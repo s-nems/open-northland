@@ -140,6 +140,23 @@ describe('terrain-aware goods reach', () => {
     expect(allows(95)).toBe(false);
     expect(allows(75)).toBe(true);
   });
+  it('answers a node no search result could reach without flooding', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(300, 100) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    createSignpost(sim.world, terrain, terrain.nodeAt(40, 30), 0, sim.content);
+    createSignpost(sim.world, terrain, terrain.nodeAt(70, 30), 0, sim.content);
+    signpostLinksSystem(sim.world, ctxOf(sim));
+    const limit = goodsSearchLimitAt(sim.world, sim.content, terrain, 0, 20, 30);
+    const floods = vi.spyOn(terrain, 'walkableResistances');
+    expect(limit?.allowsNode(terrain.nodeAt(200, 30))).toBe(false);
+    expect(floods).not.toHaveBeenCalled();
+    expect(limit?.allowsNode(terrain.nodeAt(100, 30))).toBe(true);
+    expect(floods).toHaveBeenCalledTimes(1);
+    floods.mockRestore();
+  });
   it('uses the strict 40-node boundary on plain land and a smaller reach on resistant ground', () => {
     const grass = buildTerrainGraph(testContent(), grassNodeMap(120, 100));
     const area = searchReach(grass, empty, 50, 50, 40);

@@ -9,9 +9,10 @@ import {
 import type { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { TileBuckets } from '../../inspect/tile-buckets.js';
+import { hexDistanceBetween } from '../../nav/halfcell.js';
 import { type NodeBox, type SpatialGate, unionNodeBoxes } from '../../nav/node-circle.js';
 import { type ReachArea, reachContains, reachGate } from '../../nav/range-search.js';
-import type { TerrainGraph } from '../../nav/terrain/index.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { interactionNode } from '../footprint/interaction.js';
 import { type SignpostSite, signpostNetwork, signpostNetworkRevision } from './network.js';
 import {
@@ -160,22 +161,75 @@ export function goodsSearchLimitAt(
   const key = `${player}:${hx}:${hy}`;
   const held = cache.limits.get(key);
   if (held !== undefined) return held;
-  const local = goodsReachAt(world, content, terrain, hx, hy);
-  const groups = new Set(
-    postsWithin(cache, local)
-      .filter((p) => p.player === player && reachContains(local, p.hx, p.hy))
-      .map((p) => p.group),
-  );
-  const gates: SpatialGate[] = [reachGate(terrain, [local])];
-  for (const group of groups) gates.push(groupGate(world, content, terrain, cache, player, group));
-  const bounds = unionNodeBoxes(gates.map((g) => g.bounds));
-  const limit = {
-    bounds,
-    allowsNode: (node: Parameters<SpatialGate['allowsNode']>[0]) => gates.some((g) => g.allowsNode(node)),
-  };
+  const limit = new GoodsSearchLimit(world, content, terrain, cache, player, hx, hy);
   if (cache.limits.size >= 256) cache.limits.clear();
   cache.limits.set(key, limit);
   return limit;
+}
+
+/**
+ * A spot's goods search: its own terrain search plus the signpost groups that search reaches. A caught
+ * post lies strictly inside the hex range, so a node outside that range and outside every group with a
+ * post inside it passes under no search result, and the search floods only when asked about another node.
+ * Answers come from the world as it stands when the first such node is asked about.
+ */
+class GoodsSearchLimit implements SpatialGate {
+  readonly bounds: NodeBox;
+  /** Every group with a post inside the hex range: the ones the search may catch. */
+  private readonly nearby: readonly SpatialGate[];
+  private resolved: SpatialGate | undefined;
+
+  constructor(
+    private readonly world: World,
+    private readonly content: ContentSet,
+    private readonly terrain: TerrainGraph,
+    cache: ReachCache,
+    private readonly player: number,
+    private readonly hx: number,
+    private readonly hy: number,
+  ) {
+    const range = GOODS_SEARCH_RANGE_NODES;
+    // The local search's own result bounds.
+    const own = {
+      minX: Math.max(0, hx - range + 1),
+      maxX: Math.min(terrain.width - 1, hx + range - 1),
+      minY: Math.max(0, hy - range + 1),
+      maxY: Math.min(terrain.height - 1, hy + range - 1),
+    };
+    const groups = new Set<number>();
+    for (const p of postsWithin(cache, own)) {
+      if (p.player === player && hexDistanceBetween(hx, hy, p.hx, p.hy) < range) groups.add(p.group);
+    }
+    this.nearby = [...groups].map((group) => groupGate(world, content, terrain, cache, player, group));
+    this.bounds = unionNodeBoxes([own, ...this.nearby.map((g) => g.bounds)]);
+  }
+
+  allowsNode(node: NodeId): boolean {
+    const x = this.terrain.xOf(node);
+    const y = this.terrain.yOf(node);
+    if (
+      hexDistanceBetween(this.hx, this.hy, x, y) >= GOODS_SEARCH_RANGE_NODES &&
+      !this.nearby.some((g) => g.allowsNode(node))
+    ) {
+      return false;
+    }
+    this.resolved ??= this.resolve();
+    return this.resolved.allowsNode(node);
+  }
+
+  private resolve(): SpatialGate {
+    const { world, content, terrain, player } = this;
+    const cache = cacheOf(world, content, terrain);
+    const local = goodsReachAt(world, content, terrain, this.hx, this.hy);
+    const groups = new Set(
+      postsWithin(cache, local)
+        .filter((p) => p.player === player && reachContains(local, p.hx, p.hy))
+        .map((p) => p.group),
+    );
+    const gates: SpatialGate[] = [reachGate(terrain, [local])];
+    for (const group of groups) gates.push(groupGate(world, content, terrain, cache, player, group));
+    return { bounds: this.bounds, allowsNode: (node) => gates.some((g) => g.allowsNode(node)) };
+  }
 }
 
 /** The posts filed in the tiles over a node box, a superset of those inside it. */
