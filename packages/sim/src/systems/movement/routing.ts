@@ -169,7 +169,10 @@ export function drainPathRequests(
         // occupied original every tick; the drive learns where it was stood in from the marker.
         const goalIntent = world.tryMut(e, MoveGoal);
         if (goalIntent !== undefined) goalIntent.cell = goal;
-        world.add(e, StandIn, { goal: req.goal, at: goal });
+        // Written only on a change: a stood-in walker re-routes to the same stand-in most ticks.
+        const stood = world.tryGet(e, StandIn);
+        if (stood?.goal !== req.goal || stood.at !== goal)
+          world.add(e, StandIn, { goal: req.goal, at: goal });
       } else {
         world.remove(e, StandIn);
       }
