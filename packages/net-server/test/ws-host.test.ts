@@ -3,7 +3,13 @@ import { connect as connectTcp } from 'node:net';
 import type { GameSession } from '@open-northland/lockstep';
 import { CLOSE_SERVICE_RESTART, PROTOCOL_VERSION, type RoomSettings } from '@open-northland/net-protocol';
 import { HEALTH_PATH, type RelayHost, startRelayHost } from '@open-northland/net-server';
-import { playerCommand, restoreSimulation, type SaveGame, Simulation } from '@open-northland/sim';
+import {
+  type Command,
+  playerCommand,
+  restoreSimulation,
+  type SaveGame,
+  Simulation,
+} from '@open-northland/sim';
 import { afterEach, describe, expect, it } from 'vitest';
 import { testContent } from '../../sim/test/fixtures/content.js';
 import { HeadlessClient } from './support/headless-client.js';
@@ -22,10 +28,6 @@ const SETTINGS: RoomSettings = {
   rules: { fog: null, progression: null, needs: null, weather: null },
   speed: 1,
 };
-const SEATS = [
-  { player: 0, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 0 },
-  { player: 1, mode: 'idle', offers: ['idle', 'ai', 'absent'], color: 1 },
-] as const;
 const RUN_TICKS = 24;
 const POLL_MS = 10;
 const STEP_TIMEOUT_MS = 5000;
@@ -94,67 +96,96 @@ describe('websocket host', () => {
     host = null;
   });
 
-  it(
-    'plays a session between two clients over real sockets',
-    async () => {
+  it.each([2, 8])(
+    'plays a session between %i clients over real sockets',
+    async (count) => {
       const relay = await target();
       host = relay.host;
-      const a = await connect(relay.url, 'Ania');
-      const b = await connect(relay.url, 'Bartek');
-      const clients = [a.client, b.client];
-      for (const client of clients) client.hello();
-      await until(() => clients.every((client) => client.welcomed), 'welcome');
-      a.client.createRoom(SETTINGS, SEATS);
-      await until(() => a.client.room !== null, 'the room');
-      const roomId = a.client.room?.id ?? '';
-      b.client.joinRoom(roomId);
-      await until(() => b.client.room !== null, 'the join');
-      a.client.claimSeat(0);
-      b.client.claimSeat(1);
-      await until(() => a.client.room?.seats.every((seat) => seat.nick !== null) === true, 'the seats');
-      a.client.setReady(true);
-      b.client.setReady(true);
-      await until(() => a.client.room?.seats.every((seat) => seat.ready) === true, 'readiness');
-      a.client.start();
-      await until(() => clients.every((client) => client.session !== null), 'the start');
-      await Promise.all(clients.map((client) => client.settled()));
-      await until(() => clients.every((client) => client.clockNotices.length > 0), 'the clock');
+      const connections: Awaited<ReturnType<typeof connect>>[] = [];
+      try {
+        for (let i = 0; i < count; i++) connections.push(await connect(relay.url, `Player${i}`));
+        const clients = connections.map(({ client }) => client);
+        const creator = clients[0];
+        if (creator === undefined) throw new Error('missing creator');
+        for (const client of clients) client.hello();
+        await until(() => clients.every((client) => client.welcomed), 'welcome');
+        creator.createRoom(
+          SETTINGS,
+          clients.map((_, player) => ({ player, mode: 'idle', offers: ['idle', 'ai'], color: player })),
+        );
+        await until(() => creator.room !== null, 'the room');
+        const roomId = creator.room?.id ?? '';
+        for (const client of clients.slice(1)) client.joinRoom(roomId);
+        await until(() => creator.room?.members.length === count, 'the joins');
+        for (const [player, client] of clients.entries()) client.claimSeat(player);
+        await until(() => creator.room?.seats.every((seat) => seat.nick !== null) === true, 'the seats');
+        // Compatibility arrives independently on each connection; readiness waits for every report.
+        await until(
+          () => creator.room?.members.every((member) => member.compatibility !== null) === true,
+          'compatibility',
+        );
+        for (const client of clients) client.setReady(true);
+        await until(() => creator.room?.seats.every((seat) => seat.ready) === true, 'readiness');
+        creator.start();
+        await until(() => clients.every((client) => client.session !== null), 'the start');
+        await Promise.all(clients.map((client) => client.settled()));
+        await until(() => clients.every((client) => client.clockNotices.length > 0), 'the clock');
 
-      const hashes = new Map<HeadlessClient, string>();
-      let last = performance.now();
-      while (hashes.size < clients.length) {
-        await sleep(POLL_MS);
-        const now = performance.now();
-        const elapsed = now - last;
-        last = now;
-        for (const client of clients) {
-          if (hashes.has(client)) continue;
-          client.advance(elapsed, () => {
-            const sim = client.sim;
-            if (sim === null) return;
-            const seat = client.session?.localSeat;
-            if (typeof seat === 'number' && sim.tick % 5 === seat) {
-              client.submit(
-                playerCommand(seat, {
-                  kind: 'setAssistantCounter',
-                  player: seat,
-                  counter: 'extraMen',
-                  value: sim.tick,
-                  infinite: false,
-                }),
-              );
-            }
-            if (sim.tick === RUN_TICKS) hashes.set(client, sim.hashState());
-          });
+        const captures = new Map<
+          HeadlessClient,
+          { hash: string; orders: readonly (readonly [number, number, Command])[] }
+        >();
+        let last = performance.now();
+        const deadline = last + SESSION_TIMEOUT_MS;
+        while (captures.size < clients.length) {
+          await sleep(POLL_MS);
+          const now = performance.now();
+          if (now > deadline) throw new Error('clients did not finish the socket session');
+          const elapsed = now - last;
+          last = now;
+          for (const client of clients) {
+            if (captures.has(client)) continue;
+            client.advance(elapsed, () => {
+              const sim = client.sim;
+              if (sim === null) return;
+              const seat = client.session?.localSeat;
+              if (typeof seat === 'number' && sim.tick % count === seat) {
+                client.submit(
+                  playerCommand(seat, {
+                    kind: 'setAssistantCounter',
+                    player: seat,
+                    counter: 'extraMen',
+                    value: sim.tick,
+                    infinite: false,
+                  }),
+                );
+              }
+              if (sim.tick === RUN_TICKS)
+                captures.set(client, {
+                  hash: sim.hashState(),
+                  orders: sim.commands.log.map((entry) => [entry.applyTick, entry.sequence, entry.command]),
+                });
+            });
+          }
         }
+        const reference = captures.get(creator);
+        expect(reference).toBeDefined();
+        expect(creator.sim?.commands.log.length).toBeGreaterThan(0);
+        for (const client of clients) {
+          expect(captures.get(client), client.nick).toEqual(reference);
+          expect(client.errors, client.nick).toEqual([]);
+          expect(client.rejections, client.nick).toEqual([]);
+          expect(client.desyncs, client.nick).toEqual([]);
+        }
+        const orderedSeats = new Set(
+          creator.sim?.commands.log.flatMap(({ command }) =>
+            command.kind === 'setAssistantCounter' ? [command.player] : [],
+          ),
+        );
+        expect(orderedSeats.size).toBe(count);
+      } finally {
+        for (const { socket } of connections) socket.close();
       }
-      expect(hashes.get(a.client)).toBe(hashes.get(b.client));
-      expect(a.client.sim?.commands.log.length).toBeGreaterThan(0);
-      expect(
-        a.client.sim?.commands.log.map((entry) => [entry.applyTick, entry.sequence, entry.command]),
-      ).toEqual(b.client.sim?.commands.log.map((entry) => [entry.applyTick, entry.sequence, entry.command]));
-      a.socket.close();
-      b.socket.close();
     },
     SESSION_TIMEOUT_MS,
   );
