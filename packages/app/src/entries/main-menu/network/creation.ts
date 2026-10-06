@@ -90,11 +90,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
     seed: save?.header.seed ?? drawSessionSeed(),
     rules,
     speed: savedSession?.descriptor.speed ?? DEFAULT_SESSION_SPEED,
-    ...(savedSession === null
-      ? { kickedSeatMode: 'ai' as const }
-      : savedSession.descriptor.kickedSeatMode === undefined
-        ? {}
-        : { kickedSeatMode: savedSession.descriptor.kickedSeatMode }),
+    kickedSeatMode: 'idle',
     ...(origin === 'mod' || origin === 'user' ? { mapOrigin: origin } : {}),
     ...(initial === null ? {} : { initialSave: initial.identity }),
   };

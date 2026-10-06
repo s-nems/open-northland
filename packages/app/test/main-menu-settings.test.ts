@@ -70,6 +70,7 @@ describe('parseStoredSettings', () => {
       edgeScrollEnabled: false,
       invertDragScroll: true,
       netNick: 'Ania',
+      netRelayUrl: 'ws://localhost:8768',
       debugToolsEnabled: true,
     } as const;
     expect(

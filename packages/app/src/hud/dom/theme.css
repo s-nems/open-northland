@@ -1,0 +1,35 @@
+/* Shared palette and typography for the game HUD and multiplayer screens. */
+:where(.on-hud, .network-menu) {
+  --deep: #182521;
+  --fill: #273832;
+  --text: #f0e6cf;
+  --text-hi: #f6ecd4;
+  --muted: #c1baa8;
+  --wood: #4d3b28;
+  --wood-hi: #7a5f40;
+  --wood-lo: #2b2117;
+  --bronze: #c9a262;
+  --bronze-hi: #efd28f;
+  --bronze-lo: #7a5a2f;
+  --parchment: #d9c9a4;
+  --parchment-hi: #ebdfc0;
+  --parchment-lo: #b8a77f;
+  --ink: #2b2317;
+  --ink-muted: #5c4c37;
+  --active: #e3b868;
+  --ok: #afc594;
+  --warning: #efbe70;
+  --danger: #eda08d;
+  --wax-ok: #6f8f5a;
+  --wax-warn: #c98a3a;
+  --wax-danger: #a8412f;
+  --paper-error: #783321;
+  --paper-warn: #7a5414;
+  --focus: #f3e3bb;
+  /* Delivered chrome art (assets/ui/foundation); the root sets both, `none` is the fallback. */
+  --on-surface: none;
+  --on-icons: none;
+  --paper-grain: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='g'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .35 0 0 0 0 .28 0 0 0 0 .18 0 0 0 .18 0'/></filter><rect width='100%25' height='100%25' filter='url(%23g)'/></svg>");
+  --font-body: "Alegreya Sans", system-ui, sans-serif;
+  --font-title: Cinzel, serif;
+}

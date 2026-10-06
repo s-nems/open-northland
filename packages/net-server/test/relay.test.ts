@@ -107,6 +107,30 @@ describe('relay identity', () => {
 });
 
 describe('relay rooms', () => {
+  it('leaves a departed human idle even when their seat only offered AI in the lobby', () => {
+    const s = stage();
+    const a = s.introduce(TOKEN_A, 'Ania');
+    const b = s.introduce(TOKEN_B, 'Bartek');
+    a.send({
+      kind: 'createRoom',
+      settings: { ...SETTINGS, kickedSeatMode: 'idle' },
+      seats: SEATS.map((seat) => (seat.player === 2 ? { ...seat, offers: ['ai'] } : seat)),
+    });
+    b.send({ kind: 'joinRoom', roomId: a.last('room')?.room.id });
+    a.send({ kind: 'claimSeat', player: 0 });
+    b.send({ kind: 'claimSeat', player: 2 });
+    a.send({ kind: 'setReady', ready: true });
+    b.send({ kind: 'setReady', ready: true });
+    a.send({ kind: 'start' });
+    a.send({ kind: 'loaded', tick: 0, world: 0 });
+    b.send({ kind: 'loaded', tick: 0, world: 0 });
+    b.send({ kind: 'leaveRoom' });
+    expect(a.last('kicked')).toMatchObject({ player: 2, mode: 'idle', cause: 'left' });
+    expect(a.last('room')?.room.seats[2]).toMatchObject({ mode: 'idle', nick: null });
+    expect(() => parseServerMessage(a.last('room'), parseGameSession)).not.toThrow();
+    s.advance(TICK_MS);
+    expect(a.of('frame').flatMap((frame) => frame.commands)).toEqual([]);
+  });
   it('defers departure handover until the first built world establishes its baseline', () => {
     const s = stage();
     const a = s.introduce(TOKEN_A, 'Ania'),

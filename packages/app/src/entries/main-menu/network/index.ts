@@ -2,23 +2,22 @@ import type { MapText } from '@open-northland/data';
 import { MAX_NICK_LENGTH } from '@open-northland/net-protocol';
 import { loadMapList } from '../../../content/maps-index.js';
 import { errorText } from '../../../diag/error-text.js';
-import { quietTextField } from '../../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { type ConnectionEvent, NetworkConnection } from '../../../net/connection.js';
 import { relayCloseText, relayReasonText } from '../../../net/relay-reason.js';
-import { readStoredSettings } from '../../../view/settings-store.js';
 import { relayIdentity } from '../../relay/identity.js';
 import { node } from '../dom.js';
+import { type MapSelectItem, mapItem } from '../map-select-model.js';
 import type { MenuScreen } from '../model.js';
 import type { MenuSound } from '../music.js';
 import { screenHead } from '../screen-head.js';
 import { roomAssets } from './assets.js';
+import { connectionForm } from './connection-form.js';
 import { createPanel } from './create.js';
 import { prepareRoomCreation } from './creation.js';
 import { escapeLeavesRoom, openRooms, relayAddress, validNetworkNick, worldTitle } from './model.js';
-import { button, field } from './parts.js';
-import { DEFAULT_RELAY_URL } from './relay-default.js';
+import { button } from './parts.js';
 import { mountNetworkRoom } from './room/index.js';
 import { launchNetworkGame } from './start.js';
 
@@ -34,18 +33,19 @@ export function networkScreen(
   const status = node('p', 'network-menu__notice');
   status.setAttribute('role', 'status');
   const roomHost = node('div');
-  const address = node('input');
-  address.type = 'url';
-  quietTextField(address);
-  address.value = params.get('relay') ?? DEFAULT_RELAY_URL;
-  address.required = true;
-  const nick = quietTextField(node('input'));
-  nick.value = readStoredSettings().netNick ?? '';
-  nick.maxLength = MAX_NICK_LENGTH;
-  nick.required = true;
-  const form = node('form', 'network-menu__connection');
-  const connect = node('button', 'main-menu__primary', copy.connect);
-  connect.type = 'submit';
+  const {
+    form,
+    account,
+    accountName,
+    address,
+    nick,
+    advanced,
+    resetServer,
+    connect,
+    disconnect,
+    rememberAddress,
+  } = connectionForm(params.get('relay'), () => dropConnection(''));
+  const columns = node('div', 'network-menu__columns');
   let connection: NetworkConnection | null = null;
   let assets: ReturnType<typeof roomAssets> | null = null;
   let room: ReturnType<typeof mountNetworkRoom> | null = null;
@@ -58,8 +58,10 @@ export function networkScreen(
 
   /** Map names for the room header; a room shown before the listing answers names its map by id. */
   let mapNames: ReadonlyMap<string, MapText | undefined> = new Map();
+  let mapPreviews: ReadonlyMap<string, MapSelectItem> = new Map();
   void loadMapList().then((entries) => {
     mapNames = new Map(entries.map((entry) => [entry.id, entry.name]));
+    mapPreviews = new Map(entries.map((entry) => [entry.id, mapItem(entry)]));
     const current = connection;
     if (!disposed && room !== null && current?.client.room)
       room.update(current.client.room, current.connected);
@@ -68,6 +70,7 @@ export function networkScreen(
   const notice = (text: string): void => {
     status.textContent = text;
     room?.notice(text);
+    status.hidden = room !== null;
   };
   const failure = (error: unknown): void => notice(formatMessage(copy.failed, { reason: errorText(error) }));
   const resetRoom = (): void => {
@@ -76,25 +79,29 @@ export function networkScreen(
     enteredStartedRoom = false;
     roomHost.replaceChildren();
     browser.hidden = false;
+    head.hidden = false;
   };
   /** Ends this screen's connection and room, leaving `text` as the notice; Connect works again. */
   const dropConnection = (text: string): void => {
     generation++;
+    busy = false;
     unsubscribe();
     assets?.dispose();
     assets = null;
     connection?.dispose();
     connection = null;
+    create.closeMapList();
     resetRoom();
     notice(text);
     sync();
+    nick.focus();
   };
-  const disconnect = button(copy.disconnect, () => dropConnection(''));
-  form.append(field(copy.server, address), field(copy.nick, nick), connect, disconnect);
   const list = node('div', 'network-menu__rooms');
   const refresh = button(copy.refresh, () => connection?.client.listRooms());
   const rooms = node('section', 'network-menu__room-list');
-  rooms.append(node('h2', '', copy.rooms), refresh, list);
+  const roomsHead = node('header', 'network-menu__section-head');
+  roomsHead.append(node('h2', '', copy.rooms), refresh);
+  rooms.append(roomsHead, list);
   const head = screenHead('multiplayer', open);
   const create = createPanel({
     async create(choice) {
@@ -119,15 +126,30 @@ export function networkScreen(
       browser.hidden = on;
     },
   });
-  browser.append(form, node('div', 'network-menu__columns'));
-  browser.lastElementChild?.append(rooms, create.card);
+  columns.append(rooms, create.card);
+  browser.append(form, account, columns);
   element.append(head, status, browser, create.mapList, roomHost);
 
   function sync(): void {
     const connected = connection?.connected === true && connection.client.welcomed;
+    if (room !== null) status.hidden = true;
+    else {
+      status.hidden = false;
+      if (connected) element.insertBefore(status, browser);
+      else form.insertBefore(status, connect);
+    }
+    form.hidden = connected;
+    account.hidden = !connected;
+    columns.hidden = !connected;
+    element.classList.toggle('is-entry', !connected && room === null);
+    accountName.textContent = formatMessage(copy.connected, { nick: connection?.client.nick ?? nick.value });
+    resetServer.disabled = connection !== null;
     address.disabled = connection !== null;
     nick.disabled = connection !== null;
     connect.disabled = connection !== null;
+    connect.textContent = connection === null ? copy.connect : copy.connecting;
+    if (!connected && connection !== null) form.append(disconnect);
+    else account.append(disconnect);
     disconnect.hidden = connection === null;
     refresh.disabled = !connected || busy;
     create.enable(connected && !busy);
@@ -147,7 +169,12 @@ export function networkScreen(
           node(
             'p',
             '',
-            formatMessage(pluralForm(summary.members, copy.members, bcp47Tag()), { count: summary.members }),
+            formatMessage(copy.roomCapacity, {
+              members: formatMessage(pluralForm(summary.members, copy.members, bcp47Tag()), {
+                count: summary.members,
+              }),
+              seats: summary.seats,
+            }),
           ),
         );
         row.append(
@@ -163,7 +190,11 @@ export function networkScreen(
         return row;
       }),
     );
-    if (available.length === 0) list.append(node('p', '', copy.empty));
+    if (available.length === 0) {
+      const empty = node('div', 'network-menu__empty');
+      empty.append(node('h3', '', copy.emptyTitle), node('p', '', copy.empty));
+      list.append(empty);
+    }
     sync();
   }
 
@@ -230,9 +261,11 @@ export function networkScreen(
     assets?.observeMessage(message);
     switch (message.kind) {
       case 'welcome':
+        list.replaceChildren(node('p', 'network-menu__muted', copy.loadingRooms));
         current.client.listRooms();
-        notice(formatMessage(copy.connected, { nick: current.client.nick }));
+        notice('');
         sync();
+        refresh.focus();
         break;
       case 'rooms':
         paintRooms();
@@ -245,14 +278,18 @@ export function networkScreen(
             client: current.client,
             copy: messages().networkRoom,
             savedRoster: () => assets?.savedRoster() ?? null,
+            mapPreview: (world) => (world.kind === 'map' ? (mapPreviews.get(world.mapId) ?? null) : null),
             onLeave: leaveRoom,
             rejoin: enteredStartedRoom ? launchGame : null,
             onRetryCompatibility: () => assets?.retry(),
             worldTitle: (world) => worldTitle(world, mapNames),
           });
           roomHost.replaceChildren(room.element);
+          room.element.tabIndex = -1;
+          room.element.focus();
           room.showChat(current.client.chat);
           browser.hidden = true;
+          head.hidden = true;
           status.textContent = '';
         }
         room.update(message.room, current.connected);
@@ -267,6 +304,7 @@ export function networkScreen(
         notice(copy.left);
         current.client.listRooms();
         sync();
+        refresh.focus();
         break;
       case 'chatHistory':
         room?.showChat(current.client.chat);
@@ -303,14 +341,18 @@ export function networkScreen(
     if (connection !== null) return;
     const url = relayAddress(address.value);
     if (url === null) {
+      advanced.open = true;
+      address.focus();
       notice(copy.invalidServer);
       return;
     }
     if (!validNetworkNick(nick.value.trim())) {
+      nick.focus();
       notice(formatMessage(copy.invalidNick, { max: MAX_NICK_LENGTH }));
       return;
     }
     try {
+      rememberAddress();
       connection = new NetworkConnection(url, relayIdentity(url, nick.value.trim()));
       assets = roomAssets(connection.client, failure, {}, () => {
         const current = connection;
@@ -339,6 +381,9 @@ export function networkScreen(
     leaveRoom();
   });
   sync();
+  queueMicrotask(() => {
+    if (!disposed) nick.focus();
+  });
   return {
     element,
     dispose(): void {

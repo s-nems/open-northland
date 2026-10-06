@@ -1,5 +1,14 @@
 import type { enNetwork } from './en-network.js';
 export const plNetwork = {
+  welcome: 'Gra wieloosobowa',
+  customServer: 'Serwer niestandardowy',
+  officialServer: 'Open Northland · Serwer oficjalny',
+  advanced: 'Ustawienia połączenia',
+  serverHint: 'Zmień adres, jeśli korzystasz z własnego serwera.',
+  resetServer: 'Użyj oficjalnego serwera',
+  roomCapacity: '{members} · Miejsca: {seats}',
+  loadingRooms: 'Wyszukiwanie pokoi…',
+  emptyTitle: 'Brak otwartych pokoi',
   source: 'Źródło gry',
   server: 'Adres serwera',
   nick: 'Pseudonim',
@@ -10,7 +19,7 @@ export const plNetwork = {
   reconnecting: 'Utracono połączenie. Łączenie ponownie…',
   rooms: 'Pokoje',
   refresh: 'Odśwież',
-  empty: 'Nie ma otwartych pokoi. Utwórz własny i zaproś znajomych.',
+  empty: 'Możesz utworzyć nowy pokój.',
   join: 'Dołącz',
   members: { one: '{count} gracz', few: '{count} graczy', many: '{count} graczy' },
   create: 'Utwórz pokój',

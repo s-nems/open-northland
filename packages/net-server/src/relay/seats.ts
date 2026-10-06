@@ -52,12 +52,11 @@ export class SeatTable {
     return this.seats.length;
   }
 
-  /** What the seat becomes when its member departs: the room's fallout when the seat offers it, else
-   *  its lobby setting, `idle` for an `absent` one whose settlers already stand. */
+  /** Idle departures never enable AI, even when the lobby only offered a computer seat. */
   departedModeOf(player: number, fallout: DepartedSeatMode | undefined): DepartedSeatMode | null {
     const seat = this.at(player);
     if (seat === null) return null;
-    if (fallout !== undefined && seat.offers.includes(fallout)) return fallout;
+    if (fallout === 'idle' || (fallout !== undefined && seat.offers.includes(fallout))) return fallout;
     return seat.vacantMode === 'absent' ? 'idle' : seat.vacantMode;
   }
 

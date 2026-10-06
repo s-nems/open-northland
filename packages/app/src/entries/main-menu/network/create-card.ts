@@ -51,6 +51,10 @@ export function createRoomCard(options: CreateCardOptions) {
             : '';
     },
   );
+  const sourceField = node('div', 'network-menu__field');
+  sourceField.setAttribute('role', 'group');
+  sourceField.setAttribute('aria-label', copy.source);
+  sourceField.append(node('span', '', copy.source), mode.root);
   let saves: readonly DropdownChoice<string>[] = [];
   let chosenSave = '';
   const save = dropdownControl({
@@ -131,7 +135,7 @@ export function createRoomCard(options: CreateCardOptions) {
   element.append(
     node('h2', '', copy.create),
     field(copy.roomName, name),
-    field(copy.source, mode.root),
+    sourceField,
     mapField,
     saveField,
     file,

@@ -1,6 +1,7 @@
 import type { SavedSessionMetadata, SessionWorld } from '@open-northland/lockstep';
 import type { RelayClientView } from '@open-northland/net-client';
 import type { enNetworkRoom } from '../../../../i18n/catalogs/en-network-room.js';
+import type { MapSelectItem } from '../../map-select-model.js';
 
 export type NetworkRoomCopy = { readonly [Key in keyof typeof enNetworkRoom]: string };
 export type RoomClient = Pick<
@@ -11,6 +12,7 @@ export type RoomClient = Pick<
 export interface NetworkRoomDeps {
   readonly client: RoomClient;
   readonly copy: NetworkRoomCopy;
+  readonly mapPreview?: (world: SessionWorld) => MapSelectItem | null;
   readonly savedRoster?: () => SavedSessionMetadata | null;
   readonly onLeave: () => void;
   /** The way back into a game that had already started when the player entered the room; null for

@@ -1704,11 +1704,11 @@ export const plGame = {
     departed: {
       vote: {
         ai: 'Gracz {nick} został wyrzucony, miejsce przejmuje SI',
-        idle: 'Gracz {nick} został wyrzucony, miejsce zostaje puste',
+        idle: 'Gracz {nick} został wyrzucony',
       },
       left: {
         ai: 'Gracz {nick} opuścił grę, miejsce przejmuje SI',
-        idle: 'Gracz {nick} opuścił grę, miejsce zostaje puste',
+        idle: 'Gracz {nick} opuścił grę',
       },
     },
     startRoster: {

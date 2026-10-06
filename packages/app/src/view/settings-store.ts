@@ -86,6 +86,7 @@ export interface MenuSettings {
   readonly keyBindings: KeyBindings;
   /** The display name shown to other players over a relay; null until one was chosen. */
   readonly netNick: string | null;
+  readonly netRelayUrl: string | null;
   readonly debugToolsEnabled: boolean;
 }
 
@@ -121,6 +122,7 @@ export function defaultSettings(): MenuSettings {
     invertDragScroll: true,
     keyBindings: DEFAULT_KEY_BINDINGS,
     netNick: null,
+    netRelayUrl: null,
     debugToolsEnabled: false,
   };
 }
@@ -200,6 +202,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.invertDragScroll === 'boolean' ? record.invertDragScroll : defaults.invertDragScroll,
     keyBindings: parseKeyBindings(record.changedKeyBindings),
     netNick: optionalText(record.netNick),
+    netRelayUrl: optionalText(record.netRelayUrl),
     debugToolsEnabled:
       typeof record.debugToolsEnabled === 'boolean' ? record.debugToolsEnabled : defaults.debugToolsEnabled,
   };

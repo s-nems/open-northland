@@ -332,7 +332,8 @@ room with nobody connected is kept when no frame is retained, whichever comes fi
 
 When the yeses reach `needed` the relay broadcasts `kicked { player, nick, mode, cause, tick }`, removes
 the member (its token is a stranger from then on), and returns the seat to `settings.kickedSeatMode`
-(`ai` or `idle`) when the seat offers it, else to its lobby mode, and to `idle` for an `absent` one,
+(`ai` or `idle`). An `idle` policy always applies; `ai` applies when the seat offers it,
+otherwise the seat returns to its lobby mode (`idle` for an `absent` one),
 whose settlers already stand. The room view reflects this mode. For
 `mode: "ai"` the relay lands its `setPlayerAi` envelope on `tick`, the next unemitted one, outside
 every budget, so the AI takes the seat on the same tick on every client. For `mode: "idle"` the seat

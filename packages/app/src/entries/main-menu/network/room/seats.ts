@@ -5,11 +5,11 @@ import {
   type VacantSeatMode,
 } from '@open-northland/net-protocol';
 import { components } from '@open-northland/sim';
-import { formatMessage, messages } from '../../../../i18n/index.js';
+import { localizedMapText } from '../../../../game/map-strings.js';
+import { currentLocale, formatMessage, messages, tribeName } from '../../../../i18n/index.js';
 import { memberLoadText } from '../../../../view/net/member-load.js';
 import { node } from '../../dom.js';
 import { colorChip, colorPalette } from '../../lobby-controls/color.js';
-import { seatRow as createSeatRow } from '../../lobby-controls/seat.js';
 import { seatModeControl } from '../../lobby-controls/seat-mode.js';
 import { tribePicker } from '../../lobby-controls/tribe.js';
 import { button, selectControl } from './controls.js';
@@ -30,6 +30,20 @@ const ROOM_VACANT_ORDER: readonly VacantSeatMode[] = ['idle', 'ai', 'absent'];
 export function roomSeats(deps: NetworkRoomDeps) {
   const { client, copy } = deps;
   const root = node('section', 'network-room__seats');
+  const header = node('div', 'network-room__seat-head');
+  header.setAttribute('aria-hidden', 'true');
+  header.append(
+    ...[
+      copy.human,
+      copy.color,
+      copy.team,
+      copy.seatMode,
+      messages().mainMenu.lobby.difficultyHeader,
+      messages().mainMenu.lobby.tribe,
+    ].map((label) => node('span', '', label)),
+  );
+  const difficultyHeading = header.children.item(4);
+  root.append(header);
   const rows = new Map<number, ReturnType<typeof seatRow>>();
   let shown: { readonly room: RoomView; readonly connected: boolean } | null = null;
   /** The seat whose colour palette is open; one at a time, like the local lobby. */
@@ -98,11 +112,12 @@ export function roomSeats(deps: NetworkRoomDeps) {
     const team = selectControl(
       copy.team,
       [
-        ['', copy.authored],
+        ['', '—'],
         ...Array.from({ length: MAX_SEATS }, (_, index) => [String(index), String(index + 1)] as const),
       ],
       (value) => client.setSeat(player, { team: value === '' ? null : Number(value) }),
     );
+    team.root.classList.add('network-room__team');
     const mode = seatModeControl(
       {
         fieldClassName: 'network-room__field',
@@ -132,24 +147,38 @@ export function roomSeats(deps: NetworkRoomDeps) {
         if (level !== undefined) client.setSeat(player, { difficulty: level });
       },
     );
+    difficulty.root.classList.add('network-room__difficulty');
     const take = button(copy.takeSeat, () => client.claimSeat(player));
     take.classList.add('network-room__claim');
-    const row = createSeatRow({
-      className: 'network-room__seat',
-      nameClass: 'network-room__seat-name',
-      detailClass: 'network-room__muted',
-      action: take,
-      controls: [
-        color,
-        team.root,
-        mode.root,
-        difficulty.root,
-        ...(tribe === null ? [] : [tribe.root]),
-        palette,
-      ],
-    });
+    const row = node('div', 'network-room__seat');
+    row.setAttribute('role', 'group');
+    row.tabIndex = -1;
+    const identity = node('div', 'network-room__seat-identity');
+    const nameLine = node('div', 'network-room__seat-name-line');
+    const name = node('strong', 'network-room__seat-name');
+    const yours = node('span', 'network-room__badge network-room__badge--you', copy.you);
+    const host = node('span', 'network-room__badge', copy.host);
+    const faction = node('span', 'network-room__faction');
+    const detail = node('span', 'network-room__muted');
+    const readiness = node('span', 'network-room__readiness');
+    nameLine.append(name, yours, host, detail);
+    const identityText = node('div', 'network-room__seat-description');
+    identityText.append(nameLine, faction);
+    identity.append(identityText, take);
+    const human = node('span', 'network-room__human', copy.human);
+    human.append(readiness);
+    row.append(
+      identity,
+      color,
+      team.root,
+      mode.root,
+      human,
+      difficulty.root,
+      ...(tribe === null ? [] : [tribe.root]),
+      palette,
+    );
     return {
-      row: row.root,
+      row,
       chip: chip.root,
       palette,
       update(room: RoomView, seat: RoomSeatView, connected: boolean): void {
@@ -165,19 +194,38 @@ export function roomSeats(deps: NetworkRoomDeps) {
                 ? copy.ready
                 : copy.notReady;
         const saved = savedSeatHint(deps.savedRoster?.() ?? null, player, client.nick);
-        const detail = [status, memberLoadText(member)];
+        const details = [`${copy.seat} ${player + 1}`, memberLoadText(member)];
         if (saved !== null) {
-          detail.push(formatMessage(copy.savedPlayer, { nick: saved.nick }));
-          if (saved.recommended) detail.push(copy.previousSeat);
+          details.push(formatMessage(copy.savedPlayer, { nick: saved.nick }));
+          if (saved.recommended) details.push(copy.previousSeat);
         }
-        row.update(
-          `${copy.seat} ${player + 1} · ${seat.nick ?? copy.empty}`,
-          detail.filter(Boolean).join(' · '),
-          seat.nick === client.nick,
+        const mine = seat.nick === client.nick;
+        name.textContent =
+          seat.nick ?? (seat.mode === 'ai' ? copy.ai : seat.mode === 'absent' ? copy.absentSeat : copy.empty);
+        const slot = deps.mapPreview?.(room.settings.world)?.players.find((slot) => slot.player === player);
+        faction.textContent =
+          localizedMapText(slot?.name, currentLocale()) ??
+          (civilization === null ? '' : tribeName(seat.tribe ?? civilization));
+        faction.hidden = faction.textContent === '';
+        yours.hidden = !mine;
+        host.hidden = seat.nick !== room.creator;
+        detail.textContent = details.filter(Boolean).join(' · ');
+        readiness.textContent = status;
+        readiness.hidden = status === '';
+        readiness.classList.toggle('is-ready', seat.ready && member?.connected === true);
+        row.classList.toggle('is-yours', mine);
+        row.classList.toggle('is-occupied', seat.nick !== null);
+        row.setAttribute(
+          'aria-label',
+          `${copy.seat} ${player + 1}: ${name.textContent}${mine ? ` · ${copy.you}` : ''}`,
         );
+        take.textContent = permissions.self?.seat == null ? copy.takeSeat : copy.changeSeat;
+        mode.root.hidden = seat.nick !== null;
+        human.hidden = seat.nick === null;
         chip.update({ value: seat.color, disabled: frozen, expanded: paletteSeat === player });
         paintPalette(room, seat, frozen);
         team.update(String(seat.team ?? ''), frozen);
+        team.root.title = seat.team == null ? copy.authored : `${copy.team} ${seat.team + 1}`;
         mode.update(seat.mode, !permissions.creator || seat.nick !== null);
         tribe?.update(seat, !canSetSeatTribe(room, seat, client.nick, connected));
         // Only a seat the computer plays takes a level.
@@ -199,6 +247,9 @@ export function roomSeats(deps: NetworkRoomDeps) {
     },
     update(room: RoomView, connected: boolean): void {
       shown = { room, connected };
+      const hasDifficulty = room.seats.some((seat) => seat.mode === 'ai' && seat.difficulty !== undefined);
+      root.classList.toggle('has-difficulty', hasDifficulty);
+      if (difficultyHeading instanceof HTMLElement) difficultyHeading.hidden = !hasDifficulty;
       const present = new Set(room.seats.map((seat) => seat.player));
       for (const [player, row] of rows)
         if (!present.has(player)) {

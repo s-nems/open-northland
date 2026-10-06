@@ -1734,11 +1734,11 @@ export const enGame = {
     departed: {
       vote: {
         ai: '{nick} was kicked; the AI takes the seat',
-        idle: '{nick} was kicked; the seat sits idle',
+        idle: '{nick} was kicked',
       },
       left: {
         ai: '{nick} left the game; the AI takes the seat',
-        idle: '{nick} left the game; the seat sits idle',
+        idle: '{nick} left the game',
       },
     },
     startRoster: {

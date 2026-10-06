@@ -16,8 +16,7 @@ interface RuleText {
   readonly label: string;
   readonly detail?: string;
 }
-interface BooleanRuleText {
-  readonly label: string;
+interface BooleanRuleText extends RuleText {
   readonly on: string;
   readonly off: string;
 }
@@ -105,15 +104,29 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     pill.setAttribute('role', 'switch');
     pill.setAttribute('aria-label', text.label);
     pill.addEventListener('click', () => state.request(!state.value()));
+    if (text.detail !== undefined) {
+      const detail = document.createElement('small');
+      detail.id = `lobby-rule-${++ruleIds}`;
+      detail.className = 'main-menu__rule-detail';
+      detail.textContent = text.detail;
+      label.append(detail);
+      pill.setAttribute('aria-describedby', detail.id);
+    }
     row.append(label, pill);
+    const fallback = inherited !== undefined ? select(text.label, choices, change) : null;
     return {
-      elements: [row],
+      elements: [row, ...(fallback?.elements ?? [])],
       update(value: boolean | null, disabled: boolean): void {
         state.update(value, disabled);
         pill.disabled = disabled;
         pill.classList.toggle('is-on', value === true);
         pill.setAttribute('aria-checked', String(value === true));
         pill.title = value === true ? text.on : text.off;
+        if (fallback !== null) {
+          row.hidden = value === null;
+          fallback.update(value, disabled, value === null ? inherited : undefined);
+          for (const element of fallback.elements) element.hidden = value !== null;
+        }
       },
     };
   }
@@ -175,10 +188,14 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       };
     }
     const control = segmentedRule<MapModeName>(options.map.label, mapChoices, change);
+    const inheritedMap = document.createElement('p');
+    inheritedMap.className = 'main-menu__rule-note';
     return {
-      elements: control.elements,
+      elements: [...control.elements, inheritedMap],
       update(shown: ShownMap, disabled: boolean): void {
         control.update(shown === 'revealed' ? null : shown, disabled);
+        inheritedMap.textContent = shown === 'revealed' ? (options.map.revealed ?? '') : (inherited ?? '');
+        inheritedMap.hidden = shown !== null && shown !== 'revealed';
       },
     };
   })();
@@ -199,6 +216,8 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       ? select(options.weather.label, weatherChoices, changeWeather)
       : segmentedRule(options.weather.label, weatherChoices, changeWeather);
   return {
+    environmentElements: [...map.elements, ...weather.elements],
+    gameplayElements: [...fogOfWar.elements, ...progression.elements, ...needs.elements],
     elements: [
       ...map.elements,
       ...fogOfWar.elements,
