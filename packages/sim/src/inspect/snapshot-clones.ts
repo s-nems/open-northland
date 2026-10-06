@@ -6,7 +6,7 @@ import { addField } from './fast-record.js';
 import { PendingWrites } from './pending-writes.js';
 import { clonePlain } from './plain-clone.js';
 import type { EntitySnapshot } from './snapshot.js';
-import { DeltaColumns, type SnapshotDelta } from './snapshot-delta.js';
+import { DeltaColumns, DeltaShapes, type SnapshotDelta } from './snapshot-delta.js';
 
 /** Untouched entities and unwritten components retain their detached clone identities. */
 interface CachedEntity {
@@ -200,6 +200,7 @@ export class SnapshotDeltaStream {
   private readonly pending: PendingDelta;
   /** The entities this stream carried whole since its last rebuild: the others go whole next. */
   private readonly sent = new Set<Entity>();
+  private readonly shapes = new DeltaShapes();
   private lastTick = NO_TICK;
   private lastVersion = NO_VERSION;
   private sequence = 0;
@@ -227,7 +228,7 @@ export class SnapshotDeltaStream {
     if (tick === this.lastTick && version === this.lastVersion) return null;
     this.clones.refresh();
     const pending = this.pending;
-    const columns = new DeltaColumns();
+    const columns = new DeltaColumns(this.shapes);
     let removed: Entity[];
     if (pending.rebuild) {
       this.sent.clear();

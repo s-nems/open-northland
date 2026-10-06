@@ -218,6 +218,47 @@ describe('snapshot delta stream', () => {
     expect(deltas.next()).toBeNull();
   });
 
+  it('carries records of numbers, booleans, strings and null as scalars, and repeats a layout in a later delta', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const { Fleeing, PathFollow, SettlerNeeds } = components;
+    const walker = bareResource(sim, 5);
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    mirror.apply(nonNull(deltas.next()));
+    const follow = {
+      index: 2,
+      legElapsed: 0,
+      legCost: 7,
+      legStartedAt: undefined,
+      departureCharged: true as const,
+    };
+    const needs = {
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(1),
+      piety: fx.fromInt(2),
+      enjoyment: fx.fromInt(3),
+      asOf: 9,
+      drain: 'body' as const,
+    };
+    sim.world.add(walker, PathFollow, follow);
+    sim.world.add(walker, SettlerNeeds, needs);
+    sim.world.add(walker, Fleeing, { repathAt: 1, calmUntil: null });
+    const first = nonNull(deltas.next());
+    expect(first.values).toEqual([]);
+    expect(first.recordFields).toEqual(expect.arrayContaining(['nnnb', 'nnnnns', 'nz']));
+    mirror.apply(first);
+    sim.world.mut(walker, PathFollow).index = 3;
+    const second = nonNull(deltas.next());
+    expect(second.values).toEqual([]);
+    expect(second.recordKeys).toEqual([['index', 'legElapsed', 'legCost', 'departureCharged']]);
+    mirror.apply(second);
+    const held = entityById(mirror.snapshot(), walker)?.components;
+    expect(held?.PathFollow).toStrictEqual({ index: 3, legElapsed: 0, legCost: 7, departureCharged: true });
+    expect(held?.SettlerNeeds).toStrictEqual({ ...needs });
+    expect(held?.Fleeing).toStrictEqual({ repathAt: 1, calmUntil: null });
+    expect(held).toStrictEqual(entityById(sim.snapshot(), walker)?.components);
+  });
+
   it('carries a same-tick mutation as a touched entity, and a destroyed one as removed', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const node = bareResource(sim, 5);
