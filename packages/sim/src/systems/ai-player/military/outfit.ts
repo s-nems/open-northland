@@ -75,6 +75,8 @@ export function outfitOrders(
       }),
     ),
   ];
+  // The specs a man is dressed in after his weapon, armour first, built once per decision.
+  const afterWeapon = [...armour, ...misc];
   let stock: SpareStock | undefined; // stock minus errands underway, walked on first need
   const spare = (): SpareStock => (stock ??= spareStock(world, ctx, terrain, player, barracks, counted));
   let fielded: number[] | undefined; // the army's men per weapon class, this decision's picks included
@@ -99,7 +101,7 @@ export function outfitOrders(
         break;
       }
     }
-    for (const spec of [...armour, ...misc]) {
+    for (const spec of afterWeapon) {
       if (errand !== null) break;
       const slot = freeSlotFor(eq, spec);
       if (slot === null || !spare().take(spec.goodType)) continue;

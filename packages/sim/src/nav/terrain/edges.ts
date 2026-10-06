@@ -43,17 +43,27 @@ export abstract class TerrainEdges extends TerrainLattice {
    * placement, not the pathfinder's edge set, which is 8-connected through {@link steps}.
    */
   walkableNeighbours(node: NodeId): NodeId[] {
+    const out: NodeId[] = [];
+    out.length = this.walkableNeighboursInto(node, out);
+    return out;
+  }
+
+  /** {@link walkableNeighbours} written into `out` from index 0, for a loop that reuses one array; returns
+   *  how many it wrote. */
+  walkableNeighboursInto(node: NodeId, out: NodeId[]): number {
     const x = this.xOf(node);
     const y = this.yOf(node);
-    const out: NodeId[] = [];
-    for (const [dx, dy] of NEIGHBOUR_OFFSETS) {
-      const nx = x + dx;
-      const ny = y + dy;
+    let count = 0;
+    for (let i = 0; i < NEIGHBOUR_OFFSETS.length; i++) {
+      const offset = NEIGHBOUR_OFFSETS[i];
+      if (offset === undefined) continue;
+      const nx = x + offset[0];
+      const ny = y + offset[1];
       if (!this.inBounds(nx, ny)) continue;
       const c = this.idAt(nx, ny);
-      if (this.isWalkable(c)) out.push(c);
+      if (this.isWalkable(c)) out[count++] = c;
     }
-    return out;
+    return count;
   }
 
   /**

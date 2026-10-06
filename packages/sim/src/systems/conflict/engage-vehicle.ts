@@ -223,7 +223,8 @@ function scanForTarget(
   const centre = stance === 'attack' || guard === null ? here : terrain.nodeAtClamped(guard.hx, guard.hy);
   const minDist = stance === 'hold' ? weapon.minRange : 1;
   const maxDist = stance === 'hold' ? weapon.maxRange : VEHICLE_SCAN_RADIUS_POINTS;
-  const { x, y } = terrain.coordsOf(centre);
+  const x = terrain.xOf(centre);
+  const y = terrain.yOf(centre);
   const owner = world.tryGet(e, Owner);
   if (owner !== undefined && !pass.index.othersWithin(owner.player, x, y, maxDist)) return held;
   const givenUp = givenUpTargetVeto(world, ctx, e);
@@ -443,7 +444,8 @@ function scatter(
 }
 
 function pointOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
-  const { x, y } = terrain.coordsOf(node);
+  const x = terrain.xOf(node);
+  const y = terrain.yOf(node);
   return { hx: x, hy: y };
 }
 

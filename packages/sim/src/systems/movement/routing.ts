@@ -18,7 +18,7 @@ import {
 import { type Fixed, fx } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { BlockOverlay } from '../../nav/block-overlay.js';
-import { positionOfNode, positionXOfWorld } from '../../nav/halfcell.js';
+import { positionOfNode, positionXOfNode, positionXOfWorld, positionYOfNode } from '../../nav/halfcell.js';
 import { nearestUnblockedNode } from '../../nav/nearest.js';
 import { findPath, type SearchStats } from '../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js';
@@ -384,8 +384,7 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Wa
         node: terrain.nodeAt(midX, (prevY + y) / 2),
       });
     }
-    const p = positionOfNode(x, y);
-    waypoints.push({ x: p.x, y: p.y, node });
+    waypoints.push({ x: positionXOfNode(x, y), y: positionYOfNode(y), node });
     prevX = x;
     prevY = y;
   }

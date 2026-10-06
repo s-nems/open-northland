@@ -142,23 +142,33 @@ export function rallyAt(
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const spots: NodeId[] = [];
   let holdRadius = RALLY_HOLD_RADIUS_NODES;
-  const seen = new Set<NodeId>([door]);
-  let frontier: NodeId[] = [door];
+  // A breadth-first walk one ring at a time over one queue, the ring `[from, to)`, marking nodes in the
+  // terrain's reused visit stamps.
+  const scratch = rallyScratchOf(terrain);
+  const { queue, neighbours } = scratch;
+  const pass = nextRallyPass(scratch);
+  scratch.seen[door] = pass;
+  queue[0] = door;
+  let from = 0;
+  let to = 1;
   let budget = size * RALLY_SEARCH_NODES_PER_MAN;
-  while (spots.length < size && frontier.length > 0 && budget > 0) {
-    const next: NodeId[] = [];
-    for (const node of frontier) {
-      for (const n of terrain.walkableNeighbours(node)) {
-        if (seen.has(n) || blocked.has(n)) continue;
-        seen.add(n);
+  while (spots.length < size && to > from && budget > 0) {
+    let queued = to;
+    for (let i = from; i < to; i++) {
+      const count = terrain.walkableNeighboursInto(queue[i] as NodeId, neighbours);
+      for (let k = 0; k < count; k++) {
+        const n = neighbours[k] as NodeId;
+        if (scratch.seen[n] === pass || blocked.has(n)) continue;
+        scratch.seen[n] = pass;
         budget--;
-        next.push(n);
+        queue[queued++] = n;
         if (spots.length >= size || !isCellCentre(terrain, n)) continue;
         spots.push(n);
         holdRadius = Math.max(holdRadius, manhattan(terrain, n, door) + RALLY_HOLD_SLACK_NODES);
       }
     }
-    frontier = next;
+    from = to;
+    to = queued;
   }
   const taken = takenPlaces(world, terrain, band);
   return { door, holdRadius, free: spots.filter((spot) => !taken.has(spot)) };
@@ -166,8 +176,41 @@ export function rallyAt(
 
 /** Whether `node` is a visual cell's centre, `(2cx + (cy & 1), 2cy)` on the half-cell lattice. */
 function isCellCentre(terrain: TerrainGraph, node: NodeId): boolean {
-  const { x, y } = terrain.coordsOf(node);
+  const x = terrain.xOf(node);
+  const y = terrain.yOf(node);
   return (y & 1) === 0 && ((x - ((y >> 1) & 1)) & 1) === 0;
+}
+
+/** The rally walk's reusable storage per terrain: visit stamps valid while equal to the pass, the queue,
+ *  and one node's neighbours. */
+interface RallyScratch {
+  readonly seen: Int32Array;
+  pass: number;
+  readonly queue: NodeId[];
+  readonly neighbours: NodeId[];
+}
+
+const rallyScratches = new WeakMap<TerrainGraph, RallyScratch>();
+
+function rallyScratchOf(terrain: TerrainGraph): RallyScratch {
+  let scratch = rallyScratches.get(terrain);
+  if (scratch === undefined) {
+    scratch = { seen: new Int32Array(terrain.nodeCount), pass: 0, queue: [], neighbours: [] };
+    rallyScratches.set(terrain, scratch);
+  }
+  return scratch;
+}
+
+/** Int32 stamp ceiling; on the wrap the stamps are cleared so no stale slot matches a reused pass. */
+const MAX_RALLY_PASS = 2 ** 31 - 1;
+
+function nextRallyPass(scratch: RallyScratch): number {
+  if (scratch.pass >= MAX_RALLY_PASS) {
+    scratch.seen.fill(0);
+    scratch.pass = 0;
+  }
+  scratch.pass += 1;
+  return scratch.pass;
 }
 
 /**

@@ -180,9 +180,11 @@ export class RouteMemo {
 
   /** Drop the routes no walker asked for within {@link ROUTE_MEMO_TICKS}. */
   expire(tick: number): void {
-    for (const [e, entry] of this.entries) {
+    // forEach rather than for-of, which hands out an entry pair per walker every tick. A Map's forEach
+    // visits every entry left undeleted, so deleting the visited one is safe.
+    this.entries.forEach((entry, e) => {
       if (tick - entry.tick > ROUTE_MEMO_TICKS) this.entries.delete(e);
-    }
+    });
   }
 
   /** Replays every entry's search from its log: a node asked outside the log, or another path or settle

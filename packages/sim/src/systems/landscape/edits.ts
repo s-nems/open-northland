@@ -5,6 +5,8 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import {
   cellOfNode,
+  cellXOfNode,
+  cellYOfNode,
   type HalfCellNode,
   hexDistance,
   hexDistanceBetween,
@@ -251,8 +253,8 @@ function forNodesOfCellDisc(
   const lastHx = Math.min(terrain.width - 1, 2 * (centre.cx + radius) + 2);
   for (let hy = Math.max(0, 2 * (centre.cy - radius)); hy <= lastHy; hy++) {
     for (let hx = Math.max(0, 2 * (centre.cx - radius) - 1); hx <= lastHx; hx++) {
-      const cell = cellOfNode(hx, hy);
-      if (hexDistanceBetween(cell.cx, cell.cy, centre.cx, centre.cy) <= radius) apply(terrain.nodeAt(hx, hy));
+      const distance = hexDistanceBetween(cellXOfNode(hx, hy), cellYOfNode(hy), centre.cx, centre.cy);
+      if (distance <= radius) apply(terrain.nodeAt(hx, hy));
     }
   }
 }
@@ -285,7 +287,9 @@ export function setVertexColors(
   });
   if (changed.length === 0) return true;
   writeLandscapeEdits(world, (state) => {
-    for (const node of changed) state.tints.set(node, value);
+    // Indexed: this closure runs once per write, too rarely to be optimized, so a for-of here would hand
+    // out an iterator result per node.
+    for (let i = 0; i < changed.length; i++) state.tints.set(changed[i] as NodeId, value);
   });
   return true;
 }

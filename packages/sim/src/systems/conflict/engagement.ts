@@ -414,7 +414,9 @@ export function resolveTarget(
   // ordered target is chased regardless of sight, so its real distance is measured, uncapped by the band.
   const order = world.tryGet(self, AttackOrder);
   if (order !== undefined) {
-    const { x, y } = terrain.coordsOf(here);
+    const x = terrain.xOf(here);
+
+    const y = terrain.yOf(here);
     // An enemy within a breaker's reach is fought first, and the wall taken up again once it is gone.
     const rival =
       order.breach?.enemy === undefined
@@ -434,7 +436,9 @@ export function resolveTarget(
   if (spec.hold !== undefined) {
     return heldOrPicked(world, ctx, terrain, pass, self, here, spec, spec.hold, moving);
   }
-  const { x, y } = terrain.coordsOf(spec.searchCenter ?? here);
+  const x = terrain.xOf(spec.searchCenter ?? here);
+
+  const y = terrain.yOf(spec.searchCenter ?? here);
   const locked = spec.lock?.target ?? null;
   if (locked !== null) {
     // A commitment ignores `minDist`: prey that closes inside the weapon's dead zone is backed off by the
@@ -528,7 +532,9 @@ function heldOrPicked(
     if (asker === null || moving || !withinBand(hold.band, held.dist)) return held;
     return lessCrowdedInReach(world, ctx, terrain, pass, spec, asker, heldTarget) ?? held;
   }
-  const { x, y } = terrain.coordsOf(here);
+  const x = terrain.xOf(here);
+
+  const y = terrain.yOf(here);
   if (
     held === null &&
     spec.player !== null &&
@@ -653,7 +659,9 @@ function lessCrowdedInReach(
   const { index } = pass;
   const heldRank = tierRank(world, ctx, index, heldTarget);
   const reach = { minRange: asker.band.minRange, maxRange: asker.band.maxRange + 1 };
-  const { x, y } = terrain.coordsOf(asker.here);
+  const x = terrain.xOf(asker.here);
+
+  const y = terrain.yOf(asker.here);
   const near = index.nearestFew(
     x,
     y,
@@ -768,7 +776,9 @@ export function enemyInReachFrom(
   const heldRank = tierRank(world, ctx, index, than);
   const accept = (t: Entity): boolean => tierRank(world, ctx, index, t) <= heldRank && spec.accept(t);
   return (node) => {
-    const { x, y } = terrain.coordsOf(node);
+    const x = terrain.xOf(node);
+
+    const y = terrain.yOf(node);
     return index.nearest(x, y, band.minRange, band.maxRange, accept, spec.player, SEARCH_METRIC);
   };
 }

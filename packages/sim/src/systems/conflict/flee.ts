@@ -113,7 +113,8 @@ export function fleeDrive(
   }
 
   const here = settlerMovementNode(world, terrain, e);
-  const { x, y } = terrain.coordsOf(here);
+  const x = terrain.xOf(here);
+  const y = terrain.yOf(here);
   // Fog gate: a fleer reacts only to threats its player currently sees. Any of the player's eyes counts, so
   // a watchtower spotting the raider warns a civilian whose own sight does not reach it.
   const viewer = world.tryGet(e, Owner);

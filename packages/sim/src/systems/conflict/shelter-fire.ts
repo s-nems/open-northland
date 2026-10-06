@@ -106,7 +106,8 @@ function fireFrom(
   // A wall stands up to `pad` nodes off the centre the index is searched from.
   let pad = 0;
   for (const wall of walls) pad = Math.max(pad, hexNodeDistance(terrain, centre, wall));
-  const { x, y } = terrain.coordsOf(centre);
+  const x = terrain.xOf(centre);
+  const y = terrain.yOf(centre);
   const candidates = TARGET_KINDS.map((kind) =>
     index
       .nearestFew(

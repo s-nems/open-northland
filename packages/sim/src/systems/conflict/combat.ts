@@ -40,8 +40,9 @@ export const combatSystem: System = (world, ctx) => {
   if (ctx.terrain === undefined) return; // mapless sim: no cells to measure reach over
   const terrain = ctx.terrain;
 
-  // The dormancy gate is order-independent, so it runs over the raw query.
-  if (!combatPossible(world, ctx, world.query(Settler, Health, Position))) {
+  // The dormancy gate is order-independent; it walks the kept canonical list, which hands out no iterator
+  // result per combatant as the raw query's store iterator does.
+  if (!combatPossible(world, ctx, world.canonicalQuery(Settler, Health, Position))) {
     holdDormantTick(world, ctx.tick);
     return;
   }

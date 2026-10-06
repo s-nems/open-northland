@@ -114,7 +114,8 @@ function answerAlarm(
   if (answered.has(key) || !world.has(alarm.attacker, Position)) return;
   answered.add(key);
   const from = entityNode(world, terrain, alarm.attacker);
-  const { x, y } = terrain.coordsOf(alarm.node);
+  const x = terrain.xOf(alarm.node);
+  const y = terrain.yOf(alarm.node);
   for (const { entity, distance } of index.ownedWithin(
     alarm.player,
     x,

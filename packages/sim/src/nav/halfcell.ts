@@ -51,8 +51,17 @@ export function nodeHyOfPosition(y: Fixed): number {
  * by 4 and the stagger at a half-integer row is exactly a quarter.
  */
 export function positionOfNode(hx: number, hy: number): { x: Fixed; y: Fixed } {
-  const y = fx.div(fx.fromInt(hy), TWO);
-  return { x: positionXOfWorld(fx.div(fx.fromInt(hx), TWO), y), y };
+  return { x: positionXOfNode(hx, hy), y: positionYOfNode(hy) };
+}
+
+/** {@link positionOfNode}'s `x` alone, so a loop building its own records allocates no point. */
+export function positionXOfNode(hx: number, hy: number): Fixed {
+  return positionXOfWorld(fx.div(fx.fromInt(hx), TWO), positionYOfNode(hy));
+}
+
+/** {@link positionOfNode}'s `y` alone. */
+export function positionYOfNode(hy: number): Fixed {
+  return fx.div(fx.fromInt(hy), TWO);
 }
 
 /**
@@ -86,9 +95,19 @@ export function cellOfAnchorNode(hx: number, hy: number): { readonly cx: number;
  * decides the tie the way the original did, which is what a ground lookup under a landing node needs.
  */
 export function cellOfNode(hx: number, hy: number): { readonly cx: number; readonly cy: number } {
+  return { cx: cellXOfNode(hx, hy), cy: cellYOfNode(hy) };
+}
+
+/** {@link cellOfNode}'s `cx` alone, so a per-node loop allocates no cell object. */
+export function cellXOfNode(hx: number, hy: number): number {
   const phase = hy & 3;
   const nudge = phase === 1 ? 1 : phase === 2 ? -1 : 0;
-  return { cx: (hx + nudge) >> 1, cy: hy >> 1 };
+  return (hx + nudge) >> 1;
+}
+
+/** {@link cellOfNode}'s `cy` alone. */
+export function cellYOfNode(hy: number): number {
+  return hy >> 1;
 }
 
 /**
