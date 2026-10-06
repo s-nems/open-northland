@@ -52,7 +52,8 @@ export async function fetchImageData(url: string): Promise<ImageData | null> {
     const canvas = document.createElement('canvas');
     canvas.width = bitmap.width;
     canvas.height = bitmap.height;
-    const ctx = canvas.getContext('2d');
+    // A CPU-backed canvas: the default GPU one makes every `getImageData` a synchronous GPU readback.
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
     if (ctx === null) {
       bitmap.close();
       return null;
