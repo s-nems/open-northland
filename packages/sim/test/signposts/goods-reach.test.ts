@@ -32,6 +32,22 @@ describe('terrain-aware goods reach', () => {
     liftRoad(sim.world, terrain, road);
     expect(reachContains(read(), 89, 50)).toBe(false);
   });
+  it('holds the most recently asked spots and evicts the least recently asked', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: roughNodeMap(200, 200, () => 5) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('terrain');
+    const read = (i: number) => goodsReachAt(sim.world, sim.content, terrain, i % 200, Math.floor(i / 200));
+    const SPOTS_HELD = 1024;
+    const first = read(0);
+    for (let i = 1; i < SPOTS_HELD; i++) read(i);
+    expect(read(0)).toBe(first);
+    for (let i = SPOTS_HELD; i < 2 * SPOTS_HELD - 1; i++) read(i);
+    expect(read(0)).toBe(first);
+    for (let i = 2 * SPOTS_HELD; i < 3 * SPOTS_HELD; i++) read(i);
+    const again = read(0);
+    expect(again).not.toBe(first);
+    expect(again).toEqual(first);
+  });
   it('keeps a search through block changes past the nodes its flood inspected', () => {
     // Resistance 5 spends the 80-point budget within 16 steps, far inside the 80-node outer bound.
     const sim = new Simulation({ seed: 1, content: testContent(), map: roughNodeMap(240, 240, () => 5) });

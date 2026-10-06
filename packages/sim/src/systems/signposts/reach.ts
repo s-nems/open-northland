@@ -33,6 +33,10 @@ interface ReachCache {
 }
 const caches = new WeakMap<World, ReachCache>();
 
+/** Local searches held, about (2 * range - 1)^2 bytes each: enough that a settler re-planning from the
+ *  spot it stands on finds its search again a scan beat later. */
+const SPOT_REACH_CAP = 1024;
+
 interface Doors {
   readonly feed: ChangeFeed;
   readonly entries: Map<Entity, { player: number; hx: number; hy: number }>;
@@ -110,7 +114,14 @@ export function goodsReachAt(
   const key = `${hx}:${hy}`;
   const held = cache.spots.get(key);
   const found = terrainReach(world, content, terrain, hx, hy, GOODS_SEARCH_RANGE_NODES, held);
-  if (cache.spots.size >= 256 && held === undefined) cache.spots.clear();
+  // Re-inserted on every read, so the map runs least recently asked first and eviction drops the oldest.
+  if (held !== undefined) cache.spots.delete(key);
+  else if (cache.spots.size >= SPOT_REACH_CAP) {
+    for (const oldest of cache.spots.keys()) {
+      cache.spots.delete(oldest);
+      break;
+    }
+  }
   cache.spots.set(key, found);
   return found.area;
 }
