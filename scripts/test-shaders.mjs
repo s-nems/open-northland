@@ -21,10 +21,11 @@ const DEFAULT_BACKENDS = { win32: 'd3d11', darwin: 'metal' };
 /**
  * Default budgets per backend, from the catalogue as it stands. Direct3D 11 on a GitHub runner is WARP
  * on a slow CPU, which compiles each program with FXC and then again into its own CPU code: there
- * `world-batch/textures16/xbr` takes 31 to 64 s and the whole set 109 to 217 s between two runs, on
- * shaders real hardware plays fine, while the shader that froze 0.2.1 held eight times the inlined
- * work. Metal and SwiftShader finish the set within seconds. A budget is a tripwire against that
- * order of growth over a runner that varies twofold, not a frame budget.
+ * `world-batch/textures16/xbr`, `shaded-terrain` and `decor-shadow` take 5 to 9 s each and the whole
+ * set 60 to 110 s between runs, on shaders real hardware plays fine; the batch shader that walked
+ * the sampler chain in every magnifier tap took 31 to 64 s, and the one that froze 0.2.1 held eight
+ * times its inlined work. Metal and SwiftShader finish the set within seconds. A budget is a tripwire
+ * against that order of growth over a runner that varies twofold, not a frame budget.
  */
 const BACKEND_LIMITS = {
   d3d11: { maxMs: 180_000, maxTotalMs: 480_000 },
