@@ -56,8 +56,9 @@ visual rule from a passing structural test.
 The Direct3D shader compiler behind ANGLE on Windows inlines every GLSL function before it
 optimises, so a fragment shader's cost there is its body after inlining, not its line count. A sampling path called from
 each branch of a sampler if-chain compiles once per branch; that shape took minutes to compile on
-Windows and froze the game at the loading screen while Metal compiled it in milliseconds. Pick a
-sampler once and pass it down only where the called function is small, and keep xBR and the other
+Windows and froze the game at the loading screen while Metal compiled it in milliseconds, and a chain
+walked once per magnifier tap still compiled for tens of seconds there. Gather every tap a fragment
+reads in one pass over the chain, as `gpu/world-batch-shader.ts` does, and keep xBR and the other
 magnifiers out of per-slot code. `test/shader-budget.test.ts` bounds the inlined texture operations
 of every program; a new GL program or generated variant joins `gpu/shader-catalog.ts` in the same
 commit so the budget and the Windows compile check (`npm run test:shaders`) see it.

@@ -9,7 +9,7 @@ import { DEFAULT_SHADOW_STYLE } from './shadow-style.js';
 import { WEATHER_GRADE_SOURCE, WEATHER_VEIL_SOURCE } from './weather/atmosphere.js';
 import { GROUND_REACTIONS_SOURCE } from './weather/ground-reactions.js';
 import { precipitationSource } from './weather/precipitation-shader.js';
-import { WORLD_BATCH_VERTEX, WORLD_LUT_SLOT_MASK, worldBatchFragment } from './world-batch-shader.js';
+import { WORLD_BATCH_MAX_TEXTURES, WORLD_BATCH_VERTEX, worldBatchFragment } from './world-batch-shader.js';
 
 /**
  * Every GL program the game compiles, in every variant its settings can select, so a check can read
@@ -27,7 +27,7 @@ export interface ShaderCatalogEntry {
  * batch limit where the sampler if-chain fails to compile at a size, down to 8; desktop GL reports up
  * to 32, where the batcher caps its slots.
  */
-const WORLD_BATCH_TEXTURE_LIMITS: readonly number[] = [8, 16, WORLD_LUT_SLOT_MASK + 1];
+const WORLD_BATCH_TEXTURE_LIMITS: readonly number[] = [8, 16, WORLD_BATCH_MAX_TEXTURES];
 
 export function shaderCatalog(): readonly ShaderCatalogEntry[] {
   const entries: ShaderCatalogEntry[] = [];

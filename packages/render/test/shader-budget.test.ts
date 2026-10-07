@@ -5,13 +5,14 @@ import { fragmentCost } from './support/glsl-cost.js';
 
 /**
  * Texture operations a fragment shader may hold once every function is inlined. The catalogue's
- * dearest programs measure 4,160 (`world-batch/textures32/*`; the 16-slot variants a Direct3D 11
- * GPU compiles measure 2,080). The world batch shader that sampled a page through the whole magnify
- * path inside every branch of its sampler chain measured 16,960 at 16 slots and stalled ANGLE's
- * Direct3D compile for minutes, while Metal compiled it at once. The budget is about twice the
- * current maximum.
+ * dearest programs measure 722 (`world-batch/textures32/*`; the 16-slot variants a Direct3D 11 GPU
+ * compiles measure 370). The world batch shader that sampled a page through the whole magnify path
+ * inside every branch of its sampler chain measured 16,960 at 16 slots and stalled ANGLE's Direct3D
+ * compile for minutes, while Metal compiled it at once; the shape before the one chain pass, a
+ * sampler chain in every magnifier tap, measured 2,080 and compiled for about 30 s on a Direct3D
+ * software device. The budget is about twice the current maximum.
  */
-const FRAGMENT_TEXTURE_OP_BUDGET = 8000;
+const FRAGMENT_TEXTURE_OP_BUDGET = 1500;
 
 /** Sampler slots in the synthetic regression, the count WebGL 2 guarantees. */
 const REGRESSION_SLOTS = 16;

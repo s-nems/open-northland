@@ -32,30 +32,29 @@ import type { ShadowStyle } from './shadow-style.js';
 import { spriteSelectionEffect } from './sprite-selection-effect.js';
 import { WorldAttributeBuffer } from './world-attribute-buffer.js';
 import {
+  LUT_SLOTS,
+  lutSlotOf,
+  WORLD_BATCH_MAX_TEXTURES,
   WORLD_BATCH_VERTEX,
   WORLD_FLAG_GLOW,
   WORLD_FLAG_MAGNIFY,
   WORLD_FLAG_PALETTED,
   WORLD_FLAG_SHADOW,
   WORLD_LUT_ROW_SHIFT,
-  WORLD_LUT_SLOT_MASK,
-  WORLD_LUT_SLOT_SHIFT,
   worldBatchFragment,
 } from './world-batch-shader.js';
 
 export {
   GLOW_PALETTE_INDEX,
+  lutSlotOf,
   WORLD_FLAG_GLOW,
   WORLD_FLAG_PALETTED,
   WORLD_FLAG_SHADOW,
   WORLD_LUT_ROW_SHIFT,
-  WORLD_LUT_SLOT_SHIFT,
 } from './world-batch-shader.js';
 
 /** Pixi hard-codes its default batcher per instruction set; a world sprite opts into this one by name. */
 const WORLD_BATCHER = 'world';
-/** Texture slots each batch keeps free for the palette LUT its paletted elements read. */
-const LUT_SLOTS = 1;
 
 /** Sprites drawn through the world batcher. */
 const worldSprites = new WeakSet<object>();
@@ -268,23 +267,13 @@ function defineWorldBatcher(): WorldBatcherClass {
     return magnify | WORLD_FLAG_SHADOW;
   }
 
-  function palettedFlags(element: BatchableElement, lutSlot: number): number {
+  function palettedFlags(element: BatchableElement): number {
     return (
       WORLD_FLAG_PALETTED |
       (glowOf(element) ? WORLD_FLAG_GLOW : 0) |
-      (lutSlot << WORLD_LUT_SLOT_SHIFT) |
       (lutRowOf(element) << WORLD_LUT_ROW_SHIFT)
     );
   }
-
-  /** `lut`'s slot in the element's batch; Pixi clears a slot to `null`, and an element packed before its
-   *  batch is final may still point at an older one. */
-  function lutSlotIn(batch: Batch | null, lut: TextureSource): number | null {
-    const slot: number | null | undefined = batch?.textures.ids[lut.uid];
-    return slot ?? null;
-  }
-
-  const FLAGS_FLOAT = WORLD_ATTRIBUTE_OFFSETS.aFlags / 4;
 
   /** Pixi's default batcher plus vertex attributes for what the fragment shader must know about the
    *  element's page: magnification, shadow shading, its palette LUT and row, and its frame's UV box. */
@@ -305,7 +294,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     /** Served by the prototype accessor below; `declare` keeps it off the instance. */
     declare shader: Shader;
     /** Paletted elements packed by the running {@link break}, before their batch's texture list is final. */
-    private readonly unslotted: BatchableElement[] = [];
+    private readonly paletted: BatchableElement[] = [];
     private breaking = false;
     /** Pages elements left since the last build, which their batches may still list. */
     private readonly leftPages = new Set<TextureSource>();
@@ -322,21 +311,36 @@ function defineWorldBatcher(): WorldBatcherClass {
       super.updateElement(element);
     }
 
-    /** Pixi always passes the renderer's texture limit. The flags address at most
-     *  {@link WORLD_LUT_SLOT_MASK} + 1 slots, so a larger limit is capped rather than overflowing the
-     *  slot into the row bits. */
+    /** Pixi always passes the renderer's texture limit; the batch program is compiled for at most
+     *  {@link WORLD_BATCH_MAX_TEXTURES}, so a larger limit is capped. */
     constructor(options: BatcherOptions & { maxTextures: number }) {
-      const slots = Math.min(options.maxTextures, WORLD_LUT_SLOT_MASK + 1);
+      const slots = Math.min(options.maxTextures, WORLD_BATCH_MAX_TEXTURES);
       super({ ...options, maxTextures: slots - LUT_SLOTS });
     }
 
-    /** Every element's flags. A paletted one packed during a {@link break} gets its LUT slot afterwards. */
+    /** The batch slot every LUT is bound at, past the page slots. */
+    private get lutSlot(): number {
+      return lutSlotOf(this.maxTextures + LUT_SLOTS);
+    }
+
+    /** Every element's flags. A paletted one packed during a {@link break} binds its LUT afterwards,
+     *  once its batch's page list is final. */
     private flagsOf(element: BatchableElement): number {
       const texture = element.texture;
-      const lut = palettedLutOf(texture);
-      if (lut === undefined) return plainFlags(texture);
-      if (this.breaking) this.unslotted.push(element);
-      return palettedFlags(element, lutSlotIn(element._batch, lut) ?? 0);
+      if (palettedLutOf(texture) === undefined) return plainFlags(texture);
+      if (this.breaking) this.paletted.push(element);
+      return palettedFlags(element);
+    }
+
+    /** Pages the batch lists: every slot below the LUT, which also fills the gap up to its own slot so
+     *  Pixi binds a texture at each. */
+    private pageCount(batch: Batch): number {
+      const { textures, ids, count } = batch.textures;
+      const lut = textures[this.lutSlot];
+      if (lut === null || lut === undefined || ids[lut.uid] !== this.lutSlot) return count;
+      let pages = 0;
+      while (pages < this.lutSlot && textures[pages] !== lut) pages++;
+      return pages;
     }
 
     /**
@@ -383,20 +387,20 @@ function defineWorldBatcher(): WorldBatcherClass {
       this.renderGroup = null;
     }
 
-    /** A texture whose page its batch lacks joins that batch while a slot is free, so a walker stepping
-     *  onto another atlas page re-packs one element instead of rebuilding its render group's
-     *  instructions. WebGL binds a batch's texture list afresh on every draw, as {@link slotLut} relies on. */
+    /** A texture whose page its batch lacks joins that batch while a page slot is free, so a walker
+     *  stepping onto another atlas page re-packs one element instead of rebuilding its render group's
+     *  instructions. WebGL binds a batch's texture list afresh on every draw, as {@link bindLut} relies on. */
     private joinBatch(element: BatchableElement, texture: Texture): boolean {
       if (super.checkAndUpdateTexture(element, texture)) return true;
       const batch = element._batch;
       const textures = batch.textures;
-      // Below the page budget, the reserved LUT slot stays free whether or not the batch holds a LUT.
-      if (textures.count >= this.maxTextures) return false;
+      const slot = this.pageCount(batch);
+      if (slot >= this.maxTextures) return false;
       const lut = palettedLutOf(texture);
-      if (lut !== undefined && lutSlotIn(batch, lut) === null) return false;
-      const slot = textures.count++;
+      if (lut !== undefined && !this.bindLut(batch, lut)) return false;
       textures.ids[texture.source.uid] = slot;
       textures.textures[slot] = texture.source;
+      if (slot >= textures.count) textures.count = slot + 1;
       element._textureId = slot;
       element.texture = texture;
       return true;
@@ -409,30 +413,26 @@ function defineWorldBatcher(): WorldBatcherClass {
       } finally {
         this.breaking = false;
       }
-      const f32 = this.attributeBuffer.float32View;
-      for (const element of this.unslotted) this.slotLut(element, f32);
-      this.unslotted.length = 0;
-    }
-
-    /** Append the element's LUT to its batch's textures, once per batch, and rewrite its flags with the
-     *  slot. A batch always has room: the batcher keeps {@link LUT_SLOTS} of its textures free. */
-    private slotLut(element: BatchableElement, f32: Float32Array): void {
-      const lut = palettedLutOf(element.texture);
-      if (lut === undefined) return;
-      const textures = element._batch.textures;
-      let slot = lutSlotIn(element._batch, lut);
-      if (slot === null) {
-        if (textures.count >= this.maxTextures + LUT_SLOTS) {
+      for (const element of this.paletted) {
+        const lut = palettedLutOf(element.texture);
+        if (lut !== undefined && !this.bindLut(element._batch, lut)) {
           throw new Error('A world batch holds one palette LUT');
         }
-        slot = textures.count++;
-        textures.ids[lut.uid] = slot;
-        textures.textures[slot] = lut;
       }
-      const flags = palettedFlags(element, slot);
-      for (let v = 0; v < element.attributeSize; v++) {
-        f32[element._attributeStart + v * WORLD_VERTEX_SIZE + FLAGS_FLOAT] = flags;
-      }
+      this.paletted.length = 0;
+    }
+
+    /** Lists `lut` at the batch's LUT slot, filling the page slots up to it with the LUT as well so Pixi
+     *  binds every listed slot; false when the batch already holds another LUT. */
+    private bindLut(batch: Batch, lut: TextureSource): boolean {
+      const textures = batch.textures;
+      const slot = this.lutSlot;
+      if (textures.ids[lut.uid] === slot) return true;
+      if (textures.count > slot) return false;
+      for (let free = textures.count; free <= slot; free++) textures.textures[free] = lut;
+      textures.ids[lut.uid] = slot;
+      textures.count = slot + LUT_SLOTS;
+      return true;
     }
 
     packAttributes(

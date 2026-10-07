@@ -25,7 +25,6 @@ import {
   WORLD_FLAG_PALETTED,
   WORLD_FLAG_SHADOW,
   WORLD_LUT_ROW_SHIFT,
-  WORLD_LUT_SLOT_SHIFT,
   WORLD_VERTEX_SIZE,
   worldBatched,
 } from '../src/gpu/world-batcher.js';
@@ -152,7 +151,7 @@ describe('world batcher palette LUT', () => {
     } as unknown as DefaultBatchableQuadElement;
   }
 
-  it('binds the LUT after the batch pages and writes its slot and row into each paletted vertex', () => {
+  it('binds the LUT at the last slot and writes the row into each paletted vertex', () => {
     const WorldBatcher = installWorldBatcher();
     const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
     const lut = new TextureSource({ width: 256, height: 4 });
@@ -176,20 +175,45 @@ describe('world batcher palette LUT', () => {
     const floats = batcher.attributeBuffer.float32View;
     const flagsOf = (element: number, vertex: number) =>
       floats[(element * 4 + vertex) * WORLD_VERTEX_SIZE + WORLD_ATTRIBUTE_OFFSETS.aFlags / 4];
-    const slotOne = WORLD_FLAG_PALETTED | (1 << WORLD_LUT_SLOT_SHIFT);
     for (let vertex = 0; vertex < 4; vertex++) {
-      expect(flagsOf(0, vertex)).toBe(slotOne | (3 << WORLD_LUT_ROW_SHIFT));
-      expect(flagsOf(1, vertex)).toBe(slotOne | (1 << WORLD_LUT_ROW_SHIFT));
+      expect(flagsOf(0, vertex)).toBe(WORLD_FLAG_PALETTED | (3 << WORLD_LUT_ROW_SHIFT));
+      expect(flagsOf(1, vertex)).toBe(WORLD_FLAG_PALETTED | (1 << WORLD_LUT_ROW_SHIFT));
       expect(flagsOf(2, vertex)).toBe(0);
     }
 
-    // A repack outside a rebuild, such as a new frame on the same page, keeps the slot.
+    // A repack outside a rebuild, such as a new frame on the same page, keeps the row.
     batcher.updateElement(elements[0] as DefaultBatchableQuadElement);
-    expect(flagsOf(0, 0)).toBe(slotOne | (3 << WORLD_LUT_ROW_SHIFT));
+    expect(flagsOf(0, 0)).toBe(WORLD_FLAG_PALETTED | (3 << WORLD_LUT_ROW_SHIFT));
     batcher.destroy();
   });
 
-  it('flags a glowing paletted element beside its slot and row', () => {
+  it('fills the page slots below the LUT with the LUT, so every bound slot names a texture', () => {
+    const WorldBatcher = installWorldBatcher();
+    // Three page slots plus the LUT's.
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT + 2 });
+    const lut = new TextureSource({ width: 256, height: 4 });
+    const walker = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    markPalettedTexture(walker, lut);
+    const house = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    const barn = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    const element = quad(house);
+
+    batcher.begin();
+    batcher.add(quad(walker, 1));
+    batcher.add(element);
+    batcher.break(new InstructionSet());
+
+    const textures = batcher.batches[0]?.textures;
+    expect(textures?.count).toBe(4);
+    expect(textures?.textures.slice(0, textures.count)).toEqual([walker.source, house.source, lut, lut]);
+    expect(textures?.ids[lut.uid]).toBe(3);
+    // The third page takes the filled slot, not the LUT's.
+    expect(batcher.checkAndUpdateTexture(element, barn)).toBe(true);
+    expect([textures?.count, element._textureId, textures?.textures[2]]).toEqual([4, 2, barn.source]);
+    batcher.destroy();
+  });
+
+  it('flags a glowing paletted element beside its row', () => {
     const WorldBatcher = installWorldBatcher();
     const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
     const lut = new TextureSource({ width: 256, height: 4 });
@@ -204,7 +228,7 @@ describe('world batcher palette LUT', () => {
     const floats = batcher.attributeBuffer.float32View;
     const flagsOf = (element: number) =>
       floats[element * 4 * WORLD_VERTEX_SIZE + WORLD_ATTRIBUTE_OFFSETS.aFlags / 4];
-    const body = WORLD_FLAG_PALETTED | (1 << WORLD_LUT_SLOT_SHIFT) | (2 << WORLD_LUT_ROW_SHIFT);
+    const body = WORLD_FLAG_PALETTED | (2 << WORLD_LUT_ROW_SHIFT);
     expect(flagsOf(0)).toBe(body | WORLD_FLAG_GLOW);
     expect(flagsOf(1)).toBe(body);
     batcher.destroy();
@@ -274,19 +298,25 @@ describe('world batcher palette LUT', () => {
     });
   });
 
-  it('keeps a paletted texture out of a batch that lacks its LUT', () => {
+  it('binds a joining paletted texture’s LUT into a batch without one, and refuses another LUT', () => {
     const WorldBatcher = installWorldBatcher();
     const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT + 1 });
     const plain = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
     const walker = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
-    markPalettedTexture(walker, new TextureSource({ width: 256, height: 4 }));
+    const lut = new TextureSource({ width: 256, height: 4 });
+    markPalettedTexture(walker, lut);
+    const beast = new Texture({ source: new TextureSource({ width: 8, height: 8 }) });
+    markPalettedTexture(beast, new TextureSource({ width: 256, height: 4 }));
     const element = quad(plain);
     batcher.begin();
     batcher.add(element);
     batcher.break(new InstructionSet());
 
-    expect(batcher.checkAndUpdateTexture(element, walker)).toBe(false);
-    expect(batcher.batches[0]?.textures.count).toBe(1);
+    expect(batcher.checkAndUpdateTexture(element, walker)).toBe(true);
+    const textures = batcher.batches[0]?.textures;
+    expect(textures?.textures.slice(0, textures.count)).toEqual([plain.source, walker.source, lut]);
+    expect(batcher.checkAndUpdateTexture(element, beast)).toBe(false);
+    expect(element.texture).toBe(walker);
     batcher.destroy();
   });
 });

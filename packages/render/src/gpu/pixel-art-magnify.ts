@@ -49,6 +49,14 @@ float magnifyDistance(vec4 a, vec4 b) {
 
 const float MAGNIFY_DISTINCT = 1.0 / 255.0; // two texels differ once any channel moves a level
 
+// The mirroring that puts the texel corner nearest the fragment at the lower right, so every tap
+// below reads the same way for all four corners. A host gathering the taps ahead of the magnifiers
+// lays its window out along the same step: centre - step is the window's first texel, and the
+// 4x4 window from there holds every texel xBR, sharp and bilinear read for this fragment.
+ivec2 magnifyWindowStep(vec2 fp) {
+  return ivec2(fp.x >= 0.5 ? 1 : -1, fp.y >= 0.5 ? 1 : -1);
+}
+
 // Edge-directed magnification after the published xBR rule set (Hyllian's 2011 algorithm; an
 // approximation, not an original-engine mechanism): a diagonal edge through a texel's corner is
 // redrawn as a straight cut at 45, ~27 or ~63 degrees, filled with the neighbour that continues
@@ -57,7 +65,7 @@ const float MAGNIFY_DISTINCT = 1.0 / 255.0; // two texels differ once any channe
 vec4 magnifyXbr(vec2 p, float texelsPerPixel) {
   ivec2 centre = ivec2(floor(p));
   vec2 fp = fract(p);
-  ivec2 s = ivec2(fp.x >= 0.5 ? 1 : -1, fp.y >= 0.5 ? 1 : -1);
+  ivec2 s = magnifyWindowStep(fp);
   vec2 local = abs(fp - 0.5); // 0 at the texel centre, 0.5 at the judged corner
   #define MAGNIFY_TAP(dx, dy) MAGNIFY_FETCH(centre + ivec2(dx, dy) * s)
   vec4 e = MAGNIFY_TAP(0, 0);

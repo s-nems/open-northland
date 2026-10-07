@@ -5,22 +5,27 @@ import { type ShadowStyle, shadowTintChannels } from './shadow-style.js';
  *  rather than growing every world vertex by another attribute. */
 export const WORLD_FLAG_MAGNIFY = 1;
 export const WORLD_FLAG_SHADOW = 2;
-/** The element's page is palette-indexed: the batch texture at its LUT slot holds the palette, and the
- *  flags above the slot hold its LUT row. */
+/** The element's page is palette-indexed: the batch's LUT slot holds the palette, and the flags above
+ *  the bits here hold its LUT row. */
 export const WORLD_FLAG_PALETTED = 4;
 /** A paletted element drawn as its row's {@link GLOW_PALETTE_INDEX} colour over its coverage alone. */
 export const WORLD_FLAG_GLOW = 8;
-/** A paletted element's LUT slot in the batch's texture list, in `aFlags` bits 4 to 8. */
-export const WORLD_LUT_SLOT_SHIFT = 4;
-export const WORLD_LUT_SLOT_MASK = 31;
-/** A paletted element's LUT row, from `aFlags` bit 9 up; a float32 holds it exactly below 2^15 rows. */
-export const WORLD_LUT_ROW_SHIFT = 9;
+/** A paletted element's LUT row, from `aFlags` bit 4 up; a float32 holds it exactly below 2^20 rows. */
+export const WORLD_LUT_ROW_SHIFT = 4;
 /**
  * The palette index a hero's glow takes its colour from: step 10 of the team ramp in the body palette's
  * vest band (160-175), which each player's team row of the human LUT carries. Original behavior: the glow
  * colour is that step of the owner's `Player NN` ramp.
  */
 export const GLOW_PALETTE_INDEX = 170;
+/** Texture slots each batch keeps free for the palette LUT its paletted elements read. */
+export const LUT_SLOTS = 1;
+/** Slots the batch program is compiled for at most; Pixi passes the device's limit, which desktop GL
+ *  reports above this, and the shader catalogue compiles each limit the game can select. */
+export const WORLD_BATCH_MAX_TEXTURES = 32;
+/** The batch slot a paletted element's LUT is bound at: the last one, whatever the batch's page count,
+ *  so the palette lookup indexes a constant sampler instead of walking the page chain. */
+export const lutSlotOf = (maxTextures: number): number => maxTextures - LUT_SLOTS;
 /** The world batch program: one fragment variant per magnification mode and shadow style. */
 export const WORLD_BATCH_VERTEX = /* glsl */ `#version 300 es
 precision highp float;
@@ -108,19 +113,33 @@ const int WORLD_FLAG_SHADOW = ${WORLD_FLAG_SHADOW};
 const int WORLD_FLAG_PALETTED = ${WORLD_FLAG_PALETTED};
 const int WORLD_FLAG_GLOW = ${WORLD_FLAG_GLOW};
 const float GLOW_PALETTE_INDEX = ${GLOW_PALETTE_INDEX}.0;
-const int WORLD_LUT_SLOT_SHIFT = ${WORLD_LUT_SLOT_SHIFT};
-const int WORLD_LUT_SLOT_MASK = ${WORLD_LUT_SLOT_MASK};
 const int WORLD_LUT_ROW_SHIFT = ${WORLD_LUT_ROW_SHIFT};
+const int LUT_SLOT = ${lutSlotOf(maxTextures)};
 // One texel per 8-bit palette index across a LUT row.
 const float PALETTE_INDEX_MAX = 255.0;
 // Below this uv footprint a paletted sample is magnified, so the minification taps would coincide.
-const float PALETTED_MIN_FOOTPRINT = 0.000001;${shading.declarations}
-// Resolved once per fragment: the bound page's size, the element's flags and its palette lookup.
+const float PALETTED_MIN_FOOTPRINT = 0.000001;
+/** Each of the four minification taps sits a quarter of the footprint out from the sample point, and
+ *  they average evenly: four taps cannot cover more, so the spread stops there. */
+const float MINIFY_TAP_OFFSET = 0.25;
+const float MINIFY_TAP_WEIGHT = 0.25;${shading.declarations}
+// Resolved once per fragment: the bound page's size, the element's flags and its palette row.
 vec2 texSize;
 int flags;
 bool paletted;
-float lutSlot;
 int lutRow;
+
+// The texels one fragment blends, read in one pass over the sampler chain: the magnifiers' 4x4 window
+// around the sample point, or the four 2x2 windows of a paletted element's minification taps. A tap
+// outside the element's frame is transparent, and a paletted tap resolves its colour before any blend,
+// so the magnifiers blend colours, never indices.
+const int TAP_COUNT = 16;
+const int WINDOW_SIDE = 4;
+const int SUB_WINDOW_TAPS = 4;
+ivec2 tapAt[TAP_COUNT];
+vec4 taps[TAP_COUNT];
+ivec2 windowOrigin;
+ivec2 windowStep;
 
 bool hasFlag(int bit) {
   return (flags & bit) != 0;
@@ -134,76 +153,81 @@ ivec2 textureSizeOf() {
 ${textureChain(maxTextures, 'vTextureId', (i) => `return textureSize(uTextures[${i}], 0);`)}
 }
 
-vec4 fetchTexel(ivec2 px) {
-${textureChain(maxTextures, 'vTextureId', (i) => `return texelFetch(uTextures[${i}], px, 0);`)}
-}
-
-vec4 fetchLut(ivec2 px) {
-${textureChain(maxTextures, 'lutSlot', (i) => `return texelFetch(uTextures[${i}], px, 0);`)}
+// Direct3D inlines every function into each branch it is called from, so the page is chosen once per
+// fragment and the one chain reads every tap; a tap-by-tap chain compiled for minutes there.
+void fetchTaps() {
+${textureChain(maxTextures, 'vTextureId', (i) => `for (int k = 0; k < TAP_COUNT; k++) taps[k] = texelFetch(uTextures[${i}], tapAt[k], 0);`)}
 }
 
 // A paletted texel's red is its palette index, read exactly (an interpolated index names another colour).
 vec3 paletteColour(float red) {
-  return fetchLut(ivec2(int(floor(red * PALETTE_INDEX_MAX + 0.5)), lutRow)).rgb;
+  return texelFetch(uTextures[LUT_SLOT], ivec2(int(floor(red * PALETTE_INDEX_MAX + 0.5)), lutRow), 0).rgb;
 }
 
-// The frame boundary is transparent, not the packed neighbour a two-texel tap could reach. A paletted
-// texel resolves its colour first, so the magnifiers blend colours, never indices.
-vec4 frameTexel(ivec2 px) {
-  vec2 uv = (vec2(px) + 0.5) / texSize;
-  if (any(lessThan(uv, vFrame.xy)) || any(greaterThanEqual(uv, vFrame.zw))) return vec4(0.0);
-  vec4 texel = fetchTexel(px);
-  return paletted ? vec4(paletteColour(texel.r) * texel.a, texel.a) : texel;
+void gatherTaps() {
+  fetchTaps();
+  for (int k = 0; k < TAP_COUNT; k++) {
+    vec2 uv = (vec2(tapAt[k]) + 0.5) / texSize;
+    if (any(lessThan(uv, vFrame.xy)) || any(greaterThanEqual(uv, vFrame.zw))) {
+      taps[k] = vec4(0.0);
+    } else if (paletted) {
+      taps[k] = vec4(paletteColour(taps[k].r) * taps[k].a, taps[k].a);
+    }
+  }
 }
 
-#define MAGNIFY_FETCH(px) frameTexel(px)
-/** Each of the four minification taps sits a quarter of the footprint out from the sample point, and
- *  they average evenly: four taps cannot cover more, so the spread stops there. */
-const float MINIFY_TAP_OFFSET = 0.25;
-const float MINIFY_TAP_WEIGHT = 0.25;
+// The window's texel at px, which the magnifiers address relative to the sample point's texel.
+vec4 windowTexel(ivec2 px) {
+  ivec2 d = (px - windowOrigin) * windowStep;
+  return taps[d.y * WINDOW_SIDE + d.x];
+}
+
+#define MAGNIFY_FETCH(px) windowTexel(px)
 ${PIXEL_ART_MAGNIFY_GLSL}
 
-// A paletted element samples its nearest texel with magnification off; otherwise every tap resolves
-// its colour before the blend, since the page itself cannot be filtered.
-vec4 palettedColour(vec2 p, float texelsPerPixel, vec2 uvFootprint) {
-  if (WORLD_MAGNIFY < 0.5) {
-    vec4 texel = sampleTexture(vUV);
-    return vec4(paletteColour(texel.r) * texel.a, texel.a);
+// Lays the 4x4 window out from centre - step along the magnifiers' own step, so windowTexel finds
+// every texel xBR, sharp and bilinear read for p.
+void layoutWindow(vec2 p) {
+  windowStep = magnifyWindowStep(fract(p));
+  windowOrigin = ivec2(floor(p)) - windowStep;
+  for (int k = 0; k < TAP_COUNT; k++) {
+    tapAt[k] = windowOrigin + windowStep * ivec2(k % WINDOW_SIDE, k / WINDOW_SIDE);
   }
-  if (texelsPerPixel < 1.0 && WORLD_MAGNIFY > 1.5) {
-    return WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel) : magnifySharp(p, texelsPerPixel);
-  }
-  vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
-  if (max(footprint.x, footprint.y) < PALETTED_MIN_FOOTPRINT) return magnifyBilinear(p);
-  return MINIFY_TAP_WEIGHT * (magnifyBilinear((vUV - footprint) * texSize)
-                   + magnifyBilinear((vUV + vec2(footprint.x, -footprint.y)) * texSize)
-                   + magnifyBilinear((vUV + vec2(-footprint.x, footprint.y)) * texSize)
-                   + magnifyBilinear((vUV + footprint) * texSize));
+}
+
+// A 2x2 window at p's bilinear base, in the order blendTaps reads it.
+void layoutBilinearTaps(int first, vec2 p) {
+  ivec2 base = ivec2(floor(p - 0.5));
+  tapAt[first] = base;
+  tapAt[first + 1] = base + ivec2(1, 0);
+  tapAt[first + 2] = base + ivec2(0, 1);
+  tapAt[first + 3] = base + ivec2(1, 1);
+}
+
+// The bilinear blend of a 2x2 window, weighted as magnifyBlend weights its taps.
+vec4 blendTaps(int first, vec2 p) {
+  vec2 f = fract(p - 0.5);
+  return mix(mix(taps[first], taps[first + 1], f.x),
+             mix(taps[first + SUB_WINDOW_TAPS / 2], taps[first + SUB_WINDOW_TAPS / 2 + 1], f.x), f.y);
 }
 
 void main(void) {
   texSize = vec2(textureSizeOf());
   flags = int(vFlags);
   paletted = hasFlag(WORLD_FLAG_PALETTED);
-  lutSlot = float((flags >> WORLD_LUT_SLOT_SHIFT) & WORLD_LUT_SLOT_MASK);
   lutRow = flags >> WORLD_LUT_ROW_SHIFT;
   // Derivatives before any branch: they are only defined in uniform control flow.
   vec2 p = vUV * texSize;
   float texelsPerPixel = max(fwidth(p.x), fwidth(p.y));
   vec2 uvFootprint = fwidth(vUV);
+  bool magnified = texelsPerPixel < 1.0;
+  // A paletted element always resolves through its LUT; a plain one only when its page is magnified.
+  bool filtered = WORLD_MAGNIFY > 0.5 && (paletted || hasFlag(WORLD_FLAG_MAGNIFY));
   vec4 outColor;
-  if (paletted) {
-    outColor = palettedColour(p, texelsPerPixel, uvFootprint);
-    if (hasFlag(WORLD_FLAG_GLOW)) {
-      outColor = vec4(paletteColour(GLOW_PALETTE_INDEX / PALETTE_INDEX_MAX), 1.0) * outColor.a;
-    }
-  } else if (!hasFlag(WORLD_FLAG_MAGNIFY) || WORLD_MAGNIFY < 0.5) {
-    outColor = sampleTexture(vUV);
-  } else if (texelsPerPixel < 1.0) {
-    outColor = WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel)
-             : WORLD_MAGNIFY > 1.5 ? magnifySharp(p, texelsPerPixel)
-             : sampleTexture(vUV);
-  } else {
+  if (!filtered || (!paletted && magnified && WORLD_MAGNIFY < 1.5)) {
+    vec4 texel = sampleTexture(vUV);
+    outColor = paletted ? vec4(paletteColour(texel.r) * texel.a, texel.a) : texel;
+  } else if (!paletted && !magnified) {
     // Minified: a 2x2 footprint over the sampler's own filter reduces sparkle, clamped to the frame.
     // Not a mipmap substitute at extreme zoom-out: sampling cost is deliberately bounded.
     vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
@@ -213,6 +237,41 @@ void main(void) {
                      + sampleTexture(clamp(vUV + vec2(footprint.x, -footprint.y), low, high))
                      + sampleTexture(clamp(vUV + vec2(-footprint.x, footprint.y), low, high))
                      + sampleTexture(clamp(vUV + footprint, low, high)));
+  } else {
+    // The magnifiers' window, or a paletted element's bilinear taps: with magnification off for its
+    // page size, one 2x2 at the sample point, else four spread over the minified footprint.
+    bool window = magnified && WORLD_MAGNIFY > 1.5;
+    vec2 footprint = max(uvFootprint - 1.0 / texSize, vec2(0.0)) * MINIFY_TAP_OFFSET;
+    bool single = max(footprint.x, footprint.y) < PALETTED_MIN_FOOTPRINT;
+    vec2 p0 = (vUV - footprint) * texSize;
+    vec2 p1 = (vUV + vec2(footprint.x, -footprint.y)) * texSize;
+    vec2 p2 = (vUV + vec2(-footprint.x, footprint.y)) * texSize;
+    vec2 p3 = (vUV + footprint) * texSize;
+    if (window) {
+      layoutWindow(p);
+    } else if (single) {
+      // The unused taps read the same texels, so the one chain pass stays a fixed 16 fetches.
+      for (int first = 0; first < TAP_COUNT; first += SUB_WINDOW_TAPS) layoutBilinearTaps(first, p);
+    } else {
+      layoutBilinearTaps(0, p0);
+      layoutBilinearTaps(SUB_WINDOW_TAPS, p1);
+      layoutBilinearTaps(2 * SUB_WINDOW_TAPS, p2);
+      layoutBilinearTaps(3 * SUB_WINDOW_TAPS, p3);
+    }
+    gatherTaps();
+    if (window) {
+      outColor = WORLD_MAGNIFY > 2.5 ? magnifyXbr(p, texelsPerPixel) : magnifySharp(p, texelsPerPixel);
+    } else if (single) {
+      outColor = blendTaps(0, p);
+    } else {
+      outColor = MINIFY_TAP_WEIGHT * (blendTaps(0, p0)
+                       + blendTaps(SUB_WINDOW_TAPS, p1)
+                       + blendTaps(2 * SUB_WINDOW_TAPS, p2)
+                       + blendTaps(3 * SUB_WINDOW_TAPS, p3));
+    }
+  }
+  if (paletted && hasFlag(WORLD_FLAG_GLOW)) {
+    outColor = vec4(paletteColour(GLOW_PALETTE_INDEX / PALETTE_INDEX_MAX), 1.0) * outColor.a;
   }
   if (vSelection < 0.0) {
     finalColor = vec4(vColor.rgb * outColor.a, vColor.a * outColor.a);
