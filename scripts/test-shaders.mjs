@@ -1,7 +1,8 @@
 #!/usr/bin/env node
-// Compiles every GL program in the shader catalogue through one ANGLE backend in headless Chromium and
-// fails on a compile or link error, a slow program, or a renderer that is not the backend asked for
-// (docs/TESTING.md "Shader compile check"). Needs no game content.
+// Compiles every GL program in the shader catalogue through one ANGLE backend in headless Chromium,
+// draws once with each, and fails on a compile or link error, a slow program at compile or at its
+// first draw, or a renderer that is not the backend asked for (docs/TESTING.md "Shader compile
+// check"). Needs no game content.
 import { mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
@@ -19,25 +20,28 @@ const BACKEND_RENDERERS = {
 };
 const DEFAULT_BACKENDS = { win32: 'd3d11', darwin: 'metal' };
 /**
- * Default budgets per backend, from the catalogue as it stands. Direct3D 11 on a GitHub runner is WARP
- * on a slow CPU, which compiles each program with FXC and then again into its own CPU code: there
+ * Default budgets per backend, applied to a program's compile and link and again to its first draw,
+ * from the catalogue as it stands. Direct3D 11 on a GitHub runner is WARP on a slow CPU, which
+ * compiles each program with FXC and then again into its own CPU code: there
  * `world-batch/textures16/xbr`, `shaded-terrain` and `decor-shadow` take 5 to 9 s each and the whole
  * set 60 to 110 s between runs, on shaders real hardware plays fine; the batch shader that walked
  * the sampler chain in every magnifier tap took 31 to 64 s, and the one that froze 0.2.1 held eight
- * times its inlined work. Metal and SwiftShader finish the set within seconds. A budget is a tripwire
- * against that order of growth over a runner that varies twofold, not a frame budget.
+ * times its inlined work. Metal finishes the set within seconds. SwiftShader links in milliseconds and
+ * compiles in its JIT at the first draw instead: on an M2 Pro the first draws sum to 36 s, the
+ * paletted sprite program's 4.5 s and the 32-slot batch programs' 3 s the longest. A budget is a
+ * tripwire against that order of growth over a runner that varies twofold, not a frame budget.
  */
 const BACKEND_LIMITS = {
   d3d11: { maxMs: 180_000, maxTotalMs: 480_000 },
   metal: { maxMs: 5_000, maxTotalMs: 30_000 },
-  swiftshader: { maxMs: 5_000, maxTotalMs: 30_000 },
+  swiftshader: { maxMs: 10_000, maxTotalMs: 60_000 },
 };
 /** How long the browser gets to start, load the probe and create its context. */
 const SETUP_TIMEOUT_MS = 60000;
 const CLOSE_TIMEOUT_MS = 10000;
-/** A compile still running past this multiple of the per-program budget is reported as hung and ends
- *  the run: the page stays blocked behind it. Programs that merely break the budgets are all timed, so
- *  one run names every slow one. */
+/** A compile or first draw still running past this multiple of the per-program budget is reported as
+ *  hung and ends the run: the page stays blocked behind it. Programs that merely break the budgets are
+ *  all timed, so one run names every slow one. */
 const HUNG_COMPILE_FACTOR = 2;
 const EXIT_FAILED = 1;
 const EXIT_USAGE = 2;
@@ -45,7 +49,8 @@ const EXIT_USAGE = 2;
 function usage(message) {
   console.error(`test:shaders: ${message}`);
   console.error(
-    'usage: npm run test:shaders -- [--angle=d3d11|metal|swiftshader] [--max-ms=N] [--max-total-ms=N] [--relink] [--json=path]',
+    'usage: npm run test:shaders -- [--angle=d3d11|metal|swiftshader] [--max-ms=N] [--max-total-ms=N] [--relink] [--json=path]\n' +
+      "  --max-ms bounds a program's compile and link, and separately its first draw; --max-total-ms their sum",
   );
   process.exit(EXIT_USAGE);
 }
@@ -114,10 +119,15 @@ async function bundleProbePage(dir) {
   return pathToFileURL(page).href;
 }
 
+/** A program's compile and link plus its first draw. */
+const programMs = (program) => program.ms + (program.drawMs ?? 0);
+
 function printReport(report) {
-  const sorted = [...report.programs].sort((a, b) => b.ms - a.ms || a.name.localeCompare(b.name));
+  const sorted = [...report.programs].sort(
+    (a, b) => programMs(b) - programMs(a) || a.name.localeCompare(b.name),
+  );
   const width = Math.max(...sorted.map((program) => program.name.length));
-  console.log(`\n${'program'.padEnd(width)}  compile+link ms${relink ? '  relink ms' : ''}`);
+  console.log(`\n${'program'.padEnd(width)}  compile+link ms   first draw ms${relink ? '  relink ms' : ''}`);
   for (const program of sorted) {
     if (program.status === 'skipped') {
       console.log(
@@ -125,15 +135,25 @@ function printReport(report) {
       );
       continue;
     }
-    const flag = !program.linked ? '  FAILED' : program.ms > maxMs ? '  SLOW' : '';
+    const flag =
+      !program.linked || program.drawError !== 0
+        ? '  FAILED'
+        : program.ms > maxMs || (program.drawMs ?? 0) > maxMs
+          ? '  SLOW'
+          : '';
+    const draw = program.drawMs === null ? '-' : program.drawMs.toFixed(1);
     const again = program.relinkMs === undefined ? '' : `  ${program.relinkMs.toFixed(1).padStart(9)}`;
-    console.log(`${program.name.padEnd(width)}  ${program.ms.toFixed(1).padStart(15)}${again}${flag}`);
+    console.log(
+      `${program.name.padEnd(width)}  ${program.ms.toFixed(1).padStart(15)}   ${draw.padStart(13)}${again}${flag}`,
+    );
   }
   console.log(`\nbackend:   --use-angle=${report.backend} (${report.browser})`);
   console.log(`renderer:  ${report.renderer}`);
   console.log(`vendor:    ${report.vendor}`);
   console.log(`context:   ${report.version}, ${report.maxTextureUnits} fragment texture units`);
-  console.log(`warm-up:   ${report.warmUpMs.toFixed(1)} ms`);
+  console.log(
+    `warm-up:   ${report.warmUpMs.toFixed(1)} ms compile+link, ${report.warmUpDrawMs.toFixed(1)} ms first draw`,
+  );
   const compiled = report.programs.filter((program) => program.status === 'compiled').length;
   console.log(
     `total:     ${report.totalMs.toFixed(1)} ms over ${compiled} programs` +
@@ -162,8 +182,14 @@ function failuresOf(report) {
         `${program.name}: failed to compile or link\n${logs.map(([stage, log]) => `  ${stage} log: ${log.trim()}`).join('\n')}`,
       );
     }
+    if (program.drawError !== 0)
+      failures.push(
+        `${program.name}: the first draw was refused with GL error 0x${program.drawError.toString(16)}, so its time measures nothing`,
+      );
     if (program.ms > maxMs)
-      failures.push(`${program.name}: ${program.ms.toFixed(1)} ms exceeds --max-ms ${maxMs}`);
+      failures.push(`${program.name}: compile+link ${program.ms.toFixed(1)} ms exceeds --max-ms ${maxMs}`);
+    if (program.drawMs !== null && program.drawMs > maxMs)
+      failures.push(`${program.name}: first draw ${program.drawMs.toFixed(1)} ms exceeds --max-ms ${maxMs}`);
   }
   if (report.totalMs > maxTotalMs)
     failures.push(`total ${report.totalMs.toFixed(1)} ms exceeds --max-total-ms ${maxTotalMs}`);
@@ -207,7 +233,7 @@ async function probe(pageUrl, failures) {
           page.evaluate((at) => globalThis.shaderProbe.compile(at), index),
           hungCompileMs,
           () =>
-            `${name} was still compiling after ${hungCompileMs} ms; ` +
+            `${name} was still compiling or drawing after ${hungCompileMs} ms; ` +
             `${programNames.length - index - 1} programs after it untried`,
         );
         if (relink && result.status === 'compiled' && !result.contextLost) {
@@ -219,7 +245,7 @@ async function probe(pageUrl, failures) {
           result.relinkMs = again.ms;
         }
         report.programs.push(result);
-        report.totalMs += result.ms;
+        report.totalMs += programMs(result);
         if (result.contextLost) break;
       } catch (error) {
         failures.push(error.message);

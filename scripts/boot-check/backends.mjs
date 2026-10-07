@@ -17,13 +17,17 @@ export const BACKENDS = {
   d3d11: { angle: 'd3d11', matches: (renderer) => renderer.includes('Direct3D11') },
 };
 
-/** What this machine runs natively. The software renderers are opt-in (`--angle=swiftshader`,
- *  `--docker`): with the default enhancements on they do not boot today, see
- *  docs/tickets/render/software-renderer-boot.md, so a default run would be red on every checkout. */
-const HOST_DEFAULTS = { darwin: ['metal'], win32: ['d3d11'] };
+/** What this machine runs natively, then SwiftShader: the device a machine without usable GPU
+ *  acceleration, a virtual machine or a remote desktop falls back to, where a shader is compiled by
+ *  a JIT at its first draw. Mesa's llvmpipe needs the container (`--docker`). */
+const HOST_DEFAULTS = { darwin: ['metal', 'swiftshader'], win32: ['d3d11', 'swiftshader'] };
 const FALLBACK_DEFAULTS = ['swiftshader'];
-/** The Playwright image has Mesa: ANGLE over its llvmpipe OpenGL is a second shader compiler there. */
-export const CONTAINER_DEFAULTS = ['swiftshader', 'gl'];
+/** The Playwright image also has Mesa, whose llvmpipe OpenGL is a second software compiler (`gl`), but
+ *  it stays opt-in: there the drawn world arrives a minute or more after the `hud` phase and then
+ *  runs at about a frame a second, although every catalogue program compiles and draws first within
+ *  2 s (the cost sits past the first draw, likely in llvmpipe's per-draw-state variants, unverified).
+ *  Chromium without a GPU falls back to SwiftShader, not to the system's Mesa, so no player sees it. */
+export const CONTAINER_DEFAULTS = ['swiftshader'];
 
 export function hostDefaultBackends() {
   return HOST_DEFAULTS[process.platform] ?? FALLBACK_DEFAULTS;

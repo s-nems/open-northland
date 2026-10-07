@@ -171,19 +171,21 @@ the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serve
 
 `npm run test:shaders` compiles and links every GL program of the shader catalogue
 (`packages/render/src/gpu/shader-catalog.ts`), after Pixi's preprocessing, in headless Chromium
-through one ANGLE backend, and needs no game content. It fails on a compile or link error, a program
-over `--max-ms`, a total over `--max-total-ms`, or a renderer string that is not the requested
+through one ANGLE backend, then draws one degenerate triangle with each program, and needs no game
+content. It fails on a compile or link error, a program whose compile and link or whose first draw
+is over `--max-ms`, a total over `--max-total-ms`, or a renderer string that is not the requested
 backend, since a silent fallback would time the wrong compiler. The budgets default per backend,
 seconds on Metal and SwiftShader and minutes on Direct3D 11; the table in `scripts/test-shaders.mjs`
 records the measurements behind them. Variants declaring more samplers than the device has texture
-units are skipped, as the game never builds them there. The check exists for the Windows-only
-compile cost the render contract describes
-([shader size is a budget](../packages/render/AGENTS.md#shader-size-is-a-budget)). CI runs it on
-`windows-latest` when a shader-relevant path changes, or through the CI workflow's manual `shaders`
-checkbox. Metal and SwiftShader runs catch compile errors but not that slowdown. `--relink` links
-every program a second time in another context and prints that time beside the first: it measures the
-browser's program cache, which the game's shader warm-up (`gpu/shader-warmup.ts`) relies on to link
-the renderer's programs without a second compile, so CI passes it on Direct3D.
+units are skipped, as the game never builds them there. The check exists for two costs the render
+contract describes ([shader size is a budget](../packages/render/AGENTS.md#shader-size-is-a-budget)):
+Direct3D pays for a shader's inlined size at link, which only a Windows run measures, and a software
+renderer such as SwiftShader pays for it in its JIT at the first draw, which the SwiftShader run
+measures on any machine. CI runs it on `windows-latest` when a shader-relevant path changes, or
+through the CI workflow's manual `shaders` checkbox. A Metal run catches compile errors only. `--relink`
+links every program a second time in another context and prints that time beside the first: it
+measures the browser's program cache, which the game's shader warm-up (`gpu/shader-warmup.ts`) relies
+on to link the renderer's programs without a second compile, so CI passes it on Direct3D.
 
 ```bash
 npm run test:shaders                              # d3d11 on Windows, metal on macOS, else swiftshader
@@ -202,21 +204,23 @@ all within `--boot-timeout-ms` (default 90000); the table lists the renderer str
 phase began, the boot time and the frames drawn, and a failed boot leaves a screenshot under
 `bench-out/boot-check/`. A renderer string that is not the requested backend is refused, since
 Chromium falls back to SwiftShader silently. Defaults: the machine's own backend, `metal` on macOS
-and `d3d11` on Windows; the maps are `magiczny_las` and two picked by id from `maps-index.json`,
-printed at the start. The software renderers are opt-in: `--angle=swiftshader` here, and `--docker`,
-which runs the same check in the Playwright image of the installed Playwright version on
-`swiftshader` and `gl` (ANGLE over Mesa's llvmpipe; `vulkan` there is SwiftShader again and is
-refused). With the default enhancements they do not boot today
-([software-renderer-boot.md](tickets/render/software-renderer-boot.md)); run them to verify that
-fix. The check proves that the production build boots and draws on those backends. It does not prove
-the picture is right or that a real GPU boots as fast. It needs local content and a built `dist`, so
-it never runs in CI.
+and `d3d11` on Windows, then `swiftshader`, the software device a machine without GPU acceleration,
+a virtual machine or a remote desktop falls back to, whose JIT compiles each shader at its first
+draw rather than at link; the maps are `magiczny_las` and two picked by id from `maps-index.json`,
+printed at the start. `--docker` runs the same check in the Playwright image of the installed
+Playwright version on Linux SwiftShader; `--angle=gl` there is ANGLE over Mesa's llvmpipe (`vulkan`
+is SwiftShader again and is refused), opt-in because llvmpipe reaches the drawn world a minute or
+more after the `hud` phase and then runs at about a frame a second, although every catalogue program
+compiles and draws first within 2 s there; no player device falls back to it, as Chromium without a
+GPU uses SwiftShader. The check proves that the production build boots and draws on those
+backends. It does not prove the picture is right or that a real GPU boots as fast. It needs local
+content and a built `dist`, so it never runs in CI.
 
 ```bash
-ON_CONTENT_DIR=<primary checkout>/content npm run test:boot      # metal on macOS, about 15 s
-npm run test:boot -- --build --maps=magiczny_las --angle=metal       # rebuild dist first
-npm run test:boot -- --angle=swiftshader                             # the software renderer, see the ticket
-npm run test:boot -- --docker                                        # Linux: SwiftShader and Mesa GL
+ON_CONTENT_DIR=<primary checkout>/content npm run test:boot      # metal + swiftshader on macOS
+npm run test:boot -- --build --maps=magiczny_las --angle=metal       # rebuild dist first, one backend
+npm run test:boot -- --docker                                        # Linux SwiftShader in the Playwright image
+npm run test:boot -- --docker --angle=gl --boot-timeout-ms=240000    # Mesa llvmpipe, slow by design
 ```
 
 ## Sim worker host
