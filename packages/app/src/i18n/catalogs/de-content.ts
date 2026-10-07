@@ -208,6 +208,10 @@ export const deContent = {
       summary:
         'Zivilisten, unbewaffnete Soldaten und Bogenschützen duellieren sich neben ruhenden, essenden und schlafenden Bogenschützen.',
     },
+    'clay-gatherers': {
+      title: 'Lehmsammler',
+      summary: 'Zwei Sammler jeder Zivilisation graben Lehm und tragen ihn zu ihrer Flagge.',
+    },
     'armed-idle': {
       title: 'Bewaffnete im Leerlauf',
       summary:

@@ -62,6 +62,10 @@ feet anchor, the walk cycle follows ground travel, and animals retain their head
 Original sprite movement remains tick-anchored to preserve foot contact; authored smooth clips keep
 their own interpolation.
 
+`?scene=clay-gatherers` places two collectors per civilization beside a clay deposit, in rows:
+viking, frank, byzantine, saracen, egyptian. Watch both heads through the shovel cycle and the return
+to the flag, especially the byzantine collector with a hat.
+
 `?scene=armed-idle` stands the spearman, swordsman, two-hander, shortbow and longbow of each
 civilization in rows: viking, frank, byzantine, saracen, egyptian. Watch them for a while: every idle
 fidget keeps the weapon in hand.

@@ -208,6 +208,10 @@ export const enContent = {
       title: 'Strikes and gestures',
       summary: 'Civilian, unarmed and archer duels beside resting, eating and sleeping bowmen.',
     },
+    'clay-gatherers': {
+      title: 'Clay gatherers',
+      summary: 'Two collectors from each civilization dig clay and carry it to their flag.',
+    },
     'armed-idle': {
       title: 'Armed idle',
       summary: "Every civilization's armed soldiers stand idle; each fidget keeps the weapon in hand.",

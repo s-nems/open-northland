@@ -205,6 +205,10 @@ export const plContent = {
       title: 'Ciosy i gesty',
       summary: 'Pojedynki cywila, wojownika i łuczników; obok odpoczynek, posiłek i sen z łukiem.',
     },
+    'clay-gatherers': {
+      title: 'Zbieracze gliny',
+      summary: 'Dwaj zbieracze każdej nacji kopią glinę i odnoszą ją do swojej flagi.',
+    },
     'armed-idle': {
       title: 'Uzbrojeni w bezczynności',
       summary:

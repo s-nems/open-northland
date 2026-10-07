@@ -56,16 +56,13 @@ const ARMED_JOBS: readonly number[] = [
 ];
 
 /**
- * Head looks the source authors no frames for in a clip without six facing blocks, so no own head frame can
- * stand in. Original behavior, unconfirmed in the running game: it draws them headless too. Each pattern
- * matches `tribe <id> <look>: <slot>`.
+ * Indoor clips attached to the shared civilian body but unused by these jobs.
+ * Each pattern matches `tribe <id> <look>: <slot>`.
  */
-const SOURCE_HEADLESS: readonly RegExp[] = [
+const UNUSED_INDOOR_CLIPS: readonly RegExp[] = [
   // Other trades' indoor clips are unused by the scout/druid. Brewing must have a complete head.
   /^tribe 1 job 27: sub-clip /,
   /^tribe 1 job 30: sub-clip (?!4\/0$)/,
-  // One of the two byzantine civilian head looks: the clay dig.
-  /^tribe 3 (default|job 25): atomic 26$/,
 ];
 
 /** Each slot's body clip beside the head clip its overlay reads, by slot name. */
@@ -223,25 +220,30 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
     const gaps: string[] = [];
     // A look a civilization borrows from the base is checked once, under the base.
     const checked = new Set<SettlerCharacter>();
-    for (const [tribe, table] of tables) {
+    const allTribes = characterTablesUnderTest([...CIVILIZATIONS, WERESNAKE, WEREWOLF]);
+    expect(allTribes?.size).toBe(7);
+    for (const [tribe, table] of allTribes ?? []) {
+      expect(table, `tribe ${tribe}`).toBeDefined();
       if (table === undefined) continue;
       const looks = new Map<SettlerCharacter, string>();
       const label = (key: string, char: SettlerCharacter | undefined): void => {
         if (char !== undefined && !checked.has(char)) {
           checked.add(char);
           looks.set(char, key);
+          for (const [i, variant] of (char.variants ?? []).entries()) label(`${key} variant ${i}`, variant);
         }
       };
       label('default', table.default);
       for (const [job, char] of Object.entries(table.byJob)) label(`job ${job}`, char);
       for (const [job, char] of Object.entries(table.youngByJob ?? {})) label(`young job ${job}`, char);
+      for (const [job, char] of Object.entries(table.fixedByJob ?? {})) label(`fixed job ${job}`, char);
       for (const [good, char] of Object.entries(table.byWeaponGood ?? {})) label(`weapon ${good}`, char);
       for (const [job, char] of Object.entries(table.unarmedByJob ?? {})) label(`unarmed job ${job}`, char);
       for (const [char, key] of looks) {
         for (const slot of headlessSlots(char)) gaps.push(`tribe ${tribe} ${key}: ${slot}`);
       }
     }
-    expect(gaps.filter((gap) => !SOURCE_HEADLESS.some((known) => known.test(gap)))).toEqual([]);
+    expect(gaps.filter((gap) => !UNUSED_INDOOR_CLIPS.some((known) => known.test(gap)))).toEqual([]);
   });
 
   it('swings the unarmed punch and the longbow shot at N and S out of their own clip', () => {

@@ -16,6 +16,7 @@ import { chainScene } from './chain.js';
 import { chestQueueScene } from './chest-queue.js';
 import { chestsScene } from './chests.js';
 import { childrenScene } from './children.js';
+import { clayGatherersScene } from './clay-gatherers.js';
 import { collisionScene } from './collision.js';
 import { combatGesturesScene } from './combat-gestures.js';
 import { constructionScene } from './construction.js';
@@ -104,6 +105,7 @@ export const SCENES: readonly SceneDefinition[] = [
   bowFlightScene,
   weaponFacingsScene,
   armedIdleScene,
+  clayGatherersScene,
   combatGesturesScene,
   personalNamesScene,
   battleWearyScene,

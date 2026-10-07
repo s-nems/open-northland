@@ -193,6 +193,31 @@ describe('borrowedHeadAtlas', () => {
     expect(own.frames.has(300)).toBe(false);
   });
 
+  it('fills every shovel frame with the own W, E, S or N head and follows the donor neck', () => {
+    const walk = row('human_man_generic_walk', 100, 96);
+    const shovel = row('human_man_clayworker_work_shovel', 300, 92);
+    const facings = [1, 4, 6, 7];
+    const own = indexAtlasFrames(
+      64,
+      64,
+      facings.map((f) => frame(100 + f * 12, f, -10, -42)),
+    );
+    const guide = indexAtlasFrames(64, 64, [
+      ...facings.map((f) => frame(100 + f * 12, 0, -7, -40)),
+      ...Array.from({ length: 92 }, (_, i) => frame(300 + i, 20, -6 + (i % 3), -32 - (i % 5))),
+    ]);
+    const borrowed = borrowedHeadAtlas(own, [guide], [shovel], walk);
+    for (let i = 0; i < 92; i++) {
+      expect(borrowed.frames.get(300 + i)).toMatchObject({
+        x: facings[Math.floor(i / 23)],
+        offsetX: -9 + (i % 3),
+        offsetY: -34 - (i % 5),
+      });
+    }
+    expect(own.frames.has(300)).toBe(false);
+    expect(borrowedHeadAtlas(guide, [own], [shovel], walk)).toBe(guide);
+  });
+
   it('leaves a clip without six facing blocks blank rather than drawing from the donor sheet', () => {
     const swing = row('swing', 60, 7);
     const donorSwing = indexAtlasFrames(64, 64, [
