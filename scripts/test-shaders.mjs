@@ -1,0 +1,238 @@
+#!/usr/bin/env node
+// Compiles every GL program in the shader catalogue through one ANGLE backend in headless Chromium and
+// fails on a compile or link error, a slow program, or a renderer that is not the backend asked for
+// (docs/TESTING.md "Shader compile check"). Needs no game content.
+import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join, resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { parseArgs } from 'node:util';
+import { build } from 'esbuild';
+import { chromium } from 'playwright';
+import { repoRoot } from './content-dir.mjs';
+
+/** The renderer string each backend reports; any other string means Chromium fell back elsewhere. */
+const BACKEND_RENDERERS = {
+  d3d11: /Direct3D11/,
+  'd3d11-warp': /Direct3D11/,
+  metal: /Metal/,
+  swiftshader: /SwiftShader/,
+};
+const DEFAULT_BACKENDS = { win32: 'd3d11', darwin: 'metal' };
+const DEFAULT_MAX_MS = 2000;
+const DEFAULT_MAX_TOTAL_MS = 20000;
+/** How long the browser gets to start, load the probe and create its context. */
+const SETUP_TIMEOUT_MS = 60000;
+const CLOSE_TIMEOUT_MS = 10000;
+/** Page round-trip time a program's wall-clock deadline allows beyond the compile budget it measures. */
+const EVALUATE_SLACK_MS = 5000;
+const EXIT_FAILED = 1;
+const EXIT_USAGE = 2;
+
+function usage(message) {
+  console.error(`test:shaders: ${message}`);
+  console.error(
+    'usage: npm run test:shaders -- [--angle=d3d11|d3d11-warp|metal|swiftshader] [--max-ms=N] [--max-total-ms=N] [--json=path]',
+  );
+  process.exit(EXIT_USAGE);
+}
+
+function positiveNumber(text, option) {
+  const value = Number(text);
+  if (!Number.isFinite(value) || value <= 0)
+    usage(`--${option} must be a positive number of ms, not '${text}'`);
+  return value;
+}
+
+let parsed;
+try {
+  parsed = parseArgs({
+    options: {
+      angle: { type: 'string', default: DEFAULT_BACKENDS[process.platform] ?? 'swiftshader' },
+      'max-ms': { type: 'string', default: String(DEFAULT_MAX_MS) },
+      'max-total-ms': { type: 'string', default: String(DEFAULT_MAX_TOTAL_MS) },
+      json: { type: 'string' },
+    },
+    strict: true,
+  }).values;
+} catch (error) {
+  usage(error.message);
+}
+const backend = parsed.angle;
+const expectedRenderer = BACKEND_RENDERERS[backend];
+if (expectedRenderer === undefined)
+  usage(`unknown --angle '${backend}'; known: ${Object.keys(BACKEND_RENDERERS).join(', ')}`);
+const maxMs = positiveNumber(parsed['max-ms'], 'max-ms');
+const maxTotalMs = positiveNumber(parsed['max-total-ms'], 'max-total-ms');
+// npm runs the script from the repository root; a relative path names the caller's directory.
+const jsonPath =
+  parsed.json === undefined ? undefined : resolve(process.env.INIT_CWD ?? process.cwd(), parsed.json);
+
+function withTimeout(promise, ms, describeTimeout) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(describeTimeout())), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
+async function bundleProbePage(dir) {
+  const { outputFiles } = await build({
+    entryPoints: [resolve(repoRoot, 'scripts/shader-probe/probe.ts')],
+    bundle: true,
+    platform: 'browser',
+    format: 'iife',
+    conditions: ['source'],
+    write: false,
+    logLevel: 'silent',
+  });
+  const [bundle] = outputFiles;
+  await writeFile(join(dir, 'probe.js'), bundle.contents);
+  const page = join(dir, 'index.html');
+  await writeFile(page, '<!doctype html><meta charset="utf-8"><script src="probe.js"></script>\n');
+  return pathToFileURL(page).href;
+}
+
+function printReport(report) {
+  const sorted = [...report.programs].sort((a, b) => b.ms - a.ms || a.name.localeCompare(b.name));
+  const width = Math.max(...sorted.map((program) => program.name.length));
+  console.log(`\n${'program'.padEnd(width)}  compile+link ms`);
+  for (const program of sorted) {
+    if (program.status === 'skipped') {
+      console.log(
+        `${program.name.padEnd(width)}  ${'skipped'.padStart(15)}  needs ${program.textureUnits} texture units`,
+      );
+      continue;
+    }
+    const flag = !program.linked ? '  FAILED' : program.ms > maxMs ? '  SLOW' : '';
+    console.log(`${program.name.padEnd(width)}  ${program.ms.toFixed(1).padStart(15)}${flag}`);
+  }
+  console.log(`\nbackend:   --use-angle=${report.backend} (${report.browser})`);
+  console.log(`renderer:  ${report.renderer}`);
+  console.log(`vendor:    ${report.vendor}`);
+  console.log(`context:   ${report.version}, ${report.maxTextureUnits} fragment texture units`);
+  console.log(`warm-up:   ${report.warmUpMs.toFixed(1)} ms`);
+  const compiled = report.programs.filter((program) => program.status === 'compiled').length;
+  console.log(
+    `total:     ${report.totalMs.toFixed(1)} ms over ${compiled} programs` +
+      `, ${report.programs.length - compiled} skipped for this device's texture units` +
+      `; limits ${maxMs} ms each, ${maxTotalMs} ms total`,
+  );
+}
+
+function failuresOf(report) {
+  const failures = [];
+  if (!expectedRenderer.test(report.renderer))
+    failures.push(
+      `renderer '${report.renderer}' is not the ${backend} backend (expected ${expectedRenderer}); ` +
+        'Chromium fell back to another compiler, so these timings do not measure the one asked for',
+    );
+  for (const program of report.programs) {
+    if (program.status === 'skipped') continue;
+    if (program.contextLost) failures.push(`${program.name}: the WebGL context was lost while compiling`);
+    else if (!program.linked) {
+      const logs = [
+        ['vertex', program.vertexLog],
+        ['fragment', program.fragmentLog],
+        ['program', program.programLog],
+      ].filter(([, log]) => log.trim() !== '');
+      failures.push(
+        `${program.name}: failed to compile or link\n${logs.map(([stage, log]) => `  ${stage} log: ${log.trim()}`).join('\n')}`,
+      );
+    }
+    if (program.ms > maxMs)
+      failures.push(`${program.name}: ${program.ms.toFixed(1)} ms exceeds --max-ms ${maxMs}`);
+  }
+  if (report.totalMs > maxTotalMs)
+    failures.push(`total ${report.totalMs.toFixed(1)} ms exceeds --max-total-ms ${maxTotalMs}`);
+  return failures;
+}
+
+async function probe(pageUrl, failures) {
+  const browser = await chromium.launch({
+    channel: 'chromium',
+    headless: true,
+    args: ['--mute-audio', '--use-gl=angle', `--use-angle=${backend}`, '--ignore-gpu-blocklist'],
+  });
+  try {
+    const page = await browser.newPage();
+    const pageErrors = [];
+    page.on('pageerror', (error) => pageErrors.push(error.message));
+    const device = await withTimeout(
+      (async () => {
+        await page.goto(pageUrl);
+        if (pageErrors.length > 0) throw new Error(`the probe page failed to load: ${pageErrors.join('; ')}`);
+        return page.evaluate(() => globalThis.shaderProbe.describe());
+      })(),
+      SETUP_TIMEOUT_MS,
+      () => `the probe page did not start within ${SETUP_TIMEOUT_MS} ms`,
+    );
+    const { programNames, ...context } = device;
+    const report = {
+      backend,
+      browser: `Chromium ${browser.version()}`,
+      platform: `${process.platform} ${process.arch}`,
+      ...context,
+      totalMs: 0,
+      limits: { maxMs, maxTotalMs },
+      programs: [],
+    };
+    console.log(`test:shaders: ${programNames.length} programs through --use-angle=${backend}`);
+    console.log(`renderer: ${device.renderer}`);
+    for (const [index, name] of programNames.entries()) {
+      if (report.totalMs > maxTotalMs) {
+        failures.push(
+          `stopped before ${name}: the total budget is spent, ${programNames.length - index} programs untried`,
+        );
+        break;
+      }
+      // A compile that never returns blocks the page, so the remaining total budget bounds each call.
+      const remaining = maxTotalMs - report.totalMs + EVALUATE_SLACK_MS;
+      try {
+        const result = await withTimeout(
+          page.evaluate((at) => globalThis.shaderProbe.compile(at), index),
+          remaining,
+          () =>
+            `${name} was still compiling when the total budget of ${maxTotalMs} ms ran out` +
+            ` (${report.totalMs.toFixed(1)} ms spent before it)`,
+        );
+        report.programs.push(result);
+        report.totalMs += result.ms;
+        if (result.contextLost) break;
+      } catch (error) {
+        failures.push(error.message);
+        break;
+      }
+    }
+    return report;
+  } catch (error) {
+    failures.push(error.message);
+    return null;
+  } finally {
+    // A hung GPU process can stall a graceful close; the run's verdict is already settled.
+    await withTimeout(browser.close(), CLOSE_TIMEOUT_MS, () => 'close timed out').catch(() => undefined);
+  }
+}
+
+const dir = await mkdtemp(join(tmpdir(), 'on-shader-probe-'));
+const failures = [];
+let report = null;
+try {
+  report = await probe(await bundleProbePage(dir), failures);
+} finally {
+  await rm(dir, { recursive: true, force: true });
+}
+if (report !== null) {
+  printReport(report);
+  failures.push(...failuresOf(report));
+  if (jsonPath !== undefined) {
+    await writeFile(jsonPath, `${JSON.stringify({ ...report, failures }, null, 2)}\n`);
+    console.log(`report:    ${jsonPath}`);
+  }
+}
+if (failures.length > 0) {
+  console.error(`\ntest:shaders FAILED (${failures.length}):`);
+  for (const failure of failures) console.error(`- ${failure}`);
+  process.exit(EXIT_FAILED);
+}
+console.log('\ntest:shaders passed');

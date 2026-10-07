@@ -10,10 +10,16 @@ on:
         description: Run the test suite on Windows
         type: boolean
         default: false
+      shaders:
+        description: Compile every shader on Windows ANGLE (Direct3D 11)
+        type: boolean
+        default: false
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A main run finishes: a later push diffs against this one's tip, so a cancelled shader check would
+  # never run for the change that needed it.
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
@@ -55,3 +61,45 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+
+  # Windows minutes are scarce: the shader check runs only when something it compiles or runs with changed.
+  shader-changes:
+    if: ${{ github.event_name != 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    outputs:
+      shaders: ${{ steps.diff.outputs.shaders }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - id: diff
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [ -z "$BASE" ] || [ -z "${BASE//0/}" ] || ! git fetch --quiet --depth=1 origin "$BASE"; then
+            echo "No base commit to compare with; running the shader check."
+            echo "shaders=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          relevant='^(packages/render/src/|packages/render/package\.json$|package-lock\.json$|scripts/test-shaders\.mjs$|scripts/shader-probe/|scripts/content-dir\.mjs$|\.github/workflows/ci\.yml$)'
+          if git diff --name-only "$BASE" HEAD | grep -E "$relevant"; then
+            echo "shaders=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No shader-relevant change since $BASE."
+            echo "shaders=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  shaders-windows:
+    needs: shader-changes
+    if: ${{ !cancelled() && (inputs.shaders || needs.shader-changes.outputs.shaders == 'true') }}
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: 1
+      - run: npx playwright install --no-shell chromium
+      - run: npm run test:shaders -- --angle=d3d11
