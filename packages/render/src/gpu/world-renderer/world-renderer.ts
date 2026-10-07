@@ -41,6 +41,7 @@ import {
 } from '../overlays/index.js';
 import { setPixelArtMagnification, setWorldShadowStyle } from '../pixel-art-registry.js';
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
+import { worldShaderSettings } from '../shader-warmup.js';
 import { DEFAULT_SHADOW_STYLE } from '../shadow-style.js';
 import { type EntityBounds, SpritePool } from '../sprite-pool/index.js';
 import { StillSpriteMesh } from '../still-mesh/still-mesh.js';
@@ -184,8 +185,9 @@ export class WorldRenderer {
   setGraphicsEnhancements(next: WorldEnhancements): void {
     this.enhancements = { ...next };
     this.textureCache.setSoftShadows(next.softShadows);
-    setWorldShadowStyle(next.softShadows ? DEFAULT_SHADOW_STYLE : null);
-    setPixelArtMagnification(next.enhancedSampling ? next.pixelArtScaler : 'off');
+    const { magnification, shadow } = worldShaderSettings(next);
+    setWorldShadowStyle(shadow);
+    setPixelArtMagnification(magnification);
     this.terrain.setEnhancedSampling(next.enhancedSampling);
     this.terrain.setEnhancedWater(next.enhancedWater);
     this.mapObjects.setEnvironmentMotion(next.environmentMotion);

@@ -401,6 +401,7 @@ export const plSurfaces = {
     objects: 'Rozstawianie obiektów krajobrazu…',
     world: 'Budowanie świata…',
     minimap: 'Rysowanie minimapy…',
+    shaders: 'Kompilowanie programów graficznych…',
     hud: 'Przygotowywanie interfejsu…',
     players: 'Czekanie na pozostałych graczy…',
   },

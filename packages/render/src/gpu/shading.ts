@@ -1,7 +1,7 @@
-import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
+import { Shader, type TextureSource, UniformGroup } from 'pixi.js';
 import { BRIGHTNESS_NEUTRAL } from '../data/terrain/index.js';
 import { pageChain, pageSamplerDeclarations, pageSamplerResources } from './page-samplers.js';
-import type { GlslProgramSource } from './program-source.js';
+import { type GlslProgramSource, glProgramFor } from './program-source.js';
 import {
   COVER_FRAGMENT_DECLARATIONS,
   COVER_VERTEX_BODY,
@@ -352,13 +352,19 @@ ${pageChain('finalColor = shadeDecor(uPage$);')}
 `;
 
 /** The shaded ground mesh program; the lane multiplier is sampled per fragment. */
-export const SHADED_TERRAIN_SOURCE: GlslProgramSource = { vertex: FIELD_VERTEX, fragment: FIELD_FRAGMENT };
+export const SHADED_TERRAIN_SOURCE: GlslProgramSource = {
+  name: 'shaded-terrain',
+  vertex: FIELD_VERTEX,
+  fragment: FIELD_FRAGMENT,
+};
 /** The shaded decor quad program; one brightness per quad. */
-export const SHADED_DECOR_SOURCE: GlslProgramSource = { vertex: VERTEX_VERTEX, fragment: VERTEX_FRAGMENT };
+export const SHADED_DECOR_SOURCE: GlslProgramSource = {
+  name: 'shaded-decor',
+  vertex: VERTEX_VERTEX,
+  fragment: VERTEX_FRAGMENT,
+};
 
 /** The compiled GL programs, shared process-wide (a Shader per mesh only binds resources). */
-let fieldProgram: GlProgram | undefined;
-let vertexProgram: GlProgram | undefined;
 
 /** The map's water-animation uniform group: `uWave = [timeTicks, amplitudeScale]`, mutated in place per
  *  frame (a `Float32Array`, because a shared program re-uploads only changed contents). One group per
@@ -390,9 +396,8 @@ export function makeShadedTerrainShader(
 ): Shader {
   const samplers = pageSamplerResources(pages);
   const first = samplers.uPage0 as TextureSource;
-  fieldProgram ??= new GlProgram(SHADED_TERRAIN_SOURCE);
   return new Shader({
-    glProgram: fieldProgram,
+    glProgram: glProgramFor(SHADED_TERRAIN_SOURCE),
     resources: {
       ...samplers,
       uSampler: first.style,
@@ -418,9 +423,8 @@ export interface TerrainCoverBinding {
  */
 export function makeShadedDecorShader(pages: readonly TextureSource[], cover: DecorCoverBinding): Shader {
   const samplers = pageSamplerResources(pages);
-  vertexProgram ??= new GlProgram(SHADED_DECOR_SOURCE);
   return new Shader({
-    glProgram: vertexProgram,
+    glProgram: glProgramFor(SHADED_DECOR_SOURCE),
     resources: {
       ...samplers,
       uSampler: (samplers.uPage0 as TextureSource).style,
@@ -467,8 +471,11 @@ const COLOR_FRAGMENT = `#version 300 es
   }
 `;
 /** The flat-tinted ground program for a single page. */
-export const TINTED_TERRAIN_SOURCE: GlslProgramSource = { vertex: COLOR_VERTEX, fragment: COLOR_FRAGMENT };
-let colorProgram: GlProgram | undefined;
+export const TINTED_TERRAIN_SOURCE: GlslProgramSource = {
+  name: 'tinted-terrain',
+  vertex: COLOR_VERTEX,
+  fragment: COLOR_FRAGMENT,
+};
 
 /** A mipmapped page keeps its hardware filtering, and a single texel (the flat-colour path's white
  *  pixel) has nothing to reconstruct, so neither takes the manual filter. */
@@ -488,9 +495,8 @@ export function manualSampling(source: TextureSource): boolean {
 /** `wave` is the terrain layer's shared group. A caller passing `undefined` gets a private one that no
  *  enhancement setting can ever reach, which suits the flat-colour placeholder and nothing else. */
 export function makeTintedTerrainShader(source: TextureSource, wave: WaveUniforms | undefined): Shader {
-  colorProgram ??= new GlProgram(TINTED_TERRAIN_SOURCE);
   return new Shader({
-    glProgram: colorProgram,
+    glProgram: glProgramFor(TINTED_TERRAIN_SOURCE),
     resources: {
       uTexture: source,
       uSampler: source.style,

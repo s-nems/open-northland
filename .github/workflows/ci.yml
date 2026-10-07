@@ -102,4 +102,4 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
       - run: npx playwright install --no-shell chromium
-      - run: npm run test:shaders -- --angle=d3d11
+      - run: npm run test:shaders -- --angle=d3d11 --relink

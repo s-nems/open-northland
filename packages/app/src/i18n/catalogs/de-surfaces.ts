@@ -448,6 +448,7 @@ export const deSurfaces = {
     objects: 'Landschaftsobjekte werden platziert…',
     world: 'Spielwelt wird aufgebaut…',
     minimap: 'Minikarte wird gezeichnet…',
+    shaders: 'Grafikprogramme werden kompiliert…',
     hud: 'Oberfläche wird vorbereitet…',
     players: 'Warten auf die anderen Spieler…',
   },

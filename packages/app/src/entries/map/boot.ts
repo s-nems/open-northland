@@ -6,6 +6,7 @@ import {
   type GroundWave,
   makeElevationField,
   type SceneTerrain,
+  type ShaderWarmup,
   type SpriteSheet,
   type TerrainTextureSet,
   type WorldRenderer,
@@ -49,6 +50,7 @@ import {
   loadLocalizedRealContent,
 } from '../../view/runtime/world-bootstrap.js';
 import { readStoredSettings } from '../../view/settings-store.js';
+import { graphicsShaderWarmup } from '../../view/shader-warmup.js';
 import type { MapWorldDocuments, MapWorldPlacements } from './world-inputs.js';
 
 export { type MapRuntime, presentMapWorld } from './present.js';
@@ -62,6 +64,7 @@ export const MAP_BOOT_PHASES = [
   'world',
   'objects',
   'minimap',
+  'shaders',
   'hud',
 ] as const satisfies readonly BootPhase[];
 
@@ -115,6 +118,8 @@ export interface AssembledMapWorld<H extends HostedMapWorld = HostedMapWorld> {
   /** Its host is the one object the presentation half and the diag session share. */
   readonly hosted: H;
   readonly renderer: WorldRenderer;
+  /** Links the programs the world draws with while the rest loads; awaited before the first frame. */
+  readonly shaders: ShaderWarmup;
   readonly sheet: SpriteSheet;
   readonly pack: PresentationPack | null;
   readonly terrainGrid: SceneTerrain;
@@ -220,6 +225,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
   );
   await boot.begin('graphics');
   const app = await createWindowPixiApp(canvas, { resolutionScale: readStoredSettings().renderScale });
+  const shaders = graphicsShaderWarmup();
   let assembled = false;
   let early: EarlyHosting<H> | null = null;
   try {
@@ -369,6 +375,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       session,
       hosted,
       renderer,
+      shaders,
       sheet,
       pack,
       terrainGrid,

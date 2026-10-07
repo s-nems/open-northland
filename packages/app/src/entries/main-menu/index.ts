@@ -1,10 +1,12 @@
 import { messages } from '../../i18n/index.js';
 import { type LaunchEntry, swapToEntry } from '../../launch.js';
+import { mountBootProgress } from '../../view/boot-progress.js';
 import { BRAND_LOGO_STACKED, BRAND_LOGO_STACKED_SIZE } from '../../view/brand-art.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
 import { servedByBrowser } from '../../view/host.js';
 import { clearPendingLoad } from '../../view/runtime/save-load/pending-store.js';
 import { initialSettingsMemory } from '../../view/settings-page.js';
+import { graphicsShaderWarmup } from '../../view/shader-warmup.js';
 import { startBackdropRotation } from './backdrops.js';
 import { creditsScreen } from './credits.js';
 import { mountFullscreenPrompt } from './fullscreen-prompt.js';
@@ -84,6 +86,12 @@ function mainScreen(open: (screen: MenuScreen) => void): HTMLElement {
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   // Runs before anything reads the locale or the URL.
   adoptStoredSettings(params);
+  // The graphics programs compile here, behind a card, so a map opens without that wait; a cold cache
+  // pays once per settings and install, a warm one closes the card within a frame.
+  const boot = mountBootProgress(['shaders']);
+  await boot.begin('shaders');
+  await graphicsShaderWarmup().done;
+  await boot.finish();
   // Owns the handlers this module binds outside `root`, so `closeMenu` releases them in one step.
   const scope = new AbortController();
   // Through the menu's own writer, so the settings session it caches stays in step with the store.

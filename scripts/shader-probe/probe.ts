@@ -2,6 +2,7 @@
 // context. `scripts/test-shaders.mjs` drives it one program per call, so a program that hangs the
 // compiler is named by the caller instead of lost inside one long evaluation.
 import { GlProgram } from 'pixi.js';
+import { glProgramFor } from '../../packages/render/src/gpu/program-source.js';
 import { shaderCatalog } from '../../packages/render/src/gpu/shader-catalog.js';
 
 export interface ProbeDevice {
@@ -43,6 +44,9 @@ const SAMPLER_DECLARATION =
 
 const catalogue = shaderCatalog();
 let context: WebGL2RenderingContext | null = null;
+/** A second context for `relink`, so a relink measures the browser's program cache, not the first
+ *  context's own objects. */
+let relinkContext: WebGL2RenderingContext | null = null;
 
 function gl(): WebGL2RenderingContext {
   if (context === null) throw new Error('describe() creates the WebGL 2 context first');
@@ -116,17 +120,29 @@ function declaredSamplers(source: string): number {
   return count;
 }
 
-/** Compiles catalogue entry `index` as Pixi hands it to GL, after Pixi's own preprocessing. */
-function compile(index: number): CompiledProgram | SkippedProgram {
+/** Compiles catalogue entry `index` as Pixi hands it to GL, after Pixi's own preprocessing: the one
+ *  program instance per source the game itself uses, so a relink sees the text the renderer links. */
+function compileIn(context: WebGL2RenderingContext, index: number): CompiledProgram | SkippedProgram {
   const entry = catalogue[index];
   if (entry === undefined) throw new Error(`no catalogue entry ${index}`);
-  const { vertex, fragment } = new GlProgram({ ...entry.source, name: entry.name });
+  const { vertex, fragment } = glProgramFor(entry);
   if (vertex === undefined || fragment === undefined) throw new Error(`Pixi dropped ${entry.name}'s source`);
-  const context = gl();
   const textureUnits = declaredSamplers(fragment);
   if (textureUnits > context.getParameter(context.MAX_TEXTURE_IMAGE_UNITS))
     return { status: 'skipped', name: entry.name, ms: 0, textureUnits };
   return compileAndLink(context, entry.name, vertex, fragment);
 }
 
-Object.assign(globalThis, { shaderProbe: { describe, compile } });
+function compile(index: number): CompiledProgram | SkippedProgram {
+  return compileIn(gl(), index);
+}
+
+/** Links entry `index` again in a second context: fast where the browser's program cache holds the
+ *  first link, which is what the game's shader warm-up relies on. */
+function relink(index: number): CompiledProgram | SkippedProgram {
+  relinkContext ??= document.createElement('canvas').getContext('webgl2');
+  if (relinkContext === null) throw new Error('no second WebGL 2 context for the relink');
+  return compileIn(relinkContext, index);
+}
+
+Object.assign(globalThis, { shaderProbe: { describe, compile, relink } });

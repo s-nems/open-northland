@@ -224,6 +224,7 @@ export {
   SELECTION_STYLES,
   type SelectionStyle,
 } from './gpu/selection-style.js';
+export { type ShaderWarmup, startShaderWarmup, type WarmedProgram } from './gpu/shader-warmup.js';
 export { humanPaletteIdentity } from './gpu/sprite-pool/human-palette-row.js';
 export {
   createPresentationTrack,

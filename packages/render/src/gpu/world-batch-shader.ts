@@ -1,4 +1,5 @@
 import { PIXEL_ART_MAGNIFY_GLSL } from './pixel-art-magnify.js';
+import type { GlslProgramSource } from './program-source.js';
 import { type ShadowStyle, shadowTintChannels } from './shadow-style.js';
 
 /** `aFlags` bits: what the fragment shader must know about the element's texture. They share one float
@@ -91,6 +92,22 @@ const vec3 SHADOW_TINT = vec3(${red}, ${green}, ${blue});`,
   } else {
     finalColor = outColor * vColor;
   }`,
+  };
+}
+
+/** The mode names the shader checks and the program names report; index = the compile-time mode. */
+const MODE_NAMES = ['off', 'bilinear', 'sharp', 'xbr'] as const;
+
+/** The batch program for a texture limit, magnification mode and shadow style. */
+export function worldBatchProgramSource(
+  maxTextures: number,
+  mode: number,
+  shadow: ShadowStyle | null,
+): GlslProgramSource {
+  return {
+    name: `world-batch/textures${maxTextures}/${MODE_NAMES[mode] ?? mode}/${shadow === null ? 'no-shadow' : 'shadow'}`,
+    vertex: WORLD_BATCH_VERTEX,
+    fragment: worldBatchFragment(maxTextures, mode, shadow),
   };
 }
 

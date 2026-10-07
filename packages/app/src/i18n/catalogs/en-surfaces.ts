@@ -405,6 +405,7 @@ export const enSurfaces = {
     objects: 'Placing landscape objects…',
     world: 'Building the world…',
     minimap: 'Drawing the minimap…',
+    shaders: 'Compiling the graphics programs…',
     hud: 'Preparing the interface…',
     players: 'Waiting for the other players…',
   },

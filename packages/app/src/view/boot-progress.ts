@@ -20,6 +20,7 @@ export const BOOT_PHASES = [
   'objects',
   'world',
   'minimap',
+  'shaders',
   'hud',
   'players',
 ] as const;

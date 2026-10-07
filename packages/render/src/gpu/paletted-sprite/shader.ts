@@ -220,7 +220,11 @@ export interface PalettedUniforms {
   update(): void;
 }
 
-export const PALETTED_SPRITE_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: FRAGMENT };
+export const PALETTED_SPRITE_SOURCE: GlslProgramSource = {
+  name: 'paletted-sprite',
+  vertex: VERTEX,
+  fragment: FRAGMENT,
+};
 
 export function createPalettedGeometry(): MeshGeometry {
   return new MeshGeometry({

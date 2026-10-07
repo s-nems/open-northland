@@ -1,4 +1,4 @@
-import { BufferImageSource, Geometry, GlProgram, Mesh, Shader, Texture, UniformGroup } from 'pixi.js';
+import { BufferImageSource, Geometry, Mesh, Shader, Texture, UniformGroup } from 'pixi.js';
 import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 import {
   RAIN_SATURATING_AMOUNT,
@@ -6,7 +6,7 @@ import {
   SNOW_SATURATING_AMOUNT,
 } from '../../data/weather/cover.js';
 import { WEATHER_SECTOR_NODES, type WeatherField, weatherFieldTexels } from '../../data/weather/field.js';
-import type { GlslProgramSource } from '../program-source.js';
+import { type GlslProgramSource, glProgramFor } from '../program-source.js';
 import {
   type GroundBudget,
   RIPPLE_SLOTS,
@@ -247,9 +247,11 @@ const FRAGMENT = `#version 300 es
   }
 `;
 
-export const GROUND_REACTIONS_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: FRAGMENT };
-
-let program: GlProgram | undefined;
+export const GROUND_REACTIONS_SOURCE: GlslProgramSource = {
+  name: 'weather-ground-reactions',
+  vertex: VERTEX,
+  fragment: FRAGMENT,
+};
 
 type ReactionUniforms = UniformGroup & {
   readonly uniforms: {
@@ -301,7 +303,6 @@ export class GroundReactions {
   private groundTex: BufferImageSource;
 
   constructor() {
-    program ??= new GlProgram({ ...GROUND_REACTIONS_SOURCE, name: 'weather-ground-reactions' });
     this.uniforms = new UniformGroup({
       uView: { value: new Float32Array(4), type: 'vec4<f32>' },
       uTime: { value: 0, type: 'f32' },
@@ -316,7 +317,7 @@ export class GroundReactions {
     this.fieldTex = blankTexture('rgba8unorm');
     this.groundTex = blankTexture('rg8unorm');
     const shader = new Shader({
-      glProgram: program,
+      glProgram: glProgramFor(GROUND_REACTIONS_SOURCE),
       resources: { reactionVars: this.uniforms, uFieldTex: this.fieldTex, uGroundTex: this.groundTex },
     });
     this.mesh = new Mesh({ geometry: quadGeometry(), shader, texture: Texture.WHITE });

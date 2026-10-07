@@ -44,7 +44,7 @@ const EXIT_USAGE = 2;
 function usage(message) {
   console.error(`test:shaders: ${message}`);
   console.error(
-    'usage: npm run test:shaders -- [--angle=d3d11|metal|swiftshader] [--max-ms=N] [--max-total-ms=N] [--json=path]',
+    'usage: npm run test:shaders -- [--angle=d3d11|metal|swiftshader] [--max-ms=N] [--max-total-ms=N] [--relink] [--json=path]',
   );
   process.exit(EXIT_USAGE);
 }
@@ -64,6 +64,8 @@ try {
       'max-ms': { type: 'string' },
       'max-total-ms': { type: 'string' },
       json: { type: 'string' },
+      // Links every program a second time in another context, timing the browser's program cache.
+      relink: { type: 'boolean', default: false },
     },
     strict: true,
   }).values;
@@ -71,6 +73,7 @@ try {
   usage(error.message);
 }
 const backend = parsed.angle;
+const relink = parsed.relink;
 const expectedRenderer = BACKEND_RENDERERS[backend];
 if (expectedRenderer === undefined)
   usage(`unknown --angle '${backend}'; known: ${Object.keys(BACKEND_RENDERERS).join(', ')}`);
@@ -113,7 +116,7 @@ async function bundleProbePage(dir) {
 function printReport(report) {
   const sorted = [...report.programs].sort((a, b) => b.ms - a.ms || a.name.localeCompare(b.name));
   const width = Math.max(...sorted.map((program) => program.name.length));
-  console.log(`\n${'program'.padEnd(width)}  compile+link ms`);
+  console.log(`\n${'program'.padEnd(width)}  compile+link ms${relink ? '  relink ms' : ''}`);
   for (const program of sorted) {
     if (program.status === 'skipped') {
       console.log(
@@ -122,7 +125,8 @@ function printReport(report) {
       continue;
     }
     const flag = !program.linked ? '  FAILED' : program.ms > maxMs ? '  SLOW' : '';
-    console.log(`${program.name.padEnd(width)}  ${program.ms.toFixed(1).padStart(15)}${flag}`);
+    const again = program.relinkMs === undefined ? '' : `  ${program.relinkMs.toFixed(1).padStart(9)}`;
+    console.log(`${program.name.padEnd(width)}  ${program.ms.toFixed(1).padStart(15)}${again}${flag}`);
   }
   console.log(`\nbackend:   --use-angle=${report.backend} (${report.browser})`);
   console.log(`renderer:  ${report.renderer}`);
@@ -205,6 +209,14 @@ async function probe(pageUrl, failures) {
             `${name} was still compiling after ${hungCompileMs} ms; ` +
             `${programNames.length - index - 1} programs after it untried`,
         );
+        if (relink && result.status === 'compiled' && !result.contextLost) {
+          const again = await withTimeout(
+            page.evaluate((at) => globalThis.shaderProbe.relink(at), index),
+            hungCompileMs,
+            () => `${name} was still relinking after ${hungCompileMs} ms`,
+          );
+          result.relinkMs = again.ms;
+        }
         report.programs.push(result);
         report.totalMs += result.ms;
         if (result.contextLost) break;

@@ -1,6 +1,6 @@
-import { GlProgram, Shader, type TextureSource, UniformGroup } from 'pixi.js';
+import { Shader, type TextureSource, UniformGroup } from 'pixi.js';
 import { pageChain, pageSamplerDeclarations, pageSamplerResources } from '../page-samplers.js';
-import type { GlslProgramSource } from '../program-source.js';
+import { type GlslProgramSource, glProgramFor } from '../program-source.js';
 import { type ShadowStyle, shadowTintChannels } from '../shadow-style.js';
 import { SHADOW_BLUR_KERNEL, SHADOW_BLUR_KERNEL_SUM, SHADOW_BLUR_RADIUS } from '../soft-shadow-cache.js';
 
@@ -103,9 +103,11 @@ ${pageChain('finalColor = shadeShadow(uPage$);')}
   }
 `;
 
-export const DECOR_SHADOW_SOURCE: GlslProgramSource = { vertex: SHADOW_VERTEX, fragment: SHADOW_FRAGMENT };
-
-let program: GlProgram | undefined;
+export const DECOR_SHADOW_SOURCE: GlslProgramSource = {
+  name: 'decor-shadow',
+  vertex: SHADOW_VERTEX,
+  fragment: SHADOW_FRAGMENT,
+};
 
 /** One group per layer, shared by every decor shadow mesh, so a style change is a single write. */
 export type DecorShadowUniforms = UniformGroup & {
@@ -135,9 +137,8 @@ export function writeDecorShadowStyle(group: DecorShadowUniforms, style: ShadowS
 
 export function makeDecorShadowShader(pages: readonly TextureSource[], style: DecorShadowUniforms): Shader {
   const samplers = pageSamplerResources(pages);
-  program ??= new GlProgram(DECOR_SHADOW_SOURCE);
   return new Shader({
-    glProgram: program,
+    glProgram: glProgramFor(DECOR_SHADOW_SOURCE),
     resources: { ...samplers, uSampler: (samplers.uPage0 as TextureSource).style, shadowStyle: style },
   });
 }

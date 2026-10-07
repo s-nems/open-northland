@@ -166,6 +166,10 @@ export async function presentMapWorld(
   const minimapCells = pack !== null ? null : await loadMinimapCellColours(terrainGrid, world.terrain);
   renderer.setGroundColours(minimapCells, terrainGrid.width, terrainGrid.height);
 
+  // Every program links before the first frame, so a cold Direct3D compile shows as this step, not as
+  // a frozen interface.
+  await boot.begin('shaders');
+  await world.shaders.done;
   await boot.begin('hud');
   let markShown: () => void = () => undefined;
   const shown = new Promise<true>((resolve) => {

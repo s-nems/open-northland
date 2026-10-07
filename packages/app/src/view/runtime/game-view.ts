@@ -111,6 +111,7 @@ import {
 import { createScriptEffects } from '../script-effects.js';
 import { createScriptMarkers } from '../script-markers.js';
 import { patchStoredSettings, readStoredSettings } from '../settings-store.js';
+import { applyEnhancementsWarmed } from '../shader-warmup.js';
 import { createShortfallLook } from '../speed-shortfall.js';
 import { createTooltip } from '../tooltip.js';
 import { createUnitControls, type UnitControls } from '../unit-controls/index.js';
@@ -1015,7 +1016,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       sound: soundDriver,
       setDebugToolsEnabled: debugMounts.setToolsEnabled,
       setSelectionStyle: (style) => renderer.setSelectionStyle(style),
-      setGraphicsEnhancements: (next) => renderer.setGraphicsEnhancements(next),
+      setGraphicsEnhancements: applyEnhancementsWarmed((next) => renderer.setGraphicsEnhancements(next)),
       setWeatherEnabled: (enabled) => {
         renderer.setWeatherEnabled(enabled);
         soundDriver?.setWeatherEnabled(enabled);

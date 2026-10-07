@@ -180,11 +180,15 @@ units are skipped, as the game never builds them there. The check exists for the
 compile cost the render contract describes
 ([shader size is a budget](../packages/render/AGENTS.md#shader-size-is-a-budget)). CI runs it on
 `windows-latest` when a shader-relevant path changes, or through the CI workflow's manual `shaders`
-checkbox. Metal and SwiftShader runs catch compile errors but not that slowdown.
+checkbox. Metal and SwiftShader runs catch compile errors but not that slowdown. `--relink` links
+every program a second time in another context and prints that time beside the first: it measures the
+browser's program cache, which the game's shader warm-up (`gpu/shader-warmup.ts`) relies on to link
+the renderer's programs without a second compile, so CI passes it on Direct3D.
 
 ```bash
 npm run test:shaders                              # d3d11 on Windows, metal on macOS, else swiftshader
 npm run test:shaders -- --angle=swiftshader --json=shaders.json
+npm run test:shaders -- --angle=d3d11 --relink    # second column: the cached relink
 gh workflow run ci.yml --ref <branch> -f shaders=true
 ```
 

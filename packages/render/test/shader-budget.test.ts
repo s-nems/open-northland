@@ -27,7 +27,7 @@ describe('shader catalogue', () => {
 
   it('gives every program a vertex and a fragment stage', () => {
     const empty = catalogue
-      .filter((entry) => entry.source.vertex.trim() === '' || entry.source.fragment.trim() === '')
+      .filter((entry) => entry.vertex.trim() === '' || entry.fragment.trim() === '')
       .map((entry) => entry.name);
     expect(empty).toEqual([]);
   });
@@ -35,7 +35,7 @@ describe('shader catalogue', () => {
 
 describe('fragment texture-operation budget', () => {
   it(`keeps every inlined fragment shader within ${FRAGMENT_TEXTURE_OP_BUDGET} texture operations`, () => {
-    const costs = catalogue.map((entry) => ({ name: entry.name, ...fragmentCost(entry.source.fragment) }));
+    const costs = catalogue.map((entry) => ({ name: entry.name, ...fragmentCost(entry.fragment) }));
     const table = costs.map((cost) => `${cost.name}: ${cost.textureOps}`).join('\n');
     const over = costs
       .filter((cost) => cost.textureOps > FRAGMENT_TEXTURE_OP_BUDGET)

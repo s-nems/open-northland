@@ -1,11 +1,11 @@
-import { GlProgram } from 'pixi.js';
+import type { GlProgram } from 'pixi.js';
 import {
   PARTICLE_WRAP_MARGIN_PX,
   WEATHER_NODES_PER_WORLD_X,
   WEATHER_NODES_PER_WORLD_Y,
 } from '../../data/weather/precipitation.js';
 import type { WeatherKind } from '../../data/weather/types.js';
-import type { GlslProgramSource } from '../program-source.js';
+import { type GlslProgramSource, glProgramFor } from '../program-source.js';
 import { WEATHER_REACH_GLSL } from './weather-reach.js';
 
 /**
@@ -474,19 +474,13 @@ const BODIES: Readonly<Record<WeatherKind, { readonly vertex: string; readonly f
 export function precipitationSource(kind: WeatherKind): GlslProgramSource {
   const body = BODIES[kind];
   return {
+    name: `weather-${kind}`,
     vertex: VERTEX_HEAD + lookDefines(LOOKS[kind]) + VERTEX_FRONTS + body.vertex,
     fragment: FRAGMENT_HEAD + body.fragment,
   };
 }
 
-const programs = new Map<WeatherKind, GlProgram>();
-
 /** The compiled program for `kind`, shared by every sky. */
 export function precipitationProgram(kind: WeatherKind): GlProgram {
-  let program = programs.get(kind);
-  if (program === undefined) {
-    program = new GlProgram({ ...precipitationSource(kind), name: `weather-${kind}` });
-    programs.set(kind, program);
-  }
-  return program;
+  return glProgramFor(precipitationSource(kind));
 }

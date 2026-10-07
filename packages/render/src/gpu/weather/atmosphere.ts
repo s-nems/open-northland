@@ -1,6 +1,6 @@
-import { type Container, Geometry, GlProgram, Mesh, Shader, UniformGroup } from 'pixi.js';
+import { type Container, Geometry, Mesh, Shader, UniformGroup } from 'pixi.js';
 import type { PrecipitationTravel } from '../../data/weather/precipitation.js';
-import type { GlslProgramSource } from '../program-source.js';
+import { type GlslProgramSource, glProgramFor } from '../program-source.js';
 import type { AtmosphereLook } from './atmosphere-look.js';
 import { WEATHER_REACH_GLSL, type WeatherReach } from './weather-reach.js';
 
@@ -163,11 +163,16 @@ type VeilUniforms = UniformGroup & {
   };
 };
 
-export const WEATHER_GRADE_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: GRADE_FRAGMENT };
-export const WEATHER_VEIL_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: VEIL_FRAGMENT };
-
-let gradeProgram: GlProgram | undefined;
-let veilProgram: GlProgram | undefined;
+export const WEATHER_GRADE_SOURCE: GlslProgramSource = {
+  name: 'weather-grade',
+  vertex: VERTEX,
+  fragment: GRADE_FRAGMENT,
+};
+export const WEATHER_VEIL_SOURCE: GlslProgramSource = {
+  name: 'weather-veil',
+  vertex: VERTEX,
+  fragment: VEIL_FRAGMENT,
+};
 
 /** A unit quad the mesh scales to the screen. */
 function screenQuad(): Geometry {
@@ -240,15 +245,16 @@ export class WeatherAtmosphere {
       uFlash: { value: new Float32Array(3), type: 'vec3<f32>' },
       uFlashAt: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
     }) as VeilUniforms;
-    gradeProgram ??= new GlProgram({ ...WEATHER_GRADE_SOURCE, name: 'weather-grade' });
-    veilProgram ??= new GlProgram({ ...WEATHER_VEIL_SOURCE, name: 'weather-veil' });
     this.grade = new Mesh({
       geometry: screenQuad(),
-      shader: new Shader({ glProgram: gradeProgram, resources: { weatherGrade: this.gradeUniforms } }),
+      shader: new Shader({
+        glProgram: glProgramFor(WEATHER_GRADE_SOURCE),
+        resources: { weatherGrade: this.gradeUniforms },
+      }),
     });
     this.grade.blendMode = 'multiply';
     this.veilShader = new Shader({
-      glProgram: veilProgram,
+      glProgram: glProgramFor(WEATHER_VEIL_SOURCE),
       resources: { weatherVeil: this.veilUniforms, weatherReach: reach.uniforms, uReachFog: reach.fogSource },
     });
     this.veil = new Mesh({ geometry: screenQuad(), shader: this.veilShader });

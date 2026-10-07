@@ -11,7 +11,6 @@ import {
   ExtensionType,
   extensions,
   Geometry,
-  GlProgram,
   getBatchSamplersUniformGroup,
   type InstructionSet,
   type Renderer,
@@ -28,6 +27,7 @@ import {
   pixelArtMagnifyMode,
   worldShadowStyle,
 } from './pixel-art-registry.js';
+import { glProgramFor } from './program-source.js';
 import type { ShadowStyle } from './shadow-style.js';
 import { spriteSelectionEffect } from './sprite-selection-effect.js';
 import { WorldAttributeBuffer } from './world-attribute-buffer.js';
@@ -35,13 +35,12 @@ import {
   LUT_SLOTS,
   lutSlotOf,
   WORLD_BATCH_MAX_TEXTURES,
-  WORLD_BATCH_VERTEX,
   WORLD_FLAG_GLOW,
   WORLD_FLAG_MAGNIFY,
   WORLD_FLAG_PALETTED,
   WORLD_FLAG_SHADOW,
   WORLD_LUT_ROW_SHIFT,
-  worldBatchFragment,
+  worldBatchProgramSource,
 } from './world-batch-shader.js';
 
 export {
@@ -200,11 +199,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     let shader = shaders.get(key);
     if (shader === undefined) {
       shader = new Shader({
-        glProgram: new GlProgram({
-          name: `world-batch-${mode}-${shading}`,
-          vertex: WORLD_BATCH_VERTEX,
-          fragment: worldBatchFragment(maxTextures, mode, shadow),
-        }),
+        glProgram: glProgramFor(worldBatchProgramSource(maxTextures, mode, shadow)),
         resources: { batchSamplers: getBatchSamplersUniformGroup(maxTextures) },
       });
       shaders.set(key, shader);
