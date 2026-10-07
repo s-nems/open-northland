@@ -24,8 +24,9 @@ const DEFAULT_MAX_TOTAL_MS = 20000;
 /** How long the browser gets to start, load the probe and create its context. */
 const SETUP_TIMEOUT_MS = 60000;
 const CLOSE_TIMEOUT_MS = 10000;
-/** Page round-trip time a program's wall-clock deadline allows beyond the compile budget it measures. */
-const EVALUATE_SLACK_MS = 5000;
+/** A compile still running after this is reported as hung and ends the run: the page stays blocked
+ *  behind it. Programs that merely break the budgets are all timed, so one run names every slow one. */
+const HUNG_COMPILE_MS = 120000;
 const EXIT_FAILED = 1;
 const EXIT_USAGE = 2;
 
@@ -180,21 +181,13 @@ async function probe(pageUrl, failures) {
     console.log(`test:shaders: ${programNames.length} programs through --use-angle=${backend}`);
     console.log(`renderer: ${device.renderer}`);
     for (const [index, name] of programNames.entries()) {
-      if (report.totalMs > maxTotalMs) {
-        failures.push(
-          `stopped before ${name}: the total budget is spent, ${programNames.length - index} programs untried`,
-        );
-        break;
-      }
-      // A compile that never returns blocks the page, so the remaining total budget bounds each call.
-      const remaining = maxTotalMs - report.totalMs + EVALUATE_SLACK_MS;
       try {
         const result = await withTimeout(
           page.evaluate((at) => globalThis.shaderProbe.compile(at), index),
-          remaining,
+          HUNG_COMPILE_MS,
           () =>
-            `${name} was still compiling when the total budget of ${maxTotalMs} ms ran out` +
-            ` (${report.totalMs.toFixed(1)} ms spent before it)`,
+            `${name} was still compiling after ${HUNG_COMPILE_MS} ms; ` +
+            `${programNames.length - index - 1} programs after it untried`,
         );
         report.programs.push(result);
         report.totalMs += result.ms;
@@ -231,8 +224,9 @@ if (report !== null) {
   }
 }
 if (failures.length > 0) {
-  console.error(`\ntest:shaders FAILED (${failures.length}):`);
-  for (const failure of failures) console.error(`- ${failure}`);
+  // stdout, like the table: CI interleaves two streams out of order.
+  console.log(`\ntest:shaders FAILED (${failures.length}):`);
+  for (const failure of failures) console.log(`- ${failure}`);
   process.exit(EXIT_FAILED);
 }
 console.log('\ntest:shaders passed');
