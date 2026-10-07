@@ -223,6 +223,8 @@ export interface GameViewDeps {
   readonly mapText?: (stringId: number) => string | undefined;
   /** Extra per-frame hook after the standard updates. */
   readonly onFrame?: (snapshot: WorldSnapshot) => void;
+  /** Once, when the frame after this view's first drawn one begins: the display shows the world. */
+  readonly onFirstFrameShown?: () => void;
   /** Sim events from the frame's step(s), delivered before the renderer draws. Skipped on frames that did not step. */
   readonly onEvents?: (events: readonly SimEvent[]) => void;
   /** The entry's world identity for save headers: the decoded map id, or `scene:<id>`. Omitted, saves
@@ -1081,6 +1083,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       viewer,
       onMatchEnd: () => verdict?.finish(host.matchOutcome(localPlayer)),
       isDisposed: () => destroyed,
+      ...(deps.onFirstFrameShown === undefined ? {} : { onFirstFrameShown: deps.onFirstFrameShown }),
       driver,
       frameStats,
       fogGates,

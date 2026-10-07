@@ -87,6 +87,9 @@ async function until(check: () => boolean): Promise<void> {
   }
 }
 
+/** A round trip through the worker: every message posted before it has been acted on. */
+const settles = (connection: NetworkConnection): Promise<unknown> => connection.digests();
+
 const channels: MessageChannel[] = [];
 afterEach(() => {
   for (const channel of channels.splice(0)) {
@@ -131,11 +134,16 @@ it('walks the lobby, hosts the started world and runs the relay frames through t
   if (world === undefined) throw new Error('no world');
   expect(world.worldId).toBe(1);
   expect(connection.client.worldId).toBe(1);
-  // The room waits for this client until its display draws the world's first frame.
-  expect(link.sent.some((message) => message.kind === 'loaded')).toBe(false);
+  // The room waits for this client until its runtime says the display has shown the world; the frame
+  // loop's first advance alone does not say so, since that frame may still block on its first draw.
+  const loaded = () => link.sent.some((message) => message.kind === 'loaded');
+  expect(loaded()).toBe(false);
   const driver = relayedSessionDriver(world.session.driver, connection.client);
   driver.advance(0);
-  await until(() => link.sent.some((message) => message.kind === 'loaded'));
+  await settles(connection);
+  expect(loaded()).toBe(false);
+  connection.worldShown(world.worldId);
+  await until(loaded);
   expect(link.sent).toContainEqual({ kind: 'loaded', tick: 0, world: DESCRIPTOR_WORLD });
 
   for (let tick = 1; tick <= FRAMES; tick++) link.deliver({ kind: 'frame', tick, commands: [] });

@@ -98,11 +98,27 @@ describe('startRafLoop', () => {
     vi.stubGlobal('cancelAnimationFrame', clock.caf);
 
     const frames: number[] = [];
-    const loop = startRafLoop((nowMs) => frames.push(nowMs), 30);
+    const loop = startRafLoop((nowMs) => frames.push(nowMs), { fpsLimit: 30 });
     // A 60 Hz display: every other frame passes a 30 FPS cap.
     for (let tick = 0; tick < 6; tick++) clock.flush(tick * (1000 / 60));
     expect(frames).toEqual([0, 1000 / 30, 2000 / 30]);
     expect(clock.pending()).toBe(1);
+    loop.stop();
+  });
+
+  it('reports the first frame shown once the animation frame after the first drawn one begins', () => {
+    const clock = fakeRaf();
+    vi.stubGlobal('requestAnimationFrame', clock.raf);
+    vi.stubGlobal('cancelAnimationFrame', clock.caf);
+
+    const shown = vi.fn();
+    const loop = startRafLoop(() => undefined, { fpsLimit: 30, onFirstFrameShown: shown });
+    clock.flush(0); // the first frame draws, and may block on its first draw until it returns
+    expect(shown).not.toHaveBeenCalled();
+    clock.flush(1000 / 60); // the next animation frame, gated or not, means the first was presented
+    expect(shown).toHaveBeenCalledOnce();
+    clock.flush(1000 / 30);
+    expect(shown).toHaveBeenCalledOnce();
     loop.stop();
   });
 });

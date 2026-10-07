@@ -270,7 +270,12 @@ export function renderNetworkGame(
       introAtStart: false,
       netReadout: readout,
       netPanel,
-      untilStart: () => startWait.untilStart(() => !closed && mine === revision),
+      untilStart: (shown) => {
+        // This display has shown the world: the room may count the client loaded. The card then stays
+        // up for the rest of the room.
+        if (shown && !closed && mine === revision) connection.worldShown(worldId);
+        return startWait.untilStart(() => !closed && mine === revision);
+      },
       onReturnToMenu: returnToMenu,
     })
       .then((presented) => {

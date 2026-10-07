@@ -155,9 +155,10 @@ class RelayConnection<B, E> {
         }
         return;
       case 'start':
-        // The runtime draws its first frame of the world: only now does the room wait for it no more.
         this.served?.receive(message);
-        if (this.servedWorldId !== null) client.worldShown(this.servedWorldId);
+        return;
+      case 'shown':
+        client.worldShown(message.worldId);
         return;
       case 'delivered':
       case 'fogSeat':

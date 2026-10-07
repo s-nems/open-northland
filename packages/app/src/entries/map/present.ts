@@ -52,9 +52,17 @@ export interface MapRuntime {
   readonly netReadout?: () => NetReadout | null;
   /** Present for a relayed session: the network panel's feed. */
   readonly netPanel?: GameViewDeps['netPanel'];
-  /** Present for a relayed session: the card covers the drawn world until this settles, once the room
-   *  starts its shared clock or the wait no longer matters. */
-  readonly untilStart?: () => Promise<void>;
+  /** Present for a relayed session. Called once this display has shown the world, so the room may count
+   *  the client loaded, or with `shown` false once the view ended before its first frame; the card
+   *  covers the drawn world until it settles, once the room starts its shared clock or the wait no
+   *  longer matters. */
+  readonly untilStart?: (shown: boolean) => Promise<void>;
+}
+
+/** Settles once `signal` aborts; at once when it already has. */
+function ended(signal: AbortSignal): Promise<false> {
+  if (signal.aborted) return Promise.resolve(false);
+  return new Promise((resolve) => signal.addEventListener('abort', () => resolve(false), { once: true }));
 }
 
 /** `?center=x,y` in integer tile coords; `null` when the value is absent or malformed. */
@@ -159,6 +167,10 @@ export async function presentMapWorld(
   renderer.setGroundColours(minimapCells, terrainGrid.width, terrainGrid.height);
 
   await boot.begin('hud');
+  let markShown: () => void = () => undefined;
+  const shown = new Promise<true>((resolve) => {
+    markShown = () => resolve(true);
+  });
   const view = await startGameView({
     app,
     canvas,
@@ -178,6 +190,7 @@ export async function presentMapWorld(
     ...(runtime.onReturnToMenu !== undefined ? { onReturnToMenu: runtime.onReturnToMenu } : {}),
     ...(runtime.netReadout !== undefined ? { netReadout: runtime.netReadout } : {}),
     ...(runtime.netPanel !== undefined ? { netPanel: runtime.netPanel } : {}),
+    ...(runtime.untilStart === undefined ? {} : { onFirstFrameShown: () => markShown() }),
     cameraCtl,
     terrainGrid,
     localPlayer,
@@ -230,8 +243,11 @@ export async function presentMapWorld(
     },
   });
   if (runtime.untilStart !== undefined) {
+    // Under the card the world's first frame may block for long on first-use graphics work; the room
+    // counts this client loaded only once that frame has been shown, so its clock cannot run meanwhile.
+    const wasShown = await Promise.race([shown, ended(view.lifetime)]);
     await boot.begin('players');
-    await runtime.untilStart();
+    await runtime.untilStart(wasShown);
   }
   await boot.finish();
   // A late edit answer never lands on the renderer of a view that is gone.

@@ -5,6 +5,13 @@ export interface RafLoop {
   stop(): void;
 }
 
+export interface RafLoopOptions {
+  readonly fpsLimit?: FpsLimit;
+  /** Called once, when the animation frame after the first completed `frame` begins: the browser has
+   *  presented what that frame drew, first-use GPU work it blocked on included. */
+  readonly onFirstFrameShown?: () => void;
+}
+
 /** rAF timestamps jitter a few ms around the display's refresh grid; admitting a frame this early
  *  keeps a display that matches the cap from losing every borderline frame to the gate. */
 const EARLY_FRAME_TOLERANCE_MS = 4;
@@ -36,12 +43,21 @@ export function createFrameLimiter(fpsLimit: FpsLimit): (nowMs: number) => boole
  * chain reschedules itself, so {@link RafLoop.stop} is the only thing that ends it: a session that
  * never stops leaves a second loop stepping the same stage.
  */
-export function startRafLoop(frame: (nowMs: number) => void, fpsLimit: FpsLimit = null): RafLoop {
-  const admits = createFrameLimiter(fpsLimit);
+export function startRafLoop(frame: (nowMs: number) => void, options: RafLoopOptions = {}): RafLoop {
+  const admits = createFrameLimiter(options.fpsLimit ?? null);
   let running = true;
+  let drawn = false;
+  let shown = false;
   let rafId = requestAnimationFrame(function tick(nowMs) {
     if (!running) return;
-    if (admits(nowMs)) frame(nowMs);
+    if (drawn && !shown) {
+      shown = true;
+      options.onFirstFrameShown?.();
+    }
+    if (admits(nowMs)) {
+      frame(nowMs);
+      drawn = true;
+    }
     // `frame` may have stopped the loop, so re-check before rescheduling.
     if (running) rafId = requestAnimationFrame(tick);
   });

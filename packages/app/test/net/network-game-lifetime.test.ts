@@ -137,21 +137,27 @@ function presentedGame() {
   let port: NetWorldPort | undefined;
   let onWorld: ((world: HostedRelayedWorld) => void) | undefined;
   const progress = { reached: false, started: false };
+  /** Whether the presented view reports its first frame shown, or ended before it. */
+  const presented = { shown: true };
   const worker = { dispose: vi.fn(), driver: {}, host: {}, offThreadTickCost: vi.fn() };
   mocks.assemble.mockResolvedValue({ app: { destroy: vi.fn() }, loaded: {}, hosted: { worker } });
   mocks.mountHud.mockReturnValue({ link: vi.fn(), observe: vi.fn(), dispose: vi.fn() });
-  mocks.present.mockImplementation(async (_world, runtime: { untilStart: () => Promise<void> }) => {
-    progress.reached = true;
-    await runtime.untilStart();
-    progress.started = true;
-    return { destroy: vi.fn() };
-  });
+  mocks.present.mockImplementation(
+    async (_world, runtime: { untilStart: (shown: boolean) => Promise<void> }) => {
+      progress.reached = true;
+      await runtime.untilStart(presented.shown);
+      progress.started = true;
+      return { destroy: vi.fn() };
+    },
+  );
+  const worldShown = vi.fn();
   const handover = {
     connection: {
       client,
       connected: true,
       linkState: { state: 'ok' },
       dispose: vi.fn(),
+      worldShown,
       subscribe: (next: (event: unknown) => void) => {
         listener = next;
         return () => undefined;
@@ -186,7 +192,17 @@ function presentedGame() {
     relay({ kind: 'clock' });
     await vi.waitFor(() => expect(progress.started).toBe(true));
   };
-  return { client, relay, fail, show, start, progress, open: () => port?.open(session, null, vi.fn()) };
+  return {
+    client,
+    relay,
+    fail,
+    show,
+    start,
+    progress,
+    worldShown,
+    presented,
+    open: () => port?.open(session, null, vi.fn()),
+  };
 }
 
 describe('the start wait under the loading card', () => {
@@ -201,6 +217,21 @@ describe('the start wait under the loading card', () => {
     game.client.waitingFor = [];
     game.relay({ kind: 'waiting' });
     await vi.waitFor(() => expect(game.progress.started).toBe(true));
+  });
+
+  it('tells the worker the world is shown as the card turns to the players, before the clock runs', async () => {
+    const game = presentedGame();
+    expect(game.worldShown).not.toHaveBeenCalled();
+    await game.show();
+    expect(game.worldShown).toHaveBeenCalledExactlyOnceWith(WORLD_ID);
+    expect(game.progress.started).toBe(false);
+  });
+
+  it('keeps the world unshown from the worker when the view ended before its first frame', async () => {
+    const game = presentedGame();
+    game.presented.shown = false;
+    await game.show();
+    expect(game.worldShown).not.toHaveBeenCalled();
   });
 
   it('lets a waiting world through once another world replaces it', async () => {

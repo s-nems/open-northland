@@ -94,8 +94,8 @@ export type WorkerCall =
 
 export type ToWorker<B> =
   | { readonly kind: 'boot'; readonly boot: B; readonly options: WorkerSessionOptions }
-  /** The runtime drew its first frame: the clock runs from here, as the inline driver's first advance
-   *  starts it, so no tick is stepped while the view is still mounting. */
+  /** The runtime's frame loop advanced for the first time: the clock runs from here, as the inline
+   *  driver's first advance starts it, so no tick is stepped while the view is still mounting. */
   | { readonly kind: 'start' }
   | { readonly kind: 'submit'; readonly envelope: CommandEnvelope }
   | { readonly kind: 'pause'; readonly paused: boolean }

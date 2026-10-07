@@ -66,6 +66,8 @@ export interface FrameLoopDeps {
   readonly viewer: ViewerSeat;
   readonly onMatchEnd?: () => void;
   readonly isDisposed?: () => boolean;
+  /** Once, when the animation frame after the first drawn one begins; see {@link startRafLoop}. */
+  readonly onFirstFrameShown?: () => void;
   /** The session driver: it decides how many ticks this frame may run and holds the render alpha. */
   readonly driver: SessionDriver;
   readonly frameStats: FrameStats;
@@ -416,5 +418,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     perf.update(frameReport, netReadout);
     loop.onSpeedShortfall?.(frameStats.sustainedShortfallSpeed(), driver.speed);
   }
-  return startRafLoop(frame, loop.fpsLimit);
+  return startRafLoop(frame, {
+    fpsLimit: loop.fpsLimit,
+    ...(loop.onFirstFrameShown === undefined ? {} : { onFirstFrameShown: loop.onFirstFrameShown }),
+  });
 }

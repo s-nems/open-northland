@@ -74,6 +74,8 @@ export type ToNetWorker<B> =
   | { readonly kind: 'connect'; readonly url: string; readonly token: string; readonly nick: string }
   | { readonly kind: 'lobby'; readonly name: LobbyAction; readonly args: readonly unknown[] }
   | { readonly kind: 'clock'; readonly paused?: boolean; readonly speed?: number }
+  /** The runtime has shown the world numbered `worldId`: the client may report it loaded. */
+  | { readonly kind: 'shown'; readonly worldId: number }
   | { readonly kind: 'responsiveness'; readonly mode: ResponsivenessMode }
   /** End the connection; `leave` gives a seat in a started game up first. */
   | { readonly kind: 'leave'; readonly leave: boolean }

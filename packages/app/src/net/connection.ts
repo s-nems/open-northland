@@ -151,6 +151,12 @@ export class NetworkConnection {
     this.resolveWorldPort(port);
   }
 
+  /** The runtime has shown the world numbered `worldId`: the worker's client may report it loaded. */
+  worldShown(worldId: number): void {
+    if (this.disposed) return;
+    this.post({ kind: 'shown', worldId });
+  }
+
   /** The digests the client acknowledged last, oldest first. */
   async digests(): Promise<readonly TickDigest[]> {
     return this.request({ method: 'digests' });

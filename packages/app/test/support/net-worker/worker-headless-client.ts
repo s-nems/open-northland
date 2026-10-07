@@ -111,6 +111,8 @@ export class WorkerHeadlessClient implements LinkedClient {
         this.world = world;
         this.openedAtTick = world.session.host.tick;
         this.driver = relayedSessionDriver(world.session.driver, this.connection.client);
+        // No display here: the served world counts as shown at once.
+        this.connection.worldShown(world.worldId);
       },
     );
   }

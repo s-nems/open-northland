@@ -148,10 +148,11 @@ built tick; the relay refuses any other tick from the rest, a second `loaded` on
 and a command sent before any world has loaded. The clock starts once every member has loaded, one
 whose connection dropped included, so a game never starts without one of its players. The start is
 announced by `clock { tick, speed, paused: false, by: null, governed: null }` naming the first tick
-to run. The app reports `loaded` only once its display draws the world, so every player's game
-starts together rather than when the slowest one's sim is built. A client holding no world that asks
-with `loaded { tick: null }` instead counts as loaded once the relay serves it the room's snapshot,
-before its display shows the restored world. Until then it may send
+to run. The app reports `loaded` only once its display has shown the world's first frame and begun
+the next one, so a first frame that blocks on first-use graphics work still holds the room, and
+every player's game starts together rather than when the slowest one's sim is built. A client
+holding no world that asks with `loaded { tick: null }` instead counts as loaded once the relay
+serves it the room's snapshot, before its display shows the restored world. Until then it may send
 `loading { progress }`, its boot progress in whole percent (0-100), which the room view shows; the
 relay ignores progress from a member whose world has loaded.
 After the start there is no host role.
@@ -606,8 +607,8 @@ The client keeps the room's chat as the relay logs it: `chatHistory` replaces
 it on every entry and return, each `chat` appends to it, up to `MAX_CHAT_HISTORY_LINES`. The desktop
 and browser app plays through the `?relay=` entry, whose client, link and world run in a network
 worker, the headless test client through an in-memory network. The app's client holds `loaded` until
-the display draws its first frame of the world, and keeps the loading screen up until the room's
-clock runs and nobody is still loading. A stalled display thread does not delay the app's
+the display has shown its first frame of the world and begun the next, and keeps the loading screen
+up until the room's clock runs and nobody is still loading. A stalled display thread does not delay the app's
 acknowledgements: the worker keeps stepping and acknowledging, and drops the transient events of ticks
 the display has not taken.
 
