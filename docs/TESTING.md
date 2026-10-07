@@ -167,6 +167,29 @@ map workload pins seed 7 and boots the `?map=` entry, so its sim runs in the wor
 the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serves the checkout's
 `content/` only.
 
+## Shader compile check
+
+`npm run test:shaders` compiles and links every GL program of the shader catalogue
+(`packages/render/src/gpu/shader-catalog.ts`), after Pixi's preprocessing, in headless Chromium
+through one ANGLE backend, and needs no game content. It fails on a compile or link error, a program
+over `--max-ms`, a total over `--max-total-ms`, or a renderer string that is not the requested
+backend, since a silent fallback would time the wrong compiler. The budgets default per backend
+(the table in `scripts/test-shaders.mjs` records the measurements behind them): seconds on Metal
+and SwiftShader, minutes on Direct3D 11, where the GitHub runner's WARP device takes 31 to 64 s for
+the dearest world batch variant and 109 to 217 s for the set, run to run, on shaders real hardware
+plays fine. Variants
+declaring more samplers than the device has texture units are skipped, as the game never builds them
+there. The check exists for a Windows-only failure: ANGLE over Direct3D 11 inlines every function; a
+shader that compiles in milliseconds on Metal can take minutes there. CI runs it on `windows-latest`
+when a shader-relevant path changes, or through the CI workflow's manual `shaders` checkbox. Metal
+and SwiftShader runs catch compile errors but not that slowdown.
+
+```bash
+npm run test:shaders                              # d3d11 on Windows, metal on macOS, else swiftshader
+npm run test:shaders -- --angle=swiftshader --json=shaders.json
+gh workflow run ci.yml --ref <branch> -f shaders=true
+```
+
 ## Sim worker host
 
 `packages/app/test/session-worker*.test.ts` run the worker host under Node's `worker_threads`. Node

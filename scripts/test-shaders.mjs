@@ -14,26 +14,37 @@ import { repoRoot } from './content-dir.mjs';
 /** The renderer string each backend reports; any other string means Chromium fell back elsewhere. */
 const BACKEND_RENDERERS = {
   d3d11: /Direct3D11/,
-  'd3d11-warp': /Direct3D11/,
   metal: /Metal/,
   swiftshader: /SwiftShader/,
 };
 const DEFAULT_BACKENDS = { win32: 'd3d11', darwin: 'metal' };
-const DEFAULT_MAX_MS = 2000;
-const DEFAULT_MAX_TOTAL_MS = 20000;
+/**
+ * Default budgets per backend, from the catalogue as it stands. Direct3D 11 on a GitHub runner is WARP
+ * on a slow CPU, which compiles each program with FXC and then again into its own CPU code: there
+ * `world-batch/textures16/xbr` takes 31 to 64 s and the whole set 109 to 217 s between two runs, on
+ * shaders real hardware plays fine, while the shader that froze 0.2.1 held eight times the inlined
+ * work. Metal and SwiftShader finish the set within seconds. A budget is a tripwire against that
+ * order of growth over a runner that varies twofold, not a frame budget.
+ */
+const BACKEND_LIMITS = {
+  d3d11: { maxMs: 180_000, maxTotalMs: 480_000 },
+  metal: { maxMs: 5_000, maxTotalMs: 30_000 },
+  swiftshader: { maxMs: 5_000, maxTotalMs: 30_000 },
+};
 /** How long the browser gets to start, load the probe and create its context. */
 const SETUP_TIMEOUT_MS = 60000;
 const CLOSE_TIMEOUT_MS = 10000;
-/** A compile still running after this is reported as hung and ends the run: the page stays blocked
- *  behind it. Programs that merely break the budgets are all timed, so one run names every slow one. */
-const HUNG_COMPILE_MS = 120000;
+/** A compile still running past this multiple of the per-program budget is reported as hung and ends
+ *  the run: the page stays blocked behind it. Programs that merely break the budgets are all timed, so
+ *  one run names every slow one. */
+const HUNG_COMPILE_FACTOR = 2;
 const EXIT_FAILED = 1;
 const EXIT_USAGE = 2;
 
 function usage(message) {
   console.error(`test:shaders: ${message}`);
   console.error(
-    'usage: npm run test:shaders -- [--angle=d3d11|d3d11-warp|metal|swiftshader] [--max-ms=N] [--max-total-ms=N] [--json=path]',
+    'usage: npm run test:shaders -- [--angle=d3d11|metal|swiftshader] [--max-ms=N] [--max-total-ms=N] [--json=path]',
   );
   process.exit(EXIT_USAGE);
 }
@@ -50,8 +61,8 @@ try {
   parsed = parseArgs({
     options: {
       angle: { type: 'string', default: DEFAULT_BACKENDS[process.platform] ?? 'swiftshader' },
-      'max-ms': { type: 'string', default: String(DEFAULT_MAX_MS) },
-      'max-total-ms': { type: 'string', default: String(DEFAULT_MAX_TOTAL_MS) },
+      'max-ms': { type: 'string' },
+      'max-total-ms': { type: 'string' },
       json: { type: 'string' },
     },
     strict: true,
@@ -63,8 +74,13 @@ const backend = parsed.angle;
 const expectedRenderer = BACKEND_RENDERERS[backend];
 if (expectedRenderer === undefined)
   usage(`unknown --angle '${backend}'; known: ${Object.keys(BACKEND_RENDERERS).join(', ')}`);
-const maxMs = positiveNumber(parsed['max-ms'], 'max-ms');
-const maxTotalMs = positiveNumber(parsed['max-total-ms'], 'max-total-ms');
+const limits = BACKEND_LIMITS[backend];
+const maxMs = parsed['max-ms'] === undefined ? limits.maxMs : positiveNumber(parsed['max-ms'], 'max-ms');
+const maxTotalMs =
+  parsed['max-total-ms'] === undefined
+    ? limits.maxTotalMs
+    : positiveNumber(parsed['max-total-ms'], 'max-total-ms');
+const hungCompileMs = maxMs * HUNG_COMPILE_FACTOR;
 // npm runs the script from the repository root; a relative path names the caller's directory.
 const jsonPath =
   parsed.json === undefined ? undefined : resolve(process.env.INIT_CWD ?? process.cwd(), parsed.json);
@@ -184,9 +200,9 @@ async function probe(pageUrl, failures) {
       try {
         const result = await withTimeout(
           page.evaluate((at) => globalThis.shaderProbe.compile(at), index),
-          HUNG_COMPILE_MS,
+          hungCompileMs,
           () =>
-            `${name} was still compiling after ${HUNG_COMPILE_MS} ms; ` +
+            `${name} was still compiling after ${hungCompileMs} ms; ` +
             `${programNames.length - index - 1} programs after it untried`,
         );
         report.programs.push(result);
