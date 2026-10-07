@@ -6,6 +6,7 @@ import {
   SNOW_SATURATING_AMOUNT,
 } from '../../data/weather/cover.js';
 import { WEATHER_SECTOR_NODES, type WeatherField, weatherFieldTexels } from '../../data/weather/field.js';
+import type { GlslProgramSource } from '../program-source.js';
 import {
   type GroundBudget,
   RIPPLE_SLOTS,
@@ -246,6 +247,8 @@ const FRAGMENT = `#version 300 es
   }
 `;
 
+export const GROUND_REACTIONS_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: FRAGMENT };
+
 let program: GlProgram | undefined;
 
 type ReactionUniforms = UniformGroup & {
@@ -298,7 +301,7 @@ export class GroundReactions {
   private groundTex: BufferImageSource;
 
   constructor() {
-    program ??= new GlProgram({ vertex: VERTEX, fragment: FRAGMENT, name: 'weather-ground-reactions' });
+    program ??= new GlProgram({ ...GROUND_REACTIONS_SOURCE, name: 'weather-ground-reactions' });
     this.uniforms = new UniformGroup({
       uView: { value: new Float32Array(4), type: 'vec4<f32>' },
       uTime: { value: 0, type: 'f32' },

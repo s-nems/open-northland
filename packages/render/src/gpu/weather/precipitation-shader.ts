@@ -5,6 +5,7 @@ import {
   WEATHER_NODES_PER_WORLD_Y,
 } from '../../data/weather/precipitation.js';
 import type { WeatherKind } from '../../data/weather/types.js';
+import type { GlslProgramSource } from '../program-source.js';
 import { WEATHER_REACH_GLSL } from './weather-reach.js';
 
 /**
@@ -469,18 +470,22 @@ const BODIES: Readonly<Record<WeatherKind, { readonly vertex: string; readonly f
   sand: { vertex: SAND_VERTEX, fragment: SAND_FRAGMENT },
 };
 
+/** The GLSL of `kind`'s program: the shared heads, the look's defines and the kind's bodies. */
+export function precipitationSource(kind: WeatherKind): GlslProgramSource {
+  const body = BODIES[kind];
+  return {
+    vertex: VERTEX_HEAD + lookDefines(LOOKS[kind]) + VERTEX_FRONTS + body.vertex,
+    fragment: FRAGMENT_HEAD + body.fragment,
+  };
+}
+
 const programs = new Map<WeatherKind, GlProgram>();
 
 /** The compiled program for `kind`, shared by every sky. */
 export function precipitationProgram(kind: WeatherKind): GlProgram {
   let program = programs.get(kind);
   if (program === undefined) {
-    const body = BODIES[kind];
-    program = new GlProgram({
-      vertex: VERTEX_HEAD + lookDefines(LOOKS[kind]) + VERTEX_FRONTS + body.vertex,
-      fragment: FRAGMENT_HEAD + body.fragment,
-      name: `weather-${kind}`,
-    });
+    program = new GlProgram({ ...precipitationSource(kind), name: `weather-${kind}` });
     programs.set(kind, program);
   }
   return program;

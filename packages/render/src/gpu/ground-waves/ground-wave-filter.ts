@@ -1,4 +1,5 @@
 import { Filter, GlProgram, type TextureSource, UniformGroup } from 'pixi.js';
+import type { GlslProgramSource } from '../program-source.js';
 
 /**
  * The ground-lift filter: each output pixel whose screen position the wave map covers reads the input
@@ -47,6 +48,10 @@ const FRAGMENT = `
   }
 `;
 
+/** A Pixi filter program without a version line: Pixi adds the precision line and the stages compile
+ *  as GLSL ES 1.00 through its compatibility defines. */
+export const GROUND_WAVE_FILTER_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: FRAGMENT };
+
 export interface GroundWaveFilter {
   readonly filter: Filter;
   /** Point the filter at this frame's wave map, its screen size (CSS px), the camera zoom and the
@@ -61,7 +66,7 @@ export function makeGroundWaveFilter(map: TextureSource): GroundWaveFilter {
     uResolution: { value: 1, type: 'f32' },
   });
   const filter = new Filter({
-    glProgram: GlProgram.from({ vertex: VERTEX, fragment: FRAGMENT, name: 'ground-wave-filter' }),
+    glProgram: GlProgram.from({ ...GROUND_WAVE_FILTER_SOURCE, name: 'ground-wave-filter' }),
     resources: { waveUniforms: uniforms, uWaveMap: map, uWaveMapSampler: map.style },
     // The filter's own default of 1 would redraw the ground at CSS resolution on a HiDPI screen.
     resolution: 'inherit',

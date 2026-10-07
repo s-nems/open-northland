@@ -1,5 +1,6 @@
 import { MeshGeometry, Shader, type TextureSource } from 'pixi.js';
 import { PIXEL_ART_MAGNIFY_GLSL } from '../pixel-art-magnify.js';
+import type { GlslProgramSource } from '../program-source.js';
 
 const VERTEX = `#version 300 es
 in vec2 aPosition; // native bob pixels (already offset by the frame's draw origin)
@@ -219,6 +220,8 @@ export interface PalettedUniforms {
   update(): void;
 }
 
+export const PALETTED_SPRITE_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: FRAGMENT };
+
 export function createPalettedGeometry(): MeshGeometry {
   return new MeshGeometry({
     positions: new Float32Array(8),
@@ -253,7 +256,7 @@ export function createPalettedShader(lut: TextureSource, colours: number): Shade
     uClothFreq: { value: new Float32Array([0, 0]), type: 'vec2<f32>' as const },
   };
   return Shader.from({
-    gl: { vertex: VERTEX, fragment: FRAGMENT },
+    gl: PALETTED_SPRITE_SOURCE,
     resources: {
       // The indexed atlas source is bound per frame (setFrame); start at the LUT so the program links.
       uTexture: lut,

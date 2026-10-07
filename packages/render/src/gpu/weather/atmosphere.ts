@@ -1,5 +1,6 @@
 import { type Container, Geometry, GlProgram, Mesh, Shader, UniformGroup } from 'pixi.js';
 import type { PrecipitationTravel } from '../../data/weather/precipitation.js';
+import type { GlslProgramSource } from '../program-source.js';
 import type { AtmosphereLook } from './atmosphere-look.js';
 import { WEATHER_REACH_GLSL, type WeatherReach } from './weather-reach.js';
 
@@ -162,6 +163,9 @@ type VeilUniforms = UniformGroup & {
   };
 };
 
+export const WEATHER_GRADE_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: GRADE_FRAGMENT };
+export const WEATHER_VEIL_SOURCE: GlslProgramSource = { vertex: VERTEX, fragment: VEIL_FRAGMENT };
+
 let gradeProgram: GlProgram | undefined;
 let veilProgram: GlProgram | undefined;
 
@@ -236,8 +240,8 @@ export class WeatherAtmosphere {
       uFlash: { value: new Float32Array(3), type: 'vec3<f32>' },
       uFlashAt: { value: new Float32Array([0, 0, 1]), type: 'vec3<f32>' },
     }) as VeilUniforms;
-    gradeProgram ??= new GlProgram({ vertex: VERTEX, fragment: GRADE_FRAGMENT, name: 'weather-grade' });
-    veilProgram ??= new GlProgram({ vertex: VERTEX, fragment: VEIL_FRAGMENT, name: 'weather-veil' });
+    gradeProgram ??= new GlProgram({ ...WEATHER_GRADE_SOURCE, name: 'weather-grade' });
+    veilProgram ??= new GlProgram({ ...WEATHER_VEIL_SOURCE, name: 'weather-veil' });
     this.grade = new Mesh({
       geometry: screenQuad(),
       shader: new Shader({ glProgram: gradeProgram, resources: { weatherGrade: this.gradeUniforms } }),

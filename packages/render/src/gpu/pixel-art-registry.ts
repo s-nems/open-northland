@@ -12,6 +12,7 @@ export function parsePixelArtScaler(raw: unknown): PixelArtScaler | null {
 }
 /** `off` is enhanced sampling disabled: world sprites sample exactly as Pixi's default batcher. */
 export type WorldMagnification = PixelArtScaler | 'off';
+export const WORLD_MAGNIFICATIONS: readonly WorldMagnification[] = ['off', ...PIXEL_ART_SCALERS];
 const MAGNIFY_MODES: Readonly<Record<WorldMagnification, number>> = { off: 0, bilinear: 1, sharp: 2, xbr: 3 };
 
 /**
@@ -49,6 +50,11 @@ export function setPixelArtMagnification(mode: WorldMagnification): void {
 
 export function pixelArtMagnifyMode(): number {
   return magnifyMode;
+}
+
+/** The compile-time mode number the world batch shader takes for `mode`. */
+export function worldMagnifyModeNumber(mode: WorldMagnification): number {
+  return MAGNIFY_MODES[mode];
 }
 
 /**
