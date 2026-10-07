@@ -557,6 +557,24 @@ resumes it when `restore` matches, and returns to the menu when the relay closes
 into the same `dist/`. The relay image takes its identifier as `--build-arg RELAY_BUILD=...` and
 reports it on `/healthz`.
 
+## Release checks
+
+The standard gates run on Linux and macOS and prove nothing about another GPU driver's shader
+compiler ([shader size is a budget](../packages/render/AGENTS.md#shader-size-is-a-budget)). Before a
+version is tagged, on the release commit:
+
+1. `npm test`, which includes the shader cost budget (`packages/render/test/shader-budget.test.ts`).
+2. The Windows shader compile check: dispatch the CI workflow with `shaders` checked, or run
+   `npm run test:shaders` on a Windows machine. See [TESTING.md](TESTING.md#shader-compile-check).
+3. `npm run test:boot` with local content: the production build boots and draws on this machine's
+   backend. The software renderers (`--angle=swiftshader`, `--docker`) join once
+   [software-renderer-boot.md](tickets/render/software-renderer-boot.md) is done. See
+   [TESTING.md](TESTING.md#boot-check).
+4. Boot the build on a Windows PC: the primary checkout's development server with `--host 0.0.0.0`
+   reaches the LAN (`npm run dev -- --port 5173 --host 0.0.0.0`; open
+   `http://<mac-ip>:5173/?map=magiczny_las` there), or install the packaged desktop build. The
+   loading screen must give way to the world within seconds, not minutes.
+
 ## Desktop packaging
 
 ```bash

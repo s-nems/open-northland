@@ -33,6 +33,7 @@
     "test:content": "node scripts/test-content.mjs",
     "test:pipeline": "node scripts/test-pipeline.mjs",
     "test:engines": "node scripts/test-engines.mjs",
+    "test:boot": "node scripts/test-boot.mjs",
     "test:shaders": "node scripts/test-shaders.mjs",
     "relay": "tsc --build && node packages/net-server/dist/main.js",
     "lint": "biome lint .",

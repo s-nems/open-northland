@@ -51,6 +51,17 @@ to assets that need it because it can reduce batching.
 Shadow and terrain-lighting choices need a named source basis or approximation. Do not infer a new
 visual rule from a passing structural test.
 
+## Shader size is a budget
+
+The Direct3D shader compiler behind ANGLE on Windows inlines every GLSL function before it
+optimises, so a fragment shader's cost there is its body after inlining, not its line count. A sampling path called from
+each branch of a sampler if-chain compiles once per branch; that shape took minutes to compile on
+Windows and froze the game at the loading screen while Metal compiled it in milliseconds. Pick a
+sampler once and pass it down only where the called function is small, and keep xBR and the other
+magnifiers out of per-slot code. `test/shader-budget.test.ts` bounds the inlined texture operations
+of every program; a new GL program or generated variant joins `gpu/shader-catalog.ts` in the same
+commit so the budget and the Windows compile check (`npm run test:shaders`) see it.
+
 ## Verification
 
 Headless tests can verify frame choice, projection, culling, reconciliation, bounds, and absence of

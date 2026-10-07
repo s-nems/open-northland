@@ -173,21 +173,46 @@ the first compared tick that differs. `ON_CONTENT_DIR` is refused: the app serve
 (`packages/render/src/gpu/shader-catalog.ts`), after Pixi's preprocessing, in headless Chromium
 through one ANGLE backend, and needs no game content. It fails on a compile or link error, a program
 over `--max-ms`, a total over `--max-total-ms`, or a renderer string that is not the requested
-backend, since a silent fallback would time the wrong compiler. The budgets default per backend
-(the table in `scripts/test-shaders.mjs` records the measurements behind them): seconds on Metal
-and SwiftShader, minutes on Direct3D 11, where the GitHub runner's WARP device takes 31 to 64 s for
-the dearest world batch variant and 109 to 217 s for the set, run to run, on shaders real hardware
-plays fine. Variants
-declaring more samplers than the device has texture units are skipped, as the game never builds them
-there. The check exists for a Windows-only failure: ANGLE over Direct3D 11 inlines every function; a
-shader that compiles in milliseconds on Metal can take minutes there. CI runs it on `windows-latest`
-when a shader-relevant path changes, or through the CI workflow's manual `shaders` checkbox. Metal
-and SwiftShader runs catch compile errors but not that slowdown.
+backend, since a silent fallback would time the wrong compiler. The budgets default per backend,
+seconds on Metal and SwiftShader and minutes on Direct3D 11; the table in `scripts/test-shaders.mjs`
+records the measurements behind them. Variants declaring more samplers than the device has texture
+units are skipped, as the game never builds them there. The check exists for the Windows-only
+compile cost the render contract describes
+([shader size is a budget](../packages/render/AGENTS.md#shader-size-is-a-budget)). CI runs it on
+`windows-latest` when a shader-relevant path changes, or through the CI workflow's manual `shaders`
+checkbox. Metal and SwiftShader runs catch compile errors but not that slowdown.
 
 ```bash
 npm run test:shaders                              # d3d11 on Windows, metal on macOS, else swiftshader
 npm run test:shaders -- --angle=swiftshader --json=shaders.json
 gh workflow run ci.yml --ref <branch> -f shaders=true
+```
+
+## Boot check
+
+`npm run test:boot` serves the production build (`packages/app/dist`) with generated content laid
+over it, as the web image does, and boots `?map=<id>&player=0&seed=7` in headless Chromium, one fresh
+browser per ANGLE backend and map. A boot passes when the loading screen closes, the world draws at
+least three frames with sprites, the screen centre is not a blank canvas, and the page logs no error,
+all within `--boot-timeout-ms` (default 90000); the table lists the renderer string, when each boot
+phase began, the boot time and the frames drawn, and a failed boot leaves a screenshot under
+`bench-out/boot-check/`. A renderer string that is not the requested backend is refused, since
+Chromium falls back to SwiftShader silently. Defaults: the machine's own backend, `metal` on macOS
+and `d3d11` on Windows; the maps are `magiczny_las` and two picked by id from `maps-index.json`,
+printed at the start. The software renderers are opt-in: `--angle=swiftshader` here, and `--docker`,
+which runs the same check in the Playwright image of the installed Playwright version on
+`swiftshader` and `gl` (ANGLE over Mesa's llvmpipe; `vulkan` there is SwiftShader again and is
+refused). With the default enhancements they do not boot today
+([software-renderer-boot.md](tickets/render/software-renderer-boot.md)); run them to verify that
+fix. The check proves that the production build boots and draws on those backends. It does not prove
+the picture is right or that a real GPU boots as fast. It needs local content and a built `dist`, so
+it never runs in CI.
+
+```bash
+ON_CONTENT_DIR=<primary checkout>/content npm run test:boot      # metal on macOS, about 15 s
+npm run test:boot -- --build --maps=magiczny_las --angle=metal       # rebuild dist first
+npm run test:boot -- --angle=swiftshader                             # the software renderer, see the ticket
+npm run test:boot -- --docker                                        # Linux: SwiftShader and Mesa GL
 ```
 
 ## Sim worker host
