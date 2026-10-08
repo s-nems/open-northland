@@ -46,7 +46,6 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
     role: 'worker',
     foreign: false,
     inside: null,
-    aboard: null,
     renamable: true,
     meta: 'Warm',
     status: {

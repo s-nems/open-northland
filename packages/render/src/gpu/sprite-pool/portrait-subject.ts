@@ -10,16 +10,16 @@ import type { PooledEntity } from './pooled-entity.js';
 
 interface HiddenSubject {
   readonly pe: PooledEntity;
-  /** Inside a building: the inset then renders it alone, so its cutout drops the world backdrop
-   *  instead of reading as standing on top of the building. */
-  readonly indoor: boolean;
+  /** Inside a building or aboard a vehicle: the inset then renders it alone, so its cutout drops the
+   *  world backdrop instead of reading as standing on top of the building or out on the map. */
+  readonly solo: boolean;
 }
 
 export class PortraitSubject {
   /** The inset subjects force-hidden on the main map this frame, by ref: those drawn for an inset only. */
   private readonly hidden = new Map<number, HiddenSubject>();
-  /** Sprite-layer children hidden during an indoor subject's solo render, with their prior visibility.
-   *  Reused rather than re-allocated, since the solo runs every frame an indoor portrait is open. */
+  /** Sprite-layer children hidden during a subject's solo render, with their prior visibility. Reused
+   *  rather than re-allocated, since the solo runs every frame such a portrait is open. */
   private readonly solo: StashedVisibility[] = [];
 
   constructor(private readonly spriteLayer: Container) {}
@@ -32,9 +32,9 @@ export class PortraitSubject {
 
   /** Force-hide `pe` on the main map as an inset subject, so an indoor one does not pop into view at its
    *  door. */
-  capture(ref: number, pe: PooledEntity, indoor: boolean): void {
+  capture(ref: number, pe: PooledEntity, solo: boolean): void {
     pe.container.visible = false;
-    this.hidden.set(ref, { pe, indoor });
+    this.hidden.set(ref, { pe, solo });
   }
 
   /** Reveal one inset's force-hidden subjects so its render can draw them; {@link hide} restores them
@@ -53,20 +53,20 @@ export class PortraitSubject {
     if (subject !== undefined) subject.pe.container.visible = shown;
   }
 
-  /** Hide the sprite-layer siblings of the first indoor subject among `refs` and return the sprite
+  /** Hide the sprite-layer siblings of the first solo subject among `refs` and return the sprite
    *  layer - the one world layer the inset keeps visible - so the subject draws alone over the panel's
    *  backdrop. Null when the subjects render with the world around them. */
-  beginSoloIfIndoor(refs: readonly number[]): Container | null {
+  beginSolo(refs: readonly number[]): Container | null {
     for (const ref of refs) {
       const subject = this.hidden.get(ref);
-      if (subject?.indoor !== true) continue;
+      if (subject?.solo !== true) continue;
       stashHidden(this.spriteLayer.children, subject.pe.container, this.solo);
       return this.spriteLayer;
     }
     return null;
   }
 
-  /** Restore the sprite-layer children {@link beginSoloIfIndoor} hid; a no-op when it declined. */
+  /** Restore the sprite-layer children {@link beginSolo} hid; a no-op when it declined. */
   endSolo(): void {
     restoreStash(this.solo);
     this.solo.length = 0;

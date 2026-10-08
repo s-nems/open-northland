@@ -102,8 +102,6 @@ export interface SettlerPanelModel {
   readonly foreign: boolean;
   /** The building the person has stepped into, which the portrait frames instead; null out of doors. */
   readonly inside: number | null;
-  /** The vehicle the person rides (`Rider`), which the portrait frames while it draws no figure. */
-  readonly aboard: number | null;
   readonly renamable: boolean;
   /** The owner line: another seat's owner and stance, or a child's age; null when it says nothing. */
   readonly meta: string | null;
@@ -236,7 +234,6 @@ export function settlerPanelModel(
     role,
     foreign,
     inside: indoorHouseOf(snapshot, comps),
-    aboard: num((comps.Rider as { vehicle?: unknown } | undefined)?.vehicle) ?? null,
     meta: metaLine(ctx, ent, snapshot.tick, foreign, role),
     status,
     bars,

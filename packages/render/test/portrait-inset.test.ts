@@ -8,8 +8,8 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
 import { entity, snapshotOf } from './support/fixtures.js';
 
 /**
- * The portrait insets: each frame paints its own cutout after the main render, a rider is framed off the
- * vehicle it sits on, and a box with nothing to frame still gets its floor so the map never shows
+ * The portrait insets: each frame paints its own cutout after the main render, a rider stands alone on
+ * the vehicle's spot, and a box with nothing to frame still gets its floor so the map never shows
  * through it.
  */
 
@@ -21,14 +21,16 @@ const BOX = { x: 40, y: 30, w: 96, h: 92 };
 const SETTLER = 1;
 const CART = 2;
 const HOUSE = 3;
+const SHIP = 4;
 
 interface Pass {
   readonly frame: Rectangle;
   readonly x: number;
   readonly visibleChildren: number;
+  readonly visibleSprites: number;
 }
 
-function harness() {
+function harness(portraitRef?: number) {
   const world = new Container();
   const sprites = new Container();
   world.addChild(sprites);
@@ -41,13 +43,16 @@ function harness() {
           frame: opts.frame,
           x: world.position.x,
           visibleChildren: world.children.filter((c) => c.visible).length,
+          visibleSprites: sprites.children.filter((c) => c.visible).length,
         }),
     },
   } as unknown as Application;
   const pool = new SpritePool(sprites, new TextureCache(), undefined);
-  // The rider draws no figure of its own: only the cart and a house stand in the scene.
+  // The rider has no Position: it draws only as the portrait's subject.
+  const rider = { id: SETTLER, components: { Settler: { tribe: 0 }, Rider: { vehicle: CART } } };
   pool.reconcile({
-    snapshot: snapshotOf([entity(CART, 4, 4, { Vehicle: {} }), entity(HOUSE, 8, 4, { Building: {} })]),
+    snapshot: snapshotOf([rider, entity(CART, 4, 4, { Vehicle: {} }), entity(HOUSE, 8, 4, { Building: {} })]),
+    ...(portraitRef === undefined ? {} : { portraitRef }),
     viewport: EVERYTHING,
     tick: 0,
     camera: CAMERA,
@@ -63,16 +68,19 @@ function harness() {
 }
 
 describe('PortraitInsetLayer', () => {
-  it('frames a rider off the vehicle it sits on', () => {
-    const { pool, passes, layer, terrain } = harness();
+  it("draws a rider alone on its vehicle's spot, over the panel's backdrop", () => {
+    const { pool, passes, layer, terrain } = harness(SETTLER);
     const cart = pool.anchorOf(CART);
     if (cart === undefined) throw new Error('expected the cart drawn');
-    layer.set([{ rect: BOX, entityRef: SETTLER, kind: 'settler', aboard: CART }]);
+    expect(pool.anchorOf(SETTLER)).toEqual(cart);
+    layer.set([{ rect: BOX, entityRef: SETTLER, kind: 'settler' }]);
     layer.draw(CAMERA, terrain);
     expect(passes).toHaveLength(1);
     const scale = BOX.h / 58;
     expect(passes[0]?.x).toBeCloseTo(BOX.w / 2 - cart.x * scale);
-    expect(layer.subjects()).toEqual({ ref: SETTLER, house: null, others: [CART] });
+    // The sprite layer alone, holding the rider alone: neither the cart nor the ground it crosses.
+    expect(passes[0]?.visibleChildren).toBe(1);
+    expect(passes[0]?.visibleSprites).toBe(1);
   });
 
   it("holds a vehicle's zoom while its drawn box shrinks between frames, and forgets it once unframed", () => {
@@ -116,17 +124,18 @@ describe('PortraitInsetLayer', () => {
   });
 
   it('paints one pass per inset and forces every subject but the settler as another inset ref', () => {
-    const { passes, layer, terrain } = harness();
+    const { passes, layer, terrain } = harness(SETTLER);
     const frames: PortraitInsetFrame[] = [
-      { rect: BOX, entityRef: SETTLER, kind: 'settler', aboard: CART },
+      { rect: BOX, entityRef: SETTLER, kind: 'settler' },
       { rect: { ...BOX, x: 300 }, entityRef: HOUSE, kind: 'building' },
+      { rect: { ...BOX, x: 500 }, entityRef: CART, kind: 'vehicle', aboard: SHIP },
     ];
     layer.set(frames);
     layer.draw(CAMERA, terrain);
-    expect(passes.map((pass) => pass.frame.x)).toEqual([BOX.x, 300]);
-    expect(layer.subjects().others).toEqual([CART, HOUSE]);
+    expect(passes.map((pass) => pass.frame.x)).toEqual([BOX.x, 300, 500]);
+    expect(layer.subjects()).toEqual({ ref: SETTLER, house: null, others: [HOUSE, CART, SHIP] });
     layer.set([]);
     layer.draw(CAMERA, terrain);
-    expect(passes).toHaveLength(2);
+    expect(passes).toHaveLength(3);
   });
 });

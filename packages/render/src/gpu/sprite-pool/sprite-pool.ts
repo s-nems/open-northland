@@ -713,8 +713,8 @@ export class SpritePool {
 
   /**
    * Scope one portrait inset's render: re-place the self-placing paletted meshes for the inset camera,
-   * reveal the inset's force-hidden `subjects`, solo an indoor one, then restore all of it even if
-   * `render` throws - a failed cutout must not leave a real unit hidden on the main map.
+   * reveal the inset's force-hidden `subjects`, solo an indoor or riding one, then restore all of it even
+   * if `render` throws - a failed cutout must not leave a real unit hidden on the main map.
    */
   portraitPass(
     subjects: readonly number[],
@@ -725,7 +725,7 @@ export class SpritePool {
     this.selectionEffects.setVisible(false);
     this.placePaletted(inset.camera, inset.width, inset.height);
     this.portrait.show(subjects);
-    const soloKeep = this.portrait.beginSoloIfIndoor(subjects);
+    const soloKeep = this.portrait.beginSolo(subjects);
     try {
       render(soloKeep);
     } finally {

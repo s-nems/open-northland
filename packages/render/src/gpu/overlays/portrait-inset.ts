@@ -15,8 +15,8 @@ export interface PortraitInsetFrame {
   /** A settler subject's building while it is inside one: kept through the cull for the portrait and
    *  framed whenever the scene draws no figure for the subject (nothing choreographs it in there). */
   readonly inside?: number;
-  /** The vehicle a settler subject rides, or the ship a vehicle subject rides: a rider draws no sprite
-   *  of its own, so the framing centres on what carries it. */
+  /** The ship a vehicle subject rides: a carried vehicle draws no sprite of its own, so the framing
+   *  centres on the ship. */
   readonly aboard?: number;
 }
 
@@ -25,7 +25,7 @@ export interface PortraitSubjects {
   /** The first settler inset's subject, which may be hidden indoors or soloed. */
   readonly ref: number | null;
   readonly house: number | null;
-  /** Every other subject: building insets' houses and a rider's vehicle. */
+  /** Every other subject: building insets' houses and a carried vehicle's ship. */
   readonly others: readonly number[];
 }
 
@@ -135,9 +135,8 @@ export class PortraitInsetLayer {
   /**
    * The inset camera framing (world centre + px-per-world scale), or null when nothing it frames was
    * drawn this frame. A building or a vehicle fits its drawn bounds in the box (a carried vehicle its
-   * ship's); a settler frames a fixed
-   * window off its stable feet anchor (or off the vehicle it rides), never the swaying animation bounds,
-   * so a standing unit's cutout holds still.
+   * ship's); a settler frames a fixed window off its stable feet anchor, never the swaying animation
+   * bounds, so a standing unit's cutout holds still.
    */
   private framing(
     f: PortraitInsetFrame,
@@ -145,7 +144,7 @@ export class PortraitInsetLayer {
     h: number,
   ): { cx: number; cy: number; scale: number } | null {
     if (f.kind === 'settler') {
-      const anchor = this.pool.anchorOf(f.entityRef) ?? this.aboardAnchor(f);
+      const anchor = this.pool.anchorOf(f.entityRef);
       if (anchor === undefined) {
         // Hidden inside a building the scene shows nobody in: the cutout frames the building instead.
         return f.inside === undefined ? null : this.boundsFraming(f.inside, w, h);
@@ -188,10 +187,6 @@ export class PortraitInsetLayer {
       w,
       h,
     );
-  }
-
-  private aboardAnchor(f: PortraitInsetFrame): { x: number; y: number } | undefined {
-    return f.aboard === undefined ? undefined : this.pool.anchorOf(f.aboard);
   }
 
   private boundsFraming(ref: number, w: number, h: number): { cx: number; cy: number; scale: number } | null {
@@ -241,10 +236,10 @@ export class PortraitInsetLayer {
           camera: insetCamera,
           frame,
           // The region framed past the map edge has no terrain, and the screen pass cannot `clear` just its
-          // frame region, so floor it with the ground colour. An indoor solo keeps the panel's backdrop.
+          // frame region, so floor it with the ground colour. A solo keeps the panel's backdrop.
           fill: terrain !== undefined && soloKeep === null ? terrain.backdrop : null,
-          // An indoor subject renders alone: the pool already hid its sprite-layer siblings, and every
-          // other world layer blanks too, or the building it stands in reads as its floor.
+          // An indoor or riding subject renders alone: the pool already hid its sprite-layer siblings, and
+          // every other world layer blanks too, or the building it stands in reads as its floor.
           keep: soloKeep,
         });
       } finally {
