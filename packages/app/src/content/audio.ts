@@ -30,6 +30,7 @@ export function createSoundDriver(ir: ContentIr | null): SoundDriver | null {
     ir?.terrainPatterns ?? [],
     ir?.jobs ?? [],
     ir?.tribes ?? [],
+    ir?.landscapeGfx ?? [],
   );
   return new SoundDriver(index, defaultBindings());
 }

@@ -1,4 +1,4 @@
-import type { UiCue } from '@open-northland/audio';
+import type { SceneryObject, UiCue } from '@open-northland/audio';
 import { BUILDING_KIND, type MapRelationFlag } from '@open-northland/data';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type {
@@ -199,6 +199,9 @@ export interface GameViewDeps {
   /** The static quad still drawing a harvestable the sprite pool skips, so a click on a virgin tree or
    *  deposit hit-tests its real sprite. Absent (a scene world), every node is pool-drawn. */
   readonly staticHarvestableSprite?: (entity: number) => MapObjectSprite | undefined;
+  /** The map's placed objects the sim holds no entity for, which the object ambience sounds; absent (a
+   *  scene world), only the sim's resource nodes do. Read once. */
+  readonly soundScenery?: Iterable<SceneryObject>;
   /** The controlled seat (`?player=N`): fog perspective, selection and orders, placement ownership, HUD economy. */
   readonly localPlayer?: number;
   /** Owner slot to its roster tribe, stamping the buildings a seat places and the admin panel's spawns.
@@ -385,6 +388,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       lifetime.signal,
     );
     cleanup.push(() => soundDriver?.close());
+    if (deps.soundScenery !== undefined) soundDriver?.setLandscapeScenery(deps.soundScenery);
     // The HUD's click feedback, played straight from the input event rather than through the sim.
     const uiCue = (cue: UiCue): void => soundDriver?.cue(cue);
 

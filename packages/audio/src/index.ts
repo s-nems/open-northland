@@ -45,6 +45,16 @@ export {
   MAX_CHATTER_TICKS_PER_FRAME,
 } from './data/director/index.js';
 export {
+  LANDSCAPE_CHANCE_RANGE,
+  MAX_LANDSCAPE_TICKS_PER_FRAME,
+} from './data/director/object-ambience.js';
+export {
+  LANDSCAPE_SECTOR_TILES,
+  type LandscapeSectors,
+  landscapeSectorsOf,
+  type SceneryObject,
+} from './data/landscape-sectors.js';
+export {
   clampVolume,
   DEFAULT_AMBIENT_VOLUME,
   DEFAULT_BUS_VOLUME,
@@ -154,6 +164,7 @@ export type {
   ChatterInput,
   DirectorInput,
   EventSound,
+  LandscapeInput,
   Lane,
   OneShot,
   SoundBindings,

@@ -3,13 +3,14 @@ import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { OneShotArbiter } from '../data/arbiter.js';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
+import { type LandscapeSectors, type SceneryObject, scenerySectors } from '../data/landscape-sectors.js';
 import type { MixerVolumes } from '../data/mixer.js';
 import {
   CALM_MOOD,
   type MusicManifest,
   type MusicMoodState,
-  type MusicSequence,
   MusicPlaylist,
+  type MusicSequence,
   type MusicStanding,
   mapMusicFor,
   musicIntensity,
@@ -82,6 +83,8 @@ export class SoundDriver {
   private responses: number[] = [];
   /** The sim tick the last frame stood at, so a frame knows how many ticks to roll the chatter for. */
   private lastTick: number | null = null;
+  /** The map's sounding objects that are no sim entity, for the object ambience. */
+  private scenery: LandscapeSectors | undefined;
   /** One-shot counts since construction, for {@link stats}. */
   private readonly counts = emptySoundStats();
 
@@ -125,6 +128,12 @@ export class SoundDriver {
   /** Whether the audio context is running (a gesture has started it). */
   get started(): boolean {
     return this.engine.started;
+  }
+
+  /** Hand over the map's placed objects that are no sim entity; the object ambience keeps the ones
+   *  with a sound. Call once per map. */
+  setLandscapeScenery(objects: Iterable<SceneryObject>): void {
+    this.scenery = scenerySectors(objects, (record) => this.index.landscapeAmbienceByRecord.has(record));
   }
 
   /** Mute/unmute (also stops ambient loops and music while muted). */
@@ -215,6 +224,11 @@ export class SoundDriver {
         ? { chatter: { drawn: input.drawnCreatures, ticks, random: this.random } }
         : {}),
       ...(input.terrain !== undefined ? { terrain: input.terrain } : {}),
+      landscape: {
+        ticks,
+        random: this.random,
+        ...(this.scenery !== undefined ? { scenery: this.scenery } : {}),
+      },
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
     });

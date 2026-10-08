@@ -12,6 +12,7 @@ import type { SaveGame } from '@open-northland/sim';
 import { loadFellingClips } from '../../content/felling-clips.js';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { loadScriptLandscapeSprites } from '../../content/script-landscape-sprites.js';
+import { soundScenery } from '../../content/sound-scenery.js';
 import { playerNameMap, playerTribe } from '../../game/map-roster.js';
 import { mapStartFocus } from '../../game/map-start.js';
 import { mapStringLookup } from '../../game/map-strings.js';
@@ -224,6 +225,15 @@ export async function presentMapWorld(
       landscapes?.onEvents(events);
     },
     ...(staticLayer !== null ? { staticHarvestableSprite: staticLayer.harvestableSpriteOf } : {}),
+    ...(loaded?.objects !== undefined && ir !== null
+      ? {
+          soundScenery: soundScenery(
+            loaded.objects,
+            ir,
+            harvestablePlacementOrdinals(host.content, loaded.objects, ir),
+          ),
+        }
+      : {}),
     mapText: mapStringLookup(world.strings, currentLocale()),
     ...(stagedSave?.parent !== undefined ? { parentSave: stagedSave.parent } : {}),
     ...(runtime.sharedClock

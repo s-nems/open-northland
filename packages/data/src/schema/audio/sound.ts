@@ -8,8 +8,8 @@ export const SoundSfx = z.strictObject({
   /** Wav path relative to `data/engine2d/bin/sounds`, forward-slashed and lower-cased; joins onto the
    *  served `/sounds/<file>` route. */
   file: z.string(),
-  /** The trailing integers in file order: a static group's volume (0-100), an ambient's volume then
-   *  probability. */
+  /** The trailing integers in file order: a static group's or jingle's volume (0-100); an ambient's pick
+   *  weight, volume (0-100) and per-object chance in 10,000 per tick, which a pattern bed leaves `0 0 0`. */
   params: z.array(z.number().int()).default([]),
 });
 export type SoundSfx = z.infer<typeof SoundSfx>;
@@ -28,8 +28,8 @@ export const SoundStaticGroup = z.strictObject({
 export type SoundStaticGroup = z.infer<typeof SoundStaticGroup>;
 
 /**
- * A `SoundFXAmbient` group: a bed tied to the terrain and landscape groups the camera frames. A
- * single-wav ambient loops; a multi-wav one plays sparsely by its per-`SFX` probability params.
+ * A `SoundFXAmbient` group: a bed looped over the terrain pattern groups the camera frames, or one-shots
+ * rolled over the placed objects of its landscape groups (birds in the trees), each wav picked by weight.
  */
 export const SoundAmbient = z.strictObject({
   /** `Name` - the ambient's handle (e.g. `"Water See"`). */

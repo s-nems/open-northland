@@ -1,6 +1,7 @@
 import type { Camera } from '@open-northland/render/data';
 import type { ChestKind, SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from './bank.js';
+import type { LandscapeSectors } from './landscape-sectors.js';
 import type { ShotLayer } from './perspective.js';
 import type { UiCue } from './ui-cues.js';
 
@@ -128,6 +129,17 @@ export interface AudioTerrain {
   readonly typeIds: readonly number[];
 }
 
+/** The object ambience's per-frame input: the ticks to roll for and the map's scenery. The sim's
+ *  standing objects come off the snapshot's indexes. */
+export interface LandscapeInput {
+  /** Game ticks the sim advanced since the last frame; 0 rolls nothing. */
+  readonly ticks: number;
+  /** The [0,1) roll source. */
+  readonly random: () => number;
+  /** The map's placed objects that are no sim entity (rocks, sirens, an ice wall), bucketed once. */
+  readonly scenery?: LandscapeSectors;
+}
+
 /**
  * The unprompted creature voices' per-frame input: what the render drew and how many game ticks the
  * frame advanced, since the original rolls each once per game tick over the humans and animals it drew.
@@ -158,6 +170,8 @@ export interface DirectorInput {
   readonly responses?: readonly number[];
   /** The idle chatter and animal calls' roll; omit for none (a gallery, a test of the event path). */
   readonly chatter?: ChatterInput;
+  /** The landscape objects' ambience roll; omit for none. */
+  readonly landscape?: LandscapeInput;
   /**
    * The player slot whose life-events are "ours" - gates an {@link EventSound.localPlayerOnly} jingle
    * to this player's own events. Omit → such a jingle never plays; a jingle without the flag is

@@ -1,6 +1,13 @@
-import { aabbIntersects, cameraViewport, tileToScreen, visibleTileRange } from '@open-northland/render/data';
+import {
+  aabbIntersects,
+  cameraViewport,
+  type TileRange,
+  tileToScreen,
+  type Viewport,
+  visibleTileRange,
+} from '@open-northland/render/data';
 import { clamp } from '../math.js';
-import type { AmbientLoop, DirectorInput } from '../types.js';
+import type { AmbientLoop, AudioTerrain, DirectorInput } from '../types.js';
 
 /**
  * On-screen terrain → ambient beds: sample the visible tile band (strided so a zoomed-out whole-map
@@ -32,18 +39,15 @@ interface SideHits {
 }
 
 /**
- * The ambient beds active this frame, by sampling the on-screen terrain tiles (coverage-weighted gain,
- * side-weighted pan). A tile hidden by the viewer's fog counts toward the screen but sounds no bed, so a
- * black screen is silent. Approximation: the original gates a sector on whether it was ever discovered;
- * the director only knows current visibility.
+ * The tile band the viewport frames over the map, or null when it frames only empty space beyond the
+ * grid: `visibleTileRange`'s clamp would otherwise collapse to a phantom edge tile.
  */
-export function ambientBeds(input: DirectorInput): AmbientLoop[] {
-  const { terrain, camera, canvasW, canvasH, index, visibleTile } = input;
-  if (terrain === undefined || terrain.width <= 0 || terrain.height <= 0) return [];
-  const vp = cameraViewport(camera, canvasW, canvasH);
-  // The map's projected world-space bounds: its four corner tiles. When the camera frames only empty
-  // space beyond the grid, the viewport doesn't overlap this box, so no terrain is on screen and no
-  // ambient should play - `visibleTileRange`'s clamp would otherwise collapse to a phantom edge tile.
+export function onScreenTiles(
+  terrain: Pick<AudioTerrain, 'width' | 'height'>,
+  vp: Viewport,
+): TileRange | null {
+  if (terrain.width <= 0 || terrain.height <= 0) return null;
+  // The map's projected world-space bounds: its four corner tiles.
   const c0 = tileToScreen(0, 0);
   const c1 = tileToScreen(terrain.width - 1, 0);
   const c2 = tileToScreen(0, terrain.height - 1);
@@ -54,11 +58,25 @@ export function ambientBeds(input: DirectorInput): AmbientLoop[] {
     minY: Math.min(c0.y, c1.y, c2.y, c3.y),
     maxY: Math.max(c0.y, c1.y, c2.y, c3.y),
   };
-  if (!aabbIntersects(vp, mapBox)) return [];
+  if (!aabbIntersects(vp, mapBox)) return null;
   const band = visibleTileRange(vp, terrain.width, terrain.height);
+  return band.maxCol < band.minCol || band.maxRow < band.minRow ? null : band;
+}
+
+/**
+ * The ambient beds active this frame, by sampling the on-screen terrain tiles (coverage-weighted gain,
+ * side-weighted pan). A tile hidden by the viewer's fog counts toward the screen but sounds no bed, so a
+ * black screen is silent. Approximation: the original gates a sector on whether it was ever discovered;
+ * the director only knows current visibility.
+ */
+export function ambientBeds(input: DirectorInput): AmbientLoop[] {
+  const { terrain, camera, canvasW, canvasH, index, visibleTile } = input;
+  if (terrain === undefined) return [];
+  const vp = cameraViewport(camera, canvasW, canvasH);
+  const band = onScreenTiles(terrain, vp);
+  if (band === null) return [];
   const cols = band.maxCol - band.minCol + 1;
   const rows = band.maxRow - band.minRow + 1;
-  if (cols <= 0 || rows <= 0) return [];
   const stride = Math.max(1, Math.ceil(Math.sqrt((cols * rows) / AMBIENT_MAX_SAMPLES)));
   // The pre-camera x under the screen centre splits each row into its left and right halves.
   const centreX = (vp.minX + vp.maxX) / 2;

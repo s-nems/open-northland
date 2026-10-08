@@ -1,3 +1,4 @@
+import { landscapeSectorsOf } from '@open-northland/audio';
 import {
   empireInventoryOf,
   type FrameIndexReader,
@@ -79,6 +80,8 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
   { name: 'assistant gear tallies', read: (snapshot) => gearTalliesOf(snapshot) },
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },
+  // The object ambience reads it on every frame that advanced a tick.
+  { name: 'landscape sound sectors', read: (snapshot) => landscapeSectorsOf(snapshot) },
   { name: 'staff', read: (snapshot) => staffOf(snapshot, NO_ENTITY) },
   // The workshop stall sweep reads both once a second.
   { name: 'resting buildings', read: (snapshot) => restingBuildingsOf(snapshot, NO_SEAT, NO_TYPE) },

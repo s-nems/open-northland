@@ -1,6 +1,6 @@
 /** A placements lane is a flat run of `[hx, hy, typeIndex]` half-cell triples (the original's `emla`
  *  lane; `@open-northland/data` validates its length to a multiple of this stride). */
-const PLACEMENT_STRIDE = 3;
+export const PLACEMENT_STRIDE = 3;
 
 /**
  * Visit each `[hx, hy, typeIndex]` placement in order, with its triplet `ordinal` (the placement index
