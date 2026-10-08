@@ -26,8 +26,9 @@ export interface AttackReport {
 }
 
 /** A settler's notice that speaks in its own voice: `weary` for an idle or tired worker (a yawn),
- *  `hungry` for one going without food (a sigh). */
-export type NoticeVoice = 'weary' | 'hungry';
+ *  `hungry` for one going without food (a sigh), `dying` for one about to starve (a gasp, ranked over
+ *  the economy's notices). */
+export type NoticeVoice = 'weary' | 'hungry' | 'dying';
 
 /** What rings in the alert lane besides the jingles ({@link Lane}). */
 export type AlertKind = 'baseAttacked' | 'unitsAttacked' | NoticeVoice;

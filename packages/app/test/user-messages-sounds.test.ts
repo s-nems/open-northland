@@ -79,6 +79,7 @@ describe('notice sounds', () => {
     expect(noticeSoundOf(FIGHT_TYPE.field)).toEqual({ kind: 'attack', front: 'units' });
     expect(noticeSoundOf(USER_MESSAGE_TYPE.nothingToDo)).toEqual({ kind: 'voice', voice: 'weary' });
     expect(noticeSoundOf(USER_MESSAGE_TYPE.starving)).toEqual({ kind: 'voice', voice: 'hungry' });
+    expect(noticeSoundOf(USER_MESSAGE_TYPE.willDie)).toEqual({ kind: 'voice', voice: 'dying' });
     expect(noticeSoundOf(USER_MESSAGE_TYPE.houseFinished)).toEqual({ kind: 'own' });
     expect(noticeSoundOf(USER_MESSAGE_TYPE.canDoNewJob)).toEqual({ kind: 'own' });
     expect(noticeSoundOf(USER_MESSAGE_TYPE.humanDied)).toEqual({ kind: 'card' });

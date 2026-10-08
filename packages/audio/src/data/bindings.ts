@@ -116,6 +116,17 @@ export const SIGH_WOMAN_FILES: readonly string[] = [
   'generic/human_sigh f 01.wav',
   'generic/human_sigh f 02.wav',
 ];
+/** The gasps a settler about to starve speaks with: short and sharp where a sigh is long, so the last
+ *  warning before a death does not read as one more hungry settler. They live in the murmur pools
+ *  beside the sighs and play at the volume those pools author for them. */
+export const GASP_MAN_FILES: readonly string[] = [
+  'generic/human_gasp m 01.wav',
+  'generic/human_gasp m 02.wav',
+];
+export const GASP_WOMAN_FILES: readonly string[] = [
+  'generic/human_gasp f 01.wav',
+  'generic/human_gasp f 02.wav',
+];
 /** The share of its gain a finished building's jingle rings at from off screen: about 6 dB under the
  *  on-screen ring, a reminder rather than a fanfare. Authored. */
 export const OFF_SCREEN_JINGLE_GAIN = 1 / 2;
@@ -177,10 +188,11 @@ export function defaultBindings(): SoundBindings {
       magical: { kind: 'spatial', group: GROUP_OPEN_MAGICAL_CHEST },
     },
     attackAlert: GROUP_ALERT_HORN,
-    // A child's notice stays silent: the bank has no child yawn or sigh.
+    // A child's notice stays silent: the bank has no child yawn, sigh or gasp.
     noticeVoices: {
       weary: { male: { group: GROUP_YAWN_MAN }, female: { group: GROUP_YAWN_WOMAN } },
       hungry: { male: { files: SIGH_MAN_FILES }, female: { files: SIGH_WOMAN_FILES } },
+      dying: { male: { files: GASP_MAN_FILES }, female: { files: GASP_WOMAN_FILES } },
     },
   };
 }

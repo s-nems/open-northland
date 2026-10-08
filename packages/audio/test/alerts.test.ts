@@ -19,6 +19,7 @@ import {
   CHAT_CUE_GAIN,
   defaultBindings,
   directAudio,
+  JINGLE_COOLDOWN_MAX_S,
   LANE_RANK,
   NOTICE_CARD_GAIN,
   NOTICE_CUE_INTERVAL_S,
@@ -125,6 +126,8 @@ const bank: SoundBank = {
         { file: 'humantalk/f1ok01.wav', params: [80] },
         { file: 'generic/human_sigh f 01.wav', params: [SIGH_VOLUME] },
         { file: 'generic/human_sigh f 02.wav', params: [SIGH_VOLUME] },
+        { file: 'generic/human_gasp f 01.wav', params: [SIGH_VOLUME] },
+        { file: 'generic/human_gasp f 02.wav', params: [SIGH_VOLUME] },
       ],
     },
   ],
@@ -292,11 +295,57 @@ const birth: OneShot = {
   lane: { kind: 'jingle', musicType: JINGLE_BIRTH },
 };
 
+describe('notice cadence', () => {
+  /** When a notice key offered every second rings: 20 s apart at first, then 40, then a minute apart. */
+  const RELAXING_RINGS = [0, 20, 60, 120, 180];
+  const QUIET_SPELL_S = 3 * JINGLE_COOLDOWN_MAX_S;
+
+  function ringTimes(offer: (now: number) => readonly OneShot[], from: number, until: number): number[] {
+    const rang: number[] = [];
+    for (let now = from; now <= until; now++) if (offer(now).length > 0) rang.push(now);
+    return rang;
+  }
+
+  it('relaxes a notice voice that keeps firing, and rings it at its interval again after a quiet spell', () => {
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => CLIP_S } });
+    const yawn = (now: number): OneShot[] => {
+      const shot = noticeVoiceShot(index, bindings, snapshot, 'weary', MAN);
+      return arbiter.decide(shot === null ? [] : [shot], now);
+    };
+    const last = RELAXING_RINGS.at(-1) ?? 0;
+    expect(ringTimes(yawn, 0, last)).toEqual(RELAXING_RINGS);
+    const back = last + QUIET_SPELL_S;
+    expect(ringTimes(yawn, back, back + NOTICE_CUE_INTERVAL_S)).toEqual([back, back + NOTICE_CUE_INTERVAL_S]);
+  });
+
+  it("relaxes a card type's pop the same way, outside the lane", () => {
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => CLIP_S } });
+    const HUNGER = '7';
+    const pop = (now: number): OneShot[] => arbiter.decide([notificationShot('card', HUNGER)], now);
+    expect(notificationShot('card', HUNGER).lane).toBeUndefined();
+    expect(ringTimes(pop, 0, RELAXING_RINGS.at(-1) ?? 0)).toEqual(RELAXING_RINGS);
+  });
+
+  it('gasps for a settler about to starve, over a hungry sigh still holding the lane', () => {
+    const gasp = noticeVoiceShot(index, bindings, snapshot, 'dying', WOMAN);
+    expect(gasp?.files).toEqual(['generic/human_gasp f 01.wav', 'generic/human_gasp f 02.wav']);
+    expect(gasp?.lane).toEqual({ kind: 'alert', alert: 'dying' });
+    const sigh = noticeVoiceShot(index, bindings, snapshot, 'hungry', WOMAN);
+    if (gasp === null || sigh === null) throw new Error('both notices should speak');
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => CLIP_S } });
+    expect(arbiter.decide([sigh], 0)).toHaveLength(1);
+    expect(arbiter.decide([gasp], CLIP_S / 2).map((s) => s.lane)).toEqual([
+      { kind: 'alert', alert: 'dying' },
+    ]);
+  });
+});
+
 describe('alert lane ladder', () => {
   it('ranks defeat over the settlement over people over the economy over completions', () => {
     expect(LANE_RANK.critical).toBeGreaterThan(LANE_RANK.baseAttacked);
     expect(LANE_RANK.baseAttacked).toBeGreaterThan(LANE_RANK.unitsAttacked);
-    expect(LANE_RANK.unitsAttacked).toBeGreaterThan(LANE_RANK.economy);
+    expect(LANE_RANK.unitsAttacked).toBeGreaterThan(LANE_RANK.peril);
+    expect(LANE_RANK.peril).toBeGreaterThan(LANE_RANK.economy);
     expect(LANE_RANK.economy).toBeGreaterThan(LANE_RANK.completion);
   });
 

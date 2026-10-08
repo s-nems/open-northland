@@ -44,8 +44,8 @@ export interface NotificationSound {
 }
 
 /** Least seconds between two sounds of one notice key (a message type, a notice voice) after a quiet
- *  spell: the shot's {@link OneShot.cooldownS}. Approximation: a busy settlement raises the same note for
- *  many settlers in a row. */
+ *  spell: the shot's {@link OneShot.cooldownS}, which grows while the key keeps firing. Approximation: a
+ *  busy settlement raises the same note for many settlers in a row. */
 export const NOTICE_CUE_INTERVAL_S = 20;
 
 /** A new card's briefing pop sits about 12 dB under a press: the bank's loudest GUI wav (peak -0.1 dBFS),
@@ -67,8 +67,8 @@ export const NOTIFICATION_SOUNDS: Readonly<Record<NotificationCue, NotificationS
 /**
  * The one-shot a notification rings: its wav, keyed per notification so a burst of cards in one frame
  * rings once. With `rateKey` (a message type) the key is that type's and cools for
- * {@link NOTICE_CUE_INTERVAL_S}, and the shot waits out its wav still sounding, so cards of several types
- * at once still ring once.
+ * {@link NOTICE_CUE_INTERVAL_S}, longer while the type keeps coming, and the shot waits out its wav
+ * still sounding, so cards of several types at once still ring once.
  */
 export function notificationShot(notification: NotificationCue, rateKey?: string): OneShot {
   const sound = NOTIFICATION_SOUNDS[notification];
@@ -84,6 +84,7 @@ export function notificationShot(notification: NotificationCue, rateKey?: string
     ...shot,
     key: `notify:${notification}:${rateKey}`,
     cooldownS: NOTICE_CUE_INTERVAL_S,
+    cooldownGrows: true,
     exclusive: 'group',
   };
 }

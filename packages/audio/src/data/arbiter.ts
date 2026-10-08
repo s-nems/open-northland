@@ -21,8 +21,9 @@ import type { OneShot } from './types.js';
  * - Jingles and alerts ring one at a time, in priority order. A type still ringing swallows its repeat (original
  *   behavior: a jingle already sounding is not started again). A type that keeps firing earns a growing
  *   cooldown, so the tenth birth in a row is a reminder every minute while the first birth after a
- *   quiet spell rings at once. A more important jingle (a death, the alarm) rings over a lesser one
- *   already sounding; a lesser one waits for the lane and rings late, or is dropped once stale.
+ *   quiet spell rings at once; a notice card outside the lane grows its key's cooldown the same way. A
+ *   more important jingle (a death, the alarm) rings over a lesser one already sounding; a lesser one
+ *   waits for the lane and rings late, or is dropped once stale.
  * - Voices, screams and positioned SFX draw from a rate budget each, loudest first, so the busiest battle
  *   starts a bounded number of layered sounds a second. Each sound pool starts at most its loudest shot
  *   a frame, holds a few instances at once, and the world as a whole a capped number
@@ -44,11 +45,13 @@ import type { OneShot } from './types.js';
  */
 export const LANE_RANK = {
   /** The match decided. */
-  critical: 5,
+  critical: 6,
   /** The settlement attacked, or its alarm raised. */
-  baseAttacked: 4,
+  baseAttacked: 5,
   /** People attacked out in the field. */
-  unitsAttacked: 3,
+  unitsAttacked: 4,
+  /** A settler about to die of hunger: one life still to save. */
+  peril: 3,
   /** The economy failing: hunger, idle hands, a death. */
   economy: 2,
   /** Something done: a building, a discovery, a birth, a wedding, a chest. */
@@ -71,6 +74,7 @@ export const JINGLE_PRIORITY: ReadonlyMap<number, number> = new Map([
 export const ALERT_PRIORITY: Readonly<Record<AlertKind, number>> = {
   baseAttacked: LANE_RANK.baseAttacked,
   unitsAttacked: LANE_RANK.unitsAttacked,
+  dying: LANE_RANK.peril,
   hungry: LANE_RANK.economy,
   weary: LANE_RANK.economy,
 };
@@ -80,7 +84,8 @@ export const DEFAULT_JINGLE_PRIORITY = 0;
  *  ring, in seconds. */
 export const DEFAULT_JINGLE_LENGTH_S = 3;
 /** A ring inside this many of the type's cooldowns since its last ring counts as frequent and grows the
- *  cooldown; a later one is fresh again and rings at the type's base cooldown (its own length). */
+ *  cooldown; a later one is fresh again and rings at the type's base cooldown: the shot's own
+ *  {@link OneShot.cooldownS} (a notice's interval), else its length. */
 export const JINGLE_FREQUENT_WINDOW = 2;
 /** A frequent type's cooldown multiplies by this each ring. */
 export const JINGLE_COOLDOWN_GROWTH = 2;
@@ -139,6 +144,27 @@ interface JingleTypeState {
   cooldownS: number;
 }
 
+/** Per type, a cooldown that grows by {@link JINGLE_COOLDOWN_GROWTH} while the type keeps ringing, up to
+ *  {@link JINGLE_COOLDOWN_MAX_S}, and falls back to the ring's base after a quiet spell. */
+class GrowingCooldowns {
+  private readonly types = new Map<string, JingleTypeState>();
+
+  cooling(type: string, now: number): boolean {
+    const state = this.types.get(type);
+    return state !== undefined && now < state.lastRing + state.cooldownS;
+  }
+
+  rang(type: string, baseS: number, now: number): void {
+    const state = this.types.get(type) ?? { lastRing: Number.NEGATIVE_INFINITY, cooldownS: baseS };
+    const frequent = now - state.lastRing < state.cooldownS * JINGLE_FREQUENT_WINDOW;
+    state.cooldownS = frequent
+      ? Math.min(state.cooldownS * JINGLE_COOLDOWN_GROWTH, JINGLE_COOLDOWN_MAX_S)
+      : baseS;
+    state.lastRing = now;
+    this.types.set(type, state);
+  }
+}
+
 interface PendingJingle {
   readonly shot: OneShot;
   readonly since: number;
@@ -177,7 +203,7 @@ export interface ArbiterOptions {
 }
 
 export class OneShotArbiter {
-  private readonly types = new Map<string, JingleTypeState>();
+  private readonly cooldowns = new GrowingCooldowns();
   private readonly pending = new Map<string, PendingJingle>();
   /** When the jingle lane frees, and the rank of the jingle holding it. */
   private laneBusyUntil = Number.NEGATIVE_INFINITY;
@@ -237,8 +263,12 @@ export class OneShotArbiter {
           this.ledger.offer(shot, now);
           break;
         case undefined: {
+          const growing = shot.cooldownGrows === true;
+          if (growing && this.cooldowns.cooling(shot.key, now)) break;
           const started = this.ledger.startFree(shot, now);
-          if (started !== null) this.emit(out, started);
+          if (started === null) break;
+          if (growing) this.cooldowns.rang(shot.key, shot.cooldownS ?? DEFAULT_JINGLE_LENGTH_S, now);
+          this.emit(out, started);
           break;
         }
       }
@@ -273,8 +303,7 @@ export class OneShotArbiter {
   private offerJingle(shot: OneShot, now: number, out: OneShot[]): void {
     const type = laneType(shot);
     if (type === null || this.ledger.keyCooling(shot.key, now)) return;
-    const state = this.types.get(type.key);
-    if (state !== undefined && now < state.lastRing + state.cooldownS) return; // folded into the last ring
+    if (this.cooldowns.cooling(type.key, now)) return; // folded into the last ring
     if (now < this.laneBusyUntil && type.rank <= this.lanePriority) {
       this.pending.set(type.key, { shot, since: now }); // the latest instance waits; earlier ones fold into it
       return;
@@ -292,13 +321,7 @@ export class OneShotArbiter {
 
   private ring(shot: OneShot, type: LaneType, now: number, out: OneShot[]): void {
     const length = this.laneLengthS(shot);
-    const state = this.types.get(type.key) ?? { lastRing: Number.NEGATIVE_INFINITY, cooldownS: length };
-    const frequent = now - state.lastRing < state.cooldownS * JINGLE_FREQUENT_WINDOW;
-    state.cooldownS = frequent
-      ? Math.min(state.cooldownS * JINGLE_COOLDOWN_GROWTH, JINGLE_COOLDOWN_MAX_S)
-      : length;
-    state.lastRing = now;
-    this.types.set(type.key, state);
+    this.cooldowns.rang(type.key, shot.cooldownS ?? length, now);
     this.pending.delete(type.key);
     this.laneBusyUntil = now + length;
     this.lanePriority = type.rank;
