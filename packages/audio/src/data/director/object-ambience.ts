@@ -151,7 +151,7 @@ function pickObject(tally: AmbienceTally, roll: number): TilePoint | undefined {
  * per-object odds. Approximation.
  */
 export function landscapeDensity(camera: Camera, canvasW: number, canvasH: number): number {
-  const scale = camera.scale > 0 ? camera.scale : NEAR_ZOOM_SCALE;
+  const scale = camera.scale !== undefined && camera.scale > 0 ? camera.scale : NEAR_ZOOM_SCALE;
   const area = (canvasW / scale) * (canvasH / scale);
   if (!(area > 0)) return 0;
   return Math.min(1, (LANDSCAPE_REFERENCE_SCREEN_W * LANDSCAPE_REFERENCE_SCREEN_H) / area);
