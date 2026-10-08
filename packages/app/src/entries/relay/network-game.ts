@@ -25,6 +25,7 @@ import {
 import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress, mountBootNotice } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
+import { releaseDocument } from '../../view/navigation-guard.js';
 import { menuSearch } from '../../view/params.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
@@ -125,6 +126,8 @@ export function renderNetworkGame(
     diag.warn('net', 'network game halted', { error: errorText(error) });
     const starting = startWait.pending;
     dispose();
+    // The game is over; closing the tab on the notice loses nothing.
+    releaseDocument();
     if (starting) {
       const remove = mountBootNotice(title ?? copy.startFailedTitle, relayFailureText(error), {
         label: messages().hud.returnToMenu,

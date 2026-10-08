@@ -1,4 +1,5 @@
 import { defaultLocale, localeParam, setActiveLocale } from '../../i18n/index.js';
+import { replaceEntryUrl } from '../../view/navigation-guard.js';
 import { type MenuSettings, persistSettings, readStoredSettings } from '../../view/settings-store.js';
 
 /**
@@ -101,7 +102,7 @@ export function adoptStoredSettings(params: URLSearchParams): void {
   const { session, adopted } = adoptSettings(persistedSettings(), params);
   const url = new URL(window.location.href);
   for (const { param, value } of adopted) url.searchParams.set(param, value);
-  window.history.replaceState(window.history.state, '', url);
+  replaceEntryUrl(url);
   current = session;
   setActiveLocale(session.language);
 }
@@ -114,5 +115,5 @@ function syncCarriedParams(patch: Partial<MenuSettings>, next: MenuSettings): vo
     if (value === null) url.searchParams.delete(param);
     else url.searchParams.set(param, value);
   }
-  window.history.replaceState(window.history.state, '', url);
+  replaceEntryUrl(url);
 }

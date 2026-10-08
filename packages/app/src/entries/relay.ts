@@ -6,6 +6,7 @@ import { NetworkConnection } from '../net/connection.js';
 import { takeNetworkHandover } from '../net/handover.js';
 import { relayCloseText, relayFailureText, relayReasonText, worldFailureTitle } from '../net/relay-reason.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
+import { replaceEntryUrl } from '../view/navigation-guard.js';
 import { mountMessage } from '../view/overlay.js';
 import { lobbyCompatibilityReporter } from './relay/compatibility.js';
 import { roomCreation } from './relay/creation.js';
@@ -119,7 +120,7 @@ export async function renderRelayGame(canvas: HTMLCanvasElement, params: URLSear
       case 'room': {
         compatibility.observe(message.room);
         if (!urlPinned) {
-          window.history.replaceState(null, '', searchWithRoom(params, message.room.id));
+          replaceEntryUrl(searchWithRoom(params, message.room.id));
           urlPinned = true;
         }
         const { room } = message;

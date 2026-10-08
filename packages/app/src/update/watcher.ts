@@ -3,6 +3,7 @@ import { diag } from '../diag/index.js';
 import { formatMessage, messages } from '../i18n/index.js';
 import { routeFor } from '../routes.js';
 import { servedByBrowser } from '../view/host.js';
+import { releaseDocument, reloadDocument } from '../view/navigation-guard.js';
 import { type BannerAction, hideUpdateBanner, setUpdateBannerText, showUpdateBanner } from './banner.js';
 import {
   type CheckCause,
@@ -277,8 +278,10 @@ function reloadInto(served: ServedBuild, toMenu: boolean): void {
   leaving = true;
   stopCountdown();
   rememberReloadedFor(served.build);
-  if (toMenu) window.location.replace(`${window.location.pathname}${menuSearch(window.location.search)}`);
-  else window.location.reload();
+  if (toMenu) {
+    releaseDocument();
+    window.location.replace(`${window.location.pathname}${menuSearch(window.location.search)}`);
+  } else reloadDocument();
 }
 
 function readReloadedFor(): string | null {

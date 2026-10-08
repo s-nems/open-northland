@@ -5,20 +5,14 @@ afterEach(() => vi.unstubAllGlobals());
 
 interface WindowProbe {
   readonly trace: string[];
-  /** The handler `swapToEntry` armed for the back button. */
-  popstate: (() => void) | null;
 }
 
 /** Traces what a handover does to the window; assigning `location.search` would be a real navigation. */
 function stubWindow(): WindowProbe {
-  const probe: WindowProbe = { trace: [], popstate: null };
+  const probe: WindowProbe = { trace: [] };
   vi.stubGlobal('window', {
     history: {
       pushState: (_state: unknown, _title: string, url: string) => probe.trace.push(`push ${url}`),
-    },
-    addEventListener: (type: string, handler: () => void) => {
-      probe.trace.push(`listen ${type}`);
-      if (type === 'popstate') probe.popstate = handler;
     },
     location: {
       reload: () => probe.trace.push('reload'),
@@ -46,13 +40,7 @@ describe('swapToEntry', () => {
     );
 
     // The menu holds the frame until the entry's module is in, and the URL turns over with it.
-    expect(probe.trace).toEqual([
-      'load fjord',
-      'push ?map=fjord&fog=classic',
-      'listen popstate',
-      'teardown',
-      'draw',
-    ]);
+    expect(probe.trace).toEqual(['load fjord', 'push ?map=fjord&fog=classic', 'teardown', 'draw']);
   });
 
   it('leaves the URL and the screen it replaces alone when the entry never loads', async () => {
@@ -66,21 +54,5 @@ describe('swapToEntry', () => {
       ),
     ).rejects.toThrow('offline');
     expect(probe.trace).toEqual([]);
-  });
-
-  it('reloads on the back button, so the menu boots from its own URL', async () => {
-    const probe = stubWindow();
-
-    await swapToEntry(
-      '?map=fjord',
-      () => undefined,
-      (_params, onLoaded) => {
-        onLoaded();
-        return Promise.resolve();
-      },
-    );
-    probe.popstate?.();
-
-    expect(probe.trace.at(-1)).toBe('reload');
   });
 });

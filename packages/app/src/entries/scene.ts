@@ -31,6 +31,7 @@ import { inlineSessionHost } from '../session/index.js';
 import { type BootPhase, mountBootProgress } from '../view/boot-progress.js';
 import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
+import { replaceEntryUrl } from '../view/navigation-guard.js';
 import { createNetPanelPreview, NET_PREVIEW_STATE_PARAM, stillWhileHeld } from '../view/net/panel-preview.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
@@ -66,7 +67,7 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   if (mapScene !== undefined) {
     const mapParams = mapSceneParams(mapScene, params);
     const renderMap = await routeFor(new URLSearchParams({ map: mapScene.mapId })).load();
-    window.history.replaceState(null, '', `?${mapParams.toString()}`);
+    replaceEntryUrl(`?${mapParams.toString()}`);
     await renderMap(canvas, mapParams);
     return;
   }

@@ -5,6 +5,7 @@ import { drawSessionSeed, mapIdParam, mapSession, seedParam } from '../game/sess
 import { endpointPort } from '../session/worker/port.js';
 import { startWorkerSession, type WorkerSession } from '../session/worker/worker-session.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
+import { replaceEntryUrl } from '../view/navigation-guard.js';
 import { formatSearch, introParam } from '../view/params.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { haltOnFailedRestore } from '../view/runtime/world-bootstrap.js';
@@ -29,7 +30,7 @@ export async function renderMap(canvas: HTMLCanvasElement, params: URLSearchPara
   // A match named without a seed draws one into the address, so its link replays the match.
   if (seedParam(params) === null) {
     params.set('seed', String(drawSessionSeed()));
-    history.replaceState(history.state, '', formatSearch(params));
+    replaceEntryUrl(formatSearch(params));
   }
   // Consumed before any other boot work: a staged save that fails from here on halts the boot rather
   // than silently starting a fresh world.

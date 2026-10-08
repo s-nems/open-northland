@@ -1,5 +1,6 @@
 import { diag } from '../../diag/index.js';
 import { swapToEntry } from '../../launch.js';
+import { releaseDocument } from '../navigation-guard.js';
 import { menuSearch } from '../params.js';
 
 /**
@@ -16,6 +17,7 @@ export function createMenuExit(deps: {
   const navigate =
     deps.navigate ??
     ((search: string): void => {
+      releaseDocument();
       window.location.search = search;
     });
   let leaving = false;

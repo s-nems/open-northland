@@ -1,14 +1,27 @@
 import { join } from 'node:path';
-import { BrowserWindow, type IpcMainEvent, type IpcMainInvokeEvent, ipcMain, screen } from 'electron';
+import {
+  app,
+  BrowserWindow,
+  dialog,
+  type IpcMainEvent,
+  type IpcMainInvokeEvent,
+  ipcMain,
+  screen,
+} from 'electron';
 import {
   FULLSCREEN_CHANGED_CHANNEL,
   IS_FULLSCREEN_CHANNEL,
   SET_FULLSCREEN_CHANNEL,
 } from './fullscreen-channels.js';
+import { leavePromptFor } from './leave-prompt.js';
 import { GAME_URL } from './protocol.js';
 import { isAppUrl } from './protocol-routing.js';
 import { isFullscreenChord, isGameSender, maximizedAfter, setFullScreen } from './window-control.js';
 import { placeWindow, readWindowState, WINDOW_STATE_VERSION, writeWindowState } from './window-state.js';
+
+/** Button order of the leave dialog; staying is the default and what Escape picks. */
+const LEAVE_BUTTON = 0;
+const STAY_BUTTON = 1;
 
 export function createWindow(statePath: string): BrowserWindow {
   const state = readWindowState(statePath);
@@ -70,11 +83,25 @@ export function createWindow(statePath: string): BrowserWindow {
   });
   win.on('enter-full-screen', () => win.webContents.send(FULLSCREEN_CHANGED_CHANNEL, true));
   win.on('leave-full-screen', () => win.webContents.send(FULLSCREEN_CHANGED_CHANNEL, false));
-  // macOS also keeps its own Ctrl+Cmd+F from the default View menu.
   win.webContents.on('before-input-event', (event, input) => {
     if (!isFullscreenChord(input)) return;
     event.preventDefault();
     win.setFullScreen(!win.isFullScreen());
+  });
+
+  // The page holds its document while a game runs (`beforeunload`); a shell has no prompt of its own
+  // for that, so closing or quitting asks here. Letting the handler through keeps the window open.
+  win.webContents.on('will-prevent-unload', (event) => {
+    const prompt = leavePromptFor(win.webContents.getURL(), app.getLocale());
+    const choice = dialog.showMessageBoxSync(win, {
+      type: 'question',
+      title: prompt.title,
+      message: prompt.message,
+      buttons: [prompt.leave, prompt.stay],
+      defaultId: STAY_BUTTON,
+      cancelId: STAY_BUTTON,
+    });
+    if (choice === LEAVE_BUTTON) event.preventDefault();
   });
 
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));

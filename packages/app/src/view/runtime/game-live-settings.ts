@@ -11,6 +11,7 @@ import { defaultLocale, localeParam } from '../../i18n/index.js';
 import type { AdminPalettePosition } from '../admin-debug/chrome.js';
 import type { CameraController } from '../camera/index.js';
 import type { GameToolPanelHandle } from '../game-tool-panel.js';
+import { replaceEntryUrl } from '../navigation-guard.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import { type MenuSettings, patchStoredSettings } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
@@ -105,7 +106,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     else deps.params.set(param, value);
     const url = new URL(window.location.href);
     url.search = deps.params.toString();
-    window.history.replaceState(window.history.state, '', url);
+    replaceEntryUrl(url);
   };
   const settings = createGameSettingsRuntime({
     initial: {

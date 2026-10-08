@@ -1,5 +1,6 @@
 import { join, resolve } from 'node:path';
-import { app, type BrowserWindow } from 'electron';
+import { app, type BrowserWindow, Menu } from 'electron';
+import { applicationMenuTemplate } from './application-menu.js';
 import { CONTENT_DIR_ENV, resolveShellRoots } from './paths.js';
 import { handleAppProtocol, registerAppScheme } from './protocol.js';
 import { createWindow } from './window.js';
@@ -26,6 +27,8 @@ if (app.requestSingleInstanceLock()) {
   });
 
   void app.whenReady().then(() => {
+    const menu = applicationMenuTemplate(process.platform, app.isPackaged);
+    Menu.setApplicationMenu(menu === null ? null : Menu.buildFromTemplate([...menu]));
     handleAppProtocol(roots);
     mainWindow = createWindow(join(app.getPath('userData'), WINDOW_STATE_FILE));
   });

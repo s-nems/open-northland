@@ -10,6 +10,7 @@ import type { AdminPalettePosition } from '../admin-debug/chrome.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { type AdminDebugHandle, mountAdminDebug } from '../admin-debug/index.js';
 import type { CameraController } from '../camera/index.js';
+import { replaceEntryUrl } from '../navigation-guard.js';
 import type { PerfOverlayHandle } from '../perf-overlay.js';
 import {
   createGeometryDebugOverlay,
@@ -75,7 +76,7 @@ export function mountDebugOverlays(opts: DebugMountsOptions): DebugMounts {
     // `?debug=` holds a set: a plain `params.set` would clobber an active `profile,trace`.
     setDebugFlag(params, GEOMETRY_DEBUG_FLAG, enabled);
     const search = params.toString();
-    window.history.replaceState(null, '', `${window.location.pathname}${search === '' ? '' : `?${search}`}`);
+    replaceEntryUrl(`${window.location.pathname}${search === '' ? '' : `?${search}`}`);
   };
 
   // Not written to the URL: a reload resets the camera's zoom anyway.

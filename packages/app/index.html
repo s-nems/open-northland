@@ -34,7 +34,8 @@
     <title>Open Northland</title>
     <style>
       :focus-visible { outline: none; }
-      html, body { margin: 0; height: 100%; background: #0c1420; overflow: hidden; }
+      /* A horizontal overscroll (a trackpad swipe) is not a history gesture here. */
+      html, body { margin: 0; height: 100%; background: #0c1420; overflow: hidden; overscroll-behavior: none; }
       /* Interactive entries render at device resolution (createWindowPixiApp + autoDensity), so the
          canvas maps 1:1 to device px and this pixelated hint is inert there. It still matters for the
          fixed-size ?shot canvas, which IS CSS-stretched to the viewport: nearest keeps that stretched

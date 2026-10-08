@@ -1,4 +1,5 @@
 import type { SaveGame } from '@open-northland/sim';
+import { reloadDocument } from '../../navigation-guard.js';
 import { entrySearch } from '../../params.js';
 import { type SaveLoadDeps, type SaveLoadSession, saveLoadSession } from './controller.js';
 import { browserSaveDownload, pickSaveFile } from './file-access.js';
@@ -25,7 +26,7 @@ export function createSaveLoadSession(opts: SaveLoadSessionOptions): SaveLoadSes
   return saveLoadSession({
     ...opts,
     entrySearch: opts.entrySearch ?? entrySearch(),
-    reload: () => window.location.reload(),
+    reload: reloadDocument,
     stagePending: storePendingLoad,
     store: browserSaveStore(),
     pickFile: pickSaveFile,
