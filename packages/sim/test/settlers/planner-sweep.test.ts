@@ -280,7 +280,7 @@ const MARKERS: Record<string, (world: World, e: Entity) => void> = {
   },
   riderSupplyRun: (world, e) => {
     world.add(e, SupplyRun, { site: e, goodType: PLANK, amount: 1 });
-    world.add(e, Rider, { vehicle: e, boarding: false, leaving: false });
+    world.add(e, Rider, { vehicle: e, boarding: false, leaving: null });
   },
   familyDutyPickupClaim: (world, e) => {
     world.add(e, PickupClaim, { source: e, goodType: PLANK, amount: 1 });

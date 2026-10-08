@@ -228,7 +228,7 @@ describe('needs stored as level-at-tick', () => {
     const held = needsOf(sim, e);
     // Aboard and off the map, on a vehicle that is no ship.
     sim.world.remove(e, Position);
-    sim.world.add(e, Rider, { vehicle: sim.world.create(), boarding: false, leaving: false });
+    sim.world.add(e, Rider, { vehicle: sim.world.create(), boarding: false, leaving: null });
     for (let i = 0; i < DRAINED_TICKS; i++) needsSystem(sim.world, nextTickCtxOf(sim));
     expect(needsOf(sim, e)).toEqual(held);
     sim.world.remove(e, Rider);

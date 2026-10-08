@@ -3,8 +3,10 @@ import {
   FOG_MODE,
   isAboardVehicle,
   MissionObjectId,
+  MoveGoal,
   ownerOf,
   Person,
+  PlayerOrder,
   Position,
   Rider,
   Settler,
@@ -404,7 +406,7 @@ describe('the crew results', () => {
     sim.world.mut(ship, Vehicle).moored = false; // cast off
     runLoadPass(sim);
     expect(isAboardVehicle(sim.world, crew)).toBe(true); // nobody steps off at sea
-    expect(sim.world.get(crew, Rider).leaving).toBe(true);
+    expect(sim.world.get(crew, Rider).leaving).toEqual({ to: null });
     expect(sim.events.current().filter((e) => e.kind === 'riderRefused')).toEqual([]);
     sim.world.mut(ship, Vehicle).moored = true;
     sim.step();
@@ -413,6 +415,41 @@ describe('the crew results', () => {
     const mooring = sim.world.get(ship, Vehicle).mooring;
     if (mooring === null) throw new Error('the ship lies unmoored');
     expect(hexDistance(nodeOf(sim, crew), mooring)).toBeLessThanOrEqual(1);
+  });
+
+  it('a SendHuman behind a held detach walks the crew on from the shore it lands on', () => {
+    // A point inland of the shore the crew boarded from, where the ship moors again.
+    const inland = { hx: SEA.hx - 6, hy: SEA.hy + 6 };
+    const sim = scriptedSim(
+      [
+        firingMission([
+          { opcode: 'DetachHumanFromVehicle', humanId: CREW_ID },
+          { opcode: 'SendHuman', humanId: CREW_ID, point: inland },
+        ]),
+      ],
+      testContent(),
+      splitMap(),
+    );
+    const ship = cart(sim, { type: SHIP_SMALL, at: SEA });
+    spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: SEA.hx - 4, hy: SEA.hy } });
+    sim.step();
+    const [crew] = missionObjects(sim.world, CREW_ID);
+    if (crew === undefined) throw new Error('no crew');
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: ship });
+    sim.run(BOARD_TICKS);
+    sim.world.mut(ship, Vehicle).moored = false; // cast off
+    runLoadPass(sim);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+    expect(sim.world.get(crew, Rider).leaving).toEqual({ to: inland });
+    sim.world.mut(ship, Vehicle).moored = true;
+    sim.step();
+    expect(sim.world.has(crew, Rider)).toBe(false);
+    expect(sim.world.has(crew, PlayerOrder)).toBe(true);
+    const goal = sim.world.get(crew, MoveGoal).cell;
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the split map is missing');
+    const { x, y } = terrain.coordsOf(goal);
+    expect(hexDistance({ hx: x, hy: y }, inland)).toBeLessThanOrEqual(1);
   });
 });
 

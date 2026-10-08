@@ -1,14 +1,18 @@
-import { Engagement, MoveGoal, PlayerOrder, Position, Settler } from '../../../components/index.js';
+import { Engagement, MoveGoal, PlayerOrder, Position, Rider, Settler } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { pairBySpace } from '../../../nav/formation.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
+import { NEAREST_NODE_SEARCH_CAP } from '../../../nav/nearest.js';
+import { ringSearch } from '../../../nav/ring-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { HALF_COLUMN, HALF_ROW } from '../../../nav/world-metric.js';
 import type { SystemContext } from '../../context.js';
+import { dynamicBlockOverlay } from '../../footprint/blocked.js';
 import { standingPostGrid, unitWalkBlocks } from '../../movement/collision/standing-posts.js';
 import { formationSlotGroups, type Occupancy } from '../../orders/formation-slots.js';
 import { sendUnit } from '../../orders/movement.js';
 import { isFighterJob } from '../../readviews/index.js';
+import { detachBeforeOrder } from '../../vehicles/crew.js';
 import type { MissionPass } from '../pass.js';
 import { missionHumans } from '../targets.js';
 
@@ -30,7 +34,16 @@ const FORMATION_HOLD_SLACK_NODES = 8;
 export function sendScriptedHumans(pass: MissionPass, id: number, point: HalfCellNode): void {
   const { world, ctx } = pass;
   const terrain = ctx.terrain;
-  const humans = missionHumans(world, id);
+  const humans = missionHumans(world, id).filter((e) => {
+    const held = world.tryGet(e, Rider)?.leaving;
+    if (held !== undefined && held !== null && !world.has(e, Position)) {
+      world.mut(e, Rider).leaving = { to: { hx: point.hx, hy: point.hy } };
+      return false; // walks on from the shore once the ship moors
+    }
+    // A rider aboard steps off first, as the original's walk command does; one aboard a ship at sea
+    // is refused and left out, as the original leaves it.
+    return detachBeforeOrder(world, ctx, e) && world.has(e, Position);
+  });
   if (terrain === undefined || humans.length === 0) return;
   const fighter = (e: Entity): boolean =>
     isFighterJob(ctx.content, world.tryGet(e, Settler)?.jobType ?? null);
@@ -83,7 +96,8 @@ function heldGoal(
 }
 
 /** Each human's place around `point`, off the `held` nodes. Ground too boxed in to seat the band seats
- *  the men nearest the point. */
+ *  the men nearest the point. A line naming one man seats him on the nearest free node to the point,
+ *  as the original's snap of the point does, since a formation of one has no rows to keep. */
 function formationPlaces(
   pass: MissionPass,
   terrain: TerrainGraph,
@@ -94,6 +108,16 @@ function formationPlaces(
 ): Map<Entity, HalfCellNode> {
   const { world, ctx } = pass;
   const places = new Map<Entity, HalfCellNode>();
+  const [one] = humans;
+  if (one !== undefined && humans.length === 1) {
+    const occupied = standingStrangers(ctx, held)(world, terrain, new Set(humans));
+    const blocked = dynamicBlockOverlay(world, ctx, terrain);
+    const open = (node: NodeId): boolean => terrain.isWalkable(node) && !blocked.has(node) && !occupied(node);
+    const aim = terrain.nodeAtClamped(point.hx, point.hy);
+    const node = open(aim) ? aim : ringSearch(terrain, aim, NEAREST_NODE_SEARCH_CAP, { accept: open });
+    if (node !== null) places.set(one, { hx: terrain.xOf(node), hy: terrain.yOf(node) });
+    return places;
+  }
   const rows = military ? 2 : 1;
   const occupancy = standingStrangers(ctx, held);
   for (const group of formationSlotGroups(world, ctx.content, terrain, point, humans, rows, occupancy)) {

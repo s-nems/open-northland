@@ -328,7 +328,7 @@ describe('the carrier rung', () => {
     expect(pileAmount(s, WOOD)).toBe(3);
     expect(s.world.has(carrier, Carrying)).toBe(false);
     expect(s.world.has(carrier, CargoRun)).toBe(false);
-    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: false });
+    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
   });
 
   it('fetches from a house holding the good when no pile lies near the door', () => {
@@ -482,7 +482,7 @@ describe('the carrier rung', () => {
     dropPile(s, WOOD, { hx: 100, hy: 20 }, 3);
     want(s, cart, WOOD, 1);
     s.run(TRIP_TICKS);
-    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: false });
+    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
     expect(s.events.current().some((ev) => ev.kind === 'settlerLost')).toBe(false);
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 1, reserved: 0 });
     expect(pileAmount(s, WOOD)).toBe(3);
@@ -504,7 +504,7 @@ describe('the carrier rung', () => {
     expect(s.world.has(carrier, CargoRun)).toBe(false);
     expect(s.world.has(carrier, Carrying)).toBe(false);
     expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
-    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: false });
+    expect(s.world.get(carrier, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
   });
 
   it('walks a stale booking down a trip at a time with nothing aboard', () => {
@@ -528,7 +528,7 @@ describe('the carrier rung', () => {
     s.run(TRIP_TICKS * 2);
     expect(s.world.has(scout, Carrying)).toBe(false);
     expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(10 + 1);
-    expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: false });
+    expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
     expect(line(s, cart, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
   });
 

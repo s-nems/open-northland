@@ -121,7 +121,8 @@ heaps any surplus delivered past the bill. The chest catapult takes the opener's
   raises message 0x36 and a missing entry point 0x38, each followed by a detach.
 - Messages: the human's attach refusal and detach refusal raise their own ids; the human's
   move-inside task raises 0x2b when its vehicle is a ship that is not moored; a carried vehicle
-  that fails to detach raises 0x39. A human detaching from a ship at sea is refused silently.
+  that fails to detach raises 0x39. A human detaching from a ship at sea is refused silently; a detach
+already pending when the ship casts off is kept and carried out once it moors.
 
 Open Northland: `Rider` (`packages/sim/src/components/vehicle.ts`) marks an attached settler and the
 seat's `inside` says whether it is aboard; a rider aboard has no `Position`, which is what keeps it
@@ -553,13 +554,17 @@ and `FindHumansByPlayersMM` run a vehicle iterator after the human one; `NumberO
 Open Northland (`systems/missions/results/vehicles.ts`, `goals/vehicles.ts`): every result goes
 through `createVehicle`, `removeVehicle` with cause `script`, `attachToVehicle`, `detachFromVehicle`,
 `spawnSettler` and the owner and id stamps; the captain is the type's `commanderJob`, and a type
-without one spawns bare. Named approximations: `AttachHumanToVehicle` stops at a full vehicle;
-`DetachHumanFromVehicle` taken by a rider aboard a ship at sea is held on the rider (`Rider.leaving`)
-and carried out the tick the ship moors, where the original refuses it and its scripts time the line
-to the crossing; a teleported vehicle lands on the first node in hexagon-ring order within radius 9 of its own traversal
-(ground for a cart, water for a ship) that its walk-block admits and is not already claimed by the same line, with its drive, held goal, mooring and guard reset
-and no goto issued; callback 37 is not identified and not mirrored (*open*); `IsHumanInVehicle` reads
-the `Rider` aboard state. Vehicle goals and results are unconfirmed against the 2001 original.
+without one spawns bare. Named approximations. `AttachHumanToVehicle` stops at a full vehicle.
+`DetachHumanFromVehicle` taken by a rider aboard with no landing yet, its ship at sea, is held on the
+rider (`Rider.leaving`) and carried out the tick the ship moors, together with a `SendHuman` of the
+same pass; the original's lines skip such a rider, so they are lost and its scripts presumably time
+them to the crossing, while a detach already pending when its ship casts off waits for the mooring
+the same way. A
+teleported vehicle lands on the first node in hexagon-ring order within radius 9 of its own traversal
+(ground for a cart, water for a ship) that its walk-block admits and is not already claimed by the
+same line, with its drive, held goal, mooring and guard reset and no goto issued. Callback 37 is not
+identified and not mirrored (*open*). `IsHumanInVehicle` reads the `Rider` aboard state. Vehicle
+goals and results are unconfirmed against the 2001 original.
 
 ## Graphics
 

@@ -23,7 +23,7 @@ import {
   attachToVehicle,
   boardRider,
   detachFromVehicle,
-  isShipAtSea,
+  landingOf,
   passengerJobAllowed,
 } from '../../vehicles/crew.js';
 import { dropHeldGoal, endDrive, endMarch, vehicleWalkBlocks } from '../../vehicles/movement.js';
@@ -147,19 +147,20 @@ export function attachScriptedHumans(pass: MissionPass, humanId: number, vehicle
 }
 
 /**
- * `DetachHumanFromVehicle`: every rider with the id takes the seat's detach order. One aboard a ship
- * still at sea holds the order and steps out the moment the ship moors (`riderSystem`). Approximation:
- * the original queues the order and the ship refuses it at sea, so its scripts time the line to the
- * crossing; a slower crossing here would otherwise leave the crew aboard for good.
+ * `DetachHumanFromVehicle`: every rider with the id takes the seat's detach order. One aboard with no
+ * landing yet, its ship or its vehicle's carrier still at sea, holds the order and steps out the
+ * moment the ship moors (`riderSystem`). Approximation: the original's line skips a rider aboard a
+ * ship that is not moored, so the line is lost and its scripts presumably time it to the crossing;
+ * a detach already pending when the original's ship casts off waits until it moors, which is the
+ * behaviour mirrored here, since a slower crossing would otherwise leave the crew aboard for good.
  */
 export function detachScriptedHumans(pass: MissionPass, humanId: number): void {
   const { world, ctx } = pass;
   for (const e of missionHumans(world, humanId)) {
     const rider = world.tryGet(e, Rider);
     if (rider === undefined) continue;
-    const ship = world.tryGet(rider.vehicle, Vehicle);
-    if (ship !== undefined && !world.has(e, Position) && isShipAtSea(ctx, ship)) {
-      if (!rider.leaving) world.mut(e, Rider).leaving = true;
+    if (!world.has(e, Position) && landingOf(world, ctx, rider.vehicle) === null) {
+      if (rider.leaving === null) world.mut(e, Rider).leaving = { to: null };
       continue;
     }
     detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e });

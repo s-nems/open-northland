@@ -17,7 +17,8 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { vehicleAnchor, vehicleDoorNode } from '../footprint/index.js';
 import { clearNavState, redirectRoute } from '../movement/nav-state.js';
-import { isTraderJob } from '../readviews/jobs.js';
+import { sendUnit } from '../orders/movement.js';
+import { isFighterJob, isTraderJob } from '../readviews/jobs.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { type IdleStands, wakeIdle } from '../settlers/planner/idle-replan.js';
@@ -185,11 +186,16 @@ export const riderSystem: System = (world, ctx) => {
       releaseRider(world, e, rider.vehicle); // gives any cargo booking back too
       continue;
     }
-    if (rider.leaving && !world.has(e, Position)) {
+    if (rider.leaving !== null && !world.has(e, Position)) {
       const landing = landingOf(world, ctx, rider.vehicle);
       if (landing === null) continue; // still at sea: the order waits for the mooring
+      const walkOn = rider.leaving.to;
       setDownRider(world, e, landing);
       releaseRider(world, e, rider.vehicle);
+      if (walkOn !== null) {
+        const attackMove = isFighterJob(ctx.content, world.tryGet(e, Settler)?.jobType ?? null);
+        sendUnit(world, ctx, e, walkOn.hx, walkOn.hy, { attackMove }); // the line's march, as scripted-march.ts issues it
+      }
       continue;
     }
     const request = world.tryGet(e, PathRequest);

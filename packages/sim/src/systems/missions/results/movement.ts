@@ -88,10 +88,7 @@ export function stopPlayerHumans(pass: MissionPass, player: number): void {
   for (const e of [...world.query(Person, Settler, Position)]) {
     if (!ownedBy(world, e, player) || !isTravelling(world, e)) continue;
     const at = world.get(e, Position);
-    walkTo(world, pass.ctx, e, nodeOfPosition(at.x, at.y));
+    const here = nodeOfPosition(at.x, at.y);
+    sendUnit(world, pass.ctx, e, here.hx, here.hy);
   }
-}
-
-function walkTo(world: World, ctx: SystemContext, e: Entity, point: HalfCellNode): void {
-  sendUnit(world, ctx, e, point.hx, point.hy);
 }

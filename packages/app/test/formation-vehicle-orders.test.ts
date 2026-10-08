@@ -59,7 +59,7 @@ function harness({
   if (vehicleType === 3)
     sim.enqueue(playerCommand(0, { kind: 'attachToVehicle', entity: passenger, vehicle }));
   sim.step();
-  expect(sim.world.get(captain, components.Rider)).toEqual({ vehicle, boarding: false, leaving: false });
+  expect(sim.world.get(captain, components.Rider)).toEqual({ vehicle, boarding: false, leaving: null });
   expect(sim.world.has(captain, components.Position)).toBe(true);
   expect(sim.world.has(captain, components.PathFollow)).toBe(true);
   const host = inlineSessionHost(sim);

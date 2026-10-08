@@ -159,7 +159,7 @@ describe('attachToVehicle', () => {
     attach(s, scout, cart);
     expect(vehicleCommander(s.world.get(cart, Vehicle))).toBe(scout);
     expect(seatOf(s, cart, scout)).toEqual({ entity: scout, inside: false });
-    expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: false });
+    expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
     expect(s.world.has(scout, JobAssignment)).toBe(false);
     s.run(ATTACH_WALK_TICKS);
     expect(nodeOf(s, scout)).not.toEqual(CART_DOOR);
@@ -290,7 +290,7 @@ describe('boarding', () => {
     expect(held.at(-1)).toEqual({ hx: 4, hy: 12 });
     boardOut(s, cart, scout);
     expect(s.world.has(scout, Position)).toBe(false);
-    expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: false });
+    expect(s.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
     s.step();
     expect(s.world.get(cart, Vehicle).task).toBe('none');
     expect(s.world.has(cart, VehicleDrive)).toBe(true);
@@ -304,7 +304,7 @@ describe('boarding', () => {
       map: shoreMap(),
     });
     expect(restored.hashState()).toBe(s.hashState());
-    expect(restored.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: false });
+    expect(restored.world.get(scout, Rider)).toEqual({ vehicle: cart, boarding: false, leaving: null });
   });
 
   it("refuses a goto without a commander and boards a moored ship's crew at its mooring", () => {
@@ -802,7 +802,7 @@ describe('an authored seat', () => {
     expect(seatOf(s, ship, first)).toEqual({ entity: first, inside: true });
     expect(s.world.has(first, Position)).toBe(false);
     expect(seatOf(s, ship, second)).toEqual({ entity: second, inside: false });
-    expect(s.world.get(second, Rider)).toEqual({ vehicle: ship, boarding: false, leaving: false });
+    expect(s.world.get(second, Rider)).toEqual({ vehicle: ship, boarding: false, leaving: null });
     expect(nodeOf(s, second)).not.toBeNull(); // walking to the door from where it spawned
   });
 

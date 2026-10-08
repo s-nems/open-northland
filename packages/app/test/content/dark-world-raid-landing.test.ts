@@ -120,7 +120,7 @@ describe.runIf(hasRealIr())(`${MAP_ID}: the first scripted raid`, () => {
     // left, nobody was refused, the order holds.
     for (const e of crew) {
       expect(sim.world.has(e, Position), 'aboard').toBe(false);
-      expect(sim.world.get(e, Rider).leaving).toBe(true);
+      expect(sim.world.get(e, Rider).leaving).toEqual({ to: null });
     }
     expect(sim.events.current().filter((e) => e.kind === 'riderRefused')).toEqual([]);
     const moored = runUntil(sim, RAID_BUDGET_TICKS, (events) =>

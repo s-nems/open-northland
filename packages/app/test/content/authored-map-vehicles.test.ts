@@ -76,7 +76,7 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))(
           expect(sim.world.get(seat.entity, Rider)).toEqual({
             vehicle: ship,
             boarding: false,
-            leaving: false,
+            leaving: null,
           });
         }
       },

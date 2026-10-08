@@ -5,7 +5,6 @@ import {
   Health,
   HOUSE_BEHAVIOUR,
   MissionObjectId,
-  MoveGoal,
   Owner,
   ownerOf,
   PathFollow,
@@ -288,14 +287,18 @@ describe('SendHuman', () => {
     expect(goal).not.toBe(sim.terrain?.nodeAt(FAR.hx, FAR.hy));
   });
 
-  it('gives every human sent to one point its own node beside it', () => {
+  it('gives every fighter sent alone to one point its own node beside it', () => {
     const lines = [GROUP, GROUP + 1, GROUP + 2];
     const sim = firingSim(lines.map((humanId) => ({ opcode: 'SendHuman', humanId, point: FAR })));
-    for (const missionId of lines) spawn(sim, { player: OWNER, missionId });
+    for (const missionId of lines) spawn(sim, { player: OWNER, missionId, job: SOLDIER });
     sim.run(LOAD_PASS);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('the shared lattice is missing');
-    const goals = humansOf(sim, OWNER).map((e) => sim.world.get(e, MoveGoal).cell);
+    const goals = humansOf(sim, OWNER).map((e) => {
+      const goal = sim.world.get(e, PlayerOrder).attackMove?.goal;
+      if (goal === undefined) throw new Error('march expected');
+      return goal;
+    });
     expect(new Set(goals).size).toBe(lines.length);
     for (const goal of goals) {
       const { x, y } = terrain.coordsOf(goal);
