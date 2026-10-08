@@ -11,7 +11,7 @@ import { createSoundStudio, runStudioClock } from './studio.js';
 /**
  * The `?sounds` verification gallery: the human-oracle seam for audio, since whether a sound is the
  * right sound cannot be self-judged. It lists every group the game sounds and plays each through the
- * game's own driver, under the player's stored mixer settings.
+ * game's own driver, under the player's stored mixer and mono settings.
  */
 
 const ROOT_STYLE = pageRootStyle(32, 14);
@@ -50,8 +50,9 @@ export async function renderSoundGallery(
   const index = soundIndexOf(ir, sounds);
   const bindings = defaultBindings();
   const model = buildSoundGalleryModel(sounds, index, bindings, (tribe) => namedTribes.get(tribe));
-  const { volumes } = readStoredSettings();
+  const { volumes, monoSound } = readStoredSettings();
   const driver = new SoundDriver(index, bindings, { volumes });
+  driver.setMono(monoSound);
   const studio = createSoundStudio(driver, index, model, music, volumes);
 
   const root = el('div', ROOT_STYLE);
