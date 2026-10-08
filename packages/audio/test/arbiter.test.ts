@@ -221,17 +221,28 @@ describe('wav picks', () => {
     expect(arbiter.decide(again, later).map((s) => s.key)).toEqual(['b:1']);
   });
 
-  it('skips an answer while any line of its pool still plays, and holds a key through its cooldown', () => {
+  it('hands an answer its whole pool for the engine`s guard, and holds a key through its cooldown', () => {
     const pool = wavPool('ok', 3);
-    const answer = (key: string): OneShot => ({ files: pool, gain: 0.8, pan: 0, key, exclusive: 'group' });
+    const answer: OneShot = { files: pool, gain: 0.8, pan: 0, key: 'respond:a', exclusive: 'group' };
     const arbiter = new OneShotArbiter();
-    expect(arbiter.decide([answer('respond:a')], 0)).toHaveLength(1);
-    expect(arbiter.decide([answer('respond:b')], DEFAULT_CLIP_LENGTH_S / 2)).toHaveLength(0);
-    expect(arbiter.decide([answer('respond:c')], DEFAULT_CLIP_LENGTH_S + 0.01)).toHaveLength(1);
+    expect(arbiter.decide([answer], 0)).toEqual([answer]);
+    expect(arbiter.decide([answer], KEY_COOLDOWN_S / 2)).toHaveLength(0);
     const thud = wavPool('thud', 2);
     const free = new OneShotArbiter();
     expect(free.decide([worldShot(thud, 'thud:1', 1)], 0)).toHaveLength(1);
     expect(free.decide([worldShot(thud, 'thud:1', 1)], KEY_COOLDOWN_S / 2)).toHaveLength(0);
+  });
+
+  it('draws an exclusive shot among the wavs not sounding, and refuses it once all sound', () => {
+    const pair = wavPool('blow', 2);
+    const blow = (key: string): OneShot => ({ ...worldShot(pair, key, 1), exclusive: 'wav' });
+    // A source that would pick the first wav every time: the sounding one is skipped instead.
+    const arbiter = new OneShotArbiter({ random: () => 0 });
+    const first = arbiter.decide([blow('blow:1')], 0)[0]?.files[0];
+    const second = arbiter.decide([blow('blow:2')], POOL_RETRIGGER_S)[0]?.files[0];
+    expect(second).toBeDefined();
+    expect(second).not.toBe(first);
+    expect(arbiter.decide([blow('blow:3')], 2 * POOL_RETRIGGER_S)).toHaveLength(0);
   });
 
   it('holds a wav for the length the engine reports', () => {
@@ -265,10 +276,11 @@ describe('instance caps', () => {
       playback: { clipLengthS: () => 1000, stop: (i) => stopped.push(i) },
     });
     const started: OneShot[] = [];
+    const firstPool = wavPool('fill0-', 1);
     let t = 0;
     for (let n = 0; started.length < WORLD_VOICE_CAP; n++, t += 1) {
-      const gain = n === 0 ? 0.3 : 0.5;
-      started.push(...arbiter.decide([worldShot(wavPool(`fill${n}-`, 1), `fill:${n}`, gain)], t));
+      const files = n === 0 ? firstPool : wavPool(`fill${n}-`, 1);
+      started.push(...arbiter.decide([worldShot(files, `fill:${n}`, n === 0 ? 0.3 : 0.5)], t));
     }
     const quietest = started[0]?.instance;
     expect(quietest).toBeDefined();
@@ -277,6 +289,10 @@ describe('instance caps', () => {
     const loud = arbiter.decide([worldShot(wavPool('loud', 1), 'loud', 0.9)], t + 2);
     expect(loud.map((s) => s.key)).toEqual(['loud']);
     expect(stopped).toEqual([quietest]);
+    // The stolen voice left its pool and its wav: the pool starts again over the next quietest.
+    const back = arbiter.decide([{ ...worldShot(firstPool, 'fill:again', 0.9), exclusive: 'wav' }], t + 2.5);
+    expect(back.map((s) => s.key)).toEqual(['fill:again']);
+    expect(stopped).toHaveLength(2);
     // Answers and jingles are neither counted nor stolen: they start in a full world and stop nothing.
     const answer: OneShot = {
       files: wavPool('ok', 2),
@@ -287,6 +303,20 @@ describe('instance caps', () => {
     };
     const out = arbiter.decide([answer, jingle(JINGLE_DEATH, 'died:1')], t + 3);
     expect(out.map((s) => s.key).sort()).toEqual(['died:1', 'respond:x']);
-    expect(stopped).toHaveLength(1);
+    expect(stopped).toHaveLength(2);
+  });
+
+  it('keeps a stolen wav held while the engine cannot stop it', () => {
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => 1000 } });
+    const victimPool = wavPool('held', 1);
+    let t = 0;
+    arbiter.decide([{ ...worldShot(victimPool, 'held:1', 0.1), exclusive: 'wav' }], t);
+    for (let n = 1; n < WORLD_VOICE_CAP; n++)
+      arbiter.decide([worldShot(wavPool(`f${n}-`, 1), `f:${n}`, 0.5)], ++t);
+    expect(arbiter.decide([worldShot(wavPool('loud', 1), 'loud', 0.9)], ++t)).toHaveLength(1);
+    // Its slot went to the loud shot, but its wav plays on, so a copy of it is still refused.
+    expect(arbiter.decide([{ ...worldShot(victimPool, 'held:2', 1), exclusive: 'wav' }], ++t)).toHaveLength(
+      0,
+    );
   });
 });

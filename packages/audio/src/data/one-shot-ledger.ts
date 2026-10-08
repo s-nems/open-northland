@@ -126,14 +126,14 @@ export class OneShotLedger {
   }
 
   /**
-   * Start a pool's candidate, or refuse it: when the wav it picks still sounds and the shot is
-   * exclusive, or when the world is full of sounds at least as loud. A full world otherwise gives the
+   * Start a pool's candidate, or refuse it: when it is exclusive and every wav of its pool still
+   * sounds, or when the world is full of sounds at least as loud. A full world otherwise gives the
    * shot the quietest voice's slot. Returns what the engine plays; the caller spends the lane's budget
    * only on that.
    */
   startWorld(shot: OneShot, now: number): OneShot | null {
-    const file = this.pick(shot.files);
-    if (shot.exclusive !== undefined && this.sounding(file, now)) return null;
+    const file = this.pick(shot.files, shot.exclusive !== undefined, now);
+    if (file === null) return null;
     if (this.world.length >= WORLD_VOICE_CAP) {
       let quietest: WorldVoice | null = null;
       for (const voice of this.world) if (quietest === null || voice.gain < quietest.gain) quietest = voice;
@@ -156,9 +156,14 @@ export class OneShotLedger {
    */
   startFree(shot: OneShot, now: number): OneShot | null {
     if (shot.files.length === 0 || this.keyCooling(shot.key, now)) return null;
-    if (shot.exclusive === 'group' && this.anySounding(shot.files, now)) return null;
-    const file = this.pick(shot.files);
-    if (shot.exclusive === 'wav' && this.sounding(file, now)) return null;
+    if (shot.exclusive === 'group') {
+      // An answer keeps its whole pool: the engine, which knows each line's decoded length, holds it
+      // while any line still sounds. It costs no budget, so passing it on spends nothing in vain.
+      this.lastStarted.set(shot.key, now);
+      return shot;
+    }
+    const file = this.pick(shot.files, shot.exclusive !== undefined, now);
+    if (file === null) return null;
     this.record(shot, this.pool(shot.files), file, now);
     return { ...shot, files: [file] };
   }
@@ -176,18 +181,23 @@ export class OneShotLedger {
     const at = this.world.indexOf(victim);
     if (at >= 0) this.world.splice(at, 1);
     victim.pool.playing--;
+    // Without `stop` the stolen wav plays on, so it still holds its wav.
+    if (this.playback.stop === undefined) return;
     if (this.soundingUntil.get(victim.file) === victim.endsAt) this.soundingUntil.delete(victim.file);
-    this.playback.stop?.(victim.instance);
+    this.playback.stop(victim.instance);
   }
 
-  /** A wav of a non-empty pool it has not played lately, drawn by the injected source. */
-  private pick(files: readonly string[]): string {
+  /**
+   * A wav of a non-empty pool it has not played lately, drawn by the injected source. An exclusive
+   * shot draws only among the wavs not sounding, and gets null when every one still sounds.
+   */
+  private pick(files: readonly string[], exclusive: boolean, now: number): string | null {
     const recent = this.pool(files).recent;
-    const fresh = files.filter((file) => !recent.includes(file));
-    const choices = fresh.length > 0 ? fresh : files;
-    const file = choices.length > 1 ? choices[Math.floor(this.random() * choices.length)] : choices[0];
-    if (file === undefined) throw new Error('a one-shot pool needs at least one wav');
-    return file;
+    const free = exclusive ? files.filter((file) => !this.sounding(file, now)) : files;
+    const fresh = free.filter((file) => !recent.includes(file));
+    const choices = fresh.length > 0 ? fresh : free;
+    if (choices.length <= 1) return choices[0] ?? null;
+    return choices[Math.floor(this.random() * choices.length)] ?? null;
   }
 
   private pool(files: readonly string[]): PoolState {

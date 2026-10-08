@@ -22,7 +22,7 @@ export type Lane =
 /** One resolved request to play a sound once. */
 export interface OneShot {
   /** The group's interchangeable wav paths (relative to the sounds root). Shots of one group share the
-   *  index's own array, which is how the arbiter knows the pool; it picks the one wav the engine plays. */
+   *  index's own array, which is how the arbiter knows the pool and picks the wav the engine plays. */
   readonly files: readonly string[];
   /** Final playback gain, 0..1 (spatial attenuation already applied; 1 for non-spatial jingles). */
   readonly gain: number;

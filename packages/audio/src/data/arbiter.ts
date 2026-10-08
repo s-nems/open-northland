@@ -25,9 +25,9 @@ import type { OneShot } from './types.js';
  *   a frame, holds a few instances at once, and the world as a whole a capped number
  *   ({@link OneShotLedger}).
  *
- * Every shot but a jingle has its wav picked here, and is refused before it costs any budget when its
- * key is cooling or, being exclusive, its wav (an answer: its pool) still sounds. The engine receives
- * only shots that should play, each with its one wav.
+ * Every world shot has its wav picked here, and is refused before it costs any budget when its key is
+ * cooling or, being exclusive, every wav of its pool still sounds. The engine receives only shots that
+ * should play, each with its one wav; an order's answer keeps its pool for the engine's own guard.
  *
  * Approximation: the original rations nothing beyond its same-jingle and same-wav guards; the budgets,
  * caps and the growing cooldown are a legibility choice. Pure: time comes in as `now` (audio-clock
