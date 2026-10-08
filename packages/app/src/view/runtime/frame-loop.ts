@@ -392,6 +392,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         // A settler's authored action cues locate their emitter off the snapshot, not off events, so
         // they need their own fog gate: a hidden enemy must not natter or hammer out of empty black.
         visibleTile: fogGates.visibleTile,
+        // Terrain ambience sounds over all explored ground: the grey still shows the land.
+        exploredTile: fogGates.exploredTile,
         // Which mood variant of the map's music plays: our head-count and how we stand with the roster.
         standingOf: musicStanding,
         // The idle chatter and animal calls roll over what the renderer just drew, the original's "seen"

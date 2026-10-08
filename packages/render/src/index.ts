@@ -1,5 +1,10 @@
 export type { TextureSource } from 'pixi.js';
-export { FOG_EXPLORED_ALPHA, FOG_UNEXPLORED_ALPHA, fogTileVisible } from './data/fog/index.js';
+export {
+  FOG_EXPLORED_ALPHA,
+  FOG_UNEXPLORED_ALPHA,
+  fogTileExplored,
+  fogTileVisible,
+} from './data/fog/index.js';
 export {
   buildHud,
   emptyHud,

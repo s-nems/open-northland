@@ -160,6 +160,7 @@ function direct(
     localPlayer?: number;
     bindings?: SoundBindings;
     visibleTile?: (col: number, row: number) => boolean;
+    exploredTile?: (col: number, row: number) => boolean;
   } = {},
 ) {
   return directAudio({
@@ -173,6 +174,7 @@ function direct(
     ...(opts.terrain !== undefined ? { terrain: opts.terrain } : {}),
     ...(opts.localPlayer !== undefined ? { localPlayer: opts.localPlayer } : {}),
     ...(opts.visibleTile !== undefined ? { visibleTile: opts.visibleTile } : {}),
+    ...(opts.exploredTile !== undefined ? { exploredTile: opts.exploredTile } : {}),
   });
 }
 
@@ -670,12 +672,21 @@ describe('directAudio ambient', () => {
     expect(Math.abs(direct([], { terrain: meadow }).ambient[0]?.pan ?? 1)).toBeLessThan(AMBIENT_MAX_PAN / 5);
   });
 
-  it('hears only the terrain the fog lets the viewer see', () => {
+  it('hears the explored ground, under the grey too, and nothing the viewer never explored', () => {
     const full = direct([], { terrain: meadow }).ambient[0];
-    const rightSeen = direct([], { terrain: meadow, visibleTile: (col) => col > 7 }).ambient[0];
-    expect(rightSeen?.pan).toBeCloseTo(AMBIENT_MAX_PAN, 9);
-    expect(rightSeen?.gain).toBeLessThan(full?.gain ?? 0); // the fogged half still counts as screen
-    expect(direct([], { terrain: meadow, visibleTile: () => false }).ambient).toEqual([]);
+    // Explored but out of sight everywhere: the terrain still shows, so the bed sounds in full.
+    expect(direct([], { terrain: meadow, visibleTile: () => false }).ambient[0]).toEqual(full);
+    expect(direct([], { terrain: meadow, exploredTile: () => false }).ambient).toEqual([]);
+  });
+
+  it('leaves unexplored ground out of the coverage, so it cannot dilute the explored beds', () => {
+    const full = direct([], { terrain: meadow }).ambient[0];
+    const rightExplored = direct([], { terrain: meadow, exploredTile: (col) => col > 7 }).ambient[0];
+    expect(rightExplored?.pan).toBeCloseTo(AMBIENT_MAX_PAN, 9);
+    expect(rightExplored?.gain).toBe(full?.gain);
+    // Explored bare ground does count: a meadow strip on bare explored ground is quieter.
+    const strip = direct([], { terrain: meadowWhere((col) => col > 7) }).ambient[0];
+    expect(strip?.gain).toBeLessThan(full?.gain ?? 0);
   });
 });
 
@@ -755,6 +766,20 @@ describe('directAudio ambient on a decoded map ground', () => {
     expect(water).toBeCloseTo(-AMBIENT_MAX_PAN, 9);
     expect(meadow).toBeGreaterThan(0);
     expect(Math.abs(byName.get('Forest')?.pan ?? 1)).toBeLessThan(Math.abs(water));
+  });
+
+  it('skips a ground slot outside the pattern list instead of counting it as bare ground', () => {
+    const OUT_OF_RANGE = shore.ground?.patterns.length ?? 0;
+    const meadowCells = Array.from({ length: SIDE * SIDE }, () => MEADOW);
+    const halfBroken = meadowCells.map((slot, i) => (i % 2 === 0 ? slot : OUT_OF_RANGE));
+    const meadowOnly = (a: number[], b: number[]): AudioTerrain => ({
+      ...shore,
+      ground: { patterns: shore.ground?.patterns ?? [], a, b },
+    });
+    const whole = beds(meadowOnly(meadowCells, meadowCells))[0];
+    const broken = beds(meadowOnly(halfBroken, halfBroken))[0];
+    expect(broken?.name).toBe('Meadow Green');
+    expect(broken?.gain).toBe(whole?.gain);
   });
 
   it("joins the beds of a map's pattern list again for another sound index", () => {

@@ -33,3 +33,9 @@ export function fogTileVisible(view: FogView, tileX: number, tileY: number): boo
   const { cx, cy } = fogCellOfTile(tileX, tileY);
   return view.stateAt(cx, cy) === FOG_STATE.VISIBLE;
 }
+
+/** Whether the fog view's player ever explored the ground at a tile position: the terrain shows. */
+export function fogTileExplored(view: FogView, tileX: number, tileY: number): boolean {
+  const { cx, cy } = fogCellOfTile(tileX, tileY);
+  return view.stateAt(cx, cy) >= FOG_STATE.EXPLORED;
+}

@@ -84,13 +84,13 @@ export function onScreenTiles(
 
 /**
  * The ambient beds active this frame, by sampling the on-screen ground (coverage-weighted gain,
- * side-weighted pan). A sample is a ground triangle on a decoded map and a cell otherwise. A tile hidden
- * by the viewer's fog counts toward the screen but sounds no bed, so a black screen is silent.
- * Approximation: the original gates a sector on whether it was ever discovered; the director only knows
- * current visibility.
+ * side-weighted pan). A sample is a ground triangle on a decoded map and a cell otherwise. Ground the
+ * viewer never explored is left out of the screen altogether, so a black screen is silent and the
+ * explored part alone sets the coverage; explored ground under the grey sounds, as the original gates a
+ * sector's beds on whether it was ever discovered.
  */
 export function ambientBeds(input: DirectorInput): AmbientLoop[] {
-  const { terrain, camera, canvasW, canvasH, index, visibleTile } = input;
+  const { terrain, camera, canvasW, canvasH, index, exploredTile } = input;
   if (terrain === undefined) return [];
   const vp = cameraViewport(camera, canvasW, canvasH);
   const band = onScreenTiles(terrain, vp);
@@ -104,9 +104,9 @@ export function ambientBeds(input: DirectorInput): AmbientLoop[] {
   const slotBeds = ground === undefined ? undefined : groundSlotBeds(ground.patterns, index);
   const counts = new Map<string, SideHits>();
   let sampled = 0;
-  const tally = (beds: readonly string[] | undefined, heard: boolean, left: boolean): void => {
+  const tally = (beds: readonly string[] | undefined, left: boolean): void => {
     sampled++;
-    if (!heard || beds === undefined) return;
+    if (beds === undefined) return;
     for (const bed of beds) {
       let hits = counts.get(bed);
       if (hits === undefined) {
@@ -120,18 +120,19 @@ export function ambientBeds(input: DirectorInput): AmbientLoop[] {
   for (let row = band.minRow; row <= band.maxRow; row += stride) {
     const splitCol = (centreX - tileToScreen(0, row).x) / COLUMN_STEP_X;
     for (let col = band.minCol; col <= band.maxCol; col += stride) {
+      if (exploredTile !== undefined && !exploredTile(col, row)) continue;
       const cell = row * terrain.width + col;
-      const heard = visibleTile === undefined || visibleTile(col, row);
       const left = col < splitCol;
-      // An out-of-range slot (a malformed grid) is skipped, not counted, so it can't dilute the coverage.
+      // A slot outside the pattern list or a cell outside the grid (a malformed map) is skipped, not
+      // counted, so it can't dilute the coverage; ground with no bed of its own does count.
       if (ground !== undefined && slotBeds !== undefined) {
         const a = ground.a[cell];
         const b = ground.b[cell];
-        if (a !== undefined) tally(slotBeds[a], heard, left);
-        if (b !== undefined) tally(slotBeds[b], heard, left);
+        if (a !== undefined && a < slotBeds.length) tally(slotBeds[a], left);
+        if (b !== undefined && b < slotBeds.length) tally(slotBeds[b], left);
       } else {
         const typeId = terrain.typeIds[cell];
-        if (typeId !== undefined) tally(index.ambientByTerrainType.get(typeId), heard, left);
+        if (typeId !== undefined) tally(index.ambientByTerrainType.get(typeId), left);
       }
     }
   }

@@ -48,6 +48,9 @@ export interface SoundFrameInput {
   /** The viewer's fog-of-war visibility at a fractional tile - gates the settler animation cues (a
    *  settler hidden by the fog must not natter or hammer out of empty black). Omit → no fog. */
   readonly visibleTile?: (col: number, row: number) => boolean;
+  /** Whether the viewer ever explored the ground at a fractional tile - gates the terrain beds and the
+   *  object ambience. Omit → no fog. */
+  readonly exploredTile?: (col: number, row: number) => boolean;
   /** The local settlement's standing, picking the map's own stems in its music rotation. Pulled only
    *  once a map has handed over its music, since the head-count behind it is an O(entities) read.
    *  Omit → the calm variant, which only a fight then moves. */
@@ -300,6 +303,7 @@ export class SoundDriver {
       },
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
+      ...(input.exploredTile !== undefined ? { exploredTile: input.exploredTile } : {}),
     });
     const now = this.engine.clock;
     const alerts = this.alerts.take(input, input.snapshot, this.index, this.bindings, now);

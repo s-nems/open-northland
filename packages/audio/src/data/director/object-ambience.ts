@@ -134,11 +134,11 @@ function zoomDensity(scale: number | undefined): number {
 /**
  * This frame's landscape ambience one-shots: per elapsed tick and per ambience on screen, one weighted
  * pool pick and one roll against the screen's object count times the pool's chance. A hit sounds at a
- * random object of the ambience, at the pool's authored volume and the object's screen position; one
- * hidden by the viewer's fog stays silent, as the beds do.
+ * random object of the ambience, at the pool's authored volume and the object's screen position; one on
+ * ground the viewer never explored stays silent, as the beds do.
  */
 export function objectAmbienceShots(input: DirectorInput): OneShot[] {
-  const { landscape, terrain, camera, canvasW, canvasH, index, visibleTile, snapshot } = input;
+  const { landscape, terrain, camera, canvasW, canvasH, index, exploredTile, snapshot } = input;
   if (landscape === undefined || terrain === undefined || index.landscapeAmbienceByRecord.size === 0)
     return [];
   const ticks = Math.min(landscape.ticks, MAX_LANDSCAPE_TICKS_PER_FRAME);
@@ -175,7 +175,7 @@ export function objectAmbienceShots(input: DirectorInput): OneShot[] {
       if (random() * LANDSCAPE_CHANCE_RANGE >= group.count * pool.chance * density) continue;
       const tile = pickObject(group, random());
       if (tile === undefined) continue;
-      if (visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
+      if (exploredTile !== undefined && !exploredTile(tile.col, tile.row)) continue;
       const spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
       if (spatial === null) continue;
       shots.push({

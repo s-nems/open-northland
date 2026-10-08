@@ -232,4 +232,7 @@ export interface DirectorInput {
   /** The viewer's fog-of-war visibility at a fractional tile - gates an `atomicSound` (a settler hidden by
    *  the fog must not natter or hammer out of empty black). Omit → no fog, every on-screen cue is audible. */
   readonly visibleTile?: (col: number, row: number) => boolean;
+  /** Whether the viewer ever explored the ground at a fractional tile - gates the terrain beds and the
+   *  object ambience, since the explored grey still shows the land. Omit → no fog. */
+  readonly exploredTile?: (col: number, row: number) => boolean;
 }

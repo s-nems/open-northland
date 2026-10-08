@@ -216,9 +216,12 @@ describe('object ambience', () => {
     expect(left?.layer).toBeUndefined(); // the detail layer
   });
 
-  it('stays silent at an object the fog hides', () => {
-    const hidden = input(forest(TREES), rolls(FIRST_POOL, 0, FIRST_OBJECT), { visibleTile: () => false });
-    expect(objectAmbienceShots(hidden)).toEqual([]);
+  it('sounds at an object on explored ground out of sight, never at one the viewer never explored', () => {
+    const sure = (): number => 0;
+    const greyed = input(forest(TREES), sure, { visibleTile: () => false });
+    expect(objectAmbienceShots(greyed)).toHaveLength(1);
+    const unexplored = input(forest(TREES), sure, { exploredTile: () => false });
+    expect(objectAmbienceShots(unexplored)).toEqual([]);
   });
 
   it('counts no object off screen', () => {

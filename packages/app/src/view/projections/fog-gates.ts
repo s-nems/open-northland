@@ -1,4 +1,4 @@
-import { fogTileVisible } from '@open-northland/render';
+import { fogTileExplored, fogTileVisible } from '@open-northland/render';
 import { FOG_STATE, type FogView, systems } from '@open-northland/sim';
 
 /**
@@ -10,6 +10,8 @@ export interface FogGates {
   setFrame(fog: FogView | null): void;
   current(): FogView | null;
   visibleTile(tileX: number, tileY: number): boolean;
+  /** Whether the viewer ever explored the ground at a tile: terrain stays shown under the grey. */
+  exploredTile(tileX: number, tileY: number): boolean;
   /** Whether the viewer sees the cell of a half-cell node. */
   seesNode(col: number, row: number): boolean;
 }
@@ -22,6 +24,7 @@ export function createFogGates(): FogGates {
     },
     current: () => frameFog,
     visibleTile: (tileX, tileY) => frameFog === null || fogTileVisible(frameFog, tileX, tileY),
+    exploredTile: (tileX, tileY) => frameFog === null || fogTileExplored(frameFog, tileX, tileY),
     seesNode: (col, row) => {
       if (frameFog === null) return true;
       const { cx, cy } = systems.cellOfNode(col, row);

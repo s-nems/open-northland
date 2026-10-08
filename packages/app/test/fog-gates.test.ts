@@ -41,3 +41,28 @@ describe('FogGates.seesNode', () => {
     expect(gates.seesNode(99, 99)).toBe(true);
   });
 });
+
+describe('FogGates.exploredTile', () => {
+  const SEEN = { x: 2, y: 2 };
+  const GREY = { x: 6, y: 2 };
+  const BLACK = { x: 10, y: 2 };
+  /** VISIBLE at the seen cell, UNEXPLORED from the black cell's column on, EXPLORED between. */
+  const tiered: FogView = {
+    ...fogWhere(() => false),
+    stateAt: (cx, cy) =>
+      cx === SEEN.x && cy === SEEN.y
+        ? FOG_STATE.VISIBLE
+        : cx >= BLACK.x
+          ? FOG_STATE.UNEXPLORED
+          : FOG_STATE.EXPLORED,
+  };
+
+  it('answers for explored and visible ground alike, and not for ground never explored', () => {
+    const gates = createFogGates();
+    gates.setFrame(tiered);
+    expect(gates.exploredTile(SEEN.x, SEEN.y)).toBe(true);
+    expect(gates.exploredTile(GREY.x, GREY.y)).toBe(true);
+    expect(gates.visibleTile(GREY.x, GREY.y)).toBe(false);
+    expect(gates.exploredTile(BLACK.x, BLACK.y)).toBe(false);
+  });
+});
