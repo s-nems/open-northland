@@ -51,6 +51,9 @@ export interface OneShot {
    * sounds, as an order's answer does. A shot without it (a house hit, a thud) layers freely.
    */
   readonly exclusive?: 'wav' | 'group';
+  /** The speaker's whole pool when `files` is only part of it (a selection's short lines): a
+   *  group-exclusive shot waits while any wav of this pool sounds. Absent is `files`. */
+  readonly poolFiles?: readonly string[];
   /** A line that a later group-exclusive shot over a pool holding its wav cuts short instead of waiting
    *  for: a selection's acknowledgement under the order the player gives next. */
   readonly yieldsToAnswer?: boolean;

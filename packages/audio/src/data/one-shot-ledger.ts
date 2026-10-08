@@ -118,7 +118,7 @@ export class OneShotLedger {
     if (shot.files.length === 0 || this.keyCooling(shot.key, now)) return;
     const pool = this.pool(shot.files);
     if (pool.playing >= POOL_INSTANCE_CAP || now - pool.lastStart < POOL_RETRIGGER_S) return;
-    if (shot.exclusive === 'group' && this.anySounding(shot.files, now)) return;
+    if (shot.exclusive === 'group' && this.anySounding(shot.poolFiles ?? shot.files, now)) return;
     if (pool.candidate === null) {
       pool.candidate = shot;
       this.offered.push(pool);
@@ -185,13 +185,13 @@ export class OneShotLedger {
   }
 
   /**
-   * Whether a group-exclusive shot may start over its pool: no wav of it sounds, or only lines that yield
-   * to it, which are stopped. A yielding shot never cuts another. Without `stop` a cut line plays on and
-   * keeps its wav from the pick.
+   * Whether a group-exclusive shot may start over its pool ({@link OneShot.poolFiles}): no wav of it
+   * sounds, or only lines that yield to it, which are stopped. A yielding shot never cuts another.
+   * Without `stop` a cut line plays on and keeps its wav from the pick.
    */
   private supersede(shot: OneShot, now: number): boolean {
     const cut: Play[] = [];
-    for (const file of shot.files) {
+    for (const file of shot.poolFiles ?? shot.files) {
       const play = this.lastPlay.get(file);
       if (play === undefined || this.endOf(play) <= now) continue;
       if (shot.yieldsToAnswer === true || !this.yielding.has(play)) return false;

@@ -389,6 +389,24 @@ describe('selection voice', () => {
     expect(stopped).toEqual([line?.instance]);
   });
 
+  it('keeps silent while the settler own answer still sounds', () => {
+    const members = [man(5, VIKING, CENTRE_COL)]; // pool 1: 'Viking male ok 02'
+    const CLIP_S = 2;
+    const arbiter = new OneShotArbiter({
+      random: () => 0, // the answer picks its pool's first wav, not the select line's
+      playback: { clipLengthS: () => CLIP_S, stop: () => undefined },
+    });
+    const ANSWER_AT_S = 0.3;
+    arbiter.decide(select(members, { members: [5] }), 0);
+    const [reply] = arbiter.decide(answer(members, { members: [5] }), ANSWER_AT_S);
+    expect(reply?.files).toEqual(['humantalk/m2ok01.wav']);
+    // Re-selected once the select cooldown has run, while the answer still has a while to go.
+    const answerEnds = ANSWER_AT_S + CLIP_S;
+    expect(SELECT_COOLDOWN_S).toBeLessThan(answerEnds);
+    expect(arbiter.decide(select(members, { members: [5] }), SELECT_COOLDOWN_S)).toEqual([]);
+    expect(arbiter.decide(select(members, { members: [5] }), answerEnds)).toHaveLength(1);
+  });
+
   it('never cuts another selection line on the same wav', () => {
     // Ids 5 and 9 share pool 1 and so its select line.
     const members = [man(5, VIKING, CENTRE_COL), man(9, VIKING, CENTRE_COL)];
