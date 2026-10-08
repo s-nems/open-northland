@@ -12,9 +12,8 @@ import {
 } from '../src/index.js';
 
 /**
- * The sound index build: the raw bank's lookups plus the terrain→ambient join that bridges a map
- * cell's `typeId` to the pattern-GROUP-keyed ambient beds via the IR's `terrainPatterns` + a
- * representative `GfxPattern`'s `editGroups`.
+ * The sound index build: the raw bank's lookups plus the ground→ambient joins that bridge a ground
+ * pattern's `editGroups` (or a cell `typeId`'s representative pattern) to the pattern-GROUP-keyed beds.
  */
 const bank: SoundBank = {
   staticGroups: [
@@ -47,6 +46,12 @@ const bank: SoundBank = {
       landscapeGroups: [],
       sfx: [{ file: 'ambient/water3.wav', params: [0, 0, 0] }],
     },
+    {
+      name: 'Forest',
+      patternGroups: ['meadow megadark'],
+      landscapeGroups: [],
+      sfx: [{ file: 'ambient/forest2.wav', params: [0, 0, 0] }],
+    },
   ],
   jingles: [{ name: '', musicType: 26, sfx: [{ file: 'jingles/jingles_housebuilt.wav', params: [] }] }],
   humanVoices: [
@@ -57,14 +62,20 @@ const bank: SoundBank = {
   animalCalls: [{ tribe: 8, minCount: 1, probability: 10, group: 'Bear Sounds' }],
 };
 
+/** The shipped data's shape: almost every land typeId names "meadow 01" as its representative, while a
+ *  decoded map's ground carries the forest and water patterns themselves, in mixed-case `EditName`s. */
 const gfxPatterns = [
-  { id: 5, editGroups: ['meadow all', 'meadow green'] },
-  { id: 9, editGroups: ['water 2x2'] },
+  { id: 5, editName: 'meadow 01', editGroups: ['meadow all', 'meadow green'] },
+  { id: 9, editName: 'block water 00 00 00', editGroups: ['water 2x2', 'water all'] },
+  { id: 11, editName: 'Meadow MegaDark 00 00 00', editGroups: ['meadow all', 'meadow MegaDark'] },
+  { id: 12, editName: 'water 01', editGroups: ['water all'] },
+  { id: 13, editName: 'border', editGroups: ['misc'] },
 ] as unknown as GfxPattern[];
 
 const terrainPatterns = [
   { typeId: 1, patternId: 5 },
   { typeId: 2, patternId: 5 },
+  { typeId: 4, patternId: 5 }, // a forest typeId, still on the meadow representative
   { typeId: 7, patternId: 9 },
   { typeId: 99, patternId: 404 }, // representative pattern absent → no ambient
 ] as unknown as TerrainPattern[];
@@ -115,9 +126,20 @@ describe('buildSoundIndex', () => {
     expect(index.ambientByTerrainType.has(99)).toBe(false);
   });
 
+  it('joins each ground pattern by its own editGroups, whatever representative its typeId has', () => {
+    expect(index.ambientByTerrainType.get(4)).toEqual(['Meadow Green']);
+    expect(index.ambientByGroundPattern.get('Meadow MegaDark 00 00 00')).toEqual(['Forest']);
+    expect(index.ambientByGroundPattern.get('block water 00 00 00')).toEqual(['Water See']);
+    expect(index.ambientByGroundPattern.get('meadow 01')).toEqual(['Meadow Green']);
+    // A pattern whose groups key no bed ("water all", "misc") joins none.
+    expect(index.ambientByGroundPattern.has('water 01')).toBe(false);
+    expect(index.ambientByGroundPattern.has('border')).toBe(false);
+  });
+
   it('yields an empty terrain join when no pattern tables are supplied', () => {
     const bare = buildSoundIndex(bank, [], []);
     expect(bare.ambientByTerrainType.size).toBe(0);
+    expect(bare.ambientByGroundPattern.size).toBe(0);
     expect(bare.groupsByName.get('hammer wood')).toBeDefined(); // event layers still work
   });
 

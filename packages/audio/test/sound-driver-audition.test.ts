@@ -35,6 +35,7 @@ const index: SoundIndex = {
   groupsByLogicSoundType: new Map(),
   jinglesByMusicType: new Map([[BIRTH_TYPE, BIRTH]]),
   ambientLoopByName: new Map([['Meadow', 'ambient/meadow.wav']]),
+  ambientByGroundPattern: new Map(),
   ambientByTerrainType: new Map(),
   groundLogicTypeByTerrainType: new Map(),
   humanVoices: new Map<number, Map<VoiceClass, never>>(),

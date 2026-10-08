@@ -60,6 +60,7 @@ const index: SoundIndex = {
   ),
   jinglesByMusicType: new Map(),
   ambientLoopByName: new Map(),
+  ambientByGroundPattern: new Map(),
   ambientByTerrainType: new Map(),
   groundLogicTypeByTerrainType: new Map(),
   humanVoices: new Map([[1, new Map<VoiceClass, HumanVoices>([['male', VIKING_MAN]])]]),

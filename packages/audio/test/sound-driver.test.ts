@@ -33,6 +33,7 @@ const index: SoundIndex = {
   groupsByLogicSoundType: new Map([[SOCIALTALK_MALE, ['voice/male_social.wav']]]),
   jinglesByMusicType: new Map([[26, ['jingles/jingles_housebuilt.wav']]]),
   ambientLoopByName: new Map([['Meadow Green', 'ambient/meadow1.wav']]),
+  ambientByGroundPattern: new Map(),
   ambientByTerrainType: new Map([[1, ['Meadow Green']]]),
   groundLogicTypeByTerrainType: new Map(),
   humanVoices: new Map([[1, new Map<VoiceClass, HumanVoices>([['male', VIKING_MAN]])]]),

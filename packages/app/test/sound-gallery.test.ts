@@ -156,6 +156,14 @@ describe('buildSoundGalleryModel', () => {
     ]);
     const unlooped = buildSoundGalleryModel(bank, built, defaultBindings(), tribeLabel);
     expect(unlooped.ambient[0]?.play).toEqual({ kind: 'bed', looped: false });
+    // A decoded map's ground pattern loops a bed no typeId's representative reaches.
+    const byGround = buildSoundGalleryModel(
+      bank,
+      { ...built, ambientByGroundPattern: new Map([['meadow 01', ['Meadow Green']]]) },
+      defaultBindings(),
+      tribeLabel,
+    );
+    expect(byGround.ambient[0]?.play).toEqual({ kind: 'bed', looped: true });
   });
 
   it('lists each object ambience pool once, however many records share it', () => {

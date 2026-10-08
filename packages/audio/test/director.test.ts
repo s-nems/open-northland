@@ -12,6 +12,7 @@ import {
   defaultBindings,
   directAudio,
   HOUSE_CRASH_MIN_BUILT,
+  MAX_AMBIENT_BEDS,
   type SoundBindings,
 } from '../src/index.js';
 
@@ -675,6 +676,101 @@ describe('directAudio ambient', () => {
     expect(rightSeen?.pan).toBeCloseTo(AMBIENT_MAX_PAN, 9);
     expect(rightSeen?.gain).toBeLessThan(full?.gain ?? 0); // the fogged half still counts as screen
     expect(direct([], { terrain: meadow, visibleTile: () => false }).ambient).toEqual([]);
+  });
+});
+
+describe('directAudio ambient on a decoded map ground', () => {
+  /** The shipped data's shape: every land typeId names the meadow pattern as its representative, so
+   *  only the ground triangles tell water, forest, meadow and beach apart. */
+  const bed = (name: string, group: string, file: string) => ({
+    name,
+    patternGroups: [group],
+    landscapeGroups: [],
+    sfx: [{ file, params: [0, 0, 0] }],
+  });
+  const shoreBank: SoundBank = {
+    ...bank,
+    ambient: [
+      bed('Meadow Green', 'meadow green', 'ambient/meadow1.wav'),
+      bed('Water See', 'water 2x2', 'ambient/water3.wav'),
+      bed('Forest', 'meadow megadark', 'ambient/forest2.wav'),
+      bed('Beach', 'sand 2x2', 'ambient/beach2.wav'),
+    ],
+  };
+  const MEADOW_TYPE = 1;
+  const shorePatterns = [
+    { id: 4, editName: 'meadow 01', editGroups: ['meadow all', 'meadow green'] },
+    { id: 20, editName: 'block water 00 00 00', editGroups: ['water 2x2', 'water all'] },
+    { id: 21, editName: 'Meadow MegaDark 00 00 00', editGroups: ['meadow all', 'meadow megadark'] },
+    { id: 22, editName: 'block beach 00 00 00', editGroups: ['sand 2x2', 'sand all'] },
+  ] as unknown as GfxPattern[];
+  const shoreIndex = buildSoundIndex(shoreBank, shorePatterns, [
+    { typeId: MEADOW_TYPE, patternId: 4, logicType: 2 },
+  ] as unknown as TerrainPattern[]);
+
+  // Slots into the ground's pattern list, in the map's own order.
+  const WATER = 0;
+  const FOREST = 1;
+  const MEADOW = 2;
+  const BEACH = 3;
+  const SIDE = 10;
+  /** Water on the left three columns, forest on the next three, meadow on the next three and a one-
+   *  column beach strip on the right edge; both triangles of a cell carry its pattern. */
+  const slotAt = (col: number): number => (col < 3 ? WATER : col < 6 ? FOREST : col < 9 ? MEADOW : BEACH);
+  const slots = Array.from({ length: SIDE * SIDE }, (_, i) => slotAt(i % SIDE));
+  const shore: AudioTerrain = {
+    width: SIDE,
+    height: SIDE,
+    typeIds: new Array(SIDE * SIDE).fill(MEADOW_TYPE),
+    ground: {
+      patterns: ['block water 00 00 00', 'Meadow MegaDark 00 00 00', 'meadow 01', 'block beach 00 00 00'],
+      a: slots,
+      b: slots,
+    },
+  };
+  const beds = (terrain: AudioTerrain) =>
+    directAudio({
+      events: [],
+      snapshot: snapshotAt(),
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index: shoreIndex,
+      bindings,
+      terrain,
+    }).ambient;
+
+  it('sounds the beds of the ground patterns on screen, not the representative the typeIds share', () => {
+    const { ground: _ground, ...typeIdsOnly } = shore;
+    expect(beds(typeIdsOnly).map((b) => b.name)).toEqual(['Meadow Green']);
+    const shoreBeds = beds(shore);
+    expect(shoreBeds).toHaveLength(MAX_AMBIENT_BEDS);
+    expect(shoreBeds.map((b) => b.name).sort()).toEqual(['Forest', 'Meadow Green', 'Water See']);
+  });
+
+  it('pans each shore bed toward its side of the screen', () => {
+    const byName = new Map(beds(shore).map((b) => [b.name, b]));
+    const water = byName.get('Water See')?.pan ?? 0;
+    const meadow = byName.get('Meadow Green')?.pan ?? 0;
+    expect(water).toBeCloseTo(-AMBIENT_MAX_PAN, 9);
+    expect(meadow).toBeGreaterThan(0);
+    expect(Math.abs(byName.get('Forest')?.pan ?? 1)).toBeLessThan(Math.abs(water));
+  });
+
+  it("joins the beds of a map's pattern list again for another sound index", () => {
+    const meadowOnly = buildSoundIndex(bank, shorePatterns, []);
+    const frame = directAudio({
+      events: [],
+      snapshot: snapshotAt(),
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index: meadowOnly,
+      bindings,
+      terrain: shore,
+    });
+    expect(beds(shore)).toHaveLength(MAX_AMBIENT_BEDS);
+    expect(frame.ambient.map((b) => b.name)).toEqual(['Meadow Green']);
   });
 });
 

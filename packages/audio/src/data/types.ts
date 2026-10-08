@@ -1,5 +1,5 @@
 import type { VoiceClass } from '@open-northland/data';
-import type { Camera } from '@open-northland/render/data';
+import type { Camera, SceneGround } from '@open-northland/render/data';
 import type { ChestKind, SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
 import type { AlertKind, NoticeVoice } from './alerts.js';
 import type { SoundIndex } from './bank.js';
@@ -152,6 +152,8 @@ export interface AudioTerrain {
   readonly width: number;
   readonly height: number;
   readonly typeIds: readonly number[];
+  /** A decoded map's per-triangle ground patterns; the beds join by them instead of `typeIds`. */
+  readonly ground?: SceneGround;
 }
 
 /** The object ambience's per-frame input: the ticks to roll for and the map's scenery. The sim's

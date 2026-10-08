@@ -24,10 +24,14 @@ export interface SoundIndex {
   readonly jinglesByMusicType: ReadonlyMap<number, readonly string[]>;
   /** Ambient bed name → the wav it loops (the bed's first `SFX`). */
   readonly ambientLoopByName: ReadonlyMap<string, string>;
-  /** Landscape `typeId` → the ambient bed names its on-screen tiles activate. */
+  /** Ground pattern `EditName` → the ambient beds it loops: the beds whose `PatternGroup`s name one of
+   *  the pattern's `EditGroups`. A decoded map's ground triangles join through it. */
+  readonly ambientByGroundPattern: ReadonlyMap<string, readonly string[]>;
+  /** Landscape `typeId` → the beds of its representative pattern, for a grid without per-triangle
+   *  ground (a synthetic map). Coarse: most land typeIds share one meadow pattern. */
   readonly ambientByTerrainType: ReadonlyMap<number, readonly string[]>;
   /** Landscape `typeId` → its representative pattern's `trianglepatterntypes` logic type, the column a
-   *  weapon's `soundtype_NoHit` thud table is keyed by. Coarse like the ambient join: `terrainPatterns`
+   *  weapon's `soundtype_NoHit` thud table is keyed by. Coarse like the typeId bed join: `terrainPatterns`
    *  classes each typeId as water, land or mountain, so the finer ground columns never come up. */
   readonly groundLogicTypeByTerrainType: ReadonlyMap<number, number>;
   /** Settler tribe → voice class → the groups that tribe's settlers of that class speak with; a
@@ -173,12 +177,8 @@ function pushInto(map: Map<string, string[]>, key: string, value: string): void 
 
 /**
  * Assemble the {@link SoundIndex} from the sound bank and terrain-pattern tables. `gfxPatterns`/
- * `terrainPatterns` feed only the terrain→ambient join; empty arrays yield a working index with no
- * terrain ambient.
- *
- * The join is coarse (named approximation): `terrainPatterns` already approximates each `typeId` to
- * one representative pattern, so a `typeId` inherits only that pattern's groups (the original keys
- * ambient off pattern groups; pinned to the data we have).
+ * `terrainPatterns` feed only the ground→ambient joins; empty arrays yield a working index with no
+ * terrain ambient. The original keys its beds by the pattern groups of the ground on screen.
  */
 export function buildSoundIndex(
   sounds: SoundBank,
@@ -221,14 +221,17 @@ export function buildSoundIndex(
     for (const g of a.patternGroups) pushInto(bedsByPatternGroup, g, a.name);
   }
 
-  // GfxPattern id → its (lower-cased) editGroups, so a terrainPattern's representative pattern
-  // resolves to the group names that key the ambient beds.
-  const groupsByPatternId = new Map<number, readonly string[]>();
+  // Each GfxPattern → the beds its (lower-cased) editGroups key, by id for the typeId fallback and by
+  // EditName for a decoded map's ground.
+  const bedsByPatternId = new Map<number, readonly string[]>();
+  const ambientByGroundPattern = new Map<string, readonly string[]>();
   for (const p of gfxPatterns) {
-    groupsByPatternId.set(
-      p.id,
-      p.editGroups.map((g) => g.toLowerCase()),
-    );
+    const beds = new Set<string>();
+    for (const g of p.editGroups)
+      for (const bed of bedsByPatternGroup.get(g.toLowerCase()) ?? []) beds.add(bed);
+    if (beds.size === 0) continue;
+    bedsByPatternId.set(p.id, [...beds]);
+    if (p.editName !== undefined) ambientByGroundPattern.set(p.editName, [...beds]);
   }
 
   const ambientByTerrainType = new Map<number, readonly string[]>();
@@ -236,10 +239,8 @@ export function buildSoundIndex(
   for (const tp of terrainPatterns) {
     if (!groundLogicTypeByTerrainType.has(tp.typeId))
       groundLogicTypeByTerrainType.set(tp.typeId, tp.logicType);
-    const groups = groupsByPatternId.get(tp.patternId) ?? [];
-    const beds = new Set<string>();
-    for (const g of groups) for (const bed of bedsByPatternGroup.get(g) ?? []) beds.add(bed);
-    if (beds.size > 0) ambientByTerrainType.set(tp.typeId, [...beds]);
+    const beds = bedsByPatternId.get(tp.patternId);
+    if (beds !== undefined) ambientByTerrainType.set(tp.typeId, beds);
   }
 
   const humanVoices = new Map<number, Map<VoiceClass, HumanVoices>>();
@@ -264,6 +265,7 @@ export function buildSoundIndex(
     groupsByLogicSoundType,
     jinglesByMusicType,
     ambientLoopByName,
+    ambientByGroundPattern,
     ambientByTerrainType,
     groundLogicTypeByTerrainType,
     humanVoices,

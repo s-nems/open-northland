@@ -6,14 +6,16 @@ import {
   type Viewport,
   visibleTileRange,
 } from '@open-northland/render/data';
+import type { SoundIndex } from '../bank.js';
 import { clamp } from '../math.js';
 import type { AmbientLoop, AudioTerrain, DirectorInput } from '../types.js';
 
 /**
- * On-screen terrain → ambient beds: sample the visible tile band (strided so a zoomed-out whole-map
+ * On-screen ground → ambient beds: sample the visible tile band (strided so a zoomed-out whole-map
  * view stays bounded), weight each bed by its screen coverage, pan it toward the half of the screen its
- * terrain fills, and keep the loudest few. Zoom is the engine's: the beds ride the `bed` perspective
- * layer.
+ * ground fills, and keep the loudest few. A decoded map's two ground triangles per cell join by their
+ * own pattern; a grid without them joins by its typeId's representative pattern. Zoom is the engine's:
+ * the beds ride the `bed` perspective layer.
  */
 
 /** How many ambient beds may play at once - the loudest few by on-screen coverage. */
@@ -36,6 +38,23 @@ const COLUMN_STEP_X = tileToScreen(1, 0).x - tileToScreen(0, 0).x;
 interface SideHits {
   left: number;
   right: number;
+}
+
+/** A map's ground pattern slot → its beds, per sound index: built once per map, read per sample. */
+const groundBedsCache = new WeakMap<
+  readonly string[],
+  { readonly index: SoundIndex; readonly beds: readonly (readonly string[] | undefined)[] }
+>();
+
+function groundSlotBeds(
+  patterns: readonly string[],
+  index: SoundIndex,
+): readonly (readonly string[] | undefined)[] {
+  const cached = groundBedsCache.get(patterns);
+  if (cached?.index === index) return cached.beds;
+  const beds = patterns.map((name) => index.ambientByGroundPattern.get(name));
+  groundBedsCache.set(patterns, { index, beds });
+  return beds;
 }
 
 /**
@@ -64,10 +83,11 @@ export function onScreenTiles(
 }
 
 /**
- * The ambient beds active this frame, by sampling the on-screen terrain tiles (coverage-weighted gain,
- * side-weighted pan). A tile hidden by the viewer's fog counts toward the screen but sounds no bed, so a
- * black screen is silent. Approximation: the original gates a sector on whether it was ever discovered;
- * the director only knows current visibility.
+ * The ambient beds active this frame, by sampling the on-screen ground (coverage-weighted gain,
+ * side-weighted pan). A sample is a ground triangle on a decoded map and a cell otherwise. A tile hidden
+ * by the viewer's fog counts toward the screen but sounds no bed, so a black screen is silent.
+ * Approximation: the original gates a sector on whether it was ever discovered; the director only knows
+ * current visibility.
  */
 export function ambientBeds(input: DirectorInput): AmbientLoop[] {
   const { terrain, camera, canvasW, canvasH, index, visibleTile } = input;
@@ -80,25 +100,38 @@ export function ambientBeds(input: DirectorInput): AmbientLoop[] {
   const stride = Math.max(1, Math.ceil(Math.sqrt((cols * rows) / AMBIENT_MAX_SAMPLES)));
   // The pre-camera x under the screen centre splits each row into its left and right halves.
   const centreX = (vp.minX + vp.maxX) / 2;
+  const { ground } = terrain;
+  const slotBeds = ground === undefined ? undefined : groundSlotBeds(ground.patterns, index);
   const counts = new Map<string, SideHits>();
   let sampled = 0;
+  const tally = (beds: readonly string[] | undefined, heard: boolean, left: boolean): void => {
+    sampled++;
+    if (!heard || beds === undefined) return;
+    for (const bed of beds) {
+      let hits = counts.get(bed);
+      if (hits === undefined) {
+        hits = { left: 0, right: 0 };
+        counts.set(bed, hits);
+      }
+      if (left) hits.left++;
+      else hits.right++;
+    }
+  };
   for (let row = band.minRow; row <= band.maxRow; row += stride) {
     const splitCol = (centreX - tileToScreen(0, row).x) / COLUMN_STEP_X;
     for (let col = band.minCol; col <= band.maxCol; col += stride) {
-      const typeId = terrain.typeIds[row * terrain.width + col];
-      if (typeId === undefined) continue; // out-of-range (malformed grid): don't dilute the coverage denominator
-      sampled++;
-      if (visibleTile !== undefined && !visibleTile(col, row)) continue;
-      const beds = index.ambientByTerrainType.get(typeId);
-      if (beds === undefined) continue;
-      for (const bed of beds) {
-        let hits = counts.get(bed);
-        if (hits === undefined) {
-          hits = { left: 0, right: 0 };
-          counts.set(bed, hits);
-        }
-        if (col < splitCol) hits.left++;
-        else hits.right++;
+      const cell = row * terrain.width + col;
+      const heard = visibleTile === undefined || visibleTile(col, row);
+      const left = col < splitCol;
+      // An out-of-range slot (a malformed grid) is skipped, not counted, so it can't dilute the coverage.
+      if (ground !== undefined && slotBeds !== undefined) {
+        const a = ground.a[cell];
+        const b = ground.b[cell];
+        if (a !== undefined) tally(slotBeds[a], heard, left);
+        if (b !== undefined) tally(slotBeds[b], heard, left);
+      } else {
+        const typeId = terrain.typeIds[cell];
+        if (typeId !== undefined) tally(index.ambientByTerrainType.get(typeId), heard, left);
       }
     }
   }

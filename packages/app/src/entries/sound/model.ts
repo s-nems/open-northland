@@ -236,7 +236,9 @@ export function buildSoundGalleryModel(
   });
 
   // The ambient groups keyed by ground patterns; the ones keyed by landscape objects are listed above.
-  const looped = new Set([...index.ambientByTerrainType.values()].flat());
+  const looped = new Set(
+    [...index.ambientByGroundPattern.values(), ...index.ambientByTerrainType.values()].flat(),
+  );
   const ambient: ClipList[] = [];
   for (const bed of sounds.ambient) {
     const file = index.ambientLoopByName.get(bed.name);
