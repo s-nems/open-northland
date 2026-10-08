@@ -27,13 +27,15 @@ import { snapshotOf } from './support/sandbox.js';
  *  and the soldiers among them. */
 
 const RIVAL_PLAYER = 1;
-const NO_GEAR = { boots: null, tool: null, weapon: null, armor: null, misc: [null, null, null, null] };
-const held = (goodType: number): { goodType: number; degreeOfUse: number } => ({ goodType, degreeOfUse: 0 });
+type Slot = { goodType: number; degreeOfUse: number } | null;
+type Gear = { boots: Slot; tool: Slot; weapon: Slot; armor: Slot; misc: Slot[] };
+const NO_GEAR: Gear = { boots: null, tool: null, weapon: null, armor: null, misc: [null, null, null, null] };
+const held = (goodType: number): Slot => ({ goodType, degreeOfUse: 0 });
 
 function man(
   id: number,
   jobType: number | null,
-  gear: Partial<typeof NO_GEAR> = {},
+  gear: Partial<Gear> = {},
   components: Readonly<Record<string, unknown>> = {},
   player = HUMAN_PLAYER,
 ): EntitySnapshot {
