@@ -323,6 +323,18 @@ describe('landscape sectors over a mirror', () => {
     expect(count(mirror.snapshot())).toBe(2);
     expect(mirror.verifyIndexes()).toEqual([]);
   });
+
+  it("reads an object's position only on placement, so a position write replaces nothing", () => {
+    const mirror = mirrorOf([tree(1, LEFT_COL, ROW)]);
+    const before = landscapeSectorsOf(mirror.snapshot()).revision;
+    const moved: EntityDelta = {
+      id: 1,
+      components: { Position: { x: RIGHT_COL * ONE, y: (ROW + LANDSCAPE_SECTOR_TILES) * ONE } },
+      removed: [],
+    };
+    advance(mirror, [moved], []);
+    expect(landscapeSectorsOf(mirror.snapshot()).revision).toBe(before);
+  });
 });
 
 describe('object ambience cost', () => {

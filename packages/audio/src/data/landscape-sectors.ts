@@ -78,7 +78,8 @@ function standingObject(entity: EntitySnapshot): { record: number; tile: TilePoi
 
 const LANDSCAPE_SECTORS: SnapshotIndexSpec<LandscapeSectors> = {
   name: 'landscape sound sectors',
-  reads: { values: ['Resource', 'Position'] },
+  // A resource node never moves, so its position is read only when it is placed.
+  reads: { values: ['Resource'], presence: ['Position'] },
   empty: () => new LandscapeSectors(),
   add: (sectors, entity) => {
     const object = standingObject(entity);
