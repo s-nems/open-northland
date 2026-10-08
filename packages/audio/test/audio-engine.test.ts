@@ -11,6 +11,9 @@ import {
   LIMITER_RATIO,
   LIMITER_RELEASE_S,
   LIMITER_THRESHOLD_DB,
+  MUFFLE_FAR_HZ,
+  MUFFLE_OPEN_HZ,
+  MUFFLE_Q_DB,
   ONE_SHOT_COOLDOWN_S,
   PERSPECTIVE_RAMP_S,
   perspectiveGain,
@@ -20,6 +23,7 @@ import {
   zoomDistance,
 } from '../src/index.js';
 import {
+  FakeBiquad,
   FakeCompressor,
   FakeContext,
   FakeGain,
@@ -128,9 +132,14 @@ describe('WebAudioEngine one-shots', () => {
     expect(entryOf(birth)).toBe(buses.ui);
     expect(entryOf(blow)).toBe(layers.world.impact);
     expect(entryOf(scream)).toBe(layers.voice.impact);
-    expect(layers.world.detail.connectedTo[0]).toBe(buses.world);
+    // Detail reaches its bus through the zoom low-pass; impacts and beds go straight in.
+    const worldMuffle = layers.world.detail.connectedTo[0] as FakeBiquad;
+    const voiceMuffle = layers.voice.detail.connectedTo[0] as FakeBiquad;
+    expect(worldMuffle).toBeInstanceOf(FakeBiquad);
+    expect(worldMuffle.type).toBe('lowpass');
+    expect(worldMuffle.connectedTo[0]).toBe(buses.world);
+    expect(voiceMuffle.connectedTo[0]).toBe(buses.voice);
     expect(layers.world.impact.connectedTo[0]).toBe(buses.world);
-    expect(layers.voice.detail.connectedTo[0]).toBe(buses.voice);
     expect(layers.voice.impact.connectedTo[0]).toBe(buses.voice);
     expect(layers.bed.connectedTo[0]).toBe(buses.ambient);
   });
@@ -409,8 +418,7 @@ describe('WebAudioEngine ambient reconciliation', () => {
 });
 
 describe('WebAudioEngine zoom perspective', () => {
-  const allRamps = (ctx: FakeContext): number =>
-    ctx.gains.reduce((sum, g) => sum + g.gain.ramps.length, 0);
+  const allRamps = (ctx: FakeContext): number => ctx.gains.reduce((sum, g) => sum + g.gain.ramps.length, 0);
 
   it('ramps each zoom layer once when the camera zooms out, leaving music and ui alone', async () => {
     const { engine, ctx } = makeEngine();
@@ -420,15 +428,40 @@ describe('WebAudioEngine zoom perspective', () => {
     engine.setCameraScale(FAR_ZOOM_SCALE);
     const far = zoomDistance(FAR_ZOOM_SCALE);
     for (const node of [layers.world.detail, layers.voice.detail]) {
-      expect(node.gain.ramps).toEqual([{ value: perspectiveGain('detail', far), time: 1 + PERSPECTIVE_RAMP_S }]);
+      expect(node.gain.ramps).toEqual([
+        { value: perspectiveGain('detail', far), time: 1 + PERSPECTIVE_RAMP_S },
+      ]);
     }
     for (const node of [layers.world.impact, layers.voice.impact]) {
-      expect(node.gain.ramps).toEqual([{ value: perspectiveGain('impact', far), time: 1 + PERSPECTIVE_RAMP_S }]);
+      expect(node.gain.ramps).toEqual([
+        { value: perspectiveGain('impact', far), time: 1 + PERSPECTIVE_RAMP_S },
+      ]);
     }
-    expect(layers.bed.gain.ramps).toEqual([{ value: perspectiveGain('bed', far), time: 1 + PERSPECTIVE_RAMP_S }]);
+    expect(layers.bed.gain.ramps).toEqual([
+      { value: perspectiveGain('bed', far), time: 1 + PERSPECTIVE_RAMP_S },
+    ]);
     for (const bus of [buses.music, buses.ui, buses.world, buses.voice, buses.ambient]) {
       expect(bus.gain.ramps).toEqual([]);
     }
+  });
+
+  it('closes the detail low-pass as the camera zooms out and opens it again at 1:1', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const filters = ctx.created.filter((n): n is FakeBiquad => n instanceof FakeBiquad);
+    expect(filters).toHaveLength(2); // one per world bus, never one per sound
+    for (const filter of filters) {
+      expect(filter.frequency.value).toBe(MUFFLE_OPEN_HZ);
+      expect(filter.Q.value).toBe(MUFFLE_Q_DB);
+    }
+    ctx.currentTime = 1;
+    engine.setCameraScale(FAR_ZOOM_SCALE);
+    for (const filter of filters) {
+      expect(filter.frequency.ramps.at(-1)?.value).toBeCloseTo(MUFFLE_FAR_HZ, 6);
+      expect(filter.frequency.ramps.at(-1)?.time).toBeCloseTo(1 + PERSPECTIVE_RAMP_S, 9);
+    }
+    engine.setCameraScale(1);
+    for (const filter of filters) expect(filter.frequency.ramps.at(-1)?.value).toBeCloseTo(MUFFLE_OPEN_HZ, 6);
   });
 
   it('schedules nothing for an unchanged zoom or for a camera closer than 1:1', async () => {
@@ -460,7 +493,7 @@ describe('WebAudioEngine zoom perspective', () => {
     engine.apply({ oneShots: [shot({ lane: { kind: 'sfx' } })], ambient: [] });
     await flush();
     engine.setCameraScale(FAR_ZOOM_SCALE);
-    const gain = (ctx.sources[0]?.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain;
+    const gain = ((ctx.sources[0] as FakeSource).connectedTo[0] as FakePanner).connectedTo[0] as FakeGain;
     expect(gain.gain.value).toBeCloseTo(0.42, 9);
     expect(gain.gain.ramps).toEqual([]);
   });

@@ -11,6 +11,8 @@ import {
 } from '../../data/mixer.js';
 import type { MusicTrack } from '../../data/music/index.js';
 import {
+  muffleCutoffHz,
+  PERSPECTIVE_CURVES,
   type PerspectiveLayer,
   perspectiveGain,
   SHOT_LAYERS,
@@ -77,6 +79,9 @@ export const VOLUME_RAMP_S = 0.05;
 /** A zoom step ramps the layer gains over this many seconds, so a wheel zoom glides the mix rather
  *  than stepping it. Approximation. */
 export const PERSPECTIVE_RAMP_S = 0.1;
+/** The zoom low-pass's resonance, in the dB Web Audio reads a low-pass Q in: -3 dB is a Butterworth
+ *  response, flat with no bump at the corner. */
+export const MUFFLE_Q_DB = -3;
 
 /** The original music master's fixed -5 dB offset under the music slider. */
 const MUSIC_MASTER_OFFSET_DB = -5;
@@ -125,10 +130,12 @@ type WorldBus = 'world' | 'voice';
 const WORLD_BUSES: readonly WorldBus[] = ['world', 'voice'];
 
 /** The per-layer gains in front of the buses: the world layers of `world` and `voice`, and the ambient
- *  bed layer the terrain beds and the weather share. */
+ *  bed layer the terrain beds and the weather share. A muffled layer's gain feeds its bus through one
+ *  low-pass in `filters`. */
 interface LayerGains {
   readonly shots: Readonly<Record<WorldBus, Readonly<Record<ShotLayer, GainNode>>>>;
   readonly bed: GainNode;
+  readonly filters: readonly BiquadFilterNode[];
 }
 
 export class WebAudioEngine {
@@ -285,6 +292,8 @@ export class WebAudioEngine {
       }
     }
     rampParam(ctx, layers.bed.gain, perspectiveGain('bed', zoom), PERSPECTIVE_RAMP_S);
+    for (const filter of layers.filters)
+      rampParam(ctx, filter.frequency, muffleCutoffHz(zoom), PERSPECTIVE_RAMP_S);
   }
 
   /** Apply one decided frame: fire its one-shots, reconcile its ambient loops, settle the duck. */
@@ -401,12 +410,23 @@ export class WebAudioEngine {
     return ctx;
   }
 
-  /** The layer gains, set for the zoom already known, each feeding its bus. */
+  /** The layer gains, set for the zoom already known, each feeding its bus (a muffled one through its
+   *  low-pass). */
   private createLayers(ctx: AudioContext, buses: Readonly<Record<SoundBus, GainNode>>): LayerGains {
+    const filters: BiquadFilterNode[] = [];
     const layerGain = (layer: PerspectiveLayer, bus: GainNode): GainNode => {
       const gain = ctx.createGain();
       gain.gain.value = perspectiveGain(layer, this.zoom);
-      gain.connect(bus);
+      if (!PERSPECTIVE_CURVES[layer].muffled) {
+        gain.connect(bus);
+        return gain;
+      }
+      const filter = ctx.createBiquadFilter();
+      filter.type = 'lowpass';
+      filter.Q.value = MUFFLE_Q_DB;
+      filter.frequency.value = muffleCutoffHz(this.zoom);
+      gain.connect(filter).connect(bus);
+      filters.push(filter);
       return gain;
     };
     const shotLayers = (bus: GainNode): Record<ShotLayer, GainNode> => ({
@@ -416,6 +436,7 @@ export class WebAudioEngine {
     return {
       shots: { world: shotLayers(buses.world), voice: shotLayers(buses.voice) },
       bed: layerGain('bed', buses.ambient),
+      filters,
     };
   }
 

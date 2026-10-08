@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   FAR_ZOOM_SCALE,
+  MUFFLE_FAR_HZ,
+  MUFFLE_OPEN_HZ,
+  muffleCutoffHz,
   NEAR_ZOOM_SCALE,
   type OneShot,
   PERSPECTIVE_CURVES,
@@ -48,8 +51,28 @@ describe('perspectiveGain', () => {
   });
 });
 
+describe('muffleCutoffHz', () => {
+  it('is open at 1:1, at its gentle far corner when zoomed out, and falls steadily between', () => {
+    expect(muffleCutoffHz(0)).toBe(MUFFLE_OPEN_HZ);
+    expect(muffleCutoffHz(1)).toBeCloseTo(MUFFLE_FAR_HZ, 6);
+    expect(muffleCutoffHz(0.5)).toBeCloseTo(Math.sqrt(MUFFLE_OPEN_HZ * MUFFLE_FAR_HZ), 6);
+  });
+
+  it('muffles only the detail layer', () => {
+    expect(PERSPECTIVE_CURVES.detail.muffled).toBe(true);
+    expect(PERSPECTIVE_CURVES.impact.muffled).toBe(false);
+    expect(PERSPECTIVE_CURVES.bed.muffled).toBe(false);
+  });
+});
+
 describe('shotLayer', () => {
-  const shot = (over: Partial<OneShot>): OneShot => ({ files: ['a.wav'], gain: 1, pan: 0, key: 'k', ...over });
+  const shot = (over: Partial<OneShot>): OneShot => ({
+    files: ['a.wav'],
+    gain: 1,
+    pan: 0,
+    key: 'k',
+    ...over,
+  });
 
   it('keeps a ui shot (no lane, or a jingle) out of every zoom layer', () => {
     expect(shotLayer(shot({}))).toBeNull();

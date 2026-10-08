@@ -73,6 +73,9 @@ export {
 } from './data/music/index.js';
 export {
   FAR_ZOOM_SCALE,
+  MUFFLE_FAR_HZ,
+  MUFFLE_OPEN_HZ,
+  muffleCutoffHz,
   NEAR_ZOOM_SCALE,
   PERSPECTIVE_CURVES,
   type PerspectiveCurve,
@@ -124,6 +127,7 @@ export {
   LIMITER_RELEASE_S,
   LIMITER_THRESHOLD_DB,
   MENU_MUSIC_TIMING,
+  MUFFLE_Q_DB,
   MUSIC_DUCK_GAIN,
   MUSIC_DUCK_RAMP_S,
   MUSIC_STOP_FADE_S,

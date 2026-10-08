@@ -16,8 +16,20 @@ export interface MixerGraph {
 }
 
 export function mixerGraph(ctx: FakeContext): MixerGraph {
-  const [master, music, voice, world, ambient, ui, duck, worldDetail, worldImpact, voiceDetail, voiceImpact, bed] =
-    ctx.gains;
+  const [
+    master,
+    music,
+    voice,
+    world,
+    ambient,
+    ui,
+    duck,
+    worldDetail,
+    worldImpact,
+    voiceDetail,
+    voiceImpact,
+    bed,
+  ] = ctx.gains;
   if (
     master === undefined ||
     music === undefined ||

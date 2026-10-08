@@ -9,8 +9,8 @@ import {
 } from '@open-northland/sim';
 import { groupFiles, type SoundIndex } from '../bank.js';
 import { JINGLE_DUCK_HOLD_MS } from '../bindings.js';
-import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
 import type { ShotLayer } from '../perspective.js';
+import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { AudioTerrain, DirectorInput, EventSound, Lane, OneShot, SoundBindings } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
@@ -271,7 +271,14 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
       if (files !== undefined && files.length > 0) {
         // A script's sound is a story beat, so it carries from far out like a fight does.
-        pending.push({ kind: 'sfx', files, key: eventKey(ev), node: ev.at, entity: undefined, layer: 'impact' });
+        pending.push({
+          kind: 'sfx',
+          files,
+          key: eventKey(ev),
+          node: ev.at,
+          entity: undefined,
+          layer: 'impact',
+        });
       }
       continue;
     }
