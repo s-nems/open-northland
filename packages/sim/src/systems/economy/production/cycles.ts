@@ -154,6 +154,20 @@ export function waitingForRecipeInput(
   );
 }
 
+/** Whether `building`'s stock plus the units `inbound` counts on their way cover one cycle of `recipe`. */
+export function cycleCoveredWith(
+  world: World,
+  building: Entity,
+  recipe: Recipe,
+  inbound: (goodType: number) => number,
+): boolean {
+  const stock = world.get(building, Stockpile).amounts;
+  return recipe.inputs.every((input) => {
+    const have = stock.get(input.goodType) ?? 0;
+    return have >= input.amount || have + inbound(input.goodType) >= input.amount;
+  });
+}
+
 /** Whether any product of `recipes` could start a cycle now (the ProductionSystem's dormancy gate). */
 export function anyCycleStartable(
   world: World,

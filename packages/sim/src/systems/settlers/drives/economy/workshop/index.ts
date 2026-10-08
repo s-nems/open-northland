@@ -5,7 +5,6 @@ import {
   inPastimeChat,
   Owner,
   Production,
-  Stockpile,
 } from '../../../../../components/index.js';
 import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
@@ -19,7 +18,7 @@ import { planGossipIdle } from '../../../../social/index.js';
 import { assignedWorkers } from '../../../../stores/assigned-workers.js';
 import { isWorkplaceOperator, mergedRecipeOf } from '../../../../stores/index.js';
 import { type WorkshopWorkforce, workshopWorkforce } from '../../../../stores/workshop-workforce.js';
-import { atOrWalk, startPickup, walkPickupBatch } from '../../../atomics/start.js';
+import { atOrWalk, walkFetchInput, walkPickupBatch } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
 import type { IdleStands } from '../../../planner/idle-replan.js';
@@ -56,12 +55,14 @@ interface PassErrand {
   readonly amount: number;
 }
 
-/** Per-planner-pass seat claims and incoming bound loads, indexed only when a workshop needs them. */
+/** Per-planner-pass seat claims, crew recipes and inbound loads, indexed only when a workshop needs them. */
 export class WorkSeatClaims {
   private readonly seats = new Map<Entity, WorkSeats>();
   private workforce: WorkshopWorkforce | undefined;
   private readonly recipesByWorkplace = new Map<Entity, Recipe[]>();
   private readonly errands = new Map<Entity, PassErrand>();
+  /** Units the pass's errands bring, per workplace and good. */
+  private readonly errandUnits = new Map<Entity, Map<number, number>>();
   /** The settler {@link inboundOf} asks for, read by the one skip filter the pass keeps. */
   private asker: Entity | undefined;
   private readonly skipsLoad = (settler: Entity): boolean =>
@@ -104,25 +105,33 @@ export class WorkSeatClaims {
 
   /** Record `settler`'s errand stamped this pass; it replaces whatever the index held for that settler. */
   noteErrand(settler: Entity, errand: PassErrand): void {
+    const replaced = this.errands.get(settler);
+    if (replaced !== undefined) this.addErrandUnits(replaced, -replaced.amount);
     this.errands.set(settler, errand);
+    this.addErrandUnits(errand, errand.amount);
   }
 
   /** Units other settlers are bringing to `workplace`: the index's live loads plus the errands stamped
-   *  this pass, each settler counted once. The asking settler is re-planning, so its own indexed errand no longer counts. */
+   *  this pass, each settler counted once. The asker is re-planning, so its own indexed errand is gone. */
   inboundOf(plan: PlannerContext, workplace: Entity, goodType: number): number {
     this.workforce ??= workshopWorkforce(plan.world, plan.ctx);
     this.asker = plan.entity;
-    let units = this.workforce.incomingOf(workplace, goodType, this.skipsLoad);
-    if (this.errands.size === 0) return units;
-    for (const errand of this.errands.values()) {
-      if (errand.workplace === workplace && errand.goodType === goodType) units += errand.amount;
+    const units = this.workforce.incomingOf(workplace, goodType, this.skipsLoad);
+    return units + (this.errandUnits.get(workplace)?.get(goodType) ?? 0);
+  }
+
+  private addErrandUnits(errand: PassErrand, units: number): void {
+    let byGood = this.errandUnits.get(errand.workplace);
+    if (byGood === undefined) {
+      byGood = new Map();
+      this.errandUnits.set(errand.workplace, byGood);
     }
-    return units;
+    byGood.set(errand.goodType, (byGood.get(errand.goodType) ?? 0) + units);
   }
 }
 
-/** An operator's own recipes and a carrier's restock fetch whatever is inbound, so each spare operator
- *  gets a unit for its own batch; only a crew recipe's shortfall counts colleagues' errands. */
+/** An operator fetches against its own recipe amounts and a carrier restocks to capacity, neither counting
+ *  the units other settlers are bringing: the original's producer fetches with no regard to them. */
 const OWN_SHORTFALL: InputShortfall = { restockToCapacity: false };
 const CARRIER_SHORTFALL: InputShortfall = { restockToCapacity: true };
 
@@ -131,7 +140,9 @@ const LOITER_PLAN_PERIOD_TICKS = 1;
 
 /**
  * Run the self-service producer loop: advance running batches, supply open products, claim a new batch
- * seat, clear a full slot, haul an output out, then loiter by the door with nothing to do.
+ * seat, clear a full slot, haul an output out, then loiter by the door with nothing to do. Original
+ * behavior: a producer fetches a missing input of its own recipe itself, whatever other settlers are
+ * bringing, and never waits inside for them.
  *
  * Source basis: a workshop stopping on a full product slot and resuming once a unit leaves is observed
  * original behavior, and every craft trade carries `jobtypes.ini` `baseatomics 6`, which grants the
@@ -161,9 +172,10 @@ export function planProducer(
     return;
   }
 
-  // A startable cheap recipe must not consume every incoming unit while another open recipe waits
-  // for more of that input. A worker with no batch to advance brings the missing unit first, unless a
-  // colleague's errand already brings it.
+  // A startable cheap recipe must not consume every unit while another open recipe of the crew waits for
+  // more of that input, so a worker with no batch to advance brings a missing unit first, unless a
+  // colleague already brings it. Approximation: this runs before the seat claim, so an operator whose
+  // own recipe could start may fetch a colleague's.
   const crewShortfall: InputShortfall = {
     restockToCapacity: false,
     inbound: (good) => seatClaims.inboundOf(plan, workplace, good),
@@ -178,23 +190,7 @@ export function planProducer(
     }
   }
 
-  const stock = world.get(workplace, Stockpile).amounts;
-  for (const candidate of seatClaims.recipesFor(world, ctx, workplace)) {
-    if (!candidate.inputs.some((input) => (stock.get(input.goodType) ?? 0) > 0)) continue;
-    if (outputRoomForCycles(world, ctx, workplace, candidate) <= 0) continue;
-    if (
-      candidate.inputs.some(
-        (input) =>
-          (stock.get(input.goodType) ?? 0) < input.amount &&
-          seatClaims.inboundOf(plan, workplace, input.goodType) > 0,
-      )
-    ) {
-      holdInsideWorkplace(plan, workplace, undefined, idle);
-      return;
-    }
-  }
-
-  skipUnfundedRecipe(world, ctx, workplace, plan.entity, own);
+  skipUnfundedRecipe(world, ctx, workplace, plan.entity, own, crewShortfall.inbound);
 
   if (seats.claimed < workSeatCount(world, ctx, workplace, own)) {
     seats.claimed += 1;
@@ -265,7 +261,8 @@ export function planWorkshopSupplier(
  * Send the worker to lift one carry-load of a missing input out of `source`'s store. A trip carries a
  * single unit whoever makes it, craftsman or bound carrier: the original reserves exactly one against both
  * ends of the walk before it sets off (+1 at the work house, -1 at the source), so a recipe wanting two of
- * a good is two walks.
+ * a good is two walks. The search keeps choosing the nearest self-filling house even empty, so the worker
+ * waits by its door for the refill ({@link walkFetchInput}).
  */
 function routeToInputSource(
   plan: PlannerContext,
@@ -273,18 +270,10 @@ function routeToInputSource(
   source: MissingInputSource,
   seatClaims: WorkSeatClaims,
 ): void {
-  const { world, ctx, terrain, entity, here } = plan;
-  const worker = plan;
-  plan.supply.stampSupplyRun(entity, { site: workplace, goodType: source.goodType, amount: CARRY_CAPACITY });
-  plan.supply.stampPickupClaim(entity, {
-    source: source.store,
-    goodType: source.goodType,
-    amount: CARRY_CAPACITY,
-  });
+  const { entity, supply } = plan;
+  supply.stampSupplyRun(entity, { site: workplace, goodType: source.goodType, amount: CARRY_CAPACITY });
   seatClaims.noteErrand(entity, { workplace, goodType: source.goodType, amount: CARRY_CAPACITY });
-  atOrWalk(world, entity, here, interactionCell(world, ctx, terrain, source.store, here), () =>
-    startPickup(world, ctx, entity, worker, source.store, source.goodType, CARRY_CAPACITY),
-  );
+  walkFetchInput(plan, source.store, source.goodType, source.refills);
 }
 
 /**

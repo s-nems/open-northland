@@ -22,7 +22,7 @@ import { assignedWorkers } from './assigned-workers.js';
 import { bankedSlot, stockCapacity } from './capacity.js';
 import { accessibleStockAmounts } from './inventory.js';
 import { isWorkplaceOperator } from './operators.js';
-import { mergedRecipeOf, recipeConsumes } from './workplace.js';
+import { mergedRecipeOf, recipeConsumes, refillingGoodsOf } from './workplace.js';
 
 /** A recipe input an employed settler brings its workplace: carried (`source` null) or fetched. */
 interface BoundLoad {
@@ -123,7 +123,7 @@ export class WorkshopWorkforce {
     index.loadsAt.forEach((column) => {
       const { loads, counted } = column;
       for (let i = 0; i < loads.length; i++) {
-        counted[i] = sourceHolds(world, loads[i] as BoundLoad) ? serial : NOT_COUNTED;
+        counted[i] = sourceHolds(world, ctx, loads[i] as BoundLoad) ? serial : NOT_COUNTED;
       }
     });
   }
@@ -178,10 +178,15 @@ export class WorkshopWorkforce {
 const NOT_COUNTED = 0;
 
 /** Whether a pickup leg's source still holds the good, on its arrival tick too, before the planner
- *  starts the pickup there; a carried load always passes. */
-function sourceHolds(world: World, load: BoundLoad): boolean {
+ *  starts the pickup there, or refills it, since its fetcher waits there for the unit; a carried load
+ *  always passes. */
+function sourceHolds(world: World, ctx: SystemContext, load: BoundLoad): boolean {
   const source = load.source;
-  return source === null || (accessibleStockAmounts(world, source)?.get(load.goodType) ?? 0) > 0;
+  return (
+    source === null ||
+    (accessibleStockAmounts(world, source)?.get(load.goodType) ?? 0) > 0 ||
+    refillingGoodsOf(world, ctx, source).includes(load.goodType)
+  );
 }
 
 /** Whether the workplace has shelf room for the load's good. */

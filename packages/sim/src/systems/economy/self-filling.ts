@@ -1,10 +1,9 @@
 import { Building, Stockpile, setStockAmount, UnderConstruction, Upgrading } from '../../components/index.js';
-import { ONE } from '../../core/fixed.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import { includesSortedId, insertSortedById, removeSortedById } from '../../core/sorted-id.js';
 import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
-import { buildingProduces, refillsOwnStock, stockCapacity } from '../stores/index.js';
+import { buildingProduces, refillingGoodsOf, stockCapacity } from '../stores/index.js';
 
 const byId = (e: Entity): number => e;
 
@@ -80,12 +79,9 @@ class SelfFillingStores {
 }
 
 function needsRefill(world: World, ctx: SystemContext, e: Entity): boolean {
-  const building = world.tryGet(e, Building);
-  if (building === undefined || building.built < ONE || !refillsOwnStock(world, ctx, e)) return false;
-  if (world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
   const amounts = world.tryGet(e, Stockpile)?.amounts;
   if (amounts === undefined) return false;
-  return buildingProduces(world, ctx, e).some(
+  return refillingGoodsOf(world, ctx, e).some(
     (good) => (amounts.get(good) ?? 0) < stockCapacity(world, ctx, e, good),
   );
 }

@@ -11,7 +11,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, operatorRecipeEnabled, settlerMeetsNeed } from '../../progression/index.js';
 import { resolvedAtomicLength } from '../../readviews/animations.js';
-import { beginCycle, canStartCycle, isYardBuilt, waitingForRecipeInput } from './cycles.js';
+import { beginCycle, canStartCycle, cycleCoveredWith, isYardBuilt, waitingForRecipeInput } from './cycles.js';
 
 /**
  * The products of `recipes` this operator may craft, in rotation order: every product whose
@@ -153,13 +153,15 @@ export function nextCycleFor(
   return pick;
 }
 
-/** Let a startable product take the turn when the planner found no source for the next recipe's input. */
+/** Let a startable product take the turn when the planner found no source for the next recipe's input.
+ *  A recipe whose missing units `inbound` says are on their way keeps the turn. */
 export function skipUnfundedRecipe(
   world: World,
   ctx: SystemContext,
   building: Entity,
   operator: Entity,
   own: readonly Recipe[],
+  inbound?: (goodType: number) => number,
 ): void {
   if (own.length < 2) return;
   const selection = world.tryGet(operator, ProductionCounters);
@@ -169,6 +171,7 @@ export function skipUnfundedRecipe(
     const recipe = own[index];
     if (recipe === undefined || canStartCycle(world, ctx, building, recipe)) return;
     if (!waitingForRecipeInput(world, ctx, building, recipe)) continue;
+    if (inbound !== undefined && cycleCoveredWith(world, building, recipe, inbound)) return;
     for (let j = i + 1; j < own.length; j++) {
       const alternativeIndex = (cursor + j) % own.length;
       const alternative = own[alternativeIndex];

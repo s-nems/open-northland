@@ -41,6 +41,7 @@ export {
   mergedRecipeOf,
   recipeConsumes,
   recipesByProductOf,
+  refillingGoodsOf,
   refillsOwnStock,
   workplaceStocksGood,
   workplaceStoredGoods,

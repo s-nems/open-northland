@@ -1,7 +1,8 @@
 import type { GoodQuantity, Recipe } from '@open-northland/data';
-import { Building } from '../../components/index.js';
+import { Building, UnderConstruction, Upgrading } from '../../components/index.js';
 import { isCarrierJobId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
+import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { exportedGoodForm } from '../readviews/food.js';
@@ -93,6 +94,15 @@ export function isWorkplaceOutput(
 export function refillsOwnStock(world: World, ctx: ContentContext, building: Entity): boolean {
   const b = world.tryGet(building, Building);
   return b !== undefined && contentIndex(ctx.content).buildings.get(b.buildingType)?.refillsOwnStock === true;
+}
+
+/** The goods a finished self-filling house tops up: none for any other building, nor for one still going
+ *  up or upgrading, which does not refill. */
+export function refillingGoodsOf(world: World, ctx: ContentContext, building: Entity): readonly number[] {
+  const b = world.tryGet(building, Building);
+  if (b === undefined || b.built < ONE || !refillsOwnStock(world, ctx, building)) return EMPTY_PRODUCES;
+  if (world.has(building, UnderConstruction) || world.has(building, Upgrading)) return EMPTY_PRODUCES;
+  return buildingProduces(world, ctx, building);
 }
 
 /** The job types a building type's worker slots name (`logicworker <job> <count>`). */

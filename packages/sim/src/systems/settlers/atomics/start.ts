@@ -12,12 +12,14 @@ import {
 } from '../../../components/index.js';
 import type { AtomicEffect } from '../../../core/atomic-effect.js';
 import { contentIndex, jobAllowsAtomic } from '../../../core/content-index.js';
+import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
 import type { ContentContext, SystemContext } from '../../context.js';
 import { clearNavState } from '../../movement/nav-state.js';
 import { atomicClipName, atomicDuration } from '../../readviews/animations.js';
 import { isCandyMeal } from '../../readviews/food.js';
+import { accessibleStockAmounts, refillingGoodsOf } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
 import { interactionCell, unclaimedStockOf } from '../targets/index.js';
 import { atomicHoldsSettler } from './busy.js';
@@ -199,10 +201,55 @@ export function startPickup(
 /** Walk to `from` and lift a carry-load of `goodType`, claiming the units still unclaimed there first so a
  *  settler planned after this one picks another source while it walks. */
 export function walkPickupBatch(plan: PlannerContext, from: Entity, goodType: number, cell?: NodeId): void {
-  const { world, ctx, terrain, entity: e, here, supply } = plan;
+  const { world, entity: e, supply } = plan;
   const claimed = Math.min(CARRY_CAPACITY, unclaimedStockOf(world, supply, from, goodType));
   if (claimed > 0) supply.stampPickupClaim(e, { source: from, goodType, amount: claimed });
-  atOrWalk(world, e, here, cell ?? interactionCell(world, ctx, terrain, from, here), () =>
-    startPickup(world, ctx, e, plan, from, goodType, CARRY_CAPACITY),
-  );
+  walkThenLift(plan, from, goodType, undefined, cell);
+}
+
+/**
+ * A workshop input fetch: {@link walkPickupBatch}, except a walk to a self-filling house of the good
+ * (`refills`, the source search's verdict) claims nothing there, since the original's reservation never
+ * stops a second fetcher and a far walker must not hold the refill up. The zero claim still names the
+ * source for the workplace's inbound count.
+ */
+export function walkFetchInput(plan: PlannerContext, from: Entity, goodType: number, refills: boolean): void {
+  const { world, entity: e, supply } = plan;
+  const claimed = refills ? 0 : Math.min(CARRY_CAPACITY, unclaimedStockOf(world, supply, from, goodType));
+  if (claimed > 0 || refills) supply.stampPickupClaim(e, { source: from, goodType, amount: claimed });
+  walkThenLift(plan, from, goodType, refills);
+}
+
+/** The first short idle slot (`setatomic <job> 2`), played by a fetcher waiting at an empty well or hive. */
+const REFILL_WAIT_ATOMIC_ID = 2;
+
+/**
+ * Walk to `from`, then start the pickup. Original behavior: at a self-filling house of the good the clip
+ * starts while the shelf holds a unit, whatever is claimed, so parallel lifters may start; the first clip to
+ * finish takes it and the rest end empty-handed. On an empty shelf the original idles a clip and searches
+ * again; here the settler idles, keeping its errand, until the tick after the next refill beat.
+ * `refills` is the caller's verdict on `from`, else judged on arrival at an empty shelf.
+ */
+function walkThenLift(
+  plan: PlannerContext,
+  from: Entity,
+  goodType: number,
+  refills?: boolean,
+  cell?: NodeId,
+): void {
+  const { world, ctx, terrain, entity: e, here } = plan;
+  atOrWalk(world, e, here, cell ?? interactionCell(world, ctx, terrain, from, here), () => {
+    const empty = (accessibleStockAmounts(world, from)?.get(goodType) ?? 0) <= 0;
+    if (empty && (refills ?? refillingGoodsOf(world, ctx, from).includes(goodType))) {
+      startAtomic(world, e, REFILL_WAIT_ATOMIC_ID, { kind: 'idle' }, ticksPastNextRefill(ctx.tick), null);
+    } else {
+      startPickup(world, ctx, e, plan, from, goodType, CARRY_CAPACITY);
+    }
+  });
+}
+
+/** The wait's length from `tick`, counted: it ends on the next refill beat, `tick` included, and the refill
+ *  runs after the planner on its beat, so the waiter plans again on the tick after and finds the unit. */
+function ticksPastNextRefill(tick: number): number {
+  return ((TICKS_PER_SECOND - (tick % TICKS_PER_SECOND)) % TICKS_PER_SECOND) + 1;
 }

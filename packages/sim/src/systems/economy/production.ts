@@ -130,7 +130,7 @@ export const productionSystem: System = (world, ctx) => {
         choices[i] = nextCycleFor(world, ctx, e, next[i] as Entity, recipes);
       const reserved =
         workforce !== undefined && recipes.size > 1
-          ? incomingRecipeReservations(world, ctx, e, recipes, workforce, choices)
+          ? incomingRecipeReservations(world, ctx, e, recipes, workforce, staffing.operators, choices)
           : undefined;
       const stock = world.get(e, Stockpile).amounts;
       let winner = -1;

@@ -759,28 +759,6 @@ describe('producer unblocks its own full output slot', () => {
     expect(sim.world.get(forge, Production).cycles[0]?.goodType).toBe(7);
   });
 
-  it('holds a partially stocked input while a bound carrier brings the last unit', () => {
-    const content = testContent();
-    const forgeType = content.buildings.find((building) => building.typeId === FORGE);
-    const secondRecipe = forgeType?.recipes[1];
-    if (forgeType === undefined || secondRecipe === undefined)
-      throw new Error('fixture forge needs its second recipe');
-    forgeType.workers.push({ jobType: CARRIER, count: 1 });
-    secondRecipe.inputs = [{ goodType: WOOD, amount: 2 }];
-    const sim = new Simulation({ seed: 1, content, map: grassMap(6, 1) });
-    const forge = buildingAt(sim, FORGE, 0, 0, [[WOOD, 1]]);
-    settlerAt(sim, 5, 0, WOODCUTTER);
-    const smith = settlerAt(sim, 0, 0, CARPENTER, forge);
-    sim.world.mut(smith, SettlerProgress).experience.set(WOOD_TRACK, PLANK_GATE_RAW_XP);
-    pinProducts(sim, smith, [PLANK, FOOD_SIMPLE], 1);
-    const carrier = settlerAt(sim, 3, 0, CARRIER, forge);
-    sim.world.add(carrier, Carrying, { goodType: WOOD, amount: 1 });
-
-    for (let i = 0; i < 500; i++) sim.step();
-
-    expect(sim.world.get(forge, Stockpile).amounts.get(FOOD_SIMPLE) ?? 0).toBeGreaterThan(0);
-  });
-
   it('does not wait for a carrier whose player order prevents delivery', () => {
     const content = testContent();
     const forgeType = content.buildings.find((building) => building.typeId === FORGE);

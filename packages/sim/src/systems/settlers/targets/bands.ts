@@ -74,6 +74,12 @@ export class TargetBands {
     return this.fresh(this.held.holding(goodType));
   }
 
+  /** {@link holding} plus the self-filling houses of `goodType`, empty ones included: the workshop input
+   *  search's band. */
+  supplying(goodType: number): InteractionCellIndex {
+    return this.fresh(this.held.supplying(goodType));
+  }
+
   /** Stores {@link canStoreGood} accepts `goodType` into, keyed separately per `excludeProducers` mode and
    *  drawn from the cross-tick sink ledger. */
   sinksFor(goodType: number, excludeProducers: boolean): InteractionCellIndex {

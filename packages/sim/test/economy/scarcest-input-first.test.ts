@@ -112,6 +112,7 @@ describe('a producer fetches the scarcest recipe input first', () => {
     expect(nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL)).toEqual({
       store: warehouse,
       goodType: WHEAT,
+      refills: false,
     });
   });
 
@@ -176,6 +177,7 @@ describe('a producer fetches the scarcest recipe input first', () => {
     expect(nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL)).toEqual({
       store: warehouse,
       goodType: WHEAT,
+      refills: false,
     });
 
     const pile = plan.world.create(); // unowned, so on the owned seeker's side too
@@ -184,6 +186,7 @@ describe('a producer fetches the scarcest recipe input first', () => {
     expect(nearestMissingInputSource(owned, workplace, recipe, CARRIER_SHORTFALL)).toEqual({
       store: pile,
       goodType: WHEAT,
+      refills: false,
     });
   });
 });

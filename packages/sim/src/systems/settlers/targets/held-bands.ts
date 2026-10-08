@@ -107,7 +107,8 @@ interface JudgedHolder {
 /**
  * The band of stores {@link storeYieldsGood} would strip of one good, kept off the holder ledger: a sync
  * judges again the holders the ledger recaptured since the last one, since a positioned stockpile never
- * moves, and only the piles' burial when the structure overlay that check reads moved.
+ * moves, and only the piles' burial when the structure overlay that check reads moved. A `supplying`
+ * band also admits the good's self-filling houses while they are empty.
  */
 class HoldingBand implements SyncedBand {
   private readonly band: HeldBand;
@@ -131,6 +132,7 @@ class HoldingBand implements SyncedBand {
     private readonly ctx: MapContext,
     private readonly terrain: TerrainGraph,
     private readonly goodType: number,
+    private readonly supplying: boolean,
   ) {
     this.band = new HeldBand(world, ctx, terrain, this.visitAdmitted);
   }
@@ -151,7 +153,7 @@ class HoldingBand implements SyncedBand {
     this.resources = resources;
     if (this.feed === null || ledger !== this.ledger) {
       this.ledger = ledger;
-      this.feed = ledger.watchHolders(this.goodType);
+      this.feed = this.supplying ? ledger.watchSuppliers(this.goodType) : ledger.watchHolders(this.goodType);
       this.rebuild();
       return;
     }
@@ -166,7 +168,9 @@ class HoldingBand implements SyncedBand {
    *  differs from a fresh build. */
   verify(): string[] {
     this.sync();
-    const cold = [...this.holders()].filter((e) => this.admitsCold(e)).sort((a, b) => a - b);
+    const members = new Set(this.holders());
+    for (const e of this.refillers()) members.add(e);
+    const cold = [...members].filter((e) => this.admitsCold(e)).sort((a, b) => a - b);
     const held = this.band.members();
     const problems = this.band.divergence();
     if (cold.length !== held.length || cold.some((e, i) => held[i] !== e)) {
@@ -178,11 +182,12 @@ class HoldingBand implements SyncedBand {
   private rebuild(): void {
     this.judged.clear();
     for (const e of this.holders()) this.judged.set(e, this.judge(e));
+    for (const e of this.refillers()) this.judged.set(e, this.judge(e));
     this.band.sync();
   }
 
   private rejudge(e: Entity): void {
-    if (!this.holders().has(e)) {
+    if (!this.holders().has(e) && !this.refillers().has(e)) {
       this.judged.delete(e);
       this.band.refile(e, false);
       return;
@@ -222,6 +227,11 @@ class HoldingBand implements SyncedBand {
   private holders(): ReadonlySet<Entity> {
     return this.ledger?.holders(this.goodType) ?? NO_HOLDERS;
   }
+
+  /** The self-filling houses a `supplying` band admits besides the holders; none for a holding band. */
+  private refillers(): ReadonlySet<Entity> {
+    return (this.supplying ? this.ledger?.refillers(this.goodType) : undefined) ?? NO_HOLDERS;
+  }
 }
 
 const NO_WALLS: ReadonlySet<NodeId> = new Set();
@@ -230,6 +240,7 @@ const NO_HOLDERS: ReadonlySet<Entity> = new Set();
 /** A world's held holding and sink bands, keyed by good, for one content set and terrain. */
 export class HeldBands {
   private readonly holdingByGood = new Map<number, HoldingBand>();
+  private readonly supplyingByGood = new Map<number, HoldingBand>();
   private readonly sinksByGood = new Map<number, HeldBand>();
   private readonly storageSinksByGood = new Map<number, HeldBand>();
   readonly ctx: MapContext;
@@ -243,10 +254,19 @@ export class HeldBands {
   }
 
   holding(goodType: number): HoldingBand {
-    let band = this.holdingByGood.get(goodType);
+    return this.holdingBand(this.holdingByGood, goodType, false);
+  }
+
+  /** {@link holding} plus the good's self-filling houses, empty ones included. */
+  supplying(goodType: number): HoldingBand {
+    return this.holdingBand(this.supplyingByGood, goodType, true);
+  }
+
+  private holdingBand(memo: Map<number, HoldingBand>, goodType: number, supplying: boolean): HoldingBand {
+    let band = memo.get(goodType);
     if (band === undefined) {
-      band = new HoldingBand(this.world, this.ctx, this.terrain, goodType);
-      this.holdingByGood.set(goodType, band);
+      band = new HoldingBand(this.world, this.ctx, this.terrain, goodType, supplying);
+      memo.set(goodType, band);
     }
     return band;
   }
@@ -270,6 +290,9 @@ export class HeldBands {
     const problems: string[] = [];
     for (const [good, band] of this.holdingByGood) {
       for (const m of band.verify()) problems.push(`targetBands holding ${good}: ${m}`);
+    }
+    for (const [good, band] of this.supplyingByGood) {
+      for (const m of band.verify()) problems.push(`targetBands supplying ${good}: ${m}`);
     }
     const check = (kind: string, bands: ReadonlyMap<number, HeldBand>): void => {
       for (const [good, band] of bands) {

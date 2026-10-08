@@ -2,6 +2,7 @@ import type { Recipe } from '@open-northland/data';
 import { Building, Production, Stockpile, sameSideAs } from '../../../../../components/index.js';
 import { ONE } from '../../../../../core/fixed.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
+import type { NodeId } from '../../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../../context.js';
 import { craftablePool, startableCycleCount } from '../../../../economy/production.js';
 import {
@@ -9,11 +10,18 @@ import {
   isWorkplaceOutput,
   mergedRecipeOf,
   recipesByProductOf,
+  refillingGoodsOf,
   type SupplyTally,
   stockCapacity,
 } from '../../../../stores/index.js';
 import type { PlannerContext } from '../../../planner/context.js';
-import { FetchableStock, QUALIFIES, unclaimedStockOf } from '../../../targets/index.js';
+import {
+  FetchableStock,
+  type InteractionCellIndex,
+  interactionCell,
+  type Qualified,
+  unclaimedStockOf,
+} from '../../../targets/index.js';
 import { unreachableGoalVeto } from '../../../unreachable-goals.js';
 import type { HaulFlagArea } from '../haul-flag-area.js';
 
@@ -66,11 +74,18 @@ export function workSeatCount(
   return running + startable;
 }
 
-/** The store a producer worker fetches one unit of a missing recipe input from. */
+/** The store a producer worker fetches one unit of a missing recipe input from; `refills` when it is a
+ *  self-filling house of the good. */
 export interface MissingInputSource {
   readonly store: Entity;
   readonly goodType: number;
+  readonly refills: boolean;
 }
+
+/** A source verdict: `true` once the search judged it a self-filling house of the good, `false` when it
+ *  qualified on an unclaimed unit before that was asked. */
+const LENDS: Qualified<boolean> = { payload: false };
+const REFILLS: Qualified<boolean> = { payload: true };
 
 /**
  * How far a fetch tops an input up. `restockToCapacity` raises the target from the recipe amount to the
@@ -84,11 +99,15 @@ export interface InputShortfall {
 
 /**
  * The source for the input `workplace` lacks most, or null when every input is stocked and nothing
- * reachable holds a short one: the nearest store that holds the good, a well's or hive's own shelf
- * included. Short inputs rank by how full they are against their target, emptiest first, ties in recipe
- * order; an input no reachable store holds falls through to the next. The trip brings one unit, so a
- * shortfall of two is two trips. Never from another player's store, nor a cell the worker failed to reach,
- * nor a source whose units of the good are all claimed by settlers already walking to it.
+ * reachable holds a short one: the store nearest the workplace's door that holds the good. Short inputs
+ * rank by how full they are against their target, emptiest first, ties in recipe order; an input no
+ * reachable store holds falls through to the next. The trip brings one unit, so a shortfall of two is two
+ * trips. Never from another player's store, nor a cell the worker failed to reach, nor a source whose units
+ * of the good are all claimed by settlers already walking to it.
+ *
+ * Original behavior: the source search starts from the work centre, here the door, not the worker. A
+ * self-filling house of the good qualifies even empty or claimed, so a fetcher always uses the nearest
+ * well or hive (owner ruling; the original idles a clip at an empty one and searches again).
  *
  * Approximation: the original's pick order between short inputs is unobserved; emptiest-first is authored.
  */
@@ -131,41 +150,62 @@ export function nearestMissingInputSource(
     const input = inputs[pick];
     if (input === undefined) return null;
     const goodType = input.goodType;
-    const band = sideHoldsNone(plan, goodType) ? null : targets.bands.holding(goodType);
-    const unclaimed = (e: Entity) =>
-      unclaimedStockOf(world, plan.supply, e, goodType) > 0 ? QUALIFIES : null;
+    const band = sideSuppliesNone(plan, goodType) ? null : targets.bands.supplying(goodType);
+    // The workplace never supplies itself; a self-filling house qualifies empty or claimed.
+    const source = (e: Entity): Qualified<boolean> | null => {
+      if (e === workplace) return null;
+      if (unclaimedStockOf(world, plan.supply, e, goodType) > 0) return LENDS;
+      return refillingGoodsOf(world, ctx, e).includes(goodType) ? REFILLS : null;
+    };
     const winner =
       band === null
         ? null
         : area !== undefined
           ? band.nearest(
               here,
-              (e) => (e === workplace ? null : unclaimed(e)),
+              source,
               targets.bands.goodsGate(here, plan.owner, area.gate),
               avoid,
               sameSideAs(world, plan.owner),
               area.center,
             )
-          : band.nearest(
-              here,
-              // The workplace never supplies itself.
-              (e) => (e === workplace ? null : unclaimed(e)),
-              targets.bands.goodsGate(here, plan.owner, plan.limit ?? undefined),
-              avoid,
-              sameSideAs(world, plan.owner),
-            );
-    if (winner !== null) return { store: winner.entity, goodType };
+          : nearestFromDoor(plan, workplace, band, source, avoid);
+    if (winner !== null) {
+      const store = winner.entity;
+      const refills = winner.payload || refillingGoodsOf(world, ctx, store).includes(goodType);
+      return { store, goodType, refills };
+    }
     lastIndex = pick;
     lastHave = pickHave;
     lastTarget = pickTarget;
   }
 }
 
-/** Whether no store on the seeker's side or unowned lends a unit of `goodType`, so no source can pass the
+/** The source nearest `workplace`'s door, where the original's search starts. */
+function nearestFromDoor(
+  plan: PlannerContext,
+  workplace: Entity,
+  band: InteractionCellIndex,
+  source: (e: Entity) => Qualified<boolean> | null,
+  avoid: ((cell: NodeId) => boolean) | undefined,
+) {
+  const { world, ctx, terrain, here, targets } = plan;
+  const door = interactionCell(world, ctx, terrain, workplace, here);
+  return band.nearest(
+    here,
+    source,
+    targets.bands.goodsGate(door, plan.owner, plan.limit ?? undefined),
+    avoid,
+    sameSideAs(world, plan.owner),
+    door,
+  );
+}
+
+/** Whether no store on the seeker's side or unowned lends or refills `goodType`, so no source can pass the
  *  side filter and the search would scan the whole band for nothing. An unowned seeker keeps the search. */
-function sideHoldsNone(plan: PlannerContext, goodType: number): boolean {
+function sideSuppliesNone(plan: PlannerContext, goodType: number): boolean {
   return (
-    plan.owner !== undefined && !FetchableStock.of(plan.world, plan.ctx).exceeds(plan.owner, goodType, 0)
+    plan.owner !== undefined && !FetchableStock.of(plan.world, plan.ctx).sideSupplies(plan.owner, goodType)
   );
 }
 

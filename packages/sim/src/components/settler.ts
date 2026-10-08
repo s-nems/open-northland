@@ -282,7 +282,9 @@ export const SupplyRun = defineComponent<{
  * choosing a source later subtract live claims from each candidate's stock, so a unit one settler is
  * already walking to is not offered to the next; the pickup itself is never refused on a claim. The
  * claim ends with the pickup effect, with the settler's next planning pass, or with any order that
- * diverts it, so a settler that gives the walk up frees the unit at once.
+ * diverts it, so a settler that gives the walk up frees the unit at once. A workshop input fetch to a
+ * self-filling house claims 0 there, only naming the source; at such a house the pickup starts on the
+ * shelf's physical stock, whatever is claimed.
  */
 export const PickupClaim = defineComponent<{
   source: Entity;
