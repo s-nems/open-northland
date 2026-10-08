@@ -1,7 +1,7 @@
-import { type HumanVoices, VOICE_CLASSES } from '@open-northland/data';
+import { type AnimalCall, type HumanVoices, VOICE_CLASSES } from '@open-northland/data';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
-import { creatureTribe, entityOwner, entityTile, isPerson, type TilePoint } from '../snapshot.js';
+import { creatureTribe, entityOwner, entityTile, isPerson } from '../snapshot.js';
 import { computeSpatial } from '../spatial.js';
 import type { ChatterInput, DirectorInput, Lane, OneShot } from '../types.js';
 import { humanVoicesOf } from '../voices.js';
@@ -49,78 +49,112 @@ export function selectionVoiceShots(input: DirectorInput): OneShot[] {
   return input.selection === undefined ? [] : selectionShots(input, input.selection);
 }
 
-/** One drawn creature that may speak, placed. */
-interface Speaker {
-  readonly id: number;
-  readonly tile: TilePoint;
-}
-
-/** The drawn creatures by what they speak with: people by their tribe-and-class voice row in the order the
- *  original polls them (tribe, then child / female / male), animals by tribe. */
-interface Speakers {
-  readonly pools: readonly (readonly [HumanVoices, readonly Speaker[]])[];
-  readonly herds: ReadonlyMap<number, readonly Speaker[]>;
-}
-
-function addTo<K>(groups: Map<K, Speaker[]>, key: K, speaker: Speaker): void {
-  const group = groups.get(key);
-  if (group === undefined) groups.set(key, [speaker]);
-  else group.push(speaker);
+/** A chatter pool or a calling herd and the ids of its creatures drawn this frame. */
+interface Voiced<T> {
+  readonly source: T;
+  readonly files: readonly string[];
+  readonly ids: number[];
 }
 
 /**
- * The drawn creatures that may speak: the local player's own people with a chatter pool (the original
- * searches its own humans' sector lists) and every animal of a calling tribe. A creature without a
- * position cannot be placed and is left out.
+ * The index's chatter pools in the order the original polls them (tribe, then child / female / male)
+ * and its calling herds, each with an id list the frame refills, so counting the drawn creatures
+ * allocates nothing once a pool has been seen.
  */
-function speakers(
-  snapshot: WorldSnapshot,
-  index: SoundIndex,
-  drawn: Iterable<number>,
-  localPlayer: number | undefined,
-): Speakers {
-  const pools = new Map<HumanVoices, Speaker[]>();
-  const herds = new Map<number, Speaker[]>();
-  for (const id of drawn) {
-    const e = entityById(snapshot, id);
-    if (e === undefined) continue;
-    const tribe = creatureTribe(e.components);
-    const tile = entityTile(e.components);
-    if (tribe === undefined || tile === null) continue;
-    if (isPerson(e.components)) {
-      if (localPlayer === undefined || entityOwner(e.components) !== localPlayer) continue;
-      const voices = humanVoicesOf(index, e);
-      if (voices?.generic !== undefined) addTo(pools, voices, { id, tile });
-    } else if (index.animalCalls.has(tribe)) {
-      addTo(herds, tribe, { id, tile });
+interface ChatterTally {
+  readonly pools: readonly Voiced<HumanVoices>[];
+  readonly poolOf: ReadonlyMap<HumanVoices, number[]>;
+  readonly herds: readonly Voiced<AnimalCall>[];
+  readonly herdOf: ReadonlyMap<number, number[]>;
+}
+
+const tallies = new WeakMap<SoundIndex, ChatterTally>();
+
+function tallyFor(index: SoundIndex): ChatterTally {
+  const known = tallies.get(index);
+  if (known !== undefined) return known;
+  const pools: Voiced<HumanVoices>[] = [];
+  const seen = new Set<HumanVoices>(); // a tribe that borrows its voices shares its lender's rows
+  for (const byClass of index.humanVoices.values()) {
+    for (const voices of byClass.values()) {
+      const files = voices.generic === undefined ? undefined : groupFiles(index, voices.generic);
+      if (files === undefined || seen.has(voices)) continue;
+      seen.add(voices);
+      pools.push({ source: voices, files, ids: [] });
     }
   }
   const pollOrder = (v: HumanVoices): number =>
     v.tribe * VOICE_CLASSES.length + VOICE_CLASSES.indexOf(v.voiceClass);
-  return { pools: [...pools.entries()].sort(([a], [b]) => pollOrder(a) - pollOrder(b)), herds };
+  pools.sort((a, b) => pollOrder(a.source) - pollOrder(b.source));
+  const herds: Voiced<AnimalCall>[] = [];
+  for (const call of index.animalCalls.values()) {
+    const files = groupFiles(index, call.group);
+    if (files !== undefined) herds.push({ source: call, files, ids: [] });
+  }
+  const tally: ChatterTally = {
+    pools,
+    poolOf: new Map(pools.map((pool) => [pool.source, pool.ids])),
+    herds,
+    herdOf: new Map(herds.map((herd) => [herd.source.tribe, herd.ids])),
+  };
+  tallies.set(index, tally);
+  return tally;
+}
+
+/**
+ * Count the drawn creatures that may speak into the index's tally: the local player's own people with
+ * a chatter pool (the original searches its own humans' sector lists) and every animal of a calling
+ * tribe. Only ids are kept; a speaker's position is read once a roll picks it.
+ */
+function tallyDrawn(
+  snapshot: WorldSnapshot,
+  index: SoundIndex,
+  drawn: Iterable<number>,
+  localPlayer: number | undefined,
+): ChatterTally {
+  const tally = tallyFor(index);
+  for (const pool of tally.pools) pool.ids.length = 0;
+  for (const herd of tally.herds) herd.ids.length = 0;
+  for (const id of drawn) {
+    const e = entityById(snapshot, id);
+    if (e === undefined) continue;
+    const tribe = creatureTribe(e.components);
+    if (tribe === undefined) continue;
+    if (isPerson(e.components)) {
+      if (localPlayer === undefined || entityOwner(e.components) !== localPlayer) continue;
+      const voices = humanVoicesOf(index, e);
+      if (voices !== undefined) tally.poolOf.get(voices)?.push(id);
+    } else {
+      tally.herdOf.get(tribe)?.push(id);
+    }
+  }
+  return tally;
 }
 
 const VOICE_LANE: Lane = { kind: 'voice' };
 
-/** A positioned, self-exclusive one-shot at a speaker in the voice lane, or null when it stands off screen
- *  or in the fog. */
+/** A positioned, self-exclusive one-shot at a picked speaker in the voice lane, or null when it has no
+ *  position or stands off screen or in the fog. */
 function speakerShot(
   input: DirectorInput,
-  speaker: Speaker,
+  id: number,
   files: readonly string[],
   key: string,
 ): OneShot | null {
+  const e = entityById(input.snapshot, id);
+  const tile = e === undefined ? null : entityTile(e.components);
+  if (tile === null) return null;
   const { camera, canvasW, canvasH, visibleTile } = input;
-  if (visibleTile !== undefined && !visibleTile(speaker.tile.col, speaker.tile.row)) return null;
-  const spatial = computeSpatial(speaker.tile.col, speaker.tile.row, camera, canvasW, canvasH);
+  if (visibleTile !== undefined && !visibleTile(tile.col, tile.row)) return null;
+  const spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
   if (spatial === null) return null;
   const gain = spatial.gain * poolGain(input.index, files);
   return { files, gain, pan: spatial.pan, key, exclusive: 'wav', lane: VOICE_LANE };
 }
 
-/** One of a group, picked by the roll source. */
-function pickOne(members: readonly Speaker[], random: () => number): Speaker | undefined {
-  return members[Math.floor(random() * members.length)];
+/** One of a group's ids, picked by the roll source. */
+function pickOne(ids: readonly number[], random: () => number): number | undefined {
+  return ids[Math.floor(random() * ids.length)];
 }
 
 /**
@@ -129,14 +163,13 @@ function pickOne(members: readonly Speaker[], random: () => number): Speaker | u
  * random (approximation: the original takes the first of them its sector scan meets). At most one line a
  * tick, and a crowd of many pools is no chattier than its largest pool.
  */
-function genericRoll(input: DirectorInput, chatter: ChatterInput, pools: Speakers['pools']): OneShot | null {
+function genericRoll(input: DirectorInput, chatter: ChatterInput, tally: ChatterTally): OneShot | null {
   const die = Math.floor(chatter.random() * GENERIC_ROLL_RANGE);
-  for (const [voices, members] of pools) {
-    if (die >= members.length) continue;
-    const files = voices.generic === undefined ? undefined : groupFiles(input.index, voices.generic);
-    const speaker = pickOne(members, chatter.random);
-    if (files === undefined || speaker === undefined) continue;
-    return speakerShot(input, speaker, files, `generic:${voices.generic}`);
+  for (const pool of tally.pools) {
+    if (die >= pool.ids.length) continue;
+    const speaker = pickOne(pool.ids, chatter.random);
+    if (speaker === undefined) continue;
+    return speakerShot(input, speaker, pool.files, `generic:${pool.source.generic}`);
   }
   return null;
 }
@@ -146,19 +179,16 @@ function genericRoll(input: DirectorInput, chatter: ChatterInput, pools: Speaker
  * rolls its `probability` in {@link ANIMAL_ROLL_RANGE} (inclusive, as the original compares), and a winner
  * calls through one of its animals picked at random.
  */
-function animalRoll(input: DirectorInput, chatter: ChatterInput, herds: Speakers['herds']): OneShot[] {
-  const shots: OneShot[] = [];
-  for (const [tribe, herd] of herds) {
-    const call = input.index.animalCalls.get(tribe);
-    if (call === undefined || herd.length < call.minCount) continue;
+function animalRoll(input: DirectorInput, chatter: ChatterInput, tally: ChatterTally, out: OneShot[]): void {
+  for (const herd of tally.herds) {
+    const call = herd.source;
+    if (herd.ids.length === 0 || herd.ids.length < call.minCount) continue;
     if (Math.floor(chatter.random() * ANIMAL_ROLL_RANGE) > call.probability) continue;
-    const files = groupFiles(input.index, call.group);
-    const caller = pickOne(herd, chatter.random);
-    if (files === undefined || caller === undefined) continue;
-    const shot = speakerShot(input, caller, files, `animal:${call.group}`);
-    if (shot !== null) shots.push(shot);
+    const caller = pickOne(herd.ids, chatter.random);
+    if (caller === undefined) continue;
+    const shot = speakerShot(input, caller, herd.files, `animal:${call.group}`);
+    if (shot !== null) out.push(shot);
   }
-  return shots;
 }
 
 /** The unprompted voices this frame: the human natter and animal calls of the drawn creatures, rolled once
@@ -167,13 +197,12 @@ export function chatterShots(input: DirectorInput): OneShot[] {
   const chatter = input.chatter;
   if (chatter === undefined || chatter.ticks <= 0) return [];
   const ticks = Math.min(chatter.ticks, MAX_CHATTER_TICKS_PER_FRAME);
-  const { pools, herds } = speakers(input.snapshot, input.index, chatter.drawn(), input.localPlayer);
-  if (pools.length === 0 && herds.size === 0) return [];
+  const tally = tallyDrawn(input.snapshot, input.index, chatter.drawn(), input.localPlayer);
   const shots: OneShot[] = [];
   for (let tick = 0; tick < ticks; tick++) {
-    const line = genericRoll(input, chatter, pools);
+    const line = genericRoll(input, chatter, tally);
     if (line !== null) shots.push(line);
-    shots.push(...animalRoll(input, chatter, herds));
+    animalRoll(input, chatter, tally, shots);
   }
   return shots;
 }

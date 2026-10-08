@@ -246,6 +246,41 @@ describe('idle chatter', () => {
     expect(direct({ drawn: [2], random: scripted(0), visibleTile: () => true })).toHaveLength(1);
   });
 
+  it('reads a position only for the speakers a roll picks, however many are drawn', () => {
+    const CROWD = 200;
+    const FIRST_ID = 100;
+    let positionReads = 0;
+    const crowd = Array.from({ length: CROWD }, (_, i) => ({
+      id: FIRST_ID + i,
+      components: {
+        get Position() {
+          positionReads++;
+          return here;
+        },
+        Settler: viking,
+        Person: person,
+        Owner: { player: LOCAL },
+      },
+    }));
+    const shots = directAudio({
+      events: [],
+      snapshot: { ...snapshot, entities: [...snapshot.entities, ...crowd] },
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings,
+      localPlayer: LOCAL,
+      chatter: {
+        drawn: () => crowd.map((e) => e.id),
+        ticks: MAX_CHATTER_TICKS_PER_FRAME,
+        random: scripted(0),
+      },
+    }).oneShots;
+    expect(shots).toHaveLength(MAX_CHATTER_TICKS_PER_FRAME); // every tick's roll wins
+    expect(positionReads).toBe(shots.length);
+  });
+
   it('caps a long frame at MAX_CHATTER_TICKS_PER_FRAME rolls', () => {
     // Every roll wins (random 0): one line per rolled tick, never more than the cap.
     const shots = direct({ drawn: [2], ticks: 50, random: scripted(0) });
