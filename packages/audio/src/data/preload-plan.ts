@@ -4,7 +4,7 @@ import { UI_CUE_FILES } from './ui-cues.js';
 /**
  * The order the bank is decoded in ahead of play, so a first click or first fight finds its wav
  * already decoded. Tiers run from what the player hears first and waits for most (a click, an
- * order's answer) to what only fills the background (talk, terrain beds).
+ * order's answer or refusal) to what only fills the background (talk, terrain beds).
  */
 export const PRELOAD_TIERS = ['interface', 'jingle', 'action', 'chatter', 'ambient'] as const;
 export type PreloadTier = (typeof PRELOAD_TIERS)[number];
@@ -44,6 +44,7 @@ export function preloadPlan(index: SoundIndex): readonly PreloadEntry[] {
   for (const byClass of index.humanVoices.values()) {
     for (const voices of byClass.values()) {
       for (const group of voices.respondOk) named('interface', group);
+      for (const group of voices.respondNo) named('interface', group);
       named('action', voices.scream);
       named('chatter', voices.generic);
     }

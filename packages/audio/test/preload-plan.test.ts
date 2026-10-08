@@ -19,6 +19,7 @@ const bank: SoundBank = {
     },
     { name: 'Talk Viking Male', logicSoundType: TALK_SOUND_TYPE, sfx: sfx('generic/talk 1.wav') },
     { name: 'Viking Male Ok', sfx: sfx('humantalk/ok 1.wav') },
+    { name: 'Viking Male No', sfx: sfx('humantalk/no 1.wav') },
     { name: 'Man Get Hit', sfx: sfx('static/hit 1.wav') },
     { name: 'Viking Murmur', sfx: sfx('generic/murmur 1.wav') },
     { name: 'Deer Call', sfx: sfx('generic/deer.wav') },
@@ -34,7 +35,7 @@ const bank: SoundBank = {
       scream: 'Man Get Hit',
       generic: 'Viking Murmur',
       respondOk: ['Viking Male Ok'],
-      respondNo: [],
+      respondNo: ['Viking Male No'],
     },
   ],
   animalCalls: [{ tribe: DEER, minCount: 1, probability: 1, group: 'Deer Call' }],
@@ -43,10 +44,11 @@ const bank: SoundBank = {
 describe('preloadPlan', () => {
   const plan = preloadPlan(buildSoundIndex(bank, [], []));
 
-  it('orders the bank from clicks and answers to jingles, work and combat, then talk and beds', () => {
+  it('orders the bank from clicks, answers and refusals to jingles, work and combat, then talk and beds', () => {
     expect(plan).toEqual([
       ...Object.values(UI_CUE_FILES).map((file) => ({ file, tier: 'interface' })),
       { file: 'humantalk/ok 1.wav', tier: 'interface' },
+      { file: 'humantalk/no 1.wav', tier: 'interface' },
       { file: 'jingles/birth.wav', tier: 'jingle' },
       { file: 'static/hit 1.wav', tier: 'action' },
       { file: 'static/hammer 1.wav', tier: 'action' },
