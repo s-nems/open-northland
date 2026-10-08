@@ -1,11 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
-import {
-  Owner,
-  Position,
-  SIGNPOST_LINK_BUDGET,
-  SIGNPOST_LINK_RANGE_NODES,
-  Signpost,
-} from '../../components/index.js';
+import { Owner, Position, Signpost } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { TileBuckets } from '../../inspect/tile-buckets.js';
 import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
@@ -55,7 +49,7 @@ function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, conte
   const p = world.get(post, Position);
   const hx = nodeHxOfPosition(p.x, p.y);
   const hy = nodeHyOfPosition(p.y);
-  const r = SIGNPOST_LINK_RANGE_NODES;
+  const r = SIGNPOST_LINK_SPAN.range;
   const owner = world.get(post, Owner).player;
   const count = sitesOf(world).collect(
     { minX: (hx - r) / 2, maxX: (hx + r) / 2, minY: (hy - r) / 2, maxY: (hy + r) / 2 },
@@ -70,7 +64,15 @@ function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, conte
   if (candidates === 0) return [];
   const area =
     content === undefined
-      ? searchReach(terrain, { size: 0, has: () => false }, hx, hy, r, SIGNPOST_LINK_BUDGET)
+      ? searchReach(
+          terrain,
+          { size: 0, has: () => false },
+          hx,
+          hy,
+          r,
+          SIGNPOST_LINK_SPAN.budget,
+          SIGNPOST_LINK_SPAN.groundCost,
+        )
       : postTerrainReach(world, content, terrain, post, hx, hy, SIGNPOST_LINK_SPAN).area;
   const linked: Entity[] = [];
   for (let i = 0; i < candidates; i++) {
@@ -80,7 +82,7 @@ function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, conte
   return linked.sort((a, b) => a - b);
 }
 
-/** Links reach strictly inside {@link SIGNPOST_LINK_RANGE_NODES} within {@link SIGNPOST_LINK_BUDGET}.
+/** Links follow {@link SIGNPOST_LINK_SPAN}, whatever the ground's resistance.
  *  Link count remains uncapped; the original retains at most eight neighbours. */
 export function settleSignpostLinks(
   world: World,

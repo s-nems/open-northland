@@ -2,8 +2,8 @@ import type { ContentSet } from '@open-northland/data';
 import {
   GOODS_SEARCH_RANGE_NODES,
   Position,
-  SIGNPOST_LINK_BUDGET,
   SIGNPOST_LINK_RANGE_NODES,
+  SIGNPOST_LINK_STEPS,
   Signpost,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -31,20 +31,23 @@ export function signpostTerrainKey(world: World, content: ContentSet, terrain: T
   return `${signpostMask(world, content, terrain).version}:${terrain.mirroredRoadRevision}`;
 }
 
-/** A range search's hex range and the ground resistance it spends. */
+/** A range search's hex range and what it spends: ground resistance, or steps without `groundCost`. */
 export interface ReachSpan {
   readonly range: number;
   readonly budget: number;
+  readonly groundCost: boolean;
 }
 
 export const GOODS_SEARCH_SPAN: ReachSpan = {
   range: GOODS_SEARCH_RANGE_NODES,
   budget: originalReachBudget(GOODS_SEARCH_RANGE_NODES),
+  groundCost: true,
 };
 
 export const SIGNPOST_LINK_SPAN: ReachSpan = {
   range: SIGNPOST_LINK_RANGE_NODES,
-  budget: SIGNPOST_LINK_BUDGET,
+  budget: SIGNPOST_LINK_STEPS,
+  groundCost: false,
 };
 
 export interface TerrainReach extends ReachSearch {
@@ -83,7 +86,7 @@ export function terrainReach(
     return held;
   }
   return {
-    ...floodReach(terrain, mask.levelled(), hx, hy, span.range, span.budget),
+    ...floodReach(terrain, mask.levelled(), hx, hy, span.range, span.budget, span.groundCost),
     terrain,
     hx,
     hy,

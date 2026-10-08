@@ -103,11 +103,13 @@ export function searchReach(
   hy: number,
   range: number,
   budget = originalReachBudget(range),
+  groundCost = true,
 ): ReachArea {
-  return floodReach(terrain, blocked, hx, hy, range, budget).area;
+  return floodReach(terrain, blocked, hx, hy, range, budget, groundCost).area;
 }
 
-/** {@link searchReach} with its searched box. The marked set is order-independent: a node is marked when
+/** {@link searchReach} with its searched box; without `groundCost` every step costs one rather than the
+ *  entered node's resistance. The marked set is order-independent: a node is marked when
  *  it neighbours any node whose cheapest cost stays under the budget, so the order a bucket is walked in
  *  does not matter. */
 export function floodReach(
@@ -117,6 +119,7 @@ export function floodReach(
   hy: number,
   range: number,
   budget = originalReachBudget(range),
+  groundCost = true,
 ): ReachSearch {
   const minX = Math.max(0, hx - range + 1);
   const maxX = Math.min(terrain.width - 1, hx + range - 1);
@@ -199,7 +202,7 @@ export function floodReach(
           known = open;
           costs[slot] = open;
         }
-        const nextCost = cost + resistance;
+        const nextCost = cost + (groundCost ? resistance : 1);
         if (nextCost >= known) continue;
         costs[slot] = nextCost;
         if (entries === entryNodes.length) growEntries();

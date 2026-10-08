@@ -38,8 +38,8 @@ import { stampPost } from './support.js';
 const VIKING = 1;
 const SCOUT = 27; // fixture job 27 - allowatomic 43 only, like the original scout
 const WOODCUTTER = 1;
-/** The decoded maps' commonest walking resistance. */
-const ROUGH_GROUND = 3;
+/** The decoded maps' roughest walking resistance. */
+const ROUGH_GROUND = 5;
 const P0 = 0;
 
 function makeUnit(sim: Simulation, x: number, y: number, jobType: number, player = P0): Entity {
@@ -263,7 +263,7 @@ describe('signpostNetwork - connected groups', () => {
     expect(groupOf.get(far)).not.toBe(groupOf.get(a));
   });
 
-  it('posts link across the whole range over resistance 3 ground', () => {
+  it('posts link across the whole range whatever the ground resistance', () => {
     const sim = new Simulation({
       seed: 3,
       content: testContent(),
