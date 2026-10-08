@@ -230,7 +230,7 @@ export class OneShotArbiter {
 
   private offerJingle(shot: OneShot, now: number, out: OneShot[]): void {
     const type = laneType(shot);
-    if (type === null) return;
+    if (type === null || this.ledger.keyCooling(shot.key, now)) return;
     const state = this.types.get(type.key);
     if (state !== undefined && now < state.lastRing + state.cooldownS) return; // folded into the last ring
     if (now < this.laneBusyUntil && type.rank <= this.lanePriority) {

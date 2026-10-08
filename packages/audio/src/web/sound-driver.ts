@@ -224,9 +224,7 @@ export class SoundDriver {
    *  With `rateKey` (a message type), that key rings at most once per notice interval. */
   notify(notification: NotificationCue, rateKey?: string): void {
     if (!this.engine.audible) return;
-    const now = this.engine.clock;
-    if (rateKey !== undefined && !this.alerts.admit(`${notification}:${rateKey}`, now)) return;
-    this.engine.fire(this.decide([notificationShot(notification)], now));
+    this.engine.fire(this.decide([notificationShot(notification, rateKey)], this.engine.clock));
   }
 
   /** The local seat was hit: the next frame, which knows the camera, decides whether the horn sounds. */

@@ -237,7 +237,8 @@ export class OneShotLedger {
     return pool;
   }
 
-  private keyCooling(key: string, now: number): boolean {
+  /** Whether `key` started within its cooldown ({@link OneShot.cooldownS}) of `now`. */
+  keyCooling(key: string, now: number): boolean {
     const readyAt = this.keyReadyAt.get(key);
     return readyAt !== undefined && now < readyAt;
   }

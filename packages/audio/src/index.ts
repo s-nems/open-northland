@@ -18,7 +18,6 @@ export {
   AttackAlerts,
   type AttackFront,
   type AttackReport,
-  NOTICE_CUE_INTERVAL_S,
   type NoticeVoice,
 } from './data/alerts.js';
 export {
@@ -209,6 +208,7 @@ export type {
 } from './data/types.js';
 export {
   NOTICE_CARD_GAIN,
+  NOTICE_CUE_INTERVAL_S,
   NOTIFICATION_CUES,
   type NotificationCue,
   notificationShot,

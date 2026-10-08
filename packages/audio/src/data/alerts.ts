@@ -5,7 +5,7 @@ import { groupFiles, poolGain, type SoundIndex } from './bank.js';
 import { VOICE_MUSIC_DUCK_DB } from './mixer.js';
 import { voiceClassOf } from './snapshot.js';
 import type { Lane, NoticeVoiceSound, OneShot, SoundBindings } from './types.js';
-import { UI_CUE_GAIN } from './ui-cues.js';
+import { NOTICE_CUE_INTERVAL_S, UI_CUE_GAIN } from './ui-cues.js';
 
 /**
  * Attack alerts and the notices' own sounds. The original sounds no attack alert at all, only its
@@ -57,9 +57,6 @@ export const ATTACK_ALERT_GAIN: Readonly<Record<AttackFront, number>> = {
 /** dB the world and ambient buses dip while an alert rings, so the horn reads over a battle. Authored:
  *  the common "a few dB" alert duck. */
 export const ALERT_DUCK_DB = -4;
-/** Least seconds between two sounds of one notice key (a message type, a notice voice). Approximation:
- *  a busy settlement raises the same note for many settlers in a row. */
-export const NOTICE_CUE_INTERVAL_S = 20;
 
 const FRONT_ALERT: Readonly<Record<AttackFront, AlertKind>> = {
   base: 'baseAttacked',
@@ -121,18 +118,6 @@ export class AttackAlerts {
   }
 }
 
-/** Admits one sound per key per {@link NOTICE_CUE_INTERVAL_S}. */
-export class NoticeCueGate {
-  private readonly lastRing = new Map<string, number>();
-
-  admit(key: string, now: number): boolean {
-    const last = this.lastRing.get(key);
-    if (last !== undefined && now - last < NOTICE_CUE_INTERVAL_S) return false;
-    this.lastRing.set(key, now);
-    return true;
-  }
-}
-
 /** The alert lane entry of `alert`. */
 export function alertLane(alert: AlertKind): Lane {
   return { kind: 'alert', alert };
@@ -164,8 +149,9 @@ function noticeVoiceFiles(index: SoundIndex, sound: NoticeVoiceSound): readonly 
   return sound.files.length > 0 ? sound.files : undefined;
 }
 
-/** The line a settler's `voice` notice speaks in its class's voice, centred in the alert lane; null for
- *  a settler gone from the snapshot or a class the bindings leave silent (a child). */
+/** The line a settler's `voice` notice speaks in its class's voice, centred in the alert lane and
+ *  keyed per voice to ring once per {@link NOTICE_CUE_INTERVAL_S}; null for a settler gone from the
+ *  snapshot or a class the bindings leave silent (a child). */
 export function noticeVoiceShot(
   index: SoundIndex,
   bindings: SoundBindings,
@@ -185,6 +171,7 @@ export function noticeVoiceShot(
     pan: 0,
     key: `notice:${voice}`,
     lane: alertLane(voice),
+    cooldownS: NOTICE_CUE_INTERVAL_S,
     duckMusicDb: VOICE_MUSIC_DUCK_DB,
   };
 }
@@ -197,14 +184,13 @@ interface SpokenNotice {
 
 /**
  * The alerts and notice voices reported since the last frame, turned into one-shots on the next one,
- * which knows the camera and the settlers. A notice voice speaks once per {@link NOTICE_CUE_INTERVAL_S};
- * the attacks go through {@link AttackAlerts}.
+ * which knows the camera and the settlers. The attacks go through {@link AttackAlerts}; a notice voice's
+ * repeats are the arbiter's to hold back, by the shot's own cooldown.
  */
 export class AlertDesk {
   private attacks: AttackReport[] = [];
   private spoken: SpokenNotice[] = [];
   private readonly alerts = new AttackAlerts();
-  private readonly gate = new NoticeCueGate();
 
   reportAttack(report: AttackReport): void {
     this.attacks.push(report);
@@ -212,11 +198,6 @@ export class AlertDesk {
 
   speak(voice: NoticeVoice, settler: number): void {
     this.spoken.push({ voice, settler });
-  }
-
-  /** Whether a notice keyed `key` may ring now. */
-  admit(key: string, now: number): boolean {
-    return this.gate.admit(key, now);
   }
 
   /** This frame's alert and notice one-shots, emptying the desk. */
@@ -236,7 +217,7 @@ export class AlertDesk {
     }
     for (const { voice, settler } of this.spoken) {
       const shot = noticeVoiceShot(index, bindings, snapshot, voice, settler);
-      if (shot !== null && this.gate.admit(`voice:${voice}`, now)) shots.push(shot);
+      if (shot !== null) shots.push(shot);
     }
     this.spoken = [];
     return shots;

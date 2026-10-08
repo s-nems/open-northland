@@ -21,6 +21,7 @@ import {
   notificationShot,
   type OneShot,
   OneShotArbiter,
+  SoundDriver,
   UI_CUE_GAIN,
   VOICE_MUSIC_DUCK_DB,
   WebAudioEngine,
@@ -141,7 +142,7 @@ describe('alert and notice sounds', () => {
     expect(desk.take(view, snapshot, index, bindings, ATTACK_ALERT_INTERVAL_S)).toEqual([]);
   });
 
-  it("speaks a notice in the settler's class voice, once per interval, and not for a child", () => {
+  it("speaks a notice in the settler's class voice, once per interval through the arbiter, and not for a child", () => {
     expect(noticeVoiceShot(index, bindings, snapshot, 'weary', MAN)?.files).toEqual([
       'generic/human_yawn m 01.wav',
     ]);
@@ -151,14 +152,53 @@ describe('alert and notice sounds', () => {
     ]);
     expect(noticeVoiceShot(index, bindings, snapshot, 'weary', CHILD)).toBeNull();
     const desk = new AlertDesk();
-    desk.speak('weary', MAN);
-    desk.speak('weary', WOMAN);
-    const first = desk.take(view, snapshot, index, bindings, 0);
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => 1 } });
+    const speak = (now: number, ...settlers: number[]): OneShot[] => {
+      for (const settler of settlers) desk.speak('weary', settler);
+      return arbiter.decide(desk.take(view, snapshot, index, bindings, now), now);
+    };
+    const first = speak(0, MAN, WOMAN);
     expect(first.map((s) => s.lane)).toEqual([{ kind: 'alert', alert: 'weary' }]);
-    desk.speak('weary', WOMAN);
-    expect(desk.take(view, snapshot, index, bindings, NOTICE_CUE_INTERVAL_S - 1)).toEqual([]);
-    desk.speak('weary', WOMAN);
-    expect(desk.take(view, snapshot, index, bindings, NOTICE_CUE_INTERVAL_S)).toHaveLength(1);
+    expect(first[0]?.cooldownS).toBe(NOTICE_CUE_INTERVAL_S);
+    expect(speak(NOTICE_CUE_INTERVAL_S - 1, WOMAN)).toEqual([]);
+    expect(speak(NOTICE_CUE_INTERVAL_S, WOMAN)).toHaveLength(1);
+    // The other notice voice keeps its own interval.
+    desk.speak('hungry', WOMAN);
+    expect(
+      arbiter.decide(
+        desk.take(view, snapshot, index, bindings, NOTICE_CUE_INTERVAL_S + 1),
+        NOTICE_CUE_INTERVAL_S + 1,
+      ),
+    ).toHaveLength(1);
+  });
+
+  it('rings a card once per message type per interval through the ledger, and a burst of types once', async () => {
+    const ctx = new FakeContext();
+    const driver = new SoundDriver(index, bindings, {
+      createContext: () => ctx as unknown as AudioContext,
+      fetchBytes: async () => new ArrayBuffer(1),
+    });
+    await driver.resume();
+    const HUNGER = '7';
+    const IDLE = '8';
+    driver.notify('card', HUNGER);
+    driver.notify('card', HUNGER);
+    driver.notify('card', IDLE); // the pop still sounds: the burst rings once
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+    ctx.currentTime = NOTICE_CUE_INTERVAL_S - 1;
+    driver.notify('card', HUNGER);
+    driver.notify('card', IDLE);
+    await flush();
+    expect(ctx.sources).toHaveLength(2);
+    ctx.currentTime = NOTICE_CUE_INTERVAL_S;
+    driver.notify('card', HUNGER);
+    await flush();
+    expect(ctx.sources).toHaveLength(3);
+    expect(notificationShot('card', HUNGER)).toMatchObject({
+      key: `notify:card:${HUNGER}`,
+      cooldownS: NOTICE_CUE_INTERVAL_S,
+    });
   });
 
   it('rings the notification cues, a card under a press', () => {
