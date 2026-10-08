@@ -40,6 +40,7 @@ import { forEachMinimapDot, type MinimapDotContext } from '../src/hud/minimap/do
 import { DEFAULT_MINIMAP_FILTERS, withAllMinimapLayers } from '../src/hud/minimap/filters.js';
 import { restingBuildingsOf } from '../src/hud/tool-panel/messages/workshop-stalls.js';
 import { createSceneSim, getScene } from '../src/scenes/index.js';
+import { gearTalliesOf } from '../src/view/assistant-shortages.js';
 import { computeConstructionSigns } from '../src/view/projections/construction-signs.js';
 import { computeDoorBadges, type DoorBadgeCache } from '../src/view/projections/door-badges.js';
 import { computeLifeHearts, type LifeHeartInputs } from '../src/view/projections/life-hearts.js';
@@ -70,7 +71,15 @@ function checkedMirror(sim: Simulation): { readonly mirror: SnapshotMirror; adva
 }
 
 /** Scenes whose runs exercise the grouped bonds: families, building sites, shelters, drills and roads. */
-const SCENES = ['family', 'construction', 'ai-defence', 'school', 'household-goods', 'roads'] as const;
+const SCENES = [
+  'family',
+  'construction',
+  'ai-defence',
+  'school',
+  'household-goods',
+  'roads',
+  'equipment',
+] as const;
 /** The seats whose per-owner readers each check compares. */
 const SEATS = [0, 1, 2, 3] as const;
 /** A key no entity sits under: an unowned or untyped building reads the empty group. */
@@ -89,6 +98,7 @@ function expectReadersMatchWalk(live: WorldSnapshot): void {
   expect(ids(actorsOf(live))).toEqual(ids(actorsOf(walked)));
   expect(actorsOf(live).every((e, i) => e === actorsOf(walked)[i])).toBe(true);
   expect(needsRuleEnabled(live)).toBe(needsRuleEnabled(walked));
+  expect(gearTalliesOf(live)).toEqual(gearTalliesOf(walked));
   for (const seat of SEATS) {
     expect(ids(settlersOwnedBy(live, seat))).toEqual(ids(settlersOwnedBy(walked, seat)));
     expect(ids(builderSitesOf(live, seat))).toEqual(ids(builderSitesOf(walked, seat)));

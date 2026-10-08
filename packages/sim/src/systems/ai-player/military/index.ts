@@ -146,7 +146,8 @@ function runMilitary(
     ...(siege?.commands ?? []),
     ...(offensive?.commands ?? []),
     ...outfitOrders(world, ctx, terrain, player, [...(offensive?.waiting ?? []), ...parkedDrivers]),
-    ...outfitGrantOrders(world, ctx, player),
+    // The module's own publication: the home half with the module off must not undo its withdrawal.
+    ...(campaign ? outfitGrantOrders(world, ctx, player) : []),
   ];
 }
 

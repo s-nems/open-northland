@@ -10,7 +10,11 @@ import {
   type WeaponSwitchId,
 } from '../../../game/assistant-grant-ids.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
-import type { AssistantShortage, AssistantShortages } from '../../../view/assistant-shortages.js';
+import {
+  type AssistantShortage,
+  type AssistantShortages,
+  NO_SHORTAGES,
+} from '../../../view/assistant-shortages.js';
 import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import { type GoodIconPainter, goodIconMarkup } from '../good-art.js';
 import { FIGURE, GLYPH } from '../icons.js';
@@ -393,7 +397,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
 
   // The first show() reads them; until then nothing is booked.
   let bookings = NO_BOOKINGS;
-  let shortages = deps.shortages();
+  let shortages = NO_SHORTAGES;
 
   orders.append(columnHead(copy.orders, copy.ordersTip), section(copy.births, copy.birthsTip));
   orders.append(

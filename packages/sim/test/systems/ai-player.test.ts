@@ -21,6 +21,7 @@ import {
 import type { SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
+import { grassNodeMap } from '../fixtures/terrain.js';
 
 /**
  * The strategic AI-player scaffold: the `setPlayerAi` seat flag, the AiPlayerSystem's staggered
@@ -39,11 +40,15 @@ function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
 }
 
-/** Fixture goods the soldier outfit names: the two amulets ship, the big healing potion is appended. */
+/** Fixture goods the soldier outfit names: the two amulets and the small healing potion ship, the big
+ *  potion is appended. */
 const SHOES = 8;
+const HEAL_SMALL = 16;
 const STRENGTH_AMULET = 25;
 const DEFENCE_AMULET = 26;
 const HEAL_BIG = 60;
+/** Ticks for every module of a seat to take one decision. */
+const DECISION_ROUND_TICKS = AI_DECISION_INTERVAL_TICKS + AI_PLAYER_MODULES.length;
 
 function outfitContent(): ContentSet {
   const base = testContent();
@@ -157,27 +162,31 @@ describe('setPlayerAi - the AI seat flag', () => {
   });
 
   it('publishes the soldier outfit as soldiers-only assistant grants until it stands, and withdraws it with the military module', () => {
-    const sim = new Simulation({ seed: 1, content: outfitContent() });
+    const sim = new Simulation({ seed: 1, content: outfitContent(), map: grassNodeMap(32, 32) });
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     sim.step();
     const published = outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT);
     // Each good's limit before its grant, so no civilian is dressed in the tick between.
-    expect(published).toEqual([
-      { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType: HEAL_BIG, soldiersOnly: true },
-      { kind: 'setAssistantGrant', player: AI_SEAT, goodType: HEAL_BIG, enabled: true },
-      { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType: DEFENCE_AMULET, soldiersOnly: true },
-      { kind: 'setAssistantGrant', player: AI_SEAT, goodType: DEFENCE_AMULET, enabled: true },
-      { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType: STRENGTH_AMULET, soldiersOnly: true },
-      { kind: 'setAssistantGrant', player: AI_SEAT, goodType: STRENGTH_AMULET, enabled: true },
-    ]);
-    for (const command of published) sim.enqueueSetup(command);
-    sim.step();
+    const outfit = [HEAL_BIG, HEAL_SMALL, DEFENCE_AMULET, STRENGTH_AMULET];
+    expect(published).toEqual(
+      outfit.flatMap((goodType) => [
+        { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType, soldiersOnly: true },
+        { kind: 'setAssistantGrant', player: AI_SEAT, goodType, enabled: true },
+      ]),
+    );
+    const standing = [HEAL_SMALL, STRENGTH_AMULET, DEFENCE_AMULET, HEAL_BIG];
+    // The live module publishes the same within a decision round.
+    sim.run(DECISION_ROUND_TICKS);
     expect(outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]); // standing: nothing to re-issue
-    expect(sim.assistantGrants(AI_SEAT)).toEqual([STRENGTH_AMULET, DEFENCE_AMULET, HEAL_BIG]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([STRENGTH_AMULET, DEFENCE_AMULET, HEAL_BIG]);
+    expect(sim.assistantGrants(AI_SEAT)).toEqual(standing);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual(standing);
 
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
     sim.step();
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
+    // The home half the seat keeps running with the module off republishes nothing.
+    sim.run(2 * DECISION_ROUND_TICKS);
     expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
     expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
 

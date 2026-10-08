@@ -4,6 +4,7 @@ import {
   AUDIENCE_SWITCH_IDS,
   DEFAULT_GIVE_SWITCHES,
   GIVE_SWITCH_GOODS,
+  GIVE_SWITCH_IDS,
   type GiveSwitchId,
   GRANT_IDS,
   WEAPON_SWITCH_GOOD,
@@ -20,7 +21,6 @@ const SIM_SWITCH_COMMANDS: Readonly<
 > = { postGraduates: 'setAssistantPostGraduates', moveFlags: 'setAssistantMoveFlags' };
 const isSimSwitch = (id: AssistantGrantId): id is SimSwitchId => id in SIM_SWITCH_COMMANDS;
 const isWeaponSwitch = (id: AssistantGrantId): id is WeaponSwitchId => id in WEAPON_SWITCH_GOOD;
-const GIVE_SWITCH_IDS = GRANT_IDS.filter((id): id is GiveSwitchId => id in GIVE_SWITCH_GOODS);
 const WEAPON_SWITCH_IDS = GRANT_IDS.filter(isWeaponSwitch);
 
 interface GrantContent {

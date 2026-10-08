@@ -58,6 +58,10 @@ export const GIVE_SWITCH_GOODS: Readonly<Record<GiveSwitchId, readonly [string, 
   giveCriticalHitAmulet: ['amulet_crithit'],
   giveSpeedAmulet: ['amulet_speed'],
 };
+/** The give switches in {@link GRANT_IDS} order. */
+export const GIVE_SWITCH_IDS: readonly GiveSwitchId[] = GRANT_IDS.filter(
+  (id): id is GiveSwitchId => id in GIVE_SWITCH_GOODS,
+);
 /** The good a weapon switch lifts the recruit-arming veto of. */
 export const WEAPON_SWITCH_GOOD: Readonly<Record<WeaponSwitchId, string>> = {
   allowShortSwords: 'sword_shord',
@@ -79,8 +83,8 @@ export const AUDIENCE_SWITCH_IDS: readonly GiveSwitchId[] = [
   'giveSpeedAmulet',
 ];
 
-/** The give switches granted from the start of a playable map: the gear and the mead, as before the
- *  potions and amulets had switches; those start off, since a druid's or coiner's output is dear. */
+/** The give switches granted from the start of a playable map: the gear and the mead. The potions and
+ *  amulets start off, since a druid's or coiner's output is dear. */
 export const DEFAULT_GIVE_SWITCHES: readonly GiveSwitchId[] = [
   'giveBoots',
   'giveWoodenTools',

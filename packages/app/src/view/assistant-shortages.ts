@@ -6,7 +6,7 @@ import {
   systems,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { GIVE_SWITCH_GOODS, type GiveSwitchId, GRANT_IDS } from '../game/assistant-grant-ids.js';
+import { GIVE_SWITCH_GOODS, GIVE_SWITCH_IDS, type GiveSwitchId } from '../game/assistant-grant-ids.js';
 import { isAdult, isFemale, isSettler, num, ownerPlayerOf, settlerJobType } from '../game/snapshot.js';
 
 /** How many of a seat's men a give switch would still dress: those in the switch's pool (the working
@@ -31,7 +31,6 @@ interface SeatTally {
 }
 type GearTallies = Map<number, SeatTally>;
 
-const GIVE_SWITCH_IDS = GRANT_IDS.filter((id): id is GiveSwitchId => id in GIVE_SWITCH_GOODS);
 const NO_SHORTAGE: AssistantShortage = { lacking: 0, soldiersLacking: 0 };
 export const NO_SHORTAGES: AssistantShortages = Object.fromEntries(
   GIVE_SWITCH_IDS.map((id) => [id, NO_SHORTAGE]),
@@ -113,43 +112,65 @@ const GEAR_TALLIES: SnapshotIndexSpec<GearTallies> = {
   empty: () => new Map(),
   add: (state, e) => tally(state, e, 1),
   remove: (state, e) => tally(state, e, -1),
+  // Most Equipment writes are wear (a step on the boots, a stroke of the tool) that moves no count.
+  replace: (state, previous, next) => {
+    if (sameTally(previous, next)) return;
+    tally(state, previous, -1);
+    tally(state, next, 1);
+  },
 };
+
+function sameTally(a: EntitySnapshot, b: EntitySnapshot): boolean {
+  const manA = dressedMan(a);
+  const manB = dressedMan(b);
+  if (manA === undefined || manB === undefined) return manA === manB;
+  if (manA.owner !== manB.owner || manA.job !== manB.job) return false;
+  const roomA = roomOf(a);
+  const roomB = roomOf(b);
+  return (
+    FILLED_SLOTS.every((slot) => roomA.open[slot] === roomB.open[slot]) &&
+    roomA.heldOpen.length === roomB.heldOpen.length &&
+    roomA.heldOpen.every((good, i) => good === roomB.heldOpen[i])
+  );
+}
 
 export function gearTalliesOf(snapshot: WorldSnapshot): GearTallies {
   return indexesOf(snapshot).get(GEAR_TALLIES);
 }
 
 /** The jobs of a switch's pools: every dressed trade (a hero keeps the arms its job carries), the soldiers
- *  among them, and the trades a tool helps; memoized per content. */
-interface JobPools {
+ *  among them, and the trades a tool helps; with the slot each wearable fills. Memoized per content. */
+interface ContentPools {
   readonly men: readonly number[];
   readonly soldiers: readonly number[];
   readonly trades: readonly number[];
+  readonly slotOfGood: ReadonlyMap<number, FilledSlot>;
 }
-const jobPoolMemo = new WeakMap<ContentSet, JobPools>();
+const poolMemo = new WeakMap<ContentSet, ContentPools>();
 
-function jobPoolsOf(content: ContentSet): JobPools {
-  let pools = jobPoolMemo.get(content);
+function poolsOf(content: ContentSet): ContentPools {
+  let pools = poolMemo.get(content);
   if (pools === undefined) {
     const men = content.jobs.map((j) => j.typeId).filter((job) => !systems.isHeroJob(content, job));
+    const slotOfGood = new Map<number, FilledSlot>();
+    for (const good of content.goods) {
+      const category = good.equip?.category;
+      if (category === 'boots' || category === 'tool' || category === 'misc')
+        slotOfGood.set(good.typeId, category);
+    }
     pools = {
       men,
       soldiers: men.filter((job) => systems.isFighterJob(content, job)),
       trades: men.filter((job) => systems.toolHelpsJob(content, job)),
+      slotOfGood,
     };
-    jobPoolMemo.set(content, pools);
+    poolMemo.set(content, pools);
   }
   return pools;
 }
 
 const sum = (counts: Map<number, number> | undefined, jobs: readonly number[]): number =>
   counts === undefined ? 0 : jobs.reduce((total, job) => total + (counts.get(job) ?? 0), 0);
-
-/** The slot a give switch fills. */
-function slotOf(id: GiveSwitchId): FilledSlot {
-  if (id === 'giveBoots') return 'boots';
-  return id === 'giveWoodenTools' || id === 'giveIronTools' ? 'tool' : 'misc';
-}
 
 /** What each give switch of `seat` would still dress, off the gear tallies; nothing for no seat. A
  *  boots or tool switch dresses the men with that slot empty; a misc switch the men with a free misc
@@ -162,14 +183,19 @@ export function assistantShortagesOf(
 ): AssistantShortages {
   const tallies = seat === null ? undefined : gearTalliesOf(snapshot).get(seat);
   if (tallies === undefined) return NO_SHORTAGES;
-  const pools = jobPoolsOf(content);
+  const pools = poolsOf(content);
   const shortages: Partial<Record<GiveSwitchId, AssistantShortage>> = {};
   for (const id of GIVE_SWITCH_IDS) {
-    const slot = slotOf(id);
     const goods = GIVE_SWITCH_GOODS[id].flatMap((slug) => {
       const good = goodTypeOf(slug);
       return good === undefined ? [] : [good];
     });
+    // A switch whose goods the content lacks, or wear no slot the assistant fills, dresses nobody.
+    const slot = goods[0] === undefined ? undefined : pools.slotOfGood.get(goods[0]);
+    if (slot === undefined) {
+      shortages[id] = NO_SHORTAGE;
+      continue;
+    }
     const lackingAmong = (jobs: readonly number[]): number => {
       let open = 0;
       for (const job of jobs) open += tallies.open.get(job)?.[slot] ?? 0;
