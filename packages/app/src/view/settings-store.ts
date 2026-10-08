@@ -1,4 +1,11 @@
-import { clampVolume, DEFAULT_VOLUMES, type MixerVolumes } from '@open-northland/audio';
+import {
+  clampVolume,
+  DEFAULT_UNIT_RESPONSES,
+  DEFAULT_VOLUMES,
+  type MixerVolumes,
+  parseUnitResponses,
+  type UnitResponses,
+} from '@open-northland/audio';
 import {
   DEFAULT_PIXEL_ART_SCALER,
   DEFAULT_SELECTION_STYLE,
@@ -82,6 +89,10 @@ export interface MenuSettings {
   readonly soundInBackground: boolean;
   /** The whole mix folded to one channel, for a player who hears on one ear. */
   readonly monoSound: boolean;
+  /** The jingles for something done (a building, a birth, a discovery); alerts ring regardless. */
+  readonly jinglesEnabled: boolean;
+  /** Which of an order and a selection a settler's voice answers. */
+  readonly unitResponses: UnitResponses;
   readonly language: Locale;
   readonly keyboardScrollSpeed: number;
   readonly edgeScrollSpeed: number;
@@ -131,6 +142,8 @@ export function defaultSettings(): MenuSettings {
     volumes: DEFAULT_VOLUMES,
     soundInBackground: defaultSoundInBackground(),
     monoSound: false,
+    jinglesEnabled: true,
+    unitResponses: DEFAULT_UNIT_RESPONSES,
     language: defaultLocale(),
     keyboardScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
@@ -229,6 +242,9 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     soundInBackground:
       typeof record.soundInBackground === 'boolean' ? record.soundInBackground : defaults.soundInBackground,
     monoSound: typeof record.monoSound === 'boolean' ? record.monoSound : defaults.monoSound,
+    jinglesEnabled:
+      typeof record.jinglesEnabled === 'boolean' ? record.jinglesEnabled : defaults.jinglesEnabled,
+    unitResponses: parseUnitResponses(record.unitResponses),
     language: isLocale(record.language) ? record.language : defaults.language,
     keyboardScrollSpeed: clampScrollSpeed(record.keyboardScrollSpeed),
     edgeScrollSpeed: clampScrollSpeed(record.edgeScrollSpeed),

@@ -1,4 +1,10 @@
-import { VOLUME_CHANNELS, VOLUME_MAX, type VolumeChannel } from '@open-northland/audio';
+import {
+  UNIT_RESPONSE_MODES,
+  type UnitResponses,
+  VOLUME_CHANNELS,
+  VOLUME_MAX,
+  type VolumeChannel,
+} from '@open-northland/audio';
 import { LOCALE_CODES, type Locale, messages } from '../i18n/index.js';
 import {
   defaultDisplayMode,
@@ -184,7 +190,11 @@ export function createSettingsPage(opts: {
         const tip = channel === 'master' || channel === 'music' ? undefined : text.volumeTips[channel];
         return settingRow(label, control, tip === undefined ? undefined : { tip });
       };
-      const choice = (key: 'soundInBackground' | 'monoSound', focus: string, tip: string): HTMLDivElement => {
+      const choice = (
+        key: 'soundInBackground' | 'monoSound' | 'jinglesEnabled',
+        focus: string,
+        tip: string,
+      ): HTMLDivElement => {
         const toggle = togglePill(settings[key], (on) => {
           void opts.settings.update({ [key]: on });
         });
@@ -192,10 +202,20 @@ export function createSettingsPage(opts: {
         toggle.dataset.settingsFocus = focus;
         return settingRow(text[key], toggle, { tip });
       };
+      const responses = segControl<UnitResponses>(
+        UNIT_RESPONSE_MODES.map((mode) => ({ id: mode, label: text.unitResponseModes[mode] })),
+        settings.unitResponses,
+        (unitResponses) => {
+          void opts.settings.update({ unitResponses });
+        },
+      );
+      markSegment(responses.root, 'unit-responses');
       return [
         settingRow(text.soundEnabled, sound),
         choice('soundInBackground', 'sound-in-background', text.soundInBackgroundTip),
         choice('monoSound', 'mono-sound', text.monoSoundTip),
+        choice('jinglesEnabled', 'jingles', text.jinglesEnabledTip),
+        settingRow(text.unitResponses, responses.root, { tip: text.unitResponsesTip }),
         settingsHeading(text.volumeHeading),
         ...VOLUME_CHANNELS.map(volumeRow),
       ];

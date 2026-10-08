@@ -240,6 +240,13 @@ export const enSurfaces = {
       monoSound: 'Mono sound',
       monoSoundTip:
         'Mixes both stereo channels into one and plays it on both sides, so nothing is lost on a single speaker or ear.',
+      jinglesEnabled: 'Event jingles',
+      jinglesEnabledTip:
+        'The short tunes for a finished building, a discovery, a birth, a wedding and an opened chest. Alerts, deaths and the end of a mission always sound.',
+      unitResponses: 'Unit responses',
+      unitResponsesTip:
+        'Whether settlers answer your orders and your selections out loud. Without an answer, the click alone confirms an order.',
+      unitResponseModes: { all: 'All', selection: 'First selection only', off: 'Off' },
       volumeHeading: 'Volume',
       volumes: {
         master: 'Master',

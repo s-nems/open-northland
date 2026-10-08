@@ -204,6 +204,13 @@ function laneRank(shot: OneShot): number {
   return laneType(shot)?.rank ?? DEFAULT_JINGLE_PRIORITY;
 }
 
+/** Whether `shot` is a jingle for something done ({@link LANE_RANK.completion}): the ones the player's
+ *  jingles switch silences, as the original's "jingles off" option does. Alerts and a death, the alarm
+ *  or a verdict ring regardless. */
+export function isCompletionJingle(shot: OneShot): boolean {
+  return shot.lane?.kind === 'jingle' && laneRank(shot) === LANE_RANK.completion;
+}
+
 /** {@link OneShotArbiter} construction options, all optional for a headless run. */
 export interface ArbiterOptions {
   /** Audio-clock second the budgets start full at. */
@@ -220,6 +227,8 @@ export class OneShotArbiter {
   /** When the jingle lane frees, and the rank of the jingle holding it. */
   private laneBusyUntil = Number.NEGATIVE_INFINITY;
   private lanePriority = DEFAULT_JINGLE_PRIORITY;
+  /** The player's jingles switch: off drops every {@link isCompletionJingle} shot on arrival. */
+  private completionJingles = true;
   private readonly voices: RateBudget;
   private readonly screams: RateBudget;
   private readonly sfx: RateBudget;
@@ -262,6 +271,11 @@ export class OneShotArbiter {
     out.push(shot);
   }
 
+  /** The player's jingles switch (see {@link isCompletionJingle}). */
+  setCompletionJingles(on: boolean): void {
+    this.completionJingles = on;
+  }
+
   /** The shots of this frame that should start, at `now` audio-clock seconds. Call every frame, with
    *  an empty list too: a jingle waiting for the lane rings from here. */
   decide(shots: readonly OneShot[], now: number): OneShot[] {
@@ -273,7 +287,7 @@ export class OneShotArbiter {
       switch (shot.lane?.kind) {
         case 'jingle':
         case 'alert':
-          jingles.push(shot);
+          if (this.completionJingles || !isCompletionJingle(shot)) jingles.push(shot);
           break;
         case 'voice':
         case 'sfx':

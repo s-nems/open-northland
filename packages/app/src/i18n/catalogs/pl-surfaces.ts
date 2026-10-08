@@ -238,6 +238,13 @@ export const plSurfaces = {
       monoSound: 'Dźwięk mono',
       monoSoundTip:
         'Łączy oba kanały stereo w jeden i odtwarza go po obu stronach, więc nic nie ginie na jednym głośniku albo jednym uchu.',
+      jinglesEnabled: 'Melodie zdarzeń',
+      jinglesEnabledTip:
+        'Krótkie melodie po ukończeniu budynku, odkryciu, narodzinach, ślubie i otwarciu skrzyni. Alarmy, śmierć i koniec misji słychać zawsze.',
+      unitResponses: 'Odpowiedzi jednostek',
+      unitResponsesTip:
+        'Czy osadnicy odpowiadają głosem na rozkazy i na zaznaczenie. Bez odpowiedzi rozkaz potwierdza samo kliknięcie.',
+      unitResponseModes: { all: 'Wszystkie', selection: 'Tylko przy zaznaczeniu', off: 'Wyłączone' },
       volumeHeading: 'Głośność',
       volumes: {
         master: 'Ogólna',

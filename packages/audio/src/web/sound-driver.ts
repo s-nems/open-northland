@@ -30,6 +30,7 @@ import type {
   VoiceCall,
 } from '../data/types.js';
 import { type NotificationCue, notificationShot, type UiCue, uiCueShot } from '../data/ui-cues.js';
+import { DEFAULT_UNIT_RESPONSES, gateResponse, type UnitResponses } from '../data/unit-responses.js';
 import type { WeatherSoundInput } from '../data/weather/mix.js';
 import { type AudioEngineOptions, type SoundPreloadReport, WebAudioEngine } from './engine/index.js';
 import type { RandomFn } from './platform.js';
@@ -103,6 +104,8 @@ export class SoundDriver {
   private responses: OrderAnswer[] = [];
   /** The selection taken since the last frame, acknowledged on that frame. */
   private selection: VoiceCall | undefined;
+  /** The player's "unit responses" choice, which gates {@link respond} and {@link select}. */
+  private unitResponses: UnitResponses = DEFAULT_UNIT_RESPONSES;
   /** The sim tick the last frame stood at, so a frame knows how many ticks to roll the chatter for. */
   private lastTick: number | null = null;
   /** The map's sounding objects that are no sim entity, for the object ambience. */
@@ -176,6 +179,16 @@ export class SoundDriver {
   /** The "sound in background" setting (see {@link WebAudioEngine.setPlayInBackground}). */
   setPlayInBackground(play: boolean): void {
     this.engine.setPlayInBackground(play);
+  }
+
+  /** The "jingles" setting: off silences the jingles for something done, never an alert. */
+  setJinglesEnabled(on: boolean): void {
+    this.arbiter.setCompletionJingles(on);
+  }
+
+  /** The "unit responses" setting: which of an order and a selection a settler's voice answers. */
+  setUnitResponses(mode: UnitResponses): void {
+    this.unitResponses = mode;
   }
 
   /** Fold the mix to mono (see {@link WebAudioEngine.setMono}). */
@@ -267,15 +280,17 @@ export class SoundDriver {
   }
 
   /** The settlers the player just ordered answer as a group on the next frame, which knows where they
-   *  stand and what they sound like. */
+   *  stand and what they sound like; a "unit responses" choice that silences orders plays only the
+   *  order's fallback cue. */
   respond(answer: OrderAnswer): void {
-    this.responses.push(answer);
+    this.responses.push(gateResponse(answer, this.unitResponses, 'order'));
   }
 
   /** The selection the player just took is acknowledged on the next frame by one member's voice, or by
-   *  the call's fallback cue; a later selection in the same frame replaces it. */
+   *  the call's fallback cue (always, while "unit responses" is off); a later selection in the same
+   *  frame replaces it. */
   select(call: VoiceCall): void {
-    this.selection = call;
+    this.selection = gateResponse(call, this.unitResponses, 'selection');
   }
 
   /** Decide + play one frame of audio from the current world state. */

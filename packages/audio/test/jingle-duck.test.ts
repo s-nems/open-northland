@@ -24,6 +24,7 @@ import {
   buildSoundIndex,
   defaultBindings,
   directAudio,
+  isCompletionJingle,
   OneShotArbiter,
   WebAudioEngine,
 } from '../src/index.js';
@@ -145,5 +146,21 @@ describe('jingle duck depth', () => {
     engine.apply({ oneShots: [shot], ambient: [] });
     await flush();
     expect(duck.gain.ramps[0]?.value).toBeCloseTo(10 ** (JINGLE_DUCK_COMPLETION_DB / 20), 6);
+  });
+});
+
+describe('jingles switch', () => {
+  it('silences the jingles for something done, never a death', () => {
+    const arbiter = new OneShotArbiter();
+    arbiter.setCompletionJingles(false);
+    const [house] = direct([{ kind: 'buildingFinished', entity: 7 as Entity }]);
+    const [fall] = direct([death(0)]);
+    if (house === undefined || fall === undefined) throw new Error('both jingles should be offered');
+    expect(isCompletionJingle(house)).toBe(true);
+    expect(isCompletionJingle(fall)).toBe(false);
+    expect(arbiter.decide([house], 0)).toEqual([]);
+    expect(arbiter.decide([fall], 0)).toHaveLength(1);
+    arbiter.setCompletionJingles(true);
+    expect(arbiter.decide([house], JINGLE_COMBAT_INTERVAL_S.get(JINGLE_DEATH) ?? 0)).toHaveLength(1);
   });
 });

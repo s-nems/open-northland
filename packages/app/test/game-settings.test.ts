@@ -71,6 +71,15 @@ it('applies the background and mono sound choices live', async () => {
   expect(h.persist.mock.calls).toEqual([[{ soundInBackground: true }], [{ monoSound: true }]]);
 });
 
+it('applies the jingles switch and the unit responses choice to the driver live', async () => {
+  const h = harness();
+  await h.settings.update({ jinglesEnabled: false });
+  await h.settings.update({ unitResponses: 'selection' });
+  expect(h.setJinglesEnabled).toHaveBeenCalledWith(false);
+  expect(h.setUnitResponses).toHaveBeenCalledWith('selection');
+  expect(h.persist.mock.calls).toEqual([[{ jinglesEnabled: false }], [{ unitResponses: 'selection' }]]);
+});
+
 it('reframes the mounted minimap when another frame is picked', async () => {
   const h = harness();
   await h.settings.update({ minimapFrame: 'urnes' });
@@ -85,6 +94,8 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setVolumes = vi.fn();
   const setSoundInBackground = vi.fn();
   const setMonoSound = vi.fn();
+  const setJinglesEnabled = vi.fn();
+  const setUnitResponses = vi.fn();
   const setLanguage = vi.fn();
   const setKeyBindings = vi.fn();
   const setCameraInputSettings = vi.fn();
@@ -108,6 +119,8 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setVolumes,
     setSoundInBackground,
     setMonoSound,
+    setJinglesEnabled,
+    setUnitResponses,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,
@@ -128,6 +141,8 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setVolumes,
     setSoundInBackground,
     setMonoSound,
+    setJinglesEnabled,
+    setUnitResponses,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,

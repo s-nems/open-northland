@@ -31,6 +31,7 @@ export {
   JINGLE_FREQUENT_WINDOW,
   JINGLE_PENDING_MAX_AGE_S,
   JINGLE_PRIORITY,
+  isCompletionJingle,
   LANE_RANK,
   OneShotArbiter,
   SCREAM_BURST,
@@ -262,6 +263,15 @@ export {
   type UiCue,
   uiCueShot,
 } from './data/ui-cues.js';
+export {
+  DEFAULT_UNIT_RESPONSES,
+  gateResponse,
+  parseUnitResponses,
+  type ResponseKind,
+  responseSpeaks,
+  UNIT_RESPONSE_MODES,
+  type UnitResponses,
+} from './data/unit-responses.js';
 // Weather soundscape: every level and band is a named approximation in its module (the original has
 // no weather sound); this is the mix decision and the knob a caller most likely retunes.
 export {

@@ -21,6 +21,8 @@ export interface GameSettingsRuntimeDeps {
   readonly setVolumes: (volumes: MenuSettings['volumes']) => void;
   readonly setSoundInBackground: (play: boolean) => void;
   readonly setMonoSound: (mono: boolean) => void;
+  readonly setJinglesEnabled: (on: boolean) => void;
+  readonly setUnitResponses: (mode: MenuSettings['unitResponses']) => void;
   readonly setLanguage: (language: MenuSettings['language']) => void;
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setCameraInputSettings: (settings: CameraInputSettings) => void;
@@ -54,6 +56,8 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.volumes !== undefined) deps.setVolumes(patch.volumes);
     if (patch.soundInBackground !== undefined) deps.setSoundInBackground(patch.soundInBackground);
     if (patch.monoSound !== undefined) deps.setMonoSound(patch.monoSound);
+    if (patch.jinglesEnabled !== undefined) deps.setJinglesEnabled(patch.jinglesEnabled);
+    if (patch.unitResponses !== undefined) deps.setUnitResponses(patch.unitResponses);
     if (patch.language !== undefined) deps.setLanguage(patch.language);
     if (patch.keyBindings !== undefined) deps.setKeyBindings(patch.keyBindings);
     if (

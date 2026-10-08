@@ -278,6 +278,13 @@ export const deSurfaces = {
       monoSound: 'Mono-Ton',
       monoSoundTip:
         'Mischt beide Stereokanäle zu einem und spielt ihn auf beiden Seiten, sodass auf einem einzelnen Lautsprecher oder Ohr nichts verloren geht.',
+      jinglesEnabled: 'Ereignismelodien',
+      jinglesEnabledTip:
+        'Die kurzen Melodien für ein fertiges Gebäude, eine Entdeckung, eine Geburt, eine Hochzeit und eine geöffnete Truhe. Alarme, Tode und das Missionsende erklingen immer.',
+      unitResponses: 'Antworten der Einheiten',
+      unitResponsesTip:
+        'Ob die Siedler auf Befehle und auf die Auswahl laut antworten. Ohne Antwort bestätigt allein der Klick einen Befehl.',
+      unitResponseModes: { all: 'Alle', selection: 'Nur bei Auswahl', off: 'Aus' },
       volumeHeading: 'Lautstärke',
       volumes: {
         master: 'Gesamt',

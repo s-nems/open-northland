@@ -130,6 +130,8 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setVolumes: (volumes) => deps.sound?.setVolumes(volumes),
     setSoundInBackground: (play) => deps.sound?.setPlayInBackground(play),
     setMonoSound: (mono) => deps.sound?.setMono(mono),
+    setJinglesEnabled: (on) => deps.sound?.setJinglesEnabled(on),
+    setUnitResponses: (mode) => deps.sound?.setUnitResponses(mode),
     setLanguage: (language) => {
       syncCarriedParam('lang', language === defaultLocale() ? null : language);
     },

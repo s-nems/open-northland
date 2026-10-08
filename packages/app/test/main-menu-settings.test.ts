@@ -78,6 +78,8 @@ describe('parseStoredSettings', () => {
       volumes: { master: 65, music: 40, responses: 90, world: 100, ambient: 0, ui: 75 },
       soundInBackground: true,
       monoSound: true,
+      jinglesEnabled: false,
+      unitResponses: 'off',
       language: 'eng',
       keyboardScrollSpeed: 1.25,
       edgeScrollSpeed: 2.25,
@@ -127,6 +129,18 @@ describe('parseStoredSettings', () => {
     expect(parseStoredSettings('{}').monoSound).toBe(false);
     expect(parseStoredSettings('{"monoSound":true}').monoSound).toBe(true);
     expect(parseStoredSettings('{"monoSound":"yes"}').monoSound).toBe(false);
+  });
+
+  it('rings the jingles and answers every call unless stored choices say otherwise', () => {
+    expect(parseStoredSettings('{}')).toMatchObject({ jinglesEnabled: true, unitResponses: 'all' });
+    expect(parseStoredSettings('{"jinglesEnabled":false,"unitResponses":"selection"}')).toMatchObject({
+      jinglesEnabled: false,
+      unitResponses: 'selection',
+    });
+    expect(parseStoredSettings('{"jinglesEnabled":0,"unitResponses":"some"}')).toMatchObject({
+      jinglesEnabled: true,
+      unitResponses: 'all',
+    });
   });
 
   it('keeps the debug tools off unless a stored boolean turns them on', () => {
