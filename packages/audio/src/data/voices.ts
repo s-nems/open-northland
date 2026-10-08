@@ -15,8 +15,9 @@ export function humanVoicesOf(index: SoundIndex, e: EntitySnapshot): HumanVoices
 /**
  * The "ok" pool a settler answers with for life: its pools indexed by its entity id modulo their count,
  * as the original indexes by the human's array slot, except a hero always takes the first pool. Two
- * job-specific silences (`PlayRespondingSound` mutes tribe 3 job 32 and tribe 2 job 42) are not
- * reproduced. Undefined for a tribe and class that answers with nothing (a child, an animal).
+ * job-specific silences (the original appears to mute tribe 3 job 32 and tribe 2 job 42, unconfirmed
+ * in play) are not reproduced. Undefined for a tribe and class that answers with nothing (a child, an
+ * animal).
  */
 export function responseGroup(index: SoundIndex, e: EntitySnapshot): string | undefined {
   const voices = humanVoicesOf(index, e);
