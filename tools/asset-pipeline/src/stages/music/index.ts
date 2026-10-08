@@ -1,12 +1,21 @@
+import { createHash } from 'node:crypto';
 import { mkdir, readdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
-import { FNV_OFFSET_BASIS, fnvHex, fnvMixWord } from '@open-northland/data';
+import {
+  FNV_OFFSET_BASIS,
+  fnvHex,
+  fnvMixWord,
+  MUSIC_MANIFEST_VERSION,
+  MusicManifestDocument,
+  type MusicManifestTrack,
+} from '@open-northland/data';
 import { decodeSegmentAudiopath, decodeSegmentTiming, musicTimeToSeconds } from '../../decoders/sgt.js';
 import { errorMessage } from '../../errors.js';
 import { statIfExists, writeFileWithParents } from '../../files.js';
 import { findPathCaseInsensitive, type SourceRoots } from '../../roots.js';
 import { writeJsonFile } from '../content-tree.js';
 import { interpretSegment } from './interpret.js';
+import { integratedLoudness, levellingGainDb, samplePeakDb } from './loudness.js';
 import { encodeOgg } from './ogg-encode.js';
 import { applyWavesReverb } from './reverb.js';
 import { type DlsBank, dlsFileNames, loadDlsBanks, synthesizeEvents } from './synthesize.js';
@@ -35,10 +44,10 @@ const VBR_QUALITY = 3;
 /**
  * Brings the mix back inside full scale: 12 of the 64 segments peak above it once the reverb's wet
  * sum is added, and this scaling is what keeps them from clipping rather than a spare margin over
- * one. Uniform, so relative track loudness survives - the original applies no per-track gain
- * either (original behavior: music level follows only the master volume and the
- * jingle duck). The runtime music bus undoes this file headroom. Anything that raises levels here
- * lands on 0 dBFS.
+ * one. Uniform, so the files keep the original's relative loudness (original behavior: music level
+ * follows only the master volume and the jingle duck); the manifest's per-track `gainDb` levels them
+ * at playback instead. The runtime music bus undoes this file headroom. Anything that raises levels
+ * here lands on 0 dBFS.
  */
 const MASTER_GAIN = 10 ** (-3 / 20);
 /**
@@ -59,14 +68,6 @@ const MAX_SEGMENT_S = 300;
 export const MUSIC_DIR = 'music';
 export const MUSIC_MANIFEST_NAME = 'manifest.json';
 
-interface ManifestTrack {
-  readonly file: string;
-  /** Seconds into the file the loop region opens (the first pass's end). */
-  readonly loopStartS: number;
-  /** Seconds into the file the loop region closes (the second pass's end, also the file's end). */
-  readonly loopEndS: number;
-}
-
 export interface MusicStageResult {
   /** Segments rendered this run. */
   readonly rendered: number;
@@ -79,13 +80,14 @@ export interface MusicStageResult {
 }
 
 /**
- * What the stored oggs were rendered from: this stage's render version and the byte sizes of every
- * segment and bank under `DataX/DM2`, not their mtimes, which a fresh unpack of the same archive
- * resets. A same-size edit therefore reads as unchanged, and the synthesizer and encoder are pinned
- * to exact versions in `package.json` because a caret bump would change rendered bytes without
- * changing anything this identity can see.
+ * What the stored oggs were rendered from: the manifest layout, this stage's render version and the
+ * byte sizes of every segment and bank under `DataX/DM2`, not their mtimes, which a fresh unpack of
+ * the same archive resets. A same-size edit therefore reads as unchanged, and the synthesizer and
+ * encoder are pinned to exact versions in `package.json` because a caret bump would change rendered
+ * bytes without changing anything this identity can see.
  */
 interface RenderIdentity {
+  readonly version: number;
   readonly renderVersion: number;
   readonly sources: string;
 }
@@ -102,33 +104,26 @@ async function sourcesFingerprint(dm2: string, files: readonly string[]): Promis
 }
 
 interface StoredManifest extends RenderIdentity {
-  /** The stored per-track rows, re-used verbatim for a kept ogg (its loop points are not recomputed). */
-  readonly tracks: ReadonlyMap<string, ManifestTrack>;
+  /** The stored per-track rows, re-used verbatim for a kept ogg (its loop points and gain are not
+   *  recomputed). */
+  readonly tracks: ReadonlyMap<string, MusicManifestTrack>;
 }
 
-/** The identity and rows the stored manifest carries, or a blank one when there is none to trust. */
+/** The identity and rows the stored manifest carries, or a blank one when there is none to trust: a
+ *  manifest of another layout is not read at all, so every ogg re-renders. */
 async function storedManifest(musicDir: string): Promise<StoredManifest> {
-  const tracks = new Map<string, ManifestTrack>();
   try {
-    const parsed: unknown = JSON.parse(await readFile(join(musicDir, MUSIC_MANIFEST_NAME), 'utf8'));
-    if (typeof parsed === 'object' && parsed !== null) {
-      const { renderVersion, sources, tracks: rows } = parsed as Record<string, unknown>;
-      if (typeof rows === 'object' && rows !== null) {
-        for (const [stem, row] of Object.entries(rows)) {
-          const { file, loopStartS, loopEndS } = (row ?? {}) as Record<string, unknown>;
-          if (typeof file === 'string' && typeof loopStartS === 'number' && typeof loopEndS === 'number') {
-            tracks.set(stem, { file, loopStartS, loopEndS });
-          }
-        }
-      }
-      if (typeof renderVersion === 'number' && typeof sources === 'string') {
-        return { renderVersion, sources, tracks };
-      }
+    const parsed = MusicManifestDocument.safeParse(
+      JSON.parse(await readFile(join(musicDir, MUSIC_MANIFEST_NAME), 'utf8')),
+    );
+    if (parsed.success) {
+      const { version, renderVersion, sources, tracks } = parsed.data;
+      return { version, renderVersion, sources, tracks: new Map(Object.entries(tracks)) };
     }
   } catch {
     // No readable manifest: every ogg is stale.
   }
-  return { renderVersion: 0, sources: '', tracks };
+  return { version: 0, renderVersion: 0, sources: '', tracks: new Map() };
 }
 
 /**
@@ -151,9 +146,12 @@ export async function renderMusicStage(roots: SourceRoots, outDir: string): Prom
   await mkdir(musicDir, { recursive: true });
   const sources = await sourcesFingerprint(dm2, [...segments, ...(await dlsFileNames(dm2))]);
   const stored = await storedManifest(musicDir);
-  const sameInputs = stored.renderVersion === RENDER_VERSION && stored.sources === sources;
+  const sameInputs =
+    stored.version === MUSIC_MANIFEST_VERSION &&
+    stored.renderVersion === RENDER_VERSION &&
+    stored.sources === sources;
 
-  const manifest = new Map<string, ManifestTrack>();
+  const manifest = new Map<string, MusicManifestTrack>();
   let banksPromise: Promise<Map<string, DlsBank>> | undefined;
   let rendered = 0;
   let kept = 0;
@@ -202,10 +200,15 @@ export async function renderMusicStage(roots: SourceRoots, outDir: string): Prom
       if (loopEndFrame > (synthesized[0]?.length ?? 0)) {
         throw new Error(`second segment end at frame ${loopEndFrame} lies past the synthesized buffer`);
       }
+      // Measured over the published file, both passes, after the uniform headroom scaling.
+      const loudness = integratedLoudness(synthesized, loopEndFrame, SAMPLE_RATE);
       manifest.set(stem, {
         file,
         loopStartS: loopStartFrame / SAMPLE_RATE,
         loopEndS: loopEndFrame / SAMPLE_RATE,
+        loudnessLufs: Number.isFinite(loudness) ? loudness : null,
+        gainDb: levellingGainDb(loudness, samplePeakDb(synthesized, loopEndFrame)),
+        segmentSha256: createHash('sha256').update(segmentBytes).digest('hex'),
       });
       await writeFileWithParents(
         outPath,
@@ -229,6 +232,7 @@ export async function renderMusicStage(roots: SourceRoots, outDir: string): Prom
 
   const tracks = Object.fromEntries([...manifest.entries()].sort(([a], [b]) => a.localeCompare(b)));
   await writeJsonFile(outDir, `${MUSIC_DIR}/${MUSIC_MANIFEST_NAME}`, {
+    version: MUSIC_MANIFEST_VERSION,
     renderVersion: RENDER_VERSION,
     sources,
     tracks,

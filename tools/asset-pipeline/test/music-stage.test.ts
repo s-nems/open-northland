@@ -1,5 +1,7 @@
+import { createHash } from 'node:crypto';
 import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { MUSIC_MANIFEST_VERSION, MusicManifestDocument } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { statIfExists } from '../src/files.js';
 import { MUSIC_DIR, MUSIC_MANIFEST_NAME, renderMusicStage } from '../src/stages/music/index.js';
@@ -94,6 +96,31 @@ describe('music stage incremental identity', () => {
     const stale = { ...stored, renderVersion: (stored.renderVersion as number) - 1 };
     await writeFile(manifestPath, JSON.stringify(stale));
     expect(await renderMusicStage(roots, temp.out)).toMatchObject({ rendered: 1, kept: 0 });
+  });
+
+  it('re-renders every track when the stored manifest has another layout', async () => {
+    await stageWith(shortSegment());
+    await renderMusicStage(roots, temp.out);
+    const stored = await storedManifest();
+    expect(stored.version).toBe(MUSIC_MANIFEST_VERSION);
+
+    await writeFile(manifestPath, JSON.stringify({ ...stored, version: MUSIC_MANIFEST_VERSION - 1 }));
+    expect(await renderMusicStage(roots, temp.out)).toMatchObject({ rendered: 1, kept: 0 });
+  });
+
+  it('publishes a levelling gain and the segment digest that identifies the same audio', async () => {
+    await stageWith(shortSegment());
+    await renderMusicStage(roots, temp.out);
+    const manifest = MusicManifestDocument.parse(await storedManifest());
+    const one = manifest.tracks.one;
+    expect(one?.segmentSha256).toBe(
+      createHash('sha256')
+        .update(await readFile(join(temp.game, DM2, 'one.sgt')))
+        .digest('hex'),
+    );
+    // The 125 ms file is shorter than one 400 ms loudness block, so it is unmeasurable and kept level.
+    expect(one?.loudnessLufs).toBeNull();
+    expect(one?.gainDb).toBe(0);
   });
 
   it('does not adopt an ogg left behind by a segment that failed this run', async () => {

@@ -1,5 +1,6 @@
 import type { MusicTrack } from '../../data/music/index.js';
 import type { FetchBytes } from '../platform.js';
+import { CLICK_FREE_RAMP_S } from './ramps.js';
 
 /**
  * The music half of playback. In game the map's track ring-loops the region the pipeline published
@@ -226,12 +227,15 @@ export class MusicPlayer {
       };
       const gain = this.ctx.createGain();
       source.connect(gain).connect(this.out);
+      const level = trackLevel(track);
+      gain.gain.setValueAtTime(0, startsAt);
+      gain.gain.linearRampToValueAtTime(level, startsAt + CLICK_FREE_RAMP_S);
       if (this.mode === 'loop') {
         this.configureLoop(source, track, buffer);
         source.start(startsAt);
       } else {
         const passS = firstPassSeconds(track, buffer);
-        this.scheduleFadeOut(gain, startsAt, passS);
+        this.scheduleFadeOut(gain, level, startsAt, passS);
         source.start(startsAt, 0, passS);
       }
       this.current = { file: track.file, source, gain, startsAt };
@@ -239,33 +243,32 @@ export class MusicPlayer {
   }
 
   /** Ring-loop the published region: the first pass opens from silence, then the second pass -
-   *  which carries the first's decay tails - repeats seamlessly. Without published points (an older
-   *  manifest) the whole file loops, losing only the tail carry-over. */
+   *  which carries the first's decay tails - repeats seamlessly. A file shorter than its published
+   *  region loops whole. */
   private configureLoop(source: AudioBufferSourceNode, track: MusicTrack, buffer: AudioBuffer): void {
     source.loop = true;
-    if (
-      track.loopStartS !== undefined &&
-      track.loopEndS !== undefined &&
-      track.loopStartS < buffer.duration
-    ) {
+    if (track.loopStartS < buffer.duration) {
       source.loopStart = track.loopStartS;
       source.loopEnd = Math.min(track.loopEndS, buffer.duration);
     }
   }
 
   /** Ramp a rotation track down over its last seconds, so it ends on silence rather than on a cut. */
-  private scheduleFadeOut(gain: GainNode, startsAt: number, durationS: number): void {
+  private scheduleFadeOut(gain: GainNode, level: number, startsAt: number, durationS: number): void {
     const endsAt = startsAt + durationS;
-    gain.gain.setValueAtTime(1, Math.max(startsAt, endsAt - MENU_MUSIC_TIMING.fadeS));
+    gain.gain.setValueAtTime(level, Math.max(startsAt + CLICK_FREE_RAMP_S, endsAt - MENU_MUSIC_TIMING.fadeS));
     gain.gain.linearRampToValueAtTime(0, endsAt);
   }
+}
+
+/** The track's levelling gain as a linear factor. */
+function trackLevel(track: MusicTrack): number {
+  return 10 ** (track.gainDb / 20);
 }
 
 /** A rotation entry plays the first pass only; the parting fade stands in for the tails the file
  *  carries only under the second pass. */
 function firstPassSeconds(track: MusicTrack, buffer: AudioBuffer): number {
   const { loopStartS } = track;
-  return loopStartS !== undefined && loopStartS > 0 && loopStartS < buffer.duration
-    ? loopStartS
-    : buffer.duration;
+  return loopStartS > 0 && loopStartS < buffer.duration ? loopStartS : buffer.duration;
 }

@@ -1,6 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   CALM_MOOD,
+  CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
   DEFAULT_VOLUMES,
   MENU_MUSIC_TIMING,
@@ -14,6 +15,7 @@ import {
 } from '../src/index.js';
 import { FakeContext, type FakeGain, type FakeSource, flush } from './helpers/fake-audio.js';
 import { mixerGraph } from './helpers/mixer-graph.js';
+import { manifestDocument, musicTrack } from './helpers/music-manifest.js';
 
 /**
  * The music path end to end minus the browser: the manifest parse, and the engine's music bus +
@@ -25,48 +27,40 @@ import { mixerGraph } from './helpers/mixer-graph.js';
 /** The fake serves a 4-byte buffer, and one fetched byte decodes to one second. */
 const TRACK_S = 4;
 
-const MANIFEST = parseMusicManifest({
-  tracks: {
-    theme_viking_neutral: { file: 'theme_viking_neutral.ogg', loopStartS: 2, loopEndS: 4 },
-    attack_arabs: { file: 'attack_arabs.ogg' },
-  },
-});
+const VIKING_NEUTRAL = musicTrack('theme_viking_neutral');
+const MANIFEST = parseMusicManifest(manifestDocument({ theme_viking_neutral: VIKING_NEUTRAL }));
 
 describe('music selection', () => {
   it('resolves a rendered stem through the manifest', () => {
     const THEME_VIKING = 2;
-    expect(musicTrackFor(THEME_VIKING, 'neutral', CALM_MOOD, 0, MANIFEST)).toEqual({
-      file: 'theme_viking_neutral.ogg',
-      loopStartS: 2,
-      loopEndS: 4,
-    });
+    expect(musicTrackFor(THEME_VIKING, 'neutral', CALM_MOOD, 0, MANIFEST)).toEqual(VIKING_NEUTRAL);
   });
 
   it('has no track for a known code whose stem was never rendered', () => {
     const MISSION_VIKING1 = 10;
     expect(musicTrackFor(MISSION_VIKING1, 'neutral', CALM_MOOD, 0, MANIFEST)).toBeNull();
   });
+});
 
-  it('parses tolerantly: junk entries drop, junk roots are null', () => {
-    expect(parseMusicManifest(null)).toBeNull();
-    expect(parseMusicManifest({ tracks: 'nope' })).toBeNull();
-    const partial = parseMusicManifest({ tracks: { ok: { file: 'ok.ogg' }, bad: { file: 42 } } });
-    expect(partial?.tracks).toEqual({ ok: { file: 'ok.ogg' } });
+describe('music manifest', () => {
+  const SILENCED = () => undefined;
+
+  it('reads only the layout this build writes, so stale content is silent rather than misread', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(SILENCED);
+    const document = manifestDocument({ theme_viking_neutral: VIKING_NEUTRAL });
+    expect(parseMusicManifest(document)?.tracks.theme_viking_neutral).toEqual(VIKING_NEUTRAL);
+    expect(parseMusicManifest({ ...document, version: document.version - 1 })).toBeNull();
+    expect(parseMusicManifest({ tracks: document.tracks })).toBeNull();
+    warn.mockRestore();
   });
 
-  it('drops an unusable loop region but keeps its track playable', () => {
-    const parsed = parseMusicManifest({
-      tracks: {
-        backwards: { file: 'a.ogg', loopStartS: 4, loopEndS: 2 },
-        negative: { file: 'b.ogg', loopStartS: -1, loopEndS: 2 },
-        partial: { file: 'c.ogg', loopStartS: 1 },
-      },
-    });
-    expect(parsed?.tracks).toEqual({
-      backwards: { file: 'a.ogg' },
-      negative: { file: 'b.ogg' },
-      partial: { file: 'c.ogg' },
-    });
+  it('rejects a row without its loudness correction or with a backwards loop region', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(SILENCED);
+    const { gainDb: _dropped, ...ungained } = VIKING_NEUTRAL;
+    expect(parseMusicManifest(manifestDocument({ a: ungained as typeof VIKING_NEUTRAL }))).toBeNull();
+    const backwards = { ...VIKING_NEUTRAL, loopStartS: 4, loopEndS: 2 };
+    expect(parseMusicManifest(manifestDocument({ a: backwards }))).toBeNull();
+    warn.mockRestore();
   });
 });
 
@@ -91,7 +85,8 @@ function makeEngine(opts: { failFetch?: boolean; random?: () => number } = {}): 
   return { engine, ctx, fetched };
 }
 
-const TRACK = { file: 'theme_viking_neutral.ogg', loopStartS: 2, loopEndS: 4 } as const;
+const TRACK = VIKING_NEUTRAL;
+const ATTACK = musicTrack('attack_arabs');
 
 describe('WebAudioEngine music', () => {
   it('ring-loops the desired track into the music bus', async () => {
@@ -116,15 +111,15 @@ describe('WebAudioEngine music', () => {
     expect(duck.connectedTo[0]).toBe(master);
   });
 
-  it('loops the whole file when the manifest published no loop region', async () => {
+  it('opens a track at its levelling gain through a click-free ramp', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic({ file: 'attack_arabs.ogg' });
+    const LOUD_TRACK_GAIN_DB = -6;
+    engine.setMusic({ ...TRACK, gainDb: LOUD_TRACK_GAIN_DB });
     await flush();
-    const source = ctx.sources[0] as FakeSource;
-    expect(source.loop).toBe(true);
-    expect(source.loopStart).toBe(0);
-    expect(source.loopEnd).toBe(0); // untouched - the source loops its full buffer
+    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    expect(gain.gain.events[0]).toEqual({ kind: 'set', value: 0, time: 0 });
+    expect(gain.gain.ramps).toEqual([{ value: 10 ** (LOUD_TRACK_GAIN_DB / 20), time: CLICK_FREE_RAMP_S }]);
   });
 
   it('starts a track requested before the unlocking gesture on resume()', async () => {
@@ -143,7 +138,7 @@ describe('WebAudioEngine music', () => {
     engine.setMusic(TRACK);
     await flush();
     const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
-    expect(gain.gain.ramps).toEqual([]);
+    expect(gain.gain.ramps.every((ramp) => ramp.value > 0)).toBe(true);
   });
 
   it('fades a mood switch over while the replacement opens right behind it', async () => {
@@ -155,7 +150,7 @@ describe('WebAudioEngine music', () => {
     await flush();
     expect(ctx.sources).toHaveLength(1);
     ctx.currentTime = 10;
-    engine.setMusic({ file: 'attack_arabs.ogg' });
+    engine.setMusic(ATTACK);
     await flush();
     expect(ctx.sources).toHaveLength(2);
     const [old, next] = ctx.sources as [FakeSource, FakeSource];
@@ -220,7 +215,7 @@ describe('WebAudioEngine music', () => {
     await engine.resume();
     engine.setMusic(TRACK);
     await flush();
-    engine.setMusic({ file: 'attack_arabs.ogg' });
+    engine.setMusic(ATTACK);
     await flush();
     engine.setMusic(TRACK); // back within the decoded-buffer cache
     await flush();
@@ -237,6 +232,19 @@ describe('WebAudioEngine music', () => {
     expect(ctx.sources).toHaveLength(0);
     ctx.refuseResume = false;
     await engine.resume();
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+  });
+
+  it('restarts the music a suspension dropped once the context runs again', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    ctx.refuseResume = true; // no activation: the engine's own resume is refused
+    engine.setMusic(TRACK);
+    ctx.setState('suspended'); // before the track's load lands
+    await flush();
+    expect(ctx.sources).toHaveLength(0);
+    ctx.setState('running'); // the interruption ends and the platform resumes the context
     await flush();
     expect(ctx.sources).toHaveLength(1);
   });
@@ -273,7 +281,10 @@ describe('WebAudioEngine music', () => {
 });
 
 describe('WebAudioEngine music rotation', () => {
-  const ROTATION = [{ file: 'one.ogg' }, { file: 'two.ogg' }, { file: 'three.ogg' }];
+  // A first pass as long as the fake's whole 4 s buffer, so an entry plays the buffer out.
+  const ROTATION = ['one', 'two', 'three'].map((stem) =>
+    musicTrack(stem, { loopStartS: TRACK_S, loopEndS: 2 * TRACK_S }),
+  );
 
   it('plays one entry through, landing it on silence a gap before the next opens', async () => {
     const { engine, ctx, fetched } = makeEngine();
@@ -283,15 +294,16 @@ describe('WebAudioEngine music rotation', () => {
     const first = ctx.sources[0] as FakeSource;
     expect(first.startedAt).toBe(0);
     // The one ramp lands the entry on silence at its last sample, so nothing is cut mid-level.
-    expect((first.connectedTo[0] as FakeGain).gain.ramps).toEqual([{ value: 0, time: TRACK_S }]);
+    expect((first.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({ value: 0, time: TRACK_S });
     first.onended?.();
     await flush();
     expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg']);
     const second = ctx.sources[1] as FakeSource;
     expect(second.startedAt).toBeCloseTo(MENU_MUSIC_TIMING.gapS, 5);
-    expect((second.connectedTo[0] as FakeGain).gain.ramps).toEqual([
-      { value: 0, time: MENU_MUSIC_TIMING.gapS + TRACK_S },
-    ]);
+    expect((second.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({
+      value: 0,
+      time: MENU_MUSIC_TIMING.gapS + TRACK_S,
+    });
   });
 
   it('plays only the first pass of an entry whose file carries the ring-loop’s second pass', async () => {
@@ -302,7 +314,10 @@ describe('WebAudioEngine music rotation', () => {
     const first = ctx.sources[0] as FakeSource;
     expect(first.loop).toBe(false);
     expect(first.playsForS).toBe(TRACK.loopStartS);
-    expect((first.connectedTo[0] as FakeGain).gain.ramps).toEqual([{ value: 0, time: TRACK.loopStartS }]);
+    expect((first.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({
+      value: 0,
+      time: TRACK.loopStartS,
+    });
   });
 
   it('wraps to the first entry after the last one, playing every entry in order', async () => {

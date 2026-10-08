@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import type { SoundIndex } from '../src/index.js';
 import { defaultBindings, SoundDriver } from '../src/index.js';
 import { FakeContext, type FakeSource, flush } from './helpers/fake-audio.js';
+import { musicTrack } from './helpers/music-manifest.js';
 
 /**
  * The app-facing façade end to end through the fake platform seams: one `update()` turns world state
@@ -218,8 +219,8 @@ describe('SoundDriver', () => {
       musicType: MISSION_ARABS1,
       manifest: {
         tracks: {
-          mission_arabs1_standard: { file: 'mission_arabs1_standard.ogg' },
-          mission_arabs1_danger: { file: 'mission_arabs1_danger.ogg' },
+          mission_arabs1_standard: musicTrack('mission_arabs1_standard'),
+          mission_arabs1_danger: musicTrack('mission_arabs1_danger'),
         },
       },
     });

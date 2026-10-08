@@ -10,6 +10,7 @@ import {
   WEALTHY_POPULATION,
   WEALTHY_POPULATION_DROP,
 } from '../src/index.js';
+import { manifestOf } from './helpers/music-manifest.js';
 
 /**
  * Which mood variant a map's music picks: themes switch on the local player's standing, missions on
@@ -24,20 +25,18 @@ const MISSION_ARABS1 = 17;
 /** Authors only a Standard segment, so all three of its mood slots name it. */
 const MISSION_MIDGARD1 = 20;
 
-const MANIFEST = parseMusicManifest({
-  tracks: Object.fromEntries(
-    [
-      'theme_viking_friendly',
-      'theme_viking_neutral',
-      'theme_viking_hostile',
-      'attack_byzanz',
-      'mission_arabs1_standard',
-      'mission_arabs1_wealthy',
-      'mission_arabs1_danger',
-      'mission_midgard1_standard',
-    ].map((stem) => [stem, { file: `${stem}.ogg` }]),
-  ),
-});
+const MANIFEST = parseMusicManifest(
+  manifestOf([
+    'theme_viking_friendly',
+    'theme_viking_neutral',
+    'theme_viking_hostile',
+    'attack_byzanz',
+    'mission_arabs1_standard',
+    'mission_arabs1_wealthy',
+    'mission_arabs1_danger',
+    'mission_midgard1_standard',
+  ]),
+);
 
 const US = 1;
 const THEM = 2;
