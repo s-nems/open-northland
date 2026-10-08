@@ -16,8 +16,10 @@ export type AuditionRole =
   | { readonly kind: 'world'; readonly layer: ShotLayer }
   /** A landscape object's sound in the ambience lane (birds, branch cracks, stones). */
   | { readonly kind: 'ambience' }
-  /** An unprompted line in the voice lane (chatter, screams, animal calls): one wav sounds once at a time. */
+  /** An unprompted line in the voice lane (chatter, animal calls): one wav sounds once at a time. */
   | { readonly kind: 'voice' }
+  /** A struck body's scream: the voice lane's scream budget, one wav at a time, in the `impact` layer. */
+  | { readonly kind: 'scream' }
   /** An order's answer: in no lane, on the responses bus, and held while any line of its pool still
    *  sounds. */
   | { readonly kind: 'answer' }
@@ -26,6 +28,7 @@ export type AuditionRole =
 
 const SFX_LANE = { kind: 'sfx' } as const;
 const VOICE_LANE = { kind: 'voice' } as const;
+const SCREAM_LANE = { kind: 'voice', scream: true } as const;
 const AMBIENCE_LANE = { kind: 'ambience' } as const;
 
 /** One play of `files`, a pool the index holds, as `role` plays in the game at full on-screen gain. */
@@ -44,6 +47,8 @@ export function auditionShot(
       return { files, gain, pan, key, lane: AMBIENCE_LANE };
     case 'voice':
       return { files, gain, pan, key, lane: VOICE_LANE, exclusive: 'wav' };
+    case 'scream':
+      return { files, gain, pan, key, lane: SCREAM_LANE, layer: 'impact', exclusive: 'wav' };
     case 'answer':
       return { files, gain, pan, key, bus: 'responses', exclusive: 'group' };
     case 'jingle': {

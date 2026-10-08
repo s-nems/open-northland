@@ -131,7 +131,7 @@ describe('buildSoundGalleryModel', () => {
       'Nie: Viking male no 01',
     ]);
     expect(man.map((g) => (g.play.kind === 'pool' ? g.play.role.kind : g.play.kind))).toEqual([
-      'voice',
+      'scream',
       'voice',
       'answer',
       'answer',

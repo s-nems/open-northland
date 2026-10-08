@@ -69,6 +69,12 @@ describe('auditionShot', () => {
       lane: { kind: 'voice' },
       exclusive: 'wav',
     });
+    // A scream is rationed apart from the chatter and holds through a zoom-out like the blow it answers.
+    expect(auditionShot(index, AXE, { kind: 'scream' }, 'k', 0)).toMatchObject({
+      lane: { kind: 'voice', scream: true },
+      layer: 'impact',
+      exclusive: 'wav',
+    });
     const answer = auditionShot(index, ANSWER, { kind: 'answer' }, 'k', 0);
     expect(answer.lane).toBeUndefined();
     expect(answer.exclusive).toBe('group');

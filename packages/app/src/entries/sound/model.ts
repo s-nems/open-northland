@@ -85,6 +85,7 @@ const VOICE_CLASS_ORDER: readonly VoiceClass[] = ['male', 'female', 'child'];
 
 const WORK: AuditionRole = { kind: 'world', layer: 'detail' };
 const VOICE: AuditionRole = { kind: 'voice' };
+const SCREAM: AuditionRole = { kind: 'scream' };
 const ANSWER: AuditionRole = { kind: 'answer' };
 const AMBIENCE: AuditionRole = { kind: 'ambience' };
 const NO_CLIPS: readonly string[] = [];
@@ -154,7 +155,7 @@ function voiceGroups(voices: HumanVoices, index: SoundIndex): ClipList[] {
     const clips = groupClips(index, name);
     if (clips.length > 0) groups.push({ group: `${role}: ${name}`, clips, play: pool(play) });
   };
-  if (voices.scream !== undefined) add(roles.scream, voices.scream, VOICE);
+  if (voices.scream !== undefined) add(roles.scream, voices.scream, SCREAM);
   if (voices.generic !== undefined) add(roles.chatter, voices.generic, VOICE);
   for (const name of voices.respondOk) add(roles.ok, name, ANSWER);
   for (const name of voices.respondNo) add(roles.no, name, ANSWER);
