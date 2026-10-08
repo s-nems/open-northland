@@ -27,6 +27,12 @@ export const DEFAULT_CLIP_LENGTH_S = 1;
 export const NO_REPEAT_FREE_CHOICES = 2;
 /** The key-cooldown and sounding maps sweep expired entries once they grow this large. */
 export const LEDGER_PRUNE_SIZE = 512;
+/** A world one-shot's playback rate varies by up to this fraction either way, which shifts its pitch
+ *  and length together, so a pool of two wavs does not repeat the same two sounds. Approximation: the
+ *  common 3-5 % per-play variation; the original plays every wav at its own rate. */
+export const RATE_JITTER = 0.04;
+/** A world one-shot's level varies by up to this many dB either way. Approximation, the common choice. */
+export const GAIN_JITTER_DB = 1.5;
 
 /**
  * What the arbiter asks of the playback engine, both optional so it runs headless. Without
@@ -50,10 +56,11 @@ interface PoolState {
   candidate: OneShot | null;
 }
 
-/** One start of a wav. */
+/** One start of a wav, at a playback rate that stretches its length. */
 interface Play {
   readonly file: string;
   readonly startedAt: number;
+  readonly rate: number;
 }
 
 interface WorldVoice {
@@ -131,8 +138,9 @@ export class OneShotLedger {
   /**
    * Start a pool's candidate, or refuse it: when it is exclusive and every wav of its pool still
    * sounds, or when the world is full of sounds at least as loud. A full world otherwise gives the
-   * shot the quietest voice's slot. Returns what the engine plays; the caller spends the lane's budget
-   * only on that.
+   * shot the quietest voice's slot. The started shot carries its own rate and level within
+   * {@link RATE_JITTER} and {@link GAIN_JITTER_DB}. Returns what the engine plays; the caller spends
+   * the lane's budget only on that.
    */
   startWorld(shot: OneShot, now: number): OneShot | null {
     const file = this.pick(shot.files, shot.exclusive !== undefined, now);
@@ -146,11 +154,13 @@ export class OneShotLedger {
     }
     const pool = this.pool(shot.files);
     const instance = this.nextInstance++;
-    const play = this.record(shot, pool, file, now);
+    const rate = 1 + this.jitter(RATE_JITTER);
+    const gain = shot.gain * 10 ** (this.jitter(GAIN_JITTER_DB) / 20);
+    const play = this.record(shot, pool, file, now, rate);
     pool.playing++;
     pool.lastStart = now;
-    this.world.push({ instance, play, gain: shot.gain, pool });
-    return { ...shot, files: [file], instance };
+    this.world.push({ instance, play, gain, pool });
+    return { ...shot, files: [file], gain, rate, instance };
   }
 
   /**
@@ -176,8 +186,8 @@ export class OneShotLedger {
     return { ...shot, files: [file] };
   }
 
-  private record(shot: OneShot, pool: PoolState, file: string, now: number): Play {
-    const play: Play = { file, startedAt: now };
+  private record(shot: OneShot, pool: PoolState, file: string, now: number, rate = 1): Play {
+    const play: Play = { file, startedAt: now, rate };
     this.lastPlay.set(file, play);
     this.lastStarted.set(shot.key, now);
     pool.recent.push(file);
@@ -186,7 +196,12 @@ export class OneShotLedger {
   }
 
   private endOf(play: Play): number {
-    return play.startedAt + (this.playback.clipLengthS?.(play.file) ?? DEFAULT_CLIP_LENGTH_S);
+    return play.startedAt + (this.playback.clipLengthS?.(play.file) ?? DEFAULT_CLIP_LENGTH_S) / play.rate;
+  }
+
+  /** A uniform draw in [-span, span) from the injected source. */
+  private jitter(span: number): number {
+    return (this.random() * 2 - 1) * span;
   }
 
   private steal(victim: WorldVoice): void {

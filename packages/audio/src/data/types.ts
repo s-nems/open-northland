@@ -25,7 +25,8 @@ export interface OneShot {
   /** The group's interchangeable wav paths (relative to the sounds root). Shots of one group share the
    *  index's own array, which is how the arbiter knows the pool and picks the wav the engine plays. */
   readonly files: readonly string[];
-  /** Final playback gain, 0..1 (spatial attenuation already applied; 1 for non-spatial jingles). */
+  /** Final playback gain: the group's authored volume times its spatial attenuation, and for a world
+   *  shot the arbiter's level variation, which may lift it a little past 1. */
   readonly gain: number;
   /** Stereo pan, -1 (hard left) .. +1 (hard right); 0 for non-spatial jingles. */
   readonly pan: number;
@@ -48,6 +49,8 @@ export interface OneShot {
   /** The arbiter's handle for a world one-shot it started, which a later steal names
    *  ({@link import('./one-shot-ledger.js').OneShotPlayback}). */
   readonly instance?: number;
+  /** Playback rate, 1 = as recorded; the arbiter varies it per world one-shot. Absent plays at 1. */
+  readonly rate?: number;
 }
 
 /**

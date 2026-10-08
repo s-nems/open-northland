@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { JINGLE_BIRTH, JINGLE_DEATH, JINGLE_DUCK_HOLD_MS, JINGLE_WON } from '../src/data/bindings.js';
 import {
   DEFAULT_CLIP_LENGTH_S,
+  GAIN_JITTER_DB,
   KEY_COOLDOWN_S,
   NO_REPEAT_FREE_CHOICES,
   noRepeatDepth,
   POOL_INSTANCE_CAP,
   POOL_RETRIGGER_S,
+  RATE_JITTER,
   WORLD_VOICE_CAP,
 } from '../src/data/one-shot-ledger.js';
 import {
@@ -146,7 +148,8 @@ describe('sfx and voice lanes', () => {
       for (const shot of lane(started, kind)) {
         const pool = lane(battle, kind).find((s) => s.key === shot.key)?.files;
         const rivals = lane(battle, kind).filter((s) => s.files === pool);
-        expect(shot.gain).toBe(Math.max(...rivals.map((s) => s.gain)));
+        const offered = rivals.find((s) => s.key === shot.key);
+        expect(offered?.gain).toBe(Math.max(...rivals.map((s) => s.gain)));
       }
     }
   });
@@ -275,6 +278,56 @@ describe('wav picks', () => {
   });
 });
 
+/** The [0,1) draw that jitters nothing: the middle of the range. */
+const UNJITTERED = 0.5;
+/** Floating-point slack on a bound the jitter can reach exactly. */
+const ROUNDING = 1e-9;
+
+describe('per-play variation', () => {
+  it(`varies a world shot's rate within ${RATE_JITTER} and its level within ${GAIN_JITTER_DB} dB`, () => {
+    const arbiter = new OneShotArbiter({ random: cycling([0, 0.2, 0.4, 0.6, 0.8, 0.99]) });
+    const rates: number[] = [];
+    for (let n = 0; n < 60; n++) {
+      const [started] = arbiter.decide([worldShot(wavPool(`v${n}-`, 1), `v:${n}`, 0.5, 'voice')], n);
+      expect(started).toBeDefined();
+      const rate = started?.rate ?? 0;
+      rates.push(rate);
+      expect(Math.abs(rate - 1)).toBeLessThanOrEqual(RATE_JITTER + ROUNDING);
+      const db = 20 * Math.log10((started?.gain ?? 0) / 0.5);
+      expect(Math.abs(db)).toBeLessThanOrEqual(GAIN_JITTER_DB + ROUNDING);
+    }
+    expect(Math.min(...rates)).toBeCloseTo(1 - RATE_JITTER, 9);
+    expect(new Set(rates).size).toBeGreaterThan(1);
+  });
+
+  it('leaves jingles, answers and GUI cues at their own rate and level', () => {
+    const arbiter = new OneShotArbiter({ random: () => 0 });
+    const answer: OneShot = {
+      files: wavPool('ok', 2),
+      gain: 0.6,
+      pan: 0,
+      key: 'respond:a',
+      exclusive: 'group',
+    };
+    const cue: OneShot = { files: ['gui/click.wav'], gain: 1, pan: 0, key: 'ui:confirm' };
+    const out = arbiter.decide([answer, cue, jingle(JINGLE_WON, 'won')], 0);
+    expect(out).toHaveLength(3);
+    for (const shot of out) expect(shot.rate).toBeUndefined();
+    expect(out.map((s) => s.gain).sort()).toEqual([0.6, 0.9, 1]);
+  });
+
+  it('holds a slowed wav for its stretched length', () => {
+    const one = wavPool('slow', 1);
+    const shot = { ...worldShot(one, 'slow:1', 1, 'voice'), exclusive: 'wav' as const };
+    // A source of 0 draws the slowest rate, so a one-second clip runs past one second.
+    const arbiter = new OneShotArbiter({ random: () => 0, playback: { clipLengthS: () => 1 } });
+    expect(arbiter.decide([shot], 0)).toHaveLength(1);
+    const end = 1 / (1 - RATE_JITTER);
+    expect(arbiter.decide([{ ...shot, key: 'slow:2' }], (1 + end) / 2)).toHaveLength(0);
+    expect(arbiter.decide([{ ...shot, key: 'slow:3' }], end + 0.01)).toHaveLength(1);
+  });
+});
+
 describe('instance caps', () => {
   it(`holds a pool to ${POOL_INSTANCE_CAP} at once and its starts ${POOL_RETRIGGER_S} s apart`, () => {
     const files = wavPool('swing', 10);
@@ -292,7 +345,9 @@ describe('instance caps', () => {
 
   it('drops a world shot quieter than all that play once the world is full, and steals the quietest for a louder one', () => {
     const stopped: number[] = [];
+    // A source at the middle of its range leaves every level unjittered, so the gains compare exactly.
     const arbiter = new OneShotArbiter({
+      random: () => UNJITTERED,
       playback: { clipLengthS: () => 1000, stop: (i) => stopped.push(i) },
     });
     const started: OneShot[] = [];

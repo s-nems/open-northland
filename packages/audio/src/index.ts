@@ -112,12 +112,14 @@ export {
 } from './data/music/index.js';
 export {
   DEFAULT_CLIP_LENGTH_S,
+  GAIN_JITTER_DB,
   KEY_COOLDOWN_S,
   LEDGER_PRUNE_SIZE,
   NO_REPEAT_FREE_CHOICES,
   type OneShotPlayback,
   POOL_INSTANCE_CAP,
   POOL_RETRIGGER_S,
+  RATE_JITTER,
   WORLD_VOICE_CAP,
 } from './data/one-shot-ledger.js';
 export {

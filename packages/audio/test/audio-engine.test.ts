@@ -211,6 +211,15 @@ describe('WebAudioEngine one-shots', () => {
     expect(fetched).toEqual(['/sounds/sfx/hammer.wav', '/sounds/a.wav']);
   });
 
+  it('plays a shot at the rate the arbiter gave it, and at the recorded rate without one', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [shot({ rate: 1.03 }), shot({ key: 'plain' })], ambient: [] });
+    await flush();
+    expect((ctx.sources[0] as FakeSource).playbackRate.value).toBe(1.03);
+    expect((ctx.sources[1] as FakeSource).playbackRate.events).toHaveLength(0);
+  });
+
   it('fades a stopped world shot to silence and stops its source once the fade lands', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();

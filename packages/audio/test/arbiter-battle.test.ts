@@ -25,6 +25,8 @@ const COMPARED_S = 0.25;
 const READS_PER_SHOT = 8;
 /** Reads a frame may spend beyond the linear pass: sorting and starting the pool candidates. */
 const READS_PER_FRAME = 100;
+/** Random draws one start may take: its wav pick plus its rate and level variation. */
+const DRAWS_PER_START = 3;
 
 /** The pool each wav belongs to, so a started shot's single wav maps back to its group. */
 const poolOfWav = new Map<string, string>();
@@ -95,7 +97,12 @@ function runBattle(units: number, seconds = BATTLE_S) {
       lastPoolStart.set(pool, t);
       if (shot.lane.kind === 'voice') starts.voice++;
       if (shot.lane.kind === 'sfx') starts.sfx++;
-      playing.push({ instance: shot.instance ?? 0, file, pool, endsAt: t + clipLengthS(file) });
+      playing.push({
+        instance: shot.instance ?? 0,
+        file,
+        pool,
+        endsAt: t + clipLengthS(file) / (shot.rate ?? 1),
+      });
     }
     expect(playing.length).toBeLessThanOrEqual(WORLD_VOICE_CAP);
     const perPool = new Map<string, number>();
@@ -112,8 +119,8 @@ describe('a 1000-unit battle', () => {
     expect(run.starts.voice).toBeGreaterThan(0);
     expect(run.starts.voice).toBeLessThanOrEqual(VOICE_BURST + VOICE_STARTS_PER_S * BATTLE_S);
     expect(run.starts.sfx).toBeLessThanOrEqual(SFX_BURST + SFX_STARTS_PER_S * BATTLE_S);
-    // One wav pick per sound pool a frame at most, however many shots the pool's fighters raise.
-    expect(run.maxPicksPerFrame).toBeLessThanOrEqual(battleIndex.groupsByName.size);
+    // One start per sound pool a frame at most, however many shots the pool's fighters raise.
+    expect(run.maxPicksPerFrame).toBeLessThanOrEqual(DRAWS_PER_START * battleIndex.groupsByName.size);
     expect(run.maxReadsPerFrame).toBeLessThanOrEqual(READS_PER_SHOT * run.shots + READS_PER_FRAME);
   });
 

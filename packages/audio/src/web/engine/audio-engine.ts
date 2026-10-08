@@ -475,6 +475,7 @@ export class WebAudioEngine {
       if (shot.duckMusicMs !== undefined) this.duckMusic(ctx, shot.duckMusicMs);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
+      if (shot.rate !== undefined) source.playbackRate.value = shot.rate;
       const gain = ctx.createGain();
       gain.gain.value = shot.gain;
       // StereoPannerNode is absent on some old `webkitAudioContext` builds; degrade to unpanned rather
