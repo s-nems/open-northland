@@ -82,6 +82,7 @@ export {
   type SceneryObject,
 } from './data/landscape-sectors.js';
 export {
+  ANSWER_MUSIC_DUCK_DB,
   clampVolume,
   DEFAULT_AMBIENT_VOLUME,
   DEFAULT_BUS_VOLUME,
@@ -270,6 +271,7 @@ export {
   SAMPLE_CACHE_BUDGET_BYTES,
   type SamplePreloadReport,
   type SoundPreloadReport,
+  VOICE_DUCK_DIP_S,
   VOICE_DUCK_RELEASE_S,
   VOLUME_RAMP_S,
   WebAudioEngine,

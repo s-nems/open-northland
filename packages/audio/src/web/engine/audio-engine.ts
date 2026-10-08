@@ -143,9 +143,12 @@ export const MUSIC_DUCK_GAIN = 10 ** (MUSIC_DUCK_DB / 20);
  *  audiopath volume linearly in dB. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
 
-/** The voice duck's lift back to full music ({@link OneShot.duckMusicDb}): slower than its dip, so the
- *  score does not jump back between two quick answers, quick enough not to creep audibly. Approximation. */
-export const VOICE_DUCK_RELEASE_S = 0.3;
+/** The voice duck's dip under a spoken line ({@link OneShot.duckMusicDb}): gentle enough that the
+ *  score sinks under the voice rather than dropping out. Approximation. */
+export const VOICE_DUCK_DIP_S = 0.15;
+/** The voice duck's lift back to full music: much slower than its dip, so the score does not jump back
+ *  between two quick answers and swells back in after the last. Approximation. */
+export const VOICE_DUCK_RELEASE_S = 0.8;
 
 /** The buses an alert ducks ({@link OneShot.duckWorldDb}): the world's action and its beds. */
 export const ALERT_DUCKED_BUSES: readonly SoundBus[] = ['world', 'ambient'];
@@ -530,7 +533,7 @@ export class WebAudioEngine {
       buses[bus].connect(duck.node).connect(master);
       return duck;
     });
-    const voiceDuck = new BusDuck(ctx, { releaseS: VOICE_DUCK_RELEASE_S });
+    const voiceDuck = new BusDuck(ctx, { dipS: VOICE_DUCK_DIP_S, releaseS: VOICE_DUCK_RELEASE_S });
     buses.music.connect(musicDuck.node).connect(voiceDuck.node).connect(master);
     this.voiceDuck = voiceDuck;
     this.master = master;

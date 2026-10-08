@@ -67,12 +67,14 @@ export function volumeGain(position: number): number {
 }
 
 /**
- * dB the music bus dips while a line the player asked for speaks: an order's answer, a selection's line
- * or an alert ({@link OneShot.duckMusicDb}). Idle chatter, screams and animal calls on the `voice` bus
- * leave the music alone: they ring unasked and often, and a duck under them would pump the score.
- * Approximation: the common 2-4 dB voice-over-music duck.
+ * dB the music bus dips while an alert speaks ({@link OneShot.duckMusicDb}). Idle chatter, screams and
+ * animal calls on the `voice` bus leave the music alone: they ring unasked and often, and a duck under
+ * them would pump the score. Approximation: the common 2-4 dB voice-over-music duck.
  */
 export const VOICE_MUSIC_DUCK_DB = -3;
+/** dB the music bus dips under an order's answer: lighter than an alert's, since the player hears one
+ *  after nearly every order. A selection's short line dips nothing. Approximation. */
+export const ANSWER_MUSIC_DUCK_DB = -2;
 
 /** The bus a one-shot plays on, from the lane it is rationed in; a shot outside every lane answers the
  *  player (a GUI cue, an order's answer) and plays on `ui`. */

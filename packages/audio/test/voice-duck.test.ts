@@ -3,6 +3,7 @@ import {
   BUS_DUCK_RAMP_S,
   DEFAULT_SOUNDS_BASE_URL,
   type OneShot,
+  VOICE_DUCK_DIP_S,
   VOICE_DUCK_RELEASE_S,
   VOICE_MUSIC_DUCK_DB,
   WebAudioEngine,
@@ -54,7 +55,7 @@ describe('voice duck', () => {
     const voiceDuck = voiceDuckOf(ctx);
     expect(voiceDuck.connectedTo).toEqual([master]);
     await play(engine, [line('ok.wav')]);
-    expect(voiceDuck.gain.ramps[0]).toEqual({ value: DUCKED, time: BUS_DUCK_RAMP_S });
+    expect(voiceDuck.gain.ramps[0]).toEqual({ value: DUCKED, time: VOICE_DUCK_DIP_S });
     expect(jingleDuck.gain.ramps).toHaveLength(0);
     for (const bus of [buses.ui, buses.voice, buses.world]) expect(bus.gain.ramps).toHaveLength(0);
   });
@@ -102,7 +103,7 @@ describe('voice duck', () => {
     const [cancel, anchor, dip] = voiceDuck.gain.events.slice(-5);
     expect(cancel).toMatchObject({ kind: 'cancel', time: ctx.currentTime });
     expect(anchor).toMatchObject({ kind: 'set', time: ctx.currentTime });
-    expect(dip).toEqual({ kind: 'ramp', value: DUCKED, time: ctx.currentTime + BUS_DUCK_RAMP_S });
+    expect(dip).toEqual({ kind: 'ramp', value: DUCKED, time: ctx.currentTime + VOICE_DUCK_DIP_S });
   });
 
   it('leaves the music alone under a shot without a voice duck', async () => {
