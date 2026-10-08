@@ -732,6 +732,28 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(sim.world.has(lone, SupplyRun)).toBe(false);
   });
 
+  it('keeps two full crews on their own supplied sites instead of trading builders every pass', () => {
+    const sim = new Simulation({ seed: 37, content: constructionContent(), map: grassMap(40, 5) });
+    const supplied = (x: number): Entity => {
+      const site = siteAt(sim, HOUSE, x, 1);
+      sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
+      sim.world.mut(site, Stockpile).amounts.set(WOOD, 1);
+      return site;
+    };
+    const left = supplied(6);
+    const right = supplied(30);
+    const leftCrew = Array.from({ length: 3 }, (_, i) => builderAt(sim, 5 + i, 3));
+    const rightCrew = Array.from({ length: 2 }, (_, i) => builderAt(sim, 29 + i, 3));
+    for (const b of leftCrew) sim.world.add(b, SiteAssignment, { site: left, pinned: false });
+    for (const b of rightCrew) sim.world.add(b, SiteAssignment, { site: right, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const siteOf = (b: Entity): Entity | undefined => sim.world.tryGet(b, SiteAssignment)?.site;
+    expect(leftCrew.map(siteOf)).toEqual([left, left, left]);
+    expect(rightCrew.map(siteOf)).toEqual([right, right]);
+  });
+
   it('a builder fetch skips a pile buried under walls for the nearest reachable source', () => {
     // A stone pile left INSIDE a standing house's walk-blocked body (the leftover the footprint goods
     // eviction could not land, or hand-dropped state): geometrically the nearest source, but its stand

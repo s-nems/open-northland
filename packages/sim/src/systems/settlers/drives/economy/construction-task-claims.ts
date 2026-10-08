@@ -105,10 +105,13 @@ export class ConstructionTaskClaims {
     return this.crewSizes().get(site) ?? 0;
   }
 
-  /** `site`'s {@link SITE_TIER} as the crews and claims stand now. */
-  siteTier(site: Entity): number {
+  /** `site`'s {@link SITE_TIER} as the crews and claims stand now, for `builder`'s pick: its own place in
+   *  the crew is not counted, so a site it holds never drops a tier under its own weight and sends it to
+   *  a neighbour the same way; two full sites would otherwise trade builders every pass. */
+  siteTier(site: Entity, builder: Entity): number {
     const { world, ctx } = this;
-    const crew = this.crewSize(site);
+    const own = world.tryGet(builder, SiteAssignment)?.site === site ? 1 : 0;
+    const crew = this.crewSize(site) - own;
     if (this.hasHammerWork(site)) {
       if (this.materialsPresent(site)) {
         if (crew === 0) return SITE_TIER.readyUnstaffed;
@@ -135,16 +138,15 @@ export class ConstructionTaskClaims {
   }
 
   /**
-   * Rank `owner`'s building sites among `sites` for one builder's pick, by tier. The ranks are read as
-   * the crews stand at this moment; a site another builder joins later in the pass re-ranks on its own
-   * pick.
+   * Rank `owner`'s building sites among `sites` for `builder`'s pick, by tier. The ranks are read as the
+   * crews stand at this moment; a site another builder joins later in the pass re-ranks on its own pick.
    */
-  rankBuildingSites(owner: number | undefined, sites: readonly Entity[]): SiteRanking {
+  rankBuildingSites(owner: number | undefined, sites: readonly Entity[], builder: Entity): SiteRanking {
     const rankOf = new Map<Entity, number>();
     const ranks: number[] = [];
     for (const site of sites) {
       if (!ownersCompatible(owner, ownerOf(this.world, site))) continue;
-      const rank = this.siteTier(site);
+      const rank = this.siteTier(site, builder);
       rankOf.set(site, rank);
       if (!ranks.includes(rank)) ranks.push(rank);
     }

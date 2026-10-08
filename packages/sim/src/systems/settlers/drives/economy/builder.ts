@@ -181,7 +181,7 @@ export function planBuilder(
   let rankedBuilding: Entity | null | undefined;
   const bestBuildingSite = (): Entity | null => {
     rankedBuilding ??= rankedBuildingSite(
-      claims.rankBuildingSites(settler.owner, targets.constructionSites),
+      claims.rankBuildingSites(settler.owner, targets.constructionSites, e),
       crewBuilding,
       buildingAccepts,
       (accepts) => nearestSite(targets.constructionSiteCells, accepts),
