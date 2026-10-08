@@ -87,11 +87,11 @@ export {
   zoomDistance,
 } from './data/perspective.js';
 export {
-  CULL_MARGIN_PX,
   computePan,
   computeSpatial,
   EDGE_GAIN,
   MAX_PAN,
+  OFFSCREEN_FADE_SHARE,
   type Spatial,
 } from './data/spatial.js';
 export type {

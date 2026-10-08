@@ -1,6 +1,6 @@
 import { type Camera, tileToScreen } from '@open-northland/render/data';
 import { describe, expect, it } from 'vitest';
-import { CULL_MARGIN_PX, computeSpatial, EDGE_GAIN, MAX_PAN } from '../src/index.js';
+import { computeSpatial, EDGE_GAIN, MAX_PAN, OFFSCREEN_FADE_SHARE } from '../src/index.js';
 
 /**
  * The pure spatial-audio math: an emitter is silent (null) off screen, full-gain + centre-pan at the
@@ -36,12 +36,37 @@ describe('computeSpatial', () => {
     expect(computeSpatial(100, 100, centred, CANVAS_W, CANVAS_H)).toBeNull();
   });
 
-  it('keeps an emitter just past the edge audible within the cull margin', () => {
-    // Place the emitter a little past the right edge but inside CULL_MARGIN_PX.
-    const cam: Camera = { offsetX: CANVAS_W + CULL_MARGIN_PX / 2, offsetY: CANVAS_H / 2, scale: 1 };
-    const s = computeSpatial(0, 0, cam, CANVAS_W, CANVAS_H);
-    expect(s).not.toBeNull();
-    expect(s?.pan).toBeGreaterThan(0); // to the right
+  describe('past the screen edge', () => {
+    const band = OFFSCREEN_FADE_SHARE * CANVAS_W;
+    // Tile (0,0) projects to (0,0), so the offset alone places the emitter.
+    const rightOfScreen = (px: number): ReturnType<typeof computeSpatial> =>
+      computeSpatial(0, 0, { offsetX: CANVAS_W + px, offsetY: CANVAS_H / 2, scale: 1 }, CANVAS_W, CANVAS_H);
+
+    it('meets the on-screen edge gain at the edge, so crossing it never steps', () => {
+      expect(rightOfScreen(0)?.gain).toBeCloseTo(EDGE_GAIN, 9);
+      expect(rightOfScreen(-1)?.gain).toBeCloseTo(EDGE_GAIN, 2);
+    });
+
+    it('fades linearly to silence across the band and culls beyond it', () => {
+      expect(rightOfScreen(band / 2)?.gain).toBeCloseTo(EDGE_GAIN / 2, 9);
+      expect(rightOfScreen(band / 2)?.pan).toBeCloseTo(MAX_PAN, 9); // hard to its side
+      expect(rightOfScreen(band)).toBeNull();
+      expect(rightOfScreen(band * 2)).toBeNull();
+    });
+
+    it('measures the band past the top and bottom by the screen height', () => {
+      const below = (py: number): ReturnType<typeof computeSpatial> =>
+        computeSpatial(0, 0, { offsetX: CANVAS_W / 2, offsetY: CANVAS_H + py, scale: 1 }, CANVAS_W, CANVAS_H);
+      const vertical = OFFSCREEN_FADE_SHARE * CANVAS_H;
+      expect(below(vertical / 2)?.gain).toBeCloseTo(EDGE_GAIN / 2, 9);
+      expect(below(vertical / 2)?.pan).toBeCloseTo(0, 9);
+      expect(below(vertical)).toBeNull();
+    });
+
+    it('hears nothing on a screen with no area', () => {
+      expect(computeSpatial(0, 0, centred, 0, CANVAS_H)).toBeNull();
+      expect(computeSpatial(0, 0, centred, CANVAS_W, 0)).toBeNull();
+    });
   });
 
   it('respects the camera zoom when projecting', () => {

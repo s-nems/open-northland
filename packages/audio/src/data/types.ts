@@ -96,7 +96,7 @@ export type EventSound =
       readonly localPlayerOnly?: boolean;
       /**
        * When set, the jingle rings only while the event's position (`at` node or emitter entity) is
-       * inside the viewport plus the spatial cull margin; it keeps full gain and centre - the gate
+       * inside the viewport plus the spatial off-screen fade band; it keeps full gain and centre - the gate
        * decides audibility, not attenuation. An event whose position cannot be located stays silent.
        * Approximation: the original ships no audibility data (`soundfx.cif` has no range keys), so
        * screen-locality is a choice, not extracted behaviour.
