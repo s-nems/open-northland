@@ -78,6 +78,8 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
   let heardVersion = 0;
   let heardNotice: NetNotice | null = null;
   const ringNew = (model: NetPanelModel): void => {
+    // Runs every frame: a frame with no new line and the same notice allocates nothing.
+    if (model.chatVersion === heardVersion && model.notice === heardNotice) return;
     const fresh = Math.min(model.chatVersion - heardVersion, model.chat.length);
     heardVersion = model.chatVersion;
     const cues = new Set<NetLineCue>();

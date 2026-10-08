@@ -686,4 +686,36 @@ describe('the chat cues', () => {
     expect(rung).toEqual(['chat', 'arrival', 'departure']);
     overlays.dispose();
   });
+
+  it('allocates nothing on a frame with no new line and the same notice', () => {
+    const lines: NetChatLine[] = [{ ...said(0), cue: 'chat' }];
+    const feed = source(panelModel({ chat: lines, chatVersion: 1 }));
+    const { controller } = fakeController();
+    const overlays = mountNetOverlays({
+      source: feed,
+      scale: () => 1,
+      controller: () => controller,
+      cue: () => undefined,
+      notify: () => undefined,
+      now: () => 0,
+    });
+    overlays.refresh();
+    feed.current = panelModel({ chat: lines, chatVersion: 1 });
+    const RealSet = globalThis.Set;
+    let built = 0;
+    globalThis.Set = class CountingSet<T> extends RealSet<T> {
+      constructor(values?: Iterable<T> | null) {
+        super(values);
+        built++;
+      }
+    } as SetConstructor;
+    try {
+      overlays.refresh();
+      overlays.refresh();
+    } finally {
+      globalThis.Set = RealSet;
+    }
+    expect(built).toBe(0);
+    overlays.dispose();
+  });
 });
