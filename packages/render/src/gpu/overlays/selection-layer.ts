@@ -31,19 +31,29 @@ const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 /** Neutral selection colour for unowned objects and the white-ring option. */
 const RING_COLOR = 0xf2e8c9;
 const FLAG_RING_COLOR = 0xffc020;
-/** A work radius remains amber and barely filled, distinct from the selected flag itself. */
-const AREA_RING_WIDTH = 2;
-const AREA_RING_FILL_ALPHA = 0.05;
-/** World px one half-cell node spans east-west, the unit a work radius is carried in. */
+/** A range circle is barely filled, so the ground under it still reads: amber for where a worker works,
+ *  red for where a defence-mode building shoots. */
+const RANGE_RING_COLOR: Readonly<Record<RangeRingKind, number>> = {
+  work: FLAG_RING_COLOR,
+  defence: 0xe03a2a,
+};
+const RANGE_RING_WIDTH = 2;
+const RANGE_RING_ALPHA = 0.7;
+const RANGE_RING_FILL_ALPHA = 0.05;
+/** World px one half-cell node spans east-west, the unit a range radius is carried in. */
 const NODE_WIDTH_PX = TILE_HALF_W;
 
 const NO_IDS: ReadonlySet<number> = new Set();
-const NO_AREAS: readonly WorkAreaRing[] = [];
+const NO_RANGES: readonly RangeRing[] = [];
 
-/** One work-area circle: the flag entity it centres on and its radius in half-cell nodes. */
-export interface WorkAreaRing {
+const RANGE_RING_KINDS = ['work', 'defence'] as const;
+export type RangeRingKind = (typeof RANGE_RING_KINDS)[number];
+
+/** One range circle: the entity it centres on, its radius in half-cell nodes and what the range is of. */
+export interface RangeRing {
   readonly entity: number;
   readonly radiusNodes: number;
+  readonly kind: RangeRingKind;
 }
 
 /** One ring's half-extents and centre offset in feet-local world pixels. */
@@ -71,10 +81,18 @@ export class SelectionLayer {
   private readonly rings = new Map<number, Graphics>();
   private readonly focusRings = new Map<number, Graphics>();
   private readonly seenFocus = new Set<number>();
-  /** One persistent work-area circle per shown flag entity id, keyed with the radius it was authored at
-   *  so a re-sized area redraws rather than keeping a stale circle. */
-  private readonly areaRings = new Map<number, { g: Graphics; radiusNodes: number }>();
-  private readonly seenAreas = new Set<number>();
+  /** Per kind, one persistent range circle per centre entity id, kept with the radius it was authored at
+   *  so a re-sized range redraws rather than keeping a stale circle. */
+  private readonly rangeRings: Readonly<
+    Record<RangeRingKind, Map<number, { g: Graphics; radiusNodes: number }>>
+  > = {
+    work: new Map(),
+    defence: new Map(),
+  };
+  private readonly seenRanges: Readonly<Record<RangeRingKind, Set<number>>> = {
+    work: new Set(),
+    defence: new Set(),
+  };
   /** Reused per-frame scratch of ids drawn this frame (one per pool; avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
   private readonly specs = new WeakMap<
@@ -82,46 +100,51 @@ export class SelectionLayer {
     RingSpec & { zoom: number; weight: number; color: number }
   >();
 
-  /** Reconcile selected entities, work flags, work areas and the member indicated by the group HUD. */
+  /** Reconcile selected entities, work flags, range circles and the member indicated by the group HUD. */
   draw(
     frame: SelectionFrame,
     selected: ReadonlySet<number>,
     flagged: ReadonlySet<number> = NO_IDS,
-    workAreas: readonly WorkAreaRing[] = NO_AREAS,
+    ranges: readonly RangeRing[] = NO_RANGES,
     focused: ReadonlySet<number> = NO_IDS,
   ): void {
     const style = frame.selectionStyle ?? DEFAULT_SELECTION_STYLE;
     const spriteEffect = style === 'outline' || style === 'pulse';
     this.reconcile(this.rings, this.seen, spriteEffect ? NO_IDS : selected, frame, 'selection', flagged);
-    this.reconcileAreas(workAreas, frame);
+    this.reconcileRanges(ranges, frame);
     this.reconcile(this.focusRings, this.seenFocus, focused, frame, 'focus');
   }
 
-  /** Reconcile the work-area circles: one flat ground ellipse per shown area, retiring the rest. */
-  private reconcileAreas(areas: readonly WorkAreaRing[], frame: SelectionFrame): void {
-    this.seenAreas.clear();
-    for (const area of areas) {
-      const ent = entityById(frame.snapshot, area.entity);
+  /** Reconcile the range circles: one flat ground ellipse per shown range, retiring the rest. */
+  private reconcileRanges(ranges: readonly RangeRing[], frame: SelectionFrame): void {
+    this.seenRanges.work.clear();
+    this.seenRanges.defence.clear();
+    for (const range of ranges) {
+      const ent = entityById(frame.snapshot, range.entity);
       if (ent === undefined) continue;
       const pos = readPosition(ent.components);
       if (pos === null) continue;
-      const s = feetAnchor(frame.drawn, area.entity, pos, frame.elevation);
-      let held = this.areaRings.get(area.entity);
-      if (held === undefined || held.radiusNodes !== area.radiusNodes) {
+      const s = feetAnchor(frame.drawn, range.entity, pos, frame.elevation);
+      const pool = this.rangeRings[range.kind];
+      let held = pool.get(range.entity);
+      if (held === undefined || held.radiusNodes !== range.radiusNodes) {
         held?.g.destroy();
-        const rx = area.radiusNodes * NODE_WIDTH_PX;
+        const rx = range.radiusNodes * NODE_WIDTH_PX;
+        const color = RANGE_RING_COLOR[range.kind];
         const g = new Graphics();
         g.ellipse(0, 0, rx, rx * ISO_RATIO)
-          .fill({ color: FLAG_RING_COLOR, alpha: AREA_RING_FILL_ALPHA })
-          .stroke({ width: AREA_RING_WIDTH, color: FLAG_RING_COLOR, alpha: 0.7 });
+          .fill({ color, alpha: RANGE_RING_FILL_ALPHA })
+          .stroke({ width: RANGE_RING_WIDTH, color, alpha: RANGE_RING_ALPHA });
         this.container.addChild(g);
-        held = { g, radiusNodes: area.radiusNodes };
-        this.areaRings.set(area.entity, held);
+        held = { g, radiusNodes: range.radiusNodes };
+        pool.set(range.entity, held);
       }
       held.g.position.set(s.x, s.y);
-      this.seenAreas.add(area.entity);
+      this.seenRanges[range.kind].add(range.entity);
     }
-    retireUndrawn(this.areaRings, this.seenAreas, (held) => held.g.destroy());
+    for (const kind of RANGE_RING_KINDS) {
+      retireUndrawn(this.rangeRings[kind], this.seenRanges[kind], (held) => held.g.destroy());
+    }
   }
 
   /** Reconcile one ring pool to `ids`: place/move a ring under each present entity, retire the rest. */
@@ -184,7 +207,7 @@ export class SelectionLayer {
     this.container.destroy({ children: true });
     this.rings.clear();
     this.focusRings.clear();
-    this.areaRings.clear();
+    for (const kind of RANGE_RING_KINDS) this.rangeRings[kind].clear();
   }
 }
 

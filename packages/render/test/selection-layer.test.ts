@@ -219,7 +219,7 @@ it('leaves work flags to their sprite outline and keeps their work radii in ever
   const layer = new SelectionLayer();
   const snapshot = snapshotOf([entity(2, 3, 1, { DeliveryFlag: {}, Owner: { player: 1 } })]);
   const flags = new Set([2]);
-  const areas = [{ entity: 2, radiusNodes: 4 }];
+  const areas = [{ entity: 2, radiusNodes: 4, kind: 'work' as const }];
   for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-green'] as const) {
     layer.draw({ snapshot, selectionStyle }, flags, flags);
     expect(layer.container.children).toHaveLength(0);
@@ -236,5 +236,23 @@ it('leaves work flags to their sprite outline and keeps their work radii in ever
   }
   layer.draw({ snapshot }, new Set());
   expect(layer.container.children).toHaveLength(0);
+  layer.destroy();
+});
+
+it('draws a defence range red beside a work range on the same centre', () => {
+  const layer = new SelectionLayer();
+  const snapshot = snapshotOf([entity(2, 3, 1, { Building: { buildingType: 1 }, Owner: { player: 1 } })]);
+  const ranges = [
+    { entity: 2, radiusNodes: 4, kind: 'work' as const },
+    { entity: 2, radiusNodes: 6, kind: 'defence' as const },
+  ];
+  layer.draw({ snapshot }, new Set(), new Set(), ranges);
+  const colours = layer.container.children.map((ring) => {
+    if (!(ring instanceof Graphics)) throw new Error('Missing range');
+    return ring.context.instructions.find((entry) => entry.action === 'stroke')?.data.style.color;
+  });
+  expect(colours).toEqual([0xffc020, 0xe03a2a]);
+  layer.draw({ snapshot }, new Set(), new Set(), ranges.slice(0, 1));
+  expect(layer.container.children).toHaveLength(1);
   layer.destroy();
 });

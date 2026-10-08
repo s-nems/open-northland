@@ -9,8 +9,8 @@ import type {
   LifeHeart,
   LostGoalMarker,
   OrderMarker,
+  RangeRing,
   SettlerBubble,
-  WorkAreaRing,
 } from '../overlays/index.js';
 import { DEFAULT_PIXEL_ART_SCALER, type PixelArtScaler } from '../pixel-art-registry.js';
 import type { PlanRoadTextures } from '../plan-road.js';
@@ -88,7 +88,7 @@ export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
 export const NO_GROUP_NUMBERS: ReadonlyMap<number, readonly string[]> = new Map();
-export const NO_WORK_AREAS: readonly WorkAreaRing[] = [];
+export const NO_RANGE_RINGS: readonly RangeRing[] = [];
 export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
 export const NO_LOST_GOALS: readonly LostGoalMarker[] = [];
 
@@ -116,8 +116,8 @@ export interface WorldFrame {
   readonly flagged?: ReadonlySet<number> | undefined;
   /** Ids the HUD points at among the selection (a hovered group well); lateral marks indicate them (default none). */
   readonly focused?: ReadonlySet<number> | undefined;
-  /** Work-area circles the player switched on with the ring's "Show Work Area" order (default none). */
-  readonly workAreas?: readonly WorkAreaRing[] | undefined;
+  /** Ground range circles: where a worker works, where a defence-mode building shoots (default none). */
+  readonly rangeRings?: readonly RangeRing[] | undefined;
   /** The ground acknowledgements of the player's latest walk and march orders (default none). */
   readonly orderMarkers?: readonly OrderMarker[] | undefined;
   /** The refused goals of the selected lost settlers, held while they stay lost (default none). */

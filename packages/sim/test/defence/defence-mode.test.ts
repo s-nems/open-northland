@@ -27,7 +27,11 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../src/index.js';
-import { SHELTER_SHOT_PERIOD_TICKS, shotsDue } from '../../src/systems/conflict/shelter-fire.js';
+import {
+  SHELTER_SHOT_PERIOD_TICKS,
+  shelterFireRadius,
+  shotsDue,
+} from '../../src/systems/conflict/shelter-fire.js';
 import { shelterOccupancy } from '../../src/systems/defence/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import * as ladder from '../../src/systems/settlers/drives/ladder.js';
@@ -673,5 +677,22 @@ describe('shotsDue', () => {
       expect(perTick.reduce((sum, n) => sum + n, 0)).toBe(occupants);
       expect(Math.max(...perTick)).toBeLessThanOrEqual(Math.ceil(occupants / SHELTER_SHOT_PERIOD_TICKS));
     }
+  });
+});
+
+describe('shelterFireRadius', () => {
+  /** An anchor node well inside any map, on an even row. */
+  const HX = 20;
+  const HY = 4;
+  const NO_BOW_TRIBE = VIKING + 1;
+
+  it('reaches the house bow past the farthest wall, the bound of where the building can land a shot', () => {
+    const content = defenceContent();
+    expect(shelterFireRadius(content, TOWER, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE);
+    expect(shelterFireRadius(content, HALL, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE + HALL_HALF_LENGTH_NODES);
+  });
+
+  it('is undefined for a tribe that fires no house bow', () => {
+    expect(shelterFireRadius(defenceContent(), TOWER, NO_BOW_TRIBE, HX, HY)).toBeUndefined();
   });
 });

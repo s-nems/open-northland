@@ -195,6 +195,7 @@ export {
   type PlacementOverlayCell,
   type PlacementOverlayFrame,
   type PortraitInsetFrame,
+  type RangeRing,
   type SettlerBubble,
   type SettlerBubbleGfx,
   type SettlerBubbleKind,
@@ -203,7 +204,6 @@ export {
   SIGN_HEIGHT,
   SIGN_STEP,
   signRowAt,
-  type WorkAreaRing,
 } from './gpu/overlays/index.js';
 export {
   type GuiColorKey,

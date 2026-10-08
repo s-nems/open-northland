@@ -354,7 +354,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       flagged: controls.flaggedFlagIds(),
       focused: controls.focusedIds(),
       groupNumbers: controls.groupNumbers(),
-      workAreas: controls.workAreaRings(),
+      rangeRings: controls.rangeRings(),
       orderMarkers: controls.orderMarkers(),
       lostGoals,
       lostGoalPulse: lostGoalPulse(nowMs),

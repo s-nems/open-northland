@@ -21,13 +21,13 @@ import {
   type LostGoalMarker,
   type OrderMarker,
   OrderMarkerLayer,
+  type RangeRing,
   SelectionLayer,
   type SettlerBubble,
   type SettlerBubbleGfx,
   SettlerBubbleLayer,
   ShipWakeLayer,
   ShotLayer,
-  type WorkAreaRing,
 } from '../overlays/index.js';
 import type { SelectionStyle } from '../selection-style.js';
 import type { DamagedBuilding, DrawnGeometry, ShipAfloat } from '../sprite-pool/index.js';
@@ -75,7 +75,7 @@ export interface WorldMarksFrame {
   readonly selection: ReadonlySet<number>;
   readonly flagged: ReadonlySet<number>;
   readonly focused: ReadonlySet<number>;
-  readonly workAreas: readonly WorkAreaRing[];
+  readonly rangeRings: readonly RangeRing[];
   readonly orderMarkers: readonly OrderMarker[];
   readonly lostGoals: readonly LostGoalMarker[];
   readonly lostGoalPulse: number;
@@ -188,7 +188,7 @@ export class WorldMarks {
       },
       frame.selection,
       frame.flagged,
-      frame.workAreas,
+      frame.rangeRings,
       frame.focused,
     );
     this.orderMarkers.draw(frame.orderMarkers, frame.lostGoals, frame.lostGoalPulse, elevation, viewport);

@@ -9,6 +9,7 @@ import { clientToScreen } from '../camera/index.js';
 import { setCanvasCursor } from '../cursors/element.js';
 import { nodeBounds, pickInRect, pickTopAt, screenToWorld, type Tile, worldToTile } from '../picking.js';
 import { entityAnchor } from '../projections/entity-anchor.js';
+import { memoBySnapshot, rangeRingsOf } from '../projections/index.js';
 import { orderRecipients } from './action-ring/index.js';
 import { createAnsweredOrders } from './answered-orders.js';
 import { createUnitChrome } from './chrome.js';
@@ -101,6 +102,13 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           onOrderLimit: refuseOrderLimit,
         });
   const workArea = createWorkAreaOverlay();
+  // The selection's circles and the ones the ring's "Show Work Area" kept. Both versions only ever grow,
+  // so their sum changes whenever either does.
+  const rangeRings = memoBySnapshot(
+    (snapshot: WorldSnapshot) =>
+      rangeRingsOf(opts.content, snapshot, [...workArea.ids(), ...selection.ids()]),
+    () => workArea.version() + selection.version(),
+  );
   const orderMarkers = createOrderMarkers(() => performance.now());
   const lostGoals = createLostGoals(nodeBounds(opts.mapSize).width);
   /** A gatherer's or a fisher's workplace pick also plants its flag, so the panel's one button serves
@@ -551,7 +559,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     focusedIds: () => chrome.focusedIds(),
     groupNumbers: controlGroups.numbers,
-    workAreaRings: () => workArea.rings(opts.snapshot()),
+    rangeRings: () => rangeRings(opts.snapshot()),
     orderMarkers: orderMarkers.live,
     lostGoals: () => lostGoals(opts.snapshot(), selection.ids(), pickableSeat(opts.viewer)),
     assignHighlight: pickMode.highlight,

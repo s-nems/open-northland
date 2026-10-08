@@ -9,8 +9,8 @@ import type {
   EntityBounds,
   LostGoalMarker,
   OrderMarker,
+  RangeRing,
   SpriteSheet,
-  WorkAreaRing,
 } from '@open-northland/render';
 import type {
   Entity,
@@ -177,8 +177,8 @@ export interface UnitControls {
   readonly focusedIds: () => ReadonlySet<number>;
   /** Control-group member id → the numbers of its groups the map marks it with. */
   readonly groupNumbers: () => ReadonlyMap<number, readonly string[]>;
-  /** The work-area circles the "Show Work Area" order has switched on. */
-  readonly workAreaRings: () => readonly WorkAreaRing[];
+  /** The range circles of the selection and of the settlers "Show Work Area" switched on. */
+  readonly rangeRings: () => readonly RangeRing[];
   /** The ground acknowledgements of the latest walk and march orders still playing. */
   readonly orderMarkers: () => readonly OrderMarker[];
   /** The refused goals of the selected lost settlers; the same list while they stand still. */
