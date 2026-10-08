@@ -1580,7 +1580,7 @@ export const deGame = {
     toggle: '🛠 Admin / Debug',
     title: 'Verwaltungs- und Debug-Werkzeuge',
     intro:
-      'Wähle eine Einheit, ein Fahrzeug, einen Rohstoff, eine Ware oder ein Werkzeug und klicke dann in die Spielwelt. Du kannst den Besitzer zwischen den Klicks ändern.',
+      'Wähle eine Einheit, ein Fahrzeug, einen Rohstoff, eine Ware oder ein Werkzeug und klicke dann in die Spielwelt. Halte die Taste gedrückt, um fortlaufend zu platzieren. Du kannst den Besitzer zwischen den Klicks ändern.',
     playerOwner: 'Spieler (Besitzer)',
     playerTitle: 'Spieler {player} ({name})',
     armor: 'Rüstung',

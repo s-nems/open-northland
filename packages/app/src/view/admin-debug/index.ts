@@ -23,6 +23,7 @@ import {
   setButtonActive,
   TOGGLE_STYLE,
 } from './chrome.js';
+import { createHoldRepeat } from './hold-repeat.js';
 import { type Armed, createAdminLabels, sameArmed } from './labels.js';
 import {
   createFogSwitcher,
@@ -133,7 +134,16 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     canvas.style.cursor = armed === null ? '' : 'var(--cursor-crosshair, crosshair)';
   };
 
+  // A held spawn press keeps dropping at the pointer, following it, until the button comes up.
+  const hold = createHoldRepeat();
+  let heldAt: { clientX: number; clientY: number; onCanvas: boolean } | null = null;
+  const stopHold = (): void => {
+    hold.stop();
+    heldAt = null;
+  };
+
   const setArmed = (next: Armed | null): void => {
+    stopHold();
     armed = next;
     refresh();
   };
@@ -410,6 +420,12 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     );
   };
 
+  const spawnAtPointer = (clientX: number, clientY: number): void => {
+    if (deps.claimPointer(clientX, clientY)) return;
+    const tile = deps.clientToTile(clientX, clientY);
+    if (tile !== null) spawnAtTile(tile.col, tile.row);
+  };
+
   /** Applies to the entity under the cursor; a no-op click when none is there or no picker was handed in. */
   const applyActionAt = (clientX: number, clientY: number, action: DebugAction): void => {
     // Picking is number-typed end to end, so the `Entity` brand is reconstituted at this app-to-sim seam.
@@ -450,13 +466,22 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     } else if (armed.kind === 'teleport') {
       teleportAt(e.clientX, e.clientY, armed.target);
     } else {
-      const tile = deps.clientToTile(e.clientX, e.clientY);
-      if (tile !== null) spawnAtTile(tile.col, tile.row);
+      spawnAtPointer(e.clientX, e.clientY);
+      heldAt = { clientX: e.clientX, clientY: e.clientY, onCanvas: true };
+      hold.start(() => {
+        if (heldAt?.onCanvas === true) spawnAtPointer(heldAt.clientX, heldAt.clientY);
+      });
     }
     e.preventDefault();
     e.stopPropagation();
   };
   window.addEventListener('mousedown', onPointerDown, { capture: true });
+
+  const onPointerUp = (e: MouseEvent): void => {
+    if (e.button === 0) stopHold();
+  };
+  window.addEventListener('mouseup', onPointerUp, { capture: true });
+  window.addEventListener('blur', stopHold);
 
   const onKeyDown = (e: KeyboardEvent): void => {
     if (e.code === 'Escape' && armed !== null) {
@@ -469,6 +494,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   /** The half-cell node under the pointer, so a spot on the map can be named exactly. Shift holds the
    *  readout, so the pointer can travel to the copy button without dragging it along. */
   const onPointerMove = (e: MouseEvent): void => {
+    if (heldAt !== null) heldAt = { clientX: e.clientX, clientY: e.clientY, onCanvas: e.target === canvas };
     if (!open || e.shiftKey || e.target !== canvas) return;
     const tile = deps.clientToTile(e.clientX, e.clientY);
     const text =
@@ -486,7 +512,10 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     },
     place,
     dispose(): void {
+      stopHold();
       window.removeEventListener('mousedown', onPointerDown, { capture: true });
+      window.removeEventListener('mouseup', onPointerUp, { capture: true });
+      window.removeEventListener('blur', stopHold);
       window.removeEventListener('keydown', onKeyDown, { capture: true });
       window.removeEventListener('mousemove', onPointerMove);
       toggle.remove();

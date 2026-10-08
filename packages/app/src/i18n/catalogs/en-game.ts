@@ -1441,7 +1441,7 @@ export const enGame = {
     toggle: '🛠 Admin / Debug',
     title: 'Admin and debug tools',
     intro:
-      'Choose a unit, vehicle, resource, good or tool, then click the world. Change owner between clicks.',
+      'Choose a unit, vehicle, resource, good or tool, then click the world. Hold the button to keep spawning. Change owner between clicks.',
     playerOwner: 'Player (owner)',
     playerTitle: 'Player {player} ({name})',
     armor: 'Armor',

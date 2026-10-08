@@ -1420,7 +1420,7 @@ export const plGame = {
     toggle: '🛠 Admin / Debug',
     title: 'Narzędzia admina i debugowania',
     intro:
-      'Wybierz jednostkę, wehikuł, złoże, towar lub narzędzie, a potem klikaj świat. Między klikami zmieniaj właściciela.',
+      'Wybierz jednostkę, wehikuł, złoże, towar lub narzędzie, a potem klikaj świat. Przytrzymaj przycisk, by stawiać seriami. Między klikami zmieniaj właściciela.',
     playerOwner: 'Gracz (właściciel)',
     playerTitle: 'Gracz {player} ({name})',
     armor: 'Pancerz',
