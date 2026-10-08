@@ -23,19 +23,23 @@ export function rangeRingOf(content: ContentSet, e: SnapshotEntity): RangeRing |
   const job = settlerJobType(e);
   if (job === undefined) return undefined;
   const fisher = systems.isFisherJob(content, job);
+  // A hunter's ground counts map points; every other work area counts Manhattan nodes.
+  const metric = systems.isHunterJob(content, job) ? 'hex' : 'manhattan';
   const area = workAreaOf(e);
   if (area !== undefined) {
     // A fisher's flag carries the default work radius, but his search reads only where it stands.
     const radiusNodes = fisher ? systems.FISH_SHORE_SEARCH_RADIUS : area.radius;
-    return { entity: area.flag, radiusNodes, kind: 'work' };
+    return { entity: area.flag, radiusNodes, metric, kind: 'work' };
   }
   const workplace = workplaceOf(e);
   if (workplace === undefined) return undefined;
-  if (systems.isHunterJob(content, job)) {
-    return { entity: workplace, radiusNodes: components.HUNTER_WORK_FLAG_RADIUS, kind: 'work' };
+  if (metric === 'hex') {
+    return { entity: workplace, radiusNodes: components.HUNTER_WORK_FLAG_RADIUS, metric, kind: 'work' };
   }
   // An employed fisher searches from his feet, which stand at his workplace each time he banks a catch.
-  if (fisher) return { entity: workplace, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, kind: 'work' };
+  if (fisher) {
+    return { entity: workplace, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, metric, kind: 'work' };
+  }
   return undefined;
 }
 
@@ -46,7 +50,9 @@ function defenceRing(content: ContentSet, e: SnapshotEntity): RangeRing | undefi
   if (type === undefined || tribe === undefined || pos === undefined) return undefined;
   const { hx, hy } = nodeOfPosition(pos.x, pos.y);
   const radiusNodes = defenceRadiusAt(content, type, tribe, hx, hy);
-  return radiusNodes === undefined ? undefined : { entity: e.id, radiusNodes, kind: 'defence' };
+  return radiusNodes === undefined
+    ? undefined
+    : { entity: e.id, radiusNodes, metric: 'hex', kind: 'defence' };
 }
 
 /** Each content's defence radii by type, tribe and anchor row parity, the only part of the anchor the

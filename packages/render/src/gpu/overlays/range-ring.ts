@@ -4,10 +4,15 @@ import { TILE_HALF_H, TILE_HALF_W } from '../../data/projection/index.js';
 export const RANGE_RING_KINDS = ['work', 'defence'] as const;
 export type RangeRingKind = (typeof RANGE_RING_KINDS)[number];
 
-/** One range circle: the entity it centres on, its radius in half-cell nodes and what the range is of. */
+/** The distance a range is counted in: Manhattan half-cell nodes, or map points (hex distance). */
+export type RangeMetric = 'manhattan' | 'hex';
+
+/** One range circle: the entity it centres on, its radius in half-cell nodes counted in `metric`, and what
+ *  the range is of. */
 export interface RangeRing {
   readonly entity: number;
   readonly radiusNodes: number;
+  readonly metric: RangeMetric;
   readonly kind: RangeRingKind;
 }
 
@@ -29,21 +34,20 @@ const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 
 /**
  * The share of a range's radius its ellipse spans east-west and north-south, the largest ellipse that fits
- * inside the range's true shape, so it never promises ground the range does not cover. A work area is
- * counted in Manhattan nodes, a diamond whose inscribed ellipse spans 1/√2 of it both ways. A defence range
- * is counted in map points, a hexagon with flat north and south sides: its inscribed ellipse touches them
- * and spans √3/2 of it east-west.
+ * inside the range's true shape, so it never promises ground the range does not cover. A Manhattan range is
+ * a diamond whose inscribed ellipse spans 1/√2 of it both ways. A map-point range is a hexagon with flat
+ * north and south sides: its inscribed ellipse touches them and spans √3/2 of it east-west.
  */
-const INSCRIBED_SHARE: Readonly<Record<RangeRingKind, { readonly x: number; readonly y: number }>> = {
-  work: { x: Math.SQRT1_2, y: Math.SQRT1_2 },
-  defence: { x: Math.sqrt(3) / 2, y: 1 },
+const INSCRIBED_SHARE: Readonly<Record<RangeMetric, { readonly x: number; readonly y: number }>> = {
+  manhattan: { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+  hex: { x: Math.sqrt(3) / 2, y: 1 },
 };
 
-/** A flat ground ellipse inside a range of `radiusNodes` half-cell nodes around the origin, in the colour of
+/** A flat ground ellipse inside a `metric` range of `radiusNodes` around the origin, in the colour of
  *  `kind`. */
-export function mintRangeRing(radiusNodes: number, kind: RangeRingKind): Graphics {
+export function mintRangeRing(radiusNodes: number, metric: RangeMetric, kind: RangeRingKind): Graphics {
   const rx = radiusNodes * NODE_WIDTH_PX;
-  const share = INSCRIBED_SHARE[kind];
+  const share = INSCRIBED_SHARE[metric];
   const g = new Graphics();
   traceDashedEllipse(g, rx * share.x, rx * ISO_RATIO * share.y);
   return g.stroke({ width: RANGE_RING_WIDTH, color: RANGE_RING_COLOR[kind], alpha: RANGE_RING_ALPHA });

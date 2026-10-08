@@ -220,7 +220,7 @@ it('leaves work flags to their sprite outline and keeps their work radii in ever
   const layer = new SelectionLayer();
   const snapshot = snapshotOf([entity(2, 3, 1, { DeliveryFlag: {}, Owner: { player: 1 } })]);
   const flags = new Set([2]);
-  const areas = [{ entity: 2, radiusNodes: 4, kind: 'work' as const }];
+  const areas = [{ entity: 2, radiusNodes: 4, metric: 'manhattan' as const, kind: 'work' as const }];
   for (const selectionStyle of ['outline', 'pulse', 'ring-white', 'ring-green'] as const) {
     layer.draw({ snapshot, selectionStyle }, flags, flags);
     expect(layer.container.children).toHaveLength(0);
@@ -244,8 +244,8 @@ it('draws a defence range red beside a work range on the same centre', () => {
   const layer = new SelectionLayer();
   const snapshot = snapshotOf([entity(2, 3, 1, { Building: { buildingType: 1 }, Owner: { player: 1 } })]);
   const ranges = [
-    { entity: 2, radiusNodes: 4, kind: 'work' as const },
-    { entity: 2, radiusNodes: 6, kind: 'defence' as const },
+    { entity: 2, radiusNodes: 4, metric: 'manhattan' as const, kind: 'work' as const },
+    { entity: 2, radiusNodes: 6, metric: 'hex' as const, kind: 'defence' as const },
   ];
   layer.draw({ snapshot }, new Set(), new Set(), ranges);
   const colours = layer.container.children.map((ring) => {
@@ -258,16 +258,16 @@ it('draws a defence range red beside a work range on the same centre', () => {
   layer.destroy();
 });
 
-it('draws a range inside its true shape: a work diamond at 1/√2 of its radius, a defence hexagon at √3/2 across', () => {
+it('draws a range inside its true shape: a Manhattan diamond at 1/√2 of its radius, a hexagon at √3/2 across', () => {
   const NODE_PX = 34;
   const RADIUS = 10;
   const STROKE = 2;
-  const width = (kind: 'work' | 'defence'): number => {
-    const ring = mintRangeRing(RADIUS, kind);
+  const width = (metric: 'manhattan' | 'hex'): number => {
+    const ring = mintRangeRing(RADIUS, metric, 'work');
     const w = ring.getLocalBounds().width - STROKE;
     ring.destroy();
     return w;
   };
-  expect(width('work')).toBeCloseTo(2 * RADIUS * NODE_PX * Math.SQRT1_2, 0);
-  expect(width('defence')).toBeCloseTo((2 * RADIUS * NODE_PX * Math.sqrt(3)) / 2, 0);
+  expect(width('manhattan')).toBeCloseTo(2 * RADIUS * NODE_PX * Math.SQRT1_2, 0);
+  expect(width('hex')).toBeCloseTo((2 * RADIUS * NODE_PX * Math.sqrt(3)) / 2, 0);
 });

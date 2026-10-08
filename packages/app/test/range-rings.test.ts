@@ -49,7 +49,7 @@ describe('rangeRingsOf', () => {
   it("draws a flag gatherer's circle around its flag at the flag's radius", () => {
     const world = snapshotOf([settler(1, COLLECTOR, { WorkFlag: { flag: FLAG, radius: FLAG_RADIUS } })]);
     expect(rangeRingsOf(content, world, [1])).toEqual([
-      { entity: FLAG, radiusNodes: FLAG_RADIUS, kind: 'work' },
+      { entity: FLAG, radiusNodes: FLAG_RADIUS, metric: 'manhattan', kind: 'work' },
     ]);
   });
 
@@ -59,8 +59,16 @@ describe('rangeRingsOf', () => {
       settler(2, FISHER, { JobAssignment: { workplace: LODGE } }),
     ]);
     expect(rangeRingsOf(content, world, [1, 2])).toEqual([
-      { entity: FLAG, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, kind: 'work' },
-      { entity: LODGE, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, kind: 'work' },
+      { entity: FLAG, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, metric: 'manhattan', kind: 'work' },
+      { entity: LODGE, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, metric: 'manhattan', kind: 'work' },
+    ]);
+  });
+
+  it("draws a flag hunter's ground in map points around its flag", () => {
+    const radius = components.HUNTER_WORK_FLAG_RADIUS;
+    const world = snapshotOf([settler(1, HUNTER, { WorkFlag: { flag: FLAG, radius } })]);
+    expect(rangeRingsOf(content, world, [1])).toEqual([
+      { entity: FLAG, radiusNodes: radius, metric: 'hex', kind: 'work' },
     ]);
   });
 
@@ -71,7 +79,7 @@ describe('rangeRingsOf', () => {
       settler(3, COLLECTOR, { JobAssignment: { workplace: LODGE + 1 } }),
     ]);
     expect(rangeRingsOf(content, world, [1, 2, 3])).toEqual([
-      { entity: LODGE, radiusNodes: components.HUNTER_WORK_FLAG_RADIUS, kind: 'work' },
+      { entity: LODGE, radiusNodes: components.HUNTER_WORK_FLAG_RADIUS, metric: 'hex', kind: 'work' },
     ]);
   });
 
@@ -79,7 +87,7 @@ describe('rangeRingsOf', () => {
     const { hx, hy } = nodeOfPosition(TOWER_AT.x, TOWER_AT.y);
     const reach = systems.shelterFireRadius(content, shelter.typeId, PRIMARY_TRIBE, hx, hy);
     expect(reach).toBeGreaterThan(0);
-    const ring = [{ entity: TOWER, radiusNodes: reach, kind: 'defence' }];
+    const ring = [{ entity: TOWER, radiusNodes: reach, metric: 'hex', kind: 'defence' }];
     expect(rangeRingsOf(content, snapshotOf([building(shelter.typeId)]), [TOWER])).toEqual(ring);
     expect(
       rangeRingsOf(content, snapshotOf([building(shelter.typeId, { DefenceMode: {} })]), [TOWER]),

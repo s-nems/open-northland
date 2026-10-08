@@ -38,7 +38,7 @@ export {
   PlacementOverlayLayer,
 } from './placement-overlay.js';
 export { type PortraitInsetFrame, PortraitInsetLayer } from './portrait-inset.js';
-export type { RangeRing, RangeRingKind } from './range-ring.js';
+export type { RangeMetric, RangeRing, RangeRingKind } from './range-ring.js';
 export { SelectionLayer } from './selection-layer.js';
 export { ShipWakeLayer } from './ship-wake-layer.js';
 export { type ShotFrame, ShotLayer } from './shot-layer.js';

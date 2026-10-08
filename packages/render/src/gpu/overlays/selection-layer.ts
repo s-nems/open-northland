@@ -6,7 +6,13 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
 import { feetAnchor } from './entity-anchor.js';
-import { mintRangeRing, RANGE_RING_KINDS, type RangeRing, type RangeRingKind } from './range-ring.js';
+import {
+  mintRangeRing,
+  RANGE_RING_KINDS,
+  type RangeMetric,
+  type RangeRing,
+  type RangeRingKind,
+} from './range-ring.js';
 import { retireUndrawn } from './retained-pool.js';
 import { drawUnitSelectionRing } from './unit-selection-ring.js';
 
@@ -63,7 +69,7 @@ export class SelectionLayer {
   /** Per kind, one persistent range circle per centre entity id, kept with the radius it was authored at
    *  so a re-sized range redraws rather than keeping a stale circle. */
   private readonly rangeRings: Readonly<
-    Record<RangeRingKind, Map<number, { g: Graphics; radiusNodes: number }>>
+    Record<RangeRingKind, Map<number, { g: Graphics; radiusNodes: number; metric: RangeMetric }>>
   > = {
     work: new Map(),
     defence: new Map(),
@@ -106,11 +112,11 @@ export class SelectionLayer {
       const s = feetAnchor(frame.drawn, range.entity, pos, frame.elevation);
       const pool = this.rangeRings[range.kind];
       let held = pool.get(range.entity);
-      if (held === undefined || held.radiusNodes !== range.radiusNodes) {
+      if (held === undefined || held.radiusNodes !== range.radiusNodes || held.metric !== range.metric) {
         held?.g.destroy();
-        const g = mintRangeRing(range.radiusNodes, range.kind);
+        const g = mintRangeRing(range.radiusNodes, range.metric, range.kind);
         this.container.addChild(g);
-        held = { g, radiusNodes: range.radiusNodes };
+        held = { g, radiusNodes: range.radiusNodes, metric: range.metric };
         pool.set(range.entity, held);
       }
       held.g.position.set(s.x, s.y);

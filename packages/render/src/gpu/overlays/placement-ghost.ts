@@ -35,8 +35,8 @@ export type PlacementGhost =
       /** The civilization raising it, so the cursor previews the body the placement will actually put
        *  down rather than the base tribe's. */
       readonly tribe: number;
-      /** How far the building would shoot in defence mode from this anchor, in half-cell nodes; absent for
-       *  a type with no defence mode. */
+      /** How far the building would shoot in defence mode from this anchor, in map points; absent for a
+       *  type with no defence mode. */
       readonly defenceRangeNodes?: number;
     }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
@@ -256,7 +256,7 @@ export class PlacementGhostLayer {
     }
     if (this.rangeRing?.radiusNodes !== radiusNodes) {
       this.rangeRing?.g.destroy();
-      const g = mintRangeRing(radiusNodes, 'defence');
+      const g = mintRangeRing(radiusNodes, 'hex', 'defence');
       this.rangeContainer.addChild(g);
       this.rangeRing = { g, radiusNodes };
     }
