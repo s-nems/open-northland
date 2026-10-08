@@ -1756,6 +1756,9 @@ export const plGame = {
     desync: 'Rozjazd od kroku {tick}, czekamy na migawkę (wzorzec: {nick})',
     desyncTip:
       'Od kroku {tick} ten świat nie zgadza się z resztą pokoju. Czeka na migawkę świata wzorcowego (gracz: {nick}), z której się odbuduje; gra przeładuje się, gdy dotrze.',
+    resyncTitle: 'Synchronizacja',
+    resyncing: 'Rozjazd od kroku {tick}: świat odbudowuje się z migawki gracza {nick}',
+    resynced: 'Świat odbudowany z migawki gracza {nick} po rozjeździe od kroku {tick}',
     refused: 'Odmowa: {reason}',
     chatPlaceholder: 'Wiadomość; Enter wysyła, Esc anuluje',
   },

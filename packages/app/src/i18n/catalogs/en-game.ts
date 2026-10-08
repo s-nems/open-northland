@@ -1783,6 +1783,9 @@ export const enGame = {
     desync: 'Out of sync since tick {tick}, waiting for a snapshot (reference: {nick})',
     desyncTip:
       'From tick {tick} this world no longer matches the room. It waits for a snapshot of the reference world, kept by {nick}, to rebuild from; the game reloads once it arrives.',
+    resyncTitle: 'Resync',
+    resyncing: 'Out of sync since tick {tick}: rebuilding the world from the snapshot of {nick}',
+    resynced: 'World rebuilt from the snapshot of {nick} after the desync at tick {tick}',
     refused: 'Refused: {reason}',
     chatPlaceholder: 'Message; Enter sends, Esc cancels',
   },

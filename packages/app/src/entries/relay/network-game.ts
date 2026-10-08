@@ -11,6 +11,7 @@ import {
   setDiagGameSession,
 } from '../../diag/index.js';
 import type { NetPanelSource } from '../../hud/network/model.js';
+import { desyncNotice } from '../../hud/network/text.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { swapToEntry } from '../../launch.js';
 import type { NetWorldPort, RelayedWorldHosting } from '../../net/connection.js';
@@ -26,6 +27,7 @@ import { networkSaveSession } from '../../net/save-session.js';
 import { dismissBootProgress, mountBootNotice } from '../../view/boot-progress.js';
 import { bindDisplayMode } from '../../view/fullscreen.js';
 import { releaseDocument } from '../../view/navigation-guard.js';
+import { mountResyncPlaque, type ResyncPlaque } from '../../view/net/resync-plaque.js';
 import { menuSearch } from '../../view/params.js';
 import type { GameViewHandle } from '../../view/runtime/game-view.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
@@ -65,6 +67,13 @@ export function renderNetworkGame(
   let presentation: Promise<void> = Promise.resolve();
   let presentingWorld: AssembledMapWorld<RelayedMapWorld> | null = null;
   let lastDesync: Extract<ServerMessage, { kind: 'desync' }> | null = null;
+  /** The desync the next world rebuilds from, said on the plaque until that world shows. */
+  let resyncing: Extract<ServerMessage, { kind: 'desync' }> | null = null;
+  let plaque: ResyncPlaque | null = null;
+  function dismissPlaque(): void {
+    plaque?.dispose();
+    plaque = null;
+  }
   const released = new WeakSet<AssembledMapWorld>();
   function release(world: AssembledMapWorld<RelayedMapWorld>): void {
     if (released.has(world)) return;
@@ -114,6 +123,7 @@ export function renderNetworkGame(
     unsubscribe();
     connection.dispose();
     clearWorld();
+    dismissPlaque();
     dismissBootProgress();
   }
   function returnToMenu(): void {
@@ -151,7 +161,14 @@ export function renderNetworkGame(
       return;
     }
     if (exit(event.message)) return;
-    if (event.message.kind === 'desync') lastDesync = event.message;
+    if (event.message.kind === 'desync') {
+      lastDesync = event.message;
+      resyncing = event.message;
+      // The frozen game says why, before the snapshot arrives and the loading card replaces it.
+      const text = desyncNotice(event.message.reference, event.message.tick).text;
+      if (plaque === null) plaque = mountResyncPlaque(text);
+      else plaque.update(text);
+    }
     if (event.message.kind === 'kicked' && event.message.player === client.session?.localSeat) {
       fail(copy.youWereKicked);
       return;
@@ -256,6 +273,11 @@ export function renderNetworkGame(
     async restore(session, header, host) {
       const mine = ++revision;
       startWait.release();
+      if (resyncing !== null) {
+        const text = formatMessage(copy.resyncing, { nick: resyncing.reference, tick: resyncing.tick });
+        if (plaque === null) plaque = mountResyncPlaque(text);
+        else plaque.update(text);
+      }
       await build(session, { header }, null, host, mine);
     },
   };
@@ -290,6 +312,11 @@ export function renderNetworkGame(
         }
         view = presented;
         hud = mountNetHud({ client, readout, relayUrl: connection.url });
+        dismissPlaque();
+        if (resyncing !== null) {
+          hud.resynced(resyncing);
+          resyncing = null;
+        }
         // A link event while the world was rebuilt had no HUD to reach.
         const link = connection.linkState;
         if (link === null) hud.link({ state: 'reconnecting' });

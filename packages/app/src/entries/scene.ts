@@ -33,6 +33,7 @@ import { cameraFor, createCameraController } from '../view/camera/index.js';
 import { bindDisplayMode } from '../view/fullscreen.js';
 import { replaceEntryUrl } from '../view/navigation-guard.js';
 import { createNetPanelPreview, NET_PREVIEW_STATE_PARAM, stillWhileHeld } from '../view/net/panel-preview.js';
+import { mountResyncPlaque } from '../view/net/resync-plaque.js';
 import { startGameView } from '../view/runtime/game-view.js';
 import { type StagedSession, takeStagedSession } from '../view/runtime/save-load/index.js';
 import { SCENE_TOKEN_PREFIX } from '../view/runtime/save-load/world-names.js';
@@ -186,6 +187,9 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     scene.netPanelPreview === true
       ? createNetPanelPreview({ pinned: params.get(NET_PREVIEW_STATE_PARAM) })
       : null;
+  // Pinned on the held state, the preview also shows the plaque a diverged client reads over its game.
+  const heldNotice = netPanel?.model()?.notice;
+  if (heldNotice !== undefined && heldNotice !== null) mountResyncPlaque(heldNotice.text);
   const initialViewport = { width: app.screen.width, height: app.screen.height };
   const cameraSettings = readStoredSettings();
   const cameraCtl = createCameraController(

@@ -217,6 +217,15 @@
   animation: boot-tip-in 600ms ease-out 200ms both;
 }
 
+/* The notice of a world rebuilt after a desync (view/net/resync-plaque.ts), in the roster's place: over
+   the frozen game while the snapshot is awaited, then over the loading card. */
+.boot-resync__text {
+  margin: 0;
+  font-size: clamp(14px, 1.7vh, 16px);
+  line-height: 1.4;
+  text-align: center;
+}
+
 .boot-roster__list {
   display: grid;
   gap: 7px;

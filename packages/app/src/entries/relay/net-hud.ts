@@ -26,6 +26,8 @@ export interface NetHud {
   observe(message: ServerMessage): void;
   /** The link as the worker last reported it; `atMs` is when that report arrived, default now. */
   link(report: LinkReport, atMs?: number): void;
+  /** The world this HUD mounted over was rebuilt from a snapshot after `desync`; the log says so. */
+  resynced(desync: Extract<ServerMessage, { kind: 'desync' }>): void;
 }
 
 /** A relayed game's side of the network panel: the model it reads, the chat with the session's
@@ -113,6 +115,9 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
         default:
           return;
       }
+    },
+    resynced(desync): void {
+      announce(formatMessage(copy.resynced, { nick: desync.reference, tick: desync.tick }));
     },
     link(report, atMs): void {
       feed.link(report, atMs);

@@ -1943,6 +1943,10 @@ export const deGame = {
     desync: 'Seit Tick {tick} nicht synchron. Warten auf Zustandsabbild (Referenz: {nick})',
     desyncTip:
       'Seit Tick {tick} stimmt diese Welt nicht mehr mit dem Raum überein. Sie wartet auf ein Zustandsabbild der Referenzwelt von {nick}, um sich daraus neu aufzubauen. Sobald es eintrifft, lädt das Spiel neu.',
+    resyncTitle: 'Neusynchronisation',
+    resyncing:
+      'Seit Tick {tick} nicht synchron: die Welt wird aus dem Zustandsabbild von {nick} neu aufgebaut',
+    resynced: 'Welt nach der Abweichung bei Tick {tick} aus dem Zustandsabbild von {nick} neu aufgebaut',
     refused: 'Abgelehnt: {reason}',
     chatPlaceholder: 'Nachricht; Enter sendet, Esc bricht ab',
   },
