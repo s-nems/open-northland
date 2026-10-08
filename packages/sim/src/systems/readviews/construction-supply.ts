@@ -4,12 +4,13 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { buildingBlockedCells } from '../footprint/building-blocked-cache.js';
 import { interactionNodeId } from '../footprint/interaction.js';
-import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
+import { FetchableStock, strandedPile } from '../settlers/targets/stores/index.js';
 import { spotsReaching } from '../signposts/index.js';
 import { collectSupplyTally, constructionBillOf } from '../stores/index.js';
 
-/** Own stores of a good one diagnosis tests for reach before it stops calling the case decided. */
+/** Own stores of a good one diagnosis tests for reach before it calls the good held. */
 export const MAX_DIAGNOSTIC_STORES = 128;
 
 /** One bill line a site still lacks. */
@@ -20,11 +21,12 @@ export interface ConstructionShortfall {
   readonly delivered: number;
   /** Units some settler is bringing it. */
   readonly inbound: number;
-  /** Whether a store the site's owner owns lends a unit from where a builder could carry it to the site:
-   *  within the site's signpost reach, or anywhere while nothing confines builders. A neutral pile, a
-   *  felled trunk in a far wood say, and an own store beyond the signposts count as nothing: a builder
-   *  minds its own network alone, and such a shortfall is the player's to fix (owner ruling). A good the
-   *  owner holds in more stores than the diagnosis tests for reach counts as held. */
+  /** Whether a unit lies where a builder could carry it to the site: on a store the site's owner owns or
+   *  on a neutral pile a builder can stand at (a miner's ore at its flag), within the site's signpost
+   *  reach, or anywhere while nothing confines builders. Anything beyond the signposts, a felled trunk in
+   *  a far wood say, counts as nothing: a builder minds its own network alone, and such a shortfall is the
+   *  player's to fix (owner ruling). Past {@link MAX_DIAGNOSTIC_STORES} own stores the good counts as
+   *  held; every neutral pile is tested. */
   readonly held: boolean;
 }
 
@@ -103,15 +105,21 @@ function sideHolds(
   reach: ((cell: NodeId) => boolean) | null,
 ): boolean {
   const terrain = ctx.terrain;
-  // The ledger's per-owner total settles a bare side without a walk over other sides' holders.
-  if (owner !== undefined && !stock.ownsAny(owner, goodType)) return false;
+  // The ledger's totals settle a side with none on its stores or on a neutral pile without a walk.
+  if (owner !== undefined && !stock.exceeds(owner, goodType, 0)) return false;
+  let walls: ReadonlySet<NodeId> | undefined;
   let examined = 0;
   for (const store of stock.holders(goodType)) {
-    if (ownerOf(world, store) !== owner) continue;
-    if (reach === null || terrain === undefined) return true;
-    if (++examined > MAX_DIAGNOSTIC_STORES) return true;
-    const door = storeCell(world, ctx, terrain, store);
-    if (door !== null && reach(door)) return true;
+    const storeOwner = ownerOf(world, store);
+    if (storeOwner !== undefined && storeOwner !== owner) continue;
+    if (terrain === undefined) return true;
+    if (storeOwner !== undefined && ++examined > MAX_DIAGNOSTIC_STORES) return true;
+    if (reach !== null) {
+      const door = storeCell(world, ctx, terrain, store);
+      if (door === null || !reach(door)) continue;
+    }
+    walls ??= buildingBlockedCells(world, ctx, terrain);
+    if (!strandedPile(world, ctx, terrain, walls, store)) return true;
   }
   return false;
 }

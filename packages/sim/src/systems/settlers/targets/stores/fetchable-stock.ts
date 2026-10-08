@@ -106,11 +106,6 @@ export class FetchableStock {
     return ledger;
   }
 
-  /** Whether a store `player` owns lends a unit of `goodType`; unowned piles do not count. */
-  ownsAny(player: number, goodType: number): boolean {
-    return (this.totals.get(goodType)?.byOwner.get(player) ?? 0) > 0;
-  }
-
   /** Whether `player` holds more than `units` of `goodType`. */
   exceeds(player: number, goodType: number, units: number): boolean {
     const total = this.totals.get(goodType);

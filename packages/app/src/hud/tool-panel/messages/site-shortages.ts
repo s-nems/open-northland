@@ -6,7 +6,7 @@ import { USER_MESSAGE_TYPE } from './types.js';
 import type { StatusAsks, StatusRead } from './work-asks.js';
 
 /**
- * Ticks a building site must lack a good that no store of the seat holds and nobody brings it before
+ * Ticks a building site must lack a good that nothing in its reach holds and nobody brings it before
  * its note: a workshop's next unit, or a load a carrier is about to pick up, clears a shorter gap on its
  * own. Approximation.
  */
@@ -54,7 +54,7 @@ function sharedNoteKey(site: SnapshotEntity, goodType: number): string | null {
 
 /**
  * The seat's sites short of a material the player has to supply: a line of the bill that no store of the
- * seat holds in the site's signpost reach and nobody is bringing, once that has stood
+ * seat or neutral pile holds in the site's signpost reach and nobody is bringing, once that has stood
  * {@link CONSTRUCTION_SHORTAGE_GRACE_TICKS}.
  * The note retires as soon as a store in reach holds that good or a load of it is on its way, even
  * while the line is still short: the player fixed what the note asked for. A good that runs dry again

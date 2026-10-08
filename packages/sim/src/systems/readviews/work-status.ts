@@ -280,9 +280,9 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
 
 /**
  * An idle builder's blockers, from its side's unfinished sites, walls and roads included: none at all,
- * or sites short of goods no own store in their reach holds and nobody brings, named ascending. A side
- * whose sites are short only of held goods leaves the cause to the builder's planner, which the
- * diagnosis does not re-run.
+ * or sites short of goods no own store or neutral pile in their reach holds and nobody brings, named
+ * ascending. A side whose sites are short only of held goods leaves the cause to the builder's planner,
+ * which the diagnosis does not re-run.
  */
 function builderWorkStatus(world: World, ctx: SystemContext, builder: Entity): WorkStatus {
   const owner = ownerOf(world, builder);

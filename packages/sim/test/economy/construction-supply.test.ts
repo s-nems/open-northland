@@ -3,6 +3,7 @@ import { Owner, Stockpile, SupplyRun, UnderConstruction } from '../../src/compon
 import { fx, Simulation } from '../../src/index.js';
 import { MAX_DIAGNOSTIC_STORES } from '../../src/systems/readviews/construction-supply.js';
 import { dropGroundPile } from '../../src/systems/settlers/atomics/effects/goods/piles.js';
+import { grassCellMap } from '../fixtures/terrain.js';
 import {
   builderAt,
   builtBuildingAt,
@@ -17,6 +18,10 @@ import {
 
 const LOCAL = 0;
 const RIVAL = 1;
+const ROW = 2;
+const SITE_X = 8;
+/** Past a builder's walk range from the site's door, with no signpost to stretch it. */
+const BEYOND_REACH_X = 60;
 
 describe('constructionSupply', () => {
   it('lists each lacking line with what is on site, on its way and held by the side', () => {
@@ -53,22 +58,33 @@ describe('constructionSupply', () => {
     expect(sim.constructionSupply(site)).toEqual({ kind: 'covered' });
   });
 
-  it('counts no number of neutral piles as holding, and a rival store beyond the cap as nothing', () => {
-    const sim = new Simulation({ seed: 4, content: constructionContent(), map: grassMap(48, 12) });
-    const site = siteAt(sim, HOUSE, 6, 1);
+  it("counts a neutral pile in the site's reach as holding, and no number beyond it", () => {
+    const sim = new Simulation({ seed: 4, content: constructionContent(), map: grassCellMap(128, 8) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.step();
+    const site = siteAt(sim, HOUSE, SITE_X, ROW);
     sim.world.add(site, Owner, { player: LOCAL });
     sim.world.mut(site, Stockpile).amounts.set(STONE, 2);
     const piles = MAX_DIAGNOSTIC_STORES + 2;
-    for (let i = 0; i < piles; i++)
-      dropGroundPile(sim.world, fx.fromInt(20 + (i % 24)), fx.fromInt(4 + Math.floor(i / 24)), WOOD, 1);
-    const short = {
-      kind: 'short',
-      shortfalls: [{ goodType: WOOD, required: 1, delivered: 0, inbound: 0, held: false }],
-    };
-    expect(sim.constructionSupply(site)).toEqual(short);
-    const rivalStore = builtBuildingAt(sim, HEADQUARTERS, 0, 1, [[WOOD, 3]]);
+    for (let i = 0; i < piles; i++) {
+      dropGroundPile(
+        sim.world,
+        fx.fromInt(BEYOND_REACH_X + (i % 24)),
+        fx.fromInt(1 + Math.floor(i / 24)),
+        WOOD,
+        1,
+      );
+    }
+    const rivalStore = builtBuildingAt(sim, HEADQUARTERS, SITE_X + 4, ROW, [[WOOD, 3]]);
     sim.world.add(rivalStore, Owner, { player: RIVAL });
-    expect(sim.constructionSupply(site)).toEqual(short);
+    const woodLine = (held: boolean) => ({
+      kind: 'short',
+      shortfalls: [{ goodType: WOOD, required: 1, delivered: 0, inbound: 0, held }],
+    });
+    expect(sim.constructionSupply(site)).toEqual(woodLine(false));
+
+    dropGroundPile(sim.world, fx.fromInt(SITE_X - 3), fx.fromInt(ROW), WOOD, 1);
+    expect(sim.constructionSupply(site)).toEqual(woodLine(true));
   });
 
   it('answers covered for a site holding its bill, and nothing for anything but a building site', () => {
