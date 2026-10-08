@@ -5,6 +5,7 @@ import {
   formationNodes,
   MAX_UNIT_ORDER_MEMBERS,
   nodeOfPosition,
+  pairBySpace,
   positionOfNode,
   Simulation,
 } from '../../src/index.js';
@@ -156,4 +157,30 @@ describe('fresh formation slots', () => {
       expect(visited).toHaveLength(3000 * (spacing === 1 ? 3 : 1));
     },
   );
+});
+
+describe('pairBySpace', () => {
+  it('keeps every member of a translated layout on its own place', () => {
+    const from = [
+      { key: 7, x: 0, y: 0 },
+      { key: 3, x: 4, y: 0 },
+      { key: 5, x: 0, y: 6 },
+      { key: 9, x: 4, y: 6 },
+    ];
+    const shift = { x: 40, y: 12 };
+    const to = from.map((point, key) => ({ key, x: point.x + shift.x, y: point.y + shift.y }));
+    const paired = pairBySpace(from, to);
+    for (const [index, point] of from.entries()) expect(paired.get(point.key)).toBe(index);
+  });
+
+  it('takes the leading places and leaves the surplus', () => {
+    const paired = pairBySpace(
+      [{ key: 1, x: 0, y: 0 }],
+      [
+        { key: 0, x: 9, y: 9 },
+        { key: 1, x: 0, y: 0 },
+      ],
+    );
+    expect([...paired]).toEqual([[1, 0]]);
+  });
 });

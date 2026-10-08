@@ -54,7 +54,6 @@ import {
 import { SnapshotDeltaStream, type SnapshotDeltaStreamOptions } from './inspect/snapshot-clones.js';
 import type { HalfCellNode, NodeArea } from './nav/halfcell.js';
 import { buildTerrainGraph, type TerrainGraph, type TerrainMap } from './nav/terrain/index.js';
-import { type FormationSlotGroup, formationSlotsFor } from './simulation/formation-slots.js';
 import { hashSimState } from './simulation/hash.js';
 import {
   type MooringAnswer,
@@ -102,6 +101,7 @@ import {
   type OpenTribute,
   openTributes,
 } from './systems/missions/index.js';
+import { type FormationSlotGroup, formationSlotsFor } from './systems/orders/formation-slots.js';
 import {
   ownPalisadeNodes,
   type PalisadeGateProbeResult,

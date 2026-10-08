@@ -23,8 +23,9 @@ export const deferredOrderSystem: System = (world, ctx) => {
     if (atomicHoldsSettler(world, e)) continue; // still acting - the order stays parked
     const { command, scripted } = world.get(e, DeferredOrder);
     world.remove(e, DeferredOrder);
-    if (scripted === true && command.kind === 'moveUnit') sendUnit(world, ctx, e, command.x, command.y);
-    else applyDeferredOrder(world, ctx, command);
+    if (scripted === true && (command.kind === 'moveUnit' || command.kind === 'attackMoveUnit')) {
+      sendUnit(world, ctx, e, command.x, command.y, { attackMove: command.kind === 'attackMoveUnit' });
+    } else applyDeferredOrder(world, ctx, command);
   }
 };
 

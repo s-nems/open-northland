@@ -384,6 +384,8 @@ export class ColliderWalkBlocks implements BlockOverlay {
   private readonly playersAt: Uint16Array;
   private readonly hostile: number;
   readonly size: number;
+  /** How many standing bodies block this requester. */
+  readonly posts: number;
   constructor(dynamic: BlockOverlay, units: UnitWalkBlocks, hostile: number) {
     this.dynamic = dynamic;
     this.playersAt = units.playersAt;
@@ -391,6 +393,7 @@ export class ColliderWalkBlocks implements BlockOverlay {
     let posts = 0;
     for (const [player, total] of units.totalByPlayer)
       if ((hostile & playerSlotBit(player)) !== 0) posts += total;
+    this.posts = posts;
     // 0 exactly when nothing blocks this requester, which lets the search skip its pocket probe.
     this.size = dynamic.size + posts;
   }

@@ -1,5 +1,5 @@
 import { halfCellToScreen } from '@open-northland/render';
-import { formationNodes } from '@open-northland/sim';
+import { formationNodes, pairBySpace } from '@open-northland/sim';
 import type { Tile } from '../picking.js';
 
 /**
@@ -172,53 +172,14 @@ export function pairFormation(
   return orders;
 }
 
-interface SpatialMember {
-  readonly index: number;
-  readonly key: number;
-  readonly x: number;
-  readonly y: number;
-}
-
-/** Split both layouts on the same world-space axis, then pair the corresponding equal-sized halves.
- * A translated layout keeps every member's slot; id ties make selection iteration order immaterial. */
+/** Pair corresponding spatial partitions of the army and its slots ({@link pairBySpace}). */
 function spatialPairing(units: readonly FormationUnit[], slots: readonly Tile[]): FormationOrder[] {
-  const from = units.map((unit, index) => ({ ...unit, index, key: unit.ref }));
-  const to = slots.map((slot, index) => ({
-    ...halfCellToScreen(slot.col, slot.row),
-    index,
-    key: index,
-  }));
-  const assigned = new Map<number, Tile>();
-  const span = (points: readonly SpatialMember[], axis: 'x' | 'y'): number => {
-    let low = Number.POSITIVE_INFINITY,
-      high = Number.NEGATIVE_INFINITY;
-    for (const point of points) {
-      low = Math.min(low, point[axis]);
-      high = Math.max(high, point[axis]);
-    }
-    return high - low;
-  };
-  const pair = (a: SpatialMember[], b: SpatialMember[]): void => {
-    if (a.length === 1) {
-      const unit = a[0],
-        slot = b[0];
-      const tile = slot === undefined ? undefined : slots[slot.index];
-      if (unit !== undefined && tile !== undefined) assigned.set(unit.key, tile);
-      return;
-    }
-    const axis = span(a, 'x') + span(b, 'x') >= span(a, 'y') + span(b, 'y') ? 'x' : 'y';
-    const other = axis === 'x' ? 'y' : 'x';
-    const compare = (left: SpatialMember, right: SpatialMember): number =>
-      left[axis] - right[axis] || left[other] - right[other] || left.key - right.key;
-    a.sort(compare);
-    b.sort(compare);
-    const middle = Math.floor(a.length / 2);
-    pair(a.slice(0, middle), b.slice(0, middle));
-    pair(a.slice(middle), b.slice(middle));
-  };
-  pair(from, to);
+  const assigned = pairBySpace(
+    units.map((unit) => ({ key: unit.ref, x: unit.x, y: unit.y })),
+    slots.map((slot, index) => ({ ...halfCellToScreen(slot.col, slot.row), key: index })),
+  );
   return units.flatMap((unit) => {
-    const tile = assigned.get(unit.ref);
+    const tile = slots[assigned.get(unit.ref) ?? -1];
     return tile === undefined ? [] : [{ ref: unit.ref, tile }];
   });
 }

@@ -89,9 +89,18 @@ export function moveUnit(
 }
 
 /** A map script's walk order: the player's walk without the signpost confinement, which the original
- *  applies in its GUI and not to a queued script command (reading). */
-export function sendUnit(world: World, ctx: SystemContext, e: Entity, x: number, y: number): void {
-  startPlayerWalk(world, ctx, { kind: 'moveUnit', entity: e, x, y }, { confined: false });
+ *  applies in its GUI and not to a queued script command (reading). With `attackMove` it is the march
+ *  {@link attackMoveUnit} issues. */
+export function sendUnit(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  x: number,
+  y: number,
+  { attackMove = false }: { readonly attackMove?: boolean } = {},
+): void {
+  const kind = attackMove ? 'attackMoveUnit' : 'moveUnit';
+  startPlayerWalk(world, ctx, { kind, entity: e, x, y }, { confined: false });
 }
 
 /** {@link moveUnit}'s walk stamped with an {@link AttackMoveMarch} - the "Attack Position" order. */

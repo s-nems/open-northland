@@ -54,6 +54,26 @@ function army(wall: boolean, wallHeight = GAP_Y) {
   return { sim, members };
 }
 
+/** A standing enemy soldier on every node of the wall column. */
+function enemyLine(sim: Simulation): Entity[] {
+  const posts: Entity[] = [];
+  for (let y = 0; y < HEIGHT; y++) {
+    const post = sim.world.create();
+    sim.world.add(post, Position, positionOfNode(WALL_X, y));
+    addPerson(sim.world, post, {
+      tribe: 1,
+      jobType: 31,
+      hunger: fx.fromInt(0),
+      fatigue: fx.fromInt(0),
+      piety: fx.fromInt(0),
+      enjoyment: fx.fromInt(0),
+    });
+    sim.world.add(post, Owner, { player: 1 });
+    posts.push(post);
+  }
+  return posts;
+}
+
 describe('army player routing', () => {
   it.each([1, MEMBERS])(
     'rejects %i statically disconnected orders without a dynamic-region flood',
@@ -129,20 +149,7 @@ describe('army player routing', () => {
           work: [],
         });
       } else {
-        for (let y = 0; y < HEIGHT; y++) {
-          const post = sim.world.create();
-          sim.world.add(post, Position, positionOfNode(WALL_X, y));
-          addPerson(sim.world, post, {
-            tribe: 1,
-            jobType: 31,
-            hunger: fx.fromInt(0),
-            fatigue: fx.fromInt(0),
-            piety: fx.fromInt(0),
-            enjoyment: fx.fromInt(0),
-          });
-          sim.world.add(post, Owner, { player: 1 });
-          posts.push(post);
-        }
+        posts.push(...enemyLine(sim));
       }
       let expansions = 0;
       const stepsInto = terrain.stepsInto.bind(terrain);
@@ -150,8 +157,9 @@ describe('army player routing', () => {
         expansions++;
         return stepsInto(...args);
       };
-      for (const { entity, x, y } of members)
-        sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity, x: x + 240, y }));
+      // An attack-move routes through an enemy line, so only a plain move is refused at one.
+      const kind = wallKind === 'soldiers' ? 'moveUnit' : 'attackMoveUnit';
+      for (const { entity, x, y } of members) sim.enqueue(playerCommand(0, { kind, entity, x: x + 240, y }));
       sim.step();
       for (const { entity } of members) {
         expect(sim.world.get(entity, PathRequest).failed).toBe(true);
@@ -162,7 +170,7 @@ describe('army player routing', () => {
       if (wallKind === 'soldiers') {
         for (const post of posts) sim.world.destroy(post);
         for (const { entity, x, y } of members)
-          sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity, x: x + 240, y }));
+          sim.enqueue(playerCommand(0, { kind, entity, x: x + 240, y }));
         sim.step();
         for (const { entity } of members) {
           expect(sim.world.has(entity, PathRequest)).toBe(false);
@@ -171,6 +179,28 @@ describe('army player routing', () => {
       }
     },
   );
+
+  it('routes 1000 attack-moves through a closed line of enemy soldiers', () => {
+    const { sim, members } = army(false);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('army terrain missing');
+    enemyLine(sim);
+    let expansions = 0;
+    const stepsInto = terrain.stepsInto.bind(terrain);
+    terrain.stepsInto = (...args) => {
+      expansions++;
+      return stepsInto(...args);
+    };
+    for (const { entity, x, y } of members)
+      sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity, x: x + 240, y }));
+    sim.step();
+    for (const { entity, x, y } of members) {
+      expect(sim.world.has(entity, PathRequest)).toBe(false);
+      expect(sim.world.get(entity, PathRoute).waypoints.at(-1)?.node).toBe(terrain.nodeAt(x + 240, y));
+    }
+    reportRouting('enemy-line', members.length, expansions);
+    expect(expansions).toBeLessThan(terrain.nodeCount * 3);
+  });
 
   it.each(['moveUnit', 'attackMoveUnit'] as const)(
     'starts all 1000 local %s orders in their application tick and replaces every route on redirect',

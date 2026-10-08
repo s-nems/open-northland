@@ -156,7 +156,7 @@ export { SnapshotMirror } from './inspect/snapshot-mirror.js';
 export { bucketsReach, TILE_BUCKET_SIZE, type TileBox, TileBuckets } from './inspect/tile-buckets.js';
 export type { BlockOverlay } from './nav/block-overlay.js';
 export { ClearanceField, MAX_CLEARANCE_CLASS } from './nav/clearance.js';
-export { formationNodes } from './nav/formation.js';
+export { formationNodes, pairBySpace } from './nav/formation.js';
 export {
   cellAnchorNode,
   cellOfAnchorNode,
@@ -216,7 +216,6 @@ export {
   serializeSaveGame,
   withSaveContinuation,
 } from './save/index.js';
-export type { FormationSlotGroup } from './simulation/formation-slots.js';
 // The idle-adult job key of the HUD population tally: a façade read view, not a system.
 export { IDLE_JOB } from './simulation/hud.js';
 export {
@@ -260,6 +259,7 @@ export {
   MISSION_LANDSCAPE_NAME_FIELD,
   SUCCESSFUL_IF,
 } from './systems/missions/index.js';
+export type { FormationSlotGroup } from './systems/orders/formation-slots.js';
 // The walk cadence (ticks per visual cell at cruise), exposed so render can tune animation cadence
 // independently without restating the sim's travel time.
 export type { PalisadeGateProbeResult } from './systems/palisades/index.js';

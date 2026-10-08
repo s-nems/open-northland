@@ -7,6 +7,7 @@ import {
   MissionObjectId,
   Owner,
   ownerOf,
+  PathFollow,
   Person,
   PlayerOrder,
   Position,
@@ -18,7 +19,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { playerCommand, type Simulation } from '../../src/index.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../src/nav/halfcell.js';
 import { REGENERATION_HITPOINTS_PER_TICK } from '../../src/systems/index.js';
-import type { MissionResultOp } from '../../src/systems/missions/index.js';
+import { type MissionResultOp, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import {
   firingMission,
   firingSim,
@@ -26,8 +27,11 @@ import {
   houseContent,
   LOAD_PASS,
   MAP_NODES,
+  missionSim,
+  PASS_TICKS,
   POINT,
   runLoadPass,
+  SOLDIER,
   scriptedSim,
   spawn,
   VIKING,
@@ -54,6 +58,10 @@ const WALKING_TICKS = 20;
 const PLACED = 1;
 /** The landing spread one teleport line leaves: a batch fans out around the destination. */
 const LANDING_SPREAD = 6;
+/** A band SendHuman finds on one node, as `SetHumanX` spawns it. */
+const BAND = 6;
+/** A band wide enough that its outer places lie past a lone man's formation. */
+const THINNED_BAND = 12;
 
 function nodeOf(sim: Simulation, e: Entity): HalfCellNode {
   const at = sim.world.get(e, Position);
@@ -94,6 +102,103 @@ describe('SendHuman', () => {
     sim.run(LOAD_PASS);
     expect(sim.world.has(scripted, PlayerOrder)).toBe(true);
     expect(sim.world.has(ordered, PlayerOrder)).toBe(false);
+  });
+
+  it('sends fighters on an attack-move and a civilian on a walk', () => {
+    const sim = firingSim([{ opcode: 'SendHuman', humanId: GROUP, point: FAR }]);
+    spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    spawn(sim, { player: OWNER, missionId: GROUP });
+    sim.run(LOAD_PASS);
+    const [soldier, civilian] = humansOf(sim, OWNER);
+    if (soldier === undefined || civilian === undefined) throw new Error('two settlers expected');
+    expect(sim.world.get(soldier, PlayerOrder)).toMatchObject({
+      scripted: true,
+      attackMove: expect.anything(),
+    });
+    expect(sim.world.get(civilian, PlayerOrder).attackMove).toBeUndefined();
+  });
+
+  it('gives a stacked band a place each around the point', () => {
+    const sim = firingSim([{ opcode: 'SendHuman', humanId: GROUP, point: FAR }]);
+    for (let i = 0; i < BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(LOAD_PASS);
+    const goals = humansOf(sim, OWNER).map((e) => sim.world.get(e, PlayerOrder).attackMove?.goal);
+    expect(new Set(goals).size).toBe(BAND);
+    for (const goal of goals) {
+      if (goal === undefined) throw new Error('march expected');
+      const terrain = sim.terrain;
+      if (terrain === undefined) throw new Error('map expected');
+      expect(hexDistance({ hx: terrain.xOf(goal), hy: terrain.yOf(goal) }, FAR)).toBeLessThanOrEqual(BAND);
+    }
+  });
+
+  it('keeps the march a repeating line already gave', () => {
+    const sim = firingSim([
+      { opcode: 'SendHuman', humanId: GROUP, point: FAR },
+      { opcode: 'ActivateMission', missionIndex: 0 },
+    ]);
+    spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(LOAD_PASS);
+    const [soldier] = humansOf(sim, OWNER);
+    if (soldier === undefined) throw new Error('no settler');
+    const march = sim.world.get(soldier, PlayerOrder).attackMove;
+    expect(march).toBeDefined();
+    sim.run(PASS_TICKS);
+    expect(sim.world.get(soldier, PlayerOrder).attackMove).toBe(march);
+    expect(sim.world.has(soldier, PathFollow)).toBe(true);
+  });
+
+  it('keeps the marches of a band a fight has thinned', () => {
+    const sim = firingSim([
+      { opcode: 'SendHuman', humanId: GROUP, point: FAR },
+      { opcode: 'ActivateMission', missionIndex: 0 },
+    ]);
+    for (let i = 0; i < THINNED_BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(LOAD_PASS);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map expected');
+    const reachOf = (e: Entity): number => {
+      const goal = sim.world.get(e, PlayerOrder).attackMove?.goal;
+      if (goal === undefined) throw new Error('march expected');
+      return hexDistance({ hx: terrain.xOf(goal), hy: terrain.yOf(goal) }, FAR);
+    };
+    // The outermost places survive, the band that held them does not.
+    const band = humansOf(sim, OWNER).sort((a, b) => reachOf(b) - reachOf(a));
+    const [outer, ...fallen] = band;
+    if (outer === undefined) throw new Error('no settler');
+    for (const e of fallen) sim.world.destroy(e);
+    const march = sim.world.get(outer, PlayerOrder).attackMove;
+    sim.run(PASS_TICKS);
+    expect(sim.world.get(outer, PlayerOrder).attackMove).toBe(march);
+  });
+
+  it('redirects a marching band a later line sends elsewhere', () => {
+    const sim = missionSim([
+      firingMission([
+        { opcode: 'SendHuman', humanId: GROUP, point: FAR },
+        { opcode: 'ActivateMission', missionIndex: 1 },
+      ]),
+      {
+        successfullIf: SUCCESSFUL_IF.all,
+        active: false,
+        visible: false,
+        goals: [{ opcode: 'TimeGone', seconds: 1 }],
+        results: [{ opcode: 'SendHuman', humanId: GROUP, point: POINT }],
+      },
+    ]);
+    spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER, at: OUTSIDE });
+    sim.run(LOAD_PASS);
+    const [soldier] = humansOf(sim, OWNER);
+    if (soldier === undefined) throw new Error('no settler');
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map expected');
+    const goalNear = (point: HalfCellNode): boolean => {
+      const goal = sim.world.get(soldier, PlayerOrder).attackMove?.goal;
+      return goal !== undefined && hexDistance({ hx: terrain.xOf(goal), hy: terrain.yOf(goal) }, point) <= 1;
+    };
+    expect(goalNear(FAR)).toBe(true);
+    sim.run(2 * PASS_TICKS);
+    expect(goalNear(POINT)).toBe(true);
   });
 
   it('walks the ordered group toward the point', () => {

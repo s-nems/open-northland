@@ -1,13 +1,13 @@
 import type { ContentSet } from '@open-northland/data';
-import { Position, Settler } from '../components/index.js';
-import { MAX_UNIT_ORDER_MEMBERS } from '../core/commands/unit-orders.js';
-import type { Entity, World } from '../ecs/world.js';
-import { formationNodes } from '../nav/formation.js';
-import { type HalfCellNode, nodeOfPosition } from '../nav/halfcell.js';
-import type { NodeId, TerrainGraph } from '../nav/terrain/index.js';
-import { walkBlockMask } from '../systems/footprint/walk-block-mask.js';
-import { routeStartCell } from '../systems/movement/route-start.js';
-import { commandedVehicleOf } from '../systems/vehicles/commander.js';
+import { Position, Settler } from '../../components/index.js';
+import { MAX_UNIT_ORDER_MEMBERS } from '../../core/commands/unit-orders.js';
+import type { Entity, World } from '../../ecs/world.js';
+import { formationNodes } from '../../nav/formation.js';
+import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
+import { walkBlockMask } from '../footprint/walk-block-mask.js';
+import { routeStartCell } from '../movement/route-start.js';
+import { commandedVehicleOf } from '../vehicles/commander.js';
 
 /** Foot members share a land component; each vehicle commander keeps the click in its own group. */
 export interface FormationSlotGroup {
@@ -17,6 +17,7 @@ export interface FormationSlotGroup {
   readonly commandedVehicle?: Entity;
 }
 
+/** The player's group-order slots: {@link formationSlotGroups} behind the order's own input bounds. */
 export function formationSlotsFor(
   world: World,
   content: ContentSet,
@@ -33,6 +34,39 @@ export function formationSlotsFor(
   )
     throw new RangeError('invalid formation query');
   if (terrain === undefined) return null;
+  return formationSlotGroups(world, content, terrain, target, members, rowSpacing, settlersStanding);
+}
+
+/** Which nodes a group's slots must avoid, given the group's own members. */
+export type Occupancy = (
+  world: World,
+  terrain: TerrainGraph,
+  movers: ReadonlySet<Entity>,
+) => (node: NodeId) => boolean;
+
+/** Every node another settler stands on: one scan of the population, fit for a click. */
+export const settlersStanding: Occupancy = (world, terrain, movers) => {
+  const occupied = new Set<NodeId>();
+  for (const entity of world.query(Settler, Position)) {
+    if (movers.has(entity)) continue;
+    const position = world.get(entity, Position);
+    const { hx, hy } = nodeOfPosition(position.x, position.y);
+    if (terrain.inBounds(hx, hy)) occupied.add(terrain.nodeAt(hx, hy));
+  }
+  return (node) => occupied.has(node);
+};
+
+/** One open slot around `target` per member, on the land component the member stands on and off the
+ *  nodes `occupancy` names. */
+export function formationSlotGroups(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  target: HalfCellNode,
+  members: readonly Entity[],
+  rowSpacing: 1 | 2,
+  occupancy: Occupancy,
+): FormationSlotGroup[] {
   const seat = {
     hx: Math.max(0, Math.min(terrain.width - 1, target.hx)),
     hy: Math.max(0, Math.min(terrain.height - 1, target.hy)),
@@ -67,18 +101,12 @@ export function formationSlotsFor(
     movers.add(entity);
   }
   if (movers.size === 0) return result;
-  const occupied = new Set<NodeId>();
-  for (const entity of world.query(Settler, Position)) {
-    if (movers.has(entity)) continue;
-    const position = world.get(entity, Position);
-    const { hx, hy } = nodeOfPosition(position.x, position.y);
-    if (terrain.inBounds(hx, hy)) occupied.add(terrain.nodeAt(hx, hy));
-  }
+  const occupied = occupancy(world, terrain, movers);
   const blocked = walkBlockMask(world, { content }, terrain).levelled();
   const chosen = new Set<NodeId>();
   const unavailable = (hx: number, hy: number): boolean => {
     const node = terrain.nodeAt(hx, hy);
-    if (chosen.has(node) || !terrain.isWalkable(node) || blocked.has(node) || occupied.has(node)) return true;
+    if (chosen.has(node) || !terrain.isWalkable(node) || blocked.has(node) || occupied(node)) return true;
     const group = groups.get(terrain.componentOf(node));
     if (group === undefined || group.remaining === 0) return true;
     group.remaining--;

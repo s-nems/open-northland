@@ -86,7 +86,7 @@ export function drainPathRequests(
   let dynamic: BlockOverlay | undefined;
   let units: UnitWalkBlocks | undefined;
   let hostile: readonly number[] | undefined;
-  const combinedByPlayer = new Map<number, BlockOverlay>();
+  const combinedByPlayer = new Map<number, ColliderWalkBlocks>();
   let occupiedView: BlockOverlay | undefined;
   // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out to
   // different free nodes instead of both claiming the same one.
@@ -103,7 +103,7 @@ export function drainPathRequests(
     }
     return dynamic;
   };
-  const blockedFor = (player: number): BlockOverlay => {
+  const blockedFor = (player: number): ColliderWalkBlocks => {
     let view = combinedByPlayer.get(player);
     if (view === undefined) {
       units ??= unitWalkBlocks(world, ctx.content, terrain);
@@ -118,6 +118,22 @@ export function drainPathRequests(
     units ??= unitWalkBlocks(world, ctx.content, terrain);
     occupiedView ??= new ColliderWalkBlocks(dynamicOnly(), units, EVERY_PLAYER);
     return occupiedView;
+  };
+  // A group member's route under `overlay`: refused at once by a region the group already found sealed,
+  // borrowed from a neighbour, or searched, and every answer kept for the rest of the group.
+  const routeUnder = (
+    overlay: BlockOverlay,
+    start: NodeId,
+    goal: NodeId,
+    group: boolean,
+    search: () => NodeId[] | null,
+  ): NodeId[] | null => {
+    if (group && mask !== undefined && groupReachability.unreachable(mask, overlay, start, goal)) return null;
+    const path = (group ? groupRoutes.borrow(overlay, start, goal, spent) : null) ?? search();
+    if (path !== null && group) groupRoutes.offer(overlay, path);
+    if (path === null && group && mask !== undefined && !overlay.has(goal))
+      groupReachability.rememberFailure(mask, overlay, start, goal);
+    return path;
   };
   for (const e of world.canonicalQuery(PathRequest)) {
     // A player order must not trickle into motion in entity-id order. Sharing cuts its search cost,
@@ -136,7 +152,8 @@ export function drainPathRequests(
 
     const traversal = settlerTraversal(world, e);
     const collides = traversal === 'land' && hasBodyCollision(world, ctx.content, e);
-    const blocked = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : dynamicOnly();
+    const bodies = collides ? blockedFor(world.tryGet(e, Owner)?.player ?? -1) : null;
+    const blocked = bodies ?? dynamicOnly();
     // A grind reroute plans as if its live route were already dropped, which it is unless the answer matches.
     const stepEnd =
       req.retainRoute || req.grind || !finishesStepOnReroute(world, e)
@@ -164,16 +181,22 @@ export function drainPathRequests(
     const group =
       traversal === 'land' && playerOrdered && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
     if (group && mask !== undefined) groupRoutes.refresh(mask.version);
-    const unreachable =
-      group && mask !== undefined && groupReachability.unreachable(mask, blocked, start, goal);
-    let path = group && !unreachable ? groupRoutes.borrow(blocked, start, goal, spent) : null;
-    if (path === null && !unreachable) {
-      path = collides
+    let path = routeUnder(blocked, start, goal, group, () =>
+      collides
         ? memoPath(memo, e, ctx.tick, start, goal, world.tryGet(e, Owner)?.player ?? -1, blocked, spent)
-        : resolvePath(terrain, start, goal, blocked, spent, traversal);
-      if (path !== null && group) groupRoutes.offer(blocked, path);
-      if (path === null && group && mask !== undefined && !blocked.has(goal))
-        groupReachability.rememberFailure(mask, blocked, start, goal);
+        : resolvePath(terrain, start, goal, blocked, spent, traversal),
+    );
+    // An attack-move goes for what seals its goal off: enemy bodies shape its route, never refuse it.
+    if (
+      path === null &&
+      bodies !== null &&
+      bodies.posts > 0 &&
+      world.tryGet(e, PlayerOrder)?.attackMove !== undefined
+    ) {
+      const open = dynamicOnly();
+      path = routeUnder(open, start, goal, group, () =>
+        resolvePath(terrain, start, goal, open, spent, traversal),
+      );
     }
     if (path !== null) {
       if (standIn) {
