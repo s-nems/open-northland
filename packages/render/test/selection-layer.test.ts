@@ -1,5 +1,6 @@
 import { Graphics } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { mintRangeRing } from '../src/gpu/overlays/range-ring.js';
 import { SelectionLayer } from '../src/gpu/overlays/selection-layer.js';
 import { makeElevationField, tileToScreen } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
@@ -227,7 +228,7 @@ it('leaves work flags to their sprite outline and keeps their work radii in ever
     expect(layer.container.children).toHaveLength(1);
     const area = layer.container.children[0];
     if (!(area instanceof Graphics)) throw new Error('Missing work radius');
-    expect(area.getLocalBounds().width).toBeGreaterThan(200);
+    expect(area.getLocalBounds().width).toBeGreaterThan(150);
     expect(
       area.context.instructions
         .filter((entry) => entry.action === 'stroke')
@@ -255,4 +256,18 @@ it('draws a defence range red beside a work range on the same centre', () => {
   layer.draw({ snapshot }, new Set(), new Set(), ranges.slice(0, 1));
   expect(layer.container.children).toHaveLength(1);
   layer.destroy();
+});
+
+it('draws a range inside its true shape: a work diamond at 1/√2 of its radius, a defence hexagon at 2/√5', () => {
+  const NODE_PX = 34;
+  const RADIUS = 10;
+  const STROKE = 2;
+  const width = (kind: 'work' | 'defence'): number => {
+    const ring = mintRangeRing(RADIUS, kind);
+    const w = ring.getLocalBounds().width - STROKE;
+    ring.destroy();
+    return w;
+  };
+  expect(width('work')).toBeCloseTo(2 * RADIUS * NODE_PX * Math.SQRT1_2, 0);
+  expect(width('defence')).toBeCloseTo((2 * RADIUS * NODE_PX * 2) / Math.sqrt(5), 0);
 });

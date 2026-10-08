@@ -686,10 +686,11 @@ describe('shelterFireRadius', () => {
   const HY = 4;
   const NO_BOW_TRIBE = VIKING + 1;
 
-  it('reaches the house bow past the farthest wall, the bound of where the building can land a shot', () => {
+  it("reaches the house bow less the anchor's way to its nearest wall, so every node that close is in reach", () => {
     const content = defenceContent();
     expect(shelterFireRadius(content, TOWER, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE);
-    expect(shelterFireRadius(content, HALL, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE + HALL_HALF_LENGTH_NODES);
+    // The hall's anchor stands in its own wall: its reach runs further only along its length.
+    expect(shelterFireRadius(content, HALL, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE);
   });
 
   it('is undefined for a type with no defence mode and for a tribe that fires no house bow', () => {

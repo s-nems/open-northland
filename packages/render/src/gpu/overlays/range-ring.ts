@@ -27,9 +27,21 @@ const NODE_WIDTH_PX = TILE_HALF_W;
  *  under the staggered raster. */
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 
-/** A flat ground ellipse of `radiusNodes` half-cell nodes around the origin, in the colour of `kind`. */
+/**
+ * The share of a range's radius its ellipse is drawn at, so the ellipse fits inside the range's true shape
+ * and never promises ground the range does not cover. A work area is counted in Manhattan nodes, a diamond
+ * whose sides sit 1/√2 of its radius off the centre; a defence range in map points, a hexagon whose slanted
+ * sides sit 2/√5 off.
+ */
+const INSCRIBED_SHARE: Readonly<Record<RangeRingKind, number>> = {
+  work: Math.SQRT1_2,
+  defence: 2 / Math.sqrt(5),
+};
+
+/** A flat ground ellipse inside a range of `radiusNodes` half-cell nodes around the origin, in the colour of
+ *  `kind`. */
 export function mintRangeRing(radiusNodes: number, kind: RangeRingKind): Graphics {
-  const rx = radiusNodes * NODE_WIDTH_PX;
+  const rx = radiusNodes * INSCRIBED_SHARE[kind] * NODE_WIDTH_PX;
   const g = new Graphics();
   traceDashedEllipse(g, rx, rx * ISO_RATIO);
   return g.stroke({ width: RANGE_RING_WIDTH, color: RANGE_RING_COLOR[kind], alpha: RANGE_RING_ALPHA });

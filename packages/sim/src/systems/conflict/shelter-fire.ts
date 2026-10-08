@@ -78,10 +78,10 @@ function fires(bow: WeaponType | undefined): bow is FiringBow {
 }
 
 /**
- * How far in map points from its anchor node (`hx`, `hy`) a building of `buildingType` can land a shot in
- * defence mode: the house bow's reach past its farthest wall cell. Fire measures from the nearest wall, so
- * this is the outer bound of the ground the building covers. Undefined for a type with no defence mode and
- * when `tribe` fires no house bow.
+ * How far in map points from its anchor node (`hx`, `hy`) a building of `buildingType` reaches all around in
+ * defence mode: the house bow's reach less the way from the anchor to its nearest wall cell. Fire measures
+ * from the nearest wall, so every node this close is in reach, and a long building reaches further along its
+ * length. Undefined for a type with no defence mode and when `tribe` fires no house bow.
  */
 export function shelterFireRadius(
   content: ContentSet,
@@ -92,11 +92,12 @@ export function shelterFireRadius(
 ): number | undefined {
   const bow = houseBow(content, tribe);
   if (shelterCapacityOf(content, buildingType) === 0 || !fires(bow)) return undefined;
-  let wallReach = 0;
+  let nearestWall: number | undefined;
   for (const cell of buildingFootprintOf(content, buildingType, tribe)?.blocked ?? []) {
-    wallReach = Math.max(wallReach, hexDistanceBetween(hx, hy, hx + footprintCellDx(hy, cell), hy + cell.dy));
+    const d = hexDistanceBetween(hx, hy, hx + footprintCellDx(hy, cell), hy + cell.dy);
+    nearestWall = nearestWall === undefined ? d : Math.min(nearestWall, d);
   }
-  return bow.maxRange + wallReach;
+  return Math.max(0, bow.maxRange - (nearestWall ?? 0));
 }
 
 function fireFrom(
