@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  Carrying,
-  LostWay,
-  Owner,
-  PickupClaim,
-  Position,
-  Stockpile,
-  SupplyRun,
-} from '../../src/components/index.js';
+import { Carrying, LostWay, Owner, PickupClaim, Stockpile, SupplyRun } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { dropGroundPile } from '../../src/systems/settlers/atomics/effects/goods/piles.js';
