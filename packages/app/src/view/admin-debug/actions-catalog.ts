@@ -1,11 +1,11 @@
 import type { Command, Entity } from '@open-northland/sim';
 
-export type DebugTargetKind = 'settler' | 'building';
+export type DebugTargetKind = 'settler' | 'building' | 'health';
 
 export interface DebugAction {
-  readonly id: 'kill' | 'satisfy' | 'starve' | 'fill' | 'finish';
+  readonly id: 'kill' | 'satisfy' | 'starve' | 'fill' | 'finish' | 'health';
   readonly targetKind: DebugTargetKind;
-  readonly command: (target: Entity) => Command;
+  readonly command: (target: Entity, healthPercent?: number) => Command;
 }
 
 // Raw `debugSetNeeds` levels are the inverse of the buttons' satisfaction wording: 0 is sated, 100 starving.
@@ -18,6 +18,11 @@ function setAllNeeds(target: Entity, rawPct: number): Command {
 
 /** Listed in the panel's button order. */
 export const DEBUG_ACTIONS: readonly DebugAction[] = [
+  {
+    id: 'health',
+    targetKind: 'health',
+    command: (target, percent = 1) => ({ kind: 'debugSetHealth', target, percent }),
+  },
   {
     id: 'kill',
     targetKind: 'settler',

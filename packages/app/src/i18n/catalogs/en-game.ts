@@ -1404,6 +1404,8 @@ export const enGame = {
     standingPalisade: 'Palisade (standing)',
     targetSettler: 'unit',
     targetBuilding: 'building',
+    targetHealth: 'building or unit',
+    healthPercent: 'Target HP (%)',
     nothingArmed: 'Nothing selected - choose a unit, vehicle, resource, good or tool above.',
     armedResource: 'Armed: “{label}” resource - click the world (right click/Esc cancels).',
     armedGood: 'Armed: “{label}” ground pile - click the world (right click/Esc cancels).',
@@ -1458,6 +1460,7 @@ export const enGame = {
       26: 'Lionesses',
     },
     actionsCatalog: {
+      health: 'Set HP',
       kill: 'Kill unit',
       satisfy: 'Fill needs (100%)',
       starve: 'Empty needs (0%)',

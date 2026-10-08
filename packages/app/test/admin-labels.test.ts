@@ -109,6 +109,10 @@ describe('createAdminLabels status line', () => {
     expect(labels.status({ kind: 'action', action: fill }, 0)).toBe(
       formatMessage(copy.armedAction, { label: labels.action(fill), target: copy.targetBuilding }),
     );
+    const health = debugAction('health');
+    expect(labels.status({ kind: 'action', action: health }, 0)).toBe(
+      formatMessage(copy.armedAction, { label: labels.action(health), target: copy.targetHealth }),
+    );
   });
 
   it('asks for the settler, then for its destination, on the teleport arm', () => {

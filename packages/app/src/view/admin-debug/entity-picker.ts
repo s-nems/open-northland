@@ -39,13 +39,18 @@ export function createAdminEntityPicker(
       viewport,
       elevation: deps.elevation,
     })) {
-      if (item.kind !== kind) continue;
+      if (
+        kind === 'health'
+          ? item.kind !== 'building' && item.kind !== 'settler' && item.kind !== 'vehicle'
+          : item.kind !== kind
+      )
+        continue;
       targets.push({
         ref: item.ref,
         x: item.x,
         y: item.y,
         box: deps.renderer.entityBounds(item.ref),
-        ...(kind === 'building'
+        ...(item.kind === 'building'
           ? {
               pixelHit: (wx: number, wy: number) => deps.renderer.entityPixelHit(item.ref, wx, wy),
             }

@@ -124,20 +124,29 @@ export function filterInput(entries: readonly LabelledButton[], placeholder: str
   return input;
 }
 
-/** Reports a blank or unparsable value as 0. */
-export function numberField(label: string, value: number, onChange: (v: number) => void): HTMLElement {
+/** Reports a blank or unparsable value as the minimum (0 by default). */
+export function numberField(
+  label: string,
+  value: number,
+  onChange: (v: number) => void,
+  bounds?: { readonly min: number; readonly max: number },
+): HTMLElement {
   const wrap = el('label', 'display:flex;gap:5px;align-items:center');
   wrap.append(el('span', 'opacity:0.8', label));
   const input = el('input', `width:64px;${FIELD_INPUT_STYLE}`);
   input.type = 'number';
   quietTextField(input);
-  input.min = '0';
+  input.min = String(bounds?.min ?? 0);
+  if (bounds !== undefined) input.max = String(bounds.max);
   input.value = String(value);
   // A spawn press `preventDefault()`s the click and so suppresses blur; a `change` commit would never
   // reach that click.
   input.addEventListener('input', () => {
     const v = Number.parseInt(input.value, 10);
-    onChange(Number.isFinite(v) && v > 0 ? v : 0);
+    const minimum = bounds?.min ?? 0;
+    const next = Math.max(minimum, Math.min(bounds?.max ?? Infinity, Number.isFinite(v) ? v : minimum));
+    if (bounds !== undefined && input.value !== '') input.value = String(next);
+    onChange(next);
   });
   wrap.append(input);
   return wrap;

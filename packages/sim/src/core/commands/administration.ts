@@ -94,6 +94,9 @@ export type DebugCommand =
    *  construction carries a `Health` pool but is not killable here; `demolish` owns its worker-unbind
    *  seam. */
   | { readonly kind: 'debugKill'; readonly target: Entity }
+  /** Set a living building or unit to 1..100 percent of its health pool, retaining at least one HP.
+   *  An unfinished building uses its built pool; an upgrade keeps the standing building's pool. */
+  | { readonly kind: 'debugSetHealth'; readonly target: Entity; readonly percent: number }
   /** Hand `player` one `paper` outright, as a chest would; dropped for a slot outside `[0, MAX_PLAYERS)`
    *  or when the player's slots are full. */
   | { readonly kind: 'grantPaper'; readonly player: number; readonly paper: Paper }

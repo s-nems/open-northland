@@ -279,6 +279,12 @@ toggle on the settings screen's Gameplay tab shows both, persists with the other
 live inside a running game. A relayed session shows only the readout, since the palette's pokes are
 trusted world edits with no wire.
 
+In the palette's **Actions** section, enter **Target HP (%)**, arm **Set HP**, then click a building or
+unit of any owner. The range is 1–100%, initially 1%; 100% restores its available pool. Tiny pools retain
+at least one hitpoint. Construction uses its currently built pool, while upgrades use the standing
+building's pool. Like the other admin orders, the change applies on the next simulation tick; ordinary
+regeneration and repair still run.
+
 A running game exposes `window.__opennorthland`. Besides the session `host` (the world as the runtime
 reads it: `tick` and `snapshot()` synchronously, `await hashState()` for the hash and the tick it was
 taken at, and `await run(ticks)`, which steps a paused session), the live

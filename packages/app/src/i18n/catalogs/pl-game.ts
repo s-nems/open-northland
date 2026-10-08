@@ -1384,6 +1384,8 @@ export const plGame = {
     standingPalisade: 'Palisada (gotowa)',
     targetSettler: 'jednostkę',
     targetBuilding: 'budynek',
+    targetHealth: 'budynek lub jednostkę',
+    healthPercent: 'HP celu (%)',
     nothingArmed: 'Nic nie wybrano - wybierz jednostkę, wehikuł, złoże, towar lub narzędzie powyżej.',
     armedResource: 'Wybrano złoże „{label}” - klikaj świat (PPM/Esc anuluje).',
     armedGood: 'Wybrano stos „{label}” - klikaj świat (PPM/Esc anuluje).',
@@ -1438,6 +1440,7 @@ export const plGame = {
       26: 'Lwice',
     },
     actionsCatalog: {
+      health: 'Ustaw HP',
       kill: 'Zabij jednostkę',
       satisfy: 'Nasyć potrzeby (100%)',
       starve: 'Wyzeruj potrzeby (0%)',

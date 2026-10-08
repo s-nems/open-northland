@@ -20,6 +20,17 @@ function parse(command: Record<string, unknown>): unknown {
 }
 
 describe('command payload contracts', () => {
+  it('accepts an admin health percentage and rejects malformed values or player authority', () => {
+    const command = { kind: 'debugSetHealth', target: UNIT, percent: 1 };
+    const envelope = { v: 1, origin: 'admin', command };
+    expect(parseCommandEnvelope(JSON.parse(JSON.stringify(envelope)))).toEqual(envelope);
+    for (const percent of [1.5, NaN, Infinity, '1']) {
+      expect(() => parse({ ...command, percent })).toThrow(/command.percent/);
+    }
+    expect(() => parseCommandEnvelope({ ...envelope, origin: 'player', player: SEAT })).toThrow(
+      /may not issue 'debugSetHealth'/,
+    );
+  });
   it('preserves a finite deposit and a felling marker through the serialized command boundary', () => {
     const command: Extract<Command, { kind: 'placeResource' }> = {
       kind: 'placeResource',

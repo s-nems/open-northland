@@ -118,6 +118,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   let armed: Armed | null = null;
   let player = HUMAN_PLAYER;
   let hitpoints = DEFAULT_HITPOINTS;
+  let healthPercent = 1;
   let armorClass = 0; // 0 = unarmored
 
   const armedButtons: { readonly button: HTMLButtonElement; readonly armed: Armed }[] = [];
@@ -254,13 +255,14 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     startOpen: boolean,
     filterHint?: string,
     note?: string,
-  ): void => {
+  ): HTMLElement => {
     const section = collapsibleSection(title, entries.length, startOpen);
     const buttons = armEntries(entries);
     if (note !== undefined) section.content.append(el('div', 'opacity:0.7;margin-bottom:6px', note));
     if (filterHint !== undefined) section.content.append(filterInput(buttons, filterHint));
     section.content.append(rowOf(buttons));
     body.append(section.wrap);
+    return section.content;
   };
 
   // Open by default: the first section a spawn-a-fight session reaches for.
@@ -327,7 +329,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     body.append(section.wrap);
   }
   // Click-a-target tools, inert without an entity picker.
-  addPaletteSection(
+  const actions = addPaletteSection(
     copy.actions,
     [
       ...DEBUG_ACTIONS.map(
@@ -336,6 +338,16 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
       { label: copy.teleport, armed: { kind: 'teleport', target: null } },
     ],
     false,
+  );
+  actions.prepend(
+    numberField(
+      copy.healthPercent,
+      healthPercent,
+      (value) => {
+        healthPercent = value;
+      },
+      { min: 1, max: 100 },
+    ),
   );
 
   panel.append(header, body, status);
@@ -402,7 +414,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
   const applyActionAt = (clientX: number, clientY: number, action: DebugAction): void => {
     // Picking is number-typed end to end, so the `Entity` brand is reconstituted at this app-to-sim seam.
     const ref = deps.pickEntity?.(clientX, clientY, action.targetKind) ?? null;
-    if (ref !== null) deps.enqueue(action.command(ref as Entity));
+    if (ref !== null) deps.enqueue(action.command(ref as Entity, healthPercent));
   };
 
   /** First click picks the settler, the next sends it to the clicked node and re-arms for another pick.

@@ -93,7 +93,7 @@ import {
 } from '../vehicles/index.js';
 import { VehicleOrderRoutes } from '../vehicles/order-routes.js';
 import { authorizedCommand } from './authority.js';
-import { debugFillStockpile, debugKill, debugSetNeeds, debugTeleport } from './debug.js';
+import { debugFillStockpile, debugKill, debugSetHealth, debugSetNeeds, debugTeleport } from './debug.js';
 import { cancelUpgrade, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
@@ -451,6 +451,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       return;
     case 'debugKill':
       debugKill(world, command);
+      return;
+    case 'debugSetHealth':
+      debugSetHealth(world, command);
       return;
     case 'debugSetNeeds':
       // Commands apply before the tick's needs pass.

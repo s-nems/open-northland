@@ -1539,6 +1539,8 @@ export const ruGame = {
     standingPalisade: 'Частокол (построен)',
     targetSettler: 'юнит',
     targetBuilding: 'здание',
+    targetHealth: 'здание или юнит',
+    healthPercent: 'Здоровье цели (%)',
     nothingArmed: 'Ничего не выбрано — выберите выше юнита, транспорт, ресурс, товар или инструмент.',
     armedResource: 'Выбрано: ресурс «{label}» — нажмите на карту (правая кнопка/Esc — отмена).',
     armedGood: 'Выбрано: стопка товара «{label}» — нажмите на карту (правая кнопка/Esc — отмена).',
@@ -1593,6 +1595,7 @@ export const ruGame = {
       '26': 'Львицы',
     },
     actionsCatalog: {
+      health: 'Задать здоровье',
       kill: 'Убить юнита',
       satisfy: 'Удовлетворить потребности (100%)',
       starve: 'Обнулить шкалы потребностей (0%)',

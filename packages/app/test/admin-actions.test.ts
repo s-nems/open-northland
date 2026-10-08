@@ -18,6 +18,12 @@ function actionById(id: string) {
 }
 
 describe('admin debug action command mapping', () => {
+  it('sets a building or unit to the entered health percentage, defaulting to 1%', () => {
+    const health = actionById('health');
+    expect(health.targetKind).toBe('health');
+    expect(health.command(TARGET)).toEqual({ kind: 'debugSetHealth', target: TARGET, percent: 1 });
+    expect(health.command(TARGET, 73)).toEqual({ kind: 'debugSetHealth', target: TARGET, percent: 73 });
+  });
   it('kill targets a unit and issues debugKill at the picked entity', () => {
     const kill = actionById('kill');
     expect(kill.targetKind).toBe('settler');

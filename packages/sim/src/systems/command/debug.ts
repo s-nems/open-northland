@@ -5,6 +5,7 @@ import {
   Settler,
   SettlerNeeds,
   Stockpile,
+  Upgrading,
   Vehicle,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -12,6 +13,7 @@ import { contentIndex } from '../../core/content-index.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
+import { clearRepairedDamage, markShortPool } from '../economy/repair.js';
 import { mutNeeds } from '../lifecycle/needs/levels.js';
 import { teleportHuman } from '../orders/teleport.js';
 
@@ -28,6 +30,25 @@ export function debugKill(world: World, command: Extract<Command, { kind: 'debug
   if (!world.has(command.target, Settler) && !world.has(command.target, Vehicle)) return;
   const health = world.tryMut(command.target, Health);
   if (health !== undefined) health.hitpoints = 0;
+}
+
+export function debugSetHealth(world: World, command: Extract<Command, { kind: 'debugSetHealth' }>): void {
+  const { target, percent } = command;
+  if (percent < 1 || percent > 100) return;
+  if (!world.has(target, Building) && !world.has(target, Settler) && !world.has(target, Vehicle)) return;
+  const health = world.tryGet(target, Health);
+  if (health === undefined || health.max <= 0 || health.hitpoints <= 0) return;
+  const building = world.tryGet(target, Building);
+  const ceiling =
+    building !== undefined && building.built < ONE && !world.has(target, Upgrading)
+      ? Math.max(1, Math.trunc((health.max * building.built) / ONE))
+      : health.max;
+  const hitpoints = Math.max(1, Math.floor((ceiling * percent) / 100));
+  if (health.hitpoints !== hitpoints) world.mut(target, Health).hitpoints = hitpoints;
+  if (building !== undefined) {
+    if (hitpoints < ceiling) markShortPool(world, target);
+    else clearRepairedDamage(world, target);
+  }
 }
 
 /** Set the needs the panel names to whole-percent levels (0 sated … 100 maxed). A non-settler target is a

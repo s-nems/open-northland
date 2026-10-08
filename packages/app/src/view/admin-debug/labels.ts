@@ -59,6 +59,7 @@ export function createAdminLabels(
   const targetNoun: Record<DebugTargetKind, string> = {
     settler: copy.targetSettler,
     building: copy.targetBuilding,
+    health: copy.targetHealth,
   };
 
   const goodLabelOf = (good: number, fallback: string): string => goodLabel?.(good) ?? fallback;

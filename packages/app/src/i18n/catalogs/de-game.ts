@@ -1544,6 +1544,8 @@ export const deGame = {
     standingPalisade: 'Palisade (fertig)',
     targetSettler: 'Einheit',
     targetBuilding: 'Gebäude',
+    targetHealth: 'Gebäude oder Einheit',
+    healthPercent: 'Ziel-LP (%)',
     nothingArmed:
       'Nichts ausgewählt – wähle oben eine Einheit, ein Fahrzeug, einen Rohstoff, eine Ware oder ein Werkzeug.',
     armedResource: 'Bereit: Rohstoff „{label}“ – klicke in die Spielwelt (Rechtsklick/Esc bricht ab).',
@@ -1600,6 +1602,7 @@ export const deGame = {
       '26': 'Löwinnen',
     },
     actionsCatalog: {
+      health: 'LP setzen',
       kill: 'Einheit töten',
       satisfy: 'Bedürfnisse stillen (100%)',
       starve: 'Bedürfniswerte auf 0% setzen',

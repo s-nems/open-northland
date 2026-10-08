@@ -2,18 +2,21 @@ import { describe, expect, it } from 'vitest';
 import {
   addPerson,
   Building,
+  Damaged,
   Health,
   Position,
   Stockpile,
   UnderConstruction,
+  Upgrading,
 } from '../../src/components/index.js';
 import type { Fixed } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, Simulation } from '../../src/index.js';
+import { adminCommand, fx, ONE, Simulation } from '../../src/index.js';
 import { type HalfCellNode, nodeOfPosition, positionOfNode } from '../../src/nav/halfcell.js';
+import { commandSystem } from '../../src/systems/command/index.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import { testContent } from '../fixtures/content.js';
-import { ctxOf } from '../fixtures/context.js';
+import { ctxOf, nextTickCtxOf } from '../fixtures/context.js';
 import { needsOf } from '../fixtures/settler.js';
 import { waterColumnMap } from '../fixtures/terrain.js';
 
@@ -136,6 +139,72 @@ describe('debugKill', () => {
     // that debugKill left it standing, not what its final HP is.)
     expect(sim.world.has(site, Building)).toBe(true);
     expect(sim.world.get(site, Health).hitpoints).toBeGreaterThan(0);
+  });
+});
+
+describe('debugSetHealth', () => {
+  it('sets exact percentages through the admin queue, preserving max health and repair eligibility', () => {
+    const sim = fresh();
+    const unit = unitWithHealth(sim, 5000);
+    const building = sim.world.create();
+    sim.world.add(building, Building, { buildingType: GRANARY, tribe: VIKING, built: ONE, level: 0 });
+    sim.world.add(building, Health, { hitpoints: 1000, max: 1000 });
+
+    for (const [percent, unitHp, buildingHp] of [
+      [1, 50, 10],
+      [80, 4000, 800],
+      [100, 5000, 1000],
+    ] as const) {
+      for (const target of [unit, building])
+        sim.enqueue(adminCommand({ kind: 'debugSetHealth', target, percent }));
+      // Inspect the command's exact result before ordinary unit regeneration advances it.
+      commandSystem(sim.world, nextTickCtxOf(sim));
+      expect(sim.world.get(unit, Health)).toEqual({ hitpoints: unitHp, max: 5000 });
+      expect(sim.world.get(building, Health)).toEqual({ hitpoints: buildingHp, max: 1000 });
+      expect(sim.world.has(building, Damaged)).toBe(percent < 100);
+    }
+    expect(sim.commands.log.filter(({ command }) => command.kind === 'debugSetHealth')).toHaveLength(6);
+  });
+
+  it('uses the built pool for construction and the standing pool for an upgrade', () => {
+    const sim = fresh();
+    const sites = [sim.world.create(), sim.world.create()];
+    for (const [index, site] of sites.entries()) {
+      sim.world.add(site, Building, {
+        buildingType: GRANARY,
+        tribe: VIKING,
+        built: fx.fromFloat(0.5),
+        level: 0,
+      });
+      sim.world.add(site, Health, { hitpoints: 500, max: 1000 });
+      sim.world.add(site, UnderConstruction, { labor: fx.fromInt(0) });
+      if (index === 1) sim.world.add(site, Upgrading, { savedStock: new Map(), seeded: new Map() });
+      sim.enqueue(adminCommand({ kind: 'debugSetHealth', target: site, percent: 1 }));
+    }
+    commandSystem(sim.world, nextTickCtxOf(sim));
+    expect(sites.map((site) => sim.world.get(site, Health).hitpoints)).toEqual([5, 10]);
+  });
+
+  it('keeps a small pool alive and ignores wrong targets, dead units and out-of-range percentages', () => {
+    const sim = fresh();
+    const tiny = unitWithHealth(sim, 5);
+    const dead = unitWithHealth(sim, 10);
+    sim.world.mut(dead, Health).hitpoints = 0;
+    const wrong = healthOnlyEntity(sim, 50);
+    const gone = sim.world.create();
+    sim.world.destroy(gone);
+    for (const target of [tiny, dead, wrong, gone]) {
+      sim.enqueue(adminCommand({ kind: 'debugSetHealth', target, percent: 1 }));
+    }
+    commandSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(tiny, Health).hitpoints).toBe(1);
+    expect(sim.world.get(dead, Health).hitpoints).toBe(0);
+    expect(sim.world.get(wrong, Health).hitpoints).toBe(50);
+    expect(sim.world.isAlive(gone)).toBe(false);
+    for (const percent of [0, 101])
+      sim.enqueue(adminCommand({ kind: 'debugSetHealth', target: tiny, percent }));
+    commandSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.get(tiny, Health).hitpoints).toBe(1);
   });
 });
 
