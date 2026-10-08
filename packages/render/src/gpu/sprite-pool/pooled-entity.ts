@@ -30,6 +30,8 @@ interface MutableBounds {
  */
 interface PooledEntityBase extends PresentationTrack {
   readonly container: Container;
+  /** Body sprites eligible for structural damage, refreshed by the layer binder. */
+  damageBodies?: Sprite[];
   placeholder?: SelectionGraphics;
   /** The plan marker on an unfinished wall segment or road site no builder has claimed yet: a stake or a
    *  pegged plot. */

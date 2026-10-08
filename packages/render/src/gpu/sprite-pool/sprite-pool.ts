@@ -25,6 +25,7 @@ import {
 import { DEFAULT_FACING, vehicleAfloat, vehicleLookFor } from '../../data/sprites/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
+import { BuildingDamage, type FallenBody } from '../building-damage/building-damage.js';
 import { PalettedQuad } from '../paletted-sprite/index.js';
 import type { PixelArtScaler } from '../pixel-art-registry.js';
 import { PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
@@ -81,6 +82,7 @@ export interface PoolFrame {
   /** The weather's wind, bending swaying vegetation and filling sails while `environmentMotion` is on;
    *  the same object while it holds still. Absent is still air. */
   readonly wind?: WindSway | undefined;
+  readonly buildingDamage?: boolean;
   /** How shadow silhouettes draw; absent means the shadow enhancement is off, which also keeps a
    *  character's projected cast layer off the screen. */
   readonly shadowStyle?: ShadowStyle | undefined;
@@ -203,6 +205,35 @@ export class SpritePool {
   /** The pooled entity of each of {@link lastItems}, by index: a repeated scene build skips the lookups. */
   private readonly lastPooled: (PooledEntity | undefined)[] = [];
   private readonly damaged: DamagedBuilding[] = [];
+  private readonly buildingDamage = new BuildingDamage();
+  private readonly damageSubject = (ref: number): PooledEntity | undefined => {
+    const pe = this.pool.get(ref);
+    return pe?.attached === true ? pe : undefined;
+  };
+
+  private drawDamage(frame: PoolFrame): void {
+    this.buildingDamage.draw(
+      this.damaged,
+      this.damageSubject,
+      frame.tick + frame.alpha,
+      frame.wind,
+      frame.buildingDamage === true,
+      frame.enhancedSampling === true,
+      frame.camera.scale ?? 1,
+    );
+    // Outlines copy the bound texture. Refresh after swaps/releases, including a fully repaired house
+    // that has just left the damaged list, so a stamp cannot retain a recycled atlas slot.
+    this.refreshBuildingSelection(frame.selection, frame);
+    this.refreshBuildingSelection(frame.flagged, frame);
+  }
+
+  private refreshBuildingSelection(refs: ReadonlySet<number> | undefined, frame: PoolFrame): void {
+    for (const ref of refs ?? NO_REFS) {
+      const pe = this.pool.get(ref);
+      const item = pe?.bound.item;
+      if (pe?.kind === 'building' && pe.attached && item !== undefined) this.applySelection(pe, item, frame);
+    }
+  }
   private readonly ships: ShipAfloat[] = [];
   /** Scratch {@link keelOf} answers in, valid until the next call. */
   private readonly keelScratch: number[] = [];
@@ -255,6 +286,7 @@ export class SpritePool {
       this.presentMoving(frame);
       this.reap(scene.liveRefs);
       this.sheet?.palette?.flush();
+      this.drawDamage(frame);
       return;
     }
     this.frameId++;
@@ -309,6 +341,7 @@ export class SpritePool {
 
     this.reap(scene.liveRefs);
     this.sheet?.palette?.flush();
+    this.drawDamage(frame);
   }
 
   /**
@@ -383,6 +416,10 @@ export class SpritePool {
   private presentItemAt(pe: PooledEntity, item: DrawItem, frame: PoolFrame, continuous: boolean): boolean {
     this.presentPooled(pe, item, frame, continuous);
     if (item.kind === 'settler') coatBody(pe, this.bloodCoats.packed(item.ref, frame.tick + frame.alpha));
+    return this.applySelection(pe, item, frame);
+  }
+
+  private applySelection(pe: PooledEntity, item: DrawItem, frame: PoolFrame): boolean {
     const flagged = frame.flagged?.has(item.ref) === true;
     const style =
       item.ghost === true || item.portraitOnly === true
@@ -412,6 +449,7 @@ export class SpritePool {
   /** Whether `pe` draws the same whatever the frame alpha: what a still frame may leave untouched. */
   private holdsStill(pe: PooledEntity, item: DrawItem): boolean {
     return (
+      item.hpFrac === undefined &&
       pe.reveal === undefined &&
       !pe.bound.retrying &&
       resolvesWithoutClock(item) &&
@@ -455,8 +493,12 @@ export class SpritePool {
     this.ships.length = 0;
     const vehicles = this.sheet?.bindings.vehicle;
     for (const item of items) {
-      if (item.kind === 'building' && item.hpFrac !== undefined && item.ghost !== true) {
-        this.damaged.push({ ref: item.ref, hpFrac: item.hpFrac });
+      if (item.kind === 'building' && item.hpFrac !== undefined) {
+        this.damaged.push({
+          ref: item.ref,
+          hpFrac: item.hpFrac,
+          ...(item.ghost === true ? { ghost: true } : {}),
+        });
       }
       // A portrait-only ship is hidden on the map, so it pushes no water there.
       const onMap = item.ghost !== true && item.portraitOnly !== true;
@@ -510,6 +552,7 @@ export class SpritePool {
     if (
       steady &&
       // The present may have started a construction reveal, which binds every frame.
+      item.hpFrac === undefined &&
       pe.reveal === undefined &&
       stamp.bindHolds(item, this.epoch.bind, highlight) &&
       stamp.presents(pe.motion, layers) &&
@@ -614,10 +657,13 @@ export class SpritePool {
     }
   }
 
-  /** This frame's drawn damaged finished buildings, valid until the next {@link reconcile}. Collected off
-   *  the culled draw list, so the smoke overlay's cost tracks the screen. */
-  damagedBuildings(): readonly DamagedBuilding[] {
-    return this.damaged;
+  captureBuildingDamage(ref: number): readonly FallenBody[] | undefined {
+    const pe = this.pool.get(ref);
+    if (pe === undefined || pe.paletted) return undefined;
+    return this.buildingDamage.capture(
+      ref,
+      pe.sprites.filter((_, i) => pe.pickExempt[i] !== true),
+    );
   }
 
   /** This frame's drawn ships, at sea or moored, valid until the next {@link reconcile}; off the culled
@@ -789,6 +835,7 @@ export class SpritePool {
    */
   destroy(): void {
     this.bloodCoats.setEnabled(false);
+    this.buildingDamage.destroy();
     for (const pe of this.pool.values()) {
       this.selectionEffects.clear(pe);
       pe.container.destroy({ children: true });

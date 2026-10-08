@@ -10,7 +10,6 @@ export {
 export { CollapseLayer } from './collapse-layer.js';
 export { type ConstructionPlotFrame, ConstructionPlotLayer } from './construction-plot.js';
 export { type ConstructionSign, ConstructionSignLayer } from './construction-sign-layer.js';
-export { DamageSmokeLayer } from './damage-smoke-layer.js';
 export { type BadgeAnchor, badgeAnchor, type DoorBadge } from './door-badge.js';
 export { CombatEffectsLayer } from './effects-layer.js';
 export { FogLayer, type FogWashMask } from './fog-layer.js';

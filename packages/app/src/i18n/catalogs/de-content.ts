@@ -237,6 +237,11 @@ export const deContent = {
       summary:
         'Eine Kriegerschar zerstört einen feindlichen Stützpunkt und zerschlägt das Hauptquartier und die Türme vor den einfachen Wohnhäusern.',
     },
+    'building-damage': {
+      title: 'Gebäudeschäden',
+      summary:
+        'Holz- und Steingebäude mit fünf Gesundheitsstufen: Risse, Dachschäden, Rauch und kleine Brände.',
+    },
     repair: {
       title: 'Reparatur',
       summary:

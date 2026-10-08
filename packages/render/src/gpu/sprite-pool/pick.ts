@@ -23,10 +23,11 @@ export interface DrawnGeometry {
   readonly keelOf?: (ref: number) => readonly number[] | undefined;
 }
 
-/** One drawn, damaged finished building: its ref and the remaining Health fraction the smoke reads. */
+/** One drawn damaged building, including a remembered appearance under fog. */
 export interface DamagedBuilding {
   readonly ref: number;
   readonly hpFrac: number;
+  readonly ghost?: boolean;
 }
 
 /** One drawn ship, at sea or moored, the input of the wake it pushes. */

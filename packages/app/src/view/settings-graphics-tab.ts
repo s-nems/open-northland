@@ -156,7 +156,15 @@ export function graphicsSettingsRows(
   groupNumbers.setAttribute('aria-label', text.groupNumbers);
   groupNumbers.dataset.settingsFocus = 'groupNumbers';
   const enhancementToggles = (
-    ['softShadows', 'enhancedWater', 'environmentMotion', 'groundedBuildings', 'weather', 'blood'] as const
+    [
+      'softShadows',
+      'enhancedWater',
+      'environmentMotion',
+      'groundedBuildings',
+      'buildingDamage',
+      'weather',
+      'blood',
+    ] as const
   ).map((key) => {
     const toggle = togglePill(settings[key], (enabled) => {
       void store.update({ [key]: enabled });

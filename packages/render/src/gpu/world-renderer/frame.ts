@@ -38,6 +38,8 @@ export interface WorldEnhancements {
   readonly environmentMotion: boolean;
   /** Buildings, palisades and built walls set into the ground they stand on instead of on it. */
   readonly groundedBuildings: boolean;
+  /** Structural scars, fire, embers and impact debris on damaged buildings. */
+  readonly buildingDamage: boolean;
 }
 
 /** The baseline renderer: every enhancement off. */
@@ -48,6 +50,7 @@ export const BASELINE_ENHANCEMENTS: WorldEnhancements = {
   enhancedWater: false,
   environmentMotion: false,
   groundedBuildings: false,
+  buildingDamage: false,
 };
 
 export interface WorldRendererOptions {

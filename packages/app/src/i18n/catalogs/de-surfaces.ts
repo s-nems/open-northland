@@ -251,6 +251,9 @@ export const deSurfaces = {
       enhancedWater: 'Verbessertes Wasser',
       enhancedWaterTip:
         'Sich kreuzende Wellen, dunklere flache und noch dunklere tiefe Stellen, kühlere Blautöne und wandernde Lichtreflexe auf tiefem Wasser. Aus verwendet das Originalwasser.',
+      buildingDamage: 'Gebäudeschäden',
+      buildingDamageTip:
+        'Beschädigte Dächer, freiliegende Balken, Rauch, Feuer und Trümmer. Ausschalten reduziert die Grafiklast auf einfachen Rauch.',
       environmentMotion: 'Bewegte Umgebung',
       environmentMotionTip:
         'Bäume, die im Original nur ein Einzelbild haben, wiegen sich samt Schatten im Wind. Fische schwimmen flüssig, und die Bewegung der eigenen Pflanzengrafiken wird geglättet. Siedler und Tiere behalten ihre ursprünglichen Bewegungsschritte; Originalanimationen erhalten keine zusätzlichen Bilder. In geladenen Spielständen stehen Bäume still.',

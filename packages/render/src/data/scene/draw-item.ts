@@ -52,6 +52,8 @@ export interface StaticDrawFields {
   /** The type id a per-type binding picks its frame by: a tile's landscape typeId, or a building's
    *  `Building.buildingType` (the `[GfxHouse]` `LogicType`). Omitted for settler/resource. */
   typeId?: number;
+  /** Remaining fraction of the currently built health pool, remembered under fog (0..1, exclusive of 1). */
+  hpFrac?: number;
   /** For an under-construction building: build progress as a whole percent (0..99, floored
    *  `Building.built`), which picks the `[GfxHouse]` layers showing at this stage. */
   builtPct?: number;
@@ -181,9 +183,6 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  state overlay such as the mill's rotor. Approximation of the original's overlay state 1:
    *  `Production` persists through a brief worker-away pause, whose exact behaviour is unobserved. */
   readonly working?: boolean;
-  /** For a finished, damaged building: its remaining Health fraction (0..1, exclusive of 1), which
-   *  drives the damage-smoke overlay. */
-  readonly hpFrac?: number;
   /** For a projectile: flight heading in screen space (radians, 0 = screen-east, clockwise), tilted
    *  along the drawn arc's tangent when the launch origin is readable. */
   readonly rotation?: number;

@@ -215,6 +215,9 @@ export const enSurfaces = {
       enhancedWater: 'Enhanced water',
       enhancedWaterTip:
         'Crossing swells, darker shallows and darker still deep water, a cooler and bluer colour, and a glint drifting over the deep water. Off keeps the original water.',
+      buildingDamage: 'Building damage',
+      buildingDamageTip:
+        'Broken roofs, exposed beams, smoke, fire and flying fragments. Disable for simpler smoke with less graphics work.',
       environmentMotion: 'Environment motion',
       environmentMotionTip:
         "Trees the original draws as one still frame sway in the wind together with their shadow, fish swim smoothly, and the breeze in the project's own vegetation is smoothed. Settlers and animals keep the original stepping, and original animations gain no extra frames. Trees stand still in a restored save.",

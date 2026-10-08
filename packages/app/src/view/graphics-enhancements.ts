@@ -8,6 +8,7 @@ const ENHANCEMENT_FIELDS: Readonly<Record<keyof WorldEnhancements, true>> = {
   enhancedWater: true,
   environmentMotion: true,
   groundedBuildings: true,
+  buildingDamage: true,
 };
 
 /** Every enhancement the Graphics settings own. */
@@ -22,5 +23,6 @@ export function enhancementsOf(settings: WorldEnhancements): WorldEnhancements {
     enhancedWater: settings.enhancedWater,
     environmentMotion: settings.environmentMotion,
     groundedBuildings: settings.groundedBuildings,
+    buildingDamage: settings.buildingDamage,
   };
 }

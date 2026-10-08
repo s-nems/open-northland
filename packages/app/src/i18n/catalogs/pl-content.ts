@@ -234,6 +234,11 @@ export const plContent = {
       summary:
         'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną i wieże, na końcu zwykłe domy.',
     },
+    'building-damage': {
+      title: 'Zniszczenia budynków',
+      summary:
+        'Drewniane i murowane budynki na pięciu poziomach zdrowia: pęknięcia, wyrwy w dachach, dym i małe pożary.',
+    },
     repair: {
       title: 'Naprawa',
       summary:

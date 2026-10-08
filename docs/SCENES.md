@@ -166,3 +166,6 @@ switching it back on admits new hits. `?scene=battle` exercises the same effect
 with 1000 fighters per side on a 96 × 80 cell field. Both armies attack across the field with
 independently shuffled swords, broadswords, spears, short bows and long bows, and bare, cloth, leather,
 chain and plate armor. Zoom into the front to inspect sprays and the ground left behind it.
+
+`?scene=building-damage` compares five health levels on timber, tiled masonry and plastered buildings.
+See [building damage](design/building-damage.md) for the visual choices, limits and review sequence.

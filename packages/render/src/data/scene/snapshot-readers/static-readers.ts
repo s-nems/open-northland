@@ -87,19 +87,25 @@ function risingPct(components: Readonly<Record<string, unknown>>): number | unde
   return clamp(Math.floor((b.built * 100) / ONE), 0, 99);
 }
 
-/**
- * A finished building's remaining Health fraction (0..1), or `undefined` when it is undamaged, carries
- * no readable Health, or is still building/upgrading - its pool ramps with the build, so a site would
- * otherwise read damaged for its whole construction.
- */
+/** Damage relative to the built pool, so an unharmed foundation stays pristine. An upgrade keeps
+ * its standing health pool while its new tier rises. */
 export function readHpFraction(components: Readonly<Record<string, unknown>>): number | undefined {
-  if (risingPct(components) !== undefined) return undefined;
   const h = components.Health as { hitpoints?: unknown; max?: unknown } | undefined;
-  if (h === undefined || typeof h.hitpoints !== 'number' || typeof h.max !== 'number' || h.max <= 0) {
+  if (
+    h === undefined ||
+    typeof h.hitpoints !== 'number' ||
+    typeof h.max !== 'number' ||
+    !Number.isFinite(h.hitpoints) ||
+    !Number.isFinite(h.max) ||
+    h.max <= 0
+  )
     return undefined;
-  }
-  if (!Number.isFinite(h.hitpoints) || h.hitpoints >= h.max) return undefined;
-  return clamp(h.hitpoints / h.max, 0, 1);
+  const built = readNumField(components, 'Building', 'built');
+  const ceiling =
+    built !== undefined && Number.isFinite(built) && built < ONE && !('Upgrading' in components)
+      ? Math.max(1, Math.floor((h.max * Math.max(0, built)) / ONE))
+      : h.max;
+  return h.hitpoints >= ceiling ? undefined : clamp(h.hitpoints / ceiling, 0, 1);
 }
 
 /**
@@ -187,6 +193,7 @@ function readChestGfxIndex(components: Readonly<Record<string, unknown>>): numbe
 
 const STATIC_DRAW_KEYS = [
   'typeId',
+  'hpFrac',
   'builtPct',
   'goodType',
   'fill',
@@ -237,6 +244,8 @@ export function assignStaticFields(
       readVehicleStaticFields(target, components);
       return;
     case 'building': {
+      const hpFrac = readHpFraction(components);
+      if (hpFrac !== undefined) target.hpFrac = hpFrac;
       const typeId = readBuildingType(components);
       if (typeId !== undefined) target.typeId = typeId;
       const tribe = readBuildingTribe(components);

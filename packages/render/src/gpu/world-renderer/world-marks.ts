@@ -2,8 +2,8 @@ import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
-import type { WindSway } from '../../data/weather/climate.js';
 import { BloodLayer } from '../overlays/blood-layer.js';
+import type { FallenBody } from '../building-damage/building-damage.js';
 import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
 import {
   BadgeLayer,
@@ -12,7 +12,6 @@ import {
   CombatEffectsLayer,
   type ConstructionSign,
   ConstructionSignLayer,
-  DamageSmokeLayer,
   type DoorBadge,
   type GeometryDebugItem,
   GeometryDebugLayer,
@@ -31,7 +30,7 @@ import {
   ShotLayer,
 } from '../overlays/index.js';
 import type { SelectionStyle } from '../selection-style.js';
-import type { DamagedBuilding, DrawnGeometry, ShipAfloat } from '../sprite-pool/index.js';
+import type { DrawnGeometry, ShipAfloat } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import type { CombatBonesGfx } from './frame.js';
@@ -46,7 +45,6 @@ export type MarkSlots = Pick<
   | 'orderMarkers'
   | 'bones'
   | 'bloodGround'
-  | 'damageSmoke'
   | 'constructionSigns'
   | 'bubbles'
   | 'hearts'
@@ -61,17 +59,13 @@ export interface WorldMarksFrame {
   readonly selectionStyle?: SelectionStyle;
   readonly drawn: DrawnGeometry;
   readonly elevation: ElevationField;
-  /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
-   *  through `damaged`, and the selection rings track the selected set instead. */
+  /** The sprite cull box the screen-bounded marks cull against. */
   readonly viewport: Viewport;
   readonly screenViewport?: Viewport;
   readonly fogVisible?: ((x: number, y: number) => boolean) | undefined;
   /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
   readonly renderTime: number;
-  readonly damaged: readonly DamagedBuilding[];
-  /** The weather's wind the damage smoke leans in. */
-  readonly wind: WindSway;
-  /** The drawn ships, off the pool's culled draw list like {@link damaged}. */
+  /** The drawn ships, off the pool's culled draw list. */
   readonly ships: readonly ShipAfloat[];
   /** The map's water mask the wakes fade off. */
   readonly water: WaterField;
@@ -102,7 +96,6 @@ export class WorldMarks {
   /** A siege shot's stone, shadow, trail and landing smoke; in the depth-sorted sprite layer like the
    *  collapses. */
   private readonly shots: ShotLayer;
-  private readonly damageSmoke = new DamageSmokeLayer();
   /** Sign chains and garrison flags. Also inside the depth-sorted sprite layer, so a settler walking in
    *  front of a chain occludes it. */
   private readonly badges: BadgeLayer;
@@ -119,9 +112,10 @@ export class WorldMarks {
     private readonly textures: TextureCache,
     sheet: SpriteSheet | undefined,
     playerColourOf?: (player: number) => number,
+    captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
   ) {
     this.blood = new BloodLayer(spriteLayer);
-    this.collapses = new CollapseLayer(spriteLayer, textures, sheet);
+    this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
     this.badges = new BadgeLayer(spriteLayer, playerColourOf);
@@ -132,7 +126,6 @@ export class WorldMarks {
       orderMarkers: this.orderMarkers.container,
       bones: this.effects.groundContainer,
       bloodGround: this.blood.groundContainer,
-      damageSmoke: this.damageSmoke.container,
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
       hearts: this.hearts.container,
@@ -205,7 +198,6 @@ export class WorldMarks {
     this.blood.draw(frame);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
-    this.damageSmoke.draw(frame.damaged, drawn, renderTime, frame.wind);
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
     this.familyEffects.draw(frame);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
@@ -226,7 +218,6 @@ export class WorldMarks {
     this.blood.destroy();
     this.collapses.destroy();
     this.shots.destroy();
-    this.damageSmoke.destroy();
     this.badges.destroy();
     this.familyEffects.destroy();
     this.constructionSigns.destroy();

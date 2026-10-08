@@ -1,5 +1,5 @@
 import type { SimEvent } from '@open-northland/sim';
-import { Container, Graphics, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
 import {
   type BuildingCollapse,
   COLLAPSE_LIFETIME_TICKS,
@@ -13,6 +13,8 @@ import { isVisible, type Viewport } from '../../data/projection/index.js';
 import { type DrawItem, screenDepth } from '../../data/scene/index.js';
 import { buildTimeThreshold } from '../../data/sprites/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
+import type { FallenBody } from '../building-damage/building-damage.js';
+import { DamageEffectTextures } from '../building-damage/effect-textures.js';
 import { markMagnifiedTexture } from '../pixel-art-registry.js';
 import { createLayerDrawBox, layerDrawBox, type ResolvedLayer, resolveLayers } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
@@ -33,6 +35,8 @@ export class CollapseLayer {
   private readonly seen = new Set<string>();
   private collapses: BuildingCollapse[] = [];
   private readonly revealBox = createLayerDrawBox();
+  private dustArt: DamageEffectTextures | undefined;
+  private readonly fallen = new Map<string, readonly FallenBody[]>();
 
   constructor(
     /** Depth-sorted sprite layer - collapse nodes interleave with live sprites. */
@@ -40,10 +44,22 @@ export class CollapseLayer {
     private readonly textures: TextureCache,
     /** Undefined draws nothing. */
     private readonly sheet: SpriteSheet | undefined,
+    private readonly captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
   ) {}
 
   ingest(events: readonly SimEvent[], tick: number): void {
     this.collapses = foldBuildingCollapses(this.collapses, events, tick);
+    for (const c of this.collapses) {
+      const key = collapseKey(c);
+      if (c.spawnTick !== tick || this.fallen.has(key)) continue;
+      const bodies = this.captureDamage?.(c.entity);
+      if (bodies !== undefined) this.fallen.set(key, bodies);
+    }
+    for (const [key, bodies] of this.fallen) {
+      if (this.collapses.some((c) => collapseKey(c) === key)) continue;
+      for (const body of bodies) body.release();
+      this.fallen.delete(key);
+    }
   }
 
   /** `tick` is interpolated render time, so the sink stays smooth at any frame rate. */
@@ -74,11 +90,20 @@ export class CollapseLayer {
       this.seen.add(key);
     }
     retireUndrawn(this.nodes, this.seen, destroyNode);
+    for (const [key, bodies] of this.fallen) {
+      const collapse = this.collapses.find((c) => collapseKey(c) === key);
+      if (collapse !== undefined && tick - collapse.spawnTick < COLLAPSE_LIFETIME_TICKS) continue;
+      for (const body of bodies) body.release();
+      this.fallen.delete(key);
+    }
   }
 
   destroy(): void {
     for (const node of this.nodes.values()) destroyNode(node);
     this.nodes.clear();
+    for (const bodies of this.fallen.values()) for (const body of bodies) body.release();
+    this.fallen.clear();
+    this.dustArt?.destroy();
   }
 
   /** Mints the body's layer sprites, dust last so it covers their crop edge; null when nothing resolves
@@ -95,19 +120,35 @@ export class CollapseLayer {
       tribe: c.tribe,
       ...(c.builtPct !== undefined ? { builtPct: c.builtPct } : {}),
     };
-    const layers = resolveLayers(this.sheet, item, 0);
+    const fallen = this.fallen.get(collapseKey(c));
+    const layers: readonly ResolvedLayer[] | null =
+      fallen === undefined
+        ? resolveLayers(this.sheet, item, 0)
+        : fallen.map((body) => ({
+            source: body.texture.source,
+            scale: body.scale,
+            frame: {
+              x: body.texture.frame.x,
+              y: body.texture.frame.y,
+              width: body.texture.frame.width,
+              height: body.texture.frame.height,
+              offsetX: body.x / body.scale,
+              offsetY: body.y / body.scale,
+            },
+          }));
     if (layers === null || layers.length === 0) return null;
     const node = new Container() as CollapseNode;
     let minX = Infinity;
     let maxX = -Infinity;
     let baseY = -Infinity;
-    for (const layer of layers) {
+    for (const [i, layer] of layers.entries()) {
       // The collapse draws the plain body; the ground's shade and cover would copy it.
       if (layer.shadow === true || layer.groundFoot === 'cover') continue;
       const body = this.revealedBody(layer);
       if (body === null) continue;
       const spr = worldBatched(new Sprite(body.view)) as CollapseSprite;
       spr.scale.set(layer.scale);
+      spr.alpha = fallen?.[i]?.alpha ?? 1;
       spr.collapseBody = body;
       node.addChild(spr);
       minX = Math.min(minX, layer.frame.offsetX * layer.scale);
@@ -119,8 +160,12 @@ export class CollapseLayer {
       return null;
     }
     const dust = new Container();
+    this.dustArt ??= new DamageEffectTextures();
     for (let i = 0; i < DUST_PUFFS; i++) {
-      dust.addChild(new Graphics().circle(0, 0, 1).fill({ color: DUST_COLOUR }));
+      const puff = worldBatched(new Sprite(this.dustArt.smoke[i % 4] ?? Texture.EMPTY));
+      puff.anchor.set(0.5);
+      puff.tint = DUST_COLOUR;
+      dust.addChild(puff);
     }
     dust.position.set((minX + maxX) / 2, baseY);
     node.addChild(dust);
@@ -198,11 +243,11 @@ function poseDust(node: CollapseNode, seed: number, age: number): void {
   if (dust === undefined) return;
   const halfWidth = node.dustHalfWidth ?? 0;
   for (let i = 0; i < dust.children.length; i++) {
-    const puff = dust.children[i] as Graphics;
+    const puff = dust.children[i] as Sprite;
     const pose = collapseDustPuff(seed, i, age, halfWidth);
     puff.position.set(pose.x, pose.y);
-    puff.scale.set(pose.radius);
-    puff.alpha = pose.alpha;
+    puff.scale.set(pose.radius / 22);
+    puff.alpha = pose.alpha * 0.75;
   }
 }
 

@@ -145,6 +145,7 @@ export class LayerBinder {
     frame: BindFrame,
     frameId: number,
   ): void {
+    if (pe.damageBodies !== undefined) pe.damageBodies.length = 0;
     const site = planSiteOf(item);
     if (site === 'unclaimed') {
       this.showSiteMarker(pe, item.kind === 'roadsite', frameId);
@@ -244,6 +245,10 @@ export class LayerBinder {
           this.placeShadow(spr, layer, box, tint, shadowStyle);
         } else {
           this.bindPlainLayer(spr, layer, revealTexture, box, tint, enhanceBuilding);
+        }
+        if (item.kind === 'building' && layer.boundsExempt !== true && layer.shadow !== true) {
+          pe.damageBodies ??= [];
+          pe.damageBodies.push(spr);
         }
         spriteSlot++;
       }

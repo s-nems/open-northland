@@ -34,6 +34,22 @@ describe('FogGhostStore', () => {
     expect(fogged[0]).toMatchObject({ ref: 1, kind: 'building', typeId: 7, tileX: 5, tileY: 4 });
   });
 
+  it('projects last-seen damage through the ghost scene without observing hidden repair', () => {
+    const store = new FogGhostStore();
+    const house = (hp: number) =>
+      entity(1, 5, 4, {
+        Building: { buildingType: 7, tribe: 1, built: ONE, level: 0 },
+        Health: { hitpoints: hp, max: 1000 },
+      });
+    store.update(snapshotOf([house(250)]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 1));
+    store.update(snapshotOf([house(250)]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 2));
+    store.update(snapshotOf([house(1000)]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.EXPLORED]]), 3));
+    const ghost = collectSpriteScene(snapshotOf([]), { ghosts: store }).items.find((item) => item.ref === 1);
+    expect(ghost).toMatchObject({ ghost: true, hpFrac: 0.25 });
+    store.update(snapshotOf([house(1000)]), viewOf(new Map([[HOUSE_CELL, FOG_STATE.VISIBLE]]), 4));
+    expect(collectSpriteScene(snapshotOf([house(1000)]), { ghosts: store }).items[0]?.hpFrac).toBeUndefined();
+  });
+
   it('keeps a DEAD static ghosted until re-sight, then forgets it', () => {
     const store = new FogGhostStore();
     store.update(snapshotOf([TREE]), viewOf(new Map([[TREE_CELL, FOG_STATE.VISIBLE]]), 1));

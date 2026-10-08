@@ -14,7 +14,13 @@ describe('graphics enhancement choices', () => {
       enhancedWater: false,
       environmentMotion: true,
       groundedBuildings: false,
+      buildingDamage: true,
     });
+  });
+
+  it('defaults structural damage on and persists a disabled choice', () => {
+    expect(defaultSettings().buildingDamage).toBe(true);
+    expect(enhancementsOf(parseStoredSettings('{"buildingDamage":false}')).buildingDamage).toBe(false);
   });
 
   it('keeps a known pixel-art filter', () => {

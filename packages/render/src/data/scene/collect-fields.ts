@@ -22,7 +22,6 @@ import {
   readEquipmentArmorGood,
   readEquipmentWeaponGood,
   readFacing,
-  readHpFraction,
   readJobType,
   readOwnerPlayer,
   readProducing,
@@ -86,8 +85,6 @@ export function assignBuildingFields(
   const upgradePct = readUpgradePct(components);
   if (upgradePct !== undefined) item.upgradePct = upgradePct;
   if (readProducing(components)) item.working = true;
-  const hpFrac = readHpFraction(components);
-  if (hpFrac !== undefined) item.hpFrac = hpFrac;
 }
 
 /** A bush's `level` is 2 when fruited and 1 when bare; `gfxIndex` picks its species record. */

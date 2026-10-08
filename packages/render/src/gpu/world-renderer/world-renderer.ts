@@ -147,7 +147,13 @@ export class WorldRenderer {
     );
     const pool = this.pool;
     this.spriteLayer.stills = new StillSpriteMesh((child) => pool.isHeld(child));
-    this.marks = new WorldMarks(this.spriteLayer, this.textureCache, opts?.sheet, opts?.playerColourOf);
+    this.marks = new WorldMarks(
+      this.spriteLayer,
+      this.textureCache,
+      opts?.sheet,
+      opts?.playerColourOf,
+      (ref) => pool.captureBuildingDamage(ref),
+    );
     this.portrait = new PortraitInsetLayer(app, this.worldLayer, this.pool);
     this.mapViews = new MapViewLayer(app, this.worldLayer, this.pool);
     this.placementOverlay = new PlacementOverlayLayer(app.renderer);
@@ -435,6 +441,7 @@ export class WorldRenderer {
       enhancedSampling: this.enhancements.enhancedSampling,
       pixelArtScaler: this.enhancements.pixelArtScaler,
       environmentMotion: this.enhancements.environmentMotion,
+      buildingDamage: this.enhancements.buildingDamage,
       wind: this.wind,
       shadowStyle: this.enhancements.softShadows ? DEFAULT_SHADOW_STYLE : undefined,
       ...fogFrame,
@@ -454,8 +461,6 @@ export class WorldRenderer {
       renderTime: tick + alpha,
       screenViewport: weatherView.viewport,
       fogVisible: fogFrame.fogVisible,
-      damaged: this.pool.damagedBuildings(),
-      wind: this.wind,
       ships: this.pool.shipsAfloat(),
       water: this.terrain.waterField(),
       selection,
@@ -591,8 +596,8 @@ export class WorldRenderer {
     this.sceneLight.destroy();
     this.terrain.destroy();
     this.mapObjects.dispose();
-    this.pool.destroy();
     this.marks.destroy();
+    this.pool.destroy();
     this.fog.destroy();
     this.placementOverlay.destroy();
     this.constructionPlots.destroy();

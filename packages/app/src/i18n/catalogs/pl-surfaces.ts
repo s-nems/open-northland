@@ -212,6 +212,9 @@ export const plSurfaces = {
       enhancedWater: 'Ulepszona woda',
       enhancedWaterTip:
         'Krzyżujące się fale, ciemniejsze płycizny i jeszcze ciemniejsza głębia, chłodniejszy, bardziej niebieski kolor oraz refleks wędrujący po głębokiej wodzie. Po wyłączeniu zostaje woda oryginału.',
+      buildingDamage: 'Zniszczenia budynków',
+      buildingDamageTip:
+        'Wyrwy w dachach, odsłonięte belki, dym, ogień i odpadające fragmenty. Wyłącz, aby używać prostszego dymu i odciążyć grafikę.',
       environmentMotion: 'Ruch otoczenia',
       environmentMotionTip:
         'Drzewa, które oryginał rysuje jedną nieruchomą klatką, kołyszą się na wietrze razem ze swoim cieniem, ryby pływają płynnie, a wiatr w roślinności projektu jest wygładzony. Osadnicy i zwierzęta zachowują krok oryginału, a oryginalne animacje nie dostają dodatkowych klatek. We wczytanym zapisie drzewa stoją nieruchomo.',

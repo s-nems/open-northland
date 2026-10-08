@@ -235,6 +235,11 @@ export const enContent = {
       title: 'Siege',
       summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
     },
+    'building-damage': {
+      title: 'Building damage',
+      summary:
+        'Timber and masonry buildings at five health levels: fractures, broken roofs, smoke and small fires.',
+    },
     repair: {
       title: 'Repair',
       summary:

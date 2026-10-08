@@ -46,6 +46,11 @@ export function maskSolidAt(mask: AlphaMask, x: number, y: number): boolean {
  *  too, so an unreadable source is not retried on every click. */
 const maskCache = new WeakMap<TextureSource, AlphaMask | null>();
 
+/** A mutable atlas changed its pixels; the next pick reads its current coverage. */
+export function invalidateAlphaMask(source: TextureSource): void {
+  maskCache.delete(source);
+}
+
 /** Read the RGBA pixels of a drawable via a throwaway 2d canvas, or `null` when no 2d context exists
  *  (a headless environment without canvas). */
 function readPixels(resource: DrawableResource, width: number, height: number): ImageData | null {

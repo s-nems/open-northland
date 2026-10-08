@@ -60,6 +60,7 @@ export interface MenuSettings {
   readonly enhancedWater: boolean;
   readonly environmentMotion: boolean;
   readonly groundedBuildings: boolean;
+  readonly buildingDamage: boolean;
   /** Rain, snow and sandstorms: their sky, ground and sound. Presentation only, the sim never reads it. */
   readonly weather: boolean;
   /** Hit sprays and ground stains; local presentation only. */
@@ -108,6 +109,7 @@ export function defaultSettings(): MenuSettings {
     enhancedWater: true,
     environmentMotion: true,
     groundedBuildings: true,
+    buildingDamage: true,
     weather: true,
     blood: true,
     fpsLimit: null,
@@ -188,6 +190,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.environmentMotion === 'boolean' ? record.environmentMotion : defaults.environmentMotion,
     groundedBuildings:
       typeof record.groundedBuildings === 'boolean' ? record.groundedBuildings : defaults.groundedBuildings,
+    buildingDamage:
+      typeof record.buildingDamage === 'boolean' ? record.buildingDamage : defaults.buildingDamage,
     weather: typeof record.weather === 'boolean' ? record.weather : defaults.weather,
     blood: typeof record.blood === 'boolean' ? record.blood : defaults.blood,
     fpsLimit: parseFpsLimit(record.fpsLimit),

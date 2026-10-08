@@ -21,11 +21,6 @@ export {
 } from './marks.js';
 export { frac } from './random.js';
 export {
-  DAMAGE_SMOKE_STEP,
-  damageSmokeEmitters,
-  EMITTER_WEDGE,
-  emitterSpot,
-  MAX_SMOKE_EMITTERS,
   SMOKE_PUFF_PERIOD_TICKS,
   SMOKE_PUFFS_PER_EMITTER,
   SMOKE_RISE_PX,
