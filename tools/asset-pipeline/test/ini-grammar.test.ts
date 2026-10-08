@@ -76,6 +76,13 @@ describe('parseIniSections', () => {
     expect(sec?.props.find((p) => p.key === 'name')?.values).toEqual(['tree falling']);
   });
 
+  it('drops the stray quote a doubled closing quote leaves, so the numbers keep their columns', () => {
+    const [sec] = parseIniSections('[t]\nsethuman 3 "viking" "soldier_bow_long"" 362 22 0 0\n');
+    expect(sec?.props).toEqual([
+      { key: 'sethuman', values: ['3', 'viking', 'soldier_bow_long', '362', '22', '0', '0'] },
+    ]);
+  });
+
   it('strips `//` inline and full-line comments (the marker real .ini files use)', () => {
     // landscapetypes.ini has lines like: `transition 3 80 2 -1 9 // transition 3 80 2 -1 9`
     const sections = parseIniSections('[t]\n// a full-line comment\ntransition 3 80 2 -1 9 // dup\n');

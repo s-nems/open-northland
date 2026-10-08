@@ -56,6 +56,8 @@ zero (reading; the corpus has `SetLandscape` lines with 5 to 8 tokens and the op
 Opcode matching ignores case (reading; the corpus mixes `explorearea` and `ExploreArea`). An
 unknown opcode maps to index 0: goal `True` or result `None` (reading). Corpus misspellings such as
 `setlandspace` and `missionmissionfailed` therefore load silently as no-ops or always-true goals.
+A bare `"` is no token: the integer reader steps over anything before the next digit or sign
+(reading; `WIELKA INWAZJA` writes `"hero_sword_BJARNI"" 112 163 100 33 7`).
 
 Every parameter has a kind. A quoted name is resolved to an id for the kinds marked *name*; an
 integer token is accepted for any kind, including name kinds (corpus: `EnableHouse 0 "viking" 41`
