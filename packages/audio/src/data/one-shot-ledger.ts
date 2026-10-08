@@ -67,6 +67,13 @@ interface Play {
   readonly rate: number;
 }
 
+/** A key cooldown a start set, and the one it replaced. */
+interface CooldownSet {
+  readonly key: string;
+  readonly readyAt: number;
+  readonly before: number | undefined;
+}
+
 interface WorldVoice {
   readonly instance: number;
   readonly play: Play;
@@ -90,6 +97,9 @@ export class OneShotLedger {
   private readonly yielding = new WeakMap<Play, number>();
   /** key → audio-clock second its cooldown ends, set by its latest start. */
   private readonly keyReadyAt = new Map<string, number>();
+  /** The key cooldowns each instance started in this frame set, kept until the next frame so a start
+   *  the arbiter drops before the engine hears of it can give them back ({@link releaseCooldowns}). */
+  private readonly cooledThisFrame = new Map<number, CooldownSet[]>();
   private readonly world: WorldVoice[] = [];
   /** The pools holding a candidate this frame, in offer order. */
   private readonly offered: PoolState[] = [];
@@ -108,6 +118,7 @@ export class OneShotLedger {
       else voice.pool.playing--;
     }
     this.world.length = kept;
+    this.cooledThisFrame.clear();
     pruneExpired(this.keyReadyAt, LEDGER_PRUNE_SIZE, (readyAt) => readyAt <= now);
     pruneExpired(this.lastPlay, LEDGER_PRUNE_SIZE, (play) => this.endOf(play) <= now);
   }
@@ -162,7 +173,7 @@ export class OneShotLedger {
     const instance = this.nextInstance++;
     const rate = 1 + this.jitter(RATE_JITTER);
     const gain = shot.gain * 10 ** (this.jitter(GAIN_JITTER_DB) / 20);
-    const play = this.record(shot, pool, file, now, rate);
+    const play = this.record(shot, pool, file, now, rate, instance);
     pool.playing++;
     pool.lastStart = now;
     this.world.push({ instance, play, gain, pool });
@@ -180,11 +191,27 @@ export class OneShotLedger {
     if (shot.exclusive === 'group' && !this.supersede(shot, now)) return null;
     const file = this.pick(shot.files, shot.exclusive !== undefined, now);
     if (file === null) return null;
-    const play = this.record(shot, this.pool(shot.files), file, now);
-    if (shot.yieldsToAnswer !== true) return { ...shot, files: [file] };
-    const instance = this.nextInstance++;
+    const instance = shot.yieldsToAnswer === true ? this.nextInstance++ : undefined;
+    const play = this.record(shot, this.pool(shot.files), file, now, 1, instance);
+    if (instance === undefined) return { ...shot, files: [file] };
     this.yielding.set(play, instance);
     return { ...shot, files: [file], instance };
+  }
+
+  /**
+   * Give back the key cooldowns `instance` set when it started this frame, for a start the arbiter
+   * dropped before the engine heard of it: a selection line cut by the same frame's order must not
+   * silence the next selection. A key a later start cooled again keeps that later cooldown.
+   */
+  releaseCooldowns(instance: number): void {
+    const sets = this.cooledThisFrame.get(instance);
+    if (sets === undefined) return;
+    this.cooledThisFrame.delete(instance);
+    for (const set of sets.reverse()) {
+      if (this.keyReadyAt.get(set.key) !== set.readyAt) continue;
+      if (set.before === undefined) this.keyReadyAt.delete(set.key);
+      else this.keyReadyAt.set(set.key, set.before);
+    }
   }
 
   /**
@@ -221,16 +248,33 @@ export class OneShotLedger {
   }
 
   /** A shot's start: its wav sounds from its delay on, holding it unless {@link OneShot.unheld}, and its
-   *  key cools from now. */
-  private record(shot: OneShot, pool: PoolState, file: string, now: number, rate = 1): Play {
+   *  key cools from now, revocably for a started `instance`. */
+  private record(
+    shot: OneShot,
+    pool: PoolState,
+    file: string,
+    now: number,
+    rate = 1,
+    instance?: number,
+  ): Play {
     const play: Play = { file, startedAt: now + (shot.delayS ?? 0), rate };
     if (shot.unheld !== true) this.lastPlay.set(file, play);
-    this.keyReadyAt.set(shot.key, now + (shot.cooldownS ?? KEY_COOLDOWN_S));
+    this.cool(shot.key, now + (shot.cooldownS ?? KEY_COOLDOWN_S), instance);
     const shared = shot.sharedCooldown;
-    if (shared !== undefined) this.keyReadyAt.set(shared.key, now + shared.cooldownS);
+    if (shared !== undefined) this.cool(shared.key, now + shared.cooldownS, instance);
     pool.recent.push(file);
     if (pool.recent.length > noRepeatDepth(shot.files.length)) pool.recent.shift();
     return play;
+  }
+
+  private cool(key: string, readyAt: number, instance: number | undefined): void {
+    if (instance !== undefined) {
+      const set: CooldownSet = { key, readyAt, before: this.keyReadyAt.get(key) };
+      const sets = this.cooledThisFrame.get(instance);
+      if (sets === undefined) this.cooledThisFrame.set(instance, [set]);
+      else sets.push(set);
+    }
+    this.keyReadyAt.set(key, readyAt);
   }
 
   private endOf(play: Play): number {

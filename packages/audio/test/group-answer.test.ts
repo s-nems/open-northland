@@ -486,6 +486,21 @@ describe('selection voice', () => {
     expect(stopped).toEqual([]); // the engine never started the line it would stop
   });
 
+  it('spends no cooldown on a line its own frame dropped', () => {
+    const members = [man(5, VIKING, CENTRE_COL), man(6, VIKING, CENTRE_COL)];
+    const ANSWER_S = 0.2;
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => ANSWER_S, stop: () => undefined } });
+    const frame = [...select(members, { members: [5] }), ...answer(members, { members: [5] })];
+    expect(keysOf(arbiter.decide(frame, 0))).toEqual(['respond:Viking male ok 02']);
+    // Once the answer has ended, well inside both select cooldowns, either settler speaks at once.
+    const AFTER_ANSWER_S = ANSWER_S * 2;
+    expect(AFTER_ANSWER_S).toBeLessThan(SELECT_ANY_COOLDOWN_S);
+    expect(keysOf(arbiter.decide(select(members, { members: [6] }), AFTER_ANSWER_S))).toEqual(['select:6']);
+    const fresh = new OneShotArbiter({ playback: { clipLengthS: () => ANSWER_S, stop: () => undefined } });
+    fresh.decide(frame, 0);
+    expect(keysOf(fresh.decide(select(members, { members: [5] }), AFTER_ANSWER_S))).toEqual(['select:5']);
+  });
+
   it('keeps silent while the settler own answer still sounds', () => {
     const members = [man(5, VIKING, CENTRE_COL)]; // pool 1: 'Viking male ok 02'
     const CLIP_S = 2;

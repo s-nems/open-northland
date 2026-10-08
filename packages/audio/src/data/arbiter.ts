@@ -237,7 +237,7 @@ export class OneShotArbiter {
   private readonly ledger: OneShotLedger;
   private readonly playback: OneShotPlayback;
   /** The instances the running {@link decide} has started, and those of them it stopped again: the
-   *  engine never hears of a shot both started and stopped in one decision. */
+   *  engine never hears of a shot both started and stopped in one decision, and its cooldowns lapse. */
   private readonly startedNow = new Set<number>();
   private readonly droppedNow = new Set<number>();
 
@@ -319,6 +319,7 @@ export class OneShotArbiter {
       this.emit(out, started);
     }
     this.startAmbience(ambience, now, out);
+    for (const instance of this.droppedNow) this.ledger.releaseCooldowns(instance);
     const kept =
       this.droppedNow.size === 0
         ? out
