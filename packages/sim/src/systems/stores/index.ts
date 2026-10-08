@@ -11,6 +11,7 @@ export {
 } from './capacity.js';
 export {
   addUndeliveredConstructionGoods,
+  constructionBillCovered,
   constructionBillOf,
   constructionMaterialsPresent,
   constructionTotalUnits,

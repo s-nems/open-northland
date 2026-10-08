@@ -4,7 +4,7 @@ import { type Fixed, Simulation } from '../../src/index.js';
 import { ConstructionTaskClaims } from '../../src/systems/settlers/drives/economy/construction-task-claims.js';
 import { plannerSystem } from '../../src/systems/settlers/planner/system.js';
 import * as targets from '../../src/systems/settlers/targets/index.js';
-import { deliveredConstructionFraction } from '../../src/systems/stores/index.js';
+import { collectSupplyTally, deliveredConstructionFraction } from '../../src/systems/stores/index.js';
 import {
   builderAt,
   builtBuildingAt,
@@ -25,7 +25,7 @@ describe('construction task claims', () => {
     const delivered = deliveredConstructionFraction(sim.world, ctxOf(sim), site);
     // One quantum short of the delivered cap leaves exactly one strike.
     sim.world.mut(site, UnderConstruction).labor = (delivered - 1) as Fixed;
-    const claims = new ConstructionTaskClaims(sim.world, ctxOf(sim));
+    const claims = new ConstructionTaskClaims(sim.world, ctxOf(sim), collectSupplyTally(sim.world));
 
     expect(claims.hasHammerClaim(site)).toBe(false);
     expect(claims.claimHammer(site)).toBe(true);

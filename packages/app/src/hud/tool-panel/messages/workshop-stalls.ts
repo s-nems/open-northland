@@ -17,7 +17,7 @@ import {
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 import { type MessageNaming, type MessageRaiser, nodeOf } from './raise.js';
 import { type ProductionStall, type ProductionStallReason, USER_MESSAGE_TYPE } from './types.js';
-import type { WorkStatusAsks, WorkStatusRead } from './work-asks.js';
+import type { StatusAsks, WorkStatusRead } from './work-asks.js';
 
 /**
  * Ticks a workshop stands - no cycle, nobody fetching for it or carrying a load off it - before its
@@ -175,7 +175,7 @@ export class WorkshopStalls implements StallReader {
   constructor(
     private readonly seat: number,
     private readonly types: readonly number[],
-    private readonly asks: WorkStatusAsks,
+    private readonly asks: StatusAsks<WorkStatus>,
   ) {}
 
   /** Judge the resting workshops and raise a note for each one stalled. */

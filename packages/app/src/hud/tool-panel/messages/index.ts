@@ -41,6 +41,7 @@ import {
 import type { MessageNaming, RaisedMessage } from './raise.js';
 import { isSubjectGone, NoteRetirement } from './retire.js';
 import { createSeatFeeds } from './seat-feeds.js';
+import type { SiteSeam } from './site-shortages.js';
 import { composeMessageText, fightSummary } from './text.js';
 import type { PendingMessage, UserMessage } from './types.js';
 import type { WorkshopSeam } from './workshop-stalls.js';
@@ -48,6 +49,7 @@ import type { WorkshopSeam } from './workshop-stalls.js';
 export type { MessageFeedState } from './feed.js';
 export type { MetSeat } from './from-diplomacy.js';
 export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
+export type { SiteSeam } from './site-shortages.js';
 export type { WorkshopSeam } from './workshop-stalls.js';
 
 /** A note this young slides in as it arrives; an older one (a restored feed) simply stands. */
@@ -97,6 +99,8 @@ export interface MessageCenterDeps {
   readonly isVehicleSite?: VehicleSiteTest | undefined;
   /** The seat's workshops and the sim's diagnosis of their workers; absent, no stall note is raised. */
   readonly workshops?: WorkshopSeam | undefined;
+  /** The sim's read of the seat's building sites' supply; absent, no shortage note is raised. */
+  readonly sites?: SiteSeam | undefined;
   readonly playerLabel: (player: number) => string | null;
   /** The seats this player has met, as the diplomacy roster lists them; a first contact and a seat that
    *  changed its stance toward this one each become a note. Read once per tick. */
@@ -204,12 +208,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   const feeds = createSeatFeeds(deps.viewer.seat(), deps.initial);
   const naming = makeNaming(deps);
   const snapshotSourceOf = (seat: number | null) =>
-    seat === null ? null : createSnapshotMessageSource(seat, deps.workshops);
+    seat === null ? null : createSnapshotMessageSource(seat, deps.workshops, deps.sites);
   let snapshotSource = snapshotSourceOf(feeds.seat);
   let diplomacySource = createDiplomacyMessageSource(deps.metSeats);
   let fights = FightAreas.adopt(deps.initial);
   // Keyed by note id, so it starts over with every feed it serves.
-  let retirement = new NoteRetirement(fights, snapshotSource?.stalls);
+  let retirement = new NoteRetirement(fights, snapshotSource?.stalls, snapshotSource?.shortages);
   // The tick of the last presented snapshot, which a dismissal is stamped with.
   let presentedTick = 0;
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
@@ -326,7 +330,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     snapshotSource = snapshotSourceOf(seat);
     diplomacySource = createDiplomacyMessageSource(deps.metSeats);
     fights = FightAreas.adopt(feeds.current.state());
-    retirement = new NoteRetirement(fights, snapshotSource?.stalls);
+    retirement = new NoteRetirement(fights, snapshotSource?.stalls, snapshotSource?.shortages);
     previous = null;
     renderedVersion = -1;
   };
@@ -420,7 +424,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     restore: (state): void => {
       feeds.restore(state);
       fights = FightAreas.adopt(state);
-      retirement = new NoteRetirement(fights, snapshotSource?.stalls);
+      retirement = new NoteRetirement(fights, snapshotSource?.stalls, snapshotSource?.shortages);
       renderedVersion = -1;
     },
     dispose: (): void => {

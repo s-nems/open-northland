@@ -589,7 +589,7 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(sim.world.get(hammerer, SiteAssignment)).toEqual({ site: shared, pinned: false });
   });
 
-  it('sends one hauling crew builder to an unstaffed supplied site and keeps the rest hauling', () => {
+  it('sends hauling crew builders to a supplied site and keeps only the last one hauling', () => {
     const sim = new Simulation({ seed: 29, content: constructionContent(), map: grassMap(40, 5) });
     const waiting = siteAt(sim, HOUSE, 4, 1);
     const ready = siteAt(sim, HOUSE, 30, 1);
@@ -604,10 +604,11 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
 
     plannerSystem(sim.world, ctxOf(sim));
 
+    // A supplied site outranks an empty one's fetches; the last builder at the empty site stays with it.
     const moved = builders.filter((b) => sim.world.tryGet(b, SiteAssignment)?.site === ready);
-    expect(moved).toHaveLength(1);
+    expect(moved).toHaveLength(2);
     const haulers = builders.filter((b) => sim.world.tryGet(b, SupplyRun)?.site === waiting);
-    expect(haulers).toHaveLength(2);
+    expect(haulers).toHaveLength(1);
   });
 
   it('spares one hand from a hammering crew of two for an unstaffed supplied site, never a lone hammerer', () => {
@@ -631,6 +632,82 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     const siteOf = (b: Entity): Entity | undefined => sim.world.tryGet(b, SiteAssignment)?.site;
     expect(pairCrew.map(siteOf).sort()).toEqual([pair, ready].sort());
     expect(siteOf(loneBuilder)).toBe(lone);
+  });
+
+  it('sends an idle builder past a bare site to the one nearer completion that lacks the same good', () => {
+    const sim = new Simulation({ seed: 33, content: constructionContent(), map: grassMap(40, 5) });
+    const bare = siteAt(sim, HOUSE, 6, 1);
+    const advanced = siteAt(sim, HOUSE, 30, 1);
+    sim.world.mut(advanced, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(advanced, UnderConstruction).labor = deliveredConstructionFraction(
+      sim.world,
+      ctxOf(sim),
+      advanced,
+    );
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    const idle = builderAt(sim, 4, 3);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(idle, SiteAssignment)).toEqual({ site: advanced, pinned: false });
+    expect(sim.world.get(idle, SupplyRun)).toMatchObject({ site: advanced, goodType: WOOD });
+    expect(sim.world.has(bare, SiteAssignment)).toBe(false);
+  });
+
+  it('moves a crew off a bare site to the one nearer completion once its missing good is in store', () => {
+    const sim = new Simulation({ seed: 34, content: constructionContent(), map: grassMap(40, 5) });
+    const bare = siteAt(sim, HOUSE, 6, 1);
+    const advanced = siteAt(sim, HOUSE, 30, 1);
+    sim.world.mut(advanced, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(advanced, UnderConstruction).labor = deliveredConstructionFraction(
+      sim.world,
+      ctxOf(sim),
+      advanced,
+    );
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    const crew = Array.from({ length: 3 }, (_, i) => builderAt(sim, 4 + i, 3));
+    for (const builder of crew) sim.world.add(builder, SiteAssignment, { site: bare, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // One fetch covers the advanced site's bill, so one builder goes; the rest keep hauling for their own.
+    const runs = crew.map((b) => sim.world.tryGet(b, SupplyRun)?.site);
+    expect(runs.filter((site) => site === advanced)).toHaveLength(1);
+    expect(runs.filter((site) => site === bare)).toHaveLength(2);
+  });
+
+  it('keeps a finishing crew of two waiting for the last load and sends the rest to other work', () => {
+    const sim = new Simulation({ seed: 35, content: constructionContent(), map: grassMap(40, 5) });
+    const finishing = siteAt(sim, HOUSE, 6, 1);
+    sim.world.mut(finishing, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(finishing, UnderConstruction).labor = deliveredConstructionFraction(
+      sim.world,
+      ctxOf(sim),
+      finishing,
+    );
+    const other = siteAt(sim, HOUSE, 30, 1);
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    const crew = Array.from({ length: 4 }, (_, i) => builderAt(sim, 4 + i, 3));
+    for (const builder of crew) sim.world.add(builder, SiteAssignment, { site: finishing, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    // One builder fetches the last wood, which covers the bill; one more waits to hammer it in with the
+    // hauler, and the other two go haul for the bare site.
+    const siteOf = (b: Entity): Entity | undefined => sim.world.tryGet(b, SiteAssignment)?.site;
+    const runTo = (b: Entity): Entity | undefined => sim.world.tryGet(b, SupplyRun)?.site;
+    expect(crew.filter((b) => siteOf(b) === finishing)).toHaveLength(2);
+    expect(crew.filter((b) => runTo(b) === finishing)).toHaveLength(1);
+    expect(crew.filter((b) => runTo(b) === other)).toHaveLength(2);
   });
 
   it('a builder fetch skips a pile buried under walls for the nearest reachable source', () => {

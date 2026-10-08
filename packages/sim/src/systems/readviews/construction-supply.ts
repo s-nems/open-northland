@@ -1,0 +1,72 @@
+import { Building, ownerOf, ownersCompatible, Stockpile, UnderConstruction } from '../../components/index.js';
+import type { Entity, World } from '../../ecs/world.js';
+import type { SystemContext } from '../context.js';
+import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
+import { collectSupplyTally, constructionBillOf } from '../stores/index.js';
+
+/** Stores of the site's side one diagnosis weighs before it stops calling the case decided. */
+const MAX_DIAGNOSTIC_STORES = 128;
+
+/** One bill line a building site still lacks. */
+export interface ConstructionShortfall {
+  readonly goodType: number;
+  readonly required: number;
+  /** Units on site. */
+  readonly delivered: number;
+  /** Units some settler is bringing it. */
+  readonly inbound: number;
+  /** Whether a store of the site's side lends a unit, so the shortfall is the builders' errand rather than
+   *  the player's. A side with more stores than the diagnosis weighs counts as holding it. */
+  readonly held: boolean;
+}
+
+/** A building site's supply, for the note about a site short of a material. */
+export type ConstructionSupply =
+  | { readonly kind: 'short'; readonly shortfalls: readonly ConstructionShortfall[] }
+  | { readonly kind: 'covered' };
+
+/**
+ * What `site`'s bill still lacks, on site and on its way, and whether its side holds each missing good;
+ * `covered` once every line is on site or inbound. Undefined for anything but a building site. Derived on
+ * demand, never read by the planner.
+ */
+export function constructionSupply(
+  world: World,
+  ctx: SystemContext,
+  site: Entity,
+): ConstructionSupply | undefined {
+  if (!world.isAlive(site) || !world.has(site, Building) || !world.has(site, UnderConstruction)) {
+    return undefined;
+  }
+  const supply = collectSupplyTally(world);
+  const stock = FetchableStock.of(world, ctx);
+  const owner = ownerOf(world, site);
+  const onSite = world.tryGet(site, Stockpile)?.amounts;
+  const shortfalls: ConstructionShortfall[] = [];
+  for (const line of constructionBillOf(world, ctx, site)) {
+    const delivered = Math.max(onSite?.get(line.goodType) ?? 0, 0);
+    const inbound = supply.inboundOf(site, line.goodType);
+    if (delivered + inbound >= line.amount) continue;
+    shortfalls.push({
+      goodType: line.goodType,
+      required: line.amount,
+      delivered,
+      inbound,
+      held: sideHolds(world, stock, owner, line.goodType),
+    });
+  }
+  return shortfalls.length === 0 ? { kind: 'covered' } : { kind: 'short', shortfalls };
+}
+
+function sideHolds(
+  world: World,
+  stock: FetchableStock,
+  owner: number | undefined,
+  goodType: number,
+): boolean {
+  let examined = 0;
+  for (const store of stock.holders(goodType)) {
+    if (ownersCompatible(owner, ownerOf(world, store)) || ++examined >= MAX_DIAGNOSTIC_STORES) return true;
+  }
+  return false;
+}

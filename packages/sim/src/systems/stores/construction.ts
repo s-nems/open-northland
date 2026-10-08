@@ -118,6 +118,21 @@ export function neededConstructionGoods(
   return shortfalls.map(({ goodType, amount }) => ({ goodType, amount }));
 }
 
+/** Whether every line of `site`'s bill is on site or on its way under `supply`: nothing is left to fetch. */
+export function constructionBillCovered(
+  world: World,
+  ctx: SystemContext,
+  site: Entity,
+  supply: SupplyTally,
+): boolean {
+  const stock = world.tryGet(site, Stockpile)?.amounts;
+  for (const line of constructionBillOf(world, ctx, site)) {
+    const held = Math.max(stock?.get(line.goodType) ?? 0, 0);
+    if (held + supply.inboundOf(site, line.goodType) < line.amount) return false;
+  }
+  return true;
+}
+
 /** Add to `goods` each good of `site`'s bill not yet on site in full, whatever is inbound: a superset of
  *  {@link neededConstructionGoods} under any tally. */
 export function addUndeliveredConstructionGoods(

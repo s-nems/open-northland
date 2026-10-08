@@ -655,6 +655,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         types: host.content.buildings.filter((b) => b.recipes.length > 0).map((b) => b.typeId),
         workStatus: answers.noticeWorkStatus,
       },
+      sites: { supply: answers.noticeConstructionSupply },
       isVehicleSite: (typeId) => vehicleSiteTypes.has(typeId),
       onUiCue: uiCue,
       ...(deps.netPanel !== undefined ? { network: deps.netPanel } : {}),

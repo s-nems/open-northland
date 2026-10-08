@@ -116,6 +116,7 @@ import {
   type UnlockStatus,
   unlockStatus,
 } from './systems/progression/index.js';
+import { type ConstructionSupply, constructionSupply } from './systems/readviews/construction-supply.js';
 import {
   type EquipPickEntry,
   type EquipSelectionPick,
@@ -587,6 +588,12 @@ export class Simulation {
    */
   workStatus(entity: Entity): WorkStatus | undefined {
     return workStatus(this.world, this.context(), entity);
+  }
+
+  /** What a building site's bill still lacks and whether its side holds each missing good, for the note
+   *  about a site short of a material; undefined for anything but a building site. Read-only. */
+  constructionSupply(site: Entity): ConstructionSupply | undefined {
+    return constructionSupply(this.world, this.context(), site);
   }
 
   /** The `WorldRules` rule the `setNeedsEnabled` command sets; absent = enabled. */

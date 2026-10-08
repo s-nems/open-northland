@@ -92,7 +92,7 @@ export function beginPlannerPass(world: World, ctx: SystemContext, terrain: Terr
     harvestClaims: collectHarvestClaims(world),
     gossipCandidates: new GossipCandidates(world, ctx.content),
     front,
-    constructionClaims: new ConstructionTaskClaims(world, ctx),
+    constructionClaims: new ConstructionTaskClaims(world, ctx, supply),
     siteSupply: new SiteSupplyReach(world, ctx, terrain, spacing, targets),
     repairCrews: new RepairCrews(world, ctx, front),
     seatDoors,

@@ -1,4 +1,5 @@
 import type {
+  ConstructionSupply,
   Entity,
   OpenTribute,
   Paper,
@@ -11,6 +12,8 @@ import type {
 } from '@open-northland/sim';
 import { type BuildingAvailability, OPEN_AVAILABILITY } from '../../hud/tool-panel/building-menu.js';
 import {
+  type StatusAnswer,
+  type StatusRead,
   WORK_STATUS_ASKS_PER_SWEEP,
   WORK_STATUS_REASK_SWEEPS,
   type WorkAnswer,
@@ -80,6 +83,8 @@ export interface HostAnswers {
   /** The notice sweeps' own diagnoses, asked once per sweep tick rather than per tick, in a cache of
    *  their own so the panels' reads never push them out. */
   readonly noticeWorkStatus: WorkStatusRead;
+  /** The shortage notes' read of a building site's supply, kept like the diagnoses. */
+  readonly noticeConstructionSupply: StatusRead<ConstructionSupply | undefined>;
   readonly traderView: (trader: number) => TraderView | undefined;
   readonly tradeOffersAt: (house: number) => readonly TradeOffer[];
   /** The pick highlights' rules, read off one answer per unit rather than one per building. */
@@ -141,6 +146,10 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
   const stands = cache<boolean>();
   const workStatuses = cache<WorkStatus | undefined>({ same: samePlainData });
   const noticeStatuses = cache<WorkAnswer>({ capacity: NOTICE_STATUS_CAPACITY, same: samePlainData });
+  const noticeSupplies = cache<StatusAnswer<ConstructionSupply | undefined>>({
+    capacity: NOTICE_STATUS_CAPACITY,
+    same: samePlainData,
+  });
   const jobChoices = cache<boolean>({ capacity: ROSTER_CAPACITY });
   const traders = cache<TraderView | undefined>({ same: samePlainData });
   const tradeHouses = cache<ReadonlySet<number>>({ same: sameIds });
@@ -200,6 +209,12 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
       noticeStatuses.read(
         `${entity}`,
         () => host.workStatus(entity as Entity).then((status) => ({ status, asked })),
+        `${asked}`,
+      ),
+    noticeConstructionSupply: (site, asked) =>
+      noticeSupplies.read(
+        `${site}`,
+        () => host.constructionSupply(site as Entity).then((status) => ({ status, asked })),
         `${asked}`,
       ),
     traderView: (trader) => perTick(traders, `${trader}`, () => host.traderView(trader as Entity)),

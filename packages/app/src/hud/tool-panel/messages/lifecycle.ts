@@ -50,6 +50,7 @@ const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   settlementAttacked: 'state',
   peopleAttacked: 'state',
   productionStalled: 'state',
+  constructionStarved: 'state',
 };
 
 const LIFECYCLE_BY_TYPE: ReadonlyMap<UserMessageType, NoticeLifecycle> = new Map(
@@ -92,6 +93,7 @@ const POLLED: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
   USER_MESSAGE_TYPE.willDie,
   USER_MESSAGE_TYPE.familyBlocked,
   USER_MESSAGE_TYPE.productionStalled,
+  USER_MESSAGE_TYPE.constructionStarved,
 ]);
 
 export function isPolledNote(type: UserMessageType): boolean {

@@ -1443,6 +1443,7 @@ export const plGame = {
       vehicleSiteNotFound: 'Brak placu',
       vehicleSiteOccupied: 'Plac zajęty',
       nothingToDo: 'Nic do roboty',
+      constructionStarved: 'Budowa czeka: {good}',
       noVehicleForWork: 'Brak wozu',
       experienceUnlocks: 'Nowa wiedza',
       experienceBuilding: 'Nowy budynek',
@@ -1493,6 +1494,8 @@ export const plGame = {
       vehicleSiteOccupied:
         '{name} nie może zbudować pojazdu, bo plac obok warsztatu zajmuje inny pojazd. Odprowadź go stamtąd.',
       nothingToDo: '{name} nie ma nic do roboty.',
+      constructionStarved:
+        '{building}: budowa stoi, brakuje: {good}. Nie ma go w żadnym magazynie. Wytwórz go albo sprowadź, a budowniczowie dokończą budowę.',
       noVehicleForWork: {
         he: '{name} ma trasę handlową, ale nie ma wozu. Wsadź go do wozu, a ruszy w drogę.',
         she: '{name} ma trasę handlową, ale nie ma wozu. Wsadź ją do wozu, a ruszy w drogę.',

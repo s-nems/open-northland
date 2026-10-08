@@ -265,6 +265,10 @@ export {
 export type { PalisadeGateProbeResult } from './systems/palisades/index.js';
 export type { UnlockStatus } from './systems/progression/index.js';
 export * as systems from './systems/public.js';
+export type {
+  ConstructionShortfall,
+  ConstructionSupply,
+} from './systems/readviews/construction-supply.js';
 export type { HerdWait } from './systems/readviews/herd-hold.js';
 export type { EquipPickEntry, EquipSelectionPick, MilitaryMode } from './systems/readviews/index.js';
 export type { WorkStatus } from './systems/readviews/work-status.js';

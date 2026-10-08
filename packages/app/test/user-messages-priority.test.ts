@@ -12,10 +12,15 @@ import {
   type UserMessageTypeName,
 } from '../src/hud/tool-panel/messages/types.js';
 
-/** The original's types and the attack notes; this game's own `familyBlocked` and `productionStalled`
- *  are pinned on their own. */
+/** The original's types and the attack notes; this game's own `familyBlocked`, `productionStalled` and
+ *  `constructionStarved` are pinned on their own. */
+const OWN_TYPES: readonly UserMessageType[] = [
+  USER_MESSAGE_TYPE.familyBlocked,
+  USER_MESSAGE_TYPE.productionStalled,
+  USER_MESSAGE_TYPE.constructionStarved,
+];
 const ALL_TYPES = (Object.values(USER_MESSAGE_TYPE) as UserMessageType[]).filter(
-  (type) => type !== USER_MESSAGE_TYPE.familyBlocked && type !== USER_MESSAGE_TYPE.productionStalled,
+  (type) => !OWN_TYPES.includes(type),
 );
 
 function typesAt(level: MessagePriorityLevel): UserMessageType[] {
@@ -60,9 +65,10 @@ describe('user message priority (original behavior)', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.starving)).toBe(2);
   });
 
-  it('ranks a held child order and a stalled workshop notable', () => {
+  it('ranks a held child order, a stalled workshop and a starved site notable', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.familyBlocked)).toBe(1);
     expect(messagePriority(USER_MESSAGE_TYPE.productionStalled)).toBe(1);
+    expect(messagePriority(USER_MESSAGE_TYPE.constructionStarved)).toBe(1);
   });
 
   it('shows a message when its priority reaches the filter level', () => {

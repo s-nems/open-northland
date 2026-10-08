@@ -1,5 +1,4 @@
 import {
-  Building,
   CurrentAtomic,
   ownerOf,
   ownersCompatible,
@@ -7,30 +6,72 @@ import {
   SiteAssignment,
   UnderConstruction,
 } from '../../../../components/index.js';
+import { ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { remainingConstructionSteps } from '../../../economy/construction.js';
 import { openRoadSites } from '../../../roads/site-index.js';
 import { roadPavingGood } from '../../../roads/sites.js';
-import { addUndeliveredConstructionGoods, constructionMaterialsPresent } from '../../../stores/index.js';
+import {
+  addUndeliveredConstructionGoods,
+  constructionBillCovered,
+  constructionMaterialsPresent,
+  deliveredConstructionFraction,
+  type SupplyTally,
+} from '../../../stores/index.js';
 import { atomicHoldsSettler } from '../../atomics/busy.js';
 
 /**
- * Planner-tick reservations for hammer swings, one construction step each. Swings in progress seed the
- * tally; idle builders then claim only steps that already-delivered material can absorb. A builder still
- * walking in holds no step: it would keep the crew already standing at the site off the last swings
- * until it arrived.
+ * A building site's standing with the builders, weighed ahead of its progress and its distance; a
+ * higher tier draws a builder off a lower one. Project rule.
+ */
+export const SITE_TIER = {
+  /** Material still to fetch, or nothing to do at all. */
+  waiting: 0,
+  /** Its whole bill on site or on its way, and no step to hammer until the last load lands: it keeps a
+   *  small finishing crew waiting so the load is hammered in as it arrives. */
+  covered: 1,
+  /** Steps to hammer on a part-delivered site, and no builder on it. */
+  unstaffed: 2,
+  /** Its whole bill on site and steps to hammer. */
+  ready: 3,
+  /** Ready, with no builder on it. */
+  readyUnstaffed: 4,
+} as const;
+
+/** The progress steps a tier splits into: one per tenth of the bill delivered. */
+const PROGRESS_STEPS = 10;
+/** Ranks a tier spans: tenths 0 to 10 inclusive. */
+const RANKS_PER_TIER = PROGRESS_STEPS + 1;
+
+/** Builders a covered site keeps waiting for its last loads: one bringing a load counts, so a crew's own
+ *  hauler and one more hand stay while the rest go. Owner ruling. */
+export const FINISHING_CREW = 2;
+
+/** The rank order of one builder's pick: the distinct ranks present, highest first, and each site's. */
+export interface SiteRanking {
+  readonly ranks: readonly number[];
+  readonly rankOf: ReadonlyMap<Entity, number>;
+}
+
+/**
+ * Planner-tick reservations for hammer swings, one construction step each, and the standing of every
+ * building site with the builders. Swings in progress seed the tally; idle builders then claim only
+ * steps that already-delivered material can absorb. A builder still walking in holds no step: it would
+ * keep the crew already standing at the site off the last swings until it arrived.
  */
 export class ConstructionTaskClaims {
   private readonly hammerBySite = new Map<Entity, number>();
   private readonly stepCapacityBySite = new Map<Entity, number>();
+  private readonly deliveredTenthsBySite = new Map<Entity, number>();
+  private readonly materialsPresentBySite = new Map<Entity, boolean>();
   private crews: Map<Entity, number> | null = null;
-  private hammerSites: readonly Entity[] | undefined;
   private walls: SoloSiteSurvey | undefined;
 
   constructor(
     private readonly world: World,
     private readonly ctx: SystemContext,
+    private readonly supply: SupplyTally,
   ) {
     for (const e of world.query(CurrentAtomic)) {
       const effect = world.get(e, CurrentAtomic).effect;
@@ -59,26 +100,47 @@ export class ConstructionTaskClaims {
     return this.crewSizes().get(site) ?? 0;
   }
 
-  /** Whether `site` holds its whole bill and steps to hammer, with no builder on it. */
-  isReadyUnstaffed(site: Entity): boolean {
-    return (
-      this.crewSize(site) === 0 &&
-      this.hasHammerWork(site) &&
-      constructionMaterialsPresent(this.world, this.ctx, site)
-    );
+  /** `site`'s {@link SITE_TIER} as the crews and claims stand now. */
+  siteTier(site: Entity): number {
+    const { world, ctx } = this;
+    if (this.hasHammerWork(site)) {
+      const nobody = this.crewSize(site) === 0;
+      if (this.materialsPresent(site)) {
+        return nobody ? SITE_TIER.readyUnstaffed : SITE_TIER.ready;
+      }
+      if (nobody) return SITE_TIER.unstaffed;
+    }
+    return constructionBillCovered(world, ctx, site, this.supply) ? SITE_TIER.covered : SITE_TIER.waiting;
+  }
+
+  /** Whether `builder`, one of `site`'s crew, may wait there for its last loads: a covered site with no
+   *  step to hammer keeps {@link FINISHING_CREW} of its crew and draws nobody else. */
+  hasFinishingRoom(site: Entity, builder: Entity): boolean {
+    const { world } = this;
+    if (world.tryGet(builder, SiteAssignment)?.site !== site) return false;
+    const labor = world.tryGet(site, UnderConstruction)?.labor;
+    if (labor === undefined || labor >= ONE || this.hasHammerWork(site)) return false;
+    if (!constructionBillCovered(world, this.ctx, site, this.supply)) return false;
+    return this.crewSize(site) <= FINISHING_CREW;
   }
 
   /**
-   * Whether some building site on `owner`'s side that held hammer work when the pass first asked passes
-   * `accepts`. False spares a builder the site search: claims only take steps away during the pass.
+   * Rank `owner`'s building sites among `sites` for one builder's pick: by tier, then by the tenth of
+   * the bill delivered, so a site nearer completion draws builders before a fresh one. The ranks are
+   * read as the crews stand at this moment; a site another builder joins later in the pass re-ranks on
+   * its own pick.
    */
-  mayOfferHammer(owner: number | undefined, accepts: (site: Entity) => boolean): boolean {
-    this.hammerSites ??= [...this.world.query(UnderConstruction, Building)].filter((site) =>
-      this.hasHammerWork(site),
-    );
-    return this.hammerSites.some(
-      (site) => ownersCompatible(owner, ownerOf(this.world, site)) && accepts(site),
-    );
+  rankBuildingSites(owner: number | undefined, sites: readonly Entity[]): SiteRanking {
+    const rankOf = new Map<Entity, number>();
+    const ranks: number[] = [];
+    for (const site of sites) {
+      if (!ownersCompatible(owner, ownerOf(this.world, site))) continue;
+      const rank = this.siteTier(site) * RANKS_PER_TIER + this.deliveredTenths(site);
+      rankOf.set(site, rank);
+      if (!ranks.includes(rank)) ranks.push(rank);
+    }
+    ranks.sort((a, b) => b - a);
+    return { ranks, rankOf };
   }
 
   /** Move a builder's crew count from `from` to `to`, either absent for none, for the rest of the pass.
@@ -166,6 +228,27 @@ export class ConstructionTaskClaims {
       this.stepCapacityBySite.set(site, capacity);
     }
     return capacity;
+  }
+
+  /** Site stock stays put during the planner, so one read serves the pass. */
+  private materialsPresent(site: Entity): boolean {
+    let present = this.materialsPresentBySite.get(site);
+    if (present === undefined) {
+      present = constructionMaterialsPresent(this.world, this.ctx, site);
+      this.materialsPresentBySite.set(site, present);
+    }
+    return present;
+  }
+
+  /** Tenths of the bill on site, 0 to 10; site stock stays put during the planner, so one read serves. */
+  private deliveredTenths(site: Entity): number {
+    let tenths = this.deliveredTenthsBySite.get(site);
+    if (tenths === undefined) {
+      const delivered = deliveredConstructionFraction(this.world, this.ctx, site);
+      tenths = Math.min(PROGRESS_STEPS, Math.floor((delivered * PROGRESS_STEPS) / ONE));
+      this.deliveredTenthsBySite.set(site, tenths);
+    }
+    return tenths;
   }
 }
 

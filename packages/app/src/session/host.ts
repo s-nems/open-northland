@@ -2,6 +2,7 @@ import type { ContentSet, EquipCategory } from '@open-northland/data';
 import type {
   AssistantCounterValues,
   ConstructionPlot,
+  ConstructionSupply,
   DiplomacyState,
   Entity,
   EntitySnapshot,
@@ -197,6 +198,9 @@ export interface SessionHost {
   standsTo(entity: Entity): Promise<boolean>;
   /** Why a tradesman works or stands idle; undefined when no status applies. */
   workStatus(entity: Entity): Promise<WorkStatus | undefined>;
+  /** What a building site's bill still lacks and whether the seat holds each missing good; undefined for
+   *  anything but a building site. */
+  constructionSupply(site: Entity): Promise<ConstructionSupply | undefined>;
   papers(player: number): Promise<readonly Paper[]>;
   /** Whether the pair's stances are locked, so neither seat's declaration changes them. */
   diplomacyLocked(a: number, b: number): Promise<boolean>;

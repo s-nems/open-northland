@@ -1601,6 +1601,7 @@ export const ruGame = {
       vehicleSiteNotFound: 'Нет места для сборки',
       vehicleSiteOccupied: 'Место сборки заблокировано',
       nothingToDo: 'Нечего делать',
+      constructionStarved: 'Стройке нужно: {good}',
       noVehicleForWork: 'Нет повозки',
       experienceUnlocks: 'Новые навыки',
       experienceBuilding: 'Новое здание',
@@ -1654,6 +1655,8 @@ export const ruGame = {
       vehicleSiteOccupied:
         '{name} не может построить транспорт: место у мастерской занято другим транспортом. Уберите его.',
       nothingToDo: '{name} без дела.',
+      constructionStarved:
+        '{building}: стройка стоит, не хватает: {good}. Ни на одном складе его нет. Произведите или привезите его, и строители достроят здание.',
       noVehicleForWork: {
         he: '{name} получил торговый маршрут, но у него нет повозки. Назначьте его в повозку, чтобы начать перевозки.',
         she: '{name} получила торговый маршрут, но у неё нет повозки. Назначьте её в повозку, чтобы начать перевозки.',

@@ -26,6 +26,7 @@ import {
   lacksTradeCart,
   occupationOf,
 } from './from-snapshot.js';
+import type { ShortageReader } from './site-shortages.js';
 import { USER_MESSAGE_TYPE, type UserMessage } from './types.js';
 import type { StallReader } from './workshop-stalls.js';
 
@@ -102,6 +103,13 @@ function isStallOver(m: UserMessage, workshop: SnapshotEntity, stalls: StallRead
   return verdict === null || verdict.reason !== m.stall?.reason;
 }
 
+/** A shortage note ends when its site is no longer going up, or once the sweep finds the site short of
+ *  nothing; another good only rewords it. */
+function isShortageOver(m: UserMessage, site: SnapshotEntity, shortages: ShortageReader | null): boolean {
+  if (site.components.UnderConstruction === undefined || shortages === null) return true;
+  return shortages.verdict(site.id) === null;
+}
+
 /** A grown-up note has done its job once the player acted on it: a grown man took up a trade or is on
  *  his way to a school or barracks to learn one, a grown woman has a home. */
 function isGrownUpSettled(e: SnapshotEntity): boolean {
@@ -120,7 +128,8 @@ export function isSubjectGone(m: UserMessage, snapshot: WorldSnapshot): boolean 
 
 /**
  * Whether a note's reason is gone: its subject left the world, the state a state note reports ended, a
- * fight went quiet in `fights`, `stalls` judged a workshop's stall otherwise, or a refusal was answered. One instance serves a feed, since a refused
+ * fight went quiet in `fights`, `stalls` judged a workshop's stall otherwise, `shortages` a site's
+ * shortage otherwise, or a refusal was answered. One instance serves a feed, since a refused
  * drive is answered only by a drive that starts after the vehicle stood: the drive under way at the
  * refusal, if any, is not the answer.
  * Call {@link endPass} after each expiry pass, so the notes that left stop being watched.
@@ -133,6 +142,7 @@ export class NoteRetirement {
   constructor(
     private readonly fights: FightAreas,
     private readonly stalls: StallReader | null = null,
+    private readonly shortages: ShortageReader | null = null,
   ) {}
 
   isOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
@@ -154,6 +164,8 @@ export class NoteRetirement {
         return isIdleNoteOver(m, snapshot, e, this.stalls);
       case USER_MESSAGE_TYPE.productionStalled:
         return isStallOver(m, e, this.stalls);
+      case USER_MESSAGE_TYPE.constructionStarved:
+        return isShortageOver(m, e, this.shortages);
       case USER_MESSAGE_TYPE.vehicleSiteNotFound:
       case USER_MESSAGE_TYPE.vehicleSiteOccupied:
         return !yardRefusalStands(snapshot, e);

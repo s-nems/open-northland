@@ -42,7 +42,7 @@ import {
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
 import { cutOffCheckDue } from '../cut-off.js';
 import { claimWorkCell } from '../spacing.js';
-import type { ConstructionTaskClaims } from './construction-task-claims.js';
+import type { ConstructionTaskClaims, SiteRanking } from './construction-task-claims.js';
 import { type RepairCrews, startRepair } from './repair.js';
 import { boundConstructionSite } from './site-staff.js';
 import { constructionMaterialResolver, type SiteSupplyReach } from './site-supply.js';
@@ -50,20 +50,23 @@ import { constructionMaterialResolver, type SiteSupplyReach } from './site-suppl
 type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 
 /**
- * BUILD - mend the nearest damaged building that is safe to reach, else hammer delivered material before
- * fetching more and keep a useful automatic crew assignment stable, otherwise move the builder to the
- * nearest reachable site with material it can carry there or delivered labor to install, and with no task
- * anywhere wait beside a site, unless only its signposts keep it from one. A road or wall run the player
- * started ({@link BuildMode}) goes before all of that. Walls wait while a building site holds a task the
- * builder can do, a damaged wall goes before a new segment, and road sites wait while a building or a wall
- * site holds one. Player pins and unfinished workplace bindings are strict: their builders stay with that
- * site even while another has work.
+ * BUILD - mend the nearest damaged building that is safe to reach, else take the building site of the
+ * highest rank with a task for this builder: by its tier (`SITE_TIER`), then by the tenth of its bill
+ * delivered, then by distance, its own crew site first among equals. At the site, delivered material is
+ * hammered before more is fetched, and a covered site keeps a finishing crew waiting for its last loads.
+ * The last builder at a site with a task stays, unless it has no step to hammer there and the site it
+ * would go to has nobody. With no task anywhere the builder waits beside a site, unless only its
+ * signposts keep it from one. A
+ * road or wall run the player started ({@link BuildMode}) goes before all of that. Walls wait while a
+ * building site holds a task the builder can do, a damaged wall goes before a new segment, and road sites
+ * wait while a building or a wall site holds one. Player pins and unfinished workplace bindings are
+ * strict: their builders stay with that site even while another has work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the
  * builder is already on included, where the original recruits only builders with no site, then walls,
- * then roads last (owner ruling), and hammering ahead of hauling with a spare hand for an empty supplied
- * site.
+ * then roads last (owner ruling), the site ranking and the finishing crew (owner ruling), and hammering
+ * ahead of hauling.
  */
 export function planBuilder(
   plan: PlannerContext,
@@ -167,15 +170,27 @@ export function planBuilder(
 
   if (repairNearest(plan, spacing, repairs, claims, avoidSite, false)) return true;
 
+  // Building sites are taken by rank, the crew site winning ties, so a crew holds together between
+  // equally ranked sites instead of re-ranking every time one hammer atomic completes.
+  const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
+  const crewBuilding = crewSite !== null && !isSoloSite(world, crewSite) ? crewSite : null;
+  // A building site's task for this builder: hammering, a material fetch, or a wait for its last loads.
+  const buildingAccepts = (site: Entity): boolean =>
+    hasTask(site) || (claims.hasFinishingRoom(site, e) && canStandAt(site));
+  let rankedBuilding: Entity | null | undefined;
+  const bestBuildingSite = (): Entity | null => {
+    rankedBuilding ??= rankedBuildingSite(
+      claims.rankBuildingSites(settler.owner, targets.constructionSites),
+      crewBuilding,
+      buildingAccepts,
+      (accepts) => nearestSite(targets.constructionSiteCells, accepts),
+    );
+    return rankedBuilding;
+  };
   // Walls come after buildings: an automatic builder turns to one only while no building site holds a
   // task it can do, so a house starved of material does not stall the walls. Project rule.
   const isWall = (site: Entity): boolean => world.has(site, Palisade);
-  let buildingTask: Entity | null | undefined;
-  const nearestBuildingTask = (): Entity | null => {
-    if (buildingTask === undefined) buildingTask = nearestSite(targets.constructionSiteCells, hasTask);
-    return buildingTask;
-  };
-  const wallsWait = (): boolean => nearestBuildingTask() !== null;
+  const wallsWait = (): boolean => bestBuildingSite() !== null;
   // Roads come after walls the same way: they wait while a building or a wall site holds a task.
   let wallTask: Entity | null | undefined;
   const nearestWallTask = (): Entity | null => {
@@ -216,35 +231,24 @@ export function planBuilder(
     return true;
   }
 
-  // Crew membership is sticky while it still has useful work. This avoids re-ranking builders between
-  // equally valid sites every time one hammer atomic completes.
-  const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
-  const keptCrew = crewSite !== null && hasTask(crewSite) && inTurn(crewSite) ? crewSite : null;
-  // Delivered material with nobody on it goes before fetching more. A builder not hammering at its own site,
-  // idle or hauling, takes the nearest such site first, so a crew's hauler leaves while its hammerer stays.
-  // A hammering crew of two or more spares a hand only to such a site holding its whole bill.
-  const hammering =
-    keptCrew !== null &&
-    claims.hasHammerWork(keptCrew) &&
-    (!claims.hasHammerClaim(keptCrew) || !materials.has(keptCrew));
-  const spareHand = keptCrew !== null && hammering && claims.crewSize(keptCrew) > 1;
-  const wantsHand = (candidate: Entity): boolean =>
-    hammering
-      ? claims.isReadyUnstaffed(candidate)
-      : claims.hasHammerWork(candidate) && claims.crewSize(candidate) === 0;
-  if ((!hammering || spareHand) && claims.mayOfferHammer(settler.owner, wantsHand)) {
-    const opening = nearestSite(
-      targets.constructionSiteCells,
-      (candidate) => wantsHand(candidate) && canStandAt(candidate),
-    );
-    if (opening !== null && startHammer(plan, spacing, claims, opening)) {
-      stampAssignment(plan, claims, opening, false);
-      return true;
-    }
+  // A one-builder site is kept while it still has a task and its turn.
+  const keptSolo =
+    crewSite !== null && crewBuilding === null && hasTask(crewSite) && inTurn(crewSite) ? crewSite : null;
+  // The last builder at a building site with a task stays, so a site is never left for a fuller one,
+  // unless it has no step to hammer and the site it would go to has nobody.
+  const lastHand =
+    crewBuilding !== null && claims.crewSize(crewBuilding) <= 1 && buildingAccepts(crewBuilding);
+  let site = keptSolo;
+  if (site === null) {
+    const best = bestBuildingSite();
+    const leaves =
+      best !== null &&
+      claims.crewSize(best) === 0 &&
+      crewBuilding !== null &&
+      !claims.hasHammerWork(crewBuilding);
+    site = lastHand && best !== crewBuilding && !leaves ? crewBuilding : best;
   }
-  const site =
-    keptCrew ??
-    nearestBuildingTask() ??
+  site ??=
     nearestWallTask() ??
     (claims.roadMayHaveTask(materials.canSource, settler.owner)
       ? pickRoad(targets.roadSiteCells, hasTask)
@@ -256,9 +260,16 @@ export function planBuilder(
     if (!workAtSite(plan, spacing, claims, materials, site)) waitAtSite(plan, spacing, site);
     return true;
   }
-  if (site !== null && workAtSite(plan, spacing, claims, materials, site)) {
-    stampAssignment(plan, claims, site, false);
-    return true;
+  if (site !== null) {
+    if (workAtSite(plan, spacing, claims, materials, site)) {
+      stampAssignment(plan, claims, site, false);
+      return true;
+    }
+    if (claims.hasFinishingRoom(site, e)) {
+      stampAssignment(plan, claims, site, false);
+      waitAtSite(plan, spacing, site);
+      return true;
+    }
   }
 
   // No site has a task this pass, so stand ready where the next one will appear: a site with a delivery
@@ -365,6 +376,23 @@ function anyTaskSite(
     (claims.wallMayHaveTask(materials.canSource) ? found(targets.wallSiteCells) : null) ??
     (claims.roadMayHaveTask(materials.canSource, owner) ? found(targets.roadSiteCells) : null)
   );
+}
+
+/** The building site of the highest rank that `accepts` this builder, the nearest within a rank and
+ *  the builder's own `crewSite` first among equals. */
+function rankedBuildingSite(
+  ranking: SiteRanking,
+  crewSite: Entity | null,
+  accepts: (site: Entity) => boolean,
+  nearest: (accepts: (site: Entity) => boolean) => Entity | null,
+): Entity | null {
+  const { ranks, rankOf } = ranking;
+  for (const rank of ranks) {
+    if (crewSite !== null && rankOf.get(crewSite) === rank && accepts(crewSite)) return crewSite;
+    const site = nearest((candidate) => rankOf.get(candidate) === rank && accepts(candidate));
+    if (site !== null) return site;
+  }
+  return null;
 }
 
 /** An unfinished site this builder may stand at within `limit`. A damaged upgrade site is mended before its

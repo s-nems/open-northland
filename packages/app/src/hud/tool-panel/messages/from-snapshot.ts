@@ -5,6 +5,7 @@ import {
   ONE,
   systems,
   TICKS_PER_SECOND,
+  type WorkStatus,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { isSoldierJob } from '../../../catalog/professions.js';
@@ -28,8 +29,9 @@ import {
 } from '../../../game/snapshot.js';
 import { idleReasonOf } from './idle-reasons.js';
 import { idleNotePending, type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
+import { type ShortageReader, type SiteSeam, SiteShortages } from './site-shortages.js';
 import { type IdleReason, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
-import { type WorkAnswer, WorkStatusAsks } from './work-asks.js';
+import { StatusAsks, type WorkAnswer } from './work-asks.js';
 import { type StallReader, type WorkshopSeam, WorkshopStalls } from './workshop-stalls.js';
 
 /** Ticks between two sweeps of the snapshot for the conditions no sim event announces; the feed's
@@ -59,6 +61,8 @@ export interface SnapshotMessageSource {
   sweep(snapshot: WorldSnapshot, naming: MessageNaming, dismissed?: NoteDismissed): readonly RaisedMessage[];
   /** The seat's stalled workshops as the sweeps judged them; null without the workshop seam. */
   readonly stalls: StallReader | null;
+  /** The seat's building sites short of a material as the sweeps judged them; null without the site seam. */
+  readonly shortages: ShortageReader | null;
 }
 
 type Components = SnapshotEntity['components'];
@@ -323,7 +327,7 @@ interface IdleNoteContext {
   readonly streaks: IdleStreaks;
   readonly posts: PostHistory;
   readonly stalls: StallReader | null;
-  readonly asks: WorkStatusAsks | null;
+  readonly asks: StatusAsks<WorkStatus> | null;
   readonly dismissed: NoteDismissed;
 }
 
@@ -381,24 +385,28 @@ function raiseFamilyBlock(
 /**
  * The local player's messages read off the snapshot itself: pressing needs, a settler near death, an
  * idle worker, a child order that cannot start and, given `workshops`, a stalled workshop and the reason
- * an idle worker gives. One pass over
+ * an idle worker gives, and given `sites`, a building site short of a material. One pass over
  * the seat's own settlers per sweep interval, so the cost follows that crowd and the cadence rather than
  * the world's actors or the frame rate.
  */
 export function createSnapshotMessageSource(
   localPlayer: number,
   workshops?: WorkshopSeam,
+  sites?: SiteSeam,
 ): SnapshotMessageSource {
   let lastSweepTick: number | null = null;
   const streaks = new IdleStreaks();
   const posts = new PostHistory();
   const foodWaits = new FoodWaits();
-  const asks = workshops === undefined ? null : new WorkStatusAsks(workshops.workStatus);
+  const asks = workshops === undefined ? null : new StatusAsks(workshops.workStatus);
   const stalls =
     workshops === undefined || asks === null ? null : new WorkshopStalls(localPlayer, workshops.types, asks);
+  const siteAsks = sites === undefined ? null : new StatusAsks(sites.supply);
+  const shortages = siteAsks === null ? null : new SiteShortages(localPlayer, siteAsks);
   const notDismissed: NoteDismissed = () => false;
   return {
     stalls,
+    shortages,
     sweep: (snapshot, naming, dismissed = notDismissed) => {
       const since = lastSweepTick === null ? null : snapshot.tick - lastSweepTick;
       // A tick that moved backwards (a reload behind the same source) sweeps rather than waiting forever.
@@ -407,8 +415,10 @@ export function createSnapshotMessageSource(
       const raiser = new MessageRaiser(snapshot, naming);
       const needsOn = needsRuleEnabled(snapshot);
       asks?.begin(snapshot.tick);
+      siteAsks?.begin(snapshot.tick);
       // Ahead of the idle notes, which leave a stalled workshop's operators to its note.
       stalls?.sweep(snapshot, raiser, naming);
+      shortages?.sweep(snapshot, raiser, naming);
       streaks.begin();
       foodWaits.begin();
       const idle: IdleNoteContext = { streaks, posts, stalls, asks, dismissed };
@@ -422,6 +432,7 @@ export function createSnapshotMessageSource(
         if (isAdult(e)) raiseIdleNote(raiser, snapshot, e, idle);
       }
       asks?.end();
+      siteAsks?.end();
       streaks.end();
       foodWaits.end();
       posts.end();

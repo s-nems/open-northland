@@ -13,6 +13,7 @@ import {
 import type { MetSeat } from './from-diplomacy.js';
 import { type BuildingTrades, raiseFight, raiseUnlocks } from './from-events.js';
 import { type MessageNaming, MessageRaiser, nodeOf, type RaisedMessage } from './raise.js';
+import { raiseShortage } from './site-shortages.js';
 import {
   type MessageTechnology,
   type ProductionStall,
@@ -187,6 +188,11 @@ export function galleryMessages(
           ? { reason: 'unknown', goodType: null }
           : { reason: 'noInputSource', goodType: gallery.goodType };
       if (house !== undefined) raiseStall(raiser, naming, house, stall);
+      continue;
+    }
+    if (name === 'constructionStarved') {
+      if (house !== undefined && gallery.goodType !== null)
+        raiseShortage(raiser, naming, house, gallery.goodType);
       continue;
     }
     if (name === 'settlementAttacked') {

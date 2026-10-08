@@ -33,6 +33,7 @@ import type {
   MessageTarget,
   MetSeat,
   NoticeGallery,
+  SiteSeam,
   WorkshopSeam,
 } from '../hud/tool-panel/messages/index.js';
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
@@ -163,6 +164,8 @@ export interface GameToolPanelDeps {
   readonly noticeGallery?: NoticeGallery;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
   readonly workshops?: WorkshopSeam;
+  /** The sim's read of the seat's building sites' supply, for the shortage notes. */
+  readonly sites?: SiteSeam;
   /** The vehicle build sites, which an unlock note lists as vehicles. */
   readonly isVehicleSite?: (typeId: number) => boolean;
   /** The GUI click feedback for the panel's buttons and held modes; absent, silent. */
@@ -335,6 +338,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.onAttackShown !== undefined ? { onAttackShown: deps.onAttackShown } : {}),
       ...(deps.noticeGallery !== undefined ? { noticeGallery: deps.noticeGallery } : {}),
       ...(deps.workshops !== undefined ? { workshops: deps.workshops } : {}),
+      ...(deps.sites !== undefined ? { sites: deps.sites } : {}),
       ...(deps.isVehicleSite !== undefined ? { isVehicleSite: deps.isVehicleSite } : {}),
       ...(deps.onUiCue !== undefined ? { onUiCue: deps.onUiCue } : {}),
       ...(deps.network !== undefined ? { network: deps.network } : {}),

@@ -58,6 +58,7 @@ export const HOST_REQUESTS = [
   'equipPicksForSelection',
   'standsTo',
   'workStatus',
+  'constructionSupply',
   'papers',
   'diplomacyLocked',
   'goodsTradedWith',

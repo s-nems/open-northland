@@ -7,7 +7,8 @@ import {
 } from './types.js';
 
 /** Original behavior: the base game and the CulturesNation mod give each message type the same one of
- *  three groups. `productionStalled` takes the group of the two per-worker notes it replaces. */
+ *  three groups. `productionStalled` takes the group of the two per-worker notes it replaces, and
+ *  `constructionStarved` the same one (owner ruling). */
 const IMPORTANT: readonly UserMessageTypeName[] = [
   'lostWithoutSignposts',
   'experienceUnlocks',
@@ -44,6 +45,7 @@ const NOTABLE: readonly UserMessageTypeName[] = [
   'familyBlocked',
   'peopleAttacked',
   'productionStalled',
+  'constructionStarved',
 ];
 
 const IMPORTANT_LEVEL: MessagePriorityLevel = 2;
