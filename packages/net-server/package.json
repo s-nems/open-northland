@@ -18,13 +18,13 @@
   },
   "dependencies": {
     "@open-northland/net-protocol": "*",
-    "ws": "^8.21.3"
+    "ws": "^8.22.0"
   },
   "devDependencies": {
     "@open-northland/lockstep": "*",
     "@open-northland/net-client": "*",
     "@open-northland/sim": "*",
-    "@types/node": "^26.6.2",
-    "@types/ws": "^8.18.1"
+    "@types/node": "^26.6.3",
+    "@types/ws": "^8.18.2"
   }
 }
