@@ -313,13 +313,15 @@ export class WebAudioEngine {
 
   /**
    * Decode `samples` into the sample cache in order, once a gesture has created the context; null when
-   * the engine closes first or the platform has no Web Audio.
+   * the engine closes first or the platform has no Web Audio. A close stops the preload after the
+   * wavs already loading and settles it null too.
    */
   async preload(samples: readonly PreloadSample[]): Promise<SoundPreloadReport | null> {
     const cache = await this.samplesReady;
     if (cache === null || this.closed) return null;
     const startMs = this.now();
-    const report = await cache.preload(samples);
+    const report = await cache.preload(samples, () => this.closed);
+    if (this.closed) return null;
     return { ...report, elapsedMs: this.now() - startMs, sampleRate: this.ctx?.sampleRate ?? 0 };
   }
 

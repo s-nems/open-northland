@@ -72,6 +72,18 @@ describe('SampleCache preload', () => {
     });
   });
 
+  it('starts no further wav once its stop condition holds', async () => {
+    const { cache, fetched, pending } = makeCache({ concurrency: 2, held: true });
+    let stopped = false;
+    const done = cache.preload(samples(['a.wav', 'b.wav', 'c.wav', 'd.wav'], true), () => stopped);
+    await settle();
+    stopped = true;
+    for (const { release } of pending.splice(0)) release();
+    const report = await done;
+    expect(fetched).toEqual(['a.wav', 'b.wav']);
+    expect(report.decoded).toBe(2);
+  });
+
   it('counts a failed wav and never fetches it again', async () => {
     const { cache, fetched } = makeCache({ missing: 'gone.wav' });
     const report = await cache.preload(samples(['gone.wav', 'ok.wav'], true));

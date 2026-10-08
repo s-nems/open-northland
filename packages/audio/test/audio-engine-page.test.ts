@@ -5,6 +5,7 @@ import {
   CLOCK_STALL_MS,
   DEFAULT_VOLUMES,
   MONO_SWAP_DELAY_S,
+  PRELOAD_CONCURRENCY,
   volumeGain,
   WebAudioEngine,
 } from '../src/index.js';
@@ -53,6 +54,32 @@ describe('WebAudioEngine preload', () => {
     const done = engine.preload([{ file: 'gui/click.wav', pinned: true }]);
     engine.close();
     expect(await done).toBeNull();
+  });
+
+  it('stops a preload its engine closes under, decoding nothing after the loads in flight', async () => {
+    const ctx = new FakeContext();
+    const decode = vi.spyOn(ctx, 'decodeAudioData');
+    const held: Array<() => void> = [];
+    const engine = new WebAudioEngine({
+      createContext: () => ctx as unknown as AudioContext,
+      fetchBytes: async () => {
+        await new Promise<void>((release) => held.push(release));
+        return new ArrayBuffer(4);
+      },
+    });
+    const files = Array.from({ length: PRELOAD_CONCURRENCY * 3 }, (_, i) => ({
+      file: `talk-${i}.wav`,
+      pinned: true,
+    }));
+    const done = engine.preload(files);
+    await engine.resume();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(held).toHaveLength(PRELOAD_CONCURRENCY);
+    engine.close();
+    for (const release of held.splice(0)) release();
+    expect(await done).toBeNull();
+    expect(held).toHaveLength(0);
+    expect(decode).toHaveBeenCalledTimes(PRELOAD_CONCURRENCY);
   });
 
   it('settles null on a platform with no Web Audio', async () => {

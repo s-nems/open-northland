@@ -103,9 +103,13 @@ export class SampleCache {
   /**
    * Load `samples` in order, {@link SampleCacheOptions.concurrency} at a time. Pinned wavs always load
    * and stay; unpinned ones stop once the cache reaches its budget or first evicts, so a preload never
-   * churns through what it just decoded.
+   * churns through what it just decoded. Once `stopped` answers true no worker starts another wav;
+   * loads already in flight still land.
    */
-  async preload(samples: readonly PreloadSample[]): Promise<SamplePreloadReport> {
+  async preload(
+    samples: readonly PreloadSample[],
+    stopped: () => boolean = () => false,
+  ): Promise<SamplePreloadReport> {
     const evictionsBefore = this.evictions;
     const full = (): boolean => this.cached >= this.budgetBytes || this.evictions !== evictionsBefore;
     let next = 0;
@@ -113,7 +117,7 @@ export class SampleCache {
     let failed = 0;
     let skipped = 0;
     const worker = async (): Promise<void> => {
-      for (let i = next++; i < samples.length; i = next++) {
+      for (let i = next++; i < samples.length && !stopped(); i = next++) {
         const sample = samples[i];
         if (sample === undefined) continue;
         if (sample.pinned) this.pin(sample.file);

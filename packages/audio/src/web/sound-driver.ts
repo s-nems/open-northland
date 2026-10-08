@@ -144,7 +144,8 @@ export class SoundDriver {
   }
 
   /** Decode the bank ahead of play in {@link preloadPlan} order, starting once a gesture has created
-   *  the context; resolves with what the cache holds, or null when audio never starts. */
+   *  the context; resolves with what the cache holds, or null when audio never starts or the driver
+   *  closes first. */
   preload(): Promise<SoundPreloadReport | null> {
     const samples = preloadPlan(this.index).map(({ file, tier }) => ({
       file,
