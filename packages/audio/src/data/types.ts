@@ -3,6 +3,7 @@ import type { Camera, SceneGround } from '@open-northland/render/data';
 import type { ChestKind, SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
 import type { AlertKind, NoticeVoice } from './alerts.js';
 import type { SoundIndex } from './bank.js';
+import type { AmbientBedMemory } from './director/ambient.js';
 import type { LandscapeSectors } from './landscape-sectors.js';
 import type { ShotLayer } from './perspective.js';
 import type { UiCue } from './ui-cues.js';
@@ -241,4 +242,17 @@ export interface DirectorInput {
   /** Whether the viewer ever explored the ground at a fractional tile - gates the terrain beds and the
    *  object ambience, since the explored grey still shows the land. Omit → no fog. */
   readonly exploredTile?: (col: number, row: number) => boolean;
+  /** The bed choice's memory across frames; omit for the loudest beds as they rank this frame (a
+   *  gallery, a test). */
+  readonly beds?: AmbientBedInput;
+}
+
+/** What the ambient beds keep and read across frames. */
+export interface AmbientBedInput {
+  /** Audio-clock seconds, which a bed waiting for a slot is timed by. */
+  readonly now: number;
+  readonly memory: AmbientBedMemory;
+  /** Bumps whenever {@link DirectorInput.exploredTile} may answer differently. With it, a framing that
+   *  stands still reuses its sampled coverage; without it, a fogged ground is sampled every frame. */
+  readonly fogRevision?: number;
 }

@@ -3,6 +3,7 @@ import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { AlertDesk, type AttackReport, type NoticeVoice } from '../data/alerts.js';
 import { OneShotArbiter } from '../data/arbiter.js';
 import type { SoundIndex } from '../data/bank.js';
+import { AmbientBedMemory } from '../data/director/ambient.js';
 import { directAudio } from '../data/director/index.js';
 import { type LandscapeSectors, type SceneryObject, scenerySectors } from '../data/landscape-sectors.js';
 import type { MixerVolumes } from '../data/mixer.js';
@@ -51,6 +52,8 @@ export interface SoundFrameInput {
   /** Whether the viewer ever explored the ground at a fractional tile - gates the terrain beds and the
    *  object ambience. Omit → no fog. */
   readonly exploredTile?: (col: number, row: number) => boolean;
+  /** Bumps whenever `exploredTile` may answer differently, so a still camera reuses its bed sampling. */
+  readonly fogRevision?: number;
   /** The local settlement's standing, picking the map's own stems in its music rotation. Pulled only
    *  once a map has handed over its music, since the head-count behind it is an O(entities) read.
    *  Omit → the calm variant, which only a fight then moves. */
@@ -101,6 +104,8 @@ export class SoundDriver {
   private lastTick: number | null = null;
   /** The map's sounding objects that are no sim entity, for the object ambience. */
   private scenery: LandscapeSectors | undefined;
+  /** The ambient beds' choice across frames. */
+  private readonly bedMemory = new AmbientBedMemory();
   /** One-shot counts since construction, for {@link stats}. */
   private readonly counts = emptySoundStats();
 
@@ -299,6 +304,11 @@ export class SoundDriver {
         ? { chatter: { drawn: input.drawnCreatures, ticks, random: this.random } }
         : {}),
       ...(input.terrain !== undefined ? { terrain: input.terrain } : {}),
+      beds: {
+        now: this.engine.clock,
+        memory: this.bedMemory,
+        ...(input.fogRevision !== undefined ? { fogRevision: input.fogRevision } : {}),
+      },
       landscape: {
         ticks,
         random: this.random,

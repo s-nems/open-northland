@@ -33,6 +33,9 @@ export {
   AMBIENT_MAX_GAIN,
   AMBIENT_MAX_PAN,
   AMBIENT_MAX_SAMPLES,
+  AmbientBedMemory,
+  BED_SWAP_HOLD_S,
+  BED_SWAP_LEAD,
   MAX_AMBIENT_BEDS,
 } from './ambient.js';
 export { HOUSE_CRASH_MIN_BUILT } from './events.js';

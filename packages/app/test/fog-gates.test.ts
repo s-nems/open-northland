@@ -65,4 +65,21 @@ describe('FogGates.exploredTile', () => {
     expect(gates.visibleTile(GREY.x, GREY.y)).toBe(false);
     expect(gates.exploredTile(BLACK.x, BLACK.y)).toBe(false);
   });
+
+  it('bumps its revision only when the mask, the seat or the fog switch changes', () => {
+    const gates = createFogGates();
+    const start = gates.revision();
+    gates.setFrame(null);
+    expect(gates.revision()).toBe(start);
+    gates.setFrame(tiered);
+    const fogged = gates.revision();
+    expect(fogged).not.toBe(start);
+    gates.setFrame({ ...tiered });
+    expect(gates.revision()).toBe(fogged);
+    gates.setFrame({ ...tiered, generation: tiered.generation + 1 });
+    const stamped = gates.revision();
+    expect(stamped).not.toBe(fogged);
+    gates.setFrame({ ...tiered, generation: tiered.generation + 1, player: tiered.player + 1 });
+    expect(gates.revision()).not.toBe(stamped);
+  });
 });

@@ -394,6 +394,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         visibleTile: fogGates.visibleTile,
         // Terrain ambience sounds over all explored ground: the grey still shows the land.
         exploredTile: fogGates.exploredTile,
+        fogRevision: fogGates.revision(),
         // Which mood variant of the map's music plays: our head-count and how we stand with the roster.
         standingOf: musicStanding,
         // The idle chatter and animal calls roll over what the renderer just drew, the original's "seen"
