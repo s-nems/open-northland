@@ -53,6 +53,9 @@ export const GROUP_OPEN_MAGICAL_CHEST = 'Open Magical Chest';
 export const GROUP_CARPENTER_SAW = 'Carpenter Saw';
 /** A house coming down (LogicSoundType 42), razed in combat or torn down by its owner. */
 export const GROUP_HOUSE_CRASH = 'House Crash';
+/** A tree's creak and crash as it falls (LogicSoundType 10). No clip cues it in the data, so the felling
+ *  event sounds it. */
+export const GROUP_TREE_FALLING = 'Woodcutter TreeFalling';
 
 /** Melee swing swoosh. The melee weapons share one swing wav set in the bank (`Weapon Sword Short` /
  *  `Weapon Spear` / `Weapon Fist` all point at the same `swing0N.wav`), so one group covers them all. A
@@ -91,6 +94,7 @@ export function defaultBindings(): SoundBindings {
       playerWon: { kind: 'jingle', musicType: JINGLE_WON, localPlayerOnly: true },
       playerDefeated: { kind: 'jingle', musicType: JINGLE_LOST, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
+      resourceFelled: { kind: 'spatial', group: GROUP_TREE_FALLING },
       // The director withholds this below HOUSE_CRASH_MIN_BUILT: a site under half built comes down silently.
       buildingDestroyed: { kind: 'spatial', group: GROUP_HOUSE_CRASH, layer: 'impact' },
       combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },

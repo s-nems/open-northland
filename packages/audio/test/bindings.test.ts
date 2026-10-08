@@ -1,11 +1,15 @@
+import type { Entity, HalfCellNode } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { defaultBindings } from '../src/index.js';
+import { buildSoundIndex, defaultBindings, directAudio } from '../src/index.js';
 
 /**
  * The event→sound bindings: the "which sound answers which happening" layer. A settler's voice never
  * binds here - it resolves from the creature voice tables by tribe and class, or by `logicSoundType` id
  * from a clip's authored `atomicSound` cue.
  */
+
+const CANVAS_W = 1920;
+const CANVAS_H = 1080;
 
 describe('defaultBindings', () => {
   it('binds life events to jingles and production to spatial groups', () => {
@@ -64,5 +68,44 @@ describe('defaultBindings', () => {
     const b = defaultBindings();
     expect(b.byEvent.missionCutscene).toEqual({ kind: 'cue', cue: 'briefing' });
     expect(b.byEvent.missionEarthquake).toEqual({ kind: 'cue', cue: 'earthquake' });
+  });
+
+  it('sounds a felled tree where it falls', () => {
+    const b = defaultBindings();
+    expect(b.byEvent.resourceFelled).toEqual({ kind: 'spatial', group: 'Woodcutter TreeFalling' });
+    const files = ['static/treefalling01.wav'];
+    const index = buildSoundIndex(
+      {
+        staticGroups: [{ name: 'Woodcutter TreeFalling', sfx: files.map((file) => ({ file, params: [] })) }],
+        ambient: [],
+        jingles: [],
+        humanVoices: [],
+        animalCalls: [],
+      },
+      [],
+      [],
+    );
+    // A node near the top-left of a 1080p screen.
+    const at: HalfCellNode = { hx: 10, hy: 10 };
+    const node = 1 as Entity;
+    const felled = {
+      kind: 'resourceFelled',
+      node,
+      trunk: node,
+      stump: node,
+      goodType: 1,
+      amount: 1,
+      at,
+    } as const;
+    const { oneShots } = directAudio({
+      events: [felled],
+      snapshot: { tick: 1, entities: [], events: [] },
+      camera: { offsetX: 0, offsetY: 0, scale: 1 },
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings: b,
+    });
+    expect(oneShots.map((s) => s.files)).toEqual([files]);
   });
 });

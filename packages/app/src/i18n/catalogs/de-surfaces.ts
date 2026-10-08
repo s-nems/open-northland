@@ -697,6 +697,7 @@ export const deSurfaces = {
         label: 'Ware herstellen',
         trigger: 'wenn eine Werkstatt eine Ware fertigstellt',
       },
+      resourceFelled: { label: 'Baum fällt', trigger: 'wenn ein Holzfäller einen Baum fällt' },
       buildingFinished: {
         label: 'Bau abschließen',
         trigger: 'wenn dein Gebäude im sichtbaren Bereich fertiggestellt wird',

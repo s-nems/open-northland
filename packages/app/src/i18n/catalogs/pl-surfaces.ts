@@ -633,6 +633,7 @@ export const plSurfaces = {
     actionsCatalog: {
       vehicleCreated: { label: 'Ukończenie pojazdu', trigger: 'gdy powstaje wóz, statek lub katapulta' },
       goodProduced: { label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
+      resourceFelled: { label: 'Upadek drzewa', trigger: 'gdy drwal ścina drzewo' },
       buildingFinished: {
         label: 'Ukończenie budowy',
         trigger: 'gdy twój budynek zostaje dokończony na ekranie',

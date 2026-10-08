@@ -632,6 +632,7 @@ export const enSurfaces = {
     actionsCatalog: {
       vehicleCreated: { label: 'Finish vehicle', trigger: 'when a cart, ship or catapult is created' },
       goodProduced: { label: 'Produce good', trigger: 'when a workshop completes a good' },
+      resourceFelled: { label: 'Tree falls', trigger: 'when a woodcutter fells a tree' },
       buildingFinished: {
         label: 'Finish construction',
         trigger: 'when your building is completed on screen',
