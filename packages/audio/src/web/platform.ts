@@ -13,6 +13,14 @@ export type FetchBytes = (url: string) => Promise<ArrayBuffer>;
 /** A `Math.random`-shaped source of [0, 1) - injected so clip/settler picks are testable. */
 export type RandomFn = () => number;
 
+/** Wall-clock milliseconds, for timing a preload and telling a stalled audio clock from a running one. */
+export type WallClock = () => number;
+
+/** The real wall clock: the page's monotonic `performance.now`. */
+export function performanceNow(): number {
+  return performance.now();
+}
+
 /** The real Web Audio context, with the old-Safari `webkitAudioContext` fallback. */
 export function webAudioContextFactory(): AudioContext | null {
   const Ctor =

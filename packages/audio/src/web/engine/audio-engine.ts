@@ -22,12 +22,19 @@ import {
 } from '../../data/perspective.js';
 import type { AudioFrame, OneShot } from '../../data/types.js';
 import type { WeatherSoundInput } from '../../data/weather/mix.js';
-import { type ContextFactory, type FetchBytes, httpFetchBytes, webAudioContextFactory } from '../platform.js';
+import {
+  type ContextFactory,
+  type FetchBytes,
+  httpFetchBytes,
+  performanceNow,
+  type WallClock,
+  webAudioContextFactory,
+} from '../platform.js';
 import { AmbientMixer } from './ambient-mixer.js';
 import { BusDuck } from './bus-duck.js';
 import { MusicPlayer } from './music-player.js';
 import { CLICK_FREE_RAMP_S, rampParam } from './ramps.js';
-import { SampleCache } from './sample-cache.js';
+import { type PreloadSample, SampleCache, type SamplePreloadReport } from './sample-cache.js';
 import { WeatherSoundscape } from './weather-soundscape.js';
 
 /**
@@ -47,6 +54,13 @@ import { WeatherSoundscape } from './weather-soundscape.js';
  * failure, playback is a graceful no-op (silence), never a throw.
  */
 
+/** A finished preload: what the cache holds, the wall time it took from the context's start, and the
+ *  context rate every wav was resampled to. */
+export interface SoundPreloadReport extends SamplePreloadReport {
+  readonly elapsedMs: number;
+  readonly sampleRate: number;
+}
+
 /** Options for {@link WebAudioEngine}. Platform seams default to the real browser behaviour. */
 export interface AudioEngineOptions {
   /** URL prefix the wav files are served under (a file path is appended). Default {@link DEFAULT_SOUNDS_BASE_URL}. */
@@ -59,6 +73,8 @@ export interface AudioEngineOptions {
   readonly createContext?: ContextFactory;
   /** Loads a wav's bytes by URL - override in tests with a stub. Default HTTP `fetch`. */
   readonly fetchBytes?: FetchBytes;
+  /** Wall clock the preload timing reads - override in tests. Default `performance.now`. */
+  readonly now?: WallClock;
 }
 
 /** URL prefix of the content tree's decoded wavs; every host serves the tree at the root. */
@@ -137,6 +153,7 @@ export class WebAudioEngine {
   private readonly musicBaseUrl: string;
   private readonly createContext: ContextFactory;
   private readonly fetchBytes: FetchBytes;
+  private readonly now: WallClock;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buses: Readonly<Record<SoundBus, GainNode>> | null = null;
@@ -150,6 +167,12 @@ export class WebAudioEngine {
   /** The dips behind {@link ALERT_DUCKED_BUSES}. */
   private alertDucks: readonly BusDuck[] = [];
   private samples: SampleCache | null = null;
+  /** Settles {@link samplesReady}: with the cache once the context exists, null if it never will. */
+  private settleSamples: (samples: SampleCache | null) => void = () => undefined;
+  /** The cache a preload waits for, which exists only once a gesture has created the context. */
+  private readonly samplesReady = new Promise<SampleCache | null>((resolve) => {
+    this.settleSamples = resolve;
+  });
   private mixer: AmbientMixer | null = null;
   private music: MusicPlayer | null = null;
   private weather: WeatherSoundscape | null = null;
@@ -172,6 +195,7 @@ export class WebAudioEngine {
     this.volumes = clampedVolumes(options.volumes ?? DEFAULT_VOLUMES);
     this.createContext = options.createContext ?? webAudioContextFactory;
     this.fetchBytes = options.fetchBytes ?? httpFetchBytes;
+    this.now = options.now ?? performanceNow;
   }
 
   /** Whether the context has been started (a user gesture resumed it). */
@@ -223,12 +247,25 @@ export class WebAudioEngine {
   }
 
   /**
+   * Decode `samples` into the sample cache in order, once a gesture has created the context; null when
+   * the engine closes first or the platform has no Web Audio.
+   */
+  async preload(samples: readonly PreloadSample[]): Promise<SoundPreloadReport | null> {
+    const cache = await this.samplesReady;
+    if (cache === null || this.closed) return null;
+    const startMs = this.now();
+    const report = await cache.preload(samples);
+    return { ...report, elapsedMs: this.now() - startMs, sampleRate: this.ctx?.sampleRate ?? 0 };
+  }
+
+  /**
    * Release the audio context and go permanently silent. A view that hands over to another one closes
    * its engine, so a page never accumulates contexts past the browser's cap.
    */
   close(): void {
     if (this.closed) return;
     this.closed = true;
+    this.settleSamples(null);
     const ctx = this.ctx;
     if (ctx === null) return;
     this.mixer?.stopAll();
@@ -389,7 +426,10 @@ export class WebAudioEngine {
   private ensureContext(): AudioContext | null {
     if (this.ctx !== null) return this.ctx;
     const ctx = this.createContext();
-    if (ctx === null) return null; // no Web Audio (headless/unsupported) → silent
+    if (ctx === null) {
+      this.settleSamples(null);
+      return null; // no Web Audio (headless/unsupported) → silent
+    }
     this.ctx = ctx;
     const master = ctx.createGain();
     master.gain.value = this.channelGain('master');
@@ -422,6 +462,7 @@ export class WebAudioEngine {
     this.layers = layers;
     this.musicDuck = musicDuck;
     this.samples = new SampleCache(this.baseUrl, this.fetchBytes, (bytes) => ctx.decodeAudioData(bytes));
+    this.settleSamples(this.samples);
     this.mixer = new AmbientMixer(ctx, layers.bed, this.samples, () => this.canPlay());
     this.music = new MusicPlayer(ctx, buses.music, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
     // Weather rides the ambient bed layer beside the terrain beds, so the same slider and zoom set it.

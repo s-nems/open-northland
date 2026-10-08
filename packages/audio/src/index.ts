@@ -163,6 +163,14 @@ export {
   shotLayer,
   zoomDistance,
 } from './data/perspective.js';
+export {
+  PINNED_PRELOAD_TIERS,
+  PRELOAD_TIERS,
+  type PreloadEntry,
+  type PreloadTier,
+  preloadPlan,
+  TALK_FOLDERS,
+} from './data/preload-plan.js';
 export { type LaneCounts, type SoundStatsView, STAT_LANES, type StatLane } from './data/sound-stats.js';
 export {
   computePan,
@@ -210,6 +218,7 @@ export {
   BUS_DUCK_RAMP_S,
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
+  DECODED_BYTES_PER_SAMPLE,
   DEFAULT_MUSIC_BASE_URL,
   DEFAULT_SOUNDS_BASE_URL,
   LIMITER_ATTACK_S,
@@ -224,12 +233,17 @@ export {
   MUSIC_SWITCH_TIMING,
   musicBusGain,
   PERSPECTIVE_RAMP_S,
+  PRELOAD_CONCURRENCY,
+  type PreloadSample,
+  SAMPLE_CACHE_BUDGET_BYTES,
+  type SamplePreloadReport,
+  type SoundPreloadReport,
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './web/engine/index.js';
 // Impure Web Audio sink (browser-only). The default-tuning constants stay exported as the documented
 // knobs behind the options; the platform function types are the injectable test seams.
-export type { ContextFactory, FetchBytes, RandomFn } from './web/platform.js';
+export type { ContextFactory, FetchBytes, RandomFn, WallClock } from './web/platform.js';
 export {
   type MusicMap,
   SoundDriver,

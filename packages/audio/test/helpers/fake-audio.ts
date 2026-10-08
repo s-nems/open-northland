@@ -188,7 +188,11 @@ export class FakeContext {
   }
   // One second of audio per fetched byte, so a test picks a track length by the buffer it serves.
   async decodeAudioData(bytes: ArrayBuffer): Promise<AudioBuffer> {
-    return { length: bytes.byteLength, duration: bytes.byteLength } as unknown as AudioBuffer;
+    return {
+      length: bytes.byteLength,
+      duration: bytes.byteLength,
+      numberOfChannels: 1,
+    } as unknown as AudioBuffer;
   }
   async resume(): Promise<void> {
     this.resumes++;

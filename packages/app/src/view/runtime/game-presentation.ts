@@ -6,6 +6,7 @@ import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadMusicManifest } from '../../content/music.js';
 import { loadCombatBones, loadWreckDebris } from '../../content/objects.js';
+import { diag } from '../../diag/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import { readStoredSettings } from '../settings-store.js';
 import { startSound } from '../sound-start.js';
@@ -17,6 +18,22 @@ async function startMapMusic(sound: SoundDriver, musicType: number): Promise<voi
   const manifest = await loadMusicManifest();
   if (manifest === null) return;
   sound.setMusicMap({ musicType, manifest });
+}
+
+/** Bytes in the megabyte the preload log reports in. */
+const BYTES_PER_MB = 1e6;
+
+/** Decode the bank in the background once audio has started, and log what the cache then holds and
+ *  how long it took. A first click or fight after it plays from memory. */
+async function preloadSounds(sound: SoundDriver): Promise<void> {
+  const report = await sound.preload();
+  if (report === null) return;
+  diag.info('audio', 'sound bank preloaded', {
+    ...report,
+    cachedMB: Math.round(report.cachedBytes / BYTES_PER_MB),
+    pinnedMB: Math.round(report.pinnedBytes / BYTES_PER_MB),
+    elapsedMs: Math.round(report.elapsedMs),
+  });
 }
 
 /** Load the optional decoded assets the game view's sound and combat rendering share, and return the
@@ -35,10 +52,13 @@ export async function mountGamePresentation(
   renderer.setWeatherEnabled(settings.weather);
   try {
     if (sound !== null) {
-      sound.setEnabled(gameSoundEnabled(params, settings.soundEnabled));
+      const enabled = gameSoundEnabled(params, settings.soundEnabled);
+      sound.setEnabled(enabled);
       sound.setVolumes(settings.volumes);
       sound.setWeatherEnabled(settings.weather);
       startSound(sound, { signal });
+      // A game started muted decodes on demand if it is unmuted later.
+      if (enabled) void preloadSounds(sound);
       if (musicType !== null) void startMapMusic(sound, musicType);
     }
     if (presentationPack(params) !== null) return sound;

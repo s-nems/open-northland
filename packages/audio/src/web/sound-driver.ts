@@ -17,11 +17,12 @@ import {
   musicIntensity,
   nextMusicMood,
 } from '../data/music/index.js';
+import { PINNED_PRELOAD_TIERS, preloadPlan } from '../data/preload-plan.js';
 import { countShots, emptySoundStats, type SoundStatsView } from '../data/sound-stats.js';
 import type { AmbientLoop, AudioTerrain, OneShot, SoundBindings } from '../data/types.js';
 import { type NotificationCue, notificationShot, type UiCue, uiCueShot } from '../data/ui-cues.js';
 import type { WeatherSoundInput } from '../data/weather/mix.js';
-import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
+import { type AudioEngineOptions, type SoundPreloadReport, WebAudioEngine } from './engine/index.js';
 import type { RandomFn } from './platform.js';
 
 /** One frame's world state, handed to {@link SoundDriver.update} once per rendered frame. */
@@ -131,6 +132,16 @@ export class SoundDriver {
   /** Whether the audio context is running (a gesture has started it). */
   get started(): boolean {
     return this.engine.started;
+  }
+
+  /** Decode the bank ahead of play in {@link preloadPlan} order, starting once a gesture has created
+   *  the context; resolves with what the cache holds, or null when audio never starts. */
+  preload(): Promise<SoundPreloadReport | null> {
+    const samples = preloadPlan(this.index).map(({ file, tier }) => ({
+      file,
+      pinned: PINNED_PRELOAD_TIERS.has(tier),
+    }));
+    return this.engine.preload(samples);
   }
 
   /** Hand over the map's placed objects that are no sim entity; the object ambience keeps the ones
