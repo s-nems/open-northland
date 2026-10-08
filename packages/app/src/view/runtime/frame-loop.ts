@@ -248,7 +248,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     cameraCtl.update(elapsed); // a no-op while the system menu holds the camera suspended
     // Idempotent: the sepia wash mirrors the pause flag and the relay's hold every frame rather than
     // on transitions, so neither a pauser nor the relay feed has to know about the renderer.
-    renderer.setPaused(driver.paused || loop.clockHeld?.() === true);
+    const paused = driver.paused || loop.clockHeld?.() === true;
+    renderer.setPaused(paused);
     // Before anything draws: the map entry's resource handover must release a first-worked node in the
     // same frame the pool starts drawing it.
     if (frameEvents.length > 0) deps.onEvents?.(frameEvents);
@@ -395,6 +396,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         // Terrain ambience sounds over all explored ground: the grey still shows the land.
         exploredTile: fogGates.exploredTile,
         fogRevision: fogGates.revision(),
+        // A held clock freezes the landscape's birds and branches with the world.
+        paused,
         // Which mood variant of the map's music plays: our head-count and how we stand with the roster.
         standingOf: musicStanding,
         // The idle chatter and animal calls roll over what the renderer just drew, the original's "seen"

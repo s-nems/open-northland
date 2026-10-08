@@ -5,6 +5,7 @@ import { OneShotArbiter } from '../data/arbiter.js';
 import type { SoundIndex } from '../data/bank.js';
 import { AmbientBedMemory } from '../data/director/ambient.js';
 import { directAudio } from '../data/director/index.js';
+import { LandscapeRollClock } from '../data/director/object-ambience.js';
 import { type LandscapeSectors, type SceneryObject, scenerySectors } from '../data/landscape-sectors.js';
 import type { MixerVolumes } from '../data/mixer.js';
 import {
@@ -54,6 +55,8 @@ export interface SoundFrameInput {
   readonly exploredTile?: (col: number, row: number) => boolean;
   /** Bumps whenever `exploredTile` may answer differently, so a still camera reuses its bed sampling. */
   readonly fogRevision?: number;
+  /** The game clock is held (paused, or waiting on the network): the object ambience rolls nothing. */
+  readonly paused?: boolean;
   /** The local settlement's standing, picking the map's own stems in its music rotation. Pulled only
    *  once a map has handed over its music, since the head-count behind it is an O(entities) read.
    *  Omit → the calm variant, which only a fight then moves. */
@@ -106,6 +109,9 @@ export class SoundDriver {
   private scenery: LandscapeSectors | undefined;
   /** The ambient beds' choice across frames. */
   private readonly bedMemory = new AmbientBedMemory();
+  /** The object ambience's rolls, due on the audio clock since the last frame stood at `lastClock`. */
+  private readonly landscapeRolls = new LandscapeRollClock();
+  private lastClock: number | null = null;
   /** One-shot counts since construction, for {@link stats}. */
   private readonly counts = emptySoundStats();
 
@@ -280,6 +286,11 @@ export class SoundDriver {
     this.selection = undefined;
     const ticks = this.lastTick === null ? 0 : Math.max(0, input.snapshot.tick - this.lastTick);
     this.lastTick = input.snapshot.tick;
+    // Before the audibility gate, so a muted spell rolls nothing on unmute.
+    const clock = this.engine.clock;
+    const elapsedS = this.lastClock === null || input.paused === true ? 0 : clock - this.lastClock;
+    this.lastClock = clock;
+    const landscapeRolls = this.landscapeRolls.advance(elapsedS);
     // Before the audibility gate, so a camera zoomed while muted is already in the mix on unmute.
     this.engine.setCameraScale(input.camera.scale);
     // Suspended (no gesture yet) or muted: the engine would drop the frame unheard, so don't pay the
@@ -310,7 +321,7 @@ export class SoundDriver {
         ...(input.fogRevision !== undefined ? { fogRevision: input.fogRevision } : {}),
       },
       landscape: {
-        ticks,
+        rolls: landscapeRolls,
         random: this.random,
         ...(this.scenery !== undefined ? { scenery: this.scenery } : {}),
       },

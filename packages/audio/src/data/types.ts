@@ -176,11 +176,12 @@ export interface AudioTerrain {
   readonly ground?: SceneGround;
 }
 
-/** The object ambience's per-frame input: the ticks to roll for and the map's scenery. The sim's
- *  standing objects come off the snapshot's indexes. */
+/** The object ambience's per-frame input: the rolls due and the map's scenery. The sim's standing
+ *  objects come off the snapshot's indexes. */
 export interface LandscapeInput {
-  /** Game ticks the sim advanced since the last frame; 0 rolls nothing. */
-  readonly ticks: number;
+  /** Rolls due this frame, the original's ticks elapsed on the audio clock
+   *  ({@link import('./director/object-ambience.js').LandscapeRollClock}); 0 rolls nothing. */
+  readonly rolls: number;
   /** The [0,1) roll source. */
   readonly random: () => number;
   /** The map's placed objects that are no sim entity (rocks, sirens, an ice wall), bucketed once. */

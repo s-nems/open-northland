@@ -52,5 +52,12 @@ export {
   SELECT_ANY_COOLDOWN_S,
   SELECT_COOLDOWN_S,
 } from './group-answer.js';
-export { LANDSCAPE_CHANCE_RANGE, MAX_LANDSCAPE_TICKS_PER_FRAME } from './object-ambience.js';
+export {
+  LANDSCAPE_CHANCE_RANGE,
+  LANDSCAPE_REFERENCE_SCREEN_H,
+  LANDSCAPE_REFERENCE_SCREEN_W,
+  LandscapeRollClock,
+  landscapeDensity,
+  MAX_LANDSCAPE_ROLLS_PER_FRAME,
+} from './object-ambience.js';
 export { ANIMAL_ROLL_RANGE, GENERIC_ROLL_RANGE, MAX_CHATTER_TICKS_PER_FRAME } from './voices.js';

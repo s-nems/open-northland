@@ -79,7 +79,11 @@ export {
 } from './data/director/index.js';
 export {
   LANDSCAPE_CHANCE_RANGE,
-  MAX_LANDSCAPE_TICKS_PER_FRAME,
+  LANDSCAPE_REFERENCE_SCREEN_H,
+  LANDSCAPE_REFERENCE_SCREEN_W,
+  LandscapeRollClock,
+  landscapeDensity,
+  MAX_LANDSCAPE_ROLLS_PER_FRAME,
 } from './data/director/object-ambience.js';
 export {
   LANDSCAPE_SECTOR_TILES,

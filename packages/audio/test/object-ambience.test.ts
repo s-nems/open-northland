@@ -6,6 +6,7 @@ import {
   ONE,
   packSnapshotDelta,
   SnapshotMirror,
+  TICKS_PER_SECOND,
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { describe, expect, it, vi } from 'vitest';
@@ -21,10 +22,14 @@ import {
   type DirectorInput,
   defaultBindings,
   LANDSCAPE_CHANCE_RANGE,
+  LANDSCAPE_REFERENCE_SCREEN_H,
+  LANDSCAPE_REFERENCE_SCREEN_W,
   LANDSCAPE_SECTOR_TILES,
+  LandscapeRollClock,
   type LandscapeSectors,
+  landscapeDensity,
   landscapeSectorsOf,
-  MAX_LANDSCAPE_TICKS_PER_FRAME,
+  MAX_LANDSCAPE_ROLLS_PER_FRAME,
   type SceneryObject,
 } from '../src/index.js';
 
@@ -126,9 +131,9 @@ function rolls(...values: number[]): () => number {
 function input(
   entities: readonly EntitySnapshot[],
   random: () => number,
-  extra: Partial<DirectorInput> & { readonly ticks?: number; readonly scenery?: LandscapeSectors } = {},
+  extra: Partial<DirectorInput> & { readonly rolls?: number; readonly scenery?: LandscapeSectors } = {},
 ): DirectorInput {
-  const { ticks = 1, scenery, ...rest } = extra;
+  const { rolls = 1, scenery, ...rest } = extra;
   return {
     events: [],
     snapshot: { tick: 1, entities: [...entities], events: [] },
@@ -138,7 +143,7 @@ function input(
     terrain,
     index,
     bindings: defaultBindings(),
-    landscape: { ticks, random, ...(scenery !== undefined ? { scenery } : {}) },
+    landscape: { rolls, random, ...(scenery !== undefined ? { scenery } : {}) },
     ...rest,
   };
 }
@@ -178,10 +183,12 @@ describe('landscape ambience join', () => {
 
 describe('object ambience', () => {
   const TREES = 40;
-  /** 40 trees at chance 5 in 10,000: the original's 2 % per tick. */
-  const rate = (TREES * BIRD_CHANCE) / LANDSCAPE_CHANCE_RANGE;
+  /** The test screen is wider than the original's, so it rolls at this share of the per-object odds. */
+  const density = landscapeDensity(camera, CANVAS_W, CANVAS_H);
+  /** 40 trees at chance 5 in 10,000: the original's 2 % per tick, at the screen's density. */
+  const rate = ((TREES * BIRD_CHANCE) / LANDSCAPE_CHANCE_RANGE) * density;
 
-  it("fires at the screen's object count times the picked pool's chance per tick", () => {
+  it("fires at the screen's object count times the picked pool's chance per roll", () => {
     expect(
       objectAmbienceShots(input(forest(TREES), rolls(FIRST_POOL, rate - EDGE, FIRST_OBJECT))),
     ).toHaveLength(1);
@@ -190,7 +197,7 @@ describe('object ambience', () => {
     );
     // The quieter pool, a third of the weight, rolls its own lower chance.
     const quietPick = 2 / 3 + EDGE;
-    const quietRate = (TREES * QUIET_BIRD_CHANCE) / LANDSCAPE_CHANCE_RANGE;
+    const quietRate = ((TREES * QUIET_BIRD_CHANCE) / LANDSCAPE_CHANCE_RANGE) * density;
     const [quiet] = objectAmbienceShots(
       input(forest(TREES), rolls(quietPick, quietRate - EDGE, FIRST_OBJECT)),
     );
@@ -231,26 +238,33 @@ describe('object ambience', () => {
     expect(objectAmbienceShots(input(offScreen, rolls(FIRST_POOL, 0, FIRST_OBJECT)))).toEqual([]);
   });
 
-  it('rolls once per elapsed tick, up to its cap, and not on a frame that advanced none', () => {
+  it('rolls once per due roll, up to its cap, and not on a frame with none due', () => {
     const always = rolls(FIRST_POOL, 0, FIRST_OBJECT, FIRST_POOL, 0, FIRST_OBJECT, 0);
-    expect(objectAmbienceShots(input(forest(TREES), always, { ticks: 0 }))).toEqual([]);
+    expect(objectAmbienceShots(input(forest(TREES), always, { rolls: 0 }))).toEqual([]);
     const sure = (): number => 0;
-    expect(objectAmbienceShots(input(forest(TREES), sure, { ticks: 3 }))).toHaveLength(3);
-    expect(objectAmbienceShots(input(forest(TREES), sure, { ticks: 100 }))).toHaveLength(
-      MAX_LANDSCAPE_TICKS_PER_FRAME,
+    expect(objectAmbienceShots(input(forest(TREES), sure, { rolls: 3 }))).toHaveLength(3);
+    expect(objectAmbienceShots(input(forest(TREES), sure, { rolls: 100 }))).toHaveLength(
+      MAX_LANDSCAPE_ROLLS_PER_FRAME,
     );
   });
 
-  it("keeps a 1:1 screen's rate on a zoomed-out view", () => {
+  it("keeps the original screen's rate on a zoomed-out view", () => {
     const half = 0.5;
     const zoomed = { camera: { ...camera, scale: half } };
-    const density = half ** 2;
+    expect(landscapeDensity(zoomed.camera, CANVAS_W, CANVAS_H)).toBeCloseTo(density * half ** 2, 9);
+    const zoomedRate = rate * half ** 2;
     expect(
-      objectAmbienceShots(input(forest(TREES), rolls(FIRST_POOL, rate * density - EDGE, 0), zoomed)),
+      objectAmbienceShots(input(forest(TREES), rolls(FIRST_POOL, zoomedRate - EDGE, 0), zoomed)),
     ).toHaveLength(1);
     expect(
-      objectAmbienceShots(input(forest(TREES), rolls(FIRST_POOL, rate * density + EDGE, 0), zoomed)),
+      objectAmbienceShots(input(forest(TREES), rolls(FIRST_POOL, zoomedRate + EDGE, 0), zoomed)),
     ).toEqual([]);
+  });
+
+  it("rolls at the per-object odds on a view no larger than the original's screen", () => {
+    expect(landscapeDensity(camera, LANDSCAPE_REFERENCE_SCREEN_W, LANDSCAPE_REFERENCE_SCREEN_H)).toBe(1);
+    const zoomedIn = { ...camera, scale: 2 };
+    expect(landscapeDensity(zoomedIn, CANVAS_W, CANVAS_H)).toBe(1);
   });
 
   it('tallies again for another sound index over the same objects', () => {
@@ -264,7 +278,7 @@ describe('object ambience', () => {
       [],
       [{ index: YEW_RECORD, editGroups: ['misc_sirens'] }],
     );
-    const landscape = { ticks: 1, random: rolls(FIRST_POOL, 0, FIRST_OBJECT) };
+    const landscape = { rolls: 1, random: rolls(FIRST_POOL, 0, FIRST_OBJECT) };
     const [siren] = objectAmbienceShots({ ...framing, index: sirensInYews, landscape });
     expect(siren?.files).toEqual(['ambient/sirens_01.wav']);
   });
@@ -279,6 +293,38 @@ describe('object ambience', () => {
     const [siren] = objectAmbienceShots(input([], rolls(FIRST_POOL, 0, FIRST_OBJECT), { scenery }));
     expect(siren?.files).toEqual(['ambient/sirens_01.wav']);
     expect(siren?.pan).toBeGreaterThan(0);
+  });
+});
+
+describe('object ambience rate', () => {
+  it('rolls at the tick rate on the audio clock, whatever the frame rate', () => {
+    const SLOW_FPS = 30;
+    const FAST_FPS = 144;
+    for (const fps of [SLOW_FPS, FAST_FPS]) {
+      const clock = new LandscapeRollClock();
+      let due = 0;
+      for (let frame = 0; frame < fps; frame++) due += clock.advance(1 / fps);
+      expect(due).toBe(TICKS_PER_SECOND);
+    }
+    const stalled = new LandscapeRollClock();
+    expect(stalled.advance(0)).toBe(0);
+    expect(stalled.advance(1)).toBe(MAX_LANDSCAPE_ROLLS_PER_FRAME);
+  });
+
+  it('rolls a view larger than the original screen at the odds that keep its rate per screen', () => {
+    const SIZES = [
+      [1920, 1080],
+      [2560, 1440],
+      [3840, 2160],
+    ] as const;
+    const ZOOMS = [1, 0.5];
+    const reference = LANDSCAPE_REFERENCE_SCREEN_W * LANDSCAPE_REFERENCE_SCREEN_H;
+    for (const [w, h] of SIZES) {
+      for (const scale of ZOOMS) {
+        const viewedArea = (w / scale) * (h / scale);
+        expect(landscapeDensity({ ...camera, scale }, w, h) * viewedArea).toBeCloseTo(reference, 6);
+      }
+    }
   });
 });
 

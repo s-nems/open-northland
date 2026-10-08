@@ -1,4 +1,5 @@
-import { cameraViewport, type TileRange } from '@open-northland/render/data';
+import { type Camera, cameraViewport, type TileRange } from '@open-northland/render/data';
+import { TICKS_PER_SECOND } from '@open-northland/sim';
 import { type LandscapeAmbience, type LandscapeSoundPool, poolGain, type SoundIndex } from '../bank.js';
 import {
   LANDSCAPE_SECTOR_TILES,
@@ -14,8 +15,10 @@ import { onScreenTiles } from './ambient.js';
 
 /**
  * Landscape objects on screen → their ambience one-shots: birds in a tree, a branch cracking under
- * snow, a stone settling. Each game tick every ambience the screen shows rolls once, at the original's
- * rate, and sounds at one of its objects picked at random, so a bird sings from a tree on screen.
+ * snow, a stone settling. At the original's tick rate on the audio clock, every ambience the screen
+ * shows rolls once at the original's odds and sounds at one of its objects picked at random, so a bird
+ * sings from a tree on screen. Real time rather than game ticks: a fast-forward does not multiply the
+ * birds.
  */
 
 /**
@@ -26,9 +29,29 @@ import { onScreenTiles } from './ambient.js';
  */
 export const LANDSCAPE_CHANCE_RANGE = 10_000;
 
-/** Game ticks one frame rolls the object ambience for at most; a longer frame drops the surplus
- *  rather than bursting it. */
-export const MAX_LANDSCAPE_TICKS_PER_FRAME = 5;
+/** Rolls one frame makes at most; a longer frame drops the surplus rather than bursting it. */
+export const MAX_LANDSCAPE_ROLLS_PER_FRAME = 5;
+
+/** The original's screen in pre-camera pixels, the area its per-object odds were heard over.
+ *  Approximation: its common 1024x768 mode. */
+export const LANDSCAPE_REFERENCE_SCREEN_W = 1024;
+export const LANDSCAPE_REFERENCE_SCREEN_H = 768;
+
+/**
+ * Turns audio-clock seconds into whole rolls at the original's {@link TICKS_PER_SECOND}, carrying the
+ * fraction, so the rate per second holds at any frame rate and game speed.
+ */
+export class LandscapeRollClock {
+  private carry = 0;
+
+  /** The rolls `seconds` of running audio make, at most {@link MAX_LANDSCAPE_ROLLS_PER_FRAME}. */
+  advance(seconds: number): number {
+    const due = this.carry + Math.max(0, seconds) * TICKS_PER_SECOND;
+    const rolls = Math.floor(due);
+    this.carry = due - rolls;
+    return Math.min(rolls, MAX_LANDSCAPE_ROLLS_PER_FRAME);
+  }
+}
 
 const SFX_LANE: Lane = { kind: 'sfx' };
 
@@ -122,18 +145,21 @@ function pickObject(tally: AmbienceTally, roll: number): TilePoint | undefined {
 }
 
 /**
- * The share of the original's rate a zoomed-out screen rolls at. The original has no zoom, so its rate
- * is a 1:1 screen's: a wider view keeps that density instead of multiplying the one-shots by the area
- * it adds. Approximation.
+ * The share of the original's per-object odds a screen rolls at. A view wider than the original's
+ * screen, by a larger window or a zoom-out, keeps that screen's rate instead of multiplying the
+ * one-shots by the area it adds, so a forest sounds alike at any window size; a smaller view keeps the
+ * per-object odds. Approximation.
  */
-function zoomDensity(scale: number | undefined): number {
-  const s = scale === undefined || !(scale > 0) ? NEAR_ZOOM_SCALE : scale;
-  return Math.min(1, s / NEAR_ZOOM_SCALE) ** 2;
+export function landscapeDensity(camera: Camera, canvasW: number, canvasH: number): number {
+  const scale = camera.scale > 0 ? camera.scale : NEAR_ZOOM_SCALE;
+  const area = (canvasW / scale) * (canvasH / scale);
+  if (!(area > 0)) return 0;
+  return Math.min(1, (LANDSCAPE_REFERENCE_SCREEN_W * LANDSCAPE_REFERENCE_SCREEN_H) / area);
 }
 
 /**
- * This frame's landscape ambience one-shots: per elapsed tick and per ambience on screen, one weighted
- * pool pick and one roll against the screen's object count times the pool's chance. A hit sounds at a
+ * This frame's landscape ambience one-shots: per due roll and per ambience on screen, one weighted pool
+ * pick and one roll against the screen's object count times the pool's chance. A hit sounds at a
  * random object of the ambience, at the pool's authored volume and the object's screen position; one on
  * ground the viewer never explored stays silent, as the beds do.
  */
@@ -141,8 +167,8 @@ export function objectAmbienceShots(input: DirectorInput): OneShot[] {
   const { landscape, terrain, camera, canvasW, canvasH, index, exploredTile, snapshot } = input;
   if (landscape === undefined || terrain === undefined || index.landscapeAmbienceByRecord.size === 0)
     return [];
-  const ticks = Math.min(landscape.ticks, MAX_LANDSCAPE_TICKS_PER_FRAME);
-  if (ticks <= 0) return [];
+  const rolls = Math.min(landscape.rolls, MAX_LANDSCAPE_ROLLS_PER_FRAME);
+  if (rolls <= 0) return [];
   const tiles = onScreenTiles(terrain, cameraViewport(camera, canvasW, canvasH));
   if (tiles === null) return [];
   const band = sectorBand(tiles);
@@ -165,10 +191,10 @@ export function objectAmbienceShots(input: DirectorInput): OneShot[] {
     };
     tallies.set(live, tally);
   }
-  const density = zoomDensity(camera.scale);
+  const density = landscapeDensity(camera, canvasW, canvasH);
   const { random } = landscape;
   const shots: OneShot[] = [];
-  for (let t = 0; t < ticks; t++) {
+  for (let roll = 0; roll < rolls; roll++) {
     for (const group of tally.groups) {
       const pool = pickPool(group.ambience, random());
       if (pool === undefined) continue;
