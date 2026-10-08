@@ -80,6 +80,12 @@ describe('shotLayer', () => {
     expect(shotLayer(shot({ layer: 'impact' }))).toBeNull();
   });
 
+  it('keeps a shot off the world bus out of the shot layers', () => {
+    expect(shotLayer(shot({ lane: { kind: 'ambience' } }))).toBeNull();
+    expect(shotLayer(shot({ bus: 'ambient' }))).toBeNull();
+    expect(shotLayer(shot({ bus: 'responses', layer: 'impact' }))).toBeNull();
+  });
+
   it('puts a world shot in detail unless it names its layer', () => {
     expect(shotLayer(shot({ lane: { kind: 'sfx' } }))).toBe('detail');
     expect(shotLayer(shot({ lane: { kind: 'voice' } }))).toBe('detail');
