@@ -437,16 +437,21 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     orders.append(row);
   }
 
-  /** The sentence on the men a switch would still dress, with the soldiers among them and whether the
-   *  stock covers them; empty when nobody lacks it. */
-  const shortageText = (shortage: AssistantShortage, lacking: number, amount: number): string => {
+  /** The sentence on the men the row's choice would still dress (`lacking`, the tag's figure), the
+   *  soldiers among them while everyone is served, and whether the stock covers them; empty at zero. */
+  const shortageText = (
+    shortage: AssistantShortage,
+    lacking: number,
+    soldiersAlone: boolean,
+    amount: number,
+  ): string => {
     if (lacking === 0) return '';
     const soldiers =
-      shortage.soldiersLacking > 0
+      !soldiersAlone && shortage.soldiersLacking > 0
         ? ` ${formatMessage(pluralForm(shortage.soldiersLacking, copy.shortage.soldiers, locale), { count: shortage.soldiersLacking })}`
         : '';
     const covered = amount < lacking ? copy.shortage.short : copy.shortage.covered;
-    return `${formatMessage(copy.shortage.lacking, { count: shortage.lacking })}${soldiers}. ${covered}`;
+    return `${formatMessage(copy.shortage.lacking, { count: lacking })}${soldiers}. ${covered}`;
   };
   /** A give row: the first good's icon with the stock of every good the switch grants and the men its
    *  current choice would still dress (nobody while it is off, the soldiers alone under that choice),
@@ -456,15 +461,16 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     const { art, count, lack } = goodArt(goods[0], ROW_ICON_PX);
     const audience = AUDIENCE_SWITCH_IDS.includes(id);
     const gear = audience ? audienceRow(id, art) : switchRow(id, art);
+    const soldiersAlone = (): boolean => audience && audienceNow(id) === 'soldiers';
     const lackingNow = (shortage: AssistantShortage): number => {
       if (!gear.on()) return 0;
-      return audience && audienceNow(id) === 'soldiers' ? shortage.soldiersLacking : shortage.lacking;
+      return soldiersAlone() ? shortage.soldiersLacking : shortage.lacking;
     };
     updates.push(() => {
       const shortage = shortages[id];
       const lacking = lackingNow(shortage);
       const amount = stockOfAll(goods);
-      showStock(count, amount, gear.on(), shortageText(shortage, lacking, amount));
+      showStock(count, amount, gear.on(), shortageText(shortage, lacking, soldiersAlone(), amount));
       write(lack, String(lacking));
       setHidden(lack, lacking === 0);
     });

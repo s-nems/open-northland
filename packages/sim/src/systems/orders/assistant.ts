@@ -41,7 +41,7 @@ export function revokeAssistantGrants(world: World, player: number, goods: reado
   for (const good of goods) setListed(world, AssistantGrants, player, good, false);
 }
 
-/** Keep one wearable good for `player`'s fighters alone, or lift the limit - see the command doc. The
+/** Keep one carried good for `player`'s fighters alone, or lift the limit - see the command doc. The
  *  carrier lifecycle is {@link setListed}'s. */
 export function setAssistantGrantAudience(
   world: World,
@@ -49,7 +49,7 @@ export function setAssistantGrantAudience(
   command: Extract<Command, { kind: 'setAssistantGrantAudience' }>,
 ): void {
   const good = contentIndex(ctx.content).goods.get(command.goodType);
-  if (good?.equip === undefined) return; // only a wearable good can be granted at all
+  if (good?.equip?.category !== 'misc') return; // boots and tools go to everyone the pass dresses
   setListed(world, AssistantSoldierOnlyGrants, command.player, command.goodType, command.soldiersOnly);
 }
 

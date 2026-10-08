@@ -6385,7 +6385,7 @@ body.on-drag-scroll * {
 .on-hud .on-asst-art__lack[hidden] {
   display: none;
 }
-/* An off row fades its art, not the tags: the men still without the good are the reason to switch it on. */
+/* An off row fades its art, not the stock tag; the tag of men without the good hides with the row off. */
 .on-hud .on-asst-row--off > .on-asst-art .on-good__frame,
 .on-hud .on-asst-row--off > .on-asst-art > .on-glyph {
   opacity: 0.55;

@@ -74,7 +74,8 @@ export function setPlayerAi(
 }
 
 /** Lift the recruit weapon vetoes and the soldier outfit (its grants and their soldiers-only limits) the
- *  military module published for `player`. */
+ *  military module published for `player`. Like the vetoes and the published counter kinds, the outfit
+ *  goods are the module's while it runs: a hand that set the same goods before loses them with it. */
 function withdrawMilitaryPublications(world: World, ctx: SystemContext, player: number): void {
   clearAssistantWeaponVetoes(world, player);
   const outfit = soldierOutfitGoods(ctx);

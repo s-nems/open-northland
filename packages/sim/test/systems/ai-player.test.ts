@@ -47,6 +47,7 @@ const HEAL_SMALL = 16;
 const STRENGTH_AMULET = 25;
 const DEFENCE_AMULET = 26;
 const HEAL_BIG = 60;
+const SPEED_AMULET = 28;
 /** Ticks for every module of a seat to take one decision. */
 const DECISION_ROUND_TICKS = AI_DECISION_INTERVAL_TICKS + AI_PLAYER_MODULES.length;
 
@@ -196,7 +197,7 @@ describe('setPlayerAi - the AI seat flag', () => {
     sim.enqueueSetup({
       kind: 'setAssistantGrantAudience',
       player: AI_SEAT,
-      goodType: SHOES,
+      goodType: SPEED_AMULET,
       soldiersOnly: true,
     });
     for (const command of published) sim.enqueueSetup(command);
@@ -204,7 +205,7 @@ describe('setPlayerAi - the AI seat flag', () => {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
     sim.step();
     expect(sim.assistantGrants(AI_SEAT)).toEqual([SHOES]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([SHOES]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([SPEED_AMULET]);
   });
 
   it('switches the flag follow off on disable, and when the workforce module turns off', () => {

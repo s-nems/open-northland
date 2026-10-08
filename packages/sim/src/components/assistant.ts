@@ -49,9 +49,9 @@ export const AssistantGrants = defineComponent<{
 }>('AssistantGrants', 'players');
 
 /**
- * The per-player audience limits of {@link AssistantGrants}: the wearable good types handed to fighters
- * only. Kept apart from the grant list, so a limit outlives a revoked grant and binds the next one; the
- * carrier lives while the list is non-empty, like {@link AssistantGrants}.
+ * The per-player audience limits of {@link AssistantGrants}: the carried (`misc`) good types handed to
+ * fighters only. Kept apart from the grant list, so a limit outlives a revoked grant and binds the next
+ * one; the carrier lives while the list is non-empty, like {@link AssistantGrants}.
  */
 export const AssistantSoldierOnlyGrants = defineComponent<{
   /** The player slot the limits belong to (`[0, MAX_PLAYERS)`). */

@@ -1,7 +1,6 @@
 import type { PlayerCommand } from '@open-northland/sim';
 import {
   type AssistantGrantId,
-  AUDIENCE_SWITCH_IDS,
   DEFAULT_GIVE_SWITCHES,
   GIVE_SWITCH_GOODS,
   GIVE_SWITCH_IDS,
@@ -111,7 +110,7 @@ export function assistantGrantsSeam(
     readSoldiersOnly: () => {
       const seat = player();
       const limited = new Set(seat === null ? [] : host.assistantSoldierOnlyGrants(seat));
-      const entries = AUDIENCE_SWITCH_IDS.map((id) => {
+      const entries = GIVE_SWITCH_IDS.map((id) => {
         const goods = grantGoods.give.get(id);
         return [id, goods !== undefined && goods.every((goodType) => limited.has(goodType))];
       });

@@ -228,11 +228,12 @@ describe('setAssistantGrant - the per-player grant list', () => {
     expect([...sim.world.query(AssistantGrants)]).toHaveLength(0); // the empty carrier is dropped
   });
 
-  it('limits wearables to soldiers in ascending id, independent of the grant, and drops the carrier when empty', () => {
+  it('limits carried goods to soldiers in ascending id, independent of the grant, and drops the carrier when empty', () => {
     const sim = freshSim();
     limitToSoldiers(sim, STRENGTH_AMULET);
     limitToSoldiers(sim, MEAD);
     limitToSoldiers(sim, WOOD); // not wearable: skipped
+    limitToSoldiers(sim, SHOES); // gear has no audience: skipped
     sim.step();
     expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual([MEAD, STRENGTH_AMULET]);
     expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([]); // a limit grants nothing by itself

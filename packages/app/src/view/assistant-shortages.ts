@@ -11,7 +11,8 @@ import { isAdult, isFemale, isSettler, num, ownerPlayerOf, settlerJobType } from
 
 /** How many of a seat's men a give switch would still dress: those in the switch's pool (the working
  *  trades for a tool, every grown man otherwise) with room for its good and none of its goods carried,
- *  and the soldiers among them. */
+ *  and the soldiers among them. Approximation of the assistant's pass, which also leaves a posted guard,
+ *  a man on an errand and a rider where they are: a count that stays above zero may hold such men. */
 export interface AssistantShortage {
   readonly lacking: number;
   readonly soldiersLacking: number;
@@ -144,7 +145,11 @@ interface ContentPools {
   readonly men: readonly number[];
   readonly soldiers: readonly number[];
   readonly trades: readonly number[];
-  readonly slotOfGood: ReadonlyMap<number, FilledSlot>;
+  /** Each give switch's goods the content has, and the slot they fill. */
+  readonly switches: ReadonlyMap<
+    GiveSwitchId,
+    { readonly goods: readonly number[]; readonly slot: FilledSlot }
+  >;
 }
 const poolMemo = new WeakMap<ContentSet, ContentPools>();
 
@@ -152,17 +157,23 @@ function poolsOf(content: ContentSet): ContentPools {
   let pools = poolMemo.get(content);
   if (pools === undefined) {
     const men = content.jobs.map((j) => j.typeId).filter((job) => !systems.isHeroJob(content, job));
-    const slotOfGood = new Map<number, FilledSlot>();
-    for (const good of content.goods) {
-      const category = good.equip?.category;
-      if (category === 'boots' || category === 'tool' || category === 'misc')
-        slotOfGood.set(good.typeId, category);
+    const bySlug = new Map(content.goods.map((good) => [good.id, good]));
+    const switches = new Map<GiveSwitchId, { goods: number[]; slot: FilledSlot }>();
+    for (const id of GIVE_SWITCH_IDS) {
+      const goods = GIVE_SWITCH_GOODS[id].flatMap((slug) => {
+        const good = bySlug.get(slug);
+        return good === undefined ? [] : [good];
+      });
+      // A switch whose goods the content lacks, or that wear no slot the assistant fills, dresses nobody.
+      const category = goods[0]?.equip?.category;
+      if (category !== 'boots' && category !== 'tool' && category !== 'misc') continue;
+      switches.set(id, { goods: goods.map((good) => good.typeId), slot: category });
     }
     pools = {
       men,
       soldiers: men.filter((job) => systems.isFighterJob(content, job)),
       trades: men.filter((job) => systems.toolHelpsJob(content, job)),
-      slotOfGood,
+      switches,
     };
     poolMemo.set(content, pools);
   }
@@ -178,7 +189,6 @@ const sum = (counts: Map<number, number> | undefined, jobs: readonly number[]): 
 export function assistantShortagesOf(
   snapshot: WorldSnapshot,
   content: ContentSet,
-  goodTypeOf: (goodId: string) => number | undefined,
   seat: number | null,
 ): AssistantShortages {
   const tallies = seat === null ? undefined : gearTalliesOf(snapshot).get(seat);
@@ -186,16 +196,12 @@ export function assistantShortagesOf(
   const pools = poolsOf(content);
   const shortages: Partial<Record<GiveSwitchId, AssistantShortage>> = {};
   for (const id of GIVE_SWITCH_IDS) {
-    const goods = GIVE_SWITCH_GOODS[id].flatMap((slug) => {
-      const good = goodTypeOf(slug);
-      return good === undefined ? [] : [good];
-    });
-    // A switch whose goods the content lacks, or wear no slot the assistant fills, dresses nobody.
-    const slot = goods[0] === undefined ? undefined : pools.slotOfGood.get(goods[0]);
-    if (slot === undefined) {
+    const resolved = pools.switches.get(id);
+    if (resolved === undefined) {
       shortages[id] = NO_SHORTAGE;
       continue;
     }
+    const { goods, slot } = resolved;
     const lackingAmong = (jobs: readonly number[]): number => {
       let open = 0;
       for (const job of jobs) open += tallies.open.get(job)?.[slot] ?? 0;

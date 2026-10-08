@@ -50,7 +50,6 @@ function man(
 }
 
 const content = createSceneSim(sandboxScene).content;
-const goodTypeOf = (id: string): number | undefined => content.goods.find((g) => g.id === id)?.typeId;
 
 describe('assistantShortagesOf', () => {
   it('counts the grown men of the seat without the switch goods, and the soldiers among them', () => {
@@ -65,7 +64,7 @@ describe('assistantShortagesOf', () => {
       man(8, JOB_HERO_UNARMED), // keeps the arms its job carries
       man(9, null), // jobless: the ladder never plans him
     ]);
-    const shortages = assistantShortagesOf(snapshot, content, goodTypeOf, HUMAN_PLAYER);
+    const shortages = assistantShortagesOf(snapshot, content, HUMAN_PLAYER);
     expect(shortages.giveBoots).toEqual({ lacking: 3, soldiersLacking: 2 });
     expect(shortages.giveStrengthAmulet).toEqual({ lacking: 3, soldiersLacking: 1 });
     expect(shortages.giveMead).toEqual({ lacking: 4, soldiersLacking: 2 });
@@ -79,7 +78,7 @@ describe('assistantShortagesOf', () => {
       man(4, JOB_SCOUT),
       man(5, JOB_CIVILIST),
     ]);
-    const shortages = assistantShortagesOf(snapshot, content, goodTypeOf, HUMAN_PLAYER);
+    const shortages = assistantShortagesOf(snapshot, content, HUMAN_PLAYER);
     // The iron-tooled collector's slot is taken, so he lacks the wooden tool no more than the iron one.
     expect(shortages.giveIronTools).toEqual({ lacking: 1, soldiersLacking: 0 });
     expect(shortages.giveWoodenTools).toEqual({ lacking: 1, soldiersLacking: 0 });
@@ -95,7 +94,7 @@ describe('assistantShortagesOf', () => {
       }),
       man(3, JOB_COLLECTOR, { misc: [held(GOOD_MEAD), null, null, null] }),
     ]);
-    const shortages = assistantShortagesOf(snapshot, content, goodTypeOf, HUMAN_PLAYER);
+    const shortages = assistantShortagesOf(snapshot, content, HUMAN_PLAYER);
     expect(shortages.giveBoots.lacking).toBe(2);
     expect(shortages.giveHealingPotions.lacking).toBe(2); // the full row needs nothing more
     expect(shortages.giveMead.lacking).toBe(1);
@@ -108,14 +107,14 @@ describe('assistantShortagesOf', () => {
       man(2, JOB_COLLECTOR, { misc: [held(GOOD_MEAD), held(GOOD_POTION_HEAL_BIG), null, null] }),
       man(3, JOB_COLLECTOR),
     ]);
-    const shortages = assistantShortagesOf(snapshot, content, goodTypeOf, HUMAN_PLAYER);
+    const shortages = assistantShortagesOf(snapshot, content, HUMAN_PLAYER);
     expect(shortages.giveHealingPotions.lacking).toBe(1);
     expect(shortages.giveMead.lacking).toBe(2);
   });
 
   it('reads nothing for no seat or a seat with no men', () => {
     const snapshot = snapshotOf([man(1, JOB_COLLECTOR)]);
-    expect(assistantShortagesOf(snapshot, content, goodTypeOf, null)).toBe(NO_SHORTAGES);
-    expect(assistantShortagesOf(snapshot, content, goodTypeOf, RIVAL_PLAYER)).toBe(NO_SHORTAGES);
+    expect(assistantShortagesOf(snapshot, content, null)).toBe(NO_SHORTAGES);
+    expect(assistantShortagesOf(snapshot, content, RIVAL_PLAYER)).toBe(NO_SHORTAGES);
   });
 });
