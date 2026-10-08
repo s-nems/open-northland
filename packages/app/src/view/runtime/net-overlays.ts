@@ -1,7 +1,14 @@
-import type { UiCue } from '@open-northland/audio';
+import type { NotificationCue, UiCue } from '@open-northland/audio';
 import { createNetStatusLine } from '../../hud/dom/network-status-line.js';
 import { navBeamRect } from '../../hud/nav-beam.js';
-import type { NetClockModel, NetPanelSource, NetPlayerRow } from '../../hud/network/model.js';
+import type {
+  NetClockModel,
+  NetLineCue,
+  NetNotice,
+  NetPanelModel,
+  NetPanelSource,
+  NetPlayerRow,
+} from '../../hud/network/model.js';
 import { speedBarLook } from '../../hud/network/text.js';
 import type { ToolPanelController } from '../../hud/tool-panel/index.js';
 import { mountChatPanel } from '../net/chat-panel.js';
@@ -19,6 +26,8 @@ export interface NetOverlaysDeps {
   /** The current tool panel controller; a HUD rescale replaces it. */
   readonly controller: () => NetOverlaysController;
   readonly cue: (cue: UiCue) => void;
+  /** Rings a notification: a chat line arriving, a player coming or going, the world out of sync. */
+  readonly notify?: (notification: NotificationCue) => void;
   /** Wall ms, for how long a chat line lingers. */
   readonly now?: () => number;
 }
@@ -65,6 +74,19 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
   let syncedClock: NetClockModel | null = null;
   let syncedPlayers: readonly NetPlayerRow[] | null = null;
   let syncedController: NetOverlaysController | null = null;
+  // The feed counts its lines from its own mount, as these overlays do.
+  let heardVersion = 0;
+  let heardNotice: NetNotice | null = null;
+  const ringNew = (model: NetPanelModel): void => {
+    const fresh = Math.min(model.chatVersion - heardVersion, model.chat.length);
+    heardVersion = model.chatVersion;
+    const cues = new Set<NetLineCue>();
+    for (const line of fresh > 0 ? model.chat.slice(-fresh) : [])
+      if (line.cue !== undefined) cues.add(line.cue);
+    if (model.notice !== null && model.notice !== heardNotice) cues.add('departure');
+    heardNotice = model.notice;
+    for (const cue of cues) deps.notify?.(cue);
+  };
 
   const followHold = (controller: NetOverlaysController, held: boolean): void => {
     if (!controller.networkOpen()) autoOpened = false;
@@ -99,6 +121,7 @@ export function mountNetOverlays(deps: NetOverlaysDeps): NetOverlays {
         syncedClock = model.clock;
         syncedPlayers = model.players;
         syncedController = controller;
+        ringNew(model);
       }
       chat.setHidden(controller.networkOpen());
       if (model !== null) chat.refresh(model.chat, model.chatVersion);

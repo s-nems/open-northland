@@ -1,7 +1,7 @@
 import type { ClockState } from '@open-northland/net-client';
 import type { RoomView, ServerMessage } from '@open-northland/net-protocol';
 import { diag } from '../../diag/index.js';
-import type { NetPanelModel } from '../../hud/network/model.js';
+import type { NetLineCue, NetPanelModel } from '../../hud/network/model.js';
 import { desyncNotice } from '../../hud/network/text.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { relayReasonText } from '../../net/relay-reason.js';
@@ -45,16 +45,18 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
     built = null;
   };
 
-  const announce = (text: string): void => feed.announce(text);
+  const announce = (text: string, cue?: NetLineCue): void => feed.announce(text, cue);
   const announceRoom = (room: RoomView): void => {
     const before = new Map(previousRoom?.members.map((member) => [member.nick, member.connected]) ?? []);
     for (const member of room.members) {
       const was = before.get(member.nick);
       if (was === undefined) {
-        if (previousRoom !== null) announce(formatMessage(copy.memberJoined, { nick: member.nick }));
+        if (previousRoom !== null)
+          announce(formatMessage(copy.memberJoined, { nick: member.nick }), 'arrival');
       } else if (was !== member.connected) {
         announce(
           formatMessage(member.connected ? copy.memberReturned : copy.memberDropped, { nick: member.nick }),
+          member.connected ? 'arrival' : 'departure',
         );
       }
     }
@@ -88,7 +90,10 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           announceRoom(message.room);
           return;
         case 'kicked':
-          announce(formatMessage(copy.departed[message.cause][message.mode], { nick: message.nick }));
+          announce(
+            formatMessage(copy.departed[message.cause][message.mode], { nick: message.nick }),
+            'departure',
+          );
           return;
         case 'clock': {
           const line = clockAnnouncement(previousClock, message);

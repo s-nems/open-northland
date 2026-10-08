@@ -353,3 +353,29 @@ describe('the relayed HUD model', () => {
     expect(reads).toBe(2);
   });
 });
+
+describe('the chat line cues', () => {
+  it("rings another player's line and players coming and going, never the player's own line", () => {
+    const client = new RelayClientMirror(
+      'Ania',
+      () => undefined,
+      async () => null,
+    );
+    for (const message of [{ kind: 'room', room: ROOM }, clock(null)] as const) client.apply(message);
+    const hud = mountNetHud({ client, readout: () => READOUT, relayUrl: null });
+    const send = (message: ServerMessage): void => {
+      client.apply(message);
+      hud.observe(message);
+    };
+    send({ kind: 'chat', from: 'Ania', text: 'hej', tick: 5 });
+    send({ kind: 'chat', from: 'Edek', text: 'cześć', tick: 6 });
+    send({ kind: 'room', room: { ...ROOM, members: [...ROOM.members, member('Olek', 6)] } });
+    send({ kind: 'kicked', player: 6, nick: 'Olek', mode: 'ai', cause: 'left', tick: 7 });
+    expect(
+      hud
+        .model()
+        .chat.slice(-4)
+        .map((line) => line.cue ?? null),
+    ).toEqual([null, 'chat', 'arrival', 'departure']);
+  });
+});

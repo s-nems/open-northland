@@ -650,3 +650,40 @@ describe('the kick cell', () => {
     window.dispose();
   });
 });
+
+describe('the chat cues', () => {
+  it('rings each new line’s cue once, and the out-of-sync notice, never the lines already shown', () => {
+    const shown: NetChatLine = { ...said(0), cue: 'chat' };
+    const feed = source(panelModel({ chat: [shown], chatVersion: 0 }));
+    const { controller } = fakeController();
+    const rung: string[] = [];
+    const overlays = mountNetOverlays({
+      source: feed,
+      scale: () => 1,
+      controller: () => controller,
+      cue: () => undefined,
+      notify: (notification) => rung.push(notification),
+      now: () => 0,
+    });
+    overlays.refresh();
+    expect(rung).toEqual([]);
+
+    const lines: NetChatLine[] = [
+      shown,
+      { ...said(1), cue: 'chat' },
+      { ...said(2), cue: 'chat' },
+      { from: null, text: 'Olek joined', tick: null, cue: 'arrival' },
+      said(3),
+    ];
+    feed.current = panelModel({ chat: lines, chatVersion: 4 });
+    overlays.refresh();
+    overlays.refresh();
+    expect(rung).toEqual(['chat', 'arrival']);
+
+    feed.current = panelModel({ chat: lines, chatVersion: 4, notice: { text: 'out of sync', tip: '' } });
+    overlays.refresh();
+    overlays.refresh();
+    expect(rung).toEqual(['chat', 'arrival', 'departure']);
+    overlays.dispose();
+  });
+});

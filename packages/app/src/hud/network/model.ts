@@ -108,6 +108,10 @@ export interface NetLinkModel {
   readonly loss: NetLinkLoss | null;
 }
 
+/** The sound a chat line rings as it arrives: another player's line, a player joining or returning, a
+ *  player leaving or kicked. */
+export type NetLineCue = 'chat' | 'arrival' | 'departure';
+
 /** A chat line; `from` null is a line about the session itself. `at` is when it was said, in Unix epoch
  *  ms, and `tick` the game clock then, null before it started: the relay's stamps on a member's line,
  *  this client's on a session line. */
@@ -116,6 +120,9 @@ export interface NetChatLine {
   readonly text: string;
   readonly at: number;
   readonly tick: number | null;
+  /** Absent, the line rings nothing: the player's own line, a line from the history, an announcement
+   *  about the clock. */
+  readonly cue?: NetLineCue;
 }
 
 export interface NetPanelModel {

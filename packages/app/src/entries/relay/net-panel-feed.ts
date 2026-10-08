@@ -11,6 +11,7 @@ import { playerSwatchHex } from '../../catalog/roster.js';
 import type {
   NetChatLine,
   NetClockModel,
+  NetLineCue,
   NetLinkLoss,
   NetLinkModel,
   NetNotice,
@@ -182,8 +183,9 @@ export interface RelayPanelFeed {
   model(): NetPanelModel;
   /** Every relay message after the client acted on it. */
   observe(message: ServerMessage): void;
-  /** Add a line about the session; it takes its place among the members' lines as it arrives. */
-  announce(text: string): void;
+  /** Add a line about the session; it takes its place among the members' lines as it arrives, ringing
+   *  `cue` if given. */
+  announce(text: string, cue?: NetLineCue): void;
   /** The line about this client's own world; null clears it. */
   notice(notice: NetNotice | null): void;
   /** The link as the worker last reported it; `atMs` is when that report arrived, default now. */
@@ -321,9 +323,11 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
         case 'kicked':
           roomDirty = true;
           return;
-        case 'chat':
-          append([{ from: message.from, text: message.text, at: message.at, tick: message.tick }]);
+        case 'chat': {
+          const line = { from: message.from, text: message.text, at: message.at, tick: message.tick };
+          append([message.from === client.nick ? line : { ...line, cue: 'chat' }]);
           return;
+        }
         case 'chatHistory':
           // A return after a drop: the lines said meanwhile follow what was shown.
           append(unseenHistory(chat, message.lines));
@@ -332,8 +336,9 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
           return;
       }
     },
-    announce(text): void {
-      append([{ from: null, text, at: wallClock(), tick: client.tick }]);
+    announce(text, cue): void {
+      const line = { from: null, text, at: wallClock(), tick: client.tick };
+      append([cue === undefined ? line : { ...line, cue }]);
     },
     notice(notice): void {
       worldNotice = notice;

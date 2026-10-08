@@ -1068,6 +1068,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
             scale: hudDom.currentScale,
             controller: () => toolPanel.controller,
             cue: uiCue,
+            notify: (notification) => soundDriver?.notify(notification),
           });
     if (netOverlays !== null) cleanup.push(() => netOverlays.dispose());
     let followLink: (() => void) | null = null;
