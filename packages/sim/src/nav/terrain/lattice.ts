@@ -35,6 +35,9 @@ export abstract class TerrainLattice {
   /** Each node's resolved props, row-major like {@link typeIds}, so the step test reads a slot instead
    *  of looking the node's type up. The terrain is immutable; live walk blocks are an overlay. */
   private readonly flags: Uint8Array;
+  /** Each node's open `HEX_EDGE` bits (`@open-northland/data`), the original's `lmtw` lane; absent, any
+   *  two neighbouring nodes a mover may stand on are joined. */
+  protected readonly groundEdges: Uint8Array | undefined;
 
   constructor(
     width: number,
@@ -43,6 +46,7 @@ export abstract class TerrainLattice {
     props: ReadonlyMap<number, LandscapeProps>,
     /** Ground vertex land mask, row-major; absent, every unwalkable node reads as water. */
     readonly landVertices?: readonly boolean[],
+    groundEdges?: ArrayLike<number>,
   ) {
     if (width <= 0 || height <= 0) throw new Error(`terrain dimensions must be positive: ${width}x${height}`);
     if (typeIds.length !== width * height) {
@@ -53,6 +57,10 @@ export abstract class TerrainLattice {
     if (landVertices !== undefined && landVertices.length !== width * height) {
       throw new Error(`land vertex mask has ${landVertices.length} nodes, expected ${width * height}`);
     }
+    if (groundEdges !== undefined && groundEdges.length !== width * height) {
+      throw new Error(`ground edge lane has ${groundEdges.length} nodes, expected ${width * height}`);
+    }
+    this.groundEdges = groundEdges === undefined ? undefined : Uint8Array.from(groundEdges);
     this.width = width;
     this.height = height;
     this.typeIds = typeIds;

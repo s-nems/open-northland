@@ -1,0 +1,81 @@
+import { describe, expect, it } from 'vitest';
+import {
+  GROUND_LAND,
+  GROUND_VOID,
+  GROUND_WATER,
+  type GroundKind,
+  groundLattice,
+  HEX_EDGE,
+  HEX_EDGE_COUNT,
+} from '../src/index.js';
+
+/** Cells enough that the middle of the map clears the frame no edge enters. */
+const WIDTH = 8;
+const HEIGHT = 6;
+const ALL_EDGES = (1 << HEX_EDGE_COUNT) - 1;
+
+function lattice(paint: (a: GroundKind[], b: GroundKind[]) => void = () => {}) {
+  const a = new Array<GroundKind>(WIDTH * HEIGHT).fill(GROUND_LAND);
+  const b = new Array<GroundKind>(WIDTH * HEIGHT).fill(GROUND_LAND);
+  paint(a, b);
+  const { kinds, edges } = groundLattice(WIDTH, HEIGHT, a, b);
+  const node = (hx: number, hy: number) => hy * WIDTH * 2 + hx;
+  return {
+    kind: (hx: number, hy: number) => kinds[node(hx, hy)],
+    edges: (hx: number, hy: number) => edges[node(hx, hy)],
+    opens: (hx: number, hy: number, edge: number) => ((edges[node(hx, hy)] ?? 0) & (1 << edge)) !== 0,
+  };
+}
+
+/** Cell (3, 2): an even cell row, so its centre node is (6, 4). */
+const CELL = 2 * WIDTH + 3;
+
+describe('groundLattice', () => {
+  it('opens all six edges of a node inside unbroken land', () => {
+    expect(lattice().edges(8, 6)).toBe(ALL_EDGES);
+  });
+
+  it('closes an edge that runs only through a void triangle, though land wins both its nodes', () => {
+    // Triangle A's midpoints (5,5) and (6,5) also touch the meadow beside it, so both walk; the
+    // edge between them lies inside the rock alone.
+    const g = lattice((a) => {
+      a[CELL] = GROUND_VOID;
+    });
+    expect(g.kind(5, 5)).toBe(GROUND_LAND);
+    expect(g.kind(6, 5)).toBe(GROUND_LAND);
+    expect(g.opens(5, 5, HEX_EDGE.EAST)).toBe(false);
+    expect(g.opens(6, 5, HEX_EDGE.WEST)).toBe(false);
+    // The rock's side towards cell (2, 2) is shared with that cell's meadow triangle B.
+    expect(g.opens(6, 4, HEX_EDGE.SOUTH_WEST)).toBe(true);
+    expect(g.opens(5, 5, HEX_EDGE.NORTH_EAST)).toBe(true);
+  });
+
+  it('joins sea to sea and never to the shore', () => {
+    const g = lattice((a, b) => {
+      a[CELL] = GROUND_WATER;
+      b[CELL] = GROUND_WATER;
+      a[CELL + 1] = GROUND_WATER;
+      b[CELL + 1] = GROUND_WATER;
+    });
+    // The two cells' shared side: (7,5) is touched by water alone, the corner (8,4) by meadow too.
+    expect(g.kind(7, 5)).toBe(GROUND_WATER);
+    expect(g.kind(6, 5)).toBe(GROUND_WATER);
+    expect(g.kind(8, 4)).toBe(GROUND_LAND);
+    expect(g.opens(6, 5, HEX_EDGE.EAST)).toBe(true);
+    expect(g.opens(7, 5, HEX_EDGE.NORTH_EAST)).toBe(false);
+  });
+
+  it('opens no edge into the map frame, four rows deep and three to five columns wide by row', () => {
+    const g = lattice();
+    expect(g.edges(6, 3)).toBe(0);
+    expect(g.edges(6, 4)).not.toBe(0);
+    expect(g.edges(3, 4)).toBe(0); // row 4 % 4 = 0: four columns
+    expect(g.edges(4, 4)).not.toBe(0);
+    expect(g.edges(2, 5)).toBe(0); // row 5: three columns
+    expect(g.edges(3, 5)).not.toBe(0);
+    expect(g.edges(4, 6)).toBe(0); // row 6: five columns
+    expect(g.edges(5, 6)).not.toBe(0);
+    expect(g.edges(2 * WIDTH - 6, 5)).not.toBe(0); // row 5 on the right: five columns
+    expect(g.edges(2 * WIDTH - 5, 5)).toBe(0);
+  });
+});

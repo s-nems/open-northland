@@ -6,9 +6,9 @@
 Byte-level evidence from the `lmwb` replay (docs/formats/MAPDAT.md) implies the original's world
 geometry: block-area offsets are authored in the even-row frame and odd-row anchors shift odd-`dy`
 rows one node +x, which is only geometrically consistent if odd micro-rows sit half a node
-(a quarter cell, 17 px) further +x than even rows. Two community sources suggest the probe: the
-CulturesNation `lmtw` derivation uses a parity-dependent 6-neighbour table (a staggered/hex micro
-lattice), and cultures2-gl draws `emla` landscape sprites at `x + (y % 2) * 0.5` half-cells.
+(a quarter cell, 17 px) further +x than even rows. The `lmtw` replay, byte-identical on the owned
+maps, needs the same staggered 6-neighbour table, and cultures2-gl draws `emla` landscape sprites at
+`x + (y % 2) * 0.5` half-cells.
 
 Our model is rectangular: `halfCellToScreen` maps node `(hx, hy)` to `x = hx * TILE_HALF_W` with no
 row-parity term, and `positionOfNode` subtracts `staggerShift` so a standing entity on an odd-row
@@ -28,8 +28,10 @@ footprints, placements) is unaffected - the parity shift fix already aligns bloc
   positions consistent; the second is render-local but leaves the sim's world metric a
   parity-blind approximation.
 - Movement edge lengths (`world-metric.ts`) inherit the same question (an N/S half-row step is
-  physically diagonal on a staggered lattice); treat as a separate follow-up if confirmed - the
-  original's own 6+2-direction model needs its own investigation before repricing edges.
+  physically diagonal on a staggered lattice); treat as a separate follow-up if confirmed. The
+  original's route search walks the six staggered edges of `lmtw` (`docs/formats/MAPDAT.md`); ours
+  steps 8 directions over those edges (`nav/terrain/edges.ts`), so the same ground connects and only
+  route shapes and step lengths differ.
 
 ## Verify
 

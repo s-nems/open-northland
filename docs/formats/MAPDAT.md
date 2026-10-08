@@ -129,7 +129,7 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | --- | --- | --- |
 | `lmpa`, `lmpb` | derivable | pattern `LogicType` per triangle (water = 1, void = {0, 5, 6}, land = rest) |
 | `laco` | derivable | continent table: a `u32` count, then 16-byte records `{ u32 type, u16 x, u16 y, i32 size, u32 }` with type 1 land, 2 water and record 0 type 0; on `Mroczny_Swiat` the land sizes equal their `lmco` node counts. `lmco` node ids are imported |
-| `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions (derivation verified below) |
+| `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions; replayed by `groundLattice` (derivation verified below) |
 | `lmwb`, `lmbb` | derivable | landscape walk/build blocking stamped from `emla` block areas (derivation verified below) |
 | `lmro`, `lmsb`, `lmhf`, `emm1` | derivable | road presence, walk-sector point marks, zeros, road-overlay visibility |
 | `lmao` | derivable | attach-point vector per node, encoded `(-dx - (dy << 8)) & 0xffff` |
@@ -174,8 +174,11 @@ which settles how the original classes ground under a mixed cell. Each of the `2
 takes a type from the triangles touching it, by priority `land > void > water`, where land is every
 `trianglepatterntypes` row with `humancanwalkon 1`, water is the `iswater` row, and void is the rest
 plus the row-less `border` type. An edge between two nodes carries its direction bit when both nodes
-and the triangles tangent to that edge resolve to the same type. The outer band is unconditionally
-impassable: 4 node rows top and bottom, and 3 to 5 node columns per side depending on `y % 4`.
+and the best of the triangles the edge lies in resolve to the same type other than void. Bit `d` is
+direction `d` of E, SE, SW, W, NW, NE, on a lattice whose odd rows sit half a node to +x: from an even
+row SE is `(x, y + 1)` and SW `(x - 1, y + 1)`, from an odd row `(x + 1, y + 1)` and `(x, y + 1)`. The
+outer band is unconditionally impassable: 4 node rows top and bottom, and 3 to 5 node columns per side
+depending on `y % 4`.
 
 So one blocking triangle never seals its cell: every node the cell's walkable triangle touches is a
 land node. The 124 decoded maps paint 58738 cells with exactly one walkable triangle (43664 mixed
@@ -184,21 +187,27 @@ the frame band), so shoreline and void margins drawn out of them walk in the ori
 
 ### How `content/collision.ts` uses it
 
-The join applies the node rule's types: a node walks when a walkable triangle touches it, and is sea
-for ships only when every triangle touching it is water. Checked against the original's continent table
-(`laco` type per `lmco` id) over the interior nodes of 123 owned maps, 16.5 million nodes, the land
-and water split differs on 60 nodes; the cell-resolution join it replaced differed on 193,569. Two
-named gaps remain:
+`groundLattice` (`packages/data`) replays the rule from each cell's two triangle kinds, and over the
+123 owned maps that carry the lane its edge masks equal `lmtw` byte for byte. Original behavior: the
+route search expands a node's six edges, each only where its bit is set, so this lane is the walk and
+sail graph itself. The join hands the masks to the sim, where every step needs them
+(`packages/sim/src/nav/terrain/edges.ts`): an E/W or N/S step is one edge and a diagonal two. Labelling
+the graphs with objects stripped, our land components equal the components of `lmtw` on every one of
+those maps; at sea 12 pockets of one or two nodes, joined only along the edge axis our step set lacks,
+stand apart.
 
-- Building and sowing keep the cell rule, the worse of the cell's two triangles over its 2×2 node
-  block, since no per-node build rule is verified. A node that walks inside a cell that cannot be
-  walked is margin: it walks and builds nothing.
-- The unconditional outer band is not implemented.
-- The edge rule is not replayed: the pathfinder steps between any two neighbouring walkable nodes,
-  where the original also needs the triangles tangent to the edge to agree. Labelling our land
-  components with objects stripped, 5 of them over the 123 maps join two or more original
-  continents of at least 20 nodes, the largest an 1821-node continent on `wybrzeze_czarow_sub4`;
-  whether those are painted crossings or welds is not checked.
+A node walks when a walkable triangle touches it and an edge leaves it, so the frame is closed, and it
+is sea for ships when every triangle touching it is water. Against the original's continent table
+(`laco` type per `lmco` id) over the interior nodes, 16.5 million, the land and water split differs on
+60 nodes; the cell-resolution join this replaced differed on 193,569. Building and sowing keep the
+cell rule, the worse of the cell's two triangles over its 2×2 node block, since no per-node build rule
+is verified. A node that walks inside a cell that cannot be walked is margin: it walks and builds
+nothing.
+
+`lmco` joins nodes of one kind without the edge rule or the frame, so a continent may hold ground the
+walk graph splits. It is also saved stale on some maps: on `Oczy_Weza`, `Mroczny_Swiat` and
+`FLAGOMANIA_1.0_01` its node counts disagree with the `laco` sizes, and on `KRAINA TYSISCA JEZIOR 1.1`
+an `lmtw` edge joins two lakes it numbers apart.
 
 ## Tests
 

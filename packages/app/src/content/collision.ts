@@ -2,6 +2,12 @@ import {
   type FootprintCell,
   footprintCellDx,
   fullStateBlockAreaCells,
+  GROUND_LAND,
+  GROUND_VOID,
+  GROUND_WATER,
+  type GroundKind,
+  type GroundLattice,
+  groundLattice,
   type LandscapeBlockArea,
   type TerrainMapFile,
 } from '@open-northland/data';
@@ -27,7 +33,8 @@ import { forEachPlacement } from './map-placements.js';
  *
  * The ground also yields the land vertex mask: a node every touching triangle of which is an `isWater`
  * row is sea, everything else is land, so an impassable rock face or the border stays land and only the
- * sea is water to a ship (`TerrainGraph.isWater`) and to a land-only vertex tint.
+ * sea is water to a ship (`TerrainGraph.isWater`) and to a land-only vertex tint. It yields the edges a
+ * walker or a ship may step along as well, the original's `lmtw` lane replayed.
  *
  * Missing lanes degrade, so a map with neither ground nor objects comes back all-open.
  */
@@ -59,6 +66,8 @@ export interface CollisionIrView {
 
 /** The ground logicType of the map frame and void filler, the one with no `trianglepatterntypes` row. */
 const BORDER_LOGIC_TYPE = 0;
+/** A node's edge mask with no direction open. */
+const NO_EDGES = 0;
 
 /** logicType → terrain class from the extracted `trianglepatterntypes.cif` flags. */
 function groundClassTable(ir: CollisionIrView): ReadonlyMap<number, number> {
@@ -107,7 +116,7 @@ function objectFootprints(
 
 /**
  * The two triangle classes joined into the cell's class: it walks unless both triangles refuse, and
- * builds or sows only on the worse of the two. Walking is then settled per node by {@link groundKinds};
+ * builds or sows only on the worse of the two. Walking is then settled per node by {@link mapGroundLattice};
  * building and sowing stay at cell resolution, where the original's per-node rule is not verified.
  */
 function joinTriangleClasses(a: number, b: number): number {
@@ -118,43 +127,18 @@ function joinTriangleClasses(a: number, b: number): number {
   return TERRAIN_OPEN;
 }
 
-/** A lattice node's ground by the triangles touching it, in the original's priority land > void > water. */
-const GROUND_WATER = 0;
-const GROUND_VOID = 1;
-const GROUND_LAND = 2;
-
-/** The lattice nodes a cell's triangles touch, relative to its centre node: the three corners and the
- *  three edge midpoints of each (`packages/render/src/data/terrain/tessellation.ts` owns the mesh). */
-const TRIANGLE_A_NODES: readonly (readonly [number, number])[] = [
-  [0, 0],
-  [1, 2],
-  [-1, 2],
-  [0, 1],
-  [-1, 1],
-  [0, 2],
-];
-const TRIANGLE_B_NODES: readonly (readonly [number, number])[] = [
-  [0, 0],
-  [2, 0],
-  [1, 2],
-  [1, 0],
-  [0, 1],
-  [1, 1],
-];
-
 /**
- * Each node's ground by the original's verified rule (`docs/formats/MAPDAT.md`, "Verified `lmtw`
- * derivation"): the best kind among the triangles touching it, land over void over water. Land is a
- * row with `humancanwalkon`, water the `iswater` row, void the rest and the row-less border; a pattern
- * the content does not resolve counts as land, as the ground classes treat it. A node no triangle
- * touches is void. Undefined without a ground lane.
+ * The map's ground lattice by the original's rule (`groundLattice`): each triangle's kind from its
+ * pattern, land a row with `humancanwalkon`, water the `iswater` row, void the rest and the row-less
+ * border; a pattern the content does not resolve counts as land, as the ground classes treat it.
+ * Undefined without a ground lane.
  */
-function groundKinds(map: TerrainMapFile, ir: CollisionIrView): Uint8Array | undefined {
+function mapGroundLattice(map: TerrainMapFile, ir: CollisionIrView): GroundLattice | undefined {
   const ground = map.ground;
   if (ground === undefined) return undefined;
   const rows = new Map((ir.trianglePatternTypes ?? []).map((t) => [t.type, t]));
   const logicTypeByName = new Map((ir.gfxPatterns ?? []).map((p) => [p.editName, p.logicType]));
-  const kindOfPattern = ground.patterns.map((name) => {
+  const kindOfPattern = ground.patterns.map((name): GroundKind => {
     const logicType = logicTypeByName.get(name);
     if (logicType === undefined) return GROUND_LAND;
     if (logicType === BORDER_LOGIC_TYPE) return GROUND_VOID;
@@ -162,35 +146,15 @@ function groundKinds(map: TerrainMapFile, ir: CollisionIrView): Uint8Array | und
     if (row === undefined || row.humanCanWalkOn === true) return GROUND_LAND;
     return row.isWater === true ? GROUND_WATER : GROUND_VOID;
   });
-  const nodeW = map.width * 2;
-  const nodeH = map.height * 2;
-  const kinds = new Uint8Array(nodeW * nodeH).fill(GROUND_VOID);
-  const touched = new Uint8Array(nodeW * nodeH);
-  const touch = (hx: number, hy: number, kind: number): void => {
-    if (hx < 0 || hy < 0 || hx >= nodeW || hy >= nodeH) return;
-    const i = hy * nodeW + hx;
-    if (touched[i] === 0 || kind > (kinds[i] ?? GROUND_VOID)) kinds[i] = kind;
-    touched[i] = 1;
-  };
-  for (let row = 0; row < map.height; row++) {
-    for (let col = 0; col < map.width; col++) {
-      const cell = row * map.width + col;
-      const a = kindOfPattern[ground.a[cell] ?? -1] ?? GROUND_LAND;
-      const b = kindOfPattern[ground.b[cell] ?? -1] ?? GROUND_LAND;
-      const hx = 2 * col + (row & 1);
-      const hy = 2 * row;
-      for (const [dx, dy] of TRIANGLE_A_NODES) touch(hx + dx, hy + dy, a);
-      for (const [dx, dy] of TRIANGLE_B_NODES) touch(hx + dx, hy + dy, b);
-    }
-  }
-  return kinds;
+  const kindOf = (dictIndex: number): GroundKind => kindOfPattern[dictIndex] ?? GROUND_LAND;
+  return groundLattice(map.width, map.height, ground.a.map(kindOf), ground.b.map(kindOf));
 }
 
 /**
  * Resolve a decoded map's collision grid at half-cell resolution (the sim's `2W×2H` navigation lattice).
- * Ground walks and floods per node ({@link groundKinds}); its build and sow classes are per-cell in the
- * source (`empa`/`empb` triangles) and stamp their 2×2 node block. Object block areas are stamped at
- * their native half-cell anchors and offsets.
+ * Ground walks and floods per node and is stepped along the original's edges ({@link mapGroundLattice});
+ * its build and sow classes are per-cell in the source (`empa`/`empb` triangles) and stamp their 2×2
+ * node block. Object block areas are stamped at their native half-cell anchors and offsets.
  */
 export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView): TerrainMap {
   const { width, height } = map;
@@ -218,10 +182,11 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
   const nodeW = upsampled.width;
   const nodeH = upsampled.height;
   const typeIds = upsampled.typeIds.slice(); // a mutable copy the ground and object stamps write into
-  const kinds = groundKinds(map, ir);
-  if (kinds !== undefined) {
+  const lattice = mapGroundLattice(map, ir);
+  if (lattice !== undefined) {
     for (let i = 0; i < typeIds.length; i++) {
-      if (kinds[i] !== GROUND_LAND) typeIds[i] = TERRAIN_IMPASSABLE;
+      // Land no edge leaves, the map frame's, is as closed to a walker as rock.
+      if (lattice.kinds[i] !== GROUND_LAND || lattice.edges[i] === NO_EDGES) typeIds[i] = TERRAIN_IMPASSABLE;
       else if (typeIds[i] === TERRAIN_IMPASSABLE) typeIds[i] = TERRAIN_MARGIN; // walks, builds nothing
     }
   }
@@ -249,7 +214,8 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
     });
   }
 
-  const landVertices = kinds === undefined ? undefined : Array.from(kinds, (k) => k !== GROUND_WATER);
+  const landVertices =
+    lattice === undefined ? undefined : Array.from(lattice.kinds, (k) => k !== GROUND_WATER);
   return {
     resolution: 'half-cell',
     width: nodeW,
@@ -258,6 +224,7 @@ export function buildCollisionTerrain(map: TerrainMapFile, ir: CollisionIrView):
     ...(map.elevation !== undefined ? { elevation: map.elevation } : {}),
     ...(map.tints !== undefined ? { tints: map.tints } : {}),
     ...(landVertices === undefined ? {} : { landVertices }),
+    ...(lattice === undefined ? {} : { groundEdges: lattice.edges }),
     ...(map.continents !== undefined ? { waterContinents: map.continents } : {}),
     ...(map.roughness !== undefined ? { roughness: map.roughness } : {}),
     ...(map.fishSwarms !== undefined ? { fishSwarms: map.fishSwarms } : {}),

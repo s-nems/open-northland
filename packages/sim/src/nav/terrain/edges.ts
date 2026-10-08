@@ -1,14 +1,17 @@
 /**
- * Movement keeps the original's 8 directions, one half-cell fine: E/W `(+-1, 0)`, NE/SE/SW/NW
- * `(+-1, +-2)` for the 51 px lattice edge, and N/S `(0, +-1)`. Source basis: `THexagonDirection` in the
- * shipped `Data/GameSourceIncludes/logicdefines.inc`, with NORTH = 6 and SOUTH = 7.
+ * Movement steps 8 directions, one half-cell fine: E/W `(+-1, 0)`, NE/SE/SW/NW `(+-1, +-2)` for the 51 px
+ * lattice edge, and N/S `(0, +-1)`. Source basis for the set: `THexagonDirection` in the shipped
+ * `Data/GameSourceIncludes/logicdefines.inc`, with NORTH = 6 and SOUTH = 7.
  *
- * Approximation: that the original walks this lattice rather than only blocking on it. No readable source
- * covers movement, but the direction set, edge geometry, and half-cell collision are data-pinned and
- * the observed unit packing density matches.
+ * Original behavior: the route search expands only the first six, a node's edges to its six neighbours
+ * on a lattice whose odd rows sit half a node to +x, each gated by the map's per-node edge lane. Here an
+ * E/W or N/S step is one such edge and a diagonal two in one direction, each needing the lane's bit, so
+ * on every owned map our land joins exactly the original's. Approximation: route shapes, which the
+ * missing third edge axis and the double-edge diagonals bend.
  *
  * Neighbours are emitted in a fixed canonical order so traversal is byte-identical across runs.
  */
+import { HEX_EDGE, HEX_EDGE_COUNT } from '@open-northland/data';
 import { type BlockOverlay, NodeMask } from '../block-overlay.js';
 import { DIAGONAL_STEP, HALF_COLUMN, HALF_ROW } from '../world-metric.js';
 
@@ -23,6 +26,15 @@ const NEIGHBOUR_OFFSETS: ReadonlyArray<readonly [dx: number, dy: number]> = [
   [0, 1], // S
   [-1, 0], // W
 ] as const;
+
+/** One bit per original edge direction, as the ground edge lane stores them. */
+const EAST = 1 << HEX_EDGE.EAST;
+const SOUTH_EAST = 1 << HEX_EDGE.SOUTH_EAST;
+const SOUTH_WEST = 1 << HEX_EDGE.SOUTH_WEST;
+const WEST = 1 << HEX_EDGE.WEST;
+const NORTH_WEST = 1 << HEX_EDGE.NORTH_WEST;
+const NORTH_EAST = 1 << HEX_EDGE.NORTH_EAST;
+const ALL_EDGES = (1 << HEX_EDGE_COUNT) - 1;
 
 export abstract class TerrainEdges extends TerrainLattice {
   /** The in-bounds 4-connected neighbours of a node, in canonical order. */
@@ -70,8 +82,8 @@ export abstract class TerrainEdges extends TerrainLattice {
    * The pathfinder's 8-direction edge set from `node`, emitted in the order pinned by the pathfinding
    * goldens: E/W half-column steps, the four diagonals, then N/S half-row steps. A step costs the edge's
    * world length; the pathfinder weighs it by the destination's ground. A step onto a blocked or
-   * unwalkable destination is omitted, and a diagonal additionally needs one of its two midpoint flanks
-   * passable.
+   * unwalkable destination is omitted, and so is one along ground the original's edges do not join; a
+   * diagonal additionally needs one of its two midpoint flanks passable.
    *
    * The allocating form; hot callers use {@link stepsInto}.
    */
@@ -108,31 +120,68 @@ export abstract class TerrainEdges extends TerrainLattice {
     const west = x > 0;
     const row = width;
     const twoRows = 2 * width;
-    if (east && this.open(node + 1, blocked, bytes, traversal)) out.push((node + 1) as NodeId, HALF_COLUMN);
-    if (west && this.open(node - 1, blocked, bytes, traversal)) out.push((node - 1) as NodeId, HALF_COLUMN);
+    const odd = (y & 1) !== 0;
+    const edges = this.edgeMaskAt(node);
+    if (east && (edges & EAST) !== 0 && this.open(node + 1, blocked, bytes, traversal))
+      out.push((node + 1) as NodeId, HALF_COLUMN);
+    if (west && (edges & WEST) !== 0 && this.open(node - 1, blocked, bytes, traversal))
+      out.push((node - 1) as NodeId, HALF_COLUMN);
     const north = y > 0 && this.open(node - row, blocked, bytes, traversal);
     const south = y + 1 < this.height && this.open(node + row, blocked, bytes, traversal);
     const northFar = y >= 2;
     const southFar = y + 2 < this.height;
-    // Both midpoint flanks blocked is a wall joint, not a gap to slip through.
-    if (east && northFar && this.open(node + 1 - twoRows, blocked, bytes, traversal)) {
+    // A diagonal is two original edges in one direction, through the node half a row along it; both
+    // midpoint flanks blocked is a wall joint, not a gap to slip through.
+    if (
+      east &&
+      northFar &&
+      this.twoEdges(edges, odd ? node + 1 - row : node - row, NORTH_EAST) &&
+      this.open(node + 1 - twoRows, blocked, bytes, traversal)
+    ) {
       if (north || this.open(node + 1 - row, blocked, bytes, traversal))
         out.push((node + 1 - twoRows) as NodeId, DIAGONAL_STEP);
     }
-    if (east && southFar && this.open(node + 1 + twoRows, blocked, bytes, traversal)) {
+    if (
+      east &&
+      southFar &&
+      this.twoEdges(edges, odd ? node + 1 + row : node + row, SOUTH_EAST) &&
+      this.open(node + 1 + twoRows, blocked, bytes, traversal)
+    ) {
       if (south || this.open(node + 1 + row, blocked, bytes, traversal))
         out.push((node + 1 + twoRows) as NodeId, DIAGONAL_STEP);
     }
-    if (west && southFar && this.open(node - 1 + twoRows, blocked, bytes, traversal)) {
+    if (
+      west &&
+      southFar &&
+      this.twoEdges(edges, odd ? node + row : node - 1 + row, SOUTH_WEST) &&
+      this.open(node - 1 + twoRows, blocked, bytes, traversal)
+    ) {
       if (south || this.open(node - 1 + row, blocked, bytes, traversal))
         out.push((node - 1 + twoRows) as NodeId, DIAGONAL_STEP);
     }
-    if (west && northFar && this.open(node - 1 - twoRows, blocked, bytes, traversal)) {
+    if (
+      west &&
+      northFar &&
+      this.twoEdges(edges, odd ? node - row : node - 1 - row, NORTH_WEST) &&
+      this.open(node - 1 - twoRows, blocked, bytes, traversal)
+    ) {
       if (north || this.open(node - 1 - row, blocked, bytes, traversal))
         out.push((node - 1 - twoRows) as NodeId, DIAGONAL_STEP);
     }
-    if (north) out.push((node - row) as NodeId, HALF_ROW);
-    if (south) out.push((node + row) as NodeId, HALF_ROW);
+    // The node straight up or down a half row is the original's NE/SE neighbour on an even row and its
+    // NW/SW one on an odd row.
+    if (north && (edges & (odd ? NORTH_WEST : NORTH_EAST)) !== 0) out.push((node - row) as NodeId, HALF_ROW);
+    if (south && (edges & (odd ? SOUTH_WEST : SOUTH_EAST)) !== 0) out.push((node + row) as NodeId, HALF_ROW);
+  }
+
+  /** The open ground edge bits of the in-bounds node id `c`, every bit when the map carries no edges. */
+  private edgeMaskAt(c: number): number {
+    return this.groundEdges === undefined ? ALL_EDGES : (this.groundEdges[c] ?? 0);
+  }
+
+  /** Whether the edge `bit` leaves a node whose mask is `edges` and leaves `middle` as well. */
+  private twoEdges(edges: number, middle: number, bit: number): boolean {
+    return (edges & bit) !== 0 && (this.edgeMaskAt(middle) & bit) !== 0;
   }
 
   /** Whether the in-bounds node id `c` is open to `traversal` and not masked by the dynamic `blocked`

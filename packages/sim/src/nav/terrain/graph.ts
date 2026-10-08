@@ -115,8 +115,9 @@ export class TerrainGraph extends TerrainEdges {
     roughness?: readonly number[],
     readonly elevation?: readonly number[],
     tints?: readonly number[],
+    groundEdges?: ArrayLike<number>,
   ) {
-    super(width, height, typeIds, props, landVertices);
+    super(width, height, typeIds, props, landVertices, groundEdges);
     if (waterContinents !== undefined && waterContinents.length !== this.nodeCount) {
       throw new Error(`water continent lane has ${waterContinents.length} nodes, expected ${this.nodeCount}`);
     }

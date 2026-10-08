@@ -7,6 +7,7 @@ export function mapFingerprint(map: TerrainMap): string {
   if (
     map.landscapes === undefined &&
     map.landVertices === undefined &&
+    map.groundEdges === undefined &&
     map.waterContinents === undefined &&
     map.fishSwarms === undefined &&
     map.tints === undefined
@@ -28,5 +29,8 @@ export function mapFingerprint(map: TerrainMap): string {
   );
   let hash = FNV_OFFSET_BASIS;
   for (let i = 0; i < input.length; i++) hash = fnvMixWord(hash, input.charCodeAt(i));
+  // Mixed raw: a typed array would stringify as an object keyed by index.
+  const edges = map.groundEdges ?? [];
+  for (let i = 0; i < edges.length; i++) hash = fnvMixWord(hash, edges[i] ?? 0);
   return fnvHex(hash);
 }

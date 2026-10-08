@@ -14,6 +14,9 @@ export interface TerrainMap {
   /** Ground vertex land mask, row-major on the half-cell grid; unwalkable nodes off it are the water
    *  ships sail. Omitted, every unwalkable node is water. */
   readonly landVertices?: readonly boolean[];
+  /** Each half-cell node's open `HEX_EDGE` bits (`@open-northland/data` `groundLattice`), the edges a
+   *  step may follow; omitted, every pair of neighbouring standable nodes is joined. */
+  readonly groundEdges?: ArrayLike<number>;
   /** Original `lmco` connectivity id at each half-cell node. */
   readonly waterContinents?: readonly number[];
   /** Original `lmpr` walking roughness at each half-cell node; absent, every node reads
@@ -128,5 +131,6 @@ export function buildTerrainGraph(content: ContentSet, map: TerrainMap): Terrain
     map.roughness,
     map.elevation,
     map.tints,
+    map.groundEdges,
   );
 }

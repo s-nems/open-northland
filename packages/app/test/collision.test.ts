@@ -19,8 +19,32 @@ import { buildCollisionTerrain } from '../src/content/collision.js';
  * lands in its semantic terrain class.
  */
 
-/** A 6×4-cell map (a 12×8 half-cell collision grid): meadow ground except one all-water, one
- *  half-water, one mountain, one snow and one sand cell, plus one placed tree. */
+/** Cells padded around each fixture so it clears the map frame no ground edge enters. The rows are an
+ *  even count, which keeps every cell's row parity and so the stagger. */
+const PAD_COLUMNS = 3;
+const PAD_ROWS = 2;
+/** The node offset of a fixture's own node `(0, 0)` in its padded grid. */
+const PAD_DX = 2 * PAD_COLUMNS;
+const PAD_DY = 2 * PAD_ROWS;
+
+/** A fixture's two triangle lanes inside `PAD_*` cells of the `fill` pattern on every side. */
+function padded(width: number, height: number, a: readonly number[], b: readonly number[], fill: number) {
+  const W = width + 2 * PAD_COLUMNS;
+  const H = height + 2 * PAD_ROWS;
+  const outA = new Array<number>(W * H).fill(fill);
+  const outB = new Array<number>(W * H).fill(fill);
+  for (let row = 0; row < height; row++) {
+    for (let col = 0; col < width; col++) {
+      const to = (row + PAD_ROWS) * W + col + PAD_COLUMNS;
+      outA[to] = a[row * width + col] ?? fill;
+      outB[to] = b[row * width + col] ?? fill;
+    }
+  }
+  return { width: W, height: H, a: outA, b: outB };
+}
+
+/** A 6×4-cell map (a 12×8 half-cell collision grid inside its padding): meadow ground except one
+ *  all-water, one half-water, one mountain, one snow and one sand cell, plus one placed tree. */
 function fixtureMap() {
   const W = 6;
   const H = 4;
@@ -37,16 +61,21 @@ function fixtureMap() {
   b[2 * W + 4] = mountain;
   a[0 * W + 4] = snow;
   a[3 * W + 1] = sand; // walk+build but no biocanplanton - the whole cell must reject the plough
+  const lanes = padded(W, H, a, b, meadow);
   return parseTerrainMap({
-    width: W,
-    height: H,
-    typeIds: new Array(W * H).fill(1), // the raw lane (ignored by the join - 1 = "void" ground)
-    ground: { patterns: ['meadow 01', 'water 01', 'mountain 01', 'snow 01', 'sand 01'], a, b },
+    width: lanes.width,
+    height: lanes.height,
+    typeIds: new Array(lanes.width * lanes.height).fill(1), // the raw lane (ignored by the join - 1 = "void" ground)
+    ground: {
+      patterns: ['meadow 01', 'water 01', 'mountain 01', 'snow 01', 'sand 01'],
+      a: lanes.a,
+      b: lanes.b,
+    },
     objects: {
       types: ['tree deciduous 01'],
       // Two trees on the 2W×2H grid: one anchored on an EVEN half-cell row (4, 6) - stamped
       // verbatim - and one on an ODD row (8, 3), whose odd-dy rows take the parity shift.
-      placements: [4, 6, 0, 8, 3, 0],
+      placements: [4 + PAD_DX, 6 + PAD_DY, 0, 8 + PAD_DX, 3 + PAD_DY, 0],
       levels: [3, 3],
     },
   });
@@ -113,12 +142,18 @@ function bridgeMap() {
     b[row * W + 2] = water;
   }
   a[1 * W + 2] = water; // the crossing cell: water on triangle A, land on B
+  // Padded with water, so the banks join only over the bridge.
+  const lanes = padded(W, H, a, b, water);
   return parseTerrainMap({
-    width: W,
-    height: H,
-    typeIds: new Array(W * H).fill(1),
-    ground: { patterns: ['meadow 01', 'water 01'], a, b },
-    objects: { types: ['bridge stone'], placements: [BRIDGE_HX, CORRIDOR_NODE_Y, 0], levels: [1] },
+    width: lanes.width,
+    height: lanes.height,
+    typeIds: new Array(lanes.width * lanes.height).fill(1),
+    ground: { patterns: ['meadow 01', 'water 01'], a: lanes.a, b: lanes.b },
+    objects: {
+      types: ['bridge stone'],
+      placements: [BRIDGE_HX + PAD_DX, CORRIDOR_NODE_Y + PAD_DY, 0],
+      levels: [1],
+    },
   });
 }
 
@@ -157,10 +192,11 @@ function collisionContent(): ContentSet {
 }
 
 describe('buildCollisionTerrain', () => {
-  // The join returns the sim's HALF-CELL grid (2W×2H nodes); `at` indexes NODE coordinates.
+  // The join returns the sim's HALF-CELL grid (2W×2H nodes); `at` indexes the fixture's NODE
+  // coordinates, inside its padding.
   const grid = buildCollisionTerrain(fixtureMap(), IR);
   const at = (x: number, y: number): number => {
-    const v = grid.typeIds[y * grid.width + x];
+    const v = grid.typeIds[(y + PAD_DY) * grid.width + x + PAD_DX];
     if (v === undefined) throw new Error(`(${x},${y}) out of the fixture grid`);
     return v;
   };
@@ -220,8 +256,9 @@ describe('buildCollisionTerrain', () => {
   it('routes a crossing through the bridge corridor, not over its parapet', () => {
     const g = buildCollisionTerrain(bridgeMap(), BRIDGE_IR);
     const graph = buildTerrainGraph(collisionContent(), g);
-    const componentAt = (x: number, y: number): number => graph.componentOf(graph.nodeAt(x, y));
-    const nodeAt = (x: number, y: number): number => g.typeIds[y * g.width + x] as number;
+    const componentAt = (x: number, y: number): number =>
+      graph.componentOf(graph.nodeAt(x + PAD_DX, y + PAD_DY));
+    const nodeAt = (x: number, y: number): number => g.typeIds[(y + PAD_DY) * g.width + x + PAD_DX] as number;
 
     // The parapet is a walk body like any other object's: settlers do not stand on the rail.
     expect(nodeAt(BRIDGE_HX, PARAPET_NODE_Y)).toBe(TERRAIN_BLOCKED);
@@ -233,7 +270,7 @@ describe('buildCollisionTerrain', () => {
     // unwalkable banks would satisfy the equality vacuously.
     const westBank = componentAt(0, CORRIDOR_NODE_Y);
     expect(westBank).toBeGreaterThanOrEqual(0);
-    expect(componentAt(g.width - 1, CORRIDOR_NODE_Y)).toBe(westBank);
+    expect(componentAt(g.width - 2 * PAD_DX - 1, CORRIDOR_NODE_Y)).toBe(westBank);
   });
 
   it('preserves the decoded cell elevation lane for simulation height rules', () => {

@@ -1,3 +1,4 @@
+import { HEX_EDGE, HEX_EDGE_COUNT } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   buildTerrainGraph,
@@ -199,6 +200,37 @@ describe('steps - the pathfinder half-cell lattice edge set', () => {
     const g = buildTerrainGraph(testContent(), rawGrid(2, 2, [[1, 0]]));
     const steps = g.steps(g.nodeAt(0, 0)).map((s) => g.coordsOf(s.node));
     expect(steps).toEqual([{ x: 0, y: 1 }]);
+  });
+
+  it('steps only along the ground edges the map lane opens', () => {
+    const ALL = (1 << HEX_EDGE_COUNT) - 1;
+    const width = 5;
+    const edges = new Array<number>(width * 7).fill(ALL);
+    const close = (x: number, y: number, edge: number): void => {
+      const i = y * width + x;
+      edges[i] = (edges[i] ?? ALL) & ~(1 << edge);
+    };
+    close(2, 2, HEX_EDGE.EAST);
+    // N/S from an even row are its NE/SE edges, and from an odd row its NW/SW ones.
+    close(2, 2, HEX_EDGE.NORTH_EAST);
+    close(2, 3, HEX_EDGE.SOUTH_WEST);
+    // SE from even (2,2) runs SE to (2,3), then SE again to (3,4): the middle node's edge decides.
+    close(2, 3, HEX_EDGE.SOUTH_EAST);
+    const g = buildTerrainGraph(testContent(), { ...rawGrid(width, 7), groundEdges: edges });
+    const from = (x: number, y: number) => g.steps(g.nodeAt(x, y)).map((s) => g.coordsOf(s.node));
+    expect(from(2, 2)).toEqual([
+      { x: 1, y: 2 }, // W
+      { x: 1, y: 4 }, // SW, through (1,3)
+      { x: 1, y: 0 }, // NW, through (1,1)
+      { x: 2, y: 3 }, // S, the SE edge
+    ]);
+    expect(from(2, 3)).toEqual([
+      { x: 3, y: 3 }, // E
+      { x: 1, y: 3 }, // W
+      { x: 3, y: 1 }, // NE, through (3,2)
+      { x: 1, y: 1 }, // NW, through (2,2)
+      { x: 2, y: 2 }, // N, the NW edge
+    ]);
   });
 
   it('honours the dynamic blocked overlay', () => {
