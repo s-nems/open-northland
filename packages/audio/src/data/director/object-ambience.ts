@@ -53,7 +53,7 @@ export class LandscapeRollClock {
   }
 }
 
-const SFX_LANE: Lane = { kind: 'sfx' };
+const AMBIENCE_LANE: Lane = { kind: 'ambience' };
 
 /** One ambience's objects on screen: how many, and the per-sector lists to pick one from. */
 interface AmbienceTally {
@@ -209,7 +209,7 @@ export function objectAmbienceShots(input: DirectorInput): OneShot[] {
         gain: spatial.gain * poolGain(index, pool.files),
         pan: spatial.pan,
         key: `landscape:${tile.col},${tile.row}`,
-        lane: SFX_LANE,
+        lane: AMBIENCE_LANE,
       });
     }
   }

@@ -94,5 +94,7 @@ export function oneShotBus(shot: OneShot): SoundBus {
       return 'world';
     case 'sfx':
       return 'world';
+    case 'ambience':
+      return 'ambient';
   }
 }

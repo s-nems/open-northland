@@ -12,8 +12,10 @@ import type { AmbientLoop, OneShot } from './types.js';
 
 /** How a group sounds in play, which picks its lane, its guard and its bus. */
 export type AuditionRole =
-  /** A positioned action sound in the sfx lane (work, swings, impacts, object ambience). */
+  /** A positioned action sound in the sfx lane (work, swings, impacts). */
   | { readonly kind: 'world'; readonly layer: ShotLayer }
+  /** A landscape object's sound in the ambience lane (birds, branch cracks, stones). */
+  | { readonly kind: 'ambience' }
   /** An unprompted line in the voice lane (chatter, screams, animal calls): one wav sounds once at a time. */
   | { readonly kind: 'voice' }
   /** An order's answer: in no lane, on the responses bus, and held while any line of its pool still
@@ -24,6 +26,7 @@ export type AuditionRole =
 
 const SFX_LANE = { kind: 'sfx' } as const;
 const VOICE_LANE = { kind: 'voice' } as const;
+const AMBIENCE_LANE = { kind: 'ambience' } as const;
 
 /** One play of `files`, a pool the index holds, as `role` plays in the game at full on-screen gain. */
 export function auditionShot(
@@ -37,6 +40,8 @@ export function auditionShot(
   switch (role.kind) {
     case 'world':
       return { files, gain, pan, key, lane: SFX_LANE, layer: role.layer };
+    case 'ambience':
+      return { files, gain, pan, key, lane: AMBIENCE_LANE };
     case 'voice':
       return { files, gain, pan, key, lane: VOICE_LANE, exclusive: 'wav' };
     case 'answer':

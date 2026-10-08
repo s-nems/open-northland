@@ -7,9 +7,9 @@ import type { OneShot } from './types.js';
  */
 
 /** The arbiter's lanes, and `free` for a shot in none (a GUI cue, an order's answer). */
-export type StatLane = 'jingle' | 'alert' | 'voice' | 'sfx' | 'free';
+export type StatLane = 'jingle' | 'alert' | 'voice' | 'sfx' | 'ambience' | 'free';
 
-export const STAT_LANES: readonly StatLane[] = ['jingle', 'alert', 'voice', 'sfx', 'free'];
+export const STAT_LANES: readonly StatLane[] = ['jingle', 'alert', 'voice', 'sfx', 'ambience', 'free'];
 
 export type LaneCounts = Record<StatLane, number>;
 
@@ -34,7 +34,7 @@ export type SoundStatsView = {
 };
 
 export function zeroLanes(): LaneCounts {
-  return { jingle: 0, alert: 0, voice: 0, sfx: 0, free: 0 };
+  return { jingle: 0, alert: 0, voice: 0, sfx: 0, ambience: 0, free: 0 };
 }
 
 export function emptySoundStats(): SoundStats {

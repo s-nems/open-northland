@@ -207,7 +207,7 @@ describe('object ambience', () => {
     ).toEqual([]);
   });
 
-  it('sounds at a random object of the ambience, at its authored volume, on the world sfx lane', () => {
+  it('sounds at a random object of the ambience, at its authored volume, on the ambience lane', () => {
     const entities = [tree(1, LEFT_COL, ROW), tree(2, RIGHT_COL, ROW)];
     const [left] = objectAmbienceShots(input(entities, rolls(FIRST_POOL, 0, FIRST_OBJECT)));
     const [right] = objectAmbienceShots(input(entities, rolls(FIRST_POOL, 0, LAST_OBJECT)));
@@ -219,8 +219,8 @@ describe('object ambience', () => {
     expect(right?.pan).toBeGreaterThan(0);
     expect(left?.gain).toBeCloseTo((leftSpatial?.gain ?? 0) * authoredVolumeGain(BIRD_VOLUME));
     expect(authoredVolumeGain(BIRD_VOLUME)).toBeLessThan(authoredVolumeGain(DEFAULT_AUTHORED_VOLUME));
-    expect(left?.lane).toEqual({ kind: 'sfx' });
-    expect(left?.layer).toBeUndefined(); // the detail layer
+    expect(left?.lane).toEqual({ kind: 'ambience' });
+    expect(left?.layer).toBeUndefined(); // the ambient bus follows no world layer
   });
 
   it('sounds at an object on explored ground out of sight, never at one the viewer never explored', () => {

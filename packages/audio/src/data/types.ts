@@ -18,8 +18,9 @@ import type { UiCue } from './ui-cues.js';
  * The arbitration lane a one-shot competes in ({@link import('./arbiter.js').OneShotArbiter}). A
  * `jingle` is a life-event stinger, identified by its `MusicType`; an `alert` shares its lane and
  * ranking (an attack horn, a settler's notice line); a `voice` is an unprompted line or a scream; `sfx`
- * is a positioned action sound. A shot without a lane always plays: a GUI cue answering the player's
- * own input, or a settler answering an order.
+ * is a positioned action sound; `ambience` is a landscape object's sound (a bird, a branch, a stone).
+ * A shot without a lane always plays: a GUI cue answering the player's own input, or a settler
+ * answering an order.
  */
 export type Lane =
   | { readonly kind: 'jingle'; readonly musicType: number }
@@ -29,7 +30,8 @@ export type Lane =
       /** A struck body's scream, rationed apart from the chatter and calls sharing the voice lane. */
       readonly scream?: boolean;
     }
-  | { readonly kind: 'sfx' };
+  | { readonly kind: 'sfx' }
+  | { readonly kind: 'ambience' };
 
 /** One resolved request to play a sound once. */
 export interface OneShot {

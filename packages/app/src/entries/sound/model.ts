@@ -86,6 +86,7 @@ const VOICE_CLASS_ORDER: readonly VoiceClass[] = ['male', 'female', 'child'];
 const WORK: AuditionRole = { kind: 'world', layer: 'detail' };
 const VOICE: AuditionRole = { kind: 'voice' };
 const ANSWER: AuditionRole = { kind: 'answer' };
+const AMBIENCE: AuditionRole = { kind: 'ambience' };
 const NO_CLIPS: readonly string[] = [];
 
 /** The happenings the catalog names; every event `defaultBindings` binds must be one (test-enforced). */
@@ -186,7 +187,7 @@ function objectAmbience(index: SoundIndex): ClipList[] {
     seen.add(ambience.name);
     ambience.pools.forEach((p, n) => {
       const group = ambience.pools.length > 1 ? `${ambience.name} · ${n + 1}` : ambience.name;
-      rows.push({ group, clips: p.files, play: pool(WORK) });
+      rows.push({ group, clips: p.files, play: pool(AMBIENCE) });
     });
   }
   return rows.sort((a, b) => a.group.localeCompare(b.group));

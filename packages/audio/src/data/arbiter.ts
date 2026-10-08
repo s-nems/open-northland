@@ -11,7 +11,13 @@ import {
   JINGLE_TECHNOLOGY,
   JINGLE_WON,
 } from './bindings.js';
-import { OneShotLedger, type OneShotPlayback, type StopCause } from './one-shot-ledger.js';
+import {
+  GAIN_JITTER_DB,
+  OneShotLedger,
+  type OneShotPlayback,
+  RATE_JITTER,
+  type StopCause,
+} from './one-shot-ledger.js';
 import type { OneShot } from './types.js';
 
 /**
@@ -28,6 +34,8 @@ import type { OneShot } from './types.js';
  *   starts a bounded number of layered sounds a second. Each sound pool starts at most its loudest shot
  *   a frame, holds a few instances at once, and the world as a whole a capped number
  *   ({@link OneShotLedger}).
+ * - Landscape ambience (birds, branch cracks, stones) draws from a small budget of its own, last and
+ *   outside the world's cap, so it never takes a slot from the action or loses one to it.
  *
  * Every shot has its wav picked here, and is refused before it costs any budget when its key is cooling
  * or, being exclusive, every wav of its pool (an answer: any wav of it) still sounds. The engine
@@ -106,6 +114,10 @@ export const SCREAM_BURST = 4;
 /** Layered positioned SFX (work cues, swings, impacts, crashes) started per second, and the burst. */
 export const SFX_STARTS_PER_S = 12;
 export const SFX_BURST = 12;
+/** Landscape ambience one-shots started per second, and the burst: a sparse layer under the action.
+ *  Approximation, tune by ear. */
+export const AMBIENCE_STARTS_PER_S = 2;
+export const AMBIENCE_BURST = 2;
 
 /** Seed of the pick source an arbiter built without one draws from. */
 export const DEFAULT_PICK_SEED = 1;
@@ -211,6 +223,8 @@ export class OneShotArbiter {
   private readonly voices: RateBudget;
   private readonly screams: RateBudget;
   private readonly sfx: RateBudget;
+  private readonly ambience: RateBudget;
+  private readonly random: () => number;
   private readonly ledger: OneShotLedger;
   private readonly playback: OneShotPlayback;
   /** The instances the running {@link decide} has started, and those of them it stopped again: the
@@ -223,7 +237,9 @@ export class OneShotArbiter {
     this.voices = new RateBudget(VOICE_STARTS_PER_S, VOICE_BURST, now);
     this.screams = new RateBudget(SCREAM_STARTS_PER_S, SCREAM_BURST, now);
     this.sfx = new RateBudget(SFX_STARTS_PER_S, SFX_BURST, now);
+    this.ambience = new RateBudget(AMBIENCE_STARTS_PER_S, AMBIENCE_BURST, now);
     const random = options.random ?? seededRandom(DEFAULT_PICK_SEED);
+    this.random = random;
     const playback = options.playback ?? {};
     this.playback = playback;
     const stop = playback.stop;
@@ -252,6 +268,7 @@ export class OneShotArbiter {
     this.ledger.beginFrame(now);
     const out: OneShot[] = [];
     const jingles: OneShot[] = [];
+    const ambience: OneShot[] = [];
     for (const shot of shots) {
       switch (shot.lane?.kind) {
         case 'jingle':
@@ -261,6 +278,9 @@ export class OneShotArbiter {
         case 'voice':
         case 'sfx':
           this.ledger.offer(shot, now);
+          break;
+        case 'ambience':
+          ambience.push(shot);
           break;
         case undefined: {
           const growing = shot.cooldownGrows === true;
@@ -284,6 +304,7 @@ export class OneShotArbiter {
       budget.spend();
       this.emit(out, started);
     }
+    this.startAmbience(ambience, now, out);
     const kept =
       this.droppedNow.size === 0
         ? out
@@ -291,6 +312,26 @@ export class OneShotArbiter {
     this.startedNow.clear();
     this.droppedNow.clear();
     return kept;
+  }
+
+  /** Start the loudest ambience shots the lane's budget pays for, outside the world's cap and never
+   *  stolen, each varied in rate and level as a world shot is. */
+  private startAmbience(shots: OneShot[], now: number, out: OneShot[]): void {
+    shots.sort((a, b) => b.gain - a.gain);
+    for (const shot of shots) {
+      if (!this.ambience.ready(now)) return;
+      const started = this.ledger.startFree(shot, now);
+      if (started === null) continue;
+      this.ambience.spend();
+      const rate = 1 + this.jitter(RATE_JITTER);
+      const gain = started.gain * 10 ** (this.jitter(GAIN_JITTER_DB) / 20);
+      this.emit(out, { ...started, rate, gain });
+    }
+  }
+
+  /** A uniform draw in [-span, span) from the pick source. */
+  private jitter(span: number): number {
+    return (this.random() * 2 - 1) * span;
   }
 
   /** The rate budget a world shot of the voice or sfx lane pays from. */
