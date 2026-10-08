@@ -1522,7 +1522,7 @@ export const enGame = {
         '{name} cannot build the vehicle: another vehicle stands on the spot by the workshop. Move it away.',
       nothingToDo: '{name} has nothing to do.',
       constructionStarved:
-        '{building}: construction has stopped for lack of {good}. No store holds it. Make or bring some in and the builders will finish the site.',
+        "{building}: construction has stopped for lack of {good}. No store within the site's signpost reach holds it. Make or bring some in, or link a store that holds it with signposts.",
       noVehicleForWork: {
         he: '{name} has a trade route but no cart. Put him in a cart to start the route.',
         she: '{name} has a trade route but no cart. Put her in a cart to start the route.',
@@ -1606,6 +1606,8 @@ export const enGame = {
       person: 'Person',
       building: 'Building',
       vehicle: 'Vehicle',
+      wall: 'Palisade',
+      road: 'Road',
     },
     /** An attack notice's hit bodies, counted per kind, and the name it gives unowned strikers. */
     attack: {
@@ -1649,7 +1651,8 @@ export const enGame = {
           'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
         noConstructionSite:
           'There is no construction site. Place a building or give the builder another trade.',
-        constructionShort: 'The sites wait for a good no store holds: {good}. Make or bring some in.',
+        constructionShort:
+          'The sites wait for a good no store within their signpost reach holds: {good}. Make or bring some in, or link a store that holds it with signposts.',
         gameOutOfReach:
           'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
       },
@@ -1671,7 +1674,8 @@ export const enGame = {
           'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
         noConstructionSite:
           'There is no construction site. Place a building or give the builder another trade.',
-        constructionShort: 'The sites wait for a good no store holds. Make or bring some in.',
+        constructionShort:
+          'The sites wait for a good no store within their signpost reach holds. Make or bring some in, or link a store that holds it with signposts.',
         gameOutOfReach:
           'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
       },

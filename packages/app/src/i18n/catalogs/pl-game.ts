@@ -1497,7 +1497,7 @@ export const plGame = {
         '{name} nie może zbudować pojazdu, bo plac obok warsztatu zajmuje inny pojazd. Odprowadź go stamtąd.',
       nothingToDo: '{name} nie ma nic do roboty.',
       constructionStarved:
-        '{building}: budowa stoi, brakuje: {good}. Nie ma go w żadnym magazynie. Wytwórz go albo sprowadź, a budowniczowie dokończą budowę.',
+        '{building}: budowa stoi, brakuje: {good}. Nie ma go w żadnym magazynie w zasięgu drogowskazów budowy. Wytwórz go, sprowadź albo połącz drogowskazami magazyn, który go ma.',
       noVehicleForWork: {
         he: '{name} ma trasę handlową, ale nie ma wozu. Wsadź go do wozu, a ruszy w drogę.',
         she: '{name} ma trasę handlową, ale nie ma wozu. Wsadź ją do wozu, a ruszy w drogę.',
@@ -1584,6 +1584,8 @@ export const plGame = {
       person: 'Postać',
       building: 'Budynek',
       vehicle: 'Pojazd',
+      wall: 'Palisada',
+      road: 'Droga',
     },
     attack: {
       buildings: { one: '{count} budynek', few: '{count} budynki', many: '{count} budynków' },
@@ -1625,7 +1627,7 @@ export const plGame = {
           'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
         noConstructionSite: 'Nie ma żadnego placu budowy. Postaw budynek albo nadaj mu inny zawód.',
         constructionShort:
-          'Budowy czekają na towar, którego nie ma w żadnym magazynie: {good}. Wytwórz go albo sprowadź.',
+          'Budowy czekają na towar, którego nie ma w żadnym magazynie w zasięgu ich drogowskazów: {good}. Wytwórz go, sprowadź albo połącz drogowskazami magazyn, który go ma.',
         gameOutOfReach:
           'Zwierzyna w terenie łowieckim stoi za wodą albo murem i nie da się do niej dojść. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
       },
@@ -1648,7 +1650,7 @@ export const plGame = {
           'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
         noConstructionSite: 'Nie ma żadnego placu budowy. Postaw budynek albo nadaj mu inny zawód.',
         constructionShort:
-          'Budowy czekają na towar, którego nie ma w żadnym magazynie. Wytwórz go albo sprowadź.',
+          'Budowy czekają na towar, którego nie ma w żadnym magazynie w zasięgu ich drogowskazów. Wytwórz go, sprowadź albo połącz drogowskazami magazyn, który go ma.',
         gameOutOfReach:
           'Zwierzyna w terenie łowieckim stoi za wodą albo murem i nie da się do niej dojść. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
       },

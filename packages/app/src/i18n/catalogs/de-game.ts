@@ -1665,7 +1665,7 @@ export const deGame = {
         '{name} kann das Fahrzeug nicht bauen: Ein anderes Fahrzeug steht auf dem Bauplatz bei der Werkstatt. Bewege es weg.',
       nothingToDo: '{name} hat nichts zu tun.',
       constructionStarved:
-        '{building}: der Bau steht, es fehlt: {good}. Kein Lager hat es. Stelle es her oder beschaffe es, dann bauen die Bauarbeiter weiter.',
+        '{building}: der Bau steht, es fehlt: {good}. Kein Lager in Wegweiserreichweite der Baustelle hat es. Stelle es her, beschaffe es oder verbinde ein Lager, das es hat, mit Wegweisern.',
       noVehicleForWork: {
         he: '{name} hat eine Handelsroute, aber keinen Karren. Weise ihm einen Karren zu, um die Route zu beginnen.',
         she: '{name} hat eine Handelsroute, aber keinen Karren. Weise ihr einen Karren zu, um die Route zu beginnen.',
@@ -1752,6 +1752,8 @@ export const deGame = {
       person: 'Person',
       building: 'Gebäude',
       vehicle: 'Fahrzeug',
+      wall: 'Palisade',
+      road: 'Straße',
     },
     attack: {
       buildings: {
@@ -1811,7 +1813,7 @@ export const deGame = {
         noConstructionSite:
           'Es gibt keine Baustelle. Setze ein Gebäude oder gib dem Bauarbeiter einen anderen Beruf.',
         constructionShort:
-          'Die Baustellen warten auf eine Ware, die kein Lager hat: {good}. Stelle sie her oder beschaffe sie.',
+          'Die Baustellen warten auf eine Ware, die kein Lager in ihrer Wegweiserreichweite hat: {good}. Stelle sie her, beschaffe sie oder verbinde ein Lager, das sie hat, mit Wegweisern.',
         gameOutOfReach:
           'Das Wild im Jagdgebiet steht hinter Wasser oder einer Mauer, ohne Durchgang. Mache einen Weg frei oder markiere einen anderen Ort mit einer Arbeitsfahne.',
       },
@@ -1835,7 +1837,7 @@ export const deGame = {
         noConstructionSite:
           'Es gibt keine Baustelle. Setze ein Gebäude oder gib dem Bauarbeiter einen anderen Beruf.',
         constructionShort:
-          'Die Baustellen warten auf eine Ware, die kein Lager hat. Stelle sie her oder beschaffe sie.',
+          'Die Baustellen warten auf eine Ware, die kein Lager in ihrer Wegweiserreichweite hat. Stelle sie her, beschaffe sie oder verbinde ein Lager, das sie hat, mit Wegweisern.',
         gameOutOfReach:
           'Das Wild im Jagdgebiet steht hinter Wasser oder einer Mauer, ohne Durchgang. Mache einen Weg frei oder markiere einen anderen Ort mit einer Arbeitsfahne.',
       },

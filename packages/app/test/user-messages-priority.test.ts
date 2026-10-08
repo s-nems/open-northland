@@ -65,10 +65,10 @@ describe('user message priority (original behavior)', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.starving)).toBe(2);
   });
 
-  it('ranks a held child order, a stalled workshop and a starved site notable', () => {
+  it('ranks a held child order and a stalled workshop notable, a starved site important', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.familyBlocked)).toBe(1);
     expect(messagePriority(USER_MESSAGE_TYPE.productionStalled)).toBe(1);
-    expect(messagePriority(USER_MESSAGE_TYPE.constructionStarved)).toBe(1);
+    expect(messagePriority(USER_MESSAGE_TYPE.constructionStarved)).toBe(2);
   });
 
   it('shows a message when its priority reaches the filter level', () => {

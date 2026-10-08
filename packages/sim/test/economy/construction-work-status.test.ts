@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Owner, Stockpile } from '../../src/components/index.js';
+import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { dropGroundPile } from '../../src/systems/settlers/atomics/effects/goods/piles.js';
 import {
@@ -16,7 +17,7 @@ import {
 
 const LOCAL = 0;
 
-function owned(sim: Simulation, e: number): number {
+function owned(sim: Simulation, e: Entity): Entity {
   sim.world.add(e, Owner, { player: LOCAL });
   return e;
 }

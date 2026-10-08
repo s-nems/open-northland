@@ -13,7 +13,8 @@ import {
 export interface MessageNaming {
   /** A person's display name, the trade label shown after it (null for no label) and its sex. */
   settler(e: SnapshotEntity, snapshot: WorldSnapshot): NamedSettler;
-  /** A building's type name, or a generic stand-in for a type the catalog does not know. */
+  /** A building's type name, a wall's or a road's generic name, or a generic stand-in for a type the
+   *  catalog does not know. */
   building(e: SnapshotEntity): string;
   /** A vehicle's type name, or a generic stand-in for a type the catalog does not know. */
   vehicle(e: SnapshotEntity): string;

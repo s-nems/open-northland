@@ -157,6 +157,33 @@ function builderAt(sim: Simulation, hx: number): Entity {
 }
 
 describe('palisade builders', () => {
+  it('answer the shortage read for a wall site like a house: its wood, held once a store has it', () => {
+    const map = grassNodeMap(48, 12);
+    const sim = new Simulation({
+      seed: 7,
+      content: builderContent(),
+      map: { ...map, landscapes: { types: [WALL], placements: [] } },
+    });
+    sim.enqueueSetup({
+      kind: 'placePalisade',
+      gfxIndex: WALL.typeId,
+      x: 12,
+      y: ROW,
+      tribe: VIKING,
+      owner: HUMAN,
+      underConstruction: true,
+    });
+    sim.step();
+    const [wall] = [...sim.world.query(Palisade)];
+    if (wall === undefined) throw new Error('expected a wall site');
+    expect(sim.constructionSupply(wall)).toMatchObject({
+      kind: 'short',
+      shortfalls: [{ goodType: WOOD, inbound: 0, held: false }],
+    });
+    buildingAt(sim, STORE, 4, false);
+    expect(sim.constructionSupply(wall)).toMatchObject({ kind: 'short', shortfalls: [{ held: true }] });
+  });
+
   it('raise a wall only once no house is left to build, even when the wall is nearer', () => {
     const map = grassNodeMap(48, 12);
     const sim = new Simulation({

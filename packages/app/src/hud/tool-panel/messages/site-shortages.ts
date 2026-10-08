@@ -1,5 +1,5 @@
 import { type ConstructionSupply, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import { isBuilding, ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import { ownerPlayerOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
 import { type MessageNaming, type MessageRaiser, nodeOf } from './raise.js';
 import { USER_MESSAGE_TYPE } from './types.js';
@@ -12,7 +12,7 @@ import type { StatusAsks, StatusRead } from './work-asks.js';
  */
 export const CONSTRUCTION_SHORTAGE_GRACE_TICKS = 45 * TICKS_PER_SECOND;
 
-/** What the shortage notes read about the seat's building sites. */
+/** What the shortage notes read about the seat's unfinished sites. */
 export interface SiteSeam {
   readonly supply: StatusRead<ConstructionSupply | undefined>;
 }
@@ -25,15 +25,15 @@ export interface ShortageReader {
   verdict(site: number): ShortageVerdict;
 }
 
-/** The seat's building sites still going up, by owner. */
-const BUILDING_SITES = idsGroupedBy(
-  (e) => (isBuilding(e) && e.components.UnderConstruction !== undefined ? ownerPlayerOf(e) : undefined),
-  'building sites by owner',
-  { values: ['Owner'], presence: ['Building', 'UnderConstruction'] },
+/** The seat's sites still going up, buildings, wall segments and road sites alike, by owner. */
+const UNFINISHED_SITES = idsGroupedBy(
+  (e) => (e.components.UnderConstruction !== undefined ? ownerPlayerOf(e) : undefined),
+  'unfinished sites by owner',
+  { values: ['Owner'], presence: ['UnderConstruction'] },
 );
 
-export function buildingSitesOf(snapshot: WorldSnapshot, owner: number): readonly SnapshotEntity[] {
-  return entitiesUnder(snapshot, BUILDING_SITES, owner);
+export function unfinishedSitesOf(snapshot: WorldSnapshot, owner: number): readonly SnapshotEntity[] {
+  return entitiesUnder(snapshot, UNFINISHED_SITES, owner);
 }
 
 /** One site's watch: since when it lacks a good nobody holds or brings, null while it lacks none, and
@@ -44,12 +44,13 @@ interface Watch {
 }
 
 /**
- * The seat's building sites short of a material the player has to supply: a line of the bill that no
- * store of the seat holds and nobody is bringing, once that has stood {@link CONSTRUCTION_SHORTAGE_GRACE_TICKS}.
+ * The seat's sites short of a material the player has to supply: a line of the bill that no store of the
+ * seat holds in the site's signpost reach and nobody is bringing, once that has stood
+ * {@link CONSTRUCTION_SHORTAGE_GRACE_TICKS}.
  * The note then stands until that line is covered, on site or on its way, so a good trickling in one
  * unit at a time does not flap it; a second such good rewords it once the first is covered. The grace
  * is one clock per site, not per good (approximation): a good turning unheld while another's clock runs
- * inherits that clock. A sweep visits the seat's unfinished building sites off a maintained index.
+ * inherits that clock. A sweep visits the seat's unfinished sites off a maintained index.
  */
 export class SiteShortages implements ShortageReader {
   private watched = new Map<number, Watch>();
@@ -63,7 +64,7 @@ export class SiteShortages implements ShortageReader {
   /** Judge the unfinished sites and raise a note for each one short of a material. */
   sweep(snapshot: WorldSnapshot, raiser: MessageRaiser, naming: MessageNaming): void {
     const next = new Map<number, Watch>();
-    for (const site of buildingSitesOf(snapshot, this.seat)) {
+    for (const site of unfinishedSitesOf(snapshot, this.seat)) {
       const watch = this.watched.get(site.id) ?? { unheldSince: null, verdict: undefined };
       next.set(site.id, watch);
       this.judge(snapshot.tick, site.id, watch);

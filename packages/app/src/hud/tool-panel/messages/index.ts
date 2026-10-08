@@ -9,7 +9,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { professionDefForJob } from '../../../catalog/professions.js';
-import { isFemale, num, type SnapshotEntity } from '../../../game/snapshot.js';
+import { isFemale, isPalisade, isRoadSite, num, type SnapshotEntity } from '../../../game/snapshot.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import { bcp47Tag, formatMessage, messages, professionLabel } from '../../../i18n/index.js';
 import type { BuildingThumbs } from '../../dom/building-thumb.js';
@@ -143,9 +143,12 @@ function makeNaming(deps: MessageCenterDeps): MessageNaming {
       return { name, jobLabel: def === undefined ? null : professionLabel(def.key), female };
     },
     building: (e) => {
+      const unnamed = messages().userMessages.unnamed;
+      if (isPalisade(e)) return unnamed.wall;
+      if (isRoadSite(e)) return unnamed.road;
       const typeId = num((e.components.Building as { buildingType?: unknown } | undefined)?.buildingType);
       const label = typeId === undefined ? undefined : deps.buildingLabel(typeId);
-      return label ?? messages().userMessages.unnamed.building;
+      return label ?? unnamed.building;
     },
     vehicle: (e) => {
       const typeId = num((e.components.Vehicle as { vehicleType?: unknown } | undefined)?.vehicleType);

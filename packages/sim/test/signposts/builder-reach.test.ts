@@ -104,36 +104,37 @@ function nearerToStore(sim: Simulation, builder: Entity): boolean {
 }
 
 describe('a builder whose site the signpost network keeps from its material', () => {
-  it('fetches nothing it could not carry to the site and stands lost, told once', () => {
-    const { sim, builder } = world(ISLAND_SITE_X);
+  it('fetches nothing it could not carry to the site and is never told it is lost', () => {
+    const { sim, builder, site } = world(ISLAND_SITE_X);
     stampPost(sim, ISLAND_POST_X, ROW);
-    let lostNotes = 0;
     let fetched = false;
-    // It may first walk to wait at the site, as for any site short of material; the next check tells.
     for (let t = 0; t < WALK_THERE_TICKS + 2 * CUT_OFF_CHECK_TICKS; t++) {
       sim.step();
       fetched ||= fetching(sim, builder);
-      for (const ev of sim.events.current())
-        if (ev.kind === 'settlerLost' && ev.entity === builder) lostNotes++;
     }
     expect(fetched).toBe(false);
-    expect(cutOff(sim, builder)).toBe(true);
-    expect(lostNotes).toBe(1);
-    // The site is in reach and the store is not: the mark points at the store.
-    expect(nearerToStore(sim, builder)).toBe(true);
-    // It stands: no walk back towards the store and out again.
-    const x = sim.world.get(builder, Position).x;
-    for (let t = 0; t < 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
-    expect(sim.world.get(builder, Position).x).toBe(x);
+    // Material beyond the posts is the site's shortage, not a lost builder: the store is out of reach.
+    expect(sim.world.has(builder, LostWay)).toBe(false);
+    expect(sim.constructionSupply(site)).toMatchObject({
+      kind: 'short',
+      shortfalls: [
+        { goodType: STONE, held: false },
+        { goodType: WOOD, held: false },
+      ],
+    });
   });
 
-  it('builds once a post chain links the store to the site, and the mark lifts', () => {
+  it('builds once a post chain links the store to the site', () => {
     const { sim, builder, site } = world(ISLAND_SITE_X);
     stampPost(sim, ISLAND_POST_X, ROW);
     for (let t = 0; t < WALK_THERE_TICKS + 2 * CUT_OFF_CHECK_TICKS; t++) sim.step();
-    expect(cutOff(sim, builder)).toBe(true);
+    expect(fetching(sim, builder)).toBe(false);
 
     for (const x of CHAIN.slice(0, -1)) stampPost(sim, x, ROW);
+    expect(sim.constructionSupply(site)).toMatchObject({
+      kind: 'short',
+      shortfalls: [{ held: true }, { held: true }],
+    });
     const delivered = (): boolean => (sim.world.tryGet(site, Stockpile)?.amounts.size ?? 0) > 0;
     for (let t = 0; t < 40 * CUT_OFF_CHECK_TICKS && !delivered(); t++) sim.step();
     expect(delivered()).toBe(true);
