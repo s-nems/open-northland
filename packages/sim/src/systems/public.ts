@@ -51,6 +51,7 @@ export {
   FISH_REPRODUCTION_TICKS,
   FISH_SHORE_SEARCH_RADIUS,
   MAX_FISH_PER_SWARM,
+  workplaceShoreSearchRadius,
 } from './economy/fish.js';
 // The gather gate, so the app's right-click on a resource names the same gatherers `setGatherGood` accepts.
 export { heldGatherGood, jobGatherGoods, jobGathersGood } from './economy/gather-goods.js';

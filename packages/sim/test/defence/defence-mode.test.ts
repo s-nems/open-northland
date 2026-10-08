@@ -56,8 +56,11 @@ const CHILD = 4; // `child_male` - the age class hides but never fights (`lifecy
 const TOWER = 40;
 const HUT = 41; // no shelterCapacity: a building that cannot raise the alarm at all
 const HALL = 39; // a long garrison building, whose walls stand far off its centre
+const KEEP = 42; // a hollow garrison building: a ring of walls around an open court, its anchor in the court
 /** How far the hall's walls reach east and west of its anchor, in half-cell nodes. */
 const HALL_HALF_LENGTH_NODES = 12;
+/** The keep's walls: every node at exactly this map-point distance from its anchor, on an even anchor row. */
+const KEEP_WALL_RING = 3;
 
 const TOWER_CAPACITY = 2;
 const HOUSE_BOW_DAMAGE = 30;
@@ -102,6 +105,14 @@ function defenceContent(houseBowRange = HOUSE_BOW_RANGE): ContentSet {
           door: { dx: 0, dy: 2 },
         },
       },
+      {
+        typeId: KEEP,
+        id: 'tower_01',
+        kind: 'tower',
+        hitpoints: 100_000,
+        shelterCapacity: TOWER_CAPACITY,
+        footprint: { blocked: keepWalls() },
+      },
     ],
     landscape: [{ typeId: 0, id: 'grass', walkable: true, buildable: true }],
     weapons: [
@@ -144,6 +155,18 @@ function defenceContent(houseBowRange = HOUSE_BOW_RANGE): ContentSet {
       { id: 'viking_eat', name: 'viking_eat', length: 5, events: [{ at: 3, type: 2, value: 4000 }] },
     ],
   });
+}
+
+/** The keep's wall cells as footprint offsets: the hex ring of {@link KEEP_WALL_RING} around an even-row
+ *  anchor, where a footprint offset is the plain node offset. */
+function keepWalls(): { dx: number; dy: number }[] {
+  const walls: { dx: number; dy: number }[] = [];
+  for (let dy = -KEEP_WALL_RING; dy <= KEEP_WALL_RING; dy++) {
+    for (let dx = -KEEP_WALL_RING; dx <= KEEP_WALL_RING; dx++) {
+      if (hexDistanceBetween(0, 0, dx, dy) === KEEP_WALL_RING) walls.push({ dx, dy });
+    }
+  }
+  return walls;
 }
 
 /** An all-grass w×h-cell terrain map, upsampled to the half-cell lattice. */
@@ -702,6 +725,30 @@ describe('shelterFireRadius', () => {
       );
     expect(nodeInReachOfAWall(HX, HY - radius)).toBe(true);
     expect(nodeInReachOfAWall(HX, HY - radius - 1)).toBe(false);
+  });
+
+  it('reaches past the bow around a building whose walls ring its anchor, the same on any anchor of a parity', () => {
+    const content = defenceContent();
+    const radius = shelterFireRadius(content, KEEP, VIKING, HX, HY) ?? 0;
+    expect(radius).toBeGreaterThan(HOUSE_BOW_RANGE);
+    const walls = keepWalls().map((w) => ({ x: HX + w.dx, y: HY + w.dy }));
+    const inReach = (x: number, y: number): boolean =>
+      walls.some((w) => hexDistanceBetween(w.x, w.y, x, y) <= HOUSE_BOW_RANGE);
+    const ringInReach = (r: number): boolean => {
+      for (let dy = -r; dy <= r; dy++) {
+        for (let dx = -r; dx <= r; dx++) {
+          if (hexDistanceBetween(HX, HY, HX + dx, HY + dy) === r && !inReach(HX + dx, HY + dy)) return false;
+        }
+      }
+      return true;
+    };
+    expect(ringInReach(radius)).toBe(true);
+    expect(ringInReach(radius + 1)).toBe(false);
+    expect(shelterFireRadius(content, KEEP, VIKING, HX + 7, HY + 2)).toBe(radius);
+    // An odd anchor row shifts the footprint's odd rows, so it keeps its own, equally stable answer.
+    const odd = shelterFireRadius(content, KEEP, VIKING, HX, HY + 1);
+    expect(odd).toBeGreaterThan(HOUSE_BOW_RANGE);
+    expect(shelterFireRadius(content, KEEP, VIKING, HX + 5, HY + 3)).toBe(odd);
   });
 
   it('is undefined for a type with no defence mode and for a tribe that fires no house bow', () => {

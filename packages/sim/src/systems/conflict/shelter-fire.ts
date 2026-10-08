@@ -81,8 +81,9 @@ function fires(bow: WeaponType | undefined): bow is FiringBow {
  * How far in map points from its anchor node (`hx`, `hy`) a building of `buildingType` reaches all around in
  * defence mode: the widest ring every node of which stands within the house bow's reach of some wall cell,
  * the way the fire measures. A long building reaches further along its length. Undefined for a type with no
- * defence mode and when `tribe` fires no house bow. Walks only the rings past the reach its nearest wall
- * already guarantees, so it costs the building's size, not the bow's reach squared.
+ * defence mode and when `tribe` fires no house bow. Walks only the rings between the reach its nearest wall
+ * guarantees and the reach its farthest wall bounds, each a box scan of about the bow's reach squared: a few
+ * milliseconds for a large building, worth remembering per type.
  */
 export function shelterFireRadius(
   content: ContentSet,
@@ -108,7 +109,8 @@ export function shelterFireRadius(
 }
 
 /** Whether every node at map-point distance exactly `r` from (`hx`, `hy`) passes `inReach`. A hex ring spans
- *  `r` rows up and down and at most `r + 1` nodes across, the extra one from the odd-row shift. */
+ *  `r` rows up and down and `r` nodes across. Unclipped by any map edge, so the answer is the same for every
+ *  anchor on a row of the same parity. */
 function hexRingInReach(
   hx: number,
   hy: number,
@@ -116,7 +118,7 @@ function hexRingInReach(
   inReach: (x: number, y: number) => boolean,
 ): boolean {
   for (let dy = -r; dy <= r; dy++) {
-    for (let dx = -r - 1; dx <= r + 1; dx++) {
+    for (let dx = -r; dx <= r; dx++) {
       if (hexDistanceBetween(hx, hy, hx + dx, hy + dy) === r && !inReach(hx + dx, hy + dy)) return false;
     }
   }

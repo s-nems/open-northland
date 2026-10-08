@@ -18,7 +18,11 @@ import {
  * roams for the nearest node anywhere. A fisher's circle is where he looks for a shore; he still casts at
  * fish further out in the water.
  */
-export function rangeRingOf(content: ContentSet, e: SnapshotEntity): RangeRing | undefined {
+export function rangeRingOf(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  e: SnapshotEntity,
+): RangeRing | undefined {
   if (isBuilding(e)) return defenceRing(content, e);
   const job = settlerJobType(e);
   if (job === undefined) return undefined;
@@ -36,11 +40,27 @@ export function rangeRingOf(content: ContentSet, e: SnapshotEntity): RangeRing |
   if (metric === 'hex') {
     return { entity: workplace, radiusNodes: components.HUNTER_WORK_FLAG_RADIUS, metric, kind: 'work' };
   }
-  // An employed fisher searches from his feet, which stand at his workplace each time he banks a catch.
-  if (fisher) {
-    return { entity: workplace, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, metric, kind: 'work' };
-  }
-  return undefined;
+  return fisher ? employedFisherRing(content, snapshot, workplace) : undefined;
+}
+
+/** An employed fisher searches from where he banked his last catch, the door of his workplace. */
+function employedFisherRing(
+  content: ContentSet,
+  snapshot: WorldSnapshot,
+  workplace: number,
+): RangeRing | undefined {
+  const building = entityById(snapshot, workplace);
+  const type = building === undefined ? undefined : buildingTypeOf(building);
+  const tribe = building === undefined ? undefined : buildingTribeOf(building);
+  const pos = building === undefined ? undefined : positionOf(building);
+  if (type === undefined || tribe === undefined || pos === undefined) return undefined;
+  const radiusNodes = systems.workplaceShoreSearchRadius(
+    content,
+    type,
+    tribe,
+    nodeOfPosition(pos.x, pos.y).hy,
+  );
+  return { entity: workplace, radiusNodes, metric: 'manhattan', kind: 'work' };
 }
 
 function defenceRing(content: ContentSet, e: SnapshotEntity): RangeRing | undefined {
@@ -91,7 +111,7 @@ export function rangeRingsOf(
   const rings = new Map<string, RangeRing>();
   for (const id of ids) {
     const e = entityById(snapshot, id);
-    const ring = e === undefined ? undefined : rangeRingOf(content, e);
+    const ring = e === undefined ? undefined : rangeRingOf(content, snapshot, e);
     if (ring !== undefined) rings.set(`${ring.kind}:${ring.entity}`, ring);
   }
   return [...rings.values()];

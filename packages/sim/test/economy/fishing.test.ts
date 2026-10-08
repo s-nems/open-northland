@@ -28,8 +28,10 @@ import {
   FISH_CAST_ATOMIC,
   FISH_CAUGHT_ATOMIC,
   FISH_FAILED_ATOMIC,
+  FISH_SHORE_SEARCH_RADIUS,
   fishReproductionSystem,
   takeFishNear,
+  workplaceShoreSearchRadius,
 } from '../../src/systems/economy/fish.js';
 import { syncWorkFlagToJob } from '../../src/systems/economy/work-flag.js';
 import { wearStepOf } from '../../src/systems/equipment/index.js';
@@ -504,5 +506,42 @@ describe('fishing', () => {
     if (shore === null) throw new Error('planned swarm has no shore');
     expect(takeFishNear(sim.world, terrain, shore, 7)).toBe(fallback);
     expect(sim.world.get(fallback, FishSwarm).count).toBe(1);
+  });
+});
+
+describe('workplaceShoreSearchRadius', () => {
+  const LODGE = 950;
+  const BARE = 951;
+  const TRIBE = 1;
+  const EVEN_ROW = 10;
+  const ODD_ROW = 11;
+  /** A door one node east and three rows south of the anchor: an odd row offset, which an odd anchor row
+   *  pushes one more node east. */
+  const DOOR = { dx: 1, dy: 3 };
+  const ANCHOR_ONLY = { blocked: [{ dx: 0, dy: 0 }], familyBody: [], reserved: [] };
+
+  function doorContent(): ContentSet {
+    const base = fishingContent();
+    const template = base.buildings[0];
+    if (template === undefined) throw new Error('the fixture has no building');
+    return {
+      ...base,
+      buildings: [
+        ...base.buildings,
+        { ...template, typeId: LODGE, id: 'lodge', footprint: { ...ANCHOR_ONLY, door: DOOR } },
+        { ...template, typeId: BARE, id: 'bare', footprint: ANCHOR_ONLY },
+      ],
+    };
+  }
+
+  it("shrinks the shore search by the door's Manhattan offset from the anchor, row parity included", () => {
+    const content = doorContent();
+    expect(workplaceShoreSearchRadius(content, LODGE, TRIBE, EVEN_ROW)).toBe(
+      FISH_SHORE_SEARCH_RADIUS - DOOR.dx - DOOR.dy,
+    );
+    expect(workplaceShoreSearchRadius(content, LODGE, TRIBE, ODD_ROW)).toBe(
+      FISH_SHORE_SEARCH_RADIUS - (DOOR.dx + 1) - DOOR.dy,
+    );
+    expect(workplaceShoreSearchRadius(content, BARE, TRIBE, EVEN_ROW)).toBe(FISH_SHORE_SEARCH_RADIUS);
   });
 });

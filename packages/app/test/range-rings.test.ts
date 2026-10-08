@@ -1,3 +1,4 @@
+import { buildingFootprintFor } from '@open-northland/data';
 import { components, fx, nodeOfPosition, ONE, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { PRIMARY_TRIBE } from '../src/game/rules.js';
@@ -20,6 +21,8 @@ const FISHER = jobOf('fisher');
 const shelter = content.buildings.find((b) => (b.shelterCapacity ?? 0) > 0);
 if (shelter === undefined) throw new Error('no defence-capable building in the sandbox content');
 const noShelter = content.buildings.find((b) => (b.shelterCapacity ?? 0) === 0);
+const doored = content.buildings.find((b) => buildingFootprintFor(b, PRIMARY_TRIBE)?.door !== undefined);
+if (doored === undefined) throw new Error('no building with a door in the sandbox content');
 if (noShelter === undefined) throw new Error('no building without defence mode in the sandbox content');
 
 const FLAG_RADIUS = 24;
@@ -53,14 +56,18 @@ describe('rangeRingsOf', () => {
     ]);
   });
 
-  it('draws a fisher at his shore search, whatever radius his flag carries', () => {
+  it('draws a fisher at his shore search, from his flag or short of it by his workplace door', () => {
     const world = snapshotOf([
       settler(1, FISHER, { WorkFlag: { flag: FLAG, radius: FLAG_RADIUS } }),
-      settler(2, FISHER, { JobAssignment: { workplace: LODGE } }),
+      settler(2, FISHER, { JobAssignment: { workplace: TOWER } }),
+      building(doored.typeId),
     ]);
+    const { hy } = nodeOfPosition(TOWER_AT.x, TOWER_AT.y);
+    const fromDoor = systems.workplaceShoreSearchRadius(content, doored.typeId, PRIMARY_TRIBE, hy);
+    expect(fromDoor).toBeLessThan(systems.FISH_SHORE_SEARCH_RADIUS);
     expect(rangeRingsOf(content, world, [1, 2])).toEqual([
       { entity: FLAG, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, metric: 'manhattan', kind: 'work' },
-      { entity: LODGE, radiusNodes: systems.FISH_SHORE_SEARCH_RADIUS, metric: 'manhattan', kind: 'work' },
+      { entity: TOWER, radiusNodes: fromDoor, metric: 'manhattan', kind: 'work' },
     ]);
   });
 
