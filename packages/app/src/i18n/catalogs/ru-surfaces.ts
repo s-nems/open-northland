@@ -688,7 +688,7 @@ export const ruSurfaces = {
       resourceFelled: { label: 'Падение дерева', trigger: 'когда лесоруб срубает дерево' },
       buildingFinished: {
         label: 'Завершить строительство',
-        trigger: 'когда ваше здание достроено в видимой области',
+        trigger: 'когда ваше здание достроено, вне видимой области тише',
       },
       buildingDestroyed: {
         label: 'Здание разрушено',
@@ -713,6 +713,10 @@ export const ruSurfaces = {
       chestOpened: {
         label: 'Открыть сундук',
         trigger: 'когда ваш поселенец открывает сундук',
+      },
+      technologyDiscovered: {
+        label: 'Открытие',
+        trigger: 'когда ваш поселенец открывает что-то новое',
       },
       combatSwing: {
         label: 'Удар в ближнем бою',

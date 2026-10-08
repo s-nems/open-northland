@@ -114,6 +114,9 @@ export type EventSound =
        * screen-locality is a choice, not extracted behaviour.
        */
       readonly screenGated?: boolean;
+      /** With `screenGated`: an event off screen rings at this share of the jingle's gain instead of
+       *  staying silent. A position-less event stays silent. */
+      readonly offScreenGain?: number;
     };
 
 /** The sound of a settler's notice voice: a static group by name, or wavs the bank keeps in no group of

@@ -540,8 +540,10 @@ describe('directAudio screen-gated jingles', () => {
     });
   }
 
-  it('silences the house-built jingle when the building is off screen', () => {
-    expect(directBuildingFinishedAt(100, 100, LOCAL).oneShots).toHaveLength(0);
+  it('rings the house-built jingle at half gain when the building is off screen', () => {
+    const frame = directBuildingFinishedAt(100, 100, LOCAL);
+    expect(frame.oneShots.map((s) => s.files)).toEqual([['jingles/jingles_housebuilt.wav']]);
+    expect(frame.oneShots[0]?.gain).toBeCloseTo(UNAUTHORED_GAIN / 2, 5);
   });
 
   it('keeps full stinger gain and centre for an on-screen but off-centre building', () => {

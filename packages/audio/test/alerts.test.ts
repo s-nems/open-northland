@@ -1,9 +1,9 @@
 import type { SoundBank } from '@open-northland/data';
 import type { Camera } from '@open-northland/render/data';
-import type { HalfCellNode, WorldSnapshot } from '@open-northland/sim';
+import type { Entity, HalfCellNode, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { AlertDesk, noticeVoiceShot } from '../src/data/alerts.js';
-import { JINGLE_BIRTH, JINGLE_TECHNOLOGY } from '../src/data/bindings.js';
+import { JINGLE_BIRTH, JINGLE_DUCK_HOLD_MS, JINGLE_TECHNOLOGY } from '../src/data/bindings.js';
 import {
   ALERT_DUCK_DB,
   ALERT_DUCKED_BUSES,
@@ -14,6 +14,7 @@ import {
   type AttackReport,
   buildSoundIndex,
   defaultBindings,
+  directAudio,
   LANE_RANK,
   NOTICE_CARD_GAIN,
   NOTICE_CUE_INTERVAL_S,
@@ -109,9 +110,11 @@ const bank: SoundBank = {
 const index = buildSoundIndex(bank, [], []);
 const bindings = defaultBindings();
 
+const LOCAL = 0;
 const MAN = 1;
 const WOMAN = 2;
 const CHILD = 3;
+const entity = (id: number): Entity => id as Entity;
 const snapshot: WorldSnapshot = {
   tick: 1,
   entities: [
@@ -165,6 +168,31 @@ describe('alert and notice sounds', () => {
     expect(notificationShot('arrival').files).toEqual(['gui/chat_incoming.wav']);
     expect(notificationShot('departure')).toMatchObject({ files: ['gui/click_fail.wav'], gain: UI_CUE_GAIN });
     expect(notificationShot('card').lane).toBeUndefined();
+  });
+
+  it("rings the technology jingle map-wide for the seat's own discovery only", () => {
+    const discovery = (player: number): SimEvent => ({
+      kind: 'technologyDiscovered',
+      entity: entity(MAN),
+      player,
+      tribe: 1,
+      technology: 'job',
+      typeId: 4,
+    });
+    const frame = (player: number) =>
+      directAudio({
+        events: [discovery(player)],
+        snapshot,
+        camera: awayView.camera,
+        canvasW: CANVAS_W,
+        canvasH: CANVAS_H,
+        index,
+        bindings,
+        localPlayer: LOCAL,
+      }).oneShots;
+    expect(frame(LOCAL).map((s) => s.files)).toEqual([['jingles/jingles_technology.wav']]);
+    expect(frame(LOCAL)[0]?.duckMusicMs).toBe(JINGLE_DUCK_HOLD_MS.get(JINGLE_TECHNOLOGY));
+    expect(frame(LOCAL + 1)).toEqual([]);
   });
 });
 

@@ -700,7 +700,7 @@ export const deSurfaces = {
       resourceFelled: { label: 'Baum fällt', trigger: 'wenn ein Holzfäller einen Baum fällt' },
       buildingFinished: {
         label: 'Bau abschließen',
-        trigger: 'wenn dein Gebäude im sichtbaren Bereich fertiggestellt wird',
+        trigger: 'wenn dein Gebäude fertiggestellt wird, außerhalb des sichtbaren Bereichs leiser',
       },
       buildingDestroyed: {
         label: 'Gebäude zerstört',
@@ -725,6 +725,10 @@ export const deSurfaces = {
       chestOpened: {
         label: 'Truhe öffnen',
         trigger: 'wenn dein Siedler eine Truhe öffnet',
+      },
+      technologyDiscovered: {
+        label: 'Entdeckung',
+        trigger: 'wenn dein Siedler etwas Neues entdeckt',
       },
       combatSwing: {
         label: 'Nahkampfschlag',

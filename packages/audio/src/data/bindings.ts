@@ -73,6 +73,10 @@ export const SIGH_WOMAN_FILES: readonly string[] = [
   'generic/human_sigh f 01.wav',
   'generic/human_sigh f 02.wav',
 ];
+/** The share of its gain a finished building's jingle rings at from off screen: about 6 dB under the
+ *  on-screen ring, a reminder rather than a fanfare. Authored. */
+export const OFF_SCREEN_JINGLE_GAIN = 1 / 2;
+
 /** Melee swing swoosh. The melee weapons share one swing wav set in the bank (`Weapon Sword Short` /
  *  `Weapon Spear` / `Weapon Fist` all point at the same `swing0N.wav`), so one group covers them all. A
  *  blow's impact needs no binding: the weapon's `soundtype_Hit` table names it on the hit event. */
@@ -88,13 +92,15 @@ export function defaultBindings(): SoundBindings {
     byEvent: {
       vehicleCreated: { kind: 'spatial', group: GROUP_HAMMER_WOOD },
       // Life-event stingers ring only for the local player's own events and only from the visible
-      // screen. The defence alarm stays map-wide: it acknowledges the player's own raise-alarm
-      // command, wherever the garrison building sits.
+      // screen; a finished building rings quieter from off screen too (authored: the original keeps
+      // it to the screen). The defence alarm stays map-wide: it acknowledges the player's own
+      // raise-alarm command, wherever the garrison building sits.
       buildingFinished: {
         kind: 'jingle',
         musicType: JINGLE_HOUSE_BUILT,
         localPlayerOnly: true,
         screenGated: true,
+        offScreenGain: OFF_SCREEN_JINGLE_GAIN,
       },
       settlerBorn: { kind: 'jingle', musicType: JINGLE_BIRTH, localPlayerOnly: true, screenGated: true },
       settlersMarried: {
@@ -106,6 +112,8 @@ export function defaultBindings(): SoundBindings {
       settlerDied: { kind: 'jingle', musicType: JINGLE_DEATH, localPlayerOnly: true, screenGated: true },
       defenceAlarmRaised: { kind: 'jingle', musicType: JINGLE_CIVIL_DEFENSE, localPlayerOnly: true },
       chestOpened: { kind: 'jingle', musicType: JINGLE_OPEN_CHEST, localPlayerOnly: true },
+      // A discovery is the seat's own, wherever the settler who made it stands.
+      technologyDiscovered: { kind: 'jingle', musicType: JINGLE_TECHNOLOGY, localPlayerOnly: true },
       // The match verdicts are map-wide too: the player's own seat is what decided them.
       playerWon: { kind: 'jingle', musicType: JINGLE_WON, localPlayerOnly: true },
       playerDefeated: { kind: 'jingle', musicType: JINGLE_LOST, localPlayerOnly: true },

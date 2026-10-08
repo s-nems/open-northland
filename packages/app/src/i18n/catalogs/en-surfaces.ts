@@ -635,7 +635,7 @@ export const enSurfaces = {
       resourceFelled: { label: 'Tree falls', trigger: 'when a woodcutter fells a tree' },
       buildingFinished: {
         label: 'Finish construction',
-        trigger: 'when your building is completed on screen',
+        trigger: 'when your building is completed, quieter off screen',
       },
       buildingDestroyed: {
         label: 'Building destroyed',
@@ -646,6 +646,7 @@ export const enSurfaces = {
       settlerDied: { label: 'Death', trigger: 'when your settler dies on screen' },
       defenceAlarmRaised: { label: 'Defence alarm', trigger: 'when you put a building into defence mode' },
       chestOpened: { label: 'Open chest', trigger: 'when your settler opens a chest' },
+      technologyDiscovered: { label: 'Discovery', trigger: 'when your settler discovers something new' },
       combatSwing: {
         label: 'Melee swing',
         trigger: 'when a fighter swings a weapon whose clip sounds no swing of its own',

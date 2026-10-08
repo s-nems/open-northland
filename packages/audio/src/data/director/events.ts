@@ -69,12 +69,18 @@ function soundKey(ev: SimEvent, sound: EventSound): string {
   return sound.kind === 'spatial' ? `${key}:${ev.chestKind}` : `${key}:jingle`;
 }
 
-/** A jingle's one-shot: at its authored volume, centred, carrying the music duck its `MusicType` holds
- *  for, in the jingle lane under that type. */
-function jingleShot(index: SoundIndex, files: readonly string[], key: string, musicType: number): OneShot {
+/** A jingle's one-shot: at its authored volume times `share`, centred, carrying the music duck its
+ *  `MusicType` holds for, in the jingle lane under that type. */
+function jingleShot(
+  index: SoundIndex,
+  files: readonly string[],
+  key: string,
+  musicType: number,
+  share = 1,
+): OneShot {
   const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(musicType);
   const lane: Lane = { kind: 'jingle', musicType };
-  const gain = poolGain(index, files);
+  const gain = poolGain(index, files) * share;
   return duckMusicMs === undefined
     ? { files, gain, pan: 0, key, lane }
     : { files, gain, pan: 0, key, duckMusicMs, lane };
@@ -136,6 +142,8 @@ type Pending =
        *  `player` field already decided ownership. */
       readonly ownerEntity: number | null;
       readonly musicType: number;
+      /** The gain share it rings at from off screen; absent, off screen is silent. */
+      readonly offScreenGain?: number;
     });
 
 interface EmitterFacts {
@@ -309,6 +317,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
           entity: id,
           ownerEntity,
           musicType: sound.musicType,
+          ...(sound.offScreenGain !== undefined ? { offScreenGain: sound.offScreenGain } : {}),
         });
         continue;
       }
@@ -353,7 +362,12 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       if (p.kind === 'cue' && visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
       spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
     }
-    if (spatial === null) continue; // off screen → silent
+    if (spatial === null) {
+      if (p.kind === 'stinger' && p.offScreenGain !== undefined) {
+        shots.push(jingleShot(index, files, p.key, p.musicType, p.offScreenGain));
+      }
+      continue; // off screen → silent
+    }
     if (p.kind === 'stinger') {
       shots.push(jingleShot(index, files, p.key, p.musicType));
     } else {

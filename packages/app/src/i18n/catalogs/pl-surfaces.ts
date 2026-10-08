@@ -636,7 +636,7 @@ export const plSurfaces = {
       resourceFelled: { label: 'Upadek drzewa', trigger: 'gdy drwal ścina drzewo' },
       buildingFinished: {
         label: 'Ukończenie budowy',
-        trigger: 'gdy twój budynek zostaje dokończony na ekranie',
+        trigger: 'gdy twój budynek zostaje dokończony, ciszej poza ekranem',
       },
       buildingDestroyed: {
         label: 'Zniszczenie budynku',
@@ -647,6 +647,7 @@ export const plSurfaces = {
       settlerDied: { label: 'Śmierć', trigger: 'gdy twój osadnik ginie na ekranie' },
       defenceAlarmRaised: { label: 'Alarm obronny', trigger: 'gdy przełączasz budynek w tryb obrony' },
       chestOpened: { label: 'Otwarcie skrzyni', trigger: 'gdy twój osadnik otwiera skrzynię' },
+      technologyDiscovered: { label: 'Odkrycie', trigger: 'gdy twój osadnik odkrywa coś nowego' },
       combatSwing: {
         label: 'Zamach w walce',
         trigger: 'gdy wojownik zamachuje się bronią, której klip nie ma własnego świstu',
