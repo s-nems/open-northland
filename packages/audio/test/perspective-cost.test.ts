@@ -119,6 +119,10 @@ function decide(scene: Scene, terrain?: AudioTerrain): { shots: readonly OneShot
       fogChecks++;
       return true;
     },
+    exploredTile: () => {
+      fogChecks++;
+      return true;
+    },
     ...(terrain !== undefined ? { terrain } : {}),
   });
   return { shots: frame.oneShots, fogChecks };
