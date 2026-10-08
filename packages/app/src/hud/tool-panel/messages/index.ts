@@ -24,7 +24,7 @@ import {
 import type { FigureFrames } from '../../figures/figure-frames.js';
 import type { PanelContext } from '../context.js';
 import { noticeThumb } from './cards.js';
-import { type MessageFeedState, takeRaised } from './feed.js';
+import { type MessageFeedState, type ShownNote, shownNote, takeRaised } from './feed.js';
 import { FightAreas, shownFightAt } from './fight-areas.js';
 import { type NoticeFigureSlot, NoticeFigures } from './figures.js';
 import { createDiplomacyMessageSource, type MetSeat } from './from-diplomacy.js';
@@ -46,7 +46,7 @@ import { composeMessageText, fightSummary } from './text.js';
 import type { PendingMessage, UserMessage } from './types.js';
 import type { WorkshopSeam } from './workshop-stalls.js';
 
-export type { MessageFeedState } from './feed.js';
+export type { MessageFeedState, ShownNote } from './feed.js';
 export type { MetSeat } from './from-diplomacy.js';
 export { NOTICE_GALLERY_DEBUG_FLAG, type NoticeGallery } from './gallery.js';
 export type { SiteSeam } from './site-shortages.js';
@@ -108,6 +108,8 @@ export interface MessageCenterDeps {
   readonly onSelect: (target: MessageTarget) => void;
   /** An attack note just shown as a new card, at its hit: the minimap's alarm follows the column. */
   readonly onAttackShown?: ((at: HalfCellNode) => void) | undefined;
+  /** Every note the column shows that a frame raised, new or repeated; the notices' sounds follow it. */
+  readonly onNoteShown?: ((note: ShownNote) => void) | undefined;
   readonly initial?: MessageFeedState | undefined;
   /** Set, raises one note of every type on the seat's own actors once a sweep (the `notices` debug flag). */
   readonly gallery?: NoticeGallery | undefined;
@@ -349,8 +351,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   };
   const take = (raised: RaisedMessage, tick: number): void => {
     const feed = feeds.current;
-    const fightAt = shownFightAt(feed, raised.pending, takeRaised(feed, raised, tick));
+    const outcome = takeRaised(feed, raised, tick);
+    const fightAt = shownFightAt(feed, raised.pending, outcome);
     if (fightAt !== null) deps.onAttackShown?.(fightAt);
+    if (deps.onNoteShown === undefined) return;
+    const shown = shownNote(feed, raised.pending, outcome);
+    if (shown !== null) deps.onNoteShown(shown);
   };
   const dismissed = (pending: PendingMessage): boolean => feeds.current.dismissed(pending);
   let lastGalleryTick: number | null = null;
@@ -385,9 +391,7 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
           take(raised, snapshot.tick);
         }
         if (seat !== null) {
-          for (const raised of diplomacySource.poll(naming)) {
-            feeds.current.add(raised.pending, snapshot.tick, raised.compose);
-          }
+          for (const raised of diplomacySource.poll(naming)) take(raised, snapshot.tick);
         }
         if (seat !== null && deps.gallery !== undefined && galleryDue(snapshot.tick)) {
           for (const raised of galleryMessages(

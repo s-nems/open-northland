@@ -33,6 +33,7 @@ import type {
   MessageTarget,
   MetSeat,
   NoticeGallery,
+  ShownNote,
   SiteSeam,
   WorkshopSeam,
 } from '../hud/tool-panel/messages/index.js';
@@ -160,6 +161,8 @@ export interface GameToolPanelDeps {
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
   /** An attack note just shown as a new card, at its hit. */
   readonly onAttackShown?: (at: HalfCellNode) => void;
+  /** Every note the column shows that a frame raised, new or repeated. */
+  readonly onNoteShown?: (note: ShownNote) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
@@ -336,6 +339,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
         ? { onSelectMessageTarget: deps.onSelectMessageTarget }
         : {}),
       ...(deps.onAttackShown !== undefined ? { onAttackShown: deps.onAttackShown } : {}),
+      ...(deps.onNoteShown !== undefined ? { onNoteShown: deps.onNoteShown } : {}),
       ...(deps.noticeGallery !== undefined ? { noticeGallery: deps.noticeGallery } : {}),
       ...(deps.workshops !== undefined ? { workshops: deps.workshops } : {}),
       ...(deps.sites !== undefined ? { sites: deps.sites } : {}),

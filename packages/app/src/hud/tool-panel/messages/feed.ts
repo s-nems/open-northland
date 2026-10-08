@@ -94,6 +94,26 @@ export function takeRaised(feed: MessageFeed, raised: RaisedMessage, tick: numbe
   return outcome;
 }
 
+/** A note the column shows that the feed took this frame: a new card, or a repeat that revised a card
+ *  still standing (a fight's next hit). */
+export interface ShownNote {
+  readonly pending: PendingMessage;
+  /** A new card, not a repeat of one already standing. */
+  readonly fresh: boolean;
+}
+
+/** The note `feed` just took with `outcome`, when its level shows it and the player has not dismissed
+ *  the card it repeats; else null. */
+export function shownNote(
+  feed: MessageFeed,
+  pending: PendingMessage,
+  outcome: MessageAddOutcome,
+): ShownNote | null {
+  if (!messagePassesFilter(messagePriority(pending.type), feed.level())) return null;
+  if (outcome === 'accepted') return { pending, fresh: true };
+  return outcome === 'duplicate' && !feed.dismissed(pending) ? { pending, fresh: false } : null;
+}
+
 export function defaultMessageFeedState(): MessageFeedState {
   return { level: DEFAULT_MESSAGE_LEVEL, nextId: 1, live: [], history: [] };
 }

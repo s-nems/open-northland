@@ -72,6 +72,7 @@ import {
   type MessageTarget,
   type MetSeat,
   type NoticeGallery,
+  type ShownNote,
   type SiteSeam,
   type WorkshopSeam,
 } from './messages/index.js';
@@ -238,6 +239,8 @@ export interface ToolPanelOptions {
   readonly onSelectMessageTarget?: (target: MessageTarget) => void;
   /** An attack note just shown as a new card, at its hit. */
   readonly onAttackShown?: (at: HalfCellNode) => void;
+  /** Every note the column shows that a frame raised, new or repeated. */
+  readonly onNoteShown?: (note: ShownNote) => void;
   /** Set, the notification column shows one note of every type (`?debug=notices`). */
   readonly noticeGallery?: NoticeGallery;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
@@ -765,6 +768,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       metSeats: opts.metSeats,
       onSelect: (target) => opts.onSelectMessageTarget?.(target),
       onAttackShown: opts.onAttackShown,
+      onNoteShown: opts.onNoteShown,
       gallery: opts.noticeGallery,
       workshops: opts.workshops,
       sites: opts.sites,

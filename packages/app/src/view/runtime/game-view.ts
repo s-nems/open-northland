@@ -65,6 +65,7 @@ import { type MinimapHandle, mountMinimap } from '../../hud/minimap/index.js';
 import { minimapFeatureOfGoodTypes } from '../../hud/minimap/live-objects.js';
 import type { NetPanelSource } from '../../hud/network/model.js';
 import { type MetSeat, NOTICE_GALLERY_DEBUG_FLAG } from '../../hud/tool-panel/messages/index.js';
+import { soundShownNote } from '../../hud/tool-panel/messages/sounds.js';
 import {
   MEAD_GOOD_ID,
   type ResidentsProjectionContext,
@@ -656,6 +657,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         if (target.entity !== null) selectEntity?.(target.entity);
       },
       onAttackShown: (at) => minimap?.ping(at),
+      // Each shown note's sound: the attack alert, a settler's own voice, or the card cue.
+      ...(soundDriver !== null ? { onNoteShown: (note) => soundShownNote(note, soundDriver) } : {}),
       ...(hasDebugFlag(params, NOTICE_GALLERY_DEBUG_FLAG)
         ? { noticeGallery: { goodType: goodLabelByType.keys().next().value ?? null } }
         : {}),
