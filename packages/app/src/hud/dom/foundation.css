@@ -2380,12 +2380,19 @@ body.on-drag-scroll * {
   color: var(--bronze);
   white-space: nowrap;
 }
+/* One width for both profession filters, so a picked name never moves the fields around it. */
+.on-hud .on-res-select {
+  flex: 0 0 186px;
+  min-width: 0;
+}
 .on-hud .on-res-select-btn {
   all: unset;
   display: flex;
+  flex: 1;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  max-width: 150px;
+  min-width: 0;
   color: var(--text-hi);
   font: 600 13px var(--font-body);
   cursor: var(--cursor-pointer, pointer);
@@ -2415,7 +2422,6 @@ body.on-drag-scroll * {
   position: fixed;
   inset: auto;
   margin: 0;
-  max-height: 340px;
   padding: 4px 0;
   overflow-y: auto;
   border: 1px solid var(--wood-hi);
