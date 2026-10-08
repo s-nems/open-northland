@@ -21,7 +21,6 @@ import { editScriptedLandscape } from './landscape.js';
 import {
   dockScriptedVehicles,
   moveUnitsInArea,
-  sendScriptedHumans,
   sendScriptedVehicles,
   stopPlayerHumans,
   teleportScriptedHumans,
@@ -52,6 +51,7 @@ import {
   removeScriptedHouses,
   removeScriptedHumans,
 } from './remove.js';
+import { sendScriptedHumans } from './scripted-march.js';
 import { spawnScriptedAnimal, spawnScriptedHumans } from './spawn.js';
 import {
   declareScriptedVerdict,

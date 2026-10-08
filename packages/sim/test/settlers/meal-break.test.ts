@@ -280,6 +280,26 @@ describe('meal break', () => {
     expect(sim.world.get(e, PlayerOrder).scripted).toBe(true);
   });
 
+  it("a script's attack-move parked behind a clip stays the script's march", () => {
+    const sim = freshSim();
+    const e = ownedSettler(sim, 2, 2, WOODCUTTER);
+    addCurrentAtomic(sim.world, e, {
+      atomicId: EAT_ATOMIC,
+      duration: EAT_TICKS,
+      effect: { kind: 'idle' },
+      targetEntity: null,
+      targetTile: null,
+    });
+    const n = cellAnchorNode(30, 2);
+    sendUnit(sim.world, ctxOf(sim), e, n.hx, n.hy, { attackMove: true });
+    expect(sim.world.get(e, DeferredOrder)).toMatchObject({
+      scripted: true,
+      command: { kind: 'attackMoveUnit' },
+    });
+    for (let t = 0; t <= EAT_TICKS && !sim.world.has(e, PlayerOrder); t++) sim.step();
+    expect(sim.world.get(e, PlayerOrder)).toMatchObject({ scripted: true, attackMove: expect.anything() });
+  });
+
   it('a unit a script controls keeps to its walk', () => {
     const sim = freshSim();
     larderAt(sim, 20, 6);

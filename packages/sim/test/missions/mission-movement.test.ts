@@ -45,6 +45,8 @@ import {
  */
 
 const OWNER = 2;
+/** Another player, whose standing fighter a band's places avoid. */
+const STRANGER = 3;
 const GROUP = 55;
 const FAR = { hx: POINT.hx + 16, hy: POINT.hy };
 const OUTSIDE = { hx: POINT.hx + 20, hy: POINT.hy };
@@ -199,6 +201,49 @@ describe('SendHuman', () => {
     expect(goalNear(FAR)).toBe(true);
     sim.run(2 * PASS_TICKS);
     expect(goalNear(POINT)).toBe(true);
+  });
+
+  it('seats the men a repeating line adds on places nobody holds', () => {
+    const sim = firingSim([
+      { opcode: 'SendHuman', humanId: GROUP, point: FAR },
+      { opcode: 'ActivateMission', missionIndex: 0 },
+    ]);
+    for (let i = 0; i < BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(LOAD_PASS);
+    for (let i = 0; i < BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(PASS_TICKS);
+    const goals = humansOf(sim, OWNER).map((e) => sim.world.tryGet(e, PlayerOrder)?.attackMove?.goal);
+    expect(goals.filter((goal) => goal !== undefined)).toHaveLength(2 * BAND);
+    expect(new Set(goals).size).toBe(2 * BAND);
+  });
+
+  it('keeps a walking civilian band on its places', () => {
+    const sim = firingSim([
+      { opcode: 'SendHuman', humanId: GROUP, point: FAR },
+      { opcode: 'ActivateMission', missionIndex: 0 },
+    ]);
+    for (let i = 0; i < BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP });
+    sim.run(LOAD_PASS);
+    const band = humansOf(sim, OWNER);
+    const orders = band.map((e) => sim.world.get(e, PlayerOrder));
+    sim.run(PASS_TICKS);
+    band.forEach((e, i) => expect(sim.world.tryGet(e, PlayerOrder)).toBe(orders[i]));
+  });
+
+  it("gives no place on a stranger's standing fighter", () => {
+    const sim = scriptedSim([firingMission([{ opcode: 'SendHuman', humanId: GROUP, point: FAR }])]);
+    spawn(sim, { player: STRANGER, job: SOLDIER, at: FAR });
+    spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(PLACED);
+    const [stranger] = humansOf(sim, STRANGER);
+    if (stranger === undefined) throw new Error('no stranger');
+    expect(nodeOf(sim, stranger)).toEqual(FAR);
+    runLoadPass(sim);
+    const [soldier] = humansOf(sim, OWNER);
+    if (soldier === undefined) throw new Error('no settler');
+    const goal = sim.world.get(soldier, PlayerOrder).attackMove?.goal;
+    expect(goal).toBeDefined();
+    expect(goal).not.toBe(sim.terrain?.nodeAt(FAR.hx, FAR.hy));
   });
 
   it('walks the ordered group toward the point', () => {

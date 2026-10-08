@@ -12,9 +12,9 @@ becomes a column one or two nodes wide that fans out into its formation only at 
 
 The player's own orders look better only because an army usually stands spread out and walks a short
 way over open ground. Scripted armies show it at its worst: `SetHumanX` spawns a whole band on one
-point, and `SendHuman` then marches it across the map. Measured on Wielka Inwazja's crusade (31
-fighters, about 400 cells from Rome's camp to the player's base): the column stays 25-37 nodes long
-and 1-5 nodes wide for the whole march.
+point, and `SendHuman` then marches it across the map. Measured on Wielka Inwazja's crusade (a band of
+about 30 heroes, about 400 cells from Rome's camp to the player's base): the column stays 25-37 nodes
+long and 1-5 nodes wide for the whole march.
 
 Widening the lanes alone is not enough. Lanes beside the corridor that squeeze round obstacles
 measured 3-4 abreast, but their lengths differed by 3-10% over that route, so the band stretched to
@@ -34,8 +34,9 @@ about twice its single-file length and would arrive piecemeal. The outcome needs
 - Pacing state that outlives a tick is saved state: bump the save format and regenerate its fixture
   in the same commit.
 - Per-tick cost scales with the members marching, never with member pairs or the map.
-- Name the pace and lane rules as authored approximations: the original walks a band as an
-  overlapping blob with no body collision and no formation.
+- Name the pace and lane rules as authored approximations: the original has no group pace or lanes.
+  A script's `SendHuman` sends every member to one point, a player's group order gives each member
+  its own nearby target, and members walk through each other.
 
 ## Verify
 

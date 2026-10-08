@@ -45,7 +45,7 @@ export type Occupancy = (
 ) => (node: NodeId) => boolean;
 
 /** Every node another settler stands on: one scan of the population, fit for a click. */
-export const settlersStanding: Occupancy = (world, terrain, movers) => {
+const settlersStanding: Occupancy = (world, terrain, movers) => {
   const occupied = new Set<NodeId>();
   for (const entity of world.query(Settler, Position)) {
     if (movers.has(entity)) continue;
