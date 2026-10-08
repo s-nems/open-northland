@@ -177,7 +177,8 @@ export function drainPathRequests(
       req.retainRoute || req.grind || !finishesStepOnReroute(world, e)
         ? undefined
         : freeStepEnd(world, terrain, e, blocked);
-    const start = stepEnd ?? req.start;
+    const asked = startBesideBlocks(world, terrain, e, req, traversal, dynamicOnly());
+    const start = stepEnd ?? asked;
     // A goal taken only by a standing unit, of any side, is recoverable: re-aim at the nearest free node so
     // a charge fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
     let goal = req.goal;
@@ -238,7 +239,10 @@ export function drainPathRequests(
       dropPath(world, e);
     }
     if (path === null) {
-      world.mut(e, PathRequest).failed = true;
+      const refused = world.mut(e, PathRequest);
+      refused.failed = true;
+      // A refusal's readers (a wall breach, the sealed-target check) search again from the start tried here.
+      refused.start = asked;
       // A failed mid-walk reroute keeps the live path, so the walker plays its old route out and parks on a
       // cell centre rather than freezing mid-leg. A failed grind ask has already dropped it.
       continue;
@@ -328,6 +332,21 @@ function settleRoute(world: World, e: Entity, goal: NodeId): void {
   world.remove(e, PathRequest);
   world.remove(e, Stranded);
   routeFound(world, e, goal);
+}
+
+/** The request's start, or the nearest open bracket node when it asks from a blocked one beside the walker:
+ *  a route from a wall node may leave it on the wall's far side. A start at a kept route's end stays. */
+function startBesideBlocks(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  req: { readonly start: NodeId; readonly retainRoute?: true | undefined },
+  traversal: Traversal,
+  blocked: BlockOverlay,
+): NodeId {
+  const p = world.tryGet(e, Position);
+  if (req.retainRoute || p === undefined || !blocked.has(req.start)) return req.start;
+  return routeStartCell(terrain, p.x, p.y, traversal, blocked);
 }
 
 /** Whether `e` still walks a route but no longer stands nearest `start`, the node its grind ask is from. */

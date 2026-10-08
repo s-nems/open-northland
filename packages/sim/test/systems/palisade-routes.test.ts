@@ -15,6 +15,8 @@ import {
 import {
   type Entity,
   exportSaveGame,
+  type Fixed,
+  fx,
   nodeOfPosition,
   positionOfNode,
   restoreSimulation,
@@ -105,6 +107,8 @@ const HEIGHT = 20;
 const WALL_ROW = 10;
 const GATE_X = 12;
 const NORTH = { hx: GATE_X, hy: 2 };
+/** A wall post's column well clear of the gate. */
+const PRESSED_X = 6;
 const SOUTH = { hx: GATE_X, hy: 18 };
 
 /** The fixture content with the woodcutter's axe and the hunter's bow dealing {@link HOUSE_DAMAGE} in the
@@ -509,6 +513,32 @@ describe('an attack-move against a sealed palisade', () => {
     sim.world.mut(target, Health).hitpoints = 0;
     for (let tick = 0; tick < 600 && nodeRow(sim, raider).hy < SOUTH.hy; tick++) sim.step();
     expect(nodeRow(sim, raider)).toEqual(SOUTH);
+  });
+
+  it('attacks the wall from a raider pressed against it, never stepping through', () => {
+    const sim = fresh();
+    const gate = wallRow(sim, P1);
+    sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: gate, open: false });
+    sim.step();
+    // Three quarters of the way to a wall post: the post is the nearest node to where it stands.
+    const near = positionOfNode(PRESSED_X, WALL_ROW - 1);
+    const post = positionOfNode(PRESSED_X, WALL_ROW);
+    const along = (a: Fixed, b: Fixed): Fixed =>
+      fx.add(a, fx.mulDiv(fx.sub(b, a), fx.fromInt(3), fx.fromInt(4)));
+    const raider = fighter(sim, NORTH, P0);
+    sim.world.add(raider, Position, { x: along(near.x, post.x), y: along(near.y, post.y) });
+    attackMoveUnit(sim.world, ctxOf(sim), {
+      kind: 'attackMoveUnit',
+      entity: raider,
+      x: SOUTH.hx,
+      y: SOUTH.hy,
+    });
+
+    for (let tick = 0; tick < 20 && !sim.world.has(raider, AttackOrder); tick++) sim.step();
+    const target = sim.world.tryGet(raider, AttackOrder)?.target;
+    if (target === undefined) throw new Error('expected the raider to go for the wall');
+    expect(sim.world.has(target, Palisade)).toBe(true);
+    expect(nodeRow(sim, raider).hy).toBeLessThan(WALL_ROW);
   });
 
   it('walks a whole squad through the first post to fall', () => {

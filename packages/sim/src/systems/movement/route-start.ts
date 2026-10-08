@@ -1,4 +1,5 @@
 import { type Fixed, fx } from '../../core/fixed.js';
+import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { nodeOfPosition, positionOfNode } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph, Traversal } from '../../nav/terrain/index.js';
 import { worldDistance, worldX } from '../../nav/world-metric.js';
@@ -18,12 +19,17 @@ function floorInt(v: Fixed): number {
  * cell id as the tie-break. The nearest bracket node alone can be unwalkable, since a diagonal leg is
  * legal with one impassable flank, and `findPath` rejects an unwalkable start outright, which would
  * strand the walker mid-seam. Falls back to the truncated node when no bracket node is traversable.
+ *
+ * With `blocked`, a bracket node outside it wins over a nearer one inside: a walker beside a wall is
+ * one step from each open bracket, so those lie on its side, while a blocked start lets the route leave
+ * it on either.
  */
 export function routeStartCell(
   terrain: TerrainGraph,
   x: Fixed,
   y: Fixed,
   traversal: Traversal = 'land',
+  blocked?: BlockOverlay,
 ): NodeId {
   // World coordinates in half-cell units: the lattice is rectangular in world space, so the nearest
   // node is one of the four floor/ceil corners of (2·worldX, 2·row).
@@ -35,16 +41,25 @@ export function routeStartCell(
   const rows = wy === fx.fromInt(lowY) ? [lowY] : [lowY, lowY + 1];
   let best: NodeId | undefined;
   let bestD: Fixed | undefined;
+  let bestOpen = false;
   for (const col of cols) {
     for (const row of rows) {
       const cell = terrain.nodeAtClamped(col, row);
       if (!terrain.traversable(cell, traversal)) continue;
+      const open = blocked?.has(cell) !== true;
+      if (bestOpen && !open) continue;
       const c = terrain.coordsOf(cell);
       const centre = positionOfNode(c.x, c.y);
       const d = worldDistance(x, y, centre.x, centre.y);
-      if (bestD === undefined || d < bestD || (d === bestD && best !== undefined && cell < best)) {
+      if (
+        bestD === undefined ||
+        (open && !bestOpen) ||
+        d < bestD ||
+        (d === bestD && best !== undefined && cell < best)
+      ) {
         best = cell;
         bestD = d;
+        bestOpen = open;
       }
     }
   }
