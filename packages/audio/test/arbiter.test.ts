@@ -16,6 +16,8 @@ import {
   JINGLE_PENDING_MAX_AGE_S,
   type OneShot,
   OneShotArbiter,
+  SCREAM_BURST,
+  SCREAM_STARTS_PER_S,
   SFX_BURST,
   SFX_STARTS_PER_S,
   VOICE_BURST,
@@ -126,16 +128,37 @@ describe('sfx and voice lanes', () => {
   const battle = battleShots(snapshot, battleEvents(40));
   const FRAME_S = 1 / 60;
 
-  it('counts every scream against the voice budget and every body blow against the sfx budget', () => {
+  it('counts every scream against the scream budget and every body blow against the sfx budget', () => {
     // The director's own shapes: screams and body blows hold their wav exclusive, and still pay.
-    expect(lane(battle, 'voice').length).toBeGreaterThan(VOICE_BURST);
-    expect(lane(battle, 'voice').every((s) => s.exclusive === 'wav')).toBe(true);
+    const screams = lane(battle, 'voice');
+    expect(screams.length).toBeGreaterThan(SCREAM_BURST);
+    expect(screams.every((s) => s.exclusive === 'wav' && s.lane?.kind === 'voice' && s.lane.scream)).toBe(
+      true,
+    );
     expect(lane(battle, 'sfx').some((s) => s.exclusive === 'wav')).toBe(true);
     const arbiter = new OneShotArbiter();
     const started: OneShot[] = [];
     for (let t = 0; t < 1; t += FRAME_S) started.push(...arbiter.decide(battle, t));
-    expect(lane(started, 'voice').length).toBeLessThanOrEqual(VOICE_BURST + VOICE_STARTS_PER_S);
+    expect(lane(started, 'voice').length).toBeGreaterThan(VOICE_BURST + VOICE_STARTS_PER_S);
+    expect(lane(started, 'voice').length).toBeLessThanOrEqual(SCREAM_BURST + SCREAM_STARTS_PER_S);
     expect(lane(started, 'sfx').length).toBeLessThanOrEqual(SFX_BURST + SFX_STARTS_PER_S);
+  });
+
+  it('leaves the chatter its own budget under a burst of screams', () => {
+    const SCREAM_POOLS = 2 * SCREAM_BURST;
+    const CHAT_POOLS = 2 * VOICE_BURST;
+    const shots: OneShot[] = [
+      ...Array.from({ length: SCREAM_POOLS }, (_, i) => ({
+        ...worldShot(wavPool(`scream${i}-`, 1), `scream:${i}`, 0.9, 'voice'),
+        lane: { kind: 'voice' as const, scream: true },
+      })),
+      ...Array.from({ length: CHAT_POOLS }, (_, i) =>
+        worldShot(wavPool(`chat${i}-`, 1), `chat:${i}`, 0.5, 'voice'),
+      ),
+    ];
+    const started = new OneShotArbiter().decide(shots, 0);
+    expect(started.filter((s) => s.key.startsWith('scream:'))).toHaveLength(SCREAM_BURST);
+    expect(started.filter((s) => s.key.startsWith('chat:'))).toHaveLength(VOICE_BURST);
   });
 
   it('starts the loudest shot of each pool, and rations voices separately from sfx', () => {
@@ -143,7 +166,7 @@ describe('sfx and voice lanes', () => {
     for (const kind of ['voice', 'sfx'] as const) {
       const pools = new Set(lane(battle, kind).map((s) => s.files));
       expect(lane(started, kind)).toHaveLength(
-        Math.min(pools.size, kind === 'voice' ? VOICE_BURST : SFX_BURST),
+        Math.min(pools.size, kind === 'voice' ? SCREAM_BURST : SFX_BURST),
       );
       for (const shot of lane(started, kind)) {
         const pool = lane(battle, kind).find((s) => s.key === shot.key)?.files;

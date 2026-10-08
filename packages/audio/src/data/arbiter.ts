@@ -23,7 +23,7 @@ import type { OneShot } from './types.js';
  *   cooldown, so the tenth birth in a row is a reminder every minute while the first birth after a
  *   quiet spell rings at once. A more important jingle (a death, the alarm) rings over a lesser one
  *   already sounding; a lesser one waits for the lane and rings late, or is dropped once stale.
- * - Voices and positioned SFX draw from a rate budget each, loudest first, so the busiest battle
+ * - Voices, screams and positioned SFX draw from a rate budget each, loudest first, so the busiest battle
  *   starts a bounded number of layered sounds a second. Each sound pool starts at most its loudest shot
  *   a frame, holds a few instances at once, and the world as a whole a capped number
  *   ({@link OneShotLedger}).
@@ -89,10 +89,15 @@ export const JINGLE_COOLDOWN_MAX_S = 60;
 /** A jingle waiting for the lane rings only this long after its event; later it is stale and dropped. */
 export const JINGLE_PENDING_MAX_AGE_S = 6;
 
-/** Layered voice lines (chatter, animal calls, screams) started per second, and the burst allowed after
- *  a quiet spell. */
+/** Layered voice lines (chatter, animal calls) started per second, and the burst allowed after a quiet
+ *  spell. */
 export const VOICE_STARTS_PER_S = 2;
 export const VOICE_BURST = 2;
+/** Screams started per second, and the burst: a budget of their own, so a melee sounds like many bodies
+ *  struck and leaves the chatter its share. Approximation: the original bounds screams only by its one
+ *  sounding instance per wav, about ten at once. */
+export const SCREAM_STARTS_PER_S = 4;
+export const SCREAM_BURST = 4;
 /** Layered positioned SFX (work cues, swings, impacts, crashes) started per second, and the burst. */
 export const SFX_STARTS_PER_S = 12;
 export const SFX_BURST = 12;
@@ -178,6 +183,7 @@ export class OneShotArbiter {
   private laneBusyUntil = Number.NEGATIVE_INFINITY;
   private lanePriority = DEFAULT_JINGLE_PRIORITY;
   private readonly voices: RateBudget;
+  private readonly screams: RateBudget;
   private readonly sfx: RateBudget;
   private readonly ledger: OneShotLedger;
   private readonly playback: OneShotPlayback;
@@ -189,6 +195,7 @@ export class OneShotArbiter {
   constructor(options: ArbiterOptions = {}) {
     const now = options.now ?? 0;
     this.voices = new RateBudget(VOICE_STARTS_PER_S, VOICE_BURST, now);
+    this.screams = new RateBudget(SCREAM_STARTS_PER_S, SCREAM_BURST, now);
     this.sfx = new RateBudget(SFX_STARTS_PER_S, SFX_BURST, now);
     const random = options.random ?? seededRandom(DEFAULT_PICK_SEED);
     const playback = options.playback ?? {};
@@ -240,7 +247,7 @@ export class OneShotArbiter {
     for (const shot of jingles) this.offerJingle(shot, now, out);
     this.ringPending(now, out);
     for (const shot of this.ledger.takeCandidates()) {
-      const budget = shot.lane?.kind === 'voice' ? this.voices : this.sfx;
+      const budget = this.budgetOf(shot);
       if (!budget.ready(now)) continue;
       const started = this.ledger.startWorld(shot, now);
       if (started === null) continue;
@@ -254,6 +261,13 @@ export class OneShotArbiter {
     this.startedNow.clear();
     this.droppedNow.clear();
     return kept;
+  }
+
+  /** The rate budget a world shot of the voice or sfx lane pays from. */
+  private budgetOf(shot: OneShot): RateBudget {
+    const lane = shot.lane;
+    if (lane?.kind !== 'voice') return this.sfx;
+    return lane.scream === true ? this.screams : this.voices;
   }
 
   private offerJingle(shot: OneShot, now: number, out: OneShot[]): void {

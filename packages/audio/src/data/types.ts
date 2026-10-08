@@ -23,7 +23,11 @@ import type { UiCue } from './ui-cues.js';
 export type Lane =
   | { readonly kind: 'jingle'; readonly musicType: number }
   | { readonly kind: 'alert'; readonly alert: AlertKind }
-  | { readonly kind: 'voice' }
+  | {
+      readonly kind: 'voice';
+      /** A struck body's scream, rationed apart from the chatter and calls sharing the voice lane. */
+      readonly scream?: boolean;
+    }
   | { readonly kind: 'sfx' };
 
 /** One resolved request to play a sound once. */

@@ -3,6 +3,8 @@ import { POOL_INSTANCE_CAP, POOL_RETRIGGER_S, WORLD_VOICE_CAP } from '../src/dat
 import {
   type OneShot,
   OneShotArbiter,
+  SCREAM_BURST,
+  SCREAM_STARTS_PER_S,
   SFX_BURST,
   SFX_STARTS_PER_S,
   VOICE_BURST,
@@ -75,7 +77,7 @@ function runBattle(units: number, seconds = BATTLE_S) {
   const frame = counted(shots, reads);
   let playing: Playing[] = [];
   const lastPoolStart = new Map<string, number>();
-  const starts = { voice: 0, sfx: 0 };
+  const starts = { voice: 0, scream: 0, sfx: 0 };
   let maxReadsPerFrame = 0;
   let maxPicksPerFrame = 0;
   for (let t = 0; t < seconds; t += FRAME_S) {
@@ -95,7 +97,7 @@ function runBattle(units: number, seconds = BATTLE_S) {
         POOL_RETRIGGER_S,
       );
       lastPoolStart.set(pool, t);
-      if (shot.lane.kind === 'voice') starts.voice++;
+      if (shot.lane.kind === 'voice') starts[shot.lane.scream === true ? 'scream' : 'voice']++;
       if (shot.lane.kind === 'sfx') starts.sfx++;
       playing.push({
         instance: shot.instance ?? 0,
@@ -118,6 +120,8 @@ describe('a 1000-unit battle', () => {
     expect(run.shots).toBeGreaterThan(2000);
     expect(run.starts.voice).toBeGreaterThan(0);
     expect(run.starts.voice).toBeLessThanOrEqual(VOICE_BURST + VOICE_STARTS_PER_S * BATTLE_S);
+    expect(run.starts.scream).toBeGreaterThan(VOICE_STARTS_PER_S * BATTLE_S);
+    expect(run.starts.scream).toBeLessThanOrEqual(SCREAM_BURST + SCREAM_STARTS_PER_S * BATTLE_S);
     expect(run.starts.sfx).toBeLessThanOrEqual(SFX_BURST + SFX_STARTS_PER_S * BATTLE_S);
     // One start per sound pool a frame at most, however many shots the pool's fighters raise.
     expect(run.maxPicksPerFrame).toBeLessThanOrEqual(DRAWS_PER_START * battleIndex.groupsByName.size);

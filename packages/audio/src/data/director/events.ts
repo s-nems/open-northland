@@ -93,7 +93,7 @@ function jingleShot(
 }
 
 const SFX_LANE: Lane = { kind: 'sfx' };
-const VOICE_LANE: Lane = { kind: 'voice' };
+const SCREAM_LANE: Lane = { kind: 'voice', scream: true };
 
 /** Which sounds a given event triggers, per the bindings. A chest adds its kind-specific lid sound to the
  *  common jingle; a building torn down before {@link HOUSE_CRASH_MIN_BUILT} makes no sound. */
@@ -385,7 +385,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
         gain: spatial.gain * poolGain(index, files),
         pan: spatial.pan,
         key: p.key,
-        lane: p.kind === 'scream' ? VOICE_LANE : SFX_LANE,
+        lane: p.kind === 'scream' ? SCREAM_LANE : SFX_LANE,
         ...(p.exclusive !== undefined ? { exclusive: p.exclusive } : {}),
         ...(p.layer !== undefined ? { layer: p.layer } : {}),
       });
