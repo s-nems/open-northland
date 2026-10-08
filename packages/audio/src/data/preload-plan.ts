@@ -1,5 +1,5 @@
 import { groupFiles, type SoundIndex } from './bank.js';
-import { UI_CUE_FILES } from './ui-cues.js';
+import { NOTIFICATION_SOUNDS, UI_CUE_FILES } from './ui-cues.js';
 
 /**
  * The order the bank is decoded in ahead of play, so a first click or first fight finds its wav
@@ -31,7 +31,10 @@ function isTalk(files: readonly string[]): boolean {
  *  belongs to the earlier one. */
 export function preloadPlan(index: SoundIndex): readonly PreloadEntry[] {
   const pools: Record<PreloadTier, (readonly string[])[]> = {
-    interface: [Object.values(UI_CUE_FILES)],
+    interface: [
+      Object.values(UI_CUE_FILES),
+      ...Object.values(NOTIFICATION_SOUNDS).map((sound) => sound.files),
+    ],
     jingle: [...index.jinglesByMusicType.values()],
     action: [],
     chatter: [],

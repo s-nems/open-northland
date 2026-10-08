@@ -1,6 +1,6 @@
 import type { SoundBank } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { buildSoundIndex, preloadPlan, UI_CUE_FILES } from '../src/index.js';
+import { buildSoundIndex, preloadPlan, SHIP_BELL_FILE, UI_CUE_FILES } from '../src/index.js';
 
 const VIKING = 1;
 const DEER = 8;
@@ -47,6 +47,7 @@ describe('preloadPlan', () => {
   it('orders the bank from clicks, answers and refusals to jingles, work and combat, then talk and beds', () => {
     expect(plan).toEqual([
       ...Object.values(UI_CUE_FILES).map((file) => ({ file, tier: 'interface' })),
+      { file: SHIP_BELL_FILE, tier: 'interface' },
       { file: 'humantalk/ok 1.wav', tier: 'interface' },
       { file: 'humantalk/no 1.wav', tier: 'interface' },
       { file: 'jingles/birth.wav', tier: 'jingle' },

@@ -7,6 +7,7 @@ import { JINGLE_BIRTH, JINGLE_DUCK_HOLD_MS, JINGLE_TECHNOLOGY } from '../src/dat
 import {
   ALERT_DUCK_DB,
   ALERT_DUCKED_BUSES,
+  ARRIVAL_BELL_GAIN,
   ATTACK_ALERT_GAIN,
   ATTACK_ALERT_INTERVAL_S,
   ATTACK_ALERT_MIN_GAP_S,
@@ -17,6 +18,7 @@ import {
   buildSoundIndex,
   CHAT_CUE_COOLDOWN_S,
   CHAT_CUE_GAIN,
+  DEPARTURE_BELL_RATE,
   defaultBindings,
   directAudio,
   JINGLE_COOLDOWN_MAX_S,
@@ -26,7 +28,9 @@ import {
   notificationShot,
   type OneShot,
   OneShotArbiter,
+  SHIP_BELL_FILE,
   SoundDriver,
+  UI_CUE_FILES,
   UI_CUE_GAIN,
   VOICE_DUCK_RELEASE_S,
   VOICE_MUSIC_DUCK_DB,
@@ -249,8 +253,19 @@ describe('alert and notice sounds', () => {
     });
     expect(CHAT_CUE_GAIN).toBe(UI_CUE_GAIN / 2);
     expect(CHAT_CUE_COOLDOWN_S).toBe(1);
-    expect(notificationShot('arrival').files).toEqual(['gui/chat_incoming.wav']);
-    expect(notificationShot('departure')).toMatchObject({ files: ['gui/click_fail.wav'], gain: UI_CUE_GAIN });
+  });
+
+  it("rings a player's coming and going on the ship's bell, the going lower and quieter, never the fail click", () => {
+    const arrival = notificationShot('arrival');
+    const departure = notificationShot('departure');
+    expect(arrival).toMatchObject({ files: [SHIP_BELL_FILE], gain: ARRIVAL_BELL_GAIN });
+    expect(arrival.rate).toBeUndefined();
+    expect(departure).toMatchObject({ files: [SHIP_BELL_FILE], rate: DEPARTURE_BELL_RATE });
+    expect(departure.gain).toBeLessThan(arrival.gain);
+    expect(DEPARTURE_BELL_RATE).toBeLessThan(1);
+    for (const shot of [arrival, departure, notificationShot('chat')]) {
+      expect(shot.files).not.toContain(UI_CUE_FILES.fail);
+    }
     expect(notificationShot('card').lane).toBeUndefined();
   });
 

@@ -12,7 +12,9 @@ import { NOTICE_CUE_INTERVAL_S } from './ui-cues.js';
  * Attack alerts and the notices' own sounds. The original sounds no attack alert at all, only its
  * attack music, so the horn here is an authored improvement: it rings for an attack on the local seat
  * the player is not looking at, at most once per {@link ATTACK_ALERT_INTERVAL_S} per place, and sooner
- * for a new front. Pure: time comes in as `now` (audio-clock seconds).
+ * for a new front. The horn is the bank's magic horn, which a few map scripts also play as a magic cue;
+ * on those maps the two meanings share one sound, kept for its short, distinct blast. Pure: time comes
+ * in as `now` (audio-clock seconds).
  */
 
 /** Where the seat is hit: its settlement (a building, or bodies among its buildings), or its people out

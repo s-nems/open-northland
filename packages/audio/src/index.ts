@@ -235,14 +235,18 @@ export type {
   VoiceCall,
 } from './data/types.js';
 export {
+  ARRIVAL_BELL_GAIN,
   CHAT_CUE_COOLDOWN_S,
   CHAT_CUE_GAIN,
+  DEPARTURE_BELL_GAIN,
+  DEPARTURE_BELL_RATE,
   NOTICE_CARD_GAIN,
   NOTICE_CUE_INTERVAL_S,
   NOTIFICATION_SOUNDS,
   type NotificationCue,
   type NotificationSound,
   notificationShot,
+  SHIP_BELL_FILE,
   UI_CUE_FILES,
   UI_CUE_GAIN,
   type UiCue,

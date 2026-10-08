@@ -30,16 +30,18 @@ export function uiCueShot(cue: UiCue): OneShot {
 
 /**
  * What a notification rings, all authored (the original sounds none of them in game): a new message
- * card the briefing pop, another player's chat line and a player joining or returning the chat ring, a
- * player leaving, being kicked or the world falling out of sync the fail click.
+ * card the briefing pop, another player's chat line the chat ring, a player joining or returning the
+ * ship's bell, and a player leaving, being kicked or the world falling out of sync the same bell, lower
+ * and quieter. The fail click stays the cancelled tool's alone.
  */
 export type NotificationCue = 'card' | 'chat' | 'arrival' | 'departure';
 
-/** How a notification sounds: its wav, its gain and, for one that may come in bursts, the least seconds
- *  between two rings. */
+/** How a notification sounds: its wav, its gain, its playback rate when not as recorded, and for one
+ *  that may come in bursts the least seconds between two rings. */
 export interface NotificationSound {
   readonly files: readonly string[];
   readonly gain: number;
+  readonly rate?: number;
   readonly cooldownS?: number;
 }
 
@@ -57,11 +59,23 @@ export const CHAT_CUE_GAIN = UI_CUE_GAIN / 2;
 /** Least seconds between two chat rings, so a burst of lines rings once. Authored. */
 export const CHAT_CUE_COOLDOWN_S = 1;
 
+/** The ship's bell: the one struck bell among `Ship Group3 Sails Bell`'s wavs (a sharp strike and an
+ *  even decay; its two siblings are flapping sails). Nothing in the data plays the group. Chosen from
+ *  its level envelope, still to be checked by ear in `?sounds`. */
+export const SHIP_BELL_FILE = 'static/ship09.wav';
+/** A player arriving rings the bell at about the chat ring's level: its strike sits near -16 dB RMS,
+ *  6 dB under a press at this gain. Authored, tune by ear. */
+export const ARRIVAL_BELL_GAIN = UI_CUE_GAIN / 2;
+/** A player leaving rings the bell about four semitones lower, a falling farewell. Authored. */
+export const DEPARTURE_BELL_RATE = 0.8;
+/** A player leaving rings the bell about 3 dB under an arrival. Authored, tune by ear. */
+export const DEPARTURE_BELL_GAIN = ARRIVAL_BELL_GAIN / Math.SQRT2;
+
 export const NOTIFICATION_SOUNDS: Readonly<Record<NotificationCue, NotificationSound>> = {
   card: { files: [UI_CUE_FILES.briefing], gain: NOTICE_CARD_GAIN },
   chat: { files: [UI_CUE_FILES.chat], gain: CHAT_CUE_GAIN, cooldownS: CHAT_CUE_COOLDOWN_S },
-  arrival: { files: [UI_CUE_FILES.chat], gain: CHAT_CUE_GAIN },
-  departure: { files: [UI_CUE_FILES.fail], gain: UI_CUE_GAIN },
+  arrival: { files: [SHIP_BELL_FILE], gain: ARRIVAL_BELL_GAIN },
+  departure: { files: [SHIP_BELL_FILE], gain: DEPARTURE_BELL_GAIN, rate: DEPARTURE_BELL_RATE },
 };
 
 /**
@@ -77,6 +91,7 @@ export function notificationShot(notification: NotificationCue, rateKey?: string
     gain: sound.gain,
     pan: 0,
     key: `notify:${notification}`,
+    ...(sound.rate !== undefined ? { rate: sound.rate } : {}),
     ...(sound.cooldownS !== undefined ? { cooldownS: sound.cooldownS } : {}),
   };
   if (rateKey === undefined) return shot;
