@@ -143,7 +143,8 @@ export function renderNetworkGame(
       return;
     }
     if (event.kind === 'link') {
-      hud?.link(event.state, event.reason);
+      const { kind: _kind, atMs, ...report } = event;
+      hud?.link(report, atMs);
       return;
     }
     if (exit(event.message)) return;
@@ -288,8 +289,8 @@ export function renderNetworkGame(
         hud = mountNetHud({ client, readout, relayUrl: connection.url });
         // A link event while the world was rebuilt had no HUD to reach.
         const link = connection.linkState;
-        if (link === null) hud.link('reconnecting');
-        else if (link.state !== 'ok') hud.link(link.state, link.reason);
+        if (link === null) hud.link({ state: 'reconnecting' });
+        else if (link.state !== 'ok') hud.link(link, link.atMs);
         reportNet();
       })
       .catch((error: unknown) => {

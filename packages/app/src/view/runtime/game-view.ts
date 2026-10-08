@@ -54,6 +54,7 @@ import { createProductSelectionCache } from '../../hud/details-panel/model/settl
 import type { DiplomacyPanelRow } from '../../hud/dom/diplomacy-window/model.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
+import { createLinkLostScreen, type LinkLostScreen } from '../../hud/dom/link-lost-screen.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { createSystemMenu } from '../../hud/dom/system-menu.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
@@ -283,6 +284,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
 
   let loop: RafLoop | null = null;
   let systemMenu: ReturnType<typeof createSystemMenu> | null = null;
+  let linkLost: LinkLostScreen | null = null;
   const cleanup: (() => void)[] = [];
   cleanup.push(() => clearCanvasCursors(canvas));
   let verdict: MatchResultOverlay | null = null;
@@ -618,7 +620,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onSaveGame: () => systemMenu?.openPage('save'),
       ...(sharedClock ? {} : { onLoadGame: () => systemMenu?.openPage('load') }),
       onToggleHud: () => toggleHud?.(),
-      systemMenuOpen: () => systemMenu?.isOpen() === true,
+      modalOpen: () => systemMenu?.isOpen() === true || linkLost?.isOpen() === true,
       escapeClaimed: () => escapeClaimed?.() === true,
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       ...(mission !== undefined ? { mission } : {}),
@@ -1053,6 +1055,23 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
             cue: uiCue,
           });
     if (netOverlays !== null) cleanup.push(() => netOverlays.dispose());
+    let followLink: (() => void) | null = null;
+    if (deps.netPanel !== undefined) {
+      const netPanel = deps.netPanel;
+      const screen = createLinkLostScreen({
+        hud: hudDom,
+        setCameraSuspended: cameraCtl.setSuspended,
+        onLeave: quitToMenu,
+      });
+      linkLost = screen;
+      cleanup.push(() => screen.dispose());
+      // The lost link takes the page over, the open game menu included, until the relay is heard again.
+      followLink = () => {
+        const loss = netPanel.model()?.link.loss ?? null;
+        if (loss !== null) systemMenu?.close();
+        screen.refresh(loss);
+      };
+    }
 
     installDebugHandle({
       host,
@@ -1075,6 +1094,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         onEvents,
         onFrame: (snapshot) => {
           netOverlays?.refresh();
+          followLink?.();
           deps.onFrame?.(snapshot);
         },
       },

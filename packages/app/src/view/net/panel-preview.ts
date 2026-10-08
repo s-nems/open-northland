@@ -176,6 +176,7 @@ const PREVIEW_LINK: NetLinkModel = {
   relayUrl: PREVIEW_RELAY_URL,
   relayBuild: 'preview',
   notice: null,
+  loss: null,
 };
 
 const tick = (minutes: number, seconds: number): number =>

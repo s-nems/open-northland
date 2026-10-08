@@ -262,6 +262,17 @@ export const deGame = {
         'Dies setzt alle Kategorien auf die Standardwerte zurück, einschließlich deiner eigenen Tastenbelegung.',
       cancel: 'Abbrechen',
     },
+    linkLost: {
+      title: 'Verbindung verloren',
+      dropped:
+        'Der Server ist nicht erreichbar. Der Raum wartet auf dich, während das Spiel die Verbindung wiederherstellt.',
+      seconds: '{seconds} s',
+      voteOpensIn: 'So lange, bis die anderen Spieler über deinen Ausschluss abstimmen dürfen',
+      voteOpen: 'Die anderen Spieler dürfen jetzt über deinen Ausschluss abstimmen.',
+      closed: 'Die Verbindung zum Server wurde beendet: {reason}',
+      closedHint: 'Das Spiel kann von hier aus nicht fortgesetzt werden.',
+      leave: 'Verlassen',
+    },
     systemMenu: 'Menü',
     skirmishGoal: 'Besiege alle Gegner in dieser Partie.',
     matchWonTitle: 'Mission erfolgreich!',

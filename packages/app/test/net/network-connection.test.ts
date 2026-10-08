@@ -260,10 +260,14 @@ describe('network connection mirror', () => {
     const { connection, worker } = connect();
     expect(connection.linkState).toBeNull();
     worker.send({ kind: 'link', state: 'ok' });
-    expect(connection.linkState).toEqual({ state: 'ok' });
+    expect(connection.linkState).toEqual({ state: 'ok', atMs: expect.any(Number) });
     worker.send({ kind: 'link', state: 'closed', reason: 'gameStarted' });
     expect(connection.connected).toBe(false);
-    expect(connection.linkState).toEqual({ state: 'closed', reason: 'gameStarted' });
+    expect(connection.linkState).toEqual({
+      state: 'closed',
+      reason: 'gameStarted',
+      atMs: expect.any(Number),
+    });
   });
 
   it('rebuilds a relay refusal with its coded reason', () => {

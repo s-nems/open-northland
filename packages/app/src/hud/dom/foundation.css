@@ -7349,6 +7349,38 @@ body.on-drag-scroll * {
   justify-content: flex-end;
   gap: 10px;
 }
+/* The lost-connection screen: the same wash and sheet as the game menu, one message, the room's
+   countdown large enough to read from across the room, and the one button left to press. */
+.on-hud .on-link-lost .on-window__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px 16px;
+  text-align: center;
+}
+.on-hud .on-link-lost__message {
+  margin: 0;
+  font-size: 14px;
+}
+.on-hud .on-link-lost__countdown {
+  margin: 4px 0 0;
+  font: 700 44px / 1 var(--font-title);
+  font-variant-numeric: tabular-nums;
+  color: var(--bronze-hi);
+}
+.on-hud .on-link-lost__countdown[hidden] {
+  display: none;
+}
+.on-hud .on-link-lost__hint {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 13px;
+}
+.on-hud .on-link-lost__actions {
+  display: flex;
+  justify-content: center;
+}
 .on-hud .on-system-settings {
   width: min(82%, 800px);
   height: 84%;

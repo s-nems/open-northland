@@ -106,8 +106,8 @@ it('leaves the lobby room on the worker as soon as its link drops, not when the 
   open();
   link().onMessage({ kind: 'room', room: LOBBY });
   socket.connected = false;
-  link().onRetry?.(1, 0);
-  expect(worker.posted.at(-1)).toEqual({ kind: 'link', state: 'reconnecting' });
+  link().onRetry?.(1, 0, 0);
+  expect(worker.posted.at(-1)).toEqual({ kind: 'link', state: 'reconnecting', quietMs: 0 });
   // Back and welcomed before the runtime saw the drop: the client sits in no room to leave.
   open();
   worker.send({ kind: 'leave', leave: true });
@@ -154,7 +154,7 @@ describe('pending network worker answers', () => {
     await expect(digests).rejects.toThrow(/worker crashed/);
     await expect(connection.digests()).rejects.toThrow(/worker crashed/);
     expect(connection.connected).toBe(false);
-    expect(connection.linkState).toEqual({ state: 'closed' });
+    expect(connection.linkState).toEqual({ state: 'closed', atMs: expect.any(Number) });
     expect(event).toHaveBeenCalledExactlyOnceWith({
       kind: 'failure',
       what: 'worker',
@@ -177,7 +177,11 @@ describe('pending network worker answers', () => {
     worker.send({ kind: 'closed' });
     await expect(digests).rejects.toThrow(/closed/);
     await expect(connection.digests()).rejects.toThrow(/closed/);
-    expect(connection.linkState).toEqual({ state: 'closed', reason: 'serverRestart' });
+    expect(connection.linkState).toEqual({
+      state: 'closed',
+      reason: 'serverRestart',
+      atMs: expect.any(Number),
+    });
     connection.dispose(false);
     expect(worker.port.close).toHaveBeenCalledTimes(1);
   });

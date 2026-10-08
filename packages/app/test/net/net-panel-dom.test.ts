@@ -64,6 +64,7 @@ const LINK: NetLinkModel = {
   relayUrl: null,
   relayBuild: null,
   notice: null,
+  loss: null,
 };
 
 const panelModel = (overrides: Partial<NetPanelModel> = {}): NetPanelModel => ({

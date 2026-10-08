@@ -4,8 +4,8 @@ import { diag } from '../../diag/index.js';
 import type { NetPanelModel } from '../../hud/network/model.js';
 import { desyncNotice } from '../../hud/network/text.js';
 import { formatMessage, messages } from '../../i18n/index.js';
-import { relayCloseText, relayReasonText } from '../../net/relay-reason.js';
-import type { LinkState } from '../../session/worker/net-protocol.js';
+import { relayReasonText } from '../../net/relay-reason.js';
+import type { LinkReport } from '../../session/worker/net-protocol.js';
 import { clockAnnouncement } from '../../view/net/session-clock.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
 import { createRelayPanelFeed, type RelayPanelFeedDeps } from './net-panel-feed.js';
@@ -24,7 +24,8 @@ export interface NetHud {
   model(): NetPanelModel;
   /** Every relay message after the client acted on it. */
   observe(message: ServerMessage): void;
-  link(state: LinkState, reason?: string): void;
+  /** The link as the worker last reported it; `atMs` is when that report arrived, default now. */
+  link(report: LinkReport, atMs?: number): void;
 }
 
 /** A relayed game's side of the network panel: the model it reads, the chat with the session's
@@ -113,10 +114,8 @@ export function mountNetHud(deps: NetHudDeps): NetHud {
           return;
       }
     },
-    link(state, reason): void {
-      feed.linkNotice(
-        state === 'ok' ? null : state === 'reconnecting' ? copy.reconnecting : relayCloseText(reason),
-      );
+    link(report, atMs): void {
+      feed.link(report, atMs);
     },
   };
 }

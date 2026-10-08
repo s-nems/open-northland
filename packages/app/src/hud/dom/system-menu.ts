@@ -13,6 +13,7 @@ import { createHudWindow } from './window.js';
 export type SystemMenuPage = 'save' | 'load';
 export interface SystemMenu {
   toggle(): void;
+  close(): void;
   openPage(page: SystemMenuPage): void;
   isOpen(): boolean;
   dispose(): void;
@@ -239,6 +240,7 @@ export function createSystemMenu(deps: SystemMenuDeps): SystemMenu {
       if (backdrop.hidden) show();
       else hide();
     },
+    close: hide,
     openPage(page): void {
       if (page === 'load' && deps.canLoad === false) return;
       if (backdrop.hidden) show();

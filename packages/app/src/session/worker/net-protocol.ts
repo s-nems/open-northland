@@ -22,7 +22,17 @@ import {
  * else here is the connection's.
  */
 
-export type LinkState = 'ok' | 'reconnecting' | 'closed';
+/** `quiet`: the socket is open but the relay has not been heard for `LINK_QUIET_MS`, so the room has
+ *  most likely stopped hearing this client too; `reconnecting`: the socket dropped and is retried. */
+export type LinkState = 'ok' | 'quiet' | 'reconnecting' | 'closed';
+
+/** The link as the worker reports it. `quietMs` is how long no relay message had arrived when a quiet
+ *  or a drop was noticed; `reason` is why a closed link closed. */
+export interface LinkReport {
+  readonly state: LinkState;
+  readonly reason?: string;
+  readonly quietMs?: number;
+}
 
 /** A client failure as it crosses; a relay refusal keeps its coded reason so the page can word it. */
 export type WireFailure = WireError & { readonly refusal?: RelayReason };
@@ -88,7 +98,7 @@ export type FromNetWorker<E> =
   | FromWorker<E>
   /** A relay message, after the worker's client acted on it. */
   | { readonly kind: 'message'; readonly message: ServerMessage }
-  | { readonly kind: 'link'; readonly state: LinkState; readonly reason?: string }
+  | ({ readonly kind: 'link' } & LinkReport)
   | { readonly kind: 'facts'; readonly facts: RelayFacts }
   | {
       readonly kind: 'openWorld';

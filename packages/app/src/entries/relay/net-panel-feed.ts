@@ -11,6 +11,7 @@ import { playerSwatchHex } from '../../catalog/roster.js';
 import type {
   NetChatLine,
   NetClockModel,
+  NetLinkLoss,
   NetLinkModel,
   NetNotice,
   NetPanelModel,
@@ -18,8 +19,10 @@ import type {
   NetPlayerStatus,
   SpeedSample,
 } from '../../hud/network/model.js';
-import { tribeName } from '../../i18n/index.js';
+import { messages, tribeName } from '../../i18n/index.js';
 import type { KickTally, RelayClientMirror } from '../../net/net-worker-client.js';
+import { relayCloseText } from '../../net/relay-reason.js';
+import type { LinkReport } from '../../session/worker/net-protocol.js';
 import { createSpeedHistory } from '../../view/net/speed-history.js';
 import type { NetReadout } from '../../view/runtime/net-readout.js';
 
@@ -30,6 +33,32 @@ const DEFAULT_SPEED = 1;
 /** Wall time a member may trail the clock before its row reads as catching up: the relay's
  *  `LAG_BEHIND_MS`, which a test pins, counted in frames at the requested speed as the relay counts it. */
 export const CATCHING_UP_BEHIND_MS = 1000;
+/** Pings unanswered this long make a member silent, and waited for, at the relay: its
+ *  `SILENT_AFTER_MS`, which a test pins. */
+export const RELAY_SILENT_AFTER_MS = 4000;
+
+/** When the room is reckoned to have begun waiting for this client, from a link report that arrived at
+ *  `atMs`: a socket the relay closed is gone at once, and a link quiet for longer than the relay's
+ *  silence limit went silent there that long ago, taking the outage as the same both ways. */
+function waitedSince(report: LinkReport, atMs: number): number {
+  return atMs - Math.max(0, (report.quietMs ?? 0) - RELAY_SILENT_AFTER_MS);
+}
+
+/** The link's loss after the worker's report. The first loss keeps its moment and its identity: a drop
+ *  after a quiet, or a retry after a retry, moves nothing. */
+function linkLoss(current: NetLinkLoss | null, report: LinkReport, atMs: number): NetLinkLoss | null {
+  switch (report.state) {
+    case 'ok':
+      return null;
+    case 'quiet':
+    case 'reconnecting':
+      return current?.kind === 'dropped'
+        ? current
+        : { kind: 'dropped', waitedSinceMs: waitedSince(report, atMs) };
+    case 'closed':
+      return { kind: 'closed', reason: relayCloseText(report.reason) };
+  }
+}
 
 /** What the relay has told this client about its room, as the panel's rows read it. */
 interface RelayRoomFacts {
@@ -155,8 +184,8 @@ export interface RelayPanelFeed {
   announce(text: string): void;
   /** The line about this client's own world; null clears it. */
   notice(notice: NetNotice | null): void;
-  /** Why this client's link is down; null once it is up. */
-  linkNotice(text: string | null): void;
+  /** The link as the worker last reported it; `atMs` is when that report arrived, default now. */
+  link(report: LinkReport, atMs?: number): void;
 }
 
 export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
@@ -172,6 +201,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
   let chatVersion = 0;
   let worldNotice: NetNotice | null = null;
   let linkNoticeText: string | null = null;
+  let loss: NetLinkLoss | null = null;
 
   let playersKey = '';
   let players: readonly NetPlayerRow[] = [];
@@ -237,9 +267,15 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
         client.relayBuild,
         linkNoticeText,
       ].join('|');
-      if (link === null || nextLinkKey !== linkKey) {
+      if (link === null || nextLinkKey !== linkKey || link.loss !== loss) {
         linkKey = nextLinkKey;
-        link = { ...readout, relayUrl: deps.relayUrl, relayBuild: client.relayBuild, notice: linkNoticeText };
+        link = {
+          ...readout,
+          relayUrl: deps.relayUrl,
+          relayBuild: client.relayBuild,
+          notice: linkNoticeText,
+          loss,
+        };
       }
       if (
         shown === null ||
@@ -299,8 +335,10 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
     notice(notice): void {
       worldNotice = notice;
     },
-    linkNotice(text): void {
-      linkNoticeText = text;
+    link(report, atMs = now()): void {
+      loss = linkLoss(loss, report, atMs);
+      linkNoticeText =
+        loss === null ? null : loss.kind === 'closed' ? loss.reason : messages().net.reconnecting;
     },
   };
 }

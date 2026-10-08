@@ -97,10 +97,12 @@ class RelayConnection<B, E> {
           post({ kind: 'failure', what: 'message', error: wireFailure(error) });
         }
       },
-      onRetry: () => {
+      onRetry: (_attempt, _inMs, quietMs) => {
         this.dropped();
-        post({ kind: 'link', state: 'reconnecting' });
+        post({ kind: 'link', state: 'reconnecting', quietMs });
       },
+      onQuiet: (quietMs) => post({ kind: 'link', state: 'quiet', quietMs }),
+      onHeard: () => post({ kind: 'link', state: 'ok' }),
       onClosed: (reason) => post({ kind: 'link', state: 'closed', reason }),
     });
     client.attach((message) => {

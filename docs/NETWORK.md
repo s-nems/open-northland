@@ -323,7 +323,11 @@ from the moment that member began to be waited for, and restarts only once it ha
 for. A wait is over as soon as nobody is waited for: the dropped token returned, the silent one
 answered, or the diverged one rebuilt. A client that never loads or stops answering pings is waited
 for and can be voted out, before the start as after it; a member kicked before the start is not waited
-for to start the clock. Before the clock runs, a member that has not loaded and whose boot has not
+for to start the clock. A client whose own link is lost reckons the same countdown for itself, from the
+drop of its socket or, on a socket that stays open, from the moment the relay stopped hearing it: the
+client's `LINK_QUIET_MS` (equal to `SILENT_AFTER_MS`) without a relay message. In a game on screen, the app
+then shows that countdown on a screen that takes no order until the relay is heard again, the same
+way the others see it beside the client's name. Before the clock runs, a member that has not loaded and whose boot has not
 moved for `LOADING_STALL_MS` (2 min, counted from the start, its last `loading`, its `loaded`, or its
 drop or return) ends the room: every connected member gets `error { loadingTimedOut, nick }` and
 `left`, and the players host again. The app shows no countdown for it and offers no vote on its

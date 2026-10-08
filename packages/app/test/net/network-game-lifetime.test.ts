@@ -93,7 +93,7 @@ it('shows the link as it stands on a HUD mounted after the link changed', async 
       client: IDLE_CLIENT,
       connected: false,
       // Closed while the world was rebuilt, when no HUD stood to hear it.
-      linkState: null as { state: string; reason?: string } | null,
+      linkState: null as { state: string; reason?: string; atMs: number } | null,
       subscribe: () => () => undefined,
       bindWorld: (next: NetWorldPort, shown: (world: HostedRelayedWorld) => void) => {
         port = next;
@@ -110,10 +110,14 @@ it('shows the link as it stands on a HUD mounted after the link changed', async 
     handover as unknown as NetworkHandover,
   );
   await port?.open(session, null, vi.fn());
-  handover.connection.linkState = { state: 'closed', reason: CLOSE_REASON };
+  const CLOSED_AT_MS = 1234;
+  handover.connection.linkState = { state: 'closed', reason: CLOSE_REASON, atMs: CLOSED_AT_MS };
   onWorld?.({ worldId: 1, session: worker } as unknown as HostedRelayedWorld);
   await vi.waitFor(() => expect(link).toHaveBeenCalled());
-  expect(link).toHaveBeenCalledWith('closed', CLOSE_REASON);
+  expect(link).toHaveBeenCalledWith(
+    { state: 'closed', reason: CLOSE_REASON, atMs: CLOSED_AT_MS },
+    CLOSED_AT_MS,
+  );
 });
 
 const WORLD_ID = 1;
@@ -155,7 +159,7 @@ function presentedGame() {
     connection: {
       client,
       connected: true,
-      linkState: { state: 'ok' },
+      linkState: { state: 'ok', atMs: 0 },
       dispose: vi.fn(),
       worldShown,
       subscribe: (next: (event: unknown) => void) => {

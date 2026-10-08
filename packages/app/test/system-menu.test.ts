@@ -214,6 +214,17 @@ describe('system menu navigation', () => {
     await vi.waitFor(() => expect(settings.current().soundVolume).toBe(defaultSettings().soundVolume));
   });
 
+  it('closes on request as the resume button would', () => {
+    const state = mount();
+    state.menu.toggle();
+    expect(state.menu.isOpen()).toBe(true);
+    state.menu.close();
+    expect(state.menu.isOpen()).toBe(false);
+    expect(state.saveLoad.releaseForcedPause).toHaveBeenCalledOnce();
+    state.menu.close();
+    expect(state.saveLoad.releaseForcedPause).toHaveBeenCalledOnce();
+  });
+
   it('disposal releases an open menu and restores inert siblings', () => {
     const state = mount();
     state.menu.toggle();

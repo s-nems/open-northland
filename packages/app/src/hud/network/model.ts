@@ -78,7 +78,20 @@ export interface NetClockModel {
 /** The sparkline's span: one sample per wall second. */
 export const SPEED_HISTORY_SECONDS = 120;
 
+/** The relay's countdown from the moment it begins waiting for a member until the others may vote it
+ *  out: its `KICK_COUNTDOWN_MS`, which a test pins. */
+export const KICK_COUNTDOWN_MS = 60_000;
+
+/** The link while it is lost. `dropped`: the relay is not heard, whether the socket fell or went quiet,
+ *  and the client keeps trying; `waitedSinceMs` is the wall moment (`performance.now`) the room is
+ *  reckoned to have begun waiting for this client, which {@link KICK_COUNTDOWN_MS} counts from.
+ *  `closed`: the link will not reopen. */
+export type NetLinkLoss =
+  | { readonly kind: 'dropped'; readonly waitedSinceMs: number }
+  | { readonly kind: 'closed'; readonly reason: string };
+
 export interface NetLinkModel {
+  /** What this client sends still goes out; false once the socket dropped or closed. */
   readonly connected: boolean;
   readonly roundTripMs: number | null;
   readonly delayTicks: number | null;
@@ -91,6 +104,8 @@ export interface NetLinkModel {
   readonly relayBuild: string | null;
   /** Why the link is down: reconnecting, or closed for good with the relay's reason; null while up. */
   readonly notice: string | null;
+  /** The lost link, which the lost-connection screen shows; null while the relay is heard. */
+  readonly loss: NetLinkLoss | null;
 }
 
 /** A chat line; `from` null is a line about the session itself, `tick` the game clock it was said at. */

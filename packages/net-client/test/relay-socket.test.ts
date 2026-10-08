@@ -1,4 +1,4 @@
-import { RelaySocket } from '@open-northland/net-client';
+import { LINK_QUIET_MS, RelaySocket } from '@open-northland/net-client';
 import type { ClientMessage } from '@open-northland/net-protocol';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -47,22 +47,28 @@ function harness(onRetry?: () => void) {
   const sockets: FakeSocket[] = [];
   const events: string[] = [];
   const received: unknown[] = [];
+  /** How long the relay had been quiet at each retry. */
+  const quiet: number[] = [];
   const socket = new RelaySocket({
     url: 'ws://relay.test',
     onOpen: () => events.push('open'),
     onMessage: (raw) => received.push(raw),
     onClosed: (reason) => events.push(`closed:${reason}`),
-    onRetry: (attempt, inMs) => {
+    onRetry: (attempt, inMs, quietMs) => {
       events.push(`retry:${attempt}:${inMs}`);
+      quiet.push(quietMs);
       onRetry?.();
     },
+    onQuiet: (quietMs) => events.push(`quiet:${quietMs}`),
+    onHeard: () => events.push('heard'),
     createSocket: () => {
       const fake = new FakeSocket();
       sockets.push(fake);
       return fake as unknown as WebSocket;
     },
+    now: () => Date.now(),
   });
-  return { socket, sockets, events, received };
+  return { socket, sockets, events, received, quiet };
 }
 
 describe('RelaySocket', () => {
@@ -111,6 +117,46 @@ describe('RelaySocket', () => {
     expect(events.at(-1)).toBe('open');
   });
 
+  it('reports an open link quiet once nothing arrived for the quiet limit, and heard again', () => {
+    const { socket, sockets, events } = harness();
+    sockets[0]?.open();
+    vi.advanceTimersByTime(LINK_QUIET_MS - 1000);
+    sockets[0]?.deliver('{"kind":"ping","t":1}');
+    // Heard within the limit: the silence counts from the message.
+    vi.advanceTimersByTime(LINK_QUIET_MS - 1000);
+    expect(events).toEqual(['open']);
+    vi.advanceTimersByTime(1000);
+    expect(events).toEqual(['open', `quiet:${LINK_QUIET_MS}`]);
+    // Said once; the socket stays open for whatever is still arriving.
+    vi.advanceTimersByTime(LINK_QUIET_MS * 3);
+    expect(events).toEqual(['open', `quiet:${LINK_QUIET_MS}`]);
+    expect(socket.connected).toBe(true);
+    expect(sockets[0]?.closedByClient).toBe(false);
+    sockets[0]?.deliver('{"kind":"ping","t":2}');
+    expect(events).toEqual(['open', `quiet:${LINK_QUIET_MS}`, 'heard']);
+    // Quiet again on its own clock from the last message.
+    vi.advanceTimersByTime(LINK_QUIET_MS);
+    expect(events.at(-1)).toBe(`quiet:${LINK_QUIET_MS}`);
+  });
+
+  it('says how long the relay had been quiet when a socket drops', () => {
+    const { sockets, events, quiet } = harness();
+    sockets[0]?.open();
+    sockets[0]?.deliver('{"kind":"ping","t":1}');
+    vi.advanceTimersByTime(300);
+    sockets[0]?.drop(CLOSE_ABNORMAL);
+    expect(quiet).toEqual([300]);
+    // A dropped socket's silence is the retry's to tell: the quiet watch ends with it.
+    vi.advanceTimersByTime(LINK_QUIET_MS * 2);
+    expect(events).toEqual(['open', 'retry:1:1000']);
+    const quietFor = LINK_QUIET_MS * 3;
+    sockets[1]?.open();
+    vi.advanceTimersByTime(quietFor);
+    sockets[1]?.drop(CLOSE_ABNORMAL);
+    expect(events.slice(2)).toEqual(['open', `quiet:${LINK_QUIET_MS}`, 'retry:1:1000']);
+    expect(quiet).toEqual([300, quietFor]);
+  });
+
   it('retries a connection attempt that never opens or closes', () => {
     const { socket, sockets, events } = harness();
     vi.advanceTimersByTime(10_000);
@@ -134,7 +180,8 @@ describe('RelaySocket', () => {
     sockets[0]?.deliver('{"kind":"blob","bytes":"AAAA"}');
     expect(socket.connected).toBe(true);
     expect(sockets[0]?.closedByClient).toBe(false);
-    expect(events).toEqual(['open']);
+    // The wait reads as a quiet link meanwhile, and the message ends it.
+    expect(events).toEqual(['open', `quiet:${LINK_QUIET_MS}`, 'heard']);
     expect(received).toEqual([{ kind: 'blob', bytes: 'AAAA' }]);
     socket.close();
     expect(vi.getTimerCount()).toBe(0);

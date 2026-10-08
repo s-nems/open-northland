@@ -15,6 +15,7 @@ export {
 export { isLobbyAction, type LobbyAction, type RelayClientView } from './relay-client-view.js';
 export { RelayRefusal } from './relay-refusal.js';
 export {
+  LINK_QUIET_MS,
   type RelayLink,
   type RelayLinkEvents,
   RelaySocket,

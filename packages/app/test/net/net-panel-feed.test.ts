@@ -1,3 +1,4 @@
+import { LINK_QUIET_MS } from '@open-northland/net-client';
 import {
   type ChatLine,
   PROTOCOL_VERSION,
@@ -7,14 +8,17 @@ import {
   TICK_MS,
   TICKS_PER_SECOND,
 } from '@open-northland/net-protocol';
-import { LAG_BEHIND_MS } from '@open-northland/net-server';
+import { KICK_COUNTDOWN_MS, LAG_BEHIND_MS, SILENT_AFTER_MS } from '@open-northland/net-server';
 import { describe, expect, it } from 'vitest';
 import { mountNetHud } from '../../src/entries/relay/net-hud.js';
 import {
   CATCHING_UP_BEHIND_MS,
   createRelayPanelFeed,
+  RELAY_SILENT_AFTER_MS,
   unseenHistory,
 } from '../../src/entries/relay/net-panel-feed.js';
+import { KICK_COUNTDOWN_MS as SHOWN_KICK_COUNTDOWN_MS } from '../../src/hud/network/model.js';
+import { messages } from '../../src/i18n/index.js';
 import { RelayClientMirror } from '../../src/net/net-worker-client.js';
 import type { RelayFacts } from '../../src/session/worker/net-protocol.js';
 import type { NetReadout } from '../../src/view/runtime/net-readout.js';
@@ -132,6 +136,55 @@ const rowOf = (feed: ReturnType<typeof setup>['feed'], nick: string) =>
 describe('the relayed network panel feed', () => {
   it('counts catching up from the relay’s own lag threshold, at the requested speed', () => {
     expect(CATCHING_UP_BEHIND_MS).toBe(LAG_BEHIND_MS);
+  });
+
+  it('reckons the room’s wait by the relay’s own silence limit and countdown', () => {
+    expect(RELAY_SILENT_AFTER_MS).toBe(SILENT_AFTER_MS);
+    expect(LINK_QUIET_MS).toBe(SILENT_AFTER_MS);
+    expect(SHOWN_KICK_COUNTDOWN_MS).toBe(KICK_COUNTDOWN_MS);
+  });
+
+  it('dates a quiet link’s loss from when the relay stopped hearing this client, and keeps it', () => {
+    const { feed, time } = setup();
+    expect(feed.model().link.loss).toBeNull();
+    time.ms = 10_000;
+    // Quiet for longer than the relay's limit: the room went without this client that much earlier.
+    const quietMs = RELAY_SILENT_AFTER_MS + 2000;
+    feed.link({ state: 'quiet', quietMs });
+    const lost = feed.model().link;
+    expect(lost.loss).toEqual({ kind: 'dropped', waitedSinceMs: time.ms - 2000 });
+    expect(lost.notice).toBe(messages().net.reconnecting);
+    expect(lost.connected).toBe(true);
+    // The socket falls later: the same loss, not a later one.
+    time.ms = 15_000;
+    feed.link({ state: 'reconnecting', quietMs: 11_000 });
+    expect(feed.model().link.loss).toBe(lost.loss);
+    feed.link({ state: 'reconnecting', quietMs: 12_000 });
+    expect(feed.model().link.loss).toBe(lost.loss);
+    // Heard again: no loss, and the next one starts afresh.
+    feed.link({ state: 'ok' });
+    expect(feed.model().link.loss).toBeNull();
+    expect(feed.model().link.notice).toBeNull();
+    time.ms = 20_000;
+    feed.link({ state: 'reconnecting', quietMs: 300 });
+    expect(feed.model().link.loss).toEqual({ kind: 'dropped', waitedSinceMs: 20_000 });
+  });
+
+  it('dates a replayed report from when it arrived, not from the replay', () => {
+    const { feed, time } = setup();
+    time.ms = 30_000;
+    // A HUD mounted after a rebuild replays the report the connection kept, 15 s old by then.
+    feed.link({ state: 'quiet', quietMs: RELAY_SILENT_AFTER_MS + 1000 }, 15_000);
+    expect(feed.model().link.loss).toEqual({ kind: 'dropped', waitedSinceMs: 14_000 });
+  });
+
+  it('reports a link that will not reopen with the relay’s reason', () => {
+    const { feed } = setup();
+    feed.link({ state: 'closed', reason: 'serverRestart' });
+    const { loss, notice } = feed.model().link;
+    expect(loss?.kind).toBe('closed');
+    expect(loss?.kind === 'closed' && loss.reason).toBe(notice);
+    expect(notice).not.toBe('');
   });
 
   it('reads each row’s status, link and tick cost off the room view and the clock', () => {

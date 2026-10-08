@@ -8,6 +8,7 @@ import type { MapWorkerBoot, MapWorldPlacements } from '../entries/map/world-inp
 import {
   type FromNetWorker,
   failureFromWire,
+  type LinkReport,
   type LinkState,
   type RelayAnswer,
   type RelayAnswerFor,
@@ -34,9 +35,15 @@ const GAME_FAILURES = ['open', 'restore', 'result', 'message'] as const;
  *  client its seat back after a drop. */
 export type FailureSource = (typeof GAME_FAILURES)[number] | 'worker' | 'room';
 
+/** The worker's link report with `atMs`, the `performance.now()` it reached this thread: a report replayed
+ *  later still dates the loss from then. */
+export interface TimedLinkReport extends LinkReport {
+  readonly atMs: number;
+}
+
 export type ConnectionEvent =
   | { readonly kind: 'message'; readonly message: ServerMessage }
-  | { readonly kind: 'link'; readonly state: LinkState; readonly reason?: string }
+  | ({ readonly kind: 'link' } & TimedLinkReport)
   | { readonly kind: 'failure'; readonly what: FailureSource; readonly error: unknown };
 
 export type RelayedMapSession = WorkerSession<MapWorldPlacements>;
@@ -95,7 +102,7 @@ export class NetworkConnection {
   private resolveWorldPort: (port: NetWorldPort) => void = () => undefined;
   private onWorld: (world: HostedRelayedWorld) => void = () => undefined;
   private link: LinkState | null = null;
-  private lastLink: { readonly state: LinkState; readonly reason?: string } | null = null;
+  private lastLink: TimedLinkReport | null = null;
   private disposed = false;
   private workerError: Error | null = null;
   private readonly releasePlace: () => void;
@@ -128,13 +135,13 @@ export class NetworkConnection {
     this.post({ kind: 'connect', url, ...identity });
   }
 
-  /** Whether the relay link is up. */
+  /** Whether the relay link is up: what this client sends still goes out, a quiet link included. */
   get connected(): boolean {
-    return !this.disposed && this.workerError === null && this.link === 'ok';
+    return !this.disposed && this.workerError === null && (this.link === 'ok' || this.link === 'quiet');
   }
 
-  /** The link's last state and the reason it closed with, for a screen that subscribes after the fact. */
-  get linkState(): { readonly state: LinkState; readonly reason?: string } | null {
+  /** The link's last report, for a screen that subscribes after the fact. */
+  get linkState(): TimedLinkReport | null {
     return this.lastLink;
   }
 
@@ -216,15 +223,14 @@ export class NetworkConnection {
         this.client.follow(message.facts);
         return;
       case 'link': {
-        this.link = message.state;
-        this.lastLink =
-          message.reason === undefined
-            ? { state: message.state }
-            : { state: message.state, reason: message.reason };
+        const { kind: _kind, ...heard } = message;
+        const report: TimedLinkReport = { ...heard, atMs: performance.now() };
+        this.link = report.state;
+        this.lastLink = report;
         // The mirror forgets the room before anyone hears of the drop; the synthetic `left` follows the
         // link event so a screen that ends on the drop never sees the room end for another reason.
-        const left = message.state === 'reconnecting' && this.dropped();
-        this.emit({ kind: 'link', ...this.lastLink });
+        const left = report.state === 'reconnecting' && this.dropped();
+        this.emit({ kind: 'link', ...report });
         // A relay restarts for a release, so the page itself may be outdated now.
         if (message.state === 'closed' && message.reason === SERVER_RESTART)
           requestUpdateCheck('relayRestart');
@@ -330,7 +336,7 @@ export class NetworkConnection {
     if (this.workerError !== null) return;
     this.workerError = error;
     this.link = 'closed';
-    if (this.lastLink?.state !== 'closed') this.lastLink = { state: 'closed' };
+    if (this.lastLink?.state !== 'closed') this.lastLink = { state: 'closed', atMs: performance.now() };
     if (this.leaveTimer !== null) clearTimeout(this.leaveTimer);
     this.leaveTimer = null;
     this.releasePlace();
