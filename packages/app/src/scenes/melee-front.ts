@@ -30,8 +30,8 @@ const RED_LAST_ROW = 16;
 /** Swordsmen and spearmen alternate by row, so both reaches meet at the seam. */
 const JOBS_BY_ROW: readonly number[] = [JOB_SOLDIER_SWORD, JOB_SOLDIER_SPEAR];
 
-/** The bands meet around tick 125 and the last red man falls around tick 315. */
-const RUN_TICKS = 400;
+/** The bands meet around tick 125 and the last red man falls around tick 420. */
+const RUN_TICKS = 500;
 
 /** Bodies collide, so the men who can strike one enemy at once are the ones on its free sides; four is
  *  where a crowd starts to read as a pile. The cap is asked while the smaller band still has more men than

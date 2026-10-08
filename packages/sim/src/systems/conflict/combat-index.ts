@@ -1,8 +1,8 @@
 import {
-  diplomacyStance,
+  EVERY_PLAYER,
   Health,
-  isValidPlayer,
-  MAX_PLAYERS,
+  hostileMaskOf,
+  hostilePlayerMasks,
   Owner,
   Position,
   Vehicle,
@@ -29,9 +29,6 @@ import { vehicleWeapon } from './weapons.js';
 /** A candidate packs as `distance * CANDIDATE_ID_SPAN + entity`, so a numeric sort orders by distance and then
  *  id. Entity ids stay below 2^32 and distances below 2^21, so the key is an exact double. */
 const CANDIDATE_ID_SPAN = 2 ** 32;
-
-/** A player-slot bitmask naming every slot: players are < {@link MAX_PLAYERS}, which fits one integer. */
-const EVERY_PLAYER = (1 << MAX_PLAYERS) - 1;
 
 /** The index each world's latest combat pass built, which the shots landing after it read. */
 const passIndexes = new WeakMap<World, CombatIndex>();
@@ -95,7 +92,7 @@ export class CombatIndex {
    *  disc, so a search finds a body at the distance to its nearest face. */
   constructor(world: World, ctx: SystemContext, terrain: TerrainGraph) {
     this.tick = ctx.tick;
-    this.hostileMasks = hostileMasksOf(world);
+    this.hostileMasks = hostilePlayerMasks(world);
     this.grid = combatGridOf(world, ctx, terrain);
     this.grid.startBuild(world, ctx);
     const firing = firingBuildings(world, ctx);
@@ -211,7 +208,7 @@ export class CombatIndex {
     seeker: number | null,
     metric: SearchMetric,
   ): boolean {
-    const hostile = seeker === null ? EVERY_PLAYER : this.hostileMaskOf(seeker);
+    const hostile = seeker === null ? EVERY_PLAYER : hostileMaskOf(this.hostileMasks, seeker);
     const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
     for (let cx = cx0; cx <= cx1; cx++) {
       for (let cy = cy0; cy <= cy1; cy++) {
@@ -267,7 +264,7 @@ export class CombatIndex {
    * `false` is a proof of absence; `true` only means "run the real search".
    */
   othersWithin(player: number, hx: number, hy: number, radius: number): boolean {
-    const hostile = this.hostileMaskOf(player);
+    const hostile = hostileMaskOf(this.hostileMasks, player);
     return this.someCell(hx, hy, radius, (cell) => cell.undiscounted > 0 || (cell.ownerMask & hostile) !== 0);
   }
 
@@ -277,7 +274,7 @@ export class CombatIndex {
    * flee threat. `false` is a proof of absence; `true` only means "run the real search".
    */
   threatsWithin(player: number, hx: number, hy: number, radius: number): boolean {
-    const hostile = this.hostileMaskOf(player);
+    const hostile = hostileMaskOf(this.hostileMasks, player);
     return this.someCell(
       hx,
       hy,
@@ -318,7 +315,8 @@ export class CombatIndex {
         const unit = units.members[i];
         const bit = units.bit[i] ?? 0;
         if (unit === undefined || bit === 0) continue;
-        if (nearUndiscounted || (nearMask & this.hostileMaskOf(playerOfBit(bit))) !== 0) out[count++] = unit;
+        if (nearUndiscounted || (nearMask & hostileMaskOf(this.hostileMasks, playerOfBit(bit))) !== 0)
+          out[count++] = unit;
       }
     }
     return count;
@@ -346,7 +344,7 @@ export class CombatIndex {
     ) {
       return scan;
     }
-    const hostile = seeker === null ? EVERY_PLAYER : this.hostileMaskOf(seeker);
+    const hostile = seeker === null ? EVERY_PLAYER : hostileMaskOf(this.hostileMasks, seeker);
     let count = 0;
     const { cx0, cx1, cy0, cy1 } = boxCellRange(fromX, fromY, maxDist);
     for (let cx = cx0; cx <= cx1; cx++) {
@@ -370,12 +368,6 @@ export class CombatIndex {
     return scan;
   }
 
-  /** The players `player` may fight or flee from; every slot for a player outside them, whom
-   *  {@link diplomacyStance} reads as everyone's enemy. */
-  private hostileMaskOf(player: number): number {
-    return isValidPlayer(player) ? (this.hostileMasks[player] ?? EVERY_PLAYER) : EVERY_PLAYER;
-  }
-
   /** Whether any coarse cell overlapping the box `radius` nodes around (hx, hy) passes `test`. */
   private someCell(hx: number, hy: number, radius: number, test: (cell: CoarseCell) => boolean): boolean {
     const { cx0, cx1, cy0, cy1 } = boxCellRange(hx, hy, radius);
@@ -387,22 +379,6 @@ export class CombatIndex {
     }
     return false;
   }
-}
-
-/** Per player slot, the {@link playerBit}s of the other players it holds `enemy` toward or from - the
- *  either-way rule of `isFleeThreat`, which also covers the one-way `isValidTarget`. */
-function hostileMasksOf(world: World): number[] {
-  const masks: number[] = [];
-  for (let p = 0; p < MAX_PLAYERS; p++) {
-    let mask = 0;
-    for (let q = 0; q < MAX_PLAYERS; q++) {
-      if (q === p) continue;
-      if (diplomacyStance(world, p, q) === 'enemy' || diplomacyStance(world, q, p) === 'enemy')
-        mask |= 1 << q;
-    }
-    masks.push(mask);
-  }
-  return masks;
 }
 
 /** Append to `scan` from `count` every member of `list` within `minDist..maxDist` of (fromX, fromY) that

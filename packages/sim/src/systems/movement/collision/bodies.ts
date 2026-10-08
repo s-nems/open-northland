@@ -7,14 +7,15 @@ import { settlerTraversal } from '../traversal.js';
 /**
  * Unit body collision is an authored deviation: the original is observed letting walkers pass through each
  * other. Soft movers (any owned walking settler) nudge each other apart; firm movers (owned fighters) also
- * resolve against posts, a firm collider standing still, whose nodes enter the walk overlay. Everyone else
- * is a ghost that passes through, which keeps converging economy flows unjammable.
+ * resolve against posts, a firm collider standing still. A post blocks its owner's enemies, in their walk
+ * overlay and in the resolve, so two lines meet; its own side and its allies walk through it and are only
+ * kept from stopping on it. Everyone else is a ghost that passes through, which keeps converging economy
+ * flows unjammable.
  */
 
 /**
  * The Manhattan node radius of a player's calm zone around each of its buildings. Inside its own zone a firm
- * mover drops to the soft tier and its posts stay out of that player's walk overlay; enemies get no
- * exemption. Approximation: sized to cover a building footprint plus its door approaches.
+ * mover drops to the soft tier. Approximation: sized to cover a building footprint plus its door approaches.
  */
 const CALM_ZONE_RADIUS_NODES = 8;
 

@@ -8,6 +8,7 @@ import {
   PathRequest,
   PathRoute,
   Position,
+  setDiplomacyStance,
 } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import { halfCellMapFromCells, positionOfNode, Simulation } from '../../../src/index.js';
@@ -43,7 +44,7 @@ describe('unit body collision - firm routing and resolution', () => {
       waypoints: [8, 9, 10].map((hx) => ({ ...positionOfNode(hx, 6), node: terrain.nodeAt(hx, 6) })),
     });
     s.world.add(runner, PathFollow, { index: 1, legCost: 8, legElapsed: 6, departureCharged: true });
-    settlerAt(s, 9, 6, SOLDIER, P0);
+    settlerAt(s, 9, 6, SOLDIER, P1); // an enemy post: the runner's own side would not block it
     s.world.add(runner, PathRequest, { start: blocked, goal, failed: false });
 
     pathfindingSystem(s.world, ctxOf(s));
@@ -82,6 +83,30 @@ describe('unit body collision - firm routing and resolution', () => {
     expect(s.world.has(runner, PathRequest)).toBe(false);
   });
 
+  it('a standing line of its own side is walked through: only an enemy line seals a route', () => {
+    const s = sim();
+    wallAt(s, 10, P0);
+    const runner = settlerAt(s, 4, 6, SOLDIER, P0);
+    orderTo(s, runner, 16, 6);
+    s.run(250);
+
+    expect(nodeOf(s, runner)).toEqual({ x: 16, y: 6 });
+    expect(s.world.has(runner, PathFollow)).toBe(false);
+  });
+
+  it("an ally's standing line is walked through as well", () => {
+    const s = sim();
+    setDiplomacyStance(s.world, P0, P1, 'friend');
+    setDiplomacyStance(s.world, P1, P0, 'friend');
+    wallAt(s, 10, P1);
+    const runner = settlerAt(s, 4, 6, SOLDIER, P0);
+    orderTo(s, runner, 16, 6);
+    s.run(250);
+
+    expect(nodeOf(s, runner)).toEqual({ x: 16, y: 6 });
+    expect(s.world.has(runner, PathFollow)).toBe(false);
+  });
+
   it('the wall is physically impassable even for a stale route aimed straight through it, and the walker gives up', () => {
     const s = sim();
     const posts = wallAt(s, 10, P1);
@@ -105,7 +130,7 @@ describe('unit body collision - firm routing and resolution', () => {
 
   it('routing detours around a single standing body on the straight line and still arrives', () => {
     const s = sim();
-    settlerAt(s, 10, 6, SOLDIER, P0); // a lone post directly on the straight route
+    settlerAt(s, 10, 6, SOLDIER, P1); // a lone enemy post directly on the straight route
     const runner = settlerAt(s, 4, 6, SOLDIER, P0);
     orderTo(s, runner, 16, 6);
     s.run(250);
@@ -145,7 +170,7 @@ describe('unit body collision - firm routing and resolution', () => {
     expect(s.world.has(runner, PathRequest)).toBe(false);
   });
 
-  it('inside its own calm zone a walker is a ghost: it reaches a node its own garrison stands on', () => {
+  it('inside its own calm zone a walker is a ghost: it walks through even an enemy post', () => {
     const s = sim();
     const b = s.world.create();
     s.world.add(b, Position, positionOfNode(10, 6));
@@ -156,20 +181,13 @@ describe('unit body collision - firm routing and resolution', () => {
       level: 0,
     });
     s.world.add(b, Owner, { player: P0 });
-    const post = settlerAt(s, 12, 6, SOLDIER, P0); // standing in P0's own town
-    const runner = settlerAt(s, 4, 6, SOLDIER, P0);
-    orderTo(s, runner, 12, 6);
+    const post = settlerAt(s, 12, 6, SOLDIER, P1); // an enemy standing in P0's own town
+    const runner = settlerAt(s, 8, 6, SOLDIER, P0);
+    walkStraightTo(s, runner, 14, 6); // bypasses routing: only the physical layer could stop it
+    s.run(250);
 
-    // The idle-spacing drive relocates one of two units RESTING on a shared node afterwards, so
-    // assert the pass-through at the moment of arrival: the walker must stand EXACTLY on the
-    // occupied node at some tick (physically impossible unless it ghosts through the post).
-    let reached = false;
-    for (let t = 0; t < 250 && !reached; t++) {
-      s.step();
-      const at = nodeOf(s, runner);
-      reached = at.x === 12 && at.y === 6 && nodeOf(s, post).x === 12;
-    }
-    expect(reached).toBe(true);
+    expect(nodeOf(s, runner)).toEqual({ x: 14, y: 6 });
+    expect(nodeOf(s, post)).toEqual({ x: 12, y: 6 });
   });
 
   it('never pushes a body onto unwalkable ground: a shove toward water is clamped', () => {

@@ -61,7 +61,8 @@ const CONVOY_ALIGNMENT_MIN: Fixed = fx.div(fx.fromInt(1), fx.fromInt(2));
  * Resolves this tick's body overlaps, right after the MovementSystem; `bodies.ts` holds the tier model and
  * its source basis. Only movers are displaced: a mover-vs-mover overlap resolves softly, as a convoy brake
  * or a radial split of half the overlap each, while a firm mover additionally ejects fully back onto the
- * radius of a post it overlaps, so a post is impenetrable but never jitters. A displaced position must land
+ * radius of a post that blocks it, an enemy's or a friend's on its goal node, so such a post is impenetrable
+ * but never jitters. A displaced position must land
  * on walkable, unblocked ground, or the offending axis and then the whole displacement is discarded.
  *
  * Movers are processed in ascending entity id, mover-vs-mover pushes read the tick's pre-separation
@@ -98,6 +99,13 @@ export const separationSystem: System = (world, ctx) => {
     }
     // The mover's own slot sits in its own node's list; neighbours are the rest.
     moverCount = dropSlot(nearMovers, moverCount, slot);
+    if (postCount > 0) {
+      const goal =
+        movers.hasGoal[slot] === true
+          ? gates.nodeAt(movers.goalX[slot] ?? ZERO, movers.goalY[slot] ?? ZERO)
+          : undefined;
+      postCount = gates.keepBlockingPosts(e, goal, nearPosts, postCount);
+    }
     if (moverCount === 0 && postCount === 0) {
       if (isFirm) clearGrind(world, e);
       continue;

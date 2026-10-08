@@ -130,7 +130,7 @@ function fighterOnNode(
   return e;
 }
 
-/** Allied soldiers standing on every ring node around (hx, hy): bodies that block their own side's routes. */
+/** Soldiers of the besieger's side standing on every ring node around (hx, hy). */
 function crowdIn(sim: Simulation, hx: number, hy: number): Entity[] {
   return ringAround(hx, hy).map((node) =>
     fighterOnNode(sim, node.hx, node.hy, SOLDIER, P0, MILITARY_MODE.IGNORE),
@@ -346,39 +346,20 @@ describe('a chase whose target is walled in by buildings', () => {
   });
 });
 
-describe('a chase whose target is ringed by standing bodies', () => {
-  it('holds at the cadence for as long as the ring stands and takes the gap when a body steps off', () => {
+describe('a chase whose target its own side rings', () => {
+  it('walks through the ring to its target: only an enemy body blocks a route', () => {
     const scene = standoff({ besiegerJob: SOLDIER });
-    const crowd = crowdIn(scene.sim, scene.at.hx, scene.at.hy);
+    crowdIn(scene.sim, scene.at.hx, scene.at.hy);
 
-    // Well past the release threshold, the chase still stands: a seal of bodies is never given up.
-    let engagedThroughout = true;
-    for (let i = 0; i < 6 * REPATH_CADENCE; i++) {
-      scene.sim.step();
-      if (!scene.sim.world.has(scene.besieger, Engagement)) engagedThroughout = false;
-    }
-    expect(engagedThroughout).toBe(true);
-    expect(scene.sim.world.has(scene.besieger, UnreachableTargets)).toBe(false);
-    // Held by the count and the probe, not by a swing: still outside, refusals well past the threshold.
-    expect(scene.pocket.has(nodeOf(scene.sim, scene.terrain, scene.besieger))).toBe(false);
-    expect(scene.sim.world.get(scene.besieger, Engagement).stall?.routes).toBeGreaterThanOrEqual(
-      SEALED_TARGET_ROUTE_FAILURES,
-    );
-
-    // The body on the ring's west edge steps off, opening a 4-connected passage (a corner would not): the
-    // next cadence's route resolves and the chase walks in.
-    const ring = ringAround(scene.at.hx, scene.at.hy);
-    const gap = crowd[ring.findIndex((n) => n.hx === scene.at.hx - RING_RADIUS && n.hy === scene.at.hy)];
-    if (gap === undefined) throw new Error('fixture: the ring has no west edge');
-    scene.sim.world.destroy(gap);
     let reached = false;
-    for (let i = 0; i < 120 && !reached; i++) {
+    for (let i = 0; i < 20 * REPATH_CADENCE && !reached; i++) {
       scene.sim.step();
       reached =
         scene.pocket.has(nodeOf(scene.sim, scene.terrain, scene.besieger)) ||
         swingsAt(scene.sim, scene.besieger, scene.enemy);
     }
     expect(reached).toBe(true);
+    expect(scene.sim.world.has(scene.besieger, UnreachableTargets)).toBe(false);
   });
 
   it('drops the refusal count while it stands in the second rank', () => {

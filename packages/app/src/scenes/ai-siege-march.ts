@@ -104,8 +104,8 @@ const CAMERA_AT = { hx: 40, hy: 36 } as const;
 
 /** Past the HQ's fall: the boarding, the march, the tower and the assault. Short of the catapults' drive
  *  home once the wave is spent, which the check on how far they went in reads at the end. Measured:
- *  every check holds from tick 3125 to 3400. */
-const RUN_TICKS = 3275;
+ *  every check holds from tick 3300 to 3950. */
+const RUN_TICKS = 3625;
 
 /** Past the tower's fall: the charge costs the wave its time and some men. Short of the parked drivers
  *  being sent for weapons, which hands a catapult to an armed man. Measured: every check holds from tick

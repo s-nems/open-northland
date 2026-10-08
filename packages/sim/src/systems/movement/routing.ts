@@ -1,6 +1,9 @@
 import {
   Engagement,
+  EVERY_PLAYER,
   Fleeing,
+  hostileMaskOf,
+  hostilePlayerMasks,
   MoveGoal,
   Obstructed,
   Owner,
@@ -75,13 +78,16 @@ export function drainPathRequests(
   const spent: SearchStats = { explored: 0 };
   // Walk-block overlays, built lazily so only a tick that actually routes pays for them. The standing-unit
   // stamp applies only to a requester that itself collides: a ghost walks through bodies, and detouring it
-  // would break the economy's exact node-coincidence walks. Player -1 keys an unowned collider.
+  // would break the economy's exact node-coincidence walks. Only posts at war with the requester's player
+  // block it; player -1 keys an unowned collider, which every post blocks.
   // `dynamic` is the mask's levelled view, which skips the per-read level check; each request levels it
   // once before reading it, since the previous request's writes may have moved the version.
   let mask: WalkBlockMask | undefined;
   let dynamic: BlockOverlay | undefined;
   let units: UnitWalkBlocks | undefined;
+  let hostile: readonly number[] | undefined;
   const combinedByPlayer = new Map<number, BlockOverlay>();
+  let occupiedView: BlockOverlay | undefined;
   // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out to
   // different free nodes instead of both claiming the same one.
   const claimedStandIns = new Set<NodeId>();
@@ -101,10 +107,17 @@ export function drainPathRequests(
     let view = combinedByPlayer.get(player);
     if (view === undefined) {
       units ??= unitWalkBlocks(world, ctx.content, terrain);
-      view = new ColliderWalkBlocks(dynamicOnly(), units, player);
+      hostile ??= hostilePlayerMasks(world);
+      view = new ColliderWalkBlocks(dynamicOnly(), units, hostileMaskOf(hostile, player));
       combinedByPlayer.set(player, view);
     }
     return view;
+  };
+  // Every post, whoever stands there: a walker passes its own side and its allies but never stops on them.
+  const occupied = (): BlockOverlay => {
+    units ??= unitWalkBlocks(world, ctx.content, terrain);
+    occupiedView ??= new ColliderWalkBlocks(dynamicOnly(), units, EVERY_PLAYER);
+    return occupiedView;
   };
   for (const e of world.canonicalQuery(PathRequest)) {
     // A player order must not trickle into motion in entity-id order. Sharing cuts its search cost,
@@ -130,18 +143,18 @@ export function drainPathRequests(
         ? undefined
         : freeStepEnd(world, terrain, e, blocked);
     const start = stepEnd ?? req.start;
-    // A goal blocked only by a standing unit is recoverable: re-aim at the nearest free node so a charge
-    // fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
+    // A goal taken only by a standing unit, of any side, is recoverable: re-aim at the nearest free node so
+    // a charge fans out around a crowded target. Collider-only, since a ghost's goal must stay exact.
     let goal = req.goal;
     let standIn = false;
     if (
       collides &&
       goal !== start && // a walker already standing there has arrived, however crowded
       isValidNodeId(terrain, goal) &&
-      blocked.has(goal) &&
+      occupied().has(goal) &&
       !dynamicOnly().has(goal)
     ) {
-      const free = nearestUnblockedNode(terrain, goal, blocked, claimedStandIns);
+      const free = nearestUnblockedNode(terrain, goal, occupied(), claimedStandIns);
       if (free !== null) {
         goal = free;
         standIn = true;

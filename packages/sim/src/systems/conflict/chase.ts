@@ -6,6 +6,7 @@ import {
   HuntFocus,
   MoveGoal,
   Owner,
+  PathFollow,
   PathRequest,
   PlayerOrder,
   Position,
@@ -220,10 +221,12 @@ export function chase(
   const bank = terrain.isWalkable(here) ? terrain.componentOf(here) : -1;
   const onOurBank = (cell: NodeId): boolean => bank < 0 || terrain.componentOf(cell) === bank;
 
-  // Its own body does not take the node it stands on from itself.
+  // Its own body does not take the node it stands on from itself. A walker crossing a node its own side
+  // stands on holds no claim there: routes pass friends, but no two bodies come to rest on one node.
+  const crossingFriend = world.has(e, PathFollow) && slots.isOccupied(here);
   const mine: OwnClaims = {
     goal: ownGoal,
-    standingOn: onNodeCentre(world, terrain, e, here) ? here : undefined,
+    standingOn: onNodeCentre(world, terrain, e, here) && !crossingFriend ? here : undefined,
   };
   // A waiting second rank re-asks each tick, but draws a contact slot only on its cadence: the draw walks
   // the whole disc around it, and the nearest free side is what puts it in when a front-liner steps off.

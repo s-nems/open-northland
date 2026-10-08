@@ -203,6 +203,31 @@ export function diplomacyStance(world: World, from: number, to: number): Diploma
   return diplomacyRules.read(world).stances.get(stanceKey(from, to)) ?? 'enemy';
 }
 
+/** A player-slot bitmask naming every slot: players are < {@link MAX_PLAYERS}, which fits one integer. */
+export const EVERY_PLAYER = (1 << MAX_PLAYERS) - 1;
+
+/** Per player slot, the slot bits of the players it holds `enemy` toward or from: the either-way rule a fight
+ *  and a body block share. Read once per pass; a stance written later is seen by the next one. */
+export function hostilePlayerMasks(world: World): number[] {
+  const masks: number[] = [];
+  for (let p = 0; p < MAX_PLAYERS; p++) {
+    let mask = 0;
+    for (let q = 0; q < MAX_PLAYERS; q++) {
+      if (q === p) continue;
+      if (diplomacyStance(world, p, q) === 'enemy' || diplomacyStance(world, q, p) === 'enemy')
+        mask |= 1 << q;
+    }
+    masks.push(mask);
+  }
+  return masks;
+}
+
+/** `player`'s entry of {@link hostilePlayerMasks}; every slot for a player outside them, whom
+ *  {@link diplomacyStance} reads as everyone's enemy. */
+export function hostileMaskOf(masks: readonly number[], player: number): number {
+  return isValidPlayer(player) ? (masks[player] ?? EVERY_PLAYER) : EVERY_PLAYER;
+}
+
 export function setDiplomacyStance(world: World, from: number, to: number, state: string): void {
   if (!isValidPlayer(from) || !isValidPlayer(to) || !isDiplomacyState(state)) return;
   diplomacyRules.write(world, (rules) => {

@@ -3,7 +3,7 @@ import { type NodeId, StepBuffer, type TerrainGraph } from '../../nav/terrain/in
 import type { WalkBlockMask } from '../footprint/walk-block-mask.js';
 
 /** Exact regions, paid for only after a player route fails. Routing holds its standing-body index for
- * the whole pass; each owner's overlay needs separate labels because town garrisons admit their owner. */
+ * the whole pass; each owner's overlay needs separate labels because a post blocks only its enemies. */
 export class GroupReachability {
   private readonly regions = new Map<BlockOverlay, Int32Array>();
   private version = -1;

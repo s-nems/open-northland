@@ -1,5 +1,6 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  isValidPlayer,
   Owner,
   PathFollow,
   PathRequest,
@@ -13,24 +14,22 @@ import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
-import { type CalmZones, calmZonesByPlayer, isStanding } from './bodies.js';
+import { isStanding } from './bodies.js';
 import { hasBodyCollision, ownedFighters } from './owned-fighters.js';
 
 /**
- * The nodes standing colliders block for routing, split by who is asking: every post blocks every collider
- * requester, except that a post inside its owner's calm zone is town garrison, which its own player routes
- * through while an enemy is steered around it. Membership-only and never hashed. A live view of the
- * per-world index: valid until the next read of it.
+ * The nodes standing colliders block for routing, split by who is asking: a post blocks only a requester
+ * at war with its owner, so a fighter is steered around an enemy line and walks through its own side and
+ * its allies. Membership-only and never hashed. A live view of the per-world index: valid until the next
+ * read of it.
  */
 export interface UnitWalkBlocks {
-  /** Row-major posts per node, field and town alike, zero off every post. */
+  /** Row-major posts per node, zero off every post. */
   readonly posts: Uint16Array;
-  /** How many posts {@link posts} counts in total. */
-  readonly postTotal: number;
-  /** Per player with any, its own town posts per node: the share of {@link posts} that never blocks it. */
-  readonly townByPlayer: ReadonlyMap<number, ReadonlyMap<NodeId, number>>;
-  /** Per player with any, how many town posts {@link townByPlayer} counts for it. */
-  readonly townTotalByPlayer: ReadonlyMap<number, number>;
+  /** Row-major slot bits of the players with a post on each node, zero off every post. */
+  readonly playersAt: Uint16Array;
+  /** Per player with any, how many posts it has on the lattice. */
+  readonly totalByPlayer: ReadonlyMap<number, number>;
 }
 
 /** The standing colliders by half-cell node, for a reader that needs the bodies rather than the counts. */
@@ -49,8 +48,6 @@ interface Post {
   /** Undefined while it stands off the map, where it blocks nothing. */
   node: NodeId | undefined;
   player: number;
-  /** Counted as town garrison under {@link PostIndex.zones}. */
-  inTown: boolean;
   next: Post | undefined;
 }
 
@@ -64,10 +61,6 @@ interface PostIndex extends UnitWalkBlocks, StandingPostGrid {
   readonly terrain: TerrainGraph;
   readonly feed: ChangeFeed;
   readonly moves: NodeMoveFeed;
-  /** The calm zones the town tally follows, recounted by walk-block reads only. */
-  zones: CalmZones;
-  /** The {@link zones} revision the tally was last recounted at. */
-  zonesRevision: number;
   readonly byEntity: Map<Entity, Post>;
   /** 1 at each id in {@link byEntity}: the per-entry test for the far more common node changes. */
   standingIds: Uint8Array;
@@ -78,15 +71,11 @@ interface PostIndex extends UnitWalkBlocks, StandingPostGrid {
   /** Each counted node's player: the highest id standing there. */
   readonly playerAt: Map<NodeId, number>;
   postTotal: number;
-  readonly townByPlayer: Map<number, Map<NodeId, number>>;
-  readonly townTotalByPlayer: Map<number, number>;
+  readonly totalByPlayer: Map<number, number>;
 }
 
 const indexes = new WeakMap<World, PostIndex>();
 const postId = (post: Post): number => post.entity;
-
-/** The zones a fresh index sorts by until a walk-block read hands it the real ones. */
-const NO_ZONES: CalmZones = { revision: -1, has: () => false };
 
 /** The node, player and post count of every standing collider, brought up to date. */
 function postIndex(world: World, content: ContentSet, terrain: TerrainGraph): PostIndex {
@@ -116,11 +105,17 @@ function rebuild(world: World, content: ContentSet, terrain: TerrainGraph): Post
   moves.drain(() => {});
   settlerTradeLog(world, 'standingPosts').clear();
   let posts: Uint16Array;
+  let playersAt: Uint16Array;
   if (held !== undefined && held.terrain === terrain) {
     posts = held.posts;
-    for (const node of held.byNode.keys()) posts[node] = 0;
+    playersAt = held.playersAt;
+    for (const node of held.byNode.keys()) {
+      posts[node] = 0;
+      playersAt[node] = 0;
+    }
   } else {
     posts = new Uint16Array(terrain.nodeCount);
+    playersAt = new Uint16Array(terrain.nodeCount);
   }
   const index: PostIndex = {
     collect: (hx, hy, out, at) => collectPosts(index, hx, hy, out, at),
@@ -128,17 +123,15 @@ function rebuild(world: World, content: ContentSet, terrain: TerrainGraph): Post
     terrain,
     feed,
     moves,
-    zones: held?.zones ?? NO_ZONES,
-    zonesRevision: held?.zonesRevision ?? NO_ZONES.revision,
     posts,
+    playersAt,
     postTotal: 0,
     byEntity: new Map(),
     standingIds: new Uint8Array(world.nextEntityId),
     byNode: new Map(),
     offMap: [],
     playerAt: new Map(),
-    townByPlayer: new Map(),
-    townTotalByPlayer: new Map(),
+    totalByPlayer: new Map(),
   };
   for (const e of ownedFighters(world, content)) restowPost(world, index, e);
   if (held === undefined) world.registerCacheVerifier('standingPosts', () => verifyIndex(world));
@@ -163,7 +156,7 @@ function restowPost(world: World, index: PostIndex, e: Entity): void {
   const node = index.terrain.inBounds(hx, hy) ? index.terrain.nodeAt(hx, hy) : undefined;
   const player = world.get(e, Owner).player;
   if (held === undefined) {
-    const post: Post = { entity: e, hx, hy, node, player, inTown: false, next: undefined };
+    const post: Post = { entity: e, hx, hy, node, player, next: undefined };
     index.byEntity.set(e, post);
     if (e >= index.standingIds.length) index.standingIds = grownFlags(index.standingIds, e);
     index.standingIds[e] = 1;
@@ -202,9 +195,8 @@ function link(index: PostIndex, post: Post): void {
     post.next = at.next;
     at.next = post;
   }
-  settleNodePlayer(index, node);
-  post.inTown = index.zones.has(post.player, node);
-  if (post.inTown) addTown(index, post.player, node, 1);
+  settleNodePlayers(index, node);
+  addPlayerTotal(index, post.player, 1);
 }
 
 function unlink(index: PostIndex, post: Post): void {
@@ -229,20 +221,31 @@ function unlink(index: PostIndex, post: Post): void {
   post.next = undefined;
   if (head === undefined) index.byNode.delete(node);
   else index.byNode.set(node, head);
-  settleNodePlayer(index, node);
-  if (post.inTown) addTown(index, post.player, node, -1);
-  post.inTown = false;
+  settleNodePlayers(index, node);
+  addPlayerTotal(index, post.player, -1);
 }
 
-/** Two soft-stacked bodies on one node keep the higher id's player: the list's last. */
-function settleNodePlayer(index: PostIndex, node: NodeId): void {
+/** Re-read a node's players from its list: two soft-stacked bodies keep the higher id's player, the
+ *  list's last, while the slot bits name every player standing there. */
+function settleNodePlayers(index: PostIndex, node: NodeId): void {
   let top = index.byNode.get(node);
   if (top === undefined) {
     index.playerAt.delete(node);
+    index.playersAt[node] = 0;
     return;
   }
-  while (top.next !== undefined) top = top.next;
+  let bits = playerSlotBit(top.player);
+  while (top.next !== undefined) {
+    top = top.next;
+    bits |= playerSlotBit(top.player);
+  }
   index.playerAt.set(node, top.player);
+  index.playersAt[node] = bits;
+}
+
+/** A post's slot bit, 0 for an owner outside the slots: such a post blocks no requester's route. */
+export function playerSlotBit(player: number): number {
+  return isValidPlayer(player) ? 1 << player : 0;
 }
 
 function collectPosts(index: PostIndex, hx: number, hy: number, out: Entity[], at: number): number {
@@ -257,39 +260,15 @@ function collectPosts(index: PostIndex, hx: number, hy: number, out: Entity[], a
   return count;
 }
 
-function addTown(index: PostIndex, player: number, node: NodeId, delta: number): void {
-  let town = index.townByPlayer.get(player);
-  if (town === undefined) {
-    town = new Map();
-    index.townByPlayer.set(player, town);
-  }
-  const count = (town.get(node) ?? 0) + delta;
-  if (count === 0) town.delete(node);
-  else town.set(node, count);
-  const total = (index.townTotalByPlayer.get(player) ?? 0) + delta;
-  if (total === 0) {
-    index.townTotalByPlayer.delete(player);
-    index.townByPlayer.delete(player);
-  } else {
-    index.townTotalByPlayer.set(player, total);
-  }
-}
-
-/** Re-sort every post into field or town under new calm zones. */
-function recountTown(index: PostIndex, zones: CalmZones): void {
-  index.zones = zones;
-  index.zonesRevision = zones.revision;
-  index.townByPlayer.clear();
-  index.townTotalByPlayer.clear();
-  for (const post of index.byEntity.values()) {
-    post.inTown = post.node !== undefined && zones.has(post.player, post.node);
-    if (post.inTown && post.node !== undefined) addTown(index, post.player, post.node, 1);
-  }
+function addPlayerTotal(index: PostIndex, player: number, delta: number): void {
+  const total = (index.totalByPlayer.get(player) ?? 0) + delta;
+  if (total === 0) index.totalByPlayer.delete(player);
+  else index.totalByPlayer.set(player, total);
 }
 
 /**
- * The nodes standing colliders occupy regardless of calm zones, each with the player standing there: an
- * approach cell someone already stands on is a taken melee slot even inside a town garrison. Two soft-
+ * The nodes standing colliders occupy, each with the player standing there: an approach cell someone
+ * already stands on is a taken melee slot whoever stands on it. Two soft-
  * stacked bodies on one node keep the higher id's player. Membership-only; valid until the next read.
  */
 export function standingFighterPosts(
@@ -305,19 +284,16 @@ export function standingPostGrid(world: World, content: ContentSet, terrain: Ter
   return postIndex(world, content, terrain);
 }
 
-/** Only this read refreshes the calm zones, so a posts-only read never pays a zone rebuild. */
 export function unitWalkBlocks(world: World, content: ContentSet, terrain: TerrainGraph): UnitWalkBlocks {
-  const index = postIndex(world, content, terrain);
-  const zones = calmZonesByPlayer(world, terrain);
-  if (zones !== index.zones || zones.revision !== index.zonesRevision) recountTown(index, zones);
-  return index;
+  return postIndex(world, content, terrain);
 }
 
 /** A fresh scan of every standing collider in ascending id, the index's verifier's reference. */
-function derivePosts(world: World, content: ContentSet, terrain: TerrainGraph, zones: CalmZones): FreshPosts {
+function derivePosts(world: World, content: ContentSet, terrain: TerrainGraph): FreshPosts {
   const counts = new Map<NodeId, number>();
   const playerAt = new Map<NodeId, number>();
-  const town = new Map<number, Map<NodeId, number>>();
+  const playersAt = new Map<NodeId, number>();
+  const totals = new Map<number, number>();
   const grid: Map<string, Entity[]> = new Map();
   for (const e of world.canonicalQuery(Owner, Settler)) {
     const p = world.tryGet(e, Position);
@@ -333,21 +309,17 @@ function derivePosts(world: World, content: ContentSet, terrain: TerrainGraph, z
     const player = world.get(e, Owner).player;
     counts.set(node, (counts.get(node) ?? 0) + 1);
     playerAt.set(node, player);
-    if (!zones.has(player, node)) continue;
-    let own = town.get(player);
-    if (own === undefined) {
-      own = new Map();
-      town.set(player, own);
-    }
-    own.set(node, (own.get(node) ?? 0) + 1);
+    playersAt.set(node, (playersAt.get(node) ?? 0) | playerSlotBit(player));
+    totals.set(player, (totals.get(player) ?? 0) + 1);
   }
-  return { counts, playerAt, town, grid };
+  return { counts, playerAt, playersAt, totals, grid };
 }
 
 interface FreshPosts {
   readonly counts: Map<NodeId, number>;
   readonly playerAt: Map<NodeId, number>;
-  readonly town: Map<number, Map<NodeId, number>>;
+  readonly playersAt: Map<NodeId, number>;
+  readonly totals: Map<number, number>;
   /** Each occupied node's posts in ascending id, keyed by {@link nodeKey}, on or off the lattice. */
   readonly grid: Map<string, Entity[]>;
 }
@@ -379,9 +351,7 @@ function verifyIndex(world: World): string[] {
   const held = indexes.get(world);
   if (held === undefined) return [];
   const index = postIndex(world, held.content, held.terrain);
-  // Zones caught up since the last walk-block read: that read would recount before using the tally.
-  if (index.zones.revision !== index.zonesRevision) recountTown(index, index.zones);
-  const fresh = derivePosts(world, index.content, index.terrain, index.zones);
+  const fresh = derivePosts(world, index.content, index.terrain);
   const problems: string[] = [];
   let freshTotal = 0;
   for (const count of fresh.counts.values()) freshTotal += count;
@@ -396,39 +366,35 @@ function verifyIndex(world: World): string[] {
   if (index.byNode.size !== fresh.counts.size || !sameCounts(index.playerAt, fresh.playerAt)) {
     problems.push('standingPosts names another player or node list than a fresh scan');
   }
-  const townSame =
-    index.townByPlayer.size === fresh.town.size &&
-    [...fresh.town].every(([player, town]) => {
-      const own = index.townByPlayer.get(player);
-      let total = 0;
-      for (const count of town.values()) total += count;
-      return own !== undefined && sameCounts(own, town) && index.townTotalByPlayer.get(player) === total;
-    });
-  if (!townSame) problems.push('standingPosts town garrison diverges from a fresh scan');
+  const playersSame = [...fresh.playersAt].every(([node, bits]) => index.playersAt[node] === bits);
+  if (!playersSame || !sameCounts(index.totalByPlayer, fresh.totals)) {
+    problems.push('standingPosts tallies other players per node or in total than a fresh scan');
+  }
   if (!sameGrid(index, fresh.grid))
     problems.push('standingPosts collects other posts by node than a fresh scan');
   return problems;
 }
 
 /**
- * A collider requester's walk overlay: `dynamic` plus every post except its own player's town garrison.
- * A membership test is two array reads, touching the town map only on a post.
+ * A collider requester's walk overlay: `dynamic` plus the posts of every player in `hostile`, the slot
+ * bits of the players it is at war with. A membership test is two array reads.
  */
 export class ColliderWalkBlocks implements BlockOverlay {
   private readonly dynamic: BlockOverlay;
-  private readonly posts: Uint16Array;
-  private readonly ownTown: ReadonlyMap<NodeId, number> | undefined;
+  private readonly playersAt: Uint16Array;
+  private readonly hostile: number;
   readonly size: number;
-  constructor(dynamic: BlockOverlay, units: UnitWalkBlocks, player: number) {
+  constructor(dynamic: BlockOverlay, units: UnitWalkBlocks, hostile: number) {
     this.dynamic = dynamic;
-    this.posts = units.posts;
-    this.ownTown = units.townByPlayer.get(player);
+    this.playersAt = units.playersAt;
+    this.hostile = hostile;
+    let posts = 0;
+    for (const [player, total] of units.totalByPlayer)
+      if ((hostile & playerSlotBit(player)) !== 0) posts += total;
     // 0 exactly when nothing blocks this requester, which lets the search skip its pocket probe.
-    this.size = dynamic.size + units.postTotal - (units.townTotalByPlayer.get(player) ?? 0);
+    this.size = dynamic.size + posts;
   }
   has(node: NodeId): boolean {
-    if (this.dynamic.has(node)) return true;
-    const posts = this.posts[node] ?? 0;
-    return posts > 0 && posts > (this.ownTown?.get(node) ?? 0);
+    return this.dynamic.has(node) || ((this.playersAt[node] ?? 0) & this.hostile) !== 0;
   }
 }
