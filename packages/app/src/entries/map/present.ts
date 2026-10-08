@@ -103,8 +103,20 @@ export async function presentMapWorld(
   const playerColourOf = seatColourOf(session);
   const staticObjects = world.staticObjects;
 
+  // The placements the sim holds an entity for or pools, drawn and heard as no scenery: a fresh build's
+  // own spawn record, or on a restore the ordinals a fresh build would have spawned.
+  const simHeld =
+    loaded?.objects === undefined || ir === null
+      ? null
+      : stagedSave === null
+        ? [
+            ...hosted.placements.harvestablePlacements.map(([, placement]) => placement),
+            ...hosted.placements.pooledPlacements,
+          ]
+        : harvestablePlacementOrdinals(host.content, loaded.objects, ir);
+
   const staticLayer =
-    staticObjects !== undefined && loaded?.objects !== undefined && ir !== null
+    staticObjects !== undefined && loaded?.objects !== undefined && simHeld !== null
       ? bindStaticLayer(
           renderer,
           { placements: loaded.objects.placements, byPlacement: staticObjects.byPlacement },
@@ -114,10 +126,7 @@ export async function presentMapWorld(
                 placementByEntity: hosted.placements.harvestablePlacements,
                 pooledPlacements: hosted.placements.pooledPlacements,
               }
-            : {
-                kind: 'restored',
-                placements: harvestablePlacementOrdinals(host.content, loaded.objects, ir),
-              },
+            : { kind: 'restored', placements: simHeld },
           host.content,
           () => host.snapshot(),
           2 * terrainGrid.width,
@@ -225,14 +234,8 @@ export async function presentMapWorld(
       landscapes?.onEvents(events);
     },
     ...(staticLayer !== null ? { staticHarvestableSprite: staticLayer.harvestableSpriteOf } : {}),
-    ...(loaded?.objects !== undefined && ir !== null
-      ? {
-          soundScenery: soundScenery(
-            loaded.objects,
-            ir,
-            harvestablePlacementOrdinals(host.content, loaded.objects, ir),
-          ),
-        }
+    ...(loaded?.objects !== undefined && ir !== null && simHeld !== null
+      ? { soundScenery: soundScenery(loaded.objects, ir, simHeld) }
       : {}),
     mapText: mapStringLookup(world.strings, currentLocale()),
     ...(stagedSave?.parent !== undefined ? { parentSave: stagedSave.parent } : {}),
