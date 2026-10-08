@@ -2,8 +2,8 @@ import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
-import { BloodLayer } from '../overlays/blood-layer.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
+import { BloodLayer } from '../overlays/blood-layer.js';
 import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
 import {
   BadgeLayer,
