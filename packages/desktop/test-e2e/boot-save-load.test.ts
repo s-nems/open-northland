@@ -130,7 +130,7 @@ test('boots app://, lists map previews, and restores a save and the window mode 
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await page.getByRole('button', { name: 'Settings', exact: true }).click();
     await page.getByRole('button', { name: 'Graphics', exact: true }).click();
-    const range = page.locator('.system-menu__settings .main-menu__settings-range').first();
+    const range = page.locator('.on-system-settings .main-menu__settings-range').first();
     await range.waitFor();
     assert.match(
       await range.evaluate((input) => getComputedStyle(input).backgroundImage),
@@ -159,8 +159,9 @@ test('boots app://, lists map previews, and restores a save and the window mode 
     await page.getByRole('button', { name: 'Save', exact: true }).click();
     await page.getByText('Game saved.', { exact: true }).waitFor();
     await page.getByRole('button', { name: 'Back', exact: true }).click();
-    await page.getByRole('button', { name: 'Return to menu', exact: true }).click();
-    await page.getByRole('button', { name: 'Return to menu', exact: true }).last().click();
+    // The game menu's quit asks once more under the same label.
+    await page.getByRole('button', { name: 'Leave game', exact: true }).click();
+    await page.getByRole('button', { name: 'Leave game', exact: true }).last().click();
     await page.locator('[data-nav-id="newGame"]').waitFor();
     assert.equal(await page.evaluate(() => window.__opennorthland === undefined), true);
     assert.deepEqual(errors, []);
