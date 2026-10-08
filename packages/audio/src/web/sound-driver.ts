@@ -272,8 +272,11 @@ export class SoundDriver {
     // Before the audibility gate, so a camera zoomed while muted is already in the mix on unmute.
     this.engine.setCameraScale(input.camera.scale);
     // Suspended (no gesture yet) or muted: the engine would drop the frame unheard, so don't pay the
-    // director decision work at all.
-    if (!this.engine.audible) return;
+    // director decision work at all. A report queued before a mute would ring stale on unmute.
+    if (!this.engine.audible) {
+      this.alerts.clear();
+      return;
+    }
     // Optionals are spread in only when present - `exactOptionalPropertyTypes` forbids passing `undefined`.
     const frame = directAudio({
       events: input.events,

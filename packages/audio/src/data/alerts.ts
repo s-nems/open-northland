@@ -200,6 +200,12 @@ export class AlertDesk {
     this.spoken.push({ voice, settler });
   }
 
+  /** Forget the reports not taken yet: a frame nobody hears must not leave them to ring later. */
+  clear(): void {
+    this.attacks = [];
+    this.spoken = [];
+  }
+
   /** This frame's alert and notice one-shots, emptying the desk. */
   take(
     view: AlertView,

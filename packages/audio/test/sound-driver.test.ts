@@ -222,6 +222,22 @@ describe('SoundDriver', () => {
     expect(fetched.at(-1)).toBe('/sounds/gui/click_confirm.wav');
   });
 
+  it('forgets a notice reported just before a mute instead of ringing it on unmute', async () => {
+    const { driver, fetched } = makeDriver();
+    await driver.resume();
+    driver.noticeVoice('hungry', 3);
+    driver.setEnabled(false);
+    driver.update({ ...baseInput, events: [] });
+    driver.setEnabled(true);
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(fetched).toEqual([]);
+    driver.noticeVoice('hungry', 3);
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(fetched).toHaveLength(1); // a fresh report still rings
+  });
+
   it('counts no steal when an answer cuts the selection line before it', async () => {
     const { driver, ctx } = makeDriver();
     await driver.resume();
