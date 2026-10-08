@@ -235,10 +235,13 @@ export type {
   VoiceCall,
 } from './data/types.js';
 export {
+  CHAT_CUE_COOLDOWN_S,
+  CHAT_CUE_GAIN,
   NOTICE_CARD_GAIN,
   NOTICE_CUE_INTERVAL_S,
-  NOTIFICATION_CUES,
+  NOTIFICATION_SOUNDS,
   type NotificationCue,
+  type NotificationSound,
   notificationShot,
   UI_CUE_FILES,
   UI_CUE_GAIN,

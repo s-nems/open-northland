@@ -176,7 +176,7 @@ describe('buildSoundGalleryModel', () => {
   it('lists every GUI cue and every notification cue with the shot the game fires', () => {
     const groups = model.interface.map((row) => row.group);
     expect(groups).toContain('confirm');
-    expect(groups).toContain('card (briefing)');
+    expect(groups).toContain('card (gui/briefing_popup.wav)');
     for (const row of model.interface) expect(row.play.kind).toBe('cue');
   });
 

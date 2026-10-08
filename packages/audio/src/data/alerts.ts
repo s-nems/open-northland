@@ -6,7 +6,7 @@ import { VOICE_MUSIC_DUCK_DB } from './mixer.js';
 import { voiceClassOf } from './snapshot.js';
 import { inEarshot, offsetOfScreenPoint } from './spatial.js';
 import type { Lane, NoticeVoiceSound, OneShot, SoundBindings } from './types.js';
-import { NOTICE_CUE_INTERVAL_S, UI_CUE_GAIN } from './ui-cues.js';
+import { NOTICE_CUE_INTERVAL_S } from './ui-cues.js';
 
 /**
  * Attack alerts and the notices' own sounds. The original sounds no attack alert at all, only its
@@ -49,11 +49,12 @@ export const ATTACK_ALERT_NEW_FRONT_PX = 1280;
 /** Least seconds between two alerts of any front, so fronts opening together sound one horn and the
  *  rest wait for the next frame past it. Approximation. */
 export const ATTACK_ALERT_MIN_GAP_S = 5;
-/** The horn's gain per front: an attack inside the settlement at the GUI's full level, people hit in
- *  the field about 6 dB under it. Authored, tune by ear. */
+/** The horn's gain per front. Its wav peaks at -1 dBFS with an RMS of -10 dB, about 13 dB over an
+ *  order's answer at full gain, so an attack inside the settlement rings about 8 dB under full scale
+ *  and people hit in the field about 4 dB under that. Authored, tune by ear. */
 export const ATTACK_ALERT_GAIN: Readonly<Record<AttackFront, number>> = {
-  base: UI_CUE_GAIN,
-  units: UI_CUE_GAIN / 2,
+  base: 0.4,
+  units: 0.25,
 };
 /** dB the world and ambient buses dip while an alert rings, so the horn reads over a battle. Authored:
  *  the common "a few dB" alert duck. */

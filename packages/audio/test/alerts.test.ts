@@ -15,6 +15,8 @@ import {
   authoredVolumeGain,
   BUS_DUCK_RAMP_S,
   buildSoundIndex,
+  CHAT_CUE_COOLDOWN_S,
+  CHAT_CUE_GAIN,
   defaultBindings,
   directAudio,
   LANE_RANK,
@@ -151,6 +153,11 @@ const snapshot: WorldSnapshot = {
   events: [],
 };
 
+const dbOf = (gain: number): number => 20 * Math.log10(gain);
+/** The horn's level for an attack on the settlement, and how far under it a field attack rings, in dB. */
+const HORN_BASE_DB = -8;
+const HORN_FIELD_UNDER_DB = 4;
+
 describe('alert and notice sounds', () => {
   it("sounds the horn on the ui lane at the front's level, ducking the world and the music", () => {
     const desk = new AlertDesk();
@@ -161,7 +168,9 @@ describe('alert and notice sounds', () => {
     expect(horn?.lane).toEqual({ kind: 'alert', alert: 'baseAttacked' });
     expect(horn?.duckWorldDb).toBe(ALERT_DUCK_DB);
     expect(horn?.duckMusicDb).toBe(VOICE_MUSIC_DUCK_DB);
-    expect(ATTACK_ALERT_GAIN.units).toBeLessThan(ATTACK_ALERT_GAIN.base);
+    // The hot horn rings about 8 dB under full scale for the settlement, 4 dB further down for the field.
+    expect(dbOf(ATTACK_ALERT_GAIN.base)).toBeCloseTo(HORN_BASE_DB, 0);
+    expect(dbOf(ATTACK_ALERT_GAIN.units)).toBeCloseTo(HORN_BASE_DB - HORN_FIELD_UNDER_DB, 0);
     // The reports were taken: the next frame starts empty.
     expect(desk.take(view, snapshot, index, bindings, ATTACK_ALERT_INTERVAL_S)).toEqual([]);
   });
@@ -224,12 +233,19 @@ describe('alert and notice sounds', () => {
     });
   });
 
-  it('rings the notification cues, a card under a press', () => {
+  it('rings the notification cues, a card and a chat line under a press', () => {
     expect(notificationShot('card')).toMatchObject({
       files: ['gui/briefing_popup.wav'],
       gain: NOTICE_CARD_GAIN,
     });
-    expect(notificationShot('chat').files).toEqual(['gui/chat_incoming.wav']);
+    expect(NOTICE_CARD_GAIN).toBe(0.25);
+    expect(notificationShot('chat')).toMatchObject({
+      files: ['gui/chat_incoming.wav'],
+      gain: CHAT_CUE_GAIN,
+      cooldownS: CHAT_CUE_COOLDOWN_S,
+    });
+    expect(CHAT_CUE_GAIN).toBe(UI_CUE_GAIN / 2);
+    expect(CHAT_CUE_COOLDOWN_S).toBe(1);
     expect(notificationShot('arrival').files).toEqual(['gui/chat_incoming.wav']);
     expect(notificationShot('departure')).toMatchObject({ files: ['gui/click_fail.wav'], gain: UI_CUE_GAIN });
     expect(notificationShot('card').lane).toBeUndefined();

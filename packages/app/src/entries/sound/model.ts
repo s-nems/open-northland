@@ -1,7 +1,7 @@
 import {
   type AuditionRole,
   type EventSound,
-  NOTIFICATION_CUES,
+  NOTIFICATION_SOUNDS,
   type NotificationCue,
   notificationShot,
   type OneShot,
@@ -166,10 +166,10 @@ function interfaceCues(): ClipList[] {
   for (const cue of Object.keys(UI_CUE_FILES) as UiCue[]) {
     rows.push({ group: cue, clips: [UI_CUE_FILES[cue]], play: { kind: 'cue', shot: uiCueShot(cue) } });
   }
-  for (const notification of Object.keys(NOTIFICATION_CUES) as NotificationCue[]) {
+  for (const notification of Object.keys(NOTIFICATION_SOUNDS) as NotificationCue[]) {
     const shot = notificationShot(notification);
     rows.push({
-      group: `${notification} (${NOTIFICATION_CUES[notification]})`,
+      group: `${notification} (${shot.files.join(', ')})`,
       clips: shot.files,
       play: { kind: 'cue', shot },
     });

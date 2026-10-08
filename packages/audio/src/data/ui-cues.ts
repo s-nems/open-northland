@@ -35,32 +35,51 @@ export function uiCueShot(cue: UiCue): OneShot {
  */
 export type NotificationCue = 'card' | 'chat' | 'arrival' | 'departure';
 
-export const NOTIFICATION_CUES: Readonly<Record<NotificationCue, UiCue>> = {
-  card: 'briefing',
-  chat: 'chat',
-  arrival: 'chat',
-  departure: 'fail',
-};
+/** How a notification sounds: its wav, its gain and, for one that may come in bursts, the least seconds
+ *  between two rings. */
+export interface NotificationSound {
+  readonly files: readonly string[];
+  readonly gain: number;
+  readonly cooldownS?: number;
+}
 
-/** Least seconds between two sounds of one notice key (a message type, a notice voice): the shot's
- *  {@link OneShot.cooldownS}. Approximation: a busy settlement raises the same note for many settlers in
- *  a row. */
+/** Least seconds between two sounds of one notice key (a message type, a notice voice) after a quiet
+ *  spell: the shot's {@link OneShot.cooldownS}. Approximation: a busy settlement raises the same note for
+ *  many settlers in a row. */
 export const NOTICE_CUE_INTERVAL_S = 20;
 
-/** A new card's briefing pop sits about 6 dB under a press: the bank's loudest GUI wav, rung unasked.
+/** A new card's briefing pop sits about 12 dB under a press: the bank's loudest GUI wav (peak -0.1 dBFS),
+ *  rung unasked. Authored, tune by ear. */
+export const NOTICE_CARD_GAIN = 0.25;
+/** Another player's chat line rings about 6 dB under a press: a busy chat must not peck at the mix.
  *  Authored, tune by ear. */
-export const NOTICE_CARD_GAIN = UI_CUE_GAIN / 2;
+export const CHAT_CUE_GAIN = UI_CUE_GAIN / 2;
+/** Least seconds between two chat rings, so a burst of lines rings once. Authored. */
+export const CHAT_CUE_COOLDOWN_S = 1;
+
+export const NOTIFICATION_SOUNDS: Readonly<Record<NotificationCue, NotificationSound>> = {
+  card: { files: [UI_CUE_FILES.briefing], gain: NOTICE_CARD_GAIN },
+  chat: { files: [UI_CUE_FILES.chat], gain: CHAT_CUE_GAIN, cooldownS: CHAT_CUE_COOLDOWN_S },
+  arrival: { files: [UI_CUE_FILES.chat], gain: CHAT_CUE_GAIN },
+  departure: { files: [UI_CUE_FILES.fail], gain: UI_CUE_GAIN },
+};
 
 /**
- * The one-shot a notification rings: its cue's wav, keyed per notification so a burst of cards in one
- * frame rings once. With `rateKey` (a message type) the key is that type's and cools for
+ * The one-shot a notification rings: its wav, keyed per notification so a burst of cards in one frame
+ * rings once. With `rateKey` (a message type) the key is that type's and cools for
  * {@link NOTICE_CUE_INTERVAL_S}, and the shot waits out its wav still sounding, so cards of several types
  * at once still ring once.
  */
 export function notificationShot(notification: NotificationCue, rateKey?: string): OneShot {
-  const cue = uiCueShot(NOTIFICATION_CUES[notification]);
-  const shot = notification === 'card' ? { ...cue, gain: NOTICE_CARD_GAIN } : cue;
-  if (rateKey === undefined) return { ...shot, key: `notify:${notification}` };
+  const sound = NOTIFICATION_SOUNDS[notification];
+  const shot: OneShot = {
+    files: sound.files,
+    gain: sound.gain,
+    pan: 0,
+    key: `notify:${notification}`,
+    ...(sound.cooldownS !== undefined ? { cooldownS: sound.cooldownS } : {}),
+  };
+  if (rateKey === undefined) return shot;
   return {
     ...shot,
     key: `notify:${notification}:${rateKey}`,
