@@ -98,7 +98,7 @@ export const VehicleYardRefusals = defineComponent<{
  * tenths). The component exists only while some remainder is non-zero.
  */
 export const ProductionBonus = defineComponent<{
-  /** goodType → the banked bonus output in tenths of a unit; past nine only while the shelf is full. */
+  /** goodType → the banked bonus output in tenths of a unit, below one whole unit. */
   remainders: Map<number, number>;
 }>('ProductionBonus', 'economy');
 

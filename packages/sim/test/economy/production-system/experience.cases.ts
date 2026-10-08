@@ -1,17 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { Production, ProductionBonus, SettlerProgress, Stockpile } from '../../../src/components/index.js';
+import { ProductionBonus, SettlerProgress, Stockpile } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
-import { accrueBonusOutput } from '../../../src/systems/economy/production/bonus-output.js';
 import {
   EXPERIENCE_XP_PER_POINT,
   experienceBonusTenths,
   experiencePercent,
-  OUTPUT_TENTHS_PER_UNIT,
   productionSystem,
-  recipesByProductOf,
 } from '../../../src/systems/index.js';
-import { pickupFromStore } from '../../../src/systems/settlers/atomics/effects/goods/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { CYCLE_TICKS, ctxOf, PLANK, sawmill, WOOD, WOOD_TRACK } from './support.js';
 
@@ -92,30 +88,10 @@ describe('productionSystem accrues the experience bonus in tenths of a unit', ()
     expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(5);
   });
 
-  it('never consumes a slot an in-flight batch reserved, and flushes once the batch retires', () => {
+  it('shelves the whole bonus past the capacity when the cycle started one short of full', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const { mill, worker } = sawmill(sim, [[PLANK, 19]]);
-    if (worker === null) throw new Error('staffed sawmill should have a worker');
-    const ctx = ctxOf(sim);
-    // An in-flight plank batch has reserved the last free slot (capacity 20, 19 held) - its own deposit
-    // is unconditional, so the banked bonus unit must not take it.
-    sim.world.add(mill, Production, { cycles: [{ elapsed: 1, duration: 20, goodType: PLANK }] });
-    sim.world.add(mill, ProductionBonus, { remainders: new Map([[PLANK, OUTPUT_TENTHS_PER_UNIT]]) });
-    const recipes = recipesByProductOf(sim.world, ctx, mill);
-    accrueBonusOutput(sim.world, ctx, mill, [], { kind: 'staffed', operators: [worker] }, recipes);
-    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(19); // the reserved slot stays free
-    expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(OUTPUT_TENTHS_PER_UNIT);
-    // The batch retired: the banked unit flushes even though the crediting crew has no bonus of its own.
-    sim.world.remove(mill, Production);
-    accrueBonusOutput(sim.world, ctx, mill, [], { kind: 'staffed', operators: [worker] }, recipes);
-    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(20);
-    expect(sim.world.has(mill, ProductionBonus)).toBe(false);
-  });
-
-  it('holds a whole bonus unit while the product is at capacity (nothing spills, nothing is lost)', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    // Plank capacity is 20 (fixture sawmill): 19 in store + the base deposit fills it, so the master's
-    // fifteen tenths cannot land and hold whole.
+    // Plank capacity is 20 (fixture sawmill): the cycle starts at 19, its base unit fills the shelf and
+    // the master's fifteen tenths still land, one whole plank over the capacity.
     const { mill, worker } = sawmill(sim, [
       [WOOD, 1],
       [PLANK, 19],
@@ -123,24 +99,7 @@ describe('productionSystem accrues the experience bonus in tenths of a unit', ()
     if (worker === null) throw new Error('staffed sawmill should have a worker');
     seedPoints(sim, worker, MASTERY);
     for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
-    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(20); // base deposit filled the store
-    expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(15); // held, not lost
-  });
-
-  it('a withdrawal frees the slot and releases the held unit - production may never complete again', () => {
-    const sim = new Simulation({ seed: 1, content: testContent() });
-    const { mill, worker } = sawmill(sim, [
-      [WOOD, 1],
-      [PLANK, 19],
-    ]);
-    if (worker === null) throw new Error('staffed sawmill should have a worker');
-    seedPoints(sim, worker, MASTERY);
-    for (let t = 0; t <= CYCLE_TICKS; t++) productionSystem(sim.world, ctxOf(sim));
-    // Full store, one whole bonus unit banked (the case above). A porter lifts one plank out: the
-    // withdrawal seam must flush the banked unit into the freed slot, not wait for another batch.
-    const porter = sim.world.create();
-    pickupFromStore(sim.world, ctxOf(sim), porter, mill, PLANK, 1);
-    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(20); // 19 + the released unit
-    expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(5); // the tenths stay banked
+    expect(sim.world.get(mill, Stockpile).amounts.get(PLANK)).toBe(21);
+    expect(sim.world.get(mill, ProductionBonus).remainders.get(PLANK)).toBe(5);
   });
 });

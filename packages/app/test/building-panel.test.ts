@@ -387,6 +387,31 @@ describe('building panel orders and alerts', () => {
     expect(alert(GOOD_FLOUR)).toBe('full');
   });
 
+  it('shows a bonus yield past the shelf capacity with its banked tenths', () => {
+    const flourShelf =
+      sandboxCtx()
+        .buildings.find((def) => def.typeId === BUILDING_MILL)
+        ?.stock.find((slot) => slot.goodType === GOOD_FLOUR)?.capacity ?? 0;
+    const OVER_BY = 1;
+    const BANKED_TENTHS = 5;
+    const model = buildingModel(
+      [
+        buildingEntity(1, BUILDING_MILL, {
+          components: {
+            Stockpile: { amounts: [[GOOD_FLOUR, flourShelf + OVER_BY]] },
+            ProductionBonus: { remainders: [[GOOD_FLOUR, BANKED_TENTHS]] },
+          },
+        }),
+        { id: 2, components: { Settler: { jobType: craft?.jobType }, JobAssignment: { workplace: 1 } } },
+      ],
+      1,
+    );
+    const flour = model.stock.find((row) => row.goodType === GOOD_FLOUR);
+    expect(flour?.amount).toBe(flourShelf + OVER_BY + 0.5);
+    expect(flour?.capacity).toBe(flourShelf);
+    expect(flour?.alert).toBe('full');
+  });
+
   it('reads the diagnosis of the craftsman, not of a collector posted there with a lower id', () => {
     if (craft === undefined) throw new Error('the mill declares a craft');
     const MILL = 1;

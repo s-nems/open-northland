@@ -136,12 +136,10 @@ export function stockRows(
       // Shown by the hover tooltip only; the drawn row is just the icon and the amount.
       label: goodLabel(ctx, slot.goodType),
       // Whole units plus the banked bonus tenths, one division so the decimal stays exact. Display only: a
-      // withdrawal still sees whole units, and a full shelf's banked tenths never show past the capacity.
-      amount: Math.min(
+      // withdrawal still sees whole units. A bonus yield may sit past the capacity, and shows as it is.
+      amount:
         ((live.get(slot.goodType) ?? 0) * systems.OUTPUT_TENTHS_PER_UNIT + (tenths.get(slot.goodType) ?? 0)) /
-          systems.OUTPUT_TENTHS_PER_UNIT,
-        slot.capacity,
-      ),
+        systems.OUTPUT_TENTHS_PER_UNIT,
       category: goodCategoryTab(goodId),
       capacity: slot.capacity,
       ...(goodId !== undefined ? { goodId } : {}),

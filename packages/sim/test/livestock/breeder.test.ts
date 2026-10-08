@@ -19,6 +19,8 @@ import {
   livestockAssignmentSystem,
   livestockGrowthSystem,
   livestockSummonSystem,
+  MASTERY_BONUS_TENTHS,
+  OUTPUT_TENTHS_PER_UNIT,
   plannerSystem,
   productionSystem,
   recountHerdRows,
@@ -39,7 +41,6 @@ import {
   livestockContent,
   livestockSim,
   MEAT,
-  MEAT_CAPACITY,
   SLAY_ATOMIC,
   WATER,
   WHEAT,
@@ -399,7 +400,11 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
 
     const stock = sim.world.get(farm, Stockpile).amounts;
     expect(stock.get(WOOL)).toBe(2); // one fleece off the animal, one off the hand that skinned it
-    expect(stock.get(MEAT)).toBe(MEAT_CAPACITY); // 4 cuts earned, the shelf holds 3 and banks the rest
+    // Two cuts land while the shelf is below its capacity of 3, each paying 2.5 at mastery: the second
+    // cut's bonus lands past the capacity, and no third cut goes onto the full shelf.
+    const CUTS_BELOW_CAPACITY = 2;
+    const masterCutTenths = OUTPUT_TENTHS_PER_UNIT + MASTERY_BONUS_TENTHS;
+    expect(stock.get(MEAT)).toBe((CUTS_BELOW_CAPACITY * masterCutTenths) / OUTPUT_TENTHS_PER_UNIT);
   });
 
   it('carries a full ware out before it slaughters again', () => {

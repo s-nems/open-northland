@@ -1,6 +1,5 @@
 import type { Recipe } from '@open-northland/data';
 import {
-  Production,
   ProductionBonus,
   type ProductionCycle,
   Stockpile,
@@ -11,7 +10,7 @@ import type { SystemContext } from '../../context.js';
 import { isCraftingOperator, toolProductionBonusPct, wearWornTool } from '../../equipment/index.js';
 import { jobExperiencePercent } from '../../progression/index.js';
 import { livestockTribeOfGood } from '../../readviews/index.js';
-import { recipesByProductOf, stockCapacity, type WorkplaceOperators } from '../../stores/index.js';
+import type { WorkplaceOperators } from '../../stores/index.js';
 
 /**
  * A completed cycle's extra output on top of its recipe outputs, in tenths of a unit: the operator's
@@ -50,8 +49,7 @@ function operatorBonusTenths(world: World, ctx: SystemContext, operator: Entity,
  * The bonus-output half of a completed batch: each done cycle banks its operator's bonus tenths times its
  * recipe outputs into the workplace's {@link ProductionBonus} remainders, pairing cycles to operators index
  * for index. A crafting operator's tool wears one step per completed cycle, whether or not it rates a
- * credit. The flush runs on every completion regardless of the crediting operator's bonus, so a unit
- * banked earlier is never stranded behind a fresh worker.
+ * credit.
  */
 export function accrueBonusOutput(
   world: World,
@@ -61,25 +59,23 @@ export function accrueBonusOutput(
   operators: WorkplaceOperators,
   recipes: ReadonlyMap<number, Recipe> | undefined,
 ): void {
-  if (operators.kind === 'staffed') {
-    done.forEach((cycle, i) => {
-      const op = operators.operators[i];
-      if (op === undefined) return;
-      // Credit before wearing: the cycle that breaks the tool is still a cycle the tool worked, so a tool
-      // rated `uses: N` credits N cycles, not N - 1.
-      const tenths = operatorBonusTenths(world, ctx, op, cycle.goodType);
-      if (isCraftingOperator(world, ctx, op)) wearWornTool(world, ctx, op);
-      if (tenths <= 0) return;
-      const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
-      for (const output of outputs) {
-        // A species good is not a ware on a shelf but the calf the herd bears, so there is no fraction
-        // of one to bank; the wares its slaughter yields carry the bonus instead.
-        if (livestockTribeOfGood(ctx.content, output.goodType) !== null) continue;
-        creditBonus(world, building, output.goodType, tenths * output.amount);
-      }
-    });
-  }
-  flushWholeUnits(world, ctx, building, recipes);
+  if (operators.kind !== 'staffed') return;
+  done.forEach((cycle, i) => {
+    const op = operators.operators[i];
+    if (op === undefined) return;
+    // Credit before wearing: the cycle that breaks the tool is still a cycle the tool worked, so a tool
+    // rated `uses: N` credits N cycles, not N - 1.
+    const tenths = operatorBonusTenths(world, ctx, op, cycle.goodType);
+    if (isCraftingOperator(world, ctx, op)) wearWornTool(world, ctx, op);
+    if (tenths <= 0) return;
+    const outputs = recipes?.get(cycle.goodType)?.outputs ?? [{ goodType: cycle.goodType, amount: 1 }];
+    for (const output of outputs) {
+      // A species good is not a ware on a shelf but the calf the herd bears, so there is no fraction
+      // of one to bank; the wares its slaughter yields carry the bonus instead.
+      if (livestockTribeOfGood(ctx.content, output.goodType) !== null) continue;
+      creditBonus(world, ctx, building, output.goodType, tenths * output.amount);
+    }
+  });
 }
 
 /**
@@ -96,75 +92,37 @@ export function accrueDepositBonus(
   goodType: number,
 ): void {
   const tenths = operatorBonusTenths(world, ctx, operator, goodType);
-  if (tenths <= 0) return;
-  creditBonus(world, building, goodType, tenths);
-  flushBankedBonus(world, ctx, building);
-}
-
-/** Accumulate `tenths` of bonus output of `goodType` on the workplace's remainder map. */
-function creditBonus(world: World, building: Entity, goodType: number, tenths: number): void {
-  const bonus =
-    world.tryMut(building, ProductionBonus) ??
-    world.add(building, ProductionBonus, { remainders: new Map() });
-  bonus.remainders.set(goodType, (bonus.remainders.get(goodType) ?? 0) + tenths);
+  if (tenths > 0) creditBonus(world, ctx, building, goodType, tenths);
 }
 
 /**
- * Flush a workplace's banked whole bonus units after stock left it: a withdrawal frees the space a
- * capacity-blocked unit was waiting for, and the completion-path flush may never come again.
+ * Add `tenths` of bonus output of `goodType` to the workplace's remainder and shelve every whole unit it
+ * makes, past the stock capacity if need be: the cycles that earned it were admitted under the capacity,
+ * so the overflow is at most their bonus. Original behavior: the produced amount lands in the house's
+ * stock whole, with no capacity check.
  */
-export function flushBankedBonus(world: World, ctx: SystemContext, building: Entity): void {
-  if (!world.has(building, ProductionBonus)) return;
-  flushWholeUnits(world, ctx, building, recipesByProductOf(world, ctx, building));
-}
-
-/**
- * Move each whole remainder unit into real stock, emitting `goodProduced` like a deposited batch. The room
- * in-flight same-product batches reserved is left alone, since their own deposits are unconditional, so a
- * blocked bonus unit holds until space frees.
- */
-function flushWholeUnits(
+function creditBonus(
   world: World,
   ctx: SystemContext,
   building: Entity,
-  recipes: ReadonlyMap<number, Recipe> | undefined,
-): void {
-  const bonus = world.tryMut(building, ProductionBonus);
-  if (bonus === undefined) return;
-  const stock = world.get(building, Stockpile).amounts;
-  for (const [goodType, held] of bonus.remainders) {
-    let remainder = held;
-    while (remainder >= OUTPUT_TENTHS_PER_UNIT) {
-      const have = stock.get(goodType) ?? 0;
-      const free =
-        stockCapacity(world, ctx, building, goodType) -
-        have -
-        reservedFor(world, building, goodType, recipes);
-      if (free <= 0) break;
-      setStockAmount(world, building, goodType, have + 1);
-      remainder -= OUTPUT_TENTHS_PER_UNIT;
-      ctx.events.emit({ kind: 'goodProduced', building, goodType, amount: 1 });
-    }
-    if (remainder > 0) bonus.remainders.set(goodType, remainder);
-    else bonus.remainders.delete(goodType);
-  }
-  if (bonus.remainders.size === 0) world.remove(building, ProductionBonus);
-}
-
-/** Units of `goodType` the in-flight cycles will deposit on completion - the reserved slots a bonus
- *  unit must leave free. Mirrors the per-batch reservation `outputRoomForCycles` admits cycles under. */
-function reservedFor(
-  world: World,
-  building: Entity,
   goodType: number,
-  recipes: ReadonlyMap<number, Recipe> | undefined,
-): number {
-  const cycles = world.tryGet(building, Production)?.cycles;
-  if (cycles === undefined) return 0;
-  let reserved = 0;
-  for (const c of cycles) {
-    const outputs = recipes?.get(c.goodType)?.outputs ?? [{ goodType: c.goodType, amount: 1 }];
-    for (const output of outputs) if (output.goodType === goodType) reserved += output.amount;
+  tenths: number,
+): void {
+  const banked = (world.tryGet(building, ProductionBonus)?.remainders.get(goodType) ?? 0) + tenths;
+  const whole = Math.floor(banked / OUTPUT_TENTHS_PER_UNIT);
+  const remainder = banked % OUTPUT_TENTHS_PER_UNIT;
+  if (whole > 0) {
+    const have = world.get(building, Stockpile).amounts.get(goodType) ?? 0;
+    setStockAmount(world, building, goodType, have + whole);
+    ctx.events.emit({ kind: 'goodProduced', building, goodType, amount: whole });
   }
-  return reserved;
+  const bonus = world.tryMut(building, ProductionBonus);
+  if (remainder > 0) {
+    if (bonus === undefined)
+      world.add(building, ProductionBonus, { remainders: new Map([[goodType, remainder]]) });
+    else bonus.remainders.set(goodType, remainder);
+  } else if (bonus !== undefined) {
+    bonus.remainders.delete(goodType);
+    if (bonus.remainders.size === 0) world.remove(building, ProductionBonus);
+  }
 }

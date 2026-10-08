@@ -4,11 +4,9 @@ import {
   PickupClaim,
   Stockpile,
   setStockAmount,
-  Upgrading,
 } from '../../../../../components/index.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import type { SystemContext } from '../../../../context.js';
-import { flushBankedBonus } from '../../../../economy/production/bonus-output.js';
 import { holdsSiteClaim, isSoloSite } from '../../../../economy/site-claim.js';
 import { depositHomeQuality, homeQualityUseFor, spendHomeQuality } from '../../../../family/home-quality.js';
 import { isFood } from '../../../../readviews/index.js';
@@ -45,9 +43,6 @@ export function pickupFromStore(
   if (moved <= 0) return;
   setAccessibleStockAmount(world, from, goodType, have - moved);
   addCarry(world, settler, carried, moved);
-  // An upgrading workplace is stood down, and its live Stockpile is construction material rather than
-  // the output shelf a banked production bonus belongs in.
-  if (!world.has(from, Upgrading)) flushBankedBonus(world, ctx, from);
   reapEmptyLoosePile(world, from);
 }
 
