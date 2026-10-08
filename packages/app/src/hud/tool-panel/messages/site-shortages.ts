@@ -47,8 +47,9 @@ interface Watch {
  * The seat's building sites short of a material the player has to supply: a line of the bill that no
  * store of the seat holds and nobody is bringing, once that has stood {@link CONSTRUCTION_SHORTAGE_GRACE_TICKS}.
  * The note then stands until that line is covered, on site or on its way, so a good trickling in one
- * unit at a time does not flap it; a second such good rewords it once the first is covered. A sweep
- * visits the seat's unfinished building sites off a maintained index.
+ * unit at a time does not flap it; a second such good rewords it once the first is covered. The grace
+ * is one clock per site, not per good (approximation): a good turning unheld while another's clock runs
+ * inherits that clock. A sweep visits the seat's unfinished building sites off a maintained index.
  */
 export class SiteShortages implements ShortageReader {
   private watched = new Map<number, Watch>();
@@ -81,7 +82,7 @@ export class SiteShortages implements ShortageReader {
   }
 
   private judge(tick: number, site: number, watch: Watch): void {
-    // No answer yet keeps the verdict, so a note restored from an earlier mount stands.
+    // No answer yet keeps the verdict.
     const answer = this.asks.status(site);
     if (answer === undefined) return;
     const supply = answer.status;
@@ -99,7 +100,9 @@ export class SiteShortages implements ShortageReader {
       return;
     }
     watch.unheldSince ??= tick;
-    watch.verdict = tick - watch.unheldSince >= CONSTRUCTION_SHORTAGE_GRACE_TICKS ? unheld.goodType : null;
+    // Within the grace the verdict stays as it was, so a note restored from an earlier mount stands.
+    if (tick - watch.unheldSince < CONSTRUCTION_SHORTAGE_GRACE_TICKS) return;
+    watch.verdict = unheld.goodType;
   }
 }
 

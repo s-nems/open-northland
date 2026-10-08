@@ -4,7 +4,7 @@ import type { SystemContext } from '../context.js';
 import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { collectSupplyTally, constructionBillOf } from '../stores/index.js';
 
-/** Stores of the site's side one diagnosis weighs before it stops calling the case decided. */
+/** Holders of a good one diagnosis weighs, any side, before it stops calling the case decided. */
 const MAX_DIAGNOSTIC_STORES = 128;
 
 /** One bill line a building site still lacks. */
@@ -16,7 +16,9 @@ export interface ConstructionShortfall {
   /** Units some settler is bringing it. */
   readonly inbound: number;
   /** Whether a store of the site's side lends a unit, so the shortfall is the builders' errand rather than
-   *  the player's. A side with more stores than the diagnosis weighs counts as holding it. */
+   *  the player's. Reach is not weighed: a store beyond the signposts or across water counts, and the
+   *  builder's own lost-way note reports that case. A good with more holders than the diagnosis weighs
+   *  counts as held. */
   readonly held: boolean;
 }
 
@@ -66,7 +68,8 @@ function sideHolds(
 ): boolean {
   let examined = 0;
   for (const store of stock.holders(goodType)) {
-    if (ownersCompatible(owner, ownerOf(world, store)) || ++examined >= MAX_DIAGNOSTIC_STORES) return true;
+    if (ownersCompatible(owner, ownerOf(world, store))) return true;
+    if (++examined >= MAX_DIAGNOSTIC_STORES) return true;
   }
   return false;
 }

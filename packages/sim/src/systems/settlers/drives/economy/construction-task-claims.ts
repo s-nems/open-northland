@@ -25,7 +25,7 @@ import { atomicHoldsSettler } from '../../atomics/busy.js';
  * A building site's standing with the builders, weighed ahead of its progress and its distance; a
  * higher tier draws a builder off a lower one. Project rule.
  */
-export const SITE_TIER = {
+const SITE_TIER = {
   /** Material still to fetch, or nothing to do at all. */
   waiting: 0,
   /** Its whole bill on site or on its way, and no step to hammer until the last load lands: it keeps a
@@ -46,7 +46,7 @@ const RANKS_PER_TIER = PROGRESS_STEPS + 1;
 
 /** Builders a covered site keeps waiting for its last loads: one bringing a load counts, so a crew's own
  *  hauler and one more hand stay while the rest go. Owner ruling. */
-export const FINISHING_CREW = 2;
+const FINISHING_CREW = 2;
 
 /** The rank order of one builder's pick: the distinct ranks present, highest first, and each site's. */
 export interface SiteRanking {

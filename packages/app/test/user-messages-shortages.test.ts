@@ -148,9 +148,12 @@ describe('building sites short of a material', () => {
     const source = sourceAnswering(() => answer);
     const retirement = new NoteRetirement(new FightAreas(), null, source.shortages);
     const note = shortageNote(BRICK);
-    // A fresh source has not judged the site: a note restored from an earlier mount stands.
+    // A fresh source has not judged the site, and one within the grace has not either: a note restored
+    // from an earlier mount stands.
     expect(retirement.isOver(note, world(0))).toBe(false);
-    sweepTo(source, SWEEPS_TO_GRACE);
+    sweepTo(source, 1);
+    expect(retirement.isOver(note, world(SNAPSHOT_SWEEP_INTERVAL_TICKS))).toBe(false);
+    sweepTo(source, SWEEPS_TO_GRACE, {}, 2);
     const tick = SWEEPS_TO_GRACE * SNAPSHOT_SWEEP_INTERVAL_TICKS;
     expect(retirement.isOver(note, world(tick))).toBe(false);
     // A unit in a store, with the line still short, changes nothing.

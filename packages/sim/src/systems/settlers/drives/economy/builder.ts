@@ -56,11 +56,11 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
  * hammered before more is fetched, and a covered site keeps a finishing crew waiting for its last loads.
  * The last builder at a site with a task stays, unless it has no step to hammer there and the site it
  * would go to has nobody. With no task anywhere the builder waits beside a site, unless only its
- * signposts keep it from one. A
- * road or wall run the player started ({@link BuildMode}) goes before all of that. Walls wait while a
- * building site holds a task the builder can do, a damaged wall goes before a new segment, and road sites
- * wait while a building or a wall site holds one. Player pins and unfinished workplace bindings are
- * strict: their builders stay with that site even while another has work.
+ * signposts keep it from one. A road or wall run the player started ({@link BuildMode}) goes before all
+ * of that. Walls wait while a building site holds a task the builder can do, a damaged wall goes before
+ * a new segment, and road sites wait while a building or a wall site holds one. Player pins and
+ * unfinished workplace bindings are strict: their builders stay with that site even while another has
+ * work.
  *
  * Source basis: builders recruited to a damaged building and repair ahead of an upgrade are original
  * behavior. Authored: the safety gate, repair outranking all automatic construction work, a crew the

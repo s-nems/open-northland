@@ -710,6 +710,24 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(crew.filter((b) => runTo(b) === other)).toHaveLength(2);
   });
 
+  it('lets a lone builder leave a bare site it would only haul for, for delivered steps nobody hammers', () => {
+    const sim = new Simulation({ seed: 36, content: constructionContent(), map: grassMap(40, 5) });
+    const bare = siteAt(sim, HOUSE, 4, 1);
+    const unstaffed = siteAt(sim, HOUSE, 30, 1);
+    sim.world.mut(unstaffed, Stockpile).amounts.set(STONE, 1);
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    const lone = builderAt(sim, 3, 3);
+    sim.world.add(lone, SiteAssignment, { site: bare, pinned: false });
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(lone, SiteAssignment)).toEqual({ site: unstaffed, pinned: false });
+    expect(sim.world.has(lone, SupplyRun)).toBe(false);
+  });
+
   it('a builder fetch skips a pile buried under walls for the nearest reachable source', () => {
     // A stone pile left INSIDE a standing house's walk-blocked body (the leftover the footprint goods
     // eviction could not land, or hand-dropped state): geometrically the nearest source, but its stand
