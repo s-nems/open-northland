@@ -27,6 +27,7 @@ export { defaultBindings } from './data/bindings.js';
 export {
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_GAIN,
+  AMBIENT_MAX_PAN,
   AMBIENT_MAX_SAMPLES,
   ANIMAL_ROLL_RANGE,
   directAudio,

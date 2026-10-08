@@ -333,7 +333,10 @@ describe('WebAudioEngine context interruption', () => {
 });
 
 describe('WebAudioEngine ambient reconciliation', () => {
-  const bed = (gain: number) => ({ name: 'Meadow Green', file: 'ambient/meadow1.wav', gain });
+  const bed = (gain: number, pan = 0) => ({ name: 'Meadow Green', file: 'ambient/meadow1.wav', gain, pan });
+  /** A running bed's gain, behind its panner. */
+  const bedGain = (source: FakeSource): FakeGain =>
+    (source.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain;
 
   it('starts a new bed as a loop fading in from silence to its target gain', async () => {
     const { engine, ctx } = makeEngine();
@@ -344,7 +347,7 @@ describe('WebAudioEngine ambient reconciliation', () => {
     const source = ctx.sources[0] as FakeSource;
     expect(source.loop).toBe(true);
     expect(source.started).toBe(true);
-    const gain = source.connectedTo[0] as FakeGain;
+    const gain = bedGain(source);
     expect(gain.gain.ramps).toEqual([{ value: 0.4, time: AMBIENT_FADE_S }]); // from the 0 start
   });
 
@@ -356,7 +359,7 @@ describe('WebAudioEngine ambient reconciliation', () => {
     engine.apply({ oneShots: [], ambient: [bed(0.2)] });
     await flush();
     expect(ctx.sources).toHaveLength(1);
-    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    const gain = bedGain(ctx.sources[0] as FakeSource);
     expect(gain.gain.ramps.at(-1)?.value).toBeCloseTo(0.2, 5);
   });
 
@@ -369,7 +372,7 @@ describe('WebAudioEngine ambient reconciliation', () => {
       ctx.currentTime = frame / 60;
       engine.apply({ oneShots: [], ambient: [bed(0.4)] });
     }
-    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    const gain = bedGain(ctx.sources[0] as FakeSource);
     expect(gain.gain.ramps).toEqual([{ value: 0.4, time: AMBIENT_FADE_S }]);
   });
 
@@ -380,7 +383,7 @@ describe('WebAudioEngine ambient reconciliation', () => {
     engine.apply({ oneShots: [], ambient: [bed(0.1)] }); // retuned before the wav arrived
     await flush();
     expect(ctx.sources).toHaveLength(1);
-    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    const gain = bedGain(ctx.sources[0] as FakeSource);
     expect(gain.gain.ramps.at(-1)?.value).toBeCloseTo(0.1, 5);
   });
 
@@ -394,7 +397,7 @@ describe('WebAudioEngine ambient reconciliation', () => {
     await flush();
     const source = ctx.sources[0] as FakeSource;
     expect(source.stoppedAt).toBeCloseTo(3 + AMBIENT_FADE_S, 5);
-    const gain = source.connectedTo[0] as FakeGain;
+    const gain = bedGain(source);
     expect(gain.gain.ramps.at(-1)?.value).toBe(0);
   });
 
@@ -414,6 +417,31 @@ describe('WebAudioEngine ambient reconciliation', () => {
     engine.apply({ oneShots: [], ambient: [] }); // terrain scrolled off before the wav arrived
     await flush();
     expect(ctx.sources).toHaveLength(0); // the departed bed must not start and linger
+  });
+
+  it('starts a bed at its pan and glides it toward a moved one', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [], ambient: [bed(0.4, -0.5)] });
+    await flush();
+    const panner = (ctx.sources[0] as FakeSource).connectedTo[0] as FakePanner;
+    expect(panner.pan.value).toBe(-0.5);
+    expect(panner.pan.ramps).toEqual([]);
+    ctx.currentTime = 2;
+    engine.apply({ oneShots: [], ambient: [bed(0.4, 0.3)] });
+    engine.apply({ oneShots: [], ambient: [bed(0.4, 0.3)] }); // an unchanged pan does not restart it
+    expect(panner.pan.ramps).toEqual([{ value: 0.3, time: 2 + AMBIENT_FADE_S }]);
+  });
+
+  it('plays a bed centred where the context has no stereo panner', async () => {
+    const { engine, ctx } = makeEngine({ noPanner: true });
+    await engine.resume();
+    engine.apply({ oneShots: [], ambient: [bed(0.4, -0.5)] });
+    await flush();
+    engine.apply({ oneShots: [], ambient: [bed(0.4, 0.5)] });
+    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    expect(gain).toBeInstanceOf(FakeGain);
+    expect(gain.connectedTo[0]).toBe(mixerGraph(ctx).layers.bed);
   });
 });
 

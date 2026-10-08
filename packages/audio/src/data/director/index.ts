@@ -23,6 +23,7 @@ export function directAudio(input: DirectorInput): AudioFrame {
 export {
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_GAIN,
+  AMBIENT_MAX_PAN,
   AMBIENT_MAX_SAMPLES,
   MAX_AMBIENT_BEDS,
 } from './ambient.js';

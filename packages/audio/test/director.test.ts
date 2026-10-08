@@ -4,6 +4,7 @@ import { ONE, tileToScreen } from '@open-northland/render/data';
 import type { Entity, SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
+  AMBIENT_MAX_PAN,
   type AudioTerrain,
   buildSoundIndex,
   defaultBindings,
@@ -640,6 +641,31 @@ describe('directAudio ambient', () => {
       terrain: meadow,
     });
     expect(offMap.ambient).toHaveLength(0);
+  });
+
+  /** A 10x10 grid with meadow only where `meadowAt(col)` holds, bare ground elsewhere. */
+  const meadowWhere = (meadowAt: (col: number) => boolean): AudioTerrain => ({
+    width: 10,
+    height: 10,
+    typeIds: Array.from({ length: 100 }, (_, i) => (meadowAt(i % 10) ? 1 : 42)),
+  });
+
+  it('pans a bed toward the half of the screen its terrain fills, and centres one on both', () => {
+    // The camera centres odd-row tile (5,5): columns under 5 lie left of the screen centre, over 5 right
+    // (column 5 itself is left on the even rows, whose tiles sit half a column further left).
+    const left = direct([], { terrain: meadowWhere((col) => col < 3) }).ambient[0];
+    const right = direct([], { terrain: meadowWhere((col) => col > 6) }).ambient[0];
+    expect(left?.pan).toBeCloseTo(-AMBIENT_MAX_PAN, 9);
+    expect(right?.pan).toBeCloseTo(AMBIENT_MAX_PAN, 9);
+    expect(Math.abs(direct([], { terrain: meadow }).ambient[0]?.pan ?? 1)).toBeLessThan(AMBIENT_MAX_PAN / 5);
+  });
+
+  it('hears only the terrain the fog lets the viewer see', () => {
+    const full = direct([], { terrain: meadow }).ambient[0];
+    const rightSeen = direct([], { terrain: meadow, visibleTile: (col) => col > 5 }).ambient[0];
+    expect(rightSeen?.pan).toBeCloseTo(AMBIENT_MAX_PAN, 9);
+    expect(rightSeen?.gain).toBeLessThan(full?.gain ?? 0); // the fogged half still counts as screen
+    expect(direct([], { terrain: meadow, visibleTile: () => false }).ambient).toEqual([]);
   });
 });
 

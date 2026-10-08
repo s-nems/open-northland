@@ -61,6 +61,8 @@ export interface AmbientLoop {
   readonly file: string;
   /** Target loop gain, 0..1 (coverage-weighted: more of the screen = louder). */
   readonly gain: number;
+  /** Stereo pan, -1..1, toward the half of the screen the bed's terrain fills. */
+  readonly pan: number;
 }
 
 /** One frame's full audio decision: the one-shots to fire and the ambient loops that should be live. */
