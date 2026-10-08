@@ -605,7 +605,7 @@ describe('WebAudioEngine music rotation', () => {
 describe('WebAudioEngine volumes', () => {
   it('puts the original -5 dB music offset (less the -3 dB the files bake in) under the slider curve', () => {
     expect(musicBusGain(100)).toBeCloseTo(10 ** (-2 / 20), 6);
-    expect(musicBusGain(50)).toBeCloseTo(10 ** (-27 / 20), 6);
+    expect(musicBusGain(50)).toBeCloseTo(10 ** (-22 / 20), 6);
     expect(musicBusGain(0)).toBe(0);
   });
 

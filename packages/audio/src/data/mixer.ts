@@ -29,16 +29,16 @@ export type MixerVolumes = Readonly<Record<VolumeChannel, number>>;
 
 /** A slider's top position: full gain. */
 export const VOLUME_MAX = 100;
-/** The dB span a slider covers above its silent bottom. Approximation: wide enough that the low end is
- *  usable as "barely there", the common choice for a perceptual game slider. */
-export const VOLUME_RANGE_DB = 50;
-/** Master slider default, about -10 dB: headroom for the bus sum before the master limiter.
+/** The dB span a slider covers above its silent bottom. Approximation: the low end stays "barely there"
+ *  while most of the travel sits where a player listens, rather than in a long nearly silent tail. */
+export const VOLUME_RANGE_DB = 40;
+/** Master slider default, about -8 dB: headroom for the bus sum before the master limiter.
  *  Approximation, tune by ear. */
 export const DEFAULT_MASTER_VOLUME = 80;
-/** Ambient slider default, about -7.5 dB: the beds, object ambience and weather sit under the action.
+/** Ambient slider default, about -6 dB: the beds, object ambience and weather sit under the action.
  *  Approximation, tune by ear. */
 export const DEFAULT_AMBIENT_VOLUME = 85;
-/** Music slider default, about -7.5 dB: the levelled score sits under the voices and the action rather
+/** Music slider default, about -6 dB: the levelled score sits under the voices and the action rather
  *  than over them. Approximation; the original also opened its music volume below full, at 70 of 100,
  *  on a curve of its own. */
 export const DEFAULT_MUSIC_VOLUME = 85;
@@ -61,8 +61,8 @@ export function clampVolume(position: number): number {
 }
 
 /**
- * Slider position to linear gain, linear in dB: `gain = 10^((p / 100 - 1) * 50 / 20)` for p in 1..100,
- * so 100 is 0 dB, 50 is -25 dB and 1 is -49.5 dB. Position 0 is a true mute rather than the -50 dB floor.
+ * Slider position to linear gain, linear in dB: `gain = 10^((p / 100 - 1) * 40 / 20)` for p in 1..100,
+ * so 100 is 0 dB, 50 is -20 dB and 1 is -39.6 dB. Position 0 is a true mute rather than the -40 dB floor.
  */
 export function volumeGain(position: number): number {
   const p = clampVolume(position);

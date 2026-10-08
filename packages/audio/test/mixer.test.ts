@@ -17,9 +17,10 @@ const dB = (gain: number): number => 20 * Math.log10(gain);
 describe('volumeGain', () => {
   it('is linear in dB over the slider range, full scale at the top', () => {
     expect(volumeGain(VOLUME_MAX)).toBe(1);
+    expect(VOLUME_RANGE_DB).toBe(40);
     expect(dB(volumeGain(50))).toBeCloseTo(-VOLUME_RANGE_DB / 2, 6);
-    expect(dB(volumeGain(80))).toBeCloseTo(-10, 6);
-    expect(dB(volumeGain(1))).toBeCloseTo(-49.5, 6);
+    expect(dB(volumeGain(80))).toBeCloseTo(-8, 6);
+    expect(dB(volumeGain(1))).toBeCloseTo(-39.6, 6);
     // Each step is the same number of dB anywhere on the slider.
     expect(dB(volumeGain(31)) - dB(volumeGain(30))).toBeCloseTo(dB(volumeGain(91)) - dB(volumeGain(90)), 6);
   });
