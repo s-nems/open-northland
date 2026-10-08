@@ -1,5 +1,6 @@
 import type { Camera } from '@open-northland/render/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { OneShotArbiter } from '../data/arbiter.js';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
 import {
@@ -56,7 +57,8 @@ export interface SoundDriverOptions extends AudioEngineOptions {}
 /**
  * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in its
  * own unit and this class only composes them - the pure decisions (which events sound, which beds loop)
- * in {@link directAudio}, and the Web Audio playback in the {@link WebAudioEngine}. Settler action sounds
+ * in {@link directAudio}, how much of it the ear gets in the {@link OneShotArbiter}, and the Web Audio
+ * playback in the {@link WebAudioEngine}. Settler action sounds
  * and voices ride one event path: the sim's `atomicSound` cue (an animation's authored sound frame) is
  * just another spatialised one-shot, so they come only from settlers actually working or talking on
  * screen.
@@ -64,6 +66,7 @@ export interface SoundDriverOptions extends AudioEngineOptions {}
 export class SoundDriver {
   private readonly engine: WebAudioEngine;
   private readonly random: RandomFn;
+  private readonly arbiter = new OneShotArbiter();
   private musicMap: MusicMap | null = null;
   private mood: MusicMoodState = CALM_MOOD;
   /** Settlers ordered since the last frame, answered with their voices on that frame. */
@@ -166,7 +169,7 @@ export class SoundDriver {
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
     });
-    this.engine.apply(frame);
+    this.engine.apply({ ...frame, oneShots: this.arbiter.decide(frame.oneShots, this.engine.clock) });
     this.updateMusic(input);
   }
 

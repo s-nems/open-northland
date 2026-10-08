@@ -122,6 +122,29 @@ describe('SoundDriver', () => {
     expect((ctx.sources[0] as FakeSource).started).toBe(true);
   });
 
+  it('rations the frame through the arbiter on the audio clock: a second house-built jingle in one frame waits', async () => {
+    const { driver, ctx, fetched } = makeDriver();
+    await driver.resume();
+    const house = (id: number) => ({
+      id,
+      components: { Position: { x: 5 * ONE, y: 5 * ONE }, Building: {}, Owner: { player: 0 } },
+    });
+    const twoHouses: WorldSnapshot = { ...snapshot, entities: [house(7), house(8)] };
+    const events: readonly SimEvent[] = [
+      { kind: 'buildingFinished', entity: 7 as Entity },
+      { kind: 'buildingFinished', entity: 8 as Entity },
+    ];
+    driver.update({ ...baseInput, snapshot: twoHouses, events, localPlayer: 0 });
+    await flush();
+    expect(fetched).toEqual(['/sounds/jingles/jingles_housebuilt.wav']);
+    expect(ctx.sources).toHaveLength(1);
+    // Inside the jingle's own cooldown the repeat is swallowed, not queued.
+    ctx.currentTime = 1;
+    driver.update({ ...baseInput, snapshot: twoHouses, events: [], localPlayer: 0 });
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+  });
+
   it('starts the ambient bed for on-screen terrain handed through the frame input', async () => {
     const { driver, ctx } = makeDriver();
     await driver.resume();

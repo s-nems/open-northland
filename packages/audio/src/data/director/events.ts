@@ -11,7 +11,7 @@ import { groupFiles, type SoundIndex } from '../bank.js';
 import { JINGLE_DUCK_HOLD_MS } from '../bindings.js';
 import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
-import type { AudioTerrain, DirectorInput, EventSound, OneShot, SoundBindings } from '../types.js';
+import type { AudioTerrain, DirectorInput, EventSound, Lane, OneShot, SoundBindings } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
 import { humanVoicesOf } from '../voices.js';
 
@@ -73,13 +73,18 @@ function soundKey(ev: SimEvent, sound: EventSound): string {
   return sound.kind === 'spatial' ? `${key}:${ev.chestKind}` : `${key}:jingle`;
 }
 
-/** A jingle's one-shot: full gain, centred, carrying the music duck its `MusicType` holds for. */
+/** A jingle's one-shot: full gain, centred, carrying the music duck its `MusicType` holds for, in the
+ *  jingle lane under that type. */
 function jingleShot(files: readonly string[], key: string, musicType: number): OneShot {
   const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(musicType);
+  const lane: Lane = { kind: 'jingle', musicType };
   return duckMusicMs === undefined
-    ? { files, gain: JINGLE_GAIN, pan: 0, key }
-    : { files, gain: JINGLE_GAIN, pan: 0, key, duckMusicMs };
+    ? { files, gain: JINGLE_GAIN, pan: 0, key, lane }
+    : { files, gain: JINGLE_GAIN, pan: 0, key, duckMusicMs, lane };
 }
+
+const SFX_LANE: Lane = { kind: 'sfx' };
+const VOICE_LANE: Lane = { kind: 'voice' };
 
 /** Which sounds a given event triggers, per the bindings. A chest adds its kind-specific lid sound to the
  *  common jingle; a building torn down before {@link HOUSE_CRASH_MIN_BUILT} makes no sound. */
@@ -341,6 +346,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
         gain: spatial.gain * SFX_GAIN,
         pan: spatial.pan,
         key: p.key,
+        lane: p.kind === 'scream' ? VOICE_LANE : SFX_LANE,
         ...(p.exclusive !== undefined ? { exclusive: p.exclusive } : {}),
       });
     }

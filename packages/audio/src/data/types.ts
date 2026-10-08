@@ -8,6 +8,17 @@ import type { UiCue } from './ui-cues.js';
  * decision consumes and produces, with no Web Audio / DOM.
  */
 
+/**
+ * The arbitration lane a one-shot competes in ({@link import('./arbiter.js').OneShotArbiter}). A
+ * `jingle` is a life-event stinger, identified by its `MusicType`; a `voice` is an unprompted line or
+ * a scream; `sfx` is a positioned action sound. A shot without a lane always plays: a GUI cue answering
+ * the player's own input, or a settler answering an order.
+ */
+export type Lane =
+  | { readonly kind: 'jingle'; readonly musicType: number }
+  | { readonly kind: 'voice' }
+  | { readonly kind: 'sfx' };
+
 /** One resolved request to play a sound once. */
 export interface OneShot {
   /** The group's interchangeable wav paths (relative to the sounds root); the engine picks one. */
@@ -27,6 +38,8 @@ export interface OneShot {
    * sounds, as an order's answer does. A shot without it (a house hit, a thud) layers freely.
    */
   readonly exclusive?: 'wav' | 'group';
+  /** The lane this shot is rationed in; absent for a shot that must always play. */
+  readonly lane?: Lane;
 }
 
 /**

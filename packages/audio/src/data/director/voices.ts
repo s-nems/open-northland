@@ -3,7 +3,7 @@ import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles, type SoundIndex } from '../bank.js';
 import { creatureTribe, entityOwner, entityTile, isPerson, type TilePoint } from '../snapshot.js';
 import { computePan, computeSpatial } from '../spatial.js';
-import type { ChatterInput, DirectorInput, OneShot } from '../types.js';
+import type { ChatterInput, DirectorInput, Lane, OneShot } from '../types.js';
 import { humanVoicesOf, responseGroup } from '../voices.js';
 import { SFX_GAIN } from './events.js';
 
@@ -32,7 +32,8 @@ export const MAX_CHATTER_TICKS_PER_FRAME = 5;
  * The answers to this frame's orders: one "ok" per ordered settler that has a voice, panned by where it
  * stands but neither culled nor attenuated, so a settler ordered off screen still answers. Keyed by pool,
  * so two settlers sharing a voice inside the engine's cooldown collapse into one line, and exclusive by
- * pool: the original answers nothing while any line of that settler's pool is still sounding.
+ * pool: the original answers nothing while any line of that settler's pool is still sounding. In no lane:
+ * an answer to the player's own click is never rationed away.
  */
 export function responseShots(input: DirectorInput): OneShot[] {
   const { responses, snapshot, index, camera, canvasW } = input;
@@ -107,7 +108,10 @@ function speakers(
   return { pools: [...pools.entries()].sort(([a], [b]) => pollOrder(a) - pollOrder(b)), herds };
 }
 
-/** A positioned, self-exclusive one-shot at a speaker, or null when it stands off screen or in the fog. */
+const VOICE_LANE: Lane = { kind: 'voice' };
+
+/** A positioned, self-exclusive one-shot at a speaker in the voice lane, or null when it stands off screen
+ *  or in the fog. */
 function speakerShot(
   input: DirectorInput,
   speaker: Speaker,
@@ -118,7 +122,7 @@ function speakerShot(
   if (visibleTile !== undefined && !visibleTile(speaker.tile.col, speaker.tile.row)) return null;
   const spatial = computeSpatial(speaker.tile.col, speaker.tile.row, camera, canvasW, canvasH);
   if (spatial === null) return null;
-  return { files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key, exclusive: 'wav' };
+  return { files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key, exclusive: 'wav', lane: VOICE_LANE };
 }
 
 /** One of a group, picked by the roll source. */

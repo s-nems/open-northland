@@ -156,6 +156,11 @@ export class WebAudioEngine {
     return this.canPlay();
   }
 
+  /** The audio clock in seconds, the time base of every cooldown here; 0 before the context exists. */
+  get clock(): number {
+    return this.ctx?.currentTime ?? 0;
+  }
+
   /**
    * Start (or resume) the audio context - must be called from within a user gesture the first time,
    * or the browser keeps it suspended. Creates the context lazily on first call. Safe to call repeatedly.

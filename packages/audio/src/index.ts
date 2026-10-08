@@ -8,6 +8,20 @@
 // Pure decision layer (headless-testable; no Web Audio / DOM). The event→sound MusicType/group
 // constants (JINGLE_*, GROUP_*) are intentionally not re-exported: they are implementation detail of
 // `defaultBindings`, which is the surface a consumer overrides.
+export {
+  DEFAULT_JINGLE_LENGTH_S,
+  DEFAULT_JINGLE_PRIORITY,
+  JINGLE_COOLDOWN_GROWTH,
+  JINGLE_COOLDOWN_MAX_S,
+  JINGLE_FREQUENT_WINDOW,
+  JINGLE_PENDING_MAX_AGE_S,
+  JINGLE_PRIORITY,
+  OneShotArbiter,
+  SFX_BURST,
+  SFX_STARTS_PER_S,
+  VOICE_BURST,
+  VOICE_STARTS_PER_S,
+} from './data/arbiter.js';
 export { buildSoundIndex, type SoundIndex } from './data/bank.js';
 export { defaultBindings } from './data/bindings.js';
 export {
@@ -57,6 +71,7 @@ export type {
   ChatterInput,
   DirectorInput,
   EventSound,
+  Lane,
   OneShot,
   SoundBindings,
 } from './data/types.js';
