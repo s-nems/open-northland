@@ -8,8 +8,9 @@ import {
   type WorkStatus,
   type WorldSnapshot,
 } from '@open-northland/sim';
+import { JOB_TRADER } from '../../../catalog/jobs.js';
 import { isSoldierJob } from '../../../catalog/professions.js';
-import { workerRoleOf } from '../../../game/sandbox/index.js';
+import { canonicalJobType, workerRoleOf } from '../../../game/sandbox/index.js';
 import {
   type ChildOrderWait,
   childOrderWaitOf,
@@ -268,11 +269,18 @@ function raiseDying(raiser: MessageRaiser, e: SnapshotEntity): void {
  * A settler that held a workplace once and holds none now, with no flag yard standing in for it: what a
  * razed or released post leaves behind. Reading the loss rather than the bare absence keeps the note off
  * everyone no workplace ever employed, since the sim stamps every grown woman and civilian with a trade.
- * Approximation: the original raises this from a task that went looking for a work point and found none.
- * One note per settler, so razing a whole district fills the strip with the crews it put out of work.
+ * A trader works its route from a cart and never a workplace, so the post it held in an earlier trade is
+ * no loss to tell of. Approximation: the original raises this from a task that went looking for a work
+ * point and found none. One note per settler, so razing a whole district fills the strip with the crews
+ * it put out of work.
  */
 function lostItsWorkplace(e: SnapshotEntity, everEmployed: boolean): boolean {
-  return everEmployed && workplaceOf(e) === undefined && workFlagOf(e) === undefined;
+  return everEmployed && !isTrader(e) && workplaceOf(e) === undefined && workFlagOf(e) === undefined;
+}
+
+function isTrader(e: SnapshotEntity): boolean {
+  const job = settlerJobType(e);
+  return job !== undefined && canonicalJobType(job) === JOB_TRADER;
 }
 
 /**

@@ -1,4 +1,4 @@
-import { AiPlayer } from '../../components/ai-player.js';
+import { AiPlayer, aiPlayerEntity } from '../../components/ai-player.js';
 import type { World } from '../../ecs/world.js';
 
 /**
@@ -26,17 +26,22 @@ export function aiDecisionDue(tick: number, player: number): boolean {
 export const AI_HANDLER_ROUND_TICKS = 60;
 const AI_SEAT_TURN_TICKS = 3;
 
-/** The computer seat whose scripted handler takes its turn on `tick`, or null on a tick that is no
- *  seat's or belongs to a seat the map `AI_Disable`d. */
-export function scriptedSeatOnTurn(world: World, tick: number): number | null {
+/** The computer seat whose handler turn falls on `tick`, `AI_Disable`d or not, or null on a tick that
+ *  is no computer seat's. */
+export function computerSeatOnTurn(world: World, tick: number): number | null {
   const offset = tick % AI_HANDLER_ROUND_TICKS;
   if (offset % AI_SEAT_TURN_TICKS !== 0) return null;
   const player = offset / AI_SEAT_TURN_TICKS;
-  for (const e of world.query(AiPlayer)) {
-    const seat = world.get(e, AiPlayer);
-    if (seat.player === player) return seat.scripted ? player : null;
-  }
-  return null;
+  return aiPlayerEntity(world, player) === null ? null : player;
+}
+
+/** The computer seat whose scripted handler takes its turn on `tick`, or null on a tick that is no
+ *  seat's or belongs to a seat the map `AI_Disable`d. */
+export function scriptedSeatOnTurn(world: World, tick: number): number | null {
+  const player = computerSeatOnTurn(world, tick);
+  if (player === null) return null;
+  const seat = aiPlayerEntity(world, player);
+  return seat !== null && world.get(seat, AiPlayer).scripted ? player : null;
 }
 
 /** The turn number the handler on `tick` is given: how many whole rounds have passed. */

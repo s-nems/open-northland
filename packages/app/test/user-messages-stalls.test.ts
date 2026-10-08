@@ -6,7 +6,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_CARRIER, JOB_COLLECTOR, JOB_POTTER, JOB_SOLDIER } from '../src/catalog/jobs.js';
+import { JOB_CARRIER, JOB_COLLECTOR, JOB_POTTER, JOB_SOLDIER, JOB_TRADER } from '../src/catalog/jobs.js';
 import { createMessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
 import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import {
@@ -539,8 +539,9 @@ describe('idle notes about soldiers', () => {
     return raised;
   }
 
-  it('tells of a craftsman that lost its post, never of a soldier', () => {
+  it('tells of a craftsman that lost its post, never of a soldier or a trader', () => {
     expect(afterLosingPost(JOB_POTTER)).toContain(USER_MESSAGE_TYPE.workplaceNotFound);
     expect(afterLosingPost(JOB_SOLDIER)).toEqual([]);
+    expect(afterLosingPost(JOB_TRADER)).toEqual([]);
   });
 });

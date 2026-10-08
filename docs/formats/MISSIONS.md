@@ -770,7 +770,7 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   cart's move has no walk range, like every vehicle goto (VEHICLES.md "Movement"); a house's minimum
   stock is its recipe inputs; the request counters that rank the import-mark candidates are not kept,
   so the lowest good id goes first; nothing is handed over while the house holds fewer take goods than
-  a batch pays out, where the original delivers regardless, and at a house that a scripted seat
+  a batch pays out, where the original delivers regardless, and at a house that a computer seat
   refills, the trader waits there with the rest of its load for the refill, so one trip sells all of it (owner's choice); at a house with no room for the
   give good a trader with only give goods aboard waits there too, where driving home would bring the
   same load back (unread in the original); a shelf that runs out mid-batch starts the batch over on the next
@@ -778,7 +778,9 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   merchant drops its choice; for a seat that runs the strategic economy, the handler's refill
   (`systems/trade/partner-stock.ts`) tops up only the goods an agreement pays out at the house and
   cuts nothing down, so that economy runs on what it produces; a seat whose map switched off both it
-  and the strategic military gets the full refill (see [AI data](#ai-data)). The table holds rows and
+  and the strategic military gets the full refill (see [AI data](#ai-data)); a seat the map
+  `AI_Disable`d still gets the traded goods topped up, where the original's partner never pays (owner's
+  choice: six corpus maps, WIELKA INWAZJA among them, put their trade house on such a seat). The table holds rows and
   resolves their houses live, so a row several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
   saved with the game; the diplomacy window prints it (`miscwindow` 360) at its foot for a player
   both sides hold as `friend`, the one case the original's window draws the line in (byte-level). Above

@@ -962,12 +962,16 @@ describe("a computer seat's trade house", () => {
     expect(stockOf(sim, post, WOOD)).toBe(2);
   });
 
-  it('stays empty for a seat the map switched off, a human seat, and a house that is no warehouse', () => {
-    const worlds = [
-      partnerWorld({ scripted: false }),
-      partnerWorld(null),
-      partnerWorld({ scripted: true }, [], SAWMILL),
-    ];
+  it('is refilled on a seat the map switched off too, where the original never pays', () => {
+    const { sim, post } = partnerWorld({ scripted: false });
+
+    sim.run(tickOfTurn(0) + 1);
+
+    expect(stockOf(sim, post, PLANK)).toBe(AI_STOCK_REFILL_LEVEL);
+  });
+
+  it('stays empty for a human seat and for a house that is no warehouse', () => {
+    const worlds = [partnerWorld(null), partnerWorld({ scripted: true }, [], SAWMILL)];
     for (const { sim, post } of worlds) {
       sim.run(tickOfTurn(0) + 1);
 
@@ -996,18 +1000,20 @@ describe("a computer seat's trade house", () => {
     expect(stockOf(sim, post, WOOD)).toBe(loaded);
   });
 
-  it('pays a trader out of a house the map authored empty', () => {
-    const { sim, post } = partnerWorld({ scripted: true });
-    const home = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 6]]);
-    const trader = traderAt(sim, NEAR_X);
-    sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN, to: NEIGHBOUR, state: 'friend' });
-    attach(sim, trader, home);
-    attach(sim, trader, post);
-    sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
+  it('pays a trader out of a house the map authored empty, on a switched-off seat as well', () => {
+    for (const scripted of [true, false]) {
+      const { sim, post } = partnerWorld({ scripted });
+      const home = houseAt(sim, NEAR_X, HUMAN, [[WOOD, 6]]);
+      const trader = traderAt(sim, NEAR_X);
+      sim.enqueueSetup({ kind: 'setDiplomacy', from: HUMAN, to: NEIGHBOUR, state: 'friend' });
+      attach(sim, trader, home);
+      attach(sim, trader, post);
+      sim.enqueue(playerCommand(HUMAN, { kind: 'setTradeAgreement', entity: trader, agreement: 0 }));
 
-    sim.run(RUN_TICKS);
+      sim.run(RUN_TICKS);
 
-    expect(goodsTradedWith(sim.world, HUMAN, NEIGHBOUR)).toBeGreaterThanOrEqual(2);
-    expect(stockOf(sim, home, PLANK) + cartOf(sim, trader, PLANK)).toBeGreaterThan(0);
+      expect(goodsTradedWith(sim.world, HUMAN, NEIGHBOUR)).toBeGreaterThanOrEqual(2);
+      expect(stockOf(sim, home, PLANK) + cartOf(sim, trader, PLANK)).toBeGreaterThan(0);
+    }
   });
 });

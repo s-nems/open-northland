@@ -1,6 +1,5 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import {
-  AiPlayer,
   aiPlayerEntity,
   Building,
   MissionObjectId,
@@ -11,33 +10,33 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { handlerTurn, scriptedSeatOnTurn } from '../ai-player/cadence.js';
+import { computerSeatOnTurn, handlerTurn } from '../ai-player/cadence.js';
 import type { ContentContext, System, SystemContext } from '../context.js';
 import { stockOf } from '../missions/stock.js';
 import { bankedSlot } from '../stores/index.js';
 
 /**
  * Handler turns between one computer seat's stock refills, and the level a refilled shelf is left at.
- * Reading, unconfirmed against the running original: on every sixth of its turns the scripted AI
- * handler writes 5 over every stock slot of the seat's finished houses of the storage main type, and
- * `AI_Disable` stops the handler. A trader's partner pays out of that shelf: the corpus authors most
- * computer seats' trade houses empty, the trade tutorial's among them, and no agreement pays out more
- * than 5 a batch.
+ * Original behavior: on every sixth of its turns a computer seat's handler writes 5 over every stock
+ * slot of the seat's finished houses of the storage main type, and `AI_Disable` stops the handler. A
+ * trader's partner pays out of that shelf alone: the corpus authors most computer seats' trade houses
+ * empty, the trade tutorial's among them, and no agreement pays out more than 5 a batch.
  */
 export const AI_STOCK_REFILL_TURNS = 6;
 export const AI_STOCK_REFILL_LEVEL = 5;
 
 /**
  * On a computer seat's refill turn, top its warehouses' shelves up to the refill level for the goods
- * a map agreement pays out there. Approximation: the original levels every slot of every warehouse of
- * the seat, cutting a fuller shelf down too; this build does that only for a seat whose strategic
- * economy and military the map switched off (`ai-program/town.ts`), and keeps the refill to the traded goods
- * otherwise, so the strategic economy runs on what it produces. A seat that died keeps this refill, as
- * the original's handler keeps its turns (it tests its enabled byte alone).
+ * a map agreement pays out there. Two departures from the original, both owner's choices: the refill
+ * is kept to the traded goods, so a seat with a strategic economy runs on what it produces (the
+ * original levels every slot of every warehouse, cutting a fuller shelf down too, which this build
+ * does only for a seat whose economy the map switched off, `ai-program/town.ts`); and it runs for a
+ * seat the map `AI_Disable`d as well, where the original's partner never pays. Six corpus maps put
+ * their trade house on such a seat, so a trader there would wait on an empty shelf for good.
  */
 export const tradePartnerStockSystem: System = (world, ctx) => {
   if (handlerTurn(ctx.tick) % AI_STOCK_REFILL_TURNS !== 0) return;
-  const seat = scriptedSeatOnTurn(world, ctx.tick);
+  const seat = computerSeatOnTurn(world, ctx.tick);
   if (seat === null) return;
   const agreements = tradeAgreements(world);
   if (agreements.length === 0) return;
@@ -63,7 +62,7 @@ function isRefilledHouse(world: World, ctx: ContentContext, house: Entity): bool
 }
 
 /** Whether the refill will top `house`'s shelf of `good` up to `amount` again: a finished warehouse of a
- *  scripted computer seat with room for that many. */
+ *  computer seat with room for that many. */
 export function refillRestores(
   world: World,
   ctx: SystemContext,
@@ -72,8 +71,8 @@ export function refillRestores(
   amount: number,
 ): boolean {
   const owner = ownerOf(world, house);
-  const seat = owner === undefined ? null : aiPlayerEntity(world, owner);
-  if (seat === null || !world.get(seat, AiPlayer).scripted || !isRefilledHouse(world, ctx, house))
+  if (owner === undefined || aiPlayerEntity(world, owner) === null || !isRefilledHouse(world, ctx, house)) {
     return false;
+  }
   return Math.min(AI_STOCK_REFILL_LEVEL, bankedSlot(world, ctx, house, good).capacity) >= amount;
 }
