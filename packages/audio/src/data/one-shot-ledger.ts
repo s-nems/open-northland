@@ -42,7 +42,8 @@ export const GAIN_JITTER_DB = 1.5;
 export interface OneShotPlayback {
   /** The decoded length of `file` in seconds, or undefined while the engine has not decoded it. */
   readonly clipLengthS?: (file: string) => number | undefined;
-  /** Fade out the world one-shot started as `instance` ({@link OneShot.instance}): its slot was stolen. */
+  /** Fade out the one-shot started as `instance` ({@link OneShot.instance}): a louder world shot stole
+   *  its slot, or an answer superseded its yielding line. */
   readonly stop?: (instance: number) => void;
 }
 
@@ -82,6 +83,8 @@ export class OneShotLedger {
   private readonly pools = new WeakMap<readonly string[], PoolState>();
   /** wav → its latest play. */
   private readonly lastPlay = new Map<string, Play>();
+  /** A yielding line's play ({@link OneShot.yieldsToAnswer}) → the instance that stops it. */
+  private readonly yielding = new WeakMap<Play, number>();
   /** key → audio-clock second its cooldown ends, set by its latest start. */
   private readonly keyReadyAt = new Map<string, number>();
   private readonly world: WorldVoice[] = [];
@@ -166,15 +169,43 @@ export class OneShotLedger {
   /**
    * A shot outside the world lanes (an order's answer, a GUI cue): never capped or stolen, but held by
    * its key cooldown and its exclusivity like any other. An answer waits while any line of its pool
-   * still sounds. Returns what the engine plays, or null.
+   * still sounds, unless every such line yields to it, which it then cuts short. Returns what the engine
+   * plays, or null.
    */
   startFree(shot: OneShot, now: number): OneShot | null {
     if (shot.files.length === 0 || this.keyCooling(shot.key, now)) return null;
-    if (shot.exclusive === 'group' && this.anySounding(shot.files, now)) return null;
+    if (shot.exclusive === 'group' && !this.supersede(shot, now)) return null;
     const file = this.pick(shot.files, shot.exclusive !== undefined, now);
     if (file === null) return null;
-    this.record(shot, this.pool(shot.files), file, now);
-    return { ...shot, files: [file] };
+    const play = this.record(shot, this.pool(shot.files), file, now);
+    if (shot.yieldsToAnswer !== true) return { ...shot, files: [file] };
+    const instance = this.nextInstance++;
+    this.yielding.set(play, instance);
+    return { ...shot, files: [file], instance };
+  }
+
+  /**
+   * Whether a group-exclusive shot may start over its pool: no wav of it sounds, or only lines that yield
+   * to it, which are stopped. A yielding shot never cuts another. Without `stop` a cut line plays on and
+   * keeps its wav from the pick.
+   */
+  private supersede(shot: OneShot, now: number): boolean {
+    const cut: Play[] = [];
+    for (const file of shot.files) {
+      const play = this.lastPlay.get(file);
+      if (play === undefined || this.endOf(play) <= now) continue;
+      if (shot.yieldsToAnswer === true || !this.yielding.has(play)) return false;
+      cut.push(play);
+    }
+    const stop = this.playback.stop;
+    if (stop === undefined) return true;
+    for (const play of cut) {
+      const instance = this.yielding.get(play);
+      this.yielding.delete(play);
+      this.lastPlay.delete(play.file);
+      if (instance !== undefined) stop(instance);
+    }
+    return true;
   }
 
   /** A jingle the arbiter rang, on one wav of its pool picked without repeats; its lane already

@@ -206,8 +206,8 @@ function murmurShots(index: SoundIndex, members: readonly Member[], pan: number)
 
 /**
  * A selection's acknowledgement: the shortest "ok" line of the member nearest the screen centre, at its
- * pool's level and the selection's pan, at most once per {@link SELECT_COOLDOWN_S} for that settler.
- * The original selects in silence; this is our choice. With no member to speak, the call's fallback
+ * pool's level and the selection's pan, at most once per {@link SELECT_COOLDOWN_S} for that settler. An
+ * order's answer over the same pool cuts it short. The original selects in silence; this is our choice. With no member to speak, the call's fallback
  * cue plays instead.
  */
 export function selectionShots(input: DirectorInput, call: VoiceCall): OneShot[] {
@@ -224,6 +224,7 @@ export function selectionShots(input: DirectorInput, call: VoiceCall): OneShot[]
       pan: centroidPan(members),
       key: `select:${lead.member.entity.id}`,
       exclusive: 'group',
+      yieldsToAnswer: true,
       cooldownS: SELECT_COOLDOWN_S,
       duckMusicDb: VOICE_MUSIC_DUCK_DB,
     },

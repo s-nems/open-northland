@@ -51,13 +51,16 @@ export interface OneShot {
    * sounds, as an order's answer does. A shot without it (a house hit, a thud) layers freely.
    */
   readonly exclusive?: 'wav' | 'group';
+  /** A line that a later group-exclusive shot over a pool holding its wav cuts short instead of waiting
+   *  for: a selection's acknowledgement under the order the player gives next. */
+  readonly yieldsToAnswer?: boolean;
   /** The lane this shot is rationed in; absent for a shot that must always play. */
   readonly lane?: Lane;
   /** The zoom layer a world shot fades in ({@link import('./perspective.js').shotLayer}); absent is
    *  `detail`. A `ui` shot ignores it. */
   readonly layer?: ShotLayer;
-  /** The arbiter's handle for a world one-shot it started, which a later steal names
-   *  ({@link import('./one-shot-ledger.js').OneShotPlayback}). */
+  /** The arbiter's handle for a world one-shot or a yielding line it started, which a later steal or
+   *  answer names ({@link import('./one-shot-ledger.js').OneShotPlayback}). */
   readonly instance?: number;
   /** Playback rate, 1 = as recorded; the arbiter varies it per world one-shot. Absent plays at 1. */
   readonly rate?: number;

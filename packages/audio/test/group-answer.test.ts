@@ -357,6 +357,28 @@ describe('selection voice', () => {
     expect(arbiter.decide(shots, SELECT_COOLDOWN_S)).toHaveLength(1);
   });
 
+  it('gives way to the order the player gives while it still sounds', () => {
+    const members = [man(5, VIKING, CENTRE_COL)]; // pool 1: 'Viking male ok 02', which holds the line
+    const stopped: number[] = [];
+    const arbiter = new OneShotArbiter({ playback: { stop: (instance) => stopped.push(instance) } });
+    const [line] = arbiter.decide(select(members, { members: [5] }), 0);
+    expect(line?.files).toEqual(['humantalk/m2ok08.wav']);
+    const ORDER_AFTER_SELECT_S = 0.3;
+    const started = arbiter.decide(answer(members, { members: [5] }), ORDER_AFTER_SELECT_S);
+    expect(keysOf(started)).toEqual(['respond:Viking male ok 02']);
+    expect(stopped).toEqual([line?.instance]);
+  });
+
+  it('never cuts another selection line on the same wav', () => {
+    // Ids 5 and 9 share pool 1 and so its select line.
+    const members = [man(5, VIKING, CENTRE_COL), man(9, VIKING, CENTRE_COL)];
+    const stopped: number[] = [];
+    const arbiter = new OneShotArbiter({ playback: { stop: (instance) => stopped.push(instance) } });
+    expect(arbiter.decide(select(members, { members: [5] }), 0)).toHaveLength(1);
+    expect(arbiter.decide(select(members, { members: [9] }), DEFAULT_CLIP_LENGTH_S / 2)).toHaveLength(0);
+    expect(stopped).toEqual([]);
+  });
+
   it('picks the shortest decoded wav of a pool the table does not name, or its first before decoding', () => {
     const members = [man(2, VIKING, CENTRE_COL)]; // pool 2 % 4: 'Viking male ok 03'
     const lengths = new Map([
