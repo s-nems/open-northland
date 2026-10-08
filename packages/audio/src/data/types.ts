@@ -1,6 +1,7 @@
 import type { Camera } from '@open-northland/render/data';
 import type { ChestKind, SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
 import type { SoundIndex } from './bank.js';
+import type { ShotLayer } from './perspective.js';
 import type { UiCue } from './ui-cues.js';
 
 /**
@@ -41,6 +42,9 @@ export interface OneShot {
   readonly exclusive?: 'wav' | 'group';
   /** The lane this shot is rationed in; absent for a shot that must always play. */
   readonly lane?: Lane;
+  /** The zoom layer a world shot fades in ({@link import('./perspective.js').shotLayer}); absent is
+   *  `detail`. A `ui` shot ignores it. */
+  readonly layer?: ShotLayer;
   /** The arbiter's handle for a world one-shot it started, which a later steal names
    *  ({@link import('./one-shot-ledger.js').OneShotPlayback}). */
   readonly instance?: number;
@@ -73,7 +77,12 @@ export interface AudioFrame {
  * screen. A `cue` binding plays one of the engine's hardwired wavs centred at full gain, as the GUI does.
  */
 export type EventSound =
-  | { readonly kind: 'spatial'; readonly group: string }
+  | {
+      readonly kind: 'spatial';
+      readonly group: string;
+      /** The zoom layer the sound fades in; absent is `detail`. */
+      readonly layer?: ShotLayer;
+    }
   | { readonly kind: 'cue'; readonly cue: UiCue }
   | {
       readonly kind: 'jingle';

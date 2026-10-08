@@ -17,15 +17,10 @@ export const EDGE_GAIN = 0.35;
 /** Pan strength: 1 = full hard-left/right at the screen sides. Kept < 1 so nothing fully leaves an ear. */
 export const MAX_PAN = 0.85;
 
-/**
- * Loudness floor as the camera zooms out - a zoomed-out camera is "further away", so its sounds fade
- * toward this floor (never to silence); zooming in past 1:1 never boosts past full gain.
- */
-export const ZOOM_GAIN_FLOOR = 0.45;
-
 /** A spatialised emitter: playback gain and stereo pan already resolved from its screen position. */
 export interface Spatial {
-  /** 0..1 - screen-position gain (1 at centre, {@link EDGE_GAIN} at the edge) times the zoom attenuation. */
+  /** 0..1 - screen-position gain (1 at centre, {@link EDGE_GAIN} at the edge). Zoom is not in it: the
+   *  engine applies it once per layer ({@link import('./perspective.js').perspectiveGain}). */
   readonly gain: number;
   /** -1 (hard left) .. +1 (hard right), scaled by {@link MAX_PAN}. */
   readonly pan: number;
@@ -98,9 +93,7 @@ function spatialiseScreenPoint(
   const nx = halfW === 0 ? 0 : (sx - halfW) / halfW;
   const ny = halfH === 0 ? 0 : (sy - halfH) / halfH;
   const dist = clamp(Math.hypot(nx, ny), 0, 1);
-  const screenGain = EDGE_GAIN + (1 - EDGE_GAIN) * (1 - dist);
-  // Zoom attenuation: scale clamped into [ZOOM_GAIN_FLOOR, 1].
-  const zoomGain = clamp(scale, ZOOM_GAIN_FLOOR, 1);
+  const gain = EDGE_GAIN + (1 - EDGE_GAIN) * (1 - dist);
   const pan = clamp(nx, -1, 1) * MAX_PAN;
-  return { gain: screenGain * zoomGain, pan };
+  return { gain, pan };
 }

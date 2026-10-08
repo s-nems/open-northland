@@ -72,13 +72,24 @@ export {
   WEALTHY_POPULATION_DROP,
 } from './data/music/index.js';
 export {
+  FAR_ZOOM_SCALE,
+  NEAR_ZOOM_SCALE,
+  PERSPECTIVE_CURVES,
+  type PerspectiveCurve,
+  type PerspectiveLayer,
+  perspectiveGain,
+  SHOT_LAYERS,
+  type ShotLayer,
+  shotLayer,
+  zoomDistance,
+} from './data/perspective.js';
+export {
   CULL_MARGIN_PX,
   computePan,
   computeSpatial,
   EDGE_GAIN,
   MAX_PAN,
   type Spatial,
-  ZOOM_GAIN_FLOOR,
 } from './data/spatial.js';
 export type {
   AmbientLoop,
@@ -120,6 +131,7 @@ export {
   type MusicTiming,
   musicBusGain,
   ONE_SHOT_COOLDOWN_S,
+  PERSPECTIVE_RAMP_S,
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './web/engine/index.js';

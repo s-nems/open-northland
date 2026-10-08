@@ -302,6 +302,8 @@ describe('directAudio combat SFX', () => {
     expect(frame.oneShots.map((s) => s.exclusive)).toEqual(['wav', 'wav']);
     expect(frame.oneShots[0]?.key).toBe('combatHit:82:11,10');
     expect(frame.oneShots[1]?.key).toBe('scream:11,10');
+    // A fight carries from far out: both fade in the slow impact layer, not with the work detail.
+    expect(frame.oneShots.map((s) => s.layer)).toEqual(['impact', 'impact']);
   });
 
   it('screams in the struck woman`s voice, and never for a body without one', () => {

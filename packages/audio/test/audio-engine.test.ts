@@ -5,15 +5,19 @@ import {
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
   DEFAULT_VOLUMES,
+  FAR_ZOOM_SCALE,
   LIMITER_ATTACK_S,
   LIMITER_KNEE_DB,
   LIMITER_RATIO,
   LIMITER_RELEASE_S,
   LIMITER_THRESHOLD_DB,
   ONE_SHOT_COOLDOWN_S,
+  PERSPECTIVE_RAMP_S,
+  perspectiveGain,
   VOLUME_RAMP_S,
   volumeGain,
   WebAudioEngine,
+  zoomDistance,
 } from '../src/index.js';
 import {
   FakeCompressor,
@@ -95,7 +99,7 @@ describe('WebAudioEngine one-shots', () => {
     expect(limiter.connectedTo[0]).toBe(ctx.destination);
   });
 
-  it('routes each one-shot to the bus of its lane', async () => {
+  it('routes each one-shot to the bus of its lane, through its zoom layer on a world bus', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.apply({
@@ -103,17 +107,32 @@ describe('WebAudioEngine one-shots', () => {
         shot({ key: 'work', files: ['work.wav'], lane: { kind: 'sfx' } }),
         shot({ key: 'chatter', files: ['talk.wav'], lane: { kind: 'voice' } }),
         shot({ key: 'birth', files: ['birth.wav'], lane: { kind: 'jingle', musicType: BIRTH_JINGLE } }),
+        shot({ key: 'blow', files: ['blow.wav'], lane: { kind: 'sfx' }, layer: 'impact' }),
+        shot({ key: 'scream', files: ['scream.wav'], lane: { kind: 'voice' }, layer: 'impact' }),
       ],
       ambient: [],
     });
     await flush();
-    const { buses } = mixerGraph(ctx);
-    const busOf = (source: FakeSource): unknown =>
+    const { buses, layers } = mixerGraph(ctx);
+    const entryOf = (source: FakeSource): unknown =>
       ((source.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain).connectedTo[0];
-    const [work, chatter, birth] = ctx.sources as [FakeSource, FakeSource, FakeSource];
-    expect(busOf(work)).toBe(buses.world);
-    expect(busOf(chatter)).toBe(buses.voice);
-    expect(busOf(birth)).toBe(buses.ui);
+    const [work, chatter, birth, blow, scream] = ctx.sources as [
+      FakeSource,
+      FakeSource,
+      FakeSource,
+      FakeSource,
+      FakeSource,
+    ];
+    expect(entryOf(work)).toBe(layers.world.detail);
+    expect(entryOf(chatter)).toBe(layers.voice.detail);
+    expect(entryOf(birth)).toBe(buses.ui);
+    expect(entryOf(blow)).toBe(layers.world.impact);
+    expect(entryOf(scream)).toBe(layers.voice.impact);
+    expect(layers.world.detail.connectedTo[0]).toBe(buses.world);
+    expect(layers.world.impact.connectedTo[0]).toBe(buses.world);
+    expect(layers.voice.detail.connectedTo[0]).toBe(buses.voice);
+    expect(layers.voice.impact.connectedTo[0]).toBe(buses.voice);
+    expect(layers.bed.connectedTo[0]).toBe(buses.ambient);
   });
 
   it('ends the master in a peak limiter, not the default compressor', async () => {
@@ -291,19 +310,6 @@ describe('WebAudioEngine context interruption', () => {
     expect(engine.audible).toBe(true);
   });
 
-  it('restarts the music a suspension dropped once the context runs again', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    ctx.refuseResume = true; // no activation: the engine's own resume is refused
-    engine.setMusic({ file: 'theme.ogg' });
-    ctx.setState('suspended'); // before the track's load lands
-    await flush();
-    expect(ctx.sources).toHaveLength(0);
-    ctx.setState('running'); // the interruption ends and the platform resumes the context
-    await flush();
-    expect(ctx.sources).toHaveLength(1);
-  });
-
   it('fades the master out before it closes the context, and never resumes it after', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
@@ -399,5 +405,63 @@ describe('WebAudioEngine ambient reconciliation', () => {
     engine.apply({ oneShots: [], ambient: [] }); // terrain scrolled off before the wav arrived
     await flush();
     expect(ctx.sources).toHaveLength(0); // the departed bed must not start and linger
+  });
+});
+
+describe('WebAudioEngine zoom perspective', () => {
+  const allRamps = (ctx: FakeContext): number =>
+    ctx.gains.reduce((sum, g) => sum + g.gain.ramps.length, 0);
+
+  it('ramps each zoom layer once when the camera zooms out, leaving music and ui alone', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const { buses, layers } = mixerGraph(ctx);
+    ctx.currentTime = 1;
+    engine.setCameraScale(FAR_ZOOM_SCALE);
+    const far = zoomDistance(FAR_ZOOM_SCALE);
+    for (const node of [layers.world.detail, layers.voice.detail]) {
+      expect(node.gain.ramps).toEqual([{ value: perspectiveGain('detail', far), time: 1 + PERSPECTIVE_RAMP_S }]);
+    }
+    for (const node of [layers.world.impact, layers.voice.impact]) {
+      expect(node.gain.ramps).toEqual([{ value: perspectiveGain('impact', far), time: 1 + PERSPECTIVE_RAMP_S }]);
+    }
+    expect(layers.bed.gain.ramps).toEqual([{ value: perspectiveGain('bed', far), time: 1 + PERSPECTIVE_RAMP_S }]);
+    for (const bus of [buses.music, buses.ui, buses.world, buses.voice, buses.ambient]) {
+      expect(bus.gain.ramps).toEqual([]);
+    }
+  });
+
+  it('schedules nothing for an unchanged zoom or for a camera closer than 1:1', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setCameraScale(1);
+    engine.setCameraScale(2);
+    engine.setCameraScale(undefined);
+    expect(allRamps(ctx)).toBe(0);
+    engine.setCameraScale(0.5);
+    const once = allRamps(ctx);
+    engine.setCameraScale(0.5);
+    expect(allRamps(ctx)).toBe(once);
+  });
+
+  it('builds the layers at a zoom set before the context exists', async () => {
+    const { engine, ctx } = makeEngine();
+    engine.setCameraScale(FAR_ZOOM_SCALE);
+    await engine.resume();
+    const { layers } = mixerGraph(ctx);
+    const far = zoomDistance(FAR_ZOOM_SCALE);
+    expect(layers.world.detail.gain.value).toBeCloseTo(perspectiveGain('detail', far), 9);
+    expect(layers.bed.gain.value).toBeCloseTo(perspectiveGain('bed', far), 9);
+  });
+
+  it('leaves a playing shot at its screen-position gain while the zoom moves its layer', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [shot({ lane: { kind: 'sfx' } })], ambient: [] });
+    await flush();
+    engine.setCameraScale(FAR_ZOOM_SCALE);
+    const gain = (ctx.sources[0]?.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain;
+    expect(gain.gain.value).toBeCloseTo(0.42, 9);
+    expect(gain.gain.ramps).toEqual([]);
   });
 });

@@ -145,6 +145,8 @@ export class SoundDriver {
     this.responses = [];
     const ticks = this.lastTick === null ? 0 : Math.max(0, input.snapshot.tick - this.lastTick);
     this.lastTick = input.snapshot.tick;
+    // Before the audibility gate, so a camera zoomed while muted is already in the mix on unmute.
+    this.engine.setCameraScale(input.camera.scale);
     // Suspended (no gesture yet) or muted: the engine would drop the frame unheard, so don't pay the
     // director decision work at all.
     if (!this.engine.audible) return;

@@ -92,7 +92,7 @@ export function defaultBindings(): SoundBindings {
       playerDefeated: { kind: 'jingle', musicType: JINGLE_LOST, localPlayerOnly: true },
       goodProduced: { kind: 'spatial', group: GROUP_CARPENTER_SAW },
       // The director withholds this below HOUSE_CRASH_MIN_BUILT: a site under half built comes down silently.
-      buildingDestroyed: { kind: 'spatial', group: GROUP_HOUSE_CRASH },
+      buildingDestroyed: { kind: 'spatial', group: GROUP_HOUSE_CRASH, layer: 'impact' },
       combatSwing: { kind: 'spatial', group: GROUP_MELEE_SWING },
       // No release entry: `projectileLaunched` fires whether or not the clip sounds, so binding it would
       // double the bowstring the 19 cued ranged clips author. The three that author none (the hero bows)

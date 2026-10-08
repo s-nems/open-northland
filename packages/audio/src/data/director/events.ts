@@ -10,6 +10,7 @@ import {
 import { groupFiles, type SoundIndex } from '../bank.js';
 import { JINGLE_DUCK_HOLD_MS } from '../bindings.js';
 import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
+import type { ShotLayer } from '../perspective.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
 import type { AudioTerrain, DirectorInput, EventSound, Lane, OneShot, SoundBindings } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
@@ -113,6 +114,8 @@ interface PendingBase {
   readonly key: string;
   /** Skip while the picked wav still sounds ({@link OneShot.exclusive}). */
   readonly exclusive?: 'wav';
+  /** The zoom layer ({@link OneShot.layer}); absent is `detail`. */
+  readonly layer?: ShotLayer;
   /** The explicit `at` half-cell node, or null when the position must come from `entity`'s
    *  snapshot Position (a fractional tile). The two spaces project through different renderer
    *  mappings - see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
@@ -212,6 +215,7 @@ function weaponSoundPending(
     key: `${ev.kind}:${soundType}:${ev.at.hx},${ev.at.hy}`,
     node: ev.at,
     entity: undefined,
+    layer: 'impact',
     ...(onBody ? { exclusive: 'wav' as const } : {}),
   };
 }
@@ -227,6 +231,7 @@ function screamPending(ev: SimEvent): Extract<Pending, { kind: 'scream' }> | nul
     entity: undefined,
     victim: ev.target as number,
     exclusive: 'wav',
+    layer: 'impact',
   };
 }
 
@@ -265,7 +270,8 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     if (ev.kind === 'missionSound') {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
       if (files !== undefined && files.length > 0) {
-        pending.push({ kind: 'sfx', files, key: eventKey(ev), node: ev.at, entity: undefined });
+        // A script's sound is a story beat, so it carries from far out like a fight does.
+        pending.push({ kind: 'sfx', files, key: eventKey(ev), node: ev.at, entity: undefined, layer: 'impact' });
       }
       continue;
     }
@@ -309,7 +315,14 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const id = node === null ? eventEntity(ev) : undefined;
       if (node === null && id === undefined) continue;
       if (id !== undefined) neededIds.add(id);
-      pending.push({ kind: 'sfx', files, key: soundKey(ev, sound), node, entity: id });
+      pending.push({
+        kind: 'sfx',
+        files,
+        key: soundKey(ev, sound),
+        node,
+        entity: id,
+        ...(sound.layer !== undefined ? { layer: sound.layer } : {}),
+      });
     }
   }
   // Pass 2: locate + spatialise the pending positioned events (off-screen or position-less → silent).
@@ -348,6 +361,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
         key: p.key,
         lane: p.kind === 'scream' ? VOICE_LANE : SFX_LANE,
         ...(p.exclusive !== undefined ? { exclusive: p.exclusive } : {}),
+        ...(p.layer !== undefined ? { layer: p.layer } : {}),
       });
     }
   }

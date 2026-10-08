@@ -367,7 +367,7 @@ describe('weather noise buffers', () => {
 });
 
 describe('WebAudioEngine weather', () => {
-  it('plays only once audio is live, into the ambient bus, and stops on mute', async () => {
+  it('plays only once audio is live, into the ambient bed layer, and stops on mute', async () => {
     const ctx = new FakeContext();
     const engine = new WebAudioEngine({
       createContext: () => ctx as unknown as AudioContext,
@@ -378,8 +378,8 @@ describe('WebAudioEngine weather', () => {
     expect(ctx.sources).toHaveLength(0);
     await engine.resume();
     engine.applyWeather(rain, 0);
-    const ambientBus = mixerGraph(ctx).buses.ambient;
-    const limiter = ctx.created.findIndex((n) => n.connectedTo.includes(ambientBus));
+    const { bed } = mixerGraph(ctx).layers;
+    const limiter = ctx.created.findIndex((n) => n.connectedTo.includes(bed));
     expect(limiter).toBeGreaterThan(0);
     const from = limiter - 1; // the weather bus trim gain feeds its limiter
     engine.setEnabled(false);

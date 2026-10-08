@@ -10,6 +10,14 @@ import {
   volumeGain,
 } from '../../data/mixer.js';
 import type { MusicTrack } from '../../data/music/index.js';
+import {
+  type PerspectiveLayer,
+  perspectiveGain,
+  SHOT_LAYERS,
+  type ShotLayer,
+  shotLayer,
+  zoomDistance,
+} from '../../data/perspective.js';
 import type { AudioFrame, OneShot } from '../../data/types.js';
 import type { WeatherSoundInput } from '../../data/weather/mix.js';
 import {
@@ -36,7 +44,9 @@ import { WeatherSoundscape } from './weather-soundscape.js';
  *
  * Graph: each sound feeds its {@link SoundBus} gain (one-shots by {@link oneShotBus}, beds and weather
  * on `ambient`, music through its jingle duck), every bus feeds the master gain, and the master ends in
- * a peak limiter before the destination.
+ * a peak limiter before the destination. Zoom-following sounds enter their bus through one shared gain
+ * per perspective layer ({@link import('../../data/perspective.js').PerspectiveLayer}), so a zoom moves
+ * a handful of layer gains, never a playing sound.
  *
  * The context starts suspended ({@link resume} starts it); before then, and on any decode/fetch
  * failure, playback is a graceful no-op (silence), never a throw.
@@ -64,6 +74,9 @@ export const DEFAULT_SOUNDS_BASE_URL = '/sounds/';
 export const DEFAULT_MUSIC_BASE_URL = '/music/';
 /** A slider move ramps its bus over this many seconds - long enough to avoid a zipper click. */
 export const VOLUME_RAMP_S = 0.05;
+/** A zoom step ramps the layer gains over this many seconds, so a wheel zoom glides the mix rather
+ *  than stepping it. Approximation. */
+export const PERSPECTIVE_RAMP_S = 0.1;
 
 /** The original music master's fixed -5 dB offset under the music slider. */
 const MUSIC_MASTER_OFFSET_DB = -5;
@@ -107,6 +120,17 @@ export const COOLDOWN_PRUNE_SIZE = 512;
 /** Shared empty rotation, so re-asserting a single track every frame allocates nothing. */
 const EMPTY_ROTATION: readonly MusicTrack[] = [];
 
+/** The buses that carry world one-shots, each split into the two {@link ShotLayer}s. */
+type WorldBus = 'world' | 'voice';
+const WORLD_BUSES: readonly WorldBus[] = ['world', 'voice'];
+
+/** The per-layer gains in front of the buses: the world layers of `world` and `voice`, and the ambient
+ *  bed layer the terrain beds and the weather share. */
+interface LayerGains {
+  readonly shots: Readonly<Record<WorldBus, Readonly<Record<ShotLayer, GainNode>>>>;
+  readonly bed: GainNode;
+}
+
 export class WebAudioEngine {
   private readonly baseUrl: string;
   private readonly musicBaseUrl: string;
@@ -116,6 +140,10 @@ export class WebAudioEngine {
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buses: Readonly<Record<SoundBus, GainNode>> | null = null;
+  private layers: LayerGains | null = null;
+  /** The camera's zoom distance the layer gains are set for, kept here so a zoom before the context
+   *  exists still lands. */
+  private zoom = 0;
   private musicDuck: GainNode | null = null;
   /** Audio-clock time the running jingle duck may lift at; null while the music is not ducked. */
   private duckedUntil: number | null = null;
@@ -240,6 +268,25 @@ export class WebAudioEngine {
     }
   }
 
+  /**
+   * The camera scale this frame sees the world at. A changed zoom ramps the layer gains over
+   * {@link PERSPECTIVE_RAMP_S}; an unchanged one, or any zoom closer than 1:1, schedules nothing.
+   */
+  setCameraScale(scale: number | undefined): void {
+    const zoom = zoomDistance(scale);
+    if (zoom === this.zoom) return;
+    this.zoom = zoom;
+    const ctx = this.ctx;
+    const layers = this.layers;
+    if (ctx === null || layers === null) return;
+    for (const bus of WORLD_BUSES) {
+      for (const layer of SHOT_LAYERS) {
+        rampParam(ctx, layers.shots[bus][layer].gain, perspectiveGain(layer, zoom), PERSPECTIVE_RAMP_S);
+      }
+    }
+    rampParam(ctx, layers.bed.gain, perspectiveGain('bed', zoom), PERSPECTIVE_RAMP_S);
+  }
+
   /** Apply one decided frame: fire its one-shots, reconcile its ambient loops, settle the duck. */
   apply(frame: AudioFrame): void {
     const ctx = this.ctx;
@@ -339,17 +386,45 @@ export class WebAudioEngine {
       if (bus === 'music') buses.music.connect(musicDuck).connect(master);
       else buses[bus].connect(master);
     }
+    const layers = this.createLayers(ctx, buses);
     this.master = master;
     this.buses = buses;
+    this.layers = layers;
     this.musicDuck = musicDuck;
     this.samples = new SampleCache(this.baseUrl, this.fetchBytes, (bytes) => ctx.decodeAudioData(bytes));
-    this.mixer = new AmbientMixer(ctx, buses.ambient, this.samples, () => this.canPlay());
+    this.mixer = new AmbientMixer(ctx, layers.bed, this.samples, () => this.canPlay());
     this.music = new MusicPlayer(ctx, buses.music, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
-    // Weather rides the ambient bus beside the terrain beds, so the same slider sets it.
-    this.weather = new WeatherSoundscape(ctx, buses.ambient);
+    // Weather rides the ambient bed layer beside the terrain beds, so the same slider and zoom set it.
+    this.weather = new WeatherSoundscape(ctx, layers.bed);
     this.weather.setEnabled(this.weatherEnabled);
     ctx.onstatechange = () => this.onStateChange(ctx);
     return ctx;
+  }
+
+  /** The layer gains, set for the zoom already known, each feeding its bus. */
+  private createLayers(ctx: AudioContext, buses: Readonly<Record<SoundBus, GainNode>>): LayerGains {
+    const layerGain = (layer: PerspectiveLayer, bus: GainNode): GainNode => {
+      const gain = ctx.createGain();
+      gain.gain.value = perspectiveGain(layer, this.zoom);
+      gain.connect(bus);
+      return gain;
+    };
+    const shotLayers = (bus: GainNode): Record<ShotLayer, GainNode> => ({
+      detail: layerGain('detail', bus),
+      impact: layerGain('impact', bus),
+    });
+    return {
+      shots: { world: shotLayers(buses.world), voice: shotLayers(buses.voice) },
+      bed: layerGain('bed', buses.ambient),
+    };
+  }
+
+  /** Where a one-shot enters the mix: its layer's gain on a world bus, else its bus itself. */
+  private shotInput(shot: OneShot, buses: Readonly<Record<SoundBus, GainNode>>): AudioNode {
+    const bus = oneShotBus(shot);
+    const layer = shotLayer(shot);
+    if (layer === null || this.layers === null || (bus !== 'world' && bus !== 'voice')) return buses[bus];
+    return this.layers.shots[bus][layer];
   }
 
   /**
@@ -398,7 +473,7 @@ export class WebAudioEngine {
       // than throwing inside this un-awaited promise (which would silently drop all positional SFX).
       const head = this.pannerFor(ctx, shot.pan) ?? source;
       if (head !== source) source.connect(head);
-      head.connect(gain).connect(buses[oneShotBus(shot)]);
+      head.connect(gain).connect(this.shotInput(shot, buses));
       source.start();
     });
   }
