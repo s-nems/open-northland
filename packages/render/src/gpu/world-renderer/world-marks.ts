@@ -64,6 +64,7 @@ export interface WorldMarksFrame {
   /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
    *  through `damaged`, and the selection rings track the selected set instead. */
   readonly viewport: Viewport;
+  readonly screenViewport?: Viewport;
   readonly fogVisible?: ((x: number, y: number) => boolean) | undefined;
   /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
   readonly renderTime: number;

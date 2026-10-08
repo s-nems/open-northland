@@ -186,7 +186,8 @@ export const plContent = {
     },
     battle: {
       title: 'Bitwa masowa',
-      summary: 'Dwie armie walczą na dużą skalę z użyciem czterech rodzajów broni.',
+      summary:
+        '1000 na 1000 na powiększonym polu bitwy: rozproszone oddziały, pięć rodzajów broni i różne pancerze.',
     },
     'bow-flight': {
       title: 'Lot strzały',

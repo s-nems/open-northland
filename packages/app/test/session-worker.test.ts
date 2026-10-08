@@ -215,9 +215,11 @@ describe('session worker host', () => {
   });
 
   it("delivers every tick's events in order when the runtime applies late", async () => {
+    // This short delivery window needs an immediate fight, without an army's approach march.
+    const eventScene = 'combat-blood';
     const session = await startTestSession(
       bundle.path,
-      { kind: 'scene', id: 'battle' },
+      { kind: 'scene', id: eventScene },
       { speed: FAST_SPEED, paused: false },
     );
     const delivered: { tick: number; events: string }[] = [];
@@ -244,7 +246,7 @@ describe('session worker host', () => {
     const first = delivered[0]?.tick ?? 0;
     expect(delivered.map((d) => d.tick)).toEqual(delivered.map((_, i) => first + i));
 
-    const sim: Simulation = createSceneSim(scene('battle'));
+    const sim: Simulation = createSceneSim(scene(eventScene));
     const reference: string[] = [];
     while (sim.tick < first + delivered.length - 1) {
       sim.step();

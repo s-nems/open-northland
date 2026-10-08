@@ -188,7 +188,8 @@ export const enContent = {
     },
     battle: {
       title: 'Mass battle',
-      summary: 'Two armies clash at scale with four weapon classes.',
+      summary:
+        '1000 against 1000 on an expanded battlefield: scattered troops, five weapon classes and mixed armor.',
     },
     'bow-flight': {
       title: 'Bow flight',

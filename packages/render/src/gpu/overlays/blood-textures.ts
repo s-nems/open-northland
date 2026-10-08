@@ -26,7 +26,7 @@ export class BloodTextures {
       }));
       for (let y = 0; y < CELL; y++) {
         for (let x = 0; x < CELL; x++) {
-          let field = 0;
+          let field = -1;
           for (const lobe of lobes) {
             const dx = (x - CELL / 2 - lobe.x) / lobe.rx;
             const dy = (y - CELL / 2 - lobe.y) / lobe.ry;
@@ -34,9 +34,9 @@ export class BloodTextures {
           }
           const grain = frac(seed, 100 + y * CELL + x);
           const coverage = Math.min(1, Math.max(0, field * 3 + (grain - 0.5) * 0.6));
-          const value = Math.round(175 + grain * 70);
+          const value = Math.round(230 + grain * 25);
           const offset = (((variant >> 3) * CELL + y) * width + (variant % COLUMNS) * CELL + x) * 4;
-          pixels.set([value, value, value, Math.round(coverage * (0.68 + grain * 0.27) * 255)], offset);
+          pixels.set([value, value, value, Math.round(coverage * (0.88 + grain * 0.12) * 255)], offset);
         }
       }
     }

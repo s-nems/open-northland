@@ -92,13 +92,13 @@ describe('WorldMarks', () => {
   it('fades a mark on the interpolated render clock, not the integer tick it was ingested at', () => {
     const { marks } = marksIn();
     marks.ingest([hit], 0);
-    marks.draw(frameOf({ renderTime: 600 }));
+    marks.draw(frameOf({ renderTime: 1000 }));
     const blood = marks.slots.bloodGround.children[0];
     const atTick = blood?.alpha;
     expect(atTick).toBeLessThan(1); // the ground stain is fading
 
     // Only the interpolated clock can move a fade between two integer ticks.
-    marks.draw(frameOf({ renderTime: 600.5 }));
+    marks.draw(frameOf({ renderTime: 1000.5 }));
     expect(blood?.alpha).toBeLessThan(atTick ?? 0);
     marks.destroy();
   });

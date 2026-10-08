@@ -450,6 +450,7 @@ export class WorldRenderer {
       elevation: this.elevation,
       viewport: vp,
       renderTime: tick + alpha,
+      screenViewport: weatherView.viewport,
       fogVisible: fogFrame.fogVisible,
       damaged: this.pool.damagedBuildings(),
       wind: this.wind,

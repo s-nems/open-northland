@@ -3,10 +3,10 @@ import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../projection/index
 import { frac } from './random.js';
 
 /** Authored presentation, not original behavior. Durations use the 12 Hz simulation clock. */
-export const BLOOD_LIFETIME_TICKS = 720;
+export const BLOOD_LIFETIME_TICKS = 1200;
 export const BLOOD_AIR_TICKS = 11;
-export const MAX_BLOOD_MARKS = 256;
-export const MAX_BLOOD_PER_NODE = 3;
+export const MAX_BLOOD_MARKS = 4096;
+export const MAX_BLOOD_PER_NODE = 4;
 
 export type BloodProfile = 'cut' | 'pierce' | 'blunt';
 export interface BloodMark {
@@ -119,12 +119,12 @@ export const GROUND_SQUASH = 0.5;
 
 /** Mint once per visible burst; all trajectory noise stays out of the frame loop. */
 export function bloodDrops(mark: BloodMark, bodyRise = 20): readonly BloodDrop[] {
-  const count = (mark.profile === 'blunt' ? 3 : mark.profile === 'pierce' ? 4 : 6) + (mark.fatal ? 2 : 0);
+  const count = (mark.profile === 'blunt' ? 4 : mark.profile === 'pierce' ? 6 : 9) + (mark.fatal ? 4 : 0);
   return Array.from({ length: count }, (_, i) => {
     const offset = i * 8;
     const angle =
       mark.heading + (frac(mark.seed, offset + 1) - 0.5) * (mark.profile === 'pierce' ? 0.9 : 2.4);
-    const speed = (0.55 + frac(mark.seed, offset + 2) * 1.7) * (mark.profile === 'blunt' ? 0.6 : 1);
+    const speed = (1.1 + frac(mark.seed, offset + 2) * 3) * (mark.profile === 'blunt' ? 0.6 : 1);
     const rise = bodyRise * (0.9 + frac(mark.seed, offset + 3) * 0.2);
     const lift = 0.2 + frac(mark.seed, offset + 4) * 1.1;
     return {
@@ -134,7 +134,7 @@ export function bloodDrops(mark: BloodMark, bodyRise = 20): readonly BloodDrop[]
       lift,
       delay: frac(mark.seed, offset + 5) * 1.2,
       flight: (lift + Math.sqrt(lift * lift + 2 * GRAVITY * rise)) / GRAVITY,
-      size: (0.45 + frac(mark.seed, offset + 6) * 0.5) * (mark.fatal ? 1.15 : 1),
+      size: (1.1 + frac(mark.seed, offset + 6) * 0.95) * (mark.fatal ? 1.25 : 1),
     };
   });
 }

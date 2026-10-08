@@ -187,7 +187,8 @@ export const deContent = {
     },
     battle: {
       title: 'Massenschlacht',
-      summary: 'Zwei große Armeen mit vier Waffenklassen treffen aufeinander.',
+      summary:
+        '1000 gegen 1000 auf einem größeren Schlachtfeld: verstreute Truppen, fünf Waffenklassen und gemischte Rüstungen.',
     },
     'bow-flight': {
       title: 'Pfeilflug',

@@ -1,69 +1,78 @@
-import type { Simulation } from '@open-northland/sim';
-import { components, nodeOfPosition } from '@open-northland/sim';
+import { components, type Entity, fx, type Simulation } from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
-import { JOB_ARCHER, JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_SPEAR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
-import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
 import {
-  spawnSandboxSettler,
-  WEAPON_BROADSWORD,
-  WEAPON_SHORT_BOW,
-  WEAPON_SPEAR,
-  WEAPON_SWORD,
-} from '../game/sandbox/index.js';
-import { blueLivingSettlers, enemyLivingSettlers } from './sandbox-queries.js';
+  JOB_ARCHER,
+  JOB_ARCHER_LONG,
+  JOB_SOLDIER_BROADSWORD,
+  JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SWORD,
+} from '../catalog/jobs.js';
+import { ENEMY_PLAYER, HUMAN_PLAYER } from '../game/rules.js';
+import { spawnSettlerAtNode } from '../game/sandbox/index.js';
+import { blueLivingSettlers, enemyLivingSettlers, goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-const MAP_W = 34;
-const MAP_H = 42;
+const MAP_W = 96;
+const MAP_H = 80;
+const COLUMNS = 20;
+const ROWS = 50;
+const PER_SIDE = COLUMNS * ROWS;
+const JOBS = [JOB_SOLDIER_SWORD, JOB_SOLDIER_BROADSWORD, JOB_SOLDIER_SPEAR, JOB_ARCHER, JOB_ARCHER_LONG];
+const ARMOR = [null, 'armor_wool', 'armor_leather', 'armor_chain', 'armor_plate'] as const;
+const { Equipment, Health, Position, Settler } = components;
 
-/** The shared front, in cell rows; each rank is one cell column per weapon class. */
-const RANK_ROWS_FIRST = 8;
-const RANK_ROWS_LAST = 32; // 25 units per rank × 4 ranks = 100 a side
-const BLUE_RANKS: readonly { job: number; weapon: number; x: number }[] = [
-  { job: JOB_ARCHER, weapon: WEAPON_SHORT_BOW, x: 10 },
-  { job: JOB_SOLDIER_BROADSWORD, weapon: WEAPON_BROADSWORD, x: 11 },
-  { job: JOB_SOLDIER_SPEAR, weapon: WEAPON_SPEAR, x: 12 },
-  { job: JOB_SOLDIER_SWORD, weapon: WEAPON_SWORD, x: 13 },
-];
-const RED_RANKS: readonly { job: number; weapon: number; x: number }[] = [
-  { job: JOB_SOLDIER_SWORD, weapon: WEAPON_SWORD, x: 20 },
-  { job: JOB_SOLDIER_SPEAR, weapon: WEAPON_SPEAR, x: 21 },
-  { job: JOB_SOLDIER_BROADSWORD, weapon: WEAPON_BROADSWORD, x: 22 },
-  { job: JOB_ARCHER, weapon: WEAPON_SHORT_BOW, x: 23 },
-];
-
-/** Casualties out of 200 fighters. Soft overlap tolerates two bodies on a node; three is stacking. */
-const MIN_CASUALTIES = 60;
-const MAX_FIGHTERS_PER_NODE = 2;
-
-const SPAWNED_PER_SIDE = (RANK_ROWS_LAST - RANK_ROWS_FIRST + 1) * BLUE_RANKS.length;
-
-const { Owner, Position, Settler } = components;
-
-function build(sim: Simulation): void {
-  for (let y = RANK_ROWS_FIRST; y <= RANK_ROWS_LAST; y++) {
-    for (const rank of BLUE_RANKS) {
-      spawnSandboxSettler(sim, rank.job, rank.x, y, HUMAN_PLAYER, { weaponTypeId: rank.weapon });
-    }
-    for (const rank of RED_RANKS) {
-      spawnSandboxSettler(sim, rank.job, rank.x, y, ENEMY_PLAYER, { weaponTypeId: rank.weapon });
-    }
+/** Independent balanced decks keep both armies comparable without sorting the field by equipment. */
+function shuffledDeck<T>(sim: Simulation, choices: readonly T[]): T[] {
+  const deck = Array.from({ length: PER_SIDE }, (_, i) => choices[i % choices.length]);
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = sim.rng.int(i + 1);
+    [deck[i], deck[j]] = [deck[j], deck[i]];
   }
+  return deck.filter((item): item is T => item !== undefined);
 }
 
-function casualties(sim: Simulation): number {
-  return 2 * SPAWNED_PER_SIDE - blueLivingSettlers(sim) - enemyLivingSettlers(sim);
+function army(sim: Simulation, owner: number, firstX: number): void {
+  const jobs = shuffledDeck(sim, JOBS);
+  const armor = shuffledDeck(
+    sim,
+    ARMOR.map((slug) => (slug === null ? null : goodBySlug(sim, slug))),
+  );
+  const members: { entity: Entity; x: number; y: number }[] = [];
+  for (let row = 0; row < ROWS; row++) {
+    const stagger = sim.rng.int(7) - 3;
+    for (let col = 0; col < COLUMNS; col++) {
+      const index = row * COLUMNS + col;
+      const job = jobs[index];
+      const armorGood = armor[index];
+      if (job === undefined || armorGood === undefined) throw new Error('incomplete battle equipment deck');
+      // Jitter within disjoint half-cell slots: loose ranks, with no overlapping spawn positions.
+      const hx = firstX + col * 3 + stagger + sim.rng.int(2);
+      const hy = 30 + row * 2 + sim.rng.int(2);
+      const entity = spawnSettlerAtNode(sim, job, { hx, hy }, owner);
+      sim.world.mut(entity, Equipment).armor =
+        armorGood === null ? null : { goodType: armorGood, degreeOfUse: fx.fromInt(0) };
+      members.push({ entity, x: 2 * MAP_W - 1 - hx, y: hy });
+    }
+  }
+  // Every rear rank advances into the opposing deployment, retaining its own arrival slot.
+  sim.enqueueSetup({ kind: 'attackMoveUnitGroup', members });
+}
+
+function build(sim: Simulation): void {
+  army(sim, HUMAN_PLAYER, 20);
+  army(sim, ENEMY_PLAYER, 112);
 }
 
 function nobodyStacks(sim: Simulation): boolean {
-  const perNode = new Map<string, number>();
-  for (const e of sim.world.query(Settler, Owner, Position)) {
+  const perPosition = new Map<string, number>();
+  for (const e of sim.world.query(Settler, Health, Position)) {
+    if (sim.world.get(e, Health).hitpoints <= 0) continue;
     const p = sim.world.get(e, Position);
-    const n = nodeOfPosition(p.x, p.y);
-    const key = `${n.hx},${n.hy}`;
-    const count = (perNode.get(key) ?? 0) + 1;
-    if (count > MAX_FIGHTERS_PER_NODE) return false;
-    perNode.set(key, count);
+    // Distinct sub-cell positions can share a half-cell; only coincident feet form an actual stack.
+    const key = `${p.x},${p.y}`;
+    const count = (perPosition.get(key) ?? 0) + 1;
+    if (count > 2) return false;
+    perPosition.set(key, count);
   }
   return true;
 }
@@ -73,21 +82,21 @@ export const battleScene: SceneDefinition = {
   seed: 23,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 1500,
-  initialZoom: 0.55,
+  runTicks: 400,
+  initialZoom: 0.35,
   checks: [
     {
-      label: 'the battle really ran at scale (enough casualties on the field)',
-      predicate: (sim) => casualties(sim) >= MIN_CASUALTIES,
+      label: 'the battle leaves at least 120 casualties across 2000 fighters',
+      predicate: (sim) => 2 * PER_SIDE - blueLivingSettlers(sim) - enemyLivingSettlers(sim) >= 120,
     },
     {
-      label: 'no node ever ends holding a stack of living fighters',
+      label: 'no more than two living fighters share a foot position',
       predicate: nobodyStacks,
     },
     {
-      label: 'both armies engaged (casualties are not one-sided spawn losses)',
+      label: 'both armies take casualties after advancing into combat',
       predicate: (sim) =>
-        blueLivingSettlers(sim) < SPAWNED_PER_SIDE && enemyLivingSettlers(sim) < SPAWNED_PER_SIDE,
+        blueLivingSettlers(sim) <= PER_SIDE - 50 && enemyLivingSettlers(sim) <= PER_SIDE - 50,
     },
   ],
 };

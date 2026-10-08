@@ -158,4 +158,6 @@ ingredients the headquarters holds outside her reach.
 hit on the right. Watch the short sprays settle beneath fighters, the larger stain left by the
 casualty, and the drying marks. In Settings → Graphics, switching Blood off clears existing marks
 even while paused; switching it back on admits new hits. `?scene=battle` exercises the same effect
-with 200 fighters and the bounded stain density.
+with 1000 fighters per side on a 96 × 80 cell field. Both armies attack across the field with
+independently shuffled swords, broadswords, spears, short bows and long bows, and bare, cloth, leather,
+chain and plate armor. Zoom into the front to inspect sprays and the ground left behind it.

@@ -109,13 +109,13 @@ describe('blood event history', () => {
     expect(crowded).toHaveLength(MAX_BLOOD_PER_NODE);
     const battlefield = foldBloodMarks(
       [],
-      Array.from({ length: 1000 }, (_, i) => hit(i, 3, i)),
+      Array.from({ length: MAX_BLOOD_MARKS + 100 }, (_, i) => hit(i, 3, i)),
       0,
     );
     expect(battlefield).toHaveLength(MAX_BLOOD_MARKS);
-    expect(battlefield[0]?.hx).toBe(1000 - MAX_BLOOD_MARKS);
-    const later = foldBloodMarks(battlefield, [hit(4000, 3, 4000)], 1);
-    expect(later.at(-1)?.hx).toBe(4000);
+    expect(battlefield[0]?.hx).toBe(100);
+    const later = foldBloodMarks(battlefield, [hit(9000, 3, 9000)], 1);
+    expect(later.at(-1)?.hx).toBe(9000);
     expect(foldBloodMarks(later, [], 2)).toBe(later);
     expect(foldBloodMarks(later, [], BLOOD_LIFETIME_TICKS)).toHaveLength(1);
     expect(foldBloodMarks(later, [], BLOOD_LIFETIME_TICKS + 1)).toEqual([]);
@@ -153,7 +153,7 @@ describe('ballistics and drying', () => {
     expect(new Set(cut.map((d) => d.flight)).size).toBe(cut.length);
     expect(bloodFade(0)).toBe(1);
     expect(bloodFade(300)).toBe(1);
-    expect(bloodFade(600)).toBeGreaterThan(bloodFade(600.5));
+    expect(bloodFade(1000)).toBeGreaterThan(bloodFade(1000.5));
     expect(bloodFade(BLOOD_LIFETIME_TICKS)).toBe(0);
   });
 });
@@ -170,7 +170,7 @@ describe('blood layer', () => {
     expect(air?.children.some((c) => c.visible)).toBe(true);
     const freshTint = ground?.tint;
     draw(layer, 30);
-    expect(air?.visible).toBe(false);
+    expect(air?.destroyed).toBe(true);
     expect(ground?.children[0]?.alpha).toBeGreaterThan(0);
     draw(layer, 300);
     expect(ground?.tint).not.toBe(freshTint);
@@ -192,7 +192,7 @@ describe('blood layer', () => {
     draw(layer, 5, { fogVisible: () => true });
     expect(sprites.children[0]?.visible).toBe(true);
     draw(layer, 30, { fogVisible: () => true });
-    expect(sprites.children[0]?.visible).toBe(false);
+    expect(sprites.children).toHaveLength(0);
     layer.destroy();
   });
 
@@ -215,7 +215,7 @@ describe('blood layer', () => {
     layer.ingest([shot], 20, snapshotOf([]));
     draw(layer, 23, { elevation: { maxLift: 50, liftAt: () => 50, liftAtNode: () => 50 } });
     expect(sprites.children[0]?.y).toBe(6 * 19 - 50);
-    expect(sprites.children[0]?.children.every((c) => c.x > 0)).toBe(true);
+    expect(sprites.children[0]?.children.slice(1).every((c) => c.x > 0)).toBe(true);
     layer.destroy();
   });
 
@@ -225,6 +225,8 @@ describe('blood layer', () => {
     layer.ingest([hit()], 0);
     draw(layer, 3);
     const air = sprites.children[0];
+    expect(air?.children[0]?.alpha).toBeGreaterThan(0); // the impact reads before the drops land
+    expect(layer.groundContainer.children[0]?.children[0]?.alpha).toBeGreaterThan(0);
     layer.setEnabled(false);
     expect(air?.destroyed).toBe(true);
     expect(layer.groundContainer.children).toHaveLength(0);
@@ -242,14 +244,19 @@ describe('blood layer', () => {
   it('retires off-screen sprites, restores only ground on return, and suppresses stains on water', () => {
     const sprites = new Container();
     const layer = new BloodLayer(sprites);
-    layer.ingest([hit()], 0);
-    draw(layer, 2);
+    layer.ingest([hit()], 0, snapshotOf([{ id: 1, components: { Position: positionOfNode(4, 8) } }]));
+    // The feet are below the screen, but the upward jet from a tall fighter still crosses its edge.
+    draw(layer, 3, {
+      screenViewport: { minX: 0, maxX: 300, minY: 0, maxY: 60 },
+      drawn: { anchorOf: () => undefined, boundsOf: () => ({ minX: 0, maxX: 40, minY: 0, maxY: 80 }) },
+    });
+    expect(sprites.children).toHaveLength(1);
     const air = sprites.children[0];
-    draw(layer, 3, { viewport: { minX: 10000, maxX: 11000, minY: 10000, maxY: 11000 } });
+    draw(layer, 3, { screenViewport: { minX: 10000, maxX: 11000, minY: 10000, maxY: 11000 } });
     expect(air?.destroyed).toBe(true);
     draw(layer, 50, { water: { ...NO_WATER, surface: () => 1 } });
     expect(layer.groundContainer.children[0]?.alpha).toBe(0);
-    expect(sprites.children[0]?.visible).toBe(false);
+    expect(sprites.children).toHaveLength(0);
     draw(layer, 51);
     expect(layer.groundContainer.children[0]?.alpha).toBe(1);
     layer.destroy();
@@ -274,7 +281,7 @@ describe('blood layer', () => {
     layer.destroy();
   });
 
-  it('shares one texture source across all impressions and frees it at teardown', () => {
+  it('keeps atlas corners transparent, shares one source and frees it at teardown', () => {
     const layer = new BloodLayer(new Container());
     layer.ingest([hit(), hit(3, 2, 5), hit(4, 1, 6)], 0);
     draw(layer, 30);
@@ -284,6 +291,20 @@ describe('blood layer', () => {
       .map((node) => node.texture);
     expect(new Set(textures.map((texture) => texture.source)).size).toBe(1);
     const source = textures[0]?.source;
+    const pixels = source?.resource;
+    if (source === undefined || !(pixels instanceof Uint8Array)) throw new Error('missing blood atlas');
+    for (const texture of textures) {
+      const { x, y, width, height } = texture.frame;
+      for (const [px, py] of [
+        [x, y],
+        [x + width - 1, y],
+        [x, y + height - 1],
+        [x + width - 1, y + height - 1],
+      ]) {
+        if (px === undefined || py === undefined) throw new Error('missing atlas corner');
+        expect(pixels[(py * source.width + px) * 4 + 3]).toBe(0);
+      }
+    }
     layer.destroy();
     expect(source?.destroyed).toBe(true);
   });
