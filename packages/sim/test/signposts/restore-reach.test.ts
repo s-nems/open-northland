@@ -8,11 +8,12 @@ import { createSignpost } from '../../src/systems/signposts/placement.js';
 import { testContent } from '../fixtures/content.js';
 import { roughNodeMap } from '../fixtures/terrain.js';
 
-/** Resistance 5 spends the 80-point budget within 16 steps, so the two posts link only along a road. */
+/** Resistance 5 spends the 144-point link budget within 29 steps, so the two posts link only along a
+ *  road. */
 const ROUGH = 5;
 const MAP_NODES = 160;
 const WEST = { hx: 50, hy: 50 };
-const EAST = { hx: 74, hy: 50 };
+const EAST = { hx: 86, hy: 50 };
 const TICKS = 20;
 
 function roughMap() {

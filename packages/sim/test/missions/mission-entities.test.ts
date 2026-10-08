@@ -448,12 +448,13 @@ describe('the ownership results', () => {
     const sim = firingSim([{ opcode: 'ChangePlayerPlayerId', player: 2, otherPlayer: 5 }]);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped fixture expected');
-    const post = (hy: number, player: number): Entity =>
-      createSignpost(sim.world, terrain, terrain.nodeAt(POINT.hx, hy), player);
-    // Two handed posts in link range of each other; the receiver's post is in range of the first only.
-    const receiver = post(POINT.hy - 16, 5);
-    const first = post(POINT.hy, 2);
-    const second = post(POINT.hy + 24, 2);
+    const post = (d: number, player: number): Entity =>
+      createSignpost(sim.world, terrain, terrain.nodeAt(POINT.hx + d, POINT.hy + d), player);
+    // Two handed posts in link range of each other (36 nodes); the receiver's post is in range of the
+    // first only (24 nodes, 60 from the second).
+    const receiver = post(-16, 5);
+    const first = post(0, 2);
+    const second = post(24, 2);
     expect(sim.world.get(first, Signpost).links).toEqual([second]);
 
     sim.run(LOAD_PASS);

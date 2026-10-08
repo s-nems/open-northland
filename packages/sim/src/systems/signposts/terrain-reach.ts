@@ -2,12 +2,13 @@ import type { ContentSet } from '@open-northland/data';
 import {
   GOODS_SEARCH_RANGE_NODES,
   Position,
+  SIGNPOST_LINK_BUDGET,
   SIGNPOST_LINK_RANGE_NODES,
   Signpost,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
-import { floodInspected, floodReach, type ReachSearch } from '../../nav/range-search.js';
+import { floodInspected, floodReach, originalReachBudget, type ReachSearch } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { type WalkBlockMask, walkBlockMask } from '../footprint/walk-block-mask.js';
 import { syncRoadLane } from '../roads/index.js';
@@ -30,11 +31,27 @@ export function signpostTerrainKey(world: World, content: ContentSet, terrain: T
   return `${signpostMask(world, content, terrain).version}:${terrain.mirroredRoadRevision}`;
 }
 
+/** A range search's hex range and the ground resistance it spends. */
+export interface ReachSpan {
+  readonly range: number;
+  readonly budget: number;
+}
+
+export const GOODS_SEARCH_SPAN: ReachSpan = {
+  range: GOODS_SEARCH_RANGE_NODES,
+  budget: originalReachBudget(GOODS_SEARCH_RANGE_NODES),
+};
+
+export const SIGNPOST_LINK_SPAN: ReachSpan = {
+  range: SIGNPOST_LINK_RANGE_NODES,
+  budget: SIGNPOST_LINK_BUDGET,
+};
+
 export interface TerrainReach extends ReachSearch {
   readonly terrain: TerrainGraph;
   readonly hx: number;
   readonly hy: number;
-  readonly range: number;
+  readonly span: ReachSpan;
   /** The walk-block mask the flood read, and its version, the terrain's mirrored road revision and its
    *  resistance clock at the latest moment the answer was known to hold. */
   readonly mask: WalkBlockMask;
@@ -50,18 +67,14 @@ export function terrainReach(
   terrain: TerrainGraph,
   hx: number,
   hy: number,
-  range: number,
+  span: ReachSpan,
   held?: TerrainReach,
 ): TerrainReach {
   const mask = signpostMask(world, content, terrain);
   const maskVersion = mask.version;
   const roadRevision = terrain.mirroredRoadRevision;
   const sameOrigin =
-    held?.terrain === terrain &&
-    held.mask === mask &&
-    held.hx === hx &&
-    held.hy === hy &&
-    held.range === range;
+    held?.terrain === terrain && held.mask === mask && held.hx === hx && held.hy === hy && held.span === span;
   if (sameOrigin && held.maskVersion === maskVersion && held.roadRevision === roadRevision) return held;
   if (sameOrigin && !readNodeChanged(held, mask, terrain)) {
     held.maskVersion = maskVersion;
@@ -70,11 +83,11 @@ export function terrainReach(
     return held;
   }
   return {
-    ...floodReach(terrain, mask.levelled(), hx, hy, range),
+    ...floodReach(terrain, mask.levelled(), hx, hy, span.range, span.budget),
     terrain,
     hx,
     hy,
-    range,
+    span,
     mask,
     maskVersion,
     roadRevision,
@@ -91,9 +104,8 @@ function readNodeChanged(held: TerrainReach, mask: WalkBlockMask, terrain: Terra
   );
 }
 
-/** Each signpost's reach per range, shared by the link pass and the goods search, which flood from the
- *  same post node at the same range. */
-const postReaches = new WeakMap<World, Map<number, Map<Entity, TerrainReach>>>();
+/** Each signpost's reach per span, the link pass's and the goods search's. */
+const postReaches = new WeakMap<World, Map<ReachSpan, Map<Entity, TerrainReach>>>();
 
 /** {@link terrainReach} from signpost `post` standing on `(hx, hy)`, kept per post until it falls. */
 export function postTerrainReach(
@@ -103,19 +115,19 @@ export function postTerrainReach(
   post: Entity,
   hx: number,
   hy: number,
-  range: number,
+  span: ReachSpan,
 ): TerrainReach {
-  let byRange = postReaches.get(world);
-  if (byRange === undefined) {
-    byRange = new Map();
-    postReaches.set(world, byRange);
+  let bySpan = postReaches.get(world);
+  if (bySpan === undefined) {
+    bySpan = new Map();
+    postReaches.set(world, bySpan);
   }
-  let held = byRange.get(range);
+  let held = bySpan.get(span);
   if (held === undefined) {
     held = new Map();
-    byRange.set(range, held);
+    bySpan.set(span, held);
   }
-  const found = terrainReach(world, content, terrain, hx, hy, range, held.get(post));
+  const found = terrainReach(world, content, terrain, hx, hy, span, held.get(post));
   held.set(post, found);
   return found;
 }
@@ -130,8 +142,8 @@ export function warmPostReaches(world: World, content: ContentSet, terrain: Terr
     const p = world.get(post, Position);
     const hx = nodeHxOfPosition(p.x, p.y);
     const hy = nodeHyOfPosition(p.y);
-    postTerrainReach(world, content, terrain, post, hx, hy, SIGNPOST_LINK_RANGE_NODES);
-    postTerrainReach(world, content, terrain, post, hx, hy, GOODS_SEARCH_RANGE_NODES);
+    postTerrainReach(world, content, terrain, post, hx, hy, SIGNPOST_LINK_SPAN);
+    postTerrainReach(world, content, terrain, post, hx, hy, GOODS_SEARCH_SPAN);
   }
 }
 

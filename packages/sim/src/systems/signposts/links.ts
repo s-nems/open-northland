@@ -1,5 +1,11 @@
 import type { ContentSet } from '@open-northland/data';
-import { Owner, Position, SIGNPOST_LINK_RANGE_NODES, Signpost } from '../../components/index.js';
+import {
+  Owner,
+  Position,
+  SIGNPOST_LINK_BUDGET,
+  SIGNPOST_LINK_RANGE_NODES,
+  Signpost,
+} from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { TileBuckets } from '../../inspect/tile-buckets.js';
 import { nodeHxOfPosition, nodeHyOfPosition, nodeOfPosition } from '../../nav/halfcell.js';
@@ -7,7 +13,12 @@ import { reachContains, searchReach } from '../../nav/range-search.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { System } from '../context.js';
 import { signpostNetworkRevision } from './network.js';
-import { dropFallenPostReaches, postTerrainReach, signpostTerrainKey } from './terrain-reach.js';
+import {
+  dropFallenPostReaches,
+  postTerrainReach,
+  SIGNPOST_LINK_SPAN,
+  signpostTerrainKey,
+} from './terrain-reach.js';
 
 interface Site {
   readonly id: Entity;
@@ -59,8 +70,8 @@ function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, conte
   if (candidates === 0) return [];
   const area =
     content === undefined
-      ? searchReach(terrain, { size: 0, has: () => false }, hx, hy, r)
-      : postTerrainReach(world, content, terrain, post, hx, hy, r).area;
+      ? searchReach(terrain, { size: 0, has: () => false }, hx, hy, r, SIGNPOST_LINK_BUDGET)
+      : postTerrainReach(world, content, terrain, post, hx, hy, SIGNPOST_LINK_SPAN).area;
   const linked: Entity[] = [];
   for (let i = 0; i < candidates; i++) {
     const site = nearbyScratch[i] as Site;
@@ -69,7 +80,7 @@ function reachableLinks(world: World, terrain: TerrainGraph, post: Entity, conte
   return linked.sort((a, b) => a - b);
 }
 
-/** Original guide links use the goods search's terrain budget and strict 40-node boundary.
+/** Links reach strictly inside {@link SIGNPOST_LINK_RANGE_NODES} within {@link SIGNPOST_LINK_BUDGET}.
  *  Link count remains uncapped; the original retains at most eight neighbours. */
 export function settleSignpostLinks(
   world: World,

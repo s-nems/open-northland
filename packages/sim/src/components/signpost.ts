@@ -52,9 +52,17 @@ export const CARRIER_WALK_RANGE_NODES = 63;
 
 /**
  * Two same-player signposts link strictly inside this hex distance when the terrain search reaches
- * them. Original behavior: the guide connection radius; ground resistance also limits the search.
+ * them. Project rule: the original's guide connection radius is 40 with the goods search's budget of
+ * two resistance per node, which on the decoded maps' common resistance 3 and 4 ground linked well under
+ * half of the post pairs 32 to 40 nodes apart.
  */
-export const SIGNPOST_LINK_RANGE_NODES = 40;
+export const SIGNPOST_LINK_RANGE_NODES = 48;
+
+/** The ground resistance per node of a link's range: resistance 3 ground links across the full range. */
+const SIGNPOST_LINK_RESISTANCE_PER_NODE = 3;
+
+/** The ground resistance the link search spends. Project rule, see {@link SIGNPOST_LINK_RANGE_NODES}. */
+export const SIGNPOST_LINK_BUDGET = SIGNPOST_LINK_RANGE_NODES * SIGNPOST_LINK_RESISTANCE_PER_NODE;
 
 /** Original goods search radius, with a walkable, resistance-limited search rather than a disc. */
 export const GOODS_SEARCH_RANGE_NODES = 40;

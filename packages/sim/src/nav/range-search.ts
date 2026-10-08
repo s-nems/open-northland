@@ -88,7 +88,12 @@ export function floodInspected(search: ReachSearch, x: number, y: number): boole
   return false;
 }
 
-/** Original range searches walk six neighbours, spend twice the nominal range in ground resistance,
+/** The ground resistance an original range search spends: twice its nominal range. */
+export function originalReachBudget(range: number): number {
+  return 2 * range;
+}
+
+/** Original range searches walk six neighbours, spend {@link originalReachBudget} in ground resistance,
  *  and inspect an entered node before charging its resistance. Guide callbacks also require distance
  *  strictly below the nominal range. Byte-verified behavior; the navigation grid and blockers are ours. */
 export function searchReach(
@@ -97,8 +102,9 @@ export function searchReach(
   hx: number,
   hy: number,
   range: number,
+  budget = originalReachBudget(range),
 ): ReachArea {
-  return floodReach(terrain, blocked, hx, hy, range).area;
+  return floodReach(terrain, blocked, hx, hy, range, budget).area;
 }
 
 /** {@link searchReach} with its searched box. The marked set is order-independent: a node is marked when
@@ -110,6 +116,7 @@ export function floodReach(
   hx: number,
   hy: number,
   range: number,
+  budget = originalReachBudget(range),
 ): ReachSearch {
   const minX = Math.max(0, hx - range + 1);
   const maxX = Math.min(terrain.width - 1, hx + range - 1);
@@ -118,7 +125,6 @@ export function floodReach(
   const width = Math.max(0, maxX - minX + 1);
   const cells = new Uint8Array(width * Math.max(0, maxY - minY + 1));
   const area = { minX, maxX, minY, maxY, cells };
-  const budget = 2 * range;
   // Every entered node costs at least one, so a node with a cost under the budget lies fewer than
   // `budget` hex steps from the start, each moving at most one node on either axis, and the nodes it
   // inspects one step further.

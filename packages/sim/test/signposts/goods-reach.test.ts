@@ -103,7 +103,7 @@ describe('terrain-aware goods reach', () => {
     expect(local?.posts.at(-1)?.area).toBe(remote?.posts.at(-1)?.area);
     reads.mockRestore();
   });
-  it('floods each post once for both its links and the goods search', () => {
+  it('floods each post once for its links and once for the goods search', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassNodeMap(200, 100) });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('terrain');
@@ -113,10 +113,11 @@ describe('terrain-aware goods reach', () => {
       sim.world.add(post, Position, positionOfNode(hx, 40));
       sim.world.add(post, Signpost, { links: [] });
     }
-    signpostLinksSystem(sim.world, ctxOf(sim));
     const floods = vi.spyOn(terrain, 'walkableResistances');
+    signpostLinksSystem(sim.world, ctxOf(sim));
+    expect(floods).toHaveBeenCalledTimes(2);
     expect(sim.signpostReach(0)?.posts).toHaveLength(2);
-    expect(floods).not.toHaveBeenCalled();
+    expect(floods).toHaveBeenCalledTimes(4);
     floods.mockRestore();
   });
   it('rebuilds a group coverage when one of its posts searches again', () => {

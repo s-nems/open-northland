@@ -17,6 +17,7 @@ import { interactionNode } from '../footprint/interaction.js';
 import { type SignpostSite, signpostNetwork, signpostNetworkRevision } from './network.js';
 import {
   dropFallenPostReaches,
+  GOODS_SEARCH_SPAN,
   postTerrainReach,
   signpostMask,
   type TerrainReach,
@@ -158,7 +159,7 @@ export function goodsReachAt(
   const cache = cacheOf(world, content, terrain);
   const key = spotKey(0, hx, hy);
   const held = key === null ? undefined : cache.spots.get(key);
-  const found = terrainReach(world, content, terrain, hx, hy, GOODS_SEARCH_RANGE_NODES, held);
+  const found = terrainReach(world, content, terrain, hx, hy, GOODS_SEARCH_SPAN, held);
   if (key === null) return found.area;
   // Re-inserted on every read, so the map runs least recently asked first and eviction drops the oldest.
   if (held !== undefined) cache.spots.delete(key);
@@ -180,7 +181,7 @@ function postReach(
   hx: number,
   hy: number,
 ): ReachArea {
-  return postTerrainReach(world, content, terrain, id, hx, hy, GOODS_SEARCH_RANGE_NODES).area;
+  return postTerrainReach(world, content, terrain, id, hx, hy, GOODS_SEARCH_SPAN).area;
 }
 
 /** Goods are discovered locally or through the connected guides reached by the same local search. */

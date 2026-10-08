@@ -25,7 +25,7 @@ import {
 import { FOG_STATE } from '../../src/systems/vision/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
-import { grassCellMap as grassMap, waterColumnMap } from '../fixtures/terrain.js';
+import { grassCellMap as grassMap, roughNodeMap, waterColumnMap } from '../fixtures/terrain.js';
 import { stampPost } from './support.js';
 
 /**
@@ -38,6 +38,8 @@ import { stampPost } from './support.js';
 const VIKING = 1;
 const SCOUT = 27; // fixture job 27 - allowatomic 43 only, like the original scout
 const WOODCUTTER = 1;
+/** The decoded maps' commonest walking resistance. */
+const ROUGH_GROUND = 3;
 const P0 = 0;
 
 function makeUnit(sim: Simulation, x: number, y: number, jobType: number, player = P0): Entity {
@@ -248,10 +250,10 @@ describe('placeSignpost - the scout erects a guidepost', () => {
 describe('signpostNetwork - connected groups', () => {
   it('posts inside the link range join one group; a post past it forms its own', () => {
     const sim = freshSim(96, 8);
-    // Tiles are 2 nodes wide: posts at tiles 2 and 20 are 36 nodes apart - inside the 40-node range.
+    // Tiles are 2 nodes wide: posts at tiles 2 and 22 are 40 nodes apart - inside the 48-node range.
     const a = stampPost(sim, 2, 2);
-    const b = stampPost(sim, 20, 2);
-    const far = stampPost(sim, 40, 2); // 40 nodes past b - the range is exclusive
+    const b = stampPost(sim, 22, 2);
+    const far = stampPost(sim, 46, 2); // 48 nodes past b - the range is exclusive
     expect(sim.world.get(a, Signpost).links).toEqual([b]);
     expect(sim.world.get(b, Signpost).links).toEqual([a]);
     expect(sim.world.get(far, Signpost).links).toEqual([]);
@@ -259,6 +261,17 @@ describe('signpostNetwork - connected groups', () => {
     const groupOf = new Map(posts.map((s) => [s.entity, s.group]));
     expect(groupOf.get(a)).toBe(groupOf.get(b));
     expect(groupOf.get(far)).not.toBe(groupOf.get(a));
+  });
+
+  it('posts link across the whole range over resistance 3 ground', () => {
+    const sim = new Simulation({
+      seed: 3,
+      content: testContent(),
+      map: roughNodeMap(128, 16, () => ROUGH_GROUND),
+    });
+    const a = stampPost(sim, 4, 2);
+    const b = stampPost(sim, 26, 2); // 44 nodes away
+    expect(sim.world.get(a, Signpost).links).toEqual([b]);
   });
 
   it('a post links only to posts walkable ground joins it to inside the range', () => {
