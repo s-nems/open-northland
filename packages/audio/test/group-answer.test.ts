@@ -2,7 +2,7 @@ import type { SoundBank } from '@open-northland/data';
 import { type Camera, ONE, tileToScreen } from '@open-northland/render/data';
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { poolGain } from '../src/data/bank.js';
+import { MURMUR_MIN_TALK_WAVS, poolGain } from '../src/data/bank.js';
 import { SELECT_SECOND_LINE_MAX_S, selectLines } from '../src/data/voices.js';
 import {
   ANSWER_LAYERS,
@@ -16,6 +16,7 @@ import {
   layerCount,
   MURMUR_COOLDOWN_S,
   MURMUR_GAIN_DB,
+  MURMUR_LINE_VOLUME,
   MURMUR_LINES,
   MURMUR_MIN_GROUP,
   type OneShot,
@@ -44,9 +45,17 @@ const group = (name: string, files: readonly string[], volume = ANSWER_VOLUME) =
   sfx: files.map((file) => ({ file, params: [volume] })),
 });
 
-/** The Viking murmur's own wavs; its group also lists two answer lines louder, as the data does. */
-const VIKING_MURMUR = ['talk/v1.wav', 'talk/v2.wav', 'talk/v3.wav', 'talk/v4.wav'];
-const VIKING_TALK = group('Talk Viking Male', VIKING_MURMUR, MURMUR_VOLUME);
+/** Talk wavs `talk/<prefix>1.wav` onwards, `count` of them. */
+const talkWavs = (prefix: string, count: number): string[] =>
+  Array.from({ length: count }, (_, i) => `talk/${prefix}${i + 1}.wav`);
+/** The bank's sighs and gasps, which its talk groups list beside their lines. */
+const DISTRESS = ['generic/human_sigh m 01.wav', 'generic/human_gasp m 01.wav'];
+/** The Viking talk group's laughs: too few to murmur with once its answer lines, sighs and gasps are
+ *  left out, as in the data, so Vikings murmur with their other actors' "ok" lines. */
+const VIKING_LAUGHS = talkWavs('laugh', MURMUR_MIN_TALK_WAVS - 1);
+const VIKING_TALK = group('Talk Viking Male', [...VIKING_LAUGHS, ...DISTRESS], MURMUR_VOLUME);
+/** The Frank talk group's own lines, enough to murmur with. */
+const FRANK_MURMUR = talkWavs('f', MURMUR_MIN_TALK_WAVS);
 
 const bank: SoundBank = {
   staticGroups: [
@@ -61,8 +70,8 @@ const bank: SoundBank = {
       ...VIKING_TALK,
       sfx: [...group('', ['humantalk/m1ok01.wav', 'humantalk/m1no01.wav']).sfx, ...VIKING_TALK.sfx],
     },
-    group('Talk Franks Male', ['talk/f1.wav', 'talk/f2.wav'], MURMUR_VOLUME),
-    group('Talk Arabs Male', ['talk/a1.wav'], MURMUR_VOLUME),
+    group('Talk Franks Male', [...FRANK_MURMUR, ...DISTRESS], MURMUR_VOLUME),
+    group('Talk Arabs Male', talkWavs('a', MURMUR_MIN_TALK_WAVS), MURMUR_VOLUME),
   ],
   ambient: [],
   jingles: [],
@@ -225,29 +234,102 @@ describe('group answer layers', () => {
 });
 
 describe('group answer murmur', () => {
-  it('lays a murmur of the members tribes under a group from its threshold, cooling between orders', () => {
+  /** Six Viking actors, so a group answered by four leaves two silent to murmur with. */
+  const ACTORS = 6;
+  const actorPool = (n: number) => `Viking male ok ${String(n).padStart(2, '0')}`;
+  const actorWav = (n: number) => `humantalk/m${n}ok01.wav`;
+  const actorPools = Array.from({ length: ACTORS }, (_, i) => actorPool(i + 1));
+  const crowdIndex = buildSoundIndex(
+    {
+      ...bank,
+      staticGroups: [
+        ...bank.staticGroups.filter((g) => !g.name.startsWith('Viking male ok')),
+        ...Array.from({ length: ACTORS }, (_, i) => group(actorPool(i + 1), [actorWav(i + 1)])),
+      ],
+      humanVoices: [
+        { tribe: VIKING, voiceClass: 'male', respondOk: actorPools, respondNo: ['Viking male no 01'] },
+        { tribe: FRANK, voiceClass: 'male', respondOk: ['Frank male ok 01'], respondNo: [] },
+      ],
+    },
+    [],
+    [],
+    [],
+    [
+      { typeId: VIKING, id: 'viking' },
+      { typeId: FRANK, id: 'frank' },
+    ],
+  );
+  const crowdAnswer = (entities: readonly EntitySnapshot[]): readonly OneShot[] =>
+    directAudio({
+      events: [],
+      snapshot: snapshotOf(entities),
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index: crowdIndex,
+      bindings,
+      responses: [{ members: idsOf(entities) }],
+    }).oneShots;
+  const isMurmur = (s: OneShot): boolean => s.key.startsWith('murmur:');
+
+  it('lays no murmur under a group short of its threshold', () => {
     const below = army(MURMUR_MIN_GROUP - 1);
-    expect(keysOf(answer(below, { members: idsOf(below) })).some((k) => k.startsWith('murmur:'))).toBe(false);
-    // Most are Vikings, a few Franks: the murmur cycles through both, the larger first.
-    const mixed = [...army(MURMUR_MIN_GROUP), ...army(3, 900, FRANK)];
-    const murmur = answer(mixed, { members: idsOf(mixed) }).filter((s) => s.key.startsWith('murmur:'));
+    expect(crowdAnswer(below).some(isMurmur)).toBe(false);
+  });
+
+  it('murmurs with the actors that did not answer and a talk pool, the larger tribe first', () => {
+    // Vikings at the centre, a few Franks off to the right, so the lead and layers are all Vikings.
+    const FRANK_OFFSET = 3;
+    const mixed = [
+      ...army(MURMUR_MIN_GROUP),
+      ...army(3, 900, FRANK).map((m) => man(m.id, FRANK, CENTRE_COL + FRANK_OFFSET)),
+    ];
+    const shots = crowdAnswer(mixed);
+    const answered = new Set(shots.filter((s) => s.key.startsWith('respond:')).flatMap((s) => s.files));
+    expect(answered.size).toBe(1 + ANSWER_LAYERS.length);
+    const murmur = shots.filter(isMurmur);
     expect(murmur).toHaveLength(MURMUR_LINES.length);
-    expect(murmur.map((s) => s.files[0])).toEqual(['talk/v1.wav', 'talk/f1.wav', 'talk/v1.wav']);
+    const [first, frank, third] = murmur;
+    for (const line of [first, third]) {
+      expect(line?.files).toHaveLength(1);
+      expect(answered.has(line?.files[0] ?? '')).toBe(false); // an actor that did not answer
+      expect(line?.unheld).toBe(true);
+      expect(line?.gain).toBeCloseTo(authoredVolumeGain(MURMUR_LINE_VOLUME) * dbGain(MURMUR_GAIN_DB));
+    }
+    expect(first?.files).not.toEqual(third?.files); // the two silent actors take turns
+    expect(frank?.files).toEqual(FRANK_MURMUR);
+    expect(frank?.unheld).toBeUndefined();
+    expect(frank?.gain).toBeCloseTo(authoredVolumeGain(MURMUR_VOLUME) * dbGain(MURMUR_GAIN_DB));
     murmur.forEach((shot, i) => {
       expect(shot.delayS).toBe(MURMUR_LINES[i]?.delayS);
-      expect(shot.gain).toBeCloseTo(authoredVolumeGain(MURMUR_VOLUME) * dbGain(MURMUR_GAIN_DB));
       expect(shot.cooldownS).toBe(MURMUR_COOLDOWN_S);
       expect(shot.exclusive).toBe('wav');
     });
   });
 
-  it('murmurs none of the answer lines its talk group lists, at the level of the wavs it keeps', () => {
-    const pool = index.murmurByTribe.get(VIKING)?.male;
-    expect(pool).toEqual(VIKING_MURMUR);
-    expect(pool === undefined ? undefined : poolGain(index, pool)).toBe(authoredVolumeGain(MURMUR_VOLUME));
+  it('never holds the next answer of an actor it murmurs with', () => {
+    const shots = crowdAnswer(army(MURMUR_MIN_GROUP));
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => DEFAULT_CLIP_LENGTH_S } });
+    const line = arbiter.decide(shots, 0).find(isMurmur);
+    const actor = actorPools.find(
+      (name) => crowdIndex.groupsByName.get(name.toLowerCase())?.[0] === line?.files[0],
+    );
+    expect(actor).toBeDefined();
+    const files = crowdIndex.groupsByName.get(actor?.toLowerCase() ?? '') ?? [];
+    const next: OneShot = { files, gain: 1, pan: 0, key: `respond:${actor}`, exclusive: 'group' };
+    const murmurSounds = (MURMUR_LINES[0]?.delayS ?? 0) + DEFAULT_CLIP_LENGTH_S / 2;
+    expect(arbiter.decide([next], murmurSounds)).toHaveLength(1);
   });
 
-  it('lays no murmur for a tribe whose talk group holds only answer lines', () => {
+  it('keeps only the talk lines of a talk group, without its answer lines, sighs and gasps', () => {
+    const pool = index.murmurByTribe.get(FRANK)?.male;
+    expect(pool).toEqual(FRANK_MURMUR);
+    expect(pool === undefined ? undefined : poolGain(index, pool)).toBe(authoredVolumeGain(MURMUR_VOLUME));
+    // The Viking group keeps too few laughs to murmur with.
+    expect(index.murmurByTribe.get(VIKING)?.male).toBeUndefined();
+  });
+
+  it('lays no murmur when the only actor answered and the talk group holds only answer lines', () => {
     const answersOnly = buildSoundIndex(
       {
         ...bank,
@@ -289,21 +371,19 @@ describe('group answer murmur', () => {
         { typeId: SARACEN, id: 'saracen' },
       ],
     );
-    expect(lent.murmurByTribe.get(EGYPT)?.male).toEqual(['talk/a1.wav']);
+    expect(lent.murmurByTribe.get(EGYPT)?.male).toEqual(talkWavs('a', MURMUR_MIN_TALK_WAVS));
     expect(lent.murmurByTribe.get(EGYPT)).toBe(lent.murmurByTribe.get(SARACEN));
   });
 
   it('starts at most the lead, its layers and the murmur for a thousand-strong order', () => {
     const thousand = army(1000);
-    const shots = answer(thousand, { members: idsOf(thousand) });
+    const shots = crowdAnswer(thousand);
     const started = new OneShotArbiter().decide(shots, 0);
     expect(started).toHaveLength(1 + ANSWER_LAYERS.length + MURMUR_LINES.length);
-    // An order straight after: every pool is still answering and the murmur is cooling.
+    // An order straight after: every answering pool is still sounding and the murmur is cooling.
     const again = new OneShotArbiter();
     again.decide(shots, 0);
-    expect(
-      again.decide(answer(thousand, { members: idsOf(thousand) }), DEFAULT_CLIP_LENGTH_S / 2),
-    ).toHaveLength(0);
+    expect(again.decide(crowdAnswer(thousand), DEFAULT_CLIP_LENGTH_S / 2)).toHaveLength(0);
   });
 });
 
@@ -505,7 +585,7 @@ describe('selection voice', () => {
     }
     expect(heard).toHaveLength(SELECTIONS);
     expect(new Set(heard)).toEqual(new Set(['humantalk/m2ok08.wav', 'humantalk/m2ok07.wav']));
-    heard.slice(1).forEach((line, i) => expect(line).not.toBe(heard[i]));
+    for (let i = 1; i < heard.length; i++) expect(heard[i]).not.toBe(heard[i - 1]);
     // Another settler, inside the shared cooldown of the last line: silent; past it: speaks.
     const last = (SELECTIONS - 1) * SELECT_COOLDOWN_S;
     expect(arbiter.decide(selectIn(6), last + SELECT_ANY_COOLDOWN_S / 2)).toEqual([]);

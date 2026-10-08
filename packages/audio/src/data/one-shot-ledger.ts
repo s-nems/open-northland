@@ -220,10 +220,11 @@ export class OneShotLedger {
     return { ...shot, files: [file] };
   }
 
-  /** A shot's start: its wav sounds from its delay on, and its key cools from now. */
+  /** A shot's start: its wav sounds from its delay on, holding it unless {@link OneShot.unheld}, and its
+   *  key cools from now. */
   private record(shot: OneShot, pool: PoolState, file: string, now: number, rate = 1): Play {
     const play: Play = { file, startedAt: now + (shot.delayS ?? 0), rate };
-    this.lastPlay.set(file, play);
+    if (shot.unheld !== true) this.lastPlay.set(file, play);
     this.keyReadyAt.set(shot.key, now + (shot.cooldownS ?? KEY_COOLDOWN_S));
     const shared = shot.sharedCooldown;
     if (shared !== undefined) this.keyReadyAt.set(shared.key, now + shared.cooldownS);

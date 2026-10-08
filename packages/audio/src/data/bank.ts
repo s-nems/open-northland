@@ -156,15 +156,16 @@ export const BORROWED_TRIBE_VOICES: ReadonlyMap<string, string> = new Map([['egy
 
 /** A tribe's murmur pool names by voice class. */
 export type MurmurGroups = Partial<Readonly<Record<VoiceClass, string>>>;
-/** A tribe's playable murmur wavs by voice class; a class without any does not murmur. */
+/** A tribe's playable murmur wavs by voice class; a class without a pool murmurs with its other
+ *  actors' answer lines. */
 export type MurmurPools = Partial<Readonly<Record<VoiceClass, readonly string[]>>>;
 
 /**
  * Tribe slug -> voice class -> the tribe's murmur pool: lines in its language mixed with laughs, gasps
  * and sighs at authored volume 40, which nothing in the original plays. A large group's answer lays a
  * few of them under its lines. A class the table leaves out murmurs with the tribe's men. Every group
- * also lists answer lines ("ok" and "no", the Viking ones at 80), which the index strips
- * ({@link murmurPools}).
+ * also lists answer lines ("ok" and "no", the Viking ones at 80), which the index strips, and the
+ * index leaves out {@link MURMUR_LEFT_OUT_WAVS} ({@link murmurPools}).
  */
 export const TRIBE_MURMUR_GROUPS: ReadonlyMap<string, MurmurGroups> = new Map([
   ['viking', { male: 'Talk Viking Male', female: 'Talk Viking Female' }],
@@ -172,6 +173,13 @@ export const TRIBE_MURMUR_GROUPS: ReadonlyMap<string, MurmurGroups> = new Map([
   ['byzantine', { male: 'Talk Byzanz Male', female: 'Talk Byzanz Female' }],
   ['saracen', { male: 'Talk Arabs Male' }],
 ]);
+
+/** Wav path prefixes a murmur pool leaves out: the sighs a hungry settler's notice speaks with and the
+ *  gasps, which read as distress, not as a crowd setting off. */
+export const MURMUR_LEFT_OUT_WAVS: readonly string[] = ['generic/human_sigh', 'generic/human_gasp'];
+/** Wavs a murmur pool must keep to murmur at all: fewer, and a bed of the same few laughs reads comic,
+ *  so the class murmurs with other actors' answer lines instead. Approximation. */
+export const MURMUR_MIN_TALK_WAVS = 8;
 
 /** The authored ids a content row joins by: a job's or a tribe's `typeId` and slug. */
 export interface AuthoredId {
@@ -366,9 +374,10 @@ function landscapeSoundPools(
 
 /**
  * Each tribe's murmur pools by its `typeId`, from its {@link TRIBE_MURMUR_GROUPS} row or its lender's.
- * A pool keeps the wavs of its group that are no tribe's answer line: a murmur on an answer wav would
- * say "no" under an accepted order and hold that answer's pool. Each pool's gain is that of the wavs it
- * keeps; a class left with none does not murmur.
+ * A pool keeps the wavs of its group that are no tribe's answer line, nor one of
+ * {@link MURMUR_LEFT_OUT_WAVS}: a murmur on an answer wav would say "no" under an accepted order and
+ * hold that answer's pool. Each pool's gain is that of the wavs it keeps; a class left with fewer than
+ * {@link MURMUR_MIN_TALK_WAVS} gets no pool here.
  */
 function murmurPools(
   sounds: SoundBank,
@@ -384,9 +393,12 @@ function murmurPools(
     const known = poolByGroup.get(key);
     if (known !== undefined) return known;
     const sfx = (sfxByName.get(key) ?? []).filter(
-      (s) => s.file !== SILENT_PLACEHOLDER_FILE && !answers.has(s.file),
+      (s) =>
+        s.file !== SILENT_PLACEHOLDER_FILE &&
+        !answers.has(s.file) &&
+        !MURMUR_LEFT_OUT_WAVS.some((prefix) => s.file.startsWith(prefix)),
     );
-    const files = sfx.length === 0 ? null : sfx.map((s) => s.file);
+    const files = sfx.length < MURMUR_MIN_TALK_WAVS ? null : sfx.map((s) => s.file);
     if (files !== null) poolGains.set(files, authoredVolumeGain(groupVolume(sfx)));
     poolByGroup.set(key, files);
     return files;

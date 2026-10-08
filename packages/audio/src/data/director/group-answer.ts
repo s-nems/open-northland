@@ -1,12 +1,13 @@
+import type { HumanVoices } from '@open-northland/data';
 import { type EntitySnapshot, entityById } from '@open-northland/sim';
-import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
+import { authoredVolumeGain, groupFiles, poolGain, type SoundIndex } from '../bank.js';
 import { clamp } from '../math.js';
 import { ANSWER_MUSIC_DUCK_DB } from '../mixer.js';
 import { entityTile } from '../snapshot.js';
 import { screenOffset } from '../spatial.js';
 import type { DirectorInput, OneShot, OrderAnswer, VoiceCall } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
-import { murmurPool, refusalGroup, responseGroup, selectLines } from '../voices.js';
+import { humanVoicesOf, murmurPool, refusalGroup, responseGroup, selectLines } from '../voices.js';
 
 /**
  * How a group answers the player: one lead line from the member nearest the screen centre, panned at
@@ -51,6 +52,9 @@ export const MURMUR_LINES: readonly Omit<AnswerLayer, 'gainDb'>[] = [
 ];
 /** The murmur's level below its pools' own authored volume, in dB. */
 export const MURMUR_GAIN_DB = -6;
+/** The authored volume a murmur of answer lines plays at: the one the data's talk groups give their
+ *  murmur lines, so it sits as far under the answer as a talk pool's. */
+export const MURMUR_LINE_VOLUME = 40;
 /** Seconds before another order may lay a murmur bed, so rapid orders do not pile beds up. */
 export const MURMUR_COOLDOWN_S = 2;
 
@@ -174,7 +178,10 @@ export function groupAnswerShots(input: DirectorInput, answer: OrderAnswer): One
     );
     shots.push({ ...shot, gain: shot.gain * dbGain(layer.gainDb), delayS: layer.delayS });
   });
-  if (count >= MURMUR_MIN_GROUP) shots.push(...murmurShots(input.index, members, pan));
+  if (count >= MURMUR_MIN_GROUP) {
+    const silent = nearest.slice(1 + layers.length);
+    shots.push(...murmurShots(input.index, members, nearest.slice(0, 1 + layers.length), silent, pan));
+  }
   return shots;
 }
 
@@ -190,31 +197,79 @@ function answerShot(index: SoundIndex, speaker: Speaker, key: string, pan: numbe
   };
 }
 
-/** The murmur bed's lines, cycling through the members' murmur pools from the most spoken. */
-function murmurShots(index: SoundIndex, members: readonly Member[], pan: number): OneShot[] {
-  const counts = new Map<readonly string[], number>();
-  for (const m of members) {
-    const pool = murmurPool(index, m.entity);
-    if (pool !== undefined) counts.set(pool, (counts.get(pool) ?? 0) + 1);
-  }
-  const pools = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([pool]) => pool);
-  if (pools.length === 0) return [];
-  return MURMUR_LINES.flatMap((line, i) => {
-    const files = pools[i % pools.length];
-    if (files === undefined) return [];
-    return [
-      {
-        files,
-        gain: poolGain(index, files) * dbGain(MURMUR_GAIN_DB),
-        pan: clampPan(pan + line.panOffset),
-        key: `murmur:${i}`,
-        bus: 'responses' as const,
-        exclusive: 'wav' as const,
-        delayS: line.delayS,
-        cooldownS: MURMUR_COOLDOWN_S,
-      },
-    ];
+/** Where a murmur line comes from: a tribe's talk pool, or the "ok" pools of a tribe and class's actors
+ *  that gave none of the answer's lines, which the line takes in turn. */
+type MurmurSource =
+  | { readonly kind: 'talk'; readonly files: readonly string[] }
+  | { readonly kind: 'actors'; readonly pools: readonly (readonly string[])[]; next: number };
+
+/** The actors' "ok" pools a class without a talk pool murmurs with: the silent members' own nearest
+ *  first, then the rest of the class's actors, leaving out every pool that answered. */
+function actorPools(
+  index: SoundIndex,
+  row: HumanVoices,
+  answered: readonly Speaker[],
+  silent: readonly Speaker[],
+): (readonly string[])[] {
+  const spoken = new Set(answered.map((speaker) => speaker.group));
+  const groups = silent.map((speaker) => speaker.group).filter((group) => row.respondOk.includes(group));
+  for (const group of row.respondOk) if (!spoken.has(group) && !groups.includes(group)) groups.push(group);
+  return groups.flatMap((group) => {
+    const files = groupFiles(index, group);
+    return files === undefined ? [] : [files];
   });
+}
+
+/**
+ * The murmur bed's lines, cycling through the members' murmur sources from the most spoken. A tribe and
+ * class with a talk pool murmurs from it; one without murmurs with other actors' "ok" lines at
+ * {@link MURMUR_LINE_VOLUME}, held by no pool, so the next order's answer never waits on its own
+ * actor's murmur.
+ */
+function murmurShots(
+  index: SoundIndex,
+  members: readonly Member[],
+  answered: readonly Speaker[],
+  silent: readonly Speaker[],
+  pan: number,
+): OneShot[] {
+  const counts = new Map<readonly string[] | HumanVoices, number>();
+  for (const m of members) {
+    const key = murmurPool(index, m.entity) ?? humanVoicesOf(index, m.entity);
+    if (key !== undefined) counts.set(key, (counts.get(key) ?? 0) + 1);
+  }
+  const sources: MurmurSource[] = [];
+  for (const [key] of [...counts.entries()].sort((a, b) => b[1] - a[1])) {
+    if (isWavList(key)) {
+      sources.push({ kind: 'talk', files: key });
+      continue;
+    }
+    const pools = actorPools(index, key, answered, silent);
+    if (pools.length > 0) sources.push({ kind: 'actors', pools, next: 0 });
+  }
+  if (sources.length === 0) return [];
+  const actorGain = authoredVolumeGain(MURMUR_LINE_VOLUME) * dbGain(MURMUR_GAIN_DB);
+  return MURMUR_LINES.flatMap((line, i) => {
+    const source = sources[i % sources.length];
+    if (source === undefined) return [];
+    const files = source.kind === 'talk' ? source.files : source.pools[source.next++ % source.pools.length];
+    if (files === undefined) return [];
+    const shot: OneShot = {
+      files,
+      gain: source.kind === 'talk' ? poolGain(index, files) * dbGain(MURMUR_GAIN_DB) : actorGain,
+      pan: clampPan(pan + line.panOffset),
+      key: `murmur:${i}`,
+      bus: 'responses',
+      exclusive: 'wav',
+      delayS: line.delayS,
+      cooldownS: MURMUR_COOLDOWN_S,
+    };
+    return [source.kind === 'talk' ? shot : { ...shot, unheld: true }];
+  });
+}
+
+function isWavList(key: readonly string[] | HumanVoices): key is readonly string[] {
+  return Array.isArray(key);
 }
 
 /**
