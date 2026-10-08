@@ -15,6 +15,7 @@ import type { MessageText } from './text.js';
  */
 export const USER_MESSAGE_TYPE = {
   lostWithoutSignposts: 0x03,
+  cannotFindGood: 0x04,
   workplaceNotFound: 0x08,
   vehicleSiteNotFound: 0x09,
   vehicleSiteOccupied: 0x0a,
@@ -111,7 +112,8 @@ export type IdleReasonKind =
   | 'noGame'
   | 'gameOutOfReach'
   | 'noConstructionSite'
-  | 'constructionShort';
+  | 'constructionShort'
+  | 'noFish';
 
 /** An idle worker's reason and the goods it names, possibly none. */
 export interface IdleReason {

@@ -7,10 +7,9 @@ import type { SystemContext } from '../../context.js';
 import { nodeHoldsOpenGood, openGatherGoods } from '../../economy/gather-goods.js';
 import { isHunterJob, MILITARY_MODE, stanceMode } from '../../readviews/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../../settlers/unreachable-goals.js';
-import { manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { anyHarvestAtomicPresent, anyResourceNear } from '../../spatial/resources.js';
-import { HUNT_CARCASS_SLACK_NODES, huntingGround } from './ground.js';
+import { groundDistance, HUNT_CARCASS_SLACK_NODES, huntingGround } from './ground.js';
 
 // Which bodies are a hunter's work: the kill claim that keeps two hunters off one carcass, and the
 // one-kill gate's probe that stops a hunter hunting while its own kill lies unbanked.
@@ -42,13 +41,13 @@ export function claimedByAnotherHunter(
   if (isUnreachableGoal(unreachableGoals(world, ctx, killer), at)) return false;
   const ground = huntingGround(world, terrain, killer);
   if (ground === null) return true; // an unposted hunter roams by sight - it has no ground to fall out of
-  return manhattan(terrain, ground.anchorCell, at) <= ground.radius + HUNT_CARCASS_SLACK_NODES;
+  return groundDistance(terrain, ground.anchorCell, at) <= ground.radius + HUNT_CARCASS_SLACK_NODES;
 }
 
 /**
  * Whether the hunter's ground still holds a carcass node its trade can harvest - the one-kill gate's probe:
- * standing work means no new target. The box query is a Manhattan superset, so each hit is re-checked at its
- * exact distance. It must not out-claim the harvest drive: a carcass the hunter provably cannot bank - a
+ * standing work means no new target. The box query is a superset of the map-point disc, so each hit is
+ * re-checked at its exact distance. It must not out-claim the harvest drive: a carcass the hunter provably cannot bank - a
  * colleague's claimed kill, one across a static terrain component seam, one on a cell its routes just
  * failed on, or a body holding no good its production counters leave open - counts as no work, else a
  * body it may never pluck would stall its hunting for good. The box walk still visits every resource in
@@ -87,7 +86,7 @@ export function huntingGroundHoldsCarcass(
       // Cheapest first: an array read and a ≤8-entry memo walk before the claim resolves a killer.
       if (terrain.componentOf(cell) !== hunterComponent) return false;
       if (isUnreachableGoal(memo, cell)) return false;
-      if (manhattan(terrain, ground.anchorCell, cell) > reach) return false;
+      if (groundDistance(terrain, ground.anchorCell, cell) > reach) return false;
       return !claimedByAnotherHunter(world, ctx, terrain, node, hunter);
     },
     allowed,

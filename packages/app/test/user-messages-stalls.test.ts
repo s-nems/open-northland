@@ -15,6 +15,7 @@ import {
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
   type SnapshotMessageSource,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
+import { IDLE_NOTE_TYPES } from '../src/hud/tool-panel/messages/idle-reasons.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import { NoteRetirement } from '../src/hud/tool-panel/messages/retire.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
@@ -363,8 +364,7 @@ describe('stalled workshops', () => {
         for (let i = from; i <= to; i++) {
           const out = source.sweep(world(i * SNAPSHOT_SWEEP_INTERVAL_TICKS, { collector: 'idle' }), naming);
           raised += out.filter(
-            (r) =>
-              r.pending.type === USER_MESSAGE_TYPE.nothingToDo && r.pending.subject?.entity === COLLECTOR,
+            (r) => IDLE_NOTE_TYPES.has(r.pending.type) && r.pending.subject?.entity === COLLECTOR,
           ).length;
         }
         return raised;

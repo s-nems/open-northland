@@ -10,6 +10,7 @@ export type NoticeLifecycle = 'state' | 'event';
 
 const LIFECYCLE: Readonly<Record<UserMessageTypeName, NoticeLifecycle>> = {
   lostWithoutSignposts: 'state',
+  cannotFindGood: 'state',
   workplaceNotFound: 'state',
   // The workshop's refusal memo stands while the search keeps failing (`retire.ts`).
   vehicleSiteNotFound: 'state',
@@ -85,6 +86,7 @@ const POLLED: ReadonlySet<UserMessageType> = new Set<UserMessageType>([
   USER_MESSAGE_TYPE.lostWithoutSignposts,
   USER_MESSAGE_TYPE.workplaceNotFound,
   USER_MESSAGE_TYPE.nothingToDo,
+  USER_MESSAGE_TYPE.cannotFindGood,
   USER_MESSAGE_TYPE.noVehicleForWork,
   USER_MESSAGE_TYPE.hungry,
   USER_MESSAGE_TYPE.tired,

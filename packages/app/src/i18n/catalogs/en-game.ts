@@ -568,6 +568,7 @@ export const enGame = {
         noConstructionSite: 'No construction site',
         constructionShort: 'Sites wait for: {goods}',
         gameOutOfReach: 'No way through to the game in the hunting ground',
+        noFish: 'No fish left in reach of the shore',
         noTool: 'no tool',
         noJob: 'no profession',
         inputAmount: '{good} ×{missing} (has {available}/{required})',
@@ -1152,6 +1153,11 @@ export const enGame = {
           few: '{count} without a cart',
           many: '{count} without a cart',
         },
+        cannotFindGood: {
+          one: '{count} out of resources',
+          few: '{count} out of resources',
+          many: '{count} out of resources',
+        },
         nothingToDo: { one: '{count} idle', few: '{count} idle', many: '{count} idle' },
       },
       groupHint: 'Count seal or →: pin the list · ×: whole group',
@@ -1620,8 +1626,8 @@ export const enGame = {
       vehicles: { one: '{count} vehicle', few: '{count} vehicles', many: '{count} vehicles' },
       wild: 'wild beasts',
     },
-    /** Why a worker idle at its workplace stands: the card line, and the sentence after the full note
-     *  with what to do. `{good}` lists the goods the reason is about; `withoutGood` serves a reason
+    /** Why an idle worker stands: the card line, and the sentence after the full note's lead with what
+     *  to do. `{good}` lists the goods the reason is about; `withoutGood` serves a reason
      *  whose goods have no name. */
     idleReason: {
       short: {
@@ -1636,6 +1642,7 @@ export const enGame = {
         noConstructionSite: 'Nothing to build',
         constructionShort: 'No {good}',
         gameOutOfReach: 'Game cut off',
+        noFish: 'No fish',
       },
       full: {
         noStorage: 'No store takes {good}. Build a store or make room in one.',
@@ -1650,14 +1657,14 @@ export const enGame = {
         },
         resourceRouteBlocked: 'No way through to {good}. Clear a path or mark another spot with a work flag.',
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
-        noGame:
-          'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
+        noGame: 'No free game in the hunting ground. Mark a spot where game grazes with a work flag.',
         noConstructionSite:
           'There is no construction site. Place a building or give the builder another trade.',
         constructionShort:
           'The sites wait for a good no store within their signpost reach holds: {good}. Make or bring some in, or link a store that holds it with signposts.',
         gameOutOfReach:
           'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
+        noFish: 'No fish left in reach of the shore. Mark water where fish swim with a work flag.',
       },
       withoutGood: {
         noStorage: 'No store takes the load. Build a store or make room in one.',
@@ -1673,16 +1680,22 @@ export const enGame = {
         resourceRouteBlocked:
           'No way through to the resources. Clear a path or mark another spot with a work flag.',
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
-        noGame:
-          'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
+        noGame: 'No free game in the hunting ground. Mark a spot where game grazes with a work flag.',
         noConstructionSite:
           'There is no construction site. Place a building or give the builder another trade.',
         constructionShort:
           'The sites wait for a good no store within their signpost reach holds. Make or bring some in, or link a store that holds it with signposts.',
         gameOutOfReach:
           'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
+        noFish: 'No fish left in reach of the shore. Mark water where fish swim with a work flag.',
       },
       unknown: 'The cause is unclear. Check that the workplace has a store and the goods it needs in reach.',
+    },
+    /** The lead of the note about a trade that finds none of its resource, before the reason's sentence. */
+    cannotFindGood: {
+      game: '{name} has nothing to hunt.',
+      fish: '{name} has no fish to catch.',
+      goods: '{name} has nothing to gather.',
     },
     /** A couple's wish for a child that waits on the player: the card line, and the whole message about
      *  the woman. `{partner}` is her husband's name with a leading space, or empty. */

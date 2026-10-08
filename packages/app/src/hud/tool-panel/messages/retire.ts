@@ -20,12 +20,15 @@ import {
   familyNoteWaitOf,
   hasWorkplaceToWorkAt,
   holdsPost,
+  type IdleReasonReader,
   idleNoteHeldByStall,
   idlesBetweenLoads,
   isStillDying,
   lacksTradeCart,
   occupationOf,
+  worksAtOwnFlag,
 } from './from-snapshot.js';
+import { IDLE_NOTE_TYPES, idleNoteType } from './idle-reasons.js';
 import type { ShortageReader } from './site-shortages.js';
 import { USER_MESSAGE_TYPE, type UserMessage } from './types.js';
 import type { StallReader } from './workshop-stalls.js';
@@ -58,16 +61,21 @@ function isNeedNoteOver(m: UserMessage, snapshot: WorldSnapshot, e: SnapshotEnti
 
 /** The polled idle notes last as long as the sweep's idle run would: idle chatter's walk keeps the run,
  *  so it keeps the note too, while anything the planner gave the settler, an order or a held post ends
- *  both. */
+ *  both. A worker's two idle notes hand over to each other as the sweep's reason moves between a
+ *  shortage and anything else. */
 function isIdleNoteOver(
   m: UserMessage,
   snapshot: WorldSnapshot,
   e: SnapshotEntity,
   stalls: StallReader | null,
+  idleReasons: IdleReasonReader | null,
 ): boolean {
   if (occupationOf(snapshot, e) === 'busy' || holdsPost(e)) return true;
-  if (m.type === USER_MESSAGE_TYPE.nothingToDo) {
-    return !hasWorkplaceToWorkAt(snapshot, e) || idleNoteHeldByStall(e, stalls) || idlesBetweenLoads(e);
+  if (IDLE_NOTE_TYPES.has(m.type)) {
+    const posted = hasWorkplaceToWorkAt(snapshot, e);
+    if (posted ? idleNoteHeldByStall(e, stalls) || idlesBetweenLoads(e) : !worksAtOwnFlag(e)) return true;
+    const reason = idleReasons?.(e.id);
+    return reason !== undefined && idleNoteType(reason) !== m.type;
   }
   if (m.type === USER_MESSAGE_TYPE.workplaceNotFound) {
     return workplaceOf(e) !== undefined || workFlagOf(e) !== undefined;
@@ -143,6 +151,7 @@ export class NoteRetirement {
     private readonly fights: FightAreas,
     private readonly stalls: StallReader | null = null,
     private readonly shortages: ShortageReader | null = null,
+    private readonly idleReasons: IdleReasonReader | null = null,
   ) {}
 
   isOver(m: UserMessage, snapshot: WorldSnapshot): boolean {
@@ -159,9 +168,10 @@ export class NoteRetirement {
       case USER_MESSAGE_TYPE.willDie:
         return !isStillDying(e);
       case USER_MESSAGE_TYPE.nothingToDo:
+      case USER_MESSAGE_TYPE.cannotFindGood:
       case USER_MESSAGE_TYPE.workplaceNotFound:
       case USER_MESSAGE_TYPE.noVehicleForWork:
-        return isIdleNoteOver(m, snapshot, e, this.stalls);
+        return isIdleNoteOver(m, snapshot, e, this.stalls, this.idleReasons);
       case USER_MESSAGE_TYPE.productionStalled:
         return isStallOver(m, e, this.stalls);
       case USER_MESSAGE_TYPE.constructionStarved:

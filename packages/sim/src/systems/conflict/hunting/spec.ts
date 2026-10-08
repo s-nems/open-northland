@@ -4,12 +4,17 @@ import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { openGatherGoods } from '../../economy/gather-goods.js';
 import { isLastResortPrey } from '../../readviews/index.js';
-import { hexNodeDistance, manhattan } from '../../spatial/metric.js';
+import { hexNodeDistance } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
 import type { CombatIndex } from '../combat-index.js';
 import type { EngageSpec } from '../engagement.js';
 import { isHuntTarget } from '../targeting.js';
-import { HUNT_CHASE_SLACK_NODES, HUNT_LAST_RESORT_SCAN_FACTOR, huntingGround } from './ground.js';
+import {
+  groundDistance,
+  HUNT_CHASE_SLACK_NODES,
+  HUNT_LAST_RESORT_SCAN_FACTOR,
+  huntingGround,
+} from './ground.js';
 import { huntingGroundHoldsCarcass } from './kill-claim.js';
 import { preyHeldByOthers } from './prey-holds.js';
 
@@ -19,7 +24,8 @@ import { preyHeldByOthers } from './prey-holds.js';
  * The hunter's target-acquisition spec, and the owner of the one-kill-at-a-time rule (authored): while the
  * ground holds a harvestable carcass the hunter takes no new target. It accepts only huntable prey inside
  * its hunting ground, which anchors the chase leash but is never held - an idle hunter belongs to its
- * flag-gatherer drive. A hunter with neither flag nor workplace hunts by plain sight, unanchored.
+ * flag-gatherer drive. A hunter with neither flag nor workplace hunts by plain sight, unanchored. Fog never
+ * hides game from a hunter: the original's hunter search reads no fog at all.
  *
  * Last-resort livestock (huntPrey `lastResort`) is fenced off twice: `lowPriority` keeps normal game in the
  * ground ahead of it, and {@link lastResortGate} refuses it outright while real game stands in the wider
@@ -37,7 +43,6 @@ export function hunterEngageSpec(
   e: Entity,
   hereNode: NodeId,
   jobType: number | null,
-  seesTarget: (t: Entity) => boolean,
   givenUp: ((t: Entity) => boolean) | undefined,
   minDist: number,
   sight: number,
@@ -61,11 +66,7 @@ export function hunterEngageSpec(
     return huntsAny;
   };
   const acceptPrey = (t: Entity): boolean =>
-    hunts() &&
-    reachablePrey(t) &&
-    !heldByColleague(t) &&
-    seesTarget(t) &&
-    (givenUp === undefined || !givenUp(t));
+    hunts() && reachablePrey(t) && !heldByColleague(t) && (givenUp === undefined || !givenUp(t));
   const lastResortLivestock = (t: Entity): boolean => isLastResortAnimal(world, ctx, t);
   // `player` is null in every hunter spec: a hunter is never presence-gated, in any stance.
   const ground = huntingGround(world, terrain, e);
@@ -85,14 +86,12 @@ export function hunterEngageSpec(
       defend: null,
     };
   }
-  // The ground is a work-flag circle, counted in Manhattan nodes like every work area; only the weapon
-  // band and the search count map points.
   // Probed at most once per engage, on the first candidate to reach it.
   let carcassWork: boolean | null = null;
   const groundHasCarcassWork = (): boolean =>
     (carcassWork ??= huntingGroundHoldsCarcass(world, ctx, terrain, e, jobType, ground));
   const within = (t: Entity, reach: number): boolean =>
-    manhattan(terrain, ground.anchorCell, entityNode(world, terrain, t)) <= reach;
+    groundDistance(terrain, ground.anchorCell, entityNode(world, terrain, t)) <= reach;
   const lastResortOk = lastResortGate(
     terrain,
     index,
@@ -111,14 +110,13 @@ export function hunterEngageSpec(
     accept,
     minDist,
     // From wherever the hunter stands, `dist(here, anchor) + radius` provably covers every in-ground
-    // candidate (triangle inequality, and a map-point distance never exceeds the Manhattan one), and
-    // collapses to ~radius when it stands on its ground.
-    searchRadius: manhattan(terrain, hereNode, ground.anchorCell) + ground.radius,
+    // candidate (triangle inequality), and collapses to ~radius when it stands on its ground.
+    searchRadius: groundDistance(terrain, hereNode, ground.anchorCell) + ground.radius,
     player: null,
     preySeeker: true,
     lowPriority: lastResortLivestock,
     lock: { target: livePrey(world, e, held) },
-    defend: { anchorCell: ground.anchorCell, leash, metric: 'manhattan', hold: false },
+    defend: { anchorCell: ground.anchorCell, leash, hold: false },
   };
 }
 
@@ -151,8 +149,7 @@ export function isLastResortAnimal(world: World, ctx: SystemContext, t: Entity):
  * engage, because it costs a multiple of the acquisition band.
  *
  * "Game around" is deliberately wider than what this hunter may take: a colleague's committed animal
- * counts, and so does game under fog - the one unfogged read in the hunting policy, because whether a
- * settlement may eat its own stock must not turn on the session's fog mode.
+ * counts too.
  */
 export function lastResortGate(
   terrain: TerrainGraph,
@@ -167,7 +164,8 @@ export function lastResortGate(
     if (gameless === null) {
       const { x, y } = terrain.coordsOf(at);
       const scan = radius * HUNT_LAST_RESORT_SCAN_FACTOR;
-      gameless = index.nearest(x, y, 0, scan, (t) => !lastResort(t) && reachablePrey(t), null) === null;
+      const game = (t: Entity): boolean => !lastResort(t) && reachablePrey(t);
+      gameless = index.nearest(x, y, 0, scan, game, null, 'hex') === null;
     }
     return gameless;
   };

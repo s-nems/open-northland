@@ -5,8 +5,8 @@ import type { NodeId } from '../../nav/terrain/index.js';
  * Binds a field worker to its own flag - the collection point it carries every harvested good to. For
  * an ordinary gatherer it is also the centre of the bounded area it looks for work in:
  *
- *  - it harvests only nodes within `radius` (integer node-distance) of `flag`, and with nothing in range
- *    stands idle beside the flag rather than roaming the map;
+ *  - it harvests only nodes within `radius` (Manhattan nodes; a hunter's ground counts map points) of
+ *    `flag`, and with nothing in range stands idle beside the flag rather than roaming the map;
  *  - it collects only its own harvested drops ({@link HarvestedBy} keyed to it), leaving loose piles alone;
  *  - it delivers its load onto loose ground heaps around `flag`, not into the nearest store.
  *
@@ -64,12 +64,11 @@ export const YardDeliveryRoute = defineComponent<{
 export const DEFAULT_WORK_FLAG_RADIUS = 32;
 
 /**
- * The hunter's work radius in the same node-distance, wider than the gatherer default because a hunter
- * ranges after mobile game that scatters on every shot. Hunter-only; every other gatherer keeps the
- * default. A named approximation - the original's hunter range is unknown - calibrated against kills
- * taken per sweep and how far the crew ends up standing from its flag.
+ * The hunter's work radius, counted in map points (hex distance) rather than the gatherer's Manhattan
+ * nodes. Original behavior, unconfirmed against the running original: a hunter looks for game within 50
+ * map points of its work centre. Hunter-only; every other gatherer keeps the default.
  */
-export const HUNTER_WORK_FLAG_RADIUS = 48;
+export const HUNTER_WORK_FLAG_RADIUS = 50;
 
 /**
  * How many re-plant searches in a row found nothing for a gatherer whose patch is worked out, held on

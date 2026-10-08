@@ -9,13 +9,16 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { HUNT_CHASE_SLACK_NODES, workplaceHuntingGround } from '../../conflict/hunting/index.js';
+import {
+  groundDistance,
+  HUNT_CHASE_SLACK_NODES,
+  workplaceHuntingGround,
+} from '../../conflict/hunting/index.js';
 import { huntingGroundHoldsCarcass } from '../../conflict/hunting/kill-claim.js';
 import { isHuntTarget } from '../../conflict/targeting.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { hunterJobType, isHunterJob } from '../../readviews/index.js';
-import { manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { OPENING_HUNT_UNTIL_TICKS } from '../game-phase.js';
 import { ownedSettlers } from '../seat-roster.js';
@@ -94,7 +97,7 @@ function huntWorkLeft(
   for (const t of world.query(StayPoint, Settler, Position)) {
     if (!isHuntTarget(world, ctx, t, hunterJob)) continue;
     const at = entityNode(world, terrain, t);
-    if (manhattan(terrain, ground.anchorCell, at) > reach) continue;
+    if (groundDistance(terrain, ground.anchorCell, at) > reach) continue;
     if (home < 0 || terrain.componentOf(at) === home) return true;
   }
   return false;

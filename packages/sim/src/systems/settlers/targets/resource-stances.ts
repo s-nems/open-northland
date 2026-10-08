@@ -1,8 +1,29 @@
-import type { NodeId } from '../../../nav/terrain/index.js';
+import { hexDistanceBetween } from '../../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { dynamicBlockOverlay, routeRegions } from '../../footprint/index.js';
 import { manhattan } from '../../spatial/metric.js';
 import type { PlannerContext } from '../planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
+
+/** A work area: `radius` Manhattan nodes around `center`, or map points under `metric: 'hex'`, the
+ *  hunting ground's measure. */
+export interface WorkBound {
+  readonly center: NodeId;
+  readonly radius: number;
+  readonly metric?: 'hex';
+}
+
+/** The distance from `bound`'s centre to node (x, y), in the bound's own metric. */
+export function workBoundDistance(terrain: TerrainGraph, bound: WorkBound, x: number, y: number): number {
+  const cx = terrain.xOf(bound.center);
+  const cy = terrain.yOf(bound.center);
+  return bound.metric === 'hex' ? hexDistanceBetween(cx, cy, x, y) : Math.abs(x - cx) + Math.abs(y - cy);
+}
+
+/** Whether `node` lies inside `bound`. */
+export function inWorkBound(terrain: TerrainGraph, bound: WorkBound, node: NodeId): boolean {
+  return workBoundDistance(terrain, bound, terrain.xOf(node), terrain.yOf(node)) <= bound.radius;
+}
 
 /**
  * The gates a stance must pass for this settler to walk there, the same ones the harvest scan applies
@@ -12,7 +33,7 @@ import { isUnreachableGoal, unreachableGoals } from '../unreachable-goals.js';
  */
 export function collectorStanceGates(
   plan: Pick<PlannerContext, 'world' | 'ctx' | 'terrain' | 'entity' | 'here' | 'limit'>,
-  bound: { center: NodeId; radius: number } | undefined,
+  bound: WorkBound | undefined,
 ): (cell: NodeId) => boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
@@ -25,7 +46,7 @@ export function collectorStanceGates(
       !isUnreachableGoal(unreachable, cell) &&
       terrain.componentOf(cell) === terrain.componentOf(here) &&
       (gate === undefined || gate.allowsNode(cell)) &&
-      (bound === undefined || manhattan(terrain, bound.center, cell) <= bound.radius) &&
+      (bound === undefined || inWorkBound(terrain, bound, cell)) &&
       !regions.unroutable(here, cell));
 }
 

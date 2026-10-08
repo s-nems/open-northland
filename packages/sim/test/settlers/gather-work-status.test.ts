@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   Building,
   Carrying,
+  FishSwarm,
   Owner,
   Position,
   ProductionCounters,
@@ -76,18 +77,30 @@ describe('selected gatherer work diagnostics', () => {
     expect(sim.workStatus(entity)).toEqual({ kind: 'nothingSelected' });
   });
 
-  it('reports a stopped fisher selection while keeping its unsupported search explicit', () => {
+  it('reports a stopped fisher selection, and no fish once no swarm with fish lies in reach', () => {
     const base = testContent();
     const content = {
       ...base,
       jobs: base.jobs.map((job) => (job.typeId === 1 ? { ...job, id: 'fisher' } : job)),
     };
-    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(20, 12) });
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(160, 12) });
     const entity = worker(sim);
     sim.world.add(entity, ProductionCounters, { counters: [[1, 0]], cursor: 0 });
     expect(sim.workStatus(entity)).toEqual({ kind: 'nothingSelected' });
     sim.world.remove(entity, ProductionCounters);
+    expect(sim.workStatus(entity)).toEqual({ kind: 'noFish' });
+
+    // A fished-out swarm is no work; one with fish left in reach of the shore search may be.
+    const swarm = sim.world.create();
+    sim.world.add(swarm, Position, positionOfNode(30, 4));
+    sim.world.add(swarm, FishSwarm, { count: 0, continent: 0, shore: null });
+    expect(sim.workStatus(entity)).toEqual({ kind: 'noFish' });
+    sim.world.mut(swarm, FishSwarm).count = 1;
     expect(sim.workStatus(entity)).toEqual({ kind: 'unknown', reason: 'gatherSearch' });
+
+    // A flag moves where the search starts.
+    bindToFlag(sim, entity, 70, 2, 3);
+    expect(sim.workStatus(entity)).toEqual({ kind: 'noFish' });
   });
 
   it('bounds ownership probes even when every accepting sink belongs to another player', () => {

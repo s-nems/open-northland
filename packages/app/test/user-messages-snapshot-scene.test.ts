@@ -27,6 +27,7 @@ import {
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
   type SnapshotMessageSource,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
+import { IDLE_NOTE_TYPES } from '../src/hud/tool-panel/messages/idle-reasons.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
@@ -166,7 +167,7 @@ function watchWorkers(
     }
     for (const r of source.sweep(sim.snapshot(), naming)) {
       const subject = r.pending.subject?.entity;
-      if (r.pending.type === USER_MESSAGE_TYPE.nothingToDo && subject !== undefined && workers.has(subject)) {
+      if (IDLE_NOTE_TYPES.has(r.pending.type) && subject !== undefined && workers.has(subject)) {
         idleNotes.push(subject);
       }
     }
@@ -200,7 +201,7 @@ function firstIdleNotes(
   for (let i = 0; i < sweeps; i++) {
     sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
     for (const r of source.sweep(sim.snapshot(), naming)) {
-      if (r.pending.type !== USER_MESSAGE_TYPE.nothingToDo) continue;
+      if (!IDLE_NOTE_TYPES.has(r.pending.type)) continue;
       const entity = r.pending.subject?.entity ?? -1;
       if (!firstAt.has(entity)) firstAt.set(entity, i);
     }
@@ -220,7 +221,7 @@ function idleReasonsIn(scene: SceneWorld): string[] {
   for (let i = 0; i < 2 * IDLE_SWEEPS_BEFORE_MESSAGE; i++) {
     sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
     for (const r of source.sweep(sim.snapshot(), naming)) {
-      if (r.pending.type === USER_MESSAGE_TYPE.nothingToDo) reasons.add(r.pending.idle?.kind ?? 'none');
+      if (IDLE_NOTE_TYPES.has(r.pending.type)) reasons.add(r.pending.idle?.kind ?? 'none');
     }
   }
   return [...reasons];
@@ -306,7 +307,7 @@ describe('user messages read off real scene snapshots', () => {
     for (let i = 0; i < sweeps; i++) {
       sim.run(SNAPSHOT_SWEEP_INTERVAL_TICKS);
       for (const r of source.sweep(sim.snapshot(), naming)) {
-        expect(r.pending.type).not.toBe(USER_MESSAGE_TYPE.nothingToDo);
+        expect(IDLE_NOTE_TYPES.has(r.pending.type)).toBe(false);
         if (r.pending.type !== USER_MESSAGE_TYPE.productionStalled) continue;
         reasons.set(r.pending.subject?.entity ?? -1, r.pending.stall?.reason ?? '');
       }

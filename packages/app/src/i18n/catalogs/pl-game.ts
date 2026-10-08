@@ -558,6 +558,7 @@ export const plGame = {
         noConstructionSite: 'Brak placu budowy',
         constructionShort: 'Budowy czekają na: {goods}',
         gameOutOfReach: 'Brak dojścia do zwierzyny w terenie łowieckim',
+        noFish: 'Brak ryb w zasięgu brzegu',
         noTool: 'bez narzędzia',
         noJob: 'bez zawodu',
         inputAmount: '{good} ×{missing} (jest {available}/{required})',
@@ -1130,6 +1131,11 @@ export const plGame = {
         hungry: { one: '{count} chce jeść', few: '{count} chcą jeść', many: '{count} chce jeść' },
         workplaceNotFound: { one: '{count} bez pracy', few: '{count} bez pracy', many: '{count} bez pracy' },
         noVehicleForWork: { one: '{count} bez wozu', few: '{count} bez wozu', many: '{count} bez wozu' },
+        cannotFindGood: {
+          one: '{count} bez zasobów',
+          few: '{count} bez zasobów',
+          many: '{count} bez zasobów',
+        },
         nothingToDo: { one: '{count} bez zajęcia', few: '{count} bez zajęcia', many: '{count} bez zajęcia' },
       },
       groupHint: 'Pieczęć z liczbą albo →: przypnij listę · ×: cała grupa',
@@ -1610,6 +1616,7 @@ export const plGame = {
         noConstructionSite: 'Nic do budowy',
         constructionShort: 'Brak: {good}',
         gameOutOfReach: 'Zwierz odcięty',
+        noFish: 'Brak ryb',
       },
       full: {
         noStorage: 'Żaden magazyn nie przyjmie towaru: {good}. Zbuduj magazyn albo zrób w nim miejsce.',
@@ -1627,12 +1634,13 @@ export const plGame = {
         nothingAtFlag:
           'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
         noGame:
-          'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
+          'W terenie łowieckim nie ma wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
         noConstructionSite: 'Nie ma żadnego placu budowy. Postaw budynek albo nadaj mu inny zawód.',
         constructionShort:
           'Budowy czekają na towar, którego nie ma w żadnym magazynie w zasięgu ich drogowskazów: {good}. Wytwórz go, sprowadź albo połącz drogowskazami magazyn, który go ma.',
         gameOutOfReach:
           'Zwierzyna w terenie łowieckim stoi za wodą albo murem i nie da się do niej dojść. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
+        noFish: 'W zasięgu brzegu nie ma już ryb. Wskaż flagą roboczą wodę, w której pływają ryby.',
       },
       withoutGood: {
         noStorage: 'Żaden magazyn nie przyjmie niesionego towaru. Zbuduj magazyn albo zrób w nim miejsce.',
@@ -1650,14 +1658,20 @@ export const plGame = {
         nothingAtFlag:
           'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
         noGame:
-          'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
+          'W terenie łowieckim nie ma wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
         noConstructionSite: 'Nie ma żadnego placu budowy. Postaw budynek albo nadaj mu inny zawód.',
         constructionShort:
           'Budowy czekają na towar, którego nie ma w żadnym magazynie w zasięgu ich drogowskazów. Wytwórz go, sprowadź albo połącz drogowskazami magazyn, który go ma.',
         gameOutOfReach:
           'Zwierzyna w terenie łowieckim stoi za wodą albo murem i nie da się do niej dojść. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
+        noFish: 'W zasięgu brzegu nie ma już ryb. Wskaż flagą roboczą wodę, w której pływają ryby.',
       },
       unknown: 'Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',
+    },
+    cannotFindGood: {
+      game: '{name} nie ma na co polować.',
+      fish: '{name} nie ma czego łowić.',
+      goods: '{name} nie ma czego zbierać.',
     },
     familyBlocked: {
       short: {

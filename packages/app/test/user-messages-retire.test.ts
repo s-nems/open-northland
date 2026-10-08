@@ -1,4 +1,10 @@
-import { ONE, components as simComponents, systems, type WorldSnapshot } from '@open-northland/sim';
+import {
+  ONE,
+  components as simComponents,
+  systems,
+  type WorkStatus,
+  type WorldSnapshot,
+} from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { JOB_CARRIER, JOB_CIVILIST, JOB_SOLDIER, JOB_WOMAN } from '../src/catalog/jobs.js';
 import { createMessageFeed, type MessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
@@ -16,6 +22,7 @@ import {
   type UserMessage,
   type UserMessageType,
 } from '../src/hud/tool-panel/messages/types.js';
+import { WORK_STATUS_REASK_SWEEPS } from '../src/hud/tool-panel/messages/work-asks.js';
 
 const RAISED = 100;
 const HELD = RAISED + LOST_NOTE_HOLD_TICKS - 1;
@@ -417,5 +424,86 @@ describe('a store carrier idle at an empty pickup flag', () => {
     sweep(IDLE_SWEEPS_BEFORE_MESSAGE + 1, false);
     expect(feed.dismissed(card)).toBe(false);
     expect(feed.state().history).toEqual([]);
+  });
+});
+
+describe('a field worker whose trade finds nothing to work', () => {
+  const LOCAL = 0;
+  const STORE = SETTLER + 1;
+  const FLAG = SETTLER + 2;
+  const STORE_TYPE = 12;
+  const naming: MessageNaming = {
+    settler: (e) => ({ name: `S${e.id}`, jobLabel: null, female: false }),
+    building: () => 'Magazyn',
+    vehicle: () => 'Wóz',
+    player: () => 'Gracz',
+    stance: (state) => state,
+    paper: (paper) => `${paper.kind}:${paper.param}`,
+    technology: (kind, typeId) => `${kind}:${typeId}`,
+    text: (type) => ({ short: String(type), full: String(type) }),
+  };
+
+  function workerWorld(tick: number, post: 'store' | 'flag'): WorldSnapshot {
+    const owned = { Owner: { player: LOCAL }, Position: { x: 3 * ONE, y: 2 * ONE } };
+    return {
+      tick,
+      events: [],
+      entities: [
+        {
+          id: SETTLER,
+          components: {
+            ...owned,
+            Settler: { tribe: 1, jobType: JOB_CIVILIST },
+            Person: { person: true },
+            ...(post === 'store' ? { JobAssignment: { workplace: STORE } } : { WorkFlag: { flag: FLAG } }),
+            ...IDLE_STAND,
+          },
+        },
+        { id: STORE, components: { ...owned, Building: { buildingType: STORE_TYPE, tribe: 1, built: ONE } } },
+      ],
+    };
+  }
+
+  /** The message centre's raise, feed and retire order over idle sweeps, the sim answering `status`. */
+  function watch(post: 'store' | 'flag') {
+    const sim = { status: { kind: 'noGame' } as WorkStatus };
+    const source = createSnapshotMessageSource(LOCAL, {
+      types: [],
+      workStatus: (_entity, asked) => ({ status: sim.status, asked }),
+    });
+    const retirement = new NoteRetirement(
+      new FightAreas(),
+      source.stalls,
+      source.shortages,
+      source.idleReasons,
+    );
+    const feed = createMessageFeed();
+    let i = 0;
+    const sweeps = (n: number): [UserMessageType, string | undefined][] => {
+      for (let end = i + n; i < end; ) {
+        const snapshot = workerWorld(++i * SNAPSHOT_SWEEP_INTERVAL_TICKS, post);
+        for (const raised of source.sweep(snapshot, naming)) takeRaised(feed, raised, snapshot.tick);
+        feed.expire(snapshot.tick, (m) => retirement.isOver(m, snapshot));
+        retirement.endPass();
+      }
+      return feed.live().map((m) => [m.type, m.idle?.kind]);
+    };
+    return { sim, sweeps };
+  }
+
+  it('gets the shortage note at its post, handed over to nothing-to-do and back as the reason moves', () => {
+    const { sim, sweeps } = watch('store');
+    expect(sweeps(IDLE_SWEEPS_BEFORE_MESSAGE)).toEqual([[USER_MESSAGE_TYPE.cannotFindGood, 'noGame']]);
+    sim.status = { kind: 'nothingSelected' };
+    expect(sweeps(WORK_STATUS_REASK_SWEEPS)).toEqual([[USER_MESSAGE_TYPE.nothingToDo, 'nothingSelected']]);
+    sim.status = { kind: 'noFish' };
+    expect(sweeps(WORK_STATUS_REASK_SWEEPS)).toEqual([[USER_MESSAGE_TYPE.cannotFindGood, 'noFish']]);
+  });
+
+  it('speaks at its own flag only for a shortage, and goes quiet when the reason does', () => {
+    const { sim, sweeps } = watch('flag');
+    expect(sweeps(IDLE_SWEEPS_BEFORE_MESSAGE)).toEqual([[USER_MESSAGE_TYPE.cannotFindGood, 'noGame']]);
+    sim.status = { kind: 'nothingSelected' };
+    expect(sweeps(WORK_STATUS_REASK_SWEEPS)).toEqual([]);
   });
 });

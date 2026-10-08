@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { idleNoteType } from '../src/hud/tool-panel/messages/idle-reasons.js';
 import {
   composeMessageText,
   fightSummary,
   type MessageText,
   type MessageTextParts,
   type NoticeCopy,
+  userMessageTypeName,
 } from '../src/hud/tool-panel/messages/text.js';
 import {
   type IdleReasonKind,
@@ -226,7 +228,8 @@ describe('notice text', () => {
     );
     for (const { idle, goodName } of cases) {
       for (const female of [false, true]) {
-        const text = compose(copy, 'nothingToDo', { ...BARE, female, goodName, idle });
+        const name = userMessageTypeName(idleNoteType(idle));
+        const text = compose(copy, name, { ...BARE, female, goodName, idle });
         for (const line of [text.short, text.full]) {
           expect(line, idle?.kind).not.toMatch(PLACEHOLDER);
           expect(line, idle?.kind).not.toMatch(/[—–]| {2}|: ?[.,]|:$/);
@@ -241,15 +244,19 @@ describe('notice text', () => {
 
   it('names why an idle worker stands, with what to do, in place of a pointer to its panel', () => {
     const idle = (parts: Partial<MessageTextParts>) =>
-      compose(pl.userMessages, 'nothingToDo', { ...BARE, goodName: 'Drewno', ...parts });
+      compose(pl.userMessages, userMessageTypeName(idleNoteType(parts.idle ?? null)), {
+        ...BARE,
+        goodName: 'Drewno',
+        ...parts,
+      });
     expect(
       idle({ goodName: 'Drewno, Kamień', idle: { kind: 'noResourceInArea', goodTypes: [4, 5] } }),
     ).toEqual({
       short: 'Brak w obszarze',
-      full: 'Bjorn nie ma nic do roboty. W obszarze pracy nie znaleziono zasobów do zebrania: Drewno, Kamień. Wskaż flagą roboczą miejsce z zasobami albo rozszerz zasięg drogowskazów.',
+      full: 'Bjorn nie ma czego zbierać. W obszarze pracy nie znaleziono zasobów do zebrania: Drewno, Kamień. Wskaż flagą roboczą miejsce z zasobami albo rozszerz zasięg drogowskazów.',
     });
     expect(idle({ female: true, goodName: null, idle: { kind: 'noResource', goodTypes: [] } }).full).toBe(
-      'Bjorn nie ma nic do roboty. W zasięgu nie ma nic do zebrania. Nadaj jej inny zawód.',
+      'Bjorn nie ma czego zbierać. W zasięgu nie ma nic do zebrania. Nadaj jej inny zawód.',
     );
     expect(idle({ goodName: null, idle: { kind: 'nothingAtFlag', goodTypes: [] } })).toEqual({
       short: 'Nic do zebrania',
@@ -257,11 +264,15 @@ describe('notice text', () => {
     });
     expect(idle({ goodName: null, idle: { kind: 'noGame', goodTypes: [] } })).toEqual({
       short: 'Brak zwierzyny',
-      full: 'Bjorn nie ma nic do roboty. W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
+      full: 'Bjorn nie ma na co polować. W terenie łowieckim nie ma wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
     });
     expect(idle({ goodName: null, idle: { kind: 'gameOutOfReach', goodTypes: [] } }).short).toBe(
       'Zwierz odcięty',
     );
+    expect(idle({ goodName: null, idle: { kind: 'noFish', goodTypes: [] } })).toEqual({
+      short: 'Brak ryb',
+      full: 'Bjorn nie ma czego łowić. W zasięgu brzegu nie ma już ryb. Wskaż flagą roboczą wodę, w której pływają ryby.',
+    });
     expect(idle({ idle: null })).toEqual({
       short: 'Nic do roboty',
       full: 'Bjorn nie ma nic do roboty. Przyczyny nie widać. Sprawdź, czy miejsce pracy ma w zasięgu magazyn i potrzebne towary.',

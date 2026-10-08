@@ -11,8 +11,9 @@ import {
   WorkFlag,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, ONE, positionOfNode, Simulation, type TerrainMap } from '../../src/index.js';
+import { FOG_MODE, fx, ONE, positionOfNode, Simulation, type TerrainMap } from '../../src/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
+import { playerSeesEntity } from '../../src/systems/vision/index.js';
 import { COW, DEER, fighterAtNode, HUNTER } from '../conflict/combat-system/support.js';
 import { combatantAtNode, P0 } from '../conflict/stances/support.js';
 import { testContent } from '../fixtures/content.js';
@@ -35,7 +36,7 @@ const WOOD = 1;
 /** Enough ticks for the planner to stand an idle carrier, or to walk it to a pile. */
 const SETTLE_TICKS = 40;
 
-function hunterOn(map: TerrainMap): { sim: Simulation; hunter: Entity } {
+function hunterOn(map: TerrainMap, radius = GROUND_RADIUS): { sim: Simulation; hunter: Entity } {
   const sim = new Simulation({ seed: 1, content: testContent(), map });
   const hunter = combatantAtNode(sim, HUNTER_AT.hx, HUNTER_AT.hy, P0, MILITARY_MODE.IGNORE, {
     jobType: HUNTER,
@@ -43,7 +44,7 @@ function hunterOn(map: TerrainMap): { sim: Simulation; hunter: Entity } {
   const flag = sim.world.create();
   sim.world.add(flag, Position, positionOfNode(HUNTER_AT.hx, HUNTER_AT.hy));
   sim.world.add(flag, DeliveryFlag, {});
-  sim.world.add(hunter, WorkFlag, { flag, radius: GROUND_RADIUS });
+  sim.world.add(hunter, WorkFlag, { flag, radius });
   return { sim, hunter };
 }
 
@@ -71,6 +72,16 @@ describe('selected hunter work diagnostics', () => {
     const { sim, hunter } = hunterOn(grassNodeMap(48, 48));
     fighterAtNode(sim, HUNTER_AT.hx + 5, HUNTER_AT.hy, DEER, null);
     sim.step();
+    expect(sim.workStatus(hunter)).toEqual({ kind: 'unknown', reason: 'gatherSearch' });
+  });
+
+  it('counts game the player has not seen, as the acquisition does', () => {
+    // A ground wider than the hunter's own sight, with the deer past that sight.
+    const { sim, hunter } = hunterOn(grassNodeMap(64, 48), 26);
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
+    const deer = fighterAtNode(sim, HUNTER_AT.hx + 24, HUNTER_AT.hy, DEER, null);
+    sim.step();
+    expect(playerSeesEntity(sim.world, sim.fog, P0, deer)).toBe(false);
     expect(sim.workStatus(hunter)).toEqual({ kind: 'unknown', reason: 'gatherSearch' });
   });
 

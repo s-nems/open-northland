@@ -1,5 +1,5 @@
 import type { WorkStatus } from '@open-northland/sim';
-import type { IdleReason } from './types.js';
+import { type IdleReason, type IdleReasonKind, USER_MESSAGE_TYPE, type UserMessageType } from './types.js';
 
 const NO_GOODS: readonly number[] = [];
 
@@ -33,6 +33,7 @@ export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null 
     case 'noGame':
     case 'gameOutOfReach':
     case 'noConstructionSite':
+    case 'noFish':
       return { kind: status.kind, goodTypes: NO_GOODS };
     case 'constructionShort':
       return { kind: 'constructionShort', goodTypes: status.goodTypes };
@@ -55,4 +56,33 @@ export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null 
       return unreachable;
     }
   }
+}
+
+/** The trades whose work ran out, as the dedicated note words the lead: game, fish or gathered goods. */
+export type ShortageTrade = 'game' | 'fish' | 'goods';
+
+const SHORTAGE_TRADE: Partial<Readonly<Record<IdleReasonKind, ShortageTrade>>> = {
+  noResourceInArea: 'goods',
+  noResource: 'goods',
+  resourceRouteBlocked: 'goods',
+  noGame: 'game',
+  gameOutOfReach: 'game',
+  noFish: 'fish',
+};
+
+/** The trade whose resource `reason` says ran out or lies out of reach, or null for any other reason. */
+export function shortageTradeOf(reason: IdleReason | null): ShortageTrade | null {
+  return reason === null ? null : (SHORTAGE_TRADE[reason.kind] ?? null);
+}
+
+/** The two notes an idle worker's reason picks between. */
+export const IDLE_NOTE_TYPES: ReadonlySet<UserMessageType> = new Set([
+  USER_MESSAGE_TYPE.nothingToDo,
+  USER_MESSAGE_TYPE.cannotFindGood,
+]);
+
+/** The note an idle worker's `reason` raises: the original's "cannot find the good" note when its trade
+ *  finds nothing to work, else the nothing-to-do note. */
+export function idleNoteType(reason: IdleReason | null): UserMessageType {
+  return shortageTradeOf(reason) === null ? USER_MESSAGE_TYPE.nothingToDo : USER_MESSAGE_TYPE.cannotFindGood;
 }

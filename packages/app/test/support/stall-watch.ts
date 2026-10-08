@@ -6,6 +6,7 @@ import {
   createSnapshotMessageSource,
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
 } from '../../src/hud/tool-panel/messages/from-snapshot.js';
+import { IDLE_NOTE_TYPES } from '../../src/hud/tool-panel/messages/idle-reasons.js';
 import type { MessageNaming } from '../../src/hud/tool-panel/messages/raise.js';
 import { NoteRetirement } from '../../src/hud/tool-panel/messages/retire.js';
 import {
@@ -61,7 +62,7 @@ export function watchStalls(sim: Simulation): { run(sweeps: number): StallWatchR
       return {
         raised,
         standing: live.filter((m) => m.type === USER_MESSAGE_TYPE.productionStalled),
-        idle: live.filter((m) => m.type === USER_MESSAGE_TYPE.nothingToDo),
+        idle: live.filter((m) => IDLE_NOTE_TYPES.has(m.type)),
       };
     },
   };

@@ -611,6 +611,7 @@ export const deGame = {
         noConstructionSite: 'Keine Baustelle',
         constructionShort: 'Baustellen warten auf: {goods}',
         gameOutOfReach: 'Kein Weg zum Wild im Jagdgebiet',
+        noFish: 'Keine Fische in Reichweite des Ufers',
         noTool: 'Kein Werkzeug',
         noJob: 'Kein Beruf',
         inputAmount: '{good} ×{missing} (vorhanden: {available}/{required})',
@@ -1266,6 +1267,11 @@ export const deGame = {
           few: '{count} ohne Karren',
           many: '{count} ohne Karren',
         },
+        cannotFindGood: {
+          one: '{count} ohne Rohstoffe',
+          few: '{count} ohne Rohstoffe',
+          many: '{count} ohne Rohstoffe',
+        },
         nothingToDo: {
           one: '{count} untätig',
           few: '{count} untätig',
@@ -1794,6 +1800,7 @@ export const deGame = {
         noConstructionSite: 'Nichts zu bauen',
         constructionShort: 'Kein {good}',
         gameOutOfReach: 'Wild unerreichbar',
+        noFish: 'Keine Fische',
       },
       full: {
         noStorage:
@@ -1812,13 +1819,15 @@ export const deGame = {
         nothingAtFlag:
           'Bei der Fahne liegt nichts zum Einsammeln. Versetze die Fahne an einen Ort mit Waren oder entferne sie.',
         noGame:
-          'Im Jagdgebiet ist kein freies Wild zu sehen. Markiere einen Ort, an dem Wild weidet, mit einer Arbeitsfahne.',
+          'Im Jagdgebiet gibt es kein freies Wild. Markiere einen Ort, an dem Wild weidet, mit einer Arbeitsfahne.',
         noConstructionSite:
           'Es gibt keine Baustelle. Setze ein Gebäude oder gib dem Bauarbeiter einen anderen Beruf.',
         constructionShort:
           'Die Baustellen warten auf eine Ware, die kein Lager in ihrer Wegweiserreichweite hat: {good}. Stelle sie her, beschaffe sie oder verbinde ein Lager, das sie hat, mit Wegweisern.',
         gameOutOfReach:
           'Das Wild im Jagdgebiet steht hinter Wasser oder einer Mauer, ohne Durchgang. Mache einen Weg frei oder markiere einen anderen Ort mit einer Arbeitsfahne.',
+        noFish:
+          'In Reichweite des Ufers gibt es keine Fische mehr. Markiere mit einer Arbeitsfahne ein Gewässer, in dem Fische schwimmen.',
       },
       withoutGood: {
         noStorage: 'Kein Lager nimmt die Ladung an. Baue ein Lager oder schaffe Platz in einem bestehenden.',
@@ -1836,16 +1845,23 @@ export const deGame = {
         nothingAtFlag:
           'Bei der Fahne liegt nichts zum Einsammeln. Versetze die Fahne an einen Ort mit Waren oder entferne sie.',
         noGame:
-          'Im Jagdgebiet ist kein freies Wild zu sehen. Markiere einen Ort, an dem Wild weidet, mit einer Arbeitsfahne.',
+          'Im Jagdgebiet gibt es kein freies Wild. Markiere einen Ort, an dem Wild weidet, mit einer Arbeitsfahne.',
         noConstructionSite:
           'Es gibt keine Baustelle. Setze ein Gebäude oder gib dem Bauarbeiter einen anderen Beruf.',
         constructionShort:
           'Die Baustellen warten auf eine Ware, die kein Lager in ihrer Wegweiserreichweite hat. Stelle sie her, beschaffe sie oder verbinde ein Lager, das sie hat, mit Wegweisern.',
         gameOutOfReach:
           'Das Wild im Jagdgebiet steht hinter Wasser oder einer Mauer, ohne Durchgang. Mache einen Weg frei oder markiere einen anderen Ort mit einer Arbeitsfahne.',
+        noFish:
+          'In Reichweite des Ufers gibt es keine Fische mehr. Markiere mit einer Arbeitsfahne ein Gewässer, in dem Fische schwimmen.',
       },
       unknown:
         'Die Ursache ist unklar. Prüfe, ob der Arbeitsplatz ein Lager und die benötigten Waren in Reichweite hat.',
+    },
+    cannotFindGood: {
+      game: '{name} hat nichts zu jagen.',
+      fish: '{name} hat nichts zu fischen.',
+      goods: '{name} hat nichts zu sammeln.',
     },
     familyBlocked: {
       short: {

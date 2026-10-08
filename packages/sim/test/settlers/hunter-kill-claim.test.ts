@@ -18,6 +18,7 @@ import {
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import { HUNT_CARCASS_SLACK_NODES } from '../../src/systems/conflict/hunting/index.js';
+import { huntingGroundHoldsCarcass } from '../../src/systems/conflict/hunting/kill-claim.js';
 import { anchorOnlyFootprint, stampResourceFootprintData } from '../../src/systems/index.js';
 import { setJob } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
@@ -234,6 +235,23 @@ describe('hunter - one hunter per kill, inside its own ground', () => {
 
     expect(meatLeft(sim, beyond)).toBe(4);
     expect(strayed).toBeLessThanOrEqual(RADIUS + HUNT_CARCASS_SLACK_NODES);
+  });
+
+  it('works its own kill on the ground diagonal, which the one-kill gate counts as its work', () => {
+    const RADIUS = 8;
+    const FLAG = { hx: 20, hy: 20 };
+    const sim = new Simulation({ seed: 3, content: testContent(), map: grassNodeMap(48, 48) });
+    const hunter = hunterAtNode(sim, FLAG.hx, FLAG.hy);
+    bindFlagAtNode(sim, hunter, FLAG.hx, FLAG.hy, RADIUS);
+    // 16 rows and 8 columns off: 16 map points, inside the ground's kill slack; 24 Manhattan nodes,
+    // past any Manhattan band of the same radius.
+    const body = carcassAtNode(sim, FLAG.hx + 8, FLAG.hy + 16, hunter);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('the map sim has terrain');
+    const ground = { anchorCell: terrain.nodeAt(FLAG.hx, FLAG.hy), radius: RADIUS };
+    expect(huntingGroundHoldsCarcass(sim.world, ctxOf(sim), terrain, hunter, HUNTER, ground)).toBe(true);
+
+    expect(nodesWorkedBy(sim, hunter, 600)).toContain(body);
   });
 
   it('a workplace hunter ignores a kill outside its ground, and works the one inside it', () => {

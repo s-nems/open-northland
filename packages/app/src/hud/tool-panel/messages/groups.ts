@@ -19,7 +19,7 @@ type NoticeFamily = 'hunger' | 'idle';
 /** Each family's types, heaviest first: the order a stack's breakdown names them in. */
 const NOTICE_FAMILIES: Readonly<Record<NoticeFamily, readonly FamilyTypeName[]>> = {
   hunger: ['willDie', 'starving', 'hungry'],
-  idle: ['workplaceNotFound', 'noVehicleForWork', 'nothingToDo'],
+  idle: ['workplaceNotFound', 'noVehicleForWork', 'cannotFindGood', 'nothingToDo'],
 };
 
 /** A stack needs this many members; a lone note is a plain card. */

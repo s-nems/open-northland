@@ -28,9 +28,9 @@ function typesAt(level: MessagePriorityLevel): UserMessageType[] {
 }
 
 describe('user message priority (original behavior)', () => {
-  it('covers every one of the 34 types with one of the three levels', () => {
-    expect(ALL_TYPES).toHaveLength(34);
-    expect(typesAt(2).length + typesAt(1).length + typesAt(0).length).toBe(34);
+  it('covers every one of the 35 types with one of the three levels', () => {
+    expect(ALL_TYPES).toHaveLength(35);
+    expect(typesAt(2).length + typesAt(1).length + typesAt(0).length).toBe(35);
   });
 
   it('pins the important group', () => {
@@ -59,7 +59,7 @@ describe('user message priority (original behavior)', () => {
     expect(typesAt(0).sort((a, b) => a - b)).toEqual(
       routine.map((n) => USER_MESSAGE_TYPE[n]).sort((a, b) => a - b),
     );
-    expect(typesAt(1)).toHaveLength(17);
+    expect(typesAt(1)).toHaveLength(18);
     expect(messagePriority(USER_MESSAGE_TYPE.peopleAttacked)).toBe(1);
     expect(messagePriority(USER_MESSAGE_TYPE.hungry)).toBe(0);
     expect(messagePriority(USER_MESSAGE_TYPE.starving)).toBe(2);

@@ -3,18 +3,16 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { MILITARY_MODE, stanceMode } from '../../readviews/index.js';
-import { manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
-import { playerSeesEntity } from '../../vision/gates.js';
 import { combatDormantOn, passIndexOf } from '../combat-index.js';
 import { isHuntTarget, SIGHT_RADIUS_NODES } from '../targeting.js';
-import { huntingGround } from './ground.js';
+import { groundDistance, huntingGround } from './ground.js';
 import { preyHeldByOthers } from './prey-holds.js';
 import { isLastResortAnimal, lastResortGate, preyOnBank } from './spec.js';
 
 /**
  * What a hunter's prey acquisition finds in its ground: `game` an animal it would draw on, `cutOff` only
- * game across a terrain seam or given up as unreachable, `none` no free game it sees.
+ * game across a terrain seam or given up as unreachable, `none` no free game in its ground.
  */
 export type HuntingGameSurvey = 'game' | 'cutOff' | 'none';
 
@@ -32,8 +30,7 @@ export function surveyHuntingGame(
   e: Entity,
   jobType: number,
 ): HuntingGameSurvey | null {
-  const viewer = world.tryGet(e, Owner)?.player;
-  if (viewer === undefined || !world.has(e, Health)) return null;
+  if (!world.has(e, Owner) || !world.has(e, Health)) return null;
   if (stanceMode(world, ctx.content, e, jobType) !== MILITARY_MODE.IGNORE) return null;
   const index = passIndexOf(world, ctx.tick);
   if (index === null) return combatDormantOn(world, ctx.tick) ? 'none' : null;
@@ -64,8 +61,9 @@ export function surveyHuntingGame(
     radius,
     (t) => {
       if (!isHuntTarget(world, ctx, t, jobType)) return false;
-      if (ground !== null && manhattan(terrain, center, entityNode(world, terrain, t)) > radius) return false;
-      if (!playerSeesEntity(world, ctx.fog, viewer, t) || heldByColleague(t)) return false;
+      if (ground !== null && groundDistance(terrain, center, entityNode(world, terrain, t)) > radius)
+        return false;
+      if (heldByColleague(t)) return false;
       if (!preyOnBank(world, ctx, terrain, t, jobType, bank) || gaveUp(t)) {
         cutOff = true;
         return false;
@@ -73,7 +71,7 @@ export function surveyHuntingGame(
       return lastResortOk(t);
     },
     null,
-    ground === null ? 'hex' : 'manhattan',
+    'hex',
   );
   if (found !== null) return 'game';
   return cutOff ? 'cutOff' : 'none';

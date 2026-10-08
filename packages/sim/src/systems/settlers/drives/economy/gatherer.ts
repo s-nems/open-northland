@@ -23,7 +23,7 @@ import {
   nearestHarvestableFor,
   nearestOwnDropFor,
 } from '../../targets/index.js';
-import { collectorStanceGates } from '../../targets/resource-stances.js';
+import { collectorStanceGates, type WorkBound } from '../../targets/resource-stances.js';
 import { isUnreachableGoal, unreachableGoals } from '../../unreachable-goals.js';
 import type { HarvestClaims } from './harvest-claims.js';
 
@@ -57,8 +57,7 @@ export function planGatherer(plan: PlannerContext, harvestClaims: HarvestClaims,
   // the harvest that answers it cannot disagree about what its work is. A body that drifts past every
   // ground has no sweeper left. A hunter with neither flag nor workplace still roams unbounded.
   const ground = hunter ? huntingGround(world, terrain, e) : null;
-  const huntArea =
-    ground === null ? undefined : { center: ground.anchorCell, radius: carcassReach(plan, ground.radius) };
+  const huntArea = ground === null ? undefined : carcassArea(plan, ground.anchorCell, ground.radius);
   const focus =
     admits === null
       ? null
@@ -132,7 +131,9 @@ function planFlagGatherer(
     return true;
   }
   const hunter = isHunterJob(ctx.content, plan.jobType);
-  const reach = { center: flagCell, radius: hunter ? carcassReach(plan, flag.radius) : flag.radius };
+  const reach: WorkBound = hunter
+    ? carcassArea(plan, flagCell, flag.radius)
+    : { center: flagCell, radius: flag.radius };
   const admits = countersAdmit(plan);
   const focus =
     admits === null
@@ -177,13 +178,14 @@ function countersAdmit(plan: PlannerContext): ((node: Entity) => boolean) | null
 }
 
 /**
- * How far from a hunting ground's anchor this scan must still look for a carcass. The one-kill gate
+ * The area this scan must still look for a carcass in, in the ground's map points. The one-kill gate
  * measures a body at its anchor while this scan measures the work cell a settler stands on, so the scan
  * must stay a provable superset: any narrower and a body in the outer band reads as standing work the
  * hunter may never select, wedging it off hunting for good.
  */
-function carcassReach(plan: PlannerContext, radius: number): number {
-  return radius + HUNT_CARCASS_SLACK_NODES + contentIndex(plan.ctx.content).maxResourceWorkOffset;
+function carcassArea(plan: PlannerContext, center: NodeId, radius: number): WorkBound {
+  const offset = contentIndex(plan.ctx.content).maxResourceWorkOffset;
+  return { center, radius: radius + HUNT_CARCASS_SLACK_NODES + offset, metric: 'hex' };
 }
 
 /** The harvest-scan rejection; `claimedByAnotherHunter` owns the rule. */

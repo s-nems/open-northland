@@ -169,7 +169,7 @@ export class EngagementSpecs {
         player: number | null;
         lowPriority: (t: Entity) => boolean;
         lock: null;
-        defend: { anchorCell: NodeId; leash: number; metric: 'hex'; hold: boolean } | null;
+        defend: { anchorCell: NodeId; leash: number; hold: boolean } | null;
         hold: { keep: (t: Entity) => boolean; band: ArmedWith; contact: boolean };
       }
     | undefined;
@@ -238,7 +238,6 @@ export class EngagementSpecs {
         e,
         here,
         attacker.jobType,
-        this.seesTarget,
         givenUp,
         weapon.minRange,
         SIGHT_RADIUS_NODES,
@@ -257,7 +256,7 @@ export class EngagementSpecs {
       };
       const spec = this.spec;
       if (kind === 'defend' || kind === 'ignore') {
-        this.leash ??= { anchorCell: anchor, leash: 0, metric: 'hex', hold: true };
+        this.leash ??= { anchorCell: anchor, leash: 0, hold: true };
         this.leash.anchorCell = anchor;
         this.leash.leash = (kind === 'defend' ? DEFEND_LEASH_NODES : IGNORE_LEASH_NODES) + weapon.maxRange;
         spec.defend = this.leash;
@@ -327,7 +326,7 @@ const NO_SEARCH = { accept: (): boolean => false, searchRadius: 0 } as const;
 
 /** A wild animal's leash on its stay point, which it walks back to once it lets its target go. */
 function wildLeash(stay: NodeId): NonNullable<EngageSpec['defend']> {
-  return { anchorCell: stay, leash: ANIMAL_LEASH_NODES, metric: 'hex', hold: true };
+  return { anchorCell: stay, leash: ANIMAL_LEASH_NODES, hold: true };
 }
 
 /** Whether `t`'s combat node lies within `reach` map points of `here`. */
@@ -368,13 +367,12 @@ export interface EngageSpec {
   /** Target commitment: non-null for a stance that holds one target across ticks instead of re-acquiring
    *  the nearest candidate. `target` is the live hold, null when nothing is committed yet. */
   readonly lock: { readonly target: Entity | null } | null;
-  /** Anchor leash: the chase never walks past `leash` of `anchorCell`, measured by `metric`; null when the
-   *  chase is unbounded. `hold` walks the unit back to the anchor with no target in sight, false hands it
+  /** Anchor leash: the chase never walks past `leash` map points of `anchorCell`; null when the chase is
+   *  unbounded. `hold` walks the unit back to the anchor with no target in sight, false hands it
    *  back to the economy. */
   readonly defend: {
     readonly anchorCell: NodeId;
     readonly leash: number;
-    readonly metric: SearchMetric;
     readonly hold: boolean;
   } | null;
   /** Present for an owned combatant that holds its enemy across ticks ({@link Engagement.target}) and picks

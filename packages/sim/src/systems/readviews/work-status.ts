@@ -117,10 +117,12 @@ export type WorkStatus =
   | { readonly kind: 'nothingAtFlag' }
   /** A store's carrier left idle by its ladder: nothing in reach for it to take to a store. */
   | { readonly kind: 'nothingToCarry' }
-  /** A hunter's prey search finds no free game it sees in its hunting ground. */
+  /** A hunter's prey search finds no free game in its hunting ground. */
   | { readonly kind: 'noGame' }
   /** The only game in a hunter's ground stands across a terrain seam or was given up as unreachable. */
-  | { readonly kind: 'gameOutOfReach' };
+  | { readonly kind: 'gameOutOfReach' }
+  /** No swarm with fish left lies within a fisher's shore search. */
+  | { readonly kind: 'noFish' };
 
 /** Read current workplace blockers and a bounded resource search for one selected person. */
 export function workStatus(world: World, ctx: SystemContext, entity: Entity): WorkStatus | undefined {

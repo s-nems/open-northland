@@ -18,7 +18,13 @@ import {
   WorkFlag,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import { checkInvariants, halfCellMapFromCells, positionOfNode, Simulation } from '../../../src/index.js';
+import {
+  checkInvariants,
+  FOG_MODE,
+  halfCellMapFromCells,
+  positionOfNode,
+  Simulation,
+} from '../../../src/index.js';
 import {
   HUNT_LAST_RESORT_SCAN_FACTOR,
   HUNT_SEARCH_REST_TICKS,
@@ -26,6 +32,7 @@ import {
 import { anchorOnlyFootprint, combatSystem, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { noteUnreachableGoal } from '../../../src/systems/settlers/unreachable-goals.js';
+import { playerSeesEntity } from '../../../src/systems/vision/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { grassCellMap } from '../../fixtures/terrain.js';
 import { combatantAtNode, P0 } from '../stances/support.js';
@@ -86,6 +93,32 @@ describe('combatSystem - the hunter hunting ground and prey tiers', () => {
 
     expect(sim.world.has(hunter, CurrentAtomic)).toBe(false); // no swing at out-of-ground prey
     expect(sim.world.has(hunter, Engagement)).toBe(false); // and no chase toward it
+  });
+
+  it('measures the ground in map points: a diagonal step reaches farther than a Manhattan one', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, 8);
+    // 8 rows and 4 columns off: 8 map points, 12 Manhattan nodes - inside the ground.
+    const deer = fighterAtNode(sim, 44, 48, DEER, null);
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(hunter, CurrentAtomic).effect).toMatchObject({ kind: 'attack', target: deer });
+  });
+
+  it('takes game in its ground the player has never seen - fog hides no game from a hunter', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassCellMap(64, 64) });
+    sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
+    const hunter = combatantAtNode(sim, 40, 40, P0, MILITARY_MODE.IGNORE, { jobType: HUNTER });
+    bindFlagAtNode(sim, hunter, 40, 40, 30);
+    const deer = fighterAtNode(sim, 56, 40, DEER, null);
+    sim.step();
+    expect(playerSeesEntity(sim.world, sim.fog, P0, deer)).toBe(false);
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(hunter, HuntFocus).target).toBe(deer);
   });
 
   it('prefers normal game over NEARER last-resort livestock (both in the ground)', () => {

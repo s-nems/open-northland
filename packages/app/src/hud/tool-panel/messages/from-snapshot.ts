@@ -27,7 +27,7 @@ import {
   workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot.js';
-import { idleReasonOf } from './idle-reasons.js';
+import { idleReasonOf, shortageTradeOf } from './idle-reasons.js';
 import { idleNotePending, type MessageNaming, MessageRaiser, type RaisedMessage } from './raise.js';
 import { type ShortageReader, type SiteSeam, SiteShortages } from './site-shortages.js';
 import { type IdleReason, type PendingMessage, USER_MESSAGE_TYPE } from './types.js';
@@ -63,7 +63,13 @@ export interface SnapshotMessageSource {
   readonly stalls: StallReader | null;
   /** The seat's building sites short of a material as the sweeps judged them; null without the site seam. */
   readonly shortages: ShortageReader | null;
+  /** The reason the last sweep held for each idle worker it counted. */
+  readonly idleReasons: IdleReasonReader;
 }
+
+/** The reason the last sweep held for an idle worker: null for none the sim named, undefined for a
+ *  settler that sweep did not count as idle. */
+export type IdleReasonReader = (entity: number) => IdleReason | null | undefined;
 
 type Components = SnapshotEntity['components'];
 
@@ -149,6 +155,9 @@ class IdleStreaks {
   end(): void {
     this.counts = this.next;
   }
+
+  /** The reason the last ended sweep held for `entity`, undefined for one it did not count. */
+  readonly lastReason: IdleReasonReader = (entity) => this.counts.get(entity)?.reason;
 }
 
 /** Consecutive sweeps each woman's child order has found no food, so a single missed search raises
@@ -331,10 +340,11 @@ interface IdleNoteContext {
   readonly dismissed: NoteDismissed;
 }
 
-/** The note an idle adult earns: with a post to work at it has nothing to do, and names why; having
- *  lost one it has nowhere to go, and a trader without a cart cannot work its route. The diagnosis is
- *  first asked the sweep before the note, so the note's first text already has its answer, and never
- *  while the player has the note dismissed. */
+/** The note an idle adult earns: with a post to work at it has nothing to do, and names why, or its trade
+ *  finds nothing to work; a field worker at its own flag speaks only for that; having lost a post it has
+ *  nowhere to go, and a trader without a cart cannot work its route. The diagnosis is first asked the
+ *  sweep before the note, so the note's first text already has its answer, and never while the player has
+ *  the note dismissed. */
 function raiseIdleNote(
   raiser: MessageRaiser,
   snapshot: WorldSnapshot,
@@ -349,15 +359,23 @@ function raiseIdleNote(
   if (occupation === 'busy') return;
   const count = streaks.advance(e.id, occupation, atPost);
   const due = count >= IDLE_SWEEPS_BEFORE_MESSAGE;
-  if (hasWorkplaceToWorkAt(snapshot, e)) {
-    if (count < IDLE_SWEEPS_BEFORE_MESSAGE - 1 || idleNoteHeldByStall(e, stalls) || idlesBetweenLoads(e))
-      return;
-    if (dismissed(idleNotePending(e, null))) return;
+  const posted = hasWorkplaceToWorkAt(snapshot, e);
+  if (posted || worksAtOwnFlag(e)) {
+    if (count < IDLE_SWEEPS_BEFORE_MESSAGE - 1) return;
+    if (posted && (idleNoteHeldByStall(e, stalls) || idlesBetweenLoads(e))) return;
+    if (dismissed(idleNotePending(e, streaks.reason(e.id, undefined)))) return;
     const reason = streaks.reason(e.id, asks?.status(e.id));
-    if (due && (reason !== null || !idleNoteNeedsReason(e, stalls))) raiser.idle(e, reason);
+    if (!due) return;
+    if (posted ? reason !== null || !idleNoteNeedsReason(e, stalls) : shortageTradeOf(reason) !== null)
+      raiser.idle(e, reason);
   } else if (!due) return;
   else if (lostItsWorkplace(e, everEmployed)) raiser.settler(USER_MESSAGE_TYPE.workplaceNotFound, e);
   else if (lacksTradeCart(e)) raiser.settler(USER_MESSAGE_TYPE.noVehicleForWork, e);
+}
+
+/** A gatherer, hunter or fisher working around its own flag rather than from a workplace. */
+export function worksAtOwnFlag(e: SnapshotEntity): boolean {
+  return workplaceOf(e) === undefined && e.components.WorkFlag !== undefined;
 }
 
 /** The child-order wait a note reports. The assistant's booking waiting on food is the assistant's to
@@ -407,6 +425,7 @@ export function createSnapshotMessageSource(
   return {
     stalls,
     shortages,
+    idleReasons: streaks.lastReason,
     sweep: (snapshot, naming, dismissed = notDismissed) => {
       const since = lastSweepTick === null ? null : snapshot.tick - lastSweepTick;
       // A tick that moved backwards (a reload behind the same source) sweeps rather than waiting forever.

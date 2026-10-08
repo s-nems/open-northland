@@ -12,7 +12,13 @@ import { anyHarvestAtomicPresent, resourcesNearNode } from '../../spatial/resour
 import { lowestStockedGood } from '../../stores/index.js';
 import type { PlannerContext } from '../planner/context.js';
 import { type CellMatch, type NearestByCell, nearerOf, nearestByCell } from './cell-index.js';
-import { collectorStanceGates, nearestEligibleStance } from './resource-stances.js';
+import {
+  collectorStanceGates,
+  inWorkBound,
+  nearestEligibleStance,
+  type WorkBound,
+  workBoundDistance,
+} from './resource-stances.js';
 import { unclaimedGoodsAt } from './stores/stock.js';
 import { jobAtomics } from './workplaces.js';
 
@@ -35,10 +41,10 @@ export function nearestHarvestableFor(
   opts: {
     /** Bound the scan to this circle and rank from its centre, so a flag-bound gatherer sweeps outward
      *  from its flag rather than from wherever it stands. */
-    readonly area?: { center: NodeId; radius: number };
+    readonly area?: WorkBound;
     /** Bound the scan to this circle but keep the ranking on the settler, for a bound that is a work
      *  area rather than a sweep origin. Pass this or {@link area}, never both. */
-    readonly within?: { center: NodeId; radius: number };
+    readonly within?: WorkBound;
     readonly goodFilter?: ReadonlySet<number>;
     /** Resource nodes already claimed this tick, so one node is dug by one settler at a time. */
     readonly exclude?: ReadonlySet<Entity>;
@@ -99,7 +105,7 @@ export function nearestHarvestableFor(
   /** Whether an anchor at `(hx, hy)` may have a work cell inside the radius; one that cannot is never
    *  resolved. */
   const anchorInBound = (hx: number, hy: number): boolean =>
-    bound === undefined || Math.abs(hx - boundX) + Math.abs(hy - boundY) <= anchorReach;
+    bound === undefined || workBoundDistance(terrain, bound, hx, hy) <= anchorReach;
   // Ranked from `origin`, while the interaction cell still resolves from `here`, the route start.
   const resolve = (e: Entity): CellMatch<null> | null => {
     if (exclude?.has(e)) return null; // a colleague already digs this node
@@ -123,7 +129,7 @@ export function nearestHarvestableFor(
       for (const stance of resourceApproachCells(world, terrain, e)) {
         if (
           stance === here ||
-          ((bound === undefined || manhattan(terrain, bound.center, stance) <= bound.radius) &&
+          ((bound === undefined || inWorkBound(terrain, bound, stance)) &&
             (gate === undefined || gate.allowsNode(stance)))
         )
           opts.diagnostic.eligibleInArea = true;
@@ -159,7 +165,7 @@ function nearestDropFor(
   plan: PlannerContext,
   lists: readonly (readonly Entity[])[],
   pick: (e: Entity) => number | null,
-  within?: { center: NodeId; radius: number },
+  within?: WorkBound,
 ): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, ctx, terrain, here } = plan;
   const goods = goodsSearchLimitAt(
@@ -204,7 +210,7 @@ export function nearestCollectablePileFor(
   plan: PlannerContext,
   opts: {
     readonly goodFilter?: ReadonlySet<number>;
-    readonly within?: { center: NodeId; radius: number };
+    readonly within?: WorkBound;
   } = {},
 ): { pile: Entity; goodType: number; cell: NodeId; dist: number } | null {
   const { world, ctx, targets } = plan;

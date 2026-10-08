@@ -9,7 +9,7 @@ import {
 /** Original behavior: the base game and the CulturesNation mod give each message type the same one of
  *  three groups. `productionStalled` takes the group of the two per-worker notes it replaces;
  *  `constructionStarved` is important, since nothing else tells of a site that will never finish (owner
- *  ruling). */
+ *  ruling). The original ranks `cannotFindGood` notable for a collector alone; here every trade's note is. */
 const IMPORTANT: readonly UserMessageTypeName[] = [
   'lostWithoutSignposts',
   'experienceUnlocks',
@@ -28,6 +28,7 @@ const IMPORTANT: readonly UserMessageTypeName[] = [
 ];
 
 const NOTABLE: readonly UserMessageTypeName[] = [
+  'cannotFindGood',
   'workplaceNotFound',
   'vehicleSiteNotFound',
   'vehicleSiteOccupied',

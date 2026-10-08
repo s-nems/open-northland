@@ -10,7 +10,7 @@ import {
   SNAPSHOT_SWEEP_INTERVAL_TICKS,
   type SnapshotMessageSource,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
-import { idleReasonOf } from '../src/hud/tool-panel/messages/idle-reasons.js';
+import { IDLE_NOTE_TYPES, idleReasonOf } from '../src/hud/tool-panel/messages/idle-reasons.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
 import { USER_MESSAGE_TYPE } from '../src/hud/tool-panel/messages/types.js';
@@ -538,7 +538,7 @@ describe('user messages read off the snapshot', () => {
         for (let i = 1; i <= IDLE_SWEEPS_BEFORE_MESSAGE; i++) idleAt(source, i);
         const asked = seam.asked.length;
         const dismissed: NoteDismissed = (pending) =>
-          pending.type === USER_MESSAGE_TYPE.nothingToDo && pending.subject?.entity === 1;
+          IDLE_NOTE_TYPES.has(pending.type) && pending.subject?.entity === 1;
         for (let i = 1; i <= 3 * WORK_STATUS_REASK_SWEEPS; i++) {
           expect(idleAt(source, IDLE_SWEEPS_BEFORE_MESSAGE + i, dismissed)).toEqual([]);
         }

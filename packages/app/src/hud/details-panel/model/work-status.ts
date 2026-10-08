@@ -68,6 +68,7 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
     case 'noGame':
     case 'gameOutOfReach':
     case 'noConstructionSite':
+    case 'noFish':
     case 'noTool':
     case 'noJob':
     case 'noWorkplace':

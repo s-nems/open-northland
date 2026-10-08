@@ -2,11 +2,13 @@ import { HUNTER_WORK_FLAG_RADIUS, JobAssignment, Position, WorkFlag } from '../.
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { hexNodeDistance } from '../../spatial/metric.js';
 
 // The hunting ground: the one circle that answers where a posted hunter hunts and which bodies are its work.
+// Every distance here counts map points (hex distance), as the original's hunter search does.
 
 /**
- * How far (Manhattan nodes) past its hunting ground's radius a hunter's chase may step, so it can walk up
+ * How far (map points) past its hunting ground's radius a hunter's chase may step, so it can walk up
  * to game right at the area edge without pursuing a fleeing herd across the map. Approximated (source
  * basis "Combat stances").
  */
@@ -20,12 +22,17 @@ export const HUNT_CHASE_SLACK_NODES = 4;
 export const HUNT_LAST_RESORT_SCAN_FACTOR = 2;
 
 /**
- * How far (Manhattan nodes) past the ground's radius a hunter's carcass may lie and still be its work: the
+ * How far (map points) past the ground's radius a hunter's carcass may lie and still be its work: the
  * chase overshoot ({@link HUNT_CHASE_SLACK_NODES}) plus a drift margin for prey that keeps fleeing between
  * the release and the arrow's contact. Not airtight - a runner can be carried past even this band, and such
  * a body becomes a permanent decal that no hunter can claim.
  */
 export const HUNT_CARCASS_SLACK_NODES = HUNT_CHASE_SLACK_NODES + 4;
+
+/** The ground's distance from its anchor to `node`, in map points. */
+export function groundDistance(terrain: TerrainGraph, anchorCell: NodeId, node: NodeId): number {
+  return hexNodeDistance(terrain, anchorCell, node);
+}
 
 /**
  * The area an owned hunter hunts and harvests: its work-flag circle, or the

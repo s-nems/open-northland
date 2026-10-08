@@ -21,7 +21,7 @@ import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-stat
 import { breakThroughWall } from '../palisades/breach.js';
 import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
-import { closer, hexNodeDistance, manhattan, nearestHexCell } from '../spatial/metric.js';
+import { closer, hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { type CombatantStance, type EngageSpec, enemyInReachFrom } from './engagement.js';
 import type { MeleeSlots, OwnClaims } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
@@ -337,11 +337,9 @@ export function onStride(tick: number, e: Entity, period: number): boolean {
   return (tick + e) % period === 0;
 }
 
-/** How far `dest` lies from the anchor of `defend`, in the metric its leash counts in. */
+/** How far `dest` lies from the anchor of `defend`, in the map points its leash counts in. */
 function leashDistance(terrain: TerrainGraph, defend: NonNullable<DefendPost>, dest: NodeId): number {
-  return defend.metric === 'hex'
-    ? hexNodeDistance(terrain, defend.anchorCell, dest)
-    : manhattan(terrain, defend.anchorCell, dest);
+  return hexNodeDistance(terrain, defend.anchorCell, dest);
 }
 
 /** `e`'s {@link Engagement} on `target`, added to repath at once on a first engagement. A stall is about one

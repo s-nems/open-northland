@@ -216,7 +216,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
   let diplomacySource = createDiplomacyMessageSource(deps.metSeats);
   let fights = FightAreas.adopt(deps.initial);
   // Keyed by note id, so it starts over with every feed it serves.
-  let retirement = new NoteRetirement(fights, snapshotSource?.stalls, snapshotSource?.shortages);
+  let retirement = new NoteRetirement(
+    fights,
+    snapshotSource?.stalls,
+    snapshotSource?.shortages,
+    snapshotSource?.idleReasons,
+  );
   // The tick of the last presented snapshot, which a dismissal is stamped with.
   let presentedTick = 0;
   const select = (m: UserMessage): void => deps.onSelect({ entity: m.subject?.entity ?? null, at: m.at });
@@ -333,7 +338,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     snapshotSource = snapshotSourceOf(seat);
     diplomacySource = createDiplomacyMessageSource(deps.metSeats);
     fights = FightAreas.adopt(feeds.current.state());
-    retirement = new NoteRetirement(fights, snapshotSource?.stalls, snapshotSource?.shortages);
+    retirement = new NoteRetirement(
+      fights,
+      snapshotSource?.stalls,
+      snapshotSource?.shortages,
+      snapshotSource?.idleReasons,
+    );
     previous = null;
     renderedVersion = -1;
   };
@@ -427,7 +437,12 @@ export function createMessageCenter(deps: MessageCenterDeps): MessageCenter {
     restore: (state): void => {
       feeds.restore(state);
       fights = FightAreas.adopt(state);
-      retirement = new NoteRetirement(fights, snapshotSource?.stalls, snapshotSource?.shortages);
+      retirement = new NoteRetirement(
+        fights,
+        snapshotSource?.stalls,
+        snapshotSource?.shortages,
+        snapshotSource?.idleReasons,
+      );
       renderedVersion = -1;
     },
     dispose: (): void => {

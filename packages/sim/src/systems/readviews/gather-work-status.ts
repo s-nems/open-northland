@@ -1,6 +1,8 @@
 import {
   Carrying,
+  FishSwarm,
   GroundDrop,
+  HarvestedBy,
   ownerOf,
   ownersCompatible,
   Position,
@@ -17,12 +19,15 @@ import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import { surveyHuntingGame } from '../conflict/hunting/index.js';
 import type { SystemContext } from '../context.js';
+import { FISH_SHORE_SEARCH_RADIUS } from '../economy/fish.js';
 import { nodeHoldsOpenGood, openGatherGoods } from '../economy/gather-goods.js';
 import { nearestHarvestableFor } from '../settlers/targets/resources.js';
 import { StoreSinks } from '../settlers/targets/stores/sinks.js';
 import { takesDeposits } from '../settlers/targets/stores/stock.js';
 import { interactionCell, jobAtomics } from '../settlers/targets/workplaces.js';
 import { navigationLimitFor } from '../signposts/index.js';
+import { fishSwarmsNearNode } from '../spatial/fish.js';
+import { entityNode } from '../spatial/nodes.js';
 import { canonicalResources, resourcesNearNode } from '../spatial/resources.js';
 import { bankedSlot, workplaceStocksGood, workplaceStoredGoods } from '../stores/index.js';
 import { isFisherJob, isHunterJob } from './jobs.js';
@@ -86,25 +91,32 @@ export function gatherWorkStatus(
     };
   }
   const stopped = stocked.length > 0 && counters !== undefined && wanted.length === 0;
+  const wf = world.tryGet(entity, WorkFlag);
+  const flag = wf !== undefined && world.has(wf.flag, Position) ? wf : undefined;
   // A hunter's ladder takes the piles and carcasses in its ground before it stands idle, so for an idle
   // hunter the reason lies in the prey search alone.
   if (isHunterJob(ctx.content, jobType)) {
     return stopped ? { kind: 'nothingSelected' } : huntWorkStatus(world, ctx, terrain, entity, jobType);
   }
+  // A fisher's work is the shore search alone, so its reason lies there too.
+  if (isFisherJob(ctx.content, jobType)) {
+    return stopped ? { kind: 'nothingSelected' } : fishWorkStatus(world, terrain, flag?.flag ?? entity);
+  }
   // Already-harvested piles remain work even after a gathering counter stops. Their own delivery and
   // reachability policies need a separate diagnosis; never call a harvest-only search proof of no work.
-  if (world.canonicalQuery(GroundDrop, Stockpile, Position).length > 0)
+  // A flag gatherer carries off only the piles it dug itself.
+  const piles = world.canonicalQuery(GroundDrop, Stockpile, Position);
+  if (piles.some((pile) => flag === undefined || world.tryGet(pile, HarvestedBy)?.by === entity))
     return { kind: 'unknown', reason: 'gatherSearch' };
   if (stopped) return { kind: 'nothingSelected' };
-  // Fishers use shore targets, and farmers can sow new plots.
+  // Farmers can sow new plots.
   if (resourceSearchUnsupported) return { kind: 'unknown', reason: 'gatherSearch' };
   const node = nodeOfPosition(position.x, position.y);
   const here = terrain.nodeAtClamped(node.hx, node.hy);
-  const flag = world.tryGet(entity, WorkFlag);
   const area =
-    flag !== undefined && world.has(flag.flag, Position)
-      ? { center: interactionCell(world, ctx, terrain, flag.flag, here), radius: flag.radius }
-      : undefined;
+    flag === undefined
+      ? undefined
+      : { center: interactionCell(world, ctx, terrain, flag.flag, here), radius: flag.radius };
   const limit = navigationLimitFor(world, ctx.content, terrain, entity);
   const allowed = jobAtomics(ctx, jobType);
   const center = area === undefined ? undefined : terrain.coordsOf(area.center);
@@ -167,4 +179,19 @@ function huntWorkStatus(
     case null:
       return { kind: 'unknown', reason: 'gatherSearch' };
   }
+}
+
+/**
+ * `noFish` once no swarm with fish left lies in the square twice the shore search around where the
+ * fisher's search starts (`from`): a cast stands on a shore at most that search away and reaches a swarm
+ * at most that far again. Anything nearer may still be fish it cannot reach, which the diagnosis leaves
+ * unknown.
+ */
+function fishWorkStatus(world: World, terrain: TerrainGraph, from: Entity): WorkStatus {
+  const origin = terrain.coordsOf(entityNode(world, terrain, from));
+  const reach = 2 * FISH_SHORE_SEARCH_RADIUS;
+  for (const swarm of fishSwarmsNearNode(world, origin.x, origin.y, reach)) {
+    if (world.get(swarm, FishSwarm).count > 0) return { kind: 'unknown', reason: 'gatherSearch' };
+  }
+  return { kind: 'noFish' };
 }

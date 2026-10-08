@@ -1,5 +1,6 @@
 import type { ChildOrderWait } from '../../../game/snapshot.js';
 import { bcp47Tag, formatMessage, type Messages, pluralForm } from '../../../i18n/index.js';
+import { shortageTradeOf } from './idle-reasons.js';
 import {
   type IdleReason,
   type ProductionStallReason,
@@ -14,9 +15,9 @@ export type NoticeCopy = Messages['userMessages'];
 /** A catalog line, or a pair whose wording agrees with a settler subject's sex. */
 type CopyLine = string | { readonly he: string; readonly she: string };
 
-/** The types worded by the per-type tables; `familyBlocked` and `productionStalled` have their own
- *  table per reason. */
-type TabledTypeName = Exclude<UserMessageTypeName, 'familyBlocked' | 'productionStalled'>;
+/** The types worded by the per-type tables; `familyBlocked`, `productionStalled` and `cannotFindGood`
+ *  have their own table per reason. */
+type TabledTypeName = Exclude<UserMessageTypeName, 'familyBlocked' | 'productionStalled' | 'cannotFindGood'>;
 
 const TYPE_NAME_BY_ID: ReadonlyMap<UserMessageType, UserMessageTypeName> = new Map(
   (Object.keys(USER_MESSAGE_TYPE) as UserMessageTypeName[]).map((name) => [USER_MESSAGE_TYPE[name], name]),
@@ -53,8 +54,8 @@ export interface MessageTextParts {
   readonly training?: { readonly course: 'barracks' | 'school'; readonly profession: string };
   /** Why a `productionStalled` note's workshop stands still; `goodName` names the good it is about. */
   readonly stall?: ProductionStallReason;
-  /** Why a `nothingToDo` note's worker stands idle, null while the sim names no reason; `goodName` lists
-   *  the named goods it is about, null for none. */
+  /** Why a `nothingToDo` or `cannotFindGood` note's worker stands idle, null while the sim names no
+   *  reason; `goodName` lists the named goods it is about, null for none. */
   readonly idle?: IdleReason | null;
   /** What holds a `familyBlocked` note's child order, and the spouse it names. */
   readonly family?: { readonly wait: ChildOrderWait; readonly partner: NamedSettler | null };
@@ -198,14 +199,17 @@ export function composeMessageText(
       full: formatMessage(copy.productionStalled.full[parts.stall], values),
     };
   }
-  if (name === 'nothingToDo') {
+  if (name === 'nothingToDo' || name === 'cannotFindGood') {
     const idle = parts.idle ?? null;
     const reasons = parts.goodName === null ? copy.idleReason.withoutGood : copy.idleReason.full;
     const reason = idle === null ? copy.idleReason.unknown : reasons[idle.kind];
     const idleShort = idle === null ? copy.short.nothingToDo : copy.idleReason.short[idle.kind];
+    const trade = shortageTradeOf(idle);
+    const lead =
+      name === 'cannotFindGood' && trade !== null ? copy.cannotFindGood[trade] : copy.full.nothingToDo;
     return {
       short: formatMessage(idleShort, values),
-      full: `${formatMessage(copy.full.nothingToDo, values)} ${formatMessage(inflect(reason, female), values)}`,
+      full: `${formatMessage(inflect(lead, female), values)} ${formatMessage(inflect(reason, female), values)}`,
     };
   }
   const [shortLine, fullLine] = linesOf(name, parts, copy);

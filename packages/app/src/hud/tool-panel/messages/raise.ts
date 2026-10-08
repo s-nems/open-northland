@@ -1,5 +1,6 @@
 import { type DiplomacyState, nodeOfPosition, type Paper, type WorldSnapshot } from '@open-northland/sim';
 import { type ChildOrderWait, num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
+import { idleNoteType } from './idle-reasons.js';
 import type { MessageText, MessageTextParts, NamedSettler } from './text.js';
 import {
   type IdleReason,
@@ -46,10 +47,11 @@ function jobTypeOf(e: SnapshotEntity): number | null {
   return num((e.components.Settler as { jobType?: unknown } | undefined)?.jobType) ?? null;
 }
 
-/** The note about a worker idle at its workplace for `reason`; the reason is not part of its identity. */
+/** The note about an idle worker for `reason`: the reason picks its type ({@link idleNoteType}) but is
+ *  otherwise not part of its identity. */
 export function idleNotePending(e: SnapshotEntity, reason: IdleReason | null): PendingMessage {
   return {
-    type: USER_MESSAGE_TYPE.nothingToDo,
+    type: idleNoteType(reason),
     subject: { kind: 'settler', entity: e.id },
     at: nodeOf(e),
     about: null,
@@ -116,9 +118,9 @@ export class MessageRaiser {
     );
   }
 
-  /** A worker idle at its workplace for `reason`; a repeat with another reason rewords the standing note. */
+  /** A worker idle for `reason`; a repeat with another reason of the same type rewords the standing note. */
   idle(e: SnapshotEntity, reason: IdleReason | null): void {
-    const type = USER_MESSAGE_TYPE.nothingToDo;
+    const type = idleNoteType(reason);
     this.raise(
       `${type}|settler:${e.id}`,
       idleNotePending(e, reason),
