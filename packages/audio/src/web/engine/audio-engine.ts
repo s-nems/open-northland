@@ -9,7 +9,7 @@ import {
   type VolumeChannel,
   volumeGain,
 } from '../../data/mixer.js';
-import type { MusicTrack } from '../../data/music/index.js';
+import type { MusicSequence, MusicTransition } from '../../data/music/index.js';
 import {
   muffleCutoffHz,
   PERSPECTIVE_CURVES,
@@ -108,8 +108,6 @@ export const CLOSE_GRACE_S = 0.1;
 export const MUSIC_DUCK_GAIN = 10 ** (-20 / 20);
 /** The duck's fade time each way in the original: 300 ms. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
-/** Shared empty rotation, so re-asserting a single track every frame allocates nothing. */
-const EMPTY_ROTATION: readonly MusicTrack[] = [];
 
 /** The buses that carry world one-shots, each split into the two {@link ShotLayer}s. */
 type WorldBus = 'world' | 'voice';
@@ -153,10 +151,8 @@ export class WebAudioEngine {
   private weatherEnabled = true;
   /** Current slider positions - kept here so a setter before the context exists still lands. */
   private readonly volumes: Record<VolumeChannel, number>;
-  /** The track that should be playing - re-asserted when a resume/unmute brings playback back. */
-  private desiredMusic: MusicTrack | null = null;
-  /** The rotation that should be playing instead; non-empty wins over {@link desiredMusic}. */
-  private desiredRotation: readonly MusicTrack[] = EMPTY_ROTATION;
+  /** The music that should be playing - re-asserted when a resume/unmute brings playback back. */
+  private desiredMusic: MusicSequence | null = null;
   private enabled = true;
   /** Set by {@link close}; a closed engine never resumes its context again. */
   private closed = false;
@@ -239,18 +235,17 @@ export class WebAudioEngine {
     }, CLOSE_GRACE_S * 1000);
   }
 
-  /** Which music track should be playing (null = none); takes effect once playback is live. */
-  setMusic(track: MusicTrack | null): void {
-    this.desiredMusic = track;
-    this.desiredRotation = EMPTY_ROTATION;
-    if (this.canPlay()) this.music?.set(track);
+  /** Which music should be playing (null = none); takes effect once playback is live. */
+  setMusic(sequence: MusicSequence | null): void {
+    this.desiredMusic = sequence;
+    if (this.canPlay()) this.music?.play(sequence);
   }
 
-  /** Play `tracks` one at a time in the given order, moving on when each finishes; empty = no music. */
-  setMusicRotation(tracks: readonly MusicTrack[]): void {
-    this.desiredMusic = null;
-    this.desiredRotation = tracks;
-    if (this.canPlay()) this.music?.setRotation(tracks);
+  /** Act on a mood change of the playing sequence: cut over now, or end the cue at its pass end. */
+  transitionMusic(transition: MusicTransition): void {
+    if (!this.canPlay()) return;
+    if (transition === 'now') this.music?.interrupt();
+    else if (transition === 'atPassEnd') this.music?.endAtPassEnd();
   }
 
   /** Set the slider positions; each moved bus ramps over {@link VOLUME_RAMP_S}. */
@@ -346,8 +341,7 @@ export class WebAudioEngine {
 
   private assertMusic(): void {
     if (!this.canPlay()) return;
-    if (this.desiredRotation.length > 0) this.music?.setRotation(this.desiredRotation);
-    else this.music?.set(this.desiredMusic);
+    this.music?.play(this.desiredMusic);
   }
 
   /** Live and audible: not muted or closed, context created + resumed. Re-checked after every async load. */

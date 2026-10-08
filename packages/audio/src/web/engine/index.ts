@@ -17,10 +17,5 @@ export {
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './audio-engine.js';
-export {
-  MENU_MUSIC_TIMING,
-  MUSIC_STOP_FADE_S,
-  MUSIC_SWITCH_TIMING,
-  type MusicTiming,
-} from './music-player.js';
+export { MUSIC_STOP_FADE_S, MUSIC_SWITCH_TIMING } from './music-player.js';
 export { CLICK_FREE_RAMP_S } from './ramps.js';

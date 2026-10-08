@@ -1,27 +1,23 @@
-import type { MusicTrack } from '../../data/music/index.js';
+import {
+  cueLoops,
+  cuePlaySeconds,
+  type MusicCue,
+  type MusicSequence,
+  type MusicTiming,
+  passBoundaryAfter,
+} from '../../data/music/index.js';
 import type { FetchBytes } from '../platform.js';
 import { CLICK_FREE_RAMP_S } from './ramps.js';
 
 /**
- * The music half of playback. In game the map's track ring-loops the region the pipeline published
- * (the music stage owns the evidence for why segments repeat seamlessly). The menu instead rotates
- * a queue of tracks, each playing its first pass once with a parting fade and gap - a design choice
- * of this reimplementation.
+ * The music half of playback: it plays a sequence's cues one after another, each for its passes of
+ * the region the pipeline published (the music stage owns the evidence for why segments repeat
+ * seamlessly), at the track's levelling gain, ending on its fade and the next cue's silence. The menu
+ * hands it a fixed rotation, a map its playlist.
  */
 
-/** How a rotation track hands over to the next one. */
-export interface MusicTiming {
-  /** Seconds the outgoing track takes to reach silence, ending on the last sample it plays. */
-  readonly fadeS: number;
-  /** Seconds of silence between the outgoing track and the next. */
-  readonly gapS: number;
-}
-
-/** Menu rotation handover. The rotation itself is this reimplementation's design, not original behaviour. */
-export const MENU_MUSIC_TIMING: MusicTiming = { fadeS: 2, gapS: 1.5 };
-
 /**
- * Replacing the track: the original starts the new segment immediately as the primary segment and
+ * Replacing the music: the original starts the new segment immediately as the primary segment and
  * lets the old one's note releases and reverb ring under it (original behavior: no wait for a
  * segment boundary). A rendered file cannot ring its tail out, so a short fade stands in for it.
  */
@@ -33,43 +29,37 @@ export const MUSIC_STOP_FADE_S = 1.5;
 /** Decoded tracks kept for re-use (current + the previous one a mood flip returns to). */
 const BUFFER_CACHE_SIZE = 2;
 
-/** `set` loops its single track seamlessly; `setRotation` advances through its queue. */
-type MusicMode = 'loop' | 'rotation';
-
-interface PlayingTrack {
-  readonly file: string;
+interface PlayingCue {
+  readonly cue: MusicCue;
   readonly source: AudioBufferSourceNode;
   readonly gain: GainNode;
-  /** Context time the source becomes audible; before it, the track is still waiting out the gap. */
+  /** The track's levelling gain as a linear factor. */
+  readonly level: number;
+  readonly bufferS: number;
+  /** Context time the source becomes audible; before it, the cue is still waiting out its silence. */
   readonly startsAt: number;
+  /** Context time the cue reaches silence and stops. */
+  endsAt: number;
 }
 
 export class MusicPlayer {
-  private current: PlayingTrack | null = null;
-  /** The file the latest reconcile asked for. */
-  private desiredFile: string | null = null;
-  /** Bumped by every reconcile and stop; an async load only installs itself if it still holds the
-   *  last stamp, so overlapping loads of even the same file cannot install two sources. */
+  private current: PlayingCue | null = null;
+  /** The sequence the latest {@link play} asked for; null after a stop. */
+  private sequence: MusicSequence | null = null;
+  /** A cue's load is in flight. */
+  private loading = false;
+  /** Set once the sequence offered nothing playable, so re-asserting it does nothing. */
+  private unplayable = false;
+  /** Bumped by every play, interruption and stop; an async load only installs itself if it still holds
+   *  the last stamp, so overlapping loads cannot install two sources. */
   private generation = 0;
   /** file → decoded buffer, most-recently-used last. */
   private readonly buffers = new Map<string, AudioBuffer>();
-  /** Files whose fetch/decode failed, so one request never re-fetches them. Cleared by {@link stop},
-   *  which is the mute or map change that gives a track dropped by a network blip another chance. */
+  /** Files whose fetch/decode failed, so no sequence makes the player fetch one twice. A failed file
+   *  also leaves its sequence through `drop`, for that sequence's lifetime. */
   private readonly failed = new Set<string>();
-  /** The tracks the latest reconcile asked for. A failed load leaves {@link queue} but not this, so a
-   *  re-assert of the same request is still recognised as unchanged. */
-  private desired: readonly MusicTrack[] = [];
-  /** Set once every entry of {@link desired} has failed to load, so re-asserting it does nothing. */
-  private unplayable = false;
-  /** The tracks still playable; the loop mode holds one, the rotation plays them one at a time. */
-  private queue: readonly MusicTrack[] = [];
-  /** Index in {@link queue} of the entry playing or loading. */
-  private queueAt = 0;
-  private mode: MusicMode = 'loop';
-  /** Context time the next track may open at: when the outgoing one fell silent, plus the gap. */
-  private openAt = 0;
-  /** Context time the last track faded out reaches silence. A fade outlives {@link current}, so this
-   *  is what a later handover has to wait for rather than opening over an audible tail. */
+  /** Context time the last cue faded out reaches silence. A fade outlives {@link current}, so this is
+   *  what a later handover has to wait for rather than opening over an audible tail. */
   private silentUntil = 0;
 
   constructor(
@@ -83,93 +73,95 @@ export class MusicPlayer {
     private readonly canPlay: () => boolean,
   ) {}
 
-  /** Reconcile playback to `track`, looping it seamlessly until replaced; null stops. */
-  set(track: MusicTrack | null): void {
-    this.reconcile(track === null ? [] : [track], 'loop');
-  }
-
-  /** Reconcile playback to `tracks` in order; a running queue of the same tracks keeps going. */
-  setRotation(tracks: readonly MusicTrack[]): void {
-    this.reconcile(tracks, 'rotation');
-  }
-
-  /** Fade out and drop the running track (mute / teardown); the desired track is forgotten. */
-  stop(): void {
-    this.queue = [];
-    this.desired = [];
-    this.desiredFile = null;
+  /** Play `sequence` from its next cue, fading out whatever else plays; re-asserting the running
+   *  sequence keeps it going. Null stops. */
+  play(sequence: MusicSequence | null): void {
+    if (sequence === null) {
+      if (this.sequence !== null || this.current !== null) this.stop();
+      return;
+    }
+    if (sequence === this.sequence && (this.current !== null || this.loading || this.unplayable)) return;
+    this.sequence = sequence;
     this.unplayable = false;
-    this.failed.clear();
+    this.switchNow();
+  }
+
+  /** Cut over to the sequence's next cue now, the running one fading out first. */
+  interrupt(): void {
+    if (this.sequence === null) return;
+    this.switchNow();
+  }
+
+  /** End the running cue at its next pass boundary that leaves room for its fade, rather than after
+   *  all its passes; the sequence's next cue follows as usual. */
+  endAtPassEnd(): void {
+    const playing = this.current;
+    const now = this.ctx.currentTime;
+    if (playing === null || playing.startsAt > now) return;
+    const { cue, gain, level, source } = playing;
+    const boundary = passBoundaryAfter(cue.track, playing.bufferS, playing.startsAt, now + cue.fadeS);
+    if (boundary >= playing.endsAt) return;
+    // Before the boundary's fade the cue's own end fade has not begun either, so it sits at its level.
+    gain.gain.cancelScheduledValues(now);
+    gain.gain.setValueAtTime(level, now);
+    gain.gain.setValueAtTime(level, boundary - cue.fadeS);
+    gain.gain.linearRampToValueAtTime(0, boundary);
+    playing.endsAt = boundary;
+    source.stop(boundary);
+  }
+
+  /** Fade out and drop the running cue (mute / teardown); the sequence is forgotten. */
+  stop(): void {
+    this.sequence = null;
+    this.loading = false;
+    this.unplayable = false;
     this.generation++;
     this.fadeOutCurrent(MUSIC_STOP_FADE_S);
   }
 
-  private reconcile(tracks: readonly MusicTrack[], mode: MusicMode): void {
-    if (tracks.length === 0) {
-      if (this.desired.length > 0 || this.current !== null) this.stop();
-      return;
-    }
-    const unchanged =
-      mode === this.mode &&
-      tracks.length === this.desired.length &&
-      tracks.every((track, i) => track.file === this.desired[i]?.file);
-    // Playing, still loading, or already proven unplayable: re-asserting it every frame has nothing to do.
-    if (unchanged && (this.desiredFile !== null || this.unplayable)) return;
-    this.mode = mode;
-    this.desired = tracks;
-    this.queue = tracks;
-    this.unplayable = false;
-    this.queueAt = 0;
+  private switchNow(): void {
     this.generation++;
     this.fadeOutCurrent(MUSIC_SWITCH_TIMING.fadeS);
     // A tail from this fade - or from an earlier stop still running - has to finish before the
-    // replacement opens, or the two play at once.
+    // replacement opens, or the two play at once. A cut-in skips the cue's own silence.
     const now = this.ctx.currentTime;
-    this.openAt = this.silentUntil > now ? this.silentUntil + MUSIC_SWITCH_TIMING.gapS : now;
-    this.startQueued();
+    this.startNext(this.silentUntil > now ? this.silentUntil + MUSIC_SWITCH_TIMING.gapS : now, false);
   }
 
-  /** Move to the next rotation entry once the current one has played out, wrapping at the end. */
-  private advance(): void {
-    this.queueAt += 1;
-    this.openAt = this.ctx.currentTime + MENU_MUSIC_TIMING.gapS;
-    this.startQueued();
-  }
-
-  private startQueued(): void {
-    if (this.queue.length > 0) this.queueAt %= this.queue.length;
-    const track = this.queue[this.queueAt];
-    if (track === undefined) {
-      // Every entry failed to load. Hold the desire rather than forgetting it, so the next re-assert
-      // of the same request returns early instead of rebuilding the queue frame after frame.
+  /** Load and schedule the sequence's next cue to open at `openAfter`, plus its silence when asked. */
+  private startNext(openAfter: number, withSilence: boolean): void {
+    const cue = this.sequence?.next() ?? null;
+    // A sequence offering a file that already failed would otherwise be pulled from in a tight loop.
+    if (cue === null || this.failed.has(cue.track.file)) {
+      // Nothing playable is left. Hold the sequence rather than forgetting it, so the next re-assert
+      // of the same one returns early instead of pulling from it frame after frame.
+      this.loading = false;
       this.unplayable = true;
-      this.desiredFile = null;
       return;
     }
-    this.desiredFile = track.file;
-    this.start(track, this.generation);
+    this.start(cue, openAfter + (withSilence ? cue.gapBeforeS : 0), this.generation);
   }
 
-  /** Silence the running track, recording in {@link silentUntil} when it stops being audible. */
+  /** Silence the running cue, recording in {@link silentUntil} when it stops being audible. */
   private fadeOutCurrent(fadeS: number): void {
     const now = this.ctx.currentTime;
-    const current = this.current;
-    if (current === null) return;
+    const playing = this.current;
+    if (playing === null) return;
     this.current = null;
-    // A track still waiting out its gap was never heard; drop it rather than fade silence.
-    const silentAt = current.startsAt > now ? now : now + fadeS;
+    // A cue still waiting out its silence was never heard; drop it rather than fade silence.
+    const silentAt = playing.startsAt > now ? now : Math.min(now + fadeS, playing.endsAt);
     // Read the live level before cancelling: cancelling first drops the ramp event this anchor is
     // meant to capture, which would restart the fade from full gain.
-    const level = current.gain.gain.value;
-    current.gain.gain.cancelScheduledValues(now);
-    current.gain.gain.setValueAtTime(level, now);
-    if (silentAt > now) current.gain.gain.linearRampToValueAtTime(0, silentAt);
+    const level = playing.gain.gain.value;
+    playing.gain.gain.cancelScheduledValues(now);
+    playing.gain.gain.setValueAtTime(level, now);
+    if (silentAt > now) playing.gain.gain.linearRampToValueAtTime(0, silentAt);
     try {
-      current.source.stop(silentAt);
+      playing.source.stop(silentAt);
     } catch {
       // Already stopped - nothing to do.
     }
-    this.silentUntil = silentAt;
+    this.silentUntil = Math.max(this.silentUntil, silentAt);
   }
 
   private async load(file: string): Promise<AudioBuffer | null> {
@@ -184,7 +176,7 @@ export class MusicPlayer {
     try {
       buffer = await this.ctx.decodeAudioData(await this.fetchBytes(this.baseUrl + file));
     } catch (err) {
-      this.failed.add(file); // remember the failure - a re-set must not re-fetch
+      this.failed.add(file); // remember the failure - a re-play must not re-fetch
       // Silence is what a missing track sounds like either way, so say which file went missing.
       console.warn(`[audio] music track ${file} failed to load: ${String(err)}`);
       return null;
@@ -197,78 +189,62 @@ export class MusicPlayer {
     return buffer;
   }
 
-  private start(track: MusicTrack, generation: number): void {
+  private start(cue: MusicCue, openAt: number, generation: number): void {
+    const { track } = cue;
+    this.loading = true;
     void this.load(track.file).then((buffer) => {
-      if (generation !== this.generation) return; // a newer reconcile/stop superseded this load
+      if (generation !== this.generation) return; // a newer play/interrupt/stop superseded this load
+      this.loading = false;
       if (buffer === null) {
-        // A track that cannot load leaves the queue; the others carry on without it.
-        this.queue = this.queue.filter((entry) => entry.file !== track.file);
-        this.startQueued();
+        // A track that cannot load leaves the sequence; the others carry on without it.
+        this.sequence?.drop(track.file);
+        this.startNext(openAt, false);
         return;
       }
       if (!this.canPlay()) {
-        // Dropped without a stop() (context suspended externally): forget the desire so a later
-        // set/resume re-assert retries instead of hitting the already-loading early return.
-        if (this.desiredFile === track.file) this.desiredFile = null;
+        // Dropped without a stop() (context suspended externally): forget the sequence so a later
+        // resume re-assert starts it again instead of hitting the already-playing early return.
+        this.sequence = null;
         return;
       }
-      const startsAt = Math.max(this.ctx.currentTime, this.openAt);
+      const startsAt = Math.max(this.ctx.currentTime, openAt);
+      const playS = cuePlaySeconds(track, cue.passes, buffer.duration);
       const source = this.ctx.createBufferSource();
       source.buffer = buffer;
+      const gain = this.ctx.createGain();
+      source.connect(gain).connect(this.out);
+      const level = 10 ** (track.gainDb / 20);
+      const playing: PlayingCue = {
+        cue,
+        source,
+        gain,
+        level,
+        bufferS: buffer.duration,
+        startsAt,
+        endsAt: startsAt + playS,
+      };
       source.onended = (): void => {
-        // Before the generation guard: a superseded track is exactly the one whose nodes would
+        // Before the generation guard: a superseded cue is exactly the one whose nodes would
         // otherwise stay connected to the music bus for the rest of the session.
         source.disconnect();
         gain.disconnect();
-        if (generation !== this.generation) return; // stopped or superseded, not finished
+        if (generation !== this.generation || this.current !== playing) return; // stopped or superseded
         this.current = null;
-        if (this.mode === 'rotation') this.advance();
-        else this.startQueued(); // a looping source never finishes on its own; restart if one somehow does
+        this.silentUntil = Math.max(this.silentUntil, playing.endsAt);
+        this.startNext(Math.max(this.ctx.currentTime, playing.endsAt), true);
       };
-      const gain = this.ctx.createGain();
-      source.connect(gain).connect(this.out);
-      const level = trackLevel(track);
+      if (cueLoops(track, cue.passes, buffer.duration)) {
+        source.loop = true;
+        source.loopStart = track.loopStartS;
+        source.loopEnd = Math.min(track.loopEndS, buffer.duration);
+      }
       gain.gain.setValueAtTime(0, startsAt);
       gain.gain.linearRampToValueAtTime(level, startsAt + CLICK_FREE_RAMP_S);
-      if (this.mode === 'loop') {
-        this.configureLoop(source, track, buffer);
-        source.start(startsAt);
-      } else {
-        const passS = firstPassSeconds(track, buffer);
-        this.scheduleFadeOut(gain, level, startsAt, passS);
-        source.start(startsAt, 0, passS);
-      }
-      this.current = { file: track.file, source, gain, startsAt };
+      // Land on silence at the last sample played, so nothing is cut mid-level.
+      gain.gain.setValueAtTime(level, Math.max(startsAt + CLICK_FREE_RAMP_S, playing.endsAt - cue.fadeS));
+      gain.gain.linearRampToValueAtTime(0, playing.endsAt);
+      source.start(startsAt, 0, playS);
+      this.current = playing;
     });
   }
-
-  /** Ring-loop the published region: the first pass opens from silence, then the second pass -
-   *  which carries the first's decay tails - repeats seamlessly. A file shorter than its published
-   *  region loops whole. */
-  private configureLoop(source: AudioBufferSourceNode, track: MusicTrack, buffer: AudioBuffer): void {
-    source.loop = true;
-    if (track.loopStartS < buffer.duration) {
-      source.loopStart = track.loopStartS;
-      source.loopEnd = Math.min(track.loopEndS, buffer.duration);
-    }
-  }
-
-  /** Ramp a rotation track down over its last seconds, so it ends on silence rather than on a cut. */
-  private scheduleFadeOut(gain: GainNode, level: number, startsAt: number, durationS: number): void {
-    const endsAt = startsAt + durationS;
-    gain.gain.setValueAtTime(level, Math.max(startsAt + CLICK_FREE_RAMP_S, endsAt - MENU_MUSIC_TIMING.fadeS));
-    gain.gain.linearRampToValueAtTime(0, endsAt);
-  }
-}
-
-/** The track's levelling gain as a linear factor. */
-function trackLevel(track: MusicTrack): number {
-  return 10 ** (track.gainDb / 20);
-}
-
-/** A rotation entry plays the first pass only; the parting fade stands in for the tails the file
- *  carries only under the second pass. */
-function firstPassSeconds(track: MusicTrack, buffer: AudioBuffer): number {
-  const { loopStartS } = track;
-  return loopStartS > 0 && loopStartS < buffer.duration ? loopStartS : buffer.duration;
 }

@@ -6,25 +6,38 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { entityOwner } from '../snapshot.js';
-import { MUSIC_VARIANTS, type MusicVariants, type ThemeMood } from './catalog.js';
-import type { MusicManifest, MusicTrack } from './manifest.js';
+import type { MusicVariants, ThemeMood } from './catalog.js';
+import type { MusicIntensity } from './pools.js';
 
 /**
- * Which mood variant of a map's music should be playing. The original's rule is unconfirmed, so every
- * threshold below is an approximation; the segment names
- * and the variant sets they switch between are not.
+ * Whether the map's music should be calm or tense, and which of its own stems fits the standing. The
+ * attack hold follows the original; the threat latch and the wealthy head-count stand in for the
+ * original's happiness score, which the snapshot does not expose. The segment names and the variant
+ * sets they switch between are not approximations.
  */
 
-/** How long the tense variant holds after the last blow. Approximation. Sim ticks, so a faster game
- *  speed shortens the hold in wall-clock terms; it stays well clear of the player's handover fade. */
-export const CONFLICT_HOLD_TICKS = 20 * TICKS_PER_SECOND;
+/** How long a blow on the local player holds the tense music, each new blow restarting it. Original
+ *  behavior: the attack override holds 120 ticks at 12 per second, about 10 s. */
+export const ATTACK_HOLD_TICKS = 10 * TICKS_PER_SECOND;
+
+/** Ticks for the threat of past blows to halve. Approximation, tune by ear. */
+export const THREAT_HALF_LIFE_TICKS = 5 * TICKS_PER_SECOND;
+
+/** Threat, counted in recent blows on the local player, that turns a skirmish into a battle. A lone
+ *  blow only starts the attack hold; this many close together latch the music tense. Approximation. */
+export const TENSE_ENTER_THREAT = 3;
+
+/** Threat a battle must decay below before the music may calm again. Far under the entry line, so
+ *  the music turns tense fast and calms slowly: a 30-blow fight stays tense about 30 s after its last
+ *  blow. Approximation. */
+export const TENSE_EXIT_THREAT = 0.5;
 
 /** Settlers the local player must own before a mission plays its Wealthy variant. Approximation: the
  *  head-count is the figure the HUD already shows, the threshold is a choice. */
 export const WEALTHY_POPULATION = 60;
 
 /** Where a wealthy settlement stops being one. The gap below {@link WEALTHY_POPULATION} is what keeps a
- *  birth and a death either side of the line from crossfading the track back and forth. */
+ *  birth and a death either side of the line from flipping the variant back and forth. */
 export const WEALTHY_POPULATION_DROP = 50;
 
 /** Stance to theme mood: the segment suffixes and the stance values name the same three states. */
@@ -42,15 +55,26 @@ export interface MusicStanding {
   readonly stance: DiplomacyState;
 }
 
-/** What the mood carries between frames, both parts held so a figure crossing a line cannot flap. */
+/** What the mood carries between frames, every latch held so a figure crossing a line cannot flap. */
 export interface MusicMoodState {
-  /** The tick the tense variant may stop at. */
-  readonly conflictUntilTick: number;
+  /** The tick the attack hold runs out at. */
+  readonly attackUntilTick: number;
+  /** Recent blows on the local player, decayed to {@link threatTick}. */
+  readonly threat: number;
+  readonly threatTick: number;
+  /** Latched between {@link TENSE_ENTER_THREAT} and {@link TENSE_EXIT_THREAT}. */
+  readonly battle: boolean;
   readonly wealthy: boolean;
 }
 
-/** Before any fight and before any settling: every tick is past the hold. */
-export const CALM_MOOD: MusicMoodState = { conflictUntilTick: 0, wealthy: false };
+/** Before any fight and before any settling. */
+export const CALM_MOOD: MusicMoodState = {
+  attackUntilTick: 0,
+  threat: 0,
+  threatTick: 0,
+  battle: false,
+  wealthy: false,
+};
 
 /** One frame's reading of the local settlement, from which the next mood follows. */
 export interface MusicMoodInput {
@@ -62,63 +86,72 @@ export interface MusicMoodInput {
 }
 
 /**
- * Whether this frame's events show the local player being fought: its own defence alarm, or a blow
- * landing on one of its bodies or buildings. A fight it carries to someone else does not count.
+ * How many of this frame's events show the local player being fought: its own defence alarm, or a
+ * blow landing on one of its bodies or buildings. A fight it carries to someone else does not count.
  */
-function underAttack({ events, snapshot, localPlayer }: MusicMoodInput): boolean {
-  if (localPlayer === undefined) return false;
+function blowsOnUs({ events, snapshot, localPlayer }: MusicMoodInput): number {
+  if (localPlayer === undefined) return 0;
+  let blows = 0;
   for (const event of events) {
     switch (event.kind) {
       case 'defenceAlarmRaised':
-        if (event.player === localPlayer) return true;
+        if (event.player === localPlayer) blows++;
         break;
       case 'combatHit':
       case 'projectileHit': {
         const target = entityById(snapshot, event.target);
-        if (target !== undefined && entityOwner(target.components) === localPlayer) return true;
+        if (target !== undefined && entityOwner(target.components) === localPlayer) blows++;
         break;
       }
       default:
         break;
     }
   }
-  return false;
+  return blows;
 }
 
-/** Advance both latches: a blow re-arms the hold, and the head-count moves in and out of wealthy at
- *  its two thresholds. */
+/** Advance every latch: a blow restarts the attack hold and adds to the decaying threat, the threat
+ *  moves in and out of battle at its two lines, and the head-count in and out of wealthy at its two. */
 export function nextMusicMood(previous: MusicMoodState, input: MusicMoodInput): MusicMoodState {
+  const { tick } = input.snapshot;
+  const blows = blowsOnUs(input);
+  const elapsed = Math.max(0, tick - previous.threatTick);
+  const threat = previous.threat * 0.5 ** (elapsed / THREAT_HALF_LIFE_TICKS) + blows;
   const { population } = input.standing;
   return {
-    conflictUntilTick: underAttack(input)
-      ? input.snapshot.tick + CONFLICT_HOLD_TICKS
-      : previous.conflictUntilTick,
+    attackUntilTick: blows > 0 ? tick + ATTACK_HOLD_TICKS : previous.attackUntilTick,
+    threat,
+    threatTick: tick,
+    battle: previous.battle ? threat >= TENSE_EXIT_THREAT : threat >= TENSE_ENTER_THREAT,
     wealthy: previous.wealthy ? population > WEALTHY_POPULATION_DROP : population >= WEALTHY_POPULATION,
   };
 }
 
-function stemFor(variants: MusicVariants, stance: DiplomacyState, mood: MusicMoodState, tense: boolean) {
+/** Tense while the attack hold runs or a battle is latched. */
+export function musicIntensity(mood: MusicMoodState, tick: number): MusicIntensity {
+  return mood.battle || tick < mood.attackUntilTick ? 'tense' : 'calm';
+}
+
+/** The stem a map code authored for a calm stretch in this standing. */
+export function ownCalmStem(variants: MusicVariants, stance: DiplomacyState, wealthy: boolean): string {
   switch (variants.family) {
     case 'attack':
       return variants.stem;
     case 'theme':
-      return variants.stems[tense ? 'hostile' : THEME_MOOD_BY_STANCE[stance]];
+      return variants.stems[THEME_MOOD_BY_STANCE[stance]];
     case 'mission':
-      if (tense) return variants.stems.danger;
-      return mood.wealthy ? variants.stems.wealthy : variants.stems.standard;
+      return wealthy ? variants.stems.wealthy : variants.stems.standard;
   }
 }
 
-/** The track a map's `musictype` should play now, or null when the code or the stem has none rendered. */
-export function musicTrackFor(
-  musicType: number | undefined,
-  stance: DiplomacyState,
-  mood: MusicMoodState,
-  tick: number,
-  manifest: MusicManifest | null,
-): MusicTrack | null {
-  if (musicType === undefined || manifest === null) return null;
-  const variants = MUSIC_VARIANTS[musicType];
-  if (variants === undefined) return null;
-  return manifest.tracks[stemFor(variants, stance, mood, tick < mood.conflictUntilTick)] ?? null;
+/** The stem a map code authored for a fight, or null when its tense slot only repeats a calm stem. */
+export function ownTenseStem(variants: MusicVariants): string | null {
+  switch (variants.family) {
+    case 'attack':
+      return variants.stem;
+    case 'theme':
+      return variants.stems.hostile;
+    case 'mission':
+      return variants.stems.danger === variants.stems.standard ? null : variants.stems.danger;
+  }
 }

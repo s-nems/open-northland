@@ -8,8 +8,10 @@ import {
   CALM_MOOD,
   type MusicManifest,
   type MusicMoodState,
+  MusicPlaylist,
   type MusicStanding,
-  musicTrackFor,
+  mapMusicFor,
+  musicIntensity,
   nextMusicMood,
 } from '../data/music/index.js';
 import type { AudioTerrain, SoundBindings } from '../data/types.js';
@@ -34,9 +36,9 @@ export interface SoundFrameInput {
   /** The viewer's fog-of-war visibility at a fractional tile - gates the settler animation cues (a
    *  settler hidden by the fog must not natter or hammer out of empty black). Omit → no fog. */
   readonly visibleTile?: (col: number, row: number) => boolean;
-  /** The local settlement's standing, picking the mood variant of the map's music. Pulled only once a
-   *  map has handed over its music, since the head-count behind it is an O(entities) read. Omit → the
-   *  calm variant, which only a fight then moves. */
+  /** The local settlement's standing, picking the map's own stems in its music rotation. Pulled only
+   *  once a map has handed over its music, since the head-count behind it is an O(entities) read.
+   *  Omit → the calm variant, which only a fight then moves. */
   readonly standingOf?: (snapshot: WorldSnapshot) => MusicStanding;
   /** The entity ids of the settlers and animals the renderer drew this frame, read only on a frame that
    *  advanced a game tick: the idle chatter and animal calls roll over them. Omit → no unprompted voices. */
@@ -72,7 +74,7 @@ export class SoundDriver {
   private readonly engine: WebAudioEngine;
   private readonly random: RandomFn;
   private readonly arbiter: OneShotArbiter;
-  private musicMap: MusicMap | null = null;
+  private playlist: MusicPlaylist | null = null;
   private mood: MusicMoodState = CALM_MOOD;
   /** Settlers ordered since the last frame, answered with their voices on that frame. */
   private responses: number[] = [];
@@ -98,7 +100,7 @@ export class SoundDriver {
   }
 
   close(): void {
-    this.musicMap = null;
+    this.playlist = null;
     this.engine.close();
   }
 
@@ -117,11 +119,14 @@ export class SoundDriver {
     this.engine.setEnabled(enabled);
   }
 
-  /** Hand over the map's music, after which each frame picks its mood variant. Null stops choosing
-   *  and leaves the running track alone. */
+  /** Hand over the map's music: its playlist starts once audio is live, and each frame feeds it the
+   *  mood. Null, or a code with no rendered music, stops the music. */
   setMusicMap(map: MusicMap | null): void {
-    this.musicMap = map;
+    const music = map === null ? null : mapMusicFor(map.musicType, map.manifest);
+    this.playlist =
+      map === null || music === null ? null : new MusicPlaylist(music, map.manifest, this.random);
     this.mood = CALM_MOOD;
+    this.engine.setMusic(this.playlist);
   }
 
   /** Set the mixer's slider positions. */
@@ -185,11 +190,10 @@ export class SoundDriver {
     this.updateMusic(input);
   }
 
-  /** Re-decide the map's mood variant. The player reconciles by file, so re-asking for the track
-   *  already playing every frame is free. */
+  /** Feed the playlist this frame's mood; only a change between calm and tense moves the player. */
   private updateMusic(input: SoundFrameInput): void {
-    const map = this.musicMap;
-    if (map === null) return;
+    const playlist = this.playlist;
+    if (playlist === null) return;
     const standing = input.standingOf?.(input.snapshot) ?? UNKNOWN_STANDING;
     this.mood = nextMusicMood(this.mood, {
       events: input.events,
@@ -197,8 +201,11 @@ export class SoundDriver {
       standing,
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
     });
-    this.engine.setMusic(
-      musicTrackFor(map.musicType, standing.stance, this.mood, input.snapshot.tick, map.manifest),
-    );
+    const transition = playlist.update({
+      intensity: musicIntensity(this.mood, input.snapshot.tick),
+      stance: standing.stance,
+      wealthy: this.mood.wealthy,
+    });
+    if (transition !== 'none') this.engine.transitionMusic(transition);
   }
 }

@@ -2,6 +2,7 @@ import {
   MUSIC_STOP_FADE_S,
   type MusicManifest,
   type MusicTrack,
+  trackRotation,
   type UiCue,
   uiCueShot,
   WebAudioEngine,
@@ -54,7 +55,8 @@ export function startMenuMusic(signal: AbortSignal): MenuSound {
   engine.setEnabled(settings.soundEnabled);
   void loadMusicManifest().then((manifest) => {
     if (signal.aborted) return;
-    engine.setMusicRotation(menuMusicTracks(manifest, rotationOrder(MENU_MUSIC_STEMS, null, Math.random)));
+    const tracks = menuMusicTracks(manifest, rotationOrder(MENU_MUSIC_STEMS, null, Math.random));
+    engine.setMusic(trackRotation(tracks));
   });
   startSound(engine, { signal });
 

@@ -1,6 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
-  CALM_MOOD,
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
   DEFAULT_VOLUMES,
@@ -8,9 +7,12 @@ import {
   MUSIC_DUCK_GAIN,
   MUSIC_STOP_FADE_S,
   MUSIC_SWITCH_TIMING,
+  type MusicCue,
+  type MusicSequence,
+  type MusicTrack,
   musicBusGain,
-  musicTrackFor,
   parseMusicManifest,
+  trackRotation,
   WebAudioEngine,
 } from '../src/index.js';
 import { FakeContext, type FakeGain, type FakeSource, flush } from './helpers/fake-audio.js';
@@ -19,36 +21,25 @@ import { manifestDocument, musicTrack } from './helpers/music-manifest.js';
 
 /**
  * The music path end to end minus the browser: the manifest parse, and the engine's music bus +
- * player (the game track's seamless ring-loop, the menu rotation's queue advance, mute/resume
- * reconciliation, memoised failed load, volume curves, the jingle duck). Mood selection is covered
- * in `music-mood`.
+ * player (a cue's passes through the seamless loop region, the levelling gain, cut-ins and pass-end
+ * handovers, the rotation's advance, mute/resume reconciliation, memoised failed load, volume curves,
+ * the jingle duck). Which cue comes next is covered in `music-playlist`.
  */
 
 /** The fake serves a 4-byte buffer, and one fetched byte decodes to one second. */
 const TRACK_S = 4;
 
-const VIKING_NEUTRAL = musicTrack('theme_viking_neutral');
-const MANIFEST = parseMusicManifest(manifestDocument({ theme_viking_neutral: VIKING_NEUTRAL }));
-
-describe('music selection', () => {
-  it('resolves a rendered stem through the manifest', () => {
-    const THEME_VIKING = 2;
-    expect(musicTrackFor(THEME_VIKING, 'neutral', CALM_MOOD, 0, MANIFEST)).toEqual(VIKING_NEUTRAL);
-  });
-
-  it('has no track for a known code whose stem was never rendered', () => {
-    const MISSION_VIKING1 = 10;
-    expect(musicTrackFor(MISSION_VIKING1, 'neutral', CALM_MOOD, 0, MANIFEST)).toBeNull();
-  });
-});
+/** A 4 s file whose first pass ends at 2 s, so a cue's pass boundaries fall at 2, 4, 6... */
+const TRACK = musicTrack('theme_viking_neutral');
+const ATTACK = musicTrack('attack_arabs');
 
 describe('music manifest', () => {
   const SILENCED = () => undefined;
 
   it('reads only the layout this build writes, so stale content is silent rather than misread', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(SILENCED);
-    const document = manifestDocument({ theme_viking_neutral: VIKING_NEUTRAL });
-    expect(parseMusicManifest(document)?.tracks.theme_viking_neutral).toEqual(VIKING_NEUTRAL);
+    const document = manifestDocument({ theme_viking_neutral: TRACK });
+    expect(parseMusicManifest(document)?.tracks.theme_viking_neutral).toEqual(TRACK);
     expect(parseMusicManifest({ ...document, version: document.version - 1 })).toBeNull();
     expect(parseMusicManifest({ tracks: document.tracks })).toBeNull();
     warn.mockRestore();
@@ -56,9 +47,9 @@ describe('music manifest', () => {
 
   it('rejects a row without its loudness correction or with a backwards loop region', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(SILENCED);
-    const { gainDb: _dropped, ...ungained } = VIKING_NEUTRAL;
-    expect(parseMusicManifest(manifestDocument({ a: ungained as typeof VIKING_NEUTRAL }))).toBeNull();
-    const backwards = { ...VIKING_NEUTRAL, loopStartS: 4, loopEndS: 2 };
+    const { gainDb: _dropped, ...ungained } = TRACK;
+    expect(parseMusicManifest(manifestDocument({ a: ungained as MusicTrack }))).toBeNull();
+    const backwards = { ...TRACK, loopStartS: 4, loopEndS: 2 };
     expect(parseMusicManifest(manifestDocument({ a: backwards }))).toBeNull();
     warn.mockRestore();
   });
@@ -84,24 +75,50 @@ function makeEngine(opts: { failFetch?: boolean } = {}): Harness {
   return { engine, ctx, fetched };
 }
 
-const TRACK = VIKING_NEUTRAL;
-const ATTACK = musicTrack('attack_arabs');
+const PASSES = 3;
+const FADE_S = 1;
+const GAP_S = 10;
+
+/** Hands out cues of `tracks` in turn, each with the same passes, silence and fade, until dropped. */
+function cues(
+  tracks: readonly MusicTrack[],
+  passes = PASSES,
+): MusicSequence & { readonly dropped: string[] } {
+  const dropped: string[] = [];
+  let at = 0;
+  return {
+    dropped,
+    next(): MusicCue | null {
+      const live = tracks.filter((track) => !dropped.includes(track.file));
+      const track = live[at++ % Math.max(1, live.length)];
+      return track === undefined ? null : { track, passes, gapBeforeS: GAP_S, fadeS: FADE_S };
+    },
+    drop(file) {
+      dropped.push(file);
+    },
+  };
+}
+
+/** The fade gain a source plays through. */
+const gainOf = (source: FakeSource): FakeGain => source.connectedTo[0] as FakeGain;
 
 describe('WebAudioEngine music', () => {
-  it('ring-loops the desired track into the music bus', async () => {
+  it('plays a cue’s passes through the loop region into the music bus', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK]));
     await flush();
     expect(fetched).toEqual(['/music/theme_viking_neutral.ogg']);
     const source = ctx.sources[0] as FakeSource;
     expect(source.started).toBe(true);
-    // The published region loops seamlessly, the way the original repeats a segment.
+    // The first pass, then the published region repeated: the way the original repeats a segment.
     expect(source.loop).toBe(true);
-    expect(source.loopStart).toBe(2);
-    expect(source.loopEnd).toBe(4);
+    expect(source.loopStart).toBe(TRACK.loopStartS);
+    expect(source.loopEnd).toBe(TRACK.loopEndS);
+    const loopS = TRACK.loopEndS - TRACK.loopStartS;
+    expect(source.playsForS).toBe(TRACK.loopStartS + (PASSES - 1) * loopS);
     // source → fade gain → music bus → duck → master.
-    const fade = source.connectedTo[0] as FakeGain;
+    const fade = gainOf(source);
     const { master, buses, duck } = mixerGraph(ctx);
     const musicBus = buses.music;
     expect(fade.connectedTo[0]).toBe(musicBus);
@@ -110,20 +127,25 @@ describe('WebAudioEngine music', () => {
     expect(duck.connectedTo[0]).toBe(master);
   });
 
-  it('opens a track at its levelling gain through a click-free ramp', async () => {
+  it('opens a cue at its track’s levelling gain and lands it on silence at its last sample', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     const LOUD_TRACK_GAIN_DB = -6;
-    engine.setMusic({ ...TRACK, gainDb: LOUD_TRACK_GAIN_DB });
+    engine.setMusic(cues([{ ...TRACK, gainDb: LOUD_TRACK_GAIN_DB }], 1));
     await flush();
-    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
+    const gain = gainOf(ctx.sources[0] as FakeSource);
+    const level = 10 ** (LOUD_TRACK_GAIN_DB / 20);
     expect(gain.gain.events[0]).toEqual({ kind: 'set', value: 0, time: 0 });
-    expect(gain.gain.ramps).toEqual([{ value: 10 ** (LOUD_TRACK_GAIN_DB / 20), time: CLICK_FREE_RAMP_S }]);
+    expect(gain.gain.ramps).toEqual([
+      { value: level, time: CLICK_FREE_RAMP_S },
+      { value: 0, time: TRACK.loopStartS },
+    ]);
+    expect(gain.gain.events).toContainEqual({ kind: 'set', value: level, time: TRACK.loopStartS - FADE_S });
   });
 
-  it('starts a track requested before the unlocking gesture on resume()', async () => {
+  it('starts music requested before the unlocking gesture on resume()', async () => {
     const { engine, ctx } = makeEngine();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK]));
     await flush();
     expect(ctx.sources).toHaveLength(0); // still suspended - nothing plays
     await engine.resume();
@@ -131,101 +153,155 @@ describe('WebAudioEngine music', () => {
     expect(ctx.sources).toHaveLength(1);
   });
 
-  it('schedules no end fade on a looping track - it never runs out', async () => {
-    const { engine, ctx } = makeEngine();
+  it('opens the next cue after its silence once the running one plays out', async () => {
+    const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK, ATTACK]));
     await flush();
-    const gain = (ctx.sources[0] as FakeSource).connectedTo[0] as FakeGain;
-    expect(gain.gain.ramps.every((ramp) => ramp.value > 0)).toBe(true);
+    const first = ctx.sources[0] as FakeSource;
+    expect(first.startedAt).toBe(0); // the opening cue skips its silence
+    first.onended?.();
+    await flush();
+    expect(fetched.at(-1)).toBe('/music/attack_arabs.ogg');
+    const endsAt = first.playsForS ?? 0;
+    expect((ctx.sources[1] as FakeSource).startedAt).toBeCloseTo(endsAt + GAP_S, 5);
   });
 
-  it('fades a mood switch over while the replacement opens right behind it', async () => {
+  it('cuts over at once: the running cue fades and the next opens right behind it', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK, ATTACK]));
     await flush();
-    engine.setMusic(TRACK); // same file - no restart
-    await flush();
-    expect(ctx.sources).toHaveLength(1);
-    ctx.currentTime = 10;
-    engine.setMusic(ATTACK);
+    ctx.currentTime = 1;
+    engine.transitionMusic('now');
     await flush();
     expect(ctx.sources).toHaveLength(2);
     const [old, next] = ctx.sources as [FakeSource, FakeSource];
-    const silentAt = 10 + MUSIC_SWITCH_TIMING.fadeS;
+    const silentAt = 1 + MUSIC_SWITCH_TIMING.fadeS;
     expect(old.stoppedAt).toBeCloseTo(silentAt, 5);
-    expect((old.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({ value: 0, time: silentAt });
+    expect(gainOf(old).gain.ramps.at(-1)).toEqual({ value: 0, time: silentAt });
+    // A cut-in skips the cue's own silence.
     expect(next.startedAt).toBeCloseTo(silentAt + MUSIC_SWITCH_TIMING.gapS, 5);
   });
 
-  it('waits out a stop fade before opening the next track, so the two never overlap', async () => {
+  it('ends a cue at its next pass boundary that leaves room for the fade', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK, ATTACK]));
     await flush();
-    ctx.currentTime = 30;
+    const first = ctx.sources[0] as FakeSource;
+    // Boundaries fall at 2, 4 and 6 s; at 2.5 s with a 1 s fade the first that fits is 4 s.
+    ctx.currentTime = 2.5;
+    const BOUNDARY = 4;
+    engine.transitionMusic('atPassEnd');
+    await flush();
+    expect(first.stoppedAt).toBe(BOUNDARY);
+    expect(gainOf(first).gain.events).toContainEqual({ kind: 'set', value: 1, time: BOUNDARY - FADE_S });
+    expect(gainOf(first).gain.ramps.at(-1)).toEqual({ value: 0, time: BOUNDARY });
+    // The next cue follows its silence from the boundary, not from the full three passes.
+    expect((ctx.sources[1] as FakeSource).startedAt).toBeCloseTo(BOUNDARY + GAP_S, 5);
+  });
+
+  it('leaves a cue alone when its own end is the nearest boundary', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(cues([TRACK], 1));
+    await flush();
+    ctx.currentTime = 0.5;
+    engine.transitionMusic('atPassEnd');
+    expect((ctx.sources[0] as FakeSource).stoppedAt).toBeNull();
+  });
+
+  it('waits out a stop fade before opening the next cue, so the two never overlap', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(cues([TRACK]));
+    await flush();
+    ctx.currentTime = 3;
     engine.setEnabled(false); // fades out over MUSIC_STOP_FADE_S, but stays audible until then
-    ctx.currentTime = 30.2;
+    ctx.currentTime = 3.2;
     engine.setEnabled(true);
     await flush();
     const [old, next] = ctx.sources as [FakeSource, FakeSource];
-    expect(old.stoppedAt).toBeCloseTo(30 + MUSIC_STOP_FADE_S, 5);
+    expect(old.stoppedAt).toBeCloseTo(3 + MUSIC_STOP_FADE_S, 5);
     expect(next.startedAt).toBeGreaterThanOrEqual(old.stoppedAt ?? 0);
   });
 
-  it('releases a finished track’s nodes instead of leaving them on the music bus', async () => {
+  it('releases a finished cue’s nodes instead of leaving them on the music bus', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK]));
     await flush();
     const source = ctx.sources[0] as FakeSource;
-    const gain = source.connectedTo[0] as FakeGain;
     source.onended?.();
     await flush();
     expect(source.disconnected).toBe(true);
-    expect(gain.disconnected).toBe(true);
+    expect(gainOf(source).disconnected).toBe(true);
   });
 
-  it('stops on mute and resumes the desired track on unmute', async () => {
+  it('stops on mute and resumes the sequence on unmute', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK]));
     await flush();
     engine.setEnabled(false);
     expect((ctx.sources[0] as FakeSource).stoppedAt).not.toBeNull();
     engine.setEnabled(true);
     await flush();
-    expect(ctx.sources).toHaveLength(2); // restarted from the remembered desired track
+    expect(ctx.sources).toHaveLength(2);
   });
 
   it('installs only one source when mute/unmute races an in-flight load', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK]));
     engine.setEnabled(false); // both while the first fetch is still in flight
     engine.setEnabled(true);
     await flush();
     expect(ctx.sources.filter((s) => s.started && s.stoppedAt === null)).toHaveLength(1);
   });
 
+  it('keeps a running sequence going when the same one is asserted again', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const sequence = cues([TRACK]);
+    engine.setMusic(sequence);
+    await flush();
+    engine.setMusic(sequence);
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+  });
+
   it('re-fetches nothing when returning to a recently played track', async () => {
     const { engine, fetched } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK, ATTACK]));
     await flush();
-    engine.setMusic(ATTACK);
+    engine.transitionMusic('now');
     await flush();
-    engine.setMusic(TRACK); // back within the decoded-buffer cache
+    engine.transitionMusic('now'); // back to the first track, within the decoded-buffer cache
     await flush();
     expect(fetched.filter((u) => u.endsWith('theme_viking_neutral.ogg'))).toHaveLength(1);
+  });
+
+  it('restarts the music a suspension dropped once the context runs again', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    ctx.refuseResume = true; // no activation: the engine's own resume is refused
+    engine.setMusic(cues([TRACK]));
+    ctx.setState('suspended'); // before the track's load lands
+    await flush();
+    expect(ctx.sources).toHaveLength(0);
+    ctx.setState('running'); // the interruption ends and the platform resumes the context
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
   });
 
   it('retries a track whose load landed while the context was suspended', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
-    ctx.refuseResume = true; // no user activation, so the engine's own resume is refused
+    engine.setMusic(cues([TRACK]));
+    ctx.refuseResume = true;
     ctx.setState('suspended'); // external interruption (no stop()) while the load is in flight
     await flush();
     expect(ctx.sources).toHaveLength(0);
@@ -235,44 +311,45 @@ describe('WebAudioEngine music', () => {
     expect(ctx.sources).toHaveLength(1);
   });
 
-  it('restarts the music a suspension dropped once the context runs again', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    ctx.refuseResume = true; // no activation: the engine's own resume is refused
-    engine.setMusic(TRACK);
-    ctx.setState('suspended'); // before the track's load lands
-    await flush();
-    expect(ctx.sources).toHaveLength(0);
-    ctx.setState('running'); // the interruption ends and the platform resumes the context
-    await flush();
-    expect(ctx.sources).toHaveLength(1);
-  });
-
-  it('does not re-fetch a failed track while the same one stays desired', async () => {
+  it('drops a track that cannot load from the sequence and falls silent once none is left', async () => {
     const { engine, fetched } = makeEngine({ failFetch: true });
     await engine.resume();
-    engine.setMusic(TRACK);
+    const sequence = cues([TRACK, ATTACK]);
+    engine.setMusic(sequence);
     await flush();
-    for (let frame = 0; frame < 20; frame++) engine.setMusic(TRACK); // the driver re-asserts per frame
+    for (let frame = 0; frame < 20; frame++) engine.setMusic(sequence); // re-asserted every frame
     await flush();
-    expect(fetched).toEqual(['/music/theme_viking_neutral.ogg']);
+    expect(sequence.dropped).toEqual([TRACK.file, ATTACK.file]);
+    expect(fetched).toHaveLength(2); // each tried once, no spin between failures
   });
 
-  it('gives a failed track another chance after a mute, so a network blip is not permanent', async () => {
+  it('stops pulling from a sequence that offers a failed track again', async () => {
     const { engine, fetched } = makeEngine({ failFetch: true });
     await engine.resume();
-    engine.setMusic(TRACK);
+    const stubborn: MusicSequence = {
+      next: () => ({ track: TRACK, passes: 1, gapBeforeS: 0, fadeS: FADE_S }),
+      drop: () => undefined,
+    };
+    engine.setMusic(stubborn);
+    await flush();
+    expect(fetched).toHaveLength(1);
+  });
+
+  it('keeps a failed track out of its sequence after a mute', async () => {
+    const { engine, fetched } = makeEngine({ failFetch: true });
+    await engine.resume();
+    engine.setMusic(cues([TRACK]));
     await flush();
     engine.setEnabled(false);
     engine.setEnabled(true);
     await flush();
-    expect(fetched).toHaveLength(2);
+    expect(fetched).toHaveLength(1);
   });
 
-  it('drops a track that was replaced while its load was in flight', async () => {
+  it('drops music that was replaced while its load was in flight', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(TRACK);
+    engine.setMusic(cues([TRACK]));
     engine.setMusic(null); // replaced before the fetch resolved
     await flush();
     expect(ctx.sources).toHaveLength(0);
@@ -288,41 +365,36 @@ describe('WebAudioEngine music rotation', () => {
   it('plays one entry through, landing it on silence a gap before the next opens', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
-    engine.setMusicRotation(ROTATION);
+    engine.setMusic(trackRotation(ROTATION));
     await flush();
     const first = ctx.sources[0] as FakeSource;
     expect(first.startedAt).toBe(0);
-    // The one ramp lands the entry on silence at its last sample, so nothing is cut mid-level.
-    expect((first.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({ value: 0, time: TRACK_S });
+    expect(gainOf(first).gain.ramps.at(-1)).toEqual({ value: 0, time: TRACK_S });
     first.onended?.();
     await flush();
     expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg']);
     const second = ctx.sources[1] as FakeSource;
-    expect(second.startedAt).toBeCloseTo(MENU_MUSIC_TIMING.gapS, 5);
-    expect((second.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({
+    expect(second.startedAt).toBeCloseTo(TRACK_S + MENU_MUSIC_TIMING.gapS, 5);
+    expect(gainOf(second).gain.ramps.at(-1)).toEqual({
       value: 0,
-      time: MENU_MUSIC_TIMING.gapS + TRACK_S,
+      time: TRACK_S + MENU_MUSIC_TIMING.gapS + TRACK_S,
     });
   });
 
   it('plays only the first pass of an entry whose file carries the ring-loop’s second pass', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusicRotation([TRACK]);
+    engine.setMusic(trackRotation([TRACK]));
     await flush();
     const first = ctx.sources[0] as FakeSource;
     expect(first.loop).toBe(false);
     expect(first.playsForS).toBe(TRACK.loopStartS);
-    expect((first.connectedTo[0] as FakeGain).gain.ramps.at(-1)).toEqual({
-      value: 0,
-      time: TRACK.loopStartS,
-    });
   });
 
   it('wraps to the first entry after the last one, playing every entry in order', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
-    engine.setMusicRotation(ROTATION);
+    engine.setMusic(trackRotation(ROTATION));
     await flush();
     for (let i = 0; i < ROTATION.length; i++) {
       (ctx.sources[i] as FakeSource).onended?.();
@@ -331,32 +403,10 @@ describe('WebAudioEngine music rotation', () => {
     expect(fetched).toEqual(['/music/one.ogg', '/music/two.ogg', '/music/three.ogg', '/music/one.ogg']);
   });
 
-  it('keeps a running rotation going when the same rotation is asserted again', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    engine.setMusicRotation(ROTATION);
-    await flush();
-    engine.setMusicRotation([...ROTATION]); // same tracks, fresh array
-    await flush();
-    expect(ctx.sources).toHaveLength(1);
-  });
-
-  it('stops the rotation on mute and starts it again on unmute', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    engine.setMusicRotation(ROTATION);
-    await flush();
-    engine.setEnabled(false);
-    expect((ctx.sources[0] as FakeSource).stoppedAt).not.toBeNull();
-    engine.setEnabled(true);
-    await flush();
-    expect(ctx.sources).toHaveLength(2);
-  });
-
   it('does not advance on the ended event a mute-driven stop fires', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
-    engine.setMusicRotation(ROTATION);
+    engine.setMusic(trackRotation(ROTATION));
     await flush();
     engine.setEnabled(false); // stop() ends the source, which must not read as "track finished"
     await flush();
@@ -367,7 +417,7 @@ describe('WebAudioEngine music rotation', () => {
   it('drops entries that cannot load and falls silent once none is left', async () => {
     const { engine, ctx, fetched } = makeEngine({ failFetch: true });
     await engine.resume();
-    engine.setMusicRotation(ROTATION);
+    engine.setMusic(trackRotation(ROTATION));
     await flush();
     expect(fetched).toHaveLength(ROTATION.length); // each tried once, no spin between failures
     expect(ctx.sources).toHaveLength(0);
@@ -376,7 +426,7 @@ describe('WebAudioEngine music rotation', () => {
   it('releases the context on close and goes silent', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusicRotation(ROTATION);
+    engine.setMusic(trackRotation(ROTATION));
     await flush();
     engine.close();
     expect((ctx.sources[0] as FakeSource).stoppedAt).not.toBeNull();
