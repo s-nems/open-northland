@@ -1,5 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import { messages } from '../../i18n/index.js';
+import { type GoodIconPainter, goodIconMarkup } from './good-art.js';
 import { GLYPH } from './icons.js';
 import { nameMatches } from './parts/name-search.js';
 import { quietTextField } from './parts/text-field.js';
@@ -10,20 +11,32 @@ export interface ChoiceRow {
   readonly key: string;
   readonly label: string;
   readonly reason?: string;
+  /** A good whose icon leads the row; shown only when the window has an icon painter. */
+  readonly goodId?: string;
+  /** A short value at the row's right edge, such as a count. */
+  readonly detail?: string;
+  /** The hover text of an enabled row. */
+  readonly tooltip?: string;
 }
 export interface ChoiceGroup {
   readonly label: string;
   readonly rows: readonly ChoiceRow[];
 }
 
-/** Shared modal choice surface for professions and school courses. The native dialog owns focus and
- * keeps pointer and keyboard input away from the world; the contents use the regular HUD plane. */
+/** Design px of a row's good icon, sized to the row's height. */
+const ROW_ICON_PX = 21;
+
+/** Shared modal choice surface for professions, school courses and equipment. The native dialog owns
+ * focus and keeps pointer and keyboard input away from the world; the contents use the regular HUD plane. */
 export function createChoiceWindow(opts: {
   readonly title: string;
   readonly scale?: number;
   readonly onPick: (key: string) => void;
   readonly onDismiss: () => void;
   readonly cue?: (cue: UiCue) => void;
+  readonly icons?: GoodIconPainter;
+  /** The note an empty list shows; absent, the generic "nothing discovered". */
+  readonly emptyLabel?: string;
 }) {
   const copy = messages().hud;
   const dialog = document.createElement('dialog');
@@ -122,9 +135,22 @@ export function createChoiceWindow(opts: {
         button.className = 'on-button on-choice-row';
         button.dataset.choice = row.key;
         button.setAttribute('aria-disabled', String(row.reason !== undefined));
+        if (row.goodId !== undefined && opts.icons !== undefined) {
+          button.insertAdjacentHTML('beforeend', goodIconMarkup(ROW_ICON_PX));
+          const frame = button.querySelector('.on-good__frame');
+          if (frame instanceof HTMLElement) opts.icons(frame, row.goodId, ROW_ICON_PX);
+        }
         const label = document.createElement('span');
+        label.className = 'on-choice-row__label';
         label.textContent = row.label;
         button.append(label);
+        if (row.detail !== undefined) {
+          const detail = document.createElement('span');
+          detail.className = 'on-choice-row__detail';
+          detail.textContent = row.detail;
+          button.append(detail);
+        }
+        if (row.tooltip !== undefined) button.title = row.tooltip;
         if (row.reason !== undefined) {
           button.title = row.reason;
           button.setAttribute('aria-label', `${row.label}: ${row.reason}`);
@@ -142,7 +168,7 @@ export function createChoiceWindow(opts: {
     if (count === 0) {
       const empty = document.createElement('p');
       empty.className = 'on-choice-empty';
-      empty.textContent = search.value.trim() ? copy.choiceNoMatches : copy.choiceEmpty;
+      empty.textContent = search.value.trim() ? copy.choiceNoMatches : (opts.emptyLabel ?? copy.choiceEmpty);
       list.append(empty);
     }
     const focused = [...list.querySelectorAll<HTMLButtonElement>('button')].find(

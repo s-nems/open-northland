@@ -11,12 +11,12 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import type { UiString } from '../../content/gui-gfx.js';
-import { loadUiFont } from '../../content/ui-font.js';
 import { actionLabel } from '../../hud/action-ring/labels.js';
 import type { EquipSlotRef } from '../../hud/details-panel/index.js';
-import { messages } from '../../i18n/index.js';
+import { type ChoiceGroup, type ChoiceRow, createChoiceWindow } from '../../hud/dom/choice-window.js';
+import type { GoodIconPainter } from '../../hud/dom/good-art.js';
+import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
 import { enqueueUnitSelection } from './group-orders.js';
-import { createPickerWindow, type PickerWindow } from './picker-window.js';
 
 export interface EquipPickControllerOptions {
   readonly uiString: UiString;
@@ -25,10 +25,13 @@ export interface EquipPickControllerOptions {
   /** The sim's selection-wide read (`SessionHost.equipPicksForSelection`), asked as the ring's window opens. */
   readonly selectionPicks: (entities: readonly number[]) => Promise<readonly EquipSelectionPick[]>;
   readonly content: ContentSet;
+  /** The HUD plane's current scale, read as the window opens. */
+  readonly scale: () => number;
+  readonly icons: GoodIconPainter;
   readonly snapshot: () => WorldSnapshot;
   readonly enqueue: (command: PlayerCommand) => void;
   readonly onOrderLimit?: (() => void) | undefined;
-  /** The GUI click a picked row and the ✕ box confirm with; absent, silent. */
+  /** The GUI click a picked row and a dismissal confirm with; absent, silent. */
   readonly cue?: (cue: UiCue) => void;
 }
 
@@ -72,23 +75,86 @@ export function selectionEquipCommands(
   return commands;
 }
 
+/** The window's groups in the settler panel's slot order. */
+const GROUP_ORDER: readonly EquipCategory[] = ['weapon', 'armor', 'tool', 'boots', 'misc'];
+
 function slotTitle(group: EquipCategory): string {
   const slots = messages().hud.equipmentSlots;
   if (group === 'tool') return slots.tools;
   return slots[group];
 }
 
-export async function mountEquipPicker(opts: EquipPickControllerOptions): Promise<EquipPickController> {
-  const uiFont = await loadUiFont();
+/** What a pick commits: the slot window equips one settler's slot, the selection window sends a good to
+ *  its takers. */
+type PendingPick =
+  | { readonly kind: 'slot'; readonly settlerId: number; readonly ref: EquipSlotRef }
+  | { readonly kind: 'selection'; readonly rows: readonly EquipSelectionPick[] };
+
+export function mountEquipPicker(opts: EquipPickControllerOptions): EquipPickController {
   const goods = opts.content.goods;
-  let window_: PickerWindow | null = null;
-  const win = (): PickerWindow => {
-    window_ ??= createPickerWindow({
-      uiFont,
-      onDismiss: () => window_?.hide(),
+  let dialog: ReturnType<typeof createChoiceWindow> | null = null;
+  let pending: PendingPick | null = null;
+  const hide = (): void => {
+    pending = null;
+    dialog?.hide();
+  };
+  const pick = (key: string): void => {
+    const goodType = Number(key);
+    const current = pending;
+    hide();
+    if (current?.kind === 'slot') {
+      opts.enqueue({
+        kind: 'equipGood',
+        entity: current.settlerId as Entity,
+        group: current.ref.group,
+        slot: current.ref.slot,
+        goodType,
+      });
+    } else if (current?.kind === 'selection') {
+      const row = current.rows.find((candidate) => candidate.goodType === goodType);
+      if (row === undefined) return;
+      enqueueUnitSelection(
+        selectionEquipCommands(opts.snapshot(), row.takers, row),
+        opts.enqueue,
+        opts.onOrderLimit,
+      );
+    }
+  };
+  const show = (
+    next: PendingPick,
+    groups: readonly ChoiceGroup[],
+    caption: string,
+    search: boolean,
+  ): void => {
+    const title = actionLabel('changeEquipment', opts.uiString);
+    dialog ??= createChoiceWindow({
+      title,
+      scale: opts.scale(),
+      icons: opts.icons,
+      emptyLabel: messages().hud.equipPickEmpty,
+      onPick: pick,
+      onDismiss: hide,
       ...(opts.cue !== undefined ? { cue: opts.cue } : {}),
     });
-    return window_;
+    pending = next;
+    void dialog.setUiScale(opts.scale());
+    dialog.update(groups, caption);
+    dialog.show(title, { search });
+  };
+  const row = (entry: EquipPickEntry, tooltip: (good: string) => string): ChoiceRow => {
+    const def = goods.find((g) => g.typeId === entry.goodType);
+    const label = def?.name ?? def?.id ?? `#${entry.goodType}`;
+    return {
+      key: String(entry.goodType),
+      label,
+      detail: String(entry.available),
+      tooltip: tooltip(label),
+      ...(def !== undefined ? { goodId: def.id } : {}),
+    };
+  };
+  const sorted = (rows: ChoiceRow[]): ChoiceRow[] => {
+    const compare = compareLabels();
+    return rows.sort((a, b) => compare(a.label, b.label));
   };
 
   // Each open supersedes the one before it, so a slow answer never fills a window opened since.
@@ -96,8 +162,15 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
   const controller: EquipPickController = {
     open: (settlerId: number, ref: EquipSlotRef): void => {
       const request = ++opening;
-      void opts.pickList(settlerId, ref.group).then((rows) => {
-        if (request === opening) showSlotPicks(settlerId, ref, rows);
+      void opts.pickList(settlerId, ref.group).then((entries) => {
+        if (request !== opening) return;
+        const copy = messages().hud;
+        const rows = sorted(
+          entries.map((entry) =>
+            row(entry, (good) => formatMessage(copy.equipPickRow, { good, available: entry.available })),
+          ),
+        );
+        show({ kind: 'slot', settlerId, ref }, [{ label: slotTitle(ref.group), rows }], '', false);
       });
     },
     openAll: (settlerIds): void => {
@@ -109,58 +182,40 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
         return;
       }
       const request = ++opening;
-      void opts.selectionPicks(targets).then((rows) => {
-        if (request === opening) showSelectionPicks(rows);
+      void opts.selectionPicks(targets).then((entries) => {
+        if (request !== opening) return;
+        const copy = messages().hud;
+        const count = targets.length;
+        // Each row sends its own takers: the settlers that can wear the good and reach a unit of it.
+        const groups = GROUP_ORDER.map((group) => ({
+          label: slotTitle(group),
+          rows: sorted(
+            entries
+              .filter((entry) => entry.group === group)
+              .map((entry) =>
+                row(entry, (good) =>
+                  entry.takers.length < count
+                    ? formatMessage(copy.equipPickTakers, {
+                        good,
+                        available: entry.available,
+                        takers: entry.takers.length,
+                        count,
+                      })
+                    : formatMessage(copy.equipPickRow, { good, available: entry.available }),
+                ),
+              ),
+          ),
+        })).filter((group) => group.rows.length > 0);
+        const caption = count > 1 ? formatMessage(copy.equipPickSelected, { count }) : '';
+        show({ kind: 'selection', rows: entries }, groups, caption, true);
       });
     },
     dispose: (): void => {
       opening++;
-      window_?.dispose();
-      window_ = null;
+      pending = null;
+      dialog?.dispose();
+      dialog = null;
     },
   };
-
-  function showSlotPicks(settlerId: number, ref: EquipSlotRef, rows: readonly EquipPickEntry[]): void {
-    const w = win();
-    w.setTitle(slotTitle(ref.group));
-    w.clearList();
-    if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
-    for (const row of rows) {
-      const def = goods.find((g) => g.typeId === row.goodType);
-      const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
-      w.addRow(label, () => {
-        opts.enqueue({
-          kind: 'equipGood',
-          entity: settlerId as Entity,
-          group: ref.group,
-          slot: ref.slot,
-          goodType: row.goodType,
-        });
-        w.hide();
-      });
-    }
-    w.show();
-  }
-
-  /** Each row sends its own takers: the settlers that can wear the good and reach a unit of it. */
-  function showSelectionPicks(rows: readonly EquipSelectionPick[]): void {
-    const w = win();
-    w.setTitle(actionLabel('changeEquipment', opts.uiString));
-    w.clearList();
-    if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
-    for (const row of rows) {
-      const def = goods.find((g) => g.typeId === row.goodType);
-      const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
-      w.addRow(label, () => {
-        enqueueUnitSelection(
-          selectionEquipCommands(opts.snapshot(), row.takers, row),
-          opts.enqueue,
-          opts.onOrderLimit,
-        );
-        w.hide();
-      });
-    }
-    w.show();
-  }
   return controller;
 }

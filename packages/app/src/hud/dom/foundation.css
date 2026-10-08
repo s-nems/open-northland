@@ -2831,8 +2831,16 @@ body.on-drag-scroll * {
   line-height: 1.15;
   gap: 6px;
 }
-.on-hud .on-window--choices .on-choice-row span:first-child {
+.on-hud .on-window--choices .on-choice-row__label {
+  flex: 1;
   overflow-wrap: anywhere;
+}
+.on-hud .on-window--choices .on-choice-row .on-good {
+  margin: -2px 0 -2px -3px;
+}
+.on-hud .on-window--choices .on-choice-row__detail {
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
 }
 .on-hud .on-window--choices .on-choice-row[aria-disabled="true"] {
   background: var(--deep);

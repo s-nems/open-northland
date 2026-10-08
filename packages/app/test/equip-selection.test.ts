@@ -7,31 +7,36 @@ import {
 import { beforeEach, expect, it, vi } from 'vitest';
 import { uiStringLookup } from '../src/content/gui-gfx.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
+import type { ChoiceGroup } from '../src/hud/dom/choice-window.js';
 
-const picker = vi.hoisted(() => ({ rows: [] as Array<() => void> }));
-vi.mock('../src/content/ui-font.js', () => ({ loadUiFont: async () => ({ family: 'test' }) }));
-vi.mock('../src/view/unit-controls/picker-window.js', () => ({
-  createPickerWindow: () => ({
-    setTitle: () => {},
-    clearList: () => {
-      picker.rows.length = 0;
-    },
-    addRow: (_label: string, pick: () => void) => {
-      picker.rows.push(pick);
-    },
-    addNote: () => {},
-    show: () => {},
-    hide: () => {},
-    dispose: () => {},
-  }),
+const picker = vi.hoisted(() => ({
+  groups: [] as ChoiceGroup[],
+  pick: undefined as ((key: string) => void) | undefined,
 }));
-// The app tests share a module registry; install the picker substitutes before loading its consumer.
+vi.mock('../src/hud/dom/choice-window.js', () => ({
+  createChoiceWindow: (opts: { onPick: (key: string) => void }) => {
+    picker.pick = opts.onPick;
+    return {
+      update: (groups: ChoiceGroup[]) => {
+        picker.groups = groups;
+      },
+      show: () => {},
+      hide: () => {},
+      setUiScale: async () => {},
+      dispose: () => {},
+    };
+  },
+}));
+// The app tests share a module registry; install the window substitute before loading its consumer.
 vi.resetModules();
 const { mountEquipPicker } = await import('../src/view/unit-controls/equip-picker.js');
 
 beforeEach(() => {
-  picker.rows.length = 0;
+  picker.groups = [];
+  picker.pick = undefined;
 });
+
+const shell = { uiString: uiStringLookup(null), scale: () => 1, icons: () => {} };
 
 function state(count: number, slot: number): WorldSnapshot {
   return {
@@ -58,20 +63,20 @@ it('asks the sim once for the selection and submits one gesture to the takers, m
     { goodType: good.typeId, group: 'misc' as const, available: 2000, takers: takers as Entity[] },
   ]);
   const pickList = vi.fn(async () => []);
-  const controller = await mountEquipPicker({
+  const controller = mountEquipPicker({
+    ...shell,
     content,
-    uiString: uiStringLookup(null),
     snapshot: () => snapshot,
     pickList,
     selectionPicks,
     enqueue: (command) => orders.push(command),
   });
   controller.openAll(selected);
-  await vi.waitFor(() => expect(picker.rows).toHaveLength(1));
+  await vi.waitFor(() => expect(picker.groups.flatMap((group) => group.rows)).toHaveLength(1));
   expect(selectionPicks).toHaveBeenCalledExactlyOnceWith(selected);
   expect(pickList).not.toHaveBeenCalled();
   snapshot = state(1000, 1);
-  picker.rows[0]?.();
+  picker.pick?.(String(good.typeId));
   expect(orders).toEqual([
     {
       kind: 'unitOrdersGroup',
@@ -90,9 +95,9 @@ it('refuses oversized equipment selections before querying or submitting', async
     selectionPicks = vi.fn(async () => []),
     enqueue = vi.fn(),
     onOrderLimit = vi.fn();
-  const controller = await mountEquipPicker({
+  const controller = mountEquipPicker({
+    ...shell,
     content: sandboxContent(),
-    uiString: uiStringLookup(null),
     snapshot: () => snapshot,
     pickList,
     selectionPicks,
@@ -104,5 +109,41 @@ it('refuses oversized equipment selections before querying or submitting', async
   expect(selectionPicks).not.toHaveBeenCalled();
   expect(enqueue).not.toHaveBeenCalled();
   expect(onOrderLimit).toHaveBeenCalledOnce();
+  controller.dispose();
+});
+
+it('groups the selection window by slot and equips a slot window pick into that slot', async () => {
+  const content = sandboxContent();
+  const byCategory = (category: string) => content.goods.find((row) => row.equip?.category === category);
+  const weapon = byCategory('weapon'),
+    misc = byCategory('misc');
+  if (weapon === undefined || misc === undefined) throw new Error('missing equipment goods');
+  const snapshot = state(2, 0);
+  const orders: PlayerCommand[] = [];
+  const controller = mountEquipPicker({
+    ...shell,
+    content,
+    snapshot: () => snapshot,
+    pickList: async () => [{ goodType: weapon.typeId, available: 3 }],
+    selectionPicks: async () => [
+      { goodType: misc.typeId, group: 'misc' as const, available: 5, takers: [1 as Entity] },
+      { goodType: weapon.typeId, group: 'weapon' as const, available: 3, takers: [1, 2] as Entity[] },
+    ],
+    enqueue: (command) => orders.push(command),
+  });
+  controller.openAll([1, 2]);
+  await vi.waitFor(() => expect(picker.groups).toHaveLength(2));
+  expect(picker.groups.map((group) => group.rows.map((row) => row.key))).toEqual([
+    [String(weapon.typeId)],
+    [String(misc.typeId)],
+  ]);
+  expect(picker.groups[1]?.rows[0]).toMatchObject({ goodId: misc.id, detail: '5' });
+
+  controller.open(2, { group: 'weapon', slot: 0 });
+  await vi.waitFor(() => expect(picker.groups).toHaveLength(1));
+  picker.pick?.(String(weapon.typeId));
+  expect(orders).toEqual([
+    { kind: 'equipGood', entity: 2, group: 'weapon', slot: 0, goodType: weapon.typeId },
+  ]);
   controller.dispose();
 });

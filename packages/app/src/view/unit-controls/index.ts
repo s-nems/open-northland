@@ -2,6 +2,7 @@ import { entityById, MAX_UNIT_ORDER_MEMBERS, systems, type WorldSnapshot } from 
 import { isSettler, isVehicle, settlerJobType } from '../../game/snapshot.js';
 import { pickableSeat } from '../../game/viewer-seat.js';
 import type { ActionOrderId } from '../../hud/action-ring/index.js';
+import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { isActionHotkey, isFieldKey, isOrderHotkey } from '../../hud/hotkeys.js';
 import { matchesMouseBinding } from '../../hud/keybindings.js';
 import { clientToScreen } from '../camera/index.js';
@@ -87,8 +88,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const equipPicker: EquipPickController | null =
     opts.requestEquipPicks === undefined || opts.requestSelectionEquipPicks === undefined
       ? null
-      : await mountEquipPicker({
+      : mountEquipPicker({
           uiString: opts.domHud.uiString,
+          scale: opts.domHud.scale,
+          icons: createGoodIconPainter(opts.domHud.pack, opts.content),
           pickList: opts.requestEquipPicks,
           selectionPicks: opts.requestSelectionEquipPicks,
           content: opts.content,
