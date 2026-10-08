@@ -17,6 +17,7 @@ import {
 } from '@open-northland/audio';
 import { formatMessage, messages } from '../../i18n/index.js';
 import { BUTTON_STYLE, el, pageSection } from '../../view/overlay.js';
+import { type RafLoop, startRafLoop } from '../../view/runtime/raf-loop.js';
 import { DEFAULT_BURST, type Listening, listeningControls } from './controls.js';
 import type { ClipList, SoundGalleryModel } from './model.js';
 
@@ -89,6 +90,24 @@ function basename(file: string): string {
 export interface SoundStudio {
   /** The gallery's whole page body: controls, then one section per model list and the music. */
   readonly sections: readonly HTMLElement[];
+  /** One driver frame with no new shot: the beds switched on and the zoom, for {@link runStudioClock}. */
+  readonly idleFrame: () => void;
+}
+
+/**
+ * Run `frame` every animation frame while `page` shows, stopping on `pagehide` and starting again on
+ * a `pageshow`. The arbiter rings a jingle that waited for its lane only inside a driver frame, so the
+ * studio needs frames between its clicks as a game has.
+ */
+export function runStudioClock(frame: () => void, page: EventTarget): void {
+  let loop: RafLoop | null = startRafLoop(frame);
+  page.addEventListener('pagehide', () => {
+    loop?.stop();
+    loop = null;
+  });
+  page.addEventListener('pageshow', () => {
+    loop ??= startRafLoop(frame);
+  });
 }
 
 /** Build the gallery over `audio`; `music` lists the rendered stems, null when none were rendered. */
@@ -304,6 +323,7 @@ export function createSoundStudio(
   }
 
   return {
+    idleFrame: () => frame([]),
     sections: [
       controls,
       pageSection(copy.actions, model.actions.map(actionRow)),

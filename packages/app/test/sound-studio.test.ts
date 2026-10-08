@@ -15,7 +15,7 @@ import type { SoundBank } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_BURST } from '../src/entries/sound/controls.js';
 import { buildSoundGalleryModel } from '../src/entries/sound/model.js';
-import { createSoundStudio, type GalleryAudio } from '../src/entries/sound/studio.js';
+import { createSoundStudio, type GalleryAudio, runStudioClock } from '../src/entries/sound/studio.js';
 import { messages } from '../src/i18n/index.js';
 
 /**
@@ -103,11 +103,13 @@ function lanes(): LaneCounts {
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
 
-function mount(audio: FakeAudio): HTMLElement {
+function mount(audio: FakeAudio, page?: EventTarget): HTMLElement {
   const model = buildSoundGalleryModel(bank, index, defaultBindings());
   const root = document.createElement('div');
-  root.append(...createSoundStudio(audio, index, model, music, DEFAULT_VOLUMES).sections);
+  const studio = createSoundStudio(audio, index, model, music, DEFAULT_VOLUMES);
+  root.append(...studio.sections);
   document.body.append(root);
+  if (page !== undefined) runStudioClock(studio.idleFrame, page);
   return root;
 }
 
@@ -195,5 +197,46 @@ describe('sound studio', () => {
     expect(audio.music.at(-1)).toBeNull();
     expect(audio.calls.at(-1)?.ambient).toEqual([]);
     expect(button(beds, copy.bedOn)).toBeDefined();
+  });
+});
+
+describe('sound studio frame clock', () => {
+  const copy = messages().soundGallery;
+  /** Animation frames waiting to run, by request id. */
+  const frames = new Map<number, FrameRequestCallback>();
+  let nextFrame = 0;
+  const runFrame = (): void => {
+    const due = [...frames.values()];
+    frames.clear();
+    for (const callback of due) callback(0);
+  };
+
+  beforeEach(() => {
+    frames.clear();
+    vi.stubGlobal('requestAnimationFrame', (callback: FrameRequestCallback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    });
+    vi.stubGlobal('cancelAnimationFrame', (id: number) => frames.delete(id));
+  });
+
+  it('runs an idle driver frame with the beds on every animation frame until the page hides', async () => {
+    const audio = new FakeAudio();
+    const page = new EventTarget();
+    const root = mount(audio, page);
+    button(section(root, copy.ambient), copy.bedOn).click();
+    await flush();
+    const before = audio.calls.length;
+    runFrame();
+    runFrame();
+    expect(audio.calls).toHaveLength(before + 2);
+    expect(audio.calls.at(-1)?.shots).toEqual([]);
+    expect(audio.calls.at(-1)?.ambient.map((bed) => bed.file)).toEqual(['ambient/meadow.wav']);
+    page.dispatchEvent(new Event('pagehide'));
+    runFrame();
+    expect(audio.calls).toHaveLength(before + 2);
+    page.dispatchEvent(new Event('pageshow'));
+    runFrame();
+    expect(audio.calls).toHaveLength(before + 3);
   });
 });

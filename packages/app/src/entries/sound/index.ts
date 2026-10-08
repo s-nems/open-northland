@@ -6,7 +6,7 @@ import { messages } from '../../i18n/index.js';
 import { el, pageInnerStyle, pageRootStyle } from '../../view/overlay.js';
 import { readStoredSettings } from '../../view/settings-store.js';
 import { buildSoundGalleryModel } from './model.js';
-import { createSoundStudio } from './studio.js';
+import { createSoundStudio, runStudioClock } from './studio.js';
 
 /**
  * The `?sounds` verification gallery: the human-oracle seam for audio, since whether a sound is the
@@ -70,4 +70,5 @@ export async function renderSoundGallery(
   );
   root.append(inner);
   document.body.append(root);
+  runStudioClock(studio.idleFrame, window);
 }
