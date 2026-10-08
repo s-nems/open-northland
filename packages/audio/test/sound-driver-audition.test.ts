@@ -72,6 +72,7 @@ describe('auditionShot', () => {
     const answer = auditionShot(index, ANSWER, { kind: 'answer' }, 'k', 0);
     expect(answer.lane).toBeUndefined();
     expect(answer.exclusive).toBe('group');
+    expect(answer.bus).toBe('responses');
     // A jingle rings centred and ducks the music for its type's hold, whatever the pan slider says.
     const jingle = auditionShot(index, BIRTH, { kind: 'jingle', musicType: BIRTH_TYPE }, 'k', PAN_LEFT);
     expect(jingle.pan).toBe(0);

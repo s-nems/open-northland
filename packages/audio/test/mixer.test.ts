@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   DEFAULT_VOLUMES,
+  notificationShot,
   type OneShot,
   oneShotBus,
+  SOUND_BUSES,
   uiCueShot,
   VOLUME_CHANNELS,
   VOLUME_MAX,
@@ -51,14 +53,25 @@ describe('oneShotBus', () => {
     ...(lane === undefined ? {} : { lane }),
   });
 
-  it('puts action sounds on world and unprompted voices on voice', () => {
+  it('puts action sounds and unprompted voices (chatter, screams, animal calls) on world', () => {
     expect(oneShotBus(shot({ kind: 'sfx' }))).toBe('world');
-    expect(oneShotBus(shot({ kind: 'voice' }))).toBe('voice');
+    expect(oneShotBus(shot({ kind: 'voice' }))).toBe('world');
+    expect(oneShotBus(shot({ kind: 'voice', scream: true }))).toBe('world');
   });
 
-  it('puts jingles and the shots that answer the player (GUI cues, order answers) on ui', () => {
+  it('puts jingles, alerts, GUI cues and notifications on ui', () => {
     expect(oneShotBus(shot({ kind: 'jingle', musicType: 0 }))).toBe('ui');
+    expect(oneShotBus(shot({ kind: 'alert', alert: 'baseAttacked' }))).toBe('ui');
     expect(oneShotBus(shot(undefined))).toBe('ui');
     expect(oneShotBus(uiCueShot('confirm'))).toBe('ui');
+    expect(oneShotBus(notificationShot('card', '1'))).toBe('ui');
+  });
+
+  it('puts a shot that names its bus there: an answer on responses', () => {
+    expect(oneShotBus({ ...shot(undefined), bus: 'responses' })).toBe('responses');
+  });
+
+  it('lists the buses players read: music, responses, world, ambience, interface', () => {
+    expect(SOUND_BUSES).toEqual(['music', 'responses', 'world', 'ambient', 'ui']);
   });
 });

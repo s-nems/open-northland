@@ -57,7 +57,7 @@ describe('voice duck', () => {
     await play(engine, [line('ok.wav')]);
     expect(voiceDuck.gain.ramps[0]).toEqual({ value: DUCKED, time: VOICE_DUCK_DIP_S });
     expect(jingleDuck.gain.ramps).toHaveLength(0);
-    for (const bus of [buses.ui, buses.voice, buses.world]) expect(bus.gain.ramps).toHaveLength(0);
+    for (const bus of [buses.ui, buses.responses, buses.world]) expect(bus.gain.ramps).toHaveLength(0);
   });
 
   it('schedules its lift at the end of the decoded line with no later frame', async () => {

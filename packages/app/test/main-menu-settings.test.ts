@@ -75,7 +75,7 @@ describe('parseStoredSettings', () => {
         colours: 'stance',
       },
       soundEnabled: false,
-      volumes: { master: 65, music: 40, voice: 90, world: 100, ambient: 0, ui: 75 },
+      volumes: { master: 65, music: 40, responses: 90, world: 100, ambient: 0, ui: 75 },
       soundInBackground: true,
       monoSound: true,
       language: 'eng',

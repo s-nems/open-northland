@@ -45,9 +45,7 @@ interface Harness {
   readonly fetched: string[];
 }
 
-function makeEngine(
-  opts: { failFetch?: boolean; noPanner?: boolean; random?: () => number } = {},
-): Harness {
+function makeEngine(opts: { failFetch?: boolean; noPanner?: boolean; random?: () => number } = {}): Harness {
   const ctx = new FakeContext();
   if (opts.noPanner) {
     (ctx as { createStereoPanner?: unknown }).createStereoPanner = undefined;
@@ -104,7 +102,7 @@ describe('WebAudioEngine one-shots', () => {
     expect(limiter.connectedTo[0]).toBe(ctx.destination);
   });
 
-  it('routes each one-shot to the bus of its lane, through its zoom layer on a world bus', async () => {
+  it('routes each one-shot to the bus of its lane, through its zoom layer on the world bus', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.apply({
@@ -114,6 +112,7 @@ describe('WebAudioEngine one-shots', () => {
         shot({ key: 'birth', files: ['birth.wav'], lane: { kind: 'jingle', musicType: BIRTH_JINGLE } }),
         shot({ key: 'blow', files: ['blow.wav'], lane: { kind: 'sfx' }, layer: 'impact' }),
         shot({ key: 'scream', files: ['scream.wav'], lane: { kind: 'voice' }, layer: 'impact' }),
+        shot({ key: 'answer', files: ['ok.wav'], bus: 'responses' }),
       ],
       ambient: [],
     });
@@ -121,27 +120,27 @@ describe('WebAudioEngine one-shots', () => {
     const { buses, layers } = mixerGraph(ctx);
     const entryOf = (source: FakeSource): unknown =>
       ((source.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain).connectedTo[0];
-    const [work, chatter, birth, blow, scream] = ctx.sources as [
+    const [work, chatter, birth, blow, scream, answer] = ctx.sources as [
+      FakeSource,
       FakeSource,
       FakeSource,
       FakeSource,
       FakeSource,
       FakeSource,
     ];
+    // Chatter and screams sound in the world like its work and blows; an answer has a bus of its own.
     expect(entryOf(work)).toBe(layers.world.detail);
-    expect(entryOf(chatter)).toBe(layers.voice.detail);
+    expect(entryOf(chatter)).toBe(layers.world.detail);
     expect(entryOf(birth)).toBe(buses.ui);
     expect(entryOf(blow)).toBe(layers.world.impact);
-    expect(entryOf(scream)).toBe(layers.voice.impact);
+    expect(entryOf(scream)).toBe(layers.world.impact);
+    expect(entryOf(answer)).toBe(buses.responses);
     // Detail reaches its bus through the zoom low-pass; impacts and beds go straight in.
     const worldMuffle = layers.world.detail.connectedTo[0] as FakeBiquad;
-    const voiceMuffle = layers.voice.detail.connectedTo[0] as FakeBiquad;
     expect(worldMuffle).toBeInstanceOf(FakeBiquad);
     expect(worldMuffle.type).toBe('lowpass');
     expect(worldMuffle.connectedTo[0]).toBe(buses.world);
-    expect(voiceMuffle.connectedTo[0]).toBe(buses.voice);
     expect(layers.world.impact.connectedTo[0]).toBe(buses.world);
-    expect(layers.voice.impact.connectedTo[0]).toBe(buses.voice);
     expect(layers.bed.connectedTo[0]).toBe(buses.ambient);
   });
 
@@ -181,15 +180,15 @@ describe('WebAudioEngine one-shots', () => {
     ]);
     expect(buses.ambient.gain.ramps.at(-1)?.value).toBe(0);
     expect(master.gain.ramps).toEqual([]);
-    expect(buses.voice.gain.ramps).toEqual([]);
+    expect(buses.responses.gain.ramps).toEqual([]);
   });
 
   it('applies slider positions given before the context exists, clamped to the slider range', async () => {
     const { engine, ctx } = makeEngine();
-    engine.setVolumes({ ...DEFAULT_VOLUMES, voice: 150, ui: -5 });
+    engine.setVolumes({ ...DEFAULT_VOLUMES, responses: 150, ui: -5 });
     await engine.resume();
     const { buses } = mixerGraph(ctx);
-    expect(buses.voice.gain.value).toBe(1);
+    expect(buses.responses.gain.value).toBe(1);
     expect(buses.ui.gain.value).toBe(0);
   });
 
@@ -444,20 +443,16 @@ describe('WebAudioEngine zoom perspective', () => {
     ctx.currentTime = 1;
     engine.setCameraScale(FAR_ZOOM_SCALE);
     const far = zoomDistance(FAR_ZOOM_SCALE);
-    for (const node of [layers.world.detail, layers.voice.detail]) {
-      expect(node.gain.ramps).toEqual([
-        { value: perspectiveGain('detail', far), time: 1 + PERSPECTIVE_RAMP_S },
-      ]);
-    }
-    for (const node of [layers.world.impact, layers.voice.impact]) {
-      expect(node.gain.ramps).toEqual([
-        { value: perspectiveGain('impact', far), time: 1 + PERSPECTIVE_RAMP_S },
-      ]);
-    }
+    expect(layers.world.detail.gain.ramps).toEqual([
+      { value: perspectiveGain('detail', far), time: 1 + PERSPECTIVE_RAMP_S },
+    ]);
+    expect(layers.world.impact.gain.ramps).toEqual([
+      { value: perspectiveGain('impact', far), time: 1 + PERSPECTIVE_RAMP_S },
+    ]);
     expect(layers.bed.gain.ramps).toEqual([
       { value: perspectiveGain('bed', far), time: 1 + PERSPECTIVE_RAMP_S },
     ]);
-    for (const bus of [buses.music, buses.ui, buses.world, buses.voice, buses.ambient]) {
+    for (const bus of [buses.music, buses.ui, buses.world, buses.responses, buses.ambient]) {
       expect(bus.gain.ramps).toEqual([]);
     }
   });
@@ -466,7 +461,7 @@ describe('WebAudioEngine zoom perspective', () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     const filters = ctx.created.filter((n): n is FakeBiquad => n instanceof FakeBiquad);
-    expect(filters).toHaveLength(2); // one per world bus, never one per sound
+    expect(filters).toHaveLength(1); // one for the world bus, never one per sound
     for (const filter of filters) {
       expect(filter.frequency.value).toBe(MUFFLE_OPEN_HZ);
       expect(filter.Q.value).toBe(MUFFLE_Q_DB);

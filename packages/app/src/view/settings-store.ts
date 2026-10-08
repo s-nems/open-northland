@@ -178,7 +178,7 @@ function parseVolumes(value: unknown): MixerVolumes {
   return {
     master: position('master'),
     music: position('music'),
-    voice: position('voice'),
+    responses: position('responses'),
     world: position('world'),
     ambient: position('ambient'),
     ui: position('ui'),

@@ -5,6 +5,7 @@ import type { AlertKind, NoticeVoice } from './alerts.js';
 import type { SoundIndex } from './bank.js';
 import type { AmbientBedMemory } from './director/ambient.js';
 import type { LandscapeSectors } from './landscape-sectors.js';
+import type { SoundBus } from './mixer.js';
 import type { ShotLayer } from './perspective.js';
 import type { UiCue } from './ui-cues.js';
 
@@ -67,6 +68,9 @@ export interface OneShot {
   readonly yieldsToAnswer?: boolean;
   /** The lane this shot is rationed in; absent for a shot that must always play. */
   readonly lane?: Lane;
+  /** The bus it plays on when its lane does not decide it: `responses` for a settler answering the
+   *  player ({@link import('./mixer.js').oneShotBus}). */
+  readonly bus?: SoundBus;
   /** The zoom layer a world shot fades in ({@link import('./perspective.js').shotLayer}); absent is
    *  `detail`. A `ui` shot ignores it. */
   readonly layer?: ShotLayer;

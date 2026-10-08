@@ -184,6 +184,7 @@ function answerShot(index: SoundIndex, speaker: Speaker, key: string, pan: numbe
     gain: poolGain(index, speaker.files),
     pan,
     key,
+    bus: 'responses',
     exclusive: 'group',
     duckMusicDb: ANSWER_MUSIC_DUCK_DB,
   };
@@ -207,6 +208,7 @@ function murmurShots(index: SoundIndex, members: readonly Member[], pan: number)
         gain: poolGain(index, files) * dbGain(MURMUR_GAIN_DB),
         pan: clampPan(pan + line.panOffset),
         key: `murmur:${i}`,
+        bus: 'responses' as const,
         exclusive: 'wav' as const,
         delayS: line.delayS,
         cooldownS: MURMUR_COOLDOWN_S,
@@ -237,6 +239,7 @@ export function selectionShots(input: DirectorInput, call: VoiceCall): OneShot[]
       gain: poolGain(input.index, lead.files),
       pan: centroidPan(members),
       key: `select:${lead.member.entity.id}`,
+      bus: 'responses',
       exclusive: 'group',
       yieldsToAnswer: true,
       cooldownS: SELECT_COOLDOWN_S,

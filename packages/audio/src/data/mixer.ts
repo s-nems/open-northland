@@ -1,25 +1,25 @@
 import type { OneShot } from './types.js';
 
 /**
- * The mixer's buses and player volumes. Every sound plays on one bus under the master:
+ * The mixer's buses and player volumes, one slider each, named for what a player hears on them. Every
+ * sound plays on one bus under the master:
  *
  * - `music`: the soundtrack;
- * - `voice`: unprompted speech in the world (chatter, screams, animal calls);
- * - `world`: positioned action sounds (work, combat, buildings, objects);
- * - `ambient`: terrain beds and weather;
- * - `ui`: GUI cues, order answers and life-event jingles.
+ * - `responses`: settlers answering the player (an order's answer, a selection's line, a group's murmur);
+ * - `world`: everything positioned in the world (work, combat, buildings, chatter, screams, animal calls);
+ * - `ambient`: terrain beds, the landscape's object sounds and weather;
+ * - `ui`: GUI cues, notifications, alerts and life-event jingles.
  *
- * Order answers ride `ui` rather than `voice`: they answer the player's own click like a button does,
- * so they keep one level wherever the camera is and the voice slider cannot bury feedback the player
- * asked for. Jingles and alerts sit beside them for the same reason.
+ * Responses get their own bus: they answer the player's click, keep one level wherever the camera is,
+ * and are the first thing a player may want quieter without losing the world.
  */
-export type SoundBus = 'music' | 'voice' | 'world' | 'ambient' | 'ui';
+export type SoundBus = 'music' | 'responses' | 'world' | 'ambient' | 'ui';
 
 /** One player volume slider: the master or a bus. */
 export type VolumeChannel = 'master' | SoundBus;
 
 /** Every bus, in the order the engine builds them. */
-export const SOUND_BUSES: readonly SoundBus[] = ['music', 'voice', 'world', 'ambient', 'ui'];
+export const SOUND_BUSES: readonly SoundBus[] = ['music', 'responses', 'world', 'ambient', 'ui'];
 
 /** The sliders in the order a settings page lists them. */
 export const VOLUME_CHANNELS: readonly VolumeChannel[] = ['master', ...SOUND_BUSES];
@@ -48,7 +48,7 @@ export const DEFAULT_BUS_VOLUME = VOLUME_MAX;
 export const DEFAULT_VOLUMES: MixerVolumes = {
   master: DEFAULT_MASTER_VOLUME,
   music: DEFAULT_MUSIC_VOLUME,
-  voice: DEFAULT_BUS_VOLUME,
+  responses: DEFAULT_BUS_VOLUME,
   world: DEFAULT_BUS_VOLUME,
   ambient: DEFAULT_AMBIENT_VOLUME,
   ui: DEFAULT_BUS_VOLUME,
@@ -72,7 +72,7 @@ export function volumeGain(position: number): number {
 
 /**
  * dB the music bus dips while an alert speaks ({@link OneShot.duckMusicDb}). Idle chatter, screams and
- * animal calls on the `voice` bus leave the music alone: they ring unasked and often, and a duck under
+ * animal calls in the world leave the music alone: they ring unasked and often, and a duck under
  * them would pump the score. Approximation: the common 2-4 dB voice-over-music duck.
  */
 export const VOICE_MUSIC_DUCK_DB = -3;
@@ -80,9 +80,10 @@ export const VOICE_MUSIC_DUCK_DB = -3;
  *  after nearly every order. A selection's short line dips nothing. Approximation. */
 export const ANSWER_MUSIC_DUCK_DB = -2;
 
-/** The bus a one-shot plays on, from the lane it is rationed in; a shot outside every lane answers the
- *  player (a GUI cue, an order's answer) and plays on `ui`. */
+/** The bus a one-shot plays on: the one it names ({@link OneShot.bus}), else its lane's; a shot outside
+ *  every lane (a GUI cue, a notification) plays on `ui`. */
 export function oneShotBus(shot: OneShot): SoundBus {
+  if (shot.bus !== undefined) return shot.bus;
   const lane = shot.lane;
   if (lane === undefined) return 'ui';
   switch (lane.kind) {
@@ -90,7 +91,7 @@ export function oneShotBus(shot: OneShot): SoundBus {
     case 'alert':
       return 'ui';
     case 'voice':
-      return 'voice';
+      return 'world';
     case 'sfx':
       return 'world';
   }

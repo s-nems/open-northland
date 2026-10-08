@@ -74,8 +74,9 @@ export function muffleCutoffHz(zoom: number): number {
   return lerpHz(MUFFLE_OPEN_HZ, MUFFLE_FAR_HZ, zoom);
 }
 
-/** The layer a one-shot plays in, or null for one that ignores the camera: a shot on the `ui` bus
- *  (GUI cues, order answers, jingles) keeps one level wherever the camera is. */
+/** The layer a one-shot plays in, or null for one that ignores the camera: a shot on the `ui` bus (GUI
+ *  cues, alerts, jingles) or the `responses` bus (order answers) keeps one level wherever the camera is. */
 export function shotLayer(shot: OneShot): ShotLayer | null {
-  return oneShotBus(shot) === 'ui' ? null : (shot.layer ?? 'detail');
+  const bus = oneShotBus(shot);
+  return bus === 'ui' || bus === 'responses' ? null : (shot.layer ?? 'detail');
 }

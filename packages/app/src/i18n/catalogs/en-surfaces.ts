@@ -244,16 +244,16 @@ export const enSurfaces = {
       volumes: {
         master: 'Master',
         music: 'Music',
-        voice: 'Voices',
-        world: 'World sounds',
+        responses: 'Unit responses',
+        world: 'World',
         ambient: 'Ambience',
         ui: 'Interface and alerts',
       },
       volumeTips: {
-        voice: 'Settlers chatting and crying out, and animal calls.',
-        world: 'Work, combat, buildings and everything else that sounds in the world.',
-        ambient: 'The sound of the land and the weather.',
-        ui: 'Button clicks, settlers answering your orders, and the jingles of births, deaths and finished buildings.',
+        responses: 'Settlers answering your orders and your selections.',
+        world: 'Work, combat, buildings, settlers chatting and crying out, and animals.',
+        ambient: 'The sound of the land, its birds and the weather.',
+        ui: 'Button clicks, notifications, the alarm horn, and the jingles of births, deaths and finished buildings.',
       },
       language: 'Language',
       // Endonyms: each language names itself and is not translated per locale.

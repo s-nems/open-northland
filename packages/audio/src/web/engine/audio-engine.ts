@@ -152,15 +152,11 @@ export const VOICE_DUCK_RELEASE_S = 0.8;
 /** The buses an alert ducks ({@link OneShot.duckWorldDb}): the world's action and its beds. */
 export const ALERT_DUCKED_BUSES: readonly SoundBus[] = ['world', 'ambient'];
 
-/** The buses that carry world one-shots, each split into the two {@link ShotLayer}s. */
-type WorldBus = 'world' | 'voice';
-const WORLD_BUSES: readonly WorldBus[] = ['world', 'voice'];
-
-/** The per-layer gains in front of the buses: the world layers of `world` and `voice`, and the ambient
- *  bed layer the terrain beds and the weather share. A muffled layer's gain feeds its bus through one
- *  low-pass in `filters`. */
+/** The per-layer gains in front of the buses: the two {@link ShotLayer}s of the `world` bus, which
+ *  carries every world one-shot, and the ambient bed layer the terrain beds and the weather share. A
+ *  muffled layer's gain feeds its bus through one low-pass in `filters`. */
 interface LayerGains {
-  readonly shots: Readonly<Record<WorldBus, Readonly<Record<ShotLayer, GainNode>>>>;
+  readonly shots: Readonly<Record<ShotLayer, GainNode>>;
   readonly bed: GainNode;
   readonly filters: readonly BiquadFilterNode[];
 }
@@ -398,10 +394,8 @@ export class WebAudioEngine {
     const ctx = this.ctx;
     const layers = this.layers;
     if (ctx === null || layers === null) return;
-    for (const bus of WORLD_BUSES) {
-      for (const layer of SHOT_LAYERS) {
-        rampParam(ctx, layers.shots[bus][layer].gain, perspectiveGain(layer, zoom), PERSPECTIVE_RAMP_S);
-      }
+    for (const layer of SHOT_LAYERS) {
+      rampParam(ctx, layers.shots[layer].gain, perspectiveGain(layer, zoom), PERSPECTIVE_RAMP_S);
     }
     rampParam(ctx, layers.bed.gain, perspectiveGain('bed', zoom), PERSPECTIVE_RAMP_S);
     for (const filter of layers.filters)
@@ -511,7 +505,7 @@ export class WebAudioEngine {
     else master.connect(limiter).connect(ctx.destination);
     const buses: Record<SoundBus, GainNode> = {
       music: ctx.createGain(),
-      voice: ctx.createGain(),
+      responses: ctx.createGain(),
       world: ctx.createGain(),
       ambient: ctx.createGain(),
       ui: ctx.createGain(),
@@ -569,23 +563,19 @@ export class WebAudioEngine {
       filters.push(filter);
       return gain;
     };
-    const shotLayers = (bus: GainNode): Record<ShotLayer, GainNode> => ({
-      detail: layerGain('detail', bus),
-      impact: layerGain('impact', bus),
-    });
     return {
-      shots: { world: shotLayers(buses.world), voice: shotLayers(buses.voice) },
+      shots: { detail: layerGain('detail', buses.world), impact: layerGain('impact', buses.world) },
       bed: layerGain('bed', buses.ambient),
       filters,
     };
   }
 
-  /** Where a one-shot enters the mix: its layer's gain on a world bus, else its bus itself. */
+  /** Where a one-shot enters the mix: its layer's gain on the world bus, else its bus itself. */
   private shotInput(shot: OneShot, buses: Readonly<Record<SoundBus, GainNode>>): AudioNode {
     const bus = oneShotBus(shot);
     const layer = shotLayer(shot);
-    if (layer === null || this.layers === null || (bus !== 'world' && bus !== 'voice')) return buses[bus];
-    return this.layers.shots[bus][layer];
+    if (layer === null || this.layers === null || bus !== 'world') return buses[bus];
+    return this.layers.shots[layer];
   }
 
   /**
@@ -657,7 +647,7 @@ function clampedVolumes(volumes: MixerVolumes): Record<VolumeChannel, number> {
   return {
     master: clampVolume(volumes.master),
     music: clampVolume(volumes.music),
-    voice: clampVolume(volumes.voice),
+    responses: clampVolume(volumes.responses),
     world: clampVolume(volumes.world),
     ambient: clampVolume(volumes.ambient),
     ui: clampVolume(volumes.ui),

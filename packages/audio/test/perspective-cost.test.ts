@@ -227,8 +227,8 @@ describe('listening perspective cost on a busy screen', () => {
     const few = await zoomStepAutomation(10);
     const many = await zoomStepAutomation(BUSY_SIDE * BUSY_SIDE);
     expect(many).toBe(few);
-    // Each zoom-following layer gain and each muffle filter: anchor, cancel, ramp.
-    const layerParams = 2 * SHOT_LAYERS.length + 1 + 2;
+    // Each zoom-following layer gain and the world's muffle filter: anchor, cancel, ramp.
+    const layerParams = SHOT_LAYERS.length + 1 + 1;
     expect(few).toBe(layerParams * AUTOMATION_CALLS_PER_RAMP);
   });
 

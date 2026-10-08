@@ -16,7 +16,8 @@ export type AuditionRole =
   | { readonly kind: 'world'; readonly layer: ShotLayer }
   /** An unprompted line in the voice lane (chatter, screams, animal calls): one wav sounds once at a time. */
   | { readonly kind: 'voice' }
-  /** An order's answer: in no lane, and held while any line of its pool still sounds. */
+  /** An order's answer: in no lane, on the responses bus, and held while any line of its pool still
+   *  sounds. */
   | { readonly kind: 'answer' }
   /** A life-event stinger in the jingle lane, ducking the music for its type's hold. */
   | { readonly kind: 'jingle'; readonly musicType: number };
@@ -39,7 +40,7 @@ export function auditionShot(
     case 'voice':
       return { files, gain, pan, key, lane: VOICE_LANE, exclusive: 'wav' };
     case 'answer':
-      return { files, gain, pan, key, exclusive: 'group' };
+      return { files, gain, pan, key, bus: 'responses', exclusive: 'group' };
     case 'jingle': {
       const duck = jingleDuck(role.musicType);
       const lane = { kind: 'jingle', musicType: role.musicType } as const;

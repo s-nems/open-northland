@@ -282,16 +282,16 @@ export const deSurfaces = {
       volumes: {
         master: 'Gesamt',
         music: 'Musik',
-        voice: 'Stimmen',
-        world: 'Weltgeräusche',
+        responses: 'Antworten der Einheiten',
+        world: 'Welt',
         ambient: 'Umgebung',
-        ui: 'Oberfläche und Hinweise',
+        ui: 'Oberfläche und Alarme',
       },
       volumeTips: {
-        voice: 'Gespräche und Schreie der Siedler sowie Tierrufe.',
-        world: 'Arbeit, Kampf, Gebäude und alles andere, was in der Welt erklingt.',
-        ambient: 'Der Klang des Landes und des Wetters.',
-        ui: 'Klicks, die Antworten der Siedler auf Befehle und die Melodien für Geburten, Tode und fertige Gebäude.',
+        responses: 'Die Antworten der Siedler auf Befehle und auf die Auswahl.',
+        world: 'Arbeit, Kampf, Gebäude, Gespräche und Schreie der Siedler sowie Tiere.',
+        ambient: 'Der Klang des Landes, seiner Vögel und des Wetters.',
+        ui: 'Klicks, Hinweise, das Alarmhorn und die Melodien für Geburten, Tode und fertige Gebäude.',
       },
       language: 'Sprache',
       languageNames: {
