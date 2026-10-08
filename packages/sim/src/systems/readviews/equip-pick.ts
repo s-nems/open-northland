@@ -44,9 +44,8 @@ export function canEquipCategory(content: ContentSet, jobType: number | null, gr
 
 /**
  * Every good wearable in a `group` slot that `entity` could fetch right now, in content `goods` order,
- * with the reachable unit count. A good with no reachable unit is omitted. The original's group window
- * intersects `IsAbleToEquipGoodNow` across the selection: fighters lose tools, civilians lose arms, and
- * boots/misc remain common to both.
+ * with the reachable unit count. A good with no reachable unit is omitted. Original behavior: fighters
+ * may wear no tool, civilians no arms, and boots and misc are common to both.
  */
 export function equipPickList(
   world: World,
@@ -88,6 +87,7 @@ interface SelectionRow {
  * Mirrors the equip errand's source predicate (same side, fetchable stock, the errand's gate tested at
  * the store's door) with two approximations: units other errands already claim still count, and the
  * buried-under-a-building filter is skipped, so a row may rarely name a unit the fetch cannot reach.
+ * A click-time read: one pass over every store, then the members times the stores holding equippables.
  */
 export function equipPicksForSelection(
   world: World,

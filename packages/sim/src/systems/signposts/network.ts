@@ -267,7 +267,7 @@ export function navigationLimitFor(
 }
 
 /**
- * The confinement a player's equip errand shops inside: the settler's own `limit`, or, for a job with none
+ * The confinement an equip errand shops inside: the settler's own `limit`, or, for a job with none
  * (a soldier) and for a recruit being armed, the settlement network at his feet - the original's
  * equipment-search bound. The store search cuts it further to the goods search from `here`. The errand
  * and the pick menu both read it, so a menu row names only a store the fetch can reach.
