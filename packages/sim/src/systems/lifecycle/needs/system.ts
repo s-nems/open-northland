@@ -119,7 +119,8 @@ export const needsSystem: System = (world, ctx) => {
   const refilling = seatRefillingAt(world, ctx.tick);
   const visits = wake.take(ctx.tick, ctx.content, refilling !== null);
   if (visits === null) {
-    for (const e of world.query(Person)) passPerson(world, ctx, e, refilling);
+    // Ascending id like the wake list, so a restored world's first pass writes in the live one's order.
+    for (const e of world.canonicalQuery(Person)) passPerson(world, ctx, e, refilling);
   } else {
     // Indexed: `for...of` over the list allocates an iterator result per visit on this path.
     for (let i = 0; i < visits.length; i++) {

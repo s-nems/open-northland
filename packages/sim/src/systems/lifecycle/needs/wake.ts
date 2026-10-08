@@ -83,6 +83,9 @@ export class NeedsWake {
     this.starving.forEach(this.visit);
     eachOf(woundedPersonsOf(this.world), this.visit);
     if (refilling) this.critical.forEach(this.visit);
+    // Buckets and marks fill in the order the bars moved, which a world restored from a save does not
+    // share; the sync digest folds first-touch order, so the pass writes in ascending id either way.
+    this.visits.sort(ascendingId);
     return this.visits;
   }
 
@@ -174,6 +177,8 @@ export class NeedsWake {
 }
 
 function noop(): void {}
+
+const ascendingId = (a: Entity, b: Entity): number => a - b;
 
 /** `for...of` over an array allocates an iterator result per element on this path; an index does not. */
 function eachOf(list: readonly Entity[], visit: (e: Entity) => void): void {

@@ -52,3 +52,22 @@ describe('needs wake list', () => {
     expect(sim.world.verifyCaches()).toContain('needsWake: 1 drain(s) diverge from the drain class');
   });
 });
+
+describe('needs wake visit order', () => {
+  it('visits a tick in ascending id however the bars were rescheduled into it', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    for (let i = 0; i < CROWD; i++) settlerAt(sim, { jobType: WOODCUTTER });
+    const late = settlerAt(sim, { jobType: WOODCUTTER });
+    const early = settlerAt(sim, {
+      jobType: WOODCUTTER,
+      needs: { hunger: fx.sub(NEED_SATED_THRESHOLD, needBar(NEAR_UNITS)) },
+    });
+    for (let i = 0; i < SETTLED_TICKS; i++) needsSystem(sim.world, nextTickCtxOf(sim));
+    // The lower id joins the bucket after the higher one, as bars that moved later do in a long game.
+    Object.assign(sim.world.mut(late, SettlerNeeds), sim.world.get(early, SettlerNeeds));
+    const due = nextBandTick(sim.world.get(early, SettlerNeeds), fixtureTick(sim) + 1);
+    while (fixtureTick(sim) < due - 1) needsSystem(sim.world, nextTickCtxOf(sim));
+    expect(sim.world.verifyCaches()).toEqual([]);
+    expect(needsWakeOf(sim.world).take(due, sim.content, false)).toEqual([late, early]);
+  });
+});

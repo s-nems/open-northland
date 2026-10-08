@@ -484,11 +484,16 @@ ON_BENCH_CHECKPOINT=bench-out/ml12.t50000.checkpoint npm run bench:profile
 ```
 
 `npm run bench:parity` takes the same session knobs and checkpoint. One world runs `ON_BENCH_TICKS`
-(default 3000) ticks and records its hash every 50; its save at `ON_BENCH_PARITY_POINTS` (default 12)
-evenly spaced ticks, around the first heavy link pass, AI decision and planner tick of the second half,
-and at any absolute ticks `ON_BENCH_PARITY_AT` lists, is restored into a fresh world that must reproduce
-every later hash. A divergence names its tick and fails the run; bisect it with `npm run diag -- diff`.
-`ON_BENCH_PARITY_FRESH=on` instead builds the world twice from tick zero and compares the runs.
+(default 3000) ticks and records its hash every 50 and its sync digest every tick; its save at
+`ON_BENCH_PARITY_POINTS` (default 12) evenly spaced ticks, around the first heavy link pass, AI decision
+and planner tick of the second half, and at any absolute ticks `ON_BENCH_PARITY_AT` lists, is restored
+into a fresh world that must reproduce every later hash and digest. The digest folds the entities each
+tick wrote in first-touch order, so a restored world whose caches visit them in another order fails
+here with the state hash intact, which is exactly what the relay would call a desync. A divergence
+names its tick, and for the digest the first differing component and entity when it falls within 16
+ticks of the restore (`ON_BENCH_PARITY_AT` the tick before it to get there); bisect a hash divergence
+with `npm run diag -- diff`. `ON_BENCH_PARITY_FRESH=on` instead builds the world twice from tick zero
+and compares the runs.
 
 Every run keeps its report under `bench-out/` (untracked), so a baseline exists without having been
 planned for. `npm run bench:compare` with no arguments compares the two most recent runs of the same
