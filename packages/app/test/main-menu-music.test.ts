@@ -24,7 +24,7 @@ const MANIFEST = parseMusicManifest({
     theme_viking_friendly: track('theme_viking_friendly', 'b'),
     mission_byzanz1_standard: track('mission_byzanz1_standard', 'c'),
   },
-});
+}).manifest;
 
 describe('menuMusicTracks', () => {
   it('resolves the given stems in order and skips the ones the pipeline did not render', () => {

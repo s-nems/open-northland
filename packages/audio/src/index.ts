@@ -117,6 +117,7 @@ export {
   type MusicCulture,
   type MusicIntensity,
   type MusicManifest,
+  type MusicManifestRead,
   type MusicMoodInput,
   type MusicMoodState,
   MusicPlaylist,

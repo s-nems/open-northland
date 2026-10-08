@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
@@ -35,24 +35,24 @@ const TRACK = musicTrack('theme_viking_neutral');
 const ATTACK = musicTrack('attack_arabs');
 
 describe('music manifest', () => {
-  const SILENCED = () => undefined;
+  /** Why a document was rejected, or null when it parsed. */
+  const rejection = (raw: unknown): string | null => {
+    const read = parseMusicManifest(raw);
+    return read.manifest === null ? read.rejected : null;
+  };
 
   it('reads only the layout this build writes, so stale content is silent rather than misread', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(SILENCED);
     const document = manifestDocument({ theme_viking_neutral: TRACK });
-    expect(parseMusicManifest(document)?.tracks.theme_viking_neutral).toEqual(TRACK);
-    expect(parseMusicManifest({ ...document, version: document.version - 1 })).toBeNull();
-    expect(parseMusicManifest({ tracks: document.tracks })).toBeNull();
-    warn.mockRestore();
+    expect(parseMusicManifest(document).manifest?.tracks.theme_viking_neutral).toEqual(TRACK);
+    expect(rejection({ ...document, version: document.version - 1 })).toEqual(expect.any(String));
+    expect(rejection({ tracks: document.tracks })).toEqual(expect.any(String));
   });
 
   it('rejects a row without its loudness correction or with a backwards loop region', () => {
-    const warn = vi.spyOn(console, 'warn').mockImplementation(SILENCED);
     const { gainDb: _dropped, ...ungained } = TRACK;
-    expect(parseMusicManifest(manifestDocument({ a: ungained as MusicTrack }))).toBeNull();
+    expect(rejection(manifestDocument({ a: ungained as MusicTrack }))).toEqual(expect.any(String));
     const backwards = { ...TRACK, loopStartS: 4, loopEndS: 2 };
-    expect(parseMusicManifest(manifestDocument({ a: backwards }))).toBeNull();
-    warn.mockRestore();
+    expect(rejection(manifestDocument({ a: backwards }))).toEqual(expect.any(String));
   });
 });
 

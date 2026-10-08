@@ -8,7 +8,9 @@ export async function loadMusicManifest(fetchImpl: typeof fetch = fetch): Promis
   try {
     const res = await fetchImpl('/music/manifest.json');
     if (!res.ok) return null;
-    return parseMusicManifest(await res.json());
+    const read = parseMusicManifest(await res.json());
+    if (read.manifest === null) console.warn(`[audio] music manifest rejected: ${read.rejected}`);
+    return read.manifest;
   } catch {
     return null;
   }

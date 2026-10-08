@@ -77,7 +77,7 @@ function fixture(): MusicManifest {
     ...STEMS.map((stem) => [stem, musicTrack(stem)]),
     ...ADDON_FRANKEN2.map(([addon = '', base = '']) => [addon, musicTrack(addon, { sameAudioAs: base })]),
   ]);
-  const manifest = parseMusicManifest(manifestDocument(tracks));
+  const { manifest } = parseMusicManifest(manifestDocument(tracks));
   if (manifest === null) throw new Error('the fixture manifest must parse');
   return manifest;
 }

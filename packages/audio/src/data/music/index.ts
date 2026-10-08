@@ -4,7 +4,12 @@ export {
   type MusicVariants,
   type ThemeMood,
 } from './catalog.js';
-export { type MusicManifest, type MusicTrack, parseMusicManifest } from './manifest.js';
+export {
+  type MusicManifest,
+  type MusicManifestRead,
+  type MusicTrack,
+  parseMusicManifest,
+} from './manifest.js';
 export {
   ATTACK_HOLD_TICKS,
   CALM_MOOD,

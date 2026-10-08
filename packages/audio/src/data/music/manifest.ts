@@ -13,12 +13,16 @@ export interface MusicManifest {
   readonly tracks: Readonly<Record<string, MusicTrack>>;
 }
 
-/** Parses a fetched `music/manifest.json`; null when it is not this build's layout. */
-export function parseMusicManifest(raw: unknown): MusicManifest | null {
+/** A fetched manifest as read: its tracks, or no manifest and why, for the caller to log. */
+export type MusicManifestRead =
+  | { readonly manifest: MusicManifest }
+  | { readonly manifest: null; readonly rejected: string };
+
+/** Parses a fetched `music/manifest.json`; no manifest when it is not this build's layout. */
+export function parseMusicManifest(raw: unknown): MusicManifestRead {
   const parsed = MusicManifestDocument.safeParse(raw);
   if (!parsed.success) {
-    console.warn(`[audio] music manifest rejected: ${parsed.error.issues[0]?.message ?? 'unknown shape'}`);
-    return null;
+    return { manifest: null, rejected: parsed.error.issues[0]?.message ?? 'unknown shape' };
   }
-  return { tracks: parsed.data.tracks };
+  return { manifest: { tracks: parsed.data.tracks } };
 }

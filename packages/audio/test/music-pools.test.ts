@@ -58,7 +58,7 @@ const MANIFEST = parseMusicManifest(
       }),
     ),
   ),
-);
+).manifest;
 
 if (MANIFEST === null) throw new Error('the fixture manifest must parse');
 const POOLS = culturePools(MANIFEST);
