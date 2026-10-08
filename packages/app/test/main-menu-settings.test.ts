@@ -1,3 +1,4 @@
+import { DEFAULT_VOLUMES } from '@open-northland/audio';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { adoptSettings, carriedSettingParams } from '../src/entries/main-menu/settings-state.js';
 import { DEFAULT_KEY_BINDINGS } from '../src/hud/keybindings.js';
@@ -74,8 +75,7 @@ describe('parseStoredSettings', () => {
         colours: 'stance',
       },
       soundEnabled: false,
-      soundVolume: 0.35,
-      musicVolume: 0.6,
+      volumes: { master: 65, music: 40, voice: 90, world: 100, ambient: 0, ui: 75 },
       language: 'eng',
       keyboardScrollSpeed: 1.25,
       edgeScrollSpeed: 2.25,
@@ -219,28 +219,33 @@ describe('persistSettings', () => {
     );
   });
 
-  it('clamps stored volumes into 0..1 and defaults deformed ones', () => {
-    expect(parseStoredSettings('{"soundVolume":1.4}').soundVolume).toBe(1);
-    expect(parseStoredSettings('{"musicVolume":-0.5}').musicVolume).toBe(0);
-    expect(parseStoredSettings('{"musicVolume":"loud"}').musicVolume).toBe(defaultSettings().musicVolume);
+  it('clamps stored volumes into the slider range, whole steps, and defaults deformed ones', () => {
+    const volumes = parseStoredSettings(
+      '{"volumes":{"master":140,"music":-5,"voice":"loud","world":42.6}}',
+    ).volumes;
+    expect(volumes).toEqual({ ...DEFAULT_VOLUMES, master: 100, music: 0, world: 43 });
+  });
+
+  it('starts the old two-slider shape at the default mix', () => {
+    expect(parseStoredSettings('{"soundVolume":0.3,"musicVolume":0.2}').volumes).toEqual(DEFAULT_VOLUMES);
   });
 
   it('patches one live setting without overwriting the rest of the stored choices', () => {
     const setItem = vi.fn();
     vi.stubGlobal('window', {
       localStorage: {
-        getItem: () => JSON.stringify({ renderScale: 1.5, soundVolume: 0.8 }),
+        getItem: () => JSON.stringify({ renderScale: 1.5, volumes: { ...DEFAULT_VOLUMES, music: 80 } }),
         setItem,
       },
     });
 
-    const next = patchStoredSettings({ soundVolume: 0.25 });
+    const next = patchStoredSettings({ volumes: { ...DEFAULT_VOLUMES, music: 25 } });
 
     expect(next.renderScale).toBe(1.5);
-    expect(next.soundVolume).toBe(0.25);
+    expect(next.volumes.music).toBe(25);
     expect(JSON.parse(String(setItem.mock.calls[0]?.[1]))).toMatchObject({
       renderScale: 1.5,
-      soundVolume: 0.25,
+      volumes: { music: 25 },
     });
   });
 });

@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
   CALM_MOOD,
-  DEFAULT_MUSIC_VOLUME,
+  CLOSE_GRACE_S,
+  DEFAULT_VOLUMES,
   MENU_MUSIC_TIMING,
   MUSIC_DUCK_GAIN,
   MUSIC_STOP_FADE_S,
@@ -9,10 +10,10 @@ import {
   musicBusGain,
   musicTrackFor,
   parseMusicManifest,
-  sfxBusGain,
   WebAudioEngine,
 } from '../src/index.js';
 import { FakeContext, type FakeGain, type FakeSource, flush } from './helpers/fake-audio.js';
+import { mixerGraph } from './helpers/mixer-graph.js';
 
 /**
  * The music path end to end minus the browser: the manifest parse, and the engine's music bus +
@@ -105,11 +106,12 @@ describe('WebAudioEngine music', () => {
     expect(source.loop).toBe(true);
     expect(source.loopStart).toBe(2);
     expect(source.loopEnd).toBe(4);
-    // source → fade gain → music bus (gains: master, sfx, music, duck) → duck → master.
+    // source → fade gain → music bus → duck → master.
     const fade = source.connectedTo[0] as FakeGain;
-    const [master, , musicBus, duck] = ctx.gains as [FakeGain, FakeGain, FakeGain, FakeGain];
+    const { master, buses, duck } = mixerGraph(ctx);
+    const musicBus = buses.music;
     expect(fade.connectedTo[0]).toBe(musicBus);
-    expect(musicBus.gain.value).toBeCloseTo(musicBusGain(DEFAULT_MUSIC_VOLUME), 5);
+    expect(musicBus.gain.value).toBeCloseTo(musicBusGain(DEFAULT_VOLUMES.music), 5);
     expect(musicBus.connectedTo[0]).toBe(duck);
     expect(duck.connectedTo[0]).toBe(master);
   });
@@ -364,43 +366,27 @@ describe('WebAudioEngine music rotation', () => {
     await flush();
     engine.close();
     expect((ctx.sources[0] as FakeSource).stoppedAt).not.toBeNull();
-    expect(ctx.state).toBe('closed');
     expect(engine.audible).toBe(false);
+    await new Promise((r) => setTimeout(r, CLOSE_GRACE_S * 1000 + 10));
+    expect(ctx.state).toBe('closed');
   });
 });
 
 describe('WebAudioEngine volumes', () => {
-  it('maps the music slider linearly in amplitude with the original -5 dB offset (-3 dB baked)', () => {
-    expect(musicBusGain(1)).toBeCloseTo(10 ** (-2 / 20), 6);
-    expect(musicBusGain(0.7)).toBeCloseTo(0.7 * 10 ** (-2 / 20), 6);
+  it('puts the original -5 dB music offset (less the -3 dB the files bake in) under the slider curve', () => {
+    expect(musicBusGain(100)).toBeCloseTo(10 ** (-2 / 20), 6);
+    expect(musicBusGain(50)).toBeCloseTo(10 ** (-27 / 20), 6);
     expect(musicBusGain(0)).toBe(0);
   });
 
-  it('maps the sfx slider linearly in dB over 20 dB, muting only at zero', () => {
-    expect(sfxBusGain(1)).toBe(1);
-    expect(sfxBusGain(0.5)).toBeCloseTo(10 ** -0.5, 6);
-    expect(sfxBusGain(0.05)).toBeCloseTo(10 ** -0.95, 6); // near the original's -20 dB floor
-    expect(sfxBusGain(0)).toBe(0);
-  });
-
-  it('ramps the buses through the curves on the setters and clamps the sliders to 0..1', async () => {
+  it('ramps the music bus through its curve and clamps the slider', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    const [, sfxBus, musicBus] = ctx.gains as [FakeGain, FakeGain, FakeGain];
-    engine.setSfxVolume(0.25);
-    engine.setMusicVolume(1.5);
-    expect(sfxBus.gain.ramps.at(-1)?.value).toBeCloseTo(sfxBusGain(0.25), 5);
-    expect(musicBus.gain.ramps.at(-1)?.value).toBeCloseTo(musicBusGain(1), 5);
-    engine.setMusicVolume(-2);
+    const musicBus = mixerGraph(ctx).buses.music;
+    engine.setVolumes({ ...DEFAULT_VOLUMES, music: 25 });
+    expect(musicBus.gain.ramps.at(-1)?.value).toBeCloseTo(musicBusGain(25), 5);
+    engine.setVolumes({ ...DEFAULT_VOLUMES, music: -2 });
     expect(musicBus.gain.ramps.at(-1)?.value).toBe(0);
-  });
-
-  it('applies a volume set before the context exists once it is created', async () => {
-    const { engine, ctx } = makeEngine();
-    engine.setMusicVolume(0.1);
-    await engine.resume();
-    const [, , musicBus] = ctx.gains as [FakeGain, FakeGain, FakeGain];
-    expect(musicBus.gain.value).toBeCloseTo(musicBusGain(0.1), 5);
   });
 });
 
@@ -414,7 +400,7 @@ describe('WebAudioEngine jingle duck', () => {
   it('ducks the music while a jingle rings and restores it after the hold', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    const duck = ctx.gains[3] as FakeGain;
+    const { duck } = mixerGraph(ctx);
     engine.apply(DUCKED_FRAME);
     await flush(); // the duck lands with the wav, once its load resolves
     expect(duck.gain.ramps.at(-1)?.value).toBeCloseTo(MUSIC_DUCK_GAIN, 5);
@@ -429,7 +415,7 @@ describe('WebAudioEngine jingle duck', () => {
   it('extends a running duck instead of re-ramping when a second jingle lands', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    const duck = ctx.gains[3] as FakeGain;
+    const { duck } = mixerGraph(ctx);
     engine.apply(DUCKED_FRAME);
     await flush();
     ctx.currentTime = 2;
@@ -452,7 +438,7 @@ describe('WebAudioEngine jingle duck', () => {
   it('leaves the music alone when the jingle wav fails to load', async () => {
     const { engine, ctx } = makeEngine({ failFetch: true });
     await engine.resume();
-    const duck = ctx.gains[3] as FakeGain;
+    const { duck } = mixerGraph(ctx);
     engine.apply(DUCKED_FRAME);
     await flush();
     expect(duck.gain.ramps).toHaveLength(0);
@@ -461,7 +447,7 @@ describe('WebAudioEngine jingle duck', () => {
   it('does not duck for a debounced repeat of the same jingle', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    const duck = ctx.gains[3] as FakeGain;
+    const { duck } = mixerGraph(ctx);
     const shortHold = {
       oneShots: [{ files: ['jingles_birth.wav'], gain: 0.9, pan: 0, key: 'settlerBorn:1', duckMusicMs: 50 }],
       ambient: [],

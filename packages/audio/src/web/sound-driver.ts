@@ -3,6 +3,7 @@ import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { OneShotArbiter } from '../data/arbiter.js';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
+import type { MixerVolumes } from '../data/mixer.js';
 import {
   CALM_MOOD,
   type MusicManifest,
@@ -110,14 +111,9 @@ export class SoundDriver {
     this.mood = CALM_MOOD;
   }
 
-  /** Set the game-sounds volume (0..1). */
-  setSfxVolume(volume: number): void {
-    this.engine.setSfxVolume(volume);
-  }
-
-  /** Set the music volume (0..1). */
-  setMusicVolume(volume: number): void {
-    this.engine.setMusicVolume(volume);
+  /** Set the mixer's slider positions. */
+  setVolumes(volumes: MixerVolumes): void {
+    this.engine.setVolumes(volumes);
   }
 
   /** Once per rendered frame, after the render advanced its weather: the conditions on screen and the

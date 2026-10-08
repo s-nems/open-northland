@@ -1,3 +1,4 @@
+import { VOLUME_CHANNELS } from '@open-northland/audio';
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSystemMenu, type SystemMenu } from '../src/hud/dom/system-menu.js';
@@ -198,20 +199,23 @@ describe('system menu navigation', () => {
     menu.toggle();
     openSettings();
     button(messages().mainMenu.settings.tabs.audio).click();
-    const input = document.querySelector<HTMLInputElement>('[data-settings-focus="sfx-volume"]');
+    for (const channel of VOLUME_CHANNELS) {
+      expect(document.querySelector(`[data-settings-focus="${channel}-volume"]`)).not.toBeNull();
+    }
+    const input = document.querySelector<HTMLInputElement>('[data-settings-focus="world-volume"]');
     if (input === null) throw new Error('Missing volume slider');
-    input.value = '0.23';
+    input.value = '23';
     input.dispatchEvent(new Event('input', { bubbles: true }));
-    expect(settings.current().soundVolume).toBe(0.23);
+    expect(settings.current().volumes.world).toBe(23);
     button(messages().mainMenu.settings.restoreDefaults).click();
     key('Escape');
     await Promise.resolve();
-    expect(settings.current().soundVolume).toBe(0.23);
+    expect(settings.current().volumes.world).toBe(23);
     button(messages().mainMenu.settings.restoreDefaults).click();
     const question = document.querySelector('[role="alertdialog"]');
     if (question === null) throw new Error('Missing confirmation');
     button(messages().mainMenu.settings.restoreDefaults, question).click();
-    await vi.waitFor(() => expect(settings.current().soundVolume).toBe(defaultSettings().soundVolume));
+    await vi.waitFor(() => expect(settings.current().volumes).toEqual(defaultSettings().volumes));
   });
 
   it('closes on request as the resume button would', () => {

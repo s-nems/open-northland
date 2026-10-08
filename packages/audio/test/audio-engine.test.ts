@@ -2,12 +2,16 @@ import { describe, expect, it } from 'vitest';
 import type { OneShot } from '../src/index.js';
 import {
   AMBIENT_FADE_S,
-  DEFAULT_MASTER_GAIN,
-  DEFAULT_SFX_VOLUME,
+  CLICK_FREE_RAMP_S,
+  CLOSE_GRACE_S,
+  DEFAULT_VOLUMES,
   ONE_SHOT_COOLDOWN_S,
+  VOLUME_RAMP_S,
+  volumeGain,
   WebAudioEngine,
 } from '../src/index.js';
 import { FakeContext, FakeGain, type FakePanner, type FakeSource, flush } from './helpers/fake-audio.js';
+import { mixerGraph } from './helpers/mixer-graph.js';
 
 /**
  * The Web Audio engine, exercised through its injected platform seams (a fake context + a stub
@@ -40,6 +44,11 @@ function makeEngine(opts: { failFetch?: boolean; noPanner?: boolean; random?: ()
   return { engine, ctx, fetched };
 }
 
+/** The birth jingle's `MusicType`; any jingle routes alike. */
+const BIRTH_JINGLE = 23;
+
+const waitForClose = (): Promise<unknown> => new Promise((r) => setTimeout(r, CLOSE_GRACE_S * 1000 + 10));
+
 const shot = (over: Partial<OneShot> = {}): OneShot => ({
   files: ['sfx/hammer.wav'],
   gain: 0.42,
@@ -49,7 +58,7 @@ const shot = (over: Partial<OneShot> = {}): OneShot => ({
 });
 
 describe('WebAudioEngine one-shots', () => {
-  it('plays a one-shot through a pan+gain graph into the sfx bus', async () => {
+  it('plays a one-shot through a pan+gain graph into its bus', async () => {
     const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
     expect(engine.started).toBe(true);
@@ -59,17 +68,75 @@ describe('WebAudioEngine one-shots', () => {
     expect(ctx.sources).toHaveLength(1);
     const source = ctx.sources[0] as FakeSource;
     expect(source.started).toBe(true);
-    // source → panner (pan applied) → gain (shot gain) → sfx bus → master → destination.
+    // source → panner (pan applied) → gain (shot gain) → ui bus (no lane) → master → destination.
     const panner = source.connectedTo[0] as FakePanner;
     expect(panner.pan.value).toBeCloseTo(-0.3, 5);
     const gain = panner.connectedTo[0] as FakeGain;
     expect(gain.gain.value).toBeCloseTo(0.42, 5);
-    const [master, sfxBus] = ctx.gains as [FakeGain, FakeGain];
-    expect(gain.connectedTo[0]).toBe(sfxBus);
-    expect(sfxBus.gain.value).toBeCloseTo(DEFAULT_SFX_VOLUME, 5);
-    expect(sfxBus.connectedTo[0]).toBe(master);
-    expect(master.gain.value).toBeCloseTo(DEFAULT_MASTER_GAIN, 5);
+    const { master, buses } = mixerGraph(ctx);
+    expect(gain.connectedTo[0]).toBe(buses.ui);
+    expect(buses.ui.gain.value).toBeCloseTo(volumeGain(DEFAULT_VOLUMES.ui), 5);
+    expect(buses.ui.connectedTo[0]).toBe(master);
+    expect(master.gain.value).toBeCloseTo(volumeGain(DEFAULT_VOLUMES.master), 5);
     expect(master.connectedTo[0]).toBe(ctx.destination);
+  });
+
+  it('routes each one-shot to the bus of its lane', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({
+      oneShots: [
+        shot({ key: 'work', files: ['work.wav'], lane: { kind: 'sfx' } }),
+        shot({ key: 'chatter', files: ['talk.wav'], lane: { kind: 'voice' } }),
+        shot({ key: 'birth', files: ['birth.wav'], lane: { kind: 'jingle', musicType: BIRTH_JINGLE } }),
+      ],
+      ambient: [],
+    });
+    await flush();
+    const { buses } = mixerGraph(ctx);
+    const busOf = (source: FakeSource): unknown =>
+      ((source.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain).connectedTo[0];
+    const [work, chatter, birth] = ctx.sources as [FakeSource, FakeSource, FakeSource];
+    expect(busOf(work)).toBe(buses.world);
+    expect(busOf(chatter)).toBe(buses.voice);
+    expect(busOf(birth)).toBe(buses.ui);
+  });
+
+  it('fades the master out on mute and back to its slider on unmute', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const { master } = mixerGraph(ctx);
+    ctx.currentTime = 2;
+    engine.setEnabled(false);
+    expect(master.gain.ramps.at(-1)).toEqual({ value: 0, time: 2 + CLICK_FREE_RAMP_S });
+    engine.setVolumes({ ...DEFAULT_VOLUMES, master: 50 }); // a slider moved while muted stays silent
+    expect(master.gain.ramps.at(-1)?.value).toBe(0);
+    engine.setEnabled(true);
+    expect(master.gain.ramps.at(-1)?.value).toBeCloseTo(volumeGain(50), 5);
+  });
+
+  it('ramps only the moved sliders, from the level they hold', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const { master, buses } = mixerGraph(ctx);
+    ctx.currentTime = 1;
+    engine.setVolumes({ ...DEFAULT_VOLUMES, world: 40, ambient: 0 });
+    expect(buses.world.gain.events.slice(-2)).toEqual([
+      { kind: 'set', value: volumeGain(DEFAULT_VOLUMES.world), time: 1 },
+      { kind: 'ramp', value: volumeGain(40), time: 1 + VOLUME_RAMP_S },
+    ]);
+    expect(buses.ambient.gain.ramps.at(-1)?.value).toBe(0);
+    expect(master.gain.ramps).toEqual([]);
+    expect(buses.voice.gain.ramps).toEqual([]);
+  });
+
+  it('applies slider positions given before the context exists, clamped to the slider range', async () => {
+    const { engine, ctx } = makeEngine();
+    engine.setVolumes({ ...DEFAULT_VOLUMES, voice: 150, ui: -5 });
+    await engine.resume();
+    const { buses } = mixerGraph(ctx);
+    expect(buses.voice.gain.value).toBe(1);
+    expect(buses.ui.gain.value).toBe(0);
   });
 
   it('debounces an identical key within the cooldown and replays it after', async () => {
@@ -212,11 +279,14 @@ describe('WebAudioEngine context interruption', () => {
     expect(ctx.sources).toHaveLength(1);
   });
 
-  it('never resumes a context after the engine closed it', async () => {
+  it('fades the master out before it closes the context, and never resumes it after', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.close();
-    await flush();
+    expect(mixerGraph(ctx).master.gain.ramps.at(-1)).toEqual({ value: 0, time: CLICK_FREE_RAMP_S });
+    expect(ctx.state).toBe('running'); // the fade first
+    expect(engine.audible).toBe(false);
+    await waitForClose();
     expect(ctx.state).toBe('closed');
     expect(ctx.resumes).toBe(1);
   });

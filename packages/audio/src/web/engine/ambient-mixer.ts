@@ -27,7 +27,7 @@ export class AmbientMixer {
 
   constructor(
     private readonly ctx: AudioContext,
-    /** The node loops play into (the engine's master gain). */
+    /** The node loops play into (the engine's ambient bus). */
     private readonly out: AudioNode,
     private readonly samples: SampleCache,
     /** Playback gate, re-checked when an async load lands (a mute can arrive while a wav is in flight). */

@@ -1,3 +1,4 @@
+import { VOLUME_CHANNELS, VOLUME_MAX, type VolumeChannel } from '@open-northland/audio';
 import { LOCALE_CODES, type Locale, messages } from '../i18n/index.js';
 import {
   defaultDisplayMode,
@@ -6,7 +7,7 @@ import {
   leaveFullscreen,
   onFullscreenChange,
 } from './fullscreen.js';
-import { segControl, settingRow, sliderControl, togglePill } from './settings-controls.js';
+import { segControl, settingRow, settingsHeading, sliderControl, togglePill } from './settings-controls.js';
 import { createControlsTab } from './settings-controls-tab.js';
 import { createSettingsDisplayMode, type DisplayMode } from './settings-display-mode.js';
 import { graphicsSettingsRows } from './settings-graphics-tab.js';
@@ -38,8 +39,7 @@ const SETTINGS_TABS: readonly SettingsTab[] = ['graphics', 'audio', 'gameplay', 
 const LANGUAGE_CHOICES: readonly Locale[] = LOCALE_CODES;
 const SCROLL_SPEED_STEP = 0.05;
 const VOLUME_MIN = 0;
-const VOLUME_MAX = 1;
-const VOLUME_STEP = 0.01;
+const VOLUME_STEP = 1;
 
 export function initialSettingsMemory(): SettingsMemory {
   return { tab: 'graphics' };
@@ -164,36 +164,30 @@ export function createSettingsPage(opts: {
       });
       sound.setAttribute('aria-label', text.soundEnabled);
       sound.dataset.settingsFocus = 'sound-enabled';
-      const volume = (
-        label: string,
-        value: number,
-        patch: (value: number) => Partial<MenuSettings>,
-        focusKey: string,
-      ): HTMLDivElement => {
+      const volumeRow = (channel: VolumeChannel): HTMLDivElement => {
+        const label = text.volumes[channel];
         const control = sliderControl(label, {
           min: VOLUME_MIN,
           max: VOLUME_MAX,
           step: VOLUME_STEP,
-          value,
-          onCommit: (next) => {
-            void opts.settings.update(patch(next));
+          value: settings.volumes[channel],
+          format: (position) => `${position}%`,
+          onCommit: (position) => {
+            // Patch from the live settings, so a second slider moved in one render keeps the first.
+            const volumes = { ...opts.settings.current().volumes, [channel]: position };
+            void opts.settings.update({ volumes });
           },
           live: true,
         });
         const input = control.querySelector<HTMLInputElement>('input');
-        if (input !== null) input.dataset.settingsFocus = focusKey;
-        return control;
+        if (input !== null) input.dataset.settingsFocus = `${channel}-volume`;
+        const tip = channel === 'master' || channel === 'music' ? undefined : text.volumeTips[channel];
+        return settingRow(label, control, tip === undefined ? undefined : { tip });
       };
       return [
         settingRow(text.soundEnabled, sound),
-        settingRow(
-          text.sfxVolume,
-          volume(text.sfxVolume, settings.soundVolume, (soundVolume) => ({ soundVolume }), 'sfx-volume'),
-        ),
-        settingRow(
-          text.musicVolume,
-          volume(text.musicVolume, settings.musicVolume, (musicVolume) => ({ musicVolume }), 'music-volume'),
-        ),
+        settingsHeading(text.volumeHeading),
+        ...VOLUME_CHANNELS.map(volumeRow),
       ];
     };
 

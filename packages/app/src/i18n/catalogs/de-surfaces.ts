@@ -272,8 +272,21 @@ export const deSurfaces = {
       uiScaleApplyFailed:
         'Die Oberflächenskalierung konnte nicht geändert werden. Die bisherige Größe bleibt aktiv.',
       soundEnabled: 'Spielton',
-      musicVolume: 'Musiklautstärke',
-      sfxVolume: 'Lautstärke der Spielgeräusche',
+      volumeHeading: 'Lautstärke',
+      volumes: {
+        master: 'Gesamt',
+        music: 'Musik',
+        voice: 'Stimmen',
+        world: 'Weltgeräusche',
+        ambient: 'Umgebung',
+        ui: 'Oberfläche und Hinweise',
+      },
+      volumeTips: {
+        voice: 'Gespräche und Schreie der Siedler sowie Tierrufe.',
+        world: 'Arbeit, Kampf, Gebäude und alles andere, was in der Welt erklingt.',
+        ambient: 'Der Klang des Landes und des Wetters.',
+        ui: 'Klicks, die Antworten der Siedler auf Befehle und die Melodien für Geburten, Tode und fertige Gebäude.',
+      },
       language: 'Sprache',
       languageNames: {
         pol: 'Polski',

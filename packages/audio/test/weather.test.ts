@@ -21,11 +21,11 @@ import {
 import {
   type FakeBuffer,
   FakeContext,
-  type FakeGain,
   type FakeNode,
   FakeShaper,
   type FakeSource,
 } from './helpers/fake-audio.js';
+import { mixerGraph } from './helpers/mixer-graph.js';
 
 const DRY = { rain: 0, snow: 0, sand: 0 };
 
@@ -367,7 +367,7 @@ describe('weather noise buffers', () => {
 });
 
 describe('WebAudioEngine weather', () => {
-  it('plays only once audio is live, into the game-sounds bus, and stops on mute', async () => {
+  it('plays only once audio is live, into the ambient bus, and stops on mute', async () => {
     const ctx = new FakeContext();
     const engine = new WebAudioEngine({
       createContext: () => ctx as unknown as AudioContext,
@@ -378,8 +378,8 @@ describe('WebAudioEngine weather', () => {
     expect(ctx.sources).toHaveLength(0);
     await engine.resume();
     engine.applyWeather(rain, 0);
-    const [, sfxBus] = ctx.gains as [FakeGain, FakeGain];
-    const limiter = ctx.created.findIndex((n) => n.connectedTo.includes(sfxBus));
+    const ambientBus = mixerGraph(ctx).buses.ambient;
+    const limiter = ctx.created.findIndex((n) => n.connectedTo.includes(ambientBus));
     expect(limiter).toBeGreaterThan(0);
     const from = limiter - 1; // the weather bus trim gain feeds its limiter
     engine.setEnabled(false);

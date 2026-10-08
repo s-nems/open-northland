@@ -1,3 +1,4 @@
+import { DEFAULT_VOLUMES, type MixerVolumes } from '@open-northland/audio';
 import { describe, expect, it, vi } from 'vitest';
 import { uiScaleFor } from '../src/hud/ui-scale.js';
 import { enhancementsOf } from '../src/view/graphics-enhancements.js';
@@ -9,6 +10,10 @@ import {
 } from '../src/view/runtime/game-settings.js';
 import { createGameViewportCoordinator } from '../src/view/runtime/game-viewport.js';
 import { defaultSettings, parseStoredSettings } from '../src/view/settings-store.js';
+
+/** The default mix with only the world bus moved to `world`. */
+const worldAt = (world: number): MixerVolumes => ({ ...DEFAULT_VOLUMES, world });
+const QUIET_WORLD = worldAt(35);
 
 it('applies a graphics enhancement immediately without changing its siblings', async () => {
   const h = harness();
@@ -68,8 +73,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const persist = vi.fn();
   const setUiScaleFactor = vi.fn(async () => true);
   const setSoundEnabled = vi.fn();
-  const setSfxVolume = vi.fn();
-  const setMusicVolume = vi.fn();
+  const setVolumes = vi.fn();
   const setLanguage = vi.fn();
   const setKeyBindings = vi.fn();
   const setCameraInputSettings = vi.fn();
@@ -84,16 +88,13 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     initial: {
       ...defaultSettings(),
       soundEnabled: true,
-      soundVolume: 1,
-      musicVolume: 0.7,
     },
     pinnedUiScale: null,
     effectiveUiScaleFor: (factor) => factor * 1.25,
     persist,
     setUiScaleFactor,
     setSoundEnabled,
-    setSfxVolume,
-    setMusicVolume,
+    setVolumes,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,
@@ -111,8 +112,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     persist,
     setUiScaleFactor,
     setSoundEnabled,
-    setSfxVolume,
-    setMusicVolume,
+    setVolumes,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,
@@ -132,8 +132,7 @@ describe('createGameSettingsRuntime', () => {
 
     await h.settings.update({ uiScaleFactor: 1.2 });
     await h.settings.update({ soundEnabled: false });
-    await h.settings.update({ soundVolume: 0.35 });
-    await h.settings.update({ musicVolume: 0.45 });
+    await h.settings.update({ volumes: QUIET_WORLD });
     await h.settings.update({ debugToolsEnabled: true });
     await h.settings.update({
       keyboardScrollSpeed: 1.25,
@@ -148,8 +147,7 @@ describe('createGameSettingsRuntime', () => {
     expect(h.settings.current()).toMatchObject({
       uiScaleFactor: 1.2,
       soundEnabled: false,
-      soundVolume: 0.35,
-      musicVolume: 0.45,
+      volumes: QUIET_WORLD,
       debugToolsEnabled: true,
       keyboardScrollSpeed: 1.25,
       edgeScrollSpeed: 2.5,
@@ -161,8 +159,7 @@ describe('createGameSettingsRuntime', () => {
     expect(h.persist.mock.calls).toEqual([
       [{ uiScaleFactor: 1.2 }],
       [{ soundEnabled: false }],
-      [{ soundVolume: 0.35 }],
-      [{ musicVolume: 0.45 }],
+      [{ volumes: QUIET_WORLD }],
       [{ debugToolsEnabled: true }],
       [
         {
@@ -177,8 +174,7 @@ describe('createGameSettingsRuntime', () => {
     ]);
     expect(h.setUiScaleFactor).toHaveBeenCalledWith(1.2);
     expect(h.setSoundEnabled).toHaveBeenCalledWith(false);
-    expect(h.setSfxVolume).toHaveBeenCalledWith(0.35);
-    expect(h.setMusicVolume).toHaveBeenCalledWith(0.45);
+    expect(h.setVolumes).toHaveBeenCalledWith(QUIET_WORLD);
     expect(h.setDebugToolsEnabled).toHaveBeenCalledWith(true);
     expect(h.setCameraInputSettings).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -209,22 +205,22 @@ describe('createGameSettingsRuntime', () => {
     });
     const h = harness({ setUiScaleFactor: vi.fn(() => scaleResult) });
 
-    const restore = h.settings.update({ uiScaleFactor: 1.2, soundVolume: 0.2, displayMode: 'window' });
-    const laterVolume = h.settings.update({ soundVolume: 0.9, displayMode: 'fullscreen' });
+    const restore = h.settings.update({ uiScaleFactor: 1.2, volumes: worldAt(20), displayMode: 'window' });
+    const laterVolume = h.settings.update({ volumes: worldAt(90), displayMode: 'fullscreen' });
     await Promise.resolve();
 
-    expect(h.persist).toHaveBeenCalledWith({ soundVolume: 0.9, displayMode: 'fullscreen' });
-    expect(h.setSfxVolume).toHaveBeenCalledWith(0.9);
+    expect(h.persist).toHaveBeenCalledWith({ volumes: worldAt(90), displayMode: 'fullscreen' });
+    expect(h.setVolumes).toHaveBeenCalledWith(worldAt(90));
     finishScale(true);
     await expect(Promise.all([restore, laterVolume])).resolves.toEqual([true, true]);
 
     expect(h.settings.current()).toMatchObject({
       uiScaleFactor: 1.2,
-      soundVolume: 0.9,
+      volumes: worldAt(90),
       displayMode: 'fullscreen',
     });
     expect(h.persist.mock.calls).toEqual([
-      [{ soundVolume: 0.9, displayMode: 'fullscreen' }],
+      [{ volumes: worldAt(90), displayMode: 'fullscreen' }],
       [{ uiScaleFactor: 1.2 }],
     ]);
   });
@@ -264,13 +260,13 @@ describe('createGameSettingsRuntime', () => {
 
     const first = h.settings.update({
       uiScaleFactor: 1.2,
-      soundVolume: 0.2,
+      volumes: worldAt(20),
       language: 'pol',
       debugToolsEnabled: true,
     });
     const second = h.settings.update({
       uiScaleFactor: 1.3,
-      soundVolume: 0.4,
+      volumes: worldAt(40),
       language: 'eng',
       debugToolsEnabled: false,
     });
@@ -279,7 +275,7 @@ describe('createGameSettingsRuntime', () => {
     await expect(second).resolves.toBe(false);
     expect(h.settings.current()).toMatchObject({
       uiScaleFactor: 1.2,
-      soundVolume: 0.2,
+      volumes: worldAt(20),
       language: 'pol',
       debugToolsEnabled: true,
     });
@@ -288,7 +284,7 @@ describe('createGameSettingsRuntime', () => {
     expect(h.persist).toHaveBeenCalledTimes(1);
     expect(h.persist).toHaveBeenCalledWith({
       uiScaleFactor: 1.2,
-      soundVolume: 0.2,
+      volumes: worldAt(20),
       language: 'pol',
       debugToolsEnabled: true,
     });

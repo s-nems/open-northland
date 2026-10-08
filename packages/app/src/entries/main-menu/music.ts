@@ -50,7 +50,7 @@ export interface MenuSound {
  */
 export function startMenuMusic(signal: AbortSignal): MenuSound {
   const settings = menuSettings();
-  const engine = new WebAudioEngine({ musicVolume: settings.musicVolume, sfxVolume: settings.soundVolume });
+  const engine = new WebAudioEngine({ volumes: settings.volumes });
   engine.setEnabled(settings.soundEnabled);
   void loadMusicManifest().then((manifest) => {
     if (signal.aborted) return;
@@ -60,8 +60,7 @@ export function startMenuMusic(signal: AbortSignal): MenuSound {
 
   onSettingsChange((next) => {
     engine.setEnabled(next.soundEnabled);
-    engine.setMusicVolume(next.musicVolume);
-    engine.setSfxVolume(next.soundVolume);
+    engine.setVolumes(next.volumes);
   }, signal);
 
   signal.addEventListener('abort', () => {

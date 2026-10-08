@@ -38,6 +38,22 @@ export {
   SFX_GAIN,
 } from './data/director/index.js';
 export {
+  clampVolume,
+  DEFAULT_AMBIENT_VOLUME,
+  DEFAULT_BUS_VOLUME,
+  DEFAULT_MASTER_VOLUME,
+  DEFAULT_VOLUMES,
+  type MixerVolumes,
+  oneShotBus,
+  SOUND_BUSES,
+  type SoundBus,
+  VOLUME_CHANNELS,
+  VOLUME_MAX,
+  VOLUME_RANGE_DB,
+  type VolumeChannel,
+  volumeGain,
+} from './data/mixer.js';
+export {
   CALM_MOOD,
   CONFLICT_HOLD_TICKS,
   type MissionMood,
@@ -87,10 +103,9 @@ export {
 export {
   AMBIENT_FADE_S,
   type AudioEngineOptions,
-  DEFAULT_MASTER_GAIN,
+  CLICK_FREE_RAMP_S,
+  CLOSE_GRACE_S,
   DEFAULT_MUSIC_BASE_URL,
-  DEFAULT_MUSIC_VOLUME,
-  DEFAULT_SFX_VOLUME,
   DEFAULT_SOUNDS_BASE_URL,
   MENU_MUSIC_TIMING,
   MUSIC_DUCK_GAIN,
@@ -100,7 +115,6 @@ export {
   type MusicTiming,
   musicBusGain,
   ONE_SHOT_COOLDOWN_S,
-  sfxBusGain,
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './web/engine/index.js';

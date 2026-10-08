@@ -3,6 +3,10 @@
  * clicks, so such a change ramps on the audio clock and a stop waits for its fade to land.
  */
 
+/** The shortest fade that hides a cut or a jump: long enough to smooth the step, short enough to read
+ *  as instant. Approximation inside the usual 10-30 ms anti-click window. */
+export const CLICK_FREE_RAMP_S = 0.02;
+
 /** Ramp `param` linearly from its current value to `target` over `seconds`, replacing any automation
  *  still scheduled. */
 export function rampParam(ctx: BaseAudioContext, param: AudioParam, target: number, seconds: number): void {

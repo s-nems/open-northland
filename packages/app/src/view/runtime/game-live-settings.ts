@@ -127,8 +127,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
       syncCarriedParam('sound', enabled ? null : 'off');
       deps.sound?.setEnabled(enabled);
     },
-    setSfxVolume: (volume) => deps.sound?.setSfxVolume(volume),
-    setMusicVolume: (volume) => deps.sound?.setMusicVolume(volume),
+    setVolumes: (volumes) => deps.sound?.setVolumes(volumes),
     setLanguage: (language) => {
       syncCarriedParam('lang', language === defaultLocale() ? null : language);
     },

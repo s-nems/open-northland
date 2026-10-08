@@ -234,8 +234,21 @@ export const enSurfaces = {
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',
       uiScaleApplyFailed: 'The interface scale could not be applied. The previous scale is still active.',
       soundEnabled: 'In-game sound',
-      musicVolume: 'Music volume',
-      sfxVolume: 'Game sounds volume',
+      volumeHeading: 'Volume',
+      volumes: {
+        master: 'Master',
+        music: 'Music',
+        voice: 'Voices',
+        world: 'World sounds',
+        ambient: 'Ambience',
+        ui: 'Interface and alerts',
+      },
+      volumeTips: {
+        voice: 'Settlers chatting and crying out, and animal calls.',
+        world: 'Work, combat, buildings and everything else that sounds in the world.',
+        ambient: 'The sound of the land and the weather.',
+        ui: 'Button clicks, settlers answering your orders, and the jingles of births, deaths and finished buildings.',
+      },
       language: 'Language',
       // Endonyms: each language names itself and is not translated per locale.
       languageNames: { pol: 'Polski', eng: 'English', ger: 'Deutsch', rus: 'Русский' },

@@ -1,3 +1,14 @@
+import {
+  clampVolume,
+  DEFAULT_VOLUMES,
+  type MixerVolumes,
+  oneShotBus,
+  SOUND_BUSES,
+  type SoundBus,
+  VOLUME_CHANNELS,
+  type VolumeChannel,
+  volumeGain,
+} from '../../data/mixer.js';
 import type { MusicTrack } from '../../data/music/index.js';
 import type { AudioFrame, OneShot } from '../../data/types.js';
 import type { WeatherSoundInput } from '../../data/weather/mix.js';
@@ -12,6 +23,7 @@ import {
 import { pruneExpired } from '../prune.js';
 import { AmbientMixer } from './ambient-mixer.js';
 import { MusicPlayer } from './music-player.js';
+import { CLICK_FREE_RAMP_S, rampParam } from './ramps.js';
 import { SampleCache } from './sample-cache.js';
 import { WeatherSoundscape } from './weather-soundscape.js';
 
@@ -21,6 +33,9 @@ import { WeatherSoundscape } from './weather-soundscape.js';
  * one-shots through a per-play gain+pan graph, and hands the ambient set to the {@link AmbientMixer}
  * to reconcile ({@link SampleCache} loads/decodes). All timing rides the audio clock
  * (`ctx.currentTime`), never `Date.now`, so ramps stay sample-accurate.
+ *
+ * Graph: each sound feeds its {@link SoundBus} gain (one-shots by {@link oneShotBus}, beds and weather
+ * on `ambient`, music through its jingle duck), and every bus feeds the master gain.
  *
  * The context starts suspended ({@link resume} starts it); before then, and on any decode/fetch
  * failure, playback is a graceful no-op (silence), never a throw.
@@ -32,12 +47,8 @@ export interface AudioEngineOptions {
   readonly baseUrl?: string;
   /** URL prefix the rendered music files are served under. Default {@link DEFAULT_MUSIC_BASE_URL}. */
   readonly musicBaseUrl?: string;
-  /** Overall output gain (0..1). Default {@link DEFAULT_MASTER_GAIN}. */
-  readonly masterGain?: number;
-  /** Initial game-sounds bus volume (0..1). Default {@link DEFAULT_SFX_VOLUME}. */
-  readonly sfxVolume?: number;
-  /** Initial music bus volume (0..1). Default {@link DEFAULT_MUSIC_VOLUME}. */
-  readonly musicVolume?: number;
+  /** Initial slider positions. Default {@link DEFAULT_VOLUMES}. */
+  readonly volumes?: MixerVolumes;
   /** Creates the `AudioContext` - override in tests with a fake. Default the real Web Audio context. */
   readonly createContext?: ContextFactory;
   /** Loads a wav's bytes by URL - override in tests with a stub. Default HTTP `fetch`. */
@@ -50,41 +61,24 @@ export interface AudioEngineOptions {
 export const DEFAULT_SOUNDS_BASE_URL = '/sounds/';
 /** URL prefix of the content tree's rendered music tracks. */
 export const DEFAULT_MUSIC_BASE_URL = '/music/';
-/** Default overall output gain. */
-export const DEFAULT_MASTER_GAIN = 0.8;
-/** Default game-sounds volume - the owned install's `opt_game.ini` `fx_volume 100`, as the 0..1
- *  slider position ({@link sfxBusGain} maps it onto gain). */
-export const DEFAULT_SFX_VOLUME = 1;
-/** Default music volume - the owned install's `opt_game.ini` `dm_volume 70`, which is that install's
- *  saved player preference rather than a value the game shipped with. */
-export const DEFAULT_MUSIC_VOLUME = 0.7;
-/** A user volume change ramps over this many seconds - long enough to avoid a zipper click. */
+/** A slider move ramps its bus over this many seconds - long enough to avoid a zipper click. */
 export const VOLUME_RAMP_S = 0.05;
 
-/** The original music master's fixed offset: `dm_volume` percent becomes
- *  `-500 + 2000*log10(percent/100)` hundredths of dB, i.e. a linear-amplitude curve offset by
- *  -5 dB. */
+/** The original music master's fixed -5 dB offset under the music slider. */
 const MUSIC_MASTER_OFFSET_DB = -5;
 /** Clip headroom the music stage bakes into the rendered files (its `MASTER_GAIN`, -3 dB). The
  *  original chain has no counterpart for it, so the bus adds it back; the two must move together. */
 const RENDERED_MUSIC_HEADROOM_DB = 3;
 
-/** Music-slider position (0..1) to music bus gain: the original's linear-amplitude curve, with the
+/** Music-slider position to music bus gain: the shared slider curve with the original's offset and the
  *  file headroom undone. */
-export function musicBusGain(volume: number): number {
-  return clampVolume(volume) * 10 ** ((MUSIC_MASTER_OFFSET_DB + RENDERED_MUSIC_HEADROOM_DB) / 20);
+export function musicBusGain(position: number): number {
+  return volumeGain(position) * 10 ** ((MUSIC_MASTER_OFFSET_DB + RENDERED_MUSIC_HEADROOM_DB) / 20);
 }
 
-/**
- * SFX-slider position (0..1) to game-sounds bus gain. The original maps `fx_volume` percent
- * linearly in dB over a 20 dB range: `(percent - 100) * 20` hundredths of dB. Deviation: 0 mutes
- * fully, where the original floors at
- * -20 dB.
- */
-export function sfxBusGain(volume: number): number {
-  const v = clampVolume(volume);
-  return v <= 0 ? 0 : 10 ** (v - 1);
-}
+/** A closing engine fades the master out and closes the context this long after: the fade plus the
+ *  output still buffered on its way to the device. Approximation. */
+export const CLOSE_GRACE_S = 0.1;
 
 /** Jingle duck depth on the music bus: -2000 hundredths of dB, as the original fades the music
  *  audiopath while a jingle rings. */
@@ -101,14 +95,12 @@ const EMPTY_ROTATION: readonly MusicTrack[] = [];
 export class WebAudioEngine {
   private readonly baseUrl: string;
   private readonly musicBaseUrl: string;
-  private readonly masterGainValue: number;
   private readonly createContext: ContextFactory;
   private readonly fetchBytes: FetchBytes;
   private readonly random: RandomFn;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
-  private sfxBus: GainNode | null = null;
-  private musicBus: GainNode | null = null;
+  private buses: Readonly<Record<SoundBus, GainNode>> | null = null;
   private musicDuck: GainNode | null = null;
   /** Audio-clock time the running jingle duck may lift at; null while the music is not ducked. */
   private duckedUntil: number | null = null;
@@ -118,9 +110,8 @@ export class WebAudioEngine {
   private weather: WeatherSoundscape | null = null;
   /** The graphics "Weather" switch, kept here so a setter before the context exists still lands. */
   private weatherEnabled = true;
-  /** Current bus volumes - kept here so a setter before the context exists still lands. */
-  private sfxVolume: number;
-  private musicVolume: number;
+  /** Current slider positions - kept here so a setter before the context exists still lands. */
+  private readonly volumes: Record<VolumeChannel, number>;
   /** The track that should be playing - re-asserted when a resume/unmute brings playback back. */
   private desiredMusic: MusicTrack | null = null;
   /** The rotation that should be playing instead; non-empty wins over {@link desiredMusic}. */
@@ -137,9 +128,7 @@ export class WebAudioEngine {
   constructor(options: AudioEngineOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_SOUNDS_BASE_URL;
     this.musicBaseUrl = options.musicBaseUrl ?? DEFAULT_MUSIC_BASE_URL;
-    this.masterGainValue = options.masterGain ?? DEFAULT_MASTER_GAIN;
-    this.sfxVolume = clampVolume(options.sfxVolume ?? DEFAULT_SFX_VOLUME);
-    this.musicVolume = clampVolume(options.musicVolume ?? DEFAULT_MUSIC_VOLUME);
+    this.volumes = clampedVolumes(options.volumes ?? DEFAULT_VOLUMES);
     this.createContext = options.createContext ?? webAudioContextFactory;
     this.fetchBytes = options.fetchBytes ?? httpFetchBytes;
     this.random = options.random ?? Math.random;
@@ -179,9 +168,11 @@ export class WebAudioEngine {
     this.assertMusic();
   }
 
-  /** Mute/unmute without tearing down state (running ambient loops and music fade out on mute). */
+  /** Mute/unmute without tearing down state: the master fades out, and running ambient loops and music
+   *  stop under it. */
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
+    this.rampChannel('master', CLICK_FREE_RAMP_S);
     if (!enabled) {
       this.mixer?.stopAll();
       this.music?.stop();
@@ -196,13 +187,18 @@ export class WebAudioEngine {
    * its engine, so a page never accumulates contexts past the browser's cap.
    */
   close(): void {
+    if (this.closed) return;
     this.closed = true;
     const ctx = this.ctx;
     if (ctx === null) return;
     this.mixer?.stopAll();
     this.music?.stop();
     this.weather?.stop();
-    void ctx.close().catch(() => undefined); // a context already closed elsewhere rejects
+    // Fade the master first: closing a context cuts whatever still sounds mid-wave.
+    this.rampChannel('master', CLICK_FREE_RAMP_S);
+    setTimeout(() => {
+      void ctx.close().catch(() => undefined); // a context already closed elsewhere rejects
+    }, CLOSE_GRACE_S * 1000);
   }
 
   /** Which music track should be playing (null = none); takes effect once playback is live. */
@@ -219,17 +215,13 @@ export class WebAudioEngine {
     if (this.canPlay()) this.music?.setRotation(tracks);
   }
 
-  /** Set the game-sounds slider (0..1); the bus ramps to {@link sfxBusGain} to avoid a zipper click. */
-  setSfxVolume(volume: number): void {
-    this.sfxVolume = clampVolume(volume);
-    if (this.sfxBus !== null && this.ctx !== null) rampTo(this.ctx, this.sfxBus, sfxBusGain(this.sfxVolume));
-  }
-
-  /** Set the music slider (0..1); the bus ramps to {@link musicBusGain} to avoid a zipper click. */
-  setMusicVolume(volume: number): void {
-    this.musicVolume = clampVolume(volume);
-    if (this.musicBus !== null && this.ctx !== null) {
-      rampTo(this.ctx, this.musicBus, musicBusGain(this.musicVolume));
+  /** Set the slider positions; each moved bus ramps over {@link VOLUME_RAMP_S}. */
+  setVolumes(volumes: MixerVolumes): void {
+    for (const channel of VOLUME_CHANNELS) {
+      const position = clampVolume(volumes[channel]);
+      if (position === this.volumes[channel]) continue;
+      this.volumes[channel] = position;
+      this.rampChannel(channel, VOLUME_RAMP_S);
     }
   }
 
@@ -283,38 +275,61 @@ export class WebAudioEngine {
     else this.music?.set(this.desiredMusic);
   }
 
-  /** Live and audible: not muted, context created + resumed. Re-checked after every async load. */
+  /** Live and audible: not muted or closed, context created + resumed. Re-checked after every async load. */
   private canPlay(): boolean {
-    return this.enabled && this.ctx !== null && this.ctx.state === 'running' && this.master !== null;
+    return (
+      this.enabled &&
+      !this.closed &&
+      this.ctx !== null &&
+      this.ctx.state === 'running' &&
+      this.master !== null
+    );
+  }
+
+  /** The gain a channel's node should hold now; a muted or closed engine holds its master at silence. */
+  private channelGain(channel: VolumeChannel): number {
+    if (channel === 'master') return this.enabled && !this.closed ? volumeGain(this.volumes.master) : 0;
+    if (channel === 'music') return musicBusGain(this.volumes.music);
+    return volumeGain(this.volumes[channel]);
+  }
+
+  private rampChannel(channel: VolumeChannel, seconds: number): void {
+    const node = channel === 'master' ? this.master : (this.buses?.[channel] ?? null);
+    if (this.ctx === null || node === null) return;
+    rampParam(this.ctx, node.gain, this.channelGain(channel), seconds);
   }
 
   private ensureContext(): AudioContext | null {
     if (this.ctx !== null) return this.ctx;
     const ctx = this.createContext();
     if (ctx === null) return null; // no Web Audio (headless/unsupported) → silent
+    this.ctx = ctx;
     const master = ctx.createGain();
-    master.gain.value = this.masterGainValue;
+    master.gain.value = this.channelGain('master');
     master.connect(ctx.destination);
-    const sfxBus = ctx.createGain();
-    sfxBus.gain.value = sfxBusGain(this.sfxVolume);
-    sfxBus.connect(master);
-    const musicBus = ctx.createGain();
-    musicBus.gain.value = musicBusGain(this.musicVolume);
-    // The duck sits behind the volume bus so a slider move and a running duck compose.
+    const buses: Record<SoundBus, GainNode> = {
+      music: ctx.createGain(),
+      voice: ctx.createGain(),
+      world: ctx.createGain(),
+      ambient: ctx.createGain(),
+      ui: ctx.createGain(),
+    };
+    for (const bus of SOUND_BUSES) buses[bus].gain.value = this.channelGain(bus);
+    // The duck sits behind the music bus so a slider move and a running duck compose.
     const musicDuck = ctx.createGain();
     musicDuck.gain.value = 1;
-    musicBus.connect(musicDuck);
-    musicDuck.connect(master);
-    this.ctx = ctx;
+    for (const bus of SOUND_BUSES) {
+      if (bus === 'music') buses.music.connect(musicDuck).connect(master);
+      else buses[bus].connect(master);
+    }
     this.master = master;
-    this.sfxBus = sfxBus;
-    this.musicBus = musicBus;
+    this.buses = buses;
     this.musicDuck = musicDuck;
     this.samples = new SampleCache(this.baseUrl, this.fetchBytes, (bytes) => ctx.decodeAudioData(bytes));
-    this.mixer = new AmbientMixer(ctx, sfxBus, this.samples, () => this.canPlay());
-    this.music = new MusicPlayer(ctx, musicBus, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
-    // Weather rides the game-sounds bus beside the terrain beds, so the same slider sets it.
-    this.weather = new WeatherSoundscape(ctx, sfxBus);
+    this.mixer = new AmbientMixer(ctx, buses.ambient, this.samples, () => this.canPlay());
+    this.music = new MusicPlayer(ctx, buses.music, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
+    // Weather rides the ambient bus beside the terrain beds, so the same slider sets it.
+    this.weather = new WeatherSoundscape(ctx, buses.ambient);
     this.weather.setEnabled(this.weatherEnabled);
     ctx.onstatechange = () => this.onStateChange(ctx);
     return ctx;
@@ -350,7 +365,8 @@ export class WebAudioEngine {
     pruneExpired(this.lastPlayed, COOLDOWN_PRUNE_SIZE, now, ONE_SHOT_COOLDOWN_S);
     this.lastPlayed.set(shot.key, now);
     void samples.get(file).then((buffer) => {
-      if (buffer === null || !this.canPlay() || this.sfxBus === null) {
+      const buses = this.buses;
+      if (buffer === null || !this.canPlay() || buses === null) {
         if (exclusive) this.soundingUntil.delete(file);
         return;
       }
@@ -365,7 +381,7 @@ export class WebAudioEngine {
       // than throwing inside this un-awaited promise (which would silently drop all positional SFX).
       const head = this.pannerFor(ctx, shot.pan) ?? source;
       if (head !== source) source.connect(head);
-      head.connect(gain).connect(this.sfxBus);
+      head.connect(gain).connect(buses[oneShotBus(shot)]);
       source.start();
     });
   }
@@ -379,15 +395,15 @@ export class WebAudioEngine {
   }
 }
 
-function clampVolume(volume: number): number {
-  return Math.min(1, Math.max(0, volume));
-}
-
-function rampTo(ctx: AudioContext, bus: GainNode, target: number): void {
-  const now = ctx.currentTime;
-  bus.gain.cancelScheduledValues(now);
-  bus.gain.setValueAtTime(bus.gain.value, now);
-  bus.gain.linearRampToValueAtTime(target, now + VOLUME_RAMP_S);
+function clampedVolumes(volumes: MixerVolumes): Record<VolumeChannel, number> {
+  return {
+    master: clampVolume(volumes.master),
+    music: clampVolume(volumes.music),
+    voice: clampVolume(volumes.voice),
+    world: clampVolume(volumes.world),
+    ambient: clampVolume(volumes.ambient),
+    ui: clampVolume(volumes.ui),
+  };
 }
 
 /** The duck's fade, exponential because the original ramps the audiopath volume linearly in dB. */

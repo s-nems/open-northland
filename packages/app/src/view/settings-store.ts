@@ -1,4 +1,4 @@
-import { DEFAULT_MUSIC_VOLUME, DEFAULT_SFX_VOLUME } from '@open-northland/audio';
+import { clampVolume, DEFAULT_VOLUMES, type MixerVolumes } from '@open-northland/audio';
 import {
   DEFAULT_PIXEL_ART_SCALER,
   DEFAULT_SELECTION_STYLE,
@@ -76,10 +76,8 @@ export interface MenuSettings {
   readonly minimapFilters: MinimapFilters;
   /** Mirrors the `?sound` param: `false` starts the game's audio driver muted. */
   readonly soundEnabled: boolean;
-  /** Game-sounds volume, 0..1 (effects, jingles, voices - the original `fx_volume`). */
-  readonly soundVolume: number;
-  /** Music volume, 0..1 (the original `dm_volume`). */
-  readonly musicVolume: number;
+  /** Mixer slider positions, 0..100 per channel. */
+  readonly volumes: MixerVolumes;
   readonly language: Locale;
   readonly keyboardScrollSpeed: number;
   readonly edgeScrollSpeed: number;
@@ -120,8 +118,7 @@ export function defaultSettings(): MenuSettings {
     minimapFrame: DEFAULT_MINIMAP_FRAME,
     minimapFilters: DEFAULT_MINIMAP_FILTERS,
     soundEnabled: true,
-    soundVolume: DEFAULT_SFX_VOLUME,
-    musicVolume: DEFAULT_MUSIC_VOLUME,
+    volumes: DEFAULT_VOLUMES,
     language: defaultLocale(),
     keyboardScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
@@ -157,9 +154,23 @@ function parseFpsLimit(value: unknown): FpsLimit {
   return value === 30 || value === 60 ? value : null;
 }
 
-function clampVolume(value: unknown, fallback: number): number {
-  if (typeof value !== 'number' || !Number.isFinite(value)) return fallback;
-  return Math.min(1, Math.max(0, value));
+/** Each slider rounded into its range; a channel missing or deformed in the blob takes its default. */
+function parseVolumes(value: unknown): MixerVolumes {
+  if (typeof value !== 'object' || value === null) return DEFAULT_VOLUMES;
+  const record = value as Record<string, unknown>;
+  const position = (channel: keyof MixerVolumes): number => {
+    const stored = record[channel];
+    if (typeof stored !== 'number' || !Number.isFinite(stored)) return DEFAULT_VOLUMES[channel];
+    return Math.round(clampVolume(stored));
+  };
+  return {
+    master: position('master'),
+    music: position('music'),
+    voice: position('voice'),
+    world: position('world'),
+    ambient: position('ambient'),
+    ui: position('ui'),
+  };
 }
 
 /** Parse a stored settings blob; a missing or deformed field falls back to its default. */
@@ -202,8 +213,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     minimapFrame: parseMinimapFrame(record.minimapFrame),
     minimapFilters: parseMinimapFilters(record.minimapFilters),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
-    soundVolume: clampVolume(record.soundVolume, defaults.soundVolume),
-    musicVolume: clampVolume(record.musicVolume, defaults.musicVolume),
+    volumes: parseVolumes(record.volumes),
     language: isLocale(record.language) ? record.language : defaults.language,
     keyboardScrollSpeed: clampScrollSpeed(record.keyboardScrollSpeed),
     edgeScrollSpeed: clampScrollSpeed(record.edgeScrollSpeed),
