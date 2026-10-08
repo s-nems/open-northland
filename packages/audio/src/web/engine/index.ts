@@ -2,6 +2,8 @@ export { AMBIENT_FADE_S } from './ambient-mixer.js';
 export {
   ALERT_DUCKED_BUSES,
   type AudioEngineOptions,
+  BACKGROUND_FADE_S,
+  CLOCK_STALL_MS,
   CLOSE_GRACE_S,
   DEFAULT_MUSIC_BASE_URL,
   DEFAULT_SOUNDS_BASE_URL,

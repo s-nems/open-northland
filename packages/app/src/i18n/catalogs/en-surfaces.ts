@@ -234,6 +234,9 @@ export const enSurfaces = {
       uiScalePinnedTip: 'This session has a fixed diagnostic ?uiscale value.',
       uiScaleApplyFailed: 'The interface scale could not be applied. The previous scale is still active.',
       soundEnabled: 'In-game sound',
+      soundInBackground: 'Sound in background',
+      soundInBackgroundTip:
+        'Keeps the sound playing while the game tab is hidden or another window has focus. Off fades it out until you come back.',
       volumeHeading: 'Volume',
       volumes: {
         master: 'Master',

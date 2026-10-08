@@ -62,6 +62,13 @@ it('persists and switches blood immediately, including while paused', async () =
   expect(h.setBloodEnabled).toHaveBeenLastCalledWith(true);
 });
 
+it('applies the background sound choice live', async () => {
+  const h = harness();
+  await h.settings.update({ soundInBackground: true });
+  expect(h.setSoundInBackground).toHaveBeenCalledWith(true);
+  expect(h.persist.mock.calls).toEqual([[{ soundInBackground: true }]]);
+});
+
 it('reframes the mounted minimap when another frame is picked', async () => {
   const h = harness();
   await h.settings.update({ minimapFrame: 'urnes' });
@@ -74,6 +81,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setUiScaleFactor = vi.fn(async () => true);
   const setSoundEnabled = vi.fn();
   const setVolumes = vi.fn();
+  const setSoundInBackground = vi.fn();
   const setLanguage = vi.fn();
   const setKeyBindings = vi.fn();
   const setCameraInputSettings = vi.fn();
@@ -95,6 +103,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setUiScaleFactor,
     setSoundEnabled,
     setVolumes,
+    setSoundInBackground,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,
@@ -113,6 +122,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setUiScaleFactor,
     setSoundEnabled,
     setVolumes,
+    setSoundInBackground,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,

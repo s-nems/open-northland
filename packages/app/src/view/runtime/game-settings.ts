@@ -19,6 +19,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setUiScaleFactor: (factor: number) => Promise<boolean>;
   readonly setSoundEnabled: (enabled: boolean) => void;
   readonly setVolumes: (volumes: MenuSettings['volumes']) => void;
+  readonly setSoundInBackground: (play: boolean) => void;
   readonly setLanguage: (language: MenuSettings['language']) => void;
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setCameraInputSettings: (settings: CameraInputSettings) => void;
@@ -50,6 +51,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     deps.persist(patch);
     if (patch.soundEnabled !== undefined) deps.setSoundEnabled(patch.soundEnabled);
     if (patch.volumes !== undefined) deps.setVolumes(patch.volumes);
+    if (patch.soundInBackground !== undefined) deps.setSoundInBackground(patch.soundInBackground);
     if (patch.language !== undefined) deps.setLanguage(patch.language);
     if (patch.keyBindings !== undefined) deps.setKeyBindings(patch.keyBindings);
     if (

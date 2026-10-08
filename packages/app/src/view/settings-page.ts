@@ -184,8 +184,17 @@ export function createSettingsPage(opts: {
         const tip = channel === 'master' || channel === 'music' ? undefined : text.volumeTips[channel];
         return settingRow(label, control, tip === undefined ? undefined : { tip });
       };
+      const choice = (key: 'soundInBackground', focus: string, tip: string): HTMLDivElement => {
+        const toggle = togglePill(settings[key], (on) => {
+          void opts.settings.update({ [key]: on });
+        });
+        toggle.setAttribute('aria-label', text[key]);
+        toggle.dataset.settingsFocus = focus;
+        return settingRow(text[key], toggle, { tip });
+      };
       return [
         settingRow(text.soundEnabled, sound),
+        choice('soundInBackground', 'sound-in-background', text.soundInBackgroundTip),
         settingsHeading(text.volumeHeading),
         ...VOLUME_CHANNELS.map(volumeRow),
       ];

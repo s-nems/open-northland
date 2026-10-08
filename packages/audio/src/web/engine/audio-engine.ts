@@ -73,7 +73,8 @@ export interface AudioEngineOptions {
   readonly createContext?: ContextFactory;
   /** Loads a wav's bytes by URL - override in tests with a stub. Default HTTP `fetch`. */
   readonly fetchBytes?: FetchBytes;
-  /** Wall clock the preload timing reads - override in tests. Default `performance.now`. */
+  /** Wall clock the preload timing and the stalled-clock check read - override in tests. Default
+   *  `performance.now`. */
   readonly now?: WallClock;
 }
 
@@ -119,6 +120,12 @@ export const LIMITER_RELEASE_S = 0.15;
 /** A closing engine fades the master out and closes the context this long after: the fade plus the
  *  output still buffered on its way to the device. Approximation. */
 export const CLOSE_GRACE_S = 0.1;
+/** The master's fade to silence when the page goes to the background, and back on return.
+ *  Approximation. */
+export const BACKGROUND_FADE_S = 0.3;
+/** A running context whose clock has not moved for this long is stalled (a backgrounded Safari
+ *  context can report `running` and stand still), so it counts as paused. Approximation. */
+export const CLOCK_STALL_MS = 1000;
 
 /** Jingle duck depth on the music bus: -2000 hundredths of dB, as the original fades the music
  *  audiopath while a jingle rings. */
@@ -173,6 +180,12 @@ export class WebAudioEngine {
   private readonly samplesReady = new Promise<SampleCache | null>((resolve) => {
     this.settleSamples = resolve;
   });
+  /** The page is hidden or its window unfocused. */
+  private pageInBackground = false;
+  /** The player's "sound in background" choice; off silences a page in the background. */
+  private playInBackground = true;
+  /** The audio clock at the last stall check, and the wall time it was first seen at. */
+  private lastClock = { audio: -1, wallMs: 0 };
   private mixer: AmbientMixer | null = null;
   private music: MusicPlayer | null = null;
   private weather: WeatherSoundscape | null = null;
@@ -198,9 +211,10 @@ export class WebAudioEngine {
     this.now = options.now ?? performanceNow;
   }
 
-  /** Whether the context has been started (a user gesture resumed it). */
+  /** Whether the context runs: a user gesture resumed it, and neither the platform nor a stalled clock
+   *  has paused it since. */
   get started(): boolean {
-    return this.ctx !== null && this.ctx.state === 'running';
+    return this.ctx !== null && this.ctx.state === 'running' && !this.clockStalled(this.ctx);
   }
 
   /** Live and audible (started and not muted). While false, applied frames are dropped unheard -
@@ -221,8 +235,11 @@ export class WebAudioEngine {
   async resume(): Promise<void> {
     const ctx = this.ensureContext();
     if (ctx === null) return;
-    if (ctx.state !== 'running') {
+    const stalled = ctx.state === 'running' && this.clockStalled(ctx);
+    if (ctx.state !== 'running' || stalled) {
       try {
+        // A context that claims to run on a frozen clock restarts only through a suspend.
+        if (stalled) await ctx.suspend();
         await ctx.resume();
       } catch {
         // A browser that refuses to resume outside a gesture just stays silent - not an error.
@@ -244,6 +261,21 @@ export class WebAudioEngine {
     } else {
       this.assertMusic();
     }
+  }
+
+  /** The page went to the background (hidden or unfocused) or came back. */
+  setPageInBackground(inBackground: boolean): void {
+    if (inBackground === this.pageInBackground) return;
+    this.pageInBackground = inBackground;
+    this.rampChannel('master', BACKGROUND_FADE_S);
+  }
+
+  /** Whether the mix keeps sounding while the page is in the background. Off fades the master to
+   *  silence there and back on return; unlike {@link setEnabled}, music and beds run on underneath. */
+  setPlayInBackground(play: boolean): void {
+    if (play === this.playInBackground) return;
+    this.playInBackground = play;
+    this.rampChannel('master', BACKGROUND_FADE_S);
   }
 
   /**
@@ -410,9 +442,24 @@ export class WebAudioEngine {
     );
   }
 
-  /** The gain a channel's node should hold now; a muted or closed engine holds its master at silence. */
+  /** Whether a running context's clock has stood still for {@link CLOCK_STALL_MS} of wall time. */
+  private clockStalled(ctx: AudioContext): boolean {
+    const nowMs = this.now();
+    if (ctx.currentTime !== this.lastClock.audio) {
+      this.lastClock = { audio: ctx.currentTime, wallMs: nowMs };
+      return false;
+    }
+    return nowMs - this.lastClock.wallMs >= CLOCK_STALL_MS;
+  }
+
+  /** The gain a channel's node should hold now; a muted, closed or backgrounded engine holds its master
+   *  at silence. */
   private channelGain(channel: VolumeChannel): number {
-    if (channel === 'master') return this.enabled && !this.closed ? volumeGain(this.volumes.master) : 0;
+    if (channel === 'master') {
+      const backgrounded = this.pageInBackground && !this.playInBackground;
+      const silent = !this.enabled || this.closed || backgrounded;
+      return silent ? 0 : volumeGain(this.volumes.master);
+    }
     if (channel === 'music') return musicBusGain(this.volumes.music);
     return volumeGain(this.volumes[channel]);
   }

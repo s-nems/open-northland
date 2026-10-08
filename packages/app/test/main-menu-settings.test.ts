@@ -76,6 +76,7 @@ describe('parseStoredSettings', () => {
       },
       soundEnabled: false,
       volumes: { master: 65, music: 40, voice: 90, world: 100, ambient: 0, ui: 75 },
+      soundInBackground: true,
       language: 'eng',
       keyboardScrollSpeed: 1.25,
       edgeScrollSpeed: 2.25,
@@ -110,6 +111,15 @@ describe('parseStoredSettings', () => {
     expect(parseStoredSettings('{"spriteSmoothing":false}').spriteSmoothing).toBe(false);
     expect(parseStoredSettings('{"spriteSmoothing":true}').spriteSmoothing).toBe(true);
     expect(parseStoredSettings('{"spriteSmoothing":"off"}').spriteSmoothing).toBe(true);
+  });
+
+  it('plays sound in the background by default only outside a browser tab', () => {
+    expect(defaultSettings().soundInBackground).toBe(false);
+    vi.stubGlobal('window', {});
+    expect(parseStoredSettings('{}').soundInBackground).toBe(false);
+    vi.stubGlobal('window', { desktop: { fullscreen: {} } });
+    expect(parseStoredSettings('{}').soundInBackground).toBe(true);
+    expect(parseStoredSettings('{"soundInBackground":false}').soundInBackground).toBe(false);
   });
 
   it('keeps the debug tools off unless a stored boolean turns them on', () => {

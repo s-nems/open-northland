@@ -194,6 +194,12 @@ export class FakeContext {
       numberOfChannels: 1,
     } as unknown as AudioBuffer;
   }
+  /** Suspends asked for, such as the restart of a stalled clock. */
+  suspends = 0;
+  async suspend(): Promise<void> {
+    this.suspends++;
+    if (this.state !== 'closed') this.setState('suspended');
+  }
   async resume(): Promise<void> {
     this.resumes++;
     if (this.state !== 'closed' && !this.refuseResume) this.setState('running'); // a closed context never reopens

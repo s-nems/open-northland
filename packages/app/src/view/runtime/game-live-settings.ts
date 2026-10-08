@@ -128,6 +128,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
       deps.sound?.setEnabled(enabled);
     },
     setVolumes: (volumes) => deps.sound?.setVolumes(volumes),
+    setSoundInBackground: (play) => deps.sound?.setPlayInBackground(play),
     setLanguage: (language) => {
       syncCarriedParam('lang', language === defaultLocale() ? null : language);
     },

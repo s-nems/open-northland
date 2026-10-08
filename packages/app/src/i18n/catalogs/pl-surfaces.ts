@@ -232,6 +232,9 @@ export const plSurfaces = {
       uiScalePinnedTip: 'Ta sesja ma stałą wartość diagnostyczną ?uiscale.',
       uiScaleApplyFailed: 'Nie udało się zastosować skali interfejsu. Poprzednia skala pozostaje aktywna.',
       soundEnabled: 'Dźwięk w grze',
+      soundInBackground: 'Dźwięk w tle',
+      soundInBackgroundTip:
+        'Dźwięk gra dalej, gdy karta gry jest ukryta albo aktywne jest inne okno. Po wyłączeniu cichnie do czasu powrotu do gry.',
       volumeHeading: 'Głośność',
       volumes: {
         master: 'Ogólna',

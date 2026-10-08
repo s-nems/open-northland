@@ -9,6 +9,7 @@ import { loadCombatBones, loadWreckDebris } from '../../content/objects.js';
 import { diag } from '../../diag/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import { readStoredSettings } from '../settings-store.js';
+import { followPageFocus } from '../sound-background.js';
 import { startSound } from '../sound-start.js';
 import { gameSoundEnabled } from './game-settings.js';
 
@@ -56,7 +57,9 @@ export async function mountGamePresentation(
       sound.setEnabled(enabled);
       sound.setVolumes(settings.volumes);
       sound.setWeatherEnabled(settings.weather);
+      sound.setPlayInBackground(settings.soundInBackground);
       startSound(sound, { signal });
+      followPageFocus(sound, { signal });
       // A game started muted decodes on demand if it is unmuted later.
       if (enabled) void preloadSounds(sound);
       if (musicType !== null) void startMapMusic(sound, musicType);

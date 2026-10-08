@@ -272,6 +272,9 @@ export const deSurfaces = {
       uiScaleApplyFailed:
         'Die Oberflächenskalierung konnte nicht geändert werden. Die bisherige Größe bleibt aktiv.',
       soundEnabled: 'Spielton',
+      soundInBackground: 'Ton im Hintergrund',
+      soundInBackgroundTip:
+        'Der Ton läuft weiter, während der Spieltab verborgen oder ein anderes Fenster aktiv ist. Aus blendet ihn bis zur Rückkehr aus.',
       volumeHeading: 'Lautstärke',
       volumes: {
         master: 'Gesamt',

@@ -8,6 +8,7 @@ import {
   WebAudioEngine,
 } from '@open-northland/audio';
 import { loadMusicManifest } from '../../content/music.js';
+import { followPageFocus } from '../../view/sound-background.js';
 import { startSound } from '../../view/sound-start.js';
 import { rotationOrder } from './rotation.js';
 import { menuSettings, onSettingsChange } from './settings-state.js';
@@ -53,16 +54,19 @@ export function startMenuMusic(signal: AbortSignal): MenuSound {
   const settings = menuSettings();
   const engine = new WebAudioEngine({ volumes: settings.volumes });
   engine.setEnabled(settings.soundEnabled);
+  engine.setPlayInBackground(settings.soundInBackground);
   void loadMusicManifest().then((manifest) => {
     if (signal.aborted) return;
     const tracks = menuMusicTracks(manifest, rotationOrder(MENU_MUSIC_STEMS, null, Math.random));
     engine.setMusic(trackRotation(tracks));
   });
   startSound(engine, { signal });
+  followPageFocus(engine, { signal });
 
   onSettingsChange((next) => {
     engine.setEnabled(next.soundEnabled);
     engine.setVolumes(next.volumes);
+    engine.setPlayInBackground(next.soundInBackground);
   }, signal);
 
   signal.addEventListener('abort', () => {

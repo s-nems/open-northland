@@ -78,6 +78,8 @@ export interface MenuSettings {
   readonly soundEnabled: boolean;
   /** Mixer slider positions, 0..100 per channel. */
   readonly volumes: MixerVolumes;
+  /** Sound keeps playing while the tab is hidden or the window unfocused; off fades it out there. */
+  readonly soundInBackground: boolean;
   readonly language: Locale;
   readonly keyboardScrollSpeed: number;
   readonly edgeScrollSpeed: number;
@@ -91,6 +93,12 @@ export interface MenuSettings {
   readonly netNick: string | null;
   readonly netRelayUrl: string | null;
   readonly debugToolsEnabled: boolean;
+}
+
+/** The desktop game, known by its shell's bridge, owns its window and keeps sounding behind another
+ *  one; a browser tab goes quiet among the player's other tabs. */
+export function defaultSoundInBackground(): boolean {
+  return typeof window !== 'undefined' && window.desktop !== undefined;
 }
 
 /** A player who never chose a language follows the browser's. */
@@ -119,6 +127,7 @@ export function defaultSettings(): MenuSettings {
     minimapFilters: DEFAULT_MINIMAP_FILTERS,
     soundEnabled: true,
     volumes: DEFAULT_VOLUMES,
+    soundInBackground: defaultSoundInBackground(),
     language: defaultLocale(),
     keyboardScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
@@ -214,6 +223,8 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     minimapFilters: parseMinimapFilters(record.minimapFilters),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
     volumes: parseVolumes(record.volumes),
+    soundInBackground:
+      typeof record.soundInBackground === 'boolean' ? record.soundInBackground : defaults.soundInBackground,
     language: isLocale(record.language) ? record.language : defaults.language,
     keyboardScrollSpeed: clampScrollSpeed(record.keyboardScrollSpeed),
     edgeScrollSpeed: clampScrollSpeed(record.edgeScrollSpeed),

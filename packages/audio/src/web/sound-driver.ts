@@ -144,6 +144,16 @@ export class SoundDriver {
     return this.engine.preload(samples);
   }
 
+  /** The page went to the background or came back (see {@link WebAudioEngine.setPageInBackground}). */
+  setPageInBackground(inBackground: boolean): void {
+    this.engine.setPageInBackground(inBackground);
+  }
+
+  /** The "sound in background" setting (see {@link WebAudioEngine.setPlayInBackground}). */
+  setPlayInBackground(play: boolean): void {
+    this.engine.setPlayInBackground(play);
+  }
+
   /** Hand over the map's placed objects that are no sim entity; the object ambience keeps the ones
    *  with a sound. Call once per map. */
   setLandscapeScenery(objects: Iterable<SceneryObject>): void {

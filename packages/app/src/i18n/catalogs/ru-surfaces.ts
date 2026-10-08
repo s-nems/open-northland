@@ -269,6 +269,9 @@ export const ruSurfaces = {
       uiScalePinnedTip: 'В этой сессии задан фиксированный диагностический параметр ?uiscale.',
       uiScaleApplyFailed: 'Не удалось изменить масштаб интерфейса. Сохранён прежний масштаб.',
       soundEnabled: 'Звук в игре',
+      soundInBackground: 'Звук в фоне',
+      soundInBackgroundTip:
+        'Звук продолжает играть, когда вкладка игры скрыта или активно другое окно. В режиме «Выкл.» он затихает до возвращения в игру.',
       volumeHeading: 'Громкость',
       volumes: {
         master: 'Общая',
