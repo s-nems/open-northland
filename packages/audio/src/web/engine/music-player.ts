@@ -1,4 +1,5 @@
 import {
+  CALM_RETURN_MAX_WAIT_S,
   cueLoops,
   cuePlaySeconds,
   type MusicCue,
@@ -96,7 +97,8 @@ export class MusicPlayer {
   }
 
   /** End the running cue at its next pass boundary that leaves room for its fade, rather than after
-   *  all its passes; the sequence's next cue follows as usual. A cue not sounding yet is replaced. */
+   *  all its passes, but no later than {@link CALM_RETURN_MAX_WAIT_S} from now; the sequence's next cue
+   *  follows as usual. A cue not sounding yet is replaced. */
   endAtPassEnd(): void {
     const playing = this.current;
     const now = this.ctx.currentTime;
@@ -107,11 +109,12 @@ export class MusicPlayer {
     if (playing === null) return;
     const { cue, gain, level, source } = playing;
     const boundary = passBoundaryAfter(cue.track, playing.bufferS, playing.startsAt, now + cue.fadeS);
-    if (boundary >= playing.endsAt) return;
-    // Before the boundary's fade the cue's own end fade has not begun either, so it sits at its level.
-    scheduleEnd(gain.gain, level, now, boundary, cue.fadeS);
-    playing.endsAt = boundary;
-    source.stop(boundary);
+    const endsAt = Math.min(boundary, now + Math.max(cue.fadeS, CALM_RETURN_MAX_WAIT_S));
+    if (endsAt >= playing.endsAt) return;
+    // Before this fade the cue's own end fade has not begun either, so it sits at its level.
+    scheduleEnd(gain.gain, level, now, endsAt, cue.fadeS);
+    playing.endsAt = endsAt;
+    source.stop(endsAt);
   }
 
   /**

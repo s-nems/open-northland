@@ -8,7 +8,8 @@ import type { MusicCue, MusicSequence } from './sequence.js';
  * A map's in-game soundtrack: a rotation over its culture's pools instead of one loop region forever.
  * Calm stretches open on the map's own stem, then alternate silence with shuffle-bag picks from the
  * calm pool, returning to the own stem every second or third cue. A fight cuts in at once with the
- * map's own tense stem and holds each tense stem for several passes; calm returns at a pass boundary.
+ * map's own tense stem and holds each tense stem for several passes; calm returns at a pass boundary
+ * within {@link CALM_RETURN_MAX_WAIT_S}.
  * The whole rotation is a design choice of this reimplementation (the original rings one segment per
  * map), and every number below is an approximation to tune by ear.
  */
@@ -28,6 +29,9 @@ export const OWN_STEM_EVERY_MAX = 3;
 export const TENSE_PASSES = 3;
 /** Seconds a tense cue fades out over when it hands over to the next tense stem. */
 export const TENSE_FADE_S = 1.5;
+/** The longest a fight's music plays on once the mood has calmed: the handover waits for a pass end,
+ *  but a pass can run two minutes, so past this it fades out wherever it is. */
+export const CALM_RETURN_MAX_WAIT_S = 25;
 
 /** A uniform draw in `[0, 1)`. */
 export type MusicRandom = () => number;
@@ -91,7 +95,7 @@ export class MusicPlaylist implements MusicSequence {
   /**
    * Take the frame's mood. Turning tense cuts in now on the own tense stem, unless the last cue
    * already fits a fight (a tense cue still running out its pass, or the own tense stem itself), which
-   * is kept; calming waits for the playing pass to end.
+   * is kept; calming waits for the playing pass to end, at most {@link CALM_RETURN_MAX_WAIT_S}.
    */
   update(mood: PlaylistMood): MusicTransition {
     const previous = this.mood.intensity;

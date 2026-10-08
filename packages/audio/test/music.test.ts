@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CALM_RETURN_MAX_WAIT_S,
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
   DEFAULT_VOLUMES,
@@ -62,7 +63,7 @@ interface Harness {
   readonly fetched: string[];
 }
 
-function makeEngine(opts: { failFetch?: boolean; failFile?: string } = {}): Harness {
+function makeEngine(opts: { failFetch?: boolean; failFile?: string; trackS?: number } = {}): Harness {
   const ctx = new FakeContext();
   const fetched: string[] = [];
   const engine = new WebAudioEngine({
@@ -72,7 +73,7 @@ function makeEngine(opts: { failFetch?: boolean; failFile?: string } = {}): Harn
       if (opts.failFetch || (opts.failFile !== undefined && url.endsWith(opts.failFile))) {
         throw new Error('missing track');
       }
-      return new ArrayBuffer(4);
+      return new ArrayBuffer(opts.trackS ?? TRACK_S);
     },
   });
   return { engine, ctx, fetched };
@@ -204,6 +205,24 @@ describe('WebAudioEngine music', () => {
     expect(gainOf(first).gain.ramps.at(-1)).toEqual({ value: 0, time: BOUNDARY });
     // The next cue follows its silence from the boundary, not from the full three passes.
     expect((ctx.sources[1] as FakeSource).startedAt).toBeCloseTo(BOUNDARY + GAP_S, 5);
+  });
+
+  it('fades a long pass out early rather than holding the fight past the calm return bound', async () => {
+    // One 100 s pass: its first boundary lies far beyond the bound.
+    const LONG_PASS_S = 100;
+    const { engine, ctx } = makeEngine({ trackS: 2 * LONG_PASS_S });
+    await engine.resume();
+    const long = musicTrack('attack_viking', { loopStartS: LONG_PASS_S, loopEndS: 2 * LONG_PASS_S });
+    engine.setMusic(cues([long, TRACK]));
+    await flush();
+    const first = ctx.sources[0] as FakeSource;
+    const NOW_S = 5;
+    ctx.currentTime = NOW_S;
+    engine.transitionMusic('atPassEnd');
+    const endsAt = NOW_S + CALM_RETURN_MAX_WAIT_S;
+    expect(first.stoppedAt).toBe(endsAt);
+    expect(gainOf(first).gain.events).toContainEqual({ kind: 'set', value: 1, time: endsAt - FADE_S });
+    expect(gainOf(first).gain.ramps.at(-1)).toEqual({ value: 0, time: endsAt });
   });
 
   it('leaves a cue alone when its own end is the nearest boundary', async () => {
