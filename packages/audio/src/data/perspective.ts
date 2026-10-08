@@ -75,19 +75,23 @@ export function muffleCutoffHz(zoom: number): number {
   return lerpHz(MUFFLE_OPEN_HZ, MUFFLE_FAR_HZ, zoom);
 }
 
-/** The world layer a one-shot plays in, or null for a shot off the `world` bus: only that bus has
- *  shot layers. */
-export function shotLayer(shot: OneShot): ShotLayer | null {
-  return oneShotBus(shot) === 'world' ? (shot.layer ?? 'detail') : null;
-}
-
 /**
- * The zoom layer a one-shot enters, or null for one that keeps its level wherever the camera is (the
- * `ui` and `responses` buses). A world shot plays in its {@link shotLayer}. Object ambience (birds, branch
- * cracks, stones) is part of the macro layer, so an `ambient` shot rides the `bed` layer with the beds
- * and the weather and rises with them at far zoom, through that one bus-level gain rather than per-shot
- * zoom math.
+ * The zoom layer a one-shot enters, or null for one that keeps its level wherever the camera is: a shot
+ * on the `ui` or `responses` bus, and a slider's {@link OneShot.preview}. A world shot plays in its
+ * named layer, `detail` by default. Object ambience (birds, branch cracks, stones) is part of the macro
+ * layer, so an `ambient` shot rides the `bed` layer with the beds and the weather and rises with them at
+ * far zoom, through that one bus-level gain rather than per-shot zoom math.
  */
 export function shotPerspectiveLayer(shot: OneShot): PerspectiveLayer | null {
-  return oneShotBus(shot) === 'ambient' ? 'bed' : shotLayer(shot);
+  if (shot.preview === true) return null;
+  const bus = oneShotBus(shot);
+  if (bus === 'world') return shot.layer ?? 'detail';
+  return bus === 'ambient' ? 'bed' : null;
+}
+
+/** The world layer a one-shot plays in, or null for one in no shot layer ({@link shotPerspectiveLayer}):
+ *  only the `world` bus has shot layers. */
+export function shotLayer(shot: OneShot): ShotLayer | null {
+  const layer = shotPerspectiveLayer(shot);
+  return layer === 'bed' ? null : layer;
 }

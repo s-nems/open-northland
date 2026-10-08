@@ -31,5 +31,5 @@ export const BUS_PREVIEWS: Readonly<Partial<Record<SoundBus, BusPreview>>> = {
 export function busPreviewShot(bus: SoundBus): OneShot | null {
   const preview = BUS_PREVIEWS[bus];
   if (preview === undefined) return null;
-  return { files: preview.files, gain: preview.gain, pan: 0, key: `preview:${bus}`, bus };
+  return { files: preview.files, gain: preview.gain, pan: 0, key: `preview:${bus}`, bus, preview: true };
 }

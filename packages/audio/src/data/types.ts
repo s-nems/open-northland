@@ -76,8 +76,11 @@ export interface OneShot {
    *  player ({@link import('./mixer.js').oneShotBus}). */
   readonly bus?: SoundBus;
   /** The zoom layer a world shot fades in ({@link import('./perspective.js').shotLayer}); absent is
-   *  `detail`. A shot off the `world` bus ignores it. */
+   *  `detail`. A shot off the `world` bus, or a preview, ignores it. */
   readonly layer?: ShotLayer;
+  /** A settings slider's test clip: it plays straight into its bus, outside every zoom layer, so the
+   *  slider is judged at the bus's own level wherever the camera was. */
+  readonly preview?: boolean;
   /** The arbiter's handle for a world one-shot or a yielding line it started, which a later steal or
    *  answer names ({@link import('./one-shot-ledger.js').OneShotPlayback}). */
   readonly instance?: number;

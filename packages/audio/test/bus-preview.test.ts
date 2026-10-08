@@ -7,8 +7,10 @@ import {
   oneShotBus,
   SOUND_BUSES,
   SoundDriver,
+  shotPerspectiveLayer,
 } from '../src/index.js';
-import { FakeContext, flush } from './helpers/fake-audio.js';
+import { FakeContext, type FakeGain, type FakePanner, type FakeSource, flush } from './helpers/fake-audio.js';
+import { mixerGraph } from './helpers/mixer-graph.js';
 
 /** A settings slider's test button plays one short clip on its own bus. */
 
@@ -22,6 +24,8 @@ describe('bus preview', () => {
       expect(shot?.files).toEqual(BUS_PREVIEWS[bus]?.files);
       expect(shot === null ? undefined : oneShotBus(shot)).toBe(bus);
       expect(shot?.pan).toBe(0);
+      // A slider check plays at the bus's own level, never faded or muffled by the camera's zoom.
+      expect(shot === null ? undefined : shotPerspectiveLayer(shot)).toBeNull();
     }
     expect(busPreviewShot('music')).toBeNull();
     expect(SOUND_BUSES.filter((bus) => busPreviewShot(bus) !== null)).toEqual([...PREVIEWED]);
@@ -52,5 +56,8 @@ describe('bus preview', () => {
     const world = BUS_PREVIEWS.world?.files[0] ?? '';
     expect(fetched.filter((url) => url.endsWith(world))).toHaveLength(1);
     expect(ctx.sources).toHaveLength(1);
+    const source = ctx.sources[0] as FakeSource;
+    const entry = ((source.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain).connectedTo[0];
+    expect(entry).toBe(mixerGraph(ctx).buses.world);
   });
 });
