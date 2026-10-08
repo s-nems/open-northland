@@ -1,6 +1,8 @@
-import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
+import type { GfxPattern, HumanVoices, SoundBank, TerrainPattern } from '@open-northland/data';
+import type { EntitySnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { groupFiles, SILENT_PLACEHOLDER_FILE } from '../src/data/bank.js';
+import { BORROWED_TRIBE_VOICES, groupFiles, SILENT_PLACEHOLDER_FILE } from '../src/data/bank.js';
+import { humanVoicesOf, responseGroup } from '../src/data/voices.js';
 import { buildSoundIndex } from '../src/index.js';
 
 /**
@@ -124,5 +126,77 @@ describe('buildSoundIndex', () => {
 
   it('indexes both hero and heroine job slugs for the authored hero response rule', () => {
     expect(index.heroJobs).toEqual(new Set([42, 47]));
+  });
+});
+
+describe('tribe voice borrowing', () => {
+  const SARACEN = 4;
+  const EGYPT = 7;
+  const HERO_JOB = 42;
+  const tribes = [
+    { typeId: SARACEN, id: 'saracen' },
+    { typeId: EGYPT, id: 'egypt' },
+  ];
+  const saracenRows: HumanVoices[] = [
+    {
+      tribe: SARACEN,
+      voiceClass: 'male',
+      scream: 'Man Get Hit',
+      generic: 'Generic Arabian Male',
+      respondOk: ['Arabian male ok 01', 'Arabian male ok 02'],
+      respondNo: ['Arabian male no 01'],
+    },
+    {
+      tribe: SARACEN,
+      voiceClass: 'female',
+      scream: 'Woman Get Hit',
+      generic: 'Generic Viking Female',
+      respondOk: [],
+      respondNo: [],
+    },
+    { tribe: SARACEN, voiceClass: 'child', generic: 'Generic Viking Children', respondOk: [], respondNo: [] },
+  ];
+  const voiced = (rows: readonly HumanVoices[]): SoundBank => ({ ...bank, humanVoices: [...rows] });
+  const egyptian = (id: number, components: Record<string, unknown> = {}): EntitySnapshot => ({
+    id,
+    components: { Settler: { tribe: EGYPT, jobType: null }, Person: { person: true }, ...components },
+  });
+
+  it('lends Egypt the Saracen pools by default', () => {
+    expect(BORROWED_TRIBE_VOICES.get('egypt')).toBe('saracen');
+  });
+
+  it('gives a voiceless Egyptian settler an answer pool and a scream pool', () => {
+    const index = buildSoundIndex(voiced(saracenRows), [], [], [], tribes);
+    const man = egyptian(3);
+    expect(responseGroup(index, man)).toBe('Arabian male ok 02');
+    expect(humanVoicesOf(index, man)?.scream).toBe('Man Get Hit');
+  });
+
+  it('borrows every class, the hero rule included', () => {
+    const jobs = [{ typeId: HERO_JOB, id: 'hero_unarmed' }];
+    const index = buildSoundIndex(voiced(saracenRows), [], [], jobs, tribes);
+    expect(humanVoicesOf(index, egyptian(2, { Female: { female: true } }))?.scream).toBe('Woman Get Hit');
+    expect(humanVoicesOf(index, egyptian(2, { Age: { ticks: 1 } }))?.generic).toBe('Generic Viking Children');
+    const hero = egyptian(3, { Settler: { tribe: EGYPT, jobType: HERO_JOB } });
+    expect(responseGroup(index, hero)).toBe('Arabian male ok 01');
+  });
+
+  it('never borrows for a tribe with rows of its own', () => {
+    const own: HumanVoices = {
+      tribe: EGYPT,
+      voiceClass: 'male',
+      scream: 'Pharaoh Get Hit',
+      respondOk: ['Egypt male ok 01'],
+      respondNo: [],
+    };
+    const index = buildSoundIndex(voiced([...saracenRows, own]), [], [], [], tribes);
+    expect(responseGroup(index, egyptian(3))).toBe('Egypt male ok 01');
+    expect(humanVoicesOf(index, egyptian(3, { Female: { female: true } }))).toBeUndefined();
+  });
+
+  it('stays silent when the tribe table does not name the borrower', () => {
+    const index = buildSoundIndex(voiced(saracenRows), [], []);
+    expect(humanVoicesOf(index, egyptian(3))).toBeUndefined();
   });
 });

@@ -24,6 +24,12 @@ export function hasSoundContent(sounds: SoundBank | undefined): sounds is SoundB
 export function createSoundDriver(ir: ContentIr | null): SoundDriver | null {
   const sounds = ir?.sounds;
   if (!hasSoundContent(sounds)) return null;
-  const index = buildSoundIndex(sounds, ir?.gfxPatterns ?? [], ir?.terrainPatterns ?? [], ir?.jobs ?? []);
+  const index = buildSoundIndex(
+    sounds,
+    ir?.gfxPatterns ?? [],
+    ir?.terrainPatterns ?? [],
+    ir?.jobs ?? [],
+    ir?.tribes ?? [],
+  );
   return new SoundDriver(index, defaultBindings());
 }

@@ -30,7 +30,8 @@ export interface SoundIndex {
    *  weapon's `soundtype_NoHit` thud table is keyed by. Coarse like the ambient join: `terrainPatterns`
    *  classes each typeId as water, land or mountain, so the finer ground columns never come up. */
   readonly groundLogicTypeByTerrainType: ReadonlyMap<number, number>;
-  /** Settler tribe → voice class → the groups that tribe's settlers of that class speak with. */
+  /** Settler tribe → voice class → the groups that tribe's settlers of that class speak with; a
+   *  voiceless tribe in {@link BORROWED_TRIBE_VOICES} shares its lender's rows. */
   readonly humanVoices: ReadonlyMap<number, ReadonlyMap<VoiceClass, HumanVoices>>;
   /** Job ids whose authored slug identifies a hero; heroes always use response pool zero. */
   readonly heroJobs: ReadonlySet<number>;
@@ -51,6 +52,18 @@ export const SILENT_PLACEHOLDER_FILE = 'static/dummy.wav';
  */
 function audibleFiles(sfx: readonly SoundSfx[]): readonly string[] {
   return sfx.map((s) => s.file).filter((file) => file !== SILENT_PLACEHOLDER_FILE);
+}
+
+/**
+ * Tribe slug -> the tribe whose voice rows it speaks with when the data gives it none. Authored
+ * approximation: the mod's Egypt ships without voices, so it borrows the Saracens' Arabic pools.
+ */
+export const BORROWED_TRIBE_VOICES: ReadonlyMap<string, string> = new Map([['egypt', 'saracen']]);
+
+/** The authored ids a content row joins by: a job's or a tribe's `typeId` and slug. */
+export interface AuthoredId {
+  readonly typeId?: number;
+  readonly id?: string;
 }
 
 /**
@@ -81,7 +94,8 @@ export function buildSoundIndex(
   sounds: SoundBank,
   gfxPatterns: readonly GfxPattern[],
   terrainPatterns: readonly TerrainPattern[],
-  jobs: readonly { readonly typeId?: number; readonly id?: string }[] = [],
+  jobs: readonly AuthoredId[] = [],
+  tribes: readonly AuthoredId[] = [],
 ): SoundIndex {
   const groupsByName = new Map<string, readonly string[]>();
   const groupsByLogicSoundType = new Map<number, readonly string[]>();
@@ -140,6 +154,7 @@ export function buildSoundIndex(
     }
     byClass.set(row.voiceClass, row);
   }
+  lendTribeVoices(humanVoices, tribes);
   const animalCalls = new Map<number, AnimalCall>();
   for (const call of sounds.animalCalls) animalCalls.set(call.tribe, call);
   const heroJobs = new Set<number>();
@@ -158,4 +173,20 @@ export function buildSoundIndex(
     heroJobs,
     animalCalls,
   };
+}
+
+/** Give each voiceless tribe in {@link BORROWED_TRIBE_VOICES} its lender's rows, every class at once. */
+function lendTribeVoices(
+  humanVoices: Map<number, Map<VoiceClass, HumanVoices>>,
+  tribes: readonly AuthoredId[],
+): void {
+  const typeIdBySlug = new Map<string, number>();
+  for (const t of tribes) if (t.typeId !== undefined && t.id !== undefined) typeIdBySlug.set(t.id, t.typeId);
+  for (const [borrower, lender] of BORROWED_TRIBE_VOICES) {
+    const borrowerId = typeIdBySlug.get(borrower);
+    const lenderId = typeIdBySlug.get(lender);
+    if (borrowerId === undefined || lenderId === undefined || humanVoices.has(borrowerId)) continue;
+    const rows = humanVoices.get(lenderId);
+    if (rows !== undefined) humanVoices.set(borrowerId, rows);
+  }
 }
