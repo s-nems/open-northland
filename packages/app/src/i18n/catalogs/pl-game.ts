@@ -1393,10 +1393,6 @@ export const plGame = {
     allowRegeneration: 'Zezwól na przerwy',
     prohibitRegeneration: 'Bez przerw na potrzeby',
   },
-  actionRingDetails: {
-    explore:
-      'Zwiadowca bada wyspę, zaczynając od miejsca, w którym stoi, i idąc coraz dalej. Po drodze je i śpi. Zgłasza koniec, gdy nie zostanie żaden większy nieodkryty obszar; wąskie pasy przy brzegach i krawędzi mapy zostają w mgle.',
-  },
   // Roles outside the profession picker, keyed by content job slug: the life stages (`jobtypes.ini` 1..6)
   // and the jester (28), which maps can place but no player can train.
   roleNames: {

@@ -1413,11 +1413,6 @@ export const enGame = {
     allowRegeneration: 'Allow breaks',
     prohibitRegeneration: 'Do not take breaks',
   },
-  // What an order does beyond its name, the second line of its ring tooltip.
-  actionRingDetails: {
-    explore:
-      'Explores the island outward from where the scout stands, eating and sleeping on the way. Reports once no larger unseen area is left; thin strips along shores and map edges stay dark.',
-  },
   // Roles outside the profession picker, keyed by content job slug: the life stages (`jobtypes.ini` 1..6)
   // and the jester (28), which maps can place but no player can train.
   roleNames: {

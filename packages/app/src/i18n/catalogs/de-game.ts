@@ -1555,10 +1555,6 @@ export const deGame = {
     allowRegeneration: 'Pausen erlauben',
     prohibitRegeneration: 'Keine Pausen machen',
   },
-  actionRingDetails: {
-    explore:
-      'Erkundet die Insel von seinem Standort aus immer weiter nach außen, isst und schläft unterwegs. Meldet sich, sobald kein größeres unerkundetes Gebiet bleibt; schmale Streifen an Küsten und Kartenrändern bleiben dunkel.',
-  },
   roleNames: {
     baby_female: 'Baby (Mädchen)',
     baby_male: 'Baby (Junge)',
