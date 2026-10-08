@@ -42,10 +42,15 @@ export function guardEntry(route: RouteId): void {
 }
 
 /** The trap: a back traversal lands on the game's own entry, same document, same URL. */
-function onGesture(): void {
+function pushTrap(): void {
   if (!trapPending) return;
   trapPending = false;
   window.history.pushState(null, '', heldHref);
+}
+
+/** Only an input that grants user activation may push the trap: Escape and a touch do not. */
+function onPointerDown(e: PointerEvent): void {
+  if (e.pointerType !== 'touch') pushTrap();
 }
 
 /** The document is leaving on purpose: no trap, no prompt. */
@@ -112,7 +117,7 @@ function onMouseUp(e: MouseEvent): void {
 }
 
 function onKeyDown(e: KeyboardEvent): void {
-  onGesture();
+  if (e.key !== 'Escape') pushTrap();
   if (held && isBrowserShortcut(e, isEditing(e.target))) e.preventDefault();
 }
 
@@ -140,7 +145,7 @@ export function installNavigationGuard(reload: () => void = reloadPage): () => v
   const controller = new AbortController();
   const { signal } = controller;
   window.addEventListener('popstate', onPopState, { signal });
-  window.addEventListener('pointerdown', onGesture, { capture: true, signal });
+  window.addEventListener('pointerdown', onPointerDown, { capture: true, signal });
   window.addEventListener('mouseup', onMouseUp, { capture: true, signal });
   window.addEventListener('auxclick', onMouseUp, { capture: true, signal });
   window.addEventListener('keydown', onKeyDown, { capture: true, signal });

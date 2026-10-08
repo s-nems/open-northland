@@ -14,7 +14,7 @@ const MENU = '/?lang=pol';
 
 /** The player's first touch of the game, which lets the trap entry in. */
 function gesture(): void {
-  window.dispatchEvent(new Event('pointerdown'));
+  window.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'mouse' }));
 }
 
 function key(init: KeyboardEventInit): KeyboardEvent {
@@ -102,6 +102,16 @@ describe('navigation guard', () => {
     guard.guardEntry('relay');
     gesture();
 
+    expect(pushState).toHaveBeenCalledTimes(1);
+  });
+
+  it('waits for an input that grants activation: not Escape, not a touch', () => {
+    guard.guardEntry('map');
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+    window.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'touch' }));
+    expect(pushState).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new PointerEvent('pointerdown', { pointerType: 'mouse' }));
     expect(pushState).toHaveBeenCalledTimes(1);
   });
 

@@ -86,6 +86,13 @@ describe('isFullscreenChord', () => {
     expect(isFullscreenChord(altEnter)).toBe(true);
   });
 
+  it("takes a bare F11 press, the browsers' fullscreen key", () => {
+    const f11: KeyInput = { ...altEnter, key: 'F11', alt: false };
+    expect(isFullscreenChord(f11)).toBe(true);
+    expect(isFullscreenChord({ ...f11, alt: true })).toBe(false);
+    expect(isFullscreenChord({ ...f11, isAutoRepeat: true })).toBe(false);
+  });
+
   it('leaves AltGr, other chords, repeats and releases to the game', () => {
     expect(isFullscreenChord({ ...altEnter, control: true })).toBe(false);
     expect(isFullscreenChord({ ...altEnter, shift: true })).toBe(false);

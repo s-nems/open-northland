@@ -13,6 +13,7 @@ import { diag } from '../../diag/index.js';
 import { localeParam, messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot-progress.js';
 import { enhancementsOf } from '../graphics-enhancements.js';
+import { releaseDocument } from '../navigation-guard.js';
 import { mountMessage, navButton } from '../overlay.js';
 import { postFxParam } from '../params.js';
 import { readStoredSettings } from '../settings-store.js';
@@ -66,6 +67,7 @@ export function haltOnMissingContent(err: Error): void {
   const copy = messages().common;
   diag.warn('content', `real terrain unavailable: ${err.message}`);
   dismissBootProgress();
+  releaseDocument();
   mountMessage(copy.missingContentTitle, copy.missingTerrainDetail, [navButton(copy.backToMenu, false, '')]);
 }
 
@@ -75,6 +77,7 @@ export function haltOnFailedRestore(err: unknown): void {
   const copy = messages().common;
   diag.warn('boot', `staged save restore failed: ${String(err)}`);
   dismissBootProgress();
+  releaseDocument();
   mountMessage(copy.loadFailedTitle, copy.loadFailedDetail, [navButton(copy.backToMenu, false, '')]);
 }
 

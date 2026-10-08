@@ -47,17 +47,13 @@ export interface KeyInput {
   readonly shift: boolean;
 }
 
-/** Alt+Enter, the PC games' fullscreen toggle. AltGr reports control+alt and is not it. */
+/** Alt+Enter, the PC games' fullscreen toggle, and F11, the browsers'; the shell has no View menu to
+ *  bind the latter. AltGr reports control+alt and is not Alt. */
 export function isFullscreenChord(input: KeyInput): boolean {
-  return (
-    input.type === 'keyDown' &&
-    input.key === 'Enter' &&
-    !input.isAutoRepeat &&
-    input.alt &&
-    !input.control &&
-    !input.meta &&
-    !input.shift
-  );
+  if (input.type !== 'keyDown' || input.isAutoRepeat || input.control || input.meta || input.shift)
+    return false;
+  if (input.key === 'F11') return !input.alt;
+  return input.key === 'Enter' && input.alt;
 }
 
 /** Only the game's own window, on an `app://` page, may read or change its mode. */

@@ -21,6 +21,8 @@ export async function runEntry(
   // for the download instead of leaving an empty page behind.
   onLoaded: () => void = () => undefined,
 ): Promise<void> {
+  // Set once this entry took the document; a load that fails earlier leaves the running one held.
+  let guarded = false;
   try {
     setActiveLocale(localeParam(params));
     const route = routeFor(params);
@@ -32,13 +34,14 @@ export async function runEntry(
     }
     onLoaded();
     guardEntry(route.id);
+    guarded = true;
     await run(gameCanvas(), params);
   } catch (err) {
     // A boot that throws never reaches its own `finish()`, so the progress card would sit there for
     // good, covering the crash banner.
     dismissBootProgress();
     // A game entry that never came up holds nothing worth a prompt.
-    releaseDocument();
+    if (guarded) releaseDocument();
     throw err;
   }
 }
