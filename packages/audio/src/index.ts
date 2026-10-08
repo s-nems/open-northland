@@ -203,6 +203,7 @@ export {
   SHOT_LAYERS,
   type ShotLayer,
   shotLayer,
+  shotPerspectiveLayer,
   zoomDistance,
 } from './data/perspective.js';
 export {

@@ -102,7 +102,7 @@ describe('WebAudioEngine one-shots', () => {
     expect(limiter.connectedTo[0]).toBe(ctx.destination);
   });
 
-  it('routes each one-shot to the bus of its lane, through its zoom layer on the world bus', async () => {
+  it('routes each one-shot to the bus of its lane, through its zoom layer on the world and ambient buses', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     engine.apply({
@@ -113,6 +113,7 @@ describe('WebAudioEngine one-shots', () => {
         shot({ key: 'blow', files: ['blow.wav'], lane: { kind: 'sfx' }, layer: 'impact' }),
         shot({ key: 'scream', files: ['scream.wav'], lane: { kind: 'voice' }, layer: 'impact' }),
         shot({ key: 'answer', files: ['ok.wav'], bus: 'responses' }),
+        shot({ key: 'bird', files: ['bird.wav'], lane: { kind: 'ambience' } }),
       ],
       ambient: [],
     });
@@ -120,7 +121,8 @@ describe('WebAudioEngine one-shots', () => {
     const { buses, layers } = mixerGraph(ctx);
     const entryOf = (source: FakeSource): unknown =>
       ((source.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain).connectedTo[0];
-    const [work, chatter, birth, blow, scream, answer] = ctx.sources as [
+    const [work, chatter, birth, blow, scream, answer, bird] = ctx.sources as [
+      FakeSource,
       FakeSource,
       FakeSource,
       FakeSource,
@@ -135,6 +137,8 @@ describe('WebAudioEngine one-shots', () => {
     expect(entryOf(blow)).toBe(layers.world.impact);
     expect(entryOf(scream)).toBe(layers.world.impact);
     expect(entryOf(answer)).toBe(buses.responses);
+    // Object ambience is the macro layer: it rides the bed layer with the beds and the weather.
+    expect(entryOf(bird)).toBe(layers.bed);
     // Detail reaches its bus through the zoom low-pass; impacts and beds go straight in.
     const worldMuffle = layers.world.detail.connectedTo[0] as FakeBiquad;
     expect(worldMuffle).toBeInstanceOf(FakeBiquad);

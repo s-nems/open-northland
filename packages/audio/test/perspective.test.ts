@@ -9,6 +9,7 @@ import {
   PERSPECTIVE_CURVES,
   perspectiveGain,
   shotLayer,
+  shotPerspectiveLayer,
   zoomDistance,
 } from '../src/index.js';
 
@@ -65,15 +66,15 @@ describe('muffleCutoffHz', () => {
   });
 });
 
-describe('shotLayer', () => {
-  const shot = (over: Partial<OneShot>): OneShot => ({
-    files: ['a.wav'],
-    gain: 1,
-    pan: 0,
-    key: 'k',
-    ...over,
-  });
+const shot = (over: Partial<OneShot>): OneShot => ({
+  files: ['a.wav'],
+  gain: 1,
+  pan: 0,
+  key: 'k',
+  ...over,
+});
 
+describe('shotLayer', () => {
   it('keeps a ui shot (no lane, or a jingle) out of every zoom layer', () => {
     expect(shotLayer(shot({}))).toBeNull();
     expect(shotLayer(shot({ lane: { kind: 'jingle', musicType: 1 } }))).toBeNull();
@@ -90,5 +91,15 @@ describe('shotLayer', () => {
     expect(shotLayer(shot({ lane: { kind: 'sfx' } }))).toBe('detail');
     expect(shotLayer(shot({ lane: { kind: 'voice' } }))).toBe('detail');
     expect(shotLayer(shot({ lane: { kind: 'sfx' }, layer: 'impact' }))).toBe('impact');
+  });
+});
+
+describe('shotPerspectiveLayer', () => {
+  it('puts object ambience in the bed layer, a world shot in its shot layer, and a ui shot in none', () => {
+    expect(shotPerspectiveLayer(shot({ lane: { kind: 'ambience' } }))).toBe('bed');
+    expect(shotPerspectiveLayer(shot({ lane: { kind: 'sfx' }, layer: 'impact' }))).toBe('impact');
+    expect(shotPerspectiveLayer(shot({ lane: { kind: 'voice' } }))).toBe('detail');
+    expect(shotPerspectiveLayer(shot({ bus: 'responses' }))).toBeNull();
+    expect(shotPerspectiveLayer(shot({}))).toBeNull();
   });
 });

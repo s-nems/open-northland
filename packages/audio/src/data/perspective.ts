@@ -5,16 +5,17 @@ import type { OneShot } from './types.js';
 /**
  * Zoom as a listening perspective. The listener stays on the ground under the screen centre; zooming
  * out only re-balances whole layers of the mix: fine world detail fades and muffles first, combat and
- * big events hold, and the ambient beds become the macro layer. Music and the `ui` bus never follow the
- * camera. The original has no zoom, so every curve here is an approximation to tune by ear.
+ * big events hold, and the ambient bus (beds, weather, the landscape's birds and stones) becomes the
+ * macro layer. Music and the `ui` bus never follow the camera. The original has no zoom, so every curve
+ * here is an approximation to tune by ear.
  */
 
 /** A world one-shot's layer: `detail` is work, chatter and small action sounds; `impact` is combat
  *  impacts, screams and big events that must still read from far out. */
 export type ShotLayer = 'detail' | 'impact';
 
-/** A zoom-following layer of the mix: the two world layers and the ambient `bed` (terrain beds and
- *  weather). */
+/** A zoom-following layer of the mix: the two world layers and the ambient `bed` (terrain beds,
+ *  weather and object ambience). */
 export type PerspectiveLayer = ShotLayer | 'bed';
 
 /** Every world one-shot layer. */
@@ -78,4 +79,15 @@ export function muffleCutoffHz(zoom: number): number {
  *  shot layers. */
 export function shotLayer(shot: OneShot): ShotLayer | null {
   return oneShotBus(shot) === 'world' ? (shot.layer ?? 'detail') : null;
+}
+
+/**
+ * The zoom layer a one-shot enters, or null for one that keeps its level wherever the camera is (the
+ * `ui` and `responses` buses). A world shot plays in its {@link shotLayer}. Object ambience (birds, branch
+ * cracks, stones) is part of the macro layer, so an `ambient` shot rides the `bed` layer with the beds
+ * and the weather and rises with them at far zoom, through that one bus-level gain rather than per-shot
+ * zoom math.
+ */
+export function shotPerspectiveLayer(shot: OneShot): PerspectiveLayer | null {
+  return oneShotBus(shot) === 'ambient' ? 'bed' : shotLayer(shot);
 }

@@ -18,7 +18,7 @@ import {
   perspectiveGain,
   SHOT_LAYERS,
   type ShotLayer,
-  shotLayer,
+  shotPerspectiveLayer,
   zoomDistance,
 } from '../../data/perspective.js';
 import type { AudioFrame, OneShot } from '../../data/types.js';
@@ -153,7 +153,8 @@ export const VOICE_DUCK_RELEASE_S = 0.8;
 export const ALERT_DUCKED_BUSES: readonly SoundBus[] = ['world', 'ambient'];
 
 /** The per-layer gains in front of the buses: the two {@link ShotLayer}s of the `world` bus, which
- *  carries every world one-shot, and the ambient bed layer the terrain beds and the weather share. A
+ *  carries every world one-shot, and the ambient bed layer the terrain beds, the weather and the object
+ *  ambience share. A
  *  muffled layer's gain feeds its bus through one low-pass in `filters`. */
 interface LayerGains {
   readonly shots: Readonly<Record<ShotLayer, GainNode>>;
@@ -570,12 +571,13 @@ export class WebAudioEngine {
     };
   }
 
-  /** Where a one-shot enters the mix: its layer's gain on the world bus, else its bus itself. */
+  /** Where a one-shot enters the mix: its zoom layer's gain ({@link shotPerspectiveLayer}), else its
+   *  bus itself. */
   private shotInput(shot: OneShot, buses: Readonly<Record<SoundBus, GainNode>>): AudioNode {
-    const bus = oneShotBus(shot);
-    const layer = shotLayer(shot);
-    if (layer === null || this.layers === null || bus !== 'world') return buses[bus];
-    return this.layers.shots[layer];
+    const layer = shotPerspectiveLayer(shot);
+    const layers = this.layers;
+    if (layer === null || layers === null) return buses[oneShotBus(shot)];
+    return layer === 'bed' ? layers.bed : layers.shots[layer];
   }
 
   /**
