@@ -15,6 +15,7 @@ import { battleWearyScene } from './battle-weary.js';
 import { berriesScene } from './berries.js';
 import { bowFlightScene } from './bow-flight.js';
 import { buildingDamageScene, buildingDamageVariantsScene } from './building-damage.js';
+import { cartDriversScene } from './cart-drivers.js';
 import { chainScene } from './chain.js';
 import { chestQueueScene } from './chest-queue.js';
 import { chestsScene } from './chests.js';
@@ -194,6 +195,7 @@ export const SCENES: readonly SceneDefinition[] = [
   porterFlagScene,
   gathererGoodsScene,
   vehiclesScene,
+  cartDriversScene,
   vehicleYardScene,
   vehicleOxScene,
   vehicleOxYardScene,

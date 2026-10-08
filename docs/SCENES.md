@@ -70,6 +70,10 @@ to the flag, especially the byzantine collector with a hat.
 civilization in rows: viking, frank, byzantine, saracen, egyptian. Watch them for a while: every idle
 fidget keeps the weapon in hand.
 
+`?scene=cart-drivers` crews a handcart with a trader and an ox cart with a carrier for each
+civilization, in rows: viking, frank, byzantine, saracen, egyptian, and drives them east. Every driver
+wears his own civilization's head, standing and driving.
+
 `?scene=creatures` places weresnakes and werewolves opposite four swordsmen, with wolves, lions,
 lionesses, brown bears and polar bears nearby. Watch the monsters' repeated strikes, the predators'
 walk and run cycles, and the animals turning before attacking. Order a soldier to attack a brown bear

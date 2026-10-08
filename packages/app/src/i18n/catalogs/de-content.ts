@@ -322,6 +322,11 @@ export const deContent = {
       summary:
         'Alle Karren, Schiffe und Katapulte zweier Zivilisationen stehen in mehreren Ausrichtungen an einem Ufer: ein mit Holz beladener Ochsenkarren, ein Katapult mitten im Angriff, ein Händler, der seinen Handkarren wegzieht, die Trümmer eines im ersten Tick zerstörten Karrens sowie ein bemannter Ochsenkarren und ein bemanntes Katapult, die in den unteren Reihen nach Osten fahren – das Katapult mit halber Geschwindigkeit.',
     },
+    'cart-drivers': {
+      title: 'Karrenlenker',
+      summary:
+        'Ein Händler mit Handkarren und ein Träger mit Ochsenkarren jeder Zivilisation fahren nach Osten; jeder Lenker trägt den Kopf seiner eigenen Zivilisation.',
+    },
     'vehicle-ships': {
       title: 'Ein Schiff durch die Meerenge',
       summary:

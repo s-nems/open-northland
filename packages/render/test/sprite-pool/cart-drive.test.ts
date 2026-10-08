@@ -1,12 +1,14 @@
 import { Container, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import { createHumanPaletteIdentity } from '../../src/data/palettes/human-palettes.js';
 import type { Viewport } from '../../src/data/projection/index.js';
 import type { DrawItem } from '../../src/data/scene/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
+import { humanPaletteIdentity } from '../../src/gpu/sprite-pool/human-palette-row.js';
 import { SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { resolveLayers } from '../../src/gpu/sprite-pool/resolve-layers.js';
-import type { SpriteSheet } from '../../src/gpu/sprite-sheet.js';
+import type { SettlerCharacter, SpriteSheet } from '../../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { SpriteAtlas } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
@@ -20,6 +22,7 @@ import { syntheticHumanLut } from '../support/human-palettes.js';
  */
 
 const VIKING = 1;
+const BYZANTINE = 3;
 const HANDCART = 1;
 const TRADER = 25;
 const CARRIER = 24;
@@ -103,6 +106,43 @@ describe('a cart driven from inside', () => {
   it('keeps the cart sprite for another commander and for a cart nobody rides', () => {
     expect(bodyFrameOf(cart(WOMAN))).toBe(cartAtlas.frames.get(CART_BOB));
     expect(bodyFrameOf(cart())).toBe(cartAtlas.frames.get(CART_BOB));
+  });
+
+  it("draws a tribe's own cart driver when its trader body authors no driving gait", () => {
+    const vikingHead = { ...frame, offsetX: -1 };
+    const ownHead = { ...frame, offsetX: -2 };
+    const headAtlas = (head: typeof frame): SpriteAtlas => ({
+      width: 8,
+      height: 8,
+      frames: new Map([[STAND_BOB, head]]),
+    });
+    const onFoot = { body: { source, atlas: humanAtlas }, binding: { idle: 0 } };
+    const tribeSheet = (cartDriver?: SettlerCharacter): SpriteSheet => ({
+      ...sheet,
+      characters: {
+        byJob: { [TRADER]: { ...trader, heads: [{ source, atlas: headAtlas(vikingHead) }] } },
+        default: onFoot,
+        byTribe: {
+          [BYZANTINE]: {
+            byJob: { [TRADER]: { ...onFoot, ...(cartDriver !== undefined ? { cartDriver } : {}) } },
+            default: onFoot,
+          },
+        },
+      },
+    });
+    const driven: DrawItem = { ...cart(), driver: { ref: DRIVER, jobType: TRADER, tribe: BYZANTINE } };
+    const headOf = (on: SpriteSheet) => resolveLayers(on, driven, 2)?.find((l) => l.head === true)?.frame;
+    const ownPalette = { body: 'byz_body', head: 'byz_head', random: ['byz_roll'] };
+    const own = tribeSheet({
+      ...trader,
+      palette: ownPalette,
+      heads: [{ source, atlas: headAtlas(ownHead) }],
+    });
+    expect(headOf(own)).toBe(ownHead);
+    expect(headOf(tribeSheet())).toBe(vikingHead);
+    const identity = createHumanPaletteIdentity({ body: 'other', head: 'other', random: [] });
+    expect(humanPaletteIdentity(own, driven, identity)).toBe(true);
+    expect(identity).toMatchObject({ look: ownPalette, cart: 'handcart' });
   });
 
   it('turns the pooled cart into the settler palette class and back as its driver boards and steps off', () => {

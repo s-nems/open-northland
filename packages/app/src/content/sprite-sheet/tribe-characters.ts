@@ -21,8 +21,10 @@ import {
 import type { BobSeqRow, ContentIr } from '../ir/rows.js';
 import {
   ADULT_CHARACTER_BY_JOB,
+  borrowedGaitHeadAtlas,
   borrowedHeadAtlas,
   CHARACTER_SPEC_ENTRIES,
+  type CharacterSpec,
   type CharacterSpecId,
   carryHeadFallback,
   characterBinding,
@@ -150,6 +152,41 @@ function withBorrowedHeadClips(
   });
 }
 
+/**
+ * The cart figure of a look whose body draws no driving gait of its own: `base`'s driving body under the
+ * look's palettes and heads, each head in its own walk pose where the base head sits. Original data: only
+ * the viking body and head sets draw the trader with his cart; the other civilizations' sets end before
+ * those frames. Approximation: the figure keeps the base tribe's body.
+ */
+function cartDriverFor(
+  own: SettlerCharacter,
+  base: SettlerCharacter | undefined,
+  spec: CharacterSpec,
+  ownSeqs: ReadonlyMap<string, BobSeqRow>,
+  inputs: TribeCharacterInputs,
+): SettlerCharacter | undefined {
+  if (spec.cartDrive === undefined || own.binding.cartDrive !== undefined) return undefined;
+  if (base?.binding.cartDrive === undefined || own.heads === undefined || spec.walkSeq === undefined)
+    return undefined;
+  const baseStem = [...inputs.layersByBody].find(([, layers]) => layers.body === base.body)?.[0];
+  const baseSeqs = baseStem === undefined ? undefined : inputs.sequencesByBody.get(baseStem);
+  const walk = ownSeqs.get(spec.walkSeq);
+  const donorWalk = baseSeqs?.get(spec.walkSeq);
+  const donors = (base.heads ?? []).map((head) => head.atlas);
+  if (walk === undefined || donorWalk === undefined || donors.length === 0) return undefined;
+  const gaits = Object.values(spec.cartDrive).flatMap(({ seq }) => baseSeqs?.get(seq) ?? []);
+  return {
+    body: base.body,
+    ...(own.indexed === false ? { indexed: false } : {}),
+    ...(own.palette !== undefined ? { palette: own.palette } : {}),
+    heads: own.heads.map((layer) => {
+      const atlas = borrowedGaitHeadAtlas(layer.atlas, donors, gaits, walk, donorWalk);
+      return atlas === layer.atlas ? layer : { ...layer, atlas };
+    }),
+    binding: base.binding,
+  };
+}
+
 /** The idle-action clips this body's bob pool draws, other than its base wait: a human body's `wait`
  *  sequences, an animal body's every idle clip. Render schedules them; the rows only define the clips.
  *  They come from the first job in `jobs` naming any, so an armed soldier never fidgets in the unarmed
@@ -274,7 +311,7 @@ export function tribeCharacters(
   const subClips = (ir?.gfxAtomics ?? []).filter((row) => row.tribe === tribe && row.subId !== undefined);
 
   const resolveCharacter = (
-    spec: (typeof CHARACTER_SPEC_ENTRIES)[number][1],
+    spec: CharacterSpec,
     looks: readonly ResolvedLook[],
   ): SettlerCharacter | undefined => {
     // The first look in the spec's chain that both decoded and binds: a record can name a body the
@@ -326,13 +363,16 @@ export function tribeCharacters(
         headClips(seqByName, tribeSeqs.heads, inputs.sequences),
       );
       const heads = withBorrowedHeadClips(authoredHeads, layers.headsByStem, seqByName, binding.moving);
-      return {
+      const character: SettlerCharacter = {
         body: feetShiftedLayer(layers.body, spec.feetShiftY),
         ...(look.indexed ? { palette: look.palette } : { indexed: false }),
         ...(heads.length > 0 ? { heads } : {}),
         binding,
         ...(head !== undefined ? { headBinding: head } : {}),
       };
+      const baseLook = spec.gfxJobs[0] === undefined ? undefined : base?.byJob?.[spec.gfxJobs[0]];
+      const cartDriver = cartDriverFor(character, baseLook, spec, seqByName, inputs);
+      return cartDriver !== undefined ? { ...character, cartDriver } : character;
     }
     return undefined;
   };

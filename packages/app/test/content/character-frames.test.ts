@@ -22,6 +22,7 @@ import {
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
   JOB_SOLDIER_UNARMED,
+  JOB_TRADER,
   SOLDIER_JOB_MAX,
 } from '../../src/catalog/jobs.js';
 import { humanSequences } from '../../src/content/ir/joins.js';
@@ -244,6 +245,28 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
       }
     }
     expect(gaps.filter((gap) => !UNUSED_INDOOR_CLIPS.some((known) => known.test(gap)))).toEqual([]);
+  });
+
+  it("drives each civilization's carts under its own trader heads", () => {
+    for (const [tribe, table] of tables) {
+      const trader = table?.byJob[JOB_TRADER];
+      const figure = trader?.binding.cartDrive !== undefined ? trader : trader?.cartDriver;
+      const drives = Object.entries(figure?.binding.cartDrive ?? {});
+      expect(drives, `tribe ${tribe}`).toHaveLength(2);
+      if (tribe !== VIKING) expect(figure?.heads?.length, `tribe ${tribe}`).toBe(trader?.heads?.length);
+      for (const [type, drive] of drives) {
+        for (const ref of [drive.idle, drive.moving]) {
+          for (let facing = 0; facing < FACINGS; facing++) {
+            for (const clock of clocks(ref, facing)) {
+              const bob = frameOf(ref, facing, clock);
+              for (const head of figure?.heads ?? []) {
+                expect(draws(head.atlas, bob), `tribe ${tribe} cart ${type} bob ${bob}`).toBe(true);
+              }
+            }
+          }
+        }
+      }
+    }
   });
 
   it('swings the unarmed punch and the longbow shot at N and S out of their own clip', () => {

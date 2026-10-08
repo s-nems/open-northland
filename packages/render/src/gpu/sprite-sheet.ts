@@ -85,6 +85,9 @@ export interface SettlerCharacter {
   /** Whether the owner-coloured hero glow surrounds body and head: `always` for a hero look, `never`
    *  for a look that refuses it, absent when only the settler's mission behaviour turns it on. */
   readonly glow?: 'always' | 'never';
+  /** The figure this look's cart draws when its own body authors no {@link SettlerStateBinding.cartDrive}
+   *  gait: another body's driving figure under this look's heads and palettes. */
+  readonly cartDriver?: SettlerCharacter;
 }
 
 /** The render-side `[jobbasegraphics]` join: a settler's tribe picks the table, then its weapon, job and

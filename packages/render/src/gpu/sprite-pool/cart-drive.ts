@@ -24,8 +24,8 @@ const looksByCharacter = new WeakMap<SettlerCharacter, Map<number, CartDriveLook
 
 /**
  * The figure `item` draws in its cart's place, or undefined when it draws the cart. A tribe whose trader
- * body authors no driving figure borrows the base tribe's (approximation: the original falls back along
- * its own job chain, not traced).
+ * body authors no driving figure draws its look's {@link SettlerCharacter.cartDriver}, else the base
+ * tribe's whole figure (approximation: the original falls back along its own job chain, not traced).
  */
 export function cartDriveLook(sheet: SpriteSheet | undefined, item: DrawItem): CartDriveLook | undefined {
   const drive = sheet?.cartDrive;
@@ -38,12 +38,10 @@ export function cartDriveLook(sheet: SpriteSheet | undefined, item: DrawItem): C
   const cartRecipe = drive.cartRecipeByVehicleType[typeId];
   if (cartRecipe === undefined) return undefined;
   const own = humanCharacter(characters, driver.tribe, drive.lookJob, false, undefined, item.ref);
-  const character =
-    own.binding.cartDrive?.[typeId] !== undefined
-      ? own
-      : humanCharacter(characters, undefined, drive.lookJob, false, undefined, item.ref);
-  const anim = character.binding.cartDrive?.[typeId];
-  if (anim === undefined) return undefined;
+  const base = humanCharacter(characters, undefined, drive.lookJob, false, undefined, item.ref);
+  const character = [own, own.cartDriver, base].find((c) => c?.binding.cartDrive?.[typeId] !== undefined);
+  const anim = character?.binding.cartDrive?.[typeId];
+  if (character === undefined || anim === undefined) return undefined;
   let byType = looksByCharacter.get(character);
   if (byType === undefined) {
     byType = new Map();

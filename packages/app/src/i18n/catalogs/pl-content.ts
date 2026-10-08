@@ -319,6 +319,11 @@ export const plContent = {
       summary:
         'Każdy wóz, statek i katapulta dwóch cywilizacji stoją na brzegu w kilku kierunkach: wóz z wołem załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek, szczątki wozu rozbitego w pierwszej turze oraz wóz z wołem i katapulta z załogą jadące na wschód dolnymi rzędami, katapulta o połowę wolniej.',
     },
+    'cart-drivers': {
+      title: 'Woźnice wszystkich nacji',
+      summary:
+        'Kupiec z wózkiem i tragarz z wozem z wołem każdej nacji jadą na wschód; każdy woźnica ma głowę swojej nacji.',
+    },
     'vehicle-ships': {
       title: 'Statek przez cieśninę',
       summary:

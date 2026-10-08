@@ -2,6 +2,7 @@ import { type FrameListAnim, indexAtlasFrames, type SettlerStateBinding } from '
 import { describe, expect, it } from 'vitest';
 import type { BobSeqRow } from '../src/content/ir/rows.js';
 import {
+  borrowedGaitHeadAtlas,
   borrowedHeadAtlas,
   carryHeadFallback,
   headBinding,
@@ -230,5 +231,41 @@ describe('borrowedHeadAtlas', () => {
   it('returns the atlas by identity when no donor draws what it leaves blank', () => {
     expect(borrowedHeadAtlas(hat, [], [STAND, KISS], STAND)).toBe(hat);
     expect(borrowedHeadAtlas(donor, [hat], [STAND, KISS], STAND)).toBe(donor);
+  });
+});
+
+describe('borrowedGaitHeadAtlas', () => {
+  const frame = (bobId: number, x: number, offsetX: number, offsetY: number) => ({
+    bobId,
+    rect: { x, y: 0, width: 8, height: 8 },
+    offsetX,
+    offsetY,
+  });
+  /** Eight facings of two frames: the head's walk on its own body, and the donor's on another. */
+  const walk = row('walk', 10, 16);
+  const donorWalk = row('walk', 30, 16);
+  const drive = row('drive', 100, 32);
+  const own = indexAtlasFrames(
+    64,
+    64,
+    Array.from({ length: walk.length }, (_, i) => frame(walk.start + i, i, 0, -40)),
+  );
+  /** The donor head rides the cart two pixels right of and five above where it walks. */
+  const donor = indexAtlasFrames(64, 64, [
+    ...Array.from({ length: donorWalk.length }, (_, i) => frame(donorWalk.start + i, 0, 1, -38)),
+    ...Array.from({ length: drive.length }, (_, i) => frame(drive.start + i, 0, 3, -43)),
+  ]);
+
+  it('draws each driving frame with the own first walk head of that facing, where the donor rides', () => {
+    const borrowed = borrowedGaitHeadAtlas(own, [donor], [drive], walk, donorWalk);
+    // Drive entries 13 and 31 lie in facings 3 and 7, whose first walk frames are bobs 16 and 24.
+    expect(borrowed.frames.get(drive.start + 13)).toMatchObject({ x: 6, offsetX: 2, offsetY: -45 });
+    expect(borrowed.frames.get(drive.start + 31)).toMatchObject({ x: 14, offsetX: 2, offsetY: -45 });
+    expect(borrowed.frames.get(walk.start)).toBe(own.frames.get(walk.start));
+  });
+
+  it('returns the atlas by identity when it already draws the gait or no donor does', () => {
+    expect(borrowedGaitHeadAtlas(donor, [own], [drive], donorWalk, walk)).toBe(donor);
+    expect(borrowedGaitHeadAtlas(own, [], [drive], walk, donorWalk)).toBe(own);
   });
 });

@@ -1,11 +1,20 @@
 import type { AtlasFrame, SpriteAtlas } from '@open-northland/render/data';
 import type { BobSeqRow } from '../ir/rows.js';
 import { FACING, HEX_FACINGS } from './seq-anim.js';
-import { SHOVEL_SEQ } from './sequences.js';
+import { DIRS, SHOVEL_SEQ } from './sequences.js';
 
 function drawn(atlas: SpriteAtlas, id: number): AtlasFrame | undefined {
   const frame = atlas.frames.get(id);
   return frame !== undefined && frame.width > 0 && frame.height > 0 ? frame : undefined;
+}
+
+/** `own` where `pose` puts the donor's head, less the two heads' anchor difference in a shared stand pose. */
+function placedHead(own: AtlasFrame, pose: AtlasFrame, donorStand: AtlasFrame): AtlasFrame {
+  return {
+    ...own,
+    offsetX: pose.offsetX + own.offsetX - donorStand.offsetX,
+    offsetY: pose.offsetY + own.offsetY - donorStand.offsetY,
+  };
 }
 
 /** The matching walk pose for a supported clip layout. */
@@ -58,11 +67,47 @@ export function borrowedHeadAtlas(
         const donorWalk = drawn(donor, walkId);
         if (pose === undefined || donorWalk === undefined) continue;
         frames ??= new Map(head.frames);
-        frames.set(id, {
-          ...own,
-          offsetX: pose.offsetX + own.offsetX - donorWalk.offsetX,
-          offsetY: pose.offsetY + own.offsetY - donorWalk.offsetY,
-        });
+        frames.set(id, placedHead(own, pose, donorWalk));
+        break;
+      }
+    }
+  }
+  return frames === undefined ? head : { ...head, frames };
+}
+
+/**
+ * `head` with the ×8 `gaits` of another body, which it draws no frame of, filled from that body's
+ * `donors`: each frame the head's own first `walk` frame of that facing, placed as
+ * {@link borrowedHeadAtlas} places it against the donor's first `donorWalk` frame. The driving figure
+ * barely moves its head, so a walk phase would bob it off the neck. Approximation: the head keeps its
+ * walk pose on the borrowed body. Returns `head` by identity when nothing borrows.
+ */
+export function borrowedGaitHeadAtlas(
+  head: SpriteAtlas,
+  donors: readonly SpriteAtlas[],
+  gaits: Iterable<BobSeqRow>,
+  walk: BobSeqRow,
+  donorWalk: BobSeqRow,
+): SpriteAtlas {
+  const walkStride = walk.length / DIRS;
+  const donorStride = donorWalk.length / DIRS;
+  if (!Number.isInteger(walkStride) || !Number.isInteger(donorStride)) return head;
+  let frames: Map<number, AtlasFrame> | undefined;
+  for (const gait of gaits) {
+    const gaitStride = gait.length / DIRS;
+    if (!Number.isInteger(gaitStride)) continue;
+    for (let offset = 0; offset < gait.length; offset++) {
+      const id = gait.start + offset;
+      if (drawn(head, id) !== undefined) continue;
+      const facing = Math.floor(offset / gaitStride);
+      const own = drawn(head, walk.start + facing * walkStride);
+      if (own === undefined) continue;
+      for (const donor of donors) {
+        const pose = drawn(donor, id);
+        const donorStand = drawn(donor, donorWalk.start + facing * donorStride);
+        if (pose === undefined || donorStand === undefined) continue;
+        frames ??= new Map(head.frames);
+        frames.set(id, placedHead(own, pose, donorStand));
         break;
       }
     }
