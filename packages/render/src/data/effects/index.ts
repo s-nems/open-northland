@@ -1,4 +1,11 @@
 export {
+  BONES_LIFETIME_TICKS,
+  type BonePileMark,
+  boneAlpha,
+  bonePileOf,
+  collectBonePiles,
+} from './bones.js';
+export {
   type BuildingCollapse,
   COLLAPSE_LIFETIME_TICKS,
   COLLAPSE_TICKS,
@@ -11,13 +18,11 @@ export {
   MAX_ACTIVE_COLLAPSES,
 } from './collapse.js';
 export {
-  BONES_LIFETIME_TICKS,
-  type CombatEffect,
-  type CombatEffectKind,
-  effectAlpha,
-  foldCombatEffects,
-  MAX_ACTIVE_EFFECTS,
+  foldWreckMarks,
+  MAX_ACTIVE_WRECKS,
   WRECK_LIFETIME_TICKS,
+  type WreckMark,
+  wreckAlpha,
 } from './marks.js';
 export { frac } from './random.js';
 export {

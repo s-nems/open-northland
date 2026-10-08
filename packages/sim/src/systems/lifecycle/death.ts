@@ -1,4 +1,5 @@
 import {
+  BonePile,
   isWildlife,
   LeftCarcass,
   Marriage,
@@ -16,7 +17,7 @@ import {
 import { eventAt } from '../../core/events.js';
 import { type Fixed, ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { nodeOfPosition } from '../../nav/halfcell.js';
+import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
 import type { SystemContext } from '../context.js';
 import { droppedEquipmentOf, scatterSpilledStock } from '../economy/goods-spill.js';
 import { releaseSiteClaim } from '../economy/site-claim.js';
@@ -49,11 +50,26 @@ export function reap(world: World, ctx: SystemContext, e: Entity): void {
     ...(pos !== undefined ? { at: eventAt(pos.x, pos.y) } : {}),
   });
   if (!animal) recordHumanDeath(world, owner?.player, isSoldierJob(ctx.content, settler?.jobType ?? null));
+  if (!animal && pos !== undefined) layBonePile(world, ctx.tick, eventAt(pos.x, pos.y));
   if (animal && pos !== undefined && settler !== undefined)
     layAnimalRemains(world, ctx, e, settler.tribe, pos);
   const loot = droppedEquipmentOf(world, e);
   removeSettlerSilently(world, e);
   scatterSpilledStock(world, ctx, loot);
+}
+
+/**
+ * A human leaves bones where it fell; an animal leaves none. Observation: only humans leave bones,
+ * overruling the readable drained-cadaver REMOVE transition to landscape 81 `cadaver_skeleton` in
+ * `landscapetypes.ini`. Past {@link MAX_BONE_PILES} the oldest pile goes, so the saved count stays bounded
+ * for a player who keeps bones forever.
+ */
+function layBonePile(world: World, tick: number, at: HalfCellNode): void {
+  const piles = world.canonicalQuery(BonePile);
+  // Ids ascend with creation, so the head is the oldest pile.
+  const oldest = piles.length >= MAX_BONE_PILES ? piles[0] : undefined;
+  if (oldest !== undefined) world.destroy(oldest);
+  world.add(world.create(), BonePile, { hx: at.hx, hy: at.hy, tick });
 }
 
 /**
@@ -121,6 +137,9 @@ function causeOf(needs: SettlerNeedsView | undefined, tick: number): string {
 const REMAINS_SIZE_DIVISOR = 3;
 const MINIMUM_REMAINS = 1;
 const YOUNG_REMAINS_DIVISOR = 2;
+
+/** Approximation: a bound on the bone piles a world keeps, well above what one battle leaves. */
+export const MAX_BONE_PILES = 2000;
 
 const DEATH_CAUSE_DAMAGE = 'damage';
 const DEATH_CAUSE_STARVATION = 'starvation';

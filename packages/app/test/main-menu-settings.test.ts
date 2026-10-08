@@ -53,6 +53,7 @@ describe('parseStoredSettings', () => {
       buildingDamage: false,
       weather: false,
       blood: false,
+      bonesFade: false,
       fpsLimit: 30,
       cursorTheme: 'amber',
       cursorSize: 24,

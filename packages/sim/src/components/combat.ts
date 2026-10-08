@@ -185,3 +185,9 @@ export interface ProjectileImpact {
    *  weapon that raises none. Read only by the presentation, through the `groundBurst` event. */
   smokeTicks: number | null;
 }
+
+/**
+ * A fallen human's bones, on the half-cell node it died on since `tick`. No rule reads it: the pile is
+ * saved state so a loaded game shows the bones it had, and the presentation fades it by age.
+ */
+export const BonePile = defineComponent<{ hx: number; hy: number; tick: number }>('BonePile', 'combat');

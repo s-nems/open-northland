@@ -52,6 +52,7 @@ export async function createWorldRenderer(
   return new WorldRenderer(app, {
     enhancements: enhancementsOf(stored),
     bloodEnabled: stored.blood,
+    bonesFade: stored.bonesFade,
     sheet,
     viewSmoothing: true,
     spriteSmoothing: stored.spriteSmoothing,

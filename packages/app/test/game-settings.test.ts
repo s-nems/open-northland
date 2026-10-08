@@ -62,6 +62,14 @@ it('persists and switches blood immediately, including while paused', async () =
   expect(h.setBloodEnabled).toHaveBeenLastCalledWith(true);
 });
 
+it('fades bones by default and keeps them for good once switched off', async () => {
+  const h = harness();
+  expect(h.settings.current().bonesFade).toBe(true);
+  await h.settings.update({ bonesFade: false });
+  expect(h.setBonesFade).toHaveBeenCalledWith(false);
+  expect(h.persist).toHaveBeenCalledWith({ bonesFade: false });
+});
+
 it('applies the background and mono sound choices live', async () => {
   const h = harness();
   await h.settings.update({ soundInBackground: true });
@@ -106,6 +114,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setGroupNumbersShown = vi.fn();
   const setWeatherEnabled = vi.fn();
   const setBloodEnabled = vi.fn();
+  const setBonesFade = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
       ...defaultSettings(),
@@ -131,6 +140,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setMinimapFrame,
     setWeatherEnabled,
     setBloodEnabled,
+    setBonesFade,
     ...overrides,
   });
   return {
@@ -153,6 +163,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setMinimapFrame,
     setWeatherEnabled,
     setBloodEnabled,
+    setBonesFade,
   };
 }
 

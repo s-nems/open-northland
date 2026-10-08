@@ -17,13 +17,7 @@ const VIEWPORT = cameraViewport({ offsetX: 0, offsetY: 0 }, 800, 600, 0);
 const FLAT = makeElevationField(undefined, 0, 0);
 const SETTLER = 7;
 
-const died: SimEvent = {
-  kind: 'settlerDied',
-  entity: 4 as Entity,
-  cause: 'damage',
-  player: 0,
-  at: { hx: 8, hy: 10 },
-};
+const BONES = 4;
 const hit: SimEvent = {
   kind: 'combatHit',
   damage: 250,
@@ -77,8 +71,8 @@ describe('WorldMarks', () => {
 
   it('routes bones and stains to the ground and airborne blood to the sorted sprites', () => {
     const { marks, sprites } = marksIn();
-    marks.ingest([died], 100);
-    marks.draw(frameOf({ renderTime: 100 }));
+    const bones = { id: BONES, components: { BonePile: { hx: 8, hy: 10, tick: 100 } } };
+    marks.draw(frameOf({ snapshot: snapshotOf([bones]), renderTime: 100 }));
     expect(marks.slots.bones.children).toHaveLength(1);
     expect(marks.slots.bloodGround.children).toHaveLength(0);
 

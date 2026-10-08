@@ -224,6 +224,9 @@ export const plSurfaces = {
       blood: 'Krew',
       bloodTip:
         'Rozpryski przy trafieniach i zanikające ślady na ziemi. Wyłączenie usuwa również istniejące plamy.',
+      bonesFade: 'Znikające kości',
+      bonesFadeTip:
+        'Kości poległych chwilę leżą nietknięte, a potem powoli znikają, po pięciu minutach gry nie ma po nich śladu. Wyłączone zostają na ziemi na zawsze.',
       weather: 'Pogoda',
       weatherTip:
         'Deszcz, śnieg i burze piaskowe tam, gdzie przewiduje je mapa: padające krople i płatki, mgła i światło burzy, mokra i zaśnieżona ziemia, rozpryski, wiatr i grzmoty. Pogoda nigdy nie zmienia samej rozgrywki. Po wyłączeniu niebo jest czyste, a pogody nie słychać.',

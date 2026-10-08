@@ -263,6 +263,9 @@ export const deSurfaces = {
       blood: 'Blut',
       bloodTip:
         'Blutspritzer bei Treffern und verblassende Flecken am Boden. Ausschalten entfernt auch vorhandenes Blut.',
+      bonesFade: 'Verblassende Knochen',
+      bonesFadeTip:
+        'Die Knochen der Gefallenen liegen eine Weile unberührt und verblassen dann langsam, nach fünf Minuten Spielzeit sind sie fort. Ausgeschaltet bleiben sie für immer liegen.',
       weather: 'Wetter',
       weatherTip:
         'Regen, Schnee und Sandstürme nach Vorgabe der Karte: Tropfen und Flocken, Nebel und Sturmlicht, nasser und verschneiter Boden, Spritzer, Wind und Donner. Das Wetter beeinflusst den Spielablauf nicht. Aus zeigt klaren Himmel und schaltet Wettergeräusche ab.',

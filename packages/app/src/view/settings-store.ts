@@ -72,6 +72,8 @@ export interface MenuSettings {
   readonly weather: boolean;
   /** Hit sprays and ground stains; local presentation only. */
   readonly blood: boolean;
+  /** Bone piles fade out with age; off keeps them for good. Local presentation only. */
+  readonly bonesFade: boolean;
   readonly fpsLimit: FpsLimit;
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
@@ -131,6 +133,7 @@ export function defaultSettings(): MenuSettings {
     buildingDamage: true,
     weather: true,
     blood: true,
+    bonesFade: true,
     fpsLimit: null,
     cursorTheme: DEFAULT_CURSOR_THEME,
     cursorSize: DEFAULT_CURSOR_SIZE,
@@ -230,6 +233,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
       typeof record.buildingDamage === 'boolean' ? record.buildingDamage : defaults.buildingDamage,
     weather: typeof record.weather === 'boolean' ? record.weather : defaults.weather,
     blood: typeof record.blood === 'boolean' ? record.blood : defaults.blood,
+    bonesFade: typeof record.bonesFade === 'boolean' ? record.bonesFade : defaults.bonesFade,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     cursorTheme: parseCursorTheme(record.cursorTheme),
     cursorSize: parseCursorSize(record.cursorSize),

@@ -622,7 +622,7 @@ these choices for the holes:
 - The ships' `gfxturnframelist` in-place turns are not played; a facing change snaps. The N and S
   frames, which the original shows only mid-turn, are the headings of a vehicle moving straight up or
   down ("Movement").
-- A wreck's `ruins` nodes draw the `debris wood` `[GfxLandscape]` records for the bone pile's lifetime
+- A wreck's `ruins` nodes draw the `debris wood` `[GfxLandscape]` records for 1,800 ticks
   (approximation: the ruin landscape type is unidentified, see above).
 - A handcart or ox cart whose commander rides inside and is a trader (25) or carrier (24) is not drawn
   as the cart. Its place shows the trader's driving figure, the man and his cart in one human frame:

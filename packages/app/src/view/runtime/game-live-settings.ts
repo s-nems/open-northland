@@ -65,6 +65,7 @@ export interface LiveGameSettingsDeps {
   readonly setKeyBindings: (bindings: MenuSettings['keyBindings']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
   readonly setBloodEnabled: (enabled: boolean) => void;
+  readonly setBonesFade: (fades: boolean) => void;
 }
 
 export interface LiveGameSettings {
@@ -145,6 +146,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setMinimapFrame: deps.minimap.setFrame,
     setWeatherEnabled: deps.setWeatherEnabled,
     setBloodEnabled: deps.setBloodEnabled,
+    setBonesFade: deps.setBonesFade,
     ...(sound !== null ? { previewBus: (bus) => sound.previewBus(bus) } : {}),
   });
 

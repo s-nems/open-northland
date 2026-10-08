@@ -56,6 +56,8 @@ export const BASELINE_ENHANCEMENTS: WorldEnhancements = {
 export interface WorldRendererOptions {
   /** Local presentation preference; enabled by default, independent of graphics quality. */
   readonly bloodEnabled?: boolean;
+  /** Local presentation preference: bone piles fade out with age, on by default. */
+  readonly bonesFade?: boolean;
   readonly enhancements?: WorldEnhancements;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;

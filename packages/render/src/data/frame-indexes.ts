@@ -1,4 +1,5 @@
 import { entitiesWith, type WorldSnapshot } from '@open-northland/sim';
+import { collectBonePiles } from './effects/index.js';
 import { hudTotalsOf } from './hud/totals.js';
 import { collectRebuiltPositioned, touchedIdsOf } from './scene/scene-feeds.js';
 import {
@@ -33,6 +34,7 @@ export const RENDER_FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   { name: 'fog ghost vehicles', read: (snapshot) => entitiesWith(snapshot, 'Vehicle') },
   { name: 'road network', read: (snapshot) => roadRevisionOf(snapshot) },
   { name: 'road shards', read: (snapshot) => entitiesWith(snapshot, 'RoadShard') },
+  { name: 'bone piles', read: (snapshot) => collectBonePiles(snapshot, EMPTY_BOX, []) },
   { name: 'scene touched ids', read: (snapshot) => touchedIdsOf(snapshot) },
   {
     name: 'scene rebuilt positions',

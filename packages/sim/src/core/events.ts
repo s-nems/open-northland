@@ -175,9 +175,7 @@ export type SimEvent =
       readonly entity: Entity;
       readonly cause: string;
       readonly player: number | null;
-      /** Set when the dead unit was a wild/livestock animal, which leaves no bone pile. Observation: only
-       *  humans leave bones, overruling the readable drained-cadaver REMOVE transition to landscape 81
-       *  `cadaver_skeleton` in landscapetypes.ini. */
+      /** Set when the dead unit was a wild or livestock animal. */
       readonly animal?: boolean;
       readonly at?: HalfCellNode;
     }

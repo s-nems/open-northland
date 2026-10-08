@@ -190,6 +190,7 @@ export class WorldRenderer {
     // previous renderer may have left set, so the baseline has to claim them back.
     this.setGraphicsEnhancements(opts?.enhancements ?? BASELINE_ENHANCEMENTS);
     this.setBloodEnabled(opts?.bloodEnabled ?? true);
+    this.setBonesFade(opts?.bonesFade ?? true);
   }
 
   setGraphicsEnhancements(next: WorldEnhancements): void {
@@ -318,6 +319,11 @@ export class WorldRenderer {
   ingestCombatEffects(events: readonly SimEvent[], tick: number, snapshot?: WorldSnapshot): void {
     this.marks.ingest(events, tick, snapshot);
     this.pool.ingestBlood(events, tick);
+  }
+
+  /** Off keeps every bone pile whole for good; on fades each out slowly by its age. */
+  setBonesFade(fades: boolean): void {
+    this.marks.setBonesFade(fades);
   }
 
   setCombatBonesGfx(gfx: CombatBonesGfx | null): void {
@@ -461,6 +467,7 @@ export class WorldRenderer {
       renderTime: tick + alpha,
       screenViewport: weatherView.viewport,
       fogVisible: fogFrame.fogVisible,
+      fogExplored: this.fog.exploredGate,
       ships: this.pool.shipsAfloat(),
       water: this.terrain.waterField(),
       selection,

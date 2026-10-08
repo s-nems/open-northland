@@ -1,6 +1,6 @@
 import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
-import { FogGhostStore, fogTileVisible } from '../../data/fog/index.js';
+import { FogGhostStore, fogTileExplored, fogTileVisible } from '../../data/fog/index.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { ElevationField } from '../../data/terrain/index.js';
 import { FogLayer, type FogWashMask } from '../overlays/index.js';
@@ -28,6 +28,14 @@ export class WorldFog {
   /** Bound once: the pool's cull predicate reads the live view, so a frame allocates no closure. */
   private readonly visibleAt = (tileX: number, tileY: number): boolean =>
     this.view === null || fogTileVisible(this.view, tileX, tileY);
+
+  private readonly exploredAt = (tileX: number, tileY: number): boolean =>
+    this.view === null || fogTileExplored(this.view, tileX, tileY);
+
+  /** The explored-ground gate for marks that lie on the land like its objects; unset while fog is off. */
+  get exploredGate(): ((tileX: number, tileY: number) => boolean) | undefined {
+    return this.view === null ? undefined : this.exploredAt;
+  }
 
   get container(): Container {
     return this.wash.container;

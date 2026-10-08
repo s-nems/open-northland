@@ -63,6 +63,7 @@ export interface WorldMarksFrame {
   readonly viewport: Viewport;
   readonly screenViewport?: Viewport;
   readonly fogVisible?: ((x: number, y: number) => boolean) | undefined;
+  readonly fogExplored?: ((x: number, y: number) => boolean) | undefined;
   /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
   readonly renderTime: number;
   /** The drawn ships, off the pool's culled draw list. */
@@ -148,6 +149,10 @@ export class WorldMarks {
     this.blood.setEnabled(enabled);
   }
 
+  setBonesFade(fades: boolean): void {
+    this.effects.setBonesFade(fades);
+  }
+
   setBonesGfx(gfx: CombatBonesGfx | null): void {
     this.effects.setBonesGfx(
       gfx === null ? undefined : { ...gfx, scale: gfx.scale ?? 1, textures: this.textures },
@@ -194,7 +199,7 @@ export class WorldMarks {
       frame.focused,
     );
     this.orderMarkers.draw(frame.orderMarkers, frame.lostGoals, frame.lostGoalPulse, elevation, viewport);
-    this.effects.draw(elevation, viewport, renderTime);
+    this.effects.draw(frame);
     this.blood.draw(frame);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });

@@ -164,6 +164,7 @@ export function graphicsSettingsRows(
       'buildingDamage',
       'weather',
       'blood',
+      'bonesFade',
     ] as const
   ).map((key) => {
     const toggle = togglePill(settings[key], (enabled) => {

@@ -226,6 +226,9 @@ export const enSurfaces = {
         'Buildings, palisades and stone walls sink a little into the ground they stand on: a soft shade along the walls, tufts of grass on a meadow and a drift on snow, each in the light of its own wall. Off keeps the original look.',
       blood: 'Blood',
       bloodTip: 'Hit sprays and fading ground stains. Turning this off also clears existing blood.',
+      bonesFade: 'Fading bones',
+      bonesFadeTip:
+        'The bones of the fallen lie whole for a while, then slowly fade, gone after five minutes of game time. Off leaves them on the ground for good.',
       weather: 'Weather',
       weatherTip:
         'Rain, snow and sandstorms where the map calls for them: falling drops and flakes, mist and storm light, wet and snowy ground, splashes, wind and thunder. Weather never changes the game itself. Off shows clear skies and silences the weather.',

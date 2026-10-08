@@ -1046,6 +1046,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       setGroupNumbersShown: (shown) => renderer.setGroupNumbersShown(shown),
       setGraphicsEnhancements: applyEnhancementsWarmed((next) => renderer.setGraphicsEnhancements(next)),
       setBloodEnabled: (enabled) => renderer.setBloodEnabled(enabled),
+      setBonesFade: (fades) => renderer.setBonesFade(fades),
       setWeatherEnabled: (enabled) => {
         renderer.setWeatherEnabled(enabled);
         soundDriver?.setWeatherEnabled(enabled);
