@@ -25,6 +25,32 @@ const fadingRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
  */
 const OLD_BODY_FADE_FROM_PCT = 85;
 
+/** Construction's back walls and timber, sampled only inside damage cavities. Exclude finished-tier
+ * bodies and incomplete sites so a hole cannot reveal a completed facade or unbuilt upper storey. */
+export function damageScaffoldLayers(
+  sheet: SpriteSheet | undefined,
+  item: DrawItem,
+): readonly ResolvedLayer[] {
+  if (
+    sheet === undefined ||
+    typeof sheet.bindings.building === 'number' ||
+    item.builtPct !== undefined ||
+    item.upgradePct !== undefined
+  )
+    return [];
+  const binding = sheet.bindings.building;
+  const stack = resolveConstructionDraws(binding, { ...item, builtPct: 99 });
+  if (stack === null) return [];
+  const finished = finishedBuildingBobKeys(binding);
+  const layers: ResolvedLayer[] = [];
+  for (const draw of stack) {
+    if (finished.has(bobKey(draw))) continue;
+    const layer = layeredLayerFor(sheet, 'building', draw);
+    if (layer !== null) layers.push(layer);
+  }
+  return layers;
+}
+
 /** Which stages of a stack to append: all of them, only the next tier's finished body, or only the rest
  *  (foundations and scaffolds, whose art shows the back walls). */
 type StagePart = 'all' | 'body' | 'work';

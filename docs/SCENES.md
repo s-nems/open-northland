@@ -168,4 +168,5 @@ independently shuffled swords, broadswords, spears, short bows and long bows, an
 chain and plate armor. Zoom into the front to inspect sprays and the ground left behind it.
 
 `?scene=building-damage` compares five health levels on timber, tiled masonry and plastered buildings.
+`?scene=building-damage-variants` compares five instances of each at the same critical health level.
 See [building damage](design/building-damage.md) for the visual choices, limits and review sequence.

@@ -160,7 +160,7 @@ export class CollapseLayer {
       return null;
     }
     const dust = new Container();
-    this.dustArt ??= new DamageEffectTextures();
+    this.dustArt ??= new DamageEffectTextures(false);
     for (let i = 0; i < DUST_PUFFS; i++) {
       const puff = worldBatched(new Sprite(this.dustArt.smoke[i % 4] ?? Texture.EMPTY));
       puff.anchor.set(0.5);

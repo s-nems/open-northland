@@ -235,6 +235,11 @@ export const enContent = {
       title: 'Siege',
       summary: 'A warband razes an enemy base, smashing the HQ and towers before the plain homes.',
     },
+    'building-damage-variants': {
+      title: 'Damage variations',
+      summary:
+        'Five instances of each building at 4% health: exposed construction, varied breaches, fire and debris.',
+    },
     'building-damage': {
       title: 'Building damage',
       summary:

@@ -38,6 +38,7 @@ import { restoreStash, type StashedVisibility, stashHidden } from '../visibility
 import { LayerBinder } from './bind-layers.js';
 import { FrameEpoch } from './bind-stamp.js';
 import { coatBody } from './blood-coats.js';
+import { damageScaffoldLayers } from './building-layers.js';
 import { atRest } from './motion.js';
 import { anchorOf, boundsOf, type DamagedBuilding, keelOf, pixelHit, type ShipAfloat } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
@@ -205,7 +206,10 @@ export class SpritePool {
   /** The pooled entity of each of {@link lastItems}, by index: a repeated scene build skips the lookups. */
   private readonly lastPooled: (PooledEntity | undefined)[] = [];
   private readonly damaged: DamagedBuilding[] = [];
-  private readonly buildingDamage = new BuildingDamage();
+  private readonly buildingDamage = new BuildingDamage((ref) => {
+    const item = this.pool.get(ref)?.bound.item;
+    return item === undefined ? [] : damageScaffoldLayers(this.sheet, item);
+  });
   private readonly damageSubject = (ref: number): PooledEntity | undefined => {
     const pe = this.pool.get(ref);
     return pe?.attached === true ? pe : undefined;

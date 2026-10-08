@@ -2,9 +2,11 @@ import type { Container, Sprite, Texture } from 'pixi.js';
 import type { WindSway } from '../../data/weather/climate.js';
 import { isDrawableResource, readable2dContext } from '../drawable-resource.js';
 import type { DamagedBuilding } from '../sprite-pool/pick.js';
+import type { ResolvedLayer } from '../sprite-pool/resolved-layer.js';
 import { DamageAtlas, type DamageTile } from './atlas.js';
 import { DamageEffectTextures } from './effect-textures.js';
 import { DamageEffects, type DamageOrigin } from './effects.js';
+import { type GroundContact, groundContacts } from './rubble.js';
 import { analyseSurface, damageStage, type Fracture, scarSurface } from './surface.js';
 
 export interface DamageSubject {
@@ -22,6 +24,7 @@ export interface FallenBody {
   release(): void;
 }
 
+const NO_GROUND: readonly GroundContact[] = [];
 const MAX_DAMAGE_NODES = 128;
 const MAX_PIXEL_BYTES = 32 * 1024 * 1024;
 
@@ -29,6 +32,9 @@ interface Surface {
   readonly sprite: Sprite;
   readonly original: Texture;
   readonly pixels: Uint8ClampedArray;
+  readonly backing: Uint8ClampedArray | undefined;
+  readonly bytes: number;
+  readonly ground: readonly GroundContact[];
   readonly fractures: readonly Fracture[];
   readonly width: number;
   readonly height: number;
@@ -56,6 +62,8 @@ export class BuildingDamage {
   private pixelBytes = 0;
   private scanOffset = 0;
   private readonly unreadable = new WeakSet<Texture>();
+
+  constructor(private readonly scaffoldOf?: (ref: number) => readonly ResolvedLayer[]) {}
 
   /** Freeze the complete visible body stack before the live pool releases it. Revealing/fading layers
    * need their own pixels: the normal texture cache may evict their source during the collapse. */
@@ -151,7 +159,7 @@ export class BuildingDamage {
           (sprite.texture !== surface.original && sprite.texture !== surface.tile?.texture)
         ) {
           this.release(surface);
-          this.pixelBytes -= surface.pixels.byteLength;
+          this.pixelBytes -= surface.bytes;
           node.surfaces.delete(sprite);
         }
       }
@@ -162,9 +170,9 @@ export class BuildingDamage {
           if (!detailed || this.unreadable.has(sprite.texture)) continue;
           if (budget <= 0) continue;
           budget--;
-          surface = this.read(sprite, ref) ?? undefined;
+          surface = this.read(sprite, ref, true) ?? undefined;
           if (surface === undefined) continue;
-          this.pixelBytes += surface.pixels.byteLength;
+          this.pixelBytes += surface.bytes;
           node.surfaces.set(sprite, surface);
         }
         if (!detailed) {
@@ -178,7 +186,14 @@ export class BuildingDamage {
           if (surface.tile !== null) {
             this.atlas.write(
               surface.tile,
-              scarSurface(surface.pixels, surface.width, surface.height, surface.fractures, stage),
+              scarSurface(
+                surface.pixels,
+                surface.width,
+                surface.height,
+                surface.fractures,
+                stage,
+                surface.backing,
+              ),
               surface.width,
               surface.height,
             );
@@ -187,9 +202,9 @@ export class BuildingDamage {
         }
         if (surface.tile !== null) sprite.texture = surface.tile.texture;
       }
-      this.placeOrigins(node);
+      const ground = this.placeOrigins(node);
       node.effects.container.visible = ghost !== true;
-      if (ghost !== true) node.effects.draw(node.origins, hpFrac, stage, tick, wind, detailed, zoom);
+      if (ghost !== true) node.effects.draw(node.origins, hpFrac, stage, tick, wind, detailed, zoom, ground);
     }
     for (const [ref, node] of this.nodes) {
       if (this.seen.has(ref)) continue;
@@ -199,7 +214,7 @@ export class BuildingDamage {
     this.atlas.flush(smooth);
   }
 
-  private read(sprite: Sprite, seed: number): Surface | null {
+  private read(sprite: Sprite, seed: number, withScaffold = false): Surface | null {
     const original = sprite.texture;
     const { width, height, x, y } = original.frame;
     if (width < 8 || height < 8 || width > 1000 || height > 1000) {
@@ -225,10 +240,17 @@ export class BuildingDamage {
       ctx.clearRect(0, 0, width, height);
       ctx.drawImage(resource, x, y, width, height, 0, 0, width, height);
       const pixels = ctx.getImageData(0, 0, width, height).data;
+      const backing =
+        withScaffold && this.pixelBytes + pixels.byteLength * 2 <= MAX_PIXEL_BYTES
+          ? this.readScaffold(sprite, seed, ctx, width, height)
+          : undefined;
       return {
         sprite,
         original,
         pixels,
+        backing,
+        bytes: pixels.byteLength + (backing?.byteLength ?? 0),
+        ground: groundContacts(pixels, width, height, sprite.x, sprite.y, sprite.scale.x),
         width,
         height,
         fractures: analyseSurface(pixels, width, height, seed),
@@ -241,7 +263,39 @@ export class BuildingDamage {
     }
   }
 
-  private placeOrigins(node: DamageNode): void {
+  private readScaffold(
+    sprite: Sprite,
+    ref: number,
+    ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
+    width: number,
+    height: number,
+  ): Uint8ClampedArray | undefined {
+    const layers = this.scaffoldOf?.(ref);
+    if (layers === undefined || layers.length === 0 || sprite.scale.x <= 0 || sprite.scale.y <= 0)
+      return undefined;
+    ctx.clearRect(0, 0, width, height);
+    let drew = false;
+    for (const layer of layers) {
+      const resource: unknown = layer.source.resource;
+      if (!isDrawableResource(resource)) continue;
+      const f = layer.frame;
+      ctx.drawImage(
+        resource,
+        f.x,
+        f.y,
+        f.width,
+        f.height,
+        (f.offsetX * layer.scale - sprite.x) / sprite.scale.x,
+        (f.offsetY * layer.scale - sprite.y) / sprite.scale.y,
+        (f.width * layer.scale) / sprite.scale.x,
+        (f.height * layer.scale) / sprite.scale.y,
+      );
+      drew = true;
+    }
+    return drew ? ctx.getImageData(0, 0, width, height).data : undefined;
+  }
+
+  private placeOrigins(node: DamageNode): readonly GroundContact[] {
     // The largest visible body supplies the roof; tiny accessory bobs must not start their own fires.
     let largest: Surface | undefined;
     for (const surface of node.surfaces.values()) {
@@ -253,28 +307,31 @@ export class BuildingDamage {
       const sprite = node.subject.damageBodies?.find((s) => s.visible && s.alpha > 0);
       if (sprite === undefined) {
         node.origins.length = 0;
-        return;
+        return NO_GROUND;
       }
       const x = sprite.x + sprite.width * 0.5;
       const y = sprite.y + sprite.height * 0.35;
       const previous = node.origins[0];
-      if (previous?.x !== x || previous.y !== y) node.origins[0] = { x, y, size: 13 };
+      if (previous?.x !== x || previous.y !== y)
+        node.origins[0] = { x, y, size: 13, seed: 0, colour: 0x947953 };
       node.origins.length = 1;
-      return;
+      return NO_GROUND;
     }
     const { sprite, fractures } = largest;
     let count = 0;
     for (const f of fractures) {
-      if (!f.roof || count >= 2) continue;
+      if (!f.roof || f.open || count >= 4) continue;
       const x = sprite.x + f.x * sprite.scale.x;
       const y = sprite.y + f.y * sprite.scale.y;
       const size = f.radius * Math.abs(sprite.scale.x);
+      const colour = (f.colour[0] << 16) | (f.colour[1] << 8) | f.colour[2];
       const previous = node.origins[count];
-      if (previous?.x !== x || previous.y !== y || previous.size !== size)
-        node.origins[count] = { x, y, size };
+      if (previous?.x !== x || previous.y !== y || previous.size !== size || previous.seed !== f.seed)
+        node.origins[count] = { x, y, size, seed: f.seed, colour };
       count++;
     }
     node.origins.length = count;
+    return largest.ground;
   }
 
   private release(surface: Surface): void {
@@ -288,7 +345,7 @@ export class BuildingDamage {
   private retire(node: DamageNode): void {
     for (const surface of node.surfaces.values()) {
       this.release(surface);
-      this.pixelBytes -= surface.pixels.byteLength;
+      this.pixelBytes -= surface.bytes;
     }
     node.effects.destroy();
   }

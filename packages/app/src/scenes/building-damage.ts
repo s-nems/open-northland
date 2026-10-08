@@ -11,9 +11,9 @@ const ROWS = [
   { type: 'stock_01', tribe: 4, y: 35 },
 ] as const;
 
-function build(sim: Simulation): void {
+function build(sim: Simulation, health: readonly number[]): void {
   for (const { type, tribe, y } of ROWS) {
-    for (const [column, hp] of HEALTH.entries()) {
+    for (const [column, hp] of health.entries()) {
       const entity = placeBuiltSandboxBuilding(sim, type, 6 + column * 7, y, 0, { tribe });
       const pool = sim.world.mut(entity, components.Health);
       pool.hitpoints = Math.max(1, Math.floor((pool.max * hp) / 100));
@@ -22,30 +22,35 @@ function build(sim: Simulation): void {
   }
 }
 
-export const buildingDamageScene: SceneDefinition = {
-  id: 'building-damage',
-  seed: 94,
-  terrain: grassTerrain(40, 42),
-  graphicTribes: [1, 3, 4],
-  initialZoom: 0.65,
-  build,
-  runTicks: 120,
-  checks: [
-    {
-      label: 'damage is cosmetic: unattended buildings retain every authored health level',
-      predicate: (sim) => {
-        const buildings = [...sim.world.query(components.Building, components.Health)];
-        return (
-          buildings.length === ROWS.length * HEALTH.length &&
-          buildings.every((entity, i) => {
-            const health = sim.world.get(entity, components.Health);
-            return (
-              health.hitpoints ===
-              Math.max(1, Math.floor((health.max * (HEALTH[i % HEALTH.length] ?? 100)) / 100))
-            );
-          })
-        );
+function damageScene(id: string, health: readonly number[]): SceneDefinition {
+  return {
+    id,
+    seed: 94,
+    terrain: grassTerrain(40, 42),
+    graphicTribes: [1, 3, 4],
+    initialZoom: 0.65,
+    build: (sim) => build(sim, health),
+    runTicks: 120,
+    checks: [
+      {
+        label: 'damage is cosmetic: unattended buildings retain every authored health level',
+        predicate: (sim) => {
+          const buildings = [...sim.world.query(components.Building, components.Health)];
+          return (
+            buildings.length === ROWS.length * health.length &&
+            buildings.every((entity, i) => {
+              const pool = sim.world.get(entity, components.Health);
+              return (
+                pool.hitpoints ===
+                Math.max(1, Math.floor((pool.max * (health[i % health.length] ?? 100)) / 100))
+              );
+            })
+          );
+        },
       },
-    },
-  ],
-};
+    ],
+  };
+}
+
+export const buildingDamageScene = damageScene('building-damage', HEALTH);
+export const buildingDamageVariantsScene = damageScene('building-damage-variants', [4, 4, 4, 4, 4]);

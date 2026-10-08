@@ -234,6 +234,11 @@ export const plContent = {
       summary:
         'Drużyna wojowników niszczy wrogą bazę: najpierw kwaterę główną i wieże, na końcu zwykłe domy.',
     },
+    'building-damage-variants': {
+      title: 'Różnorodność zniszczeń',
+      summary:
+        'Pięć wersji każdego budynku przy 4% zdrowia: odsłonięta konstrukcja, różne wyrwy, płomienie i odłamki.',
+    },
     'building-damage': {
       title: 'Zniszczenia budynków',
       summary:

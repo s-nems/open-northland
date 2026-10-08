@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from 'vitest';
 import type { Camera, Viewport } from '../../src/data/projection/index.js';
 import type { ElevationField } from '../../src/data/terrain/index.js';
 import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
+import { damageScaffoldLayers } from '../../src/gpu/sprite-pool/building-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
@@ -90,6 +91,19 @@ function visibleStages(layer: Container): number {
   return (container.children as { visible: boolean; alpha: number }[]).filter((s) => s.visible && s.alpha > 0)
     .length;
 }
+
+describe('damage uses construction back walls without a finished facade', () => {
+  const item = { ref: 1, kind: 'building' as const, typeId: 13, x: 0, y: 0, tileX: 0, tileY: 0, depth: 0 };
+  it('retains the scaffold, excludes the completed body, and never reveals unbuilt upper storeys', () => {
+    const layers = damageScaffoldLayers(sheet, item);
+    expect(layers).toHaveLength(1);
+    expect(layers[0]?.frame.x).toBe(85);
+    expect(layers[0]?.reveal).toBeUndefined();
+    expect(damageScaffoldLayers(sheet, { ...item, builtPct: 20 })).toEqual([]);
+    expect(damageScaffoldLayers(sheet, { ...item, upgradePct: 20 })).toEqual([]);
+    expect(damageScaffoldLayers(undefined, item)).toEqual([]);
+  });
+});
 
 describe('SpritePool - construction stages track the eased reveal, not the raw sim built', () => {
   it('keeps the scaffold stage drawn when built jumps past its window in one frame', () => {

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readHpFraction } from '../src/data/scene/snapshot-readers/index.js';
 import { DamageAtlas } from '../src/gpu/building-damage/atlas.js';
 import { BuildingDamage } from '../src/gpu/building-damage/building-damage.js';
+import { groundContacts } from '../src/gpu/building-damage/rubble.js';
 import { analyseSurface, damageStage, scarSurface } from '../src/gpu/building-damage/surface.js';
 import * as drawable from '../src/gpu/drawable-resource.js';
 
@@ -84,8 +85,62 @@ describe('structural damage surfaces', () => {
     expect(changed(5)).toBeGreaterThan(changed(3));
     expect(changed(3)).toBeGreaterThan(changed(1));
     expect(analyseSurface(original, W, H, 13)).not.toEqual(sites);
-    expect([1, 0.85, 0.6, 0.4, 0.2, 0.05].map(damageStage)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect([1, 0.85, 0.6, 0.4, 0.2, 0.08, 0.04].map(damageStage)).toEqual([0, 1, 2, 3, 4, 5, 6]);
     expect(damageStage(Number.NaN)).toBe(0);
+  });
+  it('makes light damage visible and critical damage extensive without deleting the building', () => {
+    const original = housePixels();
+    for (const seed of [1, 12, 73, 104]) {
+      const sites = analyseSurface(original, W, H, seed);
+      const light = scarSurface(original, W, H, sites, damageStage(0.8));
+      const critical = scarSurface(original, W, H, sites, damageStage(0.04));
+      let chips = 0,
+        wounds = 0,
+        lost = 0,
+        solid = 0;
+      for (let at = 0; at < original.length; at += 4) {
+        if (original[at + 3] !== 255) continue;
+        solid++;
+        if (Math.abs((light[at] ?? 0) - (original[at] ?? 0)) > 25) chips++;
+        if (Math.abs((critical[at] ?? 0) - (original[at] ?? 0)) > 25) wounds++;
+        if (critical[at + 3] === 0) lost++;
+      }
+      expect(chips).toBeGreaterThan(70);
+      expect(wounds).toBeGreaterThan(chips * 3);
+      expect(lost).toBeLessThan(solid * 0.06);
+    }
+  });
+
+  it('uncovers aligned construction inside cavities while preserving the original surroundings', () => {
+    const original = housePixels();
+    const backing = new Uint8ClampedArray(original.length);
+    for (let at = 0; at < backing.length; at += 4) backing.set([60, 180, 90, 255], at);
+    const result = scarSurface(original, W, H, analyseSurface(original, W, H, 73), 6, backing);
+    let exposed = 0;
+    for (let at = 0; at < original.length; at += 4) {
+      if (original[at + 3] === 0) expect(result[at + 3]).toBe(0);
+      else {
+        expect(result[at + 3]).toBe(original[at + 3]);
+        if (result[at] === 39 && result[at + 1] === 117) exposed++;
+      }
+    }
+    expect(exposed).toBeGreaterThan(200);
+    expect(scarSurface(original, W, H, analyseSurface(original, W, H, 73), 0, backing)).toEqual(original);
+  });
+
+  it('places rubble under the local foot of a sloped silhouette', () => {
+    const pixels = housePixels();
+    for (let x = 0; x < W; x++)
+      for (let y = 80 + Math.floor(x / 10); y < H; y++) pixels[(y * W + x) * 4 + 3] = 0;
+    const feet = groundContacts(pixels, W, H, -10, -20, 2);
+    expect(feet.length).toBeGreaterThan(8);
+    for (const foot of feet) {
+      const x = (foot.x + 10) / 2,
+        y = (foot.y + 20) / 2;
+      expect(pixels[(y * W + x) * 4 + 3]).toBe(255);
+      expect(pixels[((y + 1) * W + x) * 4 + 3]).toBe(0);
+    }
+    expect(new Set(feet.map((p) => p.y)).size).toBeGreaterThan(4);
   });
 });
 

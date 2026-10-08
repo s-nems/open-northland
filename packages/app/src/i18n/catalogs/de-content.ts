@@ -237,6 +237,11 @@ export const deContent = {
       summary:
         'Eine Kriegerschar zerstört einen feindlichen Stützpunkt und zerschlägt das Hauptquartier und die Türme vor den einfachen Wohnhäusern.',
     },
+    'building-damage-variants': {
+      title: 'Schadensvarianten',
+      summary:
+        'Je fünf Gebäude mit 4% Gesundheit: freigelegte Konstruktion, verschiedene Schäden, Feuer und Trümmer.',
+    },
     'building-damage': {
       title: 'Gebäudeschäden',
       summary:
