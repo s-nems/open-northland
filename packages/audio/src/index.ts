@@ -80,6 +80,16 @@ export {
   WEALTHY_POPULATION_DROP,
 } from './data/music/index.js';
 export {
+  DEFAULT_CLIP_LENGTH_S,
+  KEY_COOLDOWN_S,
+  LEDGER_PRUNE_SIZE,
+  NO_REPEAT_FREE_CHOICES,
+  type OneShotPlayback,
+  POOL_INSTANCE_CAP,
+  POOL_RETRIGGER_S,
+  WORLD_VOICE_CAP,
+} from './data/one-shot-ledger.js';
+export {
   FAR_ZOOM_SCALE,
   MUFFLE_FAR_HZ,
   MUFFLE_OPEN_HZ,
@@ -142,7 +152,6 @@ export {
   MUSIC_SWITCH_TIMING,
   type MusicTiming,
   musicBusGain,
-  ONE_SHOT_COOLDOWN_S,
   PERSPECTIVE_RAMP_S,
   VOLUME_RAMP_S,
   WebAudioEngine,

@@ -31,7 +31,7 @@ export const MAX_CHATTER_TICKS_PER_FRAME = 5;
 /**
  * The answers to this frame's orders: one "ok" per ordered settler that has a voice, panned by where it
  * stands but neither culled nor attenuated, so a settler ordered off screen still answers. Keyed by pool,
- * so two settlers sharing a voice inside the engine's cooldown collapse into one line, and exclusive by
+ * so two settlers sharing a voice inside the arbiter's key cooldown collapse into one line, and exclusive by
  * pool: the original answers nothing while any line of that settler's pool is still sounding. In no lane:
  * an answer to the player's own click is never rationed away.
  */

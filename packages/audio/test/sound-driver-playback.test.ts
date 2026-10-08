@@ -2,13 +2,21 @@ import type { HumanVoices, VoiceClass } from '@open-northland/data';
 import { type Camera, tileToScreen } from '@open-northland/render/data';
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { WORLD_VOICE_CAP } from '../src/data/one-shot-ledger.js';
-import { CLICK_FREE_RAMP_S, defaultBindings, SFX_BURST, type SoundIndex, SoundDriver } from '../src/index.js';
+import {
+  CLICK_FREE_RAMP_S,
+  defaultBindings,
+  KEY_COOLDOWN_S,
+  SFX_BURST,
+  SoundDriver,
+  type SoundIndex,
+  WORLD_VOICE_CAP,
+} from '../src/index.js';
 import { FakeContext, type FakeGain, type FakeNode, type FakeSource, flush } from './helpers/fake-audio.js';
 
 /**
  * The arbiter's playback seam through the driver: the arbiter reads each wav's decoded length from the
- * engine's sample cache, and a world shot it steals fades out in the engine before its source stops.
+ * engine's sample cache, a world shot it steals fades out in the engine before its source stops, and a
+ * GUI cue passes its key cooldown like any other shot.
  */
 
 const CANVAS_W = 800;
@@ -71,7 +79,11 @@ function makeDriver(clipSeconds: number): { readonly driver: SoundDriver; readon
 }
 
 function snapshotAt(tick: number): WorldSnapshot {
-  return { tick, entities: [settler(SIDE_SETTLER, SIDE_TILE), settler(CENTRE_SETTLER, CENTRE_TILE)], events: [] };
+  return {
+    tick,
+    entities: [settler(SIDE_SETTLER, SIDE_TILE), settler(CENTRE_SETTLER, CENTRE_TILE)],
+    events: [],
+  };
 }
 
 function cue(entity: number, soundType: number): SimEvent {
@@ -110,6 +122,20 @@ describe('SoundDriver playback seam', () => {
     driver.update(frame(4));
     await flush();
     expect(ctx.sources).toHaveLength(2);
+  });
+
+  it('swallows a repeat press of one GUI cue inside the key cooldown', async () => {
+    const { driver, ctx } = makeDriver(1);
+    await driver.resume();
+    driver.cue('confirm');
+    driver.cue('confirm');
+    driver.cue('fail');
+    await flush();
+    expect(ctx.sources).toHaveLength(2);
+    ctx.currentTime = KEY_COOLDOWN_S;
+    driver.cue('confirm');
+    await flush();
+    expect(ctx.sources).toHaveLength(3);
   });
 
   it('fades out the world shot a louder one steals, then stops its source', async () => {

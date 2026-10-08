@@ -221,16 +221,36 @@ describe('wav picks', () => {
     expect(arbiter.decide(again, later).map((s) => s.key)).toEqual(['b:1']);
   });
 
-  it('hands an answer its whole pool for the engine`s guard, and holds a key through its cooldown', () => {
+  it('holds an answer while any line of its pool sounds, and picks its lines without repeats', () => {
     const pool = wavPool('ok', 3);
-    const answer: OneShot = { files: pool, gain: 0.8, pan: 0, key: 'respond:a', exclusive: 'group' };
-    const arbiter = new OneShotArbiter();
-    expect(arbiter.decide([answer], 0)).toEqual([answer]);
-    expect(arbiter.decide([answer], KEY_COOLDOWN_S / 2)).toHaveLength(0);
+    const answer = (key: string): OneShot => ({ files: pool, gain: 0.8, pan: 0, key, exclusive: 'group' });
+    const arbiter = new OneShotArbiter({ random: () => 0 });
+    const first = arbiter.decide([answer('respond:a')], 0);
+    expect(first).toHaveLength(1);
+    expect(first[0]?.files).toHaveLength(1);
+    expect(arbiter.decide([answer('respond:b')], DEFAULT_CLIP_LENGTH_S / 2)).toHaveLength(0);
+    const second = arbiter.decide([answer('respond:c')], DEFAULT_CLIP_LENGTH_S + 0.01);
+    expect(second).toHaveLength(1);
+    expect(second[0]?.files[0]).not.toBe(first[0]?.files[0]);
+  });
+
+  it('holds a key through its cooldown', () => {
     const thud = wavPool('thud', 2);
-    const free = new OneShotArbiter();
-    expect(free.decide([worldShot(thud, 'thud:1', 1)], 0)).toHaveLength(1);
-    expect(free.decide([worldShot(thud, 'thud:1', 1)], KEY_COOLDOWN_S / 2)).toHaveLength(0);
+    const arbiter = new OneShotArbiter();
+    expect(arbiter.decide([worldShot(thud, 'thud:1', 1)], 0)).toHaveLength(1);
+    expect(arbiter.decide([worldShot(thud, 'thud:1', 1)], KEY_COOLDOWN_S / 2)).toHaveLength(0);
+    const cue: OneShot = { files: ['gui/click.wav'], gain: 1, pan: 0, key: 'ui:confirm' };
+    expect(arbiter.decide([cue], 0)).toHaveLength(1);
+    expect(arbiter.decide([cue], KEY_COOLDOWN_S / 2)).toHaveLength(0);
+    expect(arbiter.decide([cue], KEY_COOLDOWN_S)).toHaveLength(1);
+  });
+
+  it('rings a jingle on one wav of its pool', () => {
+    const files = wavPool('won', 2);
+    const won: OneShot = { ...jingle(JINGLE_WON, 'won'), files };
+    const [rang] = new OneShotArbiter().decide([won], 0);
+    expect(rang?.files).toHaveLength(1);
+    expect(files).toContain(rang?.files[0]);
   });
 
   it('draws an exclusive shot among the wavs not sounding, and refuses it once all sound', () => {

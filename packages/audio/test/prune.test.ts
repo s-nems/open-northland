@@ -1,44 +1,42 @@
 import { describe, expect, it } from 'vitest';
-import { pruneExpired } from '../src/web/prune.js';
+import { pruneExpired } from '../src/data/prune.js';
 
 /**
- * The shared cooldown-map eviction both impure audio units use: a no-op until the map outgrows its
- * bound, then a single sweep dropping only entries at/past the age window. The two boundaries it
- * concentrates - the `< maxSize` guard and the `>= maxAge` cutoff - are exactly what a caller relies
- * on, so they are pinned here directly rather than only transitively through chatter/engine.
+ * The bookkeeping-map eviction the one-shot ledger uses: a no-op until the map outgrows its bound, then a
+ * single sweep dropping only the entries the caller calls expired.
  */
 describe('pruneExpired', () => {
   const MAX_SIZE = 3;
   const MAX_AGE = 100;
+  const NOW = 1000;
+  const olderThanMaxAge = (when: number): boolean => NOW - when >= MAX_AGE;
 
   it('is a no-op while the map is below maxSize, even with stale entries', () => {
     const map = new Map<string, number>([
-      ['a', 0], // age 1000 - far past maxAge, but the map is under the size bound
+      ['a', 0], // far past maxAge, but the map is under the size bound
       ['b', 900],
     ]);
-    pruneExpired(map, MAX_SIZE, 1000, MAX_AGE);
+    pruneExpired(map, MAX_SIZE, olderThanMaxAge);
     expect([...map.keys()]).toEqual(['a', 'b']);
   });
 
-  it('once at/over maxSize, drops entries at or past maxAge and keeps younger ones', () => {
-    const now = 1000;
+  it('once at maxSize, drops exactly the expired entries', () => {
     const map = new Map<string, number>([
-      ['expired', now - MAX_AGE - 1], // age > maxAge → dropped
-      ['boundary', now - MAX_AGE], // age === maxAge → dropped (>= cutoff)
-      ['fresh', now - MAX_AGE + 1], // age < maxAge → kept
+      ['expired', NOW - MAX_AGE - 1],
+      ['boundary', NOW - MAX_AGE],
+      ['fresh', NOW - MAX_AGE + 1],
     ]);
-    pruneExpired(map, MAX_SIZE, now, MAX_AGE);
+    pruneExpired(map, MAX_SIZE, olderThanMaxAge);
     expect([...map.keys()]).toEqual(['fresh']);
   });
 
-  it('serves a numeric-keyed map the same as a string-keyed one (generic K)', () => {
-    const now = 500;
-    const map = new Map<number, number>([
-      [1, now - MAX_AGE - 50],
-      [2, now - 1],
-      [3, now - MAX_AGE - 5],
+  it('serves any key and value type', () => {
+    const map = new Map<number, { readonly endsAt: number }>([
+      [1, { endsAt: NOW - 1 }],
+      [2, { endsAt: NOW + 1 }],
+      [3, { endsAt: NOW }],
     ]);
-    pruneExpired(map, MAX_SIZE, now, MAX_AGE);
+    pruneExpired(map, MAX_SIZE, (play) => play.endsAt <= NOW);
     expect([...map.keys()]).toEqual([2]);
   });
 });

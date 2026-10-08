@@ -28,8 +28,3 @@ export async function httpFetchBytes(url: string): Promise<ArrayBuffer> {
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.arrayBuffer();
 }
-
-/** Pick a uniformly random element of a non-empty list. */
-export function pickRandom<T>(items: readonly T[], random: RandomFn): T {
-  return items[Math.floor(random() * items.length)] as T;
-}

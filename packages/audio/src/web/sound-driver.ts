@@ -53,7 +53,11 @@ export interface MusicMap {
 const UNKNOWN_STANDING: MusicStanding = { population: 0, stance: 'neutral' };
 
 /** {@link SoundDriver} construction options - the engine's platform/tuning seams. */
-export interface SoundDriverOptions extends AudioEngineOptions {}
+export interface SoundDriverOptions extends AudioEngineOptions {
+  /** The [0,1) source of wav picks and chatter rolls - override in tests for determinism. Default
+   *  `Math.random`. */
+  readonly random?: RandomFn;
+}
 
 /**
  * The app-facing audio façade: per frame, turn the world state into playback. Every concern lives in its
@@ -139,7 +143,8 @@ export class SoundDriver {
 
   /** Play a GUI cue now, from the input event itself: a button press confirms, a cancelled tool fails. */
   cue(cue: UiCue): void {
-    this.engine.fire([uiCueShot(cue)]);
+    if (!this.engine.audible) return;
+    this.engine.fire(this.arbiter.decide([uiCueShot(cue)], this.engine.clock));
   }
 
   /** A settler the player just ordered answers "ok" in its own voice on the next frame, which knows

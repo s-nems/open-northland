@@ -21,8 +21,8 @@ export const UI_CUE_FILES: Readonly<Record<UiCue, string>> = {
 /** Gain of a hardwired cue - full scale, the original's 100 against the static groups' 80 (`SFX_GAIN`). */
 export const UI_CUE_GAIN = 1;
 
-/** The centred, full-gain one-shot a cue plays. Keyed per cue, so the engine's one-shot cooldown
- *  swallows a repeat press inside its window (approximation: the original replays every press). */
+/** The centred, full-gain one-shot a cue plays. Keyed per cue, so in game the arbiter's key
+ *  cooldown swallows a repeat press inside its window (approximation: the original replays every press). */
 export function uiCueShot(cue: UiCue): OneShot {
   return { files: [UI_CUE_FILES[cue]], gain: UI_CUE_GAIN, pan: 0, key: `ui:${cue}` };
 }

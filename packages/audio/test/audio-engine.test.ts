@@ -14,7 +14,6 @@ import {
   MUFFLE_FAR_HZ,
   MUFFLE_OPEN_HZ,
   MUFFLE_Q_DB,
-  ONE_SHOT_COOLDOWN_S,
   PERSPECTIVE_RAMP_S,
   perspectiveGain,
   VOLUME_RAMP_S,
@@ -35,9 +34,9 @@ import { mixerGraph } from './helpers/mixer-graph.js';
 
 /**
  * The Web Audio engine, exercised through its injected platform seams (a fake context + a stub
- * loader + a scripted random): the one-shot gain/pan graph, the cooldown debounce, the memoised
- * failed load, the ambient start/retune/stop reconciliation and the in-flight-load races (mute,
- * departed bed) - all without a browser.
+ * loader): the one-shot gain/pan graph, stopping a stolen shot, the memoised failed load, the ambient
+ * start/retune/stop reconciliation and the in-flight-load races (mute, departed bed) - all without a
+ * browser.
  */
 
 interface Harness {
@@ -46,7 +45,7 @@ interface Harness {
   readonly fetched: string[];
 }
 
-function makeEngine(opts: { failFetch?: boolean; noPanner?: boolean; random?: () => number } = {}): Harness {
+function makeEngine(opts: { failFetch?: boolean; noPanner?: boolean } = {}): Harness {
   const ctx = new FakeContext();
   if (opts.noPanner) {
     (ctx as { createStereoPanner?: unknown }).createStereoPanner = undefined;
@@ -59,7 +58,6 @@ function makeEngine(opts: { failFetch?: boolean; noPanner?: boolean; random?: ()
       if (opts.failFetch) throw new Error('missing wav');
       return new ArrayBuffer(4);
     },
-    random: opts.random ?? (() => 0),
   });
   return { engine, ctx, fetched };
 }
@@ -192,100 +190,25 @@ describe('WebAudioEngine one-shots', () => {
     expect(buses.ui.gain.value).toBe(0);
   });
 
-  it('debounces an identical key within the cooldown and replays it after', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    engine.apply({ oneShots: [shot()], ambient: [] });
-    engine.apply({ oneShots: [shot()], ambient: [] });
-    await flush();
-    expect(ctx.sources).toHaveLength(1);
-    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01;
-    engine.apply({ oneShots: [shot()], ambient: [] });
-    await flush();
-    expect(ctx.sources).toHaveLength(2);
-  });
-
-  it('holds a wav-exclusive shot while its own wav still sounds, and lets a plain one layer', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    // The fake decodes a 4-byte buffer as a 4-second wav.
-    engine.apply({ oneShots: [shot({ key: 'voice:a', exclusive: 'wav' })], ambient: [] });
-    await flush();
-    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01; // past the key cooldown, inside the wav
-    engine.apply({ oneShots: [shot({ key: 'voice:b', exclusive: 'wav' })], ambient: [] }); // same wav, other key
-    await flush();
-    expect(ctx.sources).toHaveLength(1); // that line is still sounding: skipped
-    engine.apply({ oneShots: [shot({ key: 'thud:1' })], ambient: [] }); // not exclusive: layers over it
-    await flush();
-    expect(ctx.sources).toHaveLength(2);
-    ctx.currentTime += 4; // the line has ended
-    engine.apply({ oneShots: [shot({ key: 'voice:c', exclusive: 'wav' })], ambient: [] });
-    await flush();
-    expect(ctx.sources).toHaveLength(3);
-  });
-
-  it('holds a group-exclusive shot while any wav of its pool still sounds', async () => {
-    // Random 0 picks the first wav; the second ask picks a different one, and a wav-exclusive shot would
-    // let it through, while an order's answer waits for the whole pool.
-    let pick = 0;
-    const { engine, ctx } = makeEngine({ random: () => pick });
-    await engine.resume();
-    const pool = ['voice/ok1.wav', 'voice/ok2.wav'];
-    engine.apply({ oneShots: [shot({ files: pool, key: 'respond:a', exclusive: 'group' })], ambient: [] });
-    await flush();
-    pick = 0.99;
-    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01;
-    engine.apply({ oneShots: [shot({ files: pool, key: 'respond:b', exclusive: 'group' })], ambient: [] });
-    engine.apply({ oneShots: [shot({ files: pool, key: 'scream:b', exclusive: 'wav' })], ambient: [] });
-    await flush();
-    expect(ctx.sources).toHaveLength(2); // the pool held the answer; the other wav was free for the scream
-  });
-
-  it('releases an exclusive reservation whose load landed while muted, so the wav can sound later', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    engine.apply({ oneShots: [shot({ key: 'voice:a', exclusive: 'wav' })], ambient: [] }); // reserved, loading
-    engine.setEnabled(false); // mute lands before the wav arrives
-    await flush();
-    expect(ctx.sources).toHaveLength(0);
-    engine.setEnabled(true);
-    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01;
-    engine.apply({ oneShots: [shot({ key: 'voice:b', exclusive: 'wav' })], ambient: [] }); // the same wav
-    await flush();
-    expect(ctx.sources).toHaveLength(1); // not held by the abandoned reservation
-  });
-
-  it('lets a yielded exclusive shot leave its key cooldown untouched', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    engine.apply({ oneShots: [shot({ key: 'respond:a', exclusive: 'wav' })], ambient: [] }); // sounds for 4 s
-    await flush();
-    ctx.currentTime = 4 - ONE_SHOT_COOLDOWN_S / 2;
-    engine.apply({ oneShots: [shot({ key: 'respond:b', exclusive: 'wav' })], ambient: [] }); // held: still sounding
-    ctx.currentTime = 4 + ONE_SHOT_COOLDOWN_S / 2; // the line has ended, within a cooldown of the yielded ask
-    engine.apply({ oneShots: [shot({ key: 'respond:b', exclusive: 'wav' })], ambient: [] });
-    await flush();
-    expect(ctx.sources).toHaveLength(2); // the yielded ask started no cooldown
-  });
-
   it('memoises a failed load and never re-fetches the missing wav', async () => {
     const { engine, ctx, fetched } = makeEngine({ failFetch: true });
     await engine.resume();
     engine.apply({ oneShots: [shot()], ambient: [] });
     await flush();
-    ctx.currentTime += ONE_SHOT_COOLDOWN_S + 0.01;
     engine.apply({ oneShots: [shot()], ambient: [] });
     await flush();
     expect(fetched).toHaveLength(1); // second play hit the cached failure
     expect(ctx.sources).toHaveLength(0); // and nothing ever sounded
   });
 
-  it('picks the wav from the group via the injected random source', async () => {
-    const { engine, fetched } = makeEngine({ random: () => 0.99 });
+  it('plays every shot it is handed on its first wav, leaving cooldowns and picks to the arbiter', async () => {
+    const { engine, ctx, fetched } = makeEngine();
     await engine.resume();
-    engine.apply({ oneShots: [shot({ files: ['a.wav', 'b.wav', 'c.wav'] })], ambient: [] });
+    engine.apply({ oneShots: [shot({ exclusive: 'wav' }), shot({ exclusive: 'wav' })], ambient: [] });
+    engine.apply({ oneShots: [shot({ files: ['a.wav', 'b.wav'] })], ambient: [] });
     await flush();
-    expect(fetched).toEqual(['/sounds/c.wav']); // 0.99 → last of three
+    expect(ctx.sources).toHaveLength(3);
+    expect(fetched).toEqual(['/sounds/sfx/hammer.wav', '/sounds/a.wav']);
   });
 
   it('fades a stopped world shot to silence and stops its source once the fade lands', async () => {

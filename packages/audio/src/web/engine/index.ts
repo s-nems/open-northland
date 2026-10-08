@@ -13,7 +13,6 @@ export {
   MUSIC_DUCK_GAIN,
   MUSIC_DUCK_RAMP_S,
   musicBusGain,
-  ONE_SHOT_COOLDOWN_S,
   PERSPECTIVE_RAMP_S,
   VOLUME_RAMP_S,
   WebAudioEngine,

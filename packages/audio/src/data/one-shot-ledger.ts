@@ -1,3 +1,4 @@
+import { pruneExpired } from './prune.js';
 import type { OneShot } from './types.js';
 
 /**
@@ -15,7 +16,8 @@ export const POOL_INSTANCE_CAP = 3;
 export const POOL_RETRIGGER_S = 0.08;
 /** World one-shots (voice and sfx lanes) sounding at once. Approximation, to be benchmarked. */
 export const WORLD_VOICE_CAP = 48;
-/** An identical key restarts no sooner than this. Approximation, the engine's own one-shot cooldown. */
+/** An identical key restarts no sooner than this, so a burst of one emitter's events plays once.
+ *  Approximation: the common anti machine-gun window. */
 export const KEY_COOLDOWN_S = 0.12;
 /** The length a clip is taken to run before the engine has decoded it. Approximation: the median
  *  one-shot of the decoded bank runs 0.8-1.1 s. */
@@ -68,11 +70,6 @@ export function noRepeatDepth(size: number): number {
   return Math.max(1, size - NO_REPEAT_FREE_CHOICES);
 }
 
-function pruneExpired(map: Map<string, number>, now: number, maxAge: number): void {
-  if (map.size < LEDGER_PRUNE_SIZE) return;
-  for (const [key, when] of map) if (now - when >= maxAge) map.delete(key);
-}
-
 export class OneShotLedger {
   /** Pools by their file list: shots of one sound group share the index's array. */
   private readonly pools = new WeakMap<readonly string[], PoolState>();
@@ -98,10 +95,8 @@ export class OneShotLedger {
       else voice.pool.playing--;
     }
     this.world.length = kept;
-    pruneExpired(this.lastStarted, now, KEY_COOLDOWN_S);
-    if (this.lastPlay.size >= LEDGER_PRUNE_SIZE) {
-      for (const [file, play] of this.lastPlay) if (this.endOf(play) <= now) this.lastPlay.delete(file);
-    }
+    pruneExpired(this.lastStarted, LEDGER_PRUNE_SIZE, (started) => now - started >= KEY_COOLDOWN_S);
+    pruneExpired(this.lastPlay, LEDGER_PRUNE_SIZE, (play) => this.endOf(play) <= now);
   }
 
   /**
@@ -159,19 +154,24 @@ export class OneShotLedger {
   }
 
   /**
-   * A shot outside the world lanes (an order's answer, a script cue): never capped or stolen, but held
-   * by its key cooldown and its exclusivity like any other. Returns what the engine plays, or null.
+   * A shot outside the world lanes (an order's answer, a GUI cue): never capped or stolen, but held by
+   * its key cooldown and its exclusivity like any other. An answer waits while any line of its pool
+   * still sounds. Returns what the engine plays, or null.
    */
   startFree(shot: OneShot, now: number): OneShot | null {
     if (shot.files.length === 0 || this.keyCooling(shot.key, now)) return null;
-    if (shot.exclusive === 'group') {
-      // An answer keeps its whole pool: the engine, which knows each line's decoded length, holds it
-      // while any line still sounds. It costs no budget, so passing it on spends nothing in vain.
-      this.lastStarted.set(shot.key, now);
-      return shot;
-    }
+    if (shot.exclusive === 'group' && this.anySounding(shot.files, now)) return null;
     const file = this.pick(shot.files, shot.exclusive !== undefined, now);
     if (file === null) return null;
+    this.record(shot, this.pool(shot.files), file, now);
+    return { ...shot, files: [file] };
+  }
+
+  /** A jingle the arbiter rang, on one wav of its pool picked without repeats; its lane already
+   *  decided that it rings. */
+  ring(shot: OneShot, now: number): OneShot {
+    const file = this.pick(shot.files, false, now);
+    if (file === null) return shot;
     this.record(shot, this.pool(shot.files), file, now);
     return { ...shot, files: [file] };
   }

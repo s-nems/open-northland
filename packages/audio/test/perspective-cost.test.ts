@@ -162,7 +162,6 @@ describe('listening perspective cost on a busy screen', () => {
       const engine = new WebAudioEngine({
         createContext: () => ctx as unknown as AudioContext,
         fetchBytes: async () => new ArrayBuffer(4),
-        random: () => 0,
       });
       await engine.resume();
       const shots = decide(busyScene(0)).shots.slice(0, shotCount);

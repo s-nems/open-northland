@@ -25,9 +25,10 @@ import type { OneShot } from './types.js';
  *   a frame, holds a few instances at once, and the world as a whole a capped number
  *   ({@link OneShotLedger}).
  *
- * Every world shot has its wav picked here, and is refused before it costs any budget when its key is
- * cooling or, being exclusive, every wav of its pool still sounds. The engine receives only shots that
- * should play, each with its one wav; an order's answer keeps its pool for the engine's own guard.
+ * Every shot has its wav picked here, and is refused before it costs any budget when its key is cooling
+ * or, being exclusive, every wav of its pool (an answer: any wav of it) still sounds. The engine
+ * receives only shots that should play, each with its one wav, and fades out a world shot whose slot
+ * a louder one steals.
  *
  * Approximation: the original rations nothing beyond its same-jingle and same-wav guards; the budgets,
  * caps and the growing cooldown are a legibility choice. Pure: time comes in as `now` (audio-clock
@@ -208,7 +209,7 @@ export class OneShotArbiter {
     this.pending.delete(type);
     this.laneBusyUntil = now + length;
     this.lanePriority = jinglePriority(type);
-    out.push(shot);
+    out.push(this.ledger.ring(shot, now));
   }
 
   /** Once the lane is free, the highest-ranked fresh jingle still waiting rings; stale ones are dropped. */

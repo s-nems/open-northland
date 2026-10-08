@@ -70,7 +70,7 @@ interface Harness {
   readonly fetched: string[];
 }
 
-function makeEngine(opts: { failFetch?: boolean; random?: () => number } = {}): Harness {
+function makeEngine(opts: { failFetch?: boolean } = {}): Harness {
   const ctx = new FakeContext();
   const fetched: string[] = [];
   const engine = new WebAudioEngine({
@@ -80,7 +80,6 @@ function makeEngine(opts: { failFetch?: boolean; random?: () => number } = {}): 
       if (opts.failFetch) throw new Error('missing track');
       return new ArrayBuffer(4);
     },
-    random: opts.random ?? (() => 0),
   });
   return { engine, ctx, fetched };
 }
@@ -457,24 +456,5 @@ describe('WebAudioEngine jingle duck', () => {
     engine.apply(DUCKED_FRAME);
     await flush();
     expect(duck.gain.ramps).toHaveLength(0);
-  });
-
-  it('does not duck for a debounced repeat of the same jingle', async () => {
-    const { engine, ctx } = makeEngine();
-    await engine.resume();
-    const { duck } = mixerGraph(ctx);
-    const shortHold = {
-      oneShots: [{ files: ['jingles_birth.wav'], gain: 0.9, pan: 0, key: 'settlerBorn:1', duckMusicMs: 50 }],
-      ambient: [],
-    };
-    engine.apply(shortHold);
-    await flush();
-    ctx.currentTime = 0.06;
-    engine.apply(EMPTY_FRAME); // the short hold has run out - restored
-    expect(duck.gain.ramps.at(-1)?.value).toBe(1);
-    ctx.currentTime = 0.1; // inside the one-shot cooldown - the wav will not ring again
-    engine.apply(shortHold);
-    await flush();
-    expect(duck.gain.ramps.at(-1)?.value).toBe(1);
   });
 });

@@ -22,15 +22,7 @@ import {
 } from '../../data/perspective.js';
 import type { AudioFrame, OneShot } from '../../data/types.js';
 import type { WeatherSoundInput } from '../../data/weather/mix.js';
-import {
-  type ContextFactory,
-  type FetchBytes,
-  httpFetchBytes,
-  pickRandom,
-  type RandomFn,
-  webAudioContextFactory,
-} from '../platform.js';
-import { pruneExpired } from '../prune.js';
+import { type ContextFactory, type FetchBytes, httpFetchBytes, webAudioContextFactory } from '../platform.js';
 import { AmbientMixer } from './ambient-mixer.js';
 import { MusicPlayer } from './music-player.js';
 import { CLICK_FREE_RAMP_S, rampParam } from './ramps.js';
@@ -39,8 +31,8 @@ import { WeatherSoundscape } from './weather-soundscape.js';
 
 /**
  * The impure Web Audio playback sink - the only part of the package that owns an `AudioContext`. It
- * takes the pure {@link AudioFrame} the director decided and makes it audible: fires debounced
- * one-shots through a per-play gain+pan graph, and hands the ambient set to the {@link AmbientMixer}
+ * takes the pure {@link AudioFrame} the director decided and makes it audible: plays the one-shots
+ * the arbiter let through, each on its one wav, through a per-play gain+pan graph, and hands the ambient set to the {@link AmbientMixer}
  * to reconcile ({@link SampleCache} loads/decodes). All timing rides the audio clock
  * (`ctx.currentTime`), never `Date.now`, so ramps stay sample-accurate.
  *
@@ -66,8 +58,6 @@ export interface AudioEngineOptions {
   readonly createContext?: ContextFactory;
   /** Loads a wav's bytes by URL - override in tests with a stub. Default HTTP `fetch`. */
   readonly fetchBytes?: FetchBytes;
-  /** The [0,1) random source for wav picks - override in tests for determinism. Default `Math.random`. */
-  readonly random?: RandomFn;
 }
 
 /** URL prefix of the content tree's decoded wavs; every host serves the tree at the root. */
@@ -118,10 +108,6 @@ export const CLOSE_GRACE_S = 0.1;
 export const MUSIC_DUCK_GAIN = 10 ** (-20 / 20);
 /** The duck's fade time each way in the original: 300 ms. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
-/** An identical one-shot key retriggers no sooner than this many seconds apart (anti machine-gun). */
-export const ONE_SHOT_COOLDOWN_S = 0.12;
-/** Prune the one-shot cooldown map when it grows past this many entries (keys are per-entity, never reused). */
-export const COOLDOWN_PRUNE_SIZE = 512;
 /** Shared empty rotation, so re-asserting a single track every frame allocates nothing. */
 const EMPTY_ROTATION: readonly MusicTrack[] = [];
 
@@ -149,7 +135,6 @@ export class WebAudioEngine {
   private readonly musicBaseUrl: string;
   private readonly createContext: ContextFactory;
   private readonly fetchBytes: FetchBytes;
-  private readonly random: RandomFn;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buses: Readonly<Record<SoundBus, GainNode>> | null = null;
@@ -175,11 +160,6 @@ export class WebAudioEngine {
   private enabled = true;
   /** Set by {@link close}; a closed engine never resumes its context again. */
   private closed = false;
-  /** one-shot key → last play time (audio clock seconds) for cooldown debounce. */
-  private readonly lastPlayed = new Map<string, number>();
-  /** wav file → the audio-clock second an exclusive play of it ends (Infinity while its buffer is still
-   *  loading), so a voice or a body blow never stacks on a copy of itself still sounding. */
-  private readonly soundingUntil = new Map<string, number>();
   /** The world one-shots the arbiter may still stop, by {@link OneShot.instance}: null while the wav
    *  loads. An entry leaves when its source ends, its load fails, or a stop takes it. */
   private readonly stoppable = new Map<number, StoppableShot | null>();
@@ -190,7 +170,6 @@ export class WebAudioEngine {
     this.volumes = clampedVolumes(options.volumes ?? DEFAULT_VOLUMES);
     this.createContext = options.createContext ?? webAudioContextFactory;
     this.fetchBytes = options.fetchBytes ?? httpFetchBytes;
-    this.random = options.random ?? Math.random;
   }
 
   /** Whether the context has been started (a user gesture resumed it). */
@@ -484,35 +463,20 @@ export class WebAudioEngine {
     else void this.resume();
   }
 
+  /** Play a decided one-shot on its first wav: the arbiter has already picked it and applied every
+   *  cooldown and exclusivity guard. */
   private playOneShot(ctx: AudioContext, samples: SampleCache, shot: OneShot): void {
-    const now = ctx.currentTime;
-    const last = this.lastPlayed.get(shot.key);
-    if (last !== undefined && now - last < ONE_SHOT_COOLDOWN_S) return;
-    if (shot.files.length === 0) return;
-    // Randomness lives here (impure), not in the pure director.
-    const file = pickRandom(shot.files, this.random);
-    const exclusive = shot.exclusive !== undefined;
-    if (exclusive) {
-      // A group-exclusive shot yields to any line of its pool still sounding; a wav-exclusive one to the
-      // very wav it picked. A yielded shot starts no key cooldown, so the next ask is not held twice over.
-      const held = shot.exclusive === 'group' ? shot.files : [file];
-      if (held.some((f) => (this.soundingUntil.get(f) ?? 0) > now)) return;
-      this.soundingUntil.set(file, Number.POSITIVE_INFINITY); // reserved until the buffer says how long
-      pruneExpired(this.soundingUntil, COOLDOWN_PRUNE_SIZE, now, 0);
-    }
-    pruneExpired(this.lastPlayed, COOLDOWN_PRUNE_SIZE, now, ONE_SHOT_COOLDOWN_S);
-    this.lastPlayed.set(shot.key, now);
+    const file = shot.files[0];
+    if (file === undefined) return;
     const instance = shot.instance;
     if (instance !== undefined) this.stoppable.set(instance, null);
     void samples.get(file).then((buffer) => {
       const buses = this.buses;
       const stopped = instance !== undefined && !this.stoppable.has(instance);
       if (buffer === null || !this.canPlay() || buses === null || stopped) {
-        if (exclusive) this.soundingUntil.delete(file);
         if (instance !== undefined) this.stoppable.delete(instance);
         return;
       }
-      if (exclusive) this.soundingUntil.set(file, ctx.currentTime + buffer.duration);
       // The duck follows the shots that actually ring: a missing or undecodable wav dims nothing.
       if (shot.duckMusicMs !== undefined) this.duckMusic(ctx, shot.duckMusicMs);
       const source = ctx.createBufferSource();
