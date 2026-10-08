@@ -134,8 +134,10 @@ export const MONO_SWAP_DELAY_S = CLOSE_GRACE_S;
 
 /** Jingle duck depth on the music bus: -2000 hundredths of dB, as the original fades the music
  *  audiopath while a jingle rings. */
-export const MUSIC_DUCK_GAIN = 10 ** (-20 / 20);
-/** The duck's fade time each way in the original: 300 ms. */
+const MUSIC_DUCK_DB = -20;
+export const MUSIC_DUCK_GAIN = 10 ** (MUSIC_DUCK_DB / 20);
+/** The duck's fade time each way in the original: 300 ms, exponential because the original ramps the
+ *  audiopath volume linearly in dB. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
 
 /** The voice duck's lift back to full music ({@link OneShot.duckMusicDb}): slower than its dip, so the
@@ -177,9 +179,8 @@ export class WebAudioEngine {
   /** The camera's zoom distance the layer gains are set for, kept here so a zoom before the context
    *  exists still lands. */
   private zoom = 0;
-  private musicDuck: GainNode | null = null;
-  /** Audio-clock time the running jingle duck may lift at; null while the music is not ducked. */
-  private duckedUntil: number | null = null;
+  /** The music's dip under a ringing jingle. */
+  private musicDuck: BusDuck | null = null;
   /** The dips behind {@link ALERT_DUCKED_BUSES}. */
   private alertDucks: readonly BusDuck[] = [];
   /** The music's dip under a spoken line ({@link OneShot.duckMusicDb}), after the jingle duck. */
@@ -400,15 +401,11 @@ export class WebAudioEngine {
       rampParam(ctx, filter.frequency, muffleCutoffHz(zoom), PERSPECTIVE_RAMP_S);
   }
 
-  /** Apply one decided frame: fire its one-shots, reconcile its ambient loops, settle the duck. */
+  /** Apply one decided frame: fire its one-shots and reconcile its ambient loops. */
   apply(frame: AudioFrame): void {
-    const ctx = this.ctx;
-    if (!this.canPlay() || ctx === null || this.mixer === null) return;
+    if (!this.canPlay() || this.mixer === null) return;
     this.fire(frame.oneShots);
     this.mixer.reconcile(frame.ambient);
-    this.updateMusicDuck(ctx);
-    for (const duck of this.alertDucks) duck.update(ctx);
-    this.voiceDuck?.update(ctx);
   }
 
   /** Play one frame of weather; `gameSeconds` is the clock the conditions advanced by (see
@@ -445,21 +442,6 @@ export class WebAudioEngine {
     const ctx = this.ctx;
     if (!this.canPlay() || ctx === null || this.samples === null) return;
     for (const shot of shots) this.playOneShot(ctx, this.samples, shot);
-  }
-
-  /** Duck the music under a ringing jingle, extending the hold a running duck already has. */
-  private duckMusic(ctx: AudioContext, holdMs: number): void {
-    if (this.musicDuck === null) return;
-    if (this.duckedUntil === null) rampDuck(ctx, this.musicDuck, MUSIC_DUCK_GAIN);
-    this.duckedUntil = Math.max(this.duckedUntil ?? 0, ctx.currentTime + holdMs / 1000);
-  }
-
-  /** Restore a run-out duck; checked every applied frame, like the original's per-frame update. */
-  private updateMusicDuck(ctx: AudioContext): void {
-    if (this.duckedUntil === null || this.musicDuck === null) return;
-    if (ctx.currentTime < this.duckedUntil) return;
-    rampDuck(ctx, this.musicDuck, 1);
-    this.duckedUntil = null;
   }
 
   private assertMusic(): void {
@@ -529,8 +511,11 @@ export class WebAudioEngine {
     };
     for (const bus of SOUND_BUSES) buses[bus].gain.value = this.channelGain(bus);
     // The ducks sit behind their bus so a slider move and a running duck compose.
-    const musicDuck = ctx.createGain();
-    musicDuck.gain.value = 1;
+    const musicDuck = new BusDuck(ctx, {
+      dipS: MUSIC_DUCK_RAMP_S,
+      releaseS: MUSIC_DUCK_RAMP_S,
+      curve: 'exponential',
+    });
     for (const bus of SOUND_BUSES) {
       if (bus !== 'music' && !ALERT_DUCKED_BUSES.includes(bus)) buses[bus].connect(master);
     }
@@ -540,8 +525,8 @@ export class WebAudioEngine {
       buses[bus].connect(duck.node).connect(master);
       return duck;
     });
-    const voiceDuck = new BusDuck(ctx, VOICE_DUCK_RELEASE_S);
-    buses.music.connect(musicDuck).connect(voiceDuck.node).connect(master);
+    const voiceDuck = new BusDuck(ctx, { releaseS: VOICE_DUCK_RELEASE_S });
+    buses.music.connect(musicDuck.node).connect(voiceDuck.node).connect(master);
     this.voiceDuck = voiceDuck;
     this.master = master;
     this.buses = buses;
@@ -626,7 +611,9 @@ export class WebAudioEngine {
       const start = Math.max(startAt, ctx.currentTime);
       // The ducks follow the shots that actually ring: a missing or undecodable wav dims nothing. A dip
       // holds from now to the end of the delayed, rate-stretched wav.
-      if (shot.duckMusicMs !== undefined) this.duckMusic(ctx, shot.duckMusicMs);
+      if (shot.duckMusicMs !== undefined) {
+        this.musicDuck?.hold(ctx, MUSIC_DUCK_DB, shot.duckMusicMs / 1000);
+      }
       const holdS = start - ctx.currentTime + buffer.duration / (shot.rate ?? 1);
       if (shot.duckWorldDb !== undefined) {
         for (const duck of this.alertDucks) duck.hold(ctx, shot.duckWorldDb, holdS);
@@ -688,14 +675,4 @@ function createPeakLimiter(ctx: AudioContext): DynamicsCompressorNode | null {
   limiter.attack.value = LIMITER_ATTACK_S;
   limiter.release.value = LIMITER_RELEASE_S;
   return limiter;
-}
-
-/** The duck's fade, exponential because the original ramps the audiopath volume linearly in dB. */
-function rampDuck(ctx: AudioContext, bus: GainNode, target: number): void {
-  const now = ctx.currentTime;
-  // An exponential ramp needs a nonzero anchor; the duck only ever moves between 1 and its depth.
-  const from = Math.max(bus.gain.value, MUSIC_DUCK_GAIN);
-  bus.gain.cancelScheduledValues(now);
-  bus.gain.setValueAtTime(from, now);
-  bus.gain.exponentialRampToValueAtTime(target, now + MUSIC_DUCK_RAMP_S);
 }

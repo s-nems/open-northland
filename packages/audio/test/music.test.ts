@@ -5,6 +5,7 @@ import {
   DEFAULT_VOLUMES,
   MENU_MUSIC_TIMING,
   MUSIC_DUCK_GAIN,
+  MUSIC_DUCK_RAMP_S,
   MUSIC_STOP_FADE_S,
   MUSIC_SWITCH_TIMING,
   type MusicCue,
@@ -531,48 +532,60 @@ describe('WebAudioEngine volumes', () => {
 });
 
 describe('WebAudioEngine jingle duck', () => {
+  const JINGLE_HOLD_MS = 3700;
+  const JINGLE_HOLD_S = JINGLE_HOLD_MS / 1000;
   const DUCKED_FRAME = {
-    oneShots: [{ files: ['jingles_birth.wav'], gain: 0.9, pan: 0, key: 'settlerBorn:1', duckMusicMs: 3700 }],
+    oneShots: [
+      { files: ['jingles_birth.wav'], gain: 0.9, pan: 0, key: 'settlerBorn:1', duckMusicMs: JINGLE_HOLD_MS },
+    ],
     ambient: [],
   };
-  const EMPTY_FRAME = { oneShots: [], ambient: [] };
 
-  it('ducks the music while a jingle rings and restores it after the hold', async () => {
+  it('ducks the music while a jingle rings and schedules the lift at the end of the hold', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     const { duck } = mixerGraph(ctx);
     engine.apply(DUCKED_FRAME);
     await flush(); // the duck lands with the wav, once its load resolves
-    expect(duck.gain.ramps.at(-1)?.value).toBeCloseTo(MUSIC_DUCK_GAIN, 5);
-    ctx.currentTime = 1;
-    engine.apply(EMPTY_FRAME); // hold still running - no restore yet
-    expect(duck.gain.ramps).toHaveLength(1);
-    ctx.currentTime = 3.7;
-    engine.apply(EMPTY_FRAME);
-    expect(duck.gain.ramps.at(-1)?.value).toBe(1);
+    // No later frame is needed: a hidden tab that draws nothing still gets its music back.
+    expect(duck.gain.events).toEqual([
+      { kind: 'cancel', value: 1, time: 0 },
+      { kind: 'set', value: 1, time: 0 },
+      { kind: 'ramp', value: MUSIC_DUCK_GAIN, time: MUSIC_DUCK_RAMP_S },
+      { kind: 'set', value: MUSIC_DUCK_GAIN, time: JINGLE_HOLD_S },
+      { kind: 'ramp', value: 1, time: JINGLE_HOLD_S + MUSIC_DUCK_RAMP_S },
+    ]);
   });
 
-  it('extends a running duck instead of re-ramping when a second jingle lands', async () => {
+  it('moves the scheduled lift instead of re-ramping when a second jingle lands', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
     const { duck } = mixerGraph(ctx);
     engine.apply(DUCKED_FRAME);
     await flush();
-    ctx.currentTime = 2;
+    const SECOND_AT_S = 2;
+    const SECOND_HOLD_MS = 3200;
+    ctx.currentTime = SECOND_AT_S;
     engine.apply({
       oneShots: [
-        { files: ['jingles_death.wav'], gain: 0.9, pan: 0, key: 'settlerDied:2', duckMusicMs: 3200 },
+        {
+          files: ['jingles_death.wav'],
+          gain: 0.9,
+          pan: 0,
+          key: 'settlerDied:2',
+          duckMusicMs: SECOND_HOLD_MS,
+        },
       ],
       ambient: [],
     });
     await flush();
-    expect(duck.gain.ramps).toHaveLength(1); // still down - only the hold moved
-    ctx.currentTime = 4; // the first hold has run out, the second is still on
-    engine.apply(EMPTY_FRAME);
-    expect(duck.gain.ramps).toHaveLength(1);
-    ctx.currentTime = 5.2;
-    engine.apply(EMPTY_FRAME);
-    expect(duck.gain.ramps.at(-1)?.value).toBe(1);
+    const liftAt = SECOND_AT_S + SECOND_HOLD_MS / 1000;
+    expect(duck.gain.ramps.filter((ramp) => ramp.value === MUSIC_DUCK_GAIN)).toHaveLength(1);
+    expect(duck.gain.events.slice(-3)).toEqual([
+      { kind: 'cancel', value: 1, time: JINGLE_HOLD_S },
+      { kind: 'set', value: MUSIC_DUCK_GAIN, time: liftAt },
+      { kind: 'ramp', value: 1, time: liftAt + MUSIC_DUCK_RAMP_S },
+    ]);
   });
 
   it('leaves the music alone when the jingle wav fails to load', async () => {

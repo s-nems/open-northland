@@ -12,6 +12,7 @@ import {
   ATTACK_ALERT_MIN_GAP_S,
   AttackAlerts,
   type AttackReport,
+  BUS_DUCK_RAMP_S,
   buildSoundIndex,
   defaultBindings,
   directAudio,
@@ -23,6 +24,7 @@ import {
   OneShotArbiter,
   SoundDriver,
   UI_CUE_GAIN,
+  VOICE_DUCK_RELEASE_S,
   VOICE_MUSIC_DUCK_DB,
   WebAudioEngine,
 } from '../src/index.js';
@@ -305,18 +307,15 @@ describe('alert duck', () => {
     };
     engine.apply({ oneShots: [horn], ambient: [] });
     await flush(); // the duck lands with the wav, once its load resolves
-    for (const duck of ducks)
-      expect(duck.gain.ramps.at(-1)?.value).toBeCloseTo(10 ** (ALERT_DUCK_DB / 20), 5);
+    for (const duck of ducks) expect(duck.gain.ramps[0]?.value).toBeCloseTo(10 ** (ALERT_DUCK_DB / 20), 5);
     // The jingle duck stays put; the voice duck behind it takes the music down its few dB.
     expect(musicDuck.gain.ramps).toHaveLength(0);
     const voiceDuck = musicDuck.connectedTo[0] as FakeGain;
-    expect(voiceDuck.gain.ramps.at(-1)?.value).toBeCloseTo(10 ** (VOICE_MUSIC_DUCK_DB / 20), 5);
+    expect(voiceDuck.gain.ramps[0]?.value).toBeCloseTo(10 ** (VOICE_MUSIC_DUCK_DB / 20), 5);
     expect(buses.ui.connectedTo[0]).not.toBe(ducks[0]);
-    ctx.currentTime = HORN_S - 1;
-    engine.apply({ oneShots: [], ambient: [] });
-    for (const duck of ducks) expect(duck.gain.ramps).toHaveLength(1);
-    ctx.currentTime = HORN_S;
-    engine.apply({ oneShots: [], ambient: [] });
-    for (const duck of [...ducks, voiceDuck]) expect(duck.gain.ramps.at(-1)?.value).toBe(1);
+    // Each lift is scheduled for the horn's end, so it lands with no frame applied in between.
+    for (const duck of ducks)
+      expect(duck.gain.ramps.at(-1)).toEqual({ value: 1, time: HORN_S + BUS_DUCK_RAMP_S });
+    expect(voiceDuck.gain.ramps.at(-1)).toEqual({ value: 1, time: HORN_S + VOICE_DUCK_RELEASE_S });
   });
 });
