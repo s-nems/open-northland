@@ -56,7 +56,14 @@ const VILLAGE_ORIGINS: readonly (readonly [number, number])[] = [
 /** A row of home foundations below the villages, finished together with the villages' own by the city
  *  stage's button. */
 const SITE_ROW_Y = 113;
-const SITE_COLUMNS: readonly number[] = Array.from({ length: 20 }, (_, i) => 4 + i * 7);
+const SITE_COUNT = 20;
+const FIRST_SITE_X = 4;
+/** Tiles from one foundation's column to the next. */
+const SITE_PITCH = 7;
+const SITE_COLUMNS: readonly number[] = Array.from(
+  { length: SITE_COUNT },
+  (_, i) => FIRST_SITE_X + i * SITE_PITCH,
+);
 
 /** The wooded shore: a stand of trees, woodcutters at its edge, open water past them. */
 const FOREST = { x0: 164, x1: 200, dx: 3, y0: 10, y1: 100, dy: 4 } as const;
@@ -270,6 +277,10 @@ function raid(snapshot: WorldSnapshot): StageOrder[] {
   return members.length === 0 ? [] : [{ by: 'admin', command: { kind: 'attackMoveUnitGroup', members } }];
 }
 
+/** Where each stage's camera looks: the middle of the five villages, the answering groups between
+ *  their spot and their targets, and the woodcutters at the forest's edge. */
+const CITY_FOCUS = { x: 72, y: 56 } as const;
+const ORDERS_FOCUS = { x: 200, y: 150 } as const;
 const SHORE_FOCUS = { x: 214, y: 56 } as const;
 
 export const AUDIO_MIX_STAGES: readonly SceneStage[] = [
@@ -281,13 +292,13 @@ export const AUDIO_MIX_STAGES: readonly SceneStage[] = [
   },
   {
     id: 'city',
-    focus: { x: 72, y: 56 },
+    focus: CITY_FOCUS,
     zoom: ZOOM_FAR,
     actions: [{ label: 'finishSites', kind: 'orders', orders: finishSites }],
   },
   {
     id: 'orders',
-    focus: { x: 200, y: 150 },
+    focus: ORDERS_FOCUS,
     zoom: ZOOM_MID,
     actions: ORDER_GROUPS.flatMap((g) => [
       { label: 'move', values: { size: g.size }, kind: 'orders' as const, orders: moveGroup(g.job) },
