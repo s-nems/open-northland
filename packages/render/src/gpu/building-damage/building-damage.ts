@@ -6,8 +6,9 @@ import type { ResolvedLayer } from '../sprite-pool/resolved-layer.js';
 import { DamageAtlas, type DamageTile } from './atlas.js';
 import { DamageEffectTextures } from './effect-textures.js';
 import { DamageEffects, type DamageOrigin } from './effects.js';
+import { DamagePaintCache } from './paint-cache.js';
 import { type GroundContact, groundContacts } from './rubble.js';
-import { analyseSurface, damageLevel, type Fracture, scarSurface } from './surface.js';
+import { analyseSurface, damageLevel, type Fracture } from './surface.js';
 
 export interface DamageSubject {
   readonly container: Container;
@@ -45,7 +46,8 @@ interface Surface {
 interface DamageNode {
   readonly subject: DamageSubject;
   readonly surfaces: Map<Sprite, Surface>;
-  readonly effects: DamageEffects;
+  effects: DamageEffects;
+  detailed: boolean;
   readonly origins: DamageOrigin[];
   bodyOffset: number;
 }
@@ -55,7 +57,9 @@ interface DamageNode {
  * upgrading and a live settings flip all go through the same lifetime. */
 export class BuildingDamage {
   private readonly atlas = new DamageAtlas();
+  private readonly painter = new DamagePaintCache();
   private art: DamageEffectTextures | undefined;
+  private baselineArt: DamageEffectTextures | undefined;
   private readonly nodes = new Map<number, DamageNode>();
   private readonly seen = new Set<number>();
   private scratch: ReturnType<typeof readable2dContext> = null;
@@ -148,15 +152,20 @@ export class BuildingDamage {
       }
       if (node === undefined) {
         if (this.nodes.size >= MAX_DAMAGE_NODES) continue;
-        this.art ??= new DamageEffectTextures();
         node = {
           subject,
           surfaces: new Map(),
-          effects: new DamageEffects(this.art, ref),
+          effects: this.createEffects(ref, detailed),
+          detailed,
           origins: [],
           bodyOffset: 0,
         };
         this.nodes.set(ref, node);
+        subject.container.addChild(node.effects.container);
+      } else if (node.detailed !== detailed) {
+        node.effects.destroy();
+        node.effects = this.createEffects(ref, detailed);
+        node.detailed = detailed;
         subject.container.addChild(node.effects.container);
       }
       this.seen.add(ref);
@@ -172,6 +181,9 @@ export class BuildingDamage {
           this.release(surface);
           this.pixelBytes -= surface.bytes;
           node.surfaces.delete(sprite);
+        } else if (!detailed) {
+          this.release(surface);
+          surface.level = 0;
         }
       }
       const bodyStart = node.bodyOffset % subject.damageBodies.length;
@@ -191,26 +203,14 @@ export class BuildingDamage {
           this.pixelBytes += surface.bytes;
           node.surfaces.set(sprite, surface);
         }
-        if (!detailed) {
-          if (surface.tile !== null) {
-            this.release(surface);
-            surface.level = 0;
-          }
-        } else if (surface.level !== bakedLevel && paints >= bakeCost) {
+        if (detailed && surface.level !== bakedLevel && paints >= bakeCost) {
           paints -= bakeCost;
           firstWorkedBody ??= body;
           surface.tile ??= this.atlas.allocate(surface.width, surface.height, surface.original);
           if (surface.tile !== null) {
             this.atlas.write(
               surface.tile,
-              scarSurface(
-                surface.pixels,
-                surface.width,
-                surface.height,
-                surface.fractures,
-                bakedLevel,
-                surface.backing,
-              ),
+              this.painter.paint(surface, bakedLevel),
               surface.width,
               surface.height,
             );
@@ -281,6 +281,15 @@ export class BuildingDamage {
       this.unreadable.add(original);
       return null;
     }
+  }
+
+  private createEffects(ref: number, detailed: boolean): DamageEffects {
+    if (detailed) {
+      this.art ??= new DamageEffectTextures();
+      return new DamageEffects(this.art, ref);
+    }
+    this.baselineArt ??= new DamageEffectTextures(false);
+    return new DamageEffects(this.baselineArt, ref, false);
   }
 
   private readScaffold(
@@ -355,6 +364,7 @@ export class BuildingDamage {
   }
 
   private release(surface: Surface): void {
+    this.painter.forget(surface);
     if (surface.tile === null) return;
     if (!surface.sprite.destroyed && surface.sprite.texture === surface.tile.texture)
       surface.sprite.texture = surface.original;
@@ -375,6 +385,7 @@ export class BuildingDamage {
     this.nodes.clear();
     this.atlas.destroy();
     this.art?.destroy();
+    this.baselineArt?.destroy();
     this.scratch = null;
   }
 }

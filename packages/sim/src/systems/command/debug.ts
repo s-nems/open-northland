@@ -34,7 +34,7 @@ export function debugKill(world: World, command: Extract<Command, { kind: 'debug
 
 export function debugSetHealth(world: World, command: Extract<Command, { kind: 'debugSetHealth' }>): void {
   const { target, percent } = command;
-  if (percent < 1 || percent > 100) return;
+  if (!Number.isInteger(percent) || percent < 1 || percent > 100) return;
   if (!world.has(target, Building) && !world.has(target, Settler) && !world.has(target, Vehicle)) return;
   const health = world.tryGet(target, Health);
   if (health === undefined || health.max <= 0 || health.hitpoints <= 0) return;

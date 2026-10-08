@@ -24,7 +24,7 @@ export class DamageEffects {
   private readonly flameWeights = new Float32Array(4);
   private readonly embers: Sprite[] = [];
   private readonly chips: Graphics[] = [];
-  private readonly rubble: DamageRubble;
+  private readonly rubble: DamageRubble | undefined;
   private hitTick = -Infinity;
   private readonly pose = { x: 0, y: 0, radius: 0, alpha: 0 };
   private lastHp: number | undefined;
@@ -32,28 +32,31 @@ export class DamageEffects {
   constructor(
     private readonly art: DamageEffectTextures,
     private readonly seed: number,
+    detailed = true,
   ) {
-    this.rubble = new DamageRubble(seed);
-    this.container.addChild(this.rubble.graphics);
-    for (let i = 0; i < 18; i++) {
+    if (detailed) {
+      this.rubble = new DamageRubble(seed);
+      this.container.addChild(this.rubble.graphics);
+    }
+    for (let i = 0; i < (detailed ? 18 : 3); i++) {
       const puff = worldBatched(new Sprite(art.smoke[i % 4] ?? Texture.EMPTY));
       puff.anchor.set(0.5);
       this.smoke.push(puff);
       this.container.addChild(puff);
     }
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < (detailed ? 4 : 0); i++) {
       const flame = worldBatched(new Sprite(art.flames[0] ?? Texture.EMPTY));
       flame.anchor.set(0.5, 0.91);
       this.flames.push(flame);
       this.container.addChild(flame);
     }
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < (detailed ? 4 : 0); i++) {
       const ember = worldBatched(new Sprite(Texture.WHITE));
       ember.tint = i % 2 === 0 ? 0xe8a94b : 0xc56832;
       this.embers.push(ember);
       this.container.addChild(ember);
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < (detailed ? 8 : 0); i++) {
       const length = 1.5 + noise(seed, i + 310) * 3;
       const width = 0.4 + noise(seed, i + 320);
       const chip = worldBatched(new Graphics())
@@ -74,7 +77,7 @@ export class DamageEffects {
     zoom: number,
     ground: readonly GroundContact[],
   ): void {
-    this.rubble.draw(ground, Math.round(level * 16) / 16, detailed);
+    this.rubble?.draw(ground, Math.round(level * 16) / 16, detailed);
     if (this.lastHp !== undefined && hp < this.lastHp - 0.0001) this.hitTick = tick;
     this.lastHp = hp;
     const fire = detailed ? clamp01((level - 3.4) / 0.75) : 0;
@@ -169,6 +172,6 @@ export class DamageEffects {
   }
 
   destroy(): void {
-    this.container.destroy({ children: true });
+    this.container.destroy({ children: true, context: true });
   }
 }

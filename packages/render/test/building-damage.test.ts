@@ -1,8 +1,11 @@
-import { Container, Rectangle, Sprite, Texture, TextureSource } from 'pixi.js';
+import { Container, Graphics, Rectangle, Sprite, Texture, TextureSource } from 'pixi.js';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { readHpFraction } from '../src/data/scene/snapshot-readers/index.js';
 import { DamageAtlas } from '../src/gpu/building-damage/atlas.js';
 import { BuildingDamage } from '../src/gpu/building-damage/building-damage.js';
+import { DamageEffectTextures } from '../src/gpu/building-damage/effect-textures.js';
+import { DamageEffects } from '../src/gpu/building-damage/effects.js';
+import { DamagePaintCache } from '../src/gpu/building-damage/paint-cache.js';
 import { groundContacts } from '../src/gpu/building-damage/rubble.js';
 import { analyseSurface, damageLevel, scarSurface } from '../src/gpu/building-damage/surface.js';
 import * as drawable from '../src/gpu/drawable-resource.js';
@@ -182,6 +185,74 @@ describe('health relative to construction', () => {
 });
 
 describe('visible damage ownership', () => {
+  it('keeps disabled effects smoke-only and creates detailed art only when enabled', () => {
+    mockCanvas();
+    const damage = new BuildingDamage(),
+      house = subject();
+    const draw = (detailed: boolean) =>
+      damage.draw([{ ref: 7, hpFrac: 0.1 }], () => house, 10, undefined, detailed, true, 1);
+    draw(false);
+    const smoke = house.container.children[1];
+    expect(smoke?.children).toHaveLength(3);
+    expect(
+      smoke?.children.every((child) => child instanceof Sprite && child.texture.source.width === 256),
+    ).toBe(true);
+    draw(true);
+    expect(smoke?.destroyed).toBe(true);
+    const detailed = house.container.children[1];
+    expect(detailed?.children.filter((child) => child instanceof Graphics)).toHaveLength(9);
+    draw(false);
+    expect(detailed?.destroyed).toBe(true);
+    expect(house.container.children[1]?.children).toHaveLength(3);
+    damage.destroy();
+  });
+
+  it('releases the atlas and endpoint cache when a hidden body has its effects disabled', () => {
+    mockCanvas();
+    let painter: DamagePaintCache | undefined;
+    const paint = DamagePaintCache.prototype.paint;
+    vi.spyOn(DamagePaintCache.prototype, 'paint').mockImplementation(function (
+      this: DamagePaintCache,
+      surface,
+      level,
+    ) {
+      painter = this;
+      return paint.call(this, surface, level);
+    });
+    const damage = new BuildingDamage(),
+      house = subject();
+    const draw = (detailed: boolean) =>
+      damage.draw([{ ref: 7, hpFrac: 0.5 }], () => house, 10, undefined, detailed, true, 1);
+    for (const hide of ['visibility', 'alpha']) {
+      house.body.visible = true;
+      house.body.alpha = 1;
+      draw(true);
+      expect(painter?.retainedBytes).toBeGreaterThan(0);
+      const baked = house.body.texture;
+      if (hide === 'visibility') house.body.visible = false;
+      else house.body.alpha = 0;
+      draw(false);
+      expect(house.body.texture).toBe(house.texture);
+      expect(baked.destroyed).toBe(true);
+      expect(painter?.retainedBytes).toBe(0);
+    }
+    damage.destroy();
+  });
+
+  it('destroys owned fragment contexts while preserving shared effect textures', () => {
+    mockCanvas();
+    const art = new DamageEffectTextures();
+    const effects = new DamageEffects(art, 7);
+    const contexts = effects.container.children
+      .filter((child): child is Graphics => child instanceof Graphics)
+      .map((child) => child.context);
+    expect(contexts).toHaveLength(9);
+    effects.destroy();
+    expect(contexts.every((context) => context.destroyed)).toBe(true);
+    expect(art.flames.every((texture) => !texture.destroyed && !texture.source.destroyed)).toBe(true);
+    art.destroy();
+  });
+
   it('retains one bake through ordinary rebinds and releases it on repair, cull and a live option flip', () => {
     const reads = mockCanvas();
     const damage = new BuildingDamage();

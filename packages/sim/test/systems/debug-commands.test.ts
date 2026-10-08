@@ -143,6 +143,16 @@ describe('debugKill', () => {
 });
 
 describe('debugSetHealth', () => {
+  it('rejects non-finite and fractional percentages from the in-process admin queue', () => {
+    const sim = fresh();
+    const target = unitWithHealth(sim, 1000);
+    for (const percent of [Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY, 1.5]) {
+      sim.enqueue(adminCommand({ kind: 'debugSetHealth', target, percent }));
+      commandSystem(sim.world, nextTickCtxOf(sim));
+      expect(sim.world.get(target, Health)).toEqual({ hitpoints: 1000, max: 1000 });
+    }
+  });
+
   it('sets exact percentages through the admin queue, preserving max health and repair eligibility', () => {
     const sim = fresh();
     const unit = unitWithHealth(sim, 5000);

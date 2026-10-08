@@ -49,7 +49,11 @@ otherwise unpresented subject retain that view path's baseline rendering.
 
 Only the culled draw list and forced portrait subjects are visited. Body blends are quantized to
 1/16 of a reference level (96 increments across the health range); each body retains a single baked
-blend until this level or the bound source changes. Smoke and fire fade without this quantization.
+blend until this level or the bound source changes. A shared 8 MiB CPU cache retains each recently
+painted body's two neighbouring integer appearances; health changes within that interval only blend
+their pixels. Old pairs are evicted first, and repair, culling, source replacement and disabling the
+option release them. This budget is separate from original pixels and atlas slots, so cache pressure
+does not remove another building's damage. Smoke and fire fade without this quantization.
 One body preparation and two endpoint paints per frame limit the opening burst. A fractional blend
 uses both paint slots; preparation has its own allowance so a changing construction source can still
 be painted that frame. Rotating buildings and their body layers prevents a changing construction site
@@ -59,7 +63,8 @@ camera distance reduces particle detail.
 Damage uses at most 128 visible nodes, 32 MiB of retained original and construction RGBA pixels and
 four 1024-square shared damage atlas pages (16 MiB GPU RGBA plus their CPU canvases). One reusable
 readback canvas and a 2 MiB fire/smoke atlas serve the damage renderer; collapse dust uses a separate
-64 KiB smoke atlas.
+64 KiB smoke atlas. With the option disabled, buildings use three smoke sprites and a shared 64 KiB
+smoke atlas; fire artwork and fragment geometry are created only when detailed effects are enabled.
 Each building retains at most 18 smoke puffs, four flames, four embers and eight impact fragments.
 Repair, culling and disposal return texture slots; collapse takes a lease until its animation ends.
 Atlas saturation keeps the simpler body/effect cue; a partial collapse capture falls back to the

@@ -161,6 +161,16 @@ export function scarSurface(
   const out = scarStage(original, w, h, fractures, lower, backing);
   if (blend === 0) return out;
   const next = scarStage(original, w, h, fractures, lower + 1, backing);
+  return blendSurfaces(out, next, blend);
+}
+
+/** Inputs may be retained endpoints; blending never writes into either one. */
+export function blendSurfaces(
+  lower: Uint8ClampedArray,
+  next: Uint8ClampedArray,
+  blend: number,
+): Uint8ClampedArray {
+  const out = lower.slice();
   for (let at = 0; at < out.length; at += 4) {
     const a = (out[at + 3] ?? 0) * (1 - blend);
     const b = (next[at + 3] ?? 0) * blend;
@@ -193,6 +203,8 @@ function scarStage(
     const cos = Math.cos(f.angle),
       sin = Math.sin(f.angle);
     const extent = Math.max(rx, ry) * 1.65;
+    // Beyond this radius even the largest contour lobe and minimum grit are outside the soot edge.
+    const outside = (Math.max(...f.contour) * 1.55) ** 2;
     for (let y = Math.max(0, Math.floor(f.y - extent)); y < Math.min(h, f.y + extent); y++) {
       for (let x = Math.max(0, Math.floor(f.x - extent)); x < Math.min(w, f.x + extent); x++) {
         const at = (y * w + x) * 4;
@@ -201,6 +213,7 @@ function scarStage(
           py = y - f.y;
         const dx = (px * cos + py * sin) / rx;
         const dy = (-px * sin + py * cos) / ry;
+        if (dx * dx + dy * dy > outside) continue;
         const a = ((Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2)) * f.contour.length;
         const edgeA = f.contour[Math.floor(a) % f.contour.length] ?? 1;
         const edgeB = f.contour[(Math.floor(a) + 1) % f.contour.length] ?? 1;
