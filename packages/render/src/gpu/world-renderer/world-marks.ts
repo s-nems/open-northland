@@ -3,6 +3,7 @@ import type { Container } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
+import { BloodLayer } from '../overlays/blood-layer.js';
 import { FamilyEffectsLayer } from '../overlays/family-effects-layer.js';
 import {
   BadgeLayer,
@@ -44,7 +45,7 @@ export type MarkSlots = Pick<
   | 'selection'
   | 'orderMarkers'
   | 'bones'
-  | 'blood'
+  | 'bloodGround'
   | 'damageSmoke'
   | 'constructionSigns'
   | 'bubbles'
@@ -63,6 +64,7 @@ export interface WorldMarksFrame {
   /** The sprite cull box the screen-bounded marks cull against; damage smoke inherits the pool's cull
    *  through `damaged`, and the selection rings track the selected set instead. */
   readonly viewport: Viewport;
+  readonly fogVisible?: ((x: number, y: number) => boolean) | undefined;
   /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
   readonly renderTime: number;
   readonly damaged: readonly DamagedBuilding[];
@@ -91,8 +93,8 @@ export class WorldMarks {
   private readonly wakes = new ShipWakeLayer();
   private readonly selection = new SelectionLayer();
   private readonly orderMarkers = new OrderMarkerLayer();
-  /** Two containers, because blood paints over the struck body while bones litter the ground under it. */
   private readonly effects = new CombatEffectsLayer();
+  private readonly blood: BloodLayer;
   /** A razed building's sink-into-the-ground transient. Its nodes live inside the depth-sorted sprite
    *  layer rather than a slot of their own, so fighters still occlude around the falling body. */
   private readonly collapses: CollapseLayer;
@@ -117,6 +119,7 @@ export class WorldMarks {
     sheet: SpriteSheet | undefined,
     playerColourOf?: (player: number) => number,
   ) {
+    this.blood = new BloodLayer(spriteLayer);
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);
@@ -127,7 +130,7 @@ export class WorldMarks {
       selection: this.selection.container,
       orderMarkers: this.orderMarkers.container,
       bones: this.effects.groundContainer,
-      blood: this.effects.overlayContainer,
+      bloodGround: this.blood.groundContainer,
       damageSmoke: this.damageSmoke.container,
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
@@ -139,11 +142,16 @@ export class WorldMarks {
 
   /** Fold this frame's sim events into the event-driven layers; `tick` is the integer sim tick they
    *  decay against. */
-  ingest(events: readonly SimEvent[], tick: number): void {
+  ingest(events: readonly SimEvent[], tick: number, snapshot?: WorldSnapshot): void {
+    this.blood.ingest(events, tick, snapshot);
     this.effects.ingest(events, tick);
     this.collapses.ingest(events, tick);
     this.shots.ingest(events, tick);
     this.familyEffects.ingest(events, tick);
+  }
+
+  setBloodEnabled(enabled: boolean): void {
+    this.blood.setEnabled(enabled);
   }
 
   setBonesGfx(gfx: CombatBonesGfx | null): void {
@@ -193,6 +201,7 @@ export class WorldMarks {
     );
     this.orderMarkers.draw(frame.orderMarkers, frame.lostGoals, frame.lostGoalPulse, elevation, viewport);
     this.effects.draw(elevation, viewport, renderTime);
+    this.blood.draw(frame);
     this.collapses.draw(elevation, viewport, renderTime);
     this.shots.draw({ snapshot: frame.snapshot, drawn, elevation, viewport, renderTime });
     this.damageSmoke.draw(frame.damaged, drawn, renderTime, frame.wind);
@@ -213,6 +222,7 @@ export class WorldMarks {
     this.selection.destroy();
     this.orderMarkers.destroy();
     this.effects.destroy();
+    this.blood.destroy();
     this.collapses.destroy();
     this.shots.destroy();
     this.damageSmoke.destroy();

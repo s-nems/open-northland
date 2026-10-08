@@ -1,7 +1,7 @@
 import { RUIN_COLLAPSE_TICKS, type SimEvent } from '@open-northland/sim';
 import { clamp01 } from '../math.js';
 import { ONE } from '../projection/index.js';
-import { frac } from './blood.js';
+import { frac } from './random.js';
 import type { SmokePuffPose } from './smoke.js';
 
 /**

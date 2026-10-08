@@ -1,10 +1,7 @@
 import type { Entity, SimEvent } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
-  BLOOD_LIFETIME_TICKS,
-  BLOOD_RISE,
   BONES_LIFETIME_TICKS,
-  bloodDroplet,
   type CombatEffect,
   effectAlpha,
   foldCombatEffects,
@@ -14,201 +11,93 @@ import {
 import { CombatEffectsLayer } from '../src/gpu/overlays/effects-layer.js';
 import { cameraViewport, makeElevationField } from '../src/index.js';
 
-const at = (hx: number, hy: number) => ({ hx, hy });
-const asEntity = (id: number): Entity => id as Entity;
-const combatHit = (target: number, weaponMainType?: number, structure?: boolean): SimEvent => ({
-  kind: 'combatHit',
-  attacker: asEntity(1),
-  target: asEntity(target),
-  at: at(4, 6),
-  ...(weaponMainType !== undefined ? { weaponMainType } : {}),
-  ...(structure ? { structure } : {}),
-});
-const projectileHit = (target: number, structure?: boolean): SimEvent => ({
-  kind: 'projectileHit',
-  projectile: asEntity(9),
-  shooter: asEntity(1),
-  target: asEntity(target),
-  munitionType: 1,
-  at: at(4, 6),
-  ...(structure ? { structure } : {}),
-});
-const died = (entity: number, withPos = true, animal = false): SimEvent => ({
+const died = (id: number, animal = false): SimEvent => ({
   kind: 'settlerDied',
-  entity: asEntity(entity),
+  entity: id as Entity,
   cause: 'damage',
   player: 0,
-  ...(animal ? { animal } : {}),
-  ...(withPos ? { at: at(8, 10) } : {}),
-});
-const MEAT_GOOD = 21; // any good id works for the fold
-const depleted = (node: number): SimEvent => ({
-  kind: 'resourceDepleted',
-  node: asEntity(node),
-  goodType: MEAT_GOOD,
-  at: at(12, 14),
+  animal,
+  at: { hx: 8, hy: 10 },
 });
 
-describe('foldCombatEffects', () => {
-  it('spawns a blood mark for a melee or ranged hit, and a bones mark for a positioned death', () => {
-    const out = foldCombatEffects([], [combatHit(2), projectileHit(3), died(4)], 100);
-    expect(out.map((e) => e.kind)).toEqual(['blood', 'blood', 'bones']);
-    expect(out.every((e) => e.spawnTick === 100)).toBe(true);
-    // Blood sits at the victim's node, bones at the death node.
-    expect(out[0]).toMatchObject({ hx: 4, hy: 6 });
-    expect(out[2]).toMatchObject({ hx: 8, hy: 10 });
-  });
-
-  it('leaves NO bones for an animal death or a drained resource node - only humans leave bones', () => {
-    const out = foldCombatEffects([], [died(4, true, true), depleted(7)], 100);
-    expect(out).toEqual([]);
-  });
-
-  it('leaves no blood for a blow on a building (structure) - a besieged wall does not bleed', () => {
-    const out = foldCombatEffects(
+describe('combat remains', () => {
+  it('leaves bones for a positioned human death, never an animal or a drained resource', () => {
+    const marks = foldCombatEffects(
       [],
       [
-        combatHit(2, undefined, true),
-        projectileHit(3, true),
-        combatHit(4), // a unit hit in the same frame still bleeds
+        died(4),
+        died(5, true),
+        {
+          kind: 'resourceDepleted',
+          node: 7 as Entity,
+          goodType: 21,
+          at: { hx: 12, hy: 14 },
+        },
+        { kind: 'settlerDied', entity: 8 as Entity, cause: 'damage', player: 0 },
       ],
-      7,
+      100,
     );
-    expect(out.map((e) => e.kind)).toEqual(['blood']);
-    expect(out[0]).toMatchObject({ seed: expect.any(Number) });
+    expect(marks).toEqual([{ kind: 'bones', hx: 8, hy: 10, spawnTick: 100, seed: expect.any(Number) }]);
+    expect(foldCombatEffects(marks, [died(6, true)], 101)).toBe(marks);
   });
 
-  it('leaves no blood for a frame with no hit event (a miss is simply not an event)', () => {
-    // A whiffed swing resolves nothing in the sim, so no combatHit ever reaches the fold.
-    expect(foldCombatEffects([], [], 5)).toEqual([]);
-    const out = foldCombatEffects([], [{ kind: 'settlerBorn', entity: asEntity(1) }], 5);
-    expect(out).toEqual([]);
-  });
-
-  it('drops a death with no position (no `at` → nowhere to place bones)', () => {
-    expect(foldCombatEffects([], [died(4, false)], 1)).toEqual([]);
-  });
-
-  it('leaves one debris mark per ruin node of a wrecked vehicle, and none for a ruinless removal', () => {
-    const wrecked = (entity: number, ruins: { hx: number; hy: number }[]): SimEvent => ({
+  it('leaves one debris mark per ruin node and none for a ruinless removal', () => {
+    const wrecked = (ruins: { hx: number; hy: number }[]): SimEvent => ({
       kind: 'vehicleDestroyed',
-      entity: asEntity(entity),
+      entity: 9 as Entity,
       player: 0,
       vehicleType: 5,
       tribe: 1,
       cause: 'destroyed',
-      at: at(6, 6),
+      at: { hx: 6, hy: 6 },
       ruins,
     });
-    const out = foldCombatEffects([], [wrecked(9, [at(6, 6), at(7, 6), at(6, 7)])], 3);
-    expect(out.map((e) => e.kind)).toEqual(['wreck', 'wreck', 'wreck']);
-    expect(out.map((e) => [e.hx, e.hy])).toEqual([
-      [6, 6],
-      [7, 6],
-      [6, 7],
-    ]);
-    expect(new Set(out.map((e) => e.seed)).size).toBe(3);
-    expect(foldCombatEffects([], [wrecked(9, [])], 3)).toEqual([]);
-    // Debris lingers as long as a bone pile.
-    expect(foldCombatEffects(out, [], WRECK_LIFETIME_TICKS + 4)).toEqual([]);
-    expect(foldCombatEffects(out, [], WRECK_LIFETIME_TICKS + 2)).toHaveLength(3);
-    // A frame that raised and expired nothing hands back the same list, allocating nothing.
-    expect(foldCombatEffects(out, [died(4, true, true)], 4)).toBe(out);
-  });
-
-  it('expires a mark once past its lifetime, keeping younger ones', () => {
-    const marks = foldCombatEffects([], [combatHit(2), died(3)], 0);
-    // One blood and one bone at tick 0, advanced past blood's lifetime but within bones'.
-    const later = foldCombatEffects(marks, [], BLOOD_LIFETIME_TICKS + 1);
-    expect(later.map((e) => e.kind)).toEqual(['bones']);
-    expect(foldCombatEffects(later, [], BONES_LIFETIME_TICKS + 2)).toEqual([]);
-  });
-
-  it('caps the live list, dropping the oldest first', () => {
-    // A full cap of bones from tick 0, still within their long lifetime, flooded the next tick with
-    // fresh hits.
-    const old = foldCombatEffects(
-      [],
-      Array.from({ length: MAX_ACTIVE_EFFECTS }, (_, i) => died(1000 + i)),
-      0,
+    const ruins = [
+      { hx: 6, hy: 6 },
+      { hx: 7, hy: 6 },
+      { hx: 6, hy: 7 },
+    ];
+    const marks = foldCombatEffects([], [wrecked(ruins), wrecked([])], 3);
+    expect(marks.map(({ kind, hx, hy }) => ({ kind, hx, hy }))).toEqual(
+      ruins.map((at) => ({ kind: 'wreck', ...at })),
     );
-    expect(old.length).toBe(MAX_ACTIVE_EFFECTS);
-    const flooded = foldCombatEffects(
-      old,
-      Array.from({ length: 30 }, (_, i) => combatHit(i)),
+    expect(new Set(marks.map((e) => e.seed)).size).toBe(3);
+    expect(foldCombatEffects(marks, [], WRECK_LIFETIME_TICKS + 2)).toHaveLength(3);
+    expect(foldCombatEffects(marks, [], WRECK_LIFETIME_TICKS + 3)).toEqual([]);
+  });
+
+  it('caps remains independently of the number of hits', () => {
+    const marks = foldCombatEffects(
+      [],
+      Array.from({ length: MAX_ACTIVE_EFFECTS + 30 }, (_, i) => died(i)),
       1,
     );
-    expect(flooded.length).toBe(MAX_ACTIVE_EFFECTS);
-    // The 30 freshest are the tick-1 blood marks, and the 30 oldest bones fell off the front.
-    expect(flooded.at(-1)?.kind).toBe('blood');
-    expect(flooded[0]?.spawnTick).toBe(0);
-    expect(flooded.filter((e) => e.kind === 'bones').length).toBe(MAX_ACTIVE_EFFECTS - 30);
+    expect(marks).toHaveLength(MAX_ACTIVE_EFFECTS);
+    const hits: SimEvent[] = Array.from({ length: 500 }, (_, i) => ({
+      kind: 'combatHit',
+      attacker: 1 as Entity,
+      target: i as Entity,
+      at: { hx: i, hy: 6 },
+    }));
+    expect(foldCombatEffects(marks, hits, 2)).toBe(marks);
   });
-});
 
-describe('effectAlpha', () => {
-  const blood: CombatEffect = { kind: 'blood', hx: 0, hy: 0, spawnTick: 0, seed: 1 };
-  it('holds full opacity then fades to zero across the lifetime', () => {
-    expect(effectAlpha(blood, 0)).toBe(1);
-    expect(effectAlpha(blood, 1)).toBe(1); // still within the hold window
-    expect(effectAlpha(blood, BLOOD_LIFETIME_TICKS)).toBe(0);
-    const mid = effectAlpha(blood, Math.round(BLOOD_LIFETIME_TICKS * 0.7));
-    expect(mid).toBeGreaterThan(0);
-    expect(mid).toBeLessThan(1);
-  });
-  it('gives bones a much longer life than blood', () => {
+  it('holds remains, then fades continuously and retires their retained children', () => {
     const bones: CombatEffect = { kind: 'bones', hx: 0, hy: 0, spawnTick: 0, seed: 1 };
-    expect(effectAlpha(bones, BLOOD_LIFETIME_TICKS)).toBe(1); // bones still fresh when blood is gone
-    expect(BONES_LIFETIME_TICKS).toBeGreaterThan(BLOOD_LIFETIME_TICKS);
-  });
-});
-
-describe('bloodDroplet - the spray falls from the wound to the feet', () => {
-  it('starts at the wound and falls DOWN to pool at the feet over time', () => {
-    const start = bloodDroplet(1234, 0, 0);
-    expect(start.y).toBeCloseTo(0, 5); // the wound is the local origin
-    expect(start.landed).toBe(false);
-    // Far past the fall time it pools at exactly the feet, BLOOD_RISE below the wound.
-    const settled = bloodDroplet(1234, 0, 100);
-    expect(settled.landed).toBe(true);
-    expect(settled.y).toBeCloseTo(BLOOD_RISE, 5);
-    expect(settled.stretchY).toBeLessThan(1); // a pool is flat, not a streak
-    expect(settled.stretchX).toBeGreaterThan(1);
-  });
-
-  it('monotonically descends and never falls past the feet', () => {
-    let prevY = Number.NEGATIVE_INFINITY;
-    for (let age = 0; age <= 40; age++) {
-      const d = bloodDroplet(77, 2, age);
-      expect(d.y).toBeGreaterThanOrEqual(0);
-      expect(d.y).toBeLessThanOrEqual(BLOOD_RISE + 1e-9); // clamped at the ground
-      expect(d.y).toBeGreaterThanOrEqual(prevY - 1e-9); // never rises back up
-      prevY = d.y;
-    }
-  });
-
-  it('is deterministic and varies per droplet (seeded, no Math.random)', () => {
-    expect(bloodDroplet(9, 1, 3)).toEqual(bloodDroplet(9, 1, 3));
-    expect(bloodDroplet(9, 1, 3).x).not.toBe(bloodDroplet(9, 2, 3).x); // droplets fan out
-  });
-});
-
-describe('CombatEffectsLayer', () => {
-  const flat = makeElevationField(undefined, 0, 0);
-  // Frames a wide area around the origin so the projected marks are on-screen.
-  const vp = cameraViewport({ offsetX: 400, offsetY: 300, scale: 1 }, 800, 600, 512);
-
-  it('mints one retained node per live mark, split by role, and retires expired ones', () => {
+    expect(effectAlpha(bones, 0)).toBe(1);
+    expect(effectAlpha(bones, BONES_LIFETIME_TICKS * 0.9)).toBeCloseTo(0.5);
+    expect(effectAlpha(bones, BONES_LIFETIME_TICKS)).toBe(0);
     const layer = new CombatEffectsLayer();
-    layer.ingest([combatHit(2), died(3)], 0);
+    const flat = makeElevationField(undefined, 0, 0);
+    const vp = cameraViewport({ offsetX: 400, offsetY: 300, scale: 1 }, 800, 600, 512);
+    layer.ingest([died(2)], 0);
     layer.draw(flat, vp, 0);
-    // Blood goes in the overlay, over the sprites; bones go on the ground, under them.
-    expect(layer.overlayContainer.children.length).toBe(1);
-    expect(layer.groundContainer.children.length).toBe(1);
-    layer.ingest([], BLOOD_LIFETIME_TICKS + 1);
-    layer.draw(flat, vp, BLOOD_LIFETIME_TICKS + 1);
-    expect(layer.overlayContainer.children.length).toBe(0);
-    expect(layer.groundContainer.children.length).toBe(1);
+    const node = layer.groundContainer.children[0];
+    expect(node).toBeDefined();
+    layer.ingest([], BONES_LIFETIME_TICKS);
+    layer.draw(flat, vp, BONES_LIFETIME_TICKS);
+    expect(node?.destroyed).toBe(true);
+    expect(layer.groundContainer.children).toHaveLength(0);
     layer.destroy();
   });
 });

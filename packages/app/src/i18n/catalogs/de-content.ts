@@ -203,6 +203,10 @@ export const deContent = {
       summary:
         'Druiden arbeiten an ihren Kesseln, ein Fischer läuft mit seiner Angel und fängt Fische, und Babys bewegen sich im Leerlauf.',
     },
+    'combat-blood': {
+      title: 'Blut auf dem Schlachtfeld',
+      summary: 'Schwert-, Speer- und Fausttreffer, Pfeile und die Spuren eines tödlichen Treffers.',
+    },
     'combat-gestures': {
       title: 'Schläge und Gesten',
       summary:

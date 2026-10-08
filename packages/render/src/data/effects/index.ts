@@ -1,4 +1,3 @@
-export { BLOOD_RISE, bloodDroplet, frac } from './blood.js';
 export {
   type BuildingCollapse,
   COLLAPSE_LIFETIME_TICKS,
@@ -12,7 +11,6 @@ export {
   MAX_ACTIVE_COLLAPSES,
 } from './collapse.js';
 export {
-  BLOOD_LIFETIME_TICKS,
   BONES_LIFETIME_TICKS,
   type CombatEffect,
   type CombatEffectKind,
@@ -21,6 +19,7 @@ export {
   MAX_ACTIVE_EFFECTS,
   WRECK_LIFETIME_TICKS,
 } from './marks.js';
+export { frac } from './random.js';
 export {
   DAMAGE_SMOKE_STEP,
   damageSmokeEmitters,

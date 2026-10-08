@@ -153,3 +153,9 @@ signposts reach the bakery, Olaf walks to work and the mark lifts.
 `?scene=store-reach` places two bakeries and a headquarters 60 tiles east, with no signposts between
 them. Freya's full bakery names the bread no store in reach takes; Ingrid's empty bakery names the
 ingredients the headquarters holds outside her reach.
+
+`?scene=combat-blood` compares sword, spear and fist hits on the left with arrows and a fatal
+hit on the right. Watch the short sprays settle beneath fighters, the larger stain left by the
+casualty, and the drying marks. In Settings → Graphics, switching Blood off clears existing marks
+even while paused; switching it back on admits new hits. `?scene=battle` exercises the same effect
+with 200 fighters and the bounded stain density.

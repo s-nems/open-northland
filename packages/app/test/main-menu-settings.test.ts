@@ -29,6 +29,13 @@ describe('parseStoredSettings', () => {
     expect(parseStoredSettings('null')).toEqual(defaultSettings());
   });
 
+  it('enables blood by default and preserves an explicit opt-out', () => {
+    for (const raw of [null, '{}', '{"blood":null}', '{"blood":"false"}']) {
+      expect(parseStoredSettings(raw).blood).toBe(true);
+    }
+    expect(parseStoredSettings('{"blood":false}').blood).toBe(false);
+  });
+
   it('round-trips a full settings object', () => {
     const settings = {
       displayMode: 'fullscreen',
@@ -43,6 +50,7 @@ describe('parseStoredSettings', () => {
       environmentMotion: false,
       groundedBuildings: false,
       weather: false,
+      blood: false,
       fpsLimit: 30,
       cursorTheme: 'amber',
       cursorSize: 24,

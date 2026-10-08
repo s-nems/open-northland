@@ -218,6 +218,9 @@ export const plSurfaces = {
       groundedBuildings: 'Osadzenie budynków w terenie',
       groundedBuildingsTip:
         'Budynki, palisady i kamienne mury lekko zapadają się w teren, na którym stoją: miękki cień wzdłuż ścian, kępki trawy na łące i zaspa na śniegu, każde w świetle własnej ściany. Po wyłączeniu zostaje wygląd oryginału.',
+      blood: 'Krew',
+      bloodTip:
+        'Rozpryski przy trafieniach i zanikające ślady na ziemi. Wyłączenie usuwa również istniejące plamy.',
       weather: 'Pogoda',
       weatherTip:
         'Deszcz, śnieg i burze piaskowe tam, gdzie przewiduje je mapa: padające krople i płatki, mgła i światło burzy, mokra i zaśnieżona ziemia, rozpryski, wiatr i grzmoty. Pogoda nigdy nie zmienia samej rozgrywki. Po wyłączeniu niebo jest czyste, a pogody nie słychać.',

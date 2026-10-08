@@ -204,6 +204,10 @@ export const enContent = {
       summary:
         'Druids work at their cauldrons, a fisher walks with his rod and catches fish, and babies fidget while idle.',
     },
+    'combat-blood': {
+      title: 'Blood on the battlefield',
+      summary: 'Sword, spear and fist impacts, arrows, and the aftermath of a fatal hit.',
+    },
     'combat-gestures': {
       title: 'Strikes and gestures',
       summary: 'Civilian, unarmed and archer duels beside resting, eating and sleeping bowmen.',

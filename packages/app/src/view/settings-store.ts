@@ -62,6 +62,8 @@ export interface MenuSettings {
   readonly groundedBuildings: boolean;
   /** Rain, snow and sandstorms: their sky, ground and sound. Presentation only, the sim never reads it. */
   readonly weather: boolean;
+  /** Hit sprays and ground stains; local presentation only. */
+  readonly blood: boolean;
   readonly fpsLimit: FpsLimit;
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
@@ -107,6 +109,7 @@ export function defaultSettings(): MenuSettings {
     environmentMotion: true,
     groundedBuildings: true,
     weather: true,
+    blood: true,
     fpsLimit: null,
     cursorTheme: DEFAULT_CURSOR_THEME,
     cursorSize: DEFAULT_CURSOR_SIZE,
@@ -186,6 +189,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     groundedBuildings:
       typeof record.groundedBuildings === 'boolean' ? record.groundedBuildings : defaults.groundedBuildings,
     weather: typeof record.weather === 'boolean' ? record.weather : defaults.weather,
+    blood: typeof record.blood === 'boolean' ? record.blood : defaults.blood,
     fpsLimit: parseFpsLimit(record.fpsLimit),
     cursorTheme: parseCursorTheme(record.cursorTheme),
     cursorSize: parseCursorSize(record.cursorSize),

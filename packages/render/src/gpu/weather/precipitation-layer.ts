@@ -1,5 +1,5 @@
 import { Geometry, Mesh, Shader, UniformGroup } from 'pixi.js';
-import { frac } from '../../data/effects/blood.js';
+import { frac } from '../../data/effects/random.js';
 import {
   PRECIPITATION_TIME_SPLIT_SECONDS,
   PRECIPITATION_WIND_SPLIT_PX,

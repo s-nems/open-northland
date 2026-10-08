@@ -183,6 +183,7 @@ export class WorldRenderer {
     // Always routed, never only assigned: the magnification mode and shadow style are page globals a
     // previous renderer may have left set, so the baseline has to claim them back.
     this.setGraphicsEnhancements(opts?.enhancements ?? BASELINE_ENHANCEMENTS);
+    this.setBloodEnabled(opts?.bloodEnabled ?? true);
   }
 
   setGraphicsEnhancements(next: WorldEnhancements): void {
@@ -238,6 +239,10 @@ export class WorldRenderer {
   /** The match seed the wind and lightning draw from; the same on every seat and after a load. */
   setWeatherSeed(seed: number): void {
     this.climate = new WeatherClimate(seed);
+  }
+
+  setBloodEnabled(enabled: boolean): void {
+    this.marks.setBloodEnabled(enabled);
   }
 
   /** The weather setting: off draws a clear sky over ground without weather. */
@@ -303,8 +308,8 @@ export class WorldRenderer {
 
   /** Feed this frame's sim events (accumulated across every fixed-timestep sub-step) to the marks that
    *  spawn from them; call before `update` each frame. */
-  ingestCombatEffects(events: readonly SimEvent[], tick: number): void {
-    this.marks.ingest(events, tick);
+  ingestCombatEffects(events: readonly SimEvent[], tick: number, snapshot?: WorldSnapshot): void {
+    this.marks.ingest(events, tick, snapshot);
   }
 
   setCombatBonesGfx(gfx: CombatBonesGfx | null): void {
@@ -445,6 +450,7 @@ export class WorldRenderer {
       elevation: this.elevation,
       viewport: vp,
       renderTime: tick + alpha,
+      fogVisible: fogFrame.fogVisible,
       damaged: this.pool.damagedBuildings(),
       wind: this.wind,
       ships: this.pool.shipsAfloat(),

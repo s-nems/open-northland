@@ -6,7 +6,7 @@ import type { SimEvent } from '@open-northland/sim';
  * exactly.
  */
 
-export type CombatEffectKind = 'blood' | 'bones' | 'wreck';
+export type CombatEffectKind = 'bones' | 'wreck';
 
 export interface CombatEffect {
   readonly kind: CombatEffectKind;
@@ -18,11 +18,6 @@ export interface CombatEffect {
   readonly seed: number;
 }
 
-/**
- * How long a blood splatter lingers before it has fully faded, in sim ticks. Approximated - the
- * original's HIT particle (`logicdefines.inc` PARTICEL_EFFECT HIT 1) has no readable lifetime.
- */
-export const BLOOD_LIFETIME_TICKS = 60;
 /**
  * How long a bone pile lingers before it has fully faded, in sim ticks. Approximated: the original's
  * `cadaver_skeleton` auto-decays after a readable param of 100 (`landscapetypes.ini` transition 13),
@@ -36,15 +31,12 @@ export const BONES_LIFETIME_TICKS = 1800;
  */
 export const WRECK_LIFETIME_TICKS = BONES_LIFETIME_TICKS;
 /** The fraction of a mark's lifetime it holds full opacity before fading over the remaining tail. */
-const BLOOD_FADE_HOLD = 0.35;
 const BONES_FADE_HOLD = 0.8;
 /** The most marks kept alive at once, bounding the per-frame pass; oldest dropped first. */
 export const MAX_ACTIVE_EFFECTS = 400;
 
 function effectLifetime(kind: CombatEffectKind): number {
   switch (kind) {
-    case 'blood':
-      return BLOOD_LIFETIME_TICKS;
     case 'bones':
       return BONES_LIFETIME_TICKS;
     case 'wreck':
@@ -66,14 +58,13 @@ export function effectAlpha(effect: CombatEffect, tick: number): number {
   const life = effectLifetime(effect.kind);
   if (age <= 0) return 1;
   if (age >= life) return 0;
-  const hold = life * (effect.kind === 'blood' ? BLOOD_FADE_HOLD : BONES_FADE_HOLD);
+  const hold = life * BONES_FADE_HOLD;
   if (age <= hold) return 1;
   return 1 - (age - hold) / (life - hold);
 }
 
 /** Whether `ev` adds a mark in {@link foldCombatEffects}. */
 function raisesMark(ev: SimEvent): boolean {
-  if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') return ev.structure !== true;
   if (ev.kind === 'settlerDied') return ev.at !== undefined && ev.animal !== true;
   return ev.kind === 'vehicleDestroyed' && ev.ruins.length > 0;
 }
@@ -88,10 +79,8 @@ function seedFrom(sourceId: number, tick: number): number {
 const RUIN_SEED_STRIDE = 64;
 
 /**
- * Fold this frame's combat events into the live mark list: a blood splatter per landed blow, a bone
- * pile per human death (an animal death leaves no bones - see the event's `animal` doc for the source
- * basis), a debris mark per ruin node of a wrecked vehicle (the sim drew the nodes; a scripted removal
- * and a ship carry none), expired marks dropped and the list capped at {@link MAX_ACTIVE_EFFECTS}.
+ * A bone pile per positioned human death, debris per vehicle ruin node, and a capped expiry queue.
+ * Animals leave no bones (the event documents the source basis); ships carry no ruin nodes.
  */
 export function foldCombatEffects(
   active: readonly CombatEffect[],
@@ -103,16 +92,7 @@ export function foldCombatEffects(
   if (!expired && !events.some(raisesMark)) return active;
   const next = active.filter((e) => tick - e.spawnTick < effectLifetime(e.kind));
   for (const ev of events) {
-    if (ev.kind === 'combatHit' || ev.kind === 'projectileHit') {
-      if (ev.structure === true) continue; // a besieged wall doesn't bleed - impact SFX only, no blood
-      next.push({
-        kind: 'blood',
-        hx: ev.at.hx,
-        hy: ev.at.hy,
-        spawnTick: tick,
-        seed: seedFrom(ev.target, tick),
-      });
-    } else if (ev.kind === 'settlerDied' && ev.at !== undefined && ev.animal !== true) {
+    if (ev.kind === 'settlerDied' && ev.at !== undefined && ev.animal !== true) {
       next.push({
         kind: 'bones',
         hx: ev.at.hx,

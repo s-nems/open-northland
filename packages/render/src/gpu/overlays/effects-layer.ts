@@ -1,8 +1,6 @@
 import type { SimEvent } from '@open-northland/sim';
 import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
 import {
-  BLOOD_RISE,
-  bloodDroplet,
   type CombatEffect,
   type CombatEffectKind,
   effectAlpha,
@@ -28,29 +26,13 @@ interface MarkGfx {
   readonly scale: number;
 }
 
-/**
- * The combat-feedback layer - the transient marks a fight leaves: a blood spurt where a blow lands, a
- * bone pile where a unit falls, debris where a cart or catapult is wrecked. A client-side projection of
- * the sim's one-shot events, never sim state, with one world-space node per mark, keyed by the mark
- * object, which the fold keeps for the mark's life.
- * Blood is a named procedural approximation; bones and debris draw the decoded sprites when supplied.
- */
+/** Bones and wreckage linger at the event's ground anchor. Decoded sprites replace procedural
+ * fallbacks when available; retained nodes live for the capped mark's lifetime. */
 
-/** Blood: dark and bright red droplets, with a dark rim so a drop reads on any ground. */
-const BLOOD_DARK = 0x6b0f0f;
-const BLOOD_BRIGHT = 0xb51818;
-const BLOOD_RIM = 0x2a0505;
 /** Bone: off-white shafts with a dark outline so a pile reads on grass, dirt, or snow. */
 const BONE_FILL = 0xe8e0cf;
 const BONE_OUTLINE = 0x4a4436;
 
-/** Number of droplets in a blood spray, and their base radius range (world px). */
-const BLOOD_DROPS = 6;
-const BLOOD_MIN_R = 1.0;
-const BLOOD_MAX_R = 2.2;
-/** Seed-index offset for a droplet's radius, clear of `bloodDroplet`'s `i*3+{0,1,2}` motion band (max
- *  index 17 at 6 droplets) so radius and motion seeds never collide. */
-const BLOOD_RADIUS_SEED = 100;
 /** World-px length and thickness of one bone shaft in a pile. */
 const BONE_LEN = 9;
 const BONE_THICK = 2.4;
@@ -64,8 +46,6 @@ const PLANKS_PER_WRECK = 3;
 export class CombatEffectsLayer {
   /** Added below the sprite layer by the renderer, so a fighter walks over the bones. */
   readonly groundContainer = new Container();
-  /** Added above the sprite layer by the renderer, so the spurt shows on the struck body. */
-  readonly overlayContainer = new Container();
   /** The live marks - the fold's output, replaced on each ingest. */
   private effects: readonly CombatEffect[] = [];
   /** One retained node per mark. */
@@ -97,11 +77,10 @@ export class CombatEffectsLayer {
     for (const effect of this.effects) {
       const alpha = effectAlpha(effect, tick);
       if (alpha <= 0) continue; // retired below, since it never enters `seen`
-      // The lifted feet point (`projectNode`, unboxed); blood then rides up onto the body.
+      // The lifted feet point (`projectNode`, unboxed).
       const x = effect.hx * TILE_HALF_W;
       const feetY = (effect.hy * TILE_HALF_H) / 2 - terrainLiftAtNode(elevation, effect.hx, effect.hy);
-      const y = feetY - (effect.kind === 'blood' ? BLOOD_RISE : 0);
-      // Cull by the feet point, so a body-lifted spurt near the top edge still shows.
+      // Cull by the ground anchor.
       let node = this.nodes.get(effect);
       if (!isVisible(viewport, x, feetY)) {
         retainOffscreen(node, effect, this.seen);
@@ -109,60 +88,28 @@ export class CombatEffectsLayer {
       }
       if (node === undefined) {
         node = this.makeMark(effect.kind, effect.seed);
-        (effect.kind === 'blood' ? this.overlayContainer : this.groundContainer).addChild(node);
+        this.groundContainer.addChild(node);
         this.nodes.set(effect, node);
       }
       node.visible = true;
-      node.position.set(x, y);
+      node.position.set(x, feetY);
       node.alpha = alpha;
-      // `tick` is interpolated render time, so the fall stays smooth at any frame rate.
-      if (effect.kind === 'blood') animateBlood(node, effect, tick);
       this.seen.add(effect);
     }
     // Retire nodes whose mark is gone (expired / capped out this frame).
-    retireUndrawn(this.nodes, this.seen, (node) => node.destroy());
+    retireUndrawn(this.nodes, this.seen, (node) => node.destroy({ children: true }));
   }
 
   destroy(): void {
     this.groundContainer.destroy({ children: true });
-    this.overlayContainer.destroy({ children: true });
     this.nodes.clear();
   }
 
-  /** A mark's node, minted once. Its origin is the anchor the layer positions: the wound for blood, the
-   *  feet for bones and debris. */
+  /** A mark's node, minted once at its feet anchor. */
   private makeMark(kind: CombatEffectKind, seed: number): Container {
-    if (kind === 'blood') return makeBlood(seed);
     const gfx = kind === 'bones' ? this.bones : this.wreck;
     if (gfx !== undefined && gfx.frames.length > 0) return makeMarkSprite(gfx, seed);
     return kind === 'bones' ? drawBones(new Graphics(), seed) : drawPlanks(new Graphics(), seed);
-  }
-}
-
-/** A blood spray: seeded droplet blobs, all minted stacked at the wound origin. */
-function makeBlood(seed: number): Container {
-  const c = new Container();
-  for (let i = 0; i < BLOOD_DROPS; i++) {
-    const g = new Graphics();
-    const r = BLOOD_MIN_R + frac(seed, i + BLOOD_RADIUS_SEED) * (BLOOD_MAX_R - BLOOD_MIN_R);
-    const color = i % 2 === 0 ? BLOOD_DARK : BLOOD_BRIGHT;
-    g.circle(0, 0, r + 0.5).fill({ color: BLOOD_RIM, alpha: 0.5 });
-    g.circle(0, 0, r).fill({ color });
-    c.addChild(g);
-  }
-  return c;
-}
-
-/** Advance a blood node's droplets to their `tick` positions; child order is droplet index. */
-function animateBlood(node: Container, effect: CombatEffect, tick: number): void {
-  const age = tick - effect.spawnTick;
-  const drops = node.children;
-  for (let i = 0; i < drops.length; i++) {
-    const d = bloodDroplet(effect.seed, i, age);
-    const drop = drops[i];
-    if (drop === undefined) continue;
-    drop.position.set(d.x, d.y);
-    drop.scale.set(d.stretchX, d.stretchY);
   }
 }
 

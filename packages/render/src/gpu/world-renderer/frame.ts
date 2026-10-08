@@ -51,6 +51,8 @@ export const BASELINE_ENHANCEMENTS: WorldEnhancements = {
 };
 
 export interface WorldRendererOptions {
+  /** Local presentation preference; enabled by default, independent of graphics quality. */
+  readonly bloodEnabled?: boolean;
   readonly enhancements?: WorldEnhancements;
   /** The loaded bob atlas + bindings; `undefined` draws placeholder geometry for every entity. */
   readonly sheet?: SpriteSheet | undefined;

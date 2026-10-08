@@ -201,6 +201,10 @@ export const plContent = {
       summary:
         'Druidzi pracują przy kotłach, rybak idzie z wędką i łowi, a niemowlęta bawią się podczas postoju.',
     },
+    'combat-blood': {
+      title: 'Krew na polu bitwy',
+      summary: 'Ciosy mieczem, włócznią i pięścią, strzały oraz ślad po śmiertelnym trafieniu.',
+    },
     'combat-gestures': {
       title: 'Ciosy i gesty',
       summary: 'Pojedynki cywila, wojownika i łuczników; obok odpoczynek, posiłek i sen z łukiem.',

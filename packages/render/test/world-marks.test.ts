@@ -75,29 +75,30 @@ describe('WorldMarks', () => {
     marks.destroy();
   });
 
-  it('routes bones to the ground slot and blood to the overlay slot', () => {
-    const { marks } = marksIn();
+  it('routes bones and stains to the ground and airborne blood to the sorted sprites', () => {
+    const { marks, sprites } = marksIn();
     marks.ingest([died], 100);
     marks.draw(frameOf({ renderTime: 100 }));
     expect(marks.slots.bones.children).toHaveLength(1);
-    expect(marks.slots.blood.children).toHaveLength(0);
+    expect(marks.slots.bloodGround.children).toHaveLength(0);
 
     marks.ingest([hit], 101);
     marks.draw(frameOf({ renderTime: 101 }));
-    expect(marks.slots.blood.children).toHaveLength(1);
+    expect(marks.slots.bloodGround.children).toHaveLength(1);
+    expect(sprites.children).toHaveLength(1);
     marks.destroy();
   });
 
   it('fades a mark on the interpolated render clock, not the integer tick it was ingested at', () => {
     const { marks } = marksIn();
     marks.ingest([hit], 0);
-    marks.draw(frameOf({ renderTime: 30 }));
-    const blood = marks.slots.blood.children[0];
+    marks.draw(frameOf({ renderTime: 600 }));
+    const blood = marks.slots.bloodGround.children[0];
     const atTick = blood?.alpha;
-    expect(atTick).toBeLessThan(1); // past BLOOD_FADE_HOLD, so the fade is running
+    expect(atTick).toBeLessThan(1); // the ground stain is fading
 
     // Only the interpolated clock can move a fade between two integer ticks.
-    marks.draw(frameOf({ renderTime: 30.5 }));
+    marks.draw(frameOf({ renderTime: 600.5 }));
     expect(blood?.alpha).toBeLessThan(atTick ?? 0);
     marks.destroy();
   });

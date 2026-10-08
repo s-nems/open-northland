@@ -1,5 +1,5 @@
 import { TILE_HALF_H, TILE_HALF_W } from '../projection/index.js';
-import { frac } from './blood.js';
+import { frac } from './random.js';
 
 /**
  * The water a ship pushes aside - an Open Northland enhancement; the original draws no water around

@@ -1,4 +1,4 @@
-import { frac } from '../effects/blood.js';
+import { frac } from '../effects/random.js';
 import type { WeatherField } from './field.js';
 import { smoothstep } from './precipitation.js';
 import { WEATHER_KINDS, type WeatherKind } from './types.js';

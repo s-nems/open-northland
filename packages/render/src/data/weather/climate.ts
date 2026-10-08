@@ -1,4 +1,4 @@
-import { frac } from '../effects/blood.js';
+import { frac } from '../effects/random.js';
 import type { Viewport } from '../projection/viewport.js';
 import { type WeatherField, weatherAmountAt } from './field.js';
 import {

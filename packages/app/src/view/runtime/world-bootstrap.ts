@@ -51,6 +51,7 @@ export async function createWorldRenderer(
   const stored = readStoredSettings();
   return new WorldRenderer(app, {
     enhancements: enhancementsOf(stored),
+    bloodEnabled: stored.blood,
     sheet,
     viewSmoothing: true,
     spriteSmoothing: stored.spriteSmoothing,

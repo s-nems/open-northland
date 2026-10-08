@@ -29,6 +29,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
+  readonly setBloodEnabled: (enabled: boolean) => void;
 }
 
 /** An explicit session URL choice wins over the persisted sound preference. */
@@ -66,6 +67,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.minimapFrame !== undefined) deps.setMinimapFrame(patch.minimapFrame);
     if (patch.selectionStyle !== undefined) deps.setSelectionStyle(patch.selectionStyle);
     if (patch.groupNumbers !== undefined) deps.setGroupNumbersShown(patch.groupNumbers);
+    if (patch.blood !== undefined) deps.setBloodEnabled(patch.blood);
     if (patch.weather !== undefined) deps.setWeatherEnabled(patch.weather);
     if (ENHANCEMENT_KEYS.some((key) => patch[key] !== undefined)) {
       deps.setGraphicsEnhancements(enhancementsOf(current));

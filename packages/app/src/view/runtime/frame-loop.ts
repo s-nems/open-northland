@@ -324,7 +324,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const constructionSigns = constructionSignsFor(snap);
     const settlerBubbles = settlerBubblesFor(snap);
     // Blood and bones decay against the sim tick, so a pause or a screenshot reproduces.
-    renderer.ingestCombatEffects(presentEvents, snap.tick);
+    renderer.ingestCombatEffects(presentEvents, snap.tick, snap);
     // Every frame, stepped or not: a playing clip ends on the tick, and its trunk shows with that frame.
     presentFellings?.(presentEvents, snap.tick);
     // A script's earthquake shakes the drawn world alone; picking and the HUD keep the steady frame.

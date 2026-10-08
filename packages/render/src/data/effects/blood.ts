@@ -1,69 +1,163 @@
-/**
- * Blood-spurt motion in world px over render-ticks: an eye-calibrated approximation of droplets
- * spraying from the wound, falling under gravity and pooling at the feet. A mark's spawn and decay
- * belong to `marks.ts`; this module owns only where a droplet is at an age.
- */
+import { entityById, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import { ONE, TILE_HALF_H, TILE_HALF_W, tileToScreen } from '../projection/index.js';
+import { frac } from './random.js';
 
-/** A deterministic float in [0, 1) from a seed and an index - no `Math.random`, so a capture repeats. */
-export function frac(seed: number, i: number): number {
-  let x = (seed ^ Math.imul(i + 1, 0x9e3779b1)) >>> 0;
-  x = Math.imul(x ^ (x >>> 15), 0x85ebca6b) >>> 0;
-  x = Math.imul(x ^ (x >>> 13), 0xc2b2ae35) >>> 0;
-  return ((x ^ (x >>> 16)) >>> 0) / 0x100000000;
+/** Authored presentation, not original behavior. Durations use the 12 Hz simulation clock. */
+export const BLOOD_LIFETIME_TICKS = 720;
+export const BLOOD_AIR_TICKS = 11;
+export const MAX_BLOOD_MARKS = 256;
+export const MAX_BLOOD_PER_NODE = 3;
+
+export type BloodProfile = 'cut' | 'pierce' | 'blunt';
+export interface BloodMark {
+  readonly target: number;
+  readonly hx: number;
+  readonly hy: number;
+  readonly spawnTick: number;
+  readonly seed: number;
+  /** Heading in the ground plane, before isometric foreshortening. */
+  readonly heading: number;
+  readonly profile: BloodProfile;
+  readonly fatal: boolean;
 }
 
-/** Wound height above the victim's feet node in world px: the droplets fall exactly this far to pool.
- *  A viking body is ~32 px tall, so this puts the spurt at chest height. */
-export const BLOOD_RISE = 13;
-/** Render-ticks a droplet takes to fall from the wound to the feet. */
-const BLOOD_FALL_TICKS = 8;
-/** Downward acceleration in world px / render-tick², set so a droplet released at rest falls
- *  {@link BLOOD_RISE} in exactly {@link BLOOD_FALL_TICKS} ticks. */
-const BLOOD_GRAVITY = (2 * BLOOD_RISE) / (BLOOD_FALL_TICKS * BLOOD_FALL_TICKS);
-/** Initial spread of the droplets around the wound point, world px. */
-const BLOOD_SPRAY = 3;
-/** Max horizontal drift speed as a droplet falls, world px / render-tick. */
-const BLOOD_DRIFT = 0.9;
-/** Max per-droplet start delay in render-ticks - the drips stagger so the blood reads as running. */
-const BLOOD_DRIP_STAGGER = 5;
-/** Vertical elongation per unit fall-speed, and its cap - a fast drop stretches into a streak. */
-const BLOOD_STREAK = 0.35;
-const BLOOD_MAX_STREAK = 2.3;
-/** A landed droplet's stretch - flattened vertically and spread horizontally into a small pool. */
-const BLOOD_POOL_STRETCH_Y = 0.5;
-const BLOOD_POOL_STRETCH_X = 1.6;
+type Hit = Extract<SimEvent, { kind: 'combatHit' | 'projectileHit' }>;
+const isHit = (event: SimEvent): event is Hit =>
+  (event.kind === 'combatHit' || event.kind === 'projectileHit') && event.structure !== true;
 
-/** A droplet's transform in blood-node local space: the origin is the wound, y grows down toward the
- *  feet at {@link BLOOD_RISE}. */
-interface BloodDroplet {
-  readonly x: number;
-  readonly y: number;
-  readonly landed: boolean;
-  /** Vertical scale: > 1 while falling (a streak), < 1 once pooled. */
-  readonly stretchY: number;
-  /** Horizontal scale: ≤ 1 while falling, > 1 once pooled. */
-  readonly stretchX: number;
+/** Events alone create blood; no health polling, bleeding from starvation, or simulation writes. */
+export function foldBloodMarks(
+  active: readonly BloodMark[],
+  events: readonly SimEvent[],
+  tick: number,
+  snapshot?: WorldSnapshot,
+  projectileOrigins?: ReadonlyMap<number, { readonly hx: number; readonly hy: number }>,
+): readonly BloodMark[] {
+  const expired = active.some((mark) => tick - mark.spawnTick >= BLOOD_LIFETIME_TICKS);
+  if (!expired && !events.some(isHit)) return active;
+  const next = active.filter((mark) => tick - mark.spawnTick < BLOOD_LIFETIME_TICKS);
+  const deaths = new Set<number>();
+  const lastHits = new Map<number, Hit>();
+  for (const event of events) {
+    if (event.kind === 'settlerDied') deaths.add(event.entity);
+    if (isHit(event)) lastHits.set(event.target, event);
+  }
+  let ordinal = 0;
+  for (const event of events) {
+    if (!isHit(event)) continue;
+    const source = event.kind === 'combatHit' ? event.attacker : event.projectile;
+    const seed =
+      (Math.imul(event.target, 2654435761) ^
+        Math.imul(source, 2246822519) ^
+        Math.imul(ordinal++, 3266489917) ^
+        tick) >>>
+      0;
+    const origin =
+      event.kind === 'combatHit' && snapshot !== undefined
+        ? (entityById(snapshot, event.attacker)?.components.Position as { x: number; y: number } | undefined)
+        : undefined;
+    const launch = event.kind === 'projectileHit' ? projectileOrigins?.get(event.projectile) : undefined;
+    const from =
+      launch !== undefined
+        ? { x: launch.hx * TILE_HALF_W, y: (launch.hy * TILE_HALF_H) / 2 }
+        : origin === undefined
+          ? undefined
+          : tileToScreen(origin.x / ONE, origin.y / ONE);
+    const dx = from === undefined ? 0 : event.at.hx * TILE_HALF_W - from.x;
+    const dy = from === undefined ? 0 : event.at.hy * TILE_HALF_H - from.y * 2;
+    next.push({
+      ...event.at,
+      target: event.target,
+      spawnTick: tick,
+      seed,
+      heading: dx === 0 && dy === 0 ? frac(seed, 0) * Math.PI * 2 : Math.atan2(dy, dx),
+      profile:
+        event.kind === 'projectileHit' || event.weaponMainType === 2
+          ? 'pierce'
+          : event.weaponMainType === 1
+            ? 'blunt'
+            : 'cut',
+      fatal: deaths.has(event.target) && lastHits.get(event.target) === event,
+    });
+  }
+  // Keep the newest few impressions at each node. Separate budgets preserve bones and wreckage.
+  const perNode = new Map<string, number>();
+  const retained: BloodMark[] = [];
+  for (let i = next.length - 1; i >= 0 && retained.length < MAX_BLOOD_MARKS; i--) {
+    const mark = next[i];
+    if (mark === undefined) continue;
+    const key = `${mark.hx},${mark.hy}`;
+    const count = perNode.get(key) ?? 0;
+    if (count >= MAX_BLOOD_PER_NODE) continue;
+    perNode.set(key, count + 1);
+    retained.push(mark);
+  }
+  return retained.reverse();
 }
 
-/**
- * Where droplet `i` of a splatter is at `age` render-ticks after the hit. A closed form with no
- * integration state, so a fractional (interpolated) age is as valid as a whole tick.
- */
-export function bloodDroplet(seed: number, i: number, age: number): BloodDroplet {
-  // Stride 3 per droplet: spread, drift, delay. The drawing layer's radius seeds use an index band
-  // kept disjoint from this one.
-  const x0 = (frac(seed, i * 3) - 0.5) * 2 * BLOOD_SPRAY;
-  const vx = (frac(seed, i * 3 + 1) - 0.5) * 2 * BLOOD_DRIFT;
-  const delay = frac(seed, i * 3 + 2) * BLOOD_DRIP_STAGGER;
-  const t = Math.max(0, age - delay);
-  const landed = t >= BLOOD_FALL_TICKS;
-  const tc = landed ? BLOOD_FALL_TICKS : t; // freeze motion at the landing frame
-  const speed = BLOOD_GRAVITY * tc;
-  return {
-    x: x0 + vx * tc,
-    y: 0.5 * BLOOD_GRAVITY * tc * tc,
-    landed,
-    stretchY: landed ? BLOOD_POOL_STRETCH_Y : Math.min(1 + speed * BLOOD_STREAK, BLOOD_MAX_STREAK),
-    stretchX: landed ? BLOOD_POOL_STRETCH_X : 1 / (1 + speed * BLOOD_STREAK * 0.4),
-  };
+export function bloodFade(age: number): number {
+  return 1 - smoothUnit((age - BLOOD_LIFETIME_TICKS * 0.6) / (BLOOD_LIFETIME_TICKS * 0.4));
+}
+
+export const smoothUnit = (value: number): number => {
+  const t = Math.max(0, Math.min(1, value));
+  return t * t * (3 - 2 * t);
+};
+
+export interface BloodDrop {
+  readonly vx: number;
+  readonly vy: number;
+  readonly rise: number;
+  readonly lift: number;
+  readonly delay: number;
+  readonly flight: number;
+  readonly size: number;
+}
+
+const GRAVITY = 1.2;
+export const GROUND_SQUASH = 0.5;
+
+/** Mint once per visible burst; all trajectory noise stays out of the frame loop. */
+export function bloodDrops(mark: BloodMark, bodyRise = 20): readonly BloodDrop[] {
+  const count = (mark.profile === 'blunt' ? 3 : mark.profile === 'pierce' ? 4 : 6) + (mark.fatal ? 2 : 0);
+  return Array.from({ length: count }, (_, i) => {
+    const offset = i * 8;
+    const angle =
+      mark.heading + (frac(mark.seed, offset + 1) - 0.5) * (mark.profile === 'pierce' ? 0.9 : 2.4);
+    const speed = (0.55 + frac(mark.seed, offset + 2) * 1.7) * (mark.profile === 'blunt' ? 0.6 : 1);
+    const rise = bodyRise * (0.9 + frac(mark.seed, offset + 3) * 0.2);
+    const lift = 0.2 + frac(mark.seed, offset + 4) * 1.1;
+    return {
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed * GROUND_SQUASH,
+      rise,
+      lift,
+      delay: frac(mark.seed, offset + 5) * 1.2,
+      flight: (lift + Math.sqrt(lift * lift + 2 * GRAVITY * rise)) / GRAVITY,
+      size: (0.45 + frac(mark.seed, offset + 6) * 0.5) * (mark.fatal ? 1.15 : 1),
+    };
+  });
+}
+
+export interface BloodDropPose {
+  x: number;
+  y: number;
+  groundY: number;
+  angle: number;
+  stretch: number;
+  landed: boolean;
+  visible: boolean;
+}
+
+/** Closed-form ballistics, clamped at contact; the caller reuses its pose scratch each frame. */
+export function bloodDroplet(drop: BloodDrop, age: number, out: BloodDropPose): void {
+  out.landed = age >= drop.delay + drop.flight;
+  const t = out.landed ? drop.flight : Math.max(0, age - drop.delay);
+  const fallSpeed = GRAVITY * t - drop.lift;
+  out.x = drop.vx * t;
+  out.groundY = drop.vy * t;
+  out.y = out.groundY - (out.landed ? 0 : Math.max(0, drop.rise + drop.lift * t - 0.5 * GRAVITY * t * t));
+  out.angle = Math.atan2(drop.vy + fallSpeed, drop.vx);
+  out.stretch = 1 + Math.min(1.1, Math.hypot(drop.vx, drop.vy + fallSpeed) * 0.16);
+  out.visible = age >= drop.delay;
 }

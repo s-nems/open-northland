@@ -1,5 +1,5 @@
 import { type Container, Graphics } from 'pixi.js';
-import { frac } from '../../data/effects/blood.js';
+import { frac } from '../../data/effects/random.js';
 import { LIGHTNING_FLASH_SECONDS } from '../../data/weather/climate.js';
 import type { LightningStrike } from '../../data/weather/types.js';
 

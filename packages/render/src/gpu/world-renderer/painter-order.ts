@@ -18,7 +18,8 @@ export interface WorldSceneLayers {
   /** Over the sprites: an order's acknowledgement or a refused goal must not hide behind the rock or tree
    *  it marks. */
   readonly orderMarkers: Container;
-  readonly blood: Container;
+  /** Flat stains beneath fog, selection and every actor. */
+  readonly bloodGround: Container;
   readonly damageSmoke: Container;
   readonly constructionSigns: Container;
   readonly bubbles: Container;
@@ -33,6 +34,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.terrain,
     layers.decorShadows,
     layers.decor,
+    layers.bloodGround,
     layers.wakes,
     layers.weatherGround,
     layers.fog,
@@ -43,7 +45,6 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.bones,
     layers.sprites,
     layers.orderMarkers,
-    layers.blood,
     layers.damageSmoke,
     layers.constructionSigns,
     layers.bubbles,

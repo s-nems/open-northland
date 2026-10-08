@@ -1,6 +1,6 @@
 import { clamp01 } from '../math.js';
 import type { WindSway } from '../weather/climate.js';
-import { frac } from './blood.js';
+import { frac } from './random.js';
 
 /**
  * The pure half of the damage-smoke overlay: how many smoke emitters a damaged building shows and

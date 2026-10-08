@@ -257,6 +257,9 @@ export const deSurfaces = {
       groundedBuildings: 'Gebäudeübergänge zum Boden',
       groundedBuildingsTip:
         'Gebäude, Palisaden und Steinmauern fügen sich in ihren Untergrund ein: weiche Schatten entlang der Wände, Grasbüschel auf Wiesen und Schneewehen im Schnee, jeweils passend zur Beleuchtung der Wand. Aus behält das ursprüngliche Aussehen bei.',
+      blood: 'Blut',
+      bloodTip:
+        'Blutspritzer bei Treffern und verblassende Flecken am Boden. Ausschalten entfernt auch vorhandenes Blut.',
       weather: 'Wetter',
       weatherTip:
         'Regen, Schnee und Sandstürme nach Vorgabe der Karte: Tropfen und Flocken, Nebel und Sturmlicht, nasser und verschneiter Boden, Spritzer, Wind und Donner. Das Wetter beeinflusst den Spielablauf nicht. Aus zeigt klaren Himmel und schaltet Wettergeräusche ab.',

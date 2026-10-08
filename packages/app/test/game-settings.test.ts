@@ -47,6 +47,16 @@ it('shows or hides the control-group numbers live, hidden until the player turns
   expect(h.persist).toHaveBeenCalledWith({ groupNumbers: true });
 });
 
+it('persists and switches blood immediately, including while paused', async () => {
+  const h = harness();
+  expect(h.settings.current().blood).toBe(true);
+  await h.settings.update({ blood: false });
+  expect(h.setBloodEnabled).toHaveBeenCalledWith(false);
+  expect(h.persist).toHaveBeenCalledWith({ blood: false });
+  await h.settings.update({ blood: true });
+  expect(h.setBloodEnabled).toHaveBeenLastCalledWith(true);
+});
+
 it('reframes the mounted minimap when another frame is picked', async () => {
   const h = harness();
   await h.settings.update({ minimapFrame: 'urnes' });
@@ -69,6 +79,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setSelectionStyle = vi.fn();
   const setGroupNumbersShown = vi.fn();
   const setWeatherEnabled = vi.fn();
+  const setBloodEnabled = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
       ...defaultSettings(),
@@ -92,6 +103,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,
+    setBloodEnabled,
     ...overrides,
   });
   return {
@@ -110,6 +122,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,
+    setBloodEnabled,
   };
 }
 
