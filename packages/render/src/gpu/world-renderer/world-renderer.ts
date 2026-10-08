@@ -243,6 +243,7 @@ export class WorldRenderer {
 
   setBloodEnabled(enabled: boolean): void {
     this.marks.setBloodEnabled(enabled);
+    this.pool.setBloodEnabled(enabled);
   }
 
   /** The weather setting: off draws a clear sky over ground without weather. */
@@ -310,6 +311,7 @@ export class WorldRenderer {
    *  spawn from them; call before `update` each frame. */
   ingestCombatEffects(events: readonly SimEvent[], tick: number, snapshot?: WorldSnapshot): void {
     this.marks.ingest(events, tick, snapshot);
+    this.pool.ingestBlood(events, tick);
   }
 
   setCombatBonesGfx(gfx: CombatBonesGfx | null): void {

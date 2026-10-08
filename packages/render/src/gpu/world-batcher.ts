@@ -29,7 +29,7 @@ import {
 } from './pixel-art-registry.js';
 import { glProgramFor } from './program-source.js';
 import type { ShadowStyle } from './shadow-style.js';
-import { spriteSelectionEffect } from './sprite-selection-effect.js';
+import { spriteBloodEffect, spriteSelectionEffect } from './sprite-selection-effect.js';
 import { WorldAttributeBuffer } from './world-attribute-buffer.js';
 import {
   LUT_SLOTS,
@@ -90,7 +90,7 @@ export function routeWorldBatches(renderer: Renderer): void {
 }
 
 /** Vertex layout: Pixi's six (x, y, u, v, colour, textureIdAndRound) + element flags + frame UV box. */
-export const WORLD_VERTEX_SIZE = 12;
+export const WORLD_VERTEX_SIZE = 13;
 const STRIDE = WORLD_VERTEX_SIZE * 4;
 export const WORLD_ATTRIBUTE_OFFSETS = {
   aPosition: 0,
@@ -100,6 +100,7 @@ export const WORLD_ATTRIBUTE_OFFSETS = {
   aFlags: 6 * 4,
   aFrame: 7 * 4,
   aSelection: 11 * 4,
+  aBlood: 12 * 4,
 } as const;
 
 /** A world sprite drawn through a palette LUT names its row here; its texture names the LUT. */
@@ -149,6 +150,7 @@ export function worldBatchGeometry(attributeBuffer: Buffer, indexBuffer: Buffer)
       aFlags: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aFlags },
       aFrame: { buffer: attributeBuffer, format: 'float32x4', stride: STRIDE, offset: o.aFrame },
       aSelection: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aSelection },
+      aBlood: { buffer: attributeBuffer, format: 'float32', stride: STRIDE, offset: o.aBlood },
     },
     indexBuffer,
   });
@@ -219,6 +221,7 @@ function defineWorldBatcher(): WorldBatcherClass {
    *  by {@link beginElement} so the packers allocate nothing per element. */
   const packing = {
     selection: 0,
+    blood: 0,
     textureIdAndRound: 0,
     argb: 0,
     flags: 0,
@@ -251,6 +254,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     f32[index + 7] = packing.maxU;
     f32[index + 8] = packing.maxV;
     f32[index + 9] = packing.selection;
+    f32[index + 10] = packing.blood;
     return index + WORLD_VERTEX_SIZE - 2;
   }
 
@@ -439,6 +443,7 @@ function defineWorldBatcher(): WorldBatcherClass {
     ): void {
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
       packing.selection = spriteSelectionEffect(renderableOf(element));
+      packing.blood = spriteBloodEffect(renderableOf(element));
       beginElement(element.texture, textureIdAndRound, element.color, this.flagsOf(element));
       const { a, b, c, d, tx, ty } = element.transform;
       const { positions, uvs } = element;
@@ -464,6 +469,7 @@ function defineWorldBatcher(): WorldBatcherClass {
       const texture = element.texture;
       const textureIdAndRound = (textureId << 16) | (element.roundPixels & 0xffff);
       packing.selection = spriteSelectionEffect(renderableOf(element));
+      packing.blood = spriteBloodEffect(renderableOf(element));
       beginElement(texture, textureIdAndRound, element.color, this.flagsOf(element));
       const { a, b, c, d, tx, ty } = element.transform;
       const { minX, minY, maxX, maxY } = element.bounds;

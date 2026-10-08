@@ -126,7 +126,7 @@ export class BloodLayer {
       const x = mark.hx * TILE_HALF_W;
       const baseY = (mark.hy * TILE_HALF_H) / 2;
       const y = baseY - terrainLiftAtNode(elevation, mark.hx, mark.hy);
-      if (alpha <= 0 || !isVisible(screenViewport ?? viewport, x, y, 64)) continue;
+      if (alpha <= 0 || !isVisible(screenViewport ?? viewport, x, y, 80)) continue;
       let node = this.nodes.get(mark);
       if (node === undefined) {
         let bodyRise = this.bodyRises.get(mark);
@@ -150,7 +150,7 @@ export class BloodLayer {
           (fogVisible === undefined || fogVisible((mark.hx - rowStagger(mark.hy / 2)) / 2, mark.hy / 2));
       }
       node.ground.alpha = alpha * (1 - water.surface(mark.hx, mark.hy));
-      node.ground.tint = dryColour(age);
+      node.ground.tint = dryColour(age, mark.seed);
       this.animate(node, mark, age);
       this.seen.add(mark);
     }
@@ -163,7 +163,7 @@ export class BloodLayer {
     const ground = this.groundContainer.addChild(new Container());
     const air = airborne ? this.spriteLayer.addChild(new Container()) : undefined;
     const jet = air?.addChild(worldBatched(new Sprite(textures.stain(mark.seed + 3))));
-    if (air !== undefined) air.tint = 0xc72620;
+    if (air !== undefined) air.tint = 0xffffff;
     if (jet !== undefined) {
       jet.anchor.set(0.1, 0.5);
       jet.position.set(0, -bodyRise);
@@ -180,6 +180,8 @@ export class BloodLayer {
       flying?.anchor.set(0.5);
       const stain = surface.addChild(worldBatched(new Sprite(textures.stain(mark.seed + i * 7))));
       stain.anchor.set(0.5);
+      const shade = Math.round(205 + frac(mark.seed, i + 150) * 50);
+      stain.tint = (shade << 16) | (shade << 8) | shade;
       stain.position.set(motion.vx * motion.flight, (motion.vy * motion.flight) / GROUND_SQUASH);
       stain.rotation = frac(mark.seed, 110 + i) * Math.PI * 2;
       stain.visible = false;
@@ -256,11 +258,11 @@ export class BloodLayer {
   }
 }
 
-/** Keep a red pigment through drying so the battlefield remains legible against grass. */
-function dryColour(age: number): number {
-  const dry = smoothUnit((age - 72) / 480);
-  const r = Math.round(174 - dry * 58);
-  const g = Math.round(24 + dry * 2);
-  const b = Math.round(22 + dry * 1);
+/** Multiplicative drying over an already coloured atlas; each impression oxidises at its own rate. */
+function dryColour(age: number, seed: number): number {
+  const dry = smoothUnit((age - 48) / (360 + frac(seed, 97) * 240));
+  const r = Math.round(255 - dry * 45);
+  const g = Math.round(255 - dry * 95);
+  const b = Math.round(255 - dry * 110);
   return (r << 16) | (g << 8) | b;
 }

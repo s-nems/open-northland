@@ -3,6 +3,17 @@ import { Graphics, Sprite } from 'pixi.js';
 /** One world-batch value: negative draws a tinted silhouette; positive lifts colours towards white. */
 export class SelectionSprite extends Sprite {
   private effect = 0;
+  private blood = 0;
+
+  get bloodEffect(): number {
+    return this.blood;
+  }
+
+  set bloodEffect(packed: number) {
+    if (packed === this.blood) return;
+    this.blood = packed;
+    this.onViewUpdate();
+  }
 
   get selectionEffect(): number {
     return this.effect;
@@ -31,4 +42,8 @@ export function spriteSelectionEffect(sprite: object | null): number {
   return sprite instanceof SelectionSprite || sprite instanceof SelectionGraphics
     ? sprite.selectionEffect
     : 0;
+}
+
+export function spriteBloodEffect(sprite: object | null): number {
+  return sprite instanceof SelectionSprite ? sprite.bloodEffect : 0;
 }

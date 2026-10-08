@@ -1,3 +1,4 @@
+import type { Entity } from '@open-northland/sim';
 import { Container, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Viewport } from '../../src/data/projection/index.js';
@@ -6,6 +7,7 @@ import { HumanPaletteLut } from '../../src/gpu/human-palette-lut.js';
 import { PalettedQuad } from '../../src/gpu/paletted-sprite/index.js';
 import { LayerBinder } from '../../src/gpu/sprite-pool/bind-layers.js';
 import { type PoolFrame, SpritePool } from '../../src/gpu/sprite-pool/index.js';
+import { spriteBloodEffect } from '../../src/gpu/sprite-selection-effect.js';
 import { TextureCache } from '../../src/gpu/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../../src/index.js';
 import { entity, snapshotOf } from '../support/fixtures.js';
@@ -180,4 +182,42 @@ describe('SpritePool - a pan re-places the kept paletted quads', () => {
     expect(quad().position.x).toBe(expected.position.x);
     expect(quad().position.x).not.toBe(quad().offsetX);
   });
+});
+
+it('keeps blood on visible bodies across culling and clears even detached fighters when disabled', () => {
+  const lut = syntheticHumanLut();
+  const { pool, layer } = poolWith(lut);
+  const world = snapshotOf([human(1, WEST), human(2, WEST)], 1);
+  const frame = frameOf(world);
+  pool.reconcile(frame);
+  const bodies = layer.children
+    .flatMap((c) => c.children)
+    .filter((c) => c instanceof PalettedQuad && !c.glow);
+  expect(bodies).toHaveLength(2);
+  expect(bodies.map(spriteBloodEffect)).toEqual([0, 0]);
+  pool.ingestBlood(
+    [
+      {
+        kind: 'combatHit',
+        attacker: 1 as Entity,
+        target: 2 as Entity,
+        weaponMainType: 3,
+        at: { hx: 0, hy: 4 },
+      },
+    ],
+    1,
+  );
+  pool.reconcile({ ...frame, tick: 2 });
+  expect(bodies.every((b) => spriteBloodEffect(b) > 0)).toBe(true);
+  pool.reconcile({ ...frame, tick: 3, viewport: EAST_ONLY });
+  pool.reconcile({ ...frame, tick: 120 });
+  expect(bodies.every((b) => spriteBloodEffect(b) > 0)).toBe(true);
+  pool.reconcile({ ...frame, tick: 121, viewport: EAST_ONLY });
+  pool.setBloodEnabled(false);
+  expect(bodies.map(spriteBloodEffect)).toEqual([0, 0]);
+  pool.setBloodEnabled(true);
+  pool.reconcile({ ...frame, tick: 122 });
+  expect(bodies.map(spriteBloodEffect)).toEqual([0, 0]);
+  pool.destroy();
+  lut.source.destroy();
 });

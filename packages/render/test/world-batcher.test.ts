@@ -17,6 +17,7 @@ import {
   setWorldShadowStyle,
 } from '../src/gpu/pixel-art-registry.js';
 import { DEFAULT_SHADOW_STYLE } from '../src/gpu/shadow-style.js';
+import { SelectionSprite } from '../src/gpu/sprite-selection-effect.js';
 import {
   installWorldBatcher,
   routeWorldBatches,
@@ -69,7 +70,7 @@ describe('world batcher layout', () => {
       expect(attribute?.offset, name).toBe(offset);
       expect(attribute?.stride, name).toBe(stride);
     }
-    expect(WORLD_ATTRIBUTE_OFFSETS.aSelection + 4).toBe(stride);
+    expect(WORLD_ATTRIBUTE_OFFSETS.aBlood + 4).toBe(stride);
     batcher.destroy();
   });
 });
@@ -112,6 +113,31 @@ describe('world batcher element flags', () => {
     expect(Array.from(floats.slice(at, at + 4))).toEqual([2 / 8, 4 / 8, 6 / 8, 6 / 8]);
     batcher.destroy();
     source.destroy();
+  });
+
+  it('packs body blood on all four vertices and resets it for the next clean sprite', () => {
+    const WorldBatcher = installWorldBatcher();
+    const batcher = new WorldBatcher({ maxTextures: PAGES_AND_LUT });
+    const sprite = new SelectionSprite(Texture.WHITE);
+    const packed = 237 + 180 * 256 + 247 * 65536;
+    sprite.bloodEffect = packed;
+    const floats = new Float32Array(WORLD_VERTEX_SIZE * 4);
+    const element = {
+      texture: sprite.texture,
+      renderable: sprite,
+      transform: { a: 1, b: 0, c: 0, d: 1, tx: 0, ty: 0 },
+      bounds: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+      color: 0xffffffff,
+      roundPixels: 0,
+    } as unknown as DefaultBatchableQuadElement;
+    for (const value of [packed, 0]) {
+      sprite.bloodEffect = value;
+      batcher.packQuadAttributes(element, floats, new Uint32Array(floats.buffer), 0, 0);
+      for (let i = 0; i < 4; i++)
+        expect(floats[i * WORLD_VERTEX_SIZE + WORLD_ATTRIBUTE_OFFSETS.aBlood / 4]).toBe(value);
+    }
+    sprite.destroy();
+    batcher.destroy();
   });
 
   it('flags a shadow only under a style', () => {

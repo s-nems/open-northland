@@ -1,3 +1,4 @@
+import { BLOOD_COAT_GLSL } from './blood-coat-shader.js';
 import { PIXEL_ART_MAGNIFY_GLSL } from './pixel-art-magnify.js';
 import type { GlslProgramSource } from './program-source.js';
 import { type ShadowStyle, shadowTintChannels } from './shadow-style.js';
@@ -37,12 +38,14 @@ in vec2 aTextureIdAndRound;
 in float aFlags;
 in vec4 aFrame;
 in float aSelection;
+in float aBlood;
 out vec4 vColor;
 out vec2 vUV;
 out float vTextureId;
 flat out float vFlags;
 flat out vec4 vFrame;
 flat out float vSelection;
+flat out float vBlood;
 uniform mat3 uProjectionMatrix;
 uniform mat3 uWorldTransformMatrix;
 uniform vec4 uWorldColorAlpha;
@@ -55,6 +58,7 @@ void main(void) {
   vFlags = aFlags;
   vFrame = aFrame;
   vSelection = aSelection;
+  vBlood = aBlood;
   gl_Position = vec4((uProjectionMatrix * uWorldTransformMatrix * vec3(aPosition, 1.0)).xy, 0.0, 1.0);
   if (aTextureIdAndRound.x == 1.0) {
     gl_Position.xy = (floor(((gl_Position.xy * 0.5 + 0.5) * uResolution) + 0.5) / uResolution) * 2.0 - 1.0;
@@ -121,6 +125,7 @@ in float vTextureId;
 flat in float vFlags;
 flat in vec4 vFrame;
 flat in float vSelection;
+flat in float vBlood;
 out vec4 finalColor;
 uniform sampler2D uTextures[${maxTextures}];
 // 0 off (Pixi's default sampling) / 1 sampler filter + frame-clamped minification / 2 sharp / 3 xbr
@@ -140,6 +145,7 @@ const float PALETTED_MIN_FOOTPRINT = 0.000001;
  *  they average evenly: four taps cannot cover more, so the spread stops there. */
 const float MINIFY_TAP_OFFSET = 0.25;
 const float MINIFY_TAP_WEIGHT = 0.25;${shading.declarations}
+${BLOOD_COAT_GLSL}
 // Resolved once per fragment: the bound page's size, the element's flags and its palette row.
 vec2 texSize;
 int flags;
@@ -293,6 +299,10 @@ void main(void) {
   if (vSelection < 0.0) {
     finalColor = vec4(vColor.rgb * outColor.a, vColor.a * outColor.a);
     return;
+  }
+  if (vBlood > 0.0 && outColor.a > 0.0) {
+    vec2 bodyUV = (vUV - vFrame.xy) / max(vFrame.zw - vFrame.xy, vec2(0.000001));
+    outColor.rgb = coatBlood(outColor.rgb / outColor.a, bodyUV, vBlood) * outColor.a;
   }
   ${shading.output}
   finalColor.rgb = mix(finalColor.rgb, vec3(finalColor.a), max(0.0, vSelection));

@@ -1,5 +1,6 @@
-import type { WorldSnapshot } from '@open-northland/sim';
+import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
+import { BloodCoats } from '../../data/effects/blood-coats.js';
 import type { GhostSource } from '../../data/fog/index.js';
 import {
   type Camera,
@@ -35,6 +36,7 @@ import type { TextureCache } from '../texture-cache.js';
 import { restoreStash, type StashedVisibility, stashHidden } from '../visibility.js';
 import { LayerBinder } from './bind-layers.js';
 import { FrameEpoch } from './bind-stamp.js';
+import { coatBody } from './blood-coats.js';
 import { atRest } from './motion.js';
 import { anchorOf, boundsOf, type DamagedBuilding, keelOf, pixelHit, type ShipAfloat } from './pick.js';
 import type { EntityBounds, PooledEntity } from './pooled-entity.js';
@@ -207,10 +209,30 @@ export class SpritePool {
   private readonly portrait: PortraitSubject;
   private readonly binder: LayerBinder;
   private readonly selectionEffects: SelectionEffects;
+  private readonly bloodCoats = new BloodCoats();
   private readonly epoch = new FrameEpoch();
   /** Last {@link reconcile}'s device grid, so the portrait pass re-places the meshes the way it drew
    *  them. */
   private snapResolution: number | undefined;
+
+  setBloodEnabled(enabled: boolean): void {
+    this.bloodCoats.setEnabled(enabled);
+    if (!enabled) for (const pe of this.pool.values()) coatBody(pe, 0);
+  }
+
+  ingestBlood(events: readonly SimEvent[], tick: number): void {
+    this.bloodCoats.ingest(events, tick);
+    for (const event of events) {
+      if ((event.kind !== 'combatHit' && event.kind !== 'projectileHit') || event.structure === true)
+        continue;
+      const victim = this.pool.get(event.target);
+      if (victim !== undefined) victim.held = -1;
+      if (event.kind === 'combatHit') {
+        const attacker = this.pool.get(event.attacker);
+        if (attacker !== undefined) attacker.held = -1;
+      }
+    }
+  }
 
   /**
    * @param spriteLayer the renderer's shared, depth-sorted entity layer, also holding the tall map objects.
@@ -370,6 +392,7 @@ export class SpritePool {
   /** Present `item` on `pe` and apply its selection emphasis; whether any emphasis applies. */
   private presentItemAt(pe: PooledEntity, item: DrawItem, frame: PoolFrame, continuous: boolean): boolean {
     this.presentPooled(pe, item, frame, continuous);
+    if (item.kind === 'settler') coatBody(pe, this.bloodCoats.packed(item.ref, frame.tick + frame.alpha));
     const flagged = frame.flagged?.has(item.ref) === true;
     const style =
       item.ghost === true || item.portraitOnly === true
@@ -399,6 +422,7 @@ export class SpritePool {
   /** Whether `pe` draws the same whatever the frame alpha: what a still frame may leave untouched. */
   private holdsStill(pe: PooledEntity, item: DrawItem): boolean {
     return (
+      this.bloodCoats.packed(item.ref, pe.motion.tick) === 0 &&
       pe.reveal === undefined &&
       !pe.bound.retrying &&
       resolvesWithoutClock(item) &&
@@ -722,6 +746,8 @@ export class SpritePool {
           this.spriteLayer.addChild(pe.container);
           const layers = presentEntity(pe, item, frame, this.sheet);
           this.binder.bind(pe, item, layers, frame, this.frameId);
+          if (item.kind === 'settler')
+            coatBody(pe, this.bloodCoats.packed(item.ref, frame.tick + frame.alpha));
           pe.boundsFrame = MAP_VIEW_BOUNDS_FRAME;
           pe.container.zIndex = pooledDepth(pe, item);
           pe.viewSeen = this.frameId;
@@ -773,6 +799,7 @@ export class SpritePool {
    * the sprite layer can't reach.
    */
   destroy(): void {
+    this.bloodCoats.setEnabled(false);
     for (const pe of this.pool.values()) {
       this.selectionEffects.clear(pe);
       pe.container.destroy({ children: true });

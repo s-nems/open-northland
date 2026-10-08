@@ -119,7 +119,7 @@ export const GROUND_SQUASH = 0.5;
 
 /** Mint once per visible burst; all trajectory noise stays out of the frame loop. */
 export function bloodDrops(mark: BloodMark, bodyRise = 20): readonly BloodDrop[] {
-  const count = (mark.profile === 'blunt' ? 4 : mark.profile === 'pierce' ? 6 : 9) + (mark.fatal ? 4 : 0);
+  const count = (mark.profile === 'blunt' ? 5 : mark.profile === 'pierce' ? 8 : 12) + (mark.fatal ? 6 : 0);
   return Array.from({ length: count }, (_, i) => {
     const offset = i * 8;
     const angle =
@@ -134,7 +134,7 @@ export function bloodDrops(mark: BloodMark, bodyRise = 20): readonly BloodDrop[]
       lift,
       delay: frac(mark.seed, offset + 5) * 1.2,
       flight: (lift + Math.sqrt(lift * lift + 2 * GRAVITY * rise)) / GRAVITY,
-      size: (1.1 + frac(mark.seed, offset + 6) * 0.95) * (mark.fatal ? 1.25 : 1),
+      size: (1.3 + frac(mark.seed, offset + 6) * 1.25) * (mark.fatal ? 1.3 : 1),
     };
   });
 }
