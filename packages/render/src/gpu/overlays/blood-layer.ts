@@ -7,12 +7,10 @@ import {
   type BloodMark,
   bloodDroplet,
   bloodDrops,
-  bloodFade,
-  foldBloodMarks,
   GROUND_SQUASH,
   smoothUnit,
 } from '../../data/effects/blood.js';
-import { frac } from '../../data/effects/random.js';
+import { BloodHistory } from '../../data/effects/blood-history.js';
 import {
   isVisible,
   rowStagger,
@@ -24,8 +22,8 @@ import { screenDepth } from '../../data/scene/index.js';
 import { type ElevationField, terrainLiftAtNode, type WaterField } from '../../data/terrain/index.js';
 import type { DrawnGeometry } from '../sprite-pool/index.js';
 import { worldBatched } from '../world-batcher.js';
+import { BloodGround } from './blood-ground.js';
 import { BloodTextures } from './blood-textures.js';
-import { retireUndrawn } from './retained-pool.js';
 
 export interface BloodFrame {
   readonly elevation: ElevationField;
@@ -38,32 +36,40 @@ export interface BloodFrame {
   readonly drawn?: DrawnGeometry;
 }
 
-interface DropNode {
-  readonly motion: BloodDrop;
-  air: Sprite | undefined;
-  readonly stain: Sprite;
+interface AirNode {
+  readonly container: Container;
+  readonly jet: Sprite;
+  readonly strength: number;
+  readonly drops: readonly { readonly motion: BloodDrop; readonly sprite: Sprite }[];
 }
-interface BloodNode {
-  readonly ground: Container;
-  air: Container | undefined;
-  jet: Sprite | undefined;
-  readonly pool: Sprite;
-  readonly drops: readonly DropNode[];
-  readonly poolScale: number;
-  settled: boolean;
+interface Place {
+  readonly x: number;
+  readonly baseY: number;
+  rise: number | undefined;
+  elevation: ElevationField;
+  y: number;
+  water: WaterField;
+  surface: number;
 }
 
-/** Blood in flight sorts at the victim's feet; settled blood lives below fog and selection.
- * Only on-screen marks own sprites. The bounded event history permits a later camera return. */
+/** Visible ground is one retained mesh; only the short airborne phase owns sorted sprites. */
 export class BloodLayer {
   readonly groundContainer = new Container();
   private enabled = true;
-  private marks: readonly BloodMark[] = [];
+  private readonly places = new Map<BloodMark, Place>();
+  private readonly history = new BloodHistory((mark) => this.places.delete(mark));
   private readonly launches = new Map<number, { hx: number; hy: number; tick: number }>();
-  private readonly bodyRises = new Map<BloodMark, number>();
-  private readonly nodes = new Map<BloodMark, BloodNode>();
-  private readonly seen = new Set<BloodMark>();
+  private readonly nodes = new Map<BloodMark, AirNode>();
+  private readonly candidates: BloodMark[] = [];
+  private visible: BloodMark[] = [];
+  private nextVisible: BloodMark[] = [];
+  private readonly seenAir = new Set<BloodMark>();
   private textures: BloodTextures | undefined;
+  private ground: BloodGround | undefined;
+  private revision = -1;
+  private view: Viewport | undefined;
+  private elevation: ElevationField | undefined;
+  private water: WaterField | undefined;
   private readonly pose: BloodDropPose = {
     x: 0,
     y: 0,
@@ -76,21 +82,33 @@ export class BloodLayer {
 
   constructor(private readonly spriteLayer: Container) {}
 
+  /** Diagnostic snapshot; rendering reads the spatial index instead. */
+  get marks(): readonly BloodMark[] {
+    return this.history.values();
+  }
+
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (enabled) return;
-    this.marks = [];
+    this.history.clear();
     this.launches.clear();
-    this.bodyRises.clear();
-    for (const node of this.nodes.values()) this.retire(node);
+    this.places.clear();
+    for (const node of this.nodes.values()) node.container.destroy({ children: true });
     this.nodes.clear();
+    this.candidates.length = 0;
+    this.visible.length = 0;
+    this.nextVisible.length = 0;
+    this.ground?.clear();
+    this.revision = -1;
   }
 
   ingest(events: readonly SimEvent[], tick: number, snapshot?: WorldSnapshot): void {
     if (!this.enabled) return;
-    // The source of a flying arrow survives its shooter's movement or death. Missed/hidden impacts
-    // have no matching event here, so expire their origins and bound a large volley independently.
-    for (const [id, launch] of this.launches) if (tick - launch.tick > 360) this.launches.delete(id);
+    // Launches retain their origins after a shooter's movement/death; order permits prefix expiry.
+    for (const [id, launch] of this.launches) {
+      if (tick - launch.tick <= 360) break;
+      this.launches.delete(id);
+    }
     for (const event of events) {
       if (event.kind !== 'projectileLaunched') continue;
       this.launches.set(event.projectile, { ...event.at, tick });
@@ -99,165 +117,169 @@ export class BloodLayer {
         if (oldest !== undefined) this.launches.delete(oldest);
       }
     }
-    const next = foldBloodMarks(this.marks, events, tick, snapshot, this.launches);
-    if (next !== this.marks) {
-      const live = new Set(next);
-      for (const mark of this.bodyRises.keys()) if (!live.has(mark)) this.bodyRises.delete(mark);
-      this.marks = next;
-    }
+    this.history.ingest(events, tick, snapshot, this.launches);
     for (const event of events)
       if (event.kind === 'projectileHit' || event.kind === 'projectileMissed')
         this.launches.delete(event.projectile);
   }
 
-  draw({
-    elevation,
-    viewport,
-    screenViewport,
-    renderTime: tick,
-    water,
-    fogVisible,
-    drawn,
-  }: BloodFrame): void {
-    this.seen.clear();
-    for (const mark of this.marks) {
-      const age = tick - mark.spawnTick;
-      const alpha = bloodFade(age);
-      const x = mark.hx * TILE_HALF_W;
-      const baseY = (mark.hy * TILE_HALF_H) / 2;
-      const y = baseY - terrainLiftAtNode(elevation, mark.hx, mark.hy);
-      if (alpha <= 0 || !isVisible(screenViewport ?? viewport, x, y, 80)) continue;
-      let node = this.nodes.get(mark);
-      if (node === undefined) {
-        let bodyRise = this.bodyRises.get(mark);
-        if (bodyRise === undefined) {
-          const bounds = drawn?.boundsOf(mark.target);
-          bodyRise =
-            bounds === undefined ? 20 : Math.max(5, Math.min(26, (bounds.maxY - bounds.minY) * 0.42));
-          // Keep the first sampled height after culling: later animation frames must not move old stains.
-          this.bodyRises.set(mark, bodyRise);
-        }
-        node = this.makeNode(mark, bodyRise, age < BLOOD_AIR_TICKS);
-        this.nodes.set(mark, node);
-      }
-      node.ground.position.set(x, y);
-      if (node.air !== undefined) {
-        node.air.position.set(x, y);
-        // Same anchor as a settler, half a paint step above it; foreground fighters still occlude it.
-        node.air.zIndex = screenDepth(x, baseY, 'settler') + 0.125;
-        node.air.visible =
-          age < BLOOD_AIR_TICKS &&
-          (fogVisible === undefined || fogVisible((mark.hx - rowStagger(mark.hy / 2)) / 2, mark.hy / 2));
-      }
-      node.ground.alpha =
-        alpha * (0.25 + 0.75 * Math.sqrt(mark.amount)) * (1 - water.surface(mark.hx, mark.hy));
-      node.ground.tint = dryColour(age, mark.seed);
-      this.animate(node, mark, age);
-      this.seen.add(mark);
+  draw(frame: BloodFrame): void {
+    if (!this.enabled) return;
+    const { renderTime: tick, fogVisible, elevation, water } = frame;
+    this.history.expire(tick);
+    const view = frame.screenViewport ?? frame.viewport;
+    if (
+      this.revision !== this.history.revision ||
+      this.elevation !== elevation ||
+      this.water !== water ||
+      !sameView(this.view, view)
+    ) {
+      this.reconcile(frame, view);
+      this.revision = this.history.revision;
+      this.view = { ...view };
+      this.elevation = elevation;
+      this.water = water;
     }
-    retireUndrawn(this.nodes, this.seen, (node) => this.retire(node));
+    this.ground?.draw(tick);
+    for (const [mark, node] of this.nodes) {
+      const age = tick - mark.spawnTick;
+      if (age >= BLOOD_AIR_TICKS) {
+        node.container.destroy({ children: true });
+        this.nodes.delete(mark);
+        continue;
+      }
+      node.container.visible =
+        fogVisible === undefined || fogVisible((mark.hx - rowStagger(mark.hy / 2)) / 2, mark.hy / 2);
+      this.animate(node, age);
+    }
   }
 
-  private makeNode(mark: BloodMark, bodyRise: number, airborne: boolean): BloodNode {
-    this.textures ??= new BloodTextures();
-    const textures = this.textures;
-    const ground = this.groundContainer.addChild(new Container());
-    const air = airborne ? this.spriteLayer.addChild(new Container()) : undefined;
-    const jet = air?.addChild(worldBatched(new Sprite(textures.stain(mark.seed + 3))));
-    if (air !== undefined) air.tint = 0xffffff;
-    if (jet !== undefined) {
-      jet.anchor.set(0.1, 0.5);
-      jet.position.set(0, -bodyRise);
-      jet.rotation = Math.atan2(Math.sin(mark.heading) * GROUND_SQUASH, Math.cos(mark.heading));
+  private reconcile(frame: BloodFrame, view: Viewport): void {
+    this.history.query(view, frame.elevation.maxLift, this.candidates);
+    this.nextVisible.length = 0;
+    for (const mark of this.candidates) {
+      const place = this.place(mark, frame);
+      if (isVisible(view, place.x, place.y, 80)) this.nextVisible.push(mark);
     }
-    const pool = ground.addChild(worldBatched(new Sprite(textures.stain(mark.seed))));
-    pool.anchor.set(0.5);
-    // Rotate in the ground plane, then squash the parent, so every shape stays flat on the terrain.
-    const surface = ground.addChild(new Container());
-    surface.scale.y = GROUND_SQUASH;
-    pool.rotation = (frac(mark.seed, 90) - 0.5) * 0.5;
-    const drops = bloodDrops(mark, bodyRise).map((motion, i) => {
-      const flying = air?.addChild(worldBatched(new Sprite(textures.drop)));
-      flying?.anchor.set(0.5);
-      const stain = surface.addChild(worldBatched(new Sprite(textures.stain(mark.seed + i * 7))));
-      stain.anchor.set(0.5);
-      const shade = Math.round(205 + frac(mark.seed, i + 150) * 50);
-      stain.tint = (shade << 16) | (shade << 8) | shade;
-      stain.position.set(motion.vx * motion.flight, (motion.vy * motion.flight) / GROUND_SQUASH);
-      stain.rotation = frac(mark.seed, 110 + i) * Math.PI * 2;
-      stain.visible = false;
-      return { motion, air: flying, stain };
+    const rebuild =
+      this.elevation !== frame.elevation ||
+      this.water !== frame.water ||
+      this.nextVisible.length !== this.visible.length ||
+      this.nextVisible.some((mark, i) => this.visible[i] !== mark);
+    this.seenAir.clear();
+    if (rebuild) this.ground?.begin();
+    for (const mark of this.nextVisible) {
+      const place = this.places.get(mark);
+      if (place === undefined) continue;
+      const airborne = frame.renderTime - mark.spawnTick < BLOOD_AIR_TICKS;
+      if (place.surface >= 1 && !airborne) continue;
+      if (place.rise === undefined) {
+        const bounds = frame.drawn?.boundsOf(mark.target);
+        // Only the first exactly visible frame chooses the body's height, never a bucket candidate.
+        place.rise =
+          bounds === undefined ? 20 : Math.max(5, Math.min(26, (bounds.maxY - bounds.minY) * 0.42));
+      }
+      this.textures ??= new BloodTextures();
+      if (place.surface < 1 && this.ground === undefined) {
+        this.ground = new BloodGround(this.textures);
+        this.groundContainer.addChild(this.ground.mesh);
+        this.ground.begin();
+      }
+      const drops = rebuild ? this.ground?.add(mark, place.x, place.y, place.surface, place.rise) : undefined;
+      if (!airborne) continue;
+      let node = this.nodes.get(mark);
+      if (node === undefined) {
+        node = this.makeAir(mark, place, drops ?? bloodDrops(mark, place.rise), this.textures);
+        this.nodes.set(mark, node);
+      }
+      node.container.position.set(place.x, place.y);
+      this.seenAir.add(mark);
+    }
+    if (rebuild) this.ground?.finish();
+    const previous = this.visible;
+    this.visible = this.nextVisible;
+    this.nextVisible = previous;
+    for (const [mark, node] of this.nodes) {
+      if (this.seenAir.has(mark)) continue;
+      node.container.destroy({ children: true });
+      this.nodes.delete(mark);
+    }
+  }
+
+  private place(mark: BloodMark, frame: BloodFrame): Place {
+    let place = this.places.get(mark);
+    if (place === undefined) {
+      const baseY = (mark.hy * TILE_HALF_H) / 2;
+      place = {
+        x: mark.hx * TILE_HALF_W,
+        baseY,
+        rise: undefined,
+        elevation: frame.elevation,
+        y: baseY - terrainLiftAtNode(frame.elevation, mark.hx, mark.hy),
+        water: frame.water,
+        surface: frame.water.surface(mark.hx, mark.hy),
+      };
+      this.places.set(mark, place);
+    }
+    if (place.elevation !== frame.elevation) {
+      place.elevation = frame.elevation;
+      place.y = place.baseY - terrainLiftAtNode(frame.elevation, mark.hx, mark.hy);
+    }
+    if (place.water !== frame.water) {
+      place.water = frame.water;
+      place.surface = frame.water.surface(mark.hx, mark.hy);
+    }
+    return place;
+  }
+
+  private makeAir(
+    mark: BloodMark,
+    place: Place,
+    motions: readonly BloodDrop[],
+    textures: BloodTextures,
+  ): AirNode {
+    const container = this.spriteLayer.addChild(new Container());
+    container.zIndex = screenDepth(place.x, place.baseY, 'settler') + 0.125;
+    const jet = container.addChild(worldBatched(new Sprite(textures.stain(mark.seed + 3))));
+    jet.anchor.set(0.1, 0.5);
+    jet.position.set(0, -(place.rise ?? 20));
+    jet.rotation = Math.atan2(Math.sin(mark.heading) * GROUND_SQUASH, Math.cos(mark.heading));
+    const drops = motions.map((motion) => {
+      const sprite = container.addChild(worldBatched(new Sprite(textures.drop)));
+      sprite.anchor.set(0.5);
+      return { motion, sprite };
     });
-    const strength = mark.fatal ? 1 : mark.profile === 'blunt' ? 0.18 : mark.profile === 'pierce' ? 0.4 : 0.6;
     return {
-      ground,
-      air,
+      container,
       jet,
-      pool,
       drops,
-      poolScale: strength * Math.sqrt(mark.amount) * (0.85 + frac(mark.seed, 91) * 0.45),
-      settled: false,
+      strength: (mark.profile === 'blunt' ? 0.5 : 0.85) * Math.sqrt(mark.amount),
     };
   }
 
-  private animate(node: BloodNode, mark: BloodMark, age: number): void {
-    if (!node.settled || mark.fatal) {
-      const spread = smoothUnit((age - 2) / (mark.fatal ? 20 : 7));
-      node.pool.alpha = spread;
-      node.pool.scale.set(
-        node.poolScale * (0.55 + spread * 0.45),
-        node.poolScale * GROUND_SQUASH * (0.55 + spread * 0.45),
-      );
-    }
-    if (node.settled) return;
-    if (node.jet !== undefined) {
-      const strength = (mark.profile === 'blunt' ? 0.5 : 0.85) * Math.sqrt(mark.amount);
-      const spread = smoothUnit(age / 3);
-      node.jet.alpha = 1 - smoothUnit(age / 5);
-      node.jet.scale.set(strength * (0.25 + spread * 0.7), strength * (0.23 + spread * 0.2));
-    }
-    for (const drop of node.drops) {
-      const motion = drop.motion;
+  private animate(node: AirNode, age: number): void {
+    const spread = smoothUnit(age / 3);
+    node.jet.alpha = 1 - smoothUnit(age / 5);
+    node.jet.scale.set(node.strength * (0.25 + spread * 0.7), node.strength * (0.23 + spread * 0.2));
+    for (const { motion, sprite } of node.drops) {
       bloodDroplet(motion, age, this.pose);
-      if (drop.air !== undefined) {
-        drop.air.visible = this.pose.visible && !this.pose.landed;
-        drop.air.position.set(this.pose.x, this.pose.y);
-        drop.air.rotation = this.pose.angle;
-        drop.air.scale.set((motion.size * this.pose.stretch) / 4, motion.size / 4);
-      }
-      const contact = smoothUnit((age - motion.delay - motion.flight) / 1.5);
-      drop.stain.visible = this.pose.landed;
-      drop.stain.alpha = contact;
-      drop.stain.scale.set(motion.size * (0.17 + contact * 0.06));
+      sprite.visible = this.pose.visible && !this.pose.landed;
+      sprite.position.set(this.pose.x, this.pose.y);
+      sprite.rotation = this.pose.angle;
+      sprite.scale.set((motion.size * this.pose.stretch) / 4, motion.size / 4);
     }
-    if (age >= BLOOD_AIR_TICKS) {
-      // Thousands of settled marks must not retain or sort their old airborne particles.
-      node.air?.destroy({ children: true });
-      node.air = undefined;
-      node.jet = undefined;
-      for (const drop of node.drops) drop.air = undefined;
-      node.settled = true;
-    }
-  }
-
-  private retire(node: BloodNode): void {
-    node.ground.destroy({ children: true });
-    node.air?.destroy({ children: true });
   }
 
   destroy(): void {
     this.setEnabled(false);
+    this.ground?.destroy();
+    this.ground = undefined;
     this.groundContainer.destroy();
     this.textures?.destroy();
     this.textures = undefined;
   }
 }
 
-/** Multiplicative drying over an already coloured atlas; each impression oxidises at its own rate. */
-function dryColour(age: number, seed: number): number {
-  const dry = smoothUnit((age - 48) / (360 + frac(seed, 97) * 240));
-  const r = Math.round(255 - dry * 45);
-  const g = Math.round(255 - dry * 95);
-  const b = Math.round(255 - dry * 110);
-  return (r << 16) | (g << 8) | b;
+function sameView(a: Viewport | undefined, b: Viewport): boolean {
+  return a !== undefined && a.minX === b.minX && a.minY === b.minY && a.maxX === b.maxX && a.maxY === b.maxY;
 }

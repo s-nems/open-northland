@@ -259,6 +259,10 @@ describe('healing draught - below half of max hitpoints', () => {
     const blow = (HP_MAX * 3) / 5; // leaves two fifths of the pool, under half
     strike(sim, attacker, settler, blow);
     expect(sim.world.get(settler, Health).hitpoints).toBe(HP_MAX - blow + SIP_HP);
+    expect(sim.events.current().find((event) => event.kind === 'combatHit')).toMatchObject({
+      damage: blow,
+      targetMaxHealth: HP_MAX,
+    });
     expect(sim.world.get(settler, Equipment).misc[0]).toEqual({ goodType: POTION_HEAL, degreeOfUse: HALF });
   });
 
@@ -287,6 +291,10 @@ describe('healing draught - below half of max hitpoints', () => {
     const attacker = needsSettlerAt(sim, 1, 0, {});
     strike(sim, attacker, settler, HP_MAX + 50);
     expect(sim.world.get(settler, Health).hitpoints).toBe(2 * SIP_HP - 50);
+    expect(sim.events.current().find((event) => event.kind === 'combatHit')).toMatchObject({
+      damage: HP_MAX,
+      targetMaxHealth: HP_MAX,
+    });
     expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
   });
 
@@ -296,6 +304,10 @@ describe('healing draught - below half of max hitpoints', () => {
     const attacker = needsSettlerAt(sim, 1, 0, {});
     strike(sim, attacker, settler, 10 + 2 * SIP_HP);
     expect(sim.world.get(settler, Health).hitpoints).toBe(0);
+    expect(sim.events.current().find((event) => event.kind === 'combatHit')).toMatchObject({
+      damage: 10,
+      targetMaxHealth: HP_MAX,
+    });
     expect(sim.world.get(settler, Equipment).misc[0]).toBeNull();
   });
 

@@ -47,6 +47,7 @@ import type { FpsLimit } from '../settings-store.js';
 import type { UnitControls } from '../unit-controls/index.js';
 import { lostGoalPulse } from '../unit-controls/lost-goals.js';
 import type { WorldHover } from '../world-hover.js';
+import { presentCombatEffects, type TickEffects } from './combat-effects.js';
 import type { GameViewDeps } from './game-view.js';
 import type { NetReadout } from './net-readout.js';
 import { placementCursor } from './placement-cursor.js';
@@ -170,6 +171,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   // Every step's events, not just the last tick's: a frame may advance several ticks and each step
   // clears the sim's buffer.
   const frameEvents: SimEvent[] = [];
+  const combatTicks: TickEffects[] = [];
   // The roster the music's mood reads our standing against; one object, its seat read live.
   const musicRoster = {
     get localPlayer() {
@@ -218,7 +220,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
   const collect = (): void => {
     steps++;
     recordTickDiagnostics(host);
-    for (const ev of host.tickEvents()) {
+    const events = host.tickEvents();
+    if (events.length > 0) combatTicks.push({ tick: host.tick, events });
+    for (const ev of events) {
       frameEvents.push(ev);
       if (ev.kind === 'missionSubMission' && !deps.sharedClock) driver.setPaused(true);
     }
@@ -233,6 +237,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // Times our CPU work only, so the overlay can split the frame into CPU vs GPU/compositor.
     const cpu0 = performance.now();
     frameEvents.length = 0;
+    combatTicks.length = 0;
     // A persistently high step count is the sim falling behind wall-clock.
     steps = 0;
     const renderAlpha = driver.advance(elapsed, collect);
@@ -324,7 +329,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     const constructionSigns = constructionSignsFor(snap);
     const settlerBubbles = settlerBubblesFor(snap);
     // Blood and bones decay against the sim tick, so a pause or a screenshot reproduces.
-    renderer.ingestCombatEffects(presentEvents, snap.tick, snap);
+    presentCombatEffects(combatTicks, snap, renderer, fogView === null ? undefined : fogGates.seesNode);
     // Every frame, stepped or not: a playing clip ends on the tick, and its trunk shows with that frame.
     presentFellings?.(presentEvents, snap.tick);
     // A script's earthquake shakes the drawn world alone; picking and the HUD keep the steady frame.

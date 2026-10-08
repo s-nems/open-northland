@@ -25,16 +25,14 @@ export interface BloodMark {
 }
 
 /** Events alone create blood; no health polling, bleeding from starvation, or simulation writes. */
-export function foldBloodMarks(
-  active: readonly BloodMark[],
+export function makeBloodMarks(
   events: readonly SimEvent[],
   tick: number,
   snapshot?: WorldSnapshot,
   projectileOrigins?: ReadonlyMap<number, { readonly hx: number; readonly hy: number }>,
 ): readonly BloodMark[] {
-  const expired = active.some((mark) => tick - mark.spawnTick >= BLOOD_LIFETIME_TICKS);
-  if (!expired && !events.some(isBloodHit)) return active;
-  const next = active.filter((mark) => tick - mark.spawnTick < BLOOD_LIFETIME_TICKS);
+  if (!events.some(isBloodHit)) return [];
+  const next: BloodMark[] = [];
   const deaths = new Set<number>();
   const lastHits = new Map<number, BloodHit>();
   for (const event of events) {
@@ -80,23 +78,7 @@ export function foldBloodMarks(
       fatal: deaths.has(event.target) && lastHits.get(event.target) === event,
     });
   }
-  // Keep the newest few impressions at each node. Separate budgets preserve bones and wreckage.
-  const perNode = new Map<string, number>();
-  const retained: BloodMark[] = [];
-  for (let i = next.length - 1; i >= 0 && retained.length < MAX_BLOOD_MARKS; i--) {
-    const mark = next[i];
-    if (mark === undefined) continue;
-    const key = `${mark.hx},${mark.hy}`;
-    const count = perNode.get(key) ?? 0;
-    if (count >= MAX_BLOOD_PER_NODE) continue;
-    perNode.set(key, count + 1);
-    retained.push(mark);
-  }
-  return retained.reverse();
-}
-
-export function bloodFade(age: number): number {
-  return 1 - smoothUnit((age - BLOOD_LIFETIME_TICKS * 0.6) / (BLOOD_LIFETIME_TICKS * 0.4));
+  return next;
 }
 
 export const smoothUnit = (value: number): number => {

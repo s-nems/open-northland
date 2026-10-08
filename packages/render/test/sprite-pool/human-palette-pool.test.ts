@@ -1,4 +1,4 @@
-import type { Entity } from '@open-northland/sim';
+import type { Entity, SimEvent } from '@open-northland/sim';
 import { Container, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import type { Viewport } from '../../src/data/projection/index.js';
@@ -221,5 +221,45 @@ it('keeps blood on visible bodies across culling and clears even detached fighte
   pool.reconcile({ ...frame, tick: 122 });
   expect(bodies.map(spriteBloodEffect)).toEqual([0, 0]);
   pool.destroy();
+  lut.source.destroy();
+});
+
+it('updates a stationary body on the same snapshot, expires it while detached, and starts a fresh pool clean', () => {
+  const lut = syntheticHumanLut();
+  const { pool, layer } = poolWith(lut);
+  const world = snapshotOf([human(1, WEST), human(2, WEST)], 1);
+  const frame = frameOf(world);
+  pool.reconcile(frame);
+  const bodies = layer.children
+    .flatMap((c) => c.children)
+    .filter((c) => c instanceof PalettedQuad && !c.glow);
+  const hit: SimEvent = {
+    kind: 'combatHit',
+    damage: 250,
+    targetMaxHealth: 1000,
+    attacker: 1 as Entity,
+    target: 2 as Entity,
+    at: { hx: 0, hy: 4 },
+  };
+  pool.ingestBlood([hit], 1);
+  pool.reconcile({ ...frame, alpha: 0.5 });
+  expect(bodies.every((body) => spriteBloodEffect(body) > 0)).toBe(true);
+  pool.reconcile({ ...frame, tick: 1801 });
+  expect(bodies.map(spriteBloodEffect)).toEqual([0, 0]);
+  pool.ingestBlood([hit], 1801);
+  pool.reconcile({ ...frame, tick: 1802 });
+  expect(bodies.every((body) => spriteBloodEffect(body) > 0)).toBe(true);
+  pool.reconcile({ ...frame, tick: 1803, viewport: EAST_ONLY });
+  pool.ingestBlood([], 3601);
+  pool.reconcile({ ...frame, tick: 3601 });
+  expect(bodies.map(spriteBloodEffect)).toEqual([0, 0]);
+  pool.destroy();
+  const fresh = poolWith(lut);
+  fresh.pool.reconcile(frame);
+  const freshBodies = fresh.layer.children
+    .flatMap((c) => c.children)
+    .filter((c) => c instanceof PalettedQuad && !c.glow);
+  expect(freshBodies.map(spriteBloodEffect)).toEqual([0, 0]);
+  fresh.pool.destroy();
   lut.source.destroy();
 });

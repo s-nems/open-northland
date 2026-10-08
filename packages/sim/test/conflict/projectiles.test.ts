@@ -8,6 +8,7 @@ import {
   Felling,
   GroundDrop,
   Health,
+  MISSION_BEHAVIOUR,
   MoveGoal,
   Owner,
   Position,
@@ -16,6 +17,7 @@ import {
   SettlerProgress,
   Stockpile,
   Stump,
+  setMissionBehaviour,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from '../../src/index.js';
@@ -802,3 +804,27 @@ describe('projectiles - the standoff an archer closes to', () => {
     expect(Math.abs(nodeOfPosition(fx.fromInt(15), fx.fromInt(0)).hx - goal.x)).toBe(standoff);
   });
 });
+
+it.each([false, true])(
+  'preserves projectile impact cues while reporting the capped wound (invulnerable=%s)',
+  (protectedBody) => {
+    const sim = new Simulation({ seed: 1, content: content(), map: grassMap(24, 1) });
+    marksmanAt(sim, 0, 0);
+    const target = fighterAt(sim, SHOT_TILES, 0, FRANK, IDLE);
+    sim.world.mut(target, Health).hitpoints = 1;
+    if (protectedBody) setMissionBehaviour(sim.world, target, MISSION_BEHAVIOUR.INVULNERABLE, true);
+    stepToLaunch(sim);
+    const shot = shotInFlight(sim);
+    const landTick = sim.world.get(shot, Projectile).landTick;
+    while (sim.tick < landTick - 1) sim.step();
+    sim.world.mut(target, Health).hitpoints = 1;
+    sim.step();
+    expect(sim.events.current().find((event) => event.kind === 'projectileHit')).toMatchObject({
+      damage: protectedBody ? 0 : 2, // the final tick regenerates 1 HP before the arrow lands
+      targetMaxHealth: TARGET_HP,
+      soundType: BOW_HIT_SOUND,
+    });
+    expect(sim.events.current().some((event) => event.kind === 'projectileMissed')).toBe(false);
+    expect(sim.world.isAlive(target)).toBe(protectedBody);
+  },
+);

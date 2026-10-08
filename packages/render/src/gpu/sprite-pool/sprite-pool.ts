@@ -222,16 +222,6 @@ export class SpritePool {
 
   ingestBlood(events: readonly SimEvent[], tick: number): void {
     this.bloodCoats.ingest(events, tick);
-    for (const event of events) {
-      if ((event.kind !== 'combatHit' && event.kind !== 'projectileHit') || event.structure === true)
-        continue;
-      const victim = this.pool.get(event.target);
-      if (victim !== undefined) victim.held = -1;
-      if (event.kind === 'combatHit') {
-        const attacker = this.pool.get(event.attacker);
-        if (attacker !== undefined) attacker.held = -1;
-      }
-    }
   }
 
   /**
@@ -422,7 +412,6 @@ export class SpritePool {
   /** Whether `pe` draws the same whatever the frame alpha: what a still frame may leave untouched. */
   private holdsStill(pe: PooledEntity, item: DrawItem): boolean {
     return (
-      this.bloodCoats.packed(item.ref, pe.motion.tick) === 0 &&
       pe.reveal === undefined &&
       !pe.bound.retrying &&
       resolvesWithoutClock(item) &&

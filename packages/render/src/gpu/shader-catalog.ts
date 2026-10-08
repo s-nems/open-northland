@@ -1,6 +1,7 @@
 import { WEATHER_KINDS } from '../data/weather/types.js';
 import { GROUND_WAVE_FILTER_SOURCE } from './ground-waves/ground-wave-filter.js';
 import { DECOR_SHADOW_SOURCE } from './map-objects/decor-shadow-shader.js';
+import { BLOOD_GROUND_SOURCE } from './overlays/blood-ground-shader.js';
 import { PALETTED_SPRITE_SOURCE } from './paletted-sprite/shader.js';
 import {
   WORLD_MAGNIFICATIONS,
@@ -26,6 +27,7 @@ const WORLD_BATCH_TEXTURE_LIMITS: readonly number[] = [8, 16, WORLD_BATCH_MAX_TE
 function fixedPrograms(): readonly GlslProgramSource[] {
   return [
     PALETTED_SPRITE_SOURCE,
+    BLOOD_GROUND_SOURCE,
     DECOR_SHADOW_SOURCE,
     SHADED_TERRAIN_SOURCE,
     SHADED_DECOR_SOURCE,

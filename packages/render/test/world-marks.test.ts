@@ -1,5 +1,5 @@
 import type { Entity, SimEvent } from '@open-northland/sim';
-import { Container } from 'pixi.js';
+import { Container, Mesh, UniformGroup } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
 import { NO_WATER } from '../src/data/terrain/index.js';
 import { CALM_WIND_SWAY } from '../src/data/weather/climate.js';
@@ -7,6 +7,7 @@ import { TextureCache } from '../src/gpu/texture-cache.js';
 import { WorldMarks, type WorldMarksFrame } from '../src/gpu/world-renderer/world-marks.js';
 import { cameraViewport, makeElevationField } from '../src/index.js';
 import { entity, snapshotOf } from './support/fixtures.js';
+import { useHeadlessShaderContext } from './support/shader-context.js';
 
 /**
  * `mountPainterOrder` owns which slot draws over which. What is left here is a slot handed the wrong
@@ -91,17 +92,22 @@ describe('WorldMarks', () => {
     marks.destroy();
   });
 
-  it('fades a mark on the interpolated render clock, not the integer tick it was ingested at', () => {
+  it('feeds the interpolated render clock to GPU fading, including clock wrapping', () => {
     const { marks } = marksIn();
     marks.ingest([hit], 0);
     marks.draw(frameOf({ renderTime: 1000 }));
     const blood = marks.slots.bloodGround.children[0];
-    const atTick = blood?.alpha;
-    expect(atTick).toBeLessThan(1); // the ground stain is fading
+    if (!(blood instanceof Mesh)) throw new Error('missing blood mesh');
+    const clock = blood.shader?.resources.bloodTime;
+    if (!(clock instanceof UniformGroup)) throw new Error('missing blood clock');
+    expect(clock.uniforms.uTime).toBe(1000);
 
     // Only the interpolated clock can move a fade between two integer ticks.
     marks.draw(frameOf({ renderTime: 1000.5 }));
-    expect(blood?.alpha).toBeLessThan(atTick ?? 0);
+    expect(clock.uniforms.uTime).toBe(1000.5);
+    marks.ingest([hit], 4100);
+    marks.draw(frameOf({ renderTime: 4100.5 }));
+    expect(clock.uniforms.uTime).toBe(4.5);
     marks.destroy();
   });
 
@@ -134,3 +140,5 @@ describe('WorldMarks', () => {
     expect(Object.values(marks.slots).every((c) => c.destroyed)).toBe(true);
   });
 });
+
+useHeadlessShaderContext();
