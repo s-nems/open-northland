@@ -9,7 +9,8 @@ import {
   SupplyRun,
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { Simulation } from '../../src/index.js';
+import { fx, Simulation } from '../../src/index.js';
+import { dropGroundPile } from '../../src/systems/settlers/atomics/effects/goods/piles.js';
 import { CUT_OFF_CHECK_TICKS } from '../../src/systems/settlers/drives/cut-off.js';
 import { idleReplanDue } from '../../src/systems/settlers/planner/idle-replan.js';
 import {
@@ -182,6 +183,22 @@ describe('a builder whose only site lies beyond every signpost', () => {
       fetched ||= fetching(sim, builder);
     }
     expect(fetched).toBe(true);
+    expect(sim.world.has(builder, LostWay)).toBe(false);
+  });
+});
+
+describe('a builder whose only material lies on a neutral pile beyond every signpost', () => {
+  it('is never marked lost over it: a pile nobody owns is no store to link', () => {
+    const sim = new Simulation({ seed: 3, content: constructionContent(), map: grassCellMap(128, 8) });
+    sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+    sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    sim.step();
+    const builder = builderAt(sim, BUILDER_X, ROW);
+    sim.world.add(builder, Owner, { player: P0 });
+    placeSite(sim, BUILDER_X + 2);
+    dropGroundPile(sim.world, fx.fromInt(FAR_SITE_X + 40), fx.fromInt(ROW), STONE, 5);
+
+    expect(lostNotesOver(sim, builder, WALK_THERE_TICKS + 2 * CUT_OFF_CHECK_TICKS)).toBe(0);
     expect(sim.world.has(builder, LostWay)).toBe(false);
   });
 });

@@ -105,7 +105,7 @@ function isStallOver(m: UserMessage, workshop: SnapshotEntity, stalls: StallRead
 
 /** A shortage note ends when its site is no longer going up, or once the sweep finds the site short of
  *  nothing; another good only rewords it. */
-function isShortageOver(m: UserMessage, site: SnapshotEntity, shortages: ShortageReader | null): boolean {
+function isShortageOver(site: SnapshotEntity, shortages: ShortageReader | null): boolean {
   if (site.components.UnderConstruction === undefined || shortages === null) return true;
   return shortages.verdict(site.id) === null;
 }
@@ -165,7 +165,7 @@ export class NoteRetirement {
       case USER_MESSAGE_TYPE.productionStalled:
         return isStallOver(m, e, this.stalls);
       case USER_MESSAGE_TYPE.constructionStarved:
-        return isShortageOver(m, e, this.shortages);
+        return isShortageOver(e, this.shortages);
       case USER_MESSAGE_TYPE.vehicleSiteNotFound:
       case USER_MESSAGE_TYPE.vehicleSiteOccupied:
         return !yardRefusalStands(snapshot, e);

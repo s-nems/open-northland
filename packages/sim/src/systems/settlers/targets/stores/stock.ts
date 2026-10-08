@@ -1,6 +1,7 @@
 import {
   Building,
   GroundDrop,
+  ownerOf,
   Palisade,
   Position,
   Stockpile,
@@ -253,8 +254,9 @@ export function nearestStoreHolding(
   );
 }
 
-/** {@link nearestStoreHolding} with no signpost or goods-search gate: the store a fetcher would reach if
- *  nothing guided it, asked only to tell work beyond the signposts from no work at all. */
+/** {@link nearestStoreHolding} with no signpost or goods-search gate, over `owner`'s own stores alone:
+ *  the store a fetcher would reach if nothing guided it, asked only to tell work beyond the signposts from
+ *  no work at all. */
 export function nearestStoreHoldingAnywhere(
   bands: TargetBands,
   world: World,
@@ -267,9 +269,15 @@ export function nearestStoreHoldingAnywhere(
   return (
     bands
       .holding(goodType)
-      .nearest(here, holdsUnclaimed(world, supply, goodType), undefined, avoid, sameSideAs(world, owner))
+      .nearest(here, holdsUnclaimed(world, supply, goodType), undefined, avoid, ownedBy(world, owner))
       ?.entity ?? null
   );
+}
+
+/** Only `owner`'s own stores: a neutral pile is nobody's to reach with signposts, so a cut-off verdict
+ *  never rests on one lying at the far end of the map. Owner ruling. */
+function ownedBy(world: World, owner: number | undefined): (store: Entity) => boolean {
+  return (store) => ownerOf(world, store) === owner;
 }
 
 function holdsUnclaimed(
