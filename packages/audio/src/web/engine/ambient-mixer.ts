@@ -1,4 +1,5 @@
 import type { AmbientLoop } from '../../data/types.js';
+import { rampParam } from './ramps.js';
 import type { SampleCache } from './sample-cache.js';
 
 /**
@@ -91,9 +92,6 @@ export class AmbientMixer {
   }
 
   private fadeTo(gain: GainNode, target: number): void {
-    const now = this.ctx.currentTime;
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(gain.gain.value, now);
-    gain.gain.linearRampToValueAtTime(target, now + AMBIENT_FADE_S);
+    rampParam(this.ctx, gain.gain, target, AMBIENT_FADE_S);
   }
 }
