@@ -7,6 +7,7 @@ import {
   entityById,
   MAX_UNIT_ORDER_MEMBERS,
   type PlayerCommand,
+  components as simComponents,
   type UnitSelectionCommand,
   type WorldSnapshot,
 } from '@open-northland/sim';
@@ -17,6 +18,8 @@ import { type ChoiceGroup, type ChoiceRow, createChoiceWindow } from '../../hud/
 import type { GoodIconPainter } from '../../hud/dom/good-art.js';
 import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
 import { enqueueUnitSelection } from './group-orders.js';
+
+const { MISC_EQUIP_SLOTS } = simComponents;
 
 export interface EquipPickControllerOptions {
   readonly uiString: UiString;
@@ -42,13 +45,40 @@ export interface EquipPickController {
   dispose(): void;
 }
 
-/** Fixed groups replace their only slot; misc fills the first gap and replaces slot zero once full. */
+interface EquipIntentView {
+  readonly group?: unknown;
+  readonly slot?: unknown;
+}
+
+/** The misc slots the settler's own equip errand, under way or queued, is already filling. The sim lets
+ *  a later order for one of them replace it, so a second pick must aim at another slot to queue. */
+function pendingMiscSlots(components: Readonly<Record<string, unknown>>): Set<number> {
+  const order = components.EquipOrder as
+    | (EquipIntentView & { readonly issuer?: unknown; readonly queued?: readonly EquipIntentView[] })
+    | undefined;
+  const slots = new Set<number>();
+  // An assistant's hand-out gives way to the player's order instead of holding it back.
+  if (order?.issuer !== 'player') return slots;
+  for (const intent of [order, ...(order.queued ?? [])]) {
+    if (intent.group === 'misc' && typeof intent.slot === 'number') slots.add(intent.slot);
+  }
+  return slots;
+}
+
+/** Fixed groups replace their only slot. Misc fills the first gap no pending errand fills, then replaces
+ *  the first worn good no errand is replacing, and slot zero once every slot is spoken for. */
 export function equipSlotFor(components: Readonly<Record<string, unknown>>, group: EquipCategory): number {
   if (group !== 'misc') return 0;
   const equipment = components.Equipment as { readonly misc?: unknown } | undefined;
-  if (!Array.isArray(equipment?.misc)) return 0;
-  const free = equipment.misc.findIndex((slot) => slot == null);
-  return free < 0 ? 0 : free;
+  const misc: readonly unknown[] = Array.isArray(equipment?.misc) ? equipment.misc : [];
+  const pending = pendingMiscSlots(components);
+  let replaceable: number | undefined;
+  for (let slot = 0; slot < MISC_EQUIP_SLOTS; slot++) {
+    if (pending.has(slot)) continue;
+    if (misc[slot] == null) return slot;
+    replaceable ??= slot;
+  }
+  return replaceable ?? 0;
 }
 
 /** One selected good becomes one order per still-live selected settler. `skipReturn` skips the walk
