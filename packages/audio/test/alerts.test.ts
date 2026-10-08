@@ -12,6 +12,7 @@ import {
   ATTACK_ALERT_MIN_GAP_S,
   AttackAlerts,
   type AttackReport,
+  authoredVolumeGain,
   BUS_DUCK_RAMP_S,
   buildSoundIndex,
   defaultBindings,
@@ -94,6 +95,9 @@ describe('attack alerts', () => {
   });
 });
 
+/** The volume the data authors for the sighs. */
+const SIGH_VOLUME = 40;
+
 const bank: SoundBank = {
   staticGroups: [
     { name: 'Magic Horn', logicSoundType: 60, sfx: [{ file: 'static/horn01.wav', params: [80] }] },
@@ -102,6 +106,15 @@ const bank: SoundBank = {
       name: 'Yawn Woman',
       logicSoundType: 38,
       sfx: [{ file: 'generic/human_yawn f 01.wav', params: [80] }],
+    },
+    // The sighs sit only in a murmur group, among its louder lines.
+    {
+      name: 'Talk Viking Female',
+      sfx: [
+        { file: 'humantalk/f1ok01.wav', params: [80] },
+        { file: 'generic/human_sigh f 01.wav', params: [SIGH_VOLUME] },
+        { file: 'generic/human_sigh f 02.wav', params: [SIGH_VOLUME] },
+      ],
     },
   ],
   ambient: [],
@@ -148,10 +161,9 @@ describe('alert and notice sounds', () => {
     expect(noticeVoiceShot(index, bindings, snapshot, 'weary', MAN)?.files).toEqual([
       'generic/human_yawn m 01.wav',
     ]);
-    expect(noticeVoiceShot(index, bindings, snapshot, 'hungry', WOMAN)?.files).toEqual([
-      'generic/human_sigh f 01.wav',
-      'generic/human_sigh f 02.wav',
-    ]);
+    const sigh = noticeVoiceShot(index, bindings, snapshot, 'hungry', WOMAN);
+    expect(sigh?.files).toEqual(['generic/human_sigh f 01.wav', 'generic/human_sigh f 02.wav']);
+    expect(sigh?.gain).toBe(authoredVolumeGain(SIGH_VOLUME));
     expect(noticeVoiceShot(index, bindings, snapshot, 'weary', CHILD)).toBeNull();
     const desk = new AlertDesk();
     const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => 1 } });

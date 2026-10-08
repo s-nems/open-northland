@@ -42,6 +42,7 @@ const index: SoundIndex = {
   landscapeAmbienceByRecord: new Map(),
   murmurByTribe: new Map(),
   poolGains: new Map(),
+  wavGains: new Map(),
 };
 
 const CANVAS_W = 800;

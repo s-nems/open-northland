@@ -64,7 +64,7 @@ export const GROUP_ALERT_HORN = 'Magic Horn';
 export const GROUP_YAWN_MAN = 'Yawn Man';
 export const GROUP_YAWN_WOMAN = 'Yawn Woman';
 /** The sighs a hungry settler's notice speaks with. The bank keeps them only inside the murmur pools,
- *  so they are named by file. */
+ *  so they are named by file, and play at the volume those pools author for them. */
 export const SIGH_MAN_FILES: readonly string[] = [
   'generic/human_sigh m 01.wav',
   'generic/human_sigh m 02.wav',

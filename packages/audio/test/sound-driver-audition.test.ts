@@ -44,6 +44,7 @@ const index: SoundIndex = {
   landscapeAmbienceByRecord: new Map(),
   murmurByTribe: new Map(),
   poolGains: new Map([[AXE, AXE_GAIN]]),
+  wavGains: new Map(),
 };
 
 function makeDriver(): { readonly driver: SoundDriver; readonly ctx: FakeContext } {

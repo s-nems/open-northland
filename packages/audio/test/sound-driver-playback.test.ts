@@ -69,6 +69,7 @@ const index: SoundIndex = {
   landscapeAmbienceByRecord: new Map(),
   murmurByTribe: new Map(),
   poolGains: new Map(),
+  wavGains: new Map(),
 };
 
 /** A driver whose fake context decodes every wav as `clipSeconds` long (one second per fetched byte). */

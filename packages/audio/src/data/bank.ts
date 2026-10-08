@@ -50,6 +50,9 @@ export interface SoundIndex {
   /** A static group's, jingle's or landscape pool's file list (the very array the maps above hold) →
    *  the gain of its authored volume ({@link authoredVolumeGain}). */
   readonly poolGains: ReadonlyMap<readonly string[], number>;
+  /** A static group's audible wav → the gain of the volume its own slot authors; the first group
+   *  listing it wins. Prices a file list the bindings name directly (a hungry settler's sigh). */
+  readonly wavGains: ReadonlyMap<string, number>;
 }
 
 /** The wavs of one object ambience that share an `SFX` triple, so a pick among them is uniform. */
@@ -101,9 +104,20 @@ export function authoredVolumeGain(volume: number): number {
   return 10 ** (((v / AUTHORED_VOLUME_MAX - 1) * AUTHORED_VOLUME_RANGE_DB) / 20);
 }
 
-/** The gain a pool's authored volume plays at; a list the index did not build gets the default's. */
+/**
+ * The gain a pool's authored volume plays at. A list the index did not build plays at the loudest of
+ * its wavs' own authored gains ({@link SoundIndex.wavGains}), or at the default's when the bank
+ * authors none of them.
+ */
 export function poolGain(index: SoundIndex, files: readonly string[]): number {
-  return index.poolGains.get(files) ?? authoredVolumeGain(DEFAULT_AUTHORED_VOLUME);
+  const built = index.poolGains.get(files);
+  if (built !== undefined) return built;
+  let loudest: number | undefined;
+  for (const file of files) {
+    const gain = index.wavGains.get(file);
+    if (gain !== undefined) loudest = Math.max(loudest ?? gain, gain);
+  }
+  return loudest ?? authoredVolumeGain(DEFAULT_AUTHORED_VOLUME);
 }
 
 /**
@@ -196,10 +210,15 @@ export function buildSoundIndex(
   const groupsByName = new Map<string, readonly string[]>();
   const groupsByLogicSoundType = new Map<number, readonly string[]>();
   const poolGains = new Map<readonly string[], number>();
+  const wavGains = new Map<string, number>();
   for (const g of sounds.staticGroups) {
     if (g.name.trim() === '') continue;
     const files = audibleFiles(g.sfx);
     poolGains.set(files, authoredVolumeGain(groupVolume(g.sfx)));
+    for (const s of g.sfx) {
+      if (s.file !== SILENT_PLACEHOLDER_FILE && !wavGains.has(s.file))
+        wavGains.set(s.file, authoredVolumeGain(s.params[VOLUME_PARAM] ?? DEFAULT_AUTHORED_VOLUME));
+    }
     groupsByName.set(g.name.toLowerCase(), files);
     if (g.logicSoundType !== undefined && !groupsByLogicSoundType.has(g.logicSoundType)) {
       groupsByLogicSoundType.set(g.logicSoundType, files);
@@ -279,6 +298,7 @@ export function buildSoundIndex(
     murmurByTribe: murmurPools(sounds, tribes, groupsByName, poolGains),
     landscapeAmbienceByRecord: landscapeAmbience(sounds, landscapeRecords, poolGains),
     poolGains,
+    wavGains,
   };
 }
 
