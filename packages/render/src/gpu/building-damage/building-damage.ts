@@ -7,7 +7,7 @@ import { DamageAtlas, type DamageTile } from './atlas.js';
 import { DamageEffectTextures } from './effect-textures.js';
 import { DamageEffects, type DamageOrigin } from './effects.js';
 import { type GroundContact, groundContacts } from './rubble.js';
-import { analyseSurface, damageStage, type Fracture, scarSurface } from './surface.js';
+import { analyseSurface, damageLevel, type Fracture, scarSurface } from './surface.js';
 
 export interface DamageSubject {
   readonly container: Container;
@@ -39,7 +39,7 @@ interface Surface {
   readonly width: number;
   readonly height: number;
   tile: DamageTile | null;
-  stage: number;
+  level: number;
 }
 
 interface DamageNode {
@@ -47,6 +47,7 @@ interface DamageNode {
   readonly surfaces: Map<Sprite, Surface>;
   readonly effects: DamageEffects;
   readonly origins: DamageOrigin[];
+  bodyOffset: number;
 }
 
 /** Visible-only damage ownership. The normal binder still owns the original texture; this pass swaps
@@ -122,17 +123,21 @@ export class BuildingDamage {
     zoom: number,
   ): void {
     this.seen.clear();
-    // Pixel reads and bakes are rationed even on the opening view; a large damaged town fills in over
-    // several frames without one long synchronous canvas pass. Steady-state bodies do no pixel work.
-    let budget = 2;
+    // Separate preparation from painting so a changing construction source can bake in the same frame.
+    // A blended body uses both paint slots; steady-state bodies do no pixel work.
+    let preparations = 1;
+    let paints = 2;
     const start = this.scanOffset % Math.max(1, damaged.length);
     this.scanOffset = start + 1;
     for (let i = 0; i < damaged.length; i++) {
       const item = damaged[(start + i) % damaged.length];
       if (item === undefined) continue;
       const { ref, hpFrac, ghost } = item;
-      const stage = damageStage(hpFrac);
-      if (stage === 0) continue;
+      const level = damageLevel(hpFrac);
+      // Retain a baked blend until the next small health increment.
+      const bakedLevel = Math.round(level * 16) / 16;
+      const bakeCost = Number.isInteger(bakedLevel) ? 1 : 2;
+      if (bakedLevel === 0) continue;
       const subject = subjectOf(ref);
       if (subject?.damageBodies === undefined || subject.damageBodies.length === 0) continue;
       let node = this.nodes.get(ref);
@@ -144,7 +149,13 @@ export class BuildingDamage {
       if (node === undefined) {
         if (this.nodes.size >= MAX_DAMAGE_NODES) continue;
         this.art ??= new DamageEffectTextures();
-        node = { subject, surfaces: new Map(), effects: new DamageEffects(this.art, ref), origins: [] };
+        node = {
+          subject,
+          surfaces: new Map(),
+          effects: new DamageEffects(this.art, ref),
+          origins: [],
+          bodyOffset: 0,
+        };
         this.nodes.set(ref, node);
         subject.container.addChild(node.effects.container);
       }
@@ -163,13 +174,18 @@ export class BuildingDamage {
           node.surfaces.delete(sprite);
         }
       }
-      for (const sprite of subject.damageBodies) {
+      const bodyStart = node.bodyOffset % subject.damageBodies.length;
+      let firstWorkedBody: number | undefined;
+      for (let body = 0; body < subject.damageBodies.length; body++) {
+        const sprite = subject.damageBodies[(bodyStart + body) % subject.damageBodies.length];
+        if (sprite === undefined) continue;
         if (!sprite.visible || sprite.alpha <= 0 || sprite.destroyed) continue;
         let surface = node.surfaces.get(sprite);
         if (surface === undefined) {
           if (!detailed || this.unreadable.has(sprite.texture)) continue;
-          if (budget <= 0) continue;
-          budget--;
+          if (preparations <= 0) continue;
+          preparations--;
+          firstWorkedBody ??= body;
           surface = this.read(sprite, ref, true) ?? undefined;
           if (surface === undefined) continue;
           this.pixelBytes += surface.bytes;
@@ -178,10 +194,11 @@ export class BuildingDamage {
         if (!detailed) {
           if (surface.tile !== null) {
             this.release(surface);
-            surface.stage = 0;
+            surface.level = 0;
           }
-        } else if (surface.stage !== stage && budget > 0) {
-          budget--;
+        } else if (surface.level !== bakedLevel && paints >= bakeCost) {
+          paints -= bakeCost;
+          firstWorkedBody ??= body;
           surface.tile ??= this.atlas.allocate(surface.width, surface.height, surface.original);
           if (surface.tile !== null) {
             this.atlas.write(
@@ -191,20 +208,23 @@ export class BuildingDamage {
                 surface.width,
                 surface.height,
                 surface.fractures,
-                stage,
+                bakedLevel,
                 surface.backing,
               ),
               surface.width,
               surface.height,
             );
-            surface.stage = stage;
+            surface.level = bakedLevel;
           }
         }
         if (surface.tile !== null) sprite.texture = surface.tile.texture;
       }
+      // Advance on service, not visits: otherwise layer and building rotations can lock in step.
+      if (firstWorkedBody !== undefined)
+        node.bodyOffset = (bodyStart + firstWorkedBody + 1) % subject.damageBodies.length;
       const ground = this.placeOrigins(node);
       node.effects.container.visible = ghost !== true;
-      if (ghost !== true) node.effects.draw(node.origins, hpFrac, stage, tick, wind, detailed, zoom, ground);
+      if (ghost !== true) node.effects.draw(node.origins, hpFrac, level, tick, wind, detailed, zoom, ground);
     }
     for (const [ref, node] of this.nodes) {
       if (this.seen.has(ref)) continue;
@@ -255,7 +275,7 @@ export class BuildingDamage {
         height,
         fractures: analyseSurface(pixels, width, height, seed),
         tile: null,
-        stage: 0,
+        level: 0,
       };
     } catch {
       this.unreadable.add(original);

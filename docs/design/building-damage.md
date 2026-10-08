@@ -18,8 +18,9 @@ effect textures are independently authored artistic approximations. Colour and s
 placement; they do not provide semantic knowledge of every roof or wall. No replacement building
 assets, original-effect copies, external generation service or new shader program are required.
 
-At 90% health and above the body is intact. Below 90/72/52/32/14/6%, six stable damage rungs introduce
-fresh chips, cracks, cavities, chipped roof edges and local soot. Light damage exposes a contrasting
+Full health keeps the body intact. Damage blends continuously between six reference appearances at
+90/75/60/45/30/20% health: fresh chips, cracks, cavities, chipped roof edges and local soot appear
+gradually as health falls between these anchors. Light damage exposes a contrasting
 substrate and bright chipped edges. Critical damage joins larger breaches and strips more of the
 facing. Seeded rejection sampling varies positions, onset, proportions, orientation and jagged contours;
 wounds grow in place and repairs reconstruct from pristine pixels.
@@ -31,10 +32,13 @@ no coverage, a dim interior and irregular timber members provide depth. Members 
 grain, side faces and splintered ends; worsening damage breaks some into stubs. Transparency is limited
 to small upper-edge chips, rather than removing entire supporting walls.
 
+Fire fades in around 50% health, with later sources staggered; the broadest structural breaches grow
+between 45% and 20% health.
 Five fire loops vary in tongue count, spread and height. Each wound varies its phase, speed, width,
 height and mirroring; critical buildings can show up to four local fires. Smoke shares these origins.
-Solid neighbourhoods and a substantial silhouette cross-section filter thin ornaments. Dirt, chips and
-short planks accumulate along the body's lower silhouette, drawn as one retained mesh per building.
+Solid neighbourhoods and a substantial silhouette cross-section filter thin ornaments. Dust patches,
+stone chips and short planks accumulate along the body's lower silhouette, drawn as one retained mesh
+per building. Small fragments appear first; heavier damage spreads more debris around the foundations.
 
 Unfinished buildings measure health against their built pool. An upgrading building keeps its
 standing pool. Fog memories retain the last seen scars without emitting live effects or observing
@@ -43,11 +47,14 @@ otherwise unpresented subject retain that view path's baseline rendering.
 
 ## Rendering budget
 
-Only the culled draw list and forced portrait subjects are visited. Bodies retain their baked pixels
-until damage level or the bound source changes. Two body preparation/bake operations per frame,
-scheduled in rotating order, limit the opening burst and prevent a changing construction site from
-starving its neighbours. Smoke, flame and fragment nodes are retained; camera distance reduces particle
-detail.
+Only the culled draw list and forced portrait subjects are visited. Body blends are quantized to
+1/16 of a reference level (96 increments across the health range); each body retains a single baked
+blend until this level or the bound source changes. Smoke and fire fade without this quantization.
+One body preparation and two endpoint paints per frame limit the opening burst. A fractional blend
+uses both paint slots; preparation has its own allowance so a changing construction source can still
+be painted that frame. Rotating buildings and their body layers prevents a changing construction site
+from starving its neighbours or its own other layers. Smoke, flame and fragment nodes are retained;
+camera distance reduces particle detail.
 
 Damage uses at most 128 visible nodes, 32 MiB of retained original and construction RGBA pixels and
 four 1024-square shared damage atlas pages (16 MiB GPU RGBA plus their CPU canvases). One reusable

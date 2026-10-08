@@ -4,7 +4,7 @@ import { readHpFraction } from '../src/data/scene/snapshot-readers/index.js';
 import { DamageAtlas } from '../src/gpu/building-damage/atlas.js';
 import { BuildingDamage } from '../src/gpu/building-damage/building-damage.js';
 import { groundContacts } from '../src/gpu/building-damage/rubble.js';
-import { analyseSurface, damageStage, scarSurface } from '../src/gpu/building-damage/surface.js';
+import { analyseSurface, damageLevel, scarSurface } from '../src/gpu/building-damage/surface.js';
 import * as drawable from '../src/gpu/drawable-resource.js';
 
 const W = 96,
@@ -85,15 +85,34 @@ describe('structural damage surfaces', () => {
     expect(changed(5)).toBeGreaterThan(changed(3));
     expect(changed(3)).toBeGreaterThan(changed(1));
     expect(analyseSurface(original, W, H, 13)).not.toEqual(sites);
-    expect([1, 0.85, 0.6, 0.4, 0.2, 0.08, 0.04].map(damageStage)).toEqual([0, 1, 2, 3, 4, 5, 6]);
-    expect(damageStage(Number.NaN)).toBe(0);
+    expect([1, 0.9, 0.75, 0.6, 0.45, 0.3, 0.2].map(damageLevel)).toEqual([0, 1, 2, 3, 4, 5, 6]);
+    expect(damageLevel(Number.NaN)).toBe(0);
+  });
+
+  it('gradually reveals wounds across health anchors, including the first chips and exposed backing', () => {
+    const original = housePixels();
+    const sites = analyseSurface(original, W, H, 73);
+    const backing = original.slice();
+    for (let at = 0; at < backing.length; at += 4) backing.set([60, 180, 80], at);
+    for (const hp of [1, 0.9, 0.75, 0.6, 0.45, 0.3, 0.2]) {
+      const before = scarSurface(original, W, H, sites, damageLevel(hp + 0.001), backing);
+      const after = scarSurface(original, W, H, sites, damageLevel(hp - 0.001), backing);
+      let maxChange = 0;
+      for (let at = 0; at < original.length; at += 4) {
+        if (original[at + 3] === 0) expect(after[at + 3]).toBe(0);
+        for (let c = 0; c < 4; c++)
+          maxChange = Math.max(maxChange, Math.abs((after[at + c] ?? 0) - (before[at + c] ?? 0)));
+      }
+      expect(maxChange).toBeGreaterThan(0);
+      expect(maxChange).toBeLessThan(5);
+    }
   });
   it('makes light damage visible and critical damage extensive without deleting the building', () => {
     const original = housePixels();
     for (const seed of [1, 12, 73, 104]) {
       const sites = analyseSurface(original, W, H, seed);
-      const light = scarSurface(original, W, H, sites, damageStage(0.8));
-      const critical = scarSurface(original, W, H, sites, damageStage(0.04));
+      const light = scarSurface(original, W, H, sites, damageLevel(0.9));
+      const critical = scarSurface(original, W, H, sites, damageLevel(0.04));
       let chips = 0,
         wounds = 0,
         lost = 0,
@@ -248,13 +267,71 @@ describe('visible damage ownership', () => {
       site = subject(),
       neighbour = subject();
     const list = [
-      { ref: 1, hpFrac: 0.1 },
-      { ref: 2, hpFrac: 0.1 },
+      { ref: 1, hpFrac: 0.5 },
+      { ref: 2, hpFrac: 0.5 },
     ];
     damage.draw(list, (ref) => (ref === 1 ? site : neighbour), 0, undefined, true, true, 1);
     site.body.texture = subject().texture;
     damage.draw(list, (ref) => (ref === 1 ? site : neighbour), 1, undefined, true, true, 1);
     expect(neighbour.body.texture).not.toBe(neighbour.texture);
+    damage.destroy();
+  });
+
+  it('charges both endpoint paints to the frame budget for blended damage', () => {
+    mockCanvas();
+    const writes = vi.spyOn(DamageAtlas.prototype, 'write');
+    const damage = new BuildingDamage();
+    const houses = [subject(), subject(), subject()];
+    const list = houses.map((_, ref) => ({ ref, hpFrac: 0.5 }));
+    for (let tick = 0; tick < 8; tick++) {
+      writes.mockClear();
+      damage.draw(list, (ref) => houses[ref], tick, undefined, true, true, 1);
+      expect(writes.mock.calls.length).toBeLessThanOrEqual(1);
+    }
+    expect(houses.every((house) => house.body.texture !== house.texture)).toBe(true);
+    damage.destroy();
+  });
+
+  it('bakes changing construction sources without starving another layer of the same building', () => {
+    mockCanvas();
+    const damage = new BuildingDamage();
+    const site = subject(),
+      stable = subject();
+    let bakedChanging = 0;
+    for (let tick = 0; tick < 5; tick++) {
+      if (tick === 1) {
+        site.damageBodies.push(stable.body);
+        site.container.addChild(stable.body);
+      }
+      const source = subject().texture;
+      site.body.texture = source;
+      damage.draw([{ ref: 1, hpFrac: 0.5 }], () => site, tick, undefined, true, true, 1);
+      if (site.body.texture !== source) bakedChanging++;
+      if (tick === 0) expect(bakedChanging).toBe(1);
+    }
+    expect(bakedChanging).toBeGreaterThan(1);
+    expect(stable.body.texture).not.toBe(stable.texture);
+    damage.destroy();
+  });
+
+  it('gives pending layers work when two changing construction sites alternate priority', () => {
+    mockCanvas();
+    const damage = new BuildingDamage();
+    const a = subject(),
+      b = subject(),
+      stable = subject();
+    a.damageBodies.push(stable.body);
+    a.container.addChild(stable.body);
+    const list = [
+      { ref: 1, hpFrac: 0.5 },
+      { ref: 2, hpFrac: 0.5 },
+    ];
+    for (let tick = 0; tick < 8; tick++) {
+      a.body.texture = subject().texture;
+      b.body.texture = subject().texture;
+      damage.draw(list, (ref) => (ref === 1 ? a : b), tick, undefined, true, true, 1);
+    }
+    expect(stable.body.texture).not.toBe(stable.texture);
     damage.destroy();
   });
 

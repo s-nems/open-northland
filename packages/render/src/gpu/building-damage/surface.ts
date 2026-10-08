@@ -1,21 +1,16 @@
 import { clamp01 } from '../../data/math.js';
 
-/** Artistic damage ladder, independent of repair and combat rules. */
-export function damageStage(hp: number): number {
-  if (!Number.isFinite(hp)) return 0;
-  return hp >= 0.9
-    ? 0
-    : hp >= 0.72
-      ? 1
-      : hp >= 0.52
-        ? 2
-        : hp >= 0.32
-          ? 3
-          : hp >= 0.14
-            ? 4
-            : hp >= 0.06
-              ? 5
-              : 6;
+const HEALTH_ANCHORS = [1, 0.9, 0.75, 0.6, 0.45, 0.3, 0.2] as const;
+
+/** Continuous artistic damage, independent of repair and combat rules. */
+export function damageLevel(hp: number): number {
+  if (!Number.isFinite(hp) || hp >= 1) return 0;
+  for (let i = 1; i < HEALTH_ANCHORS.length; i++) {
+    const upper = HEALTH_ANCHORS[i - 1] ?? 1;
+    const lower = HEALTH_ANCHORS[i] ?? 0;
+    if (hp >= lower) return i - 1 + (upper - hp) / (upper - lower);
+  }
+  return 6;
 }
 
 export function noise(seed: number, salt: number): number {
@@ -150,8 +145,35 @@ export function analyseSurface(rgba: Uint8ClampedArray, w: number, h: number, se
   return fractures;
 }
 
-/** Rebuild from pristine pixels. Late breaches merge but retain interior support; repair is reversible. */
+/** Blend neighbouring wound states from pristine pixels, including silhouettes in premultiplied alpha.
+ * A growing breach reveals its construction backing gradually instead of replacing a wall in one step. */
 export function scarSurface(
+  original: Uint8ClampedArray,
+  w: number,
+  h: number,
+  fractures: readonly Fracture[],
+  level: number,
+  backing?: Uint8ClampedArray,
+): Uint8ClampedArray {
+  const clamped = Number.isFinite(level) ? Math.max(0, Math.min(6, level)) : 0;
+  const lower = Math.floor(clamped);
+  const blend = clamped - lower;
+  const out = scarStage(original, w, h, fractures, lower, backing);
+  if (blend === 0) return out;
+  const next = scarStage(original, w, h, fractures, lower + 1, backing);
+  for (let at = 0; at < out.length; at += 4) {
+    const a = (out[at + 3] ?? 0) * (1 - blend);
+    const b = (next[at + 3] ?? 0) * blend;
+    const alpha = a + b;
+    if (alpha > 0) {
+      for (let c = 0; c < 3; c++) out[at + c] = ((out[at + c] ?? 0) * a + (next[at + c] ?? 0) * b) / alpha;
+    }
+    out[at + 3] = alpha;
+  }
+  return out;
+}
+
+function scarStage(
   original: Uint8ClampedArray,
   w: number,
   h: number,
