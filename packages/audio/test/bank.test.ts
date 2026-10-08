@@ -1,5 +1,6 @@
 import type { GfxPattern, SoundBank, TerrainPattern } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
+import { groupFiles, SILENT_PLACEHOLDER_FILE } from '../src/data/bank.js';
 import { buildSoundIndex } from '../src/index.js';
 
 /**
@@ -14,6 +15,16 @@ const bank: SoundBank = {
     // A duplicated logicSoundType: the first-listed group keeps the id (the bank's one known collision).
     { name: 'SocialTalk Male', logicSoundType: 61, sfx: [{ file: 'voice/male_social.wav', params: [80] }] },
     { name: 'SocialTalk Dup', logicSoundType: 61, sfx: [{ file: 'voice/dup.wav', params: [80] }] },
+    { name: 'Stag Sounds', sfx: [{ file: SILENT_PLACEHOLDER_FILE, params: [80] }] },
+    {
+      name: 'Yawn Man',
+      logicSoundType: 35,
+      sfx: [
+        { file: SILENT_PLACEHOLDER_FILE, params: [80] },
+        { file: 'generic/human_yawn m 01.wav', params: [80] },
+      ],
+    },
+    { name: 'Sleep Woman', logicSoundType: 36, sfx: [{ file: SILENT_PLACEHOLDER_FILE, params: [80] }] },
   ],
   ambient: [
     {
@@ -59,12 +70,25 @@ describe('buildSoundIndex', () => {
 
   it('indexes static groups by lower-cased name and skips nameless groups', () => {
     expect(index.groupsByName.get('hammer wood')).toEqual(['static/hammer01.wav']);
-    expect([...index.groupsByName.keys()]).toEqual(['hammer wood', 'socialtalk male', 'socialtalk dup']);
+    expect([...index.groupsByName.keys()]).toEqual([
+      'hammer wood',
+      'socialtalk male',
+      'socialtalk dup',
+      'stag sounds',
+      'yawn man',
+      'sleep woman',
+    ]);
   });
 
   it('indexes groups by logicSoundType, first-listed winning a duplicated id', () => {
     expect(index.groupsByLogicSoundType.get(1)).toEqual(['static/hammer01.wav']);
     expect(index.groupsByLogicSoundType.get(61)).toEqual(['voice/male_social.wav']);
+  });
+
+  it("drops the data's silent placeholder slots, so a group of only placeholders plays nothing", () => {
+    expect(groupFiles(index, 'Stag Sounds')).toBeUndefined();
+    expect(index.groupsByLogicSoundType.get(36)).toEqual([]);
+    expect(index.groupsByLogicSoundType.get(35)).toEqual(['generic/human_yawn m 01.wav']);
   });
 
   it('indexes jingles by MusicType', () => {

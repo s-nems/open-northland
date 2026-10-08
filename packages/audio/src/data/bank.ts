@@ -3,6 +3,7 @@ import type {
   GfxPattern,
   HumanVoices,
   SoundBank,
+  SoundSfx,
   TerrainPattern,
   VoiceClass,
 } from '@open-northland/data';
@@ -35,6 +36,21 @@ export interface SoundIndex {
   readonly heroJobs: ReadonlySet<number>;
   /** Animal tribe → its unprompted call and the roll that gates it. */
   readonly animalCalls: ReadonlyMap<number, AnimalCall>;
+}
+
+/**
+ * The data's placeholder for a silent slot. Its decoded wav is a copy of the GUI confirm click, so a
+ * slot naming it is dropped from its group instead of ringing a click in the world.
+ */
+export const SILENT_PLACEHOLDER_FILE = 'static/dummy.wav';
+
+/**
+ * A group's playable wav files: every slot except the {@link SILENT_PLACEHOLDER_FILE}. A group of only
+ * placeholders stays silent. Approximation: a group mixing both plays a real file every time, where the
+ * data's placeholder slots would have kept it silent part of the time.
+ */
+function audibleFiles(sfx: readonly SoundSfx[]): readonly string[] {
+  return sfx.map((s) => s.file).filter((file) => file !== SILENT_PLACEHOLDER_FILE);
 }
 
 /**
@@ -71,7 +87,7 @@ export function buildSoundIndex(
   const groupsByLogicSoundType = new Map<number, readonly string[]>();
   for (const g of sounds.staticGroups) {
     if (g.name.trim() === '') continue;
-    const files = g.sfx.map((s) => s.file);
+    const files = audibleFiles(g.sfx);
     groupsByName.set(g.name.toLowerCase(), files);
     if (g.logicSoundType !== undefined && !groupsByLogicSoundType.has(g.logicSoundType)) {
       groupsByLogicSoundType.set(g.logicSoundType, files);
@@ -81,17 +97,14 @@ export function buildSoundIndex(
   const jinglesByMusicType = new Map<number, readonly string[]>();
   for (const j of sounds.jingles) {
     if (j.musicType === undefined) continue;
-    jinglesByMusicType.set(
-      j.musicType,
-      j.sfx.map((s) => s.file),
-    );
+    jinglesByMusicType.set(j.musicType, audibleFiles(j.sfx));
   }
 
   // Ambient bed name → its loop wav, plus pattern-group name → bed names (the join's middle table).
   const ambientLoopByName = new Map<string, string>();
   const bedsByPatternGroup = new Map<string, string[]>();
   for (const a of sounds.ambient) {
-    const loop = a.sfx[0]?.file;
+    const loop = audibleFiles(a.sfx)[0];
     if (loop === undefined) continue;
     ambientLoopByName.set(a.name, loop);
     for (const g of a.patternGroups) pushInto(bedsByPatternGroup, g, a.name);
