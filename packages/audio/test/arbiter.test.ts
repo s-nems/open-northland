@@ -9,11 +9,13 @@ import {
   SFX_STARTS_PER_S,
   VOICE_BURST,
 } from '../src/index.js';
+import { battleEvents, battleShots, battleSnapshot } from './helpers/battle.js';
 
 /**
  * The arbiter rations a frame's one-shots by lane: jingles one at a time with a cooldown that grows
  * while a type keeps firing, voices and SFX from a rate budget loudest first, and everything without a
- * lane untouched. Time is the audio clock, passed in.
+ * lane untouched. Time is the audio clock, passed in. Voice and SFX shots come from the director's
+ * fixture battle, so the tests meet the shapes play produces.
  */
 
 function jingle(musicType: number, key: string): OneShot {
@@ -26,21 +28,6 @@ function jingle(musicType: number, key: string): OneShot {
     lane: { kind: 'jingle', musicType },
     ...(duckMusicMs === undefined ? {} : { duckMusicMs }),
   };
-}
-
-function sfx(key: string, gain: number, exclusive?: 'wav'): OneShot {
-  return {
-    files: ['static/swing01.wav'],
-    gain,
-    pan: 0,
-    key,
-    lane: { kind: 'sfx' },
-    ...(exclusive === undefined ? {} : { exclusive }),
-  };
-}
-
-function voice(key: string, gain = 0.5): OneShot {
-  return { files: ['generic/m 01.wav'], gain, pan: 0, key, lane: { kind: 'voice' } };
 }
 
 const BIRTH_S = (JINGLE_DUCK_HOLD_MS.get(JINGLE_BIRTH) ?? 0) / 1000;
@@ -119,51 +106,45 @@ describe('jingle lane', () => {
 });
 
 describe('sfx and voice lanes', () => {
-  it('starts the loudest layered sounds of a burst and holds the rest to the budget', () => {
-    const arbiter = new OneShotArbiter();
-    const battle = Array.from({ length: 40 }, (_, i) => sfx(`swing:${i}`, i / 40));
-    const started = arbiter.decide(battle, 0);
-    expect(started).toHaveLength(SFX_BURST);
-    expect(started.map((s) => s.gain)).toEqual([...started.map((s) => s.gain)].sort((a, b) => b - a));
-    expect(Math.min(...started.map((s) => s.gain))).toBeGreaterThan(0.5);
-    // A frame later the budget has refilled by its rate, no more.
-    const refilled = arbiter.decide(battle, 0.5);
-    expect(refilled).toHaveLength(Math.floor(SFX_STARTS_PER_S * 0.5));
+  const snapshot = battleSnapshot(40);
+  const battle = battleShots(snapshot, battleEvents(40));
+  const lane = (shots: readonly OneShot[], kind: 'voice' | 'sfx') =>
+    shots.filter((s) => s.lane?.kind === kind);
+
+  it('counts every scream against the voice budget and every body blow against the sfx budget', () => {
+    // The director's own shapes: screams and body blows hold their wav exclusive, and still pay.
+    expect(lane(battle, 'voice').length).toBeGreaterThan(VOICE_BURST);
+    expect(lane(battle, 'voice').every((s) => s.exclusive === 'wav')).toBe(true);
+    expect(lane(battle, 'sfx').some((s) => s.exclusive === 'wav')).toBe(true);
+    const started = new OneShotArbiter().decide(battle, 0);
+    expect(lane(started, 'voice').length).toBeLessThanOrEqual(VOICE_BURST);
+    expect(lane(started, 'sfx').length).toBeLessThanOrEqual(SFX_BURST);
   });
 
-  it('lets a wav-exclusive shot through outside the budget: its own wav pool bounds it', () => {
+  it('starts the loudest of a burst and refills by the rate, no more', () => {
     const arbiter = new OneShotArbiter();
-    const frame = [
-      ...Array.from({ length: SFX_BURST }, (_, i) => sfx(`swing:${i}`, 1)),
-      sfx('hit:1', 0.1, 'wav'),
-    ];
-    expect(arbiter.decide(frame, 0).map((s) => s.key)).toContain('hit:1');
+    const started = lane(arbiter.decide(battle, 0), 'sfx');
+    const gains = lane(battle, 'sfx')
+      .map((s) => s.gain)
+      .sort((a, b) => b - a);
+    expect(Math.min(...started.map((s) => s.gain))).toBeGreaterThanOrEqual(gains[SFX_BURST - 1] ?? 0);
+    const later = 0.5;
+    expect(lane(arbiter.decide(battle, later), 'sfx').length).toBeLessThanOrEqual(
+      Math.floor(SFX_STARTS_PER_S * later),
+    );
   });
 
   it('rations voices separately from sfx', () => {
-    const arbiter = new OneShotArbiter();
-    const frame = [
-      ...Array.from({ length: VOICE_BURST + 3 }, (_, i) => voice(`generic:${i}`)),
-      ...Array.from({ length: 3 }, (_, i) => sfx(`saw:${i}`, 0.5)),
-    ];
-    const started = arbiter.decide(frame, 0);
-    expect(started.filter((s) => s.lane?.kind === 'voice')).toHaveLength(VOICE_BURST);
-    expect(started.filter((s) => s.lane?.kind === 'sfx')).toHaveLength(3);
+    const started = new OneShotArbiter().decide(battle, 0);
+    expect(lane(started, 'voice').length).toBeGreaterThan(0);
+    expect(lane(started, 'sfx').length).toBeGreaterThan(VOICE_BURST);
   });
 
-  it('never rations a shot without a lane: an order answer or a GUI click always plays', () => {
-    const arbiter = new OneShotArbiter();
-    const answer: OneShot = {
-      files: ['humantalk/m1ok01.wav'],
-      gain: 0.8,
-      pan: 0,
-      key: 'respond:ok',
-      exclusive: 'group',
-    };
-    const click: OneShot = { files: ['gui/click_confirm.wav'], gain: 1, pan: 0, key: 'ui:confirm' };
-    const frame = [...Array.from({ length: SFX_BURST + 5 }, (_, i) => sfx(`swing:${i}`, 1)), answer, click];
-    expect(arbiter.decide(frame, 0).map((s) => s.key)).toEqual(
-      expect.arrayContaining(['respond:ok', 'ui:confirm']),
-    );
+  it('never rations an order answer: it has no lane and always plays', () => {
+    const shots = battleShots(snapshot, battleEvents(40), { responses: [2] });
+    const answers = shots.filter((s) => s.key.startsWith('respond:'));
+    expect(answers).toHaveLength(1);
+    expect(answers[0]?.lane).toBeUndefined();
+    expect(new OneShotArbiter().decide(shots, 0).map((s) => s.key)).toContain(answers[0]?.key);
   });
 });

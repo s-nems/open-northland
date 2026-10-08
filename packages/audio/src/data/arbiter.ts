@@ -19,8 +19,8 @@ import type { OneShot } from './types.js';
  *   quiet spell rings at once. A more important jingle (a death, the alarm) rings over a lesser one
  *   already sounding; a lesser one waits for the lane and rings late, or is dropped once stale.
  * - Voices and positioned SFX draw from a rate budget each, loudest first, so the busiest battle
- *   starts a bounded number of layered sounds a second. A shot the engine already holds exclusive to
- *   its own wav bypasses the budget: its wav pool bounds it.
+ *   starts a bounded number of layered sounds a second. An exclusive shot (a scream, a body blow) is
+ *   counted like any other: its own wav guard and the budget both apply.
  *
  * Approximation: the original rations nothing beyond its same-jingle and same-wav guards; the budgets
  * and the growing cooldown are a legibility choice. Pure: time comes in as `now` (audio-clock seconds).
@@ -152,10 +152,10 @@ export class OneShotArbiter {
     for (const shot of jingles) this.offerJingle(shot, now, out);
     this.ringPending(now, out);
     for (const shot of byGainDesc(voices)) {
-      if (shot.exclusive !== undefined || this.voices.take(now)) out.push(shot);
+      if (this.voices.take(now)) out.push(shot);
     }
     for (const shot of byGainDesc(sfx)) {
-      if (shot.exclusive !== undefined || this.sfx.take(now)) out.push(shot);
+      if (this.sfx.take(now)) out.push(shot);
     }
     return out;
   }
