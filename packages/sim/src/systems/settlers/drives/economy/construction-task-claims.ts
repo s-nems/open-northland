@@ -6,7 +6,7 @@ import {
   SiteAssignment,
   UnderConstruction,
 } from '../../../../components/index.js';
-import { ONE } from '../../../../core/fixed.js';
+import { type Fixed, fx, ONE } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { remainingConstructionSteps } from '../../../economy/construction.js';
@@ -22,8 +22,9 @@ import {
 import { atomicHoldsSettler } from '../../atomics/busy.js';
 
 /**
- * A building site's standing with the builders, weighed ahead of its progress and its distance; a
- * higher tier draws a builder off a lower one. Project rule.
+ * A building site's standing with the builders, weighed ahead of its distance; a higher tier draws a
+ * builder off a lower one, up to {@link PRIORITY_CREW} builders. Within a tier the nearest site wins, so
+ * the ordinary work spreads over the sites by distance. Owner ruling.
  */
 const SITE_TIER = {
   /** Material still to fetch, or nothing to do at all. */
@@ -31,18 +32,22 @@ const SITE_TIER = {
   /** Its whole bill on site or on its way, and no step to hammer until the last load lands: it keeps a
    *  small finishing crew waiting so the load is hammered in as it arrives. */
   covered: 1,
+  /** Most of its bill on site and the rest to fetch, so it is finished before fresh sites are begun. */
+  nearlyDone: 2,
   /** Steps to hammer on a part-delivered site, and no builder on it. */
-  unstaffed: 2,
+  unstaffed: 3,
   /** Its whole bill on site and steps to hammer. */
-  ready: 3,
+  ready: 4,
   /** Ready, with no builder on it. */
-  readyUnstaffed: 4,
+  readyUnstaffed: 5,
 } as const;
 
-/** The progress steps a tier splits into: one per tenth of the bill delivered. */
-const PROGRESS_STEPS = 10;
-/** Ranks a tier spans: tenths 0 to 10 inclusive. */
-const RANKS_PER_TIER = PROGRESS_STEPS + 1;
+/** Builders a ready or nearly done site draws before it ranks like any other: enough to finish it fast
+ *  without emptying the other sites. Owner ruling. */
+const PRIORITY_CREW = 3;
+
+/** The delivered share of the bill from which a site counts as nearly done: two thirds. Approximation. */
+const NEARLY_DONE: Fixed = fx.div(fx.fromInt(2), fx.fromInt(3));
 
 /** Builders a covered site keeps waiting for its last loads: one bringing a load counts, so a crew's own
  *  hauler and one more hand stay while the rest go. Owner ruling. */
@@ -63,7 +68,7 @@ export interface SiteRanking {
 export class ConstructionTaskClaims {
   private readonly hammerBySite = new Map<Entity, number>();
   private readonly stepCapacityBySite = new Map<Entity, number>();
-  private readonly deliveredTenthsBySite = new Map<Entity, number>();
+  private readonly deliveredBySite = new Map<Entity, Fixed>();
   private readonly materialsPresentBySite = new Map<Entity, boolean>();
   private crews: Map<Entity, number> | null = null;
   private walls: SoloSiteSurvey | undefined;
@@ -103,14 +108,19 @@ export class ConstructionTaskClaims {
   /** `site`'s {@link SITE_TIER} as the crews and claims stand now. */
   siteTier(site: Entity): number {
     const { world, ctx } = this;
+    const crew = this.crewSize(site);
     if (this.hasHammerWork(site)) {
-      const nobody = this.crewSize(site) === 0;
       if (this.materialsPresent(site)) {
-        return nobody ? SITE_TIER.readyUnstaffed : SITE_TIER.ready;
+        if (crew === 0) return SITE_TIER.readyUnstaffed;
+        if (crew < PRIORITY_CREW) return SITE_TIER.ready;
+      } else if (crew === 0) {
+        return SITE_TIER.unstaffed;
       }
-      if (nobody) return SITE_TIER.unstaffed;
     }
-    return constructionBillCovered(world, ctx, site, this.supply) ? SITE_TIER.covered : SITE_TIER.waiting;
+    if (constructionBillCovered(world, ctx, site, this.supply)) return SITE_TIER.covered;
+    return crew < PRIORITY_CREW && this.delivered(site) >= NEARLY_DONE
+      ? SITE_TIER.nearlyDone
+      : SITE_TIER.waiting;
   }
 
   /** Whether `builder`, one of `site`'s crew, may wait there for its last loads: a covered site with no
@@ -125,17 +135,16 @@ export class ConstructionTaskClaims {
   }
 
   /**
-   * Rank `owner`'s building sites among `sites` for one builder's pick: by tier, then by the tenth of
-   * the bill delivered, so a site nearer completion draws builders before a fresh one. The ranks are
-   * read as the crews stand at this moment; a site another builder joins later in the pass re-ranks on
-   * its own pick.
+   * Rank `owner`'s building sites among `sites` for one builder's pick, by tier. The ranks are read as
+   * the crews stand at this moment; a site another builder joins later in the pass re-ranks on its own
+   * pick.
    */
   rankBuildingSites(owner: number | undefined, sites: readonly Entity[]): SiteRanking {
     const rankOf = new Map<Entity, number>();
     const ranks: number[] = [];
     for (const site of sites) {
       if (!ownersCompatible(owner, ownerOf(this.world, site))) continue;
-      const rank = this.siteTier(site) * RANKS_PER_TIER + this.deliveredTenths(site);
+      const rank = this.siteTier(site);
       rankOf.set(site, rank);
       if (!ranks.includes(rank)) ranks.push(rank);
     }
@@ -240,15 +249,14 @@ export class ConstructionTaskClaims {
     return present;
   }
 
-  /** Tenths of the bill on site, 0 to 10; site stock stays put during the planner, so one read serves. */
-  private deliveredTenths(site: Entity): number {
-    let tenths = this.deliveredTenthsBySite.get(site);
-    if (tenths === undefined) {
-      const delivered = deliveredConstructionFraction(this.world, this.ctx, site);
-      tenths = Math.min(PROGRESS_STEPS, Math.floor((delivered * PROGRESS_STEPS) / ONE));
-      this.deliveredTenthsBySite.set(site, tenths);
+  /** The delivered share of the bill; site stock stays put during the planner, so one read serves. */
+  private delivered(site: Entity): Fixed {
+    let delivered = this.deliveredBySite.get(site);
+    if (delivered === undefined) {
+      delivered = deliveredConstructionFraction(this.world, this.ctx, site);
+      this.deliveredBySite.set(site, delivered);
     }
-    return tenths;
+    return delivered;
   }
 }
 

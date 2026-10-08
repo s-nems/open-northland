@@ -416,9 +416,13 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     expect(runner).toBeDefined();
     if (runner === undefined) throw new Error('one construction runner expected');
     expect(sim.world.get(runner, SupplyRun)).toMatchObject({ site: stalled, goodType: WOOD });
+    // The runner's load covers the stalled site, so one more hand waits there to hammer it in.
     expect(
       builders.filter((builder) => sim.world.tryGet(builder, SiteAssignment)?.site === ready),
-    ).toHaveLength(7);
+    ).toHaveLength(6);
+    expect(
+      builders.filter((builder) => sim.world.tryGet(builder, SiteAssignment)?.site === stalled),
+    ).toHaveLength(2);
   });
 
   it('lets a fully supplied site reserve parallel hammer work for its whole crew', () => {

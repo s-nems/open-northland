@@ -72,6 +72,7 @@ import {
   type MessageTarget,
   type MetSeat,
   type NoticeGallery,
+  type SiteSeam,
   type WorkshopSeam,
 } from './messages/index.js';
 import { applyNavEntry, NAV_ENTRY_IDS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
@@ -241,6 +242,8 @@ export interface ToolPanelOptions {
   readonly noticeGallery?: NoticeGallery;
   /** The seat's workshops and the sim's diagnosis of their workers, for the stalled-workshop notes. */
   readonly workshops?: WorkshopSeam;
+  /** The sim's read of the seat's building sites' supply, for the shortage notes. */
+  readonly sites?: SiteSeam;
   /** The vehicle build sites, which an unlock note lists as vehicles. */
   readonly isVehicleSite?: (typeId: number) => boolean;
   /** The GUI click feedback: every pressed button confirms, a cancelled hold fails. Absent, silent. */
@@ -764,6 +767,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       onAttackShown: opts.onAttackShown,
       gallery: opts.noticeGallery,
       workshops: opts.workshops,
+      sites: opts.sites,
       isVehicleSite: opts.isVehicleSite,
     });
     domParts.push(messageCenter);

@@ -51,8 +51,9 @@ type MaterialResolver = ReturnType<typeof constructionMaterialResolver>;
 
 /**
  * BUILD - mend the nearest damaged building that is safe to reach, else take the building site of the
- * highest rank with a task for this builder: by its tier (`SITE_TIER`), then by the tenth of its bill
- * delivered, then by distance, its own crew site first among equals. At the site, delivered material is
+ * highest tier (`SITE_TIER`: a few hands finish a supplied or nearly done site before fresh ones are
+ * begun) with a task for this builder, the nearest within a tier and its own crew site first among
+ * equals, so the ordinary work spreads over the sites by distance. At the site, delivered material is
  * hammered before more is fetched, and a covered site keeps a finishing crew waiting for its last loads.
  * The last builder at a site with a task stays, unless it has no step to hammer there and the site it
  * would go to has nobody. With no task anywhere the builder waits beside a site, unless only its
@@ -170,8 +171,8 @@ export function planBuilder(
 
   if (repairNearest(plan, spacing, repairs, claims, avoidSite, false)) return true;
 
-  // Building sites are taken by rank, the crew site winning ties, so a crew holds together between
-  // equally ranked sites instead of re-ranking every time one hammer atomic completes.
+  // Building sites are taken by tier, then distance, the crew site winning ties, so a crew holds together
+  // between equally ranked sites instead of re-ranking every time one hammer atomic completes.
   const crewSite = assigned?.pinned === false && avoidSite?.(assigned.site) !== true ? assigned.site : null;
   const crewBuilding = crewSite !== null && !isSoloSite(world, crewSite) ? crewSite : null;
   // A building site's task for this builder: hammering, a material fetch, or a wait for its last loads.
