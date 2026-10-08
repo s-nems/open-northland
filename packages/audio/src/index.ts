@@ -183,7 +183,14 @@ export {
   preloadPlan,
   TALK_FOLDERS,
 } from './data/preload-plan.js';
-export { type LaneCounts, type SoundStatsView, STAT_LANES, type StatLane } from './data/sound-stats.js';
+export {
+  copySoundStats,
+  type LaneCounts,
+  type SoundStatsView,
+  STAT_LANES,
+  type StatLane,
+  zeroLanes,
+} from './data/sound-stats.js';
 export {
   computeSpatial,
   EDGE_GAIN,

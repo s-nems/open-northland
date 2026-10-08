@@ -3,6 +3,7 @@ import {
   AUTHORED_VOLUME_RANGE_DB,
   auditionBed,
   auditionShot,
+  copySoundStats,
   type MixerVolumes,
   type MusicManifest,
   NEAR_ZOOM_SCALE,
@@ -67,10 +68,6 @@ function tally(before: SoundStatsView, after: SoundStatsView): string {
     lanes.push(formatMessage(copy.laneTally, { lane: copy.lanes[lane], started, offered }));
   }
   return formatMessage(copy.tally, { lanes: lanes.join(' · '), stolen: after.stolen - before.stolen });
-}
-
-function snapshotStats(stats: SoundStatsView): SoundStatsView {
-  return { ...stats, offered: { ...stats.offered }, started: { ...stats.started } };
 }
 
 function decibels(gain: number): string {
@@ -161,7 +158,7 @@ export function createSoundStudio(
    *  the arbiter made of them. */
   const play = (row: ClipList, files: readonly string[], count: number, after: () => void): void =>
     withAudio(() => {
-      const before = snapshotStats(audio.stats);
+      const before = copySoundStats(audio.stats);
       let left = count;
       const step = (): void => {
         const shot = shotOf(row, files);

@@ -1,5 +1,5 @@
 /** The machine-readable debug seam both playable entries expose, installed by `startGameView`. */
-import type { SoundStatsView } from '@open-northland/audio';
+import { copySoundStats, type SoundStatsView } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
 import { TICKS_PER_SECOND } from '@open-northland/sim';
@@ -248,9 +248,7 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
     watchSeat: deps.watchSeat,
     audioStats: () => {
       const stats = deps.audioStats();
-      return stats === null
-        ? null
-        : { ...stats, offered: { ...stats.offered }, started: { ...stats.started } };
+      return stats === null ? null : copySoundStats(stats);
     },
   };
 }

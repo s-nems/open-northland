@@ -33,12 +33,17 @@ export type SoundStatsView = {
   readonly stolen: number;
 };
 
-function zeroLanes(): LaneCounts {
+export function zeroLanes(): LaneCounts {
   return { jingle: 0, alert: 0, voice: 0, sfx: 0, free: 0 };
 }
 
 export function emptySoundStats(): SoundStats {
   return { frames: 0, offered: zeroLanes(), started: zeroLanes(), stolen: 0 };
+}
+
+/** A detached copy of `stats`, for a read a later one is compared against or one sent off the page. */
+export function copySoundStats(stats: SoundStatsView): SoundStatsView {
+  return { ...stats, offered: { ...stats.offered }, started: { ...stats.started } };
 }
 
 export function statLane(shot: OneShot): StatLane {

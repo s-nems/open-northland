@@ -1,4 +1,4 @@
-import { type LaneCounts, type SoundStatsView, STAT_LANES } from '@open-northland/audio';
+import { type LaneCounts, type SoundStatsView, STAT_LANES, zeroLanes } from '@open-northland/audio';
 import type { Command, PlayerCommand } from '@open-northland/sim';
 import { diag } from '../diag/index.js';
 import { formatMessage, sceneStageLabels } from '../i18n/index.js';
@@ -61,8 +61,7 @@ interface CountWindow {
 }
 
 function emptyWindow(): CountWindow {
-  const lanes = (): LaneCounts => ({ jingle: 0, alert: 0, voice: 0, sfx: 0, free: 0 });
-  return { frames: 0, offered: lanes(), started: lanes(), stolen: 0, peakOffered: 0, peakStarted: 0 };
+  return { frames: 0, offered: zeroLanes(), started: zeroLanes(), stolen: 0, peakOffered: 0, peakStarted: 0 };
 }
 
 /** Reads the driver's totals each frame into a window, without allocating. */
