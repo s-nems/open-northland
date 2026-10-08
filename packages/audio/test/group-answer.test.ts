@@ -389,6 +389,15 @@ describe('selection voice', () => {
     expect(stopped).toEqual([line?.instance]);
   });
 
+  it('leaves only the answer of an order given in the selecting frame', () => {
+    const members = [man(5, VIKING, CENTRE_COL)];
+    const stopped: number[] = [];
+    const arbiter = new OneShotArbiter({ playback: { stop: (instance) => stopped.push(instance) } });
+    const frame = [...select(members, { members: [5] }), ...answer(members, { members: [5] })];
+    expect(keysOf(arbiter.decide(frame, 0))).toEqual(['respond:Viking male ok 02']);
+    expect(stopped).toEqual([]); // the engine never started the line it would stop
+  });
+
   it('keeps silent while the settler own answer still sounds', () => {
     const members = [man(5, VIKING, CENTRE_COL)]; // pool 1: 'Viking male ok 02'
     const CLIP_S = 2;

@@ -34,6 +34,10 @@ export const RATE_JITTER = 0.04;
 /** A world one-shot's level varies by up to this many dB either way. Approximation, the common choice. */
 export const GAIN_JITTER_DB = 1.5;
 
+/** Why the arbiter stops a one-shot: a louder world shot took its slot, or an answer cut the
+ *  yielding line before it ({@link OneShot.yieldsToAnswer}). */
+export type StopCause = 'steal' | 'yield';
+
 /**
  * What the arbiter asks of the playback engine, both optional so it runs headless. Without
  * `clipLengthS` every clip is taken to run {@link DEFAULT_CLIP_LENGTH_S}; without `stop` a stolen
@@ -42,9 +46,8 @@ export const GAIN_JITTER_DB = 1.5;
 export interface OneShotPlayback {
   /** The decoded length of `file` in seconds, or undefined while the engine has not decoded it. */
   readonly clipLengthS?: (file: string) => number | undefined;
-  /** Fade out the one-shot started as `instance` ({@link OneShot.instance}): a louder world shot stole
-   *  its slot, or an answer superseded its yielding line. */
-  readonly stop?: (instance: number) => void;
+  /** Fade out the one-shot started as `instance` ({@link OneShot.instance}), for `cause`. */
+  readonly stop?: (instance: number, cause: StopCause) => void;
 }
 
 interface PoolState {
@@ -203,7 +206,7 @@ export class OneShotLedger {
       const instance = this.yielding.get(play);
       this.yielding.delete(play);
       this.lastPlay.delete(play.file);
-      if (instance !== undefined) stop(instance);
+      if (instance !== undefined) stop(instance, 'yield');
     }
     return true;
   }
@@ -243,7 +246,7 @@ export class OneShotLedger {
     // Without `stop` the stolen wav plays on, so it still holds its wav.
     if (this.playback.stop === undefined) return;
     if (this.lastPlay.get(victim.play.file) === victim.play) this.lastPlay.delete(victim.play.file);
-    this.playback.stop(victim.instance);
+    this.playback.stop(victim.instance, 'steal');
   }
 
   /**

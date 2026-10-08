@@ -381,6 +381,25 @@ describe('instance caps', () => {
     expect(stopped).toHaveLength(2);
   });
 
+  it('drops a shot stolen in the decision that started it, without stopping it in the engine', () => {
+    const stopped: number[] = [];
+    // The lowest draw jitters every level down by the full span, so a started shot can end up quieter
+    // than a later candidate of the same frame.
+    const arbiter = new OneShotArbiter({
+      random: () => 0,
+      playback: { clipLengthS: () => 1000, stop: (i) => stopped.push(i) },
+    });
+    let t = 0;
+    for (let n = 1; n < WORLD_VOICE_CAP; n++)
+      arbiter.decide([worldShot(wavPool(`f${n}-`, 1), `f:${n}`, 0.9)], ++t);
+    const out = arbiter.decide(
+      [worldShot(wavPool('first', 1), 'first', 0.5), worldShot(wavPool('second', 1), 'second', 0.45)],
+      ++t,
+    );
+    expect(out.map((s) => s.key)).toEqual(['second']);
+    expect(stopped).toEqual([]);
+  });
+
   it('keeps a stolen wav held while the engine cannot stop it', () => {
     const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => 1000 } });
     const victimPool = wavPool('held', 1);

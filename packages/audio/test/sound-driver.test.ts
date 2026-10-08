@@ -222,6 +222,20 @@ describe('SoundDriver', () => {
     expect(fetched.at(-1)).toBe('/sounds/gui/click_confirm.wav');
   });
 
+  it('counts no steal when an answer cuts the selection line before it', async () => {
+    const { driver, ctx } = makeDriver();
+    await driver.resume();
+    driver.select({ members: [3], fallback: 'confirm' });
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    ctx.currentTime = FAKE_CLIP_S / 2;
+    driver.respond({ members: [3] });
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(driver.stats.started.free).toBe(2);
+    expect(driver.stats.stolen).toBe(0);
+  });
+
   it('rolls the idle chatter over the drawn creatures once per game tick the frame advanced', async () => {
     const { driver, fetched } = makeDriver(); // random 0: every roll wins
     await driver.resume();

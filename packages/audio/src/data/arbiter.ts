@@ -11,7 +11,7 @@ import {
   JINGLE_TECHNOLOGY,
   JINGLE_WON,
 } from './bindings.js';
-import { OneShotLedger, type OneShotPlayback } from './one-shot-ledger.js';
+import { OneShotLedger, type OneShotPlayback, type StopCause } from './one-shot-ledger.js';
 import type { OneShot } from './types.js';
 
 /**
@@ -181,14 +181,36 @@ export class OneShotArbiter {
   private readonly sfx: RateBudget;
   private readonly ledger: OneShotLedger;
   private readonly playback: OneShotPlayback;
+  /** The instances the running {@link decide} has started, and those of them it stopped again: the
+   *  engine never hears of a shot both started and stopped in one decision. */
+  private readonly startedNow = new Set<number>();
+  private readonly droppedNow = new Set<number>();
 
   constructor(options: ArbiterOptions = {}) {
     const now = options.now ?? 0;
     this.voices = new RateBudget(VOICE_STARTS_PER_S, VOICE_BURST, now);
     this.sfx = new RateBudget(SFX_STARTS_PER_S, SFX_BURST, now);
     const random = options.random ?? seededRandom(DEFAULT_PICK_SEED);
-    this.playback = options.playback ?? {};
-    this.ledger = new OneShotLedger(random, this.playback);
+    const playback = options.playback ?? {};
+    this.playback = playback;
+    const stop = playback.stop;
+    this.ledger = new OneShotLedger(random, {
+      ...(playback.clipLengthS !== undefined ? { clipLengthS: playback.clipLengthS } : {}),
+      ...(stop !== undefined
+        ? { stop: (instance: number, cause: StopCause) => this.stop(instance, cause, stop) }
+        : {}),
+    });
+  }
+
+  /** Stop a sounding instance through the engine, or drop one this decision started. */
+  private stop(instance: number, cause: StopCause, engineStop: NonNullable<OneShotPlayback['stop']>): void {
+    if (this.startedNow.has(instance)) this.droppedNow.add(instance);
+    else engineStop(instance, cause);
+  }
+
+  private emit(out: OneShot[], shot: OneShot): void {
+    if (shot.instance !== undefined) this.startedNow.add(shot.instance);
+    out.push(shot);
   }
 
   /** The shots of this frame that should start, at `now` audio-clock seconds. Call every frame, with
@@ -209,7 +231,7 @@ export class OneShotArbiter {
           break;
         case undefined: {
           const started = this.ledger.startFree(shot, now);
-          if (started !== null) out.push(started);
+          if (started !== null) this.emit(out, started);
           break;
         }
       }
@@ -223,9 +245,15 @@ export class OneShotArbiter {
       const started = this.ledger.startWorld(shot, now);
       if (started === null) continue;
       budget.spend();
-      out.push(started);
+      this.emit(out, started);
     }
-    return out;
+    const kept =
+      this.droppedNow.size === 0
+        ? out
+        : out.filter((shot) => shot.instance === undefined || !this.droppedNow.has(shot.instance));
+    this.startedNow.clear();
+    this.droppedNow.clear();
+    return kept;
   }
 
   private offerJingle(shot: OneShot, now: number, out: OneShot[]): void {
