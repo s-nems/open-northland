@@ -1,15 +1,7 @@
-import type { components } from '@open-northland/sim';
-
-/** The assistant's switch rows: the "give everyone …" grants (gear, drinks and charms), three that let
- *  recruits be armed with a class's weaker weapon, one that sends school graduates straight to a free
- *  workplace, one that lets gatherers move their flags after the resources, and the two audience limits
- *  that keep the drinks or the charms for soldiers alone. */
-export type AssistantGrantId =
-  | GiveSwitchId
-  | WeaponSwitchId
-  | AudienceSwitchId
-  | 'postGraduates'
-  | 'moveFlags';
+/** The assistant's switch rows: the "give …" grants (gear, drinks and charms), three that let recruits be
+ *  armed with a class's weaker weapon, one that sends school graduates straight to a free workplace and
+ *  one that lets gatherers move their flags after the resources. */
+export type AssistantGrantId = GiveSwitchId | WeaponSwitchId | 'postGraduates' | 'moveFlags';
 
 export type GiveSwitchId =
   | 'giveBoots'
@@ -26,7 +18,6 @@ export type GiveSwitchId =
   | 'giveCriticalHitAmulet'
   | 'giveSpeedAmulet';
 export type WeaponSwitchId = 'allowShortSwords' | 'allowWoodenSpears' | 'allowShortBows';
-export type AudienceSwitchId = 'drinksForSoldiers' | 'charmsForSoldiers';
 
 export const GRANT_IDS: readonly AssistantGrantId[] = [
   'giveBoots',
@@ -45,8 +36,6 @@ export const GRANT_IDS: readonly AssistantGrantId[] = [
   'allowShortSwords',
   'allowWoodenSpears',
   'allowShortBows',
-  'drinksForSoldiers',
-  'charmsForSoldiers',
   'postGraduates',
   'moveFlags',
 ];
@@ -75,11 +64,20 @@ export const WEAPON_SWITCH_GOOD: Readonly<Record<WeaponSwitchId, string>> = {
   allowWoodenSpears: 'spear_wooden',
   allowShortBows: 'bow_short',
 };
-/** The sim grant kind each audience switch keeps for soldiers while on. */
-export const AUDIENCE_SWITCH_KIND: Readonly<Record<AudienceSwitchId, components.AssistantAudienceKind>> = {
-  drinksForSoldiers: 'drink',
-  charmsForSoldiers: 'charm',
-};
+/** The give switches that choose their audience as well: off, everyone, or soldiers alone. Gear has no
+ *  audience, since tools already go only to the trades that work with them. */
+export const AUDIENCE_SWITCH_IDS: readonly GiveSwitchId[] = [
+  'giveMead',
+  'giveFoodPotions',
+  'giveStaminaPotions',
+  'giveHealingPotions',
+  'giveFoodAmulet',
+  'giveStaminaAmulet',
+  'giveStrengthAmulet',
+  'giveDefenseAmulet',
+  'giveCriticalHitAmulet',
+  'giveSpeedAmulet',
+];
 
 /** The give switches granted from the start of a playable map: the gear and the mead, as before the
  *  potions and amulets had switches; those start off, since a druid's or coiner's output is dear. */

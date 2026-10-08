@@ -6223,7 +6223,7 @@ body.on-drag-scroll * {
 /* The orders column beside the standing orders, which split into two columns of their own under one head. */
 .on-hud .on-asst__cols {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+  grid-template-columns: minmax(0, 9fr) minmax(0, 21fr);
   gap: 0 22px;
 }
 .on-hud .on-asst__standing .on-asst__cols {
@@ -6241,16 +6241,56 @@ body.on-drag-scroll * {
 .on-hud .on-asst__col .on-section {
   margin: 8px 0 2px;
 }
-/* The audience strip on a drinks or amulets rule: compact, in the body face rather than the rule's small caps. */
-.on-hud .on-asst__col .on-section .on-segmented {
-  width: auto;
-  grid-auto-columns: auto;
+/* A drink or amulet row's one control: three choice dots under the audience words the section's rule
+   carries once, so ten rows read as one table instead of ten strips. */
+.on-hud .on-asst-audience-head,
+.on-hud .on-asst-row--audience .on-segmented {
+  display: grid;
+  grid-template-columns: repeat(3, var(--asst-audience-col));
+  --asst-audience-col: 44px;
+}
+.on-hud .on-asst-audience-head {
+  margin-right: 4px;
+  font: 600 10px var(--font-body);
   font-variant: normal;
   letter-spacing: 0;
+  text-align: center;
+  color: var(--muted);
 }
-.on-hud .on-asst__col .on-section .on-segmented > button {
-  padding: 1px 8px;
-  font-size: 10.5px;
+.on-hud .on-asst-audience-head > i {
+  font-style: normal;
+}
+.on-hud .on-asst-row--audience .on-segmented {
+  width: auto;
+  border: 0;
+  border-radius: 0;
+  overflow: visible;
+}
+.on-hud .on-asst-row--audience .on-segmented > button {
+  display: grid;
+  place-items: center;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  background: none;
+  box-shadow: none;
+}
+.on-hud .on-asst-row--audience .on-segmented > button::before {
+  content: "";
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--wood-lo);
+  border-radius: 50%;
+  background: #0d100d99;
+  box-shadow: inset 0 1px 2px #0008;
+}
+.on-hud .on-asst-row--audience .on-segmented > button:hover:not([disabled])::before {
+  border-color: #c9a262aa;
+}
+.on-hud .on-asst-row--audience .on-segmented > button[aria-pressed="true"]::before {
+  border-color: #e8c479;
+  background: radial-gradient(circle at 40% 35%, #f3d690, #b58a3f 70%);
+  box-shadow: 0 0 4px #e8c47966;
 }
 .on-hud .on-asst-row {
   display: grid;

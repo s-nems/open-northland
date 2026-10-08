@@ -1,9 +1,7 @@
 import type { ContentSet, EquipCategory, EquipClass } from '@open-northland/data';
 import {
-  type AssistantAudienceKind,
   AssistantGrants,
-  assistantAudienceKindOf,
-  assistantSoldierOnlyKinds,
+  assistantSoldierOnlyGoods,
   Equipment,
   type EquipmentData,
   EquipOrder,
@@ -59,11 +57,6 @@ export interface GrantSpec {
   readonly equivalents?: ReadonlySet<number>;
 }
 
-/** A granted good with its audience kind, so the pass can pass a civilian over a soldiers-only kind. */
-interface PlayerGrant extends GrantSpec {
-  readonly audience: AssistantAudienceKind | null;
-}
-
 export function dispatchAssistantGrants(pass: PlannerPass): void {
   const { world, ctx, terrain, targets } = pass;
   const grants = collectGrantSpecs(pass);
@@ -71,15 +64,15 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
   // Manual orders are included, so the assistant also respects a unit the player already sent someone after.
   const inFlight = equipFetchesUnderway(world);
   const stock = FetchableStock.of(world, ctx);
-  // Each granting player's soldiers-only kinds, read once per pass rather than per settler.
-  const limits = new Map<number, readonly AssistantAudienceKind[]>();
-  const soldiersOnlyOf = (player: number): readonly AssistantAudienceKind[] => {
-    let kinds = limits.get(player);
-    if (kinds === undefined) {
-      kinds = assistantSoldierOnlyKinds(world, player);
-      limits.set(player, kinds);
+  // Each granting player's soldiers-only goods, read once per pass rather than per settler.
+  const limits = new Map<number, readonly number[]>();
+  const soldiersOnlyOf = (player: number): readonly number[] => {
+    let goods = limits.get(player);
+    if (goods === undefined) {
+      goods = assistantSoldierOnlyGoods(world, player);
+      limits.set(player, goods);
     }
-    return kinds;
+    return goods;
   };
 
   for (const e of dueThisBeat(world, ctx.tick)) {
@@ -115,7 +108,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     let limit: NavigationLimit | null | undefined;
     for (const spec of wanted) {
       if (toolless && spec.category === 'tool') continue; // its boots and misc grants still apply
-      if (spec.audience !== null && soldiersOnly.includes(spec.audience)) continue;
+      if (soldiersOnly.includes(spec.goodType)) continue; // kept for the fighters
       const slot = freeSlotFor(eq, spec);
       if (slot === null) continue;
       const underway = tally.get(spec.goodType) ?? 0;
@@ -154,7 +147,7 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
 /** Each granting player's specs, strongest first: by content production bonus, then by rated uses (the
  *  big potion before the small one), then ascending good id (boots carry neither and sort by id). A
  *  granted id whose content lost its `equip` class is dropped. */
-function collectGrantSpecs(pass: PlannerPass): ReadonlyMap<number, readonly PlayerGrant[]> {
+function collectGrantSpecs(pass: PlannerPass): ReadonlyMap<number, readonly GrantSpec[]> {
   const { world, ctx } = pass;
   const membership = world.componentGeneration(AssistantGrants);
   const values = world.componentValueGeneration(AssistantGrants);
@@ -167,12 +160,12 @@ function collectGrantSpecs(pass: PlannerPass): ReadonlyMap<number, readonly Play
   ) {
     return held.byPlayer;
   }
-  const byPlayer = new Map<number, readonly PlayerGrant[]>();
+  const byPlayer = new Map<number, readonly GrantSpec[]>();
   const goods = contentIndex(ctx.content).goods;
   for (const e of world.canonicalQuery(AssistantGrants)) {
     const { player, goods: granted } = world.get(e, AssistantGrants);
     if (byPlayer.has(player)) continue; // lowest-id carrier wins (the rules-singleton convention)
-    const specs: (PlayerGrant & { readonly bonus: number; readonly uses: number })[] = [];
+    const specs: (GrantSpec & { readonly bonus: number; readonly uses: number })[] = [];
     for (const goodType of granted) {
       const equip = goods.get(goodType)?.equip;
       if (equip === undefined) continue;
@@ -180,7 +173,6 @@ function collectGrantSpecs(pass: PlannerPass): ReadonlyMap<number, readonly Play
       specs.push({
         goodType,
         category: equip.category,
-        audience: assistantAudienceKindOf(equip),
         ...(equivalents === null ? {} : { equivalents }),
         bonus: equip.productionBonusPct ?? 0,
         uses: equip.uses ?? 0,
@@ -203,13 +195,14 @@ const grantSpecMemo = new WeakMap<
     readonly content: ContentSet;
     readonly membership: number;
     readonly values: number;
-    readonly byPlayer: ReadonlyMap<number, readonly PlayerGrant[]>;
+    readonly byPlayer: ReadonlyMap<number, readonly GrantSpec[]>;
   }
 >();
 
-/** The effect a drink restores, as the sorted keys of its `restorePct`, or null for any other wearable. */
+/** The effect a drink (a misc good that wears: mead, a potion) restores, as the sorted keys of its
+ *  `restorePct`, or null for any other wearable. */
 function drinkEffect(equip: EquipClass): string | null {
-  if (assistantAudienceKindOf(equip) !== 'drink' || equip.restorePct === undefined) return null;
+  if (equip.category !== 'misc' || !equip.wears || equip.restorePct === undefined) return null;
   return Object.keys(equip.restorePct).sort().join('+');
 }
 
@@ -248,7 +241,7 @@ export function freeSlotFor(eq: EquipmentData | undefined, spec: GrantSpec): num
 }
 
 const NO_SETTLERS: readonly Entity[] = [];
-const NO_LIMITS: readonly AssistantAudienceKind[] = [];
+const NO_LIMITS: readonly number[] = [];
 
 /** The settlers bucketed by scan beat, for each settler roster a world has served: rebuilt only when a
  *  settler is born or dies, so a tick visits its own beat's slice instead of the whole roster. */

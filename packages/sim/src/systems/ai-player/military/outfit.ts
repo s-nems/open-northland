@@ -1,9 +1,7 @@
 import {
-  ASSISTANT_AUDIENCE_KINDS,
   AssistantWeaponVetoes,
-  assistantAudienceKindOf,
   assistantGrantedGoods,
-  assistantSoldierOnlyKinds,
+  assistantSoldierOnlyGoods,
   Equipment,
   EquipOrder,
   ownerOf,
@@ -12,7 +10,6 @@ import {
   Settler,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
-import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -50,27 +47,18 @@ export function soldierOutfitGoods(ctx: SystemContext): number[] {
 }
 
 /**
- * The commands putting the seat's soldier outfit on the assistant until it is there: each outfit good
- * granted, and every audience kind an outfit good falls in kept for soldiers alone, published before the
- * grants so no civilian is dressed in the tick between. The same hand-out a player switches on; the
- * assistant's own pass then dresses the seat's fighters wherever they stand.
+ * The commands putting the seat's soldier outfit on the assistant until it is there: each outfit good kept
+ * for soldiers alone and granted, the limit before the grant so no civilian is dressed in the tick
+ * between. The same hand-out a player switches on; the assistant's own pass then dresses the seat's
+ * fighters wherever they stand.
  */
 export function outfitGrantOrders(world: World, ctx: SystemContext, player: number): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  const goods = soldierOutfitGoods(ctx);
-  const limited = assistantSoldierOnlyKinds(world, player);
-  const index = contentIndex(ctx.content);
-  for (const kind of ASSISTANT_AUDIENCE_KINDS) {
-    if (limited.includes(kind)) continue;
-    const dressed = goods.some((g) => {
-      const equip = index.goods.get(g)?.equip;
-      return equip !== undefined && assistantAudienceKindOf(equip) === kind;
-    });
-    if (dressed)
-      commands.push({ kind: 'setAssistantGrantAudience', player, grantKind: kind, soldiersOnly: true });
-  }
+  const limited = assistantSoldierOnlyGoods(world, player);
   const granted = assistantGrantedGoods(world, player);
-  for (const goodType of goods) {
+  for (const goodType of soldierOutfitGoods(ctx)) {
+    if (!limited.includes(goodType))
+      commands.push({ kind: 'setAssistantGrantAudience', player, goodType, soldiersOnly: true });
     if (!granted.includes(goodType))
       commands.push({ kind: 'setAssistantGrant', player, goodType, enabled: true });
   }

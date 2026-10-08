@@ -161,33 +161,41 @@ describe('setPlayerAi - the AI seat flag', () => {
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     sim.step();
     const published = outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT);
-    // The audience limits first, so no civilian is dressed in the tick between, then each outfit good.
+    // Each good's limit before its grant, so no civilian is dressed in the tick between.
     expect(published).toEqual([
-      { kind: 'setAssistantGrantAudience', player: AI_SEAT, grantKind: 'drink', soldiersOnly: true },
-      { kind: 'setAssistantGrantAudience', player: AI_SEAT, grantKind: 'charm', soldiersOnly: true },
+      { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType: HEAL_BIG, soldiersOnly: true },
       { kind: 'setAssistantGrant', player: AI_SEAT, goodType: HEAL_BIG, enabled: true },
+      { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType: DEFENCE_AMULET, soldiersOnly: true },
       { kind: 'setAssistantGrant', player: AI_SEAT, goodType: DEFENCE_AMULET, enabled: true },
+      { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType: STRENGTH_AMULET, soldiersOnly: true },
       { kind: 'setAssistantGrant', player: AI_SEAT, goodType: STRENGTH_AMULET, enabled: true },
     ]);
     for (const command of published) sim.enqueueSetup(command);
     sim.step();
     expect(outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]); // standing: nothing to re-issue
     expect(sim.assistantGrants(AI_SEAT)).toEqual([STRENGTH_AMULET, DEFENCE_AMULET, HEAL_BIG]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([STRENGTH_AMULET, DEFENCE_AMULET, HEAL_BIG]);
 
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
     sim.step();
     expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
     expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
 
-    // A grant another hand set survives the withdrawal of the outfit.
+    // A grant and a limit another hand set survive the withdrawal of the outfit.
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
     sim.enqueueSetup({ kind: 'setAssistantGrant', player: AI_SEAT, goodType: SHOES, enabled: true });
+    sim.enqueueSetup({
+      kind: 'setAssistantGrantAudience',
+      player: AI_SEAT,
+      goodType: SHOES,
+      soldiersOnly: true,
+    });
     for (const command of published) sim.enqueueSetup(command);
     sim.step();
     sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
     sim.step();
     expect(sim.assistantGrants(AI_SEAT)).toEqual([SHOES]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([SHOES]);
   });
 
   it('switches the flag follow off on disable, and when the workforce module turns off', () => {

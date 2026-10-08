@@ -1,6 +1,6 @@
 import { EQUIP_CATEGORIES, HomeQualityEffect } from '@open-northland/data';
 import { AI_DIFFICULTIES, AI_MODULE_IDS } from '../../components/ai-player.js';
-import { ASSISTANT_AUDIENCE_KINDS, ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
+import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
 import type { NeedKind } from '../../components/needs.js';
 import { GATE_MODES } from '../../components/palisade.js';
 import { PAPER_KINDS } from '../../components/papers.js';
@@ -322,7 +322,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setAssistantGrant: { required: { player: 'integer', goodType: 'integer', enabled: 'boolean' } },
   setAssistantGrantAudience: {
-    required: { player: 'integer', grantKind: { oneOf: ASSISTANT_AUDIENCE_KINDS }, soldiersOnly: 'boolean' },
+    required: { player: 'integer', goodType: 'integer', soldiersOnly: 'boolean' },
   },
   setAssistantWeaponVeto: { required: { player: 'integer', goodType: 'integer', vetoed: 'boolean' } },
   setAssistantPostGraduates: { required: { player: 'integer', enabled: 'boolean' } },

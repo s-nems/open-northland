@@ -1173,11 +1173,13 @@ export const plGame = {
       charms: 'Amulety',
       charmsTip: 'Po jednym każdego rodzaju na osobę. Amulet się nie zużywa.',
       audience: {
-        label: 'Kto je dostaje',
+        label: 'kto dostaje',
+        none: 'Nikt',
+        noneTip: 'Nie jest wydawane. Kto już ma, zachowuje.',
         everyone: 'Wszyscy',
-        everyoneTip: 'Dostaje każdy dorosły mężczyzna, także żołnierze.',
+        everyoneTip: 'Każdy dorosły mężczyzna bez tego pójdzie po to do magazynu, żołnierze też.',
         soldiers: 'Żołnierze',
-        soldiersTip: 'Dostają tylko żołnierze. Cywile zachowują to, co już noszą.',
+        soldiersTip: 'Idą po to tylko żołnierze. Cywile zachowują to, co już noszą.',
       },
       counters: {
         extraWomen: {

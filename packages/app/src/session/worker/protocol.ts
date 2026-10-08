@@ -1,6 +1,5 @@
 import type { ContentSet } from '@open-northland/data';
 import type {
-  AssistantAudienceKind,
   AssistantCounterValues,
   CommandEnvelope,
   ConstructionPlot,
@@ -158,7 +157,7 @@ export interface AssistantFacts {
   readonly counters: Readonly<AssistantCounterValues>;
   readonly grants: readonly number[];
   readonly weaponVetoes: readonly number[];
-  readonly soldierOnlyGrants: readonly AssistantAudienceKind[];
+  readonly soldierOnlyGrants: readonly number[];
   readonly postsGraduates: boolean;
   readonly movesFlags: boolean;
 }

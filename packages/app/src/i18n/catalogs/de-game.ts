@@ -1313,11 +1313,13 @@ export const deGame = {
       charms: 'Amulette',
       charmsTip: 'Eines jeder Art pro Mann. Ein Amulett nutzt sich nie ab.',
       audience: {
-        label: 'Wer sie bekommt',
+        label: 'wer es bekommt',
+        none: 'Niemand',
+        noneTip: 'Wird nicht ausgegeben. Wer eines hat, behält es.',
         everyone: 'Alle',
-        everyoneTip: 'Jeder erwachsene Mann bekommt sie, auch Soldaten.',
+        everyoneTip: 'Jeder erwachsene Mann ohne eines holt sich eines aus dem Lager, auch Soldaten.',
         soldiers: 'Soldaten',
-        soldiersTip: 'Nur Soldaten bekommen sie. Zivilisten behalten, was sie schon tragen.',
+        soldiersTip: 'Nur Soldaten holen sich eines. Zivilisten behalten, was sie schon tragen.',
       },
       counters: {
         extraWomen: {

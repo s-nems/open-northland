@@ -1,8 +1,7 @@
 import type { PlayerCommand } from '@open-northland/sim';
 import {
   type AssistantGrantId,
-  AUDIENCE_SWITCH_KIND,
-  type AudienceSwitchId,
+  AUDIENCE_SWITCH_IDS,
   DEFAULT_GIVE_SWITCHES,
   GIVE_SWITCH_GOODS,
   type GiveSwitchId,
@@ -15,12 +14,11 @@ import type { AssistantSwitchesSeam } from '../hud/dom/assistant-window/index.js
 import type { SessionHost } from '../session/index.js';
 
 /** The switches that map to no good: each flips one sim assistant switch. */
-type SimSwitchId = Exclude<AssistantGrantId, GiveSwitchId | WeaponSwitchId | AudienceSwitchId>;
+type SimSwitchId = Exclude<AssistantGrantId, GiveSwitchId | WeaponSwitchId>;
 const SIM_SWITCH_COMMANDS: Readonly<
   Record<SimSwitchId, 'setAssistantPostGraduates' | 'setAssistantMoveFlags'>
 > = { postGraduates: 'setAssistantPostGraduates', moveFlags: 'setAssistantMoveFlags' };
 const isSimSwitch = (id: AssistantGrantId): id is SimSwitchId => id in SIM_SWITCH_COMMANDS;
-const isAudienceSwitch = (id: AssistantGrantId): id is AudienceSwitchId => id in AUDIENCE_SWITCH_KIND;
 const isWeaponSwitch = (id: AssistantGrantId): id is WeaponSwitchId => id in WEAPON_SWITCH_GOOD;
 const GIVE_SWITCH_IDS = GRANT_IDS.filter((id): id is GiveSwitchId => id in GIVE_SWITCH_GOODS);
 const WEAPON_SWITCH_IDS = GRANT_IDS.filter(isWeaponSwitch);
@@ -57,7 +55,8 @@ function resolveGrantGoods(content: GrantContent): GrantGoods {
 /** Live assistant switch seam for the seat `player` names, read on every call so a spectator's
  *  window follows its watched seat; no seat (null, the whole map) reads every switch OFF. A read-only
  *  spectator session (`writable: false`) rejects every write, so the window never echoes a command
- *  the sim would drop. A give switch reads ON while every good it grants is granted. */
+ *  the sim would drop. A give switch reads ON while every good it grants is granted, and soldiers-only
+ *  while every good it grants is limited. */
 export function assistantGrantsSeam(
   host: Pick<
     SessionHost,
@@ -78,12 +77,10 @@ export function assistantGrantsSeam(
       const seat = player();
       const granted = new Set(seat === null ? [] : host.assistantGrants(seat));
       const vetoed = new Set(seat === null ? [] : host.assistantWeaponVetoes(seat));
-      const soldiersOnly = seat === null ? [] : host.assistantSoldierOnlyGrants(seat);
       const on = (id: AssistantGrantId): boolean => {
         if (seat === null) return false;
         if (id === 'postGraduates') return host.assistantPostsGraduates(seat);
         if (id === 'moveFlags') return host.assistantMovesFlags(seat);
-        if (isAudienceSwitch(id)) return soldiersOnly.includes(AUDIENCE_SWITCH_KIND[id]);
         if (isWeaponSwitch(id)) {
           const goodType = grantGoods.weapon.get(id);
           return goodType !== undefined && !vetoed.has(goodType);
@@ -100,15 +97,6 @@ export function assistantGrantsSeam(
         enqueue({ kind: SIM_SWITCH_COMMANDS[id], player: seat, enabled });
         return true;
       }
-      if (isAudienceSwitch(id)) {
-        enqueue({
-          kind: 'setAssistantGrantAudience',
-          player: seat,
-          grantKind: AUDIENCE_SWITCH_KIND[id],
-          soldiersOnly: enabled,
-        });
-        return true;
-      }
       if (isWeaponSwitch(id)) {
         const goodType = grantGoods.weapon.get(id);
         if (goodType === undefined) return false;
@@ -120,11 +108,31 @@ export function assistantGrantsSeam(
       for (const goodType of goods) enqueue({ kind: 'setAssistantGrant', player: seat, goodType, enabled });
       return true;
     },
+    readSoldiersOnly: () => {
+      const seat = player();
+      const limited = new Set(seat === null ? [] : host.assistantSoldierOnlyGrants(seat));
+      const entries = AUDIENCE_SWITCH_IDS.map((id) => {
+        const goods = grantGoods.give.get(id);
+        return [id, goods !== undefined && goods.every((goodType) => limited.has(goodType))];
+      });
+      return Object.fromEntries(entries) as Record<GiveSwitchId, boolean>;
+    },
+    setSoldiersOnly: (id, soldiersOnly) => {
+      const seat = player();
+      if (!writable || seat === null) return false;
+      const goods = grantGoods.give.get(id);
+      if (goods === undefined) return false;
+      for (const goodType of goods) {
+        enqueue({ kind: 'setAssistantGrantAudience', player: seat, goodType, soldiersOnly });
+      }
+      return true;
+    },
   };
 }
 
 /** The default give switches start enabled in a playable map only; scenes keep the sim default of nothing
- *  granted. Every weapon starts allowed and every audience open: the sim defaults, no command needed. */
+ *  granted. Every weapon starts allowed and every good open to everyone: the sim defaults, no command
+ *  needed. */
 export function grantAssistantDefaults(
   sim: WorldSetup,
   content: GrantContent,

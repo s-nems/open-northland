@@ -398,7 +398,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       setAssistantGrant(world, ctx, command);
       return;
     case 'setAssistantGrantAudience':
-      setAssistantGrantAudience(world, command);
+      setAssistantGrantAudience(world, ctx, command);
       return;
     case 'setAssistantWeaponVeto':
       setAssistantWeaponVeto(world, ctx, command);

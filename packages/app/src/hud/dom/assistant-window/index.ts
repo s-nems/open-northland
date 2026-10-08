@@ -3,7 +3,7 @@ import type { HudModel } from '@open-northland/render';
 import type { components } from '@open-northland/sim';
 import {
   type AssistantGrantId,
-  type AudienceSwitchId,
+  AUDIENCE_SWITCH_IDS,
   GIVE_SWITCH_GOODS,
   type GiveSwitchId,
   WEAPON_SWITCH_GOOD,
@@ -41,7 +41,7 @@ type CounterState = components.AssistantCounterState;
 type ClassIntent = Exclude<components.AssistantRecruitIntent, 'trainSoldiers'>;
 
 /** Design px: the orders column beside the two standing-order columns. */
-const ASSISTANT_WINDOW_W = 960;
+const ASSISTANT_WINDOW_W = 1040;
 const ROW_ICON_PX = 22;
 const SUB_ICON_PX = 18;
 
@@ -52,11 +52,15 @@ export interface AssistantCountersSeam {
   set(kind: CounterKind, state: CounterState): boolean;
 }
 
-/** The sim's switches for the watched seat: a give switch is on when its good is granted, a weapon
- *  switch when its good is not vetoed. */
+/** The sim's switches for the watched seat: a give switch is on when its goods are granted, a weapon
+ *  switch when its good is not vetoed, and a give switch is soldiers-only when its goods are kept for
+ *  fighters. */
 export interface AssistantSwitchesSeam {
   read(): Readonly<Record<AssistantGrantId, boolean>>;
+  /** False when the write was rejected, which the window must not echo. */
   set(id: AssistantGrantId, enabled: boolean): boolean;
+  readSoldiersOnly(): Readonly<Record<GiveSwitchId, boolean>>;
+  setSoldiersOnly(id: GiveSwitchId, soldiersOnly: boolean): boolean;
 }
 
 /** Whose assistant the window shows: a seat the player commands, a watched seat's (read only), or nobody's. */
@@ -133,11 +137,9 @@ const CHARM_ORDER: readonly GiveSwitchId[] = [
   'giveCriticalHitAmulet',
   'giveSpeedAmulet',
 ];
-/** A switch with a row of its own; an audience switch shows as a strip on its section's rule instead. */
-type RowSwitchId = Exclude<AssistantGrantId, AudienceSwitchId>;
-/** The two audience strips: everyone or soldiers alone. */
-type Audience = 'everyone' | 'soldiers';
-const AUDIENCES: readonly Audience[] = ['everyone', 'soldiers'];
+/** A drink or amulet row's one control: off, handed to everyone, or kept for the soldiers. */
+type Audience = 'none' | 'everyone' | 'soldiers';
+const AUDIENCES: readonly Audience[] = ['none', 'everyone', 'soldiers'];
 
 export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindow {
   const copy = messages().hud.assistant;
@@ -169,13 +171,19 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   let writable = false;
   let liveCounters = deps.counters.read();
   let liveSwitches = deps.switches.read();
+  let liveSoldiersOnly = deps.switches.readSoldiersOnly();
 
   // A press shows at once; the live value takes over when it arrives or the hold runs out.
   const pendingCounters = new PressHold<CounterKind, CounterState>(sameCounter);
   const pendingSwitches = new PressHold<AssistantGrantId, boolean>((a, b) => a === b);
+  const pendingSoldiersOnly = new PressHold<GiveSwitchId, boolean>((a, b) => a === b);
   const counterNow = (kind: CounterKind): CounterState =>
     pendingCounters.shown(kind, liveCounters[kind], tick);
   const switchNow = (id: AssistantGrantId): boolean => pendingSwitches.shown(id, liveSwitches[id], tick);
+  const soldiersOnlyNow = (id: GiveSwitchId): boolean =>
+    pendingSoldiersOnly.shown(id, liveSoldiersOnly[id], tick);
+  const audienceNow = (id: GiveSwitchId): Audience =>
+    !switchNow(id) ? 'none' : soldiersOnlyNow(id) ? 'soldiers' : 'everyone';
 
   const pressCounter = (kind: CounterKind, face: number): void => {
     const next = counterFromFace(counterNow(kind), face);
@@ -194,6 +202,21 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     }
     deps.cue('confirm');
     pendingSwitches.hold(id, next, liveSwitches[id], tick);
+    show();
+  };
+  /** The limit goes first, so no civilian is dressed in the tick between it and the grant. */
+  const pressAudience = (id: GiveSwitchId, next: Audience): void => {
+    const soldiersOnly = next === 'soldiers';
+    const on = next !== 'none';
+    const written =
+      (next === 'none' || deps.switches.setSoldiersOnly(id, soldiersOnly)) && deps.switches.set(id, on);
+    if (!written) {
+      deps.cue('fail');
+      return;
+    }
+    deps.cue('confirm');
+    if (next !== 'none') pendingSoldiersOnly.hold(id, soldiersOnly, liveSoldiersOnly[id], tick);
+    pendingSwitches.hold(id, on, liveSwitches[id], tick);
     show();
   };
 
@@ -258,19 +281,16 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     if (caption instanceof HTMLElement) setTip(caption, tip);
     return s.element;
   };
-  /** The strip on a drinks or amulets rule choosing who receives them. */
-  const audienceStrip = (id: AudienceSwitchId): HTMLElement => {
-    const strip = createSegmented(AUDIENCES, copy.audience.label, (pick) =>
-      pressSwitch(id, pick === 'soldiers'),
-    );
-    updates.push(() => {
-      const options = {
-        everyone: { label: copy.audience.everyone, tooltip: copy.audience.everyoneTip, enabled: writable },
-        soldiers: { label: copy.audience.soldiers, tooltip: copy.audience.soldiersTip, enabled: writable },
-      };
-      strip.update(options, switchNow(id) ? 'soldiers' : 'everyone');
-    });
-    return strip.element;
+  /** The three audience words once, over the columns the rows' choice dots sit in. */
+  const audienceHead = (): HTMLElement => {
+    const head = element('span', 'on-asst-audience-head');
+    for (const audience of AUDIENCES) {
+      const word = element('i', '');
+      word.textContent = copy.audience[audience];
+      setTip(word, copy.audience[`${audience}Tip`]);
+      head.append(word);
+    }
+    return head;
   };
   const columnHead = (title: string, tip: string): HTMLElement => {
     const head = element('h3', 'on-asst__kind');
@@ -312,7 +332,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     return row;
   };
 
-  const switchRow = (id: RowSwitchId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
+  const switchRow = (id: AssistantGrantId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
     const row = element('div', 'on-asst-row');
     const text = copy.switches[id];
     const control = createSwitch(text.label, text.tip, (next) => pressSwitch(id, next));
@@ -396,25 +416,49 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     orders.append(row);
   }
 
-  /** A give row: the first good's icon, the stock of every good the switch grants. */
+  /** A give row: the first good's icon, the stock of every good the switch grants, and either an on/off
+   *  switch or, for a drink and an amulet, the strip choosing who receives it. */
   const giveRow = (id: GiveSwitchId): HTMLElement => {
     const goods = GIVE_SWITCH_GOODS[id];
     const { art, count } = goodArt(goods[0], ROW_ICON_PX);
-    const gear = switchRow(id, art);
+    const gear = AUDIENCE_SWITCH_IDS.includes(id) ? audienceRow(id, art) : switchRow(id, art);
     updates.push(() => showStock(count, stockOfAll(goods), gear.on()));
     return gear.row;
+  };
+  const audienceRow = (id: GiveSwitchId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
+    const row = element('div', 'on-asst-row on-asst-row--audience');
+    const text = copy.switches[id];
+    const strip = createSegmented(AUDIENCES, `${text.label}: ${copy.audience.label}`, (pick) =>
+      pressAudience(id, pick),
+    );
+    row.append(art, label(text.label, text.tip, element('span', 'on-asst-marks')), strip.element);
+    // Dots under the section's audience words: the word and its meaning travel in the tooltip.
+    const options = {
+      none: { label: '', tooltip: `${copy.audience.none}. ${copy.audience.noneTip}`, enabled: writable },
+      everyone: {
+        label: '',
+        tooltip: `${copy.audience.everyone}. ${copy.audience.everyoneTip}`,
+        enabled: writable,
+      },
+      soldiers: {
+        label: '',
+        tooltip: `${copy.audience.soldiers}. ${copy.audience.soldiersTip}`,
+        enabled: writable,
+      },
+    };
+    updates.push(() => {
+      const choice = audienceNow(id);
+      for (const option of Object.values(options)) option.enabled = writable;
+      strip.update(options, choice);
+      row.classList.toggle('on-asst-row--off', choice === 'none');
+    });
+    return { row, on: () => switchNow(id) };
   };
 
   standing.append(columnHead(copy.standing, copy.standingTip), standingColumns);
   wear.append(section(copy.equipment, copy.equipmentTip), ...GEAR_ORDER.map(giveRow));
-  wear.append(
-    section(copy.drinks, copy.drinksTip, audienceStrip('drinksForSoldiers')),
-    ...DRINK_ORDER.map(giveRow),
-  );
-  carry.append(
-    section(copy.charms, copy.charmsTip, audienceStrip('charmsForSoldiers')),
-    ...CHARM_ORDER.map(giveRow),
-  );
+  wear.append(section(copy.drinks, copy.drinksTip, audienceHead()), ...DRINK_ORDER.map(giveRow));
+  carry.append(section(copy.charms, copy.charmsTip, audienceHead()), ...CHARM_ORDER.map(giveRow));
   carry.append(section(copy.work, copy.workTip));
   carry.append(
     switchRow('postGraduates', glyphArt(GLYPH.scroll)).row,
@@ -428,6 +472,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     setHidden(access, now === 'control');
     liveCounters = deps.counters.read();
     liveSwitches = deps.switches.read();
+    liveSoldiersOnly = deps.switches.readSoldiersOnly();
     bookings = deps.bookings();
     for (const update of updates) update();
   };

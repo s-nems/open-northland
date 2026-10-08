@@ -134,11 +134,11 @@ function grant(sim: Simulation, goodType: number, enabled = true, player = HUMAN
 
 function limitToSoldiers(
   sim: Simulation,
-  grantKind: 'drink' | 'charm',
+  goodType: number,
   soldiersOnly = true,
   player = HUMAN_PLAYER,
 ): void {
-  sim.enqueueSetup({ kind: 'setAssistantGrantAudience', player, grantKind, soldiersOnly });
+  sim.enqueueSetup({ kind: 'setAssistantGrantAudience', player, goodType, soldiersOnly });
 }
 
 /** The shared fixture plus the big healing potion: the small one's effect in a five-sip bottle. */
@@ -228,17 +228,19 @@ describe('setAssistantGrant - the per-player grant list', () => {
     expect([...sim.world.query(AssistantGrants)]).toHaveLength(0); // the empty carrier is dropped
   });
 
-  it('limits a grant kind to soldiers in kind order, and drops the carrier once no kind is limited', () => {
+  it('limits wearables to soldiers in ascending id, independent of the grant, and drops the carrier when empty', () => {
     const sim = freshSim();
-    limitToSoldiers(sim, 'charm');
-    limitToSoldiers(sim, 'drink');
+    limitToSoldiers(sim, STRENGTH_AMULET);
+    limitToSoldiers(sim, MEAD);
+    limitToSoldiers(sim, WOOD); // not wearable: skipped
     sim.step();
-    expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual(['drink', 'charm']);
+    expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual([MEAD, STRENGTH_AMULET]);
+    expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([]); // a limit grants nothing by itself
     expect(sim.assistantSoldierOnlyGrants(RIVAL_PLAYER)).toEqual([]);
-    limitToSoldiers(sim, 'drink', false);
+    limitToSoldiers(sim, MEAD, false);
     sim.step();
-    expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual(['charm']);
-    limitToSoldiers(sim, 'charm', false);
+    expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual([STRENGTH_AMULET]);
+    limitToSoldiers(sim, STRENGTH_AMULET, false);
     sim.step();
     expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual([]);
     expect([...sim.world.query(AssistantSoldierOnlyGrants)]).toEqual([]);
@@ -569,7 +571,7 @@ describe('assistant auto-equip - dispatch and reservation', () => {
     expect(sim.world.get(woodcutter, Equipment).tool?.goodType).toBe(TOOL_IRON);
   });
 
-  it('keeps a soldiers-only kind from civilians until the limit is lifted; gear is never limited', () => {
+  it('keeps a soldiers-only good from civilians until its limit is lifted; the other grants still land', () => {
     const sim = freshSim();
     const fighter = ownedSettler(sim, 2, 2);
     setSettlerJob(sim.world, fighter, FIGHTER_JOB);
@@ -580,8 +582,7 @@ describe('assistant auto-equip - dispatch and reservation', () => {
     grant(sim, STRENGTH_AMULET);
     grant(sim, MEAD);
     grant(sim, SHOES);
-    limitToSoldiers(sim, 'charm');
-    limitToSoldiers(sim, 'drink');
+    limitToSoldiers(sim, STRENGTH_AMULET);
 
     sim.run(4 * ERRAND_TICKS);
 
@@ -591,12 +592,12 @@ describe('assistant auto-equip - dispatch and reservation', () => {
         .misc.flatMap((s) => (s === null ? [] : [s.goodType]))
         .sort((a, b) => a - b);
     expect(carried(fighter)).toEqual([MEAD, STRENGTH_AMULET]);
-    expect(carried(woodcutter)).toEqual([]);
-    expect(sim.world.get(woodcutter, Equipment).boots?.goodType).toBe(SHOES); // the gear still lands
+    expect(carried(woodcutter)).toEqual([MEAD]); // the amulet is the soldiers' alone, the mead everyone's
+    expect(sim.world.get(woodcutter, Equipment).boots?.goodType).toBe(SHOES);
 
-    limitToSoldiers(sim, 'charm', false);
+    limitToSoldiers(sim, STRENGTH_AMULET, false);
     sim.run(2 * ERRAND_TICKS);
-    expect(carried(woodcutter)).toEqual([STRENGTH_AMULET]); // the drinks stay soldiers' alone
+    expect(carried(woodcutter)).toEqual([MEAD, STRENGTH_AMULET]);
   });
 
   it('hands out the big bottle before the small one and treats either as the same drink', () => {

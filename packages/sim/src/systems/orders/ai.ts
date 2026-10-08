@@ -2,7 +2,6 @@ import {
   type AiModuleEnables,
   AiPeace,
   AiPlayer,
-  ASSISTANT_AUDIENCE_KINDS,
   AssistantMovesFlags,
   aiModuleEnables,
   aiPlayerEntity,
@@ -16,9 +15,9 @@ import { soldierOutfitGoods } from '../ai-player/military/outfit.js';
 import type { SystemContext } from '../context.js';
 import {
   clearAssistantWeaponVetoes,
+  liftAssistantSoldiersOnly,
   resetAssistantCounters,
   revokeAssistantGrants,
-  setAssistantSoldiersOnly,
   setAssistantSwitch,
 } from './assistant.js';
 
@@ -74,12 +73,13 @@ export function setPlayerAi(
   if (command.difficulty !== undefined) seat.difficulty = command.difficulty;
 }
 
-/** Lift the recruit weapon vetoes and the soldier outfit (its grants and their soldiers-only audience) the
+/** Lift the recruit weapon vetoes and the soldier outfit (its grants and their soldiers-only limits) the
  *  military module published for `player`. */
 function withdrawMilitaryPublications(world: World, ctx: SystemContext, player: number): void {
   clearAssistantWeaponVetoes(world, player);
-  revokeAssistantGrants(world, player, soldierOutfitGoods(ctx));
-  for (const kind of ASSISTANT_AUDIENCE_KINDS) setAssistantSoldiersOnly(world, player, kind, false);
+  const outfit = soldierOutfitGoods(ctx);
+  revokeAssistantGrants(world, player, outfit);
+  liftAssistantSoldiersOnly(world, player, outfit);
 }
 
 /** Lower every alarm the seat is standing on, a hand-raised one included: the seat that would have called

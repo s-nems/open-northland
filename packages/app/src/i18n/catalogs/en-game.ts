@@ -1194,11 +1194,13 @@ export const enGame = {
       charms: 'Amulets',
       charmsTip: 'One of each kind per man. An amulet is never used up.',
       audience: {
-        label: 'Who receives them',
+        label: 'who receives it',
+        none: 'Nobody',
+        noneTip: 'Not handed out. Whoever carries one keeps it.',
         everyone: 'Everyone',
-        everyoneTip: 'Every adult man receives them, soldiers too.',
+        everyoneTip: 'Every adult man without one fetches one from the store, soldiers too.',
         soldiers: 'Soldiers',
-        soldiersTip: 'Only soldiers receive them. Civilians keep what they already carry.',
+        soldiersTip: 'Only soldiers fetch one. Civilians keep what they already carry.',
       },
       counters: {
         extraWomen: {
