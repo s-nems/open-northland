@@ -48,7 +48,8 @@ export function sendScriptedHumans(pass: MissionPass, id: number, point: HalfCel
   const fighter = (e: Entity): boolean =>
     isFighterJob(ctx.content, world.tryGet(e, Settler)?.jobType ?? null);
   const military = humans.some(fighter);
-  const held = (pass.walkGoals ??= new Set());
+  pass.walkGoals ??= new Set();
+  const held = pass.walkGoals;
   let places = formationPlaces(pass, terrain, humans, point, military, held);
   let reach = 0;
   for (const place of places.values()) reach = Math.max(reach, hexDistance(place, point));

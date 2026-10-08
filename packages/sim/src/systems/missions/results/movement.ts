@@ -1,8 +1,6 @@
 import { Person, Position, Resting, Settler } from '../../../components/index.js';
-import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId } from '../../../nav/terrain/index.js';
-import type { SystemContext } from '../../context.js';
 import { isTravelling } from '../../movement/nav-state.js';
 import { sendUnit } from '../../orders/movement.js';
 import { teleportHuman } from '../../orders/teleport.js';

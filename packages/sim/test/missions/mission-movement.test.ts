@@ -188,7 +188,9 @@ describe('SendHuman', () => {
     const band = humansOf(sim, OWNER);
     const marches = band.map((e) => sim.world.get(e, PlayerOrder).attackMove);
     sim.run(PASS_TICKS);
-    band.forEach((e, i) => expect(sim.world.tryGet(e, PlayerOrder)?.attackMove).toBe(marches[i]));
+    for (const [i, e] of band.entries()) {
+      expect(sim.world.tryGet(e, PlayerOrder)?.attackMove).toBe(marches[i]);
+    }
   });
 
   it('seats a band standing on its places again on its own nodes', () => {
@@ -268,7 +270,7 @@ describe('SendHuman', () => {
     const band = humansOf(sim, OWNER);
     const orders = band.map((e) => sim.world.get(e, PlayerOrder));
     sim.run(PASS_TICKS);
-    band.forEach((e, i) => expect(sim.world.tryGet(e, PlayerOrder)).toBe(orders[i]));
+    for (const [i, e] of band.entries()) expect(sim.world.tryGet(e, PlayerOrder)).toBe(orders[i]);
   });
 
   it("gives no place on a stranger's standing fighter", () => {
