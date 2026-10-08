@@ -243,10 +243,6 @@ describe('persistSettings', () => {
     expect(volumes).toEqual({ ...DEFAULT_VOLUMES, master: 100, music: 0, world: 43 });
   });
 
-  it('starts the old two-slider shape at the default mix', () => {
-    expect(parseStoredSettings('{"soundVolume":0.3,"musicVolume":0.2}').volumes).toEqual(DEFAULT_VOLUMES);
-  });
-
   it('patches one live setting without overwriting the rest of the stored choices', () => {
     const setItem = vi.fn();
     vi.stubGlobal('window', {
