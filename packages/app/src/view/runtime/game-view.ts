@@ -103,6 +103,7 @@ import { mountPerfOverlay } from '../perf-overlay.js';
 import { nodeBounds } from '../picking.js';
 import {
   createFogGates,
+  defenceRadiusAt,
   diplomacyMetSeats,
   diplomacyPanelRows,
   entityAnchor,
@@ -1129,8 +1130,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
       canPlaceAt,
-      defenceRangeAt: (typeId, tribe, col, row) =>
-        systems.shelterFireRadius(host.content, typeId, tribe, col, row),
+      defenceRangeAt: (typeId, tribe, col, row) => defenceRadiusAt(host.content, typeId, tribe, col, row),
       canPlaceSignpostAt,
       soundDriver,
       presentation,

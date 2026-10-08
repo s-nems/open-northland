@@ -28,22 +28,24 @@ const NODE_WIDTH_PX = TILE_HALF_W;
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 
 /**
- * The share of a range's radius its ellipse is drawn at, so the ellipse fits inside the range's true shape
- * and never promises ground the range does not cover. A work area is counted in Manhattan nodes, a diamond
- * whose sides sit 1/√2 of its radius off the centre; a defence range in map points, a hexagon whose slanted
- * sides sit 2/√5 off.
+ * The share of a range's radius its ellipse spans east-west and north-south, the largest ellipse that fits
+ * inside the range's true shape, so it never promises ground the range does not cover. A work area is
+ * counted in Manhattan nodes, a diamond whose inscribed ellipse spans 1/√2 of it both ways. A defence range
+ * is counted in map points, a hexagon with flat north and south sides: its inscribed ellipse touches them
+ * and spans √3/2 of it east-west.
  */
-const INSCRIBED_SHARE: Readonly<Record<RangeRingKind, number>> = {
-  work: Math.SQRT1_2,
-  defence: 2 / Math.sqrt(5),
+const INSCRIBED_SHARE: Readonly<Record<RangeRingKind, { readonly x: number; readonly y: number }>> = {
+  work: { x: Math.SQRT1_2, y: Math.SQRT1_2 },
+  defence: { x: Math.sqrt(3) / 2, y: 1 },
 };
 
 /** A flat ground ellipse inside a range of `radiusNodes` half-cell nodes around the origin, in the colour of
  *  `kind`. */
 export function mintRangeRing(radiusNodes: number, kind: RangeRingKind): Graphics {
-  const rx = radiusNodes * INSCRIBED_SHARE[kind] * NODE_WIDTH_PX;
+  const rx = radiusNodes * NODE_WIDTH_PX;
+  const share = INSCRIBED_SHARE[kind];
   const g = new Graphics();
-  traceDashedEllipse(g, rx, rx * ISO_RATIO);
+  traceDashedEllipse(g, rx * share.x, rx * ISO_RATIO * share.y);
   return g.stroke({ width: RANGE_RING_WIDTH, color: RANGE_RING_COLOR[kind], alpha: RANGE_RING_ALPHA });
 }
 

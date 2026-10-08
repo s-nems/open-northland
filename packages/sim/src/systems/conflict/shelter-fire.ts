@@ -79,9 +79,10 @@ function fires(bow: WeaponType | undefined): bow is FiringBow {
 
 /**
  * How far in map points from its anchor node (`hx`, `hy`) a building of `buildingType` reaches all around in
- * defence mode: the house bow's reach less the way from the anchor to its nearest wall cell. Fire measures
- * from the nearest wall, so every node this close is in reach, and a long building reaches further along its
- * length. Undefined for a type with no defence mode and when `tribe` fires no house bow.
+ * defence mode: the widest ring every node of which stands within the house bow's reach of some wall cell,
+ * the way the fire measures. A long building reaches further along its length. Undefined for a type with no
+ * defence mode and when `tribe` fires no house bow. Walks only the rings past the reach its nearest wall
+ * already guarantees, so it costs the building's size, not the bow's reach squared.
  */
 export function shelterFireRadius(
   content: ContentSet,
@@ -92,12 +93,34 @@ export function shelterFireRadius(
 ): number | undefined {
   const bow = houseBow(content, tribe);
   if (shelterCapacityOf(content, buildingType) === 0 || !fires(bow)) return undefined;
-  let nearestWall: number | undefined;
-  for (const cell of buildingFootprintOf(content, buildingType, tribe)?.blocked ?? []) {
-    const d = hexDistanceBetween(hx, hy, hx + footprintCellDx(hy, cell), hy + cell.dy);
-    nearestWall = nearestWall === undefined ? d : Math.min(nearestWall, d);
+  const cells = buildingFootprintOf(content, buildingType, tribe)?.blocked ?? [];
+  const walls = cells.map((cell) => ({ x: hx + footprintCellDx(hy, cell), y: hy + cell.dy }));
+  if (walls.length === 0) walls.push({ x: hx, y: hy });
+  const fromAnchor = walls.map((w) => hexDistanceBetween(hx, hy, w.x, w.y));
+  const inReach = (x: number, y: number): boolean =>
+    walls.some((w) => hexDistanceBetween(w.x, w.y, x, y) <= bow.maxRange);
+  // Every node within the reach less the nearest wall's distance is in reach through that wall; no node
+  // past the reach plus the farthest wall's distance is.
+  let radius = Math.max(0, bow.maxRange - Math.min(...fromAnchor));
+  const ceiling = bow.maxRange + Math.max(...fromAnchor);
+  while (radius < ceiling && hexRingInReach(hx, hy, radius + 1, inReach)) radius++;
+  return radius;
+}
+
+/** Whether every node at map-point distance exactly `r` from (`hx`, `hy`) passes `inReach`. A hex ring spans
+ *  `r` rows up and down and at most `r + 1` nodes across, the extra one from the odd-row shift. */
+function hexRingInReach(
+  hx: number,
+  hy: number,
+  r: number,
+  inReach: (x: number, y: number) => boolean,
+): boolean {
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r - 1; dx <= r + 1; dx++) {
+      if (hexDistanceBetween(hx, hy, hx + dx, hy + dy) === r && !inReach(hx + dx, hy + dy)) return false;
+    }
   }
-  return Math.max(0, bow.maxRange - (nearestWall ?? 0));
+  return true;
 }
 
 function fireFrom(

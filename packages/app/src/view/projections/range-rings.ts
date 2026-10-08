@@ -45,8 +45,32 @@ function defenceRing(content: ContentSet, e: SnapshotEntity): RangeRing | undefi
   const pos = positionOf(e);
   if (type === undefined || tribe === undefined || pos === undefined) return undefined;
   const { hx, hy } = nodeOfPosition(pos.x, pos.y);
-  const radiusNodes = systems.shelterFireRadius(content, type, tribe, hx, hy);
+  const radiusNodes = defenceRadiusAt(content, type, tribe, hx, hy);
   return radiusNodes === undefined ? undefined : { entity: e.id, radiusNodes, kind: 'defence' };
+}
+
+/** Each content's defence radii by type, tribe and anchor row parity, the only part of the anchor the
+ *  reach depends on. Working one out walks rings around the walls, and a held tower asks every frame. */
+const defenceRadii = new WeakMap<ContentSet, Map<string, number | undefined>>();
+
+/** {@link systems.shelterFireRadius}, remembered per content. */
+export function defenceRadiusAt(
+  content: ContentSet,
+  buildingType: number,
+  tribe: number,
+  hx: number,
+  hy: number,
+): number | undefined {
+  let radii = defenceRadii.get(content);
+  if (radii === undefined) {
+    radii = new Map();
+    defenceRadii.set(content, radii);
+  }
+  const key = `${buildingType}:${tribe}:${hy & 1}`;
+  if (radii.has(key)) return radii.get(key);
+  const radius = systems.shelterFireRadius(content, buildingType, tribe, hx, hy);
+  radii.set(key, radius);
+  return radius;
 }
 
 /**

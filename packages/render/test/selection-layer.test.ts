@@ -258,7 +258,7 @@ it('draws a defence range red beside a work range on the same centre', () => {
   layer.destroy();
 });
 
-it('draws a range inside its true shape: a work diamond at 1/√2 of its radius, a defence hexagon at 2/√5', () => {
+it('draws a range inside its true shape: a work diamond at 1/√2 of its radius, a defence hexagon at √3/2 across', () => {
   const NODE_PX = 34;
   const RADIUS = 10;
   const STROKE = 2;
@@ -269,5 +269,5 @@ it('draws a range inside its true shape: a work diamond at 1/√2 of its radius,
     return w;
   };
   expect(width('work')).toBeCloseTo(2 * RADIUS * NODE_PX * Math.SQRT1_2, 0);
-  expect(width('defence')).toBeCloseTo((2 * RADIUS * NODE_PX * 2) / Math.sqrt(5), 0);
+  expect(width('defence')).toBeCloseTo((2 * RADIUS * NODE_PX * Math.sqrt(3)) / 2, 0);
 });

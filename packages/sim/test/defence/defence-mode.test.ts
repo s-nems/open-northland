@@ -22,6 +22,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import {
   fx,
   halfCellMapFromCells,
+  hexDistanceBetween,
   ONE,
   positionOfNode,
   Simulation,
@@ -686,11 +687,21 @@ describe('shelterFireRadius', () => {
   const HY = 4;
   const NO_BOW_TRIBE = VIKING + 1;
 
-  it("reaches the house bow less the anchor's way to its nearest wall, so every node that close is in reach", () => {
+  it('reaches the house bow all around a building drawn to a point', () => {
+    expect(shelterFireRadius(defenceContent(), TOWER, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE);
+  });
+
+  it('reaches past the bow around a long building only as far as its walls hold on every side', () => {
     const content = defenceContent();
-    expect(shelterFireRadius(content, TOWER, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE);
-    // The hall's anchor stands in its own wall: its reach runs further only along its length.
-    expect(shelterFireRadius(content, HALL, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE);
+    const radius = shelterFireRadius(content, HALL, VIKING, HX, HY) ?? 0;
+    // A one-row hall reaches no further north or south than its bow; along its length it reaches more.
+    expect(radius).toBe(HOUSE_BOW_RANGE);
+    const nodeInReachOfAWall = (x: number, y: number): boolean =>
+      Array.from({ length: 2 * HALL_HALF_LENGTH_NODES + 1 }, (_, i) => HX + i - HALL_HALF_LENGTH_NODES).some(
+        (wx) => hexDistanceBetween(wx, HY, x, y) <= HOUSE_BOW_RANGE,
+      );
+    expect(nodeInReachOfAWall(HX, HY - radius)).toBe(true);
+    expect(nodeInReachOfAWall(HX, HY - radius - 1)).toBe(false);
   });
 
   it('is undefined for a type with no defence mode and for a tribe that fires no house bow', () => {
