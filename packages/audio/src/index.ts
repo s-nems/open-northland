@@ -185,12 +185,14 @@ export {
 } from './data/preload-plan.js';
 export { type LaneCounts, type SoundStatsView, STAT_LANES, type StatLane } from './data/sound-stats.js';
 export {
-  computePan,
   computeSpatial,
   EDGE_GAIN,
   MAX_PAN,
   OFFSCREEN_FADE_SHARE,
+  panAt,
+  type ScreenOffset,
   type Spatial,
+  screenOffset,
 } from './data/spatial.js';
 export type {
   AmbientLoop,

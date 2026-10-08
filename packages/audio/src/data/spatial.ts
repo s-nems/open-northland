@@ -61,20 +61,6 @@ export function computeSpatialAtNode(
   return spatialiseScreenPoint(halfCellToScreen(hx, hy), camera, canvasW, canvasH);
 }
 
-/**
- * The stereo pan alone of world tile `(col, row)`: its screen-side position, clamped to the sides for a
- * point off screen, with no cull and no attenuation. A voice answering the player's order pans this way
- * in the original: the pan is clamped to the edges, the volume is left whole and no screen or fog
- * test is made.
- */
-export function computePan(col: number, row: number, camera: Camera, canvasW: number): number {
-  const s = tileToScreen(col, row);
-  const scale = camera.scale ?? 1;
-  const sx = s.x * scale + camera.offsetX;
-  const halfW = canvasW / 2;
-  return halfW === 0 ? 0 : panAt((sx - halfW) / halfW);
-}
-
 /** The pan of a normalised horizontal screen offset (-1..1 inside the canvas), clamped to the sides. */
 export function panAt(nx: number): number {
   return clamp(nx, -1, 1) * MAX_PAN;
@@ -93,7 +79,7 @@ export function screenOffset(
 }
 
 /** A point's offset from the screen centre in half-screen units on each axis. */
-interface ScreenOffset {
+export interface ScreenOffset {
   readonly nx: number;
   readonly ny: number;
 }

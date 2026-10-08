@@ -85,7 +85,9 @@ function placeMembers(input: DirectorInput, ids: Iterable<number>): Member[] {
   return members;
 }
 
-/** The pan at the members' mean screen position, clamped to the sides as a lone answer's is. */
+/** The pan at the members' mean screen position, clamped to the sides for a group off screen, with no
+ *  cull and no attenuation: the original pans an order's answer this way, its volume whole and with
+ *  no screen or fog test. */
 function centroidPan(members: readonly Member[]): number {
   let sum = 0;
   let placed = 0;

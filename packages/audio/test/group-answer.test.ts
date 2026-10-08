@@ -7,7 +7,6 @@ import {
   ANSWER_LAYERS,
   authoredVolumeGain,
   buildSoundIndex,
-  computePan,
   DEFAULT_CLIP_LENGTH_S,
   defaultBindings,
   directAudio,
@@ -20,7 +19,9 @@ import {
   type OneShot,
   OneShotArbiter,
   type OrderAnswer,
+  panAt,
   SELECT_COOLDOWN_S,
+  screenOffset,
   UI_CUE_FILES,
   VOICE_MUSIC_DUCK_DB,
   type VoiceCall,
@@ -171,7 +172,8 @@ describe('group answer lead', () => {
     expect(lead?.gain).toBe(ANSWER_GAIN);
     expect(lead?.delayS).toBeUndefined();
     expect(lead?.exclusive).toBe('group');
-    expect(lead?.pan).toBeCloseTo(computePan(CENTRE_COL, CENTRE_ROW, camera, CANVAS_W));
+    const offset = screenOffset(CENTRE_COL, CENTRE_ROW, camera, CANVAS_W, CANVAS_H);
+    expect(lead?.pan).toBeCloseTo(panAt(offset?.nx ?? Number.NaN));
   });
 
   it('clamps the pan of a group standing off screen to its side, as a lone answer', () => {
