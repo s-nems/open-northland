@@ -662,7 +662,7 @@ describe('directAudio ambient', () => {
 
   it('hears only the terrain the fog lets the viewer see', () => {
     const full = direct([], { terrain: meadow }).ambient[0];
-    const rightSeen = direct([], { terrain: meadow, visibleTile: (col) => col > 5 }).ambient[0];
+    const rightSeen = direct([], { terrain: meadow, visibleTile: (col) => col > 7 }).ambient[0];
     expect(rightSeen?.pan).toBeCloseTo(AMBIENT_MAX_PAN, 9);
     expect(rightSeen?.gain).toBeLessThan(full?.gain ?? 0); // the fogged half still counts as screen
     expect(direct([], { terrain: meadow, visibleTile: () => false }).ambient).toEqual([]);
