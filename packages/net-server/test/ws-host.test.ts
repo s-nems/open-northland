@@ -25,7 +25,7 @@ const SETTINGS: RoomSettings = {
   name: 'socket',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 3,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 const RUN_TICKS = 24;

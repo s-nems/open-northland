@@ -54,6 +54,7 @@ export async function validateNetworkSave(save: SaveGame, handle: VerifiedMapDoc
     progression: components.professionProgressionEnabled(sim.world),
     needs: components.needsEnabled(sim.world),
     weather: savedWeatherMode(save),
+    alliedVision: components.alliedVisionEnabled(sim.world),
   };
 }
 

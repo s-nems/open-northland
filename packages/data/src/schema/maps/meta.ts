@@ -11,6 +11,11 @@ export const MAP_TYPE = {
   USER_SINGLE_PLAYER_FREE: 5,
   USER_MULTI_PLAYER_FREE: 6,
 } as const;
+/** Whether a map's `maptype` codes name it a multiplayer map, shipped or user-made. */
+export function isMultiplayerMapType(types: readonly number[]): boolean {
+  return types.includes(MAP_TYPE.MULTI_PLAYER_FREE) || types.includes(MAP_TYPE.USER_MULTI_PLAYER_FREE);
+}
+
 /** `CLEAN_MAP_TYPE_MAXIMUM`: the first code a `maptype` line may not carry. */
 export const MAP_TYPE_LIMIT = 7;
 

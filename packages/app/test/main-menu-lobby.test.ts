@@ -1,4 +1,4 @@
-import { type MapsIndexPlayerSlot, WEREWOLF_TRIBE } from '@open-northland/data';
+import { MAP_TYPE, type MapsIndexPlayerSlot, WEREWOLF_TRIBE } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   initialLobbyOptions,
@@ -18,6 +18,7 @@ import {
   setSlotTribe,
   setVacantMode,
 } from '../src/entries/main-menu/lobby/roster-state.js';
+import { localAlliedVision } from '../src/game/session-rules.js';
 import { mapSession } from '../src/game/session-url.js';
 
 /** `TRIBE_TYPE_HUMAN_*` codes the rosters below name. */
@@ -84,25 +85,39 @@ describe('lobbySlotRows', () => {
 
 describe('initialLobbyOptions', () => {
   it('defaults to classic fog, progression on, needs on and variable weather, honouring explicit URL params', () => {
-    expect(initialLobbyOptions(new URLSearchParams(''))).toEqual({
+    expect(initialLobbyOptions(new URLSearchParams(''), true)).toEqual({
       fog: 'classic',
       professionProgression: true,
       settlerNeeds: true,
       weather: 'map',
+      alliedVision: true,
     });
     expect(
-      initialLobbyOptions(new URLSearchParams('fog=recon-fow&progression=off&needs=off&weathermode=winter')),
+      initialLobbyOptions(
+        new URLSearchParams('fog=recon-fow&progression=off&needs=off&weathermode=winter'),
+        true,
+      ),
     ).toEqual({
       fog: 'recon-fow',
       professionProgression: false,
       settlerNeeds: false,
       weather: 'winter',
+      alliedVision: true,
     });
-    expect(initialLobbyOptions(new URLSearchParams('weathermode=bogus')).weather).toBe('map');
+    expect(initialLobbyOptions(new URLSearchParams('weathermode=bogus'), true).weather).toBe('map');
     // The revealed map is a debug-menu pick, never a lobby one.
-    expect(initialLobbyOptions(new URLSearchParams('fog=off')).fog).toBe('classic');
-    expect(initialLobbyOptions(new URLSearchParams('fog=bogus')).fog).toBe('classic');
-    expect(initialLobbyOptions(new URLSearchParams('needs=bogus')).settlerNeeds).toBe(true);
+    expect(initialLobbyOptions(new URLSearchParams('fog=off'), true).fog).toBe('classic');
+    expect(initialLobbyOptions(new URLSearchParams('fog=bogus'), true).fog).toBe('classic');
+    expect(initialLobbyOptions(new URLSearchParams('needs=bogus'), true).settlerNeeds).toBe(true);
+  });
+
+  it('starts a local game with allied vision on for a multiplayer map and off for a single-player one', () => {
+    expect(localAlliedVision([MAP_TYPE.SINGLE_PLAYER_FREE])).toBe(false);
+    expect(localAlliedVision([])).toBe(false);
+    expect(localAlliedVision([MAP_TYPE.MULTI_PLAYER_FREE])).toBe(true);
+    expect(localAlliedVision([MAP_TYPE.USER_MULTI_PLAYER_FREE])).toBe(true);
+    // Not carried: a stray launch flag cannot override the caller's pick.
+    expect(initialLobbyOptions(new URLSearchParams('alliedvision=off'), true).alliedVision).toBe(true);
   });
 });
 
@@ -112,6 +127,7 @@ const OPTIONS = {
   professionProgression: true,
   settlerNeeds: true,
   weather: 'winter',
+  alliedVision: true,
 } as const;
 
 /** The offered seats the launched session declares as AI, which is what `?ai=` carries. */
@@ -289,7 +305,13 @@ describe('lobbyStartEntry', () => {
         'zatoka',
         state,
         players,
-        { fog: 'recon-fow', professionProgression: false, settlerNeeds: false, weather: 'map' },
+        {
+          fog: 'recon-fow',
+          professionProgression: false,
+          settlerNeeds: false,
+          weather: 'map',
+          alliedVision: false,
+        },
         SEED,
       ),
     );
@@ -311,6 +333,7 @@ describe('lobbyStartEntry', () => {
     expect(params.get('fog')).toBe('recon-fow');
     expect(params.get('progression')).toBe('off');
     expect(params.get('needs')).toBe('off');
+    expect(params.get('alliedvision')).toBe('off');
     expect(params.get('weathermode')).toBe('map');
   });
 

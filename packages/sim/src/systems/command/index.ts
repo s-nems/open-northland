@@ -1,5 +1,6 @@
 import {
   addPaper,
+  setAlliedVision,
   setDiplomacyStance,
   setFogMode,
   setMatchParticipants,
@@ -436,8 +437,8 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
     case 'setFogMode':
       setFogMode(world, command.mode);
       return;
-    case 'setSharedVision':
-      ctx.fog?.shareVision(command.players);
+    case 'setAlliedVision':
+      setAlliedVision(world, command.enabled);
       return;
     case 'setDiplomacy':
       setDiplomacyStance(world, command.from, command.to, command.state);

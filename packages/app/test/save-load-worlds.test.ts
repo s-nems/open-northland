@@ -30,6 +30,7 @@ const BASE_OPTIONS = {
   fog: null,
   progression: null,
   needs: null,
+  alliedVision: null,
   missions: null,
 } as const;
 

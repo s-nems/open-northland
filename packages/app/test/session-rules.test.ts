@@ -1,4 +1,4 @@
-import { FOG_MODE, halfCellMapFromCells, Simulation } from '@open-northland/sim';
+import { components, FOG_MODE, halfCellMapFromCells, Simulation } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { grassTerrain } from '../src/catalog/buildings.js';
 import { sandboxContent } from '../src/game/sandbox/index.js';
@@ -33,6 +33,13 @@ describe('the on/off session rules', () => {
     expect(sessionRuleOverrides(new URLSearchParams('weathermode=snow')).weather).toBeNull();
     expect(sessionRuleOverrides(new URLSearchParams('weather=snow')).weather).toBeNull();
     expect(launch('weathermode=winter').hashState()).toBe(launch('').hashState());
+  });
+
+  it('carries ?alliedvision= to the running sim', () => {
+    expect(sessionRuleOverrides(new URLSearchParams('')).alliedVision).toBeNull();
+    expect(components.alliedVisionEnabled(launch('alliedvision=on').world)).toBe(true);
+    expect(components.alliedVisionEnabled(launch('alliedvision=off').world)).toBe(false);
+    expect(launch('').world.lowestEntityWith(components.AlliedVisionRules)).toBeNull();
   });
 
   it('applies every flag on one launch without them interfering', () => {

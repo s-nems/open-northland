@@ -57,14 +57,12 @@ describe('immutable lobby files', () => {
     b.send({ kind: 'requestInitialSave' });
     expect(b.last('blob')).toMatchObject({ type: 'initialSave', tick: 73, bytes });
   });
-  it('lets the creator resolve vacant saved seats without changing their teams or colors', () => {
+  it('lets the creator resolve vacant saved seats without removing them', () => {
     const { a, b } = lobby();
     a.send({ kind: 'setSeat', player: 2, mode: 'idle' });
     expect(a.last('room')?.room.seats.find((seat) => seat.player === 2)?.mode).toBe('idle');
     b.send({ kind: 'setSeat', player: 2, mode: 'ai' });
     expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
-    a.send({ kind: 'setSeat', player: 2, team: 1 });
-    expect(a.last('rejected')?.reason).toEqual({ code: 'savedSeatsFixed' });
     a.send({ kind: 'setSeat', player: 2, mode: 'ai' });
     expect(a.last('room')?.room.seats.find((seat) => seat.player === 2)?.mode).toBe('ai');
     a.send({ kind: 'setSeat', player: 2, mode: 'absent' });

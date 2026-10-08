@@ -37,7 +37,7 @@ const session: GameSession = {
   seed: 1,
   seats: [{ player: LOCAL_SEAT, color: 0, mode: 'human' }],
   localSeat: LOCAL_SEAT,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 

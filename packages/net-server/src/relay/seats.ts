@@ -13,7 +13,6 @@ interface Seat {
   vacantMode: VacantSeatMode;
   readonly offers: readonly VacantSeatMode[];
   color: number;
-  team?: number | null;
   /** The map's tribe for the seat and the one it plays; absent on a seat that offers no choice. */
   readonly tribes?: { readonly authored: number; current: number };
   /** How hard the computer plays the seat; absent on a seat that takes no level. */
@@ -24,7 +23,6 @@ interface Seat {
 export interface SeatChange {
   readonly mode?: VacantSeatMode;
   readonly color?: number;
-  readonly team?: number | null;
   readonly tribe?: number;
   readonly difficulty?: AiDifficulty;
 }
@@ -39,7 +37,6 @@ export class SeatTable {
       vacantMode: seat.mode,
       offers: seat.offers,
       color: seat.color,
-      ...(seat.team === undefined ? {} : { team: seat.team }),
       ...(seat.authoredTribe === undefined
         ? {}
         : { tribes: { authored: seat.authoredTribe, current: seat.tribe ?? seat.authoredTribe } }),
@@ -100,7 +97,6 @@ export class SeatTable {
       seat.vacantMode = change.mode;
     }
     if (change.color !== undefined) seat.color = change.color;
-    if (change.team !== undefined && change.team !== (seat.team ?? null)) seat.team = change.team;
     if (change.tribe !== undefined && seat.tribes !== undefined) seat.tribes.current = change.tribe;
     if (change.difficulty !== undefined) seat.difficulty = change.difficulty;
     return null;
@@ -137,7 +133,6 @@ export class SeatTable {
       player: seat.player,
       mode,
       color: seat.color,
-      ...(seat.team === undefined ? {} : { team: seat.team }),
       ...(tribes === undefined || tribes.current === tribes.authored ? {} : { tribe: tribes.current }),
       ...(mode !== 'ai' || seat.difficulty === undefined ? {} : { difficulty: seat.difficulty }),
     };

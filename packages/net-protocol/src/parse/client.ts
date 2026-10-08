@@ -11,7 +11,6 @@ import {
   parseRoomSettings,
   parseSeatIndex,
   parseSeatSetups,
-  parseTeam,
   parseTribe,
   VACANT_SEAT_MODES,
 } from './room.js';
@@ -86,7 +85,6 @@ export function parseClientMessage(value: unknown): ClientMessage {
         player: parseSeatIndex(raw.player, 'setSeat.player'),
         ...(raw.mode !== undefined ? { mode: asOneOf(raw.mode, VACANT_SEAT_MODES, 'setSeat.mode') } : {}),
         ...(raw.color !== undefined ? { color: asCount(raw.color, 'setSeat.color') } : {}),
-        ...(raw.team !== undefined ? { team: parseTeam(raw.team, 'setSeat.team') } : {}),
         ...(raw.tribe !== undefined ? { tribe: parseTribe(raw.tribe, 'setSeat.tribe') } : {}),
         ...(raw.difficulty !== undefined
           ? { difficulty: asOneOf(raw.difficulty, AI_DIFFICULTIES, 'setSeat.difficulty') }

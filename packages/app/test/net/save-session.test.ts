@@ -13,9 +13,9 @@ it('captures the current public roster and does not upload an old world after re
     seed: 7,
     localSeat: 0,
     speed: 1,
-    rules: { fog: null, progression: null, needs: null, weather: null },
+    rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
     seats: [
-      { player: 0, mode: 'human', color: 3, team: 1 },
+      { player: 0, mode: 'human', color: 3 },
       { player: 1, mode: 'human', color: 4 },
     ],
   };
@@ -38,7 +38,6 @@ it('captures the current public roster and does not upload an old world after re
         mode: 'human',
         offers: ['idle', 'ai', 'absent'],
         color: 3,
-        team: 1,
         nick: 'Ania',
         ready: false,
         difficulty: 'hard',

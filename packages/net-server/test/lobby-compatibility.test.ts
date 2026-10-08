@@ -144,25 +144,21 @@ describe('lobby compatibility gate', () => {
     expect(s.b.last('rejected')?.reason).toEqual({ code: 'gameStarted' });
   });
 
-  it('preserves explicit teams in the descriptor and invalidates ready when a team or color changes', () => {
+  it('carries a seat color into the descriptor and invalidates ready only when it changes', () => {
     const s = lobby();
     s.report();
     s.ready();
-    s.b.send({ kind: 'setSeat', player: 1, team: 3 });
+    s.b.send({ kind: 'setSeat', player: 1, color: 5 });
     expect(s.b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
-    s.a.send({ kind: 'setSeat', player: 0, team: 3 });
-    expect(s.readiness()).toEqual([false, false]);
-    s.a.send({ kind: 'setSeat', player: 1, team: 3 });
-    s.ready();
-    s.a.send({ kind: 'setSeat', player: 0, team: 3 });
+    s.a.send({ kind: 'setSeat', player: 0, color: 0 });
     expect(s.readiness()).toEqual([true, true]);
     s.a.send({ kind: 'setSeat', player: 1, color: 5 });
     expect(s.readiness()).toEqual([false, false]);
     s.ready();
     s.a.send({ kind: 'start' });
     expect(s.b.last('start')?.session.seats).toEqual([
-      { player: 0, mode: 'human', color: 0, team: 3 },
-      { player: 1, mode: 'human', color: 5, team: 3 },
+      { player: 0, mode: 'human', color: 0 },
+      { player: 1, mode: 'human', color: 5 },
       { player: 2, mode: 'ai', color: 2 },
     ]);
   });

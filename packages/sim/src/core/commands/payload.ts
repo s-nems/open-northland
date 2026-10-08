@@ -309,6 +309,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     },
   },
   placeSignpost: { required: { entity: 'integer', ...NODE }, optional: QUEUED },
+  setAlliedVision: { required: { enabled: 'boolean' } },
   setAssistantCounter: {
     required: {
       player: 'integer',
@@ -353,7 +354,6 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     },
   },
   setProfessionProgression: { required: { enabled: 'boolean' } },
-  setSharedVision: { required: { players: { arrayOf: 'integer' } } },
   setSignpostNavigation: { required: { enabled: 'boolean' } },
   setStance: { required: { entity: 'integer', mode: 'integer' } },
   setVehicleStance: { required: { vehicle: 'integer', stance: { oneOf: VEHICLE_STANCES } } },

@@ -30,7 +30,7 @@ function room(): RoomView {
       name: 'Test',
       world: { kind: 'map', mapId: 'test' },
       seed: 1,
-      rules: { fog: null, progression: null, needs: null, weather: null },
+      rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
       speed: 1,
     },
     seats: [
@@ -188,7 +188,7 @@ it('recommends only an exact saved nick match and leaves unnamed/legacy seats wi
       seed: 1,
       speed: 1,
       localSeat: 0,
-      rules: { fog: null, progression: null, needs: null, weather: null },
+      rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
       seats: [
         { player: 0, color: 0, mode: 'human' },
         { player: 1, color: 1, mode: 'ai' },

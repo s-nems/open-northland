@@ -44,6 +44,7 @@ describe.runIf(hasRealIr())('verified map transfer with owned content', () => {
         fog: 1 as const,
         progression: false,
         needs: false,
+        alliedVision: null,
       };
     };
     const creator = buildMapWorld(options(source));
@@ -60,6 +61,7 @@ describe.runIf(hasRealIr())('verified map transfer with owned content', () => {
       progression: false,
       needs: false,
       weather: null,
+      alliedVision: false,
     });
     const restored = restoreMapWorld(options(guest), save);
     expect(restored.sim.hashState()).toBe(creator.sim.hashState());

@@ -1,3 +1,4 @@
+import { isMultiplayerMapType } from '@open-northland/data';
 import { type SessionRules, WEATHER_MODES, type WeatherMode } from '@open-northland/lockstep';
 import { fogModeParam } from './fog.js';
 import type { WorldSetup } from './world/index.js';
@@ -16,13 +17,15 @@ export function weatherModeParam(params: URLSearchParams): WeatherMode | null {
   return WEATHER_MODES.find((mode) => mode === value) ?? null;
 }
 
-/** The `?fog=`, `?progression=`, `?needs=` and `?weathermode=` flags as the session's rule overrides. */
+/** The `?fog=`, `?progression=`, `?needs=`, `?weathermode=` and `?alliedvision=` flags as the session's
+ *  rule overrides. */
 export function sessionRuleOverrides(params: URLSearchParams): SessionRules {
   return {
     fog: fogModeParam(params),
     progression: onOffParam(params, 'progression'),
     needs: onOffParam(params, 'needs'),
     weather: weatherModeParam(params),
+    alliedVision: onOffParam(params, 'alliedvision'),
   };
 }
 
@@ -40,4 +43,13 @@ export function applySessionRuleOverrides(sim: WorldSetup, overrides: SimSession
     sim.enqueueSetup({ kind: 'setProfessionProgression', enabled: overrides.progression });
   }
   if (overrides.needs !== null) sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: overrides.needs });
+  if (overrides.alliedVision !== null) {
+    sim.enqueueSetup({ kind: 'setAlliedVision', enabled: overrides.alliedVision });
+  }
+}
+
+/** The allied-vision rule a local game starts a map with: on for a multiplayer map, off for a
+ *  single-player one. A network room always starts with it on. */
+export function localAlliedVision(mapTypes: readonly number[]): boolean {
+  return isMultiplayerMapType(mapTypes);
 }

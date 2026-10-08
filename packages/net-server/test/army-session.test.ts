@@ -12,7 +12,7 @@ const settings: RoomSettings = {
   name: 'army control',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 7,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 

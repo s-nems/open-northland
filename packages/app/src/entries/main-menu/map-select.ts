@@ -1,3 +1,4 @@
+import { localAlliedVision } from '../../game/session-rules.js';
 import { drawSessionSeed } from '../../game/session-url.js';
 import { messages } from '../../i18n/index.js';
 import type { LaunchEntry } from '../../launch.js';
@@ -32,7 +33,10 @@ export function mapSelectScreen(
       if (item.kind === 'scene') launch(targetSearch(`?scene=${encodeURIComponent(item.id)}`));
       else if (item.tutorialStep !== undefined) {
         const state = initialLobbyState(item.players);
-        const options = initialLobbyOptions(new URLSearchParams(window.location.search));
+        const options = initialLobbyOptions(
+          new URLSearchParams(window.location.search),
+          localAlliedVision(item.types),
+        );
         launch(targetSearch(lobbyStartEntry(item.id, state, item.players, options, drawSessionSeed())));
       } else openLobby(item);
     },

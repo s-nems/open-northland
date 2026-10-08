@@ -21,7 +21,7 @@ const SESSION: GameSession = {
   seed: 1,
   seats: [{ player: 0, color: 0, mode: 'human' }],
   localSeat: 0,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 /** Ticks the shared world runs first: the relay refuses a save at tick 0. */

@@ -31,7 +31,7 @@ export const plNetworkRelay = {
     creatorOnly: 'tylko twórca pokoju może to zrobić',
     noCreator: 'pokój nie ma twórcy',
     savedRulesFixed: 'zapisana gra zachowuje swoje ziarno i zasady',
-    savedSeatsFixed: 'zapisana gra zachowuje swoje miejsca, kolory, drużyny i nacje',
+    savedSeatsFixed: 'zapisana gra zachowuje swoje miejsca, kolory i nacje',
     noSeat: 'nie ma miejsca {seat}',
     seatTaken: 'miejsce {seat} zajmuje {nick}',
     seatModeUnavailable: 'miejsca {seat} nie można ustawić na: {mode}',

@@ -1,5 +1,5 @@
 import type { MapsIndexEntry, MapsIndexPlayerSlot, MapTextLanguage } from '@open-northland/data';
-import { MAP_TYPE } from '@open-northland/data';
+import { isMultiplayerMapType, MAP_TYPE } from '@open-northland/data';
 import { localizedMapText } from '../../game/map-strings.js';
 import { compareLabels, currentLocale } from '../../i18n/index.js';
 
@@ -144,8 +144,7 @@ const untyped = (item: MapSelectItem): boolean => item.kind === 'map' && item.ty
 export function mapCategory(item: MapSelectItem): Exclude<MapFilter, 'all'> {
   if (item.kind === 'scene') return 'scenes';
   if (item.tutorialStep !== undefined) return 'tutorial';
-  if (has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE))
-    return 'multiplayer';
+  if (isMultiplayerMapType(item.types)) return 'multiplayer';
   return 'free';
 }
 
@@ -164,8 +163,7 @@ export function listedIn(item: MapSelectItem, listing: MapListing): boolean {
   if (item.kind === 'scene') return listing === 'single';
   if (item.tutorialStep !== undefined) return listing === 'single';
   if (untyped(item)) return true;
-  if (listing === 'multiplayer')
-    return has(item, MAP_TYPE.MULTI_PLAYER_FREE) || has(item, MAP_TYPE.USER_MULTI_PLAYER_FREE);
+  if (listing === 'multiplayer') return isMultiplayerMapType(item.types);
   return (
     has(item, MAP_TYPE.SINGLE_PLAYER_FREE) ||
     has(item, MAP_TYPE.USER_SINGLE_PLAYER_FREE) ||

@@ -277,10 +277,10 @@ export const deContent = {
       summary:
         'Erstkontakt im Kriegsnebel: Der Verbündete neben dir ist sofort bekannt. Ein Stamm, der nur seinerseits feindlich gesinnt ist, zeigt sich durch einen Angriff und löst auch auf deiner Seite Feindschaft aus. Ein noch nie gesichteter Stamm erscheint nicht im Diplomatiefenster.',
     },
-    'team-vision': {
-      title: 'Gemeinsame Teamsicht',
+    'allied-vision': {
+      title: 'Gemeinsame Sicht der Verbündeten',
       summary:
-        'Ein gemeinsamer Kriegsnebel für ein Lobby-Team: Der Soldat deines Teammitglieds weit im Osten hält seine Umgebung für dich sichtbar und seinen Nachbarn in deinem Diplomatiefenster. Ein Einsiedler außerhalb jeder Sichtweite bleibt unbekannt.',
+        'Ein gemeinsamer Kriegsnebel für gegenseitige Freunde: Der Soldat deines Verbündeten weit im Osten hält seine Umgebung für dich sichtbar und seinen Nachbarn in deinem Diplomatiefenster. Ein Einsiedler außerhalb jeder Sichtweite bleibt unbekannt. Stellst du dich im Diplomatiefenster neutral oder feindlich zum Verbündeten, wird die Lichtung wieder grau.',
     },
     trade: {
       title: 'Handelsroute',

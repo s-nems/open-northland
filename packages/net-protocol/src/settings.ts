@@ -14,6 +14,7 @@ const RULE_FIELDS = keysOf<keyof SessionRules>({
   progression: true,
   needs: true,
   weather: true,
+  alliedVision: true,
 });
 
 export function sameSessionRules(a: SessionRules, b: SessionRules): boolean {

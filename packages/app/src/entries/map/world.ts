@@ -58,8 +58,6 @@ export type MapWorldKind = 'authored' | 'bare' | 'demo';
 export interface MapWorldOptions extends SimSessionRules {
   readonly missions?: boolean | null;
   readonly diplomacy?: readonly MapDiplomacy[];
-  /** Groups of players that explore through one fog mask, the lobby's teams. */
-  readonly sharedVision?: readonly (readonly number[])[];
   readonly matchVictory?: 'script' | 'elimination';
   readonly seed: number;
   /** The decoded `content/maps/<id>.json` grid, or null when no map id resolved. */
@@ -190,8 +188,8 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
     fog: options.fog ?? (scripted ? FOG_MODE.CLASSIC : null),
     progression: options.progression,
     needs: options.needs,
+    alliedVision: options.alliedVision,
   });
-  for (const players of options.sharedVision ?? []) sim.enqueueSetup({ kind: 'setSharedVision', players });
   const roster = options.playerRoster === undefined ? null : { players: options.playerRoster };
   const scriptedOnly = new Set<number>();
   for (const seat of options.aiSeats) {

@@ -14,9 +14,9 @@ const descriptor: GameSession = {
   seed: 7,
   localSeat: 0,
   speed: 2,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   seats: [
-    { player: 0, mode: 'human', color: 3, team: 1, tribe: 7 },
+    { player: 0, mode: 'human', color: 3, tribe: 7 },
     { player: 1, mode: 'ai', color: 4 },
   ],
 };
@@ -31,14 +31,13 @@ const metadata = createSavedSessionMetadata(descriptor, [
 const save = exportSaveGame(runDemoWorld(7, 0), { mapId: 'test', session: metadata });
 
 describe('saved multiplayer roster', () => {
-  it('recovers colors, teams, tribes and AI, leaving saved humans free for an explicit claim', () => {
+  it('recovers colors, tribes and AI, leaving saved humans free for an explicit claim', () => {
     expect(restoreSavedSeats(save, authored)).toEqual([
       {
         player: 0,
         mode: 'idle',
         offers: ['ai', 'idle', 'absent'],
         color: 3,
-        team: 1,
         authoredTribe: 1,
         tribe: 7,
       },

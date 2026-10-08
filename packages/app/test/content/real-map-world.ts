@@ -1,14 +1,13 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { type ContentSet, MapScript, mapLobbySlots } from '@open-northland/data';
-import type { GameSession, SessionRules, SessionSeat } from '@open-northland/lockstep';
+import type { GameSession, SessionRules } from '@open-northland/lockstep';
 import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
 import { buildMapWorldFromInputs } from '../../src/entries/map/world-inputs.js';
 import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
 import { onOffParam } from '../../src/game/session-rules.js';
-import { sessionDiplomacy, sessionSharedVision } from '../../src/game/session-teams.js';
 import { mapIdParam, mapSession } from '../../src/game/session-url.js';
 import { type AuthoredJoinRows, mapScriptWorld } from '../../src/game/world/index.js';
 import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
@@ -23,7 +22,6 @@ import { contentDir, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
 const MAP_SEED = 7;
 
 export interface RealMapWorldOptions {
-  readonly seats?: readonly SessionSeat[];
   /** Decoded map id under `content/maps/<id>.json`. */
   readonly mapId: string;
   /** Seats to flag as AI players. */
@@ -93,8 +91,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // Each played seat's assistant and each AI seat's, so a headless run measures an economy that
     // dresses itself like the browser's.
     assistantSeats: [...humanSeats, ...options.aiSeats],
-    diplomacy: sessionDiplomacy({ seats: options.seats ?? [] }, script?.diplomacy ?? []),
-    sharedVision: sessionSharedVision({ seats: options.seats ?? [] }),
+    diplomacy: script?.diplomacy ?? [],
     specialItems: script?.specialItems ?? [],
     // The entry declares the match from the same three inputs. Left out, the headless world would run
     // without the match rules the browser plays under.
@@ -108,6 +105,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     fog: options.rules?.fog ?? null,
     progression: options.rules?.progression ?? null,
     needs: options.rules?.needs ?? null,
+    alliedVision: options.rules?.alliedVision ?? null,
     berryBushes: options.berryBushes === true,
   });
   if (world.kind !== 'authored') throw new Error(`${options.mapId} resolved no authored placements`);

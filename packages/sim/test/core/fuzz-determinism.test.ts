@@ -4,6 +4,7 @@ import {
   AssistantWeaponVetoes,
   Building,
   Chest,
+  FOG_MODE,
   JobAssignment,
   Marriage,
   PAPER_KINDS,
@@ -296,6 +297,10 @@ const EQUIP_ORDER_GOODS = [
 /** Owner slots: two valid players + one out-of-range (rejects the whole command) - exercises the
  *  command system's owner-field check. */
 const OWNERS = [0, 1, 99] as const;
+/** The two valid owners the preamble allies from its second tick, sharing one fog mask. */
+const ALLY_PAIR = [OWNERS[0], OWNERS[1]] as const;
+/** The tick the second ally turns hostile, splitting the shared mask. */
+const ALLY_SPLIT_TICK = 120;
 /** The seat the stream's player envelopes claim - the preamble's owner, so a share of them reach the
  *  gate's ACCEPT branch instead of only its refusals. */
 const FUZZ_SEAT = 0;
@@ -1094,6 +1099,8 @@ interface FuzzRun {
   readonly attachedToWork: boolean;
   /** Whether the preamble's crewed catapult loosed a stone - pinned so the siege clip and burst run. */
   readonly catapultFired: boolean;
+  /** Whether the ally pair shared a fog mask and a later tick split it - pinned so merge and split run. */
+  readonly alliesJoinedAndSplit: boolean;
   /** Whether the preamble's food chest was opened - pinned so a gate change cannot quietly turn every
    *  open-chest order in the stream into a refusal. */
   readonly chestOpened: boolean;
@@ -1229,6 +1236,8 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
   let gateSwung = false;
   let weaponVetoed = false;
   let catapultFired = false;
+  let alliesJoined = false;
+  let alliesJoinedAndSplit = false;
   for (let t = 0; t < ticks; t++) {
     // House one nucleus woman and man on the second tick (ids are monotonic: the chests, the home, then
     // the six spawns in order). Not in the preamble: the home's `built` flips within tick 1's system run,
@@ -1275,6 +1284,21 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       });
     }
     if (t === 2) sim.enqueueSetup({ kind: 'setPalisadeGate', palisade: PREAMBLE_GATE_CENTRE, open: true });
+    // Allied vision on with the ally pair mutual friends from the second tick, then one side hostile at
+    // ALLY_SPLIT_TICK, so every seed merges and splits fog masks under the cache verifiers and the save
+    // round trip. Fog is set on both ticks so a stream switch to OFF cannot leave the regroup idle.
+    // Fixed input, logged like every command.
+    const [allyA, allyB] = ALLY_PAIR;
+    if (t === 1 || t === ALLY_SPLIT_TICK) {
+      sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
+    }
+    if (t === 1) {
+      sim.enqueueSetup({ kind: 'setAlliedVision', enabled: true });
+      sim.enqueueSetup({ kind: 'setDiplomacy', from: allyA, to: allyB, state: 'friend' });
+      sim.enqueueSetup({ kind: 'setDiplomacy', from: allyB, to: allyA, state: 'friend' });
+    }
+    if (t === ALLY_SPLIT_TICK)
+      sim.enqueueSetup({ kind: 'setDiplomacy', from: allyB, to: allyA, state: 'enemy' });
     // Crew the preamble catapult and aim it at open ground, so its boarding, clip and burst run under the
     // stream's orders on every seed. Fixed input, logged like every command.
     if (t === 1)
@@ -1317,6 +1341,9 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
       attachedToWork = sim.world.has(ATTACHED_SETTLER, JobAssignment);
     }
     if (!chestOpened) chestOpened = !sim.world.has(FOOD_CHEST_ID, Chest);
+    const shared = (sim.fog?.sharedVisionGroups().length ?? 0) > 0;
+    if (shared) alliesJoined = true;
+    else if (alliesJoined) alliesJoinedAndSplit = true;
     if (!catapultFired) {
       catapultFired = sim.events
         .current()
@@ -1349,6 +1376,7 @@ function runFuzz(fuzzSeed: number, ticks: number, opts: { saveRoundTrip?: boolea
     gateSwung,
     weaponVetoed,
     catapultFired,
+    alliesJoinedAndSplit,
     log: [...sim.commands.log],
   };
 }
@@ -1373,6 +1401,7 @@ describe('fuzz: randomized command streams stay deterministic, replayable, and i
       expect(a.chestOpened).toBe(true); // and a chest really opened, not just refused
       expect(a.gateSwung).toBe(true); // and a gate really stood in the wall run and opened
       expect(a.catapultFired).toBe(true); // and a crewed catapult really loosed a stone
+      expect(a.alliesJoinedAndSplit).toBe(true); // and allies really shared a fog mask, then split it
       expect(a.weaponVetoed).toBe(true); // and a weapon veto really stood, not just the arms-no-class skip
       expect(a.violations).toEqual([]);
       expect(b.violations).toEqual([]);

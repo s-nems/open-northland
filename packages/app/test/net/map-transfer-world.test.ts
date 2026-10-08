@@ -37,6 +37,7 @@ it('boots transferred authored map and roster with the same initial and future w
       fog: null,
       needs: null,
       progression: null,
+      alliedVision: null,
     });
   });
   const [creator, guest] = worlds;

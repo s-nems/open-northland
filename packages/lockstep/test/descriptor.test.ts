@@ -26,7 +26,7 @@ function session(over: Partial<GameSession> = {}): GameSession {
       { player: 2, mode: 'idle', color: 9 },
     ],
     localSeat: 0,
-    rules: { fog: 1, progression: true, needs: null, weather: 'map' },
+    rules: { fog: 1, progression: true, needs: null, weather: 'map', alliedVision: null },
     speed: 1,
     ...over,
   };
@@ -60,26 +60,6 @@ describe('game session descriptor', () => {
     expect(() => roundTrip(session({ world: { kind: 'scene', sceneId: '' } }))).toThrow(/world.sceneId/);
     for (const mapId of ['map\nname', '\u0000']) {
       expect(() => roundTrip(session({ world: { kind: 'map', mapId } }))).toThrow(/world.mapId/);
-    }
-  });
-
-  it('preserves explicit teams and the map-authored diplomacy default', () => {
-    const configured = session({
-      seats: [
-        { player: 0, mode: 'human', color: 7, team: 0 },
-        { player: 1, mode: 'human', color: 4, team: 0 },
-        { player: 2, mode: 'ai', color: 9, team: null },
-      ],
-    });
-    expect(roundTrip(configured)).toEqual(configured);
-    expect(roundTrip(session()).seats[0]).not.toHaveProperty('team');
-    for (const team of [-1, 17, 1.5, '1', false]) {
-      expect(() =>
-        parseGameSession({
-          ...session(),
-          seats: [{ player: 0, mode: 'human', color: 0, team }],
-        }),
-      ).toThrow(/team/);
     }
   });
 
@@ -141,13 +121,15 @@ describe('game session descriptor', () => {
   it('rejects unsafe integers and undefined fog modes', () => {
     expect(() => parseGameSession(session({ seed: 1e30 }))).toThrow(/seed/);
     expect(() =>
-      parseGameSession(session({ rules: { fog: 9, progression: null, needs: null, weather: null } })),
+      parseGameSession(
+        session({ rules: { fog: 9, progression: null, needs: null, weather: null, alliedVision: null } }),
+      ),
     ).toThrow(/rules.fog/);
   });
 
   it('reads every weather mode and null, and refuses an unknown or missing one', () => {
     for (const weather of [...WEATHER_MODES, null]) {
-      const rules = { fog: null, progression: null, needs: null, weather };
+      const rules = { fog: null, progression: null, needs: null, weather, alliedVision: null };
       expect(roundTrip(session({ rules })).rules.weather).toBe(weather);
     }
     const rules = { fog: null, progression: null, needs: null };

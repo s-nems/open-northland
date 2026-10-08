@@ -51,6 +51,7 @@ async function fortressWorld(): Promise<{ sim: Simulation; script: MapScript }> 
     fog: null,
     progression: null,
     needs: null,
+    alliedVision: null,
     missions: false,
     berryBushes: true,
   };

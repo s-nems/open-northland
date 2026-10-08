@@ -4,6 +4,7 @@ import type { Simulation } from '../../src/index.js';
 import type { HalfCellNode } from '../../src/nav/halfcell.js';
 import type { MissionDefinition, MissionGoalOp, MissionResultOp } from '../../src/systems/missions/index.js';
 import { FOG_STATE, VISION_CADENCE_TICKS } from '../../src/systems/vision/index.js';
+import { allyVision } from '../fixtures/allies.js';
 import {
   failedResultsNow,
   firingMission,
@@ -136,7 +137,7 @@ describe('ExploreArea', () => {
 
   it("reveals for every player sharing the named player's vision", () => {
     const sim = revealing([explore(OWNER, POINT, RANGE)], FOG_MODE.CLASSIC, (s) =>
-      s.enqueueSetup({ kind: 'setSharedVision', players: [OWNER, RIVAL] }),
+      allyVision(s, OWNER, RIVAL),
     );
     expect(cellState(sim, RIVAL, ON_RIM)).toBe(FOG_STATE.VISIBLE);
   });

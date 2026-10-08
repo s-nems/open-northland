@@ -86,7 +86,7 @@ it('carries a 1000-soldier move, paused redirects and a reconnect through real W
         name: 'army sockets',
         world: { kind: 'scene', sceneId: 'fixture' },
         seed: 7,
-        rules: { fog: null, progression: null, needs: null, weather: null },
+        rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
         speed: 2,
       },
       clients.map((_, player) => ({ player, mode: 'idle', offers: ['idle', 'ai'], color: player })),

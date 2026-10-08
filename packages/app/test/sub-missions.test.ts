@@ -32,6 +32,7 @@ function parentSave() {
     assistantSeats: [],
     fog: null,
     needs: null,
+    alliedVision: null,
     missions: null,
     progression: null,
   });

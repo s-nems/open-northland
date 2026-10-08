@@ -6,7 +6,7 @@ const original: LobbySettings = {
   name: 'Forest',
   seed: 123,
   speed: 1,
-  rules: { fog: null, needs: null, progression: null, weather: null },
+  rules: { fog: null, needs: null, progression: null, weather: null, alliedVision: null },
 };
 function view(settings: LobbySettings = original): RoomView {
   return {
@@ -44,7 +44,7 @@ describe('lobby settings replacement queue', () => {
       ...original,
       speed: 2,
       kickedSeatMode: 'ai',
-      rules: { fog: 0, needs: false, progression: true, weather: null },
+      rules: { fog: 0, needs: false, progression: true, weather: null, alliedVision: null },
     });
     expect(sent[1]).not.toHaveProperty('world');
     expect(sent[1]).not.toHaveProperty('mapOrigin');
@@ -115,7 +115,13 @@ describe('lobby settings replacement queue', () => {
         expect(send).toHaveBeenCalledOnce();
         return;
       }
-      expect(sent[1]?.rules).toEqual({ fog: 0, needs: null, progression: null, weather: null });
+      expect(sent[1]?.rules).toEqual({
+        fog: 0,
+        needs: null,
+        progression: null,
+        weather: null,
+        alliedVision: null,
+      });
     },
   );
 

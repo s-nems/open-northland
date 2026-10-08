@@ -15,7 +15,7 @@ export const SETTINGS: RoomSettings = {
   name: 'Zatoka',
   world: { kind: 'map', mapId: 'zatoka' },
   seed: 7,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 export const SEATS = [

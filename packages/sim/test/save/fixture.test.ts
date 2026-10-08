@@ -18,6 +18,7 @@ import {
 } from '../../src/index.js';
 import { layRoad } from '../../src/systems/roads/index.js';
 import { boardRider } from '../../src/systems/vehicles/index.js';
+import { allyVision } from '../fixtures/allies.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -49,13 +50,13 @@ const FIXTURE_MAP_ID = 'fixture';
 /** A road ordered but not yet laid. */
 const ROAD_SITE = { hx: 2, hy: 12 };
 
-/** The world the fixture freezes: every section populated - a shared-vision pair and its fog mask
+/** The world the fixture freezes: every section populated - an allied-vision pair and its fog mask
  *  from a scout and a script-style reveal, several component stores including a vehicle's and the road
  *  network and a road site, an advanced rng stream, and one pending envelope. */
 function fixtureSim(): Simulation {
   const sim = new Simulation({ seed: 9, content: testContent(), map: grassCellMap(MAP_CELLS, MAP_CELLS) });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.RECON_FOG_OF_WAR });
-  sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
+  allyVision(sim, P0, P1);
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: JOB_SCOUT, x: 4, y: 4, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({ kind: 'spawnSettler', jobType: JOB_IDLE, x: 8, y: 8, tribe: VIKING, owner: P0 });
   sim.enqueueSetup({
@@ -72,7 +73,7 @@ function fixtureSim(): Simulation {
   sim.enqueueSetup({ kind: 'dropGood', good: TOOL_GOOD, x: 6, y: 10, amount: 1 });
   sim.enqueueSetup({ kind: 'createVehicle', vehicleType: HANDCART, x: 12, y: 4, tribe: VIKING, owner: P0 });
   sim.run(FIXTURE_TICKS);
-  sim.fog?.revealArea(P0, REVEAL_POINT, REVEAL_RANGE); // after the setup pass: joining a group drops masks
+  sim.fog?.revealArea(P0, REVEAL_POINT, REVEAL_RANGE);
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('save fixture sim has no terrain');
   const road = [];

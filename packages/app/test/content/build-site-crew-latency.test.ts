@@ -49,7 +49,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))(
         mapId: MAP_ID,
         aiSeats: [],
         humanSeats: [HUMAN_SEAT],
-        rules: { fog: null, progression: false, needs: null, weather: null },
+        rules: { fog: null, progression: false, needs: null, weather: null, alliedVision: null },
       });
       const house = typeIdOf(ir.buildings, 'home_level_00');
       const hqType = typeIdOf(ir.buildings, 'headquarters');

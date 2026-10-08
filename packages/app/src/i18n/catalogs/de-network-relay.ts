@@ -31,7 +31,7 @@ export const deNetworkRelay = {
     creatorOnly: 'das kann nur der Raumersteller tun',
     noCreator: 'der Raum hat keinen Ersteller',
     savedRulesFixed: 'ein Spielstand behält seinen Zufallsstartwert und seine Regeln',
-    savedSeatsFixed: 'ein Spielstand behält seine Plätze, Farben, Teams und Zivilisationen',
+    savedSeatsFixed: 'ein Spielstand behält seine Plätze, Farben und Zivilisationen',
     noSeat: 'Platz {seat} existiert nicht',
     seatTaken: 'Platz {seat} ist belegt: {nick}',
     seatModeUnavailable: 'Platz {seat} kann nicht auf {mode} gesetzt werden',

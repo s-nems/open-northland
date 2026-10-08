@@ -58,19 +58,16 @@ describe('seat tribes in the lobby', () => {
   });
 
   it('lets a seated member set its own seat’s tribe alone, and nothing else', () => {
-    const { a, b, c, seat } = lobby();
+    const { b, c, seat } = lobby();
     b.send({ kind: 'setSeat', player: 1, tribe: BYZANTINE });
     expect(seat(1)?.tribe).toBe(BYZANTINE);
     b.send({ kind: 'setSeat', player: 0, tribe: BYZANTINE });
     expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     b.send({ kind: 'setSeat', player: 1, tribe: VIKING, color: 5 });
     expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
-    b.send({ kind: 'setSeat', player: 1, team: 2 });
-    expect(b.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     c.send({ kind: 'setSeat', player: 1, tribe: VIKING });
     expect(c.last('rejected')?.reason).toEqual({ code: 'creatorOnly' });
     expect(seat(1)).toMatchObject({ tribe: BYZANTINE, color: 1 });
-    expect(a.last('room')?.room.seats.find((view) => view.player === 1)?.team).toBeUndefined();
   });
 
   it('refuses a tribe on a seat that names none, without applying the rest of the change', () => {

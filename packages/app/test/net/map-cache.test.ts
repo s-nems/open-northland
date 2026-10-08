@@ -80,7 +80,7 @@ it('running reload requires the current room fingerprint and refuses a local pro
       name: 'r',
       world: { kind: 'map', mapId: 'island' },
       seed: 7,
-      rules: { fog: null, progression: null, needs: null, weather: null },
+      rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
       speed: 1,
       mapOrigin: 'user',
     },

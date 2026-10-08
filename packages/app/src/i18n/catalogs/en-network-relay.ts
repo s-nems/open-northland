@@ -31,7 +31,7 @@ export const enNetworkRelay = {
     creatorOnly: 'only the room creator can do that',
     noCreator: 'the room has no creator',
     savedRulesFixed: 'a saved game keeps its seed and rules',
-    savedSeatsFixed: 'a saved game keeps its seats, colours, teams and civilizations',
+    savedSeatsFixed: 'a saved game keeps its seats, colours and civilizations',
     noSeat: 'there is no seat {seat}',
     seatTaken: 'seat {seat} is taken by {nick}',
     seatModeUnavailable: 'seat {seat} cannot be set to {mode}',

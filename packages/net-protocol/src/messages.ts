@@ -42,7 +42,6 @@ export interface RoomSeatSetup {
   /** The vacant modes the map offers this seat, `mode` among them. */
   readonly offers: readonly VacantSeatMode[];
   readonly color: number;
-  readonly team?: number | null;
   /** The tribe the map's roster names for the seat; a seat without one, such as a scene's, offers no
    *  tribe choice. */
   readonly authoredTribe?: number;
@@ -57,7 +56,6 @@ export interface RoomSeatView {
   readonly mode: SeatMode;
   readonly offers: readonly VacantSeatMode[];
   readonly color: number;
-  readonly team?: number | null;
   /** Present together: the map's tribe for the seat and the one it plays. */
   readonly authoredTribe?: number;
   readonly tribe?: number;
@@ -214,7 +212,6 @@ export type ClientMessage =
       readonly player: number;
       readonly mode?: VacantSeatMode;
       readonly color?: number;
-      readonly team?: number | null;
       readonly tribe?: number;
       readonly difficulty?: AiDifficulty;
     }

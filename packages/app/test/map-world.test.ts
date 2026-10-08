@@ -18,6 +18,7 @@ const NO_SESSION_FLAGS = {
   fog: null,
   progression: null,
   needs: null,
+  alliedVision: null,
   missions: null,
 } as const;
 

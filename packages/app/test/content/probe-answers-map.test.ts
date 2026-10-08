@@ -38,7 +38,7 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('probe answers on
       mapId: MAP_ID,
       aiSeats: [],
       humanSeats: [SEAT],
-      rules: { fog: null, progression: false, needs: null, weather: null },
+      rules: { fog: null, progression: false, needs: null, weather: null, alliedVision: null },
     });
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('a decoded map has terrain');

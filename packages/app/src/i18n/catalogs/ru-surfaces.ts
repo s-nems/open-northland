@@ -151,6 +151,12 @@ export const ruSurfaces = {
         on: 'Через опыт',
         off: 'Всё доступно с начала игры',
       },
+      alliedVisionLabel: 'Общая карта союзников',
+      alliedVisionModes: {
+        on: 'Союзники видят одно и то же',
+        off: 'Каждый видит своё',
+      },
+      alliedVisionDetail: 'Взаимно дружественные игроки делят разведанную местность.',
       needsLabel: 'Потребности поселенцев',
       needsModes: {
         on: 'Растут со временем',

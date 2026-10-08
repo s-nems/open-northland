@@ -505,7 +505,7 @@ Readings unless marked otherwise.
   [PROGRESSION.md](PROGRESSION.md) for rules, save conversion and remaining fidelity limits.
 - **Explored**: a 16-bit per-map-point mask, one bit per player up to player 15. This build answers
   from its per-cell fog masks: explored everywhere with fog off, known terrain counting on a Recon
-  map, a script reveal reading VISIBLE for good, and players sharing vision (a lobby team) reading one
+  map, a script reveal reading VISIBLE for good, and allies under the allied-vision rule reading one
   mask.
 
 ## AI data

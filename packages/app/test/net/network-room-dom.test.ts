@@ -29,7 +29,7 @@ function lobby(): RoomView {
       name: 'Expedition',
       world: { kind: 'map', mapId: 'test' },
       seed: 1,
-      rules: { fog: null, progression: null, needs: null, weather: null },
+      rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
       speed: 1,
       kickedSeatMode: 'idle',
     },
@@ -112,7 +112,7 @@ describe('multiplayer entry', () => {
 });
 
 describe('room guidance and chat', () => {
-  it('shows the map faction and a compact team value without changing the inherited team', () => {
+  it('shows the map faction without changing the seat', () => {
     const map = mapItem({
       id: 'test',
       picture: false,
@@ -136,10 +136,7 @@ describe('room guidance and chat', () => {
     const view = lobby();
     room.update(view, true);
     expect(room.element.querySelector('.network-room__faction')?.textContent).toMatch(/Vinland/);
-    expect(room.element.querySelector('.network-room__team .main-menu__dropdown-btn')?.textContent).toBe('—');
     expect(client.setSeat).not.toHaveBeenCalled();
-    room.update({ ...view, seats: view.seats.map((seat) => ({ ...seat, team: 1 })) }, true);
-    expect(room.element.querySelector('.network-room__team .main-menu__dropdown-btn')?.textContent).toBe('2');
   });
 
   it('shows successful compatibility beside the room title and keeps problems above the roster', () => {

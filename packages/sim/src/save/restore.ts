@@ -146,7 +146,7 @@ function restoreFog(sim: Simulation, section: FogSection): void {
   if (fog === undefined) {
     throw new Error('save.sections: a fog section needs a mapped sim');
   }
-  for (const group of section.sharedVision) fog.shareVision(group);
+  fog.setVisionGroups(section.sharedVision);
   for (const [group, digits] of section.masks) {
     fog.restoreMask(group, maskBytes(digits, group));
   }

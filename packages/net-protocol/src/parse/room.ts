@@ -114,6 +114,7 @@ function parseSessionRules(value: unknown, at: string): SessionRules {
     progression: raw.progression === null ? null : asBoolean(raw.progression, `${at}.progression`),
     needs: raw.needs === null ? null : asBoolean(raw.needs, `${at}.needs`),
     weather: raw.weather === null ? null : asOneOf(raw.weather, WEATHER_MODES, `${at}.weather`),
+    alliedVision: raw.alliedVision === null ? null : asBoolean(raw.alliedVision, `${at}.alliedVision`),
   };
 }
 
@@ -135,7 +136,6 @@ export function parseSeatSetups(value: unknown, at: string): readonly RoomSeatSe
       mode,
       offers,
       color: asCount(raw.color, `${at}[${i}].color`),
-      ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}[${i}].team`) }),
       ...parseSeatTribes(raw, `${at}[${i}]`, false),
       ...parseSeatDifficulty(raw, `${at}[${i}]`),
     };
@@ -199,7 +199,6 @@ function parseRoomSeatView(value: unknown, at: string): RoomSeatView {
     mode: asOneOf(raw.mode, SEAT_MODES, `${at}.mode`),
     offers: parseSeatOffers(raw.offers, `${at}.offers`),
     color: asCount(raw.color, `${at}.color`),
-    ...(raw.team === undefined ? {} : { team: parseTeam(raw.team, `${at}.team`) }),
     ...parseSeatTribes(raw, at, true),
     ...parseSeatDifficulty(raw, at),
     nick: raw.nick === null ? null : parseNick(raw.nick, `${at}.nick`),
@@ -254,10 +253,6 @@ export function parseSeatIndex(value: unknown, at: string): number {
   const player = asCount(value, at);
   if (player >= MAX_SEATS) throw new Error(`${at}: seat ${player} is past the last seat ${MAX_SEATS - 1}`);
   return player;
-}
-
-export function parseTeam(value: unknown, at: string): number | null {
-  return value === null ? null : parseSeatIndex(value, at);
 }
 
 export function parseTribe(value: unknown, at: string): number {

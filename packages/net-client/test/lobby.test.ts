@@ -32,7 +32,7 @@ const ROOM: RoomView = {
     name: 'Forest',
     world: { kind: 'map', mapId: 'forest' },
     seed: 7,
-    rules: { fog: null, progression: null, needs: null, weather: null },
+    rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
     speed: 1,
   },
   seats: [
@@ -41,7 +41,6 @@ const ROOM: RoomView = {
       mode: 'human',
       offers: ['idle', 'ai', 'absent'],
       color: 0,
-      team: 2,
       nick: 'Ania',
       ready: false,
     },
@@ -66,7 +65,7 @@ describe('RelayClient lobby API', () => {
     const { client, sent } = harness();
     client.receive({ kind: 'room', room: ROOM });
     client.listRooms();
-    client.setSeat(0, { color: 3, team: 1 });
+    client.setSeat(0, { color: 3 });
     client.setCompatibility(COMPATIBILITY);
     client.setCompatibility(null);
     const settings = { name: 'Other', seed: 8, rules: ROOM.settings.rules, speed: 2 };
@@ -74,7 +73,7 @@ describe('RelayClient lobby API', () => {
     client.leaveRoom();
     expect(sent).toEqual([
       { kind: 'listRooms' },
-      { kind: 'setSeat', player: 0, color: 3, team: 1 },
+      { kind: 'setSeat', player: 0, color: 3 },
       { kind: 'setCompatibility', compatibility: COMPATIBILITY },
       { kind: 'setCompatibility', compatibility: null },
       { kind: 'setSettings', settings },

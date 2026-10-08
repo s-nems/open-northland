@@ -42,6 +42,7 @@ const options = {
   fog: null,
   progression: null,
   needs: null,
+  alliedVision: null,
   missions: null,
   script: { missions },
 };

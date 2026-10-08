@@ -9,6 +9,7 @@ import {
 } from '../../src/components/index.js';
 import { playerCommand, positionOfNode } from '../../src/index.js';
 import { type MissionDefinition, SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
+import { allyVision } from '../fixtures/allies.js';
 import {
   loadPassAfter,
   missionSim,
@@ -48,7 +49,7 @@ describe('briefing delivery and persistence', () => {
       }),
     ]);
     sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
-    sim.enqueueSetup({ kind: 'setSharedVision', players: [OWNER, 1] });
+    allyVision(sim, OWNER, 1);
     const post = sim.world.create();
     sim.world.add(post, Position, positionOfNode(POINT.hx, POINT.hy));
     sim.world.add(post, Owner, { player: rival });

@@ -90,6 +90,24 @@ export function setFogMode(world: World, mode: number): void {
   });
 }
 
+const alliedVisionRules = defineWorldSingleton<{ enabled: boolean }>('AlliedVisionRules', 'fog', () => ({
+  enabled: false,
+}));
+
+/** Whether allies see through one fog mask (`systems/vision/allies.ts`), in every fog mode. Off by
+ *  default, a project rule: the original keeps one explored bit per player. */
+export const AlliedVisionRules = alliedVisionRules.component;
+
+export function alliedVisionEnabled(world: World): boolean {
+  return alliedVisionRules.read(world).enabled;
+}
+
+export function setAlliedVision(world: World, enabled: boolean): void {
+  alliedVisionRules.write(world, (rules) => {
+    rules.enabled = enabled;
+  });
+}
+
 const signpostRules = defineWorldSingleton<{ navigationEnabled: boolean }>(
   'SignpostRules',
   'players',

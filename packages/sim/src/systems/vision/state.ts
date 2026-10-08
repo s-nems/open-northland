@@ -1,4 +1,4 @@
-import { FOG_MODE, type FogMode, isValidPlayer } from '../../components/index.js';
+import { FOG_MODE, type FogMode } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
@@ -67,8 +67,8 @@ export function foldCellChange(fold: FogFold, index: number, from: number, to: n
  * The fog masks, a `Simulation`-owned world resource rather than a component: one lazily allocated
  * `W×H` array of mask bytes ({@link FOG_STATE} or {@link REVEALED_BYTE}) per vision group that ever
  * owned a positioned entity or received a script's reveal. A
- * vision group is one player, or the players a `setSharedVision` command joined, keyed by its lowest
- * member; every player-keyed accessor resolves the player to its group first. `generation` bumps
+ * vision group is one player, or allies the vision system joined ({@link setVisionGroups}), keyed by its
+ * lowest member; every player-keyed accessor resolves the player to its group first. `generation` bumps
  * whenever a mask byte or the mode changes, so its readers re-read only when the fog changed.
  */
 export class FogState {
@@ -79,7 +79,7 @@ export class FogState {
    *  hash; raw Map order is insertion order, so it is history-dependent. */
   private readonly masks = new Map<number, Uint8Array>();
   /** player → its vision group, held for every member of a shared group, ascending by player; a player
-   *  without an entry is its own group. Shared vision is an authored rule: the original keeps one
+   *  without an entry is its own group. Shared vision is a project rule: the original keeps one
    *  explored bit per player and its display reads the local player's bit alone. */
   private groupOf = new Map<number, number>();
   /**
@@ -172,26 +172,54 @@ export class FogState {
   }
 
   /**
-   * Join `players` into one vision group, together with any group a listed player already belongs to.
-   * An invalid slot is skipped; fewer than two distinct valid players change nothing. Masks already
-   * explored are dropped, so exploration restarts under the new grouping, as a switch to OFF does; the
-   * command is a setup rule, so a live session never pays that.
+   * Adopt `groups` (disjoint, each ascending with two or more valid members) as the shared-vision
+   * table; a player in no group is its own. Each new group's mask is the bytewise maximum of its
+   * members' old group masks, so allies who join keep everything either explored, and a member who
+   * leaves keeps the group's memory. A script's reveal stays revealed in every copy, so a former ally
+   * keeps that sight under fog of war too. Returns whether the table changed.
    */
-  shareVision(players: readonly number[]): void {
-    const joined = new Set<number>();
-    for (const player of players) {
-      if (!isValidPlayer(player)) continue;
-      for (const member of this.visionGroupMembers(player)) joined.add(member);
+  setVisionGroups(groups: readonly (readonly number[])[]): boolean {
+    const table = new Map<number, number>();
+    for (const members of groups) for (const member of members) table.set(member, members[0] ?? member);
+    const next = new Map([...table].sort(([a], [b]) => a - b));
+    if (sameGroupTable(this.groupOf, next)) return false;
+    const masks = new Map<number, Uint8Array>();
+    const bounds = new Map<number, { minC: number; maxC: number; minR: number; maxR: number }>();
+    for (const group of this.groupsWithMasks()) {
+      const mask = this.masks.get(group);
+      if (mask === undefined) continue; // unreachable - groupsWithMasks lists only allocated masks
+      const box = this.visibleBounds.get(group);
+      for (const member of this.visionGroupMembers(group)) {
+        const key = next.get(member) ?? member;
+        const into = masks.get(key);
+        if (into === undefined) masks.set(key, mask.slice());
+        else for (let i = 0; i < into.length; i++) into[i] = Math.max(into[i] ?? 0, mask[i] ?? 0);
+        if (box === undefined) continue;
+        const held = bounds.get(key);
+        if (held === undefined) bounds.set(key, { ...box });
+        else {
+          held.minC = Math.min(held.minC, box.minC);
+          held.maxC = Math.max(held.maxC, box.maxC);
+          held.minR = Math.min(held.minR, box.minR);
+          held.maxR = Math.max(held.maxR, box.maxR);
+        }
+      }
     }
-    if (joined.size < 2) return;
-    const members = [...joined].sort((a, b) => a - b);
-    const key = members[0] ?? 0;
-    if (members.every((member) => this.groupOf.get(member) === key)) return;
-    const table = new Map(this.groupOf);
-    for (const member of members) table.set(member, key);
-    this.groupOf = new Map([...table].sort(([a], [b]) => a - b));
-    this.reset();
-    this.lastRebuildTick = -1;
+    this.groupOf = next;
+    this.masks.clear();
+    for (const key of [...masks.keys()].sort((a, b) => a - b)) {
+      const mask = masks.get(key);
+      if (mask !== undefined) this.masks.set(key, mask);
+    }
+    this.visibleBounds.clear();
+    for (const [key, box] of bounds) this.visibleBounds.set(key, box);
+    this.eyeStamps.clear();
+    if (this.folds !== null) {
+      this.folds = null;
+      this.startFolding();
+    }
+    this.generation++;
+    return true;
   }
 
   /** The vision group `player` reads and writes: the lowest member of its shared group, else itself. */
@@ -266,8 +294,8 @@ export class FogState {
     this.generation++;
   }
 
-  /** Drop every mask (fog switched OFF or the grouping changed): exploration history resets, the
-   *  shared-vision table stays, generation bumps once. */
+  /** Drop every mask (fog switched OFF): exploration history resets, the shared-vision table stays,
+   *  generation bumps once. */
   reset(): void {
     this.eyeStamps.clear();
     if (this.masks.size === 0) return;
@@ -512,6 +540,12 @@ export class FogState {
       cellY,
     );
   }
+}
+
+function sameGroupTable(a: ReadonlyMap<number, number>, b: ReadonlyMap<number, number>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [player, group] of a) if (b.get(player) !== group) return false;
+  return true;
 }
 
 /** The raw {@link FOG_STATE} of a cell in one group's mask bytes, a revealed cell reading VISIBLE;

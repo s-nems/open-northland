@@ -203,7 +203,7 @@ A save is one JSON document produced by `exportSaveGame` and `serializeSaveGame`
   32 and 65536 UTF-16 text units; non-JSON values, cycles and prototype keys are rejected, and null
   records that the caller had no session to describe. Lockstep owns what it writes there,
   `{version, descriptor, roster: [{player, nick}]}`: its parser validates the descriptor and the
-  exact ascending seat roster, keeps modes, colors, teams, rules and the local seat, strips unknown
+  exact ascending seat roster, keeps modes, colors, tribes, levels, rules and the local seat, strips unknown
   fields, and allows a nick (unique, printable, trimmed, at most 24 characters) on human seats only.
   The app checks the descriptor's map and seed against the enclosing header.
 - Optional `parent` stores the suspended map save, with at most 16 parent envelopes.

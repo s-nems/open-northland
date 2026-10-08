@@ -45,7 +45,7 @@ const PARITY_TICKS = 120;
 /** Fast enough that the clock-driven tests take a fraction of a second per hundred ticks. */
 const FAST_SPEED = 8;
 const LOOP_TICKS = 60;
-const TEAMMATE = 1;
+const ALLY = 1;
 /** Where the human seat's soldier walks in the fog test: east into ground it has not seen. */
 const WALK_EAST_TO = { x: 20, y: 6 } as const;
 const WALK_TICKS = 120;
@@ -261,7 +261,7 @@ describe('session worker host', () => {
   it('posts the seat fog masks as they change, and the next seat on request', async () => {
     const session = await startTestSession(
       bundle.path,
-      { kind: 'scene', id: 'team-vision' },
+      { kind: 'scene', id: 'allied-vision' },
       { speed: FAST_SPEED, paused: false, fogSeat: HUMAN_PLAYER },
     );
     try {
@@ -284,7 +284,7 @@ describe('session worker host', () => {
       });
       session.driver.setPaused(true);
       await pumpWhile(session, session.host.settled());
-      const sim = createSceneSim(scene('team-vision'));
+      const sim = createSceneSim(scene('allied-vision'));
       sim.run(session.host.tick - sim.tick);
       const view = session.host.fogView(HUMAN_PLAYER);
       const live = sim.fogView(HUMAN_PLAYER);
@@ -299,22 +299,22 @@ describe('session worker host', () => {
 
       // Once the next seat's masks are drawn, the previous seat's never are again.
       session.driver.setPaused(false);
-      session.host.fogView(TEAMMATE);
+      session.host.fogView(ALLY);
       const heldTo = (await session.host.hashState()).tick;
       const seatsDrawn: number[] = [];
       await pumpUntil(session, () => {
-        const drawn = session.host.fogView(TEAMMATE)?.player;
-        if (drawn !== undefined && (drawn === TEAMMATE || seatsDrawn.length > 0)) seatsDrawn.push(drawn);
+        const drawn = session.host.fogView(ALLY)?.player;
+        if (drawn !== undefined && (drawn === ALLY || seatsDrawn.length > 0)) seatsDrawn.push(drawn);
         return session.host.tick >= heldTo;
       });
-      expect(new Set(seatsDrawn)).toEqual(new Set([TEAMMATE]));
+      expect(new Set(seatsDrawn)).toEqual(new Set([ALLY]));
       session.driver.setPaused(true);
       await pumpWhile(session, session.host.settled());
       sim.run(session.host.tick - sim.tick);
-      const teammate = sim.fogView(TEAMMATE);
-      const received = session.host.fogView(TEAMMATE);
-      if (teammate === null || received === null) throw new Error('the scene plays under fog');
-      expect(fogCells(received)).toEqual(fogCells(teammate));
+      const ally = sim.fogView(ALLY);
+      const received = session.host.fogView(ALLY);
+      if (ally === null || received === null) throw new Error('the scene plays under fog');
+      expect(fogCells(received)).toEqual(fogCells(ally));
 
       // The human soldier's walk east reveals ground to the shared mask: a changed mask reaches the
       // runtime after the ones already drawn.
@@ -331,13 +331,13 @@ describe('session worker host', () => {
       );
       const walkStart = session.host.tick;
       await pumpUntil(session, () => {
-        const view = session.host.fogView(TEAMMATE);
+        const view = session.host.fogView(ALLY);
         return (
           (view !== null && JSON.stringify(fogCells(view)) !== before) ||
           session.host.tick >= walkStart + WALK_TICKS
         );
       });
-      const walked = session.host.fogView(TEAMMATE);
+      const walked = session.host.fogView(ALLY);
       expect(walked === null ? before : JSON.stringify(fogCells(walked))).not.toBe(before);
     } finally {
       session.dispose();

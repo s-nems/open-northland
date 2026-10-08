@@ -140,6 +140,8 @@ export function sessionSearch(
   }
   if (session.rules.needs !== null) params.set('needs', session.rules.needs ? 'on' : 'off');
   if (session.rules.weather !== null) params.set('weathermode', session.rules.weather);
+  if (session.rules.alliedVision !== null)
+    params.set('alliedvision', session.rules.alliedVision ? 'on' : 'off');
   if (session.speed !== DEFAULT_SESSION_SPEED) params.set('speed', String(session.speed));
   return params;
 }

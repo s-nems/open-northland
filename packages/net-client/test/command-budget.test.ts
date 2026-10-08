@@ -16,7 +16,7 @@ const SESSION: GameSession = {
   seed: 3,
   seats: [{ player: 0, mode: 'human', color: 0 }],
   localSeat: 0,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 const jsonBytes = (value: unknown): number => new TextEncoder().encode(JSON.stringify(value)).byteLength;

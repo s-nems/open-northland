@@ -1,9 +1,4 @@
-import {
-  MAX_SEATS,
-  type RoomSeatView,
-  type RoomView,
-  type VacantSeatMode,
-} from '@open-northland/net-protocol';
+import type { RoomSeatView, RoomView, VacantSeatMode } from '@open-northland/net-protocol';
 import { components } from '@open-northland/sim';
 import { localizedMapText } from '../../../../game/map-strings.js';
 import { currentLocale, formatMessage, messages, tribeName } from '../../../../i18n/index.js';
@@ -36,13 +31,12 @@ export function roomSeats(deps: NetworkRoomDeps) {
     ...[
       copy.human,
       copy.color,
-      copy.team,
       copy.seatMode,
       messages().mainMenu.lobby.difficultyHeader,
       messages().mainMenu.lobby.tribe,
     ].map((label) => node('span', '', label)),
   );
-  const difficultyHeading = header.children.item(4);
+  const difficultyHeading = header.children.item(3);
   root.append(header);
   const rows = new Map<number, ReturnType<typeof seatRow>>();
   let shown: { readonly room: RoomView; readonly connected: boolean } | null = null;
@@ -109,15 +103,6 @@ export function roomSeats(deps: NetworkRoomDeps) {
       );
       if (focusKey !== undefined) palette.querySelector<HTMLElement>(`[data-focus="${focusKey}"]`)?.focus();
     }
-    const team = selectControl(
-      copy.team,
-      [
-        ['', '—'],
-        ...Array.from({ length: MAX_SEATS }, (_, index) => [String(index), String(index + 1)] as const),
-      ],
-      (value) => client.setSeat(player, { team: value === '' ? null : Number(value) }),
-    );
-    team.root.classList.add('network-room__team');
     const mode = seatModeControl(
       {
         fieldClassName: 'network-room__field',
@@ -170,7 +155,6 @@ export function roomSeats(deps: NetworkRoomDeps) {
     row.append(
       identity,
       color,
-      team.root,
       mode.root,
       human,
       difficulty.root,
@@ -224,8 +208,6 @@ export function roomSeats(deps: NetworkRoomDeps) {
         human.hidden = seat.nick === null;
         chip.update({ value: seat.color, disabled: frozen, expanded: paletteSeat === player });
         paintPalette(room, seat, frozen);
-        team.update(String(seat.team ?? ''), frozen);
-        team.root.title = seat.team == null ? copy.authored : `${copy.team} ${seat.team + 1}`;
         mode.update(seat.mode, !permissions.creator || seat.nick !== null);
         tribe?.update(seat, !canSetSeatTribe(room, seat, client.nick, connected));
         // Only a seat the computer plays takes a level.

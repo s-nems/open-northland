@@ -76,7 +76,7 @@ it('a new human seat supersedes the old room AI takeover while retaining player 
     localSeat: 1,
     speed: 1,
     seats: [{ player: 1, mode: 'human', color: 1 }],
-    rules: { fog: null, progression: null, needs: null, weather: null },
+    rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   });
   resumed.run(3);
   expect(components.isAiPlayer(resumed.world, 1)).toBe(false);
@@ -107,7 +107,7 @@ it('a resumed room keeps the saved handlers and module toggles of a seat that st
       { player: 7, mode: 'ai', color: 7 },
       { player: 8, mode: 'ai', color: 8 },
     ],
-    rules: { fog: null, progression: null, needs: null, weather: null },
+    rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   });
   resumed.run(2);
   expect(components.aiModuleRuns(resumed.world, 6, 'military')).toBe(false);

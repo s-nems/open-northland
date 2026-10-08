@@ -11,6 +11,7 @@ import {
 } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import { FOG_STATE, VISION_CADENCE_TICKS } from '../../src/systems/vision/index.js';
+import { allyVision } from '../fixtures/allies.js';
 import { testContent } from '../fixtures/content.js';
 import { grassCellMap } from '../fixtures/terrain.js';
 
@@ -259,8 +260,8 @@ describe('sync digest', () => {
   it('folds the shared-vision table into the fog domain, beyond the mask bytes it keys', () => {
     const a = watchedWorld();
     const b = watchedWorld();
-    b.enqueueSetup({ kind: 'setSharedVision', players: [P0, P0 + 1] });
-    // The sharing restarts b's exploration; the next rebuild re-stamps the same bytes under the group.
+    allyVision(b, P0, P0 + 1);
+    // Only P0 owns eyes, so the shared mask holds the same bytes as a's own.
     a.run(VISION_CADENCE_TICKS);
     b.run(VISION_CADENCE_TICKS);
     expect(b.fog?.tryMaskFor(P0)).toEqual(a.fog?.tryMaskFor(P0));

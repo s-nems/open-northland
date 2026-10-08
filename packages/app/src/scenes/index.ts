@@ -1,6 +1,7 @@
 import { aiDefenceScene } from './ai-defence.js';
 import { aiSiegeChargeScene, aiSiegeMarchScene } from './ai-siege-march.js';
 import { alchemyScene } from './alchemy.js';
+import { alliedVisionScene } from './allied-vision.js';
 import { amuletsScene } from './amulets.js';
 import { armedIdleScene } from './armed-idle.js';
 import { armorScene } from './armor.js';
@@ -63,7 +64,6 @@ import { shipWakesScene } from './ship-wakes.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
 import { storeReachScene } from './store-reach.js';
-import { teamVisionScene } from './team-vision.js';
 import { technologyScene } from './technology.js';
 import { terrainEditsScene } from './terrain-edits.js';
 import { towerDefenceScene } from './tower-defence.js';
@@ -117,7 +117,7 @@ export const SCENES: readonly SceneDefinition[] = [
   hitAlarmScene,
   meleeFrontScene,
   diplomacyScene,
-  teamVisionScene,
+  alliedVisionScene,
   goodsCatalogScene,
   berriesScene,
   chestsScene,

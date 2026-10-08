@@ -17,7 +17,7 @@ const SETTINGS: RoomSettings = {
   name: 'fixture',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 5,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 const SEATS = [

@@ -42,7 +42,7 @@ const LINKS = [
   { latencyMs: 120, jitterMs: 40 },
   { latencyMs: 250, jitterMs: 80 },
 ];
-const RULES = { fog: null, progression: null, needs: null, weather: null };
+const RULES = { fog: null, progression: null, needs: null, weather: null, alliedVision: null };
 /** Virtual time for a lobby step to cross the slowest link twice, with margin. */
 const LOBBY_SETTLE_MS = 800;
 const RUN_TIMEOUT_MS = 900_000;
@@ -67,7 +67,6 @@ async function buildWorld(session: GameSession): Promise<Simulation> {
     humanSeats: humanSeatsOf(session),
     seed: session.seed,
     rules: session.rules,
-    seats: session.seats,
     berryBushes: true,
   });
   return world.sim;

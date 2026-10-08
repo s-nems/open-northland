@@ -1,3 +1,4 @@
+import { localAlliedVision } from '../../../game/session-rules.js';
 import { drawSessionSeed } from '../../../game/session-url.js';
 import { messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
@@ -86,7 +87,10 @@ export function lobbyScreen(
   const launchPanel = document.createElement('div');
   launchPanel.className = 'main-menu__lobby-launch';
 
-  const options = initialLobbyOptions(new URLSearchParams(window.location.search));
+  const options = initialLobbyOptions(
+    new URLSearchParams(window.location.search),
+    localAlliedVision(item.types),
+  );
 
   const start = document.createElement('button');
   start.type = 'button';

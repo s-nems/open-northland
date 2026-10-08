@@ -19,8 +19,6 @@ export interface SessionSeat {
   readonly mode: SeatMode;
   /** Team colour id, the map's authored colour unless the roster recoloured the seat. */
   readonly color: number;
-  /** Explicit lobby team; absent or null preserves the map's diplomacy. */
-  readonly team?: number | null;
   /** The civilization the lobby chose for the seat; absent keeps the map's roster tribe. */
   readonly tribe?: number;
   /** How hard an `ai` seat plays; absent plays the full strategy, `hard`. */
@@ -58,6 +56,8 @@ export interface SessionRules {
   readonly needs: boolean | null;
   /** Null plays {@link DEFAULT_WEATHER_MODE}. */
   readonly weather: WeatherMode | null;
+  /** Sets `AlliedVisionRules.enabled`, which defines who shares a fog mask. */
+  readonly alliedVision: boolean | null;
 }
 
 /**
@@ -186,7 +186,6 @@ function parseSeats(value: unknown): readonly SessionSeat[] {
     const color = integer(raw.color, 'seat.color');
     // The palette's own bound belongs to the content layer; a negative id has no reading anywhere.
     if (color < 0) throw new Error(`session seat ${player} has a negative colour`);
-    const team = parseTeam(raw.team);
     const tribe = raw.tribe === undefined ? undefined : integer(raw.tribe, 'seat.tribe');
     // Which ids are civilizations is the content's to say; a non-positive id has no reading anywhere.
     if (tribe !== undefined && tribe <= 0) throw new Error(`session seat ${player} has tribe ${tribe}`);
@@ -198,19 +197,11 @@ function parseSeats(value: unknown): readonly SessionSeat[] {
       player,
       mode,
       color,
-      ...(team === undefined ? {} : { team }),
       ...(tribe === undefined ? {} : { tribe }),
       ...(difficulty === undefined ? {} : { difficulty }),
     });
   }
   return seats;
-}
-
-function parseTeam(value: unknown): number | null | undefined {
-  if (value === undefined || value === null) return value;
-  const team = integer(value, 'seat.team');
-  if (!isValidPlayer(team)) throw new Error(`session team ${team} is outside the supported range`);
-  return team;
 }
 
 function parseSeatMode(value: unknown): SeatMode {
@@ -242,6 +233,7 @@ function parseRules(value: unknown): SessionRules {
     progression: nullableBoolean(raw.progression, 'rules.progression'),
     needs: nullableBoolean(raw.needs, 'rules.needs'),
     weather: parseWeather(raw.weather),
+    alliedVision: nullableBoolean(raw.alliedVision, 'rules.alliedVision'),
   };
 }
 

@@ -32,6 +32,7 @@ import {
   isShipVehicle,
   isSiegeVehicle,
 } from '../readviews/index.js';
+import { alliedVisionGroups } from './allies.js';
 import { cellOfNode } from './gates.js';
 import { FOG_STATE, type FogState } from './state.js';
 
@@ -119,7 +120,7 @@ interface ViewerBits {
  * change so a `setFogMode` command takes effect the same tick. Runs before the combatSystem in
  * `SYSTEM_ORDER`, so combat gates on this tick's (at worst a cadence-stale) visibility. Without fog of
  * war exploration is sticky, matching the original's observed behaviour. Every eye stamps its owner's
- * vision group, so players sharing vision explore, see and meet as one.
+ * vision group, so allies sharing vision explore, see and meet as one.
  */
 export const visionSystem: System = (world, ctx) => {
   const fog = ctx.fog;
@@ -140,10 +141,13 @@ export const visionSystem: System = (world, ctx) => {
   const due = fog.lastRebuildTick === -1 || ctx.tick - fog.lastRebuildTick >= VISION_CADENCE_TICKS;
   if (!modeChanged && !due) return;
 
+  // Regroup first, so a stance changed since the last rebuild joins or splits the masks before this
+  // rebuild's downgrade and stamps: a member leaving an alliance stops seeing what the others see now.
+  let changed = fog.setVisionGroups(alliedVisionGroups(world)) || modeChanged;
+
   // Downgrade pass (fog of war): ground no eye covers falls back to explored, a script's revealed byte
   // excepted. Masks walk in ascending-group order, the order hashState mixes them in, and each scan
   // covers only that group's may-hold-VISIBLE box.
-  let changed = modeChanged;
   if (settings.fogOfWar) {
     for (const group of fog.groupsWithMasks()) {
       if (fog.downgradeVisible(group)) changed = true;

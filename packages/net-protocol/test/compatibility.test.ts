@@ -65,15 +65,4 @@ describe('lobby compatibility protocol', () => {
       compatibility: null,
     });
   });
-
-  it.each([-1, 16, 1.5])('rejects team %s outside the session seat domain', (team) => {
-    expect(() => parseClientMessage({ kind: 'setSeat', player: 0, team })).toThrow();
-  });
-
-  it('preserves team omission, explicit map diplomacy and an assigned team', () => {
-    for (const team of [undefined, null, 15]) {
-      const message = { kind: 'setSeat', player: 0, ...(team === undefined ? {} : { team }) };
-      expect(parseClientMessage(message)).toEqual(message);
-    }
-  });
 });

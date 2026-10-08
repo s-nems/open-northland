@@ -275,10 +275,10 @@ export const enContent = {
       summary:
         'First contact under fog: the ally beside you is known at once, a one-way aggressor reveals itself by its blow and turns you hostile, and a tribe never seen stays off the diplomacy window.',
     },
-    'team-vision': {
-      title: 'Team vision',
+    'allied-vision': {
+      title: 'Allied vision',
       summary:
-        "One fog mask for a lobby team: your teammate's soldier far to the east keeps its clearing in your sight and its neighbour on your diplomacy window, while a hermit beyond every eye stays unknown.",
+        "One fog mask for mutual friends: your ally's soldier far to the east keeps its clearing in your sight and its neighbour on your diplomacy window, while a hermit beyond every eye stays unknown. Turn neutral or hostile toward the ally in the diplomacy window and the clearing fades back to grey.",
     },
     trade: {
       title: 'Trade route',

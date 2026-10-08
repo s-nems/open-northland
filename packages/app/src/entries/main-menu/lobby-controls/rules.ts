@@ -11,6 +11,7 @@ export interface GameRules {
   readonly needs: boolean | null;
   /** Null plays the default weather mode. */
   readonly weather: WeatherMode | null;
+  readonly alliedVision: boolean | null;
 }
 interface RuleText {
   readonly label: string;
@@ -34,6 +35,7 @@ export interface GameRuleControlOptions {
   readonly fogOfWar: BooleanRuleText;
   readonly progression: BooleanRuleText;
   readonly needs: BooleanRuleText;
+  readonly alliedVision: BooleanRuleText;
   readonly weather: {
     readonly label: string;
     readonly modes: Readonly<Record<WeatherMode, RuleText>>;
@@ -206,6 +208,9 @@ export function gameRuleControls(options: GameRuleControlOptions) {
     options.onChange({ progression: value }),
   );
   const needs = booleanRule(options.needs, true, (value) => options.onChange({ needs: value }));
+  const alliedVision = booleanRule(options.alliedVision, false, (value) =>
+    options.onChange({ alliedVision: value === true }),
+  );
   const weatherChoices: Choice<WeatherMode>[] = WEATHER_MODES.map((mode) => ({
     value: mode,
     ...options.weather.modes[mode],
@@ -217,10 +222,16 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       : segmentedRule(options.weather.label, weatherChoices, changeWeather);
   return {
     environmentElements: [...map.elements, ...weather.elements],
-    gameplayElements: [...fogOfWar.elements, ...progression.elements, ...needs.elements],
+    gameplayElements: [
+      ...fogOfWar.elements,
+      ...alliedVision.elements,
+      ...progression.elements,
+      ...needs.elements,
+    ],
     elements: [
       ...map.elements,
       ...fogOfWar.elements,
+      ...alliedVision.elements,
       ...progression.elements,
       ...needs.elements,
       ...weather.elements,
@@ -231,6 +242,7 @@ export function gameRuleControls(options: GameRuleControlOptions) {
       fogOfWar.update(settings?.fogOfWar ?? null, disabled);
       progression.update(rules.progression, disabled);
       needs.update(rules.needs, disabled);
+      alliedVision.update(rules.alliedVision, disabled);
       weather.update(rules.weather ?? DEFAULT_WEATHER_MODE, disabled);
     },
     /** The room refused the last settings change; drop what the fog pair composed on top of it. */

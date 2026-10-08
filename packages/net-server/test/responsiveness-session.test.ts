@@ -28,7 +28,7 @@ it('changes shared pacing repeatedly while eight clients apply every command and
       name: 'pacing',
       world: { kind: 'scene', sceneId: 'fixture' },
       seed: 5,
-      rules: { fog: null, progression: null, needs: null, weather: null },
+      rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
       speed: 1,
     },
     seats: clients.map((_, player) => ({ player, mode: 'idle', offers: ['idle'], color: player })),

@@ -47,6 +47,7 @@ it('fresh and restored map worlds share editable landscape input and saved terra
     fog: null,
     progression: null,
     needs: null,
+    alliedVision: null,
     missions: true,
     script: { missions },
   };

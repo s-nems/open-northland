@@ -41,6 +41,7 @@ describe('mapSession', () => {
       progression: null,
       needs: false,
       weather: null,
+      alliedVision: null,
     });
     expect(parsed.speed).toBe(2);
   });
@@ -52,7 +53,13 @@ describe('mapSession', () => {
     expect(parsed.seed).toBeGreaterThanOrEqual(0);
     expect(new Set([1, 2, 3, 4].map(() => session('map=zatoka').seed)).size).toBeGreaterThan(1);
     expect(parsed.speed).toBe(1);
-    expect(parsed.rules).toEqual({ fog: null, progression: null, needs: null, weather: null });
+    expect(parsed.rules).toEqual({
+      fog: null,
+      progression: null,
+      needs: null,
+      weather: null,
+      alliedVision: null,
+    });
   });
 
   it('reads both spectator seats, which play no roster seat', () => {
@@ -127,7 +134,13 @@ describe('sceneSession', () => {
     expect(parsed.world).toEqual({ kind: 'scene', sceneId: 'sandbox' });
     expect(parsed.seed).toBe(11);
     expect(parsed.seats).toEqual([]);
-    expect(parsed.rules).toEqual({ fog: null, progression: false, needs: null, weather: null });
+    expect(parsed.rules).toEqual({
+      fog: null,
+      progression: false,
+      needs: null,
+      weather: null,
+      alliedVision: null,
+    });
   });
 });
 

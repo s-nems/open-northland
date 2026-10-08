@@ -24,6 +24,9 @@ import type { CreateChoice } from './create-card.js';
 import { type PreparedNetworkSave, readNetworkSave, validateNetworkSave } from './save.js';
 import { restoreSavedSeats, savedRoster } from './saved-roster.js';
 
+/** A network room starts with allies sharing the map, whatever the map's kind. */
+const ROOM_ALLIED_VISION = true;
+
 export async function prepareRoomCreation(choice: CreateChoice, params: URLSearchParams) {
   const save = choice.kind === 'save' ? await readNetworkSave(choice.bytes) : null;
   const mapId = choice.kind === 'map' ? choice.mapId : save?.header.mapId;
@@ -72,7 +75,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
   });
   const seats = save === null ? authoredSeats : restoreSavedSeats(save, authoredSeats);
   const savedSession = save === null ? null : savedRoster(save);
-  const options = initialLobbyOptions(params);
+  const options = initialLobbyOptions(params, ROOM_ALLIED_VISION);
   const rules =
     save === null
       ? {
@@ -80,6 +83,7 @@ export async function prepareRoomCreation(choice: CreateChoice, params: URLSearc
           progression: options.professionProgression,
           needs: options.settlerNeeds,
           weather: options.weather,
+          alliedVision: options.alliedVision,
         }
       : await validateNetworkSave(save, handle);
   const initial: PreparedNetworkSave | null = save === null ? null : await prepareInitialSave(save);

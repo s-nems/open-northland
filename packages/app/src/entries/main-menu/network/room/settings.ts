@@ -31,6 +31,12 @@ export function roomSettings(deps: NetworkRoomDeps) {
       on: lobby.needsModes.on,
       off: lobby.needsModes.off,
     },
+    alliedVision: {
+      label: lobby.alliedVisionLabel,
+      detail: lobby.alliedVisionDetail,
+      on: copy.enabled,
+      off: copy.disabled,
+    },
     weather: { label: lobby.weatherLabel, modes: lobby.weatherModes },
     onChange(change) {
       queue.change({ rules: change });

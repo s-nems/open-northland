@@ -50,6 +50,7 @@ import {
   VISION_CADENCE_TICKS,
   visionRadiusForJob,
 } from '../../src/systems/vision/index.js';
+import { allyVision } from '../fixtures/allies.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
@@ -554,29 +555,40 @@ describe('fog modes - update rules over the per-player mask', () => {
   });
 });
 
-describe('shared vision - players a setSharedVision command joined explore one mask', () => {
+describe('allied vision - mutual friends explore one mask while the rule is on', () => {
   const P2 = 2;
+  const P4 = 4;
+  const P5 = 5;
+  const P6 = 6;
   /** P0 west, P1 east, 18 cells apart: neither civilian eye (6 cells) reaches the other's ground. */
   const WEST = { x: 2, y: 2 } as const;
   const EAST = { x: 20, y: 2 } as const;
 
-  function sharedSim(mode: FogMode): Simulation {
+  function alliedSim(mode: FogMode): Simulation {
     const sim = simOn(mode);
-    sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
+    allyVision(sim, P0, P1);
     unit(sim, WEST.x, WEST.y, P0);
     unit(sim, EAST.x, EAST.y, P1);
     return sim;
   }
 
+  function unitOf(sim: Simulation, player: number): Entity {
+    const found = [...sim.world.query(Owner)].find((e) => sim.world.get(e, Owner).player === player);
+    if (found === undefined) throw new Error(`no unit of player ${player}`);
+    return found;
+  }
+
+  function setStance(sim: Simulation, a: number, b: number, state: 'friend' | 'neutral' | 'enemy'): void {
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: a, to: b, state });
+  }
+
   it('RECON + fog of war: what one eye sees now, every member sees, and ground it leaves stays known to all', () => {
-    const sim = sharedSim(FOG_MODE.RECON_FOG_OF_WAR);
+    const sim = alliedSim(FOG_MODE.RECON_FOG_OF_WAR);
     sim.run(1);
     expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.VISIBLE);
     expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
     expect(rawState(sim, P2, WEST.x, WEST.y)).toBe(FOG_STATE.UNEXPLORED); // an outsider shares nothing
-    const east = [...sim.world.query(Owner)].find((e) => sim.world.get(e, Owner).player === P1);
-    if (east === undefined) throw new Error('east unit missing');
-    teleport(sim, east, (WEST.x + EAST.x) / 2, EAST.y); // 9 cells from either start, beyond both eyes
+    teleport(sim, unitOf(sim, P1), (WEST.x + EAST.x) / 2, EAST.y); // 9 cells from either start, beyond both eyes
     sim.run(VISION_CADENCE_TICKS + 1);
     expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.EXPLORED);
     expect(rawState(sim, P1, EAST.x, EAST.y)).toBe(FOG_STATE.EXPLORED);
@@ -584,18 +596,16 @@ describe('shared vision - players a setSharedVision command joined explore one m
   });
 
   it('CLASSIC: ground either member explored stays visible to both', () => {
-    const sim = sharedSim(FOG_MODE.CLASSIC);
+    const sim = alliedSim(FOG_MODE.CLASSIC);
     sim.run(1);
-    const west = [...sim.world.query(Owner)].find((e) => sim.world.get(e, Owner).player === P0);
-    if (west === undefined) throw new Error('west unit missing');
-    teleport(sim, west, WEST.x + 8, WEST.y);
+    teleport(sim, unitOf(sim, P0), WEST.x + 8, WEST.y);
     sim.run(VISION_CADENCE_TICKS + 1);
     expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
     expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.VISIBLE);
   });
 
   it('a contact one member makes is a contact of every member', () => {
-    const sim = sharedSim(FOG_MODE.RECON_FOG_OF_WAR);
+    const sim = alliedSim(FOG_MODE.RECON_FOG_OF_WAR);
     unit(sim, EAST.x + 1, EAST.y, P2); // inside P1's eye alone
     sim.run(1);
     expect(sim.hasMetPlayer(P0, P2)).toBe(true);
@@ -604,35 +614,97 @@ describe('shared vision - players a setSharedVision command joined explore one m
     expect(sim.hasMetPlayer(P2, P1)).toBe(true);
   });
 
-  it('joining after exploration drops the masks, so exploration restarts under the new grouping', () => {
+  it('allying mid-game merges the masks: each keeps what either explored before', () => {
     const sim = simOn(FOG_MODE.CLASSIC);
-    const e = unit(sim, WEST.x, WEST.y, P0);
-    sim.run(1);
-    teleport(sim, e, WEST.x + 8, WEST.y);
-    sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
+    sim.enqueueSetup({ kind: 'setAlliedVision', enabled: true });
+    unit(sim, WEST.x, WEST.y, P0);
+    unit(sim, EAST.x, EAST.y, P1);
     sim.run(1);
     expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.UNEXPLORED);
-    expect(rawState(sim, P1, WEST.x + 8, WEST.y)).toBe(FOG_STATE.VISIBLE);
+    setStance(sim, P0, P1, 'friend');
+    setStance(sim, P1, P0, 'friend');
+    sim.run(VISION_CADENCE_TICKS);
+    expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
+    expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.VISIBLE);
   });
 
-  it('skips invalid slots and a lone player, and merges an overlapping later group', () => {
-    const sim = simOn(FOG_MODE.CLASSIC);
-    sim.enqueueSetup({ kind: 'setSharedVision', players: [P1, 99] });
-    sim.enqueueSetup({ kind: 'setSharedVision', players: [P1, P2] });
-    sim.enqueueSetup({ kind: 'setSharedVision', players: [P2, 5] });
+  it.each(['neutral', 'enemy'] as const)(
+    "turning %s splits the mask: the leaver keeps the memory but loses the former ally's live sight",
+    (state) => {
+      const sim = alliedSim(FOG_MODE.RECON_FOG_OF_WAR);
+      sim.run(1);
+      expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
+      setStance(sim, P1, P0, state);
+      sim.run(VISION_CADENCE_TICKS);
+      expect(sim.fog?.visionGroupOf(P1)).toBe(P1);
+      expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.EXPLORED);
+      expect(rawState(sim, P0, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
+      expect(rawState(sim, P0, EAST.x, EAST.y)).toBe(FOG_STATE.EXPLORED);
+      const middle = (WEST.x + EAST.x) / 2; // beyond both start eyes
+      teleport(sim, unitOf(sim, P0), middle, WEST.y);
+      sim.run(VISION_CADENCE_TICKS);
+      expect(rawState(sim, P0, middle, WEST.y)).toBe(FOG_STATE.VISIBLE);
+      expect(rawState(sim, P1, middle, WEST.y)).toBe(FOG_STATE.UNEXPLORED);
+    },
+  );
+
+  it('CLASSIC: ground explored together stays fully visible to a member who turns hostile', () => {
+    const sim = alliedSim(FOG_MODE.CLASSIC);
     sim.run(1);
-    const fog = sim.fog;
-    if (fog === undefined) throw new Error('mapless sim');
-    expect(fog.visionGroupOf(P0)).toBe(P0);
-    expect(fog.visionGroupOf(5)).toBe(P1);
-    expect(fog.visionGroupMembers(P1)).toEqual([P1, P2, 5]);
-    expect(fog.sharedVisionGroups()).toEqual([[P1, P2, 5]]);
+    setStance(sim, P1, P0, 'enemy');
+    sim.run(VISION_CADENCE_TICKS);
+    expect(sim.fog?.visionGroupOf(P1)).toBe(P1);
+    expect(rawState(sim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.VISIBLE);
+    const middle = (WEST.x + EAST.x) / 2; // beyond both start eyes
+    teleport(sim, unitOf(sim, P0), middle, WEST.y);
+    sim.run(VISION_CADENCE_TICKS);
+    expect(rawState(sim, P1, middle, WEST.y)).toBe(FOG_STATE.UNEXPLORED);
   });
 
-  it('two same-seed runs with shared vision reach the same state hash, unlike an unshared one', () => {
-    const run = (shared: boolean): string => {
+  it('shares nothing while the rule is off or the friendship runs one way', () => {
+    const offSim = simOn(FOG_MODE.CLASSIC);
+    setStance(offSim, P0, P1, 'friend');
+    setStance(offSim, P1, P0, 'friend');
+    unit(offSim, WEST.x, WEST.y, P0);
+    offSim.run(1);
+    expect(rawState(offSim, P1, WEST.x, WEST.y)).toBe(FOG_STATE.UNEXPLORED);
+
+    const oneWay = simOn(FOG_MODE.CLASSIC);
+    oneWay.enqueueSetup({ kind: 'setAlliedVision', enabled: true });
+    setStance(oneWay, P0, P1, 'friend');
+    unit(oneWay, WEST.x, WEST.y, P0);
+    oneWay.run(1);
+    expect(rawState(oneWay, P1, WEST.x, WEST.y)).toBe(FOG_STATE.UNEXPLORED);
+  });
+
+  it('switching the rule off splits every group at the next rebuild', () => {
+    const sim = alliedSim(FOG_MODE.CLASSIC);
+    sim.run(1);
+    sim.enqueueSetup({ kind: 'setAlliedVision', enabled: false });
+    sim.run(VISION_CADENCE_TICKS);
+    expect(sim.fog?.sharedVisionGroups()).toEqual([]);
+    expect(sim.fog?.groupsWithMasks()).toEqual([P0, P1]);
+  });
+
+  it('never joins a player to a group holding a player it is not allied with', () => {
+    const sim = simOn(FOG_MODE.CLASSIC);
+    allyVision(sim, P0, P1);
+    allyVision(sim, P1, P2); // P0 and P2 stay enemies, the unset default
+    allyVision(sim, P4, P5);
+    allyVision(sim, P5, P6);
+    allyVision(sim, P4, P6);
+    sim.run(1);
+    expect(sim.fog?.sharedVisionGroups()).toEqual([
+      [P0, P1],
+      [P4, P5, P6],
+    ]);
+    expect(sim.fog?.visionGroupOf(P2)).toBe(P2);
+  });
+
+  it('two same-seed allied runs reach the same state hash, unlike an unallied one', () => {
+    const run = (allied: boolean): string => {
       const sim = simOn(FOG_MODE.RECON_FOG_OF_WAR);
-      if (shared) sim.enqueueSetup({ kind: 'setSharedVision', players: [P0, P1] });
+      if (allied) allyVision(sim, P0, P1);
       unit(sim, WEST.x, WEST.y, P0);
       unit(sim, EAST.x, EAST.y, P1);
       sim.run(VISION_CADENCE_TICKS * 2);

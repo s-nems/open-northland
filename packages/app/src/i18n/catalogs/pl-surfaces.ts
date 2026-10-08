@@ -124,6 +124,12 @@ export const plSurfaces = {
         on: 'Przez doświadczenie',
         off: 'Wszystkie od początku',
       },
+      alliedVisionLabel: 'Wspólna mapa sojuszników',
+      alliedVisionModes: {
+        on: 'Sojusznicy widzą to samo',
+        off: 'Każdy widzi swoje',
+      },
+      alliedVisionDetail: 'Gracze wzajemnie przyjaźni dzielą odkryty teren.',
       needsLabel: 'Potrzeby osadników',
       needsModes: {
         on: 'Rosną z czasem',

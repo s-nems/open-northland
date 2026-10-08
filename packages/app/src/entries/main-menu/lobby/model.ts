@@ -44,16 +44,19 @@ export interface LobbyOptions {
   professionProgression: boolean;
   settlerNeeds: boolean;
   weather: WeatherMode;
+  alliedVision: boolean;
 }
 
-/** Both rules default on, so only an explicit `off` in the URL clears the box. */
-export function initialLobbyOptions(params: URLSearchParams): LobbyOptions {
+/** Progression and needs default on, so only an explicit `off` in the URL clears the box. Allied vision
+ *  is not carried between menu visits: the caller picks it for the kind of game. */
+export function initialLobbyOptions(params: URLSearchParams, alliedVision: boolean): LobbyOptions {
   const fog = params.get('fog');
   return {
     fog: LOBBY_FOG_MODES.find((mode) => mode === fog) ?? DEFAULT_FOG_MODE,
     professionProgression: onOffParam(params, 'progression') !== false,
     settlerNeeds: onOffParam(params, 'needs') !== false,
     weather: weatherModeParam(params) ?? DEFAULT_WEATHER_MODE,
+    alliedVision,
   };
 }
 
@@ -151,6 +154,7 @@ export function lobbySession(
       progression: options.professionProgression,
       needs: options.settlerNeeds,
       weather: options.weather,
+      alliedVision: options.alliedVision,
     },
     speed: DEFAULT_SESSION_SPEED,
   };

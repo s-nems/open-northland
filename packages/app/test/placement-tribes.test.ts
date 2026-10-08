@@ -15,6 +15,7 @@ const BASE_OPTIONS = {
   fog: null,
   progression: null,
   needs: null,
+  alliedVision: null,
 } as const;
 
 function contentWithOtherTribe() {

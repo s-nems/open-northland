@@ -152,6 +152,12 @@ export const deSurfaces = {
         on: 'Durch Erfahrung',
         off: 'Alles von Anfang an freigeschaltet',
       },
+      alliedVisionLabel: 'Gemeinsame Karte der Verbündeten',
+      alliedVisionModes: {
+        on: 'Verbündete sehen dasselbe',
+        off: 'Jeder sieht nur selbst',
+      },
+      alliedVisionDetail: 'Gegenseitig befreundete Spieler teilen erkundetes Gelände.',
       needsLabel: 'Bedürfnisse der Siedler',
       needsModes: {
         on: 'Nehmen mit der Zeit zu',

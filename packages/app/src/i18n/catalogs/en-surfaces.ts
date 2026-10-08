@@ -125,6 +125,12 @@ export const enSurfaces = {
         on: 'Through experience',
         off: 'All unlocked from start',
       },
+      alliedVisionLabel: 'Shared allied map',
+      alliedVisionModes: {
+        on: 'Allies see as one',
+        off: 'Each player sees alone',
+      },
+      alliedVisionDetail: 'Mutually friendly players share explored ground.',
       needsLabel: 'Settler needs',
       needsModes: {
         on: 'Rise over time',

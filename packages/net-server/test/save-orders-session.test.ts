@@ -13,7 +13,7 @@ const settings: RoomSettings = {
   name: 'saved orders',
   world: { kind: 'scene', sceneId: 'fixture' },
   seed: 7,
-  rules: { fog: null, progression: null, needs: null, weather: null },
+  rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
   speed: 1,
 };
 function client(nick: string) {

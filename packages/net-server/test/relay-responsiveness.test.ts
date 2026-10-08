@@ -63,7 +63,7 @@ describe('relay command responsiveness', () => {
           name: 'latency',
           world: { kind: 'scene', sceneId: 'fixture' },
           seed: 3,
-          rules: { fog: null, progression: null, needs: null, weather: null },
+          rules: { fog: null, progression: null, needs: null, weather: null, alliedVision: null },
           speed: scenario.speed,
         },
         seats: clients.map((_, player) => ({ player, mode: 'idle', offers: ['idle', 'ai'], color: player })),
