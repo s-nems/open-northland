@@ -5,13 +5,13 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   ANIMAL_ROLL_RANGE,
+  ANSWER_MAX_PAN,
   authoredVolumeGain,
   buildSoundIndex,
   defaultBindings,
   directAudio,
   GENERIC_ROLL_RANGE,
   MAX_CHATTER_TICKS_PER_FRAME,
-  MAX_PAN,
 } from '../src/index.js';
 
 /**
@@ -190,11 +190,11 @@ describe('order responses', () => {
     expect(frame.oneShots[0]?.files).toEqual(['humantalk/f1ok01.wav']);
   });
 
-  it('pans an off-screen settler hard to its side instead of culling it', () => {
+  it('leans the answer of an off-screen settler to its side instead of culling it', () => {
     const shots = direct({ responses: [4] });
     expect(shots).toHaveLength(1);
     expect(shots[0]?.files).toEqual(['humantalk/f1ok01.wav']);
-    expect(shots[0]?.pan).toBe(MAX_PAN);
+    expect(shots[0]?.pan).toBe(ANSWER_MAX_PAN);
     expect(shots[0]?.gain).toBe(ANSWER_GAIN);
   });
 
