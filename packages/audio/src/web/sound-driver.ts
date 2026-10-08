@@ -187,8 +187,11 @@ export class SoundDriver {
    *  mood. Null, or a code with no rendered music, stops the music. */
   setMusicMap(map: MusicMap | null): void {
     const music = map === null ? null : mapMusicFor(map.musicType, map.manifest);
+    // The session runs on the audio clock, from the hand-over: the listener's time with this map's music.
+    const startS = this.engine.clock;
+    const sessionS = (): number => Math.max(0, this.engine.clock - startS);
     this.playlist =
-      map === null || music === null ? null : new MusicPlaylist(music, map.manifest, this.random);
+      map === null || music === null ? null : new MusicPlaylist(music, map.manifest, this.random, sessionS);
     this.mood = CALM_MOOD;
     this.engine.setMusic(this.playlist);
   }

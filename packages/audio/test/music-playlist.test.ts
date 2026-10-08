@@ -5,6 +5,12 @@ import {
   CALM_PASSES_MIN,
   CALM_SILENCE_MAX_S,
   CALM_SILENCE_MIN_S,
+  LONG_SESSION_OWN_STEM_EVERY_MAX,
+  LONG_SESSION_OWN_STEM_EVERY_MIN,
+  LONG_SESSION_S,
+  LONG_SESSION_SILENCE_MAX_S,
+  LONG_SESSION_SILENCE_MIN_S,
+  type MusicClock,
   type MusicCue,
   type MusicManifest,
   MusicPlaylist,
@@ -88,10 +94,15 @@ const MANIFEST = fixture();
 const CALM: PlaylistMood = { intensity: 'calm', stance: 'neutral', wealthy: false };
 const TENSE: PlaylistMood = { ...CALM, intensity: 'tense' };
 
-function playlistFor(musicType: number, random: MusicRandom = seeded(SEED)): MusicPlaylist {
+/** A playlist on a session clock that stands still at its start unless `sessionS` moves it. */
+function playlistFor(
+  musicType: number,
+  random: MusicRandom = seeded(SEED),
+  sessionS: MusicClock = () => 0,
+): MusicPlaylist {
   const music = mapMusicFor(musicType, MANIFEST);
   if (music === null) throw new Error(`no music for ${musicType}`);
-  return new MusicPlaylist(music, MANIFEST, random);
+  return new MusicPlaylist(music, MANIFEST, random, sessionS);
 }
 
 function take(playlist: MusicPlaylist, count: number): MusicCue[] {
@@ -186,6 +197,54 @@ describe('calm rotation', () => {
         'mission_addon_asgard_standard',
       ]),
     );
+  });
+});
+
+describe('long sessions', () => {
+  /** Positions of the own stem in a run of cues. */
+  const ownSlots = (cues: readonly MusicCue[]): number[] =>
+    cues.flatMap((cue, i) => (stemOf(cue) === 'mission_franken1_standard' ? [i] : []));
+
+  it('lengthens the silences as the session runs, up to their long-session range', () => {
+    let nowS = 0;
+    const playlist = playlistFor(MISSION_FRANKEN1, seeded(SEED), () => nowS);
+    take(playlist, 1);
+    const HALF = 0.5;
+    nowS = LONG_SESSION_S * HALF;
+    for (const cue of take(playlist, LONG_RUN)) {
+      expect(cue.gapBeforeS).toBeGreaterThanOrEqual((CALM_SILENCE_MIN_S + LONG_SESSION_SILENCE_MIN_S) * HALF);
+      expect(cue.gapBeforeS).toBeLessThanOrEqual((CALM_SILENCE_MAX_S + LONG_SESSION_SILENCE_MAX_S) * HALF);
+    }
+    const TWICE_LONG = 2;
+    nowS = LONG_SESSION_S * TWICE_LONG;
+    for (const cue of take(playlist, LONG_RUN)) {
+      expect(cue.gapBeforeS).toBeGreaterThanOrEqual(LONG_SESSION_SILENCE_MIN_S);
+      expect(cue.gapBeforeS).toBeLessThanOrEqual(LONG_SESSION_SILENCE_MAX_S);
+    }
+  });
+
+  it('brings the own stem back less often once the session is long', () => {
+    const playlist = playlistFor(MISSION_FRANKEN1, seeded(SEED), () => LONG_SESSION_S);
+    const slots = ownSlots(take(playlist, LONG_RUN));
+    expect(slots[0]).toBe(0);
+    for (let i = 1; i < slots.length; i++) {
+      const every = (slots[i] ?? 0) - (slots[i - 1] ?? 0);
+      expect(every).toBeGreaterThanOrEqual(LONG_SESSION_OWN_STEM_EVERY_MIN);
+      expect(every).toBeLessThanOrEqual(LONG_SESSION_OWN_STEM_EVERY_MAX);
+    }
+  });
+
+  it('draws the same rotation from the same seed and session clock', () => {
+    const run = (): Array<[string, number]> => {
+      let nowS = 0;
+      const playlist = playlistFor(MISSION_FRANKEN1, seeded(SEED), () => nowS);
+      const STEP_S = 300;
+      return take(playlist, LONG_RUN).map((cue) => {
+        nowS += STEP_S;
+        return [stemOf(cue), cue.gapBeforeS];
+      });
+    };
+    expect(run()).toEqual(run());
   });
 });
 

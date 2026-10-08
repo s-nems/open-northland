@@ -7,7 +7,9 @@ import type { MusicCue, MusicSequence } from './sequence.js';
 /**
  * A map's in-game soundtrack: a rotation over its culture's pools instead of one loop region forever.
  * Calm stretches open on the map's own stem, then alternate silence with shuffle-bag picks from the
- * calm pool, returning to the own stem every second or third cue. A fight cuts in at once with the
+ * calm pool, returning to the own stem every second or third cue. Over a long session the silences
+ * grow and the own stem comes back less often, so the score thins out instead of wearing on the
+ * listener. A fight cuts in at once with the
  * map's own tense stem and holds each tense stem for several passes; calm returns at a pass boundary
  * within {@link CALM_RETURN_MAX_WAIT_S}.
  * The whole rotation is a design choice of this reimplementation (the original rings one segment per
@@ -21,12 +23,21 @@ export const CALM_PASSES_MAX = 2;
 export const CALM_FADE_S = 2.5;
 /** Seconds a calm cue rises over from silence, so a rendered file's first downbeat does not punch in. */
 export const CALM_FADE_IN_S = 1.5;
-/** Silence before each calm cue after the first, drawn per cue. */
+/** Silence before each calm cue after the first, drawn per cue, as a session starts. */
 export const CALM_SILENCE_MIN_S = 20;
 export const CALM_SILENCE_MAX_S = 60;
-/** The map's own calm stem comes back every this many calm cues, drawn per return. */
+/** The map's own calm stem comes back every this many calm cues, drawn per return, as a session starts. */
 export const OWN_STEM_EVERY_MIN = 2;
 export const OWN_STEM_EVERY_MAX = 3;
+/** Seconds of a session over which the silences and the own stem's spacing grow, linearly, from their
+ *  opening ranges to their long-session ones, which then hold. */
+export const LONG_SESSION_S = 30 * 60;
+/** Silence before each calm cue once a session has run {@link LONG_SESSION_S}. */
+export const LONG_SESSION_SILENCE_MIN_S = 60;
+export const LONG_SESSION_SILENCE_MAX_S = 180;
+/** How many calm cues apart the own stem comes back once a session has run {@link LONG_SESSION_S}. */
+export const LONG_SESSION_OWN_STEM_EVERY_MIN = 3;
+export const LONG_SESSION_OWN_STEM_EVERY_MAX = 5;
 /** Passes a tense stem holds before the fight rotates to another one. */
 export const TENSE_PASSES = 3;
 /** Seconds a tense cue fades out over when it hands over to the next tense stem. */
@@ -40,6 +51,9 @@ export const CALM_RETURN_MAX_WAIT_S = 25;
 
 /** A uniform draw in `[0, 1)`. */
 export type MusicRandom = () => number;
+
+/** Seconds the session has run. */
+export type MusicClock = () => number;
 
 /**
  * What a change of mood asks the player to do with the cue it is playing: nothing, cut over to the
@@ -57,6 +71,11 @@ export interface PlaylistMood {
 
 function randomInt(min: number, max: number, random: MusicRandom): number {
   return min + Math.floor(random() * (max - min + 1));
+}
+
+/** `from` moved toward `to` by `share` of the way. */
+function lerp(from: number, to: number, share: number): number {
+  return from + (to - from) * share;
 }
 
 function shuffled<T>(items: readonly T[], random: MusicRandom): T[] {
@@ -93,6 +112,7 @@ export class MusicPlaylist implements MusicSequence {
     private readonly music: MapMusic,
     private readonly manifest: MusicManifest,
     private readonly random: MusicRandom,
+    private readonly sessionS: MusicClock,
   ) {
     this.ownEvery = this.drawOwnEvery();
   }
@@ -144,9 +164,10 @@ export class MusicPlaylist implements MusicSequence {
     } else {
       this.sinceOwn++;
     }
-    const gapS = this.started
-      ? CALM_SILENCE_MIN_S + this.random() * (CALM_SILENCE_MAX_S - CALM_SILENCE_MIN_S)
-      : 0;
+    const grown = this.sessionGrowth();
+    const silenceMinS = lerp(CALM_SILENCE_MIN_S, LONG_SESSION_SILENCE_MIN_S, grown);
+    const silenceMaxS = lerp(CALM_SILENCE_MAX_S, LONG_SESSION_SILENCE_MAX_S, grown);
+    const gapS = this.started ? silenceMinS + this.random() * (silenceMaxS - silenceMinS) : 0;
     return this.cue(
       stem,
       'calm',
@@ -203,6 +224,16 @@ export class MusicPlaylist implements MusicSequence {
   }
 
   private drawOwnEvery(): number {
-    return randomInt(OWN_STEM_EVERY_MIN, OWN_STEM_EVERY_MAX, this.random);
+    const grown = this.sessionGrowth();
+    return randomInt(
+      Math.round(lerp(OWN_STEM_EVERY_MIN, LONG_SESSION_OWN_STEM_EVERY_MIN, grown)),
+      Math.round(lerp(OWN_STEM_EVERY_MAX, LONG_SESSION_OWN_STEM_EVERY_MAX, grown)),
+      this.random,
+    );
+  }
+
+  /** How far the session has grown toward its long-session spacing, 0 at its start to 1. */
+  private sessionGrowth(): number {
+    return Math.min(1, Math.max(0, this.sessionS() / LONG_SESSION_S));
   }
 }
