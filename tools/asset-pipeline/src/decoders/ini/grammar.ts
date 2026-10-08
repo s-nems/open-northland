@@ -22,20 +22,17 @@ export interface RuleSection {
   readonly props: readonly RuleProp[];
 }
 
-const STRAY_QUOTE = '"';
+/** The token a doubled closing quote leaves (`"soldier_bow_long"" 362 22`). Each reader decides what
+ *  it means: the original's readers disagree. */
+export const BARE_QUOTE = '"';
 
 /**
  * Splits one line into tokens: a quoted run (`"a b"`) is one token with the quotes stripped, otherwise
  * tokens are whitespace-separated. Signed numbers (`-1`, `+1`) stay raw strings for extractors to coerce.
- * A bare `"` is no token: a doubled closing quote (`"soldier_bow_long"" 362 22`) leaves one, and the
- * original's number reader steps over anything before the next digit or sign.
  */
 function tokenize(line: string): string[] {
   const out: string[] = [];
-  for (const m of line.matchAll(/"([^"]*)"|(\S+)/g)) {
-    if (m[2] === STRAY_QUOTE) continue;
-    out.push(m[1] !== undefined ? m[1] : (m[2] as string));
-  }
+  for (const m of line.matchAll(/"([^"]*)"|(\S+)/g)) out.push(m[1] !== undefined ? m[1] : (m[2] as string));
   return out;
 }
 

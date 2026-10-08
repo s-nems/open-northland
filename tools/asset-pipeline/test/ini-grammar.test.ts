@@ -76,10 +76,10 @@ describe('parseIniSections', () => {
     expect(sec?.props.find((p) => p.key === 'name')?.values).toEqual(['tree falling']);
   });
 
-  it('drops the stray quote a doubled closing quote leaves, so the numbers keep their columns', () => {
+  it('keeps the bare quote a doubled closing quote leaves as its own token', () => {
     const [sec] = parseIniSections('[t]\nsethuman 3 "viking" "soldier_bow_long"" 362 22 0 0\n');
     expect(sec?.props).toEqual([
-      { key: 'sethuman', values: ['3', 'viking', 'soldier_bow_long', '362', '22', '0', '0'] },
+      { key: 'sethuman', values: ['3', 'viking', 'soldier_bow_long', '"', '362', '22', '0', '0'] },
     ]);
   });
 

@@ -1,4 +1,4 @@
-import type { RuleSection } from './grammar.js';
+import { BARE_QUOTE, type RuleSection } from './grammar.js';
 
 /** The decoded `StaticObjects` placements of one map - the on-disk `entities` layer's shape. */
 export interface MapStaticObjects {
@@ -155,7 +155,11 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       out.buildings.push(building);
       goodsTarget = building;
     } else if (p.key === 'sethuman') {
-      const [playerRaw, tribe, role, hxRaw, hyRaw, missionIdRaw, behaviourRaw] = p.values;
+      // Original behavior: the numbers are read with the integer reader, which steps over anything
+      // before the next digit or sign, a doubled closing quote's bare `"` included.
+      const [playerRaw, tribe, role, hxRaw, hyRaw, missionIdRaw, behaviourRaw] = p.values.filter(
+        (value) => value !== BARE_QUOTE,
+      );
       const player = int(playerRaw);
       const hx = int(hxRaw);
       const hy = int(hyRaw);

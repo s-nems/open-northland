@@ -17,7 +17,7 @@ import {
   WEREWOLF_TRIBE,
 } from '@open-northland/data';
 import { GOOD_TYPE_CODES } from './good-type-codes.js';
-import type { RuleProp, RuleSection } from './grammar.js';
+import { BARE_QUOTE, type RuleProp, type RuleSection } from './grammar.js';
 import { HOUSE_TYPE_CODES } from './house-type-codes.js';
 import { makeSource, type SourceRef } from './ir-fields.js';
 import { weatherRectangles } from './map-weather.js';
@@ -99,6 +99,15 @@ function int(token: string | undefined): number | undefined {
 
 function asLine(p: RuleProp): MapScriptLine {
   return { key: p.key, values: [...p.values] };
+}
+
+/** A goal or result line. Original behavior: the parameter reader takes a bare `"` for a string, which
+ *  no number parameter accepts, and does not move past it, so that parameter and every one after it
+ *  read 0. */
+function missionLine(p: RuleProp): MapScriptLine {
+  const cut = p.values.indexOf(BARE_QUOTE);
+  if (cut < 0) return asLine(p);
+  return { key: p.key, values: p.values.map((value, i) => (i < cut ? value : '0')) };
 }
 
 /** `player <slot> <type> <tribe> <colorId>` to a roster row, or undefined when malformed. The range
@@ -437,10 +446,10 @@ function mission(sec: RuleSection): MapScript['missions'][number] {
         break;
       }
       case 'goal':
-        out.goals.push(asLine(p));
+        out.goals.push(missionLine(p));
         break;
       case 'result':
-        out.results.push(asLine(p));
+        out.results.push(missionLine(p));
         break;
       default:
         out.other.push(asLine(p));

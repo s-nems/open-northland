@@ -47,6 +47,16 @@ describe('extractStaticObjects', () => {
     });
   });
 
+  it('steps over the bare quote a doubled closing quote leaves before the numbers', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 3 "viking" "soldier_bow_long"" 362 22 0 0' },
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines)).humans).toEqual([
+      { tribe: 'viking', role: 'soldier_bow_long', player: 3, hx: 362, hy: 22 },
+    ]);
+  });
+
   // Mission scripts address placements by the id column, and `sethuman`'s last column is the
   // behaviour mask the `*BehaviourFlag` results share. Both are omitted at the corpus's "none" zero.
   it('keeps the mission object ids, the behaviour columns, and the setvehicle/setguide verbs', () => {

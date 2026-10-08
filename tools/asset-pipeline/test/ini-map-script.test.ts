@@ -455,3 +455,23 @@ setsandrectangle a 0 10 10 100
     expect(extractMapScript(parseIniSections('[misc_weather]\n'), SRC)).toBeUndefined();
   });
 });
+
+describe('extractMapScript [MissionData] doubled closing quote', () => {
+  it('reads every parameter from the bare quote on as 0', () => {
+    const text = `
+[MissionData]
+result "SetHumanX" 4 "frank" "hero_sword_BJARNI"" 112 163 100 33 7
+result "SetHumanX" 4 "viking" "heroine_bow_XENA" 111 162 100 33 12
+`;
+    expect(extractMapScript(parseIniSections(text), SRC)?.missions[0]?.results).toEqual([
+      {
+        key: 'result',
+        values: ['SetHumanX', '4', 'frank', 'hero_sword_BJARNI', '0', '0', '0', '0', '0', '0'],
+      },
+      {
+        key: 'result',
+        values: ['SetHumanX', '4', 'viking', 'heroine_bow_XENA', '111', '162', '100', '33', '12'],
+      },
+    ]);
+  });
+});
