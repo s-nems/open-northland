@@ -1,8 +1,10 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BACKGROUND_FADE_S,
+  CLICK_FREE_RAMP_S,
   CLOCK_STALL_MS,
   DEFAULT_VOLUMES,
+  MONO_SWAP_DELAY_S,
   volumeGain,
   WebAudioEngine,
 } from '../src/index.js';
@@ -135,17 +137,59 @@ describe('WebAudioEngine clock health', () => {
 });
 
 describe('WebAudioEngine mono fold', () => {
-  it('mixes the master down to one channel and back to what its inputs carry', async () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('mixes the master down to one channel and back to what its inputs carry, faded around each flip', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
+    vi.useFakeTimers();
     const { master } = mixerGraph(ctx);
+    const full = volumeGain(DEFAULT_VOLUMES.master);
     expect(master.channelCountMode).toBe('max');
     engine.setMono(true);
+    // The master fades out first and keeps its layout until the fade has landed.
+    expect(master.gain.ramps.at(-1)).toEqual({ value: 0, time: CLICK_FREE_RAMP_S });
+    expect(master.channelCountMode).toBe('max');
+    vi.advanceTimersByTime(MONO_SWAP_DELAY_S * 1000);
     expect(master.channelCount).toBe(1);
     expect(master.channelCountMode).toBe('explicit');
     expect(master.channelInterpretation).toBe('speakers');
+    expect(master.gain.ramps.at(-1)?.value).toBe(full);
     engine.setMono(false);
+    expect(master.gain.ramps.at(-1)?.value).toBe(0);
+    vi.advanceTimersByTime(MONO_SWAP_DELAY_S * 1000);
     expect(master.channelCountMode).toBe('max');
+    expect(master.gain.ramps.at(-1)?.value).toBe(full);
+  });
+
+  it('keeps the master silent through the flip and takes the last choice of a quick double switch', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    vi.useFakeTimers();
+    const { master } = mixerGraph(ctx);
+    engine.setMono(true);
+    engine.setVolumes({ ...DEFAULT_VOLUMES, master: DEFAULT_VOLUMES.master / 2 });
+    expect(master.gain.ramps.at(-1)?.value).toBe(0);
+    engine.setMono(false);
+    engine.setMono(true);
+    expect(master.gain.ramps.filter((r) => r.value === 0)).toHaveLength(2);
+    vi.advanceTimersByTime(MONO_SWAP_DELAY_S * 1000);
+    expect(master.channelCount).toBe(1);
+    expect(master.gain.ramps.at(-1)?.value).toBe(volumeGain(DEFAULT_VOLUMES.master / 2));
+  });
+
+  it('leaves a closed engine silent when its pending flip lands', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    vi.useFakeTimers();
+    const { master } = mixerGraph(ctx);
+    engine.setMono(true);
+    engine.close();
+    vi.advanceTimersByTime(MONO_SWAP_DELAY_S * 1000);
+    expect(master.channelCountMode).toBe('max');
+    expect(master.gain.ramps.at(-1)?.value).toBe(0);
   });
 
   it('builds a mono master when the setting came before the context', async () => {

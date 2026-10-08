@@ -128,6 +128,9 @@ export const BACKGROUND_FADE_S = 0.3;
 export const CLOCK_STALL_MS = 1000;
 /** The master's channel count while the mix folds to mono; the destination spreads it to both ears. */
 const MONO_CHANNELS = 1;
+/** The mono switch fades the master out, flips its channel layout this long after, and fades it back:
+ *  the same wait a close gives its fade, since a layout flip is not scheduled on the audio clock. */
+export const MONO_SWAP_DELAY_S = CLOSE_GRACE_S;
 
 /** Jingle duck depth on the music bus: -2000 hundredths of dB, as the original fades the music
  *  audiopath while a jingle rings. */
@@ -194,6 +197,8 @@ export class WebAudioEngine {
   private playInBackground = true;
   /** The mix folds to one channel ({@link setMono}). */
   private mono = false;
+  /** A mono switch waits under a silent master for its layout flip. */
+  private monoSwapPending = false;
   /** The audio clock at the last stall check, and the wall time it was first seen at. */
   private lastClock = { audio: -1, wallMs: 0 };
   private mixer: AmbientMixer | null = null;
@@ -289,11 +294,21 @@ export class WebAudioEngine {
   }
 
   /** Fold the whole mix to mono for a player who hears on one ear. Each sound keeps its pan, which
-   *  then only sets its share of the one channel. */
+   *  then only sets its share of the one channel. A running mix fades out around the flip, which would
+   *  otherwise jump every channel at once. */
   setMono(mono: boolean): void {
     if (mono === this.mono) return;
     this.mono = mono;
-    if (this.master !== null) foldMaster(this.master, mono);
+    const master = this.master;
+    if (master === null || this.monoSwapPending) return; // a pending flip takes the latest choice
+    this.monoSwapPending = true;
+    this.rampChannel('master', CLICK_FREE_RAMP_S);
+    setTimeout(() => {
+      this.monoSwapPending = false;
+      if (this.closed) return;
+      foldMaster(master, this.mono);
+      this.rampChannel('master', CLICK_FREE_RAMP_S);
+    }, MONO_SWAP_DELAY_S * 1000);
   }
 
   /**
@@ -471,12 +486,12 @@ export class WebAudioEngine {
     return nowMs - this.lastClock.wallMs >= CLOCK_STALL_MS;
   }
 
-  /** The gain a channel's node should hold now; a muted, closed or backgrounded engine holds its master
-   *  at silence. */
+  /** The gain a channel's node should hold now; a muted, closed or backgrounded engine, or one mid mono
+   *  switch, holds its master at silence. */
   private channelGain(channel: VolumeChannel): number {
     if (channel === 'master') {
       const backgrounded = this.pageInBackground && !this.playInBackground;
-      const silent = !this.enabled || this.closed || backgrounded;
+      const silent = !this.enabled || this.closed || backgrounded || this.monoSwapPending;
       return silent ? 0 : volumeGain(this.volumes.master);
     }
     if (channel === 'music') return musicBusGain(this.volumes.music);
