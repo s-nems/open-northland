@@ -1,7 +1,9 @@
 import type { Camera } from '@open-northland/render';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { diag } from '../src/diag/log.js';
 import { DEFAULT_KEY_BINDINGS, type KeyBindings } from '../src/hud/keybindings.js';
 import { DRAG_SCROLL_CLASS } from '../src/view/camera/drag-capture.js';
+import { JUMP_FLOOR_PX } from '../src/view/camera/drag-jump-filter.js';
 import {
   type CameraController,
   type CameraInputSettings,
@@ -391,6 +393,30 @@ describe('createCameraController input settings', () => {
     win.emit('mouseup', { button: 1 });
     expect(locked()).toBe(false);
     expect(cursorHidden()).toBe(false);
+    ctl.dispose();
+  });
+
+  it('drops a reported cursor warp and its return from a locked drag, and logs it', () => {
+    const { ctl, lock, moveLocked, startMiddleDrag, win } = install();
+    lock.grantLock = true;
+    startMiddleDrag(100, 100);
+    moveLocked(0, 0, 100, 100);
+    moveLocked(30, 0, 100, 100);
+    const warpPx = JUMP_FLOOR_PX * 2;
+    // A browser that warps its hidden cursor back toward the window centre, and reports both legs.
+    moveLocked(0, warpPx, 100, 100);
+    moveLocked(0, -warpPx, 100, 100);
+    moveLocked(30, 0, 100, 100);
+    expect(ctl.camera()).toEqual({ offsetX: 60, offsetY: 0 });
+    const logged = diag.entries().filter((entry) => entry.channel === 'camera' && entry.level === 'warn');
+    expect(logged.at(-1)?.message).toContain('reversal');
+
+    // A fast throw is not a warp: its second step confirms the first and both land.
+    moveLocked(warpPx, 0, 100, 100);
+    expect(ctl.camera().offsetX).toBe(60);
+    moveLocked(warpPx, 0, 100, 100);
+    expect(ctl.camera().offsetX).toBe(60 + warpPx * 2);
+    win.emit('mouseup', { button: 1 });
     ctl.dispose();
   });
 

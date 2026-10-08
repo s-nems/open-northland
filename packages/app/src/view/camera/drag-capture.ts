@@ -1,3 +1,6 @@
+import { diag } from '../../diag/log.js';
+import { createDragJumpFilter, type DragStep, type DroppedJump } from './drag-jump-filter.js';
+
 /** Hides the cursor and makes every page element inert while a drag scroll runs. */
 export const DRAG_SCROLL_CLASS = 'on-drag-scroll';
 
@@ -11,7 +14,8 @@ export const DRAG_SCROLL_CLASS = 'on-drag-scroll';
 export interface DragCapture {
   /** Call from the press handler: a browser grants the lock only inside a user gesture. */
   begin(clientX: number, clientY: number): void;
-  /** Mouse movement in client px since the previous step, or since `begin`. */
+  /** Mouse movement in client px to pan by for this move, with a reported jump the hand never made
+   *  filtered out (see `drag-jump-filter.ts`). */
   step(event: MouseEvent): { readonly dx: number; readonly dy: number };
   end(): void;
   dispose(): void;
@@ -25,6 +29,8 @@ export function createDragCapture(target: HTMLElement, onLost: () => void): Drag
   let skipFirstLockedMove = false;
   let lastX = 0;
   let lastY = 0;
+  let lastMoveAtMs: number | undefined;
+  const jumpFilter = createDragJumpFilter();
   const holdsLock = (): boolean => document.pointerLockElement === target;
   const release = (): void => {
     if (holdsLock()) document.exitPointerLock();
@@ -43,11 +49,37 @@ export function createDragCapture(target: HTMLElement, onLost: () => void): Drag
   };
   document.addEventListener('pointerlockchange', onLockChange);
 
+  const logDropped = (dropped: DroppedJump | undefined): void => {
+    if (dropped === undefined) return;
+    diag.warn('camera', `drag scroll dropped a reported mouse jump (${dropped.reason})`, {
+      locked,
+      steps: dropped.steps,
+    });
+  };
+
   const end = (): void => {
+    if (active) logDropped(jumpFilter.reset());
     active = false;
     locked = false;
     document.body?.classList.remove(DRAG_SCROLL_CLASS);
     release();
+  };
+
+  const rawStep = (event: MouseEvent): DragStep => {
+    const dtMs =
+      lastMoveAtMs !== undefined && Number.isFinite(event.timeStamp)
+        ? event.timeStamp - lastMoveAtMs
+        : undefined;
+    lastMoveAtMs = Number.isFinite(event.timeStamp) ? event.timeStamp : undefined;
+    if (locked) {
+      if (!skipFirstLockedMove) return { dx: event.movementX, dy: event.movementY, dtMs };
+      skipFirstLockedMove = false;
+      return { dx: 0, dy: 0, dtMs };
+    }
+    const delta = { dx: event.clientX - lastX, dy: event.clientY - lastY, dtMs };
+    lastX = event.clientX;
+    lastY = event.clientY;
+    return delta;
   };
 
   return {
@@ -55,20 +87,16 @@ export function createDragCapture(target: HTMLElement, onLost: () => void): Drag
       active = true;
       lastX = clientX;
       lastY = clientY;
+      lastMoveAtMs = undefined;
+      jumpFilter.reset();
       document.body?.classList.add(DRAG_SCROLL_CLASS);
       // Older engines return nothing and report a refusal through `pointerlockerror` instead.
       target.requestPointerLock?.()?.catch(() => undefined);
     },
     step: (event) => {
-      if (locked) {
-        if (!skipFirstLockedMove) return { dx: event.movementX, dy: event.movementY };
-        skipFirstLockedMove = false;
-        return { dx: 0, dy: 0 };
-      }
-      const delta = { dx: event.clientX - lastX, dy: event.clientY - lastY };
-      lastX = event.clientX;
-      lastY = event.clientY;
-      return delta;
+      const { dx, dy, dropped } = jumpFilter.step(rawStep(event));
+      logDropped(dropped);
+      return { dx, dy };
     },
     end,
     dispose: () => {
