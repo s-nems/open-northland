@@ -146,6 +146,23 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     expect(herdRow(sim, reachable)).toBe(2);
   });
 
+  it('slaughters only on its own side of the water, keeping the pair there', () => {
+    const sim = new Simulation({ seed: 1, content: livestockContent(), map: waterColumnMap(32, 32, 16) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('expected terrain');
+    const { farm, breeder } = farmWithBreeder(sim);
+    for (let i = 0; i < 2; i++) cowAt(sim, 36 + i, 20, { owner: P0, farm }); // across water, nearest the door
+    for (let i = 0; i < 2; i++) cowAt(sim, 4 + i, 4, { owner: P0, farm });
+
+    plan(sim);
+    expect(sim.world.has(breeder, MoveGoal)).toBe(false); // only the pair stands on this side
+
+    const spare = cowAt(sim, 8, 4, { owner: P0, farm });
+    plan(sim);
+    expect(sim.world.get(breeder, MoveGoal).cell).toBe(terrain.nodeAt(8, 4));
+    expect(sim.world.isAlive(spare)).toBe(true);
+  });
+
   it('leaves a neighbour with only a pair alone', () => {
     const sim = livestockSim();
     const { farm } = farmWithBreeder(sim);

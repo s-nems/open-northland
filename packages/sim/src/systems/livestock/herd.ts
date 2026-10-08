@@ -15,6 +15,7 @@ import {
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { interactionNodeId } from '../footprint/interaction.js';
 import {
@@ -59,6 +60,14 @@ export function farmStands(world: World, ctx: SystemContext, farm: Entity): bool
 /** Whether `animal` has grown up (the original's `adult_animal` job). */
 export function isAdultAnimal(world: World, animal: Entity): boolean {
   return !world.has(animal, YoungAnimal);
+}
+
+/** Whether `animal` stands on another landmass than `door`, so no walk joins them. Only two walkable
+ *  nodes prove it: a beast passing a shore flank can read a water node for a moment. */
+export function acrossWater(world: World, terrain: TerrainGraph, animal: Entity, door: NodeId): boolean {
+  const at = entityNode(world, terrain, animal);
+  if (!terrain.isWalkable(at) || !terrain.isWalkable(door)) return false;
+  return terrain.componentOf(at) !== terrain.componentOf(door);
 }
 
 /** The species good of `animal`, or null when it is not livestock. */

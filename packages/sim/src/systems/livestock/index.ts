@@ -11,6 +11,7 @@ export { claimableBy, LIVESTOCK_CAPTURE_RANGE, livestockCaptureSystem } from './
 export { freeStockOf } from './free-stock.js';
 export { ANIMAL_ADULT_AGE_TICKS, livestockGrowthSystem } from './growth.js';
 export {
+  acrossWater,
   attachToFarm,
   birthHerdAnimal,
   farmStands,

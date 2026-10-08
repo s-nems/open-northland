@@ -154,11 +154,11 @@ function nearestRipeBush(
   return best === null ? null : { bush: best.entity, dist: best.distance, cell: best.cell };
 }
 
-/** A resolved food target: a store to eat a stocked good from, or a wild bush to forage. The drive
- *  dispatches `eat` or `forage` off the kind. */
+/** A resolved food target: a store to eat a stocked good from, or a wild bush to forage, with its
+ *  Manhattan distance in half-cell nodes. The drive dispatches `eat` or `forage` off the kind. */
 type FoodTarget =
-  | { readonly kind: 'store'; readonly store: Entity; readonly goodType: number }
-  | { readonly kind: 'bush'; readonly bush: Entity };
+  | { readonly kind: 'store'; readonly store: Entity; readonly goodType: number; readonly distance: number }
+  | { readonly kind: 'bush'; readonly bush: Entity; readonly distance: number };
 
 /**
  * The nearest food of any kind a hungry settler should head for, or null when neither a store nor a ripe
@@ -189,8 +189,10 @@ export function nearestFood(
   );
   const bush = nearestRipeBush(world, ctx, terrain, here, memo, gate);
   if (bush !== null && (store === null || closer(bush.dist, bush.cell, store.dist, store.cell))) {
-    return { kind: 'bush', bush: bush.bush };
+    return { kind: 'bush', bush: bush.bush, distance: bush.dist };
   }
-  if (store !== null) return { kind: 'store', store: store.store, goodType: store.goodType };
+  if (store !== null) {
+    return { kind: 'store', store: store.store, goodType: store.goodType, distance: store.dist };
+  }
   return null;
 }

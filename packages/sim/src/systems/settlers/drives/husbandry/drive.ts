@@ -19,6 +19,7 @@ import type { SystemContext } from '../../../context.js';
 import { BREEDING_PAIR, craftablePool } from '../../../economy/production.js';
 import { removeSettlerSilently } from '../../../lifecycle/death.js';
 import {
+  acrossWater,
   attachToFarm,
   farmStands,
   freeStockOf,
@@ -294,7 +295,8 @@ function planSlay(plan: PlannerContext, farm: Entity, good: number): boolean {
 }
 
 /** The animal this cycle slaughters: the one this breeder already leads, else - while the herd keeps more
- *  than a breeding pair of grown animals nobody else is leading away - the nearest of those to the door. */
+ *  than a breeding pair of grown animals nobody else is leading away - the nearest of those to the door.
+ *  One across water is neither a target nor part of the pair until the herding pass lets it go. */
 function slayTarget(plan: PlannerContext, farm: Entity, good: number, door: NodeId): Entity | null {
   const { world, ctx, terrain, entity: e } = plan;
   let spare = 0;
@@ -309,6 +311,7 @@ function slayTarget(plan: PlannerContext, farm: Entity, good: number, door: Node
     // breeder on the next animal instead, and keeps it out of the count that decides the pair.
     if (summoner !== null) continue;
     if (world.has(animal, DraughtAnimal)) continue; // walking to the cart that recruited it
+    if (acrossWater(world, terrain, animal, door)) continue;
     spare += 1;
     const range = hexRange(plan, door, entityNode(world, terrain, animal));
     if (range < bestRange || (range === bestRange && best !== null && animal < best)) {

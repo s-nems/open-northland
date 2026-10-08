@@ -75,14 +75,14 @@ describe('forage target reachability', () => {
     const { sim, eater, berry, blocker } = setup(SEAL_RING);
     expect(food(sim, eater)).toBeNull();
     sim.world.destroy(blocker);
-    expect(food(sim, eater)).toEqual({ kind: 'bush', bush: berry });
+    expect(food(sim, eater)).toMatchObject({ kind: 'bush', bush: berry });
   });
 
   it('admits a bush underfoot inside a sealed pocket', () => {
     const { sim, eater, berry, terrain } = setup(SEAL_RING);
     sim.world.mut(eater, Position).x = positionOfNode(10, 6).x;
     sim.world.mut(eater, Position).y = positionOfNode(10, 6).y;
-    expect(food(sim, eater, terrain.nodeAt(10, 6))).toEqual({
+    expect(food(sim, eater, terrain.nodeAt(10, 6))).toMatchObject({
       kind: 'bush',
       bush: berry,
     });
@@ -105,7 +105,7 @@ describe('forage target reachability', () => {
         terrain.nodeAt(2, 6),
         eater,
       ),
-    ).toEqual({ kind: 'bush', bush: berry });
+    ).toMatchObject({ kind: 'bush', bush: berry });
   });
 });
 

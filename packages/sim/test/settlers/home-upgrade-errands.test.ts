@@ -32,6 +32,10 @@ import { ctxOf } from '../fixtures/context.js';
 import { setNeeds, settlerAt } from '../fixtures/settler.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 
+/** Where the resident starts: a walk long enough to be under way at the upgrade, inside the range a
+ *  settler walks home for a bed (the home stands on node 90). */
+const RESIDENT_HX = 50;
+
 function scenario(tribe = 1, unchangedDoor = false) {
   const base = testContent();
   // Opposite-side entrances exercise both base and nation-specific footprint selection.
@@ -94,7 +98,7 @@ function scenario(tribe = 1, unchangedDoor = false) {
     tribe,
     jobType: 1,
     needs: { fatigue: ONE },
-    position: positionOfNode(10, 20),
+    position: positionOfNode(RESIDENT_HX, 20),
   });
   sim.world.add(resident, Residence, { home });
   const terrain = sim.terrain;
@@ -245,7 +249,7 @@ describe('home errands during an entrance-changing upgrade', () => {
         terrain,
         resident,
         sim.world.get(resident, Settler),
-        terrain.nodeAt(10, 20),
+        terrain.nodeAt(RESIDENT_HX, 20),
         null,
       ),
     ).toBe(true);

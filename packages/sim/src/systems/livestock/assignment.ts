@@ -20,7 +20,7 @@ import { isTravelling } from '../movement/nav-state.js';
 import { stayPointRangeOf } from '../readviews/index.js';
 import { manhattan } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { farmStands } from './herd.js';
+import { acrossWater, farmStands, recountHerdRows } from './herd.js';
 import { nearestYardDoor, type StrayYard, strayYardOf } from './stray-yard.js';
 
 /** Re-anchoring cadence (ticks): a slow sweep, so claims, adoptions, new farms, and demolitions converge
@@ -88,6 +88,9 @@ export function territoryRangeOf(world: World, ctx: SystemContext, e: Entity): n
  * held by no farm, onto a spot ringing its player's base door. An idle animal beyond its leash walks back
  * to a spot beside that door; inside the leash the grazing drive takes over.
  *
+ * A farm's animal standing across water from its door leaves the herd for the same yard, so the farm's
+ * breeder neither chases nor counts a beast it can never reach (named addition).
+ *
  * Source basis: a house-attached animal keeps to its work house's door in the original; the
  * headquarters fallback and the ring of home spots are observed original behaviour. Without headquarters,
  * choosing the nearest owned storage, then any finished owned building, is an authored fallback. Determinism:
@@ -109,8 +112,12 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     } else if (held !== undefined) {
       if (held.summoner !== null) continue; // the slaughter summon owns its feet
       const door = interactionNodeId(world, ctx, terrain, held.farm);
-      if (door !== null) push(byDoor, door, e);
-      continue;
+      if (door === null || !acrossWater(world, terrain, e, door)) {
+        if (door !== null) push(byDoor, door, e);
+        continue;
+      }
+      world.remove(e, FarmAnimal);
+      recountHerdRows(world, ctx, held.farm);
     }
     strays.push(e);
   }
