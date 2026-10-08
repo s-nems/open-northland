@@ -61,14 +61,16 @@ interface Harness {
   readonly fetched: string[];
 }
 
-function makeEngine(opts: { failFetch?: boolean } = {}): Harness {
+function makeEngine(opts: { failFetch?: boolean; failFile?: string } = {}): Harness {
   const ctx = new FakeContext();
   const fetched: string[] = [];
   const engine = new WebAudioEngine({
     createContext: () => ctx as unknown as AudioContext,
     fetchBytes: async (url) => {
       fetched.push(url);
-      if (opts.failFetch) throw new Error('missing track');
+      if (opts.failFetch || (opts.failFile !== undefined && url.endsWith(opts.failFile))) {
+        throw new Error('missing track');
+      }
       return new ArrayBuffer(4);
     },
   });
@@ -210,6 +212,79 @@ describe('WebAudioEngine music', () => {
     ctx.currentTime = 0.5;
     engine.transitionMusic('atPassEnd');
     expect((ctx.sources[0] as FakeSource).stoppedAt).toBeNull();
+  });
+
+  it('calls off a pending pass-end handover when the fight flares up again', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(cues([TRACK, ATTACK]));
+    await flush();
+    const first = ctx.sources[0] as FakeSource;
+    // The fake ends a source as soon as a stop is scheduled; this one keeps playing to its stop time.
+    first.stop = (at: number) => {
+      first.stoppedAt = at;
+    };
+    const fullEnd = first.playsForS ?? 0;
+    ctx.currentTime = 2.5;
+    engine.transitionMusic('atPassEnd');
+    expect(first.stoppedAt).toBe(4);
+    ctx.currentTime = 2.7;
+    engine.transitionMusic('keep');
+    await flush();
+    expect(ctx.sources).toHaveLength(1);
+    expect(first.stoppedAt).toBe(fullEnd);
+    expect(gainOf(first).gain.ramps.at(-1)).toEqual({ value: 0, time: fullEnd });
+  });
+
+  it('cuts over instead when the cue is already fading toward its handover', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(cues([TRACK, ATTACK]));
+    await flush();
+    const first = ctx.sources[0] as FakeSource;
+    first.stop = (at: number) => {
+      first.stoppedAt = at;
+    };
+    ctx.currentTime = 2.5;
+    engine.transitionMusic('atPassEnd');
+    ctx.currentTime = 3.5; // inside the fade that lands on the 4 s boundary
+    engine.transitionMusic('keep');
+    await flush();
+    expect(ctx.sources).toHaveLength(2);
+  });
+
+  it('replaces a cue that is still loading when the mood calms', async () => {
+    const { engine, ctx, fetched } = makeEngine();
+    await engine.resume();
+    engine.setMusic(cues([TRACK, ATTACK]));
+    engine.transitionMusic('atPassEnd'); // before the first load lands
+    await flush();
+    expect(fetched).toEqual(['/music/theme_viking_neutral.ogg', '/music/attack_arabs.ogg']);
+    expect(ctx.sources).toHaveLength(1);
+  });
+
+  it('drops a failed track from its sequence even when a cut-in superseded its load', async () => {
+    const { engine, ctx } = makeEngine({ failFile: TRACK.file });
+    await engine.resume();
+    const sequence = cues([TRACK, ATTACK]);
+    engine.setMusic(sequence);
+    engine.transitionMusic('now'); // while the first load is in flight
+    await flush();
+    expect(sequence.dropped).toEqual([TRACK.file]);
+    expect(ctx.sources).toHaveLength(1);
+  });
+
+  it('drops a track that failed under an earlier sequence before fetching it again', async () => {
+    const { engine, ctx, fetched } = makeEngine({ failFile: TRACK.file });
+    await engine.resume();
+    engine.setMusic(cues([TRACK, ATTACK]));
+    await flush();
+    const next = cues([TRACK, ATTACK]);
+    engine.setMusic(next);
+    await flush();
+    expect(next.dropped).toEqual([TRACK.file]);
+    expect(fetched.filter((url) => url.endsWith(TRACK.file))).toHaveLength(1);
+    expect(ctx.sources).toHaveLength(2);
   });
 
   it('waits out a stop fade before opening the next cue, so the two never overlap', async () => {

@@ -32,8 +32,12 @@ export const TENSE_FADE_S = 1.5;
 /** A uniform draw in `[0, 1)`. */
 export type MusicRandom = () => number;
 
-/** What a change of mood asks the player to do with the cue it is playing. */
-export type MusicTransition = 'none' | 'now' | 'atPassEnd';
+/**
+ * What a change of mood asks the player to do with the cue it is playing: nothing, cut over to the
+ * next cue now, keep a cue that already fits the fight (calling off a pending pass-end handover), or
+ * hand over at the next pass end.
+ */
+export type MusicTransition = 'none' | 'now' | 'keep' | 'atPassEnd';
 
 /** The frame's mood as the playlist reads it. */
 export interface PlaylistMood {
@@ -69,8 +73,9 @@ export class MusicPlaylist implements MusicSequence {
   private ownEvery: number;
   /** Set on entering a fight, so its first cue is the map's own tense stem. */
   private freshFight = false;
-  /** Audio digest of the last cue handed out, so no stem follows itself. */
+  /** Audio digest and mood of the last cue handed out, so no stem follows itself. */
   private lastAudio: string | null = null;
+  private lastIntensity: MusicIntensity = 'calm';
   /** Each pool's shuffle bag: stems still to play this round, drawn from the end. */
   private readonly bags: Record<MusicIntensity, string[]> = { calm: [], tense: [] };
   private readonly dropped = new Set<string>();
@@ -83,14 +88,21 @@ export class MusicPlaylist implements MusicSequence {
     this.ownEvery = this.drawOwnEvery();
   }
 
-  /** Take the frame's mood. Turning tense cuts in now; calming waits for the playing pass to end. */
+  /**
+   * Take the frame's mood. Turning tense cuts in now on the own tense stem, unless the last cue
+   * already fits a fight (a tense cue still running out its pass, or the own tense stem itself), which
+   * is kept; calming waits for the playing pass to end.
+   */
   update(mood: PlaylistMood): MusicTransition {
     const previous = this.mood.intensity;
     this.mood = mood;
     if (mood.intensity === previous) return 'none';
     if (mood.intensity === 'calm') return 'atPassEnd';
-    this.freshFight = true;
-    return 'now';
+    const ownTense = ownTenseStem(this.music.variants);
+    const lastFits =
+      this.lastIntensity === 'tense' || (ownTense !== null && this.audioOf(ownTense) === this.lastAudio);
+    this.freshFight = !lastFits;
+    return lastFits ? 'keep' : 'now';
   }
 
   next(): MusicCue | null {
@@ -104,8 +116,9 @@ export class MusicPlaylist implements MusicSequence {
   private tenseCue(): MusicCue | null {
     const own = this.freshFight ? ownTenseStem(this.music.variants) : null;
     this.freshFight = false;
-    const stem = (own !== null && this.playable(own) ? own : null) ?? this.draw('tense', null);
-    return stem === null ? null : this.cue(stem, TENSE_PASSES, 0, TENSE_FADE_S);
+    const ownFits = own !== null && this.playable(own) && this.audioOf(own) !== this.lastAudio;
+    const stem = (ownFits ? own : null) ?? this.draw('tense', null);
+    return stem === null ? null : this.cue(stem, 'tense', TENSE_PASSES, 0, TENSE_FADE_S);
   }
 
   private calmCue(): MusicCue | null {
@@ -125,14 +138,27 @@ export class MusicPlaylist implements MusicSequence {
     const gapS = this.started
       ? CALM_SILENCE_MIN_S + this.random() * (CALM_SILENCE_MAX_S - CALM_SILENCE_MIN_S)
       : 0;
-    return this.cue(stem, randomInt(CALM_PASSES_MIN, CALM_PASSES_MAX, this.random), gapS, CALM_FADE_S);
+    return this.cue(
+      stem,
+      'calm',
+      randomInt(CALM_PASSES_MIN, CALM_PASSES_MAX, this.random),
+      gapS,
+      CALM_FADE_S,
+    );
   }
 
-  private cue(stem: string, passes: number, gapBeforeS: number, fadeS: number): MusicCue | null {
+  private cue(
+    stem: string,
+    intensity: MusicIntensity,
+    passes: number,
+    gapBeforeS: number,
+    fadeS: number,
+  ): MusicCue | null {
     const track = this.manifest.tracks[stem];
     if (track === undefined) return null;
     this.started = true;
     this.lastAudio = track.segmentSha256;
+    this.lastIntensity = intensity;
     return { track, passes, gapBeforeS, fadeS };
   }
 

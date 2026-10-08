@@ -23,6 +23,7 @@ import { manifestDocument, musicTrack } from './helpers/music-manifest.js';
  * each tense stem for several passes. Everything is drawn from the injected source, so a seed pins it.
  */
 
+const THEME_VIKING = 2;
 const MISSION_FRANKEN1 = 11;
 const MISSION_MIDGARD1 = 20;
 const MISSION_ADDON_FRANKEN2 = 34;
@@ -56,6 +57,9 @@ const STEMS = [
   'theme_franken_hostile',
   'attack_franken',
   'mission_midgard1_standard',
+  'theme_viking_friendly',
+  'theme_viking_neutral',
+  'theme_viking_hostile',
   'mission_midgard2_standard',
   'mission_viking1_danger',
   'attack_viking',
@@ -183,6 +187,25 @@ describe('calm rotation', () => {
 });
 
 describe('fights', () => {
+  it('keeps a tense cue still running out its pass when the fight flares up again', () => {
+    const playlist = playlistFor(MISSION_FRANKEN1);
+    take(playlist, 1);
+    playlist.update(TENSE);
+    const [danger] = take(playlist, 1);
+    expect(playlist.update(CALM)).toBe('atPassEnd');
+    expect(playlist.update(TENSE)).toBe('keep');
+    // When the kept cue ends, the fight rotates on rather than restarting the same stem.
+    expect(take(playlist, 1)[0]?.track.segmentSha256).not.toBe(danger?.track.segmentSha256);
+  });
+
+  it('keeps the own tense stem when it is already playing as the calm one', () => {
+    const playlist = playlistFor(THEME_VIKING);
+    playlist.update({ ...CALM, stance: 'enemy' });
+    expect(take(playlist, 1).map(stemOf)).toEqual(['theme_viking_hostile']);
+    expect(playlist.update({ ...TENSE, stance: 'enemy' })).toBe('keep');
+    expect(take(playlist, 1).map(stemOf)).not.toContain('theme_viking_hostile');
+  });
+
   it('cuts in at once and calms at a pass end, saying nothing while the mood holds', () => {
     const playlist = playlistFor(MISSION_FRANKEN1);
     expect(playlist.update(CALM)).toBe('none');

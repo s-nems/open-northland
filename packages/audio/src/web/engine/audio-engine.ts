@@ -241,11 +241,22 @@ export class WebAudioEngine {
     if (this.canPlay()) this.music?.play(sequence);
   }
 
-  /** Act on a mood change of the playing sequence: cut over now, or end the cue at its pass end. */
+  /** Act on a mood change of the playing sequence (see {@link MusicTransition}). */
   transitionMusic(transition: MusicTransition): void {
     if (!this.canPlay()) return;
-    if (transition === 'now') this.music?.interrupt();
-    else if (transition === 'atPassEnd') this.music?.endAtPassEnd();
+    switch (transition) {
+      case 'now':
+        this.music?.interrupt();
+        break;
+      case 'keep':
+        this.music?.keepOrInterrupt();
+        break;
+      case 'atPassEnd':
+        this.music?.endAtPassEnd();
+        break;
+      case 'none':
+        break;
+    }
   }
 
   /** Set the slider positions; each moved bus ramps over {@link VOLUME_RAMP_S}. */

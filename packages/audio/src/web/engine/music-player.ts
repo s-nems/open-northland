@@ -38,8 +38,11 @@ interface PlayingCue {
   readonly bufferS: number;
   /** Context time the source becomes audible; before it, the cue is still waiting out its silence. */
   readonly startsAt: number;
-  /** Context time the cue reaches silence and stops. */
+  /** Context time the cue reaches silence and stops, earlier than {@link fullEndsAt} while a pass-end
+   *  handover is pending. */
   endsAt: number;
+  /** Context time the cue ends after all its passes. */
+  readonly fullEndsAt: number;
 }
 
 export class MusicPlayer {
@@ -93,21 +96,41 @@ export class MusicPlayer {
   }
 
   /** End the running cue at its next pass boundary that leaves room for its fade, rather than after
-   *  all its passes; the sequence's next cue follows as usual. */
+   *  all its passes; the sequence's next cue follows as usual. A cue not sounding yet is replaced. */
   endAtPassEnd(): void {
     const playing = this.current;
     const now = this.ctx.currentTime;
-    if (playing === null || playing.startsAt > now) return;
+    if ((playing === null && this.loading) || (playing !== null && playing.startsAt > now)) {
+      this.interrupt();
+      return;
+    }
+    if (playing === null) return;
     const { cue, gain, level, source } = playing;
     const boundary = passBoundaryAfter(cue.track, playing.bufferS, playing.startsAt, now + cue.fadeS);
     if (boundary >= playing.endsAt) return;
     // Before the boundary's fade the cue's own end fade has not begun either, so it sits at its level.
-    gain.gain.cancelScheduledValues(now);
-    gain.gain.setValueAtTime(level, now);
-    gain.gain.setValueAtTime(level, boundary - cue.fadeS);
-    gain.gain.linearRampToValueAtTime(0, boundary);
+    scheduleEnd(gain.gain, level, now, boundary, cue.fadeS);
     playing.endsAt = boundary;
     source.stop(boundary);
+  }
+
+  /**
+   * Keep the running cue: a pending pass-end handover is called off and the cue plays all its passes;
+   * a cue still loading is kept as well. A cue already fading toward that handover, or one waiting out
+   * its silence, cannot be kept, so the sequence's next cue cuts in instead.
+   */
+  keepOrInterrupt(): void {
+    const playing = this.current;
+    const now = this.ctx.currentTime;
+    if (playing === null && this.loading) return;
+    if (playing === null || playing.startsAt > now || now >= playing.endsAt - playing.cue.fadeS) {
+      this.interrupt();
+      return;
+    }
+    if (playing.endsAt === playing.fullEndsAt) return;
+    scheduleEnd(playing.gain.gain, playing.level, now, playing.fullEndsAt, playing.cue.fadeS);
+    playing.endsAt = playing.fullEndsAt;
+    playing.source.stop(playing.fullEndsAt); // the last stop call is the one that applies
   }
 
   /** Fade out and drop the running cue (mute / teardown); the sequence is forgotten. */
@@ -130,8 +153,15 @@ export class MusicPlayer {
 
   /** Load and schedule the sequence's next cue to open at `openAfter`, plus its silence when asked. */
   private startNext(openAfter: number, withSilence: boolean): void {
-    const cue = this.sequence?.next() ?? null;
-    // A sequence offering a file that already failed would otherwise be pulled from in a tight loop.
+    let cue = this.sequence?.next() ?? null;
+    // A file that failed earlier, under this sequence or another, leaves it before it is fetched again.
+    // Each drop removes a file, so this ends; a sequence offering the file it just dropped is done.
+    let dropped: string | null = null;
+    while (cue !== null && this.failed.has(cue.track.file) && cue.track.file !== dropped) {
+      dropped = cue.track.file;
+      this.sequence?.drop(dropped);
+      cue = this.sequence?.next() ?? null;
+    }
     if (cue === null || this.failed.has(cue.track.file)) {
       // Nothing playable is left. Hold the sequence rather than forgetting it, so the next re-assert
       // of the same one returns early instead of pulling from it frame after frame.
@@ -191,13 +221,15 @@ export class MusicPlayer {
 
   private start(cue: MusicCue, openAt: number, generation: number): void {
     const { track } = cue;
+    const sequence = this.sequence;
     this.loading = true;
     void this.load(track.file).then((buffer) => {
+      // A track that cannot load leaves the sequence that offered it, even when a newer request
+      // superseded the load, so the sequence never offers it again.
+      if (buffer === null) sequence?.drop(track.file);
       if (generation !== this.generation) return; // a newer play/interrupt/stop superseded this load
       this.loading = false;
       if (buffer === null) {
-        // A track that cannot load leaves the sequence; the others carry on without it.
-        this.sequence?.drop(track.file);
         this.startNext(openAt, false);
         return;
       }
@@ -222,6 +254,7 @@ export class MusicPlayer {
         bufferS: buffer.duration,
         startsAt,
         endsAt: startsAt + playS,
+        fullEndsAt: startsAt + playS,
       };
       source.onended = (): void => {
         // Before the generation guard: a superseded cue is exactly the one whose nodes would
@@ -247,4 +280,13 @@ export class MusicPlayer {
       this.current = playing;
     });
   }
+}
+
+/** Hold `param` at `level` from `now`, then fade it to silence over the `fadeS` before `endsAt`,
+ *  replacing whatever end was scheduled. */
+function scheduleEnd(param: AudioParam, level: number, now: number, endsAt: number, fadeS: number): void {
+  param.cancelScheduledValues(now);
+  param.setValueAtTime(level, now);
+  param.setValueAtTime(level, Math.max(now, endsAt - fadeS));
+  param.linearRampToValueAtTime(0, endsAt);
 }
