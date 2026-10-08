@@ -1,4 +1,5 @@
 /** The machine-readable debug seam both playable entries expose, installed by `startGameView`. */
+import type { SoundStatsView } from '@open-northland/audio';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type { SpriteSheet, WorldRenderer } from '@open-northland/render';
 import { TICKS_PER_SECOND } from '@open-northland/sim';
@@ -115,6 +116,9 @@ export interface OpenNorthlandDebug {
   /** A spectator's seat picker: watch `seat`'s fog and figures, or the whole map for null. Null outside
    *  a spectated session. */
   readonly watchSeat: ((seat: number | null) => void) | null;
+  /** A copy of the sound driver's running one-shot counts per lane, or null when the session plays no
+   *  sound. A probe differences two reads. */
+  audioStats(): SoundStatsView | null;
 }
 
 export interface PerfReportInputs {
@@ -199,6 +203,8 @@ export interface DebugHandleDeps {
   /** Null unless `?debug=profile` asked for a running per-system profile. */
   readonly profile: ProfileSource | null;
   readonly watchSeat: ((seat: number | null) => void) | null;
+  /** The sound driver's live counts, or null when the session plays no sound. */
+  readonly audioStats: () => SoundStatsView | null;
 }
 
 export function installDebugHandle(deps: DebugHandleDeps): void {
@@ -240,5 +246,11 @@ export function installDebugHandle(deps: DebugHandleDeps): void {
     },
     trace: () => recordedTraceEvents(),
     watchSeat: deps.watchSeat,
+    audioStats: () => {
+      const stats = deps.audioStats();
+      return stats === null
+        ? null
+        : { ...stats, offered: { ...stats.offered }, started: { ...stats.started } };
+    },
   };
 }

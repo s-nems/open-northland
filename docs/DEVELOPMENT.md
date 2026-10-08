@@ -255,7 +255,7 @@ Debug modes:
   invariants and logs any violation. In a worker session each delta also carries a digest of the
   entities it names, which the drawn mirror must match, and on the invariant ticks the mirror's indexes
   are checked against a fresh walk; either disagreement is logged on the `mirror` channel;
-- `debug=perf` adds browser performance marks;
+- `debug=perf` adds browser performance marks, `frame/audio` among them around the sound driver's frame;
 - `debug=trace` records a trace that can be exported for offline profiling;
 - `debug=profile` accumulates per-system sim cost for the whole session;
 - `debug=missions` shows saved mission execution ticks and counts in a collapsible inspector;
@@ -290,6 +290,8 @@ reads it: `tick` and `snapshot()` synchronously, `await hashState()` for the has
 taken at, and `await run(ticks)`, which steps a paused session), the live
 `renderer`, `sheet` and `cameraCtl`, it answers `await perf()` with one JSON-serialisable performance
 report, so an automated probe reads numbers instead of screenshotting the on-canvas readout.
+`audioStats()` copies the sound driver's running one-shot counts (offered and started per lane, and
+steals); a probe differences two reads.
 `resetPerf()` opens a fresh measurement window, and `setSpeed()` / `setPaused()` put the session into
 a state worth measuring: `setSpeed(1)` gives a baseline the per-frame step cap cannot distort, and
 pausing isolates the render half of a frame. The `?map=` entry runs its sim in a worker, which may

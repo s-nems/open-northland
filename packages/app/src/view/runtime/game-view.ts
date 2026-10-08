@@ -1,4 +1,4 @@
-import type { SceneryObject, UiCue, VoiceCall } from '@open-northland/audio';
+import type { SceneryObject, SoundStatsView, UiCue, VoiceCall } from '@open-northland/audio';
 import { BUILDING_KIND, type MapRelationFlag } from '@open-northland/data';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type {
@@ -1108,6 +1108,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       frameStats,
       profile,
       watchSeat: switchableSeat === null ? null : (seat) => switchableSeat.watch(seat),
+      audioStats: () => soundDriver?.stats ?? null,
     });
 
     const shortfallLook = createShortfallLook();

@@ -374,6 +374,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     worldHover.update(snap, nowMs); // after controls, so the pointer-claim state is current
     presentation?.frame(snap, drawnCamera, nowMs);
     deps.onFrame?.(snap);
+    // Timed only while a recording asks: the audio path's own share of the frame.
+    const audio0 = emitPhase === null ? 0 : performance.now();
     // After `renderer.update`, which stepped the weather this frame.
     soundDriver?.updateWeather(renderer.weatherConditions(), (snap.tick + renderAlpha) / TICKS_PER_SECOND);
     if (soundDriver !== null) {
@@ -397,6 +399,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
         drawnCreatures: () => drawnCreatureIds(renderer.drawnItems()),
       });
     }
+    if (emitPhase !== null) emitPhase('frame/audio', audio0, performance.now());
     const cpuMs = performance.now() - cpu0;
     // The remainder after the driver and the snapshot, so the three sum to cpuMs.
     const drawMs = cpuMs - advanceMs - snapMs;
