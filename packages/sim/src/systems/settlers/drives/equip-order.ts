@@ -1,11 +1,4 @@
-import {
-  Carrying,
-  EquipOrder,
-  MoveGoal,
-  ownerOf,
-  type SettlerIdentity,
-  wornSlot,
-} from '../../../components/index.js';
+import { Carrying, EquipOrder, ownerOf, type SettlerIdentity, wornSlot } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -189,8 +182,9 @@ function planStow(errand: EquipErrand): boolean {
   return true;
 }
 
-/** The `return` stage: walk back to the issue node, if the order keeps one. Arriving, or finding it
- *  unreachable, ends the errand and returns false so the economy re-tasks the settler the same tick. */
+/** The `return` stage: walk back to the order's return node, if it keeps one. Arriving, stood in beside
+ *  it, or finding it unreachable, ends the errand and returns false so the economy re-tasks the settler
+ *  the same tick. */
 function planReturn(errand: EquipErrand): boolean {
   const { world, ctx, terrain, entity, order, here, avoid, targets, supply } = errand;
   // A queued player intent continues from the current stock/stow point. Only the final intent walks
@@ -209,11 +203,14 @@ function planReturn(errand: EquipErrand): boolean {
     }
   }
   const { returnTo } = order;
-  if (returnTo === null || here === returnTo || avoid?.(returnTo) === true) {
-    return finishEquipOrder(errand);
-  }
-  world.add(entity, MoveGoal, { cell: returnTo });
-  return true;
+  if (returnTo === null || avoid?.(returnTo) === true) return finishEquipOrder(errand);
+  // A fighter stood in beside a return node another fighter holds has arrived: out of its own town's calm
+  // zone a standing fighter is a post, and re-aiming at the occupied node would never end the errand.
+  let arrived = false;
+  atOrWalk(world, entity, here, returnTo, () => {
+    arrived = true;
+  });
+  return arrived ? finishEquipOrder(errand) : true;
 }
 
 function endErrand(errand: EquipErrand): boolean {

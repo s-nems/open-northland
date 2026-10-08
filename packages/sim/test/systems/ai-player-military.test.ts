@@ -350,7 +350,11 @@ describe('military module - the muster', () => {
       throw new Error('setup: no soldier');
     }
     // A booking says a weapon is on its way to this one; nobody is arming the other.
-    sim.world.add(waiting, AssistantRecruit, { intent: 'trainSword', armed: false });
+    sim.world.add(waiting, AssistantRecruit, {
+      intent: 'trainSword',
+      armed: false,
+      barracks: buildingOfType(sim, BARRACKS_TYPE, SEAT),
+    });
     sim.world.add(busy, Engagement, { repathAt: 0 });
 
     const ctx = ctxOf(sim);
@@ -374,7 +378,11 @@ describe('military module - the muster', () => {
     pack(sim, WAVE_MIN_SOLDIERS, rally);
     const [waiting] = spawn(sim, 1, { x: rally.x + RALLY_HOLD_RADIUS_NODES + 2, y: rally.y });
     if (waiting === undefined) throw new Error('setup: no recruit');
-    sim.world.add(waiting, AssistantRecruit, { intent: 'trainSword', armed: false });
+    sim.world.add(waiting, AssistantRecruit, {
+      intent: 'trainSword',
+      armed: false,
+      barracks: buildingOfType(sim, BARRACKS_TYPE, SEAT),
+    });
     sim.enqueueSetup({ kind: 'setJob', entity: waiting, jobType: FIST });
     sim.step();
 

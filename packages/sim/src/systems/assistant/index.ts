@@ -194,7 +194,7 @@ function dispatchTraining(
     // Every recruit serves the one standard drill and exits unarmed; the arming pass dresses the class
     // recruits later.
     startDrill(world, e, house, BARRACKS_DRILL_TICKS);
-    world.add(e, AssistantRecruit, { intent, armed: false });
+    world.add(e, AssistantRecruit, { intent, armed: false, barracks: house });
     remaining.set(intent, (remaining.get(intent) ?? 1) - 1);
     turn += 1;
     budget -= 1;

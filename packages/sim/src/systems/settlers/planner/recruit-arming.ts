@@ -16,6 +16,7 @@ import {
   type SettlerIdentity,
   Stockpile,
   SupplyRun,
+  sameSide,
   TrainingOrder,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -27,6 +28,7 @@ import { isTravelling } from '../../movement/nav-state.js';
 import {
   ARMOR_MAIN_TYPE,
   armorByClass,
+  isBarracksOrFoundation,
   isSoldierJob,
   weaponDamageVsMaterial,
 } from '../../readviews/index.js';
@@ -51,7 +53,8 @@ import type { PlannerPass } from './pass.js';
 /**
  * The assistant's arming pass: dress each enlisted weapon-class recruit whose drill is served from any
  * reachable store. Authored: one outing, so the weapon is fetched first and the equip drive chains the
- * armor want at the store before the single walk home. Runs on the grants pass's stride beat with the
+ * armor want at the store before the single walk back to the recruit's barracks (owner's ruling: armed
+ * soldiers gather there, not at the store). Runs on the grants pass's stride beat with the
  * same one-errand rule. A dispatch claims its unit at once, so a recruit on the same beat shops for
  * another; the recruit's own plan re-claims it.
  */
@@ -89,7 +92,7 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
         world.remove(e, AssistantRecruit);
         continue;
       }
-      dispatchWeaponFetch(pass, e, settler, booking.intent, owner);
+      dispatchWeaponFetch(pass, e, settler, booking.intent, booking.barracks, owner);
       continue;
     }
     // The fallback armor outing: the weapon errand normally chains the armor at the store, so this
@@ -98,7 +101,7 @@ export function dispatchRecruitArming(pass: PlannerPass): void {
       world.remove(e, AssistantRecruit);
       continue;
     }
-    if (!dispatchArmorFetch(pass, e, owner)) world.remove(e, AssistantRecruit);
+    if (!dispatchArmorFetch(pass, e, booking.barracks, owner)) world.remove(e, AssistantRecruit);
   }
 }
 
@@ -183,6 +186,7 @@ function dispatchWeaponFetch(
   e: Entity,
   settler: SettlerIdentity,
   intent: keyof typeof INTENT_WEAPON_CLASS,
+  barracks: Entity,
   owner: number,
 ): void {
   const { world, ctx, targets } = pass;
@@ -206,8 +210,7 @@ function dispatchWeaponFetch(
       group: 'weapon',
       slot: 0,
       goodType,
-      // Armed at the stock source: walking back marched the recruit to the barracks it had just left.
-      returnTo: null,
+      returnTo: barracksDoor(pass, e, barracks, route.here),
       stage: 'acquire',
       issuer: 'assistant-recruit',
       queued: [],
@@ -221,7 +224,7 @@ function dispatchWeaponFetch(
  * Send the armed recruit for one {@link pickReachableArmor} good. True when an errand was
  * dispatched, false when no tier has a reachable unit (the caller releases the recruit unarmored).
  */
-function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolean {
+function dispatchArmorFetch(pass: PlannerPass, e: Entity, barracks: Entity, owner: number): boolean {
   const { world, ctx, targets } = pass;
   const route = fetchRouteFor(pass, e, owner);
   const pick = pickReachableArmor(
@@ -240,7 +243,7 @@ function dispatchArmorFetch(pass: PlannerPass, e: Entity, owner: number): boolea
     group: 'armor',
     slot: 0,
     goodType: pick.goodType,
-    returnTo: null, // like the weapon fetch, done at the stock source
+    returnTo: barracksDoor(pass, e, barracks, route.here),
     stage: 'acquire',
     issuer: 'assistant-recruit',
     queued: [],
@@ -326,6 +329,15 @@ function pickReachableArmor(
 
 /** The unarmored damage column (`damagevalue 0`), the strength axis the weapon preference sorts on. */
 const BARE_TARGET = 0;
+
+/** Where an arming outing ends: the door of the barracks the recruit drilled at, or where the outing
+ *  leaves him (null) when that barracks is gone or another side's at dispatch. A barracks lost later still
+ *  draws him to its old door. */
+function barracksDoor(pass: PlannerPass, e: Entity, barracks: Entity, here: NodeId): NodeId | null {
+  const { world, ctx, terrain } = pass;
+  if (!isBarracksOrFoundation(world, ctx, barracks) || !sameSide(world, e, barracks)) return null;
+  return interactionCell(world, ctx, terrain, barracks, here);
+}
 
 /** The recruit's store-search inputs, resolved once per dispatch attempt. `limit` is the settlement
  *  network at the recruit's feet, not its own confinement, which the equip drive owns and re-applies

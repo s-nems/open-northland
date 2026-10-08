@@ -351,7 +351,9 @@ describe('population module (homeExpansion)', () => {
     it('never counts a man booked for a drill as idle', () => {
       const booked = (sim: Simulation, [man]: readonly Entity[]): void => {
         if (man === undefined) throw new Error('setup: no builder');
-        sim.world.add(man, AssistantRecruit, { intent: 'trainSword', armed: false });
+        // Any house serves as the drill house: the census reads only that the booking exists.
+        const barracks = entityOfBuilding(sim, HQ_TYPE);
+        sim.world.add(man, AssistantRecruit, { intent: 'trainSword', armed: false, barracks });
       };
       expect(sonsAfter(reserve + IDLE_MEN_HOLD_BIRTHS, booked)).toEqual({ value: 0, infinite: true });
     });

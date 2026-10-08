@@ -168,13 +168,15 @@ export const ASSISTANT_RECRUIT_INTENTS = [
 export type AssistantRecruitIntent = (typeof ASSISTANT_RECRUIT_INTENTS)[number];
 
 /**
- * The assistant's training booking on a dispatched recruit: which `train*` counter funds it, and whether
- * its weapon has landed. A `trainSoldiers` recruit is unmarked at enlistment; a class recruit keeps the
- * mark until armed and armored, or until armor proves unavailable.
+ * The assistant's training booking on a dispatched recruit: which `train*` counter funds it, whether its
+ * weapon has landed, and the barracks it drills at, where its arming outing ends. A `trainSoldiers` recruit
+ * is unmarked at enlistment; a class recruit keeps the mark until armed and armored, or until armor proves
+ * unavailable, and through the walk back to the barracks.
  */
 export const AssistantRecruit = defineComponent<{
   intent: AssistantRecruitIntent;
   armed: boolean;
+  barracks: Entity;
 }>('AssistantRecruit', 'players');
 
 /**

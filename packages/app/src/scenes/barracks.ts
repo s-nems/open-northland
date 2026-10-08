@@ -1,20 +1,26 @@
-import { components, type Entity, type Simulation, systems } from '@open-northland/sim';
+import {
+  components,
+  type Entity,
+  fx,
+  hexDistanceBetween,
+  nodeOfPosition,
+  type Simulation,
+  systems,
+} from '@open-northland/sim';
 import { grassTerrain } from '../catalog/buildings.js';
 import { JOB_CIVILIST, JOB_SOLDIER, JOB_SOLDIER_BROADSWORD } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_BARRACKS,
   BUILDING_HEADQUARTERS,
-  GOOD_ARMOR_CHAIN,
-  GOOD_SWORD_LONG,
-  GOOD_SWORD_SHORT,
   placeBuiltSandboxBuilding,
   placeSandboxBuilding,
   spawnSettlerDirect,
 } from '../game/sandbox/index.js';
+import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-const { Equipment, Settler, SettlerProgress } = components;
+const { EquipOrder, Equipment, Position, Settler, SettlerProgress } = components;
 
 /** The drill banks nothing in this bucket, the rule `progression/experience.ts` states on it. */
 const TRAINING_TRACK = systems.TRAINING_EXPERIENCE_TYPE;
@@ -27,10 +33,16 @@ const RECRUIT_X = 10;
 const VETERAN_X = 12;
 const DRAFTEE_X = 16;
 const BYSTANDER_X = 8;
-/** The armory pile the assistant's arming pass fetches from. */
-const ARMORY = { x: 18, y: 12 } as const;
+/** The armory pile the arming pass fetches from, by the headquarters and away from the barracks, so the
+ *  walk back shows; a half-cell node, as `dropGood` takes. */
+const ARMORY = { hx: 6, hy: 18 } as const;
 
-/** The manual drill (~400) plus the draftee's own drill and his one dressing outing, with slack. */
+const SWORD_SHORT = 'sword_shord'; // the content's own spelling
+const SWORD_LONG = 'sword_long';
+const ARMOR_CHAIN = 'armor_chain';
+
+/** The manual drill (~400) plus the draftee's own drill and his one dressing outing there and back,
+ *  with slack. */
 const RUN_TICKS = 1400;
 
 function build(sim: Simulation): void {
@@ -44,9 +56,14 @@ function build(sim: Simulation): void {
   sim.enqueueSetup({ kind: 'trainSoldier', entity: recruit, house: barracks });
   sim.enqueueSetup({ kind: 'trainSoldier', entity: veteran, house: barracks });
   // Both swords in store, so the arming pass has to pick the stronger one.
-  sim.enqueueSetup({ kind: 'dropGood', good: GOOD_SWORD_SHORT, x: ARMORY.x, y: ARMORY.y, amount: 1 });
-  sim.enqueueSetup({ kind: 'dropGood', good: GOOD_SWORD_LONG, x: ARMORY.x, y: ARMORY.y, amount: 1 });
-  sim.enqueueSetup({ kind: 'dropGood', good: GOOD_ARMOR_CHAIN, x: ARMORY.x, y: ARMORY.y, amount: 1 });
+  for (const slug of [SWORD_SHORT, SWORD_LONG, ARMOR_CHAIN])
+    sim.enqueueSetup({
+      kind: 'dropGood',
+      good: goodBySlug(sim, slug),
+      x: ARMORY.hx,
+      y: ARMORY.hy,
+      amount: 1,
+    });
   sim.enqueueSetup({
     kind: 'setAssistantCounter',
     player: HUMAN_PLAYER,
@@ -65,6 +82,13 @@ function cast(sim: Simulation): {
 } {
   const [recruit, veteran, draftee, bystander] = sim.world.query(Settler);
   return { recruit, veteran, draftee, bystander };
+}
+
+/** The hex distance, in half-cell nodes, from an entity's position to node `to`. */
+function nodesBetween(sim: Simulation, e: Entity, to: { readonly hx: number; readonly hy: number }): number {
+  const p = sim.world.get(e, Position);
+  const at = nodeOfPosition(p.x, p.y);
+  return hexDistanceBetween(at.hx, at.hy, to.hx, to.hy);
 }
 
 /** The gate the job picker and the `setJob` command share. */
@@ -123,7 +147,7 @@ export const barracksScene: SceneDefinition = {
         if (draftee === undefined) return false;
         return (
           sim.world.get(draftee, Settler).jobType === JOB_SOLDIER_BROADSWORD &&
-          sim.world.tryGet(draftee, Equipment)?.weapon?.goodType === GOOD_SWORD_LONG
+          sim.world.tryGet(draftee, Equipment)?.weapon?.goodType === goodBySlug(sim, SWORD_LONG)
         );
       },
     },
@@ -133,9 +157,18 @@ export const barracksScene: SceneDefinition = {
         const { draftee } = cast(sim);
         if (draftee === undefined) return false;
         return (
-          sim.world.tryGet(draftee, Equipment)?.armor?.goodType === GOOD_ARMOR_CHAIN &&
+          sim.world.tryGet(draftee, Equipment)?.armor?.goodType === goodBySlug(sim, ARMOR_CHAIN) &&
           sim.assistantCounters(HUMAN_PLAYER).trainSword.value === 0
         );
+      },
+    },
+    {
+      label: 'then walks back from the armory to the barracks',
+      predicate: (sim) => {
+        const { draftee } = cast(sim);
+        if (draftee === undefined || sim.world.has(draftee, EquipOrder)) return false;
+        const barracks = nodeOfPosition(fx.fromInt(BARRACKS.x), fx.fromInt(BARRACKS.y));
+        return nodesBetween(sim, draftee, barracks) < nodesBetween(sim, draftee, ARMORY);
       },
     },
   ],

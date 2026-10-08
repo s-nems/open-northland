@@ -28,10 +28,15 @@ import {
 } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, ONE, Simulation } from '../../src/index.js';
+import { nodeOfPosition } from '../../src/nav/halfcell.js';
+import type { NodeId, TerrainGraph } from '../../src/nav/terrain/index.js';
 import { ASSISTANT_DECISION_PERIOD_TICKS } from '../../src/systems/assistant/index.js';
 import { BARRACKS_DRILL_TICKS } from '../../src/systems/settlers/drives/training.js';
 import { ASSISTANT_SCAN_PERIOD_TICKS } from '../../src/systems/settlers/planner/assistant-grants.js';
+import { interactionCell } from '../../src/systems/settlers/targets/index.js';
+import { hexNodeDistance } from '../../src/systems/spatial/metric.js';
 import { TEST_MANIFEST, testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 import { grassCellMap as grassMap } from '../fixtures/terrain.js';
 import { stampPost } from '../signposts/support.js';
 
@@ -213,6 +218,21 @@ function barracksAt(sim: Simulation, x: number, y: number): Entity {
   return e;
 }
 
+function terrainOf(sim: Simulation): TerrainGraph {
+  if (sim.terrain === undefined) throw new Error('setup: terrain missing');
+  return sim.terrain;
+}
+
+function nodeOf(sim: Simulation, e: Entity): NodeId {
+  const p = sim.world.get(e, Position);
+  const n = nodeOfPosition(p.x, p.y);
+  return terrainOf(sim).nodeAtClamped(n.hx, n.hy);
+}
+
+function doorOf(sim: Simulation, building: Entity): NodeId {
+  return interactionCell(sim.world, ctxOf(sim), terrainOf(sim), building);
+}
+
 /** A loose ground pile holding the given goods - a store the arming pass can fetch from. */
 function pileAt(sim: Simulation, x: number, y: number, amounts: ReadonlyMap<number, number>): Entity {
   const e = sim.world.create();
@@ -305,7 +325,7 @@ describe('setAssistantWeaponVeto - command and carrier lifecycle', () => {
 describe('the training queue', () => {
   it('sends only a free man to drill: not the employed, not another trade', () => {
     const sim = trainSim();
-    barracksAt(sim, 6, 3);
+    const barracks = barracksAt(sim, 6, 3);
     const employed = settlerAt(sim, CIVILIST, 2, 2);
     sim.world.add(employed, JobAssignment, { workplace: barracksAt(sim, 12, 3) });
     const tradesman = settlerAt(sim, WOODCUTTER, 2, 3);
@@ -324,7 +344,11 @@ describe('the training queue', () => {
     }
     expect(booked).toBe(true);
 
-    expect(sim.world.get(free, AssistantRecruit)).toEqual({ intent: 'trainSoldiers', armed: false });
+    expect(sim.world.get(free, AssistantRecruit)).toEqual({
+      intent: 'trainSoldiers',
+      armed: false,
+      barracks,
+    });
     expect(sim.world.has(employed, TrainingOrder)).toBe(false);
     expect(sim.world.has(tradesman, TrainingOrder)).toBe(false);
   });
@@ -385,7 +409,7 @@ describe('the training queue', () => {
 
   it('re-dispatches a recruit walked off mid-drill instead of draining the queue', () => {
     const sim = trainSim();
-    barracksAt(sim, 6, 3);
+    const barracks = barracksAt(sim, 6, 3);
     const man = settlerAt(sim, CIVILIST, 3, 3);
     setCounter(sim, 'trainSoldiers', 1);
     runUntil(sim, () => sim.world.has(man, TrainingOrder), BEAT_TICKS, 'dispatched');
@@ -397,7 +421,7 @@ describe('the training queue', () => {
 
     // The sweep clears the stale booking, and the standing counter simply drafts him again.
     runUntil(sim, () => sim.world.has(man, TrainingOrder), 6 * BEAT_TICKS, 're-dispatched');
-    expect(sim.world.get(man, AssistantRecruit)).toEqual({ intent: 'trainSoldiers', armed: false });
+    expect(sim.world.get(man, AssistantRecruit)).toEqual({ intent: 'trainSoldiers', armed: false, barracks });
   });
 
   it('an infinite counter keeps queueing every free man and never drains', () => {
@@ -418,7 +442,7 @@ describe('the training queue', () => {
 
   it('a weapon-class recruit drills the standard term, takes the strongest sword, then armor - and pays on the sword', () => {
     const sim = trainSim();
-    barracksAt(sim, 6, 3);
+    const barracks = barracksAt(sim, 6, 3);
     const recruit = settlerAt(sim, CIVILIST, 3, 3);
     pileAt(
       sim,
@@ -449,12 +473,33 @@ describe('the training queue', () => {
     // instead of walking home in between - the chain shows as the live order flipping groups.
     runUntil(sim, () => sim.world.tryGet(recruit, EquipOrder)?.group === 'armor', 30, 'chained');
 
-    // The armor leg: the heavy tier outranks the light one; the booking ends once it is worn.
+    // The armor leg: the heavy tier outranks the light one.
     runUntil(sim, () => (sim.world.tryGet(recruit, Equipment)?.armor ?? null) !== null, 2000, 'armor');
     expect(sim.world.tryGet(recruit, Equipment)?.armor?.goodType).toBe(ARMOR_CHAIN_GOOD);
-    runUntil(sim, () => !sim.world.has(recruit, AssistantRecruit), 200, 'booking released');
-    runUntil(sim, () => !sim.world.has(recruit, EquipOrder), 200, 'arming errand released');
-    expect(sim.world.get(recruit, Position)).toMatchObject({ x: fx.fromInt(9), y: fx.fromInt(3) });
+    // Dressed, he walks back from the store to the barracks he drilled at, still booked on the way; the
+    // arming pass settles the booking on its next beat after the errand ends.
+    runUntil(sim, () => !sim.world.has(recruit, EquipOrder), 2000, 'arming errand released');
+    expect(nodeOf(sim, recruit)).toBe(doorOf(sim, barracks));
+    runUntil(
+      sim,
+      () => !sim.world.has(recruit, AssistantRecruit),
+      2 * ASSISTANT_SCAN_PERIOD_TICKS,
+      'booking released',
+    );
+  });
+
+  it('ends the outing at the store once the barracks he drilled at is gone', () => {
+    const sim = trainSim();
+    const barracks = barracksAt(sim, 6, 3);
+    const recruit = settlerAt(sim, CIVILIST, 3, 3);
+    const pile = nodeOf(sim, pileAt(sim, 9, 3, new Map([[SWORD_LONG_GOOD, 1]]))); // emptied, the pile goes
+
+    setCounter(sim, 'trainSword', 1);
+    runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SOLDIER, 3000, 'enlisted');
+    sim.world.destroy(barracks);
+    runUntil(sim, () => sim.world.get(recruit, Settler).jobType === SWORDSMAN_LONG, 3000, 'swordsman');
+    runUntil(sim, () => !sim.world.has(recruit, EquipOrder), 2000, 'arming errand released');
+    expect(nodeOf(sim, recruit)).toBe(pile);
   });
 
   it('releases a recruit unarmored when no armor is in store, once its weapon landed', () => {
@@ -562,12 +607,13 @@ describe('the training queue', () => {
 
   it('arms two recruits on the same beat from different units, never both after the last one', () => {
     const sim = trainSim();
+    const barracks = barracksAt(sim, 6, 3);
     const first = settlerAt(sim, SOLDIER, 3, 3);
     // Ids one scan period apart share the arming beat.
     for (let i = 1; i < ASSISTANT_SCAN_PERIOD_TICKS; i++) sim.world.create();
     const second = settlerAt(sim, SOLDIER, 3, 4);
     for (const e of [first, second])
-      sim.world.add(e, AssistantRecruit, { intent: 'trainSword', armed: false });
+      sim.world.add(e, AssistantRecruit, { intent: 'trainSword', armed: false, barracks });
     const longPile = pileAt(sim, 9, 3, new Map([[SWORD_LONG_GOOD, 1]]));
     const shortPile = pileAt(sim, 12, 3, new Map([[SWORD_SHORT_GOOD, 1]]));
 
@@ -591,17 +637,28 @@ describe('the training queue', () => {
       3000,
       'both armed',
     );
+    // Both walk back to the one barracks door: inside their own town's calm zone fighters may share it.
+    runUntil(
+      sim,
+      () => !sim.world.has(first, EquipOrder) && !sim.world.has(second, EquipOrder),
+      2000,
+      'both back',
+    );
+    const door = doorOf(sim, barracks);
+    for (const e of [first, second])
+      expect(hexNodeDistance(terrainOf(sim), nodeOf(sim, e), door)).toBeLessThanOrEqual(1);
   });
 
   it('arms a recruit sent to the pile another recruit already stands on', () => {
     // Fighters cannot share a node outside a town, so routing stands the second recruit in beside the pile
     // the armed first one keeps standing on; it must still lift its blade from there.
     const sim = trainSim();
+    const barracks = barracksAt(sim, 6, 3);
     const first = settlerAt(sim, SOLDIER, 3, 3);
     for (let i = 1; i < ASSISTANT_SCAN_PERIOD_TICKS; i++) sim.world.create();
     const second = settlerAt(sim, SOLDIER, 3, 4);
     for (const e of [first, second])
-      sim.world.add(e, AssistantRecruit, { intent: 'trainSword', armed: false });
+      sim.world.add(e, AssistantRecruit, { intent: 'trainSword', armed: false, barracks });
     pileAt(
       sim,
       9,

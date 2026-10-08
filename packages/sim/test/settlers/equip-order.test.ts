@@ -31,6 +31,7 @@ import { WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
 import { equipGood, unequipGood } from '../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../src/systems/readviews/index.js';
 import { EQUIP_FETCH_SEARCHES_PER_PASS } from '../../src/systems/settlers/planner/pass.js';
+import { hexNodeDistance } from '../../src/systems/spatial/metric.js';
 import { combatant } from '../conflict/stances/support.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -72,6 +73,8 @@ const HERO_JOB = 45;
 
 /** Enough ticks for a fetch across the small map plus the stow and return legs. */
 const ERRAND_TICKS = 600;
+/** Long enough for an ordered settler to have stepped off its issue node. */
+const LEAVE_HOME_TICKS = 20;
 
 function freshSim(): Simulation {
   const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(16, 6) });
@@ -390,6 +393,31 @@ describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
     expect(sim.world.has(settler, Carrying)).toBe(false);
     const back = sim.world.get(settler, Position);
     expect(nodeOfPosition(back.x, back.y)).toEqual(homeNode);
+  });
+
+  it('ends the walk back beside its issue node when a friendly fighter has taken it out in the field', () => {
+    // No building on the map, so no calm zone: a standing fighter is a firm post another fighter cannot share,
+    // and routing stands the returning one in beside it.
+    const sim = freshSim();
+    const fighter = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, fighter, FIGHTER_JOB);
+    pileAt(sim, 12, 2, SWORD, 1);
+    const home = sim.world.get(fighter, Position);
+    const homeNode = terrainNodeAt(sim, home.x, home.y);
+
+    sim.enqueueSetup(equip(fighter, SWORD, 'weapon'));
+    sim.run(LEAVE_HOME_TICKS);
+    const away = sim.world.get(fighter, Position);
+    expect(terrainNodeAt(sim, away.x, away.y)).not.toBe(homeNode);
+    combatant(sim, 2, 2, HUMAN_PLAYER, MILITARY_MODE.ATTACK, { jobType: FIGHTER_JOB });
+    sim.run(ERRAND_TICKS);
+
+    expect(sim.world.get(fighter, Equipment).weapon?.goodType).toBe(SWORD);
+    expect(sim.world.has(fighter, EquipOrder)).toBe(false);
+    const back = sim.world.get(fighter, Position);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('mapped sim expected');
+    expect(hexNodeDistance(terrain, terrainNodeAt(sim, back.x, back.y), homeNode)).toBe(1);
   });
 
   it('swap: the replaced good is stowed into a store that can take it', () => {
