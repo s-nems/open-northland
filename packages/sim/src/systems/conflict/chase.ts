@@ -264,7 +264,11 @@ export function chase(
   // A walker crossing a friend's node is never dealt it: it waits on the nearest node no body holds.
   if (crossingFriend && approach.cell === here) {
     const off = freeNodeNear(terrain, slots, here, mine, onOurBank);
-    if (off === null) return false; // walk the live route off it and ask again
+    if (off === null) {
+      // Walk the live route off it and ask again on the cadence.
+      world.mut(e, Engagement).repathAt = ctx.tick + REPATH_CADENCE;
+      return false;
+    }
     approach = { cell: off, waiting: true };
   }
   const dest = approach.cell;

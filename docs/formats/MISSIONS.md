@@ -58,8 +58,8 @@ unknown opcode maps to index 0: goal `True` or result `None` (reading). Corpus m
 `setlandspace` and `missionmissionfailed` therefore load silently as no-ops or always-true goals.
 A doubled closing quote leaves a bare `"` (`WIELKA INWAZJA` writes
 `"hero_sword_BJARNI"" 112 163 100 33 7`). The parameter reader takes it for the start of a string,
-which no number parameter accepts, and does not move past it, so that parameter and every one after
-it read 0 and such a `SetHumanX` line spawns nobody (reading). A `sethuman` placement reads its
+which no number parameter accepts, and does not move past it, so that number parameter and every
+number parameter after it read 0 and such a `SetHumanX` line spawns nobody (reading). A `sethuman` placement reads its
 numbers with the integer reader, which steps over anything before the next digit or sign.
 
 Every parameter has a kind. A quoted name is resolved to an id for the kinds marked *name*; an

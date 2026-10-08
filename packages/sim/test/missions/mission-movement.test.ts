@@ -64,6 +64,10 @@ const LANDING_SPREAD = 6;
 const BAND = 6;
 /** A band wide enough that its outer places lie past a lone man's formation. */
 const THINNED_BAND = 12;
+/** A band whose outer places lie farther from the point than the hold slack. */
+const WIDE_BAND = 150;
+/** Long enough for a band to walk to its places and stand. */
+const ARRIVAL_TICKS = 600;
 
 function nodeOf(sim: Simulation, e: Entity): HalfCellNode {
   const at = sim.world.get(e, Position);
@@ -172,6 +176,43 @@ describe('SendHuman', () => {
     const march = sim.world.get(outer, PlayerOrder).attackMove;
     sim.run(PASS_TICKS);
     expect(sim.world.get(outer, PlayerOrder).attackMove).toBe(march);
+  });
+
+  it('keeps the marches of a band whose places spill far past the point', () => {
+    const sim = firingSim([
+      { opcode: 'SendHuman', humanId: GROUP, point: FAR },
+      { opcode: 'ActivateMission', missionIndex: 0 },
+    ]);
+    for (let i = 0; i < WIDE_BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(LOAD_PASS);
+    const band = humansOf(sim, OWNER);
+    const marches = band.map((e) => sim.world.get(e, PlayerOrder).attackMove);
+    sim.run(PASS_TICKS);
+    band.forEach((e, i) => expect(sim.world.tryGet(e, PlayerOrder)?.attackMove).toBe(marches[i]));
+  });
+
+  it('seats a band standing on its places again on its own nodes', () => {
+    const sim = firingSim([
+      { opcode: 'SendHuman', humanId: GROUP, point: FAR },
+      { opcode: 'ActivateMission', missionIndex: 0 },
+    ]);
+    for (let i = 0; i < BAND; i++) spawn(sim, { player: OWNER, missionId: GROUP, job: SOLDIER });
+    sim.run(LOAD_PASS);
+    const band = humansOf(sim, OWNER);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map expected');
+    // Every man arrives and stands; the next pass finds nobody holding an order.
+    let arrived = false;
+    for (let i = 0; i < ARRIVAL_TICKS && !arrived; i++) {
+      sim.step();
+      arrived = band.every((e) => !sim.world.has(e, PlayerOrder));
+    }
+    expect(arrived).toBe(true);
+    for (let i = 0; i < PASS_TICKS && !band.every((e) => sim.world.has(e, PlayerOrder)); i++) sim.step();
+    for (const e of band) {
+      const { hx, hy } = nodeOf(sim, e);
+      expect(sim.world.get(e, PlayerOrder).attackMove?.goal).toBe(terrain.nodeAt(hx, hy));
+    }
   });
 
   it('redirects a marching band a later line sends elsewhere', () => {

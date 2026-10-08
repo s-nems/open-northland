@@ -102,8 +102,9 @@ function asLine(p: RuleProp): MapScriptLine {
 }
 
 /** A goal or result line. Original behavior: the parameter reader takes a bare `"` for a string, which
- *  no number parameter accepts, and does not move past it, so that parameter and every one after it
- *  read 0. */
+ *  no number parameter accepts, and does not move past it, so that number parameter and every one after
+ *  it read 0. Approximation: a name or text parameter after it would read the unclosed rest of the line
+ *  instead; every corpus line has only numbers there. */
 function missionLine(p: RuleProp): MapScriptLine {
   const cut = p.values.indexOf(BARE_QUOTE);
   if (cut < 0) return asLine(p);

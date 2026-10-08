@@ -263,14 +263,17 @@ describe('army player routing', () => {
     for (const { entity, x, y } of members)
       sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity, x: x + 240, y }));
     const started = performance.now();
-    sim.step();
+    try {
+      sim.step();
+    } finally {
+      GroupRoutes.prototype.offer = offer;
+    }
     reportRouting(
       wall ? 'open-wall-gap' : 'open-long',
       members.length,
       expansions,
       performance.now() - started,
     );
-    GroupRoutes.prototype.offer = offer;
     // Only searched routes are offered: a handful for the whole army, not one per member.
     expect(offered).toBeLessThan(MEMBERS / 10);
     expect(members.filter(({ entity }) => sim.world.has(entity, PathRequest))).toEqual([]);
