@@ -28,6 +28,9 @@ export interface MissionPass {
   /** Walk cells the pass's landscape removals opened so far: an object laid back over them closes
    *  nothing a route could not already cross when the pass began. */
   landscapeFreed?: Set<NodeId>;
+  /** The places the pass's walk lines handed out or found held so far, so a later line of the pass
+   *  seats its men beside them. */
+  walkGoals?: Set<NodeId>;
 }
 
 /**

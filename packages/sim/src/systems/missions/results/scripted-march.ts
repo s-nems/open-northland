@@ -22,8 +22,10 @@ const FORMATION_HOLD_SLACK_NODES = 8;
  * on an attack-move, so the band fights what it meets, and a civilian walks. A man whose order already
  * leads into the formation, or a fighter fighting within it, keeps it, so a repeating line neither
  * breaks off a fight nor reshuffles a walking band; a man the line adds takes a place nobody holds.
- * Authored: the original sends every one of them on a plain walk to the one point. A man left without
- * a place walks to the point, which the walk order snaps to the nearest node he can stand on.
+ * The places the pass's earlier lines handed out are held too, so a party sent in one line per man
+ * stands around the point rather than queueing behind one place. Authored: the original sends every
+ * one of them on a plain walk to the one point. A man left without a place walks to the point, which
+ * the walk order snaps to the nearest node he can stand on.
  */
 export function sendScriptedHumans(pass: MissionPass, id: number, point: HalfCellNode): void {
   const { world, ctx } = pass;
@@ -33,21 +35,26 @@ export function sendScriptedHumans(pass: MissionPass, id: number, point: HalfCel
   const fighter = (e: Entity): boolean =>
     isFighterJob(ctx.content, world.tryGet(e, Settler)?.jobType ?? null);
   const military = humans.some(fighter);
-  let places = formationPlaces(pass, terrain, humans, point, military, new Set());
+  const held = (pass.walkGoals ??= new Set());
+  let places = formationPlaces(pass, terrain, humans, point, military, held);
   let reach = 0;
   for (const place of places.values()) reach = Math.max(reach, hexDistance(place, point));
   reach += FORMATION_HOLD_SLACK_NODES;
-  const held = new Set<NodeId>();
   const movers: Entity[] = [];
+  let holders = 0;
   for (const e of humans) {
     const goal = heldGoal(world, terrain, e, point, reach, fighter(e));
     if (goal === undefined) movers.push(e);
-    else if (goal !== null) held.add(goal);
+    else if (goal !== null) {
+      held.add(goal);
+      holders++;
+    }
   }
   if (movers.length === 0) return;
-  if (movers.length < humans.length) places = formationPlaces(pass, terrain, movers, point, military, held);
+  if (holders > 0) places = formationPlaces(pass, terrain, movers, point, military, held);
   for (const e of movers) {
     const place = places.get(e) ?? point;
+    held.add(terrain.nodeAt(place.hx, place.hy));
     sendUnit(world, ctx, e, place.hx, place.hy, { attackMove: fighter(e) });
   }
 }
