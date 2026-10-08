@@ -16,10 +16,12 @@ import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import {
   ANIMAL_ADULT_AGE_TICKS,
+  livestockAssignmentSystem,
   livestockGrowthSystem,
   livestockSummonSystem,
   plannerSystem,
   productionSystem,
+  recountHerdRows,
 } from '../../src/systems/index.js';
 import { waterColumnMap } from '../fixtures/terrain.js';
 import {
@@ -161,6 +163,20 @@ describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
     plan(sim);
     expect(sim.world.get(breeder, MoveGoal).cell).toBe(terrain.nodeAt(8, 4));
     expect(sim.world.isAlive(spare)).toBe(true);
+  });
+
+  it('recounts a farm row when the herding pass lets an animal across water go', () => {
+    const sim = new Simulation({ seed: 1, content: livestockContent(), map: waterColumnMap(32, 32, 16) });
+    const farm = farmAt(sim, FARM_AT.hx, FARM_AT.hy, { owner: P0 });
+    const stranded = cowAt(sim, 36, 20, { owner: P0, farm });
+    cowAt(sim, 4, 4, { owner: P0, farm });
+    recountHerdRows(sim.world, ctxOf(sim), farm);
+    expect(herdRow(sim, farm)).toBe(2);
+
+    livestockAssignmentSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.has(stranded, FarmAnimal)).toBe(false);
+    expect(herdRow(sim, farm)).toBe(1);
   });
 
   it('leaves a neighbour with only a pair alone', () => {

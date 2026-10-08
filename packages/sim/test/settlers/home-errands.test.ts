@@ -19,7 +19,7 @@ import { cellAnchorNode, type Fixed, fx, type NodeId, ONE, Simulation } from '..
 import { ATOMIC_EVENT_CHANNEL, needBar, plannerSystem } from '../../src/systems/index.js';
 import { HOME_ERRAND_RANGE_NODES, isServedAtHome } from '../../src/systems/settlers/drives/home-errands.js';
 import { noteUnreachableGoal } from '../../src/systems/settlers/unreachable-goals.js';
-import { manhattan } from '../../src/systems/spatial/metric.js';
+import { hexNodeDistance } from '../../src/systems/spatial/metric.js';
 import { testContent } from '../fixtures/content.js';
 import { needsOf } from '../fixtures/settler.js';
 import { ctxOf, grassMap, justAbove, NEED_DRIVE_THRESHOLD, needsSettlerAt } from './needs/support.js';
@@ -51,10 +51,13 @@ const CONFINED_MAP_WIDTH = 64;
 const OUT_OF_AREA = 40;
 const PLAYER = 0;
 /** A strip long enough for a home past {@link HOME_ERRAND_RANGE_NODES}: a settler on cell 1 and a home on
- *  cell 30 stand 58 half-cell nodes apart, and a store on cell 38 farther still. */
-const FAR_MAP_WIDTH = 40;
+ *  cell 30 stand 58 map points apart, and a store on cell 38 farther still. */
+const FAR_MAP_WIDTH = 64;
 const FAR_HOME = 30;
 const FARTHER_STORE = 38;
+/** A home on this cell stands exactly {@link HOME_ERRAND_RANGE_NODES} from a settler on cell 1, two map
+ *  points to a cell along a row. */
+const HOME_AT_RANGE = 1 + HOME_ERRAND_RANGE_NODES / 2;
 /** Half a bar spent: under the drive trigger, over the level a served need sits at, so only the at-home
  *  chain answers it. */
 const HALF_SPENT: Fixed = fx.div(ONE, fx.fromInt(2));
@@ -88,19 +91,30 @@ function simWithHomes(content: ContentSet = homeContent(), width = 8): Simulatio
   return new Simulation({ seed: 1, content, map: grassMap(width, 6) });
 }
 
-/** A settler on cell (1, 2) whose home stands past {@link HOME_ERRAND_RANGE_NODES}, larder stocked. */
-function farFromHome(needs: { hunger?: Fixed; fatigue?: Fixed }): { sim: Simulation; settler: Entity } {
+/** A settler on cell (`from`, 2) whose stocked home stands on cell (`homeCell`, 2), `range` map points off. */
+function awayFromHome(
+  needs: { hunger?: Fixed; fatigue?: Fixed },
+  homeCell: number,
+  range: number,
+  from = 1,
+): { sim: Simulation; settler: Entity } {
   const sim = simWithHomes(homeContent(), FAR_MAP_WIDTH);
-  const settler = needsSettlerAt(sim, 1, 2, needs);
-  const home = homeAt(sim, FAR_HOME, 2);
+  const settler = needsSettlerAt(sim, from, 2, needs);
+  const home = homeAt(sim, homeCell, 2);
   sim.world.add(settler, Residence, { home });
   stock(sim, home, 2);
-  const door = nodeAt(sim, FAR_HOME, 2);
-  const here = nodeAt(sim, 1, 2);
-  if (door === undefined || here === undefined || sim.terrain === undefined)
+  const door = nodeAt(sim, homeCell, 2);
+  const here = nodeAt(sim, from, 2);
+  if (door === undefined || here === undefined || sim.terrain === undefined) {
     throw new Error('setup: no nodes');
-  expect(manhattan(sim.terrain, here, door)).toBeGreaterThan(HOME_ERRAND_RANGE_NODES);
+  }
+  expect(hexNodeDistance(sim.terrain, here, door)).toBe(range);
   return { sim, settler };
+}
+
+/** {@link awayFromHome} with the home past {@link HOME_ERRAND_RANGE_NODES}. */
+function farFromHome(needs: { hunger?: Fixed; fatigue?: Fixed }): { sim: Simulation; settler: Entity } {
+  return awayFromHome(needs, FAR_HOME, 2 * (FAR_HOME - 1));
 }
 
 /** A built home of `tribe` standing on cell (x, y). */
@@ -193,6 +207,16 @@ describe('sleepAtHome - a housed settler goes to bed indoors', () => {
 
     expect(sim.world.tryGet(settler, MoveGoal)?.cell).not.toBe(nodeAt(sim, FAR_HOME, 2));
     expect(sim.world.get(settler, CurrentAtomic).effect).toEqual({ kind: 'sleep' });
+  });
+
+  it('still walks home at exactly the range, and lies down one cell past it', () => {
+    const atRange = awayFromHome({ fatigue: TIRED }, HOME_AT_RANGE, HOME_ERRAND_RANGE_NODES);
+    plannerSystem(atRange.sim.world, ctxOf(atRange.sim));
+    expect(atRange.sim.world.get(atRange.settler, MoveGoal).cell).toBe(nodeAt(atRange.sim, HOME_AT_RANGE, 2));
+
+    const past = awayFromHome({ fatigue: TIRED }, HOME_AT_RANGE + 1, HOME_ERRAND_RANGE_NODES + 2);
+    plannerSystem(past.sim.world, ctxOf(past.sim));
+    expect(past.sim.world.get(past.settler, CurrentAtomic).effect).toEqual({ kind: 'sleep' });
   });
 
   it('falls back to open ground for a homeless settler', () => {
@@ -395,6 +419,28 @@ describe('eatAtHome - a hungry settler eats off its own larder first', () => {
     plannerSystem(sim.world, ctxOf(sim));
 
     expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, 6, 2));
+  });
+
+  it('walks home at exactly the range even with a store nearer, and not one cell past it', () => {
+    const atRange = awayFromHome({ hunger: HUNGRY }, HOME_AT_RANGE, HOME_ERRAND_RANGE_NODES);
+    storeAt(atRange.sim, 6, 2, 2);
+    plannerSystem(atRange.sim.world, ctxOf(atRange.sim));
+    expect(atRange.sim.world.get(atRange.settler, MoveGoal).cell).toBe(nodeAt(atRange.sim, HOME_AT_RANGE, 2));
+
+    const past = awayFromHome({ hunger: HUNGRY }, HOME_AT_RANGE + 1, HOME_ERRAND_RANGE_NODES + 2);
+    storeAt(past.sim, 6, 2, 2);
+    plannerSystem(past.sim.world, ctxOf(past.sim));
+    expect(past.sim.world.get(past.settler, MoveGoal).cell).toBe(nodeAt(past.sim, 6, 2));
+  });
+
+  it('walks a far home rather than a store just as far', () => {
+    const from = FAR_MAP_WIDTH / 2;
+    const { sim, settler } = awayFromHome({ hunger: HUNGRY }, from - FAR_HOME, 2 * FAR_HOME, from);
+    storeAt(sim, from + FAR_HOME, 2, 2);
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(settler, MoveGoal).cell).toBe(nodeAt(sim, from - FAR_HOME, 2));
   });
 
   it('still walks a far home when it holds the nearest food', () => {

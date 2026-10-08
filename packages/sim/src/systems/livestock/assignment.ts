@@ -112,8 +112,9 @@ export const livestockAssignmentSystem: System = (world, ctx) => {
     } else if (held !== undefined) {
       if (held.summoner !== null) continue; // the slaughter summon owns its feet
       const door = interactionNodeId(world, ctx, terrain, held.farm);
-      if (door === null || !acrossWater(world, terrain, e, door)) {
-        if (door !== null) push(byDoor, door, e);
+      if (door === null) continue;
+      if (!acrossWater(world, terrain, e, door)) {
+        push(byDoor, door, e);
         continue;
       }
       world.remove(e, FarmAnimal);

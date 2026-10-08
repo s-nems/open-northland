@@ -31,7 +31,7 @@ import { atOrWalk, PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } fro
 import type { PlannerSpacing } from '../planner/spacing.js';
 import { interactionCell, nearestFood, nearestPrayerSite, type TargetCandidates } from '../targets/index.js';
 import { unreachableGoalVeto } from '../unreachable-goals.js';
-import { eatAtHome, HOME_ERRAND_RANGE_NODES, homeMealFor, prayAtHome, sleepAtHome } from './home-errands.js';
+import { eatAtHome, homeMealFor, prayAtHome, sleepAtHome } from './home-errands.js';
 import { restingCell } from './rest-spot.js';
 import { eatAtPost, sleepAtPost } from './tower-post.js';
 
@@ -278,17 +278,16 @@ function seekMeal(
   const seek = maySeek(world, e, ordered, 'hunger');
   if (seek && eatCarried(world, ctx, e, settler, load)) return true;
   if (seek && eatAtPost(world, ctx, e, settler)) return true;
-  // Original behavior: the family larder comes first, then the nearest food elsewhere. A home beyond
-  // HOME_ERRAND_RANGE_NODES gives way to nearer food. A store and a wild berry bush share the
-  // walk-or-act tail; only the meal's effect differs.
+  // Original behavior: the family larder comes first, then the nearest food elsewhere. Named addition:
+  // a home beyond HOME_ERRAND_RANGE_NODES gives way to nearer food. A store and a wild berry bush share
+  // the walk-or-act tail; only the meal's effect differs.
   const walks = seek && (hunger >= NEED_CRITICAL_THRESHOLD || !onAlert());
   const homeMeal = walks ? homeMealFor(world, ctx, terrain, supply, e, here, limit) : null;
-  const homeNear = homeMeal !== null && homeMeal.distance <= HOME_ERRAND_RANGE_NODES;
   const food =
-    walks && !homeNear
+    walks && homeMeal?.near !== true
       ? nearestFood(targets, world, ctx, supply, terrain, here, e, limit ?? undefined)
       : null;
-  if (homeMeal !== null && (homeNear || food === null || food.distance >= homeMeal.distance)) {
+  if (homeMeal !== null && (homeMeal.near || food === null || food.distance >= homeMeal.distance)) {
     eatAtHome(world, ctx, supply, e, settler, here, homeMeal);
     return true;
   }

@@ -107,7 +107,7 @@ describe('a breeder approaching moving livestock', () => {
       }
     }
     expect(lost.length).toBeGreaterThan(0);
-    for (let index = 1; index < lost.length; index++) {
+    for (let index = 0; index < lost.length; index++) {
       expect((lost[index] ?? 0) - (lost[index - 1] ?? 0)).toBeGreaterThanOrEqual(4 * TICKS_PER_SECOND);
     }
     expect(sim.world.isAlive(animal)).toBe(true);

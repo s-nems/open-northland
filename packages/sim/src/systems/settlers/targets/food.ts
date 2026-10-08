@@ -30,7 +30,8 @@ import { interactionCell } from './workplaces.js';
  * The nearest store holding an edible good, by Manhattan distance from `here` with an ascending-cell-id
  * tie-break, with the specific good to eat, or null when no reachable store holds food. A producing
  * workplace counts too, so a settler may eat the food it makes. Original behavior: the search skips every
- * home, the eater's own included; the needs drive tries that larder first (`eatAtHome`).
+ * home, the eater's own included; the needs drive tries that larder first when it lies within
+ * `HOME_ERRAND_RANGE_NODES` (`homeMealFor`).
  *
  * A store in another static component or on the eater's failed-goal `memo` is skipped, so a hungry
  * settler walks to the second, reachable larder instead of looping beside the first. So is one whose

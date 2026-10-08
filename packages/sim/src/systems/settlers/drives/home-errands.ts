@@ -7,7 +7,7 @@ import { builtHomeType, homeUsedBy } from '../../family/households.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { ATOMIC_EVENT_CHANNEL } from '../../readviews/index.js';
 import type { NavigationLimit } from '../../signposts/index.js';
-import { manhattan } from '../../spatial/metric.js';
+import { hexNodeDistance, manhattan } from '../../spatial/metric.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { MEAL_UNITS } from '../atomics/effects/goods/index.js';
 import { PRAY_ATOMIC_ID, SLEEP_ATOMIC_ID, startAtomic, startMeal } from '../atomics/start.js';
@@ -37,9 +37,10 @@ import { homeClipServes } from './at-home.js';
 // eat it still walks home rather than starve.
 
 /**
- * The farthest a settler's home door may lie, in Manhattan half-cell nodes, for it to walk home to eat or
- * sleep. Approximation: an unshod walker on default ground spends about 10 hunger units per node (8 ticks
- * of drain plus 2 for the step), so 50 nodes cost half the 1000 units a meal break leaves it.
+ * The farthest a settler's home door may lie, in map points ({@link hexNodeDistance}, one per walked
+ * step), for it to walk home to eat or sleep. Approximation: an unshod walker on default ground spends
+ * about 10 hunger units a step (8 ticks of drain plus 2 for the step), so 50 steps cost half the 1000
+ * units a meal break leaves it.
  */
 export const HOME_ERRAND_RANGE_NODES = 50;
 
@@ -61,7 +62,7 @@ export function sleepAtHome(
   const home = homeUsedBy(world, ctx, e);
   if (home === undefined || builtHomeType(world, ctx, home) === undefined) return false;
   const door = homeDoorFor(world, ctx, terrain, e, home, here, limit);
-  if (door === null || manhattan(terrain, here, door) > HOME_ERRAND_RANGE_NODES) return false;
+  if (door === null || hexNodeDistance(terrain, here, door) > HOME_ERRAND_RANGE_NODES) return false;
   enterBuilding(world, e, home, here, door, () =>
     startAtomic(
       world,
@@ -112,7 +113,9 @@ export interface HomeMeal {
   readonly home: Entity;
   readonly goodType: number;
   readonly door: NodeId;
-  /** Manhattan half-cell nodes from the settler to the door. */
+  /** Whether the door lies within {@link HOME_ERRAND_RANGE_NODES}. */
+  readonly near: boolean;
+  /** Manhattan half-cell nodes from the settler to the door, the measure food targets compare by. */
   readonly distance: number;
 }
 
@@ -136,7 +139,13 @@ export function homeMealFor(
   if (goodType === null) return null;
   const door = homeDoorFor(world, ctx, terrain, e, home, here, limit);
   if (door === null) return null;
-  return { home, goodType, door, distance: manhattan(terrain, here, door) };
+  return {
+    home,
+    goodType,
+    door,
+    near: hexNodeDistance(terrain, here, door) <= HOME_ERRAND_RANGE_NODES,
+    distance: manhattan(terrain, here, door),
+  };
 }
 
 /** Send `e` home to eat one unit of `meal` off its family larder, claiming it. */
