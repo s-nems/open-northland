@@ -40,7 +40,7 @@ interface ReachCache {
   readonly groups: Map<number, GroupGate>;
   /** The previous key's group gates, taken over unchanged when their posts' searches still hold. */
   readonly priorGroups: ReadonlyMap<number, GroupGate>;
-  readonly limits: Map<number, SpatialGate>;
+  readonly limits: Map<number, GoodsSearchLimit>;
   readonly views: Map<number, SignpostReachView>;
 }
 const caches = new WeakMap<World, ReachCache>();
@@ -191,7 +191,7 @@ export function goodsSearchLimitAt(
   player: number | undefined,
   hx: number,
   hy: number,
-): SpatialGate | null {
+): GoodsSearchLimit | null {
   if (!signpostNavigationEnabled(world) || player === undefined) return null;
   const cache = cacheOf(world, content, terrain);
   const key = spotKey(player, hx, hy);
@@ -202,6 +202,25 @@ export function goodsSearchLimitAt(
   if (cache.limits.size >= 256) cache.limits.clear();
   cache.limits.set(key, limit);
   return limit;
+}
+
+/**
+ * {@link goodsSearchLimitAt} without its terrain flood: a node passes inside hex range of the spot or under
+ * a group caught by that range. The flood is the one cost that grows with distinct spots, so a read that
+ * asks for thousands of spots per click takes this half and over-lists what lies across water or walls
+ * inside the range. Null where {@link goodsSearchLimitAt} is.
+ */
+export function goodsSearchCatchAt(
+  world: World,
+  content: ContentSet,
+  terrain: TerrainGraph,
+  player: number | undefined,
+  hx: number,
+  hy: number,
+): SpatialGate | null {
+  const limit = goodsSearchLimitAt(world, content, terrain, player, hx, hy);
+  if (limit === null) return null;
+  return { bounds: limit.bounds, allowsNode: (node) => limit.catchesNode(node) };
 }
 
 /** Exclusive bound of each field {@link spotKey} packs. */
@@ -259,14 +278,17 @@ class GoodsSearchLimit implements SpatialGate {
   }
 
   allowsNode(node: NodeId): boolean {
+    if (!this.catchesNode(node)) return false;
+    this.resolved ??= this.resolve();
+    return this.resolved.allowsNode(node);
+  }
+
+  /** The flood-free half of {@link allowsNode}: inside the hex range or under a caught group. */
+  catchesNode(node: NodeId): boolean {
     this.confirmKey();
     const x = this.terrain.xOf(node);
     const y = this.terrain.yOf(node);
-    if (hexDistanceBetween(this.hx, this.hy, x, y) >= GOODS_SEARCH_RANGE_NODES && !this.nearbyAllows(node)) {
-      return false;
-    }
-    this.resolved ??= this.resolve();
-    return this.resolved.allowsNode(node);
+    return hexDistanceBetween(this.hx, this.hy, x, y) < GOODS_SEARCH_RANGE_NODES || this.nearbyAllows(node);
   }
 
   private nearbyAllows(node: NodeId): boolean {

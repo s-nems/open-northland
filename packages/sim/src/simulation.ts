@@ -573,7 +573,7 @@ export class Simulation {
 
   /** The selection's equip menu: every good some of `entities` can wear and reach, with the settlers a
    *  pick would send. Read-only, click-time: a pass over every store, then the selection times the stores
-   *  holding equippable goods. */
+   *  holding equippable goods, no per-member terrain flood; the read's doc carries the measurement. */
   equipPicksForSelection(entities: readonly Entity[]): EquipSelectionPick[] {
     return equipPicksForSelection(this.world, this.content, this.terrain, entities);
   }

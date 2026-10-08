@@ -8,7 +8,7 @@ import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext, MapContext } from '../context.js';
 import { interactionCellOf } from '../footprint/interaction.js';
 import { equipErrandConfinement, navigationLimitFor } from '../signposts/index.js';
-import { goodsSearchLimitAt } from '../signposts/reach.js';
+import { goodsSearchCatchAt } from '../signposts/reach.js';
 import { accessibleStockAmounts, mayFetchGoodFrom } from '../stores/index.js';
 import { isFighterJob, isHeroJob } from './jobs.js';
 
@@ -84,10 +84,16 @@ interface SelectionRow {
  * group window intersects the selection's wearable sets; this unions them so one far or ineligible
  * settler hides no row from the rest.
  *
- * Mirrors the equip errand's source predicate (same side, fetchable stock, the errand's gate tested at
- * the store's door) with two approximations: units other errands already claim still count, and the
- * buried-under-a-building filter is skipped, so a row may rarely name a unit the fetch cannot reach.
- * A click-time read: one pass over every store, then the members times the stores holding equippables.
+ * Mirrors the equip errand's source predicate (same side, fetchable stock, the errand's confinement tested
+ * at the store's door) with named approximations, so a row may rarely name a unit the fetch cannot reach
+ * or omit one it can: the goods search is taken without its terrain flood (a store across water or walls
+ * inside the range is listed), units other errands already claim still count, the buried-pile, failed-goal
+ * and stance-cell filters are skipped, and a loose pile on an unwalkable node is tested there rather than
+ * from a neighbour. The click re-validates: an errand finding nothing ends empty-handed.
+ *
+ * Click-time cost: one pass over every store, then the members times the stores holding equippables, with
+ * no per-member terrain flood. Measured on an all-grass 600x300-node map with 300 stores, 50 posts and
+ * 3655 men on distinct nodes: about 75 ms per call, against about 1.1 s with the flood.
  */
 export function equipPicksForSelection(
   world: World,
@@ -179,8 +185,8 @@ function fetchNodeOf(world: World, ctx: MapContext, store: Entity): NodeId | nul
   return terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.y));
 }
 
-/** The gate the errand's store search applies for `entity`: its confinement cut to the goods search
- *  from where it stands. Null when nothing confines it. */
+/** The gate the errand's store search applies for `entity`: its confinement cut to the goods search from
+ *  where it stands, the search taken by catch alone (`goodsSearchCatchAt`). Null when nothing confines it. */
 function fetchGateFor(
   world: World,
   content: ContentSet,
@@ -199,5 +205,5 @@ function fetchGateFor(
     here,
     navigationLimitFor(world, content, terrain, entity),
   );
-  return intersectReach(confinement, goodsSearchLimitAt(world, content, terrain, owner, hx, hy)) ?? null;
+  return intersectReach(confinement, goodsSearchCatchAt(world, content, terrain, owner, hx, hy)) ?? null;
 }

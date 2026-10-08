@@ -1116,6 +1116,12 @@ describe('equipPicksForSelection - the selection menu read view', () => {
     expect(rows).toEqual([{ goodType: SWORD, group: 'weapon', available: 2, takers: [nearFighter] }]);
     expect(sim.equipPicksForSelection([farFighter, civilian])).toEqual([]);
     expect(sim.world.get(forge, Stockpile).amounts.get(SWORD)).toBe(2);
+
+    // The omitted fighter is omitted because his errand would find nothing either.
+    sim.enqueueSetup(equip(farFighter, SWORD, 'weapon'));
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.tryGet(farFighter, Equipment)?.weapon ?? null).toBeNull();
+    expect(sim.world.get(forge, Stockpile).amounts.get(SWORD)).toBe(2);
   });
 
   it('counts a store once however many members reach it, and lists goods in content order', () => {
