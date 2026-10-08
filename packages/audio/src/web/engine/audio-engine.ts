@@ -35,7 +35,8 @@ import { WeatherSoundscape } from './weather-soundscape.js';
  * (`ctx.currentTime`), never `Date.now`, so ramps stay sample-accurate.
  *
  * Graph: each sound feeds its {@link SoundBus} gain (one-shots by {@link oneShotBus}, beds and weather
- * on `ambient`, music through its jingle duck), and every bus feeds the master gain.
+ * on `ambient`, music through its jingle duck), every bus feeds the master gain, and the master ends in
+ * a peak limiter before the destination.
  *
  * The context starts suspended ({@link resume} starts it); before then, and on any decode/fetch
  * failure, playback is a graceful no-op (silence), never a throw.
@@ -76,6 +77,20 @@ export function musicBusGain(position: number): number {
   return volumeGain(position) * 10 ** ((MUSIC_MASTER_OFFSET_DB + RENDERED_MUSIC_HEADROOM_DB) / 20);
 }
 
+// The master peak limiter, a `DynamicsCompressorNode` set to catch only the peaks of a dense mix. All
+// approximations to tune by ear. The node adds the spec's automatic makeup gain (0.6 of the gain it
+// takes off a full-scale input, about +1.7 dB here): the whole mix sits that much higher, and a 0 dBFS
+// input leaves at about -1.1 dBFS.
+/** Level the limiter starts to act at; below it the mix passes untouched. */
+export const LIMITER_THRESHOLD_DB = -3;
+/** Hard knee: no gradual onset below the threshold. */
+export const LIMITER_KNEE_DB = 0;
+/** The node's highest ratio, as close to a brick wall as it goes. */
+export const LIMITER_RATIO = 20;
+/** Fast enough to catch a transient, slow enough not to distort low frequencies. */
+export const LIMITER_ATTACK_S = 0.003;
+/** Recovery after a peak, short enough that the mix does not audibly pump. */
+export const LIMITER_RELEASE_S = 0.15;
 /** A closing engine fades the master out and closes the context this long after: the fade plus the
  *  output still buffered on its way to the device. Approximation. */
 export const CLOSE_GRACE_S = 0.1;
@@ -306,7 +321,9 @@ export class WebAudioEngine {
     this.ctx = ctx;
     const master = ctx.createGain();
     master.gain.value = this.channelGain('master');
-    master.connect(ctx.destination);
+    const limiter = createPeakLimiter(ctx);
+    if (limiter === null) master.connect(ctx.destination);
+    else master.connect(limiter).connect(ctx.destination);
     const buses: Record<SoundBus, GainNode> = {
       music: ctx.createGain(),
       voice: ctx.createGain(),
@@ -404,6 +421,19 @@ function clampedVolumes(volumes: MixerVolumes): Record<VolumeChannel, number> {
     ambient: clampVolume(volumes.ambient),
     ui: clampVolume(volumes.ui),
   };
+}
+
+/** The master's peak limiter, or null on a context that cannot make a compressor (it then plays
+ *  unlimited rather than not at all). */
+function createPeakLimiter(ctx: AudioContext): DynamicsCompressorNode | null {
+  if (typeof ctx.createDynamicsCompressor !== 'function') return null;
+  const limiter = ctx.createDynamicsCompressor();
+  limiter.threshold.value = LIMITER_THRESHOLD_DB;
+  limiter.knee.value = LIMITER_KNEE_DB;
+  limiter.ratio.value = LIMITER_RATIO;
+  limiter.attack.value = LIMITER_ATTACK_S;
+  limiter.release.value = LIMITER_RELEASE_S;
+  return limiter;
 }
 
 /** The duck's fade, exponential because the original ramps the audiopath volume linearly in dB. */

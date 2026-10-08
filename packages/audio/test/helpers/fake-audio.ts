@@ -99,6 +99,14 @@ export class FakeBiquad extends FakeNode {
   gain = new FakeParam();
 }
 
+export class FakeCompressor extends FakeNode {
+  threshold = new FakeParam();
+  knee = new FakeParam();
+  ratio = new FakeParam();
+  attack = new FakeParam();
+  release = new FakeParam();
+}
+
 export class FakeShaper extends FakeNode {
   curve: Float32Array | null = null;
 }
@@ -160,6 +168,11 @@ export class FakeContext {
     const f = new FakeBiquad();
     this.created.push(f);
     return f;
+  }
+  createDynamicsCompressor(): FakeCompressor {
+    const c = new FakeCompressor();
+    this.created.push(c);
+    return c;
   }
   createWaveShaper(): FakeShaper {
     const w = new FakeShaper();

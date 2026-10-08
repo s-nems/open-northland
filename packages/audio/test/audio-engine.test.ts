@@ -5,12 +5,24 @@ import {
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
   DEFAULT_VOLUMES,
+  LIMITER_ATTACK_S,
+  LIMITER_KNEE_DB,
+  LIMITER_RATIO,
+  LIMITER_RELEASE_S,
+  LIMITER_THRESHOLD_DB,
   ONE_SHOT_COOLDOWN_S,
   VOLUME_RAMP_S,
   volumeGain,
   WebAudioEngine,
 } from '../src/index.js';
-import { FakeContext, FakeGain, type FakePanner, type FakeSource, flush } from './helpers/fake-audio.js';
+import {
+  FakeCompressor,
+  FakeContext,
+  FakeGain,
+  type FakePanner,
+  type FakeSource,
+  flush,
+} from './helpers/fake-audio.js';
 import { mixerGraph } from './helpers/mixer-graph.js';
 
 /**
@@ -68,7 +80,7 @@ describe('WebAudioEngine one-shots', () => {
     expect(ctx.sources).toHaveLength(1);
     const source = ctx.sources[0] as FakeSource;
     expect(source.started).toBe(true);
-    // source → panner (pan applied) → gain (shot gain) → ui bus (no lane) → master → destination.
+    // source → panner (pan applied) → gain (shot gain) → ui bus (no lane) → master → limiter → out.
     const panner = source.connectedTo[0] as FakePanner;
     expect(panner.pan.value).toBeCloseTo(-0.3, 5);
     const gain = panner.connectedTo[0] as FakeGain;
@@ -78,7 +90,9 @@ describe('WebAudioEngine one-shots', () => {
     expect(buses.ui.gain.value).toBeCloseTo(volumeGain(DEFAULT_VOLUMES.ui), 5);
     expect(buses.ui.connectedTo[0]).toBe(master);
     expect(master.gain.value).toBeCloseTo(volumeGain(DEFAULT_VOLUMES.master), 5);
-    expect(master.connectedTo[0]).toBe(ctx.destination);
+    const limiter = master.connectedTo[0] as FakeCompressor;
+    expect(limiter).toBeInstanceOf(FakeCompressor);
+    expect(limiter.connectedTo[0]).toBe(ctx.destination);
   });
 
   it('routes each one-shot to the bus of its lane', async () => {
@@ -100,6 +114,17 @@ describe('WebAudioEngine one-shots', () => {
     expect(busOf(work)).toBe(buses.world);
     expect(busOf(chatter)).toBe(buses.voice);
     expect(busOf(birth)).toBe(buses.ui);
+  });
+
+  it('ends the master in a peak limiter, not the default compressor', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const limiter = ctx.created.find((n) => n instanceof FakeCompressor) as FakeCompressor;
+    expect(limiter.threshold.value).toBe(LIMITER_THRESHOLD_DB);
+    expect(limiter.knee.value).toBe(LIMITER_KNEE_DB);
+    expect(limiter.ratio.value).toBe(LIMITER_RATIO);
+    expect(limiter.attack.value).toBe(LIMITER_ATTACK_S);
+    expect(limiter.release.value).toBe(LIMITER_RELEASE_S);
   });
 
   it('fades the master out on mute and back to its slider on unmute', async () => {
