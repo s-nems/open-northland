@@ -5,11 +5,14 @@ import { button, element, setAttribute, setClass, setHidden, setTip, write } fro
 import { createSection } from '../parts/section.js';
 import type { DiplomacyGood, DiplomacyOffer, TributePanelRow } from './model.js';
 
+/** Design px of a good's icon in its well (foundation.css `.on-good-well`). */
+const GOOD_ICON_PX = 18;
+
 function goodCell(good: DiplomacyGood, paint: GoodIconPainter): HTMLElement {
   const root = element('span', 'on-dip-good');
-  const well = element('span', 'on-good-well', goodIconMarkup());
+  const well = element('span', 'on-good-well', goodIconMarkup(GOOD_ICON_PX));
   const frame = well.querySelector('.on-good__frame');
-  if (good.goodId !== undefined && frame instanceof HTMLElement) paint(frame, good.goodId, 25);
+  if (good.goodId !== undefined && frame instanceof HTMLElement) paint(frame, good.goodId, GOOD_ICON_PX);
   const label = element('span', 'on-dip-good__label');
   write(label, good.label);
   root.append(well, label);
