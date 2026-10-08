@@ -505,6 +505,11 @@ export const enContent = {
       summary:
         'A home re-opens as a construction site and rises a level for the difference cost; a second home awaits your Upgrade button.',
     },
+    'frank-construction': {
+      title: 'Frankish construction stages',
+      summary:
+        'A frankish mason hut rises from its foundation while a mason hut and a druid hut upgrade beside it.',
+    },
     'upgrade-tribes': {
       title: 'Upgrades across civilizations',
       summary:

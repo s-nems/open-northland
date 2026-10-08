@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import type { BuildingFootprint, GoodQuantity } from '@open-northland/data';
 import {
   type ByTribe,
@@ -32,6 +31,7 @@ import {
   iniBytesToSections,
   type SourceRef,
 } from '../../decoders/ini.js';
+import { readSourceFile, type SourceRoots } from '../../roots.js';
 import type { BuildingGraphicsOverlays } from './building-overlays.js';
 import type { IniSource } from './sources.js';
 
@@ -45,7 +45,7 @@ function foldOverlay<V>(into: Map<number, V>, rows: ReadonlyMap<number, V>): voi
  * pulls only its own `[section]`s, so a file with no matching section contributes nothing. These are
  * the per-source tables only; the cross-table joins run afterwards.
  */
-export async function extractIniTables(sources: readonly IniSource[]) {
+export async function extractIniTables(roots: SourceRoots, sources: readonly IniSource[]) {
   const goods = [];
   const jobs = [];
   const jobExperience = [];
@@ -77,7 +77,7 @@ export async function extractIniTables(sources: readonly IniSource[]) {
   } satisfies BuildingGraphicsOverlays;
 
   for (const { path, file, layer } of sources) {
-    const sections = iniBytesToSections(await readFile(path));
+    const sections = iniBytesToSections(await readSourceFile(roots, path));
     const src: SourceRef = { file, layer };
     goods.push(...extractGoods(sections, src));
     jobs.push(...extractJobs(sections, src));

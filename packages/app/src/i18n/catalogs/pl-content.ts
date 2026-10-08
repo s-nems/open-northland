@@ -503,6 +503,11 @@ export const plContent = {
       summary:
         'Dom ponownie staje się placem budowy i rośnie o poziom za różnicę kosztów; drugi dom czeka na twój przycisk Rozbuduj.',
     },
+    'frank-construction': {
+      title: 'Etapy budowy u Franków',
+      summary:
+        'Frankijska chata kamieniarza rośnie od fundamentów, a obok rozbudowują się chata kamieniarza i chata druida.',
+    },
     'upgrade-tribes': {
       title: 'Rozbudowa u innych ludów',
       summary:

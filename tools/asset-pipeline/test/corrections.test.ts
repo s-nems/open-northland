@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CORRECTIONS_DIR, loadSourceCorrections } from '../src/corrections.js';
 import { readSourceFile } from '../src/roots.js';
+import { extractIniTables } from '../src/stages/ir/tables.js';
 import { convertMapDatTree } from '../src/stages/maps/index.js';
 import { buildMapDat } from './fixtures/mapdat.js';
 import { makeTempDir, type TempDir } from './support/game-tree.js';
@@ -102,6 +103,35 @@ describe('source corrections', () => {
     expect(() => corrections.assertApplied()).not.toThrow();
   });
 
+  it('confines a sectioned edit to the block holding its section line', async () => {
+    const shipped =
+      '[GfxHouse]\r\nEditName "mill"\r\nLayer 0 72\r\n\r\n[GfxHouse]\r\nEditName "hut"\r\nLayer 0 72\r\n' +
+      '[GfxHouse]\r\nEditName "well"\r\nLayer 0 72\r\n';
+    const path = await writeMod(AI_INC, shipped);
+    const edit = (section: string) => ({
+      reason: 'test',
+      file: AI_INC,
+      sha256: sha256(shipped),
+      lines: [{ section, from: 'Layer 0 72', to: 'Layer 0 4' }],
+    });
+    await writeCorrection('sectioned', edit('EditName "hut"'));
+    const corrections = await loadSourceCorrections(dir, mod);
+    expect(Buffer.from(await corrections.read(path)).toString('latin1')).toBe(
+      shipped.replace('"hut"\r\nLayer 0 72', '"hut"\r\nLayer 0 4'),
+    );
+    expect(() => corrections.assertApplied()).not.toThrow();
+
+    for (const [section, why] of [
+      ['EditName "barn"', /section .* matches 0 lines/],
+      ['[GfxHouse]', /section .* matches 3 lines/],
+    ] as const) {
+      await writeCorrection('sectioned', edit(section));
+      const refused = await loadSourceCorrections(dir, mod);
+      expect(Buffer.from(await refused.read(path)).toString('latin1')).toBe(shipped);
+      expect(() => refused.assertApplied()).toThrow(why);
+    }
+  });
+
   it('refuses a malformed correction or two naming one file', async () => {
     const valid = { reason: 'test', file: AI_INC, sha256: sha256(SHIPPED_AI), lines: SWAP };
     const refused: readonly [object, RegExp][] = [
@@ -110,6 +140,7 @@ describe('source corrections', () => {
       [{ ...valid, lines: [] }, /at least one edit/],
       [{ ...valid, lines: [{ from: 'ż', to: 'z' }] }, /printable-ASCII/],
       [{ ...valid, lines: [{ from: 'a', to: 'z', every: false }] }, /"every"/],
+      [{ ...valid, lines: [{ from: 'a', to: 'z', section: '' }] }, /"section"/],
       [{ ...valid, note: 'x' }, /unknown key "note"/],
     ];
     for (const [correction, why] of refused) {
@@ -142,6 +173,28 @@ describe('source corrections', () => {
     // Without corrections the stage reads the file as shipped.
     const shipped = await readSourceFile({ mod }, join(mod, AI_INC));
     expect(Buffer.from(shipped).toString('latin1')).toBe(SHIPPED_AI);
+  });
+
+  it('feeds the corrected houses table to the IR stage', async () => {
+    const housesIni = 'DataCnmd/budynki12/houses/houses.ini';
+    const shipped =
+      '[GfxHouse]\r\nEditName "hut"\r\nLogicTribeType 2\r\nLogicType 0 29\r\n' +
+      'GfxBobLibs "data\\engine2d\\bin\\bobs\\test_house.bmd"\r\nGfxPalette "house01"\r\nGfxBobId 0 0\r\n' +
+      'GfxBobConstructionLayer 0 0 72 -1 0 100\r\n';
+    const path = await writeMod(housesIni, shipped);
+    await writeCorrection('stages', {
+      reason: 'test',
+      file: housesIni,
+      sha256: sha256(shipped),
+      lines: [
+        { from: 'GfxBobConstructionLayer 0 0 72 -1 0 100', to: 'GfxBobConstructionLayer 0 0 2 -1 0 100' },
+      ],
+    });
+    const roots = { mod, corrections: await loadSourceCorrections(dir, mod) };
+
+    const { constructionLayers } = await extractIniTables(roots, [{ path, file: housesIni, layer: 'mod' }]);
+    expect(constructionLayers.map((row) => row.bobId)).toEqual([2]);
+    expect(() => roots.corrections.assertApplied()).not.toThrow();
   });
 
   it('parses every committed correction', async () => {

@@ -6,11 +6,16 @@ import { fileURLToPath } from 'node:url';
 /** The named fixes to single mod files, one JSON file each; this package's AGENTS.md sets the rules. */
 export const CORRECTIONS_DIR = fileURLToPath(new URL('../corrections/', import.meta.url));
 
-/** One whole line of the file swapped for another; with `every`, each line spelled like `from`. */
+/**
+ * One whole line of the file swapped for another; with `every`, each line spelled like `from`. With
+ * `section`, only lines inside the `[...]` block holding the one line spelled `section` count, for a
+ * line that repeats verbatim across records.
+ */
 interface LineEdit {
   readonly from: string;
   readonly to: string;
   readonly every: boolean;
+  readonly section?: string;
 }
 
 /** A fix to the mod file `file`, applied only while its bytes still hash to `sha256`. */
@@ -105,10 +110,16 @@ function applyCorrection(correction: SourceCorrection, bytes: Uint8Array): Uint8
   // latin1 maps each byte to one code unit, so every untouched line keeps its exact bytes.
   const lines = Buffer.from(bytes).toString('latin1').split('\n');
   const edits = new Map<number, LineEdit>();
+  const text = lines.map((line) => line.replace(/\r$/, ''));
   for (const edit of correction.lines) {
-    const at = lines.flatMap((line, i) => (line.replace(/\r$/, '') === edit.from ? [i] : []));
+    const range =
+      edit.section === undefined ? { start: 0, end: text.length } : sectionAround(text, edit.section);
+    if (typeof range === 'string') return range;
+    const at: number[] = [];
+    for (let i = range.start; i < range.end; i++) if (text[i] === edit.from) at.push(i);
     if (at.length === 0 || (at.length > 1 && !edit.every)) {
-      return `"${edit.from}" matches ${at.length} lines instead of one`;
+      const scope = edit.section === undefined ? '' : ` in the section of "${edit.section}"`;
+      return `"${edit.from}" matches ${at.length} lines${scope} instead of one`;
     }
     for (const index of at) {
       if (edits.has(index)) return `two edits replace the line "${edit.from}"`;
@@ -119,6 +130,20 @@ function applyCorrection(correction: SourceCorrection, bytes: Uint8Array): Uint8
     lines[index] = `${edit.to}${lines[index]?.endsWith('\r') ? '\r' : ''}`;
   }
   return Buffer.from(lines.join('\n'), 'latin1');
+}
+
+/** The line range of the `[...]` block holding the one line spelled `anchor`, or why there is none. */
+function sectionAround(text: readonly string[], anchor: string): { start: number; end: number } | string {
+  const at = text.flatMap((line, i) => (line === anchor ? [i] : []));
+  const [index] = at;
+  if (index === undefined || at.length > 1)
+    return `section "${anchor}" matches ${at.length} lines instead of one`;
+  const isHeader = (line: string | undefined): boolean => line?.trimStart().startsWith('[') === true;
+  let start = index;
+  while (start > 0 && !isHeader(text[start])) start--;
+  let end = index + 1;
+  while (end < text.length && !isHeader(text[end])) end++;
+  return { start, end };
 }
 
 function parseCorrection(id: string, raw: unknown): SourceCorrection {
@@ -138,7 +163,7 @@ function parseCorrection(id: string, raw: unknown): SourceCorrection {
   if (!Array.isArray(lines) || lines.length === 0) return fail('lines must list at least one edit');
   const edits = lines.map((line: unknown): LineEdit => {
     if (typeof line !== 'object' || line === null) return fail('each line edit is an object');
-    const { from, to, every } = line as Record<string, unknown>;
+    const { from, to, every, section } = line as Record<string, unknown>;
     if (
       typeof from !== 'string' ||
       typeof to !== 'string' ||
@@ -148,7 +173,15 @@ function parseCorrection(id: string, raw: unknown): SourceCorrection {
       return fail('each line edit has printable-ASCII "from" and "to" lines');
     }
     if (every !== undefined && every !== true) return fail('"every" is true or absent');
-    return { from, to, every: every === true };
+    if (
+      section !== undefined &&
+      (typeof section !== 'string' || !SCRIPT_LINE.test(section) || section === '')
+    ) {
+      return fail('"section" is a printable-ASCII line or absent');
+    }
+    return section === undefined
+      ? { from, to, every: every === true }
+      : { from, to, every: every === true, section };
   });
   return { id, reason, file, sha256, lines: edits };
 }

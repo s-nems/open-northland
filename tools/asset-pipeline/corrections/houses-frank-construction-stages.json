@@ -1,0 +1,42 @@
+{
+  "reason": "Dwa frankijskie budynki wskazują etapy budowy, których nie ma w ich plikach grafiki, więc budynek od razu stoi gotowy. Chata kamieniarza (oba poziomy) ma linie GfxBobConstructionLayer, drzwi i nakładkę skopiowane z młyna (boby 70-72 z ls_houses_viking.bmd), a jej test_house.bmd ma tylko boby 0-6. Podstawiamy jej własne boby: 4 (tylne ściany), 2 (rusztowanie), 0 (gotowy dom). Te boby nie mają bajtów czasu, więc każdy etap pojawia się w całości; progi 0, 35 i 100 dobrane na oko, nie z oryginału. Chata druida na poziomie 1 wskazuje bob 1, a f_druid.bmd ma tylko bob 0, którego używa poziom 0 i ciało obu poziomów.",
+  "file": "DataCnmd/budynki12/houses/houses.ini",
+  "sha256": "6f55714fab6931061824a78818b19d49798dc5a017bdfafbc7e3a2fcd2bf220c",
+  "lines": [
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 0 0 72 75 9 81",
+      "to": "GfxBobConstructionLayer 0 0 4 -1 35 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 0 0 71 -1 0 73",
+      "to": "GfxBobConstructionLayer 0 0 2 -1 0 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 0 0 70 -1 26 100",
+      "to": "GfxBobConstructionLayer 0 0 0 -1 100 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 1 0 72 75 9 81",
+      "to": "GfxBobConstructionLayer 1 0 4 -1 35 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 1 0 71 -1 0 73",
+      "to": "GfxBobConstructionLayer 1 0 2 -1 0 100"
+    },
+    {
+      "section": "EditName \"frank mason hut\"",
+      "from": "GfxBobConstructionLayer 1 0 70 -1 26 100",
+      "to": "GfxBobConstructionLayer 1 0 0 -1 100 100"
+    },
+    {
+      "section": "EditName \"frank druid hut\"",
+      "from": "GfxBobConstructionLayer 1 0 1 65 0 100",
+      "to": "GfxBobConstructionLayer 1 0 0 65 0 100"
+    }
+  ]
+}

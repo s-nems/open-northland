@@ -104,6 +104,7 @@ export function placeSandboxSite(
   x: number,
   y: number,
   owner: number = HUMAN_PLAYER,
+  opts: { readonly tribe?: number } = {},
 ): Entity {
   const { Building, Health, Owner, Position, Stockpile, UnderConstruction } = components;
   const typeId = resolveVikingBuilding(ref).typeId;
@@ -112,7 +113,12 @@ export function placeSandboxSite(
   const e = sim.world.create();
   sim.world.add(e, Position, positionOfNode(node.hx, node.hy));
   const level = buildingLevelForType(sim.content, typeId);
-  sim.world.add(e, Building, { buildingType: typeId, tribe: PRIMARY_TRIBE, built: NONE, level });
+  sim.world.add(e, Building, {
+    buildingType: typeId,
+    tribe: opts.tribe ?? PRIMARY_TRIBE,
+    built: NONE,
+    level,
+  });
   sim.world.add(e, UnderConstruction, { labor: NONE });
   sim.world.add(e, Stockpile, { amounts: new Map<number, number>() });
   if (def?.hitpoints !== undefined) sim.world.add(e, Health, { hitpoints: 1, max: def.hitpoints });

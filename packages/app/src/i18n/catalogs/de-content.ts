@@ -508,6 +508,11 @@ export const deContent = {
       summary:
         'Ein Wohnhaus wird wieder zur Baustelle und steigt gegen Zahlung der Kostendifferenz um eine Stufe auf. Ein zweites Wohnhaus wartet darauf, dass du auf „Ausbauen“ klickst.',
     },
+    'frank-construction': {
+      title: 'Bauphasen der Franken',
+      summary:
+        'Eine fränkische Steinmetzhütte wächst aus ihrem Fundament, daneben werden eine Steinmetzhütte und eine Druidenhütte ausgebaut.',
+    },
     'upgrade-tribes': {
       title: 'Ausbau verschiedener Kulturen',
       summary:

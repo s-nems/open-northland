@@ -31,8 +31,9 @@ export const BUILDING_JOINERY_02 = 25;
 export const BUILDING_JOINERY_03 = 26;
 /** The armory (`work_armory_00`). */
 export const BUILDING_ARMORY = 27;
-/** The mason's hut (`work_mason_hut_00`). */
+/** The mason's hut (`work_mason_hut_00`) and its upgrade (`work_mason_hut_01`). */
 export const BUILDING_MASON_HUT = 29;
+export const BUILDING_MASON_HUT_01 = 30;
 /** The smithy (`work_smithy_00`). */
 export const BUILDING_SMITHY = 31;
 /** The druid's hut (`work_druid_00`) and its potion-brewing upgrade (`work_druid_01`). */

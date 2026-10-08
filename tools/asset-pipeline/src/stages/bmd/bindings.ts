@@ -1,4 +1,3 @@
-import { readFile } from 'node:fs/promises';
 import {
   type BmdPaletteBinding,
   cifBytesToSections,
@@ -15,7 +14,7 @@ import {
   type RuleSection,
 } from '../../decoders/ini.js';
 import { CULTURESNATION_MOD } from '../../mod-root.js';
-import { resolveSourceFile, type SourceRoots } from '../../roots.js';
+import { readSourceFile, resolveSourceFile, type SourceRoots } from '../../roots.js';
 
 /**
  * One graphics-binding resolution: every `(bmd, palette)` binding, the palette `editname` index, and the
@@ -189,7 +188,7 @@ async function readSections(
   try {
     const path = await resolveSourceFile(roots, relPath);
     if (path === undefined) throw new Error('unresolved');
-    const bytes = await readFile(path);
+    const bytes = await readSourceFile(roots, path);
     return encrypted ? cifBytesToSections(bytes) : iniBytesToSections(bytes);
   } catch {
     console.warn(`[pipeline] graphics binding source not found or corrupt, skipping: ${relPath}`);

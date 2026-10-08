@@ -64,7 +64,7 @@ export async function buildIr(roots: SourceRoots): Promise<ContentSet> {
     buildingSoldierFlagPoints,
     buildingHolyFirePoints,
     buildingGraphicsOverlays,
-  } = await extractIniTables(await resolveIniSources(roots));
+  } = await extractIniTables(roots, await resolveIniSources(roots));
   const { jobGraphics, jobChanges } = await loadJobGraphics(roots);
   const humanPalettes = await loadHumanPalettes(roots, jobGraphics, jobChanges, goods);
   const vehicleGraphics = buildVehicleGraphics({
