@@ -1193,6 +1193,16 @@ export const enGame = {
         'Mead and potions. One bottle of each kind per man; a man with a small potion is not sent for the big one.',
       charms: 'Amulets',
       charmsTip: 'One of each kind per man. An amulet is never used up.',
+      shortage: {
+        lacking: 'Without one: {count}',
+        soldiers: {
+          one: '(including {count} soldier)',
+          few: '(including {count} soldiers)',
+          many: '(including {count} soldiers)',
+        },
+        short: 'Not enough for everyone: the rest wait for more.',
+        covered: 'Enough for everyone.',
+      },
       audience: {
         label: 'who receives it',
         none: 'Nobody',

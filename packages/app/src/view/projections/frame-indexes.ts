@@ -28,6 +28,7 @@ import { readMinimapIndexes } from '../../hud/minimap/dots.js';
 import { standingNodesRevision } from '../../hud/minimap/live-objects.js';
 import { restingBuildingsOf } from '../../hud/tool-panel/messages/workshop-stalls.js';
 import { assistantBookingsOf } from '../assistant-bookings.js';
+import { gearTalliesOf } from '../assistant-shortages.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
@@ -75,6 +76,7 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
   { name: 'minimap layers', read: (snapshot) => readMinimapIndexes(snapshot) },
   { name: 'minimap standing nodes', read: (snapshot) => standingNodesRevision(snapshot, NO_GOODS) },
   { name: 'construction signs', read: (snapshot) => entitiesWith(snapshot, 'UnderConstruction') },
+  { name: 'assistant gear tallies', read: (snapshot) => gearTalliesOf(snapshot) },
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },
   { name: 'staff', read: (snapshot) => staffOf(snapshot, NO_ENTITY) },

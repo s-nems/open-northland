@@ -44,7 +44,7 @@ export const ASSISTANT_SCAN_PERIOD_TICKS = 2 * TICKS_PER_SECOND;
  * work with them, a civilist never operating a workplace. It binds only the assistant; the player may
  * still equip a scout by hand.
  */
-function toolHelpsJob(content: ContentSet, jobType: number): boolean {
+export function toolHelpsJob(content: ContentSet, jobType: number): boolean {
   return !isFighterJob(content, jobType) && !isScoutJob(content, jobType) && jobType !== CIVILIST_JOB;
 }
 

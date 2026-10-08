@@ -80,6 +80,7 @@ import type { AmbientWeather } from '../ambient-weather.js';
 import { seatBookingsOf } from '../assistant-bookings.js';
 import { assistantCountersSeam } from '../assistant-counters.js';
 import { assistantGrantsSeam } from '../assistant-grants.js';
+import { assistantShortagesOf } from '../assistant-shortages.js';
 import type { CameraController } from '../camera/index.js';
 import {
   cameraCenteredOnTile,
@@ -521,6 +522,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const vehicleSiteTypes = new Set(
       host.content.buildings.filter((b) => b.kind === BUILDING_KIND.vehicle).map((b) => b.typeId),
     );
+    const goodTypeById = new Map(host.content.goods.map((g) => [g.id, g.typeId]));
     const toolPanel = await mountGameToolPanel({
       settlerName: (entity) => settlerName({ jobs: host.content.jobs, mapText }, entity),
       app,
@@ -534,6 +536,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         counters: assistantCountersSeam(host, viewer.seat, issueCommand, !readOnly),
         switches: assistantGrantsSeam(host, host.content, viewer.seat, issueCommand, !readOnly),
         bookings: () => assistantBookingsFor(host.snapshot()),
+        shortages: () =>
+          assistantShortagesOf(host.snapshot(), host.content, (id) => goodTypeById.get(id), viewer.seat()),
         access: () => (viewer.seat() === null ? 'noSeat' : readOnly ? 'watching' : 'control'),
         tooltip: assistantTip,
         paintGood: goodIcons,

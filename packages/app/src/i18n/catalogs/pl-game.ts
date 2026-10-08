@@ -1172,6 +1172,16 @@ export const plGame = {
         'Miód pitny i mikstury. Po jednej butelce każdego rodzaju na osobę; kto ma małą miksturę, nie idzie po dużą.',
       charms: 'Amulety',
       charmsTip: 'Po jednym każdego rodzaju na osobę. Amulet się nie zużywa.',
+      shortage: {
+        lacking: 'Bez tego: {count}',
+        soldiers: {
+          one: '(w tym {count} żołnierz)',
+          few: '(w tym {count} żołnierzy)',
+          many: '(w tym {count} żołnierzy)',
+        },
+        short: 'Nie starczy dla wszystkich: reszta poczeka na dostawę.',
+        covered: 'Starczy dla wszystkich.',
+      },
       audience: {
         label: 'kto dostaje',
         none: 'Nikt',
