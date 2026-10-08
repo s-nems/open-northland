@@ -18,7 +18,8 @@ export const UI_CUE_FILES: Readonly<Record<UiCue, string>> = {
   earthquake: 'misc/earthquak.wav',
 };
 
-/** Gain of a hardwired cue - full scale, the original's 100 against the static groups' 80 (`SFX_GAIN`). */
+/** Gain of a hardwired cue - full scale, the original's 100 on the authored volume scale where the
+ *  static groups mostly author 80 ({@link import('./bank.js').authoredVolumeGain}). */
 export const UI_CUE_GAIN = 1;
 
 /** The centred, full-gain one-shot a cue plays. Keyed per cue, so in game the arbiter's key

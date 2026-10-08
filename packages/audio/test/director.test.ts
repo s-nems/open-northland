@@ -6,11 +6,12 @@ import { describe, expect, it } from 'vitest';
 import {
   AMBIENT_MAX_PAN,
   type AudioTerrain,
+  authoredVolumeGain,
   buildSoundIndex,
+  DEFAULT_AUTHORED_VOLUME,
   defaultBindings,
   directAudio,
   HOUSE_CRASH_MIN_BUILT,
-  JINGLE_GAIN,
   type SoundBindings,
 } from '../src/index.js';
 
@@ -26,6 +27,7 @@ const bank: SoundBank = {
     { name: 'Open Wooden Chest', sfx: [{ file: 'static/woodenchest.wav', params: [80] }] },
     { name: 'Open Magical Chest', sfx: [{ file: 'static/magicalchest.wav', params: [80] }] },
     { name: 'Woodcutter Axe', logicSoundType: 9, sfx: [{ file: 'static/axe01.wav', params: [80] }] },
+    { name: 'Watering Can', logicSoundType: 13, sfx: [{ file: 'static/wateringcan.wav', params: [30] }] },
     // Combat impact groups, named by id like every cue group: the weapon's `soundtype_Hit` / `_NoHit`
     // tables carry the id onto the hit and miss events.
     {
@@ -101,8 +103,10 @@ const terrainPatterns = [
   { typeId: 3, patternId: 8, logicType: 1 }, // water
 ] as unknown as TerrainPattern[];
 
-/** `logicSoundType` ids the fixture bank carries: the woodcutter's axe and the male chat voice. */
+/** `logicSoundType` ids the fixture bank carries: the woodcutter's axe, the watering can and the chat
+ *  voices. */
 const SOUND_AXE = 9;
+const SOUND_WATERING_CAN = 13;
 const SOUND_SOCIALTALK_MALE = 61;
 const SOUND_SOCIALTALK_FEMALE = 62;
 const index = buildSoundIndex(bank, gfxPatterns, terrainPatterns);
@@ -171,6 +175,9 @@ function direct(
   });
 }
 
+/** The fixture's jingles author no volume, so they play at the default's. */
+const UNAUTHORED_GAIN = authoredVolumeGain(DEFAULT_AUTHORED_VOLUME);
+
 describe('directAudio one-shots', () => {
   it('does not invent a placement sound before any builder starts hammering', () => {
     const frame = direct([{ kind: 'buildingPlaced', entity: entity(7), at: { hx: 11, hy: 10 } }]);
@@ -205,7 +212,7 @@ describe('directAudio one-shots', () => {
     const frame = direct([{ kind: 'buildingFinished', entity: entity(7) }], { localPlayer: 0 });
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['jingles/jingles_housebuilt.wav']);
-    expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
+    expect(frame.oneShots[0]?.gain).toBeCloseTo(UNAUTHORED_GAIN, 5);
     expect(frame.oneShots[0]?.pan).toBe(0);
     expect(frame.oneShots[0]?.key).toBe('buildingFinished:7');
     // The house-built hold from the original's per-MusicType duck table.
@@ -542,7 +549,7 @@ describe('directAudio screen-gated jingles', () => {
     // screen gate decides audibility only, so the jingle keeps its stinger character.
     const frame = directBuildingFinishedAt(8, 5, LOCAL);
     expect(frame.oneShots).toHaveLength(1);
-    expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
+    expect(frame.oneShots[0]?.gain).toBeCloseTo(UNAUTHORED_GAIN, 5);
     expect(frame.oneShots[0]?.pan).toBe(0);
   });
 
@@ -604,7 +611,7 @@ describe('directAudio screen-gated jingles', () => {
     expect(frame.oneShots).toHaveLength(1);
     expect(frame.oneShots[0]?.files).toEqual(['jingles/jingles_civildefense.wav']);
     expect(frame.oneShots[0]?.duckMusicMs).toBe(5000);
-    expect(frame.oneShots[0]?.gain).toBeCloseTo(JINGLE_GAIN, 5);
+    expect(frame.oneShots[0]?.gain).toBeCloseTo(UNAUTHORED_GAIN, 5);
   });
 });
 
@@ -677,6 +684,18 @@ describe('authored cue one-shots', () => {
     expect(shot?.files).toEqual(['voice/male_social.wav']);
     expect(shot?.gain).toBeGreaterThan(0);
     expect(shot?.pan).toBeCloseTo(0, 5); // centred emitter
+  });
+
+  it('plays each group at its authored volume, so a quiet one ranks under a loud one at the same spot', () => {
+    const [axe, can] = direct([
+      { kind: 'atomicSound', entity: entity(3), soundType: SOUND_AXE },
+      { kind: 'atomicSound', entity: entity(3), soundType: SOUND_WATERING_CAN },
+    ]).oneShots;
+    expect(axe?.files).toEqual(['static/axe01.wav']);
+    expect(can?.files).toEqual(['static/wateringcan.wav']);
+    // Centred on screen, so the spatial gain is 1 and the authored one is all that is left.
+    expect(axe?.gain).toBeCloseTo(authoredVolumeGain(80), 9);
+    expect(can?.gain).toBeCloseTo(authoredVolumeGain(30), 9);
   });
 
   it('resolves the female clip cue to the female group', () => {

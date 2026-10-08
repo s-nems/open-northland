@@ -5,13 +5,13 @@ import type { WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import {
   ANIMAL_ROLL_RANGE,
+  authoredVolumeGain,
   buildSoundIndex,
   defaultBindings,
   directAudio,
   GENERIC_ROLL_RANGE,
   MAX_CHATTER_TICKS_PER_FRAME,
   MAX_PAN,
-  SFX_GAIN,
 } from '../src/index.js';
 
 /**
@@ -143,13 +143,17 @@ function direct(opts: {
   }).oneShots;
 }
 
+/** The fixture's authored volumes: 80 on the answers, 40 on the natter. */
+const ANSWER_GAIN = authoredVolumeGain(80);
+const CHATTER_GAIN = authoredVolumeGain(40);
+
 describe('order responses', () => {
-  it('answers each ordered settler in its own lifelong "ok" voice, at full gain and self-exclusive', () => {
+  it('answers each ordered settler in its own lifelong "ok" voice, unattenuated and self-exclusive', () => {
     const shots = direct({ responses: [2, 3] });
     expect(shots.map((s) => s.files)).toEqual([['humantalk/m1ok01.wav'], ['humantalk/m2ok01.wav']]);
     expect(shots.map((s) => s.key)).toEqual(['respond:Viking male ok 01', 'respond:Viking male ok 02']);
     for (const s of shots) {
-      expect(s.gain).toBe(SFX_GAIN);
+      expect(s.gain).toBe(ANSWER_GAIN);
       expect(s.exclusive).toBe('group'); // nothing while any line of the pool still sounds
     }
     // The same settler asked again answers with the same voice: id 2 is always pool 0.
@@ -193,7 +197,7 @@ describe('order responses', () => {
     expect(shots).toHaveLength(1);
     expect(shots[0]?.files).toEqual(['humantalk/f1ok01.wav']);
     expect(shots[0]?.pan).toBe(MAX_PAN);
-    expect(shots[0]?.gain).toBe(SFX_GAIN);
+    expect(shots[0]?.gain).toBe(ANSWER_GAIN);
   });
 
   it('answers nothing for a child, a bear or a settler no longer in the snapshot', () => {
@@ -217,7 +221,7 @@ describe('idle chatter', () => {
     expect(shots.map((s) => s.files)).toEqual([['generic/m 01.wav']]);
     expect(shots[0]?.key).toBe('generic:Generic Viking Male');
     expect(shots[0]?.exclusive).toBe('wav');
-    expect(shots[0]?.gain).toBeCloseTo(SFX_GAIN); // picked man 3, centred on screen
+    expect(shots[0]?.gain).toBeCloseTo(CHATTER_GAIN); // picked man 3, centred on screen
   });
 
   it('polls the first pool first, so a die under both counts speaks through the child', () => {

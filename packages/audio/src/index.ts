@@ -22,7 +22,14 @@ export {
   VOICE_BURST,
   VOICE_STARTS_PER_S,
 } from './data/arbiter.js';
-export { buildSoundIndex, type SoundIndex } from './data/bank.js';
+export {
+  AUTHORED_VOLUME_MAX,
+  AUTHORED_VOLUME_RANGE_DB,
+  authoredVolumeGain,
+  buildSoundIndex,
+  DEFAULT_AUTHORED_VOLUME,
+  type SoundIndex,
+} from './data/bank.js';
 export { defaultBindings } from './data/bindings.js';
 export {
   AMBIENT_FULL_COVERAGE,
@@ -33,10 +40,8 @@ export {
   directAudio,
   GENERIC_ROLL_RANGE,
   HOUSE_CRASH_MIN_BUILT,
-  JINGLE_GAIN,
   MAX_AMBIENT_BEDS,
   MAX_CHATTER_TICKS_PER_FRAME,
-  SFX_GAIN,
 } from './data/director/index.js';
 export {
   clampVolume,

@@ -1,11 +1,10 @@
 import { type HumanVoices, VOICE_CLASSES } from '@open-northland/data';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
-import { groupFiles, type SoundIndex } from '../bank.js';
+import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
 import { creatureTribe, entityOwner, entityTile, isPerson, type TilePoint } from '../snapshot.js';
 import { computePan, computeSpatial } from '../spatial.js';
 import type { ChatterInput, DirectorInput, Lane, OneShot } from '../types.js';
 import { humanVoicesOf, responseGroup } from '../voices.js';
-import { SFX_GAIN } from './events.js';
 
 /**
  * The creatures' own voices, none of them a sim event: a settler answering the player's order, the idle
@@ -48,7 +47,7 @@ export function responseShots(input: DirectorInput): OneShot[] {
     const tile = entityTile(e.components);
     shots.push({
       files,
-      gain: SFX_GAIN,
+      gain: poolGain(index, files),
       pan: tile === null ? 0 : computePan(tile.col, tile.row, camera, canvasW),
       key: `respond:${group}`,
       exclusive: 'group',
@@ -122,7 +121,8 @@ function speakerShot(
   if (visibleTile !== undefined && !visibleTile(speaker.tile.col, speaker.tile.row)) return null;
   const spatial = computeSpatial(speaker.tile.col, speaker.tile.row, camera, canvasW, canvasH);
   if (spatial === null) return null;
-  return { files, gain: spatial.gain * SFX_GAIN, pan: spatial.pan, key, exclusive: 'wav', lane: VOICE_LANE };
+  const gain = spatial.gain * poolGain(input.index, files);
+  return { files, gain, pan: spatial.pan, key, exclusive: 'wav', lane: VOICE_LANE };
 }
 
 /** One of a group, picked by the roll source. */

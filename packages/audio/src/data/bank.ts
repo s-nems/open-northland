@@ -14,7 +14,7 @@ import type {
  * terrain→ambient join (`typeId → bed names`) the raw bank can't express.
  */
 export interface SoundIndex {
-  /** Lower-cased static-group name → its interchangeable wav files (the engine picks one per play). */
+  /** Lower-cased static-group name → its interchangeable wav files (the arbiter picks one per play). */
   readonly groupsByName: ReadonlyMap<string, readonly string[]>;
   /** A static group's `logicSoundType` id → its wav files - the id space animation events reference
    *  (`event <frame> 34 <id>`; the sim's `atomicSound` carries it as `soundType`). First-listed group
@@ -37,6 +37,46 @@ export interface SoundIndex {
   readonly heroJobs: ReadonlySet<number>;
   /** Animal tribe → its unprompted call and the roll that gates it. */
   readonly animalCalls: ReadonlyMap<number, AnimalCall>;
+  /** A static group's or jingle's file list (the very array the maps above hold) → the gain of its
+   *  authored volume ({@link authoredVolumeGain}). */
+  readonly poolGains: ReadonlyMap<readonly string[], number>;
+}
+
+/** The top of the data's per-wav volume scale, which plays at full gain. */
+export const AUTHORED_VOLUME_MAX = 100;
+/** The dB span the authored 0-100 volume covers, linear in dB: 100 plays at 0 dB, 50 at -10 dB. The
+ *  original's scale, unconfirmed in play. */
+export const AUTHORED_VOLUME_RANGE_DB = 20;
+/** The volume of a group that authors none (a custom bank's): the data's majority, which most work
+ *  sounds, answers and jingles carry. */
+export const DEFAULT_AUTHORED_VOLUME = 80;
+/** Where a static group's or jingle's `SFX` line keeps its volume among the trailing integers. */
+const VOLUME_PARAM = 0;
+
+/** An authored 0-100 volume as linear gain over {@link AUTHORED_VOLUME_RANGE_DB}; 0 or below is
+ *  silent, as the original skips a play of volume 0. */
+export function authoredVolumeGain(volume: number): number {
+  if (!(volume > 0)) return 0;
+  const v = Math.min(volume, AUTHORED_VOLUME_MAX);
+  return 10 ** (((v / AUTHORED_VOLUME_MAX - 1) * AUTHORED_VOLUME_RANGE_DB) / 20);
+}
+
+/** The gain a pool's authored volume plays at; a list the index did not build gets the default's. */
+export function poolGain(index: SoundIndex, files: readonly string[]): number {
+  return index.poolGains.get(files) ?? authoredVolumeGain(DEFAULT_AUTHORED_VOLUME);
+}
+
+/**
+ * A group's authored volume. Approximation: the original sets the volume per wav, and a group whose
+ * wavs differ (a few unbound murmur pools mixing 40 laughs with 80 lines) plays all at its loudest.
+ */
+function groupVolume(sfx: readonly SoundSfx[]): number {
+  let volume: number | undefined;
+  for (const s of sfx) {
+    const v = s.params[VOLUME_PARAM];
+    if (s.file !== SILENT_PLACEHOLDER_FILE && v !== undefined) volume = Math.max(volume ?? v, v);
+  }
+  return volume ?? DEFAULT_AUTHORED_VOLUME;
 }
 
 /**
@@ -99,9 +139,11 @@ export function buildSoundIndex(
 ): SoundIndex {
   const groupsByName = new Map<string, readonly string[]>();
   const groupsByLogicSoundType = new Map<number, readonly string[]>();
+  const poolGains = new Map<readonly string[], number>();
   for (const g of sounds.staticGroups) {
     if (g.name.trim() === '') continue;
     const files = audibleFiles(g.sfx);
+    poolGains.set(files, authoredVolumeGain(groupVolume(g.sfx)));
     groupsByName.set(g.name.toLowerCase(), files);
     if (g.logicSoundType !== undefined && !groupsByLogicSoundType.has(g.logicSoundType)) {
       groupsByLogicSoundType.set(g.logicSoundType, files);
@@ -111,10 +153,15 @@ export function buildSoundIndex(
   const jinglesByMusicType = new Map<number, readonly string[]>();
   for (const j of sounds.jingles) {
     if (j.musicType === undefined) continue;
-    jinglesByMusicType.set(j.musicType, audibleFiles(j.sfx));
+    const files = audibleFiles(j.sfx);
+    poolGains.set(files, authoredVolumeGain(groupVolume(j.sfx)));
+    jinglesByMusicType.set(j.musicType, files);
   }
 
-  // Ambient bed name → its loop wav, plus pattern-group name → bed names (the join's middle table).
+  // Ambient bed name → its loop wav, plus pattern-group name → bed names (the join's middle table). A
+  // pattern bed authors `0 0 0` (weight, volume, chance): its level is its screen coverage, not a
+  // volume. The landscape groups' `<weight> <volume> <chance>` belong to the object ambience (birds,
+  // branch cracks), which is still to be played; its chance is the per-tick roll, not a bed level.
   const ambientLoopByName = new Map<string, string>();
   const bedsByPatternGroup = new Map<string, string[]>();
   for (const a of sounds.ambient) {
@@ -172,6 +219,7 @@ export function buildSoundIndex(
     humanVoices,
     heroJobs,
     animalCalls,
+    poolGains,
   };
 }
 

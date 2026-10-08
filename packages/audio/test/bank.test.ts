@@ -1,9 +1,15 @@
 import type { GfxPattern, HumanVoices, SoundBank, TerrainPattern } from '@open-northland/data';
 import type { EntitySnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { BORROWED_TRIBE_VOICES, groupFiles, SILENT_PLACEHOLDER_FILE } from '../src/data/bank.js';
+import { BORROWED_TRIBE_VOICES, groupFiles, poolGain, SILENT_PLACEHOLDER_FILE } from '../src/data/bank.js';
 import { humanVoicesOf, responseGroup } from '../src/data/voices.js';
-import { buildSoundIndex } from '../src/index.js';
+import {
+  AUTHORED_VOLUME_MAX,
+  AUTHORED_VOLUME_RANGE_DB,
+  authoredVolumeGain,
+  buildSoundIndex,
+  DEFAULT_AUTHORED_VOLUME,
+} from '../src/index.js';
 
 /**
  * The sound index build: the raw bank's lookups plus the terrain→ambient join that bridges a map
@@ -126,6 +132,45 @@ describe('buildSoundIndex', () => {
 
   it('indexes both hero and heroine job slugs for the authored hero response rule', () => {
     expect(index.heroJobs).toEqual(new Set([42, 47]));
+  });
+
+  it('keys each pool`s authored gain by the very file list the lookups hand out', () => {
+    const hammer = groupFiles(index, 'Hammer Wood') ?? [];
+    expect(poolGain(index, hammer)).toBeCloseTo(authoredVolumeGain(80), 9);
+    const jingle = index.jinglesByMusicType.get(26) ?? [];
+    expect(poolGain(index, jingle)).toBe(authoredVolumeGain(DEFAULT_AUTHORED_VOLUME)); // authors none
+    expect(poolGain(index, ['not/indexed.wav'])).toBe(authoredVolumeGain(DEFAULT_AUTHORED_VOLUME));
+  });
+
+  it('plays a group whose wavs disagree at its loudest, ignoring its silent slots', () => {
+    const mixed = buildSoundIndex(
+      {
+        ...bank,
+        staticGroups: [
+          {
+            name: 'Talk',
+            sfx: [
+              { file: 'laugh.wav', params: [40] },
+              { file: 'line.wav', params: [80] },
+              { file: SILENT_PLACEHOLDER_FILE, params: [100] },
+            ],
+          },
+        ],
+      },
+      [],
+      [],
+    );
+    expect(poolGain(mixed, groupFiles(mixed, 'Talk') ?? [])).toBeCloseTo(authoredVolumeGain(80), 9);
+  });
+});
+
+describe('authoredVolumeGain', () => {
+  it(`is linear in dB over ${AUTHORED_VOLUME_RANGE_DB} dB, full gain at the top and silent at 0`, () => {
+    expect(authoredVolumeGain(AUTHORED_VOLUME_MAX)).toBe(1);
+    const halfDb = 20 * Math.log10(authoredVolumeGain(AUTHORED_VOLUME_MAX / 2));
+    expect(halfDb).toBeCloseTo(-AUTHORED_VOLUME_RANGE_DB / 2, 9);
+    expect(authoredVolumeGain(0)).toBe(0);
+    expect(authoredVolumeGain(AUTHORED_VOLUME_MAX * 2)).toBe(1); // clamped to the scale
   });
 });
 

@@ -7,7 +7,7 @@ import {
   type SimEvent,
   type WorldSnapshot,
 } from '@open-northland/sim';
-import { groupFiles, type SoundIndex } from '../bank.js';
+import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
 import { JINGLE_DUCK_HOLD_MS } from '../bindings.js';
 import type { ShotLayer } from '../perspective.js';
 import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
@@ -25,11 +25,6 @@ import { humanVoicesOf } from '../voices.js';
  * thud) resolves by that id instead of a binding.
  */
 
-/** Base gain of a life-event jingle (kept below 1 so a jingle doesn't clip over SFX). */
-export const JINGLE_GAIN = 0.9;
-/** Base gain of a spatial action SFX, multiplied by its spatial (distance) attenuation. Approximation:
- *  settler voices share it, since the data ranks no authored cue above another. */
-export const SFX_GAIN = 0.8;
 /**
  * Least construction progress (fixed-point fraction of ONE) at which a destroyed building crashes
  * audibly. Original behavior: a finished house, a house
@@ -74,14 +69,15 @@ function soundKey(ev: SimEvent, sound: EventSound): string {
   return sound.kind === 'spatial' ? `${key}:${ev.chestKind}` : `${key}:jingle`;
 }
 
-/** A jingle's one-shot: full gain, centred, carrying the music duck its `MusicType` holds for, in the
- *  jingle lane under that type. */
-function jingleShot(files: readonly string[], key: string, musicType: number): OneShot {
+/** A jingle's one-shot: at its authored volume, centred, carrying the music duck its `MusicType` holds
+ *  for, in the jingle lane under that type. */
+function jingleShot(index: SoundIndex, files: readonly string[], key: string, musicType: number): OneShot {
   const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(musicType);
   const lane: Lane = { kind: 'jingle', musicType };
+  const gain = poolGain(index, files);
   return duckMusicMs === undefined
-    ? { files, gain: JINGLE_GAIN, pan: 0, key, lane }
-    : { files, gain: JINGLE_GAIN, pan: 0, key, duckMusicMs, lane };
+    ? { files, gain, pan: 0, key, lane }
+    : { files, gain, pan: 0, key, duckMusicMs, lane };
 }
 
 const SFX_LANE: Lane = { kind: 'sfx' };
@@ -127,8 +123,8 @@ interface PendingBase {
  * A resolved positioned event waiting for its location. An `sfx` attenuates and pans; a `cue` (an
  * animation's authored sound, always a settler's own body) additionally hides behind the viewer's fog; a
  * `scream` is the struck body's own voice, resolved from the victim's snapshot identity once located; a
- * `stinger` (screen-gated jingle) rings at full {@link JINGLE_GAIN}, centred - the viewport cull decides
- * its audibility only.
+ * `stinger` (screen-gated jingle) rings at its authored volume, centred - the viewport cull decides its
+ * audibility only.
  */
 type Pending =
   | (PendingBase & { readonly kind: 'sfx' })
@@ -293,7 +289,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
         if (sound.localPlayerOnly && 'player' in ev && !firesForLocalPlayer(ev, localPlayer)) continue;
         if (sound.screenGated !== true) {
           if (sound.localPlayerOnly && !('player' in ev)) continue; // no owner path for a map-wide jingle
-          shots.push(jingleShot(files, soundKey(ev, sound), sound.musicType));
+          shots.push(jingleShot(index, files, soundKey(ev, sound), sound.musicType));
           continue;
         }
         const node = eventNode(ev);
@@ -359,11 +355,11 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     }
     if (spatial === null) continue; // off screen → silent
     if (p.kind === 'stinger') {
-      shots.push(jingleShot(files, p.key, p.musicType));
+      shots.push(jingleShot(index, files, p.key, p.musicType));
     } else {
       shots.push({
         files,
-        gain: spatial.gain * SFX_GAIN,
+        gain: spatial.gain * poolGain(index, files),
         pan: spatial.pan,
         key: p.key,
         lane: p.kind === 'scream' ? VOICE_LANE : SFX_LANE,
