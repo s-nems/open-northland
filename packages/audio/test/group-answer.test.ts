@@ -331,6 +331,24 @@ describe('refused orders', () => {
     }).oneShots;
     expect(keysOf(shots)).toEqual(['respond:Viking male ok 03']);
   });
+
+  it('keeps the fallback cue of the orders one frame merges', () => {
+    const building = (id: number): EntitySnapshot => ({
+      id,
+      components: { Position: { x: 0, y: 0 }, Building: {} },
+    });
+    const shots = directAudio({
+      events: [],
+      snapshot: snapshotOf([building(40), building(41)]),
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index,
+      bindings,
+      responses: [{ members: [40] }, { members: [41], fallback: 'confirm' }],
+    }).oneShots;
+    expect(shots.map((s) => s.files)).toEqual([[UI_CUE_FILES.confirm]]);
+  });
 });
 
 describe('music under an answer', () => {

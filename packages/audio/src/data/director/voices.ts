@@ -30,9 +30,9 @@ export const MAX_CHATTER_TICKS_PER_FRAME = 5;
 
 /**
  * The answers to this frame's orders, panned but neither culled nor attenuated, so a group ordered off
- * screen still answers. Orders given in one frame answer as one group ({@link groupAnswerShots}); an
- * order every member refused answers only when nothing was accepted beside it. In no lane: an answer
- * to the player's own click is never rationed away.
+ * screen still answers. Orders given in one frame answer as one group ({@link groupAnswerShots}), with
+ * the first fallback cue among them; an order every member refused answers only when nothing was
+ * accepted beside it. In no lane: an answer to the player's own click is never rationed away.
  */
 export function responseShots(input: DirectorInput): OneShot[] {
   const responses = input.responses;
@@ -40,7 +40,8 @@ export function responseShots(input: DirectorInput): OneShot[] {
   const accepted = responses.filter((answer) => answer.refused !== true);
   if (accepted.length === 0) return responses.flatMap((answer) => groupAnswerShots(input, answer));
   const members = new Set(accepted.flatMap((answer) => answer.members));
-  return groupAnswerShots(input, { members: [...members] });
+  const fallback = accepted.find((answer) => answer.fallback !== undefined)?.fallback;
+  return groupAnswerShots(input, { members: [...members], ...(fallback === undefined ? {} : { fallback }) });
 }
 
 /** The acknowledgement of this frame's selection, if the player took one ({@link selectionShots}). */
