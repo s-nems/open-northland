@@ -124,6 +124,40 @@ function decide(scene: Scene, terrain?: AudioTerrain): { shots: readonly OneShot
   return { shots: frame.oneShots, fogChecks };
 }
 
+/** Blows struck in one battle: as many hits as {@link busyScene} has workers. */
+const BATTLE_HITS = 2 * BUSY_SIDE * BUSY_SIDE;
+const IMPACT_SOUND = WORK_SOUND;
+
+/** A snapshot whose entity list counts every element read, as an entity lookup makes them. */
+function countingSnapshot(entities: EntitySnapshot[]): { snapshot: WorldSnapshot; reads: () => number } {
+  let reads = 0;
+  const counted = new Proxy(entities, {
+    get(target, key, receiver) {
+      if (typeof key === 'string' && /^\d+$/.test(key)) reads++;
+      return Reflect.get(target, key, receiver);
+    },
+  });
+  return { snapshot: { tick: 1, entities: counted, events: [] }, reads: () => reads };
+}
+
+/** {@link BATTLE_HITS} blows on settlers standing at half-cell column `hx`. */
+function battleScene(hx: number): Scene & { readonly reads: () => number } {
+  const entities: EntitySnapshot[] = [];
+  const events: SimEvent[] = [];
+  for (let id = 1; id <= BATTLE_HITS; id++) {
+    entities.push(settler(id, hx / 2, BUSY_FROM));
+    events.push({
+      kind: 'combatHit',
+      attacker: id as Entity,
+      target: id as Entity,
+      soundType: IMPACT_SOUND,
+      at: { hx, hy: BUSY_FROM * 2 },
+    });
+  }
+  const { snapshot, reads } = countingSnapshot(entities);
+  return { snapshot, events, onScreen: 0, reads };
+}
+
 describe('listening perspective cost on a busy screen', () => {
   it('hears the on-screen workers and none of the far ones', () => {
     const scene = busyScene(0);
@@ -135,12 +169,26 @@ describe('listening perspective cost on a busy screen', () => {
     expect(farKeys).toEqual([]);
   });
 
-  it('spatialises each frame event once, however many idle settlers the snapshot holds', () => {
+  it('fog-checks only the workers on screen, however many idle settlers the snapshot holds', () => {
     const quiet = decide(busyScene(0));
     const crowded = decide(busyScene(20_000));
-    expect(quiet.fogChecks).toBe(2 * BUSY_SIDE * BUSY_SIDE);
+    expect(quiet.fogChecks).toBe(BUSY_SIDE * BUSY_SIDE);
     expect(crowded.fogChecks).toBe(quiet.fogChecks);
     expect(crowded.shots).toHaveLength(quiet.shots.length);
+  });
+
+  it('reads no entity and checks no fog for a battle off screen', () => {
+    const offScreen = battleScene(FAR_COL * 2);
+    expect(offScreen.reads()).toBe(0);
+    const heard = decide(offScreen);
+    expect(heard.shots).toEqual([]);
+    expect(heard.fogChecks).toBe(0);
+    expect(offScreen.reads()).toBe(0);
+    // The same battle on screen pays for its victims' voices, and is heard.
+    const onScreen = battleScene(BUSY_FROM * 2);
+    const watched = decide(onScreen);
+    expect(watched.shots.length).toBeGreaterThan(0);
+    expect(onScreen.reads()).toBeGreaterThan(0);
   });
 
   it('samples at most its cap of terrain tiles at the widest zoom over a huge map', () => {

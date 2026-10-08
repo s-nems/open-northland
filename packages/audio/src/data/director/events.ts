@@ -118,10 +118,12 @@ interface PendingBase {
   readonly exclusive?: 'wav';
   /** The zoom layer ({@link OneShot.layer}); absent is `detail`. */
   readonly layer?: ShotLayer;
-  /** The explicit `at` half-cell node, or null when the position must come from `entity`'s
-   *  snapshot Position (a fractional tile). The two spaces project through different renderer
-   *  mappings - see {@link computeSpatialAtNode} vs {@link computeSpatial}. */
-  readonly node: HalfCellNode | null;
+  /** Where an event at an explicit `at` node sounds, placed once in pass 1; null only for a stinger
+   *  that still rings from off screen. Unused when `entity` places the sound. */
+  readonly spatial: Spatial | null;
+  /** The entity whose snapshot Position (a fractional tile) places the sound, for an event without a
+   *  node of its own. The two spaces project through different renderer mappings - see
+   *  {@link computeSpatialAtNode} vs {@link computeSpatial}. */
   readonly entity: number | undefined;
 }
 
@@ -202,6 +204,7 @@ function missSoundType(
  */
 function weaponSoundPending(
   ev: SimEvent,
+  spatial: Spatial,
   index: SoundIndex,
   terrain: AudioTerrain | undefined,
 ): Pending | null {
@@ -217,21 +220,21 @@ function weaponSoundPending(
     kind: 'sfx',
     files,
     key: `${ev.kind}:${soundType}:${ev.at.hx},${ev.at.hy}`,
-    node: ev.at,
+    spatial,
     entity: undefined,
     layer: 'impact',
     ...(onBody ? { exclusive: 'wav' as const } : {}),
   };
 }
 
-/** The struck body's scream, waiting for the victim's voice and position; a blow on a building screams
- *  nothing. The same damaging-blow approximation as the impact applies. */
-function screamPending(ev: SimEvent): Extract<Pending, { kind: 'scream' }> | null {
+/** The struck body's scream, waiting for the victim's voice; a blow on a building screams nothing. The
+ *  same damaging-blow approximation as the impact applies. */
+function screamPending(ev: SimEvent, spatial: Spatial): Extract<Pending, { kind: 'scream' }> | null {
   if ((ev.kind !== 'combatHit' && ev.kind !== 'projectileHit') || ev.structure === true) return null;
   return {
     kind: 'scream',
     key: `scream:${ev.at.hx},${ev.at.hy}`,
-    node: ev.at,
+    spatial,
     entity: undefined,
     victim: ev.target as number,
     exclusive: 'wav',
@@ -240,23 +243,30 @@ function screamPending(ev: SimEvent): Extract<Pending, { kind: 'scream' }> | nul
 }
 
 /** The one-shots to fire for this frame's events (action SFX and screen-gated jingles viewport-culled;
- *  map-wide jingles pass through non-spatially). */
+ *  map-wide jingles pass through non-spatially). An event at an explicit node is placed first, so one
+ *  off screen costs no entity read, fog check, pending or key, however big the battle it belongs to. */
 export function eventOneShots(input: DirectorInput): OneShot[] {
   const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer, visibleTile, terrain } =
     input;
   const shots: OneShot[] = [];
   if (events.length === 0) return shots; // the common frame - no events, no snapshot work at all
-  // Pass 1: resolve bindings, emit jingles, and collect the entity ids the spatial events need.
+  // Pass 1: place the node events, resolve bindings, emit jingles, and collect the entity ids the
+  // on-screen and entity-placed events need.
   const pending: Pending[] = [];
   const neededIds = new Set<number>();
   for (const ev of events) {
+    const node = eventNode(ev);
+    const spatial = node === null ? null : computeSpatialAtNode(node.hx, node.hy, camera, canvasW, canvasH);
+    const offScreen = node !== null && spatial === null;
     // A blow names its impact by the weapon's listed id, and the struck body screams in its own voice.
-    const weaponSound = weaponSoundPending(ev, index, terrain);
-    if (weaponSound !== null) pending.push(weaponSound);
-    const scream = screamPending(ev);
-    if (scream !== null) {
-      neededIds.add(scream.victim);
-      pending.push(scream);
+    if (spatial !== null) {
+      const weaponSound = weaponSoundPending(ev, spatial, index, terrain);
+      if (weaponSound !== null) pending.push(weaponSound);
+      const scream = screamPending(ev, spatial);
+      if (scream !== null) {
+        neededIds.add(scream.victim);
+        pending.push(scream);
+      }
     }
     // An authored cue names its sound by the animation event's own `logicSoundType` id (data, not a
     // binding - the clip already picked the axe, the hammer, the sex-correct voice), so it resolves
@@ -266,23 +276,16 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
       const id = eventEntity(ev);
       if (files !== undefined && files.length > 0 && id !== undefined) {
         neededIds.add(id);
-        pending.push({ kind: 'cue', files, key: eventKey(ev), node: null, entity: id });
+        pending.push({ kind: 'cue', files, key: eventKey(ev), spatial: null, entity: id });
       }
       continue;
     }
     // A map script's `PlaySound` names its group the same way, at a point of its own.
     if (ev.kind === 'missionSound') {
       const files = index.groupsByLogicSoundType.get(ev.soundType);
-      if (files !== undefined && files.length > 0) {
+      if (files !== undefined && files.length > 0 && spatial !== null) {
         // A script's sound is a story beat, so it carries from far out like a fight does.
-        pending.push({
-          kind: 'sfx',
-          files,
-          key: eventKey(ev),
-          node: ev.at,
-          entity: undefined,
-          layer: 'impact',
-        });
+        pending.push({ kind: 'sfx', files, key: eventKey(ev), spatial, entity: undefined, layer: 'impact' });
       }
       continue;
     }
@@ -300,7 +303,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
           shots.push(jingleShot(index, files, soundKey(ev, sound), sound.musicType));
           continue;
         }
-        const node = eventNode(ev);
+        if (offScreen && sound.offScreenGain === undefined) continue; // off screen → silent under the gate
         const id = eventEntity(ev);
         let ownerEntity: number | null = null;
         if (sound.localPlayerOnly && !('player' in ev)) {
@@ -313,17 +316,17 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
           kind: 'stinger',
           files,
           key: soundKey(ev, sound),
-          node,
-          entity: id,
+          spatial,
+          entity: node === null ? id : undefined,
           ownerEntity,
           musicType: sound.musicType,
           ...(sound.offScreenGain !== undefined ? { offScreenGain: sound.offScreenGain } : {}),
         });
         continue;
       }
+      if (offScreen) continue;
       const files = groupFiles(index, sound.group);
       if (files === undefined) continue;
-      const node = eventNode(ev);
       const id = node === null ? eventEntity(ev) : undefined;
       if (node === null && id === undefined) continue;
       if (id !== undefined) neededIds.add(id);
@@ -331,13 +334,14 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
         kind: 'sfx',
         files,
         key: soundKey(ev, sound),
-        node,
+        spatial,
         entity: id,
         ...(sound.layer !== undefined ? { layer: sound.layer } : {}),
       });
     }
   }
-  // Pass 2: locate + spatialise the pending positioned events (off-screen or position-less → silent).
+  // Pass 2: place the entity events and spatialise every pending one (off-screen or position-less →
+  // silent); the fog hides only a cue already on screen.
   const facts = neededIds.size > 0 ? emitterFacts(snapshot, index, neededIds) : null;
   for (const p of pending) {
     if (p.kind === 'stinger' && p.ownerEntity !== null) {
@@ -353,14 +357,12 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     } else {
       files = p.files;
     }
-    let spatial: Spatial | null = null;
-    if (p.node !== null) {
-      spatial = computeSpatialAtNode(p.node.hx, p.node.hy, camera, canvasW, canvasH);
-    } else if (p.entity !== undefined) {
+    let spatial = p.spatial;
+    if (p.entity !== undefined) {
       const tile = facts?.tiles.get(p.entity) ?? null;
       if (tile === null) continue; // position-less emitter → silent
-      if (p.kind === 'cue' && visibleTile !== undefined && !visibleTile(tile.col, tile.row)) continue;
       spatial = computeSpatial(tile.col, tile.row, camera, canvasW, canvasH);
+      if (spatial !== null && p.kind === 'cue' && visibleTile?.(tile.col, tile.row) === false) continue;
     }
     if (spatial === null) {
       if (p.kind === 'stinger' && p.offScreenGain !== undefined) {
