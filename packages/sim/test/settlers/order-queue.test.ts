@@ -248,7 +248,7 @@ describe('order queue', () => {
     const sim = freshSim();
     const e = ownedSettler(sim, 2, 2, WOODCUTTER);
     sim.world.add(e, PlayerOrder, {});
-    sim.world.add(e, Rider, { vehicle: e, boarding: false });
+    sim.world.add(e, Rider, { vehicle: e, boarding: false, leaving: false });
     const n = cellAnchorNode(8, 2);
     expect(
       queueBehindCurrentOrder(sim.world, { kind: 'moveUnit', entity: e, x: n.hx, y: n.hy, queued: true }),

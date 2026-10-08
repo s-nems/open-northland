@@ -447,7 +447,7 @@ const VEHICLE_AT = { x: 2, y: 2 } as const;
 function riddenVehicle(sim: Simulation, vehicleType: number, rider: Entity): Entity {
   const vehicle = spawnVehicleDirect(sim, vehicleType, VEHICLE_AT.x, VEHICLE_AT.y);
   sim.world.mut(vehicle, Vehicle).passengers[0] = { entity: rider, inside: false };
-  sim.world.add(rider, Rider, { vehicle, boarding: false });
+  sim.world.add(rider, Rider, { vehicle, boarding: false, leaving: false });
   return vehicle;
 }
 
@@ -475,7 +475,7 @@ describe('right-clicking a standing house with a trader', () => {
     const home = buildingAt(sim, BUILDING_HOME_00, ONE);
     const trader = settlerAt(sim, JOB_TRADER);
     sim.world.remove(trader, Position);
-    sim.world.add(trader, Rider, { vehicle: sim.world.create(), boarding: false });
+    sim.world.add(trader, Rider, { vehicle: sim.world.create(), boarding: false, leaving: false });
 
     expect(await rightClick(sim, [trader], home, sim.content, true, 'riders')).toEqual([
       { kind: 'attachTradeHouse', entity: trader, house: home },

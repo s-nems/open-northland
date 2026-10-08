@@ -147,7 +147,7 @@ export function attachToVehicle(
   world.remove(e, AttackOrder);
   world.remove(e, HuntFocus);
   endChat(world, ctx.tick, e);
-  world.add(e, Rider, { vehicle, boarding: false });
+  world.add(e, Rider, { vehicle, boarding: false, leaving: false });
   const door = vehicleDoorNode(world, ctx, vehicle);
   // The walk order snaps a door another blocker covers to the node beside it, as the rider rung does.
   if (door !== null && world.has(e, Position)) sendUnit(world, ctx, e, door.hx, door.hy);
@@ -260,7 +260,7 @@ export function boardRider(world: World, rider: Entity, vehicle: Entity): void {
   world.remove(rider, HuntFocus);
   world.remove(rider, Position);
   const seat = world.tryMut(rider, Rider);
-  if (seat === undefined) world.add(rider, Rider, { vehicle, boarding: false });
+  if (seat === undefined) world.add(rider, Rider, { vehicle, boarding: false, leaving: false });
   else {
     seat.vehicle = vehicle;
     seat.boarding = false;

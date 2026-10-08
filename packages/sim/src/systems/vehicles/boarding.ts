@@ -166,10 +166,10 @@ export function planRider(
 
 /**
  * Keep riders consistent with their seats: a rider whose vehicle is gone or whose seat was taken away is
- * released, and one that cannot find a way to the door is dropped where it stands with a lost note. A
- * cargo hand's failed walk to a cargo source or store is not a lost door: it takes the planner's ordinary
- * stranded recovery and keeps its seat. Before the planner, so the ladder's rider rung only sees riders
- * that still belong somewhere.
+ * released, one holding a script's detach steps out as soon as its ship lies moored, and one that cannot
+ * find a way to the door is dropped where it stands with a lost note. A cargo hand's failed walk to a
+ * cargo source or store is not a lost door: it takes the planner's ordinary stranded recovery and keeps
+ * its seat. Before the planner, so the ladder's rider rung only sees riders that still belong somewhere.
  */
 export const riderSystem: System = (world, ctx) => {
   const terrain = ctx.terrain;
@@ -183,6 +183,13 @@ export const riderSystem: System = (world, ctx) => {
         if (landing !== null) setDownRider(world, e, landing);
       }
       releaseRider(world, e, rider.vehicle); // gives any cargo booking back too
+      continue;
+    }
+    if (rider.leaving && !world.has(e, Position)) {
+      const landing = landingOf(world, ctx, rider.vehicle);
+      if (landing === null) continue; // still at sea: the order waits for the mooring
+      setDownRider(world, e, landing);
+      releaseRider(world, e, rider.vehicle);
       continue;
     }
     const request = world.tryGet(e, PathRequest);

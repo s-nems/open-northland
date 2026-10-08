@@ -553,8 +553,10 @@ and `FindHumansByPlayersMM` run a vehicle iterator after the human one; `NumberO
 Open Northland (`systems/missions/results/vehicles.ts`, `goals/vehicles.ts`): every result goes
 through `createVehicle`, `removeVehicle` with cause `script`, `attachToVehicle`, `detachFromVehicle`,
 `spawnSettler` and the owner and id stamps; the captain is the type's `commanderJob`, and a type
-without one spawns bare. Named approximations: `AttachHumanToVehicle` stops at a full vehicle; a
-teleported vehicle lands on the first node in hexagon-ring order within radius 9 of its own traversal
+without one spawns bare. Named approximations: `AttachHumanToVehicle` stops at a full vehicle;
+`DetachHumanFromVehicle` taken by a rider aboard a ship at sea is held on the rider (`Rider.leaving`)
+and carried out the tick the ship moors, where the original refuses it and its scripts time the line
+to the crossing; a teleported vehicle lands on the first node in hexagon-ring order within radius 9 of its own traversal
 (ground for a cart, water for a ship) that its walk-block admits and is not already claimed by the same line, with its drive, held goal, mooring and guard reset
 and no goto issued; callback 37 is not identified and not mirrored (*open*); `IsHumanInVehicle` reads
 the `Rider` aboard state. Vehicle goals and results are unconfirmed against the 2001 original.

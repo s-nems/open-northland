@@ -386,6 +386,34 @@ describe('the crew results', () => {
     expect(sim.world.has(crew, Rider)).toBe(false);
     expect(vehiclePassengers(sim.world.get(e, Vehicle))).toHaveLength(0);
   });
+
+  it('DetachHumanFromVehicle taken at sea is carried out the moment the ship moors', () => {
+    const sim = scriptedSim(
+      [firingMission([{ opcode: 'DetachHumanFromVehicle', humanId: CREW_ID }])],
+      testContent(),
+      splitMap(),
+    );
+    const ship = cart(sim, { type: SHIP_SMALL, at: SEA });
+    spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: SEA.hx - 4, hy: SEA.hy } });
+    sim.step();
+    const [crew] = missionObjects(sim.world, CREW_ID);
+    if (crew === undefined) throw new Error('no crew');
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: ship });
+    sim.run(BOARD_TICKS);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+    sim.world.mut(ship, Vehicle).moored = false; // cast off
+    runLoadPass(sim);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true); // nobody steps off at sea
+    expect(sim.world.get(crew, Rider).leaving).toBe(true);
+    expect(sim.events.current().filter((e) => e.kind === 'riderRefused')).toEqual([]);
+    sim.world.mut(ship, Vehicle).moored = true;
+    sim.step();
+    expect(sim.world.has(crew, Rider)).toBe(false);
+    expect(vehiclePassengers(sim.world.get(ship, Vehicle))).toHaveLength(0);
+    const mooring = sim.world.get(ship, Vehicle).mooring;
+    if (mooring === null) throw new Error('the ship lies unmoored');
+    expect(hexDistance(nodeOf(sim, crew), mooring)).toBeLessThanOrEqual(1);
+  });
 });
 
 describe('MoveUnitsInArea', () => {

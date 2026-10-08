@@ -92,9 +92,14 @@ export const Vehicle = defineComponent<{
 /**
  * A settler attached to a vehicle, from the attach order until it is detached. The seat it holds says
  * whether it is inside; `boarding` is the vehicle's request to step in, which the rider answers on the
- * door node. An aboard rider has no `Position`: it stands nowhere on the map until it is set down.
+ * door node, and `leaving` a script's detach taken while the ship lay at sea, which the rider carries
+ * out the moment its ship moors. An aboard rider has no `Position`: it stands nowhere on the map until
+ * it is set down.
  */
-export const Rider = defineComponent<{ vehicle: Entity; boarding: boolean }>('Rider', 'movement');
+export const Rider = defineComponent<{ vehicle: Entity; boarding: boolean; leaving: boolean }>(
+  'Rider',
+  'movement',
+);
 
 /**
  * An animal a cart recruited as its draught animal, from the pick until it is consumed at the cart's

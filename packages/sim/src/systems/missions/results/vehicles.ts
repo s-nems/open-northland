@@ -19,7 +19,13 @@ import { clearNavState } from '../../movement/nav-state.js';
 import { vehicleTraversal } from '../../readviews/vehicles.js';
 import { spawnSettler } from '../../spawn/index.js';
 import { createVehicle } from '../../vehicles/create.js';
-import { attachToVehicle, boardRider, detachFromVehicle, passengerJobAllowed } from '../../vehicles/crew.js';
+import {
+  attachToVehicle,
+  boardRider,
+  detachFromVehicle,
+  isShipAtSea,
+  passengerJobAllowed,
+} from '../../vehicles/crew.js';
 import { dropHeldGoal, endDrive, endMarch, vehicleWalkBlocks } from '../../vehicles/movement.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { removeVehicle } from '../../vehicles/remove.js';
@@ -140,11 +146,23 @@ export function attachScriptedHumans(pass: MissionPass, humanId: number, vehicle
   }
 }
 
-/** `DetachHumanFromVehicle`: every rider with the id takes the seat's detach order. */
+/**
+ * `DetachHumanFromVehicle`: every rider with the id takes the seat's detach order. One aboard a ship
+ * still at sea holds the order and steps out the moment the ship moors (`riderSystem`). Approximation:
+ * the original queues the order and the ship refuses it at sea, so its scripts time the line to the
+ * crossing; a slower crossing here would otherwise leave the crew aboard for good.
+ */
 export function detachScriptedHumans(pass: MissionPass, humanId: number): void {
   const { world, ctx } = pass;
   for (const e of missionHumans(world, humanId)) {
-    if (world.has(e, Rider)) detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e });
+    const rider = world.tryGet(e, Rider);
+    if (rider === undefined) continue;
+    const ship = world.tryGet(rider.vehicle, Vehicle);
+    if (ship !== undefined && !world.has(e, Position) && isShipAtSea(ctx, ship)) {
+      if (!rider.leaving) world.mut(e, Rider).leaving = true;
+      continue;
+    }
+    detachFromVehicle(world, ctx, { kind: 'detachFromVehicle', entity: e });
   }
 }
 

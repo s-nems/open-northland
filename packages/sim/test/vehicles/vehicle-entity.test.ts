@@ -399,7 +399,7 @@ describe('footprint', () => {
     expect(boardingNode(s.world, ctxOf(s), terrain, first)).toBe(terrain.nodeAt(firstDoor.hx, firstDoor.hy));
     const rider = spawnRider(s, 8, 8);
     expect(seatPassenger(s.world, first, rider)).toBe(true);
-    s.world.add(rider, Rider, { vehicle: first, boarding: false });
+    s.world.add(rider, Rider, { vehicle: first, boarding: false, leaving: false });
     boardRider(s.world, rider, first);
     s.enqueue(playerCommand(P0, { kind: 'unloadPeople', vehicle: first }));
     s.step();
