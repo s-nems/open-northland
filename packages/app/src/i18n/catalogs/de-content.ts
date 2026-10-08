@@ -121,7 +121,7 @@ export const deContent = {
     brick: 'Ziegelstein',
     tile: 'Dachziegel',
     pillar: 'Säule',
-    ornament: 'Verzierung',
+    ornament: 'Marmor',
     crockery: 'Geschirr',
     furniture: 'Möbel',
     shoes: 'Schuhe',

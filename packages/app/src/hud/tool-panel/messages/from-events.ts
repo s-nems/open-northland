@@ -1,4 +1,5 @@
 import { entityById, type HalfCellNode, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
+import { isSoldierJob, professionDefForJob } from '../../../catalog/professions.js';
 import {
   isBuilding,
   isPalisade,
@@ -79,7 +80,13 @@ export function pictureOfUnlocks(
   return (worksIn(newJobs) ?? worksIn(ownJob === undefined ? [] : [ownJob]) ?? buildings[0])?.typeId;
 }
 
-/** The technologies of `batch` that `group`'s note lists: those a catalog names. */
+/** Whether a discovered trade is news: one the profession picker offers, other than the soldier, whom
+ *  only the barracks makes. Heroes and the sea trades sit off the picker. */
+function announcesJob(jobType: number): boolean {
+  return professionDefForJob(jobType) !== undefined && !isSoldierJob(jobType);
+}
+
+/** The technologies of `batch` that `group`'s note lists: those a catalog names, trades only when news. */
 function unlocksIn(
   naming: MessageNaming,
   group: UnlockGroup,
@@ -87,7 +94,9 @@ function unlocksIn(
 ): MessageTechnology[] {
   return batch.filter(
     (t) =>
-      (t.kind === 'house') === (group === 'buildings') && naming.technology(t.kind, t.typeId) !== undefined,
+      (t.kind === 'house') === (group === 'buildings') &&
+      (t.kind !== 'job' || announcesJob(t.typeId)) &&
+      naming.technology(t.kind, t.typeId) !== undefined,
   );
 }
 

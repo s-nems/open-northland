@@ -122,7 +122,7 @@ export const enContent = {
     brick: 'Brick',
     tile: 'Roof tile',
     pillar: 'Pillar',
-    ornament: 'Ornament',
+    ornament: 'Marble',
     crockery: 'Crockery',
     furniture: 'Furniture',
     shoes: 'Shoes',

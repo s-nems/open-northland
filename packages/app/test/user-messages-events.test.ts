@@ -297,6 +297,31 @@ describe('user messages from sim events', () => {
     ]);
   });
 
+  it('lists only trades the player can assign, so a hero or soldier gaining experience raises no note', () => {
+    // `jobtypes.ini`: the collector is a picker trade, the iron-spear soldier comes from the barracks,
+    // the sea fisher needs a harbour, and Bjarni is a hero.
+    const [COLLECTOR, SOLDIER_SPEAR_IRON, FISHER_SEA, HERO_BJARNI] = [8, 33, 23, 44];
+    const snap = snapshot(50, [
+      { id: 1, player: LOCAL, kind: 'person' },
+      { id: 2, player: LOCAL, kind: 'person' },
+    ]);
+    const job = (entity: number, typeId: number): SimEvent => ({
+      kind: 'technologyDiscovered',
+      entity: e(entity),
+      player: LOCAL,
+      tribe: 1,
+      technology: 'job',
+      typeId,
+    });
+    const out = run(
+      [job(1, COLLECTOR), job(1, SOLDIER_SPEAR_IRON), job(1, FISHER_SEA), job(2, HERO_BJARNI)],
+      snap,
+    );
+    expect(out.map((m) => [m.subject, m.technologies])).toEqual([
+      [{ kind: 'settler', entity: e(1) }, [{ kind: 'job', typeId: COLLECTOR }]],
+    ]);
+  });
+
   it("announces this seat's completed barracks and school qualifications", () => {
     const snap = snapshot(50, [
       { id: 1, player: LOCAL, kind: 'person' },

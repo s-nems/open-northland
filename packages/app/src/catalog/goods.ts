@@ -66,7 +66,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 124, id: 'brick', name: 'Brick', storable: true },
   { typeId: 125, id: 'tile', name: 'Roof Tile', storable: true },
   { typeId: 126, id: 'pillar', name: 'Pillar', storable: true },
-  { typeId: 127, id: 'ornament', name: 'Ornament', storable: true },
+  { typeId: 127, id: 'ornament', name: 'Marble', storable: true },
   {
     typeId: 128,
     id: 'crockery',

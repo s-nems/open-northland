@@ -121,7 +121,7 @@ export const ruContent = {
     brick: 'Кирпич',
     tile: 'Черепица',
     pillar: 'Колонна',
-    ornament: 'Украшение',
+    ornament: 'Мрамор',
     crockery: 'Посуда',
     furniture: 'Мебель',
     shoes: 'Обувь',

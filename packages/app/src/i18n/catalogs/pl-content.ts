@@ -121,7 +121,7 @@ export const plContent = {
     brick: 'Cegła',
     tile: 'Dachówka',
     pillar: 'Kamienny blok',
-    ornament: 'Ozdoba',
+    ornament: 'Marmur',
     crockery: 'Naczynia',
     furniture: 'Meble',
     shoes: 'Buty',
