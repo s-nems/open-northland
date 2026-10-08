@@ -546,13 +546,14 @@ as the relay's `left` would have.
 
 ## Chat
 
-`chat { text }` is broadcast to the room as `chat { from, text, at }`, where `at` is the relay's wall
-clock when it received the line, in Unix epoch milliseconds. One printable line, at
+`chat { text }` is broadcast to the room as `chat { from, text, at, tick }`, where `at` is the relay's
+wall clock when it received the line, in Unix epoch milliseconds, and `tick` the clock's next tick
+then, null before the clock has started. One printable line, at
 most `MAX_CHAT_LENGTH` (500) characters, like every other string that reaches another person. Unicode
 line and paragraph separators are refused along with control characters.
 
 The relay keeps each room's lines, the lobby's included, up to the newest `MAX_CHAT_HISTORY_LINES`
-(500); the log ends with the room. A member gets `chatHistory { lines: [{ from, text, at }] }`, oldest
+(500); the log ends with the room. A member gets `chatHistory { lines: [{ from, text, at, tick }] }`, oldest
 first, right after the room view each time it enters the room: on creating it, on joining it, and on
 every return of its token, before `start` and `clock`.
 

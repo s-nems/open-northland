@@ -157,11 +157,12 @@ export interface GovernedClock {
 }
 
 /** One line of a room's chat as the relay logged it: `at` is the relay's wall clock when it received
- *  the line, in Unix epoch milliseconds. */
+ *  the line, in Unix epoch milliseconds, and `tick` the clock's next tick then, null before it started. */
 export interface ChatLine {
   readonly from: string;
   readonly text: string;
   readonly at: number;
+  readonly tick: number | null;
 }
 
 export interface WaitedMember {

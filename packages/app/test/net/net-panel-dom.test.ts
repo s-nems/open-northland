@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { TICKS_PER_SECOND } from '@open-northland/net-protocol';
 import { afterEach, describe, expect, it } from 'vitest';
 import { createNetStatusLine } from '../../src/hud/dom/network-status-line.js';
 import { createNetworkWindow } from '../../src/hud/dom/network-window.js';
@@ -131,6 +132,7 @@ const said = (index: number): NetChatLine => ({
   from: 'Ania',
   text: `line ${index}`,
   at: CHAT_OPENED_AT + index * MINUTE_MS,
+  tick: null,
 });
 const stamped = (index: number): string => `${formatClockTime(said(index).at)}Ania:line ${index}`;
 
@@ -182,6 +184,20 @@ describe('the network window', () => {
     window.refresh();
     expect(list?.childElementCount).toBe(CHAT_CAP);
     expect([...(list?.children ?? [])].map((item) => item.textContent)).toEqual([2, 3, 4].map(stamped));
+    window.dispose();
+  });
+
+  it('stamps a line said in the game with the game clock beside the hour', () => {
+    const copy = messages().hud.network;
+    const inGame: NetChatLine = { ...said(0), tick: 5 * TICKS_PER_SECOND };
+    const feed = source(panelModel({ chat: [said(1), inGame], chatVersion: 2 }));
+    const { plane, window } = mountWindow(feed);
+    const stamps = [...plane.querySelectorAll('.on-net-chat__time')];
+    expect(stamps.map((stamp) => stamp.textContent)).toEqual([
+      formatClockTime(said(1).at),
+      `${formatClockTime(inGame.at)} (0:00:05)`,
+    ]);
+    expect(stamps[1]?.getAttribute(TIP)).toBe(copy.tips.chatTime);
     window.dispose();
   });
 });

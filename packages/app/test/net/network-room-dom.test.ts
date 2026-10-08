@@ -287,13 +287,13 @@ describe('room guidance and chat', () => {
     Object.defineProperties(log, { scrollHeight: { value: 1000 }, clientHeight: { value: 200 } });
     log.scrollTop = 100;
     const saidAt = new Date(2026, 0, 1, 21, 47).getTime();
-    room.observeChat({ from: 'Bjorn', text: '<b>Hi</b>', at: saidAt });
+    room.observeChat({ from: 'Bjorn', text: '<b>Hi</b>', at: saidAt, tick: null });
     expect(log.scrollTop).toBe(100);
     expect(log.querySelector('time')?.textContent).toBe(formatClockTime(saidAt));
     expect(log.textContent).toContain('<b>Hi</b>');
     expect(log.querySelector('b')).toBeNull();
     log.scrollTop = 800;
-    room.observeChat({ from: 'Bjorn', text: 'Ready?', at: 0 });
+    room.observeChat({ from: 'Bjorn', text: 'Ready?', at: 0, tick: null });
     expect(log.scrollTop).toBe(1000);
     room.update(lobby(), false);
     input.value = 'Offline';

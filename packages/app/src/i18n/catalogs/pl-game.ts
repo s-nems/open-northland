@@ -292,6 +292,7 @@ export const plGame = {
         vote: 'Wyrzucenie',
       },
       tips: {
+        chatTime: 'Godzina wysłania; w nawiasie czas gry od jej startu',
         ping: 'Czas obiegu do serwera i z powrotem',
         delay: 'O ile kroków później wykonuje się rozkaz; wynika z pingu i jego wahań',
         cost: 'Ile budżetu jednego kroku przy obecnym tempie zużywa ta maszyna; ponad 100% znaczy, że nie nadąża',

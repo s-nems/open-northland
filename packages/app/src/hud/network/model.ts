@@ -109,11 +109,13 @@ export interface NetLinkModel {
 }
 
 /** A chat line; `from` null is a line about the session itself. `at` is when it was said, in Unix epoch
- *  ms: the relay's stamp on a member's line, this client's clock on a session line. */
+ *  ms, and `tick` the game clock then, null before it started: the relay's stamps on a member's line,
+ *  this client's on a session line. */
 export interface NetChatLine {
   readonly from: string | null;
   readonly text: string;
   readonly at: number;
+  readonly tick: number | null;
 }
 
 export interface NetPanelModel {

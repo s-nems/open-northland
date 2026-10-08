@@ -361,7 +361,14 @@ export class Room {
   }
 
   chat(member: Member, text: string): void {
-    this.broadcast(this.chatLog.add({ from: member.nick, text, at: this.hooks.wallClock() }));
+    this.broadcast(
+      this.chatLog.add({
+        from: member.nick,
+        text,
+        at: this.hooks.wallClock(),
+        tick: this.game?.chatTick ?? null,
+      }),
+    );
   }
 
   advance(elapsedMs: number, now: number): Refusal {

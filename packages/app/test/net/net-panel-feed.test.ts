@@ -290,21 +290,27 @@ describe('the relayed network panel feed', () => {
   });
 
   it('shows the room’s chat from before it mounted, its announcements in order, and only the unseen lines of a replay', () => {
-    const said = (from: string, text: string, at: number): ChatLine => ({ from, text, at });
+    const said = (from: string, text: string, at: number, tick: number | null = null): ChatLine => ({
+      from,
+      text,
+      at,
+      tick,
+    });
     const lobby = said('Bartek', 'cześć', 1);
-    const { feed, send, wall } = setup([{ kind: 'chatHistory', lines: [lobby] }]);
+    const { feed, send, client, wall } = setup([{ kind: 'chatHistory', lines: [lobby] }]);
     expect(feed.model().chat).toEqual([lobby]);
     const before = feed.model().chatVersion;
-    send({ kind: 'chat', ...said('Ania', 'gramy', 4) });
+    send({ kind: 'chat', ...said('Ania', 'gramy', 4, 4) });
+    client.follow({ ...FACTS, tick: 9 });
     wall.ms = 9;
     feed.announce('Bartek stracił połączenie');
-    const away = said('Celina', 'czekamy', 12);
-    send({ kind: 'chatHistory', lines: [lobby, said('Ania', 'gramy', 4), away] });
+    const away = said('Celina', 'czekamy', 12, 12);
+    send({ kind: 'chatHistory', lines: [lobby, said('Ania', 'gramy', 4, 4), away] });
     const model = feed.model();
     expect(model.chat).toEqual([
       lobby,
-      said('Ania', 'gramy', 4),
-      { from: null, text: 'Bartek stracił połączenie', at: 9 },
+      said('Ania', 'gramy', 4, 4),
+      { from: null, text: 'Bartek stracił połączenie', at: 9, tick: 9 },
       away,
     ]);
     expect(model.chatVersion - before).toBe(3);
@@ -312,11 +318,11 @@ describe('the relayed network panel feed', () => {
 });
 
 describe('unseen history', () => {
-  const line = (text: string): ChatLine => ({ from: 'Ania', text, at: 0 });
+  const line = (text: string): ChatLine => ({ from: 'Ania', text, at: 0, tick: null });
 
   it('takes every line when none was shown, or when the last shown one fell out of the log', () => {
     expect(unseenHistory([], [line('a')])).toEqual([line('a')]);
-    expect(unseenHistory([{ from: null, text: 'x', at: 0 }], [line('a')])).toEqual([line('a')]);
+    expect(unseenHistory([{ from: null, text: 'x', at: 0, tick: null }], [line('a')])).toEqual([line('a')]);
     expect(unseenHistory([line('gone')], [line('a'), line('b')])).toEqual([line('a'), line('b')]);
     expect(unseenHistory([line('a'), line('b')], [line('a'), line('b')])).toEqual([]);
   });

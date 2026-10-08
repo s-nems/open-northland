@@ -292,6 +292,8 @@ describe('a relayed session under faults', () => {
       ['Bartek', 'tak'],
       ['Ania', 'wracaj'],
     ]);
+    // Said after the clock started, each line carries the tick the relay heard it at.
+    for (const line of bartek.chat) expect(line.tick).toBeGreaterThan(0);
     expect(bartek.restoredFrom).toEqual([]);
   });
 

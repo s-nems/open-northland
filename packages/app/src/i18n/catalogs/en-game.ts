@@ -292,6 +292,7 @@ export const enGame = {
         vote: 'Kick vote',
       },
       tips: {
+        chatTime: 'When it was sent; in brackets, the game clock since the start',
         ping: 'The round trip to the server and back',
         delay: 'How many ticks later an order runs; it follows the ping and how much it varies',
         cost: "How much of one tick's budget at the current pace this machine uses; over 100% it cannot keep up",

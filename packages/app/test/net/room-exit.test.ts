@@ -16,7 +16,7 @@ describe('room termination', () => {
     const exits: Array<RelayReason | null> = [];
     const observe = roomExitObserver((reason) => exits.push(reason));
     observe({ kind: 'error', reason: { code: 'relayFault' } });
-    observe({ kind: 'chat', from: 'Ania', text: 'hello', at: 0 });
+    observe({ kind: 'chat', from: 'Ania', text: 'hello', at: 0, tick: null });
     observe({ kind: 'left' });
     expect(exits).toEqual([null]);
   });

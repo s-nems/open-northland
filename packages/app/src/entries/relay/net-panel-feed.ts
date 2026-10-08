@@ -322,7 +322,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
           roomDirty = true;
           return;
         case 'chat':
-          append([{ from: message.from, text: message.text, at: message.at }]);
+          append([{ from: message.from, text: message.text, at: message.at, tick: message.tick }]);
           return;
         case 'chatHistory':
           // A return after a drop: the lines said meanwhile follow what was shown.
@@ -333,7 +333,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
       }
     },
     announce(text): void {
-      append([{ from: null, text, at: wallClock() }]);
+      append([{ from: null, text, at: wallClock(), tick: client.tick }]);
     },
     notice(notice): void {
       worldNotice = notice;

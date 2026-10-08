@@ -21,6 +21,7 @@ import {
   statusText,
   voteText,
 } from '../network/text.js';
+import { formatSimClock } from '../summary/model.js';
 import type { ToolWindow } from '../tool-panel/window-shell.js';
 import { button, element, setClass, setHidden, setTip, write } from './parts/dom.js';
 import { createSection } from './parts/section.js';
@@ -493,7 +494,11 @@ export function createNetworkWindow(deps: NetworkWindowDeps): NetworkWindow {
     );
     const stamp = element('time', 'on-net-chat__time');
     stamp.setAttribute('datetime', new Date(line.at).toISOString());
-    stamp.textContent = formatClockTime(line.at);
+    stamp.textContent =
+      line.tick === null
+        ? formatClockTime(line.at)
+        : `${formatClockTime(line.at)} (${formatSimClock(line.tick)})`;
+    setTip(stamp, tipsCopy.chatTime);
     item.append(stamp);
     if (line.from !== null) {
       const from = element('b', 'on-net-chat__from');

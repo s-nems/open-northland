@@ -322,6 +322,7 @@ export const deGame = {
         vote: 'Ausschlussabstimmung',
       },
       tips: {
+        chatTime: 'Wann sie gesendet wurde; in Klammern die Spielzeit seit dem Start',
         ping: 'Die Zeit zum Server und zurück',
         delay:
           'Nach wie vielen Ticks ein Befehl ausgeführt wird; richtet sich nach dem Ping und dessen Schwankungen',
