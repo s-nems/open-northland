@@ -444,18 +444,21 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     const covered = amount < lacking ? copy.shortage.short : copy.shortage.covered;
     return `${formatMessage(copy.shortage.lacking, { count: shortage.lacking })}${soldiers}. ${covered}`;
   };
-  /** A give row: the first good's icon with the stock of every good the switch grants and the men it
-   *  would still dress (the soldiers alone under that choice), and either an on/off switch or, for a
-   *  drink and an amulet, the strip choosing who receives it. */
+  /** A give row: the first good's icon with the stock of every good the switch grants and the men its
+   *  current choice would still dress (nobody while it is off, the soldiers alone under that choice),
+   *  and either an on/off switch or, for a drink and an amulet, the strip choosing who receives it. */
   const giveRow = (id: GiveSwitchId): HTMLElement => {
     const goods = GIVE_SWITCH_GOODS[id];
     const { art, count, lack } = goodArt(goods[0], ROW_ICON_PX);
     const audience = AUDIENCE_SWITCH_IDS.includes(id);
     const gear = audience ? audienceRow(id, art) : switchRow(id, art);
+    const lackingNow = (shortage: AssistantShortage): number => {
+      if (!gear.on()) return 0;
+      return audience && audienceNow(id) === 'soldiers' ? shortage.soldiersLacking : shortage.lacking;
+    };
     updates.push(() => {
       const shortage = shortages[id];
-      const lacking =
-        audience && audienceNow(id) === 'soldiers' ? shortage.soldiersLacking : shortage.lacking;
+      const lacking = lackingNow(shortage);
       const amount = stockOfAll(goods);
       showStock(count, amount, gear.on(), shortageText(shortage, lacking, amount));
       write(lack, String(lacking));

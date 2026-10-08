@@ -6374,10 +6374,10 @@ body.on-drag-scroll * {
   top: -2px;
   min-width: 14px;
   padding: 0 3px;
-  border: 1px solid #c0392b88;
+  border: 1px solid #d9893a88;
   border-radius: 7px;
-  background: #3a1410;
-  color: #ff9d8c;
+  background: #33200f;
+  color: #f2b56b;
   font: 700 10px / 13px var(--font-body);
   font-variant-numeric: tabular-nums;
   text-align: center;

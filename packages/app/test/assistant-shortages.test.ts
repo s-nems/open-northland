@@ -80,9 +80,26 @@ describe('assistantShortagesOf', () => {
       man(5, JOB_CIVILIST),
     ]);
     const shortages = assistantShortagesOf(snapshot, content, goodTypeOf, HUMAN_PLAYER);
+    // The iron-tooled collector's slot is taken, so he lacks the wooden tool no more than the iron one.
     expect(shortages.giveIronTools).toEqual({ lacking: 1, soldiersLacking: 0 });
-    expect(shortages.giveWoodenTools).toEqual({ lacking: 2, soldiersLacking: 0 });
+    expect(shortages.giveWoodenTools).toEqual({ lacking: 1, soldiersLacking: 0 });
     expect(shortages.giveBoots.lacking).toBe(5);
+  });
+
+  it('counts nobody whose slot is taken: full misc rows, boots of another kind', () => {
+    const FUR_BOOTS = GOOD_SHOES + 1; // any other boots good: the slot is taken whatever it holds
+    const snapshot = snapshotOf([
+      man(1, JOB_COLLECTOR, { boots: held(FUR_BOOTS) }),
+      man(2, JOB_COLLECTOR, {
+        misc: [held(GOOD_MEAD), held(GOOD_AMULET_STRENGTH), held(GOOD_MEAD), held(GOOD_MEAD)],
+      }),
+      man(3, JOB_COLLECTOR, { misc: [held(GOOD_MEAD), null, null, null] }),
+    ]);
+    const shortages = assistantShortagesOf(snapshot, content, goodTypeOf, HUMAN_PLAYER);
+    expect(shortages.giveBoots.lacking).toBe(2);
+    expect(shortages.giveHealingPotions.lacking).toBe(2); // the full row needs nothing more
+    expect(shortages.giveMead.lacking).toBe(1);
+    expect(shortages.giveStrengthAmulet.lacking).toBe(2);
   });
 
   it('treats either bottle size as having the potion', () => {
