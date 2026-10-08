@@ -56,6 +56,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     assistantCounters: (player) => sim.assistantCounters(player),
     assistantGrants: (player) => sim.assistantGrants(player),
     assistantWeaponVetoes: (player) => sim.assistantWeaponVetoes(player),
+    assistantSoldierOnlyGrants: (player) => sim.assistantSoldierOnlyGrants(player),
     assistantPostsGraduates: (player) => sim.assistantPostsGraduates(player),
     assistantMovesFlags: (player) => sim.assistantMovesFlags(player),
     needsEnabled: () => sim.needsEnabled(),

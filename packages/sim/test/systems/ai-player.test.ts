@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { AiPlayer, aiPlayerEntity, isAiPlayer } from '../../src/components/index.js';
 import { CommandQueue } from '../../src/core/command-queue.js';
@@ -12,12 +13,14 @@ import {
   aiDecisionDue,
   runAiPlayerModules,
 } from '../../src/systems/ai-player/index.js';
+import { outfitGrantOrders } from '../../src/systems/ai-player/military/outfit.js';
 import {
   FLAG_RELOCATE_EVERY_DECISIONS,
   flagRelocateDue,
 } from '../../src/systems/ai-player/workforce/collectors/upkeep.js';
 import type { SystemContext } from '../../src/systems/index.js';
 import { testContent } from '../fixtures/content.js';
+import { ctxOf } from '../fixtures/context.js';
 
 /**
  * The strategic AI-player scaffold: the `setPlayerAi` seat flag, the AiPlayerSystem's staggered
@@ -34,6 +37,28 @@ const STUB_UNIT = 1 as Entity;
 
 function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
+}
+
+/** Fixture goods the soldier outfit names: the two amulets ship, the big healing potion is appended. */
+const SHOES = 8;
+const STRENGTH_AMULET = 25;
+const DEFENCE_AMULET = 26;
+const HEAL_BIG = 60;
+
+function outfitContent(): ContentSet {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: HEAL_BIG,
+        id: 'potion_heal_big',
+        weight: 0,
+        equip: { category: 'misc', wears: true, uses: 5, restorePct: { healthMax: 40 } },
+      },
+    ],
+  });
 }
 
 describe('setPlayerAi - the AI seat flag', () => {
@@ -129,6 +154,40 @@ describe('setPlayerAi - the AI seat flag', () => {
     sim.step();
     expect(sim.assistantCounters(AI_SEAT).trainSoldiers.value).toBe(0);
     expect(sim.assistantCounters(AI_SEAT).extraWomen.value).toBe(4);
+  });
+
+  it('publishes the soldier outfit as soldiers-only assistant grants until it stands, and withdraws it with the military module', () => {
+    const sim = new Simulation({ seed: 1, content: outfitContent() });
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.step();
+    const published = outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT);
+    // The audience limits first, so no civilian is dressed in the tick between, then each outfit good.
+    expect(published).toEqual([
+      { kind: 'setAssistantGrantAudience', player: AI_SEAT, grantKind: 'drink', soldiersOnly: true },
+      { kind: 'setAssistantGrantAudience', player: AI_SEAT, grantKind: 'charm', soldiersOnly: true },
+      { kind: 'setAssistantGrant', player: AI_SEAT, goodType: HEAL_BIG, enabled: true },
+      { kind: 'setAssistantGrant', player: AI_SEAT, goodType: DEFENCE_AMULET, enabled: true },
+      { kind: 'setAssistantGrant', player: AI_SEAT, goodType: STRENGTH_AMULET, enabled: true },
+    ]);
+    for (const command of published) sim.enqueueSetup(command);
+    sim.step();
+    expect(outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]); // standing: nothing to re-issue
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([STRENGTH_AMULET, DEFENCE_AMULET, HEAL_BIG]);
+
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true, modules: { military: false } });
+    sim.step();
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
+
+    // A grant another hand set survives the withdrawal of the outfit.
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: true });
+    sim.enqueueSetup({ kind: 'setAssistantGrant', player: AI_SEAT, goodType: SHOES, enabled: true });
+    for (const command of published) sim.enqueueSetup(command);
+    sim.step();
+    sim.enqueueSetup({ kind: 'setPlayerAi', player: AI_SEAT, enabled: false });
+    sim.step();
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([SHOES]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
   });
 
   it('switches the flag follow off on disable, and when the workforce module turns off', () => {

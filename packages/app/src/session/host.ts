@@ -1,5 +1,6 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import type {
+  AssistantAudienceKind,
   AssistantCounterValues,
   ConstructionPlot,
   ConstructionSupply,
@@ -127,6 +128,8 @@ export interface SessionHost {
   assistantGrants(player: number): readonly number[];
   /** The weapon goods `player`'s assistant never arms a recruit with. */
   assistantWeaponVetoes(player: number): readonly number[];
+  /** The grant kinds `player`'s assistant hands to fighters alone. */
+  assistantSoldierOnlyGrants(player: number): readonly AssistantAudienceKind[];
   /** Whether `player`'s assistant sends graduates straight to a free workplace. */
   assistantPostsGraduates(player: number): boolean;
   /** Whether `player`'s gatherers move their own flags after the resources. */

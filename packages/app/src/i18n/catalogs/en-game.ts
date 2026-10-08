@@ -1188,6 +1188,18 @@ export const enGame = {
       equipmentTip: 'Adult men receive it, soldiers too. Tools only go to those working in a trade.',
       work: 'Work',
       workTip: 'Help with sharing out the work.',
+      drinks: 'Drinks',
+      drinksTip:
+        'Mead and potions. One bottle of each kind per man; a man with a small potion is not sent for the big one.',
+      charms: 'Amulets',
+      charmsTip: 'One of each kind per man. An amulet is never used up.',
+      audience: {
+        label: 'Who receives them',
+        everyone: 'Everyone',
+        everyoneTip: 'Every adult man receives them, soldiers too.',
+        soldiers: 'Soldiers',
+        soldiersTip: 'Only soldiers receive them. Civilians keep what they already carry.',
+      },
       counters: {
         extraWomen: {
           label: 'Daughters',
@@ -1210,6 +1222,42 @@ export const enGame = {
         },
         giveWoodenTools: { label: 'Wooden tools', tip: 'Anyone working in a trade gets wooden tools.' },
         giveMead: { label: 'Mead', tip: 'Every adult man without mead fetches some from the store.' },
+        giveFoodPotions: {
+          label: 'Food potions',
+          tip: 'Every man without a food potion fetches one from the store. The large bottle first, the small one when no large one is left.',
+        },
+        giveStaminaPotions: {
+          label: 'Stamina potions',
+          tip: 'Every man without a stamina potion fetches one from the store. The large bottle first, the small one when no large one is left.',
+        },
+        giveHealingPotions: {
+          label: 'Healing potions',
+          tip: 'Every man without a healing potion fetches one from the store. The large bottle first, the small one when no large one is left.',
+        },
+        giveFoodAmulet: {
+          label: 'Amulet of plenty',
+          tip: 'Every man without one fetches one from the store. It keeps its bearer fed.',
+        },
+        giveStaminaAmulet: {
+          label: 'Amulet of stamina',
+          tip: 'Every man without one fetches one from the store. It keeps its bearer rested.',
+        },
+        giveStrengthAmulet: {
+          label: 'Amulet of strength',
+          tip: 'Every man without one fetches one from the store. Its bearer strikes harder.',
+        },
+        giveDefenseAmulet: {
+          label: 'Amulet of defense',
+          tip: 'Every man without one fetches one from the store. Its bearer takes half the damage.',
+        },
+        giveCriticalHitAmulet: {
+          label: 'Amulet of the critical blow',
+          tip: 'Every man without one fetches one from the store. Some of its bearer’s blows land twice as hard.',
+        },
+        giveSpeedAmulet: {
+          label: 'Amulet of speed',
+          tip: 'Every man without one fetches one from the store. Its bearer walks faster.',
+        },
         allowShortSwords: {
           label: 'Short swords too',
           tip: 'On: a recruit takes a short sword when no long sword is in stock. Off: he waits for a long one.',

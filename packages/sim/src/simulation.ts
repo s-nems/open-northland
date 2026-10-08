@@ -2,6 +2,7 @@ import type { ContentSet, EquipCategory } from '@open-northland/data';
 import type { AiProgramScript } from './components/ai-program.js';
 import {
   ASSISTANT_COUNTER_KINDS,
+  type AssistantAudienceKind,
   AssistantCounters,
   type AssistantCounterValues,
   AssistantWeaponVetoes,
@@ -9,6 +10,7 @@ import {
   assistantGrantedGoods,
   assistantMovesFlags,
   assistantPostsGraduatesEntity,
+  assistantSoldierOnlyKinds,
   Building,
   buildTribes,
   type DiplomacyState,
@@ -612,6 +614,11 @@ export class Simulation {
   /** The good types `player`'s assistant may hand out, as a detached copy of the command's state. */
   assistantGrants(player: number): readonly number[] {
     return [...assistantGrantedGoods(this.world, player)];
+  }
+
+  /** The grant kinds `player`'s assistant hands to fighters alone, as a detached copy. */
+  assistantSoldierOnlyGrants(player: number): readonly AssistantAudienceKind[] {
+    return [...assistantSoldierOnlyKinds(this.world, player)];
   }
 
   /** The weapon goods `player`'s assistant never arms a recruit with, as a detached copy. */

@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   Age,
   AssistantGrants,
+  AssistantSoldierOnlyGrants,
   addPerson,
   Building,
   Carrying,
@@ -39,6 +40,10 @@ const FUR_BOOTS = 10;
 const TOOL_WOODEN = 11;
 const TOOL_IRON = 12;
 const MEAD = 13;
+/** The fixture's small healing potion, and a big one of the same effect this suite appends. */
+const HEAL_SMALL = 16;
+const HEAL_BIG = 60;
+const STRENGTH_AMULET = 25;
 const WOOD = 1;
 const WOODCUTTER = 1;
 /** The fixture's soldier trade (`soldier_unarmed`) - what `isFighterJob` reads off the job slug. */
@@ -127,6 +132,32 @@ function grant(sim: Simulation, goodType: number, enabled = true, player = HUMAN
   sim.enqueueSetup({ kind: 'setAssistantGrant', player, goodType, enabled });
 }
 
+function limitToSoldiers(
+  sim: Simulation,
+  grantKind: 'drink' | 'charm',
+  soldiersOnly = true,
+  player = HUMAN_PLAYER,
+): void {
+  sim.enqueueSetup({ kind: 'setAssistantGrantAudience', player, grantKind, soldiersOnly });
+}
+
+/** The shared fixture plus the big healing potion: the small one's effect in a five-sip bottle. */
+function twoBottleContent(): ContentSet {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      {
+        typeId: HEAL_BIG,
+        id: 'potion_heal_big',
+        weight: 0,
+        equip: { category: 'misc', wears: true, uses: 5, restorePct: { healthMax: 40 } },
+      },
+    ],
+  });
+}
+
 /** The shared fixture plus a workplace that CONSUMES a wearable - the `work_coin_mint` shape, which
  *  strikes an amulet out of a pair of shoes, so its shoe slot is a reserve and not grantable stock. */
 function mintContent(): ContentSet {
@@ -195,6 +226,22 @@ describe('setAssistantGrant - the per-player grant list', () => {
     sim.run(1);
     expect(sim.assistantGrants(HUMAN_PLAYER)).toEqual([]);
     expect([...sim.world.query(AssistantGrants)]).toHaveLength(0); // the empty carrier is dropped
+  });
+
+  it('limits a grant kind to soldiers in kind order, and drops the carrier once no kind is limited', () => {
+    const sim = freshSim();
+    limitToSoldiers(sim, 'charm');
+    limitToSoldiers(sim, 'drink');
+    sim.step();
+    expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual(['drink', 'charm']);
+    expect(sim.assistantSoldierOnlyGrants(RIVAL_PLAYER)).toEqual([]);
+    limitToSoldiers(sim, 'drink', false);
+    sim.step();
+    expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual(['charm']);
+    limitToSoldiers(sim, 'charm', false);
+    sim.step();
+    expect(sim.assistantSoldierOnlyGrants(HUMAN_PLAYER)).toEqual([]);
+    expect([...sim.world.query(AssistantSoldierOnlyGrants)]).toEqual([]);
   });
 
   it('refuses a non-wearable good and an out-of-range player', () => {
@@ -520,6 +567,57 @@ describe('assistant auto-equip - dispatch and reservation', () => {
       expect(sim.world.get(e, Equipment).boots?.goodType).toBe(SHOES); // the other grants still land
     }
     expect(sim.world.get(woodcutter, Equipment).tool?.goodType).toBe(TOOL_IRON);
+  });
+
+  it('keeps a soldiers-only kind from civilians until the limit is lifted; gear is never limited', () => {
+    const sim = freshSim();
+    const fighter = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, fighter, FIGHTER_JOB);
+    const woodcutter = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, STRENGTH_AMULET, 5);
+    pileAt(sim, 12, 4, MEAD, 5);
+    pileAt(sim, 12, 5, SHOES, 5);
+    grant(sim, STRENGTH_AMULET);
+    grant(sim, MEAD);
+    grant(sim, SHOES);
+    limitToSoldiers(sim, 'charm');
+    limitToSoldiers(sim, 'drink');
+
+    sim.run(4 * ERRAND_TICKS);
+
+    const carried = (e: Entity): number[] =>
+      sim.world
+        .get(e, Equipment)
+        .misc.flatMap((s) => (s === null ? [] : [s.goodType]))
+        .sort((a, b) => a - b);
+    expect(carried(fighter)).toEqual([MEAD, STRENGTH_AMULET]);
+    expect(carried(woodcutter)).toEqual([]);
+    expect(sim.world.get(woodcutter, Equipment).boots?.goodType).toBe(SHOES); // the gear still lands
+
+    limitToSoldiers(sim, 'charm', false);
+    sim.run(2 * ERRAND_TICKS);
+    expect(carried(woodcutter)).toEqual([STRENGTH_AMULET]); // the drinks stay soldiers' alone
+  });
+
+  it('hands out the big bottle before the small one and treats either as the same drink', () => {
+    const sim = new Simulation({ seed: 1, content: twoBottleContent(), map: grassMap(16, 6) });
+    setNeedsEnabled(sim.world, false);
+    const first = ownedSettler(sim, 2, 2);
+    const second = ownedSettler(sim, 2, 4);
+    pileAt(sim, 12, 2, HEAL_BIG, 1);
+    pileAt(sim, 12, 4, HEAL_SMALL, 5);
+    grant(sim, HEAL_SMALL);
+    grant(sim, HEAL_BIG);
+
+    sim.run(3 * ERRAND_TICKS);
+
+    const bottles = (e: Entity): number[] =>
+      sim.world.get(e, Equipment).misc.flatMap((s) => (s === null ? [] : [s.goodType]));
+    const both = [...bottles(first), ...bottles(second)].sort((a, b) => a - b);
+    // One man took the only big bottle, the other a small one; neither went for a second healing drink.
+    expect(both).toEqual([HEAL_SMALL, HEAL_BIG]);
+    expect(bottles(first)).toHaveLength(1);
+    expect(bottles(second)).toHaveLength(1);
   });
 
   it('hands nothing to a woman, a child or a hero', () => {

@@ -16,7 +16,7 @@ import {
 
 import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
-import { outfitOrders } from './outfit.js';
+import { outfitGrantOrders, outfitOrders } from './outfit.js';
 import { siegeCrewOrders } from './siege-crew.js';
 
 export { campaignTarget } from './campaign.js';
@@ -146,6 +146,7 @@ function runMilitary(
     ...(siege?.commands ?? []),
     ...(offensive?.commands ?? []),
     ...outfitOrders(world, ctx, terrain, player, [...(offensive?.waiting ?? []), ...parkedDrivers]),
+    ...outfitGrantOrders(world, ctx, player),
   ];
 }
 

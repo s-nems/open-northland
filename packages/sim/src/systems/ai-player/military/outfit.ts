@@ -1,5 +1,9 @@
 import {
+  ASSISTANT_AUDIENCE_KINDS,
   AssistantWeaponVetoes,
+  assistantAudienceKindOf,
+  assistantGrantedGoods,
+  assistantSoldierOnlyKinds,
   Equipment,
   EquipOrder,
   ownerOf,
@@ -8,6 +12,7 @@ import {
   Settler,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -26,21 +31,59 @@ import { ownedSettlers } from '../seat-roster.js';
 import { FULL_FIELD_SHARES, GARRISON_WEAPON_INTENTS } from '../workforce/garrison.js';
 import { fighterWeaponClass } from './census.js';
 
-/** The misc goods every soldier waiting at the barracks is sent to fetch, one slot each, whenever a store
- *  holds a unit (authored). The seat's druids and coiners make exactly these. */
+/** The misc goods the seat grants its soldiers through the assistant, one slot each as a store holds a
+ *  unit (authored). The seat's druids and coiners make exactly these. */
 export const SOLDIER_OUTFIT_GOOD_IDS: readonly string[] = [
   'potion_heal_big',
   'amulet_defense',
   'amulet_strength',
 ];
 
+/** The good types of {@link SOLDIER_OUTFIT_GOOD_IDS} that are wearables in this content set. */
+export function soldierOutfitGoods(ctx: SystemContext): number[] {
+  const goods: number[] = [];
+  for (const id of SOLDIER_OUTFIT_GOOD_IDS) {
+    const good = goodTypeByContentId(ctx.content, id);
+    if (good?.equip !== undefined) goods.push(good.typeId);
+  }
+  return goods;
+}
+
+/**
+ * The commands putting the seat's soldier outfit on the assistant until it is there: each outfit good
+ * granted, and every audience kind an outfit good falls in kept for soldiers alone, published before the
+ * grants so no civilian is dressed in the tick between. The same hand-out a player switches on; the
+ * assistant's own pass then dresses the seat's fighters wherever they stand.
+ */
+export function outfitGrantOrders(world: World, ctx: SystemContext, player: number): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
+  const goods = soldierOutfitGoods(ctx);
+  const limited = assistantSoldierOnlyKinds(world, player);
+  const index = contentIndex(ctx.content);
+  for (const kind of ASSISTANT_AUDIENCE_KINDS) {
+    if (limited.includes(kind)) continue;
+    const dressed = goods.some((g) => {
+      const equip = index.goods.get(g)?.equip;
+      return equip !== undefined && assistantAudienceKindOf(equip) === kind;
+    });
+    if (dressed)
+      commands.push({ kind: 'setAssistantGrantAudience', player, grantKind: kind, soldiersOnly: true });
+  }
+  const granted = assistantGrantedGoods(world, player);
+  for (const goodType of goods) {
+    if (!granted.includes(goodType))
+      commands.push({ kind: 'setAssistantGrant', player, goodType, enabled: true });
+  }
+  return commands;
+}
+
 /**
  * Send each soldier in `waiting` for the first thing he lacks: a weapon when he stands bare-handed, then
- * armour, then the {@link SOLDIER_OUTFIT_GOOD_IDS} he has no slot of (authored: a man drilled while
- * the shops were empty is dressed as their goods come in). One errand per man per decision, none for a
- * man whose errand is underway, and never more errands for a good than the stores the barracks door can
- * reach hold. `waiting` must be men no order of this decision walks elsewhere, the campaign's men left at
- * the door and the parked catapult drivers, since a walk order strips the errand.
+ * armour (authored: a man drilled while the shops were empty is dressed as their goods come in). One
+ * errand per man per decision, none for a man whose errand is underway, and never more errands for a good
+ * than the stores the barracks door can reach hold. `waiting` must be men no order of this decision walks
+ * elsewhere, the campaign's men left at the door and the parked catapult drivers, since a walk order
+ * strips the errand. The potions and amulets go through {@link outfitGrantOrders}.
  */
 export function outfitOrders(
   world: World,
@@ -53,7 +96,6 @@ export function outfitOrders(
   const barracks = seatBarracksOf(world, ctx, player);
   if (barracks === null) return [];
   const commands: PlayerCommand[] = [];
-  const misc = outfitSpecs(ctx);
   const armour = armourSpecs(ctx);
   const armsFor = new Map<number, ArmsByClass>(); // per tribe of the waiting men
   for (const e of waiting) {
@@ -66,7 +108,6 @@ export function outfitOrders(
   for (const arms of armsFor.values())
     for (const goods of arms) for (const good of goods) weaponGoods.add(good);
   const counted: GrantSpec[] = [
-    ...misc,
     ...armour,
     ...[...weaponGoods].map(
       (goodType): GrantSpec => ({
@@ -75,8 +116,6 @@ export function outfitOrders(
       }),
     ),
   ];
-  // The specs a man is dressed in after his weapon, armour first, built once per decision.
-  const afterWeapon = [...armour, ...misc];
   let stock: SpareStock | undefined; // stock minus errands underway, walked on first need
   const spare = (): SpareStock => (stock ??= spareStock(world, ctx, terrain, player, barracks, counted));
   let fielded: number[] | undefined; // the army's men per weapon class, this decision's picks included
@@ -101,7 +140,7 @@ export function outfitOrders(
         break;
       }
     }
-    for (const spec of afterWeapon) {
+    for (const spec of armour) {
       if (errand !== null) break;
       const slot = freeSlotFor(eq, spec);
       if (slot === null || !spare().take(spec.goodType)) continue;
@@ -138,16 +177,6 @@ function armourSpecs(ctx: SystemContext): GrantSpec[] {
     for (const armor of byClass.get(tier) ?? []) {
       if (armor.goodType !== undefined) specs.push({ goodType: armor.goodType, category: 'armor' });
     }
-  }
-  return specs;
-}
-
-function outfitSpecs(ctx: SystemContext): GrantSpec[] {
-  const specs: GrantSpec[] = [];
-  for (const id of SOLDIER_OUTFIT_GOOD_IDS) {
-    const good = goodTypeByContentId(ctx.content, id);
-    if (good?.equip === undefined) continue; // not a wearable in this content set
-    specs.push({ goodType: good.typeId, category: good.equip.category });
   }
   return specs;
 }

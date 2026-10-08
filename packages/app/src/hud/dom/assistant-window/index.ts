@@ -3,7 +3,8 @@ import type { HudModel } from '@open-northland/render';
 import type { components } from '@open-northland/sim';
 import {
   type AssistantGrantId,
-  GIVE_SWITCH_GOOD,
+  type AudienceSwitchId,
+  GIVE_SWITCH_GOODS,
   type GiveSwitchId,
   WEAPON_SWITCH_GOOD,
   type WeaponSwitchId,
@@ -15,6 +16,7 @@ import { FIGURE, GLYPH } from '../icons.js';
 import { COUNTER_TENS_STEP, createCounter } from '../parts/counter.js';
 import { element, setHidden, setTip, write } from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
+import { createSegmented } from '../parts/segmented.js';
 import { createSwitch } from '../parts/switch.js';
 import { attachTipLayer, type TipChip } from '../parts/tip-layer.js';
 import { centralWindowPlacer, createHudWindow } from '../window.js';
@@ -38,8 +40,8 @@ type CounterKind = components.AssistantCounterKind;
 type CounterState = components.AssistantCounterState;
 type ClassIntent = Exclude<components.AssistantRecruitIntent, 'trainSoldiers'>;
 
-/** Design px: two columns of rows side by side. */
-const ASSISTANT_WINDOW_W = 700;
+/** Design px: the orders column beside the two standing-order columns. */
+const ASSISTANT_WINDOW_W = 960;
 const ROW_ICON_PX = 22;
 const SUB_ICON_PX = 18;
 
@@ -80,8 +82,8 @@ export interface AssistantWindowDeps extends AssistantSource {
 }
 
 /** The assistant window on the DOM plane: the drain-down orders on the left (births, training), the
- *  standing orders on the right (equipment, work). Like the residents window it routes its own
- *  pointer input, so it claims no canvas point. */
+ *  standing orders in two columns on the right (gear and drinks; amulets and work). Like the residents
+ *  window it routes its own pointer input, so it claims no canvas point. */
 export interface AssistantWindow extends ToolWindow {
   /** Once a frame: re-place an open window and show the live state. */
   refresh(): void;
@@ -114,7 +116,28 @@ const NOTE_GLYPH: Readonly<Record<StatusNoteKey, string>> = {
   needsMen: GLYPH.addPerson,
 };
 /** Iron tools before wooden ones, as the assistant hands them out. */
-const GEAR_ORDER: readonly GiveSwitchId[] = ['giveBoots', 'giveIronTools', 'giveWoodenTools', 'giveMead'];
+const GEAR_ORDER: readonly GiveSwitchId[] = ['giveBoots', 'giveIronTools', 'giveWoodenTools'];
+/** The drinks, mead first as the one brewed without a druid, then the potions by what they restore. */
+const DRINK_ORDER: readonly GiveSwitchId[] = [
+  'giveMead',
+  'giveFoodPotions',
+  'giveStaminaPotions',
+  'giveHealingPotions',
+];
+/** The amulets: the two that feed a need, then the four for a fight and the road. */
+const CHARM_ORDER: readonly GiveSwitchId[] = [
+  'giveFoodAmulet',
+  'giveStaminaAmulet',
+  'giveStrengthAmulet',
+  'giveDefenseAmulet',
+  'giveCriticalHitAmulet',
+  'giveSpeedAmulet',
+];
+/** A switch with a row of its own; an audience switch shows as a strip on its section's rule instead. */
+type RowSwitchId = Exclude<AssistantGrantId, AudienceSwitchId>;
+/** The two audience strips: everyone or soldiers alone. */
+type Audience = 'everyone' | 'soldiers';
+const AUDIENCES: readonly Audience[] = ['everyone', 'soldiers'];
 
 export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindow {
   const copy = messages().hud.assistant;
@@ -140,6 +163,9 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     stocks ??= new Map(stockLines.map((line) => [line.goodType, line.amount]));
     return stocks.get(goodType) ?? 0;
   };
+  /** A give switch's stock: every bottle size of a potion counts. */
+  const stockOfAll = (goodIds: readonly string[]): number =>
+    goodIds.reduce((sum, goodId) => sum + stockOf(goodId), 0);
   let writable = false;
   let liveCounters = deps.counters.read();
   let liveSwitches = deps.switches.read();
@@ -225,12 +251,26 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     line.append(node, marks);
     return line;
   };
-  const section = (title: string, tip: string): HTMLElement => {
-    const s = createSection();
+  const section = (title: string, tip: string, control?: HTMLElement): HTMLElement => {
+    const s = createSection(control);
     s.update(title);
     const caption = s.element.firstElementChild;
     if (caption instanceof HTMLElement) setTip(caption, tip);
     return s.element;
+  };
+  /** The strip on a drinks or amulets rule choosing who receives them. */
+  const audienceStrip = (id: AudienceSwitchId): HTMLElement => {
+    const strip = createSegmented(AUDIENCES, copy.audience.label, (pick) =>
+      pressSwitch(id, pick === 'soldiers'),
+    );
+    updates.push(() => {
+      const options = {
+        everyone: { label: copy.audience.everyone, tooltip: copy.audience.everyoneTip, enabled: writable },
+        soldiers: { label: copy.audience.soldiers, tooltip: copy.audience.soldiersTip, enabled: writable },
+      };
+      strip.update(options, switchNow(id) ? 'soldiers' : 'everyone');
+    });
+    return strip.element;
   };
   const columnHead = (title: string, tip: string): HTMLElement => {
     const head = element('h3', 'on-asst__kind');
@@ -272,7 +312,7 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     return row;
   };
 
-  const switchRow = (id: AssistantGrantId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
+  const switchRow = (id: RowSwitchId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
     const row = element('div', 'on-asst-row');
     const text = copy.switches[id];
     const control = createSwitch(text.label, text.tip, (next) => pressSwitch(id, next));
@@ -307,7 +347,11 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
   const access = element('div', 'on-asst__access');
   const columns = element('div', 'on-asst__cols');
   const orders = element('div', 'on-asst__col');
-  const standing = element('div', 'on-asst__col');
+  const standing = element('div', 'on-asst__standing');
+  const standingColumns = element('div', 'on-asst__cols');
+  const wear = element('div', 'on-asst__col');
+  const carry = element('div', 'on-asst__col');
+  standingColumns.append(wear, carry);
   columns.append(orders, standing);
   window.body.append(access, columns);
 
@@ -352,16 +396,27 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     orders.append(row);
   }
 
-  standing.append(columnHead(copy.standing, copy.standingTip), section(copy.equipment, copy.equipmentTip));
-  for (const id of GEAR_ORDER) {
-    const good = GIVE_SWITCH_GOOD[id];
-    const { art, count } = goodArt(good, ROW_ICON_PX);
+  /** A give row: the first good's icon, the stock of every good the switch grants. */
+  const giveRow = (id: GiveSwitchId): HTMLElement => {
+    const goods = GIVE_SWITCH_GOODS[id];
+    const { art, count } = goodArt(goods[0], ROW_ICON_PX);
     const gear = switchRow(id, art);
-    updates.push(() => showStock(count, stockOf(good), gear.on()));
-    standing.append(gear.row);
-  }
-  standing.append(section(copy.work, copy.workTip));
-  standing.append(
+    updates.push(() => showStock(count, stockOfAll(goods), gear.on()));
+    return gear.row;
+  };
+
+  standing.append(columnHead(copy.standing, copy.standingTip), standingColumns);
+  wear.append(section(copy.equipment, copy.equipmentTip), ...GEAR_ORDER.map(giveRow));
+  wear.append(
+    section(copy.drinks, copy.drinksTip, audienceStrip('drinksForSoldiers')),
+    ...DRINK_ORDER.map(giveRow),
+  );
+  carry.append(
+    section(copy.charms, copy.charmsTip, audienceStrip('charmsForSoldiers')),
+    ...CHARM_ORDER.map(giveRow),
+  );
+  carry.append(section(copy.work, copy.workTip));
+  carry.append(
     switchRow('postGraduates', glyphArt(GLYPH.scroll)).row,
     switchRow('moveFlags', glyphArt(GLYPH.pin)).row,
   );

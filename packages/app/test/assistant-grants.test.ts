@@ -2,8 +2,9 @@ import type { Command } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { assistantGrantsSeam, grantAssistantDefaults } from '../src/view/assistant-grants.js';
 
-/** The seam translating the assistant window switches to `setAssistantGrant` and `setAssistantWeaponVeto`
- *  commands and back - good ids resolved from the live content by slug, so the fixture uses arbitrary ids. */
+/** The seam translating the assistant window switches to `setAssistantGrant`, `setAssistantWeaponVeto` and
+ *  `setAssistantGrantAudience` commands and back - good ids resolved from the live content by slug, so the
+ *  fixture uses arbitrary ids. */
 
 const CONTENT = {
   goods: [
@@ -11,27 +12,35 @@ const CONTENT = {
     { typeId: 31, id: 'tool_wooden' },
     { typeId: 32, id: 'tool_iron' },
     { typeId: 43, id: 'mead' },
+    { typeId: 48, id: 'potion_heal_small' },
+    { typeId: 49, id: 'potion_heal_big' },
+    { typeId: 53, id: 'amulet_defense' },
     { typeId: 41, id: 'sword_shord' },
     { typeId: 39, id: 'spear_wooden' },
     { typeId: 37, id: 'bow_short' },
   ],
 };
 
-/** A sim face granting `granted`, vetoing `vetoed`, posting graduates when `posts` and moving flags when
- *  `movesFlags`. */
+type AudienceKind = 'drink' | 'charm';
+
+/** A sim face granting `granted`, vetoing `vetoed`, posting graduates when `posts`, moving flags when
+ *  `movesFlags` and keeping `soldiersOnly` for soldiers. */
 const simGranting = (
   granted: readonly number[],
   vetoed: readonly number[] = [],
   posts = false,
   movesFlags = false,
+  soldiersOnly: readonly AudienceKind[] = [],
 ): {
   assistantGrants: () => readonly number[];
   assistantWeaponVetoes: () => readonly number[];
+  assistantSoldierOnlyGrants: () => readonly AudienceKind[];
   assistantPostsGraduates: () => boolean;
   assistantMovesFlags: () => boolean;
 } => ({
   assistantGrants: () => granted,
   assistantWeaponVetoes: () => vetoed,
+  assistantSoldierOnlyGrants: () => soldiersOnly,
   assistantPostsGraduates: () => posts,
   assistantMovesFlags: () => movesFlags,
 });
@@ -40,6 +49,9 @@ const SHOES = 30;
 const TOOL_WOODEN = 31;
 const TOOL_IRON = 32;
 const MEAD = 43;
+const HEAL_SMALL = 48;
+const HEAL_BIG = 49;
+const DEFENSE_AMULET = 53;
 const SWORD_SHORT = 41;
 const SPEAR_WOODEN = 39;
 
@@ -57,9 +69,9 @@ describe('assistantGrantsSeam', () => {
     expect(sent).toEqual([]);
   });
 
-  it('reads a switch as ON exactly when its content-resolved good is granted', () => {
+  it('reads a switch as ON exactly when its content-resolved goods are all granted', () => {
     const seam = assistantGrantsSeam(
-      simGranting([SHOES, MEAD]),
+      simGranting([SHOES, MEAD, HEAL_BIG, DEFENSE_AMULET], [], false, false, ['charm']),
       CONTENT,
       () => 0,
       () => {},
@@ -69,12 +81,64 @@ describe('assistantGrantsSeam', () => {
       giveWoodenTools: false,
       giveIronTools: false,
       giveMead: true,
+      giveFoodPotions: false,
+      giveStaminaPotions: false,
+      giveHealingPotions: false, // the big bottle alone: a half-granted potion reads OFF
+      giveFoodAmulet: false,
+      giveStaminaAmulet: false,
+      giveStrengthAmulet: false,
+      giveDefenseAmulet: true,
+      giveCriticalHitAmulet: false,
+      giveSpeedAmulet: false,
       allowShortSwords: true,
       allowWoodenSpears: true,
       allowShortBows: true,
+      drinksForSoldiers: false,
+      charmsForSoldiers: true,
       postGraduates: false,
       moveFlags: false,
     });
+    expect(
+      assistantGrantsSeam(
+        simGranting([HEAL_SMALL, HEAL_BIG]),
+        CONTENT,
+        () => 0,
+        () => {},
+      ).read().giveHealingPotions,
+    ).toBe(true);
+  });
+
+  it('writes a potion switch as one grant per bottle size, the big one first', () => {
+    const sent: Command[] = [];
+    const seam = assistantGrantsSeam(
+      simGranting([]),
+      CONTENT,
+      () => 1,
+      (c) => sent.push(c),
+    );
+    expect(seam.set('giveHealingPotions', true)).toBe(true);
+    expect(sent).toEqual([
+      { kind: 'setAssistantGrant', player: 1, goodType: HEAL_BIG, enabled: true },
+      { kind: 'setAssistantGrant', player: 1, goodType: HEAL_SMALL, enabled: true },
+    ]);
+  });
+
+  it('reads and writes an audience strip through the grant-audience command', () => {
+    const sent: Command[] = [];
+    const seam = assistantGrantsSeam(
+      simGranting([], [], false, false, ['drink']),
+      CONTENT,
+      () => 2,
+      (c) => sent.push(c),
+    );
+    expect(seam.read().drinksForSoldiers).toBe(true);
+    expect(seam.read().charmsForSoldiers).toBe(false);
+    expect(seam.set('drinksForSoldiers', false)).toBe(true);
+    expect(seam.set('charmsForSoldiers', true)).toBe(true);
+    expect(sent).toEqual([
+      { kind: 'setAssistantGrantAudience', player: 2, grantKind: 'drink', soldiersOnly: false },
+      { kind: 'setAssistantGrantAudience', player: 2, grantKind: 'charm', soldiersOnly: true },
+    ]);
   });
 
   it('reads and writes the graduate switch through its own command', () => {
@@ -162,7 +226,7 @@ describe('assistantGrantsSeam', () => {
 });
 
 describe('grantAssistantDefaults', () => {
-  it('switches all four grants ON for the seat at world start and vetoes no weapon', () => {
+  it('switches the four default grants ON for the seat at world start, no potion, amulet or veto', () => {
     const sent: Command[] = [];
     grantAssistantDefaults({ enqueueSetup: (c) => sent.push(c) }, CONTENT, [1]);
     expect(sent.every((c) => c.kind === 'setAssistantGrant')).toBe(true);

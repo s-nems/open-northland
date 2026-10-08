@@ -6217,12 +6217,20 @@ body.on-drag-scroll * {
   color: var(--warning);
   font-size: 12.5px;
 }
+.on-hud .on-window--assistant {
+  max-width: calc(100% - 24px);
+}
+/* The orders column beside the standing orders, which split into two columns of their own under one head. */
 .on-hud .on-asst__cols {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
   gap: 0 22px;
 }
-.on-hud .on-asst__col {
+.on-hud .on-asst__standing .on-asst__cols {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+.on-hud .on-asst__col,
+.on-hud .on-asst__standing {
   min-width: 0;
 }
 .on-hud .on-asst__kind {
@@ -6232,6 +6240,17 @@ body.on-drag-scroll * {
 }
 .on-hud .on-asst__col .on-section {
   margin: 8px 0 2px;
+}
+/* The audience strip on a drinks or amulets rule: compact, in the body face rather than the rule's small caps. */
+.on-hud .on-asst__col .on-section .on-segmented {
+  width: auto;
+  grid-auto-columns: auto;
+  font-variant: normal;
+  letter-spacing: 0;
+}
+.on-hud .on-asst__col .on-section .on-segmented > button {
+  padding: 1px 8px;
+  font-size: 10.5px;
 }
 .on-hud .on-asst-row {
   display: grid;

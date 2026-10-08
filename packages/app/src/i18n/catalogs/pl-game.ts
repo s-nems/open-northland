@@ -1167,6 +1167,18 @@ export const plGame = {
         'Dostają dorośli mężczyźni, także żołnierze. Narzędzia tylko ci, którzy pracują w zawodzie.',
       work: 'Praca',
       workTip: 'Pomoc w rozdzielaniu pracy.',
+      drinks: 'Napoje',
+      drinksTip:
+        'Miód pitny i mikstury. Po jednej butelce każdego rodzaju na osobę; kto ma małą miksturę, nie idzie po dużą.',
+      charms: 'Amulety',
+      charmsTip: 'Po jednym każdego rodzaju na osobę. Amulet się nie zużywa.',
+      audience: {
+        label: 'Kto je dostaje',
+        everyone: 'Wszyscy',
+        everyoneTip: 'Dostaje każdy dorosły mężczyzna, także żołnierze.',
+        soldiers: 'Żołnierze',
+        soldiersTip: 'Dostają tylko żołnierze. Cywile zachowują to, co już noszą.',
+      },
       counters: {
         extraWomen: {
           label: 'Córki',
@@ -1194,6 +1206,42 @@ export const plGame = {
         giveMead: {
           label: 'Miód pitny',
           tip: 'Każdy dorosły mężczyzna bez miodu pójdzie po niego do magazynu.',
+        },
+        giveFoodPotions: {
+          label: 'Mikstury pożywienia',
+          tip: 'Każdy bez mikstury pożywienia pójdzie po nią do magazynu. Najpierw duża butelka, mała dopiero gdy dużych nie ma.',
+        },
+        giveStaminaPotions: {
+          label: 'Mikstury wytrzymałości',
+          tip: 'Każdy bez mikstury wytrzymałości pójdzie po nią do magazynu. Najpierw duża butelka, mała dopiero gdy dużych nie ma.',
+        },
+        giveHealingPotions: {
+          label: 'Mikstury leczenia',
+          tip: 'Każdy bez mikstury leczenia pójdzie po nią do magazynu. Najpierw duża butelka, mała dopiero gdy dużych nie ma.',
+        },
+        giveFoodAmulet: {
+          label: 'Amulet obfitości',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący nie głoduje.',
+        },
+        giveStaminaAmulet: {
+          label: 'Amulet wytrzymałości',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący się nie męczy.',
+        },
+        giveStrengthAmulet: {
+          label: 'Amulet siły',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący uderza mocniej.',
+        },
+        giveDefenseAmulet: {
+          label: 'Amulet obrony',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący odbiera połowę obrażeń.',
+        },
+        giveCriticalHitAmulet: {
+          label: 'Amulet ciosu krytycznego',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Część ciosów noszącego trafia dwa razy mocniej.',
+        },
+        giveSpeedAmulet: {
+          label: 'Amulet szybkości',
+          tip: 'Każdy bez niego pójdzie po niego do magazynu. Noszący chodzi szybciej.',
         },
         allowShortSwords: {
           label: 'Także krótki miecz',

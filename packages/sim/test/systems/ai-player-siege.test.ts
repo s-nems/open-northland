@@ -29,6 +29,7 @@ import {
 import { VEHICLE_SCAN_RADIUS_POINTS } from '../../src/systems/conflict/engage-vehicle.js';
 import { vehicleAnchor } from '../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
+import { ARMOR_MAIN_TYPE } from '../../src/systems/readviews/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
@@ -47,8 +48,9 @@ const FIST = 31;
 const SPEARMAN = 32;
 const BOWMAN = 40;
 const CATAPULT = 5;
-/** The heal potion, one of the outfit goods a waiting soldier is sent for. */
-const POTION = 60;
+/** The chain armour a waiting soldier is sent for; the potions go through the assistant's grants. */
+const CHAIN_GOOD = 60;
+const CHAIN_ARMOR = 7;
 /** A seed whose opening wave draw is its floor, so a band of that floor charges at once. */
 const EAGER_SEED = 7;
 const BARRACKS = { x: 30, y: 30 };
@@ -68,13 +70,9 @@ function siegeContent(): ContentSet {
     ...base,
     goods: [
       ...base.goods,
-      {
-        typeId: POTION,
-        id: 'potion_heal_big',
-        weight: 1,
-        equip: { category: 'misc', wears: true, uses: 5, restorePct: { healthMax: 50 } },
-      },
+      { typeId: CHAIN_GOOD, id: 'armor_chain', weight: 1, equip: { category: 'armor' } },
     ],
+    armor: [{ typeId: CHAIN_ARMOR, id: 'chain', mainType: ARMOR_MAIN_TYPE.HEAVY, goodType: CHAIN_GOOD }],
     vehicles: [
       {
         typeId: CATAPULT,
@@ -397,7 +395,7 @@ describe('military module - the catapults defend the settlement', () => {
 });
 
 describe('military module - the parked driver outfit', () => {
-  /** A seat whose headquarters holds one potion, with one catapult and its driver aboard at `at`. */
+  /** A seat whose headquarters holds one suit of armour, with one catapult and its driver aboard at `at`. */
   function outfitSim(at: (rally: { x: number; y: number }) => { x: number; y: number }): {
     sim: Simulation;
     driver: Entity;
@@ -411,7 +409,7 @@ describe('military module - the parked driver outfit', () => {
       y: HQ.y,
       tribe: VIKING,
       owner: SEAT,
-      initialGoods: [{ good: POTION, amount: 1 }],
+      initialGoods: [{ good: CHAIN_GOOD, amount: 1 }],
     });
     sim.step();
     const spot = at(rallyOf(sim));
@@ -430,7 +428,9 @@ describe('military module - the parked driver outfit', () => {
     const commands = run(sim);
     expect(vehicleOrders(commands)).toEqual([]); // parked already
     const errand = commands.filter((c) => c.kind === 'equipGood');
-    expect(errand).toEqual([{ kind: 'equipGood', entity: driver, group: 'misc', slot: 0, goodType: POTION }]);
+    expect(errand).toEqual([
+      { kind: 'equipGood', entity: driver, group: 'armor', slot: 0, goodType: CHAIN_GOOD },
+    ]);
 
     apply(sim, errand);
     expect(sim.world.has(driver, Rider)).toBe(false);

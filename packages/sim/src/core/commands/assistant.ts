@@ -1,8 +1,9 @@
-import type { AssistantCounterKind } from '../../components/assistant.js';
+import type { AssistantAudienceKind, AssistantCounterKind } from '../../components/assistant.js';
 
 /** Commands that configure the per-player settlement assistant. */
 export type AssistantCommand =
   | AssistantGrantCommand
+  | AssistantGrantAudienceCommand
   | AssistantWeaponVetoCommand
   | AssistantCounterCommand
   | AssistantPostGraduatesCommand
@@ -20,6 +21,18 @@ type AssistantGrantCommand = {
   /** The content good type id; a good with no `equip` class is skipped (only wearables are grantable). */
   readonly goodType: number;
   readonly enabled: boolean;
+};
+
+type AssistantGrantAudienceCommand = {
+  /**
+   * Keep `player`'s granted goods of one audience kind (the drinks or the charms) for fighters alone, or
+   * hand them to everyone again, held on the per-player `AssistantSoldierOnlyGrants` carrier.
+   */
+  readonly kind: 'setAssistantGrantAudience';
+  /** The player slot (`[0, MAX_PLAYERS)`); an out-of-range slot skips the command. */
+  readonly player: number;
+  readonly grantKind: AssistantAudienceKind;
+  readonly soldiersOnly: boolean;
 };
 
 type AssistantWeaponVetoCommand = {

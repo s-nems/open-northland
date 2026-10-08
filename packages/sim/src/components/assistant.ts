@@ -1,3 +1,4 @@
+import type { EquipClass } from '@open-northland/data';
 import { type Component, defineComponent, type Entity, type World } from '../ecs/world.js';
 
 /** The assistant's production counters: the `extra*` kinds queue births, the `train*` kinds barracks
@@ -47,6 +48,50 @@ export const AssistantGrants = defineComponent<{
   /** Granted good type ids, ascending - canonical for hashing and for a deterministic scan order. */
   goods: readonly number[];
 }>('AssistantGrants', 'players');
+
+/**
+ * The grant kinds a player may keep for soldiers alone, read off a good's equip class rather than its id:
+ * a drink is a misc good that wears (mead, the potions), a charm a lasting one (the amulets). Gear (boots,
+ * tools) has no audience switch: tools already go only to the trades that work with them.
+ */
+export const ASSISTANT_AUDIENCE_KINDS = ['drink', 'charm'] as const;
+export type AssistantAudienceKind = (typeof ASSISTANT_AUDIENCE_KINDS)[number];
+
+/** The audience kind of a wearable, or null for one every dressed settler may receive. */
+export function assistantAudienceKindOf(equip: EquipClass): AssistantAudienceKind | null {
+  if (equip.category !== 'misc') return null;
+  return equip.wears ? 'drink' : 'charm';
+}
+
+/**
+ * The per-player audience limits of {@link AssistantGrants}: the grant kinds handed to fighters only. The
+ * carrier exists while a kind is limited; by default every kind goes to everyone the pass dresses.
+ */
+export const AssistantSoldierOnlyGrants = defineComponent<{
+  /** The player slot the limits belong to (`[0, MAX_PLAYERS)`). */
+  player: number;
+  /** The limited kinds, in {@link ASSISTANT_AUDIENCE_KINDS} order. */
+  kinds: readonly AssistantAudienceKind[];
+}>('AssistantSoldierOnlyGrants', 'players');
+
+/** `player`'s {@link AssistantSoldierOnlyGrants} carrier, or null while no kind is limited. The lowest-id
+ *  carrier wins should more than one ever exist. */
+export function assistantSoldierOnlyEntity(world: World, player: number): Entity | null {
+  let best: Entity | null = null;
+  for (const e of world.query(AssistantSoldierOnlyGrants)) {
+    if (world.get(e, AssistantSoldierOnlyGrants).player !== player) continue;
+    if (best === null || e < best) best = e;
+  }
+  return best;
+}
+
+const NO_KINDS: readonly AssistantAudienceKind[] = [];
+
+/** The grant kinds `player` keeps for soldiers alone; empty by default. */
+export function assistantSoldierOnlyKinds(world: World, player: number): readonly AssistantAudienceKind[] {
+  const carrier = assistantSoldierOnlyEntity(world, player);
+  return carrier === null ? NO_KINDS : world.get(carrier, AssistantSoldierOnlyGrants).kinds;
+}
 
 /** A per-player good list carrier: {@link AssistantGrants} and {@link AssistantWeaponVetoes}. */
 export type PlayerGoodList = Component<{ player: number; goods: readonly number[] }>;

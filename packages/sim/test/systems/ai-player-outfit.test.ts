@@ -9,13 +9,14 @@ import type { Entity } from '../../src/ecs/world.js';
 import { EventBuffer, Rng, Simulation } from '../../src/index.js';
 import { militaryModule, RALLY_HOLD_RADIUS_NODES } from '../../src/systems/ai-player/index.js';
 import type { SystemContext } from '../../src/systems/index.js';
+import { ARMOR_MAIN_TYPE } from '../../src/systems/readviews/index.js';
 import { interactionCell } from '../../src/systems/settlers/targets/index.js';
 import { aiContent } from '../fixtures/ai-content.js';
 import { grassNodeMap } from '../fixtures/terrain.js';
 import { armedContent, SWORD, UNARMED } from './ai-player/support.js';
 
-// The soldiers' outfit: the heal potion and the defence amulet the military module sends a man waiting at
-// the barracks to fetch.
+// The soldiers' outfit: the armour the military module sends a man waiting at the barracks to fetch. The
+// potions and amulets go through the assistant's grants, covered with the AI seat flag.
 
 const VIKING = 1;
 const SEAT = 2;
@@ -29,9 +30,8 @@ const FOE = 3;
 const CHARGING_SEED = 7;
 /** A seed whose draw is above the floor, so the same band waits at the door. */
 const WAITING_SEED = 1;
-const POTION = 60;
-const AMULET = 61;
-const STRENGTH_AMULET = 62;
+const CHAIN_GOOD = 60;
+const CHAIN_ARMOR = 7;
 
 const HQ = { x: 20, y: 30 };
 const FOE_HQ = { x: 80, y: 50 };
@@ -43,20 +43,9 @@ function outfitContent(): ContentSet {
     ...base,
     goods: [
       ...base.goods,
-      {
-        typeId: POTION,
-        id: 'potion_heal_big',
-        weight: 1,
-        equip: { category: 'misc', wears: true, uses: 5, restorePct: { healthMax: 50 } },
-      },
-      { typeId: AMULET, id: 'amulet_defense', weight: 1, equip: { category: 'misc', wears: false } },
-      {
-        typeId: STRENGTH_AMULET,
-        id: 'amulet_strength',
-        weight: 1,
-        equip: { category: 'misc', wears: false },
-      },
+      { typeId: CHAIN_GOOD, id: 'armor_chain', weight: 1, equip: { category: 'armor' } },
     ],
+    armor: [{ typeId: CHAIN_ARMOR, id: 'chain', mainType: ARMOR_MAIN_TYPE.HEAVY, goodType: CHAIN_GOOD }],
   });
 }
 
@@ -182,30 +171,25 @@ function equipOrders(sim: Simulation, seed = WAITING_SEED): Extract<Command, { k
 }
 
 describe('military module - the soldiers outfit', () => {
-  it('sends a man waiting at the barracks for the potion a store holds', () => {
-    const sim = outfittedSeat([{ good: POTION, amount: 1 }], 1);
+  it('sends a man waiting at the barracks for the armour a store holds', () => {
+    const sim = outfittedSeat([{ good: CHAIN_GOOD, amount: 1 }], 1);
     const [man] = soldiers(sim);
     expect(equipOrders(sim)).toEqual([
-      { kind: 'equipGood', entity: man, group: 'misc', slot: 0, goodType: POTION },
+      { kind: 'equipGood', entity: man, group: 'armor', slot: 0, goodType: CHAIN_GOOD },
     ]);
   });
 
   it('sends no more men for a good than the stores hold', () => {
-    const sim = outfittedSeat([{ good: POTION, amount: 1 }], 3);
+    const sim = outfittedSeat([{ good: CHAIN_GOOD, amount: 1 }], 3);
     expect(equipOrders(sim)).toHaveLength(1);
   });
 
-  it('falls through to the amulet when no potion is in stock', () => {
-    const sim = outfittedSeat([{ good: AMULET, amount: 2 }], 2);
-    expect(equipOrders(sim).map((c) => c.goodType)).toEqual([AMULET, AMULET]);
-  });
-
-  it('sends nobody while the stores hold neither good', () => {
+  it('sends nobody while the stores hold no armour', () => {
     expect(equipOrders(outfittedSeat([], 2))).toEqual([]);
   });
 
   it('counts the errands already underway against the stock', () => {
-    const sim = outfittedSeat([{ good: POTION, amount: 1 }], 2);
+    const sim = outfittedSeat([{ good: CHAIN_GOOD, amount: 1 }], 2);
     const [sent] = equipOrders(sim);
     if (sent === undefined) throw new Error('expected an errand');
     sim.enqueueSetup(sent);
@@ -213,48 +197,24 @@ describe('military module - the soldiers outfit', () => {
     expect(equipOrders(sim)).toEqual([]);
   });
 
-  it('sends a man who already carries the potion for the amulet, into the next free slot', () => {
-    const sim = outfittedSeat(
-      [
-        { good: POTION, amount: 1 },
-        { good: AMULET, amount: 1 },
-      ],
-      1,
-    );
+  it('sends nobody who already wears his armour', () => {
+    const sim = outfittedSeat([{ good: CHAIN_GOOD, amount: 1 }], 1);
     const [man] = soldiers(sim);
     if (man === undefined) throw new Error('setup: no soldier');
     sim.world.add(man, Equipment, {
       boots: null,
       tool: null,
       weapon: null,
-      armor: null,
-      misc: [{ goodType: POTION, degreeOfUse: ZERO }, null, null, null],
+      armor: { goodType: CHAIN_GOOD, degreeOfUse: ZERO },
+      misc: [null, null, null, null],
     });
-    expect(equipOrders(sim)).toEqual([
-      { kind: 'equipGood', entity: man, group: 'misc', slot: 1, goodType: AMULET },
-    ]);
-  });
-
-  it('sends a man who wears both the potion and the defence amulet for the strength amulet', () => {
-    const sim = outfittedSeat([{ good: STRENGTH_AMULET, amount: 1 }], 1);
-    const [man] = soldiers(sim);
-    if (man === undefined) throw new Error('setup: no soldier');
-    sim.world.add(man, Equipment, {
-      boots: null,
-      tool: null,
-      weapon: null,
-      armor: null,
-      misc: [{ goodType: POTION, degreeOfUse: ZERO }, { goodType: AMULET, degreeOfUse: ZERO }, null, null],
-    });
-    expect(equipOrders(sim)).toEqual([
-      { kind: 'equipGood', entity: man, group: 'misc', slot: 2, goodType: STRENGTH_AMULET },
-    ]);
+    expect(equipOrders(sim)).toEqual([]);
   });
 
   it('counts the units a heap on the ground lends and none an enemy store holds', () => {
-    const sim = outfittedSeat([{ good: POTION, amount: 1 }], 4);
+    const sim = outfittedSeat([{ good: CHAIN_GOOD, amount: 1 }], 4);
     const door = rallyOf(sim);
-    sim.enqueueSetup({ kind: 'dropGood', good: POTION, x: door.x + 4, y: door.y + 2, amount: 1 });
+    sim.enqueueSetup({ kind: 'dropGood', good: CHAIN_GOOD, x: door.x + 4, y: door.y + 2, amount: 1 });
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: FOE, tribes: [VIKING] });
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -263,10 +223,10 @@ describe('military module - the soldiers outfit', () => {
       y: FOE_HQ.y,
       tribe: VIKING,
       owner: FOE,
-      initialGoods: [{ good: POTION, amount: 5 }],
+      initialGoods: [{ good: CHAIN_GOOD, amount: 5 }],
     });
     sim.step();
-    expect(equipOrders(sim).map((c) => c.goodType)).toEqual([POTION, POTION]);
+    expect(equipOrders(sim).map((c) => c.goodType)).toEqual([CHAIN_GOOD, CHAIN_GOOD]);
   });
 
   it('counts a weapon good the waiting tribes share once, not once per tribe', () => {
@@ -283,7 +243,7 @@ describe('military module - the soldiers outfit', () => {
 
   it('never sends a band that charges this decision, only one that waits', () => {
     const band = (): Simulation => {
-      const sim = outfittedSeat([{ good: POTION, amount: 1 }], 5);
+      const sim = outfittedSeat([{ good: CHAIN_GOOD, amount: 1 }], 5);
       sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: HQ_TYPE,
@@ -300,7 +260,7 @@ describe('military module - the soldiers outfit', () => {
   });
 
   it('leaves a man away from the barracks to the recall', () => {
-    const sim = outfittedSeat([{ good: POTION, amount: 1 }], 0);
+    const sim = outfittedSeat([{ good: CHAIN_GOOD, amount: 1 }], 0);
     const door = rallyOf(sim);
     sim.enqueueSetup({
       kind: 'spawnSettler',

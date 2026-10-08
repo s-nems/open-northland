@@ -132,6 +132,7 @@ export const COMMAND_ISSUER: {
   setAlliedVision: 'trusted',
   setAssistantCounter: 'seat',
   setAssistantGrant: 'seat',
+  setAssistantGrantAudience: 'seat',
   setAssistantPostGraduates: 'seat',
   setAssistantMoveFlags: 'seat',
   setAssistantWeaponVeto: 'seat',

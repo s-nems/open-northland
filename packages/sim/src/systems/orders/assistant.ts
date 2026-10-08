@@ -1,15 +1,19 @@
 import {
+  ASSISTANT_AUDIENCE_KINDS,
   ASSISTANT_COUNTER_MAX,
   ASSISTANT_COUNTER_MIN,
+  type AssistantAudienceKind,
   type AssistantCounterKind,
   AssistantCounters,
   AssistantGrants,
   AssistantMovesFlags,
   AssistantPostsGraduates,
+  AssistantSoldierOnlyGrants,
   type AssistantSwitch,
   AssistantWeaponVetoes,
   assistantCountersAtDefault,
   assistantCountersEntity,
+  assistantSoldierOnlyEntity,
   assistantSwitchEntity,
   defaultAssistantCounters,
   INFINITE_COUNTER_KINDS,
@@ -33,6 +37,42 @@ export function setAssistantGrant(
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined) return; // only a wearable good is grantable
   setListed(world, AssistantGrants, command.player, command.goodType, command.enabled);
+}
+
+/** Revoke `goods` from `player`'s grant list, the strategic AI's teardown seam for the goods it published. */
+export function revokeAssistantGrants(world: World, player: number, goods: readonly number[]): void {
+  for (const good of goods) setListed(world, AssistantGrants, player, good, false);
+}
+
+/** Limit one grant kind of `player` to fighters, or lift the limit - see the command doc. */
+export function setAssistantGrantAudience(
+  world: World,
+  command: Extract<Command, { kind: 'setAssistantGrantAudience' }>,
+): void {
+  setAssistantSoldiersOnly(world, command.player, command.grantKind, command.soldiersOnly);
+}
+
+/** Put `kind` on or off `player`'s soldiers-only list: the carrier is created with the first kind and
+ *  destroyed with the last, and the kinds keep the {@link ASSISTANT_AUDIENCE_KINDS} order. */
+export function setAssistantSoldiersOnly(
+  world: World,
+  player: number,
+  kind: AssistantAudienceKind,
+  soldiersOnly: boolean,
+): void {
+  const carrier = assistantSoldierOnlyEntity(world, player);
+  const current = carrier === null ? [] : world.get(carrier, AssistantSoldierOnlyGrants).kinds;
+  if (soldiersOnly === current.includes(kind)) return; // already in the wanted state
+  if (!soldiersOnly) {
+    if (carrier === null) return;
+    const kinds = current.filter((k) => k !== kind);
+    if (kinds.length === 0) world.destroy(carrier);
+    else world.mut(carrier, AssistantSoldierOnlyGrants).kinds = kinds;
+    return;
+  }
+  const kinds = ASSISTANT_AUDIENCE_KINDS.filter((k) => k === kind || current.includes(k));
+  if (carrier === null) world.add(world.create(), AssistantSoldierOnlyGrants, { player, kinds });
+  else world.mut(carrier, AssistantSoldierOnlyGrants).kinds = kinds;
 }
 
 /** Switch `player`'s graduate posting on or off - see the command doc. */

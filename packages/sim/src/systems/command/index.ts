@@ -46,6 +46,7 @@ import {
   renameSettler,
   setAssistantCounter,
   setAssistantGrant,
+  setAssistantGrantAudience,
   setAssistantMoveFlags,
   setAssistantPostGraduates,
   setAssistantWeaponVeto,
@@ -396,6 +397,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
     case 'setAssistantGrant':
       setAssistantGrant(world, ctx, command);
       return;
+    case 'setAssistantGrantAudience':
+      setAssistantGrantAudience(world, command);
+      return;
     case 'setAssistantWeaponVeto':
       setAssistantWeaponVeto(world, ctx, command);
       return;
@@ -447,7 +451,7 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       setMatchParticipants(world, command.players, command.victory);
       return;
     case 'setPlayerAi':
-      setPlayerAi(world, command);
+      setPlayerAi(world, ctx, command);
       return;
     case 'debugKill':
       debugKill(world, command);

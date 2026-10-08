@@ -493,6 +493,7 @@ class WorkerClient<E> {
       assistantCounters: (player) => assistantFacts(facts(), player).counters,
       assistantGrants: (player) => assistantFacts(facts(), player).grants,
       assistantWeaponVetoes: (player) => assistantFacts(facts(), player).weaponVetoes,
+      assistantSoldierOnlyGrants: (player) => assistantFacts(facts(), player).soldierOnlyGrants,
       assistantPostsGraduates: (player) => assistantFacts(facts(), player).postsGraduates,
       assistantMovesFlags: (player) => assistantFacts(facts(), player).movesFlags,
       needsEnabled: () => facts().needsEnabled,
@@ -614,6 +615,7 @@ function assistantFacts(facts: WorldFacts, player: number): AssistantFacts {
       counters: components.defaultAssistantCounters(),
       grants: [],
       weaponVetoes: [],
+      soldierOnlyGrants: [],
       postsGraduates: false,
       movesFlags: false,
     }

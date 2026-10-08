@@ -1307,6 +1307,18 @@ export const deGame = {
         'Erwachsene Männer erhalten sie, auch Soldaten. Werkzeug bekommen nur Männer, die in einem Beruf arbeiten.',
       work: 'Arbeit',
       workTip: 'Hilfe beim Verteilen der Arbeit.',
+      drinks: 'Getränke',
+      drinksTip:
+        'Met und Tränke. Eine Flasche jeder Art pro Mann; wer einen kleinen Trank hat, holt keinen großen.',
+      charms: 'Amulette',
+      charmsTip: 'Eines jeder Art pro Mann. Ein Amulett nutzt sich nie ab.',
+      audience: {
+        label: 'Wer sie bekommt',
+        everyone: 'Alle',
+        everyoneTip: 'Jeder erwachsene Mann bekommt sie, auch Soldaten.',
+        soldiers: 'Soldaten',
+        soldiersTip: 'Nur Soldaten bekommen sie. Zivilisten behalten, was sie schon tragen.',
+      },
       counters: {
         extraWomen: {
           label: 'Töchter',
@@ -1349,6 +1361,42 @@ export const deGame = {
         giveMead: {
           label: 'Met',
           tip: 'Jeder erwachsene Mann ohne Met holt sich welchen aus dem Lager.',
+        },
+        giveFoodPotions: {
+          label: 'Nahrungstränke',
+          tip: 'Jeder Mann ohne Nahrungstrank holt sich einen aus dem Lager. Zuerst die große Flasche, die kleine erst, wenn keine große mehr da ist.',
+        },
+        giveStaminaPotions: {
+          label: 'Ausdauertränke',
+          tip: 'Jeder Mann ohne Ausdauertrank holt sich einen aus dem Lager. Zuerst die große Flasche, die kleine erst, wenn keine große mehr da ist.',
+        },
+        giveHealingPotions: {
+          label: 'Heiltränke',
+          tip: 'Jeder Mann ohne Heiltrank holt sich einen aus dem Lager. Zuerst die große Flasche, die kleine erst, wenn keine große mehr da ist.',
+        },
+        giveFoodAmulet: {
+          label: 'Amulett der Fülle',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger bleibt satt.',
+        },
+        giveStaminaAmulet: {
+          label: 'Amulett der Ausdauer',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger bleibt ausgeruht.',
+        },
+        giveStrengthAmulet: {
+          label: 'Amulett der Stärke',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger schlägt härter.',
+        },
+        giveDefenseAmulet: {
+          label: 'Amulett der Verteidigung',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger nimmt nur halben Schaden.',
+        },
+        giveCriticalHitAmulet: {
+          label: 'Amulett des kritischen Schlags',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Manche Schläge seines Trägers treffen doppelt so hart.',
+        },
+        giveSpeedAmulet: {
+          label: 'Amulett der Geschwindigkeit',
+          tip: 'Jeder Mann ohne eines holt sich eines aus dem Lager. Sein Träger geht schneller.',
         },
         allowShortSwords: {
           label: 'Auch Kurzschwerter',
