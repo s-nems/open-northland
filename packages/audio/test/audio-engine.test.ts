@@ -288,6 +288,49 @@ describe('WebAudioEngine one-shots', () => {
     expect(fetched).toEqual(['/sounds/c.wav']); // 0.99 → last of three
   });
 
+  it('fades a stopped world shot to silence and stops its source once the fade lands', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [shot({ instance: 7 })], ambient: [] });
+    await flush();
+    ctx.currentTime = 2;
+    engine.stopOneShot(7);
+    const source = ctx.sources[0] as FakeSource;
+    const gain = (source.connectedTo[0] as FakePanner).connectedTo[0] as FakeGain;
+    expect(gain.gain.ramps).toEqual([{ value: 0, time: 2 + CLICK_FREE_RAMP_S }]);
+    expect(source.stoppedAt).toBe(2 + CLICK_FREE_RAMP_S);
+  });
+
+  it('never starts a world shot stopped while its wav still loads', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [shot({ instance: 7 })], ambient: [] });
+    engine.stopOneShot(7);
+    await flush();
+    expect(ctx.sources).toHaveLength(0);
+  });
+
+  it('forgets a world shot once its source ends, so a late stop touches nothing', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.apply({ oneShots: [shot({ instance: 7 })], ambient: [] });
+    await flush();
+    const source = ctx.sources[0] as FakeSource;
+    source.onended?.(); // played out
+    engine.stopOneShot(7);
+    expect(source.stoppedAt).toBeNull();
+  });
+
+  it('reports a wav`s decoded length once it has loaded', async () => {
+    const { engine } = makeEngine();
+    await engine.resume();
+    expect(engine.clipLengthS('sfx/hammer.wav')).toBeUndefined();
+    engine.apply({ oneShots: [shot()], ambient: [] });
+    expect(engine.clipLengthS('sfx/hammer.wav')).toBeUndefined(); // still loading
+    await flush();
+    expect(engine.clipLengthS('sfx/hammer.wav')).toBe(4); // the fake decodes 4 bytes as 4 s
+  });
+
   it('degrades to unpanned playback when the context has no StereoPannerNode', async () => {
     const { engine, ctx } = makeEngine({ noPanner: true });
     await engine.resume();

@@ -67,7 +67,7 @@ export interface SoundDriverOptions extends AudioEngineOptions {}
 export class SoundDriver {
   private readonly engine: WebAudioEngine;
   private readonly random: RandomFn;
-  private readonly arbiter = new OneShotArbiter();
+  private readonly arbiter: OneShotArbiter;
   private musicMap: MusicMap | null = null;
   private mood: MusicMoodState = CALM_MOOD;
   /** Settlers ordered since the last frame, answered with their voices on that frame. */
@@ -80,8 +80,17 @@ export class SoundDriver {
     private readonly bindings: SoundBindings,
     options: SoundDriverOptions = {},
   ) {
-    this.engine = new WebAudioEngine(options);
+    const engine = new WebAudioEngine(options);
+    this.engine = engine;
     this.random = options.random ?? Math.random;
+    this.arbiter = new OneShotArbiter({
+      random: this.random,
+      now: engine.clock,
+      playback: {
+        clipLengthS: (file) => engine.clipLengthS(file),
+        stop: (instance) => engine.stopOneShot(instance),
+      },
+    });
   }
 
   close(): void {

@@ -35,4 +35,10 @@ export class SampleCache {
     this.entries.set(file, promise);
     return promise;
   }
+
+  /** The decoded length of `file` in seconds, or undefined while it is unloaded, loading or failed. */
+  duration(file: string): number | undefined {
+    const entry = this.entries.get(file);
+    return entry === undefined || entry === null || entry instanceof Promise ? undefined : entry.duration;
+  }
 }

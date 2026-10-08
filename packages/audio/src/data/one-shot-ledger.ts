@@ -3,8 +3,9 @@ import type { OneShot } from './types.js';
 /**
  * What the arbiter has started and when each start ends, on the audio clock: the wav it picked from a
  * pool, which wavs still sound, how many instances a pool holds, and the world one-shots that count
- * against {@link WORLD_VOICE_CAP}. Pure: the end of a play is its start plus the clip's length, as the
- * engine reports it or, until then, {@link DEFAULT_CLIP_LENGTH_S}.
+ * against {@link WORLD_VOICE_CAP}. Pure: the end of a play is its start plus the clip's length, asked of
+ * the engine each time, so a play started before its wav decoded ends by the real length once it has;
+ * until then the clip is taken to run {@link DEFAULT_CLIP_LENGTH_S}.
  */
 
 /** Simultaneous instances one sound pool may hold (a scream pool, a swing pool). Approximation: the
@@ -47,11 +48,16 @@ interface PoolState {
   candidate: OneShot | null;
 }
 
+/** One start of a wav. */
+interface Play {
+  readonly file: string;
+  readonly startedAt: number;
+}
+
 interface WorldVoice {
   readonly instance: number;
-  readonly file: string;
+  readonly play: Play;
   readonly gain: number;
-  readonly endsAt: number;
   readonly pool: PoolState;
 }
 
@@ -70,8 +76,8 @@ function pruneExpired(map: Map<string, number>, now: number, maxAge: number): vo
 export class OneShotLedger {
   /** Pools by their file list: shots of one sound group share the index's array. */
   private readonly pools = new WeakMap<readonly string[], PoolState>();
-  /** wav → audio-clock second its latest play ends. */
-  private readonly soundingUntil = new Map<string, number>();
+  /** wav → its latest play. */
+  private readonly lastPlay = new Map<string, Play>();
   /** key → audio-clock second of its latest start. */
   private readonly lastStarted = new Map<string, number>();
   private readonly world: WorldVoice[] = [];
@@ -88,12 +94,14 @@ export class OneShotLedger {
   beginFrame(now: number): void {
     let kept = 0;
     for (const voice of this.world) {
-      if (voice.endsAt > now) this.world[kept++] = voice;
+      if (this.endOf(voice.play) > now) this.world[kept++] = voice;
       else voice.pool.playing--;
     }
     this.world.length = kept;
     pruneExpired(this.lastStarted, now, KEY_COOLDOWN_S);
-    pruneExpired(this.soundingUntil, now, 0);
+    if (this.lastPlay.size >= LEDGER_PRUNE_SIZE) {
+      for (const [file, play] of this.lastPlay) if (this.endOf(play) <= now) this.lastPlay.delete(file);
+    }
   }
 
   /**
@@ -143,10 +151,10 @@ export class OneShotLedger {
     }
     const pool = this.pool(shot.files);
     const instance = this.nextInstance++;
-    const endsAt = this.record(shot, pool, file, now);
+    const play = this.record(shot, pool, file, now);
     pool.playing++;
     pool.lastStart = now;
-    this.world.push({ instance, file, gain: shot.gain, endsAt, pool });
+    this.world.push({ instance, play, gain: shot.gain, pool });
     return { ...shot, files: [file], instance };
   }
 
@@ -168,13 +176,17 @@ export class OneShotLedger {
     return { ...shot, files: [file] };
   }
 
-  private record(shot: OneShot, pool: PoolState, file: string, now: number): number {
-    const endsAt = now + (this.playback.clipLengthS?.(file) ?? DEFAULT_CLIP_LENGTH_S);
-    this.soundingUntil.set(file, endsAt);
+  private record(shot: OneShot, pool: PoolState, file: string, now: number): Play {
+    const play: Play = { file, startedAt: now };
+    this.lastPlay.set(file, play);
     this.lastStarted.set(shot.key, now);
     pool.recent.push(file);
     if (pool.recent.length > noRepeatDepth(shot.files.length)) pool.recent.shift();
-    return endsAt;
+    return play;
+  }
+
+  private endOf(play: Play): number {
+    return play.startedAt + (this.playback.clipLengthS?.(play.file) ?? DEFAULT_CLIP_LENGTH_S);
   }
 
   private steal(victim: WorldVoice): void {
@@ -183,7 +195,7 @@ export class OneShotLedger {
     victim.pool.playing--;
     // Without `stop` the stolen wav plays on, so it still holds its wav.
     if (this.playback.stop === undefined) return;
-    if (this.soundingUntil.get(victim.file) === victim.endsAt) this.soundingUntil.delete(victim.file);
+    if (this.lastPlay.get(victim.play.file) === victim.play) this.lastPlay.delete(victim.play.file);
     this.playback.stop(victim.instance);
   }
 
@@ -215,7 +227,8 @@ export class OneShotLedger {
   }
 
   private sounding(file: string, now: number): boolean {
-    return (this.soundingUntil.get(file) ?? Number.NEGATIVE_INFINITY) > now;
+    const play = this.lastPlay.get(file);
+    return play !== undefined && this.endOf(play) > now;
   }
 
   private anySounding(files: readonly string[], now: number): boolean {

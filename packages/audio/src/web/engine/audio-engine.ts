@@ -138,6 +138,12 @@ interface LayerGains {
   readonly filters: readonly BiquadFilterNode[];
 }
 
+/** A started world one-shot's nodes, kept so a steal can fade and stop it. */
+interface StoppableShot {
+  readonly source: AudioBufferSourceNode;
+  readonly gain: GainNode;
+}
+
 export class WebAudioEngine {
   private readonly baseUrl: string;
   private readonly musicBaseUrl: string;
@@ -174,6 +180,9 @@ export class WebAudioEngine {
   /** wav file → the audio-clock second an exclusive play of it ends (Infinity while its buffer is still
    *  loading), so a voice or a body blow never stacks on a copy of itself still sounding. */
   private readonly soundingUntil = new Map<string, number>();
+  /** The world one-shots the arbiter may still stop, by {@link OneShot.instance}: null while the wav
+   *  loads. An entry leaves when its source ends, its load fails, or a stop takes it. */
+  private readonly stoppable = new Map<number, StoppableShot | null>();
 
   constructor(options: AudioEngineOptions = {}) {
     this.baseUrl = options.baseUrl ?? DEFAULT_SOUNDS_BASE_URL;
@@ -316,6 +325,22 @@ export class WebAudioEngine {
   setWeatherEnabled(enabled: boolean): void {
     this.weatherEnabled = enabled;
     this.weather?.setEnabled(enabled);
+  }
+
+  /** The decoded length of `file` in seconds, or undefined until its wav has loaded. */
+  clipLengthS(file: string): number | undefined {
+    return this.samples?.duration(file);
+  }
+
+  /** Fade out the world one-shot started as `instance` and stop it once silent; a stop that lands while
+   *  its wav still loads keeps it from starting at all. */
+  stopOneShot(instance: number): void {
+    const playing = this.stoppable.get(instance);
+    this.stoppable.delete(instance);
+    const ctx = this.ctx;
+    if (playing === undefined || playing === null || ctx === null) return;
+    rampParam(ctx, playing.gain.gain, 0, CLICK_FREE_RAMP_S);
+    playing.source.stop(ctx.currentTime + CLICK_FREE_RAMP_S);
   }
 
   /** Fire one-shots outside a frame decision - a GUI cue answering an input event right away. */
@@ -477,10 +502,14 @@ export class WebAudioEngine {
     }
     pruneExpired(this.lastPlayed, COOLDOWN_PRUNE_SIZE, now, ONE_SHOT_COOLDOWN_S);
     this.lastPlayed.set(shot.key, now);
+    const instance = shot.instance;
+    if (instance !== undefined) this.stoppable.set(instance, null);
     void samples.get(file).then((buffer) => {
       const buses = this.buses;
-      if (buffer === null || !this.canPlay() || buses === null) {
+      const stopped = instance !== undefined && !this.stoppable.has(instance);
+      if (buffer === null || !this.canPlay() || buses === null || stopped) {
         if (exclusive) this.soundingUntil.delete(file);
+        if (instance !== undefined) this.stoppable.delete(instance);
         return;
       }
       if (exclusive) this.soundingUntil.set(file, ctx.currentTime + buffer.duration);
@@ -495,6 +524,10 @@ export class WebAudioEngine {
       const head = this.pannerFor(ctx, shot.pan) ?? source;
       if (head !== source) source.connect(head);
       head.connect(gain).connect(this.shotInput(shot, buses));
+      if (instance !== undefined) {
+        this.stoppable.set(instance, { source, gain });
+        source.onended = () => this.stoppable.delete(instance);
+      }
       source.start();
     });
   }
