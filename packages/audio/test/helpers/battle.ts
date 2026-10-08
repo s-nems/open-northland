@@ -104,6 +104,8 @@ export function battleEvents(units: number): SimEvent[] {
     events.push({ kind: 'combatSwing', attacker: id as Entity, at: nodeOf(id) });
     events.push({
       kind: 'combatHit',
+      damage: 250,
+      targetMaxHealth: 1000,
       attacker: id as Entity,
       target: target as Entity,
       soundType: SWORD_HIT_SOUND,

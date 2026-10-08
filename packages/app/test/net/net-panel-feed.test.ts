@@ -367,8 +367,8 @@ describe('the chat line cues', () => {
       client.apply(message);
       hud.observe(message);
     };
-    send({ kind: 'chat', from: 'Ania', text: 'hej', tick: 5 });
-    send({ kind: 'chat', from: 'Edek', text: 'cześć', tick: 6 });
+    send({ kind: 'chat', from: 'Ania', text: 'hej', at: 5, tick: 5 });
+    send({ kind: 'chat', from: 'Edek', text: 'cześć', at: 6, tick: 6 });
     send({ kind: 'room', room: { ...ROOM, members: [...ROOM.members, member('Olek', 6)] } });
     send({ kind: 'kicked', player: 6, nick: 'Olek', mode: 'ai', cause: 'left', tick: 7 });
     expect(

@@ -152,6 +152,8 @@ function battleScene(hx: number): Scene & { readonly reads: () => number } {
     entities.push(settler(id, hx / 2, BUSY_FROM));
     events.push({
       kind: 'combatHit',
+      damage: 250,
+      targetMaxHealth: 1000,
       attacker: id as Entity,
       target: id as Entity,
       soundType: IMPACT_SOUND,

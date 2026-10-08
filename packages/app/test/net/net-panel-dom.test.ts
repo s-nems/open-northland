@@ -672,7 +672,7 @@ describe('the chat cues', () => {
       shown,
       { ...said(1), cue: 'chat' },
       { ...said(2), cue: 'chat' },
-      { from: null, text: 'Olek joined', tick: null, cue: 'arrival' },
+      { from: null, text: 'Olek joined', at: CHAT_OPENED_AT, tick: null, cue: 'arrival' },
       said(3),
     ];
     feed.current = panelModel({ chat: lines, chatVersion: 4 });

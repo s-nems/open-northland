@@ -64,6 +64,8 @@ const hitOn = (target: number, attackerPlayer = THEM): SimEvent => ({
 /** A wolf's bite on `target`: a blow from nobody's side. */
 const biteOn = (target: number): SimEvent => ({
   kind: 'combatHit',
+  damage: 250,
+  targetMaxHealth: 1000,
   attacker: entity(98),
   target: entity(target),
   at: { hx: 0, hy: 0 },
@@ -122,6 +124,8 @@ describe('music intensity', () => {
     expect(ours.battle).toBe(true);
     const shot = (target: number, collateral: boolean): SimEvent => ({
       kind: 'projectileHit',
+      damage: 250,
+      targetMaxHealth: 1000,
       projectile: entity(98),
       shooter: entity(97),
       shooterPlayer: US,
