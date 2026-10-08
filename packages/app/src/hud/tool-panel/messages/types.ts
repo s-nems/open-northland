@@ -98,8 +98,8 @@ export interface ProductionStall {
 
 /** Why a worker idle at a finished workplace stands, as its note names it, read off the sim's diagnosis
  *  of the worker: a load with no store to take it, every product stopped, nothing to gather in reach or
- *  no way to it, or nothing to collect at a porter's flag. A craft operator's gates are the stall note's
- *  to name. */
+ *  no way to it, nothing to collect at a porter's flag, no site to build or sites short of goods nobody
+ *  holds. A craft operator's gates are the stall note's to name. */
 export type IdleReasonKind =
   | 'noStorage'
   | 'outputOutOfReach'
@@ -109,7 +109,9 @@ export type IdleReasonKind =
   | 'resourceRouteBlocked'
   | 'nothingAtFlag'
   | 'noGame'
-  | 'gameOutOfReach';
+  | 'gameOutOfReach'
+  | 'noConstructionSite'
+  | 'constructionShort';
 
 /** An idle worker's reason and the goods it names, possibly none. */
 export interface IdleReason {

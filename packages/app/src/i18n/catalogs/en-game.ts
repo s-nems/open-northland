@@ -562,6 +562,8 @@ export const enGame = {
         nothingAtFlag: 'Nothing to collect at the flag',
         nothingToCarry: 'Nothing to carry in reach',
         noGame: 'No free game in the hunting ground',
+        noConstructionSite: 'No construction site',
+        constructionShort: 'Sites wait for: {goods}',
         gameOutOfReach: 'No way through to the game in the hunting ground',
         noTool: 'no tool',
         noJob: 'no profession',
@@ -1626,6 +1628,8 @@ export const enGame = {
         resourceRouteBlocked: 'No way through',
         nothingAtFlag: 'Flag is empty',
         noGame: 'No game',
+        noConstructionSite: 'Nothing to build',
+        constructionShort: 'No {good}',
         gameOutOfReach: 'Game cut off',
       },
       full: {
@@ -1643,6 +1647,9 @@ export const enGame = {
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
         noGame:
           'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
+        noConstructionSite:
+          'There is no construction site. Place a building or give the builder another trade.',
+        constructionShort: 'The sites wait for a good no store holds: {good}. Make or bring some in.',
         gameOutOfReach:
           'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
       },
@@ -1662,6 +1669,9 @@ export const enGame = {
         nothingAtFlag: 'Nothing to collect at the flag. Move the flag to where goods lie, or take it away.',
         noGame:
           'No free game in sight in the hunting ground. Mark a spot where game grazes with a work flag.',
+        noConstructionSite:
+          'There is no construction site. Place a building or give the builder another trade.',
+        constructionShort: 'The sites wait for a good no store holds. Make or bring some in.',
         gameOutOfReach:
           'The game in the hunting ground stands across water or a wall, with no way through. Clear a path or mark another spot with a work flag.',
       },

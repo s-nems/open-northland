@@ -32,7 +32,10 @@ export function idleReasonOf(status: WorkStatus | undefined): IdleReason | null 
     case 'nothingAtFlag':
     case 'noGame':
     case 'gameOutOfReach':
+    case 'noConstructionSite':
       return { kind: status.kind, goodTypes: NO_GOODS };
+    case 'constructionShort':
+      return { kind: 'constructionShort', goodTypes: status.goodTypes };
     case 'nothingToCarry':
     case 'waitingInput':
     case 'herdNotReady':

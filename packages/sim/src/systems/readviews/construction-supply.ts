@@ -15,8 +15,9 @@ export interface ConstructionShortfall {
   readonly delivered: number;
   /** Units some settler is bringing it. */
   readonly inbound: number;
-  /** Whether a store of the site's side lends a unit, so the shortfall is the builders' errand rather than
-   *  the player's. Reach is not weighed: a store beyond the signposts or across water counts, and the
+  /** Whether a store the site's owner owns lends a unit, so the shortfall is the builders' errand rather
+   *  than the player's. A neutral pile, a felled trunk in a far wood say, is no store the player keeps,
+   *  so it does not count. Reach is not weighed: an own store beyond the signposts counts, and the
    *  builder's own lost-way note reports that case. A good with more holders than the diagnosis weighs
    *  counts as held. */
   readonly held: boolean;
@@ -68,7 +69,7 @@ function sideHolds(
 ): boolean {
   let examined = 0;
   for (const store of stock.holders(goodType)) {
-    if (ownersCompatible(owner, ownerOf(world, store))) return true;
+    if (ownerOf(world, store) === owner) return true;
     if (++examined >= MAX_DIAGNOSTIC_STORES) return true;
   }
   return false;

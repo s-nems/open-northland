@@ -605,6 +605,8 @@ export const deGame = {
         nothingAtFlag: 'An der Fahne gibt es nichts einzusammeln',
         nothingToCarry: 'Nichts zum Tragen in Reichweite',
         noGame: 'Kein verfügbares Wild im Jagdgebiet',
+        noConstructionSite: 'Keine Baustelle',
+        constructionShort: 'Baustellen warten auf: {goods}',
         gameOutOfReach: 'Kein Weg zum Wild im Jagdgebiet',
         noTool: 'Kein Werkzeug',
         noJob: 'Kein Beruf',
@@ -1784,6 +1786,8 @@ export const deGame = {
         resourceRouteBlocked: 'Kein Durchgang',
         nothingAtFlag: 'Nichts bei der Fahne',
         noGame: 'Kein Wild',
+        noConstructionSite: 'Nichts zu bauen',
+        constructionShort: 'Kein {good}',
         gameOutOfReach: 'Wild unerreichbar',
       },
       full: {
@@ -1804,6 +1808,10 @@ export const deGame = {
           'Bei der Fahne liegt nichts zum Einsammeln. Versetze die Fahne an einen Ort mit Waren oder entferne sie.',
         noGame:
           'Im Jagdgebiet ist kein freies Wild zu sehen. Markiere einen Ort, an dem Wild weidet, mit einer Arbeitsfahne.',
+        noConstructionSite:
+          'Es gibt keine Baustelle. Setze ein Gebäude oder gib dem Bauarbeiter einen anderen Beruf.',
+        constructionShort:
+          'Die Baustellen warten auf eine Ware, die kein Lager hat: {good}. Stelle sie her oder beschaffe sie.',
         gameOutOfReach:
           'Das Wild im Jagdgebiet steht hinter Wasser oder einer Mauer, ohne Durchgang. Mache einen Weg frei oder markiere einen anderen Ort mit einer Arbeitsfahne.',
       },
@@ -1824,6 +1832,10 @@ export const deGame = {
           'Bei der Fahne liegt nichts zum Einsammeln. Versetze die Fahne an einen Ort mit Waren oder entferne sie.',
         noGame:
           'Im Jagdgebiet ist kein freies Wild zu sehen. Markiere einen Ort, an dem Wild weidet, mit einer Arbeitsfahne.',
+        noConstructionSite:
+          'Es gibt keine Baustelle. Setze ein Gebäude oder gib dem Bauarbeiter einen anderen Beruf.',
+        constructionShort:
+          'Die Baustellen warten auf eine Ware, die kein Lager hat. Stelle sie her oder beschaffe sie.',
         gameOutOfReach:
           'Das Wild im Jagdgebiet steht hinter Wasser oder einer Mauer, ohne Durchgang. Mache einen Weg frei oder markiere einen anderen Ort mit einer Arbeitsfahne.',
       },

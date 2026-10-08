@@ -552,6 +552,8 @@ export const plGame = {
         nothingAtFlag: 'Nic do zebrania przy chorągiewce',
         nothingToCarry: 'Nic do przeniesienia w zasięgu',
         noGame: 'Brak wolnej zwierzyny w terenie łowieckim',
+        noConstructionSite: 'Brak placu budowy',
+        constructionShort: 'Budowy czekają na: {goods}',
         gameOutOfReach: 'Brak dojścia do zwierzyny w terenie łowieckim',
         noTool: 'bez narzędzia',
         noJob: 'bez zawodu',
@@ -1600,6 +1602,8 @@ export const plGame = {
         resourceRouteBlocked: 'Brak dojścia',
         nothingAtFlag: 'Nic do zebrania',
         noGame: 'Brak zwierzyny',
+        noConstructionSite: 'Nic do budowy',
+        constructionShort: 'Brak: {good}',
         gameOutOfReach: 'Zwierz odcięty',
       },
       full: {
@@ -1619,6 +1623,9 @@ export const plGame = {
           'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
         noGame:
           'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
+        noConstructionSite: 'Nie ma żadnego placu budowy. Postaw budynek albo nadaj mu inny zawód.',
+        constructionShort:
+          'Budowy czekają na towar, którego nie ma w żadnym magazynie: {good}. Wytwórz go albo sprowadź.',
         gameOutOfReach:
           'Zwierzyna w terenie łowieckim stoi za wodą albo murem i nie da się do niej dojść. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
       },
@@ -1639,6 +1646,9 @@ export const plGame = {
           'Przy chorągiewce nie ma nic do zebrania. Przenieś chorągiewkę tam, gdzie leżą towary, albo ją zabierz.',
         noGame:
           'W terenie łowieckim nie widać wolnej zwierzyny. Wskaż flagą roboczą miejsce, gdzie pasie się zwierzyna.',
+        noConstructionSite: 'Nie ma żadnego placu budowy. Postaw budynek albo nadaj mu inny zawód.',
+        constructionShort:
+          'Budowy czekają na towar, którego nie ma w żadnym magazynie. Wytwórz go albo sprowadź.',
         gameOutOfReach:
           'Zwierzyna w terenie łowieckim stoi za wodą albo murem i nie da się do niej dojść. Otwórz przejście albo wskaż flagą roboczą inne miejsce.',
       },

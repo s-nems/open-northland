@@ -4,6 +4,7 @@ import {
   IdleStand,
   JobAssignment,
   ownerOf,
+  ownersCompatible,
   Person,
   Production,
   ProductionCounters,
@@ -27,6 +28,7 @@ import { craftablePool } from '../economy/production/rotation.js';
 import { liveHaulFlag, liveWorkFlag } from '../economy/work-flag.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
 import { operatorRecipeEnabled } from '../progression/index.js';
+import { jobCanBuild } from '../settlers/atomics/start.js';
 import { strandedWorkplaceDoor } from '../settlers/drives/cut-off.js';
 import { carriedGoodForm } from '../settlers/drives/economy/delivery-targets.js';
 import { isBoundToStorageSink } from '../settlers/drives/economy/store-policy.js';
@@ -43,6 +45,7 @@ import {
   workplaceStocksGood,
   workplaceStoredGoods,
 } from '../stores/index.js';
+import { constructionSupply } from './construction-supply.js';
 import { gatherWorkStatus } from './gather-work-status.js';
 import { GoodSources } from './good-sources.js';
 import { type HerdHold, herdHoldOf } from './herd-hold.js';
@@ -96,7 +99,14 @@ export type WorkStatus =
       readonly reason: 'noStorage' | 'outOfReach' | 'unknown';
     }
   | { readonly kind: 'noWorkplace' }
-  | { readonly kind: 'unknown'; readonly reason: 'unsupportedWorkplace' | 'productionGate' | 'gatherSearch' }
+  | {
+      readonly kind: 'unknown';
+      readonly reason: 'unsupportedWorkplace' | 'productionGate' | 'gatherSearch' | 'constructionSearch';
+    }
+  /** A builder with no unfinished site on its side to work. */
+  | { readonly kind: 'noConstructionSite' }
+  /** A builder whose side's building sites wait for goods no store of the side holds. */
+  | { readonly kind: 'constructionShort'; readonly goodTypes: readonly number[] }
   | { readonly kind: 'noTool' }
   | { readonly kind: 'noJob' }
   | { readonly kind: 'workplaceUnderConstruction' }
@@ -139,6 +149,7 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   }
   const gathered = jobGatherGoods(ctx, jobType);
   if (gathered.length > 0) return gatherWorkStatus(world, ctx, entity, workplace, gathered);
+  if (jobCanBuild(ctx.content, jobType)) return builderWorkStatus(world, ctx, entity);
   if (liveHaulFlag(world, entity) !== undefined) return { kind: 'nothingAtFlag' };
   // A store's carrier reaches the idle tail of its ladder only after the porter and haul rungs found
   // nothing in reach a store would take.
@@ -258,6 +269,29 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   return stranded !== undefined
     ? { kind: 'noOutputDestination', goodType: stranded.goodType, reason: 'outOfReach' }
     : { kind: 'outputFull', outputs };
+}
+
+/**
+ * A builder's blockers, from its side's unfinished sites: none at all, or building sites short of goods
+ * no store of the side holds, named ascending. Sites short only of held goods, or wall and road sites,
+ * leave the cause to the builder's planner, which the diagnosis does not re-run.
+ */
+function builderWorkStatus(world: World, ctx: SystemContext, builder: Entity): WorkStatus {
+  const owner = ownerOf(world, builder);
+  const short = new Set<number>();
+  let sites = 0;
+  for (const site of world.query(UnderConstruction)) {
+    if (!ownersCompatible(owner, ownerOf(world, site))) continue;
+    sites++;
+    const supply = constructionSupply(world, ctx, site);
+    if (supply?.kind !== 'short') continue;
+    for (const line of supply.shortfalls) {
+      if (line.inbound === 0 && !line.held) short.add(line.goodType);
+    }
+  }
+  if (sites === 0) return { kind: 'noConstructionSite' };
+  if (short.size > 0) return { kind: 'constructionShort', goodTypes: [...short].sort((a, b) => a - b) };
+  return { kind: 'unknown', reason: 'constructionSearch' };
 }
 
 /**

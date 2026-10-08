@@ -54,6 +54,10 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
       return formatMessage(copy.resourceRouteBlocked, {
         goods: status.goodTypes.map((good) => goodLabel(ctx, good)).join(', '),
       });
+    case 'constructionShort':
+      return formatMessage(copy.constructionShort, {
+        goods: status.goodTypes.map((good) => goodLabel(ctx, good)).join(', '),
+      });
     case 'noOutputDestination':
       return formatMessage(copy.outputDestination[status.reason], { good: goodLabel(ctx, status.goodType) });
     case 'unknown':
@@ -63,6 +67,7 @@ export function workStatusDetail(ctx: UnitPanelModelContext, status: SettlerWork
     case 'nothingToCarry':
     case 'noGame':
     case 'gameOutOfReach':
+    case 'noConstructionSite':
     case 'noTool':
     case 'noJob':
     case 'noWorkplace':
