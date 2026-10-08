@@ -630,6 +630,26 @@ export const plContent = {
       summary:
         'Tysiąc mieczników przechodzi przez wąski przesmyk i rozstawia się po drugiej stronie. Sprawdź zwężanie grupy przy przeszkodzie, rozproszenie za nią i zmianę kierunku podczas marszu.',
     },
+    'audio-mix': {
+      title: 'Miks dźwięku: etapy odsłuchu',
+      summary:
+        'Pięć miejsc do oceny dźwięku na ucho, wybieranych z paska u góry: bitwa tysiąca żołnierzy, miasto z ponad 200 budynkami, grupy 1, 5, 20 i 200 wykonujące rozkazy, zalesiony brzeg w trzech przybliżeniach i placówka napadnięta poza ekranem. Każdy przycisk wydaje swój rozkaz od nowa; konsola co sekundę wypisuje, ile dźwięków mikser dostał, zagrał i odebrał.',
+      stages: {
+        melee: 'Bitwa',
+        charge: 'Do ataku',
+        city: 'Miasto',
+        finishSites: 'Dokończ wszystkie budowy',
+        orders: 'Rozkazy grup',
+        move: 'Ruch {size}',
+        attack: 'Atak {size}',
+        shore: 'Brzeg',
+        zoomNear: 'Blisko',
+        zoomMid: 'Średnio',
+        zoomFar: 'Daleko',
+        alert: 'Napad poza ekranem',
+        raid: 'Napadnij placówkę',
+      },
+    },
     'net-panel': {
       title: 'Panel sieci',
       summary:

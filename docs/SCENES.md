@@ -96,6 +96,17 @@ army scenes, inspect the whole march and the settled destination, where soldiers
 distinct spaces rather than form dense clumps. The open clearing should retain a broad marching
 front; the passage should narrow it only where the ground requires.
 
+`?scene=audio-mix` is the audio pass's listening scene. The bar at the top opens five stages, and a
+stage's buttons issue its orders again. Melee: two armies of 500 charge each other, for the voice
+budget, the world cap and its steals. City: five staffed villages and a row of foundations the button
+finishes at once, for work sounds, chatter and the jingle lane. Group orders: groups of 1, 5, 20 and
+200 move and attack through the HUD's order path, so each answers as a player's order would. Shore: a
+wooded shore with woodcutters at three zooms, for object ambience, the perspective layers and the
+low-pass. Raid off screen: raiders storm an outpost while the camera stays on the shore, for the
+attack alert. Scene ground loops no terrain bed; listen to beds on a decoded map or in `?sounds`. While
+a stage is open the console logs once a second, on the `audio` channel, what the driver was offered
+and started per lane, its busiest frame and the steals.
+
 ## Real map acceptance
 
 `?scene=mission-map` opens the decoded `wielkie_sprzatanie` map through the normal map entry with

@@ -1,7 +1,7 @@
 import { LockstepDriver, LoopbackTransport } from '@open-northland/lockstep';
 import type { TerrainTextureSet } from '@open-northland/render';
 import { buildSpriteScene, createWindowPixiApp, terrainMapToScene } from '@open-northland/render';
-import type { Simulation } from '@open-northland/sim';
+import { adminCommand, type Simulation } from '@open-northland/sim';
 import { loadFellingClips } from '../content/felling-clips.js';
 import { buildingFootprints } from '../content/ir/joins.js';
 import { loadIr } from '../content/ir/load.js';
@@ -45,6 +45,7 @@ import {
   terrainColourOption,
 } from '../view/runtime/world-bootstrap.js';
 import { mountUnknownSceneOverlay } from '../view/scene-overlay.js';
+import { mountSceneStages } from '../view/scene-stages.js';
 import { readStoredSettings } from '../view/settings-store.js';
 
 /**
@@ -235,6 +236,19 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
     ...(netPanel === null ? {} : { netPanel }),
   });
   view.lifetime.addEventListener('abort', () => displayScope.abort(), { once: true });
+  if (scene.stages !== undefined) {
+    mountSceneStages({
+      sceneId: scene.id,
+      stages: scene.stages,
+      host,
+      cameraCtl,
+      viewport: () => app.screen,
+      issue: view.issue,
+      submitAdmin: (command) => driver.submit(adminCommand(command)),
+      soundStats: view.soundStats,
+      signal: view.lifetime,
+    });
+  }
   await boot.finish();
 }
 

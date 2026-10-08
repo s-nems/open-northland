@@ -638,6 +638,26 @@ export const deContent = {
       summary:
         'Tausend Schwertkämpfer überqueren eine schmale Landenge und verteilen sich auf der anderen Seite. Prüfe, wie sich die Gruppe am Hindernis verengt, dahinter wieder auffächert und während des Marsches auf einen Richtungswechsel reagiert.',
     },
+    'audio-mix': {
+      title: 'Klangmischung: Hörstationen',
+      summary:
+        'Fünf Orte, um den Klang nach Gehör zu beurteilen, wählbar in der Leiste oben: eine Schlacht von tausend Kriegern, eine Stadt mit über 200 Gebäuden, Gruppen von 1, 5, 20 und 200 mit Befehlen, ein bewaldetes Ufer in drei Zoomstufen und ein Außenposten, der außerhalb des Bildes überfallen wird. Jede Schaltfläche gibt ihren Befehl erneut; die Konsole zeigt jede Sekunde, was das Mischpult angeboten bekam, startete und verdrängte.',
+      stages: {
+        melee: 'Schlacht',
+        charge: 'Angriff',
+        city: 'Stadt',
+        finishSites: 'Alle Baustellen fertigstellen',
+        orders: 'Gruppenbefehle',
+        move: 'Bewegen {size}',
+        attack: 'Angreifen {size}',
+        shore: 'Ufer',
+        zoomNear: 'Nah',
+        zoomMid: 'Mittel',
+        zoomFar: 'Fern',
+        alert: 'Überfall außer Sicht',
+        raid: 'Außenposten überfallen',
+      },
+    },
     'net-panel': {
       title: 'Netzwerkübersicht',
       summary:

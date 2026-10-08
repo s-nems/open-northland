@@ -124,6 +124,15 @@ export function scenePages(
   return entry !== undefined && 'pages' in entry ? entry.pages : undefined;
 }
 
+/** A scene's stage and stage-button labels by key; undefined for a scene without stages. */
+export function sceneStageLabels(
+  id: string,
+  locale: Locale = currentLocale(),
+): Readonly<Record<string, string>> | undefined {
+  const entry = sceneCopy(id, locale);
+  return entry !== undefined && 'stages' in entry ? entry.stages : undefined;
+}
+
 export function formatMessage(template: string, values: Readonly<Record<string, string | number>>): string {
   return template.replace(/\{([A-Za-z][A-Za-z0-9]*)\}/g, (match, key: string) =>
     Object.hasOwn(values, key) ? String(values[key]) : match,

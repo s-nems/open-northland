@@ -8,6 +8,7 @@ import { armorScene } from './armor.js';
 import { armyControlScene } from './army-control.js';
 import { armyPassageScene } from './army-passage.js';
 import { attackMoveScene } from './attack-move.js';
+import { audioMixScene } from './audio-mix.js';
 import { barracksScene } from './barracks.js';
 import { battleScene } from './battle.js';
 import { battleWearyScene } from './battle-weary.js';
@@ -169,6 +170,7 @@ export const SCENES: readonly SceneDefinition[] = [
   groupPanelArmyScene,
   armyControlScene,
   armyPassageScene,
+  audioMixScene,
   netPanelScene,
   amuletsScene,
   barracksScene,

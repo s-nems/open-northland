@@ -632,6 +632,26 @@ export const enContent = {
       summary:
         'A thousand swordsmen cross a narrow land passage and spread out on the other side. Check how the group narrows at the obstacle, spreads beyond it, and responds to a new direction while marching.',
     },
+    'audio-mix': {
+      title: 'Audio mix: listening stages',
+      summary:
+        'Five places to judge the sound by ear, picked from the bar at the top: a melee of a thousand, a city of over 200 buildings, groups of 1, 5, 20 and 200 taking orders, a wooded shore at three zooms, and an outpost raided off screen. Each button issues its order again; the console prints each second what the mixer was offered, started and stole.',
+      stages: {
+        melee: 'Melee',
+        charge: 'Charge',
+        city: 'City',
+        finishSites: 'Finish every foundation',
+        orders: 'Group orders',
+        move: 'Move {size}',
+        attack: 'Attack {size}',
+        shore: 'Shore',
+        zoomNear: 'Near',
+        zoomMid: 'Middle',
+        zoomFar: 'Far',
+        alert: 'Raid off screen',
+        raid: 'Raid the outpost',
+      },
+    },
     'net-panel': {
       title: 'Network panel',
       summary:

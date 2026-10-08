@@ -255,6 +255,10 @@ export interface GameViewHandle {
   /** Aborted by {@link destroy}, including the teardown a sub-mission swap runs, so a document-level
    *  binding made for this world can end with it. */
   readonly lifetime: AbortSignal;
+  /** Order through the HUD's own path, the ordered settlers' answer included: a scene stage's orders. */
+  issue(command: PlayerCommand): void;
+  /** The sound driver's running one-shot counts, or null when this session plays no sound. */
+  soundStats(): SoundStatsView | null;
 }
 
 const PAUSE_HOLDER_MENU = 'menu';
@@ -1178,7 +1182,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // A restored save of a decided match says so at once, since no event will repeat the verdict.
     if (deps.observer !== true) verdict?.announce(host.matchOutcome(localPlayer));
 
-    return { destroy, lifetime: lifetime.signal };
+    return {
+      destroy,
+      lifetime: lifetime.signal,
+      issue: issueCommand,
+      soundStats: () => soundDriver?.stats ?? null,
+    };
   } catch (error) {
     try {
       destroy();
