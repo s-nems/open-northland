@@ -114,8 +114,8 @@ export class SoundDriver {
       now: engine.clock,
       playback: {
         clipLengthS: (file) => engine.clipLengthS(file),
-        stop: (instance) => {
-          this.counts.stolen++;
+        stop: (instance, cause) => {
+          if (cause === 'steal') this.counts.stolen++;
           engine.stopOneShot(instance);
         },
       },
