@@ -56,6 +56,7 @@ export {
   AMBIENT_MAX_SAMPLES,
   ANIMAL_ROLL_RANGE,
   ANSWER_LAYERS,
+  ANSWER_MAX_PAN,
   type AnswerLayer,
   directAudio,
   GENERIC_ROLL_RANGE,

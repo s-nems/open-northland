@@ -3,7 +3,7 @@ import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
 import { clamp } from '../math.js';
 import { VOICE_MUSIC_DUCK_DB } from '../mixer.js';
 import { entityTile } from '../snapshot.js';
-import { MAX_PAN, panAt, screenOffset } from '../spatial.js';
+import { screenOffset } from '../spatial.js';
 import type { DirectorInput, OneShot, OrderAnswer, VoiceCall } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
 import { murmurPool, refusalGroup, responseGroup, selectLine } from '../voices.js';
@@ -32,6 +32,10 @@ export const ANSWER_LAYERS: readonly AnswerLayer[] = [
   { delayS: 0.42, gainDb: -13, panOffset: -0.1 },
 ];
 
+/** The widest pan of an answer or a selection line: feedback to the player's own click stays near the
+ *  centre, a group at the screen edge or beyond only leaning to its side. */
+export const ANSWER_MAX_PAN = 0.35;
+
 /** The group sizes at which each further layer joins: one at 1-4 speakers, two at 5-19, three from
  *  20. A layer still needs a member of another pool than the lines already chosen. */
 export const LAYER_GROUP_SIZES: readonly number[] = [1, 5, 20];
@@ -58,7 +62,7 @@ function dbGain(db: number): number {
 }
 
 function clampPan(pan: number): number {
-  return clamp(pan, -MAX_PAN, MAX_PAN);
+  return clamp(pan, -ANSWER_MAX_PAN, ANSWER_MAX_PAN);
 }
 
 /** One addressed person and how far from the screen centre it stands, in half-screen units. */
@@ -86,9 +90,9 @@ function placeMembers(input: DirectorInput, ids: Iterable<number>): Member[] {
   return members;
 }
 
-/** The pan at the members' mean screen position, clamped to the sides for a group off screen, with no
- *  cull and no attenuation: the original pans an order's answer this way, its volume whole and with
- *  no screen or fog test. */
+/** The pan at the members' mean screen position, scaled into {@link ANSWER_MAX_PAN} and held at it for a
+ *  group off screen, with no cull and no attenuation: the original pans an order's answer by position,
+ *  its volume whole and with no screen or fog test. The narrow width is our choice. */
 function centroidPan(members: readonly Member[]): number {
   let sum = 0;
   let placed = 0;
@@ -97,7 +101,7 @@ function centroidPan(members: readonly Member[]): number {
     sum += m.offsetX;
     placed++;
   }
-  return placed === 0 ? 0 : panAt(sum / placed);
+  return placed === 0 ? 0 : clamp(sum / placed, -1, 1) * ANSWER_MAX_PAN;
 }
 
 /** A member and the pool it speaks for the group with. */

@@ -38,6 +38,7 @@ export {
 export { HOUSE_CRASH_MIN_BUILT } from './events.js';
 export {
   ANSWER_LAYERS,
+  ANSWER_MAX_PAN,
   type AnswerLayer,
   LAYER_GROUP_SIZES,
   layerCount,

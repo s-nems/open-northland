@@ -5,13 +5,13 @@ import { describe, expect, it } from 'vitest';
 import { poolGain } from '../src/data/bank.js';
 import {
   ANSWER_LAYERS,
+  ANSWER_MAX_PAN,
   authoredVolumeGain,
   buildSoundIndex,
   DEFAULT_CLIP_LENGTH_S,
   defaultBindings,
   directAudio,
   layerCount,
-  MAX_PAN,
   MURMUR_COOLDOWN_S,
   MURMUR_GAIN_DB,
   MURMUR_LINES,
@@ -19,7 +19,6 @@ import {
   type OneShot,
   OneShotArbiter,
   type OrderAnswer,
-  panAt,
   SELECT_COOLDOWN_S,
   screenOffset,
   UI_CUE_FILES,
@@ -173,12 +172,15 @@ describe('group answer lead', () => {
     expect(lead?.delayS).toBeUndefined();
     expect(lead?.exclusive).toBe('group');
     const offset = screenOffset(CENTRE_COL, CENTRE_ROW, camera, CANVAS_W, CANVAS_H);
-    expect(lead?.pan).toBeCloseTo(panAt(offset?.nx ?? Number.NaN));
+    expect(lead?.pan).toBeCloseTo((offset?.nx ?? Number.NaN) * ANSWER_MAX_PAN);
   });
 
-  it('clamps the pan of a group standing off screen to its side, as a lone answer', () => {
+  it('leans an answer and a selection line only slightly toward a group off screen', () => {
     const members = [man(1, VIKING, CENTRE_COL + 60), man(2, VIKING, CENTRE_COL + 61)];
-    expect(answer(members, { members: idsOf(members) })[0]?.pan).toBe(MAX_PAN);
+    const shots = [...answer(members, { members: idsOf(members) }), ...select(members, { members: [1] })];
+    expect(shots.length).toBeGreaterThan(1);
+    expect(shots[0]?.pan).toBe(ANSWER_MAX_PAN);
+    for (const shot of shots) expect(Math.abs(shot.pan)).toBeLessThanOrEqual(ANSWER_MAX_PAN);
   });
 });
 
