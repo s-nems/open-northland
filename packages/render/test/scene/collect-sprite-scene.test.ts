@@ -151,7 +151,7 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     expect(drawn.every((d) => d.frozen === true)).toBe(true);
   });
 
-  it('keepAboardRiders stands a rider without a Position idle on its vehicle', () => {
+  it('keepAboardRiders stands a rider without a Position still on its vehicle', () => {
     const entities = [
       entity(20, 4, 3, {}),
       {
@@ -163,7 +163,7 @@ describe('collectSpriteScene - the single-pass draw list + liveness set', () => 
     const rider = collectSpriteScene(snapshotOf(entities), { keepAboardRiders: true }).items.find(
       (d) => d.ref === 3,
     );
-    expect(rider).toMatchObject({ kind: 'settler', state: 'idle', ...tileToScreen(4, 3) });
+    expect(rider).toMatchObject({ kind: 'settler', state: 'idle', frozen: true, ...tileToScreen(4, 3) });
   });
 
   it('stands the portrait subject riding a vehicle still on its spot, for the portrait only', () => {

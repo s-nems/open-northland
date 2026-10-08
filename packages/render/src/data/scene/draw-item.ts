@@ -203,8 +203,7 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
    *  pop into view at its workplace door. */
   readonly portraitOnly?: boolean;
   /** Freeze this settler's animation clock to a fixed standing frame rather than the breathing idle
-   *  loop. Set on every settler drawn while inside a building, and on a portrait subject aboard a
-   *  vehicle. */
+   *  loop. Set on every settler drawn while inside a building or aboard a vehicle. */
   readonly frozen?: boolean;
   /** This settler is drawn inside its workplace by an in-house craft program: its anchor is the house's,
    *  offset by the program, and its gait runs on the free tick rather than on ground covered. */

@@ -68,7 +68,7 @@ export interface SpriteSceneOptions {
    *  (observed original: off-duty workers wait in the house). Approximation: how the original's
    *  building window presents one indoors is unverified. */
   readonly keepIndoorSettlers?: boolean;
-  /** Keep the riders aboard a vehicle, which stand nowhere on the map: each stands idle on its
+  /** Keep the riders aboard a vehicle, which stand nowhere on the map: each stands still on its
    *  vehicle's spot, for a figure drawn outside the map. */
   readonly keepAboardRiders?: boolean;
   /** The details-panel portrait's subject: emitted even when the viewport/fog cull or the
@@ -347,9 +347,9 @@ function collectScene(
       applyInHousePose(item, inHouse.inHouse);
       if (stagesEffects) pushEffectItems(list, collected, item, inHouse.overlays, screen, tileX, tileY);
     }
-    // Only a kept or forced settler gets this far indoors without a craft to show; a rider the portrait
-    // forces stands as still, alone over the panel's backdrop.
-    else if (indoorSettler || portraitRider) item.frozen = true;
+    // Only a kept or forced settler gets this far indoors without a craft to show, and only a kept or
+    // forced rider aboard: both stand still, as the vehicle carries a rider and plays no idle for it.
+    else if (indoorSettler || aboard !== null) item.frozen = true;
     if (kind === 'building' && stagesEffects) {
       const fire = holyFireOverlays(snapshot, entity.id, components, holyFire);
       pushEffectItems(list, collected, item, fire, screen, tileX, tileY);
