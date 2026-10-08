@@ -22,6 +22,7 @@ export {
   VOICE_BURST,
   VOICE_STARTS_PER_S,
 } from './data/arbiter.js';
+export { type AuditionRole, auditionBed, auditionShot } from './data/audition.js';
 export {
   AUTHORED_VOLUME_MAX,
   AUTHORED_VOLUME_RANGE_DB,
@@ -137,6 +138,7 @@ export {
   shotLayer,
   zoomDistance,
 } from './data/perspective.js';
+export { type LaneCounts, type SoundStatsView, STAT_LANES, type StatLane } from './data/sound-stats.js';
 export {
   computePan,
   computeSpatial,

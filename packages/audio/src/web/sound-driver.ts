@@ -8,13 +8,15 @@ import {
   CALM_MOOD,
   type MusicManifest,
   type MusicMoodState,
+  type MusicSequence,
   MusicPlaylist,
   type MusicStanding,
   mapMusicFor,
   musicIntensity,
   nextMusicMood,
 } from '../data/music/index.js';
-import type { AudioTerrain, SoundBindings } from '../data/types.js';
+import { countShots, emptySoundStats, type SoundStatsView } from '../data/sound-stats.js';
+import type { AmbientLoop, AudioTerrain, OneShot, SoundBindings } from '../data/types.js';
 import { type UiCue, uiCueShot } from '../data/ui-cues.js';
 import type { WeatherSoundInput } from '../data/weather/mix.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
@@ -80,6 +82,8 @@ export class SoundDriver {
   private responses: number[] = [];
   /** The sim tick the last frame stood at, so a frame knows how many ticks to roll the chatter for. */
   private lastTick: number | null = null;
+  /** One-shot counts since construction, for {@link stats}. */
+  private readonly counts = emptySoundStats();
 
   constructor(
     private readonly index: SoundIndex,
@@ -94,7 +98,10 @@ export class SoundDriver {
       now: engine.clock,
       playback: {
         clipLengthS: (file) => engine.clipLengthS(file),
-        stop: (instance) => engine.stopOneShot(instance),
+        stop: (instance) => {
+          this.counts.stolen++;
+          engine.stopOneShot(instance);
+        },
       },
     });
   }
@@ -102,6 +109,12 @@ export class SoundDriver {
   close(): void {
     this.playlist = null;
     this.engine.close();
+  }
+
+  /** One-shot counts since construction (see {@link SoundStatsView}); a live view, so copy what a later
+   *  read is compared against. */
+  get stats(): SoundStatsView {
+    return this.counts;
   }
 
   /** Start/resume audio - call from inside a user gesture (first click/key) to satisfy autoplay policy. */
@@ -134,6 +147,25 @@ export class SoundDriver {
     this.engine.setVolumes(volumes);
   }
 
+  /** The `?sounds` gallery's frame: `shots` pass the arbiter as a game frame's would, `ambient` is the
+   *  full set of beds to loop, and the world sounds as the camera at `cameraScale` hears it. */
+  audition(shots: readonly OneShot[], ambient: readonly AmbientLoop[], cameraScale: number): void {
+    this.engine.setCameraScale(cameraScale);
+    if (!this.engine.audible) return;
+    this.engine.apply({ oneShots: this.decide(shots, this.engine.clock), ambient });
+  }
+
+  /** The `?sounds` gallery's music: play `sequence` in place of any map's, or stop for null. */
+  auditionMusic(sequence: MusicSequence | null): void {
+    this.playlist = null;
+    this.engine.setMusic(sequence);
+  }
+
+  /** The decoded length of `file` in seconds, or undefined until it has loaded. */
+  clipLengthS(file: string): number | undefined {
+    return this.engine.clipLengthS(file);
+  }
+
   /** Once per rendered frame, after the render advanced its weather: the conditions on screen and the
    *  game seconds they advanced by (frozen while paused, so no new thunder rolls; the rain bed keeps
    *  sounding). Null conditions fade the weather out. */
@@ -149,7 +181,7 @@ export class SoundDriver {
   /** Play a GUI cue now, from the input event itself: a button press confirms, a cancelled tool fails. */
   cue(cue: UiCue): void {
     if (!this.engine.audible) return;
-    this.engine.fire(this.arbiter.decide([uiCueShot(cue)], this.engine.clock));
+    this.engine.fire(this.decide([uiCueShot(cue)], this.engine.clock));
   }
 
   /** A settler the player just ordered answers "ok" in its own voice on the next frame, which knows
@@ -186,8 +218,17 @@ export class SoundDriver {
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
     });
-    this.engine.apply({ ...frame, oneShots: this.arbiter.decide(frame.oneShots, this.engine.clock) });
+    this.counts.frames++;
+    this.engine.apply({ ...frame, oneShots: this.decide(frame.oneShots, this.engine.clock) });
     this.updateMusic(input);
+  }
+
+  /** The arbiter's decision on `shots`, counted per lane on the way in and out. */
+  private decide(shots: readonly OneShot[], now: number): OneShot[] {
+    countShots(this.counts.offered, shots);
+    const started = this.arbiter.decide(shots, now);
+    countShots(this.counts.started, started);
+    return started;
   }
 
   /** Feed the playlist this frame's mood; only a change between calm and tense moves the player. */
