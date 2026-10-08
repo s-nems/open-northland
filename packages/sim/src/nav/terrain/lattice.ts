@@ -6,8 +6,10 @@
  *
  * Node `(hx, hy)` sits at world `(hx/2 column, hy/2 row)`, a 34 px by 19 px pitch under the measured
  * 68x38 px projection, and cell `(c, r)` is node `(2c + (r&1), 2r)`, so the staggered raster becomes a
- * rectangular lattice with one parity-independent neighbour table.
+ * rectangular lattice with one parity-independent neighbour table. The ground edges a step needs follow
+ * the original's row parity (`edges.ts`).
  */
+import { HEX_EDGE_COUNT, hexEdgeNeighbourX, hexEdgeNeighbourY, oppositeHexEdge } from '@open-northland/data';
 import { type LandscapeProps, UNKNOWN_LANDSCAPE_PROPS } from './landscape-props.js';
 import type { NodeId } from './node-id.js';
 
@@ -27,6 +29,24 @@ function flagsOf(p: LandscapeProps): number {
  */
 export type Traversal = 'land' | 'water';
 
+/** Throws unless every open edge of the `width x height` lane leads to a node that opens it back. */
+function assertSymmetricEdges(width: number, height: number, edges: Uint8Array): void {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const mask = edges[y * width + x] ?? 0;
+      for (let edge = 0; edge < HEX_EDGE_COUNT; edge++) {
+        if ((mask & (1 << edge)) === 0) continue;
+        const nx = hexEdgeNeighbourX(x, y, edge);
+        const ny = hexEdgeNeighbourY(y, edge);
+        const back = nx >= 0 && ny >= 0 && nx < width && ny < height ? (edges[ny * width + nx] ?? 0) : 0;
+        if ((back & (1 << oppositeHexEdge(edge))) === 0) {
+          throw new Error(`ground edge ${edge} of node (${x}, ${y}) is open from one side only`);
+        }
+      }
+    }
+  }
+}
+
 export abstract class TerrainLattice {
   readonly width: number;
   readonly height: number;
@@ -36,7 +56,8 @@ export abstract class TerrainLattice {
    *  of looking the node's type up. The terrain is immutable; live walk blocks are an overlay. */
   private readonly flags: Uint8Array;
   /** Each node's open `HEX_EDGE` bits (`@open-northland/data`), the original's `lmtw` lane; absent, any
-   *  two neighbouring nodes a mover may stand on are joined. */
+   *  two neighbouring nodes a mover may stand on are joined. An edge is open from both its nodes or from
+   *  neither, which the route search's goal-side half and the component labels rely on. */
   protected readonly groundEdges: Uint8Array | undefined;
 
   constructor(
@@ -61,6 +82,7 @@ export abstract class TerrainLattice {
       throw new Error(`ground edge lane has ${groundEdges.length} nodes, expected ${width * height}`);
     }
     this.groundEdges = groundEdges === undefined ? undefined : Uint8Array.from(groundEdges);
+    if (this.groundEdges !== undefined) assertSymmetricEdges(width, height, this.groundEdges);
     this.width = width;
     this.height = height;
     this.typeIds = typeIds;

@@ -6,8 +6,9 @@
  * Original behavior: the route search expands only the first six, a node's edges to its six neighbours
  * on a lattice whose odd rows sit half a node to +x, each gated by the map's per-node edge lane. Here an
  * E/W or N/S step is one such edge and a diagonal two in one direction, each needing the lane's bit, so
- * on every owned map our land joins exactly the original's. Approximation: route shapes, which the
- * missing third edge axis and the double-edge diagonals bend.
+ * on every owned map our land joins exactly the original's. Approximation: route shapes. The edges that
+ * shift a column, NW/SW from an even row and NE/SE from an odd one, have no step of their own and are
+ * walked only inside a diagonal.
  *
  * Neighbours are emitted in a fixed canonical order so traversal is byte-identical across runs.
  */
@@ -51,8 +52,9 @@ export abstract class TerrainEdges extends TerrainLattice {
   }
 
   /**
-   * The walkable subset of {@link neighbours}, in the same order. This is the adjacency relation for
-   * placement, not the pathfinder's edge set, which is 8-connected through {@link steps}.
+   * The walkable subset of {@link neighbours} a walkable `node` is {@link joined} to, in the same order.
+   * This is the adjacency relation for placement, not the pathfinder's edge set, which is 8-connected
+   * through {@link steps}.
    */
   walkableNeighbours(node: NodeId): NodeId[] {
     const out: NodeId[] = [];
@@ -65,6 +67,8 @@ export abstract class TerrainEdges extends TerrainLattice {
   walkableNeighboursInto(node: NodeId, out: NodeId[]): number {
     const x = this.xOf(node);
     const y = this.yOf(node);
+    // A node no walker stands on, a trunk or a rock, borders its neighbours rather than stepping to them.
+    const fromGround = this.isWalkable(node);
     let count = 0;
     for (let i = 0; i < NEIGHBOUR_OFFSETS.length; i++) {
       const offset = NEIGHBOUR_OFFSETS[i];
@@ -73,7 +77,7 @@ export abstract class TerrainEdges extends TerrainLattice {
       const ny = y + offset[1];
       if (!this.inBounds(nx, ny)) continue;
       const c = this.idAt(nx, ny);
-      if (this.isWalkable(c)) out[count++] = c;
+      if (this.isWalkable(c) && (!fromGround || this.joined(node, c))) out[count++] = c;
     }
     return count;
   }
@@ -172,6 +176,23 @@ export abstract class TerrainEdges extends TerrainLattice {
     // NW/SW one on an odd row.
     if (north && (edges & (odd ? NORTH_WEST : NORTH_EAST)) !== 0) out.push((node - row) as NodeId, HALF_ROW);
     if (south && (edges & (odd ? SOUTH_WEST : SOUTH_EAST)) !== 0) out.push((node + row) as NodeId, HALF_ROW);
+  }
+
+  /**
+   * Whether the ground joins `node` to `next`, one of its {@link neighbours}: the original's edge between
+   * them is open, or the map carries no edges. A search over the orthogonal neighbours asks it between
+   * two nodes a mover stands on, so that it never crosses ground a step cannot.
+   */
+  joined(node: NodeId, next: NodeId): boolean {
+    if (this.groundEdges === undefined) return true;
+    const odd = (this.yOf(node) & 1) !== 0;
+    const offset = next - node;
+    let bit = 0;
+    if (offset === -this.width) bit = odd ? NORTH_WEST : NORTH_EAST;
+    else if (offset === this.width) bit = odd ? SOUTH_WEST : SOUTH_EAST;
+    else if (offset === 1) bit = EAST;
+    else if (offset === -1) bit = WEST;
+    return (this.edgeMaskAt(node) & bit) !== 0;
   }
 
   /** The open ground edge bits of the in-bounds node id `c`, every bit when the map carries no edges. */

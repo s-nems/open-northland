@@ -83,16 +83,37 @@ const NO_KIND = -1;
 export interface GroundLattice {
   /** Each node's {@link GroundKind}, row-major over `2W x 2H`; a node no triangle touches is void. */
   readonly kinds: Uint8Array;
-  /** Each node's open {@link HEX_EDGE} bits, row-major over `2W x 2H`: the original's `lmtw` lane. */
+  /** Each node's open {@link HEX_EDGE} bits, row-major over `2W x 2H`: the original's `lmtw` lane. An
+   *  edge is open from both its nodes or from neither. */
   readonly edges: Uint8Array;
 }
 
-/** The node one forward {@link HEX_EDGE} from `(hx, hy)`. */
-function forwardNeighbourX(hx: number, hy: number, edge: number): number {
+/** The column of the node one {@link HEX_EDGE} `edge` from `(hx, hy)`; its row is `hy` for EAST and
+ *  WEST, `hy + 1` for the southern edges and `hy - 1` for the northern ones. */
+export function hexEdgeNeighbourX(hx: number, hy: number, edge: number): number {
   const odd = (hy & 1) !== 0;
-  if (edge === HEX_EDGE.EAST) return hx + 1;
-  if (edge === HEX_EDGE.SOUTH_EAST) return odd ? hx + 1 : hx;
-  return odd ? hx : hx - 1;
+  switch (edge) {
+    case HEX_EDGE.EAST:
+      return hx + 1;
+    case HEX_EDGE.WEST:
+      return hx - 1;
+    case HEX_EDGE.SOUTH_EAST:
+    case HEX_EDGE.NORTH_EAST:
+      return odd ? hx + 1 : hx;
+    default:
+      return odd ? hx : hx - 1;
+  }
+}
+
+/** The row of the node one {@link HEX_EDGE} `edge` from row `hy`. */
+export function hexEdgeNeighbourY(hy: number, edge: number): number {
+  if (edge === HEX_EDGE.EAST || edge === HEX_EDGE.WEST) return hy;
+  return edge === HEX_EDGE.SOUTH_EAST || edge === HEX_EDGE.SOUTH_WEST ? hy + 1 : hy - 1;
+}
+
+/** The {@link HEX_EDGE} that leads back along `edge`. */
+export function oppositeHexEdge(edge: number): number {
+  return (edge + FORWARD_EDGES) % HEX_EDGE_COUNT;
 }
 
 function inFrame(hx: number, hy: number, nodeW: number, nodeH: number): boolean {
@@ -155,13 +176,13 @@ export function groundLattice(
       const kind = kinds[i];
       if (kind === GROUND_VOID || inFrame(hx, hy, nodeW, nodeH)) continue;
       for (let edge = 0; edge < FORWARD_EDGES; edge++) {
-        const x = forwardNeighbourX(hx, hy, edge);
-        const y = edge === HEX_EDGE.EAST ? hy : hy + 1;
+        const x = hexEdgeNeighbourX(hx, hy, edge);
+        const y = hexEdgeNeighbourY(hy, edge);
         if (x < 0 || x >= nodeW || y >= nodeH || inFrame(x, y, nodeW, nodeH)) continue;
         const j = y * nodeW + x;
         if (kinds[j] !== kind || edgeKinds[i * FORWARD_EDGES + edge] !== kind) continue;
         edges[i] = (edges[i] ?? 0) | (1 << edge);
-        edges[j] = (edges[j] ?? 0) | (1 << (edge + FORWARD_EDGES));
+        edges[j] = (edges[j] ?? 0) | (1 << oppositeHexEdge(edge));
       }
     }
   }

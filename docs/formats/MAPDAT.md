@@ -188,13 +188,15 @@ the frame band), so shoreline and void margins drawn out of them walk in the ori
 ### How `content/collision.ts` uses it
 
 `groundLattice` (`packages/data`) replays the rule from each cell's two triangle kinds, and over the
-123 owned maps that carry the lane its edge masks equal `lmtw` byte for byte. Original behavior: the
-route search expands a node's six edges, each only where its bit is set, so this lane is the walk and
-sail graph itself. The join hands the masks to the sim, where every step needs them
-(`packages/sim/src/nav/terrain/edges.ts`): an E/W or N/S step is one edge and a diagonal two. Labelling
-the graphs with objects stripped, our land components equal the components of `lmtw` on every one of
-those maps; at sea 12 pockets of one or two nodes, joined only along the edge axis our step set lacks,
-stand apart.
+123 mod maps the pipeline converts with their ground lane its edge masks equal `lmtw` byte for byte.
+Original behavior: the route search expands a node's six edges, each only where its bit is set, so
+this lane is the walk and sail graph itself. The join hands the masks to the sim, where every step
+needs them (`packages/sim/src/nav/terrain/edges.ts`): an E/W or N/S step is one edge and a diagonal
+two. Labelling the graphs with objects stripped, our land components equal the components of `lmtw`
+on every one of those maps; at sea 12 pockets of one or two nodes stand apart, joined only by an
+edge that shifts a column (NW/SW from an even row, NE/SE from an odd one), which our steps walk only
+inside a diagonal. The searches over a node's four orthogonal neighbours (nearest free node,
+eviction, door passage, rally spots) cross only open edges too.
 
 A node walks when a walkable triangle touches it and an edge leaves it, so the frame is closed, and it
 is sea for ships when every triangle touching it is water. Against the original's continent table

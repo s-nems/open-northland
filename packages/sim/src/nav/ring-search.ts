@@ -40,8 +40,11 @@ export function ringSearch(
   while (frontier.length > 0 && visited < cap) {
     const next: NodeId[] = [];
     for (const cell of frontier) {
+      // Only an untraversable start, a click on water, reaches out across ground no step crosses.
+      const stepping = terrain.traversable(cell, traversal);
       for (const n of terrain.neighbours(cell)) {
         if (!terrain.traversable(n, traversal) || seen.has(n) || !traverse(n)) continue;
+        if (stepping && !terrain.joined(cell, n)) continue;
         seen.add(n);
         visited++;
         if (accept(n)) return n;

@@ -71,8 +71,9 @@ export function evictSettlersFromCells(
     const at = settlerNode(world, terrain, e);
     if (blocked.has(at) || doors.has(at)) continue;
     const traversal = settlerTraversal(world, e);
-    if (terrain.neighbours(at).every((n) => !terrain.traversable(n, traversal) || blocked.has(n)))
-      evicteesUnsorted.push(e);
+    const sealed = (n: NodeId): boolean =>
+      !terrain.traversable(n, traversal) || blocked.has(n) || !terrain.joined(at, n);
+    if (terrain.neighbours(at).every(sealed)) evicteesUnsorted.push(e);
   }
   if (evicteesUnsorted.length === 0) return;
   // Canonical order fixes the Position-write and claim order.
@@ -179,8 +180,9 @@ function nearestFreeCellOutside(
       traverse: (n) => !blocked.has(n) || body.has(n),
       accept: (n) => {
         if (blocked.has(n) || doors.has(n)) return false;
-        if (!terrain.neighbours(n).some((m) => terrain.traversable(m, traversal) && !blocked.has(m)))
-          return false;
+        const exit = (m: NodeId): boolean =>
+          terrain.traversable(m, traversal) && !blocked.has(m) && terrain.joined(n, m);
+        if (!terrain.neighbours(n).some(exit)) return false;
         const { x, y } = terrain.coordsOf(n);
         return !claimed.has(n) && occupancy.at(x, y).length === 0;
       },

@@ -1,4 +1,10 @@
-import { HEX_EDGE, HEX_EDGE_COUNT } from '@open-northland/data';
+import {
+  HEX_EDGE,
+  HEX_EDGE_COUNT,
+  hexEdgeNeighbourX,
+  hexEdgeNeighbourY,
+  oppositeHexEdge,
+} from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   buildTerrainGraph,
@@ -129,6 +135,34 @@ describe('neighbours are emitted in canonical N, E, S, W order', () => {
   });
 });
 
+const EDGE_GRID_WIDTH = 5;
+const EDGE_GRID_HEIGHT = 7;
+const ALL_EDGES = (1 << HEX_EDGE_COUNT) - 1;
+
+/** The edge lane of the edge grid with every edge inside it open but the listed `[x, y, edge]` ones,
+ *  each closed from both its nodes. */
+function groundEdgesClosing(closed: readonly (readonly [number, number, number])[]): number[] {
+  const edges = new Array<number>(EDGE_GRID_WIDTH * EDGE_GRID_HEIGHT).fill(ALL_EDGES);
+  const close = (x: number, y: number, edge: number): void => {
+    const i = y * EDGE_GRID_WIDTH + x;
+    edges[i] = (edges[i] ?? ALL_EDGES) & ~(1 << edge);
+  };
+  for (let y = 0; y < EDGE_GRID_HEIGHT; y++) {
+    for (let x = 0; x < EDGE_GRID_WIDTH; x++) {
+      for (let edge = 0; edge < HEX_EDGE_COUNT; edge++) {
+        const nx = hexEdgeNeighbourX(x, y, edge);
+        const ny = hexEdgeNeighbourY(y, edge);
+        if (nx < 0 || ny < 0 || nx >= EDGE_GRID_WIDTH || ny >= EDGE_GRID_HEIGHT) close(x, y, edge);
+      }
+    }
+  }
+  for (const [x, y, edge] of closed) {
+    close(x, y, edge);
+    close(hexEdgeNeighbourX(x, y, edge), hexEdgeNeighbourY(y, edge), oppositeHexEdge(edge));
+  }
+  return edges;
+}
+
 describe('steps - the pathfinder half-cell lattice edge set', () => {
   it('emits the eight edges in canonical order with their world-length costs (parity-independent)', () => {
     const g = buildTerrainGraph(testContent(), rawGrid(5, 5));
@@ -203,20 +237,17 @@ describe('steps - the pathfinder half-cell lattice edge set', () => {
   });
 
   it('steps only along the ground edges the map lane opens', () => {
-    const ALL = (1 << HEX_EDGE_COUNT) - 1;
-    const width = 5;
-    const edges = new Array<number>(width * 7).fill(ALL);
-    const close = (x: number, y: number, edge: number): void => {
-      const i = y * width + x;
-      edges[i] = (edges[i] ?? ALL) & ~(1 << edge);
-    };
-    close(2, 2, HEX_EDGE.EAST);
-    // N/S from an even row are its NE/SE edges, and from an odd row its NW/SW ones.
-    close(2, 2, HEX_EDGE.NORTH_EAST);
-    close(2, 3, HEX_EDGE.SOUTH_WEST);
-    // SE from even (2,2) runs SE to (2,3), then SE again to (3,4): the middle node's edge decides.
-    close(2, 3, HEX_EDGE.SOUTH_EAST);
-    const g = buildTerrainGraph(testContent(), { ...rawGrid(width, 7), groundEdges: edges });
+    const g = buildTerrainGraph(testContent(), {
+      ...rawGrid(EDGE_GRID_WIDTH, EDGE_GRID_HEIGHT),
+      groundEdges: groundEdgesClosing([
+        [2, 2, HEX_EDGE.EAST],
+        // N/S from an even row are its NE/SE edges, and from an odd row its NW/SW ones.
+        [2, 2, HEX_EDGE.NORTH_EAST],
+        [2, 3, HEX_EDGE.SOUTH_WEST],
+        // SE from even (2,2) runs SE to (2,3), then SE again to (3,4): the middle node's edge decides.
+        [2, 3, HEX_EDGE.SOUTH_EAST],
+      ]),
+    });
     const from = (x: number, y: number) => g.steps(g.nodeAt(x, y)).map((s) => g.coordsOf(s.node));
     expect(from(2, 2)).toEqual([
       { x: 1, y: 2 }, // W
@@ -231,6 +262,30 @@ describe('steps - the pathfinder half-cell lattice edge set', () => {
       { x: 1, y: 1 }, // NW, through (2,2)
       { x: 2, y: 2 }, // N, the NW edge
     ]);
+  });
+
+  it('keeps placement adjacency off a closed ground edge', () => {
+    const g = buildTerrainGraph(testContent(), {
+      ...rawGrid(EDGE_GRID_WIDTH, EDGE_GRID_HEIGHT),
+      groundEdges: groundEdgesClosing([[2, 3, HEX_EDGE.NORTH_WEST]]),
+    });
+    expect(g.joined(g.nodeAt(2, 3), g.nodeAt(2, 2))).toBe(false);
+    expect(g.walkableNeighbours(g.nodeAt(2, 3)).map((n) => g.coordsOf(n))).toEqual([
+      { x: 3, y: 3 },
+      { x: 2, y: 4 },
+      { x: 1, y: 3 },
+    ]);
+  });
+
+  it('rejects a ground edge open from one side only', () => {
+    const edges = groundEdgesClosing([]);
+    edges[2 * EDGE_GRID_WIDTH + 2] = ALL_EDGES & ~(1 << HEX_EDGE.EAST);
+    expect(() =>
+      buildTerrainGraph(testContent(), {
+        ...rawGrid(EDGE_GRID_WIDTH, EDGE_GRID_HEIGHT),
+        groundEdges: edges,
+      }),
+    ).toThrow(/one side only/);
   });
 
   it('honours the dynamic blocked overlay', () => {

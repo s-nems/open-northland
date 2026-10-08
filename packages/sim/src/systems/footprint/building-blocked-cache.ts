@@ -43,7 +43,7 @@ export function doorPassage(terrain: TerrainGraph, body: ReadonlySet<NodeId>, do
     const steps = depth.get(cell) ?? 0;
     if (exit !== null && steps > exit.depth) break;
     for (const next of terrain.neighbours(cell)) {
-      if (!terrain.isWalkable(next)) continue;
+      if (!terrain.isWalkable(next) || !terrain.joined(cell, next)) continue;
       if (!body.has(next)) {
         if (!leadsOut(next)) continue;
         if (exit === null || steps < exit.depth || (steps === exit.depth && next < exit.outside))

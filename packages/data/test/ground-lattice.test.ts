@@ -7,11 +7,14 @@ import {
   groundLattice,
   HEX_EDGE,
   HEX_EDGE_COUNT,
+  hexEdgeNeighbourX,
+  hexEdgeNeighbourY,
+  oppositeHexEdge,
 } from '../src/index.js';
 
 /** Cells enough that the middle of the map clears the frame no edge enters. */
-const WIDTH = 8;
-const HEIGHT = 6;
+const WIDTH = 10;
+const HEIGHT = 8;
 const ALL_EDGES = (1 << HEX_EDGE_COUNT) - 1;
 
 function lattice(paint: (a: GroundKind[], b: GroundKind[]) => void = () => {}) {
@@ -27,12 +30,40 @@ function lattice(paint: (a: GroundKind[], b: GroundKind[]) => void = () => {}) {
   };
 }
 
+const KINDS: readonly GroundKind[] = [GROUND_LAND, GROUND_VOID, GROUND_WATER];
+
+/** A deterministic patchwork of all three kinds, one lane of a map's triangles. */
+function mixedKinds(seed: number): GroundKind[] {
+  return Array.from(
+    { length: WIDTH * HEIGHT },
+    (_, i) => KINDS[(i * seed + (i >> 2)) % KINDS.length] ?? GROUND_LAND,
+  );
+}
+
 /** Cell (3, 2): an even cell row, so its centre node is (6, 4). */
 const CELL = 2 * WIDTH + 3;
 
 describe('groundLattice', () => {
-  it('opens all six edges of a node inside unbroken land', () => {
-    expect(lattice().edges(8, 6)).toBe(ALL_EDGES);
+  it('opens all six edges of every node inside unbroken land whose neighbours clear the frame', () => {
+    // The frame is at most five columns and four rows deep.
+    const g = lattice();
+    for (let hy = 5; hy <= 2 * HEIGHT - 6; hy++) {
+      for (let hx = 6; hx <= 2 * WIDTH - 7; hx++) expect(g.edges(hx, hy), `(${hx},${hy})`).toBe(ALL_EDGES);
+    }
+  });
+
+  it('opens every edge from both its nodes', () => {
+    const { edges } = groundLattice(WIDTH, HEIGHT, mixedKinds(1), mixedKinds(2));
+    const nodeW = 2 * WIDTH;
+    for (let i = 0; i < edges.length; i++) {
+      const hx = i % nodeW;
+      const hy = Math.floor(i / nodeW);
+      for (let edge = 0; edge < HEX_EDGE_COUNT; edge++) {
+        if (((edges[i] ?? 0) & (1 << edge)) === 0) continue;
+        const back = edges[hexEdgeNeighbourY(hy, edge) * nodeW + hexEdgeNeighbourX(hx, hy, edge)] ?? 0;
+        expect(back & (1 << oppositeHexEdge(edge)), `(${hx},${hy}) edge ${edge}`).not.toBe(0);
+      }
+    }
   });
 
   it('closes an edge that runs only through a void triangle, though land wins both its nodes', () => {
