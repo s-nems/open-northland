@@ -170,6 +170,27 @@ describe('unit body collision - firm routing and resolution', () => {
     expect(s.world.has(runner, PathRequest)).toBe(false);
   });
 
+  it.each(['own', 'allied'] as const)(
+    "a stale walk onto an %s post's node is ejected off it and stands beside it",
+    (side) => {
+      const s = sim();
+      const owner = side === 'own' ? P0 : P1;
+      if (side === 'allied') {
+        setDiplomacyStance(s.world, P0, P1, 'friend');
+        setDiplomacyStance(s.world, P1, P0, 'friend');
+      }
+      const post = settlerAt(s, 12, 6, SOLDIER, owner);
+      const runner = settlerAt(s, 18, 6, SOLDIER, P0);
+      walkStraightTo(s, runner, 12, 6); // a route no stand-in re-aimed
+      s.run(150);
+
+      const at = nodeOf(s, runner);
+      expect(at).not.toEqual({ x: 12, y: 6 });
+      expect(Math.abs(at.x - 12) + Math.abs(at.y - 6)).toBeLessThanOrEqual(2);
+      expect(nodeOf(s, post)).toEqual({ x: 12, y: 6 });
+    },
+  );
+
   it('inside its own calm zone a walker is a ghost: it walks through even an enemy post', () => {
     const s = sim();
     const b = s.world.create();

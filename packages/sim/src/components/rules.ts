@@ -222,6 +222,17 @@ export function hostilePlayerMasks(world: World): number[] {
   return masks;
 }
 
+/** The slot bits of the players `player` holds 'enemy' toward: whom it fights, one way. Every slot for
+ *  a player outside the slots, whom {@link diplomacyStance} reads as everyone's enemy. */
+export function enemyPlayerMask(world: World, player: number): number {
+  if (!isValidPlayer(player)) return EVERY_PLAYER;
+  let mask = 0;
+  for (let q = 0; q < MAX_PLAYERS; q++) {
+    if (q !== player && diplomacyStance(world, player, q) === 'enemy') mask |= 1 << q;
+  }
+  return mask;
+}
+
 /** `player`'s entry of {@link hostilePlayerMasks}; every slot for a player outside them, whom
  *  {@link diplomacyStance} reads as everyone's enemy. */
 export function hostileMaskOf(masks: readonly number[], player: number): number {

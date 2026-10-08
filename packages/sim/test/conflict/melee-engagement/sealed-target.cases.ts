@@ -7,10 +7,13 @@ import {
   Health,
   MoveGoal,
   Owner,
+  PathFollow,
   PathRequest,
+  PathRoute,
   Position,
   Resource,
   Stance,
+  setDiplomacyStance,
   UnreachableTargets,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
@@ -47,6 +50,7 @@ import { ctxOf, fighterAt, grassMap, HARVEST_ATOMIC, P0, P1, VIKING, WOOD, WOODC
 const WALL = 90; // appended: a plain, low-priority building blocking one node
 const SOLDIER = 31; // `soldier_unarmed`: a collider, so standing bodies block its routes and it blocks theirs
 const MACE = 12; // appended: the soldier's melee weapon, a strict one-node band
+const P2 = 2; // a third side, for a ring that blocks the besieger without being his target
 
 /** The shared fixture plus the wall post and the soldier's mace. */
 function siegeContent(): ContentSet {
@@ -131,9 +135,9 @@ function fighterOnNode(
 }
 
 /** Soldiers of the besieger's side standing on every ring node around (hx, hy). */
-function crowdIn(sim: Simulation, hx: number, hy: number): Entity[] {
+function crowdIn(sim: Simulation, hx: number, hy: number, owner = P0): Entity[] {
   return ringAround(hx, hy).map((node) =>
-    fighterOnNode(sim, node.hx, node.hy, SOLDIER, P0, MILITARY_MODE.IGNORE),
+    fighterOnNode(sim, node.hx, node.hy, SOLDIER, owner, MILITARY_MODE.IGNORE),
   );
 }
 
@@ -346,6 +350,52 @@ describe('a chase whose target is walled in by buildings', () => {
   });
 });
 
+describe('a chase whose target a ring of bodies seals off', () => {
+  it('holds at the cadence for as long as the ring stands and takes the gap when a body steps off', () => {
+    const scene = standoff({ besiegerJob: SOLDIER });
+    // A third side that holds the besieger an enemy while he holds it a friend: its bodies block his
+    // routes, but he never fights them.
+    for (const [from, to, state] of [
+      [P2, P0, 'enemy'],
+      [P0, P2, 'friend'],
+      [P1, P2, 'friend'],
+      [P2, P1, 'friend'],
+    ] as const) {
+      setDiplomacyStance(scene.sim.world, from, to, state);
+    }
+    const crowd = crowdIn(scene.sim, scene.at.hx, scene.at.hy, P2);
+
+    // Well past the release threshold, the chase still stands: a seal of bodies is never given up.
+    let engagedThroughout = true;
+    for (let i = 0; i < 6 * REPATH_CADENCE; i++) {
+      scene.sim.step();
+      if (!scene.sim.world.has(scene.besieger, Engagement)) engagedThroughout = false;
+    }
+    expect(engagedThroughout).toBe(true);
+    expect(scene.sim.world.has(scene.besieger, UnreachableTargets)).toBe(false);
+    // Held by the count and the probe, not by a swing: still outside, refusals well past the threshold.
+    expect(scene.pocket.has(nodeOf(scene.sim, scene.terrain, scene.besieger))).toBe(false);
+    expect(scene.sim.world.get(scene.besieger, Engagement).stall?.routes).toBeGreaterThanOrEqual(
+      SEALED_TARGET_ROUTE_FAILURES,
+    );
+
+    // The body on the ring's west edge steps off, opening a 4-connected passage (a corner would not): the
+    // next cadence's route resolves and the chase walks in.
+    const ring = ringAround(scene.at.hx, scene.at.hy);
+    const gap = crowd[ring.findIndex((n) => n.hx === scene.at.hx - RING_RADIUS && n.hy === scene.at.hy)];
+    if (gap === undefined) throw new Error('fixture: the ring has no west edge');
+    scene.sim.world.destroy(gap);
+    let reached = false;
+    for (let i = 0; i < 120 && !reached; i++) {
+      scene.sim.step();
+      reached =
+        scene.pocket.has(nodeOf(scene.sim, scene.terrain, scene.besieger)) ||
+        swingsAt(scene.sim, scene.besieger, scene.enemy);
+    }
+    expect(reached).toBe(true);
+  });
+});
+
 describe('a chase whose target its own side rings', () => {
   it('walks through the ring to its target: only an enemy body blocks a route', () => {
     const scene = standoff({ besiegerJob: SOLDIER });
@@ -383,5 +433,32 @@ describe('a chase whose target its own side rings', () => {
 
     expect(sim.world.get(subject, Engagement)).toMatchObject({ stall: undefined, target: enemy });
     expect(sim.world.has(subject, MoveGoal)).toBe(false);
+  });
+
+  it('never waits on the friend whose node it is crossing', () => {
+    // The front and the second rank around the enemy are full of the subject's own side, and the subject
+    // is mid-route on one of those friends.
+    const sim = new Simulation({ seed: 1, content: siegeContent(), map: grassMap(9, 1) });
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('map expected');
+    const enemy = fighterOnNode(sim, 10, 0, SOLDIER, P1, MILITARY_MODE.IGNORE);
+    const ranks: [number, number][] = [];
+    for (let hx = 8; hx <= 12; hx++) for (const hy of [0, 1]) if (hx !== 10 || hy !== 0) ranks.push([hx, hy]);
+    for (const [hx, hy] of ranks) fighterOnNode(sim, hx, hy, SOLDIER, P0, MILITARY_MODE.IGNORE);
+    const crossing = 9;
+    const subject = fighterOnNode(sim, crossing, 0, SOLDIER, P0, MILITARY_MODE.ATTACK);
+    sim.world.add(subject, PathRoute, {
+      waypoints: [crossing - 1, crossing, crossing + 1].map((hx) => ({
+        ...positionOfNode(hx, 0),
+        node: terrain.nodeAt(hx, 0),
+      })),
+    });
+    sim.world.add(subject, PathFollow, { index: 2, legElapsed: 0, legCost: 0 });
+    sim.world.add(subject, MoveGoal, { cell: terrain.nodeAt(crossing + 1, 0) });
+    sim.world.add(subject, Engagement, { repathAt: 0, target: enemy });
+
+    combatSystem(sim.world, ctxOf(sim));
+
+    expect(sim.world.get(subject, MoveGoal).cell).not.toBe(terrain.nodeAt(crossing, 0));
   });
 });

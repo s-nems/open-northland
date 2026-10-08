@@ -261,6 +261,12 @@ export function chase(
     approach = { cell: step.cell, waiting: false };
     alongFront = step.enemy;
   }
+  // A walker crossing a friend's node is never dealt it: it waits on the nearest node no body holds.
+  if (crossingFriend && approach.cell === here) {
+    const off = freeNodeNear(terrain, slots, here, mine, onOurBank);
+    if (off === null) return false; // walk the live route off it and ask again
+    approach = { cell: off, waiting: true };
+  }
   const dest = approach.cell;
   // `dest` fell back to the target itself: no cell that would bring it into reach is one this unit can stand
   // on. Only the walk is refused - the reach check ran before the chase, so an archer still shoots across
@@ -289,6 +295,31 @@ export function chase(
   held.waiting = undefined;
   if (alongFront !== null) held.target = alongFront;
   return false;
+}
+
+/** How far (map points) a walker crossing a friend's node looks for a free node to wait on. Authored:
+ *  two rings, past the friend's own neighbours, who are usually his line. */
+const OFF_FRIEND_RADIUS = 2;
+
+/** The free node nearest `here`, ring by ring and in ring order, or null within {@link OFF_FRIEND_RADIUS}. */
+function freeNodeNear(
+  terrain: TerrainGraph,
+  slots: MeleeSlots,
+  here: NodeId,
+  mine: OwnClaims,
+  onOurBank: (cell: NodeId) => boolean,
+): NodeId | null {
+  const at = { hx: terrain.xOf(here), hy: terrain.yOf(here) };
+  let found: NodeId | null = null;
+  for (let ring = 1; ring <= OFF_FRIEND_RADIUS && found === null; ring++) {
+    forEachRingNode(at, ring, terrain.width, terrain.height, (hx, hy) => {
+      const cell = terrain.nodeAt(hx, hy);
+      if (!slots.isOpen(cell) || !onOurBank(cell) || slots.isTaken(cell, mine.goal)) return true;
+      found = cell;
+      return false;
+    });
+  }
+  return found;
 }
 
 /**

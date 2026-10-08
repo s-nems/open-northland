@@ -8,6 +8,7 @@ import {
   PathRoute,
   PlayerOrder,
   Position,
+  setDiplomacyStance,
   WALK_DIRECTION,
   WalkFacing,
 } from '../../src/components/index.js';
@@ -179,6 +180,21 @@ describe('army player routing', () => {
       }
     },
   );
+
+  it('refuses an attack-move through the line of a side that is its enemy but not its target', () => {
+    const { sim, members } = army(false);
+    // Player 1 holds player 0 an enemy, so its line blocks player 0, who holds it a friend and never
+    // fights it.
+    setDiplomacyStance(sim.world, 0, 1, 'friend');
+    enemyLine(sim);
+    const [member] = members;
+    if (member === undefined) throw new Error('army missing');
+    sim.enqueue(
+      playerCommand(0, { kind: 'attackMoveUnit', entity: member.entity, x: member.x + 240, y: member.y }),
+    );
+    sim.step();
+    expect(sim.world.get(member.entity, PathRequest).failed).toBe(true);
+  });
 
   it('routes 1000 attack-moves through a closed line of enemy soldiers', () => {
     const { sim, members } = army(false);

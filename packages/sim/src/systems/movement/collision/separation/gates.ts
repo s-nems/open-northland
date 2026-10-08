@@ -45,7 +45,8 @@ export class SeparationGates {
     for (let i = 0; i < count; i++) {
       const post = posts[i];
       if (post === undefined) continue;
-      if ((hostile & playerSlotBit(this.world.get(post, Owner).player)) !== 0 || this.nodeOf(post) === goal) {
+      const onGoal = goal !== undefined && this.nodeOf(post) === goal;
+      if ((hostile & playerSlotBit(this.world.get(post, Owner).player)) !== 0 || onGoal) {
         posts[kept++] = post;
       }
     }

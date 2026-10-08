@@ -1,6 +1,7 @@
 import {
   Engagement,
   EVERY_PLAYER,
+  enemyPlayerMask,
   Fleeing,
   hostileMaskOf,
   hostilePlayerMasks,
@@ -87,6 +88,7 @@ export function drainPathRequests(
   let units: UnitWalkBlocks | undefined;
   let hostile: readonly number[] | undefined;
   const combinedByPlayer = new Map<number, ColliderWalkBlocks>();
+  const besideTargetsByPlayer = new Map<number, ColliderWalkBlocks>();
   let occupiedView: BlockOverlay | undefined;
   // Goal stand-ins already handed out this tick, so two walkers aimed at one crowded node fan out to
   // different free nodes instead of both claiming the same one.
@@ -110,6 +112,19 @@ export function drainPathRequests(
       hostile ??= hostilePlayerMasks(world);
       view = new ColliderWalkBlocks(dynamicOnly(), units, hostileMaskOf(hostile, player));
       combinedByPlayer.set(player, view);
+    }
+    return view;
+  };
+  // The bodies an attack-move of `player` cannot fight its way through: the hostile ones it does not
+  // fight itself, as a side that holds it an enemy it holds a friend.
+  const besideTargetsFor = (player: number): ColliderWalkBlocks => {
+    let view = besideTargetsByPlayer.get(player);
+    if (view === undefined) {
+      units ??= unitWalkBlocks(world, ctx.content, terrain);
+      hostile ??= hostilePlayerMasks(world);
+      const passable = hostileMaskOf(hostile, player) & ~enemyPlayerMask(world, player);
+      view = new ColliderWalkBlocks(dynamicOnly(), units, passable);
+      besideTargetsByPlayer.set(player, view);
     }
     return view;
   };
@@ -186,17 +201,14 @@ export function drainPathRequests(
         ? memoPath(memo, e, ctx.tick, start, goal, world.tryGet(e, Owner)?.player ?? -1, blocked, spent)
         : resolvePath(terrain, start, goal, blocked, spent, traversal),
     );
-    // An attack-move goes for what seals its goal off: enemy bodies shape its route, never refuse it.
-    if (
-      path === null &&
-      bodies !== null &&
-      bodies.posts > 0 &&
-      world.tryGet(e, PlayerOrder)?.attackMove !== undefined
-    ) {
-      const open = dynamicOnly();
-      path = routeUnder(open, start, goal, group, () =>
-        resolvePath(terrain, start, goal, open, spent, traversal),
-      );
+    // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
+    if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
+      const through = besideTargetsFor(world.tryGet(e, Owner)?.player ?? -1);
+      if (through.posts < bodies.posts) {
+        path = routeUnder(through, start, goal, group, () =>
+          resolvePath(terrain, start, goal, through, spent, traversal),
+        );
+      }
     }
     if (path !== null) {
       if (standIn) {

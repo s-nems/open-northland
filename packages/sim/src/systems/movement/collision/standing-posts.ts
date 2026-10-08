@@ -366,7 +366,11 @@ function verifyIndex(world: World): string[] {
   if (index.byNode.size !== fresh.counts.size || !sameCounts(index.playerAt, fresh.playerAt)) {
     problems.push('standingPosts names another player or node list than a fresh scan');
   }
-  const playersSame = [...fresh.playersAt].every(([node, bits]) => index.playersAt[node] === bits);
+  let playerNodes = 0;
+  for (const bits of index.playersAt) if (bits !== 0) playerNodes++;
+  const playersSame =
+    playerNodes === fresh.playersAt.size &&
+    [...fresh.playersAt].every(([node, bits]) => index.playersAt[node] === bits);
   if (!playersSame || !sameCounts(index.totalByPlayer, fresh.totals)) {
     problems.push('standingPosts tallies other players per node or in total than a fresh scan');
   }
