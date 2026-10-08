@@ -550,7 +550,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     portraits: () => chrome.portraits(),
     flaggedFlagIds: () => selection.workFlagIds(opts.snapshot()),
     focusedIds: () => chrome.focusedIds(),
-    groupLabels: controlGroups.labels,
+    groupNumbers: controlGroups.numbers,
     workAreaRings: () => workArea.rings(opts.snapshot()),
     orderMarkers: orderMarkers.live,
     lostGoals: () => lostGoals(opts.snapshot(), selection.ids(), pickableSeat(opts.viewer)),

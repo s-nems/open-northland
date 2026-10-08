@@ -46,9 +46,9 @@ export interface ControlGroups {
     isSelectable: (id: number) => boolean,
     isUnit: IsUnit,
   ): readonly number[] | null;
-  /** Member id → the label the map marks it with: its groups' numbers in group order, comma-joined, the
-   *  first {@link MAX_LABELLED_GROUPS} of them. The same map until a group changes. */
-  labels(): ReadonlyMap<number, string>;
+  /** Member id → the numbers of its groups the map marks it with, in group order, the first
+   *  {@link MAX_LABELLED_GROUPS} of them. The same map until a group changes. */
+  numbers(): ReadonlyMap<number, readonly string[]>;
 }
 
 /** Each group's own number, independent of the key it is bound to. */
@@ -109,17 +109,17 @@ export function isControlGroupMember(snapshot: WorldSnapshot, ref: number, seat:
 /** Ten client-local selection groups. Invalid members are forgotten when their group is recalled. */
 export function createControlGroups(): ControlGroups {
   const groups = new Map<ControlGroupAction, Set<number>>();
-  let labels: Map<number, string> | null = null;
+  let numbers: Map<number, string[]> | null = null;
 
   return {
     replace: (action, ids) => {
       groups.set(action, new Set(ids));
-      labels = null;
+      numbers = null;
     },
     addExclusive: (action, ids) => {
       const moving = new Set(ids);
       if (moving.size === 0) return;
-      labels = null;
+      numbers = null;
       for (const [otherAction, otherGroup] of groups) {
         if (otherAction === action) continue;
         for (const id of moving) otherGroup.delete(id);
@@ -136,24 +136,23 @@ export function createControlGroups(): ControlGroups {
         if (isSelectable(id)) valid.push(id);
         else {
           group.delete(id);
-          labels = null;
+          numbers = null;
         }
       }
       return valid.length === 0 ? null : selectionAfter([], valid, false, isUnit);
     },
-    labels: () => {
-      if (labels !== null) return labels;
-      const numbersOf = new Map<number, string[]>();
+    numbers: () => {
+      if (numbers !== null) return numbers;
+      const built = new Map<number, string[]>();
       for (const action of CONTROL_GROUP_ACTIONS) {
         for (const id of groups.get(action) ?? []) {
-          const numbers = numbersOf.get(id) ?? [];
-          if (numbers.length < MAX_LABELLED_GROUPS) numbers.push(GROUP_NUMBERS[action]);
-          numbersOf.set(id, numbers);
+          const listed = built.get(id) ?? [];
+          if (listed.length < MAX_LABELLED_GROUPS) listed.push(GROUP_NUMBERS[action]);
+          built.set(id, listed);
         }
       }
-      labels = new Map();
-      for (const [id, numbers] of numbersOf) labels.set(id, numbers.join(','));
-      return labels;
+      numbers = built;
+      return built;
     },
   };
 }

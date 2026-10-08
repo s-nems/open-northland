@@ -353,7 +353,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       lifeHearts,
       flagged: controls.flaggedFlagIds(),
       focused: controls.focusedIds(),
-      groupLabels: controls.groupLabels(),
+      groupNumbers: controls.groupNumbers(),
       workAreas: controls.workAreaRings(),
       orderMarkers: controls.orderMarkers(),
       lostGoals,

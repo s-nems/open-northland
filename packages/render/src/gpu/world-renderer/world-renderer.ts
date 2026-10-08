@@ -58,7 +58,7 @@ import {
   EMPTY_HIGHLIGHT,
   NO_BADGES,
   NO_BUBBLES,
-  NO_GROUP_LABELS,
+  NO_GROUP_NUMBERS,
   NO_HEARTS,
   NO_LOST_GOALS,
   NO_ORDER_MARKERS,
@@ -359,7 +359,7 @@ export class WorldRenderer {
       constructionSigns: signItems = NO_SIGNS,
       settlerBubbles = NO_BUBBLES,
       lifeHearts = NO_HEARTS,
-      groupLabels = NO_GROUP_LABELS,
+      groupNumbers = NO_GROUP_NUMBERS,
       flagged = NO_REFS,
       focused = NO_REFS,
       workAreas = NO_WORK_AREAS,
@@ -459,7 +459,7 @@ export class WorldRenderer {
       constructionSigns: signItems,
       settlerBubbles,
       lifeHearts,
-      groupLabels: this.groupNumbersShown ? groupLabels : NO_GROUP_LABELS,
+      groupNumbers: this.groupNumbersShown ? groupNumbers : NO_GROUP_NUMBERS,
     });
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);

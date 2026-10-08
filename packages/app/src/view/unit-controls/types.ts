@@ -175,8 +175,8 @@ export interface UnitControls {
   readonly flaggedFlagIds: () => ReadonlySet<number>;
   /** The selected unit the HUD points at, whose ring the map lights over the green one. */
   readonly focusedIds: () => ReadonlySet<number>;
-  /** Control-group member id → the group numbers the map marks it with, such as `1,3`. */
-  readonly groupLabels: () => ReadonlyMap<number, string>;
+  /** Control-group member id → the numbers of its groups the map marks it with. */
+  readonly groupNumbers: () => ReadonlyMap<number, readonly string[]>;
   /** The work-area circles the "Show Work Area" order has switched on. */
   readonly workAreaRings: () => readonly WorkAreaRing[];
   /** The ground acknowledgements of the latest walk and march orders still playing. */

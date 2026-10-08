@@ -54,7 +54,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     constructionSigns: [],
     settlerBubbles: [],
     lifeHearts: [],
-    groupLabels: new Map(),
+    groupNumbers: new Map(),
     wind: CALM_WIND_SWAY,
     ...over,
   };
@@ -108,7 +108,7 @@ describe('WorldMarks', () => {
       frameOf({
         selection: new Set([SETTLER]),
         doorBadges: [{ id: 12, x: 0, y: 0, rows: [{ role: 'craftsman' }] }],
-        groupLabels: new Map([[SETTLER, '1']]),
+        groupNumbers: new Map([[SETTLER, ['1']]]),
         drawn: {
           boundsOf: (id) => (id === SETTLER ? { minX: 0, minY: 0, maxX: 40, maxY: 40 } : undefined),
           anchorOf: () => undefined,
