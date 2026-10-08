@@ -3,7 +3,7 @@ appId: org.opennorthland.desktop
 productName: OpenNorthland
 # electron-builder needs an exact Electron release to fetch platform binaries; keep in lockstep
 # with the devDependency.
-electronVersion: 44.4.3
+electronVersion: 44.5.1
 directories:
   output: release
   # Installer inputs (the app icons); `build/`, electron-builder's default, reads like an output.
