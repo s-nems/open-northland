@@ -1,4 +1,4 @@
-import { buildSoundIndex, defaultBindings, SoundDriver } from '@open-northland/audio';
+import { buildSoundIndex, defaultBindings, SoundDriver, type SoundIndex } from '@open-northland/audio';
 import type { SoundBank } from '@open-northland/data';
 import type { ContentIr } from './ir/rows.js';
 
@@ -17,20 +17,24 @@ export function hasSoundContent(sounds: SoundBank | undefined): sounds is SoundB
   );
 }
 
+/** The sound index over `sounds`, joined with the IR rows that place, voice and bed it. */
+export function soundIndexOf(ir: ContentIr, sounds: SoundBank): SoundIndex {
+  return buildSoundIndex(
+    sounds,
+    ir.gfxPatterns ?? [],
+    ir.terrainPatterns ?? [],
+    ir.jobs ?? [],
+    ir.tribes ?? [],
+    ir.landscapeGfx ?? [],
+  );
+}
+
 /**
  * Build a {@link SoundDriver} from the fetched IR, or `null` when content is absent - the caller then
  * runs silent.
  */
 export function createSoundDriver(ir: ContentIr | null): SoundDriver | null {
   const sounds = ir?.sounds;
-  if (!hasSoundContent(sounds)) return null;
-  const index = buildSoundIndex(
-    sounds,
-    ir?.gfxPatterns ?? [],
-    ir?.terrainPatterns ?? [],
-    ir?.jobs ?? [],
-    ir?.tribes ?? [],
-    ir?.landscapeGfx ?? [],
-  );
-  return new SoundDriver(index, defaultBindings());
+  if (ir === null || !hasSoundContent(sounds)) return null;
+  return new SoundDriver(soundIndexOf(ir, sounds), defaultBindings());
 }

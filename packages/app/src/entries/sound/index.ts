@@ -1,5 +1,5 @@
-import { buildSoundIndex, defaultBindings, SoundDriver } from '@open-northland/audio';
-import { hasSoundContent } from '../../content/audio.js';
+import { defaultBindings, SoundDriver } from '@open-northland/audio';
+import { hasSoundContent, soundIndexOf } from '../../content/audio.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadMusicManifest } from '../../content/music.js';
 import { messages } from '../../i18n/index.js';
@@ -47,14 +47,7 @@ export async function renderSoundGallery(
       namedTribes.set(tribe.typeId, tribe.name);
     }
   }
-  const index = buildSoundIndex(
-    sounds,
-    ir.gfxPatterns ?? [],
-    ir.terrainPatterns ?? [],
-    ir.jobs ?? [],
-    ir.tribes ?? [],
-    ir.landscapeGfx ?? [],
-  );
+  const index = soundIndexOf(ir, sounds);
   const bindings = defaultBindings();
   const model = buildSoundGalleryModel(sounds, index, bindings, (tribe) => namedTribes.get(tribe));
   const { volumes } = readStoredSettings();
