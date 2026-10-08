@@ -118,7 +118,7 @@ export class OneShotLedger {
    * pool stays a candidate, since a pool starts at most once per {@link POOL_RETRIGGER_S}.
    */
   offer(shot: OneShot, now: number): void {
-    if (shot.files.length === 0 || this.keyCooling(shot.key, now)) return;
+    if (shot.files.length === 0 || this.shotCooling(shot, now)) return;
     const pool = this.pool(shot.files);
     if (pool.playing >= POOL_INSTANCE_CAP || now - pool.lastStart < POOL_RETRIGGER_S) return;
     if (shot.exclusive === 'group' && this.anySounding(shot.poolFiles ?? shot.files, now)) return;
@@ -176,7 +176,7 @@ export class OneShotLedger {
    * plays, or null.
    */
   startFree(shot: OneShot, now: number): OneShot | null {
-    if (shot.files.length === 0 || this.keyCooling(shot.key, now)) return null;
+    if (shot.files.length === 0 || this.shotCooling(shot, now)) return null;
     if (shot.exclusive === 'group' && !this.supersede(shot, now)) return null;
     const file = this.pick(shot.files, shot.exclusive !== undefined, now);
     if (file === null) return null;
@@ -225,6 +225,8 @@ export class OneShotLedger {
     const play: Play = { file, startedAt: now + (shot.delayS ?? 0), rate };
     this.lastPlay.set(file, play);
     this.keyReadyAt.set(shot.key, now + (shot.cooldownS ?? KEY_COOLDOWN_S));
+    const shared = shot.sharedCooldown;
+    if (shared !== undefined) this.keyReadyAt.set(shared.key, now + shared.cooldownS);
     pool.recent.push(file);
     if (pool.recent.length > noRepeatDepth(shot.files.length)) pool.recent.shift();
     return play;
@@ -269,6 +271,12 @@ export class OneShotLedger {
       this.pools.set(files, pool);
     }
     return pool;
+  }
+
+  /** Whether the shot's key or its {@link OneShot.sharedCooldown} key is cooling. */
+  private shotCooling(shot: OneShot, now: number): boolean {
+    const shared = shot.sharedCooldown;
+    return this.keyCooling(shot.key, now) || (shared !== undefined && this.keyCooling(shared.key, now));
   }
 
   /** Whether `key` started within its cooldown ({@link OneShot.cooldownS}) of `now`. */

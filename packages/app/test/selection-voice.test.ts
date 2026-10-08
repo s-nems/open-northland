@@ -100,9 +100,9 @@ describe('selection voice', () => {
 
   it('lets a box select speak without a fallback click, and an empty box stay silent', () => {
     const h = harness();
-    h.voice.group([]);
+    h.voice.box([]);
     expect(h.calls).toEqual([]);
-    h.voice.group([HOUSE, SETTLER]);
+    h.voice.box([HOUSE, SETTLER]);
     expect(h.calls).toEqual([{ members: [HOUSE, SETTLER] }]);
   });
 });

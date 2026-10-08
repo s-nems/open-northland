@@ -6,7 +6,7 @@ import { entityTile } from '../snapshot.js';
 import { screenOffset } from '../spatial.js';
 import type { DirectorInput, OneShot, OrderAnswer, VoiceCall } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
-import { murmurPool, refusalGroup, responseGroup, selectLine } from '../voices.js';
+import { murmurPool, refusalGroup, responseGroup, selectLines } from '../voices.js';
 
 /**
  * How a group answers the player: one lead line from the member nearest the screen centre, panned at
@@ -56,6 +56,11 @@ export const MURMUR_COOLDOWN_S = 2;
 
 /** Seconds before one settler answers being selected again. */
 export const SELECT_COOLDOWN_S = 1.5;
+/** Seconds before any selection speaks again, whoever it picks: a run of clicks over a crowd voices
+ *  once, not once per settler. */
+export const SELECT_ANY_COOLDOWN_S = 1;
+/** The key every selection line shares its {@link SELECT_ANY_COOLDOWN_S} under. */
+const SELECT_ANY_KEY = 'select';
 
 function dbGain(db: number): number {
   return 10 ** (db / 20);
@@ -211,21 +216,23 @@ function murmurShots(index: SoundIndex, members: readonly Member[], pan: number)
 }
 
 /**
- * A selection's acknowledgement: the shortest "ok" line of the member nearest the screen centre, at its
- * pool's level and the selection's pan, at most once per {@link SELECT_COOLDOWN_S} for that settler, and
- * never while any line of its pool still sounds. An order's answer over the same pool cuts it short. The original selects in silence; this is our choice. With no member to speak, the call's fallback
- * cue plays instead.
+ * A selection's acknowledgement: one of the shortest "ok" lines of the member nearest the screen centre
+ * ({@link selectLines}), alternating, at its pool's level and the selection's pan. At most once per
+ * {@link SELECT_COOLDOWN_S} for that settler and once per {@link SELECT_ANY_COOLDOWN_S} for any, and
+ * never while any line of its pool still sounds. An order's answer over the same pool cuts it short. The
+ * original selects in silence; this is our choice. With no member to speak, the call's fallback cue
+ * plays instead.
  */
 export function selectionShots(input: DirectorInput, call: VoiceCall): OneShot[] {
   const members = placeMembers(input, call.members);
   const lead = speakersByPool(input.index, members, responseGroup).nearest[0];
-  const line = lead === undefined ? undefined : selectLine(input.index, lead.group, input.clipLengthS);
-  if (lead === undefined || line === undefined) {
+  const lines = lead === undefined ? undefined : selectLines(input.index, lead.group, input.clipLengthS);
+  if (lead === undefined || lines === undefined) {
     return call.fallback === undefined ? [] : [uiCueShot(call.fallback)];
   }
   return [
     {
-      files: [line],
+      files: lines,
       poolFiles: lead.files,
       gain: poolGain(input.index, lead.files),
       pan: centroidPan(members),
@@ -233,6 +240,7 @@ export function selectionShots(input: DirectorInput, call: VoiceCall): OneShot[]
       exclusive: 'group',
       yieldsToAnswer: true,
       cooldownS: SELECT_COOLDOWN_S,
+      sharedCooldown: { key: SELECT_ANY_KEY, cooldownS: SELECT_ANY_COOLDOWN_S },
     },
   ];
 }

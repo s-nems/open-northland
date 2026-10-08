@@ -80,6 +80,9 @@ export interface OneShot {
   /** Seconds the shot's key stays cooling after it starts, for a line that must not repeat soon (a
    *  re-select, a murmur line). Absent is the ledger's anti machine-gun window. */
   readonly cooldownS?: number;
+  /** A second key the shot waits on and cools, shared by a family of shots: any selection line, so a
+   *  quick run of selections of different settlers speaks once. */
+  readonly sharedCooldown?: { readonly key: string; readonly cooldownS: number };
   /** A shot outside every lane whose key cooldown grows like a jingle type's while it keeps firing, from
    *  {@link cooldownS}: a notice card the same settlement raises again and again. */
   readonly cooldownGrows?: boolean;

@@ -3,6 +3,7 @@ import { type Camera, ONE, tileToScreen } from '@open-northland/render/data';
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { poolGain } from '../src/data/bank.js';
+import { SELECT_SECOND_LINE_MAX_S, selectLines } from '../src/data/voices.js';
 import {
   ANSWER_LAYERS,
   ANSWER_MAX_PAN,
@@ -20,6 +21,7 @@ import {
   type OneShot,
   OneShotArbiter,
   type OrderAnswer,
+  SELECT_ANY_COOLDOWN_S,
   SELECT_COOLDOWN_S,
   screenOffset,
   UI_CUE_FILES,
@@ -354,7 +356,7 @@ describe('refused orders', () => {
 });
 
 describe('music under an answer', () => {
-  it('dips the music under an answer\'s lines, not under its murmur, a selection or a fallback click', () => {
+  it('dips the music under the lines of an answer, not its murmur, a selection or a fallback click', () => {
     const crowd = [...army(MURMUR_MIN_GROUP), ...army(3, 900, FRANK)];
     const shots = answer(crowd, { members: idsOf(crowd) });
     const murmur = shots.filter((s) => s.key.startsWith('murmur:'));
@@ -432,16 +434,82 @@ describe('selection voice', () => {
     expect(stopped).toEqual([]);
   });
 
-  it('picks the shortest decoded wav of a pool the table does not name, or its first before decoding', () => {
+  it('takes the two shortest decoded wavs of a pool the table does not name, or its first before decoding', () => {
     const members = [man(2, VIKING, CENTRE_COL)]; // pool 2 % 4: 'Viking male ok 03'
+    expect(select(members, { members: [2] })[0]?.files).toEqual(['humantalk/m3ok01.wav']);
     const lengths = new Map([
       ['humantalk/m3ok01.wav', 0.9],
       ['humantalk/m3ok02.wav', 0.4],
     ]);
-    expect(select(members, { members: [2] }, (file) => lengths.get(file))[0]?.files).toEqual([
-      'humantalk/m3ok02.wav',
+    const lines = select(members, { members: [2] }, (file) => lengths.get(file))[0]?.files;
+    expect(lines).toEqual(['humantalk/m3ok02.wav', 'humantalk/m3ok01.wav']);
+    // The same array comes back, so the ledger can alternate its lines.
+    expect(select(members, { members: [2] }, (file) => lengths.get(file))[0]?.files).toBe(lines);
+  });
+
+  it('leaves out a second line longer than the cap', () => {
+    const LONG = 'humantalk/long.wav';
+    const SHORT = 'humantalk/short.wav';
+    const own = buildSoundIndex(
+      { ...bank, staticGroups: [...bank.staticGroups, group('Viking male ok 05', [LONG, SHORT])] },
+      [],
+      [],
+      [],
+      [{ typeId: VIKING, id: 'viking' }],
+    );
+    const pools = [...VIKING_POOLS, 'Viking male ok 05'];
+    const lengths = new Map([
+      [LONG, SELECT_SECOND_LINE_MAX_S + 0.1],
+      [SHORT, SELECT_SECOND_LINE_MAX_S / 2],
     ]);
-    expect(select(members, { members: [2] })[0]?.files).toEqual(['humantalk/m3ok01.wav']);
+    const lines = selectLines(own, pools[4] ?? '', (file) => lengths.get(file));
+    expect(lines).toEqual([SHORT]);
+  });
+
+  it('alternates its lines and keeps quiet for a second after any selection', () => {
+    // Id 5 speaks with pool 1 ('Viking male ok 02'), id 6 with pool 2 ('Viking male ok 03').
+    const members = [man(5, VIKING, CENTRE_COL), man(6, VIKING, CENTRE_COL)];
+    const own = buildSoundIndex(
+      {
+        ...bank,
+        staticGroups: [
+          ...bank.staticGroups.filter((g) => g.name !== 'Viking male ok 02'),
+          group('Viking male ok 02', [
+            'humantalk/m2ok01.wav',
+            'humantalk/m2ok07.wav',
+            'humantalk/m2ok08.wav',
+          ]),
+        ],
+      },
+      [],
+      [],
+      [],
+      [{ typeId: VIKING, id: 'viking' }],
+    );
+    const selectIn = (id: number): readonly OneShot[] =>
+      directAudio({
+        events: [],
+        snapshot: snapshotOf(members),
+        camera,
+        canvasW: CANVAS_W,
+        canvasH: CANVAS_H,
+        index: own,
+        bindings,
+        selection: { members: [id] },
+      }).oneShots;
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => SELECT_ANY_COOLDOWN_S / 2 } });
+    const heard: string[] = [];
+    const SELECTIONS = 4;
+    for (let i = 0; i < SELECTIONS; i++) {
+      for (const shot of arbiter.decide(selectIn(5), i * SELECT_COOLDOWN_S)) heard.push(shot.files[0] ?? '');
+    }
+    expect(heard).toHaveLength(SELECTIONS);
+    expect(new Set(heard)).toEqual(new Set(['humantalk/m2ok08.wav', 'humantalk/m2ok07.wav']));
+    heard.slice(1).forEach((line, i) => expect(line).not.toBe(heard[i]));
+    // Another settler, inside the shared cooldown of the last line: silent; past it: speaks.
+    const last = (SELECTIONS - 1) * SELECT_COOLDOWN_S;
+    expect(arbiter.decide(selectIn(6), last + SELECT_ANY_COOLDOWN_S / 2)).toEqual([]);
+    expect(arbiter.decide(selectIn(6), last + SELECT_ANY_COOLDOWN_S)).toHaveLength(1);
   });
 
   it('clicks the fallback for a selection nobody in it can speak for', () => {

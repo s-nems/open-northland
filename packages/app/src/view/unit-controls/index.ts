@@ -449,7 +449,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       const boxed = [...unitTargets.owned('settler'), ...unitTargets.owned('vehicle')];
       const picked = pickInRect(boxed, a.x, a.y, b.x, b.y);
       applySelection(picked, e.shiftKey);
-      selectionVoice.group(picked);
+      selectionVoice.box(picked);
       return;
     }
     const w = toWorld(e.clientX, e.clientY);
@@ -509,7 +509,6 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           if (centre !== null) opts.centerOn(centre.x, centre.y);
         } else {
           applySelection(ids, false);
-          selectionVoice.group(ids);
         }
       }
     } else if (isActionHotkey(e, opts.bindings, 'actionRing')) {
