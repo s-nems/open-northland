@@ -9,8 +9,8 @@ import { FetchableStock } from '../settlers/targets/stores/fetchable-stock.js';
 import { spotsReaching } from '../signposts/index.js';
 import { collectSupplyTally, constructionBillOf } from '../stores/index.js';
 
-/** Holders of a good one diagnosis weighs, any side, before it stops calling the case decided. */
-const MAX_DIAGNOSTIC_STORES = 128;
+/** Own stores of a good one diagnosis tests for reach before it stops calling the case decided. */
+export const MAX_DIAGNOSTIC_STORES = 128;
 
 /** One bill line a site still lacks. */
 export interface ConstructionShortfall {
@@ -23,8 +23,8 @@ export interface ConstructionShortfall {
   /** Whether a store the site's owner owns lends a unit from where a builder could carry it to the site:
    *  within the site's signpost reach, or anywhere while nothing confines builders. A neutral pile, a
    *  felled trunk in a far wood say, and an own store beyond the signposts count as nothing: a builder
-   *  minds its own network alone, and such a shortfall is the player's to fix (owner ruling). A good with
-   *  more holders than the diagnosis weighs counts as held. */
+   *  minds its own network alone, and such a shortfall is the player's to fix (owner ruling). A good the
+   *  owner holds in more stores than the diagnosis tests for reach counts as held. */
   readonly held: boolean;
 }
 
@@ -103,11 +103,13 @@ function sideHolds(
   reach: ((cell: NodeId) => boolean) | null,
 ): boolean {
   const terrain = ctx.terrain;
+  // The ledger's per-owner total settles a bare side without a walk over other sides' holders.
+  if (owner !== undefined && !stock.ownsAny(owner, goodType)) return false;
   let examined = 0;
   for (const store of stock.holders(goodType)) {
-    if (++examined > MAX_DIAGNOSTIC_STORES) return true;
     if (ownerOf(world, store) !== owner) continue;
     if (reach === null || terrain === undefined) return true;
+    if (++examined > MAX_DIAGNOSTIC_STORES) return true;
     const door = storeCell(world, ctx, terrain, store);
     if (door !== null && reach(door)) return true;
   }

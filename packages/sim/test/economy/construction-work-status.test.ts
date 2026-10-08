@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { Owner, Stockpile } from '../../src/components/index.js';
+import { IdleStand, Owner, Stockpile } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
 import { dropGroundPile } from '../../src/systems/settlers/atomics/effects/goods/piles.js';
@@ -26,6 +26,9 @@ describe('Simulation.workStatus - a builder', () => {
   it('names no site at all, then the goods the sites wait for that no own store holds', () => {
     const sim = new Simulation({ seed: 1, content: constructionContent(), map: grassMap(40, 4) });
     const builder = owned(sim, builderAt(sim, 4, 2));
+    // A busy builder is not diagnosed: it has a site.
+    expect(sim.workStatus(builder)).toEqual({ kind: 'unknown', reason: 'constructionSearch' });
+    sim.world.add(builder, IdleStand, { standing: true });
     expect(sim.workStatus(builder)).toEqual({ kind: 'noConstructionSite' });
 
     const site = owned(sim, siteAt(sim, HOUSE, 8, 1));

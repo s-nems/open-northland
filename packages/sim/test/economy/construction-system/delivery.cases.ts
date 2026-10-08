@@ -425,6 +425,29 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     ).toHaveLength(2);
   });
 
+  it('caps the crew a far ready site draws at three and sends the rest to the nearest fresh sites', () => {
+    const sim = new Simulation({ seed: 31, content: constructionContent(), map: grassMap(40, 5) });
+    const ready = siteAt(sim, HOUSE, 34, 1);
+    sim.world.mut(ready, Stockpile).amounts.set(STONE, 2);
+    sim.world.mut(ready, Stockpile).amounts.set(WOOD, 1);
+    const near = siteAt(sim, HOUSE, 8, 1);
+    const next = siteAt(sim, HOUSE, 14, 1);
+    builtBuildingAt(sim, HEADQUARTERS, 0, 1, [
+      [STONE, 10],
+      [WOOD, 10],
+    ]);
+    const builders = Array.from({ length: 6 }, (_, i) => builderAt(sim, 4 + (i % 3), 3 + Math.floor(i / 3)));
+
+    plannerSystem(sim.world, ctxOf(sim));
+
+    const siteOf = (b: Entity): Entity | undefined => sim.world.tryGet(b, SiteAssignment)?.site;
+    expect(builders.filter((b) => siteOf(b) === ready)).toHaveLength(3);
+    const fetching = builders.filter((b) => sim.world.has(b, SupplyRun));
+    expect(fetching).toHaveLength(3);
+    expect(fetching.filter((b) => sim.world.get(b, SupplyRun).site === near).length).toBeGreaterThan(0);
+    expect(fetching.every((b) => [near, next].includes(sim.world.get(b, SupplyRun).site))).toBe(true);
+  });
+
   it('lets a fully supplied site reserve parallel hammer work for its whole crew', () => {
     const sim = new Simulation({ seed: 23, content: constructionContent(), map: grassMap(12, 5) });
     const site = siteAt(sim, HOUSE, 6, 1);

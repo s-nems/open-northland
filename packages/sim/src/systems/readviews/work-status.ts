@@ -149,7 +149,12 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
   }
   const gathered = jobGatherGoods(ctx, jobType);
   if (gathered.length > 0) return gatherWorkStatus(world, ctx, entity, workplace, gathered);
-  if (jobCanBuild(ctx.content, jobType)) return builderWorkStatus(world, ctx, entity);
+  if (jobCanBuild(ctx.content, jobType)) {
+    // The walk over the side's sites is for a builder standing idle; a busy one has a site.
+    return world.tryGet(entity, IdleStand)?.standing === true
+      ? builderWorkStatus(world, ctx, entity)
+      : { kind: 'unknown', reason: 'constructionSearch' };
+  }
   if (liveHaulFlag(world, entity) !== undefined) return { kind: 'nothingAtFlag' };
   // A store's carrier reaches the idle tail of its ladder only after the porter and haul rungs found
   // nothing in reach a store would take.
@@ -272,9 +277,10 @@ export function workStatus(world: World, ctx: SystemContext, entity: Entity): Wo
 }
 
 /**
- * A builder's blockers, from its side's unfinished sites: none at all, or building sites short of goods
- * no store of the side holds, named ascending. Sites short only of held goods, or wall and road sites,
- * leave the cause to the builder's planner, which the diagnosis does not re-run.
+ * An idle builder's blockers, from its side's unfinished sites, walls and roads included: none at all,
+ * or sites short of goods no own store in their reach holds and nobody brings, named ascending. A side
+ * whose sites are short only of held goods leaves the cause to the builder's planner, which the
+ * diagnosis does not re-run.
  */
 function builderWorkStatus(world: World, ctx: SystemContext, builder: Entity): WorkStatus {
   const owner = ownerOf(world, builder);

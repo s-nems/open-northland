@@ -119,6 +119,8 @@ export class ConstructionTaskClaims {
       } else if (crew === 0) {
         return SITE_TIER.unstaffed;
       }
+      // A full priority crew hammers on; the site draws the rest by distance alone, like a fresh one.
+      if (crew >= PRIORITY_CREW) return SITE_TIER.waiting;
     }
     if (constructionBillCovered(world, ctx, site, this.supply)) return SITE_TIER.covered;
     return crew < PRIORITY_CREW && this.delivered(site) >= NEARLY_DONE

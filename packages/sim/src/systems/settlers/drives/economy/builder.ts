@@ -180,12 +180,14 @@ export function planBuilder(
     hasTask(site) || (claims.hasFinishingRoom(site, e) && canStandAt(site));
   let rankedBuilding: Entity | null | undefined;
   const bestBuildingSite = (): Entity | null => {
-    rankedBuilding ??= rankedBuildingSite(
-      claims.rankBuildingSites(settler.owner, targets.constructionSites, e),
-      crewBuilding,
-      buildingAccepts,
-      (accepts) => nearestSite(targets.constructionSiteCells, accepts),
-    );
+    if (rankedBuilding === undefined) {
+      rankedBuilding = rankedBuildingSite(
+        claims.rankBuildingSites(settler.owner, targets.constructionSites, e),
+        crewBuilding,
+        buildingAccepts,
+        (accepts) => nearestSite(targets.constructionSiteCells, accepts),
+      );
+    }
     return rankedBuilding;
   };
   // Walls come after buildings: an automatic builder turns to one only while no building site holds a
