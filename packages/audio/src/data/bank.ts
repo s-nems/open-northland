@@ -1,11 +1,12 @@
-import type {
-  AnimalCall,
-  GfxPattern,
-  HumanVoices,
-  SoundBank,
-  SoundSfx,
-  TerrainPattern,
-  VoiceClass,
+import {
+  type AnimalCall,
+  type GfxPattern,
+  type HumanVoices,
+  type SoundBank,
+  type SoundSfx,
+  type TerrainPattern,
+  VOICE_CLASSES,
+  type VoiceClass,
 } from '@open-northland/data';
 
 /**
@@ -41,9 +42,9 @@ export interface SoundIndex {
   readonly heroJobs: ReadonlySet<number>;
   /** Animal tribe → its unprompted call and the roll that gates it. */
   readonly animalCalls: ReadonlyMap<number, AnimalCall>;
-  /** Settler tribe → its {@link TRIBE_MURMUR_GROUPS} row; a voiceless tribe in
+  /** Settler tribe → its murmur pools ({@link murmurPools}); a voiceless tribe in
    *  {@link BORROWED_TRIBE_VOICES} murmurs with its lender. */
-  readonly murmurByTribe: ReadonlyMap<number, MurmurGroups>;
+  readonly murmurByTribe: ReadonlyMap<number, MurmurPools>;
   /** A `[GfxLandscape]` record index → the object ambience its placed objects sound (birds in a tree). */
   readonly landscapeAmbienceByRecord: ReadonlyMap<number, LandscapeAmbience>;
   /** A static group's, jingle's or landscape pool's file list (the very array the maps above hold) →
@@ -141,11 +142,15 @@ export const BORROWED_TRIBE_VOICES: ReadonlyMap<string, string> = new Map([['egy
 
 /** A tribe's murmur pool names by voice class. */
 export type MurmurGroups = Partial<Readonly<Record<VoiceClass, string>>>;
+/** A tribe's playable murmur wavs by voice class; a class without any does not murmur. */
+export type MurmurPools = Partial<Readonly<Record<VoiceClass, readonly string[]>>>;
 
 /**
  * Tribe slug -> voice class -> the tribe's murmur pool: lines in its language mixed with laughs, gasps
  * and sighs at authored volume 40, which nothing in the original plays. A large group's answer lays a
- * few of them under its lines. A class the table leaves out murmurs with the tribe's men.
+ * few of them under its lines. A class the table leaves out murmurs with the tribe's men. Every group
+ * also lists answer lines ("ok" and "no", the Viking ones at 80), which the index strips
+ * ({@link murmurPools}).
  */
 export const TRIBE_MURMUR_GROUPS: ReadonlyMap<string, MurmurGroups> = new Map([
   ['viking', { male: 'Talk Viking Male', female: 'Talk Viking Female' }],
@@ -271,7 +276,7 @@ export function buildSoundIndex(
     humanVoices,
     heroJobs,
     animalCalls,
-    murmurByTribe: murmurByTribe(tribes),
+    murmurByTribe: murmurPools(sounds, tribes, groupsByName, poolGains),
     landscapeAmbienceByRecord: landscapeAmbience(sounds, landscapeRecords, poolGains),
     poolGains,
   };
@@ -339,17 +344,69 @@ function landscapeSoundPools(
   return { name, pools, weight: total };
 }
 
-/** Each tribe's {@link TRIBE_MURMUR_GROUPS} row by its `typeId`, a borrower taking its lender's. */
-function murmurByTribe(tribes: readonly AuthoredId[]): Map<number, MurmurGroups> {
-  const byTribe = new Map<number, MurmurGroups>();
+/**
+ * Each tribe's murmur pools by its `typeId`, from its {@link TRIBE_MURMUR_GROUPS} row or its lender's.
+ * A pool keeps the wavs of its group that are no tribe's answer line: a murmur on an answer wav would
+ * say "no" under an accepted order and hold that answer's pool. Each pool's gain is that of the wavs it
+ * keeps; a class left with none does not murmur.
+ */
+function murmurPools(
+  sounds: SoundBank,
+  tribes: readonly AuthoredId[],
+  groupsByName: ReadonlyMap<string, readonly string[]>,
+  poolGains: Map<readonly string[], number>,
+): Map<number, MurmurPools> {
+  const answers = answerWavs(sounds.humanVoices, groupsByName);
+  const sfxByName = new Map(sounds.staticGroups.map((g) => [g.name.toLowerCase(), g.sfx]));
+  const poolByGroup = new Map<string, readonly string[] | null>();
+  const poolOf = (group: string): readonly string[] | null => {
+    const key = group.toLowerCase();
+    const known = poolByGroup.get(key);
+    if (known !== undefined) return known;
+    const sfx = (sfxByName.get(key) ?? []).filter(
+      (s) => s.file !== SILENT_PLACEHOLDER_FILE && !answers.has(s.file),
+    );
+    const files = sfx.length === 0 ? null : sfx.map((s) => s.file);
+    if (files !== null) poolGains.set(files, authoredVolumeGain(groupVolume(sfx)));
+    poolByGroup.set(key, files);
+    return files;
+  };
+  const poolsBySlug = new Map<string, MurmurPools>();
+  const byTribe = new Map<number, MurmurPools>();
   for (const t of tribes) {
     if (t.typeId === undefined || t.id === undefined) continue;
-    const lender = BORROWED_TRIBE_VOICES.get(t.id);
-    const row =
-      TRIBE_MURMUR_GROUPS.get(t.id) ?? (lender === undefined ? undefined : TRIBE_MURMUR_GROUPS.get(lender));
-    if (row !== undefined) byTribe.set(t.typeId, row);
+    const slug = TRIBE_MURMUR_GROUPS.has(t.id) ? t.id : BORROWED_TRIBE_VOICES.get(t.id);
+    const row = slug === undefined ? undefined : TRIBE_MURMUR_GROUPS.get(slug);
+    if (slug === undefined || row === undefined) continue;
+    let pools = poolsBySlug.get(slug);
+    if (pools === undefined) {
+      const byClass: Partial<Record<VoiceClass, readonly string[]>> = {};
+      for (const voiceClass of VOICE_CLASSES) {
+        if (voiceClass === 'child') continue;
+        const group = row[voiceClass] ?? row.male;
+        const files = group === undefined ? null : poolOf(group);
+        if (files !== null) byClass[voiceClass] = files;
+      }
+      pools = byClass;
+      poolsBySlug.set(slug, pools);
+    }
+    byTribe.set(t.typeId, pools);
   }
   return byTribe;
+}
+
+/** Every wav of any tribe's "ok" and "no" answer pools. */
+function answerWavs(
+  rows: readonly HumanVoices[],
+  groupsByName: ReadonlyMap<string, readonly string[]>,
+): Set<string> {
+  const wavs = new Set<string>();
+  for (const row of rows) {
+    for (const group of [...row.respondOk, ...row.respondNo]) {
+      for (const file of groupsByName.get(group.toLowerCase()) ?? []) wavs.add(file);
+    }
+  }
+  return wavs;
 }
 
 /** Give each voiceless tribe in {@link BORROWED_TRIBE_VOICES} its lender's rows, every class at once. */

@@ -44,6 +44,7 @@ export {
   buildSoundIndex,
   DEFAULT_AUTHORED_VOLUME,
   type MurmurGroups,
+  type MurmurPools,
   type SoundIndex,
   TRIBE_MURMUR_GROUPS,
 } from './data/bank.js';

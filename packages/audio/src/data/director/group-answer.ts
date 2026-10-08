@@ -6,7 +6,7 @@ import { entityTile } from '../snapshot.js';
 import { MAX_PAN, panAt, screenOffset } from '../spatial.js';
 import type { DirectorInput, OneShot, OrderAnswer, VoiceCall } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
-import { murmurGroup, refusalGroup, responseGroup, selectLine } from '../voices.js';
+import { murmurPool, refusalGroup, responseGroup, selectLine } from '../voices.js';
 
 /**
  * How a group answers the player: one lead line from the member nearest the screen centre, panned at
@@ -179,15 +179,12 @@ function answerShot(index: SoundIndex, speaker: Speaker, key: string, pan: numbe
 
 /** The murmur bed's lines, cycling through the members' murmur pools from the most spoken. */
 function murmurShots(index: SoundIndex, members: readonly Member[], pan: number): OneShot[] {
-  const counts = new Map<string, number>();
+  const counts = new Map<readonly string[], number>();
   for (const m of members) {
-    const group = murmurGroup(index, m.entity);
-    if (group !== undefined) counts.set(group, (counts.get(group) ?? 0) + 1);
+    const pool = murmurPool(index, m.entity);
+    if (pool !== undefined) counts.set(pool, (counts.get(pool) ?? 0) + 1);
   }
-  const pools = [...counts.entries()]
-    .sort((a, b) => b[1] - a[1])
-    .map(([group]) => groupFiles(index, group))
-    .filter((files) => files !== undefined);
+  const pools = [...counts.entries()].sort((a, b) => b[1] - a[1]).map(([pool]) => pool);
   if (pools.length === 0) return [];
   return MURMUR_LINES.flatMap((line, i) => {
     const files = pools[i % pools.length];

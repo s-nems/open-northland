@@ -107,13 +107,11 @@ export function selectLine(
   return shortest?.file;
 }
 
-/** The murmur pool ({@link import('./bank.js').TRIBE_MURMUR_GROUPS}) a grown settler's tribe and class
- *  lays under a large group's answer, or undefined for a child, an animal or a tribe without one. */
-export function murmurGroup(index: SoundIndex, e: EntitySnapshot): string | undefined {
+/** The murmur wavs ({@link SoundIndex.murmurByTribe}) a grown settler's tribe and class lays under a
+ *  large group's answer, or undefined for a child, an animal or a tribe and class without any. */
+export function murmurPool(index: SoundIndex, e: EntitySnapshot): readonly string[] | undefined {
   if (!isPerson(e.components)) return undefined;
   const tribe = creatureTribe(e.components);
-  const voiceClass = voiceClassOf(e.components);
-  if (tribe === undefined || voiceClass === 'child') return undefined;
-  const row = index.murmurByTribe.get(tribe);
-  return row?.[voiceClass] ?? row?.male;
+  if (tribe === undefined) return undefined;
+  return index.murmurByTribe.get(tribe)?.[voiceClassOf(e.components)];
 }

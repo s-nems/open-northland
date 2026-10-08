@@ -2,6 +2,7 @@ import type { SoundBank } from '@open-northland/data';
 import { type Camera, ONE, tileToScreen } from '@open-northland/render/data';
 import type { EntitySnapshot, WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { poolGain } from '../src/data/bank.js';
 import {
   ANSWER_LAYERS,
   authoredVolumeGain,
@@ -20,7 +21,6 @@ import {
   OneShotArbiter,
   type OrderAnswer,
   SELECT_COOLDOWN_S,
-  TRIBE_MURMUR_GROUPS,
   UI_CUE_FILES,
   VOICE_MUSIC_DUCK_DB,
   type VoiceCall,
@@ -42,6 +42,10 @@ const group = (name: string, files: readonly string[], volume = ANSWER_VOLUME) =
   sfx: files.map((file) => ({ file, params: [volume] })),
 });
 
+/** The Viking murmur's own wavs; its group also lists two answer lines louder, as the data does. */
+const VIKING_MURMUR = ['talk/v1.wav', 'talk/v2.wav', 'talk/v3.wav', 'talk/v4.wav'];
+const VIKING_TALK = group('Talk Viking Male', VIKING_MURMUR, MURMUR_VOLUME);
+
 const bank: SoundBank = {
   staticGroups: [
     group('Viking male ok 01', ['humantalk/m1ok01.wav', 'humantalk/m1ok02.wav']),
@@ -51,8 +55,12 @@ const bank: SoundBank = {
     group('Viking male ok 04', ['humantalk/m4ok01.wav']),
     group('Viking male no 01', ['humantalk/m1no01.wav']),
     group('Frank male ok 01', ['humantalk/oldenglish/o33.wav']),
-    group('Talk Viking Male', ['talk/v1.wav', 'talk/v2.wav', 'talk/v3.wav', 'talk/v4.wav'], MURMUR_VOLUME),
+    {
+      ...VIKING_TALK,
+      sfx: [...group('', ['humantalk/m1ok01.wav', 'humantalk/m1no01.wav']).sfx, ...VIKING_TALK.sfx],
+    },
     group('Talk Franks Male', ['talk/f1.wav', 'talk/f2.wav'], MURMUR_VOLUME),
+    group('Talk Arabs Male', ['talk/a1.wav'], MURMUR_VOLUME),
   ],
   ambient: [],
   jingles: [],
@@ -227,6 +235,41 @@ describe('group answer murmur', () => {
     });
   });
 
+  it('murmurs none of the answer lines its talk group lists, at the level of the wavs it keeps', () => {
+    const pool = index.murmurByTribe.get(VIKING)?.male;
+    expect(pool).toEqual(VIKING_MURMUR);
+    expect(pool === undefined ? undefined : poolGain(index, pool)).toBe(authoredVolumeGain(MURMUR_VOLUME));
+  });
+
+  it('lays no murmur for a tribe whose talk group holds only answer lines', () => {
+    const answersOnly = buildSoundIndex(
+      {
+        ...bank,
+        staticGroups: [
+          ...bank.staticGroups.filter((g) => g.name !== 'Talk Franks Male'),
+          group('Talk Franks Male', ['humantalk/oldenglish/o33.wav'], MURMUR_VOLUME),
+        ],
+      },
+      [],
+      [],
+      [],
+      [{ typeId: FRANK, id: 'frank' }],
+    );
+    expect(answersOnly.murmurByTribe.get(FRANK)).toEqual({});
+    const franks = army(MURMUR_MIN_GROUP, 1, FRANK);
+    const shots = directAudio({
+      events: [],
+      snapshot: snapshotOf(franks),
+      camera,
+      canvasW: CANVAS_W,
+      canvasH: CANVAS_H,
+      index: answersOnly,
+      bindings,
+      responses: [{ members: idsOf(franks) }],
+    }).oneShots;
+    expect(keysOf(shots)).toEqual(['respond:Frank male ok 01']);
+  });
+
   it('lets a voiceless tribe murmur with the tribe it borrows its voices from', () => {
     const EGYPT = 7;
     const SARACEN = 4;
@@ -240,7 +283,8 @@ describe('group answer murmur', () => {
         { typeId: SARACEN, id: 'saracen' },
       ],
     );
-    expect(lent.murmurByTribe.get(EGYPT)).toBe(TRIBE_MURMUR_GROUPS.get('saracen'));
+    expect(lent.murmurByTribe.get(EGYPT)?.male).toEqual(['talk/a1.wav']);
+    expect(lent.murmurByTribe.get(EGYPT)).toBe(lent.murmurByTribe.get(SARACEN));
   });
 
   it('starts at most the lead, its layers and the murmur for a thousand-strong order', () => {
