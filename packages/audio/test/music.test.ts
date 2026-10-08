@@ -15,6 +15,7 @@ import {
   type MusicTrack,
   musicBusGain,
   parseMusicManifest,
+  SPARE_DECODED_TRACKS,
   TENSE_FADE_IN_S,
   trackRotation,
   WebAudioEngine,
@@ -36,6 +37,8 @@ const TRACK_S = 4;
 /** A 4 s file whose first pass ends at 2 s, so a cue's pass boundaries fall at 2, 4, 6... */
 const TRACK = musicTrack('theme_viking_neutral');
 const ATTACK = musicTrack('attack_arabs');
+const CALM_TWO = musicTrack('theme_viking_friendly');
+const CALM_THREE = musicTrack('mission_midgard1_standard');
 
 describe('music manifest', () => {
   /** Why a document was rejected, or null when it parsed. */
@@ -412,6 +415,39 @@ describe('WebAudioEngine music', () => {
     engine.transitionMusic('now'); // back to the first track, within the decoded-buffer cache
     await flush();
     expect(fetched.filter((u) => u.endsWith('theme_viking_neutral.ogg'))).toHaveLength(1);
+  });
+
+  it('keeps one decoded track beyond the playing one', async () => {
+    const { engine, fetched } = makeEngine();
+    await engine.resume();
+    const tracks = [TRACK, ATTACK, CALM_TWO];
+    engine.setMusic(cues(tracks));
+    await flush();
+    for (let cut = 0; cut < tracks.length; cut++) {
+      engine.transitionMusic('now');
+      await flush();
+    }
+    // Back on the first track after two others: only the last of them stayed decoded beside the
+    // playing one, so the first is fetched again.
+    expect(fetched.filter((url) => url.endsWith(TRACK.file))).toHaveLength(1 + SPARE_DECODED_TRACKS);
+    expect(fetched.filter((url) => url.endsWith(CALM_TWO.file))).toHaveLength(1);
+  });
+
+  it('decodes the sequence’s standby ahead and keeps it through the calm rotation', async () => {
+    const { engine, fetched } = makeEngine();
+    await engine.resume();
+    const calm = cues([TRACK, CALM_TWO, CALM_THREE, ATTACK]);
+    engine.setMusic({ ...calm, standby: () => ATTACK });
+    await flush();
+    expect(fetched).toEqual(['/music/theme_viking_neutral.ogg', '/music/attack_arabs.ogg']);
+    engine.transitionMusic('now');
+    await flush();
+    engine.transitionMusic('now');
+    await flush();
+    // The fight's opener cuts in from memory, though two calm tracks played since it decoded.
+    engine.transitionMusic('now');
+    await flush();
+    expect(fetched.filter((url) => url.endsWith(ATTACK.file))).toHaveLength(1);
   });
 
   it('restarts the music a suspension dropped once the context runs again', async () => {

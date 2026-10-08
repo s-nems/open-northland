@@ -273,7 +273,7 @@ describe('SoundDriver', () => {
 
   it('plays the map music, then hands over to its Danger variant once another player strikes us', async () => {
     const MISSION_ARABS1 = 17;
-    const { driver, fetched } = makeDriver();
+    const { driver, ctx, fetched } = makeDriver();
     await driver.resume();
     driver.setMusicMap({
       musicType: MISSION_ARABS1,
@@ -298,12 +298,14 @@ describe('SoundDriver', () => {
     } as const;
     driver.update({ ...ours, events: [] });
     await flush();
-    expect(fetched).toEqual(['/music/mission_arabs1_standard.ogg']);
+    // The Danger stem decodes ahead behind the opening cue, ready for a cut-in.
+    const music = ['/music/mission_arabs1_standard.ogg', '/music/mission_arabs1_danger.ogg'];
+    expect(fetched).toEqual(music);
 
     // Re-asking for the same track every frame must not re-fetch it.
     driver.update({ ...ours, events: [] });
     await flush();
-    expect(fetched).toHaveLength(1);
+    expect(fetched).toEqual(music);
 
     const ENEMY = 2;
     const struck: readonly SimEvent[] = Array.from({ length: TENSE_ENTER_THREAT }, () => ({
@@ -315,8 +317,11 @@ describe('SoundDriver', () => {
       target: 7 as Entity,
       at: { hx: 5, hy: 5 },
     }));
+    const calmSources = ctx.sources.length;
     driver.update({ ...ours, events: struck });
     await flush();
-    expect(fetched).toEqual(['/music/mission_arabs1_standard.ogg', '/music/mission_arabs1_danger.ogg']);
+    // The cut-in opens on the decoded Danger stem without another fetch.
+    expect(fetched).toEqual(music);
+    expect(ctx.sources).toHaveLength(calmSources + 1);
   });
 });

@@ -286,6 +286,7 @@ export {
   SAMPLE_CACHE_BUDGET_BYTES,
   type SamplePreloadReport,
   type SoundPreloadReport,
+  SPARE_DECODED_TRACKS,
   VOICE_DUCK_DIP_S,
   VOICE_DUCK_RELEASE_S,
   VOLUME_RAMP_S,

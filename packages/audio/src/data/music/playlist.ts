@@ -1,5 +1,5 @@
 import type { DiplomacyState } from '@open-northland/sim';
-import type { MusicManifest } from './manifest.js';
+import type { MusicManifest, MusicTrack } from './manifest.js';
 import { ownCalmStem, ownTenseStem } from './mood.js';
 import type { MapMusic, MusicIntensity } from './pools.js';
 import type { MusicCue, MusicSequence } from './sequence.js';
@@ -9,9 +9,9 @@ import type { MusicCue, MusicSequence } from './sequence.js';
  * Calm stretches open on the map's own stem, then alternate silence with shuffle-bag picks from the
  * calm pool, returning to the own stem every second or third cue. Over a long session the silences
  * grow and the own stem comes back less often, so the score thins out instead of wearing on the
- * listener. A fight cuts in at once with the
- * map's own tense stem and holds each tense stem for several passes; calm returns at a pass boundary
- * within {@link CALM_RETURN_MAX_WAIT_S}.
+ * listener. A fight cuts in at once with the map's own tense stem, or its culture's first one, which
+ * the player keeps decoded ahead, and holds each tense stem for several passes; calm returns at a
+ * pass boundary within {@link CALM_RETURN_MAX_WAIT_S}.
  * The whole rotation is a design choice of this reimplementation (the original rings one segment per
  * map), and every number below is an approximation to tune by ear.
  */
@@ -142,11 +142,24 @@ export class MusicPlaylist implements MusicSequence {
     this.dropped.add(file);
   }
 
+  /** The stem a fight opens on, kept decoded so the cut-in does not wait on a fetch. */
+  standby(): MusicTrack | null {
+    const opener = this.fightOpener();
+    return opener === null ? null : (this.manifest.tracks[opener] ?? null);
+  }
+
+  /** The map's own tense stem, or for a map without one the first of its culture's tense pool. */
+  private fightOpener(): string | null {
+    const own = ownTenseStem(this.music.variants);
+    if (own !== null && this.playable(own)) return own;
+    return this.music.pools.tense.find((stem) => this.playable(stem)) ?? null;
+  }
+
   private tenseCue(): MusicCue | null {
-    const own = this.freshFight ? ownTenseStem(this.music.variants) : null;
+    const opener = this.freshFight ? this.fightOpener() : null;
     this.freshFight = false;
-    const ownFits = own !== null && this.playable(own) && this.audioOf(own) !== this.lastAudio;
-    const stem = (ownFits ? own : null) ?? this.draw('tense', null);
+    const openerFits = opener !== null && this.audioOf(opener) !== this.lastAudio;
+    const stem = (openerFits ? opener : null) ?? this.draw('tense', null);
     return stem === null ? null : this.cue(stem, 'tense', TENSE_PASSES, 0, TENSE_FADE_IN_S, TENSE_FADE_S);
   }
 

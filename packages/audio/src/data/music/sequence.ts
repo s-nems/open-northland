@@ -24,6 +24,8 @@ export interface MusicSequence {
   /** The cue to play next, or null when nothing playable is left. */
   next(): MusicCue | null;
   drop(file: string): void;
+  /** A track the sequence may cut over to at short notice, which the player keeps decoded ahead. */
+  standby?(): MusicTrack | null;
 }
 
 /** How a fixed rotation's tracks hand over. */

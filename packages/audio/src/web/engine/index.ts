@@ -25,7 +25,7 @@ export {
   WebAudioEngine,
 } from './audio-engine.js';
 export { BUS_DUCK_RAMP_S } from './bus-duck.js';
-export { MUSIC_STOP_FADE_S, MUSIC_SWITCH_TIMING } from './music-player.js';
+export { MUSIC_STOP_FADE_S, MUSIC_SWITCH_TIMING, SPARE_DECODED_TRACKS } from './music-player.js';
 export { CLICK_FREE_RAMP_S } from './ramps.js';
 export {
   DECODED_BYTES_PER_SAMPLE,

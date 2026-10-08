@@ -289,6 +289,16 @@ describe('fights', () => {
     expect(second?.track.segmentSha256).not.toBe(first?.track.segmentSha256);
   });
 
+  it('stands by with the stem a fight opens on, its culture’s first for a map with no Danger segment', () => {
+    expect(playlistFor(MISSION_FRANKEN1).standby()?.file).toBe('mission_franken1_danger.ogg');
+    const playlist = playlistFor(MISSION_MIDGARD1);
+    const opener = playlist.standby();
+    expect(opener?.file).toBe(`${mapMusicFor(MISSION_MIDGARD1, MANIFEST)?.pools.tense[0]}.ogg`);
+    take(playlist, 1);
+    playlist.update(TENSE);
+    expect(take(playlist, 1)[0]?.track).toEqual(opener);
+  });
+
   it('fights a map with no Danger segment to its culture’s tense music, never its calm stem', () => {
     const playlist = playlistFor(MISSION_MIDGARD1);
     take(playlist, 1);

@@ -29,8 +29,12 @@ export const MUSIC_SWITCH_TIMING: MusicTiming = { fadeS: 1.5, gapS: 0, fadeInS: 
 /** Muting or tearing down: the original stops at once and lets the tail ring; the same stand-in fade. */
 export const MUSIC_STOP_FADE_S = 1.5;
 
-/** Decoded tracks kept for re-use (current + the previous one a mood flip returns to). */
-const BUFFER_CACHE_SIZE = 2;
+/**
+ * Decoded tracks kept beyond the playing one (and one loading for a cue): the sequence's standby if
+ * it has one, otherwise the track played last, which a mood flip returns to. A rendered track holds
+ * two passes, up to about 254 s, so each decodes to as much as 98 MB of stereo float at 48 kHz.
+ */
+export const SPARE_DECODED_TRACKS = 1;
 
 interface PlayingCue {
   readonly cue: MusicCue;
@@ -63,6 +67,12 @@ export class MusicPlayer {
   private generation = 0;
   /** file → decoded buffer, most-recently-used last. */
   private readonly buffers = new Map<string, AudioBuffer>();
+  /** file → its fetch and decode in flight, so a cut-in onto a prefetching track waits for that one. */
+  private readonly pending = new Map<string, Promise<AudioBuffer | null>>();
+  /** The file a cue is loading for, kept decoded alongside the playing one. */
+  private cueLoading: string | null = null;
+  /** The running sequence's standby file, the spare kept decoded ahead of the others. */
+  private standby: string | null = null;
   /** Files whose fetch/decode failed, so no sequence makes the player fetch one twice. A failed file
    *  also leaves its sequence through `drop`, for that sequence's lifetime. */
   private readonly failed = new Set<string>();
@@ -217,6 +227,14 @@ export class MusicPlayer {
       return cached;
     }
     if (this.failed.has(file)) return null;
+    const inFlight = this.pending.get(file);
+    if (inFlight !== undefined) return inFlight;
+    const loading = this.fetchAndDecode(file).finally(() => this.pending.delete(file));
+    this.pending.set(file, loading);
+    return loading;
+  }
+
+  private async fetchAndDecode(file: string): Promise<AudioBuffer | null> {
     let buffer: AudioBuffer;
     try {
       buffer = await this.ctx.decodeAudioData(await this.fetchBytes(this.baseUrl + file));
@@ -227,21 +245,44 @@ export class MusicPlayer {
       return null;
     }
     this.buffers.set(file, buffer);
-    for (const key of this.buffers.keys()) {
-      if (this.buffers.size <= BUFFER_CACHE_SIZE) break;
-      this.buffers.delete(key);
-    }
+    this.trimBuffers(file);
     return buffer;
+  }
+
+  /** Forget decoded tracks, oldest first, down to the ones in use and {@link SPARE_DECODED_TRACKS}
+   *  spares, the standby first among them. `landed` has just decoded and counts as in use. */
+  private trimBuffers(landed: string | null): void {
+    const inUse = new Set([landed, this.cueLoading, this.current?.cue.track.file]);
+    const spares = [...this.buffers.keys()].filter((file) => !inUse.has(file));
+    const kept = new Set<string>();
+    if (this.standby !== null && spares.includes(this.standby)) kept.add(this.standby);
+    for (let i = spares.length - 1; i >= 0 && kept.size < SPARE_DECODED_TRACKS; i--) {
+      const file = spares[i];
+      if (file !== undefined) kept.add(file);
+    }
+    for (const file of spares) if (!kept.has(file)) this.buffers.delete(file);
+  }
+
+  /** Decode the sequence's standby track ahead, so cutting over to it does not wait on a fetch. */
+  private prefetchStandby(sequence: MusicSequence): void {
+    const track = sequence.standby?.() ?? null;
+    this.standby = track?.file ?? null;
+    if (track === null) return;
+    void this.load(track.file).then((buffer) => {
+      if (buffer === null) sequence.drop(track.file);
+    });
   }
 
   private start(cue: MusicCue, openAt: number, generation: number): void {
     const { track } = cue;
     const sequence = this.sequence;
     this.loading = true;
+    this.cueLoading = track.file;
     void this.load(track.file).then((buffer) => {
       // A track that cannot load leaves the sequence that offered it, even when a newer request
       // superseded the load, so the sequence never offers it again.
       if (buffer === null) sequence?.drop(track.file);
+      if (this.cueLoading === track.file) this.cueLoading = null;
       if (generation !== this.generation) return; // a newer play/interrupt/stop superseded this load
       this.loading = false;
       if (buffer === null) {
@@ -295,6 +336,8 @@ export class MusicPlayer {
       gain.gain.linearRampToValueAtTime(0, playing.endsAt);
       source.start(startsAt, 0, playS);
       this.current = playing;
+      this.trimBuffers(null);
+      if (sequence !== null) this.prefetchStandby(sequence);
     });
   }
 }
