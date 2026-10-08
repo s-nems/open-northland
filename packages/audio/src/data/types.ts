@@ -41,6 +41,9 @@ export interface OneShot {
   readonly exclusive?: 'wav' | 'group';
   /** The lane this shot is rationed in; absent for a shot that must always play. */
   readonly lane?: Lane;
+  /** The arbiter's handle for a world one-shot it started, which a later steal names
+   *  ({@link import('./one-shot-ledger.js').OneShotPlayback}). */
+  readonly instance?: number;
 }
 
 /**

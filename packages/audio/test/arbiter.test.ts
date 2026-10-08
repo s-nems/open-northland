@@ -5,6 +5,9 @@ import {
   KEY_COOLDOWN_S,
   NO_REPEAT_FREE_CHOICES,
   noRepeatDepth,
+  POOL_INSTANCE_CAP,
+  POOL_RETRIGGER_S,
+  WORLD_VOICE_CAP,
 } from '../src/data/one-shot-ledger.js';
 import {
   JINGLE_COOLDOWN_MAX_S,
@@ -133,14 +136,19 @@ describe('sfx and voice lanes', () => {
     expect(lane(started, 'sfx').length).toBeLessThanOrEqual(SFX_BURST + SFX_STARTS_PER_S);
   });
 
-  it('starts the loudest of a burst, and rations voices separately from sfx', () => {
+  it('starts the loudest shot of each pool, and rations voices separately from sfx', () => {
     const started = new OneShotArbiter().decide(battle, 0);
-    expect(lane(started, 'voice')).toHaveLength(VOICE_BURST);
-    expect(lane(started, 'sfx')).toHaveLength(SFX_BURST);
-    // Loudest first: the nearest blow always starts, and a blow whose wav is held yields to the next.
-    const gains = lane(started, 'sfx').map((s) => s.gain);
-    expect(gains).toEqual([...gains].sort((a, b) => b - a));
-    expect(gains[0]).toBe(Math.max(...lane(battle, 'sfx').map((s) => s.gain)));
+    for (const kind of ['voice', 'sfx'] as const) {
+      const pools = new Set(lane(battle, kind).map((s) => s.files));
+      expect(lane(started, kind)).toHaveLength(
+        Math.min(pools.size, kind === 'voice' ? VOICE_BURST : SFX_BURST),
+      );
+      for (const shot of lane(started, kind)) {
+        const pool = lane(battle, kind).find((s) => s.key === shot.key)?.files;
+        const rivals = lane(battle, kind).filter((s) => s.files === pool);
+        expect(shot.gain).toBe(Math.max(...rivals.map((s) => s.gain)));
+      }
+    }
   });
 
   it('never rations an order answer: it has no lane and always plays', () => {
@@ -233,5 +241,52 @@ describe('wav picks', () => {
     expect(arbiter.decide([shot], 0)).toHaveLength(1);
     expect(arbiter.decide([{ ...shot, key: 'long:2' }], 4)).toHaveLength(0);
     expect(arbiter.decide([{ ...shot, key: 'long:3' }], 5.01)).toHaveLength(1);
+  });
+});
+
+describe('instance caps', () => {
+  it(`holds a pool to ${POOL_INSTANCE_CAP} at once and its starts ${POOL_RETRIGGER_S} s apart`, () => {
+    const files = wavPool('swing', 10);
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => 100 } });
+    const starts: number[] = [];
+    for (let t = 0; t < 5; t += 0.01) {
+      const frame = Array.from({ length: 5 }, (_, i) => worldShot(files, `swing:${t}:${i}`, 1));
+      if (arbiter.decide(frame, t).length > 0) starts.push(t);
+    }
+    expect(starts).toHaveLength(POOL_INSTANCE_CAP);
+    for (let i = 1; i < starts.length; i++) {
+      expect((starts[i] ?? 0) - (starts[i - 1] ?? 0)).toBeGreaterThanOrEqual(POOL_RETRIGGER_S - 1e-9);
+    }
+  });
+
+  it('drops a world shot quieter than all that play once the world is full, and steals the quietest for a louder one', () => {
+    const stopped: number[] = [];
+    const arbiter = new OneShotArbiter({
+      playback: { clipLengthS: () => 1000, stop: (i) => stopped.push(i) },
+    });
+    const started: OneShot[] = [];
+    let t = 0;
+    for (let n = 0; started.length < WORLD_VOICE_CAP; n++, t += 1) {
+      const gain = n === 0 ? 0.3 : 0.5;
+      started.push(...arbiter.decide([worldShot(wavPool(`fill${n}-`, 1), `fill:${n}`, gain)], t));
+    }
+    const quietest = started[0]?.instance;
+    expect(quietest).toBeDefined();
+    expect(arbiter.decide([worldShot(wavPool('soft', 1), 'soft', 0.2)], t)).toHaveLength(0);
+    expect(arbiter.decide([worldShot(wavPool('even', 1), 'even', 0.3)], t + 1)).toHaveLength(0);
+    const loud = arbiter.decide([worldShot(wavPool('loud', 1), 'loud', 0.9)], t + 2);
+    expect(loud.map((s) => s.key)).toEqual(['loud']);
+    expect(stopped).toEqual([quietest]);
+    // Answers and jingles are neither counted nor stolen: they start in a full world and stop nothing.
+    const answer: OneShot = {
+      files: wavPool('ok', 2),
+      gain: 0.1,
+      pan: 0,
+      key: 'respond:x',
+      exclusive: 'group',
+    };
+    const out = arbiter.decide([answer, jingle(JINGLE_DEATH, 'died:1')], t + 3);
+    expect(out.map((s) => s.key).sort()).toEqual(['died:1', 'respond:x']);
+    expect(stopped).toHaveLength(1);
   });
 });

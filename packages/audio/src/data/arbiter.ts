@@ -21,14 +21,16 @@ import type { OneShot } from './types.js';
  *   quiet spell rings at once. A more important jingle (a death, the alarm) rings over a lesser one
  *   already sounding; a lesser one waits for the lane and rings late, or is dropped once stale.
  * - Voices and positioned SFX draw from a rate budget each, loudest first, so the busiest battle
- *   starts a bounded number of layered sounds a second.
+ *   starts a bounded number of layered sounds a second. Each sound pool starts at most its loudest shot
+ *   a frame, holds a few instances at once, and the world as a whole a capped number
+ *   ({@link OneShotLedger}).
  *
  * Every shot but a jingle has its wav picked here, and is refused before it costs any budget when its
  * key is cooling or, being exclusive, its wav (an answer: its pool) still sounds. The engine receives
  * only shots that should play, each with its one wav.
  *
- * Approximation: the original rations nothing beyond its same-jingle and same-wav guards; the budgets
- * and the growing cooldown are a legibility choice. Pure: time comes in as `now` (audio-clock
+ * Approximation: the original rations nothing beyond its same-jingle and same-wav guards; the budgets,
+ * caps and the growing cooldown are a legibility choice. Pure: time comes in as `now` (audio-clock
  * seconds) and the wav picks draw from an injected source.
  */
 
@@ -124,7 +126,7 @@ export interface ArbiterOptions {
   readonly now?: number;
   /** The [0,1) source wav picks draw from; absent, a fixed-seed sequence, so the layer stays pure. */
   readonly random?: () => number;
-  /** What the engine reports back. */
+  /** What the engine reports back and lets the arbiter stop. */
   readonly playback?: OneShotPlayback;
 }
 
