@@ -69,8 +69,8 @@ it('brings a mirror fed the client’s messages to the client’s lobby and sess
     { kind: 'welcome', protocol: PROTOCOL_VERSION, nick: 'Ania', build: 'relay-1' },
     { kind: 'rooms', rooms: [{ id: 'room', name: 'Game', state: 'lobby', members: 1, seats: 1 }] },
     { kind: 'room', room: ROOM },
-    { kind: 'chatHistory', lines: [{ from: 'Bartek', text: 'cześć', tick: null }] },
-    { kind: 'chat', from: 'Ania', text: 'hej', tick: null },
+    { kind: 'chatHistory', lines: [{ from: 'Bartek', text: 'cześć', at: 1 }] },
+    { kind: 'chat', from: 'Ania', text: 'hej', at: 2 },
     { kind: 'start', session: SESSION, snapshotTick: null },
     { kind: 'clock', tick: 1, speed: 2, paused: true, by: 'Ania', governed: null },
     { kind: 'responsiveness', mode: 'smooth', bufferTicks: 3, by: 'Bartek' },
@@ -78,7 +78,7 @@ it('brings a mirror fed the client’s messages to the client’s lobby and sess
     { kind: 'delay', ticks: 3 },
     { kind: 'waiting', for: [{ nick: 'Bartek', reason: 'silent', voteAfterMs: 500 }] },
     { kind: 'ping', t: 7, roundTripMs: 42 },
-    { kind: 'chat', from: 'Bartek', text: 'gramy', tick: 4 },
+    { kind: 'chat', from: 'Bartek', text: 'gramy', at: 4 },
     { kind: 'desync', tick: 5, domains: ['rng'], reference: 'Bartek' },
     { kind: 'ended', tick: 9, hash: '0000abcd' },
     { kind: 'left' },
@@ -89,11 +89,11 @@ it('brings a mirror fed the client’s messages to the client’s lobby and sess
   }
 });
 
-const line = (n: number): ChatLine => ({ from: 'Ania', text: `line ${n}`, tick: n });
+const line = (n: number): ChatLine => ({ from: 'Ania', text: `line ${n}`, at: n });
 
 it('replaces the chat with the relay’s history and appends each line said after it', () => {
   const state = new RelayState('Ania');
-  state.apply({ kind: 'chat', from: 'Ania', text: 'stale', tick: null });
+  state.apply({ kind: 'chat', from: 'Ania', text: 'stale', at: 0 });
   state.apply({ kind: 'chatHistory', lines: [line(1), line(2)] });
   expect(state.chat).toEqual([line(1), line(2)]);
   state.apply({ kind: 'chat', ...line(3) });

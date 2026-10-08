@@ -30,6 +30,8 @@ export type RelayLog = (event: string, fields?: Record<string, unknown>) => void
 export interface RelayOptions {
   /** Monotonic milliseconds; the host's clock, or a test's. */
   readonly now?: () => number;
+  /** Unix epoch milliseconds; stamps chat lines. */
+  readonly wallClock?: () => number;
   readonly log?: RelayLog;
   /** Rooms held at once; `createRoom` is refused past it. */
   readonly maxRooms?: number;
@@ -72,6 +74,7 @@ export class Relay {
   private readonly roomOfToken = new Map<string, Room>();
   private readonly emptySince = new Map<Room, number>();
   private readonly now: () => number;
+  private readonly wallClock: () => number;
   private readonly log: RelayLog;
   private readonly maxRooms: number;
   private readonly build: { readonly build?: string };
@@ -79,6 +82,7 @@ export class Relay {
 
   constructor(options: RelayOptions = {}) {
     this.now = options.now ?? (() => performance.now());
+    this.wallClock = options.wallClock ?? (() => Date.now());
     this.log = options.log ?? (() => undefined);
     this.maxRooms = options.maxRooms ?? DEFAULT_MAX_ROOMS;
     const build = options.build ?? null;
@@ -313,6 +317,7 @@ export class Relay {
         this.dropIfEmpty(room);
       }
     },
+    wallClock: (): number => this.wallClock(),
   };
 
   /** The token no longer belongs to `room`, nor does the connection holding it. */

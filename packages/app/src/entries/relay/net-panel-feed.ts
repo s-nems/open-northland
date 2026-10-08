@@ -151,7 +151,7 @@ function relayClock(clock: ClockState | null, held: boolean, history: readonly S
 }
 
 const sameLine = (a: NetChatLine, b: NetChatLine): boolean =>
-  a.from === b.from && a.text === b.text && a.tick === b.tick;
+  a.from === b.from && a.text === b.text && a.at === b.at;
 
 /** The lines of a replayed history this client has not shown: those after the last member line it
  *  holds, or all of them when that line is not among them (the room said more than its log keeps). */
@@ -171,6 +171,8 @@ export interface RelayPanelFeedDeps {
   readonly relayUrl: string | null;
   /** Wall milliseconds, monotonic; default `performance.now`. */
   readonly now?: () => number;
+  /** Unix epoch milliseconds, which stamps the session's own lines; default `Date.now`. */
+  readonly wallClock?: () => number;
 }
 
 /** The network panel's model for a relayed game, built from what the client view and the messages
@@ -191,6 +193,7 @@ export interface RelayPanelFeed {
 export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
   const { client } = deps;
   const now = deps.now ?? ((): number => performance.now());
+  const wallClock = deps.wallClock ?? ((): number => Date.now());
   const speeds = createSpeedHistory();
   // The client's wait list, which an `ended` clears as well as a `waiting`; its countdowns run from when
   // this feed saw it change.
@@ -319,7 +322,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
           roomDirty = true;
           return;
         case 'chat':
-          append([{ from: message.from, text: message.text, tick: message.tick }]);
+          append([{ from: message.from, text: message.text, at: message.at }]);
           return;
         case 'chatHistory':
           // A return after a drop: the lines said meanwhile follow what was shown.
@@ -330,7 +333,7 @@ export function createRelayPanelFeed(deps: RelayPanelFeedDeps): RelayPanelFeed {
       }
     },
     announce(text): void {
-      append([{ from: null, text, tick: client.tick }]);
+      append([{ from: null, text, at: wallClock() }]);
     },
     notice(notice): void {
       worldNotice = notice;

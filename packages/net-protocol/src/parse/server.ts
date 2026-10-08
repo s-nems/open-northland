@@ -229,7 +229,7 @@ function parseChatLine(raw: Record<string, unknown>, at: string): ChatLine {
   return {
     from: parseNick(raw.from, `${at}.from`),
     text: parseLine(raw.text, `${at}.text`, MAX_CHAT_LENGTH),
-    tick: raw.tick === null ? null : asCount(raw.tick, `${at}.tick`),
+    at: asTimestamp(raw.at, `${at}.at`),
   };
 }
 

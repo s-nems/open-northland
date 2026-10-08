@@ -108,11 +108,12 @@ export interface NetLinkModel {
   readonly loss: NetLinkLoss | null;
 }
 
-/** A chat line; `from` null is a line about the session itself, `tick` the game clock it was said at. */
+/** A chat line; `from` null is a line about the session itself. `at` is when it was said, in Unix epoch
+ *  ms: the relay's stamp on a member's line, this client's clock on a session line. */
 export interface NetChatLine {
   readonly from: string | null;
   readonly text: string;
-  readonly tick: number | null;
+  readonly at: number;
 }
 
 export interface NetPanelModel {

@@ -15,6 +15,7 @@ import {
   type Peer,
   SEATS,
   SETTINGS,
+  STAGE_EPOCH_MS,
   seatCommand,
   stage,
   startedRoom,
@@ -548,12 +549,12 @@ describe('relay clock', () => {
     expect(a.last('delay')?.ticks).toBe(5);
   });
 
-  it('relays chat to the room with the sender’s nick and the clock’s next tick', () => {
+  it('relays chat to the room with the sender’s nick and the relay’s wall clock', () => {
     const s = startedRoom();
     s.advance(TICK_MS * 3);
     s.a.send({ kind: 'chat', text: 'gotowi?' });
-    const next = (s.a.last('frame')?.tick ?? 0) + 1;
-    expect(s.b.last('chat')).toEqual({ kind: 'chat', from: 'Ania', text: 'gotowi?', tick: next });
+    const at = STAGE_EPOCH_MS + s.now();
+    expect(s.b.last('chat')).toEqual({ kind: 'chat', from: 'Ania', text: 'gotowi?', at });
   });
 });
 
@@ -567,7 +568,7 @@ describe('chat history', () => {
     a.send({ kind: 'createRoom', settings: SETTINGS, seats: SEATS });
     expect(a.last('chatHistory')).toEqual({ kind: 'chatHistory', lines: [] });
     a.send({ kind: 'chat', text: 'kto gra?' });
-    const lobbyLine = { from: 'Ania', text: 'kto gra?', tick: null };
+    const lobbyLine = { from: 'Ania', text: 'kto gra?', at: STAGE_EPOCH_MS + s.now() };
 
     const b = s.introduce(TOKEN_B, 'Bartek');
     const joinedAt = b.sent.length;
@@ -585,7 +586,7 @@ describe('chat history', () => {
     b.send({ kind: 'loaded', tick: 0, world: 0 });
     s.advance(TICK_MS * 2);
     b.send({ kind: 'chat', text: 'atak' });
-    const gameLine = { from: 'Bartek', text: 'atak', tick: (a.last('frame')?.tick ?? 0) + 1 };
+    const gameLine = { from: 'Bartek', text: 'atak', at: STAGE_EPOCH_MS + s.now() };
 
     s.relay.disconnect(b.handle);
     const back = s.introduce(TOKEN_B, 'Bartek');
@@ -613,7 +614,7 @@ describe('chat history', () => {
 
     const c = s.introduce(TOKEN_C, 'Cezary');
     c.send({ kind: 'joinRoom', roomId: b.last('room')?.room.id ?? '' });
-    expect(c.last('chatHistory')?.lines).toEqual([{ from: 'Bartek', text: 'tu Bartek', tick: null }]);
+    expect(c.last('chatHistory')?.lines).toEqual([{ from: 'Bartek', text: 'tu Bartek', at: STAGE_EPOCH_MS }]);
   });
 
   it('keeps the newest lines up to its cap', () => {

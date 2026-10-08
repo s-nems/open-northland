@@ -1,6 +1,6 @@
 # Network protocol
 
-The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 24` in
+The wire contract between a game client and the relay server, version `PROTOCOL_VERSION = 25` in
 `packages/net-protocol`. A change one side of the current version could not honour, a message shape
 or the value set of a validated field such as the fog mode ids, bumps the version; the relay refuses a
 `hello` that names another.
@@ -546,13 +546,13 @@ as the relay's `left` would have.
 
 ## Chat
 
-`chat { text }` is broadcast to the room as `chat { from, text, tick }`, where `tick` is the clock's
-next tick when the relay received the line, null before the clock has started. One printable line, at
+`chat { text }` is broadcast to the room as `chat { from, text, at }`, where `at` is the relay's wall
+clock when it received the line, in Unix epoch milliseconds. One printable line, at
 most `MAX_CHAT_LENGTH` (500) characters, like every other string that reaches another person. Unicode
 line and paragraph separators are refused along with control characters.
 
 The relay keeps each room's lines, the lobby's included, up to the newest `MAX_CHAT_HISTORY_LINES`
-(500); the log ends with the room. A member gets `chatHistory { lines: [{ from, text, tick }] }`, oldest
+(500); the log ends with the room. A member gets `chatHistory { lines: [{ from, text, at }] }`, oldest
 first, right after the room view each time it enters the room: on creating it, on joining it, and on
 every return of its token, before `start` and `clock`.
 

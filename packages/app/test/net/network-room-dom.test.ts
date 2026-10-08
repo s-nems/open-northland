@@ -6,7 +6,7 @@ import { type MapSelectItem, mapItem } from '../../src/entries/main-menu/map-sel
 import { connectionForm } from '../../src/entries/main-menu/network/connection-form.js';
 import { DEFAULT_RELAY_URL } from '../../src/entries/main-menu/network/relay-default.js';
 import { mountNetworkRoom, type NetworkRoomDeps } from '../../src/entries/main-menu/network/room/index.js';
-import { messages } from '../../src/i18n/index.js';
+import { formatClockTime, messages } from '../../src/i18n/index.js';
 import { patchStoredSettings, readStoredSettings } from '../../src/view/settings-store.js';
 
 const mounted: Array<ReturnType<typeof mountNetworkRoom>> = [];
@@ -286,12 +286,14 @@ describe('room guidance and chat', () => {
     expect(input.value).toBe('');
     Object.defineProperties(log, { scrollHeight: { value: 1000 }, clientHeight: { value: 200 } });
     log.scrollTop = 100;
-    room.observeChat({ from: 'Bjorn', text: '<b>Hi</b>', tick: null });
+    const saidAt = new Date(2026, 0, 1, 21, 47).getTime();
+    room.observeChat({ from: 'Bjorn', text: '<b>Hi</b>', at: saidAt });
     expect(log.scrollTop).toBe(100);
+    expect(log.querySelector('time')?.textContent).toBe(formatClockTime(saidAt));
     expect(log.textContent).toContain('<b>Hi</b>');
     expect(log.querySelector('b')).toBeNull();
     log.scrollTop = 800;
-    room.observeChat({ from: 'Bjorn', text: 'Ready?', tick: null });
+    room.observeChat({ from: 'Bjorn', text: 'Ready?', at: 0 });
     expect(log.scrollTop).toBe(1000);
     room.update(lobby(), false);
     input.value = 'Offline';

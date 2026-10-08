@@ -3,6 +3,7 @@ import { localizedBuildingName } from '../src/catalog/building-i18n.js';
 import {
   bcp47Tag,
   defaultLocale,
+  formatClockTime,
   LOCALE_CODES,
   localeParam,
   type Messages,
@@ -66,6 +67,12 @@ describe('application locale', () => {
     setActiveLocale('pol');
     expect(professionLabel('smith')).toBe('Kowal');
     expect(localizedBuildingName('barracks', 'fallback')).toBe('Koszary');
+  });
+
+  it('writes a chat stamp as the local hour and minute', () => {
+    const evening = new Date(2026, 0, 1, 21, 7, 45).getTime();
+    expect(formatClockTime(evening, 'pl')).toBe('21:07');
+    expect(formatClockTime(evening, 'de')).toBe('21:07');
   });
 
   it('has localized menu metadata for every registered scene', () => {

@@ -15,7 +15,7 @@ import type {
 } from '../../src/hud/network/model.js';
 import type { GameSpeedState } from '../../src/hud/tool-panel/game-speed.js';
 import { createSpeedControl } from '../../src/hud/tool-panel/speed-control.js';
-import { formatMessage, messages } from '../../src/i18n/index.js';
+import { formatClockTime, formatMessage, messages } from '../../src/i18n/index.js';
 import { CHAT_LINGER_MS, mountChatPanel } from '../../src/view/net/chat-panel.js';
 import { mountNetOverlays, type NetOverlaysController } from '../../src/view/runtime/net-overlays.js';
 
@@ -125,7 +125,14 @@ it('requests a room-wide response mode and displays only the relay-confirmed cho
   window.dispose();
 });
 
-const said = (index: number): NetChatLine => ({ from: 'Ania', text: `line ${index}`, tick: null });
+const CHAT_OPENED_AT = new Date(2026, 0, 1, 21, 40).getTime();
+const MINUTE_MS = 60_000;
+const said = (index: number): NetChatLine => ({
+  from: 'Ania',
+  text: `line ${index}`,
+  at: CHAT_OPENED_AT + index * MINUTE_MS,
+});
+const stamped = (index: number): string => `${formatClockTime(said(index).at)}Ania:line ${index}`;
 
 const textOf = (root: HTMLElement, selector: string): string | null => {
   const node = root.querySelector<HTMLElement>(selector);
@@ -174,11 +181,7 @@ describe('the network window', () => {
     feed.current = panelModel({ chat: capped, chatVersion: grown.length + 2 });
     window.refresh();
     expect(list?.childElementCount).toBe(CHAT_CAP);
-    expect([...(list?.children ?? [])].map((item) => item.textContent)).toEqual([
-      'Ania:line 2',
-      'Ania:line 3',
-      'Ania:line 4',
-    ]);
+    expect([...(list?.children ?? [])].map((item) => item.textContent)).toEqual([2, 3, 4].map(stamped));
     window.dispose();
   });
 });
@@ -443,6 +446,7 @@ describe('the chat above the beam', () => {
 
     chat.refresh([said(0)], 1);
     expect(lines.style.opacity).toBe('1');
+    expect(lines.textContent).toBe(`${formatClockTime(said(0).at)}Ania: line 0`);
     clock = CHAT_LINGER_MS;
     chat.refresh([said(0)], 1);
     expect(lines.style.opacity).toBe('0');

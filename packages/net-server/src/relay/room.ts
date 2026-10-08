@@ -37,6 +37,8 @@ export interface RoomHooks {
   readonly deliver: Deliver;
   /** A member left, was dropped from the lobby, or was kicked; its token no longer belongs here. */
   readonly removed: (member: Member) => void;
+  /** Unix epoch milliseconds. */
+  readonly wallClock: () => number;
 }
 
 /**
@@ -359,7 +361,7 @@ export class Room {
   }
 
   chat(member: Member, text: string): void {
-    this.broadcast(this.chatLog.add({ from: member.nick, text, tick: this.game?.chatTick ?? null }));
+    this.broadcast(this.chatLog.add({ from: member.nick, text, at: this.hooks.wallClock() }));
   }
 
   advance(elapsedMs: number, now: number): Refusal {

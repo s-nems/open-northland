@@ -467,13 +467,13 @@ const SERVER_MESSAGES: readonly ServerMessage[] = [
       },
     ],
   },
-  { kind: 'chat', from: 'Ania', text: 'gotowi?', tick: null },
-  { kind: 'chat', from: 'Ania', text: 'atak!', tick: 1200 },
+  { kind: 'chat', from: 'Ania', text: 'gotowi?', at: 1_767_297_600_000 },
+  { kind: 'chat', from: 'Ania', text: 'atak!', at: 1_767_297_660_500 },
   {
     kind: 'chatHistory',
     lines: [
-      { from: 'Ania', text: 'gotowi?', tick: null },
-      { from: 'Bartek', text: 'tak', tick: 40 },
+      { from: 'Ania', text: 'gotowi?', at: 1_767_297_600_000 },
+      { from: 'Bartek', text: 'tak', at: 1_767_297_605_000 },
     ],
   },
   { kind: 'chatHistory', lines: [] },
@@ -617,12 +617,13 @@ describe('server messages', () => {
       );
   });
 
-  it('refuses a chat line without a tick or with a negative one, and a history past its cap', () => {
-    const line = { from: 'Ania', text: 'hej', tick: 1 };
+  it('refuses a chat line without a stamp or with a negative one, and a history past its cap', () => {
+    const line = { from: 'Ania', text: 'hej', at: 1 };
     expect(() => parseServerMessage({ kind: 'chat', from: 'Ania', text: 'hej' }, parseSession)).toThrow(
-      /chat\.tick/,
+      /chat\.at/,
     );
-    expect(() => parseServerMessage({ kind: 'chat', ...line, tick: -1 }, parseSession)).toThrow(/chat\.tick/);
+    expect(() => parseServerMessage({ kind: 'chat', ...line, at: -1 }, parseSession)).toThrow(/chat\.at/);
+    expect(() => parseServerMessage({ kind: 'chat', ...line, at: null }, parseSession)).toThrow(/chat\.at/);
     expect(() =>
       parseServerMessage({ kind: 'chatHistory', lines: [{ ...line, text: ' ' }] }, parseSession),
     ).toThrow(/chatHistory\.lines\[0\]\.text/);

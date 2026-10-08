@@ -131,7 +131,7 @@ export function createNetPanelPreview(options: NetPanelPreviewOptions): NetPanel
       else cast.delete(seat);
     },
     say(text): void {
-      chat = [...chat, { from: SELF, text, tick: null }];
+      chat = [...chat, { from: SELF, text, at: Date.now() }];
       chatVersion += 1;
     },
   };
@@ -182,14 +182,19 @@ const PREVIEW_LINK: NetLinkModel = {
 const tick = (minutes: number, seconds: number): number =>
   (minutes * SECONDS_PER_MINUTE + seconds) * TICKS_PER_SECOND;
 
+/** The opening chat's first line, at a fixed local evening hour so every viewer's stamps read alike. */
+const CHAT_OPENED_AT = new Date(2026, 0, 1, 20, 41).getTime();
+const saidAt = (minutes: number, seconds: number): number =>
+  CHAT_OPENED_AT + (minutes * SECONDS_PER_MINUTE + seconds) * MS_PER_SECOND;
+
 const OPENING_CHAT: readonly NetChatLine[] = [
-  { from: PEER, text: 'gotowi?', tick: null },
-  { from: SLOW_PEER, text: 'chwila, wczytuję mapę', tick: null },
-  { from: null, text: 'Celina dołącza', tick: tick(0, 0) },
-  { from: SELF, text: 'gl hf', tick: tick(0, 4) },
-  { from: PEER, text: 'kto bierze wyspę na północy?', tick: tick(3, 12) },
-  { from: SLOW_PEER, text: 'ja, ale u mnie trochę klatkuje', tick: tick(3, 20) },
-  { from: null, text: 'Bartek ustawia tempo x3', tick: tick(5, 2) },
+  { from: PEER, text: 'gotowi?', at: saidAt(0, 0) },
+  { from: SLOW_PEER, text: 'chwila, wczytuję mapę', at: saidAt(0, 25) },
+  { from: null, text: 'Celina dołącza', at: saidAt(1, 10) },
+  { from: SELF, text: 'gl hf', at: saidAt(1, 14) },
+  { from: PEER, text: 'kto bierze wyspę na północy?', at: saidAt(4, 22) },
+  { from: SLOW_PEER, text: 'ja, ale u mnie trochę klatkuje', at: saidAt(4, 30) },
+  { from: null, text: 'Bartek ustawia tempo x3', at: saidAt(6, 12) },
 ];
 
 function row(nick: string, overrides: Partial<NetPlayerRow>): NetPlayerRow {

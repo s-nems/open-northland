@@ -91,7 +91,7 @@ export class RelayState {
         this.chat = message.lines;
         break;
       case 'chat': {
-        const line: ChatLine = { from: message.from, text: message.text, tick: message.tick };
+        const line: ChatLine = { from: message.from, text: message.text, at: message.at };
         // The newest lines up to the relay's own cap, this one included.
         this.chat = [...this.chat.slice(1 - MAX_CHAT_HISTORY_LINES), line];
         break;

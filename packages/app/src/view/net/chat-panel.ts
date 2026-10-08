@@ -2,7 +2,7 @@ import { MAX_CHAT_LENGTH } from '@open-northland/net-protocol';
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import type { Rect } from '../../hud/geometry.js';
 import type { NetChatLine } from '../../hud/network/model.js';
-import { messages } from '../../i18n/index.js';
+import { formatClockTime, messages } from '../../i18n/index.js';
 import { el } from '../overlay.js';
 
 /** Lines kept on screen; older ones scroll off. */
@@ -37,6 +37,8 @@ const LINES_STYLE = [
   'gap:2px',
   `transition:opacity ${FADE_MS}ms`,
 ].join(';');
+const TIME_STYLE =
+  'margin-right:6px;opacity:0.7;font-size:11px;font-variant-numeric:tabular-nums lining-nums';
 const INPUT_STYLE = [
   'box-sizing:border-box',
   'width:100%',
@@ -202,6 +204,7 @@ function lineRow(line: NetChatLine): HTMLDivElement {
     'div',
     `overflow-wrap:anywhere;${line.from === null ? 'opacity:0.75;font-style:italic' : ''}`,
   );
+  row.append(el('span', TIME_STYLE, formatClockTime(line.at)));
   if (line.from !== null) row.append(el('span', 'font-weight:700', `${line.from}: `));
   row.append(document.createTextNode(line.text));
   return row;

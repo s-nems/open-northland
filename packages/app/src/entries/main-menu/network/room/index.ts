@@ -1,6 +1,6 @@
 import { type ChatLine, MAX_CHAT_LENGTH, type RoomView } from '@open-northland/net-protocol';
 import { quietTextField } from '../../../../hud/dom/parts/text-field.js';
-import { formatMessage, messages } from '../../../../i18n/index.js';
+import { formatClockTime, formatMessage, messages } from '../../../../i18n/index.js';
 import { memberLoadText } from '../../../../view/net/member-load.js';
 import { node } from '../../dom.js';
 import { createMapDetailsCard } from '../../map-card.js';
@@ -212,6 +212,8 @@ export function mountNetworkRoom(deps: NetworkRoomDeps) {
 
 function chatRow(line: ChatLine): HTMLElement {
   const row = node('p');
-  row.append(node('strong', '', `${line.from}: `), document.createTextNode(line.text));
+  const time = node('time', 'network-room__chat-time', formatClockTime(line.at));
+  time.setAttribute('datetime', new Date(line.at).toISOString());
+  row.append(time, node('strong', '', `${line.from}: `), document.createTextNode(line.text));
   return row;
 }

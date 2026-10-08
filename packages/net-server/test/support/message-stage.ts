@@ -45,9 +45,12 @@ export interface MessageStage {
   introduce(token: string, nick: string): Peer;
 }
 
+/** The stage's wall clock at its start, in Unix epoch ms; it runs with the stage's own clock. */
+export const STAGE_EPOCH_MS = Date.UTC(2026, 0, 1, 20, 0);
+
 export function stage(autoCompatibility = true): MessageStage {
   const time = { ms: 0 };
-  const relay = new Relay({ now: () => time.ms });
+  const relay = new Relay({ now: () => time.ms, wallClock: () => STAGE_EPOCH_MS + time.ms });
   const advance = (ms: number): void => {
     time.ms += ms;
     relay.advance();

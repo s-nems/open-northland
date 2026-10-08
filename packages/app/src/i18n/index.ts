@@ -63,6 +63,18 @@ export function compareLabels(tag: string = bcp47Tag()): (a: string, b: string) 
   return collator.compare;
 }
 
+const clockFormats = new Map<string, Intl.DateTimeFormat>();
+
+/** The local hour and minute of `epochMs`, written as `tag`'s language writes a time of day. */
+export function formatClockTime(epochMs: number, tag: string = bcp47Tag()): string {
+  let format = clockFormats.get(tag);
+  if (format === undefined) {
+    format = new Intl.DateTimeFormat(tag, { hour: '2-digit', minute: '2-digit' });
+    clockFormats.set(tag, format);
+  }
+  return format.format(epochMs);
+}
+
 export function setActiveLocale(locale: Locale): void {
   activeLocale = locale;
   if (typeof document !== 'undefined') document.documentElement.lang = bcp47Tag(locale);

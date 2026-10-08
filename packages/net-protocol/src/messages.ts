@@ -156,12 +156,12 @@ export interface GovernedClock {
   readonly cause: GovernorCause;
 }
 
-/** One line of a room's chat as the relay logged it: `tick` is the clock's next tick when the relay
- *  received it, null before the clock started. */
+/** One line of a room's chat as the relay logged it: `at` is the relay's wall clock when it received
+ *  the line, in Unix epoch milliseconds. */
 export interface ChatLine {
   readonly from: string;
   readonly text: string;
-  readonly tick: number | null;
+  readonly at: number;
 }
 
 export interface WaitedMember {

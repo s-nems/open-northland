@@ -98,11 +98,6 @@ export class Game {
     return this.clock.running;
   }
 
-  /** The tick a chat line received now is stamped with: the clock's next one, null before it runs. */
-  get chatTick(): number | null {
-    return this.clock.running ? this.clock.nextTick : null;
-  }
-
   /** Ticks the member's acknowledgements trail the clock; 0 while the relay does not follow its world,
    *  before the clock runs and after the match ended. */
   behindTicks(member: Member): number {

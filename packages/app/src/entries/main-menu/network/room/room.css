@@ -198,6 +198,11 @@
 .network-room__chat-log strong {
   color: var(--bronze-hi);
 }
+.network-room__chat-time {
+  margin-right: calc(var(--u) * 8);
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
 .network-room__heading h1,
 .network-room__heading p {
   overflow-wrap: anywhere;
