@@ -184,7 +184,7 @@ the frame band), so shoreline and void margins drawn out of them walk in the ori
 
 ### How `content/collision.ts` uses it
 
-The join applies the node rule as stated: a node walks when a walkable triangle touches it, and is sea
+The join applies the node rule's types: a node walks when a walkable triangle touches it, and is sea
 for ships only when every triangle touching it is water. Checked against the original's continent table
 (`laco` type per `lmco` id) over the interior nodes of 123 owned maps, 16.5 million nodes, the land
 and water split differs on 60 nodes; the cell-resolution join it replaced differed on 193,569. Two
@@ -194,6 +194,11 @@ named gaps remain:
   block, since no per-node build rule is verified. A node that walks inside a cell that cannot be
   walked is margin: it walks and builds nothing.
 - The unconditional outer band is not implemented.
+- The edge rule is not replayed: the pathfinder steps between any two neighbouring walkable nodes,
+  where the original also needs the triangles tangent to the edge to agree. Labelling our land
+  components with objects stripped, 5 of them over the 123 maps join two or more original
+  continents of at least 20 nodes, the largest an 1821-node continent on `wybrzeze_czarow_sub4`;
+  whether those are painted crossings or welds is not checked.
 
 ## Tests
 

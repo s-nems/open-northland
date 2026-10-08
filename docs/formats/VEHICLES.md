@@ -291,15 +291,17 @@ routed around by other vehicles, while settlers walk through them as in the orig
 shove happens on entering a node only and sends a settler outside the discs of the whole remaining
 route. Open Northland shoves only owned settlers standing still (the planner's kept occupancy): one
 already walking passes on, and an unowned animal's next wander leg steps it off the disc
-(approximation). A real map's water is the cells whose two ground triangles are both
-`isWater` pattern types (approximation of the per-node rule; an unknown or border pattern counts as
-land, so a ship never sails onto the map edge).
+(approximation). A real map's water is the nodes every ground triangle touching which is an
+`isWater` pattern type, the original's per-node rule (`MAPDAT.md`, "How `content/collision.ts` uses
+it"); a border or void pattern is never water and an unknown one counts as land, so a ship never
+sails onto the map edge.
 
 ## Ships and docking
 
 Ships never attack. A ship spawns moored when a node on the hex ring of exactly radius
 `passengervector[1]` around it, walked in the dock scan's order below, lies on a land continent
-(type 1); the first such node is its mooring point, and with none it spawns with no mooring point. Dock on a land point needs a commander;
+(type 1) with a non-negative size byte; the first node of that continent on the same walk is
+its mooring point, and with none it spawns with no mooring point. Dock on a land point needs a commander;
 a moored ship boards its crew first and the order waits while anyone is outside; then it scans the hex ring of exactly radius
 `passengervector[1]` around the point, starting `passengervector[1]` steps north-west and turning
 through the six directions, for a non-border node whose continent byte equals the ship's own and

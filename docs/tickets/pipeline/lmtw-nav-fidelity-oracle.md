@@ -12,8 +12,9 @@ from it.
 
 - Import `lmtw` into the decoded map alongside the existing lanes.
 - Add a content-mode test that labels components over `lmtw` and over `buildCollisionTerrain`, and
-  asserts every one of ours falls inside a single `lmtw` component, allowing any residual pockets
-  by an explicit bound rather than a per-map list.
+  asserts every one of ours falls inside a single `lmtw` component, allowing residual pockets by an
+  explicit bound rather than a per-map list. The starting residue is the 5 land components that join
+  two original continents (`MAPDAT.md`, "How `content/collision.ts` uses it").
 - The lane is a fidelity oracle for tests, not sim input. Do not route nav through it.
 
 ## Verify

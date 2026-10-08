@@ -28,9 +28,9 @@ function emptySeats(count: number): (VehicleSeat | null)[] {
 
 /**
  * The shore node a ship lying at `anchor` is moored to: the first walkable node on the hexagon rings
- * out to the door distance, in ring order (the original's spawn test is "a land continent borders it
- * within `passengervector[1]` steps"; which node it stores is not read, so the nearest in ring order is
- * the named pick). Null when open water surrounds the ship.
+ * out to the door distance, in ring order. Null when open water surrounds the ship. Approximation: the
+ * original searches the ring at exactly the door distance for land (`docs/formats/VEHICLES.md`,
+ * "Ships and docking").
  */
 function spawnMooring(terrain: TerrainGraph, type: VehicleType, anchor: HalfCellNode): HalfCellNode | null {
   const vector = type.passengerVector;
