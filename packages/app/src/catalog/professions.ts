@@ -1,4 +1,4 @@
-import { categoryLabel, type Locale, type Messages, professionLabel } from '../i18n/index.js';
+import { categoryLabel, type Locale, type Messages, professionLabel, professionTip } from '../i18n/index.js';
 import {
   JOB_ARMORER,
   JOB_BAKER,
@@ -131,7 +131,7 @@ export function professionDefForJob(jobType: number | undefined): ProfessionDef 
 /** One rendered picker row: a clickable profession, or a non-clickable group header. */
 export type PickerEntry =
   | { readonly kind: 'header'; readonly label: string }
-  | { readonly kind: 'profession'; readonly jobType: number; readonly label: string };
+  | { readonly kind: 'profession'; readonly jobType: number; readonly label: string; readonly tip?: string };
 
 /** The localized picker list, top to bottom: a `header` entry at every category boundary. */
 export function pickerEntries(locale?: Locale): PickerEntry[] {
@@ -146,7 +146,13 @@ export function pickerEntries(locale?: Locale): PickerEntry[] {
       group = p.category;
       entries.push({ kind: 'header', label: categoryLabel(p.category, locale) });
     }
-    entries.push({ kind: 'profession', jobType: p.jobType, label: professionLabel(p.key, locale) });
+    const tip = professionTip(p.key, locale);
+    entries.push({
+      kind: 'profession',
+      jobType: p.jobType,
+      label: professionLabel(p.key, locale),
+      ...(tip === undefined ? {} : { tip }),
+    });
   }
   return entries;
 }

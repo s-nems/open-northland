@@ -134,6 +134,16 @@ export function professionLabel(key: keyof Messages['profession'], locale: Local
   return messages(locale).profession[key];
 }
 
+/** The hover line of a profession whose name does not say what it does, or undefined. */
+export function professionTip(
+  key: keyof Messages['profession'],
+  locale: Locale = currentLocale(),
+): string | undefined {
+  const tips: Readonly<Partial<Record<keyof Messages['profession'], string>>> =
+    messages(locale).professionTips;
+  return tips[key];
+}
+
 export function categoryLabel(key: keyof Messages['category'], locale: Locale = currentLocale()): string {
   return messages(locale).category[key];
 }

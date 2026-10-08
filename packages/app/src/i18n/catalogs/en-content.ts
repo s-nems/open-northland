@@ -29,6 +29,10 @@ export const enContent = {
     archer_long: 'Longbow archer',
     worker: 'Worker',
   },
+  // The hover line of a picker row whose name does not say what the profession does.
+  professionTips: {
+    scout: 'With the “Explore” order a scout explores the map by itself.',
+  },
   category: {
     gathering: 'Gathering',
     transport: 'Transport',
