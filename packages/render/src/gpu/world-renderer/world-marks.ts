@@ -83,8 +83,8 @@ export interface WorldMarksFrame {
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
   readonly lifeHearts: readonly LifeHeart[];
-  /** Entity id → control-group number to mark; empty when the player turned the numbers off. */
-  readonly groupNumbers: ReadonlyMap<number, number>;
+  /** Entity id → its control groups' label; empty when the player turned the numbers off. */
+  readonly groupLabels: ReadonlyMap<number, string>;
 }
 
 export class WorldMarks {
@@ -203,7 +203,7 @@ export class WorldMarks {
     this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation }, viewport);
     this.groupNumbers.draw(
       { snapshot: frame.snapshot, drawn, zoom: frame.zoom },
-      frame.groupNumbers,
+      frame.groupLabels,
       viewport,
     );
   }

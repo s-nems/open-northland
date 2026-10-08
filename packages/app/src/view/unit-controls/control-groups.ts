@@ -2,6 +2,7 @@ import type { ElevationField } from '@open-northland/render';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { isBuilding, isSettler, isVehicle, ownerPlayerOf } from '../../game/snapshot.js';
 import {
+  CONTROL_GROUP_ACTIONS,
   CONTROL_GROUP_BINDING_ACTIONS,
   type ControlGroupAction,
   type ControlGroupMode,
@@ -45,17 +46,27 @@ export interface ControlGroups {
     isSelectable: (id: number) => boolean,
     isUnit: IsUnit,
   ): readonly number[] | null;
-  /** Member id → the number the map marks it with, for the first {@link NUMBERED_GROUPS} groups; a member
-   *  of several shows the lowest. The same map until a group changes. */
-  numbers(): ReadonlyMap<number, number>;
+  /** Member id → the label the map marks it with: its groups' numbers in group order, comma-joined, the
+   *  first {@link MAX_LABELLED_GROUPS} of them. The same map until a group changes. */
+  labels(): ReadonlyMap<number, string>;
 }
 
-/** The groups whose members wear their number on the map; higher groups stay unmarked. */
-export const NUMBERED_GROUPS: ReadonlyMap<ControlGroupAction, number> = new Map([
-  ['controlGroup1', 1],
-  ['controlGroup2', 2],
-  ['controlGroup3', 3],
-]);
+/** Each group's own number, independent of the key it is bound to. */
+const GROUP_NUMBERS: Readonly<Record<ControlGroupAction, string>> = {
+  controlGroup1: '1',
+  controlGroup2: '2',
+  controlGroup3: '3',
+  controlGroup4: '4',
+  controlGroup5: '5',
+  controlGroup6: '6',
+  controlGroup7: '7',
+  controlGroup8: '8',
+  controlGroup9: '9',
+  controlGroup0: '0',
+};
+
+/** A member of more groups shows only the first this many. */
+export const MAX_LABELLED_GROUPS = 3;
 
 /** Centre only when the current selection contains exactly the recalled group. */
 export function groupRecallEffect(
@@ -98,17 +109,17 @@ export function isControlGroupMember(snapshot: WorldSnapshot, ref: number, seat:
 /** Ten client-local selection groups. Invalid members are forgotten when their group is recalled. */
 export function createControlGroups(): ControlGroups {
   const groups = new Map<ControlGroupAction, Set<number>>();
-  let numbers: Map<number, number> | null = null;
+  let labels: Map<number, string> | null = null;
 
   return {
     replace: (action, ids) => {
       groups.set(action, new Set(ids));
-      numbers = null;
+      labels = null;
     },
     addExclusive: (action, ids) => {
       const moving = new Set(ids);
       if (moving.size === 0) return;
-      numbers = null;
+      labels = null;
       for (const [otherAction, otherGroup] of groups) {
         if (otherAction === action) continue;
         for (const id of moving) otherGroup.delete(id);
@@ -125,18 +136,24 @@ export function createControlGroups(): ControlGroups {
         if (isSelectable(id)) valid.push(id);
         else {
           group.delete(id);
-          numbers = null;
+          labels = null;
         }
       }
       return valid.length === 0 ? null : selectionAfter([], valid, false, isUnit);
     },
-    numbers: () => {
-      if (numbers !== null) return numbers;
-      numbers = new Map();
-      for (const [action, number] of NUMBERED_GROUPS) {
-        for (const id of groups.get(action) ?? []) if (!numbers.has(id)) numbers.set(id, number);
+    labels: () => {
+      if (labels !== null) return labels;
+      const numbersOf = new Map<number, string[]>();
+      for (const action of CONTROL_GROUP_ACTIONS) {
+        for (const id of groups.get(action) ?? []) {
+          const numbers = numbersOf.get(id) ?? [];
+          if (numbers.length < MAX_LABELLED_GROUPS) numbers.push(GROUP_NUMBERS[action]);
+          numbersOf.set(id, numbers);
+        }
       }
-      return numbers;
+      labels = new Map();
+      for (const [id, numbers] of numbersOf) labels.set(id, numbers.join(','));
+      return labels;
     },
   };
 }

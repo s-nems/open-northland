@@ -230,7 +230,7 @@ export const deSurfaces = {
       },
       groupNumbers: 'Gruppennummern',
       groupNumbersTip:
-        'Eine kleine Nummer an jeder Einheit in Gruppe 1, 2 oder 3. Höhere Gruppen zeigen keine.',
+        'Eine winzige Gruppennummer an jeder Einheit in einer Gruppe. Eine Einheit in mehreren Gruppen zeigt bis zu drei, etwa 1,2,3.',
       minimapFrameTip: 'Aussehen des Rahmens um die Minikarte. Änderungen werden im Spiel sofort sichtbar.',
       minimapFrames: {
         zelazo: 'Eisen',

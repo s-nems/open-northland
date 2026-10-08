@@ -191,7 +191,7 @@ export const plSurfaces = {
       },
       groupNumbers: 'Numery grup',
       groupNumbersTip:
-        'Mały numer przy każdej jednostce przypisanej do grupy 1, 2 lub 3. Dalsze grupy go nie mają.',
+        'Malutki numer grupy przy każdej jednostce przypisanej do grupy. Jednostka w kilku grupach pokazuje do trzech, np. 1,2,3.',
       minimapFrameTip: 'Wygląd ramki wokół minimapy. Zmienia się w grze od razu.',
       minimapFrames: {
         zelazo: 'Żelazo',

@@ -193,7 +193,8 @@ export const enSurfaces = {
         'ring-green': 'Green ring',
       },
       groupNumbers: 'Group numbers',
-      groupNumbersTip: 'A small number by each unit bound to group 1, 2 or 3. Higher groups show none.',
+      groupNumbersTip:
+        'A tiny group number by each unit bound to a group. A unit in several groups shows up to three, such as 1,2,3.',
       minimapFrameTip: 'The look of the frame around the minimap. Changes in game immediately.',
       minimapFrames: {
         zelazo: 'Iron',

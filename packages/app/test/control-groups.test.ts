@@ -146,32 +146,33 @@ describe('control groups', () => {
   });
 });
 
-describe('group numbers on the map', () => {
-  it('numbers the members of groups 1-3 only, the lowest group winning', () => {
+describe('group labels on the map', () => {
+  it('lists every group of a member in group order, the first three of more', () => {
     const groups = createControlGroups();
+    groups.replace('controlGroup5', [1]);
+    groups.replace('controlGroup0', [1, 2]);
+    groups.replace('controlGroup2', [1]);
     groups.replace('controlGroup1', [1]);
-    groups.replace('controlGroup2', [2, 1]);
-    groups.replace('controlGroup3', [3]);
-    groups.replace('controlGroup4', [4]);
+    groups.replace('controlGroup9', [3]);
 
-    expect([...groups.numbers()]).toEqual([
-      [1, 1],
-      [2, 2],
-      [3, 3],
+    expect([...groups.labels()]).toEqual([
+      [1, '1,2,5'],
+      [3, '9'],
+      [2, '0'],
     ]);
   });
 
   it('keeps one map until a group changes, then follows a steal and a forgotten member', () => {
     const groups = createControlGroups();
     groups.replace('controlGroup1', [1, 2]);
-    const first = groups.numbers();
-    expect(groups.numbers()).toBe(first);
+    const first = groups.labels();
+    expect(groups.labels()).toBe(first);
 
     groups.addExclusive('controlGroup2', [2]);
-    expect(groups.numbers().get(2)).toBe(2);
+    expect(groups.labels().get(2)).toBe('2');
 
     groups.recall('controlGroup1', (id) => id !== 1, ALL_UNITS);
-    expect(groups.numbers().has(1)).toBe(false);
+    expect(groups.labels().has(1)).toBe(false);
   });
 });
 

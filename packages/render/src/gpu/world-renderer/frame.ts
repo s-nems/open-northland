@@ -87,7 +87,7 @@ export const NO_BADGES: readonly DoorBadge[] = [];
 export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
-export const NO_GROUP_NUMBERS: ReadonlyMap<number, number> = new Map();
+export const NO_GROUP_LABELS: ReadonlyMap<number, string> = new Map();
 export const NO_WORK_AREAS: readonly WorkAreaRing[] = [];
 export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
 export const NO_LOST_GOALS: readonly LostGoalMarker[] = [];
@@ -110,8 +110,9 @@ export interface WorldFrame {
   readonly constructionSigns?: readonly ConstructionSign[] | undefined;
   readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
   readonly lifeHearts?: readonly LifeHeart[] | undefined;
-  /** Entity id → control-group number, drawn while the numbers are shown (default none). */
-  readonly groupNumbers?: ReadonlyMap<number, number> | undefined;
+  /** Entity id → its control groups' label, such as `1,3`, drawn while the numbers are shown (default
+   *  none). */
+  readonly groupLabels?: ReadonlyMap<number, string> | undefined;
   /** Work flag entity ids belonging to selected gatherers; highlighted with an amber outline. */
   readonly flagged?: ReadonlySet<number> | undefined;
   /** Ids the HUD points at among the selection (a hovered group well); lateral marks indicate them (default none). */

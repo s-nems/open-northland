@@ -66,7 +66,7 @@ export interface MenuSettings {
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
   readonly selectionStyle: SelectionStyle;
-  /** A small 1-3 by each unit bound to one of the first control groups. */
+  /** A small label of its control groups' numbers by each unit bound to one. */
   readonly groupNumbers: boolean;
   readonly minimapFrame: MinimapFrame;
   /** The minimap's marker layers and owner scope, set from its filters popover. */
