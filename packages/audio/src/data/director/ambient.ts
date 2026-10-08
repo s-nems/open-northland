@@ -20,8 +20,9 @@ import type { AmbientLoop, AudioTerrain, DirectorInput } from '../types.js';
 
 /** How many ambient beds may play at once - the loudest few by on-screen coverage. */
 export const MAX_AMBIENT_BEDS = 3;
-/** Loudest an ambient bed reaches. */
-export const AMBIENT_MAX_GAIN = 0.5;
+/** Loudest an ambient bed reaches: the wav as recorded, since the beds are mastered far below the
+ *  one-shots and the original scales a bed by its coverage alone. Approximation, tune by ear. */
+export const AMBIENT_MAX_GAIN = 1;
 /** On-screen coverage fraction at which a bed hits {@link AMBIENT_MAX_GAIN} (below it, quieter). */
 export const AMBIENT_FULL_COVERAGE = 0.4;
 /** Cap on tiles sampled per frame for ambient - a stride keeps a zoomed-out whole-map view bounded. */

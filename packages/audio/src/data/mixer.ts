@@ -35,8 +35,9 @@ export const VOLUME_RANGE_DB = 50;
 /** Master slider default, about -10 dB: headroom for the bus sum before the master limiter.
  *  Approximation, tune by ear. */
 export const DEFAULT_MASTER_VOLUME = 80;
-/** Ambient slider default, about -15 dB: the beds and weather sit under the action. Approximation. */
-export const DEFAULT_AMBIENT_VOLUME = 70;
+/** Ambient slider default, about -7.5 dB: the beds, object ambience and weather sit under the action.
+ *  Approximation, tune by ear. */
+export const DEFAULT_AMBIENT_VOLUME = 85;
 /** Default of every other bus slider: full scale, so the mix inside the bus decides. */
 export const DEFAULT_BUS_VOLUME = VOLUME_MAX;
 
