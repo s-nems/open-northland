@@ -6220,7 +6220,11 @@ body.on-drag-scroll * {
 .on-hud .on-window--assistant {
   max-width: calc(100% - 24px);
 }
-/* The orders column beside the standing orders, which split into two columns of their own under one head. */
+.on-hud .on-window--assistant .on-window__body {
+  container: assistant / inline-size;
+}
+/* The orders column beside the standing orders, which split into two columns of their own under one
+   head; on the narrow window the standing orders stack in one column and the body scrolls. */
 .on-hud .on-asst__cols {
   display: grid;
   grid-template-columns: minmax(0, 9fr) minmax(0, 21fr);
@@ -6228,6 +6232,14 @@ body.on-drag-scroll * {
 }
 .on-hud .on-asst__standing .on-asst__cols {
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+}
+@container assistant (max-width: 900px) {
+  .on-hud .on-asst__cols {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  }
+  .on-hud .on-asst__standing .on-asst__cols {
+    grid-template-columns: minmax(0, 1fr);
+  }
 }
 .on-hud .on-asst__col,
 .on-hud .on-asst__standing {
@@ -6294,7 +6306,7 @@ body.on-drag-scroll * {
 }
 .on-hud .on-asst-row {
   display: grid;
-  grid-template-columns: 26px 1fr auto;
+  grid-template-columns: 32px 1fr auto;
   align-items: center;
   gap: 1px 8px;
   padding: 3px 4px 3px 2px;
@@ -6326,13 +6338,14 @@ body.on-drag-scroll * {
 .on-hud .on-asst-row--off .on-asst-row__label {
   color: var(--muted);
 }
-/* A row's art: a figure, a glyph, or a good with the seat's stock of it on a tag at its corner. */
+/* A row's art: a figure, a glyph, or a good with the seat's stock of it on a tag at its foot and the men
+   still without it on a tag at its head. */
 .on-hud .on-asst-art {
   position: relative;
   display: grid;
   place-items: center;
-  width: 26px;
-  height: 26px;
+  width: 32px;
+  height: 32px;
   color: var(--parchment);
 }
 .on-hud .on-asst-art .on-figure,
@@ -6342,8 +6355,8 @@ body.on-drag-scroll * {
 }
 .on-hud .on-asst-art__count {
   position: absolute;
-  right: -5px;
-  bottom: -3px;
+  right: -7px;
+  bottom: -2px;
   min-width: 14px;
   padding: 0 3px;
   border: 1px solid #c9a26255;
@@ -6354,7 +6367,26 @@ body.on-drag-scroll * {
   font-variant-numeric: tabular-nums;
   text-align: center;
 }
-.on-hud .on-asst-row--off > .on-asst-art {
+/* The men still without the good, at the icon's head in red; the stock tag stays at its foot. */
+.on-hud .on-asst-art__lack {
+  position: absolute;
+  right: -7px;
+  top: -2px;
+  min-width: 14px;
+  padding: 0 3px;
+  border: 1px solid #c0392b88;
+  border-radius: 7px;
+  background: #3a1410;
+  color: #ff9d8c;
+  font: 700 10px / 13px var(--font-body);
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.on-hud .on-asst-art__lack[hidden] {
+  display: none;
+}
+/* An off row fades its good, not the tags: the men still without it are the reason to switch it on. */
+.on-hud .on-asst-row--off > .on-asst-art .on-good__frame {
   opacity: 0.55;
   filter: saturate(0.4);
 }

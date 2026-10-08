@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  ASSISTANT_WINDOW_NARROW_W,
+  ASSISTANT_WINDOW_WIDE_W,
+  assistantWindowWidth,
   birthNotes,
   counterFace,
   counterFromFace,
@@ -149,5 +152,19 @@ describe('assistant press hold', () => {
     hold.hold('men', 3, 2, 0);
     expect(hold.shown('men', 2, PRESS_HOLD_TICKS)).toBe(3);
     expect(hold.shown('men', 2, PRESS_HOLD_TICKS + 1)).toBe(2);
+  });
+});
+
+describe('assistantWindowWidth', () => {
+  const minimap = { x: 0, y: 500, w: 290, h: 300 };
+  it('takes the wide window where it sits centred clear of the minimap', () => {
+    expect(assistantWindowWidth({ width: 1920, height: 1080 }, minimap)).toBe(ASSISTANT_WINDOW_WIDE_W);
+    expect(assistantWindowWidth({ width: 1920, height: 1080 }, null)).toBe(ASSISTANT_WINDOW_WIDE_W);
+  });
+  it('falls back to the narrow window where the wide one would be pushed off centre or off screen', () => {
+    // 1440: centred at x 200, but the minimap reaches 290, so the placer would push it right.
+    expect(assistantWindowWidth({ width: 1440, height: 900 }, minimap)).toBe(ASSISTANT_WINDOW_NARROW_W);
+    expect(assistantWindowWidth({ width: 1440, height: 900 }, null)).toBe(ASSISTANT_WINDOW_WIDE_W);
+    expect(assistantWindowWidth({ width: 1024, height: 768 }, null)).toBe(ASSISTANT_WINDOW_NARROW_W);
   });
 });

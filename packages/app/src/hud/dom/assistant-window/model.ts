@@ -1,5 +1,22 @@
 import { components, TICKS_PER_SECOND } from '@open-northland/sim';
+import type { Rect } from '../../geometry.js';
+import type { ScreenSize } from '../../nav-beam.js';
+import { centralWindowBox, centralWindowOrigin } from '../../regions.js';
 import type { CounterRange } from '../parts/counter.js';
+
+/** Design px. Wide: the orders column beside two standing-order columns. Narrow: the standing orders
+ *  in one column beside the orders, scrolled; `foundation.css` switches the layout by the body's width. */
+export const ASSISTANT_WINDOW_WIDE_W = 1040;
+export const ASSISTANT_WINDOW_NARROW_W = 700;
+
+/** The wide window only where it sits centred: on a screen that fits it beside the minimap without the
+ *  placer pushing it off centre or against the right edge; the narrow one elsewhere. */
+export function assistantWindowWidth(screen: ScreenSize, overlay: Rect | null): number {
+  const wide = centralWindowBox(screen, 1, ASSISTANT_WINDOW_WIDE_W, overlay);
+  const centred = centralWindowOrigin(screen, 1, ASSISTANT_WINDOW_WIDE_W).x;
+  const fits = wide.x === centred && wide.x + ASSISTANT_WINDOW_WIDE_W <= screen.width;
+  return fits ? ASSISTANT_WINDOW_WIDE_W : ASSISTANT_WINDOW_NARROW_W;
+}
 
 type CounterKind = components.AssistantCounterKind;
 type CounterState = components.AssistantCounterState;

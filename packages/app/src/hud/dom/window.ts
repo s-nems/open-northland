@@ -1,3 +1,5 @@
+import type { Rect } from '../geometry.js';
+import type { ScreenSize } from '../nav-beam.js';
 import { centralWindowBox } from '../regions.js';
 import { GLYPH } from './icons.js';
 import { minimapReserve } from './minimap-reserve.js';
@@ -96,21 +98,31 @@ export function createHudWindow(plane: HTMLElement, spec: HudWindowSpec): HudWin
   };
 }
 
+/** A central window's design-px width: fixed, or chosen per screen and the minimap it must clear. */
+export type CentralWindowWidth = number | ((screen: ScreenSize, overlay: Rect | null) => number);
+
 /**
  * The one placement every central window uses, applied only when the box moved. The caller runs it
  * per frame and on open; it answers whether the window moved, for an owner that repaints against the
- * new box.
+ * new box. A width chosen per screen is written onto the element with the box.
  */
-export function centralWindowPlacer(window: HudWindow, plane: HTMLElement, width: number): () => boolean {
+export function centralWindowPlacer(
+  window: HudWindow,
+  plane: HTMLElement,
+  width: CentralWindowWidth,
+): () => boolean {
   let placed = '';
   return () => {
     if (!window.isOpen()) return false;
     // The plane's client box is the design-px screen (foundation.css sizes it by 1 / scale).
     const screen = { width: plane.clientWidth, height: plane.clientHeight };
-    const box = centralWindowBox(screen, 1, width, minimapReserve(plane));
-    const key = `${box.x},${box.y},${box.maxHeight}`;
+    const overlay = minimapReserve(plane);
+    const drawn = typeof width === 'number' ? width : width(screen, overlay);
+    const box = centralWindowBox(screen, 1, drawn, overlay);
+    const key = `${drawn},${box.x},${box.y},${box.maxHeight}`;
     if (key === placed) return false;
     placed = key;
+    if (typeof width !== 'number') window.element.style.width = `${drawn}px`;
     window.place(box.x, box.y);
     window.element.style.maxHeight = `${box.maxHeight}px`;
     return true;

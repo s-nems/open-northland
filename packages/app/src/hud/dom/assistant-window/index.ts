@@ -22,7 +22,9 @@ import { createSwitch } from '../parts/switch.js';
 import { attachTipLayer, type TipChip } from '../parts/tip-layer.js';
 import { centralWindowPlacer, createHudWindow } from '../window.js';
 import {
+  ASSISTANT_WINDOW_WIDE_W,
   type AssistantBookings,
+  assistantWindowWidth,
   birthNotes,
   counterFace,
   counterFromFace,
@@ -41,9 +43,7 @@ type CounterKind = components.AssistantCounterKind;
 type CounterState = components.AssistantCounterState;
 type ClassIntent = Exclude<components.AssistantRecruitIntent, 'trainSoldiers'>;
 
-/** Design px: the orders column beside the two standing-order columns. */
-const ASSISTANT_WINDOW_W = 1040;
-const ROW_ICON_PX = 22;
+const ROW_ICON_PX = 24;
 const SUB_ICON_PX = 18;
 
 /** The sim's counter block for the watched seat, and the command that sets one counter. */
@@ -152,11 +152,11 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     kicker: copy.kicker,
     art: deps.art,
     closeLabel: messages().hud.shell.close,
-    width: ASSISTANT_WINDOW_W,
+    width: ASSISTANT_WINDOW_WIDE_W,
   });
   window.element.classList.add('on-window--assistant');
   const tips = attachTipLayer(window.element, deps.tooltip);
-  const placeWindow = centralWindowPlacer(window, deps.plane, ASSISTANT_WINDOW_W);
+  const placeWindow = centralWindowPlacer(window, deps.plane, assistantWindowWidth);
 
   let tick = 0;
   // Indexed only when an open window asks: the model lands every frame, the window is mostly shut.
@@ -223,22 +223,35 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     show();
   };
 
-  const goodArt = (goodId: string, box: number): { art: HTMLElement; count: HTMLElement } => {
-    const art = element('span', 'on-asst-art', `${goodIconMarkup(box)}<b class="on-asst-art__count"></b>`);
+  /** A good's icon with the stock tag at its foot and, for a give row, the tag of the men still without
+   *  it at its head. */
+  const goodArt = (
+    goodId: string,
+    box: number,
+  ): { art: HTMLElement; count: HTMLElement; lack: HTMLElement } => {
+    const art = element(
+      'span',
+      'on-asst-art',
+      `${goodIconMarkup(box)}<b class="on-asst-art__count"></b><b class="on-asst-art__lack" hidden></b>`,
+    );
     const frame = art.querySelector<HTMLElement>('.on-good__frame');
     const count = art.querySelector<HTMLElement>('.on-asst-art__count');
-    if (frame === null || count === null) throw new Error('assistant: good art');
+    const lack = art.querySelector<HTMLElement>('.on-asst-art__lack');
+    if (frame === null || count === null || lack === null) throw new Error('assistant: good art');
     deps.paintGood(frame, goodId, box);
-    return { art, count };
+    return { art, count, lack };
   };
-  /** The stock tag turns amber when an order waits on it; its tip then says so. */
-  const showStock = (count: HTMLElement, amount: number, wanted: boolean): void => {
+  /** The stock tag turns amber when an order waits on it; its tip then says so. `more` follows the
+   *  stock sentence in the art's tip. */
+  const showStock = (count: HTMLElement, amount: number, wanted: boolean, more = ''): void => {
     write(count, String(amount));
     const short = wanted && amount === 0;
     count.classList.toggle('is-short', short);
     const holder = count.parentElement;
-    if (holder !== null)
-      setTip(holder, short ? copy.outOfStock : formatMessage(copy.inStock, { count: amount }));
+    if (holder !== null) {
+      const stock = short ? copy.outOfStock : formatMessage(copy.inStock, { count: amount });
+      setTip(holder, more === '' ? stock : `${stock} ${more}`);
+    }
   };
   const glyphArt = (markup: string): HTMLElement => element('span', 'on-asst-art', markup);
 
@@ -335,15 +348,11 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     return row;
   };
 
-  const switchRow = (
-    id: AssistantGrantId,
-    art: HTMLElement,
-    marks: HTMLElement = element('span', 'on-asst-marks'),
-  ): { row: HTMLElement; on: () => boolean } => {
+  const switchRow = (id: AssistantGrantId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
     const row = element('div', 'on-asst-row');
     const text = copy.switches[id];
     const control = createSwitch(text.label, text.tip, (next) => pressSwitch(id, next));
-    row.append(art, label(text.label, text.tip, marks), control.element);
+    row.append(art, label(text.label, text.tip, element('span', 'on-asst-marks')), control.element);
     updates.push(() => {
       const on = switchNow(id);
       control.update(on, writable);
@@ -424,64 +433,43 @@ export function createAssistantWindow(deps: AssistantWindowDeps): AssistantWindo
     orders.append(row);
   }
 
-  /** The mark on a give row saying how many men the switch would still dress: amber when the stock
-   *  falls short of them, so the row tells what a press does before it is pressed. Hidden at zero. */
-  const shortageMark = (id: GiveSwitchId, stock: () => number, forSoldiers: () => boolean) => {
-    const marks = element('span', 'on-asst-marks');
-    let shown = '';
-    return {
-      marks,
-      show: (shortage: AssistantShortage) => {
-        const lacking = forSoldiers() ? shortage.soldiersLacking : shortage.lacking;
-        const amount = stock();
-        const key = `${lacking}|${shortage.soldiersLacking}|${amount}`;
-        if (key === shown) return;
-        shown = key;
-        if (lacking === 0) {
-          marks.replaceChildren();
-          return;
-        }
-        const mark = element('span', `on-asst-mark is-${amount < lacking ? 'warn' : 'idle'}`, GLYPH.people);
-        mark.append(String(lacking));
-        const soldiers =
-          shortage.soldiersLacking > 0
-            ? ` ${formatMessage(pluralForm(shortage.soldiersLacking, copy.shortage.soldiers, locale), { count: shortage.soldiersLacking })}`
-            : '';
-        setTip(
-          mark,
-          `${formatMessage(copy.shortage.lacking, { count: shortage.lacking })}${soldiers}. ${formatMessage(copy.inStock, { count: amount })}. ${amount < lacking ? copy.shortage.short : copy.shortage.covered}`,
-        );
-        marks.replaceChildren(mark);
-      },
-    };
+  /** The sentence on the men a switch would still dress, with the soldiers among them and whether the
+   *  stock covers them; empty when nobody lacks it. */
+  const shortageText = (shortage: AssistantShortage, lacking: number, amount: number): string => {
+    if (lacking === 0) return '';
+    const soldiers =
+      shortage.soldiersLacking > 0
+        ? ` ${formatMessage(pluralForm(shortage.soldiersLacking, copy.shortage.soldiers, locale), { count: shortage.soldiersLacking })}`
+        : '';
+    const covered = amount < lacking ? copy.shortage.short : copy.shortage.covered;
+    return `${formatMessage(copy.shortage.lacking, { count: shortage.lacking })}${soldiers}. ${covered}`;
   };
-  /** A give row: the first good's icon, the stock of every good the switch grants, the men it would
-   *  still dress, and either an on/off switch or, for a drink and an amulet, the strip choosing who
-   *  receives it. */
+  /** A give row: the first good's icon with the stock of every good the switch grants and the men it
+   *  would still dress (the soldiers alone under that choice), and either an on/off switch or, for a
+   *  drink and an amulet, the strip choosing who receives it. */
   const giveRow = (id: GiveSwitchId): HTMLElement => {
     const goods = GIVE_SWITCH_GOODS[id];
-    const { art, count } = goodArt(goods[0], ROW_ICON_PX);
-    const stock = (): number => stockOfAll(goods);
+    const { art, count, lack } = goodArt(goods[0], ROW_ICON_PX);
     const audience = AUDIENCE_SWITCH_IDS.includes(id);
-    const lack = shortageMark(id, stock, () => audience && audienceNow(id) === 'soldiers');
-    const gear = audience ? audienceRow(id, art, lack.marks) : switchRow(id, art, lack.marks);
+    const gear = audience ? audienceRow(id, art) : switchRow(id, art);
     updates.push(() => {
-      showStock(count, stock(), gear.on());
-      lack.show(shortages[id]);
+      const shortage = shortages[id];
+      const lacking =
+        audience && audienceNow(id) === 'soldiers' ? shortage.soldiersLacking : shortage.lacking;
+      const amount = stockOfAll(goods);
+      showStock(count, amount, gear.on(), shortageText(shortage, lacking, amount));
+      write(lack, String(lacking));
+      setHidden(lack, lacking === 0);
     });
     return gear.row;
   };
-  const audienceRow = (
-    id: GiveSwitchId,
-    art: HTMLElement,
-    marks: HTMLElement,
-  ): { row: HTMLElement; on: () => boolean } => {
+  const audienceRow = (id: GiveSwitchId, art: HTMLElement): { row: HTMLElement; on: () => boolean } => {
     const row = element('div', 'on-asst-row on-asst-row--audience');
     const text = copy.switches[id];
     const strip = createSegmented(AUDIENCES, `${text.label}: ${copy.audience.label}`, (pick) =>
       pressAudience(id, pick),
     );
-    row.append(art, label(text.label, text.tip, marks), strip.element);
+    row.append(art, label(text.label, text.tip, element('span', 'on-asst-marks')), strip.element);
     // Dots under the section's audience words: the word and its meaning travel in the tooltip.
     const options = {
       none: { label: '', tooltip: `${copy.audience.none}. ${copy.audience.noneTip}`, enabled: writable },
