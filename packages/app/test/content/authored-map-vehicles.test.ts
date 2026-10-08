@@ -73,7 +73,11 @@ describe.runIf(hasRealIr() && existsSync(resolve(contentDir(), 'maps')))(
         for (const seat of seats) {
           expect(seat.inside).toBe(true);
           expect(sim.world.has(seat.entity, Position)).toBe(false); // aboard: off the map
-          expect(sim.world.get(seat.entity, Rider)).toEqual({ vehicle: ship, boarding: false, leaving: false });
+          expect(sim.world.get(seat.entity, Rider)).toEqual({
+            vehicle: ship,
+            boarding: false,
+            leaving: false,
+          });
         }
       },
       REAL_MAP_TIMEOUT_MS,

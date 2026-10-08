@@ -300,7 +300,7 @@ sails onto the map edge.
 
 Ships never attack. A ship spawns moored when a node on the hex ring of exactly radius
 `passengervector[1]` around it, walked in the dock scan's order below, lies on a land continent
-(type 1) with a non-negative size byte; the first node of that continent on the same walk is
+(type 1) with a non-negative size field; the first node of that continent on the same walk is
 its mooring point, and with none it spawns with no mooring point. Dock on a land point needs a commander;
 a moored ship boards its crew first and the order waits while anyone is outside; then it scans the hex ring of exactly radius
 `passengervector[1]` around the point, starting `passengervector[1]` steps north-west and turning

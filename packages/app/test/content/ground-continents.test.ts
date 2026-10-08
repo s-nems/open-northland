@@ -24,7 +24,7 @@ const STRAY_NODES = 5;
  *  numbers apart. */
 const STALE_CONTINENT_WELDS = 1;
 
-/** Building every graph of the ~125-map corpus takes tens of seconds; sized as a hang guard. */
+/** Building every graph of the 123-map corpus takes tens of seconds; sized as a hang guard. */
 const CORPUS_TIMEOUT_MS = 600_000;
 
 function mapsDir(): string {
