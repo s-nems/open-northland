@@ -17,9 +17,10 @@ import {
 } from '../src/index.js';
 
 /**
- * The music's mood: a blow on the local player starts the attack hold, a run of blows latches a
- * battle that turns tense fast and calms slowly, and the head-count moves a mission in and out of
- * Wealthy. Every latch is hysteretic, so a figure sitting on a line cannot flip the music.
+ * The music's mood: a run of blows between us and another player latches a battle that turns tense
+ * fast and calms slowly, the attack hold sustains a battle but never starts one, and the head-count
+ * moves a mission in and out of Wealthy. Every latch is hysteretic, so a figure sitting on a line
+ * cannot flip the music.
  */
 
 const THEME_VIKING = 2;
@@ -30,29 +31,46 @@ const MISSION_MIDGARD1 = 20;
 
 const US = 1;
 const THEM = 2;
+const OUR_SETTLER = 10;
+const THEIR_SETTLER = 20;
+const DEER = 30;
 const START_TICK = 100;
 const entity = (id: number): Entity => id as Entity;
 
-/** Two combatants, one ours and one theirs, at whatever tick the case needs. */
+/** Two combatants, one ours and one theirs, and an unowned deer, at whatever tick the case needs. */
 function snapshotAt(tick: number): WorldSnapshot {
   return {
     tick,
     entities: [
-      { id: 10, components: { Owner: { player: US } } },
-      { id: 20, components: { Owner: { player: THEM } } },
+      { id: OUR_SETTLER, components: { Owner: { player: US } } },
+      { id: THEIR_SETTLER, components: { Owner: { player: THEM } } },
+      { id: DEER, components: {} },
     ],
     events: [],
   };
 }
 
-const hitOn = (target: number): SimEvent => ({
+/** A melee blow on `target`, struck by `attackerPlayer`'s side. */
+const hitOn = (target: number, attackerPlayer = THEM): SimEvent => ({
   kind: 'combatHit',
   damage: 250,
   targetMaxHealth: 1000,
   attacker: entity(99),
+  attackerPlayer,
   target: entity(target),
   at: { hx: 0, hy: 0 },
 });
+
+/** A wolf's bite on `target`: a blow from nobody's side. */
+const biteOn = (target: number): SimEvent => ({
+  kind: 'combatHit',
+  attacker: entity(98),
+  target: entity(target),
+  at: { hx: 0, hy: 0 },
+});
+
+const blows = (count: number, blow: () => SimEvent = () => hitOn(OUR_SETTLER)): SimEvent[] =>
+  Array.from({ length: count }, blow);
 
 const moodAfter = (
   previous: MusicMoodState,
@@ -74,66 +92,112 @@ const variants = (code: number) => {
 };
 
 describe('music intensity', () => {
-  it('holds tense for the attack hold after a lone blow, then calms', () => {
-    const mood = moodAfter(CALM_MOOD, [hitOn(10)]);
+  it('stays calm on a wolf’s bites, however many', () => {
+    const MANY = 10;
+    const mood = moodAfter(
+      CALM_MOOD,
+      blows(MANY, () => biteOn(OUR_SETTLER)),
+    );
     expect(mood.battle).toBe(false);
-    expect(musicIntensity(mood, START_TICK)).toBe('tense');
-    expect(musicIntensity(mood, START_TICK + ATTACK_HOLD_TICKS - 1)).toBe('tense');
-    expect(musicIntensity(mood, START_TICK + ATTACK_HOLD_TICKS)).toBe('calm');
+    expect(mood.threat).toBe(0);
+    expect(musicIntensity(mood)).toBe('calm');
   });
 
-  it('restarts the attack hold on every new blow', () => {
-    const first = moodAfter(CALM_MOOD, [hitOn(10)]);
-    const later = START_TICK + ATTACK_HOLD_TICKS - 1;
-    const second = moodAfter(first, [hitOn(10)], 0, later);
-    expect(second.attackUntilTick).toBe(later + ATTACK_HOLD_TICKS);
+  it('stays calm on a lone blow from another player, which only starts the attack hold', () => {
+    const mood = moodAfter(CALM_MOOD, [hitOn(OUR_SETTLER)]);
+    expect(mood.attackUntilTick).toBe(START_TICK + ATTACK_HOLD_TICKS);
+    expect(musicIntensity(mood)).toBe('calm');
   });
 
-  it('latches a battle on a run of blows and keeps a big one tense well past the attack hold', () => {
+  it('latches a battle on a run of blows from another player', () => {
+    expect(musicIntensity(moodAfter(CALM_MOOD, blows(TENSE_ENTER_THREAT - 1)))).toBe('calm');
+    expect(musicIntensity(moodAfter(CALM_MOOD, blows(TENSE_ENTER_THREAT)))).toBe('tense');
+  });
+
+  it('counts blows we land on another player, but not a hunter’s shot at game or a stray shot', () => {
+    const ours = moodAfter(
+      CALM_MOOD,
+      blows(TENSE_ENTER_THREAT, () => hitOn(THEIR_SETTLER, US)),
+    );
+    expect(ours.battle).toBe(true);
+    const shot = (target: number, collateral: boolean): SimEvent => ({
+      kind: 'projectileHit',
+      projectile: entity(98),
+      shooter: entity(97),
+      shooterPlayer: US,
+      ...(collateral ? { collateral: true } : {}),
+      target: entity(target),
+      munitionType: 1,
+      at: { hx: 0, hy: 0 },
+    });
+    const hunt = moodAfter(
+      CALM_MOOD,
+      blows(TENSE_ENTER_THREAT, () => shot(DEER, false)),
+    );
+    expect(hunt.threat).toBe(0);
+    const stray = moodAfter(
+      CALM_MOOD,
+      blows(TENSE_ENTER_THREAT, () => shot(THEIR_SETTLER, true)),
+    );
+    expect(stray.threat).toBe(0);
+  });
+
+  it('sustains a battle through the attack hold after its threat decays', () => {
+    const battle = moodAfter(CALM_MOOD, blows(TENSE_ENTER_THREAT));
+    // A late blow restarts the hold; long after it the threat sits under the exit line.
+    const lateTick = START_TICK + THREAT_HALF_LIFE_TICKS * 4;
+    const late = moodAfter(battle, [hitOn(OUR_SETTLER)], 0, lateTick);
+    const quietTick = lateTick + ATTACK_HOLD_TICKS - 1;
+    const held = moodAfter(late, [], 0, quietTick);
+    expect(held.threat).toBeLessThan(TENSE_EXIT_THREAT);
+    expect(musicIntensity(held)).toBe('tense');
+    expect(musicIntensity(moodAfter(held, [], 0, lateTick + ATTACK_HOLD_TICKS))).toBe('calm');
+  });
+
+  it('keeps a big battle tense well past the attack hold', () => {
     const BIG_FIGHT_BLOWS = 20;
-    const blows = Array.from({ length: BIG_FIGHT_BLOWS }, () => hitOn(10));
-    const battle = moodAfter(CALM_MOOD, blows);
-    expect(battle.battle).toBe(true);
+    const battle = moodAfter(CALM_MOOD, blows(BIG_FIGHT_BLOWS));
     // One half-life after the hold ran out the threat is still above the exit line.
     const after = moodAfter(battle, [], 0, START_TICK + ATTACK_HOLD_TICKS + THREAT_HALF_LIFE_TICKS);
-    expect(after.battle).toBe(true);
-    expect(musicIntensity(after, START_TICK + ATTACK_HOLD_TICKS + THREAT_HALF_LIFE_TICKS)).toBe('tense');
+    expect(musicIntensity(after)).toBe('tense');
   });
 
-  it('calms a battle only once its threat decays below the exit line', () => {
-    const blows = Array.from({ length: TENSE_ENTER_THREAT }, () => hitOn(10));
-    const battle = moodAfter(CALM_MOOD, blows);
+  it('calms a battle once its threat decays below the exit line and the hold has run out', () => {
+    const battle = moodAfter(CALM_MOOD, blows(TENSE_ENTER_THREAT));
     const halvings = Math.ceil(Math.log2(TENSE_ENTER_THREAT / TENSE_EXIT_THREAT));
     const justAbove = moodAfter(battle, [], 0, START_TICK + (halvings - 1) * THREAT_HALF_LIFE_TICKS);
     expect(justAbove.battle).toBe(true);
-    const calmTick = START_TICK + halvings * THREAT_HALF_LIFE_TICKS;
-    const calmed = moodAfter(justAbove, [], 0, calmTick);
-    expect(calmed.battle).toBe(false);
-    expect(musicIntensity(calmed, calmTick)).toBe('calm');
+    const calmed = moodAfter(justAbove, [], 0, START_TICK + halvings * THREAT_HALF_LIFE_TICKS);
+    expect(musicIntensity(calmed)).toBe('calm');
   });
 
   it('does not re-enter a battle on a blow while the threat sits between the two lines', () => {
     const below = { ...CALM_MOOD, threat: TENSE_EXIT_THREAT, threatTick: START_TICK };
-    const nudged = moodAfter(below, [hitOn(10)]);
+    const nudged = moodAfter(below, [hitOn(OUR_SETTLER)]);
     expect(nudged.threat).toBeLessThan(TENSE_ENTER_THREAT);
     expect(nudged.battle).toBe(false);
   });
 
-  it('ignores a blow we land on someone else, and their alarm', () => {
-    expect(moodAfter(CALM_MOOD, [hitOn(20)]).attackUntilTick).toBe(0);
-    const theirAlarm: SimEvent = { kind: 'defenceAlarmRaised', entity: entity(20), player: THEM };
-    expect(moodAfter(CALM_MOOD, [theirAlarm]).attackUntilTick).toBe(0);
-    const ourAlarm: SimEvent = { kind: 'defenceAlarmRaised', entity: entity(10), player: US };
-    expect(moodAfter(CALM_MOOD, [ourAlarm]).attackUntilTick).toBe(START_TICK + ATTACK_HOLD_TICKS);
+  it('ignores a fight between two other players and a raised alarm', () => {
+    const THIRD = 3;
+    expect(
+      moodAfter(
+        CALM_MOOD,
+        blows(TENSE_ENTER_THREAT, () => hitOn(THEIR_SETTLER, THIRD)),
+      ).threat,
+    ).toBe(0);
+    const ourAlarm: SimEvent = { kind: 'defenceAlarmRaised', entity: entity(OUR_SETTLER), player: US };
+    expect(moodAfter(CALM_MOOD, [ourAlarm]).attackUntilTick).toBe(0);
   });
 
   it('reads no event as aimed at us when the frame names no local player', () => {
     const mood = nextMusicMood(CALM_MOOD, {
-      events: [hitOn(10)],
+      events: blows(TENSE_ENTER_THREAT),
       snapshot: snapshotAt(START_TICK),
       standing: { population: 0, stance: 'neutral' },
     });
     expect(mood.attackUntilTick).toBe(0);
+    expect(mood.battle).toBe(false);
   });
 });
 

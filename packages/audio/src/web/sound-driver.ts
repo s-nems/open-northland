@@ -326,7 +326,7 @@ export class SoundDriver {
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
     });
     const transition = playlist.update({
-      intensity: musicIntensity(this.mood, input.snapshot.tick),
+      intensity: musicIntensity(this.mood),
       stance: standing.stance,
       wealthy: this.mood.wealthy,
     });

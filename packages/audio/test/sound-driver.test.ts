@@ -3,7 +3,7 @@ import { type Camera, tileToScreen } from '@open-northland/render/data';
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { SoundIndex } from '../src/index.js';
-import { defaultBindings, SELECT_COOLDOWN_S, SoundDriver } from '../src/index.js';
+import { defaultBindings, SELECT_COOLDOWN_S, SoundDriver, TENSE_ENTER_THREAT } from '../src/index.js';
 import { FakeContext, type FakeSource, flush } from './helpers/fake-audio.js';
 import { musicTrack } from './helpers/music-manifest.js';
 
@@ -241,7 +241,7 @@ describe('SoundDriver', () => {
     expect(fetched).toEqual(['/sounds/generic/m 01.wav']);
   });
 
-  it('plays the map music, then hands over to its Danger variant once we are struck', async () => {
+  it('plays the map music, then hands over to its Danger variant once another player strikes us', async () => {
     const MISSION_ARABS1 = 17;
     const { driver, fetched } = makeDriver();
     await driver.resume();
@@ -275,16 +275,16 @@ describe('SoundDriver', () => {
     await flush();
     expect(fetched).toHaveLength(1);
 
-    const struck: readonly SimEvent[] = [
-      {
-        kind: 'combatHit',
-        damage: 250,
-        targetMaxHealth: 1000,
-        attacker: 9 as Entity,
-        target: 7 as Entity,
-        at: { hx: 5, hy: 5 },
-      },
-    ];
+    const ENEMY = 2;
+    const struck: readonly SimEvent[] = Array.from({ length: TENSE_ENTER_THREAT }, () => ({
+      kind: 'combatHit',
+      damage: 250,
+      targetMaxHealth: 1000,
+      attacker: 9 as Entity,
+      attackerPlayer: ENEMY,
+      target: 7 as Entity,
+      at: { hx: 5, hy: 5 },
+    }));
     driver.update({ ...ours, events: struck });
     await flush();
     expect(fetched).toEqual(['/music/mission_arabs1_standard.ogg', '/music/mission_arabs1_danger.ogg']);

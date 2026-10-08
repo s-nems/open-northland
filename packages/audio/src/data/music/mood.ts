@@ -1,5 +1,6 @@
 import {
   type DiplomacyState,
+  type Entity,
   entityById,
   type SimEvent,
   TICKS_PER_SECOND,
@@ -10,26 +11,29 @@ import type { MusicVariants, ThemeMood } from './catalog.js';
 import type { MusicIntensity } from './pools.js';
 
 /**
- * Whether the map's music should be calm or tense, and which of its own stems fits the standing. The
- * attack hold follows the original; the threat latch and the wealthy head-count stand in for the
- * original's happiness score, which the snapshot does not expose. The segment names and the variant
- * sets they switch between are not approximations.
+ * Whether the map's music should be calm or tense, and which of its own stems fits the standing.
+ * Original behavior: a blow between the local player and another player, either way round, switches
+ * to attack music and holds it {@link ATTACK_HOLD_TICKS}, each new blow extending the hold. Here a
+ * lone blow does not cut the score in: the music turns tense only once a run of blows latches a battle,
+ * and the original's hold then keeps an already tense score from calming. The latch and the wealthy
+ * head-count are authored, standing in for the original's happiness score, which the snapshot does
+ * not expose. The segment names and the variant sets they switch between are not approximations.
  */
 
-/** How long a blow on the local player holds the tense music, each new blow restarting it. Original
- *  behavior: the attack override holds 120 ticks at 12 per second, about 10 s. */
+/** How long a blow holds a battle's music tense, each new blow restarting it. Original behavior: the
+ *  attack override holds 120 ticks at 12 per second, about 10 s. */
 export const ATTACK_HOLD_TICKS = 10 * TICKS_PER_SECOND;
 
 /** Ticks for the threat of past blows to halve. Approximation, tune by ear. */
 export const THREAT_HALF_LIFE_TICKS = 5 * TICKS_PER_SECOND;
 
-/** Threat, counted in recent blows on the local player, that turns a skirmish into a battle. A lone
- *  blow only starts the attack hold; this many close together latch the music tense. Approximation. */
+/** Threat, counted in recent blows between the local player and another player, that turns a skirmish
+ *  into a battle and the music tense. A lone blow does nothing audible. Approximation. */
 export const TENSE_ENTER_THREAT = 3;
 
-/** Threat a battle must decay below before the music may calm again. Far under the entry line, so
- *  the music turns tense fast and calms slowly: a 30-blow fight stays tense about 30 s after its last
- *  blow. Approximation. */
+/** Threat a battle must decay below, with the attack hold run out, before the music may calm again.
+ *  Far under the entry line, so the music turns tense fast and calms slowly: a 30-blow fight stays
+ *  tense about 30 s after its last blow. Approximation. */
 export const TENSE_EXIT_THREAT = 0.5;
 
 /** Settlers the local player must own before a mission plays its Wealthy variant. Approximation: the
@@ -57,12 +61,13 @@ export interface MusicStanding {
 
 /** What the mood carries between frames, every latch held so a figure crossing a line cannot flap. */
 export interface MusicMoodState {
-  /** The tick the attack hold runs out at. */
+  /** The tick the attack hold runs out at; it only sustains a battle already latched. */
   readonly attackUntilTick: number;
-  /** Recent blows on the local player, decayed to {@link threatTick}. */
+  /** Recent blows between the local player and another, decayed to {@link threatTick}. */
   readonly threat: number;
   readonly threatTick: number;
-  /** Latched between {@link TENSE_ENTER_THREAT} and {@link TENSE_EXIT_THREAT}. */
+  /** Latched at {@link TENSE_ENTER_THREAT}, held until the threat falls under {@link TENSE_EXIT_THREAT}
+   *  and the attack hold runs out. */
   readonly battle: boolean;
   readonly wealthy: boolean;
 }
@@ -86,23 +91,30 @@ export interface MusicMoodInput {
 }
 
 /**
- * How many of this frame's events show the local player being fought: its own defence alarm, or a
- * blow landing on one of its bodies or buildings. A fight it carries to someone else does not count.
+ * How many of this frame's blows landed between the local player and another player, either way round.
+ * A beast's bite, a hunter's shot at game and a stray shot on a side not at war have no player at one
+ * end, or none at war, and do not count.
  */
-function blowsOnUs({ events, snapshot, localPlayer }: MusicMoodInput): number {
+function playerBlows({ events, snapshot, localPlayer }: MusicMoodInput): number {
   if (localPlayer === undefined) return 0;
+  const ownerOfTarget = (target: Entity): number | undefined => {
+    const found = entityById(snapshot, target);
+    return found === undefined ? undefined : entityOwner(found.components);
+  };
   let blows = 0;
   for (const event of events) {
     switch (event.kind) {
-      case 'defenceAlarmRaised':
-        if (event.player === localPlayer) blows++;
-        break;
       case 'combatHit':
-      case 'projectileHit': {
-        const target = entityById(snapshot, event.target);
-        if (target !== undefined && entityOwner(target.components) === localPlayer) blows++;
+        if (involves(localPlayer, event.attackerPlayer, ownerOfTarget(event.target))) blows++;
         break;
-      }
+      case 'projectileHit':
+        if (
+          event.collateral !== true &&
+          involves(localPlayer, event.shooterPlayer, ownerOfTarget(event.target))
+        ) {
+          blows++;
+        }
+        break;
       default:
         break;
     }
@@ -110,26 +122,36 @@ function blowsOnUs({ events, snapshot, localPlayer }: MusicMoodInput): number {
   return blows;
 }
 
+/** Whether a blow from `attacker`'s side on `victim`'s is one between `local` and another player. */
+function involves(local: number, attacker: number | undefined, victim: number | undefined): boolean {
+  if (attacker === undefined || victim === undefined || attacker === victim) return false;
+  return attacker === local || victim === local;
+}
+
 /** Advance every latch: a blow restarts the attack hold and adds to the decaying threat, the threat
- *  moves in and out of battle at its two lines, and the head-count in and out of wealthy at its two. */
+ *  latches a battle at its entry line, the battle holds while the threat stays over its exit line or
+ *  the attack hold runs, and the head-count moves in and out of wealthy at its two lines. */
 export function nextMusicMood(previous: MusicMoodState, input: MusicMoodInput): MusicMoodState {
   const { tick } = input.snapshot;
-  const blows = blowsOnUs(input);
+  const blows = playerBlows(input);
   const elapsed = Math.max(0, tick - previous.threatTick);
   const threat = previous.threat * 0.5 ** (elapsed / THREAT_HALF_LIFE_TICKS) + blows;
+  const attackUntilTick = blows > 0 ? tick + ATTACK_HOLD_TICKS : previous.attackUntilTick;
   const { population } = input.standing;
   return {
-    attackUntilTick: blows > 0 ? tick + ATTACK_HOLD_TICKS : previous.attackUntilTick,
+    attackUntilTick,
     threat,
     threatTick: tick,
-    battle: previous.battle ? threat >= TENSE_EXIT_THREAT : threat >= TENSE_ENTER_THREAT,
+    battle: previous.battle
+      ? threat >= TENSE_EXIT_THREAT || tick < attackUntilTick
+      : threat >= TENSE_ENTER_THREAT,
     wealthy: previous.wealthy ? population > WEALTHY_POPULATION_DROP : population >= WEALTHY_POPULATION,
   };
 }
 
-/** Tense while the attack hold runs or a battle is latched. */
-export function musicIntensity(mood: MusicMoodState, tick: number): MusicIntensity {
-  return mood.battle || tick < mood.attackUntilTick ? 'tense' : 'calm';
+/** Tense while a battle is latched. */
+export function musicIntensity(mood: MusicMoodState): MusicIntensity {
+  return mood.battle ? 'tense' : 'calm';
 }
 
 /** The stem a map code authored for a calm stretch in this standing. */
