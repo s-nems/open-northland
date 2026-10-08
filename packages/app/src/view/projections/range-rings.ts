@@ -4,6 +4,7 @@ import { components, entityById, nodeOfPosition, systems, type WorldSnapshot } f
 import {
   buildingTribeOf,
   buildingTypeOf,
+  isBuilding,
   positionOf,
   type SnapshotEntity,
   settlerJobType,
@@ -12,12 +13,13 @@ import {
 } from '../../game/snapshot.js';
 
 /**
- * The range circle `e` shows: the ground a worker looks for work in, or the ground a defence-mode building
- * shoots over. Undefined for everything else, an employed gatherer included: it roams for the nearest node
- * anywhere. A fisher's circle is where he looks for a shore; he still casts at fish further out in the water.
+ * The range circle `e` shows: the ground a worker looks for work in, or the ground a building would shoot
+ * over in defence mode, raised or not. Undefined for everything else, an employed gatherer included: it
+ * roams for the nearest node anywhere. A fisher's circle is where he looks for a shore; he still casts at
+ * fish further out in the water.
  */
 export function rangeRingOf(content: ContentSet, e: SnapshotEntity): RangeRing | undefined {
-  if (e.components.DefenceMode !== undefined) return defenceRing(content, e);
+  if (isBuilding(e)) return defenceRing(content, e);
   const job = settlerJobType(e);
   if (job === undefined) return undefined;
   const fisher = systems.isFisherJob(content, job);

@@ -45,6 +45,23 @@ const sheet: SpriteSheet = {
 };
 
 describe('PlacementGhostLayer', () => {
+  it("draws a held building's defence range on the ground under its anchor, and drops it with the ghost", () => {
+    const layer = new PlacementGhostLayer(sheet, new TextureCache());
+    layer.set({ kind: 'building', col: 4, row: 6, buildingType: HOUSE_TYPE, tribe: VIKING }, FLAT);
+    expect(layer.rangeContainer.visible).toBe(false);
+
+    layer.set(
+      { kind: 'building', col: 4, row: 6, buildingType: HOUSE_TYPE, tribe: VIKING, defenceRangeNodes: 10 },
+      FLAT,
+    );
+    expect(layer.rangeContainer.visible).toBe(true);
+    expect([layer.rangeContainer.x, layer.rangeContainer.y]).toEqual([layer.container.x, layer.container.y]);
+    expect(layer.rangeContainer.children).toHaveLength(1);
+
+    layer.set(null, FLAT);
+    expect(layer.rangeContainer.visible).toBe(false);
+  });
+
   it('mints the building body sprite at its resolved layer offset and scale', () => {
     const layer = new PlacementGhostLayer(sheet, new TextureCache());
     layer.set({ kind: 'building', col: 4, row: 6, buildingType: HOUSE_TYPE, tribe: VIKING }, FLAT);

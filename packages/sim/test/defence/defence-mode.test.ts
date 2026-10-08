@@ -692,7 +692,8 @@ describe('shelterFireRadius', () => {
     expect(shelterFireRadius(content, HALL, VIKING, HX, HY)).toBe(HOUSE_BOW_RANGE + HALL_HALF_LENGTH_NODES);
   });
 
-  it('is undefined for a tribe that fires no house bow', () => {
+  it('is undefined for a type with no defence mode and for a tribe that fires no house bow', () => {
+    expect(shelterFireRadius(defenceContent(), HUT, VIKING, HX, HY)).toBeUndefined();
     expect(shelterFireRadius(defenceContent(), TOWER, NO_BOW_TRIBE, HX, HY)).toBeUndefined();
   });
 });

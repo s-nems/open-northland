@@ -16,6 +16,7 @@ import { resolveLayers } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
 import { mintLayerSprite } from './layer-sprite.js';
+import { mintRangeRing } from './range-ring.js';
 
 /**
  * The placement cursor ghost - the held building's, signpost's or work flag's own sprite, translucent,
@@ -34,6 +35,9 @@ export type PlacementGhost =
       /** The civilization raising it, so the cursor previews the body the placement will actually put
        *  down rather than the base tribe's. */
       readonly tribe: number;
+      /** How far the building would shoot in defence mode from this anchor, in half-cell nodes; absent for
+       *  a type with no defence mode. */
+      readonly defenceRangeNodes?: number;
     }
   | { readonly kind: 'signpost'; readonly col: number; readonly row: number; readonly player: number }
   | {
@@ -162,6 +166,9 @@ function sameShifts(a: readonly number[], b: readonly number[]): boolean {
 
 export class PlacementGhostLayer {
   readonly container = new Container();
+  /** The held building's defence range on the ground, mounted under the sprites apart from the ghost. */
+  readonly rangeContainer = new Container();
+  private rangeRing: { g: Graphics; radiusNodes: number } | null = null;
   private builtForKey: string | null = null;
   /** The line plan and wall layout the memoized `lineShifts` were worked out for. The app hands a new
    *  node list every frame, so the plan compares by value. */
@@ -185,6 +192,7 @@ export class PlacementGhostLayer {
 
   /** `walls` is the scene's palisade layout, which a line plan staggers with. */
   set(ghost: PlacementGhost | null, elevation: ElevationField, walls?: PalisadeLayout): void {
+    this.setRange(ghost, elevation);
     if (ghost === null) {
       this.container.visible = false;
       return;
@@ -238,6 +246,23 @@ export class PlacementGhostLayer {
     // stands on the walls it replaces, so it reads over them instead.
     this.container.zIndex = ghost.kind === 'gate' ? Number.MAX_SAFE_INTEGER : depthKey(p.x, p.y);
     this.container.visible = true;
+  }
+
+  private setRange(ghost: PlacementGhost | null, elevation: ElevationField): void {
+    const radiusNodes = ghost?.kind === 'building' ? ghost.defenceRangeNodes : undefined;
+    if (ghost?.kind !== 'building' || radiusNodes === undefined) {
+      this.rangeContainer.visible = false;
+      return;
+    }
+    if (this.rangeRing?.radiusNodes !== radiusNodes) {
+      this.rangeRing?.g.destroy();
+      const g = mintRangeRing(radiusNodes, 'defence');
+      this.rangeContainer.addChild(g);
+      this.rangeRing = { g, radiusNodes };
+    }
+    const p = halfCellToScreen(ghost.col, ghost.row);
+    this.rangeContainer.position.set(p.x, p.y - terrainLiftAtNode(elevation, ghost.col, ghost.row));
+    this.rangeContainer.visible = true;
   }
 
   private rebuildLine(
@@ -363,5 +388,7 @@ export class PlacementGhostLayer {
 
   destroy(): void {
     this.container.destroy({ children: true });
+    this.rangeContainer.destroy({ children: true });
+    this.rangeRing = null;
   }
 }

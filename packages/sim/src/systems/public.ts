@@ -41,7 +41,7 @@ export {
 export { REST_CLEARANCE_NODES } from './conflict/battle-alert.js';
 export { FLEE_STEP_NODES } from './conflict/flee.js';
 export { ALARM_SOLDIER_RADIUS_NODES } from './conflict/hit-alarm.js';
-// The ground a defence-mode building covers, drawn when it is selected.
+// The ground a defence-capable building covers, drawn when it is selected or placed.
 export { shelterFireRadius } from './conflict/shelter-fire.js';
 export { ANIMAL_AGGRO_RADIUS_NODES, SIGHT_RADIUS_NODES } from './conflict/targeting.js';
 export { BERRY_REGROW_TICKS, BERRY_STAGE_TICKS, createBerryBush } from './economy/berries.js';

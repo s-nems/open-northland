@@ -1129,6 +1129,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       settlerBubblesFor,
       lifeHeartsFor,
       canPlaceAt,
+      defenceRangeAt: (typeId, tribe, col, row) =>
+        systems.shelterFireRadius(host.content, typeId, tribe, col, row),
       canPlaceSignpostAt,
       soundDriver,
       presentation,

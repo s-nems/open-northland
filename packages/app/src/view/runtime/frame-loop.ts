@@ -97,6 +97,8 @@ export interface FrameLoopDeps {
   /** Memoized by snapshot identity, the screen and the selection version, and fog-filtered. */
   readonly lifeHeartsFor: (snap: WorldSnapshot, viewport?: Viewport) => ReturnType<typeof computeLifeHearts>;
   readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
+  /** The held building's defence range at a node, drawn around its ghost. */
+  readonly defenceRangeAt: (typeId: number, tribe: number, col: number, row: number) => number | undefined;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly soundDriver: ReturnType<typeof createSoundDriver> | null;
   /** The map script's display: its camera jitter for the frame, and its overlays after the draw. */
@@ -150,6 +152,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     settlerBubblesFor,
     lifeHeartsFor,
     canPlaceAt,
+    defenceRangeAt,
     canPlaceSignpostAt,
     soundDriver,
     presentation,
@@ -286,6 +289,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       dockOverlay,
       tileAt: () => (pointer === null ? null : toolPanel.clientToTile(pointer.clientX, pointer.clientY)),
       canPlaceAt,
+      defenceRangeAt,
       canPlaceSignpostAt,
       palisadePreview: (tile) => toolPanel.controller.palisadePreview(tile),
       roadPreview: (tile) => toolPanel.controller.roadPreview(tile),

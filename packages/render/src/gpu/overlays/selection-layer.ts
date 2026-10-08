@@ -6,6 +6,7 @@ import type { ElevationField } from '../../data/terrain/index.js';
 import { DEFAULT_SELECTION_STYLE, type SelectionStyle } from '../selection-style.js';
 import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
 import { feetAnchor } from './entity-anchor.js';
+import { mintRangeRing, RANGE_RING_KINDS, type RangeRing, type RangeRingKind } from './range-ring.js';
 import { retireUndrawn } from './retained-pool.js';
 import { drawUnitSelectionRing } from './unit-selection-ring.js';
 
@@ -30,31 +31,9 @@ const MIN_BUILDING_RX = 28;
 const ISO_RATIO = TILE_HALF_H / (2 * TILE_HALF_W);
 /** Neutral selection colour for unowned objects and the white-ring option. */
 const RING_COLOR = 0xf2e8c9;
-const FLAG_RING_COLOR = 0xffc020;
-/** A range circle is barely filled, so the ground under it still reads: amber for where a worker works,
- *  red for where a defence-mode building shoots. */
-const RANGE_RING_COLOR: Readonly<Record<RangeRingKind, number>> = {
-  work: FLAG_RING_COLOR,
-  defence: 0xe03a2a,
-};
-const RANGE_RING_WIDTH = 2;
-const RANGE_RING_ALPHA = 0.7;
-const RANGE_RING_FILL_ALPHA = 0.05;
-/** World px one half-cell node spans east-west, the unit a range radius is carried in. */
-const NODE_WIDTH_PX = TILE_HALF_W;
 
 const NO_IDS: ReadonlySet<number> = new Set();
 const NO_RANGES: readonly RangeRing[] = [];
-
-const RANGE_RING_KINDS = ['work', 'defence'] as const;
-export type RangeRingKind = (typeof RANGE_RING_KINDS)[number];
-
-/** One range circle: the entity it centres on, its radius in half-cell nodes and what the range is of. */
-export interface RangeRing {
-  readonly entity: number;
-  readonly radiusNodes: number;
-  readonly kind: RangeRingKind;
-}
 
 /** One ring's half-extents and centre offset in feet-local world pixels. */
 interface RingSpec {
@@ -129,12 +108,7 @@ export class SelectionLayer {
       let held = pool.get(range.entity);
       if (held === undefined || held.radiusNodes !== range.radiusNodes) {
         held?.g.destroy();
-        const rx = range.radiusNodes * NODE_WIDTH_PX;
-        const color = RANGE_RING_COLOR[range.kind];
-        const g = new Graphics();
-        g.ellipse(0, 0, rx, rx * ISO_RATIO)
-          .fill({ color, alpha: RANGE_RING_FILL_ALPHA })
-          .stroke({ width: RANGE_RING_WIDTH, color, alpha: RANGE_RING_ALPHA });
+        const g = mintRangeRing(range.radiusNodes, range.kind);
         this.container.addChild(g);
         held = { g, radiusNodes: range.radiusNodes };
         pool.set(range.entity, held);

@@ -6,7 +6,7 @@ import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { shelterOccupancy, shelterStillHolds } from '../defence/index.js';
 import { buildingFootprintOf } from '../footprint/geometry.js';
-import { houseBow, isAreaWeapon, isFighterJob } from '../readviews/index.js';
+import { houseBow, isAreaWeapon, isFighterJob, shelterCapacityOf } from '../readviews/index.js';
 import { type LooseShot, looseProjectile } from '../settlers/atomics/effects/combat/index.js';
 import { hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
@@ -78,9 +78,10 @@ function fires(bow: WeaponType | undefined): bow is FiringBow {
 }
 
 /**
- * How far in map points from its anchor node (`hx`, `hy`) a defence-mode building of `buildingType` can
- * land a shot: the house bow's reach past its farthest wall cell. Fire measures from the nearest wall, so
- * this is the outer bound of the ground the building covers. Undefined when `tribe` fires no house bow.
+ * How far in map points from its anchor node (`hx`, `hy`) a building of `buildingType` can land a shot in
+ * defence mode: the house bow's reach past its farthest wall cell. Fire measures from the nearest wall, so
+ * this is the outer bound of the ground the building covers. Undefined for a type with no defence mode and
+ * when `tribe` fires no house bow.
  */
 export function shelterFireRadius(
   content: ContentSet,
@@ -90,7 +91,7 @@ export function shelterFireRadius(
   hy: number,
 ): number | undefined {
   const bow = houseBow(content, tribe);
-  if (!fires(bow)) return undefined;
+  if (shelterCapacityOf(content, buildingType) === 0 || !fires(bow)) return undefined;
   let wallReach = 0;
   for (const cell of buildingFootprintOf(content, buildingType, tribe)?.blocked ?? []) {
     wallReach = Math.max(wallReach, hexDistanceBetween(hx, hy, hx + footprintCellDx(hy, cell), hy + cell.dy));

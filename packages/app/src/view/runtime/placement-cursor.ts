@@ -29,6 +29,8 @@ export interface PlacementCursorInput {
   /** The tile under the cursor, or null off the map or off the canvas. */
   readonly tileAt: () => { readonly col: number; readonly row: number } | null;
   readonly canPlaceAt: (typeId: number, tribe: number, col: number, row: number, paper?: Paper) => boolean;
+  /** How far a held building would shoot in defence mode from a node, undefined for a type without one. */
+  readonly defenceRangeAt?: (typeId: number, tribe: number, col: number, row: number) => number | undefined;
   readonly canPlaceSignpostAt: (col: number, row: number) => boolean;
   readonly palisadePreview?: (tile: {
     readonly col: number;
@@ -98,9 +100,18 @@ export function placementCursor(input: PlacementCursorInput): PlacementCursor {
   if (tile === null) return { overlay, ghost: null };
   if (building !== null) {
     const { typeId, tribe, paper } = building;
-    return input.canPlaceAt(typeId, tribe, tile.col, tile.row, paper ?? undefined)
-      ? { overlay, ghost: { kind: 'building', col: tile.col, row: tile.row, buildingType: typeId, tribe } }
-      : { overlay, ghost: null };
+    if (!input.canPlaceAt(typeId, tribe, tile.col, tile.row, paper ?? undefined))
+      return { overlay, ghost: null };
+    const defenceRangeNodes = input.defenceRangeAt?.(typeId, tribe, tile.col, tile.row);
+    const ghost: PlacementGhost = {
+      kind: 'building',
+      col: tile.col,
+      row: tile.row,
+      buildingType: typeId,
+      tribe,
+      ...(defenceRangeNodes === undefined ? {} : { defenceRangeNodes }),
+    };
+    return { overlay, ghost };
   }
   return input.canPlaceSignpostAt(tile.col, tile.row)
     ? { overlay, ghost: { kind: 'signpost', col: tile.col, row: tile.row, player: input.localPlayer } }

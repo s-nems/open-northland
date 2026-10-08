@@ -167,6 +167,7 @@ export class WorldRenderer {
       fog: this.fog.container,
       constructionPlots: this.constructionPlots.container,
       placementWash: this.placementOverlay.container,
+      placementRange: this.placementGhost.rangeContainer,
       sprites: this.spriteLayer,
       ...this.marks.slots,
     });

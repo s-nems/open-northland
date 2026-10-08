@@ -99,6 +99,21 @@ describe('placement cursor', () => {
     });
   });
 
+  it("rings the held building's ghost with its defence range at the hovered node", () => {
+    const RANGE = 31;
+    const asks: Array<readonly [number, number, number, number]> = [];
+    const f = frame({
+      building: HELD,
+      defenceRangeAt: (type, tribe, col, row) => {
+        asks.push([type, tribe, col, row]);
+        return RANGE;
+      },
+    });
+
+    expect(f.cursor().ghost).toMatchObject({ kind: 'building', defenceRangeNodes: RANGE });
+    expect(asks).toEqual([[HOUSE, SARACEN, TILE.col, TILE.row]]);
+  });
+
   it('keeps the wash but hides the ghost over rejecting ground', () => {
     const f = frame({ building: HELD, canPlaceAt: () => false });
 

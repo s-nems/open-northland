@@ -50,6 +50,7 @@ const SLOTS = [
   'fog',
   'constructionPlots',
   'placementWash',
+  'placementRange',
   'selection',
   'bones',
   'sprites',

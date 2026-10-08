@@ -6,7 +6,7 @@ import { rangeRingsOf } from '../src/view/projections/index.js';
 import { createWorkAreaOverlay } from '../src/view/unit-controls/work-area.js';
 import { type Ent, idLookupVisits, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
 
-/** The ground circles a selection shows: where its workers work, and where a defence-mode building shoots. */
+/** The ground circles a selection shows: where its workers work, and where a defence-capable building shoots. */
 
 const content = sandboxContent();
 const jobOf = (slug: string): number => {
@@ -19,6 +19,8 @@ const HUNTER = jobOf('hunter');
 const FISHER = jobOf('fisher');
 const shelter = content.buildings.find((b) => (b.shelterCapacity ?? 0) > 0);
 if (shelter === undefined) throw new Error('no defence-capable building in the sandbox content');
+const noShelter = content.buildings.find((b) => (b.shelterCapacity ?? 0) === 0);
+if (noShelter === undefined) throw new Error('no building without defence mode in the sandbox content');
 
 const FLAG_RADIUS = 24;
 const LODGE = 50;
@@ -34,12 +36,12 @@ const settler = (id: number, jobType: number, extra: Record<string, unknown> = {
     ...extra,
   },
 });
-const tower = (defence: boolean): Ent => ({
+const building = (buildingType: number, extra: Record<string, unknown> = {}): Ent => ({
   id: TOWER,
   components: {
-    Building: { buildingType: shelter.typeId, tribe: PRIMARY_TRIBE, built: ONE },
+    Building: { buildingType, tribe: PRIMARY_TRIBE, built: ONE },
     Position: TOWER_AT,
-    ...(defence ? { DefenceMode: {} } : {}),
+    ...extra,
   },
 });
 
@@ -73,15 +75,16 @@ describe('rangeRingsOf', () => {
     ]);
   });
 
-  it("draws a defence-mode building's fire reach in its own kind, and nothing once the alarm drops", () => {
-    const pos = TOWER_AT;
-    const { hx, hy } = nodeOfPosition(pos.x, pos.y);
+  it("draws a defence-capable building's fire reach in its own kind, whether its alarm is up or not", () => {
+    const { hx, hy } = nodeOfPosition(TOWER_AT.x, TOWER_AT.y);
     const reach = systems.shelterFireRadius(content, shelter.typeId, PRIMARY_TRIBE, hx, hy);
     expect(reach).toBeGreaterThan(0);
-    expect(rangeRingsOf(content, snapshotOf([tower(true)]), [TOWER])).toEqual([
-      { entity: TOWER, radiusNodes: reach, kind: 'defence' },
-    ]);
-    expect(rangeRingsOf(content, snapshotOf([tower(false)]), [TOWER])).toEqual([]);
+    const ring = [{ entity: TOWER, radiusNodes: reach, kind: 'defence' }];
+    expect(rangeRingsOf(content, snapshotOf([building(shelter.typeId)]), [TOWER])).toEqual(ring);
+    expect(
+      rangeRingsOf(content, snapshotOf([building(shelter.typeId, { DefenceMode: {} })]), [TOWER]),
+    ).toEqual(ring);
+    expect(rangeRingsOf(content, snapshotOf([building(noShelter.typeId)]), [TOWER])).toEqual([]);
   });
 
   it('costs the ids, not the map', () => {
