@@ -54,7 +54,7 @@ const ROUTES: readonly Route[] = [
   {
     id: 'sounds',
     matches: (params) => params.has('sounds'),
-    load: () => import('./entries/sound.js').then((m) => m.renderSoundGallery),
+    load: () => import('./entries/sound/index.js').then((m) => m.renderSoundGallery),
   },
   // Before `map`: a relayed game's creator names the map in the same search.
   {

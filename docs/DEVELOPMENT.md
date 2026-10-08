@@ -153,7 +153,7 @@ loading a save preserves its stored mission rules.
 | `?relay=<ws url>&room=<id\|new>` | decoded map played through a relay server; see below |
 | `?anim` | character animation gallery |
 | `?icons` | decoded sprite-frame gallery |
-| `?sounds` | sound-binding gallery |
+| `?sounds` | sound studio: every group played through the game's mixer and arbiter |
 | `?shot` | single-frame screenshot entry used by the harness |
 
 Common modifiers include `lang=<pol|eng|ger|rus>`, `fog=<off|classic|classic-fow|recon|recon-fow>` (the

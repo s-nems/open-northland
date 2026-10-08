@@ -666,7 +666,7 @@ export const deSurfaces = {
   soundGallery: {
     title: 'Tonstudio',
     intro:
-      'Spiele eine Aufnahme ab, um ihren Einsatz zu prüfen. Die Aktionszeilen zeigen, wann ein Klang abgespielt wird. Aktionsklänge sind die Gruppen, auf die Siedleranimationen per ID verweisen. Stimmen sind nach Alter und Geschlecht gruppiert.',
+      'Jede Wiedergabe läuft durch das Mischpult und den Schiedsrichter des Spiels: Die Regler sind die Busse des Spiels, Panorama und Zoom setzen den Hörer, und eine Serie zeigt, was Pool-Grenze und Spurbudget durchlassen. Die Aktionszeilen zeigen, wann ein Klang abgespielt wird; Aktionsklänge sind die Gruppen, auf die Siedleranimationen per ID verweisen.',
     missingTitle: 'Keine dekodierten Klänge gefunden',
     missingDetail:
       'Führe die Asset-Pipeline mit der CulturesNation-Mod aus, um die lokale Klangbibliothek zu erstellen.',
@@ -688,6 +688,31 @@ export const deSurfaces = {
       no: 'Ablehnung',
     },
     children: 'Kinder',
+    mixer: 'Mischpult und Hörposition',
+    pan: 'Panorama',
+    zoom: 'Kamerazoom',
+    burstSize: 'Seriengröße',
+    stopMusic: 'Musik und Klangteppiche stoppen',
+    poolCapNote:
+      'Eine Serie spielt eine Kopie pro Bild, wie Spielereignisse eintreffen: Ein Pool klingt höchstens {cap}-mal gleichzeitig, der Rest wartet oder entfällt.',
+    pick: '▶ zufällig',
+    burst: '▶ ×{count}',
+    bedOn: '▶ Schleife',
+    bedOff: '■ Stopp',
+    fileCount: '{count} Dateien',
+    authoredVolume: 'Lautstärke {volume} ({db} dB)',
+    gain: '{db} dB',
+    layers: { detail: 'Detail', impact: 'Wucht' },
+    lengths: '{min}-{max} s',
+    lengthsUnknown: 'Länge nach dem ersten Abspielen',
+    lanes: { jingle: 'Jingles', alert: 'Alarme', voice: 'Stimmen', sfx: 'Welt', free: 'unbegrenzt' },
+    laneTally: '{lane} {started} von {offered}',
+    tally: 'Gestartet: {lanes} · verdrängt {stolen}',
+    objectAmbience: 'Objektgeräusche',
+    interface: 'Oberflächen- und Benachrichtigungsklänge',
+    music: 'Musik',
+    musicFacts: 'Schleife {start}-{end} s · {db} dB zur gemeinsamen Lautheit',
+    bedUnreached: 'kein Gelände spielt ihn im Spiel ab',
     actionsCatalog: {
       vehicleCreated: {
         label: 'Fahrzeug fertigstellen',

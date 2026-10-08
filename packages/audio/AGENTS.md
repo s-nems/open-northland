@@ -29,5 +29,5 @@ layer receives any needed source through an explicit parameter.
 ## Verification
 
 `npm test` covers binding, spatial, director, driver, and fake-audio behavior. Use `?sounds` to
-audition decoded clips and a playable scene to check event timing and positioning. Final audio quality
-and balance require human listening.
+audition every group through the driver, at the mixer's levels and a chosen pan and zoom, and a playable
+scene to check event timing and positioning. Final audio quality and balance require human listening.
