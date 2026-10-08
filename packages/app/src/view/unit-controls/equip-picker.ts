@@ -3,6 +3,7 @@ import type { ContentSet, EquipCategory } from '@open-northland/data';
 import {
   type Entity,
   type EquipPickEntry,
+  type EquipSelectionPick,
   entityById,
   MAX_UNIT_ORDER_MEMBERS,
   type PlayerCommand,
@@ -17,13 +18,12 @@ import { messages } from '../../i18n/index.js';
 import { enqueueUnitSelection } from './group-orders.js';
 import { createPickerWindow, type PickerWindow } from './picker-window.js';
 
-/** The goods a settler could fetch and wear in one slot group. */
-type PickList = (entity: number, group: EquipCategory) => readonly EquipPickEntry[];
-
 export interface EquipPickControllerOptions {
   readonly uiString: UiString;
-  /** The sim's pick-list read (`SessionHost.equipPickList`), asked afresh as a window opens. */
+  /** The sim's pick-list read (`SessionHost.equipPickList`), asked afresh as a slot window opens. */
   readonly pickList: (entity: number, group: EquipCategory) => Promise<readonly EquipPickEntry[]>;
+  /** The sim's selection-wide read (`SessionHost.equipPicksForSelection`), asked as the ring's window opens. */
+  readonly selectionPicks: (entities: readonly number[]) => Promise<readonly EquipSelectionPick[]>;
   readonly content: ContentSet;
   readonly snapshot: () => WorldSnapshot;
   readonly enqueue: (command: PlayerCommand) => void;
@@ -34,48 +34,9 @@ export interface EquipPickControllerOptions {
 
 export interface EquipPickController {
   open(settlerId: number, ref: EquipSlotRef): void;
-  /** Every good the whole selection can wear and reach - the ring's "Change Equipment" entry point. */
+  /** Every good some of the selection can wear and reach - the ring's "Change Equipment" entry point. */
   openAll(settlerIds: readonly number[]): void;
   dispose(): void;
-}
-
-export interface CommonEquipPick extends EquipPickEntry {
-  readonly group: EquipCategory;
-}
-
-const EQUIP_GROUPS: readonly EquipCategory[] = ['boots', 'tool', 'weapon', 'armor', 'misc'];
-
-/** The content-ordered intersection of goods every selected settler can currently fetch and wear. */
-export function commonEquipPicks(
-  content: ContentSet,
-  settlerIds: readonly number[],
-  pickList: PickList,
-): CommonEquipPick[] {
-  if (settlerIds.length === 0) return [];
-  const picksBySettler = settlerIds.map((entity) => {
-    const picks = new Map<number, CommonEquipPick>();
-    for (const group of EQUIP_GROUPS) {
-      for (const row of pickList(entity, group)) picks.set(row.goodType, { ...row, group });
-    }
-    return picks;
-  });
-  const rows: CommonEquipPick[] = [];
-  for (const good of content.goods) {
-    const first = picksBySettler[0]?.get(good.typeId);
-    if (first === undefined) continue;
-    let available = first.available;
-    let common = true;
-    for (let i = 1; i < picksBySettler.length; i++) {
-      const pick = picksBySettler[i]?.get(good.typeId);
-      if (pick === undefined || pick.group !== first.group) {
-        common = false;
-        break;
-      }
-      available = Math.min(available, pick.available);
-    }
-    if (common) rows.push({ goodType: good.typeId, group: first.group, available });
-  }
-  return rows;
 }
 
 /** Fixed groups replace their only slot; misc fills the first gap and replaces slot zero once full. */
@@ -92,7 +53,7 @@ export function equipSlotFor(components: Readonly<Record<string, unknown>>, grou
 export function selectionEquipCommands(
   snapshot: WorldSnapshot,
   settlerIds: readonly number[],
-  pick: Pick<CommonEquipPick, 'goodType' | 'group'>,
+  pick: Pick<EquipSelectionPick, 'goodType' | 'group'>,
   { skipReturn = false }: { readonly skipReturn?: boolean } = {},
 ): UnitSelectionCommand[] {
   const commands: UnitSelectionCommand[] = [];
@@ -148,15 +109,8 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
         return;
       }
       const request = ++opening;
-      const asked = targets.flatMap((entity) =>
-        EQUIP_GROUPS.map((group) =>
-          opts.pickList(entity, group).then((rows) => [`${entity}:${group}`, rows] as const),
-        ),
-      );
-      void Promise.all(asked).then((answered) => {
-        if (request !== opening) return;
-        const lists = new Map(answered);
-        showCommonPicks(targets, (entity, group) => lists.get(`${entity}:${group}`) ?? []);
+      void opts.selectionPicks(targets).then((rows) => {
+        if (request === opening) showSelectionPicks(rows);
       });
     },
     dispose: (): void => {
@@ -188,18 +142,18 @@ export async function mountEquipPicker(opts: EquipPickControllerOptions): Promis
     w.show();
   }
 
-  function showCommonPicks(targets: readonly number[], pickList: PickList): void {
+  /** Each row sends its own takers: the settlers that can wear the good and reach a unit of it. */
+  function showSelectionPicks(rows: readonly EquipSelectionPick[]): void {
     const w = win();
     w.setTitle(actionLabel('changeEquipment', opts.uiString));
     w.clearList();
-    const rows = commonEquipPicks(opts.content, targets, pickList);
     if (rows.length === 0) w.addNote(messages().hud.equipPickEmpty);
     for (const row of rows) {
       const def = goods.find((g) => g.typeId === row.goodType);
       const label = `${def?.name ?? def?.id ?? `#${row.goodType}`} (${row.available})`;
       w.addRow(label, () => {
         enqueueUnitSelection(
-          selectionEquipCommands(opts.snapshot(), targets, row),
+          selectionEquipCommands(opts.snapshot(), row.takers, row),
           opts.enqueue,
           opts.onOrderLimit,
         );

@@ -1,5 +1,4 @@
 import {
-  AssistantRecruit,
   Carrying,
   EquipOrder,
   MoveGoal,
@@ -14,7 +13,7 @@ import type { SystemContext } from '../../context.js';
 import { atomicDuration } from '../../readviews/animations.js';
 import { canEquipCategory } from '../../readviews/equip-pick.js';
 import { isHeroJob } from '../../readviews/jobs.js';
-import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
+import { equipErrandConfinement, type NavigationLimit } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
 import { EQUIP_FETCH_UNITS, isUsed } from '../atomics/effects/goods/index.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic, startDrop } from '../atomics/start.js';
@@ -24,6 +23,8 @@ import { interactionCell, nearestStoreFor, nearestStoreHolding } from '../target
 import { unreachableGoalVeto } from '../unreachable-goals.js';
 
 type EquipOrderState = NonNullable<(typeof EquipOrder)['__value']>;
+
+const EXCLUDE_PRODUCERS = false;
 
 /** What one errand's stage handlers share, resolved once per plan call. */
 interface EquipErrand {
@@ -43,25 +44,6 @@ interface EquipErrand {
   readonly targets: TargetCandidates;
   readonly supply: SupplyTally;
   readonly fetches: { remaining: number };
-}
-
-const EXCLUDE_PRODUCERS = false;
-
-/** An errand shops inside its settler's own confinement, or, for a job with none (a soldier) and for a
- *  recruit being armed, inside the settlement network at his feet - the original's
- *  equipment-search bound. The store is re-picked every tick, so without a gate an
- *  unconfined settler would re-target across the map the moment his store ran dry. */
-function errandGate(
-  world: World,
-  terrain: TerrainGraph,
-  e: Entity,
-  here: NodeId,
-  limit: NavigationLimit | null,
-): NavigationLimit | undefined {
-  if (limit !== null && !world.has(e, AssistantRecruit)) return limit;
-  const owner = ownerOf(world, e);
-  if (owner === undefined) return limit ?? undefined;
-  return networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here)) ?? undefined;
 }
 
 /**
@@ -92,7 +74,9 @@ export function planEquipOrder(
     settler,
     order,
     here,
-    gate: errandGate(world, terrain, e, here, limit),
+    // The store is re-picked every tick, so without a gate an unconfined settler would re-target across
+    // the map the moment his store ran dry.
+    gate: equipErrandConfinement(world, terrain, e, here, limit),
     avoid: unreachableGoalVeto(world, ctx, e),
     owner: ownerOf(world, e),
     targets,

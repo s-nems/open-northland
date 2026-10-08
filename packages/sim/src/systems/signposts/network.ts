@@ -1,7 +1,9 @@
 import type { ContentSet } from '@open-northland/data';
 import {
+  AssistantRecruit,
   CARRIER_WALK_RANGE_NODES,
   Owner,
+  ownerOf,
   Position,
   Settler,
   Signpost,
@@ -262,6 +264,25 @@ export function navigationLimitFor(
     limit,
   });
   return limit;
+}
+
+/**
+ * The confinement a player's equip errand shops inside: the settler's own `limit`, or, for a job with none
+ * (a soldier) and for a recruit being armed, the settlement network at his feet - the original's
+ * equipment-search bound. The store search cuts it further to the goods search from `here`. The errand
+ * and the pick menu both read it, so a menu row names only a store the fetch can reach.
+ */
+export function equipErrandConfinement(
+  world: World,
+  terrain: TerrainGraph,
+  e: Entity,
+  here: NodeId,
+  limit: NavigationLimit | null,
+): NavigationLimit | undefined {
+  if (limit !== null && !world.has(e, AssistantRecruit)) return limit;
+  const owner = ownerOf(world, e);
+  if (owner === undefined) return limit ?? undefined;
+  return networkLimitAt(world, terrain, owner, terrain.xOf(here), terrain.yOf(here)) ?? undefined;
 }
 
 /** Equipment uses the same terrain-limited 40-node goods search, including exempt professions. */

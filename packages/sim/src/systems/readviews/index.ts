@@ -58,7 +58,9 @@ export { houseBow, shelterCapacityOf, sheltersOnAlarm } from './defence.js';
 export {
   canEquipCategory,
   type EquipPickEntry,
+  type EquipSelectionPick,
   equipPickList,
+  equipPicksForSelection,
   mayChangeEquipment,
 } from './equip-pick.js';
 export { edibleGoodFormOf, exportedGoodForm, isFood, isFoodIn } from './food.js';

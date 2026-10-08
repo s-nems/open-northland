@@ -521,6 +521,7 @@ class WorkerClient<E> {
       canChooseJob: (...args) => this.ask('canChooseJob', args),
       hasEarnedGood: (...args) => this.ask('hasEarnedGood', args),
       equipPickList: (...args) => this.ask('equipPickList', args),
+      equipPicksForSelection: (...args) => this.ask('equipPicksForSelection', args),
       standsTo: (...args) => this.ask('standsTo', args),
       workStatus: (...args) => this.ask('workStatus', args),
       papers: (...args) => this.ask('papers', args),

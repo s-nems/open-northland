@@ -116,7 +116,12 @@ import {
   type UnlockStatus,
   unlockStatus,
 } from './systems/progression/index.js';
-import { type EquipPickEntry, equipPickList } from './systems/readviews/index.js';
+import {
+  type EquipPickEntry,
+  type EquipSelectionPick,
+  equipPickList,
+  equipPicksForSelection,
+} from './systems/readviews/index.js';
 import { type WorkStatus, workStatus } from './systems/readviews/work-status.js';
 import { syncRoadLane } from './systems/roads/index.js';
 import { roadSitePlacementVersion } from './systems/roads/sites.js';
@@ -564,6 +569,12 @@ export class Simulation {
    */
   equipPickList(entity: Entity, group: EquipCategory): EquipPickEntry[] {
     return equipPickList(this.world, this.content, this.terrain, entity, group);
+  }
+
+  /** The selection's equip menu: every good some of `entities` can wear and reach, with the settlers a
+   *  pick would send. Read-only; scales with the selection times the stores holding equippable goods. */
+  equipPicksForSelection(entities: readonly Entity[]): EquipSelectionPick[] {
+    return equipPicksForSelection(this.world, this.content, this.terrain, entities);
   }
 
   /**

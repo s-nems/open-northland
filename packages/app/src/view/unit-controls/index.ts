@@ -85,11 +85,12 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   const controlGroups = createControlGroups();
   // Without the sim's pick-list seam the panel's equip and swap buttons stay inert.
   const equipPicker: EquipPickController | null =
-    opts.requestEquipPicks === undefined
+    opts.requestEquipPicks === undefined || opts.requestSelectionEquipPicks === undefined
       ? null
       : await mountEquipPicker({
           uiString: opts.domHud.uiString,
           pickList: opts.requestEquipPicks,
+          selectionPicks: opts.requestSelectionEquipPicks,
           content: opts.content,
           snapshot: opts.snapshot,
           enqueue: opts.enqueue,

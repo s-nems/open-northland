@@ -15,6 +15,7 @@ import type {
 import type {
   Entity,
   EquipPickEntry,
+  EquipSelectionPick,
   FormationSlotGroup,
   HalfCellNode,
   PlayerCommand,
@@ -104,6 +105,11 @@ export interface UnitControlsOptions {
   /** The sim's equip pick-list (`SessionHost.equipPickList`), asked as a window opens or a goods heap is
    *  clicked; absent leaves the equipment panel's plus/swap buttons inert and the heap click a walk. */
   readonly requestEquipPicks?: (entity: number, group: EquipCategory) => Promise<readonly EquipPickEntry[]>;
+  /** The sim's selection-wide equip menu (`SessionHost.equipPicksForSelection`), asked as the ring's
+   *  "Change Equipment" opens; absent with `requestEquipPicks` leaves the picker unmounted. */
+  readonly requestSelectionEquipPicks?: (
+    entities: readonly number[],
+  ) => Promise<readonly EquipSelectionPick[]>;
   /** The sim's battle-alert read seam (`SessionHost.standsTo`); absent leaves a unit holding its ground
    *  under fire captioned as idle. */
   readonly standsTo?: (entity: number) => boolean;

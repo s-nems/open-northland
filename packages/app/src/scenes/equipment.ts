@@ -5,14 +5,21 @@ import { JOB_COLLECTOR, JOB_SOLDIER_SWORD } from '../catalog/jobs.js';
 import { HUMAN_PLAYER } from '../game/rules.js';
 import {
   BUILDING_HEADQUARTERS,
-  placeSandboxBuilding,
+  placeBuiltSandboxBuilding,
   spawnSandboxSettler,
   WEAPON_SWORD,
 } from '../game/sandbox/index.js';
 import { goodBySlug } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
-const { Equipment, Settler } = components;
+const { Equipment, Settler, Stockpile } = components;
+
+/** Shelf stock the pick menus must list through the headquarters' door: a building's own anchor sits
+ *  inside its walk-blocked body, where no goods search reaches. */
+const SHELF_STOCK: readonly { slug: string; amount: number }[] = [
+  { slug: 'potion_heal_small', amount: 3 },
+  { slug: 'amulet_defense', amount: 1 },
+];
 
 /** Degree-of-use inputs; the panel shows the remaining condition, `100 -` these. */
 const BOOTS_USE_PCT = 70;
@@ -34,7 +41,10 @@ const YARD_PILES: readonly { slug: string; x: number; y: number; amount: number 
 ];
 
 function build(sim: Simulation): void {
-  placeSandboxBuilding(sim, BUILDING_HEADQUARTERS, 9, 12, HUMAN_PLAYER);
+  const hq = placeBuiltSandboxBuilding(sim, BUILDING_HEADQUARTERS, 9, 12, HUMAN_PLAYER);
+  for (const { slug, amount } of SHELF_STOCK) {
+    sim.world.mut(hq, Stockpile).amounts.set(goodBySlug(sim, slug), amount);
+  }
   for (const pile of YARD_PILES) {
     const node = cellAnchorNode(pile.x, pile.y);
     sim.enqueueSetup({
@@ -109,6 +119,22 @@ export const equipmentScene: SceneDefinition = {
     {
       label: 'the bare settler carries no Equipment component',
       predicate: (sim) => [...sim.world.query(Settler)].some((e) => !sim.world.has(e, Equipment)),
+    },
+    {
+      label: "the selection menu lists the headquarters' shelf through its door, for every grown man",
+      predicate: (sim) => {
+        const men = [...sim.world.query(Settler)];
+        return SHELF_STOCK.every(({ slug, amount }) =>
+          sim
+            .equipPicksForSelection(men)
+            .some(
+              (row) =>
+                row.goodType === goodBySlug(sim, slug) &&
+                row.available >= amount &&
+                row.takers.length === men.length,
+            ),
+        );
+      },
     },
     {
       label: 'the yard piles hold the spare gear the pick menus list',

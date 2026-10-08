@@ -6,6 +6,7 @@ import type {
   Entity,
   EntitySnapshot,
   EquipPickEntry,
+  EquipSelectionPick,
   ExportSaveOptions,
   FogMode,
   FogView,
@@ -190,6 +191,8 @@ export interface SessionHost {
   canChooseJob(entity: Entity, jobType: number): Promise<boolean>;
   hasEarnedGood(entity: Entity, goodType: number): Promise<boolean>;
   equipPickList(entity: Entity, group: EquipCategory): Promise<readonly EquipPickEntry[]>;
+  /** The selection's equip menu: every good some of `entities` can wear and reach, with its takers. */
+  equipPicksForSelection(entities: readonly Entity[]): Promise<readonly EquipSelectionPick[]>;
   /** Whether a unit is holding its ground on battle alert. */
   standsTo(entity: Entity): Promise<boolean>;
   /** Why a tradesman works or stands idle; undefined when no status applies. */

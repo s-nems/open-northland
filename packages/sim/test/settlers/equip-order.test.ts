@@ -14,6 +14,7 @@ import {
   Owner,
   PickupClaim,
   Position,
+  Signpost,
   Stance,
   Stockpile,
   setNeedsEnabled,
@@ -24,7 +25,7 @@ import {
 import type { Command } from '../../src/core/commands/index.js';
 import type { Fixed } from '../../src/core/fixed.js';
 import type { Entity } from '../../src/ecs/world.js';
-import { fx, nodeOfPosition, Simulation } from '../../src/index.js';
+import { fx, nodeOfPosition, positionOfNode, Simulation } from '../../src/index.js';
 import type { NodeId } from '../../src/nav/terrain/index.js';
 import { WOMAN_JOB } from '../../src/systems/lifecycle/ageclass.js';
 import { equipGood, unequipGood } from '../../src/systems/orders/index.js';
@@ -115,6 +116,69 @@ function upgradeableForgeSim(): Simulation {
   const sim = new Simulation({ seed: 1, content, map: grassMap(16, 6) });
   setNeedsEnabled(sim.world, false);
   return sim;
+}
+
+/** The upgradeable forge with a walk-blocked body and a door east of its anchor, the shape every real
+ *  building has: a fetch reaches its shelf through the door, never through the walls. */
+function walledForgeSim(): Simulation {
+  const base = testContent();
+  const forge = {
+    typeId: FORGE,
+    id: 'forge_00',
+    kind: 'workplace' as const,
+    produces: [SWORD],
+    stock: [
+      { goodType: WOOD, capacity: 10, initial: 0 },
+      { goodType: SWORD, capacity: 10, initial: 0 },
+    ],
+    recipes: [
+      {
+        inputs: [{ goodType: WOOD, amount: 1 }],
+        outputs: [{ goodType: SWORD, amount: 1 }],
+        ticks: 20,
+      },
+    ],
+    footprint: {
+      blocked: [
+        { dx: 0, dy: 0 },
+        { dx: -1, dy: 0 },
+        { dx: 0, dy: -1 },
+        { dx: 0, dy: 1 },
+      ],
+      door: { dx: 1, dy: 0 },
+    },
+  };
+  const content = parseContentSet({ ...base, buildings: [...base.buildings, forge] });
+  const sim = new Simulation({ seed: 1, content, map: grassMap(64, 8) });
+  setNeedsEnabled(sim.world, false);
+  sim.enqueueSetup({ kind: 'setSignpostNavigation', enabled: true });
+  sim.step();
+  return sim;
+}
+
+function signpostAt(sim: Simulation, hx: number, hy: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(hx, hy));
+  sim.world.add(e, Owner, { player: HUMAN_PLAYER });
+  sim.world.add(e, Signpost, { links: [] });
+  return e;
+}
+
+/** A built, owned forge at half-cell node (hx, hy) holding `swords` on its shelf. */
+function ownedForgeAtNode(sim: Simulation, hx: number, hy: number, swords: number): Entity {
+  const e = sim.world.create();
+  sim.world.add(e, Position, positionOfNode(hx, hy));
+  sim.world.add(e, Building, { buildingType: FORGE, tribe: VIKING, built: fx.fromInt(1), level: 0 });
+  sim.world.add(e, Stockpile, { amounts: new Map([[SWORD, swords]]) });
+  sim.world.add(e, Owner, { player: HUMAN_PLAYER });
+  return e;
+}
+
+function ownedSettlerAtNode(sim: Simulation, hx: number, hy: number): Entity {
+  const e = ownedSettler(sim, 0, 0);
+  sim.world.mut(e, Position).x = positionOfNode(hx, hy).x;
+  sim.world.mut(e, Position).y = positionOfNode(hx, hy).y;
+  return e;
 }
 
 function forgeAt(sim: Simulation, x: number, y: number): Entity {
@@ -1009,6 +1073,23 @@ describe('equipPickList - the pick-menu read view', () => {
     expect(sim.equipPickList(fighter, 'weapon')).toEqual([{ goodType: SWORD, available: 2 }]);
   });
 
+  it('lists a walled workshop inside the network through its door, as the errand fetches from it', () => {
+    // A building's anchor sits inside its walk-blocked body, which the goods-search flood never enters.
+    // Tested at the anchor, every real store vanished from the menu while the errand fetched fine.
+    const sim = walledForgeSim();
+    signpostAt(sim, 60, 8);
+    ownedForgeAtNode(sim, 50, 8, 1);
+    const fighter = ownedSettlerAtNode(sim, 80, 8);
+    setSettlerJob(sim.world, fighter, FIGHTER_JOB);
+    sim.step();
+
+    expect(sim.equipPickList(fighter, 'weapon')).toEqual([{ goodType: SWORD, available: 1 }]);
+
+    sim.enqueueSetup(equip(fighter, SWORD, 'weapon'));
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.get(fighter, Equipment).weapon?.goodType).toBe(SWORD);
+  });
+
   it('offers a civilian no weapon or armor rows', () => {
     const sim = freshSim();
     const civilian = ownedSettler(sim, 2, 2);
@@ -1016,6 +1097,56 @@ describe('equipPickList - the pick-menu read view', () => {
 
     expect(sim.equipPickList(civilian, 'weapon')).toEqual([]);
     expect(sim.equipPickList(civilian, 'armor')).toEqual([]);
+  });
+});
+
+describe('equipPicksForSelection - the selection menu read view', () => {
+  it('unions the selection: a row for what any member reaches, sent only to the members that can', () => {
+    const sim = walledForgeSim();
+    signpostAt(sim, 60, 8);
+    const forge = ownedForgeAtNode(sim, 50, 8, 2);
+    const nearFighter = ownedSettlerAtNode(sim, 80, 8);
+    setSettlerJob(sim.world, nearFighter, FIGHTER_JOB);
+    const farFighter = ownedSettlerAtNode(sim, 120, 8); // beyond the walk range, no post to catch
+    setSettlerJob(sim.world, farFighter, FIGHTER_JOB);
+    const civilian = ownedSettlerAtNode(sim, 82, 8); // may never wear a weapon
+    sim.step();
+
+    const rows = sim.equipPicksForSelection([farFighter, civilian, nearFighter]);
+    expect(rows).toEqual([{ goodType: SWORD, group: 'weapon', available: 2, takers: [nearFighter] }]);
+    expect(sim.equipPicksForSelection([farFighter, civilian])).toEqual([]);
+    expect(sim.world.get(forge, Stockpile).amounts.get(SWORD)).toBe(2);
+  });
+
+  it('counts a store once however many members reach it, and lists goods in content order', () => {
+    const sim = freshSim();
+    const a = ownedSettler(sim, 2, 2);
+    const b = ownedSettler(sim, 3, 2);
+    pileAt(sim, 8, 2, TOOL_WOODEN, 2);
+    pileAt(sim, 9, 2, SHOES, 3);
+    pileAt(sim, 10, 2, SHOES, 1);
+
+    expect(sim.equipPicksForSelection([a, b, a])).toEqual([
+      { goodType: SHOES, group: 'boots', available: 4, takers: [a, b] },
+      { goodType: TOOL_WOODEN, group: 'tool', available: 2, takers: [a, b] },
+    ]);
+  });
+
+  it('skips a hero, a woman and a child without hiding the rows from the rest', () => {
+    const sim = freshSim();
+    const man = ownedSettler(sim, 2, 2);
+    const hero = ownedSettler(sim, 3, 2);
+    setSettlerJob(sim.world, hero, HERO_JOB);
+    const woman = ownedSettler(sim, 4, 2);
+    setSettlerJob(sim.world, woman, WOMAN_JOB);
+    sim.world.add(woman, Female, { female: true });
+    const child = ownedSettler(sim, 5, 2);
+    sim.world.add(child, Age, { ticks: 0, asOf: null });
+    pileAt(sim, 8, 2, SHOES, 1);
+
+    expect(sim.equipPicksForSelection([hero, woman, child, man])).toEqual([
+      { goodType: SHOES, group: 'boots', available: 1, takers: [man] },
+    ]);
   });
 });
 

@@ -792,6 +792,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       doorBadges: () => pickableDoorBadges?.() ?? [],
       requestEquipPicks: (entity, group) => host.equipPickList(entity as Entity, group),
+      requestSelectionEquipPicks: (entities) => host.equipPicksForSelection(entities as Entity[]),
       standsTo: answers.standsTo,
       traderView: answers.traderView,
       signpostReach: answers.signpostReach,
