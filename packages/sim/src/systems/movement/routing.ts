@@ -135,7 +135,7 @@ export function drainPathRequests(
     return occupiedView;
   };
   // A group member's route under `overlay`: refused at once by a region the group already found sealed,
-  // borrowed from a neighbour, or searched, and every answer kept for the rest of the group.
+  // borrowed from a neighbour, or searched, a searched answer kept for the rest of the group.
   const routeUnder = (
     overlay: BlockOverlay,
     start: NodeId,
@@ -144,7 +144,10 @@ export function drainPathRequests(
     search: () => NodeId[] | null,
   ): NodeId[] | null => {
     if (group && mask !== undefined && groupReachability.unreachable(mask, overlay, start, goal)) return null;
-    const path = (group ? groupRoutes.borrow(overlay, start, goal, spent) : null) ?? search();
+    const borrowed = group ? groupRoutes.borrow(overlay, start, goal, spent) : null;
+    if (borrowed !== null) return borrowed;
+    // Only a searched route is offered: offering borrowed ones grows the list each member tries.
+    const path = search();
     if (path !== null && group) groupRoutes.offer(overlay, path);
     if (path === null && group && mask !== undefined && !overlay.has(goal))
       groupReachability.rememberFailure(mask, overlay, start, goal);

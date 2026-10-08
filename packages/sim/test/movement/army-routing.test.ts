@@ -16,6 +16,7 @@ import type { Entity } from '../../src/ecs/world.js';
 import { fx, playerCommand, positionOfNode, Simulation, type TerrainMap } from '../../src/index.js';
 import { StepBuffer } from '../../src/nav/terrain/index.js';
 import { stampResourceFootprintData } from '../../src/systems/footprint/index.js';
+import { GroupRoutes } from '../../src/systems/movement/group-routes.js';
 import { testContent } from '../fixtures/content.js';
 
 const MEMBERS = 1000;
@@ -252,6 +253,13 @@ describe('army player routing', () => {
       expansions++;
       return stepsInto(...args);
     };
+    // Every offered route is one more each later member tries to borrow, which expansions do not count.
+    let offered = 0;
+    const offer = GroupRoutes.prototype.offer;
+    GroupRoutes.prototype.offer = function (this: GroupRoutes, ...args) {
+      offered++;
+      return offer.apply(this, args);
+    };
     for (const { entity, x, y } of members)
       sim.enqueue(playerCommand(0, { kind: 'attackMoveUnit', entity, x: x + 240, y }));
     const started = performance.now();
@@ -262,6 +270,9 @@ describe('army player routing', () => {
       expansions,
       performance.now() - started,
     );
+    GroupRoutes.prototype.offer = offer;
+    // Only searched routes are offered: a handful for the whole army, not one per member.
+    expect(offered).toBeLessThan(MEMBERS / 10);
     expect(members.filter(({ entity }) => sim.world.has(entity, PathRequest))).toEqual([]);
     // Route checks stay linear in the army's total path length; a wall must not trigger one full-map
     // search per member. Timing is diagnostic only, never a machine-dependent correctness gate.
