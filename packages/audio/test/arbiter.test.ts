@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { JINGLE_BIRTH, JINGLE_DEATH, JINGLE_DUCK_HOLD_MS, JINGLE_WON } from '../src/data/bindings.js';
 import {
+  DEFAULT_CLIP_LENGTH_S,
+  KEY_COOLDOWN_S,
+  NO_REPEAT_FREE_CHOICES,
+  noRepeatDepth,
+} from '../src/data/one-shot-ledger.js';
+import {
   JINGLE_COOLDOWN_MAX_S,
   JINGLE_PENDING_MAX_AGE_S,
   type OneShot,
@@ -8,6 +14,7 @@ import {
   SFX_BURST,
   SFX_STARTS_PER_S,
   VOICE_BURST,
+  VOICE_STARTS_PER_S,
 } from '../src/index.js';
 import { battleEvents, battleShots, battleSnapshot } from './helpers/battle.js';
 
@@ -28,6 +35,10 @@ function jingle(musicType: number, key: string): OneShot {
     lane: { kind: 'jingle', musicType },
     ...(duckMusicMs === undefined ? {} : { duckMusicMs }),
   };
+}
+
+function lane(shots: readonly OneShot[], kind: 'voice' | 'sfx'): OneShot[] {
+  return shots.filter((s) => s.lane?.kind === kind);
 }
 
 const BIRTH_S = (JINGLE_DUCK_HOLD_MS.get(JINGLE_BIRTH) ?? 0) / 1000;
@@ -108,36 +119,28 @@ describe('jingle lane', () => {
 describe('sfx and voice lanes', () => {
   const snapshot = battleSnapshot(40);
   const battle = battleShots(snapshot, battleEvents(40));
-  const lane = (shots: readonly OneShot[], kind: 'voice' | 'sfx') =>
-    shots.filter((s) => s.lane?.kind === kind);
+  const FRAME_S = 1 / 60;
 
   it('counts every scream against the voice budget and every body blow against the sfx budget', () => {
     // The director's own shapes: screams and body blows hold their wav exclusive, and still pay.
     expect(lane(battle, 'voice').length).toBeGreaterThan(VOICE_BURST);
     expect(lane(battle, 'voice').every((s) => s.exclusive === 'wav')).toBe(true);
     expect(lane(battle, 'sfx').some((s) => s.exclusive === 'wav')).toBe(true);
-    const started = new OneShotArbiter().decide(battle, 0);
-    expect(lane(started, 'voice').length).toBeLessThanOrEqual(VOICE_BURST);
-    expect(lane(started, 'sfx').length).toBeLessThanOrEqual(SFX_BURST);
-  });
-
-  it('starts the loudest of a burst and refills by the rate, no more', () => {
     const arbiter = new OneShotArbiter();
-    const started = lane(arbiter.decide(battle, 0), 'sfx');
-    const gains = lane(battle, 'sfx')
-      .map((s) => s.gain)
-      .sort((a, b) => b - a);
-    expect(Math.min(...started.map((s) => s.gain))).toBeGreaterThanOrEqual(gains[SFX_BURST - 1] ?? 0);
-    const later = 0.5;
-    expect(lane(arbiter.decide(battle, later), 'sfx').length).toBeLessThanOrEqual(
-      Math.floor(SFX_STARTS_PER_S * later),
-    );
+    const started: OneShot[] = [];
+    for (let t = 0; t < 1; t += FRAME_S) started.push(...arbiter.decide(battle, t));
+    expect(lane(started, 'voice').length).toBeLessThanOrEqual(VOICE_BURST + VOICE_STARTS_PER_S);
+    expect(lane(started, 'sfx').length).toBeLessThanOrEqual(SFX_BURST + SFX_STARTS_PER_S);
   });
 
-  it('rations voices separately from sfx', () => {
+  it('starts the loudest of a burst, and rations voices separately from sfx', () => {
     const started = new OneShotArbiter().decide(battle, 0);
-    expect(lane(started, 'voice').length).toBeGreaterThan(0);
-    expect(lane(started, 'sfx').length).toBeGreaterThan(VOICE_BURST);
+    expect(lane(started, 'voice')).toHaveLength(VOICE_BURST);
+    expect(lane(started, 'sfx')).toHaveLength(SFX_BURST);
+    // Loudest first: the nearest blow always starts, and a blow whose wav is held yields to the next.
+    const gains = lane(started, 'sfx').map((s) => s.gain);
+    expect(gains).toEqual([...gains].sort((a, b) => b - a));
+    expect(gains[0]).toBe(Math.max(...lane(battle, 'sfx').map((s) => s.gain)));
   });
 
   it('never rations an order answer: it has no lane and always plays', () => {
@@ -146,5 +149,89 @@ describe('sfx and voice lanes', () => {
     expect(answers).toHaveLength(1);
     expect(answers[0]?.lane).toBeUndefined();
     expect(new OneShotArbiter().decide(shots, 0).map((s) => s.key)).toContain(answers[0]?.key);
+  });
+});
+
+/** A synthetic pool: shots of one group share the array, as the director's do. */
+function wavPool(name: string, size: number): readonly string[] {
+  return Array.from({ length: size }, (_, i) => `${name}${i + 1}.wav`);
+}
+
+function worldShot(
+  files: readonly string[],
+  key: string,
+  gain: number,
+  kind: 'voice' | 'sfx' = 'sfx',
+): OneShot {
+  return { files, gain, pan: 0, key, lane: { kind } };
+}
+
+/** A [0,1) source cycling through `values`, so a test can steer the picks. */
+function cycling(values: readonly number[]): () => number {
+  let i = 0;
+  return () => values[i++ % values.length] ?? 0;
+}
+
+describe('wav picks', () => {
+  it('hands the engine one wav and never repeats the pool`s last ones', () => {
+    for (const size of [1, 2, 3, 10]) {
+      const files = wavPool(`p${size}-`, size);
+      const arbiter = new OneShotArbiter({ random: cycling([0, 0.99, 0.5, 0.25, 0.75]) });
+      const picks: string[] = [];
+      for (let i = 0; i < 40; i++) {
+        const [started] = arbiter.decide([{ files, gain: 1, pan: 0, key: `answer:${i}` }], i * 10);
+        expect(started?.files).toHaveLength(1);
+        picks.push(started?.files[0] ?? '');
+      }
+      const depth = noRepeatDepth(size);
+      expect(depth).toBe(size === 1 ? 0 : size === 2 ? 1 : size - NO_REPEAT_FREE_CHOICES);
+      for (let i = 0; i + depth < picks.length; i++) {
+        expect(new Set(picks.slice(i, i + depth + 1)).size).toBe(depth + 1);
+      }
+      expect(new Set(picks).size).toBe(size);
+    }
+  });
+
+  it('refuses a scream whose wav still sounds before it costs any budget', () => {
+    const one = wavPool('scream-a', 1);
+    const other = wavPool('scream-b', 1);
+    const third = wavPool('scream-c', 1);
+    const arbiter = new OneShotArbiter();
+    const first = [worldShot(one, 'a:1', 0.9, 'voice'), worldShot(third, 'c:1', 0.8, 'voice')];
+    expect(
+      arbiter.decide(
+        first.map((s) => ({ ...s, exclusive: 'wav' as const })),
+        0,
+      ),
+    ).toHaveLength(VOICE_BURST);
+    // Half a second refills one token. The louder scream's wav still sounds, so the quieter one gets it.
+    const later = 1 / VOICE_STARTS_PER_S;
+    const again = [
+      { ...worldShot(one, 'a:2', 0.9, 'voice'), exclusive: 'wav' as const },
+      { ...worldShot(other, 'b:1', 0.5, 'voice'), exclusive: 'wav' as const },
+    ];
+    expect(arbiter.decide(again, later).map((s) => s.key)).toEqual(['b:1']);
+  });
+
+  it('skips an answer while any line of its pool still plays, and holds a key through its cooldown', () => {
+    const pool = wavPool('ok', 3);
+    const answer = (key: string): OneShot => ({ files: pool, gain: 0.8, pan: 0, key, exclusive: 'group' });
+    const arbiter = new OneShotArbiter();
+    expect(arbiter.decide([answer('respond:a')], 0)).toHaveLength(1);
+    expect(arbiter.decide([answer('respond:b')], DEFAULT_CLIP_LENGTH_S / 2)).toHaveLength(0);
+    expect(arbiter.decide([answer('respond:c')], DEFAULT_CLIP_LENGTH_S + 0.01)).toHaveLength(1);
+    const thud = wavPool('thud', 2);
+    const free = new OneShotArbiter();
+    expect(free.decide([worldShot(thud, 'thud:1', 1)], 0)).toHaveLength(1);
+    expect(free.decide([worldShot(thud, 'thud:1', 1)], KEY_COOLDOWN_S / 2)).toHaveLength(0);
+  });
+
+  it('holds a wav for the length the engine reports', () => {
+    const one = wavPool('long', 1);
+    const shot = { ...worldShot(one, 'long', 1, 'voice'), exclusive: 'wav' as const };
+    const arbiter = new OneShotArbiter({ playback: { clipLengthS: () => 5 } });
+    expect(arbiter.decide([shot], 0)).toHaveLength(1);
+    expect(arbiter.decide([{ ...shot, key: 'long:2' }], 4)).toHaveLength(0);
+    expect(arbiter.decide([{ ...shot, key: 'long:3' }], 5.01)).toHaveLength(1);
   });
 });

@@ -1,3 +1,4 @@
+import { Rng } from '@open-northland/sim';
 import {
   JINGLE_CIVIL_DEFENSE,
   JINGLE_DEATH,
@@ -7,6 +8,7 @@ import {
   JINGLE_TECHNOLOGY,
   JINGLE_WON,
 } from './bindings.js';
+import { OneShotLedger, type OneShotPlayback } from './one-shot-ledger.js';
 import type { OneShot } from './types.js';
 
 /**
@@ -19,11 +21,15 @@ import type { OneShot } from './types.js';
  *   quiet spell rings at once. A more important jingle (a death, the alarm) rings over a lesser one
  *   already sounding; a lesser one waits for the lane and rings late, or is dropped once stale.
  * - Voices and positioned SFX draw from a rate budget each, loudest first, so the busiest battle
- *   starts a bounded number of layered sounds a second. An exclusive shot (a scream, a body blow) is
- *   counted like any other: its own wav guard and the budget both apply.
+ *   starts a bounded number of layered sounds a second.
+ *
+ * Every shot but a jingle has its wav picked here, and is refused before it costs any budget when its
+ * key is cooling or, being exclusive, its wav (an answer: its pool) still sounds. The engine receives
+ * only shots that should play, each with its one wav.
  *
  * Approximation: the original rations nothing beyond its same-jingle and same-wav guards; the budgets
- * and the growing cooldown are a legibility choice. Pure: time comes in as `now` (audio-clock seconds).
+ * and the growing cooldown are a legibility choice. Pure: time comes in as `now` (audio-clock
+ * seconds) and the wav picks draw from an injected source.
  */
 
 /** The rank a jingle rings with: a higher rank interrupts the lane, a lower or equal one waits. */
@@ -58,6 +64,9 @@ export const VOICE_BURST = 2;
 export const SFX_STARTS_PER_S = 12;
 export const SFX_BURST = 12;
 
+/** Seed of the pick source an arbiter built without one draws from. */
+export const DEFAULT_PICK_SEED = 1;
+
 /** The classic leaky budget: `tokens` refill at `rate` up to `burst`; a start spends one. */
 class RateBudget {
   private tokens: number;
@@ -72,13 +81,16 @@ class RateBudget {
     this.refilledAt = now;
   }
 
-  take(now: number): boolean {
+  /** Whether a start can be paid for at `now`, after refilling. */
+  ready(now: number): boolean {
     const elapsed = Math.max(0, now - this.refilledAt);
     this.tokens = Math.min(this.burst, this.tokens + elapsed * this.rate);
     this.refilledAt = now;
-    if (this.tokens < 1) return false;
+    return this.tokens >= 1;
+  }
+
+  spend(): void {
     this.tokens -= 1;
-    return true;
   }
 }
 
@@ -106,9 +118,14 @@ function jingleType(shot: OneShot): number | null {
   return shot.lane?.kind === 'jingle' ? shot.lane.musicType : null;
 }
 
-/** Loudest first, stable within a gain, so the nearest sounds win a tight budget. */
-function byGainDesc(shots: OneShot[]): OneShot[] {
-  return shots.sort((a, b) => b.gain - a.gain);
+/** {@link OneShotArbiter} construction options, all optional for a headless run. */
+export interface ArbiterOptions {
+  /** Audio-clock second the budgets start full at. */
+  readonly now?: number;
+  /** The [0,1) source wav picks draw from; absent, a fixed-seed sequence, so the layer stays pure. */
+  readonly random?: () => number;
+  /** What the engine reports back. */
+  readonly playback?: OneShotPlayback;
 }
 
 export class OneShotArbiter {
@@ -119,43 +136,48 @@ export class OneShotArbiter {
   private lanePriority = DEFAULT_JINGLE_PRIORITY;
   private readonly voices: RateBudget;
   private readonly sfx: RateBudget;
+  private readonly ledger: OneShotLedger;
 
-  constructor(now = 0) {
+  constructor(options: ArbiterOptions = {}) {
+    const now = options.now ?? 0;
     this.voices = new RateBudget(VOICE_STARTS_PER_S, VOICE_BURST, now);
     this.sfx = new RateBudget(SFX_STARTS_PER_S, SFX_BURST, now);
+    const random = options.random ?? seededRandom(DEFAULT_PICK_SEED);
+    this.ledger = new OneShotLedger(random, options.playback ?? {});
   }
 
   /** The shots of this frame that should start, at `now` audio-clock seconds. Call every frame, with
    *  an empty list too: a jingle waiting for the lane rings from here. */
   decide(shots: readonly OneShot[], now: number): OneShot[] {
+    this.ledger.beginFrame(now);
     const out: OneShot[] = [];
     const jingles: OneShot[] = [];
-    const voices: OneShot[] = [];
-    const sfx: OneShot[] = [];
     for (const shot of shots) {
       switch (shot.lane?.kind) {
         case 'jingle':
           jingles.push(shot);
           break;
         case 'voice':
-          voices.push(shot);
-          break;
         case 'sfx':
-          sfx.push(shot);
+          this.ledger.offer(shot, now);
           break;
-        case undefined:
-          out.push(shot);
+        case undefined: {
+          const started = this.ledger.startFree(shot, now);
+          if (started !== null) out.push(started);
           break;
+        }
       }
     }
     jingles.sort((a, b) => jinglePriority(jingleType(b) ?? 0) - jinglePriority(jingleType(a) ?? 0));
     for (const shot of jingles) this.offerJingle(shot, now, out);
     this.ringPending(now, out);
-    for (const shot of byGainDesc(voices)) {
-      if (this.voices.take(now)) out.push(shot);
-    }
-    for (const shot of byGainDesc(sfx)) {
-      if (this.sfx.take(now)) out.push(shot);
+    for (const shot of this.ledger.takeCandidates()) {
+      const budget = shot.lane?.kind === 'voice' ? this.voices : this.sfx;
+      if (!budget.ready(now)) continue;
+      const started = this.ledger.startWorld(shot, now);
+      if (started === null) continue;
+      budget.spend();
+      out.push(started);
     }
     return out;
   }
@@ -202,4 +224,9 @@ export class OneShotArbiter {
     this.pending.delete(best.type);
     this.offerJingle(best.waiting.shot, now, out);
   }
+}
+
+function seededRandom(seed: number): () => number {
+  const rng = new Rng(seed);
+  return () => rng.next();
 }
