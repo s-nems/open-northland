@@ -1,5 +1,6 @@
 import {
   AttackOrder,
+  ClaimAnimalOrder,
   CurrentAtomic,
   DeferredOrder,
   EquipOrder,
@@ -24,6 +25,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { orderOpenChest } from './chests.js';
 import { dropOrderQueue, isOrderableSettler } from './guards.js';
+import { orderClaimAnimal } from './livestock.js';
 import { breaksForMeal, startMealBreak } from './meal-break.js';
 import { attackMoveUnit, moveUnit } from './movement.js';
 import { placeSignpost } from './signposts.js';
@@ -51,6 +53,7 @@ function holdsCurrentOrder(world: World, e: Entity): boolean {
     world.has(e, PlayerOrder) ||
     world.has(e, ErectSignpostOrder) ||
     world.has(e, OpenChestOrder) ||
+    world.has(e, ClaimAnimalOrder) ||
     world.has(e, TrainingOrder) ||
     world.has(e, ExploreOrder) ||
     world.has(e, DeferredOrder) ||
@@ -137,6 +140,9 @@ function startQueuedOrder(world: World, ctx: SystemContext, command: QueueableOr
       return;
     case 'openChest':
       orderOpenChest(world, ctx, command);
+      return;
+    case 'claimAnimal':
+      orderClaimAnimal(world, ctx, command);
       return;
     default:
       assertNever(command);

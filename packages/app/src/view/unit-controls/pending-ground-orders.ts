@@ -176,6 +176,7 @@ function orderActors(command: PlayerCommand): OrderActor[] {
     case 'moveUnit':
     case 'attackMoveUnit':
     case 'openChest':
+    case 'claimAnimal':
     case 'placeSignpost':
       return [{ id: command.entity, queued: command.queued === true }];
     case 'attackUnit':

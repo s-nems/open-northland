@@ -1,4 +1,5 @@
 import { defineComponent, type Entity } from '../ecs/world.js';
+import type { NodeId } from '../nav/terrain/index.js';
 
 /**
  * Marks a creature of a livestock species (a `catchable` `animaltypes.ini` record), claimable by a scout
@@ -26,3 +27,17 @@ export const YoungAnimal = defineComponent<{
   /** The tick it becomes an adult (`adult_animal` job 49). */
   adultAt: number;
 }>('YoungAnimal', 'economy');
+
+/**
+ * A scout's pending "claim that animal" order - the `claimAnimal` command's marker. The scout walks after
+ * the animal under a normal `PlayerOrder`, re-aimed while the animal moves, until the capture pass hands
+ * the animal to the scout's player. Dropped when the animal is claimed, gone or no longer claimable, or the
+ * walk fails or is interrupted. Named addition: the original claims only what a scout passes.
+ */
+export const ClaimAnimalOrder = defineComponent<{
+  animal: Entity;
+  /** The node the scout's walk heads for: the animal's node, snapped walkable, when last aimed. */
+  goal: NodeId;
+  /** The first tick the walk may be re-aimed at a moved animal. */
+  retargetAt: number;
+}>('ClaimAnimalOrder', 'settlers');

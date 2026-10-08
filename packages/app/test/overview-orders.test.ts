@@ -49,6 +49,7 @@ const targets: UnitTargets = {
   goods: () => [],
   resources: () => [],
   wildlife: () => [],
+  claimableLivestock: () => [],
   ownedSettlersIn: (refs) =>
     [SCOUT, MATE]
       .filter((unit) => refs.has(unit.id))

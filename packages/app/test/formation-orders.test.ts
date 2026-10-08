@@ -42,6 +42,7 @@ function harness(count = 4) {
     goods: () => [],
     resources: () => [],
     wildlife: () => [],
+    claimableLivestock: () => [],
     enemies: () => [],
     ownedSettlersIn: (ids) => units.filter(({ ref }) => ids.has(ref)),
   };

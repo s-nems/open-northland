@@ -137,6 +137,7 @@ const targetsOf = (arms: Arms): UnitTargets => ({
   goods: () => [],
   resources: () => [],
   wildlife: () => [],
+  claimableLivestock: () => [],
   ownedSettlersIn: () => (arms.settlers ?? []).map((ref) => ({ ref, x: 0, y: 0 })),
 });
 

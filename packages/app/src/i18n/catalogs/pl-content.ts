@@ -460,6 +460,11 @@ export const plContent = {
       summary:
         'Głodny zwiadowca z kolejką drogowskazów idzie najpierw do spiżarni, je i stawia resztę. Żołnierz z regeneracją też schodzi coś zjeść, ten bez regeneracji maszeruje dalej głodny.',
     },
+    'scout-claim': {
+      title: 'Zwiadowca zajmuje zwierzę',
+      summary:
+        'Zaznacz zwiadowcę i kliknij prawym owcę: idzie za nią, aż będzie twoja. Shift + prawy na krowie dodaje ją do kolejki.',
+    },
     'chest-queue': {
       title: 'Skrzynie po kolei',
       summary:

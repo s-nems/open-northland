@@ -82,6 +82,7 @@ function harness({
     goods: () => [],
     resources: () => [],
     wildlife: () => [],
+    claimableLivestock: () => [],
     enemies: () => [],
     ownedSettlersIn: (ids) =>
       [captain, passenger]

@@ -73,6 +73,7 @@ async function rightClick(
     goods: () => [pile],
     resources: () => [],
     wildlife: () => [],
+    claimableLivestock: () => [],
     ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),
   };
   createUnitOrderController({

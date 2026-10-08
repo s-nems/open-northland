@@ -208,6 +208,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
       { kind: 'unassignHouse' },
       { kind: 'marry' },
       { kind: 'openChest', chest: t.hq, queued: true },
+      { kind: 'claimAnimal', animal: t.hq, queued: true },
       { kind: 'equipGood', group: 'boots', slot: 0, goodType: SHOES, skipReturn: true },
       { kind: 'unequipGood', group: 'misc', slot: 1 },
       { kind: 'setJob', jobType: CARPENTER },
@@ -261,6 +262,10 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     openChest: [
       { entity: t.worker, chest: t.hq },
       { entity: t.worker, chest: t.hq, queued: true },
+    ],
+    claimAnimal: [
+      { entity: t.worker, animal: t.hq },
+      { entity: t.worker, animal: t.hq, queued: true },
     ],
     placeBuilding: [
       { buildingType: SAWMILL, ...node, tribe: VIKING },

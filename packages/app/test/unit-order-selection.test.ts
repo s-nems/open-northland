@@ -69,6 +69,7 @@ const targets: UnitTargets = {
   goods: () => [],
   resources: () => [],
   wildlife: () => [],
+  claimableLivestock: () => [],
   ownedSettlersIn: (refs) =>
     UNITS.filter((u) => refs.has(u.id)).map((u) => {
       const node = nodeUnder(u.cell);

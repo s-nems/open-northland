@@ -340,7 +340,13 @@ export interface AttackMoveMarch {
 }
 
 /** The order kinds a Shift-click may line up behind a settler's current order; each carries `queued`. */
-export const QUEUEABLE_ORDER_KINDS = ['moveUnit', 'attackMoveUnit', 'placeSignpost', 'openChest'] as const;
+export const QUEUEABLE_ORDER_KINDS = [
+  'moveUnit',
+  'attackMoveUnit',
+  'placeSignpost',
+  'openChest',
+  'claimAnimal',
+] as const;
 
 export type QueueableOrderCommand = Extract<Command, { kind: (typeof QUEUEABLE_ORDER_KINDS)[number] }>;
 
@@ -367,7 +373,7 @@ export const MealBreakRetry = defineComponent<{ readonly retryAt: number }>('Mea
 /** The order kinds a running non-interruptible atomic parks instead of cancelling. */
 export type DeferrableOrderCommand = Extract<
   Command,
-  { kind: 'moveUnit' | 'attackMoveUnit' | 'setJob' | 'placeSignpost' | 'openChest' }
+  { kind: 'moveUnit' | 'attackMoveUnit' | 'setJob' | 'placeSignpost' | 'openChest' | 'claimAnimal' }
 >;
 
 /**

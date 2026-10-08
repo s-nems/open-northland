@@ -337,16 +337,22 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       return false;
     }
     const chest = pickTopAt(deps.targets.chests(), world.x, world.y);
-    // Shift queues a chest to open or a walk behind each settler's current order; no order on another
-    // target is queueable, so the ground under it is walked to instead.
+    const animal = pickTopAt(deps.targets.claimableLivestock(), world.x, world.y);
+    // Shift queues a chest to open, an animal to claim or a walk behind each settler's current order; no
+    // order on another target is queueable, so the ground under it is walked to instead.
     if (event.shiftKey) {
       if (chest !== null && openChest(commanded, chest, true)) return true;
-      return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), commanded, 'moveUnit', true);
+      const walkers = animal === null ? commanded : claimAnimal(commanded, animal, true);
+      if (walkers.length === 0) return true;
+      return issueWalkOrder(worldToTile(world.x, world.y, deps.elevation), walkers, 'moveUnit', true);
     }
+    // The scouts go after a claimable animal; the rest take the ladder, which strikes an enemy's animal.
+    const rest = animal === null ? commanded : claimAnimal(commanded, animal);
+    if (rest.length === 0) return true;
     const enemy = pickTopAt(deps.targets.enemies(), world.x, world.y);
-    if (enemy !== null) return strike(commanded, enemy);
+    if (enemy !== null) return strike(rest, enemy);
     // A chest nobody selected may open is walked to like any ground.
-    if (chest !== null && openChest(commanded, chest)) return true;
+    if (chest !== null && openChest(rest, chest)) return true;
     const goods = deps.targets.goods();
     const pile = pickTopAt(goods, world.x, world.y);
     const pileGood = pile === null ? undefined : goods.find((target) => target.ref === pile)?.goodType;
@@ -358,11 +364,11 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
     };
     if (
       pileGood !== undefined &&
-      wearFromGround(commanded, pileGood, (unworn) => rightClickRest(event, unworn, aim))
+      wearFromGround(rest, pileGood, (unworn) => rightClickRest(event, unworn, aim))
     ) {
       return true;
     }
-    const others = gatherFromResource(commanded, world.x, world.y);
+    const others = gatherFromResource(rest, world.x, world.y);
     if (others.length === 0) return true;
     return rightClickRest(event, others, aim);
   };
@@ -635,6 +641,33 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
       });
     }
     return enqueueUnitSelection(commands, deps.enqueue, onOrderLimit);
+  };
+
+  /** Send every commanded scout after `animal`, queued behind its current order when `queued`; returns
+   *  the units that are not scouts. The sim judges the animal when each order starts. */
+  const claimAnimal = (
+    commanded: readonly FormationUnit[],
+    animal: number,
+    queued = false,
+  ): readonly FormationUnit[] => {
+    const snapshot = deps.snapshot();
+    const others: FormationUnit[] = [];
+    const commands: UnitSelectionCommand[] = [];
+    for (const unit of commanded) {
+      const self = entityById(snapshot, unit.ref);
+      if (self === undefined || !systems.isScoutJob(deps.content, settlerJobType(self) ?? null)) {
+        others.push(unit);
+        continue;
+      }
+      commands.push({
+        kind: 'claimAnimal',
+        entity: unit.ref as Entity,
+        animal: animal as Entity,
+        ...(queued ? { queued } : {}),
+      });
+    }
+    enqueueUnitSelection(commands, deps.enqueue, onOrderLimit);
+    return others;
   };
 
   /**

@@ -90,6 +90,9 @@ export interface UnitTargets {
    * reads it.
    */
   wildlife(): Pickable[];
+  /** The livestock on screen a scout may be sent to claim: wild, or held by a player the viewer's seat is
+   *  hostile toward - the sim's claim rule. */
+  claimableLivestock(): Pickable[];
   /**
    * The owned settlers among `refs` that take the player's orders, in draw order. Bound to the selection
    * rather than the screen, so it survives the camera panning away and reaches a settler standing inside
@@ -268,6 +271,20 @@ export function createUnitTargets(deps: UnitTargetsDeps): UnitTargets & Selectio
         const e = entityById(snapshot, it.ref);
         if (e === undefined || !isWildlife(e)) continue;
         if (ownerPlayerOf(e) !== undefined) continue; // owned - a person or someone's livestock, not game
+        out.push(hitTarget(it, 'settler'));
+      }
+      return out;
+    },
+
+    claimableLivestock(): Pickable[] {
+      const snapshot = deps.snapshot();
+      const out: Pickable[] = [];
+      for (const it of deps.drawnItems()) {
+        if (it.kind !== 'settler' || !isHitTarget(it)) continue;
+        const e = entityById(snapshot, it.ref);
+        if (e === undefined || !isLivestock(e)) continue;
+        const owner = ownerPlayerOf(e);
+        if (owner !== undefined && (pickableOwner(owner) || !deps.hostileToward(owner))) continue;
         out.push(hitTarget(it, 'settler'));
       }
       return out;

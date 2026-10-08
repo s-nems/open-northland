@@ -1,4 +1,5 @@
 import {
+  ClaimAnimalOrder,
   ErectSignpostOrder,
   ExploreOrder,
   hasMissionBehaviour,
@@ -102,6 +103,7 @@ export function suspendWalkForMeal(world: World, terrain: TerrainGraph, e: Entit
   world.remove(e, PlayerOrder);
   world.remove(e, ErectSignpostOrder);
   world.remove(e, OpenChestOrder);
+  world.remove(e, ClaimAnimalOrder);
   clearNavState(world, e);
   startMealBreak(world, e);
 }
@@ -111,6 +113,8 @@ function resumableOrder(world: World, terrain: TerrainGraph, e: Entity): Queueab
   if (world.has(e, ExploreOrder)) return null;
   const chest = world.tryGet(e, OpenChestOrder);
   if (chest !== undefined) return { kind: 'openChest', entity: e, chest: chest.chest };
+  const claim = world.tryGet(e, ClaimAnimalOrder);
+  if (claim !== undefined) return { kind: 'claimAnimal', entity: e, animal: claim.animal };
   const signpost = world.tryGet(e, ErectSignpostOrder);
   if (signpost !== undefined) {
     const at = terrain.coordsOf(signpost.goal);

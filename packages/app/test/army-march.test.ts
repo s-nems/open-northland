@@ -23,6 +23,7 @@ it.each(['move', 'attack-move', 'redirect'] as const)(
       goods: () => [],
       resources: () => [],
       wildlife: () => [],
+      claimableLivestock: () => [],
       enemies: () => [],
       ownedSettlersIn: (ids) =>
         members

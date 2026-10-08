@@ -115,6 +115,7 @@ const UNIT_SELECTION_ACTION_PAYLOAD: {
   },
   makeChild: { required: { child: { oneOf: CHILD_SEXES } } },
   openChest: { required: { chest: 'integer' }, optional: QUEUED },
+  claimAnimal: { required: { animal: 'integer' }, optional: QUEUED },
   equipGood: {
     required: { group: { oneOf: EQUIP_CATEGORIES }, slot: 'integer', goodType: 'integer' },
     optional: { skipReturn: 'boolean' },
@@ -270,6 +271,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   dockVehicle: { required: { vehicle: 'integer', ...NODE } },
   renameSettler: { required: { entity: 'integer', name: { string: SETTLER_NAME_MAX_CHARS } } },
   openChest: { required: { entity: 'integer', chest: 'integer' }, optional: QUEUED },
+  claimAnimal: { required: { entity: 'integer', animal: 'integer' }, optional: QUEUED },
   placeBuilding: {
     required: { buildingType: 'integer', ...NODE, tribe: 'integer' },
     optional: {

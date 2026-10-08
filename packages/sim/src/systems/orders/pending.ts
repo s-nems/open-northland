@@ -4,6 +4,7 @@ import type { World } from '../../ecs/world.js';
 import type { System, SystemContext } from '../context.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { orderOpenChest } from './chests.js';
+import { orderClaimAnimal } from './livestock.js';
 import { attackMoveUnit, moveUnit, sendUnit } from './movement.js';
 import { placeSignpost } from './signposts.js';
 import { setJob } from './work/index.js';
@@ -43,6 +44,9 @@ function applyDeferredOrder(world: World, ctx: SystemContext, command: Deferrabl
       return;
     case 'openChest':
       orderOpenChest(world, ctx, command);
+      return;
+    case 'claimAnimal':
+      orderClaimAnimal(world, ctx, command);
       return;
     default:
       assertNever(command);

@@ -58,6 +58,7 @@ function harness(enemy = false, count = COUNT, posted = false, vehicleCount = 0)
     goods: () => [],
     resources: () => [],
     wildlife: () => [],
+    claimableLivestock: () => [],
     enemies: () => (enemy ? [{ ref: ENEMY, ...POINT, kind: 'settler' }] : []),
     ownedSettlersIn: (ids) => units.filter((unit) => ids.has(unit.ref)),
   };

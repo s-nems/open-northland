@@ -130,6 +130,7 @@ async function pressRightClick(
     goods: () => [],
     resources: () => [],
     wildlife: () => [],
+    claimableLivestock: () => [],
     ownedSettlersIn: () => settlers.map((ref) => ({ ref, x: 0, y: 0 })),
   };
   const controller = createUnitOrderController({

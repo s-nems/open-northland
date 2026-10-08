@@ -38,6 +38,7 @@ import {
   makeChild,
   marry,
   moveUnit,
+  orderClaimAnimal,
   orderNeed,
   orderOpenChest,
   placeSignpost,
@@ -345,6 +346,9 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       return;
     case 'openChest':
       obeyDespiteHunger(world, ctx, command.entity, () => orderOpenChest(world, ctx, command));
+      return;
+    case 'claimAnimal':
+      obeyDespiteHunger(world, ctx, command.entity, () => orderClaimAnimal(world, ctx, command));
       return;
     case 'grantPaper':
       addPaper(world, command.player, command.paper);

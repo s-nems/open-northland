@@ -464,6 +464,11 @@ export const deContent = {
       summary:
         'Ein hungriger Kundschafter soll mehrere Wegweiser nacheinander errichten. Zuerst geht er jedoch zur Vorratskammer, isst und stellt dann die übrigen auf. Auch ein Soldat, dem Erholung erlaubt ist, macht eine Essenspause; der Soldat ohne Erholungserlaubnis marschiert hungrig weiter.',
     },
+    'scout-claim': {
+      title: 'Ein Kundschafter fängt ein Tier',
+      summary:
+        'Wähle den Kundschafter aus und klicke mit rechts auf ein Schaf: Er folgt ihm, bis es dir gehört. Mit Shift + Rechtsklick auf eine Kuh reihst du sie als Nächstes ein.',
+    },
     'chest-queue': {
       title: 'Truhen nacheinander öffnen',
       summary:

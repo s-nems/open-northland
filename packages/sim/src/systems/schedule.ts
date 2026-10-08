@@ -35,6 +35,7 @@ import { pathfindingSystem } from './movement/routing.js';
 import { movementSystem } from './movement/system.js';
 import {
   chestOrderSystem,
+  claimAnimalOrderSystem,
   deferredOrderSystem,
   exploreOrderSystem,
   orderQueueSystem,
@@ -88,6 +89,9 @@ export const SYSTEM_ORDER: readonly ScheduledSystem[] = [
   { name: 'herding', system: herdingSystem },
   // After herding, so cohesion outranks grazing.
   { name: 'animalWander', system: animalWanderSystem },
+  // Just before the player-order system, so a claim walk that arrives short of a moved animal is re-aimed
+  // before that system retires it.
+  { name: 'claimAnimalOrder', system: claimAnimalOrderSystem },
   { name: 'playerOrder', system: playerOrderSystem },
   // After playerOrderSystem retires the walk and before the planner could re-task the scout, so an
   // arrived erect order starts its hammer swing this same tick.

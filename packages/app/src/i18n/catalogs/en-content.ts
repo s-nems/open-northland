@@ -462,6 +462,11 @@ export const enContent = {
       summary:
         'A hungry scout with a queued run of signposts goes to the larder first, eats, then erects the rest. A soldier allowed to regenerate breaks off to eat too; the one without regeneration marches on hungry.',
     },
+    'scout-claim': {
+      title: 'A scout claims an animal',
+      summary:
+        'Select the scout and right click a sheep: it follows the sheep until it is yours. Shift + right click a cow to queue it next.',
+    },
     'chest-queue': {
       title: 'Chests one after another',
       summary:

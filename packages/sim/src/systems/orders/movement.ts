@@ -3,6 +3,7 @@ import {
   AttackOrder,
   Carrying,
   Chat,
+  ClaimAnimalOrder,
   CurrentAtomic,
   DeferredOrder,
   Engagement,
@@ -60,7 +61,12 @@ import { breaksForMeal, suspendWalkForMeal } from './meal-break.js';
  * Only static blockers and terrain count; re-aiming a goal off a standing unit belongs to the routing
  * surround rule.
  */
-function reachableMoveGoal(world: World, ctx: SystemContext, terrain: TerrainGraph, clicked: NodeId): NodeId {
+export function reachableMoveGoal(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  clicked: NodeId,
+): NodeId {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   if (terrain.isWalkable(clicked) && !blocked.has(clicked)) return clicked;
   return nearestUnblockedNode(terrain, clicked, blocked) ?? clicked;
@@ -166,6 +172,7 @@ function startPlayerWalk(
   world.remove(e, Fleeing);
   world.remove(e, ErectSignpostOrder);
   world.remove(e, OpenChestOrder);
+  world.remove(e, ClaimAnimalOrder);
   // Cancelling the equip errand is the player's only way to call it off; left standing it would resume after
   // the walk and drag the settler back to its stale pre-order return spot.
   world.remove(e, EquipOrder);

@@ -44,6 +44,7 @@ export type UnitSelfAction =
 export type UnitSelectionAction =
   | UnitSelfAction
   | { readonly kind: 'openChest'; readonly chest: Entity; readonly queued?: boolean }
+  | { readonly kind: 'claimAnimal'; readonly animal: Entity; readonly queued?: boolean }
   | {
       readonly kind: 'equipGood';
       readonly group: EquipCategory;
@@ -165,6 +166,18 @@ export type UnitOrderCommand =
       readonly entity: Entity;
       readonly chest: Entity;
       /** As `moveUnit`'s; the chest is judged when the order starts. */
+      readonly queued?: boolean;
+    }
+  | {
+      /**
+       * Send one owned scout after `animal`, a livestock creature its player may claim: the scout follows
+       * it as it moves until the capture pass makes it the player's. A non-scout, or an animal already
+       * the player's or not claimable, orders nothing.
+       */
+      readonly kind: 'claimAnimal';
+      readonly entity: Entity;
+      readonly animal: Entity;
+      /** As `moveUnit`'s; the animal is judged when the order starts. */
       readonly queued?: boolean;
     }
   | {

@@ -106,6 +106,7 @@ export const COMMAND_ISSUER: {
   detachFromVehicle: 'seat',
   detachTradeHouse: 'seat',
   dockVehicle: 'seat',
+  claimAnimal: 'seat',
   clearTradeImports: 'seat',
   createVehicle: 'trusted',
   dropGood: 'trusted',

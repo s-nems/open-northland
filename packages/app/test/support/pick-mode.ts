@@ -15,6 +15,7 @@ export const NO_TARGETS: UnitTargets = {
   goods: () => [],
   resources: () => [],
   wildlife: () => [],
+  claimableLivestock: () => [],
   ownedSettlersIn: () => [],
 };
 
