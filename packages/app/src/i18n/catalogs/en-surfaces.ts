@@ -243,10 +243,10 @@ export const enSurfaces = {
       jinglesEnabled: 'Event jingles',
       jinglesEnabledTip:
         'The short tunes for a finished building, a discovery, a birth, a wedding and an opened chest. Alerts, deaths and the end of a mission always sound.',
-      unitResponses: 'Unit responses',
+      unitResponses: 'When units answer',
       unitResponsesTip:
         'Whether settlers answer your orders and your selections out loud. Without an answer, the click alone confirms an order.',
-      unitResponseModes: { all: 'All', selection: 'First selection only', off: 'Off' },
+      unitResponseModes: { all: 'Always', selection: 'First selection only', off: 'Never' },
       volumeHeading: 'Volume',
       volumeTest: 'Test',
       volumes: {

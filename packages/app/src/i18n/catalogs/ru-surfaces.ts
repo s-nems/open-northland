@@ -278,10 +278,10 @@ export const ruSurfaces = {
       jinglesEnabled: 'Мелодии событий',
       jinglesEnabledTip:
         'Короткие мелодии при готовом здании, открытии, рождении, свадьбе и открытом сундуке. Тревоги, смерти и конец миссии звучат всегда.',
-      unitResponses: 'Ответы юнитов',
+      unitResponses: 'Когда юниты отвечают',
       unitResponsesTip:
         'Отвечают ли поселенцы голосом на приказы и на выделение. Без ответа приказ подтверждает только щелчок.',
-      unitResponseModes: { all: 'Все', selection: 'Только при выделении', off: 'Выкл.' },
+      unitResponseModes: { all: 'Всегда', selection: 'Только при выделении', off: 'Никогда' },
       volumeHeading: 'Громкость',
       volumeTest: 'Тест',
       volumes: {

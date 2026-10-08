@@ -281,10 +281,10 @@ export const deSurfaces = {
       jinglesEnabled: 'Ereignismelodien',
       jinglesEnabledTip:
         'Die kurzen Melodien für ein fertiges Gebäude, eine Entdeckung, eine Geburt, eine Hochzeit und eine geöffnete Truhe. Alarme, Tode und das Missionsende erklingen immer.',
-      unitResponses: 'Antworten der Einheiten',
+      unitResponses: 'Wann Einheiten antworten',
       unitResponsesTip:
         'Ob die Siedler auf Befehle und auf die Auswahl laut antworten. Ohne Antwort bestätigt allein der Klick einen Befehl.',
-      unitResponseModes: { all: 'Alle', selection: 'Nur bei Auswahl', off: 'Aus' },
+      unitResponseModes: { all: 'Immer', selection: 'Nur bei Auswahl', off: 'Nie' },
       volumeHeading: 'Lautstärke',
       volumeTest: 'Anhören',
       volumes: {

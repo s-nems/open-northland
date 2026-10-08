@@ -241,10 +241,10 @@ export const plSurfaces = {
       jinglesEnabled: 'Melodie zdarzeń',
       jinglesEnabledTip:
         'Krótkie melodie po ukończeniu budynku, odkryciu, narodzinach, ślubie i otwarciu skrzyni. Alarmy, śmierć i koniec misji słychać zawsze.',
-      unitResponses: 'Odpowiedzi jednostek',
+      unitResponses: 'Kiedy jednostki odpowiadają',
       unitResponsesTip:
         'Czy osadnicy odpowiadają głosem na rozkazy i na zaznaczenie. Bez odpowiedzi rozkaz potwierdza samo kliknięcie.',
-      unitResponseModes: { all: 'Wszystkie', selection: 'Tylko przy zaznaczeniu', off: 'Wyłączone' },
+      unitResponseModes: { all: 'Zawsze', selection: 'Tylko przy zaznaczeniu', off: 'Nigdy' },
       volumeHeading: 'Głośność',
       volumeTest: 'Odsłuchaj',
       volumes: {
