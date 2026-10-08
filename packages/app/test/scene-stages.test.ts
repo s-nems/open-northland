@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { LaneCounts, SoundStatsView } from '@open-northland/audio';
+import { type LaneCounts, type SoundStatsView, zeroLanes } from '@open-northland/audio';
 import type { Camera } from '@open-northland/render';
 import type { Command, PlayerCommand, WorldSnapshot } from '@open-northland/sim';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -38,10 +38,6 @@ const stages: readonly SceneStage[] = [
     ],
   },
 ];
-
-function lanes(): LaneCounts {
-  return { jingle: 0, alert: 0, voice: 0, sfx: 0, free: 0 };
-}
 
 let frameCallbacks: FrameRequestCallback[] = [];
 let now = 0;
@@ -98,8 +94,8 @@ describe('scene stage bar', () => {
   });
 
   it('logs each second what the driver was offered and started per lane', () => {
-    const offered = lanes();
-    const started = lanes();
+    const offered = zeroLanes();
+    const started = zeroLanes();
     const stats: { frames: number; stolen: number; offered: LaneCounts; started: LaneCounts } = {
       frames: 0,
       stolen: 0,

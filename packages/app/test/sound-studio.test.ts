@@ -4,12 +4,12 @@ import {
   buildSoundIndex,
   DEFAULT_VOLUMES,
   defaultBindings,
-  type LaneCounts,
   type MixerVolumes,
   type MusicManifest,
   type MusicSequence,
   type OneShot,
   type SoundStatsView,
+  zeroLanes,
 } from '@open-northland/audio';
 import type { SoundBank } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -71,7 +71,7 @@ class FakeAudio implements GalleryAudio {
   readonly calls: AuditionCall[] = [];
   readonly volumes: MixerVolumes[] = [];
   readonly music: (MusicSequence | null)[] = [];
-  private readonly counts = { frames: 0, offered: lanes(), started: lanes(), stolen: 0 };
+  private readonly counts = { frames: 0, offered: zeroLanes(), started: zeroLanes(), stolen: 0 };
   get stats(): SoundStatsView {
     return this.counts;
   }
@@ -95,10 +95,6 @@ class FakeAudio implements GalleryAudio {
   clipLengthS(): number | undefined {
     return undefined;
   }
-}
-
-function lanes(): LaneCounts {
-  return { jingle: 0, alert: 0, voice: 0, sfx: 0, free: 0 };
 }
 
 const flush = (): Promise<void> => new Promise((resolve) => setTimeout(resolve, 0));
