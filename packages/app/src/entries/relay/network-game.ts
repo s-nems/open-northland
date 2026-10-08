@@ -70,6 +70,10 @@ export function renderNetworkGame(
   /** The desync the next world rebuilds from, said on the plaque until that world shows. */
   let resyncing: Extract<ServerMessage, { kind: 'desync' }> | null = null;
   let plaque: ResyncPlaque | null = null;
+  function showPlaque(text: string): void {
+    if (plaque === null) plaque = mountResyncPlaque(text);
+    else plaque.update(text);
+  }
   function dismissPlaque(): void {
     plaque?.dispose();
     plaque = null;
@@ -165,9 +169,7 @@ export function renderNetworkGame(
       lastDesync = event.message;
       resyncing = event.message;
       // The frozen game says why, before the snapshot arrives and the loading card replaces it.
-      const text = desyncNotice(event.message.reference, event.message.tick).text;
-      if (plaque === null) plaque = mountResyncPlaque(text);
-      else plaque.update(text);
+      showPlaque(desyncNotice(event.message.reference, event.message.tick).text);
     }
     if (event.message.kind === 'kicked' && event.message.player === client.session?.localSeat) {
       fail(copy.youWereKicked);
@@ -273,11 +275,8 @@ export function renderNetworkGame(
     async restore(session, header, host) {
       const mine = ++revision;
       startWait.release();
-      if (resyncing !== null) {
-        const text = formatMessage(copy.resyncing, { nick: resyncing.reference, tick: resyncing.tick });
-        if (plaque === null) plaque = mountResyncPlaque(text);
-        else plaque.update(text);
-      }
+      if (resyncing !== null)
+        showPlaque(formatMessage(copy.resyncing, { nick: resyncing.reference, tick: resyncing.tick }));
       await build(session, { header }, null, host, mine);
     },
   };

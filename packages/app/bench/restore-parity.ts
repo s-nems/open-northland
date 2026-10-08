@@ -23,9 +23,9 @@ import { benchSession, mapBenchKnobs, mapBenchWorld, worldSourceLines } from './
  * heavy link pass, AI decision and planner tick of the second half, and at the absolute ticks
  * `ON_BENCH_PARITY_AT` lists, its save is restored into a fresh world, which runs to the end and must
  * reproduce every hash and every digest. A digest that differs with the state hash intact means the
- * restored world wrote other entities than the continuous one did, which the relay judges a desync
- * all the same; the first such tick is diffed down to the component and entity when it falls within
- * {@link INPUT_WINDOW_TICKS} of the restore.
+ * restored world wrote the same entities in another order, or other entities, than the continuous one
+ * did, which the relay judges a desync all the same; the first such tick is diffed down to the
+ * component and entity when it falls within {@link INPUT_WINDOW_TICKS} of the restore.
  * `ON_BENCH_PARITY_FRESH=on` instead builds the world twice from tick zero and compares the two runs:
  * plain determinism. Exits nonzero on the first divergence, naming its tick.
  */

@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { SettlerNeeds, type SettlerNeedsState } from '../../src/components/index.js';
-import { fx, ONE, Simulation } from '../../src/index.js';
+import {
+  exportSaveGame,
+  fx,
+  ONE,
+  parseSaveGame,
+  restoreSimulation,
+  Simulation,
+  serializeSaveGame,
+} from '../../src/index.js';
 import { NEED_SATED_THRESHOLD, needBar, needsSystem } from '../../src/systems/index.js';
 import { nextBandTick } from '../../src/systems/lifecycle/needs/levels.js';
 import { needsWakeOf } from '../../src/systems/lifecycle/needs/wake.js';
@@ -69,5 +77,32 @@ describe('needs wake visit order', () => {
     while (fixtureTick(sim) < due - 1) needsSystem(sim.world, nextTickCtxOf(sim));
     expect(sim.world.verifyCaches()).toEqual([]);
     expect(needsWakeOf(sim.world).take(due, sim.content, false)).toEqual([late, early]);
+  });
+});
+
+describe('needs pass after a restore', () => {
+  it('folds the same digest as the live world on a tick two settlers share', () => {
+    const live = new Simulation({ seed: 1, content: testContent() });
+    for (let i = 0; i < CROWD; i++) settlerAt(live, { jobType: WOODCUTTER });
+    const late = settlerAt(live, { jobType: WOODCUTTER });
+    const early = settlerAt(live, {
+      jobType: WOODCUTTER,
+      needs: { hunger: fx.sub(NEED_SATED_THRESHOLD, needBar(NEAR_UNITS)) },
+    });
+    live.run(SETTLED_TICKS);
+    Object.assign(live.world.mut(late, SettlerNeeds), live.world.get(early, SettlerNeeds));
+    const due = nextBandTick(live.world.get(early, SettlerNeeds), live.tick + 1);
+    live.run(due - 1 - live.tick);
+    // The live wake list stands with both settlers queued for `due`; the restored world rebuilds it.
+    const restored = restoreSimulation(parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(live)))), {
+      content: live.content,
+    });
+    live.setSyncDigest(true);
+    restored.setSyncDigest(true);
+    live.step();
+    restored.step();
+    expect(live.tick).toBe(due);
+    expect(restored.syncDigest()?.domains).toEqual(live.syncDigest()?.domains);
+    expect(restored.hashState()).toBe(live.hashState());
   });
 });
