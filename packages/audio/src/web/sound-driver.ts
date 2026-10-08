@@ -1,5 +1,6 @@
 import type { Camera } from '@open-northland/render/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { AlertDesk, type AttackReport, type NoticeVoice } from '../data/alerts.js';
 import { OneShotArbiter } from '../data/arbiter.js';
 import type { SoundIndex } from '../data/bank.js';
 import { directAudio } from '../data/director/index.js';
@@ -18,7 +19,7 @@ import {
 } from '../data/music/index.js';
 import { countShots, emptySoundStats, type SoundStatsView } from '../data/sound-stats.js';
 import type { AmbientLoop, AudioTerrain, OneShot, SoundBindings } from '../data/types.js';
-import { type UiCue, uiCueShot } from '../data/ui-cues.js';
+import { type NotificationCue, notificationShot, type UiCue, uiCueShot } from '../data/ui-cues.js';
 import type { WeatherSoundInput } from '../data/weather/mix.js';
 import { type AudioEngineOptions, WebAudioEngine } from './engine/index.js';
 import type { RandomFn } from './platform.js';
@@ -74,6 +75,8 @@ export interface SoundDriverOptions extends AudioEngineOptions {
  * screen.
  */
 export class SoundDriver {
+  /** Attacks and notice voices reported since the last frame. */
+  private readonly alerts = new AlertDesk();
   private readonly engine: WebAudioEngine;
   private readonly random: RandomFn;
   private readonly arbiter: OneShotArbiter;
@@ -182,6 +185,25 @@ export class SoundDriver {
     this.engine.applyWeather(conditions, gameSeconds);
   }
 
+  /** A notification arrived (a message card, a chat line, a player coming or going): ring its cue now.
+   *  With `rateKey` (a message type), that key rings at most once per notice interval. */
+  notify(notification: NotificationCue, rateKey?: string): void {
+    if (!this.engine.audible) return;
+    const now = this.engine.clock;
+    if (rateKey !== undefined && !this.alerts.admit(`${notification}:${rateKey}`, now)) return;
+    this.engine.fire(this.decide([notificationShot(notification)], now));
+  }
+
+  /** The local seat was hit: the next frame, which knows the camera, decides whether the horn sounds. */
+  alertAttack(report: AttackReport): void {
+    if (this.engine.audible) this.alerts.reportAttack(report);
+  }
+
+  /** A settler's new notice speaks in its own voice on the next frame, once per notice interval. */
+  noticeVoice(voice: NoticeVoice, settler: number): void {
+    if (this.engine.audible) this.alerts.speak(voice, settler);
+  }
+
   /** The graphics "Weather" switch (live). */
   setWeatherEnabled(enabled: boolean): void {
     this.engine.setWeatherEnabled(enabled);
@@ -232,8 +254,11 @@ export class SoundDriver {
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
     });
+    const now = this.engine.clock;
+    const alerts = this.alerts.take(input, input.snapshot, this.index, this.bindings, now);
+    const oneShots = alerts.length === 0 ? frame.oneShots : [...frame.oneShots, ...alerts];
     this.counts.frames++;
-    this.engine.apply({ ...frame, oneShots: this.decide(frame.oneShots, this.engine.clock) });
+    this.engine.apply({ ...frame, oneShots: this.decide(oneShots, now) });
     this.updateMusic(input);
   }
 

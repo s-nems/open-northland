@@ -11,7 +11,7 @@ import type { OneShot } from './types.js';
  *
  * Order answers ride `ui` rather than `voice`: they answer the player's own click like a button does,
  * so they keep one level wherever the camera is and the voice slider cannot bury feedback the player
- * asked for. Jingles are alerts and sit beside them for the same reason.
+ * asked for. Jingles and alerts sit beside them for the same reason.
  */
 export type SoundBus = 'music' | 'voice' | 'world' | 'ambient' | 'ui';
 
@@ -72,6 +72,7 @@ export function oneShotBus(shot: OneShot): SoundBus {
   if (lane === undefined) return 'ui';
   switch (lane.kind) {
     case 'jingle':
+    case 'alert':
       return 'ui';
     case 'voice':
       return 'voice';

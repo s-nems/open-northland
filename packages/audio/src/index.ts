@@ -9,6 +9,20 @@
 // constants (JINGLE_*, GROUP_*) are intentionally not re-exported: they are implementation detail of
 // `defaultBindings`, which is the surface a consumer overrides.
 export {
+  ALERT_DUCK_DB,
+  type AlertKind,
+  ATTACK_ALERT_GAIN,
+  ATTACK_ALERT_INTERVAL_S,
+  ATTACK_ALERT_MIN_GAP_S,
+  ATTACK_ALERT_NEW_FRONT_PX,
+  AttackAlerts,
+  type AttackFront,
+  type AttackReport,
+  NOTICE_CUE_INTERVAL_S,
+  type NoticeVoice,
+} from './data/alerts.js';
+export {
+  ALERT_PRIORITY,
   DEFAULT_JINGLE_LENGTH_S,
   DEFAULT_JINGLE_PRIORITY,
   JINGLE_COOLDOWN_GROWTH,
@@ -16,6 +30,7 @@ export {
   JINGLE_FREQUENT_WINDOW,
   JINGLE_PENDING_MAX_AGE_S,
   JINGLE_PRIORITY,
+  LANE_RANK,
   OneShotArbiter,
   SFX_BURST,
   SFX_STARTS_PER_S,
@@ -166,10 +181,20 @@ export type {
   EventSound,
   LandscapeInput,
   Lane,
+  NoticeVoiceSound,
   OneShot,
   SoundBindings,
 } from './data/types.js';
-export { UI_CUE_FILES, UI_CUE_GAIN, type UiCue, uiCueShot } from './data/ui-cues.js';
+export {
+  NOTICE_CARD_GAIN,
+  NOTIFICATION_CUES,
+  type NotificationCue,
+  notificationShot,
+  UI_CUE_FILES,
+  UI_CUE_GAIN,
+  type UiCue,
+  uiCueShot,
+} from './data/ui-cues.js';
 // Weather soundscape: every level and band is a named approximation in its module (the original has
 // no weather sound); this is the mix decision and the knob a caller most likely retunes.
 export {
@@ -179,8 +204,10 @@ export {
   weatherMix,
 } from './data/weather/mix.js';
 export {
+  ALERT_DUCKED_BUSES,
   AMBIENT_FADE_S,
   type AudioEngineOptions,
+  BUS_DUCK_RAMP_S,
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
   DEFAULT_MUSIC_BASE_URL,

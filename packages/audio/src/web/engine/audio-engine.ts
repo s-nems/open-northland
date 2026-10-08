@@ -24,6 +24,7 @@ import type { AudioFrame, OneShot } from '../../data/types.js';
 import type { WeatherSoundInput } from '../../data/weather/mix.js';
 import { type ContextFactory, type FetchBytes, httpFetchBytes, webAudioContextFactory } from '../platform.js';
 import { AmbientMixer } from './ambient-mixer.js';
+import { BusDuck } from './bus-duck.js';
 import { MusicPlayer } from './music-player.js';
 import { CLICK_FREE_RAMP_S, rampParam } from './ramps.js';
 import { SampleCache } from './sample-cache.js';
@@ -109,6 +110,9 @@ export const MUSIC_DUCK_GAIN = 10 ** (-20 / 20);
 /** The duck's fade time each way in the original: 300 ms. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
 
+/** The buses an alert ducks ({@link OneShot.duckWorldDb}): the world's action and its beds. */
+export const ALERT_DUCKED_BUSES: readonly SoundBus[] = ['world', 'ambient'];
+
 /** The buses that carry world one-shots, each split into the two {@link ShotLayer}s. */
 type WorldBus = 'world' | 'voice';
 const WORLD_BUSES: readonly WorldBus[] = ['world', 'voice'];
@@ -143,6 +147,8 @@ export class WebAudioEngine {
   private musicDuck: GainNode | null = null;
   /** Audio-clock time the running jingle duck may lift at; null while the music is not ducked. */
   private duckedUntil: number | null = null;
+  /** The dips behind {@link ALERT_DUCKED_BUSES}. */
+  private alertDucks: readonly BusDuck[] = [];
   private samples: SampleCache | null = null;
   private mixer: AmbientMixer | null = null;
   private music: MusicPlayer | null = null;
@@ -297,6 +303,7 @@ export class WebAudioEngine {
     this.fire(frame.oneShots);
     this.mixer.reconcile(frame.ambient);
     this.updateMusicDuck(ctx);
+    for (const duck of this.alertDucks) duck.update(ctx);
   }
 
   /** Play one frame of weather; `gameSeconds` is the clock the conditions advanced by (see
@@ -402,9 +409,14 @@ export class WebAudioEngine {
     musicDuck.gain.value = 1;
     for (const bus of SOUND_BUSES) {
       if (bus === 'music') buses.music.connect(musicDuck).connect(master);
-      else buses[bus].connect(master);
+      else if (!ALERT_DUCKED_BUSES.includes(bus)) buses[bus].connect(master);
     }
     const layers = this.createLayers(ctx, buses);
+    this.alertDucks = ALERT_DUCKED_BUSES.map((bus) => {
+      const duck = new BusDuck(ctx);
+      buses[bus].connect(duck.node).connect(master);
+      return duck;
+    });
     this.master = master;
     this.buses = buses;
     this.layers = layers;
@@ -484,6 +496,10 @@ export class WebAudioEngine {
       }
       // The duck follows the shots that actually ring: a missing or undecodable wav dims nothing.
       if (shot.duckMusicMs !== undefined) this.duckMusic(ctx, shot.duckMusicMs);
+      if (shot.duckWorldDb !== undefined) {
+        const holdS = buffer.duration / (shot.rate ?? 1);
+        for (const duck of this.alertDucks) duck.hold(ctx, shot.duckWorldDb, holdS);
+      }
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       if (shot.rate !== undefined) source.playbackRate.value = shot.rate;

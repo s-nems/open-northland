@@ -1,5 +1,6 @@
 export { AMBIENT_FADE_S } from './ambient-mixer.js';
 export {
+  ALERT_DUCKED_BUSES,
   type AudioEngineOptions,
   CLOSE_GRACE_S,
   DEFAULT_MUSIC_BASE_URL,
@@ -17,5 +18,6 @@ export {
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './audio-engine.js';
+export { BUS_DUCK_RAMP_S } from './bus-duck.js';
 export { MUSIC_STOP_FADE_S, MUSIC_SWITCH_TIMING } from './music-player.js';
 export { CLICK_FREE_RAMP_S } from './ramps.js';

@@ -57,6 +57,22 @@ export const GROUP_HOUSE_CRASH = 'House Crash';
  *  event sounds it. */
 export const GROUP_TREE_FALLING = 'Woodcutter TreeFalling';
 
+/** The horn the attack alert sounds (LogicSoundType 60), short and the loudest brief clip in the bank.
+ *  Its data otherwise cues it only from a few map scripts. */
+export const GROUP_ALERT_HORN = 'Magic Horn';
+/** The yawns a weary settler's notice speaks with, by voice class. */
+export const GROUP_YAWN_MAN = 'Yawn Man';
+export const GROUP_YAWN_WOMAN = 'Yawn Woman';
+/** The sighs a hungry settler's notice speaks with. The bank keeps them only inside the murmur pools,
+ *  so they are named by file. */
+export const SIGH_MAN_FILES: readonly string[] = [
+  'generic/human_sigh m 01.wav',
+  'generic/human_sigh m 02.wav',
+];
+export const SIGH_WOMAN_FILES: readonly string[] = [
+  'generic/human_sigh f 01.wav',
+  'generic/human_sigh f 02.wav',
+];
 /** Melee swing swoosh. The melee weapons share one swing wav set in the bank (`Weapon Sword Short` /
  *  `Weapon Spear` / `Weapon Fist` all point at the same `swing0N.wav`), so one group covers them all. A
  *  blow's impact needs no binding: the weapon's `soundtype_Hit` table names it on the hit event. */
@@ -108,6 +124,12 @@ export function defaultBindings(): SoundBindings {
     byChestKind: {
       wooden: { kind: 'spatial', group: GROUP_OPEN_WOODEN_CHEST },
       magical: { kind: 'spatial', group: GROUP_OPEN_MAGICAL_CHEST },
+    },
+    attackAlert: GROUP_ALERT_HORN,
+    // A child's notice stays silent: the bank has no child yawn or sigh.
+    noticeVoices: {
+      weary: { male: { group: GROUP_YAWN_MAN }, female: { group: GROUP_YAWN_WOMAN } },
+      hungry: { male: { files: SIGH_MAN_FILES }, female: { files: SIGH_WOMAN_FILES } },
     },
   };
 }

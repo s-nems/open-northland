@@ -27,3 +27,29 @@ export const UI_CUE_GAIN = 1;
 export function uiCueShot(cue: UiCue): OneShot {
   return { files: [UI_CUE_FILES[cue]], gain: UI_CUE_GAIN, pan: 0, key: `ui:${cue}` };
 }
+
+/**
+ * What a notification rings, all authored (the original sounds none of them in game): a new message
+ * card the briefing pop, another player's chat line and a player joining or returning the chat ring, a
+ * player leaving, being kicked or the world falling out of sync the fail click.
+ */
+export type NotificationCue = 'card' | 'chat' | 'arrival' | 'departure';
+
+export const NOTIFICATION_CUES: Readonly<Record<NotificationCue, UiCue>> = {
+  card: 'briefing',
+  chat: 'chat',
+  arrival: 'chat',
+  departure: 'fail',
+};
+
+/** A new card's briefing pop sits about 6 dB under a press: the bank's loudest GUI wav, rung unasked.
+ *  Authored, tune by ear. */
+export const NOTICE_CARD_GAIN = UI_CUE_GAIN / 2;
+
+/** The one-shot a notification rings: its cue's wav, keyed per notification so a burst of cards in
+ *  one frame rings once. */
+export function notificationShot(notification: NotificationCue): OneShot {
+  const shot = uiCueShot(NOTIFICATION_CUES[notification]);
+  const key = `notify:${notification}`;
+  return notification === 'card' ? { ...shot, gain: NOTICE_CARD_GAIN, key } : { ...shot, key };
+}

@@ -1,5 +1,7 @@
+import type { VoiceClass } from '@open-northland/data';
 import type { Camera } from '@open-northland/render/data';
 import type { ChestKind, SimEvent, SimEventKind, WorldSnapshot } from '@open-northland/sim';
+import type { AlertKind, NoticeVoice } from './alerts.js';
 import type { SoundIndex } from './bank.js';
 import type { LandscapeSectors } from './landscape-sectors.js';
 import type { ShotLayer } from './perspective.js';
@@ -12,12 +14,14 @@ import type { UiCue } from './ui-cues.js';
 
 /**
  * The arbitration lane a one-shot competes in ({@link import('./arbiter.js').OneShotArbiter}). A
- * `jingle` is a life-event stinger, identified by its `MusicType`; a `voice` is an unprompted line or
- * a scream; `sfx` is a positioned action sound. A shot without a lane always plays: a GUI cue answering
- * the player's own input, or a settler answering an order.
+ * `jingle` is a life-event stinger, identified by its `MusicType`; an `alert` shares its lane and
+ * ranking (an attack horn, a settler's notice line); a `voice` is an unprompted line or a scream; `sfx`
+ * is a positioned action sound. A shot without a lane always plays: a GUI cue answering the player's
+ * own input, or a settler answering an order.
  */
 export type Lane =
   | { readonly kind: 'jingle'; readonly musicType: number }
+  | { readonly kind: 'alert'; readonly alert: AlertKind }
   | { readonly kind: 'voice' }
   | { readonly kind: 'sfx' };
 
@@ -36,6 +40,8 @@ export interface OneShot {
   /** Milliseconds the music should stay ducked under this shot - set on a jingle, from its
    *  per-`MusicType` hold ({@link import('./bindings.js').JINGLE_DUCK_HOLD_MS}). */
   readonly duckMusicMs?: number;
+  /** dB the world and ambient buses dip for the length of this shot's wav - set on an alert. */
+  readonly duckWorldDb?: number;
   /**
    * The original's "is this wave running" guard. `wav`: skip while the wav this shot picked is still
    * sounding, as a positioned voice, call or body blow does. `group`: skip while any wav of `files` still
@@ -110,6 +116,10 @@ export type EventSound =
       readonly screenGated?: boolean;
     };
 
+/** The sound of a settler's notice voice: a static group by name, or wavs the bank keeps in no group of
+ *  their own. */
+export type NoticeVoiceSound = { readonly group: string } | { readonly files: readonly string[] };
+
 /**
  * The event→sound map the director resolves against, for the events whose sound is a choice made here.
  * An `atomicSound` needs no entry: it names its own group by `logicSoundType`, straight from the
@@ -120,6 +130,10 @@ export interface SoundBindings {
   /** The original plays a kind-specific positioned lid sound in addition to the common open-chest
    *  jingle. Optional so synthetic/custom banks can leave chest opening silent. */
   readonly byChestKind?: Readonly<Record<ChestKind, EventSound>>;
+  /** The static group the attack alert sounds; absent, an attack sounds no alert. */
+  readonly attackAlert?: string;
+  /** What each notice voice plays per voice class; a class left out stays silent. */
+  readonly noticeVoices?: Readonly<Record<NoticeVoice, Partial<Record<VoiceClass, NoticeVoiceSound>>>>;
 }
 
 /** The row-major landscape grid the ambient layer samples (the terrain the snapshot is positioned over). */
