@@ -39,10 +39,6 @@ export { HOUSE_CRASH_MIN_BUILT } from './events.js';
 export {
   ANSWER_LAYERS,
   type AnswerLayer,
-  CHARGE_HORN_GROUP,
-  HORN_COOLDOWN_S,
-  HORN_GAIN_DB,
-  HORN_MIN_GROUP,
   LAYER_GROUP_SIZES,
   layerCount,
   MURMUR_COOLDOWN_S,

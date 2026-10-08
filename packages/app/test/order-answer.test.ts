@@ -6,20 +6,13 @@ const one = 1 as Entity;
 const two = 2 as Entity;
 
 describe('order answers', () => {
-  it('lets every member of a group order answer, and marks an attack', () => {
+  it('lets every member of a group order answer', () => {
     const march = [
       { entity: one, x: 4, y: 4 },
       { entity: two, x: 6, y: 4 },
     ];
-    expect(orderAnswerOf({ kind: 'moveUnitGroup', members: march })).toEqual({ members: [one, two] });
-    expect(orderAnswerOf({ kind: 'attackMoveUnitGroup', members: march })).toEqual({
-      members: [one, two],
-      attack: true,
-    });
-    expect(orderAnswerOf({ kind: 'attackUnit', entity: one, target: two })).toEqual({
-      members: [one],
-      attack: true,
-    });
+    expect(orderAnswerOf({ kind: 'attackMoveUnitGroup', members: march })).toEqual({ members: [one, two] });
+    expect(orderAnswerOf({ kind: 'attackUnit', entity: one, target: two })).toEqual({ members: [one] });
   });
 
   it('answers nothing for a command that addresses no unit', () => {

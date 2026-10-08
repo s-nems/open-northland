@@ -10,9 +10,6 @@ import {
   DEFAULT_CLIP_LENGTH_S,
   defaultBindings,
   directAudio,
-  HORN_COOLDOWN_S,
-  HORN_GAIN_DB,
-  HORN_MIN_GROUP,
   layerCount,
   MAX_PAN,
   MURMUR_COOLDOWN_S,
@@ -30,8 +27,7 @@ import {
 
 /**
  * A group's answer to an order or a selection: one lead line from the member nearest the screen centre,
- * a few quieter, later lines from other actors, a murmur under a large group and the horn over a large
- * attack. Pure: the director decides the lines, the arbiter keeps a pool from stacking on itself.
+ * a few quieter, later lines from other actors and a murmur under a large group. Pure: the director decides the lines, the arbiter keeps a pool from stacking on itself.
  */
 
 const VIKING = 1;
@@ -56,7 +52,6 @@ const bank: SoundBank = {
     group('Frank male ok 01', ['humantalk/oldenglish/o33.wav']),
     group('Talk Viking Male', ['talk/v1.wav', 'talk/v2.wav', 'talk/v3.wav', 'talk/v4.wav'], MURMUR_VOLUME),
     group('Talk Franks Male', ['talk/f1.wav', 'talk/f2.wav'], MURMUR_VOLUME),
-    group('Magic Horn', ['static/horn01.wav']),
   ],
   ambient: [],
   jingles: [],
@@ -214,7 +209,7 @@ describe('group answer layers', () => {
   });
 });
 
-describe('group answer murmur and horn', () => {
+describe('group answer murmur', () => {
   it('lays a murmur of the members tribes under a group from its threshold, cooling between orders', () => {
     const below = army(MURMUR_MIN_GROUP - 1);
     expect(keysOf(answer(below, { members: idsOf(below) })).some((k) => k.startsWith('murmur:'))).toBe(false);
@@ -247,30 +242,12 @@ describe('group answer murmur and horn', () => {
     expect(lent.murmurByTribe.get(EGYPT)).toBe(TRIBE_MURMUR_GROUPS.get('saracen'));
   });
 
-  it('sounds the horn once over an attack of its threshold, at a reduced gain, rate-limited', () => {
-    const small = army(HORN_MIN_GROUP - 1);
-    expect(keysOf(answer(small, { members: idsOf(small), attack: true }))).not.toContain('answer:horn');
-    const big = army(HORN_MIN_GROUP);
-    expect(keysOf(answer(big, { members: idsOf(big) }))).not.toContain('answer:horn'); // a move
-    const order = { members: idsOf(big), attack: true };
-    const horn = answer(big, order).find((s) => s.key === 'answer:horn');
-    expect(horn?.gain).toBeCloseTo(ANSWER_GAIN * dbGain(HORN_GAIN_DB));
-    expect(horn?.cooldownS).toBe(HORN_COOLDOWN_S);
-
-    const arbiter = new OneShotArbiter();
-    const horns = (now: number) =>
-      keysOf(arbiter.decide(answer(big, order), now)).filter((k) => k === 'answer:horn');
-    expect(horns(0)).toHaveLength(1);
-    expect(horns(HORN_COOLDOWN_S / 2)).toHaveLength(0);
-    expect(horns(HORN_COOLDOWN_S)).toHaveLength(1);
-  });
-
-  it('starts at most the lead, its layers, the murmur and the horn for a thousand-strong attack', () => {
+  it('starts at most the lead, its layers and the murmur for a thousand-strong order', () => {
     const thousand = army(1000);
-    const shots = answer(thousand, { members: idsOf(thousand), attack: true });
+    const shots = answer(thousand, { members: idsOf(thousand) });
     const started = new OneShotArbiter().decide(shots, 0);
-    expect(started).toHaveLength(1 + ANSWER_LAYERS.length + MURMUR_LINES.length + 1);
-    // An order straight after: every pool is still answering, the murmur and horn are cooling.
+    expect(started).toHaveLength(1 + ANSWER_LAYERS.length + MURMUR_LINES.length);
+    // An order straight after: every pool is still answering and the murmur is cooling.
     const again = new OneShotArbiter();
     again.decide(shots, 0);
     expect(

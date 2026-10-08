@@ -10,7 +10,7 @@ import { murmurGroup, refusalGroup, responseGroup, selectLine } from '../voices.
 /**
  * How a group answers the player: one lead line from the member nearest the screen centre, panned at
  * the group's screen centroid, and for a larger group a few more lines from other actors of the
- * members' own tribes, a murmur bed and, for a big attack, the charge horn. The original lets every
+ * members' own tribes and a murmur bed. The original lets every
  * selected settler answer, so a group sounds one line per distinct pool at once; this keeps that
  * sound of many voices while bounding it. Every count, delay, level and spread here is an
  * approximation to tune by ear.
@@ -47,15 +47,6 @@ export const MURMUR_LINES: readonly Omit<AnswerLayer, 'gainDb'>[] = [
 export const MURMUR_GAIN_DB = -6;
 /** Seconds before another order may lay a murmur bed, so rapid orders do not pile beds up. */
 export const MURMUR_COOLDOWN_S = 2;
-
-/** The pool sounded as a large attack's charge horn. */
-export const CHARGE_HORN_GROUP = 'Magic Horn';
-/** Speakers an attack order needs before the horn sounds. */
-export const HORN_MIN_GROUP = 20;
-/** The horn's level below its authored volume, in dB: the loudest short clip in the bank. */
-export const HORN_GAIN_DB = -8;
-/** Seconds before the horn may sound again. */
-export const HORN_COOLDOWN_S = 10;
 
 /** Seconds before one settler answers being selected again. */
 export const SELECT_COOLDOWN_S = 1.5;
@@ -141,10 +132,9 @@ export function layerCount(speakers: number): number {
 /**
  * One order's answer. An order every member refused is answered "no" by the lead alone. An accepted one
  * is answered "ok" by the lead at its pool's level and the group's pan, then by up to
- * {@link layerCount} other pools' nearest speakers, each quieter, later and a little off to one side;
- * a group of {@link MURMUR_MIN_GROUP} lays its tribes' murmur under them, and an attack of
- * {@link HORN_MIN_GROUP} sounds the horn. Every line is exclusive by pool, so a pool still answering an
- * earlier order stays out. With no member to speak, the call's fallback cue plays instead.
+ * {@link layerCount} other pools' nearest speakers, each quieter, later and a little off to one side,
+ * and a group of {@link MURMUR_MIN_GROUP} lays its tribes' murmur under them. Every line is exclusive
+ * by pool, so a pool still answering an earlier order stays out. With no member to speak, the call's fallback cue plays instead.
  */
 export function groupAnswerShots(input: DirectorInput, answer: OrderAnswer): OneShot[] {
   const members = placeMembers(input, answer.members);
@@ -172,10 +162,6 @@ export function groupAnswerShots(input: DirectorInput, answer: OrderAnswer): One
     shots.push({ ...shot, gain: shot.gain * dbGain(layer.gainDb), delayS: layer.delayS });
   });
   if (count >= MURMUR_MIN_GROUP) shots.push(...murmurShots(input.index, members, pan));
-  if (answer.attack === true && count >= HORN_MIN_GROUP) {
-    const horn = hornShot(input.index, pan);
-    if (horn !== null) shots.push(horn);
-  }
   return shots;
 }
 
@@ -210,18 +196,6 @@ function murmurShots(index: SoundIndex, members: readonly Member[], pan: number)
       },
     ];
   });
-}
-
-function hornShot(index: SoundIndex, pan: number): OneShot | null {
-  const files = groupFiles(index, CHARGE_HORN_GROUP);
-  if (files === undefined) return null;
-  return {
-    files,
-    gain: poolGain(index, files) * dbGain(HORN_GAIN_DB),
-    pan,
-    key: 'answer:horn',
-    cooldownS: HORN_COOLDOWN_S,
-  };
 }
 
 /**

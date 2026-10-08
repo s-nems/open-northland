@@ -61,7 +61,7 @@ export interface OneShot {
   /** Seconds after the decision the shot starts, so a group's answer staggers its layers. Absent is 0. */
   readonly delayS?: number;
   /** Seconds the shot's key stays cooling after it starts, for a line that must not repeat soon (a
-   *  re-select, the charge horn). Absent is the ledger's anti machine-gun window. */
+   *  re-select, a murmur line). Absent is the ledger's anti machine-gun window. */
   readonly cooldownS?: number;
 }
 
@@ -184,8 +184,6 @@ export interface VoiceCall {
 
 /** One order's addressees, answered as a group. */
 export interface OrderAnswer extends VoiceCall {
-  /** An attack order, which a large enough group answers with the charge horn too. */
-  readonly attack?: boolean;
   /** Every member refused the order (unreachable): the lead answers "no" instead of "ok". */
   readonly refused?: boolean;
 }

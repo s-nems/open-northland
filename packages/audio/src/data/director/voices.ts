@@ -40,8 +40,7 @@ export function responseShots(input: DirectorInput): OneShot[] {
   const accepted = responses.filter((answer) => answer.refused !== true);
   if (accepted.length === 0) return responses.flatMap((answer) => groupAnswerShots(input, answer));
   const members = new Set(accepted.flatMap((answer) => answer.members));
-  const attack = accepted.some((answer) => answer.attack === true);
-  return groupAnswerShots(input, { members: [...members], attack });
+  return groupAnswerShots(input, { members: [...members] });
 }
 
 /** The acknowledgement of this frame's selection, if the player took one ({@link selectionShots}). */
