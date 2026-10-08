@@ -103,6 +103,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     requestUiScale: hudScale.request,
   });
   const initialSoundEnabled = gameSoundEnabled(deps.params, deps.stored.soundEnabled);
+  const sound = deps.sound;
   const syncCarriedParam = (param: string, value: string | null): void => {
     if (value === null) deps.params.delete(param);
     else deps.params.set(param, value);
@@ -144,6 +145,7 @@ export function createLiveGameSettings(deps: LiveGameSettingsDeps): LiveGameSett
     setMinimapFrame: deps.minimap.setFrame,
     setWeatherEnabled: deps.setWeatherEnabled,
     setBloodEnabled: deps.setBloodEnabled,
+    ...(sound !== null ? { previewBus: (bus) => sound.previewBus(bus) } : {}),
   });
 
   return {

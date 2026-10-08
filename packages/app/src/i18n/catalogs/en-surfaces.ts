@@ -248,6 +248,7 @@ export const enSurfaces = {
         'Whether settlers answer your orders and your selections out loud. Without an answer, the click alone confirms an order.',
       unitResponseModes: { all: 'All', selection: 'First selection only', off: 'Off' },
       volumeHeading: 'Volume',
+      volumeTest: 'Test',
       volumes: {
         master: 'Master',
         music: 'Music',

@@ -26,12 +26,12 @@ export {
   AMBIENCE_STARTS_PER_S,
   DEFAULT_JINGLE_LENGTH_S,
   DEFAULT_JINGLE_PRIORITY,
+  isCompletionJingle,
   JINGLE_COOLDOWN_GROWTH,
   JINGLE_COOLDOWN_MAX_S,
   JINGLE_FREQUENT_WINDOW,
   JINGLE_PENDING_MAX_AGE_S,
   JINGLE_PRIORITY,
-  isCompletionJingle,
   LANE_RANK,
   OneShotArbiter,
   SCREAM_BURST,
@@ -56,6 +56,7 @@ export {
   TRIBE_MURMUR_GROUPS,
 } from './data/bank.js';
 export { defaultBindings } from './data/bindings.js';
+export { BUS_PREVIEWS, type BusPreview, busPreviewShot } from './data/bus-preview.js';
 export {
   AMBIENT_FULL_COVERAGE,
   AMBIENT_MAX_GAIN,

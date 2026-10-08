@@ -283,6 +283,7 @@ export const ruSurfaces = {
         'Отвечают ли поселенцы голосом на приказы и на выделение. Без ответа приказ подтверждает только щелчок.',
       unitResponseModes: { all: 'Все', selection: 'Только при выделении', off: 'Выкл.' },
       volumeHeading: 'Громкость',
+      volumeTest: 'Тест',
       volumes: {
         master: 'Общая',
         music: 'Музыка',

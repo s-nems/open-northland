@@ -246,6 +246,7 @@ export const plSurfaces = {
         'Czy osadnicy odpowiadają głosem na rozkazy i na zaznaczenie. Bez odpowiedzi rozkaz potwierdza samo kliknięcie.',
       unitResponseModes: { all: 'Wszystkie', selection: 'Tylko przy zaznaczeniu', off: 'Wyłączone' },
       volumeHeading: 'Głośność',
+      volumeTest: 'Odsłuchaj',
       volumes: {
         master: 'Ogólna',
         music: 'Muzyka',

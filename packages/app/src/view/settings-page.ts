@@ -1,4 +1,6 @@
 import {
+  BUS_PREVIEWS,
+  type SoundBus,
   UNIT_RESPONSE_MODES,
   type UnitResponses,
   VOLUME_CHANNELS,
@@ -32,6 +34,8 @@ export interface SettingsPageStore {
   effectiveUiScaleFor(factor: number): number;
   /** True when boot-owned graphics and language are being edited from a running game. */
   readonly bootOwnedChangesDeferred?: boolean;
+  /** Play the clip that previews a bus's slider; absent, the sliders have no test button. */
+  readonly previewBus?: (bus: SoundBus) => void;
 }
 
 export interface SettingsPageHandle {
@@ -188,7 +192,30 @@ export function createSettingsPage(opts: {
         const input = control.querySelector<HTMLInputElement>('input');
         if (input !== null) input.dataset.settingsFocus = `${channel}-volume`;
         const tip = channel === 'master' || channel === 'music' ? undefined : text.volumeTips[channel];
+        const preview = opts.settings.previewBus;
+        if (preview !== undefined) control.append(previewButton(channel, label, preview));
         return settingRow(label, control, tip === undefined ? undefined : { tip });
+      };
+      // A bus without a clip keeps an invisible button, so every slider ends at the same place.
+      const previewButton = (
+        channel: VolumeChannel,
+        label: string,
+        preview: (bus: SoundBus) => void,
+      ): HTMLButtonElement => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'main-menu__ghost main-menu__settings-test';
+        button.textContent = text.volumeTest;
+        if (channel === 'master' || BUS_PREVIEWS[channel] === undefined) {
+          button.classList.add('is-placeholder');
+          button.tabIndex = -1;
+          button.setAttribute('aria-hidden', 'true');
+          return button;
+        }
+        button.setAttribute('aria-label', `${text.volumeTest}: ${label}`);
+        button.dataset.settingsFocus = `${channel}-test`;
+        button.addEventListener('click', () => preview(channel));
+        return button;
       };
       const choice = (
         key: 'soundInBackground' | 'monoSound' | 'jinglesEnabled',

@@ -1,7 +1,9 @@
 import {
+  busPreviewShot,
   MUSIC_STOP_FADE_S,
   type MusicManifest,
   type MusicTrack,
+  type SoundBus,
   trackRotation,
   type UiCue,
   uiCueShot,
@@ -39,9 +41,10 @@ export function menuMusicTracks(
 }
 
 /** The menu's sound beyond its music: the hardwired cues a menu screen fires, such as the lobby's
- *  incoming-chat ring. */
+ *  incoming-chat ring, and the settings' preview of a bus. */
 export interface MenuSound {
   cue(cue: UiCue): void;
+  previewBus(bus: SoundBus): void;
 }
 
 /**
@@ -75,5 +78,11 @@ export function startMenuMusic(signal: AbortSignal): MenuSound {
     engine.setMusic(null); // the fade covers the load screen the launched entry puts up
     window.setTimeout(() => engine.close(), MUSIC_STOP_FADE_S * 1000);
   });
-  return { cue: (cue) => engine.fire([uiCueShot(cue)]) };
+  return {
+    cue: (cue) => engine.fire([uiCueShot(cue)]),
+    previewBus: (bus) => {
+      const shot = busPreviewShot(bus);
+      if (shot !== null) engine.fire([shot]);
+    },
+  };
 }

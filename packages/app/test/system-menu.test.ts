@@ -1,4 +1,4 @@
-import { VOLUME_CHANNELS } from '@open-northland/audio';
+import { type SoundBus, VOLUME_CHANNELS } from '@open-northland/audio';
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createSystemMenu, type SystemMenu } from '../src/hud/dom/system-menu.js';
@@ -32,7 +32,15 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function mount(opts: { canLoad?: boolean; paused?: boolean; onNetwork?: () => void } = {}) {
+function mount(
+  opts: {
+    canLoad?: boolean;
+    paused?: boolean;
+    onNetwork?: () => void;
+    previewBus?: (bus: SoundBus) => void;
+  } = {},
+) {
+  const { previewBus, ...menuOpts } = opts;
   let paused = opts.paused ?? false;
   let beforeMenu = paused;
   let current = defaultSettings();
@@ -63,6 +71,7 @@ function mount(opts: { canLoad?: boolean; paused?: boolean; onNetwork?: () => vo
       current = { ...current, ...patch };
       return true;
     },
+    ...(previewBus !== undefined ? { previewBus } : {}),
   };
   const onQuit = vi.fn();
   menu = createSystemMenu({
@@ -71,7 +80,7 @@ function mount(opts: { canLoad?: boolean; paused?: boolean; onNetwork?: () => vo
     hud: { element: document.createElement('div'), currentScale: () => hudScale },
     onQuit,
     setCameraSuspended: vi.fn(),
-    ...opts,
+    ...menuOpts,
   });
   return {
     menu,
@@ -216,6 +225,32 @@ describe('system menu navigation', () => {
     if (question === null) throw new Error('Missing confirmation');
     button(messages().mainMenu.settings.restoreDefaults, question).click();
     await vi.waitFor(() => expect(settings.current().volumes).toEqual(defaultSettings().volumes));
+  });
+
+  it('plays a bus preview beside each slider that has one, and sets the jingles and responses', async () => {
+    const previewBus = vi.fn();
+    const { menu, settings } = mount({ previewBus });
+    menu.toggle();
+    openSettings();
+    button(messages().mainMenu.settings.tabs.audio).click();
+    document.querySelector<HTMLButtonElement>('[data-settings-focus="world-test"]')?.click();
+    document.querySelector<HTMLButtonElement>('[data-settings-focus="responses-test"]')?.click();
+    expect(previewBus.mock.calls).toEqual([['world'], ['responses']]);
+    // The master and the music keep a hidden button, so the sliders line up.
+    expect(document.querySelector('[data-settings-focus="master-test"]')).toBeNull();
+    expect(document.querySelectorAll('.main-menu__settings-test.is-placeholder')).toHaveLength(2);
+    document.querySelector<HTMLButtonElement>('[data-settings-focus="jingles"]')?.click();
+    document.querySelector<HTMLButtonElement>('[data-settings-focus="unit-responses:1"]')?.click();
+    await Promise.resolve();
+    expect(settings.current()).toMatchObject({ jinglesEnabled: false, unitResponses: 'selection' });
+  });
+
+  it('leaves the sliders without test buttons when there is no sound to preview', () => {
+    const { menu } = mount();
+    menu.toggle();
+    openSettings();
+    button(messages().mainMenu.settings.tabs.audio).click();
+    expect(document.querySelector('.main-menu__settings-test')).toBeNull();
   });
 
   it('closes on request as the resume button would', () => {

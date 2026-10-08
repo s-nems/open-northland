@@ -2,6 +2,7 @@ import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
 import { messages } from '../../i18n/index.js';
 import { createSettingsPage, type SettingsMemory, type SettingsPageStore } from '../../view/settings-page.js';
 import type { MenuScreen, MountedScreen } from './model.js';
+import type { MenuSound } from './music.js';
 import { screenHead } from './screen-head.js';
 import { menuSettings, updateSettings } from './settings-state.js';
 
@@ -12,6 +13,7 @@ export function settingsScreen(
   memory: SettingsMemory,
   signal: AbortSignal,
   onLanguageChange: () => void,
+  sound: MenuSound,
 ): MountedScreen {
   const section = document.createElement('section');
   section.className = 'main-menu__screen main-menu__settings';
@@ -23,6 +25,7 @@ export function settingsScreen(
     },
     pinnedUiScale: null,
     effectiveUiScaleFor: (factor) => uiScaleFor(displayViewOf(window.innerWidth, window.innerHeight), factor),
+    previewBus: sound.previewBus,
   };
   const head = screenHead('settings', open);
   const relabel = (): void => {

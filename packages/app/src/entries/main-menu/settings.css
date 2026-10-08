@@ -266,6 +266,22 @@ button.main-menu__settings-key:focus-visible {
   }
 }
 
+/* A volume slider's test button: plays the bus's preview clip. A bus without one keeps a hidden button
+   of the same width, so the sliders line up. */
+.main-menu__ghost.main-menu__settings-test {
+  flex: none;
+  padding: calc(var(--u) * 6) calc(var(--u) * 16);
+  font-size: calc(var(--u) * 18);
+}
+
+.main-menu__settings-test.is-placeholder {
+  visibility: hidden;
+}
+
+.main-menu__settings-slider:has(.main-menu__settings-test) {
+  width: calc(var(--u) * 540);
+}
+
 .main-menu__settings-value {
   width: calc(var(--u) * 64);
   text-align: right;

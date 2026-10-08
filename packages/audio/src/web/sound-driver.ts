@@ -3,11 +3,12 @@ import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { AlertDesk, type AttackReport, type NoticeVoice } from '../data/alerts.js';
 import { OneShotArbiter } from '../data/arbiter.js';
 import type { SoundIndex } from '../data/bank.js';
+import { busPreviewShot } from '../data/bus-preview.js';
 import { AmbientBedMemory } from '../data/director/ambient.js';
 import { directAudio } from '../data/director/index.js';
 import { LandscapeRollClock } from '../data/director/object-ambience.js';
 import { type LandscapeSectors, type SceneryObject, scenerySectors } from '../data/landscape-sectors.js';
-import type { MixerVolumes } from '../data/mixer.js';
+import type { MixerVolumes, SoundBus } from '../data/mixer.js';
 import {
   CALM_MOOD,
   type MusicManifest,
@@ -271,6 +272,14 @@ export class SoundDriver {
   /** The graphics "Weather" switch (live). */
   setWeatherEnabled(enabled: boolean): void {
     this.engine.setWeatherEnabled(enabled);
+  }
+
+  /** Play the clip that previews `bus` for its slider ({@link busPreviewShot}); a bus without one is
+   *  silent. */
+  previewBus(bus: SoundBus): void {
+    const shot = busPreviewShot(bus);
+    if (shot === null || !this.engine.audible) return;
+    this.engine.fire(this.decide([shot], this.engine.clock));
   }
 
   /** Play a GUI cue now, from the input event itself: a button press confirms, a cancelled tool fails. */

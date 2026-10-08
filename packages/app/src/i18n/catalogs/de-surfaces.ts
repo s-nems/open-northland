@@ -286,6 +286,7 @@ export const deSurfaces = {
         'Ob die Siedler auf Befehle und auf die Auswahl laut antworten. Ohne Antwort bestätigt allein der Klick einen Befehl.',
       unitResponseModes: { all: 'Alle', selection: 'Nur bei Auswahl', off: 'Aus' },
       volumeHeading: 'Lautstärke',
+      volumeTest: 'Anhören',
       volumes: {
         master: 'Gesamt',
         music: 'Musik',

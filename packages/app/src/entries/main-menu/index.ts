@@ -173,7 +173,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
         // Only `openLobby` leads here, with its map already set.
         return lobbyMap === null ? screenFor('newGame') : lobbyScreen(lobbyMap, show, rosters, launch);
       case 'settings':
-        return settingsScreen(show, settingsMemory, scope.signal, fullscreenPrompt.relabel);
+        return settingsScreen(show, settingsMemory, scope.signal, fullscreenPrompt.relabel, sound);
       case 'credits':
         return { element: creditsScreen(show) };
     }

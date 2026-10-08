@@ -1,3 +1,4 @@
+import type { SoundBus } from '@open-northland/audio';
 import type { WorldEnhancements } from '@open-northland/render';
 import type { CameraInputSettings } from '../camera/index.js';
 import { ENHANCEMENT_KEYS, enhancementsOf } from '../graphics-enhancements.js';
@@ -9,6 +10,8 @@ export interface GameSettingsRuntime {
   effectiveUiScaleFor(factor: number): number;
   readonly bootOwnedChangesDeferred: true;
   update(patch: Partial<MenuSettings>): Promise<boolean>;
+  /** Play the clip that previews a bus's slider; absent without a sound driver. */
+  readonly previewBus?: (bus: SoundBus) => void;
 }
 
 export interface GameSettingsRuntimeDeps {
@@ -33,6 +36,7 @@ export interface GameSettingsRuntimeDeps {
   readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
   readonly setWeatherEnabled: (enabled: boolean) => void;
   readonly setBloodEnabled: (enabled: boolean) => void;
+  readonly previewBus?: (bus: SoundBus) => void;
 }
 
 /** An explicit session URL choice wins over the persisted sound preference. */
@@ -84,6 +88,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     pinnedUiScale: deps.pinnedUiScale,
     effectiveUiScaleFor: deps.effectiveUiScaleFor,
     bootOwnedChangesDeferred: true,
+    ...(deps.previewBus !== undefined ? { previewBus: deps.previewBus } : {}),
     update(patch): Promise<boolean> {
       const patchRevision = ++revision;
       const keys = keysOf(patch);

@@ -7670,6 +7670,13 @@ body.on-drag-scroll * {
   border-radius: 2px;
   color: var(--muted);
 }
+.on-hud .on-settings .main-menu__settings-slider:has(.main-menu__settings-test) {
+  width: 280px;
+}
+.on-hud .on-settings .main-menu__ghost.main-menu__settings-test {
+  padding: 4px 10px;
+  font-size: 13px;
+}
 .on-hud .on-settings__back {
   align-self: flex-start;
   margin-top: 8px;
