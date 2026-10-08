@@ -37,6 +37,7 @@ import { createPickModeController, pickPressCue } from './pick-mode.js';
 import { issueRingCommand } from './ring-commands.js';
 import { createUnitSelection } from './selection.js';
 import { createSelectionCursor } from './selection-cursor.js';
+import { createSelectionVoice } from './selection-voice.js';
 import type { UnitControls, UnitControlsOptions } from './types.js';
 import { createUnitTargets } from './unit-targets.js';
 import { createVehicleOrderController } from './vehicle-orders.js';
@@ -73,6 +74,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
   // `click_confirm`, a cancel plays `click_fail`, and a drag select or a click on empty ground plays
   // nothing.
   const { cue, deferGroundConfirmation } = createOrderFeedback(opts.onUiCue);
+  const selectionVoice = createSelectionVoice(opts.voices, cue);
   const isUnit = (id: number): boolean => {
     const entity = entityById(opts.snapshot(), id);
     return entity !== undefined && (isSettler(entity) || isVehicle(entity));
@@ -445,7 +447,9 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       // Any own vehicle whose sprite the box touches joins the settlers; a single one opens its order
       // window, a group takes the right-click and the attack-move.
       const boxed = [...unitTargets.owned('settler'), ...unitTargets.owned('vehicle')];
-      applySelection(pickInRect(boxed, a.x, a.y, b.x, b.y), e.shiftKey);
+      const picked = pickInRect(boxed, a.x, a.y, b.x, b.y);
+      applySelection(picked, e.shiftKey);
+      selectionVoice.group(picked);
       return;
     }
     const w = toWorld(e.clientX, e.clientY);
@@ -464,9 +468,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     if (mates !== null) {
       applySelection(mates, e.shiftKey); // the original's double-click plays no further click
     } else if (hit !== null) {
+      const dropped = e.shiftKey && selection.ids().has(hit);
       if (e.shiftKey) toggleSelected(hit);
       else applySelection([hit], false);
-      cue('confirm');
+      selectionVoice.click(hit, dropped);
     } else if (!e.shiftKey) applySelection([], false); // clearing the selection is no button
   };
 
@@ -504,6 +509,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
           if (centre !== null) opts.centerOn(centre.x, centre.y);
         } else {
           applySelection(ids, false);
+          selectionVoice.group(ids);
         }
       }
     } else if (isActionHotkey(e, opts.bindings, 'actionRing')) {

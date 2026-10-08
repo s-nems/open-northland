@@ -829,7 +829,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
       onUiCue: uiCue,
       ...(soundDriver !== null
-        ? { voices: { refuse: (call: VoiceCall) => soundDriver.respond({ ...call, refused: true }) } }
+        ? {
+            voices: {
+              select: (call: VoiceCall) => soundDriver.select(call),
+              refuse: (call: VoiceCall) => soundDriver.respond({ ...call, refused: true }),
+            },
+          }
         : {}),
       domHud: {
         plane: hudDom.element,

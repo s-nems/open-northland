@@ -19,7 +19,14 @@ import {
 } from '../data/music/index.js';
 import { PINNED_PRELOAD_TIERS, preloadPlan } from '../data/preload-plan.js';
 import { countShots, emptySoundStats, type SoundStatsView } from '../data/sound-stats.js';
-import type { AmbientLoop, AudioTerrain, OneShot, OrderAnswer, SoundBindings } from '../data/types.js';
+import type {
+  AmbientLoop,
+  AudioTerrain,
+  OneShot,
+  OrderAnswer,
+  SoundBindings,
+  VoiceCall,
+} from '../data/types.js';
 import { type NotificationCue, notificationShot, type UiCue, uiCueShot } from '../data/ui-cues.js';
 import type { WeatherSoundInput } from '../data/weather/mix.js';
 import { type AudioEngineOptions, type SoundPreloadReport, WebAudioEngine } from './engine/index.js';
@@ -85,6 +92,8 @@ export class SoundDriver {
   private mood: MusicMoodState = CALM_MOOD;
   /** Orders given since the last frame, answered with their settlers' voices on that frame. */
   private responses: OrderAnswer[] = [];
+  /** The selection taken since the last frame, acknowledged on that frame. */
+  private selection: VoiceCall | undefined;
   /** The sim tick the last frame stood at, so a frame knows how many ticks to roll the chatter for. */
   private lastTick: number | null = null;
   /** The map's sounding objects that are no sim entity, for the object ambience. */
@@ -247,10 +256,18 @@ export class SoundDriver {
     this.responses.push(answer);
   }
 
+  /** The selection the player just took is acknowledged on the next frame by one member's voice, or by
+   *  the call's fallback cue; a later selection in the same frame replaces it. */
+  select(call: VoiceCall): void {
+    this.selection = call;
+  }
+
   /** Decide + play one frame of audio from the current world state. */
   update(input: SoundFrameInput): void {
     const responses = this.responses;
     this.responses = [];
+    const selection = this.selection;
+    this.selection = undefined;
     const ticks = this.lastTick === null ? 0 : Math.max(0, input.snapshot.tick - this.lastTick);
     this.lastTick = input.snapshot.tick;
     // Before the audibility gate, so a camera zoomed while muted is already in the mix on unmute.
@@ -268,6 +285,8 @@ export class SoundDriver {
       index: this.index,
       bindings: this.bindings,
       responses,
+      ...(selection !== undefined ? { selection } : {}),
+      clipLengthS: (file) => this.engine.clipLengthS(file),
       ...(input.drawnCreatures !== undefined
         ? { chatter: { drawn: input.drawnCreatures, ticks, random: this.random } }
         : {}),

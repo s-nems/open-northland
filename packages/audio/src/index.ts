@@ -72,6 +72,7 @@ export {
   MURMUR_GAIN_DB,
   MURMUR_LINES,
   MURMUR_MIN_GROUP,
+  SELECT_COOLDOWN_S,
 } from './data/director/index.js';
 export {
   LANDSCAPE_CHANCE_RANGE,

@@ -22,8 +22,10 @@ import {
   type OneShot,
   OneShotArbiter,
   type OrderAnswer,
+  SELECT_COOLDOWN_S,
   TRIBE_MURMUR_GROUPS,
   UI_CUE_FILES,
+  type VoiceCall,
 } from '../src/index.js';
 
 /**
@@ -126,6 +128,24 @@ function answer(
     index,
     bindings,
     responses: [order],
+    ...(clipLengthS !== undefined ? { clipLengthS } : {}),
+  }).oneShots;
+}
+
+function select(
+  entities: readonly EntitySnapshot[],
+  call: VoiceCall,
+  clipLengthS?: (file: string) => number | undefined,
+): readonly OneShot[] {
+  return directAudio({
+    events: [],
+    snapshot: snapshotOf(entities),
+    camera,
+    canvasW: CANVAS_W,
+    canvasH: CANVAS_H,
+    index,
+    bindings,
+    selection: call,
     ...(clipLengthS !== undefined ? { clipLengthS } : {}),
   }).oneShots;
 }
@@ -286,5 +306,40 @@ describe('refused orders', () => {
       responses: [{ members: [1], refused: true, fallback: 'fail' }, { members: [2] }],
     }).oneShots;
     expect(keysOf(shots)).toEqual(['respond:Viking male ok 03']);
+  });
+});
+
+describe('selection voice', () => {
+  it('speaks the authored shortest line of the nearest member, once per cooldown', () => {
+    // Box-selected: id 5 nearest the centre (pool 1), id 6 further right (pool 2).
+    const members = [man(6, VIKING, CENTRE_COL + 2), man(5, VIKING, CENTRE_COL)];
+    const shots = select(members, { members: idsOf(members) });
+    expect(shots).toHaveLength(1);
+    expect(shots[0]?.files).toEqual(['humantalk/m2ok08.wav']);
+    expect(shots[0]?.key).toBe('select:5');
+    expect(shots[0]?.cooldownS).toBe(SELECT_COOLDOWN_S);
+    const arbiter = new OneShotArbiter();
+    expect(arbiter.decide(shots, 0)).toHaveLength(1);
+    expect(arbiter.decide(shots, SELECT_COOLDOWN_S / 2)).toHaveLength(0);
+    expect(arbiter.decide(shots, SELECT_COOLDOWN_S)).toHaveLength(1);
+  });
+
+  it('picks the shortest decoded wav of a pool the table does not name, or its first before decoding', () => {
+    const members = [man(2, VIKING, CENTRE_COL)]; // pool 2 % 4: 'Viking male ok 03'
+    const lengths = new Map([
+      ['humantalk/m3ok01.wav', 0.9],
+      ['humantalk/m3ok02.wav', 0.4],
+    ]);
+    expect(select(members, { members: [2] }, (file) => lengths.get(file))[0]?.files).toEqual([
+      'humantalk/m3ok02.wav',
+    ]);
+    expect(select(members, { members: [2] })[0]?.files).toEqual(['humantalk/m3ok01.wav']);
+  });
+
+  it('clicks the fallback for a selection nobody in it can speak for', () => {
+    const building: EntitySnapshot = { id: 40, components: { Position: { x: 0, y: 0 }, Building: {} } };
+    const shots = select([building], { members: [40], fallback: 'confirm' });
+    expect(shots.map((s) => s.files)).toEqual([[UI_CUE_FILES.confirm]]);
+    expect(select([building], { members: [40] })).toHaveLength(0); // a box select stays silent
   });
 });

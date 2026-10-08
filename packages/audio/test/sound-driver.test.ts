@@ -3,7 +3,7 @@ import { type Camera, tileToScreen } from '@open-northland/render/data';
 import { type Entity, ONE, type SimEvent, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { SoundIndex } from '../src/index.js';
-import { defaultBindings, SoundDriver } from '../src/index.js';
+import { defaultBindings, SELECT_COOLDOWN_S, SoundDriver } from '../src/index.js';
 import { FakeContext, type FakeSource, flush } from './helpers/fake-audio.js';
 import { musicTrack } from './helpers/music-manifest.js';
 
@@ -91,6 +91,8 @@ function makeDriver(): Harness {
 }
 
 const baseInput = { snapshot, camera, canvasW: CANVAS_W, canvasH: CANVAS_H };
+/** Seconds a fetched clip decodes to: the fake decoder makes each of its four bytes a second. */
+const FAKE_CLIP_S = 4;
 
 describe('SoundDriver', () => {
   it('does no decision work while inaudible (no gesture yet), then plays after resume', async () => {
@@ -193,6 +195,29 @@ describe('SoundDriver', () => {
     driver.update({ ...baseInput, events: [] });
     await flush();
     expect(fetched).toHaveLength(1);
+  });
+
+  it('acknowledges a selected settler with one line, not again inside its cooldown, and clicks for a building', async () => {
+    const { driver, ctx, fetched } = makeDriver();
+    await driver.resume();
+    driver.select({ members: [3], fallback: 'confirm' });
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(fetched).toEqual(['/sounds/humantalk/m1ok01.wav']);
+    ctx.currentTime = SELECT_COOLDOWN_S / 2;
+    driver.select({ members: [3], fallback: 'confirm' });
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(ctx.sources).toHaveLength(1); // re-selected inside the cooldown: silent
+    ctx.currentTime = SELECT_COOLDOWN_S + FAKE_CLIP_S; // the first line has also ended
+    driver.select({ members: [3], fallback: 'confirm' });
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(ctx.sources).toHaveLength(2);
+    driver.select({ members: [7], fallback: 'confirm' }); // the building has no voice
+    driver.update({ ...baseInput, events: [] });
+    await flush();
+    expect(fetched.at(-1)).toBe('/sounds/gui/click_confirm.wav');
   });
 
   it('rolls the idle chatter over the drawn creatures once per game tick the frame advanced', async () => {

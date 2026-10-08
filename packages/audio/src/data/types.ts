@@ -205,6 +205,11 @@ export interface DirectorInput {
   readonly bindings: SoundBindings;
   /** The orders the player gave since the last frame, answered together as one group. */
   readonly responses?: readonly OrderAnswer[];
+  /** The latest selection the player took since the last frame, acknowledged by one member's voice. */
+  readonly selection?: VoiceCall;
+  /** The decoded length of a wav in seconds, or undefined while it is not decoded; picks the shortest
+   *  line of a pool for the selection voice. Omit → the authored table alone decides. */
+  readonly clipLengthS?: (file: string) => number | undefined;
   /** The idle chatter and animal calls' roll; omit for none (a gallery, a test of the event path). */
   readonly chatter?: ChatterInput;
   /** The landscape objects' ambience roll; omit for none. */

@@ -135,9 +135,11 @@ export interface UnitControlsOptions {
   /** The GUI click feedback: a pressed button, a taken selection or an accepted order confirms, a
    *  cancelled pick fails. Absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
-  /** The settlers' own voices acknowledging the player: a walk every member refused. The call's
-   *  fallback cue plays when nobody in it can speak; absent, the GUI cues alone answer. */
+  /** The settlers' own voices acknowledging the player: a selection taken with a click or a box, and a
+   *  walk every member refused. Each plays the call's fallback cue when nobody in it can speak; absent,
+   *  the GUI cues alone answer. */
   readonly voices?: {
+    readonly select: (call: VoiceCall) => void;
     readonly refuse: (call: VoiceCall) => void;
   };
   /** The DOM plane the settler panel mounts on, and what its icons, hover card and trade browsing read. */

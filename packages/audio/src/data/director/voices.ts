@@ -5,7 +5,7 @@ import { creatureTribe, entityOwner, entityTile, isPerson, type TilePoint } from
 import { computeSpatial } from '../spatial.js';
 import type { ChatterInput, DirectorInput, Lane, OneShot } from '../types.js';
 import { humanVoicesOf } from '../voices.js';
-import { groupAnswerShots } from './group-answer.js';
+import { groupAnswerShots, selectionShots } from './group-answer.js';
 
 /**
  * The creatures' own voices, none of them a sim event: a settler answering the player's order, the idle
@@ -42,6 +42,11 @@ export function responseShots(input: DirectorInput): OneShot[] {
   const members = new Set(accepted.flatMap((answer) => answer.members));
   const attack = accepted.some((answer) => answer.attack === true);
   return groupAnswerShots(input, { members: [...members], attack });
+}
+
+/** The acknowledgement of this frame's selection, if the player took one ({@link selectionShots}). */
+export function selectionVoiceShots(input: DirectorInput): OneShot[] {
+  return input.selection === undefined ? [] : selectionShots(input, input.selection);
 }
 
 /** One drawn creature that may speak, placed. */

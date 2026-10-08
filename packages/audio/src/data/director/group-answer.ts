@@ -3,9 +3,9 @@ import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
 import { clamp } from '../math.js';
 import { entityTile } from '../snapshot.js';
 import { MAX_PAN, panAt, screenOffset } from '../spatial.js';
-import type { DirectorInput, OneShot, OrderAnswer } from '../types.js';
+import type { DirectorInput, OneShot, OrderAnswer, VoiceCall } from '../types.js';
 import { uiCueShot } from '../ui-cues.js';
-import { murmurGroup, refusalGroup, responseGroup } from '../voices.js';
+import { murmurGroup, refusalGroup, responseGroup, selectLine } from '../voices.js';
 
 /**
  * How a group answers the player: one lead line from the member nearest the screen centre, panned at
@@ -56,6 +56,9 @@ export const HORN_MIN_GROUP = 20;
 export const HORN_GAIN_DB = -8;
 /** Seconds before the horn may sound again. */
 export const HORN_COOLDOWN_S = 10;
+
+/** Seconds before one settler answers being selected again. */
+export const SELECT_COOLDOWN_S = 1.5;
 
 function dbGain(db: number): number {
   return 10 ** (db / 20);
@@ -219,4 +222,29 @@ function hornShot(index: SoundIndex, pan: number): OneShot | null {
     key: 'answer:horn',
     cooldownS: HORN_COOLDOWN_S,
   };
+}
+
+/**
+ * A selection's acknowledgement: the shortest "ok" line of the member nearest the screen centre, at its
+ * pool's level and the selection's pan, at most once per {@link SELECT_COOLDOWN_S} for that settler.
+ * The original selects in silence; this is our choice. With no member to speak, the call's fallback
+ * cue plays instead.
+ */
+export function selectionShots(input: DirectorInput, call: VoiceCall): OneShot[] {
+  const members = placeMembers(input, call.members);
+  const lead = speakersByPool(input.index, members, responseGroup).nearest[0];
+  const line = lead === undefined ? undefined : selectLine(input.index, lead.group, input.clipLengthS);
+  if (lead === undefined || line === undefined) {
+    return call.fallback === undefined ? [] : [uiCueShot(call.fallback)];
+  }
+  return [
+    {
+      files: [line],
+      gain: poolGain(input.index, lead.files),
+      pan: centroidPan(members),
+      key: `select:${lead.member.entity.id}`,
+      exclusive: 'group',
+      cooldownS: SELECT_COOLDOWN_S,
+    },
+  ];
 }
