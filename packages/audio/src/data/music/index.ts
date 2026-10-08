@@ -16,3 +16,12 @@ export {
   WEALTHY_POPULATION,
   WEALTHY_POPULATION_DROP,
 } from './mood.js';
+export {
+  cultureOfStem,
+  culturePools,
+  type MapMusic,
+  type MusicCulture,
+  type MusicIntensity,
+  type MusicPools,
+  mapMusicFor,
+} from './pools.js';
