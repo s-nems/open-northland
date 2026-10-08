@@ -27,6 +27,7 @@ export {
   WEALTHY_POPULATION_DROP,
 } from './mood.js';
 export {
+  CALM_FADE_IN_S,
   CALM_FADE_S,
   CALM_PASSES_MAX,
   CALM_PASSES_MIN,
@@ -39,6 +40,7 @@ export {
   OWN_STEM_EVERY_MAX,
   OWN_STEM_EVERY_MIN,
   type PlaylistMood,
+  TENSE_FADE_IN_S,
   TENSE_FADE_S,
   TENSE_PASSES,
 } from './playlist.js';

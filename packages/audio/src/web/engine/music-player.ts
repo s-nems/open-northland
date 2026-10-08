@@ -20,9 +20,11 @@ import { CLICK_FREE_RAMP_S } from './ramps.js';
 /**
  * Replacing the music: the original starts the new segment immediately as the primary segment and
  * lets the old one's note releases and reverb ring under it (original behavior: no wait for a
- * segment boundary). A rendered file cannot ring its tail out, so a short fade stands in for it.
+ * segment boundary). A rendered file cannot ring its tail out, so a short fade stands in for it. A
+ * mood cut-in opens the new cue under that fade, at its own rise; a new sequence, such as the map's
+ * after the menu's, waits for the fade and its gap.
  */
-export const MUSIC_SWITCH_TIMING: MusicTiming = { fadeS: 1.5, gapS: 0 };
+export const MUSIC_SWITCH_TIMING: MusicTiming = { fadeS: 1.5, gapS: 0, fadeInS: 0 };
 
 /** Muting or tearing down: the original stops at once and lets the tail ring; the same stand-in fade. */
 export const MUSIC_STOP_FADE_S = 1.5;
@@ -39,6 +41,8 @@ interface PlayingCue {
   readonly bufferS: number;
   /** Context time the source becomes audible; before it, the cue is still waiting out its silence. */
   readonly startsAt: number;
+  /** Context time the cue's rise from silence reaches its level. */
+  readonly risenAt: number;
   /** Context time the cue reaches silence and stops, earlier than {@link fullEndsAt} while a pass-end
    *  handover is pending. */
   endsAt: number;
@@ -87,13 +91,13 @@ export class MusicPlayer {
     if (sequence === this.sequence && (this.current !== null || this.loading || this.unplayable)) return;
     this.sequence = sequence;
     this.unplayable = false;
-    this.switchNow();
+    this.switchNow(false);
   }
 
-  /** Cut over to the sequence's next cue now, the running one fading out first. */
+  /** Cut over to the sequence's next cue now, opening it under the running one's fade. */
   interrupt(): void {
     if (this.sequence === null) return;
-    this.switchNow();
+    this.switchNow(true);
   }
 
   /** End the running cue at its next pass boundary that leaves room for its fade, rather than after
@@ -107,12 +111,12 @@ export class MusicPlayer {
       return;
     }
     if (playing === null) return;
-    const { cue, gain, level, source } = playing;
+    const { cue, gain, level, risenAt, source } = playing;
     const boundary = passBoundaryAfter(cue.track, playing.bufferS, playing.startsAt, now + cue.fadeS);
     const endsAt = Math.min(boundary, now + Math.max(cue.fadeS, CALM_RETURN_MAX_WAIT_S));
     if (endsAt >= playing.endsAt) return;
     // Before this fade the cue's own end fade has not begun either, so it sits at its level.
-    scheduleEnd(gain.gain, level, now, endsAt, cue.fadeS);
+    scheduleEnd(gain.gain, level, now, risenAt, endsAt, cue.fadeS);
     playing.endsAt = endsAt;
     source.stop(endsAt);
   }
@@ -131,7 +135,14 @@ export class MusicPlayer {
       return;
     }
     if (playing.endsAt === playing.fullEndsAt) return;
-    scheduleEnd(playing.gain.gain, playing.level, now, playing.fullEndsAt, playing.cue.fadeS);
+    scheduleEnd(
+      playing.gain.gain,
+      playing.level,
+      now,
+      playing.risenAt,
+      playing.fullEndsAt,
+      playing.cue.fadeS,
+    );
     playing.endsAt = playing.fullEndsAt;
     playing.source.stop(playing.fullEndsAt); // the last stop call is the one that applies
   }
@@ -145,13 +156,14 @@ export class MusicPlayer {
     this.fadeOutCurrent(MUSIC_STOP_FADE_S);
   }
 
-  private switchNow(): void {
+  /** Fade the running cue out and open the sequence's next one, skipping its silence: under the fade
+   *  when `overlap`, otherwise once every fading tail, this one's or an earlier stop's, is silent. */
+  private switchNow(overlap: boolean): void {
     this.generation++;
     this.fadeOutCurrent(MUSIC_SWITCH_TIMING.fadeS);
-    // A tail from this fade - or from an earlier stop still running - has to finish before the
-    // replacement opens, or the two play at once. A cut-in skips the cue's own silence.
     const now = this.ctx.currentTime;
-    this.startNext(this.silentUntil > now ? this.silentUntil + MUSIC_SWITCH_TIMING.gapS : now, false);
+    const waits = !overlap && this.silentUntil > now;
+    this.startNext(waits ? this.silentUntil + MUSIC_SWITCH_TIMING.gapS : now, false);
   }
 
   /** Load and schedule the sequence's next cue to open at `openAfter`, plus its silence when asked. */
@@ -249,6 +261,7 @@ export class MusicPlayer {
       const gain = this.ctx.createGain();
       source.connect(gain).connect(this.out);
       const level = 10 ** (track.gainDb / 20);
+      const risenAt = startsAt + Math.max(CLICK_FREE_RAMP_S, cue.fadeInS);
       const playing: PlayingCue = {
         cue,
         source,
@@ -256,6 +269,7 @@ export class MusicPlayer {
         level,
         bufferS: buffer.duration,
         startsAt,
+        risenAt,
         endsAt: startsAt + playS,
         fullEndsAt: startsAt + playS,
       };
@@ -275,9 +289,9 @@ export class MusicPlayer {
         source.loopEnd = Math.min(track.loopEndS, buffer.duration);
       }
       gain.gain.setValueAtTime(0, startsAt);
-      gain.gain.linearRampToValueAtTime(level, startsAt + CLICK_FREE_RAMP_S);
+      gain.gain.linearRampToValueAtTime(level, risenAt);
       // Land on silence at the last sample played, so nothing is cut mid-level.
-      gain.gain.setValueAtTime(level, Math.max(startsAt + CLICK_FREE_RAMP_S, playing.endsAt - cue.fadeS));
+      gain.gain.setValueAtTime(level, Math.max(risenAt, playing.endsAt - cue.fadeS));
       gain.gain.linearRampToValueAtTime(0, playing.endsAt);
       source.start(startsAt, 0, playS);
       this.current = playing;
@@ -286,10 +300,29 @@ export class MusicPlayer {
 }
 
 /** Hold `param` at `level` from `now`, then fade it to silence over the `fadeS` before `endsAt`,
- *  replacing whatever end was scheduled. */
-function scheduleEnd(param: AudioParam, level: number, now: number, endsAt: number, fadeS: number): void {
+ *  replacing whatever end was scheduled. A cue still rising toward `risenAt` keeps rising, cut short
+ *  where the fade has to begin. */
+function scheduleEnd(
+  param: AudioParam,
+  level: number,
+  now: number,
+  risenAt: number,
+  endsAt: number,
+  fadeS: number,
+): void {
+  // Read the live level before cancelling, which drops the rise this anchor continues.
+  const live = param.value;
   param.cancelScheduledValues(now);
-  param.setValueAtTime(level, now);
-  param.setValueAtTime(level, Math.max(now, endsAt - fadeS));
+  const fadeFrom = Math.max(now, endsAt - fadeS);
+  let peak = level;
+  if (now < risenAt) {
+    param.setValueAtTime(live, now);
+    const riseEnd = Math.min(risenAt, fadeFrom);
+    peak = live + ((level - live) * (riseEnd - now)) / (risenAt - now);
+    param.linearRampToValueAtTime(peak, riseEnd);
+  } else {
+    param.setValueAtTime(level, now);
+  }
+  param.setValueAtTime(peak, fadeFrom);
   param.linearRampToValueAtTime(0, endsAt);
 }

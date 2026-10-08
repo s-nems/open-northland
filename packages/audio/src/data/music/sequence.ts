@@ -2,7 +2,7 @@ import type { MusicTrack } from './manifest.js';
 
 /**
  * What the music player plays: a sequence of cues it pulls one at a time. Each cue names how many
- * loop passes of its track to play, the silence before it and the fade it parts on.
+ * loop passes of its track to play, the silence before it and the fades it opens and parts on.
  */
 
 /** One stretch of music. */
@@ -12,6 +12,9 @@ export interface MusicCue {
   readonly passes: number;
   /** Seconds of silence between the previous cue falling silent and this one opening. */
   readonly gapBeforeS: number;
+  /** Seconds the cue takes to rise from silence as it opens; the player never rises faster than a
+   *  click-free ramp, so 0 opens the file as it starts. */
+  readonly fadeInS: number;
   /** Seconds the cue takes to fade to silence at its end. */
   readonly fadeS: number;
 }
@@ -29,10 +32,13 @@ export interface MusicTiming {
   readonly fadeS: number;
   /** Seconds of silence between the outgoing track and the next. */
   readonly gapS: number;
+  /** Seconds the next track takes to rise from silence. */
+  readonly fadeInS: number;
 }
 
-/** Menu rotation handover. The rotation itself is this reimplementation's design, not original behaviour. */
-export const MENU_MUSIC_TIMING: MusicTiming = { fadeS: 2, gapS: 1.5 };
+/** Menu rotation handover: each track opens as its file starts, from the silence its first pass
+ *  opens on. The rotation itself is this reimplementation's design, not original behaviour. */
+export const MENU_MUSIC_TIMING: MusicTiming = { fadeS: 2, gapS: 1.5, fadeInS: 0 };
 
 /** `tracks` in order, each for its first pass, wrapping at the end. */
 export function trackRotation(
@@ -46,7 +52,7 @@ export function trackRotation(
       const track = queue[at];
       if (track === undefined) return null;
       at = (at + 1) % queue.length;
-      return { track, passes: 1, gapBeforeS: timing.gapS, fadeS: timing.fadeS };
+      return { track, passes: 1, gapBeforeS: timing.gapS, fadeInS: timing.fadeInS, fadeS: timing.fadeS };
     },
     drop(file) {
       const dropped = queue.findIndex((track) => track.file === file);

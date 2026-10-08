@@ -19,6 +19,8 @@ export const CALM_PASSES_MIN = 1;
 export const CALM_PASSES_MAX = 2;
 /** Seconds a calm cue fades out over before its silence. */
 export const CALM_FADE_S = 2.5;
+/** Seconds a calm cue rises over from silence, so a rendered file's first downbeat does not punch in. */
+export const CALM_FADE_IN_S = 1.5;
 /** Silence before each calm cue after the first, drawn per cue. */
 export const CALM_SILENCE_MIN_S = 20;
 export const CALM_SILENCE_MAX_S = 60;
@@ -29,6 +31,9 @@ export const OWN_STEM_EVERY_MAX = 3;
 export const TENSE_PASSES = 3;
 /** Seconds a tense cue fades out over when it hands over to the next tense stem. */
 export const TENSE_FADE_S = 1.5;
+/** Seconds a tense cue rises over: it cuts in under the outgoing cue's fade, so it lands fast but not
+ *  as a click. */
+export const TENSE_FADE_IN_S = 0.3;
 /** The longest a fight's music plays on once the mood has calmed: the handover waits for a pass end,
  *  but a pass can run two minutes, so past this it fades out wherever it is. */
 export const CALM_RETURN_MAX_WAIT_S = 25;
@@ -122,7 +127,7 @@ export class MusicPlaylist implements MusicSequence {
     this.freshFight = false;
     const ownFits = own !== null && this.playable(own) && this.audioOf(own) !== this.lastAudio;
     const stem = (ownFits ? own : null) ?? this.draw('tense', null);
-    return stem === null ? null : this.cue(stem, 'tense', TENSE_PASSES, 0, TENSE_FADE_S);
+    return stem === null ? null : this.cue(stem, 'tense', TENSE_PASSES, 0, TENSE_FADE_IN_S, TENSE_FADE_S);
   }
 
   private calmCue(): MusicCue | null {
@@ -147,6 +152,7 @@ export class MusicPlaylist implements MusicSequence {
       'calm',
       randomInt(CALM_PASSES_MIN, CALM_PASSES_MAX, this.random),
       gapS,
+      CALM_FADE_IN_S,
       CALM_FADE_S,
     );
   }
@@ -156,6 +162,7 @@ export class MusicPlaylist implements MusicSequence {
     intensity: MusicIntensity,
     passes: number,
     gapBeforeS: number,
+    fadeInS: number,
     fadeS: number,
   ): MusicCue | null {
     const track = this.manifest.tracks[stem];
@@ -163,7 +170,7 @@ export class MusicPlaylist implements MusicSequence {
     this.started = true;
     this.lastAudio = track.segmentSha256;
     this.lastIntensity = intensity;
-    return { track, passes, gapBeforeS, fadeS };
+    return { track, passes, gapBeforeS, fadeInS, fadeS };
   }
 
   /**

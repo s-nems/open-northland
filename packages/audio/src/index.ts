@@ -100,6 +100,7 @@ export {
 } from './data/mixer.js';
 export {
   ATTACK_HOLD_TICKS,
+  CALM_FADE_IN_S,
   CALM_FADE_S,
   CALM_MOOD,
   CALM_PASSES_MAX,
@@ -143,6 +144,7 @@ export {
   passBoundaryAfter,
   TENSE_ENTER_THREAT,
   TENSE_EXIT_THREAT,
+  TENSE_FADE_IN_S,
   TENSE_FADE_S,
   TENSE_PASSES,
   THREAT_HALF_LIFE_TICKS,

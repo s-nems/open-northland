@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CALM_FADE_IN_S,
   CALM_RETURN_MAX_WAIT_S,
   CLICK_FREE_RAMP_S,
   CLOSE_GRACE_S,
@@ -14,6 +15,7 @@ import {
   type MusicTrack,
   musicBusGain,
   parseMusicManifest,
+  TENSE_FADE_IN_S,
   trackRotation,
   WebAudioEngine,
 } from '../src/index.js';
@@ -83,10 +85,11 @@ const PASSES = 3;
 const FADE_S = 1;
 const GAP_S = 10;
 
-/** Hands out cues of `tracks` in turn, each with the same passes, silence and fade, until dropped. */
+/** Hands out cues of `tracks` in turn, each with the same passes, silence and fades, until dropped. */
 function cues(
   tracks: readonly MusicTrack[],
   passes = PASSES,
+  fadeInS = 0,
 ): MusicSequence & { readonly dropped: string[] } {
   const dropped: string[] = [];
   let at = 0;
@@ -95,7 +98,7 @@ function cues(
     next(): MusicCue | null {
       const live = tracks.filter((track) => !dropped.includes(track.file));
       const track = live[at++ % Math.max(1, live.length)];
-      return track === undefined ? null : { track, passes, gapBeforeS: GAP_S, fadeS: FADE_S };
+      return track === undefined ? null : { track, passes, gapBeforeS: GAP_S, fadeInS, fadeS: FADE_S };
     },
     drop(file) {
       dropped.push(file);
@@ -148,6 +151,16 @@ describe('WebAudioEngine music', () => {
     expect(gain.gain.events).toContainEqual({ kind: 'set', value: level, time: TRACK.loopStartS - FADE_S });
   });
 
+  it('raises a cue over its own fade-in from silence', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    engine.setMusic(cues([TRACK], 1, CALM_FADE_IN_S));
+    await flush();
+    const gain = gainOf(ctx.sources[0] as FakeSource);
+    expect(gain.gain.events[0]).toEqual({ kind: 'set', value: 0, time: 0 });
+    expect(gain.gain.ramps[0]).toEqual({ value: 1, time: CALM_FADE_IN_S });
+  });
+
   it('starts music requested before the unlocking gesture on resume()', async () => {
     const { engine, ctx } = makeEngine();
     engine.setMusic(cues([TRACK]));
@@ -172,21 +185,42 @@ describe('WebAudioEngine music', () => {
     expect((ctx.sources[1] as FakeSource).startedAt).toBeCloseTo(endsAt + GAP_S, 5);
   });
 
-  it('cuts over at once: the running cue fades and the next opens right behind it', async () => {
+  it('cuts over at once: the next cue rises under the running one’s fade', async () => {
     const { engine, ctx } = makeEngine();
     await engine.resume();
-    engine.setMusic(cues([TRACK, ATTACK]));
+    engine.setMusic(cues([TRACK, ATTACK], PASSES, TENSE_FADE_IN_S));
     await flush();
-    ctx.currentTime = 1;
+    const CUT_AT_S = 1;
+    ctx.currentTime = CUT_AT_S;
     engine.transitionMusic('now');
     await flush();
     expect(ctx.sources).toHaveLength(2);
     const [old, next] = ctx.sources as [FakeSource, FakeSource];
-    const silentAt = 1 + MUSIC_SWITCH_TIMING.fadeS;
+    const silentAt = CUT_AT_S + MUSIC_SWITCH_TIMING.fadeS;
     expect(old.stoppedAt).toBeCloseTo(silentAt, 5);
     expect(gainOf(old).gain.ramps.at(-1)).toEqual({ value: 0, time: silentAt });
-    // A cut-in skips the cue's own silence.
-    expect(next.startedAt).toBeCloseTo(silentAt + MUSIC_SWITCH_TIMING.gapS, 5);
+    // No dip to silence between them: the cut-in opens now, skipping its own silence.
+    expect(next.startedAt).toBe(CUT_AT_S);
+    expect(gainOf(next).gain.ramps[0]).toEqual({ value: 1, time: CUT_AT_S + TENSE_FADE_IN_S });
+  });
+
+  it('cuts a cue’s rise short where a pass-end handover’s fade begins', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const SLOW_RISE_S = 3;
+    engine.setMusic(cues([TRACK, ATTACK], PASSES, SLOW_RISE_S));
+    await flush();
+    const gain = gainOf(ctx.sources[0] as FakeSource).gain;
+    // At 0.5 s with a 1 s fade the first boundary that fits is 2 s, so the fade begins at 1 s.
+    ctx.currentTime = 0.5;
+    engine.transitionMusic('atPassEnd');
+    const [rise, fade] = gain.ramps.slice(-2);
+    expect(rise?.time).toBe(1);
+    expect(rise?.value).toBeLessThan(1);
+    expect(fade).toEqual({ value: 0, time: 2 });
+    // Monotonic: no automation event is scheduled behind an earlier one.
+    const times = gain.events.filter((event) => event.kind !== 'cancel').map((event) => event.time);
+    expect(times.slice(-4)).toEqual([...times.slice(-4)].sort((a, b) => a - b));
   });
 
   it('ends a cue at its next pass boundary that leaves room for the fade', async () => {
@@ -423,7 +457,7 @@ describe('WebAudioEngine music', () => {
     const { engine, fetched } = makeEngine({ failFetch: true });
     await engine.resume();
     const stubborn: MusicSequence = {
-      next: () => ({ track: TRACK, passes: 1, gapBeforeS: 0, fadeS: FADE_S }),
+      next: () => ({ track: TRACK, passes: 1, gapBeforeS: 0, fadeInS: 0, fadeS: FADE_S }),
       drop: () => undefined,
     };
     engine.setMusic(stubborn);

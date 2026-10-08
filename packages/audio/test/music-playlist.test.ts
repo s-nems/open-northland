@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  CALM_FADE_IN_S,
   CALM_PASSES_MAX,
   CALM_PASSES_MIN,
   CALM_SILENCE_MAX_S,
@@ -13,6 +14,7 @@ import {
   OWN_STEM_EVERY_MIN,
   type PlaylistMood,
   parseMusicManifest,
+  TENSE_FADE_IN_S,
   TENSE_PASSES,
 } from '../src/index.js';
 import { manifestDocument, musicTrack } from './helpers/music-manifest.js';
@@ -109,6 +111,7 @@ describe('calm rotation', () => {
     const [first] = take(playlistFor(MISSION_FRANKEN1), 1);
     expect(first?.track.file).toBe('mission_franken1_standard.ogg');
     expect(first?.gapBeforeS).toBe(0);
+    expect(first?.fadeInS).toBe(CALM_FADE_IN_S);
     expect(first?.passes).toBeGreaterThanOrEqual(CALM_PASSES_MIN);
     expect(first?.passes).toBeLessThanOrEqual(CALM_PASSES_MAX);
   });
@@ -219,7 +222,7 @@ describe('fights', () => {
     take(playlist, 1);
     playlist.update(TENSE);
     const [first, second] = take(playlist, 2);
-    expect(first).toMatchObject({ passes: TENSE_PASSES, gapBeforeS: 0 });
+    expect(first).toMatchObject({ passes: TENSE_PASSES, gapBeforeS: 0, fadeInS: TENSE_FADE_IN_S });
     expect(first?.track.file).toBe('mission_franken1_danger.ogg');
     // Only after those passes does the fight rotate, to another tense stem.
     expect(second).toMatchObject({ passes: TENSE_PASSES, gapBeforeS: 0 });
