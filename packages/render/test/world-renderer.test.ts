@@ -244,6 +244,29 @@ describe('WorldRenderer scene graph', () => {
     renderer.dispose();
   });
 
+  it('draws the control-group numbers only while they are shown', () => {
+    const app = stubApp();
+    const renderer = new WorldRenderer(app);
+    const SETTLER = 1;
+    const frame = {
+      snapshot: snapshotOf([entity(SETTLER, 3, 4, { Settler: {}, Owner: { player: 0 } })]),
+      camera: { offsetX: 0, offsetY: 0, scale: 1 },
+      groupNumbers: new Map([[SETTLER, ['1']]]),
+    };
+    const world = app.stage.children[0] as Container;
+    const labels = world.children[SLOTS.indexOf('groupNumbers')] as Container;
+
+    renderer.update(frame);
+    expect(labels.children).toHaveLength(0);
+    renderer.setGroupNumbersShown(true);
+    renderer.update(frame);
+    expect(labels.children).toHaveLength(1);
+    renderer.setGroupNumbersShown(false);
+    renderer.update(frame);
+    expect(labels.children).toHaveLength(0);
+    renderer.dispose();
+  });
+
   it('drops the whole graph on dispose', () => {
     const app = stubApp();
     const renderer = new WorldRenderer(app);

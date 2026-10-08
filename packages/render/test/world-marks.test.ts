@@ -110,8 +110,8 @@ describe('WorldMarks', () => {
         doorBadges: [{ id: 12, x: 0, y: 0, rows: [{ role: 'craftsman' }] }],
         groupNumbers: new Map([[SETTLER, ['1']]]),
         drawn: {
-          boundsOf: (id) => (id === SETTLER ? { minX: 0, minY: 0, maxX: 40, maxY: 40 } : undefined),
-          anchorOf: () => undefined,
+          boundsOf: () => undefined,
+          anchorOf: (id) => (id === SETTLER ? { x: 20, y: 40 } : undefined),
         },
       }),
     );

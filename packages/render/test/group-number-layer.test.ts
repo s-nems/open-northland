@@ -7,10 +7,9 @@ import { drawnGeometry, entity, snapshotOf } from './support/fixtures.js';
 const SETTLER = 7;
 const OTHER = 8;
 const snapshot = snapshotOf([entity(SETTLER, 3, 4, { Settler: {} }), entity(OTHER, 4, 4, { Settler: {} })]);
-const BOUNDS = { minX: 100, minY: 50, maxX: 140, maxY: 90 };
-const CENTRE = (BOUNDS.minX + BOUNDS.maxX) / 2;
-/** Both settlers drawn this frame. */
-const drawn = drawnGeometry({ boundsOf: () => BOUNDS });
+const FEET = { x: 120, y: 90 };
+/** Both settlers drawn this frame, standing on {@link FEET}. */
+const drawn = drawnGeometry({ anchorOf: () => FEET });
 
 const labelOf = (layer: GroupNumberLayer, index = 0): Text => layer.container.children[index] as Text;
 
@@ -28,7 +27,7 @@ describe('GroupNumberLayer', () => {
     layer.destroy();
   });
 
-  it('stands a lone number at the sprite bottom-right and hangs a list centred under it', () => {
+  it('stands a lone number right of the feet and hangs a list centred under them', () => {
     const layer = new GroupNumberLayer();
     layer.draw(
       { snapshot, drawn },
@@ -38,15 +37,14 @@ describe('GroupNumberLayer', () => {
       ]),
     );
     const lone = labelOf(layer, 0);
-    expect(lone.position.y).toBe(BOUNDS.maxY);
+    expect(lone.position.y).toBe(FEET.y);
     expect(lone.anchor.y).toBe(1);
-    expect(lone.position.x).toBeGreaterThan(CENTRE);
-    expect(lone.position.x).toBeLessThanOrEqual(BOUNDS.maxX);
+    expect(lone.position.x).toBeGreaterThan(FEET.x);
 
     const list = labelOf(layer, 1);
-    expect(list.position.x).toBe(CENTRE);
+    expect(list.position.x).toBe(FEET.x);
     expect(list.anchor.x).toBe(0.5);
-    expect(list.position.y).toBe(BOUNDS.maxY);
+    expect(list.position.y).toBeGreaterThanOrEqual(FEET.y);
     expect(list.anchor.y).toBe(0);
     layer.destroy();
   });
@@ -74,8 +72,11 @@ describe('GroupNumberLayer', () => {
 
   it('keeps one node per member, rewrites it on a new list and retires dropped members', () => {
     const layer = new GroupNumberLayer();
-    layer.draw({ snapshot, drawn }, new Map([[SETTLER, ['1']]]));
+    const lone = ['1'];
+    layer.draw({ snapshot, drawn }, new Map([[SETTLER, lone]]));
     const first = labelOf(layer);
+    layer.draw({ snapshot, drawn }, new Map([[SETTLER, lone]]));
+    expect(first.text).toBe('1');
     layer.draw({ snapshot, drawn }, new Map([[SETTLER, ['1', '3']]]));
     expect(labelOf(layer)).toBe(first);
     expect(first.text).toBe('1,3');

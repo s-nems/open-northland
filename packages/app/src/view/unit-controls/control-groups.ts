@@ -66,7 +66,7 @@ const GROUP_NUMBERS: Readonly<Record<ControlGroupAction, string>> = {
 };
 
 /** A member of more groups shows only the first this many. */
-export const MAX_LABELLED_GROUPS = 3;
+const MAX_LABELLED_GROUPS = 3;
 
 /** Centre only when the current selection contains exactly the recalled group. */
 export function groupRecallEffect(

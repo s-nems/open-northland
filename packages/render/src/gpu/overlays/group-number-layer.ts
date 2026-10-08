@@ -1,9 +1,9 @@
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { Container, Text, TextStyle } from 'pixi.js';
-import { isVisible, ONE, tileToScreen, type Viewport } from '../../data/projection/index.js';
+import { isVisible, ONE, tileToScreenX, tileToScreenY, type Viewport } from '../../data/projection/index.js';
 import type { EntityKind } from '../../data/scene/draw-item.js';
 import { classify, readPosition } from '../../data/scene/snapshot-readers/index.js';
-import type { DrawnGeometry, EntityBounds } from '../sprite-pool/index.js';
+import type { DrawnGeometry } from '../sprite-pool/index.js';
 import { retireUndrawn } from './retained-pool.js';
 
 /**
@@ -27,9 +27,10 @@ const LABEL_STYLE = new TextStyle({
   // A soft dark halo instead of a stroke, which would thicken the thin strokes it rims.
   dropShadow: { color: 0x000000, alpha: 0.9, blur: 1.5, distance: 0, angle: 0 },
 });
-/** How far right of the sprite's centre line a lone number starts, at most (world px); a narrower
- *  sprite starts it at its own right edge. */
-const CORNER_REACH = 6;
+/** How far right of the feet a lone number starts (world px). */
+const CORNER_REACH = 12;
+/** How far below the feet a list hangs (world px). */
+const FEET_GAP = 1;
 const LABELLED_KINDS: ReadonlySet<EntityKind | null> = new Set(['settler', 'vehicle']);
 
 export interface GroupNumberFrame {
@@ -39,10 +40,16 @@ export interface GroupNumberFrame {
   readonly zoom?: number;
 }
 
+interface Label {
+  readonly text: Text;
+  /** The list {@link text} was written from; the app's lists keep their identity until a group changes. */
+  numbers: readonly string[];
+}
+
 export class GroupNumberLayer {
   readonly container = new Container();
-  /** One label per on-screen member; rebuilt only when its text changes. */
-  private readonly labels = new Map<number, Text>();
+  /** One label per on-screen member; rewritten only when its list changes. */
+  private readonly labels = new Map<number, Label>();
   /** Reused scratch of ids drawn this frame, to avoid a per-frame allocation. */
   private readonly seen = new Set<number>();
 
@@ -57,25 +64,30 @@ export class GroupNumberLayer {
       if (entity === undefined || !LABELLED_KINDS.has(classify(entity.components))) continue;
       const pos = readPosition(entity.components);
       if (pos === null) continue;
-      const raw = tileToScreen(pos.x / ONE, pos.y / ONE);
-      if (viewport !== undefined && !isVisible(viewport, raw.x, raw.y)) continue;
-      const bounds = frame.drawn.boundsOf(id);
-      if (bounds === undefined) continue;
+      const col = pos.x / ONE;
+      const row = pos.y / ONE;
+      if (viewport !== undefined && !isVisible(viewport, tileToScreenX(col, row), tileToScreenY(row)))
+        continue;
+      // The drawn feet rather than the sprite box, which sways with a stride or a swing.
+      const feet = frame.drawn.anchorOf(id);
+      if (feet === undefined) continue;
 
-      const text = numbers.join(',');
       let label = this.labels.get(id);
       if (label === undefined) {
-        label = new Text({ text, style: LABEL_STYLE, resolution: TEXT_RESOLUTION });
-        this.container.addChild(label);
+        const text = new Text({ text: numbers.join(','), style: LABEL_STYLE, resolution: TEXT_RESOLUTION });
+        this.container.addChild(text);
+        label = { text, numbers };
         this.labels.set(id, label);
-      } else if (label.text !== text) {
-        label.text = text;
+      } else if (label.numbers !== numbers) {
+        const written = numbers.join(',');
+        if (label.text.text !== written) label.text.text = written;
+        label.numbers = numbers;
       }
-      placeLabel(label, bounds, numbers.length > 1);
-      label.scale.set(scale);
+      placeLabel(label.text, feet, numbers.length > 1);
+      label.text.scale.set(scale);
       this.seen.add(id);
     }
-    retireUndrawn(this.labels, this.seen, (label) => label.destroy());
+    retireUndrawn(this.labels, this.seen, (label) => label.text.destroy());
   }
 
   destroy(): void {
@@ -84,14 +96,13 @@ export class GroupNumberLayer {
   }
 }
 
-/** A lone number stands at the sprite's bottom-right; a list hangs centred under the sprite. */
-function placeLabel(label: Text, bounds: EntityBounds, several: boolean): void {
-  const centre = (bounds.minX + bounds.maxX) / 2;
+/** A lone number stands right of the feet; a list hangs centred under them. */
+function placeLabel(label: Text, feet: { readonly x: number; readonly y: number }, several: boolean): void {
   if (several) {
     label.anchor.set(0.5, 0);
-    label.position.set(centre, bounds.maxY);
+    label.position.set(feet.x, feet.y + FEET_GAP);
   } else {
     label.anchor.set(0, 1);
-    label.position.set(centre + Math.min(CORNER_REACH, bounds.maxX - centre), bounds.maxY);
+    label.position.set(feet.x + CORNER_REACH, feet.y);
   }
 }
