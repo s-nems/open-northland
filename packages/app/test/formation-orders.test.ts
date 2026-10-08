@@ -16,7 +16,7 @@ import { createPendingGroundOrders } from '../src/view/unit-controls/pending-gro
 import type { UnitTargets } from '../src/view/unit-controls/unit-targets.js';
 import { snapshotOf } from './support/snapshot.js';
 
-function harness(count = 4) {
+function harness(count = 4, refuse?: (movers: readonly number[]) => void) {
   const units = Array.from({ length: count }, (_, i) => ({
     ref: i + 1,
     ...halfCellToScreen(2 + (i % 40), 2 + Math.floor(i / 40) * 2),
@@ -72,6 +72,7 @@ function harness(count = 4) {
     selectOwnSettler: () => {},
     openActions: () => {},
     markOrder: (node) => marks.push(node),
+    refuse,
   });
   const answer = (index: number) => {
     const ask = asks[index];
@@ -220,6 +221,21 @@ describe('fresh ground order answers', () => {
     expect(h.issued).toHaveLength(1);
     expect(h.marks).toEqual([B]);
     expect(h.cues).toEqual(['fail', 'fail', 'confirm']);
+  });
+
+  it('hands a walk none of its movers can take to the refusal voice instead of the fail click', async () => {
+    const refused: (readonly number[])[] = [];
+    const h = harness(4, (movers) => refused.push(movers));
+    h.orders.issueMoveTo(A);
+    h.asks[0]?.resolve([]);
+    await Promise.resolve();
+    expect(refused).toEqual([[1, 2, 3, 4]]);
+    expect(h.cues).toEqual([]);
+    // A failed query is no refusal by the movers: it still clicks.
+    h.orders.issueMoveTo(A);
+    h.asks[1]?.reject();
+    await Promise.resolve();
+    expect(h.cues).toEqual(['fail']);
   });
 
   it('defers actual overview confirmation until acceptance, while unrelated input keeps its feedback', async () => {

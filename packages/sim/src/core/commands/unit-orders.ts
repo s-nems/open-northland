@@ -617,13 +617,13 @@ export type UnitOrderCommand =
     };
 
 /**
- * The settler that answers a player's order with its voice, or undefined for a command aimed at a
+ * The units a player's order addresses, whose voices answer it, or none for a command aimed at a
  * building, the map or the seat itself. `entity` is the unit-order vocabulary's addressee field (an
- * order's other party rides as `chest`, `target`, `house`...); a group order answers with its first
- * member. The panel pickers answer too: the job, equipment, produced-good, learn and trader windows.
+ * order's other party rides as `chest`, `target`, `house`...); a group order addresses every member.
+ * The panel pickers answer too: the job, equipment, produced-good, learn and trader windows.
  */
-export function orderedSettler(command: Command): Entity | undefined {
-  if ('entity' in command) return command.entity;
-  if ('members' in command) return command.members[0]?.entity;
-  return undefined;
+export function orderedSettlers(command: Command): readonly Entity[] {
+  if ('entity' in command) return [command.entity];
+  if ('members' in command) return command.members.map((member) => member.entity);
+  return [];
 }

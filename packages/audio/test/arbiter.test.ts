@@ -155,7 +155,7 @@ describe('sfx and voice lanes', () => {
   });
 
   it('never rations an order answer: it has no lane and always plays', () => {
-    const shots = battleShots(snapshot, battleEvents(40), { responses: [2] });
+    const shots = battleShots(snapshot, battleEvents(40), { responses: [{ members: [2] }] });
     const answers = shots.filter((s) => s.key.startsWith('respond:'));
     expect(answers).toHaveLength(1);
     expect(answers[0]?.lane).toBeUndefined();

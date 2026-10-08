@@ -85,6 +85,8 @@ export interface UnitOrderDeps {
   readonly openActions: (atClient: { readonly x: number; readonly y: number }) => void;
   /** The GUI click the school dialog's buttons confirm with; absent, silent. */
   readonly cue?: (cue: UiCue) => void;
+  /** Answers a walk none of its movers can take; absent, the fail click does. */
+  readonly refuse?: ((movers: readonly number[]) => void) | undefined;
   /** The sim's trade-stop rule, asked as the click lands; absent, a trader's right-click puts no house on
    *  its route. */
   readonly askAttachTradeHouse?: ((trader: number, house: number) => Promise<boolean>) | undefined;
@@ -238,7 +240,8 @@ export function createUnitOrderController(deps: UnitOrderDeps): UnitOrderControl
         y: order.tile.row,
       }));
       if (members.length === 0) {
-        deps.cue?.('fail');
+        if (deps.refuse !== undefined) deps.refuse(currentMovers.map((mover) => mover.ref));
+        else deps.cue?.('fail');
         return false;
       }
       const accepted = enqueueArmyOrder(

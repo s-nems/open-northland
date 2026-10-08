@@ -16,8 +16,8 @@ export const POOL_INSTANCE_CAP = 3;
 export const POOL_RETRIGGER_S = 0.08;
 /** World one-shots (voice and sfx lanes) sounding at once. Approximation, to be benchmarked. */
 export const WORLD_VOICE_CAP = 48;
-/** An identical key restarts no sooner than this, so a burst of one emitter's events plays once.
- *  Approximation: the common anti machine-gun window. */
+/** An identical key restarts no sooner than this, so a burst of one emitter's events plays once, unless
+ *  the shot names its own {@link OneShot.cooldownS}. Approximation: the common anti machine-gun window. */
 export const KEY_COOLDOWN_S = 0.12;
 /** The length a clip is taken to run before the engine has decoded it. Approximation: the median
  *  one-shot of the decoded bank runs 0.8-1.1 s. */
@@ -82,8 +82,8 @@ export class OneShotLedger {
   private readonly pools = new WeakMap<readonly string[], PoolState>();
   /** wav → its latest play. */
   private readonly lastPlay = new Map<string, Play>();
-  /** key → audio-clock second of its latest start. */
-  private readonly lastStarted = new Map<string, number>();
+  /** key → audio-clock second its cooldown ends, set by its latest start. */
+  private readonly keyReadyAt = new Map<string, number>();
   private readonly world: WorldVoice[] = [];
   /** The pools holding a candidate this frame, in offer order. */
   private readonly offered: PoolState[] = [];
@@ -102,7 +102,7 @@ export class OneShotLedger {
       else voice.pool.playing--;
     }
     this.world.length = kept;
-    pruneExpired(this.lastStarted, LEDGER_PRUNE_SIZE, (started) => now - started >= KEY_COOLDOWN_S);
+    pruneExpired(this.keyReadyAt, LEDGER_PRUNE_SIZE, (readyAt) => readyAt <= now);
     pruneExpired(this.lastPlay, LEDGER_PRUNE_SIZE, (play) => this.endOf(play) <= now);
   }
 
@@ -186,10 +186,11 @@ export class OneShotLedger {
     return { ...shot, files: [file] };
   }
 
+  /** A shot's start: its wav sounds from its delay on, and its key cools from now. */
   private record(shot: OneShot, pool: PoolState, file: string, now: number, rate = 1): Play {
-    const play: Play = { file, startedAt: now, rate };
+    const play: Play = { file, startedAt: now + (shot.delayS ?? 0), rate };
     this.lastPlay.set(file, play);
-    this.lastStarted.set(shot.key, now);
+    this.keyReadyAt.set(shot.key, now + (shot.cooldownS ?? KEY_COOLDOWN_S));
     pool.recent.push(file);
     if (pool.recent.length > noRepeatDepth(shot.files.length)) pool.recent.shift();
     return play;
@@ -237,8 +238,8 @@ export class OneShotLedger {
   }
 
   private keyCooling(key: string, now: number): boolean {
-    const last = this.lastStarted.get(key);
-    return last !== undefined && now - last < KEY_COOLDOWN_S;
+    const readyAt = this.keyReadyAt.get(key);
+    return readyAt !== undefined && now < readyAt;
   }
 
   private sounding(file: string, now: number): boolean {

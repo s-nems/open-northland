@@ -1,4 +1,4 @@
-import type { SceneryObject, UiCue } from '@open-northland/audio';
+import type { SceneryObject, UiCue, VoiceCall } from '@open-northland/audio';
 import { BUILDING_KIND, type MapRelationFlag } from '@open-northland/data';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type {
@@ -15,7 +15,6 @@ import {
   type Command,
   type Entity,
   type FogView,
-  orderedSettler,
   type Paper,
   type PlayerCommand,
   playerCommand,
@@ -134,6 +133,7 @@ import { createHostAnswers } from './host-answers.js';
 import { createMenuExit } from './menu-exit.js';
 import { mountNetOverlays } from './net-overlays.js';
 import type { NetReadout } from './net-readout.js';
+import { orderAnswerOf } from './order-answer.js';
 import { ownRoadSiteAt } from './own-road-sites.js';
 import { createPauseHolds } from './pause-holds.js';
 import { createPlacementGates } from './placement-gates.js';
@@ -438,9 +438,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const issueCommand = (command: PlayerCommand): void => {
       if (readOnly) return;
       driver.submit(overseer ? adminCommand(command) : playerCommand(localPlayer, command));
-      // The ordered settler answers at once, as in the original, whatever the sim then makes of the order.
-      const settler = orderedSettler(command);
-      if (settler !== undefined) soundDriver?.respond(settler);
+      // The ordered settlers answer at once, as in the original, whatever the sim then makes of the order.
+      const answer = orderAnswerOf(command);
+      if (answer !== null) soundDriver?.respond(answer);
     };
 
     const goodLabelByType = goodLabelsFromContent(host.content);
@@ -828,6 +828,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       claimPointer: (x: number, y: number) =>
         toolPanel.claimPointer(x, y) || mountedMinimap.claimsPointer(x, y),
       onUiCue: uiCue,
+      ...(soundDriver !== null
+        ? { voices: { refuse: (call: VoiceCall) => soundDriver.respond({ ...call, refused: true }) } }
+        : {}),
       domHud: {
         plane: hudDom.element,
         scale: hudDom.currentScale,

@@ -34,5 +34,19 @@ export {
   MAX_AMBIENT_BEDS,
 } from './ambient.js';
 export { HOUSE_CRASH_MIN_BUILT } from './events.js';
+export {
+  ANSWER_LAYERS,
+  type AnswerLayer,
+  CHARGE_HORN_GROUP,
+  HORN_COOLDOWN_S,
+  HORN_GAIN_DB,
+  HORN_MIN_GROUP,
+  LAYER_GROUP_SIZES,
+  layerCount,
+  MURMUR_COOLDOWN_S,
+  MURMUR_GAIN_DB,
+  MURMUR_LINES,
+  MURMUR_MIN_GROUP,
+} from './group-answer.js';
 export { LANDSCAPE_CHANCE_RANGE, MAX_LANDSCAPE_TICKS_PER_FRAME } from './object-ambience.js';
 export { ANIMAL_ROLL_RANGE, GENERIC_ROLL_RANGE, MAX_CHATTER_TICKS_PER_FRAME } from './voices.js';

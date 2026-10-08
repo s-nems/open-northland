@@ -20,9 +20,35 @@ export function humanVoicesOf(index: SoundIndex, e: EntitySnapshot): HumanVoices
  * animal).
  */
 export function responseGroup(index: SoundIndex, e: EntitySnapshot): string | undefined {
-  const voices = humanVoicesOf(index, e);
-  if (voices === undefined || voices.respondOk.length === 0) return undefined;
+  return lifelongPool(index, e, humanVoicesOf(index, e)?.respondOk);
+}
+
+/**
+ * The "no" pool a settler refuses with, picked like its {@link responseGroup}, so one settler keeps one
+ * actor for both. The original never plays these pools; a refusal voice is our choice.
+ */
+export function refusalGroup(index: SoundIndex, e: EntitySnapshot): string | undefined {
+  return lifelongPool(index, e, humanVoicesOf(index, e)?.respondNo);
+}
+
+function lifelongPool(
+  index: SoundIndex,
+  e: EntitySnapshot,
+  pools: readonly string[] | undefined,
+): string | undefined {
+  if (pools === undefined || pools.length === 0) return undefined;
   const job = settlerJob(e.components);
   const voiceIndex = job !== undefined && job !== null && index.heroJobs.has(job) ? 0 : e.id;
-  return voices.respondOk[voiceIndex % voices.respondOk.length];
+  return pools[voiceIndex % pools.length];
+}
+
+/** The murmur pool ({@link import('./bank.js').TRIBE_MURMUR_GROUPS}) a grown settler's tribe and class
+ *  lays under a large group's answer, or undefined for a child, an animal or a tribe without one. */
+export function murmurGroup(index: SoundIndex, e: EntitySnapshot): string | undefined {
+  if (!isPerson(e.components)) return undefined;
+  const tribe = creatureTribe(e.components);
+  const voiceClass = voiceClassOf(e.components);
+  if (tribe === undefined || voiceClass === 'child') return undefined;
+  const row = index.murmurByTribe.get(tribe);
+  return row?.[voiceClass] ?? row?.male;
 }

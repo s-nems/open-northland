@@ -39,6 +39,7 @@ const index: SoundIndex = {
   heroJobs: new Set(),
   animalCalls: new Map(),
   landscapeAmbienceByRecord: new Map(),
+  murmurByTribe: new Map(),
   poolGains: new Map(),
 };
 
@@ -183,8 +184,8 @@ describe('SoundDriver', () => {
   it('answers an ordered settler on the next frame, in its own voice', async () => {
     const { driver, fetched } = makeDriver();
     await driver.resume();
-    driver.respond(3);
-    driver.respond(99); // gone from the snapshot: nothing to answer with
+    driver.respond({ members: [3] });
+    driver.respond({ members: [99] }); // gone from the snapshot: nothing to answer with
     driver.update({ ...baseInput, events: [] });
     await flush();
     expect(fetched).toEqual(['/sounds/humantalk/m1ok01.wav']);

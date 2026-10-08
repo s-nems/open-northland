@@ -44,7 +44,9 @@ export {
   authoredVolumeGain,
   buildSoundIndex,
   DEFAULT_AUTHORED_VOLUME,
+  type MurmurGroups,
   type SoundIndex,
+  TRIBE_MURMUR_GROUPS,
 } from './data/bank.js';
 export { defaultBindings } from './data/bindings.js';
 export {
@@ -53,11 +55,23 @@ export {
   AMBIENT_MAX_PAN,
   AMBIENT_MAX_SAMPLES,
   ANIMAL_ROLL_RANGE,
+  ANSWER_LAYERS,
+  type AnswerLayer,
+  CHARGE_HORN_GROUP,
   directAudio,
   GENERIC_ROLL_RANGE,
+  HORN_COOLDOWN_S,
+  HORN_GAIN_DB,
+  HORN_MIN_GROUP,
   HOUSE_CRASH_MIN_BUILT,
+  LAYER_GROUP_SIZES,
+  layerCount,
   MAX_AMBIENT_BEDS,
   MAX_CHATTER_TICKS_PER_FRAME,
+  MURMUR_COOLDOWN_S,
+  MURMUR_GAIN_DB,
+  MURMUR_LINES,
+  MURMUR_MIN_GROUP,
 } from './data/director/index.js';
 export {
   LANDSCAPE_CHANCE_RANGE,
@@ -191,7 +205,9 @@ export type {
   Lane,
   NoticeVoiceSound,
   OneShot,
+  OrderAnswer,
   SoundBindings,
+  VoiceCall,
 } from './data/types.js';
 export {
   NOTICE_CARD_GAIN,

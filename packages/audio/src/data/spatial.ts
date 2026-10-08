@@ -72,7 +72,46 @@ export function computePan(col: number, row: number, camera: Camera, canvasW: nu
   const scale = camera.scale ?? 1;
   const sx = s.x * scale + camera.offsetX;
   const halfW = canvasW / 2;
-  return halfW === 0 ? 0 : clamp((sx - halfW) / halfW, -1, 1) * MAX_PAN;
+  return halfW === 0 ? 0 : panAt((sx - halfW) / halfW);
+}
+
+/** The pan of a normalised horizontal screen offset (-1..1 inside the canvas), clamped to the sides. */
+export function panAt(nx: number): number {
+  return clamp(nx, -1, 1) * MAX_PAN;
+}
+
+/** World tile `(col, row)`'s offset from the screen centre on each axis, -1..1 within the canvas and past
+ *  1 beyond its edges; null for a screen with no area. */
+export function screenOffset(
+  col: number,
+  row: number,
+  camera: Camera,
+  canvasW: number,
+  canvasH: number,
+): ScreenOffset | null {
+  return offsetOfScreenPoint(tileToScreen(col, row), camera, canvasW, canvasH);
+}
+
+/** A point's offset from the screen centre in half-screen units on each axis. */
+interface ScreenOffset {
+  readonly nx: number;
+  readonly ny: number;
+}
+
+function offsetOfScreenPoint(
+  s: { x: number; y: number },
+  camera: Camera,
+  canvasW: number,
+  canvasH: number,
+): ScreenOffset | null {
+  const halfW = canvasW / 2;
+  const halfH = canvasH / 2;
+  if (!(halfW > 0 && halfH > 0)) return null;
+  const scale = camera.scale ?? 1;
+  return {
+    nx: (s.x * scale + camera.offsetX - halfW) / halfW,
+    ny: (s.y * scale + camera.offsetY - halfH) / halfH,
+  };
 }
 
 /** The fade band's depth in half-screen units: a share of the whole viewport is twice that of its half. */
@@ -86,18 +125,13 @@ function spatialiseScreenPoint(
   canvasW: number,
   canvasH: number,
 ): Spatial | null {
-  const halfW = canvasW / 2;
-  const halfH = canvasH / 2;
-  if (!(halfW > 0 && halfH > 0)) return null;
-  const scale = camera.scale ?? 1;
-  // Normalised offset from centre on each axis: -1..1 within the canvas, past 1 beyond its edges.
-  const nx = (s.x * scale + camera.offsetX - halfW) / halfW;
-  const ny = (s.y * scale + camera.offsetY - halfH) / halfH;
+  const offset = offsetOfScreenPoint(s, camera, canvasW, canvasH);
+  if (offset === null) return null;
+  const { nx, ny } = offset;
   const beyond = Math.max(Math.abs(nx), Math.abs(ny)) - 1;
   const fade = beyond <= 0 ? 1 : 1 - beyond / OFFSCREEN_FADE_HALF_EXTENTS;
   if (fade <= 0) return null;
   const dist = clamp(Math.hypot(nx, ny), 0, 1);
   const gain = (EDGE_GAIN + (1 - EDGE_GAIN) * (1 - dist)) * fade;
-  const pan = clamp(nx, -1, 1) * MAX_PAN;
-  return { gain, pan };
+  return { gain, pan: panAt(nx) };
 }

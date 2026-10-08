@@ -1,4 +1,4 @@
-import type { UiCue } from '@open-northland/audio';
+import type { UiCue, VoiceCall } from '@open-northland/audio';
 import type { ContentSet, EquipCategory } from '@open-northland/data';
 import type {
   BuildingHighlightItem,
@@ -135,6 +135,11 @@ export interface UnitControlsOptions {
   /** The GUI click feedback: a pressed button, a taken selection or an accepted order confirms, a
    *  cancelled pick fails. Absent, silent. */
   readonly onUiCue?: (cue: UiCue) => void;
+  /** The settlers' own voices acknowledging the player: a walk every member refused. The call's
+   *  fallback cue plays when nobody in it can speak; absent, the GUI cues alone answer. */
+  readonly voices?: {
+    readonly refuse: (call: VoiceCall) => void;
+  };
   /** The DOM plane the settler panel mounts on, and what its icons, hover card and trade browsing read. */
   readonly domHud: {
     readonly plane: HTMLElement;

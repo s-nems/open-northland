@@ -66,6 +66,7 @@ const index: SoundIndex = {
   heroJobs: new Set(),
   animalCalls: new Map(),
   landscapeAmbienceByRecord: new Map(),
+  murmurByTribe: new Map(),
   poolGains: new Map(),
 };
 

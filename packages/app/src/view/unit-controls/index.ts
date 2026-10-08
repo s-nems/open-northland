@@ -305,6 +305,10 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     selectOwnSettler: (id) => applySelection([id], false),
     openActions: (atClient) => chrome.actions().open(atClient),
     cue,
+    refuse:
+      opts.voices === undefined
+        ? undefined
+        : (movers) => opts.voices?.refuse({ members: movers, fallback: 'fail' }),
     askAttachTradeHouse: opts.askAttachTradeHouse,
     markOrder: orderMarkers.place,
   });

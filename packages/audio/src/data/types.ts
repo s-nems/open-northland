@@ -58,6 +58,11 @@ export interface OneShot {
   readonly instance?: number;
   /** Playback rate, 1 = as recorded; the arbiter varies it per world one-shot. Absent plays at 1. */
   readonly rate?: number;
+  /** Seconds after the decision the shot starts, so a group's answer staggers its layers. Absent is 0. */
+  readonly delayS?: number;
+  /** Seconds the shot's key stays cooling after it starts, for a line that must not repeat soon (a
+   *  re-select, the charge horn). Absent is the ledger's anti machine-gun window. */
+  readonly cooldownS?: number;
 }
 
 /**
@@ -170,6 +175,21 @@ export interface ChatterInput {
   readonly random: () => number;
 }
 
+/** Settlers the player addressed at once, of whom the voices pick who speaks. */
+export interface VoiceCall {
+  readonly members: readonly number[];
+  /** The GUI cue played instead when no member has a line to speak (a child, an animal, a building). */
+  readonly fallback?: UiCue;
+}
+
+/** One order's addressees, answered as a group. */
+export interface OrderAnswer extends VoiceCall {
+  /** An attack order, which a large enough group answers with the charge horn too. */
+  readonly attack?: boolean;
+  /** Every member refused the order (unreachable): the lead answers "no" instead of "ok". */
+  readonly refused?: boolean;
+}
+
 /**
  * Everything one {@link import('./director/index.js').directAudio} call needs. `terrain` is optional -
  * absent, no ambient plays.
@@ -183,8 +203,8 @@ export interface DirectorInput {
   readonly terrain?: AudioTerrain;
   readonly index: SoundIndex;
   readonly bindings: SoundBindings;
-  /** Settlers the player ordered since the last frame, each to answer with its own "ok" voice. */
-  readonly responses?: readonly number[];
+  /** The orders the player gave since the last frame, answered together as one group. */
+  readonly responses?: readonly OrderAnswer[];
   /** The idle chatter and animal calls' roll; omit for none (a gallery, a test of the event path). */
   readonly chatter?: ChatterInput;
   /** The landscape objects' ambience roll; omit for none. */

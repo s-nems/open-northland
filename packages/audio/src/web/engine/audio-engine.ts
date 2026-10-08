@@ -588,6 +588,8 @@ export class WebAudioEngine {
     if (file === undefined) return;
     const instance = shot.instance;
     if (instance !== undefined) this.stoppable.set(instance, null);
+    // A delay counts from the decision, so a layer whose wav loads late does not drift further behind.
+    const startAt = ctx.currentTime + (shot.delayS ?? 0);
     void samples.get(file).then((buffer) => {
       const buses = this.buses;
       const stopped = instance !== undefined && !this.stoppable.has(instance);
@@ -615,7 +617,7 @@ export class WebAudioEngine {
         this.stoppable.set(instance, { source, gain });
         source.onended = () => this.stoppable.delete(instance);
       }
-      source.start();
+      source.start(Math.max(startAt, ctx.currentTime));
     });
   }
 

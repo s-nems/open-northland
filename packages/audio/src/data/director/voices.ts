@@ -2,9 +2,10 @@ import { type HumanVoices, VOICE_CLASSES } from '@open-northland/data';
 import { entityById, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
 import { creatureTribe, entityOwner, entityTile, isPerson, type TilePoint } from '../snapshot.js';
-import { computePan, computeSpatial } from '../spatial.js';
+import { computeSpatial } from '../spatial.js';
 import type { ChatterInput, DirectorInput, Lane, OneShot } from '../types.js';
-import { humanVoicesOf, responseGroup } from '../voices.js';
+import { humanVoicesOf } from '../voices.js';
+import { groupAnswerShots } from './group-answer.js';
 
 /**
  * The creatures' own voices, none of them a sim event: a settler answering the player's order, the idle
@@ -28,32 +29,19 @@ export const ANIMAL_ROLL_RANGE = 1000;
 export const MAX_CHATTER_TICKS_PER_FRAME = 5;
 
 /**
- * The answers to this frame's orders: one "ok" per ordered settler that has a voice, panned by where it
- * stands but neither culled nor attenuated, so a settler ordered off screen still answers. Keyed by pool,
- * so two settlers sharing a voice inside the arbiter's key cooldown collapse into one line, and exclusive by
- * pool: the original answers nothing while any line of that settler's pool is still sounding. In no lane:
- * an answer to the player's own click is never rationed away.
+ * The answers to this frame's orders, panned but neither culled nor attenuated, so a group ordered off
+ * screen still answers. Orders given in one frame answer as one group ({@link groupAnswerShots}); an
+ * order every member refused answers only when nothing was accepted beside it. In no lane: an answer
+ * to the player's own click is never rationed away.
  */
 export function responseShots(input: DirectorInput): OneShot[] {
-  const { responses, snapshot, index, camera, canvasW } = input;
+  const responses = input.responses;
   if (responses === undefined || responses.length === 0) return [];
-  const shots: OneShot[] = [];
-  for (const id of responses) {
-    const e = entityById(snapshot, id);
-    if (e === undefined) continue;
-    const group = responseGroup(index, e);
-    const files = group === undefined ? undefined : groupFiles(index, group);
-    if (files === undefined) continue;
-    const tile = entityTile(e.components);
-    shots.push({
-      files,
-      gain: poolGain(index, files),
-      pan: tile === null ? 0 : computePan(tile.col, tile.row, camera, canvasW),
-      key: `respond:${group}`,
-      exclusive: 'group',
-    });
-  }
-  return shots;
+  const accepted = responses.filter((answer) => answer.refused !== true);
+  if (accepted.length === 0) return responses.flatMap((answer) => groupAnswerShots(input, answer));
+  const members = new Set(accepted.flatMap((answer) => answer.members));
+  const attack = accepted.some((answer) => answer.attack === true);
+  return groupAnswerShots(input, { members: [...members], attack });
 }
 
 /** One drawn creature that may speak, placed. */

@@ -13,6 +13,7 @@ import {
   defaultBindings,
   directAudio,
   type OneShot,
+  type OrderAnswer,
   type SoundIndex,
 } from '../../src/index.js';
 
@@ -117,7 +118,7 @@ export function battleEvents(units: number): SimEvent[] {
 export function battleShots(
   snapshot: WorldSnapshot,
   events: readonly SimEvent[],
-  extra: { readonly chatterTicks?: number; readonly responses?: readonly number[] } = {},
+  extra: { readonly chatterTicks?: number; readonly responses?: readonly OrderAnswer[] } = {},
 ): OneShot[] {
   return [
     ...directAudio({

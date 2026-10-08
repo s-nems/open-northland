@@ -37,6 +37,9 @@ export interface SoundIndex {
   readonly heroJobs: ReadonlySet<number>;
   /** Animal tribe → its unprompted call and the roll that gates it. */
   readonly animalCalls: ReadonlyMap<number, AnimalCall>;
+  /** Settler tribe → its {@link TRIBE_MURMUR_GROUPS} row; a voiceless tribe in
+   *  {@link BORROWED_TRIBE_VOICES} murmurs with its lender. */
+  readonly murmurByTribe: ReadonlyMap<number, MurmurGroups>;
   /** A `[GfxLandscape]` record index → the object ambience its placed objects sound (birds in a tree). */
   readonly landscapeAmbienceByRecord: ReadonlyMap<number, LandscapeAmbience>;
   /** A static group's, jingle's or landscape pool's file list (the very array the maps above hold) →
@@ -131,6 +134,21 @@ function audibleFiles(sfx: readonly SoundSfx[]): readonly string[] {
  * approximation: the mod's Egypt ships without voices, so it borrows the Saracens' Arabic pools.
  */
 export const BORROWED_TRIBE_VOICES: ReadonlyMap<string, string> = new Map([['egypt', 'saracen']]);
+
+/** A tribe's murmur pool names by voice class. */
+export type MurmurGroups = Partial<Readonly<Record<VoiceClass, string>>>;
+
+/**
+ * Tribe slug -> voice class -> the tribe's murmur pool: lines in its language mixed with laughs, gasps
+ * and sighs at authored volume 40, which nothing in the original plays. A large group's answer lays a
+ * few of them under its lines. A class the table leaves out murmurs with the tribe's men.
+ */
+export const TRIBE_MURMUR_GROUPS: ReadonlyMap<string, MurmurGroups> = new Map([
+  ['viking', { male: 'Talk Viking Male', female: 'Talk Viking Female' }],
+  ['frank', { male: 'Talk Franks Male' }],
+  ['byzantine', { male: 'Talk Byzanz Male', female: 'Talk Byzanz Female' }],
+  ['saracen', { male: 'Talk Arabs Male' }],
+]);
 
 /** The authored ids a content row joins by: a job's or a tribe's `typeId` and slug. */
 export interface AuthoredId {
@@ -251,6 +269,7 @@ export function buildSoundIndex(
     humanVoices,
     heroJobs,
     animalCalls,
+    murmurByTribe: murmurByTribe(tribes),
     landscapeAmbienceByRecord: landscapeAmbience(sounds, landscapeRecords, poolGains),
     poolGains,
   };
@@ -316,6 +335,19 @@ function landscapeSoundPools(
     total += weight;
   }
   return { name, pools, weight: total };
+}
+
+/** Each tribe's {@link TRIBE_MURMUR_GROUPS} row by its `typeId`, a borrower taking its lender's. */
+function murmurByTribe(tribes: readonly AuthoredId[]): Map<number, MurmurGroups> {
+  const byTribe = new Map<number, MurmurGroups>();
+  for (const t of tribes) {
+    if (t.typeId === undefined || t.id === undefined) continue;
+    const lender = BORROWED_TRIBE_VOICES.get(t.id);
+    const row =
+      TRIBE_MURMUR_GROUPS.get(t.id) ?? (lender === undefined ? undefined : TRIBE_MURMUR_GROUPS.get(lender));
+    if (row !== undefined) byTribe.set(t.typeId, row);
+  }
+  return byTribe;
 }
 
 /** Give each voiceless tribe in {@link BORROWED_TRIBE_VOICES} its lender's rows, every class at once. */

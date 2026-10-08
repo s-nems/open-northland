@@ -130,7 +130,7 @@ function direct(opts: {
     bindings,
     ...(localPlayer === null ? {} : { localPlayer }),
     ...(opts.visibleTile !== undefined ? { visibleTile: opts.visibleTile } : {}),
-    ...(opts.responses !== undefined ? { responses: opts.responses } : {}),
+    ...(opts.responses !== undefined ? { responses: [{ members: opts.responses }] } : {}),
     ...(opts.drawn !== undefined
       ? {
           chatter: {
@@ -148,16 +148,14 @@ const ANSWER_GAIN = authoredVolumeGain(80);
 const CHATTER_GAIN = authoredVolumeGain(40);
 
 describe('order responses', () => {
-  it('answers each ordered settler in its own lifelong "ok" voice, unattenuated and self-exclusive', () => {
-    const shots = direct({ responses: [2, 3] });
-    expect(shots.map((s) => s.files)).toEqual([['humantalk/m1ok01.wav'], ['humantalk/m2ok01.wav']]);
-    expect(shots.map((s) => s.key)).toEqual(['respond:Viking male ok 01', 'respond:Viking male ok 02']);
-    for (const s of shots) {
-      expect(s.gain).toBe(ANSWER_GAIN);
-      expect(s.exclusive).toBe('group'); // nothing while any line of the pool still sounds
-    }
-    // The same settler asked again answers with the same voice: id 2 is always pool 0.
-    expect(direct({ responses: [2] })[0]?.files).toEqual(['humantalk/m1ok01.wav']);
+  it('answers an ordered settler in its own lifelong "ok" voice, unattenuated and self-exclusive', () => {
+    const shots = direct({ responses: [2] });
+    expect(shots.map((s) => s.files)).toEqual([['humantalk/m1ok01.wav']]);
+    expect(shots[0]?.key).toBe('respond:Viking male ok 01');
+    expect(shots[0]?.gain).toBe(ANSWER_GAIN);
+    expect(shots[0]?.exclusive).toBe('group'); // nothing while any line of the pool still sounds
+    // Id 3 takes the other pool (id % 2), and keeps it whenever it is asked again.
+    expect(direct({ responses: [3] })[0]?.files).toEqual(['humantalk/m2ok01.wav']);
   });
 
   it('gives every hero the first response recording rather than an entity-id-selected voice', () => {
@@ -181,7 +179,7 @@ describe('order responses', () => {
     };
     const frame = directAudio({
       events: [],
-      responses: [3],
+      responses: [{ members: [3] }],
       snapshot: heroSnapshot,
       camera,
       canvasW: CANVAS_W,

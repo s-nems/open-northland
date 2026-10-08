@@ -19,7 +19,7 @@ import {
 } from '../data/music/index.js';
 import { PINNED_PRELOAD_TIERS, preloadPlan } from '../data/preload-plan.js';
 import { countShots, emptySoundStats, type SoundStatsView } from '../data/sound-stats.js';
-import type { AmbientLoop, AudioTerrain, OneShot, SoundBindings } from '../data/types.js';
+import type { AmbientLoop, AudioTerrain, OneShot, OrderAnswer, SoundBindings } from '../data/types.js';
 import { type NotificationCue, notificationShot, type UiCue, uiCueShot } from '../data/ui-cues.js';
 import type { WeatherSoundInput } from '../data/weather/mix.js';
 import { type AudioEngineOptions, type SoundPreloadReport, WebAudioEngine } from './engine/index.js';
@@ -83,8 +83,8 @@ export class SoundDriver {
   private readonly arbiter: OneShotArbiter;
   private playlist: MusicPlaylist | null = null;
   private mood: MusicMoodState = CALM_MOOD;
-  /** Settlers ordered since the last frame, answered with their voices on that frame. */
-  private responses: number[] = [];
+  /** Orders given since the last frame, answered with their settlers' voices on that frame. */
+  private responses: OrderAnswer[] = [];
   /** The sim tick the last frame stood at, so a frame knows how many ticks to roll the chatter for. */
   private lastTick: number | null = null;
   /** The map's sounding objects that are no sim entity, for the object ambience. */
@@ -241,10 +241,10 @@ export class SoundDriver {
     this.engine.fire(this.decide([uiCueShot(cue)], this.engine.clock));
   }
 
-  /** A settler the player just ordered answers "ok" in its own voice on the next frame, which knows
-   *  where it stands and what it sounds like. */
-  respond(settler: number): void {
-    this.responses.push(settler);
+  /** The settlers the player just ordered answer as a group on the next frame, which knows where they
+   *  stand and what they sound like. */
+  respond(answer: OrderAnswer): void {
+    this.responses.push(answer);
   }
 
   /** Decide + play one frame of audio from the current world state. */

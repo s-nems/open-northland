@@ -49,7 +49,7 @@ export {
   type GroupWorker,
   MAX_UNIT_MEMBER_ACTIONS,
   MAX_UNIT_ORDER_MEMBERS,
-  orderedSettler,
+  orderedSettlers,
   ownedEnvelope,
   type PlayerCommand,
   playerCommand,
