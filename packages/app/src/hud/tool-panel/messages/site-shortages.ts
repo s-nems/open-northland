@@ -47,10 +47,12 @@ interface Watch {
  * The seat's sites short of a material the player has to supply: a line of the bill that no store of the
  * seat holds in the site's signpost reach and nobody is bringing, once that has stood
  * {@link CONSTRUCTION_SHORTAGE_GRACE_TICKS}.
- * The note then stands until that line is covered, on site or on its way, so a good trickling in one
- * unit at a time does not flap it; a second such good rewords it once the first is covered. The grace
- * is one clock per site, not per good (approximation): a good turning unheld while another's clock runs
- * inherits that clock. A sweep visits the seat's unfinished sites off a maintained index.
+ * The note retires as soon as a store in reach holds that good or a load of it is on its way, even
+ * while the line is still short: the player fixed what the note asked for. A good that runs dry again
+ * earns a new note after another grace, so a good trickling in one unit at a time raises one note a
+ * grace at most. A second short good rewords the standing note once the first is held or inbound. The
+ * grace is one clock per site, not per good (approximation): a good turning unheld while another's
+ * clock runs inherits that clock. A sweep visits the seat's unfinished sites off a maintained index.
  */
 export class SiteShortages implements ShortageReader {
   private watched = new Map<number, Watch>();
@@ -92,9 +94,10 @@ export class SiteShortages implements ShortageReader {
       watch.verdict = null;
       return;
     }
+    const unheldLines = supply.shortfalls.filter((line) => line.inbound === 0 && !line.held);
     const standing = watch.verdict;
-    if (typeof standing === 'number' && supply.shortfalls.some((line) => line.goodType === standing)) return;
-    const unheld = supply.shortfalls.find((line) => line.inbound === 0 && !line.held);
+    if (typeof standing === 'number' && unheldLines.some((line) => line.goodType === standing)) return;
+    const unheld = unheldLines[0];
     if (unheld === undefined) {
       watch.unheldSince = null;
       watch.verdict = null;

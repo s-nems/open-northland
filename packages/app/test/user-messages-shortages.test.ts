@@ -143,7 +143,7 @@ describe('building sites short of a material', () => {
     expect(sweeps.at(-1)).toHaveLength(1);
   });
 
-  it('keeps the note while the good trickles in, and retires it once the line is covered or the site stands', () => {
+  it('retires the note once the good is held or on its way, and once the site stands', () => {
     let answer: ConstructionSupply = shortOf(BRICK, false);
     const source = sourceAnswering(() => answer);
     const retirement = new NoteRetirement(new FightAreas(), null, source.shortages);
@@ -156,22 +156,33 @@ describe('building sites short of a material', () => {
     sweepTo(source, SWEEPS_TO_GRACE, {}, 2);
     const tick = SWEEPS_TO_GRACE * SNAPSHOT_SWEEP_INTERVAL_TICKS;
     expect(retirement.isOver(note, world(tick))).toBe(false);
-    // A unit in a store, with the line still short, changes nothing.
+    expect(retirement.isOver(note, world(tick, { finished: true }))).toBe(true);
+    // A unit in a store ends the note at the next ask, with the line still short.
     answer = shortOf(BRICK, true);
     sweepTo(source, SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS, {}, SWEEPS_TO_GRACE + 1);
-    expect(retirement.isOver(note, world(tick))).toBe(false);
-    expect(retirement.isOver(note, world(tick, { finished: true }))).toBe(true);
-    answer = COVERED;
-    sweepTo(
-      source,
-      SWEEPS_TO_GRACE + 2 * WORK_STATUS_REASK_SWEEPS,
-      {},
-      SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS + 1,
-    );
     expect(retirement.isOver(note, world(tick))).toBe(true);
   });
 
-  it('rewords the standing note with the next unheld good once the first line is covered', () => {
+  it('retires the note once a load is on its way and raises it again only after another grace', () => {
+    let answer: ConstructionSupply = shortOf(BRICK, false);
+    const source = sourceAnswering(() => answer);
+    const retirement = new NoteRetirement(new FightAreas(), null, source.shortages);
+    const note = shortageNote(BRICK);
+    sweepTo(source, SWEEPS_TO_GRACE + 1);
+    expect(retirement.isOver(note, world(0))).toBe(false);
+    answer = shortOf(BRICK, false, 1);
+    const inboundRead = SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS;
+    sweepTo(source, inboundRead, {}, SWEEPS_TO_GRACE + 2);
+    expect(retirement.isOver(note, world(0))).toBe(true);
+    // The load landed, the store is bare again: a new note comes a grace after the next ask reads that.
+    answer = shortOf(BRICK, false);
+    const dryRead = inboundRead + WORK_STATUS_REASK_SWEEPS;
+    const sweeps = sweepTo(source, dryRead + SWEEPS_TO_GRACE, {}, inboundRead + 1);
+    expect(sweeps.slice(0, -1).flat()).toEqual([]);
+    expect(sweeps.at(-1)).toHaveLength(1);
+  });
+
+  it('rewords the standing note with the next unheld good once the first is held', () => {
     let answer: ConstructionSupply = {
       kind: 'short',
       shortfalls: [
@@ -183,7 +194,13 @@ describe('building sites short of a material', () => {
     const retirement = new NoteRetirement(new FightAreas(), null, source.shortages);
     const first = sweepTo(source, SWEEPS_TO_GRACE).at(-1);
     expect(first?.[0]?.[0]).toContain(`good:${BRICK}`);
-    answer = shortOf(WOOD, false);
+    answer = {
+      kind: 'short',
+      shortfalls: [
+        { goodType: BRICK, required: 2, delivered: 1, inbound: 0, held: true },
+        { goodType: WOOD, required: 1, delivered: 0, inbound: 0, held: false },
+      ],
+    };
     const next = sweepTo(source, SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS, {}, SWEEPS_TO_GRACE + 1).at(-1);
     expect(next).toEqual([[`Piekarnia:${USER_MESSAGE_TYPE.constructionStarved}:good:${WOOD}`, true]]);
     expect(retirement.isOver(shortageNote(BRICK), world(0))).toBe(false);
