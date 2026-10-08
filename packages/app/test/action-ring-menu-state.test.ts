@@ -397,9 +397,18 @@ describe('allowedActions - several settlers', () => {
 
   it('sends a single-settler order to nobody in a group', () => {
     const snapshot = snapshotOf([settler(1, JOB_SCOUT), settler(2, JOB_SCOUT)]);
-    expect(allowedActions(content, snapshot, [1, 2]).has('explore')).toBe(false);
-    expect(orderRecipients(content, snapshot, [1, 2], 'explore')).toEqual([]);
-    expect(orderRecipients(content, snapshot, [1], 'explore')).toEqual([1]);
+    expect(allowedActions(content, snapshot, [1, 2]).has('erectSignpost')).toBe(false);
+    expect(orderRecipients(content, snapshot, [1, 2], 'erectSignpost')).toEqual([]);
+    expect(orderRecipients(content, snapshot, [1], 'erectSignpost')).toEqual([1]);
+  });
+
+  it('sends every scout of a group exploring', () => {
+    const snapshot = snapshotOf([
+      settler(1, JOB_SCOUT),
+      settler(2, JOB_SCOUT),
+      settler(3, JOB_CHILD_MALE, { child: true }),
+    ]);
+    expect(orderRecipients(content, snapshot, [1, 2, 3], 'explore')).toEqual([1, 2]);
   });
 });
 

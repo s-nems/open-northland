@@ -9,6 +9,7 @@ import {
   Engagement,
   EquipOrder,
   ErectSignpostOrder,
+  ExploreOrder,
   Fleeing,
   GraduateWait,
   HuntFocus,
@@ -246,8 +247,13 @@ export const playerOrderSystem: System = (world, ctx) => {
       }
       // A failed request is never retried, so the order must be dropped or the unit freezes on it forever.
       // A signpost errand is the original's build-guide task, whose failure is a plain task failure,
-      // never a lost note.
-      if (!world.has(e, ErectSignpostOrder)) markLostWay(world, ctx, e, request.goal);
+      // never a lost note; an explore leg's goal is the sweep's own pick, which it steers around next.
+      const sweep = world.tryMut(e, ExploreOrder);
+      if (sweep !== undefined) {
+        if (sweep.leg !== null) sweep.leg.failed = true;
+      } else if (!world.has(e, ErectSignpostOrder)) {
+        markLostWay(world, ctx, e, request.goal);
+      }
       world.remove(e, PlayerOrder);
       stopAtNextNode(world, ctx.terrain, e);
       continue;

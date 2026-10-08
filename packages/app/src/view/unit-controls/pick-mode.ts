@@ -52,7 +52,7 @@ export type PickMode =
   | { readonly kind: VehicleTargetPickKind; readonly vehicle: number };
 
 /** The orders one scout resolves by clicking a spot on the map. */
-type ScoutPickKind = 'signpost' | 'explore';
+type ScoutPickKind = 'signpost';
 
 /** The orders that resolve by clicking one of the player's own buildings. */
 export type BuildingPickKind = 'workplace' | 'home' | 'building-site' | 'learning-place' | 'trade-house';
@@ -173,7 +173,6 @@ const SPOT_MODES: ReadonlySet<PickMode['kind']> = new Set<
   'work-area',
   'attack-move',
   'signpost',
-  'explore',
   'vehicle-destination',
   'vehicle-dock',
   'vehicle-attack-position',
@@ -402,15 +401,6 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
           x: target.col,
           y: target.row,
           ...(queued ? { queued } : {}),
-        });
-        return true;
-      // The explore order centres the scout's sweep on the named spot, as the original does.
-      case 'explore':
-        deps.enqueue({
-          kind: 'exploreArea',
-          entity: mode.scout as Entity,
-          x: target.col,
-          y: target.row,
         });
         return true;
       case 'vehicle-destination':

@@ -63,6 +63,14 @@ const MIN_ROUTE_RESISTANCE = ROAD_RESISTANCE;
 /** The road revision of a graph no road network has been mirrored into yet; world revisions start at 0. */
 const UNSYNCED_ROAD_REVISION = -1;
 
+/** The half-cell box holding every node of one static component. */
+export interface ComponentBox {
+  readonly minX: number;
+  readonly minY: number;
+  readonly maxX: number;
+  readonly maxY: number;
+}
+
 /**
  * The sim's navigation model: the half-cell node lattice with its 8-direction edge set and each node's
  * static connectivity label. Distinct from the render's triangle tessellation. Construct through
@@ -70,6 +78,8 @@ const UNSYNCED_ROAD_REVISION = -1;
  */
 export class TerrainGraph extends TerrainEdges {
   private readonly components: Int32Array;
+  /** Indexed by component label; built on the first ask, since the components never change. */
+  private componentBoxes: readonly ComponentBox[] | null = null;
   /** Per-node `lmpr` roughness, or undefined for the uniform default. */
   private readonly roughness: Uint8Array | undefined;
   /** The map author's vertex colour palette index per node; absent, every node reads neutral. */
@@ -302,6 +312,34 @@ export class TerrainGraph extends TerrainEdges {
    */
   componentOf(node: NodeId): number {
     return this.checkedSlot(this.components, node);
+  }
+
+  /** The box holding every node labelled `component`, a label {@link componentOf} returned. */
+  componentBounds(component: number): ComponentBox {
+    this.componentBoxes ??= this.computeComponentBoxes();
+    const box = this.componentBoxes[component];
+    if (box === undefined) throw new Error(`no component ${component}`);
+    return box;
+  }
+
+  private computeComponentBoxes(): ComponentBox[] {
+    const boxes: { minX: number; minY: number; maxX: number; maxY: number }[] = [];
+    for (let y = 0; y < this.height; y++) {
+      for (let x = 0; x < this.width; x++) {
+        const label = this.componentOf(this.idAt(x, y));
+        if (label === NO_COMPONENT) continue;
+        const box = boxes[label];
+        if (box === undefined) {
+          boxes[label] = { minX: x, minY: y, maxX: x, maxY: y };
+          continue;
+        }
+        box.minX = Math.min(box.minX, x);
+        box.minY = Math.min(box.minY, y);
+        box.maxX = Math.max(box.maxX, x);
+        box.maxY = Math.max(box.maxY, y);
+      }
+    }
+    return boxes;
   }
 
   /** Flood-fill the static components over the pathfinder's own edge set, so the diagonal flank-seam

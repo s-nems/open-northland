@@ -191,7 +191,7 @@ function orderActors(command: PlayerCommand): OrderActor[] {
     case 'trainSoldier':
     case 'cancelTraining':
     case 'learn':
-    case 'exploreArea':
+    case 'explore':
     case 'setWorkFlag':
     case 'setGatherGood':
     case 'clearHaulFlag':

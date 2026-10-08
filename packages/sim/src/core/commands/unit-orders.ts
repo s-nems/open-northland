@@ -38,6 +38,7 @@ export type UnitSelfAction =
   | { readonly kind: 'unassignWorker' }
   | { readonly kind: 'unassignHouse' }
   | { readonly kind: 'marry' }
+  | { readonly kind: 'explore' }
   | { readonly kind: 'makeChild'; readonly child: (typeof CHILD_SEXES)[number] };
 
 /** Existing selection actions carried together without changing their individual handlers. */
@@ -402,13 +403,11 @@ export type UnitOrderCommand =
     }
   | {
       /**
-       * Send one owned scout to explore around (x,y): it walks to unexplored ground within
-       * `EXPLORE_RADIUS_NODES` of that centre, one point at a time, until nothing there is left unseen.
+       * Send one owned scout exploring: it walks to unseen ground on its landmass, outward from where it
+       * stands, eating and sleeping on the way, until nothing there is left unseen (`explorationFinished`).
        */
-      readonly kind: 'exploreArea';
+      readonly kind: 'explore';
       readonly entity: Entity;
-      readonly x: number;
-      readonly y: number;
     }
   | {
       /**

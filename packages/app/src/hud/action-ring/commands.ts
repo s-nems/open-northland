@@ -73,7 +73,7 @@ export const ACTION_COMMANDS: readonly ActionCommand[] = [
   { id: 'assignWorkArea', arm: TOP_ARM, icon: 'order_assign_work_area', multi: false },
   { id: 'showWorkArea', arm: TOP_ARM, icon: 'order_show_work_area', multi: false },
   { id: 'erectSignpost', arm: TOP_ARM, icon: 'order_erect_signpost', multi: false },
-  { id: 'explore', arm: TOP_ARM, icon: 'order_explore', multi: false },
+  { id: 'explore', arm: TOP_ARM, icon: 'order_explore', multi: true },
 
   // Named addition: the building placement and removal orders serve a whole group too.
   { id: 'removeBuildingSite', arm: RIGHT_ARM, icon: 'order_remove_building_site', multi: true },

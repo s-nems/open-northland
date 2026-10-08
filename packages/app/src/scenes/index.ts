@@ -63,6 +63,7 @@ import { sandboxScene } from './sandbox/index.js';
 import { schoolScene } from './school.js';
 import { schoolGraduatesScene } from './school-graduates.js';
 import { scoutClaimScene } from './scout-claim.js';
+import { scoutExploreScene } from './scout-explore.js';
 import { shipWakesScene } from './ship-wakes.js';
 import { siegeScene } from './siege.js';
 import { signpostsScene } from './signposts.js';
@@ -158,6 +159,7 @@ export const SCENES: readonly SceneDefinition[] = [
   livestockScene,
   livestockYardScene,
   scoutClaimScene,
+  scoutExploreScene,
   palisadeScene,
   roadsScene,
   roadUpgradeScene,

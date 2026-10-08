@@ -1495,6 +1495,10 @@ export const deGame = {
     allowRegeneration: 'Pausen erlauben',
     prohibitRegeneration: 'Keine Pausen machen',
   },
+  actionRingDetails: {
+    explore:
+      'Erkundet die Insel von seinem Standort aus immer weiter nach außen, isst und schläft unterwegs. Meldet sich, sobald kein größeres unerkundetes Gebiet bleibt; schmale Streifen an Küsten und Kartenrändern bleiben dunkel.',
+  },
   roleNames: {
     baby_female: 'Baby (Mädchen)',
     baby_male: 'Baby (Junge)',
@@ -1647,6 +1651,7 @@ export const deGame = {
       settlementAttacked: 'Dorf angegriffen',
       peopleAttacked: 'Unter Angriff',
       houseFinished: 'Fertig gebaut',
+      explorationFinished: 'Land erkundet',
       houseUpgraded: 'Ausgebaut',
       vehicleNoPath: 'Kein Weg',
       vehicleNoCommander: 'Kein Kommandant',
@@ -1735,6 +1740,7 @@ export const deGame = {
       peopleAttacked:
         'Deine Leute werden außerhalb der Siedlung angegriffen. Feind: {enemy}. Getroffen: {hits}. Schicke Soldaten oder bringe die Angegriffenen in Sicherheit.',
       houseFinished: 'Bau abgeschlossen: {building}.',
+      explorationFinished: '{name} hat alles erreichbare Land erkundet und wartet auf Befehle.',
       houseUpgraded: 'Ausbau abgeschlossen: {building}.',
       vehicleNoPath: '{vehicle}: Kein Weg zum Ziel gefunden. Wähle ein anderes Ziel.',
       vehicleNoCommander: '{vehicle}: Niemand übernimmt das Kommando. Schicke einen Siedler an Bord.',

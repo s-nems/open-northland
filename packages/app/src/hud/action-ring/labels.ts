@@ -50,3 +50,9 @@ export function actionLabel(
   if (locale === 'pol' && (id === 'erectSignpost' || id === 'defenceMode')) return fallback;
   return uiString('misclogic', ACTION_STRING_IDS[id], fallback);
 }
+
+/** The second tooltip line of an order whose name does not say what it does, or null. */
+export function actionDetail(id: ActionCommandId, locale: Locale = currentLocale()): string | null {
+  const details: Readonly<Partial<Record<ActionCommandId, string>>> = messages(locale).actionRingDetails;
+  return details[id] ?? null;
+}

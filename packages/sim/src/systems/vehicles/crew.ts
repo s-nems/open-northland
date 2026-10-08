@@ -335,7 +335,7 @@ export function forcesDetach(command: Command): command is Command & { entity: E
     case 'assignHouse':
     case 'trainSoldier':
     case 'learn':
-    case 'exploreArea':
+    case 'explore':
     case 'placeSignpost':
     case 'openChest':
     case 'claimAnimal':

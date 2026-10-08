@@ -11,7 +11,8 @@ import type { MessageText } from './text.js';
  * original fails a child order it cannot start without a word, reports every attacked body alone where
  * the two attack notes report one fight area each, and has a worker report each product it failed to
  * make where `productionStalled` reports the workshop once, with the reason, and raises no word about a
- * building site short of a material (`constructionStarved`).
+ * building site short of a material (`constructionStarved`) and gives scouts no landmass-wide sweep to
+ * report the end of (`explorationFinished`).
  */
 export const USER_MESSAGE_TYPE = {
   lostWithoutSignposts: 0x03,
@@ -52,6 +53,7 @@ export const USER_MESSAGE_TYPE = {
   peopleAttacked: 0x82,
   productionStalled: 0x83,
   constructionStarved: 0x84,
+  explorationFinished: 0x85,
 } as const;
 
 export type UserMessageTypeName = keyof typeof USER_MESSAGE_TYPE;

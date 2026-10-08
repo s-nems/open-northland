@@ -56,7 +56,7 @@ describe('command payload contracts', () => {
 
   it.each([
     { kind: 'cancelTraining', entity: UNIT },
-    { kind: 'exploreArea', entity: UNIT, x: 3, y: 4 },
+    { kind: 'explore', entity: UNIT },
     { kind: 'orderNeed', entity: UNIT, need: 'piety' },
     { kind: 'setRegeneration', entity: UNIT, enabled: false },
     { kind: 'unassignBuilder', entity: UNIT },
@@ -102,7 +102,6 @@ describe('command payload contracts', () => {
   it('rejects invalid need orders and regeneration toggles', () => {
     expect(() => parse({ kind: 'orderNeed', entity: UNIT, need: 'unknown' })).toThrow(/command.need/);
     expect(() => parse({ kind: 'setRegeneration', entity: UNIT, enabled: 1 })).toThrow(/command.enabled/);
-    expect(() => parse({ kind: 'exploreArea', entity: UNIT, x: 1e30, y: 0 })).toThrow(/command.x/);
   });
 
   it('rejects malformed school, tribute, stance and mission-toggle orders', () => {

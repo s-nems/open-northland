@@ -480,6 +480,11 @@ export const plContent = {
       summary:
         'Zaznacz zwiadowcę i kliknij prawym owcę: idzie za nią, aż będzie twoja. Shift + prawy na krowie dodaje ją do kolejki.',
     },
+    'scout-explore': {
+      title: 'Zwiadowcy badają wyspę',
+      summary:
+        'Zaznacz obu zwiadowców i wybierz Zwiad w menu rozkazów: przeczeszą całą wyspę i zgłoszą, gdy nie zostanie na niej nic do odkrycia.',
+    },
     'chest-queue': {
       title: 'Skrzynie po kolei',
       summary:

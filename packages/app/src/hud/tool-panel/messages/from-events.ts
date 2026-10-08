@@ -369,6 +369,11 @@ export function messagesFromEvents(
         if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.grewUp, e);
         break;
       }
+      case 'explorationFinished': {
+        const e = ownedPerson(ev.entity);
+        if (e !== undefined) raiser.settler(USER_MESSAGE_TYPE.explorationFinished, e);
+        break;
+      }
       case 'technologyDiscovered': {
         if (ev.player !== localPlayer || announcedDiscoveries.has(ev.entity)) break;
         announcedDiscoveries.add(ev.entity);

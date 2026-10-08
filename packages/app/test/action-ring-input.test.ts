@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ACTION_COMMANDS, type ActionCommand } from '../src/hud/action-ring/index.js';
+import { currentLocale, messages } from '../src/i18n/index.js';
 import { createActionRingInput } from '../src/view/unit-controls/action-ring/input.js';
 import type { MenuMode } from '../src/view/unit-controls/action-ring/types.js';
 
@@ -17,7 +18,7 @@ function harness(mode: MenuMode, ringVisible = true, accepts = true) {
   let targets: readonly number[] = TARGETS;
   const input = createActionRingInput({
     uiString: (table, id) => `fixture:${table}:${id}`,
-    showTip: (text, x, y) => calls.push(`tip ${text} ${x},${y}`),
+    showTip: (title, detail, x, y) => calls.push(`tip ${title} ${detail ?? '-'} ${x},${y}`),
     hideTip: () => calls.push('hideTip'),
     toCanvas: (x, y) => ({ x, y }),
     getMode: () => mode,
@@ -89,10 +90,18 @@ describe('action ring button presses', () => {
     const open = harness('menu');
     open.input.hover(command('sleep'), { clientX: 30, clientY: 40 });
     open.input.hover(null, null);
-    expect(open.calls).toEqual(['tip fixture:misclogic:6 30,40', 'hideTip']);
+    expect(open.calls).toEqual(['tip fixture:misclogic:6 - 30,40', 'hideTip']);
 
     const closed = harness('closed');
     closed.input.hover(command('sleep'), { clientX: 30, clientY: 40 });
     expect(closed.calls).toEqual(['hideTip']);
+  });
+
+  it('says under the Explore name what the order does', () => {
+    const { input, calls } = harness('menu');
+    input.hover(command('explore'), { clientX: 30, clientY: 40 });
+    expect(calls).toEqual([
+      `tip fixture:misclogic:37 ${messages(currentLocale()).actionRingDetails.explore} 30,40`,
+    ]);
   });
 });

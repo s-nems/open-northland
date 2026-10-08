@@ -1333,6 +1333,10 @@ export const plGame = {
     allowRegeneration: 'Zezwól na przerwy',
     prohibitRegeneration: 'Bez przerw na potrzeby',
   },
+  actionRingDetails: {
+    explore:
+      'Zwiadowca bada wyspę, zaczynając od miejsca, w którym stoi, i idąc coraz dalej. Po drodze je i śpi. Zgłasza koniec, gdy nie zostanie żaden większy nieodkryty obszar; wąskie pasy przy brzegach i krawędzi mapy zostają w mgle.',
+  },
   // Roles outside the profession picker, keyed by content job slug: the life stages (`jobtypes.ini` 1..6)
   // and the jester (28), which maps can place but no player can train.
   roleNames: {
@@ -1479,6 +1483,7 @@ export const plGame = {
       settlementAttacked: 'Atak na osadę',
       peopleAttacked: 'Atakują nas',
       houseFinished: 'Budowa gotowa',
+      explorationFinished: 'Ląd zbadany',
       houseUpgraded: 'Rozbudowano',
       vehicleNoPath: 'Brak trasy',
       vehicleNoCommander: 'Brak dowódcy',
@@ -1566,6 +1571,7 @@ export const plGame = {
       peopleAttacked:
         'Twoi ludzie są atakowani poza osadą. Wróg: {enemy}. Zaatakowano: {hits}. Wyślij żołnierzy albo odprowadź ludzi w bezpieczne miejsce.',
       houseFinished: 'Budowa ukończona: {building}.',
+      explorationFinished: '{name}: zbadano cały dostępny ląd. Zwiadowca czeka na rozkazy.',
       houseUpgraded: 'Rozbudowa ukończona: {building}.',
       vehicleNoPath: '{vehicle}: brak drogi do celu. Wskaż inny cel.',
       vehicleNoCommander: '{vehicle}: nikt nie kieruje tym pojazdem. Wyślij do pojazdu osadnika.',

@@ -1489,6 +1489,10 @@ export const ruGame = {
     allowRegeneration: 'Разрешить перерывы',
     prohibitRegeneration: 'Не делать перерывов',
   },
+  actionRingDetails: {
+    explore:
+      'Разведывает остров, начиная с места, где стоит разведчик, и уходя всё дальше. По пути ест и спит. Докладывает, когда не останется крупных неразведанных участков; узкие полосы у берегов и краёв карты остаются скрытыми.',
+  },
   roleNames: {
     baby_female: 'Младенец (девочка)',
     baby_male: 'Младенец (мальчик)',
@@ -1640,6 +1644,7 @@ export const ruGame = {
       settlementAttacked: 'Нападение на деревню',
       peopleAttacked: 'Под атакой',
       houseFinished: 'Построено',
+      explorationFinished: 'Земля разведана',
       houseUpgraded: 'Улучшено',
       vehicleNoPath: 'Нет пути',
       vehicleNoCommander: 'Нет командира',
@@ -1727,6 +1732,7 @@ export const ruGame = {
       peopleAttacked:
         'Ваших людей атакуют за пределами поселения. Враг: {enemy}. Под ударом: {hits}. Отправьте солдат или уведите людей в безопасное место.',
       houseFinished: 'Строительство завершено: {building}.',
+      explorationFinished: '{name} разведал всю доступную землю и ждёт приказов.',
       houseUpgraded: 'Улучшение завершено: {building}.',
       vehicleNoPath: '{vehicle}: путь к цели не найден. Выберите другое место назначения.',
       vehicleNoCommander: '{vehicle}: некому командовать. Отправьте поселенца на борт.',

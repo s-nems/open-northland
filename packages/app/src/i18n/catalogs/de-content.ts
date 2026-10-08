@@ -484,6 +484,11 @@ export const deContent = {
       summary:
         'Wähle den Kundschafter aus und klicke mit rechts auf ein Schaf: Er folgt ihm, bis es dir gehört. Mit Shift + Rechtsklick auf eine Kuh reihst du sie als Nächstes ein.',
     },
+    'scout-explore': {
+      title: 'Kundschafter erkunden eine Insel',
+      summary:
+        'Wähle beide Kundschafter aus und drücke im Befehlsring auf Erkunden: Sie durchstreifen die ganze Insel und melden sich, wenn es dort nichts mehr zu entdecken gibt.',
+    },
     'chest-queue': {
       title: 'Truhen nacheinander öffnen',
       summary:

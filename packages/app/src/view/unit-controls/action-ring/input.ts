@@ -6,7 +6,7 @@ import {
   type ActionRingLayout,
   hitTestActionRing,
 } from '../../../hud/action-ring/index.js';
-import { actionLabel } from '../../../hud/action-ring/labels.js';
+import { actionDetail, actionLabel } from '../../../hud/action-ring/labels.js';
 import type { MenuMode } from './types.js';
 
 /**
@@ -15,8 +15,9 @@ import type { MenuMode } from './types.js';
  */
 export interface ActionRingInputContext {
   readonly uiString: UiString;
-  /** The button's name beside the cursor, at a client point. */
-  readonly showTip: (text: string, clientX: number, clientY: number) => void;
+  /** The button's name beside the cursor, at a client point, with what the order does under it when its
+   *  name alone does not say. */
+  readonly showTip: (title: string, detail: string | null, clientX: number, clientY: number) => void;
   readonly hideTip: () => void;
   /** Client (CSS) point to canvas px, the space the layout and every hit-test work in. */
   readonly toCanvas: (clientX: number, clientY: number) => { x: number; y: number };
@@ -70,7 +71,10 @@ export const createActionRingInput = (ctx: ActionRingInputContext): ActionRingIn
     },
     hover(command, event): void {
       if (command === null || event === null || ctx.getMode() === 'closed') ctx.hideTip();
-      else ctx.showTip(actionLabel(command.id, ctx.uiString), event.clientX, event.clientY);
+      else {
+        const title = actionLabel(command.id, ctx.uiString);
+        ctx.showTip(title, actionDetail(command.id), event.clientX, event.clientY);
+      }
     },
   };
 };

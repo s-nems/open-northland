@@ -35,7 +35,7 @@ import {
   clearHaulFlag,
   declareDiplomacy,
   equipGood,
-  exploreArea,
+  explore,
   makeChild,
   marry,
   moveUnit,
@@ -327,8 +327,8 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
     case 'setRegeneration':
       setRegeneration(world, ctx, command);
       return;
-    case 'exploreArea':
-      obeyDespiteHunger(world, ctx, command.entity, () => exploreArea(world, ctx, command));
+    case 'explore':
+      obeyDespiteHunger(world, ctx, command.entity, () => explore(world, ctx, command));
       return;
     case 'setWorkFlag':
       setWorkFlag(world, ctx, command);

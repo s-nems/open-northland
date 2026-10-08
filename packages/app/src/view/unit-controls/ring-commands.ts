@@ -72,8 +72,7 @@ export function issueRingCommand(
       deps.toggleWorkArea(targets);
       return true;
     case 'explore':
-      if (single !== undefined) deps.pickMode.arm({ kind: 'explore', scout: single });
-      return true;
+      return action({ kind: 'explore' });
     case 'marry':
       return action({ kind: 'marry' });
     case 'haveBoy':

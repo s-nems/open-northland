@@ -19,24 +19,26 @@ export const Signpost = defineComponent<{ links: readonly Entity[] }>('Signpost'
 export const ErectSignpostOrder = defineComponent<{ goal: NodeId }>('ErectSignpostOrder', 'settlers');
 
 /**
- * A scout's standing "explore around here" order: it walks to unexplored ground within
- * {@link EXPLORE_RADIUS_NODES} of `centre`, one point at a time, and the order ends once nothing inside
- * that circle is still unseen. A walk order, a trade change, or the scout's death calls it off.
- *
- * `leg` is the last leg issued - where the scout stood and where it was sent. Re-picking that same pair
- * means the walk never started, so the sweep gives up rather than re-issuing it every tick.
+ * A scout's standing "explore" order: it walks to unseen ground on the landmass it stands on, one leg at a
+ * time, in rings outward from `origin` (where the order was given), cutting a leg short once its goal comes
+ * into view, and the order ends once nothing walkable there is still unseen. A walk order, a trade change,
+ * or the scout's death calls it off.
  */
-export const ExploreOrder = defineComponent<{
-  centre: NodeId;
-  leg: { from: NodeId; to: NodeId } | null;
-}>('ExploreOrder', 'settlers');
+export interface ExploreSweep {
+  readonly origin: NodeId;
+  /** The fog-cell ring around `origin` that last held unseen ground, where the next search starts. */
+  frontierRing: number;
+  /** The last leg issued - where the scout stood and where it was sent - or null once a revealed goal had
+   *  nothing left to turn to, or hunger took the scout off it. The leg failed when its route found no way
+   *  (`failed`), or when the scout is free again on the node it left from. */
+  leg: { readonly from: NodeId; readonly to: NodeId; failed: boolean } | null;
+  /** The latest goals of failed legs, which later picks steer around. */
+  unreachable: readonly NodeId[];
+  /** Such failures since the last walk that got under way. */
+  failedLegs: number;
+}
 
-/**
- * How far from its explore centre a scout will walk to reveal ground, in half-cell nodes on the world
- * metric. Approximation, sized to the signpost work circle: the original searches a fixed box around the
- * scout's work centre, whose unit is not readable here.
- */
-export const EXPLORE_RADIUS_NODES = 40;
+export const ExploreOrder = defineComponent<ExploreSweep>('ExploreOrder', 'settlers');
 
 /**
  * How far a civilian plans a walk without signposts, in hex node distance (`nav/hex-distance.ts`) from

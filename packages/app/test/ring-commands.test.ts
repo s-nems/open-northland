@@ -132,10 +132,17 @@ describe('issueRingCommand', () => {
     const h = harness();
     issueRingCommand('changeEquipment', [4, 9], h);
     issueRingCommand('showWorkArea', [4], h);
-    issueRingCommand('explore', [7], h);
     expect(h.equipmentFor).toEqual([[4, 9]]);
     expect(h.workAreaFor).toEqual([[4]]);
-    expect(h.armed).toEqual([{ kind: 'explore', scout: 7 }]);
     expect(h.issued).toEqual([]);
+  });
+
+  it('sends every selected scout exploring at once, with no spot to pick', () => {
+    const h = harness();
+    issueRingCommand('explore', [7, 8], h);
+    expect(h.armed).toEqual([]);
+    expect(h.issued).toEqual([
+      { kind: 'unitActionGroup', members: [{ entity: 7 }, { entity: 8 }], action: { kind: 'explore' } },
+    ]);
   });
 });

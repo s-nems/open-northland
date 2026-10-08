@@ -51,6 +51,8 @@ const TOOLTIP_STYLE = [
 
 /** Where the button's name stands from the cursor, in client px: beside it and just above. */
 const TIP_OFFSET = { x: 12, y: -22 } as const;
+/** The wrapped line under a button's name that says what the order does. */
+const TIP_DETAIL_STYLE = ['white-space:normal', 'max-width:320px', 'color:#bfb19a'].join(';');
 
 /** Mount the settler action menu. Async because it loads the optional decoded GUI art. */
 export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<SettlerActions> {
@@ -72,6 +74,9 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     document.body.append(layer);
 
     const tooltip = el('div', TOOLTIP_STYLE);
+    const tipTitle = el('div', '');
+    const tipDetail = el('div', TIP_DETAIL_STYLE);
+    tooltip.append(tipTitle, tipDetail);
     document.body.append(tooltip);
     cleanup.push(() => tooltip.remove());
 
@@ -230,11 +235,17 @@ export async function mountSettlerActions(opts: SettlerActionsOptions): Promise<
     // Click routing is order-independent: unit-controls asks `claimsPointer` before world picking.
     const input = createActionRingInput({
       uiString: opts.uiString,
-      showTip: (text, clientX, clientY) => {
-        tooltip.textContent = text;
-        tooltip.style.left = `${clientX + TIP_OFFSET.x}px`;
-        tooltip.style.top = `${clientY + TIP_OFFSET.y}px`;
+      showTip: (title, detail, clientX, clientY) => {
+        tipTitle.textContent = title;
+        tipDetail.textContent = detail;
+        tipDetail.hidden = detail === null;
+        // Measured from the left edge, where the previous tip's spot cannot squeeze it narrower.
+        tooltip.style.left = '0px';
         tooltip.style.display = 'block';
+        // A described order's tip is wide: near the right edge it shifts left to stay on screen.
+        const left = Math.min(clientX + TIP_OFFSET.x, window.innerWidth - tooltip.offsetWidth);
+        tooltip.style.left = `${Math.max(0, left)}px`;
+        tooltip.style.top = `${clientY + TIP_OFFSET.y}px`;
       },
       hideTip: hideTransient,
       toCanvas,

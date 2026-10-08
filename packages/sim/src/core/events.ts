@@ -115,6 +115,11 @@ export type SimEvent =
       readonly entity: Entity;
     }
   | {
+      /** A scout's explore order ran out of unseen ground it can walk to on its landmass. */
+      readonly kind: 'explorationFinished';
+      readonly entity: Entity;
+    }
+  | {
       /** A barracks or school course granted this settler a new job or production qualification. */
       readonly kind: 'settlerTrained';
       readonly entity: Entity;

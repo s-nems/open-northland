@@ -12,12 +12,13 @@ import {
   type UserMessageTypeName,
 } from '../src/hud/tool-panel/messages/types.js';
 
-/** The original's types and the attack notes; this game's own `familyBlocked`, `productionStalled` and
- *  `constructionStarved` are pinned on their own. */
+/** The original's types and the attack notes; this game's own `familyBlocked`, `productionStalled`,
+ *  `constructionStarved` and `explorationFinished` are pinned on their own. */
 const OWN_TYPES: readonly UserMessageType[] = [
   USER_MESSAGE_TYPE.familyBlocked,
   USER_MESSAGE_TYPE.productionStalled,
   USER_MESSAGE_TYPE.constructionStarved,
+  USER_MESSAGE_TYPE.explorationFinished,
 ];
 const ALL_TYPES = (Object.values(USER_MESSAGE_TYPE) as UserMessageType[]).filter(
   (type) => !OWN_TYPES.includes(type),
@@ -65,9 +66,10 @@ describe('user message priority (original behavior)', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.starving)).toBe(2);
   });
 
-  it('ranks a held child order and a stalled workshop notable, a starved site important', () => {
+  it('ranks a held child order, a stalled workshop and an explored landmass notable, a starved site important', () => {
     expect(messagePriority(USER_MESSAGE_TYPE.familyBlocked)).toBe(1);
     expect(messagePriority(USER_MESSAGE_TYPE.productionStalled)).toBe(1);
+    expect(messagePriority(USER_MESSAGE_TYPE.explorationFinished)).toBe(1);
     expect(messagePriority(USER_MESSAGE_TYPE.constructionStarved)).toBe(2);
   });
 

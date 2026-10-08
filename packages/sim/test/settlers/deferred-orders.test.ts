@@ -183,8 +183,7 @@ describe('a later order that executes at once', () => {
     orderMove(sim, scout, 8, 1);
     sim.step();
     expect(sim.world.get(scout, DeferredOrder).command.kind).toBe('moveUnit');
-    const far = cellAnchorNode(28, 6);
-    sim.enqueueSetup({ kind: 'exploreArea', entity: scout, x: far.hx, y: far.hy });
+    sim.enqueueSetup({ kind: 'explore', entity: scout });
     sim.step();
     expect(sim.world.has(scout, DeferredOrder)).toBe(false);
 

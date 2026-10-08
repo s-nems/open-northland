@@ -482,6 +482,11 @@ export const enContent = {
       summary:
         'Select the scout and right click a sheep: it follows the sheep until it is yours. Shift + right click a cow to queue it next.',
     },
+    'scout-explore': {
+      title: 'Scouts explore an island',
+      summary:
+        'Select both scouts and press Explore in the action ring: they sweep the whole island and report when nothing on it is left to see.',
+    },
     'chest-queue': {
       title: 'Chests one after another',
       summary:

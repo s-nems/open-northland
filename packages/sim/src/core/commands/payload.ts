@@ -136,6 +136,7 @@ const UNIT_SELECTION_ACTION_PAYLOAD: {
   unassignWorker: { required: {} },
   unassignHouse: { required: {} },
   marry: { required: {} },
+  explore: { required: {} },
 };
 
 /**
@@ -171,7 +172,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setMissionsEnabled: { required: { enabled: 'boolean' } },
   cancelTraining: { required: { entity: 'integer' } },
-  exploreArea: { required: { entity: 'integer', ...NODE } },
+  explore: { required: { entity: 'integer' } },
   grantPaper: { required: { player: 'integer', paper: PAPER } },
   orderNeed: {
     required: {

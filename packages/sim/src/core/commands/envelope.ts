@@ -112,7 +112,7 @@ export const COMMAND_ISSUER: {
   createVehicle: 'trusted',
   dropGood: 'trusted',
   equipGood: 'seat',
-  exploreArea: 'seat',
+  explore: 'seat',
   grantPaper: 'trusted',
   makeChild: 'seat',
   marry: 'seat',

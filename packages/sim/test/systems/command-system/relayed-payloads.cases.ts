@@ -161,7 +161,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     clearTradeImports: [{ entity: t.carrier }],
     setTradeAgreement: [{ entity: t.carrier, agreement: 0 }],
     cancelTraining: [{ entity: t.worker }],
-    exploreArea: [{ entity: t.scout, ...node }],
+    explore: [{ entity: t.scout }],
     orderNeed: [{ entity: t.worker, need: 'hunger' }],
     setRegeneration: [{ entity: t.soldier, enabled: false }],
     moveUnitGroup: [
@@ -207,6 +207,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
       { kind: 'unassignWorker' },
       { kind: 'unassignHouse' },
       { kind: 'marry' },
+      { kind: 'explore' },
       { kind: 'openChest', chest: t.hq, queued: true },
       { kind: 'claimAnimal', animal: t.hq, queued: true },
       { kind: 'equipGood', group: 'boots', slot: 0, goodType: SHOES, skipReturn: true },
