@@ -83,7 +83,7 @@ describe('script landscape content', () => {
     expect(JSON.stringify(map)).toBe(before);
   });
 
-  it('marks every cell but confirmed water as land, for ships and land-only vertex colors', () => {
+  it('marks every node but one all of whose triangles are water as land, for ships and land-only vertex colors', () => {
     const map = TerrainMapFile.parse({
       width: 3,
       height: 1,
@@ -105,21 +105,25 @@ describe('script landscape content', () => {
         TrianglePatternType.parse({ type: 1, isWater: true }),
       ],
     };
-    // A dry cell, a half-wet cell and an unknown one are land; only the wet-wet cell would be sea.
-    expect(buildScriptLandscapeTerrain(map, ir).landVertices).toEqual(new Array<boolean>(12).fill(true));
+    // Only node (3,0) is touched by the half-wet cell's wet triangle alone; the dry and unknown
+    // triangles claim every other node.
+    const halfWet = new Array<boolean>(12).fill(true);
+    halfWet[3] = false;
+    expect(buildScriptLandscapeTerrain(map, ir).landVertices).toEqual(halfWet);
     const sea = TerrainMapFile.parse({
       width: 2,
       height: 1,
       typeIds: [1, 1],
       ground: { patterns: ['dry', 'wet'], a: [0, 1], b: [1, 1] },
     });
+    // The dry triangle claims its apex (0,0) and its west edge's midpoint (0,1); the rest is sea.
     expect(buildScriptLandscapeTerrain(sea, ir).landVertices).toEqual([
       true,
-      true,
       false,
       false,
+      false,
       true,
-      true,
+      false,
       false,
       false,
     ]);

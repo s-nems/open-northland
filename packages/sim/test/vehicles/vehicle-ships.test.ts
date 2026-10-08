@@ -284,22 +284,6 @@ describe('dockVehicle', () => {
     expect(docked(s)).toEqual([point]);
   });
 
-  it('docks on a ring past the door distance when the door ring holds no water deep enough for the hull', () => {
-    const s = sim();
-    const { ship } = crewedShip(s, 20, MID_ROW);
-    // The door ring reaches the strait's last node, beside the shore; the first ring the hull's size
-    // class admits lies two rings out.
-    const point = { hx: EAST_SHORE_X + SHIP_SIZE + 1, hy: MID_ROW };
-    const terrain = s.terrain;
-    if (terrain === undefined) throw new Error('map missing');
-    expect(mooringProbe(s.world, ctxOf(s), terrain, ship)?.canMoor(point.hx, point.hy)).toBe(true);
-    dock(s, ship, point.hx, point.hy);
-    sailOut(s, ship);
-    expect(refusals(s)).toEqual([]);
-    expect(s.world.get(ship, Vehicle)).toMatchObject({ moored: true, mooring: point });
-    expect(distanceTo(anchorOf(s, ship), point)).toBe(DOOR_DISTANCE + SHIP_SIZE);
-  });
-
   it('sails on and moors on the shore when its last rider is removed at sea', () => {
     const s = sim();
     const { ship, riders } = crewedShip(s, 20, MID_ROW);

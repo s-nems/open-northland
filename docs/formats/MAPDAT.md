@@ -128,7 +128,7 @@ Treat these meanings as probe targets, not implementation evidence, until they a
 | Tag | Kind | Meaning |
 | --- | --- | --- |
 | `lmpa`, `lmpb` | derivable | pattern `LogicType` per triangle (water = 1, void = {0, 5, 6}, land = rest) |
-| `laco` | derivable | continent table (type, anchor, size); `lmco` node ids are imported |
+| `laco` | derivable | continent table: a `u32` count, then 16-byte records `{ u32 type, u16 x, u16 y, i32 size, u32 }` with type 1 land, 2 water and record 0 type 0; on `Mroczny_Swiat` the land sizes equal their `lmco` node counts. `lmco` node ids are imported |
 | `lmtw` | derivable | per-node passability bits for the 6 lattice edge directions (derivation verified below) |
 | `lmwb`, `lmbb` | derivable | landscape walk/build blocking stamped from `emla` block areas (derivation verified below) |
 | `lmro`, `lmsb`, `lmhf`, `emm1` | derivable | road presence, walk-sector point marks, zeros, road-overlay visibility |
@@ -182,22 +182,18 @@ land node. The 124 decoded maps paint 58738 cells with exactly one walkable tria
 with water, 7733 with moor, 7341 with `border`, which is also the interior void filler and not only
 the frame band), so shoreline and void margins drawn out of them walk in the original.
 
-### How `content/collision.ts` approximates it
+### How `content/collision.ts` uses it
 
-The join keeps ground classes at cell resolution and mirrors the node rule per flag: better triangle
-for walking, worse for building and sowing. Two named gaps, measured against the replayed `lmtw`
-components over the same 124 maps:
+The join applies the node rule as stated: a node walks when a walkable triangle touches it, and is sea
+for ships only when every triangle touching it is water. Checked against the original's continent table
+(`laco` type per `lmco` id) over the interior nodes of 123 owned maps, 16.5 million nodes, the land
+and water split differs on 60 nodes; the cell-resolution join it replaced differed on 193,569. Two
+named gaps remain:
 
-- **Permissive inside a mixed cell.** A walkable triangle opens all four of the cell's nodes, not
-  just the ones it touches, so a mixed cell is a 4-node crossing rather than a 3-node one. On 17 maps
-  that attaches one pocket of 202 to 556 nodes to a mainland the original keeps separate. On every
-  other map, and for every larger region, each of our components falls inside a single `lmtw`
-  component: the join never welds two landmasses the original holds apart.
-- **Restrictive at a fully blocking cell.** Its nodes are impassable here even where a neighbouring
-  cell's walkable triangle touches them, and the unconditional outer band is not implemented at all.
-
-The worst-triangle collapse this replaced was wrong in the other direction and by more: it split
-landmasses the original's own `lmtw` joins, on 7 of the maps sampled.
+- Building and sowing keep the cell rule, the worse of the cell's two triangles over its 2×2 node
+  block, since no per-node build rule is verified. A node that walks inside a cell that cannot be
+  walked is margin: it walks and builds nothing.
+- The unconditional outer band is not implemented.
 
 ## Tests
 

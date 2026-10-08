@@ -23,13 +23,14 @@ import {
   nodeOfPosition,
   parseSaveGame,
   playerCommand,
+  positionOfNode,
   restoreSimulation,
   Simulation,
   serializeSaveGame,
   type TerrainMap,
 } from '../../src/index.js';
 import { removeSettlerSilently } from '../../src/systems/lifecycle/death.js';
-import { createVehicle, stockVehicleGoods } from '../../src/systems/vehicles/index.js';
+import { boardCrew, createVehicle, stockVehicleGoods } from '../../src/systems/vehicles/index.js';
 import { type VehicleWorkFilter, vehiclesAtWork } from '../../src/systems/vehicles/registry.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -347,6 +348,21 @@ describe('boarding', () => {
     expect(s.world.has(far, Rider)).toBe(false);
     expect(nodeOf(s, far)).toEqual({ hx: 20, hy: 6 });
     expect(vehicleCommander(s.world.get(ship, Vehicle))).toBe(near);
+  });
+
+  it('keeps a rider whose position rounds onto the sea beside the shore it walks, judging its continent on ground', () => {
+    const s = sim();
+    const ship = spawn(s, SHIP_SMALL, 22, 8);
+    const scout = spawnSettler(s, 2, 8);
+    attach(s, scout, ship);
+    // A walker mid-step on a one-node strip of shore can round onto the water beside its leg.
+    const sea = positionOfNode(SHORE_CELL * 2, 8);
+    const pos = s.world.mut(scout, Position);
+    pos.x = sea.x;
+    pos.y = sea.y;
+    boardCrew(s.world, ctxOf(s), ship);
+    expect(seatOf(s, ship, scout)).toEqual({ entity: scout, inside: false });
+    expect(s.world.get(scout, Rider).vehicle).toBe(ship);
   });
 
   it('boards a starving carrier when the cart asks: the order outranks the need', () => {

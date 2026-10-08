@@ -170,10 +170,11 @@ describe('buildCollisionTerrain', () => {
     expect(at(11, 7)).toBe(TERRAIN_OPEN); // cell (5,3)'s far corner node
   });
 
-  it('blocks a cell whose BOTH triangles are a no-walk ground class (water)', () => {
-    // Water cell (1,1) stamps its whole 2×2 node block (2..3, 2..3).
-    expect(at(2, 2)).toBe(TERRAIN_IMPASSABLE);
+  it('blocks a node only when every ground triangle touching it is a no-walk class', () => {
+    // Water cell (1,1) centres on node (3,2). The midpoint its two triangles share touches nothing
+    // else and floods; its centre, a corner the meadow triangles around it share, still walks.
     expect(at(3, 3)).toBe(TERRAIN_IMPASSABLE);
+    expect(at(3, 2)).toBe(TERRAIN_MARGIN);
   });
 
   it('keeps a half-water shoreline cell walkable but unbuildable', () => {

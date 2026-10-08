@@ -219,15 +219,6 @@ export function latticeDistanceBounds(
   return { nearest, farthest };
 }
 
-/** {@link hexagonRing} as the original's scans walk it, stepping before each test, so the start corner
- *  comes last. */
-export function hexagonRingStepFirst(centre: HalfCellNode, radius: number): HalfCellNode[] {
-  const ring = Array.from(hexagonRing(centre, radius), ({ point }) => point);
-  const start = ring.shift();
-  if (start !== undefined) ring.push(start);
-  return ring;
-}
-
 /** Visit the nodes of the `width` x `height` lattice exactly `radius` map points from `centre`, row by
  *  row and ascending within a row, until `visit` answers false; answers whether the walk finished. */
 export function forEachRingNode(

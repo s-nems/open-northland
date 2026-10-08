@@ -6,7 +6,6 @@ import {
   type HalfCellNode,
   HEX_DIRECTIONS,
   hexagonRing,
-  hexagonRingStepFirst,
   hexDistance,
   nodeOfPosition,
   stepHex,
@@ -113,7 +112,10 @@ export function vehicleDoorPoint(
   if (terrain === undefined || hexDistance(entry, anchor) > type.logicSize) return entry;
   if (!terrain.inBounds(anchor.hx, anchor.hy)) return entry;
   const continent = terrain.componentOf(terrain.nodeAt(anchor.hx, anchor.hy));
-  for (const point of hexagonRingStepFirst(anchor, type.logicSize + 1)) {
+  const ring = Array.from(hexagonRing(anchor, type.logicSize + 1), ({ point }) => point);
+  const start = ring.shift();
+  if (start !== undefined) ring.push(start);
+  for (const point of ring) {
     if (!terrain.inBounds(point.hx, point.hy)) continue;
     const node = terrain.nodeAt(point.hx, point.hy);
     if (terrain.isWalkable(node) && terrain.componentOf(node) === continent) return point;

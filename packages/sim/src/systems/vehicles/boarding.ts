@@ -57,6 +57,10 @@ function continentAt(terrain: TerrainGraph, point: HalfCellNode): number {
   return terrain.componentOf(terrain.nodeAt(point.hx, point.hy));
 }
 
+function standsOnGround(terrain: TerrainGraph, point: HalfCellNode): boolean {
+  return terrain.inBounds(point.hx, point.hy) && terrain.isWalkable(terrain.nodeAt(point.hx, point.hy));
+}
+
 /**
  * One pass of the crew's boarding: every rider still outside is asked in when it stands on the door's
  * continent, and detached where it stands when on another continent. Returns whether the whole crew is
@@ -76,7 +80,10 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
     const rider = seat.entity;
     if (!world.isAlive(rider) || !world.has(rider, Position)) continue;
     const p = world.get(rider, Position);
-    if (continentAt(terrain, nodeOfPosition(p.x, p.y)) !== continent) {
+    const at = nodeOfPosition(p.x, p.y);
+    // A walker mid-step can round onto the unwalkable node beside its leg, which on a one-node strip
+    // of shore is the sea; it is judged once it stands on ground.
+    if (standsOnGround(terrain, at) && continentAt(terrain, at) !== continent) {
       releaseRider(world, rider, vehicle);
       continue;
     }

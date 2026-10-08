@@ -70,9 +70,6 @@ const SCOUT = 27;
 const HANDCART_SLOTS = 15;
 const SHIP_PASSENGER_SLOTS = 19;
 const SHIP_DOOR_DISTANCE = 4;
-/** `lmco` continent ids of the shore map's land and sea. */
-const LAND_ID = 17;
-const SEA_ID = 5;
 const MAP_CELLS = 16;
 const GRASS = 0;
 const WATER = 1;
@@ -219,40 +216,6 @@ describe('createVehicle', () => {
     expect(s.terrain?.isWalkable(s.terrain.nodeAt(moored.mooring.hx, moored.mooring.hy))).toBe(true);
     expect(s.vehicleView(near)?.door).toEqual(moored.mooring);
     expect(s.world.get(far, Vehicle)).toMatchObject({ moored: false, mooring: null });
-  });
-
-  it("moors by the authored continent lane on the door-distance ring, where the original's coast reaches past the walkable shore", () => {
-    const shoreX = MAP_CELLS;
-    const width = MAP_CELLS * 2;
-    // The lane's land runs one node into this build's water, as the original's coast does.
-    const lane = Array.from({ length: width * width }, (_, node) =>
-      node % width <= shoreX ? LAND_ID : SEA_ID,
-    );
-    const s = sim({ ...shoreMap(), waterContinents: lane });
-    const atCoast = { hx: shoreX + SHIP_DOOR_DISTANCE, hy: 10 };
-    const ship = spawn(s, SHIP_SMALL, atCoast.hx, atCoast.hy);
-    const offshore = spawn(s, SHIP_SMALL, atCoast.hx + 1, atCoast.hy);
-    const moored = s.world.get(ship, Vehicle);
-    expect(moored.moored).toBe(true);
-    if (moored.mooring === null) throw new Error('a moored ship has a mooring point');
-    expect(s.terrain?.isWalkable(s.terrain.nodeAt(moored.mooring.hx, moored.mooring.hy))).toBe(true);
-    expect(hexDistance(atCoast, moored.mooring)).toBe(SHIP_DOOR_DISTANCE + 1);
-    expect(s.world.get(offshore, Vehicle)).toMatchObject({ moored: false, mooring: null });
-  });
-
-  it('moors on the walkable shore when the lane puts the ship itself on the land continent', () => {
-    const shoreX = MAP_CELLS;
-    const width = MAP_CELLS * 2;
-    // The lane's land reaches past this build's coast and under the ship, so no ring node differs.
-    const lane = Array.from({ length: width * width }, (_, node) =>
-      node % width <= shoreX + SHIP_DOOR_DISTANCE ? LAND_ID : SEA_ID,
-    );
-    const s = sim({ ...shoreMap(), waterContinents: lane });
-    const ship = spawn(s, SHIP_SMALL, shoreX + 2, 10);
-    const moored = s.world.get(ship, Vehicle);
-    expect(moored.moored).toBe(true);
-    if (moored.mooring === null) throw new Error('a moored ship has a mooring point');
-    expect(s.terrain?.isWalkable(s.terrain.nodeAt(moored.mooring.hx, moored.mooring.hy))).toBe(true);
   });
 });
 

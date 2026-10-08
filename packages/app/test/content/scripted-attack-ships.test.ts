@@ -11,13 +11,14 @@ import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
 import { realMapWorld } from './real-map-world.js';
 
-const { Vehicle } = components;
+const { Vehicle, vehiclePassengers } = components;
 
 /**
- * The raids of a story map whose script lands each wave by ship: a ship spawned off the raiders'
- * shore, the men attached to it, and a dock order on the defended coast. A ship that spawns unmoored
- * drops the men it cannot board, and one that cannot dock never lands them, so the defence objective,
- * which waits for every raider's death, never completes.
+ * The raids of a story map whose script lands each wave by ship: men spawned on the raiders' shore, a
+ * ship beside it, the men attached to it, a dock order on the defended coast and a detach a few
+ * seconds later. A ship that spawns unmoored or drops men on the way to its door leaves them on the
+ * far shore, and one that cannot dock never lands them, so the defence objective, which waits for
+ * every raider's death, never completes.
  */
 const MAP_ID = 'mroczny_swiat';
 /** Ticks a wave may take to board and sail to its dock. */
@@ -26,7 +27,7 @@ const SAIL_BUDGET_TICKS = 3000;
 interface Wave {
   readonly mission: number;
   readonly ship: Extract<MissionResultOp, { opcode: 'SetVehicle' }>;
-  readonly men: Extract<MissionResultOp, { opcode: 'SetHumanX' }>;
+  readonly men: readonly Extract<MissionResultOp, { opcode: 'SetHumanX' }>[];
   readonly dock: HalfCellNode;
 }
 
@@ -34,11 +35,11 @@ function scriptedWaves(sim: Simulation): Wave[] {
   const waves: Wave[] = [];
   for (const [mission, { results }] of (sim.missions?.missions ?? []).entries()) {
     const ship = results.find((op) => op.opcode === 'SetVehicle');
-    const men = results.find((op) => op.opcode === 'SetHumanX');
     const dock = results.find((op) => op.opcode === 'DockVehicle');
-    if (ship?.opcode !== 'SetVehicle' || men?.opcode !== 'SetHumanX' || dock?.opcode !== 'DockVehicle')
+    const men = results.filter((op) => op.opcode === 'SetHumanX');
+    if (ship?.opcode !== 'SetVehicle' || dock?.opcode !== 'DockVehicle' || dock.vehicleId !== ship.vehicleId)
       continue;
-    if (dock.vehicleId === ship.vehicleId) waves.push({ mission, ship, men, dock: dock.point });
+    waves.push({ mission, ship, men, dock: dock.point });
   }
   return waves;
 }
@@ -49,14 +50,8 @@ function spawnedVehicle(sim: Simulation): Entity {
   return created.entity;
 }
 
-function spawnedSettler(sim: Simulation, before: ReadonlySet<Entity>): Entity {
-  const fresh = [...sim.world.query(components.Settler)].find((e) => !before.has(e));
-  if (fresh === undefined) throw new Error('the raider was not spawned');
-  return fresh;
-}
-
 describe.runIf(hasRealIr())(`${MAP_ID}: the scripted raids`, () => {
-  it('moor every raiding ship where it spawns and dock it on the defended coast', async () => {
+  it('moor every raiding ship where it spawns and land its whole crew on the defended coast', async () => {
     const { sim } = await realMapWorld({ mapId: MAP_ID, aiSeats: [], missions: false });
     const waves = scriptedWaves(sim);
     expect(waves.length).toBeGreaterThan(0);
@@ -74,17 +69,24 @@ describe.runIf(hasRealIr())(`${MAP_ID}: the scripted raids`, () => {
       const vehicle = spawnedVehicle(sim);
       expect(sim.world.get(vehicle, Vehicle).moored, `${label} spawns moored`).toBe(true);
       const before = new Set(sim.world.query(components.Settler));
-      sim.enqueueSetup({
-        kind: 'spawnSettler',
-        jobType: men.job,
-        tribe: men.tribe,
-        x: men.point.hx,
-        y: men.point.hy,
-        owner: men.player,
-      });
+      for (const line of men) {
+        for (let i = 0; i < line.amount; i++) {
+          sim.enqueueSetup({
+            kind: 'spawnSettler',
+            jobType: line.job,
+            tribe: line.tribe,
+            x: line.point.hx,
+            y: line.point.hy,
+            owner: line.player,
+          });
+        }
+      }
       sim.step();
-      const raider = spawnedSettler(sim, before);
-      sim.enqueue(playerCommand(ship.player, { kind: 'attachToVehicle', entity: raider, vehicle }));
+      const raiders = [...sim.world.query(components.Settler)].filter((e) => !before.has(e));
+      expect(raiders.length, label).toBe(men.reduce((sum, line) => sum + line.amount, 0));
+      for (const raider of raiders) {
+        sim.enqueue(playerCommand(ship.player, { kind: 'attachToVehicle', entity: raider, vehicle }));
+      }
       sim.enqueue(playerCommand(ship.player, { kind: 'dockVehicle', vehicle, x: dock.hx, y: dock.hy }));
       let docked = false;
       const refusals: string[] = [];
@@ -97,7 +99,9 @@ describe.runIf(hasRealIr())(`${MAP_ID}: the scripted raids`, () => {
       }
       expect(refusals, label).toEqual([]);
       expect(docked, `${label} docks`).toBe(true);
-      expect(sim.world.get(vehicle, Vehicle).mooring, label).toEqual(dock);
+      const state = sim.world.get(vehicle, Vehicle);
+      expect(state.mooring, label).toEqual(dock);
+      expect(vehiclePassengers(state).length, `${label} carries every raider`).toBe(raiders.length);
     }
   }, 300_000);
 });
