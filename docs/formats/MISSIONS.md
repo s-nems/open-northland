@@ -751,8 +751,7 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
 - The partner pays out of real stock: the trader's fetch fails at a shelf holding nothing, and he
   comes back for the goods he is owed without paying again (reading). A computer seat's houses of the
   storage main type hold it because its scripted handler writes 5 over every one of their stock
-  slots on every sixth turn (`turn % 6 == 0`), a fuller shelf cut down too (reading;
-  `AI_Disable` stops the handler and the refill with it). The corpus relies on it: most computer seats' trade houses are authored empty, the trade
+  slots on every sixth turn (`turn % 6 == 0`), a fuller shelf cut down too (reading). The corpus relies on it: most computer seats' trade houses are authored empty, the trade
   tutorial's among them, and no row pays out more than 5 a batch.
 - This build registers the rows through the `addTradeAgreement` setup command
   (`components/trade.ts`), resolves the house by its mission object id at use, refuses a house of a
@@ -779,8 +778,7 @@ A reading of the original's trade agreements and trader work, which the goal `Nu
   (`systems/trade/partner-stock.ts`) tops up only the goods an agreement pays out at the house and
   cuts nothing down, so that economy runs on what it produces; a seat whose map switched off both it
   and the strategic military gets the full refill (see [AI data](#ai-data)); a seat the map
-  `AI_Disable`d still gets the traded goods topped up, where the original's partner never pays (owner's
-  choice: six corpus maps, WIELKA INWAZJA among them, put their trade house on such a seat). The table holds rows and
+  `AI_Disable`d gets the traded goods topped up as well. The table holds rows and
   resolves their houses live, so a row several houses carry costs one entry here and one per house there. The tally is `TradeLedger`,
   saved with the game; the diplomacy window prints it (`miscwindow` 360) at its foot for a player
   both sides hold as `friend`, the one case the original's window draws the line in (byte-level). Above

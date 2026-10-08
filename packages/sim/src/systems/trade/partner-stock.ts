@@ -18,21 +18,18 @@ import { bankedSlot } from '../stores/index.js';
 /**
  * Handler turns between one computer seat's stock refills, and the level a refilled shelf is left at.
  * Original behavior: on every sixth of its turns a computer seat's handler writes 5 over every stock
- * slot of the seat's finished houses of the storage main type, and `AI_Disable` stops the handler. A
- * trader's partner pays out of that shelf alone: the corpus authors most computer seats' trade houses
- * empty, the trade tutorial's among them, and no agreement pays out more than 5 a batch.
+ * slot of the seat's finished houses of the storage main type. A trader's partner pays out of that
+ * shelf: the corpus authors most computer seats' trade houses empty, the trade tutorial's among them,
+ * and no agreement pays out more than 5 a batch.
  */
 export const AI_STOCK_REFILL_TURNS = 6;
 export const AI_STOCK_REFILL_LEVEL = 5;
 
 /**
- * On a computer seat's refill turn, top its warehouses' shelves up to the refill level for the goods
- * a map agreement pays out there. Two departures from the original, both owner's choices: the refill
- * is kept to the traded goods, so a seat with a strategic economy runs on what it produces (the
- * original levels every slot of every warehouse, cutting a fuller shelf down too, which this build
- * does only for a seat whose economy the map switched off, `ai-program/town.ts`); and it runs for a
- * seat the map `AI_Disable`d as well, where the original's partner never pays. Six corpus maps put
- * their trade house on such a seat, so a trader there would wait on an empty shelf for good.
+ * On a computer seat's refill turn, top its warehouses' shelves up to the refill level for the goods a
+ * map agreement pays out there, `AI_Disable`d seats included. The refill is kept to the traded goods, so
+ * a seat with a strategic economy runs on what it produces; a seat whose economy the map switched off
+ * has every slot of every warehouse levelled instead (`ai-program/town.ts`).
  */
 export const tradePartnerStockSystem: System = (world, ctx) => {
   if (handlerTurn(ctx.tick) % AI_STOCK_REFILL_TURNS !== 0) return;

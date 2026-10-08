@@ -962,7 +962,7 @@ describe("a computer seat's trade house", () => {
     expect(stockOf(sim, post, WOOD)).toBe(2);
   });
 
-  it('is refilled on a seat the map switched off too, where the original never pays', () => {
+  it('is refilled on a seat the map switched off too', () => {
     const { sim, post } = partnerWorld({ scripted: false });
 
     sim.run(tickOfTurn(0) + 1);
