@@ -52,7 +52,7 @@ describe('extractStaticObjects', () => {
       { level: 1, text: 'StaticObjects' },
       { level: 2, text: 'sethuman 3 "viking" "soldier_bow_long"" 362 22 0 0' },
     ];
-    expect(extractStaticObjects(cifLinesToSections(lines)).humans).toEqual([
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
       { tribe: 'viking', role: 'soldier_bow_long', player: 3, hx: 362, hy: 22 },
     ]);
   });
