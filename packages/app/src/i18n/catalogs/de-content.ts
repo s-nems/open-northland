@@ -29,10 +29,6 @@ export const deContent = {
     archer_long: 'Langbogenschütze',
     worker: 'Arbeiter',
   },
-  // The hover line of a picker row whose name does not say what the profession does.
-  professionTips: {
-    scout: 'Mit dem Befehl „Kläre Gegend auf“ erkundet der Kundschafter die Karte selbstständig.',
-  },
   category: {
     gathering: 'Sammeln',
     transport: 'Transport',

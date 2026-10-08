@@ -22,7 +22,7 @@ import {
 } from '../../game/snapshot.js';
 import { technologyLabel } from '../../game/technology.js';
 import { createChoiceWindow } from '../../hud/dom/choice-window.js';
-import { compareLabels, formatMessage, messages, professionTip } from '../../i18n/index.js';
+import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
 import { orderRecipients } from './action-ring/menu-state.js';
 import { enqueueUnitSelection } from './group-orders.js';
 import type { TechnologyStatusRead } from './types.js';
@@ -285,17 +285,11 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
     }
     const reasonProps = (reason: string | undefined): { reason?: string } =>
       reason === undefined ? {} : { reason };
-    const tipProps = (jobType: number): { tooltip?: string } => {
-      const profession = professionDefForJob(jobType);
-      const tooltip = profession === undefined ? undefined : professionTip(profession.key);
-      return tooltip === undefined ? {} : { tooltip };
-    };
     const rows =
       selected === undefined
         ? choices.map((group) => ({
             key: String(group.jobType),
             label: group.label,
-            ...tipProps(group.jobType),
             ...reasonProps(
               group.courses.every((course) => reasons.get(courseKey(course)) !== undefined)
                 ? group.courses
@@ -307,7 +301,6 @@ export function openSchoolDialog(opts: SchoolDialogOptions): SchoolDialog | unde
         : selected.courses.map((course) => ({
             key: courseKey(course),
             label: course.label,
-            ...(course.target === 'job' ? tipProps(course.typeId) : {}),
             ...reasonProps(reasons.get(courseKey(course))),
           }));
     dialog.update(

@@ -443,6 +443,7 @@ export const plSurfaces = {
       nextSingleWoman: '{key} zaznacza następną niezamężną kobietę bez domu.',
       signposts:
         'Budynki można stawiać na własnych drogowskazach. Drogowskazy przesuną się na bok, a ich połączenia zostaną.',
+      scoutExplore: 'Zwiadowca akcją „Badaj” samodzielnie eksploruje mapę.',
       porterFlag:
         'Tragarze magazynu i warsztatu mogą dostać flagę odbioru, spod której zbierają towary. Ustawisz ją w wierszu „{area}” panelu osadnika.',
       nationSwitch: 'Mając osadników innej nacji, w oknie budowy ({key}) przełączysz się na jej budynki.',

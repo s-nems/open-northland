@@ -444,6 +444,7 @@ export const enSurfaces = {
       nextCivilian: '{key} selects the next free civilian.',
       nextSingleWoman: '{key} selects the next unmarried woman without a home.',
       signposts: 'You can build over your own signposts. They move aside and keep their links.',
+      scoutExplore: 'With the “Explore” order a scout explores the map by itself.',
       porterFlag:
         'Warehouse and workshop porters can get a pickup flag and gather goods around it. Set it in the "{area}" row of the settler panel.',
       nationSwitch:

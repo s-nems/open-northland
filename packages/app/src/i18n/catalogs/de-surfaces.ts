@@ -492,6 +492,7 @@ export const deSurfaces = {
       nextSingleWoman: '{key} wählt die nächste unverheiratete Frau ohne Wohnhaus aus.',
       signposts:
         'Du kannst über eigene Wegweiser bauen. Sie rücken zur Seite und bleiben miteinander verbunden.',
+      scoutExplore: 'Mit dem Befehl „Kläre Gegend auf“ erkundet der Kundschafter die Karte selbstständig.',
       porterFlag:
         'Träger in Lagerhäusern und Werkstätten können eine Sammelfahne erhalten und Waren in ihrer Nähe abholen. Setze sie in der Zeile „{area}“ im Siedlerfenster.',
       nationSwitch:

@@ -29,10 +29,6 @@ export const ruContent = {
     archer_long: 'Лучник с длинным луком',
     worker: 'Рабочий',
   },
-  // The hover line of a picker row whose name does not say what the profession does.
-  professionTips: {
-    scout: 'По приказу «Исследовать» разведчик сам исследует карту.',
-  },
   category: {
     gathering: 'Собирательство',
     transport: 'Перевозка',

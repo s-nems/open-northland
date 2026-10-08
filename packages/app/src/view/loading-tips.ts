@@ -22,6 +22,7 @@ const LOADING_TIPS: readonly LoadingTip[] = [
   { id: 'nextCivilian', key: 'nextCivilian' },
   { id: 'nextSingleWoman', key: 'nextSingleWoman' },
   { id: 'signposts' },
+  { id: 'scoutExplore' },
   { id: 'porterFlag' },
   { id: 'nationSwitch', key: 'construction' },
 ];

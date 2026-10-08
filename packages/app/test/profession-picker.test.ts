@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { JOB_SCOUT } from '../src/catalog/jobs.js';
-import { type PickerEntry, pickerEntries } from '../src/catalog/professions.js';
+import type { PickerEntry } from '../src/catalog/professions.js';
 import { professionChoices } from '../src/hud/dom/profession-choices.js';
 
 const ENTRIES: readonly PickerEntry[] = [
@@ -45,22 +44,5 @@ describe('professionChoices', () => {
         ],
       },
     ]);
-  });
-
-  it('shows the scout tip on hover of an enabled row and the reason on a locked one', () => {
-    const entries = pickerEntries('pol');
-    const scoutRow = (unlocked: boolean) =>
-      professionChoices(
-        entries,
-        (job) => job === JOB_SCOUT,
-        () => unlocked,
-        () => 'Needs experience',
-      )[0]?.rows[0];
-    expect(scoutRow(true)).toEqual({
-      key: String(JOB_SCOUT),
-      label: 'Zwiadowca',
-      tooltip: 'Zwiadowca akcją „Badaj” samodzielnie eksploruje mapę.',
-    });
-    expect(scoutRow(false)?.reason).toBe('Needs experience');
   });
 });

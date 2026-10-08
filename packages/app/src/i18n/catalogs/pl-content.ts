@@ -29,10 +29,6 @@ export const plContent = {
     archer_long: 'Łucznik z długim łukiem',
     worker: 'Pracownik',
   },
-  // The hover line of a picker row whose name does not say what the profession does.
-  professionTips: {
-    scout: 'Zwiadowca akcją „Badaj” samodzielnie eksploruje mapę.',
-  },
   category: {
     gathering: 'Zbieractwo',
     transport: 'Transport',
