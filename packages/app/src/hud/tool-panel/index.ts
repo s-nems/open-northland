@@ -710,7 +710,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           }
         : {}),
       summary: {
-        pack: opts.pack,
+        paintGood: opts.assistant.paintGood,
         goodIdOf: (goodType) => goodIdByType.get(goodType),
         goodLabel: (goodId) => {
           const typeId = goodTypeById.get(goodId);

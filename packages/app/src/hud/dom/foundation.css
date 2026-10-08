@@ -2041,9 +2041,23 @@ body.on-drag-scroll * {
   border-top: 1px solid #8d754966;
   font-weight: 700;
 }
+/* The icon box is taller than the line; centred and unshrinkable, as on the hover card's rows. */
+.on-hud .on-tip__row--good > span:first-child {
+  align-items: center;
+}
+.on-hud .on-tip__row--good > span:first-child::after {
+  transform: translateY(2px);
+}
+.on-hud .on-tip__row--good .on-good {
+  flex-shrink: 0;
+  margin: -2px 0;
+}
 /* A known good with nothing on hand stays listed, so its absence reads as data, not as a gap. */
 .on-hud .on-tip__row--zero {
   color: var(--ink-muted);
+}
+.on-hud .on-tip__row--zero .on-good {
+  opacity: 0.45;
 }
 
 /* ---------- hover card: the sheet the cursor opens over a settler or a building ---------- */

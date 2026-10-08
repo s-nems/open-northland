@@ -491,7 +491,7 @@ describe('the speed bar', () => {
     const plane = mountPlane();
     const pressed: string[] = [];
     const bar = createHudSystemBar(plane, {
-      summary: { pack: null, goodIdOf: () => undefined, goodLabel: (id) => id },
+      summary: { paintGood: () => {}, goodIdOf: () => undefined, goodLabel: (id) => id },
       onPauseToggle: () => pressed.push('pause'),
       onSpeed: (running) => pressed.push(running),
       onMenu: () => undefined,
@@ -515,7 +515,7 @@ describe('the speed bar', () => {
   it('hangs a note in its aside and takes it down again', () => {
     const plane = mountPlane();
     const bar = createHudSystemBar(plane, {
-      summary: { pack: null, goodIdOf: () => undefined, goodLabel: (id) => id },
+      summary: { paintGood: () => {}, goodIdOf: () => undefined, goodLabel: (id) => id },
       onPauseToggle: () => undefined,
       onSpeed: () => undefined,
       onMenu: () => undefined,
@@ -537,7 +537,7 @@ describe('the speed bar', () => {
       onShow: (control) => bars[0]?.setSpeed(control),
     });
     const bar = createHudSystemBar(plane, {
-      summary: { pack: null, goodIdOf: () => undefined, goodLabel: (id) => id },
+      summary: { paintGood: () => {}, goodIdOf: () => undefined, goodLabel: (id) => id },
       onPauseToggle: () => speed.togglePause(),
       onSpeed: (running) => speed.setRunning(running),
       onMenu: () => undefined,

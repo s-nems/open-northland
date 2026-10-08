@@ -1,7 +1,5 @@
 import type { HudModel } from '@open-northland/render';
-import { diag } from '../../diag/index.js';
 import { formatMessage, messages } from '../../i18n/index.js';
-import type { PresentationPack } from '../../presentation/pack.js';
 import {
   SUMMARY_CATEGORIES,
   type SummaryCategoryId,
@@ -9,12 +7,12 @@ import {
   summaryPopulation,
   summaryStocks,
 } from '../summary/model.js';
-import { goodIconMarkup, goodIconSource, goodIconStyle } from './good-art.js';
+import { GOOD_ICON_BOX_PX, type GoodIconPainter, goodIconMarkup } from './good-art.js';
 import { FIGURE } from './icons.js';
 
 export interface HudSummaryDeps {
-  /** The pack the map draws with, or null for the original's art; the category icons follow it. */
-  readonly pack: PresentationPack | null;
+  /** Paints the counters' and the breakdown rows' good icons in the art this game draws with. */
+  readonly paintGood: GoodIconPainter;
   /** A stock entry's good by its content type id; `undefined` when the catalog has no such good. */
   readonly goodIdOf: (goodType: number) => string | undefined;
   /** A good's localized name by string id. */
@@ -29,6 +27,9 @@ export interface HudSummary {
   update(model: HudModel): void;
   dispose(): void;
 }
+
+/** The good icon on a breakdown row, sized to the row's 15 px type. */
+const ROW_ICON_PX = 18;
 
 /** Design px a breakdown keeps from the screen's side edges. */
 const TIP_EDGE_MARGIN_PX = 6;
@@ -79,7 +80,6 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
   element.className = 'on-summary';
   element.setAttribute('role', 'group');
   element.setAttribute('aria-label', copy.label);
-  let disposed = false;
   let open: Group | null = null;
 
   // A breakdown hangs under its counter, and on a narrow screen a wide one would run past the edge.
@@ -204,13 +204,8 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
       columnHost.append(host);
       return { host, rows: [] as TipRow[] };
     });
-    goodIconSource(spec.icon, deps.pack, null)
-      .then((source) => {
-        const frame = count.button.querySelector('.on-good__frame');
-        if (disposed || source === null || !(frame instanceof HTMLElement)) return;
-        frame.style.cssText = goodIconStyle(source);
-      })
-      .catch((error: unknown) => diag.warn('hud', `summary icon ${spec.icon}: ${String(error)}`));
+    const frame = count.button.querySelector('.on-good__frame');
+    if (frame instanceof HTMLElement) deps.paintGood(frame, spec.icon, GOOD_ICON_BOX_PX);
     return { spec, count, columns };
   });
 
@@ -220,7 +215,13 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
     if (!same) {
       column.host.replaceChildren();
       column.rows = rows.map(({ goodId }) => {
-        const made = tipRow(deps.goodLabel(goodId));
+        const made = tipRow(deps.goodLabel(goodId), 'on-tip__row--good');
+        const name = made.row.firstElementChild;
+        if (name instanceof HTMLElement) {
+          name.insertAdjacentHTML('afterbegin', goodIconMarkup(ROW_ICON_PX));
+          const frame = name.querySelector('.on-good__frame');
+          if (frame instanceof HTMLElement) deps.paintGood(frame, goodId, ROW_ICON_PX);
+        }
         column.host.append(made.row);
         return { goodId, ...made };
       });
@@ -266,7 +267,6 @@ export function createHudSummary(deps: HudSummaryDeps): HudSummary {
       });
     },
     dispose: () => {
-      disposed = true;
       window.removeEventListener('resize', onResize);
       element.remove();
     },
