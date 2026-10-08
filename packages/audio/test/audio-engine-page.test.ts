@@ -10,8 +10,8 @@ import { FakeContext } from './helpers/fake-audio.js';
 import { mixerGraph } from './helpers/mixer-graph.js';
 
 /**
- * The engine's page-facing hooks: the preload that waits for the context, the background silence and
- * the stalled-clock check.
+ * The engine's page-facing hooks: the preload that waits for the context, the background silence, the
+ * stalled-clock check and the mono fold.
  */
 
 function makeEngine(): {
@@ -131,5 +131,29 @@ describe('WebAudioEngine clock health', () => {
     ctx.refuseResume = true;
     ctx.setState('interrupted' as AudioContextState);
     expect(engine.started).toBe(false);
+  });
+});
+
+describe('WebAudioEngine mono fold', () => {
+  it('mixes the master down to one channel and back to what its inputs carry', async () => {
+    const { engine, ctx } = makeEngine();
+    await engine.resume();
+    const { master } = mixerGraph(ctx);
+    expect(master.channelCountMode).toBe('max');
+    engine.setMono(true);
+    expect(master.channelCount).toBe(1);
+    expect(master.channelCountMode).toBe('explicit');
+    expect(master.channelInterpretation).toBe('speakers');
+    engine.setMono(false);
+    expect(master.channelCountMode).toBe('max');
+  });
+
+  it('builds a mono master when the setting came before the context', async () => {
+    const { engine, ctx } = makeEngine();
+    engine.setMono(true);
+    await engine.resume();
+    const { master } = mixerGraph(ctx);
+    expect(master.channelCount).toBe(1);
+    expect(master.channelCountMode).toBe('explicit');
   });
 });

@@ -58,6 +58,7 @@ export async function mountGamePresentation(
       sound.setVolumes(settings.volumes);
       sound.setWeatherEnabled(settings.weather);
       sound.setPlayInBackground(settings.soundInBackground);
+      sound.setMono(settings.monoSound);
       startSound(sound, { signal });
       followPageFocus(sound, { signal });
       // A game started muted decodes on demand if it is unmuted later.

@@ -235,6 +235,9 @@ export const plSurfaces = {
       soundInBackground: 'Dźwięk w tle',
       soundInBackgroundTip:
         'Dźwięk gra dalej, gdy karta gry jest ukryta albo aktywne jest inne okno. Po wyłączeniu cichnie do czasu powrotu do gry.',
+      monoSound: 'Dźwięk mono',
+      monoSoundTip:
+        'Łączy oba kanały stereo w jeden i odtwarza go po obu stronach, więc nic nie ginie na jednym głośniku albo jednym uchu.',
       volumeHeading: 'Głośność',
       volumes: {
         master: 'Ogólna',

@@ -80,6 +80,8 @@ export interface MenuSettings {
   readonly volumes: MixerVolumes;
   /** Sound keeps playing while the tab is hidden or the window unfocused; off fades it out there. */
   readonly soundInBackground: boolean;
+  /** The whole mix folded to one channel, for a player who hears on one ear. */
+  readonly monoSound: boolean;
   readonly language: Locale;
   readonly keyboardScrollSpeed: number;
   readonly edgeScrollSpeed: number;
@@ -128,6 +130,7 @@ export function defaultSettings(): MenuSettings {
     soundEnabled: true,
     volumes: DEFAULT_VOLUMES,
     soundInBackground: defaultSoundInBackground(),
+    monoSound: false,
     language: defaultLocale(),
     keyboardScrollSpeed: DEFAULT_SCROLL_SPEED,
     edgeScrollSpeed: DEFAULT_SCROLL_SPEED,
@@ -225,6 +228,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     volumes: parseVolumes(record.volumes),
     soundInBackground:
       typeof record.soundInBackground === 'boolean' ? record.soundInBackground : defaults.soundInBackground,
+    monoSound: typeof record.monoSound === 'boolean' ? record.monoSound : defaults.monoSound,
     language: isLocale(record.language) ? record.language : defaults.language,
     keyboardScrollSpeed: clampScrollSpeed(record.keyboardScrollSpeed),
     edgeScrollSpeed: clampScrollSpeed(record.edgeScrollSpeed),

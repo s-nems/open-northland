@@ -184,7 +184,7 @@ export function createSettingsPage(opts: {
         const tip = channel === 'master' || channel === 'music' ? undefined : text.volumeTips[channel];
         return settingRow(label, control, tip === undefined ? undefined : { tip });
       };
-      const choice = (key: 'soundInBackground', focus: string, tip: string): HTMLDivElement => {
+      const choice = (key: 'soundInBackground' | 'monoSound', focus: string, tip: string): HTMLDivElement => {
         const toggle = togglePill(settings[key], (on) => {
           void opts.settings.update({ [key]: on });
         });
@@ -195,6 +195,7 @@ export function createSettingsPage(opts: {
       return [
         settingRow(text.soundEnabled, sound),
         choice('soundInBackground', 'sound-in-background', text.soundInBackgroundTip),
+        choice('monoSound', 'mono-sound', text.monoSoundTip),
         settingsHeading(text.volumeHeading),
         ...VOLUME_CHANNELS.map(volumeRow),
       ];

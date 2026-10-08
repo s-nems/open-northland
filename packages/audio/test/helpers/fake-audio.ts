@@ -44,6 +44,9 @@ export class FakeParam {
 
 export class FakeNode {
   readonly connectedTo: unknown[] = [];
+  channelCount = 2;
+  channelCountMode: ChannelCountMode = 'max';
+  channelInterpretation: ChannelInterpretation = 'speakers';
   /** Set by {@link disconnect}, so a test can prove a finished track released its nodes. */
   disconnected = false;
   connect<T>(node: T): T {

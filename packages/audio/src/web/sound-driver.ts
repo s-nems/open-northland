@@ -154,6 +154,11 @@ export class SoundDriver {
     this.engine.setPlayInBackground(play);
   }
 
+  /** Fold the mix to mono (see {@link WebAudioEngine.setMono}). */
+  setMono(mono: boolean): void {
+    this.engine.setMono(mono);
+  }
+
   /** Hand over the map's placed objects that are no sim entity; the object ambience keeps the ones
    *  with a sound. Call once per map. */
   setLandscapeScenery(objects: Iterable<SceneryObject>): void {

@@ -55,6 +55,7 @@ export function startMenuMusic(signal: AbortSignal): MenuSound {
   const engine = new WebAudioEngine({ volumes: settings.volumes });
   engine.setEnabled(settings.soundEnabled);
   engine.setPlayInBackground(settings.soundInBackground);
+  engine.setMono(settings.monoSound);
   void loadMusicManifest().then((manifest) => {
     if (signal.aborted) return;
     const tracks = menuMusicTracks(manifest, rotationOrder(MENU_MUSIC_STEMS, null, Math.random));
@@ -67,6 +68,7 @@ export function startMenuMusic(signal: AbortSignal): MenuSound {
     engine.setEnabled(next.soundEnabled);
     engine.setVolumes(next.volumes);
     engine.setPlayInBackground(next.soundInBackground);
+    engine.setMono(next.monoSound);
   }, signal);
 
   signal.addEventListener('abort', () => {

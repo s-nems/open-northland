@@ -77,6 +77,7 @@ describe('parseStoredSettings', () => {
       soundEnabled: false,
       volumes: { master: 65, music: 40, voice: 90, world: 100, ambient: 0, ui: 75 },
       soundInBackground: true,
+      monoSound: true,
       language: 'eng',
       keyboardScrollSpeed: 1.25,
       edgeScrollSpeed: 2.25,
@@ -120,6 +121,12 @@ describe('parseStoredSettings', () => {
     vi.stubGlobal('window', { desktop: { fullscreen: {} } });
     expect(parseStoredSettings('{}').soundInBackground).toBe(true);
     expect(parseStoredSettings('{"soundInBackground":false}').soundInBackground).toBe(false);
+  });
+
+  it('keeps the mix in stereo unless a stored boolean folds it to mono', () => {
+    expect(parseStoredSettings('{}').monoSound).toBe(false);
+    expect(parseStoredSettings('{"monoSound":true}').monoSound).toBe(true);
+    expect(parseStoredSettings('{"monoSound":"yes"}').monoSound).toBe(false);
   });
 
   it('keeps the debug tools off unless a stored boolean turns them on', () => {

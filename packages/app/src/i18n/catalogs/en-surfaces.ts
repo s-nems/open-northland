@@ -237,6 +237,9 @@ export const enSurfaces = {
       soundInBackground: 'Sound in background',
       soundInBackgroundTip:
         'Keeps the sound playing while the game tab is hidden or another window has focus. Off fades it out until you come back.',
+      monoSound: 'Mono sound',
+      monoSoundTip:
+        'Mixes both stereo channels into one and plays it on both sides, so nothing is lost on a single speaker or ear.',
       volumeHeading: 'Volume',
       volumes: {
         master: 'Master',

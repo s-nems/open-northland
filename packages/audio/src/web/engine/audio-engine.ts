@@ -126,6 +126,8 @@ export const BACKGROUND_FADE_S = 0.3;
 /** A running context whose clock has not moved for this long is stalled (a backgrounded Safari
  *  context can report `running` and stand still), so it counts as paused. Approximation. */
 export const CLOCK_STALL_MS = 1000;
+/** The master's channel count while the mix folds to mono; the destination spreads it to both ears. */
+const MONO_CHANNELS = 1;
 
 /** Jingle duck depth on the music bus: -2000 hundredths of dB, as the original fades the music
  *  audiopath while a jingle rings. */
@@ -184,6 +186,8 @@ export class WebAudioEngine {
   private pageInBackground = false;
   /** The player's "sound in background" choice; off silences a page in the background. */
   private playInBackground = true;
+  /** The mix folds to one channel ({@link setMono}). */
+  private mono = false;
   /** The audio clock at the last stall check, and the wall time it was first seen at. */
   private lastClock = { audio: -1, wallMs: 0 };
   private mixer: AmbientMixer | null = null;
@@ -276,6 +280,14 @@ export class WebAudioEngine {
     if (play === this.playInBackground) return;
     this.playInBackground = play;
     this.rampChannel('master', BACKGROUND_FADE_S);
+  }
+
+  /** Fold the whole mix to mono for a player who hears on one ear. Each sound keeps its pan, which
+   *  then only sets its share of the one channel. */
+  setMono(mono: boolean): void {
+    if (mono === this.mono) return;
+    this.mono = mono;
+    if (this.master !== null) foldMaster(this.master, mono);
   }
 
   /**
@@ -480,6 +492,7 @@ export class WebAudioEngine {
     this.ctx = ctx;
     const master = ctx.createGain();
     master.gain.value = this.channelGain('master');
+    foldMaster(master, this.mono);
     const limiter = createPeakLimiter(ctx);
     if (limiter === null) master.connect(ctx.destination);
     else master.connect(limiter).connect(ctx.destination);
@@ -624,6 +637,13 @@ function clampedVolumes(volumes: MixerVolumes): Record<VolumeChannel, number> {
     ambient: clampVolume(volumes.ambient),
     ui: clampVolume(volumes.ui),
   };
+}
+
+/** Mix the master's inputs down to one channel, or let it carry as many as they bring. */
+function foldMaster(master: GainNode, mono: boolean): void {
+  master.channelCountMode = mono ? 'explicit' : 'max';
+  if (mono) master.channelCount = MONO_CHANNELS;
+  master.channelInterpretation = 'speakers';
 }
 
 /** The master's peak limiter, or null on a context that cannot make a compressor (it then plays

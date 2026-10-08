@@ -275,6 +275,9 @@ export const deSurfaces = {
       soundInBackground: 'Ton im Hintergrund',
       soundInBackgroundTip:
         'Der Ton läuft weiter, während der Spieltab verborgen oder ein anderes Fenster aktiv ist. Aus blendet ihn bis zur Rückkehr aus.',
+      monoSound: 'Mono-Ton',
+      monoSoundTip:
+        'Mischt beide Stereokanäle zu einem und spielt ihn auf beiden Seiten, sodass auf einem einzelnen Lautsprecher oder Ohr nichts verloren geht.',
       volumeHeading: 'Lautstärke',
       volumes: {
         master: 'Gesamt',

@@ -62,11 +62,13 @@ it('persists and switches blood immediately, including while paused', async () =
   expect(h.setBloodEnabled).toHaveBeenLastCalledWith(true);
 });
 
-it('applies the background sound choice live', async () => {
+it('applies the background and mono sound choices live', async () => {
   const h = harness();
   await h.settings.update({ soundInBackground: true });
+  await h.settings.update({ monoSound: true });
   expect(h.setSoundInBackground).toHaveBeenCalledWith(true);
-  expect(h.persist.mock.calls).toEqual([[{ soundInBackground: true }]]);
+  expect(h.setMonoSound).toHaveBeenCalledWith(true);
+  expect(h.persist.mock.calls).toEqual([[{ soundInBackground: true }], [{ monoSound: true }]]);
 });
 
 it('reframes the mounted minimap when another frame is picked', async () => {
@@ -82,6 +84,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setSoundEnabled = vi.fn();
   const setVolumes = vi.fn();
   const setSoundInBackground = vi.fn();
+  const setMonoSound = vi.fn();
   const setLanguage = vi.fn();
   const setKeyBindings = vi.fn();
   const setCameraInputSettings = vi.fn();
@@ -104,6 +107,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setSoundEnabled,
     setVolumes,
     setSoundInBackground,
+    setMonoSound,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,
@@ -123,6 +127,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setSoundEnabled,
     setVolumes,
     setSoundInBackground,
+    setMonoSound,
     setLanguage,
     setKeyBindings,
     setCameraInputSettings,
