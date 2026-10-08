@@ -24,11 +24,12 @@ export interface AnswerLayer {
   readonly panOffset: number;
 }
 
-/** The layers a group may add under its lead, in the order they are used. */
+/** The layers a group may add under its lead, in the order they are used. Each enters after the lead's
+ *  first syllable and well under it, so the lead's onset stays clear and the rest reads as more voices. */
 export const ANSWER_LAYERS: readonly AnswerLayer[] = [
-  { delayS: 0.04, gainDb: -6, panOffset: -0.2 },
-  { delayS: 0.08, gainDb: -7.5, panOffset: 0.2 },
-  { delayS: 0.12, gainDb: -9, panOffset: -0.1 },
+  { delayS: 0.15, gainDb: -9, panOffset: -0.2 },
+  { delayS: 0.28, gainDb: -11, panOffset: 0.2 },
+  { delayS: 0.42, gainDb: -13, panOffset: -0.1 },
 ];
 
 /** The group sizes at which each further layer joins: one at 1-4 speakers, two at 5-19, three from
