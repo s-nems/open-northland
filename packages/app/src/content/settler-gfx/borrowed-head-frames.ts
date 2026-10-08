@@ -1,20 +1,12 @@
 import type { AtlasFrame, SpriteAtlas } from '@open-northland/render/data';
 import type { BobSeqRow } from '../ir/rows.js';
+import type { CartDriveHeadShifts } from './character-specs.js';
 import { FACING, HEX_FACINGS } from './seq-anim.js';
 import { DIRS, SHOVEL_SEQ } from './sequences.js';
 
 function drawn(atlas: SpriteAtlas, id: number): AtlasFrame | undefined {
   const frame = atlas.frames.get(id);
   return frame !== undefined && frame.width > 0 && frame.height > 0 ? frame : undefined;
-}
-
-/** `own` where `pose` puts the donor's head, less the two heads' anchor difference in a shared stand pose. */
-function placedHead(own: AtlasFrame, pose: AtlasFrame, donorStand: AtlasFrame): AtlasFrame {
-  return {
-    ...own,
-    offsetX: pose.offsetX + own.offsetX - donorStand.offsetX,
-    offsetY: pose.offsetY + own.offsetY - donorStand.offsetY,
-  };
 }
 
 /** The matching walk pose for a supported clip layout. */
@@ -67,7 +59,11 @@ export function borrowedHeadAtlas(
         const donorWalk = drawn(donor, walkId);
         if (pose === undefined || donorWalk === undefined) continue;
         frames ??= new Map(head.frames);
-        frames.set(id, placedHead(own, pose, donorWalk));
+        frames.set(id, {
+          ...own,
+          offsetX: pose.offsetX + own.offsetX - donorWalk.offsetX,
+          offsetY: pose.offsetY + own.offsetY - donorWalk.offsetY,
+        });
         break;
       }
     }
@@ -75,40 +71,47 @@ export function borrowedHeadAtlas(
   return frames === undefined ? head : { ...head, frames };
 }
 
+/** A ×8 driving cycle of another body and where a head's first walk frame sits on its neck per facing. */
+export interface BorrowedGait {
+  readonly start: number;
+  readonly stride: number;
+  readonly headShifts: CartDriveHeadShifts;
+}
+
 /**
- * `head` with the ×8 `gaits` of another body, which it draws no frame of, filled from that body's
- * `donors`: each frame the head's own first `walk` frame of that facing, placed as
- * {@link borrowedHeadAtlas} places it against the donor's first `donorWalk` frame. The driving figure
- * barely moves its head, so a walk phase would bob it off the neck. Approximation: the head keeps its
- * walk pose on the borrowed body. Returns `head` by identity when nothing borrows.
+ * `head` with the frames of `gaits` it draws none of filled in: each its own first `walk` frame of that
+ * facing, moved by the gait's head shift and bobbing with the first donor head that draws the frame, as
+ * that head's top moves around its mean over the facing's cycle. Approximation: the head keeps its walk
+ * pose on the borrowed body. Returns `head` by identity when nothing borrows.
  */
 export function borrowedGaitHeadAtlas(
   head: SpriteAtlas,
   donors: readonly SpriteAtlas[],
-  gaits: Iterable<BobSeqRow>,
-  walk: BobSeqRow,
-  donorWalk: BobSeqRow,
+  gaits: Iterable<BorrowedGait>,
+  walk: { readonly start: number; readonly stride: number },
 ): SpriteAtlas {
-  const walkStride = walk.length / DIRS;
-  const donorStride = donorWalk.length / DIRS;
-  if (!Number.isInteger(walkStride) || !Number.isInteger(donorStride)) return head;
   let frames: Map<number, AtlasFrame> | undefined;
   for (const gait of gaits) {
-    const gaitStride = gait.length / DIRS;
-    if (!Number.isInteger(gaitStride)) continue;
-    for (let offset = 0; offset < gait.length; offset++) {
-      const id = gait.start + offset;
-      if (drawn(head, id) !== undefined) continue;
-      const facing = Math.floor(offset / gaitStride);
-      const own = drawn(head, walk.start + facing * walkStride);
-      if (own === undefined) continue;
-      for (const donor of donors) {
-        const pose = drawn(donor, id);
-        const donorStand = drawn(donor, donorWalk.start + facing * donorStride);
-        if (pose === undefined || donorStand === undefined) continue;
+    for (let facing = 0; facing < DIRS; facing++) {
+      const own = drawn(head, walk.start + facing * walk.stride);
+      const shift = gait.headShifts[facing];
+      if (own === undefined || shift === undefined) continue;
+      const block = gait.start + facing * gait.stride;
+      const donor = donors.find((atlas) => drawn(atlas, block) !== undefined);
+      const tops = Array.from({ length: gait.stride }, (_, i) =>
+        donor === undefined ? undefined : drawn(donor, block + i)?.offsetY,
+      );
+      const drawnTops = tops.filter((top): top is number => top !== undefined);
+      const meanTop = drawnTops.reduce((sum, top) => sum + top, 0) / Math.max(1, drawnTops.length);
+      for (let i = 0; i < gait.stride; i++) {
+        if (drawn(head, block + i) !== undefined) continue;
+        const top = tops[i];
         frames ??= new Map(head.frames);
-        frames.set(id, placedHead(own, pose, donorStand));
-        break;
+        frames.set(block + i, {
+          ...own,
+          offsetX: own.offsetX + shift[0],
+          offsetY: own.offsetY + shift[1] + (top === undefined ? 0 : Math.round(top - meanTop)),
+        });
       }
     }
   }

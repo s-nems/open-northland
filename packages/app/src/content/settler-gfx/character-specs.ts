@@ -89,8 +89,14 @@ export interface CharacterSpec {
   /** The ×8 locomotion cycle; absent → the look stands its wait even while moving. */
   readonly walkSeq?: string;
   /** The figure a cart draws while this look's trade drives it from inside, by vehicle type: the ×8
-   *  driving cycle and the `[gfxanimatomic]` action whose one frame per facing stands it. */
-  readonly cartDrive?: Readonly<Record<number, { readonly seq: string; readonly standAction: number }>>;
+   *  driving cycle, the `[gfxanimatomic]` action whose one frame per facing stands it, and where a head
+   *  drawn by no driving frame of its own sits (see {@link CartDriveHeadShifts}). */
+  readonly cartDrive?: Readonly<
+    Record<
+      number,
+      { readonly seq: string; readonly standAction: number; readonly headShifts: CartDriveHeadShifts }
+    >
+  >;
   /** The standing-idle `[bobseq]`; absent → idle holds the walk's first frame per facing. */
   readonly waitSeq?: string;
   /**
@@ -145,6 +151,35 @@ export interface CharacterSpec {
 /** The trader's `[gfxanimatomic]` actions that stand the handcart and the ox cart it drives. */
 const HANDCART_STAND_ACTION = 2;
 const OXCART_STAND_ACTION = 3;
+
+/**
+ * Per facing in strip-block order (SW, W, NW, NE, E, SE, S, N), the px a head's first walk frame moves to
+ * sit on a driving figure's neck. Calibrated on the viking head: the shift that best overlays its walk frame on its
+ * own driving frames, averaged over the cycle. Approximation: on the handcart the walking head stands
+ * 3 px further from the cart and 3 px higher than that, since the driver's own head leans into the push
+ * and an upright head in its place reads low and forward.
+ */
+export type CartDriveHeadShifts = readonly (readonly [dx: number, dy: number])[];
+const HANDCART_HEAD_SHIFTS: CartDriveHeadShifts = [
+  [15, -9],
+  [23, 4],
+  [14, 16],
+  [-16, 15],
+  [-25, 2],
+  [-13, -9],
+  [1, -13],
+  [-1, 19],
+];
+const OXCART_HEAD_SHIFTS: CartDriveHeadShifts = [
+  [-5, -16],
+  [-9, -20],
+  [-5, -22],
+  [4, -23],
+  [8, -20],
+  [5, -15],
+  [0, -16],
+  [0, -23],
+];
 
 /**
  * The builder's one hammer swing, played whole across each build or repair atomic whatever length the
@@ -206,8 +241,16 @@ export const CHARACTER_SPECS = {
     logicJob: JOB_CIVILIST,
     walkSeq: 'human_man_generic_walk',
     cartDrive: {
-      [VEHICLE_HANDCART]: { seq: 'human_man_z00Trader_walk', standAction: HANDCART_STAND_ACTION },
-      [VEHICLE_OXCART]: { seq: 'human_man_z01TraderOx_walk', standAction: OXCART_STAND_ACTION },
+      [VEHICLE_HANDCART]: {
+        seq: 'human_man_z00Trader_walk',
+        standAction: HANDCART_STAND_ACTION,
+        headShifts: HANDCART_HEAD_SHIFTS,
+      },
+      [VEHICLE_OXCART]: {
+        seq: 'human_man_z01TraderOx_walk',
+        standAction: OXCART_STAND_ACTION,
+        headShifts: OXCART_HEAD_SHIFTS,
+      },
     },
     waitSeq: 'human_man_generic_wait',
     carryPrefix: 'human_man_generic_walk_',

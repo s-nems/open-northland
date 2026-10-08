@@ -5,6 +5,7 @@ import type {
   SettlerCharacter,
   SettlerStateBinding,
   SpriteAtlas,
+  SpriteFrameRef,
   SpriteLayer,
 } from '@open-northland/render';
 import { MUSHROOM_HARVEST_ATOMIC } from '../../catalog/atomics.js';
@@ -152,35 +153,40 @@ function withBorrowedHeadClips(
   });
 }
 
+/** The block start and stride of a ×8 strip anim, or undefined for any other frame ref. */
+function strip(
+  ref: SpriteFrameRef | undefined,
+): { readonly start: number; readonly stride: number } | undefined {
+  return typeof ref === 'object' && 'stride' in ref ? { start: ref.start, stride: ref.stride } : undefined;
+}
+
 /**
  * The cart figure of a look whose body draws no driving gait of its own: `base`'s driving body under the
- * look's palettes and heads, each head in its own walk pose where the base head sits. Original data: only
- * the viking body and head sets draw the trader with his cart; the other civilizations' sets end before
- * those frames. Approximation: the figure keeps the base tribe's body.
+ * look's palettes and heads, each head in its own walk pose on the driver's neck. Original data: only the
+ * viking body and head sets draw the trader with his cart; the other civilizations' sets end before those
+ * frames. Approximation: the figure keeps the base tribe's body.
  */
 function cartDriverFor(
   own: SettlerCharacter,
   base: SettlerCharacter | undefined,
   spec: CharacterSpec,
-  ownSeqs: ReadonlyMap<string, BobSeqRow>,
-  inputs: TribeCharacterInputs,
 ): SettlerCharacter | undefined {
+  const baseDrives = base?.binding.cartDrive;
+  const walk = strip(own.binding.moving);
   if (spec.cartDrive === undefined || own.binding.cartDrive !== undefined) return undefined;
-  if (base?.binding.cartDrive === undefined || own.heads === undefined || spec.walkSeq === undefined)
+  if (base === undefined || baseDrives === undefined || own.heads === undefined || walk === undefined)
     return undefined;
-  const baseStem = [...inputs.layersByBody].find(([, layers]) => layers.body === base.body)?.[0];
-  const baseSeqs = baseStem === undefined ? undefined : inputs.sequencesByBody.get(baseStem);
-  const walk = ownSeqs.get(spec.walkSeq);
-  const donorWalk = baseSeqs?.get(spec.walkSeq);
   const donors = (base.heads ?? []).map((head) => head.atlas);
-  if (walk === undefined || donorWalk === undefined || donors.length === 0) return undefined;
-  const gaits = Object.values(spec.cartDrive).flatMap(({ seq }) => baseSeqs?.get(seq) ?? []);
+  const gaits = Object.entries(spec.cartDrive).flatMap(([vehicleType, { headShifts }]) => {
+    const gait = strip(baseDrives[Number(vehicleType)]?.moving);
+    return gait === undefined ? [] : [{ ...gait, headShifts }];
+  });
   return {
     body: base.body,
     ...(own.indexed === false ? { indexed: false } : {}),
     ...(own.palette !== undefined ? { palette: own.palette } : {}),
     heads: own.heads.map((layer) => {
-      const atlas = borrowedGaitHeadAtlas(layer.atlas, donors, gaits, walk, donorWalk);
+      const atlas = borrowedGaitHeadAtlas(layer.atlas, donors, gaits, walk);
       return atlas === layer.atlas ? layer : { ...layer, atlas };
     }),
     binding: base.binding,
@@ -371,7 +377,7 @@ export function tribeCharacters(
         ...(head !== undefined ? { headBinding: head } : {}),
       };
       const baseLook = spec.gfxJobs[0] === undefined ? undefined : base?.byJob?.[spec.gfxJobs[0]];
-      const cartDriver = cartDriverFor(character, baseLook, spec, seqByName, inputs);
+      const cartDriver = cartDriverFor(character, baseLook, spec);
       return cartDriver !== undefined ? { ...character, cartDriver } : character;
     }
     return undefined;

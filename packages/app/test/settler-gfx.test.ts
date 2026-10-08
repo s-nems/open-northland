@@ -274,8 +274,8 @@ describe('characterBinding', () => {
       gfxJobs: [25],
       waitSeq: 'wait',
       cartDrive: {
-        [OX_CART]: { seq: 'ox_drive', standAction: OX_STAND_ACTION },
-        [HANDCART]: { seq: 'absent_drive', standAction: 2 },
+        [OX_CART]: { seq: 'ox_drive', standAction: OX_STAND_ACTION, headShifts: [] },
+        [HANDCART]: { seq: 'absent_drive', standAction: 2, headShifts: [] },
       },
     } as const;
     const standFrames = [[55], [70], [0], [15], [24], [41], [88], [75]];
