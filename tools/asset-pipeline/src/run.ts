@@ -27,12 +27,14 @@ import { copySoundTree } from './stages/sounds.js';
 import { indexSourceAssets } from './stages/source-files.js';
 import { convertVehiclePaletteFamilies } from './stages/vehicle-colors.js';
 import { convertVertexPalette, VERTEX_PALETTE_FILE } from './stages/vertex-palette.js';
+import { loadStringCorrections, STRING_CORRECTIONS_FILE } from './string-corrections.js';
 
 /** Runs the full conversion of the mod root into the IR under `args.out`. */
 export async function runPipeline(args: Args): Promise<void> {
   const mod = await resolveModRoot(args.modRoot);
   const corrections = await loadSourceCorrections(CORRECTIONS_DIR, mod);
-  const roots: SourceRoots = { mod, corrections };
+  const stringCorrections = await loadStringCorrections(STRING_CORRECTIONS_FILE);
+  const roots: SourceRoots = { mod, corrections, stringCorrections };
   console.log(`[pipeline] mod=${roots.mod} out=${args.out}`);
   for (const { id, file } of corrections.list) console.log(`[pipeline] correction ${id}: ${file}`);
 
@@ -175,5 +177,8 @@ export async function runPipeline(args: Args): Promise<void> {
   console.log(`[pipeline] listings: ${MAPS_INDEX_FILE}, ${BOBS_INDEX_FILE} into ${args.out}`);
 
   corrections.assertApplied();
-  console.log(`[pipeline] corrections: ${corrections.list.length} applied`);
+  stringCorrections.assertApplied();
+  console.log(
+    `[pipeline] corrections: ${corrections.list.length} file(s), ${stringCorrections.list.length} string(s) applied`,
+  );
 }

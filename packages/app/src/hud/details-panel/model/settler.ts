@@ -8,6 +8,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
+import { WEAPON_XP_TYPES } from '../../../content/original-names.js';
 import { num, type SnapshotEntity, settlerExperienceOf, settlerNeedsOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { healthBar, type PanelBar, pct } from './bars.js';
@@ -71,28 +72,25 @@ export interface ExperienceRowModel {
 
 const PERCENT = 100;
 
-const WEAPON_XP_KEY: ReadonlyMap<number, keyof ReturnType<typeof messages>['hud']['weaponXp']> = new Map([
-  [systems.FIGHT_EXPERIENCE_TYPE.FIST, 'fist'],
-  [systems.FIGHT_EXPERIENCE_TYPE.SPEAR, 'spear'],
-  [systems.FIGHT_EXPERIENCE_TYPE.SWORD, 'sword'],
-  [systems.FIGHT_EXPERIENCE_TYPE.BOW, 'bow'],
-  [systems.FIGHT_EXPERIENCE_TYPE.CATAPULT, 'catapult'],
-]);
+type WeaponXpKey = keyof ReturnType<typeof messages>['hud']['weaponXp'];
 
-/** A specialization row's label; a good-specific track uses its `hud.trackLabels` entry, keyed by the
- *  track's content id slug, and falls back to "job - good". */
+const WEAPON_XP_KEY: ReadonlyMap<number, WeaponXpKey> = new Map(
+  (Object.keys(WEAPON_XP_TYPES) as WeaponXpKey[]).map((key) => [WEAPON_XP_TYPES[key], key]),
+);
+
+/** A specialization row's label: the track's `hud.trackLabels` entry, keyed by its content slug, else
+ *  the job's name for a general track and "job - good" for a good-specific one. */
 export function experienceLabel(
   ctx: UnitPanelModelContext,
   spec: number,
   track: JobExperienceDef | undefined,
 ): string {
   if (track !== undefined) {
-    if (track.goodTypes.length === 0) return jobDisplayName(ctx, track.jobType);
     const trackLabels: Readonly<Record<string, string | undefined>> = messages().hud.trackLabels;
-    return (
-      trackLabels[track.id] ??
-      `${jobDisplayName(ctx, track.jobType)} - ${track.goodTypes.map((good) => goodLabel(ctx, good)).join(' / ')}`
-    );
+    const own = trackLabels[track.id];
+    if (own !== undefined) return own;
+    if (track.goodTypes.length === 0) return jobDisplayName(ctx, track.jobType);
+    return `${jobDisplayName(ctx, track.jobType)} - ${track.goodTypes.map((good) => goodLabel(ctx, good)).join(' / ')}`;
   }
   const weaponKey = WEAPON_XP_KEY.get(spec);
   if (weaponKey !== undefined) return messages().hud.weaponXp[weaponKey];

@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { loadGoodNames } from '../src/stages/goods/names.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { convertGuiHistory } from '../src/stages/gui/history.js';
 import { convertGuiStrings, STRING_TABLES } from '../src/stages/gui/strings.js';
 import { resolveMapBriefing } from '../src/stages/maps/briefing.js';
@@ -56,15 +55,17 @@ describe('localized pipeline text', () => {
     }
   });
 
-  it('joins localized goods by explicit type id, without using the plural row', async () => {
+  it('exports German and Russian game-object names by type id, without the plural row', async () => {
     for (const { lang, bytes: raw } of TEXTS) {
       await temp.write(`Data/text/${lang}/strings/gameobjects/goods.cif`, table(raw));
     }
-    await temp.write('Data/text/eng/strings/gameobjects/goods.cif', table('fixture'));
-    await temp.write('Data/text/pol/strings/gameobjects/goods.ini', bytes('[text]\nstringn 5 "fixture"'));
-    const names = await loadGoodNames({ mod: temp.game }, [{ id: 'fixture_good', typeId: 5 }]);
-    expect(names.de?.fixture_good).toBe('Größe œ');
-    expect(names.ru?.fixture_good).toBe('Ёж');
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await convertGuiStrings({ mod: temp.game }, temp.out, ['ger', 'rus']);
+    warn.mockRestore();
+    for (const { lang, text } of TEXTS) {
+      const output = JSON.parse(await readFile(join(temp.out, `gui/strings/${lang}.json`), 'utf8'));
+      expect(output.goods).toEqual({ 5: text });
+    }
   });
 
   it.each(TEXTS)(

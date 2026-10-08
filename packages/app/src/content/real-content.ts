@@ -73,12 +73,6 @@ export interface RealContentMerge {
   readonly uncatalogedBuildings: readonly string[];
 }
 
-/** Localize a good's display name by its string id; a good the map lacks keeps its own name. */
-function withLocalizedName(good: GoodType, goodNames?: ReadonlyMap<string, string>): GoodType {
-  const name = goodNames?.get(good.id);
-  return name !== undefined ? { ...good, name } : good;
-}
-
 /** Overlay the clean-room field-farming block (growth timing, field radius/count): the source carries no
  *  readable growth constants, so the pipeline cannot extract one. A good absent from
  *  {@link FARMING_BALANCE_BY_ID} is returned unchanged. */
@@ -153,14 +147,9 @@ function withGatheringBalance(good: GoodType): GoodType {
  * real content's detailed types (1..87) carry no collision classes, and the class ids sit in a reserved
  * band that never aliases them. Idempotent, so a class row already present is not duplicated.
  */
-export function mergeRealContent(
-  real: ContentSet,
-  goodNames?: ReadonlyMap<string, string>,
-): RealContentMerge {
+export function mergeRealContent(real: ContentSet): RealContentMerge {
   const goods = real.goods.map((raw) =>
-    withWoolCarcassHarvest(
-      withEquipClass(withGatheringBalance(withFarmingBalance(withLocalizedName(raw, goodNames)))),
-    ),
+    withWoolCarcassHarvest(withEquipClass(withGatheringBalance(withFarmingBalance(raw)))),
   );
   const unfarmedFieldGoods = goods
     .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
@@ -224,11 +213,10 @@ export function mergeRealContent(
  * (no `content/ir.json`), so the interactive entries fall back to the clean-room sandbox content.
  */
 export async function loadRuntimeRealContent(
-  goodNames?: ReadonlyMap<string, string>,
   fetchImpl: typeof fetch = fetch,
 ): Promise<RealContentMerge | null> {
   const real = await loadRealContent(fetchImpl);
-  return real === null ? null : mergeRealContent(real, goodNames);
+  return real === null ? null : mergeRealContent(real);
 }
 
 /** Log the gaps {@link mergeRealContent} surfaced as one line. No-op when there is nothing to report. */

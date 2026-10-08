@@ -33,7 +33,7 @@ import {
   type SettlerWorkStatus,
   type UnitPanelModelContext,
 } from '../src/hud/details-panel/model/index.js';
-import { formatMessage, messages } from '../src/i18n/index.js';
+import { formatMessage, goodName, messages } from '../src/i18n/index.js';
 import { buildingEntity, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 const SETTLER = 1;
@@ -365,8 +365,7 @@ describe('the settler panel model', () => {
       withStatus({ kind: 'crafting', goodType: good }),
     );
     expect(working.status).toMatchObject({ state: 'working', trouble: false });
-    const def = ctx.goods.find((g) => g.typeId === good);
-    expect(working.status.detail).toBe(def?.name ?? def?.id);
+    expect(working.status.detail).toBe(goodLabel(ctx, good));
 
     const full = settlerModel(
       world({}),
@@ -377,7 +376,7 @@ describe('the settler panel model', () => {
     );
     expect(full.status).toMatchObject({ state: 'idle', trouble: true });
     expect(full.status.detail).toContain('20/20');
-    expect(full.status.detail).toContain(def?.name ?? def?.id);
+    expect(full.status.detail).toContain(goodLabel(ctx, good));
 
     const waiting = {
       kind: 'waitingInput',
@@ -553,13 +552,13 @@ describe('the settler panel model', () => {
           amount: 2,
           goodType: giveGood.typeId,
           goodId: giveGood.id,
-          label: giveGood.name ?? giveGood.id,
+          label: goodName(giveGood),
         },
         take: {
           amount: 1,
           goodType: takeGood.typeId,
           goodId: takeGood.id,
-          label: takeGood.name ?? takeGood.id,
+          label: goodName(takeGood),
         },
         selected: true,
       },

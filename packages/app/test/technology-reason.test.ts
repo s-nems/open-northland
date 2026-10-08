@@ -68,7 +68,7 @@ describe('technologyName', () => {
     expect(technologyName(extracted, 'job', FISHER_SEA)).toBe(text.profession.fisher_sea);
     expect(technologyName(extracted, 'job', TRADER_SEA)).toBe(text.profession.trader_sea);
     expect(technologyName(extracted, 'job', BABY_MALE)).toBe(text.roleNames.baby_male);
-    expect(technologyName(extracted, 'job', HERO_SPEAR)).toBe(text.heroNames.hero_unarmed);
+    expect(technologyName(extracted, 'job', HERO_SPEAR)).toBe(text.hud.groupPanel.role.hero);
     expect(technologyName(extracted, 'good', FISH)).toBe(text.goods.fish);
   });
 

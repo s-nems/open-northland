@@ -16,7 +16,7 @@ import { actionLabel } from '../../hud/action-ring/labels.js';
 import type { EquipSlotRef } from '../../hud/details-panel/index.js';
 import { type ChoiceGroup, type ChoiceRow, createChoiceWindow } from '../../hud/dom/choice-window.js';
 import type { GoodIconPainter } from '../../hud/dom/good-art.js';
-import { compareLabels, formatMessage, messages } from '../../i18n/index.js';
+import { compareLabels, formatMessage, goodName, messages } from '../../i18n/index.js';
 import { enqueueUnitSelection } from './group-orders.js';
 
 const { MISC_EQUIP_SLOTS } = simComponents;
@@ -173,7 +173,7 @@ export function mountEquipPicker(opts: EquipPickControllerOptions): EquipPickCon
   };
   const row = (entry: EquipPickEntry, tooltip: (good: string) => string): ChoiceRow => {
     const def = goods.find((g) => g.typeId === entry.goodType);
-    const label = def?.name ?? def?.id ?? `#${entry.goodType}`;
+    const label = def === undefined ? `#${entry.goodType}` : goodName(def);
     return {
       key: String(entry.goodType),
       label,

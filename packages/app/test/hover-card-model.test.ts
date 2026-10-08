@@ -58,8 +58,8 @@ describe('building hover card model', () => {
     expect(model?.title).toBe('Magazyn (poziom 1)');
     expect(model?.state).toBeNull();
     expect(model?.rows).toEqual([
-      { goodId: 'stone', label: 'stone', amount: 2 },
-      { goodId: 'wood', label: 'wood', amount: 4 },
+      { goodId: 'wood', label: 'Drewno', amount: 4 },
+      { goodId: 'stone', label: 'Kamień', amount: 2 },
     ]);
   });
 
@@ -76,8 +76,8 @@ describe('building hover card model', () => {
 
     expect(model?.state).toEqual({ kind: 'construction', pct: 25 });
     expect(model?.rows).toEqual([
-      { goodId: 'stone', label: 'stone', amount: 0, needed: 2 },
-      { goodId: 'wood', label: 'wood', amount: 2, needed: 3 },
+      { goodId: 'wood', label: 'Drewno', amount: 2, needed: 3 },
+      { goodId: 'stone', label: 'Kamień', amount: 0, needed: 2 },
     ]);
   });
 
@@ -155,10 +155,10 @@ describe('building hover card model', () => {
 
     expect(own?.owner).toBeNull();
     expect(own?.health).toEqual({ label: 'Zdrowie', pct: 25, hover: '30/120' });
-    expect(own?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 4 }]);
+    expect(own?.rows).toEqual([{ goodId: 'wood', label: 'Drewno', amount: 4 }]);
     expect(overseen?.owner).toBeNull();
     expect(overseen?.health).toEqual({ label: 'Zdrowie', pct: 50, hover: '60/120' });
-    expect(overseen?.rows).toEqual([{ goodId: 'stone', label: 'stone', amount: 1 }]);
+    expect(overseen?.rows).toEqual([{ goodId: 'stone', label: 'Kamień', amount: 1 }]);
   });
 
   it("lists the store of an ownerless building, which is nobody else's", () => {
@@ -169,7 +169,7 @@ describe('building hover card model', () => {
     const model = buildingHoverModel(snapshot, 10, hoverCtx());
 
     expect(model?.owner).toBeNull();
-    expect(model?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 3 }]);
+    expect(model?.rows).toEqual([{ goodId: 'wood', label: 'Drewno', amount: 3 }]);
   });
 
   it("follows a spectator's seat switch: another seat's store hides, the watched seat's shows", () => {
@@ -183,7 +183,7 @@ describe('building hover card model', () => {
     const watchingOwner = buildingHoverModel(snapshot, 11, hoverCtx(viewer));
 
     expect(watchingOther?.rows).toEqual([]);
-    expect(watchingOwner?.rows).toEqual([{ goodId: 'wood', label: 'wood', amount: 2 }]);
+    expect(watchingOwner?.rows).toEqual([{ goodId: 'wood', label: 'Drewno', amount: 2 }]);
   });
 
   it('has nothing to say about an entity that is not a building', () => {
@@ -251,7 +251,7 @@ describe('settler hover card model', () => {
       settlerEntity(8, JOB_COLLECTOR, { ...narrowed, Owner: { player: OTHER_PLAYER } }),
     ]);
 
-    expect(settlerHoverModel(snapshot, 6, ctx)?.products).toBe('iron');
+    expect(settlerHoverModel(snapshot, 6, ctx)?.products).toBe('Żelazo');
     expect(settlerHoverModel(snapshot, 7, ctx)?.products).toBe('wszystko');
     expect(settlerHoverModel(snapshot, 8, ctx)?.products).toBeNull();
   });

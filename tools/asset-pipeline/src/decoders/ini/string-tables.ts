@@ -40,26 +40,42 @@ export function extractStringTable(sections: readonly RuleSection[]): Record<num
   return byId;
 }
 
+/** A game-object name table: each `stringn` id's singular, and the plural its bare `string` row carries. */
+export interface StringnNames {
+  readonly singular: Record<number, string>;
+  readonly plural: Record<number, string>;
+}
+
 /**
- * Reads only the explicit `stringn <id> "<text>"` lines of a `[text]` table, with no
- * `stringidmultiplier` and no running id, so an entry's id is exactly its `stringn` number.
+ * Reads the explicit `stringn <id> "<text>"` lines of a `[text]` table, with no `stringidmultiplier` and
+ * no running id, so an entry's id is exactly its `stringn` number. A bare `string` directly after a
+ * `stringn` is that id's plural; any other bare `string` is ignored.
  *
- * The localized good-name tables (`text/<lang>/strings/gameobjects/goods.{ini,cif}`) need this: each
- * `stringn <goodType> "<singular>"` is the display name and the following bare `string` is its plural,
- * but the table declares `stringidmultiplier 2` and leaves gaps in the `stringn` sequence, so
- * {@link extractStringTable}'s scaled running id lands a neighbour's plural on another good's slot.
+ * The game-object name tables (`text/<lang>/strings/gameobjects/<table>.{ini,cif}`) need this: they
+ * declare `stringidmultiplier 2` and leave gaps in the `stringn` sequence, so
+ * {@link extractStringTable}'s scaled running id lands a neighbour's plural on another object's slot.
  */
-export function extractStringnById(sections: readonly RuleSection[]): Record<number, string> {
+export function extractStringnNames(sections: readonly RuleSection[]): StringnNames {
   const text = sections.find((s) => s.name === 'text');
-  const byId: Record<number, string> = {};
+  const singular: Record<number, string> = {};
+  const plural: Record<number, string> = {};
+  let last: number | undefined; // the id of the `stringn` the previous line set
   for (const prop of text?.props ?? []) {
+    const previous = last;
+    last = undefined;
+    if (prop.key === 'string') {
+      const display = prop.values[0];
+      if (previous !== undefined && display !== undefined) plural[previous] = display;
+      continue;
+    }
     if (prop.key !== 'stringn') continue;
     const id = Number.parseInt(prop.values[0] ?? '', 10);
     const display = prop.values[1];
     if (Number.isNaN(id) || display === undefined) continue;
-    byId[id] = display;
+    singular[id] = display;
+    last = id;
   }
-  return byId;
+  return { singular, plural };
 }
 
 /** Re-decodes a byte-preserving latin1 string from the `.cif` seam in its display code page. */

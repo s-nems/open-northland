@@ -180,7 +180,6 @@ describe('a session with a changed seat', () => {
       map: authoredMapFile(AUTHORED_ENTITIES),
       ir: rows as ContentIr,
       script: roster,
-      goodNames: new Map<string, string>(),
       content: null,
       session: session([seat(0, SARACEN), seat(2)]),
       missions: null,

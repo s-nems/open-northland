@@ -1,3 +1,4 @@
+import { installOriginalTribeNames } from '../../content/original-names.js';
 import { defaultLocale, localeParam, setActiveLocale } from '../../i18n/index.js';
 import { replaceEntryUrl } from '../../view/navigation-guard.js';
 import { type MenuSettings, persistSettings, readStoredSettings } from '../../view/settings-store.js';
@@ -61,7 +62,10 @@ export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
   current = next;
   persisted = { ...persistedSettings(), ...patch };
   persistSettings(persisted);
-  if (patch.language !== undefined) setActiveLocale(next.language);
+  if (patch.language !== undefined) {
+    setActiveLocale(next.language);
+    void installOriginalTribeNames(next.language);
+  }
   syncCarriedParams(patch, next);
   for (const listener of listeners) listener(next);
   return next;
@@ -95,9 +99,9 @@ export function adoptSettings(
  * Menu-boot bridge between the store and the URL: layers the stored settings under the explicit URL
  * params, without persisting URL overrides. Only the menu runs this; direct `?map=` and `?scene=`
  * entries take the carried params from the URL as-is and read store-only settings straight from the
- * store. Mutates `params` in place.
+ * store. Mutates `params` in place. Resolves once the adopted language's original tribe names are in.
  */
-export function adoptStoredSettings(params: URLSearchParams): void {
+export function adoptStoredSettings(params: URLSearchParams): Promise<void> {
   persisted = readStoredSettings();
   const { session, adopted } = adoptSettings(persistedSettings(), params);
   const url = new URL(window.location.href);
@@ -105,6 +109,7 @@ export function adoptStoredSettings(params: URLSearchParams): void {
   replaceEntryUrl(url);
   current = session;
   setActiveLocale(session.language);
+  return installOriginalTribeNames(session.language);
 }
 
 /** Project the touched carried keys onto the URL; a value at its default clears the param. */

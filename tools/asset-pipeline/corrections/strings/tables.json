@@ -1,0 +1,274 @@
+[
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 15,
+    "from": "Нефть",
+    "to": "Масло",
+    "reason": "Święty olej to olej do lamp i obrzędów, a nie ropa naftowa."
+  },
+  {
+    "lang": "rus",
+    "table": "houses",
+    "id": 22,
+    "from": "Гончарня 3",
+    "to": "Стена",
+    "reason": "Budynek 22 to mur obronny (pol \"Mur obronny\", eng \"Defence wall\", ger \"Mauer\"), a nie garncarnia."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 31,
+    "from": "Содат",
+    "to": "Солдат",
+    "reason": "Literówka w słowie \"żołnierz\"."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 58,
+    "from": "Алхимия - Нефть",
+    "to": "Алхимия - Масло",
+    "reason": "Święty olej to olej do lamp i obrzędów, a nie ropa naftowa."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 36,
+    "from": "Гибкие Доспехи",
+    "to": "Пластинчатые Доспехи",
+    "reason": "\"Гибкие\" znaczy giętkie; towar 36 to zbroja płytowa."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 34,
+    "from": "Ковка - Пластичная Броня",
+    "to": "Ковка - Пластинчатая Броня",
+    "reason": "\"Пластичная\" znaczy plastyczna; ścieżka dotyczy zbroi płytowej."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 44,
+    "from": "S Целебное Зелье",
+    "to": "S Питательное Зелье",
+    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 45,
+    "from": "L Целебное Зелье",
+    "to": "L Питательное Зелье",
+    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 50,
+    "from": "Целебный Амулет",
+    "to": "Питательный Амулет",
+    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 59,
+    "from": "Алхимия - Целебное Зелье",
+    "to": "Алхимия - Питательное Зелье",
+    "reason": "Towary 44, 45 i 50 to mikstury i amulet odżywcze; \"Целебн-\" znaczy leczniczy, a lecznicze są towary 48 i 49."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 51,
+    "from": "Амулет Здоровья",
+    "to": "Амулет Жизненной Силы",
+    "reason": "Towar 51 to amulet wytrzymałości, jak mikstury 46 i 47 (\"Жизненной Силы\"), a nie zdrowia."
+  },
+  {
+    "lang": "pol",
+    "table": "experiences",
+    "id": 12,
+    "from": "Ciesielstwo - Drewniane Włócznie",
+    "to": "Wyrób Broni - Drewniane Włócznie",
+    "reason": "Ścieżkę 12 zdobywa płatnerz, a drewniane włócznie robi zbrojownia, nie stolarnia."
+  },
+  {
+    "lang": "eng",
+    "table": "experiences",
+    "id": 12,
+    "from": "Carpentry - Wooden Spear",
+    "to": "Arms Production - Wooden Spear",
+    "reason": "Ścieżkę 12 zdobywa płatnerz, a drewniane włócznie robi zbrojownia, nie stolarnia."
+  },
+  {
+    "lang": "ger",
+    "table": "experiences",
+    "id": 12,
+    "from": "Schreinern - Holzspeer",
+    "to": "Waffenbau - Holzspeer",
+    "reason": "Ścieżkę 12 zdobywa płatnerz, a drewniane włócznie robi zbrojownia, nie stolarnia."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 12,
+    "from": "Столярная Мастерская - Деревянное Копье",
+    "to": "Производство Оружия - Деревянное Копье",
+    "reason": "Ścieżkę 12 zdobywa płatnerz, a drewniane włócznie robi zbrojownia, nie stolarnia."
+  },
+  {
+    "lang": "pol",
+    "table": "experiences",
+    "id": 20,
+    "from": "Wyrób Broni - Katapulta",
+    "to": "Ciesielstwo - Katapulta",
+    "reason": "Ścieżkę 20 zdobywa cieśla, a katapultę robi stolarnia (poziom 4), nie zbrojownia."
+  },
+  {
+    "lang": "eng",
+    "table": "experiences",
+    "id": 20,
+    "from": "Arms Production - Catapult",
+    "to": "Carpentry - Catapult",
+    "reason": "Ścieżkę 20 zdobywa cieśla, a katapultę robi stolarnia (poziom 4), nie zbrojownia."
+  },
+  {
+    "lang": "ger",
+    "table": "experiences",
+    "id": 20,
+    "from": "Waffenbau - Katapult",
+    "to": "Schreinern - Katapult",
+    "reason": "Ścieżkę 20 zdobywa cieśla, a katapultę robi stolarnia (poziom 4), nie zbrojownia."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 20,
+    "from": "Производство Оружия - Катапульта",
+    "to": "Столярная Мастерская - Катапульта",
+    "reason": "Ścieżkę 20 zdobywa cieśla, a katapultę robi stolarnia (poziom 4), nie zbrojownia."
+  },
+  {
+    "lang": "pol",
+    "table": "experiences",
+    "id": 29,
+    "from": "Kowalstwo - Żelazne Narzędzia",
+    "to": "Ciesielstwo - Żelazne Narzędzia",
+    "reason": "Ścieżkę 29 zdobywa cieśla, a żelazne narzędzia robi stolarnia, nie kuźnia."
+  },
+  {
+    "lang": "eng",
+    "table": "experiences",
+    "id": 29,
+    "from": "Forging - Iron Tools",
+    "to": "Carpentry - Iron Tools",
+    "reason": "Ścieżkę 29 zdobywa cieśla, a żelazne narzędzia robi stolarnia, nie kuźnia."
+  },
+  {
+    "lang": "ger",
+    "table": "experiences",
+    "id": 29,
+    "from": "Schmieden - Eisenwerkzeug",
+    "to": "Schreinern - Eisenwerkzeug",
+    "reason": "Ścieżkę 29 zdobywa cieśla, a żelazne narzędzia robi stolarnia, nie kuźnia."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 29,
+    "from": "Ковка - Инструмент",
+    "to": "Столярная Мастерская - Инструмент",
+    "reason": "Ścieżkę 29 zdobywa cieśla, a żelazne narzędzia robi stolarnia, nie kuźnia."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 12,
+    "from": "Каменетес",
+    "to": "Каменотес",
+    "reason": "Literówka."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 12,
+    "from": "Каменетесы",
+    "to": "Каменотесы",
+    "reason": "Literówka, jak w liczbie pojedynczej."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 44,
+    "from": "Бжарни",
+    "to": "Бьярни",
+    "reason": "Literówka w imieniu Bjarni."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 44,
+    "from": "Бжарни",
+    "to": "Бьярни",
+    "reason": "Literówka w imieniu Bjarni, jak w liczbie pojedynczej."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 34,
+    "from": "Воин с мечем",
+    "to": "Воин с мечом",
+    "reason": "Błędna końcówka: \"с мечом\"."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 34,
+    "from": "Кожанные Доспехи",
+    "to": "Кожаные Доспехи",
+    "reason": "Literówka: \"кожаные\" z jednym \"н\"."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 44,
+    "from": "Шитье - Кожанная Броня",
+    "to": "Шитье - Кожаная Броня",
+    "reason": "Literówka: \"кожаная\" z jednym \"н\"."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 19,
+    "from": "Производство Оружия - Длинный ЛУк",
+    "to": "Производство Оружия - Длинный Лук",
+    "reason": "Literówka: wielkie \"У\" w środku słowa."
+  },
+  {
+    "lang": "rus",
+    "table": "houses",
+    "id": 33,
+    "from": "Монетьный Двор",
+    "to": "Монетный Двор",
+    "reason": "Literówka."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 49,
+    "from": "Kolloss",
+    "to": "Koloss",
+    "reason": "Literówka."
+  },
+  {
+    "lang": "pol",
+    "table": "houses",
+    "id": 54,
+    "from": "8-y Cud",
+    "to": "8. Cud",
+    "reason": "Błędna forma liczebnika: \"8-y\" zamiast \"8.\"."
+  }
+]

@@ -15,7 +15,7 @@ import {
   convertGuiStrings,
   liftPaletteShadows,
 } from '../src/stages/gui/index.js';
-import { STRING_TABLES } from '../src/stages/gui/strings.js';
+import { EXPORTED_TABLES, GAME_OBJECT_TABLES, STRING_TABLES } from '../src/stages/gui/strings.js';
 import { sampleGlyphBmd } from './fixtures/bmd.js';
 import { buildStringCif } from './fixtures/cif.js';
 import { rampPalette } from './fixtures/palette.js';
@@ -178,6 +178,111 @@ describe('gui stage', () => {
     expect(Object.values(eng.main)).not.toContain('Bad'); // only the malformed line itself is gone
   });
 
+  it('decodes the five game-object tables by type id, preferring a readable .ini over the .cif', async () => {
+    // `stringidmultiplier 2` and the bare plural rows must not move or add ids: the key is the `stringn` id.
+    const rows = (singular: string): string =>
+      `[control]\nstringidmultiplier 2\n[text]\nstringn 3 "${singular}"\nstring "plural"\n`;
+    for (const table of GAME_OBJECT_TABLES) {
+      await writeGame(
+        join('Data', 'text', 'eng', 'strings', 'gameobjects', `${table}.cif`),
+        buildStringCif([
+          { level: 1, text: 'text' },
+          { level: 2, text: `stringn 3 "${table} cif"` },
+          { level: 2, text: 'string "plural"' },
+        ]),
+      );
+      // Raw CP1250 bytes for 'ą' (0xB9), so the .ini is decoded in the language's code page.
+      await writeGame(
+        join('Data', 'text', 'pol', 'strings', 'gameobjects', `${table}.ini`),
+        Buffer.from(rows(`${table} \xb9`), 'latin1'),
+      );
+    }
+    await writeGame(
+      join('Data', 'text', 'eng', 'strings', 'gameobjects', 'houses.ini'),
+      Buffer.from(rows('houses ini'), 'latin1'),
+    );
+
+    const res = await convertGuiStrings({ mod: game }, out);
+    expect(res.every((r) => r.tables === EXPORTED_TABLES.length)).toBe(true);
+    const eng = JSON.parse(await readFile(join(out, 'gui', 'strings', 'eng.json'), 'utf8'));
+    const pol = JSON.parse(await readFile(join(out, 'gui', 'strings', 'pol.json'), 'utf8'));
+    for (const table of GAME_OBJECT_TABLES) {
+      expect(eng[table]).toEqual({ 3: table === 'houses' ? 'houses ini' : `${table} cif` });
+      expect(pol[table]).toEqual({ 3: `${table} ą` });
+    }
+    expect(eng.jobsPlural).toEqual({ 3: 'plural' });
+    expect(pol.jobsPlural).toEqual({ 3: 'plural' });
+    expect(eng).not.toHaveProperty('goodsPlural');
+  });
+
+  it('exports the jobs plurals from the string row after each stringn, in .ini and .cif alike', async () => {
+    // Raw CP1250 bytes for 'ś' (0x9C) in the .ini, raw CP1251 for 'Ж' (0xC6) in the .cif.
+    await writeGame(
+      join('Data', 'text', 'pol', 'strings', 'gameobjects', 'jobs.ini'),
+      Buffer.from(
+        '[text]\nstringn 9 "Cie\x9cla"\nstring "Cie\x9cle"\nstringn 4 "Bez"\nstringn 5 "Nowy"\n',
+        'latin1',
+      ),
+    );
+    await writeGame(
+      join('Data', 'text', 'rus', 'strings', 'gameobjects', 'jobs.cif'),
+      buildStringCif([
+        { level: 1, text: 'text' },
+        { level: 2, text: 'stringn 9 "\xc6"' },
+        { level: 2, text: 'string "\xc6\xc6"' },
+        { level: 2, text: 'stringn zz "Bad"' },
+        { level: 2, text: 'string "orphan"' },
+      ]),
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await convertGuiStrings({ mod: game }, out, ['pol', 'rus']);
+    warn.mockRestore();
+    const pol = JSON.parse(await readFile(join(out, 'gui', 'strings', 'pol.json'), 'utf8'));
+    const rus = JSON.parse(await readFile(join(out, 'gui', 'strings', 'rus.json'), 'utf8'));
+    expect(pol.jobs).toEqual({ 9: 'Cieśla', 4: 'Bez', 5: 'Nowy' });
+    // A stringn with no string row after it has no plural.
+    expect(pol.jobsPlural).toEqual({ 9: 'Cieśle' });
+    // The plural of a malformed stringn goes with it.
+    expect(rus.jobsPlural).toEqual({ 9: 'ЖЖ' });
+  });
+
+  it('trims game-object names and collapses their runs of spaces before corrections read them', async () => {
+    await writeGame(
+      join('Data', 'text', 'eng', 'strings', 'gameobjects', 'goods.cif'),
+      buildStringCif([
+        { level: 1, text: 'text' },
+        { level: 2, text: 'stringn 46 "Small  Potion "' },
+        { level: 2, text: 'string " Small   Potions"' },
+      ]),
+    );
+    await writeGame(
+      join('Data', 'text', 'eng', 'strings', 'gameobjects', 'jobs.ini'),
+      Buffer.from('[text]\nstringn 2 "  Wood   Cutter "\nstring "Wood  Cutters  "\n', 'latin1'),
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await convertGuiStrings({ mod: game }, out, ['eng']);
+    warn.mockRestore();
+    const eng = JSON.parse(await readFile(join(out, 'gui', 'strings', 'eng.json'), 'utf8'));
+    expect(eng.goods).toEqual({ 46: 'Small Potion' });
+    expect(eng.jobs).toEqual({ 2: 'Wood Cutter' });
+    expect(eng.jobsPlural).toEqual({ 2: 'Wood Cutters' });
+  });
+
+  it('skips a missing game-object table with a warning and keeps the rest', async () => {
+    await writeGame(
+      join('Data', 'text', 'eng', 'strings', 'gameobjects', 'goods.ini'),
+      Buffer.from('[text]\nstringn 1 "Wood"\n', 'latin1'),
+    );
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    const res = await convertGuiStrings({ mod: game }, out, ['eng']);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/skipped strings eng\/houses/));
+    warn.mockRestore();
+    expect(res[0]?.tables).toBe(STRING_TABLES.length + 1);
+    const eng = JSON.parse(await readFile(join(out, 'gui', 'strings', 'eng.json'), 'utf8'));
+    expect(eng.goods).toEqual({ 1: 'Wood' });
+    expect(eng).not.toHaveProperty('houses');
+  });
+
   it('decodes each cursor to a PNG, copies the .cur through, and records the hotspot', async () => {
     const cursors = await convertCursors({ mod: game }, out);
     expect(cursors.map((c) => c.name)).toEqual(['MouseNormal', 'MousePressed', 'MouseRight']);
@@ -200,7 +305,7 @@ describe('gui stage', () => {
     expect(manifest.paletteLut.stem).toBe('gui-palettes-lut');
     expect(manifest.paletteLut.names).toHaveLength(14);
     expect(manifest.strings.languages).toEqual(['eng', 'pol']);
-    expect(manifest.strings.tables).toHaveLength(8);
+    expect(manifest.strings.tables).toEqual([...STRING_TABLES, ...GAME_OBJECT_TABLES, 'jobsPlural']);
     expect(manifest.history.languages).toEqual([]); // no hypertext/history folder in this fixture
     expect(manifest.cursors).toHaveLength(3);
   });

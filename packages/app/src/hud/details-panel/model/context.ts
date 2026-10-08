@@ -15,7 +15,14 @@ import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import type { SnapshotEntity } from '../../../game/snapshot.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
-import { currentLocale, formatMessage, messages, professionLabel, tribeName } from '../../../i18n/index.js';
+import {
+  currentLocale,
+  formatMessage,
+  goodName,
+  messages,
+  professionLabel,
+  tribeName,
+} from '../../../i18n/index.js';
 import type { SettlerStateHold } from './settler.js';
 
 export type BuildingDef = ContentSet['buildings'][number];
@@ -173,18 +180,16 @@ export function goodDef(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: num
   return ctx.goods.find((g) => g.typeId === goodType);
 }
 
-/** A good's display name: its localized content `name`, falling back to the machine id on a checkout
- *  without the per-locale good-name table. */
 export function goodLabel(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: number): string {
   const def = goodDef(ctx, goodType);
-  return def?.name ?? def?.id ?? `#${goodType}`;
+  return def === undefined ? `#${goodType}` : goodName(def);
 }
 
 /**
  * A job's display name, shared by the worker-slot rows and a settler's profession title. Roles outside the
  * profession picker (life stages, the jester) are keyed by the content job's string id through the locale
- * catalog. Every hero role is shown as the generic profession "Hero": maps reuse one hero
- * body for different named characters, so the job id is not a reliable personal name.
+ * catalog. Every hero role is shown as the generic role "Hero": maps reuse one hero body for different
+ * named characters, so the job id is not a reliable personal name.
  */
 export function jobDisplayName(
   ctx: Pick<UnitPanelModelContext, 'jobs'>,
@@ -195,7 +200,8 @@ export function jobDisplayName(
   const job = ctx.jobs.find((j) => j.typeId === jobType);
   const roles: Readonly<Record<string, string | undefined>> = messages().roleNames;
   const role = job?.id !== undefined ? roles[job.id] : undefined;
-  const hero = job !== undefined && systems.isHeroJobRow(job) ? messages().heroNames.hero_unarmed : undefined;
+  const hero =
+    job !== undefined && systems.isHeroJobRow(job) ? messages().hud.groupPanel.role.hero : undefined;
   return role ?? hero ?? job?.name ?? jobLabel(jobType);
 }
 

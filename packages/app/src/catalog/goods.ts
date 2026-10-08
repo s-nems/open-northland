@@ -65,7 +65,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 122, id: 'fish', name: 'Fish', storable: true },
   { typeId: 124, id: 'brick', name: 'Brick', storable: true },
   { typeId: 125, id: 'tile', name: 'Roof Tile', storable: true },
-  { typeId: 126, id: 'pillar', name: 'Pillar', storable: true },
+  { typeId: 126, id: 'pillar', name: 'Stone Block', storable: true },
   { typeId: 127, id: 'ornament', name: 'Marble', storable: true },
   {
     typeId: 128,
@@ -98,7 +98,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   { typeId: 130, id: 'shoes', name: 'Shoes', storable: true },
   { typeId: 131, id: 'tool_wooden', name: 'Wooden Tool', storable: true },
   { typeId: 132, id: 'tool_iron', name: 'Iron Tool', storable: true },
-  { typeId: 133, id: 'armor_wool', name: 'Cloth Armor', storable: true },
+  { typeId: 133, id: 'armor_wool', name: 'Tunic', storable: true },
   { typeId: 134, id: 'armor_leather', name: 'Leather Armor', storable: true },
   { typeId: 135, id: 'armor_chain', name: 'Chain Armor', storable: true },
   { typeId: 136, id: 'armor_plate', name: 'Plate Armor', storable: true },
@@ -175,7 +175,7 @@ export const EXTENDED_GOODS: readonly CatalogGood[] = [
   // Real goodtypes, but herded, driven or sentinel rather than warehoused, so no stock slot and no icon.
   { typeId: 156, id: 'prey', name: 'Game', storable: false },
   { typeId: 157, id: 'sheep', name: 'Sheep', storable: false },
-  { typeId: 158, id: 'cattle', name: 'Cattle', storable: false },
+  { typeId: 158, id: 'cattle', name: 'Ox', storable: false },
   { typeId: 159, id: 'handcart', name: 'Handcart', storable: false },
   { typeId: 160, id: 'oxcart', name: 'Ox Cart', storable: false },
   { typeId: 161, id: 'ship_small', name: 'Small Ship', storable: false },

@@ -39,7 +39,6 @@ describe.runIf(hasRealIr())(`${MAP_ID} mountain path`, () => {
       map,
       ir,
       script,
-      goodNames: new Map(),
       content: merge.content,
       session,
       missions: null,

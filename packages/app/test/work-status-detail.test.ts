@@ -17,12 +17,15 @@ it('names ingredient deficits separately from the product in both languages', ()
       { goodType: GOOD_WATER, available: 1, required: 3, missing: 2, source: 'inReach', gatheredBy: null },
     ],
   } as const;
-  const product = goodLabel(ctx, GOOD_FLOUR);
-  const input = goodLabel(ctx, GOOD_WATER);
+  const names = () => ({ product: goodLabel(ctx, GOOD_FLOUR), input: goodLabel(ctx, GOOD_WATER) });
   setActiveLocale('pol');
-  expect(workStatusDetail(ctx, status)).toBe(`${product}: brakuje w warsztacie ${input} ×2 (jest 1/3)`);
+  const pol = names();
+  expect(workStatusDetail(ctx, status)).toBe(
+    `${pol.product}: brakuje w warsztacie ${pol.input} ×2 (jest 1/3)`,
+  );
   setActiveLocale('eng');
-  expect(workStatusDetail(ctx, status)).toBe(`${product}: workshop is missing ${input} ×2 (has 1/3)`);
+  const eng = names();
+  expect(workStatusDetail(ctx, status)).toBe(`${eng.product}: workshop is missing ${eng.input} ×2 (has 1/3)`);
 });
 
 it('distinguishes a missing resource, a blocked approach, and an unknown cause', () => {

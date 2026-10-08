@@ -108,13 +108,12 @@ export async function renderSceneMode(canvas: HTMLCanvasElement, params: URLSear
   await boot.begin('content');
   // Served real content makes the browser scene collide and place exactly like the live map view. The
   // headless twin never loads it, so copyrighted content stays out of tests.
-  const { goodNames, realContent } = await loadLocalizedRealContent(params);
+  const realContent = await loadLocalizedRealContent(params);
   const ir = await loadIr();
   // Empty on a bare checkout.
   const footprints = buildingFootprints(ir);
   await boot.begin('world');
   const worldOptions = {
-    goodNames,
     ...(footprints.size > 0 ? { footprints } : {}),
     ...(realContent !== null ? { content: realContent.content } : {}),
   };

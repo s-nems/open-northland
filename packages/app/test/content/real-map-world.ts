@@ -129,7 +129,6 @@ export async function realMapWorldOfSession(
     map,
     ir: rawIrUnderTest() as ContentIr,
     script: realMapScript(mapId),
-    goodNames: new Map(),
     content: merge.content,
     session,
     missions: options.missions ?? null,

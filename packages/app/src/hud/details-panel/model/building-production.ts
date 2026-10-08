@@ -8,6 +8,7 @@ import {
 } from '@open-northland/sim';
 import { num, positionOf, type SnapshotEntity } from '../../../game/snapshot.js';
 import { entitiesUnder, idsGroupedBy } from '../../../game/snapshot-id-index.js';
+import { goodName } from '../../../i18n/index.js';
 import { pctRatio } from './bars.js';
 import { liveAmounts } from './building-materials.js';
 import {
@@ -142,7 +143,7 @@ export function productionModel(
     }
     return {
       kind: 'fields',
-      label: fieldGood.name ?? fieldGood.id,
+      label: goodName(fieldGood),
       sown: growing + ripe,
       growing,
       ripe,

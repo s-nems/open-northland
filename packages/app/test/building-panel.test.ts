@@ -36,7 +36,7 @@ import {
 } from '../src/hud/details-panel/model/building.js';
 import { orderViews } from '../src/hud/dom/building-panel/portrait.js';
 import { STAFF_WELLS_MAX, staffWells } from '../src/hud/dom/building-panel/staff.js';
-import { formatMessage, messages } from '../src/i18n/index.js';
+import { currentLocale, formatMessage, installNameOverlay, messages } from '../src/i18n/index.js';
 import { buildingPanelActions, buildingPeers } from '../src/view/unit-controls/building-panel.js';
 import { buildingEntity, snapshotOf as panelSnapshotOf, sandboxCtx } from './support/sandbox.js';
 import { type Ent, idLookupVisits, snapshotOf, visitCountingSnapshot } from './support/snapshot.js';
@@ -349,6 +349,18 @@ describe('building panel orders and alerts', () => {
     const mill = buildingModel([buildingEntity(1, BUILDING_MILL)], 1);
     expect(mill.tier).toBeNull();
     expect(mill.title).toBe(mill.name);
+  });
+
+  it("drops the tier number the game's own tables end a tier's name with", () => {
+    installNameOverlay(currentLocale(), { building: { home_level_00: 'Fixture dwelling 1' } });
+    try {
+      const home = buildingModel([buildingEntity(1, BUILDING_HOME_00)], 1);
+      expect(home.name).toBe('Fixture dwelling 1');
+      expect(home.title).toBe('Fixture dwelling');
+      expect(home.tier).toBe(1);
+    } finally {
+      installNameOverlay(currentLocale(), {});
+    }
   });
 
   it('marks the input a posted worker waits for and a full product shelf', () => {

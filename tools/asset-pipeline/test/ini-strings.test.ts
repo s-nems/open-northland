@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   decodeDisplayText,
-  extractStringnById,
+  extractStringnNames,
   extractStringTable,
   iniBytesToSections,
   parseIniSections,
@@ -44,30 +44,39 @@ describe('extractStringTable', () => {
   });
 });
 
-describe('extractStringnById (singular-only, multiplier-free)', () => {
-  it('keys each explicit stringn line by its own id and ignores the bare string plurals', () => {
-    const table = extractStringnById(
+describe('extractStringnNames (multiplier-free, plural from the following string row)', () => {
+  it('keys each explicit stringn line by its own id and its plural by the same id', () => {
+    const names = extractStringnNames(
       parseIniSections('[text]\nstringn 5 "Wood"\nstring "Woods"\nstringn 22 "Fish"\nstring "Fishes"\n'),
     );
-    expect(table).toEqual({ 5: 'Wood', 22: 'Fish' });
+    expect(names).toEqual({ singular: { 5: 'Wood', 22: 'Fish' }, plural: { 5: 'Woods', 22: 'Fishes' } });
   });
 
   it('does not collide when a gapped stringn shares a multiplier-2 plural slot (the mead case)', () => {
     // The real goods name table (stringidmultiplier 2) lists mead's `stringn 43` BEFORE the 42-sword block,
     // so under extractStringTable the sword's plural auto-increment (id 43 → slot 86) clobbers mead's own
-    // singular (also slot 86). Reading singulars only keeps mead by its own `stringn` id.
+    // singular (also slot 86). Reading by `stringn` id keeps mead by its own id.
     const src =
       '[control]\nstringidmultiplier 2\n[text]\nstringn 43 "Mead"\nstring "Meads"\nstringn 42 "Longsword"\nstring "Longswords"\n';
-    expect(extractStringnById(parseIniSections(src))).toEqual({ 43: 'Mead', 42: 'Longsword' });
+    expect(extractStringnNames(parseIniSections(src)).singular).toEqual({ 43: 'Mead', 42: 'Longsword' });
     // The shared table loses mead: 43*2 = slot 86, overwritten by Longsword's plural auto-increment.
     expect(extractStringTable(parseIniSections(src))[86]).toBe('Longswords');
   });
 
-  it('drops malformed ids and yields empty without a [text] block', () => {
-    expect(extractStringnById(parseIniSections('[text]\nstringn zz "Bad"\nstringn 1 "One"\n'))).toEqual({
-      1: 'One',
-    });
-    expect(extractStringnById([])).toEqual({});
+  it('takes only a string row directly after a stringn as its plural', () => {
+    const names = extractStringnNames(
+      parseIniSections(
+        '[text]\nstring "Lead"\nstringn 1 "One"\nstring "Ones"\nstring "Extra"\nstringn 2 "Two"\n',
+      ),
+    );
+    expect(names).toEqual({ singular: { 1: 'One', 2: 'Two' }, plural: { 1: 'Ones' } });
+  });
+
+  it('drops malformed ids with their plural and yields empty without a [text] block', () => {
+    expect(
+      extractStringnNames(parseIniSections('[text]\nstringn zz "Bad"\nstring "Bads"\nstringn 1 "One"\n')),
+    ).toEqual({ singular: { 1: 'One' }, plural: {} });
+    expect(extractStringnNames([])).toEqual({ singular: {}, plural: {} });
   });
 });
 

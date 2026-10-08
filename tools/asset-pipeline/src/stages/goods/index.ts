@@ -5,12 +5,10 @@ import { emitIndexedAndPreviewAtlas, writeJsonFile } from '../content-tree.js';
 import { identityPalette, writeLutPng } from '../palette-lut.js';
 import { readSourceFile } from '../source-files.js';
 import { buildGoodIcons, GOODS_ATLAS_STEM, type GoodIcon, loadGoods } from './icons.js';
-import { loadGoodNames } from './names.js';
 import { loadGoodsPalette, loadPaletteAliases } from './palettes.js';
 
 export type { GoodIcon } from './icons.js';
 export { resolveGoodIcons } from './icons.js';
-export { resolveGoodNames } from './names.js';
 
 /**
  * Goods-icon extraction. A good's icon is its on-map pile graphic: the engine shares one monochrome bob
@@ -43,11 +41,6 @@ export interface GoodsManifest {
   readonly palettes: string[];
   /** good string id → its icon binding. */
   readonly icons: Record<string, GoodIcon>;
-  /**
-   * Localized display names: locale code → (good string id → name). A locale whose string file is missing
-   * is simply absent, and the app falls back to the next locale, then the machine id.
-   */
-  readonly names: Record<string, Record<string, string>>;
 }
 
 export interface GoodsStageSummary {
@@ -62,15 +55,11 @@ export interface GoodsStageSummary {
  */
 export async function convertGoodsStage(roots: SourceRoots, outDir: string): Promise<GoodsStageSummary> {
   let icons: Record<string, GoodIcon>;
-  let names: Record<string, Record<string, string>>;
   try {
-    const goods = await loadGoods(roots);
-    icons = await buildGoodIcons(roots, goods);
-    names = await loadGoodNames(roots, goods);
+    icons = await buildGoodIcons(roots, await loadGoods(roots));
   } catch (err) {
     console.warn(`[pipeline] goods: skipped (good tables unreadable): ${errorMessage(err)}`);
     icons = {};
-    names = {};
   }
 
   const paletteAliases = await loadPaletteAliases(roots);
@@ -114,7 +103,6 @@ export async function convertGoodsStage(roots: SourceRoots, outDir: string): Pro
     paletteLutStem: GOODS_PALETTE_LUT_STEM,
     palettes: paletteNames,
     icons,
-    names,
   };
   await writeJsonFile(outDir, `${GOODS_CONTENT_DIR}/manifest.json`, manifest);
 

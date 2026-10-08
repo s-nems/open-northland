@@ -293,14 +293,6 @@ describe('mergeRealContent', () => {
     expect(content.landscape.find((t) => t.typeId === TERRAIN_IMPASSABLE)?.walkable).toBe(false);
     expect(() => buildTerrainGraph(content, grid)).not.toThrow();
   });
-
-  it('localizes good display names from the goodNames map, leaving unlisted goods as-is', () => {
-    const raw = rawRealLike();
-    const { content } = mergeRealContent(raw, new Map([['wood', 'Drewno']]));
-    expect(goodById(content, 'wood').name).toBe('Drewno');
-    // A good absent from the map keeps whatever name it shipped with (unchanged).
-    expect(goodById(content, 'coin').name).toBe(goodById(raw, 'coin').name);
-  });
 });
 
 /** A Response-shaped stub for the injected fetch - only `ok` + `json()` are read (see net.ts). */
@@ -312,14 +304,13 @@ describe('loadRuntimeRealContent', () => {
   it('fetches + merges the served content (nav classes injected), or null when absent', async () => {
     // A plain-JSON round-trip of the stand-in, like the served ir.json the loader parses.
     const served = JSON.parse(JSON.stringify(rawRealLike()));
-    const merge = await loadRuntimeRealContent(new Map([['wood', 'Drewno']]), fetchStub(served));
+    const merge = await loadRuntimeRealContent(fetchStub(served));
     expect(merge).not.toBeNull();
     expect(merge?.content.landscape.some((t) => t.typeId === TERRAIN_OPEN)).toBe(true);
-    expect(goodById(merge?.content ?? sandboxContent(), 'wood').name).toBe('Drewno');
     expect(merge?.unbalancedGoods).toContain('testberry');
 
     // A bare checkout (no ir.json → 404) degrades to null so the entries fall back to sandbox content.
-    expect(await loadRuntimeRealContent(undefined, fetchStub(null, false))).toBeNull();
+    expect(await loadRuntimeRealContent(fetchStub(null, false))).toBeNull();
   });
 });
 

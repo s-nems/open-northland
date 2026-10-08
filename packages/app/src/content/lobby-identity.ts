@@ -27,7 +27,7 @@ export async function loadLobbyCompatibility(
     content: jsonFingerprint({
       content: contentFingerprint(content),
       resolved: contentFingerprint(mergeRealContent(content).content),
-      // Authored placements join raw script names before the runtime localizes display labels.
+      // Authored placements join script names against these.
       authoredNames: {
         goods: content.goods.map((row) => [row.typeId, row.name ?? row.id]),
         jobs: content.jobs.map((row) => [row.typeId, row.name ?? row.id]),

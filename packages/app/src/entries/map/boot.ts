@@ -250,7 +250,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     // Started before the content await rather than after it: the sheet cannot pick its tribes until the
     // IR lands, so serialising the two documents would push every atlas fetch back by one round trip.
     const irLoad = loadIr();
-    const { goodNames, realContent } = await loadLocalizedRealContent(params);
+    const realContent = await loadLocalizedRealContent(params);
     const ir = await irLoad;
     // Every civilization the map fields brings its own building and settler pages, so the sheet loads
     // exactly the seats' and the authored entities' tribes.
@@ -265,7 +265,6 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
       map: loaded,
       ir,
       script,
-      goodNames,
       content: realContent?.content ?? null,
       session,
       // `?missions=off` is a local diagnostic; the descriptor carries no such rule, so a relayed

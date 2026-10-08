@@ -40,7 +40,7 @@ import type {
 import type { PapersSeam } from '../hud/tool-panel/paper-cards.js';
 import type { GateSites, PalisadeGateProbeView, PlacementClickAsks } from '../hud/tool-panel/placement.js';
 import type { ResidentsSeam } from '../hud/tool-panel/residents/seam.js';
-import { bcp47Tag, compareLabels, currentLocale, type Locale } from '../i18n/index.js';
+import { bcp47Tag, compareLabels, currentLocale, goodName, type Locale } from '../i18n/index.js';
 import type { PresentationPack } from '../presentation/pack.js';
 import type { SessionHost } from '../session/index.js';
 import { clientToScreen, screenScale } from './camera/index.js';
@@ -240,11 +240,11 @@ function buildingLabel(b: { readonly typeId: number; readonly id: string }, lang
   return localizedBuildingName(catalog?.id ?? b.id, catalog?.label ?? b.id, lang);
 }
 
-/** The content set's goods by type, labelled with their authored name; the `none` sentinel is no good. */
+/** The content set's goods by type, labelled with their catalog name; the `none` sentinel is no good. */
 export function goodLabelsFromContent(content: {
   goods: readonly { typeId: number; id: string; name?: string | undefined }[];
 }): ReadonlyMap<number, string> {
-  return new Map(content.goods.filter((g) => g.id !== 'none').map((g) => [g.typeId, g.name ?? g.id]));
+  return new Map(content.goods.filter((g) => g.id !== 'none').map((g) => [g.typeId, goodName(g)]));
 }
 
 /** The quick row's wall-line tool and axis-detecting gate-conversion tool, from the map catalog. */

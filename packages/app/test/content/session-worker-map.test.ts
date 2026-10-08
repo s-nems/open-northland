@@ -42,7 +42,6 @@ async function mapInputs(): Promise<MapWorldInputs> {
     map: JSON.parse(readFileSync(realMapPath(MAP_ID), 'utf8')),
     ir: rawIrUnderTest() as ContentIr,
     script,
-    goodNames: new Map(),
     content: merge.content,
     session: mapSession(new URLSearchParams(SEARCH), script === null ? [] : mapLobbySlots(script)),
     missions: null,

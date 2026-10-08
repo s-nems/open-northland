@@ -64,7 +64,7 @@ function jobName(content: TechnologyContent, typeId: number): string | undefined
   return (
     trades[row.id] ??
     roles[row.id] ??
-    (systems.isHeroJobRow(row) ? messages().heroNames.hero_unarmed : undefined)
+    (systems.isHeroJobRow(row) ? messages().hud.groupPanel.role.hero : undefined)
   );
 }
 

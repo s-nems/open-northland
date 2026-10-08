@@ -828,7 +828,7 @@ export const plGame = {
         joiner: 'Cieśle',
         armorer: 'Płatnerze',
         potter: 'Garncarze',
-        mason: 'Murarze',
+        mason: 'Kamieniarze',
         smith: 'Kowale',
         coin_maker: 'Mincerze',
         hunter: 'Myśliwi',

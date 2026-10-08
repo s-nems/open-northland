@@ -16,6 +16,52 @@ const FALLBACK_LOCALE: Locale = 'eng';
 const LOCALES: Readonly<Record<Locale, Messages>> = { pol: pl, eng: en, ger: de, rus: ru };
 let activeLocale: Locale | undefined;
 
+/** Display names that replace authored catalog entries, keyed as each catalog table keys them. */
+export interface NameOverlay {
+  readonly goods?: Readonly<Record<string, string>>;
+  readonly building?: Readonly<Record<string, string>>;
+  readonly profession?: Readonly<Record<string, string>>;
+  readonly roleNames?: Readonly<Record<string, string>>;
+  readonly heroNames?: Readonly<Record<string, string>>;
+  readonly soldierClass?: Readonly<Record<string, string>>;
+  /** `hud.groupPanel.professions`, the plural of `profession`. */
+  readonly professions?: Readonly<Record<string, string>>;
+  /** `hud.groupPanel.soldierClasses`, the plural of `soldierClass`. */
+  readonly soldierClasses?: Readonly<Record<string, string>>;
+  readonly trackLabels?: Readonly<Record<string, string>>;
+  readonly weaponXp?: Readonly<Record<string, string>>;
+  readonly tribeNames?: Readonly<Record<number, string>>;
+}
+
+const overlaid = new Map<Locale, Messages>();
+
+/** Make `messages(locale)` answer the overlay's names over the authored catalog; every entry the overlay
+ *  lacks keeps its authored text. A later install for the same locale replaces the earlier one. */
+export function installNameOverlay(locale: Locale, names: NameOverlay): void {
+  const base = LOCALES[locale];
+  const { hud } = base;
+  overlaid.set(locale, {
+    ...base,
+    goods: { ...base.goods, ...names.goods },
+    building: { ...base.building, ...names.building },
+    profession: { ...base.profession, ...names.profession },
+    roleNames: { ...base.roleNames, ...names.roleNames },
+    heroNames: { ...base.heroNames, ...names.heroNames },
+    tribeNames: { ...base.tribeNames, ...names.tribeNames },
+    hud: {
+      ...hud,
+      trackLabels: { ...hud.trackLabels, ...names.trackLabels },
+      weaponXp: { ...hud.weaponXp, ...names.weaponXp },
+      groupPanel: {
+        ...hud.groupPanel,
+        soldierClass: { ...hud.groupPanel.soldierClass, ...names.soldierClass },
+        soldierClasses: { ...hud.groupPanel.soldierClasses, ...names.soldierClasses },
+        professions: { ...hud.groupPanel.professions, ...names.professions },
+      },
+    },
+  });
+}
+
 export function isLocale(value: unknown): value is Locale {
   return LOCALE_CODES.some((code) => code === value);
 }
@@ -84,15 +130,26 @@ export function currentLocale(): Locale {
   return activeLocale ?? defaultLocale();
 }
 
-/** A civilization's localized name. Only the playable tribes are translated, so an animal species falls
- *  back to `contentName`, the content's own untranslated id, and then to the bare tribe code. */
+/** A tribe's localized name. The authored catalog names only the playable tribes, so without the game's
+ *  own tables an animal species falls back to `contentName`, the content's untranslated id, and then to
+ *  the bare tribe code. */
 export function tribeName(tribe: number | undefined, contentName?: string): string {
   if (tribe === undefined) return '-';
   return messages().tribeNames[tribe] ?? contentName ?? `#${tribe}`;
 }
 
 export function messages(locale: Locale = currentLocale()): Messages {
-  return LOCALES[locale];
+  return overlaid.get(locale) ?? LOCALES[locale];
+}
+
+/** A good's display name by its content slug; a good no catalog names keeps its content name, then its
+ *  slug. */
+export function goodName(
+  good: { readonly id: string; readonly name?: string | undefined },
+  locale: Locale = currentLocale(),
+): string {
+  const names: Readonly<Record<string, string | undefined>> = messages(locale).goods;
+  return names[good.id] ?? good.name ?? good.id;
 }
 
 /** The menu title and summary of scene `id`, or undefined for an id the catalog does not know. */

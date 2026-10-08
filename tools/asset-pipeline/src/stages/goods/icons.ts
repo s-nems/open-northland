@@ -107,10 +107,8 @@ export async function buildGoodIcons(
   return resolveGoodIcons(goods, landscapeGfx);
 }
 
-/** Parse `goodtypes.ini` into the goods list (the id/typeId/landscapeType the icon + name joins key off). */
-export async function loadGoods(
-  roots: SourceRoots,
-): Promise<readonly (GoodLike & { readonly typeId: number })[]> {
+/** Parse `goodtypes.ini` into the goods list (the id/landscapeType the icon join keys off). */
+export async function loadGoods(roots: SourceRoots): Promise<readonly GoodLike[]> {
   const sections = iniBytesToSections(await readSourceFile(roots, GOODTYPES_INI));
   return extractGoods(sections, { file: GOODTYPES_INI, layer: 'base' });
 }

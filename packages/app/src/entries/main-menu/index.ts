@@ -85,12 +85,13 @@ function mainScreen(open: (screen: MenuScreen) => void): HTMLElement {
 
 export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearchParams): Promise<void> {
   // Runs before anything reads the locale or the URL.
-  adoptStoredSettings(params);
+  const tribeNames = adoptStoredSettings(params);
   // The graphics programs compile here, behind a card, so a map opens without that wait; a cold cache
   // pays once per settings and install, a warm one closes the card within a frame.
   const boot = mountBootProgress(['shaders']);
   await boot.begin('shaders');
   await graphicsShaderWarmup().done;
+  await tribeNames;
   await boot.finish();
   // Owns the handlers this module binds outside `root`, so `closeMenu` releases them in one step.
   const scope = new AbortController();

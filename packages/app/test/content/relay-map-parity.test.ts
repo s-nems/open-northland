@@ -120,7 +120,6 @@ async function relayedMapBoot(mapId: string): Promise<(session: GameSession) => 
     map,
     ir,
     script,
-    goodNames: new Map(),
     content: merge.content,
     session,
     missions: null,

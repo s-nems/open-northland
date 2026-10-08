@@ -100,7 +100,7 @@ export const enSurfaces = {
         'How hard the computer plays this seat: Easy and Medium build slower, raise fewer children and stop expanding earlier; Hard is the full strategy.',
       difficulty: { easy: 'Easy', medium: 'Medium', hard: 'Hard' },
       tribeMapDefault: 'map default',
-      tribeMapChoice: 'The map recommends {tribe}',
+      tribeMapChoice: 'The map recommends: {tribe}',
       tribeTitle:
         'The nation this seat plays: its settlers and buildings take that people. The map was designed for the starred one.',
       settingsTitle: 'Match settings',

@@ -35,7 +35,6 @@ import {
   GOOD_WHEAT,
   GOOD_WOOD,
 } from '../../ids/index.js';
-import type { SandboxContentExtras } from '../types.js';
 
 /** The vehicle good to yard pairing of `logicdefines.inc` (`GOOD_TYPE_VEHICLE_*` / `HOUSE_TYPE_VEHICLE_*`),
  *  for the vehicles the sandbox builds. */
@@ -46,28 +45,21 @@ const VEHICLE_HOUSE_BY_GOOD: ReadonlyMap<number, number> = new Map([
   [GOOD_CATAPULT, BUILDING_CATAPULT_YARD],
 ]);
 
-export function buildSandboxGoods(extras: SandboxContentExtras): readonly object[] {
-  const localName = (id: string): { name?: string } => {
-    const name = extras.goodNames?.get(id);
-    return name !== undefined ? { name } : {};
-  };
-
+export function buildSandboxGoods(): readonly object[] {
   return [
     { typeId: GOOD_NONE, id: 'none' },
     {
       typeId: GOOD_WOOD,
       id: 'wood',
-      ...localName('wood'),
       weight: 1,
       atomics: { harvest: HARVEST_ATOMIC },
       gathering: GATHERING_BALANCE_BY_ID.wood,
     },
-    { typeId: GOOD_PLANK, id: 'plank', ...localName('plank'), weight: 1 },
-    { typeId: GOOD_COIN, id: 'coin', ...localName('coin') },
+    { typeId: GOOD_PLANK, id: 'plank', weight: 1 },
+    { typeId: GOOD_COIN, id: 'coin' },
     {
       typeId: GOOD_STONE,
       id: 'stone',
-      ...localName('stone'),
       weight: 1,
       atomics: { harvest: STONE_HARVEST_ATOMIC },
       gathering: GATHERING_BALANCE_BY_ID.stone,
@@ -75,7 +67,6 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
     {
       typeId: GOOD_MUD,
       id: 'mud',
-      ...localName('mud'),
       weight: 1,
       atomics: { harvest: CLAY_HARVEST_ATOMIC },
       gathering: GATHERING_BALANCE_BY_ID.mud,
@@ -83,7 +74,6 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
     {
       typeId: GOOD_IRON,
       id: 'iron',
-      ...localName('iron'),
       weight: 1,
       atomics: { harvest: IRON_HARVEST_ATOMIC },
       gathering: GATHERING_BALANCE_BY_ID.iron,
@@ -91,7 +81,6 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
     {
       typeId: GOOD_GOLD,
       id: 'gold',
-      ...localName('gold'),
       weight: 1,
       atomics: { harvest: GOLD_HARVEST_ATOMIC },
       gathering: GATHERING_BALANCE_BY_ID.gold,
@@ -99,7 +88,6 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
     {
       typeId: GOOD_MUSHROOM,
       id: 'mushroom',
-      ...localName('mushroom'),
       weight: 1,
       atomics: { harvest: MUSHROOM_HARVEST_ATOMIC },
       gathering: GATHERING_BALANCE_BY_ID.mushroom,
@@ -120,7 +108,7 @@ export function buildSandboxGoods(extras: SandboxContentExtras): readonly object
       return {
         typeId: good.typeId,
         id: good.id,
-        name: extras.goodNames?.get(good.id) ?? good.name,
+        name: good.name,
         weight: 1,
         ...(equip !== undefined ? { equip } : {}),
         ...(good.homeQuality !== undefined ? { homeQuality: good.homeQuality } : {}),

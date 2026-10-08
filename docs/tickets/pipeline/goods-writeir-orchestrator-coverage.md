@@ -6,8 +6,8 @@ Two pipeline orchestrators have no direct test coverage. Their pure inner joins 
 emit/assembly wrappers around them are only exercised by a full `npm run pipeline` run against the
 local mod (not by CI, which has no game assets):
 
-- `convertGoodsStage` (`tools/asset-pipeline/src/stages/goods/index.ts`) - only the pure joins
-  `resolveGoodIcons` / `resolveGoodNames` are unit-tested. The stage's atlas + palette-LUT + manifest
+- `convertGoodsStage` (`tools/asset-pipeline/src/stages/goods/index.ts`) - only the pure join
+  `resolveGoodIcons` is unit-tested. The stage's atlas + palette-LUT + manifest
   emit (icon packing, the `paletteAliasMap` resolution, the good-icon LUT PNG, the manifest JSON) is
   untested.
 - `writeIr` (`tools/asset-pipeline/src/stages/ir/index.ts`) - `buildIr`'s extractors are covered via the
@@ -19,7 +19,7 @@ local mod (not by CI, which has no game assets):
 - Build a minimal synthetic game tree under a temp dir (reuse the shared `test/fixtures/` byte-buffer
   builders - palette/pcx/bmd/cif) sufficient to drive each stage.
 - `convertGoodsStage`: assert it emits the icon atlas PNG + `.atlas.json`, the goods palette LUT, and
-  a manifest whose good→icon/name joins match the fixture inputs; assert a missing-palette carrier
+  a manifest whose good→icon join matches the fixture inputs; assert a missing-palette carrier
   degrades to a neutral row (matching the warn-and-skip contract) instead of aborting.
 - `writeIr`: assert `<out>/ir.json` is written, round-trips through `parseContentSet` (zod +
   cross-reference validation), and carries the fixture's tables.

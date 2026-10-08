@@ -59,7 +59,7 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   const buildings = buildSandboxBuildings(extras);
   const jobs = buildSandboxJobs(extras);
   const tribes = buildSandboxTribes([...jobs.keys()], extras);
-  const goods = buildSandboxGoods(extras);
+  const goods = buildSandboxGoods();
   return parseContentSet({
     manifest: { version: IR_VERSION, generatedFrom: { mod: 'opennorthland-global-sandbox' }, locale: 'eng' },
     goods,
@@ -80,10 +80,8 @@ export function sandboxContent(map?: TerrainTypeIds, extras: SandboxContentExtra
   });
 }
 
-/**
- * A real-content override wins whole: it already ships footprints and names, so the overlays apply only
- * to the sandbox catalog.
- */
+/** A real-content override wins whole: it already ships footprints, so the footprint overlay applies
+ *  only to the sandbox catalog. */
 export function resolveWorldContent(
   map: TerrainTypeIds | undefined,
   options: WorldContentOptions,
@@ -94,7 +92,6 @@ export function resolveWorldContent(
     sandboxContent(map, {
       ...extras,
       ...(options.footprints !== undefined ? { buildingFootprints: options.footprints } : {}),
-      ...(options.goodNames !== undefined ? { goodNames: options.goodNames } : {}),
     })
   );
 }

@@ -57,8 +57,9 @@ export { extractStaticObjects, type MapStaticObjects } from './ini/static-object
 export {
   decodeCifStringTable,
   decodeDisplayText,
-  extractStringnById,
+  extractStringnNames,
   extractStringTable,
+  type StringnNames,
 } from './ini/string-tables.js';
 export { extractPatterns, extractPatternTransitions } from './ini/terrain.js';
 export {

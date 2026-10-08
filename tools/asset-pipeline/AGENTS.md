@@ -37,6 +37,13 @@ A correction the run did not apply fails the pipeline, including after a mod rel
 file: check whether the mod now fixes it, then delete the file or re-pin its hash. Deleting the file
 removes the correction. Behavior differences from the original stay in code and docs, not here.
 
+`corrections/strings/tables.json` is the one place for display-string fixes in all four languages,
+whether the table ships as `.ini` or `.cif`. Each entry names `lang`, `table` (its key in
+`gui/strings/<lang>.json`), the string `id`, the exact decoded `from` text (game-object names arrive
+trimmed, with single spaces), our `to` text and a Polish `reason`. The strings stage swaps the text
+only while it still reads `from`, and an entry the run did not apply fails the pipeline the same way,
+so a mod release that fixes the text forces its removal.
+
 ## Decoder work
 
 Binary claims need byte-level evidence from the owned copy and synthetic fixtures. Test valid input,

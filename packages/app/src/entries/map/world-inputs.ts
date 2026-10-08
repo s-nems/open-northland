@@ -22,7 +22,6 @@ export interface MapWorldInputs {
   readonly map: TerrainMapFile | null;
   readonly ir: ContentIr | null;
   readonly script: MapScript | null;
-  readonly goodNames: ReadonlyMap<string, string>;
   /** Real decoded content; null runs the sandbox catalog. */
   readonly content: ContentSet | null;
   readonly session: GameSession;
@@ -56,7 +55,6 @@ export function buildMapWorldFromInputs(inputs: MapWorldInputs): BuiltWorld<MapW
     specialItems: script?.specialItems ?? [],
     content: {
       footprints: buildingFootprints(ir),
-      goodNames: inputs.goodNames,
       ...(inputs.content !== null ? { content: inputs.content } : {}),
     },
     // Only the no-decodable-map fallback takes ownership from the session seat; a real map takes it

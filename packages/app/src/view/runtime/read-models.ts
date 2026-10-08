@@ -8,6 +8,7 @@ import type { ContentIr } from '../../content/ir/rows.js';
 import { workerRoleOf } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
+import { goodName } from '../../i18n/index.js';
 import type { SessionHost } from '../../session/index.js';
 import {
   makeDockOverlaySource,
@@ -113,7 +114,7 @@ export interface ViewReadModels extends ReturnType<typeof createSnapshotProjecti
 
 export async function createViewReadModels(deps: ViewReadModelDeps): Promise<ViewReadModels> {
   const { host, mapSize, localPlayer, fogGates } = deps;
-  const goodLabelByType = new Map(host.content.goods.map((g) => [g.typeId, g.name ?? g.id]));
+  const goodLabelByType = new Map(host.content.goods.map((g) => [g.typeId, goodName(g)]));
   const ir = await loadIr();
   const buildings = buildingModels(host.content.buildings, ir, deps.tribes, deps.authoredBuildings);
   return {

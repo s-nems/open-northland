@@ -66,7 +66,6 @@ function fallbackBoot(session: GameSession): MapWorkerBoot {
     map: null,
     ir: null,
     script: null,
-    goodNames: new Map(),
     content: null,
     session: { ...session, localSeat: OWNER_SEAT },
     missions: null,

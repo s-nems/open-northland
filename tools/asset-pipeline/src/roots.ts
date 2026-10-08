@@ -3,6 +3,7 @@ import { join, relative, sep } from 'node:path';
 import type { SourceCorrections } from './corrections.js';
 import { statIfExists, walkFiles } from './files.js';
 import { CULTURESNATION_HOME_URL, CULTURESNATION_MOD } from './mod-root.js';
+import type { StringCorrections } from './string-corrections.js';
 
 /** The mod subtrees the stages read by name; the on-disk spelling varies, so resolve them through
  *  `resolveSourceFile` or match them lower-cased. */
@@ -16,6 +17,8 @@ export interface SourceRoots {
   readonly mod: string;
   /** Fixes applied as stages read the mod; without them it is read as shipped. */
   readonly corrections?: SourceCorrections;
+  /** Fixes applied to decoded display strings; without them the tables keep the shipped text. */
+  readonly stringCorrections?: StringCorrections;
 }
 
 /** Reads a mod file as the run sees it, through the corrections that name it. */

@@ -26,8 +26,6 @@ export interface GoodsManifest {
   readonly paletteLutStem: string;
   readonly palettes: readonly string[];
   readonly icons: Readonly<Record<string, GoodIcon>>;
-  /** Localized display names: locale → good id → name. */
-  readonly names: Readonly<Record<string, Readonly<Record<string, string>>>>;
 }
 
 const GOODS_MANIFEST_URL = '/goods/manifest.json';

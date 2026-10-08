@@ -61,7 +61,7 @@ import {
 } from '../src/hud/details-panel/index.js';
 import { goodLabel, jobDisplayName } from '../src/hud/details-panel/model/context.js';
 import { experienceShown } from '../src/hud/details-panel/model/index.js';
-import { messages } from '../src/i18n/index.js';
+import { currentLocale, installNameOverlay, messages } from '../src/i18n/index.js';
 import { equipmentScene } from '../src/scenes/equipment.js';
 import { createSceneSim } from '../src/scenes/index.js';
 import { sandboxScene } from '../src/scenes/sandbox/index.js';
@@ -244,7 +244,7 @@ describe('selection details panel model', () => {
       goodType: GOOD_PLANK,
       pct: 50,
       running: true,
-      label: 'plank',
+      label: messages().goods.plank,
     });
     // The production row carries its output's string id - the icon key the panel draws beside the bar -
     // and its ingredient against the shelf: one wood a cycle, three held.
@@ -272,7 +272,7 @@ describe('selection details panel model', () => {
     ]);
     expect(model.staff?.count).toEqual({ filled: 1, capacity: 1 });
     // The running batch is what the status strip names.
-    expect(model.status).toEqual({ label: 'Pracuje', detail: 'plank', tone: 'ok' });
+    expect(model.status).toEqual({ label: 'Pracuje', detail: messages().goods.plank, tone: 'ok' });
   });
 
   it('models a construction site: delivered/needed/inbound materials, stall reason, and health ramp', () => {
@@ -688,24 +688,21 @@ describe('selection details panel model', () => {
     ]);
   });
 
-  it('labels a good by its localized content name when one is loaded (Mąka, not "flour")', () => {
-    // The browser entries feed sandboxContent a per-locale good-name map (content/good-names.ts); the
-    // model's labels must prefer that `name` over the machine id - the Production row read "flour x1".
-    const ctx = sandboxCtx();
-    const named = {
-      ...ctx,
-      goods: ctx.goods.map((g) => (g.typeId === GOOD_FLOUR ? { ...g, name: 'Mąka' } : g)),
-    };
+  it('labels a good by its catalog name, which an installed overlay replaces (Mąka, not "flour")', () => {
     const snapshot = snapshotOf(
       [buildingEntity(1, BUILDING_MILL, { components: { Stockpile: { amounts: [] } } })],
       1,
     );
-    const model = buildUnitPanelModel(snapshot, new Set([1]), named);
-    if (model.kind !== 'building') throw new Error('expected a building model');
-    expect(model.production?.kind).toBe('recipe');
-    if (model.production?.kind !== 'recipe') return;
-    expect(model.production.rows[0]?.label).toBe('Mąka');
-    expect(model.production.rows[0]?.goodId).toBe('flour'); // the icon key stays the machine id
+    installNameOverlay(currentLocale(), { goods: { flour: 'Mąka' } });
+    try {
+      const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
+      if (model.kind !== 'building') throw new Error('expected a building model');
+      if (model.production?.kind !== 'recipe') throw new Error('expected a recipe');
+      expect(model.production.rows[0]?.label).toBe('Mąka');
+      expect(model.production.rows[0]?.goodId).toBe('flour'); // the icon key stays the machine id
+    } finally {
+      installNameOverlay(currentLocale(), {});
+    }
   });
 
   it('lists each worker trade with its own filled/capacity (Druid 1/1 · Tragarz 0/1 · Zbieracz 0/1)', () => {
@@ -1125,7 +1122,7 @@ describe('selection details panel model', () => {
     expect(model.production).toEqual({
       kind: 'fields',
       goodId: 'wheat',
-      label: 'Wheat',
+      label: messages().goods.wheat,
       sown: 3,
       growing: 2,
       ripe: 1,

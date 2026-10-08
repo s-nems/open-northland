@@ -199,9 +199,9 @@ function ownsSeveralTribes(snapshot: WorldSnapshot, owner: number | undefined): 
   return tribes > 1;
 }
 
-/** The locale tables name a tier of an upgrade chain "<name> (poziom N)"; the head shows the tier on
- *  its own line. */
-const TIER_SUFFIX = /\s*\([^()]*\)$/;
+/** The authored tables name a tier of an upgrade chain "<name> (poziom N)", the game's own tables
+ *  "<name> N"; the head shows the tier on its own line. */
+const TIER_SUFFIX = /\s*(\([^()]*\)|\d+)$/;
 
 const HOUSEHOLD_ORDER: Readonly<Record<HouseholdEffect, number>> = { cooking: 0, rest: 1, piety: 2 };
 

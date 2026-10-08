@@ -27,7 +27,7 @@ vi.mock('../src/content/terrain.js', async (original) => ({
   loadRealTerrain: mocks.terrain,
 }));
 vi.mock('../src/view/runtime/world-bootstrap.js', () => ({
-  loadLocalizedRealContent: async () => ({ goodNames: new Map(), realContent: null }),
+  loadLocalizedRealContent: async () => null,
   createWorldRenderer: () => {
     throw new Error('the early exits never reach the renderer');
   },

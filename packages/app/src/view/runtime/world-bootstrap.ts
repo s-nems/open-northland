@@ -1,7 +1,8 @@
 import type { SpriteSheet, TerrainTextureSet } from '@open-northland/render';
 import { WorldRenderer } from '@open-northland/render';
 import type { Application } from 'pixi.js';
-import { loadGoodNameMap } from '../../content/good-names.js';
+import { loadGuiStrings } from '../../content/gui-gfx.js';
+import { installOriginalNames } from '../../content/original-names.js';
 import { loadPlanRoadArt } from '../../content/plan-road-art.js';
 import { loadPlanStakeArt } from '../../content/plan-stake-art.js';
 import {
@@ -19,20 +20,18 @@ import { postFxParam } from '../params.js';
 import { readStoredSettings } from '../settings-store.js';
 import type { GameViewDeps } from './game-view.js';
 
-/** The localized real content a playable entry boots on. Both fields degrade on their own, so a
- *  checkout without `content/` still boots on the authored fallbacks. */
-export interface LocalizedRealContent {
-  /** The good-name map in the session's language. */
-  readonly goodNames: ReadonlyMap<string, string>;
-  /** The merged real content, or `null` when `content/` is absent. */
-  readonly realContent: RealContentMerge | null;
-}
-
-export async function loadLocalizedRealContent(params: URLSearchParams): Promise<LocalizedRealContent> {
-  const goodNames = await loadGoodNameMap(localeParam(params));
-  const realContent = await loadRuntimeRealContent(goodNames);
-  if (realContent !== null) logRealContentGaps(realContent);
-  return { goodNames, realContent };
+/**
+ * The real content a playable entry boots on, `null` when `content/` is absent. With it, the session
+ * language's original game-object names replace the authored catalog names before any surface reads
+ * them; a bare checkout keeps the authored names.
+ */
+export async function loadLocalizedRealContent(params: URLSearchParams): Promise<RealContentMerge | null> {
+  const locale = localeParam(params);
+  const [realContent, strings] = await Promise.all([loadRuntimeRealContent(), loadGuiStrings(locale)]);
+  if (realContent === null) return null;
+  logRealContentGaps(realContent);
+  if (strings !== null) installOriginalNames(locale, strings, realContent.content);
+  return realContent;
 }
 
 /**

@@ -5,14 +5,19 @@ import { convertCursors, type GuiCursorResult } from './cursors.js';
 import { convertGuiHistory, type GuiHistoryResult } from './history.js';
 import { convertGuiPaletteLut } from './palette-lut.js';
 import { GUI_CONTENT_DIR } from './paths.js';
-import { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strings.js';
+import { convertGuiStrings, EXPORTED_TABLES, type GuiStringsResult } from './strings.js';
 import { convertWindowBitmaps } from './window-bitmaps.js';
 
 export { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 export { convertCursors, type GuiCursorResult } from './cursors.js';
 export { convertGuiHistory, type GuiHistoryResult } from './history.js';
 export { convertGuiPaletteLut, GUI_PALETTE_LUT_STEM } from './palette-lut.js';
-export { convertGuiStrings, type GuiStringsResult, STRING_TABLES } from './strings.js';
+export {
+  convertGuiStrings,
+  GAME_OBJECT_TABLES,
+  type GuiStringsResult,
+  STRING_TABLES,
+} from './strings.js';
 export { BODY_SHADOW_MIN_LUMA, convertWindowBitmaps, liftPaletteShadows } from './window-bitmaps.js';
 
 /** The emitted `content/gui/manifest.json`, the app's entry point to every GUI output. */
@@ -49,7 +54,7 @@ export async function convertGuiStage(roots: SourceRoots, outDir: string): Promi
   const manifest: GuiManifest = {
     atlases,
     paletteLut: { stem: palettes.stem, names: palettes.names },
-    strings: { languages: strings.map((s) => s.lang), tables: STRING_TABLES },
+    strings: { languages: strings.map((s) => s.lang), tables: EXPORTED_TABLES },
     history: { languages: history.map((h) => h.lang) },
     cursors,
   };

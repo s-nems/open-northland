@@ -76,7 +76,6 @@ describe.runIf(hasRealIr())(`${PARENT} played as franks through its sub-mission`
         map,
         ir,
         script,
-        goodNames: new Map(),
         content: merge.content,
         session: mapSession(search, mapLobbySlots(script)),
         missions: null,

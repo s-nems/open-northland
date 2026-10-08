@@ -1,4 +1,4 @@
-import { localeParam, setActiveLocale } from './i18n/index.js';
+import { installNameOverlay, localeParam, setActiveLocale } from './i18n/index.js';
 import { routeFor } from './routes.js';
 import { dismissBootProgress } from './view/boot-progress.js';
 import { guardEntry, pushEntryUrl, releaseDocument } from './view/navigation-guard.js';
@@ -24,15 +24,21 @@ export async function runEntry(
   // Set once this entry took the document; a load that fails earlier leaves the running one held.
   let guarded = false;
   try {
-    setActiveLocale(localeParam(params));
+    const locale = localeParam(params);
+    setActiveLocale(locale);
     const route = routeFor(params);
-    const run = await route.load();
+    const [run, tribeNames] = await Promise.all([
+      route.load(),
+      import('./content/original-names.js').then((names) => names.originalTribeNameOverlay(locale)),
+    ]);
     if (!cursorsInstalled) {
       const { installCursorTheme } = await import('./view/cursors/theme.js');
       installCursorTheme();
       cursorsInstalled = true;
     }
     onLoaded();
+    // Only now: the screen this replaces, a world with its full overlay, draws until `onLoaded`.
+    installNameOverlay(locale, tribeNames);
     guardEntry(route.id);
     guarded = true;
     await run(gameCanvas(), params);
