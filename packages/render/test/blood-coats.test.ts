@@ -1,9 +1,16 @@
 import type { Entity, SimEvent } from '@open-northland/sim';
 import { expect, it } from 'vitest';
-import { BLOOD_COAT_LIFETIME, BloodCoats, MAX_BLOOD_COATS } from '../src/data/effects/blood-coats.js';
+import {
+  BLOOD_COAT_LIFETIME,
+  BloodCoats,
+  MAX_BLOOD_COAT_AMOUNT,
+  MAX_BLOOD_COATS,
+} from '../src/data/effects/blood-coats.js';
 
 const hit: SimEvent = {
   kind: 'combatHit',
+  damage: 250,
+  targetMaxHealth: 1000,
   attacker: 1 as Entity,
   target: 2 as Entity,
   weaponMainType: 3,
@@ -11,6 +18,8 @@ const hit: SimEvent = {
 };
 const shot: SimEvent = {
   kind: 'projectileHit',
+  damage: 250,
+  targetMaxHealth: 1000,
   shooter: 3 as Entity,
   projectile: 10 as Entity,
   target: 4 as Entity,
@@ -36,14 +45,15 @@ it('accumulates coverage, refreshes wetness, keeps each pattern stable and fades
   expect(dryness(first)).toBe(0);
   const dried = coats.packed(2, 600);
   expect(dryness(dried)).toBe(255);
-  expect(amount(dried)).toBe(amount(first));
+  expect(Math.abs(amount(dried) * 2 - amount(first))).toBeLessThanOrEqual(1);
   coats.ingest([hit], 600);
   const second = coats.packed(2, 600);
-  expect(amount(second)).toBe(255);
+  expect(amount(second)).toBeGreaterThan(amount(first));
+  expect(amount(second)).toBeLessThan(Math.round(MAX_BLOOD_COAT_AMOUNT * 255));
   expect(dryness(second)).toBe(0);
   expect(Math.floor(second / 65536)).toBe(Math.floor(first / 65536));
   expect(new Float32Array([second])[0]).toBe(second);
-  expect(amount(coats.packed(2, 2100))).toBeLessThan(255);
+  expect(amount(coats.packed(2, 2100))).toBeLessThan(amount(second));
   expect(coats.packed(2, 600 + BLOOD_COAT_LIFETIME)).toBe(0);
 });
 
@@ -72,4 +82,33 @@ it('bounds off-screen history and evicts the oldest untouched coat', () => {
   coats.ingest([], BLOOD_COAT_LIFETIME + 1);
   expect(coats.packed(0, BLOOD_COAT_LIFETIME + 1)).toBe(0);
   expect(coats.packed(MAX_BLOOD_COATS, BLOOD_COAT_LIFETIME + 1)).toBe(0); // fully faded before retirement
+});
+
+it('accumulates actual wounds rather than hit counts, with a lower ceiling for long fights', () => {
+  const grazes = new BloodCoats();
+  const wound = new BloodCoats();
+  grazes.ingest(
+    Array.from({ length: 100 }, () => ({ ...hit, damage: 1 })),
+    0,
+  );
+  wound.ingest([{ ...hit, damage: 100 }], 0);
+  for (const ref of [1, 2]) expect(amount(grazes.packed(ref, 0))).toBe(amount(wound.packed(ref, 0)));
+  expect(amount(grazes.packed(2, 0))).toBeLessThan(20);
+  wound.ingest(
+    Array.from({ length: 20 }, () => ({ ...hit, damage: 1000 })),
+    1,
+  );
+  expect(amount(wound.packed(2, 1))).toBe(Math.round(MAX_BLOOD_COAT_AMOUNT * 255));
+});
+
+it('neither bloodies nor refreshes a coat from protected hits, and lets old stains fade during grazing hits', () => {
+  const coats = new BloodCoats();
+  coats.ingest([{ ...hit, damage: 0 }], 0);
+  expect(coats.packed(2, 0)).toBe(0);
+  coats.ingest([hit], 1);
+  const dried = coats.packed(2, 601);
+  coats.ingest([{ ...hit, damage: 0 }], 601);
+  expect(coats.packed(2, 601)).toBe(dried);
+  for (let tick = 721; tick <= 2401; tick += 120) coats.ingest([{ ...hit, damage: 1 }], tick);
+  expect(amount(coats.packed(2, 2401))).toBeLessThan(amount(dried) / 3);
 });

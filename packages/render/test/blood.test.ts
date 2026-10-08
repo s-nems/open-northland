@@ -20,6 +20,8 @@ import { snapshotOf } from './support/fixtures.js';
 
 const hit = (target = 2, weaponMainType = 3, hx = 4, hy = 6): SimEvent => ({
   kind: 'combatHit',
+  damage: 250,
+  targetMaxHealth: 1000,
   attacker: 1 as Entity,
   target: target as Entity,
   weaponMainType,
@@ -27,6 +29,8 @@ const hit = (target = 2, weaponMainType = 3, hx = 4, hy = 6): SimEvent => ({
 });
 const shot: SimEvent = {
   kind: 'projectileHit',
+  damage: 250,
+  targetMaxHealth: 1000,
   shooter: 1 as Entity,
   projectile: 7 as Entity,
   target: 2 as Entity,
@@ -62,7 +66,7 @@ function mark() {
 }
 
 describe('blood event history', () => {
-  it('distinguishes cuts, punctures and blunt hits; only a hit paired with death leaves a pool', () => {
+  it('distinguishes cuts, punctures and blunt hits and marks only the final impact as fatal', () => {
     expect(
       foldBloodMarks([], [hit(), hit(3, 2, 5), hit(4, 1, 6), shot, death], 10).map((m) => [
         m.profile,
@@ -78,6 +82,29 @@ describe('blood event history', () => {
     expect(
       foldBloodMarks([], [{ ...shot, structure: true }, { ...hit(), structure: true } as SimEvent], 10),
     ).toEqual([]);
+  });
+
+  it('suppresses protected hits and scales blood to damage after armor, including a small lethal wound', () => {
+    expect(foldBloodMarks([], [{ ...shot, damage: 0 }], 0)).toEqual([]);
+    const [graze, wound] = foldBloodMarks(
+      [],
+      [
+        { ...shot, damage: 1 },
+        { ...shot, damage: 250 },
+      ],
+      0,
+    );
+    if (graze === undefined || wound === undefined) throw new Error('Missing wounds');
+    expect(graze.amount).toBeCloseTo(0.004);
+    expect(wound.amount).toBe(1);
+    const small = bloodDrops(graze);
+    const large = bloodDrops(wound);
+    expect(small.length).toBeLessThan(large.length);
+    expect(Math.max(...small.map((drop) => drop.size))).toBeLessThan(
+      Math.min(...large.map((drop) => drop.size)),
+    );
+    const [fatal] = foldBloodMarks([], [{ ...shot, damage: 1 }, death], 0);
+    expect(fatal).toMatchObject({ fatal: true, amount: graze.amount });
   });
 
   it('uses the attacker and the isometric row stagger for the incoming direction', () => {

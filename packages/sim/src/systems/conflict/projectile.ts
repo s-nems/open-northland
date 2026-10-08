@@ -96,11 +96,13 @@ function land(
       ? 'projectile'
       : 'collateral';
     // Original behavior: a shot that does its victim no damage thuds like one that strikes nothing.
-    if (!strike(world, ctx, proj, victim, source, pendingReactions)) continue;
+    const wound = strike(world, ctx, proj, victim, source, pendingReactions);
+    if (wound === null) continue;
     struckAny = true;
     // Ranged: the projectile announces its own `projectileHit`, not a melee `combatHit`.
     ctx.events.emit({
       kind: 'projectileHit',
+      ...wound,
       projectile: p,
       shooter: proj.source,
       ...(proj.player !== null ? { shooterPlayer: proj.player } : {}),
@@ -138,7 +140,7 @@ function land(
 }
 
 /**
- * Land shot `proj`'s blow on `victim`; true when it did damage. The victim's armor picks the damage column,
+ * Land shot `proj`'s blow on `victim`; null when computed damage is non-positive. The victim's armor picks the damage column,
  * as a melee swing's does. Original behavior: the blow comes from where the shot was loosed, which a
  * person's hit direction reads, and a siege shot (the only kind with an `impact`) is a vehicle's, which the
  * commander's amulets do not raise. A side not at war with the shooter, which only a `hitSelf` weapon reaches,
@@ -152,7 +154,7 @@ function strike(
   victim: Entity,
   source: 'projectile' | 'collateral',
   pendingReactions: PendingHitReaction[],
-): boolean {
+): ReturnType<typeof resolveCombatHit> {
   const material = targetMaterial(world, ctx, victim);
   const blow = {
     damage: damageVsTarget(world, victim, weaponDamageVsMaterial(proj, material)),

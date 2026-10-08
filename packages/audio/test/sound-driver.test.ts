@@ -245,7 +245,14 @@ describe('SoundDriver', () => {
     expect(fetched).toHaveLength(1);
 
     const struck: readonly SimEvent[] = [
-      { kind: 'combatHit', attacker: 9 as Entity, target: 7 as Entity, at: { hx: 5, hy: 5 } },
+      {
+        kind: 'combatHit',
+        damage: 250,
+        targetMaxHealth: 1000,
+        attacker: 9 as Entity,
+        target: 7 as Entity,
+        at: { hx: 5, hy: 5 },
+      },
     ];
     driver.update({ ...ours, events: struck });
     await flush();

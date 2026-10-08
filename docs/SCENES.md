@@ -155,10 +155,12 @@ them. Freya's full bakery names the bread no store in reach takes; Ingrid's empt
 ingredients the headquarters holds outside her reach.
 
 `?scene=combat-blood` compares sword, spear and fist hits on the left with arrows and a fatal
-hit on the right. Watch sprays settle beneath fighters, larger stains left by casualties, and the
-different shades of fresh and drying blood. Victims accumulate stains on their bodies; melee attackers
-also catch splashes, while distant archers stay clean. Ground marks fade within 100 game seconds;
-body stains dry and clear within 150 seconds of the last hit or splash. Both histories are bounded.
+hit on the right. Spray size and ground stains follow damage after protection: grazes leave small
+marks, and fully protected hits leave none. Fresh and drying blood use different shades. Victims
+accumulate body stains in proportion to their wounds; melee attackers catch smaller splashes, while
+distant archers stay clean. Body coverage is capped to keep equipment and team colours readable.
+Ground marks fade within 100 game seconds; body stains steadily fade even during combat and clear
+within 150 seconds of the last wound or splash. Both histories are bounded.
 In Settings → Graphics, switching Blood off clears ground and body stains even while paused;
 switching it back on admits new hits. `?scene=battle` exercises the same effect
 with 1000 fighters per side on a 96 × 80 cell field. Both armies attack across the field with

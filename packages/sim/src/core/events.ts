@@ -221,6 +221,9 @@ export type SimEvent =
        * emits nothing. `attackerPlayer` is the striker's owner as the blow lands, absent for an unowned one.
        */
       readonly kind: 'combatHit';
+      /** Wounding hitpoints after protection, capped to the living pool before instant healing. */
+      readonly damage: number;
+      readonly targetMaxHealth: number;
       readonly attacker: Entity;
       readonly attackerPlayer?: number;
       readonly target: Entity;
@@ -293,6 +296,9 @@ export type SimEvent =
        * included.
        */
       readonly kind: 'projectileHit';
+      /** Wounding hitpoints and pool size, with the same semantics as combatHit. */
+      readonly damage: number;
+      readonly targetMaxHealth: number;
       readonly projectile: Entity;
       readonly shooter: Entity;
       readonly shooterPlayer?: number;

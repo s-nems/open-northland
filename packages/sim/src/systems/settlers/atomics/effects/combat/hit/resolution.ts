@@ -111,10 +111,15 @@ function meleeTargetOutOfReach(
   return dist > effect.maxRange;
 }
 
+export interface HitDamage {
+  readonly damage: number;
+  readonly targetMaxHealth: number;
+}
+
 /**
  * Land one combat blow, shared by a melee swing at its ATTACK frame and a ranged projectile on contact so
  * the two cannot drift. {@link landedDamage} turns `blow.damage` into the hitpoints taken, on contact;
- * answers whether the blow did damage.
+ * returns its wound, or null when computed damage is non-positive.
  * Original behavior: only a living human striker's amulets count, so a defence-mode building's shot
  * carries none. Reaching 0 hitpoints is dead; `cleanupSystem` reaps the corpse at the end of the tick. A dead
  * attacker is tolerated, since a dead archer's arrow still lands. A `collateral` blow, a siege burst on a side
@@ -128,17 +133,19 @@ export function resolveCombatHit(
   blow: LandingBlow,
   pendingReactions: PendingHitReaction[],
   source: 'melee' | 'projectile' | 'collateral',
-): boolean {
+): HitDamage | null {
   // A target felled earlier this tick still holds its Health until cleanup reaps it: a blow there lands on a
   // corpse, which earns nothing and provokes no one, the same as a shot that is never loosed at one.
   const pool = world.tryGet(target, Health);
-  if (pool === undefined || pool.hitpoints <= 0) return false;
+  if (pool === undefined || pool.hitpoints <= 0) return null;
   const from = blow.from ?? world.tryGet(attacker, Position);
   const damage = landedDamage(world, ctx, attacker, target, blow.damage, from, blow.vehicleShot !== true);
   const weaponMainType = blow.weaponMainType ?? undefined;
   // A blow counts as damaging by its damage value, so an overkill still earns fight experience. Original
   // behavior: a blow that does no damage is silent, earns nothing and is no attack on the victim's side.
   const dealtDamage = damage > 0;
+  const dealt = shieldedByScript(world, target) ? 0 : Math.max(0, damage);
+  const wound = { damage: Math.min(pool.hitpoints, dealt), targetMaxHealth: pool.max };
   // Ranged hits do not emit this, because `projectileSystem` announces its own `projectileHit`.
   if (source === 'melee' && dealtDamage) {
     const at = world.tryGet(target, Position);
@@ -146,6 +153,7 @@ export function resolveCombatHit(
       const attackerPlayer = ownerOf(world, attacker);
       ctx.events.emit({
         kind: 'combatHit',
+        ...wound,
         attacker,
         ...(attackerPlayer !== undefined ? { attackerPlayer } : {}),
         target,
@@ -158,7 +166,6 @@ export function resolveCombatHit(
   }
   // A script-shielded target still hears the blow and still turns on its attacker; only its pool is
   // spared here, as starvation spares it in the needs pass.
-  const dealt = shieldedByScript(world, target) ? 0 : Math.max(0, damage);
   if (dealt > 0) {
     woundBearer(world, ctx, target, dealt);
     markStructureDamaged(world, ctx, target);
@@ -185,7 +192,7 @@ export function resolveCombatHit(
   } else {
     collectHitReaction(world, ctx, target, pendingReactions); // applied after the caller's loop
   }
-  return dealtDamage;
+  return dealtDamage ? wound : null;
 }
 
 /** Whether a script has made this target unharmable - a human's invulnerable bit or a house's

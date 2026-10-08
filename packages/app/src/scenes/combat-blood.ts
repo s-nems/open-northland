@@ -24,7 +24,8 @@ function build(sim: Simulation): void {
     const attacker = spawnSettlerAtNode(sim, job, from, HUMAN_PLAYER);
     for (const unit of [attacker, target]) {
       const health = sim.world.mut(unit, Health);
-      health.hitpoints = health.max = ENDURANCE;
+      // Extra endurance keeps the comparison running; the normal max still sizes visible wounds.
+      health.hitpoints = ENDURANCE;
       sim.world.mut(unit, Stance).mode = systems.MILITARY_MODE.IGNORE;
     }
     components.setMissionBehaviour(sim.world, target, components.MISSION_BEHAVIOUR.PASSIVE, true);

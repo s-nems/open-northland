@@ -57,6 +57,8 @@ function snapshotAt(tick: number): WorldSnapshot {
 
 const hitOn = (target: number): SimEvent => ({
   kind: 'combatHit',
+  damage: 250,
+  targetMaxHealth: 1000,
   attacker: entity(99),
   target: entity(target),
   at: { hx: 0, hy: 0 },

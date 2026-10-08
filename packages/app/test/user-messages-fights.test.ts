@@ -80,6 +80,8 @@ const nodeOf = (b: Body) => nodeOfPosition(fx.fromInt(b.x), fx.fromInt(b.y));
 function melee(attacker: Body, target: Body): SimEvent {
   return {
     kind: 'combatHit',
+    damage: 250,
+    targetMaxHealth: 1000,
     attacker: e(attacker.id),
     ...(attacker.player === undefined ? {} : { attackerPlayer: attacker.player }),
     target: e(target.id),
@@ -90,6 +92,8 @@ function melee(attacker: Body, target: Body): SimEvent {
 function shot(shooterPlayer: number, target: Body, collateral = false): SimEvent {
   return {
     kind: 'projectileHit',
+    damage: 250,
+    targetMaxHealth: 1000,
     projectile: e(99),
     shooter: e(98),
     shooterPlayer,

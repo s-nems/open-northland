@@ -149,7 +149,8 @@ export class BloodLayer {
           age < BLOOD_AIR_TICKS &&
           (fogVisible === undefined || fogVisible((mark.hx - rowStagger(mark.hy / 2)) / 2, mark.hy / 2));
       }
-      node.ground.alpha = alpha * (1 - water.surface(mark.hx, mark.hy));
+      node.ground.alpha =
+        alpha * (0.25 + 0.75 * Math.sqrt(mark.amount)) * (1 - water.surface(mark.hx, mark.hy));
       node.ground.tint = dryColour(age, mark.seed);
       this.animate(node, mark, age);
       this.seen.add(mark);
@@ -187,20 +188,14 @@ export class BloodLayer {
       stain.visible = false;
       return { motion, air: flying, stain };
     });
-    const strength = mark.fatal
-      ? 1.25
-      : mark.profile === 'blunt'
-        ? 0.35
-        : mark.profile === 'pierce'
-          ? 0.55
-          : 0.75;
+    const strength = mark.fatal ? 1 : mark.profile === 'blunt' ? 0.18 : mark.profile === 'pierce' ? 0.4 : 0.6;
     return {
       ground,
       air,
       jet,
       pool,
       drops,
-      poolScale: strength * (0.85 + frac(mark.seed, 91) * 0.45),
+      poolScale: strength * Math.sqrt(mark.amount) * (0.85 + frac(mark.seed, 91) * 0.45),
       settled: false,
     };
   }
@@ -216,7 +211,7 @@ export class BloodLayer {
     }
     if (node.settled) return;
     if (node.jet !== undefined) {
-      const strength = mark.profile === 'blunt' ? 0.6 : mark.fatal ? 1.2 : 1;
+      const strength = (mark.profile === 'blunt' ? 0.5 : 0.85) * Math.sqrt(mark.amount);
       const spread = smoothUnit(age / 3);
       node.jet.alpha = 1 - smoothUnit(age / 5);
       node.jet.scale.set(strength * (0.25 + spread * 0.7), strength * (0.23 + spread * 0.2));

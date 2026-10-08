@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { addCurrentAtomic, Health, Owner, Position } from '../../src/components/index.js';
+import {
+  addCurrentAtomic,
+  Health,
+  MISSION_BEHAVIOUR,
+  Owner,
+  Position,
+  setMissionBehaviour,
+} from '../../src/components/index.js';
 import { eventAt } from '../../src/core/events.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { fx, Simulation } from '../../src/index.js';
@@ -60,6 +67,8 @@ describe('combatHit - a landed melee blow', () => {
       target,
       attacker,
       weaponMainType: 3,
+      damage: 100,
+      targetMaxHealth: 500,
       at: eventAt(fx.fromInt(7), fx.fromInt(5)),
     });
     expect(hits[0]).not.toHaveProperty('attackerPlayer');
@@ -103,6 +112,21 @@ describe('combatHit - a landed melee blow', () => {
     expect(hit).not.toHaveProperty('soundType');
   });
 
+  it('reports no wound for an invulnerable body while preserving its impact cue', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const attacker = sim.world.create();
+    const target = sim.world.create();
+    sim.world.add(target, Position, { x: fx.fromInt(7), y: fx.fromInt(5) });
+    sim.world.add(target, Health, { hitpoints: 500, max: 500 });
+    setMissionBehaviour(sim.world, target, MISSION_BEHAVIOUR.INVULNERABLE, true);
+    attack(sim, attacker, target, 100, 3, 82);
+    sim.step();
+    expect(sim.world.get(target, Health).hitpoints).toBe(500);
+    expect(sim.snapshot().events.filter((event) => event.kind === 'combatHit')).toMatchObject([
+      { damage: 0, targetMaxHealth: 500, soundType: 82 },
+    ]);
+  });
+
   it('emits NO combatHit when the swing strikes air (target has no Health - a miss)', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const attacker = sim.world.create();
@@ -126,7 +150,9 @@ describe('combatHit - a landed melee blow', () => {
     sim.step();
 
     const evts = sim.snapshot().events;
-    expect(evts.filter((ev) => ev.kind === 'combatHit')).toHaveLength(1);
+    expect(evts.filter((ev) => ev.kind === 'combatHit')).toMatchObject([
+      { damage: 20, targetMaxHealth: 500 },
+    ]);
     expect(evts.filter((ev) => ev.kind === 'settlerDied')).toHaveLength(1); // reaped same tick
     expect(sim.world.isAlive(target)).toBe(false);
   });

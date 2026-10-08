@@ -181,7 +181,7 @@ describe('resolveCombatHit - a blow that does no damage', () => {
       [],
       'melee',
     );
-    expect(landed).toBe(false);
+    expect(landed).toBeNull();
     expect(sim.world.get(victim, Health).hitpoints).toBe(BASE);
     expect(sim.events.current().filter((ev) => ev.kind === 'combatHit')).toEqual([]);
     expect(sim.world.get(striker, SettlerProgress).experience.size).toBe(0);
@@ -189,8 +189,10 @@ describe('resolveCombatHit - a blow that does no damage', () => {
 
     expect(
       resolveCombatHit(sim.world, ctxOf(sim), striker, victim, swing(ARMOR_BLOCKING + 1), [], 'melee'),
-    ).toBe(true);
-    expect(sim.events.current().filter((ev) => ev.kind === 'combatHit')).toHaveLength(1);
+    ).toEqual({ damage: 1, targetMaxHealth: BASE });
+    expect(sim.events.current().filter((ev) => ev.kind === 'combatHit')).toMatchObject([
+      { damage: 1, targetMaxHealth: BASE },
+    ]);
     expect(diplomacyStance(sim.world, VICTIM_PLAYER, ATTACKER_PLAYER)).toBe('enemy');
   });
 
@@ -222,7 +224,7 @@ describe('resolveCombatHit - a blow that does no damage', () => {
     sim.world.add(house, Position, positionOfNode(1, 0));
     sim.world.add(house, Building, { buildingType: 1, tribe: VIKING, built: 0, level: 0 });
     sim.world.add(house, Health, { hitpoints: BASE, max: BASE });
-    expect(resolveCombatHit(sim.world, ctxOf(sim), striker, house, swing(0), [], 'melee')).toBe(false);
+    expect(resolveCombatHit(sim.world, ctxOf(sim), striker, house, swing(0), [], 'melee')).toBeNull();
     expect(sim.world.get(house, Health).hitpoints).toBe(BASE);
     expect(sim.events.current()).toEqual([]);
   });

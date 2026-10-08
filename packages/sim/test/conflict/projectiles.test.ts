@@ -333,14 +333,19 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     const bystander = fighterAt(sim, 8, 1, FRANK, IDLE);
     sim.world.add(bystander, Armor, { armorClass: CHAIN });
     let soundType: number | undefined;
+    let wound: { damage: number; targetMaxHealth: number } | undefined;
     for (let i = 0; i < 20 && sim.world.isAlive(shot); i++) {
       sim.step();
       const event = sim.snapshot().events.find((candidate) => candidate.kind === 'projectileHit');
-      if (event?.kind === 'projectileHit') soundType = event.soundType;
+      if (event?.kind === 'projectileHit') {
+        soundType = event.soundType;
+        wound = event;
+      }
     }
 
     expect(sim.world.get(bystander, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE_VS_CHAIN);
     expect(soundType).toBe(BOW_HIT_SOUND_VS_CHAIN);
+    expect(wound).toMatchObject({ damage: BOW_DAMAGE_VS_CHAIN, targetMaxHealth: TARGET_HP });
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP);
   });
 
@@ -452,6 +457,7 @@ describe('projectiles - frozen flight chord + on-contact damage', () => {
     expect(sim.world.get(target, Health).hitpoints).toBe(TARGET_HP - BOW_DAMAGE); // the column damage landed, with no experience on an arrow
     // A projectileHit was announced for render/audio, carrying the impact the bow lists for a bare target.
     expect(hitEvent?.soundType).toBe(BOW_HIT_SOUND);
+    expect(hitEvent).toMatchObject({ damage: BOW_DAMAGE, targetMaxHealth: TARGET_HP });
     expect(sim.world.isAlive(shot)).toBe(false); // the spent arrow was destroyed on impact
   });
 

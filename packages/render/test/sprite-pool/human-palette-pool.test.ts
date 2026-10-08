@@ -199,6 +199,8 @@ it('keeps blood on visible bodies across culling and clears even detached fighte
     [
       {
         kind: 'combatHit',
+        damage: 250,
+        targetMaxHealth: 1000,
         attacker: 1 as Entity,
         target: 2 as Entity,
         weaponMainType: 3,

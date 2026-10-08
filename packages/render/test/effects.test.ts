@@ -75,6 +75,8 @@ describe('combat remains', () => {
     expect(marks).toHaveLength(MAX_ACTIVE_EFFECTS);
     const hits: SimEvent[] = Array.from({ length: 500 }, (_, i) => ({
       kind: 'combatHit',
+      damage: 250,
+      targetMaxHealth: 1000,
       attacker: 1 as Entity,
       target: i as Entity,
       at: { hx: i, hy: 6 },

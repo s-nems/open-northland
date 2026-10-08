@@ -1,9 +1,12 @@
 import type { SimEvent } from '@open-northland/sim';
 import { smoothUnit } from './blood.js';
+import { bloodLoss, isBloodHit } from './blood-damage.js';
 
 /** Authored appearance: clothing dries, then clears over 150 game seconds without changing health. */
 export const BLOOD_COAT_LIFETIME = 1800;
 export const MAX_BLOOD_COATS = 8192;
+/** Keep equipment and team colours readable even after a long fight. */
+export const MAX_BLOOD_COAT_AMOUNT = 0.65;
 interface Coat {
   readonly amount: number;
   readonly tick: number;
@@ -26,10 +29,11 @@ export class BloodCoats {
       this.coats.delete(ref);
     }
     for (const event of events) {
-      if (event.kind !== 'combatHit' && event.kind !== 'projectileHit') continue;
-      if (event.structure === true) continue;
-      this.add(event.target, tick, event.kind === 'projectileHit' ? 0.4 : 0.55);
-      if (event.kind === 'combatHit') this.add(event.attacker, tick, event.weaponMainType === 1 ? 0.13 : 0.3);
+      if (!isBloodHit(event)) continue;
+      const loss = bloodLoss(event);
+      this.add(event.target, tick, loss * 0.55);
+      if (event.kind === 'combatHit')
+        this.add(event.attacker, tick, loss * (event.weaponMainType === 1 ? 0.06 : 0.16));
     }
     while (this.coats.size > MAX_BLOOD_COATS) {
       const oldest = this.coats.keys().next();
@@ -42,7 +46,7 @@ export class BloodCoats {
     const old = this.coats.get(ref);
     const retained = old === undefined ? 0 : old.amount * coatFade(tick - old.tick);
     this.coats.delete(ref);
-    this.coats.set(ref, { amount: Math.min(1, retained + amount), tick });
+    this.coats.set(ref, { amount: Math.min(MAX_BLOOD_COAT_AMOUNT, retained + amount), tick });
   }
 
   /** Three bytes packed exactly into a float32: coverage, dryness, stable individual pattern. */
@@ -59,5 +63,6 @@ export class BloodCoats {
 }
 
 function coatFade(age: number): number {
-  return 1 - smoothUnit((age - 1200) / (BLOOD_COAT_LIFETIME - 1200));
+  const elapsed = Math.max(0, age);
+  return 0.5 ** (elapsed / 600) * (1 - smoothUnit((elapsed - 1200) / (BLOOD_COAT_LIFETIME - 1200)));
 }

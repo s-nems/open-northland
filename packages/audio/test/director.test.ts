@@ -286,7 +286,16 @@ describe('directAudio combat SFX', () => {
 
   it('plays the impact the weapon listed for the victim, by id, and the struck man screams', () => {
     const frame = direct([
-      { kind: 'combatHit', attacker: entity(12), target: entity(3), weaponMainType: 3, soundType: 82, at },
+      {
+        kind: 'combatHit',
+        damage: 250,
+        targetMaxHealth: 1000,
+        attacker: entity(12),
+        target: entity(3),
+        weaponMainType: 3,
+        soundType: 82,
+        at,
+      },
     ]);
     expect(frame.oneShots.map((s) => s.files)).toEqual([['static/swordhit01.wav'], ['static/hit m 01.wav']]);
     // Both are self-exclusive: a body blow and a scream never stack on a copy still sounding.
@@ -296,20 +305,35 @@ describe('directAudio combat SFX', () => {
   });
 
   it('screams in the struck woman`s voice, and never for a body without one', () => {
-    const woman = direct([{ kind: 'combatHit', attacker: entity(3), target: entity(12), at }]);
+    const woman = direct([
+      { kind: 'combatHit', damage: 250, targetMaxHealth: 1000, attacker: entity(3), target: entity(12), at },
+    ]);
     expect(woman.oneShots.map((s) => s.files)).toEqual([['static/hit f 01.wav']]);
     // A bear (no voice row for its tribe) and a stranger (not in the snapshot) scream nothing.
-    expect(direct([{ kind: 'combatHit', attacker: entity(3), target: entity(9), at }]).oneShots).toHaveLength(
-      0,
-    );
-    expect(direct([{ kind: 'combatHit', attacker: entity(3), target: entity(4), at }]).oneShots).toHaveLength(
-      0,
-    );
+    expect(
+      direct([
+        { kind: 'combatHit', damage: 250, targetMaxHealth: 1000, attacker: entity(3), target: entity(9), at },
+      ]).oneShots,
+    ).toHaveLength(0);
+    expect(
+      direct([
+        { kind: 'combatHit', damage: 250, targetMaxHealth: 1000, attacker: entity(3), target: entity(4), at },
+      ]).oneShots,
+    ).toHaveLength(0);
   });
 
   it('lands a blow on a house with the house impact alone, layering freely, and no scream', () => {
     const frame = direct([
-      { kind: 'combatHit', attacker: entity(3), target: entity(7), soundType: 84, structure: true, at },
+      {
+        kind: 'combatHit',
+        damage: 250,
+        targetMaxHealth: 1000,
+        attacker: entity(3),
+        target: entity(7),
+        soundType: 84,
+        structure: true,
+        at,
+      },
     ]);
     expect(frame.oneShots.map((s) => s.files)).toEqual([['static/swordhouse01.wav']]);
     expect(frame.oneShots[0]?.exclusive).toBeUndefined();
@@ -317,7 +341,15 @@ describe('directAudio combat SFX', () => {
 
   it('stays silent for a blow whose weapon lists no impact for that material', () => {
     const frame = direct([
-      { kind: 'combatHit', attacker: entity(3), target: entity(7), structure: true, at },
+      {
+        kind: 'combatHit',
+        damage: 250,
+        targetMaxHealth: 1000,
+        attacker: entity(3),
+        target: entity(7),
+        structure: true,
+        at,
+      },
     ]);
     expect(frame.oneShots).toHaveLength(0);
   });
@@ -337,6 +369,8 @@ describe('directAudio combat SFX', () => {
     const hit = direct([
       {
         kind: 'projectileHit',
+        damage: 250,
+        targetMaxHealth: 1000,
         projectile: entity(9),
         shooter: entity(12),
         target: entity(3),

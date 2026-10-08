@@ -26,6 +26,8 @@ const died: SimEvent = {
 };
 const hit: SimEvent = {
   kind: 'combatHit',
+  damage: 250,
+  targetMaxHealth: 1000,
   attacker: 1 as Entity,
   target: 2 as Entity,
   at: { hx: 4, hy: 6 },
