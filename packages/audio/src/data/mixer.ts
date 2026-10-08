@@ -91,7 +91,6 @@ export function oneShotBus(shot: OneShot): SoundBus {
     case 'alert':
       return 'ui';
     case 'voice':
-      return 'world';
     case 'sfx':
       return 'world';
     case 'ambience':
