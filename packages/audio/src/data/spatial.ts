@@ -84,7 +84,8 @@ export interface ScreenOffset {
   readonly ny: number;
 }
 
-function offsetOfScreenPoint(
+/** A pre-camera screen point's {@link ScreenOffset}; null for a screen with no area. */
+export function offsetOfScreenPoint(
   s: { x: number; y: number },
   camera: Camera,
   canvasW: number,
@@ -103,6 +104,18 @@ function offsetOfScreenPoint(
 /** The fade band's depth in half-screen units: a share of the whole viewport is twice that of its half. */
 const OFFSCREEN_FADE_HALF_EXTENTS = 2 * OFFSCREEN_FADE_SHARE;
 
+/** The share of its gain a point keeps for lying past the screen edge: 1 on screen, falling to 0 at the
+ *  end of the {@link OFFSCREEN_FADE_SHARE} band. */
+function edgeFade({ nx, ny }: ScreenOffset): number {
+  const beyond = Math.max(Math.abs(nx), Math.abs(ny)) - 1;
+  return beyond <= 0 ? 1 : 1 - beyond / OFFSCREEN_FADE_HALF_EXTENTS;
+}
+
+/** Whether a positioned sound at `offset` is heard at all: on screen or inside the fade band. */
+export function inEarshot(offset: ScreenOffset): boolean {
+  return edgeFade(offset) > 0;
+}
+
 /** The shared cull/attenuate/pan half: a pre-camera screen point in, `Spatial` (or `null`) out. A
  *  screen with no area hears nothing. */
 function spatialiseScreenPoint(
@@ -113,10 +126,9 @@ function spatialiseScreenPoint(
 ): Spatial | null {
   const offset = offsetOfScreenPoint(s, camera, canvasW, canvasH);
   if (offset === null) return null;
-  const { nx, ny } = offset;
-  const beyond = Math.max(Math.abs(nx), Math.abs(ny)) - 1;
-  const fade = beyond <= 0 ? 1 : 1 - beyond / OFFSCREEN_FADE_HALF_EXTENTS;
+  const fade = edgeFade(offset);
   if (fade <= 0) return null;
+  const { nx, ny } = offset;
   const dist = clamp(Math.hypot(nx, ny), 0, 1);
   const gain = (EDGE_GAIN + (1 - EDGE_GAIN) * (1 - dist)) * fade;
   return { gain, pan: panAt(nx) };

@@ -45,6 +45,10 @@ const view = { camera: { offsetX: 0, offsetY: 0, scale: 1 } as Camera, canvasW: 
 const awayView = { ...view, camera: { offsetX: -100_000, offsetY: 0, scale: 1 } as Camera };
 
 const ON_SCREEN: HalfCellNode = { hx: 10, hy: 10 };
+/** 884 world px across: past the screen's right edge, inside the band its sounds fade out over. */
+const JUST_PAST_EDGE: HalfCellNode = { hx: 26, hy: 10 };
+/** 1054 world px across: past that band. */
+const PAST_EARSHOT: HalfCellNode = { hx: 31, hy: 10 };
 const OFF_SCREEN: HalfCellNode = { hx: 100, hy: 10 };
 /** 340 world px from {@link OFF_SCREEN}: the same front. */
 const SAME_FRONT: HalfCellNode = { hx: 110, hy: 10 };
@@ -57,6 +61,11 @@ const units = (at: HalfCellNode): AttackReport => ({ front: 'units', at });
 describe('attack alerts', () => {
   it('stays silent for a hit the camera shows', () => {
     expect(new AttackAlerts().decide([base(ON_SCREEN)], view, 0)).toBeNull();
+  });
+
+  it('stays silent for a hit just off screen that the player still hears', () => {
+    expect(new AttackAlerts().decide([base(JUST_PAST_EDGE)], view, 0)).toBeNull();
+    expect(new AttackAlerts().decide([base(PAST_EARSHOT)], view, 0)).toEqual(base(PAST_EARSHOT));
   });
 
   it('alerts an off-screen place once per interval while it stays under attack', () => {

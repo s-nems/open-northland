@@ -4,6 +4,7 @@ import { entityById, type HalfCellNode, type WorldSnapshot } from '@open-northla
 import { groupFiles, poolGain, type SoundIndex } from './bank.js';
 import { VOICE_MUSIC_DUCK_DB } from './mixer.js';
 import { voiceClassOf } from './snapshot.js';
+import { inEarshot, offsetOfScreenPoint } from './spatial.js';
 import type { Lane, NoticeVoiceSound, OneShot, SoundBindings } from './types.js';
 import { NOTICE_CUE_INTERVAL_S, UI_CUE_GAIN } from './ui-cues.js';
 
@@ -73,17 +74,16 @@ interface KnownFront {
   at: number;
 }
 
-function onScreen(p: { readonly x: number; readonly y: number }, view: AlertView): boolean {
-  const scale = view.camera.scale ?? 1;
-  const sx = p.x * scale + view.camera.offsetX;
-  const sy = p.y * scale + view.camera.offsetY;
-  return sx >= 0 && sx <= view.canvasW && sy >= 0 && sy <= view.canvasH;
+/** Whether the player already hears a fight at world point `p`, as a positioned sound decides it. */
+function heard(p: { readonly x: number; readonly y: number }, view: AlertView): boolean {
+  const offset = offsetOfScreenPoint(p, view.camera, view.canvasW, view.canvasH);
+  return offset !== null && inEarshot(offset);
 }
 
 /**
- * Which of a frame's attacks sounds the alert. A hit on screen sounds nothing (the player is watching)
- * and marks its place as seen, so turning away from it does not sound the horn either. An off-screen
- * hit alerts unless a place within {@link ATTACK_ALERT_NEW_FRONT_PX} of it was alerted or watched within
+ * Which of a frame's attacks sounds the alert. A hit the player hears (on screen, or just past its edge
+ * where its sounds fade out) sounds nothing and marks its place as seen, so turning away from it does
+ * not sound the horn either. Any other hit alerts unless a place within {@link ATTACK_ALERT_NEW_FRONT_PX} of it was alerted or watched within
  * {@link ATTACK_ALERT_INTERVAL_S} on a front at least as grave.
  */
 export class AttackAlerts {
@@ -98,7 +98,7 @@ export class AttackAlerts {
     for (const report of reports) {
       const p = halfCellToScreen(report.at.hx, report.at.hy);
       const near = this.fronts.filter((f) => Math.hypot(f.x - p.x, f.y - p.y) < ATTACK_ALERT_NEW_FRONT_PX);
-      if (onScreen(p, view)) {
+      if (heard(p, view)) {
         for (const f of near) {
           f.at = now;
           if (FRONT_RANK[report.front] > FRONT_RANK[f.front]) f.front = report.front;
