@@ -25,6 +25,8 @@ export interface ThunderPlan {
   readonly rumbleS: number;
   /** Rolling amplitude swells in time order; the rumble fades to silence after the last. */
   readonly rolls: readonly ThunderRoll[];
+  /** Stereo pan toward the bolt's side of the screen, -1..1. */
+  readonly pan: number;
 }
 
 /** Strikes nearer than this open with a crack. Approximation. */
@@ -62,6 +64,9 @@ export const THUNDER_STALE_S = 0.5;
 export const THUNDER_CLOCK_RESET_S = 1;
 /** At most this many thunders wait for their sound to arrive; more strikes are dropped. */
 export const THUNDER_MAX_PENDING = 8;
+/** Pan of a bolt at a screen side or beyond; thunder rolls across the sky, so it never leaves one ear
+ *  as a spot sound nearly does. Approximation. */
+export const THUNDER_MAX_PAN = 0.6;
 
 /** A small deterministic [0, 1) generator (mulberry32), so a strike always rolls the same way. */
 export function seededRandom(seed: number): () => number {
@@ -104,6 +109,8 @@ export function planThunder(strike: LightningStrike, random: () => number): Thun
     lowpassHz: lerpHz(THUNDER_NEAR_LOWPASS_HZ, THUNDER_FAR_LOWPASS_HZ, distance),
     rumbleS,
     rolls,
+    // screenX runs 0..1 across the screen; a distant bolt may lie past either side.
+    pan: clamp(2 * strike.screenX - 1, -1, 1) * THUNDER_MAX_PAN,
   };
 }
 

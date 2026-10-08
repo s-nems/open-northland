@@ -359,8 +359,16 @@ export class WeatherSoundscape {
     const sources: AudioBufferSourceNode[] = [];
     const out = ctx.createGain();
     out.gain.value = 1;
-    out.connect(this.acquireBus());
     nodes.push(out);
+    // Old webkit contexts lack a stereo panner; the thunder then rolls centred.
+    if (typeof ctx.createStereoPanner === 'function') {
+      const panner = ctx.createStereoPanner();
+      panner.pan.value = plan.pan;
+      out.connect(panner).connect(this.acquireBus());
+      nodes.push(panner);
+    } else {
+      out.connect(this.acquireBus());
+    }
     const filter = (type: BiquadFilterType, hz: number): BiquadFilterNode => {
       const node = ctx.createBiquadFilter();
       node.type = type;

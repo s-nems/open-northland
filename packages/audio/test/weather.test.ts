@@ -5,6 +5,7 @@ import {
   planThunder,
   seededRandom,
   THUNDER_CRACK_DISTANCE,
+  THUNDER_MAX_PAN,
   THUNDER_STALE_S,
   type ThunderPlan,
   ThunderQueue,
@@ -22,6 +23,7 @@ import {
   type FakeBuffer,
   FakeContext,
   type FakeNode,
+  FakePanner,
   FakeShaper,
   type FakeSource,
 } from './helpers/fake-audio.js';
@@ -87,6 +89,15 @@ describe('weatherMix', () => {
 });
 
 describe('planThunder', () => {
+  it('pans toward the bolt`s side of the screen, holding the side for a bolt past it', () => {
+    const at = (screenX: number): number =>
+      planThunder({ ...strike(1, 0, 0.5), screenX }, seededRandom(1)).pan;
+    expect(at(0.5)).toBe(0);
+    expect(at(0)).toBeCloseTo(-THUNDER_MAX_PAN, 9);
+    expect(at(0.75)).toBeCloseTo(THUNDER_MAX_PAN / 2, 9);
+    expect(at(3)).toBeCloseTo(THUNDER_MAX_PAN, 9);
+  });
+
   it('delays and muffles with distance, and cracks only near', () => {
     const near = planThunder(strike(1, 10, 0), seededRandom(1));
     const far = planThunder(strike(2, 10, 1), seededRandom(2));
@@ -331,6 +342,15 @@ describe('WeatherSoundscape', () => {
     expect(shaper?.disconnected).toBe(false);
     scape.setEnabled(false);
     expect(live(ctx, from)).toEqual([]);
+  });
+
+  it('rolls each thunder from its bolt side of the screen', () => {
+    const { ctx, scape } = soundscape();
+    scape.update({ ...rain, strikes: [{ ...strike(1, 0, 0), screenX: 0 }] }, 0);
+    const panners = ctx.gains
+      .flatMap((g) => g.connectedTo)
+      .filter((n): n is FakePanner => n instanceof FakePanner);
+    expect(panners.map((p) => p.pan.value)).toEqual([-THUNDER_MAX_PAN]);
   });
 
   it('opens a near strike with a crack', () => {
