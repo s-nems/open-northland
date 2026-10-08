@@ -20,6 +20,7 @@ import {
   grantWorkExperience,
   jobEnabled,
   rawXpForRepeats,
+  startingExperience,
 } from '../../src/systems/progression/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
@@ -39,6 +40,8 @@ const WOOD = 1;
 const WOOD_TRACK = 1;
 /** A newborn's life stage, a job row the tribe's tech tree never gates. */
 const BABY_MALE = 90;
+/** The fixture hero, whom a map's starting experience never reaches. */
+const HERO = 45;
 
 function setup(
   houseRequirements: { readonly jobs: readonly number[]; readonly goods: readonly number[] } = {
@@ -93,6 +96,36 @@ describe('player technology discoveries', () => {
     technologySystem(sim.world, ctx);
     expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
     expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
+  });
+
+  it("opens a trade at setup from a map's starting experience on the worker its edge reads", () => {
+    const { sim, ctx } = setup({ jobs: [CARPENTER], goods: [] });
+    const experience = startingExperience(sim.content, WOODCUTTER, [{ track: WOOD_TRACK, amount: 3 }]);
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      x: 2,
+      y: 2,
+      tribe: TRIBE,
+      owner: PLAYER,
+      experience,
+    });
+    sim.step();
+    expect(jobEnabled(sim.world, ctx, PLAYER, TRIBE, CARPENTER)).toBe(true);
+    expect(buildingEnabled(sim.world, ctx, PLAYER, TRIBE, SMITHY)).toBe(true);
+  });
+
+  it("reads a map's starting experience in requirement units, summed per track and never for a hero", () => {
+    const { sim } = setup();
+    const track = sim.content.jobExperience.find((candidate) => candidate.typeId === WOOD_TRACK);
+    const lines = [
+      { track: WOOD_TRACK, amount: 2 },
+      { track: WOOD_TRACK, amount: 1 },
+    ];
+    expect(startingExperience(sim.content, WOODCUTTER, lines)).toEqual([
+      [WOOD_TRACK, rawXpForRepeats(track, 3)],
+    ]);
+    expect(startingExperience(sim.content, HERO, lines)).toEqual([]);
   });
 
   it('work discovers a profession and its basic product, opening a house before that profession is staffed', () => {

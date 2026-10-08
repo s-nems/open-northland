@@ -106,7 +106,7 @@ describe('extractStaticObjects', () => {
       { level: 2, text: 'sethuman 2 "byzantine" "collector" 220 206 0 0' },
       { level: 2, text: 'setproducedgood "wood"' },
       { level: 2, text: 'sethuman 0 "saracen" "fisher" 359 366 0 0' },
-      { level: 2, text: 'setexpierence 4 13' }, // uncaptured, and does not end the block
+      { level: 2, text: 'setexpierence 4 13' }, // a modifier, so it does not end the block
       { level: 2, text: 'attachtohouse 359 358 2' },
       { level: 2, text: 'setproducedgood "fish"' },
       { level: 2, text: 'sethuman 1 "viking" "collector" 12 14 0 0' }, // no pick - gathers everything
@@ -121,6 +121,7 @@ describe('extractStaticObjects', () => {
         hy: 366,
         producedGood: 'fish',
         attach: [{ hx: 359, hy: 358, slot: 2 }],
+        experience: [{ track: 4, amount: 13 }],
       },
       { tribe: 'viking', role: 'collector', player: 1, hx: 12, hy: 14 },
     ]);
@@ -159,7 +160,7 @@ describe('extractStaticObjects', () => {
       { level: 2, text: 'attachtovehicle 480 18' },
       { level: 2, text: 'moveintovehicle' },
       { level: 2, text: 'sethuman 0 "egypt" "carrier" 364 313 0 0' },
-      { level: 2, text: 'setexpierence 28 100' }, // uncaptured, and does not end the block
+      { level: 2, text: 'setexpierence 28 100' }, // a modifier, so it does not end the block
       { level: 2, text: 'attachtovehicle 362 312' },
       { level: 2, text: 'sethuman 0 "egypt" "carrier" 368 317 0 0' },
       { level: 2, text: 'moveintovehicle' }, // no attach to board through - dropped
@@ -185,6 +186,7 @@ describe('extractStaticObjects', () => {
         hx: 364,
         hy: 313,
         boardVehicleAt: { hx: 362, hy: 312, inside: false },
+        experience: [{ track: 28, amount: 100 }],
       },
       { tribe: 'egypt', role: 'carrier', player: 0, hx: 368, hy: 317 },
     ]);
@@ -244,6 +246,33 @@ describe('extractStaticObjects', () => {
     const out = extractStaticObjects(cifLinesToSections(lines));
     expect(out?.humans).toEqual([{ tribe: 'viking', role: 'collector', player: 0, hx: 10, hy: 12 }]);
     expect(out?.guides).toEqual([{ player: 3, hx: 141, hy: 51 }]);
+  });
+
+  it('attaches every setexpierence line to its sethuman, in either case and across other modifiers', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 0 "saracen" "collector" 481 319 0 0' },
+      { level: 2, text: 'setexpierence 5 11' },
+      { level: 2, text: 'setproducedgood "iron"' },
+      { level: 2, text: 'SETEXPIERENCE 6 11' },
+      { level: 2, text: 'setexpierence 6 0' }, // adds nothing - dropped
+      { level: 2, text: 'setanimal 6 "deer" "adult" 50 60 0 0' },
+      { level: 2, text: 'setexpierence 9 15' }, // no human to train - dropped
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      {
+        tribe: 'saracen',
+        role: 'collector',
+        player: 0,
+        hx: 481,
+        hy: 319,
+        producedGood: 'iron',
+        experience: [
+          { track: 5, amount: 11 },
+          { track: 6, amount: 11 },
+        ],
+      },
+    ]);
   });
 
   it('does not attach setproducedgood across a placement verb or a skipped sethuman', () => {

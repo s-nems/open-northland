@@ -51,6 +51,8 @@ export type AuthoredPlacement =
       missionId?: number;
       /** The `sethuman` behaviour mask, carried verbatim; no system reads the bits yet. */
       behaviourFlags?: number;
+      /** Starting experience (`setexpierence`), verbatim: track ids and `needfor*`-unit amounts. */
+      experience?: readonly { track: number; amount: number }[];
       /** The map's `[misc_humannames]` name for this settler, as a string id in the map's own table. */
       nameStringId?: number;
     }
@@ -238,6 +240,7 @@ export function resolveAuthoredPlacements(
       ...(home !== undefined ? { home } : {}),
       ...(workplace !== undefined ? { workplace } : {}),
       ...(vehicle !== undefined ? { vehicle } : {}),
+      ...(h.experience !== undefined ? { experience: h.experience } : {}),
       ...(h.missionId !== undefined ? { missionId: h.missionId } : {}),
       ...(h.behaviourFlags !== undefined ? { behaviourFlags: h.behaviourFlags } : {}),
       ...(nameStringId !== undefined ? { nameStringId } : {}),

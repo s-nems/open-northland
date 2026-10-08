@@ -158,8 +158,9 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
       });
     } else {
       // A warrior placement carries its class weapon in the equipment slot, so its drawn weapon and its
-      // Weapon row agree. Authored humans spawn with no experience, earning the `needfor*` gates normally.
+      // Weapon row agree.
       const equipment = weaponEquipmentFor(p.jobType, sim.content.goods);
+      const experience = systems.startingExperience(sim.content, p.jobType, p.experience ?? []);
       sim.enqueueSetup({
         kind: 'spawnSettler',
         jobType: p.jobType,
@@ -168,6 +169,7 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         tribe: p.tribe,
         ...own,
         ...(equipment !== undefined ? { equipment } : {}),
+        ...(experience.length > 0 ? { experience } : {}),
         ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
         ...(p.nameStringId !== undefined ? { nameStringId: p.nameStringId } : {}),
         ...(p.home !== undefined ? { home: p.home } : {}),

@@ -118,6 +118,7 @@ export {
   FIGHT_EXPERIENCE_TYPE,
   SCOUT_EXPERIENCE_TYPE,
   SOLDIER_GENERAL_EXPERIENCE_TYPE,
+  startingExperience,
   TRAINING_EXPERIENCE_TYPE,
 } from './progression/experience.js';
 // The atomic clip resolution and the need channels its events carry, so the real-content suite can pin the

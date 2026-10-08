@@ -95,6 +95,27 @@ function accrueTrack(world: World, settler: Entity, track: HumanJobExperienceTyp
   );
 }
 
+/**
+ * A placed settler's starting experience as a `spawnSettler` payload: each `(track, repeats)` line in the
+ * factor-scaled encoding, a repeated track summed under its cap, a track content lacks dropped. Original
+ * behavior: a map's `setexpierence` is skipped for a hero and counts in `needfor*` units.
+ */
+export function startingExperience(
+  content: ContentSet,
+  jobType: number,
+  lines: readonly { readonly track: number; readonly amount: number }[],
+): [number, number][] {
+  if (isHeroJob(content, jobType)) return [];
+  const xp = new Map<number, number>();
+  for (const { track: id, amount } of lines) {
+    const track = content.jobExperience.find((t) => t.typeId === id);
+    if (track === undefined || amount <= 0) continue;
+    const cap = track.experienceFactor * MAX_EXPERIENCE_REPEATS;
+    xp.set(id, Math.min(cap, (xp.get(id) ?? 0) + track.experienceFactor * amount));
+  }
+  return [...xp].filter(([, amount]) => amount > 0);
+}
+
 /** A job's general (no-good) experience track, or `undefined` when the job trains none; unlike
  *  {@link trackFor} it never resolves a good-specific track. */
 export function generalTrackFor(ctx: SystemContext, jobType: number): HumanJobExperienceType | undefined {

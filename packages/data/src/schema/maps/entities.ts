@@ -73,6 +73,16 @@ export const TerrainEntities = z.strictObject({
             inside: z.boolean(),
           })
           .optional(),
+        /** Starting experience (`setexpierence`) per `humanjobexperiencetype` track, in the unit of the
+         *  tribe's `needfor*` amounts; a repeated track adds up. */
+        experience: z
+          .array(
+            z.strictObject({
+              track: z.number().int().nonnegative(),
+              amount: z.number().int().positive(),
+            }),
+          )
+          .optional(),
       }),
     )
     .default([]),

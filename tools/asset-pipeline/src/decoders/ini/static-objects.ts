@@ -29,6 +29,9 @@ export interface MapStaticObjects {
     /** The vehicle this human crews (`attachtovehicle`), by its `setvehicle` half-cell; `inside` once a
      *  `moveintovehicle` boards him. */
     boardVehicleAt?: { hx: number; hy: number; inside: boolean };
+    /** Starting experience (`setexpierence`, the corpus spelling) per `humanjobexperiencetype` track, in
+     *  source order; a repeated track adds up. */
+    experience?: { track: number; amount: number }[];
   }[];
   animals: {
     species: string;
@@ -71,6 +74,7 @@ const EMPTY_COLUMN = 0;
  * attachtohouse <hx> <hy> <slot>
  * attachtovehicle <hx> <hy>
  * moveintovehicle
+ * setexpierence <humanjobexperiencetype> <amount>
  * ```
  *
  * `addgoods` stocks the entity placed by the immediately preceding `sethouse` or `setvehicle`. Its
@@ -89,6 +93,9 @@ const EMPTY_COLUMN = 0;
  * `attachtovehicle` names the `setvehicle` half-cell the enclosing `sethuman` crews, and a later
  * `moveintovehicle` in the same block boards him; one without an attach has no vehicle and is dropped.
  * Fifteen corpus `setvehicle` rows carry an eighth `0` column the original never reads.
+ *
+ * `setexpierence` adds starting experience to the enclosing `sethuman`, in the unit of the tribe's
+ * `needfor*` amounts (original behavior: both read one per-track counter).
  */
 export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
   const sec = sections.find((s) => s.name === 'StaticObjects');
@@ -109,12 +116,21 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
   // uncaptured in-block modifiers, so only a placement verb retargets it.
   let humanTarget: MapStaticObjects['humans'][number] | undefined;
   for (const p of sec.props) {
-    if (p.key !== 'addgoods') goodsTarget = undefined;
-    if (PLACEMENT_VERBS.has(p.key)) humanTarget = undefined;
-    if (p.key === 'setproducedgood') {
+    // Original behavior: the verbs match case-insensitively, and five corpus lines write `SETEXPIERENCE`.
+    const key = p.key.toLowerCase();
+    if (key !== 'addgoods') goodsTarget = undefined;
+    if (PLACEMENT_VERBS.has(key)) humanTarget = undefined;
+    if (key === 'setexpierence') {
+      const [trackRaw, amountRaw] = p.values;
+      const track = int(trackRaw);
+      const amount = int(amountRaw);
+      if (humanTarget === undefined || track === undefined || amount === undefined || amount <= 0) continue;
+      humanTarget.experience ??= [];
+      humanTarget.experience.push({ track, amount });
+    } else if (key === 'setproducedgood') {
       const [name] = p.values;
       if (humanTarget !== undefined && name !== undefined) humanTarget.producedGood = name;
-    } else if (p.key === 'attachtohouse') {
+    } else if (key === 'attachtohouse') {
       const [hxRaw, hyRaw, slotRaw] = p.values;
       const hx = int(hxRaw);
       const hy = int(hyRaw);
@@ -122,21 +138,21 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       if (humanTarget === undefined || hx === undefined || hy === undefined || slot === undefined) continue;
       humanTarget.attach ??= [];
       humanTarget.attach.push({ hx, hy, slot });
-    } else if (p.key === 'attachtovehicle') {
+    } else if (key === 'attachtovehicle') {
       const [hxRaw, hyRaw] = p.values;
       const hx = int(hxRaw);
       const hy = int(hyRaw);
       if (humanTarget === undefined || hx === undefined || hy === undefined) continue;
       humanTarget.boardVehicleAt = { hx, hy, inside: false };
-    } else if (p.key === 'moveintovehicle') {
+    } else if (key === 'moveintovehicle') {
       if (humanTarget?.boardVehicleAt !== undefined) humanTarget.boardVehicleAt.inside = true;
-    } else if (p.key === 'addgoods') {
+    } else if (key === 'addgoods') {
       const [name, countRaw] = p.values;
       const count = int(countRaw);
       if (goodsTarget === undefined || name === undefined || count === undefined || count === 0) continue;
       goodsTarget.goods ??= [];
       goodsTarget.goods.push({ name, count });
-    } else if (p.key === 'sethouse') {
+    } else if (key === 'sethouse') {
       const [playerRaw, name, levelRaw, , hxRaw, hyRaw, missionIdRaw] = p.values;
       const level = int(levelRaw);
       const player = int(playerRaw);
@@ -154,7 +170,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       const building = { name, level, player, hx, hy, ...(missionId !== undefined ? { missionId } : {}) };
       out.buildings.push(building);
       goodsTarget = building;
-    } else if (p.key === 'sethuman') {
+    } else if (key === 'sethuman') {
       // Original behavior: the numbers are read with the integer reader, which steps over anything
       // before the next digit or sign, a doubled closing quote's bare `"` included.
       const [playerRaw, tribe, role, hxRaw, hyRaw, missionIdRaw, behaviourRaw] = p.values.filter(
@@ -184,7 +200,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       };
       out.humans.push(human);
       humanTarget = human;
-    } else if (p.key === 'setanimal') {
+    } else if (key === 'setanimal') {
       const [playerRaw, species, , hxRaw, hyRaw, missionIdRaw, behaviourRaw] = p.values;
       const player = int(playerRaw);
       const hx = int(hxRaw);
@@ -200,7 +216,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
         ...(missionId !== undefined ? { missionId } : {}),
         ...(behaviour !== undefined ? { behaviour } : {}),
       });
-    } else if (p.key === 'setvehicle') {
+    } else if (key === 'setvehicle') {
       const [playerRaw, tribe, type, hxRaw, hyRaw, missionIdRaw] = p.values;
       const player = int(playerRaw);
       const hx = int(hxRaw);
@@ -217,7 +233,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       const vehicle = { tribe, type, player, hx, hy, ...(missionId !== undefined ? { missionId } : {}) };
       out.vehicles.push(vehicle);
       goodsTarget = vehicle;
-    } else if (p.key === 'setguide') {
+    } else if (key === 'setguide') {
       const [playerRaw, hxRaw, hyRaw] = p.values;
       const player = int(playerRaw);
       const hx = int(hxRaw);
