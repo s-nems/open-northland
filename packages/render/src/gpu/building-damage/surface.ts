@@ -62,8 +62,8 @@ export function analyseSurface(rgba: Uint8ClampedArray, w: number, h: number, se
     }
   }
   const fractures: Fracture[] = [];
-  const roofCount = 4 + Math.floor(noise(seed, 17) * 3);
-  const count = roofCount + 3 + Math.floor(noise(seed, 18) * 3);
+  const roofCount = 4 + Math.floor(noise(seed, 17) * 2);
+  const count = roofCount + 2 + Math.floor(noise(seed, 18) * 2);
   for (let i = 0; i < count; i++) {
     const roof = i < roofCount;
     const open = i === roofCount - 1 || i === count - 1;
@@ -197,7 +197,7 @@ function scarStage(
     const strength = clamp01((stage - f.onset) / (6 - f.onset));
     if (strength <= 0) continue;
     const radius =
-      f.radius * (0.25 + strength * 1.15 + Math.max(0, stage - 4) * 0.3 + (stage === 1 ? 0.1 : 0));
+      f.radius * (0.25 + strength * 1.15 + Math.max(0, stage - 4) * 0.12 + (stage === 1 ? 0.1 : 0));
     const rx = radius,
       ry = radius * f.aspect;
     const cos = Math.cos(f.angle),

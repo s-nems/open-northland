@@ -21,9 +21,9 @@ assets, original-effect copies, external generation service or new shader progra
 Full health keeps the body intact. Damage blends continuously between six reference appearances at
 90/75/60/45/30/20% health: fresh chips, cracks, cavities, chipped roof edges and local soot appear
 gradually as health falls between these anchors. Light damage exposes a contrasting
-substrate and bright chipped edges. Critical damage joins larger breaches and strips more of the
-facing. Seeded rejection sampling varies positions, onset, proportions, orientation and jagged contours;
-wounds grow in place and repairs reconstruct from pristine pixels.
+substrate and bright chipped edges. Critical damage deepens local breaches while retaining broad
+sections of roof and wall. Seeded rejection sampling varies positions, onset, proportions, orientation
+and jagged contours; wounds grow in place and repairs reconstruct from pristine pixels.
 
 Finished buildings expose their own construction back walls and scaffolds inside cavities, aligned
 by the existing frame offsets and scales. Finished-body stages are excluded. Incomplete and upgrading
