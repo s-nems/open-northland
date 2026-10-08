@@ -45,7 +45,9 @@ interface Harness {
   readonly fetched: string[];
 }
 
-function makeEngine(opts: { failFetch?: boolean; noPanner?: boolean } = {}): Harness {
+function makeEngine(
+  opts: { failFetch?: boolean; noPanner?: boolean; random?: () => number } = {},
+): Harness {
   const ctx = new FakeContext();
   if (opts.noPanner) {
     (ctx as { createStereoPanner?: unknown }).createStereoPanner = undefined;
@@ -58,6 +60,7 @@ function makeEngine(opts: { failFetch?: boolean; noPanner?: boolean } = {}): Har
       if (opts.failFetch) throw new Error('missing wav');
       return new ArrayBuffer(4);
     },
+    ...(opts.random !== undefined ? { random: opts.random } : {}),
   });
   return { engine, ctx, fetched };
 }
@@ -324,6 +327,17 @@ describe('WebAudioEngine ambient reconciliation', () => {
     expect(source.started).toBe(true);
     const gain = bedGain(source);
     expect(gain.gain.ramps).toEqual([{ value: 0.4, time: AMBIENT_FADE_S }]); // from the 0 start
+  });
+
+  it('starts a bed at a random point of its loop', async () => {
+    const LOOP_SHARE = 0.25;
+    const { engine, ctx } = makeEngine({ random: () => LOOP_SHARE });
+    await engine.resume();
+    engine.apply({ oneShots: [], ambient: [bed(0.4)] });
+    await flush();
+    const source = ctx.sources[0] as FakeSource;
+    expect(source.startOffset).toBe(LOOP_SHARE * (source.buffer as { duration: number }).duration);
+    expect(source.startOffset).toBeGreaterThan(0);
   });
 
   it('retunes a running bed by ramping its gain, without a second source', async () => {

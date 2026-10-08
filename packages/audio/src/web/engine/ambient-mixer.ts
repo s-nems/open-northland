@@ -1,4 +1,5 @@
 import type { AmbientLoop } from '../../data/types.js';
+import type { RandomFn } from '../platform.js';
 import { rampParam } from './ramps.js';
 import type { SampleCache } from './sample-cache.js';
 
@@ -6,7 +7,8 @@ import type { SampleCache } from './sample-cache.js';
  * The looping-ambient half of playback: reconcile the running terrain beds against each frame's
  * target - start new beds (fading in from silence), ramp existing ones toward their target gain and
  * pan, and fade-and-stop departed ones. All ramps ride the audio clock (`ctx.currentTime`), never
- * `Date.now`.
+ * `Date.now`. A bed starts at a random point of its loop, so one that returns is not the same opening
+ * bars again.
  */
 
 /** Ambient beds fade in / out / between gains and pans over this many seconds. */
@@ -36,6 +38,8 @@ export class AmbientMixer {
     private readonly samples: SampleCache,
     /** Playback gate, re-checked when an async load lands (a mute can arrive while a wav is in flight). */
     private readonly canPlay: () => boolean,
+    /** The [0,1) source of a loop's start point. */
+    private readonly random: RandomFn,
   ) {}
 
   /** Reconcile the running loops to `target`: start the new, retune the kept, stop the departed. */
@@ -102,7 +106,7 @@ export class AmbientMixer {
         source.connect(panner).connect(gain);
       }
       gain.connect(this.out);
-      source.start();
+      source.start(0, this.random() * buffer.duration);
       // Ramp to the current target gain, not the possibly stale one this load was requested with.
       this.fadeTo(gain.gain, current.gain);
       this.loops.set(loop.name, { source, gain, panner, target: current.gain, targetPan: current.pan });

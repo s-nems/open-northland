@@ -27,6 +27,7 @@ import {
   type FetchBytes,
   httpFetchBytes,
   performanceNow,
+  type RandomFn,
   type WallClock,
   webAudioContextFactory,
 } from '../platform.js';
@@ -76,6 +77,8 @@ export interface AudioEngineOptions {
   /** Wall clock the preload timing and the stalled-clock check read - override in tests. Default
    *  `performance.now`. */
   readonly now?: WallClock;
+  /** The [0,1) source of each ambient bed's loop start - override in tests. Default `Math.random`. */
+  readonly random?: RandomFn;
 }
 
 /** URL prefix of the content tree's decoded wavs; every host serves the tree at the root. */
@@ -172,6 +175,7 @@ export class WebAudioEngine {
   private readonly createContext: ContextFactory;
   private readonly fetchBytes: FetchBytes;
   private readonly now: WallClock;
+  private readonly random: RandomFn;
   private ctx: AudioContext | null = null;
   private master: GainNode | null = null;
   private buses: Readonly<Record<SoundBus, GainNode>> | null = null;
@@ -225,6 +229,7 @@ export class WebAudioEngine {
     this.createContext = options.createContext ?? webAudioContextFactory;
     this.fetchBytes = options.fetchBytes ?? httpFetchBytes;
     this.now = options.now ?? performanceNow;
+    this.random = options.random ?? Math.random;
   }
 
   /** Whether the context runs: a user gesture resumed it, and neither the platform nor a stalled clock
@@ -534,7 +539,7 @@ export class WebAudioEngine {
     this.musicDuck = musicDuck;
     this.samples = new SampleCache(this.baseUrl, this.fetchBytes, (bytes) => ctx.decodeAudioData(bytes));
     this.settleSamples(this.samples);
-    this.mixer = new AmbientMixer(ctx, layers.bed, this.samples, () => this.canPlay());
+    this.mixer = new AmbientMixer(ctx, layers.bed, this.samples, () => this.canPlay(), this.random);
     this.music = new MusicPlayer(ctx, buses.music, this.musicBaseUrl, this.fetchBytes, () => this.canPlay());
     // Weather rides the ambient bed layer beside the terrain beds, so the same slider and zoom set it.
     this.weather = new WeatherSoundscape(ctx, layers.bed);
