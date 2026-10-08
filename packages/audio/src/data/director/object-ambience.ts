@@ -39,8 +39,10 @@ interface AmbienceTally {
   readonly holders: ReadonlyMap<number, TilePoint>[];
 }
 
-/** The tally of one framing of the map, valid while the sector band and both sources stand still. */
+/** The tally of one framing of the map, valid while the sector band, both sources and the sound index
+ *  that joined them stand still. */
 interface ScreenTally {
+  readonly index: SoundIndex;
   readonly band: TileRange;
   readonly liveRevision: number;
   readonly scenery: LandscapeSectors | undefined;
@@ -148,12 +150,14 @@ export function objectAmbienceShots(input: DirectorInput): OneShot[] {
   let tally = tallies.get(live);
   if (
     tally === undefined ||
+    tally.index !== index ||
     !sameBand(tally.band, band) ||
     tally.liveRevision !== live.revision ||
     tally.scenery !== landscape.scenery
   ) {
     const sources = landscape.scenery === undefined ? [live] : [live, landscape.scenery];
     tally = {
+      index,
       band,
       liveRevision: live.revision,
       scenery: landscape.scenery,

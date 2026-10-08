@@ -250,6 +250,22 @@ describe('object ambience', () => {
     ).toEqual([]);
   });
 
+  it('tallies again for another sound index over the same objects', () => {
+    const framing = input(forest(TREES), rolls(FIRST_POOL, 0, FIRST_OBJECT));
+    expect(objectAmbienceShots(framing)[0]?.files).toEqual(['ambient/bird_01.wav', 'ambient/bird_02.wav']);
+    const sirensInYews = buildSoundIndex(
+      bank,
+      [],
+      [],
+      [],
+      [],
+      [{ index: YEW_RECORD, editGroups: ['misc_sirens'] }],
+    );
+    const landscape = { ticks: 1, random: rolls(FIRST_POOL, 0, FIRST_OBJECT) };
+    const [siren] = objectAmbienceShots({ ...framing, index: sirensInYews, landscape });
+    expect(siren?.files).toEqual(['ambient/sirens_01.wav']);
+  });
+
   it("sounds the map's scenery, keeping only the records that have a sound", () => {
     const placements: SceneryObject[] = [
       { id: 0, record: SIREN_RECORD, hx: 2 * RIGHT_COL, hy: 2 * ROW },
