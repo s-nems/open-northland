@@ -38,12 +38,16 @@ export const DEFAULT_MASTER_VOLUME = 80;
 /** Ambient slider default, about -7.5 dB: the beds, object ambience and weather sit under the action.
  *  Approximation, tune by ear. */
 export const DEFAULT_AMBIENT_VOLUME = 85;
+/** Music slider default, about -7.5 dB: the levelled score sits under the voices and the action rather
+ *  than over them. Approximation; the original also opened its music volume below full, at 70 of 100,
+ *  on a curve of its own. */
+export const DEFAULT_MUSIC_VOLUME = 85;
 /** Default of every other bus slider: full scale, so the mix inside the bus decides. */
 export const DEFAULT_BUS_VOLUME = VOLUME_MAX;
 
 export const DEFAULT_VOLUMES: MixerVolumes = {
   master: DEFAULT_MASTER_VOLUME,
-  music: DEFAULT_BUS_VOLUME,
+  music: DEFAULT_MUSIC_VOLUME,
   voice: DEFAULT_BUS_VOLUME,
   world: DEFAULT_BUS_VOLUME,
   ambient: DEFAULT_AMBIENT_VOLUME,
