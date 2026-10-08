@@ -8,7 +8,7 @@ import {
   gameSoundEnabled,
 } from '../src/view/runtime/game-settings.js';
 import { createGameViewportCoordinator } from '../src/view/runtime/game-viewport.js';
-import { defaultSettings } from '../src/view/settings-store.js';
+import { defaultSettings, parseStoredSettings } from '../src/view/settings-store.js';
 
 it('applies a graphics enhancement immediately without changing its siblings', async () => {
   const h = harness();
@@ -37,6 +37,16 @@ it('switches weather live without touching the renderer enhancements', async () 
   expect(h.persist).toHaveBeenCalledWith({ weather: false });
 });
 
+it('shows or hides the control-group numbers live, hidden until the player turns them on', async () => {
+  expect(defaultSettings().groupNumbers).toBe(false);
+  expect(parseStoredSettings('{"groupNumbers":"yes"}').groupNumbers).toBe(false);
+  expect(parseStoredSettings('{"groupNumbers":true}').groupNumbers).toBe(true);
+  const h = harness();
+  await h.settings.update({ groupNumbers: true });
+  expect(h.setGroupNumbersShown).toHaveBeenCalledWith(true);
+  expect(h.persist).toHaveBeenCalledWith({ groupNumbers: true });
+});
+
 it('reframes the mounted minimap when another frame is picked', async () => {
   const h = harness();
   await h.settings.update({ minimapFrame: 'urnes' });
@@ -57,6 +67,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setGraphicsEnhancements = vi.fn();
   const setMinimapFrame = vi.fn();
   const setSelectionStyle = vi.fn();
+  const setGroupNumbersShown = vi.fn();
   const setWeatherEnabled = vi.fn();
   const settings = createGameSettingsRuntime({
     initial: {
@@ -78,6 +89,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDebugToolsEnabled,
     setGraphicsEnhancements,
     setSelectionStyle,
+    setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,
     ...overrides,
@@ -95,6 +107,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDebugToolsEnabled,
     setGraphicsEnhancements,
     setSelectionStyle,
+    setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,
   };

@@ -58,6 +58,7 @@ import {
   EMPTY_HIGHLIGHT,
   NO_BADGES,
   NO_BUBBLES,
+  NO_GROUP_NUMBERS,
   NO_HEARTS,
   NO_LOST_GOALS,
   NO_ORDER_MARKERS,
@@ -116,6 +117,7 @@ export class WorldRenderer {
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = BASELINE_ENHANCEMENTS;
   private selectionStyle: SelectionStyle = DEFAULT_SELECTION_STYLE;
+  private groupNumbersShown = false;
   private withheldRefs: ReadonlySet<number> | undefined;
 
   constructor(app: Application, opts?: WorldRendererOptions) {
@@ -196,6 +198,11 @@ export class WorldRenderer {
 
   setSelectionStyle(style: SelectionStyle): void {
     this.selectionStyle = style;
+  }
+
+  /** Whether the frame's control-group numbers show; hidden by default. */
+  setGroupNumbersShown(shown: boolean): void {
+    this.groupNumbersShown = shown;
   }
 
   setPaused(paused: boolean): void {
@@ -352,6 +359,7 @@ export class WorldRenderer {
       constructionSigns: signItems = NO_SIGNS,
       settlerBubbles = NO_BUBBLES,
       lifeHearts = NO_HEARTS,
+      groupNumbers = NO_GROUP_NUMBERS,
       flagged = NO_REFS,
       focused = NO_REFS,
       workAreas = NO_WORK_AREAS,
@@ -451,6 +459,7 @@ export class WorldRenderer {
       constructionSigns: signItems,
       settlerBubbles,
       lifeHearts,
+      groupNumbers: this.groupNumbersShown ? groupNumbers : NO_GROUP_NUMBERS,
     });
     this.chrome.resize(this.app.screen.width, this.app.screen.height);
     this.hud.draw(hud);

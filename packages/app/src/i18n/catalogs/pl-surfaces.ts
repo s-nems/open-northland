@@ -189,6 +189,9 @@ export const plSurfaces = {
         'ring-white': 'Biały pierścień',
         'ring-green': 'Zielony pierścień',
       },
+      groupNumbers: 'Numery grup',
+      groupNumbersTip:
+        'Mały numer przy każdej jednostce przypisanej do grupy 1, 2 lub 3. Dalsze grupy go nie mają.',
       minimapFrameTip: 'Wygląd ramki wokół minimapy. Zmienia się w grze od razu.',
       minimapFrames: {
         zelazo: 'Żelazo',

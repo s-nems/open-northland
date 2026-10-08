@@ -54,6 +54,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     constructionSigns: [],
     settlerBubbles: [],
     lifeHearts: [],
+    groupNumbers: new Map(),
     wind: CALM_WIND_SWAY,
     ...over,
   };
@@ -107,9 +108,15 @@ describe('WorldMarks', () => {
       frameOf({
         selection: new Set([SETTLER]),
         doorBadges: [{ id: 12, x: 0, y: 0, rows: [{ role: 'craftsman' }] }],
+        groupNumbers: new Map([[SETTLER, 1]]),
+        drawn: {
+          boundsOf: (id) => (id === SETTLER ? { minX: 0, minY: 0, maxX: 40, maxY: 40 } : undefined),
+          anchorOf: () => undefined,
+        },
       }),
     );
     expect(marks.slots.selection.children).toHaveLength(1);
+    expect(marks.slots.groupNumbers.children).toHaveLength(1);
     // Without decoded sign art the badge layer draws placeholder squares, into the depth-sorted sprite
     // layer rather than a slot of its own.
     expect(sprites.children).toHaveLength(1);

@@ -150,6 +150,11 @@ export function graphicsSettingsRows(
     },
   });
   minimapFrame.root.classList.add('main-menu__minimap-frames');
+  const groupNumbers = togglePill(settings.groupNumbers, (enabled) => {
+    void store.update({ groupNumbers: enabled });
+  });
+  groupNumbers.setAttribute('aria-label', text.groupNumbers);
+  groupNumbers.dataset.settingsFocus = 'groupNumbers';
   const enhancementToggles = (
     ['softShadows', 'enhancedWater', 'environmentMotion', 'groundedBuildings', 'weather'] as const
   ).map((key) => {
@@ -171,6 +176,7 @@ export function graphicsSettingsRows(
     ...cursorSettingsRows(store, markSegment),
     settingsHeading(text.interfaceHeading),
     settingRow(text.selectionStyle, selectionStyle.root, { tip: text.selectionStyleTip }),
+    settingRow(text.groupNumbers, groupNumbers, { tip: liveTip(text.groupNumbersTip) }),
     settingRow(text.minimapFrame, minimapFrame.root, { tip: text.minimapFrameTip }),
     settingsHeading(text.worldHeading),
     settingRow(text.pixelArtFilter, filter.root, { tip: liveTip(text.pixelArtFilterTip) }),

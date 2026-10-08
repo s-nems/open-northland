@@ -228,6 +228,9 @@ export const deSurfaces = {
         'ring-white': 'Weißer Ring',
         'ring-green': 'Grüner Ring',
       },
+      groupNumbers: 'Gruppennummern',
+      groupNumbersTip:
+        'Eine kleine Nummer an jeder Einheit in Gruppe 1, 2 oder 3. Höhere Gruppen zeigen keine.',
       minimapFrameTip: 'Aussehen des Rahmens um die Minikarte. Änderungen werden im Spiel sofort sichtbar.',
       minimapFrames: {
         zelazo: 'Eisen',

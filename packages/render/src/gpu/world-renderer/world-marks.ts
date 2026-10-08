@@ -15,6 +15,7 @@ import {
   type DoorBadge,
   type GeometryDebugItem,
   GeometryDebugLayer,
+  GroupNumberLayer,
   type LifeHeart,
   LifeHeartLayer,
   type LostGoalMarker,
@@ -48,6 +49,7 @@ export type MarkSlots = Pick<
   | 'constructionSigns'
   | 'bubbles'
   | 'hearts'
+  | 'groupNumbers'
   | 'geometryDebug'
 >;
 
@@ -81,6 +83,8 @@ export interface WorldMarksFrame {
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
   readonly lifeHearts: readonly LifeHeart[];
+  /** Entity id → control-group number to mark; empty when the player turned the numbers off. */
+  readonly groupNumbers: ReadonlyMap<number, number>;
 }
 
 export class WorldMarks {
@@ -103,6 +107,7 @@ export class WorldMarks {
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
   private readonly hearts = new LifeHeartLayer();
+  private readonly groupNumbers = new GroupNumberLayer();
   private readonly geometryDebug = new GeometryDebugLayer();
   readonly slots: MarkSlots;
 
@@ -127,6 +132,7 @@ export class WorldMarks {
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
       hearts: this.hearts.container,
+      groupNumbers: this.groupNumbers.container,
       geometryDebug: this.geometryDebug.container,
     };
   }
@@ -195,6 +201,11 @@ export class WorldMarks {
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);
     this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation }, viewport);
+    this.groupNumbers.draw(
+      { snapshot: frame.snapshot, drawn, zoom: frame.zoom },
+      frame.groupNumbers,
+      viewport,
+    );
   }
 
   destroy(): void {
@@ -210,6 +221,7 @@ export class WorldMarks {
     this.constructionSigns.destroy();
     this.bubbles.destroy();
     this.hearts.destroy();
+    this.groupNumbers.destroy();
     this.geometryDebug.destroy();
   }
 }

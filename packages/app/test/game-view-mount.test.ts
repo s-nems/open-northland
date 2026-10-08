@@ -73,7 +73,7 @@ it.each([false, true])(
         canvas: Object.assign(new EventTarget(), { getAttribute: () => null }),
         initialViewport: { width: 1000, height: 600 },
         cameraCtl: { dispose: acquire('camera') },
-        renderer: { setSelectionStyle() {} },
+        renderer: { setSelectionStyle() {}, setGroupNumbersShown() {} },
         driver: {},
         saveEntrySearch: '?scene=mount-test',
         mapSize: { width: 10, height: 10 },

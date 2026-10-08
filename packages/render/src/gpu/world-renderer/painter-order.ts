@@ -21,6 +21,7 @@ export interface WorldSceneLayers {
   readonly constructionSigns: Container;
   readonly bubbles: Container;
   readonly hearts: Container;
+  readonly groupNumbers: Container;
   readonly geometryDebug: Container;
 }
 
@@ -44,6 +45,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.constructionSigns,
     layers.bubbles,
     layers.hearts,
+    layers.groupNumbers,
     layers.geometryDebug,
   );
 }

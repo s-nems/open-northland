@@ -358,6 +358,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   try {
     const storedSettings = readStoredSettings();
     renderer.setSelectionStyle(storedSettings.selectionStyle);
+    renderer.setGroupNumbersShown(storedSettings.groupNumbers);
     // `?uiscale` pins an absolute HUD scale for reproducible diagnostics; only a positive value pins.
     const uiScaleParam = floatParam(params, 'uiscale', 0);
     const pinnedUiScale = uiScaleParam > 0 ? uiScaleParam : null;
@@ -1020,6 +1021,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       sound: soundDriver,
       setDebugToolsEnabled: debugMounts.setToolsEnabled,
       setSelectionStyle: (style) => renderer.setSelectionStyle(style),
+      setGroupNumbersShown: (shown) => renderer.setGroupNumbersShown(shown),
       setGraphicsEnhancements: applyEnhancementsWarmed((next) => renderer.setGraphicsEnhancements(next)),
       setWeatherEnabled: (enabled) => {
         renderer.setWeatherEnabled(enabled);

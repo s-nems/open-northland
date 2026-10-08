@@ -226,6 +226,8 @@ export const ruSurfaces = {
         'ring-white': 'Белое кольцо',
         'ring-green': 'Зелёное кольцо',
       },
+      groupNumbers: 'Номера групп',
+      groupNumbersTip: 'Маленький номер у каждого юнита из группы 1, 2 или 3. У остальных групп номера нет.',
       minimapFrameTip: 'Вид рамки вокруг мини-карты. Изменения сразу видны в игре.',
       minimapFrames: {
         zelazo: 'Железо',

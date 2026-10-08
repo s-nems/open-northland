@@ -66,6 +66,8 @@ export interface MenuSettings {
   readonly cursorTheme: CursorTheme;
   readonly cursorSize: CursorSize;
   readonly selectionStyle: SelectionStyle;
+  /** A small 1-3 by each unit bound to one of the first control groups. */
+  readonly groupNumbers: boolean;
   readonly minimapFrame: MinimapFrame;
   /** The minimap's marker layers and owner scope, set from its filters popover. */
   readonly minimapFilters: MinimapFilters;
@@ -109,6 +111,7 @@ export function defaultSettings(): MenuSettings {
     cursorTheme: DEFAULT_CURSOR_THEME,
     cursorSize: DEFAULT_CURSOR_SIZE,
     selectionStyle: DEFAULT_SELECTION_STYLE,
+    groupNumbers: false,
     minimapFrame: DEFAULT_MINIMAP_FRAME,
     minimapFilters: DEFAULT_MINIMAP_FILTERS,
     soundEnabled: true,
@@ -187,6 +190,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     cursorTheme: parseCursorTheme(record.cursorTheme),
     cursorSize: parseCursorSize(record.cursorSize),
     selectionStyle: parseSelectionStyle(record.selectionStyle),
+    groupNumbers: typeof record.groupNumbers === 'boolean' ? record.groupNumbers : defaults.groupNumbers,
     minimapFrame: parseMinimapFrame(record.minimapFrame),
     minimapFilters: parseMinimapFilters(record.minimapFilters),
     soundEnabled: typeof record.soundEnabled === 'boolean' ? record.soundEnabled : defaults.soundEnabled,
