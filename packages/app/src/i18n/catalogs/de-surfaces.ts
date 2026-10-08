@@ -292,6 +292,7 @@ export const deSurfaces = {
         network: 'Netzwerkfenster (Mehrspieler)',
         actionRing: 'Aktionsring der Einheit',
         professionPicker: 'Berufsliste des Siedlers',
+        equipmentPicker: 'Ausrüstungsfenster der Siedler',
         attackMove: 'Angriffsbewegung',
         hudToggle: 'Oberfläche aus-/einblenden',
         speedCycle: 'Spieltempo ×1 / ×2 / ×3',

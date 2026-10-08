@@ -247,6 +247,7 @@ export const plSurfaces = {
         network: 'Okno sieci (gra sieciowa)',
         actionRing: 'Pierścień akcji jednostki',
         professionPicker: 'Lista zawodów osadnika',
+        equipmentPicker: 'Okno wyposażenia osadników',
         attackMove: 'Atak w marszu',
         hudToggle: 'Ukryj/pokaż interfejs',
         speedCycle: 'Prędkość gry ×1 / ×2 / ×3',

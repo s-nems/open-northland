@@ -112,6 +112,12 @@ describe('keyboard orders', () => {
     expect(asked).toEqual(['assignBuildingSite', 'assignWorkPlace']);
   });
 
+  it('open the equipment window through the ring order, so the key gates as the ring button does', () => {
+    const { handle, ringOrders } = mount();
+    expect(handle(key('KeyI'))).toBe(true);
+    expect(ringOrders).toEqual(['changeEquipment']);
+  });
+
   it('raise the defence in every building that has one, and fail a press with nothing to change', () => {
     const { handle, sent, cues } = mount();
     handle(key('KeyV'));

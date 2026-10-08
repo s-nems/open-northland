@@ -50,6 +50,7 @@ export const KEYBINDING_ACTIONS = [
   'jumpToStore',
   'actionRing',
   'professionPicker',
+  'equipmentPicker',
   'assignWorkplace',
   'assignHome',
   'attackMove',
@@ -98,7 +99,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   // original's help), F2 the subjects (the original's F7), F7 the knowledge (the original's technology
   // tree on F8), F8 the HUD, N the network panel of a relayed game (a letter: Mac keyboards give F9 to
   // media keys), Q for the original's A (Assign Work Place), so A stays attack-move, R the shown
-  // building's Upgrade.
+  // building's Upgrade, I the selection's equipment window (the common inventory key).
   pauseToggle: 'KeyP',
   speedCycle: 'KeyL',
   gameMenu: 'Escape',
@@ -116,6 +117,7 @@ export const DEFAULT_KEY_BINDINGS: KeyBindings = {
   jumpToStore: 'KeyH',
   actionRing: 'Space',
   professionPicker: 'KeyC',
+  equipmentPicker: 'KeyI',
   assignWorkplace: 'KeyQ',
   assignHome: 'KeyW',
   attackMove: 'KeyA',

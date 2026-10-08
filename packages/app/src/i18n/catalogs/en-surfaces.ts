@@ -251,6 +251,7 @@ export const enSurfaces = {
         network: 'Network window (multiplayer)',
         actionRing: 'Unit action ring',
         professionPicker: 'Settler profession list',
+        equipmentPicker: 'Settler equipment window',
         attackMove: 'Attack-move',
         hudToggle: 'Hide/show interface',
         speedCycle: 'Game speed ×1 / ×2 / ×3',

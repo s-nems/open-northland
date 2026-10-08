@@ -289,6 +289,7 @@ export const ruSurfaces = {
         network: 'Окно сети (сетевая игра)',
         actionRing: 'Круговое меню действий',
         professionPicker: 'Список профессий поселенца',
+        equipmentPicker: 'Окно снаряжения поселенцев',
         attackMove: 'Движение с атакой',
         hudToggle: 'Скрыть/показать интерфейс',
         speedCycle: 'Скорость игры ×1 / ×2 / ×3',

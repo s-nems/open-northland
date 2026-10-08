@@ -37,8 +37,8 @@ interface StoreJump {
 }
 
 /**
- * The single-press keys that select by kind, jump the camera, assign a settler or switch every
- * building's defence. True when the press was one of them.
+ * The single-press keys that select by kind, jump the camera, assign or equip a settler or switch
+ * every building's defence. True when the press was one of them.
  */
 export function createKeyboardOrders(deps: KeyboardOrdersDeps): (e: KeyboardEvent) => boolean {
   let lastStoreJump: StoreJump | null = null;
@@ -81,6 +81,10 @@ export function createKeyboardOrders(deps: KeyboardOrdersDeps): (e: KeyboardEven
     }
     if (pressed('assignHome')) {
       deps.ringOrder('assignHome');
+      return true;
+    }
+    if (pressed('equipmentPicker')) {
+      deps.ringOrder('changeEquipment');
       return true;
     }
     const defence = pressed('defenceOn') ? true : pressed('defenceOff') ? false : null;
