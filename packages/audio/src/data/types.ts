@@ -40,6 +40,9 @@ export interface OneShot {
   /** Milliseconds the music should stay ducked under this shot - set on a jingle, from its
    *  per-`MusicType` hold ({@link import('./bindings.js').JINGLE_DUCK_HOLD_MS}). */
   readonly duckMusicMs?: number;
+  /** dB the music dips for {@link duckMusicMs}: the jingle type's depth scaled by the share it rings at
+   *  ({@link import('./bindings.js').jingleDuck}). Absent is the original's full duck. */
+  readonly jingleDuckDb?: number;
   /** dB the world and ambient buses dip for the length of this shot's wav - set on an alert. */
   readonly duckWorldDb?: number;
   /** dB the music bus dips for the length of this shot's wav - set on an order's answer
@@ -232,6 +235,9 @@ export interface DirectorInput {
   /** The viewer's fog-of-war visibility at a fractional tile - gates an `atomicSound` (a settler hidden by
    *  the fog must not natter or hammer out of empty black). Omit → no fog, every on-screen cue is audible. */
   readonly visibleTile?: (col: number, row: number) => boolean;
+  /** The local player is fighting, as the music's tense mood last read it; a jingle with a combat interval
+   *  then rings sparingly and ducks nothing. Omit → calm. */
+  readonly tense?: boolean;
   /** Whether the viewer ever explored the ground at a fractional tile - gates the terrain beds and the
    *  object ambience, since the explored grey still shows the land. Omit → no fog. */
   readonly exploredTile?: (col: number, row: number) => boolean;

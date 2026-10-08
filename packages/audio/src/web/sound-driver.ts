@@ -304,6 +304,7 @@ export class SoundDriver {
       ...(input.localPlayer !== undefined ? { localPlayer: input.localPlayer } : {}),
       ...(input.visibleTile !== undefined ? { visibleTile: input.visibleTile } : {}),
       ...(input.exploredTile !== undefined ? { exploredTile: input.exploredTile } : {}),
+      ...(musicIntensity(this.mood) === 'tense' ? { tense: true } : {}),
     });
     const now = this.engine.clock;
     const alerts = this.alerts.take(input, input.snapshot, this.index, this.bindings, now);

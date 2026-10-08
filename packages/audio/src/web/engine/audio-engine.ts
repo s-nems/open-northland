@@ -1,3 +1,4 @@
+import { JINGLE_DUCK_FULL_DB } from '../../data/bindings.js';
 import {
   clampVolume,
   DEFAULT_VOLUMES,
@@ -135,10 +136,8 @@ const MONO_CHANNELS = 1;
  *  the same wait a close gives its fade, since a layout flip is not scheduled on the audio clock. */
 export const MONO_SWAP_DELAY_S = CLOSE_GRACE_S;
 
-/** Jingle duck depth on the music bus: -2000 hundredths of dB, as the original fades the music
- *  audiopath while a jingle rings. */
-const MUSIC_DUCK_DB = -20;
-export const MUSIC_DUCK_GAIN = 10 ** (MUSIC_DUCK_DB / 20);
+/** The music's gain under a jingle that names no depth of its own ({@link OneShot.jingleDuckDb}). */
+export const MUSIC_DUCK_GAIN = 10 ** (JINGLE_DUCK_FULL_DB / 20);
 /** The duck's fade time each way in the original: 300 ms, exponential because the original ramps the
  *  audiopath volume linearly in dB. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
@@ -620,7 +619,7 @@ export class WebAudioEngine {
       // The ducks follow the shots that actually ring: a missing or undecodable wav dims nothing. A dip
       // holds from now to the end of the delayed, rate-stretched wav.
       if (shot.duckMusicMs !== undefined) {
-        this.musicDuck?.hold(ctx, MUSIC_DUCK_DB, shot.duckMusicMs / 1000);
+        this.musicDuck?.hold(ctx, shot.jingleDuckDb ?? JINGLE_DUCK_FULL_DB, shot.duckMusicMs / 1000);
       }
       const holdS = start - ctx.currentTime + buffer.duration / (shot.rate ?? 1);
       if (shot.duckWorldDb !== undefined) {

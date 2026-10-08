@@ -29,7 +29,7 @@ export const JINGLE_OPEN_CHEST = 30;
 
 /**
  * Milliseconds the map music stays ducked while each jingle `MusicType` rings, from the original's
- * per-type hold table. The duck depth and fade live with the engine's playback constants.
+ * per-type hold table. The duck's fade lives with the engine's playback constants.
  */
 export const JINGLE_DUCK_HOLD_MS: ReadonlyMap<number, number> = new Map([
   [JINGLE_MARRIAGE, 2800],
@@ -42,6 +42,49 @@ export const JINGLE_DUCK_HOLD_MS: ReadonlyMap<number, number> = new Map([
   [JINGLE_TECHNOLOGY, 2800],
   [JINGLE_OPEN_CHEST, 3000],
 ]);
+
+/** The original's jingle duck: the music audiopath fades to -2000 hundredths of a dB while a jingle rings. */
+export const JINGLE_DUCK_FULL_DB = -20;
+/** How deep something done (a building, a discovery, a chest, a birth, a wedding) dips the music: the
+ *  score keeps its line under a routine fanfare. Authored, tune by ear. */
+export const JINGLE_DUCK_COMPLETION_DB = -12;
+/** How deep a death dips the music: the lament lies over the score rather than stopping it. Authored,
+ *  tune by ear. */
+export const JINGLE_DUCK_DEATH_DB = -8;
+
+/** The depth each jingle `MusicType` dips the music to while it rings. The match verdicts and the
+ *  player's own alarm keep the original's full duck; the rest are lighter, an authored choice. */
+export const JINGLE_DUCK_DB: ReadonlyMap<number, number> = new Map([
+  [JINGLE_MARRIAGE, JINGLE_DUCK_COMPLETION_DB],
+  [JINGLE_BIRTH, JINGLE_DUCK_COMPLETION_DB],
+  [JINGLE_CIVIL_DEFENSE, JINGLE_DUCK_FULL_DB],
+  [JINGLE_DEATH, JINGLE_DUCK_DEATH_DB],
+  [JINGLE_HOUSE_BUILT, JINGLE_DUCK_COMPLETION_DB],
+  [JINGLE_WON, JINGLE_DUCK_FULL_DB],
+  [JINGLE_LOST, JINGLE_DUCK_FULL_DB],
+  [JINGLE_TECHNOLOGY, JINGLE_DUCK_COMPLETION_DB],
+  [JINGLE_OPEN_CHEST, JINGLE_DUCK_COMPLETION_DB],
+]);
+
+/** Seconds between two rings of a listed jingle type while the local player fights: a death in the
+ *  battle the player watches would otherwise lament over the tense music at every fall. In a fight it
+ *  rings without a duck. Authored, tune by ear. */
+export const JINGLE_COMBAT_INTERVAL_S: ReadonlyMap<number, number> = new Map([[JINGLE_DEATH, 15]]);
+
+/** A jingle's music duck: how long it holds and how deep it dips. */
+export interface JingleDuck {
+  readonly duckMusicMs: number;
+  readonly jingleDuckDb: number;
+}
+
+/** The duck a jingle of `musicType` rings with at `share` of its gain: its type's hold at its type's depth
+ *  times the share, so a ring at half gain dips the music half as deep. Undefined for a type without a
+ *  hold. */
+export function jingleDuck(musicType: number, share = 1): JingleDuck | undefined {
+  const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(musicType);
+  if (duckMusicMs === undefined) return undefined;
+  return { duckMusicMs, jingleDuckDb: (JINGLE_DUCK_DB.get(musicType) ?? JINGLE_DUCK_FULL_DB) * share };
+}
 
 // --- Static sound-group names (SoundFXStatic `Name`s) for the positioned action SFX ---
 /** Construction hammering; house builders cue it from their animation, while boat placement binds it here. */

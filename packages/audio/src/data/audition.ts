@@ -1,5 +1,5 @@
 import { poolGain, type SoundIndex } from './bank.js';
-import { JINGLE_DUCK_HOLD_MS } from './bindings.js';
+import { jingleDuck } from './bindings.js';
 import { AMBIENT_MAX_GAIN } from './director/ambient.js';
 import type { ShotLayer } from './perspective.js';
 import type { AmbientLoop, OneShot } from './types.js';
@@ -41,12 +41,12 @@ export function auditionShot(
     case 'answer':
       return { files, gain, pan, key, exclusive: 'group' };
     case 'jingle': {
-      const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(role.musicType);
+      const duck = jingleDuck(role.musicType);
       const lane = { kind: 'jingle', musicType: role.musicType } as const;
       // A jingle rings centred in play, whatever the pan.
-      return duckMusicMs === undefined
+      return duck === undefined
         ? { files, gain, pan: 0, key, lane }
-        : { files, gain, pan: 0, key, lane, duckMusicMs };
+        : { files, gain, pan: 0, key, lane, ...duck };
     }
   }
 }

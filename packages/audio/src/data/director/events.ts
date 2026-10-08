@@ -8,7 +8,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
-import { JINGLE_DUCK_HOLD_MS } from '../bindings.js';
+import { JINGLE_COMBAT_INTERVAL_S, jingleDuck } from '../bindings.js';
 import type { ShotLayer } from '../perspective.js';
 import { entityOwner, entityTile, type TilePoint } from '../snapshot.js';
 import { computeSpatial, computeSpatialAtNode, type Spatial } from '../spatial.js';
@@ -69,21 +69,27 @@ function soundKey(ev: SimEvent, sound: EventSound): string {
   return sound.kind === 'spatial' ? `${key}:${ev.chestKind}` : `${key}:jingle`;
 }
 
-/** A jingle's one-shot: at its authored volume times `share`, centred, carrying the music duck its
- *  `MusicType` holds for, in the jingle lane under that type. */
+/** A jingle's one-shot: at its authored volume times `share`, centred, carrying its type's music duck
+ *  scaled by the share, in the jingle lane under that type. While the player fights (`tense`), a type
+ *  with a combat interval rings under one key that cools for that interval, and ducks nothing. */
 function jingleShot(
   index: SoundIndex,
   files: readonly string[],
   key: string,
   musicType: number,
+  tense: boolean,
   share = 1,
 ): OneShot {
-  const duckMusicMs = JINGLE_DUCK_HOLD_MS.get(musicType);
   const lane: Lane = { kind: 'jingle', musicType };
   const gain = poolGain(index, files) * share;
-  return duckMusicMs === undefined
+  const combatIntervalS = tense ? JINGLE_COMBAT_INTERVAL_S.get(musicType) : undefined;
+  if (combatIntervalS !== undefined) {
+    return { files, gain, pan: 0, key: `jingle:${musicType}:combat`, lane, cooldownS: combatIntervalS };
+  }
+  const duck = jingleDuck(musicType, share);
+  return duck === undefined
     ? { files, gain, pan: 0, key, lane }
-    : { files, gain, pan: 0, key, duckMusicMs, lane };
+    : { files, gain, pan: 0, key, lane, ...duck };
 }
 
 const SFX_LANE: Lane = { kind: 'sfx' };
@@ -248,6 +254,7 @@ function screamPending(ev: SimEvent, spatial: Spatial): Extract<Pending, { kind:
 export function eventOneShots(input: DirectorInput): OneShot[] {
   const { events, snapshot, camera, canvasW, canvasH, index, bindings, localPlayer, visibleTile, terrain } =
     input;
+  const tense = input.tense === true;
   const shots: OneShot[] = [];
   if (events.length === 0) return shots; // the common frame - no events, no snapshot work at all
   // Pass 1: place the node events, resolve bindings, emit jingles, and collect the entity ids the
@@ -300,7 +307,7 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
         if (sound.localPlayerOnly && 'player' in ev && !firesForLocalPlayer(ev, localPlayer)) continue;
         if (sound.screenGated !== true) {
           if (sound.localPlayerOnly && !('player' in ev)) continue; // no owner path for a map-wide jingle
-          shots.push(jingleShot(index, files, soundKey(ev, sound), sound.musicType));
+          shots.push(jingleShot(index, files, soundKey(ev, sound), sound.musicType, tense));
           continue;
         }
         if (offScreen && sound.offScreenGain === undefined) continue; // off screen → silent under the gate
@@ -366,12 +373,12 @@ export function eventOneShots(input: DirectorInput): OneShot[] {
     }
     if (spatial === null) {
       if (p.kind === 'stinger' && p.offScreenGain !== undefined) {
-        shots.push(jingleShot(index, files, p.key, p.musicType, p.offScreenGain));
+        shots.push(jingleShot(index, files, p.key, p.musicType, tense, p.offScreenGain));
       }
       continue; // off screen → silent
     }
     if (p.kind === 'stinger') {
-      shots.push(jingleShot(index, files, p.key, p.musicType));
+      shots.push(jingleShot(index, files, p.key, p.musicType, tense));
     } else {
       shots.push({
         files,
