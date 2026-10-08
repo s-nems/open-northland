@@ -23,16 +23,24 @@ import {
 import { type SeaRegions, seaRegions } from './sea-regions.js';
 
 // The dock order of docs/formats/VEHICLES.md "Ships and docking": a commanded ship boards its crew,
-// scans the hexagon ring of its door distance around the clicked shore point for a node of its own
-// water body it may lie at, sails there under the `docks` task with the click stored as its mooring
+// scans the hexagon ring of its door distance, then the slack rings beyond it, around the clicked
+// shore point for a node of its own water body it may lie at, sails there under the `docks` task with the click stored as its mooring
 // point, and moors on arrival (`movement.ts`). No port building is involved.
 
 /**
- * The nodes a ship may dock at for `point`, in the original's ring order: the map points at exactly
- * the door distance from the point that lie in a part of the sea the ship can sail into, however far
- * (deviation: the original holds the dock to the goto's walk range), and are open under its walk-block,
- * which is the free-size class test plus the other vehicles' cells. The ship's own node qualifies as an
- * in-place mooring.
+ * How many rings past the door distance a dock may lie. Approximation: the original docks on the door
+ * ring alone, by its authored `lmms` size lane; this build's coast comes from the ground patterns at
+ * cell resolution and can sit a node off the original's, so a narrow bay the original's ring still
+ * fits may have no node of the hull's size class on it here.
+ */
+const DOCK_RING_SLACK = 2;
+
+/**
+ * The nodes a ship may dock at for `point`, in the original's ring order, the door ring first and then
+ * the {@link DOCK_RING_SLACK} rings beyond it: the map points that lie in a part of the sea the ship can
+ * sail into, however far (deviation: the original holds the dock to the goto's walk range), and are
+ * open under its walk-block, which is the free-size class test plus the other vehicles' cells. The
+ * ship's own node qualifies as an in-place mooring.
  */
 function dockCandidates(
   world: World,
@@ -49,10 +57,12 @@ function dockCandidates(
   const reach = regions.regionsFrom(terrain.nodeAt(anchor.hx, anchor.hy));
   const blocked = vehicleWalkBlocks(world, ctx, terrain, vehicle, type);
   const out: NodeId[] = [];
-  for (const { point: ring } of hexagonRing(point, vector.distance)) {
-    if (!terrain.inBounds(ring.hx, ring.hy)) continue;
-    const node = terrain.nodeAt(ring.hx, ring.hy);
-    if (reach.includes(regions.regionOf(node)) && !blocked.has(node)) out.push(node);
+  for (let radius = vector.distance; radius <= vector.distance + DOCK_RING_SLACK; radius++) {
+    for (const { point: ring } of hexagonRing(point, radius)) {
+      if (!terrain.inBounds(ring.hx, ring.hy)) continue;
+      const node = terrain.nodeAt(ring.hx, ring.hy);
+      if (reach.includes(regions.regionOf(node)) && !blocked.has(node)) out.push(node);
+    }
   }
   return out;
 }
@@ -159,8 +169,8 @@ export function dockVehicle(
  * pure answer per node over the rule {@link startDock} applies, without issuing the order.
  */
 export interface MooringProbe {
-  /** Whether the dock order on half-cell node `(x, y)` would find a dock node: a shore node at exactly
-   *  the door distance from a water node the ship can reach. */
+  /** Whether the dock order on half-cell node `(x, y)` would find a dock node: a shore node on the door
+   *  ring or a slack ring of a water node the ship can reach. */
   canMoor(x: number, y: number): boolean;
   /** Changes whenever the answers may have; overlay frames memoize on it. */
   readonly key: string;
@@ -183,8 +193,8 @@ const mooringMemo = new WeakMap<World, MooringMemo>();
 
 /**
  * The {@link MooringProbe} of `vehicle`, or null for a vehicle that takes no dock order: not a ship, or
- * riding a carrier. Every land node at the door distance from the parts of the sea the ship can sail
- * into is a mooring spot, gathered once per sea labelling ({@link seaRegions}), so a ship under way
+ * riding a carrier. Every land node on the door ring or a slack ring around the parts of the sea the
+ * ship can sail into is a mooring spot, gathered once per sea labelling ({@link seaRegions}), so a ship under way
  * or another vehicle moving keeps the answer. Approximations: the original's dock command takes any
  * point, so a click at sea also moors when a ring node takes it; the probe accepts walkable land only,
  * the shore the crew can step onto; and other vehicles do not dim a shore, whether one lies on its
@@ -238,9 +248,10 @@ function mooringMemoOf(
 }
 
 /**
- * The walkable land nodes at exactly `doorDistance` from a node of the `reach` regions. A node whose
- * free-size class is at least the door distance has no other continent within it (the class is the
- * radius of its own open component around it), so only the coastal band is scanned.
+ * The walkable land nodes from `doorDistance` to {@link DOCK_RING_SLACK} rings beyond it away from a node
+ * of the `reach` regions, the rings {@link dockCandidates} searches. A node whose free-size class is at
+ * least the outermost ring has no other continent within it (the class is the radius of its own open
+ * component around it), so only the coastal band is scanned.
  */
 function mooringSpots(
   world: World,
@@ -251,16 +262,19 @@ function mooringSpots(
   doorDistance: number,
 ): ReadonlySet<NodeId> {
   const clearance = vehicleClearance(world, ctx, terrain);
-  const inland = doorDistance <= MAX_CLEARANCE_CLASS ? doorDistance : Number.POSITIVE_INFINITY;
+  const outermost = doorDistance + DOCK_RING_SLACK;
+  const inland = outermost <= MAX_CLEARANCE_CLASS ? outermost : Number.POSITIVE_INFINITY;
   const spots = new Set<NodeId>();
   for (let n = 0; n < terrain.nodeCount; n++) {
     const node = n as NodeId;
     if (!reach.includes(regions.regionOf(node)) || clearance.classOf(node) >= inland) continue;
     const { x, y } = terrain.coordsOf(node);
-    for (const { point } of hexagonRing({ hx: x, hy: y }, doorDistance)) {
-      if (!terrain.inBounds(point.hx, point.hy)) continue;
-      const shore = terrain.nodeAt(point.hx, point.hy);
-      if (terrain.isWalkable(shore)) spots.add(shore);
+    for (let radius = doorDistance; radius <= outermost; radius++) {
+      for (const { point } of hexagonRing({ hx: x, hy: y }, radius)) {
+        if (!terrain.inBounds(point.hx, point.hy)) continue;
+        const shore = terrain.nodeAt(point.hx, point.hy);
+        if (terrain.isWalkable(shore)) spots.add(shore);
+      }
     }
   }
   return spots;

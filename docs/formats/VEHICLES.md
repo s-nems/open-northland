@@ -295,12 +295,14 @@ land, so a ship never sails onto the map edge).
 
 ## Ships and docking
 
-Ships never attack. A ship spawns moored when a land continent borders it within
-`passengervector[1]` steps, otherwise with no mooring point. Dock on a land point needs a commander;
+Ships never attack. A ship spawns moored when a node on the hex ring of exactly radius
+`passengervector[1]` around it, walked in the dock scan's order below, lies on a land continent
+(type 1); the first such node is its mooring point, and with none it spawns with no mooring point.
+Dock on a land point needs a commander;
 a moored ship boards its crew first and the order waits while anyone is outside; then it scans the hex ring of exactly radius
 `passengervector[1]` around the point, starting `passengervector[1]` steps north-west and turning
 through the six directions, for a non-border node whose continent byte equals the ship's own and
-whose size class is `>= logicsize`, and starts the walk (range 60) to the
+whose size class (the map's `lmms` lane, low three bits) is `>= logicsize`, and starts the walk (range 60) to the
 first that takes it; the walk sets task 1 "docks" and stores the *clicked point* as the mooring
 point. A ring node that is the ship's own position ends the order with nothing set. When no ring
 node takes the walk, a ship with its commander inside raises 0x32; without one it stores the point
@@ -314,12 +316,19 @@ cell and riders still walking to it are only detached where they stand, and a ca
 down on the door cell; with the door at sea the
 crew dies and a carried vehicle is removed with the ship. Ships leave no wreck and no cargo.
 
-Open Northland: a spawned ship's mooring point is the nearest walkable node in hexagon-ring order
-within the door distance; the door direction adds the vector's offset to the vehicle's facing in the
-six map-point directions, a N facing read as NE and a S facing as SW, the way a human's walk facing
-reads as a map-point heading (approximation). Which node the
-original stores as the spawn mooring is *open*. `dockVehicle` (`systems/vehicles/dock.ts`) holds the
-point under the `docks` task while the crew boards, the twin of the goto's `waitsForHuman` hold; a
+Open Northland: this build's coast comes from the ground patterns at cell resolution
+(`landVertexMask`, `packages/app/src/content/collision.ts`) and can sit a node or two off the
+original's `lmco` continents, either way. A spawned ship reads the authored `lmco` lane on the door
+ring; the lane carries no continent types, so a ring node on any continent but the ship's own reads
+as land, and the mooring is that node when walkable here, else a walkable neighbour on the same
+continent (approximation). When the lane finds nothing, which includes an anchor the lane puts on
+land, or a map has no lane, the ship moors on the nearest walkable node in hexagon-ring order within
+the door distance. The door direction adds the vector's offset to the
+vehicle's facing in the six map-point directions, a N facing read as NE and a S facing as SW, the
+way a human's walk facing reads as a map-point heading (approximation). `dockVehicle`
+(`systems/vehicles/dock.ts`) holds the point under the `docks` task while the crew boards, the twin
+of the goto's `waitsForHuman` hold; it scans the door ring and then two more rings beyond it, so a
+narrow bay the original's ring fits still takes a hull here (approximation); a
 ring node is open when the ship's walk-block admits it, which adds other vehicles' cells to the size
 class test, and lies in a part of the sea the ship can sail into, however far (the deviation of
 "Movement"); a ship already on a ring node moors in place and drops any drive under way (approximation: the original ends the order with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
@@ -331,7 +340,7 @@ crew aboard is reaped like any death, so the owner's casualty tallies count it. 
 choice): a rider still walking to a ship lost at sea, and a cart still driving to it, stand on land
 and are only detached (`removeVehicle`, `systems/vehicles/remove.ts`); the original frees them with
 the ship. The dock pick shows where the
-order would moor (`mooringProbe`): every walkable node at exactly the door distance from the parts of
+order would moor (`mooringProbe`): every walkable node on those rings around the parts of
 the sea the ship can sail into is a mooring spot, lit on the map; the rest is dimmed, a click there
 orders nothing, and a ship's right-click on a lit spot docks instead of the refused goto. The parts are
 the water nodes whose size class admits the hull, joined over the pathfinder's edges and labelled once

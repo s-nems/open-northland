@@ -23,7 +23,8 @@ export interface SettlerEquipment {
 
 /**
  * Put a vehicle of `vehicleType` on the map at half-cell node (x,y) for `tribe`, at full hit points
- * with an empty hold and no crew. A ship spawns moored when land lies within its door distance. Trusted
+ * with an empty hold and no crew. A ship spawns moored when land lies on the map's continent lane at its
+ * door distance, or walkable land within it (`spawnMooring`, `systems/vehicles/create.ts`). Trusted
  * only: a yard's finished site, a decoded map's `setvehicle`, a chest reward. A `vehicleType` the
  * content lacks is skipped.
  */
