@@ -11,7 +11,7 @@ const MAP_W = 128;
 const MAP_H = 16;
 /** Tiles, not half-cell nodes; the sim's ranges are hex node distances, two nodes per tile E/W. */
 const SCOUT = { x: 5, y: 8 } as const;
-/** Ten tiles short of CHAIN_A: past its 16-node spacing, inside the 48-node link range. */
+/** Ten tiles short of CHAIN_A: past its 16-node spacing, inside the 40-node link range. */
 const ERECT_AT = { x: 6, y: 8 } as const;
 /** CHAIN_A stands 28 hex nodes from the collector, inside its 50-node walk range; CHAIN_B 34 past A,
  *  inside the link range, on an ODD row so the pair straddles the half-cell stagger (a board drawn from

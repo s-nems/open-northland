@@ -52,11 +52,11 @@ export const CARRIER_WALK_RANGE_NODES = 63;
 
 /**
  * Two same-player signposts link strictly inside this hex distance when a walk of at most
- * {@link SIGNPOST_LINK_STEPS} joins them, whatever the ground's resistance. Project rule: the original
- * links within 40 nodes under the goods search's resistance budget, which on the decoded maps' common
- * resistance 3 and 4 ground linked well under half of the post pairs 32 to 40 nodes apart.
+ * {@link SIGNPOST_LINK_STEPS} joins them, whatever the ground's resistance. Project rule: the original's
+ * guide connection radius without its resistance budget, which cuts a link to about 26 nodes on sand and
+ * 20 on mountains and split networks on the decoded maps' common sand and mountain ground.
  */
-export const SIGNPOST_LINK_RANGE_NODES = 48;
+export const SIGNPOST_LINK_RANGE_NODES = 40;
 
 /** The longest walk a link follows, in steps: twice its range, so a lake's long way round still cuts. */
 export const SIGNPOST_LINK_STEPS = 2 * SIGNPOST_LINK_RANGE_NODES;

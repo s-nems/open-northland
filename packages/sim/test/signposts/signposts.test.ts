@@ -250,10 +250,10 @@ describe('placeSignpost - the scout erects a guidepost', () => {
 describe('signpostNetwork - connected groups', () => {
   it('posts inside the link range join one group; a post past it forms its own', () => {
     const sim = freshSim(96, 8);
-    // Tiles are 2 nodes wide: posts at tiles 2 and 22 are 40 nodes apart - inside the 48-node range.
+    // Tiles are 2 nodes wide: posts at tiles 2 and 20 are 36 nodes apart - inside the 40-node range.
     const a = stampPost(sim, 2, 2);
-    const b = stampPost(sim, 22, 2);
-    const far = stampPost(sim, 46, 2); // 48 nodes past b - the range is exclusive
+    const b = stampPost(sim, 20, 2);
+    const far = stampPost(sim, 40, 2); // 40 nodes past b - the range is exclusive
     expect(sim.world.get(a, Signpost).links).toEqual([b]);
     expect(sim.world.get(b, Signpost).links).toEqual([a]);
     expect(sim.world.get(far, Signpost).links).toEqual([]);
@@ -270,7 +270,7 @@ describe('signpostNetwork - connected groups', () => {
       map: roughNodeMap(128, 16, () => ROUGH_GROUND),
     });
     const a = stampPost(sim, 4, 2);
-    const b = stampPost(sim, 26, 2); // 44 nodes away
+    const b = stampPost(sim, 23, 2); // 38 nodes away
     expect(sim.world.get(a, Signpost).links).toEqual([b]);
   });
 
