@@ -1,5 +1,7 @@
 import { type ConstructionSupply, ONE, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import type { SnapshotEntity } from '../src/game/snapshot.js';
+import { createMessageFeed, takeRaised } from '../src/hud/tool-panel/messages/feed.js';
 import { FightAreas } from '../src/hud/tool-panel/messages/fight-areas.js';
 import {
   createSnapshotMessageSource,
@@ -7,9 +9,11 @@ import {
   type SnapshotMessageSource,
 } from '../src/hud/tool-panel/messages/from-snapshot.js';
 import type { MessageNaming } from '../src/hud/tool-panel/messages/raise.js';
+import { MessageRaiser } from '../src/hud/tool-panel/messages/raise.js';
 import { NoteRetirement } from '../src/hud/tool-panel/messages/retire.js';
 import {
   CONSTRUCTION_SHORTAGE_GRACE_TICKS,
+  raiseShortage,
   type SiteSeam,
 } from '../src/hud/tool-panel/messages/site-shortages.js';
 import type { MessageText } from '../src/hud/tool-panel/messages/text.js';
@@ -33,7 +37,7 @@ const COVERED: ConstructionSupply = { kind: 'covered' };
 const plain = (full: string): MessageText => ({ short: full, full });
 const naming: MessageNaming = {
   settler: (e) => ({ name: `S${e.id}`, jobLabel: null, female: false }),
-  building: () => 'Piekarnia',
+  building: (e) => (e.components.Palisade === undefined ? 'Piekarnia' : 'Palisada'),
   vehicle: () => 'Wóz',
   player: () => 'Gracz',
   stance: (state) => state,
@@ -45,23 +49,39 @@ const naming: MessageNaming = {
 interface World {
   readonly owner?: number;
   readonly finished?: boolean;
+  /** Wall segment ids beside the building site, all going up. */
+  readonly wall?: readonly number[];
+}
+
+function siteEntity(id: number, w: World): SnapshotEntity {
+  return {
+    id,
+    components: {
+      Owner: { player: w.owner ?? LOCAL },
+      Position: { x: 5 * ONE, y: 5 * ONE },
+      Building: { buildingType: BAKERY, tribe: 1, built: 0, level: 0 },
+      ...(w.finished === true ? {} : { UnderConstruction: { labor: 0 } }),
+    },
+  };
+}
+
+function wallSegment(id: number): SnapshotEntity {
+  return {
+    id,
+    components: {
+      Owner: { player: LOCAL },
+      Position: { x: id * ONE, y: 5 * ONE },
+      Palisade: {},
+      UnderConstruction: { labor: 0 },
+    },
+  };
 }
 
 function world(tick: number, w: World = {}): WorldSnapshot {
   return {
     tick,
     events: [],
-    entities: [
-      {
-        id: SITE,
-        components: {
-          Owner: { player: w.owner ?? LOCAL },
-          Position: { x: 5 * ONE, y: 5 * ONE },
-          Building: { buildingType: BAKERY, tribe: 1, built: 0, level: 0 },
-          ...(w.finished === true ? {} : { UnderConstruction: { labor: 0 } }),
-        },
-      },
-    ],
+    entities: [siteEntity(SITE, w), ...(w.wall ?? []).map(wallSegment)],
   };
 }
 
@@ -204,5 +224,55 @@ describe('building sites short of a material', () => {
     const next = sweepTo(source, SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS, {}, SWEEPS_TO_GRACE + 1).at(-1);
     expect(next).toEqual([[`Piekarnia:${USER_MESSAGE_TYPE.constructionStarved}:good:${WOOD}`, true]]);
     expect(retirement.isOver(shortageNote(BRICK), world(0))).toBe(false);
+  });
+
+  it('rewords the standing card in the feed once the good changes', () => {
+    const feed = createMessageFeed();
+    const site = siteEntity(SITE, {});
+    const raised = SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    const reworded = 2 * SNAPSHOT_SWEEP_INTERVAL_TICKS;
+    const first = new MessageRaiser(world(raised), naming);
+    raiseShortage(first, naming, site, BRICK);
+    const [brick] = first.out;
+    if (brick === undefined) throw new Error('no note raised');
+    expect(takeRaised(feed, brick, raised)).toBe('accepted');
+    const next = new MessageRaiser(world(reworded), naming);
+    raiseShortage(next, naming, site, WOOD);
+    const [wood] = next.out;
+    if (wood === undefined) throw new Error('no note raised');
+    expect(takeRaised(feed, wood, reworded)).toBe('duplicate');
+    const [card] = feed.live();
+    expect(card?.text.full).toBe(`Piekarnia:${USER_MESSAGE_TYPE.constructionStarved}:good:${WOOD}`);
+    expect(card?.goodType).toBe(WOOD);
+  });
+
+  it('raises one note for the wall segments short of a good, voiced by one segment while it stands', () => {
+    const wall = [31, 32, 33];
+    const short = new Set(wall);
+    const source = createSnapshotMessageSource(LOCAL, undefined, {
+      supply: (site, asked) => ({ status: short.has(site) ? shortOf(WOOD, false) : COVERED, asked }),
+    });
+    const retirement = new NoteRetirement(new FightAreas(), null, source.shortages);
+    const sweeps = sweepTo(source, SWEEPS_TO_GRACE, { wall });
+    expect(sweeps.at(-1)).toEqual([[`Palisada:${USER_MESSAGE_TYPE.constructionStarved}:good:${WOOD}`, true]]);
+    const voiceOf = (id: number) => ({
+      ...shortageNote(WOOD),
+      subject: { kind: 'building' as const, entity: id },
+    });
+    expect(retirement.isOver(voiceOf(31), world(0, { wall }))).toBe(false);
+    expect(retirement.isOver(voiceOf(32), world(0, { wall }))).toBe(true);
+    // The first segment gets its wood: the note moves to the next one, the standing voice retires.
+    short.delete(31);
+    const moved = SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS;
+    sweepTo(source, moved, { wall }, SWEEPS_TO_GRACE + 1);
+    expect(retirement.isOver(voiceOf(31), world(0, { wall }))).toBe(true);
+    expect(retirement.isOver(voiceOf(32), world(0, { wall }))).toBe(false);
+    // The run keeps its voice when a segment ahead of it in the index turns short again.
+    short.add(31);
+    const back = moved + SWEEPS_TO_GRACE + WORK_STATUS_REASK_SWEEPS;
+    const later = sweepTo(source, back, { wall }, moved + 1);
+    expect(later.at(-1)).toHaveLength(1);
+    expect(retirement.isOver(voiceOf(32), world(0, { wall }))).toBe(false);
+    expect(retirement.isOver(voiceOf(31), world(0, { wall }))).toBe(true);
   });
 });

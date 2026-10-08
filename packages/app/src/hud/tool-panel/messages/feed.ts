@@ -120,12 +120,14 @@ function identityKey(m: PendingMessage): string {
   return `${m.type}|${subjectKey(m.subject, m.about)}|${m.goodType ?? ''}|${m.jobType ?? ''}|${technologies}|${m.familyWait ?? ''}|${stance}`;
 }
 
-/** The facts outside the identity a standing note's text reads; a fight's text changes with every hit. */
+/** The facts outside the identity a standing note's text reads: a state note's good, since its identity
+ *  leaves the good out; a fight's text changes with every hit. */
 function wordedFacts(m: PendingMessage): string | null {
   if (m.fight !== undefined) return null;
   const idle =
     m.idle === undefined ? '' : m.idle === null ? 'none' : `${m.idle.kind}:${m.idle.goodTypes.join(',')}`;
-  return `${m.stall?.reason ?? ''}:${m.stall?.goodType ?? ''}|${idle}`;
+  const good = lifecycleOf(m.type) === 'state' ? (m.goodType ?? '') : '';
+  return `${m.stall?.reason ?? ''}:${m.stall?.goodType ?? ''}|${idle}|${good}`;
 }
 
 /** The note to push off a full strip for `arrival`, or undefined when none may go: any lighter note, or
@@ -304,8 +306,9 @@ export function createMessageFeed(initial: MessageFeedState = defaultMessageFeed
               ...m,
               at: pending.at,
               ...(pending.fight === undefined ? {} : { fight: pending.fight }),
-              ...(pending.stall === undefined ? {} : { stall: pending.stall, goodType: pending.goodType }),
-              ...(pending.idle === undefined ? {} : { idle: pending.idle, goodType: pending.goodType }),
+              ...(pending.stall === undefined ? {} : { stall: pending.stall }),
+              ...(pending.idle === undefined ? {} : { idle: pending.idle }),
+              ...(lifecycleOf(pending.type) === 'state' ? { goodType: pending.goodType } : {}),
               text: compose(),
             };
       const shown = live.replace(pending, update);

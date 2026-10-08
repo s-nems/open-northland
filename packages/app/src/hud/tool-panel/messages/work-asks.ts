@@ -24,6 +24,11 @@ export type StatusRead<S> = (entity: number, asked: number) => StatusAnswer<S> |
 export type WorkAnswer = StatusAnswer<WorkStatus>;
 export type WorkStatusRead = StatusRead<WorkStatus>;
 
+/** When the entity was last asked, never asked sorting first. */
+function ageOf<S>(watch: AskWatch<S>): number {
+  return watch.askedAt === null ? -1 : watch.askedSweep;
+}
+
 interface AskWatch<S> {
   /** The tick and sweep of the last ask, null before the first. */
   askedAt: number | null;
@@ -35,8 +40,11 @@ interface AskWatch<S> {
 /**
  * Which entities' answers the sweeps ask the sim for, and when: the first read of an entity asks at once,
  * then every {@link WORK_STATUS_REASK_SWEEPS} sweeps, never more than {@link WORK_STATUS_ASKS_PER_SWEEP}
- * asks a sweep. An entity no read touched in a sweep is forgotten, so its next read asks afresh. One
- * instance per read, each with its own budget.
+ * asks a sweep. A sweep grants the next one's asks to the entities it read that are due by then, the
+ * longest unasked first, never asked ahead of all; the rest ask only in the room the granted leave. So
+ * a crowd past the budget stretches every entity's re-ask alike instead of starving the ones read last.
+ * An entity no read touched in a sweep is forgotten, so its next read asks afresh. One instance per
+ * read, each with its own budget.
  */
 export class StatusAsks<S> {
   private watches = new Map<number, AskWatch<S>>();
@@ -44,6 +52,10 @@ export class StatusAsks<S> {
   private sweep = 0;
   private tick = 0;
   private budget = 0;
+  /** Entities the previous sweep granted an ask this sweep, and the asks kept for the ones still to be
+   *  read; the budget never drops below that reserve for an ungranted ask. */
+  private granted = new Set<number>();
+  private reserved = 0;
 
   constructor(private readonly read: StatusRead<S>) {}
 
@@ -52,6 +64,7 @@ export class StatusAsks<S> {
     this.sweep++;
     this.tick = tick;
     this.budget = WORK_STATUS_ASKS_PER_SWEEP;
+    this.reserved = this.granted.size;
   }
 
   /** The newest landed answer about `entity`, asking anew when one is due and the sweep has room;
@@ -64,9 +77,11 @@ export class StatusAsks<S> {
     this.next.set(entity, watch);
     const answered = watch.answer !== undefined && watch.answer.asked === watch.askedAt;
     if (watch.askedAt !== null && !answered) this.land(entity, watch);
-    const due = watch.askedAt === null || this.sweep - watch.askedSweep >= WORK_STATUS_REASK_SWEEPS;
-    if (due && this.budget > 0) {
+    const granted = this.granted.has(entity);
+    const room = granted ? this.budget > 0 : this.budget > this.reserved;
+    if (this.isDue(watch, this.sweep) && room) {
       this.budget--;
+      if (granted) this.reserved--;
       watch.askedAt = this.tick;
       watch.askedSweep = this.sweep;
       this.land(entity, watch);
@@ -74,8 +89,20 @@ export class StatusAsks<S> {
     return watch.answer;
   }
 
+  /** Grant the next sweep's asks to the entities read this sweep that will be due by then, the longest
+   *  unasked first; ties keep the order they were read in. */
   end(): void {
     this.watches = this.next;
+    const due: [entity: number, watch: AskWatch<S>][] = [];
+    for (const [entity, watch] of this.next) {
+      if (this.isDue(watch, this.sweep + 1)) due.push([entity, watch]);
+    }
+    due.sort((a, b) => ageOf(a[1]) - ageOf(b[1]));
+    this.granted = new Set(due.slice(0, WORK_STATUS_ASKS_PER_SWEEP).map(([entity]) => entity));
+  }
+
+  private isDue(watch: AskWatch<S>, sweep: number): boolean {
+    return watch.askedAt === null || sweep - watch.askedSweep >= WORK_STATUS_REASK_SWEEPS;
   }
 
   /** Read the outstanding ask, keeping an answer only when it answers this watch's latest ask. */
