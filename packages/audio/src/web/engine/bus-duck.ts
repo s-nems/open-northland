@@ -6,7 +6,9 @@ export const BUS_DUCK_RAMP_S = 0.08;
 
 /**
  * A gain stage behind a bus that dips it for a while, so a slider move on the bus and a running dip
- * compose. A new dip extends a running one and deepens it, never lifts it early.
+ * compose. A new dip extends a running one and deepens it, never lifts it early; dips of one depth
+ * share a single hold rather than stacking, and a dip that lands mid-release ramps down from where the
+ * release has got to.
  */
 export class BusDuck {
   readonly node: GainNode;
@@ -14,7 +16,11 @@ export class BusDuck {
   private until: number | null = null;
   private depth = 1;
 
-  constructor(ctx: BaseAudioContext) {
+  /** `releaseS` is the lift's fade back to full; the dip itself fades in over {@link BUS_DUCK_RAMP_S}. */
+  constructor(
+    ctx: BaseAudioContext,
+    private readonly releaseS = BUS_DUCK_RAMP_S,
+  ) {
     this.node = ctx.createGain();
     this.node.gain.value = 1;
   }
@@ -32,7 +38,7 @@ export class BusDuck {
   /** Lift a run-out dip; call every applied frame. */
   update(ctx: BaseAudioContext): void {
     if (this.until === null || ctx.currentTime < this.until) return;
-    rampParam(ctx, this.node.gain, 1, BUS_DUCK_RAMP_S);
+    rampParam(ctx, this.node.gain, 1, this.releaseS);
     this.until = null;
     this.depth = 1;
   }

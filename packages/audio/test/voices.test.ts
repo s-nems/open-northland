@@ -220,6 +220,8 @@ describe('idle chatter', () => {
     expect(shots[0]?.key).toBe('generic:Generic Viking Male');
     expect(shots[0]?.exclusive).toBe('wav');
     expect(shots[0]?.gain).toBeCloseTo(CHATTER_GAIN); // picked man 3, centred on screen
+    // Unprompted: the music does not dip under it.
+    expect(shots[0]?.duckMusicDb).toBeUndefined();
   });
 
   it('polls the first pool first, so a die under both counts speaks through the child', () => {

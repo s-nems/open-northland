@@ -22,6 +22,7 @@ import {
   SELECT_COOLDOWN_S,
   TRIBE_MURMUR_GROUPS,
   UI_CUE_FILES,
+  VOICE_MUSIC_DUCK_DB,
   type VoiceCall,
 } from '../src/index.js';
 
@@ -283,6 +284,17 @@ describe('refused orders', () => {
       responses: [{ members: [1], refused: true, fallback: 'fail' }, { members: [2] }],
     }).oneShots;
     expect(keysOf(shots)).toEqual(['respond:Viking male ok 03']);
+  });
+});
+
+describe('music under an answer', () => {
+  it('dips the music under every line of an answer and a selection, not under a fallback click', () => {
+    const crowd = [...army(MURMUR_MIN_GROUP), ...army(3, 900, FRANK)];
+    const shots = [...answer(crowd, { members: idsOf(crowd) }), ...select(crowd, { members: idsOf(crowd) })];
+    expect(keysOf(shots).some((k) => k.startsWith('murmur:'))).toBe(true);
+    for (const shot of shots) expect(shot.duckMusicDb).toBe(VOICE_MUSIC_DUCK_DB);
+    const building: EntitySnapshot = { id: 40, components: { Position: { x: 0, y: 0 }, Building: {} } };
+    expect(select([building], { members: [40], fallback: 'confirm' })[0]?.duckMusicDb).toBeUndefined();
   });
 });
 

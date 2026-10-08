@@ -45,8 +45,8 @@ import { WeatherSoundscape } from './weather-soundscape.js';
  * (`ctx.currentTime`), never `Date.now`, so ramps stay sample-accurate.
  *
  * Graph: each sound feeds its {@link SoundBus} gain (one-shots by {@link oneShotBus}, beds and weather
- * on `ambient`, music through its jingle duck), every bus feeds the master gain, and the master ends in
- * a peak limiter before the destination. Zoom-following sounds enter their bus through one shared gain
+ * on `ambient`, music through its jingle and voice ducks), every bus feeds the master gain, and the
+ * master ends in a peak limiter before the destination. Zoom-following sounds enter their bus through one shared gain
  * per perspective layer ({@link import('../../data/perspective.js').PerspectiveLayer}), so a zoom moves
  * a handful of layer gains, never a playing sound.
  *
@@ -135,6 +135,10 @@ export const MUSIC_DUCK_GAIN = 10 ** (-20 / 20);
 /** The duck's fade time each way in the original: 300 ms. */
 export const MUSIC_DUCK_RAMP_S = 0.3;
 
+/** The voice duck's lift back to full music ({@link OneShot.duckMusicDb}): slower than its dip, so the
+ *  score does not jump back between two quick answers, quick enough not to creep audibly. Approximation. */
+export const VOICE_DUCK_RELEASE_S = 0.3;
+
 /** The buses an alert ducks ({@link OneShot.duckWorldDb}): the world's action and its beds. */
 export const ALERT_DUCKED_BUSES: readonly SoundBus[] = ['world', 'ambient'];
 
@@ -175,6 +179,8 @@ export class WebAudioEngine {
   private duckedUntil: number | null = null;
   /** The dips behind {@link ALERT_DUCKED_BUSES}. */
   private alertDucks: readonly BusDuck[] = [];
+  /** The music's dip under a spoken line ({@link OneShot.duckMusicDb}), after the jingle duck. */
+  private voiceDuck: BusDuck | null = null;
   private samples: SampleCache | null = null;
   /** Settles {@link samplesReady}: with the cache once the context exists, null if it never will. */
   private settleSamples: (samples: SampleCache | null) => void = () => undefined;
@@ -385,6 +391,7 @@ export class WebAudioEngine {
     this.mixer.reconcile(frame.ambient);
     this.updateMusicDuck(ctx);
     for (const duck of this.alertDucks) duck.update(ctx);
+    this.voiceDuck?.update(ctx);
   }
 
   /** Play one frame of weather; `gameSeconds` is the clock the conditions advanced by (see
@@ -504,12 +511,11 @@ export class WebAudioEngine {
       ui: ctx.createGain(),
     };
     for (const bus of SOUND_BUSES) buses[bus].gain.value = this.channelGain(bus);
-    // The duck sits behind the music bus so a slider move and a running duck compose.
+    // The ducks sit behind their bus so a slider move and a running duck compose.
     const musicDuck = ctx.createGain();
     musicDuck.gain.value = 1;
     for (const bus of SOUND_BUSES) {
-      if (bus === 'music') buses.music.connect(musicDuck).connect(master);
-      else if (!ALERT_DUCKED_BUSES.includes(bus)) buses[bus].connect(master);
+      if (bus !== 'music' && !ALERT_DUCKED_BUSES.includes(bus)) buses[bus].connect(master);
     }
     const layers = this.createLayers(ctx, buses);
     this.alertDucks = ALERT_DUCKED_BUSES.map((bus) => {
@@ -517,6 +523,9 @@ export class WebAudioEngine {
       buses[bus].connect(duck.node).connect(master);
       return duck;
     });
+    const voiceDuck = new BusDuck(ctx, VOICE_DUCK_RELEASE_S);
+    buses.music.connect(musicDuck).connect(voiceDuck.node).connect(master);
+    this.voiceDuck = voiceDuck;
     this.master = master;
     this.buses = buses;
     this.layers = layers;
@@ -597,12 +606,15 @@ export class WebAudioEngine {
         if (instance !== undefined) this.stoppable.delete(instance);
         return;
       }
-      // The duck follows the shots that actually ring: a missing or undecodable wav dims nothing.
+      const start = Math.max(startAt, ctx.currentTime);
+      // The ducks follow the shots that actually ring: a missing or undecodable wav dims nothing. A dip
+      // holds from now to the end of the delayed, rate-stretched wav.
       if (shot.duckMusicMs !== undefined) this.duckMusic(ctx, shot.duckMusicMs);
+      const holdS = start - ctx.currentTime + buffer.duration / (shot.rate ?? 1);
       if (shot.duckWorldDb !== undefined) {
-        const holdS = buffer.duration / (shot.rate ?? 1);
         for (const duck of this.alertDucks) duck.hold(ctx, shot.duckWorldDb, holdS);
       }
+      if (shot.duckMusicDb !== undefined) this.voiceDuck?.hold(ctx, shot.duckMusicDb, holdS);
       const source = ctx.createBufferSource();
       source.buffer = buffer;
       if (shot.rate !== undefined) source.playbackRate.value = shot.rate;
@@ -617,7 +629,7 @@ export class WebAudioEngine {
         this.stoppable.set(instance, { source, gain });
         source.onended = () => this.stoppable.delete(instance);
       }
-      source.start(Math.max(startAt, ctx.currentTime));
+      source.start(start);
     });
   }
 

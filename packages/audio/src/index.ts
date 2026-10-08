@@ -90,6 +90,7 @@ export {
   oneShotBus,
   SOUND_BUSES,
   type SoundBus,
+  VOICE_MUSIC_DUCK_DB,
   VOLUME_CHANNELS,
   VOLUME_MAX,
   VOLUME_RANGE_DB,
@@ -253,6 +254,7 @@ export {
   SAMPLE_CACHE_BUDGET_BYTES,
   type SamplePreloadReport,
   type SoundPreloadReport,
+  VOICE_DUCK_RELEASE_S,
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './web/engine/index.js';

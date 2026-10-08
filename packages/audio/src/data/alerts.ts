@@ -2,6 +2,7 @@ import type { VoiceClass } from '@open-northland/data';
 import { type Camera, halfCellToScreen } from '@open-northland/render/data';
 import { entityById, type HalfCellNode, type WorldSnapshot } from '@open-northland/sim';
 import { groupFiles, poolGain, type SoundIndex } from './bank.js';
+import { VOICE_MUSIC_DUCK_DB } from './mixer.js';
 import { voiceClassOf } from './snapshot.js';
 import type { Lane, NoticeVoiceSound, OneShot, SoundBindings } from './types.js';
 import { UI_CUE_GAIN } from './ui-cues.js';
@@ -137,8 +138,8 @@ export function alertLane(alert: AlertKind): Lane {
   return { kind: 'alert', alert };
 }
 
-/** The horn of an attack on `front`, centred on the ui bus, ducking the world under it; null when the
- *  bindings name no alert group or the bank lacks it. */
+/** The horn of an attack on `front`, centred on the ui bus, ducking the world and the music under it;
+ *  null when the bindings name no alert group or the bank lacks it. */
 export function attackAlertShot(
   index: SoundIndex,
   bindings: SoundBindings,
@@ -154,6 +155,7 @@ export function attackAlertShot(
     key: `alert:${alert}`,
     lane: alertLane(alert),
     duckWorldDb: ALERT_DUCK_DB,
+    duckMusicDb: VOICE_MUSIC_DUCK_DB,
   };
 }
 
@@ -177,7 +179,14 @@ export function noticeVoiceShot(
   const sound = bindings.noticeVoices?.[voice][voiceClass];
   const files = sound === undefined ? undefined : noticeVoiceFiles(index, sound);
   if (files === undefined) return null;
-  return { files, gain: poolGain(index, files), pan: 0, key: `notice:${voice}`, lane: alertLane(voice) };
+  return {
+    files,
+    gain: poolGain(index, files),
+    pan: 0,
+    key: `notice:${voice}`,
+    lane: alertLane(voice),
+    duckMusicDb: VOICE_MUSIC_DUCK_DB,
+  };
 }
 
 /** A settler's notice voice waiting for the next frame's snapshot. */

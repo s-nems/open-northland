@@ -119,14 +119,15 @@ describe('WebAudioEngine music', () => {
     expect(source.loopEnd).toBe(TRACK.loopEndS);
     const loopS = TRACK.loopEndS - TRACK.loopStartS;
     expect(source.playsForS).toBe(TRACK.loopStartS + (PASSES - 1) * loopS);
-    // source → fade gain → music bus → duck → master.
+    // source → fade gain → music bus → jingle duck → voice duck → master.
     const fade = gainOf(source);
     const { master, buses, duck } = mixerGraph(ctx);
     const musicBus = buses.music;
     expect(fade.connectedTo[0]).toBe(musicBus);
     expect(musicBus.gain.value).toBeCloseTo(musicBusGain(DEFAULT_VOLUMES.music), 5);
     expect(musicBus.connectedTo[0]).toBe(duck);
-    expect(duck.connectedTo[0]).toBe(master);
+    const voiceDuck = duck.connectedTo[0] as FakeGain;
+    expect(voiceDuck.connectedTo[0]).toBe(master);
   });
 
   it('opens a cue at its track’s levelling gain and lands it on silence at its last sample', async () => {

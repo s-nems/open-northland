@@ -18,6 +18,7 @@ export {
   musicBusGain,
   PERSPECTIVE_RAMP_S,
   type SoundPreloadReport,
+  VOICE_DUCK_RELEASE_S,
   VOLUME_RAMP_S,
   WebAudioEngine,
 } from './audio-engine.js';

@@ -22,6 +22,7 @@ import {
   type OneShot,
   OneShotArbiter,
   UI_CUE_GAIN,
+  VOICE_MUSIC_DUCK_DB,
   WebAudioEngine,
 } from '../src/index.js';
 import { FakeContext, type FakeGain, flush } from './helpers/fake-audio.js';
@@ -126,7 +127,7 @@ const snapshot: WorldSnapshot = {
 };
 
 describe('alert and notice sounds', () => {
-  it("sounds the horn on the ui lane at the front's level, ducking the world", () => {
+  it("sounds the horn on the ui lane at the front's level, ducking the world and the music", () => {
     const desk = new AlertDesk();
     desk.reportAttack(base(OFF_SCREEN));
     const [horn] = desk.take(view, snapshot, index, bindings, 0);
@@ -134,6 +135,7 @@ describe('alert and notice sounds', () => {
     expect(horn?.gain).toBe(ATTACK_ALERT_GAIN.base);
     expect(horn?.lane).toEqual({ kind: 'alert', alert: 'baseAttacked' });
     expect(horn?.duckWorldDb).toBe(ALERT_DUCK_DB);
+    expect(horn?.duckMusicDb).toBe(VOICE_MUSIC_DUCK_DB);
     expect(ATTACK_ALERT_GAIN.units).toBeLessThan(ATTACK_ALERT_GAIN.base);
     // The reports were taken: the next frame starts empty.
     expect(desk.take(view, snapshot, index, bindings, ATTACK_ALERT_INTERVAL_S)).toEqual([]);
@@ -242,7 +244,7 @@ describe('alert lane ladder', () => {
 const HORN_S = 4;
 
 describe('alert duck', () => {
-  it('dips the world and ambient buses for the alert wav, leaving the ui and music alone', async () => {
+  it('dips the world and ambient buses and the music under the alert wav, leaving the ui alone', async () => {
     const ctx = new FakeContext();
     const engine = new WebAudioEngine({
       createContext: () => ctx as unknown as AudioContext,
@@ -259,18 +261,22 @@ describe('alert duck', () => {
       key: 'alert:baseAttacked',
       lane: { kind: 'alert', alert: 'baseAttacked' },
       duckWorldDb: ALERT_DUCK_DB,
+      duckMusicDb: VOICE_MUSIC_DUCK_DB,
     };
     engine.apply({ oneShots: [horn], ambient: [] });
     await flush(); // the duck lands with the wav, once its load resolves
     for (const duck of ducks)
       expect(duck.gain.ramps.at(-1)?.value).toBeCloseTo(10 ** (ALERT_DUCK_DB / 20), 5);
+    // The jingle duck stays put; the voice duck behind it takes the music down its few dB.
     expect(musicDuck.gain.ramps).toHaveLength(0);
+    const voiceDuck = musicDuck.connectedTo[0] as FakeGain;
+    expect(voiceDuck.gain.ramps.at(-1)?.value).toBeCloseTo(10 ** (VOICE_MUSIC_DUCK_DB / 20), 5);
     expect(buses.ui.connectedTo[0]).not.toBe(ducks[0]);
     ctx.currentTime = HORN_S - 1;
     engine.apply({ oneShots: [], ambient: [] });
     for (const duck of ducks) expect(duck.gain.ramps).toHaveLength(1);
     ctx.currentTime = HORN_S;
     engine.apply({ oneShots: [], ambient: [] });
-    for (const duck of ducks) expect(duck.gain.ramps.at(-1)?.value).toBe(1);
+    for (const duck of [...ducks, voiceDuck]) expect(duck.gain.ramps.at(-1)?.value).toBe(1);
   });
 });

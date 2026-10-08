@@ -1,6 +1,7 @@
 import { type EntitySnapshot, entityById } from '@open-northland/sim';
 import { groupFiles, poolGain, type SoundIndex } from '../bank.js';
 import { clamp } from '../math.js';
+import { VOICE_MUSIC_DUCK_DB } from '../mixer.js';
 import { entityTile } from '../snapshot.js';
 import { MAX_PAN, panAt, screenOffset } from '../spatial.js';
 import type { DirectorInput, OneShot, OrderAnswer, VoiceCall } from '../types.js';
@@ -166,7 +167,14 @@ export function groupAnswerShots(input: DirectorInput, answer: OrderAnswer): One
 }
 
 function answerShot(index: SoundIndex, speaker: Speaker, key: string, pan: number): OneShot {
-  return { files: speaker.files, gain: poolGain(index, speaker.files), pan, key, exclusive: 'group' };
+  return {
+    files: speaker.files,
+    gain: poolGain(index, speaker.files),
+    pan,
+    key,
+    exclusive: 'group',
+    duckMusicDb: VOICE_MUSIC_DUCK_DB,
+  };
 }
 
 /** The murmur bed's lines, cycling through the members' murmur pools from the most spoken. */
@@ -193,6 +201,7 @@ function murmurShots(index: SoundIndex, members: readonly Member[], pan: number)
         exclusive: 'wav' as const,
         delayS: line.delayS,
         cooldownS: MURMUR_COOLDOWN_S,
+        duckMusicDb: VOICE_MUSIC_DUCK_DB,
       },
     ];
   });
@@ -219,6 +228,7 @@ export function selectionShots(input: DirectorInput, call: VoiceCall): OneShot[]
       key: `select:${lead.member.entity.id}`,
       exclusive: 'group',
       cooldownS: SELECT_COOLDOWN_S,
+      duckMusicDb: VOICE_MUSIC_DUCK_DB,
     },
   ];
 }

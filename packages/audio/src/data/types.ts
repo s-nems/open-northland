@@ -42,6 +42,9 @@ export interface OneShot {
   readonly duckMusicMs?: number;
   /** dB the world and ambient buses dip for the length of this shot's wav - set on an alert. */
   readonly duckWorldDb?: number;
+  /** dB the music bus dips for the length of this shot's wav - set on a line the player asked for and
+   *  on an alert ({@link import('./mixer.js').VOICE_MUSIC_DUCK_DB}). */
+  readonly duckMusicDb?: number;
   /**
    * The original's "is this wave running" guard. `wav`: skip while the wav this shot picked is still
    * sounding, as a positioned voice, call or body blow does. `group`: skip while any wav of `files` still
