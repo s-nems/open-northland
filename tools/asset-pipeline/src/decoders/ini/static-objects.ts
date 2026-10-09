@@ -51,6 +51,16 @@ export interface MapStaticObjects {
     goods?: { name: string; count: number }[];
   }[];
   guides: { player: number; hx: number; hy: number }[];
+  /** The `marry` and `childOfWoman` lines in source order, positions verbatim. */
+  familyLinks: (
+    | { kind: 'marry'; woman: HalfCell; man: HalfCell }
+    | { kind: 'childOfWoman'; child: HalfCell; woman: HalfCell }
+  )[];
+}
+
+interface HalfCell {
+  hx: number;
+  hy: number;
 }
 
 /** The verbs that place an entity, each ending the previous placement's block of modifiers. */
@@ -75,6 +85,8 @@ const EMPTY_COLUMN = 0;
  * attachtovehicle <hx> <hy>
  * moveintovehicle
  * setexpierence <humanjobexperiencetype> <amount>
+ * marry <woman hx> <woman hy> <man hx> <man hy>
+ * childOfWoman <child hx> <child hy> <woman hx> <woman hy>
  * ```
  *
  * `addgoods` stocks the entity placed by the immediately preceding `sethouse` or `setvehicle`. Its
@@ -96,6 +108,12 @@ const EMPTY_COLUMN = 0;
  *
  * `setexpierence` adds starting experience to the enclosing `sethuman`, in the unit of the tribe's
  * `needfor*` amounts (original behavior: both read one per-track counter).
+ *
+ * `marry` and `childOfWoman` name two humans by their placement half-cells and belong to no block.
+ * Original behavior: each runs where it stands in the file, over the humans placed so far, so a map
+ * repeats a `marry` after the second spouse's `sethuman`; the first position must hold the woman (a
+ * child for `childOfWoman`). The one corpus line naming a single position names a man there and marries
+ * no one, so a line short of four positions is dropped.
  */
 export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
   const sec = sections.find((s) => s.name === 'StaticObjects');
@@ -108,7 +126,22 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
     const n = int(v);
     return n === EMPTY_COLUMN ? undefined : n;
   };
-  const out: MapStaticObjects = { buildings: [], humans: [], animals: [], vehicles: [], guides: [] };
+  const halfCellPair = (values: readonly string[]): [HalfCell, HalfCell] | undefined => {
+    const [ax, ay, bx, by] = values.map(int);
+    if (ax === undefined || ay === undefined || bx === undefined || by === undefined) return undefined;
+    return [
+      { hx: ax, hy: ay },
+      { hx: bx, hy: by },
+    ];
+  };
+  const out: MapStaticObjects = {
+    buildings: [],
+    humans: [],
+    animals: [],
+    vehicles: [],
+    guides: [],
+    familyLinks: [],
+  };
   // The entity the next `addgoods` run stocks: the last captured `sethouse` or `setvehicle`, which any
   // other line retargets away from.
   let goodsTarget: MapStaticObjects['buildings'][number] | MapStaticObjects['vehicles'][number] | undefined;
@@ -120,7 +153,13 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
     const key = p.key.toLowerCase();
     if (key !== 'addgoods') goodsTarget = undefined;
     if (PLACEMENT_VERBS.has(key)) humanTarget = undefined;
-    if (key === 'setexpierence') {
+    if (key === 'marry') {
+      const pair = halfCellPair(p.values);
+      if (pair !== undefined) out.familyLinks.push({ kind: 'marry', woman: pair[0], man: pair[1] });
+    } else if (key === 'childofwoman') {
+      const pair = halfCellPair(p.values);
+      if (pair !== undefined) out.familyLinks.push({ kind: 'childOfWoman', child: pair[0], woman: pair[1] });
+    } else if (key === 'setexpierence') {
       const [trackRaw, amountRaw] = p.values;
       const track = int(trackRaw);
       const amount = int(amountRaw);
@@ -172,7 +211,10 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
       goodsTarget = building;
     } else if (key === 'sethuman') {
       // Original behavior: the numbers are read with the integer reader, which steps over anything
-      // before the next digit or sign, a doubled closing quote's bare `"` included.
+      // before the next digit or sign, a doubled closing quote's bare `"` included. A doubled opening
+      // quote (`""soldier_bow_long"`, once in the corpus) reads as an empty job name instead, which matches
+      // no `[jobtype]`: the original places a human of the undefined job 0 there, not the archer, and
+      // the line is dropped here.
       const [playerRaw, tribe, role, hxRaw, hyRaw, missionIdRaw, behaviourRaw] = p.values.filter(
         (value) => value !== BARE_QUOTE,
       );

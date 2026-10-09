@@ -44,7 +44,7 @@ export interface CreateVehicleCommand {
   readonly goods?: readonly { readonly good: number; readonly amount: number }[];
 }
 
-/** Commands that create living settlers, wildlife herds or vehicles. */
+/** Commands that create living settlers, wildlife herds or vehicles, and wire the families a map places. */
 export type SpawnCommand =
   | CreateVehicleCommand
   | {
@@ -129,4 +129,19 @@ export type SpawnCommand =
       /** The player that owns the herd (a slot in `[0, MAX_PLAYERS)`; stamps an `Owner`). Omit, or
        *  name the wild slot a `setanimal` writes, for creatures nobody owns. */
       readonly owner?: number;
+    }
+  | {
+      /** Wed the woman placed on `woman` to the man placed on `man` at once, with no wedding walk (a
+       *  decoded map's `marry`). Each is the half-cell a `spawnSettler` named; nobody eligible there
+       *  leaves both single. */
+      readonly kind: 'marryPlaced';
+      readonly woman: { readonly x: number; readonly y: number };
+      readonly man: { readonly x: number; readonly y: number };
+    }
+  | {
+      /** Make the child placed on `child` the child of the woman placed on `woman` and of her husband
+       *  (a decoded map's `childOfWoman`), each named like `marryPlaced`'s. */
+      readonly kind: 'parentPlacedChild';
+      readonly child: { readonly x: number; readonly y: number };
+      readonly woman: { readonly x: number; readonly y: number };
     };

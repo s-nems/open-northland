@@ -60,7 +60,9 @@ A doubled closing quote leaves a bare `"` (`WIELKA INWAZJA` writes
 `"hero_sword_BJARNI"" 112 163 100 33 7`). The parameter reader takes it for the start of a string,
 which no number parameter accepts, and does not move past it, so that number parameter and every
 number parameter after it read 0 and such a `SetHumanX` line spawns nobody (reading). A `sethuman` placement reads its
-numbers with the integer reader, which steps over anything before the next digit or sign.
+numbers with the integer reader, which steps over anything before the next digit or sign. A doubled
+opening quote reads as an empty name instead: `WIELKA INWAZJA`'s `sethuman 3 "viking" ""soldier_bow_long"
+299 52 0 0` names no `[jobtype]`, so it places a human of the undefined job 0, not an archer (reading).
 
 Every parameter has a kind. A quoted name is resolved to an id for the kinds marked *name*; an
 integer token is accepted for any kind, including name kinds (corpus: `EnableHouse 0 "viking" 41`
@@ -125,6 +127,39 @@ column at all. Ids are not unique: one id names a group, and every lookup scans 
 (reading), which is why a reimplementation wants an id-to-entities index. Ids are also assigned
 at runtime by `SetHuman`, `SetHouse`, `SetAnimal`, `SetVehicle`, the `ChangeMissionId*` results, and,
 as a side effect, by the `BuildHumans`, `BuildHouses`, and `BuildVehicles` goals.
+
+## Placed families
+
+Two more `[StaticObjects]` lines name two placed humans by the map points they were placed on (reading):
+
+| Line | Columns |
+| --- | --- |
+| `marry` | `<woman x> <woman y> <man x> <man y>` |
+| `childOfWoman` | `<child x> <child y> <woman x> <woman y>` |
+
+Each line runs where it stands in the file, over the humans placed so far, so a hand-written map repeats
+a `marry` after its second spouse's `sethuman`; the packed tutorial maps write them all after the
+placements (corpus). Only the two named points are searched: `marry` takes the first woman on its first
+point who may marry (an adult who is no soldier, hero or scout and is neither married nor about to be)
+and the first such man on its second, with no player or tribe check, and weds them at once. A line
+naming the man first weds no one. If the wife has a home, the couple settles: a homeless husband joins
+her, one without a workplace takes her into his home, and one with a workplace keeps whichever home
+lies nearer to it, his own on a tie; no move checks the home's capacity, and a child of hers follows
+her. A homeless wife leaves both where they live.
+
+`childOfWoman` takes the first non-adult without a mother on its first point and the first female
+without a child on its second. The child becomes hers and, when she is married, her husband's, and
+moves into her home.
+
+Corpus: 30 `marry` lines on 9 maps and one `childOfWoman` (`tutorial_002`), together 26 couples.
+`Mroczny_Swiat_sub1` writes `marry 54 59`, a single point holding a man, which weds no one;
+`SARACEN_1`'s one line names the man first; `WIELKA INWAZJA` writes two lines before their husbands are
+placed and repeats both after them.
+
+The loader reads exactly these verbs, matched ignoring case: `sethouse`, `sethuman`, `setanimal`,
+`setvehicle`, `setguide`, `addgoods`, `setproducedgood`, `attachtohouse`, `attachtovehicle`,
+`moveintovehicle`, `setexpierence`, `marry` and `childOfWoman`; any other line is skipped (reading). The
+corpus uses no other verb.
 
 ## Execution model
 

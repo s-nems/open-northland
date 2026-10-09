@@ -128,26 +128,33 @@ export function evictSettlerFromBlockedSpawn(
   // An off-map spawn stays put: clamping would judge standability from a border node it is not on.
   if (!terrain.inBounds(n.hx, n.hy)) return;
   const from = terrain.nodeAt(n.hx, n.hy);
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
-  const taken = claimed?.has(from) ?? false;
-  if (terrain.traversable(from, settlerTraversal(world, settler)) && !blocked.has(from) && !taken) {
-    claimed?.add(from); // no push, but a later unit in the batch must still avoid this node
-    return;
-  }
-  const free = nearestUnblockedNode(
-    terrain,
-    from,
-    blocked,
-    claimed,
-    undefined,
-    settlerTraversal(world, settler),
-  );
-  if (free === null) return; // boxed in - nowhere free to stand; the settler stays put
-  claimed?.add(free);
-  const c = terrain.coordsOf(free);
+  const landing = spawnLanding(world, ctx, terrain, from, settlerTraversal(world, settler), claimed);
+  if (landing === null) return; // boxed in - nowhere free to stand; the settler stays put
+  // Even without a push, a later unit in the batch must avoid the node.
+  claimed?.add(landing);
+  if (landing === from) return;
+  const c = terrain.coordsOf(landing);
   const centre = positionOfNode(c.x, c.y);
   p.x = centre.x;
   p.y = centre.y;
+}
+
+/**
+ * Where {@link evictSettlerFromBlockedSpawn} stands a settler spawned on `from`: `from` itself when it
+ * is free, else the nearest unblocked node, or null when boxed in (the settler then stays on `from`).
+ */
+export function spawnLanding(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  from: NodeId,
+  traversal: Traversal,
+  claimed?: ReadonlySet<NodeId>,
+): NodeId | null {
+  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const taken = claimed?.has(from) ?? false;
+  if (terrain.traversable(from, traversal) && !blocked.has(from) && !taken) return from;
+  return nearestUnblockedNode(terrain, from, blocked, claimed, undefined, traversal);
 }
 
 /** The half-cell node a settler stands on, clamped into bounds. */

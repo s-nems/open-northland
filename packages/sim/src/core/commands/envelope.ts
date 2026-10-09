@@ -162,6 +162,8 @@ export const COMMAND_ISSUER: {
   setVehicleWanted: 'seat',
   clearVehicleWanted: 'seat',
   setWorkFlag: 'seat',
+  marryPlaced: 'trusted',
+  parentPlacedChild: 'trusted',
   spawnAnimalHerd: 'trusted',
   spawnSettler: 'trusted',
   stopVehicle: 'seat',

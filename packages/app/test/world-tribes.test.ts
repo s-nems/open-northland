@@ -39,7 +39,7 @@ const seats = (...tribeIds: number[]) => ({
 });
 
 function entities(over: Partial<NonNullable<TerrainMapFile['entities']>>): TerrainMapFile['entities'] {
-  return { buildings: [], humans: [], animals: [], vehicles: [], guides: [], ...over };
+  return { buildings: [], humans: [], animals: [], vehicles: [], guides: [], familyLinks: [], ...over };
 }
 
 describe('worldTribes', () => {

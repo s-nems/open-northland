@@ -18,6 +18,8 @@ const AuthoredGoods = z
   .array(z.strictObject({ name: z.string(), count: z.number().int().positive() }))
   .optional();
 
+const HalfCell = z.strictObject({ hx: z.number().int().nonnegative(), hy: z.number().int().nonnegative() });
+
 export const TerrainEntities = z.strictObject({
   /**
    * `sethouse` placements: `[GfxHouse]` EditName + level pick the building type. `player` is the
@@ -123,6 +125,17 @@ export const TerrainEntities = z.strictObject({
         hx: z.number().int().nonnegative(),
         hy: z.number().int().nonnegative(),
       }),
+    )
+    .default([]),
+  /** The `marry` and `childOfWoman` lines in source order, each naming two placed humans by the
+   *  half-cells they were placed on, verbatim: the woman first for `marry`, the child first for
+   *  `childOfWoman`. */
+  familyLinks: z
+    .array(
+      z.discriminatedUnion('kind', [
+        z.strictObject({ kind: z.literal('marry'), woman: HalfCell, man: HalfCell }),
+        z.strictObject({ kind: z.literal('childOfWoman'), child: HalfCell, woman: HalfCell }),
+      ]),
     )
     .default([]),
 });

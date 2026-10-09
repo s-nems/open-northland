@@ -70,7 +70,7 @@ import { setPalisadeGateMode } from '../palisades/gate-control.js';
 import { convertPalisadeGate, placePalisade, setPalisadeGate } from '../palisades/index.js';
 import { cancelRoadSite, placeRoadSite } from '../roads/sites.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
-import { spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
+import { marryPlaced, parentPlacedChild, spawnAnimalHerd, spawnSettler } from '../spawn/index.js';
 import { applyTradeCommand, registerTradeAgreement } from '../trade/index.js';
 import {
   attachToVehicle,
@@ -198,6 +198,12 @@ function applyCommand(world: World, ctx: SystemContext, command: Command, orders
       return;
     case 'spawnSettler':
       spawnSettler(world, ctx, command);
+      return;
+    case 'marryPlaced':
+      marryPlaced(world, ctx, command);
+      return;
+    case 'parentPlacedChild':
+      parentPlacedChild(world, ctx, command);
       return;
     case 'spawnAnimalHerd':
       spawnAnimalHerd(world, ctx, command);

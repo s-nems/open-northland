@@ -364,6 +364,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setVehicleStance: { required: { vehicle: 'integer', stance: { oneOf: VEHICLE_STANCES } } },
   setWorkFlag: { required: { entity: 'integer', ...NODE } },
   clearHaulFlag: { required: { entity: 'integer' } },
+  marryPlaced: { required: { woman: { fields: { required: NODE } }, man: { fields: { required: NODE } } } },
+  parentPlacedChild: {
+    required: { child: { fields: { required: NODE } }, woman: { fields: { required: NODE } } },
+  },
   spawnAnimalHerd: {
     required: { tribe: 'integer', ...NODE },
     optional: { count: 'integer', missionId: 'integer', owner: 'integer' },

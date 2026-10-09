@@ -44,7 +44,41 @@ describe('extractStaticObjects', () => {
       animals: [{ species: 'deer', player: 6, hx: 50, hy: 60 }],
       vehicles: [],
       guides: [],
+      familyLinks: [],
     });
+  });
+
+  it('keeps marry and childOfWoman lines in source order, positions verbatim, outside any block', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 0 "saracen" "woman" 395 318 0 0' },
+      { level: 2, text: 'marry 395 318 390 349' }, // written before the husband is placed
+      { level: 2, text: 'attachtohouse 395 314 1' }, // still the woman's
+      { level: 2, text: 'sethuman 0 "saracen" "builder" 390 349 0 0' },
+      { level: 2, text: 'Marry 395 318 390 349' },
+      { level: 2, text: 'childOfWoman 88 197 395 318' },
+      { level: 2, text: 'marry 54 59' }, // one position only - dropped
+    ];
+    const out = extractStaticObjects(cifLinesToSections(lines));
+    const woman = { hx: 395, hy: 318 };
+    const man = { hx: 390, hy: 349 };
+    expect(out?.familyLinks).toEqual([
+      { kind: 'marry', woman, man },
+      { kind: 'marry', woman, man },
+      { kind: 'childOfWoman', child: { hx: 88, hy: 197 }, woman },
+    ]);
+    expect(out?.humans[0]?.attach).toEqual([{ hx: 395, hy: 314, slot: 1 }]);
+  });
+
+  it('drops a doubled opening quote, which the original reads as an empty job name', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 3 "viking" ""soldier_bow_long" 299 52 0 0' },
+      { level: 2, text: 'sethuman 3 "viking" "soldier_bow_long" 299 38 0 0' },
+    ];
+    expect(extractStaticObjects(cifLinesToSections(lines))?.humans).toEqual([
+      { tribe: 'viking', role: 'soldier_bow_long', player: 3, hx: 299, hy: 38 },
+    ]);
   });
 
   it('steps over the bare quote a doubled closing quote leaves before the numbers', () => {
@@ -95,6 +129,7 @@ describe('extractStaticObjects', () => {
         },
       ],
       guides: [{ player: 3, hx: 141, hy: 51 }],
+      familyLinks: [],
     });
   });
 
@@ -362,6 +397,7 @@ describe('extractStaticObjects', () => {
       animals: [{ species: 'cattle', player: 20, hx: 68, hy: 77 }],
       vehicles: [],
       guides: [],
+      familyLinks: [],
     });
   });
 });

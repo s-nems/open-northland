@@ -65,6 +65,22 @@ describe('resolveAuthoredPlacements', () => {
     expect(skipped).toBe(3);
   });
 
+  it('keeps the family links in source order and drops one naming a half-cell off the map', () => {
+    const woman = { hx: 3, hy: 5 };
+    const familyLinks = [
+      { kind: 'marry' as const, woman, man: { hx: 7, hy: 5 } },
+      { kind: 'marry' as const, woman, man: { hx: 40, hy: 5 } }, // the 12x12 lattice ends at 11
+      { kind: 'childOfWoman' as const, child: { hx: 4, hy: 5 }, woman },
+    ];
+    const { familyLinks: kept, skipped } = resolveAuthoredPlacements(
+      { buildings: [], humans: [], animals: [], familyLinks },
+      AUTHORED_ROWS,
+      authoredMap(),
+    );
+    expect(kept).toEqual([familyLinks[0], familyLinks[2]]);
+    expect(skipped).toBe(1);
+  });
+
   it('names the first human carrying a `setname` id, once, and leaves the rest of the group unnamed', () => {
     const entities = {
       buildings: [],

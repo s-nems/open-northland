@@ -4,7 +4,7 @@ import { resolveWorldContent, type WorldContentOptions } from '../sandbox/index.
 import { MAP_TRIBES, type SeatTribeRemap, seatedPlacements } from '../seat-tribes.js';
 import { authoredCatalogExtras } from './authored-catalog.js';
 import { type AuthoredEntities, resolveAuthoredPlacements } from './authored-placements.js';
-import { enqueuePlacements, type MapScriptWorld, newWorldSim } from './build.js';
+import { enqueueFamilyLinks, enqueuePlacements, type MapScriptWorld, newWorldSim } from './build.js';
 import type { AuthoredJoinRows } from './content-joins.js';
 
 /**
@@ -38,7 +38,7 @@ export function runAuthoredMap(
   absentSeats: readonly number[] = [],
   seatTribes: SeatTribeRemap = MAP_TRIBES,
 ): Simulation | null {
-  const { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals } =
+  const { placements, familyLinks, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals } =
     resolveAuthoredPlacements(entities, rows, map, script.humanNames);
   if (placements.length === 0) return null;
   if (skipped > 0 || droppedGoods > 0 || droppedPicks > 0 || droppedAttachments > 0 || skippedAnimals > 0) {
@@ -62,6 +62,7 @@ export function runAuthoredMap(
       seatTribes,
     ),
   );
+  enqueueFamilyLinks(sim, familyLinks);
   sim.run(ticks);
   return sim;
 }

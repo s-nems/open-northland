@@ -183,8 +183,9 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(CORPUS_MAP)))('a real decod
     const { sim } = await realMapWorld({ mapId: CORPUS_MAP, aiSeats: [] });
     const housed = [...sim.world.query(Residence)].length;
     const posted = [...sim.world.query(JobAssignment)].length;
-    // Measured against CnMod 1.3.2; both move only on an intentional content or gate change.
-    expect(housed).toBe(8);
+    // Measured against CnMod 1.3.2; both move only on an intentional content or gate change. Half the
+    // housed are the eight husbands the map's `marry` lines move into their wives' homes.
+    expect(housed).toBe(16);
     expect(posted).toBe(18);
   });
 });

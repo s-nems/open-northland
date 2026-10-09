@@ -25,7 +25,9 @@ export function authoredMapFile(entities?: AuthoredEntities): TerrainMapFile {
     height: 6,
     typeIds: new Array(36).fill(GRASS),
     // The lanes a case does not author are what the loader's own defaults would give it.
-    ...(entities !== undefined ? { entities: { vehicles: [], guides: [], ...entities } } : {}),
+    ...(entities !== undefined
+      ? { entities: { vehicles: [], guides: [], familyLinks: [], ...entities } }
+      : {}),
   };
 }
 

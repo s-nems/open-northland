@@ -11,7 +11,10 @@ export type AuthoredEntities = Pick<
   NonNullable<TerrainMapFile['entities']>,
   'buildings' | 'humans' | 'animals'
 > &
-  Partial<Pick<NonNullable<TerrainMapFile['entities']>, 'guides' | 'vehicles'>>;
+  Partial<Pick<NonNullable<TerrainMapFile['entities']>, 'guides' | 'vehicles' | 'familyLinks'>>;
+
+/** A `marry` or `childOfWoman` line, its two half-cells verbatim. */
+export type AuthoredFamilyLink = NonNullable<TerrainMapFile['entities']>['familyLinks'][number];
 
 /** One resolved authored placement, ready to enqueue. */
 export type AuthoredPlacement =
@@ -105,6 +108,8 @@ export function resolveAuthoredPlacements(
   humanNames: readonly MapHumanName[] = [],
 ): {
   placements: AuthoredPlacement[];
+  /** The `marry` and `childOfWoman` lines whose both half-cells lie on the map, in source order. */
+  familyLinks: AuthoredFamilyLink[];
   skipped: number;
   droppedGoods: number;
   droppedPicks: number;
@@ -273,5 +278,11 @@ export function resolveAuthoredPlacements(
     }
     placements.push({ kind: 'signpost', x: guide.hx, y: guide.hy, owner: guide.player });
   }
-  return { placements, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals };
+  const familyLinks: AuthoredFamilyLink[] = [];
+  for (const link of entities.familyLinks ?? []) {
+    const [first, second] = link.kind === 'marry' ? [link.woman, link.man] : [link.child, link.woman];
+    if (inBounds(first.hx, first.hy) && inBounds(second.hx, second.hy)) familyLinks.push(link);
+    else skipped++;
+  }
+  return { placements, familyLinks, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals };
 }

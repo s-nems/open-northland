@@ -11,7 +11,7 @@ import type {
 import { components, type MissionScript, Simulation, systems, type TerrainMap } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
-import type { AuthoredPlacement } from './authored-placements.js';
+import type { AuthoredFamilyLink, AuthoredPlacement } from './authored-placements.js';
 
 /** Decoded map setup and resolved mission definitions. */
 export interface MapScriptWorld {
@@ -180,4 +180,24 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
       });
     }
   }
+}
+
+/**
+ * A map's `marry` and `childOfWoman` lines, in source order and after every placement they name.
+ * Approximation: the original runs each line where it stands in the file, over the humans placed so far.
+ * The corpus repeats every line written before its second spouse's `sethuman` after it, so running them
+ * all last weds the same couples.
+ */
+export function enqueueFamilyLinks(sim: Simulation, links: readonly AuthoredFamilyLink[]): void {
+  for (const link of links) {
+    if (link.kind === 'marry') {
+      sim.enqueueSetup({ kind: 'marryPlaced', woman: nodeOf(link.woman), man: nodeOf(link.man) });
+    } else {
+      sim.enqueueSetup({ kind: 'parentPlacedChild', child: nodeOf(link.child), woman: nodeOf(link.woman) });
+    }
+  }
+}
+
+function nodeOf(cell: { readonly hx: number; readonly hy: number }): { x: number; y: number } {
+  return { x: cell.hx, y: cell.hy };
 }
