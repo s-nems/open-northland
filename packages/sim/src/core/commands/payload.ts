@@ -1,6 +1,7 @@
-import { EQUIP_CATEGORIES, HomeQualityEffect } from '@open-northland/data';
+import { EQUIP_CATEGORIES, HomeQualityEffect, MAP_GOAL_GOODS_MAX } from '@open-northland/data';
 import { AI_DIFFICULTIES, AI_MODULE_IDS } from '../../components/ai-player.js';
 import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
+import { MAX_MATCH_GOALS, type MatchGoal } from '../../components/match.js';
 import { SCRIPTED_LOOK_MAX_RECIPES, SCRIPTED_LOOK_RECIPE_MAX_CHARS } from '../../components/mission.js';
 import type { NeedKind } from '../../components/needs.js';
 import { GATE_MODES } from '../../components/palisade.js';
@@ -107,6 +108,23 @@ type PayloadSpec<C> = {
 } & ([OptionalKey<C>] extends [never]
   ? { readonly optional?: never }
   : { readonly optional: { readonly [P in OptionalKey<C>]: FieldCheck } });
+
+const MATCH_GOAL_PAYLOAD: {
+  readonly [K in MatchGoal['kind']]: PayloadSpec<Extract<MatchGoal, { kind: K }>>;
+} = {
+  goods: {
+    required: {
+      goods: {
+        arrayOf: { fields: { required: { good: 'integer', amount: 'integer' } } },
+        maxLength: MAP_GOAL_GOODS_MAX,
+      },
+    },
+  },
+  inhabitants: { required: { count: 'integer', soldiers: 'boolean' } },
+  wonByMission: { required: {} },
+  lostByMission: { required: {} },
+  lastStanding: { required: {} },
+};
 
 const UNIT_SELECTION_ACTION_PAYLOAD: {
   readonly [K in UnitSelectionAction['kind']]: PayloadSpec<Extract<UnitSelectionAction, { kind: K }>>;
@@ -344,7 +362,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   setJob: { required: { entity: 'integer', jobType: 'integer' } },
   setMatchParticipants: {
     required: { players: { arrayOf: 'integer' } },
-    optional: { victory: { oneOf: ['script', 'elimination'] } },
+    optional: {
+      victory: { oneOf: ['script', 'elimination', 'goals'] },
+      goals: { arrayOf: { variants: MATCH_GOAL_PAYLOAD }, maxLength: MAX_MATCH_GOALS },
+    },
   },
   setNeedsEnabled: { required: { enabled: 'boolean' } },
   setPalisadeGateMode: { required: { palisade: 'integer', mode: { oneOf: GATE_MODES } } },

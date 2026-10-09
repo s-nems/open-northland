@@ -320,7 +320,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 9 | `PlayCutscene` | 34, 33 | open briefing page `NNNN.hlt` in the mission window and add it to the shown-page history; with the replay flag the page is also stored as the map's current briefing, which the window opens on from the tool button; raises the pass's stop flag; plays the briefing pop-up sound (reading). Here: the `missionCutscene` event, the `MissionBriefing` page, and the pass ends after this mission; the pop-up sound is not in the decoded bank | both | 1450 |
 | 10 | `ActivateMission` | 21 | set the active flag (records the activation tick on the transition) | sim | 4665 |
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
-| 12 | `MissionWon` | 1 | set the map's won flag, send the "won" message and the notification with the player; in multiplayer also notify the multiplayer goals. Here: the player's script verdict, announced like the skirmish rule's | both | 120 |
+| 12 | `MissionWon` | 1 | set the map's won flag, send the "won" message and the notification with the player; in multiplayer also notify the multiplayer goals. Here: the player's script verdict, announced like the skirmish rule's; on a multiplayer map it raises the goal table's rows instead | both | 120 |
 | 13 | `MissionFailed` | 1 | as above for "lost"; the player's dead flag stays clear and, here, its commands stay accepted (approximation) | both | 110 |
 | 14 | `AllowMap` | 31, 22 | unlock a campaign map | sim | 0 \* |
 | 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 \* |
@@ -1030,11 +1030,34 @@ the unsigned wraparound a reading suggests.
 
 ## Multiplayer goals
 
-`[misc_multiplayer_goals]` (9 corpus maps) feeds a separate check every 120 ticks
-(reading): goal type 1 loses when the player's dead flag is set, type 2 wins on good counts, type 3 on
-an inhabitant or soldier count, type 4 wins when `MissionWon` fires for the player, type 5 loses when
-`MissionFailed` fires. This build does not read the table: a network match ends by elimination or by
-the script verdicts described under "Multiplayer integration".
+`[misc_multiplayer_goals]` ships with 13 corpus maps, 9 plaintext (`misc.inc`) and 4 packed (`map.cif`).
+Five carry an empty section; the rest author one `goalwonbymission` line and nothing else. Original
+behavior (a reading, the same in the owned 2001 copy; not timed against the running game):
+
+- The table is read and checked only when the map's first `maptype` is `MULTI_PLAYER_FREE` (4), whether
+  a network or a single computer plays it; on any other map the section is ignored. Keys match in any
+  case.
+- The table has 20 slots. The first is always "lose once dead", so a map authors at most 19 rows, in
+  file order: `goalwonwhengoods <good> <amount>...` (up to 8 pairs, read while numbers follow; it wins
+  once the player's houses hold every listed amount in their stock slots, and wins at once with no
+  pair), `goalwonwheninhabitants <count> <soldiers>` (wins once the player has `count` humans, or with
+  `soldiers` non-zero `count` adult men in a soldier job), `goalwonbymission` (wins once a
+  `MissionWon` named the player) and `goallostbymission` (loses once a `MissionFailed` named it). An
+  unknown key and a row past the last slot are skipped.
+- A `MissionWon` or `MissionFailed` only raises the matching rows for the named player; it decides
+  nothing on its own, and with no such row it decides nothing in the match at all.
+- Every 120 ticks, on each tick count divisible by 120, every existing player the table has not decided
+  is checked in slot order: the dead flag first, then the rows in table order, and the first that holds
+  decides the player. A decided player is never checked again, so a winner that later dies stays a
+  winner. Each player's verdict is its own: no team, alliance or "last one standing" rule exists, and
+  one player winning ends nothing for the others.
+- Each verdict is announced with the player and numbered in order of winning or losing, which the
+  end-of-game ranking sorts by. A player that lost has every house, human, vehicle and signpost removed
+  on the next check, its animals turned wild; a winner keeps playing.
+- The goods and inhabitants rows also show their progress (`have/need`) in the on-screen info lines.
+
+This build plays the table on every multiplayer map (`packages/sim/src/systems/match/goals.ts`). Not
+ported: the loser's teardown, the ranking order and the info lines.
 
 ## Open questions
 
@@ -1055,8 +1078,7 @@ session descriptor and reconnect snapshot name one map. No StartSubMission or En
 in the locally extracted multiplayer corpus. Single-player transitions retain the suspended world
 and accepted future commands through the session driver's save capture.
 
-A multiplayer script with no MissionWon or MissionFailed keeps elimination victory. A script that
-contains either verdict uses scripted victory; this opcode-based policy is an approximation.
-The shared match completes once every participant has an elimination or scripted outcome.
+A multiplayer map's match plays by its goal table ("Multiplayer goals"); a story map's by its script
+verdicts. The shared match completes once every participant has a verdict.
 Briefings open locally without holding the shared clock. Scripted camera and selection effects
 remain local presentation of the same events on every peer.

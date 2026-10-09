@@ -6,7 +6,7 @@ import type { SaveGame, Simulation } from '@open-northland/sim';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorld, restoreMapWorld } from '../../src/entries/map/world.js';
 import { buildMapWorldFromInputs } from '../../src/entries/map/world-inputs.js';
-import { matchParticipants, neverDiesSeats } from '../../src/game/match-participants.js';
+import { matchParticipants, neverDiesSeats, scriptDecidesRoster } from '../../src/game/match-participants.js';
 import { onOffParam } from '../../src/game/session-rules.js';
 import { mapIdParam, mapSession } from '../../src/game/session-url.js';
 import { type AuthoredJoinRows, mapScriptWorld } from '../../src/game/world/index.js';
@@ -96,7 +96,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
     // The entry declares the match from the same three inputs. Left out, the headless world would run
     // without the match rules the browser plays under.
     matchParticipants:
-      (missionWorld.victory === 'script' ? missionWorld.participants : undefined) ??
+      (scriptDecidesRoster(missionWorld) ? missionWorld.participants : undefined) ??
       matchParticipants({
         controlled: humanSeats,
         aiSeats: options.aiSeats,

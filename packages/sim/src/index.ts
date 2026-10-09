@@ -7,7 +7,7 @@ export {
   productionCountOf,
 } from './components/economy/production.js';
 export * as components from './components/index.js';
-export type { MatchOutcome, MatchRulesView } from './components/match.js';
+export type { MatchGoal, MatchOutcome, MatchRulesView, MatchVictory } from './components/match.js';
 export { BRIEFING_HISTORY_LIMIT } from './components/mission.js';
 export type { MissionPresentationView } from './components/mission-presentation.js';
 // Fog mode ids, their two settings and the diplomacy stance union, flattened to the package root for

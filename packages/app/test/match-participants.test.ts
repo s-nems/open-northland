@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   hasEliminationGoal,
   matchParticipants,
+  multiplayerMatchGoals,
   neverDiesSeats,
   scriptMatchParticipants,
 } from '../src/game/match-participants.js';
@@ -57,7 +58,35 @@ it('takes passive authored seats into account and exempts never-dying seats', ()
   ).toEqual([0, 2]);
 });
 it('never promises an elimination goal for scripted or spectator seats', () => {
-  expect(hasEliminationGoal({ participants: [0, 2], victory: 'script' }, 0)).toBe(false);
-  expect(hasEliminationGoal({ participants: [0, 2], victory: 'elimination' }, 1)).toBe(false);
-  expect(hasEliminationGoal({ participants: [0, 2], victory: 'elimination' }, 0)).toBe(true);
+  expect(hasEliminationGoal({ participants: [0, 2], victory: 'script', lastStanding: false }, 0)).toBe(false);
+  expect(hasEliminationGoal({ participants: [0, 2], victory: 'elimination', lastStanding: true }, 1)).toBe(
+    false,
+  );
+  expect(hasEliminationGoal({ participants: [0, 2], victory: 'elimination', lastStanding: true }, 0)).toBe(
+    true,
+  );
+  expect(hasEliminationGoal({ participants: [0, 2], victory: 'goals', lastStanding: true }, 0)).toBe(true);
+  expect(hasEliminationGoal({ participants: [0, 2], victory: 'goals', lastStanding: false }, 0)).toBe(false);
+});
+
+describe('multiplayerMatchGoals', () => {
+  it('keeps the authored rows and reads a verdict the table leaves unread', () => {
+    expect(multiplayerMatchGoals([{ kind: 'wonByMission' }], { won: true, failed: false })).toEqual([
+      { kind: 'wonByMission' },
+    ]);
+    expect(multiplayerMatchGoals([], { won: true, failed: true })).toEqual([
+      { kind: 'wonByMission' },
+      { kind: 'lostByMission' },
+    ]);
+  });
+
+  it('lets the last seats standing win only where nothing else can decide', () => {
+    expect(multiplayerMatchGoals([{ kind: 'wonByMission' }], { won: false, failed: false })).toEqual([
+      { kind: 'wonByMission' },
+      { kind: 'lastStanding' },
+    ]);
+    const counted = [{ kind: 'inhabitants', count: 50, soldiers: false }] as const;
+    expect(multiplayerMatchGoals(counted, { won: false, failed: false })).toEqual(counted);
+    expect(multiplayerMatchGoals([], { won: false, failed: true })).toEqual([{ kind: 'lostByMission' }]);
+  });
 });

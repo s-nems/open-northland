@@ -1,4 +1,4 @@
-import type { World } from '../ecs/world.js';
+import type { DeepReadonly, World } from '../ecs/world.js';
 import { defineWorldSingleton } from '../ecs/world-singleton.js';
 import { isValidPlayer, MAX_PLAYERS } from './ownership.js';
 
@@ -33,6 +33,49 @@ const scriptVerdicts = defineWorldSingleton<{
 /** The outcome a map script declares, apart from the skirmish rule: any valid slot, participant or
  *  not, since a campaign map decides for whoever it names. */
 export const ScriptVerdicts = scriptVerdicts.component;
+
+/**
+ * One row of a multiplayer map's goal table (`docs/formats/MISSIONS.md`, "Multiplayer goals"). Goods are
+ * good type ids. `lastStanding` is no authored row: the app adds it where the map's table and script
+ * would leave a match nobody can win.
+ */
+export type MatchGoal =
+  | { readonly kind: 'goods'; readonly goods: readonly { readonly good: number; readonly amount: number }[] }
+  | { readonly kind: 'inhabitants'; readonly count: number; readonly soldiers: boolean }
+  | { readonly kind: 'wonByMission' }
+  | { readonly kind: 'lostByMission' }
+  | { readonly kind: 'lastStanding' };
+
+export type MatchVictory = 'script' | 'elimination' | 'goals';
+
+/** The most rows a `setMatchParticipants` payload may carry: a bound on an untrusted payload, above
+ *  the nineteen a map authors plus the few the app adds. */
+export const MAX_MATCH_GOALS = 32;
+
+interface MatchGoalTable {
+  goals: MatchGoal[];
+  /** Per goal, the players a script's `MissionWon` (a `wonByMission` row) or `MissionFailed` (a
+   *  `lostByMission` row) named since the table was set; 0 for every other row. */
+  raised: number[];
+  /** Participants the table decided, never both: a decided seat is not checked again. */
+  won: number;
+  lost: number;
+}
+
+const matchGoals = defineWorldSingleton<MatchGoalTable & { enabled: boolean }>(
+  'MatchGoals',
+  'players',
+  () => ({
+    enabled: false,
+    goals: [],
+    raised: [],
+    won: 0,
+    lost: 0,
+  }),
+);
+
+/** The goal table a multiplayer map plays by and the verdicts it reached. */
+export const MatchGoals = matchGoals.component;
 
 export type MatchOutcome = 'undecided' | 'defeat' | 'victory';
 
@@ -80,6 +123,10 @@ export function isPlayerDead(world: World, player: number): boolean {
 
 export function matchEnded(world: World): boolean {
   const rules = matchRules.read(world);
+  if (goalsMatchVictory(world)) {
+    const goals = matchGoals.read(world);
+    return rules.participants !== 0 && ((goals.won | goals.lost) & rules.participants) === rules.participants;
+  }
   return (
     rules.participants !== 0 &&
     ((rules.dead | rules.won | wonByScriptBits(world) | lostByScriptBits(world)) & rules.participants) ===
@@ -88,21 +135,27 @@ export function matchEnded(world: World): boolean {
 }
 
 /** A defeat outranks a victory: a seat that died, or that a script failed, has lost whatever else is
- *  marked. */
+ *  marked. A goal table's verdict is the one it reached first, a death included. */
 export function matchOutcome(world: World, player: number): MatchOutcome {
   if (!isValidPlayer(player)) return 'undecided';
   const bit = playerBit(player);
+  if (goalsMatchVictory(world)) {
+    const goals = matchGoals.read(world);
+    if ((goals.lost & bit) !== 0) return 'defeat';
+    return (goals.won & bit) !== 0 ? 'victory' : 'undecided';
+  }
   if (isPlayerDead(world, player) || (lostByScriptBits(world) & bit) !== 0) return 'defeat';
   if (((wonPlayerBits(world) | wonByScriptBits(world)) & bit) !== 0) return 'victory';
   return 'undecided';
 }
 
 /** Replace the participant set with the valid slots of `players`; a seat dropped from the set also loses
- *  its dead or won mark. */
+ *  its dead or won mark. Goals mode plays by `goals`, copied, with no verdict reached yet. */
 export function setMatchParticipants(
   world: World,
   players: readonly number[],
-  victory: 'script' | 'elimination' = 'elimination',
+  victory: MatchVictory = 'elimination',
+  goals: readonly MatchGoal[] = [],
 ): void {
   if (!Array.isArray(players)) return; // an imported log carries untyped payloads
   let bits = 0;
@@ -111,13 +164,40 @@ export function setMatchParticipants(
     rules.participants = bits;
     rules.dead &= bits;
     rules.won &= bits;
-    if (victory === 'script') rules.won = 0;
+    if (victory !== 'elimination') rules.won = 0;
   });
   const enabled = victory === 'script';
   if (scriptedMatchVictory(world) !== enabled) {
     scriptMatchRules.write(world, (rules) => {
       rules.enabled = enabled;
     });
+  }
+  if (victory === 'goals') {
+    const rows = Array.isArray(goals) ? goals : [];
+    matchGoals.write(world, (table) => {
+      table.enabled = true;
+      table.goals = rows.map(copyGoal);
+      table.raised = rows.map(() => 0);
+      table.won = 0;
+      table.lost = 0;
+    });
+  } else if (goalsMatchVictory(world)) {
+    matchGoals.write(world, (table) => {
+      table.enabled = false;
+    });
+  }
+}
+
+function copyGoal(goal: MatchGoal): MatchGoal {
+  switch (goal.kind) {
+    case 'goods':
+      return { kind: 'goods', goods: goal.goods.map(({ good, amount }) => ({ good, amount })) };
+    case 'inhabitants':
+      return { kind: 'inhabitants', count: goal.count, soldiers: goal.soldiers };
+    case 'wonByMission':
+    case 'lostByMission':
+    case 'lastStanding':
+      return { kind: goal.kind };
   }
 }
 
@@ -148,14 +228,55 @@ export function scriptedMatchVictory(world: World): boolean {
   return scriptMatchRules.read(world).enabled;
 }
 
+export function goalsMatchVictory(world: World): boolean {
+  return matchGoals.read(world).enabled;
+}
+
+export function matchGoalTable(world: World): DeepReadonly<MatchGoalTable> {
+  return matchGoals.read(world);
+}
+
+/** Record that a script's `MissionWon` (`won`) or `MissionFailed` named `player`, on every goal row
+ *  that waits for it; the next goal check reads it. A mark already held takes no write. */
+export function raiseMissionGoal(world: World, player: number, verdict: 'won' | 'lost'): void {
+  if (!isValidPlayer(player)) return;
+  const kind = verdict === 'won' ? 'wonByMission' : 'lostByMission';
+  const bit = playerBit(player);
+  const table = matchGoals.read(world);
+  if (!table.goals.some((goal, i) => goal.kind === kind && ((table.raised[i] ?? 0) & bit) === 0)) return;
+  matchGoals.write(world, (rows) => {
+    rows.goals.forEach((goal, i) => {
+      if (goal.kind === kind) rows.raised[i] = (rows.raised[i] ?? 0) | bit;
+    });
+  });
+}
+
+/** Record the goal table's verdict for a participant it has not yet decided. */
+export function markGoalVerdict(world: World, player: number, verdict: 'won' | 'lost'): void {
+  const bit = playerBit(player);
+  const table = matchGoals.read(world);
+  if (((table.won | table.lost) & bit) !== 0) return;
+  matchGoals.write(world, (rows) => {
+    rows[verdict] |= bit;
+  });
+}
+
 export interface MatchRulesView {
   readonly participants: readonly number[];
-  readonly victory: 'script' | 'elimination';
+  readonly victory: MatchVictory;
+  /** Whether the seats left standing win once every rival is out: the skirmish rule, or a goal
+   *  table's `lastStanding` row. */
+  readonly lastStanding: boolean;
 }
 
 export function matchRulesView(world: World): MatchRulesView {
+  const goals = goalsMatchVictory(world);
+  const victory: MatchVictory = goals ? 'goals' : scriptedMatchVictory(world) ? 'script' : 'elimination';
   return {
     participants: playersOfBits(matchParticipantBits(world)),
-    victory: scriptedMatchVictory(world) ? 'script' : 'elimination',
+    victory,
+    lastStanding:
+      victory === 'elimination' ||
+      (goals && matchGoals.read(world).goals.some((goal) => goal.kind === 'lastStanding')),
   };
 }

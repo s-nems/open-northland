@@ -91,7 +91,11 @@ export {
 export { LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
 export { slayDepositGoods } from './livestock/slay-clip.js';
 // The match cadence, so an acceptance scene can run past the first verdict without restating it.
-export { MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_DEATH_GRACE_TICKS } from './match/index.js';
+export {
+  MATCH_DEATH_CHECK_INTERVAL_TICKS,
+  MATCH_DEATH_GRACE_TICKS,
+  MATCH_GOAL_CHECK_TICKS,
+} from './match/index.js';
 // The mission engine's cadence, the opcodes it runs, and the ids a world's placements carry: the
 // coverage report and the real-content suite read these from outside the package.
 export {

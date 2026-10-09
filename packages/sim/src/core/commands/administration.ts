@@ -1,3 +1,4 @@
+import type { MatchGoal, MatchVictory } from '../../components/match.js';
 import type { Paper } from '../../components/papers.js';
 import type { DiplomacyState } from '../../components/rules.js';
 import type { Entity } from '../../ecs/world.js';
@@ -78,8 +79,10 @@ export type RulesCommand =
        */
       readonly kind: 'setMatchParticipants';
       readonly players: readonly number[];
-      /** Script mode checks deaths even for one seat and leaves victory to MissionWon. */
-      readonly victory?: 'script' | 'elimination';
+      /** Script mode checks deaths even for one seat and leaves victory to MissionWon; goals mode
+       *  plays a multiplayer map's `goals` table. */
+      readonly victory?: MatchVictory;
+      readonly goals?: readonly MatchGoal[];
     };
 
 /**

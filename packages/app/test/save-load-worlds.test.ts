@@ -62,7 +62,7 @@ describe('restoreMapWorld', () => {
       save,
     );
     expect(restored.fogMode()).toBe(FOG_MODE.OFF);
-    expect(restored.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
+    expect(restored.matchRules()).toEqual({ participants: [0, 2], victory: 'script', lastStanding: false });
     expectExactRestore(sim, restored, bytes, 'm1');
     sim.run(1);
     restored.run(1);

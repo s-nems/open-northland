@@ -1,6 +1,6 @@
 import { type MapScript, mapLobbySlots } from '@open-northland/data';
 import { absentSeatsOf, type GameSession } from '@open-northland/lockstep';
-import { neverDiesSeats } from './match-participants.js';
+import { neverDiesSeats, scriptDecidesRoster } from './match-participants.js';
 import { sessionRoles } from './session-roles.js';
 import { isMapComputerSeat } from './session-url.js';
 import type { MapScriptWorld } from './world/build.js';
@@ -14,11 +14,9 @@ import type { MapScriptWorld } from './world/build.js';
  */
 export function sessionWorldOptions(session: GameSession, script: MapScript | null, world: MapScriptWorld) {
   const roles = sessionRoles(session, script === null ? [] : neverDiesSeats(script));
-  // A story script decides the match for the seats it names; a multiplayer setup script without a
-  // verdict leaves the roster to the session's seats.
   const absent = new Set(absentSeatsOf(session));
   const matchParticipants = (
-    (world.victory === 'script' ? world.participants : undefined) ?? roles.matchParticipants
+    (scriptDecidesRoster(world) ? world.participants : undefined) ?? roles.matchParticipants
   ).filter((seat) => !absent.has(seat));
   const mapComputer = new Set(
     script === null

@@ -93,7 +93,7 @@ describe('scripted match participants', () => {
   it('persists script mode and exposes detached setup while an unscripted world keeps elimination', () => {
     const sim = fresh([2, 0, 2], 'script');
     const view = sim.matchRules();
-    expect(view).toEqual({ participants: [0, 2], victory: 'script' });
+    expect(view).toEqual({ participants: [0, 2], victory: 'script', lastStanding: false });
     Object.assign(view.participants, { 0: 7 });
     expect(sim.matchRules().participants).toEqual([0, 2]);
     const loaded = restore(sim);
@@ -102,6 +102,10 @@ describe('scripted match participants', () => {
     check(sim);
     check(loaded);
     expect(loaded.hashState()).toBe(sim.hashState());
-    expect(restore(fresh([0, 1])).matchRules()).toEqual({ participants: [0, 1], victory: 'elimination' });
+    expect(restore(fresh([0, 1])).matchRules()).toEqual({
+      participants: [0, 1],
+      victory: 'elimination',
+      lastStanding: true,
+    });
   });
 });

@@ -1,8 +1,10 @@
 import {
   FOG_MODE,
   fogMode,
+  goalsMatchVictory,
   isValidPlayer,
   markScriptVerdict,
+  raiseMissionGoal,
   setAiExternalFlag,
   setDiplomacyLock,
   setDiplomacyStance,
@@ -36,7 +38,8 @@ export function lockScriptedStance(
 }
 
 /** Declare the map won or lost for the player and announce it the way the match rule does. A repeat
- *  fire announces again, as the original re-sends its message; the verdict is recorded once. */
+ *  fire announces again, as the original re-sends its message; the verdict is recorded once. Under a
+ *  goal table the verdict only raises the rows waiting for it, which decide at the next goal check. */
 export function declareScriptedVerdict(
   pass: MissionPass,
   mission: number,
@@ -47,6 +50,10 @@ export function declareScriptedVerdict(
     return;
   }
   const won = op.opcode === 'MissionWon';
+  if (goalsMatchVictory(pass.world)) {
+    raiseMissionGoal(pass.world, op.player, won ? 'won' : 'lost');
+    return;
+  }
   markScriptVerdict(pass.world, op.player, won ? 'won' : 'lost');
   pass.ctx.events.emit({ kind: won ? 'playerWon' : 'playerDefeated', player: op.player });
 }

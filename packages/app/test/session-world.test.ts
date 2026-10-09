@@ -70,6 +70,18 @@ describe('session world options', () => {
     expect(sessionWorldOptions(absent, null, {}).absentSeats).toEqual([4]);
     const scripted = sessionWorldOptions(absent, null, { victory: 'script', participants: [0, 1, 2, 3, 4] });
     expect(scripted.matchParticipants).toEqual([0, 1, 2, 3]);
+    const goals = sessionWorldOptions(absent, null, {
+      victory: 'goals',
+      goals: [{ kind: 'wonByMission' }],
+      participants: [0, 1, 2, 3, 4, 5],
+    });
+    expect(goals.matchParticipants).toEqual([0, 1, 2, 3, 5]);
+    const survivors = sessionWorldOptions(absent, null, {
+      victory: 'goals',
+      goals: [{ kind: 'lastStanding' }],
+      participants: [0, 1, 2, 3, 4, 5],
+    });
+    expect(survivors.matchParticipants).toEqual(sessionWorldOptions(absent, null, {}).matchParticipants);
   });
 
   it('hands the world the rules, allied vision among them', () => {

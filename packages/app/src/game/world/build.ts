@@ -9,7 +9,15 @@ import type {
   MapTradeAgreement,
   MapWeatherRectangle,
 } from '@open-northland/data';
-import { components, type MissionScript, Simulation, systems, type TerrainMap } from '@open-northland/sim';
+import {
+  components,
+  type MatchGoal,
+  type MatchVictory,
+  type MissionScript,
+  Simulation,
+  systems,
+  type TerrainMap,
+} from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { weaponEquipmentFor } from '../sandbox/index.js';
 import type { AuthoredFamilyLink, AuthoredPlacement } from './authored-placements.js';
@@ -17,7 +25,9 @@ import type { AuthoredFamilyLink, AuthoredPlacement } from './authored-placement
 /** Decoded map setup and resolved mission definitions. */
 export interface MapScriptWorld {
   readonly scenarioPlayers?: readonly number[];
-  readonly victory?: 'script' | 'elimination';
+  readonly victory?: MatchVictory;
+  /** A multiplayer map's goal table, which `goals` victory plays by. */
+  readonly goals?: readonly MatchGoal[];
   readonly permissions?: MapScript['permissions'];
   readonly diplomacy?: readonly MapDiplomacy[];
   /** The `[playermisc]` relation rows; the ones that lock a pair's stances are stood up before tick 0. */

@@ -12,6 +12,7 @@ import {
   type Entity,
   FOG_MODE,
   halfCellMapFromCells,
+  type MatchVictory,
   restoreSimulation,
   type SaveGame,
   type Simulation,
@@ -58,7 +59,7 @@ export type MapWorldKind = 'authored' | 'bare' | 'demo';
 export interface MapWorldOptions extends SimSessionRules {
   readonly missions?: boolean | null;
   readonly diplomacy?: readonly MapDiplomacy[];
-  readonly matchVictory?: 'script' | 'elimination';
+  readonly matchVictory?: MatchVictory;
   readonly seed: number;
   /** The decoded `content/maps/<id>.json` grid, or null when no map id resolved. */
   readonly map: TerrainMapFile | null;
@@ -221,10 +222,15 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
   grantStartingPapers(sim, options.specialItems ?? []);
   const participants = options.matchParticipants ?? (scripted ? options.script?.participants : undefined);
   if (participants !== undefined) {
+    const goals = options.script?.victory === 'goals' ? options.script.goals : undefined;
+    const victory =
+      options.matchVictory ??
+      (goals !== undefined ? 'goals' : scripted ? (options.script?.victory ?? 'script') : 'elimination');
     sim.enqueueSetup({
       kind: 'setMatchParticipants',
       players: participants,
-      victory: options.matchVictory ?? (scripted ? (options.script?.victory ?? 'script') : 'elimination'),
+      victory,
+      ...(victory === 'goals' && goals !== undefined ? { goals } : {}),
     });
   }
 }

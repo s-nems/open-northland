@@ -12,7 +12,7 @@ import {
 import type { MissionHouseRef, MissionScript, ResolvedOp } from '@open-northland/sim';
 import { MISSION_HOUSE_NAME_FIELD, MISSION_LANDSCAPE_NAME_FIELD } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
-import { scriptMatchParticipants } from '../match-participants.js';
+import { multiplayerMatchGoals, scriptMatchParticipants } from '../match-participants.js';
 import { isMapComputerSeat } from '../session-url.js';
 import type { MapScriptWorld } from './build.js';
 import type { AuthoredJoinRows, ContentJoins } from './content-joins.js';
@@ -178,33 +178,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
   const weather = script?.weather ?? [];
   const roster =
     script !== null && script.players.length > 0 ? { participants: scriptMatchParticipants(script) } : {};
-  if (script === null || rows === null || script.missions.length === 0)
-    return {
-      scenarioPlayers,
-      ...permissionRows,
-      diplomacy,
-      relationFlags,
-      ai,
-      humanNames,
-      humanPalettes,
-      tradeAgreements,
-      weather,
-      ...roster,
-    };
-  const join = resolveMissionScript(script.missions, rows);
-  if (join.unknownOpcodes > 0 || join.tokenMismatches > 0 || join.unresolvedNames.length > 0) {
-    const named = join.unresolvedNames.slice(0, NAMES_IN_WARNING).join(', ');
-    diag.warn(
-      'content',
-      `mapScriptWorld: ${script.missions.length} missions loaded with ${join.unknownOpcodes} unknown opcodes, ${join.tokenMismatches} token-count mismatches and ${join.unresolvedNames.length} unresolvable names (${named})`,
-    );
-  }
-  const scriptedVictory =
-    script.multiplayer === undefined ||
-    join.script.missions.some((mission) =>
-      mission.results.some((op) => op.opcode === 'MissionWon' || op.opcode === 'MissionFailed'),
-    );
-  return {
+  const setup = {
     scenarioPlayers,
     ...permissionRows,
     diplomacy,
@@ -215,7 +189,37 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
     tradeAgreements,
     weather,
     ...roster,
-    missions: join.script,
-    victory: scriptedVictory ? 'script' : 'elimination',
   };
+  if (script === null || rows === null || script.missions.length === 0) {
+    return { ...setup, ...multiplayerVictory(script, NO_VERDICTS) };
+  }
+  const join = resolveMissionScript(script.missions, rows);
+  if (join.unknownOpcodes > 0 || join.tokenMismatches > 0 || join.unresolvedNames.length > 0) {
+    const named = join.unresolvedNames.slice(0, NAMES_IN_WARNING).join(', ');
+    diag.warn(
+      'content',
+      `mapScriptWorld: ${script.missions.length} missions loaded with ${join.unknownOpcodes} unknown opcodes, ${join.tokenMismatches} token-count mismatches and ${join.unresolvedNames.length} unresolvable names (${named})`,
+    );
+  }
+  const names = (opcode: 'MissionWon' | 'MissionFailed'): boolean =>
+    join.script.missions.some((mission) => mission.results.some((op) => op.opcode === opcode));
+  const verdicts = { won: names('MissionWon'), failed: names('MissionFailed') };
+  return {
+    ...setup,
+    missions: join.script,
+    ...(multiplayerVictory(script, verdicts) ?? { victory: 'script' }),
+  };
+}
+
+const NO_VERDICTS = { won: false, failed: false } as const;
+
+/** A multiplayer map plays by its goal table whether a network or a single computer runs it; any other
+ *  map leaves the match to its script. Original behavior: the gate is a first `maptype` of 4, which in
+ *  the corpus is exactly the maps shipping a `[multiplayer]` lobby table. */
+function multiplayerVictory(
+  script: MapScript | null,
+  verdicts: { readonly won: boolean; readonly failed: boolean },
+): Pick<MapScriptWorld, 'victory' | 'goals'> | undefined {
+  if (script?.multiplayer === undefined) return undefined;
+  return { victory: 'goals', goals: multiplayerMatchGoals(script.multiplayerGoals ?? [], verdicts) };
 }

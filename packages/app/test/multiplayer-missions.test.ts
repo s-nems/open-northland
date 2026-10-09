@@ -18,9 +18,21 @@ describe('multiplayer mission policy', () => {
   it.each(['StartSubMission', ' endsubmission '])('rejects network world transitions: %s', (opcode) => {
     expect(() => assertMultiplayerMap(script(opcode))).toThrow('transitions');
   });
-  it('keeps elimination for multiplayer setup scripts and scripted victory for story maps', () => {
-    expect(mapScriptWorld(script('None'), {}).victory).toBe('elimination');
+  it('plays a multiplayer map by its goal table and a story map by its script', () => {
+    expect(mapScriptWorld(script('None'), {})).toMatchObject({
+      victory: 'goals',
+      goals: [{ kind: 'lastStanding' }],
+    });
     expect(mapScriptWorld(script('None', false), {}).victory).toBe('script');
-    expect(mapScriptWorld(script('MissionWon'), {}).victory).toBe('script');
+    expect(mapScriptWorld(script('MissionWon'), {})).toMatchObject({
+      victory: 'goals',
+      goals: [{ kind: 'wonByMission' }],
+    });
+    const tabled = MapScript.parse({ multiplayer: {}, multiplayerGoals: [{ kind: 'wonByMission' }] });
+    expect(mapScriptWorld(tabled, null)).toMatchObject({
+      victory: 'goals',
+      goals: [{ kind: 'wonByMission' }, { kind: 'lastStanding' }],
+    });
+    expect(mapScriptWorld(MapScript.parse({ multiplayerGoals: [] }), null).victory).toBeUndefined();
   });
 });

@@ -39,7 +39,7 @@ describe('buildMapWorld', () => {
         fog,
       });
       expect(sim.fogMode()).toBe(fog ?? FOG_MODE.CLASSIC);
-      expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'script' });
+      expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'script', lastStanding: false });
     },
   );
 
@@ -53,7 +53,7 @@ describe('buildMapWorld', () => {
       matchParticipants: [1, 3],
     });
     expect(sim.fogMode()).toBe(FOG_MODE.OFF);
-    expect(sim.matchRules()).toEqual({ participants: [1, 3], victory: 'elimination' });
+    expect(sim.matchRules()).toEqual({ participants: [1, 3], victory: 'elimination', lastStanding: true });
   });
 
   it('lets an explicit empty participant fixture override the scripted roster', () => {
@@ -65,7 +65,26 @@ describe('buildMapWorld', () => {
       missions: true,
       matchParticipants: [],
     });
-    expect(sim.matchRules()).toEqual({ participants: [], victory: 'script' });
+    expect(sim.matchRules()).toEqual({ participants: [], victory: 'script', lastStanding: false });
+  });
+
+  it('plays a multiplayer goal table, with the script on or off', () => {
+    for (const missions of [true, false]) {
+      const { sim } = buildMapWorld({
+        ...NO_SESSION_FLAGS,
+        map: authoredMapFile(AUTHORED_ENTITIES),
+        ir: AUTHORED_IR,
+        script: {
+          missions: { missions: [] },
+          participants: [0, 2],
+          victory: 'goals',
+          goals: [{ kind: 'lastStanding' }],
+        },
+        missions,
+        matchParticipants: [0, 2],
+      });
+      expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'goals', lastStanding: true });
+    }
   });
 
   it('falls back to the demo world when no map decoded, owned by the session seat', () => {

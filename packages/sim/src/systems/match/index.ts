@@ -1,7 +1,7 @@
 import {
   deadPlayerBits,
-  diplomacyStance,
   Female,
+  goalsMatchVictory,
   isValidPlayer,
   markPlayerDead,
   markPlayersWon,
@@ -14,9 +14,14 @@ import {
   wonPlayerBits,
 } from '../../components/index.js';
 import type { World } from '../../ecs/world.js';
-import type { System } from '../context.js';
+import type { System, SystemContext } from '../context.js';
 import { isAdultSettler } from '../family/eligibility.js';
 import { removeVehiclesOf } from '../vehicles/remove.js';
+import { checkMatchGoals } from './goals.js';
+
+export { MATCH_GOAL_CHECK_TICKS } from './goals.js';
+
+import { allMutualFriends, hasTwoSeats } from './standing.js';
 
 /**
  * Death-check cadence in ticks: the first check lands on the cadence tick past the grace period.
@@ -28,32 +33,48 @@ export const MATCH_DEATH_CHECK_INTERVAL_TICKS = 125;
 
 /** A seat without a living adult man dies (engine-build reading). Skirmish mode needs two seats and
  *  stops after the survivors win by mutual friendship (approximation). Script mode checks even one
- *  seat and leaves victory to script results; death checks continue after a scripted win. */
+ *  seat and leaves victory to script results; death checks continue after a scripted win. Goals mode
+ *  checks even one seat and leaves every verdict, a death's defeat included, to the goal table. */
 export const matchSystem: System = (world, ctx) => {
   const participants = matchParticipantBits(world);
-  const scripted = scriptedMatchVictory(world);
-  if (participants === 0 || (!scripted && (!hasTwoSeats(participants) || wonPlayerBits(world) !== 0))) return;
-  if (ctx.tick < MATCH_DEATH_GRACE_TICKS || ctx.tick % MATCH_DEATH_CHECK_INTERVAL_TICKS !== 0) return;
-
-  let dead = deadPlayerBits(world);
-  const pending = participants & ~dead;
-  if (pending !== 0) {
-    const manned = playersWithAdultMen(world, pending);
-    for (const player of playersOfBits(pending & ~manned)) {
-      markPlayerDead(world, player);
-      dead |= playerBit(player);
-      ctx.events.emit({ kind: 'playerDefeated', player });
-      // A dead seat's vehicles are destroyed, never transferred (reading of the original's teardown).
-      removeVehiclesOf(world, ctx, player);
-    }
+  if (participants === 0) return;
+  if (goalsMatchVictory(world)) {
+    if (deathCheckDue(ctx.tick)) markDeaths(world, ctx, participants, false);
+    checkMatchGoals(world, ctx);
+    return;
   }
+  const scripted = scriptedMatchVictory(world);
+  if (!scripted && (!hasTwoSeats(participants) || wonPlayerBits(world) !== 0)) return;
+  if (!deathCheckDue(ctx.tick)) return;
 
+  const dead = markDeaths(world, ctx, participants, true);
   if (scripted) return;
   const standing = participants & ~dead;
   if (dead === 0 || standing === 0 || !allMutualFriends(world, playersOfBits(standing))) return;
   markPlayersWon(world, standing);
   for (const player of playersOfBits(standing)) ctx.events.emit({ kind: 'playerWon', player });
 };
+
+function deathCheckDue(tick: number): boolean {
+  return tick >= MATCH_DEATH_GRACE_TICKS && tick % MATCH_DEATH_CHECK_INTERVAL_TICKS === 0;
+}
+
+/** Mark every participant left without a living adult man dead, announcing the defeat when `announce`;
+ *  returns the dead set. */
+function markDeaths(world: World, ctx: SystemContext, participants: number, announce: boolean): number {
+  let dead = deadPlayerBits(world);
+  const pending = participants & ~dead;
+  if (pending === 0) return dead;
+  const manned = playersWithAdultMen(world, pending);
+  for (const player of playersOfBits(pending & ~manned)) {
+    markPlayerDead(world, player);
+    dead |= playerBit(player);
+    if (announce) ctx.events.emit({ kind: 'playerDefeated', player });
+    // A dead seat's vehicles are destroyed, never transferred (reading of the original's teardown).
+    removeVehiclesOf(world, ctx, player);
+  }
+  return dead;
+}
 
 /** The slots of `candidates` owning at least one living adult man, as a bitmask. One pass over the
  *  persons, so the check costs the population once per cadence tick rather than once per player. */
@@ -69,24 +90,4 @@ function playersWithAdultMen(world: World, candidates: number): number {
     if (manned === candidates) break;
   }
   return manned;
-}
-
-function allMutualFriends(world: World, players: readonly number[]): boolean {
-  for (let i = 0; i < players.length; i++) {
-    const a = players[i];
-    if (a === undefined) continue;
-    for (let j = i + 1; j < players.length; j++) {
-      const b = players[j];
-      if (b === undefined) continue;
-      if (diplomacyStance(world, a, b) !== 'friend' || diplomacyStance(world, b, a) !== 'friend') {
-        return false;
-      }
-    }
-  }
-  return true;
-}
-
-/** At least two bits set: a match with one seat has nobody to beat. */
-function hasTwoSeats(bits: number): boolean {
-  return (bits & (bits - 1)) !== 0;
 }

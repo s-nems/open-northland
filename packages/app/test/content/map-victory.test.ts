@@ -15,14 +15,21 @@ function defeatOpponents(sim: Simulation): void {
 const FIRST_CHECK =
   Math.ceil(systems.MATCH_DEATH_GRACE_TICKS / systems.MATCH_DEATH_CHECK_INTERVAL_TICKS) *
   systems.MATCH_DEATH_CHECK_INTERVAL_TICKS;
+/** The first goal check after the deaths are found, which announces every verdict. */
+const VERDICT_CHECK =
+  Math.ceil(FIRST_CHECK / systems.MATCH_GOAL_CHECK_TICKS) * systems.MATCH_GOAL_CHECK_TICKS;
 
 describe.runIf(hasRealIr())('map victory through session setup', () => {
   it('awards the forest allies victory and completes the objective after the enemy seats die', async () => {
     const sim = await realMapSessionWorld('map=magiczny_las&ai=1,2,3,4,5');
     sim.step();
-    expect(sim.matchRules()).toEqual({ participants: [0, 1, 2, 3, 4, 5], victory: 'elimination' });
+    expect(sim.matchRules()).toEqual({
+      participants: [0, 1, 2, 3, 4, 5],
+      victory: 'goals',
+      lastStanding: true,
+    });
     defeatOpponents(sim);
-    sim.run(FIRST_CHECK - sim.tick - 1);
+    sim.run(VERDICT_CHECK - sim.tick - 1);
     expect(sim.matchOutcome(0)).toBe('undecided');
     sim.step();
     expect(sim.matchOutcome(0)).toBe('victory');
@@ -44,9 +51,9 @@ describe.runIf(hasRealIr())('map victory through session setup', () => {
   it('does not run elimination with only the local seat participating', async () => {
     const sim = await realMapSessionWorld('map=magiczny_las');
     sim.step();
-    expect(sim.matchRules()).toEqual({ participants: [0], victory: 'elimination' });
+    expect(sim.matchRules()).toEqual({ participants: [0], victory: 'goals', lastStanding: true });
     defeatOpponents(sim);
-    sim.run(FIRST_CHECK - sim.tick + systems.MATCH_DEATH_CHECK_INTERVAL_TICKS);
+    sim.run(VERDICT_CHECK - sim.tick + systems.MATCH_GOAL_CHECK_TICKS);
     expect(sim.matchOutcome(0)).toBe('undecided');
   }, 30_000);
 });
