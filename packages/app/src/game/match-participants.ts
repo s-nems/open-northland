@@ -42,7 +42,8 @@ export function scriptMatchParticipants(script: Pick<MapScript, 'players' | 'mis
 /**
  * Whether the match counts the script's roster rather than the session's seats: where a script verdict
  * decides, the script names whom it decides for. Original behavior: a goal table checks every seat on
- * the map; a lobby leaves no seat there undriven, so the session's seats are that set.
+ * the map. A lobby session drives every such seat, so its seats are that set; approximation: a local
+ * run leaves the seats it does not drive out of the table.
  */
 export function scriptDecidesRoster(world: Pick<MapScriptWorld, 'victory' | 'scriptVerdicts'>): boolean {
   return world.victory === 'script' || (world.victory === 'goals' && world.scriptVerdicts === true);

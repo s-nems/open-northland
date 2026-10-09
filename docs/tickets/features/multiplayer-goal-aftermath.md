@@ -5,8 +5,9 @@
 `[misc_multiplayer_goals]` now decides players on multiplayer maps, but three parts of the original's
 check are not ported ("Multiplayer goals" in `docs/formats/MISSIONS.md`):
 
-- a player that lost has every house, human, vehicle and signpost removed on the next check and its
-  animals turned wild; here the loser's world stays;
+- a player that lost has every house, human, vehicle and signpost removed on the next check, a wild
+  chicken (the `chicken` tribe's `adult_animal`) left in place of each removed human that stood on
+  land, and its animals turned wild; here the loser's world stays;
 - each verdict is numbered in the order it lands and the end-of-game ranking sorts by it; here the
   end-of-match panel has no order;
 - the goods and inhabitants rows show `have/need` progress in the on-screen info lines.
@@ -14,7 +15,7 @@ check are not ported ("Multiplayer goals" in `docs/formats/MISSIONS.md`):
 ## Scope
 
 - Remove a loser's entities through the existing removal seams on the check after its verdict (a
-  script removal, not deaths in the tallies), turning its animals wild.
+  script removal, not deaths in the tallies), spawning the wild chickens and turning its animals wild.
 - Store the verdict order in the saved `MatchGoals` state and sort the end-of-match panel by it.
 - Feed the goods and inhabitants progress into the info-line model, counted on the goal check rather
   than per frame.

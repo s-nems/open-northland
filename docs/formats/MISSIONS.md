@@ -140,17 +140,17 @@ Two more `[StaticObjects]` lines name two placed humans by the map points they w
 
 Each line runs where it stands in the file, over the humans placed so far, so a hand-written map repeats
 a `marry` after its second spouse's `sethuman`; the packed tutorial maps write them all after the
-placements (corpus). Only the two named points are searched: `marry` takes the first woman on its first
-point who may marry (an adult who is no soldier, hero or scout and is neither married nor about to be)
-and the first such man on its second, with no player or tribe check, and weds them at once. A line
-naming the man first weds no one. If the wife has a home, the couple settles: a homeless husband joins
-her, one without a workplace takes her into his home, and one with a workplace keeps whichever home
-lies nearer to it, his own on a tie; no move checks the home's capacity, and a child of hers follows
-her. A homeless wife leaves both where they live.
+placements (corpus). Only the two named points are searched: `marry` takes the most recently placed
+woman on its first point who may marry (an adult who is no soldier, hero or scout and is neither married
+nor about to be) and the most recently placed such man on its second, with no player or tribe check, and
+weds them at once. A line naming the man first weds no one. If the wife has a home, the couple settles:
+a homeless husband joins her, one without a workplace takes her into his home, and one with a workplace
+keeps whichever home lies nearer to it, his own on a tie; no move checks the home's capacity, and a
+child of hers follows her. A homeless wife leaves both where they live.
 
-`childOfWoman` takes the first non-adult without a mother on its first point and the first female
-without a child on its second. The child becomes hers and, when she is married, her husband's, and
-moves into her home.
+`childOfWoman` takes the most recently placed non-adult without a mother on its first point and the most
+recently placed female without a child on its second. The child becomes hers and, when she is married,
+her husband's, and moves into her home.
 
 Corpus: 30 `marry` lines on 9 maps and one `childOfWoman` (`tutorial_002`), together 26 couples.
 `Mroczny_Swiat_sub1` writes `marry 54 59`, a single point holding a man, which weds no one;
@@ -1053,7 +1053,8 @@ behavior (a reading, the same in the owned 2001 copy; not timed against the runn
   alliance or "last one standing" rule exists, and one player winning ends nothing for the others.
 - Each verdict is announced with the player and numbered in order of winning or losing, which the
   end-of-game ranking sorts by. A player that lost has every house, human, vehicle and signpost removed
-  on the next check, its animals turned wild; a winner keeps playing.
+  on the next check, a wild chicken left in place of each removed human that stood on land, and its
+  animals turned wild; a winner keeps playing.
 - The goods and inhabitants rows also show their progress (`have/need`) in the on-screen info lines.
 
 ## Open questions

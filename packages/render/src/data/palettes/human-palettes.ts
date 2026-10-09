@@ -206,6 +206,8 @@ export class HumanPaletteBook {
         ? NO_BANDS
         : this.apply(identity.female ? player.female : player.male, seed, STAGE_PLAYER, out);
     if (look.random.length > 0) {
+      // Original behavior: a `gfxpaletterandom` name no recipe carries still takes its share of the
+      // roll and changes nothing.
       this.rng.seed(seed, STAGE_PICK);
       const pick = look.random[this.rng.below(look.random.length)];
       if (pick !== undefined) this.apply(pick, seed, STAGE_RANDOM, out);
