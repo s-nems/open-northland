@@ -16,12 +16,16 @@ import { exportSaveGame, restoreSimulation, Simulation } from '../../src/index.j
 import { technologySystem } from '../../src/systems/progression/discoveries.js';
 import {
   buildingEnabled,
+  FIGHT_EXPERIENCE_TYPE,
   goodEnabled,
   grantWorkExperience,
   jobEnabled,
   rawXpForRepeats,
+  requirementRepeats,
   startingExperience,
+  weaponClassHits,
 } from '../../src/systems/progression/index.js';
+import { WEAPON_MAIN_TYPE } from '../../src/systems/readviews/combat.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -126,6 +130,16 @@ describe('player technology discoveries', () => {
       [WOOD_TRACK, rawXpForRepeats(track, 3)],
     ]);
     expect(startingExperience(sim.content, HERO, lines)).toEqual([]);
+  });
+
+  it("counts a map's starting fight experience raw, so an archer starts with his landed hits", () => {
+    const { sim } = setup();
+    const BOW_HITS = 150;
+    const xp = new Map(
+      startingExperience(sim.content, WOODCUTTER, [{ track: FIGHT_EXPERIENCE_TYPE.BOW, amount: BOW_HITS }]),
+    );
+    expect(weaponClassHits(xp, WEAPON_MAIN_TYPE.BOW)).toBe(BOW_HITS);
+    expect(requirementRepeats(sim.content.jobExperience, xp, [FIGHT_EXPERIENCE_TYPE.BOW])).toBe(BOW_HITS);
   });
 
   it('work discovers a profession and its basic product, opening a house before that profession is staffed', () => {

@@ -97,8 +97,10 @@ function accrueTrack(world: World, settler: Entity, track: HumanJobExperienceTyp
 
 /**
  * A placed settler's starting experience as a `spawnSettler` payload: each `(track, repeats)` line in the
- * factor-scaled encoding, a repeated track summed under its cap, a track content lacks dropped. Original
- * behavior: a map's `setexpierence` is skipped for a hero and counts in `needfor*` units.
+ * factor-scaled encoding, a repeated track summed under its cap. A track content lacks (the fight buckets
+ * {@link FIGHT_EXPERIENCE_TYPE}) counts raw, as the fight grant and the `needfor*` readers count it.
+ * Original behavior: a map's `setexpierence` is skipped for a hero, counts in `needfor*` units and adds
+ * to the same per-track counter whether or not a track record exists.
  */
 export function startingExperience(
   content: ContentSet,
@@ -108,13 +110,16 @@ export function startingExperience(
   if (isHeroJob(content, jobType)) return [];
   const xp = new Map<number, number>();
   for (const { track: id, amount } of lines) {
-    const track = content.jobExperience.find((t) => t.typeId === id);
-    if (track === undefined || amount <= 0) continue;
-    const cap = track.experienceFactor * MAX_EXPERIENCE_REPEATS;
-    xp.set(id, Math.min(cap, (xp.get(id) ?? 0) + track.experienceFactor * amount));
+    if (amount <= 0) continue;
+    const factor = contentIndex(content).jobExperience.get(id)?.experienceFactor ?? RAW_EXPERIENCE_FACTOR;
+    const cap = factor * MAX_EXPERIENCE_REPEATS;
+    xp.set(id, Math.min(cap, (xp.get(id) ?? 0) + factor * amount));
   }
   return [...xp].filter(([, amount]) => amount > 0);
 }
+
+/** The factor of a track no record describes: one raw point per counted action. */
+const RAW_EXPERIENCE_FACTOR = 1;
 
 /** A job's general (no-good) experience track, or `undefined` when the job trains none; unlike
  *  {@link trackFor} it never resolves a good-specific track. */
