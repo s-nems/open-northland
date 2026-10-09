@@ -1,41 +1,40 @@
 import type { SimEvent } from '@open-northland/sim';
-import { Container, Rectangle, Sprite, Texture } from 'pixi.js';
+import { Container, Rectangle, Texture } from 'pixi.js';
+import { dismantleMask } from '../../data/effects/dismantle.js';
 import {
   type BuildingCollapse,
   COLLAPSE_LIFETIME_TICKS,
-  collapseDustPuff,
   collapseKey,
   collapseProgress,
-  DUST_PUFFS,
   foldBuildingCollapses,
 } from '../../data/effects/index.js';
 import { isVisible, type Viewport } from '../../data/projection/index.js';
 import { type DrawItem, screenDepth } from '../../data/scene/index.js';
 import { buildTimeThreshold } from '../../data/sprites/index.js';
 import { type ElevationField, projectNode } from '../../data/terrain/index.js';
+import { DamageAtlas } from '../building-damage/atlas.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
 import { DamageEffectTextures } from '../building-damage/effect-textures.js';
+import { readable2dContext } from '../drawable-resource.js';
 import { markMagnifiedTexture } from '../pixel-art-registry.js';
-import { createLayerDrawBox, layerDrawBox, type ResolvedLayer, resolveLayers } from '../sprite-pool/index.js';
+import { createLayerDrawBox, layerDrawBox, type ResolvedLayer } from '../sprite-pool/index.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import type { TextureCache } from '../texture-cache.js';
-import { worldBatched } from '../world-batcher.js';
+import { collapsePlan } from './collapse-plan.js';
+import { DismantleBody } from './dismantle-body.js';
+import { DismantleDebris } from './dismantle-debris.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
-/**
- * A razed building sinks into the ground instead of blinking out: the body is re-resolved from the
- * `buildingDestroyed` event's building type (the entity left the snapshot the same tick), then shifted
- * down while its lowest pixel rows are cropped at the ground line, as in the
- * original. An unfinished site sinks only what its construction reveal showed. Cast-shadow layers are
- * skipped, because a sinking body's ground shadow would crop nonsensically.
- */
+/** Unwind the building's authored construction layers while retaining its last visible damage. */
 export class CollapseLayer {
   /** One node per live collapse, keyed by {@link collapseKey}. */
   private readonly nodes = new Map<string, CollapseNode>();
   private readonly seen = new Set<string>();
   private collapses: BuildingCollapse[] = [];
+  private readonly masks = new DamageAtlas();
   private readonly revealBox = createLayerDrawBox();
   private dustArt: DamageEffectTextures | undefined;
+  private scratch: ReturnType<typeof readable2dContext> | undefined;
   private readonly fallen = new Map<string, readonly FallenBody[]>();
 
   constructor(
@@ -62,12 +61,12 @@ export class CollapseLayer {
     }
   }
 
-  /** `tick` is interpolated render time, so the sink stays smooth at any frame rate. */
+  /** Interpolated sim time keeps debris smooth, pausable and reproducible. */
   draw(elevation: ElevationField, viewport: Viewport, tick: number): void {
     this.seen.clear();
     for (const c of this.collapses) {
       const age = tick - c.spawnTick;
-      if (age >= COLLAPSE_LIFETIME_TICKS) continue; // body sunk and dust settled - retired below
+      if (age >= COLLAPSE_LIFETIME_TICKS) continue;
       const key = collapseKey(c);
       const p = projectNode(elevation, c.hx, c.hy);
       let node = this.nodes.get(key);
@@ -85,10 +84,11 @@ export class CollapseLayer {
       node.visible = true;
       node.position.set(p.x, p.y);
       node.zIndex = screenDepth(p.x, p.y, 'building');
-      this.sinkTo(node, collapseProgress(c, tick));
-      poseDust(node, c.entity, age);
+      for (const body of node.bodies) body.pose(collapseProgress(c, tick));
+      node.debris.draw(age, node.ground);
       this.seen.add(key);
     }
+    this.masks.flush(false);
     retireUndrawn(this.nodes, this.seen, destroyNode);
     for (const [key, bodies] of this.fallen) {
       const collapse = this.collapses.find((c) => collapseKey(c) === key);
@@ -104,12 +104,13 @@ export class CollapseLayer {
     for (const bodies of this.fallen.values()) for (const body of bodies) body.release();
     this.fallen.clear();
     this.dustArt?.destroy();
+    this.masks.destroy();
+    this.scratch = null;
   }
 
-  /** Mints the body's layer sprites, dust last so it covers their crop edge; null when nothing resolves
+  /** Mints the body's layer quads, dust last to cover impacts; null when nothing resolves
    *  or the site had revealed nothing yet. */
   private makeNode(c: BuildingCollapse): CollapseNode | null {
-    // `builtPct` rides along so an unfinished site sinks its construction-stage body.
     const item: DrawItem = {
       kind: 'building',
       ref: c.entity,
@@ -121,56 +122,74 @@ export class CollapseLayer {
       ...(c.builtPct !== undefined ? { builtPct: c.builtPct } : {}),
     };
     const fallen = this.fallen.get(collapseKey(c));
-    const layers: readonly ResolvedLayer[] | null =
-      fallen === undefined
-        ? resolveLayers(this.sheet, item, 0)
-        : fallen.map((body) => ({
-            source: body.texture.source,
-            scale: body.scale,
-            frame: {
-              x: body.texture.frame.x,
-              y: body.texture.frame.y,
-              width: body.texture.frame.width,
-              height: body.texture.frame.height,
-              offsetX: body.x / body.scale,
-              offsetY: body.y / body.scale,
-            },
-          }));
-    if (layers === null || layers.length === 0) return null;
+    const plan = collapsePlan(this.sheet, item, fallen);
+    if (plan.length === 0) return null;
     const node = new Container() as CollapseNode;
+    node.bodies = [];
+    node.debris = new DismantleDebris();
+    this.dustArt ??= new DamageEffectTextures(false);
+    if (this.scratch === undefined) this.scratch = readable2dContext(1024, 1024);
     let minX = Infinity;
     let maxX = -Infinity;
+    let minY = Infinity;
     let baseY = -Infinity;
-    for (const [i, layer] of layers.entries()) {
-      // The collapse draws the plain body; the ground's shade and cover would copy it.
-      if (layer.shadow === true || layer.groundFoot === 'cover') continue;
-      const body = this.revealedBody(layer);
-      if (body === null) continue;
-      const spr = worldBatched(new Sprite(body.view)) as CollapseSprite;
-      spr.scale.set(layer.scale);
-      spr.alpha = fallen?.[i]?.alpha ?? 1;
-      spr.collapseBody = body;
-      node.addChild(spr);
+    for (const [i, part] of plan.entries()) {
+      const { draw: layer, construction } = part;
+      const frozen = this.revealedBody(layer);
+      if (frozen === null) continue;
+      const { view, hiddenTop, bake } = frozen;
+      const left = (layer.frame.offsetX * layer.scale) / construction.scale - construction.frame.offsetX;
+      const top =
+        ((layer.frame.offsetY + hiddenTop) * layer.scale) / construction.scale - construction.frame.offsetY;
+      const removal = dismantleMask(
+        view.width,
+        view.height,
+        {
+          frame: construction.frame,
+          ...(construction.times !== undefined ? { times: construction.times } : {}),
+          ...(construction.revealWindow !== undefined ? { window: construction.revealWindow } : {}),
+          built: construction.reveal ?? (c.builtPct === undefined ? 1 : c.builtPct / 100),
+          seed: c.entity + i * 83,
+        },
+        left,
+        top,
+      );
+      const body = new DismantleBody(view, removal, this.masks, {
+        introduced: part.introduced,
+        shade: part.shade,
+        alpha: part.alpha,
+        ...(bake !== undefined ? { bake } : {}),
+      });
+      body.display.scale.set(layer.scale);
+      body.display.position.set(
+        layer.frame.offsetX * layer.scale,
+        (layer.frame.offsetY + hiddenTop) * layer.scale,
+      );
+      body.display.alpha = part.alpha;
+      node.debris.add(
+        view,
+        removal,
+        body.display.x,
+        body.display.y,
+        layer.scale,
+        c.entity + i * 83,
+        this.scratch,
+      );
+      node.bodies.push(body);
+      node.addChild(body.display);
       minX = Math.min(minX, layer.frame.offsetX * layer.scale);
       maxX = Math.max(maxX, (layer.frame.offsetX + layer.frame.width) * layer.scale);
+      minY = Math.min(minY, (layer.frame.offsetY + hiddenTop) * layer.scale);
       baseY = Math.max(baseY, (layer.frame.offsetY + layer.frame.height) * layer.scale);
     }
     if (node.children.length === 0) {
+      node.debris.destroy();
       node.destroy();
       return null;
     }
-    const dust = new Container();
-    this.dustArt ??= new DamageEffectTextures(false);
-    for (let i = 0; i < DUST_PUFFS; i++) {
-      const puff = worldBatched(new Sprite(this.dustArt.smoke[i % 4] ?? Texture.EMPTY));
-      puff.anchor.set(0.5);
-      puff.tint = DUST_COLOUR;
-      dust.addChild(puff);
-    }
-    dust.position.set((minX + maxX) / 2, baseY);
-    node.addChild(dust);
-    node.dust = dust;
-    node.dustHalfWidth = (maxX - minX) / 2;
+    node.debris.addDust(maxX - minX, baseY - minY, c.entity, this.dustArt);
+    node.addChild(node.debris.display);
+    node.ground = baseY;
     return node;
   }
 
@@ -198,74 +217,29 @@ export class CollapseLayer {
       rows.x += frame.x;
       rows.y += frame.y;
     }
-    const view = new Texture({ source: bake?.source ?? layer.source, frame: rows, dynamic: true });
+    const view = new Texture({ source: bake?.source ?? layer.source, frame: rows });
     markMagnifiedTexture(view, layer.source);
-    return { layer, view, hiddenTop, ...(bake !== null ? { bake } : {}) };
-  }
-
-  /** Hides the bottom `progress · height` rows and shifts the remainder down by the same amount, so the
-   *  body's bottom edge stays pinned at the ground line. */
-  private sinkTo(node: Container, progress: number): void {
-    for (const child of node.children) {
-      const body = (child as CollapseSprite).collapseBody;
-      if (body === undefined) continue;
-      const { frame, scale } = body.layer;
-      const hiddenBottom = Math.round(progress * frame.height);
-      const keptRows = frame.height - body.hiddenTop - hiddenBottom;
-      if (keptRows <= 0) {
-        child.visible = false;
-        continue;
-      }
-      if (body.view.frame.height !== keptRows) {
-        body.view.frame.height = keptRows;
-        body.view.update();
-      }
-      child.position.set(frame.offsetX * scale, (frame.offsetY + body.hiddenTop + hiddenBottom) * scale);
-    }
+    return { view, hiddenTop, ...(bake !== null ? { bake } : {}) };
   }
 }
 
-/** The textures a collapse owns go with it; the atlas page under a plain view stays. */
-function destroyNode(node: Container): void {
-  for (const child of node.children) {
-    const body = (child as CollapseSprite).collapseBody;
-    body?.view.destroy();
-    body?.bake?.destroy(true);
-  }
+function destroyNode(node: CollapseNode): void {
+  for (const body of node.bodies) body.destroy();
+  node.debris.destroy();
   node.destroy({ children: true });
 }
 
-/** Warm grey, a shade off the damage smoke so debris reads distinct from fire smoke. */
-const DUST_COLOUR = 0x9b9186;
-
-function poseDust(node: CollapseNode, seed: number, age: number): void {
-  const dust = node.dust;
-  if (dust === undefined) return;
-  const halfWidth = node.dustHalfWidth ?? 0;
-  for (let i = 0; i < dust.children.length; i++) {
-    const puff = dust.children[i] as Sprite;
-    const pose = collapseDustPuff(seed, i, age, halfWidth);
-    puff.position.set(pose.x, pose.y);
-    puff.scale.set(pose.radius / 22);
-    puff.alpha = pose.alpha * 0.75;
-  }
-}
-
 interface CollapseNode extends Container {
-  dust?: Container;
-  dustHalfWidth?: number;
+  bodies: DismantleBody[];
+  debris: DismantleDebris;
+  ground: number;
 }
 
-/** One sinking layer: `view` samples its revealed rows and shrinks from the bottom as it sinks. */
+/** Frozen pixels of a visible layer, before construction is reversed. */
 interface CollapseBody {
-  readonly layer: ResolvedLayer;
   readonly view: Texture;
   /** Frame rows the construction crop still hid at destruction; 0 for a per-pixel reveal or a finished body. */
   readonly hiddenTop: number;
   /** The frozen per-pixel reveal `view` samples, when the stage has a time sheet. */
   readonly bake?: Texture;
-}
-
-interface CollapseSprite extends Sprite {
-  collapseBody?: CollapseBody;
 }

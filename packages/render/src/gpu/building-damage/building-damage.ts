@@ -22,6 +22,8 @@ export interface FallenBody {
   readonly y: number;
   readonly scale: number;
   readonly alpha: number;
+  readonly layer?: ResolvedLayer;
+  readonly damageLevel?: number;
   release(): void;
 }
 
@@ -72,13 +74,17 @@ export class BuildingDamage {
 
   /** Freeze the complete visible body stack before the live pool releases it. Revealing/fading layers
    * need their own pixels: the normal texture cache may evict their source during the collapse. */
-  capture(ref: number, sprites?: readonly Sprite[]): readonly FallenBody[] | undefined {
+  capture(
+    ref: number,
+    sprites?: readonly Sprite[],
+    layerOf?: (sprite: Sprite) => ResolvedLayer | undefined,
+  ): readonly FallenBody[] | undefined {
     const node = this.nodes.get(ref);
-    if (node === undefined) return undefined;
+    if (node === undefined && sprites === undefined) return undefined;
     const prepared: { sprite: Sprite; tile: DamageTile; borrowed: boolean }[] = [];
-    for (const sprite of sprites ?? node.subject.damageBodies ?? []) {
+    for (const sprite of sprites ?? node?.subject.damageBodies ?? []) {
       if (sprite.destroyed || !sprite.visible || sprite.alpha <= 0 || sprite.texture.width < 2) continue;
-      const surface = node.surfaces.get(sprite);
+      const surface = node?.surfaces.get(sprite);
       let tile = surface?.tile ?? null;
       const borrowed = tile !== null;
       if (tile === null) {
@@ -98,21 +104,24 @@ export class BuildingDamage {
     }
     const bodies: FallenBody[] = [];
     for (const { sprite, tile, borrowed } of prepared) {
+      const layer = layerOf?.(sprite);
+      const surface = node?.surfaces.get(sprite);
       bodies.push({
         texture: tile.texture,
         x: sprite.x,
         y: sprite.y,
         scale: sprite.scale.x,
         alpha: sprite.alpha,
+        ...(layer !== undefined ? { layer } : {}),
+        damageLevel: surface?.level ?? 0,
         release: () => this.atlas.release(tile),
       });
-      const surface = node.surfaces.get(sprite);
       if (borrowed && surface !== undefined) {
         if (sprite.texture === tile.texture) sprite.texture = surface.original;
         surface.tile = null;
       }
     }
-    this.retire(node);
+    if (node !== undefined) this.retire(node);
     this.nodes.delete(ref);
     return bodies.length > 0 ? bodies : undefined;
   }

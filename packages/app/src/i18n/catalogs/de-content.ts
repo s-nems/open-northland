@@ -247,6 +247,12 @@ export const deContent = {
       summary:
         'Je fünf Gebäude mit 4% Gesundheit: freigelegte Konstruktion, verschiedene Schäden, Feuer und Trümmer.',
     },
+    'building-demolition': {
+      title: 'Gebäudeabriss',
+      summary:
+        'Beschädigte Häuser, einen intakten Turm und eine Baustelle abreißen: Die Wände geben das Gerüst frei, das bis zum Fundament abgetragen wird.',
+      stages: { demolition: 'Abriss', demolish: 'Gebäude abreißen' },
+    },
     'building-damage': {
       title: 'Gebäudeschäden',
       summary:

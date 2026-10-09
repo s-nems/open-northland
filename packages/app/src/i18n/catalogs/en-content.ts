@@ -245,6 +245,12 @@ export const enContent = {
       summary:
         'Five instances of each building at 4% health: exposed construction, varied breaches, fire and debris.',
     },
+    'building-demolition': {
+      title: 'Building demolition',
+      summary:
+        'Demolish damaged homes, an intact tower and an unfinished site: walls uncover the structure, which dismantles to its foundations.',
+      stages: { demolition: 'Demolition', demolish: 'Demolish buildings' },
+    },
     'building-damage': {
       title: 'Building damage',
       summary:

@@ -1,31 +1,40 @@
 import type { SimEvent } from '@open-northland/sim';
-import { Container, type Sprite, Texture, TextureSource } from 'pixi.js';
-import { describe, expect, it, vi } from 'vitest';
+import { Container, DOMAdapter, type Mesh, Sprite, Texture, TextureSource } from 'pixi.js';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   COLLAPSE_LIFETIME_TICKS,
+  COLLAPSE_SMOKE_LEAD_TICKS,
   COLLAPSE_TICKS,
-  collapseDustPuff,
   collapseProgress,
-  DUST_PUFFS,
-  DUST_SETTLE_TICKS,
   foldBuildingCollapses,
   MAX_ACTIVE_COLLAPSES,
 } from '../src/data/effects/index.js';
 import type { Viewport } from '../src/data/projection/index.js';
 import type { ElevationField } from '../src/data/terrain/index.js';
+import * as drawable from '../src/gpu/drawable-resource.js';
 import { CollapseLayer } from '../src/gpu/overlays/collapse-layer.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import type { SpriteAtlas, SpriteSheet } from '../src/index.js';
 
-/**
- * A razed building sinks over a short window: the body's lowest pixel rows are clipped at the ground line
- * and the graphic shifts down by the same amount, mirroring the construction rise (as in the
- * original). The fixture sheet's fake TextureSource is never sampled.
- */
-
 const FLAT: ElevationField = { maxLift: 0, liftAt: () => 0, liftAtNode: () => 0 };
 const VIEW_ALL: Viewport = { minX: -1e6, maxX: 1e6, minY: -1e6, maxY: 1e6 };
-const source = {} as TextureSource;
+const source = new TextureSource({ width: 100, height: 10 });
+
+beforeEach(() => {
+  vi.spyOn(DOMAdapter.get(), 'createCanvas').mockReturnValue({
+    getContext: () => null,
+  } as unknown as HTMLCanvasElement);
+  vi.spyOn(drawable, 'readable2dContext').mockImplementation(
+    (width, height) =>
+      ({
+        canvas: { width, height },
+        clearRect: vi.fn(),
+        putImageData: vi.fn(),
+        createImageData: (w: number, h: number) => ({ data: new Uint8ClampedArray(w * h * 4) }),
+      }) as unknown as CanvasRenderingContext2D,
+  );
+});
+afterEach(() => vi.restoreAllMocks());
 
 const BODY_BOB = 70;
 const STAGE_BOB = 80;
@@ -80,9 +89,12 @@ describe('foldBuildingCollapses', () => {
     if (collapse === undefined) throw new Error('expected one live collapse');
     expect(collapse).toMatchObject({ entity: 9, typeId: 13, hx: 4, hy: 6, spawnTick: 100 });
     expect(collapseProgress(collapse, 100)).toBe(0);
-    expect(collapseProgress(collapse, 100 + COLLAPSE_TICKS / 2)).toBeCloseTo(0.5);
-    expect(collapseProgress(collapse, 100 + COLLAPSE_TICKS)).toBe(1);
-    // The sunk body's dust tail keeps the collapse alive for DUST_SETTLE_TICKS more.
+    expect(collapseProgress(collapse, 100 + COLLAPSE_SMOKE_LEAD_TICKS)).toBe(0);
+    expect(collapseProgress(collapse, 100 + COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS / 2)).toBeCloseTo(
+      0.25,
+    );
+    expect(collapseProgress(collapse, 100 + COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS)).toBe(1);
+    // The dust tail remains through material recovery, after the body has cleared.
     expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_TICKS)).toHaveLength(1);
     expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_LIFETIME_TICKS)).toHaveLength(0);
   });
@@ -124,43 +136,45 @@ describe('foldBuildingCollapses', () => {
   });
 });
 
-describe('collapseDustPuff', () => {
-  it('is deterministic, billows in at the crash, and settles to nothing by the end of the tail', () => {
-    expect(collapseDustPuff(9, 3, 7, 20)).toEqual(collapseDustPuff(9, 3, 7, 20));
-    expect(collapseDustPuff(9, 3, 0, 20).alpha).toBeLessThanOrEqual(
-      // The cloud-wide envelope is still ramping at age 0, so it is never denser than mid-sink.
-      Math.max(...Array.from({ length: COLLAPSE_TICKS }, (_, a) => collapseDustPuff(9, 3, a, 20).alpha)),
-    );
-    for (let i = 0; i < DUST_PUFFS; i++) {
-      expect(collapseDustPuff(9, i, COLLAPSE_LIFETIME_TICKS, 20).alpha).toBe(0);
-    }
-  });
-
-  it('keeps every puff at or below the ground line, spread across the body base', () => {
-    const HALF_W = 20;
-    for (let i = 0; i < DUST_PUFFS; i++) {
-      for (let age = 0; age < COLLAPSE_LIFETIME_TICKS; age++) {
-        const pose = collapseDustPuff(9, i, age, HALF_W);
-        expect(pose.y).toBeLessThanOrEqual(0); // dust rolls low, it never plumes upward far
-        expect(Math.abs(pose.x)).toBeLessThanOrEqual(HALF_W * 2); // near the base, not across the map
-        expect(pose.radius).toBeGreaterThan(0);
-      }
-    }
-  });
-
-  it('holds the cloud dense through the whole sink window before the settle fade', () => {
-    // At every tick of the sink at least one puff is past its birth fade, so the mask has no gap.
-    for (let age = DUST_SETTLE_TICKS / 2; age <= COLLAPSE_TICKS; age++) {
-      const best = Math.max(
-        ...Array.from({ length: DUST_PUFFS }, (_, i) => collapseDustPuff(9, i, age, 20).alpha),
-      );
-      expect(best).toBeGreaterThan(0.2);
-    }
-  });
-});
-
 describe('CollapseLayer', () => {
-  it('mints one sinking node per razed building, crops it as it sinks, and retires it when done', () => {
+  it('keeps leased layers anchored across culling and releases them when the dust settles', () => {
+    const spriteLayer = new Container();
+    const source = new TextureSource({ width: 20, height: 20 });
+    const body = new Texture({ source });
+    const accessory = new Texture({ source });
+    const releaseBody = vi.fn();
+    const releaseAccessory = vi.fn();
+    const layer = new CollapseLayer(spriteLayer, new TextureCache(), sheet, () => [
+      { texture: body, x: -10, y: -20, scale: 1, alpha: 1, release: releaseBody },
+      { texture: accessory, x: 0, y: -40, scale: 0.5, alpha: 0.7, release: releaseAccessory },
+    ]);
+    layer.ingest([razed(9)], 0);
+    layer.draw(FLAT, VIEW_ALL, 0);
+    const node = spriteLayer.children[0] as Container;
+    const mesh = node.children[1] as Mesh;
+    const buffers = [...mesh.geometry.buffers];
+    const original = mesh.geometry.getBuffer('aPosition').data.slice();
+    expect(mesh.alpha).toBe(0.7);
+    layer.draw(FLAT, { minX: 1e6, minY: 1e6, maxX: 2e6, maxY: 2e6 }, COLLAPSE_TICKS / 2);
+    expect(node.visible).toBe(false);
+    expect(mesh.geometry.getBuffer('aPosition').data).toEqual(original);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS * 0.95);
+    expect(node.visible).toBe(true);
+    expect(mesh.geometry.getBuffer('aPosition').data).toEqual(original);
+    expect(mesh.position).toMatchObject({ x: 0, y: -40 });
+    expect(mesh.alpha).toBe(0.7);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);
+    expect(releaseBody).toHaveBeenCalledOnce();
+    expect(releaseAccessory).toHaveBeenCalledOnce();
+    expect(mesh.destroyed).toBe(true);
+    expect(buffers.every((buffer) => buffer.destroyed)).toBe(true);
+    layer.destroy();
+    body.destroy();
+    accessory.destroy();
+    source.destroy();
+  });
+
+  it('dismantles each body in place without moving geometry or cropping its texture, then retires it', () => {
     const spriteLayer = new Container();
     const layer = new CollapseLayer(spriteLayer, new TextureCache(), sheet);
     layer.ingest([razed(9)], 0);
@@ -168,53 +182,67 @@ describe('CollapseLayer', () => {
     layer.draw(FLAT, VIEW_ALL, 0);
     expect(spriteLayer.children).toHaveLength(1);
     const node = spriteLayer.children[0] as Container;
-    const spr = node.children[0] as Sprite;
+    const spr = node.children[0] as Mesh;
     expect(spr.texture.frame.height).toBe(BODY_H); // intact at progress 0
     expect(spr.position.y).toBe(-BODY_H); // the frame's own feet-anchored draw offset
 
-    // One body, then the dust: the ground's shade and cover a standing building draws are left out.
-    expect(node.children).toHaveLength(2);
-    // The dust cloud is minted last, so it draws over the sprites' crop edge.
-    const dust = node.children[node.children.length - 1] as Container;
-    expect(dust.children).toHaveLength(DUST_PUFFS);
-    expect(dust.position.y).toBe(0); // the fixture frame's bottom edge (offsetY + height) is the ground
-
-    // Halfway the bottom half is clipped and the remainder shifts down by the same rows, so the visible
-    // bottom edge stays pinned at the ground line while the roof sinks.
+    const positions = spr.geometry.getBuffer('aPosition').data.slice();
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / 2);
-    expect(spr.texture.frame.height).toBe(BODY_H / 2);
-    expect(spr.position.y).toBe(-BODY_H + BODY_H / 2);
-    expect(dust.children.some((p) => p.alpha > 0)).toBe(true); // the cloud masks the cut
+    expect(spr.texture.frame.height).toBe(BODY_H);
+    expect(spr.position.y).toBe(-BODY_H);
+    expect(spr.geometry.getBuffer('aPosition').data).toEqual(positions);
 
-    // Fully sunk, the body is hidden but the node stays while the dust settles over the empty plot.
-    layer.ingest([], COLLAPSE_TICKS);
-    layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS);
+    layer.ingest([], COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS);
     expect(spriteLayer.children).toHaveLength(1);
     expect(spr.visible).toBe(false);
-    expect(dust.children.some((p) => p.alpha > 0)).toBe(true);
 
     layer.ingest([], COLLAPSE_LIFETIME_TICKS);
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);
     expect(spriteLayer.children).toHaveLength(0);
+    layer.destroy();
   });
 
-  it('sinks only the rows a cropped site had risen, not the whole stage frame', () => {
+  it('preserves a leased upgrade fade when a mask atlas cannot be allocated', () => {
+    vi.spyOn(drawable, 'readable2dContext').mockReturnValue(null);
+    const spriteLayer = new Container();
+    const texture = new Texture({ source });
+    const release = vi.fn();
+    const layer = new CollapseLayer(spriteLayer, new TextureCache(), sheet, () => [
+      { texture, x: -5, y: -10, scale: 1, alpha: 0.3, release },
+    ]);
+    layer.ingest([razed(9)], 0);
+    layer.draw(FLAT, VIEW_ALL, 0);
+    const body = spriteLayer.children[0]?.children[0];
+    expect(body).toBeInstanceOf(Sprite);
+    expect(body?.alpha).toBe(0.3);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_SMOKE_LEAD_TICKS);
+    expect(body?.alpha).toBe(0.3);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS / 2);
+    expect(body?.alpha).toBeLessThan(0.3);
+    expect(body?.y).toBe(-10);
+    layer.destroy();
+    expect(release).toHaveBeenCalledOnce();
+    expect(texture.destroyed).toBe(false);
+    texture.destroy();
+  });
+
+  it('breaks only the rows a cropped site had revealed, keeping its feet anchor', () => {
     const spriteLayer = new Container();
     const layer = new CollapseLayer(spriteLayer, new TextureCache(), sheet);
     layer.ingest([razed(9, CROPPED_SITE, AT, (SIM_ONE * 3) / 10)], 0);
 
     layer.draw(FLAT, VIEW_ALL, 0);
-    const spr = (spriteLayer.children[0] as Container).children[0] as Sprite;
+    const spr = (spriteLayer.children[0] as Container).children[0] as Mesh;
     const risenRows = (BODY_H * 3) / 10;
     expect(spr.texture.frame.y).toBe(BODY_H - risenRows); // the bottom 30% the live site showed
     expect(spr.texture.frame.height).toBe(risenRows);
     expect(spr.position.y).toBe(-risenRows);
 
-    // The sink eats the short stub from below at the full body's rate, so it is gone early.
-    layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / BODY_H);
-    expect(spr.texture.frame.height).toBe(risenRows - 1);
-    expect(spr.position.y).toBe(-risenRows + 1);
-    layer.draw(FLAT, VIEW_ALL, (COLLAPSE_TICKS * risenRows) / BODY_H);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / 2);
+    expect(spr.texture.frame.height).toBe(risenRows);
+    expect(spr.position.y).toBe(-risenRows);
+    layer.draw(FLAT, VIEW_ALL, COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS);
     expect(spr.visible).toBe(false);
   });
 
@@ -226,7 +254,7 @@ describe('CollapseLayer', () => {
     expect(spriteLayer.children).toHaveLength(0);
   });
 
-  it('sinks a timed site as its per-pixel reveal and destroys that bake with the collapse', () => {
+  it('breaks a timed site from its per-pixel reveal and destroys that bake with the collapse', () => {
     const spriteLayer = new Container();
     const textures = new TextureCache();
     const bake = new Texture({ source: new TextureSource({ width: 10, height: BODY_H }) });
@@ -237,12 +265,12 @@ describe('CollapseLayer', () => {
     layer.draw(FLAT, VIEW_ALL, 0);
     expect(bakeReveal).toHaveBeenCalledOnce();
     expect(bakeReveal.mock.calls[0]?.[3]).toBeCloseTo(255 / 4, 0); // a quarter into its [0,100] window
-    const spr = (spriteLayer.children[0] as Container).children[0] as Sprite;
+    const spr = (spriteLayer.children[0] as Container).children[0] as Mesh;
     expect(spr.texture.source).toBe(bake.source);
     expect(spr.texture.frame.height).toBe(BODY_H); // the reveal hides pixels, not rows
 
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_TICKS / 2);
-    expect(spr.texture.frame.height).toBe(BODY_H / 2);
+    expect(spr.texture.frame.height).toBe(BODY_H);
 
     layer.ingest([], COLLAPSE_LIFETIME_TICKS);
     layer.draw(FLAT, VIEW_ALL, COLLAPSE_LIFETIME_TICKS);

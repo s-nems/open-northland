@@ -64,7 +64,7 @@ export interface WorldMarksFrame {
   readonly screenViewport?: Viewport;
   readonly fogVisible?: ((x: number, y: number) => boolean) | undefined;
   readonly fogExplored?: ((x: number, y: number) => boolean) | undefined;
-  /** Interpolated render clock (`tick + alpha`) so fades, sinks and plumes glide at any frame rate. */
+  /** Interpolated render clock (`tick + alpha`) so fades, demolition and plumes glide at any frame rate. */
   readonly renderTime: number;
   /** The drawn ships, off the pool's culled draw list. */
   readonly ships: readonly ShipAfloat[];
@@ -91,7 +91,7 @@ export class WorldMarks {
   private readonly orderMarkers = new OrderMarkerLayer();
   private readonly effects = new CombatEffectsLayer();
   private readonly blood: BloodLayer;
-  /** A razed building's sink-into-the-ground transient. Its nodes live inside the depth-sorted sprite
+  /** A razed building's reverse-construction transient. Its nodes live inside the depth-sorted sprite
    *  layer rather than a slot of their own, so fighters still occlude around the falling body. */
   private readonly collapses: CollapseLayer;
   /** A siege shot's stone, shadow, trail and landing smoke; in the depth-sorted sprite layer like the

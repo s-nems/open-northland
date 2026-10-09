@@ -320,6 +320,28 @@ describe('visible damage ownership', () => {
     damage.destroy();
   });
 
+  it('captures a healthy construction layer without requiring a damage node', () => {
+    mockCanvas();
+    const damage = new BuildingDamage(),
+      house = subject();
+    const layer = {
+      source: house.texture.source,
+      frame: { x: 0, y: 0, width: W, height: H, offsetX: -W / 2, offsetY: -H },
+      scale: 1,
+      reveal: 0.37,
+      revealWindow: [20, 100] as const,
+    };
+    const fallen = damage.capture(12, [house.body], () => layer);
+    expect(fallen).toHaveLength(1);
+    expect(fallen?.[0]?.texture.source).not.toBe(house.texture.source);
+    expect(fallen?.[0]?.layer).toBe(layer);
+    house.texture.destroy(true);
+    expect(fallen?.[0]?.texture.source.destroyed).toBe(false);
+    fallen?.[0]?.release();
+    expect(fallen?.[0]?.texture.destroyed).toBe(true);
+    damage.destroy();
+  });
+
   it('keeps remembered scars without emitting fire or smoke under fog', () => {
     mockCanvas();
     const damage = new BuildingDamage(),

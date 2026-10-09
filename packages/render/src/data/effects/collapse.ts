@@ -1,15 +1,12 @@
-import { RUIN_COLLAPSE_TICKS, type SimEvent } from '@open-northland/sim';
+import type { SimEvent } from '@open-northland/sim';
 import { clamp01 } from '../math.js';
 import { ONE } from '../projection/index.js';
-import { frac } from './random.js';
-import type { SmokePuffPose } from './smoke.js';
 
 /**
  * The pure half of the building-collapse transient: `buildingDestroyed` events fold into a list of
- * collapsing buildings the GPU layer draws sinking into the ground behind a dust cloud. Progress is
+ * collapsing buildings whose last visible layers unwind through their construction order. Progress is
  * measured in sim ticks, not wall-clock, so a paused game and a `?shot` capture reproduce exactly.
- * Source basis: the original removes a destroyed house's pixel rows bottom-up over time;
- * the constant-rate sink and the procedural dust are approximated.
+ * Reverse construction, chip motion and procedural dust are artistic approximations.
  */
 
 export interface BuildingCollapse {
@@ -27,69 +24,33 @@ export interface BuildingCollapse {
   readonly spawnTick: number;
 }
 
-/** Ticks a collapse takes from intact to fully sunk: the sim's span, so the goods land as the body goes. */
-export const COLLAPSE_TICKS = RUIN_COLLAPSE_TICKS;
+/** Artistic pacing for readability at ×3: smoke and accelerating removal take one real second.
+ * Presentation deliberately outlives the simulation's ruin delay. */
+export const COLLAPSE_SMOKE_LEAD_TICKS = 6;
+export const COLLAPSE_TICKS = 30;
 
-/** Ticks the ground-line dust cloud outlives the sunk body, settling instead of blinking out. */
-export const DUST_SETTLE_TICKS = 10;
-
-export const COLLAPSE_LIFETIME_TICKS = COLLAPSE_TICKS + DUST_SETTLE_TICKS;
-
-/** Concurrent dust puffs along one collapse's ground line - dense enough to swallow the body's
- *  cropped bottom edge rather than decorate it. */
-export const DUST_PUFFS = 16;
-
-/** One dust puff's churn loop, in sim ticks. */
-const DUST_PERIOD_TICKS = 14;
-
-/** How far a puff rolls outward past the body's edge and how far it rises, in world px. */
-const DUST_ROLL_PX = 14;
-const DUST_RISE_PX = 14;
-
-/** A dust puff's radius from birth to dissolve, in world px. */
-const DUST_MIN_R = 6;
-const DUST_MAX_R = 14;
-
-/** Peak opacity of one dust puff. */
-const DUST_PEAK_ALPHA = 0.8;
-
-/** Ticks the cloud takes to billow up when the collapse starts. */
-const DUST_RAMP_TICKS = 3;
+/** Ticks reserved for airborne dust to disperse after the structure is gone. */
+export const DUST_SETTLE_TICKS = 100;
+export const COLLAPSE_LIFETIME_TICKS = COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS + DUST_SETTLE_TICKS;
 
 /** The most simultaneous collapses kept alive - bounds the per-frame pass when a whole base falls at
  *  once. Oldest dropped first. */
 export const MAX_ACTIVE_COLLAPSES = 60;
 
-/** Sink progress at `tick`: 0 intact, 1 fully underground. */
+/** Breakup progress at `tick`: 0 unchanged, 1 no standing structure. */
 export function collapseProgress(c: BuildingCollapse, tick: number): number {
-  const p = (tick - c.spawnTick) / COLLAPSE_TICKS;
-  return p < 0 ? 0 : p > 1 ? 1 : p;
+  const p = clamp01((tick - c.spawnTick - COLLAPSE_SMOKE_LEAD_TICKS) / COLLAPSE_TICKS);
+  return p * p;
+}
+
+/** Inverse of the accelerating body curve: chips detach when their source pixels disappear. */
+export function collapseRemovalAge(progress: number): number {
+  return COLLAPSE_SMOKE_LEAD_TICKS + Math.sqrt(clamp01(progress)) * COLLAPSE_TICKS;
 }
 
 /** A stable per-collapse key for the retained GPU pool. */
 export function collapseKey(c: BuildingCollapse): string {
   return `${c.entity}:${c.spawnTick}`;
-}
-
-/**
- * Dust puff `i` of a collapse at `age` ticks since the crash, in ground-line-local world px. Puffs
- * are seeded along the body's base (`halfWidth` px each side) and loop a short outward roll under a
- * cloud-wide envelope that billows in, holds through the sink, then settles. Deterministic in
- * (seed, i, age).
- */
-export function collapseDustPuff(seed: number, i: number, age: number, halfWidth: number): SmokePuffPose {
-  const phase = (i * DUST_PERIOD_TICKS) / DUST_PUFFS + frac(seed, i * 17) * DUST_PERIOD_TICKS;
-  const looped = (((age + phase) % DUST_PERIOD_TICKS) + DUST_PERIOD_TICKS) % DUST_PERIOD_TICKS;
-  const t = looped / DUST_PERIOD_TICKS;
-  const side = frac(seed, i * 5 + 1) * 2 - 1; // seeded home spot across the base, either side
-  const envelope =
-    Math.min(1, age / DUST_RAMP_TICKS) * clamp01((COLLAPSE_LIFETIME_TICKS - age) / DUST_SETTLE_TICKS);
-  return {
-    x: side * (halfWidth + t * DUST_ROLL_PX),
-    y: -(0.4 + 0.6 * frac(seed, i * 5 + 2)) * DUST_RISE_PX * t,
-    radius: DUST_MIN_R + (DUST_MAX_R - DUST_MIN_R) * t,
-    alpha: Math.min(1, t * 4) * (1 - t) * DUST_PEAK_ALPHA * envelope,
-  };
 }
 
 /**

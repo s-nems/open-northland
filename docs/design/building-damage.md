@@ -16,7 +16,7 @@ resources or save state.
 These are design references, not implementation sources. The damage geometry, timings and procedural
 effect textures are independently authored artistic approximations. Colour and silhouette guide
 placement; they do not provide semantic knowledge of every roof or wall. No replacement building
-assets, original-effect copies, external generation service or new shader program are required.
+assets, original-effect copies or external generation service are required.
 
 Full health keeps the body intact. Damage blends continuously between six reference appearances at
 90/75/60/45/30/20% health: fresh chips, cracks, cavities, chipped roof edges and local soot appear
@@ -45,6 +45,22 @@ standing pool. Fog memories retain the last seen scars without emitting live eff
 hidden repairs. Normal portrait subjects follow the live appearance; map views that borrow an
 otherwise unpresented subject retain that view path's baseline rendering.
 
+Destruction reverses the building's construction time masks and stage windows: roof covering and
+facades disappear to expose its own back walls and timber, then those layers dismantle to the
+foundation. The last visible damaged pixels remain the outer layer; destruction never substitutes an
+undamaged facade. Incomplete and upgrading sites reverse only the layers and progress already shown.
+Without matching construction artwork, the visible body erodes in place from roof to foundation.
+Small palette-matched chips and dust originate at sampled removal points; chips fall, bounce once
+and settle. Dust gathers at sampled roof and wall positions for six ticks before the structure
+starts to dismantle. Each puff has its own shape and drift, stays over the structure through removal
+and then slowly spreads outward and thins. Initial swelling is independent of the long dispersal
+tail, so extending the tail does not weaken the cover during removal. Reverse construction accelerates along a quadratic curve over 30 ticks; chip
+births follow the same curve. The body clears at tick 36 and the longer dust tail clears by tick 136.
+Standing layers stay anchored throughout. The timing, shaded breaking edges and particles are artistic
+approximations, not a structural simulation. At ×3, removal takes one real second including the
+smoke lead, followed by up to 2.8 seconds of lingering dust. Presentation deliberately outlives the
+simulation's ruin delay; recovered materials and site availability keep their existing timing.
+
 ## Rendering budget
 
 Only the culled draw list and forced portrait subjects are visited. Body blends are quantized to
@@ -71,6 +87,19 @@ Atlas saturation keeps the simpler body/effect cue; a partial collapse capture f
 complete ordinary collapse. These limits are not a frame-time guarantee; use the browser procedure
 below to measure a device.
 
+Each visible collapse layer uses one static quad and a dedicated two-texture shader, preserving the
+world's pixel-art magnifier. A removal mask is prepared once; only uniforms change during the
+animation, avoiding per-frame pixel repaints and atlas uploads. These masks use at most four shared
+1024-square pages (16 MiB GPU RGBA plus their CPU canvases), separate from leased damage pixels.
+Saturation falls back to a stationary fade. One reusable readback canvas supplies particle origins;
+each building retains at most 48 small chips and 14 local dust puffs in ordinary world
+batches. Only visible collapses animate; at most 60 nodes remain alive. Captured colour slots, masks,
+construction reveal textures and particle geometry are released when the dust settles.
+In the six-building demolition scene at 1500×1100, Metal draws 18 body quads with two mask pages;
+the whole frame uses 31 GL draws versus 12 while the buildings stand. After preparation, demolition
+uploads no texture pixels. This trades extra draws during the short effect for a fixed mask sampled
+on the GPU, without adding demolition attributes to every ordinary world sprite.
+
 ## Review
 
 Open `?scene=building-damage`: columns show 100%, 82%, 60%, 30% and 8% health; rows show a small timber
@@ -81,7 +110,10 @@ option in Graphics while paused, scroll away and back, then inspect selection ou
 check that large breaches still have structural support. Inspect the rubble at normal zoom as well.
 
 Use `?scene=siege` for impacts, construction damage and the collapse transition, and `?scene=repair`
-for repair. See [SCENES.md](../SCENES.md) and [TESTING.md](../TESTING.md) for the shared setup and checks.
+for repair. `?scene=building-demolition` has a Demolition stage with a Demolish buildings button:
+compare damaged timber, masonry, plaster and headquarters, an intact tower and an unfinished home.
+Reload to repeat; inspect the exposed construction, fixed anchors and the empty plot after dust settles.
+See [SCENES.md](../SCENES.md) and [TESTING.md](../TESTING.md) for the shared setup and checks.
 For an A/B timing, keep camera, resolution and simulation state fixed, warm each mode, then use
 `window.__opennorthland.resetPerf()` and `perf()` in a headed browser. Record the GPU backend, visible
 building count, window length and world-render CPU time separately from frame cadence.

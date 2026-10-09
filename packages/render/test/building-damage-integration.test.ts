@@ -1,5 +1,5 @@
 import { type Entity, ONE } from '@open-northland/sim';
-import { Container, Sprite, type Texture, TextureSource } from 'pixi.js';
+import { Container, Mesh, type Texture, TextureSource } from 'pixi.js';
 import { afterEach, expect, it, vi } from 'vitest';
 import { COLLAPSE_LIFETIME_TICKS, COLLAPSE_TICKS } from '../src/data/effects/collapse.js';
 import type { ElevationField } from '../src/data/terrain/index.js';
@@ -10,6 +10,9 @@ import { SelectionSprite } from '../src/gpu/sprite-selection-effect.js';
 import type { SpriteSheet } from '../src/gpu/sprite-sheet.js';
 import { TextureCache } from '../src/gpu/texture-cache.js';
 import { entity, snapshotOf } from './support/fixtures.js';
+import { useHeadlessShaderContext } from './support/shader-context.js';
+
+useHeadlessShaderContext();
 
 const REF = 1 as Entity;
 const SIZE = 100;
@@ -135,14 +138,15 @@ it('keeps selected textures current through live settings and repair, then lease
     collapses.draw(FLAT, VIEW, deathTick);
     expect(layer.children).toHaveLength(1);
     const body = layer.children[0]?.children[0];
-    if (!(body instanceof Sprite)) throw new Error('Missing collapsing body');
+    if (!(body instanceof Mesh)) throw new Error('Missing collapsing body');
     const collapseView = body.texture;
     expect(collapseView.source).toBe(lastBake.source);
     expect(collapseView.frame).toEqual(lastBake.frame);
     expect(body.position).toMatchObject({ x: -SIZE / 2, y: -SIZE });
 
     collapses.draw(FLAT, VIEW, deathTick + COLLAPSE_TICKS / 2);
-    expect(collapseView.frame.height).toBe(SIZE / 2);
+    expect(collapseView.frame.height).toBe(SIZE);
+    expect(body.position).toMatchObject({ x: -SIZE / 2, y: -SIZE });
     expect(lastBake.frame.height).toBe(SIZE);
     expect(lastBake.destroyed).toBe(false);
     const expiry = deathTick + COLLAPSE_LIFETIME_TICKS;

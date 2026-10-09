@@ -184,4 +184,6 @@ chain and plate armor. Zoom into the front to inspect sprays and the ground left
 
 `?scene=building-damage` compares five health levels on timber, tiled masonry and plastered buildings.
 `?scene=building-damage-variants` compares five instances of each at the same critical health level.
+`?scene=building-demolition` compares reverse construction on damaged buildings, an intact tower and an
+unfinished home. Select Demolition, then Demolish buildings; reload to repeat the animation.
 See [building damage](design/building-damage.md) for the visual choices, limits and review sequence.

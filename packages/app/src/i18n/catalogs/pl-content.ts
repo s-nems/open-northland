@@ -244,6 +244,12 @@ export const plContent = {
       summary:
         'Pięć wersji każdego budynku przy 4% zdrowia: odsłonięta konstrukcja, różne wyrwy, płomienie i odłamki.',
     },
+    'building-demolition': {
+      title: 'Burzenie budynków',
+      summary:
+        'Zburz uszkodzone domy, wieżę i niedokończoną budowę: ściany odsłaniają szkielet, który rozpada się do fundamentów.',
+      stages: { demolition: 'Burzenie', demolish: 'Zburz budynki' },
+    },
     'building-damage': {
       title: 'Zniszczenia budynków',
       summary:

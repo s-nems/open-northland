@@ -8,11 +8,10 @@ export {
 export {
   type BuildingCollapse,
   COLLAPSE_LIFETIME_TICKS,
+  COLLAPSE_SMOKE_LEAD_TICKS,
   COLLAPSE_TICKS,
-  collapseDustPuff,
   collapseKey,
   collapseProgress,
-  DUST_PUFFS,
   DUST_SETTLE_TICKS,
   foldBuildingCollapses,
   MAX_ACTIVE_COLLAPSES,

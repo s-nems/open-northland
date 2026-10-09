@@ -1,5 +1,5 @@
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
-import type { Container } from 'pixi.js';
+import type { Container, Sprite } from 'pixi.js';
 import { BloodCoats } from '../../data/effects/blood-coats.js';
 import type { GhostSource } from '../../data/fog/index.js';
 import {
@@ -664,9 +664,11 @@ export class SpritePool {
   captureBuildingDamage(ref: number): readonly FallenBody[] | undefined {
     const pe = this.pool.get(ref);
     if (pe === undefined || pe.paletted) return undefined;
+    const sprites: readonly Sprite[] = pe.sprites;
     return this.buildingDamage.capture(
       ref,
-      pe.sprites.filter((_, i) => pe.pickExempt[i] !== true),
+      sprites.filter((_, i) => pe.pickExempt[i] !== true),
+      (sprite) => pe.layers.finish()[sprites.indexOf(sprite)],
     );
   }
 

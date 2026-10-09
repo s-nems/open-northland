@@ -25,9 +25,9 @@ interface DamagePage {
   dirty: boolean;
 }
 
-/** Four shared pages at most (16 MiB RGBA). Slots belong only to visible damaged bodies and are returned
- * on repair/cull. A full atlas leaves excess bodies on their ordinary art with the cheap damage cue.
- * No per-house canvas, per-sprite filter or extra shader program. */
+/** Four shared pages at most (16 MiB RGBA). Damage leases colour tiles and demolition leases removal
+ * masks in its own instance. Each owner returns slots at the end of its effect and handles saturation;
+ * no per-house canvas. */
 export class DamageAtlas {
   private readonly pages: DamagePage[] = [];
   private unavailable = false;
