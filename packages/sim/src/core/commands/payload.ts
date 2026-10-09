@@ -4,6 +4,7 @@ import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
 import { MAX_MATCH_GOALS, type MatchGoal } from '../../components/match.js';
 import { SCRIPTED_LOOK_MAX_RECIPES, SCRIPTED_LOOK_RECIPE_MAX_CHARS } from '../../components/mission.js';
 import type { NeedKind } from '../../components/needs.js';
+import { MAX_PLAYERS } from '../../components/ownership.js';
 import { GATE_MODES } from '../../components/palisade.js';
 import { PAPER_KINDS } from '../../components/papers.js';
 import { DIPLOMACY_STATES } from '../../components/rules.js';
@@ -365,6 +366,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
     optional: {
       victory: { oneOf: ['script', 'elimination', 'goals'] },
       goals: { arrayOf: { variants: MATCH_GOAL_PAYLOAD }, maxLength: MAX_MATCH_GOALS },
+      goalSeats: { arrayOf: 'integer', maxLength: MAX_PLAYERS },
     },
   },
   setNeedsEnabled: { required: { enabled: 'boolean' } },

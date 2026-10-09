@@ -73,12 +73,14 @@ describe('session world options', () => {
     const goals = sessionWorldOptions(absent, null, {
       victory: 'goals',
       goals: [{ kind: 'wonByMission' }],
+      scriptVerdicts: true,
       participants: [0, 1, 2, 3, 4, 5],
     });
     expect(goals.matchParticipants).toEqual([0, 1, 2, 3, 5]);
     const survivors = sessionWorldOptions(absent, null, {
       victory: 'goals',
-      goals: [{ kind: 'lastStanding' }],
+      goals: [{ kind: 'wonByMission' }, { kind: 'lastStanding' }],
+      scriptVerdicts: false,
       participants: [0, 1, 2, 3, 4, 5],
     });
     expect(survivors.matchParticipants).toEqual(sessionWorldOptions(absent, null, {}).matchParticipants);

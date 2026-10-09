@@ -53,6 +53,9 @@ export type MatchVictory = 'script' | 'elimination' | 'goals';
 export const MAX_MATCH_GOALS = 32;
 
 interface MatchGoalTable {
+  /** The seats the table checks: the participants and the seats on the map that cannot die, which
+   *  only a row can decide. */
+  seats: number;
   goals: MatchGoal[];
   /** Per goal, the players a script's `MissionWon` (a `wonByMission` row) or `MissionFailed` (a
    *  `lostByMission` row) named since the table was set; 0 for every other row. */
@@ -67,6 +70,7 @@ const matchGoals = defineWorldSingleton<MatchGoalTable & { enabled: boolean }>(
   'players',
   () => ({
     enabled: false,
+    seats: 0,
     goals: [],
     raised: [],
     won: 0,
@@ -150,12 +154,14 @@ export function matchOutcome(world: World, player: number): MatchOutcome {
 }
 
 /** Replace the participant set with the valid slots of `players`; a seat dropped from the set also loses
- *  its dead or won mark. Goals mode plays by `goals`, copied, with no verdict reached yet. */
+ *  its dead or won mark. Goals mode plays by `goals`, copied, with no verdict reached yet, over the
+ *  participants and `goalSeats`. */
 export function setMatchParticipants(
   world: World,
   players: readonly number[],
   victory: MatchVictory = 'elimination',
   goals: readonly MatchGoal[] = [],
+  goalSeats: readonly number[] = [],
 ): void {
   if (!Array.isArray(players)) return; // an imported log carries untyped payloads
   let bits = 0;
@@ -174,8 +180,11 @@ export function setMatchParticipants(
   }
   if (victory === 'goals') {
     const rows = Array.isArray(goals) ? goals : [];
+    let seats = bits;
+    for (const p of Array.isArray(goalSeats) ? goalSeats : []) if (isValidPlayer(p)) seats |= playerBit(p);
     matchGoals.write(world, (table) => {
       table.enabled = true;
+      table.seats = seats;
       table.goals = rows.map(copyGoal);
       table.raised = rows.map(() => 0);
       table.won = 0;
@@ -251,7 +260,7 @@ export function raiseMissionGoal(world: World, player: number, verdict: 'won' | 
   });
 }
 
-/** Record the goal table's verdict for a participant it has not yet decided. */
+/** Record the goal table's verdict for a seat it has not yet decided. */
 export function markGoalVerdict(world: World, player: number, verdict: 'won' | 'lost'): void {
   const bit = playerBit(player);
   const table = matchGoals.read(world);

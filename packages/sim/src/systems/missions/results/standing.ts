@@ -39,7 +39,9 @@ export function lockScriptedStance(
 
 /** Declare the map won or lost for the player and announce it the way the match rule does. A repeat
  *  fire announces again, as the original re-sends its message; the verdict is recorded once. Under a
- *  goal table the verdict only raises the rows waiting for it, which decide at the next goal check. */
+ *  goal table the verdict only raises the rows waiting for it, which decide at the next goal check.
+ *  Approximation: the original still shows its won or lost message there at once; here the goal
+ *  check's verdict is the only announcement. */
 export function declareScriptedVerdict(
   pass: MissionPass,
   mission: number,

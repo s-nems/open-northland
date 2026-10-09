@@ -12,7 +12,7 @@ import {
 import type { MissionHouseRef, MissionScript, ResolvedOp } from '@open-northland/sim';
 import { MISSION_HOUSE_NAME_FIELD, MISSION_LANDSCAPE_NAME_FIELD } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
-import { multiplayerMatchGoals, scriptMatchParticipants } from '../match-participants.js';
+import { multiplayerMatchGoals, neverDiesSeats, scriptMatchParticipants } from '../match-participants.js';
 import { isMapComputerSeat } from '../session-url.js';
 import type { MapScriptWorld } from './build.js';
 import type { AuthoredJoinRows, ContentJoins } from './content-joins.js';
@@ -219,7 +219,12 @@ const NO_VERDICTS = { won: false, failed: false } as const;
 function multiplayerVictory(
   script: MapScript | null,
   verdicts: { readonly won: boolean; readonly failed: boolean },
-): Pick<MapScriptWorld, 'victory' | 'goals'> | undefined {
+): Pick<MapScriptWorld, 'victory' | 'goals' | 'scriptVerdicts' | 'neverDies'> | undefined {
   if (script?.multiplayer === undefined) return undefined;
-  return { victory: 'goals', goals: multiplayerMatchGoals(script.multiplayerGoals ?? [], verdicts) };
+  return {
+    victory: 'goals',
+    goals: multiplayerMatchGoals(script.multiplayerGoals ?? [], verdicts),
+    scriptVerdicts: verdicts.won || verdicts.failed,
+    neverDies: neverDiesSeats(script),
+  };
 }

@@ -83,6 +83,8 @@ export type RulesCommand =
        *  plays a multiplayer map's `goals` table. */
       readonly victory?: MatchVictory;
       readonly goals?: readonly MatchGoal[];
+      /** Seats beyond `players` the goal table checks: those on the map that cannot die. */
+      readonly goalSeats?: readonly number[];
     };
 
 /**

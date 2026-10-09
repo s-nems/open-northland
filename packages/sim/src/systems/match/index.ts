@@ -5,6 +5,7 @@ import {
   isValidPlayer,
   markPlayerDead,
   markPlayersWon,
+  matchGoalTable,
   matchParticipantBits,
   Owner,
   Person,
@@ -18,10 +19,9 @@ import type { System, SystemContext } from '../context.js';
 import { isAdultSettler } from '../family/eligibility.js';
 import { removeVehiclesOf } from '../vehicles/remove.js';
 import { checkMatchGoals } from './goals.js';
+import { allMutualFriends, hasTwoSeats } from './standing.js';
 
 export { MATCH_GOAL_CHECK_TICKS } from './goals.js';
-
-import { allMutualFriends, hasTwoSeats } from './standing.js';
 
 /**
  * Death-check cadence in ticks: the first check lands on the cadence tick past the grace period.
@@ -37,12 +37,14 @@ export const MATCH_DEATH_CHECK_INTERVAL_TICKS = 125;
  *  checks even one seat and leaves every verdict, a death's defeat included, to the goal table. */
 export const matchSystem: System = (world, ctx) => {
   const participants = matchParticipantBits(world);
-  if (participants === 0) return;
+  // The goal table also decides seats that cannot die, so it runs on its own seats, not the participants.
   if (goalsMatchVictory(world)) {
+    if (matchGoalTable(world).seats === 0) return;
     if (deathCheckDue(ctx.tick)) markDeaths(world, ctx, participants, false);
     checkMatchGoals(world, ctx);
     return;
   }
+  if (participants === 0) return;
   const scripted = scriptedMatchVictory(world);
   if (!scripted && (!hasTwoSeats(participants) || wonPlayerBits(world) !== 0)) return;
   if (!deathCheckDue(ctx.tick)) return;

@@ -1046,8 +1046,8 @@ behavior (a reading, the same in the owned 2001 copy; not timed against the runn
   unknown key and a row past the last slot are skipped.
 - A `MissionWon` or `MissionFailed` only raises the matching rows for the named player; it decides
   nothing on its own, and with no such row it decides nothing in the match at all.
-- Every 120 ticks, on each tick count divisible by 120, every existing player the table has not decided
-  is checked in slot order: the dead flag first, then the rows in table order, and the first that holds
+- Every 120 ticks, on each tick count divisible by 120, every existing player the table has not decided,
+  a `playerneverdies` one included, is checked in slot order: the dead flag first, then the rows in table order, and the first that holds
   decides the player. A decided player is never checked again, so a winner that later dies stays a
   winner. Each player's verdict is its own: no team, alliance or "last one standing" rule exists, and
   one player winning ends nothing for the others.

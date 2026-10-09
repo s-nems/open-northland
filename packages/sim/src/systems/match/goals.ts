@@ -34,17 +34,16 @@ const GOOD_TALLY_MAX = 0xffff;
 type Verdict = 'won' | 'lost';
 
 /**
- * Original behavior: each participant the table has not decided is checked in slot order, a death
- * first and then the rows in table order, and the first that holds decides it for good; a seat that
- * won is never checked again, so a later death does not undo it. Each seat's verdict is its own: one
- * seat winning ends nothing for the others. The counts walk the buildings and the people once per
- * check, and only when a row reads them.
+ * Original behavior: each seat on the map the table has not decided is checked in slot order, a
+ * death first and then the rows in table order, and the first that holds decides it for good; a seat
+ * that won is never checked again, so a later death does not undo it. A seat that cannot die is
+ * checked too. Each seat's verdict is its own: one seat winning ends nothing for the others. The
+ * counts walk the buildings and the people once per check, and only when a row reads them.
  */
 export function checkMatchGoals(world: World, ctx: SystemContext): void {
   if (ctx.tick % MATCH_GOAL_CHECK_TICKS !== 0) return;
   const table = matchGoalTable(world);
-  const participants = matchParticipantBits(world);
-  const pending = participants & ~(table.won | table.lost);
+  const pending = table.seats & ~(table.won | table.lost);
   if (pending === 0) return;
   const tallies = new GoalTallies(world, ctx, pending);
   for (const player of playersOfBits(pending)) {
@@ -95,8 +94,9 @@ function goalVerdict(
   }
 }
 
-/** The skirmish rule as a row: with two seats or more, once one is out (dead or lost) and those still
- *  standing are all mutual friends, each of them wins. */
+/** The skirmish rule as a row, over the participants alone, since a seat that cannot die is no rival
+ *  to beat: with two or more, once one is out (dead or lost) and those still standing are all mutual
+ *  friends, each standing participant wins. */
 function lastStanding(world: World, player: number): boolean {
   const participants = matchParticipantBits(world);
   const out = (deadPlayerBits(world) | matchGoalTable(world).lost) & participants;

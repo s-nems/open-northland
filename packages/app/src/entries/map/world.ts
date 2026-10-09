@@ -230,9 +230,16 @@ function applySessionRules(sim: Simulation, options: MapWorldOptions): void {
       kind: 'setMatchParticipants',
       players: participants,
       victory,
-      ...(victory === 'goals' && goals !== undefined ? { goals } : {}),
+      ...(victory === 'goals' && goals !== undefined ? { goals, goalSeats: immortalSeats(options) } : {}),
     });
   }
+}
+
+/** The map's seats that cannot die and are on the map: no participants, yet a goal row can decide them. */
+function immortalSeats(options: MapWorldOptions): number[] {
+  const absent = new Set(options.absentSeats);
+  const roster = new Set((options.playerRoster ?? []).map((row) => row.player));
+  return (options.script?.neverDies ?? []).filter((seat) => roster.has(seat) && !absent.has(seat));
 }
 
 /** The world-build inputs a restore reuses: identity only, since placements, session rules, AI seats

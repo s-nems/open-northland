@@ -62,4 +62,14 @@ describe.runIf(hasRealIr())('multiplayer goal tables', () => {
     expect(sim.matchOutcome(RED)).toBe('defeat');
     expect(won % systems.MATCH_GOAL_CHECK_TICKS).toBe(0);
   }, 60_000);
+
+  it("decides Ucieczka z Gazy's never-dying seats by their script verdict", async () => {
+    const sim = await realMapSessionWorld(`map=ucieczka_z_gazy&ai=${RED}`);
+    sim.step();
+    expect(sim.matchRules().participants).not.toContain(BLUE);
+    components.raiseMissionGoal(sim.world, BLUE, 'won');
+    const won = verdictTick(sim, BLUE, sim.tick + systems.MATCH_GOAL_CHECK_TICKS);
+    expect(sim.matchOutcome(BLUE)).toBe('victory');
+    expect(won % systems.MATCH_GOAL_CHECK_TICKS).toBe(0);
+  }, 60_000);
 });

@@ -16,7 +16,12 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../src/index.js';
-import { MATCH_GOAL_CHECK_TICKS, matchSystem } from '../../src/systems/match/index.js';
+import {
+  MATCH_DEATH_CHECK_INTERVAL_TICKS,
+  MATCH_DEATH_GRACE_TICKS,
+  MATCH_GOAL_CHECK_TICKS,
+  matchSystem,
+} from '../../src/systems/match/index.js';
 import { testContent } from '../fixtures/content.js';
 import { ctxOf } from '../fixtures/context.js';
 import { settlerAt } from '../fixtures/settler.js';
@@ -30,9 +35,21 @@ const SECOND_CHECK = 2 * MATCH_GOAL_CHECK_TICKS;
 /** Every setup command has applied by then. */
 const PLACED = 2;
 
-function goalsSim(players: readonly number[], goals: readonly MatchGoal[], sim?: Simulation): Simulation {
+function lcm(a: number, b: number): number {
+  const gcd = (x: number, y: number): number => (y === 0 ? x : gcd(y, x % y));
+  const both = (a * b) / gcd(a, b);
+  if (both < MATCH_DEATH_GRACE_TICKS) throw new Error('the cadences meet inside the grace period');
+  return both;
+}
+
+function goalsSim(
+  players: readonly number[],
+  goals: readonly MatchGoal[],
+  sim?: Simulation,
+  goalSeats: readonly number[] = [],
+): Simulation {
   const world = sim ?? new Simulation({ seed: 1, content: testContent() });
-  world.enqueueSetup({ kind: 'setMatchParticipants', players, victory: 'goals', goals });
+  world.enqueueSetup({ kind: 'setMatchParticipants', players, victory: 'goals', goals, goalSeats });
   world.step();
   return world;
 }
@@ -99,8 +116,8 @@ describe('multiplayer goal table', () => {
   it('announces a death only through the table, on its next check', () => {
     const sim = goalsSim([0, 1], []);
     man(sim, 0);
-    // The death check's first tick past its grace that is also a goal check.
-    const both = 3000;
+    // The first tick past the death check's grace that both cadences land on.
+    const both = lcm(MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_GOAL_CHECK_TICKS);
     expect(verdicts(check(sim, both))).toEqual([{ kind: 'playerDefeated', player: 1 }]);
     expect(sim.matchOutcome(0)).toBe('undecided');
   });
@@ -183,6 +200,26 @@ describe('multiplayer goal table', () => {
     goalsSim([0, 1], [{ kind: 'lostByMission' }], unread);
     expect(eventsUntil(unread, SECOND_CHECK, ['playerWon', 'playerDefeated'])).toEqual([]);
     expect(unread.matchOutcome(0)).toBe('undecided');
+  });
+
+  it('decides a seat that cannot die by its rows alone, and ends the match on the participants', () => {
+    const sim = goalsSim([1], [{ kind: 'wonByMission' }], undefined, [0]);
+    man(sim, 1);
+    raiseMissionGoal(sim.world, 0, 'won');
+    expect(verdicts(check(sim, lcm(MATCH_DEATH_CHECK_INTERVAL_TICKS, MATCH_GOAL_CHECK_TICKS)))).toEqual([
+      { kind: 'playerWon', player: 0 },
+    ]);
+    expect(sim.matchEnded()).toBe(false);
+    const lonely = goalsSim([1], [{ kind: 'lastStanding' }], undefined, [0]);
+    markPlayerDead(lonely.world, 1);
+    expect(verdicts(check(lonely, FIRST_CHECK))).toEqual([{ kind: 'playerDefeated', player: 1 }]);
+    expect(lonely.matchEnded()).toBe(true);
+  });
+
+  it('checks a table whose only seats cannot die', () => {
+    const sim = goalsSim([], [{ kind: 'wonByMission' }], undefined, [0]);
+    raiseMissionGoal(sim.world, 0, 'won');
+    expect(verdicts(check(sim, FIRST_CHECK))).toEqual([{ kind: 'playerWon', player: 0 }]);
   });
 
   it('saves the table, its raised rows and its verdicts', () => {

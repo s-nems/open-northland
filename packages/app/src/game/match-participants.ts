@@ -44,12 +44,8 @@ export function scriptMatchParticipants(script: Pick<MapScript, 'players' | 'mis
  * decides, the script names whom it decides for. Original behavior: a goal table checks every seat on
  * the map; a lobby leaves no seat there undriven, so the session's seats are that set.
  */
-export function scriptDecidesRoster(world: Pick<MapScriptWorld, 'victory' | 'goals'>): boolean {
-  if (world.victory === 'script') return true;
-  return (
-    world.victory === 'goals' &&
-    (world.goals ?? []).some((goal) => goal.kind === 'wonByMission' || goal.kind === 'lostByMission')
-  );
+export function scriptDecidesRoster(world: Pick<MapScriptWorld, 'victory' | 'scriptVerdicts'>): boolean {
+  return world.victory === 'script' || (world.victory === 'goals' && world.scriptVerdicts === true);
 }
 
 export function hasEliminationGoal(rules: MatchRulesView, player: number): boolean {
