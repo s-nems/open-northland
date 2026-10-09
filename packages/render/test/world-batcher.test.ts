@@ -10,6 +10,7 @@ import {
   TextureSource,
 } from 'pixi.js';
 import { afterEach, describe, expect, it } from 'vitest';
+import { bloodSurface } from '../src/gpu/blood-surface.js';
 import {
   markPalettedTexture,
   markShadowTexture,
@@ -70,7 +71,7 @@ describe('world batcher layout', () => {
       expect(attribute?.offset, name).toBe(offset);
       expect(attribute?.stride, name).toBe(stride);
     }
-    expect(WORLD_ATTRIBUTE_OFFSETS.aBlood + 4).toBe(stride);
+    expect(WORLD_ATTRIBUTE_OFFSETS.aSplashes + 16).toBe(stride);
     batcher.destroy();
   });
 });
@@ -121,6 +122,8 @@ describe('world batcher element flags', () => {
     const sprite = new SelectionSprite(Texture.WHITE);
     const packed = 237 + 180 * 256 + 247 * 65536;
     sprite.bloodEffect = packed;
+    const surface = bloodSurface(sprite, 0);
+    surface.packed.set([0xffffff, 0x050a22, 0x050a23, 0xffab01]);
     const floats = new Float32Array(WORLD_VERTEX_SIZE * 4);
     const element = {
       texture: sprite.texture,
@@ -130,11 +133,19 @@ describe('world batcher element flags', () => {
       color: 0xffffffff,
       roundPixels: 0,
     } as unknown as DefaultBatchableQuadElement;
-    for (const value of [packed, 0]) {
+    for (const [value, enabled, facade, expectedBlood] of [
+      [packed, true, false, packed],
+      [0, true, true, -0.7],
+      [0, false, true, 0],
+    ] as const) {
       sprite.bloodEffect = value;
+      bloodSurface(sprite, 0, { enabled, facade });
       batcher.packQuadAttributes(element, floats, new Uint32Array(floats.buffer), 0, 0);
-      for (let i = 0; i < 4; i++)
-        expect(floats[i * WORLD_VERTEX_SIZE + WORLD_ATTRIBUTE_OFFSETS.aBlood / 4]).toBe(value);
+      for (let i = 0; i < 4; i++) {
+        expect(floats[i * WORLD_VERTEX_SIZE + WORLD_ATTRIBUTE_OFFSETS.aBlood / 4]).toBeCloseTo(expectedBlood);
+        const at = i * WORLD_VERTEX_SIZE + WORLD_ATTRIBUTE_OFFSETS.aSplashes / 4;
+        expect([...floats.slice(at, at + 4)]).toEqual(enabled ? [...surface.packed] : new Array(4).fill(0));
+      }
     }
     sprite.destroy();
     batcher.destroy();

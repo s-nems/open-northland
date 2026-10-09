@@ -169,14 +169,39 @@ signposts reach the bakery, Olaf walks to work and the mark lifts.
 them. Freya's full bakery names the bread no store in reach takes; Ingrid's empty bakery names the
 ingredients the headquarters holds outside her reach.
 
-`?scene=combat-blood` compares sword, spear and fist hits on the left with arrows and a fatal
-hit on the right. Spray size and ground stains follow damage after protection: grazes leave small
-marks, and fully protected hits leave none. Fresh and drying blood use different shades. Victims
-accumulate body stains in proportion to their wounds; melee attackers catch smaller splashes, while
-distant archers stay clean. Body coverage is capped to keep equipment and team colours readable.
+`?scene=combat-blood` compares swords, spears, fists and arrows beside stones, a tree, a bush,
+loose wood and bones. The stage buttons also show separate fights behind and in front of a store:
+the rear fight must leave its visible roof and facade clean; the front fight must visibly stain the
+stone wall beside the entrance while the fighters remain in view.
+Spray size and ground stains follow damage after protection: grazes leave small marks, and fully
+protected hits leave none. Fresh and drying blood use different shades. Victims accumulate body
+stains in proportion to their wounds; melee attackers catch smaller splashes, while distant archers
+stay clean. Body coverage is capped to keep equipment and team colours readable.
+
+Spray starts at the upper torso (62% of drawn height, capped at 34 world pixels). Airborne drops
+meeting an opaque scenery pixel leave local splats instead of a second ground drop.
+These are authored 2D contacts, not volumetric collision: upright receivers must be on or behind the
+emitter's pre-lift ground row, within 42 world pixels, and the contact no more than 32 pixels above
+the receiver's lifted anchor. Buildings use the front footing of their body bounds instead of the
+interior anchor: only the bottom 30% (at most 40 pixels) receives splashes. An 8-pixel footing margin
+allows for empty frame padding. Facade contacts preserve the drop's height above that footing rather
+than using screen overlap at the victim's nearer ground row. The shader clips splats at the facade
+boundary, leaving their size intact. These conservative proxies avoid projecting onto roofs or crowns.
+Low piles receive drops only near landing. Flat ground decor uses ground stains. Splats
+follow the object's frame and sway, share its alpha and painter order, spread briefly, then dry and
+clear independently within 100 game seconds, using the same fade interval as ground blood.
+A new hit grows and refreshes the patch it overlaps without restarting its initial spread or shrinking
+its dried outline. Upright impacts spread more broadly than drops landing on low piles.
+Directional marks and short upright runs are artistic approximations; the qualitative link between
+oblique impact and elongated stains is supported by
+[Cseh and Liscio's droplet experiments](https://doi.org/10.1016/j.forsciint.2024.111986).
+No material absorption, fluid volumes or surface normals are simulated.
+Each surface holds at most three patches; at saturation it omits isolated new contacts until a patch
+expires, preserving existing stains. The renderer retains at most 512 stained surfaces.
+Contacts are discovered for fresh visible bursts only; loading a save does not restore blood.
 Ground marks fade within 100 game seconds; body stains steadily fade even during combat and clear
 within 150 seconds of the last wound or splash. Both histories are bounded.
-In Settings → Graphics, switching Blood off clears ground and body stains even while paused;
+In Settings → Graphics, switching Blood off clears ground, scenery and body stains even while paused;
 switching it back on admits new hits. `?scene=battle` exercises the same effect
 with 1000 fighters per side on a 96 × 80 cell field. Both armies attack across the field with
 independently shuffled swords, broadswords, spears, short bows and long bows, and bare, cloth, leather,

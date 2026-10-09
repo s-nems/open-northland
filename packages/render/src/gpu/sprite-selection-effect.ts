@@ -1,7 +1,8 @@
-import { Graphics, Sprite } from 'pixi.js';
+import { Graphics } from 'pixi.js';
+import { BloodSurfaceSprite } from './blood-surface.js';
 
 /** One world-batch value: negative draws a tinted silhouette; positive lifts colours towards white. */
-export class SelectionSprite extends Sprite {
+export class SelectionSprite extends BloodSurfaceSprite {
   private effect = 0;
   private blood = 0;
 

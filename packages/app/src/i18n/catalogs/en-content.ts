@@ -207,7 +207,13 @@ export const enContent = {
     },
     'combat-blood': {
       title: 'Blood on the battlefield',
-      summary: 'Sword, spear and fist impacts, arrows, and the aftermath of a fatal hit.',
+      summary:
+        'Hits and arrows splash blood onto stones, a tree, a bush, a building, bones and dropped goods.',
+      stages: {
+        objects: 'Objects and plants',
+        behind: 'Fight behind a building',
+        front: 'Fight in front of a building',
+      },
     },
     'byzantine-spears': {
       title: 'Byzantine spears',

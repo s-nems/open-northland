@@ -2,9 +2,11 @@
  * This is a surface approximation, not a wound attached to a skeletal animation. No texture taps. */
 export const BLOOD_COAT_GLSL = /* glsl */ `
 float bloodHash(vec2 p) {
-  vec3 q = fract(vec3(p.xyx) * 0.1031);
-  q += dot(q, q.yzx + 33.33);
-  return fract((q.x + q.y) * q.z);
+  highp uvec2 cell = uvec2(ivec2(floor(p)));
+  highp uint hash = cell.x * 1664525u + cell.y * 1013904223u;
+  hash = (hash ^ (hash >> 16)) * 2246822519u;
+  hash = hash ^ (hash >> 13);
+  return float(hash & 65535u) / 65535.0;
 }
 
 float bloodNoise(vec2 p) {

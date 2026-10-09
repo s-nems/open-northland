@@ -1,5 +1,5 @@
 import { type Entity, positionOfNode, type SimEvent } from '@open-northland/sim';
-import { Container, Mesh } from 'pixi.js';
+import { Container, Mesh, Rectangle, Texture, TextureSource } from 'pixi.js';
 import { describe, expect, it, vi } from 'vitest';
 import {
   BLOOD_AIR_TICKS,
@@ -14,7 +14,9 @@ import {
 import { BloodHistory } from '../src/data/effects/blood-history.js';
 import { screenDepth } from '../src/data/scene/index.js';
 import { NO_WATER } from '../src/data/terrain/index.js';
+import { BloodSurfaceSprite, bloodSurface } from '../src/gpu/blood-surface.js';
 import { type BloodFrame, BloodLayer } from '../src/gpu/overlays/blood-layer.js';
+import * as alphaMasks from '../src/gpu/sprite-pool/alpha-mask.js';
 import { cameraViewport, makeElevationField } from '../src/index.js';
 import { snapshotOf } from './support/fixtures.js';
 import { useHeadlessShaderContext } from './support/shader-context.js';
@@ -155,7 +157,7 @@ describe('blood event history', () => {
 describe('ballistics', () => {
   it('launches near the torso and lands at a stable ground point without a layer-change jump', () => {
     for (let seed = 0; seed < 32; seed++) {
-      for (const drop of bloodDrops({ ...mark(), seed, fatal: true })) {
+      for (const drop of bloodDrops({ ...mark(), seed, fatal: true }, 34)) {
         const p = pose();
         bloodDroplet(drop, 0, p);
         expect(p.y).toBeLessThan(-8);
@@ -172,6 +174,7 @@ describe('ballistics', () => {
         bloodDroplet(drop, 100, p);
         expect(p).toEqual(landing);
         expect(drop.delay + drop.flight).toBeLessThan(BLOOD_AIR_TICKS);
+        expect(Math.abs(drop.vy * drop.flight)).toBeLessThan(24); // Facade projection's broad-phase margin.
       }
     }
   });
@@ -294,7 +297,7 @@ describe('blood layer', () => {
     draw(layer, 0, {
       drawn: { anchorOf: () => undefined, boundsOf: () => ({ minX: 0, maxX: 20, minY: 0, maxY: 20 }) },
     });
-    expect(sprites.children[0]?.children.every((c) => c.y > -10 && c.y < -5)).toBe(true);
+    expect(sprites.children[0]?.children.every((c) => c.y > -14 && c.y < -11)).toBe(true);
     draw(layer, 30);
     const ground = groundMesh(layer);
     const landings = [...ground.geometry.getBuffer('aPosition').data];
@@ -403,7 +406,7 @@ it('samples body height when a coarse bucket candidate first crosses the exact v
   expect(boundsOf).not.toHaveBeenCalled();
   draw(layer, 0, { ...over, screenViewport: { minX: -50, maxX: 30, minY: -50, maxY: 50 } });
   expect(boundsOf).toHaveBeenCalledTimes(1);
-  expect(sprites.children[0]?.children[0]?.y).toBeCloseTo(-8.4);
+  expect(sprites.children[0]?.children[0]?.y).toBeCloseTo(-12.4);
   layer.destroy();
 });
 
@@ -445,4 +448,149 @@ it('reserves GPU capacity and keeps indices uploaded when visible marks grow wit
   expect(index.data.byteLength).toBe(capacity);
   expect(updated).not.toHaveBeenCalled();
   layer.destroy();
+});
+
+it('deposits scenery blood at contact, retires caught drops, and clears through the blood switch', () => {
+  const mask = vi
+    .spyOn(alphaMasks, 'alphaMaskOf')
+    .mockReturnValue({ width: 32, height: 32, bits: new Uint8Array(128).fill(255) });
+  const root = new Container();
+  const texture = new Texture({
+    source: new TextureSource({ width: 32, height: 32 }),
+    frame: new Rectangle(0, 0, 32, 32),
+  });
+  const wall = root.addChild(new BloodSurfaceSprite(texture));
+  wall.position.set(140, 80);
+  const surface = bloodSurface(wall, 114);
+  const layer = new BloodLayer(root);
+  try {
+    layer.ingest([hit()], 0, snapshotOf([{ id: 1, components: { Position: positionOfNode(3, 6) } }]));
+    draw(layer, 0);
+    expect([...surface.packed]).toEqual(new Array(4).fill(0));
+    const mesh = layer.groundContainer.children[0];
+    if (!(mesh instanceof Mesh)) throw new Error('missing ground blood');
+    const marks = layer.marks[0];
+    if (marks === undefined) throw new Error('missing burst');
+    expect(mesh.geometry.indexCount).toBeLessThan((bloodDrops(marks).length + 1) * 6);
+    draw(layer, BLOOD_AIR_TICKS);
+    expect(Math.abs(surface.packed[3] ?? 0)).toBeGreaterThan(0);
+    expect(root.children).toEqual([wall]);
+    layer.setEnabled(false);
+    expect([...surface.packed]).toEqual(new Array(4).fill(0));
+  } finally {
+    mask.mockRestore();
+    layer.destroy();
+    root.destroy({ children: true });
+  }
+});
+
+it('delivers contacts once when the camera leaves during flight or returns before the burst ends', () => {
+  const mask = vi
+    .spyOn(alphaMasks, 'alphaMaskOf')
+    .mockReturnValue({ width: 32, height: 32, bits: new Uint8Array(128).fill(255) });
+  const far = { minX: 10000, minY: 10000, maxX: 11000, maxY: 11000 };
+  function run(frames: readonly (readonly [number, boolean])[]): number[] {
+    const root = new Container();
+    const wall = root.addChild(
+      new BloodSurfaceSprite(new Texture({ source: new TextureSource({ width: 32, height: 32 }) })),
+    );
+    wall.position.set(140, 80);
+    const surface = bloodSurface(wall, 114);
+    const layer = new BloodLayer(root);
+    layer.ingest([hit()], 0, snapshotOf([{ id: 1, components: { Position: positionOfNode(3, 6) } }]));
+    for (const [tick, visible] of frames) draw(layer, tick, { viewport: visible ? vp : far });
+    const result = [...surface.packed];
+    layer.destroy();
+    root.destroy({ children: true });
+    return result;
+  }
+  try {
+    const continuous = run([
+      [0, true],
+      [4, true],
+      [12, true],
+    ]);
+    expect(Math.abs(continuous[3] ?? 0)).toBeGreaterThan(0);
+    expect(
+      run([
+        [0, true],
+        [1, false],
+        [12, true],
+      ]),
+    ).toEqual(continuous);
+    expect(
+      run([
+        [0, true],
+        [4, true],
+        [5, false],
+        [6, true],
+        [12, true],
+      ]),
+    ).toEqual(continuous);
+  } finally {
+    mask.mockRestore();
+  }
+});
+
+it('keeps the same scenery patches when interleaved contacts arrive across skipped frames', () => {
+  function run(frames: readonly number[], overlapping: boolean): number[] {
+    const root = new Container();
+    const wall = root.addChild(
+      new BloodSurfaceSprite(
+        new Texture({
+          source: new TextureSource({ width: 64, height: 64 }),
+        }),
+      ),
+    );
+    const surface = bloodSurface(wall, 114);
+    const layer = new BloodLayer(root);
+    let index = 0;
+    const trace = vi.spyOn(layer.surfaces, 'trace').mockImplementation(() => {
+      const i = index++;
+      return {
+        surface,
+        x: overlapping ? 0.5 : 0.1 + (i % 10) * 0.08,
+        y: overlapping ? 0.5 : i < 10 ? 0.2 : 0.8,
+        radius: 1,
+        angle: i * 0.3,
+        age: 10 - i * 0.45,
+      };
+    });
+    try {
+      layer.ingest([hit(2), hit(3)], 0);
+      for (const tick of frames) draw(layer, tick);
+      expect(index).toBe(20);
+      return [...surface.packed];
+    } finally {
+      trace.mockRestore();
+      layer.destroy();
+      root.destroy({ children: true });
+    }
+  }
+  const continuous = Array.from({ length: 49 }, (_, i) => i / 4);
+  for (const overlapping of [false, true]) {
+    const fine = run(continuous, overlapping);
+    expect(fine.some((value) => value !== 0)).toBe(true);
+    expect(run([0, 12], overlapping)).toEqual(fine);
+  }
+});
+
+it('aligns the long axis of settled droplets with their travel on the projected ground', () => {
+  for (const from of [positionOfNode(3, 6), positionOfNode(4, 5)]) {
+    const layer = new BloodLayer(new Container());
+    layer.ingest([hit()], 0, snapshotOf([{ id: 1, components: { Position: from } }]));
+    draw(layer, 0);
+    const burst = layer.marks[0];
+    if (burst === undefined) throw new Error('missing burst');
+    const drops = bloodDrops(burst);
+    const positions = groundMesh(layer).geometry.getBuffer('aPosition').data;
+    for (const [i, drop] of drops.entries()) {
+      const at = (i + 1) * 8; // The central pool precedes the settled droplets.
+      const dx = Number(positions[at + 2]) - Number(positions[at]);
+      const dy = Number(positions[at + 3]) - Number(positions[at + 1]);
+      expect(Math.abs(dx * drop.vy - dy * drop.vx)).toBeLessThan(0.001);
+      expect(dx * drop.vx + dy * drop.vy).toBeGreaterThan(0);
+    }
+    layer.destroy();
+  }
 });

@@ -3,6 +3,7 @@ import { type BloodDrop, type BloodMark, bloodDrops, GROUND_SQUASH } from '../..
 import { frac } from '../../data/effects/random.js';
 import { glProgramFor } from '../program-source.js';
 import { BLOOD_GROUND_SOURCE } from './blood-ground-shader.js';
+import type { SurfaceContact } from './blood-surfaces.js';
 import type { BloodTextures } from './blood-textures.js';
 
 const VERTICES = 4;
@@ -73,6 +74,7 @@ export class BloodGround {
     y: number,
     water: number,
     bodyRise: number,
+    contacts?: readonly (SurfaceContact | undefined)[],
   ): readonly BloodDrop[] | undefined {
     if (water >= 1) return;
     const cached = this.records.get(mark);
@@ -98,8 +100,8 @@ export class BloodGround {
       x,
       y,
       c * scale,
-      s * scale,
-      -s * scale * GROUND_SQUASH,
+      s * scale * GROUND_SQUASH,
+      -s * scale,
       c * scale * GROUND_SQUASH,
       2,
       mark.fatal ? 20 : 7,
@@ -109,8 +111,11 @@ export class BloodGround {
     );
     for (let i = 0; i < drops.length; i++) {
       const drop = drops[i];
-      if (drop === undefined) continue;
-      const angle = frac(mark.seed, 110 + i) * Math.PI * 2;
+      if (drop === undefined || contacts?.[i] !== undefined) continue;
+      // Unsquash the velocity before rotating on the ground plane; oblique impacts leave longer marks.
+      const angle = Math.atan2(drop.vy / GROUND_SQUASH, drop.vx);
+      const speed = Math.hypot(drop.vx, drop.vy / GROUND_SQUASH);
+      const stretch = 1 + Math.min(0.8, speed * 0.18);
       const scale = drop.size * 0.23;
       const c = Math.cos(angle),
         s = Math.sin(angle);
@@ -119,10 +124,10 @@ export class BloodGround {
         this.textures.stain(mark.seed + i * 7),
         x + drop.vx * drop.flight,
         y + drop.vy * drop.flight,
-        c * scale,
-        s * scale * GROUND_SQUASH,
-        -s * scale,
-        c * scale * GROUND_SQUASH,
+        c * scale * stretch,
+        s * scale * stretch * GROUND_SQUASH,
+        (-s * scale) / Math.sqrt(stretch),
+        (c * scale * GROUND_SQUASH) / Math.sqrt(stretch),
         drop.delay + drop.flight,
         1.5,
         0.17 / 0.23,

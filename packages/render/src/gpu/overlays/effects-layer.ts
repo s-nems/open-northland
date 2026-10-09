@@ -1,5 +1,5 @@
 import type { EntitySnapshot, SimEvent, WorldSnapshot } from '@open-northland/sim';
-import { Container, Graphics, Sprite, type TextureSource } from 'pixi.js';
+import { Container, Graphics, type TextureSource } from 'pixi.js';
 import {
   boneAlpha,
   bonePileOf,
@@ -19,7 +19,9 @@ import {
 import { anchorTileBox } from '../../data/scene/entity-source.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { type ElevationField, terrainLiftAtNode } from '../../data/terrain/index.js';
+import { BloodSurfaceSprite } from '../blood-surface.js';
 import type { TextureCache } from '../texture-cache.js';
+import { worldBatched } from '../world-batcher.js';
 import { retainOffscreen, retireUndrawn } from './retained-pool.js';
 
 /**
@@ -82,6 +84,15 @@ export class CombatEffectsLayer {
   /** Unset draws the procedural planks. */
   private wreck: MarkGfx | undefined;
 
+  constructor(
+    private readonly surface?: (
+      sprite: BloodSurfaceSprite,
+      id: number,
+      groundY: number,
+      lift: number,
+    ) => void,
+  ) {}
+
   setBonesGfx(bones: MarkGfx | undefined): void {
     this.bones = bones;
   }
@@ -127,6 +138,14 @@ export class CombatEffectsLayer {
         this.makeMark(this.bones, pile.id, drawBones),
       );
       if (node === undefined) continue;
+      const sprite = node.children[0];
+      if (sprite instanceof BloodSurfaceSprite)
+        this.surface?.(
+          sprite,
+          pile.id,
+          (pile.hy * TILE_HALF_H) / 2,
+          terrainLiftAtNode(elevation, pile.hx, pile.hy),
+        );
       this.boneNodes.set(pile.id, node);
       node.alpha = alpha;
       this.drawnBones.add(pile.id);
@@ -192,7 +211,7 @@ function makeMarkSprite(gfx: MarkGfx, seed: number): Container {
   const c = new Container();
   const frame = gfx.frames[seed % gfx.frames.length];
   if (frame === undefined) return c;
-  const sprite = new Sprite(gfx.textures.get(gfx.source, frame));
+  const sprite = worldBatched(new BloodSurfaceSprite(gfx.textures.get(gfx.source, frame)));
   sprite.scale.set(gfx.scale);
   sprite.position.set(frame.offsetX * gfx.scale, frame.offsetY * gfx.scale);
   c.addChild(sprite);

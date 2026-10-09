@@ -4,6 +4,7 @@ import { clamp } from '../../data/math.js';
 import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
 import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
+import { bloodSurface } from '../blood-surface.js';
 import { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanRoad, PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
@@ -252,6 +253,22 @@ export class LayerBinder {
         } else {
           this.bindPlainLayer(spr, layer, revealTexture, box, tint, enhanceBuilding);
         }
+        bloodSurface(spr, item.y, {
+          lift: item.lift ?? 0,
+          flat: item.kind === 'grounddrop' || item.kind === 'stockpile',
+          facade: item.kind === 'building',
+          enabled:
+            !pe.pickExempt[spriteSlot] &&
+            layer.cast !== true &&
+            layer.boundsExempt !== true &&
+            (layer.groundFoot === undefined || layer.groundFoot === 'body') &&
+            item.kind !== 'settler' &&
+            item.kind !== 'fish' &&
+            item.kind !== 'projectile' &&
+            item.kind !== 'craftfx' &&
+            item.kind !== 'vehicle' &&
+            item.ghost !== true,
+        });
         if (item.kind === 'building' && layer.boundsExempt !== true && layer.shadow !== true) {
           pe.damageBodies ??= [];
           pe.damageBodies.push(spr);

@@ -204,7 +204,13 @@ export const plContent = {
     },
     'combat-blood': {
       title: 'Krew na polu bitwy',
-      summary: 'Ciosy mieczem, włócznią i pięścią, strzały oraz ślad po śmiertelnym trafieniu.',
+      summary:
+        'Ciosy i strzały rozchlapują krew na kamieniach, drzewie, krzewie, budynku, kościach i przedmiotach.',
+      stages: {
+        objects: 'Przedmioty i rośliny',
+        behind: 'Walka za budynkiem',
+        front: 'Walka przed budynkiem',
+      },
     },
     'byzantine-spears': {
       title: 'Bizantyjscy włócznicy',

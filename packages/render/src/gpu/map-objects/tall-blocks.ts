@@ -12,6 +12,7 @@ import { drawPassDepth, SHADOW_DEPTH_EPS } from '../../data/scene/index.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import { scaleColour } from '../../data/terrain/index.js';
 import type { WindSway } from '../../data/weather/climate.js';
+import { BloodSurfaceSprite, bloodSurface } from '../blood-surface.js';
 import type { GroundFootPart } from '../ground-foot/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { castShadowShear, setVegetationShear, vegetationShear } from '../vegetation-sway.js';
@@ -37,7 +38,7 @@ const GHOST_OVERLAY_TINT = fogGhostTint(WATCHED_OVERLAY_TINT);
 interface PooledObject {
   readonly obj: MapObjectSprite;
   /** Null until minted on first visibility. */
-  sprite: Sprite | null;
+  sprite: BloodSurfaceSprite | null;
   /** The cast-shadow twin, minted with {@link sprite} only when the object carries shadow frames. */
   shadowSprite: Sprite | null;
   /** A {@link MapObjectSprite.grounded} object's ground shade and foot cover, minted with {@link sprite}. */
@@ -178,10 +179,10 @@ export class TallObjectLayer {
     return true;
   }
 
-  private mint(po: PooledObject): Sprite {
+  private mint(po: PooledObject): BloodSurfaceSprite {
     const obj = po.obj;
     const depth = depthKey(obj.x, obj.y) + drawPassDepth(obj.groundPass === true ? 'ground' : 'sorted');
-    const sprite = worldBatched(new Sprite());
+    const sprite = worldBatched(new BloodSurfaceSprite());
     sprite.scale.set(obj.scale);
     sprite.zIndex = depth;
     po.baseTint = obj.brightness !== undefined ? scaleColour(0xffffff, obj.brightness) : 0xffffff;
@@ -330,6 +331,8 @@ export class TallObjectLayer {
         ) {
           continue;
         }
+        if (rebind)
+          bloodSurface(sprite, obj.y, { enabled: watched && obj.creature !== true, lift: obj.lift ?? 0 });
         po.lastWatched = watched;
         if (!po.attached) {
           this.spriteLayer.addChild(sprite);

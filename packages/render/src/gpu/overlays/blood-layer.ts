@@ -23,6 +23,7 @@ import { type ElevationField, terrainLiftAtNode, type WaterField } from '../../d
 import type { DrawnGeometry } from '../sprite-pool/index.js';
 import { worldBatched } from '../world-batcher.js';
 import { BloodGround } from './blood-ground.js';
+import { BloodSurfaces, type SurfaceContact } from './blood-surfaces.js';
 import { BloodTextures } from './blood-textures.js';
 
 export interface BloodFrame {
@@ -40,7 +41,15 @@ interface AirNode {
   readonly container: Container;
   readonly jet: Sprite;
   readonly strength: number;
-  readonly drops: readonly { readonly motion: BloodDrop; readonly sprite: Sprite }[];
+  readonly drops: readonly {
+    readonly motion: BloodDrop;
+    readonly sprite: Sprite;
+    readonly contact: SurfaceContact | undefined;
+  }[];
+}
+interface ContactPlan {
+  readonly contacts: readonly (SurfaceContact | undefined)[];
+  delivered: number;
 }
 interface Place {
   readonly x: number;
@@ -50,14 +59,21 @@ interface Place {
   y: number;
   water: WaterField;
   surface: number;
+  contacts?: readonly (SurfaceContact | undefined)[];
 }
 
 /** Visible ground is one retained mesh; only the short airborne phase owns sorted sprites. */
 export class BloodLayer {
   readonly groundContainer = new Container();
+  readonly surfaces = new BloodSurfaces();
+  groundSurfaces: Container | undefined;
   private enabled = true;
   private readonly places = new Map<BloodMark, Place>();
-  private readonly history = new BloodHistory((mark) => this.places.delete(mark));
+  private readonly pending = new Map<BloodMark, ContactPlan>();
+  private readonly history = new BloodHistory((mark) => {
+    this.places.delete(mark);
+    this.pending.delete(mark);
+  });
   private readonly launches = new Map<number, { hx: number; hy: number; tick: number }>();
   private readonly nodes = new Map<BloodMark, AirNode>();
   private readonly candidates: BloodMark[] = [];
@@ -90,6 +106,8 @@ export class BloodLayer {
   setEnabled(enabled: boolean): void {
     this.enabled = enabled;
     if (enabled) return;
+    this.surfaces.clear();
+    this.pending.clear();
     this.history.clear();
     this.launches.clear();
     this.places.clear();
@@ -140,7 +158,9 @@ export class BloodLayer {
       this.elevation = elevation;
       this.water = water;
     }
+    this.deposit(tick);
     this.ground?.draw(tick);
+    this.surfaces.draw(tick);
     for (const [mark, node] of this.nodes) {
       const age = tick - mark.spawnTick;
       if (age >= BLOOD_AIR_TICKS) {
@@ -167,6 +187,7 @@ export class BloodLayer {
       this.nextVisible.length !== this.visible.length ||
       this.nextVisible.some((mark, i) => this.visible[i] !== mark);
     this.seenAir.clear();
+    let preparedSurfaces = false;
     if (rebuild) this.ground?.begin();
     for (const mark of this.nextVisible) {
       const place = this.places.get(mark);
@@ -175,9 +196,9 @@ export class BloodLayer {
       if (place.surface >= 1 && !airborne) continue;
       if (place.rise === undefined) {
         const bounds = frame.drawn?.boundsOf(mark.target);
-        // Only the first exactly visible frame chooses the body's height, never a bucket candidate.
+        // Spray starts at the upper torso. Only the first exactly visible frame chooses its height.
         place.rise =
-          bounds === undefined ? 20 : Math.max(5, Math.min(26, (bounds.maxY - bounds.minY) * 0.42));
+          bounds === undefined ? 20 : Math.max(5, Math.min(34, (bounds.maxY - bounds.minY) * 0.62));
       }
       this.textures ??= new BloodTextures();
       if (place.surface < 1 && this.ground === undefined) {
@@ -185,11 +206,33 @@ export class BloodLayer {
         this.groundContainer.addChild(this.ground.mesh);
         this.ground.begin();
       }
-      const drops = rebuild ? this.ground?.add(mark, place.x, place.y, place.surface, place.rise) : undefined;
+      let motions: readonly BloodDrop[] | undefined;
+      if (airborne && place.contacts === undefined) {
+        motions = bloodDrops(mark, place.rise);
+        const watched =
+          frame.fogVisible === undefined ||
+          frame.fogVisible((mark.hx - rowStagger(mark.hy / 2)) / 2, mark.hy / 2);
+        if (watched) {
+          if (!preparedSurfaces) {
+            this.surfaces.prepare(
+              this.groundSurfaces === undefined
+                ? [this.spriteLayer]
+                : [this.groundSurfaces, this.spriteLayer],
+            );
+            preparedSurfaces = true;
+          }
+          place.contacts = motions.map((drop) => this.surfaces.trace(drop, place.x, place.y, place.baseY));
+          if (place.contacts.some((contact) => contact !== undefined))
+            this.pending.set(mark, { contacts: place.contacts, delivered: 0 });
+        } else place.contacts = [];
+      }
+      const drops = rebuild
+        ? this.ground?.add(mark, place.x, place.y, place.surface, place.rise, place.contacts)
+        : undefined;
       if (!airborne) continue;
       let node = this.nodes.get(mark);
       if (node === undefined) {
-        node = this.makeAir(mark, place, drops ?? bloodDrops(mark, place.rise), this.textures);
+        node = this.makeAir(mark, place, motions ?? drops ?? bloodDrops(mark, place.rise), this.textures);
         this.nodes.set(mark, node);
       }
       node.container.position.set(place.x, place.y);
@@ -244,10 +287,10 @@ export class BloodLayer {
     jet.anchor.set(0.1, 0.5);
     jet.position.set(0, -(place.rise ?? 20));
     jet.rotation = Math.atan2(Math.sin(mark.heading) * GROUND_SQUASH, Math.cos(mark.heading));
-    const drops = motions.map((motion) => {
+    const drops = motions.map((motion, i) => {
       const sprite = container.addChild(worldBatched(new Sprite(textures.drop)));
       sprite.anchor.set(0.5);
-      return { motion, sprite };
+      return { motion, sprite, contact: place.contacts?.[i] };
     });
     return {
       container,
@@ -257,13 +300,36 @@ export class BloodLayer {
     };
   }
 
+  private deposit(tick: number): void {
+    if (this.pending.size === 0) return;
+    const due: { contact: SurfaceContact; tick: number }[] = [];
+    for (const [mark, plan] of this.pending) {
+      let waiting = false;
+      for (let i = 0; i < plan.contacts.length; i++) {
+        const contact = plan.contacts[i];
+        if (contact === undefined || (plan.delivered & (1 << i)) !== 0) continue;
+        if (tick < mark.spawnTick + contact.age) {
+          waiting = true;
+          continue;
+        }
+        due.push({ contact, tick: mark.spawnTick + contact.age });
+        plan.delivered |= 1 << i;
+      }
+      if (!waiting) this.pending.delete(mark);
+    }
+    // A skipped frame may deliver several interleaved bursts at once. Patch growth, ageing and
+    // eviction must follow impact time, not emitter or droplet enumeration order.
+    due.sort((a, b) => a.tick - b.tick);
+    for (const impact of due) this.surfaces.stamp(impact.contact, impact.tick);
+  }
+
   private animate(node: AirNode, age: number): void {
     const spread = smoothUnit(age / 3);
     node.jet.alpha = 1 - smoothUnit(age / 5);
     node.jet.scale.set(node.strength * (0.25 + spread * 0.7), node.strength * (0.23 + spread * 0.2));
-    for (const { motion, sprite } of node.drops) {
+    for (const { motion, sprite, contact } of node.drops) {
       bloodDroplet(motion, age, this.pose);
-      sprite.visible = this.pose.visible && !this.pose.landed;
+      sprite.visible = this.pose.visible && !this.pose.landed && (contact === undefined || age < contact.age);
       sprite.position.set(this.pose.x, this.pose.y);
       sprite.rotation = this.pose.angle;
       sprite.scale.set((motion.size * this.pose.stretch) / 4, motion.size / 4);

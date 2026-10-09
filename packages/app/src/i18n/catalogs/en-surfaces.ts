@@ -225,7 +225,8 @@ export const enSurfaces = {
       groundedBuildingsTip:
         'Buildings, stockades and defence walls sink a little into the ground they stand on: a soft shade along the walls, tufts of grass on a meadow and a drift on snow, each in the light of its own wall. Off keeps the original look.',
       blood: 'Blood',
-      bloodTip: 'Hit sprays and fading ground stains. Turning this off also clears existing blood.',
+      bloodTip:
+        'Hit sprays and fading stains on the ground, characters and nearby objects. Turning this off also clears existing blood.',
       bonesFade: 'Fading bones',
       bonesFadeTip:
         'The bones of the fallen lie whole for a while, then slowly fade, gone after five minutes of game time. Off leaves them on the ground for good.',

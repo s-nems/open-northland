@@ -206,7 +206,13 @@ export const deContent = {
     },
     'combat-blood': {
       title: 'Blut auf dem Schlachtfeld',
-      summary: 'Schwert-, Speer- und Fausttreffer, Pfeile und die Spuren eines tödlichen Treffers.',
+      summary:
+        'Treffer und Pfeile spritzen Blut auf Steine, einen Baum, einen Busch, ein Gebäude, Knochen und abgelegte Waren.',
+      stages: {
+        objects: 'Objekte und Pflanzen',
+        behind: 'Kampf hinter dem Gebäude',
+        front: 'Kampf vor dem Gebäude',
+      },
     },
     'byzantine-spears': {
       title: 'Byzantinische Speerträger',

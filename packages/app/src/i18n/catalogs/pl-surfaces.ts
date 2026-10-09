@@ -223,7 +223,7 @@ export const plSurfaces = {
         'Budynki, palisady i kamienne mury lekko zapadają się w teren, na którym stoją: miękki cień wzdłuż ścian, kępki trawy na łące i zaspa na śniegu, każde w świetle własnej ściany. Po wyłączeniu zostaje wygląd oryginału.',
       blood: 'Krew',
       bloodTip:
-        'Rozpryski przy trafieniach i zanikające ślady na ziemi. Wyłączenie usuwa również istniejące plamy.',
+        'Rozpryski przy trafieniach i zanikające plamy na ziemi, postaciach oraz pobliskich przedmiotach i obiektach. Wyłączenie usuwa również istniejące plamy.',
       bonesFade: 'Znikające kości',
       bonesFadeTip:
         'Kości poległych chwilę leżą nietknięte, a potem powoli znikają, po pięciu minutach gry nie ma po nich śladu. Wyłączone zostają na ziemi na zawsze.',

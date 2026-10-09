@@ -89,7 +89,7 @@ export class WorldMarks {
   private readonly wakes = new ShipWakeLayer();
   private readonly selection = new SelectionLayer();
   private readonly orderMarkers = new OrderMarkerLayer();
-  private readonly effects = new CombatEffectsLayer();
+  private readonly effects: CombatEffectsLayer;
   private readonly blood: BloodLayer;
   /** A razed building's reverse-construction transient. Its nodes live inside the depth-sorted sprite
    *  layer rather than a slot of their own, so fighters still occlude around the falling body. */
@@ -116,6 +116,10 @@ export class WorldMarks {
     captureDamage?: (ref: number) => readonly FallenBody[] | undefined,
   ) {
     this.blood = new BloodLayer(spriteLayer);
+    this.effects = new CombatEffectsLayer((sprite, id, groundY, lift) =>
+      this.blood.surfaces.restore(sprite, id, groundY, lift),
+    );
+    this.blood.groundSurfaces = this.effects.groundContainer;
     this.collapses = new CollapseLayer(spriteLayer, textures, sheet, captureDamage);
     this.shots = new ShotLayer(spriteLayer, textures, sheet);
     this.familyEffects = new FamilyEffectsLayer(spriteLayer, textures, sheet);

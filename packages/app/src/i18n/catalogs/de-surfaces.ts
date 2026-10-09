@@ -262,7 +262,7 @@ export const deSurfaces = {
         'Gebäude, Palisaden und Steinmauern fügen sich in ihren Untergrund ein: weiche Schatten entlang der Wände, Grasbüschel auf Wiesen und Schneewehen im Schnee, jeweils passend zur Beleuchtung der Wand. Aus behält das ursprüngliche Aussehen bei.',
       blood: 'Blut',
       bloodTip:
-        'Blutspritzer bei Treffern und verblassende Flecken am Boden. Ausschalten entfernt auch vorhandenes Blut.',
+        'Blutspritzer bei Treffern und verblassende Flecken auf dem Boden, Figuren und nahen Gegenständen. Ausschalten entfernt auch vorhandenes Blut.',
       bonesFade: 'Verblassende Knochen',
       bonesFadeTip:
         'Die Knochen der Gefallenen liegen eine Weile unberührt und verblassen dann langsam, nach fünf Minuten Spielzeit sind sie fort. Ausgeschaltet bleiben sie für immer liegen.',
