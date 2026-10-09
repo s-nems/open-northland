@@ -1,20 +1,14 @@
 import { MapScript } from '@open-northland/data';
 import { exportSaveGame, parseSaveGame, serializeSaveGame } from '@open-northland/sim';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
-import { loadMapScript, loadTerrainMap } from '../src/content/map-loader.js';
-import { loadMapList } from '../src/content/maps-index.js';
+import * as mapLoader from '../src/content/map-loader.js';
+import * as mapsIndex from '../src/content/maps-index.js';
 import { mapSubMissionLoader, validateSavedMap } from '../src/entries/map/sub-missions.js';
 import { buildMapWorld } from '../src/entries/map/world.js';
 import { evaluateSaveFile } from '../src/view/runtime/save-load/evaluate.js';
 import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
 import { authoredMapFile } from './support/world-maps.js';
-
-vi.mock('../src/content/map-loader.js', () => ({
-  loadTerrainMap: vi.fn(),
-  loadMapScript: vi.fn(),
-}));
-vi.mock('../src/content/maps-index.js', () => ({ loadMapList: vi.fn() }));
 
 const inputs = {
   ir: AUTHORED_ROWS as ContentIr,
@@ -41,12 +35,13 @@ function parentSave() {
 }
 
 beforeEach(() => {
-  vi.mocked(loadMapList).mockResolvedValue([
+  vi.spyOn(mapsIndex, 'loadMapList').mockResolvedValue([
     { id: 'child', picture: false, minimap: false, campaign: { campaignId: 0, missionId: 91 } },
   ]);
-  vi.mocked(loadTerrainMap).mockResolvedValue(map);
-  vi.mocked(loadMapScript).mockResolvedValue(source);
+  vi.spyOn(mapLoader, 'loadTerrainMap').mockResolvedValue(map);
+  vi.spyOn(mapLoader, 'loadMapScript').mockResolvedValue(source);
 });
+afterEach(() => vi.restoreAllMocks());
 
 describe('map sub-mission worlds', () => {
   it('resolves campaign zero, embeds a detached parent and returns to its complete save after serialization', async () => {
@@ -85,7 +80,7 @@ describe('map sub-mission worlds', () => {
       'found 0',
     );
     const pair = { campaignId: 0, missionId: 91 };
-    vi.mocked(loadMapList).mockResolvedValue([
+    vi.mocked(mapsIndex.loadMapList).mockResolvedValue([
       { id: 'child', picture: false, minimap: false, campaign: pair },
       { id: 'twin', picture: false, minimap: false, campaign: pair },
     ]);
