@@ -933,8 +933,7 @@ an earlier one (`Diamentowa_Dolina` dresses its hero with ten). An unknown name 
 rows run once, at load: a human a script spawns later with the same id keeps its own look (reading). The
 palette lives on the human, so a later job change or armor recipe goes over it rather than resetting
 it (reading). One map (`SMOCZA_KRAINA`) writes a `setpalette` under `[misc_humannames]`, which reads
-`setname` only, so that row does nothing. Here the rows become the settler's `ScriptedLook` at spawn,
-kept through a save, and the renderer composes them into the human's palettes.
+`setname` only, so that row does nothing.
 
 ## Mutable landscape and terrain
 
@@ -1003,12 +1002,13 @@ the parameter is named campaign. Only maps present in generated content can be s
 
 Save format 7 embeds optional `parent` envelopes recursively. Each includes its own map identity,
 commands, RNG, fog and mission state. The app session retains that envelope on subsequent saves;
-restoring a single simulation does not itself manage the world stack. Returning discards the child,
-so neither inhabitants nor goods are merged into the parent. Parent simulation time stays frozen.
-The parser limits nesting to 16 parents, a defensive approximation. A fresh child reuses the parent's
-construction seed and URL session rules, an approximation. The in-game load menu accepts another map in the same saved parent chain, with a destination
-preflight; unrelated map saves remain rejected. Automatic handovers resume play; ordinary user loads remain paused. The temporary
-IndexedDB handover records this distinction separately from the saved game.
+restoring a single simulation does not itself manage the world stack. Returning discards the child, so
+neither inhabitants nor goods are merged into the parent. Parent simulation time stays frozen. The
+parser limits nesting to 16 parents, a defensive approximation. A fresh child reuses the parent's
+construction seed and URL session rules, an approximation. The in-game load menu accepts another map in
+the same saved parent chain, with a destination preflight; unrelated map saves remain rejected.
+Automatic handovers resume play; ordinary user loads remain paused. The temporary IndexedDB handover
+records this distinction separately from the saved game.
 
 ## Guide detection
 
@@ -1046,18 +1046,15 @@ behavior (a reading, the same in the owned 2001 copy; not timed against the runn
   unknown key and a row past the last slot are skipped.
 - A `MissionWon` or `MissionFailed` only raises the matching rows for the named player; it decides
   nothing on its own, and with no such row it decides nothing in the match at all.
-- Every 120 ticks, on each tick count divisible by 120, every existing player the table has not decided,
-  a `playerneverdies` one included, is checked in slot order: the dead flag first, then the rows in table order, and the first that holds
-  decides the player. A decided player is never checked again, so a winner that later dies stays a
-  winner. Each player's verdict is its own: no team, alliance or "last one standing" rule exists, and
-  one player winning ends nothing for the others.
+- Every 120 ticks, on each tick count divisible by 120, every existing player the table has not
+  decided, a `playerneverdies` one included, is checked in slot order: the dead flag first, then the
+  rows in table order, and the first that holds decides the player. A decided player is never checked
+  again, so a winner that later dies stays a winner. Each player's verdict is its own: no team,
+  alliance or "last one standing" rule exists, and one player winning ends nothing for the others.
 - Each verdict is announced with the player and numbered in order of winning or losing, which the
   end-of-game ranking sorts by. A player that lost has every house, human, vehicle and signpost removed
   on the next check, its animals turned wild; a winner keeps playing.
 - The goods and inhabitants rows also show their progress (`have/need`) in the on-screen info lines.
-
-This build plays the table on every multiplayer map (`packages/sim/src/systems/match/goals.ts`). Not
-ported: the loser's teardown, the ranking order and the info lines.
 
 ## Open questions
 
