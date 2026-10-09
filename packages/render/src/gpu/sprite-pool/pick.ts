@@ -124,8 +124,14 @@ function palettedPixelHit(pe: PalettedPooledEntity, wx: number, wy: number): boo
     sampledEveryLayer = true;
     const scale = spr.artScale;
     if (!(scale > 0)) return undefined;
-    const ny = (wy - pe.motion.drawY - spr.artDy) / scale;
-    const nx = (wx - pe.motion.drawX - spr.artDx) / scale - spr.shear * ny;
+    const sy = (wy - pe.motion.drawY - spr.artDy) / scale;
+    const sx = (wx - pe.motion.drawX - spr.artDx) / scale - spr.shear * sy;
+    // Undo the frame's clockwise tilt about its bottom-centre.
+    const tilt = frame.tilt ?? 0;
+    const pivotX = frame.offsetX + frame.width / 2;
+    const pivotY = frame.offsetY + frame.height;
+    const nx = pivotX + (sx - pivotX) * Math.cos(tilt) + (sy - pivotY) * Math.sin(tilt);
+    const ny = pivotY - (sx - pivotX) * Math.sin(tilt) + (sy - pivotY) * Math.cos(tilt);
     const lx = Math.floor(nx - frame.offsetX);
     const ly = Math.floor(ny - frame.offsetY);
     if (lx < 0 || ly < 0 || lx >= frame.width || ly >= frame.height) continue;

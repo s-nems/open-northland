@@ -1,4 +1,5 @@
 import { Container, Matrix } from 'pixi.js';
+import type { AtlasFrame } from '../../data/sprites/index.js';
 import { PalettedSprite } from '../paletted-sprite/index.js';
 import { type SelectionStyle, selectionLight } from '../selection-style.js';
 import { SelectionGraphics, SelectionSprite } from '../sprite-selection-effect.js';
@@ -88,17 +89,7 @@ export class SelectionEffects {
             }
             stamp.texture = this.textures.castSilhouette(source, frame);
             stamp.scale.set(body.artScale);
-            // Match the mesh's x += shear * y transform, including the frame's authored origin.
-            stamp.setFromMatrix(
-              this.transform.set(
-                body.artScale,
-                0,
-                body.shear * body.artScale,
-                body.artScale,
-                body.artDx + (frame.offsetX + body.shear * frame.offsetY) * body.artScale,
-                body.artDy + frame.offsetY * body.artScale,
-              ),
-            );
+            stamp.setFromMatrix(meshFrameTransform(this.transform, body, frame));
           } else {
             stamp.texture = body.texture;
             body.updateLocalTransform();
@@ -163,4 +154,31 @@ export class SelectionEffects {
     outline.destroy({ children: true });
     this.outlines.delete(pe);
   }
+}
+
+/**
+ * `out` set to the mesh's placement of `frame`'s texels: the frame's tilt about its bottom-centre, then the
+ * mesh's `x += shear * y` and art scale, from the frame's authored origin.
+ */
+function meshFrameTransform(out: Matrix, body: PalettedSprite, frame: AtlasFrame): Matrix {
+  const s = body.artScale;
+  const shear = body.shear;
+  const tilt = frame.tilt ?? 0;
+  const cos = Math.cos(tilt);
+  const sin = Math.sin(tilt);
+  // The texel origin lands at pivot + R(origin - pivot), R turning clockwise with screen y down.
+  const pivotX = frame.offsetX + frame.width / 2;
+  const pivotY = frame.offsetY + frame.height;
+  const fromX = frame.offsetX - pivotX;
+  const fromY = frame.offsetY - pivotY;
+  const x = pivotX + fromX * cos - fromY * sin;
+  const y = pivotY + fromX * sin + fromY * cos;
+  return out.set(
+    s * (cos + shear * sin),
+    s * sin,
+    s * (shear * cos - sin),
+    s * cos,
+    body.artDx + s * (x + shear * y),
+    body.artDy + s * y,
+  );
 }

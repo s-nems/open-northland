@@ -115,3 +115,46 @@ it('keeps vehicle outlines out of linear atlas sampling and follows mesh origin 
   source.destroy();
   lut.source.destroy();
 });
+
+it("lays a tilted frame's vehicle outline over the mesh's own turned corners", () => {
+  const textures = new TextureCache();
+  const effects = new SelectionEffects(textures);
+  const lut = syntheticHumanLut();
+  const pe = createPooled('vehicle', lut);
+  if (!pe.paletted) throw new Error('Expected an indexed vehicle');
+  const source = new TextureSource({ width: 32, height: 32, scaleMode: 'nearest' });
+  const body = new PalettedSprite(lut.source, lut.colours);
+  const frame = { x: 0, y: 0, width: 16, height: 24, offsetX: -8, offsetY: -24, tilt: 0.4 };
+  body.setFrame(source, frame, 32, 32);
+  body.artScale = 2;
+  body.artDx = 3;
+  body.artDy = 4;
+  body.shear = 0.1;
+  pe.sprites.push(body);
+  pe.container.addChild(body);
+  effects.update(pe, 'outline', 0.75, 0);
+  const stamp = pe.container.children[0]?.children[0];
+  if (stamp === undefined) throw new Error('Missing outline stamp');
+  stamp.updateLocalTransform();
+  const m = stamp.localTransform;
+  // The first stamp sits one outline radius to the right of the body.
+  const radiusX = 2 / 0.75;
+  const corners = body.geometry.positions;
+  const texels = [
+    [0, 0],
+    [frame.width, 0],
+    [frame.width, frame.height],
+    [0, frame.height],
+  ];
+  for (const [i, [u = 0, v = 0]] of texels.entries()) {
+    const px = corners[2 * i] ?? 0;
+    const py = corners[2 * i + 1] ?? 0;
+    expect(m.a * u + m.c * v + m.tx - radiusX).toBeCloseTo(3 + 2 * (px + 0.1 * py));
+    expect(m.b * u + m.d * v + m.ty).toBeCloseTo(4 + 2 * py);
+  }
+  effects.clear(pe);
+  pe.container.destroy({ children: true });
+  textures.clear();
+  source.destroy();
+  lut.source.destroy();
+});
