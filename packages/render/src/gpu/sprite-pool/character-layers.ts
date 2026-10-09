@@ -158,12 +158,14 @@ export function pushComposedCharacterLayers(
   tick: number,
   gaitClock: number,
   idleElapsed?: number,
+  /** The ref whose head this figure wears; absent, the item's own. */
+  headRef: number = item.ref,
 ): boolean {
   const scale = characterScale(sheet, char);
   const bob = resolveSettlerBobId(binding, item, tick, gaitClock, idleElapsed);
   const body = resolveFromLayer(char.body, bob, scale);
   const heads = char.heads;
-  const headLayer = heads !== undefined && heads.length > 0 ? heads[item.ref % heads.length] : undefined;
+  const headLayer = heads !== undefined && heads.length > 0 ? heads[headRef % heads.length] : undefined;
   const headBob =
     headBinding !== undefined ? resolveSettlerBobId(headBinding, item, tick, gaitClock, idleElapsed) : bob;
   const head = headLayer === undefined ? null : resolveFromLayer(headLayer, headBob, scale);

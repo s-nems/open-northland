@@ -145,6 +145,24 @@ describe('a cart driven from inside', () => {
     expect(identity).toMatchObject({ look: ownPalette, cart: 'handcart' });
   });
 
+  it("wears the head its driver wears on foot, picked by his ref rather than the cart's", () => {
+    const headFrame = (offsetX: number) => ({ ...frame, offsetX });
+    const heads = [headFrame(-1), headFrame(-2)].map((head) => ({
+      source,
+      atlas: { width: 8, height: 8, frames: new Map([[STAND_BOB, head]]) } satisfies SpriteAtlas,
+    }));
+    const twoHeads: SpriteSheet = {
+      ...sheet,
+      characters: {
+        byJob: { [TRADER]: { ...trader, heads } },
+        default: { body: { source, atlas: humanAtlas }, binding: { idle: 0 } },
+      },
+    };
+    const head = resolveLayers(twoHeads, cart(TRADER), 2)?.find((l) => l.head === true)?.frame;
+    expect(head).toBe(heads[DRIVER % heads.length]?.atlas.frames.get(STAND_BOB));
+    expect(DRIVER % heads.length).not.toBe(cart().ref % heads.length);
+  });
+
   it('turns the pooled cart into the settler palette class and back as its driver boards and steps off', () => {
     const binder = new LayerBinder(new TextureCache(), sheet);
     const parked = binder.create('vehicle', cart());

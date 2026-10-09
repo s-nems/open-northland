@@ -37,11 +37,13 @@ export function cartDriveLook(sheet: SpriteSheet | undefined, item: DrawItem): C
   if (item.ghost === true || !drive.commanderJobs.has(driver.jobType)) return undefined;
   const cartRecipe = drive.cartRecipeByVehicleType[typeId];
   if (cartRecipe === undefined) return undefined;
-  const own = humanCharacter(characters, driver.tribe, drive.lookJob, false, undefined, item.ref);
-  const base = humanCharacter(characters, undefined, drive.lookJob, false, undefined, item.ref);
-  const character = [own, own.cartDriver, base].find((c) => c?.binding.cartDrive?.[typeId] !== undefined);
-  const anim = character?.binding.cartDrive?.[typeId];
-  if (character === undefined || anim === undefined) return undefined;
+  // The driver's own ref picks the look, as it does on foot.
+  let character = humanCharacter(characters, driver.tribe, drive.lookJob, false, undefined, driver.ref);
+  if (character.binding.cartDrive?.[typeId] === undefined) character = character.cartDriver ?? character;
+  if (character.binding.cartDrive?.[typeId] === undefined)
+    character = humanCharacter(characters, undefined, drive.lookJob, false, undefined, driver.ref);
+  const anim = character.binding.cartDrive?.[typeId];
+  if (anim === undefined) return undefined;
   let byType = looksByCharacter.get(character);
   if (byType === undefined) {
     byType = new Map();
@@ -55,7 +57,8 @@ export function cartDriveLook(sheet: SpriteSheet | undefined, item: DrawItem): C
   return look;
 }
 
-/** Append the figure's layers, a character's with the cart gait in place of its own binding. */
+/** Append the figure's layers, a character's with the cart gait in place of its own binding, under the
+ *  head its driver wears on foot. */
 export function pushCartDriveLayers(
   out: LayerBuffer,
   sheet: SpriteSheet,
@@ -64,5 +67,16 @@ export function pushCartDriveLayers(
   tick: number,
   gaitClock: number,
 ): boolean {
-  return pushComposedCharacterLayers(out, sheet, look.character, look.anim, undefined, item, tick, gaitClock);
+  return pushComposedCharacterLayers(
+    out,
+    sheet,
+    look.character,
+    look.anim,
+    undefined,
+    item,
+    tick,
+    gaitClock,
+    undefined,
+    item.driver?.ref,
+  );
 }

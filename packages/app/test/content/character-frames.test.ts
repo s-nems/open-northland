@@ -253,7 +253,12 @@ describe.runIf(hasRealIr())('every settler look draws its head', () => {
       const figure = trader?.binding.cartDrive !== undefined ? trader : trader?.cartDriver;
       const drives = Object.entries(figure?.binding.cartDrive ?? {});
       expect(drives, `tribe ${tribe}`).toHaveLength(2);
-      if (tribe !== VIKING) expect(figure?.heads?.length, `tribe ${tribe}`).toBe(trader?.heads?.length);
+      if (tribe !== VIKING) {
+        // The tribe's own head sheets, never the base tribe's that the driving body comes from.
+        expect(figure?.heads?.length, `tribe ${tribe}`).toBe(trader?.heads?.length);
+        for (const [i, head] of (figure?.heads ?? []).entries())
+          expect(head.source, `tribe ${tribe} head ${i}`).toBe(trader?.heads?.[i]?.source);
+      }
       for (const [type, drive] of drives) {
         for (const ref of [drive.idle, drive.moving]) {
           for (let facing = 0; facing < FACINGS; facing++) {

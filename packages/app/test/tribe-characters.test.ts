@@ -13,6 +13,7 @@ import {
   JOB_HEROINE_BOW,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
+  JOB_TRADER,
   JOB_WOMAN,
 } from '../src/catalog/jobs.js';
 import type { BobSeqRow, ContentIr, JobGraphicsRow } from '../src/content/ir/rows.js';
@@ -259,5 +260,66 @@ describe('tribeCharacters', () => {
     // An uncalibrated look keeps both layers verbatim.
     const civilian = tribeCharacters(babyIr, [], VIKING, inputs)?.default;
     expect(civilian?.body.atlas.frames.get(0)?.offsetY).toBe(0);
+  });
+
+  it("drives a tribe's carts on the base tribe's driving body under the tribe's own palette and heads", () => {
+    const DRIVE_SEQS = [...CIVILIAN_SEQS, 'human_man_z00Trader_walk', 'human_man_z01TraderOx_walk'];
+    const headLayer = (bobs: number): SpriteLayer => ({
+      source: {} as TextureSource,
+      atlas: indexAtlasFrames(
+        64,
+        64,
+        Array.from({ length: bobs }, (_, bobId) => ({
+          bobId,
+          rect: { x: 0, y: 0, width: 8, height: 8 },
+          offsetX: 0,
+          offsetY: -8,
+        })),
+      ),
+    });
+    // The viking body and head draw the walk, the wait and both driving clips; the frankish ones end
+    // before the driving clips, as the decoded sets do.
+    const vikingHead = headLayer(DRIVE_SEQS.length * 8);
+    const frankHead = headLayer(CIVILIAN_SEQS.length * 8);
+    const withHead = (tribe: number, body: string, names: readonly string[], head: SpriteLayer) => {
+      const inputs = inputsFor(tribe, [body], [...names]);
+      const looks = new Map(
+        [...(inputs.looks as Map<string, ResolvedLook[]>)].map(([specId, chain]) => [
+          specId,
+          chain.map((look) => ({ ...look, headStems: ['head'] })),
+        ]),
+      );
+      const layersByBody = new Map([[body, { body: layer(), headsByStem: new Map([['head', head]]) }]]);
+      return { ...inputs, looks: looks as never, layersByBody };
+    };
+    const viking = tribeCharacters(
+      ir,
+      [],
+      VIKING,
+      withHead(VIKING, 'cr_hum_body_00', DRIVE_SEQS, vikingHead),
+    );
+    const frank = tribeCharacters(
+      ir,
+      [],
+      FRANK,
+      withHead(FRANK, 'cr_hum_body_30', CIVILIAN_SEQS, frankHead),
+      viking,
+    );
+    const vikingTrader = viking?.byJob[JOB_TRADER];
+    const frankTrader = frank?.byJob[JOB_TRADER];
+    expect(vikingTrader?.binding.cartDrive).toBeDefined();
+    expect(vikingTrader?.cartDriver).toBeUndefined();
+    expect(frankTrader?.binding.cartDrive).toBeUndefined();
+    const driver = frankTrader?.cartDriver;
+    expect(driver?.body).toBe(vikingTrader?.body);
+    expect(driver?.binding.cartDrive).toBe(vikingTrader?.binding.cartDrive);
+    expect(driver?.palette).toBe(frankTrader?.palette);
+    expect(driver?.heads).toHaveLength(1);
+    expect(driver?.heads?.[0]?.source).toBe(frankHead.source);
+    expect(driver?.heads?.[0]?.source).not.toBe(vikingHead.source);
+    // The first handcart frame, past the walk and the wait, now draws the frankish head.
+    const handcartStart = CIVILIAN_SEQS.length * 8;
+    expect(frankHead.atlas.frames.has(handcartStart)).toBe(false);
+    expect(driver?.heads?.[0]?.atlas.frames.has(handcartStart)).toBe(true);
   });
 });

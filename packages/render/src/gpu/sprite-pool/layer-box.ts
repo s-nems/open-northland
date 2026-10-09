@@ -68,3 +68,18 @@ export class BoundsUnion {
     return this.minX > this.maxX;
   }
 }
+
+/** Add `box` turned `tilt` radians clockwise about its bottom-centre, then sheared as its mesh draws it. */
+export function addTiltedBox(bounds: BoundsUnion, box: LayerDrawBox, tilt: number, shear: number): void {
+  const cos = Math.cos(tilt);
+  const sin = Math.sin(tilt);
+  const pivotX = box.ox + box.width / 2;
+  const pivotY = box.oy + box.height;
+  for (let corner = 0; corner < 4; corner++) {
+    const fromX = (corner & 1) === 0 ? -box.width / 2 : box.width / 2;
+    const fromY = (corner & 2) === 0 ? -box.height : 0;
+    const y = pivotY + fromX * sin + fromY * cos;
+    const x = pivotX + fromX * cos - fromY * sin + shear * y;
+    bounds.add(x, y, x, y);
+  }
+}

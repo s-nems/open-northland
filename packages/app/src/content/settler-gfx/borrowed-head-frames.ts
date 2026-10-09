@@ -80,9 +80,9 @@ export interface BorrowedGait {
 
 /**
  * `head` with the frames of `gaits` it draws none of filled in: each its own first `walk` frame of that
- * facing, moved and tilted by the gait's head shift and bobbing with the first donor head that draws the frame, as
- * that head's top moves around its mean over the facing's cycle. Approximation: the head keeps its walk
- * pose on the borrowed body. Returns `head` by identity when nothing borrows.
+ * facing, moved and tilted by the gait's head shift. It bobs with the first donor head drawing the facing's
+ * first frame, as that head's top moves around its mean over the cycle. Approximation: the head keeps its
+ * walk pose on the borrowed body. Returns `head` by identity when nothing borrows.
  */
 export function borrowedGaitHeadAtlas(
   head: SpriteAtlas,

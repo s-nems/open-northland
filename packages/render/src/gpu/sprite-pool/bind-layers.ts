@@ -16,7 +16,13 @@ import { setVegetationShear } from '../vegetation-sway.js';
 import { worldBatched } from '../world-batcher.js';
 import { settlerPalette } from './character-layers.js';
 import { humanLayerRow } from './human-palette-row.js';
-import { BoundsUnion, createLayerDrawBox, type LayerDrawBox, layerDrawBox } from './layer-box.js';
+import {
+  addTiltedBox,
+  BoundsUnion,
+  createLayerDrawBox,
+  type LayerDrawBox,
+  layerDrawBox,
+} from './layer-box.js';
 import { drawPlaceholder, placeholderBounds } from './placeholder.js';
 import {
   createPooled,
@@ -262,6 +268,10 @@ export class LayerBinder {
         ellipse.rx = selection.rx * layer.scale;
         ellipse.ry = selection.ry * layer.scale;
         hasSelection = true;
+      }
+      if (layer.frame.tilt !== undefined) {
+        addTiltedBox(bounds, box, layer.frame.tilt, layer.shear ?? 0);
+        continue;
       }
       const shearTop = box.oy * (layer.shear ?? 0);
       const shearBottom = (box.oy + box.height) * (layer.shear ?? 0);

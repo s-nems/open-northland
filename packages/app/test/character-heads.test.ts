@@ -285,6 +285,11 @@ describe('borrowedGaitHeadAtlas', () => {
     expect(borrowedGaitHeadAtlas(own, [], [gait], walk).frames.get(gait.start + 13)).toMatchObject({
       offsetY: -60,
     });
-    expect(borrowedGaitHeadAtlas(donor, [own], [gait], walk)).toBe(donor);
+    // A head that draws its walk and every driving frame keeps them all.
+    const complete = indexAtlasFrames(64, 64, [
+      ...Array.from({ length: walk.stride * 8 }, (_, i) => frame(walk.start + i, i, 0, -40)),
+      ...Array.from({ length: gait.stride * 8 }, (_, i) => frame(gait.start + i, 0, 3, -50)),
+    ]);
+    expect(borrowedGaitHeadAtlas(complete, [donor], [gait], walk)).toBe(complete);
   });
 });

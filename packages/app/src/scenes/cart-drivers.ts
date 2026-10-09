@@ -1,5 +1,6 @@
 import {
   cellAnchorNode,
+  cellOfNode,
   components,
   type Entity,
   playerCommand,
@@ -80,7 +81,8 @@ function everyCartDrivenByItsTribe(sim: Simulation): boolean {
         rider?.inside === true &&
         sim.world.get(rider.entity, Settler).tribe === view.tribe &&
         view.at !== null &&
-        view.at.hx > cellAnchorNode(drive.fromX, 0).hx
+        // Each cart keeps its row, whose stagger moves its spawn node half a cell on the odd rows.
+        view.at.hx > cellAnchorNode(drive.fromX, cellOfNode(view.at.hx, view.at.hy).cy).hx
       );
     })
   );
