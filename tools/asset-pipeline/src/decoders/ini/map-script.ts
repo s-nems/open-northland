@@ -517,16 +517,16 @@ function tradeAgreementRow(p: RuleProp): MapScript['tradeAgreements'][number] | 
 
 /** One `setname <humanId> <stringId>` row, or undefined when either id is malformed. */
 function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined {
-  if (p.key !== 'setname') return undefined;
+  if (p.key.toLowerCase() !== 'setname') return undefined;
   const humanId = int(p.values[0]);
   const stringId = int(p.values[1]);
   return humanId === undefined || stringId === undefined ? undefined : { humanId, stringId };
 }
 
 /** One `setpalette <humanId> "<recipe>"` row, the recipe name lower-cased as recipes are matched; undefined
- *  when the id is malformed or the name blank. */
+ *  when the id is malformed or the name blank. Original behavior: the key matches in any case. */
 function humanPaletteRow(p: RuleProp): MapScript['humanPalettes'][number] | undefined {
-  if (p.key !== 'setpalette') return undefined;
+  if (p.key.toLowerCase() !== 'setpalette') return undefined;
   const humanId = int(p.values[0]);
   const recipe = p.values[1]?.trim();
   return humanId === undefined || recipe === undefined || recipe === ''

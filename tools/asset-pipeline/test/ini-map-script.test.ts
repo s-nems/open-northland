@@ -477,11 +477,11 @@ result "SetHumanX" 4 "viking" "heroine_bow_XENA" 111 162 100 33 12
 });
 
 describe('extractMapScript [misc_humangraphics]', () => {
-  it('keeps every setpalette row in file order, names lower-cased, one id stacking several', () => {
+  it('keeps every setpalette row in file order, in any key case, names lower-cased, one id stacking several', () => {
     const text = `
 [misc_humangraphics] 
 setpalette 100 "golden weapons"
-setpalette\t100 "Red Hero Shirt"
+SetPalette\t100 "Red Hero Shirt"
 // setpalette 105 "grizzuOld"
 setpalette 201  "Vik_WoMan_POW"
 setpalette x "ghost"
