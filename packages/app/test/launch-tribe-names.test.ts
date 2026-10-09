@@ -1,29 +1,27 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as originalNames from '../src/content/original-names.js';
+import { diag } from '../src/diag/index.js';
+import { runEntry } from '../src/launch.js';
+import * as routes from '../src/routes.js';
+import * as cursors from '../src/view/cursors/theme.js';
+import * as navigation from '../src/view/navigation-guard.js';
 
-const ran = vi.fn();
-
-vi.mock('../src/routes.js', () => ({
-  routeFor: () => ({ id: 'sounds', matches: () => true, load: async () => ran }),
-}));
-vi.mock('../src/content/original-names.js', () => ({
-  originalTribeNameOverlay: () => Promise.reject(new Error('chunk failed')),
-}));
-vi.mock('../src/view/cursors/theme.js', () => ({ installCursorTheme: () => () => undefined }));
-vi.mock('../src/view/navigation-guard.js', () => ({
-  guardEntry: () => undefined,
-  pushEntryUrl: () => undefined,
-  releaseDocument: () => undefined,
-}));
-
-// The app tests share a module registry; load the dispatcher fresh so it sees the substitutes above.
-vi.resetModules();
-const { runEntry } = await import('../src/launch.js');
-const { diag } = await import('../src/diag/index.js');
-
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 describe('runEntry', () => {
   it('boots the entry with the authored tribe names when the original ones fail to load', async () => {
+    const ran = vi.fn();
+    vi.spyOn(routes, 'routeFor').mockReturnValue({
+      id: 'sounds',
+      matches: () => true,
+      load: async () => ran,
+    });
+    vi.spyOn(originalNames, 'originalTribeNameOverlay').mockRejectedValue(new Error('chunk failed'));
+    vi.spyOn(cursors, 'installCursorTheme').mockReturnValue(() => undefined);
+    vi.spyOn(navigation, 'guardEntry').mockImplementation(() => undefined);
     class CanvasStub {}
     vi.stubGlobal('HTMLCanvasElement', CanvasStub);
     vi.stubGlobal('document', { documentElement: {}, getElementById: () => new CanvasStub() });
@@ -33,6 +31,5 @@ describe('runEntry', () => {
 
     expect(ran).toHaveBeenCalledOnce();
     expect(warn).toHaveBeenCalledOnce();
-    warn.mockRestore();
   });
 });
