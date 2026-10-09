@@ -933,7 +933,7 @@ invent a land mask.
 ## Sub-missions
 
 `StartSubMission campaign map` saves the running game to a temporary slot, loads the clean campaign
-map at the current difficulty, and embeds the saved parent inside the new game; `EndSubMission`
+map and embeds the saved parent inside the new game; `EndSubMission`
 restores the embedded parent and discards the temporary slot (reading). A sub-mission is therefore a
 separate world with the parent frozen, not a shared map. `AllowMap` and `CloseMap` toggle campaign map
 availability.
@@ -955,8 +955,7 @@ commands, RNG, fog and mission state. The app session retains that envelope on s
 restoring a single simulation does not itself manage the world stack. Returning discards the child,
 so neither inhabitants nor goods are merged into the parent. Parent simulation time stays frozen.
 The parser limits nesting to 16 parents, a defensive approximation. A fresh child reuses the parent's
-construction seed and URL session rules, an approximation; difficulty-specific campaign state is not
-implemented. The in-game load menu accepts another map in the same saved parent chain, with a destination
+construction seed and URL session rules, an approximation. The in-game load menu accepts another map in the same saved parent chain, with a destination
 preflight; unrelated map saves remain rejected. Automatic handovers resume play; ordinary user loads remain paused. The temporary
 IndexedDB handover records this distinction separately from the saved game.
 
