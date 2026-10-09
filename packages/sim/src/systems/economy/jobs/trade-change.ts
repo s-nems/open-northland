@@ -31,6 +31,7 @@ import {
   TrainingOrder,
   Weapon,
 } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
@@ -38,7 +39,7 @@ import { resizeUnitHealth, unitHitpoints } from '../../lifecycle/unit-health.js'
 // Deliberately the module, not `orders/index.js`: that barrel re-exports `orders/work/employment.js`, which
 // imports this package's barrel, so a barrel import would close an import cycle.
 import { stampDefaultStance } from '../../orders/combat.js';
-import { isFighterJob } from '../../readviews/index.js';
+import { isFighterJob, isSoldierJob } from '../../readviews/index.js';
 // Deliberately the leaves, not the goods barrel: that barrel re-exports the equip effect, which applies the
 // good-to-class transform through this module, so a barrel import would close a cycle.
 import { addCarry } from '../../settlers/atomics/effects/goods/carry.js';
@@ -56,6 +57,18 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   // A script may fix a unit's trade (`MISSIONS.md`, behaviour bit 6). It holds against every player
   // order, drill and equipment promotion; growing out of an age class still reclasses the settler.
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED)) return;
+  // Soldier specializations follow the equipped good. A profession order must not combine one
+  // weapon's damage with another class's health and attack events, or conjure a replacement weapon.
+  const goodType = world.tryGet(e, Equipment)?.weapon?.goodType;
+  const armedClass =
+    isSoldierJob(ctx.content, jobType) && goodType !== undefined
+      ? contentIndex(ctx.content).weaponByTribeAndGoodType.get(world.get(e, Settler).tribe)?.get(goodType)
+      : undefined;
+  if (armedClass?.jobType !== undefined && isSoldierJob(ctx.content, armedClass.jobType)) {
+    jobType = armedClass.jobType;
+    if (world.has(e, Weapon)) world.mut(e, Weapon).weaponTypeId = armedClass.typeId;
+    else world.add(e, Weapon, { weaponTypeId: armedClass.typeId });
+  }
   const previousHitpoints = unitHitpoints(ctx.content, world.get(e, Settler));
   const tradeChanged = world.get(e, Settler).jobType !== jobType;
   rememberCurrentJob(world, e, jobType);

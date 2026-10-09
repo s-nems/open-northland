@@ -244,6 +244,38 @@ describe('unit variants by map slot', () => {
     expect(arms(sim, dragon).weapon.damage['0']).toBe(500);
   });
 
+  it('keeps an equipped iron soldier human when a profession command requests the dragon class', () => {
+    const sim = fresh();
+    const soldier = spawn(sim, SCENARIO);
+    sim.world.mut(soldier, Equipment).weapon = { goodType: IRON_GOOD, degreeOfUse: fx.fromInt(0) };
+    takeUpWeaponGood(sim.world, ctxOf(sim), soldier, IRON_GOOD);
+    sim.world.mut(soldier, Health).hitpoints = 2500;
+
+    sim.enqueueSetup({ kind: 'setJob', entity: soldier, jobType: WOOD });
+    sim.step();
+
+    expect(sim.world.get(soldier, Settler).jobType).toBe(IRON);
+    expect(sim.world.get(soldier, Equipment).weapon?.goodType).toBe(IRON_GOOD);
+    expect(sim.world.get(soldier, Health).max).toBe(5000);
+    expect(sim.world.get(soldier, Health).hitpoints).toBe(2501); // one normal regeneration tick
+    const weapon = arms(sim, soldier);
+    expect(weapon.weapon.damage['0']).toBe(3800);
+    expect(weapon.maxRange).toBe(2);
+    startAttack(
+      sim.world,
+      ctxOf(sim),
+      sim.world.get(soldier, Settler),
+      soldier,
+      spawn(sim, 0),
+      { damage: 3800, hitSoundType: undefined },
+      weapon.weapon,
+    );
+    expect(sim.world.get(soldier, CurrentAtomic)).toMatchObject({
+      duration: 27,
+      effect: { hitFrames: [12] },
+    });
+  });
+
   it('uses the same variants for mission spawns and individual or whole-player handovers', () => {
     const sim = fresh();
     spawnScriptedHumans(

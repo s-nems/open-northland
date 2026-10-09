@@ -2,7 +2,8 @@ import type { TribeType, UnitVariant, WeaponType } from '@open-northland/data';
 import { JOB_SOLDIER_SPEAR, JOB_SOLDIER_SPEAR_WOODEN } from './jobs.js';
 
 /** Authored balance: CNMod's Byzantine dragon belongs only to non-claimable scenario seats.
- * Playable seats borrow the ordinary wooden weapon and the Byzantine human spear choreography. */
+ * Playable seats borrow the ordinary wooden weapon and the Byzantine human spear choreography.
+ * Original behavior: the wooden-spear class has 20000 HP; its equipment transitions remain unconfirmed. */
 export const BYZANTINE_SPEAR_VARIANTS: readonly UnitVariant[] = [
   {
     jobType: JOB_SOLDIER_SPEAR_WOODEN,
