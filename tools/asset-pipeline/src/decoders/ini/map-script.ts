@@ -5,12 +5,15 @@
  * already resolved to numbers.
  */
 import {
+  MAP_GOAL_GOODS_MAX,
+  MAP_MULTIPLAYER_GOALS_MAX,
   MAP_PLAYER_COLOR_COUNT,
   MAP_SPECIAL_ITEM_KIND_COUNT,
   MapAiCondition,
   MapAiModule,
   type MapAiSeat,
   MapAiTask,
+  type MapMultiplayerGoal,
   MapScript,
   type MapScriptLine,
   WERESNAKE_TRIBE,
@@ -199,6 +202,38 @@ function multiplayerSection(sec: RuleSection, out: NonNullable<MapScript['multip
       continue;
     }
     out.other.push(asLine(p));
+  }
+}
+
+/**
+ * Folds one `[misc_multiplayer_goals]` section into `out`, the way the original's loader reads it:
+ * keys match in any case, a row past the last slot and an unknown key are skipped, `goalwonwhengoods`
+ * takes `good amount` pairs while numbers follow (a missing amount reads 0), and
+ * `goalwonwheninhabitants` reads a missing number as 0.
+ */
+function multiplayerGoalsSection(sec: RuleSection, out: MapMultiplayerGoal[]): void {
+  for (const p of sec.props) {
+    if (out.length === MAP_MULTIPLAYER_GOALS_MAX) return;
+    const key = p.key.toLowerCase();
+    if (key === 'goalwonwhengoods') {
+      const goods: { good: number; amount: number }[] = [];
+      for (let i = 0; i < p.values.length && goods.length < MAP_GOAL_GOODS_MAX; i += 2) {
+        const good = code(p.values[i]);
+        if (good === undefined) break;
+        goods.push({ good, amount: code(p.values[i + 1]) ?? 0 });
+      }
+      out.push({ kind: 'goods', goods });
+    } else if (key === 'goalwonwheninhabitants') {
+      out.push({
+        kind: 'inhabitants',
+        count: code(p.values[0]) ?? 0,
+        soldiers: (code(p.values[1]) ?? 0) !== 0,
+      });
+    } else if (key === 'goalwonbymission') {
+      out.push({ kind: 'wonByMission' });
+    } else if (key === 'goallostbymission') {
+      out.push({ kind: 'lostByMission' });
+    }
   }
 }
 
@@ -522,6 +557,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const weather: NonNullable<MapScript['weather']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
   let multiplayer: NonNullable<MapScript['multiplayer']> | undefined;
+  let multiplayerGoals: MapMultiplayerGoal[] | undefined;
   for (const sec of sections) {
     const name = sec.name.toLowerCase();
     if (name === 'allowedthings') {
@@ -592,6 +628,9 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     } else if (name === 'multiplayer') {
       multiplayer ??= { slotOptions: [], hiddenSlots: [], other: [] };
       multiplayerSection(sec, multiplayer);
+    } else if (name === 'misc_multiplayer_goals') {
+      multiplayerGoals ??= [];
+      multiplayerGoalsSection(sec, multiplayerGoals);
     } else if (name === 'aidata') {
       aiSection(sec, ai);
     } else if (name === 'missiondata') {
@@ -609,7 +648,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     ai.length +
     tradeAgreements.length +
     weather.length;
-  if (scripted === 0 && multiplayer === undefined) return undefined;
+  if (scripted === 0 && multiplayer === undefined && multiplayerGoals === undefined) return undefined;
   return MapScript.parse({
     players,
     ...(permissions.length > 0 ? { permissions } : {}),
@@ -617,6 +656,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     relationFlags,
     ai,
     multiplayer,
+    multiplayerGoals,
     specialItems,
     misc,
     humanNames,

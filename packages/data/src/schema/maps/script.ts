@@ -344,6 +344,30 @@ export const MapTradeAgreement = z.strictObject({
 });
 export type MapTradeAgreement = z.infer<typeof MapTradeAgreement>;
 
+/** How many `good amount` pairs one `goalwonwhengoods` row holds; the original reads no more. */
+export const MAP_GOAL_GOODS_MAX = 8;
+/** How many rows `[misc_multiplayer_goals]` holds: the original keeps twenty slots and fills the first
+ *  with its own "lose once dead" goal, so a map authors at most nineteen. */
+export const MAP_MULTIPLAYER_GOALS_MAX = 19;
+
+/**
+ * One `[misc_multiplayer_goals]` row (`docs/formats/MISSIONS.md`, "Multiplayer goals"):
+ * `goalwonwhengoods <good> <amount>…` (`goods`), `goalwonwheninhabitants <count> <soldiers>`
+ * (`inhabitants`), `goalwonbymission` and `goallostbymission`. Goods are `GOOD_TYPE_*` codes.
+ */
+export const MapMultiplayerGoal = z.discriminatedUnion('kind', [
+  z.strictObject({
+    kind: z.literal('goods'),
+    goods: z
+      .array(z.strictObject({ good: z.number().int(), amount: z.number().int() }))
+      .max(MAP_GOAL_GOODS_MAX),
+  }),
+  z.strictObject({ kind: z.literal('inhabitants'), count: z.number().int(), soldiers: z.boolean() }),
+  z.strictObject({ kind: z.literal('wonByMission') }),
+  z.strictObject({ kind: z.literal('lostByMission') }),
+]);
+export type MapMultiplayerGoal = z.infer<typeof MapMultiplayerGoal>;
+
 /** The weather kinds a map's `[misc_weather]` section can lay down; scripts write only rain and snow. */
 export const MAP_WEATHER_KINDS = ['rain', 'snow', 'sand'] as const;
 /** The original's full weather density; an authored value outside `0..` this is clamped where it applies. */
@@ -375,6 +399,8 @@ export const MapScript = z.strictObject({
   ai: z.array(MapAiSeat).default([]),
   /** The `[multiplayer]` lobby table, when the map ships one. */
   multiplayer: MapMultiplayer.optional(),
+  /** The `[misc_multiplayer_goals]` rows in file order, when the map ships the section. */
+  multiplayerGoals: z.array(MapMultiplayerGoal).max(MAP_MULTIPLAYER_GOALS_MAX).optional(),
   /** The `[specialItems]` starting papers, in authored order. */
   specialItems: z.array(MapSpecialItem).default([]),
   permissions: z

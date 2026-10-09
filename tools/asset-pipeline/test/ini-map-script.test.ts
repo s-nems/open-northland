@@ -511,3 +511,68 @@ setpalette 202
     ]);
   });
 });
+
+describe('extractMapScript [misc_multiplayer_goals]', () => {
+  /** `GOOD_TYPE_GOLD` in the owned copy's `logicdefines.inc`. */
+  const GOLD = 7;
+
+  it('types each goal row in file order, in any key case', () => {
+    const text = `
+[misc_multiplayer_goals]
+goalwonbymission
+GoalLostByMission
+goalwonwheninhabitants 40 1
+goalwonwheninhabitants 25
+goalwonwhengoods #GOOD_TYPE_GOLD 50 12 3 7
+goalwonwhengoods
+goalwonbydance 4
+`;
+    expect(extractMapScript(parseIniSections(text), SRC)?.multiplayerGoals).toEqual([
+      { kind: 'wonByMission' },
+      { kind: 'lostByMission' },
+      { kind: 'inhabitants', count: 40, soldiers: true },
+      { kind: 'inhabitants', count: 25, soldiers: false },
+      {
+        kind: 'goods',
+        goods: [
+          { good: GOLD, amount: 50 },
+          { good: 12, amount: 3 },
+          { good: 7, amount: 0 },
+        ],
+      },
+      { kind: 'goods', goods: [] },
+    ]);
+  });
+
+  it('stops a goods row at eight pairs and at the first word, and the table at nineteen rows', () => {
+    const pairs = Array.from({ length: 10 }, (_, i) => `${i} 1`).join(' ');
+    const rows = Array.from({ length: 25 }, () => 'goalwonbymission').join('\n');
+    const goods = extractMapScript(
+      parseIniSections(`[misc_multiplayer_goals]\ngoalwonwhengoods ${pairs}\ngoalwonwhengoods 3 2 x 4 5\n`),
+      SRC,
+    )?.multiplayerGoals;
+    expect(goods?.[0]).toEqual({
+      kind: 'goods',
+      goods: Array.from({ length: 8 }, (_, good) => ({ good, amount: 1 })),
+    });
+    expect(goods?.[1]).toEqual({ kind: 'goods', goods: [{ good: 3, amount: 2 }] });
+    const table = extractMapScript(parseIniSections(`[misc_multiplayer_goals]\n${rows}\n`), SRC);
+    expect(table?.multiplayerGoals).toHaveLength(19);
+  });
+
+  it('keeps an empty section apart from a missing one, from the packed skin too', () => {
+    expect(extractMapScript(parseIniSections('[misc_multiplayer_goals]\n'), SRC)?.multiplayerGoals).toEqual(
+      [],
+    );
+    expect(
+      extractMapScript(parseIniSections('[playerdata]\nnoseenfirstmessage 0 5\n'), SRC)?.multiplayerGoals,
+    ).toBeUndefined();
+    const lines: CifLine[] = [
+      { level: 1, text: 'misc_multiplayer_goals' },
+      { level: 2, text: 'goalwonbymission' },
+    ];
+    expect(extractMapScript(cifLinesToSections(lines), SRC)?.multiplayerGoals).toEqual([
+      { kind: 'wonByMission' },
+    ]);
+  });
+});
