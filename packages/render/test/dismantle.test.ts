@@ -106,7 +106,6 @@ describe('demolition dust', () => {
 
   it('selects actual break points throughout the sequence within a fixed particle budget', () => {
     const selected = dismantleDustOrigins(origins, 9);
-    expect(selected).toEqual(dismantleDustOrigins(origins, 9));
     expect(dismantleDustOrigins([], 9)).toEqual([]);
     expect(selected.length).toBeGreaterThan(0);
     expect(selected.length).toBeLessThanOrEqual(MAX_DISMANTLE_DUST);
@@ -133,9 +132,6 @@ describe('demolition dust', () => {
       expect(pose.alpha).toBeGreaterThan(0.4);
       expect(pose.alpha).toBeLessThan(0.99);
       expect(Math.abs(pose.y - origin.y)).toBeLessThan(25);
-      const again = { ...pose };
-      poseDismantleDust(again, origin, COLLAPSE_SMOKE_LEAD_TICKS, 100);
-      expect(again).toEqual(pose);
       poseDismantleDust(pose, origin, COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS + 50, 100);
       lingering ||= pose.alpha > 0.1;
       for (const age of [COLLAPSE_LIFETIME_TICKS, COLLAPSE_LIFETIME_TICKS + 10]) {

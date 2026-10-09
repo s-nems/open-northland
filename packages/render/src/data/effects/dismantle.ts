@@ -12,7 +12,7 @@ export interface DismantleSource {
 }
 
 /** The authored construction order, reversed. The margins keep the opening frame unchanged and
- * clear even time-zero foundation pixels before the ruin releases its materials. */
+ * clear even time-zero foundation pixels before the visual body finishes dismantling. */
 export function removalTime(timeByte: number, window: readonly [number, number], built: number): number {
   const installed = (window[0] + (timeByte / 255) * Math.max(0, window[1] - window[0])) / 100;
   return 0.035 + clamp01(1 - installed / Math.max(0.001, built)) * 0.9;

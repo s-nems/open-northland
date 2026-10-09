@@ -94,8 +94,8 @@ describe('foldBuildingCollapses', () => {
       0.25,
     );
     expect(collapseProgress(collapse, 100 + COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS)).toBe(1);
-    // The dust tail remains through material recovery, after the body has cleared.
-    expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_TICKS)).toHaveLength(1);
+    // Dust remains after the body has cleared.
+    expect(foldBuildingCollapses(live, [], 101 + COLLAPSE_SMOKE_LEAD_TICKS + COLLAPSE_TICKS)).toHaveLength(1);
     expect(foldBuildingCollapses(live, [], 100 + COLLAPSE_LIFETIME_TICKS)).toHaveLength(0);
   });
 

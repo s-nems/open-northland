@@ -54,8 +54,9 @@ Small palette-matched chips and dust originate at sampled removal points; chips 
 and settle. Dust gathers at sampled roof and wall positions for six ticks before the structure
 starts to dismantle. Each puff has its own shape and drift, stays over the structure through removal
 and then slowly spreads outward and thins. Initial swelling is independent of the long dispersal
-tail, so extending the tail does not weaken the cover during removal. Reverse construction accelerates along a quadratic curve over 30 ticks; chip
-births follow the same curve. The body clears at tick 36 and the longer dust tail clears by tick 136.
+tail, so extending the tail does not weaken the cover during removal. Reverse construction accelerates
+along a quadratic curve over 30 ticks; chip births follow the same curve. The body clears at tick 36
+and the longer dust tail clears by tick 136.
 Standing layers stay anchored throughout. The timing, shaded breaking edges and particles are artistic
 approximations, not a structural simulation. At ×3, removal takes one real second including the
 smoke lead, followed by up to 2.8 seconds of lingering dust. Presentation deliberately outlives the
