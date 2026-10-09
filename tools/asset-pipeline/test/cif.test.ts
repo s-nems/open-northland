@@ -33,8 +33,11 @@ function buildPool(lines: ReadonlyArray<{ level: number; text: string }>): {
   return { pool: Uint8Array.from(chunks), offsets };
 }
 
-/** Serializes a CStringArray `.cif`, encrypting its offsets and pool for a synthetic round trip. */
-function buildCif(lines: ReadonlyArray<{ level: number; text: string }>): Uint8Array {
+/**
+ * Serializes a CStringArray `.cif`, encrypting its offsets and pool for a synthetic round trip. The
+ * header's used-bytes figure is the pool length unless `usedBytes` overrides it.
+ */
+function buildCif(lines: ReadonlyArray<{ level: number; text: string }>, usedBytes?: number): Uint8Array {
   const { pool, offsets } = buildPool(lines);
   const encOffsets = Uint8Array.from(offsets);
   const encPool = Uint8Array.from(pool);
@@ -56,7 +59,7 @@ function buildCif(lines: ReadonlyArray<{ level: number; text: string }>): Uint8A
   pushU32(lines.length); // stringCount
   pushU32(lines.length); // usedIdCount
   pushU32(lines.length); // slotCount
-  pushU32(pool.length); // stringPoolUsedBytes
+  pushU32(usedBytes ?? pool.length); // stringPoolUsedBytes
   pushCMemory(encOffsets);
   out.push(1); // hasStringPool flag
   pushCMemory(encPool);
@@ -147,6 +150,18 @@ describe('decodeCifStringArray', () => {
     const cif = decodeCifStringArray(Uint8Array.from(out));
     expect(cif.slotCount).toBe(3);
     expect(cif.lines).toEqual(real); // hole skipped, order preserved
+  });
+
+  it('reads strings past a stale used-bytes header up to the end of the pool', () => {
+    const lines = [
+      { level: 1, text: 'text' },
+      { level: 2, text: 'stringn 1 "kept"' },
+      { level: 2, text: 'stringn 2 "past the stale header"' },
+    ];
+    const staleUsedBytes = 'text'.length + 'stringn 1 "kept"'.length + 'stringn 2'.length;
+    const cif = decodeCifStringArray(buildCif(lines, staleUsedBytes));
+    expect(cif.stringPoolUsedBytes).toBe(staleUsedBytes);
+    expect(cif.lines).toEqual(lines);
   });
 
   it('returns no lines when hasStringPool is 0', () => {

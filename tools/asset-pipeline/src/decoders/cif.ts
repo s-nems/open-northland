@@ -28,6 +28,7 @@ export interface CifStringArray {
   readonly stringCount: number;
   readonly usedIdCount: number;
   readonly slotCount: number;
+  /** The header's figure; stale in some shipped files, so reads ignore it. */
   readonly stringPoolUsedBytes: number;
   /** Strings in canonical id order; empty/hole slots are skipped (so `lines.length` may be < `stringCount`). */
   readonly lines: readonly CifLine[];
@@ -76,11 +77,12 @@ export function encryptMode1(buf: Uint8Array): void {
 
 /**
  * Splits a NUL-separated, level-prefixed string pool into {@link CifLine}s by the offsets table.
- * Bounds use the logical `usedBytes`, not the raw buffer length, which may include allocation padding.
+ * Bounds use the pool's own length: some shipped tables carry a stale `stringPoolUsedBytes` smaller
+ * than the strings their offsets point at.
  */
-function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number, usedBytes: number): CifLine[] {
+function readLines(pool: Uint8Array, offsets: Uint8Array, slotCount: number): CifLine[] {
   const INVALID = 0xffffffff;
-  const limit = Math.min(pool.length, usedBytes);
+  const limit = pool.length;
   const offView = viewOf(offsets);
   const lines: CifLine[] = [];
   for (let id = 0; id < slotCount; id++) {
@@ -131,7 +133,7 @@ export function decodeCifStringArray(bytes: Uint8Array): CifStringArray {
   if (hasStringPool) {
     const pool = readCMemory(r);
     decryptMode1(pool);
-    lines = readLines(pool, offsets, slotCount, stringPoolUsedBytes);
+    lines = readLines(pool, offsets, slotCount);
   }
 
   return { forceSequentialIds, stringCount, usedIdCount, slotCount, stringPoolUsedBytes, lines };

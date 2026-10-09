@@ -56,7 +56,15 @@ secondary key twice plus `0x21`, while the secondary key advances by `0x42`; all
 one byte. The inverse transform applies the XOR before adding one.
 
 Offsets are little-endian `u32` values. `0xFFFFFFFF` denotes an unused slot. A valid entry points into
-the NUL-separated string pool and is bounded by `stringPoolUsedBytes`, not the allocated buffer size.
+the NUL-separated string pool and runs to its NUL, bounded by the pool's `CMemory` size.
+
+`stringPoolUsedBytes` is not a reliable bound. In every shipped table the pool ends exactly at the
+last string's NUL, with no padding. Most tables record that length in the header, but 34 Russian
+`.cif` files in CnMod 1.3.2 (among them game-object names, in-game GUI, main menu, demo, campaign,
+help and map strings) carry a stale figure: some larger than the pool, 19 smaller. In the smaller ones the offsets still point at
+complete, NUL-terminated strings past the header's figure, for example the last rows of
+`gameobjects/goods.cif` and `ingamegui/ingameguimisclogic.cif`, so reading only up to the header
+would cut or drop real strings. The decoder therefore ignores the header figure.
 
 Configuration strings may begin with a control byte below `0x20`. The pipeline preserves that byte as
 the nesting level and decodes the remaining structural text as Latin-1. Display strings that contain
