@@ -34,6 +34,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeOfPosition, positionOfNode } from '../../../nav/halfcell.js';
 import type { SystemContext } from '../../context.js';
+import { resizeUnitHealth, unitHitpoints } from '../../lifecycle/unit-health.js';
 // Deliberately the module, not `orders/index.js`: that barrel re-exports `orders/work/employment.js`, which
 // imports this package's barrel, so a barrel import would close an import cycle.
 import { stampDefaultStance } from '../../orders/combat.js';
@@ -55,9 +56,11 @@ export function applyTradeChange(world: World, ctx: SystemContext, e: Entity, jo
   // A script may fix a unit's trade (`MISSIONS.md`, behaviour bit 6). It holds against every player
   // order, drill and equipment promotion; growing out of an age class still reclasses the settler.
   if (hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.JOB_LOCKED)) return;
+  const previousHitpoints = unitHitpoints(ctx.content, world.get(e, Settler));
   const tradeChanged = world.get(e, Settler).jobType !== jobType;
   rememberCurrentJob(world, e, jobType);
   setSettlerJob(world, e, jobType);
+  resizeUnitHealth(world, e, previousHitpoints, unitHitpoints(ctx.content, world.get(e, Settler)));
   world.remove(e, TrainingOrder); // a trade change calls off a drill errand
   world.remove(e, GraduateWait); // and a school wait: the trade it was trained for is gone
   world.remove(e, NeedOrder); // and any need the player ordered the old trade to answer

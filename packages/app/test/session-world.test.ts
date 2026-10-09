@@ -1,9 +1,10 @@
-import type { MapDiplomacy } from '@open-northland/data';
+import { type MapDiplomacy, MapScript } from '@open-northland/data';
 import type { GameSession } from '@open-northland/lockstep';
 import { components, FOG_MODE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { buildMapWorld } from '../src/entries/map/world.js';
 import { sessionWorldOptions } from '../src/game/session-world.js';
+import { mapScriptWorld } from '../src/game/world/mission-script.js';
 
 const SESSION: GameSession = {
   world: { kind: 'map', mapId: 'synthetic' },
@@ -27,6 +28,40 @@ const AUTHORED: readonly MapDiplomacy[] = [
 ];
 
 describe('session world options', () => {
+  it('marks only map-only AI slots as scenario seats even with the mission script disabled', () => {
+    const script = MapScript.parse({
+      players: [
+        { player: 0, type: 'human', tribeId: 3, colorId: 0 },
+        { player: 1, type: 'ai', tribeId: 3, colorId: 1 },
+        { player: 2, type: 'ai', tribeId: 3, colorId: 2 },
+      ],
+      multiplayer: {
+        slotOptions: [
+          { player: 0, allowed: ['human', 'ai'] },
+          { player: 1, allowed: ['human', 'ai'] },
+          { player: 2, allowed: ['ai'] },
+        ],
+      },
+    });
+    const world = mapScriptWorld(script, null);
+    expect(world.scenarioPlayers).toEqual([2]);
+    const { sim } = buildMapWorld({
+      map: { width: 2, height: 2, typeIds: [0, 0, 0, 0] },
+      ir: null,
+      seed: 7,
+      content: {},
+      aiSeats: [1, 2],
+      assistantSeats: [],
+      script: world,
+      ...SESSION.rules,
+      missions: false,
+    });
+    expect([0, 1, 2].map((player) => components.isScenarioPlayer(sim.world, player))).toEqual([
+      false,
+      false,
+      true,
+    ]);
+  });
   it('leaves an absent seat out of the match, even where the script names the participants', () => {
     const absent: GameSession = {
       ...SESSION,

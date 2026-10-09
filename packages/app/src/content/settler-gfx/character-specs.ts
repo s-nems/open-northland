@@ -220,6 +220,24 @@ const CIVILIAN_ATOMICS = {
   [HIVE_DRAW_ATOMIC]: { seq: PICKUP_SEQ, loop: true },
 } as const;
 
+/** Shared spear clips; each material still resolves its own job graphics and animation rows. */
+const SPEAR_ANIMATIONS = {
+  walkSeq: 'human_man_Warrior_spear_walk',
+  waitSeq: 'human_man_Warrior_spear_wait',
+  attack: 'human_man_Warrior_spear_attack',
+  atomics: {
+    [EAT_ATOMIC]: { seq: 'human_man_Warrior_spear_eat' },
+    [SLEEP_ATOMIC]: { seq: 'human_man_Warrior_spear_sleep' },
+    [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
+    [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
+    [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
+  },
+  engaged: {
+    moving: 'human_man_Warrior_spear_walk_agressive',
+    idle: 'human_man_Warrior_spear_wait_agressive',
+  },
+} as const;
+
 /** Specs for every look, keyed by the id the job tables reference. `satisfies` keeps those keys literal, so
  *  a typo'd spec id in a job table is a compile error rather than a silent fall-to-default. */
 export const CHARACTER_SPECS = {
@@ -426,22 +444,14 @@ export const CHARACTER_SPECS = {
     },
   },
   'warrior-spear': {
+    ...SPEAR_ANIMATIONS,
     gfxJobs: [JOB_SOLDIER_SPEAR_WOODEN, JOB_SOLDIER_UNARMED],
     logicJob: JOB_SOLDIER_SPEAR_WOODEN,
-    walkSeq: 'human_man_Warrior_spear_walk',
-    waitSeq: 'human_man_Warrior_spear_wait',
-    attack: 'human_man_Warrior_spear_attack',
-    atomics: {
-      [EAT_ATOMIC]: { seq: 'human_man_Warrior_spear_eat' },
-      [SLEEP_ATOMIC]: { seq: 'human_man_Warrior_spear_sleep' },
-      [STORE_PICKUP_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
-      [STORE_PILEUP_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
-      [OPEN_CHEST_ATOMIC]: { seq: 'human_man_Warrior_spear_pick_up' },
-    },
-    engaged: {
-      moving: 'human_man_Warrior_spear_walk_agressive',
-      idle: 'human_man_Warrior_spear_wait_agressive',
-    },
+  },
+  'warrior-spear-iron': {
+    ...SPEAR_ANIMATIONS,
+    gfxJobs: [JOB_SOLDIER_SPEAR, JOB_SOLDIER_UNARMED],
+    logicJob: JOB_SOLDIER_SPEAR,
   },
   'warrior-sword': {
     gfxJobs: [JOB_SOLDIER_SWORD, JOB_SOLDIER_UNARMED],
@@ -564,7 +574,7 @@ export const ADULT_CHARACTER_BY_JOB: Readonly<Record<number, CharacterSpecId>> =
   [JOB_TRADER]: 'trader',
   [JOB_SOLDIER_UNARMED]: 'warrior',
   [JOB_SOLDIER_SPEAR_WOODEN]: 'warrior-spear',
-  [JOB_SOLDIER_SPEAR]: 'warrior-spear',
+  [JOB_SOLDIER_SPEAR]: 'warrior-spear-iron',
   [JOB_SOLDIER_SWORD]: 'warrior-sword',
   [JOB_SOLDIER_BROADSWORD]: 'warrior-broadsword',
   [JOB_SOLDIER_SABER_SHORT]: 'warrior-sword',
@@ -601,7 +611,7 @@ export const WARRIOR_SPEC_BY_WEAPON_GOOD_SLUG: Readonly<Record<string, Character
   bow_short: 'warrior-shortbow',
   bow_long: 'warrior-longbow',
   spear_wooden: 'warrior-spear',
-  spear_iron: 'warrior-spear',
+  spear_iron: 'warrior-spear-iron',
   sword_shord: 'warrior-sword',
   sword_long: 'warrior-broadsword', // the two-hander
 };

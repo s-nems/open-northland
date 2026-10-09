@@ -1,4 +1,4 @@
-import type { WeaponType } from '@open-northland/data';
+import { unitVariantFor, type WeaponType } from '@open-northland/data';
 import {
   Armor,
   addCurrentAtomic,
@@ -67,8 +67,16 @@ export function attackerWeapon(
   tribe: number,
   jobType: number | null,
   wornWeaponTypeId?: number,
+  scenario = false,
 ): WeaponReach | null {
   const index = contentIndex(ctx.content);
+  const variant = unitVariantFor(ctx.content, { tribe, jobType, scenario });
+  const classType =
+    jobType === null ? undefined : index.weaponsByTribeAndJob.get(tribe)?.get(jobType)?.typeId;
+  if (variant?.weapon !== undefined && (wornWeaponTypeId === undefined || wornWeaponTypeId === classType)) {
+    const weapon = index.weaponsByTribeAndTypeId.get(variant.weapon.tribeType)?.get(variant.weapon.typeId);
+    return weapon === undefined ? null : withReach(weapon);
+  }
   // Worn weapon (own tribe + typeId) overrides the class default; an unresolved worn id leaves it unarmed.
   if (wornWeaponTypeId !== undefined) {
     const worn = index.weaponsByTribeAndTypeId.get(tribe)?.get(wornWeaponTypeId);

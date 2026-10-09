@@ -11,6 +11,8 @@ import {
   JOB_CIVILIST,
   JOB_HERO_SWORD,
   JOB_HEROINE_BOW,
+  JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_SWORD,
   JOB_SOLDIER_UNARMED,
   JOB_TRADER,
@@ -84,6 +86,42 @@ function inputsFor(
 }
 
 describe('tribeCharacters', () => {
+  it('keeps wooden and iron spear bodies distinct by job and by equipped weapon', () => {
+    const tribe = 3;
+    const woodenGood = 139;
+    const ironGood = 140;
+    const spearIr: ContentIr = {
+      jobGraphics: [
+        row(tribe, JOB_CIVILIST, 'cr_hum_body_50'),
+        row(tribe, JOB_SOLDIER_SPEAR_WOODEN, 'cr_hum_body_72'),
+        row(tribe, JOB_SOLDIER_SPEAR, 'cr_hum_body_52'),
+      ],
+    };
+    const inputs = inputsFor(
+      tribe,
+      ['cr_hum_body_50', 'cr_hum_body_72', 'cr_hum_body_52'],
+      [...CIVILIAN_SEQS, 'human_man_Warrior_spear_walk', 'human_man_Warrior_spear_wait'],
+      spearIr,
+    );
+    const table = tribeCharacters(
+      spearIr,
+      [
+        { typeId: woodenGood, id: 'spear_wooden' },
+        { typeId: ironGood, id: 'spear_iron' },
+      ],
+      tribe,
+      inputs,
+    );
+    if (table === undefined) throw new Error('the spear bodies must bind');
+    const woodenBody = inputs.layersByBody.get('cr_hum_body_72')?.body;
+    const ironBody = inputs.layersByBody.get('cr_hum_body_52')?.body;
+    expect(table.byJob[JOB_SOLDIER_SPEAR_WOODEN]?.body).toBe(woodenBody);
+    expect(table.byJob[JOB_SOLDIER_SPEAR]?.body).toBe(ironBody);
+    // Equipment takes precedence over the job, so its table must preserve the distinction too.
+    expect(table.byWeaponGood?.[woodenGood]?.body).toBe(woodenBody);
+    expect(table.byWeaponGood?.[ironGood]?.body).toBe(ironBody);
+  });
+
   it('builds each spec on the body its own tribe names', () => {
     const vikingIn = inputsFor(VIKING, ['cr_hum_body_00', 'cr_hum_body_05']);
     const frankIn = inputsFor(FRANK, ['cr_hum_body_30', 'cr_hum_body_32']);

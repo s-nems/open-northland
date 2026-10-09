@@ -4,7 +4,7 @@ import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
 import { atomicDuration } from '../../readviews/animations.js';
-import { canEquipCategory } from '../../readviews/equip-pick.js';
+import { canEquipCategory, weaponKeepsLockedJob } from '../../readviews/equip-pick.js';
 import { isHeroJob } from '../../readviews/jobs.js';
 import { equipErrandConfinement, type NavigationLimit } from '../../signposts/index.js';
 import type { SupplyTally } from '../../stores/index.js';
@@ -76,6 +76,12 @@ export function planEquipOrder(
     supply,
     fetches,
   };
+  if (
+    order.stage === 'acquire' &&
+    order.group === 'weapon' &&
+    !weaponKeepsLockedJob(world, ctx.content, e, order.goodType)
+  )
+    return endErrand(errand);
   if (order.issuer === 'player' && !playerIntentAllowed(ctx, settler, order)) return finishEquipOrder(errand);
   switch (order.stage) {
     case 'acquire':
@@ -233,6 +239,11 @@ function promoteQueuedEquipOrder(errand: EquipErrand): boolean {
   for (;;) {
     const next = order.queued?.shift();
     if (next === undefined) return false;
+    if (
+      next.group === 'weapon' &&
+      !weaponKeepsLockedJob(errand.world, ctx.content, errand.entity, next.goodType)
+    )
+      continue;
     if (!playerIntentAllowed(ctx, settler, next)) continue;
     order.group = next.group;
     order.slot = next.slot;

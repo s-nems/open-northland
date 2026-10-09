@@ -29,6 +29,7 @@ export * from './player-placement.js';
 export * from './relations.js';
 export * from './roads.js';
 export * from './rules.js';
+export * from './scenario-players.js';
 export * from './settler.js';
 export * from './signpost.js';
 export * from './social.js';

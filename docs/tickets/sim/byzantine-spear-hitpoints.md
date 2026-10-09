@@ -1,23 +1,31 @@
-# Give the Byzantine wooden-spear soldier its 20000 hitpoints
+# Reserve Byzantine dragons for scenario player slots
 
 **Area:** sim · **Priority:** P3
 
-`HUMAN_HITPOINTS` (`systems/spawn/settlers.ts`) gives every person 5000 hitpoints. Original behavior:
-one class is the exception, the Byzantine wooden-spear soldier, whose pool is 20000. The sim names the
-gap in the constant's comment and models nothing for it, so a Byzantine spear rush is four times
-weaker than in the original.
+Original behavior: the Byzantine wooden-spear profession has 20000 hitpoints instead of 5000,
+independent of its controller. The owned copy confirms this class-based exception; equipment
+transitions have not been checked against the running original. CNMod's `weapons.ini` and
+`atomicanimations.ini` give it range 3 and five strikes over 59 ticks (500 damage each against an unarmored target).
+
+Authored balance: reserve that dragon for map-authored AI slots unavailable to humans. A claimable
+slot uses a normal wooden spearman whether a human or replacement AI controls it. Both must coexist
+on one map; controller changes never change the slot's classification.
 
 ## Scope
 
-- Carry the exception as data, a per-(tribe, job) hitpoint pool in the content schema with 5000 as the
-  default, not as an id rule in a system.
-- Apply it wherever the pool is set: spawn, a profession change into or out of the class, and the
-  `Health.max` the dying-settler warning and the healing rate read.
-- Confirm against the owned copy whether the pool is 20000 on the class alone or also on the
-  wooden-spear good when another class equips it.
+- Carry variants as validated tribe/job data selected by the owner's persistent scenario-slot role.
+- Scenario variant: dragon graphics, 20000 HP, source combat timing, weapon and movement reduction.
+- Playable variant: Byzantine iron-spearman graphics and animation timing, 5000 HP, ordinary wooden
+  spear weapon values (the Viking source row) and no dragon movement reduction. Iron remains iron.
+- Apply the same selection to initial placements, mission spawns, equipment/profession changes and
+  mission ownership transfers. A changed health pool preserves the health fraction, rounded down
+  with a minimum of one HP for a living unit.
+- Persist slot roles through saves and use identical rules in local and network worlds.
 
 ## Verify
 
-- A unit test: a Byzantine wooden-spear soldier spawns with 20000 and every other class with 5000, and
-  a class change moves the pool between them.
-- The state-hash goldens: a changed one names the behavior change in its commit.
+- One world containing a claimable human, replacement AI and scenario AI: distinct HP, range, damage,
+  hit events, movement and graphics, including after equipment and ownership changes.
+- Mission-created units, save/restore and controller changes retain the intended distinction.
+- Real-content and browser checks show human spearmen and dragons together; changed state hashes
+  reflect only these intentional rules and the persisted format change.

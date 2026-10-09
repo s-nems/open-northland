@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import { type ContentSet, unitVariantFor } from '@open-northland/data';
 import {
   Armor,
   bootsDegreeOfUse,
@@ -144,9 +144,10 @@ export function walkStepModifiersOf(
     walksFast: (flags & MISSION_BEHAVIOUR.WALKS_FAST) !== 0,
     age: ageClassOfJobId(job === null ? undefined : index.jobs.get(job)?.id),
     tribeReduction:
-      reduction !== undefined && (reduction.jobType === undefined || reduction.jobType === job)
+      (settler === undefined ? undefined : unitVariantFor(content, settler)?.walkStepReduction) ??
+      (reduction !== undefined && (reduction.jobType === undefined || reduction.jobType === job)
         ? reduction.ticks
-        : 0,
+        : 0),
     equipmentWeight:
       settler === undefined || isHeroJob(content, job)
         ? 0
@@ -173,6 +174,11 @@ function equipmentWeight(
       : equipment?.weapon == null || equipment.weapon.goodType === classWeapon?.goodType
         ? classWeapon
         : index.weaponByTribeAndGoodType.get(tribe)?.get(equipment.weapon.goodType);
+  const variant = unitVariantFor(content, world.get(e, Settler));
+  const variantWeapon =
+    variant?.weapon !== undefined && (weaponType === undefined || weaponType === classWeapon?.typeId)
+      ? index.weaponsByTribeAndTypeId.get(variant.weapon.tribeType)?.get(variant.weapon.typeId)
+      : undefined;
   const armorClass = world.tryGet(e, Armor)?.armorClass;
   const armor =
     equipment?.armor != null
@@ -180,5 +186,5 @@ function equipmentWeight(
       : armorClass === undefined
         ? undefined
         : index.armor.get(armorClass);
-  return (weapon?.weight ?? 0) + (armor?.weight ?? 0);
+  return (variantWeapon?.weight ?? weapon?.weight ?? 0) + (armor?.weight ?? 0);
 }

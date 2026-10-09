@@ -11,6 +11,7 @@ import {
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { releaseEmployment } from '../../economy/jobs/binding.js';
+import { syncScenarioIdentity } from '../../lifecycle/unit-health.js';
 import { relinkSignpost } from '../../signposts/index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
@@ -26,6 +27,7 @@ export function handHumansToPlayer(pass: MissionPass, id: number, player: number
   for (const e of missionHumans(pass.world, id)) {
     detachFromHouses(pass.world, pass.ctx, e);
     stampOwner(pass.world, e, player);
+    syncScenarioIdentity(pass.world, pass.ctx.content, e);
   }
 }
 
@@ -40,7 +42,10 @@ export function handPlayerToPlayer(pass: MissionPass, from: number, to: number):
   const { world } = pass;
   if (!isValidPlayer(from) || !isValidPlayer(to) || from === to) return;
   const handed = world.canonicalQuery(Owner).filter((e) => world.get(e, Owner).player === from);
-  for (const e of handed) stampOwner(world, e, to);
+  for (const e of handed) {
+    stampOwner(world, e, to);
+    syncScenarioIdentity(world, pass.ctx.content, e);
+  }
   relinkHandedSignposts(pass, handed);
 }
 
@@ -55,6 +60,7 @@ export function handAreaToPlayer(
   for (const e of handed) {
     if (pass.world.has(e, Person)) detachFromHouses(pass.world, pass.ctx, e);
     stampOwner(pass.world, e, op.otherPlayer);
+    syncScenarioIdentity(pass.world, pass.ctx.content, e);
   }
   relinkHandedSignposts(pass, handed);
 }

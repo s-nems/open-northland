@@ -6,12 +6,15 @@ import type { NodeId } from '../nav/terrain/index.js';
 
 /** The `(tribe, job)` pair that keys a settler's content lookups. */
 export interface SettlerIdentity {
+  readonly scenario?: boolean | undefined;
   readonly tribe: number;
   readonly jobType: number | null;
 }
 
 /** An autonomous individual; `jobType` constrains which atomics it may run (`jobtypes.allowatomic`). */
 export const Settler = defineComponent<{
+  /** The owner occupies a map-only scenario slot, independent of its current controller. */
+  scenario?: boolean | undefined;
   readonly tribe: number;
   /** Written only through {@link setSettlerJob}. */
   readonly jobType: number | null;
@@ -94,7 +97,11 @@ export const Person = defineComponent<{ readonly person: true }>('Person', 'sett
 
 /** Mint separate identity and need payloads so a bar write leaves the identity revision unchanged. */
 export function addSettler(world: World, entity: Entity, state: SettlerInitialState): void {
-  world.add(entity, Settler, { tribe: state.tribe, jobType: state.jobType });
+  world.add(entity, Settler, {
+    tribe: state.tribe,
+    jobType: state.jobType,
+    ...(state.scenario === true ? { scenario: true } : {}),
+  });
   world.add(entity, SettlerNeeds, {
     hunger: state.hunger,
     fatigue: state.fatigue,

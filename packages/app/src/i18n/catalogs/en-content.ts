@@ -209,6 +209,11 @@ export const enContent = {
       title: 'Blood on the battlefield',
       summary: 'Sword, spear and fist impacts, arrows, and the aftermath of a fatal hit.',
     },
+    'byzantine-spears': {
+      title: 'Byzantine spears',
+      summary:
+        'Columns: human, replacement AI, scenario AI. Wooden spears above, iron below; only the scenario wooden spear is a dragon.',
+    },
     'combat-gestures': {
       title: 'Strikes and gestures',
       summary: 'Civilian, unarmed and archer duels beside resting, eating and sleeping bowmen.',

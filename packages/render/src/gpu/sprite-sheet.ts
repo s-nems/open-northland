@@ -63,6 +63,8 @@ export interface SpriteLayer {
 /** One composited settler look - the original's `[jobbasegraphics]` record. Each body's sequences live
  *  in its own frame-id space, so the binding travels with the layers. */
 export interface SettlerCharacter {
+  /** Job palette used by an authored appearance alias. */
+  readonly paletteJobType?: number | undefined;
   readonly body: SpriteLayer;
   /** False for a baked body atlas that must bypass the human palette LUT. */
   readonly indexed?: boolean;

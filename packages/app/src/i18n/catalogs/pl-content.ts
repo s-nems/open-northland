@@ -206,6 +206,11 @@ export const plContent = {
       title: 'Krew na polu bitwy',
       summary: 'Ciosy mieczem, włócznią i pięścią, strzały oraz ślad po śmiertelnym trafieniu.',
     },
+    'byzantine-spears': {
+      title: 'Bizantyjscy włócznicy',
+      summary:
+        'Kolumny: człowiek, AI na grywalnym slocie, scenariuszowe AI. Drewniane włócznie u góry, żelazne u dołu; smok jest tylko na slocie scenariuszowym.',
+    },
     'combat-gestures': {
       title: 'Ciosy i gesty',
       summary: 'Pojedynki cywila, wojownika i łuczników; obok odpoczynek, posiłek i sen z łukiem.',

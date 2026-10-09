@@ -1,5 +1,16 @@
 import type { ContentSet, EquipCategory } from '@open-northland/data';
-import { Age, Female, ownerOf, Position, Settler, Stockpile, sameSideAs } from '../../components/index.js';
+import {
+  Age,
+  Female,
+  hasMissionBehaviour,
+  MISSION_BEHAVIOUR,
+  ownerOf,
+  Position,
+  Settler,
+  Stockpile,
+  sameSideAs,
+} from '../../components/index.js';
+import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
 import type { SpatialGate } from '../../nav/node-circle.js';
@@ -10,7 +21,7 @@ import { interactionCellOf } from '../footprint/interaction.js';
 import { equipErrandConfinement, navigationLimitFor } from '../signposts/index.js';
 import { goodsSearchCatchAt } from '../signposts/reach.js';
 import { accessibleStockAmounts, mayFetchGoodFrom } from '../stores/index.js';
-import { isFighterJob, isHeroJob } from './jobs.js';
+import { baseSoldierJobType, isFighterJob, isHeroJob, isSoldierJob } from './jobs.js';
 
 /** One equip pick-menu row: an equippable good for the slot and how many units the settler can reach. */
 export interface EquipPickEntry {
@@ -34,6 +45,27 @@ export function mayChangeEquipment(world: World, content: ContentSet, entity: En
   const settler = world.tryGet(entity, Settler);
   if (settler === undefined || world.has(entity, Age) || world.has(entity, Female)) return false;
   return !isHeroJob(content, settler.jobType);
+}
+
+/** A mission-locked profession cannot change through a weapon swap or by taking its weapon off. */
+export function weaponKeepsLockedJob(
+  world: World,
+  content: ContentSet,
+  entity: Entity,
+  goodType: number | null,
+): boolean {
+  const settler = world.get(entity, Settler);
+  if (
+    !hasMissionBehaviour(world, entity, MISSION_BEHAVIOUR.JOB_LOCKED) ||
+    !isSoldierJob(content, settler.jobType)
+  )
+    return true;
+  const index = contentIndex(content);
+  const job =
+    goodType === null
+      ? baseSoldierJobType(content)
+      : index.weaponByTribeAndGoodType.get(settler.tribe)?.get(goodType)?.jobType;
+  return job === settler.jobType;
 }
 
 /** Whether the trade may wear this equipment category in the original change-equipment window. */
@@ -129,6 +161,7 @@ export function equipPicksForSelection(
       for (const { goodType, amount } of source.goods) {
         const group = groupOf.get(goodType);
         if (group === undefined || !canEquipCategory(content, jobType, group)) continue;
+        if (group === 'weapon' && !weaponKeepsLockedJob(world, content, entity, goodType)) continue;
         let row = rows.get(goodType);
         if (row === undefined) {
           row = { group, reached: new Set(), available: 0, takers: [] };

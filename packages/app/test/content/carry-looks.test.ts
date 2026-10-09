@@ -88,6 +88,7 @@ describe.runIf(hasRealIr())("the warrior chest bend is the source's own action-9
     for (const id of [
       'warrior',
       'warrior-spear',
+      'warrior-spear-iron',
       'warrior-sword',
       'warrior-broadsword',
       'warrior-shortbow',

@@ -4,6 +4,7 @@ import {
   addPerson,
   Female,
   Health,
+  isScenarioPlayer,
   Owner,
   Position,
   Residence,
@@ -35,6 +36,7 @@ export function spawnNewborn(
   world.add(baby, Position, { x: p.x, y: p.y });
   addPerson(world, baby, {
     tribe: world.get(mother, Settler).tribe,
+    ...(isScenarioPlayer(world, world.tryGet(mother, Owner)?.player) ? { scenario: true } : {}),
     jobType: sex === 'male' ? BABY_MALE : BABY_FEMALE,
     hunger: fx.fromInt(0),
     fatigue: fx.fromInt(0),

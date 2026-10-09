@@ -155,7 +155,11 @@ describe('mergeRealContent', () => {
     const realLike = parseContentSet({
       ...raw,
       jobs: [...raw.jobs, { typeId: 32, id: 'soldier_spear_wood' }, { typeId: 42, id: 'hero_unarmed' }],
-      weapons: [...raw.weapons, ...rows],
+      weapons: [
+        ...raw.weapons,
+        { ...fist, tribeType: 1, typeId: 4, id: 'wooden_spear', jobType: 32, damage: { '0': 2400 } },
+        ...rows,
+      ],
     });
 
     const { content } = mergeRealContent(realLike);

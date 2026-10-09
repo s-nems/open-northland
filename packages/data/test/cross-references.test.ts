@@ -47,6 +47,22 @@ function parseWith(overrides: Record<string, unknown>): void {
 }
 
 describe('validateCrossReferences', () => {
+  it('validates unit variant jobs, scoped weapons and unique slot roles', () => {
+    const rule = { jobType: 1, scenario: false, hitpoints: 5000 };
+    const tribe = { typeId: 1, id: 'test', unitVariants: [rule] };
+    expect(() => parseWith({ tribes: [tribe] })).not.toThrow();
+    for (const field of ['jobType', 'animationJobType', 'graphicsJobType']) {
+      expect(() => parseWith({ tribes: [{ ...tribe, unitVariants: [{ ...rule, [field]: 99 }] }] })).toThrow(
+        /unknown job 99/,
+      );
+    }
+    expect(() =>
+      parseWith({ tribes: [{ ...tribe, unitVariants: [{ ...rule, weapon: { tribeType: 1, typeId: 7 } }] }] }),
+    ).toThrow(/unknown weapon 1:7/);
+    expect(() => parseWith({ tribes: [{ ...tribe, unitVariants: [rule, rule] }] })).toThrow(
+      /repeats unit variant/,
+    );
+  });
   it('requires a natural weapon to resolve within its own tribe', () => {
     const tribe = { typeId: 5, id: 'monster', naturalWeaponType: 1 };
     const foreignWeapon = { typeId: 1, id: 'other claw', tribeType: 6 };

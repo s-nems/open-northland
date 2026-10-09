@@ -168,7 +168,13 @@ function scanRaiders(
 /** The weapon `e` fights with and its reach band, or null for an unarmed man. */
 function heldWeapon(world: World, ctx: SystemContext, e: Entity): ReturnType<typeof attackerWeapon> {
   const settler = world.get(e, Settler);
-  return attackerWeapon(ctx, settler.tribe, settler.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
+  return attackerWeapon(
+    ctx,
+    settler.tribe,
+    settler.jobType,
+    world.tryGet(e, Weapon)?.weaponTypeId,
+    settler.scenario,
+  );
 }
 
 /** The far reach of the weapon `e` fights with, 0 for an unarmed man. */

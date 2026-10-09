@@ -156,7 +156,13 @@ export function engageCombatant(
     return;
   }
 
-  const held = attackerWeapon(ctx, attacker.tribe, attacker.jobType, world.tryGet(e, Weapon)?.weaponTypeId);
+  const held = attackerWeapon(
+    ctx,
+    attacker.tribe,
+    attacker.jobType,
+    world.tryGet(e, Weapon)?.weaponTypeId,
+    attacker.scenario,
+  );
   if (held === null) {
     disengage(world, e);
     return;

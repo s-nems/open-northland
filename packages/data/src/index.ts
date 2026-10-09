@@ -45,3 +45,5 @@ export function parseGeneratedContentSet(raw: unknown): ContentSet {
 export function parseTerrainMap(raw: unknown): TerrainMapFile {
   return TerrainMapFile.parse(raw);
 }
+
+export { type UnitIdentity, unitVariantFor } from './unit-variants.js';

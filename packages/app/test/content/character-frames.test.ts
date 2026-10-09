@@ -21,14 +21,19 @@ import {
   JOB_CIVILIST,
   JOB_HERO_UNARMED,
   JOB_HEROINE_BOW,
+  JOB_SOLDIER_SPEAR,
+  JOB_SOLDIER_SPEAR_WOODEN,
   JOB_SOLDIER_UNARMED,
   JOB_TRADER,
   SOLDIER_JOB_MAX,
 } from '../../src/catalog/jobs.js';
+import { BYZANTINE_SPEAR_VARIANTS } from '../../src/catalog/unit-variants.js';
 import { humanSequences } from '../../src/content/ir/joins.js';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { FACING } from '../../src/content/settler-gfx/index.js';
+import { withPlayableCharacters } from '../../src/content/sprite-sheet/unit-variants.js';
 import type { WorldTribes } from '../../src/game/world-tribes.js';
+import { byzantineSpearsScene } from '../../src/scenes/byzantine-spears.js';
 import { combatGesturesScene } from '../../src/scenes/combat-gestures.js';
 import { createSceneSim } from '../../src/scenes/runtime.js';
 import { characterTablesUnderTest, hasRealIr, loadContentUnderTest, rawIrUnderTest } from './helpers.js';
@@ -142,6 +147,61 @@ function headlessSlots(char: SettlerCharacter): Set<string> {
 describe.runIf(hasRealIr())('every settler look draws its head', () => {
   const tables = characterTablesUnderTest(CIVILIZATIONS);
   if (tables === null) return;
+
+  it('draws the Byzantine wooden spear as a dragon and the iron spear as a headed soldier', () => {
+    const table = tables.get(BYZANTINE);
+    const wooden = table?.byJob[JOB_SOLDIER_SPEAR_WOODEN];
+    const iron = table?.byJob[JOB_SOLDIER_SPEAR];
+    // CNMod jobgraphics.ini names body 72 for job 32, body 52 with heads 53/54 for job 33.
+    expect(wooden?.heads ?? []).toHaveLength(0);
+    expect(iron?.heads).toHaveLength(2);
+    // The authored bobseq starts distinguish both the gait and the swing, not just the atlas.
+    expect(wooden?.binding.moving).toMatchObject({ start: 586 });
+    expect(wooden?.binding.byAtomic?.[ATTACK_ATOMIC]).toMatchObject({ start: 0 });
+    expect(iron?.binding.moving).toMatchObject({ start: 2672 });
+    expect(iron?.binding.byAtomic?.[ATTACK_ATOMIC]).toMatchObject({ start: 2255 });
+    const ir = rawIrUnderTest() as ContentIr;
+    for (const [slug, character] of [
+      ['spear_wooden', wooden],
+      ['spear_iron', iron],
+    ] as const) {
+      const good = ir.goods?.find((row) => row.id === slug);
+      if (good === undefined) throw new Error(`missing ${slug}`);
+      expect(table?.byWeaponGood?.[good.typeId]).toBe(character);
+    }
+  });
+
+  it('gives the playable wooden spear the complete human look while retaining scenario dragons', () => {
+    const raw = tables.get(BYZANTINE);
+    if (raw === undefined) throw new Error('missing Byzantine table');
+    const table = withPlayableCharacters(raw, BYZANTINE_SPEAR_VARIANTS);
+    const playable = table.playable?.byJob[JOB_SOLDIER_SPEAR_WOODEN];
+    const iron = raw.byJob[JOB_SOLDIER_SPEAR];
+    expect(playable?.body).toBe(iron?.body);
+    expect(playable?.binding).toBe(iron?.binding);
+    expect(playable?.heads).toHaveLength(2);
+    expect(playable?.paletteJobType).toBe(JOB_SOLDIER_SPEAR);
+    expect(table.byJob[JOB_SOLDIER_SPEAR_WOODEN]?.heads ?? []).toHaveLength(0);
+    const good = (rawIrUnderTest() as ContentIr).goods?.find((row) => row.id === 'spear_wooden');
+    if (good === undefined) throw new Error('missing wooden spear');
+    expect(table.playable?.byWeaponGood?.[good.typeId]).toBe(playable);
+  });
+
+  it('spawns both spear forms together using the generated catalog and authored slot roles', async () => {
+    const { merge } = await loadContentUnderTest();
+    const sim = createSceneSim(byzantineSpearsScene, { content: merge.content });
+    sim.step();
+    const units = [...sim.world.query(components.Settler, components.Owner, components.Health)];
+    expect(units).toHaveLength(6);
+    for (const e of units) {
+      const identity = sim.world.get(e, components.Settler);
+      const owner = sim.world.get(e, components.Owner).player;
+      const dragon = owner === 2 && identity.jobType === JOB_SOLDIER_SPEAR_WOODEN;
+      expect(sim.world.get(e, components.Health).max, `owner ${owner}, job ${identity.jobType}`).toBe(
+        dragon ? 20000 : 5000,
+      );
+    }
+  });
 
   it('reaches the new actions through normal commands with generated content', async () => {
     const { merge } = await loadContentUnderTest();

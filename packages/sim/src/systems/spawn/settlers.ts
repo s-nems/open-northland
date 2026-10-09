@@ -7,6 +7,7 @@ import {
   type EquipmentSlot,
   Female,
   Health,
+  isScenarioPlayer,
   MISC_EQUIP_SLOTS,
   MoveSpeed,
   nameHuman,
@@ -47,11 +48,9 @@ export type SettlerSpec = Omit<
   'kind' | 'home' | 'workplace' | 'vehicle'
 >;
 
-/**
- * The hitpoint pool of every person, child or adult, of any tribe. Original behavior; the original's one
- * exception, a Byzantine wooden-spear soldier's 20000, is not modelled.
- */
-export const HUMAN_HITPOINTS = 5000;
+export { HUMAN_HITPOINTS } from '../lifecycle/unit-health.js';
+
+import { unitHitpoints } from '../lifecycle/unit-health.js';
 
 /** The idle/unemployed job sentinel: the command wire form of `jobType: null`, since a command field cannot
  *  carry null. Valid on any content, including one whose job table starts at typeId 1. */
@@ -85,6 +84,7 @@ export function createSettler(
     e,
     {
       tribe: spec.tribe,
+      ...(isScenarioPlayer(world, spec.owner) ? { scenario: true } : {}),
       jobType: spec.jobType === IDLE_JOB_TYPE ? null : spec.jobType,
       hunger: rollInitialNeed(rng),
       fatigue: rollInitialNeed(rng),
@@ -112,7 +112,14 @@ export function createSettler(
     world.add(e, Age, { ticks: ageTicks, asOf: null });
   }
   // An explicit positive `hitpoints` wins over the person's pool.
-  const hitpoints = spec.hitpoints !== undefined && spec.hitpoints > 0 ? spec.hitpoints : HUMAN_HITPOINTS;
+  const hitpoints =
+    spec.hitpoints !== undefined && spec.hitpoints > 0
+      ? spec.hitpoints
+      : unitHitpoints(content, {
+          tribe: spec.tribe,
+          jobType: spec.jobType,
+          scenario: isScenarioPlayer(world, spec.owner),
+        });
   world.add(e, Health, { hitpoints, max: hitpoints });
   const heroJob = isHeroJob(content, spec.jobType);
   const fixedHeroArmor = heroJob ? contentIndex(content).jobs.get(spec.jobType)?.fixedArmorType : undefined;

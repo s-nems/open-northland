@@ -1,4 +1,4 @@
-import type { AtomicAnimation, ContentSet } from '@open-northland/data';
+import { type AtomicAnimation, type ContentSet, unitVariantFor } from '@open-northland/data';
 import type { SettlerIdentity } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { CIVILIST_JOB } from '../lifecycle/ageclass.js';
@@ -165,7 +165,8 @@ export function boundAtomicAnimation(
   atomicId: number,
 ): string | undefined {
   if (settler.jobType === null) return undefined;
-  return contentIndex(content).atomicBindingsByTribe.get(settler.tribe)?.get(settler.jobType)?.get(atomicId);
+  const jobType = unitVariantFor(content, settler)?.animationJobType ?? settler.jobType;
+  return contentIndex(content).atomicBindingsByTribe.get(settler.tribe)?.get(jobType)?.get(atomicId);
 }
 
 const adultAnimalJobs = new WeakMap<ContentSet, number | null>();

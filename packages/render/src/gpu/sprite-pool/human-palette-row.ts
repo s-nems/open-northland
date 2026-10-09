@@ -56,7 +56,15 @@ export function humanPaletteIdentity(
   }
   if (item.tribe !== undefined && characters.animals?.tribes.has(item.tribe) === true) return false;
   const young = item.young === true;
-  const character = humanCharacter(characters, item.tribe, item.jobType, young, item.weaponGood, item.ref);
+  const character = humanCharacter(
+    characters,
+    item.tribe,
+    item.jobType,
+    young,
+    item.weaponGood,
+    item.ref,
+    item.scenario,
+  );
   if (character.indexed === false) return false;
   const table = (item.tribe !== undefined ? characters.byTribe?.[item.tribe] : undefined) ?? characters;
   const fixed = !young && item.jobType !== undefined && table.fixedByJob?.[item.jobType] !== undefined;
@@ -64,7 +72,7 @@ export function humanPaletteIdentity(
   out.look = character.palette ?? BASE_ONLY;
   out.player = item.player ?? 0;
   out.female = item.female === true;
-  out.jobChange = lut.book.jobChangeRecipe(item.tribe, item.jobType);
+  out.jobChange = lut.book.jobChangeRecipe(item.tribe, character.paletteJobType ?? item.jobType);
   const worn = armorGood == null ? undefined : lut.armor.tierByGood.get(armorGood);
   const soldier = item.jobType !== undefined && lut.armor.soldierJobs.has(item.jobType);
   out.armorTier = fixed ? undefined : (worn ?? (soldier ? UNARMORED_TIER : undefined));

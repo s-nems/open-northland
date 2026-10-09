@@ -51,10 +51,23 @@ export const JobRequirement = z.strictObject({
 });
 export type JobRequirement = z.infer<typeof JobRequirement>;
 
+/** Authored unit rules for a playable seat or a map-only scenario seat. Unset fields keep source data. */
+export const UnitVariant = z.strictObject({
+  jobType: TypeId,
+  scenario: z.boolean(),
+  hitpoints: z.number().int().positive(),
+  animationJobType: TypeId.optional(),
+  graphicsJobType: TypeId.optional(),
+  weapon: z.strictObject({ tribeType: TypeId, typeId: TypeId }).optional(),
+  walkStepReduction: z.number().int().nonnegative().optional(),
+});
+export type UnitVariant = z.infer<typeof UnitVariant>;
+
 export const TribeType = z.strictObject({
   typeId: TypeId,
   id: z.string(),
   name: z.string().optional(),
+  unitVariants: z.array(UnitVariant).optional(),
   /** Reset weapon type (original behavior: a person's weapon resets to type 1). Keeping it equipped
    *  across a monster's body-form job changes is an approximation, not traced for all five body jobs. */
   naturalWeaponType: TypeId.optional(),

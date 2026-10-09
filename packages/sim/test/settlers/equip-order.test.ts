@@ -11,12 +11,14 @@ import {
   EquipOrder,
   Female,
   MISC_EQUIP_SLOTS,
+  MISSION_BEHAVIOUR,
   Owner,
   PickupClaim,
   Position,
   Signpost,
   Stance,
   Stockpile,
+  setMissionBehaviour,
   setNeedsEnabled,
   setSettlerJob,
   TrainingOrder,
@@ -324,6 +326,27 @@ function terrainNodeAt(sim: Simulation, x: Fixed, y: Fixed): NodeId {
 }
 
 describe('equipGood - fetch, wear, stow the swap-out, walk back', () => {
+  it('returns from a weapon fetch when a mission locks the profession mid-walk', () => {
+    const sim = freshSim();
+    const settler = ownedSettler(sim, 2, 2);
+    setSettlerJob(sim.world, settler, FIGHTER_JOB);
+    const stock = pileAt(sim, 12, 2, SWORD, 1);
+    const start = sim.world.get(settler, Position);
+    const origin = nodeOfPosition(start.x, start.y);
+    sim.enqueueSetup(equip(settler, SWORD, 'weapon'));
+    sim.run(LEAVE_HOME_TICKS);
+    const away = sim.world.get(settler, Position);
+    expect(nodeOfPosition(away.x, away.y)).not.toEqual(origin);
+    setMissionBehaviour(sim.world, settler, MISSION_BEHAVIOUR.JOB_LOCKED, true);
+    expect(sim.equipPickList(settler, 'weapon')).toEqual([]);
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.has(settler, EquipOrder)).toBe(false);
+    expect(sim.world.tryGet(settler, Equipment)?.weapon ?? null).toBeNull();
+    expect(sim.world.get(stock, Stockpile).amounts.get(SWORD)).toBe(1);
+    const back = sim.world.get(settler, Position);
+    expect(nodeOfPosition(back.x, back.y)).toEqual(origin);
+  });
+
   it('rejects a stale weapon pick after the selected fighter changes to a civilian trade', () => {
     const sim = freshSim();
     const settler = ownedSettler(sim, 2, 2);

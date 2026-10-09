@@ -7,11 +7,13 @@ import {
   type MissionGoal,
   type MissionNameRef,
   type MissionResult,
+  mapLobbySlots,
 } from '@open-northland/data';
 import type { MissionHouseRef, MissionScript, ResolvedOp } from '@open-northland/sim';
 import { MISSION_HOUSE_NAME_FIELD, MISSION_LANDSCAPE_NAME_FIELD } from '@open-northland/sim';
 import { diag } from '../../diag/index.js';
 import { scriptMatchParticipants } from '../match-participants.js';
+import { isMapComputerSeat } from '../session-url.js';
 import type { MapScriptWorld } from './build.js';
 import type { AuthoredJoinRows, ContentJoins } from './content-joins.js';
 import { contentJoins } from './content-joins.js';
@@ -159,6 +161,12 @@ function resolveRef(field: string, ref: MissionNameRef, joins: ContentJoins, dro
 
 /** Script roster and diplomacy survive missing catalog data; mission names require the served IR. */
 export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows | null): MapScriptWorld {
+  const scenarioPlayers =
+    script === null
+      ? []
+      : mapLobbySlots(script)
+          .filter(isMapComputerSeat)
+          .map((slot) => slot.player);
   const permissions = script?.permissions;
   const permissionRows = permissions !== undefined ? { permissions } : {};
   const diplomacy = script?.diplomacy ?? [];
@@ -171,6 +179,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
     script !== null && script.players.length > 0 ? { participants: scriptMatchParticipants(script) } : {};
   if (script === null || rows === null || script.missions.length === 0)
     return {
+      scenarioPlayers,
       ...permissionRows,
       diplomacy,
       relationFlags,
@@ -194,6 +203,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
       mission.results.some((op) => op.opcode === 'MissionWon' || op.opcode === 'MissionFailed'),
     );
   return {
+    scenarioPlayers,
     ...permissionRows,
     diplomacy,
     relationFlags,

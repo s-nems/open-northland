@@ -6,6 +6,7 @@ import {
   type JobRequirementTarget,
   LOGIC_TYPE_NONE,
 } from './schema/index.js';
+import { checkUnitVariants } from './unit-variant-references.js';
 
 /** Reject a set whose numeric references dangle, at load rather than as a crash mid-game. */
 export function validateCrossReferences(set: ContentSet): void {
@@ -24,6 +25,7 @@ const CHECKS: readonly CrossReferenceCheck[] = [
   checkGoodProduction,
   checkBuildings,
   checkTribes,
+  checkUnitVariants,
   checkWeaponsAndArmor,
   checkAnimals,
   checkHuntPrey,

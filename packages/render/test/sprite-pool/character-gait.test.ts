@@ -5,6 +5,7 @@ import { resolveSettlerBobId } from '../../src/data/sprites/settler.js';
 import {
   characterGaitRate,
   characterInterpolatesMotion,
+  humanCharacter,
 } from '../../src/gpu/sprite-pool/character-layers.js';
 import { type MotionTrack, trackMotion } from '../../src/gpu/sprite-pool/motion.js';
 import type { SettlerCharacterSet } from '../../src/gpu/sprite-sheet.js';
@@ -45,6 +46,19 @@ function fresh(): MotionTrack {
 }
 
 describe('measured walk travel', () => {
+  it('draws scenario and playable forms of the same equipped profession together', () => {
+    const dragon = { body, binding: { idle: 11, moving: 12 } };
+    const human = { body, binding: { idle: 21, moving: 22 } };
+    const table: SettlerCharacterSet = {
+      default: human,
+      byJob: { 32: dragon },
+      byWeaponGood: { 39: dragon },
+      playable: { default: human, byJob: { 32: human }, byWeaponGood: { 39: human } },
+    };
+    expect(humanCharacter(table, 3, 32, false, 39, 1, true)).toBe(dragon);
+    expect(humanCharacter(table, 3, 32, false, 39, 2, false)).toBe(human);
+    expect(humanCharacter(table, 3, 32, false, undefined, 3)).toBe(human);
+  });
   it('keeps phase tied to distance across speed changes, turns and catch-up ticks', () => {
     const track = fresh();
     const rate = characterGaitRate({ characters }, item);

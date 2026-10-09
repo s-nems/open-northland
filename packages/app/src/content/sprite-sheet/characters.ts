@@ -1,11 +1,13 @@
 import type { ByJobTable, SettlerCharacter, SettlerCharacterSet } from '@open-northland/render';
 import { ANIMAL_BODY_IMAGELIB } from '../../catalog/animal-roster.js';
+import { BYZANTINE_SPEAR_VARIANTS } from '../../catalog/unit-variants.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { bodySequences, humanSequences, playableSequences, sequencesFor } from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
 import { type GoodRef, isAnimalBody } from '../settler-gfx/index.js';
 import { loadLookLayers, resolveAnimalJobLooks, resolveLooks } from './character-looks.js';
 import { type TribeCharacterInputs, tribeAtomicPrograms, tribeCharacters } from './tribe-characters.js';
+import { withPlayableCharacters } from './unit-variants.js';
 
 /**
  * Load the per-job {@link SettlerCharacterSet} for every civilization in `tribes`, the first of which is
@@ -60,5 +62,7 @@ export async function loadCharacters(
     const table = tribeCharacters(ir, goods, tribe, inputsFor(tribe), baseTable);
     if (table !== undefined) byTribe[tribe] = table;
   }
-  return { ...baseTable, byTribe };
+  const byzantine = byTribe[3];
+  if (byzantine !== undefined) byTribe[3] = withPlayableCharacters(byzantine, BYZANTINE_SPEAR_VARIANTS);
+  return { ...(byTribe[tribes[0]] ?? baseTable), byTribe };
 }

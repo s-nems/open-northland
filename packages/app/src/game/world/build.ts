@@ -15,6 +15,7 @@ import type { AuthoredPlacement } from './authored-placements.js';
 
 /** Decoded map setup and resolved mission definitions. */
 export interface MapScriptWorld {
+  readonly scenarioPlayers?: readonly number[];
   readonly victory?: 'script' | 'elimination';
   readonly permissions?: MapScript['permissions'];
   readonly diplomacy?: readonly MapDiplomacy[];
@@ -75,6 +76,7 @@ export function newWorldSim(
   if (map.fishSwarms !== undefined && sim.terrain !== undefined) {
     systems.addFishSwarms(sim.world, sim.terrain, map.fishSwarms);
   }
+  components.seedScenarioPlayers(sim.world, script.scenarioPlayers ?? []);
   for (const row of script.permissions ?? []) components.setMapPermission(sim.world, row);
   components.seedMapWeather(sim.world, script.weather ?? []);
   for (const row of script.relationFlags ?? []) {

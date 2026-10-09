@@ -667,6 +667,7 @@ describe('the job → character tables (the [jobbasegraphics] transcription)', (
     for (const id of [
       'warrior',
       'warrior-spear',
+      'warrior-spear-iron',
       'warrior-sword',
       'warrior-broadsword',
       'warrior-shortbow',

@@ -180,6 +180,6 @@ function holdsLadderState(world: World, e: Entity): boolean {
 
 /** How far `e`'s weapon strikes in map points, 0 when it holds none. */
 function reachOf(world: World, ctx: SystemContext, e: Entity): number {
-  const { tribe, jobType } = world.get(e, Settler);
-  return attackerWeapon(ctx, tribe, jobType, world.tryGet(e, Weapon)?.weaponTypeId)?.maxRange ?? 0;
+  const { tribe, jobType, scenario } = world.get(e, Settler);
+  return attackerWeapon(ctx, tribe, jobType, world.tryGet(e, Weapon)?.weaponTypeId, scenario)?.maxRange ?? 0;
 }

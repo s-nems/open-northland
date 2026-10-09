@@ -20,6 +20,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { TerrainGraph } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
+import { weaponKeepsLockedJob } from '../readviews/equip-pick.js';
 import { canEquipCategory, mayChangeEquipment } from '../readviews/index.js';
 import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 
@@ -114,6 +115,7 @@ export function equipGood(
   const good = contentIndex(ctx.content).goods.get(command.goodType);
   if (good?.equip === undefined || good.equip.category !== command.group) return;
   if (!canEquipCategory(ctx.content, jobType, command.group)) return;
+  if (command.group === 'weapon' && !weaponKeepsLockedJob(world, ctx.content, e, command.goodType)) return;
   stampEquipOrder(world, terrain, e, {
     group: command.group,
     slot: command.slot,
@@ -138,6 +140,7 @@ export function unequipGood(
   if (!isValidSlotAddress(command.group, command.slot)) return;
   const eq = world.tryGet(e, Equipment);
   if (eq === undefined || equipSlotValue(eq, command.group, command.slot) === null) return;
+  if (command.group === 'weapon' && !weaponKeepsLockedJob(world, ctx.content, e, null)) return;
   stampEquipOrder(world, terrain, e, {
     group: command.group,
     slot: command.slot,

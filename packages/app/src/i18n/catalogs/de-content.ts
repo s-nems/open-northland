@@ -208,6 +208,11 @@ export const deContent = {
       title: 'Blut auf dem Schlachtfeld',
       summary: 'Schwert-, Speer- und Fausttreffer, Pfeile und die Spuren eines tödlichen Treffers.',
     },
+    'byzantine-spears': {
+      title: 'Byzantinische Speerträger',
+      summary:
+        'Spalten: Mensch, KI im spielbaren Platz, Szenario-KI. Holzspeere oben, Eisenspeere unten; nur der Szenario-Holzspeer ist ein Drache.',
+    },
     'combat-gestures': {
       title: 'Schläge und Gesten',
       summary:
