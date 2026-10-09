@@ -38,6 +38,7 @@ function converted(id: string, extra: Partial<MapDatConversion> = {}): MapDatCon
     meta: { provenance: { kind: 'mod', folder: `CnModMaps/${id}` } },
     briefing: false,
     strings: false,
+    unknownStaticVerbs: [],
     ...extra,
   };
 }

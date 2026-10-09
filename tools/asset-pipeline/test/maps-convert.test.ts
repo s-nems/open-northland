@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { encodePcx } from '../src/decoders/pcx.js';
 import { decodePng } from '../src/decoders/png.js';
-import { convertMapDatTree, mapIdFromPath } from '../src/stages/maps/index.js';
+import { assertStaticVerbsKnown, convertMapDatTree, mapIdFromPath } from '../src/stages/maps/index.js';
 import { buildStringCif } from './fixtures/cif.js';
 import { buildMapDat } from './fixtures/mapdat.js';
 import { rampPalette } from './fixtures/palette.js';
@@ -103,6 +103,21 @@ describe('convertMapDatTree', () => {
     await convertMapDatTree({ mod: game }, out);
     const included = JSON.parse(await readFile(join(out, 'maps', 'forteca.json'), 'utf8'));
     expect(included.entities.humans).toEqual([{ tribe: 'frank', role: 'woman', player: 1, hx: 1, hy: 2 }]);
+  });
+
+  it('reports a [StaticObjects] verb the decoder does not know, which then fails the run', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await writeFile(
+      join(game, 'CnModMaps', 'forteca', 'staticobjects.inc'),
+      '[StaticObjects]\nsethuman 0 "viking" "woman" 1 2 0 0\nAdoptHuman 1 2\nMARRY 1 2 3 4\n',
+    );
+    const done = await convertMapDatTree({ mod: game }, out);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/forteca.*AdoptHuman/));
+    warn.mockRestore();
+    expect(done.find((d) => d.id === 'forteca')?.unknownStaticVerbs).toEqual(['AdoptHuman']);
+    expect(done.find((d) => d.id === 'tutorial_002')?.unknownStaticVerbs).toEqual([]);
+    expect(() => assertStaticVerbsKnown(done)).toThrow(/forteca \(AdoptHuman\)/);
+    expect(() => assertStaticVerbsKnown(done.filter((d) => d.id !== 'forteca'))).not.toThrow();
   });
 
   /** Raw single-byte string → bytes (for CP1250 fixtures written verbatim to disk). */

@@ -70,6 +70,20 @@ describe('extractStaticObjects', () => {
     expect(out?.humans[0]?.attach).toEqual([{ hx: 395, hy: 314, slot: 1 }]);
   });
 
+  it('reports each verb the loader does not read, in any case, and nothing for known ones', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'StaticObjects' },
+      { level: 2, text: 'sethuman 0 "viking" "woman" 10 12 0 0' },
+      { level: 2, text: 'SETEXPIERENCE 4 1' },
+      { level: 2, text: 'childofwoman 1 2 10 12' },
+      { level: 2, text: 'setweather 3' },
+      { level: 2, text: 'AttachToHut 1 2 1' },
+    ];
+    const unknown: string[] = [];
+    extractStaticObjects(cifLinesToSections(lines), (verb) => unknown.push(verb));
+    expect(unknown).toEqual(['setweather', 'AttachToHut']);
+  });
+
   it('drops a doubled opening quote, which the original reads as an empty job name', () => {
     const lines: CifLine[] = [
       { level: 1, text: 'StaticObjects' },

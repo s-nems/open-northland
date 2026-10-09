@@ -19,7 +19,7 @@ import { HYPERTEXT_PICTURES_DIR } from './stages/gui/paths.js';
 import { writeIr } from './stages/ir/index.js';
 import { loadVehicleGraphicsBindings } from './stages/ir/vehicle-graphics.js';
 import { BOBS_INDEX_FILE, MAPS_INDEX_FILE, writeListings } from './stages/listings.js';
-import { convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
+import { assertStaticVerbsKnown, convertMapDatTree, createMinimapSynthesizer } from './stages/maps/index.js';
 import { renderMusicStage } from './stages/music/index.js';
 import { composeMaskedTransitionPages, convertPcxTree } from './stages/pcx.js';
 import { convertGuidepostPlayerAtlases, convertIndexedCharacterAtlases } from './stages/player-colors.js';
@@ -181,4 +181,5 @@ export async function runPipeline(args: Args): Promise<void> {
   console.log(
     `[pipeline] corrections: ${corrections.list.length} file(s), ${stringCorrections.list.length} string(s) applied`,
   );
+  assertStaticVerbsKnown(terrains);
 }

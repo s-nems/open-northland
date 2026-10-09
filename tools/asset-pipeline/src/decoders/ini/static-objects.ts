@@ -66,6 +66,19 @@ interface HalfCell {
 /** The verbs that place an entity, each ending the previous placement's block of modifiers. */
 const PLACEMENT_VERBS = new Set(['sethouse', 'sethuman', 'setanimal', 'setvehicle', 'setguide']);
 
+/** Every verb the original's `[StaticObjects]` loader reads, lower-cased; it skips any other line. */
+const STATIC_OBJECT_VERBS: ReadonlySet<string> = new Set([
+  ...PLACEMENT_VERBS,
+  'addgoods',
+  'setproducedgood',
+  'attachtohouse',
+  'attachtovehicle',
+  'moveintovehicle',
+  'setexpierence',
+  'marry',
+  'childofwoman',
+]);
+
 /** What the id and behaviour columns hold when they carry nothing: the corpus writes them as 0. */
 const EMPTY_COLUMN = 0;
 
@@ -114,8 +127,13 @@ const EMPTY_COLUMN = 0;
  * repeats a `marry` after the second spouse's `sethuman`; the first position must hold the woman (a
  * child for `childOfWoman`). The one corpus line naming a single position names a man there and marries
  * no one, so a line short of four positions is dropped.
+ *
+ * `onUnknownVerb` receives each line whose verb the original's loader does not read either.
  */
-export function extractStaticObjects(sections: readonly RuleSection[]): MapStaticObjects | undefined {
+export function extractStaticObjects(
+  sections: readonly RuleSection[],
+  onUnknownVerb?: (verb: string) => void,
+): MapStaticObjects | undefined {
   const sec = sections.find((s) => s.name === 'StaticObjects');
   if (sec === undefined) return undefined;
   const int = (v: string | undefined): number | undefined => {
@@ -151,6 +169,7 @@ export function extractStaticObjects(sections: readonly RuleSection[]): MapStati
   for (const p of sec.props) {
     // Original behavior: the verbs match case-insensitively, and five corpus lines write `SETEXPIERENCE`.
     const key = p.key.toLowerCase();
+    if (!STATIC_OBJECT_VERBS.has(key)) onUnknownVerb?.(p.key);
     if (key !== 'addgoods') goodsTarget = undefined;
     if (PLACEMENT_VERBS.has(key)) humanTarget = undefined;
     if (key === 'marry') {

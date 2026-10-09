@@ -50,6 +50,19 @@ export interface MapDatConversion {
   readonly briefing: boolean;
   /** Whether a `maps/<id>.strings.json` per-language string table was emitted. */
   readonly strings: boolean;
+  /** The `[StaticObjects]` verbs the decoder skipped because it does not know them, sorted. */
+  readonly unknownStaticVerbs: readonly string[];
+}
+
+/**
+ * Fails the run when any converted map carries a `[StaticObjects]` verb the decoder does not know, so a
+ * verb the corpus gains is decoded or named as one the original skips rather than dropped silently.
+ */
+export function assertStaticVerbsKnown(maps: readonly MapDatConversion[]): void {
+  const unknown = maps.filter((m) => m.unknownStaticVerbs.length > 0);
+  if (unknown.length === 0) return;
+  const list = unknown.map((m) => `${m.id} (${m.unknownStaticVerbs.join(', ')})`).join('; ');
+  throw new Error(`[StaticObjects] verbs the decoder does not know: ${list}`);
 }
 
 /**
@@ -84,11 +97,15 @@ export async function convertMapDatTree(
     // otherwise turn into a silently missing entity layer.
     const mapDir = join(roots.mod, dirname(rel));
     let cifSections: readonly RuleSection[] | undefined;
+    const unknownVerbs = new Set<string>();
+    const onUnknownVerb = (verb: string): void => {
+      unknownVerbs.add(verb);
+    };
     const cifPath = await findPathCaseInsensitive(mapDir, ['map.cif']);
     if (cifPath !== undefined) {
       try {
         cifSections = cifBytesToSections(await readFile(cifPath));
-        const entities = extractStaticObjects(cifSections);
+        const entities = extractStaticObjects(cifSections, onUnknownVerb);
         if (entities !== undefined) terrain = { ...terrain, entities };
       } catch {
         // Undecodable: the entity layer is skipped.
@@ -99,11 +116,17 @@ export async function convertMapDatTree(
       const path = await findPathCaseInsensitive(mapDir, [file]);
       if (path === undefined) continue;
       try {
-        const entities = extractStaticObjects(iniBytesToSections(await readFile(path)));
+        const entities = extractStaticObjects(iniBytesToSections(await readFile(path)), onUnknownVerb);
         if (entities !== undefined) terrain = { ...terrain, entities };
       } catch (err) {
         console.warn(`[pipeline] map ${rel}: ${file} undecodable: ${errorMessage(err)}`);
       }
+    }
+    const unknownStaticVerbs = [...unknownVerbs].sort();
+    if (unknownStaticVerbs.length > 0) {
+      console.warn(
+        `[pipeline] map ${rel}: unknown [StaticObjects] verb(s) skipped: ${unknownStaticVerbs.join(', ')}`,
+      );
     }
     const output = `${MAPS_DIR}/${id}.json`;
     // Compact JSON: the lanes are hundreds of thousands of numbers, and one per line costs ~8x size.
@@ -181,6 +204,7 @@ export async function convertMapDatTree(
       ...(scriptFile !== undefined ? { script: scriptFile } : {}),
       briefing,
       strings: Object.keys(stringTables).length > 0,
+      unknownStaticVerbs,
     });
   }
   return done;
