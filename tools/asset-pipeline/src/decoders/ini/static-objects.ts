@@ -79,6 +79,9 @@ const STATIC_OBJECT_VERBS: ReadonlySet<string> = new Set([
   'childofwoman',
 ]);
 
+/** Verbs the original's loader recognises but never acts on, so a line naming one changes nothing. */
+const SKIPPED_STATIC_OBJECT_VERBS: ReadonlySet<string> = new Set(['allowjob', 'forbidjob']);
+
 /** What the id and behaviour columns hold when they carry nothing: the corpus writes them as 0. */
 const EMPTY_COLUMN = 0;
 
@@ -128,7 +131,7 @@ const EMPTY_COLUMN = 0;
  * child for `childOfWoman`). The one corpus line naming a single position names a man there and marries
  * no one, so a line short of four positions is dropped.
  *
- * `onUnknownVerb` receives each line whose verb the original's loader does not read either.
+ * `onUnknownVerb` receives each line whose verb the original's loader does not recognise.
  */
 export function extractStaticObjects(
   sections: readonly RuleSection[],
@@ -169,7 +172,7 @@ export function extractStaticObjects(
   for (const p of sec.props) {
     // Original behavior: the verbs match case-insensitively, and five corpus lines write `SETEXPIERENCE`.
     const key = p.key.toLowerCase();
-    if (!STATIC_OBJECT_VERBS.has(key)) onUnknownVerb?.(p.key);
+    if (!STATIC_OBJECT_VERBS.has(key) && !SKIPPED_STATIC_OBJECT_VERBS.has(key)) onUnknownVerb?.(p.key);
     if (key !== 'addgoods') goodsTarget = undefined;
     if (PLACEMENT_VERBS.has(key)) humanTarget = undefined;
     if (key === 'marry') {
