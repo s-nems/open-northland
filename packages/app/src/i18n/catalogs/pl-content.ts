@@ -10,15 +10,15 @@ export const plContent = {
     smith: 'Kowal',
     coin_maker: 'Mincerz',
     hunter: 'Myśliwy',
-    breeder: 'Hodowca',
+    breeder: 'Hodowca bydła',
     tailor: 'Krawiec',
-    farmer: 'Rolnik',
+    farmer: 'Farmer',
     miller: 'Młynarz',
     baker: 'Piekarz',
     brewer: 'Piwowar',
     fisher: 'Rybak',
     fisher_sea: 'Rybak morski',
-    herbalist: 'Zielarz',
+    herbalist: 'Zbieracz ziół',
     druid: 'Druid',
     scout: 'Zwiadowca',
     trader: 'Kupiec',
@@ -30,14 +30,14 @@ export const plContent = {
     worker: 'Pracownik',
   },
   category: {
-    gathering: 'Zbieractwo',
+    gathering: 'Wydobywanie',
     transport: 'Transport',
     production: 'Rzemiosło',
     special: 'Specjalne',
     military: 'Wojsko',
   },
   building: {
-    headquarters: 'Kwatera Główna',
+    headquarters: 'Kwatera główna',
     home_level_00: 'Dom (poziom 1)',
     home_level_01: 'Dom (poziom 2)',
     home_level_02: 'Dom (poziom 3)',
@@ -47,41 +47,41 @@ export const plContent = {
     stock_01: 'Magazyn (poziom 2)',
     stock_02: 'Magazyn (poziom 3)',
     work_well_00: 'Studnia',
-    work_hive_00: 'Pasieka',
+    work_hive_00: 'Ul',
     work_farm_00: 'Farma',
     work_mill_00: 'Młyn',
     work_bakery_00: 'Piekarnia (poziom 1)',
     work_bakery_01: 'Piekarnia (poziom 2)',
     work_brewery: 'Browar',
-    work_animal_farm: 'Hodowla',
-    work_sewery_00: 'Pracownia krawiecka (poziom 1)',
-    work_sewery_01: 'Pracownia krawiecka (poziom 2)',
-    work_pottery_00: 'Garncarnia (poziom 1)',
-    work_pottery_01: 'Garncarnia (poziom 2)',
+    work_animal_farm: 'Ferma bydła',
+    work_sewery_00: 'Zakład krawiecki (poziom 1)',
+    work_sewery_01: 'Zakład krawiecki (poziom 2)',
+    work_pottery_00: 'Warsztat garncarski (poziom 1)',
+    work_pottery_01: 'Warsztat garncarski (poziom 2)',
     work_pottery_02: 'Mur obronny',
-    work_joinery_00: 'Stolarnia (poziom 1)',
-    work_joinery_01: 'Stolarnia (poziom 2)',
-    work_joinery_02: 'Stolarnia (poziom 3)',
-    work_joinery_03: 'Stolarnia (poziom 4)',
-    work_armory_00: 'Pracownia płatnerska (poziom 1)',
-    work_armory_01: 'Pracownia płatnerska (poziom 2)',
-    work_mason_hut_00: 'Chata kamieniarza (poziom 1)',
-    work_mason_hut_01: 'Chata kamieniarza (poziom 2)',
+    work_joinery_00: 'Warsztat ciesielski (poziom 1)',
+    work_joinery_01: 'Warsztat ciesielski (poziom 2)',
+    work_joinery_02: 'Warsztat ciesielski (poziom 3)',
+    work_joinery_03: 'Warsztat ciesielski (poziom 4)',
+    work_armory_00: 'Warsztat płatnerski (poziom 1)',
+    work_armory_01: 'Warsztat płatnerski (poziom 2)',
+    work_mason_hut_00: 'Warsztat kamieniarski (poziom 1)',
+    work_mason_hut_01: 'Warsztat kamieniarski (poziom 2)',
     work_smithy_00: 'Kuźnia (poziom 1)',
     work_smithy_01: 'Kuźnia (poziom 2)',
     work_coin_mint: 'Mennica',
-    work_herb_hut: 'Chata zielarza',
-    work_druid_00: 'Chata alchemika (poziom 1)',
-    work_druid_01: 'Chata alchemika (poziom 2)',
+    work_herb_hut: 'Chatka zielarza',
+    work_druid_00: 'Chatka alchemika (poziom 1)',
+    work_druid_01: 'Chatka alchemika (poziom 2)',
     work_temple: 'Świątynia',
     school: 'Szkoła',
     barracks: 'Koszary',
-    tower_00: 'Wieża strażnicza (poziom 1)',
-    tower_01: 'Wieża strażnicza (poziom 2)',
+    tower_00: 'Wieża obronna (poziom 1)',
+    tower_01: 'Wieża obronna (poziom 2)',
     handcart: 'Wózek ręczny',
-    oxcart: 'Wóz wołowy',
-    ship_small: 'Mały statek',
-    ship_big: 'Duży statek',
+    oxcart: 'Zaprzęg',
+    ship_small: 'Statek',
+    ship_big: 'Statek handlowy',
     catapult: 'Katapulta',
     wonder_lighthouse_of_alexandria: 'Latarnia Morska',
     wonder_gardens_of_semiramis: 'Ogród',
@@ -90,7 +90,7 @@ export const plContent = {
     wonder_artemis_temple: 'Świątynia Artemidy',
     wonder_zeus_statue: 'Statua Zeusa',
     wonder_pyramid_of_gizeh: 'Piramida',
-    wonder_8th_wonder: '8-y Cud',
+    wonder_8th_wonder: '8. Cud',
     work_murek: 'Mur obronny',
   },
   goods: {
@@ -101,22 +101,22 @@ export const plContent = {
     mud: 'Glina',
     iron: 'Żelazo',
     gold: 'Złoto',
-    mushroom: 'Grzyby',
+    mushroom: 'Grzyb',
     water: 'Woda',
     wheat: 'Pszenica',
     leather: 'Skóra',
     wool: 'Wełna',
     flour: 'Mąka',
     honey: 'Miód',
-    herb: 'Zioła',
-    holy_oil: 'Święty olej',
-    food_simple: 'Proste jedzenie',
-    food_extra: 'Wykwintne jedzenie',
+    herb: 'Zioło',
+    holy_oil: 'Oliwa',
+    food_simple: 'Żywność',
+    food_extra: 'Ciastko',
     bread: 'Chleb',
-    candy: 'Słodycze',
+    candy: 'Ciastko',
     meat: 'Mięso',
     fish: 'Ryba',
-    fruit: 'Owoce',
+    fruit: 'Owoc',
     sausage: 'Kiełbasa',
     brick: 'Cegła',
     tile: 'Dachówka',
@@ -128,7 +128,7 @@ export const plContent = {
     tool_wooden: 'Drewniane narzędzie',
     tool_iron: 'Żelazne narzędzie',
     armor_wool: 'Tunika',
-    armor_leather: 'Zbroja skórzana',
+    armor_leather: 'Skórzana zbroja',
     armor_chain: 'Kolczuga',
     armor_plate: 'Zbroja płytowa',
     bow_short: 'Krótki łuk',
@@ -138,29 +138,29 @@ export const plContent = {
     sword_shord: 'Krótki miecz',
     sword_long: 'Długi miecz',
     mead: 'Miód pitny',
-    potion_food_small: 'Mała mikstura pożywienia',
-    potion_food_big: 'Duża mikstura pożywienia',
+    potion_food_small: 'Mała odżywcza mikstura',
+    potion_food_big: 'Duża odżywcza mikstura',
     potion_stamina_small: 'Mała mikstura wytrzymałości',
     potion_stamina_big: 'Duża mikstura wytrzymałości',
-    potion_heal_small: 'Mała mikstura leczenia',
-    potion_heal_big: 'Duża mikstura leczenia',
-    amulet_food: 'Amulet obfitości',
+    potion_heal_small: 'Mała lecznicza mikstura',
+    potion_heal_big: 'Duża lecznicza mikstura',
+    amulet_food: 'Odżywczy amulet',
     amulet_stamina: 'Amulet wytrzymałości',
     amulet_strength: 'Amulet siły',
     amulet_defense: 'Amulet obrony',
-    amulet_crithit: 'Amulet ciosu krytycznego',
-    amulet_speed: 'Amulet szybkości',
-    prey: 'Zwierzyna',
+    amulet_crithit: 'Amulet precyzji',
+    amulet_speed: 'Amulet wiatru',
+    prey: 'Zdobycz',
     sheep: 'Owca',
     cattle: 'Wół',
     handcart: 'Wózek ręczny',
-    oxcart: 'Wóz wołowy',
-    ship_small: 'Mały statek',
-    ship_big: 'Duży statek',
+    oxcart: 'Zaprzęg',
+    ship_small: 'Statek',
+    ship_big: 'Statek handlowy',
     catapult: 'Katapulta',
-    cart_no_ox: 'Wóz bez wołu',
+    cart_no_ox: 'Wóz',
     chest: 'Skrzynia',
-    anything: 'Dowolny towar',
+    anything: 'Wszystko',
   },
   missionTrace: {
     title: 'Rejestr wykonanych misji',
@@ -195,7 +195,7 @@ export const plContent = {
     },
     'personal-names': {
       title: 'Imiona mieszkańców',
-      summary: 'Imiona pięciu nacji oraz wężoludzi i wilkołaków.',
+      summary: 'Imiona pięciu plemion oraz wężołaków i wilkołaków.',
     },
     'everyday-gestures': {
       title: 'Codzienne gesty',
@@ -212,12 +212,12 @@ export const plContent = {
     },
     'clay-gatherers': {
       title: 'Zbieracze gliny',
-      summary: 'Dwaj zbieracze każdej nacji kopią glinę i odnoszą ją do swojej flagi.',
+      summary: 'Dwaj zbieracze każdego plemienia kopią glinę i odnoszą ją do swojej flagi.',
     },
     'armed-idle': {
       title: 'Uzbrojeni w bezczynności',
       summary:
-        'Uzbrojeni żołnierze każdej nacji stoją bezczynnie; w każdej animacji nudzenia się trzymają broń.',
+        'Uzbrojeni żołnierze każdego plemienia stoją bezczynnie; w każdej animacji nudzenia się trzymają broń.',
     },
     'weapon-facings': {
       title: 'Kierunki broni',
@@ -252,7 +252,7 @@ export const plContent = {
     'road-upgrade': {
       title: 'Drogi przy rozbudowie',
       summary:
-        'Plac chaty druida i gotowa chata trzymają teren, na który urośnie ich kolejny poziom; narzędzia drogi i palisady barwią go i omijają.',
+        'Plac chatki alchemika i gotowa chatka trzymają teren, na który urośnie ich kolejny poziom; narzędzia drogi i palisady barwią go i omijają.',
     },
     roads: {
       title: 'Drogi',
@@ -287,17 +287,17 @@ export const plContent = {
     diplomacy: {
       title: 'Dyplomacja',
       summary:
-        'Pierwszy kontakt pod mgłą: sojusznik obok jest znany od razu, jednostronny agresor zdradza się własnym ciosem i zmienia Twoje nastawienie na wrogie, a nigdy niewidziane plemię nie trafia do okna dyplomacji.',
+        'Pierwszy kontakt pod mgłą: sojusznik obok jest znany od razu, jednostronny agresor zdradza się własnym ciosem i zmienia Twój stosunek na wrogi, a nigdy niewidziane plemię nie trafia do okna dyplomacji.',
     },
     'allied-vision': {
       title: 'Wspólna mapa sojuszników',
       summary:
-        'Jedna mgła wojny dla wzajemnych przyjaciół: wojownik sojusznika daleko na wschodzie trzyma swoją polanę w Twoim polu widzenia, a jego sąsiada w Twoim oknie dyplomacji, podczas gdy pustelnik poza zasięgiem wszystkich oczu pozostaje nieznany. Zmień w oknie dyplomacji nastawienie do sojusznika na neutralne albo wrogie, a polana wróci do szarości.',
+        'Jedna mgła wojny dla wzajemnych przyjaciół: wojownik sojusznika daleko na wschodzie trzyma swoją polanę w Twoim polu widzenia, a jego sąsiada w Twoim oknie dyplomacji, podczas gdy pustelnik poza zasięgiem wszystkich oczu pozostaje nieznany. Zmień w oknie dyplomacji stosunek do sojusznika na neutralny albo wrogi, a polana wróci do szarości.',
     },
     trade: {
       title: 'Szlak handlowy',
       summary:
-        'Neutralny magazyn oferuje cztery żelaza za monetę; kupiec wozi monety z własnego magazynu, przywozi żelazo, a wymienione towary zmieniają nastawienie nacji na przyjazne. Zaznacz kupca, żeby zobaczyć sekcję Handel, a daleki magazyn, żeby zobaczyć umowy.',
+        'Neutralny magazyn oferuje cztery żelaza za monetę; kupiec wozi monety z własnego magazynu, przywozi żelazo, a wymienione towary zmieniają stosunek plemienia na przyjazny. Zaznacz kupca, żeby zobaczyć sekcję Handel, a daleki magazyn, żeby zobaczyć oferty handlowe.',
     },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',
@@ -307,7 +307,7 @@ export const plContent = {
     tribute: {
       title: 'Trybuty',
       summary:
-        'Skrypt mapy żąda trzech trybutów dla sąsiada: drewno można zapłacić z jednego magazynu i zapłata zmienia nastawienie sąsiada na przyjazne, sakiewki monet brakuje, a kamień leży rozdzielony między dwa składy, które płacą go razem.',
+        'Skrypt mapy żąda trzech trybutów dla sąsiada: drewno można zapłacić z jednego magazynu i zapłata zmienia stosunek sąsiada na przyjazny, sakiewki monet brakuje, a kamień leży rozdzielony między dwa składy, które płacą go razem.',
       strings: {
         '1': 'Sąsiedzi proszą o drewno i kamień na nową halę.',
         '2': 'Sąsiedzi proszą o sakiewkę monet.',
@@ -315,9 +315,9 @@ export const plContent = {
       },
     },
     vehicles: {
-      title: 'Pojazdy',
+      title: 'Wehikuły',
       summary:
-        'Każdy wóz, statek i katapulta dwóch cywilizacji stoją na brzegu w kilku kierunkach: wóz z wołem załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek, szczątki wozu rozbitego w pierwszej turze oraz wóz z wołem i katapulta z załogą jadące na wschód dolnymi rzędami, katapulta o połowę wolniej.',
+        'Każdy wóz, statek i katapulta dwóch plemion stoi na brzegu w kilku kierunkach: zaprzęg załadowany drewnem, katapulta w trakcie ataku, kupiec odciągający swój wózek, szczątki wozu rozbitego w pierwszej turze oraz zaprzęg i katapulta z załogą jadące na wschód dolnymi rzędami, katapulta o połowę wolniej.',
     },
     'cart-drivers': {
       title: 'Woźnice wszystkich nacji',
@@ -327,47 +327,47 @@ export const plContent = {
     'vehicle-ships': {
       title: 'Statek przez cieśninę',
       summary:
-        'Mała łódź cumuje przy zachodnim brzegu. Trzech wojowników wsiada na nią i dostaje rozkaz przybicia do wschodniego brzegu: łódź czeka, aż wszyscy będą na pokładzie, odbija, przepływa cieśninę, cumuje po drugiej stronie i wysadza oddział na wskazanym punkcie.',
+        'Statek cumuje przy zachodnim brzegu. Trzech wojowników wsiada na niego i dostaje rozkaz przybicia do wschodniego brzegu: statek czeka, aż wszyscy będą na pokładzie, odbija, przepływa cieśninę, cumuje po drugiej stronie i wysadza oddział na wskazanym punkcie.',
     },
     'vehicle-yard': {
       title: 'Warsztat wozów',
       summary:
-        'Stolarnia trzeciego poziomu, której dwaj stolarze mają robić wózki ręczne: każdy otwiera ukryty plac budowy wozu obok warsztatu, przynosi drewno z magazynu, pracuje młotkiem na placu, a ukończony plac zamienia się w wózek stojący w jego miejscu.',
+        'Warsztat ciesielski trzeciego poziomu, którego dwaj cieśle mają robić wózki ręczne: każdy otwiera ukryty plac budowy wozu obok warsztatu, przynosi drewno z magazynu, pracuje młotkiem na placu, a ukończony plac zamienia się w wózek stojący w jego miejscu.',
     },
     'vehicle-ship-column': {
       title: 'Statki na północ i południe',
       summary:
-        'Dwa obsadzone statki na otwartym morzu: mały płynie prosto na północ, duży prosto na południe, potem oba zawracają i płyną z powrotem. Każdy trzyma swoją kolumnę i pokazuje kadłub dziobem w górę lub w dół ze śladem piany za rufą, zamiast kluczyć między przekątnymi.',
+        'Dwa obsadzone statki na otwartym morzu: zwykły płynie prosto na północ, handlowy prosto na południe, potem oba zawracają i płyną z powrotem. Każdy trzyma swoją kolumnę i pokazuje kadłub dziobem w górę lub w dół ze śladem piany za rufą, zamiast kluczyć między przekątnymi.',
     },
     'vehicle-ship-voyage': {
       title: 'Daleki rejs statku',
       summary:
-        'Obsadzony statek na północnym krańcu długiego kanału dostaje rozkaz przybicia do brzegu na jego południowym końcu, dwa razy dalej niż dawny zasięg pojazdów. Opływa wyspę, która zagradza prostą drogę, przepływa cały kanał i cumuje przy wskazanym brzegu.',
+        'Obsadzony statek na północnym krańcu długiego kanału dostaje rozkaz przybicia do brzegu na jego południowym końcu, dwa razy dalej niż dawny zasięg wehikułów. Opływa wyspę, która zagradza prostą drogę, przepływa cały kanał i cumuje przy wskazanym brzegu.',
     },
     'ship-wakes': {
       title: 'Piana wokół statków',
       summary:
-        'Oba kadłuby stoją na otwartym morzu, każdy w każdym kierunku, w jakim jest rysowany, a dwa obsadzone duże statki płyną: jeden wzdłuż rzędu, drugi po przekątnej. Piana powinna obmywać każdy kadłub przy linii wody, a fala dziobowa i kilwater zaczynać się przy dziobie i rufie.',
+        'Oba kadłuby stoją na otwartym morzu, każdy w każdym kierunku, w jakim jest rysowany, a dwa obsadzone statki handlowe płyną: jeden wzdłuż rzędu, drugi po przekątnej. Piana powinna obmywać każdy kadłub przy linii wody, a fala dziobowa i kilwater zaczynać się przy dziobie i rufie.',
     },
     'vehicle-shipyard': {
       title: 'Stocznia',
       summary:
-        'Stolarnia czwartego poziomu na brzegu, której stolarze mają robić na zmianę mały statek i katapultę: plac statku otwiera się na wodzie obok warsztatu, a szkutnik pracuje na brzegu; plac katapulty na lądzie. Zwodowany statek stoi zacumowany przy brzegu ze zwiniętymi żaglami.',
+        'Warsztat ciesielski czwartego poziomu na brzegu, którego cieśle mają robić na zmianę statek i katapultę: plac statku otwiera się na wodzie obok warsztatu, a cieśla pracuje z brzegu; plac katapulty na lądzie. Zwodowany statek stoi zacumowany przy brzegu ze zwiniętymi żaglami.',
     },
     'vehicle-ox-yard': {
-      title: 'Budowa wozu wołowego',
+      title: 'Budowa zaprzęgu',
       summary:
-        'Cieśla stale buduje kolejne puste wozy, korzystając z drewna w magazynie. Krowa podchodzi z hodowli i wchodzi do pierwszego wozu. W każdej hodowli zostają dwie krowy, więc następne wozy czekają na zwierzęta, a cieśla pracuje dalej.',
+        'Cieśla stale buduje kolejne puste wozy, korzystając z drewna w magazynie. Krowa podchodzi z fermy bydła i wchodzi do pierwszego wozu. Na każdej fermie bydła zostają dwie krowy, więc następne wozy czekają na zwierzęta, a cieśla pracuje dalej.',
     },
     'vehicle-ox': {
       title: 'Wóz bez wołu',
       summary:
-        'Pusty wóz obok czterech krów gracza. Rozkaz jazdy zostaje odrzucony z braku zwierzęcia; potem wóz sam wybiera najbliższą krowę poza parą hodowlaną stada, krowa podchodzi i zostaje zaprzężona, a wóz zamienia się w miejscu w wóz z wołem, do którego może już dołączyć czekający tragarz.',
+        'Pusty wóz obok czterech krów gracza. Rozkaz jazdy zostaje odrzucony z braku zwierzęcia; potem wóz sam wybiera najbliższą krowę poza parą hodowlaną stada, krowa podchodzi i zostaje zaprzężona, a wóz zamienia się w miejscu w zaprzęg, do którego może już dołączyć czekający tragarz.',
     },
     'vehicle-cargo': {
       title: 'Ładunek wozów',
       summary:
-        'Dwa wozy z tragarzami: wózek ręczny, dla którego gracz zamówił drewno, tragarz przynosi je sztuka po sztuce ze stert obok wozu; wóz z wołem zaczyna załadowany kamieniem, którego nikt nie zamówił, więc jego tragarz wynosi go do magazynu. Wózek zmienia się w załadowany po pierwszej sztuce, wóz w pusty po ostatniej.',
+        'Dwa wozy z tragarzami: wózek ręczny, dla którego gracz zamówił drewno, tragarz przynosi je sztuka po sztuce ze stert obok wozu; zaprzęg zaczyna załadowany kamieniem, którego nikt nie zamówił, więc jego tragarz wynosi go do magazynu. Wózek zmienia się w załadowany po pierwszej sztuce, zaprzęg w pusty po ostatniej.',
     },
     'vehicle-catapult': {
       title: 'Katapulta',
@@ -382,7 +382,7 @@ export const plContent = {
     'vehicle-tight-gap': {
       title: 'Wąskie przejazdy',
       summary:
-        'Przez mapę biegnie palisada z przejściami od zachodu na wschód: dwa domy w odstępie 1, 2, 3 i 4 węzłów, rzędy drzew z lukami 1, 2 i 3 węzłów, rzadki las oraz gołe przerwy w murze na 2 i 3 węzły. Cztery katapulty, dwa wozy z wołem i taczka przejeżdżają na drugą stronę, jedne z północy na południe, inne z powrotem. Katapulta mieści się między domami oddalonymi o dwa węzły i przez każdą lukę w rzędzie drzew, ale nie między domami oddalonymi o jeden węzeł, gdzie objeżdża sąsiednim przejściem, ani przez przerwę w murze węższą niż trzy. Wozy przejadą każdą luką. Zaznacz pojazd i sam poślij go przez wybrane przejście.',
+        'Przez mapę biegnie palisada z przejściami od zachodu na wschód: dwa domy w odstępie 1, 2, 3 i 4 węzłów, rzędy drzew z lukami 1, 2 i 3 węzłów, rzadki las oraz gołe przerwy w palisadzie na 2 i 3 węzły. Cztery katapulty, dwa zaprzęgi i wózek ręczny przejeżdżają na drugą stronę, jedne z północy na południe, inne z powrotem. Katapulta mieści się między domami oddalonymi o dwa węzły i przez każdą lukę w rzędzie drzew, ale nie między domami oddalonymi o jeden węzeł, gdzie objeżdża sąsiednim przejściem, ani przez przerwę w palisadzie węższą niż trzy. Wozy przejadą każdą luką. Zaznacz wehikuł i sam poślij go przez wybrane przejście.',
     },
     school: {
       title: 'Nauka zawodu',
@@ -397,12 +397,12 @@ export const plContent = {
     'school-graduates': {
       title: 'Absolwenci idą do pracy',
       summary:
-        'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w stolarni. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty. Kowal uczy się zbroi płytowej, mija bliższą kuźnię, która jej nie robi, i kuje płytówki w rozbudowanej.',
+        'Dwóch zbieraczy uczy się ciesielstwa, a asystent kieruje absolwentów do pracy. Pierwszy zajmuje jedyne miejsce cieśli w warsztacie ciesielskim. Drugi nie znajduje wolnego miejsca, zostaje przy szkole i wraca tam, gdy nie ma nic do roboty. Kowal uczy się zbroi płytowej, mija bliższą kuźnię, która jej nie robi, i kuje płytówki w rozbudowanej.',
     },
     'porter-flag': {
       title: 'Chorągiewka tragarza w kamieniołomie',
       summary:
-        'Górnik układa kamień przy swojej chorągiewce daleko na wschód od kwatery głównej. Tragarz kwatery ma chorągiewkę przy tym składzie: nosi kamień z kamieniołomu i mąkę z pobliskiego młyna, zostawia kupkę leżącą przy kwaterze i czeka przy chorągiewce, gdy nic tam nie leży.',
+        'Zbieracz układa kamień przy swojej chorągiewce daleko na wschód od kwatery głównej. Tragarz kwatery ma chorągiewkę przy tym składzie: nosi kamień z kamieniołomu i mąkę z pobliskiego młyna, zostawia kupkę leżącą przy kwaterze i czeka przy chorągiewce, gdy nic tam nie leży.',
     },
     'gatherer-flag-follow': {
       title: 'Flagi idą za surowcami',
@@ -473,12 +473,12 @@ export const plContent = {
     chests: {
       title: 'Skrzynie i plany',
       summary:
-        'Trzy drewniane skrzynie oddają żywność, trzech cywilów i papier na studnię, magiczna odmawia zwykłemu rzemieślnikowi, a trzymany papier stawia gotową studnię.',
+        'Trzy drewniane skrzynie oddają żywność, trzech cywilów i papiery na studnię, magiczna odmawia zwykłemu rzemieślnikowi, a trzymane papiery stawiają gotową studnię.',
     },
     'meal-break': {
       title: 'Przerwa na posiłek',
       summary:
-        'Głodny zwiadowca z kolejką drogowskazów idzie najpierw do spiżarni, je i stawia resztę. Żołnierz z regeneracją też schodzi coś zjeść, ten bez regeneracji maszeruje dalej głodny.',
+        'Głodny zwiadowca z kolejką drogowskazów idzie najpierw po jedzenie, je i stawia resztę. Żołnierz z regeneracją też schodzi coś zjeść, ten bez regeneracji maszeruje dalej głodny.',
     },
     'scout-claim': {
       title: 'Zwiadowca zajmuje zwierzę',
@@ -488,7 +488,7 @@ export const plContent = {
     'scout-explore': {
       title: 'Zwiadowcy badają wyspę',
       summary:
-        'Zaznacz obu zwiadowców i wybierz Zwiad w menu rozkazów: przeczeszą całą wyspę i zgłoszą, gdy nie zostanie na niej nic do odkrycia.',
+        'Zaznacz obu zwiadowców i wybierz „Badaj” w menu rozkazów: przeczeszą całą wyspę i zgłoszą, gdy nie zostanie na niej nic do odkrycia.',
     },
     'chest-queue': {
       title: 'Skrzynie po kolei',
@@ -500,14 +500,14 @@ export const plContent = {
       summary: 'Farma, młyn, piekarnia i studnia w jednej pętli: pszenica → mąka → chleb, zasilane wodą.',
     },
     alchemy: {
-      title: 'Chaty alchemika',
+      title: 'Chatki alchemika',
       summary:
-        'Druid warzy święty olej z grzybów w małej chacie, a dwóch druidów mikstury z wody, grzybów, ziół i monet w dużej.',
+        'Druid warzy oliwę z grzybów w małej chatce, a dwóch druidów mikstury z wody, grzybów, ziół i monet w dużej.',
     },
     'household-goods': {
       title: 'Wyposażenie domu',
       summary:
-        'Garncarze, stolarze i druid zaopatrują rozbudowany dom w naczynia, meble i święty olej, wspomagające posiłki, odpoczynek i modlitwę.',
+        'Garncarze, cieśle i druid zaopatrują rozbudowany dom w naczynia, meble i oliwę, wspomagające posiłki, odpoczynek i modlitwę.',
     },
     warehouse: {
       title: 'Logistyka magazynu',
@@ -521,7 +521,7 @@ export const plContent = {
     'farm-construction': {
       title: 'Budowa farmy',
       summary:
-        'Budowniczowie wznoszą farmę obok gotowej suszarni: od drewnianego szkieletu po ściany i dach.',
+        'Budowniczowie wznoszą farmę obok gotowej farmy do porównania: od drewnianego szkieletu po ściany i dach. Materiały dostarcza magazyn.',
     },
     upgrade: {
       title: 'Rozbudowa budynków',
@@ -531,17 +531,17 @@ export const plContent = {
     'frank-construction': {
       title: 'Etapy budowy u Franków',
       summary:
-        'Frankijska chata kamieniarza rośnie od fundamentów, a obok rozbudowują się chata kamieniarza i chata druida.',
+        'Frankijski warsztat kamieniarski rośnie od fundamentów, a obok rozbudowują się warsztat kamieniarski i chatka alchemika.',
     },
     'upgrade-tribes': {
-      title: 'Rozbudowa u innych ludów',
+      title: 'Rozbudowa u innych plemion',
       summary:
-        'Dom wikingów i dom Franków rozbudowują się obok siebie; każdy zachowuje wygląd własnego ludu.',
+        'Dom wikingów i dom Franków rozbudowują się obok siebie; każdy zachowuje wygląd własnego plemienia.',
     },
     'workshop-products': {
       title: 'Produkty warsztatu',
       summary:
-        'Garncarz zatrudniony w garncarni robi tylko cegły, jej pierwszy produkt, i zostaje przy cegłach po rozbudowie garncarni.',
+        'Garncarz zatrudniony w warsztacie garncarskim robi tylko cegły, jego pierwszy produkt, i zostaje przy cegłach po rozbudowie warsztatu.',
     },
     signposts: {
       title: 'Drogowskazy',
@@ -568,7 +568,7 @@ export const plContent = {
     gossip: {
       title: 'Plotki i dymki potrzeb',
       summary:
-        'Bezczynni osadnicy dobierają się w pary i rozmawiają, odnawiając potrzebę towarzystwa (żołnierze nigdy nie dołączają), a głodni i senni pokazują dymki myśli.',
+        'Bezczynni osadnicy dobierają się w pary i rozmawiają, odnawiając motywację społeczną (żołnierze nigdy nie dołączają), a głodni i senni pokazują dymki myśli.',
     },
     wildlife: {
       title: 'Dzikie stada',
@@ -583,12 +583,12 @@ export const plContent = {
     creatures: {
       title: 'Potwory i drapieżniki',
       summary:
-        'Wężoludzie i wilkołaki naprzeciw oddziału wojowników. W pobliżu grasują wilki, lwy, lwice oraz niedźwiedzie brunatne i polarne.',
+        'Wężołaki i wilkołaki naprzeciw oddziału wojowników. W pobliżu grasują wilki, lwy, lwice, niedźwiedzie i niedźwiedzie polarne.',
     },
     'creature-forms': {
-      title: 'Postacie wężoludzi',
+      title: 'Postacie wężołaków',
       summary:
-        'Obejrzyj owczą, kurzą, lwią, wilczą i niedźwiedzią postać wężoludzi. Trzy bojowe postacie stoją naprzeciw wojowników.',
+        'Obejrzyj owczą, kurzą, lwią, wilczą i niedźwiedzią postać wężołaków. Trzy bojowe postacie stoją naprzeciw wojowników.',
     },
     'movement-continuity': {
       title: 'Płynność ruchu',
@@ -608,12 +608,12 @@ export const plContent = {
     livestock: {
       title: 'Hodowla zwierząt',
       summary:
-        'Zwiadowca zajmuje owce i krowy (serduszko w kolorze frakcji), stado idzie pod hodowlę, a hodowcy z wody, zboża i odrobiny życia zwierząt robią wełnę, skórę i mięso.',
+        'Zwiadowca zajmuje owce i krowy (serduszko w kolorze gracza), stado idzie pod fermę bydła, a hodowcy z wody, zboża i odrobiny życia zwierząt robią wełnę, skórę i mięso.',
     },
     equipment: {
       title: 'Okno ekwipunku',
       summary:
-        'Trzej osadnicy do okna ekwipunku: cywil z założonymi butami, narzędziem i miksturami, żołnierz z mieczem i kolczugą oraz osadnik bez niczego. Przy ratuszu leży zapasowy sprzęt do rozkazów załóż, wymień i zdejmij.',
+        'Trzej osadnicy do okna ekwipunku: cywil z założonymi butami, narzędziem i miksturami, żołnierz z mieczem i kolczugą oraz osadnik bez niczego. Przy kwaterze głównej leży zapasowy sprzęt do rozkazów załóż, wymień i zdejmij.',
     },
     'group-panel': {
       title: 'Panel grupy',
@@ -668,7 +668,7 @@ export const plContent = {
     amulets: {
       title: 'Amulety',
       summary:
-        'Trzy próby amuletów: piechur z amuletem szybkości wyprzedza tego bez amuletu, wojownik z amuletami siły, ciosu krytycznego i obrony pokonuje równego rywala, a głodny i zmęczony zbieracz uzupełnia obie potrzeby z amuletów obfitości i wytrzymałości, które nigdy się nie zużywają.',
+        'Trzy próby amuletów: piechur z amuletem wiatru wyprzedza tego bez amuletu, wojownik z amuletami siły, precyzji i obrony pokonuje równego rywala, a głodny i zmęczony zbieracz uzupełnia obie potrzeby z odżywczego amuletu i amuletu wytrzymałości, które nigdy się nie zużywają.',
     },
     barracks: {
       title: 'Szkolenie w koszarach',
@@ -678,7 +678,7 @@ export const plContent = {
     armor: {
       title: 'Parada zbroi',
       summary:
-        'Parada mieczników: po kolumnie na każdy stan zbroi (bez, wełniana, skórzana, kolczuga, płytowa) i po wierszu na kolor gracza, wszyscy w postawie ignorowania, więc wrogie frakcje nie walczą. Do oceny przebarwień zbroi na tle kolorów drużyn.',
+        'Parada mieczników: po kolumnie na każdy stan zbroi (bez zbroi, tunika, skórzana zbroja, kolczuga, zbroja płytowa) i po wierszu na kolor gracza, wszyscy w trybie ignorowania, więc wrodzy gracze nie walczą. Do oceny przebarwień zbroi na tle kolorów drużyn.',
     },
     'ai-defence': {
       title: 'Obrona AI',
@@ -698,7 +698,7 @@ export const plContent = {
     'tower-garrison': {
       title: 'Załoga wieży',
       summary:
-        'Sześciu łuczników - trzy krótkie łuki i trzy długie - obsadza wieżę strażniczą, znika w środku i strzela z niej na zasięg swojego łuku powiększony o premię wieży. Zamiast znacznika przy każdym z nich na dachu powiewa flaga załogi: pięć gwiazdek na sześciu ludzi. Wrogi oddział dostaje strzałami już w marszu, a gdy dojdzie pod mur, może tłuc tylko w wieżę: do załogi nie sięgnie.',
+        'Sześciu łuczników - trzy krótkie łuki i trzy długie - obsadza wieżę obronną, znika w środku i strzela z niej na zasięg swojego łuku powiększony o premię wieży. Zamiast znacznika przy każdym z nich na dachu powiewa flaga załogi: pięć gwiazdek na sześciu ludzi. Wrogi oddział dostaje strzałami już w marszu, a gdy dojdzie pod mur, może tłuc tylko w wieżę: do załogi nie sięgnie.',
     },
     'death-loot': {
       title: 'Polegli żołnierze',

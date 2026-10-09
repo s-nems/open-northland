@@ -310,6 +310,68 @@ describe('adoptSettings', () => {
   });
 });
 
+describe('updateSettings', () => {
+  const VIKINGS = 1;
+  const TRIBE_NAMES: Readonly<Record<string, string>> = { ger: 'Nordmänner', rus: 'Викинги' };
+
+  /** Answers each language's strings only when the test releases it, so installs can overlap. */
+  function heldStrings(): (lang: string) => void {
+    const pending = new Map<string, () => void>();
+    vi.stubGlobal('fetch', (url: string) => {
+      const lang = /strings\/(\w+)\.json$/.exec(url)?.[1] ?? '';
+      const body = { tribes: { [VIKINGS]: TRIBE_NAMES[lang] } };
+      return new Promise<Response>((resolve) =>
+        pending.set(lang, () => resolve(new Response(JSON.stringify(body)))),
+      );
+    });
+    return (lang) => pending.get(lang)?.();
+  }
+
+  // Drop the fresh graph from the shared registry too, or the next test file would import it.
+  afterEach(() => vi.resetModules());
+
+  /** The settings session and catalog from a fresh module graph, so neither the loaded string tables nor
+   *  the language change reach another test (the app tests share one registry). */
+  async function freshSettings() {
+    vi.stubGlobal('window', {
+      location: { href: 'http://localhost/' },
+      history: { state: null, replaceState: () => undefined },
+      localStorage: { getItem: () => null, setItem: () => undefined },
+    });
+    vi.resetModules();
+    const settings = await import('../src/entries/main-menu/settings-state.js');
+    const { tribeName } = await import('../src/i18n/index.js');
+    const heard: string[] = [];
+    const scope = new AbortController();
+    settings.onSettingsChange(() => heard.push(tribeName(VIKINGS)), scope.signal);
+    return { update: settings.updateSettings, heard, stop: () => scope.abort() };
+  }
+
+  it("installs a new language's original tribe names before its listeners re-render", async () => {
+    const release = heldStrings();
+    const { update, heard, stop } = await freshSettings();
+    const updating = update({ language: 'ger' });
+    release('ger');
+    await updating;
+    stop();
+    expect(heard).toEqual([TRIBE_NAMES.ger]);
+  });
+
+  it('leaves the notice to a later language change that starts during the install', async () => {
+    const release = heldStrings();
+    const { update, heard, stop } = await freshSettings();
+    const first = update({ language: 'ger' });
+    const second = update({ language: 'rus' });
+    release('ger');
+    await first;
+    expect(heard).toEqual([]);
+    release('rus');
+    await second;
+    stop();
+    expect(heard).toEqual([TRIBE_NAMES.rus]);
+  });
+});
+
 describe('carriedSettingParams', () => {
   it('elides every param at defaults, so a clean URL stays clean', () => {
     expect(carriedSettingParams(defaultSettings()).every((row) => row.value === null)).toBe(true);

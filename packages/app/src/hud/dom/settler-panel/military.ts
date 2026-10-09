@@ -22,7 +22,7 @@ export function stanceSegment(mode: number | null): Stance | null {
   return STANCES.find((stance) => STANCE_MODE[stance] === mode) ?? null;
 }
 
-/** Military: Stance as a three-way choice and Food and sleep as allowed or forbidden. */
+/** Military: the stance as a three-way choice and the eat-and-sleep permission as allowed or prohibited. */
 export interface MilitarySection {
   readonly element: HTMLElement;
   update(model: SettlerPanelModel): void;

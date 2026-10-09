@@ -30,7 +30,8 @@ export const STRING_TABLES = [
 
 /**
  * The game-object name tables (`Data/text/<lang>/strings/gameobjects/<table>.{ini,cif}`), keyed by the
- * object's type id: each `stringn <typeId> "<singular>"` is followed by a bare `string` plural.
+ * object's type id in `stringn <typeId> "<singular>"`. Every table but `experiences` follows each with a
+ * bare `string` plural.
  */
 export const GAME_OBJECT_TABLES = ['goods', 'houses', 'jobs', 'experiences', 'tribes'] as const;
 

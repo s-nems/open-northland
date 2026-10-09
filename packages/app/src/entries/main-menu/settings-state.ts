@@ -55,20 +55,25 @@ export function menuSettings(): MenuSettings {
 
 /**
  * The store advances by the patch alone, so a shared link's URL overrides never leak into the stored
- * defaults.
+ * defaults. A new language's original tribe names are installed before the listeners hear of it and the
+ * update resolves, so whatever re-renders on it shows them. A language change made during that install
+ * takes over the notice: the earlier update resolves without notifying.
  */
-export function updateSettings(patch: Partial<MenuSettings>): MenuSettings {
+export async function updateSettings(patch: Partial<MenuSettings>): Promise<MenuSettings> {
   const next = { ...menuSettings(), ...patch };
   current = next;
   persisted = { ...persistedSettings(), ...patch };
   persistSettings(persisted);
+  syncCarriedParams(patch, next);
   if (patch.language !== undefined) {
     setActiveLocale(next.language);
-    void installOriginalTribeNames(next.language);
+    await installOriginalTribeNames(next.language);
+    if (menuSettings().language !== next.language) return menuSettings();
   }
-  syncCarriedParams(patch, next);
-  for (const listener of listeners) listener(next);
-  return next;
+  // A later update may have landed during the install; the listeners hear the settings as they stand.
+  const settled = menuSettings();
+  for (const listener of listeners) listener(settled);
+  return settled;
 }
 
 /**

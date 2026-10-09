@@ -180,7 +180,7 @@ describe('notice text', () => {
     });
     expect(text.short).toBe('Nowy budynek');
     expect(text.full).toBe(
-      'Bjorn zdobył doświadczenie.\n\nNowe budynki:\n- Szkoła\n\nNowe pojazdy:\n- Wózek',
+      'Bjorn zdobył doświadczenie.\n\nNowe budynki:\n- Szkoła\n\nNowe wehikuły:\n- Wózek',
     );
     const carts = compose(en.userMessages, 'experienceUnlocks', {
       ...BARE,
@@ -287,7 +287,7 @@ describe('notice text', () => {
     });
     expect(raid).toEqual({
       short: 'Atak na osadę',
-      full: 'Twoja osada jest atakowana. Wróg: Gracz 2. Zaatakowano: 2 budynki, 3 odcinki muru, 1 osadnika, 5 pojazdów. Wyślij żołnierzy do obrony.',
+      full: 'Twoja osada jest atakowana. Wróg: Gracz 2. Zaatakowano: 2 budynki, 3 odcinki palisady, 1 osadnika, 5 wehikułów. Wyślij żołnierzy do obrony.',
     });
     const wolves = composeIn(en.userMessages, 'en', 'peopleAttacked', {
       ...NAMELESS,

@@ -1,4 +1,11 @@
-import { installNameOverlay, localeParam, setActiveLocale } from './i18n/index.js';
+import { diag } from './diag/index.js';
+import {
+  installNameOverlay,
+  type Locale,
+  localeParam,
+  type NameOverlay,
+  setActiveLocale,
+} from './i18n/index.js';
 import { routeFor } from './routes.js';
 import { dismissBootProgress } from './view/boot-progress.js';
 import { guardEntry, pushEntryUrl, releaseDocument } from './view/navigation-guard.js';
@@ -14,6 +21,17 @@ function gameCanvas(): HTMLCanvasElement {
   return canvas;
 }
 
+/** `locale`'s original tribe names. They are optional: a failed load keeps the authored ones and never
+ *  fails the entry. */
+function loadTribeNames(locale: Locale): Promise<NameOverlay> {
+  return import('./content/original-names.js')
+    .then((names) => names.originalTribeNameOverlay(locale))
+    .catch((err: unknown) => {
+      diag.warn('content', 'launch: original tribe names failed to load; the authored names stay', err);
+      return {};
+    });
+}
+
 /** Boots the entry `params` selects into the shared canvas. */
 export async function runEntry(
   params: URLSearchParams,
@@ -27,10 +45,7 @@ export async function runEntry(
     const locale = localeParam(params);
     setActiveLocale(locale);
     const route = routeFor(params);
-    const [run, tribeNames] = await Promise.all([
-      route.load(),
-      import('./content/original-names.js').then((names) => names.originalTribeNameOverlay(locale)),
-    ]);
+    const [run, tribeNames] = await Promise.all([route.load(), loadTribeNames(locale)]);
     if (!cursorsInstalled) {
       const { installCursorTheme } = await import('./view/cursors/theme.js');
       installCursorTheme();

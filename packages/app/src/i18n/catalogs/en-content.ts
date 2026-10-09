@@ -3,34 +3,34 @@ export const enContent = {
     idle: 'Civilian',
     carrier: 'Carrier',
     builder: 'Builder',
-    joiner: 'Joiner',
-    armorer: 'Armorer',
+    joiner: 'Carpenter',
+    armorer: 'Armourer',
     potter: 'Potter',
-    mason: 'Mason',
-    smith: 'Smith',
-    coin_maker: 'Coin maker',
+    mason: 'Stonemason',
+    smith: 'Blacksmith',
+    coin_maker: 'Mint Worker',
     hunter: 'Hunter',
-    breeder: 'Breeder',
+    breeder: 'Stock Farmer',
     tailor: 'Tailor',
     farmer: 'Farmer',
     miller: 'Miller',
     baker: 'Baker',
     brewer: 'Brewer',
-    fisher: 'Fisher',
-    fisher_sea: 'Sea fisher',
-    herbalist: 'Herbalist',
+    fisher: 'Fisherman',
+    fisher_sea: 'Sea Fisher',
+    herbalist: 'Herb Gatherer',
     druid: 'Druid',
     scout: 'Scout',
-    trader: 'Trader',
-    trader_sea: 'Sea trader',
+    trader: 'Merchant',
+    trader_sea: 'Sea Merchant',
     soldier: 'Soldier',
-    collector: 'Gatherer',
-    archer_short: 'Archer',
-    archer_long: 'Longbow archer',
+    collector: 'Extractor',
+    archer_short: 'Short Bow Archer',
+    archer_long: 'Longbow Archer',
     worker: 'Worker',
   },
   category: {
-    gathering: 'Gathering',
+    gathering: 'Extraction',
     transport: 'Transport',
     production: 'Crafting',
     special: 'Special',
@@ -38,51 +38,51 @@ export const enContent = {
   },
   building: {
     headquarters: 'Headquarters',
-    home_level_00: 'Home (level 1)',
-    home_level_01: 'Home (level 2)',
-    home_level_02: 'Home (level 3)',
-    home_level_03: 'Home (level 4)',
-    home_level_04: 'Home (level 5)',
-    stock_00: 'Warehouse (level 1)',
-    stock_01: 'Warehouse (level 2)',
-    stock_02: 'Warehouse (level 3)',
+    home_level_00: 'Dwelling 1',
+    home_level_01: 'Dwelling 2',
+    home_level_02: 'Dwelling 3',
+    home_level_03: 'Dwelling 4',
+    home_level_04: 'Dwelling 5',
+    stock_00: 'Warehouse 1',
+    stock_01: 'Warehouse 2',
+    stock_02: 'Warehouse 3',
     work_well_00: 'Well',
-    work_hive_00: 'Apiary',
+    work_hive_00: 'Beehive',
     work_farm_00: 'Farm',
     work_mill_00: 'Mill',
-    work_bakery_00: 'Bakery (level 1)',
-    work_bakery_01: 'Bakery (level 2)',
+    work_bakery_00: 'Bakery 1',
+    work_bakery_01: 'Bakery 2',
     work_brewery: 'Brewery',
-    work_animal_farm: 'Animal farm',
-    work_sewery_00: 'Tailor (level 1)',
-    work_sewery_01: 'Tailor (level 2)',
-    work_pottery_00: 'Pottery (level 1)',
-    work_pottery_01: 'Pottery (level 2)',
+    work_animal_farm: 'Cattle Farm',
+    work_sewery_00: "Tailor's Workshop 1",
+    work_sewery_01: "Tailor's Workshop 2",
+    work_pottery_00: 'Pottery 1',
+    work_pottery_01: 'Pottery 2',
     work_pottery_02: 'Defence wall',
-    work_joinery_00: 'Joinery (level 1)',
-    work_joinery_01: 'Joinery (level 2)',
-    work_joinery_02: 'Joinery (level 3)',
-    work_joinery_03: 'Joinery (level 4)',
-    work_armory_00: 'Armory (level 1)',
-    work_armory_01: 'Armory (level 2)',
-    work_mason_hut_00: 'Mason hut (level 1)',
-    work_mason_hut_01: 'Mason hut (level 2)',
-    work_smithy_00: 'Smithy (level 1)',
-    work_smithy_01: 'Smithy (level 2)',
-    work_coin_mint: 'Coin mint',
-    work_herb_hut: 'Herb hut',
-    work_druid_00: 'Alchemist hut (level 1)',
-    work_druid_01: 'Alchemist hut (level 2)',
+    work_joinery_00: "Carpenter's Shop 1",
+    work_joinery_01: "Carpenter's Shop 2",
+    work_joinery_02: "Carpenter's Shop 3",
+    work_joinery_03: "Carpenter's Shop 4",
+    work_armory_00: "Armourer's Shop 1",
+    work_armory_01: "Armourer's Shop 2",
+    work_mason_hut_00: "Mason's Shop 1",
+    work_mason_hut_01: "Mason's Shop 2",
+    work_smithy_00: 'Smithy 1',
+    work_smithy_01: 'Smithy 2',
+    work_coin_mint: 'Coin Mint',
+    work_herb_hut: 'Herb Hut',
+    work_druid_00: "Alchemist's Hut 1",
+    work_druid_01: "Alchemist's Hut 2",
     work_temple: 'Temple',
     school: 'School',
     barracks: 'Barracks',
-    tower_00: 'Watchtower (level 1)',
-    tower_01: 'Watchtower (level 2)',
+    tower_00: 'Defence Tower 1',
+    tower_01: 'Defence Tower 2',
     // The hidden yard houses a workshop raises beside itself; a site is named after the vehicle it becomes.
     handcart: 'Handcart',
-    oxcart: 'Ox cart',
-    ship_small: 'Small ship',
-    ship_big: 'Large ship',
+    oxcart: 'Ox Cart',
+    ship_small: 'Ship',
+    ship_big: 'Big Ship',
     catapult: 'Catapult',
     wonder_lighthouse_of_alexandria: 'Lighthouse',
     wonder_gardens_of_semiramis: 'Garden',
@@ -98,11 +98,11 @@ export const enContent = {
     wood: 'Wood',
     plank: 'Log',
     coin: 'Coin',
-    stone: 'Stone',
+    stone: 'Quarrystone',
     mud: 'Clay',
     iron: 'Iron',
     gold: 'Gold',
-    mushroom: 'Mushrooms',
+    mushroom: 'Mushroom',
     water: 'Water',
     wheat: 'Wheat',
     leather: 'Leather',
@@ -110,59 +110,59 @@ export const enContent = {
     flour: 'Flour',
     honey: 'Honey',
     herb: 'Herb',
-    holy_oil: 'Holy oil',
-    food_simple: 'Simple food',
-    food_extra: 'Fine food',
+    holy_oil: 'Oil',
+    food_simple: 'Food',
+    food_extra: 'Cake',
     bread: 'Bread',
-    candy: 'Candy',
+    candy: 'Cake',
     meat: 'Meat',
     fish: 'Fish',
     fruit: 'Fruit',
     sausage: 'Sausage',
     brick: 'Brick',
-    tile: 'Roof tile',
-    pillar: 'Stone block',
+    tile: 'Tile',
+    pillar: 'Stone',
     ornament: 'Marble',
     crockery: 'Crockery',
     furniture: 'Furniture',
     shoes: 'Shoes',
-    tool_wooden: 'Wooden tool',
-    tool_iron: 'Iron tool',
+    tool_wooden: 'Wooden Tool',
+    tool_iron: 'Iron Tool',
     armor_wool: 'Tunic',
-    armor_leather: 'Leather armor',
-    armor_chain: 'Chain armor',
-    armor_plate: 'Plate armor',
-    bow_short: 'Short bow',
-    bow_long: 'Long bow',
-    spear_wooden: 'Wooden spear',
-    spear_iron: 'Iron spear',
-    sword_shord: 'Short sword',
-    sword_long: 'Long sword',
+    armor_leather: 'Leather Armour',
+    armor_chain: 'Chain Mail',
+    armor_plate: 'Plate Armour',
+    bow_short: 'Short Bow',
+    bow_long: 'Longbow',
+    spear_wooden: 'Wooden Spear',
+    spear_iron: 'Iron Spear',
+    sword_shord: 'Shortsword',
+    sword_long: 'Longsword',
     mead: 'Mead',
-    potion_food_small: 'Small food potion',
-    potion_food_big: 'Large food potion',
-    potion_stamina_small: 'Small stamina potion',
-    potion_stamina_big: 'Large stamina potion',
-    potion_heal_small: 'Small healing potion',
-    potion_heal_big: 'Large healing potion',
-    amulet_food: 'Amulet of plenty',
-    amulet_stamina: 'Amulet of stamina',
-    amulet_strength: 'Amulet of strength',
-    amulet_defense: 'Amulet of defense',
-    amulet_crithit: 'Amulet of the critical blow',
-    amulet_speed: 'Amulet of speed',
-    prey: 'Game',
+    potion_food_small: 'S Nourishing Potion',
+    potion_food_big: 'L Nourishing Potion',
+    potion_stamina_small: 'S Stamina Potion',
+    potion_stamina_big: 'L Stamina Potion',
+    potion_heal_small: 'S Healing Potion',
+    potion_heal_big: 'L Healing Potion',
+    amulet_food: 'Nourishing Amulet',
+    amulet_stamina: 'Amulet of Stamina',
+    amulet_strength: 'Amulet of Strength',
+    amulet_defense: 'Amulet of Defence',
+    amulet_crithit: 'Amulet of Precision',
+    amulet_speed: 'Wind Amulet',
+    prey: 'Prey',
     sheep: 'Sheep',
     cattle: 'Ox',
     handcart: 'Handcart',
-    oxcart: 'Ox cart',
-    ship_small: 'Small ship',
-    ship_big: 'Large ship',
+    oxcart: 'Ox Cart',
+    ship_small: 'Ship',
+    ship_big: 'Big Ship',
     catapult: 'Catapult',
     /** The vehicle type without a good of its own: the ox cart before its ox arrives. */
-    cart_no_ox: 'Ox cart without ox',
+    cart_no_ox: 'Ox Cart Framework',
     chest: 'Chest',
-    anything: 'Anything',
+    anything: 'All',
   },
   missionTrace: {
     title: 'Mission execution log',
@@ -189,7 +189,7 @@ export const enContent = {
     battle: {
       title: 'Mass battle',
       summary:
-        '1000 against 1000 on an expanded battlefield: scattered troops, five weapon classes and mixed armor.',
+        '1000 against 1000 on an expanded battlefield: scattered troops, five weapon classes and mixed armour.',
     },
     'bow-flight': {
       title: 'Bow flight',
@@ -198,12 +198,12 @@ export const enContent = {
     },
     'personal-names': {
       title: 'Personal names',
-      summary: 'Given names for five civilizations and two creature tribes.',
+      summary: 'Given names for five tribes and two creature tribes.',
     },
     'everyday-gestures': {
       title: 'Everyday gestures',
       summary:
-        'Druids work at their cauldrons, a fisher walks with his rod and catches fish, and babies fidget while idle.',
+        'Druids work at their cauldrons, a fisherman walks with his rod and catches fish, and babies fidget while idle.',
     },
     'combat-blood': {
       title: 'Blood on the battlefield',
@@ -214,12 +214,12 @@ export const enContent = {
       summary: 'Civilian, unarmed and archer duels beside resting, eating and sleeping bowmen.',
     },
     'clay-gatherers': {
-      title: 'Clay gatherers',
-      summary: 'Two collectors from each civilization dig clay and carry it to their flag.',
+      title: 'Clay extractors',
+      summary: 'Two extractors from each tribe dig clay and carry it to their flag.',
     },
     'armed-idle': {
       title: 'Armed idle',
-      summary: "Every civilization's armed soldiers stand idle; each fidget keeps the weapon in hand.",
+      summary: "Every tribe's armed soldiers stand idle; each fidget keeps the weapon in hand.",
     },
     'weapon-facings': {
       title: 'Weapon facings',
@@ -251,24 +251,24 @@ export const enContent = {
         'Builders mend a quiet damaged home first and pass over a nearer one while a fight is on beside it.',
     },
     palisade: {
-      title: 'Palisades and gates',
+      title: 'Stockades and gates',
       summary:
         'Builders raise a connected wooden stockade, a gate opens a route through it, and an enemy soldier breaks a segment to make a second breach.',
     },
     'road-upgrade': {
       title: 'Roads beside an upgrade',
       summary:
-        'A druid hut site and a finished one keep the ground their next level grows over; the road and wall tools tint it and lay around it.',
+        "An alchemist's hut site and a finished one keep the ground their next level grows over; the road and stockade tools tint it and lay around it.",
     },
     roads: {
       title: 'Roads',
       summary:
-        'Two builders pave a laid line of road sites with stone from the store; one stone paves a site and its waiting neighbours.',
+        'Two builders pave a laid line of road sites with quarrystone from the store; one quarrystone paves a site and its waiting neighbours.',
     },
     'tower-defence': {
       title: 'Tower defence',
       summary:
-        'The alarm goes up: civilians hide in the watchtowers, and each tower shoots at the raiders faster the more are inside.',
+        'Defence mode is on: civilians hide in the defence towers, and each tower shoots at the raiders faster the more are inside.',
     },
     'attack-move': {
       title: 'Attack-move',
@@ -298,12 +298,12 @@ export const enContent = {
     trade: {
       title: 'Trade route',
       summary:
-        'A neutral warehouse offers four iron for a coin; the trader carts coins over from the home warehouse, brings the iron back, and the goods traded turn the nation friendly. Select the trader for its Handel section, and the far warehouse for its agreements.',
+        'A neutral warehouse offers four iron for a coin; the merchant carts coins over from the home warehouse, brings the iron back, and the goods traded turn the tribe friendly. Select the merchant for its Trade section, and the far warehouse for its trade offers.',
     },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:
-        "A trader with a handcart plies between two of your warehouses with different stocks and no good marked, so nothing moves. Select the trader and, in its Handel section, choose a good's direction (→ A, ⇄, → B), its ceiling and the reserve left behind.",
+        "A merchant with a handcart plies between two of your warehouses with different stocks and no good marked, so nothing moves. Select the merchant and, in its Trade section, choose a good's direction (→ A, ⇄, → B), its ceiling and the reserve left behind.",
     },
     tribute: {
       title: 'Tributes',
@@ -318,7 +318,7 @@ export const enContent = {
     vehicles: {
       title: 'Vehicles',
       summary:
-        'Every cart, ship and catapult of two civilizations standing on a shore at a few headings: an ox cart loaded with wood, a catapult mid-attack, a trader pulling its handcart away, the debris of a cart wrecked on the first tick, and a crewed ox cart and catapult driving east along the bottom rows, the catapult at half the pace.',
+        'Every cart, ship and catapult of two tribes standing on a shore at a few headings: an ox cart loaded with wood, a catapult mid-attack, a merchant pulling its handcart away, the debris of a cart wrecked on the first tick, and a crewed ox cart and catapult driving east along the bottom rows, the catapult at half the pace.',
     },
     'cart-drivers': {
       title: 'Cart drivers',
@@ -328,17 +328,17 @@ export const enContent = {
     'vehicle-ships': {
       title: 'A ship across the strait',
       summary:
-        'A small ship lies moored at the west shore. Three soldiers attach to it and are ordered to dock at the east shore: the ship waits until everyone is aboard, casts off, sails the strait, moors on the far side and unloads the party on the clicked point.',
+        'A ship lies moored at the west shore. Three soldiers attach to it and are ordered to dock at the east shore: the ship waits until everyone is aboard, casts off, sails the strait, moors on the far side and unloads the party on the clicked point.',
     },
     'vehicle-yard': {
       title: 'Vehicle yard',
       summary:
-        'A level-3 joinery whose two joiners are set to make handcarts: each opens a hidden cart yard beside the shop, carries the wood in from the warehouse, hammers on the site, and the finished yard becomes a handcart standing where it stood.',
+        "A level-3 carpenter's shop whose two carpenters are set to make handcarts: each opens a hidden cart yard beside the shop, carries the wood in from the warehouse, hammers on the site, and the finished yard becomes a handcart standing where it stood.",
     },
     'vehicle-ship-column': {
       title: 'Ships sailing north and south',
       summary:
-        'Two crewed ships on open water: the small one sails straight north, the big one straight south, then both turn about and sail back. Each keeps its column and shows its bow-up or bow-down hull with the wake behind it, instead of zigzagging between the diagonals.',
+        'Two crewed ships on open water: the ordinary one sails straight north, the big one straight south, then both turn about and sail back. Each keeps its column and shows its bow-up or bow-down hull with the wake behind it, instead of zigzagging between the diagonals.',
     },
     'vehicle-ship-voyage': {
       title: 'A long voyage',
@@ -353,17 +353,17 @@ export const enContent = {
     'vehicle-shipyard': {
       title: 'Shipyard',
       summary:
-        'A level-4 joinery on a shore whose joiners are set to the small ship and the catapult in turn: the ship yard opens on the water beside the shop with the shipwright working from the shore, the catapult yard on the land. The launched ship lies moored at the shore with its sails furled.',
+        "A level-4 carpenter's shop on a shore whose carpenters are set to the ship and the catapult in turn: the ship yard opens on the water beside the shop with the carpenter working from the shore, the catapult yard on the land. The launched ship lies moored at the shore with its sails furled.",
     },
     'vehicle-ox-yard': {
       title: 'Building an ox cart',
       summary:
-        'A joiner keeps building bare carts with wood from the warehouse. One cow walks over from a farm and harnesses the first cart. Each farm keeps two cows, so further carts wait for animals while the joiner continues working.',
+        'A carpenter keeps building ox cart frameworks with wood from the warehouse. One cow walks over from a cattle farm and is harnessed to the first one. Each cattle farm keeps two cows, so further frameworks wait for animals while the carpenter continues working.',
     },
     'vehicle-ox': {
-      title: 'Ox cart without ox',
+      title: 'Ox cart framework',
       summary:
-        "A bare ox cart beside the player's four cows. Its goto is refused for want of an animal; then the cart recruits the nearest cow past the herd's breeding pair, the cow walks over and is consumed, and the cart becomes an ox cart in place, which the carrier standing by may now attach to.",
+        "An ox cart framework beside the player's four cows. Its goto is refused for want of an animal; then the cart recruits the nearest cow past the herd's breeding pair, the cow walks over and is consumed, and the cart becomes an ox cart in place, which the carrier standing by may now attach to.",
     },
     'vehicle-cargo': {
       title: 'Vehicle cargo',
@@ -383,37 +383,37 @@ export const enContent = {
     'vehicle-tight-gap': {
       title: 'Vehicle tight gaps',
       summary:
-        'A palisade runs across the map, broken by lanes from west to east: two houses 1, 2, 3 and 4 nodes apart, tree lines with gaps of 1, 2 and 3 nodes, a sparse forest, and bare wall openings of 2 and 3 nodes. Four catapults, two ox carts and a handcart drive across, some north to south, some back. A catapult fits between houses two nodes apart and through any single tree gap, but not between houses one node apart, where it goes round by the next lane, nor through a wall opening narrower than three. Carts pass every gap. Select a vehicle and send it through a lane yourself.',
+        'A stockade runs across the map, broken by lanes from west to east: two houses 1, 2, 3 and 4 nodes apart, tree lines with gaps of 1, 2 and 3 nodes, a sparse forest, and bare stockade openings of 2 and 3 nodes. Four catapults, two ox carts and a handcart drive across, some north to south, some back. A catapult fits between houses two nodes apart and through any single tree gap, but not between houses one node apart, where it goes round by the next lane, nor through a stockade opening narrower than three. Carts pass every gap. Select a vehicle and send it through a lane yourself.',
     },
     school: {
       title: 'Learning a profession',
       summary:
-        'One collector goes to school to learn carpentry, a trade already known to the settlement. Select the other collector and right-click the school to choose a course yourself.',
+        'One extractor goes to school to learn carpentry, a profession already known to the settlement. Select the other extractor and right-click the school to choose a course yourself.',
     },
     'learning-foundations': {
       title: 'Learning at a foundation',
       summary:
-        'A civilian is sent to a barracks foundation and a collector to a school foundation before the builders finish them. Both wait beside the door, walk in once their house stands, and come out a soldier and a carpenter. Select the spare civilian and right-click a foundation to send it yourself.',
+        'A civilian is sent to a barracks foundation and an extractor to a school foundation before the builders finish them. Both wait beside the door, walk in once their house stands, and come out a soldier and a carpenter. Select the spare civilian and right-click a foundation to send it yourself.',
     },
     'school-graduates': {
       title: 'Graduates go to work',
       summary:
-        "Two collectors learn carpentry with the assistant sending graduates to work. The first takes the joinery's only joiner slot. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do. A smith learns plate armour, passes the nearer smithy that cannot make it and forges plate at the upgraded one.",
+        "Two extractors learn carpentry with the assistant sending graduates to work. The first takes the only carpenter slot in the carpenter's shop. The second finds no free slot, stays in the school yard and walks back there whenever it has nothing to do. A blacksmith learns plate armour, passes the nearer smithy that cannot make it and forges plate at the upgraded one.",
     },
     'porter-flag': {
-      title: "A porter's flag at the quarry",
+      title: "A carrier's flag at the quarry",
       summary:
-        'A miner stacks stone at his yard far east of the headquarters. The headquarters porter holds a flag beside that yard: he carries the quarry stone and the flour of a mill near the flag home, leaves the heap by the headquarters alone and waits at the flag when nothing lies there.',
+        'An extractor stacks quarrystone at his yard far east of the headquarters. The headquarters carrier holds a flag beside that yard: he carries the quarrystone and the flour of a mill near the flag home, leaves the heap by the headquarters alone and waits at the flag when nothing lies there.',
     },
     'gatherer-flag-follow': {
       title: 'Flags follow the resources',
       summary:
-        'A collector fells the two trees beside his flag with the assistant moving gatherer flags. Once they are gone, the flag moves 3-5 tiles from a tree of the grove to the east, between the grove and the headquarters, and he goes on felling there.',
+        'An extractor fells the two trees beside his flag with the assistant moving extractor flags. Once they are gone, the flag moves 3-5 tiles from a tree of the grove to the east, between the grove and the headquarters, and he goes on felling there.',
     },
     'gatherer-goods': {
-      title: 'What the collector gathers',
+      title: 'What the extractor gathers',
       summary:
-        'A novice collector beside trees, a stone deposit and an iron deposit. Stone and clay are stopped, iron and gold are locked until he gains experience, so his Production list shows a gathered, a stopped and a locked good side by side, and he fells only the trees.',
+        'A novice extractor beside trees, a stone deposit and an iron deposit. Quarrystone and clay are stopped, iron and gold are locked until he gains experience, so his Production list shows a gathered, a stopped and a locked good side by side, and he fells only the trees.',
     },
     'idle-work': {
       title: 'Why workers are idle',
@@ -423,7 +423,7 @@ export const enContent = {
     'far-post': {
       title: 'Post beyond signpost reach',
       summary:
-        'A bakery and a home stand 52 tiles from the camp, with no signposts between. Olaf is posted to the bakery but stands lost. Right-click other settlers onto the bakery, the home or the headquarters, then have the scout raise signposts to the bakery: Olaf sets off to work on his own.',
+        'A bakery and a dwelling stand 52 tiles from the camp, with no signposts between. Olaf is posted to the bakery but stands lost. Right-click other settlers onto the bakery, the dwelling or the headquarters, then have the scout raise signposts to the bakery: Olaf sets off to work on his own.',
     },
     'store-reach': {
       title: 'Store beyond signpost reach',
@@ -433,7 +433,7 @@ export const enContent = {
     technology: {
       title: 'Mission technologies',
       summary:
-        'Open the building menu: housing starts forbidden. The script first grants permission, then your own collector unlocks it. The rival collector cannot unlock your technologies.',
+        'Open the building menu: housing starts forbidden. The script first grants permission, then your own extractor unlocks it. The rival extractor cannot unlock your technologies.',
     },
     'terrain-edits': {
       title: 'Scripted terrain edits',
@@ -456,7 +456,7 @@ export const enContent = {
         '500':
           'The elders send word: hold the ford until the thaw, and raise the great hall before the next winter. Hallvard will lead the guard.',
         '501':
-          'A rider from the elders: the ford is marked out for the palisade. Keep the guard inside the ring.',
+          'A rider from the elders: the ford is marked out for the stockade. Keep the guard inside the ring.',
       },
     },
     victory: {
@@ -475,7 +475,7 @@ export const enContent = {
     chests: {
       title: 'Chests and papers',
       summary:
-        'Three wooden chests are opened for food, three civilists and a well paper, a magical one cannot be opened by an ordinary settler, and a held paper stands a well up finished.',
+        'Three wooden chests open to give food, three civilians and a well paper; a magical one cannot be opened by an ordinary settler, and a held paper places a finished well.',
     },
     'meal-break': {
       title: 'Meal break',
@@ -495,7 +495,7 @@ export const enContent = {
     'chest-queue': {
       title: 'Chests one after another',
       summary:
-        'A collector opens a chest and then the one queued behind it. Select it and Shift + right click the last two chests to queue them too.',
+        'An extractor opens a chest and then the one queued behind it. Select it and Shift + right click the last two chests to queue them too.',
     },
     chain: {
       title: 'Production chain',
@@ -504,12 +504,12 @@ export const enContent = {
     alchemy: {
       title: "Alchemist's huts",
       summary:
-        'A druid brews holy oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and coin in the large one.',
+        'A druid brews oil from mushrooms in the small hut; two druids brew potions from water, mushroom, herb and coin in the large one.',
     },
     'household-goods': {
       title: 'Household goods',
       summary:
-        'Potters, joiners and druids supply a mature home with crockery, furniture and holy oil for better meals, rest and prayer.',
+        'Potters, carpenters and druids supply a mature dwelling with crockery, furniture and oil for better meals, rest and prayer.',
     },
     warehouse: {
       title: 'Warehouse logistics',
@@ -518,27 +518,27 @@ export const enContent = {
     construction: {
       title: 'Raising buildings',
       summary:
-        'Carriers and future staff haul materials while builders hammer; the animal farm shows a breeder helping before taking up the finished workplace.',
+        'Carriers and future staff haul materials while builders hammer; the cattle farm shows a stock farmer helping before taking up the finished workplace.',
     },
     'farm-construction': {
       title: 'Farm construction',
       summary:
-        'Builders raise a farm beside a finished drying barn, from its timber frame to walls and roofing.',
+        'Builders raise a farm beside a finished one for comparison, from its timber frame to walls and roofing; a warehouse supplies the materials.',
     },
     upgrade: {
       title: 'Building upgrades',
       summary:
-        'A home re-opens as a construction site and rises a level for the difference cost; a second home awaits your Upgrade button.',
+        'A dwelling re-opens as a construction site and rises a level for the difference cost; a second dwelling awaits your Upgrade button.',
     },
     'frank-construction': {
       title: 'Frankish construction stages',
       summary:
-        'A frankish mason hut rises from its foundation while a mason hut and a druid hut upgrade beside it.',
+        "A Frankish mason's shop rises from its foundation while a mason's shop and an alchemist's hut upgrade beside it.",
     },
     'upgrade-tribes': {
-      title: 'Upgrades across civilizations',
+      title: 'Upgrades across tribes',
       summary:
-        "A viking home and a frank home upgrade side by side, each keeping its own civilization's look.",
+        "A Viking dwelling and a Frankish dwelling upgrade side by side, each keeping its own tribe's look.",
     },
     'workshop-products': {
       title: 'Workshop products',
@@ -547,11 +547,11 @@ export const enContent = {
     },
     signposts: {
       title: 'Signposts',
-      summary: 'A scout erects a signpost; settlers work only within the connected guidepost network.',
+      summary: 'A scout erects a signpost; settlers work only within the connected signpost network.',
     },
     family: {
       title: 'Marriage and children',
-      summary: 'A couple weds with a kiss; a married wife stocks the home with food and bears a child.',
+      summary: 'A couple weds with a kiss; a married wife stocks the dwelling with food and bears a child.',
     },
     'family-away': {
       title: 'A husband who never comes home',
@@ -570,7 +570,7 @@ export const enContent = {
     gossip: {
       title: 'Gossip and need bubbles',
       summary:
-        'Idle settlers pair up and chat to refill their company need (soldiers never join) while hungry and sleepy settlers show thought bubbles.',
+        'Idle settlers pair up and chat to refill their social motivation (soldiers never join) while hungry and sleepy settlers show thought bubbles.',
     },
     wildlife: {
       title: 'Wildlife herds',
@@ -585,7 +585,7 @@ export const enContent = {
     creatures: {
       title: 'Monsters and predators',
       summary:
-        'Weresnakes and werewolves face a band of warriors. Wolves, lions, lionesses, brown bears and polar bears roam nearby.',
+        'Weresnakes and werewolves face a band of warriors. Wolves, lions, lionesses, bears and polar bears roam nearby.',
     },
     'creature-forms': {
       title: 'Weresnake forms',
@@ -605,17 +605,17 @@ export const enContent = {
     'livestock-yard': {
       title: 'Livestock without headquarters',
       summary:
-        'Sheep and cattle gather at the nearer warehouse in the north. The southern herd has no storage and gathers beside the nearer home.',
+        'Sheep and cattle gather at the nearer warehouse in the north. The southern herd has no storage and gathers beside the nearer dwelling.',
     },
     livestock: {
       title: 'Animal husbandry',
       summary:
-        'A scout claims sheep and cattle (a faction-coloured heart appears), the herd marches to the animal farm, and the breeders turn water, wheat and a little animal life into wool, leather and meat.',
+        "A scout claims sheep and cattle (a heart in the player's colour appears), the herd marches to the cattle farm, and the stock farmers turn water, wheat and a little animal life into wool, leather and meat.",
     },
     equipment: {
       title: 'Equipment window',
       summary:
-        'Three settlers for the equip window: a civilian with worn boots, tool and consumables, a soldier with sword and chain armour, and a bare settler. Spare gear lies by the HQ for the per-slot equip, swap and take-off orders.',
+        'Three settlers for the equip window: a civilian with worn shoes, tool and consumables, a soldier with sword and chain mail, and a bare settler. Spare gear lies by the HQ for the per-slot equip, swap and take-off orders.',
     },
     'group-panel': {
       title: 'Group panel',
@@ -665,47 +665,47 @@ export const enContent = {
     'equipment-effects': {
       title: 'Equipment effects',
       summary:
-        'Two collectors trek to a forest - the booted one visibly faster, its boots wearing down on the road; an iron-tooled miller grinds 5 wheat with a production bonus, and settlers drink their mead and potions by themselves when hunger or fatigue presses.',
+        'Two extractors trek to a forest - the shod one visibly faster, its shoes wearing down on the road; an iron-tooled miller grinds 5 wheat with a production bonus, and settlers drink their mead and potions by themselves when hunger or fatigue presses.',
     },
     amulets: {
       title: 'Amulets',
       summary:
-        'Three amulet trials: a walker with the speed amulet pulls ahead of a bare one, a swordsman with the strength, critical-hit and defense amulets beats an equal rival, and a hungry, tired collector tops up both needs from the food and stamina amulets, which never wear out.',
+        'Three amulet trials: a walker with the wind amulet pulls ahead of a bare one, a swordsman with the amulets of strength, precision and defence beats an equal rival, and a hungry, tired extractor tops up both needs from the nourishing amulet and the amulet of stamina, which never wear out.',
     },
     barracks: {
       title: 'Barracks training',
       summary:
-        'A colonist sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a serving soldier who only drills, and a colonist for whom the soldier trade stays shut.',
+        'A civilian sent to the barracks drills inside for 15 seconds and walks out an unarmed soldier; beside him a serving soldier who only drills, and a civilian for whom the soldier profession stays shut.',
     },
     armor: {
-      title: 'Armor parade',
+      title: 'Armour parade',
       summary:
-        'A parade grid of sword soldiers: one column per armor state (bare, wool, leather, chain, plate) and one row per player colour, every unit standing down so rival owners never fight. For judging the per-armor recolours across team colours.',
+        'A parade grid of sword soldiers: one column per armour state (bare, tunic, leather armour, chain mail, plate armour) and one row per player colour, every unit standing down so rival owners never fight. For judging the per-armour recolours across team colours.',
     },
     'ai-defence': {
       title: 'AI defence',
       summary:
-        'The red seat is handed to the strategic AI with only its military plan running. It rings its own alarm over the headquarters as the blue warband closes, walls three of its four archers into the watchtower - the fourth is left to the field army - and throws everyone still free at the raiders. Both warbands are over-tough, so the scene settles into a standing fight instead of a body count.',
+        'The red seat is handed to the strategic AI with only its military plan running. It puts its headquarters into defence mode as the blue warband closes, walls three of its four archers into the defence tower - the fourth is left to the field army - and throws everyone still free at the raiders. Both warbands are over-tough, so the scene settles into a standing fight instead of a body count.',
     },
     'ai-siege-march': {
       title: 'AI siege march',
       summary:
-        'The red AI seat drafts its two bare-handed men as catapult drivers and sends its first wave across the map. It marches in legs, closing up at each stop, catapults in front, swordsmen behind them and archers last. At the blue settlement the catapults and archers break the watchtower while the swordsmen hold back, then everybody goes in on the headquarters.',
+        'The red AI seat drafts its two bare-handed men as catapult commanders and sends its first wave across the map. It marches in legs, closing up at each stop, catapults in front, swordsmen behind them and archers last. At the blue settlement the catapults and archers break the defence tower while the swordsmen hold back, then everybody goes in on the headquarters.',
     },
     'ai-siege-charge': {
       title: 'AI siege charge',
       summary:
-        'The AI siege march with a tough blue band standing across the route. The catapults shell it as the wave closes in, and once the band is near enough the whole wave charges it before marching on to the watchtower.',
+        'The AI siege march with a tough blue band standing across the route. The catapults shell it as the wave closes in, and once the band is near enough the whole wave charges it before marching on to the defence tower.',
     },
     'tower-garrison': {
       title: 'Tower garrison',
       summary:
-        'Six archers - three short bows, three long - fill a watchtower, vanish inside it, and shoot from up there at their own bow plus the tower bonus. Instead of a sign per man the roof flies the garrison flag, five stars for the six of them. The enemy party takes arrows on the march, and once it reaches the wall it can only batter the tower: the men inside are out of reach.',
+        'Six archers - three short bows, three long - fill a defence tower, vanish inside it, and shoot from up there at their own bow plus the tower bonus. Instead of a sign per man the roof flies the garrison flag, five stars for the six of them. The enemy party takes arrows on the march, and once it reaches the tower it can only batter it: the men inside are out of reach.',
     },
     'death-loot': {
       title: 'Fallen soldiers',
       summary:
-        'Two files of sword soldiers cut each other down in the open. Every man is dressed alike - short sword, chain armor, a full mead and half-walked shoes - and his gear lies beside his bones: the sword, the armor and the untouched mead drop, the part-used shoes go down with him.',
+        'Two files of sword soldiers cut each other down in the open. Every man is dressed alike - shortsword, chain mail, a full mead and half-walked shoes - and his gear lies beside his bones: the sword, the armour and the untouched mead drop, the part-used shoes go down with him.',
     },
   },
 } as const;

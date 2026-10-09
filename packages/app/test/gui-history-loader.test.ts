@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadGuiHistory } from '../src/content/gui-gfx.js';
+import { loadGuiHistory, loadGuiStrings } from '../src/content/gui-gfx.js';
 import { diag } from '../src/diag/index.js';
 
 /** The history book loader: `/gui/history/<lang>.json` validated through the data schema, null otherwise. */
@@ -35,5 +35,24 @@ describe('loadGuiHistory', () => {
     await expect(loadGuiHistory('eng', malformed as unknown as typeof fetch)).resolves.toBeNull();
     expect(warn).toHaveBeenCalledOnce();
     warn.mockRestore();
+  });
+});
+
+describe('loadGuiStrings', () => {
+  it('asks again after a failed load and keeps a loaded table', async () => {
+    const STRINGS = { goods: { '1': 'Wood' } };
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(jsonResponse(null, false))
+      .mockResolvedValue(jsonResponse(STRINGS));
+    vi.stubGlobal('fetch', fetchMock);
+    try {
+      await expect(loadGuiStrings('retry-lang')).resolves.toBeNull();
+      await expect(loadGuiStrings('retry-lang')).resolves.toEqual(STRINGS);
+      await expect(loadGuiStrings('retry-lang')).resolves.toEqual(STRINGS);
+      expect(fetchMock).toHaveBeenCalledTimes(2);
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
 });

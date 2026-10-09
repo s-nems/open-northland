@@ -8,7 +8,8 @@ import { loadMapStringTables } from '../src/stages/maps/meta.js';
 import { buildStringCif } from './fixtures/cif.js';
 import { type GameOutTemp, makeGameOutTemp } from './support/game-tree.js';
 
-// Authored display text, represented as source bytes rather than UTF-8 fixtures.
+// Authored display text, represented as source bytes rather than UTF-8 fixtures. German 0x9C is œ in
+// CP1252 but ś in CP1250, and Russian 0xA8 is Ё only in CP1251.
 const TEXTS = [
   { lang: 'ger', code: 'de', bytes: 'Gr\xf6\xdfe \x9c', text: 'Größe œ' },
   { lang: 'rus', code: 'ru', bytes: '\xa8\xe6', text: 'Ёж' },
@@ -65,6 +66,22 @@ describe('localized pipeline text', () => {
     for (const { lang, text } of TEXTS) {
       const output = JSON.parse(await readFile(join(temp.out, `gui/strings/${lang}.json`), 'utf8'));
       expect(output.goods).toEqual({ 5: text });
+    }
+  });
+
+  it('decodes German and Russian game-object .ini tables in their own code pages', async () => {
+    for (const { lang, bytes: raw } of TEXTS) {
+      await temp.write(
+        `Data/text/${lang}/strings/gameobjects/tribes.ini`,
+        bytes(`[control]\nstringidmultiplier 2\n[text]\nstringn 5 "${raw}"\nstring "${raw}"`),
+      );
+    }
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    await convertGuiStrings({ mod: temp.game }, temp.out, ['ger', 'rus']);
+    warn.mockRestore();
+    for (const { lang, text } of TEXTS) {
+      const output = JSON.parse(await readFile(join(temp.out, `gui/strings/${lang}.json`), 'utf8'));
+      expect(output.tribes).toEqual({ 5: text });
     }
   });
 

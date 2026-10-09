@@ -12,12 +12,7 @@ export { convertGuiAtlases, type GuiAtlasResult } from './atlases.js';
 export { convertCursors, type GuiCursorResult } from './cursors.js';
 export { convertGuiHistory, type GuiHistoryResult } from './history.js';
 export { convertGuiPaletteLut, GUI_PALETTE_LUT_STEM } from './palette-lut.js';
-export {
-  convertGuiStrings,
-  GAME_OBJECT_TABLES,
-  type GuiStringsResult,
-  STRING_TABLES,
-} from './strings.js';
+export { convertGuiStrings, type GuiStringsResult } from './strings.js';
 export { BODY_SHADOW_MIN_LUMA, convertWindowBitmaps, liftPaletteShadows } from './window-bitmaps.js';
 
 /** The emitted `content/gui/manifest.json`, the app's entry point to every GUI output. */

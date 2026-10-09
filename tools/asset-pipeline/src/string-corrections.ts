@@ -1,6 +1,8 @@
 import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { errorMessage } from './errors.js';
+import { GUI_LANGS } from './stages/gui/paths.js';
+import { EXPORTED_TABLES } from './stages/gui/strings.js';
 
 /** The committed fixes to decoded display strings; this package's AGENTS.md sets the rules. */
 export const STRING_CORRECTIONS_FILE = fileURLToPath(
@@ -101,8 +103,12 @@ function parseStringCorrections(path: string, raw: unknown): StringCorrection[] 
     const unknownKey = Object.keys(record).find((key) => !(ENTRY_KEYS as readonly string[]).includes(key));
     if (unknownKey !== undefined) at(`unknown key "${unknownKey}"`);
     const { lang, table, id, from, to, reason } = record;
-    if (typeof lang !== 'string' || lang === '') return at('lang must name a text folder');
-    if (typeof table !== 'string' || table === '') return at('table must name a string table');
+    if (typeof lang !== 'string' || !(GUI_LANGS as readonly string[]).includes(lang)) {
+      return at(`lang must be one of ${GUI_LANGS.join(', ')}`);
+    }
+    if (typeof table !== 'string' || !EXPORTED_TABLES.includes(table)) {
+      return at(`table must be one of ${EXPORTED_TABLES.join(', ')}`);
+    }
     if (typeof id !== 'number' || !Number.isSafeInteger(id) || id < 0) return at('id must be a string id');
     if (typeof from !== 'string' || typeof to !== 'string' || from === to) {
       return at('"from" and "to" must be two different strings');

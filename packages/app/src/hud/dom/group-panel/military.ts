@@ -32,9 +32,9 @@ export function holdCounts<K extends string>(
     .join(' · ');
 }
 
-/** Military for a group: the fighters' stance and Food and sleep, and the catapults' stance. A strip lights
- *  the value every member holds and none while they differ; each option says how many it reaches. A row
- *  the group has stays in every tab, faded where the tab holds nobody it orders. */
+/** Military for a group: the fighters' stance and eat-and-sleep permission, and the catapults' stance. A
+ *  strip lights the value every member holds and none while they differ; each option says how many it
+ *  reaches. A row the group has stays in every tab, faded where the tab holds nobody it orders. */
 export interface GroupMilitarySection {
   readonly element: HTMLElement;
   update(scope: GroupScopeModel, orders: boolean): void;

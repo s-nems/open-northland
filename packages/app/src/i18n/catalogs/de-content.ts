@@ -3,34 +3,34 @@ export const deContent = {
     idle: 'Zivilist',
     carrier: 'Träger',
     builder: 'Bauarbeiter',
-    joiner: 'Zimmermann',
-    armorer: 'Waffenschmied',
+    joiner: 'Schreiner',
+    armorer: 'Waffenbauer',
     potter: 'Töpfer',
     mason: 'Steinmetz',
     smith: 'Schmied',
-    coin_maker: 'Münzpräger',
+    coin_maker: 'Münzmacher',
     hunter: 'Jäger',
     breeder: 'Viehzüchter',
-    tailor: 'Schneider',
-    farmer: 'Bauer',
+    tailor: 'Näher',
+    farmer: 'Farmer',
     miller: 'Müller',
     baker: 'Bäcker',
-    brewer: 'Brauer',
+    brewer: 'Braumeister',
     fisher: 'Fischer',
     fisher_sea: 'Seefischer',
-    herbalist: 'Kräuterkundiger',
+    herbalist: 'Kräutergärtner',
     druid: 'Druide',
     scout: 'Kundschafter',
     trader: 'Händler',
     trader_sea: 'Seehändler',
     soldier: 'Soldat',
-    collector: 'Sammler',
-    archer_short: 'Bogenschütze',
+    collector: 'Abbauer',
+    archer_short: 'Kurzbogenschütze',
     archer_long: 'Langbogenschütze',
     worker: 'Arbeiter',
   },
   category: {
-    gathering: 'Sammeln',
+    gathering: 'Abbau',
     transport: 'Transport',
     production: 'Handwerk',
     special: 'Spezial',
@@ -47,29 +47,29 @@ export const deContent = {
     stock_01: 'Lagerhaus (Stufe 2)',
     stock_02: 'Lagerhaus (Stufe 3)',
     work_well_00: 'Brunnen',
-    work_hive_00: 'Imkerei',
-    work_farm_00: 'Bauernhof',
+    work_hive_00: 'Bienenstock',
+    work_farm_00: 'Farm',
     work_mill_00: 'Mühle',
     work_bakery_00: 'Bäckerei (Stufe 1)',
     work_bakery_01: 'Bäckerei (Stufe 2)',
     work_brewery: 'Brauerei',
-    work_animal_farm: 'Viehhof',
-    work_sewery_00: 'Schneiderei (Stufe 1)',
-    work_sewery_01: 'Schneiderei (Stufe 2)',
+    work_animal_farm: 'Viehzüchterei',
+    work_sewery_00: 'Näherei (Stufe 1)',
+    work_sewery_01: 'Näherei (Stufe 2)',
     work_pottery_00: 'Töpferei (Stufe 1)',
     work_pottery_01: 'Töpferei (Stufe 2)',
-    work_pottery_02: 'Wehrmauer',
-    work_joinery_00: 'Zimmerei (Stufe 1)',
-    work_joinery_01: 'Zimmerei (Stufe 2)',
-    work_joinery_02: 'Zimmerei (Stufe 3)',
-    work_joinery_03: 'Zimmerei (Stufe 4)',
-    work_armory_00: 'Waffenschmiede (Stufe 1)',
-    work_armory_01: 'Waffenschmiede (Stufe 2)',
+    work_pottery_02: 'Mauer',
+    work_joinery_00: 'Schreinerei (Stufe 1)',
+    work_joinery_01: 'Schreinerei (Stufe 2)',
+    work_joinery_02: 'Schreinerei (Stufe 3)',
+    work_joinery_03: 'Schreinerei (Stufe 4)',
+    work_armory_00: 'Waffenhütte (Stufe 1)',
+    work_armory_01: 'Waffenhütte (Stufe 2)',
     work_mason_hut_00: 'Steinmetzhütte (Stufe 1)',
     work_mason_hut_01: 'Steinmetzhütte (Stufe 2)',
     work_smithy_00: 'Schmiede (Stufe 1)',
     work_smithy_01: 'Schmiede (Stufe 2)',
-    work_coin_mint: 'Münzprägestätte',
+    work_coin_mint: 'Münzpräge',
     work_herb_hut: 'Kräuterhütte',
     work_druid_00: 'Alchemistenhütte (Stufe 1)',
     work_druid_01: 'Alchemistenhütte (Stufe 2)',
@@ -80,7 +80,7 @@ export const deContent = {
     tower_01: 'Wachturm (Stufe 2)',
     handcart: 'Handkarren',
     oxcart: 'Ochsenkarren',
-    ship_small: 'Kleines Schiff',
+    ship_small: 'Schiff',
     ship_big: 'Großes Schiff',
     catapult: 'Katapult',
     wonder_lighthouse_of_alexandria: 'Leuchtturm',
@@ -90,18 +90,18 @@ export const deContent = {
     wonder_artemis_temple: 'Artemis-Tempel',
     wonder_zeus_statue: 'Zeus-Statue',
     wonder_pyramid_of_gizeh: 'Pyramide',
-    wonder_8th_wonder: '8. Weltwunder',
-    work_murek: 'Wehrmauer',
+    wonder_8th_wonder: '8. Wunder',
+    work_murek: 'Mauer',
   },
   goods: {
     wood: 'Holz',
     plank: 'Baumstamm',
     coin: 'Münze',
-    stone: 'Stein',
+    stone: 'Bruchstein',
     mud: 'Lehm',
     iron: 'Eisen',
     gold: 'Gold',
-    mushroom: 'Pilze',
+    mushroom: 'Pilz',
     water: 'Wasser',
     wheat: 'Weizen',
     leather: 'Leder',
@@ -109,27 +109,27 @@ export const deContent = {
     flour: 'Mehl',
     honey: 'Honig',
     herb: 'Kraut',
-    holy_oil: 'Heiliges Öl',
-    food_simple: 'Einfache Kost',
-    food_extra: 'Feine Kost',
+    holy_oil: 'Öl',
+    food_simple: 'Nahrung',
+    food_extra: 'Kuchen',
     bread: 'Brot',
-    candy: 'Süßigkeiten',
+    candy: 'Kuchen',
     meat: 'Fleisch',
     fish: 'Fisch',
-    fruit: 'Obst',
+    fruit: 'Frucht',
     sausage: 'Wurst',
-    brick: 'Ziegelstein',
+    brick: 'Backstein',
     tile: 'Dachziegel',
-    pillar: 'Steinquader',
+    pillar: 'Steinblock',
     ornament: 'Marmor',
     crockery: 'Geschirr',
     furniture: 'Möbel',
     shoes: 'Schuhe',
     tool_wooden: 'Holzwerkzeug',
     tool_iron: 'Eisenwerkzeug',
-    armor_wool: 'Tunika',
+    armor_wool: 'Waffenrock',
     armor_leather: 'Lederrüstung',
-    armor_chain: 'Kettenrüstung',
+    armor_chain: 'Kettenhemd',
     armor_plate: 'Plattenrüstung',
     bow_short: 'Kurzbogen',
     bow_long: 'Langbogen',
@@ -140,27 +140,27 @@ export const deContent = {
     mead: 'Met',
     potion_food_small: 'Kleiner Nahrungstrank',
     potion_food_big: 'Großer Nahrungstrank',
-    potion_stamina_small: 'Kleiner Ausdauertrank',
-    potion_stamina_big: 'Großer Ausdauertrank',
+    potion_stamina_small: 'Kleiner Wachtrank',
+    potion_stamina_big: 'Großer Wachtrank',
     potion_heal_small: 'Kleiner Heiltrank',
     potion_heal_big: 'Großer Heiltrank',
-    amulet_food: 'Amulett der Fülle',
-    amulet_stamina: 'Amulett der Ausdauer',
-    amulet_strength: 'Amulett der Stärke',
-    amulet_defense: 'Amulett der Verteidigung',
-    amulet_crithit: 'Amulett des kritischen Schlags',
-    amulet_speed: 'Amulett der Geschwindigkeit',
-    prey: 'Wild',
-    sheep: 'Schafe',
+    amulet_food: 'Nahrungsamulett',
+    amulet_stamina: 'Wachbleibamulett',
+    amulet_strength: 'Stärkeamulett',
+    amulet_defense: 'Verteidigungsamulett',
+    amulet_crithit: 'Trefferamulett',
+    amulet_speed: 'Windamulett',
+    prey: 'Beute',
+    sheep: 'Schaf',
     cattle: 'Ochse',
     handcart: 'Handkarren',
     oxcart: 'Ochsenkarren',
-    ship_small: 'Kleines Schiff',
+    ship_small: 'Schiff',
     ship_big: 'Großes Schiff',
     catapult: 'Katapult',
-    cart_no_ox: 'Ochsenkarren ohne Ochsen',
-    chest: 'Truhe',
-    anything: 'Beliebige Ware',
+    cart_no_ox: 'Ochsenkarrengerüst',
+    chest: 'Kiste',
+    anything: 'Alles',
   },
   missionTrace: {
     title: 'Missionsausführungsprotokoll',
@@ -197,7 +197,7 @@ export const deContent = {
     },
     'personal-names': {
       title: 'Vornamen',
-      summary: 'Vornamen für fünf Zivilisationen und zwei Kreaturenstämme.',
+      summary: 'Vornamen für fünf Stämme und zwei Kreaturenstämme.',
     },
     'everyday-gestures': {
       title: 'Alltägliche Gesten',
@@ -214,13 +214,13 @@ export const deContent = {
         'Zivilisten, unbewaffnete Soldaten und Bogenschützen duellieren sich neben ruhenden, essenden und schlafenden Bogenschützen.',
     },
     'clay-gatherers': {
-      title: 'Lehmsammler',
-      summary: 'Zwei Sammler jeder Zivilisation graben Lehm und tragen ihn zu ihrer Flagge.',
+      title: 'Lehmabbau',
+      summary: 'Zwei Abbauer jedes Stammes graben Lehm und tragen ihn zu ihrer Flagge.',
     },
     'armed-idle': {
       title: 'Bewaffnete im Leerlauf',
       summary:
-        'Bewaffnete Soldaten aller Zivilisationen stehen untätig herum; bei jeder kleinen Bewegung behalten sie ihre Waffe in der Hand.',
+        'Bewaffnete Soldaten aller Stämme stehen untätig herum; bei jeder kleinen Bewegung behalten sie ihre Waffe in der Hand.',
     },
     'weapon-facings': {
       title: 'Angriffsrichtungen der Waffen',
@@ -260,17 +260,17 @@ export const deContent = {
     'road-upgrade': {
       title: 'Straßen neben einem Ausbau',
       summary:
-        'Die Baustelle einer Druidenhütte und eine fertige Druidenhütte halten die Fläche frei, die sie auf der nächsten Stufe einnehmen werden. Die Straßen- und Mauerwerkzeuge markieren diese Fläche farbig und bauen um sie herum.',
+        'Die Baustelle einer Alchemistenhütte und eine fertige Alchemistenhütte halten die Fläche frei, die sie auf der nächsten Stufe einnehmen werden. Die Straßen- und Palisadenwerkzeuge markieren diese Fläche farbig und bauen um sie herum.',
     },
     roads: {
       title: 'Straßen',
       summary:
-        'Zwei Bauarbeiter pflastern eine geplante Reihe von Straßenbaustellen mit Stein aus dem Lager. Ein Stein pflastert eine Baustelle und die benachbarten, die noch darauf warten.',
+        'Zwei Bauarbeiter pflastern eine geplante Reihe von Straßenbaustellen mit Bruchstein aus dem Lager. Ein Bruchstein pflastert eine Baustelle und die benachbarten, die noch darauf warten.',
     },
     'tower-defence': {
       title: 'Turmverteidigung',
       summary:
-        'Alarm wird ausgelöst: Zivilisten verstecken sich in den Wachtürmen. Je mehr sich in einem Turm befinden, desto schneller schießt er auf die Angreifer.',
+        'Der Verteidigungsmodus ist aktiv: Zivilisten verstecken sich in den Wachtürmen. Je mehr sich in einem Turm befinden, desto schneller schießt er auf die Angreifer.',
     },
     'attack-move': {
       title: 'Angriffsbewegung',
@@ -300,7 +300,7 @@ export const deContent = {
     trade: {
       title: 'Handelsroute',
       summary:
-        'Ein neutrales Lagerhaus bietet vier Eisen für eine Münze. Der Händler fährt Münzen vom heimischen Lagerhaus dorthin und bringt das Eisen zurück. Durch den Warenaustausch wird das Volk freundlich. Wähle den Händler für den Bereich „Handel“ aus und das entfernte Lagerhaus für dessen Abkommen.',
+        'Ein neutrales Lagerhaus bietet vier Eisen für eine Münze. Der Händler fährt Münzen vom heimischen Lagerhaus dorthin und bringt das Eisen zurück. Durch den Warenaustausch wird der Stamm freundlich. Wähle den Händler für den Bereich „Handel“ aus und das entfernte Lagerhaus für dessen Handelsangebote.',
     },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
@@ -310,17 +310,17 @@ export const deContent = {
     tribute: {
       title: 'Tribute',
       summary:
-        'Das Kartenskript verlangt drei Tribute für den Nachbarn: Das Bauholz kann aus einem Lagerhaus bezahlt werden, und die Zahlung macht den Nachbarn freundlich. Für den Münzbeutel reicht der Vorrat nicht. Der Stein liegt auf zwei Lager verteilt, die ihn gemeinsam bezahlen.',
+        'Das Kartenskript verlangt drei Tribute für den Nachbarn: Das Holz kann aus einem Lagerhaus bezahlt werden, und die Zahlung macht den Nachbarn freundlich. Für den Münzbeutel reicht der Vorrat nicht. Der Bruchstein liegt auf zwei Lager verteilt, die ihn gemeinsam bezahlen.',
       strings: {
-        '1': 'Die Nachbarn bitten um Bauholz und Stein für ihre neue Halle.',
+        '1': 'Die Nachbarn bitten um Holz und Bruchstein für ihre neue Halle.',
         '2': 'Die Nachbarn bitten um einen Beutel Münzen.',
-        '3': 'Die Nachbarn bitten um Stein, um die Straße zwischen uns zu pflastern.',
+        '3': 'Die Nachbarn bitten um Bruchstein, um die Straße zwischen uns zu pflastern.',
       },
     },
     vehicles: {
       title: 'Fahrzeuge',
       summary:
-        'Alle Karren, Schiffe und Katapulte zweier Zivilisationen stehen in mehreren Ausrichtungen an einem Ufer: ein mit Holz beladener Ochsenkarren, ein Katapult mitten im Angriff, ein Händler, der seinen Handkarren wegzieht, die Trümmer eines im ersten Tick zerstörten Karrens sowie ein bemannter Ochsenkarren und ein bemanntes Katapult, die in den unteren Reihen nach Osten fahren – das Katapult mit halber Geschwindigkeit.',
+        'Alle Karren, Schiffe und Katapulte zweier Stämme stehen in mehreren Ausrichtungen an einem Ufer: ein mit Holz beladener Ochsenkarren, ein Katapult mitten im Angriff, ein Händler, der seinen Handkarren wegzieht, die Trümmer eines im ersten Tick zerstörten Karrens sowie ein bemannter Ochsenkarren und ein bemanntes Katapult, die in den unteren Reihen nach Osten fahren – das Katapult mit halber Geschwindigkeit.',
     },
     'cart-drivers': {
       title: 'Karrenlenker',
@@ -330,17 +330,17 @@ export const deContent = {
     'vehicle-ships': {
       title: 'Ein Schiff durch die Meerenge',
       summary:
-        'Ein kleines Schiff liegt am Westufer. Drei Soldaten werden ihm zugewiesen, und es erhält den Befehl, am Ostufer anzulegen. Das Schiff wartet, bis alle an Bord sind, legt ab, durchquert die Meerenge, macht am anderen Ufer fest und setzt die Gruppe am angeklickten Punkt ab.',
+        'Ein Schiff liegt am Westufer. Drei Soldaten werden ihm zugewiesen, und es erhält den Befehl, am Ostufer anzulegen. Das Schiff wartet, bis alle an Bord sind, legt ab, durchquert die Meerenge, macht am anderen Ufer fest und setzt die Gruppe am angeklickten Punkt ab.',
     },
     'vehicle-yard': {
       title: 'Fahrzeugbauplatz',
       summary:
-        'Eine Zimmerei der Stufe 3, deren zwei Zimmerleute Handkarren herstellen sollen: Jeder legt neben der Werkstatt einen unsichtbaren Karrenbauplatz an, trägt Holz vom Lagerhaus dorthin und hämmert auf der Baustelle. Nach Abschluss steht anstelle des Bauplatzes ein fertiger Handkarren.',
+        'Eine Schreinerei der Stufe 3, deren zwei Schreiner Handkarren herstellen sollen: Jeder legt neben der Werkstatt einen unsichtbaren Karrenbauplatz an, trägt Holz vom Lagerhaus dorthin und hämmert auf der Baustelle. Nach Abschluss steht anstelle des Bauplatzes ein fertiger Handkarren.',
     },
     'vehicle-ship-column': {
       title: 'Schiffe auf Nord- und Südkurs',
       summary:
-        'Zwei bemannte Schiffe auf offenem Wasser: Das kleine fährt gerade nach Norden, das große gerade nach Süden. Dann wenden beide und fahren zurück. Jedes bleibt in seiner Spalte und zeigt seinen Rumpf mit dem Bug nach oben oder unten und dem Kielwasser dahinter, statt im Zickzack zwischen den Diagonalen zu wechseln.',
+        'Zwei bemannte Schiffe auf offenem Wasser: Das gewöhnliche fährt gerade nach Norden, das große gerade nach Süden. Dann wenden beide und fahren zurück. Jedes bleibt in seiner Spalte und zeigt seinen Rumpf mit dem Bug nach oben oder unten und dem Kielwasser dahinter, statt im Zickzack zwischen den Diagonalen zu wechseln.',
     },
     'vehicle-ship-voyage': {
       title: 'Eine lange Seereise',
@@ -355,22 +355,22 @@ export const deContent = {
     'vehicle-shipyard': {
       title: 'Werft',
       summary:
-        'Eine Zimmerei der Stufe 4 am Ufer, deren Zimmerleute nacheinander das kleine Schiff und das Katapult bauen sollen: Der Schiffsbauplatz entsteht im Wasser neben der Werkstatt, wobei der Schiffbauer vom Ufer aus arbeitet; der Katapultbauplatz entsteht an Land. Das zu Wasser gelassene Schiff liegt mit eingeholten Segeln am Ufer.',
+        'Eine Schreinerei der Stufe 4 am Ufer, deren Schreiner nacheinander das Schiff und das Katapult bauen sollen: Der Schiffsbauplatz entsteht im Wasser neben der Werkstatt, wobei der Schreiner vom Ufer aus arbeitet; der Katapultbauplatz entsteht an Land. Das zu Wasser gelassene Schiff liegt mit eingeholten Segeln am Ufer.',
     },
     'vehicle-ox-yard': {
       title: 'Bau eines Ochsenkarrens',
       summary:
-        'Ein Zimmermann baut fortlaufend Karren ohne Zugtiere aus Holz vom Lagerhaus. Eine Kuh kommt von einem Viehhof herüber und wird vor den ersten Karren gespannt. Jeder Viehhof behält zwei Kühe, daher warten weitere Karren auf Tiere, während der Zimmermann weiterarbeitet.',
+        'Ein Schreiner baut fortlaufend Ochsenkarrengerüste aus Holz vom Lagerhaus. Eine Kuh kommt von einer Viehzüchterei herüber und wird vor das erste Gerüst gespannt. Jede Viehzüchterei behält zwei Kühe, daher warten weitere Gerüste auf Tiere, während der Schreiner weiterarbeitet.',
     },
     'vehicle-ox': {
-      title: 'Ochsenkarren ohne Ochsen',
+      title: 'Ochsenkarrengerüst',
       summary:
-        'Ein Ochsenkarren ohne Zugtier steht neben den vier Kühen des Spielers. Sein goto-Befehl wird abgelehnt, weil ein Tier fehlt. Dann fordert der Karren die nächste Kuh an, die nicht zum Zuchtpaar der Herde gehört. Die Kuh läuft herüber und wird dabei verbraucht. Der Karren wird an Ort und Stelle zum bespannten Ochsenkarren, dem sich nun der bereitstehende Träger zuweisen kann.',
+        'Ein Ochsenkarrengerüst steht neben den vier Kühen des Spielers. Sein goto-Befehl wird abgelehnt, weil ein Tier fehlt. Dann fordert das Gerüst die nächste Kuh an, die nicht zum Zuchtpaar der Herde gehört. Die Kuh läuft herüber und wird dabei verbraucht. Das Gerüst wird an Ort und Stelle zum bespannten Ochsenkarren, dem sich nun der bereitstehende Träger zuweisen kann.',
     },
     'vehicle-cargo': {
       title: 'Fahrzeugladung',
       summary:
-        'Zwei Karren und ihre Träger: ein Handkarren, für den der Spieler Holz angefordert hat, das sein Träger Stück für Stück von den Haufen daneben holt, und ein Ochsenkarren, der anfangs mit nicht angefordertem Stein beladen ist, den sein Träger deshalb zum Lagerhaus bringt. Der Handkarren erscheint nach der ersten Einheit beladen, der Ochsenkarren nach der letzten leer.',
+        'Zwei Karren und ihre Träger: ein Handkarren, für den der Spieler Holz angefordert hat, das sein Träger Stück für Stück von den Haufen daneben holt, und ein Ochsenkarren, der anfangs mit nicht angefordertem Bruchstein beladen ist, den sein Träger deshalb zum Lagerhaus bringt. Der Handkarren erscheint nach der ersten Einheit beladen, der Ochsenkarren nach der letzten leer.',
     },
     'vehicle-catapult': {
       title: 'Katapult',
@@ -385,37 +385,37 @@ export const deContent = {
     'vehicle-tight-gap': {
       title: 'Fahrzeuge in engen Durchgängen',
       summary:
-        'Eine Palisade zieht sich quer über die Karte, unterbrochen von Durchgängen, die von Westen nach Osten angeordnet sind: je zwei Häuser im Abstand von 1, 2, 3 und 4 Knoten, Baumreihen mit Lücken von 1, 2 und 3 Knoten, ein lichter Wald und freie Maueröffnungen von 2 und 3 Knoten. Vier Katapulte, zwei Ochsenkarren und ein Handkarren fahren hindurch, teils von Norden nach Süden, teils zurück. Ein Katapult passt zwischen Häuser mit zwei Knoten Abstand und durch jede einzelne Baumlücke, aber nicht zwischen Häuser mit nur einem Knoten Abstand. Dort weicht es auf den nächsten Durchgang aus. Auch Maueröffnungen mit weniger als drei Knoten sind zu eng. Karren passen durch jede Lücke. Wähle ein Fahrzeug aus und schicke es selbst durch einen Durchgang.',
+        'Eine Palisade zieht sich quer über die Karte, unterbrochen von Durchgängen, die von Westen nach Osten angeordnet sind: je zwei Häuser im Abstand von 1, 2, 3 und 4 Knoten, Baumreihen mit Lücken von 1, 2 und 3 Knoten, ein lichter Wald und freie Palisadenöffnungen von 2 und 3 Knoten. Vier Katapulte, zwei Ochsenkarren und ein Handkarren fahren hindurch, teils von Norden nach Süden, teils zurück. Ein Katapult passt zwischen Häuser mit zwei Knoten Abstand und durch jede einzelne Baumlücke, aber nicht zwischen Häuser mit nur einem Knoten Abstand. Dort weicht es auf den nächsten Durchgang aus. Auch Palisadenöffnungen mit weniger als drei Knoten sind zu eng. Karren passen durch jede Lücke. Wähle ein Fahrzeug aus und schicke es selbst durch einen Durchgang.',
     },
     school: {
       title: 'Einen Beruf erlernen',
       summary:
-        'Ein Sammler geht zur Schule, um das Zimmerhandwerk zu lernen, einen der Siedlung bereits bekannten Beruf. Wähle den anderen Sammler aus und klicke mit der rechten Maustaste auf die Schule, um selbst einen Kurs zu wählen.',
+        'Ein Abbauer geht zur Schule und lässt sich zum Schreiner ausbilden, einem Beruf, den die Siedlung bereits kennt. Wähle den anderen Abbauer aus und klicke mit der rechten Maustaste auf die Schule, um selbst einen Kurs zu wählen.',
     },
     'learning-foundations': {
       title: 'Ausbildung am Fundament',
       summary:
-        'Ein Zivilist wird zum Fundament einer Kaserne und ein Sammler zum Fundament einer Schule geschickt, bevor die Bauarbeiter fertig sind. Beide warten neben der Tür, gehen hinein, sobald ihr Gebäude steht, und kommen als Soldat und Zimmermann heraus. Wähle den übrigen Zivilisten aus und klicke mit der rechten Maustaste auf ein Fundament, um ihn selbst dorthin zu schicken.',
+        'Ein Zivilist wird zum Fundament einer Kaserne und ein Abbauer zum Fundament einer Schule geschickt, bevor die Bauarbeiter fertig sind. Beide warten neben der Tür, gehen hinein, sobald ihr Gebäude steht, und kommen als Soldat und Schreiner heraus. Wähle den übrigen Zivilisten aus und klicke mit der rechten Maustaste auf ein Fundament, um ihn selbst dorthin zu schicken.',
     },
     'school-graduates': {
       title: 'Absolventen gehen an die Arbeit',
       summary:
-        'Zwei Sammler lernen das Zimmerhandwerk, während der Assistent Absolventen zur Arbeit schickt. Der erste besetzt die einzige Zimmermannstelle der Zimmerei. Der zweite findet keine freie Stelle, bleibt im Schulhof und kehrt immer dorthin zurück, wenn er nichts zu tun hat. Ein Schmied lernt, Plattenrüstungen herzustellen, lässt die nähere Schmiede aus, die dazu nicht geeignet ist, und schmiedet sie in der ausgebauten Schmiede.',
+        'Zwei Abbauer lernen den Beruf des Schreiners, während der Assistent Absolventen zur Arbeit schickt. Der erste besetzt die einzige Schreinerstelle der Schreinerei. Der zweite findet keine freie Stelle, bleibt im Schulhof und kehrt immer dorthin zurück, wenn er nichts zu tun hat. Ein Schmied lernt, Plattenrüstungen herzustellen, lässt die nähere Schmiede aus, die dazu nicht geeignet ist, und schmiedet sie in der ausgebauten Schmiede.',
     },
     'porter-flag': {
       title: 'Trägerfahne am Steinbruch',
       summary:
-        'Ein Bergarbeiter stapelt Stein an seinem Arbeitsplatz weit östlich des Hauptquartiers. Der Träger des Hauptquartiers hat eine Arbeitsfahne daneben: Er trägt den Stein aus dem Steinbruch und das Mehl einer Mühle nahe der Fahne zum Hauptquartier, lässt den Haufen direkt am Hauptquartier liegen und wartet an der Fahne, wenn dort nichts mehr liegt.',
+        'Ein Abbauer stapelt Bruchstein an seinem Arbeitsplatz weit östlich des Hauptquartiers. Der Träger des Hauptquartiers hat eine Arbeitsfahne daneben: Er trägt den Bruchstein aus dem Steinbruch und das Mehl einer Mühle nahe der Fahne zum Hauptquartier, lässt den Haufen direkt am Hauptquartier liegen und wartet an der Fahne, wenn dort nichts mehr liegt.',
     },
     'gatherer-flag-follow': {
       title: 'Fahnen folgen den Rohstoffen',
       summary:
-        'Ein Sammler fällt die zwei Bäume neben seiner Fahne, während der Assistent Sammlerfahnen versetzt. Sobald beide Bäume weg sind, wandert die Fahne auf ein Feld 3-5 Felder von einem Baum des östlichen Hains entfernt, zwischen Hain und Hauptquartier. Dort fällt er weiter Bäume.',
+        'Ein Abbauer fällt die zwei Bäume neben seiner Fahne, während der Assistent Abbauerfahnen versetzt. Sobald beide Bäume weg sind, wandert die Fahne auf ein Feld 3-5 Felder von einem Baum des östlichen Hains entfernt, zwischen Hain und Hauptquartier. Dort fällt er weiter Bäume.',
     },
     'gatherer-goods': {
-      title: 'Was der Sammler sammelt',
+      title: 'Was der Abbauer abbaut',
       summary:
-        'Ein unerfahrener Sammler steht neben Bäumen, einem Stein- und einem Eisenvorkommen. Das Sammeln von Stein und Lehm ist gestoppt, Eisen und Gold sind gesperrt, bis er Erfahrung gewinnt. Seine Produktionsliste zeigt so eine gesammelte, eine gestoppte und eine gesperrte Ware nebeneinander, und er fällt nur die Bäume.',
+        'Ein unerfahrener Abbauer steht neben Bäumen, einem Stein- und einem Eisenvorkommen. Der Abbau von Bruchstein und Lehm ist gestoppt, Eisen und Gold sind gesperrt, bis er Erfahrung gewinnt. Seine Produktionsliste zeigt so eine abgebaute, eine gestoppte und eine gesperrte Ware nebeneinander, und er fällt nur die Bäume.',
     },
     'idle-work': {
       title: 'Warum Arbeiter untätig sind',
@@ -435,7 +435,7 @@ export const deContent = {
     technology: {
       title: 'Missionstechnologien',
       summary:
-        'Öffne das Baumenü: Wohnhäuser sind anfangs verboten. Zuerst erteilt das Skript die Erlaubnis, dann schaltet dein eigener Sammler sie frei. Der Sammler des Gegners kann deine Technologien nicht freischalten.',
+        'Öffne das Baufenster: Wohnhäuser sind anfangs verboten. Zuerst erteilt das Skript die Erlaubnis, dann schaltet dein eigener Abbauer sie frei. Der Abbauer des Gegners kann deine Technologien nicht freischalten.',
     },
     'terrain-edits': {
       title: 'Geländeänderungen per Skript',
@@ -472,12 +472,12 @@ export const deContent = {
     },
     berries: {
       title: 'Wilde Beeren',
-      summary: 'Sammler essen von wilden Beerensträuchern, und die abgeernteten Pflanzen wachsen nach.',
+      summary: 'Abbauer essen von wilden Beerensträuchern, und die abgeernteten Pflanzen wachsen nach.',
     },
     chests: {
-      title: 'Truhen und Schriftrollen',
+      title: 'Kisten und Briefe',
       summary:
-        'Drei Holztruhen liefern beim Öffnen Nahrung, drei Zivilisten und eine Brunnen-Schriftrolle. Eine magische Truhe lässt sich von einem gewöhnlichen Siedler nicht öffnen, und eine mitgeführte Schriftrolle lässt einen fertigen Brunnen entstehen.',
+        'Drei einfache Kisten liefern beim Öffnen Nahrung, drei Zivilisten und einen Brief für einen Brunnen. Eine magische Kiste lässt sich von einem gewöhnlichen Siedler nicht öffnen, und ein mitgeführter Brief lässt einen fertigen Brunnen entstehen.',
     },
     'meal-break': {
       title: 'Essenspause',
@@ -492,27 +492,27 @@ export const deContent = {
     'scout-explore': {
       title: 'Kundschafter erkunden eine Insel',
       summary:
-        'Wähle beide Kundschafter aus und drücke im Befehlsring auf Erkunden: Sie durchstreifen die ganze Insel und melden sich, wenn es dort nichts mehr zu entdecken gibt.',
+        'Wähle beide Kundschafter aus und drücke im Befehlsring auf „Kläre Gegend auf“: Sie durchstreifen die ganze Insel und melden sich, wenn es dort nichts mehr zu entdecken gibt.',
     },
     'chest-queue': {
-      title: 'Truhen nacheinander öffnen',
+      title: 'Kisten nacheinander öffnen',
       summary:
-        'Ein Sammler öffnet eine Truhe und danach die nächste in seiner Befehlswarteschlange. Wähle ihn aus und füge mit Shift + Rechtsklick auch die letzten beiden Truhen hinzu.',
+        'Ein Abbauer öffnet eine Kiste und danach die nächste in seiner Befehlswarteschlange. Wähle ihn aus und füge mit Shift + Rechtsklick auch die letzten beiden Kisten hinzu.',
     },
     chain: {
       title: 'Produktionskette',
       summary:
-        'Bauernhof, Mühle, Bäckerei und Brunnen in einem Kreislauf: Weizen → Mehl → Brot, versorgt mit Wasser.',
+        'Farm, Mühle, Bäckerei und Brunnen in einem Kreislauf: Weizen → Mehl → Brot, versorgt mit Wasser.',
     },
     alchemy: {
       title: 'Alchemistenhütten',
       summary:
-        'In der kleinen Hütte braut ein Druide heiliges Öl aus Pilzen. In der großen brauen zwei Druiden Tränke aus Wasser, Pilz, Kraut und Münze.',
+        'In der kleinen Hütte braut ein Druide Öl aus Pilzen. In der großen brauen zwei Druiden Tränke aus Wasser, Pilz, Kraut und Münze.',
     },
     'household-goods': {
       title: 'Haushaltswaren',
       summary:
-        'Töpfer, Zimmerleute und Druiden versorgen ein ausgebautes Wohnhaus mit Geschirr, Möbeln und heiligem Öl, um Mahlzeiten, Ruhe und Gebet zu verbessern.',
+        'Töpfer, Schreiner und Druiden versorgen ein ausgebautes Wohnhaus mit Geschirr, Möbeln und Öl, um Mahlzeiten, Ruhe und Gebet zu verbessern.',
     },
     warehouse: {
       title: 'Lagerlogistik',
@@ -521,12 +521,12 @@ export const deContent = {
     construction: {
       title: 'Gebäude errichten',
       summary:
-        'Träger und künftige Beschäftigte schleppen Material heran, während Bauarbeiter hämmern. Auf dem Viehhof hilft ein Züchter beim Bau, bevor er seinen fertigen Arbeitsplatz bezieht.',
+        'Träger und künftige Beschäftigte schleppen Material heran, während Bauarbeiter hämmern. In der Viehzüchterei hilft ein Viehzüchter beim Bau, bevor er seinen fertigen Arbeitsplatz bezieht.',
     },
     'farm-construction': {
-      title: 'Bau eines Bauernhofs',
+      title: 'Bau einer Farm',
       summary:
-        'Bauarbeiter errichten neben einer fertigen Trockenscheune einen Bauernhof: vom Holzgerüst über die Wände bis zum Dach.',
+        'Bauarbeiter errichten neben einer fertigen Vergleichsfarm eine zweite Farm: vom Holzgerüst über die Wände bis zum Dach. Ein Lagerhaus liefert das Baumaterial.',
     },
     upgrade: {
       title: 'Gebäudeausbau',
@@ -536,7 +536,7 @@ export const deContent = {
     'frank-construction': {
       title: 'Bauphasen der Franken',
       summary:
-        'Eine fränkische Steinmetzhütte wächst aus ihrem Fundament, daneben werden eine Steinmetzhütte und eine Druidenhütte ausgebaut.',
+        'Eine fränkische Steinmetzhütte wächst aus ihrem Fundament, daneben werden eine Steinmetzhütte und eine Alchemistenhütte ausgebaut.',
     },
     'upgrade-tribes': {
       title: 'Ausbau verschiedener Kulturen',
@@ -546,7 +546,7 @@ export const deContent = {
     'workshop-products': {
       title: 'Werkstattprodukte',
       summary:
-        'Ein in einer Töpferei angestellter Töpfer stellt nur Ziegel her, ihr erstes Produkt. Auch nach dem Ausbau der Töpferei bleibt er bei Ziegeln.',
+        'Ein in einer Töpferei angestellter Töpfer stellt nur Backsteine her, ihr erstes Produkt. Auch nach dem Ausbau der Töpferei bleibt er bei Backsteinen.',
     },
     signposts: {
       title: 'Wegweiser',
@@ -576,7 +576,7 @@ export const deContent = {
     gossip: {
       title: 'Plaudern und Gedankenblasen',
       summary:
-        'Untätige Siedler finden sich zu zweit zusammen und plaudern, um ihr Bedürfnis nach Gesellschaft zu stillen. Soldaten machen nie mit. Hungrige und müde Siedler zeigen währenddessen Gedankenblasen.',
+        'Untätige Siedler finden sich zu zweit zusammen und plaudern, um ihre soziale Motivation aufzufüllen. Soldaten machen nie mit. Hungrige und müde Siedler zeigen währenddessen Gedankenblasen.',
     },
     wildlife: {
       title: 'Wildtierherden',
@@ -591,12 +591,12 @@ export const deContent = {
     creatures: {
       title: 'Monster und Raubtiere',
       summary:
-        'Werschlangen und Werwölfe stehen einer Kriegerschar gegenüber. In der Nähe streifen Wölfe, Löwen, Löwinnen, Braunbären und Eisbären umher.',
+        'Schlangenmenschen und Werwölfe stehen einer Kriegerschar gegenüber. In der Nähe streifen Wölfe, Löwen, Löwinnen, Bären und Eisbären umher.',
     },
     'creature-forms': {
-      title: 'Gestalten der Werschlangen',
+      title: 'Gestalten der Schlangenmenschen',
       summary:
-        'Sieh dir die Schaf-, Hühner-, Löwen-, Wolfs- und Bärengestalten des Werschlangenstamms an. Die drei Kriegergestalten stehen Soldaten in der Nähe gegenüber.',
+        'Sieh dir die Schaf-, Hühner-, Löwen-, Wolfs- und Bärengestalten des Schlangenmenschenstamms an. Die drei Kriegergestalten stehen Soldaten in der Nähe gegenüber.',
     },
     'movement-continuity': {
       title: 'Flüssige Bewegung',
@@ -616,22 +616,22 @@ export const deContent = {
     livestock: {
       title: 'Viehzucht',
       summary:
-        'Ein Kundschafter nimmt Schafe und Rinder in Besitz; dabei erscheint ein Herz in der Farbe seiner Partei. Die Herde zieht zum Viehhof, und die Züchter verarbeiten Wasser, Weizen und einige Lebenspunkte der Tiere zu Wolle, Leder und Fleisch.',
+        'Ein Kundschafter nimmt Schafe und Rinder in Besitz; dabei erscheint ein Herz in der Farbe seiner Partei. Die Herde zieht zur Viehzüchterei, und die Viehzüchter verarbeiten Wasser, Weizen und einige Lebenspunkte der Tiere zu Wolle, Leder und Fleisch.',
     },
     equipment: {
       title: 'Ausrüstungsfenster',
       summary:
-        'Drei Siedler für das Ausrüstungsfenster: ein Zivilist mit abgenutzten Stiefeln, Werkzeug und Verbrauchsgegenständen, ein Soldat mit Schwert und Kettenrüstung sowie ein Siedler ohne Ausrüstung. Neben dem Hauptquartier liegt Ersatzausrüstung für die Befehle zum Anlegen, Tauschen und Ablegen je Ausrüstungsplatz.',
+        'Drei Siedler für das Ausrüstungsfenster: ein Zivilist mit abgenutzten Schuhen, Werkzeug und Verbrauchsgegenständen, ein Soldat mit Schwert und Kettenhemd sowie ein Siedler ohne Ausrüstung. Neben dem Hauptquartier liegt Ersatzausrüstung für die Befehle zum Anlegen, Tauschen und Ablegen je Ausrüstungsplatz.',
     },
     'group-panel': {
       title: 'Gruppenübersicht',
       summary:
-        'Eine Gruppe zum Auswählen per Auswahlrahmen: Bogenschützen in Lederrüstung mit Tränken, Schwertkämpfer in Kettenrüstung, verwundete Speerkämpfer, Bauarbeiter mit Werkzeug, Frauen, Zivilisten, zwei Katapulte und ein Handkarren. Die Gruppenübersicht zeigt Miniaturbilder, Reiter nach Einheitentyp, Werte und gemeinsame Befehle.',
+        'Eine Gruppe zum Auswählen per Auswahlrahmen: Bogenschützen in Lederrüstung mit Tränken, Schwertkämpfer in Kettenhemden, verwundete Speerträger, Bauarbeiter mit Werkzeug, Frauen, Zivilisten, zwei Katapulte und ein Handkarren. Die Gruppenübersicht zeigt Miniaturbilder, Reiter nach Einheitentyp, Werte und gemeinsame Befehle.',
     },
     'group-panel-army': {
       title: 'Gruppenübersicht: Armee',
       summary:
-        'Hundertzwanzig Soldaten in drei Blöcken: Bogenschützen, Schwertkämpfer und Speerkämpfer, einige davon verwundet. Werden sie gemeinsam per Auswahlrahmen ausgewählt, erscheinen kompakte Miniaturbilder, da die Gruppe mehr als 99 Einheiten umfasst.',
+        'Hundertzwanzig Soldaten in drei Blöcken: Bogenschützen, Schwertkämpfer und Speerträger, einige davon verwundet. Werden sie gemeinsam per Auswahlrahmen ausgewählt, erscheinen kompakte Miniaturbilder, da die Gruppe mehr als 99 Einheiten umfasst.',
     },
     'army-control': {
       title: 'Armeesteuerung: 1000 Soldaten',
@@ -671,12 +671,12 @@ export const deContent = {
     'equipment-effects': {
       title: 'Auswirkung der Ausrüstung',
       summary:
-        'Zwei Sammler gehen zu einem Wald. Der mit Stiefeln ist sichtbar schneller, doch seine Stiefel nutzen sich unterwegs ab. Ein Müller mit Eisenwerkzeug mahlt 5 Weizen mit einem Produktionsbonus, und Siedler trinken ihren Met und ihre Tränke selbstständig, wenn Hunger oder Müdigkeit drängen.',
+        'Zwei Abbauer gehen zu einem Wald. Der mit Schuhen ist sichtbar schneller, doch seine Schuhe nutzen sich unterwegs ab. Ein Müller mit Eisenwerkzeug mahlt 5 Weizen mit einem Produktionsbonus, und Siedler trinken ihren Met und ihre Tränke selbstständig, wenn Hunger oder Müdigkeit drängen.',
     },
     amulets: {
       title: 'Amulette',
       summary:
-        'Drei Amulettproben: Ein Fußgänger mit Geschwindigkeitsamulett lässt einen ohne Amulett hinter sich. Ein Schwertkämpfer mit Amuletten für Stärke, kritische Treffer und Verteidigung besiegt einen ebenbürtigen Gegner. Ein hungriger, müder Sammler stillt beide Bedürfnisse mit Nahrungs- und Ausdaueramuletten, die sich nie abnutzen.',
+        'Drei Amulettproben: Ein Fußgänger mit Windamulett lässt einen ohne Amulett hinter sich. Ein Schwertkämpfer mit Stärke-, Treffer- und Verteidigungsamulett besiegt einen ebenbürtigen Gegner. Ein hungriger, müder Abbauer stillt beide Bedürfnisse mit einem Nahrungs- und einem Wachbleibamulett, die sich nie abnutzen.',
     },
     barracks: {
       title: 'Ausbildung in der Kaserne',
@@ -686,12 +686,12 @@ export const deContent = {
     armor: {
       title: 'Rüstungsparade',
       summary:
-        'Eine Paradeaufstellung von Schwertkämpfern im Raster: eine Spalte je Rüstungszustand (ohne, Wolle, Leder, Kette, Platte) und eine Zeile je Spielerfarbe. Keine Einheit greift an, damit es zwischen verfeindeten Besitzern nicht zum Kampf kommt. So lassen sich die Einfärbungen jeder Rüstung über die Teamfarben hinweg beurteilen.',
+        'Eine Paradeaufstellung von Schwertkämpfern im Raster: eine Spalte je Rüstungszustand (ohne, Waffenrock, Lederrüstung, Kettenhemd, Plattenrüstung) und eine Zeile je Spielerfarbe. Keine Einheit greift an, damit es zwischen verfeindeten Besitzern nicht zum Kampf kommt. So lassen sich die Einfärbungen jeder Rüstung über die Teamfarben hinweg beurteilen.',
     },
     'ai-defence': {
       title: 'KI-Verteidigung',
       summary:
-        'Der rote Spielerplatz wird von der strategischen KI gesteuert, wobei nur ihre Militärplanung aktiv ist. Als sich der blaue Kampftrupp nähert, löst sie selbst Alarm über dem Hauptquartier aus, schickt drei ihrer vier Bogenschützen in den Wachturm und lässt den vierten bei der Feldarmee. Alle noch verfügbaren Einheiten wirft sie den Angreifern entgegen. Beide Kampftrupps sind übermäßig widerstandsfähig, sodass sich ein anhaltender Kampf statt vieler Verluste ergibt.',
+        'Der rote Spielerplatz wird von der strategischen KI gesteuert, wobei nur ihre Militärplanung aktiv ist. Als sich der blaue Kampftrupp nähert, versetzt sie ihr Hauptquartier in den Verteidigungsmodus, schickt drei ihrer vier Bogenschützen in den Wachturm und lässt den vierten bei der Feldarmee. Alle noch verfügbaren Einheiten wirft sie den Angreifern entgegen. Beide Kampftrupps sind übermäßig widerstandsfähig, sodass sich ein anhaltender Kampf statt vieler Verluste ergibt.',
     },
     'ai-siege-march': {
       title: 'KI-Belagerungsmarsch',
@@ -706,12 +706,12 @@ export const deContent = {
     'tower-garrison': {
       title: 'Turmbesatzung',
       summary:
-        'Sechs Bogenschützen, drei mit Kurz- und drei mit Langbögen, besetzen einen Wachturm und verschwinden darin. Von oben schießen sie mit der Reichweite ihres Bogens plus dem Turmbonus. Statt einer Markierung pro Mann weht auf dem Dach die Garnisonsfahne: fünf Sterne für die sechs Soldaten. Die feindliche Gruppe gerät schon beim Anmarsch unter Pfeilbeschuss. Sobald sie die Mauer erreicht, kann sie nur den Turm angreifen; die Männer darin sind außer Reichweite.',
+        'Sechs Bogenschützen, drei mit Kurz- und drei mit Langbögen, besetzen einen Wachturm und verschwinden darin. Von oben schießen sie mit der Reichweite ihres Bogens plus dem Turmbonus. Statt einer Markierung pro Mann weht auf dem Dach die Garnisonsfahne: fünf Sterne für die sechs Soldaten. Die feindliche Gruppe gerät schon beim Anmarsch unter Pfeilbeschuss. Sobald sie den Turm erreicht, kann sie nur ihn selbst angreifen; die Männer darin sind außer Reichweite.',
     },
     'death-loot': {
       title: 'Gefallene Soldaten',
       summary:
-        'Zwei Reihen Schwertkämpfer schlagen sich auf offenem Gelände nieder. Jeder ist gleich ausgerüstet: Kurzschwert, Kettenrüstung, voller Met und halb abgetragene Schuhe. Neben seinen Knochen bleibt die Ausrüstung liegen: Schwert, Rüstung und unberührter Met werden fallen gelassen, die teilweise abgenutzten Schuhe verschwinden mit ihm.',
+        'Zwei Reihen Schwertkämpfer schlagen sich auf offenem Gelände nieder. Jeder ist gleich ausgerüstet: Kurzschwert, Kettenhemd, voller Met und halb abgetragene Schuhe. Neben seinen Knochen bleibt die Ausrüstung liegen: Schwert, Rüstung und unberührter Met werden fallen gelassen, die teilweise abgenutzten Schuhe verschwinden mit ihm.',
     },
   },
 } as const;

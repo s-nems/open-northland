@@ -20,7 +20,7 @@ export function settingsScreen(
   const settings: SettingsPageStore = {
     current: menuSettings,
     update: async (patch) => {
-      updateSettings(patch);
+      await updateSettings(patch);
       return true;
     },
     pinnedUiScale: null,

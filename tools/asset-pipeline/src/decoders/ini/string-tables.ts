@@ -51,9 +51,10 @@ export interface StringnNames {
  * no running id, so an entry's id is exactly its `stringn` number. A bare `string` directly after a
  * `stringn` is that id's plural; any other bare `string` is ignored.
  *
- * The game-object name tables (`text/<lang>/strings/gameobjects/<table>.{ini,cif}`) need this: they
- * declare `stringidmultiplier 2` and leave gaps in the `stringn` sequence, so
+ * The game-object name tables (`text/<lang>/strings/gameobjects/<table>.{ini,cif}`) need this: those
+ * with plural rows declare `stringidmultiplier 2` and leave gaps in the `stringn` sequence, so
  * {@link extractStringTable}'s scaled running id lands a neighbour's plural on another object's slot.
+ * `experiences` has neither plurals nor a multiplier.
  */
 export function extractStringnNames(sections: readonly RuleSection[]): StringnNames {
   const text = sections.find((s) => s.name === 'text');

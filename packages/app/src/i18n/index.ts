@@ -28,6 +28,9 @@ export interface NameOverlay {
   readonly professions?: Readonly<Record<string, string>>;
   /** `hud.groupPanel.soldierClasses`, the plural of `soldierClass`. */
   readonly soldierClasses?: Readonly<Record<string, string>>;
+  /** `hud.groupPanel.role`, a settler role's name, and `roles`, its plural. */
+  readonly groupRole?: Readonly<Record<string, string>>;
+  readonly groupRoles?: Readonly<Record<string, string>>;
   readonly trackLabels?: Readonly<Record<string, string>>;
   readonly weaponXp?: Readonly<Record<string, string>>;
   readonly tribeNames?: Readonly<Record<number, string>>;
@@ -57,6 +60,8 @@ export function installNameOverlay(locale: Locale, names: NameOverlay): void {
         soldierClass: { ...hud.groupPanel.soldierClass, ...names.soldierClass },
         soldierClasses: { ...hud.groupPanel.soldierClasses, ...names.soldierClasses },
         professions: { ...hud.groupPanel.professions, ...names.professions },
+        role: { ...hud.groupPanel.role, ...names.groupRole },
+        roles: { ...hud.groupPanel.roles, ...names.groupRoles },
       },
     },
   });

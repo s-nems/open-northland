@@ -1,13 +1,13 @@
 export const enSurfaces = {
   /** The `TRIBE_TYPE_HUMAN_*` civilizations, by their `logicdefines.inc` id. */
   tribeNames: {
-    1: 'Vikings',
-    2: 'Franks',
-    3: 'Byzantines',
-    4: 'Saracens',
-    5: 'Weresnakes',
-    6: 'Werewolves',
-    7: 'Egyptians',
+    1: 'Viking',
+    2: 'Frank',
+    3: 'Byzantine',
+    4: 'Saracen',
+    5: 'Weresnake',
+    6: 'Werewolf',
+    7: 'Egyptian',
   } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: 'A Viking-era economic strategy game',
@@ -38,13 +38,13 @@ export const enSurfaces = {
         all: 'All',
         campaign: 'Campaign',
         tutorial: 'Tutorial',
-        free: 'Free game',
+        free: 'Free play',
         multiplayer: 'Multiplayer',
         scenes: 'Test scenes',
       },
       categoryNames: {
         tutorial: 'tutorial',
-        free: 'free game',
+        free: 'free play',
         multiplayer: 'multiplayer',
         scenes: 'test scene',
       },
@@ -94,7 +94,7 @@ export const enSurfaces = {
       overseerTaken: 'You oversee',
       teamColour: 'Team colour',
       teamColourLocked: 'this map fixes its colours',
-      tribe: 'Nation',
+      tribe: 'Tribe',
       difficultyHeader: 'Level',
       difficultyTitle:
         'How hard the computer plays this seat: Easy and Medium build slower, raise fewer children and stop expanding earlier; Hard is the full strategy.',
@@ -102,7 +102,7 @@ export const enSurfaces = {
       tribeMapDefault: 'map default',
       tribeMapChoice: 'The map recommends: {tribe}',
       tribeTitle:
-        'The nation this seat plays: its settlers and buildings take that people. The map was designed for the starred one.',
+        'The tribe this seat plays: its settlers and buildings belong to that tribe. The map was designed for the starred one.',
       settingsTitle: 'Match settings',
       mapLabel: 'Map',
       mapModes: {
@@ -223,7 +223,7 @@ export const enSurfaces = {
         "Trees the original draws as one still frame sway in the wind together with their shadow, fish swim smoothly, and the breeze in the project's own vegetation is smoothed. Settlers and animals keep the original stepping, and original animations gain no extra frames. Trees stand still in a restored save.",
       groundedBuildings: 'Grounded buildings',
       groundedBuildingsTip:
-        'Buildings, palisades and stone walls sink a little into the ground they stand on: a soft shade along the walls, tufts of grass on a meadow and a drift on snow, each in the light of its own wall. Off keeps the original look.',
+        'Buildings, stockades and defence walls sink a little into the ground they stand on: a soft shade along the walls, tufts of grass on a meadow and a drift on snow, each in the light of its own wall. Off keeps the original look.',
       blood: 'Blood',
       bloodTip: 'Hit sprays and fading ground stains. Turning this off also clears existing blood.',
       bonesFade: 'Fading bones',
@@ -350,13 +350,13 @@ export const enSurfaces = {
         cancel: 'Cancel / close / deselect',
         toggleSelection: 'Add to or remove from selection',
         queueOrder: 'Queue an order after the current one',
-        selectJobMates: 'Select nearby settlers of the same trade',
+        selectJobMates: 'Select nearby settlers of the same profession',
         coarseStep: 'Change a training counter by 10',
         craftToggle: 'Add/remove a product from production',
         workFlagOrder: 'Set a work flag',
         roadTool: 'Road tool',
-        palisadeTool: 'Palisade tool',
-        upgradeGround: 'Wall or road over upgrade ground',
+        palisadeTool: 'Stockade tool',
+        upgradeGround: 'Stockade or road over upgrade ground',
       },
       keySpace: 'Space',
       mouseLeft: 'left mouse button',
@@ -464,21 +464,20 @@ export const enSurfaces = {
       postGraduates:
         'In the assistant window ({key}), "{graduatesOption}" sends freshly trained settlers from the schools to the workshops.',
       moveFlags:
-        'In the assistant window ({key}), "{flagsOption}" moves gatherers\' flags closer to resources as they run out.',
-      lobbyNation:
-        "In the lobby, click the headquarters icon beside a player to change that player's nation.",
+        'In the assistant window ({key}), "{flagsOption}" moves extractors\' flags closer to resources as they run out.',
+      lobbyNation: "In the lobby, click the headquarters icon beside a player to change that player's tribe.",
       roads: '{key} is the road tool. Settlers walk about twice as fast on a road as on grass.',
       upgrade: '{key} upgrades the selected building.',
       buildRun:
-        'A builder you assign by hand to a road or palisade builds its next sections before working on buildings.',
+        'A builder you assign by hand to a road or stockade builds its next sections before working on buildings.',
       nextCivilian: '{key} selects the next free civilian.',
       nextSingleWoman: '{key} selects the next unmarried woman without a home.',
       signposts: 'You can build over your own signposts. They move aside and keep their links.',
       scoutExplore: 'With the “Explore” order a scout explores the map by itself.',
       porterFlag:
-        'Warehouse and workshop porters can get a pickup flag and gather goods around it. Set it in the "{area}" row of the settler panel.',
+        'Warehouse and workshop carriers can get a pickup flag and gather goods around it. Set it in the "{area}" row of the settler panel.',
       nationSwitch:
-        "With settlers of another nation, the build window ({key}) can switch to that nation's buildings.",
+        "With settlers of another tribe, the build window ({key}) can switch to that tribe's buildings.",
     },
   },
   common: {
@@ -681,7 +680,7 @@ export const enSurfaces = {
     actionsCatalog: {
       vehicleCreated: { label: 'Finish vehicle', trigger: 'when a cart, ship or catapult is created' },
       goodProduced: { label: 'Produce good', trigger: 'when a workshop completes a good' },
-      resourceFelled: { label: 'Tree falls', trigger: 'when a woodcutter fells a tree' },
+      resourceFelled: { label: 'Tree falls', trigger: 'when an extractor fells a tree' },
       buildingFinished: {
         label: 'Finish construction',
         trigger: 'when your building is completed, quieter off screen',

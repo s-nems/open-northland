@@ -1,6 +1,6 @@
 import { systems } from '@open-northland/sim';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { JOB_BABY_FEMALE, JOB_CIVILIST, JOB_COLLECTOR, JOB_MASON } from '../src/catalog/jobs.js';
+import { JOB_BABY_FEMALE, JOB_CIVILIST, JOB_COLLECTOR, JOB_MASON, JOB_WOMAN } from '../src/catalog/jobs.js';
 import type { GuiStrings } from '../src/content/gui-gfx.js';
 import {
   installOriginalNames,
@@ -69,6 +69,7 @@ const strings: GuiStrings = {
     [JOB_MASON]: 'Fixture stonecutter',
     [JOB_CIVILIST]: 'Fixture commoner',
     [JOB_BABY_FEMALE]: 'Fixture infant',
+    [JOB_WOMAN]: 'Fixture lady',
     [SPEARMAN]: 'Fixture pikeman',
     [HERO_JOB]: 'Fixture bare-handed champion',
     [CART_JOB]: 'Fixture barrow driver',
@@ -77,6 +78,7 @@ const strings: GuiStrings = {
   jobsPlural: {
     [JOB_MASON]: 'Fixture stonecutters',
     [JOB_CIVILIST]: 'Fixture commoners',
+    [JOB_WOMAN]: 'Fixture ladies',
     [SPEARMAN]: 'Fixture pikemen',
   },
   experiences: { [COLLECTOR_GENERAL_TRACK]: 'Fixture gathering', [FIST_XP]: 'Fixture brawling' },
@@ -109,6 +111,17 @@ describe('originalNameOverlay', () => {
     expect(names.soldierClasses).toEqual({ soldier_spear_wooden: 'Fixture pikemen' });
   });
 
+  it("names the group panel's civilians and women by their jobs, as the settler panel does", () => {
+    installOriginalNames(currentLocale(), strings, content);
+    const copy = messages().hud.groupPanel;
+    expect([copy.role.civilian, copy.roles.civilian]).toEqual([
+      jobDisplayName(ctx, JOB_CIVILIST),
+      'Fixture commoners',
+    ]);
+    expect([copy.role.woman, copy.roles.woman]).toEqual([jobDisplayName(ctx, JOB_WOMAN), 'Fixture ladies']);
+    expect(copy.role.civilian).toBe('Fixture commoner');
+  });
+
   it('names every tribe in the table, with or without a content row', () => {
     expect(originalNameOverlay(strings, content).tribeNames).toEqual({
       [VIKING]: 'Fixture northman',
@@ -118,10 +131,6 @@ describe('originalNameOverlay', () => {
 
   it('leaves a slug that more than one job shares to the authored catalog', () => {
     expect(originalNameOverlay(strings, content).roleNames).not.toHaveProperty(SHARED_SLUG);
-  });
-
-  it("names a vehicle's build site after the vehicle, not the houses entry", () => {
-    expect(originalNameOverlay(strings, content).building?.handcart).toBe('Fixture barrow');
   });
 });
 
@@ -161,7 +170,7 @@ describe('installed original names', () => {
     expect(technologyName(sandbox, 'good', WOOD)).toBe('Fixture timber');
     expect(goodLabel(ctx, WOOD)).toBe('Fixture timber');
     expect(goodName(wood)).toBe('Fixture timber');
-    expect(technologyName(sandbox, 'house', HANDCART_YARD)).toBe('Fixture barrow');
+    expect(technologyName(sandbox, 'house', HANDCART_YARD)).toBe('Fixture vehicle');
   });
 
   it('keep the generic hero label for every hero, whatever the job is called', () => {
@@ -207,8 +216,10 @@ describe('launch-time tribe names', () => {
   it('fetch each language once per document', async () => {
     stubStrings(strings);
     await originalTribeNameOverlay('ger');
+    // Another test file may have loaded this language already, so count only the repeat's fetches.
+    const fetched = vi.mocked(fetch).mock.calls.length;
     await originalTribeNameOverlay('ger');
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(fetched);
   });
 
   it('leave the authored names without the pipeline strings', async () => {

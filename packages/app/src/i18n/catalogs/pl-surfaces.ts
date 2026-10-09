@@ -1,13 +1,13 @@
 export const plSurfaces = {
   /** The `TRIBE_TYPE_HUMAN_*` civilizations, by their `logicdefines.inc` id. */
   tribeNames: {
-    1: 'Wikingowie',
-    2: 'Frankowie',
-    3: 'Bizantyjczycy',
-    4: 'Saraceni',
-    5: 'Wężołaki',
-    6: 'Wilkołaki',
-    7: 'Egipcjanie',
+    1: 'Wiking',
+    2: 'Frank',
+    3: 'Bizantyjczyk',
+    4: 'Saracen',
+    5: 'Wężołak',
+    6: 'Wilkołak',
+    7: 'Egipcjanin',
   } as Readonly<Record<number, string>>,
   mainMenu: {
     eyebrow: 'Strategia ekonomiczna z czasów wikingów',
@@ -93,7 +93,7 @@ export const plSurfaces = {
       overseerTaken: 'Nadzorujesz',
       teamColour: 'Kolor drużyny',
       teamColourLocked: 'ta mapa ma stałe kolory',
-      tribe: 'Nacja',
+      tribe: 'Plemię',
       difficultyHeader: 'Poziom',
       difficultyTitle:
         'Jak mocno komputer gra tym miejscem: Łatwy i Średni budują wolniej, mają mniej dzieci i wcześniej kończą rozbudowę; Trudny to pełna strategia.',
@@ -101,7 +101,7 @@ export const plSurfaces = {
       tribeMapDefault: 'ustawienia mapy',
       tribeMapChoice: 'Mapa zaleca: {tribe}',
       tribeTitle:
-        'Nacja, którą gra to miejsce: jego osadnicy i budynki należą do tego ludu. Mapę zaprojektowano pod nację oznaczoną gwiazdką.',
+        'Plemię, którym gra to miejsce: jego osadnicy i budynki należą do tego plemienia. Mapę zaprojektowano pod plemię oznaczone gwiazdką.',
       settingsTitle: 'Ustawienia rozgrywki',
       mapLabel: 'Mapa',
       mapModes: {
@@ -182,7 +182,7 @@ export const plSurfaces = {
       interfaceHeading: 'Interfejs',
       minimapFrame: 'Ramka minimapy',
       selectionStyle: 'Styl zaznaczenia',
-      selectionStyleTip: 'Wspólny dla postaci, pojazdów i budynków. Zmienia się w grze od razu.',
+      selectionStyleTip: 'Wspólny dla postaci, wehikułów i budynków. Zmienia się w grze od razu.',
       selectionStyles: {
         outline: 'Obwódka',
         pulse: 'Pulsujące rozjaśnienie',
@@ -290,9 +290,9 @@ export const plSurfaces = {
         diplomacy: 'Okno dyplomacji',
         knowledge: 'Okno wiedzy',
         network: 'Okno sieci (gra sieciowa)',
-        actionRing: 'Pierścień akcji jednostki',
+        actionRing: 'Menu akcji jednostki',
         professionPicker: 'Lista zawodów osadnika',
-        equipmentPicker: 'Okno wyposażenia osadników',
+        equipmentPicker: 'Okno ekwipunku osadników',
         attackMove: 'Atak w marszu',
         hudToggle: 'Ukryj/pokaż interfejs',
         speedCycle: 'Prędkość gry ×1 / ×2 / ×3',
@@ -463,7 +463,7 @@ export const plSurfaces = {
         'W oknie asystenta ({key}) opcja „{graduatesOption}” sama wysyła świeżo wyszkolonych osadników ze szkół do warsztatów.',
       moveFlags:
         'W oknie asystenta ({key}) opcja „{flagsOption}” sama przesuwa flagi zbieraczy bliżej surowców, kiedy te się kończą.',
-      lobbyNation: 'W lobby kliknij ikonę kwatery głównej przy graczu, żeby zmienić jego nację.',
+      lobbyNation: 'W lobby kliknij ikonę kwatery głównej przy graczu, żeby zmienić jego plemię.',
       roads:
         '{key} to narzędzie dróg. Po drodze osadnicy chodzą mniej więcej dwa razy szybciej niż po trawie.',
       upgrade: '{key} rozbudowuje zaznaczony budynek.',
@@ -476,7 +476,8 @@ export const plSurfaces = {
       scoutExplore: 'Zwiadowca akcją „Badaj” samodzielnie eksploruje mapę.',
       porterFlag:
         'Tragarze magazynu i warsztatu mogą dostać flagę odbioru, spod której zbierają towary. Ustawisz ją w wierszu „{area}” panelu osadnika.',
-      nationSwitch: 'Mając osadników innej nacji, w oknie budowy ({key}) przełączysz się na jej budynki.',
+      nationSwitch:
+        'Mając osadników innego plemienia, w oknie budowy ({key}) przełączysz się na jego budynki.',
     },
   },
   common: {
@@ -624,7 +625,7 @@ export const plSurfaces = {
       goods: 'Dobra, narzędzia i broń',
       houses: 'Budynki',
       ruins: 'Ruiny',
-      characters: 'Postacie, zwierzęta i pojazdy',
+      characters: 'Postacie, zwierzęta i wehikuły',
       objects: 'Obiekty, teren i efekty',
     },
   },
@@ -680,7 +681,7 @@ export const plSurfaces = {
     musicFacts: 'pętla {start}-{end} s · {db} dB do wspólnej głośności',
     bedUnreached: 'żaden teren nie zapętla go w grze',
     actionsCatalog: {
-      vehicleCreated: { label: 'Ukończenie pojazdu', trigger: 'gdy powstaje wóz, statek lub katapulta' },
+      vehicleCreated: { label: 'Ukończenie wehikułu', trigger: 'gdy powstaje wóz, statek lub katapulta' },
       goodProduced: { label: 'Produkcja towaru', trigger: 'gdy warsztat wytwarza towar' },
       resourceFelled: { label: 'Upadek drzewa', trigger: 'gdy drwal ścina drzewo' },
       buildingFinished: {

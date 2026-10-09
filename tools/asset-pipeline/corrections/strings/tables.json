@@ -180,8 +180,8 @@
     "table": "experiences",
     "id": 29,
     "from": "Ковка - Инструмент",
-    "to": "Столярная Мастерская - Инструмент",
-    "reason": "Ścieżkę 29 zdobywa cieśla, a żelazne narzędzia robi stolarnia, nie kuźnia."
+    "to": "Столярная Мастерская - Железные Инструменты",
+    "reason": "Ścieżkę 29 zdobywa cieśla, a żelazne narzędzia robi stolarnia, nie kuźnia; rosyjski tekst gubił też słowo \"żelazne\" (eng \"Iron Tools\", pol \"Żelazne Narzędzia\")."
   },
   {
     "lang": "rus",
@@ -270,5 +270,765 @@
     "from": "8-y Cud",
     "to": "8. Cud",
     "reason": "Błędna forma liczebnika: \"8-y\" zamiast \"8.\"."
+  },
+  {
+    "lang": "ger",
+    "table": "tribes",
+    "id": 4,
+    "from": "Sarazen",
+    "to": "Sarazene",
+    "reason": "\"Sarazen\" to nie niemiecka forma; liczba pojedyncza brzmi \"Sarazene\", jak \"Wikinger\" i \"Ägypter\" w tej samej tabeli."
+  },
+  {
+    "lang": "ger",
+    "table": "tribes",
+    "id": 15,
+    "from": "Ziege",
+    "to": "Wildziege",
+    "reason": "Zwierzę 15 to koziorożec (wewnętrzna nazwa \"ibexes\", pol \"Dzika Koza\"), a \"Ziege\" nosi już koza 14."
+  },
+  {
+    "lang": "ger",
+    "table": "tribes",
+    "id": 26,
+    "from": "Löwe",
+    "to": "Löwin",
+    "reason": "Zwierzę 26 to lwica (wewnętrzna nazwa \"lionesses\", pol \"Lwica\"), a \"Löwe\" nosi już lew 25."
+  },
+  {
+    "lang": "ger",
+    "table": "jobs",
+    "id": 53,
+    "from": "Schiff",
+    "to": "Großes Schiff",
+    "reason": "Zawód 53 to duży statek (towar 62 \"Großes Schiff\"), a \"Schiff\" nosi już zawód 52."
+  },
+  {
+    "lang": "ger",
+    "table": "jobsPlural",
+    "id": 53,
+    "from": "Schiffe",
+    "to": "Große Schiffe",
+    "reason": "Zawód 53 to duży statek (towar 62 \"Großes Schiff\"), a \"Schiffe\" nosi już zawód 52."
+  },
+  {
+    "lang": "ger",
+    "table": "experiences",
+    "id": 16,
+    "from": "Schreinern - Schiff",
+    "to": "Schreinern - Großes Schiff",
+    "reason": "Ścieżka 16 dotyczy dużego statku (towar 62 \"Großes Schiff\"), a tę samą nazwę nosi już ścieżka 15."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 45,
+    "from": "Schiff",
+    "to": "Großes Schiff",
+    "reason": "Obiekt 45 to duży statek (towar 62 \"Großes Schiff\"), a \"Schiff\" nosi już obiekt 44."
+  },
+  {
+    "lang": "ger",
+    "table": "jobsPlural",
+    "id": 1,
+    "from": "Babies",
+    "to": "Babys",
+    "reason": "Niemiecka liczba mnoga od \"Baby\" to \"Babys\"; \"Babies\" to forma angielska."
+  },
+  {
+    "lang": "ger",
+    "table": "jobsPlural",
+    "id": 2,
+    "from": "Babies",
+    "to": "Babys",
+    "reason": "Niemiecka liczba mnoga od \"Baby\" to \"Babys\"; \"Babies\" to forma angielska."
+  },
+  {
+    "lang": "ger",
+    "table": "jobs",
+    "id": 42,
+    "from": "unbewaffneter Held",
+    "to": "Unbewaffneter Held",
+    "reason": "Niemiecka nazwa zawodu zaczyna się wielką literą, jak każda inna w tej tabeli."
+  },
+  {
+    "lang": "ger",
+    "table": "jobsPlural",
+    "id": 42,
+    "from": "unbewaffnete Helden",
+    "to": "Unbewaffnete Helden",
+    "reason": "Niemiecka nazwa zawodu zaczyna się wielką literą, jak każda inna w tej tabeli."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 54,
+    "from": "8te Wunder",
+    "to": "8. Wunder",
+    "reason": "Błędny zapis liczebnika porządkowego: po niemiecku \"8.\"."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 51,
+    "from": "Artemis Tempel",
+    "to": "Artemis-Tempel",
+    "reason": "Niemiecki rzeczownik złożony z imieniem pisze się z łącznikiem."
+  },
+  {
+    "lang": "ger",
+    "table": "houses",
+    "id": 52,
+    "from": "Zeus Statue",
+    "to": "Zeus-Statue",
+    "reason": "Niemiecki rzeczownik złożony z imieniem pisze się z łącznikiem."
+  },
+  {
+    "lang": "ger",
+    "table": "misc",
+    "id": 12,
+    "from": "Setze Arbeitsmittelpunk",
+    "to": "Setze Arbeitsmittelpunkt",
+    "reason": "Literówka: brak końcowego \"t\"."
+  },
+  {
+    "lang": "ger",
+    "table": "housewindow",
+    "id": 4,
+    "from": "Austattung",
+    "to": "Ausstattung",
+    "reason": "Literówka: \"Ausstattung\" pisze się przez podwójne \"s\"."
+  },
+  {
+    "lang": "ger",
+    "table": "housewindow",
+    "id": 33,
+    "from": "Resourcen",
+    "to": "Ressourcen",
+    "reason": "Literówka: po niemiecku \"Ressourcen\"."
+  },
+  {
+    "lang": "pol",
+    "table": "experiences",
+    "id": 26,
+    "from": "Kamieniarstwo - Kamień",
+    "to": "Kamieniarstwo - Kamienny blok",
+    "reason": "Kamieniarz robi kamienny blok (towar 26, ger \"Steinbau - Steinblock\"), a \"Kamień\" to surowiec 3 z wydobycia."
+  },
+  {
+    "lang": "pol",
+    "table": "jobs",
+    "id": 32,
+    "from": "Włócznik z drew. Włócznią",
+    "to": "Włócznik z drew. włócznią",
+    "reason": "Zbędna wielka litera w środku nazwy, której nie mają liczba mnoga ani zawód 33."
+  },
+  {
+    "lang": "pol",
+    "table": "jobsPlural",
+    "id": 45,
+    "from": "Hatchies",
+    "to": "Hatchie",
+    "reason": "Angielska końcówka \"-s\" w polskiej nazwie; imiona bohaterów w tej tabeli, jak \"Bjarni\", mają jedną formę w obu liczbach."
+  },
+  {
+    "lang": "pol",
+    "table": "misclogic",
+    "id": 36,
+    "from": "Wyburz drogowskaz",
+    "to": "Postaw drogowskaz",
+    "reason": "Rozkaz stawia drogowskaz (eng \"Erect Signpost\", ger \"Baue Wegweiser\"), a nie go burzy."
+  },
+  {
+    "lang": "pol",
+    "table": "misclogic",
+    "id": 39,
+    "from": "Tryb obrony żłnierza",
+    "to": "Tryb obrony żołnierza",
+    "reason": "Literówka: brak \"o\" w słowie \"żołnierza\"."
+  },
+  {
+    "lang": "pol",
+    "table": "main",
+    "id": 7,
+    "from": "Otwiera okno staytstyk",
+    "to": "Otwiera okno statystyk",
+    "reason": "Literówka w słowie \"statystyk\"."
+  },
+  {
+    "lang": "pol",
+    "table": "misc",
+    "id": 84,
+    "from": "Ekraz został zapisany jako plik .BMP",
+    "to": "Ekran został zapisany jako plik .BMP",
+    "reason": "Literówka w słowie \"Ekran\"."
+  },
+  {
+    "lang": "pol",
+    "table": "miscwindow",
+    "id": 12,
+    "from": "Brak budynków to wybudowania!",
+    "to": "Brak budynków do wybudowania!",
+    "reason": "Literówka: \"do\", nie \"to\"."
+  },
+  {
+    "lang": "pol",
+    "table": "miscwindow",
+    "id": 114,
+    "from": "Nie można uzyskać żadnych inforamcji o module sieciowym!",
+    "to": "Nie można uzyskać żadnych informacji o module sieciowym!",
+    "reason": "Literówka w słowie \"informacji\"."
+  },
+  {
+    "lang": "pol",
+    "table": "miscwindow",
+    "id": 301,
+    "from": "- odłuż",
+    "to": "- odłóż",
+    "reason": "Błąd ortograficzny: \"odłóż\"."
+  },
+  {
+    "lang": "pol",
+    "table": "miscwindow",
+    "id": 302,
+    "from": "- wysposażony",
+    "to": "- wyposażony",
+    "reason": "Literówka w słowie \"wyposażony\"."
+  },
+  {
+    "lang": "pol",
+    "table": "miscwindow",
+    "id": 360,
+    "from": "Dotychczas dokonałes wymiany handlowej w %d towarach",
+    "to": "Dotychczas dokonałeś wymiany handlowej w %d towarach",
+    "reason": "Brak polskiej litery w słowie \"dokonałeś\"."
+  },
+  {
+    "lang": "pol",
+    "table": "humanlistwindow",
+    "id": 4,
+    "from": "Wybierz wszystkich podanych na liście.",
+    "to": "Wybierz wszystkich poddanych na liście.",
+    "reason": "Chodzi o poddanych (eng \"subjects\", ger \"Untertanen\"), a nie o \"podanych\"."
+  },
+  {
+    "lang": "eng",
+    "table": "miscwindow",
+    "id": 125,
+    "from": "Win as soon as a certain amount of gods has been reached",
+    "to": "Win as soon as a certain amount of goods has been reached",
+    "reason": "Literówka: warunek dotyczy towarów (\"goods\"), a nie bogów (\"gods\")."
+  },
+  {
+    "lang": "rus",
+    "table": "miscwindow",
+    "id": 125,
+    "from": "Победа при достижении определенного количества богов",
+    "to": "Победа при достижении определенного количества товаров",
+    "reason": "Ten sam błąd co w eng: warunek dotyczy towarów (\"товаров\"), a nie bogów (\"богов\")."
+  },
+  {
+    "lang": "pol",
+    "table": "miscwindow",
+    "id": 125,
+    "from": "Zwycięstwo, gdy tylko została osiągnięte pewna ilość towarów",
+    "to": "Zwycięstwo, gdy tylko została osiągnięta pewna ilość towarów",
+    "reason": "Błędna odmiana: \"została osiągnięta\" zgadza się z rodzajem żeńskim słowa \"ilość\"."
+  },
+  {
+    "lang": "pol",
+    "table": "miscwindow",
+    "id": 126,
+    "from": "Zwycięstwo, gdy tylko została osiągnięte pewna ilość żołnierzy",
+    "to": "Zwycięstwo, gdy tylko została osiągnięta pewna ilość żołnierzy",
+    "reason": "Błędna odmiana: \"została osiągnięta\" zgadza się z rodzajem żeńskim słowa \"ilość\"."
+  },
+  {
+    "lang": "eng",
+    "table": "tribes",
+    "id": 7,
+    "from": "Egypt",
+    "to": "Egyptian",
+    "reason": "Plemię 7 to lud jak \"Viking\" czy \"Saracen\", a \"Egypt\" to nazwa kraju (pol \"Egipcjanin\", ger \"Ägypter\")."
+  },
+  {
+    "lang": "eng",
+    "table": "tribes",
+    "id": 15,
+    "from": "Goat",
+    "to": "Ibex",
+    "reason": "Zwierzę 15 to koziorożec (wewnętrzna nazwa \"ibexes\", pol \"Dzika Koza\"), a \"Goat\" nosi już koza 14."
+  },
+  {
+    "lang": "eng",
+    "table": "tribes",
+    "id": 26,
+    "from": "Lion",
+    "to": "Lioness",
+    "reason": "Zwierzę 26 to lwica (wewnętrzna nazwa \"lionesses\", pol \"Lwica\"), a \"Lion\" nosi już lew 25."
+  },
+  {
+    "lang": "eng",
+    "table": "experiences",
+    "id": 16,
+    "from": "Carpentry - Ship",
+    "to": "Carpentry - Big Ship",
+    "reason": "Ścieżka 16 dotyczy dużego statku (towar 62 \"Big Ship\"), a tę samą nazwę nosi już ścieżka 15."
+  },
+  {
+    "lang": "eng",
+    "table": "houses",
+    "id": 45,
+    "from": "Ship",
+    "to": "Big Ship",
+    "reason": "Obiekt 45 to duży statek (towar 62 \"Big Ship\"), a \"Ship\" nosi już obiekt 44."
+  },
+  {
+    "lang": "eng",
+    "table": "jobs",
+    "id": 53,
+    "from": "Ship",
+    "to": "Big Ship",
+    "reason": "Zawód 53 to duży statek (towar 62 \"Big Ship\"), a \"Ship\" nosi już zawód 52."
+  },
+  {
+    "lang": "eng",
+    "table": "jobsPlural",
+    "id": 53,
+    "from": "Ships",
+    "to": "Big Ships",
+    "reason": "Zawód 53 to duży statek (towar 62 \"Big Ship\"), a \"Ships\" nosi już zawód 52."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 8,
+    "from": "Добытчик",
+    "to": "Добытчики",
+    "reason": "W wierszu liczby mnogiej stoi liczba pojedyncza (eng \"Extractors\")."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 9,
+    "from": "Столяра",
+    "to": "Столяры",
+    "reason": "Błędna forma liczby mnogiej: po rosyjsku \"Столяры\" (eng \"Carpenters\")."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 45,
+    "from": "Наемники",
+    "to": "Хатчи",
+    "reason": "Zawód 45 to bohater Hatchie (\"Хатчи\" w liczbie pojedynczej), a nie najemnicy."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 55,
+    "from": "Раммы Повозок",
+    "to": "Рамы Повозок",
+    "reason": "Literówka: \"Рамы\" z jednym \"м\", jak w liczbie pojedynczej \"Рама Повозки\"."
+  },
+  {
+    "lang": "rus",
+    "table": "tribes",
+    "id": 18,
+    "from": "Кролик-убийца",
+    "to": "Белый Медведь",
+    "reason": "Zwierzę 18 to niedźwiedź polarny (eng \"Polar Bear\", ger \"Eisbär\", pol \"Niedźwiedź Polarny\"), a \"Кролик-убийца\" to zabójczy królik, którego ten typ opisywał wcześniej według komentarza w animaltypes.ini."
+  },
+  {
+    "lang": "rus",
+    "table": "tribes",
+    "id": 7,
+    "from": "Египет",
+    "to": "Египтянин",
+    "reason": "Plemię 7 to lud jak \"Викинг\" czy \"Сарацин\", a \"Египет\" to nazwa kraju (pol \"Egipcjanin\", ger \"Ägypter\")."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 43,
+    "from": "Мед",
+    "to": "Медовуха",
+    "reason": "Towar 43 to miód pitny (eng \"Mead\", pol \"Miód Pitny\"), a \"Мед\" nosi już miód 12."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 53,
+    "from": "Пивоварение - Мед",
+    "to": "Пивоварение - Медовуха",
+    "reason": "Browar warzy miód pitny (towar 43, eng \"Brewing - Mead\"), a \"Мед\" to miód 12."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 13,
+    "from": "Столярная Мастерская - Ручная Повозка",
+    "to": "Столярная Мастерская - Ручная Тележка",
+    "reason": "Wózek ręczny to towar 59 \"Ручная Тележка\", a \"Повозка\" to wóz z wołami (towar 60 \"Бычья Повозка\")."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 16,
+    "from": "Столярная Мастерская - Корабль",
+    "to": "Столярная Мастерская - Большой Корабль",
+    "reason": "Ścieżka 16 dotyczy dużego statku (towar 62 \"Большой Корабль\"), a tę samą nazwę nosi już ścieżka 15."
+  },
+  {
+    "lang": "rus",
+    "table": "houses",
+    "id": 45,
+    "from": "Корабль",
+    "to": "Большой Корабль",
+    "reason": "Obiekt 45 to duży statek (towar 62 \"Большой Корабль\"), a \"Корабль\" nosi już obiekt 44."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 53,
+    "from": "Корабль",
+    "to": "Большой Корабль",
+    "reason": "Zawód 53 to duży statek (towar 62 \"Большой Корабль\"), a \"Корабль\" nosi już zawód 52."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 53,
+    "from": "Корабли",
+    "to": "Большие Корабли",
+    "reason": "Zawód 53 to duży statek (towar 62 \"Большой Корабль\"), a \"Корабли\" nosi już zawód 52."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 5,
+    "from": "Добыча - Камень",
+    "to": "Добыча - Бут",
+    "reason": "Wydobywa się kamień łamany, towar 3 \"Бут\"; \"Камень\" to kamienny blok kamieniarza (towar 26)."
+  },
+  {
+    "lang": "eng",
+    "table": "experiences",
+    "id": 5,
+    "from": "Extraction - Stone",
+    "to": "Extraction - Quarrystone",
+    "reason": "Zbieracz wydobywa towar 3 \"Quarrystone\", a \"Stone\" to nazwa kamiennego bloku (towar 26)."
+  },
+  {
+    "lang": "rus",
+    "table": "goods",
+    "id": 56,
+    "from": "Жертва",
+    "to": "Дичь",
+    "reason": "Towar 56 to upolowana zdobycz (eng \"Prey\", pol \"Zdobycz\"), a \"Жертва\" znaczy ofiara."
+  },
+  {
+    "lang": "rus",
+    "table": "tribes",
+    "id": 12,
+    "from": "Олень",
+    "to": "Лань",
+    "reason": "Zwierzę 12 to łania (pol \"Łania\", ger \"Reh\"), a \"Олень\" nosi już jeleń 11."
+  },
+  {
+    "lang": "rus",
+    "table": "tribes",
+    "id": 15,
+    "from": "Коза",
+    "to": "Горный Козел",
+    "reason": "Zwierzę 15 to koziorożec (wewnętrzna nazwa \"ibexes\", pol \"Dzika Koza\"), a \"Коза\" nosi już koza 14."
+  },
+  {
+    "lang": "rus",
+    "table": "tribes",
+    "id": 22,
+    "from": "Верблюд",
+    "to": "Дромадер",
+    "reason": "Zwierzę 22 to dromader (eng \"Dromedary\", pol \"Dromader\"), a \"Верблюд\" nosi już wielbłąd 21."
+  },
+  {
+    "lang": "rus",
+    "table": "tribes",
+    "id": 26,
+    "from": "Лев",
+    "to": "Львица",
+    "reason": "Zwierzę 26 to lwica (wewnętrzna nazwa \"lionesses\", pol \"Lwica\"), a \"Лев\" nosi już lew 25."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 32,
+    "from": "Копьеносец",
+    "to": "Копьеносец с деревянным копьем",
+    "reason": "Zawody 32 i 33 noszą tę samą nazwę, a różnią się włócznią (eng \"Wooden Spearman\" i \"Iron Spearman\")."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 33,
+    "from": "Копьеносец",
+    "to": "Копьеносец с железным копьем",
+    "reason": "Zawody 32 i 33 noszą tę samą nazwę, a różnią się włócznią (eng \"Wooden Spearman\" i \"Iron Spearman\")."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 32,
+    "from": "Копьеносцы",
+    "to": "Копьеносцы с деревянными копьями",
+    "reason": "Zawody 32 i 33 noszą tę samą nazwę, a różnią się włócznią (eng \"Wooden Spearman\" i \"Iron Spearman\")."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 33,
+    "from": "Копьеносцы",
+    "to": "Копьеносцы с железными копьями",
+    "reason": "Zawody 32 i 33 noszą tę samą nazwę, a różnią się włócznią (eng \"Wooden Spearman\" i \"Iron Spearman\")."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 35,
+    "from": "Длинный меч",
+    "to": "Воин с длинным мечом",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Longsword Fighter\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 36,
+    "from": "Короткая сабля",
+    "to": "Воин с короткой саблей",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Shortsabre Fighter\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 37,
+    "from": "Длинная сабля",
+    "to": "Воин с длинной саблей",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Longsabre Fighter\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 39,
+    "from": "Большой Топор",
+    "to": "Воин с большим топором",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Big Axe Fighter\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 41,
+    "from": "Длинный Лук",
+    "to": "Стрелок с длинным луком",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Longbow Archer\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobs",
+    "id": 42,
+    "from": "Безоружный",
+    "to": "Безоружный Герой",
+    "reason": "Sam przymiotnik \"nieuzbrojony\"; zawód 42 to nieuzbrojony bohater (eng \"Unarmed Hero\")."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 35,
+    "from": "Длинные мечи",
+    "to": "Воины с длинными мечами",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Longsword Fighters\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 36,
+    "from": "Короткие сабли",
+    "to": "Воины с короткими саблями",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Shortsabre Fighters\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 37,
+    "from": "Длинные сабли",
+    "to": "Воины с длинными саблями",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Longsabre Fighters\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 39,
+    "from": "Большие Топоры",
+    "to": "Воины с большими топорами",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Big Axe Fighters\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 41,
+    "from": "Длинные Луки",
+    "to": "Стрелки с длинными луками",
+    "reason": "Klasa żołnierza nazwana samą bronią; oryginał nazywa wojowników od broni (\"Воин с мечом\", \"Стрелок с Луком\"), eng \"Longbow Archers\"."
+  },
+  {
+    "lang": "rus",
+    "table": "jobsPlural",
+    "id": 42,
+    "from": "Безоружные",
+    "to": "Безоружные Герои",
+    "reason": "Sam przymiotnik \"nieuzbrojeni\"; zawód 42 to nieuzbrojeni bohaterowie (eng \"Unarmed Heroes\")."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 35,
+    "from": "Тиснение",
+    "to": "Чеканка",
+    "reason": "\"Тиснение\" znaczy tłoczenie wzorów; mennica bije monety, czyli \"чеканка\" (eng \"Minting\")."
+  },
+  {
+    "lang": "rus",
+    "table": "experiences",
+    "id": 36,
+    "from": "Тиснение - Монеты",
+    "to": "Чеканка - Монеты",
+    "reason": "\"Тиснение\" znaczy tłoczenie wzorów; mennica bije monety, czyli \"чеканка\" (eng \"Minting - Coins\")."
+  },
+  {
+    "lang": "rus",
+    "table": "misclogic",
+    "id": 107,
+    "from": "Включить Посуду",
+    "to": "Запретить Посуду",
+    "reason": "To rozkaz zakazu (eng \"Prohibit Crockery\"), a tekst powtarza zezwolenie z wiersza 106."
+  },
+  {
+    "lang": "rus",
+    "table": "housewindow",
+    "id": 46,
+    "from": "Включить Посуду",
+    "to": "Запретить Посуду",
+    "reason": "To przycisk zakazu (eng \"Prohibit Crockery\"), a tekst powtarza zezwolenie z wiersza 45."
+  },
+  {
+    "lang": "rus",
+    "table": "housewindow",
+    "id": 47,
+    "from": "Нефть",
+    "to": "Масло",
+    "reason": "Etykieta dotyczy świętego oleju, towaru 15 (tu \"Масло\", jak w wierszu 48 \"Включить Масло\"), a \"Нефть\" znaczy ropa naftowa."
+  },
+  {
+    "lang": "rus",
+    "table": "misclogic",
+    "id": 149,
+    "from": "Attack Mode",
+    "to": "Режим Атаки",
+    "reason": "Nieprzetłumaczony angielski tekst; zapis jak w wierszu 38 \"Режим Атаки Солдата\"."
+  },
+  {
+    "lang": "rus",
+    "table": "misclogic",
+    "id": 150,
+    "from": "режим Обороны",
+    "to": "Режим Обороны",
+    "reason": "Mała litera na początku i wielka w środku, inaczej niż w wierszach 39 i 151."
+  },
+  {
+    "lang": "rus",
+    "table": "misc",
+    "id": 88,
+    "from": "вогел в игру",
+    "to": "вошел в игру",
+    "reason": "Literówka: \"вошел\" (eng \"has entered the game\")."
+  },
+  {
+    "lang": "rus",
+    "table": "vehiclewindow",
+    "id": 27,
+    "from": "Приписать к торгвому посту",
+    "to": "Приписать к торговому посту",
+    "reason": "Literówka w słowie \"торговому\", zapisanym poprawnie w wierszu 28."
+  },
+  {
+    "lang": "rus",
+    "table": "houses",
+    "id": 54,
+    "from": "8е Чудо",
+    "to": "8-е Чудо",
+    "reason": "Błędny zapis liczebnika porządkowego: po rosyjsku \"8-е\"."
+  },
+  {
+    "lang": "eng",
+    "table": "misclogic",
+    "id": 182,
+    "from": "Place a '%s'",
+    "to": "Place '%s'",
+    "reason": "Rodzajnik \"a\" przed nazwą budynku w cudzysłowie daje błędne \"a 'Armourer's Shop 1'\"; nazwa stoi bez rodzajnika."
+  },
+  {
+    "lang": "eng",
+    "table": "misclogic",
+    "id": 183,
+    "from": "Place a '%s' and fill its store",
+    "to": "Place '%s' and fill its store",
+    "reason": "Rodzajnik \"a\" przed nazwą budynku w cudzysłowie daje błędne \"a 'Armourer's Shop 1'\"; nazwa stoi bez rodzajnika."
+  },
+  {
+    "lang": "eng",
+    "table": "misclogic",
+    "id": 184,
+    "from": "Permit for building a '%s'",
+    "to": "Permit to build '%s'",
+    "reason": "Rodzajnik \"a\" przed nazwą budynku w cudzysłowie daje błędne \"a 'Armourer's Shop 1'\"; nazwa stoi bez rodzajnika."
+  },
+  {
+    "lang": "ger",
+    "table": "misclogic",
+    "id": 181,
+    "from": "Ein Haus ihrer Wahl setzen",
+    "to": "Ein Haus Ihrer Wahl setzen",
+    "reason": "Zaimek grzecznościowy \"Ihrer\" pisze się wielką literą; \"ihrer\" znaczy \"jej\"."
+  },
+  {
+    "lang": "ger",
+    "table": "misclogic",
+    "id": 183,
+    "from": "'%s' setzen und dessen Lager zu füllen",
+    "to": "'%s' setzen und dessen Lager füllen",
+    "reason": "Zbędne \"zu\" w poleceniu (błąd gramatyczny)."
+  },
+  {
+    "lang": "ger",
+    "table": "misclogic",
+    "id": 184,
+    "from": "Erlaubnis, ein '%s' Haus zu bauen",
+    "to": "Erlaubnis, '%s' zu bauen",
+    "reason": "\"ein '%s' Haus\" daje np. \"ein 'Wohnhaus 1' Haus\"; nazwa budynku stoi sama."
+  },
+  {
+    "lang": "rus",
+    "table": "misclogic",
+    "id": 183,
+    "from": "Построить '%s' и заполнить склад",
+    "to": "Построить '%s' и заполнить его запасами",
+    "reason": "\"заполнить склад\" brzmi jak budowa magazynu; papier wypełnia zapasy tego budynku."
+  },
+  {
+    "lang": "ger",
+    "table": "tribes",
+    "id": 2,
+    "from": "Franken",
+    "to": "Franke",
+    "reason": "Pozostałe plemiona stoją w liczbie pojedynczej (Wikinger, Byzantiner, Ägypter); \"Franken\" to liczba mnoga albo nazwa regionu."
   }
 ]

@@ -45,8 +45,5 @@ export function actionLabel(
   uiString: UiString,
   locale: Locale = currentLocale(),
 ): string {
-  const fallback = messages(locale).actionRing[id];
-  // These Polish rows mislabel signpost creation and misspell the defensive stance.
-  if (locale === 'pol' && (id === 'erectSignpost' || id === 'defenceMode')) return fallback;
-  return uiString('misclogic', ACTION_STRING_IDS[id], fallback);
+  return uiString('misclogic', ACTION_STRING_IDS[id], messages(locale).actionRing[id]);
 }

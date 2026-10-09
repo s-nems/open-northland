@@ -78,6 +78,6 @@ it('names the herd a breeder waits on in place of its water and wheat', () => {
   expect(herd('youngGrowing')).toBe(`Młode dorastają: ${sheep}. Hodowla ruszy, gdy para dorośnie`);
   setActiveLocale('eng');
   expect(herd('herdFull')).toBe(
-    `Herd full: ${goodLabel(ctx, GOOD_SHEEP)}. The breeder waits for the young to grow up`,
+    `Herd full: ${goodLabel(ctx, GOOD_SHEEP)}. The stock farmer waits for the young to grow up`,
   );
 });

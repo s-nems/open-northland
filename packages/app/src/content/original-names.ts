@@ -1,24 +1,14 @@
 import type { ContentSet } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
-import { JOB_ARCHER, JOB_ARCHER_LONG, JOB_CIVILIST } from '../catalog/jobs.js';
+import { JOB_ARCHER, JOB_ARCHER_LONG, JOB_CIVILIST, JOB_WOMAN } from '../catalog/jobs.js';
 import { isSoldierJob, PROFESSIONS } from '../catalog/professions.js';
+import { WEAPON_XP_KEY_BY_TYPE } from '../catalog/weapon-experience.js';
 import { installNameOverlay, type Locale, type Messages, messages, type NameOverlay } from '../i18n/index.js';
 import { type GuiStrings, loadGuiStrings } from './gui-gfx.js';
 
 /** The content rows that turn a string table's type id into the slug a catalog keys the name by. The
  *  tables use the game's type ids, so these are the decoded content's rows, never the sandbox's. */
 export type NameContent = Pick<ContentSet, 'goods' | 'buildings' | 'jobs' | 'jobExperience' | 'tribes'>;
-
-type WeaponXpKey = keyof Messages['hud']['weaponXp'];
-
-/** The fight experience buckets, which have no content row, by the catalog key that names them. */
-export const WEAPON_XP_TYPES: Readonly<Record<WeaponXpKey, number>> = {
-  fist: systems.FIGHT_EXPERIENCE_TYPE.FIST,
-  spear: systems.FIGHT_EXPERIENCE_TYPE.SPEAR,
-  sword: systems.FIGHT_EXPERIENCE_TYPE.SWORD,
-  bow: systems.FIGHT_EXPERIENCE_TYPE.BOW,
-  catapult: systems.FIGHT_EXPERIENCE_TYPE.CATAPULT,
-};
 
 /** Profession keys outside the picker roster, by the job they name. The other off-roster keys (the sea
  *  trades) equal their content job's slug. */
@@ -27,6 +17,13 @@ const OFF_ROSTER_PROFESSION_JOBS: Readonly<Partial<Record<keyof Messages['profes
   archer_short: JOB_ARCHER,
   archer_long: JOB_ARCHER_LONG,
 };
+
+/** The group panel's settler roles one job names. A child's role spans the baby and child jobs and a
+ *  hero's is the generic hero class label, so both keep their authored text. */
+const GROUP_ROLE_JOBS: ReadonlyMap<keyof Messages['hud']['groupPanel']['role'], number> = new Map([
+  ['civilian', JOB_CIVILIST],
+  ['woman', JOB_WOMAN],
+]);
 
 type Table = Readonly<Record<string, string>>;
 
@@ -92,20 +89,12 @@ function byKey(jobOfKey: ReadonlyMap<string, number>, table: Table | undefined):
 
 /**
  * The catalog overlay one language's game-object string tables (`goods`, `houses`, `jobs`, `jobsPlural`,
- * `experiences`, `tribes`, keyed by type id) give. A vehicle's build site takes the vehicle's good name,
- * since the houses table names both ship yards alike.
+ * `experiences`, `tribes`, keyed by type id) give.
  */
 export function originalNameOverlay(strings: GuiStrings, content: NameContent): NameOverlay {
   const { goods, houses, jobs, jobsPlural, experiences } = strings;
   const byTypeId = <T extends { readonly typeId: number }>(row: T): number => row.typeId;
   const bySlug = <T extends { readonly id: string }>(row: T): string => row.id;
-
-  const building = named(content.buildings, houses, bySlug, byTypeId);
-  for (const good of content.goods) {
-    const site = content.buildings.find((row) => row.typeId === good.vehicleHouse);
-    const name = goods?.[String(good.typeId)];
-    if (site !== undefined && name !== undefined) building[site.id] = name;
-  }
 
   const jobOfKey = professionJobs(content);
   const rosterJobs = new Set(PROFESSIONS.map((p) => p.jobType));
@@ -117,19 +106,21 @@ export function originalNameOverlay(strings: GuiStrings, content: NameContent): 
 
   return {
     goods: named(content.goods, goods, bySlug, byTypeId),
-    building,
+    building: named(content.buildings, houses, bySlug, byTypeId),
     profession: byKey(jobOfKey, jobs),
     professions: byKey(jobOfKey, jobsPlural),
     roleNames: named(roleJobs, jobs, bySlug, byTypeId),
     heroNames: named(heroJobs, jobs, bySlug, byTypeId),
     soldierClass: named(soldierJobs, jobs, bySlug, byTypeId),
     soldierClasses: named(soldierJobs, jobsPlural, bySlug, byTypeId),
+    groupRole: byKey(GROUP_ROLE_JOBS, jobs),
+    groupRoles: byKey(GROUP_ROLE_JOBS, jobsPlural),
     trackLabels: named(content.jobExperience, experiences, bySlug, byTypeId),
     weaponXp: named(
-      Object.entries(WEAPON_XP_TYPES),
+      [...WEAPON_XP_KEY_BY_TYPE],
       experiences,
-      ([key]) => key,
-      ([, type]) => type,
+      ([, key]) => key,
+      ([type]) => type,
     ),
     tribeNames: tribeNamesOf(strings),
   };

@@ -181,7 +181,7 @@ describe('selection details panel model', () => {
     if (model.kind !== 'building') return;
     expect(model.typeId).toBe(BUILDING_HEADQUARTERS);
     // The title reads the SAME localized name the build menu shows (catalog/building-i18n.ts).
-    expect(model.title).toBe('Kwatera Główna');
+    expect(model.title).toBe('Kwatera główna');
     expect(model.orders?.alarm).toEqual({ on: false });
     // The stock list is the HQ's ACCEPTED goods (its `stock` slots), each shown even at 0 - so every
     // accepted good appears; a freshly-placed HQ holds nothing, so every row is 0.
@@ -764,9 +764,14 @@ describe('selection details panel model', () => {
 
     const model = buildUnitPanelModel(snapshot, new Set([1]), sandboxCtx());
     if (model.kind !== 'settler') throw new Error('expected a settler model');
-    // Pinned labels (deliberately diverging from the decoded humanwindow 12–14 stat names), in the
-    // fixed Health → Food → Sleep → Company → Religion order.
-    expect(model.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Sytość', 'Sen', 'Towarzystwo', 'Religia']);
+    // The original's humanwindow stat names, in the fixed Health → Food → Sleep → Company → Religion order.
+    expect(model.bars.map((b) => b.label)).toEqual([
+      'Zdrowie',
+      'Energia',
+      'Wytrzymałość',
+      'Motywacja Społeczna',
+      'Religia',
+    ]);
     // Health: gauge = hp/max percent, hover = the raw points.
     expect(model.bars[0]).toMatchObject({ pct: 30, hover: '300/1000' });
     // Needs: gauge = satisfaction level, hover = the same level as a percent.
@@ -777,7 +782,12 @@ describe('selection details panel model', () => {
 
     const bare = buildUnitPanelModel(snapshot, new Set([2]), sandboxCtx());
     if (bare.kind !== 'settler') throw new Error('expected a settler model');
-    expect(bare.bars.map((b) => b.label)).toEqual(['Sytość', 'Sen', 'Towarzystwo', 'Religia']);
+    expect(bare.bars.map((b) => b.label)).toEqual([
+      'Energia',
+      'Wytrzymałość',
+      'Motywacja Społeczna',
+      'Religia',
+    ]);
   });
 
   it('drops every need bar while the needs rule is off, leaving only Zdrowie', () => {
@@ -808,7 +818,13 @@ describe('selection details panel model', () => {
     ]);
     const kept = buildUnitPanelModel(on, new Set([1]), sandboxCtx());
     if (kept.kind !== 'settler') throw new Error('expected a settler model');
-    expect(kept.bars.map((b) => b.label)).toEqual(['Zdrowie', 'Sytość', 'Sen', 'Towarzystwo', 'Religia']);
+    expect(kept.bars.map((b) => b.label)).toEqual([
+      'Zdrowie',
+      'Energia',
+      'Wytrzymałość',
+      'Motywacja Społeczna',
+      'Religia',
+    ]);
   });
 
   it('shows a minor its age in years off the sim rate, and shows an adult none', () => {
@@ -864,8 +880,8 @@ describe('selection details panel model', () => {
     const saracen = buildUnitPanelModel(snapshot, new Set([2]), watcher);
     if (viking.kind !== 'settler' || saracen.kind !== 'settler') throw new Error('expected settlers');
     expect(viking.foreign).toBe(true);
-    expect(viking.meta).toContain('Wikingowie');
-    expect(saracen.meta).toContain('Saraceni');
+    expect(viking.meta).toContain('Wiking');
+    expect(saracen.meta).toContain('Saracen');
     // The seat's own settler has nothing to say on that line.
     const own = buildUnitPanelModel(snapshot, new Set([1]), { ...sandboxCtx(), viewer: fixedViewerSeat(0) });
     if (own.kind !== 'settler') throw new Error('expected a settler');
@@ -1417,7 +1433,7 @@ describe('selection details panel model', () => {
       { repeats: 1, bonusPct: 17, own: true },
       { repeats: 4, bonusPct: 2, own: false },
     ]);
-    expect(model.experience[0]?.label).toBe('Zbieracz Drewna'); // hand-translated trackLabels entry
+    expect(model.experience[0]?.label).toBe('Zbieranie - Drewno'); // hand-translated trackLabels entry
     expect(model.experience[1]?.label).not.toMatch(/Specjalizacja/); // general track labels by its job
     expect(model.experience[2]?.label).toBe('Walka - Miecz'); // the sword fight bucket's weapon label
     // Both own rows show before the fold; the sword row waits behind "1 more".
@@ -1534,7 +1550,7 @@ describe('settler upcoming-unlock rows', () => {
       { unlocks: jobDisplayName(unlockCtx(), GATED_JOB), current: 4, required: 10 },
       { unlocks: goodLabel(unlockCtx(), GOOD_IRON), current: 4, required: 20 },
     ]);
-    expect(model.upcomingUnlocks[0]?.track).toBe('Zbieracz Drewna'); // the tracked path named
+    expect(model.upcomingUnlocks[0]?.track).toBe('Zbieranie - Drewno'); // the tracked path named
   });
 
   it('shows nothing while profession progression is off (the ProgressionRules singleton)', () => {

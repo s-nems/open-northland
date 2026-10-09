@@ -95,6 +95,8 @@ describe('string corrections', () => {
   it.each([
     ['an object instead of a list', { ...ENTRY }, /not a JSON array/],
     ['an unknown key', [{ ...ENTRY, sha256: 'x' }], /unknown key "sha256"/],
+    ['an unknown language', [{ ...ENTRY, lang: 'ru' }], /lang must be one of eng, pol, ger, rus/],
+    ['an unknown table', [{ ...ENTRY, table: 'good' }], /table must be one of main, .*jobsPlural/],
     ['a missing reason', [{ ...ENTRY, reason: ' ' }], /reason must say why/],
     ['a non-integer id', [{ ...ENTRY, id: '4' }], /id must be a string id/],
     ['a no-op swap', [{ ...ENTRY, to: RUS_TEXT }], /two different strings/],
@@ -110,7 +112,7 @@ describe('string corrections', () => {
     expect(() => none.assertApplied()).not.toThrow();
   });
 
-  it('parses the committed corrections', async () => {
+  it('parses the committed corrections, each naming a known language and table', async () => {
     expect((await loadStringCorrections(STRING_CORRECTIONS_FILE)).list.length).toBeGreaterThan(0);
   });
 });

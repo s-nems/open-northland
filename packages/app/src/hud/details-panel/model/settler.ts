@@ -8,7 +8,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { JOB_SCOUT } from '../../../catalog/jobs.js';
-import { WEAPON_XP_TYPES } from '../../../content/original-names.js';
+import { WEAPON_XP_KEY_BY_TYPE } from '../../../catalog/weapon-experience.js';
 import { num, type SnapshotEntity, settlerExperienceOf, settlerNeedsOf } from '../../../game/snapshot.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import { healthBar, type PanelBar, pct } from './bars.js';
@@ -32,10 +32,7 @@ function needBar(label: string, need: NeedKind, deficit: number | undefined): Pa
 /**
  * The General stat bars. The sim stores needs as rising deficits (`hunger`↑ = hungrier) while the
  * original's window shows the satisfaction level, so each need bar is `100 - need`; an overfilled bar
- * reads full rather than over. The labels
- * deliberately diverge from the decoded `humanwindow` 11-15 strings: each bar is named after the need it
- * shows (Hungry←hunger, Sleep←fatigue, Company←enjoyment), which the original's stat names do not map
- * onto 1:1.
+ * reads full rather than over. The labels are the original's `humanwindow` 11-15 stat names.
  */
 export function satisfactionBars(
   ent: SnapshotEntity,
@@ -72,12 +69,6 @@ export interface ExperienceRowModel {
 
 const PERCENT = 100;
 
-type WeaponXpKey = keyof ReturnType<typeof messages>['hud']['weaponXp'];
-
-const WEAPON_XP_KEY: ReadonlyMap<number, WeaponXpKey> = new Map(
-  (Object.keys(WEAPON_XP_TYPES) as WeaponXpKey[]).map((key) => [WEAPON_XP_TYPES[key], key]),
-);
-
 /** A specialization row's label: the track's `hud.trackLabels` entry, keyed by its content slug, else
  *  the job's name for a general track and "job - good" for a good-specific one. */
 export function experienceLabel(
@@ -92,7 +83,7 @@ export function experienceLabel(
     if (track.goodTypes.length === 0) return jobDisplayName(ctx, track.jobType);
     return `${jobDisplayName(ctx, track.jobType)} - ${track.goodTypes.map((good) => goodLabel(ctx, good)).join(' / ')}`;
   }
-  const weaponKey = WEAPON_XP_KEY.get(spec);
+  const weaponKey = WEAPON_XP_KEY_BY_TYPE.get(spec);
   if (weaponKey !== undefined) return messages().hud.weaponXp[weaponKey];
   if (spec === systems.SCOUT_EXPERIENCE_TYPE) return jobDisplayName(ctx, JOB_SCOUT);
   return formatMessage(messages().hud.specialization, { id: spec });
@@ -106,7 +97,7 @@ function experienceBonusPct(
   track: JobExperienceDef | undefined,
   points: number,
 ): number | null {
-  if (track === undefined && WEAPON_XP_KEY.has(spec)) {
+  if (track === undefined && WEAPON_XP_KEY_BY_TYPE.has(spec)) {
     return systems.withFightExperience(PERCENT, points) - PERCENT;
   }
   if (spec === systems.SCOUT_EXPERIENCE_TYPE) {
@@ -135,7 +126,7 @@ export function experienceRows(ctx: UnitPanelModelContext, comps: Comp): Experie
     const own =
       track !== undefined
         ? track.jobType === jobType
-        : WEAPON_XP_KEY.has(spec)
+        : WEAPON_XP_KEY_BY_TYPE.has(spec)
           ? fights
           : spec === systems.SCOUT_EXPERIENCE_TYPE && jobType === JOB_SCOUT;
     rows.push({

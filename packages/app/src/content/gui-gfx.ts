@@ -130,15 +130,18 @@ const guiStringsByLang = new Map<string, Promise<GuiStrings | null>>();
 
 /**
  * Load one language's decoded in-game UI strings, once per document. `null` when the pipeline hasn't
- * produced them, so a caller falls back to placeholder labels.
+ * produced them or the fetch failed, so a caller falls back to placeholder labels; a `null` is not kept,
+ * so the next caller asks again.
  */
 export function loadGuiStrings(lang: string): Promise<GuiStrings | null> {
-  let strings = guiStringsByLang.get(lang);
-  if (strings === undefined) {
-    strings = fetchJsonOrNull<GuiStrings>(`${GUI_ROOT}/strings/${lang}.json`);
-    guiStringsByLang.set(lang, strings);
-  }
-  return strings;
+  const cached = guiStringsByLang.get(lang);
+  if (cached !== undefined) return cached;
+  const loading = fetchJsonOrNull<GuiStrings>(`${GUI_ROOT}/strings/${lang}.json`);
+  guiStringsByLang.set(lang, loading);
+  void loading.then((loaded) => {
+    if (loaded === null && guiStringsByLang.get(lang) === loading) guiStringsByLang.delete(lang);
+  });
+  return loading;
 }
 
 /** Load one language's rendered history tables (read in the mission book's chronicle), or `null` without them. */

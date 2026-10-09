@@ -18,16 +18,14 @@ describe('action labels from content', () => {
     expect(actionLabel('changeProfession', lookup, 'pol')).toBe('fixture trade');
   });
 
-  it('keeps Polish corrections ahead of content without overriding other locales', () => {
-    expect(actionLabel('erectSignpost', lookup, 'pol')).toBe('Postaw drogowskaz');
-    expect(actionLabel('defenceMode', lookup, 'pol')).toBe('Tryb obrony żołnierza');
-    expect(actionLabel('erectSignpost', lookup, 'eng')).toBe('fixture sign');
-    expect(actionLabel('defenceMode', lookup, 'eng')).toBe('fixture stance');
+  it('reads the signpost and defence rows from content, Polish included', () => {
+    expect(actionLabel('erectSignpost', lookup, 'pol')).toBe('fixture sign');
+    expect(actionLabel('defenceMode', lookup, 'pol')).toBe('fixture stance');
   });
 
   it('uses project wording when a row or the whole table is missing', () => {
-    expect(actionLabel('assignHome', lookup, 'eng')).toBe('Choose a home');
+    expect(actionLabel('assignHome', lookup, 'eng')).toBe('Assign Home');
     expect(actionLabel('assignHome', uiStringLookup(null), 'pol')).toBe('Wybierz dom');
-    expect(messages('eng').actionRing.goTo).toBe('Move to a location');
+    expect(messages('eng').actionRing.goTo).toBe('Go To');
   });
 });

@@ -1,6 +1,8 @@
+import { systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_ARCHER } from '../src/catalog/jobs.js';
+import { JOB_ARCHER, JOB_BABY_FEMALE, JOB_CHILD_FEMALE } from '../src/catalog/jobs.js';
 import { isSettler, isVehicle, settlerJobType } from '../src/game/snapshot.js';
+import { jobDisplayName } from '../src/hud/details-panel/model/context.js';
 import {
   ALL_SCOPE,
   buildUnitPanelModel,
@@ -9,7 +11,7 @@ import {
 } from '../src/hud/details-panel/model/index.js';
 import { groupPanelScene } from '../src/scenes/group-panel.js';
 import { createSceneSim } from '../src/scenes/index.js';
-import { ctxOf } from './support/sandbox.js';
+import { ctxOf, sandboxCtx, snapshotOf } from './support/sandbox.js';
 
 /** The scene's whole company, boxed: 35 settlers, two catapults and a handcart. */
 function company(select: (kind: 'settler' | 'vehicle') => boolean = () => true): GroupPanelModel {
@@ -137,6 +139,31 @@ describe('group panel model', () => {
     if (settler === undefined || vehicle === undefined) throw new Error('scene: no settler or vehicle');
     const model = buildUnitPanelModel(snapshot, new Set([settler.id, vehicle.id]), ctxOf(sim));
     expect(model.kind).toBe('group');
+  });
+
+  it("names each child by its own job, under the children's one plural", () => {
+    const BABY = 1;
+    const GIRL = 2;
+    const snapshot = snapshotOf([
+      { id: BABY, components: { Settler: { tribe: 1, jobType: JOB_BABY_FEMALE }, Age: { ticks: 0 } } },
+      {
+        id: GIRL,
+        components: {
+          Settler: { tribe: 1, jobType: JOB_CHILD_FEMALE },
+          Age: { ticks: systems.CHILD_AGE_TICKS },
+        },
+      },
+    ]);
+    const ctx = sandboxCtx();
+    const model = buildUnitPanelModel(snapshot, new Set([BABY, GIRL]), ctx);
+    if (model.kind !== 'group') throw new Error(`expected a group, got ${model.kind}`);
+    const labelOf = (id: number) => model.members.find((m) => m.id === id)?.kindLabel;
+    expect([labelOf(BABY), labelOf(GIRL)]).toEqual([
+      jobDisplayName(ctx, JOB_BABY_FEMALE),
+      jobDisplayName(ctx, JOB_CHILD_FEMALE),
+    ]);
+    expect(labelOf(BABY)).not.toBe(labelOf(GIRL));
+    expect(model.scopes).toHaveLength(1);
   });
 
   it('gives a vehicle-only group no orders medallion', () => {

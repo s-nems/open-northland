@@ -1,11 +1,11 @@
 export const deSurfaces = {
   tribeNames: {
     '1': 'Wikinger',
-    '2': 'Franken',
+    '2': 'Franke',
     '3': 'Byzantiner',
-    '4': 'Sarazenen',
-    '5': 'Werschlangen',
-    '6': 'Werwölfe',
+    '4': 'Sarazene',
+    '5': 'Schlangenmensch',
+    '6': 'Werwolf',
     '7': 'Ägypter',
   },
   mainMenu: {
@@ -116,7 +116,7 @@ export const deSurfaces = {
       overseerTaken: 'Du leitest das Spiel',
       teamColour: 'Teamfarbe',
       teamColourLocked: 'die Farben sind auf dieser Karte festgelegt',
-      tribe: 'Volk',
+      tribe: 'Stamm',
       difficultyHeader: 'Schwierigkeit',
       difficultyTitle:
         'Spielstärke des Computers auf diesem Platz: Leicht und Mittel bauen langsamer, bekommen weniger Kinder und beenden den Ausbau früher. Schwer nutzt die vollständige Strategie.',
@@ -128,7 +128,7 @@ export const deSurfaces = {
       tribeMapDefault: 'Kartenvorgabe',
       tribeMapChoice: 'Die Karte empfiehlt: {tribe}',
       tribeTitle:
-        'Das Volk dieses Spielerplatzes bestimmt dessen Siedler und Gebäude. Die Karte wurde für das mit einem Stern markierte Volk entworfen.',
+        'Der Stamm dieses Spielerplatzes bestimmt dessen Siedler und Gebäude. Die Karte wurde für den mit einem Stern markierten Stamm entworfen.',
       settingsTitle: 'Spieleinstellungen',
       mapLabel: 'Karte',
       mapModes: {
@@ -283,7 +283,7 @@ export const deSurfaces = {
         'Mischt beide Stereokanäle zu einem und spielt ihn auf beiden Seiten, sodass auf einem einzelnen Lautsprecher oder Ohr nichts verloren geht.',
       jinglesEnabled: 'Ereignismelodien',
       jinglesEnabledTip:
-        'Die kurzen Melodien für ein fertiges Gebäude, eine Entdeckung, eine Geburt, eine Hochzeit und eine geöffnete Truhe. Alarme, Tode und das Missionsende erklingen immer.',
+        'Die kurzen Melodien für ein fertiges Gebäude, eine Entdeckung, eine Geburt, eine Hochzeit und eine geöffnete Kiste. Alarme, Tode und das Missionsende erklingen immer.',
       unitResponses: 'Wann Einheiten antworten',
       unitResponsesTip:
         'Ob die Siedler auf Befehle und auf die Auswahl laut antworten. Ohne Antwort bestätigt allein der Klick einen Befehl.',
@@ -327,8 +327,8 @@ export const deSurfaces = {
         panDown: 'Karte nach unten bewegen',
         pauseToggle: 'Pause',
         gameMenu: 'Spielmenü',
-        construction: 'Baumenü',
-        residents: 'Siedlerübersicht',
+        construction: 'Baufenster',
+        residents: 'Untertanenfenster',
         assistant: 'Assistent',
         statistics: 'Statistik',
         mission: 'Missionsfenster',
@@ -398,7 +398,7 @@ export const deSurfaces = {
         workFlagOrder: 'Arbeitsfahne setzen',
         roadTool: 'Straßenwerkzeug',
         palisadeTool: 'Palisadenwerkzeug',
-        upgradeGround: 'Mauer oder Straße auf Ausbaufläche platzieren',
+        upgradeGround: 'Palisade oder Straße auf Ausbaufläche platzieren',
       },
       keySpace: 'Leertaste',
       mouseLeft: 'linke Maustaste',
@@ -502,7 +502,7 @@ export const deSurfaces = {
     heading: 'Tipp',
     tips: {
       queueOrders:
-        '{shift} + Klick reiht Gehaufträge, Angriffsbewegungen sowie das Setzen von Wegweisern und Öffnen von Truhen ein.',
+        '{shift} + Klick reiht Gehaufträge, Angriffsbewegungen sowie das Setzen von Wegweisern und Öffnen von Kisten ein.',
       buildMany:
         'Halte beim Platzieren eines Gebäudes {shift} gedrückt, um mehrere davon zu setzen, eines pro Klick.',
       attackMove:
@@ -510,9 +510,9 @@ export const deSurfaces = {
       postGraduates:
         'Im Assistentenfenster ({key}) schickt „{graduatesOption}“ frisch ausgebildete Siedler von der Schule in die Werkstätten.',
       moveFlags:
-        'Im Assistentenfenster ({key}) versetzt „{flagsOption}“ die Arbeitsfahnen der Sammler näher an die Rohstoffe, wenn die bisherigen Vorräte erschöpft sind.',
+        'Im Assistentenfenster ({key}) versetzt „{flagsOption}“ die Arbeitsfahnen der Abbauer näher an die Rohstoffe, wenn die bisherigen Vorräte erschöpft sind.',
       lobbyNation:
-        'Klicke in der Lobby auf das Hauptquartiersymbol neben einem Spieler, um dessen Volk zu ändern.',
+        'Klicke in der Lobby auf das Hauptquartiersymbol neben einem Spieler, um dessen Stamm zu ändern.',
       roads:
         '{key} aktiviert das Straßenwerkzeug. Auf Straßen gehen Siedler etwa doppelt so schnell wie auf Gras.',
       upgrade: '{key} baut das ausgewählte Gebäude aus.',
@@ -526,7 +526,7 @@ export const deSurfaces = {
       porterFlag:
         'Träger in Lagerhäusern und Werkstätten können eine Sammelfahne erhalten und Waren in ihrer Nähe abholen. Setze sie in der Zeile „{area}“ im Siedlerfenster.',
       nationSwitch:
-        'Wenn du Siedler eines anderen Volkes hast, kannst du im Baumenü ({key}) zu dessen Gebäuden wechseln.',
+        'Wenn du Siedler eines anderen Stammes hast, kannst du im Baufenster ({key}) zu dessen Gebäuden wechseln.',
     },
   },
   common: {
@@ -613,7 +613,7 @@ export const deSurfaces = {
     head: 'Kopf {number}',
     roster: {
       civilian: 'Zivilist',
-      warrior: 'Krieger',
+      warrior: 'Soldat',
       woman: 'Frau',
       boy: 'Junge',
       girl: 'Mädchen',
@@ -746,7 +746,7 @@ export const deSurfaces = {
         label: 'Ware herstellen',
         trigger: 'wenn eine Werkstatt eine Ware fertigstellt',
       },
-      resourceFelled: { label: 'Baum fällt', trigger: 'wenn ein Holzfäller einen Baum fällt' },
+      resourceFelled: { label: 'Baum fällt', trigger: 'wenn ein Abbauer einen Baum fällt' },
       buildingFinished: {
         label: 'Bau abschließen',
         trigger: 'wenn dein Gebäude fertiggestellt wird, außerhalb des sichtbaren Bereichs leiser',
@@ -772,8 +772,8 @@ export const deSurfaces = {
         trigger: 'wenn du ein Gebäude in den Verteidigungsmodus versetzt',
       },
       chestOpened: {
-        label: 'Truhe öffnen',
-        trigger: 'wenn dein Siedler eine Truhe öffnet',
+        label: 'Kiste öffnen',
+        trigger: 'wenn dein Siedler eine Kiste öffnet',
       },
       technologyDiscovered: {
         label: 'Entdeckung',

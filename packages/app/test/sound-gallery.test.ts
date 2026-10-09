@@ -113,7 +113,7 @@ describe('buildSoundGalleryModel', () => {
   });
 
   it('binds vehicle completion and production to their positional groups', () => {
-    expect(model.actions.find((a) => a.label === 'Ukończenie pojazdu')?.group).toBe('Hammer Wood');
+    expect(model.actions.find((a) => a.label === 'Ukończenie wehikułu')?.group).toBe('Hammer Wood');
     expect(model.actions.find((a) => a.label === 'Produkcja towaru')?.group).toBe('Carpenter Saw');
   });
 
@@ -205,7 +205,7 @@ describe('buildSoundGalleryModel', () => {
     expect(m.voices).toHaveLength(3);
     expect(m.voices.flatMap((v) => v.groups)).toEqual([]);
     // A spatial action whose group is missing resolves to an empty clip list (still shown for auditing).
-    expect(m.actions.find((a) => a.label === 'Ukończenie pojazdu')?.clips).toEqual([]);
+    expect(m.actions.find((a) => a.label === 'Ukończenie wehikułu')?.clips).toEqual([]);
     expect(m.cues).toEqual([]);
   });
 });

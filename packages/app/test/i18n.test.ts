@@ -61,7 +61,7 @@ describe('application locale', () => {
 
   it('drives hand-authored profession and building labels from one active locale', () => {
     setActiveLocale('eng');
-    expect(professionLabel('smith')).toBe('Smith');
+    expect(professionLabel('smith')).toBe('Blacksmith');
     expect(localizedBuildingName('barracks', 'fallback')).toBe('Barracks');
 
     setActiveLocale('pol');

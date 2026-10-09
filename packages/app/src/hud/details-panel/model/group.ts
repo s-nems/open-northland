@@ -264,7 +264,9 @@ function settlerFacts(
     default:
       kind = `role:${role}`;
       plural = copy.roles[role];
-      singular = role === 'hero' ? jobDisplayName(ctx, jobType) : copy.role[role];
+      // A hero and a child read the name their job shows on every other surface; the children's row
+      // gathers babies, girls and boys under one plural.
+      singular = role === 'hero' || role === 'child' ? jobDisplayName(ctx, jobType) : copy.role[role];
   }
   const hunger = satisfactionBars(ent, snapshot.tick, needsOn, role !== 'hero').find(
     (bar) => bar.need === 'hunger',

@@ -9,7 +9,7 @@ import type { BuildingPanelDeps } from './actions.js';
 /** Design px of a good on an agreement chip (foundation.css `.on-offer`). */
 const OFFER_ICON_PX = 18;
 
-/** Trade agreements: the agreements this house offers a visiting trader, read-only chips
+/** Trade offers: the agreements this house offers a visiting trader, read-only chips
  *  "1 [coin] → 4 [iron]" as the trader's Agreement shows them. */
 export interface OffersSection {
   readonly element: HTMLElement;

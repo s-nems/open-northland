@@ -99,7 +99,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   bindDisplayMode(
     params,
     (displayMode) => {
-      updateSettings({ displayMode });
+      void updateSettings({ displayMode });
     },
     scope.signal,
   );

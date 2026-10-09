@@ -105,7 +105,7 @@ describe('building hover card model', () => {
 
     const model = buildingHoverModel(snapshot, 4, ctx);
 
-    expect(model?.title).toBe('Wieża strażnicza (poziom 1)');
+    expect(model?.title).toBe('Wieża obronna (poziom 1)');
     expect(model?.rows).toEqual([]);
   });
 
