@@ -154,18 +154,21 @@ const OXCART_STAND_ACTION = 3;
 
 /**
  * Per facing in strip-block order (SW, W, NW, NE, E, SE, S, N), the px a head's first walk frame moves to
- * sit on a driving figure's neck. Calibrated on the viking head: the shift that best overlays its walk frame on its
- * own driving frames, averaged over the cycle. Approximation: on the handcart the walking head stands
- * 3 px further from the cart and 3 px higher than that, since the driver's own head leans into the push
- * and an upright head in its place reads low and forward.
+ * sit on a driving figure's neck, and the radians it turns clockwise about that neck. Calibrated on the
+ * viking head: the shift that best overlays its walk frame on its own driving frames, averaged over the
+ * cycle. Approximation: on the handcart the walking head stands 3 px further from the cart and 3 px higher
+ * than that, since the driver's own head leans into the push and an upright head in its place reads low
+ * and forward, and pushing west or east it tips back by {@link HANDCART_HEAD_TILT}, forehead up, where its
+ * walking profile would look down at the cart.
  */
-export type CartDriveHeadShifts = readonly (readonly [dx: number, dy: number])[];
+export type CartDriveHeadShifts = readonly (readonly [dx: number, dy: number, tilt?: number])[];
+const HANDCART_HEAD_TILT = (20 * Math.PI) / 180;
 const HANDCART_HEAD_SHIFTS: CartDriveHeadShifts = [
   [15, -9],
-  [23, 4],
+  [23, 4, HANDCART_HEAD_TILT],
   [14, 16],
   [-16, 15],
-  [-25, 2],
+  [-25, 2, -HANDCART_HEAD_TILT],
   [-13, -9],
   [1, -13],
   [-1, 19],

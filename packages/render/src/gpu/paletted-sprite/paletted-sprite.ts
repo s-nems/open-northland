@@ -20,6 +20,18 @@ const WHITE = 0xffffff;
  */
 export type GuiColorKey = 'off' | 'magenta' | 'full' | 'round';
 
+/** Turn the quad's corners `radians` clockwise (screen y down) about `(pivotX, pivotY)`. */
+function tiltCorners(corners: Float32Array, pivotX: number, pivotY: number, radians: number): void {
+  const cos = Math.cos(radians);
+  const sin = Math.sin(radians);
+  for (let i = 0; i < corners.length; i += 2) {
+    const dx = (corners[i] ?? 0) - pivotX;
+    const dy = (corners[i + 1] ?? 0) - pivotY;
+    corners[i] = pivotX + dx * cos - dy * sin;
+    corners[i + 1] = pivotY + dx * sin + dy * cos;
+  }
+}
+
 /**
  * A feet-anchored sprite whose colour is a per-player palette lookup rather than a baked texture: the
  * indexed atlas holds a palette index in red and a mask in alpha, and each index is read through the
@@ -219,6 +231,7 @@ export class PalettedSprite extends Mesh<MeshGeometry, Shader> {
     p[5] = offsetY + height;
     p[6] = offsetX;
     p[7] = offsetY + height;
+    if (frame.tilt !== undefined) tiltCorners(p, offsetX + width / 2, offsetY + height, frame.tilt);
     const t = this.texUvs;
     t[0] = x / atlasWidth;
     t[1] = y / atlasHeight;

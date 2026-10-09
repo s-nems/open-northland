@@ -16,6 +16,8 @@ export interface AtlasFrame {
   readonly offsetX: number;
   readonly offsetY: number;
   readonly selectionEllipse?: SelectionEllipse;
+  /** Radians the paletted mesh turns the frame clockwise about its bottom-centre, a head about its neck. */
+  readonly tilt?: number;
 }
 
 export interface SpriteAtlas {

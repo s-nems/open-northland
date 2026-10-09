@@ -270,6 +270,17 @@ describe('borrowedGaitHeadAtlas', () => {
     expect(borrowed.frames.get(walk.start)).toBe(own.frames.get(walk.start));
   });
 
+  it("carries a head shift's tilt onto the frames it fills", () => {
+    const TILT = 0.3;
+    const tilted = { ...gait, headShifts: gait.headShifts.map(([dx, dy]) => [dx, dy, TILT] as const) };
+    expect(borrowedGaitHeadAtlas(own, [donor], [tilted], walk).frames.get(gait.start)).toMatchObject({
+      tilt: TILT,
+    });
+    expect(borrowedGaitHeadAtlas(own, [donor], [gait], walk).frames.get(gait.start)).not.toHaveProperty(
+      'tilt',
+    );
+  });
+
   it('holds the head still without a donor, and returns an atlas that already draws the gait by identity', () => {
     expect(borrowedGaitHeadAtlas(own, [], [gait], walk).frames.get(gait.start + 13)).toMatchObject({
       offsetY: -60,

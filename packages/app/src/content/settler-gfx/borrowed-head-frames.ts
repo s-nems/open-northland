@@ -80,7 +80,7 @@ export interface BorrowedGait {
 
 /**
  * `head` with the frames of `gaits` it draws none of filled in: each its own first `walk` frame of that
- * facing, moved by the gait's head shift and bobbing with the first donor head that draws the frame, as
+ * facing, moved and tilted by the gait's head shift and bobbing with the first donor head that draws the frame, as
  * that head's top moves around its mean over the facing's cycle. Approximation: the head keeps its walk
  * pose on the borrowed body. Returns `head` by identity when nothing borrows.
  */
@@ -111,6 +111,7 @@ export function borrowedGaitHeadAtlas(
           ...own,
           offsetX: own.offsetX + shift[0],
           offsetY: own.offsetY + shift[1] + (top === undefined ? 0 : Math.round(top - meanTop)),
+          ...(shift[2] !== undefined ? { tilt: shift[2] } : {}),
         });
       }
     }
