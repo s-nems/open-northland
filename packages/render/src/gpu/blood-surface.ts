@@ -7,7 +7,7 @@ export class BloodSurfaceSprite extends Sprite {
 }
 
 export interface BloodSurface {
-  readonly sprite: BloodSurfaceSprite;
+  sprite: BloodSurfaceSprite;
   /** Three local splats and their packed age bytes; negative ages mean upright. */
   readonly packed: Float32Array;
   enabled: boolean;
@@ -24,6 +24,15 @@ export interface BloodSurface {
 
 const surfaces = new WeakMap<object, BloodSurface>();
 
+/** A pooled slot is about to draw another layer. Pending contacts keep the detached receiver. */
+export function detachBloodSurface(sprite: BloodSurfaceSprite): void {
+  const surface = surfaces.get(sprite);
+  if (surface === undefined) return;
+  surface.enabled = false;
+  surfaces.delete(sprite);
+  sprite.refreshBlood();
+}
+
 /** Only solid scenery opts in; shadows, actors, selection stamps and ground covers do not. */
 export function bloodSurface(
   sprite: BloodSurfaceSprite,
@@ -39,11 +48,12 @@ export function bloodSurface(
     flat?: boolean;
     facade?: boolean;
   } = {},
+  retained?: BloodSurface,
 ): BloodSurface {
   const clipY = facade
     ? Math.max(0.7, 1 - 40 / Math.max(1, sprite.texture.frame.height * Math.abs(sprite.scale.y)))
     : 0;
-  let surface = surfaces.get(sprite);
+  let surface = retained ?? surfaces.get(sprite);
   if (surface === undefined) {
     surface = {
       sprite,
@@ -57,8 +67,9 @@ export function bloodSurface(
       width: sprite.texture.frame.width,
       height: sprite.texture.frame.height,
     };
-    surfaces.set(sprite, surface);
   }
+  surface.sprite = sprite;
+  surfaces.set(sprite, surface);
   if (surface.enabled !== enabled || surface.clipY !== clipY) sprite.refreshBlood();
   surface.enabled = enabled;
   surface.groundY = groundY;

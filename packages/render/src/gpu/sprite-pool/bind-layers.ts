@@ -3,8 +3,8 @@ import { FOG_GHOST_TINT } from '../../data/fog/index.js';
 import { clamp } from '../../data/math.js';
 import { cameraScreenX, cameraScreenY, snapToDevicePixels } from '../../data/projection/index.js';
 import type { DrawItem } from '../../data/scene/index.js';
-import { buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
-import { bloodSurface } from '../blood-surface.js';
+import { type AtlasFrame, buildTimeThreshold, type SpriteKind } from '../../data/sprites/index.js';
+import { type BloodSurface, bloodSurface, detachBloodSurface } from '../blood-surface.js';
 import { PalettedQuad, PalettedSprite } from '../paletted-sprite/index.js';
 import { DEFAULT_PIXEL_ART_SCALER } from '../pixel-art-registry.js';
 import { mintPlanRoad, PLOT_BOUNDS, type PlanRoadTextures } from '../plan-road.js';
@@ -95,6 +95,8 @@ function entityTint(ref: number, ghost: boolean, highlight?: ReadonlyMap<number,
 }
 
 export class LayerBinder {
+  // Scaffolds can shift a kept building body to another pooled slot. Its atlas frame owns the stains.
+  private readonly buildingBlood = new WeakMap<PlainPooledEntity, WeakMap<AtlasFrame, BloodSurface>>();
   /** Per-entity and per-layer scratch, so the bind pass allocates nothing. */
   private readonly layerBounds = new BoundsUnion();
   /** Where the entity being bound stands, lifted like its drawn feet: where a grounded foot meets the
@@ -153,6 +155,15 @@ export class LayerBinder {
     frameId: number,
   ): void {
     if (pe.damageBodies !== undefined) pe.damageBodies.length = 0;
+    let buildingBlood: WeakMap<AtlasFrame, BloodSurface> | undefined;
+    if (!pe.paletted && item.kind === 'building') {
+      buildingBlood = this.buildingBlood.get(pe);
+      if (buildingBlood === undefined) {
+        buildingBlood = new WeakMap();
+        this.buildingBlood.set(pe, buildingBlood);
+      }
+      for (const sprite of pe.sprites) detachBloodSurface(sprite);
+    }
     const site = planSiteOf(item);
     if (site === 'unclaimed') {
       this.showSiteMarker(pe, item.kind === 'roadsite', frameId);
@@ -253,22 +264,30 @@ export class LayerBinder {
         } else {
           this.bindPlainLayer(spr, layer, revealTexture, box, tint, enhanceBuilding);
         }
-        bloodSurface(spr, item.y, {
-          lift: item.lift ?? 0,
-          flat: item.kind === 'grounddrop' || item.kind === 'stockpile',
-          facade: item.kind === 'building',
-          enabled:
-            !pe.pickExempt[spriteSlot] &&
-            layer.cast !== true &&
-            layer.boundsExempt !== true &&
-            (layer.groundFoot === undefined || layer.groundFoot === 'body') &&
-            item.kind !== 'settler' &&
-            item.kind !== 'fish' &&
-            item.kind !== 'projectile' &&
-            item.kind !== 'craftfx' &&
-            item.kind !== 'vehicle' &&
-            item.ghost !== true,
-        });
+        const receivesBlood =
+          !pe.pickExempt[spriteSlot] &&
+          layer.cast !== true &&
+          layer.boundsExempt !== true &&
+          (layer.groundFoot === undefined || layer.groundFoot === 'body') &&
+          item.kind !== 'settler' &&
+          item.kind !== 'fish' &&
+          item.kind !== 'projectile' &&
+          item.kind !== 'craftfx' &&
+          item.kind !== 'vehicle';
+        if (buildingBlood === undefined || receivesBlood) {
+          const surface = bloodSurface(
+            spr,
+            item.y,
+            {
+              lift: item.lift ?? 0,
+              flat: item.kind === 'grounddrop' || item.kind === 'stockpile',
+              facade: item.kind === 'building',
+              enabled: receivesBlood && item.ghost !== true,
+            },
+            receivesBlood ? buildingBlood?.get(layer.frame) : undefined,
+          );
+          if (receivesBlood) buildingBlood?.set(layer.frame, surface);
+        }
         if (item.kind === 'building' && layer.boundsExempt !== true && layer.shadow !== true) {
           pe.damageBodies ??= [];
           pe.damageBodies.push(spr);
