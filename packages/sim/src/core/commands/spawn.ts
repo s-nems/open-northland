@@ -109,6 +109,9 @@ export type SpawnCommand =
       /** The map's `[misc_humannames]` name for this settler, as a string id in the map's own table;
        *  omit for a settler the map left unnamed. */
       readonly nameStringId?: number;
+      /** The map's `[misc_humangraphics]` recipes for this settler, stamped as a `ScriptedLook`; omit
+       *  (or leave empty) for a settler the map gave no look. */
+      readonly paletteRecipes?: readonly string[];
     }
   | {
       /**

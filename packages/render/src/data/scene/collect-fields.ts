@@ -30,6 +30,7 @@ import {
   readProjectileMunition,
   readProjectileOrigin,
   readProjectileSiege,
+  readScriptedLook,
   readSettlerTribe,
   readUpgradePct,
 } from './snapshot-readers/index.js';
@@ -76,6 +77,8 @@ export function assignSettlerFields(
   if ('Age' in components) item.young = true;
   if (readBehaviourGlow(components)) item.glow = true;
   if ('Female' in components) item.female = true;
+  const scriptedLook = readScriptedLook(components);
+  if (scriptedLook !== undefined) item.scriptedLook = scriptedLook;
 }
 
 export function assignBuildingFields(

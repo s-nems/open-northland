@@ -175,6 +175,8 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly glow?: boolean;
   /** For a settler: `Female` present, which picks the women's player palette recipe. */
   readonly female?: boolean;
+  /** For a settler: the palette recipes its map laid over it (`ScriptedLook`), in file order. */
+  readonly scriptedLook?: readonly string[];
   /** For a building upgrading into its next level: upgrade progress as a whole percent (0..99, floored
    *  `Building.built`). Distinct from {@link builtPct}, since an upgrading building keeps its finished
    *  old-tier body and the next tier's overlay (the `[GfxHouse]` `upgrade === 1` rows) reveals over it
@@ -296,6 +298,7 @@ export function newDrawItem(
     young: undefined,
     glow: undefined,
     female: undefined,
+    scriptedLook: undefined,
     upgradePct: undefined,
     working: undefined,
     hpFrac: undefined,

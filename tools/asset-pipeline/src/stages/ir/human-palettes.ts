@@ -111,20 +111,17 @@ function synthesizeRecipe(template: RandomPaletteRecipe, name: string, hue: numb
 const syntheticRampName = (ramp: string, hue: number): string => `${ramp} hue ${hue}`;
 
 /**
- * Composes the `humanPalettes` lane: the recipes every human look, job change, player colour, armor tier
- * and cart can reach, the ramps those recipes name resolved to their 16 colours, and the base palettes
- * the looks name. Throws on a player, armor or cart recipe, a ramp or a base palette that does not
- * resolve.
+ * Composes the `humanPalettes` lane: every recipe, the job change, player colour, armor tier, cart and
+ * good recipes, the ramps the recipes name resolved to their 16 colours, and the base palettes the looks
+ * name. Throws on a player, armor or cart recipe, a ramp or a base palette that does not resolve.
  *
  * Player colours 10..15 have no original. Approximation: their recipes copy colour 0's with every ramp
  * hue-rotated to the colour's {@link PLAYER_COLORS} hue.
  */
 export async function buildHumanPalettes(sources: HumanPaletteSources): Promise<HumanPalettes> {
   const recipeByName = new Map(sources.recipes.map((r) => [r.name, r]));
-  const reached = new Set<string>();
   const reach = (name: string, by: string): string => {
     if (!recipeByName.has(name)) throw new Error(`human palettes: ${by} names unknown recipe "${name}"`);
-    reached.add(name);
     return name;
   };
   const recipeOf = (name: string, by: string): RandomPaletteRecipe => {
@@ -133,12 +130,8 @@ export async function buildHumanPalettes(sources: HumanPaletteSources): Promise<
     return recipe;
   };
 
-  // Original behavior: a `gfxpaletterandom` name no recipe carries still takes its share of the roll
-  // and changes nothing, and a job change record whose last name is absent or unknown applies no recipe.
-  // That record is kept without one: it still stops the runtime's walk up to the parent job's record.
-  for (const look of sources.jobGraphics) {
-    for (const name of look.randomPalettes) if (recipeByName.has(name)) reached.add(name);
-  }
+  // Original behavior: a job change record whose last name is absent or unknown applies no recipe. That
+  // record is kept without one: it still stops the runtime's walk up to the parent job's record.
   const jobChanges = sources.jobChanges.map(({ tribe, job, recipes }) => {
     const last = recipes.at(-1);
     return last === undefined || !recipeByName.has(last)
@@ -179,7 +172,8 @@ export async function buildHumanPalettes(sources: HumanPaletteSources): Promise<
   };
   const players = PLAYER_COLORS.map(playerRecipes);
 
-  const recipes = sources.recipes.filter((r) => reached.has(r.name));
+  // Every recipe is kept: a map's `[misc_humangraphics]` row may name any of them.
+  const recipes = sources.recipes;
   const resolver = paletteResolver(sources);
   const ramps = new Map<string, string>();
   for (const recipe of recipes) {

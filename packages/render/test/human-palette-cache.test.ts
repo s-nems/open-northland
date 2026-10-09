@@ -31,6 +31,13 @@ describe('the CPU human palette cache', () => {
     expect(team(woman.body)).toEqual(BLUE);
   });
 
+  it('holds a key across equal scripted recipe lists and recomposes when they differ', () => {
+    const cache = new HumanPaletteCache(book, CAPACITY);
+    const dressed = cache.colours(1, { ...identity(false), scripted: ['ghost'] });
+    expect(cache.colours(1, { ...identity(false), scripted: ['ghost'] })).toBe(dressed);
+    expect(cache.colours(1, { ...identity(false), scripted: ['grizzu'] })).not.toBe(dressed);
+  });
+
   it('drops the oldest key once full', () => {
     const cache = new HumanPaletteCache(book, CAPACITY);
     const first = cache.colours(1, identity(false));

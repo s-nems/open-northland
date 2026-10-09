@@ -23,7 +23,8 @@ Constants and semantics are described as behavior; nothing here is copied from t
 ## Files and sections
 
 A map folder's `map.ini` includes `mission.inc`, `staticobjects.inc`, `ai.inc`, `player.inc`, and
-`misc.inc` (corpus), the last carrying the `[misc_humannames]` and `[misc_weather]` sections beside
+`misc.inc` (corpus), the last carrying the `[misc_humannames]`, `[misc_humangraphics]` and
+`[misc_weather]` sections beside
 the map's name, type and music. `WIELKA BITWA Z SARACENAMI` and `oasis_o_plenty` ship a flattened
 `map.ini` that holds every section inline, `[StaticObjects]` included. Packed base-game maps carry
 the same sections inside `map.cif`. Texts live in `text/<lang>/strings.ini`
@@ -919,6 +920,21 @@ delivery, not whether the player read the text.
 after the string in the map's table, the same way the `SetHumanName` result does; a row
 naming an id no human carries does nothing (reading). Here the row becomes the settler's
 `ScriptedName` at spawn and the app resolves the string in the player's language.
+
+## Human looks
+
+`[misc_humangraphics]` holds `setpalette <humanId> "<recipe>"` rows, 278 of them on 55 CnMod maps
+(the 1.3.2 corpus). The name is a `randompalette.ini` `[RandomPalette]` recipe, matched ignoring case
+(the maps write `Vik_WoMan_POW` and `Vik_WoMan_Pow` for one recipe); every corpus name resolves. After
+the `StaticObjects` placements load, each row lays its recipe over the body and head palettes of every
+human then carrying the mission object id, not only the first as `setname` does, rolling each band as
+any recipe rolls. Rows for one id stack in file order, so a later recipe wins the bands it shares with
+an earlier one (`Diamentowa_Dolina` dresses its hero with ten). An unknown name changes nothing. The
+rows run once, at load: a human a script spawns later with the same id keeps its own look (reading). The
+palette lives on the human, so a later job change or armor recipe goes over it rather than resetting
+it (reading). One map (`SMOCZA_KRAINA`) writes a `setpalette` under `[misc_humannames]`, which reads
+`setname` only, so that row does nothing. Here the rows become the settler's `ScriptedLook` at spawn,
+kept through a save, and the renderer composes them into the human's palettes.
 
 ## Mutable landscape and terrain
 

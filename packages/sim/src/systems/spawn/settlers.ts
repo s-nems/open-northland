@@ -13,6 +13,7 @@ import {
   nameHuman,
   Owner,
   Position,
+  ScriptedLook,
   stampMissionBehaviour,
   stampMissionId,
   stampOwner,
@@ -159,6 +160,9 @@ export function createSettler(
   stampMissionId(world, e, spec.missionId);
   stampMissionBehaviour(world, e, spec.behaviourFlags);
   if (spec.nameStringId !== undefined) nameHuman(world, e, spec.nameStringId);
+  if (spec.paletteRecipes !== undefined && spec.paletteRecipes.length > 0) {
+    world.add(e, ScriptedLook, { recipes: [...spec.paletteRecipes] });
+  }
   // The default stance is owned-only, so an unowned or golden settler carries no Stance at all.
   if (world.has(e, Owner)) stampDefaultStance(world, content, e, spec.jobType);
   return e;

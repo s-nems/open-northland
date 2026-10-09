@@ -65,8 +65,8 @@ export type GoodPaletteRecipe = z.infer<typeof GoodPaletteRecipe>;
 /**
  * Everything a runtime needs to compose a human's body and head palettes the way the original does:
  * base palettes, then the player recipe, then the job's rolled recipe, then armor or cart recipes, then
- * a carried good's recipe. Only recipes, ramps and bases some human look, player, armor tier, cart or
- * good can reach are included.
+ * a carried good's recipe. Every `randompalette.ini` recipe is included, since a map may name any of
+ * them, with the ramps they name and the bases the human looks name.
  */
 export const HumanPalettes = z.strictObject({
   /** `[GfxPalette256]` editname (lower-cased) → its colours. */

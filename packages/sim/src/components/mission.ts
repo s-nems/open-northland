@@ -33,6 +33,19 @@ export function nameHuman(world: World, e: Entity, stringId: number): void {
 }
 
 /**
+ * The palette recipes a map's `[misc_humangraphics]` rows laid over one human at build, lower-cased
+ * `randompalette.ini` names in file order. The sim never reads them; the app composes them into the
+ * human's palettes. Original behavior: the rows apply once, at map load, to every human then carrying
+ * the row's mission object id, so a human a script spawns later with that id keeps its own look.
+ */
+export const ScriptedLook = defineComponent<{ recipes: string[] }>('ScriptedLook', 'settlers');
+
+/** Bounds on a {@link ScriptedLook} a spawn payload may carry; the corpus stacks at most ten recipes on
+ *  one human, and the longest `randompalette.ini` name has 38 characters. */
+export const SCRIPTED_LOOK_MAX_RECIPES = 32;
+export const SCRIPTED_LOOK_RECIPE_MAX_CHARS = 64;
+
+/**
  * One mission's live state, indexed by the mission's position in the map's script - the same index
  * every `ActivateMission`, `DeactivateMission`, `CheckMission`, `IsMissionDone`, `IfMissionIsActive`
  * and `SetVisible` argument names. The mission's goals and results are content, not state, so only

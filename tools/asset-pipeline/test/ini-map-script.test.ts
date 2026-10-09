@@ -475,3 +475,39 @@ result "SetHumanX" 4 "viking" "heroine_bow_XENA" 111 162 100 33 12
     ]);
   });
 });
+
+describe('extractMapScript [misc_humangraphics]', () => {
+  it('keeps every setpalette row in file order, names lower-cased, one id stacking several', () => {
+    const text = `
+[misc_humangraphics] 
+setpalette 100 "golden weapons"
+setpalette\t100 "Red Hero Shirt"
+// setpalette 105 "grizzuOld"
+setpalette 201  "Vik_WoMan_POW"
+setpalette x "ghost"
+setpalette 202
+`;
+    expect(extractMapScript(parseIniSections(text), SRC)?.humanPalettes).toEqual([
+      { humanId: 100, recipe: 'golden weapons' },
+      { humanId: 100, recipe: 'red hero shirt' },
+      { humanId: 201, recipe: 'vik_woman_pow' },
+    ]);
+  });
+
+  it('ignores a setpalette written under [misc_humannames], which reads setname only', () => {
+    const text = '[misc_humannames]\nsetname 250 250\nsetpalette 250 "Vik_WoMan_POW"\n';
+    const script = extractMapScript(parseIniSections(text), SRC);
+    expect(script?.humanNames).toEqual([{ humanId: 250, stringId: 250 }]);
+    expect(script?.humanPalettes).toEqual([]);
+  });
+
+  it('reads the packed map.cif skin the same way', () => {
+    const lines: CifLine[] = [
+      { level: 1, text: 'misc_humangraphics' },
+      { level: 2, text: 'setpalette 30 "hero_hatschi"' },
+    ];
+    expect(extractMapScript(cifLinesToSections(lines), { file: 'x/map.cif' })?.humanPalettes).toEqual([
+      { humanId: 30, recipe: 'hero_hatschi' },
+    ]);
+  });
+});

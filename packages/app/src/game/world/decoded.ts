@@ -39,7 +39,7 @@ export function runAuthoredMap(
   seatTribes: SeatTribeRemap = MAP_TRIBES,
 ): Simulation | null {
   const { placements, familyLinks, skipped, droppedGoods, droppedPicks, droppedAttachments, skippedAnimals } =
-    resolveAuthoredPlacements(entities, rows, map, script.humanNames);
+    resolveAuthoredPlacements(entities, rows, map, script);
   if (placements.length === 0) return null;
   if (skipped > 0 || droppedGoods > 0 || droppedPicks > 0 || droppedAttachments > 0 || skippedAnimals > 0) {
     diag.warn(

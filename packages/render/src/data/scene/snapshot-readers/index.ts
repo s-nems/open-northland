@@ -37,6 +37,7 @@ export {
   readEquipmentWeaponGood,
   readJobType,
   readOwnerPlayer,
+  readScriptedLook,
   readSettlerTribe,
   readSpriteState,
   readStoreExchangeRef,

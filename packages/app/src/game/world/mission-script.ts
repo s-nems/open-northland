@@ -173,6 +173,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
   const relationFlags = script?.relationFlags ?? [];
   const ai = script?.ai ?? [];
   const humanNames = script?.humanNames ?? [];
+  const humanPalettes = script?.humanPalettes ?? [];
   const tradeAgreements = script?.tradeAgreements ?? [];
   const weather = script?.weather ?? [];
   const roster =
@@ -185,6 +186,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
       relationFlags,
       ai,
       humanNames,
+      humanPalettes,
       tradeAgreements,
       weather,
       ...roster,
@@ -209,6 +211,7 @@ export function mapScriptWorld(script: MapScript | null, rows: AuthoredJoinRows 
     relationFlags,
     ai,
     humanNames,
+    humanPalettes,
     tradeAgreements,
     weather,
     ...roster,

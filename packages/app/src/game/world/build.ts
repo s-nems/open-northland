@@ -3,6 +3,7 @@ import type {
   MapAiSeat,
   MapDiplomacy,
   MapHumanName,
+  MapHumanPalette,
   MapRelationFlag,
   MapScript,
   MapTradeAgreement,
@@ -25,6 +26,8 @@ export interface MapScriptWorld {
    *  simulation runs. */
   readonly ai?: readonly MapAiSeat[];
   readonly humanNames?: readonly MapHumanName[];
+  /** The `[misc_humangraphics]` rows, laid over the placed humans carrying their ids. */
+  readonly humanPalettes?: readonly MapHumanPalette[];
   /** The map's `tradeagreement` rows, registered before the first tick. */
   readonly tradeAgreements?: readonly MapTradeAgreement[];
   /** The map's `[misc_weather]` rectangles, laid down before the first tick and any script write. */
@@ -172,6 +175,7 @@ export function enqueuePlacements(sim: Simulation, placements: readonly Authored
         ...(experience.length > 0 ? { experience } : {}),
         ...(p.gatherGood !== undefined ? { gatherGood: p.gatherGood } : {}),
         ...(p.nameStringId !== undefined ? { nameStringId: p.nameStringId } : {}),
+        ...(p.paletteRecipes !== undefined ? { paletteRecipes: p.paletteRecipes } : {}),
         ...(p.home !== undefined ? { home: p.home } : {}),
         ...(p.workplace !== undefined ? { workplace: p.workplace } : {}),
         ...(p.vehicle !== undefined ? { vehicle: p.vehicle } : {}),

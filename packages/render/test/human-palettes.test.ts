@@ -143,6 +143,27 @@ describe('composing a human palette', () => {
     ).toEqual(WOOD);
   });
 
+  it("stacks the map's scripted recipes in order over the armor, under the cart", () => {
+    const b = book(
+      [
+        { name: 'human_armor_002', patches: [ramp(SHIRT, 'mail')] },
+        { name: 'golden weapons', patches: [ramp(SHIRT, 'gold'), ramp(APRON, 'gold')] },
+        { name: 'red hero shirt', patches: [ramp(SHIRT, 'red')] },
+        { name: 'good_handcart', patches: [ramp(SHIRT, 'wood')] },
+      ],
+      {
+        armorRecipes: ['human_armor_000', 'human_armor_001', 'human_armor_002'],
+        cartRecipes: { handcart: 'good_handcart', oxcart: 'good_oxcart' },
+      },
+    );
+    const scripted = ['golden weapons', 'red hero shirt', 'absent'];
+    const out = compose(b, identity(PLAIN, { armorTier: 2, scripted }));
+    expect(band(out.body, SHIRT)).toEqual(RED);
+    expect(band(out.body, APRON)).toEqual(GOLD);
+    const carted = compose(b, identity(PLAIN, { armorTier: 2, scripted, cart: 'handcart' }));
+    expect(band(carted.body, SHIRT)).toEqual(WOOD);
+  });
+
   it('looks up the job-change recipe by tribe and job, else up the base-job chain', () => {
     const CIVILIST = 6;
     const BUILDER = 7;

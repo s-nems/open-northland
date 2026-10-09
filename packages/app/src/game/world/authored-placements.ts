@@ -1,4 +1,9 @@
-import { BUILDING_KIND, type MapHumanName, type TerrainMapFile } from '@open-northland/data';
+import {
+  BUILDING_KIND,
+  type MapHumanName,
+  type MapHumanPalette,
+  type TerrainMapFile,
+} from '@open-northland/data';
 import { components, type TerrainMap } from '@open-northland/sim';
 import { type AuthoredBuildingGraphics, type AuthoredJoinRows, contentJoins } from './content-joins.js';
 
@@ -58,6 +63,8 @@ export type AuthoredPlacement =
       experience?: readonly { track: number; amount: number }[];
       /** The map's `[misc_humannames]` name for this settler, as a string id in the map's own table. */
       nameStringId?: number;
+      /** The map's `[misc_humangraphics]` palette recipes for this settler, in file order. */
+      paletteRecipes?: readonly string[];
     }
   | {
       /** A `setvehicle` row: the type by its `[vehicletype]` name, for an occupied seat only. */
@@ -105,7 +112,10 @@ export function resolveAuthoredPlacements(
   entities: AuthoredEntities,
   rows: AuthoredJoinRows,
   map: Pick<TerrainMap, 'width' | 'height'>,
-  humanNames: readonly MapHumanName[] = [],
+  looks: {
+    readonly humanNames?: readonly MapHumanName[];
+    readonly humanPalettes?: readonly MapHumanPalette[];
+  } = {},
 ): {
   placements: AuthoredPlacement[];
   /** The `marry` and `childOfWoman` lines whose both half-cells lie on the map, in source order. */
@@ -202,8 +212,15 @@ export function resolveAuthoredPlacements(
   // A `setname` names the first human carrying its id, and a name is spent once given. No corpus map
   // repeats an id; the first row wins here (approximation).
   const nameByHumanId = new Map<number, number>();
-  for (const { humanId, stringId } of humanNames) {
+  for (const { humanId, stringId } of looks.humanNames ?? []) {
     if (!nameByHumanId.has(humanId)) nameByHumanId.set(humanId, stringId);
+  }
+  // A `setpalette` row, unlike a name, dresses every human carrying its id, each row in file order.
+  const recipesByHumanId = new Map<number, string[]>();
+  for (const { humanId, recipe } of looks.humanPalettes ?? []) {
+    const recipes = recipesByHumanId.get(humanId);
+    if (recipes === undefined) recipesByHumanId.set(humanId, [recipe]);
+    else recipes.push(recipe);
   }
   for (const h of entities.humans) {
     const jobType = joins.job(h.role);
@@ -214,6 +231,7 @@ export function resolveAuthoredPlacements(
     }
     const nameStringId = h.missionId === undefined ? undefined : nameByHumanId.get(h.missionId);
     if (h.missionId !== undefined && nameStringId !== undefined) nameByHumanId.delete(h.missionId);
+    const paletteRecipes = h.missionId === undefined ? undefined : recipesByHumanId.get(h.missionId);
     // An unresolvable pick only counts: the settler still spawns on the gather-everything default.
     const gatherGood = h.producedGood !== undefined ? joins.good(h.producedGood) : undefined;
     if (h.producedGood !== undefined && gatherGood === undefined) droppedPicks++;
@@ -249,6 +267,7 @@ export function resolveAuthoredPlacements(
       ...(h.missionId !== undefined ? { missionId: h.missionId } : {}),
       ...(h.behaviourFlags !== undefined ? { behaviourFlags: h.behaviourFlags } : {}),
       ...(nameStringId !== undefined ? { nameStringId } : {}),
+      ...(paletteRecipes !== undefined ? { paletteRecipes } : {}),
     });
   }
   let skippedAnimals = 0;

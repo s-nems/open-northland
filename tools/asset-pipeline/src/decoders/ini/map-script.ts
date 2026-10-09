@@ -19,7 +19,7 @@ import {
 import { GOOD_TYPE_CODES } from './good-type-codes.js';
 import { BARE_QUOTE, type RuleProp, type RuleSection } from './grammar.js';
 import { HOUSE_TYPE_CODES } from './house-type-codes.js';
-import { makeSource, type SourceRef } from './ir-fields.js';
+import { makeSource, normalizePaletteName, type SourceRef } from './ir-fields.js';
 import { weatherRectangles } from './map-weather.js';
 import { codeOf } from './props.js';
 
@@ -488,6 +488,17 @@ function humanNameRow(p: RuleProp): MapScript['humanNames'][number] | undefined 
   return humanId === undefined || stringId === undefined ? undefined : { humanId, stringId };
 }
 
+/** One `setpalette <humanId> "<recipe>"` row, the recipe name lower-cased as recipes are matched; undefined
+ *  when the id is malformed or the name blank. */
+function humanPaletteRow(p: RuleProp): MapScript['humanPalettes'][number] | undefined {
+  if (p.key !== 'setpalette') return undefined;
+  const humanId = int(p.values[0]);
+  const recipe = p.values[1]?.trim();
+  return humanId === undefined || recipe === undefined || recipe === ''
+    ? undefined
+    : { humanId, recipe: normalizePaletteName(recipe) };
+}
+
 /**
  * Reduces a map's decoded sections into its validated {@link MapScript}, keeping every `playermisc`
  * line and unrecognized `playerdata` or `specialItems` line lossless in `misc`, the `misc_*`
@@ -506,6 +517,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
   const ai: MapAiSeat[] = [];
   const misc: NonNullable<MapScript['misc']> = [];
   const humanNames: NonNullable<MapScript['humanNames']> = [];
+  const humanPalettes: NonNullable<MapScript['humanPalettes']> = [];
   const tradeAgreements: NonNullable<MapScript['tradeAgreements']> = [];
   const weather: NonNullable<MapScript['weather']> = [];
   const missions: NonNullable<MapScript['missions']> = [];
@@ -534,6 +546,11 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
       for (const p of sec.props) {
         const row = humanNameRow(p);
         if (row !== undefined) humanNames.push(row);
+      }
+    } else if (name === 'misc_humangraphics') {
+      for (const p of sec.props) {
+        const row = humanPaletteRow(p);
+        if (row !== undefined) humanPalettes.push(row);
       }
     } else if (name === 'misc_tradeagreement') {
       for (const p of sec.props) {
@@ -587,6 +604,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     playerLines +
     missions.length +
     humanNames.length +
+    humanPalettes.length +
     permissions.length +
     ai.length +
     tradeAgreements.length +
@@ -602,6 +620,7 @@ export function extractMapScript(sections: readonly RuleSection[], src: SourceRe
     specialItems,
     misc,
     humanNames,
+    humanPalettes,
     tradeAgreements,
     weather,
     missions,

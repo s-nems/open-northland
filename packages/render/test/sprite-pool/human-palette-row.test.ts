@@ -53,6 +53,15 @@ describe('a settler palette identity', () => {
     expect(out).toMatchObject({ look, player: OWNER, female: true, seed: item.ref, armorTier: CHAIN_TIER });
   });
 
+  it("reads the map's scripted recipes off the item, a hero's included", () => {
+    const scriptedLook = ['hero_bjarni', 'golden weapons'];
+    const out = createHumanPaletteIdentity(look);
+    humanPaletteIdentity(sheetWith(heroes), { ...item, scriptedLook }, out);
+    expect(out.scripted).toBe(scriptedLook);
+    humanPaletteIdentity(sheetWith(heroes), item, out);
+    expect(out.scripted).toBeUndefined();
+  });
+
   it('reads the carried good only while the settler carries it', () => {
     const WHEAT = 4;
     const out = createHumanPaletteIdentity(look);

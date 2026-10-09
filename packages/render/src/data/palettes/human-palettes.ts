@@ -36,6 +36,8 @@ export interface HumanPaletteIdentity {
   jobChange: string | undefined;
   /** Worn `TArmorType`, which picks a `human_armor_NNN` recipe. */
   armorTier: number | undefined;
+  /** The recipes the human's map laid over it, in file order. */
+  scripted: readonly string[] | undefined;
   cart: CartRecipe | undefined;
   /** The good type the human carries, whose recipe goes on last. */
   carried: number | undefined;
@@ -50,6 +52,7 @@ export function createHumanPaletteIdentity(look: CharacterPalette): HumanPalette
     female: false,
     jobChange: undefined,
     armorTier: undefined,
+    scripted: undefined,
     cart: undefined,
     carried: undefined,
     seed: 0,
@@ -63,6 +66,7 @@ export function sameHumanPaletteIdentity(a: HumanPaletteIdentity, b: HumanPalett
     a.female === b.female &&
     a.jobChange === b.jobChange &&
     a.armorTier === b.armorTier &&
+    sameRecipes(a.scripted, b.scripted) &&
     a.cart === b.cart &&
     a.carried === b.carried &&
     a.seed === b.seed
@@ -75,6 +79,7 @@ export function copyHumanPaletteIdentity(from: HumanPaletteIdentity, to: HumanPa
   to.female = from.female;
   to.jobChange = from.jobChange;
   to.armorTier = from.armorTier;
+  to.scripted = from.scripted;
   to.cart = from.cart;
   to.carried = from.carried;
   to.seed = from.seed;
@@ -108,6 +113,8 @@ const STAGE_JOB_CHANGE = 4;
 const STAGE_ARMOR = 5;
 const STAGE_CART = 6;
 const STAGE_GOOD = 7;
+/** The first scripted recipe's stage; each later one takes the next. */
+const STAGE_SCRIPTED = 8;
 /** An empty set of bands; a band set holds one bit per band id. */
 const NO_BANDS = 0;
 
@@ -179,8 +186,11 @@ export class HumanPaletteBook {
 
   /**
    * Compose `identity`'s palettes into `out`: the look's bases, then its player recipe by sex, one recipe
-   * rolled from the look's list, the job-change recipe, the worn armor's recipe, the cart's, and last the
-   * carried good's.
+   * rolled from the look's list, the job-change recipe, the worn armor's recipe, the map's scripted
+   * recipes, the cart's, and last the carried good's.
+   *
+   * Approximation: the original lays a map's recipes over the palettes once, at load, so a later job
+   * change or armor recipe goes over them; here they stay over the current job's and armor's recipes.
    *
    * The good recipe is a project choice, not the original's behavior (the original draws a carried good
    * through the human palette unchanged). It skips every band the player recipe wrote, so a woman's
@@ -204,6 +214,11 @@ export class HumanPaletteBook {
     if (identity.armorTier !== undefined) {
       const armor = this.armorRecipes[identity.armorTier];
       if (armor !== undefined) this.apply(armor, seed, STAGE_ARMOR, out);
+    }
+    const scripted = identity.scripted ?? NO_RECIPES;
+    for (let i = 0; i < scripted.length; i++) {
+      const recipe = scripted[i];
+      if (recipe !== undefined) this.apply(recipe, seed, STAGE_SCRIPTED + i, out);
     }
     if (identity.cart !== undefined) this.apply(this.cartRecipes[identity.cart], seed, STAGE_CART, out);
     const good = identity.carried === undefined ? undefined : this.goodRecipes.get(identity.carried);
@@ -273,6 +288,14 @@ export class HumanPaletteBook {
 }
 
 const EMPTY_PALETTE = new Uint8Array(HUMAN_PALETTE_BYTES);
+const NO_RECIPES: readonly string[] = [];
+
+function sameRecipes(a: readonly string[] | undefined, b: readonly string[] | undefined): boolean {
+  if (a === b) return true;
+  if (a === undefined || b === undefined || a.length !== b.length) return false;
+  for (let i = 0; i < a.length; i++) if (a[i] !== b[i]) return false;
+  return true;
+}
 
 /** Job type ids stay below this, so a tribe and a job share one numeric key. */
 const JOB_KEYS = 0x1_0000;

@@ -3,6 +3,7 @@ import {
   infoLinesOf,
   missionBriefingPage,
   missionRecords,
+  ScriptedLook,
   ScriptedName,
 } from '../../src/components/index.js';
 import type { SimEvent } from '../../src/core/events.js';
@@ -224,6 +225,27 @@ describe('SelectHuman and SetHumanName', () => {
     });
     sim.step();
     expect(sim.world.get(stamped(sim, HUMAN), ScriptedName)).toEqual({ stringId: STRING });
+  });
+
+  it("a spawn carrying the map's palette recipes keeps them as its look through a save", () => {
+    const sim = missionSim([]);
+    const paletteRecipes = ['golden weapons', 'red hero shirt'];
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: WOODCUTTER,
+      tribe: 1,
+      x: POINT.hx,
+      y: POINT.hy,
+      owner: OWNER,
+      missionId: HUMAN,
+      paletteRecipes,
+    });
+    sim.step();
+    const look = sim.world.get(stamped(sim, HUMAN), ScriptedLook);
+    expect(look).toEqual({ recipes: paletteRecipes });
+    expect(look.recipes).not.toBe(paletteRecipes);
+    const restored = roundTrip(sim);
+    expect(restored.world.get(stamped(restored, HUMAN), ScriptedLook)).toEqual({ recipes: paletteRecipes });
   });
 });
 

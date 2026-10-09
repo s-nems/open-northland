@@ -158,6 +158,16 @@ export function readBehaviourGlow(components: Readonly<Record<string, unknown>>)
   return (flags & simComponents.MISSION_BEHAVIOUR.GLOWS) !== 0;
 }
 
+/** The map-authored palette recipes laid over a settler (`ScriptedLook.recipes`), or undefined. */
+export function readScriptedLook(
+  components: Readonly<Record<string, unknown>>,
+): readonly string[] | undefined {
+  const look = components.ScriptedLook as { recipes?: unknown } | undefined;
+  const recipes = look?.recipes;
+  if (!Array.isArray(recipes) || recipes.length === 0) return undefined;
+  return recipes.every((r) => typeof r === 'string') ? (recipes as readonly string[]) : undefined;
+}
+
 /** The owning player slot (`Owner.player`), the team-colour key, or `undefined` for an unowned settler
  *  (wildlife, a neutral fixture) that draws in the base palette. */
 export function readOwnerPlayer(components: Readonly<Record<string, unknown>>): number | undefined {

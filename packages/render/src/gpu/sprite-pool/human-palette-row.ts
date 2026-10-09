@@ -28,6 +28,7 @@ const UNARMORED_TIER = 0;
  *   soldier rolls from the soldier's list and a child's roll switches when it grows up.
  * - The armor recipe follows the armor worn now, tier 0 for a soldier wearing none; the original applies
  *   it at the job change, with the armor worn then.
+ * - A cart's driver is drawn without the recipes its map laid over it.
  *
  * A fixed-by-job character (the heroes) is an authored identity: its worn armor still counts in combat
  * but adds no armor recipe.
@@ -49,6 +50,7 @@ export function humanPaletteIdentity(
     out.female = driver.female === true;
     out.jobChange = lut.book.jobChangeRecipe(driver.tribe, driver.jobType);
     out.armorTier = undefined;
+    out.scripted = undefined;
     out.cart = driven.cartRecipe;
     out.carried = undefined;
     out.seed = driver.ref;
@@ -76,6 +78,7 @@ export function humanPaletteIdentity(
   const worn = armorGood == null ? undefined : lut.armor.tierByGood.get(armorGood);
   const soldier = item.jobType !== undefined && lut.armor.soldierJobs.has(item.jobType);
   out.armorTier = fixed ? undefined : (worn ?? (soldier ? UNARMORED_TIER : undefined));
+  out.scripted = item.scriptedLook;
   out.cart = undefined;
   out.carried = item.carrying === true ? item.carryGood : undefined;
   out.seed = item.ref;

@@ -1,6 +1,7 @@
 import { EQUIP_CATEGORIES, HomeQualityEffect } from '@open-northland/data';
 import { AI_DIFFICULTIES, AI_MODULE_IDS } from '../../components/ai-player.js';
 import { ASSISTANT_COUNTER_KINDS } from '../../components/assistant.js';
+import { SCRIPTED_LOOK_MAX_RECIPES, SCRIPTED_LOOK_RECIPE_MAX_CHARS } from '../../components/mission.js';
 import type { NeedKind } from '../../components/needs.js';
 import { GATE_MODES } from '../../components/palisade.js';
 import { PAPER_KINDS } from '../../components/papers.js';
@@ -378,6 +379,10 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
       missionId: 'integer',
       behaviourFlags: 'integer',
       nameStringId: 'integer',
+      paletteRecipes: {
+        arrayOf: { string: SCRIPTED_LOOK_RECIPE_MAX_CHARS },
+        maxLength: SCRIPTED_LOOK_MAX_RECIPES,
+      },
       hitpoints: 'integer',
       armorClass: 'integer',
       weaponTypeId: 'integer',

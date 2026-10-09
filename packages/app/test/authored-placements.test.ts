@@ -98,11 +98,40 @@ describe('resolveAuthoredPlacements', () => {
       { humanId: 101, stringId: 12 },
       { humanId: 102, stringId: 13 },
     ];
-    const { placements } = resolveAuthoredPlacements(entities, AUTHORED_ROWS, authoredMap(), names);
+    const { placements } = resolveAuthoredPlacements(entities, AUTHORED_ROWS, authoredMap(), {
+      humanNames: names,
+    });
     expect(placements.map((p) => (p.kind === 'human' ? (p.nameStringId ?? null) : -1))).toEqual([
       10,
       null,
       12,
+      null,
+    ]);
+  });
+
+  it('dresses every human carrying a `setpalette` id in all its recipes, in file order', () => {
+    const entities = {
+      buildings: [],
+      humans: [
+        { tribe: 'viking', role: 'builder', player: 0, hx: 3, hy: 5, missionId: 100 },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 5, hy: 5, missionId: 100 },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 7, hy: 5, missionId: 101 },
+        { tribe: 'viking', role: 'builder', player: 0, hx: 9, hy: 5 },
+      ],
+      animals: [],
+    };
+    const humanPalettes = [
+      { humanId: 100, recipe: 'golden weapons' },
+      { humanId: 102, recipe: 'ghost' },
+      { humanId: 100, recipe: 'red hero shirt' },
+    ];
+    const { placements } = resolveAuthoredPlacements(entities, AUTHORED_ROWS, authoredMap(), {
+      humanPalettes,
+    });
+    expect(placements.map((p) => (p.kind === 'human' ? (p.paletteRecipes ?? null) : -1))).toEqual([
+      ['golden weapons', 'red hero shirt'],
+      ['golden weapons', 'red hero shirt'],
+      null,
       null,
     ]);
   });

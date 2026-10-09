@@ -141,6 +141,16 @@ export const MapHumanName = z.strictObject({
 export type MapHumanName = z.infer<typeof MapHumanName>;
 
 /**
+ * One `[misc_humangraphics]` `setpalette <humanId> "<recipe>"` row: a `randompalette.ini` recipe, by its
+ * lower-cased name, laid over the palettes of every human placed with the mission object id.
+ */
+export const MapHumanPalette = z.strictObject({
+  humanId: z.number().int(),
+  recipe: z.string(),
+});
+export type MapHumanPalette = z.infer<typeof MapHumanPalette>;
+
+/**
  * A strategic-AI concern a map's `[AIData]` may switch off, named after the original's own
  * `HAI_Disable<Module>` keywords. The sim's AI player runs one module per name.
  */
@@ -381,6 +391,8 @@ export const MapScript = z.strictObject({
   misc: z.array(MapScriptLine).default([]),
   /** The `[misc_humannames]` rows in file order, when the map ships the section. */
   humanNames: z.array(MapHumanName).default([]),
+  /** The `[misc_humangraphics]` rows in file order, when the map ships the section. */
+  humanPalettes: z.array(MapHumanPalette).default([]),
   /** The `[misc_tradeagreement]` rows in file order, when the map ships the section. */
   tradeAgreements: z.array(MapTradeAgreement).default([]),
   /** The `[misc_weather]` rectangles in file order, applied at map load before any script write. */

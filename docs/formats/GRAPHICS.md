@@ -32,7 +32,9 @@ Original behavior: a human is composed at creation from its bases, then the reci
 colour `n` (`player_%2.2d` for men, `woman_%2.2d` for women), then one recipe rolled from its record's
 `gfxpaletterandom` lines. A later job change applies the `[jobchangegraphics]` record's recipe on
 top, and that record keeps the last of its `gfxpaletterandom` lines. A soldier then applies
-`human_armor_%3.3d` of its armor type. The `player_NN` and `woman_NN` recipes patch body bands only, so
+`human_armor_%3.3d` of its armor type. A map's `[misc_humangraphics]` recipes go on at load, over
+whatever the human had then ([missions](MISSIONS.md#human-looks)). The `player_NN` and `woman_NN`
+recipes patch body bands only, so
 a head never carries the team ramp. The human `*_Base` recipes roll the eyebrows (head band 5)
 from the already rolled hair band (`Patch 21 20 35`) against a lighter blond or face-skin option;
 `Egy_Soldier_Base` leaves them at the base.

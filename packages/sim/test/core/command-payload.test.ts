@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { SCRIPTED_LOOK_MAX_RECIPES, SCRIPTED_LOOK_RECIPE_MAX_CHARS } from '../../src/components/index.js';
 import { type Command, parseCommandEnvelope, SETTLER_NAME_MAX_CHARS } from '../../src/index.js';
 
 /**
@@ -137,8 +138,18 @@ describe('command payload contracts', () => {
       gatherGood: 5,
       home: { x: 8, y: 8 },
       workplace: { x: 10, y: 10 },
+      paletteRecipes: ['golden weapons', 'red hero shirt'],
     };
     expect(parse(spawn)).toEqual({ v: 1, origin: 'setup', command: spawn });
+  });
+
+  it("holds a spawn's palette recipes to a bounded list of bounded names", () => {
+    const spawn = { kind: 'spawnSettler', jobType: 3, x: 4, y: 6, tribe: 1 };
+    const tooMany = Array.from({ length: SCRIPTED_LOOK_MAX_RECIPES + 1 }, () => 'ghost');
+    expect(() => parse({ ...spawn, paletteRecipes: tooMany })).toThrow(/command.paletteRecipes/);
+    const tooLong = ['x'.repeat(SCRIPTED_LOOK_RECIPE_MAX_CHARS + 1)];
+    expect(() => parse({ ...spawn, paletteRecipes: tooLong })).toThrow(/command.paletteRecipes/);
+    expect(() => parse({ ...spawn, paletteRecipes: [7] })).toThrow(/command.paletteRecipes/);
   });
 
   it('refuses a string where a coordinate belongs', () => {

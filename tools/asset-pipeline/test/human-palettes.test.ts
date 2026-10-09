@@ -19,9 +19,9 @@ const ramp = (band: number, name: string, weight = 10) =>
 const copy = (band: number, from: number, weight = 10) =>
   ({ band, source: { kind: 'copy', band: from }, weight }) as const;
 
-/** The recipes the lane must reach, mirroring the real file's shapes, plus one nothing reaches. */
+/** The recipes the lane must reach, mirroring the real file's shapes, plus one only a map would name. */
 function recipes(): RandomPaletteRecipe[] {
-  const out: RandomPaletteRecipe[] = [{ name: 'unused', patches: [ramp(3, 'orphan ramp')] }];
+  const out: RandomPaletteRecipe[] = [{ name: 'golden weapons', patches: [ramp(3, 'colors grey')] }];
   for (let c = 0; c < SHIPPED_COLORS; c++) {
     out.push({ name: `player_${pad(c)}`, patches: [ramp(10, `player ${pad(c)}`), copy(5, 10)] });
     out.push({ name: `woman_${pad(c)}`, patches: [ramp(15, `player ${pad(c)}`)] });
@@ -94,11 +94,10 @@ const hexOf = (r: number, g: number, b: number, entries: number): string =>
     .repeat(entries);
 
 describe('buildHumanPalettes', () => {
-  it('keeps the reachable recipes in file order, then the synthetic player colours', async () => {
+  it('keeps every recipe in file order, then the synthetic player colours', async () => {
     const lane = await buildHumanPalettes(sources());
     const names = lane.recipes.map((r) => r.name);
-    expect(names).not.toContain('unused');
-    expect(names.slice(0, 2)).toEqual(['player_00', 'woman_00']);
+    expect(names.slice(0, 3)).toEqual(['golden weapons', 'player_00', 'woman_00']);
     expect(names).toContain('vik_woman_base');
     expect(names.at(-1)).toBe('synthetic_woman_15');
     expect(lane.recipes.find((r) => r.name === 'vik_woman_base')?.patches).toEqual([
@@ -128,7 +127,6 @@ describe('buildHumanPalettes', () => {
     const lane = await buildHumanPalettes(sources());
     expect(lane.ramps['player 00']).toBe(hexOf(255, 0, 0, 16));
     expect(lane.ramps['colors grey']).toBe(hexOf(128, 128, 128, 16));
-    expect(lane.ramps['orphan ramp']).toBeUndefined();
     expect(Object.keys(lane.bases)).toEqual(['test_human_00']);
     expect(lane.bases.test_human_00).toBe(hexOf(0, 0, 0, 256));
   });
