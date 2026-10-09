@@ -28,6 +28,8 @@ export interface MapScriptWorld {
   readonly victory?: MatchVictory;
   /** A multiplayer map's goal table, which `goals` victory plays by. */
   readonly goals?: readonly MatchGoal[];
+  /** The same table for a run with missions off, where no script verdict can raise a row. */
+  readonly scriptlessGoals?: readonly MatchGoal[];
   /** Whether the script names a `MissionWon` or `MissionFailed` result. */
   readonly scriptVerdicts?: boolean;
   /** The `playerneverdies` seats, which the goal table checks though they are no participants. */

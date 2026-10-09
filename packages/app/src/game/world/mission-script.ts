@@ -219,11 +219,15 @@ const NO_VERDICTS = { won: false, failed: false } as const;
 function multiplayerVictory(
   script: MapScript | null,
   verdicts: { readonly won: boolean; readonly failed: boolean },
-): Pick<MapScriptWorld, 'victory' | 'goals' | 'scriptVerdicts' | 'neverDies'> | undefined {
+):
+  | Pick<MapScriptWorld, 'victory' | 'goals' | 'scriptlessGoals' | 'scriptVerdicts' | 'neverDies'>
+  | undefined {
   if (script?.multiplayer === undefined) return undefined;
+  const authored = script.multiplayerGoals ?? [];
   return {
     victory: 'goals',
-    goals: multiplayerMatchGoals(script.multiplayerGoals ?? [], verdicts),
+    goals: multiplayerMatchGoals(authored, verdicts),
+    scriptlessGoals: multiplayerMatchGoals(authored, NO_VERDICTS),
     scriptVerdicts: verdicts.won || verdicts.failed,
     neverDies: neverDiesSeats(script),
   };

@@ -79,11 +79,32 @@ describe('buildMapWorld', () => {
           participants: [0, 2],
           victory: 'goals',
           goals: [{ kind: 'lastStanding' }],
+          scriptlessGoals: [{ kind: 'lastStanding' }],
         },
         missions,
         matchParticipants: [0, 2],
       });
       expect(sim.matchRules()).toEqual({ participants: [0, 2], victory: 'goals', lastStanding: true });
+    }
+  });
+
+  it('plays the scriptless goal table with missions off, so a verdict row never strands the match', () => {
+    for (const missions of [true, false]) {
+      const { sim } = buildMapWorld({
+        ...NO_SESSION_FLAGS,
+        map: authoredMapFile(AUTHORED_ENTITIES),
+        ir: AUTHORED_IR,
+        script: {
+          missions: { missions: [] },
+          participants: [0, 2],
+          victory: 'goals',
+          goals: [{ kind: 'wonByMission' }],
+          scriptlessGoals: [{ kind: 'wonByMission' }, { kind: 'lastStanding' }],
+        },
+        missions,
+        matchParticipants: [0, 2],
+      });
+      expect(sim.matchRules().lastStanding).toBe(!missions);
     }
   });
 
