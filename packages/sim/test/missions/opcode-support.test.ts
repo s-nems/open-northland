@@ -18,6 +18,9 @@ const POINT = { hx: 4, hy: 4 };
 
 /** One well-formed line per listed opcode; the mapped type is what forces an entry for each. */
 const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }> } = {
+  HumanIsOnContinent: { opcode: 'HumanIsOnContinent', humanId: 7, point: POINT },
+  BuildHouseOnContinent: { opcode: 'BuildHouseOnContinent', player: 0, houseType: 1, point: POINT },
+  CheckNumberOfWildAnimals: { opcode: 'CheckNumberOfWildAnimals', tribe: 9, amount: 1 },
   DetectGuide: { opcode: 'DetectGuide', player: 0, point: POINT, range: 1 },
   IsAnyLandscapeOnPoint: { opcode: 'IsAnyLandscapeOnPoint', point: POINT },
   NumberOfAnimals: { opcode: 'NumberOfAnimals', player: 0, tribe: 9, amount: 1 },
@@ -140,6 +143,9 @@ const GOAL_SAMPLES: { [K in SupportedGoal]: Extract<MissionGoalOp, { opcode: K }
 };
 
 const RESULT_SAMPLES: { [K in SupportedResult]: Extract<MissionResultOp, { opcode: K }> } = {
+  AllowMap: { opcode: 'AllowMap', campaignId: 0, mapId: 1 },
+  'Mission quit and play video': { opcode: 'Mission quit and play video', amount: 0 },
+  SetHouseOverlayState: { opcode: 'SetHouseOverlayState', objectId: 7, extra: 0, flag: true },
   '1 Open/0 CloseWallGate': { opcode: '1 Open/0 CloseWallGate', player: 0, point: POINT, flag: true },
   StartSubMission: { opcode: 'StartSubMission', campaignId: 0, mapId: 1 },
   EndSubMission: { opcode: 'EndSubMission' },
@@ -413,8 +419,8 @@ describe('the published opcode support lists', () => {
 
   it('reports an opcode outside the lists, so the lists are the whole of it', () => {
     expect(
-      reportedOpcodes([{ opcode: 'BuildHouseOnContinent', player: 0, point: POINT, houseType: 1 }], []),
-    ).toEqual(['BuildHouseOnContinent']);
-    expect(reportedOpcodes([], [{ opcode: 'AllowMap', campaignId: 0, mapId: 1 }])).toEqual(['AllowMap']);
+      reportedOpcodes([{ opcode: 'IsLandscapePlayer10ConstructionSignOnPoint', point: POINT }], []),
+    ).toEqual(['IsLandscapePlayer10ConstructionSignOnPoint']);
+    expect(reportedOpcodes([], [{ opcode: 'CloseMap', campaignId: 0, mapId: 1 }])).toEqual(['CloseMap']);
   });
 });

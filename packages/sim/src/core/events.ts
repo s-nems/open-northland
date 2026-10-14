@@ -449,6 +449,17 @@ export type SimEvent =
       readonly mission: number;
     }
   | {
+      /** A newly granted authored map; the host namespaces it by the current campaign pack. */
+      readonly kind: 'missionCampaignUnlock';
+      readonly campaignId: number;
+      readonly mapId: number;
+    }
+  | {
+      /** End the mission with this campaign-local movie sequence. Retained in MissionCampaign. */
+      readonly kind: 'missionVideo';
+      readonly sequence: number;
+    }
+  | {
       /**
        * A `PlayCutscene` result fired: the mission window opens on briefing page `page`. With `replay`
        * the page is also the one the window opens on later, which `MissionBriefing` records.

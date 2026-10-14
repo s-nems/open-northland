@@ -263,7 +263,7 @@ writes.
 | 20 | `HousesDied` | 14 | no house carries the id | 41 |
 | 21 | `PlayerDied` | 1 | the player's dead flag is set (see statistics) | 223 |
 | 22 | `FindPosByPlayersMapMoveable` | 1, 16, 17, 9 | any human or vehicle of the player is within `range` of the point | 1135 |
-| 23 | `BuildHouseOnContinent` | 1, 16, 17, 15 | the player has a finished house of the type on the continent of the point | 0 \* |
+| 23 | `BuildHouseOnContinent` | 1, 16, 17, 15 | the player has a finished house of the type whose anchor shares the authored continent of the point | 0 |
 | 24 | `DiplomacyState` | 1, 2, 25 | the first player's stance toward the second equals the state | 83 |
 | 25 | `HumansWithHome` | 1, 7 | at least `amount` adult humans of the player live in a finished home | 5 |
 | 26 | `NumberOfSoldiers` | 1, 7 | the player has at least `amount` soldiers | 17 |
@@ -284,12 +284,12 @@ writes.
 | 41 | `FindAnimals` | 1, 14 | any animal with the id stands on a point explored by the player | 8 |
 | 42 | `NumberOfGoodsTraded` | 1, 2, 7 | the first player's traders have taken at least `amount` goods aboard out of the second player's houses under a trade agreement: one per unit of the agreement's take good, the goods handed over not counted (byte-level) | 3 |
 | 43 | `HumanAttachedToWorkHouse` | 1, 4, 7 | at least `amount` humans of the player with the job are attached to a workplace | 17 |
-| 44 | `CheckNumberOfWildAnimals` | 3, 7 | at least `amount` wild animals of the species | 0 \* |
+| 44 | `CheckNumberOfWildAnimals` | 3, 7 | at least `amount` ownerless animals of the species (zero still needs a match) | 0 |
 | 45 | `RandomTimeGone` | 35 | a random `[n/2, n)` seconds have passed since activation | 28 |
 | 46 | `IfMissionIsActive` | 21 | mission `n` is active | 210 |
 | 47 | `NumberOfAnimals` | 1, 3, 7 | the player owns at least `amount` animals of the species; implemented against living animal groups | 8 |
 | 48 | `NumberOfHumansKilled` | 1, 7 | the player has killed at least `amount` humans (soldiers plus civilians) | 20 |
-| 49 | `HumanIsOnContinent` | 10, 16, 17 | any human with the id stands on the continent of the point | 0 \* |
+| 49 | `HumanIsOnContinent` | 10, 16, 17 | any human with the id shares the point's authored continent, using its carrier position when aboard | 0 |
 | 50 | `IsMissionDone` | 21 | mission `n`'s stored goal flags satisfy its rule | 325 |
 | 51 | `NumberOfSoldiersNearPos` | 1, 16, 17, 9, 7 | at least `amount` non-hero soldiers of the player within `range`, vehicle crews included | 24 |
 | 52 | `NumberOfCivilainsNearPos` | 1, 16, 17, 9, 7 | as above for civilians; a hero counts in neither | 14 |
@@ -331,7 +331,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 11 | `DeactivateMission` | 21 | clear the active flag | sim | 1905 |
 | 12 | `MissionWon` | 1 | set the map's won flag, send the "won" message and the notification with the player; in multiplayer also notify the multiplayer goals. Here: the player's script verdict, announced like the skirmish rule's; on a multiplayer map it also raises the goal table's rows, announcing immediately without repeating the same verdict at the next goal check | both | 120 |
 | 13 | `MissionFailed` | 1 | as above for "lost"; the player's dead flag stays clear and, here, its commands stay accepted (approximation) | both | 110 |
-| 14 | `AllowMap` | 31, 22 | unlock a campaign map | sim | 0 \* |
+| 14 | `AllowMap` | 31, 22 | retain a campaign/map unlock and emit `missionCampaignUnlock` once per pair | both | 0 |
 | 15 | `CloseMap` | 31, 22 | lock a campaign map | sim | 0 \* |
 | 16 | `ExploreArea` | 1, 16, 17, 9 | reveal the hexagon of `range` map points around the point for the player, ring by ring, and the area of any house or landscape on a revealed point; `0 0 0 0` (any zero x, y, or range) reveals the whole map; a player at or above 16 explores nothing. Here: the fog mask's cells, set as fully visible as ground an own eye covers and kept so under every fog mode, for every player sharing the player's vision; nothing with fog off. A house anchor in the hexagon reveals its authored build-exclusion footprint; a landscape walk cell in it reveals that landscape's build area, without recursively revealing neighbouring objects. These trigger details remain unconfirmed against the running original | sim | 1412 |
 | 17 | `Exit` | | leave the map (restart) | app | 70 |
@@ -365,7 +365,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (original behavior), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the wave-group graphics within `range` (membership below) | both | 0 |
 | 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's completed wall gate at the point. Here: the point may be the gate's anchor or any node its closed body blocks, and the swap takes the same transition a seat's own gate command does, so a close onto an occupied passage is refused and reported, where the original swaps the gate unconditionally (adaptation) | sim | 14 |
-| 48 | `Mission quit and play video` | 7 | request the FMV `Seq_NNNN` at exit (out of scope: game video) | app | 0 |
+| 48 | `Mission quit and play video` | 7 | retain the campaign-local movie sequence and emit `missionVideo`; host playback is separate | both | 0 |
 | 49 | `SetPlayerBehaviourFlag` | 1, 7, 32 | OR or clear the mask on every current human of the player | sim | 240 |
 | 50 | `SetHumanBehaviourFlag` | 10, 7, 32 | OR or clear the mask on humans with the id | sim | 436 |
 | 51 | `SetRandomChestOnRandomPos` | 7 | choose a reward from the category mask, then try six random land points and drop a wooden chest at the first clear one | sim | 0 |
@@ -405,7 +405,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 85 | `SetCameraPosition` | 16, 17 | end any follow mode and set the display's wanted position to the point (reading). Here: the `missionCamera` event and an eased glide there | app | 197 |
 | 86 | `SetHumanX` | 1, 3, 4, 16, 17, 10, 29, 7 | `SetHuman` repeated `count` times | sim | 1371 |
 | 87 | `RemoveHPsOfHousesInAreaX` | 1, 16, 17, 9, 7, 14 | as 81, skipping houses with the id | sim | 0 |
-| 88 | `SetHouseOverlayState` | 14, 37, 32 | toggle a landscape overlay on houses with the id | app | 0 \* |
+| 88 | `SetHouseOverlayState` | 14, 37, 32 | retain an explicit landscape-overlay slot override on every house with the id | both | 0 |
 | 89 | `AttachHumanToVehicle` | 10, 12 | the seat's attach order for every human with the id that the attach gate admits (same owner, allowed trade, free slot), on the first vehicle with the vehicle id | sim | 77 |
 | 90 | `DetachHumanFromVehicle` | 10 | the seat's detach order for every rider with the id | sim | 74 |
 | 91 | `SetHouseBuildForbiddenArea` | 16, 17, 9, 32 | forbid or allow building within `range` | sim | 150 |
@@ -1045,6 +1045,32 @@ own node is not land (original behavior). The index points into the owned
 clamped to 255, and shades each triangle between the colours of its three corner cells (original
 behavior). [SCRIPT-TINTS.md](SCRIPT-TINTS.md) covers how the shipped maps use it and how the scene
 draws it.
+
+## Campaign command state
+
+`HumanIsOnContinent` and `BuildHouseOnContinent` compare the authored `lmco` node labels, which
+can differ from navigation connectivity. The house must be finished and owned by the named player;
+its anchor selects the continent. The human uses its carrier position when aboard, including a
+moored ship's entry point. These semantics are a reading of original behavior, not yet confirmed
+against the running original. Maps without the authored lane use static movement components as an
+approximation. An out-of-bounds point never matches; missing terrain leaves the goal unknown.
+`CheckNumberOfWildAnimals` counts ownerless wildlife of the requested species, not people or claimed
+livestock, through the same count threshold as `NumberOfAnimals`.
+
+`AllowMap` retains distinct numeric campaign/map pairs in `MissionCampaign`; a duplicate does not
+emit another `missionCampaignUnlock`. `Mission quit and play video` retains the sequence there and
+emits `missionVideo` on each request. It does not discard later results or triggers in the same pass.
+Both outputs survive save/load; loading does not re-emit them. A host must read retained state on
+restore as well as live events, scope identifiers to the source pack, persist unlocks outside a
+single world (including child worlds), and resolve the film for that pack and locale. Profile
+persistence and the movie player are not implemented by these sim evaluators.
+
+`SetHouseOverlayState` writes `HouseLandscapeOverlays` on every house with the authored object id.
+Slots 0 through 9 retain independent true/false overrides; missing slots leave the initial state to
+content. Other slot numbers are ignored. The ten-slot bound is a reading of original behavior,
+not confirmed against the running original. The overrides are saved, hashed and exposed through
+snapshots; the landscape-overlay extraction and renderer remain separate work. Repeated identical
+writes do not invalidate a component. Save format 102 includes these campaign and overlay outputs.
 
 ## Sub-missions
 

@@ -22,6 +22,7 @@ export * from './map-ai.js';
 export * from './map-ai-defence.js';
 export * from './match.js';
 export * from './mission.js';
+export * from './mission-campaign.js';
 export * from './mission-presentation.js';
 export * from './movement.js';
 export * from './needs.js';

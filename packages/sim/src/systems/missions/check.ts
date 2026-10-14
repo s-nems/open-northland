@@ -11,6 +11,7 @@ import {
   vehiclesGone,
 } from './goals/casualties.js';
 import { chestNearPoint } from './goals/chests.js';
+import { houseOnContinent, humanOnContinent } from './goals/continents.js';
 import { neededMatches } from './goals/count.js';
 import {
   animalsExploredHolds,
@@ -118,6 +119,17 @@ function goalHolds(
   op: MissionGoalOp,
 ): boolean | undefined {
   switch (op.opcode) {
+    case 'HumanIsOnContinent':
+    case 'BuildHouseOnContinent': {
+      const holds =
+        op.opcode === 'HumanIsOnContinent' ? humanOnContinent(pass, op) : houseOnContinent(pass, op);
+      if (holds === undefined) pass.report(index, op.opcode);
+      return holds;
+    }
+    case 'CheckNumberOfWildAnimals':
+      return (
+        countAnimals(pass.world, undefined, op.tribe, neededMatches(op.amount)) >= neededMatches(op.amount)
+      );
     case 'IsAnyLandscapeOnPoint':
       if (pass.ctx.terrain?.landscapes === undefined) {
         pass.report(index, op.opcode);

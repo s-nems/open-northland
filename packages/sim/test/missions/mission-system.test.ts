@@ -363,10 +363,8 @@ describe('RandomTimeGone', () => {
 
 /** A goal no evaluator runs and no corpus map writes. */
 const UNKNOWN_GOAL: MissionGoalOp = {
-  opcode: 'BuildHouseOnContinent',
-  player: 0,
+  opcode: 'IsLandscapePlayer10ConstructionSignOnPoint',
   point: POINT,
-  houseType: 1,
 };
 
 describe('an opcode this build cannot run', () => {
@@ -390,12 +388,12 @@ describe('an opcode this build cannot run', () => {
     const sim = missionSim([
       mission({
         goals: [TRUE_GOAL],
-        results: [{ opcode: 'AllowMap', campaignId: 0, mapId: 1 }, { opcode: 'Exit' }],
+        results: [{ opcode: 'CloseMap', campaignId: 0, mapId: 1 }, { opcode: 'Exit' }],
       }),
     ]);
     sim.run(LOAD_PASS);
     expect(eventsOfKind(sim, 'missionUnsupported')).toEqual([
-      { kind: 'missionUnsupported', mission: 0, opcode: 'AllowMap' },
+      { kind: 'missionUnsupported', mission: 0, opcode: 'CloseMap' },
     ]);
     expect(eventsOfKind(sim, 'missionExit')).toHaveLength(1);
   });

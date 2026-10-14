@@ -5,6 +5,9 @@ import type { MissionGoalOp, MissionResultOp } from './script.js';
  * what the coverage report and the opcode-support test read, and the test holds the two together.
  */
 export const SUPPORTED_GOALS = [
+  'HumanIsOnContinent',
+  'BuildHouseOnContinent',
+  'CheckNumberOfWildAnimals',
   'IsAnyLandscapeOnPoint',
   'NumberOfAnimals',
   'True',
@@ -68,6 +71,9 @@ export const SUPPORTED_GOALS = [
 
 /** The result opcodes this build executes; see {@link SUPPORTED_GOALS}. */
 export const SUPPORTED_RESULTS = [
+  'AllowMap',
+  'Mission quit and play video',
+  'SetHouseOverlayState',
   'StartSubMission',
   'EndSubMission',
   'SetLandscape',

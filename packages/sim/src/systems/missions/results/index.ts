@@ -6,6 +6,7 @@ import {
   setImportMarker,
   setPlayerBehaviour,
 } from './behaviour.js';
+import { allowCampaignMap, playCampaignVideo, setHouseLandscapeOverlay } from './campaign.js';
 import { setRandomChest } from './chests.js';
 import {
   addGoodsToAnyStock,
@@ -79,6 +80,15 @@ import { setScriptedWallGate } from './wall-gates.js';
  *  nothing here throws, because a corpus script must never halt a running world. */
 export function executeResult(pass: MissionPass, index: number, result: MissionResultOp): void {
   switch (result.opcode) {
+    case 'AllowMap':
+      allowCampaignMap(pass, index, result.campaignId, result.mapId);
+      return;
+    case 'Mission quit and play video':
+      playCampaignVideo(pass, index, result.amount);
+      return;
+    case 'SetHouseOverlayState':
+      setHouseLandscapeOverlay(pass, result.objectId, result.extra, result.flag);
+      return;
     case 'StartSubMission':
       if (result.campaignId < 0 || result.mapId < 0) pass.reportFailed(index, result.opcode);
       else if (pass.subMission?.kind !== 'end')
