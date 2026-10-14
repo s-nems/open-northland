@@ -8,6 +8,7 @@ import { clearPendingLoad } from '../../view/runtime/save-load/pending-store.js'
 import { initialSettingsMemory } from '../../view/settings-page.js';
 import { warmGraphicsInBackground } from '../../view/shader-warmup.js';
 import { startBackdropRotation } from './backdrops.js';
+import { campaignScreen } from './campaign/screen.js';
 import { catalogueScreen } from './catalogue/screen.js';
 import { initialCatalogueMemory } from './catalogue/view.js';
 import { creditsScreen } from './credits.js';
@@ -174,6 +175,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
         return { element: mainScreen(show) };
       case 'newGame':
         return { element: mapSelectScreen(show, mapSelectMemory, openLobby, launch) };
+      case 'campaign':
+        return campaignScreen(show, launch);
       case 'catalogue':
         return catalogueScreen(show, catalogueBack, catalogueMemory, openLobby);
       case 'multiplayer':
@@ -208,7 +211,12 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     // The prompt sits outside `content`, so a language change reaches it only from here.
     fullscreenPrompt.relabel();
   };
-  const firstScreen: MenuScreen = params.get('menu') === 'multiplayer' ? 'multiplayer' : 'main';
+  const firstScreen: MenuScreen =
+    params.get('menu') === 'campaign'
+      ? 'campaign'
+      : params.get('menu') === 'multiplayer'
+        ? 'multiplayer'
+        : 'main';
   if (await gateOwed) {
     // The gate stands in for the first screen and darkens like a sub-screen; passing it opens the menu.
     root.classList.add('is-sub');

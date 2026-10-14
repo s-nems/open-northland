@@ -1,0 +1,100 @@
+.campaign-screen {
+  overflow: auto;
+}
+.campaign-screen h2 {
+  text-align: center;
+  margin: 0 0 20px;
+}
+.campaign-screen__layout {
+  display: flex;
+  gap: 36px;
+  align-items: center;
+  justify-content: center;
+}
+.campaign-screen__map {
+  position: relative;
+  width: min(48vw, 524px);
+  flex-shrink: 0;
+}
+.campaign-screen__map img {
+  width: 100%;
+  display: block;
+}
+.campaign-screen__point {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid #e6cf8a;
+  background: #384433;
+  color: #fff4cf;
+  font: bold 15px serif;
+  cursor: pointer;
+}
+.campaign-screen__point[aria-pressed="true"] {
+  outline: 3px solid #fff4cf;
+  outline-offset: 3px;
+}
+.campaign-screen__point:disabled {
+  background: #303031;
+  color: #888;
+  border-color: #777;
+  cursor: default;
+}
+.campaign-screen__side {
+  width: min(38vw, 410px);
+}
+.campaign-screen__stages {
+  display: grid;
+  gap: 6px;
+  padding-left: 24px;
+}
+.campaign-screen__stages button {
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  color: inherit;
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  font: inherit;
+}
+.campaign-screen__stages button[aria-pressed="true"] {
+  border-color: #c8ae72;
+  background: #c8ae7215;
+}
+.campaign-screen__stages button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.campaign-screen__start,
+.campaign-screen__skip {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  margin-top: 12px;
+  border: 1px solid #a18a5d;
+  background: #302719;
+  color: #f4e6cb;
+  font: inherit;
+  cursor: pointer;
+}
+.campaign-screen__skip {
+  background: transparent;
+  border-color: #666;
+}
+.campaign-screen__start:disabled,
+.campaign-screen__skip:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+@media (max-width: 700px) {
+  .campaign-screen__layout {
+    flex-direction: column;
+  }
+  .campaign-screen__map,
+  .campaign-screen__side {
+    width: min(85vw, 524px);
+  }
+}

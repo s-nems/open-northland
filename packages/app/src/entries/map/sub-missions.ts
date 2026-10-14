@@ -1,6 +1,7 @@
 import { mapLobbySlots } from '@open-northland/data';
 import { localPlayerOf } from '@open-northland/lockstep';
 import { exportSaveGame, type SaveGame, type SimEvent } from '@open-northland/sim';
+import { campaignForMap, loadCampaigns } from '../../campaign/catalog.js';
 import { loadMapScript, loadTerrainMap } from '../../content/map-loader.js';
 import { loadMapSources, type MapSource, mapFetch } from '../../content/map-source/index.js';
 import { sessionMapScript } from '../../game/seat-tribes.js';
@@ -22,7 +23,10 @@ type Inputs = Pick<MapWorldOptions, 'ir' | 'content'> & { readonly params: URLSe
 export function subMissionPool(
   sources: readonly MapSource[],
   currentMapId: string | null,
+  campaignMapIds?: ReadonlySet<string>,
 ): readonly MapSource[] {
+  if (campaignMapIds !== undefined)
+    return sources.filter((source) => campaignMapIds.has(source.entry.id) && !source.stale);
   const key = currentMapId?.toLowerCase();
   const current = sources.find((source) => source.entry.id.toLowerCase() === key);
   const entryId = (current?.catalog ?? current?.local)?.entryId;
@@ -61,7 +65,15 @@ export function mapSubMissionLoader(
         throw new Error('No parent mission to return to');
       target = parent.header.mapId;
     } else {
-      const matches = subMissionPool(await loadMapSources(), current.header.mapId).filter(
+      const campaign =
+        current.header.mapId === null
+          ? undefined
+          : campaignForMap(await loadCampaigns(), current.header.mapId);
+      const matches = subMissionPool(
+        await loadMapSources(),
+        current.header.mapId,
+        campaign === undefined ? undefined : new Set(campaign.maps.map((map) => map.id)),
+      ).filter(
         ({ entry: { campaign } }) =>
           campaign?.campaignId === transition.campaignId && campaign.missionId === transition.mapId,
       );

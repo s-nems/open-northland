@@ -25,6 +25,7 @@ export interface MapPickerOptions {
   readonly primaryLabel: (item: MapSelectItem) => string;
   readonly onPrimary: (item: MapSelectItem) => void;
   /** The decoded maps the listing takes, once `maps-index.json` has answered. */
+  readonly onCampaign?: () => void;
   readonly onMaps?: (maps: readonly MapSelectItem[]) => void;
 }
 
@@ -61,13 +62,10 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'main-menu__seg-btn';
-    if (tab.kind === 'comingSoon') {
-      // aria-disabled instead of `disabled`: a disabled button swallows hover, which kills the
-      // native tooltip in some engines.
+    if (tab.kind === 'action') {
       button.textContent = select.filters[tab.id];
-      button.classList.add('is-coming-soon');
-      button.title = copy.comingSoonTip;
-      button.setAttribute('aria-disabled', 'true');
+      if (options.onCampaign === undefined) button.disabled = true;
+      else button.addEventListener('click', options.onCampaign);
       seg.append(button);
       continue;
     }

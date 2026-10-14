@@ -4,6 +4,7 @@ export type MenuScreen =
   | 'main'
   | 'multiplayer'
   | 'newGame'
+  | 'campaign'
   | 'catalogue'
   | 'lobby'
   | 'load'
@@ -47,6 +48,7 @@ export function mainNavFor(browser: boolean): readonly MainNavItem[] {
 /** Where Esc and the back link lead; `null` on the main screen. */
 export function backTarget(screen: MenuScreen): MenuScreen | null {
   if (screen === 'main') return null;
+  if (screen === 'campaign') return 'newGame';
   if (screen === 'lobby') return 'newGame';
   return 'main';
 }

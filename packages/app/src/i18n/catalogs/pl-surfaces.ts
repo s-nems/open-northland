@@ -37,6 +37,7 @@ export const plSurfaces = {
     },
     backLabels: { main: 'Menu', newGame: 'Wybór mapy' },
     screenTitles: {
+      campaign: 'Kampania',
       multiplayer: 'Gra wieloosobowa',
       newGame: 'Nowa gra',
       catalogue: 'Katalog map',

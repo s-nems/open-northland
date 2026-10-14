@@ -18,19 +18,17 @@ export type MapFilter = 'all' | 'tutorial' | 'free' | 'multiplayer' | 'scenes';
 /** What a map's preview shows: the authored illustration or the terrain minimap. */
 export type MapPreviewView = 'picture' | 'map';
 
-/** A mode of the original this build cannot launch yet (its maps are `SINGLE_PLAYER_CAMPAIGN`,
- *  which no list takes); its tab renders greyed out with a coming-soon tooltip. */
-export type ComingSoonTab = 'campaign';
+/** Navigation actions beside the map filters. */
+export type MapActionTab = 'campaign';
 
 export type MapFilterTab =
   | { readonly kind: 'filter'; readonly filter: MapFilter }
-  | { readonly kind: 'comingSoon'; readonly id: ComingSoonTab };
+  | { readonly kind: 'action'; readonly id: MapActionTab };
 
-/** Segmented-bar order of the New Game screen: the coming-soon modes sit by "all", before the live
- *  filters. A room lists multiplayer maps only, so it shows no bar. */
+/** A room lists multiplayer maps only, so it shows no filter bar. */
 export const SINGLE_PLAYER_TABS: readonly MapFilterTab[] = [
   { kind: 'filter', filter: 'all' },
-  { kind: 'comingSoon', id: 'campaign' },
+  { kind: 'action', id: 'campaign' },
   { kind: 'filter', filter: 'tutorial' },
   { kind: 'filter', filter: 'free' },
   { kind: 'filter', filter: 'multiplayer' },

@@ -235,7 +235,8 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     if (events.length > 0) combatTicks.push({ tick: host.tick, events });
     for (const ev of events) {
       frameEvents.push(ev);
-      if (ev.kind === 'missionSubMission' && !deps.sharedClock) driver.setPaused(true);
+      if ((ev.kind === 'missionSubMission' || ev.kind === 'missionVideo') && !deps.sharedClock)
+        driver.setPaused(true);
     }
   };
 

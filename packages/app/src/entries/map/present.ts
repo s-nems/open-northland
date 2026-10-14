@@ -9,6 +9,7 @@ import {
 } from '@open-northland/lockstep';
 import type { Camera } from '@open-northland/render';
 import type { SaveGame } from '@open-northland/sim';
+import { campaignForMap, loadCampaigns } from '../../campaign/catalog.js';
 import { loadFellingClips } from '../../content/felling-clips.js';
 import { mapBriefingPictures } from '../../content/map-source/briefing-pictures.js';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
@@ -188,7 +189,10 @@ export async function presentMapWorld(
     markShown = () => resolve(true);
   });
   const pictures = await mapBriefingPictures(mapId, world.briefing);
+  const campaign =
+    runtime.sharedClock === true || mapId === null ? undefined : campaignForMap(await loadCampaigns(), mapId);
   const view = await startGameView({
+    ...(campaign === undefined ? {} : { campaign }),
     missionPictureUrl: pictures.url,
     app,
     canvas,

@@ -432,7 +432,10 @@ export class ServedSession<E> {
     const { sim } = this;
     const tick = sim.tick;
     const events = sim.events.current();
-    if (this.options.pauseOnSubMission && events.some((event) => event.kind === 'missionSubMission')) {
+    if (
+      this.options.pauseOnSubMission &&
+      events.some((event) => event.kind === 'missionSubMission' || event.kind === 'missionVideo')
+    ) {
       this.driver.setPaused(true);
       this.halt();
     }

@@ -1,4 +1,5 @@
 export * from './briefing.js';
+export * from './campaign.js';
 export * from './entities.js';
 export * from './info.js';
 export * from './listing.js';

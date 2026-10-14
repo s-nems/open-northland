@@ -1,3 +1,4 @@
+import { enCampaign } from './catalogs/en-campaign.js';
 import { enContent } from './catalogs/en-content.js';
 import { enGame } from './catalogs/en-game.js';
 import { enMapCatalogue } from './catalogs/en-map-catalogue.js';
@@ -7,6 +8,7 @@ import { enNetworkRoom } from './catalogs/en-network-room.js';
 import { enSurfaces } from './catalogs/en-surfaces.js';
 
 export const en = {
+  campaign: enCampaign,
   network: enNetwork,
   mapCatalogue: enMapCatalogue,
   networkRoom: enNetworkRoom,

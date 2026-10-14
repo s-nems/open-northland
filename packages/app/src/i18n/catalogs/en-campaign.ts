@@ -1,0 +1,17 @@
+export const enCampaign = {
+  title: 'Campaign',
+  empty: 'No campaign is installed.',
+  start: 'Start mission',
+  skip: 'Skip mission',
+  confirm: 'Unlock the next mission: {mission}? This alpha recovery option does not change your saved games.',
+  cancel: 'Cancel',
+  unlock: 'Unlock mission',
+  locked: 'Locked',
+  available: 'Available',
+  all: 'All missions are unlocked.',
+  storage: 'Campaign progress could not be saved. Free browser storage and retry.',
+  retry: 'Retry',
+  play: 'Play video',
+  skipMovie: 'Skip video',
+  movieFailed: 'The video could not be loaded. You can skip it.',
+} as const;

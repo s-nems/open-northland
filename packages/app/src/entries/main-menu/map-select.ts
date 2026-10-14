@@ -24,6 +24,7 @@ export function mapSelectScreen(
   tools.className = 'main-menu__head-tools';
   const picker = mapPicker({
     memory,
+    onCampaign: () => open('campaign'),
     listing: 'single',
     tabs: SINGLE_PLAYER_TABS,
     primaryLabel: (item) =>

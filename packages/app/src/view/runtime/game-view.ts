@@ -1,4 +1,5 @@
 import type { SceneryObject, SoundStatsView, UiCue, VoiceCall } from '@open-northland/audio';
+import type { Campaign } from '@open-northland/data';
 import { BUILDING_KIND, jobCanPray, type MapRelationFlag } from '@open-northland/data';
 import type { SessionDriver } from '@open-northland/lockstep';
 import type {
@@ -30,6 +31,9 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
+import { campaignFailureDialog } from '../../campaign/failure-dialog.js';
+import { playCampaignMovie } from '../../campaign/movie.js';
+import { createCampaignRuntime } from '../../campaign/runtime.js';
 import { pickerEntries } from '../../catalog/professions.js';
 import { emblemBuildingType } from '../../content/building-gfx/emblems.js';
 import type { FellingClips } from '../../content/felling-clips.js';
@@ -82,7 +86,7 @@ import {
 } from '../../hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
-import { currentLocale } from '../../i18n/index.js';
+import { currentLocale, messages } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
 import { setUpdateContinuation } from '../../update/watcher.js';
@@ -108,7 +112,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { createSignpostMapOverlay } from '../map-overlays/signposts.js';
-import { floatParam, introParam, tintParam, weatherParam } from '../params.js';
+import { floatParam, introParam, menuSearch, tintParam, weatherParam } from '../params.js';
 import { nodeBounds } from '../picking.js';
 import {
   createFogGates,
@@ -167,6 +171,7 @@ import { createWorldTeardown } from './world-teardown.js';
 
 /** The assembled world and per-session flags a playable entry (`?map=` or `?scene=`) hands the shared runtime. */
 export interface GameViewDeps {
+  readonly campaign?: Campaign;
   readonly app: Application;
   readonly canvas: HTMLCanvasElement;
   readonly params: URLSearchParams;
@@ -395,7 +400,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           destroy();
           onReturnToMenu();
         }
-      : createMenuExit({ teardown: teardownWorld });
+      : createMenuExit({
+          teardown: teardownWorld,
+          search: () => {
+            const search = new URLSearchParams(menuSearch());
+            if (deps.campaign !== undefined) {
+              search.set('menu', 'campaign');
+              search.set('campaign', deps.campaign.id);
+            }
+            return `?${search}`;
+          },
+        });
 
   try {
     const storedSettings = readStoredSettings();
@@ -802,7 +817,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       teardown: teardownWorld,
     });
-    const onEvents = createWorldEventHandler({
+    const forwardEvents = createWorldEventHandler({
       forward: (events) => deps.onEvents?.(events),
       scriptTints: scriptTints.onEvents,
       subMissions: (events) => !sharedClock && subMissions.onEvents(events),
@@ -811,6 +826,35 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       },
       presentation: (events) => presentation?.onEvents(events),
     });
+
+    const campaign = !sharedClock
+      ? createCampaignRuntime({
+          ...(deps.campaign === undefined ? {} : { campaign: deps.campaign }),
+          storage: {
+            getItem: (key) => localStorage.getItem(key),
+            setItem: (key, value) => localStorage.setItem(key, value),
+          },
+          pause: () => pauseHolds.hold('campaign'),
+          resume: () => pauseHolds.release('campaign'),
+          play: async (sequence) => {
+            const movie = deps.campaign?.videos.find((movie) => movie.sequence === sequence);
+            const copy = messages().campaign;
+            await playCampaignMovie(
+              movie,
+              { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed },
+              lifetime.signal,
+            );
+          },
+          exit: quitToMenu,
+          failed: (retry) => campaignFailureDialog(retry, lifetime.signal),
+          signal: lifetime.signal,
+        })
+      : null;
+    campaign?.restore(host.snapshot());
+    const onEvents = (events: readonly SimEvent[]): void => {
+      if (campaign === null) forwardEvents(events);
+      else campaign.events(events, forwardEvents);
+    };
 
     // Injected rather than imported: `hud/` never imports `view/`.
     const clientToScreen = (clientX: number, clientY: number): { x: number; y: number } =>
@@ -1255,7 +1299,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           deps.onFrame?.(snapshot);
         },
       },
-      suspended: subMissions.isPending,
+      suspended: () => subMissions.isPending() || campaign?.isPending() === true,
       fpsLimit: liveSettings.settings.current().fpsLimit,
       fogView: fogViewOf,
       viewer,

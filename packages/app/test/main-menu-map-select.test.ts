@@ -33,11 +33,11 @@ function slot(player: number, hidden = false): MapsIndexPlayerSlot {
 }
 
 describe('map filter tabs', () => {
-  it('keeps every live filter clickable and parks the coming-soon modes next to "all"', () => {
+  it('keeps every live filter clickable and places campaign navigation next to "all"', () => {
     const filters = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'filter' ? [tab.filter] : []));
     expect(filters).toEqual(['all', 'tutorial', 'free', 'multiplayer', 'scenes']);
-    const comingSoon = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'comingSoon' ? [tab.id] : []));
-    expect(comingSoon).toEqual(['campaign']);
+    const action = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'action' ? [tab.id] : []));
+    expect(action).toEqual(['campaign']);
     expect(SINGLE_PLAYER_TABS[0]).toEqual({ kind: 'filter', filter: 'all' });
     expect(ROOM_TABS).toEqual([]);
   });

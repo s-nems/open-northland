@@ -1062,15 +1062,21 @@ emit another `missionCampaignUnlock`. `Mission quit and play video` retains the 
 emits `missionVideo` on each request. It does not discard later results or triggers in the same pass.
 Both outputs survive save/load; loading does not re-emit them. A host must read retained state on
 restore as well as live events, scope identifiers to the source pack, persist unlocks outside a
-single world (including child worlds), and resolve the film for that pack and locale. Profile
-persistence and the movie player are not implemented by these sim evaluators.
+single world (including child worlds), and resolve the film for that pack and locale. The local app persists those unlocks automatically under campaign identity and language, before
+forwarding exits or submap transitions. The campaign screen exposes available missions and a confirmed
+alpha recovery action; it has no save/load controls. Movies stop the worker at the requesting tick
+boundary and play centred on black without upscaling. Restoring a pending movie replays it.
+Campaign presentation and stage order come from the validated `campaigns-index.json` manifest.
 
 `SetHouseOverlayState` writes `HouseLandscapeOverlays` on every house with the authored object id.
 Slots 0 through 9 retain independent true/false overrides; missing slots leave the initial state to
 content. Other slot numbers are ignored. The ten-slot bound is a reading of original behavior,
 not confirmed against the running original. The overrides are saved, hashed and exposed through
-snapshots; the landscape-overlay extraction and renderer remain separate work. Repeated identical
-writes do not invalidate a component. Save format 102 includes these campaign and overlay outputs.
+snapshots. The `gfxoverlaylandscape` rows bind each slot to named landscape frames and pixel offsets;
+the renderer draws enabled slots over the completed building body, preserving the frozen mask in fog.
+Missing overrides default to off. Animated overlays use the existing two-tick frame cadence, an
+approximation, and do not reproduce individual landscape timing or shadows. Repeated identical writes
+do not invalidate a component. Save format 102 includes these campaign and overlay outputs.
 
 ## Sub-missions
 
