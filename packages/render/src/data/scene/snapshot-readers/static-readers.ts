@@ -197,6 +197,7 @@ function readChestGfxIndex(components: Readonly<Record<string, unknown>>): numbe
 }
 
 const STATIC_DRAW_KEYS = [
+  'landscapeOverlayMask',
   'typeId',
   'hpFrac',
   'builtPct',
@@ -249,6 +250,12 @@ export function assignStaticFields(
       readVehicleStaticFields(target, components);
       return;
     case 'building': {
+      const overlays = components.HouseLandscapeOverlays as
+        | { slots?: ReadonlyMap<number, boolean> }
+        | undefined;
+      let mask = 0;
+      for (let slot = 0; slot < 10; slot++) if (overlays?.slots?.get(slot) === true) mask |= 1 << slot;
+      target.landscapeOverlayMask = mask;
       const hpFrac = readHpFraction(components);
       if (hpFrac !== undefined) target.hpFrac = hpFrac;
       const typeId = readBuildingType(components);

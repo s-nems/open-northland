@@ -29,6 +29,7 @@ export {
 export type {
   BuildingBobRef,
   BuildingDraw,
+  BuildingLandscapeOverlayRef,
   BuildingOverlayRef,
   BuildingSkinTables,
   BuildingTribeTables,

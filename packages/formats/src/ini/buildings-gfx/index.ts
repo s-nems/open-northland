@@ -1,3 +1,4 @@
+export { extractBuildingLandscapeOverlays } from './landscape-overlays.js';
 export {
   type ByTribe,
   extractBuildingFootprints,

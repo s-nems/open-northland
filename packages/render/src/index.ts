@@ -74,6 +74,7 @@ export {
   type AtlasManifestFrame,
   atlasFromManifest,
   type BuildingBobRef,
+  type BuildingLandscapeOverlayRef,
   type BuildingOverlayRef,
   type BuildingSkinTables,
   type BuildingTribeTables,

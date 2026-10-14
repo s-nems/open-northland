@@ -10,11 +10,14 @@ import {
   resolveUpgradeDraws,
   resolveUpgradeRebuildDraws,
 } from '../../data/sprites/index.js';
+import { buildingLandscapeOverlays } from '../../data/sprites/layered.js';
+import type { BuildingLandscapeOverlayRef } from '../../data/sprites/layered-bindings.js';
 import type { SpriteSheet } from '../sprite-sheet.js';
 import { hasLoadedFamily, layeredLayerFor, pushGroundedBody } from './layered-layers.js';
 import type { LayerBuffer, ResolvedLayer } from './resolved-layer.js';
 
 /** A state overlay's bounds-exempt twin of its memoized record (see {@link layeredLayerFor}). */
+const landscapeLayers = new WeakMap<BuildingLandscapeOverlayRef, Map<number, ResolvedLayer>>();
 const overlayRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
 /** An old body part's fading twin, for an upgrade site that rebuilds its next tier. */
 const fadingRecords = new WeakMap<ResolvedLayer, ResolvedLayer>();
@@ -95,6 +98,26 @@ export function pushBuildingExtras(out: LayerBuffer, sheet: SpriteSheet, item: D
   if (overlayDraw !== null) {
     const resolved = layeredLayerFor(sheet, 'building', overlayDraw);
     if (resolved !== null) out.push(boundsExemptLayerFor(resolved));
+  }
+  for (const overlay of buildingLandscapeOverlays(sheet.bindings.building, item)) {
+    if (((item.landscapeOverlayMask ?? 0) & (1 << overlay.slot)) === 0) continue;
+    // Same two-tick approximation as the existing animated building overlay.
+    const index = overlay.animated ? Math.floor(tick / 2) % overlay.frames.length : 0;
+    const bob = overlay.frames[index];
+    if (bob === undefined) continue;
+    let frames = landscapeLayers.get(overlay);
+    if (frames === undefined) {
+      frames = new Map();
+      landscapeLayers.set(overlay, frames);
+    }
+    let layer = frames.get(bob);
+    if (layer === undefined) {
+      const base = layeredLayerFor(sheet, 'building', { bob, layer: overlay.layer });
+      if (base === null) continue;
+      layer = { ...base, dx: overlay.x, dy: overlay.y, boundsExempt: true };
+      frames.set(bob, layer);
+    }
+    out.push(layer);
   }
   const upgradeStack = resolveUpgradeDraws(sheet.bindings.building, item);
   if (upgradeStack !== null) {

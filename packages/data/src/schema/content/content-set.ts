@@ -15,6 +15,7 @@ import {
   BuildingConstructionLayer,
   BuildingFlagPoint,
   BuildingHolyFirePoint,
+  BuildingLandscapeOverlay,
   BuildingOverlay,
 } from '../graphics/building-bobs.js';
 import { emptyHumanPalettes, HumanPalettes } from '../graphics/human-palettes.js';
@@ -87,6 +88,7 @@ export const ContentSet = z.strictObject({
   constructionLayers: z.array(BuildingConstructionLayer).default([]),
   /** `[GfxHouse]` `GfxOverlay` type-4 animated state overlays, such as the mill rotor. */
   buildingOverlays: z.array(BuildingOverlay).default([]),
+  buildingLandscapeOverlays: z.array(BuildingLandscapeOverlay).default([]),
   /** `[GfxHouse]` `GfxFlagPoint` anchors: where a building's sign chain plants. */
   buildingFlagPoints: z.array(BuildingFlagPoint).default([]),
   /** `[GfxHouse]` `gfxsoldierflagpoint` anchors: where a manned post flies its garrison flag. */

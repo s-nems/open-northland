@@ -20,6 +20,7 @@ import {
   VIKING_HOUSE01_BOBS,
   VIKING_TRIBE,
 } from './families.js';
+import { landscapeOverlayFamilies, landscapeOverlayRefs } from './landscape-overlays.js';
 import { buildingOverlayRefsByType } from './overlays.js';
 
 /** One skin slot of a tribe's building tables, from its own `[GfxHouse]` rows in the families the sheet
@@ -36,6 +37,7 @@ function skinTables(ir: ContentIr | null, scope: BuildingRefScope): BuildingSkin
   };
   return {
     byType,
+    landscapeOverlaysByType: landscapeOverlayRefs(ir, scope.tribeId),
     ...(Object.keys(constructionByType).length > 0 ? { constructionByType } : {}),
     ...(Object.keys(upgradeByType).length > 0 ? { upgradeByType } : {}),
     ...(Object.keys(overlayByType).length > 0 ? { overlayByType } : {}),
@@ -113,6 +115,8 @@ export function referencedFamilyLayers(binding: BuildingTypeBinding): Set<string
     ]) {
       for (const stage of stack) if (stage.layer !== undefined) layers.add(stage.layer);
     }
+    for (const overlays of Object.values(tables.landscapeOverlaysByType ?? {}))
+      for (const overlay of overlays) layers.add(overlay.layer);
     for (const overlay of Object.values<BuildingOverlayRef>(tables.overlayByType ?? {})) {
       if (overlay.layer !== undefined) layers.add(overlay.layer);
     }
@@ -124,7 +128,12 @@ export function referencedFamilyLayers(binding: BuildingTypeBinding): Set<string
  *  reduction can narrow them to the ones the winning rows actually draw from. */
 export function candidateFamilies(ir: ContentIr | null, tribes: WorldTribes): BuildingFamily[] {
   return buildingFamiliesFor(
-    [...(ir?.buildingBobs ?? []), ...(ir?.constructionLayers ?? []), ...(ir?.buildingOverlays ?? [])],
+    [
+      ...(ir?.buildingBobs ?? []),
+      ...(ir?.constructionLayers ?? []),
+      ...(ir?.buildingOverlays ?? []),
+      ...landscapeOverlayFamilies(ir),
+    ],
     tribes,
     DEFAULT_BUILDING_FAMILY,
   );

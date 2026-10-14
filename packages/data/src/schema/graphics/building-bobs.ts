@@ -107,3 +107,17 @@ export const BuildingOverlay = BuildingBobBase.extend({
   frames: z.array(z.number().int().nonnegative()).min(1),
 });
 export type BuildingOverlay = z.infer<typeof BuildingOverlay>;
+
+/** `gfxoverlaylandscape <level> <slot> <x> <y> <landscape-name>`; enabled by mission state. */
+export const BuildingLandscapeOverlay = z.strictObject({
+  tribeId: TypeId,
+  typeId: TypeId,
+  level: z.number().int().nonnegative(),
+  slot: z.number().int().min(0).max(9),
+  x: z.number().int(),
+  y: z.number().int(),
+  landscape: z.string().min(1),
+  editName: z.string().optional(),
+  source: Provenance.optional(),
+});
+export type BuildingLandscapeOverlay = z.infer<typeof BuildingLandscapeOverlay>;

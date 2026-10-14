@@ -49,6 +49,7 @@ export interface VehicleDriver {
 
 /** The draw fields a fog ghost keeps from its last sighting, shared by every sprite kind. */
 export interface StaticDrawFields {
+  landscapeOverlayMask?: number;
   /** The type id a per-type binding picks its frame by: a tile's landscape typeId, or a building's
    *  `Building.buildingType` (the `[GfxHouse]` `LogicType`). Omitted for settler/resource. */
   typeId?: number;
@@ -300,6 +301,7 @@ export function newDrawItem(
     scriptedLook: undefined,
     upgradePct: undefined,
     working: undefined,
+    landscapeOverlayMask: undefined,
     hpFrac: undefined,
     rotation: undefined,
     munition: undefined,

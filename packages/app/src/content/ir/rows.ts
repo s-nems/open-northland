@@ -1,6 +1,7 @@
 import type {
   BuildingFootprint,
   BuildingHolyFirePoint,
+  BuildingLandscapeOverlay,
   GfxInHouseProgram,
   GfxPattern,
   GfxPatternTransition,
@@ -217,6 +218,7 @@ export interface ContentIr {
   readonly goods?: readonly IrGoodRow[];
   readonly buildingBobs?: readonly BuildingBobRow[];
   readonly constructionLayers?: readonly ConstructionLayerRow[];
+  readonly buildingLandscapeOverlays?: readonly BuildingLandscapeOverlay[];
   readonly buildingOverlays?: readonly BuildingOverlayRow[];
   readonly buildingFlagPoints?: readonly BuildingFlagPointRow[];
   /** `gfxsoldierflagpoint` - the mast a manned post flies its garrison flag from; observed only on the

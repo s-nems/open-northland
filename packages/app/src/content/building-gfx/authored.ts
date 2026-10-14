@@ -1,3 +1,4 @@
+import type { BuildingLandscapeOverlayRef } from '@open-northland/render';
 import { type BuildingBobRef, lookupFrame, type SpriteSheet } from '@open-northland/render';
 import { entitiesWith, nodeOfPosition, type WorldSnapshot } from '@open-northland/sim';
 import { buildingTribeOf, buildingTypeOf, positionOf } from '../../game/snapshot-base.js';
@@ -5,6 +6,7 @@ import type { AuthoredPlacement } from '../../game/world/authored-placements.js'
 import { type AuthoredHolyFireVariant, holyFireLookup, servedAtlasStem } from '../ir/joins.js';
 import type { ContentIr } from '../ir/rows.js';
 import { HOUSE_ATLAS, skinPalettePool } from './families.js';
+import { landscapeOverlayRefs } from './landscape-overlays.js';
 
 /** Bind once, before the first draw; subsequent frames only look up the entity id. On restore the map
  *  is rejoined by anchor and type. Approximation: a replacement of the same type on that exact anchor
@@ -28,6 +30,7 @@ export function authoredBuildingSheet(
       readonly typeId: number;
       readonly tribe: number;
       readonly body: BuildingBobRef;
+      readonly landscapeOverlays?: readonly BuildingLandscapeOverlayRef[];
       readonly flagPoint?: { readonly x: number; readonly y: number };
     }
   >();
@@ -60,6 +63,7 @@ export function authoredBuildingSheet(
     byEntity.set(entity.id, {
       typeId: placement.typeId,
       tribe: placement.tribe,
+      landscapeOverlays: landscapeOverlayRefs(ir, placement.tribe, row.editName)[placement.typeId] ?? [],
       body: isDefault ? row.bobId : { layer: stem, bob: row.bobId },
       ...(row.flagPoint !== undefined ? { flagPoint: row.flagPoint } : {}),
     });

@@ -29,6 +29,7 @@ export interface BuildingSkinTables {
   readonly upgradeByType?: Readonly<Record<number, readonly ConstructionLayerRef[]>>;
   /** The `[GfxHouse]` type-4 `GfxOverlay` table. The original lists overlays only for the finished body,
    *  so a building under construction draws none. */
+  readonly landscapeOverlaysByType?: Readonly<Record<number, readonly BuildingLandscapeOverlayRef[]>>;
   readonly overlayByType?: Readonly<Record<number, BuildingOverlayRef>>;
 }
 
@@ -54,6 +55,7 @@ export interface BuildingTypeBinding extends BuildingTribeTables {
       readonly typeId: number;
       readonly tribe: number;
       readonly body: BuildingBobRef;
+      readonly landscapeOverlays?: readonly BuildingLandscapeOverlayRef[];
       readonly flagPoint?: { readonly x: number; readonly y: number };
     }
   >;
@@ -143,4 +145,13 @@ export interface StockpileBinding {
   readonly flag: WaveLoop<LayeredBobRef>;
   /** Fallback frame for a held pile whose good has no bound heap frames, drawn at any fill. */
   readonly default: LayeredBobRef;
+}
+
+export interface BuildingLandscapeOverlayRef {
+  readonly slot: number;
+  readonly layer: string;
+  readonly frames: readonly number[];
+  readonly x: number;
+  readonly y: number;
+  readonly animated: boolean;
 }

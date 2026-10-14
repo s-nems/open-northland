@@ -1,6 +1,7 @@
 import type { DrawItem } from '../scene/index.js';
 import type {
   BuildingDraw,
+  BuildingLandscapeOverlayRef,
   BuildingSkinTables,
   BuildingTribeTables,
   BuildingTypeBinding,
@@ -302,4 +303,27 @@ export function resolveCraftFxDraw(
   const n = loop.frames.length;
   const bob = loop.frames[((Math.floor(tick) % n) + n) % n];
   return bob === undefined ? null : { bob, layer: loop.layer };
+}
+
+const NO_LANDSCAPE_OVERLAYS: readonly BuildingLandscapeOverlayRef[] = [];
+export function buildingLandscapeOverlays(
+  binding: number | BuildingTypeBinding,
+  item: DrawItem,
+): readonly BuildingLandscapeOverlayRef[] {
+  if (
+    typeof binding === 'number' ||
+    item.builtPct !== undefined ||
+    item.upgradePct !== undefined ||
+    !item.landscapeOverlayMask
+  )
+    return NO_LANDSCAPE_OVERLAYS;
+  const authored = binding.byEntity?.get(item.ref);
+  if (
+    authored !== undefined &&
+    authored.typeId === item.typeId &&
+    authored.tribe === item.tribe &&
+    authored.landscapeOverlays !== undefined
+  )
+    return authored.landscapeOverlays;
+  return byTypeFor(binding, item, (tables) => tables.landscapeOverlaysByType) ?? NO_LANDSCAPE_OVERLAYS;
 }
