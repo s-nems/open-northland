@@ -774,12 +774,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
     cleanup.push(() => perfReadout.dispose());
 
+    // A campaign script ends a won mission itself: won page, unlocks some seconds later, then Exit. A
+    // victory panel would pause it before the unlocks and offer a quit that drops them.
+    const scriptEndsVictory = deps.campaign !== undefined && !sharedClock;
     // The verdict panel rides the same event stream the entry's own hook does; a spectator seat has no
     // verdict to hear.
     if (deps.observer !== true || sharedClock) {
       verdict = createMatchResultOverlay({
         localPlayer,
         sharedClock,
+        announcesVictory: !scriptEndsVictory,
         ranking: () => host.matchRanking(),
         ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
         hud: hudDom,
@@ -1062,7 +1066,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       mapText,
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       now: () => performance.now(),
-      keepPlayingAfterResult: () => sharedClock || host.matchOutcome(localPlayer) !== 'undecided',
+      keepPlayingAfterResult: () =>
+        sharedClock || (!scriptEndsVictory && host.matchOutcome(localPlayer) !== 'undecided'),
       exit: () => queueMicrotask(quitToMenu),
     });
 

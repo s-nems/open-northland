@@ -1063,7 +1063,9 @@ emits `missionVideo` on each request. It does not discard later results or trigg
 Both outputs survive save/load; loading does not re-emit them. A host must read retained state on
 restore as well as live events, scope identifiers to the source pack, persist unlocks outside a
 single world (including child worlds), and resolve the film for that pack and locale. The local app persists those unlocks automatically under campaign identity and language, before
-forwarding exits or submap transitions. The campaign screen exposes available missions and a confirmed
+forwarding exits or submap transitions. Campaign scripts follow `MissionWon` with their won page, their
+`AllowMap` some seconds later and `Exit`, so on a campaign map a victory opens no result panel and
+the script's `Exit` leaves the map even after a verdict. The campaign screen exposes available missions and a confirmed
 alpha recovery action; it has no save/load controls. Movies stop the worker at the requesting tick
 boundary and play centred on black without upscaling. Restoring a pending movie replays it.
 Campaign presentation and stage order come from the validated `campaigns-index.json` manifest.

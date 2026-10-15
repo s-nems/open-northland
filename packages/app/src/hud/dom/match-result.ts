@@ -9,6 +9,8 @@ import { createHudWindow } from './window.js';
 export interface MatchResultDeps {
   readonly localPlayer: number;
   readonly sharedClock?: boolean;
+  /** False where the map's script ends a won mission itself, so no panel pauses it before its unlocks. */
+  readonly announcesVictory?: boolean;
   /** A goal table's verdicts in the order they landed, read when the window opens; empty shows no list. */
   readonly ranking?: () => readonly MatchRank[];
   /** The roster's authored seat name; absent, the list numbers the seat. */
@@ -219,6 +221,7 @@ export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOver
 
   const announce = (outcome: MatchOutcome, scripted = false): void => {
     if (deps.sharedClock && outcome === 'victory' && !scripted) return;
+    if (deps.announcesVictory === false && outcome === 'victory') return;
     if (state.announce(outcome)) show(outcome);
   };
   return {

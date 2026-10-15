@@ -12,7 +12,11 @@ afterEach(() => {
   document.body.replaceChildren();
   vi.unstubAllGlobals();
 });
-function setup(sharedClock: boolean, ranking: () => readonly MatchRank[] = () => []) {
+function setup(
+  sharedClock: boolean,
+  ranking: () => readonly MatchRank[] = () => [],
+  announcesVictory?: boolean,
+) {
   vi.stubGlobal(
     'ResizeObserver',
     class {
@@ -30,6 +34,7 @@ function setup(sharedClock: boolean, ranking: () => readonly MatchRank[] = () =>
     localPlayer: 0,
     sharedClock,
     ranking,
+    ...(announcesVictory === undefined ? {} : { announcesVictory }),
     seatNameOf: (player) => (player === 1 ? 'Ragnar' : undefined),
     pause,
     resume,
@@ -66,6 +71,17 @@ it('lets a defeated player watch without pausing and inspect the map after the m
   h.body.buttons()[1]?.click();
   expect(h.onQuit).toHaveBeenCalledOnce();
   expect(h.body.children).toHaveLength(0);
+});
+
+it('leaves a won mission to a script that ends it, and still reports its defeat', () => {
+  const h = setup(false, () => [], false);
+  h.overlay.onEvents([{ kind: 'playerWon', player: 0 }]);
+  h.overlay.announce('victory');
+  expect(h.body.children).toHaveLength(0);
+  expect(h.pause).not.toHaveBeenCalled();
+  h.overlay.onEvents([{ kind: 'playerDefeated', player: 0 }]);
+  expect(h.body.children).toHaveLength(1);
+  expect(h.pause).toHaveBeenCalledOnce();
 });
 
 it('lists the goal table ranking in verdict order, naming the roster seat and numbering the rest', () => {
