@@ -38,6 +38,7 @@ import { pickerEntries } from '../../catalog/professions.js';
 import { emblemBuildingType } from '../../content/building-gfx/emblems.js';
 import type { FellingClips } from '../../content/felling-clips.js';
 import { loadGuiArt } from '../../content/gui-art.js';
+import { briefingVoicePlayer, mapBriefingVoices } from '../../content/map-source/briefing-voices.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
 import {
   currentDiagGameSession,
@@ -699,6 +700,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       ...(mission !== undefined ? { mission } : {}),
       ...(deps.missionPictureUrl === undefined ? {} : { missionPictureUrl: deps.missionPictureUrl }),
+      ...(soundDriver === null
+        ? {}
+        : { missionVoice: briefingVoicePlayer(mapBriefingVoices(deps.worldToken ?? null), soundDriver) }),
       missionBriefingHistory: answers.missionBriefingHistory,
       askMissionBriefing: answers.askMissionBriefing,
       missionHuman: answers.missionHuman,

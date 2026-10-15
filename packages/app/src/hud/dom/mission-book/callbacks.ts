@@ -4,8 +4,8 @@ import type { MissionGroupKind } from '@open-northland/sim';
 /**
  * What a briefing's `<onscreencallback:kind,a,b>` asks of the main view: kind 1000 centres it on
  * half-cell node (a, b), 1001, 1002 and 1003 on the mean point of the humans, vehicles or houses
- * stamped with mission id `a`. Kind 2000 plays the map's `SFX\<lang>\<a as 4 digits>.wav`, which no
- * corpus map ships, so it is left out with every other kind, though it still takes the pending slot.
+ * stamped with mission id `a`. Kind 2000 speaks a clip instead (`callbackVoice`) and moves no view,
+ * though it still takes the pending slot.
  */
 export type BriefingViewTarget =
   | { readonly kind: 'node'; readonly hx: number; readonly hy: number }

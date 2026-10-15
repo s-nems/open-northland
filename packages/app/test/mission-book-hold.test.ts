@@ -1,4 +1,4 @@
-import type { HypertextCallback } from '@open-northland/data';
+import type { BriefingVoice, HypertextCallback } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import type { MissionBriefingAnswer, MissionGoal, MissionReader } from '../src/game/mission-brief.js';
 import type { BookOpening, BookReading, BookWindow } from '../src/hud/dom/mission-book/book-window.js';
@@ -26,7 +26,10 @@ function mount(pauseStopsClock = true, briefing: MissionBriefingAnswer = { histo
   const holds: boolean[] = [];
   const openings: BookOpening[] = [];
   const dismiss: { run: () => void } = { run: () => undefined };
-  const fire: { callback: (args: HypertextCallback['args']) => void } = { callback: () => undefined };
+  const fire: { callback: (args: HypertextCallback['args'] | null, spread?: string) => void } = {
+    callback: () => undefined,
+  };
+  const spoken: (BriefingVoice | 'stop')[] = [];
   const centred: BriefingViewTarget[] = [];
   let goals: readonly MissionGoal[] = [goal('0', 'open')];
   let open = false;
@@ -78,11 +81,13 @@ function mount(pauseStopsClock = true, briefing: MissionBriefingAnswer = { histo
     onSlipOpen: () => undefined,
     bookKey: () => null,
     cue: () => undefined,
+    voice: { play: (voice) => spoken.push(voice), stop: () => spoken.push('stop') },
   };
   const mission = createMissionBook(deps, {
     book: (bookDeps) => {
       dismiss.run = bookDeps.onDismiss;
-      fire.callback = bookDeps.onCallback;
+      fire.callback = (args, spread = '0:0') =>
+        bookDeps.onCallback(args === null ? null : { args, lang: 'pol', spread });
       return book;
     },
     slip: () => slip,
@@ -90,7 +95,7 @@ function mount(pauseStopsClock = true, briefing: MissionBriefingAnswer = { histo
   const setGoals = (next: readonly MissionGoal[]): void => {
     goals = next;
   };
-  return { mission, holds, openings, dismiss, setGoals, fire, centred };
+  return { mission, holds, openings, dismiss, setGoals, fire, centred, spoken };
 }
 
 describe('the mission book`s pause', () => {
@@ -237,5 +242,22 @@ describe('the briefing callbacks', () => {
     second.mission.toggle();
     second.fire.callback(HUMANS_5);
     expect(second.centred).toEqual([]);
+  });
+
+  it('speak a 2000 callback once per spread shown and silence it on another spread or the close', () => {
+    const { mission, fire, spoken, centred } = mount();
+    mission.toggle();
+    spoken.length = 0;
+    fire.callback(SOUND, '0:0');
+    fire.callback(SOUND, '0:0');
+    expect(spoken).toEqual([{ lang: 'pol', id: 3 }]);
+    fire.callback(null, '0:1');
+    fire.callback(NODE, '0:2');
+    expect(spoken.slice(1)).toEqual(['stop', 'stop']);
+    fire.callback(SOUND, '0:0');
+    expect(spoken.at(-1)).toEqual({ lang: 'pol', id: 3 });
+    mission.close();
+    expect(spoken.at(-1)).toBe('stop');
+    expect(centred).toEqual([{ kind: 'node', hx: 296, hy: 188 }]);
   });
 });

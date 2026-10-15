@@ -35,6 +35,7 @@ import {
 import { AmbientMixer } from './ambient-mixer.js';
 import { BusDuck } from './bus-duck.js';
 import { MusicPlayer } from './music-player.js';
+import { Narration } from './narration.js';
 import { CLICK_FREE_RAMP_S, rampParam } from './ramps.js';
 import { type PreloadSample, SampleCache, type SamplePreloadReport } from './sample-cache.js';
 import { WeatherSoundscape } from './weather-soundscape.js';
@@ -208,6 +209,9 @@ export class WebAudioEngine {
   private mixer: AmbientMixer | null = null;
   private music: MusicPlayer | null = null;
   private weather: WeatherSoundscape | null = null;
+  private narration: Narration | null = null;
+  /** A narration asked for before a gesture started the context; it speaks once audio is live. */
+  private pendingNarration: Uint8Array | null = null;
   /** The graphics "Weather" switch, kept here so a setter before the context exists still lands. */
   private weatherEnabled = true;
   /** Current slider positions - kept here so a setter before the context exists still lands. */
@@ -265,8 +269,9 @@ export class WebAudioEngine {
         // A browser that refuses to resume outside a gesture just stays silent - not an error.
       }
     }
-    // Music requested while suspended starts on the gesture that unlocked audio.
+    // Music and a narration requested while suspended start on the gesture that unlocked audio.
     this.assertMusic();
+    this.assertNarration();
   }
 
   /** Mute/unmute without tearing down state: the master fades out, and running ambient loops and music
@@ -278,6 +283,7 @@ export class WebAudioEngine {
       this.mixer?.stopAll();
       this.music?.stop();
       this.weather?.stop();
+      this.stopNarration();
     } else {
       this.assertMusic();
     }
@@ -343,6 +349,7 @@ export class WebAudioEngine {
     this.mixer?.stopAll();
     this.music?.stop();
     this.weather?.stop();
+    this.stopNarration();
     // Fade the master first: closing a context cuts whatever still sounds mid-wave.
     this.rampChannel('master', CLICK_FREE_RAMP_S);
     setTimeout(() => {
@@ -439,6 +446,31 @@ export class WebAudioEngine {
     playing.source.stop(ctx.currentTime + CLICK_FREE_RAMP_S);
   }
 
+  /** Speak the `wav` on the `ui` bus, cutting the narration still speaking. Before a gesture has
+   *  started audio it waits for that gesture; muted or closed, it stays silent. */
+  playNarration(wav: Uint8Array): void {
+    this.pendingNarration = null;
+    if (this.canPlay()) {
+      this.narration?.play(wav);
+      return;
+    }
+    this.narration?.stop();
+    if (this.enabled && !this.closed) this.pendingNarration = wav;
+  }
+
+  /** Fade out the narration still speaking, or drop the one still waiting for audio to start. */
+  stopNarration(): void {
+    this.pendingNarration = null;
+    this.narration?.stop();
+  }
+
+  private assertNarration(): void {
+    const wav = this.pendingNarration;
+    if (wav === null || !this.canPlay()) return;
+    this.pendingNarration = null;
+    this.narration?.play(wav);
+  }
+
   /** Fire one-shots outside a frame decision - a GUI cue answering an input event right away. */
   fire(shots: readonly OneShot[]): void {
     const ctx = this.ctx;
@@ -530,6 +562,7 @@ export class WebAudioEngine {
     const voiceDuck = new BusDuck(ctx, { dipS: VOICE_DUCK_DIP_S, releaseS: VOICE_DUCK_RELEASE_S });
     buses.music.connect(musicDuck.node).connect(voiceDuck.node).connect(master);
     this.voiceDuck = voiceDuck;
+    this.narration = new Narration(ctx, buses.ui, voiceDuck);
     this.master = master;
     this.buses = buses;
     this.layers = layers;
@@ -587,8 +620,10 @@ export class WebAudioEngine {
    */
   private onStateChange(ctx: AudioContext): void {
     if (this.closed || ctx.state === 'closed') return;
-    if (ctx.state === 'running') this.assertMusic();
-    else void this.resume();
+    if (ctx.state === 'running') {
+      this.assertMusic();
+      this.assertNarration();
+    } else void this.resume();
   }
 
   /** Play a decided one-shot on its first wav: the arbiter has already picked it and applied every

@@ -52,6 +52,7 @@ import { minimapReserve } from '../dom/minimap-reserve.js';
 import {
   type BookView,
   type BriefingViewTarget,
+  type BriefingVoicePlayer,
   createMissionBook,
   type MissionHumanLookup,
   NO_MISSION,
@@ -262,6 +263,8 @@ export interface ToolPanelOptions {
   readonly onShowOnMap?: (target: MapViewTarget) => void;
   /** A briefing callback centres the main view. */
   readonly onCentreView?: (target: BriefingViewTarget) => void;
+  /** Speaks a briefing page's narration; absent, the book is silent. */
+  readonly missionVoice?: BriefingVoicePlayer;
   /** The map's sprite sheet, which draws a settler on its notice card and a building on its
    *  construction card; absent leaves the thumbnails bare. */
   readonly sheet?: SpriteSheet;
@@ -605,6 +608,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
             return binding === null ? null : keyDisplayLabel(binding);
           },
           cue: ctx.cue,
+          ...(opts.missionVoice === undefined ? {} : { voice: opts.missionVoice }),
         });
         book.onDismiss(() => focusOwner?.('mission'));
         return book;

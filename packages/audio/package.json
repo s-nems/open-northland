@@ -16,6 +16,7 @@
   },
   "dependencies": {
     "@open-northland/data": "*",
+    "@open-northland/formats": "*",
     "@open-northland/render": "*",
     "@open-northland/sim": "*"
   }

@@ -38,6 +38,14 @@ const LEAF_TURN_MS = 440;
 const STILL_REFRESH_MS = 1000;
 
 export type BookTab = 'brief' | 'goals' | 'history';
+
+/** The callback a shown briefing spread acts on, in the chapter's map text language. */
+export interface ShownCallback {
+  readonly args: HypertextCallback['args'];
+  readonly lang: string | null;
+  /** Names the shown spread, so the owner acts once per spread shown. */
+  readonly spread: string;
+}
 /** The HTML language tags of the map text languages, which set the prose's hyphenation. */
 const PAGE_LANG_TAGS: Readonly<Partial<Record<string, string>>> = {
   pol: 'pl',
@@ -70,8 +78,9 @@ export interface BookWindowDeps {
   readonly missionHuman: MissionHumanLookup;
   readonly pictureUrl: (file: string) => string;
   readonly onShowOnMap: (target: MapViewTarget) => void;
-  /** A briefing chapter's on-screen callback shows on the spread a layout settled on. */
-  readonly onCallback: (args: HypertextCallback['args']) => void;
+  /** What the spread a layout settled on acts on: a briefing chapter's on-screen callback, or null
+   *  for a spread without one or another tab. */
+  readonly onCallback: (shown: ShownCallback | null) => void;
   /** The goal changes the player has not seen yet, which count as seen once the goal page shows them. */
   readonly takeGoalMarks: () => ReadonlyMap<string, GoalMark>;
   /** The close medallion closed the book. */
@@ -193,6 +202,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
   /** The shown briefing chapter's callbacks; a layout reports the last one it shows to the owner, which
    *  acts once per opening. */
   let callbacks: readonly BookCallback[] = [];
+  let callbackLang: string | null = null;
 
   const chapters = (): readonly (number | null)[] => {
     const list = deps.chapters();
@@ -238,6 +248,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     const index = Math.min(reading.chapter, count - 1);
     const { page, title, lang } = chapterPage(index);
     callbacks = page.callbacks;
+    callbackLang = lang;
     const fresh =
       arrival && index === count - 1
         ? `<span class="on-book__new">${escapeHtml(copy.newChapter)}</span>`
@@ -318,10 +329,14 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
    *  only the last in reading order is acted on. The spread stands in for the original window's first
    *  frame, which may show fewer lines (approximation). */
   const fireCallbacks = (): void => {
-    if (scene.hidden || reading.tab !== 'brief') return;
-    const last = shownCallbacks(spreadEl).at(-1);
+    if (scene.hidden) return;
+    const last = reading.tab === 'brief' ? shownCallbacks(spreadEl).at(-1) : undefined;
     const callback = last === undefined ? undefined : callbacks[last];
-    if (callback !== undefined) deps.onCallback(callback.args);
+    deps.onCallback(
+      callback === undefined
+        ? null
+        : { args: callback.args, lang: callbackLang, spread: `${reading.chapter}:${reading.spread}` },
+    );
   };
 
   /** Show `slot`'s still in a copied page's lens; false while the view has none. */
@@ -350,6 +365,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       left === null
     ) {
       measureViews();
+      fireCallbacks();
       return;
     }
     const gap = Number.parseFloat(getComputedStyle(rightFlow).columnGap);

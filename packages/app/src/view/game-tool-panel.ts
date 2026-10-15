@@ -17,7 +17,7 @@ import type { SnapshotEntity } from '../game/snapshot.js';
 import type { ViewerSeat } from '../game/viewer-seat.js';
 import type { AssistantSource } from '../hud/dom/assistant-window/index.js';
 import type { DiplomacySource } from '../hud/dom/diplomacy-window/model.js';
-import type { BriefingViewTarget } from '../hud/dom/mission-book/index.js';
+import type { BriefingViewTarget, BriefingVoicePlayer } from '../hud/dom/mission-book/index.js';
 import type { Rect } from '../hud/geometry.js';
 import type { KeyBindings } from '../hud/keybindings.js';
 import type { NetPanelSource } from '../hud/network/model.js';
@@ -171,6 +171,7 @@ export interface GameToolPanelDeps {
   readonly pauseStopsClock?: boolean;
   readonly onShowOnMap?: (target: MapViewTarget) => void;
   readonly onCentreView?: (target: BriefingViewTarget) => void;
+  readonly missionVoice?: BriefingVoicePlayer;
   /** The map's sprite sheet for the cards' settler figures; absent leaves the thumbnails bare. */
   readonly sheet?: SpriteSheet;
   readonly playerColourOf?: (player: number) => number;
@@ -356,6 +357,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
       ...(deps.pauseStopsClock !== undefined ? { pauseStopsClock: deps.pauseStopsClock } : {}),
       ...(deps.onShowOnMap !== undefined ? { onShowOnMap: deps.onShowOnMap } : {}),
       ...(deps.onCentreView !== undefined ? { onCentreView: deps.onCentreView } : {}),
+      ...(deps.missionVoice !== undefined ? { missionVoice: deps.missionVoice } : {}),
       ...(deps.sheet !== undefined ? { sheet: deps.sheet } : {}),
       ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
       ...(deps.onSelectMessageTarget !== undefined

@@ -8,7 +8,7 @@ import type { OneShot } from './types.js';
  * - `responses`: settlers answering the player (an order's answer, a selection's line, a group's murmur);
  * - `world`: everything positioned in the world (work, combat, buildings, chatter, screams, animal calls);
  * - `ambient`: terrain beds, the landscape's object sounds and weather;
- * - `ui`: GUI cues, notifications, alerts and life-event jingles.
+ * - `ui`: GUI cues, notifications, alerts, life-event jingles and a briefing page's narration.
  *
  * Responses get their own bus: they answer the player's click, keep one level wherever the camera is,
  * and are the first thing a player may want quieter without losing the world.

@@ -282,6 +282,16 @@ export class SoundDriver {
     this.engine.fire(this.decide([shot], this.engine.clock));
   }
 
+  /** Speak a briefing page's narration, cutting the one still speaking (see {@link WebAudioEngine.playNarration}). */
+  narrate(wav: Uint8Array): void {
+    this.engine.playNarration(wav);
+  }
+
+  /** Fade out the briefing narration still speaking. */
+  stopNarration(): void {
+    this.engine.stopNarration();
+  }
+
   /** Play a GUI cue now, from the input event itself: a button press confirms, a cancelled tool fails. */
   cue(cue: UiCue): void {
     if (!this.engine.audible) return;

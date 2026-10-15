@@ -1,7 +1,11 @@
 // @vitest-environment jsdom
 import type { HypertextBlock, HypertextCallback } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type BookReading, createBookWindow } from '../src/hud/dom/mission-book/book-window.js';
+import {
+  type BookReading,
+  createBookWindow,
+  type ShownCallback,
+} from '../src/hud/dom/mission-book/book-window.js';
 
 /** Which of a briefing chapter's on-screen callbacks the book window hands on after a layout. The
  *  document has no layout here, so every page window and marker is stubbed to one visible box. */
@@ -43,29 +47,33 @@ afterEach(() => {
 });
 
 function mountWindow(blocks: readonly HypertextBlock[]) {
+  const shown: (ShownCallback | null)[] = [];
   const fired: HypertextCallback['args'][] = [];
   const book = createBookWindow({
     infoRows: () => [],
     plane: document.body,
     chapters: () => [PAGE],
-    page: () => ({ title: '', blocks, lang: null }),
+    page: () => ({ title: '', blocks, lang: 'pol' }),
     goals: () => [],
     missionName: 'Test',
     history: null,
     missionHuman: () => null,
     pictureUrl: (file) => file,
     onShowOnMap: () => undefined,
-    onCallback: (args) => fired.push(args),
+    onCallback: (callback) => {
+      shown.push(callback);
+      if (callback !== null) fired.push(callback.args);
+    },
     takeGoalMarks: () => new Map(),
     onDismiss: () => undefined,
     cue: () => undefined,
   });
-  return { book, fired };
+  return { book, fired, shown };
 }
 
 describe('the book window`s briefing callbacks', () => {
   it('hands on only the last callback the spread shows, as the original keeps one pending', () => {
-    const { book, fired } = mountWindow([
+    const { book, fired, shown } = mountWindow([
       { kind: 'callback', args: NODE },
       text('Title'),
       { kind: 'callback', args: SOUND },
@@ -74,12 +82,14 @@ describe('the book window`s briefing callbacks', () => {
     book.open({ reading: brief, arrival: true, paused: false });
     expect(fired.length).toBeGreaterThan(0);
     expect(new Set(fired.map((args) => args.join()))).toEqual(new Set([SOUND.join()]));
+    expect(shown.at(-1)).toEqual({ args: SOUND, lang: 'pol', spread: '0:0' });
   });
 
   it('hands on nothing on the goals tab or while the book is closed', () => {
-    const { book, fired } = mountWindow([{ kind: 'callback', args: NODE }, text('Body')]);
+    const { book, fired, shown } = mountWindow([{ kind: 'callback', args: NODE }, text('Body')]);
     book.open({ reading: { ...brief, tab: 'goals' }, arrival: false, paused: false });
     expect(fired).toEqual([]);
+    expect(shown.every((callback) => callback === null)).toBe(true);
     book.open({ reading: brief, arrival: false, paused: false });
     expect(fired.at(-1)).toEqual(NODE);
     book.close();

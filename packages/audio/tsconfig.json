@@ -6,5 +6,10 @@
     "lib": ["ES2022", "DOM"]
   },
   "include": ["src/**/*.ts"],
-  "references": [{ "path": "../data" }, { "path": "../sim" }, { "path": "../render" }]
+  "references": [
+    { "path": "../data" },
+    { "path": "../formats" },
+    { "path": "../sim" },
+    { "path": "../render" }
+  ]
 }

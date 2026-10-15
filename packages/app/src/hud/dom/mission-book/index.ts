@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import type { HypertextBook } from '@open-northland/data';
+import { type BriefingVoice, callbackVoice, type HypertextBook } from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 import type { MissionInfoRow } from '../../../game/info-lines.js';
 import type { MissionBriefingAnswer, MissionReader } from '../../../game/mission-brief.js';
@@ -10,6 +10,7 @@ import {
   type BookWindow,
   type BookWindowDeps,
   createBookWindow,
+  type ShownCallback,
 } from './book-window.js';
 import { type BriefingViewTarget, callbackView } from './callbacks.js';
 import { GoalMarks, type GoalMarksState } from './goal-marks.js';
@@ -67,6 +68,14 @@ export interface MissionBookDeps {
   /** The key that toggles the book, for the slip's button; null when unbound. */
   readonly bookKey: () => string | null;
   readonly cue: (cue: UiCue) => void;
+  /** Speaks a briefing page's narration; absent, the book is silent. */
+  readonly voice?: BriefingVoicePlayer;
+}
+
+/** Plays one briefing narration line at a time; a missing clip is silent. */
+export interface BriefingVoicePlayer {
+  play(voice: BriefingVoice): void;
+  stop(): void;
 }
 
 /** The mission book (briefing chapters, goals, chronicle) and the goal slip on the map. The plane
@@ -120,6 +129,8 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
   /** The original's one-shot flag: one callback centres the view per opening of the window, a page
    *  delivered to the open window included; one that finds nobody stamped spends it too. */
   let viewCentred = false;
+  /** The spread whose narration was started, so a relayout of the same spread does not restart it. */
+  let spokenSpread: string | null = null;
   /** A restored reading the next opening resumes, and whether a script delivered it. */
   let resume: { readonly reading: BookReading; readonly arrival: boolean } | null = null;
   let answersKey = deps.answersVersion();
@@ -143,9 +154,24 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     deps.onHold(false);
   };
 
+  /** The 2000 callback speaks once per spread shown; any other spread, tab or callback silences it. */
+  const speak = (shown: ShownCallback | null): void => {
+    const spread = shown?.spread ?? null;
+    if (spread === spokenSpread) return;
+    spokenSpread = spread;
+    const voice = shown === null ? null : callbackVoice(shown.lang, shown.args);
+    if (voice === null) deps.voice?.stop();
+    else deps.voice?.play(voice);
+  };
+  const silence = (): void => {
+    spokenSpread = null;
+    deps.voice?.stop();
+  };
+
   const close = (): void => {
     openings++;
     if (!book.isOpen()) return;
+    silence();
     book.close();
     arrival = false;
     release();
@@ -170,8 +196,10 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
       marks.read();
       return unseen;
     },
-    onCallback: (args) => {
-      const target = callbackView(args);
+    onCallback: (shown) => {
+      speak(shown);
+      if (shown === null) return;
+      const target = callbackView(shown.args);
       if (target === null || viewCentred) return;
       viewCentred = true;
       deps.onCentreView(target);
@@ -281,6 +309,7 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     // A remount reopens an open book from the state, so the hold is not released here.
     dispose(): void {
       openings++;
+      silence();
       book.dispose();
       slip.dispose();
     },
