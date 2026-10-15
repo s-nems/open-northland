@@ -1,12 +1,6 @@
-import {
-  CIVILIZATION_TRIBES,
-  type MapTextLanguage,
-  RECOMMENDED_CIVILIZATION_TRIBE,
-} from '@open-northland/data';
+import { type MapTextLanguage, RECOMMENDED_CIVILIZATION_TRIBE } from '@open-northland/data';
 import { HUMAN_TRIBE_PARAM } from '../view/params.js';
 
-/** The civilizations a mission launch offers the person, the lobby's own tribe picker list. */
-export const CAMPAIGN_TRIBES = CIVILIZATION_TRIBES;
 export const RECOMMENDED_CAMPAIGN_TRIBE = RECOMMENDED_CIVILIZATION_TRIBE;
 
 export interface CampaignMissionLaunch {

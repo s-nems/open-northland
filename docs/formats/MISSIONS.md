@@ -1075,8 +1075,8 @@ on the campaign screen; its maps exist once, carry the text languages in `langua
 numbered `videos`) are per language. A stage may carry a `route`, the dotted path drawn into it from
 the previous stage, placed as fractions of the background. The campaign plays in the UI language,
 else English, else its first language; texts, artwork and films fall back the same way. A mission launch is `?map=<id>&missions=on&lang=<language>`, plus
-`tribe=<id>` when the person picks a civilization for their own seat; map AIs keep theirs, and
-sub-missions and related-world loads keep the choice.
+`tribe=<id>` when the person picks a civilization for their own seat; map AIs keep theirs,
+sub-missions keep the choice, and a save replays the civilization its own entry names.
 
 `SetHouseOverlayState` writes `HouseLandscapeOverlays` on every house with the authored object id.
 Slots 0 through 9 retain independent true/false overrides; missing slots leave the initial state to

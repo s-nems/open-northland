@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CAMPAIGN_TRIBES, campaignMissionQuery, RECOMMENDED_CAMPAIGN_TRIBE } from '../src/campaign/launch.js';
+import { campaignMissionQuery } from '../src/campaign/launch.js';
 import { campaignLanguage, campaignLogo, campaignMovies, localizedText } from '../src/campaign/locale.js';
 import { mapSession } from '../src/game/session-url.js';
 import { campaignFixture } from './support/campaign.js';
@@ -35,9 +35,6 @@ describe('campaign mission launch', () => {
     expect(campaignMissionQuery({ mapId: 'wonder-1', language: 'eng', tribe: 2 })).toBe(
       '?map=wonder-1&missions=on&lang=eng&tribe=2',
     );
-  });
-  it('offers the lobby civilizations with viking recommended', () => {
-    expect(CAMPAIGN_TRIBES).toContain(RECOMMENDED_CAMPAIGN_TRIBE);
   });
   it('changes only the person seat, leaving the map AI its tribe', () => {
     const roster = [
