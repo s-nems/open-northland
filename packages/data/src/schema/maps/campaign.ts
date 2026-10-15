@@ -32,6 +32,16 @@ const LanguageMovies = z
     if (new Set(sequences).size !== sequences.length)
       ctx.addIssue({ code: 'custom', path: ['videos'], message: 'Duplicate video sequence' });
   });
+/** The dotted path drawn into a stage from the one before it, placed as fractions of the background. */
+const Route = z.strictObject({
+  url: MapAsset,
+  x: z.number().min(0).max(1),
+  y: z.number().min(0).max(1),
+  width: z.number().positive().max(1),
+  height: z.number().positive().max(1),
+});
+export type CampaignRoute = z.infer<typeof Route>;
+
 export type CampaignLanguageMovies = z.infer<typeof LanguageMovies>;
 
 /**
@@ -54,6 +64,7 @@ export const Campaign = z
           title: LocalizedText,
           x: z.number().min(0).max(1),
           y: z.number().min(0).max(1),
+          route: Route.optional(),
         }),
       )
       .min(1),
