@@ -1,7 +1,8 @@
+import { existsSync } from 'node:fs';
 import { components, TICKS_PER_SECOND } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { hasRealIr } from './helpers.js';
-import { realMapScript, realMapWorld } from './real-map-world.js';
+import { realMapPath, realMapScript, realMapWorld } from './real-map-world.js';
 
 /**
  * The fifth Wonder stage raises the Artemis temple with `SetHouse` and grows it twice through
@@ -18,7 +19,10 @@ const WONDER_ID = 'wonder_artemis_temple';
 const SCRIPTED_LEVEL = 2;
 const BUDGET_TICKS = 30 * TICKS_PER_SECOND;
 
-describe.runIf(hasRealIr())(`${MAP_ID}: the scripted wonder growth`, () => {
+/** A campaign map: the public content set does not ship it. */
+const HAS_MAP = hasRealIr() && existsSync(realMapPath(MAP_ID));
+
+describe.runIf(HAS_MAP)(`${MAP_ID}: the scripted wonder growth`, () => {
   it('stands the Artemis temple at the scripted level', async () => {
     const script = realMapScript(MAP_ID);
     if (script === null) throw new Error(`${MAP_ID} ships no script`);
