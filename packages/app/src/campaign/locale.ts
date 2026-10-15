@@ -1,6 +1,7 @@
 import {
   type Campaign,
   type CampaignLanguageMovies,
+  type CampaignMovie,
   type LocalizedText,
   MAP_TEXT_LANGUAGES,
   type MapTextLanguage,
@@ -10,6 +11,8 @@ import { type Locale, mapTextLanguage } from '../i18n/index.js';
 /** Campaign content falls back to English, then to the first language it has. */
 const FALLBACK_LANGUAGE: MapTextLanguage = 'eng';
 const NO_MOVIES: CampaignLanguageMovies = { videos: [] };
+/** The script video the last stage's win requests; the shipped campaigns have no other. */
+const FINALE_SEQUENCE = 0;
 
 function fallbackLanguage(
   present: readonly MapTextLanguage[],
@@ -51,4 +54,12 @@ export function campaignMovies(
 ): CampaignLanguageMovies {
   const chosen = fallbackLanguage(presentIn(campaign.movies), language);
   return (chosen === undefined ? undefined : campaign.movies[chosen]) ?? NO_MOVIES;
+}
+
+/** The finale in a language, falling back like the other films; `undefined` without one. */
+export function campaignFinale(
+  campaign: Pick<Campaign, 'movies'>,
+  language: MapTextLanguage,
+): CampaignMovie | undefined {
+  return campaignMovies(campaign, language).videos.find((movie) => movie.sequence === FINALE_SEQUENCE);
 }

@@ -850,6 +850,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
             deps.campaign === undefined
               ? mapTextLanguage(currentLocale())
               : campaignLanguage(deps.campaign, currentLocale()),
+          ...(deps.worldToken === undefined || deps.worldToken === null ? {} : { mapId: deps.worldToken }),
+          localPlayer,
           storage: {
             getItem: (key) => localStorage.getItem(key),
             setItem: (key, value) => localStorage.setItem(key, value),

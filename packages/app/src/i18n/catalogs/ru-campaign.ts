@@ -18,4 +18,6 @@ export const ruCampaign = {
   skipMovie: 'Пропустить видео',
   movieFailed: 'Не удалось загрузить видео. Его можно пропустить.',
   seekMovie: 'Позиция в видео',
+  watchIntro: 'Смотреть вступление',
+  watchFinale: 'Смотреть финал',
 } as const;

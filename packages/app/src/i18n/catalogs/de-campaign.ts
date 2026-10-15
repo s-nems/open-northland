@@ -19,4 +19,6 @@ export const deCampaign = {
   skipMovie: 'Video überspringen',
   movieFailed: 'Video konnte nicht geladen werden. Du kannst es überspringen.',
   seekMovie: 'Videoposition',
+  watchIntro: 'Intro ansehen',
+  watchFinale: 'Schlussfilm ansehen',
 } as const;

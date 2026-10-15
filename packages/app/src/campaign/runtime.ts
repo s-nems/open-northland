@@ -1,7 +1,7 @@
 import type { Campaign, CampaignMovie, MapTextLanguage } from '@open-northland/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import { campaignMovies } from './locale.js';
-import { grantCampaignMaps } from './progress.js';
+import { completeCampaign, grantCampaignMaps, isFinalCampaignStage } from './progress.js';
 
 type Grant = { readonly campaignId: number; readonly mapId: number };
 type SavedCampaign = { readonly unlockedMaps: readonly Grant[]; readonly video: number | undefined };
@@ -10,6 +10,9 @@ export interface CampaignRuntimeDeps {
   readonly campaign?: Campaign;
   /** The running mission's text language, which picks the films. */
   readonly language: MapTextLanguage;
+  /** The running map; a local win on the campaign's last stage completes the campaign. */
+  readonly mapId?: string;
+  readonly localPlayer: number;
   readonly storage: Pick<Storage, 'getItem' | 'setItem'>;
   readonly pause: () => void;
   readonly resume: () => void;
@@ -20,7 +23,7 @@ export interface CampaignRuntimeDeps {
   readonly signal: AbortSignal;
 }
 
-/** All grants persist before any handover; a failed write keeps the exact batch for retry. */
+/** All grants and a completion persist before any handover; a failed write keeps the exact batch for retry. */
 export function createCampaignRuntime(deps: CampaignRuntimeDeps): {
   restore(snapshot: WorldSnapshot): void;
   events(events: readonly SimEvent[], proceed: (events: readonly SimEvent[]) => void): void;
@@ -28,15 +31,20 @@ export function createCampaignRuntime(deps: CampaignRuntimeDeps): {
 } {
   let pending = false;
   const queued: { events: readonly SimEvent[]; proceed: (events: readonly SimEvent[]) => void }[] = [];
-  const persist = (grants: readonly Grant[]): void => {
-    if (grants.length > 0 && deps.campaign !== undefined)
-      grantCampaignMaps(deps.campaign, grants, deps.storage);
+  const finalStage = deps.campaign !== undefined && isFinalCampaignStage(deps.campaign, deps.mapId);
+  const completes = (events: readonly SimEvent[]): boolean =>
+    finalStage && events.some((event) => event.kind === 'playerWon' && event.player === deps.localPlayer);
+  const persist = (grants: readonly Grant[], complete: boolean): void => {
+    if (deps.campaign === undefined) return;
+    if (grants.length > 0) grantCampaignMaps(deps.campaign, grants, deps.storage);
+    if (complete) completeCampaign(deps.campaign, deps.storage);
   };
   const finishMovie = (): void => {
     if (deps.signal.aborted) return;
     try {
       persist(
         queued.flatMap(({ events }) => events.filter((event) => event.kind === 'missionCampaignUnlock')),
+        queued.some(({ events }) => completes(events)),
       );
     } catch {
       deps.failed(finishMovie);
@@ -45,12 +53,17 @@ export function createCampaignRuntime(deps: CampaignRuntimeDeps): {
     queued.length = 0;
     deps.exit();
   };
-  const run = (grants: readonly Grant[], video: number | undefined, proceed: () => void): void => {
+  const run = (
+    grants: readonly Grant[],
+    complete: boolean,
+    video: number | undefined,
+    proceed: () => void,
+  ): void => {
     if (deps.signal.aborted) return;
     const attempt = (): void => {
       if (deps.signal.aborted) return;
       try {
-        persist(grants);
+        persist(grants, complete);
       } catch {
         pending = true;
         deps.pause();
@@ -98,12 +111,13 @@ export function createCampaignRuntime(deps: CampaignRuntimeDeps): {
       if (event.kind === 'missionCampaignUnlock') grants.push(event);
       if (event.kind === 'missionVideo') video = event.sequence;
     }
-    if (grants.length === 0 && video === undefined) {
+    const complete = completes(events);
+    if (grants.length === 0 && !complete && video === undefined) {
       proceed(events);
       return;
     }
     const retained = [...events];
-    run(grants, video, () => proceed(retained));
+    run(grants, complete, video, () => proceed(retained));
   };
 
   return {
@@ -111,7 +125,7 @@ export function createCampaignRuntime(deps: CampaignRuntimeDeps): {
       // A one-off restore read, not a frame scan. Component state is validated by the save reader.
       const saved = snapshot.entities.find((entity) => entity.components.MissionCampaign !== undefined)
         ?.components.MissionCampaign as SavedCampaign | undefined;
-      if (saved !== undefined) run(saved.unlockedMaps, saved.video, () => undefined);
+      if (saved !== undefined) run(saved.unlockedMaps, false, saved.video, () => undefined);
     },
     events: handle,
     isPending: () => pending,

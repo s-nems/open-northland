@@ -1065,14 +1065,16 @@ restore as well as live events, scope identifiers to the source pack, persist un
 single world (including child worlds), and resolve the film for that pack and locale. The local app persists those unlocks automatically under campaign identity, one progress per
 campaign whatever language or civilization played it, before forwarding exits or submap transitions. Campaign scripts follow `MissionWon` with their won page, their
 `AllowMap` some seconds later and `Exit`, so on a campaign map a victory opens no result panel and
-the script's `Exit` leaves the map even after a verdict. The campaign screen exposes available missions and a confirmed
-alpha recovery action; it has no save/load controls. Movies stop the worker at the requesting tick
+the script's `Exit` leaves the map even after a verdict. A local win on the campaign's last stage, or
+the recovery action past it, marks the campaign completed in the same progress. The campaign screen
+exposes available missions, a confirmed alpha recovery action, and replay buttons for the intro and,
+once completed, the finale; no stage launch plays a film, and it has no save/load controls. Movies stop the worker at the requesting tick
 boundary and play centred on black without upscaling. Restoring a pending movie replays it.
 Campaign presentation and stage order come from the validated `campaigns-index.json` manifest
 (version 2, `CampaignIndex` in `packages/data`). Each original game is one campaign with an `order`
 on the campaign screen; its maps exist once, carry the text languages in `languages`, and texts
 (`title`, stage titles), title artwork (`logo`) and films (`movies`, per language: optional `intro`,
-numbered `videos`) are per language. A stage may carry a `route`, the dotted path drawn into it from
+numbered `videos`, of which sequence 0 is the finale) are per language. A stage may carry a `route`, the dotted path drawn into it from
 the previous stage, placed as fractions of the background. The campaign plays in the UI language,
 else English, else its first language; texts, artwork and films fall back the same way. A mission launch is `?map=<id>&missions=on&lang=<language>`, plus
 `tribe=<id>` when the person picks a civilization for their own seat; map AIs keep theirs,

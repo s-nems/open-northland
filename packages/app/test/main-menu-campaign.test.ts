@@ -2,6 +2,7 @@ import { Campaign } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { RECOMMENDED_CAMPAIGN_TRIBE } from '../src/campaign/launch.js';
 import {
+  campaignFilms,
   initialCampaign,
   launchTribe,
   readChosenCampaign,
@@ -34,18 +35,20 @@ const throwing: Pick<Storage, 'getItem' | 'setItem'> = {
 describe('campaign screen stages', () => {
   it('lists only unlocked stages, numbered by their place in the campaign', () => {
     const campaign = campaignFixture();
-    expect(unlockedStages(campaign, { unlocked: ['second'] })).toEqual([
+    expect(unlockedStages(campaign, { unlocked: ['second'], completed: false })).toEqual([
       { stage: campaign.stages[1], number: 2 },
     ]);
-    expect(unlockedStages(campaign, { unlocked: ['first', 'second'] }).map(({ number }) => number)).toEqual([
-      1, 2,
-    ]);
+    expect(
+      unlockedStages(campaign, { unlocked: ['first', 'second'], completed: false }).map(
+        ({ number }) => number,
+      ),
+    ).toEqual([1, 2]);
   });
 
   it('draws the route into the newest stage once per viewer', () => {
     const campaign = withRoute();
     const storage = memoryStorage();
-    const stages = unlockedStages(campaign, { unlocked: ['first', 'second'] });
+    const stages = unlockedStages(campaign, { unlocked: ['first', 'second'], completed: false });
     expect(routeToReveal(stages, readRevealedRoutes(storage, campaign))).toBe('second');
     rememberRevealedRoute(storage, campaign, 'second');
     expect(routeToReveal(stages, readRevealedRoutes(storage, campaign))).toBeUndefined();
@@ -53,7 +56,9 @@ describe('campaign screen stages', () => {
 
   it('has nothing to draw for a stage without a route', () => {
     const campaign = campaignFixture();
-    expect(routeToReveal(unlockedStages(campaign, { unlocked: ['first', 'second'] }), [])).toBeUndefined();
+    expect(
+      routeToReveal(unlockedStages(campaign, { unlocked: ['first', 'second'], completed: false }), []),
+    ).toBeUndefined();
   });
 
   it('keeps only the campaign stages in the drawn-route record and survives bad storage', () => {
@@ -66,6 +71,37 @@ describe('campaign screen stages', () => {
     expect(readRevealedRoutes(storage, campaign)).toEqual([]);
     expect(readRevealedRoutes(throwing, campaign)).toEqual([]);
     expect(() => rememberRevealedRoute(throwing, campaign, 'second')).not.toThrow();
+  });
+});
+
+describe('campaign screen films', () => {
+  const INTRO = { url: '/campaigns/test/pol/intro.webm', width: 640, height: 480 };
+  const FINALE = { url: '/campaigns/test/pol/video-0.webm', width: 640, height: 480, sequence: 0 };
+  const withFilms = (): Campaign => {
+    const campaign = campaignFixture();
+    return Campaign.parse({
+      ...campaign,
+      movies: { ...campaign.movies, pol: { intro: INTRO, videos: [FINALE] } },
+    });
+  };
+
+  it('offers the intro whenever there is one, the finale only once completed', () => {
+    const campaign = withFilms();
+    expect(campaignFilms(campaign, 'pol', { unlocked: ['first'], completed: false })).toEqual({
+      intro: INTRO,
+      finale: undefined,
+    });
+    expect(campaignFilms(campaign, 'pol', { unlocked: ['first'], completed: true })).toEqual({
+      intro: INTRO,
+      finale: FINALE,
+    });
+  });
+
+  it('offers nothing where the language has no films', () => {
+    expect(campaignFilms(campaignFixture(), 'eng', { unlocked: ['first'], completed: true })).toEqual({
+      intro: undefined,
+      finale: undefined,
+    });
   });
 });
 

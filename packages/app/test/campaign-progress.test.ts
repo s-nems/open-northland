@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { movieSize } from '../src/campaign/movie.js';
 import {
   campaignProgressKey,
+  canSkipCampaignStage,
+  completeCampaign,
   grantCampaignMaps,
   readCampaignProgress,
   skipCampaignStage,
@@ -47,6 +49,35 @@ describe('campaign progression', () => {
     storage.setItem(campaignProgressKey(campaign), '{broken');
     expect(skipCampaignStage(campaign, storage).unlocked).toEqual(['first', 'second']);
     expect(skipCampaignStage(campaign, storage).unlocked).toEqual(['first', 'second']);
+  });
+  it('completes the campaign once the skip passes the last stage, keeping its grants', () => {
+    const campaign = campaignFixture();
+    const storage = memoryStorage();
+    expect(readCampaignProgress(campaign, storage).completed).toBe(false);
+    skipCampaignStage(campaign, storage);
+    const last = readCampaignProgress(campaign, storage);
+    expect(last).toEqual({ unlocked: ['first', 'second'], completed: false });
+    expect(canSkipCampaignStage(campaign, last)).toBe(true);
+    const done = skipCampaignStage(campaign, storage);
+    expect(done).toEqual({ unlocked: ['first', 'second'], completed: true });
+    expect(readCampaignProgress(campaign, storage)).toEqual(done);
+    expect(canSkipCampaignStage(campaign, done)).toBe(false);
+    grantCampaignMaps(campaign, [{ campaignId: 3, mapId: 20 }], storage);
+    expect(readCampaignProgress(campaign, storage).completed).toBe(true);
+  });
+  it('reads anything but a literal true as not completed', () => {
+    const campaign = campaignFixture();
+    const storage = memoryStorage();
+    for (const completed of ['true', 1, null, {}]) {
+      storage.setItem(campaignProgressKey(campaign), JSON.stringify({ unlocked: ['second'], completed }));
+      expect(readCampaignProgress(campaign, storage)).toEqual({
+        unlocked: ['first', 'second'],
+        completed: false,
+      });
+    }
+    storage.setItem(campaignProgressKey(campaign), JSON.stringify({ unlocked: 'gone', completed: true }));
+    expect(readCampaignProgress(campaign, storage)).toEqual({ unlocked: ['first'], completed: true });
+    expect(completeCampaign(campaign, memoryStorage())).toEqual({ unlocked: ['first'], completed: true });
   });
   it('surfaces write failures', () => {
     expect(() =>

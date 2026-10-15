@@ -6,12 +6,17 @@ import { campaignFixture, memoryStorage } from './support/campaign.js';
 
 const ENGLISH_VIDEO = expect.objectContaining({ url: '/campaigns/test/eng/video-1.webm' });
 
-function setup() {
+const LOCAL_PLAYER = 0;
+const OTHER_PLAYER = 1;
+
+function setup(mapId = 'first') {
   const campaign = campaignFixture();
   const storage = memoryStorage();
   const deps = {
     campaign,
     language: 'eng' as const,
+    mapId,
+    localPlayer: LOCAL_PLAYER,
     storage,
     pause: vi.fn(),
     resume: vi.fn(),
@@ -100,5 +105,20 @@ describe('campaign handovers', () => {
     retry?.();
     expect(proceed).toHaveBeenCalledOnce();
     expect(t.runtime.isPending()).toBe(false);
+  });
+  it('completes the campaign when the local seat wins its last stage', () => {
+    const t = setup('second');
+    const proceed = vi.fn(() => expect(readCampaignProgress(t.campaign, t.storage).completed).toBe(true));
+    t.runtime.events([{ kind: 'playerWon', player: OTHER_PLAYER }], vi.fn());
+    expect(readCampaignProgress(t.campaign, t.storage).completed).toBe(false);
+    t.runtime.events([{ kind: 'playerWon', player: LOCAL_PLAYER, scripted: true }], proceed);
+    expect(proceed).toHaveBeenCalledOnce();
+  });
+  it('does not complete the campaign on an earlier stage win', () => {
+    const t = setup('first');
+    const proceed = vi.fn();
+    t.runtime.events([{ kind: 'playerWon', player: LOCAL_PLAYER }], proceed);
+    expect(proceed).toHaveBeenCalledOnce();
+    expect(readCampaignProgress(t.campaign, t.storage).completed).toBe(false);
   });
 });

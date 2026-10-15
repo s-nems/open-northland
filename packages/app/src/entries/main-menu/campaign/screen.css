@@ -332,12 +332,57 @@
   opacity: 1;
 }
 
-.campaign-screen__side {
+/* The film replays sit above the missions panel and share its column. */
+.campaign-screen__aside {
   --u: calc((var(--k) + var(--menu-u)) / 2);
   flex: none;
   width: calc(var(--u) * var(--campaign-side-width));
   max-height: calc(var(--k) * var(--campaign-map-width) / var(--map-aspect));
   margin-left: calc(var(--k) * var(--campaign-gap));
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 10);
+}
+
+.campaign-screen__films {
+  flex: none;
+  display: flex;
+  gap: calc(var(--u) * 8);
+}
+
+.campaign-screen__film {
+  all: unset;
+  flex: 1 1 0;
+  min-width: 0;
+  padding: calc(var(--u) * 7) calc(var(--u) * 10);
+  border: 1px solid var(--bronze-lo);
+  border-radius: 3px;
+  background: linear-gradient(135deg, #273832f5, #182521fa);
+  color: var(--text-hi);
+  font: 600 calc(var(--u) * 14) / 1.2 var(--font-body);
+  text-align: center;
+  cursor: var(--cursor-pointer, pointer);
+}
+
+.campaign-screen__film::before {
+  content: "\25B6\FE0E";
+  margin-right: calc(var(--u) * 6);
+  color: var(--bronze-hi);
+  font-size: 0.8em;
+}
+
+.campaign-screen__film:hover:not(:disabled) {
+  border-color: var(--bronze-hi);
+}
+
+.campaign-screen__film:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.campaign-screen__side {
+  flex: 0 1 auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -661,7 +706,7 @@
     aspect-ratio: var(--map-aspect);
   }
 
-  .campaign-screen__side {
+  .campaign-screen__aside {
     width: 100%;
     max-height: none;
     margin-left: 0;

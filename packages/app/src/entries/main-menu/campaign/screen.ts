@@ -1,13 +1,14 @@
 import type { Campaign, MapTextLanguage } from '@open-northland/data';
 import { loadCampaigns } from '../../../campaign/catalog.js';
 import { campaignMissionQuery, RECOMMENDED_CAMPAIGN_TRIBE } from '../../../campaign/launch.js';
-import { campaignLanguage, campaignLogo, campaignMovies, localizedText } from '../../../campaign/locale.js';
-import { type MusicSilencer, playCampaignMovie } from '../../../campaign/movie.js';
+import { campaignLanguage, campaignLogo, localizedText } from '../../../campaign/locale.js';
+import { type MovieLabels, type MusicSilencer, playCampaignMovie } from '../../../campaign/movie.js';
 import {
   type CampaignProgress,
-  grantCampaignMaps,
+  canSkipCampaignStage,
   nextCampaignStage,
   readCampaignProgress,
+  skipCampaignStage,
 } from '../../../campaign/progress.js';
 import { createHudPlane } from '../../../hud/dom/root.js';
 import { createSystemConfirm, type SystemConfirmCopy } from '../../../hud/dom/system-confirm.js';
@@ -20,6 +21,7 @@ import { screenHead } from '../screen-head.js';
 import { targetSearch } from '../target-search.js';
 import { campaignMap } from './map.js';
 import {
+  campaignFilms,
   initialCampaign,
   launchTribe,
   readChosenCampaign,
@@ -96,6 +98,11 @@ async function askInHud(copy: SystemConfirmCopy, signal: AbortSignal): Promise<b
   }
 }
 
+function movieLabels(): MovieLabels {
+  const copy = messages().campaign;
+  return { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed, seek: copy.seekMovie };
+}
+
 export function campaignScreen(
   open: (screen: MenuScreen) => void,
   launch: LaunchEntry,
@@ -161,6 +168,30 @@ export function campaignScreen(
     if (reveal !== undefined) rememberRevealedRoute(storage, campaign, reveal);
 
     const map = campaignMap(campaign, stages, language, reveal, body, (mapId) => choose(mapId));
+    const aside = node('div', 'campaign-screen__aside');
+    const { intro, finale } = campaignFilms(campaign, language, progress);
+    const films = [
+      ...(intro === undefined ? [] : [{ label: copy.watchIntro, movie: intro }]),
+      ...(finale === undefined ? [] : [{ label: copy.watchFinale, movie: finale }]),
+    ];
+    if (films.length > 0) {
+      const row = node('div', 'campaign-screen__films');
+      for (const { label, movie } of films) {
+        const button = node('button', 'campaign-screen__film', label);
+        button.type = 'button';
+        button.addEventListener('click', () => {
+          if (busy || asking) return;
+          setBusy(true);
+          void playCampaignMovie(movie, movieLabels(), scope.signal, silenceMusic).then(() => {
+            if (scope.signal.aborted) return;
+            setBusy(false);
+            start.disabled = selected === undefined;
+          });
+        });
+        row.append(button);
+      }
+      aside.append(row);
+    }
     const side = node('aside', 'campaign-screen__side');
     const heading = node('h2', 'campaign-screen__side-title', copy.missions);
     heading.id = 'campaign-screen-missions';
@@ -190,15 +221,7 @@ export function campaignScreen(
       const mapId = selected;
       if (mapId === undefined || busy) return;
       setBusy(true);
-      const intro = campaignMovies(campaign, language).intro;
       const run = async (): Promise<void> => {
-        if (mapId === campaign.stages[0]?.mapId && intro !== undefined)
-          await playCampaignMovie(
-            intro,
-            { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed, seek: copy.seekMovie },
-            scope.signal,
-            silenceMusic,
-          );
         const chosen = launchTribe(tribe);
         const query = campaignMissionQuery(
           chosen === undefined ? { mapId, language } : { mapId, language, tribe: chosen },
@@ -214,13 +237,11 @@ export function campaignScreen(
     });
 
     side.append(heading, list, start);
+    aside.append(side);
     const foot = node('div', 'campaign-screen__foot');
     foot.append(tribeChoice.root);
 
-    const next = nextCampaignStage(campaign, progress);
-    const nextStage = campaign.stages.find((stage) => stage.mapId === next);
-    const nextMap = campaign.maps.find((map) => map.id === next);
-    if (nextStage !== undefined && nextMap !== undefined) {
+    if (canSkipCampaignStage(campaign, progress)) {
       const skip = node('button', 'campaign-screen__skip', copy.skip);
       skip.type = 'button';
       skip.addEventListener('click', () => {
@@ -237,18 +258,16 @@ export function campaignScreen(
         ).then((accepted) => {
           asking = false;
           if (!accepted || scope.signal.aborted) return;
+          let next: string | undefined;
           try {
-            grantCampaignMaps(
-              campaign,
-              [{ campaignId: campaign.campaignId, mapId: nextMap.missionId }],
-              localStorage,
-            );
+            next = nextCampaignStage(campaign, readCampaignProgress(campaign, localStorage));
+            skipCampaignStage(campaign, localStorage);
           } catch {
             status.textContent = copy.storage;
             return;
           }
           status.textContent = '';
-          selected = nextStage.mapId;
+          if (next !== undefined) selected = next;
           show(campaign);
           body.querySelector<HTMLElement>('.campaign-screen__mission[aria-pressed="true"]')?.focus();
         });
@@ -272,7 +291,7 @@ export function campaignScreen(
       start.disabled = busy;
     };
     const stage = node('div', 'campaign-screen__stage');
-    stage.append(map.root, side);
+    stage.append(map.root, aside);
     body.replaceChildren(stage, foot);
     if (selected !== undefined) choose(selected);
     else start.disabled = true;

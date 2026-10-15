@@ -1,5 +1,6 @@
-import type { Campaign } from '@open-northland/data';
+import type { Campaign, CampaignMovie, MapTextLanguage } from '@open-northland/data';
 import { RECOMMENDED_CAMPAIGN_TRIBE } from '../../../campaign/launch.js';
+import { campaignFinale, campaignMovies } from '../../../campaign/locale.js';
 import type { CampaignProgress } from '../../../campaign/progress.js';
 
 type ScreenStorage = Pick<Storage, 'getItem' | 'setItem'>;
@@ -21,6 +22,18 @@ export function unlockedStages(campaign: Campaign, progress: CampaignProgress): 
   return campaign.stages
     .map((stage, index) => ({ stage, number: index + 1 }))
     .filter(({ stage }) => unlocked.has(stage.mapId));
+}
+
+/** The films the screen replays: the intro when there is one, the finale once the campaign is completed. */
+export function campaignFilms(
+  campaign: Campaign,
+  language: MapTextLanguage,
+  progress: CampaignProgress,
+): { readonly intro: CampaignMovie | undefined; readonly finale: CampaignMovie | undefined } {
+  return {
+    intro: campaignMovies(campaign, language).intro,
+    finale: progress.completed ? campaignFinale(campaign, language) : undefined,
+  };
 }
 
 /** The URL's campaign first, then the one this viewer last chose, then the first in display order. */

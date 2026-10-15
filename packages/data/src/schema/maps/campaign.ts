@@ -27,7 +27,7 @@ export const LocalizedAsset = z
   .refine((asset) => Object.keys(asset).length > 0, 'Asset has no language');
 export type LocalizedAsset = z.infer<typeof LocalizedAsset>;
 
-/** The films of one language: the intro before the first stage and the script's numbered videos. */
+/** The films of one language: the campaign intro and the script's numbered videos. */
 const LanguageMovies = z
   .strictObject({
     intro: Movie.optional(),

@@ -19,4 +19,6 @@ export const plCampaign = {
   skipMovie: 'Pomiń film',
   movieFailed: 'Nie udało się wczytać filmu. Możesz go pominąć.',
   seekMovie: 'Pozycja w filmie',
+  watchIntro: 'Obejrzyj wstęp',
+  watchFinale: 'Obejrzyj zakończenie',
 } as const;
