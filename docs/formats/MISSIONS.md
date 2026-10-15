@@ -368,7 +368,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 48 | `Mission quit and play video` | 7 | retain the campaign-local movie sequence and emit `missionVideo`; host playback is separate | both | 0 |
 | 49 | `SetPlayerBehaviourFlag` | 1, 7, 32 | OR or clear the mask on every current human of the player | sim | 240 |
 | 50 | `SetHumanBehaviourFlag` | 10, 7, 32 | OR or clear the mask on humans with the id | sim | 436 |
-| 51 | `SetRandomChestOnRandomPos` | 7 | choose a reward from the category mask, then try six random land points and drop a wooden chest at the first clear one | sim | 0 |
+| 51 | `SetRandomChestOnRandomPos` | 7 | choose a reward from the category mask, then try six random land points whose six neighbours are free and drop a wooden chest at the first that passes; mask 0, the empty category or six failed tries place nothing, silently and without a later retry | sim | 0 |
 | 52 | `RemoveHumansNearPos` | 16, 17, 9 | mark every human within `range` for removal | sim | 20 |
 | 53 | `StopHumanByPlayerId` | 1 | stop every walking human of the player and reset its work target | sim | 45 |
 | 54 | `SetAnimal` | 1, 3, 4, 16, 17, 14, 29 | spawn an animal with the id and behaviour | sim | 591 |

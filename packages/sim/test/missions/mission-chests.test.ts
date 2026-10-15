@@ -9,10 +9,13 @@ import { grassNodeMap } from '../fixtures/terrain.js';
 import { failedResultsUntil, holds, LOAD_PASS, missionSim, POINT } from './support.js';
 
 const WOODEN_CHEST = 85;
+const MAP_SIZE = 48;
+/** Ground type id 1 in the synthetic fixtures, walkable by nothing. */
+const WATER = 1;
 
 function chestMap(): TerrainMap {
   return {
-    ...grassNodeMap(48, 48),
+    ...grassNodeMap(MAP_SIZE, MAP_SIZE),
     landscapes: {
       types: [
         {
@@ -197,6 +200,25 @@ describe('mission chests', () => {
       testContent(),
       chestMap(),
     );
-    expect(failedResultsUntil(invalid, LOAD_PASS)).toEqual(['SetRandomChestOnRandomPos']);
+    expect(failedResultsUntil(invalid, LOAD_PASS)).toEqual([]);
+    expect([...invalid.world.query(Chest)]).toEqual([]);
+  });
+
+  it('places no random chest and reports nothing when no position qualifies', () => {
+    const sim = missionSim(
+      [
+        {
+          active: true,
+          visible: false,
+          successfullIf: SUCCESSFUL_IF.all,
+          goals: [],
+          results: [{ opcode: 'SetRandomChestOnRandomPos', amount: 8 }],
+        },
+      ],
+      testContent(),
+      { ...chestMap(), typeIds: new Array<number>(MAP_SIZE * MAP_SIZE).fill(WATER) },
+    );
+    expect(failedResultsUntil(sim, LOAD_PASS)).toEqual([]);
+    expect([...sim.world.query(Chest)]).toEqual([]);
   });
 });

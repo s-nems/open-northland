@@ -43,20 +43,24 @@ type RandomChestOp = Extract<
   { opcode: 'SetRandomChestOnPosition' | 'SetRandomChestOnRandomPos' }
 >;
 
-/** Place the original's wooden random chest, or report that the authored request found no valid spot. */
+/**
+ * Place the original's wooden random chest. `SetRandomChestOnPosition` reports a request that found
+ * no valid spot. Original behavior for `SetRandomChestOnRandomPos`: an empty mask, the empty
+ * category, or six failed position tries place nothing and say nothing, so neither is a map error.
+ */
 export function setRandomChest(pass: MissionPass, mission: number, op: RandomChestOp): void {
   const draw = randomChestContents(pass, op.amount);
   if (draw.kind === 'empty') return;
+  const random = op.opcode === 'SetRandomChestOnRandomPos';
+  if (draw.kind === 'invalid' && random) return;
   const terrain = pass.ctx.terrain;
   const type = woodenChestType(terrain);
   if (draw.kind === 'invalid' || terrain === undefined || type === undefined) {
     pass.reportFailed(mission, op.opcode);
     return;
   }
-  const point =
-    op.opcode === 'SetRandomChestOnPosition'
-      ? nearestFreeLand(pass, terrain, op.point)
-      : randomFreeLand(pass, terrain);
+  const point = random ? randomFreeLand(pass, terrain) : nearestFreeLand(pass, terrain, op.point);
+  if (point === null && random) return;
   if (point === null || !layScriptedLandscape(pass, terrain, point, type.typeId, draw.contents))
     pass.reportFailed(mission, op.opcode);
 }
