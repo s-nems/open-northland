@@ -10,10 +10,11 @@ correctly emits no chain link for them (a self-link is skipped). But those recor
 `GfxBobConstructionLayer` rows - including `upgrade === 1` rows between the size levels (13 such rows
 across typeIds 47..53, tribe 5, in real `ir.json`) - meaning the original renders a wonder rising
 through several authored construction stages of one building, with upgrade-overlay art between
-stages. Today OpenNorthland treats a wonder as a single-stage build: one from-scratch stage stack
-(the lowest-sizeIdx record group wins in `constructionRefsByType`), and the per-stage
-`LogicConstructionGoods` collapse to the lowest sizeIdx's cost (`extractConstructionCosts`'s
-lowest-sizeIdx convention), so the higher stages' costs and art are unused.
+stages. A finished wonder already draws the body of its `Building.level` (`byTypeLevel`), and
+`SetHouseExtensionLevel` sets that level, but the player builds a wonder as a single-stage build: one
+from-scratch stage stack (the lowest-sizeIdx record group wins in `constructionRefsByType`), and the
+per-stage `LogicConstructionGoods` collapse to the lowest sizeIdx's cost (`extractConstructionCosts`'s
+lowest-sizeIdx convention), so the higher stages' costs and construction art are unused.
 
 ## Scope
 

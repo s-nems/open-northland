@@ -181,7 +181,7 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       placeScriptedHouse(pass, index, result);
       return;
     case 'SetHouseExtensionLevel':
-      setScriptedHouseLevel(pass, result.objectId, result.amount);
+      setScriptedHouseLevel(pass, index, result);
       return;
     case 'RemoveHumans':
       removeScriptedHumans(pass, result.humanId);

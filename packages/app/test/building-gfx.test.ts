@@ -4,6 +4,7 @@ import {
   type BuildingRefScope,
   buildingBobRefsByType,
   buildingFamiliesFor,
+  buildingLevelRefsByType,
   buildingOverlayRefsByType,
   constructionRefsByType,
   DEFAULT_BUILDING_FAMILY,
@@ -221,6 +222,21 @@ describe('buildingBobRefsByType', () => {
         if (typeof ref !== 'number') expect(loadedLayers.has(ref.layer)).toBe(true);
       }
     });
+  });
+});
+
+describe('buildingLevelRefsByType', () => {
+  it("keys a wonder's stages by level and leaves a type drawing one bob per typeId out", () => {
+    const WONDER = 51;
+    const rows = [
+      bobRow(WONDER, 1, { level: 0 }),
+      bobRow(WONDER, 5, { level: 1 }),
+      bobRow(WONDER, 0, { level: 2 }),
+      bobRow(2, 1),
+      // An unloaded family drops its level.
+      bobRow(WONDER, 7, { level: 3, bmd: VIKING2_BMD }),
+    ];
+    expect(buildingLevelRefsByType(rows, scope(1, FAMILIES))).toEqual({ [WONDER]: { 0: 1, 1: 5, 2: 0 } });
   });
 });
 

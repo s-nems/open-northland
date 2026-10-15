@@ -40,6 +40,8 @@ export interface RealMapWorldOptions {
   readonly berryBushes?: boolean;
   /** Optional headless override; map scripts run by default. */
   readonly missions?: boolean;
+  /** The map's script with a test's edits; omitted reads the map's own sidecar. */
+  readonly script?: MapScript;
 }
 
 export interface RealMapWorld {
@@ -73,7 +75,7 @@ export async function realMapWorld(options: RealMapWorldOptions): Promise<RealMa
   // Named explicitly: a mistyped map id otherwise surfaces as a bare ENOENT from inside vitest.
   if (!existsSync(mapPath)) throw new Error(`no decoded map at ${mapPath}`);
   const map = JSON.parse(readFileSync(mapPath, 'utf8'));
-  const script = realMapScript(options.mapId);
+  const script = options.script ?? realMapScript(options.mapId);
   const ir = rawIrUnderTest() as ContentIr & AuthoredJoinRows;
   const humanSeats = options.humanSeats ?? [];
   const missionWorld = mapScriptWorld(script, ir);

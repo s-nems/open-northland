@@ -1,5 +1,6 @@
 import type { DrawItem } from '../scene/index.js';
 import type {
+  BuildingBobRef,
   BuildingDraw,
   BuildingLandscapeOverlayRef,
   BuildingSkinTables,
@@ -84,7 +85,20 @@ export function resolveBuildingDraw(binding: number | BuildingTypeBinding, item:
   if (authored !== undefined && authored.typeId === item.typeId && authored.tribe === item.tribe) {
     return unwrapBobRef(authored.body);
   }
-  return unwrapBobRef(byTypeFor(binding, item, (t) => t.byType) ?? binding.default);
+  return unwrapBobRef(
+    bodyAtLevel(tablesFor(binding, item), item) ??
+      bodyAtLevel(skinFor(binding, item.ref), item) ??
+      binding.default,
+  );
+}
+
+/** One table set's body for the item's type, at its level when the set draws that level apart; the level
+ *  table is read only beside the set's own `byType` row, so a tribe never borrows another's stage art. */
+function bodyAtLevel(tables: BuildingSkinTables, item: DrawItem): BuildingBobRef | undefined {
+  if (item.typeId === undefined) return undefined;
+  const body = tables.byType[item.typeId];
+  if (body === undefined || item.level === undefined) return body;
+  return tables.byTypeLevel?.[item.typeId]?.[item.level] ?? body;
 }
 
 export interface ConstructionDraw extends BuildingDraw {

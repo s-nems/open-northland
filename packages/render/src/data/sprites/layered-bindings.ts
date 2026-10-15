@@ -16,6 +16,9 @@ export interface BuildingDraw {
 /** The per-type building tables of one palette skin. */
 export interface BuildingSkinTables {
   readonly byType: Readonly<Record<number, BuildingBobRef>>;
+  /** The body per `Building.level` of a type whose `[GfxHouse]` record draws several levels on the one
+   *  typeId, such as a wonder's stages. A level absent here draws {@link byType}. */
+  readonly byTypeLevel?: Readonly<Record<number, Readonly<Record<number, BuildingBobRef>>>>;
   /**
    * The `[GfxHouse]` `GfxBobConstructionLayer` from-scratch rows, in the source's stacking (file)
    * order. A type absent here keeps its finished-body draw at every progress.

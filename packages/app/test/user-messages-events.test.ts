@@ -590,11 +590,6 @@ describe('user messages from sim events', () => {
     expect(out).toEqual([]);
   });
 
-  it('announces nothing when a script takes a house down its chain', () => {
-    const snap = snapshot(50, [{ id: 1, player: LOCAL, kind: 'building' }]);
-    expect(run([{ kind: 'buildingUpgraded', entity: e(1), level: 0, lowered: true }], snap)).toEqual([]);
-  });
-
   it('lists a vehicle build site among the vehicles of an unlock, not the buildings', () => {
     const CART_SITE = 42;
     const SCHOOL = 38;

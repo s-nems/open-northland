@@ -65,7 +65,8 @@ export interface StaticDrawFields {
    *  contents. */
   fill?: number;
   /** A mined deposit's or crop's visual fill level in `[1, levels]`, stepping down from `levels` as it
-   *  empties. Omitted for a plain node, which draws its full-state frame. */
+   *  empties. Omitted for a plain node, which draws its full-state frame. For a building, its
+   *  `Building.level`. */
   level?: number;
   /** The {@link level} ladder's denominator (`MineDeposit.levels` or a crop's `stages`). Must travel
    *  with {@link level}, which would otherwise redraw at a different frame. */

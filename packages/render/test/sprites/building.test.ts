@@ -82,6 +82,23 @@ describe('resolveBuildingDraw - layer-qualified (multi-.bmd) building binding', 
     expect(resolveBuildingDraw(20, building())).toEqual({ bob: 20 });
   });
 
+  it("draws a wonder's stage by the building's level, and its own tribe's body at a level it lacks", () => {
+    const WONDER = 51;
+    const VIKING = 1;
+    const staged: BuildingTypeBinding = {
+      byType: { [WONDER]: 0 },
+      byTypeLevel: { [WONDER]: { 0: 1, 1: 5, 2: 0 } },
+      byTribe: { [VIKING]: { byType: { [WONDER]: 9 } } },
+      default: 11,
+    };
+    const at = (level: number, tribe?: number): DrawItem =>
+      drawItem('building', { typeId: WONDER, level, ...(tribe !== undefined ? { tribe } : {}) });
+    expect(resolveBuildingDraw(staged, at(0))).toEqual({ bob: 1 });
+    expect(resolveBuildingDraw(staged, at(1))).toEqual({ bob: 5 });
+    expect(resolveBuildingDraw(staged, at(3))).toEqual({ bob: 0 });
+    expect(resolveBuildingDraw(staged, at(1, VIKING))).toEqual({ bob: 9 });
+  });
+
   it('agrees with resolveSpriteBobId on the bob id (the bob is the resolver split-out)', () => {
     expect(resolveBuildingDraw(binding, building(1)).bob).toBe(
       resolveSpriteBobId(building(1), { settler: 10, building: binding, resource: 30 }),

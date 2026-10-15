@@ -179,6 +179,19 @@ export function skinPalettePool<T extends { paletteName: string }>(
   return rows.filter((r) => r.paletteName === palette);
 }
 
+/** A type's rows in the skin slot, narrowed to its pinned `EditName` when it has one. */
+function canonicalCandidates(
+  typeId: number,
+  rows: readonly BuildingBobRow[],
+  skinSlot: number,
+): readonly BuildingBobRow[] {
+  const candidates = skinPalettePool(rows, skinSlot);
+  const canonName = CANONICAL_EDIT_NAME[typeId];
+  if (canonName === undefined) return candidates;
+  const named = candidates.filter((r) => r.editName === canonName);
+  return named.length > 0 ? named : candidates;
+}
+
 /**
  * Pick the single canonical `buildingBobs` row for one `typeId` from rows already filtered to that tribe and
  * typeId. The palette → canonical-name → highest `level` → lowest `bobId` ladder makes the choice
@@ -189,14 +202,8 @@ function pickCanonicalBuildingRow(
   rows: readonly BuildingBobRow[],
   skinSlot: number,
 ): BuildingBobRow | undefined {
-  let candidates = skinPalettePool(rows, skinSlot);
-  const canonName = CANONICAL_EDIT_NAME[typeId];
-  if (canonName !== undefined) {
-    const named = candidates.filter((r) => r.editName === canonName);
-    if (named.length > 0) candidates = named;
-  }
   let best: BuildingBobRow | undefined;
-  for (const r of candidates) {
+  for (const r of canonicalCandidates(typeId, rows, skinSlot)) {
     if (best === undefined || r.level > best.level || (r.level === best.level && r.bobId < best.bobId)) {
       best = r;
     }
@@ -250,6 +257,34 @@ export function buildingBobRefsByType(
     const layer = familyLayerFor(row.bmd, row.paletteName, scope.defaultFamily, scope.families);
     if (layer === null) continue; // family not loaded → drop (the constant/default backs this typeId)
     out[typeId] = layer.layer === undefined ? row.bobId : { layer: layer.layer, bob: row.bobId };
+  }
+  return out;
+}
+
+/**
+ * The body per level of each type whose rows draw several levels on the one typeId (a wonder's stages),
+ * each level's lowest `bobId` in the canonical candidates. A type drawing a single level is absent, so it
+ * keeps {@link buildingBobRefsByType}'s body.
+ */
+export function buildingLevelRefsByType(
+  rows: readonly BuildingBobRow[],
+  scope: BuildingRefScope,
+): Record<number, Record<number, BuildingBobRef>> {
+  const out: Record<number, Record<number, BuildingBobRef>> = {};
+  for (const [typeId, list] of rowsByType(rows, scope.tribeId)) {
+    const byLevel = new Map<number, BuildingBobRow>();
+    for (const r of canonicalCandidates(typeId, list, scope.skinSlot)) {
+      const held = byLevel.get(r.level);
+      if (held === undefined || r.bobId < held.bobId) byLevel.set(r.level, r);
+    }
+    if (byLevel.size < 2) continue;
+    const refs: Record<number, BuildingBobRef> = {};
+    for (const [level, row] of byLevel) {
+      const layer = familyLayerFor(row.bmd, row.paletteName, scope.defaultFamily, scope.families);
+      if (layer === null) continue;
+      refs[level] = layer.layer === undefined ? row.bobId : { layer: layer.layer, bob: row.bobId };
+    }
+    if (Object.keys(refs).length > 1) out[typeId] = refs;
   }
   return out;
 }

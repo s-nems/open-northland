@@ -336,7 +336,11 @@ describe('a line over upgrade ground', () => {
     orderWall(sim, growth, true);
     expect([...sim.world.query(Palisade)]).toHaveLength(1);
 
-    setScriptedHouseLevel(passOf(sim), SCRIPTED_HOUSE, 1);
+    setScriptedHouseLevel(passOf(sim), 0, {
+      opcode: 'SetHouseExtensionLevel',
+      objectId: SCRIPTED_HOUSE,
+      amount: 1,
+    });
 
     expect(sim.world.get(buildingAt(sim, GROWING_AT), Building).buildingType).toBe(GROWN_HUT);
     expect([...sim.world.query(Palisade)]).toHaveLength(0);

@@ -9,6 +9,10 @@ function readBuildingType(components: Readonly<Record<string, unknown>>): number
   return readNumField(components, 'Building', 'buildingType');
 }
 
+function readBuildingLevel(components: Readonly<Record<string, unknown>>): number | undefined {
+  return readNumField(components, 'Building', 'level');
+}
+
 function readBuildingTribe(components: Readonly<Record<string, unknown>>): number | undefined {
   return readNumField(components, 'Building', 'tribe');
 }
@@ -268,6 +272,8 @@ export function assignStaticFields(
       if (typeId !== undefined) target.typeId = typeId;
       const tribe = readBuildingTribe(components);
       if (tribe !== undefined) target.tribe = tribe;
+      const level = readBuildingLevel(components);
+      if (level !== undefined) target.level = level;
       const builtPct = readBuiltPct(components);
       if (builtPct !== undefined) target.builtPct = builtPct;
       return;

@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   Building,
-  Damaged,
-  Health,
   isWildlife,
   MissionBehaviour,
   MissionObjectId,
@@ -28,7 +26,6 @@ import {
   firingMission,
   firingSim,
   HUT,
-  HUT_LARGE,
   houseContent,
   LOAD_PASS,
   loadPassAfter,
@@ -264,63 +261,6 @@ describe('the house results', () => {
     expect(buildings(sim)).toHaveLength(0);
     expect(sim.events.current().filter((e) => e.kind === 'missionResultFailed')).toEqual([
       { kind: 'missionResultFailed', mission: 0, opcode: 'SetHouse' },
-    ]);
-  });
-
-  it('rebuilds a house at another level of its chain, in place', () => {
-    const sim = firingSim(
-      [
-        {
-          opcode: 'SetHouse',
-          player: 1,
-          houseName: { typeId: HUT, tribe: VIKING },
-          level: 0,
-          built: true,
-          point: POINT,
-          objectId: 5,
-        },
-        { opcode: 'SetHouseExtensionLevel', objectId: 5, amount: 1 },
-      ],
-      houseContent(),
-    );
-    sim.run(LOAD_PASS);
-    const house = only(missionObjects(sim.world, 5));
-    expect(sim.world.get(house, Building).buildingType).toBe(HUT_LARGE);
-    expect(sim.world.get(house, Building).level).toBe(1);
-    expect(sim.world.get(house, Health).max).toBe(300);
-    // The house keeps its 100 hit points in the larger pool, which is short, so builders mend the rest
-    // with no calm period to wait out: nothing hit it.
-    expect(sim.world.get(house, Health)).toEqual({ hitpoints: 100, max: 300 });
-    expect(sim.world.get(house, Damaged)).toEqual({ lastHitTick: null });
-    // The larger body settles its plot like a finished upgrade, which the app's clearing keys on.
-    expect(sim.events.current().filter((e) => e.kind === 'buildingUpgraded')).toEqual([
-      { kind: 'buildingUpgraded', entity: house, level: 1 },
-    ]);
-  });
-
-  it('marks a rebuild down the chain as lowered', () => {
-    const sim = firingSim(
-      [
-        {
-          opcode: 'SetHouse',
-          player: 1,
-          houseName: { typeId: HUT, tribe: VIKING },
-          level: 0,
-          built: true,
-          point: POINT,
-          objectId: 5,
-        },
-        { opcode: 'SetHouseExtensionLevel', objectId: 5, amount: 1 },
-        { opcode: 'SetHouseExtensionLevel', objectId: 5, amount: 0 },
-      ],
-      houseContent(),
-    );
-    sim.run(LOAD_PASS);
-    const house = only(missionObjects(sim.world, 5));
-    expect(sim.world.get(house, Building).buildingType).toBe(HUT);
-    expect(sim.events.current().filter((e) => e.kind === 'buildingUpgraded')).toEqual([
-      { kind: 'buildingUpgraded', entity: house, level: 1 },
-      { kind: 'buildingUpgraded', entity: house, level: 0, lowered: true },
     ]);
   });
 });

@@ -14,6 +14,7 @@ import {
   type BuildingRefScope,
   buildingBobRefsByType,
   buildingFamiliesFor,
+  buildingLevelRefsByType,
   DEFAULT_BUILDING_FAMILY,
   HOUSE_BOB,
   skinSlotCount,
@@ -35,8 +36,10 @@ function skinTables(ir: ContentIr | null, scope: BuildingRefScope): BuildingSkin
     ...(scope.tribeId === VIKING_TRIBE ? VIKING_HOUSE01_BOBS : {}),
     ...buildingBobRefsByType(ir?.buildingBobs ?? [], scope),
   };
+  const byTypeLevel = buildingLevelRefsByType(ir?.buildingBobs ?? [], scope);
   return {
     byType,
+    ...(Object.keys(byTypeLevel).length > 0 ? { byTypeLevel } : {}),
     landscapeOverlaysByType: landscapeOverlayRefs(ir, scope.tribeId),
     ...(Object.keys(constructionByType).length > 0 ? { constructionByType } : {}),
     ...(Object.keys(upgradeByType).length > 0 ? { upgradeByType } : {}),
@@ -106,7 +109,8 @@ export function referencedFamilyLayers(binding: BuildingTypeBinding): Set<string
   const layers = new Set<string>();
   const tribes = [binding, ...Object.values(binding.byTribe ?? {})];
   for (const tables of tribes.flatMap((tribe) => [tribe, ...(tribe.altSkins ?? [])])) {
-    for (const ref of Object.values<BuildingBobRef>(tables.byType)) {
+    const levelRefs = Object.values(tables.byTypeLevel ?? {}).flatMap((byLevel) => Object.values(byLevel));
+    for (const ref of [...Object.values<BuildingBobRef>(tables.byType), ...levelRefs]) {
       if (typeof ref !== 'number') layers.add(ref.layer);
     }
     for (const stack of [

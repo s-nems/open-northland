@@ -345,8 +345,6 @@ export function messagesFromEvents(
         break;
       }
       case 'buildingUpgraded': {
-        // A script that takes a house down its chain has nothing to announce.
-        if (ev.lowered === true) break;
         const e = ownedBuilding(ev.entity);
         if (e !== undefined) raiser.building(USER_MESSAGE_TYPE.houseUpgraded, e);
         break;

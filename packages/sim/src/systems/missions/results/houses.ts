@@ -1,14 +1,12 @@
-import { buildingHitpointsFor } from '@open-northland/data';
-import { Building, Health, MAX_BUILDING_LEVEL, UnderConstruction } from '../../../components/index.js';
+import { Building, MAX_BUILDING_LEVEL, ownerOf, Position } from '../../../components/index.js';
 import { buildingLevelOf, type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { type HalfCellNode, hexDistance } from '../../../nav/halfcell.js';
-import { placeBuilding } from '../../command/placement.js';
+import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
+import { assembleBuilding, placeBuilding } from '../../command/placement.js';
 import type { SystemContext } from '../../context.js';
-import { settleFootprint } from '../../economy/construction.js';
-import { clearRepairedDamage, markShortPool } from '../../economy/repair.js';
 import { clearUpgradeGround } from '../../economy/upgrade-ground.js';
 import { placementProbe } from '../../footprint/index.js';
+import { removeBuildingSilently } from '../../lifecycle/cleanup.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
 import { missionHouses } from '../targets.js';
@@ -53,59 +51,80 @@ export function placeScriptedHouse(
   });
 }
 
-/** Rebuild the houses stamped with the id at another growth level, in place: the plot, the owner and
- *  everyone bound to the house stay, only its type and life pool move up or down the chain. */
-export function setScriptedHouseLevel(pass: MissionPass, id: number, level: number): void {
-  const index = contentIndex(pass.ctx.content);
-  for (const e of missionHouses(pass.world, id).slice(0, EXTENSION_LEVEL_CAP)) {
-    rebuildAtLevel(pass.world, pass.ctx, index, e, level);
+/**
+ * Original behavior: each house stamped with the id, up to {@link EXTENSION_LEVEL_CAP}, is removed and set
+ * again on its anchor, finished at the new level with the same owner and id; its workers, residents and
+ * stock go with the old house. A level the type's chain cannot reach fails the line.
+ */
+export function setScriptedHouseLevel(
+  pass: MissionPass,
+  mission: number,
+  op: Extract<MissionResultOp, { opcode: 'SetHouseExtensionLevel' }>,
+): void {
+  const { world, ctx } = pass;
+  const index = contentIndex(ctx.content);
+  for (const e of missionHouses(world, op.objectId).slice(0, EXTENSION_LEVEL_CAP)) {
+    const typeId = typeAtLevel(index, world.get(e, Building).buildingType, op.amount);
+    if (typeId === undefined) {
+      pass.reportFailed(mission, op.opcode);
+      continue;
+    }
+    rebuildAtLevel(world, ctx, e, typeId, op.amount, op.objectId);
   }
 }
 
-/** Swap a standing house to the chain's rung at `level` and settle its plot as a finished upgrade
- *  does, so a larger body evicts what stood under it; a house already at the rung is left alone. */
+/** The type that draws `level` on `typeId`'s chain: a chain rung holds the levels from its own up to the
+ *  top its `[GfxHouse]` record draws, and a wonder holds all of them on one type. */
+function typeAtLevel(index: ContentIndex, typeId: number, level: number): number | undefined {
+  if (level < 0 || level > MAX_BUILDING_LEVEL) return undefined;
+  let at = typeId;
+  for (let steps = 0; steps < MAX_BUILDING_LEVEL; steps++) {
+    const above = index.commandBuildings.get(at)?.upgradeTarget;
+    if (level <= topLevelOf(index, at) || above === undefined) break;
+    at = above;
+  }
+  for (let steps = 0; steps < MAX_BUILDING_LEVEL; steps++) {
+    const below = index.buildingLevelBelow.get(at);
+    if (level >= buildingLevelOf(index, at) || below === undefined) break;
+    at = below;
+  }
+  const holds = level >= buildingLevelOf(index, at) && level <= topLevelOf(index, at);
+  return holds && index.commandBuildings.has(at) ? at : undefined;
+}
+
+function topLevelOf(index: ContentIndex, typeId: number): number {
+  return Math.max(buildingLevelOf(index, typeId), index.buildingTopLevel.get(typeId) ?? 0);
+}
+
+/** Replace `e` with a finished `typeId` house at `level` on the same anchor. */
 function rebuildAtLevel(
   world: World,
   ctx: SystemContext,
-  index: ContentIndex,
   e: Entity,
+  typeId: number,
   level: number,
+  missionId: number,
 ): void {
-  const wanted = Math.min(Math.max(level, 0), MAX_BUILDING_LEVEL);
-  let typeId = world.get(e, Building).buildingType;
-  let at = buildingLevelOf(index, typeId);
-  const lowered = wanted < at;
-  for (; at < wanted; at++) {
-    const above = index.commandBuildings.get(typeId)?.upgradeTarget;
-    if (above === undefined) return; // the chain tops out below the level the script asked for
-    typeId = above;
-  }
-  for (; at > wanted; at--) {
-    const below = index.buildingLevelBelow.get(typeId);
-    if (below === undefined) return;
-    typeId = below;
-  }
-  const type = index.commandBuildings.get(typeId);
-  if (type === undefined || typeId === world.get(e, Building).buildingType) return;
-  const building = world.mut(e, Building);
-  const rising = at > building.level;
-  building.buildingType = typeId;
-  building.level = at;
-  const max = buildingHitpointsFor(type, building.tribe);
-  if (max === undefined) {
-    world.remove(e, Health); // the new level carries no life pool, so the house cannot be besieged
-  } else {
-    const held = world.tryGet(e, Health)?.hitpoints ?? max;
-    world.add(e, Health, { hitpoints: Math.min(held, max), max });
-  }
-  // A new tier's pool can leave a whole house short or a damaged one whole.
-  clearRepairedDamage(world, e);
-  markShortPool(world, e);
-  if (rising) clearUpgradeGround(world, ctx, e, typeId);
-  if (!world.has(e, UnderConstruction)) {
-    settleFootprint(world, ctx, e);
-    ctx.events.emit({ kind: 'buildingUpgraded', entity: e, level: at, ...(lowered ? { lowered } : {}) });
-  }
+  const type = contentIndex(ctx.content).commandBuildings.get(typeId);
+  if (type === undefined) return;
+  const { tribe } = world.get(e, Building);
+  const anchor = world.get(e, Position);
+  const { hx, hy } = nodeOfPosition(anchor.x, anchor.y);
+  const owner = ownerOf(world, e);
+  // A larger body takes the walls and roads under it, as a finished upgrade does.
+  clearUpgradeGround(world, ctx, e, typeId);
+  removeBuildingSilently(world, ctx, e);
+  const rebuilt = assembleBuilding(world, ctx, type, {
+    buildingType: typeId,
+    tribe,
+    owner,
+    missionId,
+    x: hx,
+    y: hy,
+    underConstruction: false,
+    fillStock: false,
+  });
+  world.mut(rebuilt, Building).level = level;
 }
 
 /** The buildable node nearest `point`, ties going to the lower node id; null when the whole band is

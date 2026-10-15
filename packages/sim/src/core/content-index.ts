@@ -64,6 +64,9 @@ export interface ContentIndex {
   readonly commandBuildings: ReadonlyMap<number, BuildingType>;
   /** The building type one level below each chained type - `upgradeTarget` inverted. */
   readonly buildingLevelBelow: ReadonlyMap<number, number>;
+  /** The highest `[GfxHouse]` size level any tribe's record draws on a typeId. A wonder's record maps
+   *  every level to its one typeId, so its levels show here and nowhere in the chain. */
+  readonly buildingTopLevel: ReadonlyMap<number, number>;
   /** Command-boundary job lookup - last-wins on a duplicate typeId, unlike {@link jobs}. */
   readonly commandJobs: ReadonlyMap<number, JobType>;
   /** Armor types by their armor-class `typeId`. */
@@ -215,6 +218,7 @@ function buildIndex(content: ContentSet): ContentIndex {
     vehicles: byKey(content.vehicles, (v) => v.typeId),
     commandBuildings: lastByTypeId(content.buildings),
     buildingLevelBelow: levelBelowTypes(content),
+    buildingTopLevel: topLevelByType(content),
     commandJobs: lastByTypeId(content.jobs),
     armor: byKey(content.armor, (a) => a.typeId),
     armorByGoodType: byOptionalKey(content.armor, (a) => a.goodType),
@@ -322,6 +326,14 @@ export function buildingLevelOf(index: ContentIndex, typeId: number): number {
 /** {@link buildingLevelOf} for a caller holding the content set, not its index. */
 export function buildingLevelForType(content: ContentSet, typeId: number): number {
   return buildingLevelOf(contentIndex(content), typeId);
+}
+
+function topLevelByType(content: ContentSet): ReadonlyMap<number, number> {
+  const out = new Map<number, number>();
+  for (const row of content.buildingBobs) {
+    out.set(row.typeId, Math.max(out.get(row.typeId) ?? row.level, row.level));
+  }
+  return out;
 }
 
 function levelBelowTypes(content: ContentSet): ReadonlyMap<number, number> {

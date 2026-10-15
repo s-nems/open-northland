@@ -106,8 +106,6 @@ export type SimEvent =
       readonly kind: 'buildingUpgraded';
       readonly entity: Entity;
       readonly level: number;
-      /** A script moved the house down its chain rather than up. */
-      readonly lowered?: true;
     }
   | { readonly kind: 'settlerBorn'; readonly entity: Entity }
   | {
