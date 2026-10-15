@@ -10,6 +10,7 @@ import {
   Marriage,
   mapAiEntity,
   Owner,
+  Position,
   Settler,
   Stockpile,
   setSignpostNavigation,
@@ -340,6 +341,19 @@ describe('ai program town - posts, homes and stores', () => {
       jobPriority: [BAKER],
     });
     expect(orders).toContainEqual({ kind: 'setJob', entity: civilian, jobType: BUILDER });
+  });
+
+  it('passes over the men and women aboard a vehicle, who stand nowhere', () => {
+    const sim = townSim();
+    place(sim, BAKERY_TYPE, BAKERY);
+    place(sim, HOME_TYPE, HOME);
+    const aboard = [
+      ...spawn(sim, 1, { x: BAKERY.x + 6, y: BAKERY.y }, CIVILIST),
+      ...spawn(sim, 1, { x: HOME.x + 6, y: HOME.y }, WOMAN),
+    ];
+    // Boarding takes the rider's position away; the fixture content has no vehicle to board.
+    for (const e of aboard) sim.world.remove(e, Position);
+    expect(staffing(sim).filter((c) => c.kind === 'assignWorker' || c.kind === 'assignHouse')).toEqual([]);
   });
 
   it('moves a homeless woman into a home with room', () => {

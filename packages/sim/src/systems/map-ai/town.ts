@@ -5,6 +5,7 @@ import {
   Female,
   JobAssignment,
   ownerOf,
+  Position,
   Residence,
   Settler,
   SettlerProgress,
@@ -138,7 +139,8 @@ function spareMen(world: World, ctx: SystemContext, terrain: TerrainGraph, seat:
     // A gatherer at his live flag is working already.
     if (world.has(e, SiteAssignment) || world.has(e, Wedding) || liveWorkFlag(world, e) !== undefined)
       continue;
-    men.push(placedPerson(world, ctx, terrain, e));
+    const man = placedPerson(world, ctx, terrain, e);
+    if (man !== null) men.push(man);
   }
   return men;
 }
@@ -332,7 +334,8 @@ function homeOrders(
   for (const e of ownedSettlers(world, seat)) {
     if (!world.has(e, Female) || !isAdultSettler(world, e) || world.has(e, Residence)) continue;
     if (isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
-    women.push(placedPerson(world, ctx, terrain, e));
+    const woman = placedPerson(world, ctx, terrain, e);
+    if (woman !== null) women.push(woman);
   }
   const commands: PlayerCommand[] = [];
   for (const house of ownedBuildings(world, seat)) {
@@ -381,7 +384,14 @@ function takeBest(people: PlacedPerson[], at: Placed, radius: number, rank: Rank
   return taken?.entity ?? null;
 }
 
-function placedPerson(world: World, ctx: SystemContext, terrain: TerrainGraph, e: Entity): PlacedPerson {
+/** Null for a person aboard a vehicle: he stands nowhere until set down, so no order can place him. */
+function placedPerson(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  e: Entity,
+): PlacedPerson | null {
+  if (!world.has(e, Position)) return null;
   const node = entityNode(world, terrain, e);
   return {
     entity: e,
