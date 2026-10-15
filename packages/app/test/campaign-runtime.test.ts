@@ -4,11 +4,14 @@ import { readCampaignProgress } from '../src/campaign/progress.js';
 import { createCampaignRuntime } from '../src/campaign/runtime.js';
 import { campaignFixture, memoryStorage } from './support/campaign.js';
 
+const ENGLISH_VIDEO = expect.objectContaining({ url: '/campaigns/test/eng/video-1.webm' });
+
 function setup() {
   const campaign = campaignFixture();
   const storage = memoryStorage();
   const deps = {
     campaign,
+    language: 'eng' as const,
     storage,
     pause: vi.fn(),
     resume: vi.fn(),
@@ -44,14 +47,14 @@ describe('campaign handovers', () => {
       expect(t.exit).not.toHaveBeenCalled();
     });
     const events = [
-      { kind: 'missionVideo', sequence: 0 },
+      { kind: 'missionVideo', sequence: 1 },
       { kind: 'missionExit', mission: 1 },
       { kind: 'missionCampaignUnlock', campaignId: 3, mapId: 20 },
     ] as const;
     t.runtime.events(events, proceed);
     t.runtime.events(events, proceed);
     await vi.waitFor(() => expect(t.exit).toHaveBeenCalledOnce());
-    expect(t.play).toHaveBeenCalledExactlyOnceWith(0);
+    expect(t.play).toHaveBeenCalledExactlyOnceWith(ENGLISH_VIDEO);
     expect(proceed).not.toHaveBeenCalled();
     expect(t.resume).not.toHaveBeenCalled();
   });
@@ -61,12 +64,12 @@ describe('campaign handovers', () => {
       entities: [
         {
           id: 1,
-          components: { MissionCampaign: { unlockedMaps: [{ campaignId: 3, mapId: 20 }], video: 0 } },
+          components: { MissionCampaign: { unlockedMaps: [{ campaignId: 3, mapId: 20 }], video: 1 } },
         },
       ],
     } as unknown as WorldSnapshot;
     t.runtime.restore(snapshot);
-    await vi.waitFor(() => expect(t.play).toHaveBeenCalledWith(0));
+    await vi.waitFor(() => expect(t.play).toHaveBeenCalledWith(ENGLISH_VIDEO));
     expect(readCampaignProgress(t.campaign, t.storage).unlocked).toContain('second');
   });
   it('does not access storage for ordinary events and retains grants when reads fail', () => {

@@ -32,8 +32,14 @@ describe('campaign progression', () => {
       storage,
     );
     expect(readCampaignProgress(campaign, storage).unlocked).toEqual(['first', 'second']);
-    expect(readCampaignProgress({ ...campaign, language: 'eng' }, storage).unlocked).toEqual(['first']);
+    expect(readCampaignProgress({ ...campaign, languages: ['eng'] }, storage).unlocked).toEqual([
+      'first',
+      'second',
+    ]);
     expect(readCampaignProgress({ ...campaign, id: 'other' }, storage).unlocked).toEqual(['first']);
+  });
+  it('keys progress by campaign alone', () => {
+    expect(campaignProgressKey(campaignFixture())).toBe('open-northland:campaign:v2:test');
   });
   it('recovers corrupt progress and unlocks the next stage once', () => {
     const campaign = campaignFixture();
@@ -55,11 +61,14 @@ describe('campaign progression', () => {
   it('rejects ambiguous map ownership and invalid stage references', () => {
     const campaign = campaignFixture();
     expect(
-      CampaignIndex.safeParse({ version: 1, campaigns: [campaign, { ...campaign, id: 'other' }] }).success,
+      CampaignIndex.safeParse({ version: 2, campaigns: [campaign, { ...campaign, id: 'other', order: 1 }] })
+        .success,
     ).toBe(false);
     expect(
-      Campaign.safeParse({ ...campaign, stages: [{ mapId: 'missing', title: 'Missing', x: 0, y: 0 }] })
-        .success,
+      Campaign.safeParse({
+        ...campaign,
+        stages: [{ mapId: 'missing', title: { eng: 'Missing' }, x: 0, y: 0 }],
+      }).success,
     ).toBe(false);
   });
 });

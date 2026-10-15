@@ -1,3 +1,4 @@
+import type { MapTextLanguage } from '@open-northland/data';
 import { de } from './de.js';
 import { en, type Messages } from './en.js';
 import { pl } from './pl.js';
@@ -65,6 +66,11 @@ export function installNameOverlay(locale: Locale, names: NameOverlay): void {
       },
     },
   });
+}
+
+/** The map text language a UI locale reads: the two share their codes. */
+export function mapTextLanguage(locale: Locale): MapTextLanguage {
+  return locale;
 }
 
 export function isLocale(value: unknown): value is Locale {

@@ -32,6 +32,7 @@ import {
 } from '@open-northland/sim';
 import { type Application, Container } from 'pixi.js';
 import { campaignFailureDialog } from '../../campaign/failure-dialog.js';
+import { campaignLanguage } from '../../campaign/locale.js';
 import { playCampaignMovie } from '../../campaign/movie.js';
 import { createCampaignRuntime } from '../../campaign/runtime.js';
 import { pickerEntries } from '../../catalog/professions.js';
@@ -91,7 +92,7 @@ import {
 } from '../../hud/tool-panel/residents/projection.js';
 import type { ResidentRow } from '../../hud/tool-panel/residents/rows.js';
 import { displayViewOf, uiScaleFor } from '../../hud/ui-scale.js';
-import { currentLocale, messages } from '../../i18n/index.js';
+import { currentLocale, mapTextLanguage, messages } from '../../i18n/index.js';
 import { presentationPack } from '../../presentation/pack.js';
 import type { OffThreadTickCost, SessionHost } from '../../session/index.js';
 import { setUpdateContinuation } from '../../update/watcher.js';
@@ -844,14 +845,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const campaign = !sharedClock
       ? createCampaignRuntime({
           ...(deps.campaign === undefined ? {} : { campaign: deps.campaign }),
+          language:
+            deps.campaign === undefined
+              ? mapTextLanguage(currentLocale())
+              : campaignLanguage(deps.campaign, currentLocale()),
           storage: {
             getItem: (key) => localStorage.getItem(key),
             setItem: (key, value) => localStorage.setItem(key, value),
           },
           pause: () => pauseHolds.hold('campaign'),
           resume: () => pauseHolds.release('campaign'),
-          play: async (sequence) => {
-            const movie = deps.campaign?.videos.find((movie) => movie.sequence === sequence);
+          play: async (movie) => {
             const copy = messages().campaign;
             await playCampaignMovie(
               movie,

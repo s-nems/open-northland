@@ -8,39 +8,65 @@ const Id = z
 const MovieAsset = z.string().regex(/^\/campaigns\/[a-z0-9_/-]+\.(webm|mp4)$/);
 const MapAsset = z.string().regex(/^\/campaigns\/[a-z0-9_/-]+\.png$/);
 const Slot = z.number().int().nonnegative();
+const Language = z.enum(MAP_TEXT_LANGUAGES);
 const Movie = z.strictObject({
   url: MovieAsset,
   width: z.number().int().positive().max(8192),
   height: z.number().int().positive().max(8192),
 });
 
-/** Explicit authored order; submaps belong to maps but never become selectable stages. */
+/** One text in the languages that carry it; at least one does. */
+export const LocalizedText = z
+  .partialRecord(Language, z.string().min(1))
+  .refine((text) => Object.keys(text).length > 0, 'Text has no language');
+export type LocalizedText = z.infer<typeof LocalizedText>;
+
+/** The films of one language: the intro before the first stage and the script's numbered videos. */
+const LanguageMovies = z
+  .strictObject({
+    intro: Movie.optional(),
+    videos: z.array(Movie.extend({ sequence: Slot })),
+  })
+  .superRefine((movies, ctx) => {
+    const sequences = movies.videos.map((movie) => movie.sequence);
+    if (new Set(sequences).size !== sequences.length)
+      ctx.addIssue({ code: 'custom', path: ['videos'], message: 'Duplicate video sequence' });
+  });
+export type CampaignLanguageMovies = z.infer<typeof LanguageMovies>;
+
+/**
+ * One original campaign. Its maps exist once; texts, films and voices are per language, and
+ * `languages` lists the text languages every map of the campaign carries. `order` is the display
+ * order; submaps belong to maps but never become selectable stages.
+ */
 export const Campaign = z
   .strictObject({
     id: Id,
-    language: z.enum(MAP_TEXT_LANGUAGES),
-    title: z.string().min(1),
     campaignId: Slot,
+    order: z.number().int(),
+    title: LocalizedText,
+    languages: z.array(Language).min(1),
     maps: z.array(z.strictObject({ id: Id, missionId: Slot })).min(1),
     stages: z
       .array(
         z.strictObject({
           mapId: Id,
-          title: z.string().min(1),
+          title: LocalizedText,
           x: z.number().min(0).max(1),
           y: z.number().min(0).max(1),
         }),
       )
       .min(1),
     background: MapAsset,
-    intro: Movie.optional(),
-    videos: z.array(Movie.extend({ sequence: Slot })),
+    logo: MapAsset.optional(),
+    movies: z.partialRecord(Language, LanguageMovies),
   })
   .superRefine((campaign, ctx) => {
     const unique = (values: readonly (string | number)[], path: string): void => {
       if (new Set(values).size !== values.length)
         ctx.addIssue({ code: 'custom', path: [path], message: 'Duplicate campaign identity' });
     };
+    unique(campaign.languages, 'languages');
     unique(
       campaign.maps.map((map) => map.id),
       'maps',
@@ -53,10 +79,6 @@ export const Campaign = z
       campaign.stages.map((stage) => stage.mapId),
       'stages',
     );
-    unique(
-      campaign.videos.map((movie) => movie.sequence),
-      'videos',
-    );
     for (const stage of campaign.stages) {
       if (!campaign.maps.some((map) => map.id === stage.mapId))
         ctx.addIssue({ code: 'custom', path: ['stages'], message: 'Stage has no campaign map' });
@@ -67,19 +89,22 @@ export type CampaignMovie = z.infer<typeof Movie>;
 
 export const CampaignIndex = z
   .strictObject({
-    version: z.literal(1),
+    version: z.literal(2),
     campaigns: z.array(Campaign),
   })
   .superRefine(({ campaigns }, ctx) => {
-    const identities = new Set<string>();
+    const ids = new Set<string>();
+    const orders = new Set<number>();
     const maps = new Set<string>();
     for (const campaign of campaigns) {
-      const key = `${campaign.id}/${campaign.language}`;
-      if (identities.has(key)) ctx.addIssue({ code: 'custom', message: 'Duplicate campaign locale' });
-      identities.add(key);
+      if (ids.has(campaign.id)) ctx.addIssue({ code: 'custom', message: 'Duplicate campaign id' });
+      ids.add(campaign.id);
+      if (orders.has(campaign.order)) ctx.addIssue({ code: 'custom', message: 'Duplicate campaign order' });
+      orders.add(campaign.order);
       for (const map of campaign.maps) {
         if (maps.has(map.id)) ctx.addIssue({ code: 'custom', message: 'Map belongs to multiple campaigns' });
         maps.add(map.id);
       }
     }
   });
+export type CampaignIndex = z.infer<typeof CampaignIndex>;

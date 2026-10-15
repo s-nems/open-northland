@@ -1,5 +1,7 @@
 import type { Campaign } from '@open-northland/data';
 import { loadCampaigns } from '../../../campaign/catalog.js';
+import { campaignMissionQuery } from '../../../campaign/launch.js';
+import { campaignLanguage, campaignMovies, localizedText } from '../../../campaign/locale.js';
 import { playCampaignMovie } from '../../../campaign/movie.js';
 import {
   type CampaignProgress,
@@ -34,6 +36,8 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
 
   const render = (campaign: Campaign): void => {
     current = campaign;
+    const language = campaignLanguage(campaign, currentLocale());
+    const movies = campaignMovies(campaign, language);
     let progress: CampaignProgress;
     try {
       progress = readCampaignProgress(campaign, localStorage);
@@ -45,7 +49,7 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
     selected ??= campaign.stages.filter((stage) => unlocked.has(stage.mapId)).at(-1)?.mapId;
     body.replaceChildren();
     const title = document.createElement('h2');
-    title.textContent = campaign.title;
+    title.textContent = localizedText(campaign.title, language);
     const layout = document.createElement('div');
     layout.className = 'campaign-screen__layout';
     const map = document.createElement('div');
@@ -60,7 +64,8 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
     list.className = 'campaign-screen__stages';
     for (const [index, stage] of campaign.stages.entries()) {
       const available = unlocked.has(stage.mapId);
-      const label = `${index + 1}. ${stage.title} · ${available ? copy.available : copy.locked}`;
+      const stageTitle = localizedText(stage.title, language);
+      const label = `${index + 1}. ${stageTitle} · ${available ? copy.available : copy.locked}`;
       const select = (): void => {
         selected = stage.mapId;
         render(campaign);
@@ -80,7 +85,7 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
       const row = document.createElement('li');
       const button = document.createElement('button');
       button.type = 'button';
-      button.textContent = stage.title;
+      button.textContent = stageTitle;
       button.disabled = !available || busy;
       button.title = label;
       button.setAttribute('aria-pressed', String(selected === stage.mapId));
@@ -99,16 +104,13 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
       busy = true;
       render(campaign);
       const run = async (): Promise<void> => {
-        if (mapId === campaign.stages[0]?.mapId && campaign.intro !== undefined)
+        if (mapId === campaign.stages[0]?.mapId && movies.intro !== undefined)
           await playCampaignMovie(
-            campaign.intro,
+            movies.intro,
             { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed },
             scope.signal,
           );
-        if (!scope.signal.aborted)
-          await launch(
-            targetSearch(`?map=${encodeURIComponent(mapId)}&missions=on&lang=${campaign.language}`),
-          );
+        if (!scope.signal.aborted) await launch(targetSearch(campaignMissionQuery({ mapId, language })));
       };
       void run().catch(() => {
         if (!scope.signal.aborted) {
@@ -130,7 +132,13 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
       const map = campaign.maps.find((map) => map.id === next);
       if (stage === undefined || map === undefined || busy) return;
       const dialog = el('dialog', `${DIALOG_STYLE};max-width:32rem`);
-      dialog.append(el('p', 'line-height:1.5', formatMessage(copy.confirm, { mission: stage.title })));
+      dialog.append(
+        el(
+          'p',
+          'line-height:1.5',
+          formatMessage(copy.confirm, { mission: localizedText(stage.title, language) }),
+        ),
+      );
       const cancel = el('button', BUTTON_STYLE, copy.cancel);
       const confirm = el('button', BUTTON_STYLE, copy.unlock);
       const error = el('p', '', '');
@@ -175,10 +183,7 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
     .then((campaigns) => {
       if (scope.signal.aborted) return;
       const requested = new URLSearchParams(window.location.search).get('campaign');
-      const campaign =
-        campaigns.find((campaign) => campaign.id === requested && campaign.language === currentLocale()) ??
-        campaigns.find((campaign) => campaign.language === currentLocale()) ??
-        campaigns[0];
+      const campaign = campaigns.find((campaign) => campaign.id === requested) ?? campaigns[0];
       if (campaign === undefined) {
         status.textContent = copy.empty;
         return;

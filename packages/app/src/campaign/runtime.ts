@@ -1,5 +1,6 @@
-import type { Campaign } from '@open-northland/data';
+import type { Campaign, CampaignMovie, MapTextLanguage } from '@open-northland/data';
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
+import { campaignMovies } from './locale.js';
 import { grantCampaignMaps } from './progress.js';
 
 type Grant = { readonly campaignId: number; readonly mapId: number };
@@ -7,10 +8,13 @@ type SavedCampaign = { readonly unlockedMaps: readonly Grant[]; readonly video: 
 
 export interface CampaignRuntimeDeps {
   readonly campaign?: Campaign;
+  /** The running mission's text language, which picks the films. */
+  readonly language: MapTextLanguage;
   readonly storage: Pick<Storage, 'getItem' | 'setItem'>;
   readonly pause: () => void;
   readonly resume: () => void;
-  readonly play: (sequence: number) => Promise<void>;
+  /** Plays a script video; `undefined` when the campaign has no film for the sequence. */
+  readonly play: (movie: CampaignMovie | undefined) => Promise<void>;
   readonly exit: () => void;
   readonly failed: (retry: () => void) => void;
   readonly signal: AbortSignal;
@@ -68,8 +72,12 @@ export function createCampaignRuntime(deps: CampaignRuntimeDeps): {
       // End the frame before mounting media or disposing the world on completion.
       queueMicrotask(() => {
         if (deps.signal.aborted) return;
+        const movie =
+          deps.campaign === undefined
+            ? undefined
+            : campaignMovies(deps.campaign, deps.language).videos.find((movie) => movie.sequence === video);
         void deps
-          .play(video)
+          .play(movie)
           .then(finishMovie)
           .catch(() => {
             if (!deps.signal.aborted) deps.failed(attempt);

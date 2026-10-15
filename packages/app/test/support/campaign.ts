@@ -2,20 +2,24 @@ import { Campaign } from '@open-northland/data';
 export const campaignFixture = (): Campaign =>
   Campaign.parse({
     id: 'test',
-    language: 'pol',
-    title: 'Campaign',
     campaignId: 3,
+    order: 0,
+    title: { pol: 'Kampania', eng: 'Campaign' },
+    languages: ['pol', 'eng'],
     maps: [
       { id: 'first', missionId: 10 },
       { id: 'child', missionId: 11 },
       { id: 'second', missionId: 20 },
     ],
     stages: [
-      { mapId: 'first', title: 'First', x: 0.2, y: 0.3 },
-      { mapId: 'second', title: 'Second', x: 0.5, y: 0.6 },
+      { mapId: 'first', title: { eng: 'First' }, x: 0.2, y: 0.3 },
+      { mapId: 'second', title: { eng: 'Second' }, x: 0.5, y: 0.6 },
     ],
     background: '/campaigns/test/map.png',
-    videos: [],
+    movies: {
+      pol: { videos: [{ url: '/campaigns/test/pol/video-1.webm', width: 640, height: 480, sequence: 1 }] },
+      eng: { videos: [{ url: '/campaigns/test/eng/video-1.webm', width: 640, height: 480, sequence: 1 }] },
+    },
   });
 export function memoryStorage(): Storage {
   const values = new Map<string, string>();

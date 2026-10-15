@@ -20,6 +20,8 @@ export const WEREWOLF_TRIBE = 6;
 /** The `TRIBE_TYPE_HUMAN_*` codes of the civilizations a roster row can name: viking 1, frank 2,
  *  byzantine 3, saracen 4 and egypt 7, in code order. The rest of the range is the two monsters. */
 export const CIVILIZATION_TRIBES: readonly number[] = [1, 2, 3, 4, 7];
+/** The civilization a launch offers first when it lets the person choose: viking. */
+export const RECOMMENDED_CIVILIZATION_TRIBE = 1;
 
 export function isCivilizationTribe(tribe: number): boolean {
   return CIVILIZATION_TRIBES.includes(tribe);

@@ -38,6 +38,9 @@ export function menuSearch(current = new URLSearchParams(window.location.search)
   return formatSearch(carriedParams(current));
 }
 
+/** `?tribe=<id>`: the civilization the person's own seat plays, a choice the campaign launch makes. */
+export const HUMAN_TRIBE_PARAM = 'tribe';
+
 /** The world and seat selection a save records so a menu load can relaunch the session; carried
  *  settings and diagnostic pins stay out, so a relaunch takes those from the player's own session. */
 const ENTRY_PARAMS = [
@@ -46,6 +49,7 @@ const ENTRY_PARAMS = [
   'player',
   'colors',
   'tribes',
+  HUMAN_TRIBE_PARAM,
   'computer',
   'idle',
   'absent',

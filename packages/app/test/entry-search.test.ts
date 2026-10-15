@@ -4,12 +4,12 @@ import { entrySearch } from '../src/view/params.js';
 describe('entrySearch', () => {
   it('records only the world and seat selection, dropping settings and diagnostic pins', () => {
     const current = new URLSearchParams(
-      'map=twierdza&player=2&colors=1:3&computer=3&map-ai=4&idle=5&absent=6&difficulty=3:easy&seed=42&lang=pol&speed=3&fog=recon-fow&uiscale=2&postfx=off&debug=perf',
+      'map=twierdza&player=2&colors=1:3&tribe=2&computer=3&map-ai=4&idle=5&absent=6&difficulty=3:easy&seed=42&lang=pol&speed=3&fog=recon-fow&uiscale=2&postfx=off&debug=perf',
     );
     // The seed rides along: relaunching a save into a fresh world on the default seed would build a
     // different world from the one the save was taken in.
     expect(entrySearch(current)).toBe(
-      '?map=twierdza&player=2&colors=1%3A3&computer=3&idle=5&absent=6&difficulty=3%3Aeasy&seed=42',
+      '?map=twierdza&player=2&colors=1%3A3&tribe=2&computer=3&idle=5&absent=6&difficulty=3%3Aeasy&seed=42',
     );
   });
 

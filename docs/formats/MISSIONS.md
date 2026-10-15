@@ -1062,13 +1062,20 @@ emit another `missionCampaignUnlock`. `Mission quit and play video` retains the 
 emits `missionVideo` on each request. It does not discard later results or triggers in the same pass.
 Both outputs survive save/load; loading does not re-emit them. A host must read retained state on
 restore as well as live events, scope identifiers to the source pack, persist unlocks outside a
-single world (including child worlds), and resolve the film for that pack and locale. The local app persists those unlocks automatically under campaign identity and language, before
-forwarding exits or submap transitions. Campaign scripts follow `MissionWon` with their won page, their
+single world (including child worlds), and resolve the film for that pack and locale. The local app persists those unlocks automatically under campaign identity, one progress per
+campaign whatever language or civilization played it, before forwarding exits or submap transitions. Campaign scripts follow `MissionWon` with their won page, their
 `AllowMap` some seconds later and `Exit`, so on a campaign map a victory opens no result panel and
 the script's `Exit` leaves the map even after a verdict. The campaign screen exposes available missions and a confirmed
 alpha recovery action; it has no save/load controls. Movies stop the worker at the requesting tick
 boundary and play centred on black without upscaling. Restoring a pending movie replays it.
-Campaign presentation and stage order come from the validated `campaigns-index.json` manifest.
+Campaign presentation and stage order come from the validated `campaigns-index.json` manifest
+(version 2, `CampaignIndex` in `packages/data`). Each original game is one campaign with an `order`
+on the campaign screen; its maps exist once, carry the text languages in `languages`, and texts
+(`title`, stage titles) and films (`movies`, per language: optional `intro`, numbered `videos`) are
+per language. The campaign plays in the UI language, else English, else its first language; texts and
+films fall back the same way. A mission launch is `?map=<id>&missions=on&lang=<language>`, plus
+`tribe=<id>` when the person picks a civilization for their own seat; map AIs keep theirs, and
+sub-missions and related-world loads keep the choice.
 
 `SetHouseOverlayState` writes `HouseLandscapeOverlays` on every house with the authored object id.
 Slots 0 through 9 retain independent true/false overrides; missing slots leave the initial state to

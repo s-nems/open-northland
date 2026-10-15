@@ -1,4 +1,4 @@
-import { MAP_PLAYER_COLOR_COUNT, type MapsIndexPlayerSlot } from '@open-northland/data';
+import { isCivilizationTribe, MAP_PLAYER_COLOR_COUNT, type MapsIndexPlayerSlot } from '@open-northland/data';
 import {
   type ComputerDifficulty,
   DEFAULT_LOCAL_PLAYER,
@@ -11,7 +11,7 @@ import {
   type SessionSeat,
 } from '@open-northland/lockstep';
 import { components } from '@open-northland/sim';
-import { floatParam, intParam, seatListParam } from '../view/params.js';
+import { floatParam, HUMAN_TRIBE_PARAM, intParam, seatListParam } from '../view/params.js';
 import { fogModeName } from './fog.js';
 import { sessionRuleOverrides } from './session-rules.js';
 
@@ -29,6 +29,7 @@ const SEED_VALUES = 2 ** 32;
 export const drawSessionSeed = (): number => Math.floor(Math.random() * SEED_VALUES);
 
 const NO_SEED = -1;
+const NO_TRIBE = -1;
 
 /** `?seed=<n>`: the seed that replays a match; null when the search names none. */
 export function seedParam(params: URLSearchParams): number | null {
@@ -66,9 +67,9 @@ export function mapIdParam(params: URLSearchParams): string | null {
 }
 
 /** The session a `?map=` search describes. The roster supplies each seat's authored colour, which
- *  `?colors=` then overrides; `?tribes=` names the seats played as another civilization and
- *  `?difficulty=` how hard each computer seat plays. A search
- *  naming no seed draws one. */
+ *  `?colors=` then overrides; `?tribes=` names the seats played as another civilization, `?tribe=`
+ *  the person's own seat's civilization unless `?tribes=` names that seat, and `?difficulty=` how
+ *  hard each computer seat plays. A search naming no seed draws one. */
 export function mapSession(params: URLSearchParams, roster: readonly SessionRosterSlot[]): GameSession {
   const localSeat = claimableLocalSeat(localSeatParam(params), roster);
   return {
@@ -182,6 +183,7 @@ function rosterSeats(
 ): readonly SessionSeat[] {
   const overrides = colorOverridesParam(params);
   const tribes = seatPairsParam(params, 'tribes', (tribe) => tribe > 0);
+  const humanTribe = humanTribeParam(params);
   const difficulties = seatDifficultiesParam(params);
   const lists: SeatLists = {
     computer: new Set(seatListParam(params, 'computer').filter(isValidPlayer)),
@@ -195,8 +197,8 @@ function rosterSeats(
     [...players].map((player) => {
       // A seat the map never authored is a claimable one that keeps its slot id as its colour.
       const slot = authored.get(player) ?? { player, colorId: player, type: 'human', claimable: true };
-      const tribe = tribes.get(player);
       const mode = seatMode(slot, localSeat, lists);
+      const tribe = tribes.get(player) ?? (mode === 'human' ? humanTribe : undefined);
       // Only a computer seat plays at a difficulty; a stale pair for another seat is dropped.
       const difficulty = mode === 'computer' || mode === 'map-ai' ? difficulties.get(player) : undefined;
       return {
@@ -231,6 +233,12 @@ export function seatMode(
   if (lists.idle.has(slot.player)) return 'idle';
   if (slot.noneAllowed !== false && lists.absent.has(slot.player)) return 'absent';
   return slot.type === 'ai' && slot.aiAllowed !== false ? 'computer' : 'idle';
+}
+
+/** `?tribe=<id>`: the civilization the person's seat plays, whatever seat that is; map AIs keep theirs. */
+function humanTribeParam(params: URLSearchParams): number | undefined {
+  const tribe = intParam(params, HUMAN_TRIBE_PARAM, NO_TRIBE);
+  return isCivilizationTribe(tribe) ? tribe : undefined;
 }
 
 /** `?colors=<slot>:<colorId>,…`. Colours are bounded to the roster's id space, because an

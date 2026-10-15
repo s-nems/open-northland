@@ -5,11 +5,12 @@ export interface CampaignProgress {
 }
 
 type ProgressStorage = Pick<Storage, 'getItem' | 'setItem'>;
-const PREFIX = 'open-northland:campaign:v1:';
+const PREFIX = 'open-northland:campaign:v2:';
 const MAX_PROGRESS_BYTES = 65536;
 
-export function campaignProgressKey(campaign: Pick<Campaign, 'id' | 'language'>): string {
-  return `${PREFIX}${campaign.id}:${campaign.language}`;
+/** One progress per campaign, whatever language or civilization its missions were played in. */
+export function campaignProgressKey(campaign: Pick<Campaign, 'id'>): string {
+  return `${PREFIX}${campaign.id}`;
 }
 
 /** First stage is available even after storage loss. Malformed state cannot unlock arbitrary maps. */
