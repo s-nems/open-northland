@@ -75,8 +75,19 @@ describe('campaign screen stages', () => {
 });
 
 describe('campaign screen films', () => {
-  const INTRO = { url: '/campaigns/test/pol/intro.webm', width: 640, height: 480 };
-  const FINALE = { url: '/campaigns/test/pol/video-0.webm', width: 640, height: 480, sequence: 0 };
+  const INTRO = {
+    url: '/campaigns/test/video/intro.webm',
+    audio: '/campaigns/test/pol/intro.webm',
+    width: 640,
+    height: 480,
+  };
+  const FINALE = {
+    url: '/campaigns/test/video/video-0.webm',
+    audio: '/campaigns/test/pol/video-0.webm',
+    width: 640,
+    height: 480,
+    sequence: 0,
+  };
   const withFilms = (): Campaign => {
     const campaign = campaignFixture();
     return Campaign.parse({

@@ -16,20 +16,45 @@ const campaign = {
   logo: { pol: '/campaigns/wonder/logo-pol.png', eng: '/campaigns/wonder/logo-eng.png' },
   movies: {
     pol: {
-      intro: { url: '/campaigns/wonder/pol/intro.webm', width: 640, height: 480 },
-      videos: [{ url: '/campaigns/wonder/pol/video-1.webm', width: 640, height: 480, sequence: 1 }],
+      intro: {
+        url: '/campaigns/wonder/video/intro.webm',
+        audio: '/campaigns/wonder/pol/intro.webm',
+        width: 640,
+        height: 480,
+      },
+      videos: [
+        {
+          url: '/campaigns/wonder/video/video-1.webm',
+          audio: '/campaigns/wonder/pol/video-1.webm',
+          width: 640,
+          height: 480,
+          sequence: 1,
+        },
+      ],
     },
   },
 };
 
 describe('campaign index', () => {
   it('accepts one campaign per original game with per-language texts and films', () => {
-    expect(CampaignIndex.parse({ version: 2, campaigns: [campaign] }).campaigns[0]?.languages).toEqual([
+    expect(CampaignIndex.parse({ version: 3, campaigns: [campaign] }).campaigns[0]?.languages).toEqual([
       'pol',
     ]);
   });
   it('rejects the previous format version', () => {
-    expect(CampaignIndex.safeParse({ version: 1, campaigns: [campaign] }).success).toBe(false);
+    expect(CampaignIndex.safeParse({ version: 2, campaigns: [campaign] }).success).toBe(false);
+  });
+  it('requires each film to name its language sound track beside the shared picture', () => {
+    const picture = { url: '/campaigns/wonder/pol/intro.webm', width: 640, height: 480 };
+    expect(Campaign.safeParse({ ...campaign, movies: { pol: { intro: picture, videos: [] } } }).success).toBe(
+      false,
+    );
+    expect(
+      Campaign.safeParse({
+        ...campaign,
+        movies: { pol: { intro: { ...picture, audio: '/elsewhere/intro.webm' }, videos: [] } },
+      }).success,
+    ).toBe(false);
   });
   it('rejects empty texts and logos, missing languages and unknown stages', () => {
     expect(Campaign.safeParse({ ...campaign, title: {} }).success).toBe(false);
@@ -43,7 +68,13 @@ describe('campaign index', () => {
     ).toBe(false);
   });
   it('rejects a repeated video sequence within one language', () => {
-    const video = { url: '/campaigns/wonder/pol/video-1.webm', width: 640, height: 480, sequence: 1 };
+    const video = {
+      url: '/campaigns/wonder/video/video-1.webm',
+      audio: '/campaigns/wonder/pol/video-1.webm',
+      width: 640,
+      height: 480,
+      sequence: 1,
+    };
     expect(Campaign.safeParse({ ...campaign, movies: { pol: { videos: [video, video] } } }).success).toBe(
       false,
     );
@@ -56,16 +87,16 @@ describe('campaign index', () => {
       maps: [{ id: 'saga-1', missionId: 1 }],
       stages: [{ mapId: 'saga-1', title: { eng: 'One' }, x: 0, y: 0 }],
     };
-    expect(CampaignIndex.safeParse({ version: 2, campaigns: [campaign, saga] }).success).toBe(true);
+    expect(CampaignIndex.safeParse({ version: 3, campaigns: [campaign, saga] }).success).toBe(true);
     expect(
-      CampaignIndex.safeParse({ version: 2, campaigns: [campaign, { ...saga, id: 'wonder' }] }).success,
+      CampaignIndex.safeParse({ version: 3, campaigns: [campaign, { ...saga, id: 'wonder' }] }).success,
     ).toBe(false);
     expect(
-      CampaignIndex.safeParse({ version: 2, campaigns: [campaign, { ...saga, order: 2 }] }).success,
+      CampaignIndex.safeParse({ version: 3, campaigns: [campaign, { ...saga, order: 2 }] }).success,
     ).toBe(false);
     expect(
       CampaignIndex.safeParse({
-        version: 2,
+        version: 3,
         campaigns: [campaign, { ...saga, maps: [...saga.maps, campaign.maps[0]] }],
       }).success,
     ).toBe(false);

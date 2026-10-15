@@ -17,8 +17,28 @@ export const campaignFixture = (): Campaign =>
     ],
     background: '/campaigns/test/map.png',
     movies: {
-      pol: { videos: [{ url: '/campaigns/test/pol/video-1.webm', width: 640, height: 480, sequence: 1 }] },
-      eng: { videos: [{ url: '/campaigns/test/eng/video-1.webm', width: 640, height: 480, sequence: 1 }] },
+      pol: {
+        videos: [
+          {
+            url: '/campaigns/test/video/video-1.webm',
+            audio: '/campaigns/test/pol/video-1.webm',
+            width: 640,
+            height: 480,
+            sequence: 1,
+          },
+        ],
+      },
+      eng: {
+        videos: [
+          {
+            url: '/campaigns/test/video/video-1.webm',
+            audio: '/campaigns/test/eng/video-1.webm',
+            width: 640,
+            height: 480,
+            sequence: 1,
+          },
+        ],
+      },
     },
   });
 export function memoryStorage(): Storage {

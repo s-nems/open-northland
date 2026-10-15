@@ -4,7 +4,7 @@ import { readCampaignProgress } from '../src/campaign/progress.js';
 import { createCampaignRuntime } from '../src/campaign/runtime.js';
 import { campaignFixture, memoryStorage } from './support/campaign.js';
 
-const ENGLISH_VIDEO = expect.objectContaining({ url: '/campaigns/test/eng/video-1.webm' });
+const ENGLISH_VIDEO = expect.objectContaining({ audio: '/campaigns/test/eng/video-1.webm' });
 
 const LOCAL_PLAYER = 0;
 const OTHER_PLAYER = 1;

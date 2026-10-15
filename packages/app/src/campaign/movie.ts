@@ -1,6 +1,7 @@
 import '../hud/dom/foundation.css';
 import './movie.css';
 import type { CampaignMovie } from '@open-northland/data';
+import { syncMovieSound } from './movie-sync.js';
 
 /** The original's film frame, used while a movie names no size of its own. */
 const DEFAULT_MOVIE_WIDTH = 640;
@@ -58,8 +59,9 @@ export interface MovieLabels {
 }
 
 /**
- * A blocking DOM movie surface; owns its media and listeners until end, skip or cancellation. While a
- * film plays, `silenceMusic` holds the page's music silent.
+ * A blocking DOM movie surface; owns its media and listeners until end, skip or cancellation. The
+ * silent picture and the language's sound track play as one film. While it plays, `silenceMusic`
+ * holds the page's music silent.
  */
 export function playCampaignMovie(
   movie: CampaignMovie | undefined,
@@ -78,6 +80,10 @@ export function playCampaignMovie(
     if (movie !== undefined) video.src = movie.url;
     video.playsInline = true;
     video.preload = 'auto';
+    const sound = document.createElement('audio');
+    if (movie !== undefined) sound.src = movie.audio;
+    sound.preload = 'auto';
+    const media = syncMovieSound(video, sound);
     const play = document.createElement('button');
     play.className = 'on-button';
     play.textContent = labels.play;
@@ -110,7 +116,7 @@ export function playCampaignMovie(
     frameHud.append(seekRow);
     const frame = document.createElement('div');
     frame.className = 'campaign-movie__frame';
-    frame.append(video, frameHud);
+    frame.append(video, sound, frameHud);
     // A pointer that merely rests where the film opened must not show the bar; a move does.
     let pointing: ReturnType<typeof setTimeout> | undefined;
     const stopPointing = (): void => {
@@ -137,9 +143,12 @@ export function playCampaignMovie(
       music.release();
       window.removeEventListener('resize', resize);
       signal?.removeEventListener('abort', finish);
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
+      media.dispose();
+      media.pause();
+      for (const element of [video, sound]) {
+        element.removeAttribute('src');
+        element.load();
+      }
       surface.remove();
       if (previousFocus instanceof HTMLElement && previousFocus.isConnected) previousFocus.focus();
       resolve();
@@ -166,7 +175,7 @@ export function playCampaignMovie(
     };
     const attempt = (): void => {
       play.hidden = true;
-      void video.play().catch(() => {
+      void media.play().catch(() => {
         if (!done) {
           play.hidden = false;
           play.focus();
@@ -176,7 +185,7 @@ export function playCampaignMovie(
     play.addEventListener('click', attempt);
     skip.addEventListener('click', finish);
     seek.addEventListener('input', () => {
-      video.currentTime = Number(seek.value);
+      media.seek(Number(seek.value));
       showPosition();
     });
     video.addEventListener('loadedmetadata', showPosition);

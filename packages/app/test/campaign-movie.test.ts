@@ -5,7 +5,13 @@ import { movieClock, movieMusicHold, playCampaignMovie } from '../src/campaign/m
 /** A film silences the page's music once and gives it back once, on every way the film ends. */
 
 const LABELS = { play: 'Play', skip: 'Skip', failed: 'Failed', seek: 'Position' };
-const MOVIE = { sequence: 0, url: '/campaigns/test/intro.webm', width: 640, height: 480 };
+const MOVIE = {
+  sequence: 0,
+  url: '/campaigns/test/video/intro.webm',
+  audio: '/campaigns/test/eng/intro.webm',
+  width: 640,
+  height: 480,
+};
 
 function silencer(): {
   readonly silence: () => () => void;
@@ -52,6 +58,17 @@ describe('movieMusicHold', () => {
 
   it('is a no-op without a silencer', () => {
     expect(() => movieMusicHold(undefined).release()).not.toThrow();
+  });
+});
+
+describe('playCampaignMovie media', () => {
+  it('plays the shared picture muted beside the language sound track', async () => {
+    void playCampaignMovie(MOVIE, LABELS);
+    const video = surface().querySelector('video');
+    expect(video?.getAttribute('src')).toBe(MOVIE.url);
+    expect(video?.muted).toBe(true);
+    expect(surface().querySelector('audio')?.getAttribute('src')).toBe(MOVIE.audio);
+    await vi.waitFor(() => expect(HTMLMediaElement.prototype.play).toHaveBeenCalledTimes(2));
   });
 });
 

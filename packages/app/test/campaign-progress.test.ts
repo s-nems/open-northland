@@ -92,7 +92,7 @@ describe('campaign progression', () => {
   it('rejects ambiguous map ownership and invalid stage references', () => {
     const campaign = campaignFixture();
     expect(
-      CampaignIndex.safeParse({ version: 2, campaigns: [campaign, { ...campaign, id: 'other', order: 1 }] })
+      CampaignIndex.safeParse({ version: 3, campaigns: [campaign, { ...campaign, id: 'other', order: 1 }] })
         .success,
     ).toBe(false);
     expect(

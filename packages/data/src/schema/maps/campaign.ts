@@ -9,8 +9,10 @@ const MovieAsset = z.string().regex(/^\/campaigns\/[a-z0-9_/-]+\.(webm|mp4)$/);
 const MapAsset = z.string().regex(/^\/campaigns\/[a-z0-9_/-]+\.png$/);
 const Slot = z.number().int().nonnegative();
 const Language = z.enum(MAP_TEXT_LANGUAGES);
+/** A silent picture shared by every language, and this language's sound track cut to its length. */
 const Movie = z.strictObject({
   url: MovieAsset,
+  audio: MovieAsset,
   width: z.number().int().positive().max(8192),
   height: z.number().int().positive().max(8192),
 });
@@ -106,7 +108,7 @@ export type CampaignMovie = z.infer<typeof Movie>;
 
 export const CampaignIndex = z
   .strictObject({
-    version: z.literal(2),
+    version: z.literal(3),
     campaigns: z.array(Campaign),
   })
   .superRefine(({ campaigns }, ctx) => {

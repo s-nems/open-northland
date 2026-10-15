@@ -15,7 +15,14 @@ describe('campaign language', () => {
     expect(localizedText({ pol: 'Kampania', eng: 'Campaign' }, 'pol')).toBe('Kampania');
     expect(localizedText({ pol: 'Kampania', eng: 'Campaign' }, 'rus')).toBe('Campaign');
     expect(localizedText({ ger: 'Feldzug', pol: 'Kampania' }, 'rus')).toBe('Kampania');
-    expect(campaignMovies(campaign, 'ger').videos[0]?.url).toBe('/campaigns/test/eng/video-1.webm');
+    expect(campaignMovies(campaign, 'ger').videos[0]).toMatchObject({
+      url: '/campaigns/test/video/video-1.webm',
+      audio: '/campaigns/test/eng/video-1.webm',
+    });
+    expect(campaignMovies(campaign, 'pol').videos[0]).toMatchObject({
+      url: '/campaigns/test/video/video-1.webm',
+      audio: '/campaigns/test/pol/video-1.webm',
+    });
     expect(campaignMovies({ movies: {} }, 'pol').videos).toEqual([]);
     const logo = { pol: '/campaigns/test/logo-pol.png', eng: '/campaigns/test/logo-eng.png' };
     expect(campaignLogo({ logo }, 'pol')).toBe('/campaigns/test/logo-pol.png');
