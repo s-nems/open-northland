@@ -196,6 +196,17 @@ function readChestGfxIndex(components: Readonly<Record<string, unknown>>): numbe
   return readNumField(components, 'Chest', 'gfxIndex') ?? readNumField(components, 'OpenedChest', 'gfxIndex');
 }
 
+/** The switched-on `HouseLandscapeOverlays` slots as a bit mask. A snapshot carries the sim's slot Map
+ *  as its plain `[slot, active]` entry list. */
+function readLandscapeOverlayMask(components: Readonly<Record<string, unknown>>): number {
+  const overlays = components.HouseLandscapeOverlays as
+    | { slots?: readonly (readonly [number, boolean])[] }
+    | undefined;
+  let mask = 0;
+  for (const [slot, active] of overlays?.slots ?? []) if (active) mask |= 1 << slot;
+  return mask;
+}
+
 const STATIC_DRAW_KEYS = [
   'landscapeOverlayMask',
   'typeId',
@@ -250,12 +261,7 @@ export function assignStaticFields(
       readVehicleStaticFields(target, components);
       return;
     case 'building': {
-      const overlays = components.HouseLandscapeOverlays as
-        | { slots?: ReadonlyMap<number, boolean> }
-        | undefined;
-      let mask = 0;
-      for (let slot = 0; slot < 10; slot++) if (overlays?.slots?.get(slot) === true) mask |= 1 << slot;
-      target.landscapeOverlayMask = mask;
+      target.landscapeOverlayMask = readLandscapeOverlayMask(components);
       const hpFrac = readHpFraction(components);
       if (hpFrac !== undefined) target.hpFrac = hpFrac;
       const typeId = readBuildingType(components);
