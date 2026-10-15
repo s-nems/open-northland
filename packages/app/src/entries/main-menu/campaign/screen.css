@@ -3,7 +3,7 @@
 /* The campaign screen in the reworked look of the multiplayer and catalogue screens (network.css):
    HUD tokens, the bronze primary and deep-green bronze-ruled panels. */
 .main-menu__screen.campaign-screen {
-  --u: clamp(1px, calc(100vh / 1440), 1.3px);
+  --u: clamp(1px, calc(100vh / 1080), 1.4px);
   --accent: var(--bronze);
   --accent-bright: var(--bronze-hi);
   --accent-rgb: 201 162 98;
@@ -11,7 +11,6 @@
   --text-body: var(--text);
   --text-muted: var(--muted);
   --text-label: var(--muted);
-  --campaign-side: calc(var(--u) * 400);
   width: min(100%, calc(var(--u) * 1600));
   margin-inline: auto;
   padding: calc(var(--u) * 32);
@@ -122,8 +121,8 @@
   max-width: 100%;
   max-height: 100%;
   object-fit: contain;
-  opacity: 0.55;
-  filter: saturate(0.6) drop-shadow(0 2px 3px #000a);
+  opacity: 0.7;
+  filter: saturate(0.7) drop-shadow(0 2px 3px #000a);
   transition:
     opacity 150ms ease-out,
     filter 150ms ease-out;
@@ -150,26 +149,40 @@
 
 /* ---- Map and mission panel ---- */
 
-/* The map and the panel sit side by side as one centred group; the map takes the room the panel
-   leaves at the picture's own proportions (--map-aspect from map.ts). */
+/* The map and the panel are one composition drawn in --k, its unit: the largest that fits the body
+   at the picture's own proportions (--map-aspect from map.ts), capped so a large screen does not
+   blow the map up past the rest of the menu. Inside the map --u is --k, so markers and labels grow
+   with the picture; the panel grows halfway between the menu's --u and --k, never taller than the map. */
 .campaign-screen__body {
-  --campaign-gap: calc(var(--u) * 40);
+  --map-aspect: 1;
+  --campaign-map-width: 524;
+  --campaign-side-width: 400;
+  --campaign-gap: 40;
+  --campaign-max-scale: 1.3;
+  --menu-u: var(--u);
+  --k: min(
+    100cqw /
+    (var(--campaign-map-width) + var(--campaign-gap) + var(--campaign-side-width)),
+    100cqh *
+    var(--map-aspect) /
+    var(--campaign-map-width),
+    var(--u) *
+    var(--campaign-max-scale)
+  );
   flex: 1;
   min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: var(--campaign-gap);
   container-type: size;
 }
 
 .campaign-map {
-  --map-aspect: 1;
-  --map-room: calc(100cqw - var(--campaign-side) - var(--campaign-gap));
+  --u: var(--k);
   position: relative;
   flex: none;
-  width: min(var(--map-room), 100cqh * var(--map-aspect));
-  height: min(100cqh, var(--map-room) / var(--map-aspect));
+  width: calc(var(--k) * var(--campaign-map-width));
+  height: calc(var(--k) * var(--campaign-map-width) / var(--map-aspect));
 }
 
 .campaign-map::before {
@@ -193,20 +206,6 @@
 .campaign-map__route {
   position: absolute;
   pointer-events: none;
-}
-
-/* The route into a newly unlocked stage draws out of the previous stage's marker, once. */
-.campaign-map__route.is-revealing {
-  animation: campaign-route-reveal 1500ms cubic-bezier(0.45, 0, 0.3, 1) 300ms both;
-}
-
-@keyframes campaign-route-reveal {
-  from {
-    clip-path: circle(0 at var(--from-x) var(--from-y));
-  }
-  to {
-    clip-path: circle(145% at var(--from-x) var(--from-y));
-  }
 }
 
 .campaign-map__point {
@@ -289,7 +288,7 @@
   }
 }
 
-/* The stage the revealed route leads to lands once the route reaches it. */
+/* The stage the revealed route leads to lands once the route reaches it (REVEAL_* in map.ts). */
 .campaign-map__point.is-arriving {
   animation: campaign-point-arrive 420ms cubic-bezier(0.3, 1.4, 0.5, 1) 1600ms both;
 }
@@ -328,8 +327,11 @@
 }
 
 .campaign-screen__side {
+  --u: calc((var(--k) + var(--menu-u)) / 2);
   flex: none;
-  width: var(--campaign-side);
+  width: calc(var(--u) * var(--campaign-side-width));
+  max-height: calc(var(--k) * var(--campaign-map-width) / var(--map-aspect));
+  margin-left: calc(var(--k) * var(--campaign-gap));
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -342,7 +344,6 @@
     0 12px 36px #0005,
     inset 0 0 0 3px #182521,
     inset 0 0 0 4px #7a5f4040;
-  max-height: 100%;
 }
 
 .campaign-screen__side-title {
@@ -352,6 +353,7 @@
 }
 
 .campaign-screen__missions {
+  position: relative;
   flex: 0 1 auto;
   min-height: 0;
   margin: 0;
@@ -553,7 +555,7 @@
   all: unset;
   align-self: flex-end;
   padding: calc(var(--u) * 4) calc(var(--u) * 2);
-  color: #c1baa8b3;
+  color: var(--muted);
   font: calc(var(--u) * 13) / 1.2 var(--font-body);
   cursor: var(--cursor-pointer, pointer);
 }
@@ -585,7 +587,6 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .campaign-map__route.is-revealing,
   .campaign-map__point.is-arriving,
   .campaign-map__point[aria-pressed="true"]::after {
     animation: none;
@@ -603,8 +604,10 @@
   }
 
   .campaign-screen__body {
+    --k: var(--u);
     flex: none;
     flex-direction: column;
+    gap: calc(var(--u) * var(--campaign-gap));
     container-type: inline-size;
   }
 
@@ -616,5 +619,7 @@
 
   .campaign-screen__side {
     width: 100%;
+    max-height: none;
+    margin-left: 0;
   }
 }

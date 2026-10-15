@@ -156,7 +156,7 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
     const reveal = routeToReveal(stages, readRevealedRoutes(storage, campaign));
     if (reveal !== undefined) rememberRevealedRoute(storage, campaign, reveal);
 
-    const map = campaignMap(campaign, stages, language, reveal, (mapId) => choose(mapId));
+    const map = campaignMap(campaign, stages, language, reveal, body, (mapId) => choose(mapId));
     const side = node('aside', 'campaign-screen__side');
     const heading = node('h2', 'campaign-screen__side-title', copy.missions);
     heading.id = 'campaign-screen-missions';
@@ -258,15 +258,24 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
       side.append(skip);
     }
 
+    // Scrolls the list alone, so a long campaign keeps the chosen row in sight without moving the screen.
+    const keepInView = (item: HTMLElement): void => {
+      const bottom = item.offsetTop + item.offsetHeight;
+      if (item.offsetTop < list.scrollTop) list.scrollTop = item.offsetTop;
+      else if (bottom > list.scrollTop + list.clientHeight) list.scrollTop = bottom - list.clientHeight;
+    };
     const choose = (mapId: string): void => {
       selected = mapId;
       map.select(mapId);
-      for (const { mapId: id, row } of rows) row.setAttribute('aria-pressed', String(id === mapId));
+      for (const { mapId: id, row } of rows) {
+        row.setAttribute('aria-pressed', String(id === mapId));
+        if (id === mapId && row.parentElement !== null) keepInView(row.parentElement);
+      }
       start.disabled = busy;
     };
+    body.replaceChildren(map.root, side);
     if (selected !== undefined) choose(selected);
     else start.disabled = true;
-    body.replaceChildren(map.root, side);
   };
 
   void loadCampaigns()

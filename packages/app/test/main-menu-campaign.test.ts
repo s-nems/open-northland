@@ -11,6 +11,7 @@ import {
   routeToReveal,
   unlockedStages,
 } from '../src/entries/main-menu/campaign/model.js';
+import { NOT_ON_ROUTE, routeOrder } from '../src/entries/main-menu/campaign/route-order.js';
 import { campaignFixture, memoryStorage } from './support/campaign.js';
 
 const ROUTE = { url: '/campaigns/test/route-2.png', x: 0.2, y: 0.3, width: 0.3, height: 0.3 };
@@ -97,5 +98,32 @@ describe('campaign screen choice', () => {
     expect(launchTribe(RECOMMENDED_CAMPAIGN_TRIBE)).toBeUndefined();
     const other = RECOMMENDED_CAMPAIGN_TRIBE + 1;
     expect(launchTribe(other)).toBe(other);
+  });
+});
+
+describe('campaign route drawing order', () => {
+  // A dotted hook: right along the top row, down the right edge, then back left along the bottom,
+  // so its far end lies right under its start.
+  const SIZE = 12;
+  const STEP = 3;
+  const hook: { x: number; y: number }[] = [];
+  for (let x = 0; x <= 9; x += STEP) hook.push({ x, y: 0 });
+  for (let y = STEP; y <= 9; y += STEP) hook.push({ x: 9, y });
+  for (let x = 9 - STEP; x >= 0; x -= STEP) hook.push({ x, y: 9 });
+  const rgba = new Uint8ClampedArray(SIZE * SIZE * 4);
+  for (const { x, y } of hook) rgba[(y * SIZE + x) * 4 + 3] = 255;
+  const order = routeOrder({ width: SIZE, height: SIZE, rgba }, { x: 0, y: 0 });
+  const at = ({ x, y }: { x: number; y: number }): number => order[y * SIZE + x] ?? NOT_ON_ROUTE;
+
+  it('walks the dots from the start, even where the route bends back past it', () => {
+    const places = hook.map(at);
+    expect(places[0]).toBe(0);
+    expect(places.at(-1)).toBe(1);
+    for (const [index, place] of places.entries())
+      if (index > 0) expect(place).toBeGreaterThan(places[index - 1] ?? 0);
+  });
+
+  it('leaves transparent pixels off the route', () => {
+    expect(at({ x: 1, y: 1 })).toBe(NOT_ON_ROUTE);
   });
 });
