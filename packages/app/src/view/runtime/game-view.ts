@@ -859,8 +859,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
             const copy = messages().campaign;
             await playCampaignMovie(
               movie,
-              { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed },
+              { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed, seek: copy.seekMovie },
               lifetime.signal,
+              soundDriver === null ? undefined : () => soundDriver.silenceMusic(),
             );
           },
           exit: quitToMenu,

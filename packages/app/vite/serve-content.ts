@@ -21,6 +21,9 @@ const CONTENT_ROOTS = new Set([
   'terrain-palettes',
 ]);
 
+const HTTP_PARTIAL_CONTENT = 206;
+const HTTP_RANGE_NOT_SATISFIABLE = 416;
+
 const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.json': 'application/json',
   '.png': 'image/png',
@@ -28,6 +31,7 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
   '.cur': 'image/x-icon',
+  '.webm': 'video/webm',
 };
 
 /**
@@ -50,6 +54,34 @@ export async function contentFile(contentRoot: string, rawPathname: string): Pro
   } catch {
     return undefined;
   }
+}
+
+/** Inclusive byte bounds of a satisfiable single `Range` request. */
+export interface ByteRange {
+  readonly start: number;
+  readonly end: number;
+}
+
+/**
+ * The part of a `size`-byte file a `Range` header asks for: undefined to serve it whole (no header, a
+ * multi-range or an unparsed unit), `'unsatisfiable'` for a range past the end. Media elements need
+ * ranges to seek.
+ */
+export function byteRange(header: string | undefined, size: number): ByteRange | 'unsatisfiable' | undefined {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? '');
+  if (match === null) return undefined;
+  const [, first = '', last = ''] = match;
+  if (first === '' && last === '') return undefined;
+  if (first === '') {
+    const suffix = Number(last);
+    return suffix === 0 || size === 0
+      ? 'unsatisfiable'
+      : { start: Math.max(0, size - suffix), end: size - 1 };
+  }
+  const start = Number(first);
+  if (start >= size) return 'unsatisfiable';
+  const end = last === '' ? size - 1 : Math.min(Number(last), size - 1);
+  return end < start ? 'unsatisfiable' : { start, end };
 }
 
 /** Whether a pathname belongs to the content tree's URL space, whatever is on disk. */
@@ -76,11 +108,25 @@ export function serveContent(contentRoot: string): Plugin {
             return;
           }
           res.setHeader('Content-Type', CONTENT_TYPES[extname(file)] ?? 'application/octet-stream');
+          res.setHeader('Accept-Ranges', 'bytes');
+          const { size } = await stat(file);
+          const range = byteRange(req.headers.range, size);
+          if (range === 'unsatisfiable') {
+            res.statusCode = HTTP_RANGE_NOT_SATISFIABLE;
+            res.setHeader('Content-Range', `bytes */${size}`);
+            res.end();
+            return;
+          }
+          if (range !== undefined) {
+            res.statusCode = HTTP_PARTIAL_CONTENT;
+            res.setHeader('Content-Range', `bytes ${range.start}-${range.end}/${size}`);
+          }
+          res.setHeader('Content-Length', range === undefined ? size : range.end - range.start + 1);
           if (req.method === 'HEAD') {
             res.end();
             return;
           }
-          createReadStream(file).pipe(res);
+          createReadStream(file, range).pipe(res);
         })().catch(next);
       });
     },

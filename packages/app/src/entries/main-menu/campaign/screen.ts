@@ -2,7 +2,7 @@ import type { Campaign, MapTextLanguage } from '@open-northland/data';
 import { loadCampaigns } from '../../../campaign/catalog.js';
 import { campaignMissionQuery, RECOMMENDED_CAMPAIGN_TRIBE } from '../../../campaign/launch.js';
 import { campaignLanguage, campaignLogo, campaignMovies, localizedText } from '../../../campaign/locale.js';
-import { playCampaignMovie } from '../../../campaign/movie.js';
+import { type MusicSilencer, playCampaignMovie } from '../../../campaign/movie.js';
 import {
   type CampaignProgress,
   grantCampaignMaps,
@@ -96,7 +96,11 @@ async function askInHud(copy: SystemConfirmCopy, signal: AbortSignal): Promise<b
   }
 }
 
-export function campaignScreen(open: (screen: MenuScreen) => void, launch: LaunchEntry): MountedScreen {
+export function campaignScreen(
+  open: (screen: MenuScreen) => void,
+  launch: LaunchEntry,
+  silenceMusic: MusicSilencer,
+): MountedScreen {
   const scope = new AbortController();
   const copy = messages().campaign;
   const storage = viewerStorage();
@@ -191,8 +195,9 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
         if (mapId === campaign.stages[0]?.mapId && intro !== undefined)
           await playCampaignMovie(
             intro,
-            { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed },
+            { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed, seek: copy.seekMovie },
             scope.signal,
+            silenceMusic,
           );
         const chosen = launchTribe(tribe);
         const query = campaignMissionQuery(

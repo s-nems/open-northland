@@ -2,7 +2,7 @@ import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { contentFile, isContentPath } from '../vite/serve-content.js';
+import { byteRange, contentFile, isContentPath } from '../vite/serve-content.js';
 
 /** The dev server's boundary between a crafted URL and the rest of the developer's disk. */
 describe('contentFile', () => {
@@ -52,5 +52,28 @@ describe('isContentPath', () => {
   it('leaves the app and Vite paths to the server', () => {
     for (const path of ['/', '/index.html', '/src/main.ts', '/@vite/client', '/assets/x.png'])
       expect(isContentPath(path)).toBe(false);
+  });
+});
+
+describe('byteRange', () => {
+  const SIZE = 100;
+
+  it('reads a bounded, an open and a suffix range, clamping the end to the file', () => {
+    expect(byteRange('bytes=10-19', SIZE)).toEqual({ start: 10, end: 19 });
+    expect(byteRange('bytes=90-', SIZE)).toEqual({ start: 90, end: 99 });
+    expect(byteRange('bytes=-5', SIZE)).toEqual({ start: 95, end: 99 });
+    expect(byteRange('bytes=50-500', SIZE)).toEqual({ start: 50, end: 99 });
+  });
+
+  it('serves the whole file without a single byte range', () => {
+    expect(byteRange(undefined, SIZE)).toBeUndefined();
+    expect(byteRange('bytes=0-1,5-6', SIZE)).toBeUndefined();
+    expect(byteRange('items=0-1', SIZE)).toBeUndefined();
+  });
+
+  it('refuses a range past the end', () => {
+    expect(byteRange('bytes=100-', SIZE)).toBe('unsatisfiable');
+    expect(byteRange('bytes=20-10', SIZE)).toBe('unsatisfiable');
+    expect(byteRange('bytes=-0', SIZE)).toBe('unsatisfiable');
   });
 });

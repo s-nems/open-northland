@@ -17,4 +17,5 @@ export const ruCampaign = {
   play: 'Смотреть видео',
   skipMovie: 'Пропустить видео',
   movieFailed: 'Не удалось загрузить видео. Его можно пропустить.',
+  seekMovie: 'Позиция в видео',
 } as const;

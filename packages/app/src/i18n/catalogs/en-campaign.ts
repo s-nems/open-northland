@@ -17,4 +17,5 @@ export const enCampaign = {
   play: 'Play video',
   skipMovie: 'Skip video',
   movieFailed: 'The video could not be loaded. You can skip it.',
+  seekMovie: 'Video position',
 } as const;

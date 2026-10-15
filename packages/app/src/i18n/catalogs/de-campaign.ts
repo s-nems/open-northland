@@ -18,4 +18,5 @@ export const deCampaign = {
   play: 'Video abspielen',
   skipMovie: 'Video überspringen',
   movieFailed: 'Video konnte nicht geladen werden. Du kannst es überspringen.',
+  seekMovie: 'Videoposition',
 } as const;

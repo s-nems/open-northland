@@ -292,6 +292,11 @@ export class SoundDriver {
     this.engine.stopNarration();
   }
 
+  /** Hold the music silent until the returned release (see {@link WebAudioEngine.silenceMusic}). */
+  silenceMusic(): () => void {
+    return this.engine.silenceMusic();
+  }
+
   /** Play a GUI cue now, from the input event itself: a button press confirms, a cancelled tool fails. */
   cue(cue: UiCue): void {
     if (!this.engine.audible) return;

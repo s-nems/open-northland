@@ -33,7 +33,7 @@ import {
   webAudioContextFactory,
 } from '../platform.js';
 import { AmbientMixer } from './ambient-mixer.js';
-import { BusDuck } from './bus-duck.js';
+import { BusDuck, type DuckHold } from './bus-duck.js';
 import { MusicPlayer } from './music-player.js';
 import { Narration } from './narration.js';
 import { CLICK_FREE_RAMP_S, rampParam } from './ramps.js';
@@ -150,6 +150,12 @@ export const VOICE_DUCK_DIP_S = 0.15;
  *  between two quick answers and swells back in after the last. Approximation. */
 export const VOICE_DUCK_RELEASE_S = 0.8;
 
+/** A silence's depth on the voice duck: the music drops out entirely. */
+const MUSIC_SILENT_DB = Number.NEGATIVE_INFINITY;
+/** A silence runs until its release; the duck schedules its lift at a finite time, so it holds this
+ *  long, longer than any film, and the release moves the lift up to now. */
+export const MUSIC_SILENCE_HOLD_S = 24 * 60 * 60;
+
 /** The buses an alert ducks ({@link OneShot.duckWorldDb}): the world's action and its beds. */
 export const ALERT_DUCKED_BUSES: readonly SoundBus[] = ['world', 'ambient'];
 
@@ -189,6 +195,8 @@ export class WebAudioEngine {
   private alertDucks: readonly BusDuck[] = [];
   /** The music's dip under a spoken line ({@link OneShot.duckMusicDb}), after the jingle duck. */
   private voiceDuck: BusDuck | null = null;
+  /** The running {@link silenceMusic} holds; null for one taken before the context, held once it exists. */
+  private readonly musicSilences = new Map<symbol, DuckHold | null>();
   private samples: SampleCache | null = null;
   /** Settles {@link samplesReady}: with the cache once the context exists, null if it never will. */
   private settleSamples: (samples: SampleCache | null) => void = () => undefined;
@@ -458,6 +466,24 @@ export class WebAudioEngine {
     if (this.enabled && !this.closed) this.pendingNarration = wav;
   }
 
+  /** Hold the music silent until the returned release, as a film plays over it: it drops out on the
+   *  voice duck's dip and swells back on its release once no other hold runs. A silence taken before a
+   *  gesture starts the context holds from the context's start. Release is idempotent. */
+  silenceMusic(): () => void {
+    const key = Symbol('music silence');
+    this.musicSilences.set(key, this.holdSilence());
+    return () => {
+      const hold = this.musicSilences.get(key);
+      if (!this.musicSilences.delete(key)) return;
+      if (hold !== null && hold !== undefined && this.ctx !== null) this.voiceDuck?.release(this.ctx, hold);
+    };
+  }
+
+  private holdSilence(): DuckHold | null {
+    if (this.ctx === null || this.voiceDuck === null) return null;
+    return this.voiceDuck.hold(this.ctx, MUSIC_SILENT_DB, MUSIC_SILENCE_HOLD_S);
+  }
+
   /** Fade out the narration still speaking, or drop the one still waiting for audio to start. */
   stopNarration(): void {
     this.pendingNarration = null;
@@ -563,6 +589,7 @@ export class WebAudioEngine {
     buses.music.connect(musicDuck.node).connect(voiceDuck.node).connect(master);
     this.voiceDuck = voiceDuck;
     this.narration = new Narration(ctx, buses.ui, voiceDuck);
+    for (const key of this.musicSilences.keys()) this.musicSilences.set(key, this.holdSilence());
     this.master = master;
     this.buses = buses;
     this.layers = layers;

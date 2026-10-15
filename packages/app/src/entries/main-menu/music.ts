@@ -41,10 +41,11 @@ export function menuMusicTracks(
 }
 
 /** The menu's sound beyond its music: the hardwired cues a menu screen fires, such as the lobby's
- *  incoming-chat ring, and the settings' preview of a bus. */
+ *  incoming-chat ring, the settings' preview of a bus, and the music's silence under a film. */
 export interface MenuSound {
   cue(cue: UiCue): void;
   previewBus(bus: SoundBus): void;
+  silenceMusic(): () => void;
 }
 
 /**
@@ -84,5 +85,6 @@ export function startMenuMusic(signal: AbortSignal): MenuSound {
       const shot = busPreviewShot(bus);
       if (shot !== null) engine.fire([shot]);
     },
+    silenceMusic: () => engine.silenceMusic(),
   };
 }

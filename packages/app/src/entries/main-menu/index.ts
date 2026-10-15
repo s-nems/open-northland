@@ -176,7 +176,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
       case 'newGame':
         return { element: mapSelectScreen(show, mapSelectMemory, openLobby, launch) };
       case 'campaign':
-        return campaignScreen(show, launch);
+        return campaignScreen(show, launch, sound.silenceMusic);
       case 'catalogue':
         return catalogueScreen(show, catalogueBack, catalogueMemory, openLobby);
       case 'multiplayer':
