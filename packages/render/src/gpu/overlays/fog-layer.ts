@@ -140,15 +140,20 @@ export class FogLayer {
     this.key = key;
   }
 
-  /** Grow-only quantized (re)allocation of the CPU buffer + linear-filtered GPU texture. */
+  /** Grow-only quantized allocation of the CPU buffer + linear-filtered GPU texture. Growth resizes the
+   *  one source in place: a shader still binding it keeps a live resource instead of a destroyed one. */
   private ensureTexture(w: number, h: number): void {
     const quantW = Math.ceil(w / TEXTURE_QUANT) * TEXTURE_QUANT;
     const quantH = Math.ceil(h / TEXTURE_QUANT) * TEXTURE_QUANT;
     if (this.texture !== null && this.texW >= quantW && this.texH >= quantH) return;
     this.texW = Math.max(quantW, this.texW);
     this.texH = Math.max(quantH, this.texH);
-    this.texture?.destroy(true);
     this.buffer = new Uint8Array(this.texW * this.texH * 4); // RGB stay 0 (black); alpha is written per band
+    if (this.texture !== null) {
+      this.texture.source.resource = this.buffer;
+      this.texture.source.resize(this.texW, this.texH);
+      return;
+    }
     this.texture = new Texture({
       source: new BufferImageSource({
         resource: this.buffer,
@@ -161,7 +166,10 @@ export class FogLayer {
 
   destroy(): void {
     this.washMask.source = null;
-    this.texture?.destroy(true);
+    // Unloaded, not destroyed: Pixi's shared mesh shader keeps the last drawn texture bound until its
+    // renderer goes, and destroying a bound source is a Pixi warning. Unloading frees the GPU copy.
+    this.texture?.source.unload();
+    this.texture?.destroy(false);
     destroyMeshChildren(this.container);
     this.container.destroy({ children: true });
   }
