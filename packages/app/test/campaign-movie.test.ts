@@ -108,3 +108,26 @@ describe('movieClock', () => {
     expect(movieClock(Number.NaN)).toBe('0:00');
   });
 });
+
+describe('seek bar visibility', () => {
+  it('shows the bar on pointer movement over the film, not on a resting pointer, and hides it on leave', () => {
+    vi.useFakeTimers();
+    try {
+      const { silence } = silencer();
+      void playCampaignMovie(MOVIE, LABELS, undefined, silence);
+      const frame = surface().querySelector('.campaign-movie__frame');
+      if (!(frame instanceof HTMLElement)) throw new Error('no frame');
+      const pointing = 'campaign-movie__frame--pointing';
+      expect(frame.classList.contains(pointing)).toBe(false);
+      frame.dispatchEvent(new Event('pointermove', { bubbles: true }));
+      expect(frame.classList.contains(pointing)).toBe(true);
+      vi.advanceTimersByTime(3000);
+      expect(frame.classList.contains(pointing)).toBe(false);
+      frame.dispatchEvent(new Event('pointermove', { bubbles: true }));
+      frame.dispatchEvent(new Event('pointerleave'));
+      expect(frame.classList.contains(pointing)).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+});

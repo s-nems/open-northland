@@ -40,7 +40,8 @@
 .campaign-movie__controls [hidden] {
   display: none;
 }
-/* Over the film's own black band at the frame's foot, shown only while the pointer or focus is on it. */
+/* Over the film's own black band at the frame's foot, shown while the pointer moves over the film or
+   the bar has focus. */
 .campaign-movie .campaign-movie__seek {
   position: absolute;
   left: 0;
@@ -55,7 +56,7 @@
   transition: opacity 0.15s ease-out;
   pointer-events: auto;
 }
-.campaign-movie__frame:hover .campaign-movie__seek,
+.campaign-movie__frame--pointing .campaign-movie__seek,
 .campaign-movie .campaign-movie__seek:focus-within {
   opacity: 1;
 }

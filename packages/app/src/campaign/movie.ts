@@ -9,6 +9,9 @@ const DEFAULT_MOVIE_HEIGHT = 480;
 const CONTROLS_RESERVE_PX = 64;
 /** The seek bar's keyboard step. */
 const SEEK_STEP_S = 1;
+/** How long the seek bar stays after the pointer last moved over the film. */
+const SEEK_LINGER_MS = 2500;
+const POINTING_CLASS = 'campaign-movie__frame--pointing';
 const SECONDS_PER_MINUTE = 60;
 
 /** Display pixels, never enlarged. A small viewport shrinks both dimensions by the same factor. */
@@ -108,6 +111,19 @@ export function playCampaignMovie(
     const frame = document.createElement('div');
     frame.className = 'campaign-movie__frame';
     frame.append(video, frameHud);
+    // A pointer that merely rests where the film opened must not show the bar; a move does.
+    let pointing: ReturnType<typeof setTimeout> | undefined;
+    const stopPointing = (): void => {
+      clearTimeout(pointing);
+      pointing = undefined;
+      frame.classList.remove(POINTING_CLASS);
+    };
+    frame.addEventListener('pointermove', () => {
+      clearTimeout(pointing);
+      frame.classList.add(POINTING_CLASS);
+      pointing = setTimeout(stopPointing, SEEK_LINGER_MS);
+    });
+    frame.addEventListener('pointerleave', stopPointing);
     const hud = document.createElement('div');
     hud.className = 'on-hud';
     hud.append(controls);
