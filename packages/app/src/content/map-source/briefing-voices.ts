@@ -1,8 +1,7 @@
 import type { BriefingVoice } from '@open-northland/data';
 import { diag } from '../../diag/log.js';
-import { isMapId } from '../transfer/documents.js';
 import { mapFilePath, voiceFileSuffix } from './files.js';
-import { mapFetch } from './sources.js';
+import { findMapSource, type MapSource } from './sources.js';
 
 /** One briefing clip's wav bytes, or null when the map ships none. */
 export type BriefingVoiceLoader = (voice: BriefingVoice) => Promise<Uint8Array | null>;
@@ -13,29 +12,43 @@ export interface NarrationSink {
   stopNarration(): void;
 }
 
-/** Loads `mapId`'s briefing voices through the fetch that serves its files, installed maps included,
- *  each clip at most once per world. */
-export function mapBriefingVoices(mapId: string | null, fetchFor = mapFetch): BriefingVoiceLoader {
+const SILENT: BriefingVoiceLoader = async () => null;
+
+/** `mapId`'s briefing voices: only the clips its listing declares, so a map that ships none asks for
+ *  nothing. A map awaiting a rebuild or download has none. */
+export async function mapBriefingVoices(
+  mapId: string | null,
+  find: (mapId: string) => Promise<MapSource | null> = findMapSource,
+): Promise<BriefingVoiceLoader> {
+  if (mapId === null) return SILENT;
+  const source = await find(mapId);
+  if (source === null || source.stale) return SILENT;
+  return declaredVoices(source.entry.id, source.entry.voices ?? [], source.fetch);
+}
+
+/** Loads the `declared` clips through `files`, each at most once per world. */
+function declaredVoices(
+  mapId: string,
+  declared: readonly string[],
+  files: typeof fetch,
+): BriefingVoiceLoader {
+  const listed = new Set(declared);
   const clips = new Map<string, Promise<Uint8Array | null>>();
   return (voice) => {
-    if (mapId === null || !isMapId(mapId)) return Promise.resolve(null);
     const suffix = voiceFileSuffix(voice);
+    if (!listed.has(suffix)) return Promise.resolve(null);
     let clip = clips.get(suffix);
     if (clip === undefined) {
-      clip = loadClip(mapId, mapFilePath(mapId, suffix), fetchFor);
+      clip = loadClip(mapFilePath(mapId, suffix), files);
       clips.set(suffix, clip);
     }
     return clip;
   };
 }
 
-async function loadClip(
-  mapId: string,
-  path: string,
-  fetchFor: (mapId: string) => Promise<typeof fetch>,
-): Promise<Uint8Array | null> {
+async function loadClip(path: string, files: typeof fetch): Promise<Uint8Array | null> {
   try {
-    const response = await (await fetchFor(mapId))(path);
+    const response = await files(path);
     return response.ok ? new Uint8Array(await response.arrayBuffer()) : null;
   } catch (error) {
     diag.warn('content', 'briefing voice unreadable', { path, error: String(error) });

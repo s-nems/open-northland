@@ -269,6 +269,7 @@ describe('mapFiles', () => {
       onWarning: (message) => warnings.push(message),
     });
     expect([...map.voices.keys()]).toEqual(['.voice-pol-0001.wav']);
+    expect(map.index.voices).toEqual(['.voice-pol-0001.wav']);
     expect(mapFiles(map).get('voiced.voice-pol-0001.wav')).toBe(wav);
     expect(warnings).toEqual([expect.stringContaining('sfx/eng/0003.wav is not a wav')]);
   });

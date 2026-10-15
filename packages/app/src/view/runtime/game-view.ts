@@ -38,7 +38,7 @@ import { pickerEntries } from '../../catalog/professions.js';
 import { emblemBuildingType } from '../../content/building-gfx/emblems.js';
 import type { FellingClips } from '../../content/felling-clips.js';
 import { loadGuiArt } from '../../content/gui-art.js';
-import { briefingVoicePlayer, mapBriefingVoices } from '../../content/map-source/briefing-voices.js';
+import { type BriefingVoiceLoader, briefingVoicePlayer } from '../../content/map-source/briefing-voices.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
 import {
   currentDiagGameSession,
@@ -274,6 +274,8 @@ export interface GameViewDeps {
   /** Where the mission book's pages and goals come from; omitted, the book shows nothing. */
   readonly missionBriefSource?: MissionBriefSource;
   readonly missionPictureUrl?: (file: string) => string;
+  /** The map's spoken briefing lines; omitted, the book speaks none. */
+  readonly missionVoices?: BriefingVoiceLoader;
   /** Open the mission book as the session starts, the original's mission briefing; the entry decides
    *  (a fresh world, and no `?intro=off`). */
   readonly introAtStart?: boolean;
@@ -704,9 +706,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
       ...(mission !== undefined ? { mission } : {}),
       ...(deps.missionPictureUrl === undefined ? {} : { missionPictureUrl: deps.missionPictureUrl }),
-      ...(soundDriver === null
+      ...(soundDriver === null || deps.missionVoices === undefined
         ? {}
-        : { missionVoice: briefingVoicePlayer(mapBriefingVoices(deps.worldToken ?? null), soundDriver) }),
+        : { missionVoice: briefingVoicePlayer(deps.missionVoices, soundDriver) }),
       missionBriefingHistory: answers.missionBriefingHistory,
       askMissionBriefing: answers.askMissionBriefing,
       missionHuman: answers.missionHuman,

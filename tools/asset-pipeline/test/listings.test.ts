@@ -39,6 +39,7 @@ function converted(id: string, extra: Partial<MapDatConversion> = {}): MapDatCon
     output: `maps/${id}.json`,
     picture: false,
     minimap: false,
+    voices: [],
     meta: { provenance: { kind: 'mod', folder: `maps/community/${id}` } },
     briefing: false,
     strings: false,
@@ -61,6 +62,7 @@ describe('mapsIndexEntries', () => {
       converted('arena', {
         picture: true,
         minimap: true,
+        voices: ['.voice-pol-0001.wav'],
         meta: {
           provenance: { kind: 'mod', folder: 'maps/community/arena' },
           name: { pol: 'Arena', eng: 'Arena' },
@@ -81,6 +83,7 @@ describe('mapsIndexEntries', () => {
         description: { pol: 'Dwoch na dwoch.', eng: 'Two against two.' },
         picture: true,
         minimap: true,
+        voices: ['.voice-pol-0001.wav'],
         players: [
           {
             player: 0,

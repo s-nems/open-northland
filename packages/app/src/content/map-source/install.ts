@@ -210,7 +210,9 @@ export async function installCatalogEntry(
         if (suffix === '.briefing.json') {
           const briefing = MapBriefing.parse(json(bytes, url));
           pictures = briefingPictureSuffixes(briefing);
-          voices = briefingVoiceSuffixes(briefing);
+          // The listing names the clips the conversion kept; the pages bound which names may be asked.
+          const kept = new Set<string>(map.index.voices ?? []);
+          voices = briefingVoiceSuffixes(briefing).filter((voice) => kept.has(voice));
           total += pictures.length + voices.length;
         }
         files.set(suffix, bytes);

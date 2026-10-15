@@ -34,6 +34,8 @@ export interface MapDatConversion {
   readonly picture: boolean;
   /** Whether a terrain minimap was rasterized from the decoded cells into `maps/<id>.map.png`. */
   readonly minimap: boolean;
+  /** The suffixes of the briefing voices written as `maps/<id><suffix>`. */
+  readonly voices: readonly string[];
   /** The emitted `maps/<id>.meta.json`. */
   readonly meta: MapMeta;
   /** The emitted `maps/<id>.script.json`, when the map ships a decodable script. */
@@ -66,6 +68,7 @@ function summarize(map: ConvertedMap): MapDatConversion {
     output: `${MAPS_DIR}/${map.id}.json`,
     picture: map.picture !== undefined,
     minimap: map.minimap !== undefined,
+    voices: [...map.voices.keys()],
     meta: map.meta,
     ...(map.script === undefined ? {} : { script: map.script }),
     briefing: map.briefing !== undefined,

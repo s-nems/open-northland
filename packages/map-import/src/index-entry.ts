@@ -11,6 +11,8 @@ export interface MapsIndexSource {
   readonly picture: boolean;
   /** Whether the rasterized minimap `maps/<id>.map.png` exists. */
   readonly minimap: boolean;
+  /** The suffixes of the briefing voices written as `maps/<id><suffix>`. */
+  readonly voices: readonly string[];
 }
 
 /** One map's `maps-index.json` row, the menu's view of it without loading the map. */
@@ -26,6 +28,7 @@ export function mapsIndexEntry(map: MapsIndexSource): MapsIndexEntry {
     ...(description === undefined ? {} : { description }),
     picture: map.picture,
     minimap: map.minimap,
+    ...(map.voices.length > 0 ? { voices: [...map.voices] } : {}),
     ...(players.length > 0 ? { players } : {}),
     ...(map.script?.multiplayer?.fixedColors === true ? { fixedColors: true } : {}),
     ...(mapTypes === undefined ? {} : { mapTypes }),

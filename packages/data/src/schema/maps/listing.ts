@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { BRIEFING_VOICE_SUFFIX } from './briefing.js';
 import { MapMeta } from './meta.js';
 import { MapProvenance } from './provenance.js';
 import { MapPlayerSlot } from './script.js';
@@ -38,6 +39,9 @@ export const MapsIndexEntry = z.strictObject({
   picture: z.boolean(),
   /** Whether the terrain minimap `maps/<id>.map.png` exists. */
   minimap: z.boolean(),
+  /** The `briefingVoiceSuffix` of each spoken briefing line the map ships as `maps/<id><suffix>`.
+   *  Absent when it ships none, as most maps whose pages name a clip do. */
+  voices: z.array(z.string().regex(BRIEFING_VOICE_SUFFIX)).optional(),
   /** Absent when the map ships no decodable roster. */
   players: z.array(MapsIndexPlayerSlot).optional(),
   /** `[multiplayer]` `playerfixcolors`: the map locks its authored team colours. Present only when true. */

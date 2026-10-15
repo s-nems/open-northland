@@ -197,6 +197,7 @@ describe('local conversion and retained sources', () => {
     expect(new Uint8Array(await response.arrayBuffer()).slice(1, 4)).toEqual(new TextEncoder().encode('PNG'));
     const voice = await store.fetchFor(map.record)(`/maps/${map.record.mapId}.voice-pol-0001.wav`);
     expect(voice.headers.get('content-type')).toBe('audio/wav');
+    expect(map.record.index.voices).toEqual(['.voice-pol-0001.wav']);
     expect(map.record.size).toBe([...map.files.values()].reduce((sum, data) => sum + data.byteLength, 0));
     await store.remove(map.record.entryId);
     expect(backing.files.size).toBe(0);

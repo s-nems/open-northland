@@ -12,6 +12,7 @@ import type { SaveGame } from '@open-northland/sim';
 import { campaignForMap, loadCampaigns } from '../../campaign/catalog.js';
 import { loadFellingClips } from '../../content/felling-clips.js';
 import { mapBriefingPictures } from '../../content/map-source/briefing-pictures.js';
+import { mapBriefingVoices } from '../../content/map-source/briefing-voices.js';
 import { loadMinimapCellColours } from '../../content/minimap-ground.js';
 import { loadScriptLandscapeSprites } from '../../content/script-landscape-sprites.js';
 import { soundScenery } from '../../content/sound-scenery.js';
@@ -189,11 +190,13 @@ export async function presentMapWorld(
     markShown = () => resolve(true);
   });
   const pictures = await mapBriefingPictures(mapId, world.briefing);
+  const missionVoices = await mapBriefingVoices(mapId);
   const campaign =
     runtime.sharedClock === true || mapId === null ? undefined : campaignForMap(await loadCampaigns(), mapId);
   const view = await startGameView({
     ...(campaign === undefined ? {} : { campaign }),
     missionPictureUrl: pictures.url,
+    missionVoices,
     app,
     canvas,
     params,

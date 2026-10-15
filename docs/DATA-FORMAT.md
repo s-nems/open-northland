@@ -17,6 +17,7 @@ content/
     <id>.strings.json     optional per-language string table
     <id>.png              optional authored picture (the map's minimap.pcx)
     <id>.map.png          optional minimap rasterized from the terrain
+    <id>.voice-<lang>-NNNN.wav  optional spoken briefing line; its maps-index row lists each one
   bobs/                   atlases and colour LUTs
   textures/               ground pages and transition overlays
   sounds/                 the mod's wav tree

@@ -293,6 +293,8 @@ export async function convertMapFolder(
     }
   }
 
+  const voices =
+    resolved === undefined ? new Map<string, Uint8Array>() : resolveBriefingVoices(folder, resolved.briefing);
   return {
     id,
     folder: folder.path,
@@ -304,7 +306,7 @@ export async function convertMapFolder(
     ...(picture === undefined ? {} : { picture }),
     ...(minimap === undefined ? {} : { minimap }),
     pictures: resolved?.pictures ?? new Map(),
-    voices: resolved === undefined ? new Map() : resolveBriefingVoices(folder, resolved.briefing),
+    voices,
     index: mapsIndexEntry({
       id,
       fingerprint: servedFingerprint(terrain, script),
@@ -312,6 +314,7 @@ export async function convertMapFolder(
       ...(script === undefined ? {} : { script }),
       picture: picture !== undefined,
       minimap: minimap !== undefined,
+      voices: [...voices.keys()],
     }),
     unknownStaticVerbs,
   };
