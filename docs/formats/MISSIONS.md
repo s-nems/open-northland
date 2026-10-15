@@ -188,7 +188,11 @@ All of this section is a reading unless marked otherwise.
   seconds in (a deliberate deviation); a mission it activates records clock 1 as well, and the cadence
   passes are unchanged.
 - A pass clears the pending sub-mission flags, then visits missions in index order, skipping inactive
-  ones. A result can raise a stop flag (`PlayCutscene` does); the pass ends after that mission. After
+  ones. The active flag is read at each visit, and a satisfied mission's results run before the next
+  mission is visited: a `DisableAll` in mission 12 leaves a satisfied mission 15 unvisited in that
+  pass, and inactive until something re-activates it, while a lower-index mission has already fired.
+  `DisableAll` and `DeactivateMission` do not stop the issuing mission's remaining results. Only a
+  stop flag ends a pass early (`PlayCutscene` raises it); the pass ends after that mission. After
   the loop the pending `EndSubMission` returns to the parent map, else a pending `StartSubMission`
   loads the sub map.
 - One mission check evaluates every goal in order and stores each goal's current truth in the goal's
@@ -208,8 +212,8 @@ All of this section is a reading unless marked otherwise.
   reimplementation must draw from the simulation's seeded generator.
 - A mission with no goals holds at once under `successfullif` 0, 2, and 3, and never under 1. A rule
   outside 0 to 3 never holds (byte-level; no corpus map writes one).
-- `CheckMission n` evaluates mission `n`'s goals immediately (updating its goal flags) and reports its
-  `successfullif` verdict without executing results. `IsMissionDone n` reads mission `n`'s stored goal
+- `CheckMission n` evaluates mission `n`'s goals immediately (updating its goal flags), whatever its
+  active flag, and reports its `successfullif` verdict without executing results or deactivating `n`. `IsMissionDone n` reads mission `n`'s stored goal
   flags and applies `n`'s own `successfullif` without re-evaluating, so it stays true after `n` fired
   until `n` is re-activated and checked again, and it is true for a never-checked mission whose rule is
   3 (no goals hold). `IfMissionIsActive n` reads the active flag.
@@ -378,7 +382,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 44 | `ChangePlayerIdInArea` | 1, 2, 16, 17, 9 | hand everything of the first player within `range` to the second; its humans are detached from houses as under `ChangeHumanPlayerId` | sim | 134 |
 | 45 | `SetDiplomacyNotChangeableFlag` | 1, 2, 32 | set or clear the pair's not-changeable flag in both directions (original behavior), which takes the diplomacy window's stance buttons away; this build's lock refuses a seat's `declareDiplomacy` | sim | 189 |
 | 46 | `RemoveFXWaveLandscapeInArea` | 16, 17, 9 | remove the wave-group graphics within `range` (membership below) | both | 0 |
-| 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's completed wall gate at the point. Here: the point may be the gate's anchor or any node its closed body blocks, and the swap takes the same transition a seat's own gate command does, so a close onto an occupied passage is refused and reported, where the original swaps the gate unconditionally (adaptation) | sim | 14 |
+| 47 | `1 Open/0 CloseWallGate` | 1, 16, 17, 32 | open or close the player's completed wall gate at the point; with no gate of that player exactly at the point nothing happens, without a search or an error. Here: the point may be the gate's anchor or any node its closed body blocks, and the swap takes the same transition a seat's own gate command does, so a close onto an occupied passage is refused and reported, where the original swaps the gate unconditionally (adaptation) | sim | 14 |
 | 48 | `Mission quit and play video` | 7 | retain the campaign-local movie sequence and emit `missionVideo`; host playback is separate | both | 0 |
 | 49 | `SetPlayerBehaviourFlag` | 1, 7, 32 | OR or clear the mask on every current human of the player | sim | 240 |
 | 50 | `SetHumanBehaviourFlag` | 10, 7, 32 | OR or clear the mask on humans with the id | sim | 436 |

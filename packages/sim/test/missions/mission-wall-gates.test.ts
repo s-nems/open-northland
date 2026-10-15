@@ -116,7 +116,7 @@ describe('1 Open/0 CloseWallGate', () => {
     expect(failedResultsNow(sim)).toEqual(['1 Open/0 CloseWallGate']);
   });
 
-  it('reports a gate belonging to another player', () => {
+  it('leaves a gate of another player at the point closed without a failure', () => {
     const sim = gateSim(
       { opcode: '1 Open/0 CloseWallGate', player: OWNER, point: ANCHOR, flag: true },
       OTHER_PLAYER,
@@ -126,10 +126,10 @@ describe('1 Open/0 CloseWallGate', () => {
     sim.step();
 
     expect(isOpen(sim)).toBe(false);
-    expect(failedResultsNow(sim)).toEqual(['1 Open/0 CloseWallGate']);
+    expect(failedResultsNow(sim)).toEqual([]);
   });
 
-  it('reports a point with no gate on it', () => {
+  it('does nothing at a point with no gate on it', () => {
     const sim = gateSim({
       opcode: '1 Open/0 CloseWallGate',
       player: OWNER,
@@ -141,6 +141,6 @@ describe('1 Open/0 CloseWallGate', () => {
     sim.step();
 
     expect(isOpen(sim)).toBe(false);
-    expect(failedResultsNow(sim)).toEqual(['1 Open/0 CloseWallGate']);
+    expect(failedResultsNow(sim)).toEqual([]);
   });
 });

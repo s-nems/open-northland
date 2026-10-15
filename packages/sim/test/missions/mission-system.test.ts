@@ -239,6 +239,24 @@ describe('activation', () => {
     expect(records(sim).map((r) => r.active)).toEqual([false, false, false]);
   });
 
+  it('re-reads each active flag in a pass where DisableAll fires mid-way', () => {
+    const sim = missionSim([
+      mission({ goals: [TRUE_GOAL], results: [NO_RESULT] }),
+      mission({
+        goals: [TRUE_GOAL],
+        results: [{ opcode: 'DisableAll' }, { opcode: 'SetVisible', missionIndex: 1, flag: true }],
+      }),
+      mission({ goals: [TRUE_GOAL], results: [{ opcode: 'Exit' }] }),
+    ]);
+    sim.run(LOAD_PASS);
+    // The lower mission fired before DisableAll, the issuing mission finished its own results, and
+    // the higher one was inactive by the time the pass reached it.
+    expect(records(sim).map((r) => r.fireCount)).toEqual([1, 1, undefined]);
+    expect(records(sim)[1]?.visible).toBe(true);
+    expect(records(sim)[2]?.active).toBe(false);
+    expect(eventsOfKind(sim, 'missionExit')).toEqual([]);
+  });
+
   it('shows and hides a mission through SetVisible', () => {
     const sim = missionSim([
       mission({ goals: [TRUE_GOAL], results: [{ opcode: 'SetVisible', missionIndex: 1, flag: true }] }),
@@ -280,6 +298,18 @@ describe('the mission-reading goals', () => {
     expect(records(sim)[1]?.evaluated).toBe(true);
     // The probe stored mission 0's verdict but ran none of its results.
     expect(records(sim)[0]?.evaluated).toBe(true);
+    expect(eventsOfKind(sim, 'missionExit')).toEqual([]);
+  });
+
+  it('never runs the results of an active mission it probes through CheckMission', () => {
+    const sim = missionSim([
+      mission({ goals: [{ opcode: 'CheckMission', missionIndex: 1 }], results: [{ opcode: 'DisableAll' }] }),
+      mission({ goals: [TRUE_GOAL], results: [{ opcode: 'Exit' }] }),
+    ]);
+    sim.run(LOAD_PASS);
+    // The probe saw mission 1's goal hold, yet only mission 0's own DisableAll deactivated it.
+    expect(records(sim)[1]?.goalsHeld).toEqual([true]);
+    expect(records(sim)[1]?.fireCount).toBeUndefined();
     expect(eventsOfKind(sim, 'missionExit')).toEqual([]);
   });
 
