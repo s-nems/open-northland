@@ -1,3 +1,4 @@
+import '../hud/dom/foundation.css';
 import './movie.css';
 import type { CampaignMovie } from '@open-northland/data';
 
@@ -36,16 +37,22 @@ export function playCampaignMovie(
     video.playsInline = true;
     video.preload = 'auto';
     const play = document.createElement('button');
+    play.className = 'on-button';
     play.textContent = labels.play;
     play.hidden = true;
     const skip = document.createElement('button');
+    skip.className = 'on-button';
     skip.textContent = labels.skip;
     const status = document.createElement('p');
     status.setAttribute('role', 'status');
     const controls = document.createElement('div');
     controls.className = 'campaign-movie__controls';
     controls.append(play, skip, status);
-    surface.append(video, controls);
+    // The HUD scope lends the controls its button style; the black surface stays outside it.
+    const hud = document.createElement('div');
+    hud.className = 'on-hud';
+    hud.append(controls);
+    surface.append(video, hud);
     const previousFocus = document.activeElement;
     let done = false;
     const finish = (): void => {

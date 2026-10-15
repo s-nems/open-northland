@@ -22,17 +22,16 @@
 .campaign-movie__controls {
   position: absolute;
   bottom: 12px;
+  left: 50%;
+  transform: translateX(-50%);
   display: flex;
   align-items: center;
   gap: 16px;
-}
-.campaign-movie__controls button {
-  padding: 8px 16px;
-  color: #fff;
-  background: #222;
-  border: 1px solid #888;
-  cursor: pointer;
+  pointer-events: auto;
 }
 .campaign-movie__controls p {
   margin: 0;
+}
+.campaign-movie__controls [hidden] {
+  display: none;
 }
