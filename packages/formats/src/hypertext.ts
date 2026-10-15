@@ -22,8 +22,10 @@ import { DecodeLimitError } from './limit.js';
  * reads as a space (the corpus joins linked headlines with underscores into one word).
  */
 
-const BLOCK_START = /^\[blockstart:([^\]]+)\]\s*$/;
-const BLOCK_END = /^\[blockend:[^\]]+\]\s*$/;
+/** A block tag opens its line; text after a start tag is the block's first line, text after an end
+ *  tag is dropped (the corpus has both, e.g. a stray period after an end tag). */
+const BLOCK_START = /^\[blockstart:([^\]]+)\](.*)$/;
+const BLOCK_END = /^\[blockend:[^\]]+\]/;
 /** A tag, a `\n` marker, whitespace, or a word running up to the next of those. A `<` that opens no
  *  tag stays part of a word. */
 const TOKEN = /<([a-z]+)(?::([^>]*))?>|\\n|\s+|(?:[^\s<\\]|\\(?!n))+|</gi;
@@ -68,7 +70,8 @@ export function parseBriefingBlocks(text: string): Map<string, string> {
       const start = BLOCK_START.exec(raw);
       if (start?.[1] !== undefined) {
         label = start[1].trim();
-        lines = [];
+        const rest = start[2] ?? '';
+        lines = rest.trim() === '' ? [] : [rest];
       }
       continue;
     }

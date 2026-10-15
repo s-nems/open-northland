@@ -48,6 +48,31 @@ describe('parseBriefingBlocks', () => {
     expect(blocks.get('newline')).toBe('');
     expect(blocks.get('500')?.startsWith('<font:')).toBe(true);
   });
+
+  it('closes a block at an end tag followed by trailing text and drops that text', () => {
+    const blocks = parseBriefingBlocks(
+      ['[blockstart:a]', 'first', '[blockend:a].', '[blockstart:b]', 'second', '[blockend:b]'].join('\r\n'),
+    );
+    expect([...blocks.entries()]).toEqual([
+      ['a', 'first'],
+      ['b', 'second'],
+    ]);
+  });
+
+  it('keeps text after a start tag as the first line of the block', () => {
+    const blocks = parseBriefingBlocks(
+      [
+        '[blockstart:a]Opening words',
+        'more words',
+        '[blockend:a]',
+        '[blockstart:b]   ',
+        'only',
+        '[blockend:b]',
+      ].join('\n'),
+    );
+    expect(blocks.get('a')).toBe('Opening words\nmore words');
+    expect(blocks.get('b')).toBe('only');
+  });
 });
 
 describe('jumpTarget', () => {
