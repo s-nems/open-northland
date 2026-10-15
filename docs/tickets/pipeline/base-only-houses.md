@@ -24,3 +24,10 @@ palace, mosque, tents and residences.
 - If they appear: record the observation as the source basis in `base-houses.ts` and delete this ticket.
 - If they do not: decide with the owner whether mod maps should keep them; the original campaigns need
   the base layer either way.
+
+## Verify
+
+- `npm run test:pipeline` keeps the fallback and precedence tests in
+  `tools/asset-pipeline/test/ir-base-houses.test.ts` green.
+- After the decision, `npm run build:content` and a boot of `tutorial_007` show either the base-only
+  houses placed or an explicit skip, matching the recorded observation.
