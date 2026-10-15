@@ -1,6 +1,6 @@
 import { extname } from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { net, protocol } from 'electron';
+import { protocol } from 'electron';
+import { fileResponse } from './file-response.js';
 import type { ShellRoots } from './paths.js';
 import { APP_ORIGIN_PREFIX, APP_SCHEME, GAME_HOST, routePathOf } from './protocol-routing.js';
 import { servedFile } from './static-files.js';
@@ -22,6 +22,7 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
   '.cur': 'image/x-icon',
   '.wav': 'audio/wav',
   '.ogg': 'audio/ogg',
+  '.webm': 'video/webm',
   '.map': 'application/json',
   '.woff2': 'font/woff2',
 };
@@ -45,14 +46,6 @@ function notFound(): Response {
 // `routePathOf`) are cross-origin to `app://game`. Only that origin may read across.
 const CORS_HEADER = { 'access-control-allow-origin': 'app://game' } as const;
 
-/** A HEAD request gets headers only, serving the app's texture existence probes. */
-async function serveFile(file: string, contentType: string, method: string): Promise<Response> {
-  const headers = { 'content-type': contentType, ...CORS_HEADER };
-  if (method === 'HEAD') return new Response(null, { headers });
-  const res = await net.fetch(pathToFileURL(file).toString());
-  return new Response(res.body, { headers });
-}
-
 const DIRECTORY_INDEX = 'index.html';
 
 /** Install the read-only app and generated-content handler once in `app.whenReady`. */
@@ -64,6 +57,6 @@ export function handleAppProtocol(roots: ShellRoots): void {
     const file = await servedFile(roots, pathname);
     if (file === undefined) return notFound();
     const contentType = CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
-    return serveFile(file, contentType, request.method);
+    return fileResponse(file, request, { 'content-type': contentType, ...CORS_HEADER });
   });
 }

@@ -147,6 +147,20 @@ test('boots app://, lists map previews, and restores a save and the window mode 
     assert.equal(routes[1]?.status, 200, 'the folded app://bobs route must serve sprites');
     assert.deepEqual(routes[1], routes[0], 'both app:// spellings must serve the same sprite');
     assert.deepEqual(routes[0]?.bytes.slice(0, 8), [137, 80, 78, 71, 13, 10, 26, 10]);
+    const RANGE_BYTES = 100;
+    const ranged = await page.evaluate(async (url) => {
+      const response = await fetch(url, { headers: { range: 'bytes=0-99' } });
+      return {
+        status: response.status,
+        acceptRanges: response.headers.get('accept-ranges'),
+        length: (await response.arrayBuffer()).byteLength,
+      };
+    }, `app://game/bobs/${bob}`);
+    assert.deepEqual(
+      ranged,
+      { status: 206, acceptRanges: 'bytes', length: RANGE_BYTES },
+      'app:// must serve byte ranges',
+    );
 
     await page.goto(`${MENU}&map=${installed.record.mapId}&intro=off&uiscale=1`);
     await page.waitForFunction(() => (window.__opennorthland?.host.tick ?? 0) >= 3, null, {

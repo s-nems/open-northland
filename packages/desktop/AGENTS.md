@@ -38,7 +38,7 @@ converted content over the `app://` protocol. The root [`AGENTS.md`](../../AGENT
   `packages/app/dist` and `content/` with `ON_CONTENT_DIR` honoured like Vite does, and the
   profile's `maps/` for installed maps. Do not duplicate that choice elsewhere.
 - Keep `main.ts` and `window.ts` free of logic worth a unit test; routing, containment and path
-  rules live in `protocol-routing.ts`, `static-files.ts`, `installed-maps.ts`, `map-store.ts`, `paths.ts`,
+  rules live in `protocol-routing.ts`, `static-files.ts`, `file-response.ts`, `installed-maps.ts`, `map-store.ts`, `paths.ts`,
   `window-state.ts` and `window-control.ts`, which import nothing from `electron`.
 
 ## Build and verification
