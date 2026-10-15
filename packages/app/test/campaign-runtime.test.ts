@@ -35,9 +35,14 @@ describe('campaign handovers', () => {
     );
     expect(proceed).toHaveBeenCalledOnce();
   });
-  it('claims a movie batch once, retaining grants after the movie event', async () => {
+  it('claims a movie batch once: pause, persist the grants, play, then exit', async () => {
     const t = setup();
     const proceed = vi.fn();
+    t.play.mockImplementation(async () => {
+      expect(t.pause).toHaveBeenCalledOnce();
+      expect(readCampaignProgress(t.campaign, t.storage).unlocked).toContain('second');
+      expect(t.exit).not.toHaveBeenCalled();
+    });
     const events = [
       { kind: 'missionVideo', sequence: 0 },
       { kind: 'missionExit', mission: 1 },
@@ -48,7 +53,7 @@ describe('campaign handovers', () => {
     await vi.waitFor(() => expect(t.exit).toHaveBeenCalledOnce());
     expect(t.play).toHaveBeenCalledExactlyOnceWith(0);
     expect(proceed).not.toHaveBeenCalled();
-    expect(readCampaignProgress(t.campaign, t.storage).unlocked).toContain('second');
+    expect(t.resume).not.toHaveBeenCalled();
   });
   it('restores retained grants and movie without requiring repeated events', async () => {
     const t = setup();
