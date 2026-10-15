@@ -137,4 +137,29 @@ describe('bus duck', () => {
       { kind: 'ramp', value: 1, time: HOLD_S + BUS_DUCK_RAMP_S },
     ]);
   });
+
+  it('lifts at a released hold only when no other hold runs past it', () => {
+    const ctx = new FakeContext();
+    const audio = ctx as unknown as BaseAudioContext;
+    const duck = new BusDuck(audio);
+    const param = (duck.node as unknown as FakeGain).gain;
+    const LONG_S = 45;
+    const SHORT_S = 3;
+    const long = duck.hold(audio, SHALLOW_DB, LONG_S);
+    const short = duck.hold(audio, SHALLOW_DB, SHORT_S);
+    const shallow = 10 ** (SHALLOW_DB / 20);
+    const RELEASE_AT_S = 1;
+    ctx.currentTime = RELEASE_AT_S;
+    duck.release(audio, long);
+    expect(param.events.slice(-3)).toEqual([
+      { kind: 'cancel', value: 1, time: LONG_S },
+      { kind: 'set', value: shallow, time: SHORT_S },
+      { kind: 'ramp', value: 1, time: SHORT_S + BUS_DUCK_RAMP_S },
+    ]);
+    duck.release(audio, short);
+    expect(param.events.slice(-2)).toEqual([
+      { kind: 'set', value: shallow, time: RELEASE_AT_S },
+      { kind: 'ramp', value: 1, time: RELEASE_AT_S + BUS_DUCK_RAMP_S },
+    ]);
+  });
 });

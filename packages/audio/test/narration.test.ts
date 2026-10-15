@@ -1,16 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { CLICK_FREE_RAMP_S, VOICE_MUSIC_DUCK_DB, WebAudioEngine } from '../src/index.js';
-import { FakeContext } from './helpers/fake-audio.js';
+import { CLICK_FREE_RAMP_S, VOICE_DUCK_DIP_S, VOICE_MUSIC_DUCK_DB, WebAudioEngine } from '../src/index.js';
+import { FakeContext, type FakeGain } from './helpers/fake-audio.js';
 import { mixerGraph } from './helpers/mixer-graph.js';
 
 /** A briefing page's narration: one clip at a time on the `ui` bus, cut by the next or a stop. */
 
-const RATE = 4;
+/** The lowest rate a Web Audio buffer holds, so test clips stay small. */
+const RATE = 3000;
+const DUCKED = 10 ** (VOICE_MUSIC_DUCK_DB / 20);
 const PCM_16 = 16;
 
-/** A mono 16-bit PCM wav of `seconds` at {@link RATE}, every sample at half scale. */
-function clip(seconds: number): Uint8Array {
-  const frames = seconds * RATE;
+/** A mono 16-bit PCM wav of `seconds` at `rate`, every sample at half scale. */
+function clip(seconds: number, rate = RATE): Uint8Array {
+  const frames = seconds * Math.min(rate, RATE);
   const bytes = new Uint8Array(44 + frames * 2);
   const view = new DataView(bytes.buffer);
   const ascii = (at: number, text: string): void => {
@@ -23,7 +25,7 @@ function clip(seconds: number): Uint8Array {
   view.setUint32(16, 16, true);
   view.setUint16(20, 1, true);
   view.setUint16(22, 1, true);
-  view.setUint32(24, RATE, true);
+  view.setUint32(24, rate, true);
   view.setUint16(32, 2, true);
   view.setUint16(34, PCM_16, true);
   ascii(36, 'data');
@@ -32,8 +34,22 @@ function clip(seconds: number): Uint8Array {
   return bytes;
 }
 
-async function running(): Promise<{ engine: WebAudioEngine; ctx: FakeContext }> {
-  const ctx = new FakeContext();
+/** A context that refuses a buffer at the clips' rate, as a browser does past its limits; the engine's
+ *  own buffers at the context rate still build. */
+class RefusingContext extends FakeContext {
+  override createBuffer(channels: number, length: number, sampleRate: number) {
+    if (sampleRate === RATE) throw new DOMException('unsupported buffer', 'NotSupportedError');
+    return super.createBuffer(channels, length, sampleRate);
+  }
+}
+
+/** When the lift scheduled last on the voice duck starts. */
+function lastLift(ctx: FakeContext): number | undefined {
+  const voiceDuck = mixerGraph(ctx).duck.connectedTo[0] as FakeGain;
+  return voiceDuck.gain.events.filter((event) => event.kind === 'set' && event.value === DUCKED).at(-1)?.time;
+}
+
+async function running(ctx = new FakeContext()): Promise<{ engine: WebAudioEngine; ctx: FakeContext }> {
   const engine = new WebAudioEngine({ createContext: () => ctx as unknown as AudioContext });
   await engine.resume();
   return { engine, ctx };
@@ -95,5 +111,52 @@ describe('narration', () => {
     stopped.stopNarration();
     await stopped.resume();
     expect(later.sources.filter((source) => source.started)).toHaveLength(0);
+  });
+
+  it('lifts the music when a stop cuts the line, not at the end of the clip', async () => {
+    const { engine, ctx } = await running();
+    engine.playNarration(clip(45));
+    expect(lastLift(ctx)).toBe(45);
+    const STOP_AT_S = 2;
+    ctx.currentTime = STOP_AT_S;
+    engine.stopNarration();
+    expect(lastLift(ctx)).toBe(STOP_AT_S);
+  });
+
+  it('keeps one dip across page turns, ending with the line still speaking', async () => {
+    const { engine, ctx } = await running();
+    engine.playNarration(clip(45));
+    ctx.currentTime = 1;
+    engine.playNarration(clip(3));
+    expect(lastLift(ctx)).toBe(1 + 3);
+  });
+
+  it('never lifts before the dip has landed', async () => {
+    const { engine, ctx } = await running();
+    engine.playNarration(clip(45));
+    engine.stopNarration();
+    expect(lastLift(ctx)).toBe(VOICE_DUCK_DIP_S);
+  });
+
+  it('stays silent for a clip the context cannot hold, now or once audio starts', async () => {
+    const refusing = new RefusingContext();
+    const { engine } = await running(refusing);
+    const before = refusing.sources.length;
+    expect(() => engine.playNarration(clip(1))).not.toThrow();
+    expect(refusing.sources).toHaveLength(before);
+
+    const pending = new RefusingContext();
+    const waiting = new WebAudioEngine({ createContext: () => pending as unknown as AudioContext });
+    waiting.playNarration(clip(1));
+    await waiting.resume();
+    expect(pending.sources.filter((source) => source.started)).toHaveLength(0);
+  });
+
+  it('stays silent for a rate no context holds', async () => {
+    const { engine, ctx } = await running();
+    const before = ctx.sources.length;
+    const ABSURD_RATE = 1_000_000;
+    engine.playNarration(clip(1, ABSURD_RATE));
+    expect(ctx.sources).toHaveLength(before);
   });
 });

@@ -35,4 +35,15 @@ describe('briefingVoicePlayer', () => {
     player.play({ lang: 'pol', id: 2 });
     await vi.waitFor(() => expect(sink.narrate).toHaveBeenCalledWith(clip));
   });
+
+  it('keeps a sink that throws from leaving an unhandled rejection', async () => {
+    const narrate = vi.fn(() => {
+      throw new Error('unplayable');
+    });
+    briefingVoicePlayer(async () => new Uint8Array([1]), { narrate, stopNarration: vi.fn() }).play({
+      lang: 'pol',
+      id: 1,
+    });
+    await vi.waitFor(() => expect(narrate).toHaveBeenCalled());
+  });
 });

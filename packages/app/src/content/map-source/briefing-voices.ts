@@ -50,9 +50,13 @@ export function briefingVoicePlayer(load: BriefingVoiceLoader, sink: NarrationSi
     play(voice: BriefingVoice): void {
       const mine = ++turn;
       sink.stopNarration();
-      void load(voice).then((wav) => {
-        if (wav !== null && mine === turn) sink.narrate(wav);
-      });
+      void load(voice)
+        .then((wav) => {
+          if (wav !== null && mine === turn) sink.narrate(wav);
+        })
+        .catch((error: unknown) =>
+          diag.warn('content', 'briefing voice unplayable', { error: String(error) }),
+        );
     },
     stop(): void {
       turn++;

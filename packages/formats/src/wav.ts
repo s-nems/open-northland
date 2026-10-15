@@ -18,6 +18,28 @@ const PCM_8_MIDPOINT = 128;
 const INT16_SCALE = 32768;
 /** A wav names a decoded length far past any spoken line only when it is corrupt. */
 const MAX_WAV_FRAMES = 1 << 26;
+/** The rates and channel counts every Web Audio context must hold in a buffer (W3C Web Audio API,
+ *  `createBuffer`); a wav outside them could not play anyway. */
+export const MIN_WAV_SAMPLE_RATE = 3000;
+export const MAX_WAV_SAMPLE_RATE = 768000;
+export const MAX_WAV_CHANNELS = 32;
+/** `fmt `'s common fields, through `wBitsPerSample`. */
+const FMT_MIN_BYTES = 16;
+const FACT_BYTES = 4;
+
+/** Why a file did not decode: no RIFF WAVE, a malformed or truncated header or chunk, or a format
+ *  this decoder does not read. */
+export type WavDecodeFailure = 'notWav' | 'malformed' | 'unsupported';
+
+export class WavDecodeError extends Error {
+  constructor(
+    readonly failure: WavDecodeFailure,
+    message: string,
+  ) {
+    super(`wav: ${message}`);
+    this.name = 'WavDecodeError';
+  }
+}
 
 /** IMA ADPCM's step sizes and index moves: the Interactive Multimedia Association's published
  *  "Recommended Practices for Enhancing Digital Audio Compatibility in Multimedia Systems" (1992). */
@@ -47,16 +69,22 @@ interface WavFormat {
 }
 
 /**
- * Decodes a RIFF WAVE file in 8/16-bit PCM or IMA ADPCM (Microsoft's `0x0011` layout). Throws on a
- * file that is no wav or uses another codec; the browser decoders do not all read IMA ADPCM.
+ * Decodes a RIFF WAVE file in 8/16-bit PCM or IMA ADPCM (Microsoft's `0x0011` layout). Throws a
+ * {@link WavDecodeError} on a file that is no wav, is malformed or truncated, or uses another codec,
+ * rate or channel count; the browser decoders do not all read IMA ADPCM.
  */
 export function decodeWav(bytes: Uint8Array): WavPcm {
+  if (!isWav(bytes)) throw new WavDecodeError('notWav', 'not a RIFF WAVE file');
   const [riff] = riffChildren(bytes, 0, bytes.length);
-  if (riff?.id !== 'RIFF' || riff.form !== 'WAVE') throw new Error('wav: not a RIFF WAVE file');
+  if (riff?.id !== 'RIFF' || riff.form !== 'WAVE')
+    throw new WavDecodeError('malformed', 'truncated RIFF body');
   const chunks = riffChildren(bytes, riff.bodyStart, riff.bodyEnd);
   const fmt = chunks.find((chunk) => chunk.id === 'fmt ');
   const data = chunks.find((chunk) => chunk.id === 'data');
-  if (fmt === undefined || data === undefined) throw new Error('wav: missing fmt or data chunk');
+  if (fmt === undefined || data === undefined)
+    throw new WavDecodeError('malformed', 'missing or truncated fmt or data chunk');
+  if (fmt.bodyEnd - fmt.bodyStart < FMT_MIN_BYTES)
+    throw new WavDecodeError('malformed', `fmt chunk of ${fmt.bodyEnd - fmt.bodyStart} bytes`);
   const view = viewOf(bytes);
   const format: WavFormat = {
     tag: view.getUint16(fmt.bodyStart, true),
@@ -65,15 +93,21 @@ export function decodeWav(bytes: Uint8Array): WavPcm {
     blockAlign: view.getUint16(fmt.bodyStart + 12, true),
     bits: view.getUint16(fmt.bodyStart + 14, true),
   };
-  if (format.channelCount === 0 || format.sampleRate === 0) throw new Error('wav: empty format');
+  if (format.channelCount === 0 || format.channelCount > MAX_WAV_CHANNELS)
+    throw new WavDecodeError('unsupported', `${format.channelCount} channels`);
+  if (format.sampleRate < MIN_WAV_SAMPLE_RATE || format.sampleRate > MAX_WAV_SAMPLE_RATE)
+    throw new WavDecodeError('unsupported', `sample rate ${format.sampleRate}`);
   const body = bytes.subarray(data.bodyStart, data.bodyEnd);
   const fact = chunks.find((chunk) => chunk.id === 'fact');
-  const declared = fact === undefined ? undefined : view.getUint32(fact.bodyStart, true);
+  const declared =
+    fact === undefined || fact.bodyEnd - fact.bodyStart < FACT_BYTES
+      ? undefined
+      : view.getUint32(fact.bodyStart, true);
   if (format.tag === FORMAT_PCM && (format.bits === PCM_8_BIT || format.bits === PCM_16_BIT))
     return { sampleRate: format.sampleRate, channels: decodePcm(body, format) };
   if (format.tag === FORMAT_IMA_ADPCM && format.bits === IMA_ADPCM_BITS)
     return { sampleRate: format.sampleRate, channels: decodeImaAdpcm(body, format, declared) };
-  throw new Error(`wav: unsupported codec ${format.tag} at ${format.bits} bits`);
+  throw new WavDecodeError('unsupported', `codec ${format.tag} at ${format.bits} bits`);
 }
 
 /** Whether `bytes` starts like a RIFF WAVE file. */
@@ -82,7 +116,8 @@ export function isWav(bytes: Uint8Array): boolean {
 }
 
 function channelsOf(count: number, frames: number): Float32Array[] {
-  if (frames > MAX_WAV_FRAMES) throw new Error(`wav: ${frames} frames is past the decode limit`);
+  if (frames > MAX_WAV_FRAMES)
+    throw new WavDecodeError('unsupported', `${frames} frames is past the decode limit`);
   return Array.from({ length: count }, () => new Float32Array(frames));
 }
 
@@ -112,7 +147,10 @@ function decodeImaAdpcm(
   const headerBytes = IMA_HEADER_BYTES * channelCount;
   const wordGroup = IMA_WORD_BYTES * channelCount;
   if (blockAlign <= headerBytes || (blockAlign - headerBytes) % wordGroup !== 0)
-    throw new Error(`wav: IMA ADPCM block of ${blockAlign} bytes for ${channelCount} channels`);
+    throw new WavDecodeError(
+      'malformed',
+      `IMA ADPCM block of ${blockAlign} bytes for ${channelCount} channels`,
+    );
   const perBlock = 1 + ((blockAlign - headerBytes) / wordGroup) * IMA_SAMPLES_PER_WORD;
   const blocks = Math.floor(body.length / blockAlign);
   const frames = Math.min(blocks * perBlock, declaredFrames ?? Number.POSITIVE_INFINITY);
