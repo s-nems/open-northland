@@ -7,6 +7,7 @@ import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
 import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
 import { ctxOf } from '../fixtures/context.js';
 import {
+  goalMission,
   goalSim,
   HUT,
   HUT_LARGE,
@@ -88,24 +89,46 @@ describe('FindPosByHumans', () => {
     expect(judged(sim)).toBe(false);
   });
 
-  it('holds for a human aboard a vehicle standing inside the area', () => {
-    const sim = goalSim(goal);
-    const vehicle = createVehicle(sim.world, ctxOf(sim), {
-      vehicleType: HANDCART,
-      x: POINT.hx,
-      y: POINT.hy,
-      tribe: VIKING,
-      owner: OWNER,
+  describe('aboard a vehicle', () => {
+    /** Never elapses, so the mission stays active and the next pass judges the boarded stand. */
+    const NEVER: MissionGoalOp = { opcode: 'TimeGone', seconds: 1_000_000 };
+
+    /** A scout carrying `HERE`, set down at `groundAt`, seated on a cart standing at `cartAt`;
+     *  returns whether the first pass after boarding holds the goal. */
+    function heldAboard(cartAt: { hx: number; hy: number }, groundAt: { hx: number; hy: number }): boolean {
+      const sim = missionSim([{ ...goalMission(goal), goals: [goal, NEVER] }]);
+      const vehicle = createVehicle(sim.world, ctxOf(sim), {
+        vehicleType: HANDCART,
+        x: cartAt.hx,
+        y: cartAt.hy,
+        tribe: VIKING,
+        owner: OWNER,
+      });
+      if (vehicle === null) throw new Error('setup: no cart');
+      spawn(sim, { player: OWNER, missionId: HERE, job: SCOUT, at: groundAt });
+      sim.step();
+      const rider = stamped(sim, HERE);
+      sim.enqueueSetup({ kind: 'attachToVehicle', entity: rider, vehicle });
+      sim.step();
+      boardRider(sim.world, rider, vehicle);
+      expect(sim.world.has(rider, Rider) && !sim.world.has(rider, Position)).toBe(true);
+      sim.run(PASS_TICKS);
+      return missionRecords(sim.world)[0]?.goalsHeld[0] === true;
+    }
+
+    it('holds where the vehicle stands inside the area, boarded from outside', () => {
+      expect(heldAboard(POINT, FAR)).toBe(true);
     });
-    if (vehicle === null) throw new Error('setup: no cart');
-    spawn(sim, { player: OWNER, missionId: HERE, job: SCOUT });
-    sim.step();
-    const rider = stamped(sim, HERE);
-    sim.enqueueSetup({ kind: 'attachToVehicle', entity: rider, vehicle });
-    sim.step();
-    boardRider(sim.world, rider, vehicle);
-    expect(sim.world.has(rider, Rider) && !sim.world.has(rider, Position)).toBe(true);
-    expect(judged(sim)).toBe(true);
+
+    it('does not hold where the vehicle stands outside, boarded from inside', () => {
+      expect(heldAboard(FAR, POINT)).toBe(false);
+    });
+  });
+
+  it('does not hold for a human carrying another id', () => {
+    const sim = goalSim(goal);
+    spawn(sim, { player: OWNER, missionId: THERE });
+    expect(judged(sim)).toBe(false);
   });
 
   describe('with id 0', () => {
