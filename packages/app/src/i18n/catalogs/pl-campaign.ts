@@ -6,8 +6,9 @@ export const plCampaign = {
   start: 'Rozpocznij misję',
   tribeNote: 'zalecane',
   tribeChoice: 'Kampania zaleca: {tribe}',
+  nation: 'Nacja',
   tribeTitle:
-    'Plemię, którym grasz w tej misji: jego osadnicy i budynki. Kampanię zaprojektowano pod plemię oznaczone gwiazdką.',
+    'Nacja, którą grasz w tej misji: jej osadnicy i budynki. Kampanię zaprojektowano pod nację oznaczoną gwiazdką.',
   skip: 'Przewiń misję',
   confirm: 'Odblokować kolejną misję?\nTo funkcja pomocnicza wersji alpha Open Northland.',
   cancel: 'Anuluj',

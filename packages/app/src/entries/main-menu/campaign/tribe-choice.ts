@@ -34,7 +34,7 @@ function emblem(tribe: number): HTMLElement {
 export function campaignTribeChoice(initial: number, change: (tribe: number) => void) {
   const copy = messages().campaign;
   const root = node('div', 'campaign-tribe');
-  const label = node('span', 'campaign-tribe__label', messages().mainMenu.lobby.tribe);
+  const label = node('span', 'campaign-tribe__label', copy.nation);
   label.id = 'campaign-tribe-label';
   const group = node('div', 'campaign-tribe__options');
   group.setAttribute('role', 'radiogroup');

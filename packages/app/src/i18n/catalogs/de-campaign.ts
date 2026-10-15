@@ -6,8 +6,9 @@ export const deCampaign = {
   start: 'Mission starten',
   tribeNote: 'empfohlen',
   tribeChoice: 'Die Kampagne empfiehlt: {tribe}',
+  nation: 'Nation',
   tribeTitle:
-    'Der Stamm, mit dem du diese Mission spielst: seine Siedler und Gebäude. Die Kampagne wurde für den mit einem Stern markierten Stamm entworfen.',
+    'Die Nation, mit der du diese Mission spielst: ihre Siedler und Gebäude. Die Kampagne wurde für die mit einem Stern markierte Nation entworfen.',
   skip: 'Mission überspringen',
   confirm: 'Nächste Mission freischalten?\nDas ist eine Hilfsfunktion der Alpha-Version von Open Northland.',
   cancel: 'Abbrechen',

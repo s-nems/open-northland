@@ -238,8 +238,9 @@ export function campaignScreen(
 
     side.append(heading, list, start);
     aside.append(side);
-    const foot = node('div', 'campaign-screen__foot');
-    foot.append(tribeChoice.root);
+    const mapColumn = node('div', 'campaign-screen__map-column');
+    mapColumn.append(map.root, tribeChoice.root);
+    const asideFoot = node('div', 'campaign-screen__aside-foot');
 
     if (canSkipCampaignStage(campaign, progress)) {
       const skip = node('button', 'campaign-screen__skip', copy.skip);
@@ -272,7 +273,7 @@ export function campaignScreen(
           body.querySelector<HTMLElement>('.campaign-screen__mission[aria-pressed="true"]')?.focus();
         });
       });
-      foot.append(skip);
+      asideFoot.append(skip);
     }
 
     // Scrolls the list alone, so a long campaign keeps the chosen row in sight without moving the screen.
@@ -290,9 +291,10 @@ export function campaignScreen(
       }
       start.disabled = busy;
     };
+    aside.append(asideFoot);
     const stage = node('div', 'campaign-screen__stage');
-    stage.append(map.root, aside);
-    body.replaceChildren(stage, foot);
+    stage.append(mapColumn, aside);
+    body.replaceChildren(stage);
     if (selected !== undefined) choose(selected);
     else start.disabled = true;
   };

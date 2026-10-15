@@ -6,8 +6,9 @@ export const enCampaign = {
   start: 'Start mission',
   tribeNote: 'recommended',
   tribeChoice: 'The campaign recommends: {tribe}',
+  nation: 'Nation',
   tribeTitle:
-    'The tribe you play this mission as: its settlers and buildings. The campaign was designed for the starred one.',
+    'The nation you play this mission as: its settlers and buildings. The campaign was designed for the starred one.',
   skip: 'Skip mission',
   confirm: 'Unlock the next mission?\nThis is a helper of the Open Northland alpha version.',
   cancel: 'Cancel',

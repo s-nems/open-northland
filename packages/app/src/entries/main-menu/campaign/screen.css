@@ -337,12 +337,26 @@
   --u: calc((var(--k) + var(--menu-u)) / 2);
   flex: none;
   width: calc(var(--u) * var(--campaign-side-width));
-  max-height: calc(var(--k) * var(--campaign-map-width) / var(--map-aspect));
+  height: calc(var(--k) * var(--campaign-map-width) / var(--map-aspect));
   margin-left: calc(var(--k) * var(--campaign-gap));
   min-height: 0;
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 1fr auto auto 1fr;
   gap: calc(var(--u) * 10);
+}
+
+/* The films and the panel sit in the middle of the map's height; the alpha recovery at its foot. */
+.campaign-screen__films {
+  grid-row: 2;
+}
+
+.campaign-screen__side {
+  grid-row: 3;
+}
+
+.campaign-screen__aside-foot {
+  grid-row: 4;
+  align-self: end;
 }
 
 .campaign-screen__films {
@@ -504,21 +518,26 @@
   transform: none;
 }
 
-/* ---- Foot row: the civilization on the left, the alpha recovery on the far right ---- */
+/* ---- Under the map: the nation centred; the alpha recovery at the panel's foot, far right ---- */
 
-.campaign-screen__foot {
-  height: calc(var(--u) * var(--campaign-foot-height));
+.campaign-screen__map-column {
   display: flex;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: calc(var(--u) * 24);
+  flex-direction: column;
+  align-items: center;
 }
 
 .campaign-tribe {
+  height: calc(var(--u) * var(--campaign-foot-height));
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: calc(var(--u) * 12);
   min-width: 0;
+}
+
+.campaign-screen__aside-foot {
+  display: flex;
+  justify-content: flex-end;
 }
 
 .campaign-tribe__label {
@@ -694,9 +713,9 @@
     gap: calc(var(--u) * var(--campaign-gap));
   }
 
-  .campaign-screen__foot {
+  .campaign-tribe {
     height: auto;
-    margin-top: calc(var(--u) * 20);
+    margin-top: calc(var(--u) * 12);
     flex-wrap: wrap;
   }
 
@@ -708,7 +727,7 @@
 
   .campaign-screen__aside {
     width: 100%;
-    max-height: none;
+    height: auto;
     margin-left: 0;
   }
 }
