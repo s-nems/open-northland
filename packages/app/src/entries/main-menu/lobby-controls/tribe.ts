@@ -36,24 +36,45 @@ function emblem(tribe: number): HTMLElement {
   return box;
 }
 
-/** A list entry's name, over a small starred line on the map's own civilization. */
-function caption(tribe: number, authored: number): HTMLElement {
+/** A list entry's name, over a small starred line on the starred civilization. */
+function caption(tribe: number, authored: number, starNote: string): HTMLElement {
   const root = node('span', 'lobby-tribe__caption');
   root.append(node('span', 'lobby-tribe__name', tribeName(tribe)));
   if (tribe === authored) {
     const note = node('span', 'lobby-tribe__note');
-    note.append(star(), messages().mainMenu.lobby.tribeMapDefault);
+    note.append(star(), starNote);
     root.append(note);
   }
   return root;
 }
 
+/** Wording for a picker whose starred civilization is not the map's own, such as a campaign's. */
+export interface TribePickerCopy {
+  /** The starred civilization's note. */
+  readonly note: string;
+  /** The button's hint while another civilization is chosen; `{tribe}` names the starred one. */
+  readonly choice: string;
+  /** The button's tooltip line saying what the choice means. */
+  readonly title: string;
+}
+
 /**
- * A seat's civilization picker, shared by the local lobby and a network room: the chosen
- * civilization's icon, opening a named list of all of them with the map's own starred.
+ * A seat's civilization picker, shared by the local lobby, a network room and the campaign launch:
+ * the chosen civilization's icon, opening a named list of all of them with the starred one marked.
+ * `named` also shows the chosen civilization's name on the button.
  */
-export function tribePicker(authored: number, change: (tribe: number) => void, className = '') {
+export function tribePicker(
+  authored: number,
+  change: (tribe: number) => void,
+  className = '',
+  { wording, named = false }: { readonly wording?: TribePickerCopy; readonly named?: boolean } = {},
+) {
   const copy = messages().mainMenu.lobby;
+  const text: TribePickerCopy = wording ?? {
+    note: copy.tribeMapDefault,
+    choice: copy.tribeMapChoice,
+    title: copy.tribeTitle,
+  };
   const root = node('div', `lobby-tribe ${className}`.trim());
   const label = node('span', 'lobby-tribe__label', copy.tribe);
   const button = node('button', 'lobby-tribe__button');
@@ -62,7 +83,9 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
   button.setAttribute('aria-expanded', 'false');
   let current = authored;
   let buttonEmblem = emblem(authored);
+  let buttonCaption = named ? caption(authored, authored, text.note) : null;
   button.append(buttonEmblem);
+  if (buttonCaption !== null) button.append(buttonCaption);
 
   const menu = node('div', 'lobby-tribe__menu');
   menu.popover = 'auto';
@@ -75,7 +98,7 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
     const option = node('button', 'lobby-tribe__option');
     option.type = 'button';
     option.setAttribute('role', 'option');
-    option.append(emblem(tribe), caption(tribe, authored));
+    option.append(emblem(tribe), caption(tribe, authored, text.note));
     option.addEventListener('click', () => {
       menu.hidePopover();
       if (tribe !== current) change(tribe);
@@ -144,15 +167,20 @@ export function tribePicker(authored: number, change: (tribe: number) => void, c
         const next = emblem(tribe);
         buttonEmblem.replaceWith(next);
         buttonEmblem = next;
+        if (buttonCaption !== null) {
+          const nextCaption = caption(tribe, authored, text.note);
+          buttonCaption.replaceWith(nextCaption);
+          buttonCaption = nextCaption;
+        }
       }
       current = tribe;
       const name = tribeName(tribe);
       button.setAttribute('aria-label', `${copy.tribe}: ${name}`);
       button.title = `${
         tribe === authored
-          ? `${name} (${copy.tribeMapDefault})`
-          : `${name}. ${formatMessage(copy.tribeMapChoice, { tribe: tribeName(authored) })}.`
-      }\n${copy.tribeTitle}`;
+          ? `${name} (${text.note})`
+          : `${name}. ${formatMessage(text.choice, { tribe: tribeName(authored) })}.`
+      }\n${text.title}`;
       button.disabled = disabled;
       if (disabled && menu.matches(':popover-open')) menu.hidePopover();
       for (const { tribe: entry, option } of options) {

@@ -1,7 +1,7 @@
-import type { Campaign } from '@open-northland/data';
+import type { Campaign, MapTextLanguage } from '@open-northland/data';
 import { loadCampaigns } from '../../../campaign/catalog.js';
-import { campaignMissionQuery } from '../../../campaign/launch.js';
-import { campaignLanguage, campaignMovies, localizedText } from '../../../campaign/locale.js';
+import { campaignMissionQuery, RECOMMENDED_CAMPAIGN_TRIBE } from '../../../campaign/launch.js';
+import { campaignLanguage, campaignLogo, campaignMovies, localizedText } from '../../../campaign/locale.js';
 import { playCampaignMovie } from '../../../campaign/movie.js';
 import {
   type CampaignProgress,
@@ -9,186 +9,277 @@ import {
   nextCampaignStage,
   readCampaignProgress,
 } from '../../../campaign/progress.js';
+import { createHudPlane } from '../../../hud/dom/root.js';
+import { createSystemConfirm, type SystemConfirmCopy } from '../../../hud/dom/system-confirm.js';
+import { displayViewOf, uiScaleFor } from '../../../hud/ui-scale.js';
 import { currentLocale, formatMessage, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
-import { BUTTON_STYLE, DIALOG_STYLE, el } from '../../../view/overlay.js';
+import { node } from '../dom.js';
+import { tribePicker } from '../lobby-controls/tribe.js';
 import type { MenuScreen, MountedScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { targetSearch } from '../target-search.js';
+import { campaignMap } from './map.js';
+import {
+  initialCampaign,
+  launchTribe,
+  readChosenCampaign,
+  readRevealedRoutes,
+  rememberChosenCampaign,
+  rememberRevealedRoute,
+  routeToReveal,
+  unlockedStages,
+} from './model.js';
 import './screen.css';
+
+/** Window storage, or none where reading the accessor itself throws. */
+function viewerStorage(): Storage | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+/** The campaign's title artwork, or its localized title where there is none or it fails to load. */
+function campaignTab(campaign: Campaign, language: MapTextLanguage): HTMLButtonElement {
+  const title = localizedText(campaign.title, language);
+  const button = node('button', 'campaign-screen__campaign');
+  button.type = 'button';
+  const text = (): HTMLElement => node('span', 'campaign-screen__campaign-title', title);
+  const url = campaignLogo(campaign, language);
+  if (url === undefined) {
+    button.append(text());
+    return button;
+  }
+  const logo = node('img', 'campaign-screen__campaign-logo');
+  logo.alt = title;
+  logo.src = url;
+  logo.addEventListener('error', () => logo.replaceWith(text()), { once: true });
+  button.append(logo);
+  return button;
+}
+
+/** A question over the whole menu in the HUD's own confirm window; Esc and the shade decline. */
+async function askInHud(copy: SystemConfirmCopy, signal: AbortSignal): Promise<boolean> {
+  const backdrop = node('div', 'on-system-backdrop');
+  const plane = createHudPlane(uiScaleFor(displayViewOf(window.innerWidth, window.innerHeight)));
+  plane.element.classList.add('on-system-plane');
+  backdrop.append(plane.element);
+  const confirm = createSystemConfirm(plane.element);
+  const prior = document.activeElement;
+  const inert = new Map<HTMLElement, boolean>();
+  for (const child of document.body.children) {
+    if (child instanceof HTMLElement) {
+      inert.set(child, child.inert);
+      child.inert = true;
+    }
+  }
+  // Capture phase, so the menu does not also read Esc as back-navigation.
+  const onKey = (event: KeyboardEvent): void => {
+    if (event.key !== 'Escape') return;
+    event.stopPropagation();
+    event.preventDefault();
+    confirm.cancel();
+  };
+  window.addEventListener('keydown', onKey, true);
+  signal.addEventListener('abort', confirm.cancel, { once: true });
+  document.body.append(backdrop);
+  try {
+    return await confirm.open(copy);
+  } finally {
+    signal.removeEventListener('abort', confirm.cancel);
+    window.removeEventListener('keydown', onKey, true);
+    backdrop.remove();
+    for (const [element, was] of inert) element.inert = was;
+    if (prior instanceof HTMLElement && prior.isConnected) prior.focus();
+  }
+}
 
 export function campaignScreen(open: (screen: MenuScreen) => void, launch: LaunchEntry): MountedScreen {
   const scope = new AbortController();
-  const section = document.createElement('section');
-  section.className = 'main-menu__screen campaign-screen';
-  section.append(screenHead('campaign', open, 'newGame'));
-  const body = document.createElement('div');
-  const status = document.createElement('p');
-  status.setAttribute('role', 'status');
-  section.append(body, status);
   const copy = messages().campaign;
-  let selected: string | undefined;
-  let busy = false;
+  const storage = viewerStorage();
+  const section = node('section', 'main-menu__screen campaign-screen');
+  const tabs = node('div', 'campaign-screen__campaigns');
+  tabs.setAttribute('role', 'group');
+  tabs.setAttribute('aria-label', copy.campaigns);
+  const body = node('div', 'campaign-screen__body');
+  const status = node('p', 'campaign-screen__status');
+  status.setAttribute('role', 'status');
+  section.append(screenHead('campaign', open, 'newGame'), tabs, body, status);
+
+  let campaigns: readonly Campaign[] = [];
   let current: Campaign | undefined;
-  const fail = (): void => {
-    status.textContent = copy.storage;
+  let selected: string | undefined;
+  let tribe: number = RECOMMENDED_CAMPAIGN_TRIBE;
+  let busy = false;
+  let asking = false;
+
+  const setBusy = (next: boolean): void => {
+    busy = next;
+    for (const button of section.querySelectorAll<HTMLButtonElement>('button')) button.disabled = next;
   };
 
-  const render = (campaign: Campaign): void => {
+  const renderTabs = (): void => {
+    tabs.replaceChildren(
+      ...campaigns.map((campaign) => {
+        const tab = campaignTab(campaign, campaignLanguage(campaign, currentLocale()));
+        tab.setAttribute('aria-pressed', String(campaign === current));
+        tab.addEventListener('click', () => {
+          if (campaign === current) return;
+          rememberChosenCampaign(storage, campaign.id);
+          selected = undefined;
+          status.textContent = '';
+          show(campaign);
+          tabs.querySelector<HTMLElement>('[aria-pressed="true"]')?.focus();
+        });
+        return tab;
+      }),
+    );
+  };
+
+  const show = (campaign: Campaign): void => {
     current = campaign;
+    renderTabs();
     const language = campaignLanguage(campaign, currentLocale());
-    const movies = campaignMovies(campaign, language);
     let progress: CampaignProgress;
     try {
       progress = readCampaignProgress(campaign, localStorage);
     } catch {
-      fail();
+      status.textContent = copy.storage;
+      body.replaceChildren();
       return;
     }
-    const unlocked = new Set(progress.unlocked);
-    selected ??= campaign.stages.filter((stage) => unlocked.has(stage.mapId)).at(-1)?.mapId;
-    body.replaceChildren();
-    const title = document.createElement('h2');
-    title.textContent = localizedText(campaign.title, language);
-    const layout = document.createElement('div');
-    layout.className = 'campaign-screen__layout';
-    const map = document.createElement('div');
-    map.className = 'campaign-screen__map';
-    const image = document.createElement('img');
-    image.src = campaign.background;
-    image.alt = '';
-    map.append(image);
-    const side = document.createElement('div');
-    side.className = 'campaign-screen__side';
-    const list = document.createElement('ol');
-    list.className = 'campaign-screen__stages';
-    for (const [index, stage] of campaign.stages.entries()) {
-      const available = unlocked.has(stage.mapId);
-      const stageTitle = localizedText(stage.title, language);
-      const label = `${index + 1}. ${stageTitle} · ${available ? copy.available : copy.locked}`;
-      const select = (): void => {
-        selected = stage.mapId;
-        render(campaign);
-      };
-      const point = document.createElement('button');
-      point.type = 'button';
-      point.className = 'campaign-screen__point';
-      point.textContent = `${index + 1}`;
-      point.title = label;
-      point.setAttribute('aria-label', label);
-      point.style.left = `${stage.x * 100}%`;
-      point.style.top = `${stage.y * 100}%`;
-      point.disabled = !available || busy;
-      point.setAttribute('aria-pressed', String(selected === stage.mapId));
-      point.addEventListener('click', select);
-      map.append(point);
-      const row = document.createElement('li');
-      const button = document.createElement('button');
-      button.type = 'button';
-      button.textContent = stageTitle;
-      button.disabled = !available || busy;
-      button.title = label;
-      button.setAttribute('aria-pressed', String(selected === stage.mapId));
-      button.addEventListener('click', select);
-      row.append(button);
-      list.append(row);
-    }
-    const start = document.createElement('button');
+    const stages = unlockedStages(campaign, progress);
+    if (!stages.some(({ stage }) => stage.mapId === selected)) selected = stages.at(-1)?.stage.mapId;
+    const reveal = routeToReveal(stages, readRevealedRoutes(storage, campaign));
+    if (reveal !== undefined) rememberRevealedRoute(storage, campaign, reveal);
+
+    const map = campaignMap(campaign, stages, language, reveal, (mapId) => choose(mapId));
+    const side = node('aside', 'campaign-screen__side');
+    const heading = node('h2', 'campaign-screen__side-title', copy.missions);
+    heading.id = 'campaign-screen-missions';
+    const list = node('ol', 'campaign-screen__missions');
+    list.setAttribute('aria-labelledby', heading.id);
+    const rows = stages.map(({ stage, number }) => {
+      const row = node('button', 'campaign-screen__mission');
+      row.type = 'button';
+      row.append(
+        node('span', 'campaign-screen__mission-number', String(number)),
+        node('span', 'campaign-screen__mission-title', localizedText(stage.title, language)),
+      );
+      row.addEventListener('click', () => choose(stage.mapId));
+      const item = node('li');
+      item.append(row);
+      list.append(item);
+      return { mapId: stage.mapId, row };
+    });
+
+    const picker = tribePicker(
+      RECOMMENDED_CAMPAIGN_TRIBE,
+      (next) => {
+        tribe = next;
+        picker.update(tribe, busy);
+      },
+      'campaign-screen__tribe',
+      { wording: { note: copy.tribeNote, choice: copy.tribeChoice, title: copy.tribeTitle }, named: true },
+    );
+    picker.update(tribe, busy);
+
+    const start = node('button', 'main-menu__primary campaign-screen__start', copy.start);
     start.type = 'button';
-    start.className = 'campaign-screen__start';
-    start.textContent = copy.start;
-    start.disabled = busy || selected === undefined || !unlocked.has(selected);
     start.addEventListener('click', () => {
       const mapId = selected;
       if (mapId === undefined || busy) return;
-      busy = true;
-      render(campaign);
+      setBusy(true);
+      const intro = campaignMovies(campaign, language).intro;
       const run = async (): Promise<void> => {
-        if (mapId === campaign.stages[0]?.mapId && movies.intro !== undefined)
+        if (mapId === campaign.stages[0]?.mapId && intro !== undefined)
           await playCampaignMovie(
-            movies.intro,
+            intro,
             { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed },
             scope.signal,
           );
-        if (!scope.signal.aborted) await launch(targetSearch(campaignMissionQuery({ mapId, language })));
+        const chosen = launchTribe(tribe);
+        const query = campaignMissionQuery(
+          chosen === undefined ? { mapId, language } : { mapId, language, tribe: chosen },
+        );
+        if (!scope.signal.aborted) await launch(targetSearch(query));
       };
       void run().catch(() => {
-        if (!scope.signal.aborted) {
-          busy = false;
-          fail();
-          render(campaign);
-        }
+        if (scope.signal.aborted) return;
+        setBusy(false);
+        status.textContent = copy.storage;
+        show(campaign);
       });
     });
-    const skip = document.createElement('button');
-    skip.type = 'button';
-    skip.className = 'campaign-screen__skip';
-    skip.textContent = copy.skip;
+
+    const launchRow = node('div', 'campaign-screen__launch');
+    launchRow.append(picker.root, start);
+    side.append(heading, list, launchRow);
+
     const next = nextCampaignStage(campaign, progress);
-    skip.disabled = busy || next === undefined;
-    if (next === undefined) skip.title = copy.all;
-    skip.addEventListener('click', () => {
-      const stage = campaign.stages.find((stage) => stage.mapId === next);
-      const map = campaign.maps.find((map) => map.id === next);
-      if (stage === undefined || map === undefined || busy) return;
-      const dialog = el('dialog', `${DIALOG_STYLE};max-width:32rem`);
-      dialog.append(
-        el(
-          'p',
-          'line-height:1.5',
-          formatMessage(copy.confirm, { mission: localizedText(stage.title, language) }),
-        ),
-      );
-      const cancel = el('button', BUTTON_STYLE, copy.cancel);
-      const confirm = el('button', BUTTON_STYLE, copy.unlock);
-      const error = el('p', '', '');
-      error.setAttribute('role', 'status');
-      const close = (): void => {
-        dialog.remove();
-        scope.signal.removeEventListener('abort', close);
-        skip.focus();
-      };
-      scope.signal.addEventListener('abort', close, { once: true });
-      cancel.addEventListener('click', close);
-      dialog.addEventListener('cancel', (event) => {
-        event.preventDefault();
-        close();
+    const nextStage = campaign.stages.find((stage) => stage.mapId === next);
+    const nextMap = campaign.maps.find((map) => map.id === next);
+    if (nextStage !== undefined && nextMap !== undefined) {
+      const skip = node('button', 'campaign-screen__skip', copy.skip);
+      skip.type = 'button';
+      skip.addEventListener('click', () => {
+        if (busy || asking) return;
+        asking = true;
+        void askInHud(
+          {
+            title: copy.skip,
+            message: formatMessage(copy.confirm, { mission: localizedText(nextStage.title, language) }),
+            cancel: copy.cancel,
+            confirm: copy.unlock,
+          },
+          scope.signal,
+        ).then((accepted) => {
+          asking = false;
+          if (!accepted || scope.signal.aborted) return;
+          try {
+            grantCampaignMaps(
+              campaign,
+              [{ campaignId: campaign.campaignId, mapId: nextMap.missionId }],
+              localStorage,
+            );
+          } catch {
+            status.textContent = copy.storage;
+            return;
+          }
+          status.textContent = '';
+          selected = nextStage.mapId;
+          show(campaign);
+          body.querySelector<HTMLElement>('.campaign-screen__mission[aria-pressed="true"]')?.focus();
+        });
       });
-      dialog.addEventListener('keydown', (event) => event.stopPropagation());
-      confirm.addEventListener('click', () => {
-        try {
-          grantCampaignMaps(
-            campaign,
-            [{ campaignId: campaign.campaignId, mapId: map.missionId }],
-            localStorage,
-          );
-        } catch {
-          error.textContent = copy.storage;
-          return;
-        }
-        close();
-        selected = stage.mapId;
-        render(campaign);
-      });
-      dialog.append(cancel, confirm, error);
-      document.body.append(dialog);
-      dialog.showModal();
-      cancel.focus();
-    });
-    side.append(list, start, skip);
-    layout.append(map, side);
-    body.append(title, layout);
+      side.append(skip);
+    }
+
+    const choose = (mapId: string): void => {
+      selected = mapId;
+      map.select(mapId);
+      for (const { mapId: id, row } of rows) row.setAttribute('aria-pressed', String(id === mapId));
+      start.disabled = busy;
+    };
+    if (selected !== undefined) choose(selected);
+    else start.disabled = true;
+    body.replaceChildren(map.root, side);
   };
+
   void loadCampaigns()
-    .then((campaigns) => {
+    .then((loaded) => {
       if (scope.signal.aborted) return;
+      campaigns = loaded;
       const requested = new URLSearchParams(window.location.search).get('campaign');
-      const campaign = campaigns.find((campaign) => campaign.id === requested) ?? campaigns[0];
+      const campaign = initialCampaign(campaigns, requested, readChosenCampaign(storage));
       if (campaign === undefined) {
         status.textContent = copy.empty;
         return;
       }
-      render(campaign);
+      show(campaign);
     })
     .catch(() => {
       if (!scope.signal.aborted) status.textContent = copy.empty;
@@ -196,7 +287,7 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
   window.addEventListener(
     'storage',
     () => {
-      if (current !== undefined && !busy) render(current);
+      if (current !== undefined && !busy && !asking) show(current);
     },
     { signal: scope.signal },
   );

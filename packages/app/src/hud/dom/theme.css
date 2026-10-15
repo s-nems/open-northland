@@ -1,5 +1,5 @@
-/* Shared palette and typography for the game HUD, the multiplayer screens and the map catalogue. */
-:where(.on-hud, .network-menu, .catalogue-screen) {
+/* Shared palette and typography for the game HUD, the multiplayer, catalogue and campaign screens. */
+:where(.on-hud, .network-menu, .catalogue-screen, .campaign-screen) {
   --deep: #182521;
   --fill: #273832;
   --text: #f0e6cf;

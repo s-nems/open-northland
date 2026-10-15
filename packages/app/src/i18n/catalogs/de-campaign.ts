@@ -1,15 +1,18 @@
 export const deCampaign = {
   title: 'Kampagne',
   empty: 'Keine Kampagne installiert.',
+  campaigns: 'Kampagnen',
+  missions: 'Missionen',
   start: 'Mission starten',
+  tribeNote: 'empfohlen',
+  tribeChoice: 'Die Kampagne empfiehlt: {tribe}',
+  tribeTitle:
+    'Der Stamm, mit dem du diese Mission spielst: seine Siedler und Gebäude. Die Kampagne wurde für den mit einem Stern markierten Stamm entworfen.',
   skip: 'Mission überspringen',
   confirm:
-    'Nächste Mission freischalten: {mission}? Diese Alpha-Wiederherstellung verändert keine Spielstände.',
+    'Nächste Mission freischalten: {mission}?\nDas ist eine Hilfsfunktion der Alpha-Version von Open Northland.',
   cancel: 'Abbrechen',
   unlock: 'Mission freischalten',
-  locked: 'Gesperrt',
-  available: 'Verfügbar',
-  all: 'Alle Missionen sind freigeschaltet.',
   storage:
     'Kampagnenfortschritt konnte nicht gespeichert werden. Browserspeicher freigeben und erneut versuchen.',
   retry: 'Erneut versuchen',
