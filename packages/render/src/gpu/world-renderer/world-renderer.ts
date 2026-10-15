@@ -27,6 +27,7 @@ import {
   type BuildingSignGfx,
   type ConstructionPlotFrame,
   ConstructionPlotLayer,
+  type ExperienceStarGfx,
   type GeometryDebugItem,
   HudLayer,
   type ImportMarkerGfx,
@@ -67,6 +68,7 @@ import {
   NO_RANGE_RINGS,
   NO_REFS,
   NO_SIGNS,
+  NO_STARS,
   SPRITE_CULL_MARGIN,
   type WorldEnhancements,
   type WorldFrame,
@@ -368,6 +370,10 @@ export class WorldRenderer {
     this.marks.setBubbleGfx(gfx);
   }
 
+  setExperienceStarGfx(gfx: ExperienceStarGfx | null): void {
+    this.marks.setExperienceStarGfx(gfx);
+  }
+
   setImportMarkerGfx(gfx: ImportMarkerGfx | null): void {
     this.marks.setImportMarkerGfx(gfx);
   }
@@ -413,6 +419,7 @@ export class WorldRenderer {
       constructionSigns: signItems = NO_SIGNS,
       settlerBubbles = NO_BUBBLES,
       lifeHearts = NO_HEARTS,
+      experienceStars = NO_STARS,
       groupNumbers = NO_GROUP_NUMBERS,
       flagged = NO_REFS,
       focused = NO_REFS,
@@ -516,6 +523,7 @@ export class WorldRenderer {
       constructionSigns: signItems,
       settlerBubbles,
       lifeHearts,
+      experienceStars,
       groupNumbers: this.groupNumbersShown ? groupNumbers : NO_GROUP_NUMBERS,
     });
     this.pool.coverGroundPiles(this.marks.collapseGroundCover());

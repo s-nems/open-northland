@@ -1,6 +1,8 @@
 import type { SimEvent, WorldSnapshot } from '@open-northland/sim';
 import type { Container } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
+import { type ImportMarker, importMarkersOf } from '../../data/scene/import-markers.js';
+import { OverheadColumn } from '../../data/scene/overhead-column.js';
 import type { ElevationField, WaterField } from '../../data/terrain/index.js';
 import type { FallenBody } from '../building-damage/building-damage.js';
 import { BloodLayer } from '../overlays/blood-layer.js';
@@ -13,6 +15,9 @@ import {
   type ConstructionSign,
   ConstructionSignLayer,
   type DoorBadge,
+  type ExperienceStar,
+  type ExperienceStarGfx,
+  ExperienceStarLayer,
   type GeometryDebugItem,
   GeometryDebugLayer,
   GroupNumberLayer,
@@ -40,6 +45,8 @@ import type { WorldSceneLayers } from './painter-order.js';
 
 /** The marks the world draws on its entities rather than as entities. */
 
+const NO_MARKERS: readonly ImportMarker[] = [];
+
 export type MarkSlots = Pick<
   WorldSceneLayers,
   | 'wakes'
@@ -49,6 +56,7 @@ export type MarkSlots = Pick<
   | 'bloodGround'
   | 'constructionSigns'
   | 'bubbles'
+  | 'experienceStars'
   | 'hearts'
   | 'importMarkers'
   | 'groupNumbers'
@@ -84,6 +92,7 @@ export interface WorldMarksFrame {
   readonly constructionSigns: readonly ConstructionSign[];
   readonly settlerBubbles: readonly SettlerBubble[];
   readonly lifeHearts: readonly LifeHeart[];
+  readonly experienceStars: readonly ExperienceStar[];
   /** Entity id → the numbers of its control groups; empty when the player turned the numbers off. */
   readonly groupNumbers: ReadonlyMap<number, readonly string[]>;
 }
@@ -107,7 +116,10 @@ export class WorldMarks {
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
   private readonly hearts = new LifeHeartLayer();
+  private readonly experienceStars = new ExperienceStarLayer();
   private readonly importMarkers = new ImportMarkerLayer();
+  /** The icons each person wears over his head this frame, which stack them in one column. */
+  private readonly column = new OverheadColumn();
   private readonly groupNumbers = new GroupNumberLayer();
   private readonly geometryDebug = new GeometryDebugLayer();
   readonly slots: MarkSlots;
@@ -137,6 +149,7 @@ export class WorldMarks {
       bloodGround: this.blood.groundContainer,
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
+      experienceStars: this.experienceStars.container,
       hearts: this.hearts.container,
       importMarkers: this.importMarkers.container,
       groupNumbers: this.groupNumbers.container,
@@ -180,6 +193,11 @@ export class WorldMarks {
     this.bubbles.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textures });
   }
 
+  /** `null` leaves the star layer drawing nothing. */
+  setExperienceStarGfx(gfx: ExperienceStarGfx | null): void {
+    this.experienceStars.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textures });
+  }
+
   /** `null` leaves the import-marker layer drawing nothing. */
   setImportMarkerGfx(gfx: ImportMarkerGfx | null): void {
     this.importMarkers.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textures });
@@ -220,9 +238,23 @@ export class WorldMarks {
     this.badges.draw(frame.doorBadges, elevation, viewport, renderTime);
     this.familyEffects.draw(frame);
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
-    this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);
-    this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation }, viewport);
-    this.importMarkers.draw({ snapshot: frame.snapshot, drawn, elevation }, viewport);
+    const column = this.column;
+    column.clear();
+    if (this.experienceStars.drawsStars) {
+      for (const star of frame.experienceStars) {
+        if (star.weaponTier > 0) column.wear(star.id, 'weaponStar');
+        if (star.jobTier > 0) column.wear(star.id, 'jobStar');
+      }
+    }
+    for (const heart of frame.lifeHearts) column.wear(heart.id, 'heart');
+    if (this.bubbles.drawsBubbles)
+      for (const bubble of frame.settlerBubbles) column.wear(bubble.id, 'bubble');
+    const exempt = this.importMarkers.exemptJobs;
+    const markers = exempt === undefined ? NO_MARKERS : importMarkersOf(frame.snapshot, exempt);
+    this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation, column }, viewport);
+    this.experienceStars.draw({ stars: frame.experienceStars, drawn, elevation, column }, viewport);
+    this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation, column }, viewport);
+    this.importMarkers.draw({ markers, drawn, elevation, column }, viewport);
     this.groupNumbers.draw(
       { snapshot: frame.snapshot, drawn, zoom: frame.zoom },
       frame.groupNumbers,
@@ -247,6 +279,7 @@ export class WorldMarks {
     this.constructionSigns.destroy();
     this.bubbles.destroy();
     this.hearts.destroy();
+    this.experienceStars.destroy();
     this.importMarkers.destroy();
     this.groupNumbers.destroy();
     this.geometryDebug.destroy();

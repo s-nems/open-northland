@@ -185,6 +185,8 @@ export {
   type DoorBadge,
   type DoorBadgeRole,
   type DoorBadgeRow,
+  type ExperienceStar,
+  type ExperienceStarGfx,
   GARRISON_MAST_FALLBACK_DX,
   type GeometryDebugCell,
   type GeometryDebugItem,
@@ -218,6 +220,7 @@ export {
   SIGN_HALF_WIDTH,
   SIGN_HEIGHT,
   SIGN_STEP,
+  STAR_TIERS,
   signRowAt,
 } from './gpu/overlays/index.js';
 export {

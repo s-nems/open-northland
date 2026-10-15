@@ -84,7 +84,7 @@ describe('createSnapshotProjections - memoized by snapshot identity', () => {
   });
 
   it('re-filters the fog-gated overlays when a spectator switches seats under a held snapshot', () => {
-    const viewer = switchableViewerSeat(null);
+    const viewer = switchableViewerSeat(0);
     const gates = createFogGates();
     const selected = new Set<number>([1]);
     const { doorBadgesFor, lifeHeartsFor } = createSnapshotProjections(
@@ -216,7 +216,7 @@ describe('per-tick projections - one walk of the map between them', () => {
   });
 
   it("builds render's scene index once for a heart-wearer mid store-exchange, however many ask", () => {
-    // The one case the shared pass does not answer: a wounded carrier inside a completed store is not
+    // The one case the shared pass does not answer: a selected carrier inside a completed store is not
     // drawn, so it gets no heart - and only render's scene index knows that. Under the running renderer
     // that index already exists; a headless caller pays for it, but once per snapshot, not per projection.
     const store = owned(building(10, HOME_TYPE, 1, 1), 1, 1);
@@ -233,7 +233,10 @@ describe('per-tick projections - one walk of the map between them', () => {
     const entities: Ent[] = [store, hurt];
     for (let i = 0; i < SCENERY; i++) entities.push(tree(100 + i));
     const { snapshot, visits } = visitCountingSnapshot(snapshotOf(entities));
-    const heartInputs = { isLivestockTribe: () => false };
+    const heartInputs = {
+      isLivestockTribe: () => false,
+      selection: { ids: () => new Set([hurt.id]), version: () => 0 },
+    };
 
     const first = createSnapshotProjections(
       fixedViewerSeat(PLAYER),

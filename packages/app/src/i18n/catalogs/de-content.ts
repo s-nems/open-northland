@@ -198,6 +198,11 @@ export const deContent = {
       summary:
         '1000 gegen 1000 auf einem größeren Schlachtfeld: verstreute Truppen, fünf Waffenklassen und gemischte Rüstungen.',
     },
+    'overhead-icons': {
+      title: 'Symbole über dem Kopf',
+      summary:
+        'Jeder Schwertkämpfer trägt einen Stern, der je Viertel seiner gelandeten Treffer wächst; ein vom Skript markierter Soldat trägt darüber die Markierung. Alle auswählen, um die Lebensherzen und den Berufsstern des Meistersammlers in die Säule zu stapeln.',
+    },
     'bow-flight': {
       title: 'Pfeilflug',
       summary:

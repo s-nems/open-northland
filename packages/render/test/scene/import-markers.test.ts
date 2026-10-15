@@ -83,9 +83,10 @@ describe('ImportMarkerLayer', () => {
     const drawn = drawnGeometry({
       boundsOf: (ref) => (ref === 1 ? { minX: 0, minY: 0, maxX: 10, maxY: 30 } : undefined),
     });
-    layer.draw({ snapshot, drawn });
+    const markers = importMarkersOf(snapshot, EXEMPT);
+    layer.draw({ markers, drawn });
     expect(layer.container.children).toHaveLength(1);
-    layer.draw({ snapshot, drawn: drawnGeometry() });
+    layer.draw({ markers, drawn: drawnGeometry() });
     expect(layer.container.children).toHaveLength(0);
     layer.destroy();
   });

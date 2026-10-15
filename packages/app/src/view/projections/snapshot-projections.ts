@@ -14,6 +14,7 @@ import type { WorkerRole } from '../../game/sandbox/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
 import { computeConstructionSigns } from './construction-signs.js';
 import { type BuildingDoorInfoOf, computeDoorBadges, type DoorBadgeCache } from './door-badges.js';
+import { computeExperienceStars, type ExperienceStarInputs } from './experience-stars.js';
 import type { FogGates } from './fog-gates.js';
 import { hudLabels } from './hud-labels.js';
 import { computeLifeHearts, type LifeHeartInputs } from './life-hearts.js';
@@ -80,9 +81,14 @@ export interface HeartSelection {
   readonly version: () => number;
 }
 
-/** {@link LifeHeartInputs} as the factory takes it: the selection arrives live, not as a frozen set. */
+/** The content rules the star projection resolves; absent draws no star. */
+export type StarRules = Omit<ExperienceStarInputs, 'viewer' | 'selected'>;
+
+/** {@link LifeHeartInputs} as the factory takes it: the selection arrives live, not as a frozen set. The
+ *  stars read the same selection. */
 export interface HeartProjectionInputs extends Omit<LifeHeartInputs, 'selected'> {
   readonly selection?: HeartSelection | undefined;
+  readonly starRules?: StarRules | undefined;
 }
 
 /** The snapshot read projections the frame loop shares across HUD/render consumers; `viewer` is the
@@ -111,6 +117,10 @@ export function createSnapshotProjections(
     snapshot: WorldSnapshot,
     viewport?: Viewport,
   ) => ReturnType<typeof computeLifeHearts>;
+  readonly experienceStarsFor: (
+    snapshot: WorldSnapshot,
+    viewport?: Viewport,
+  ) => ReturnType<typeof computeExperienceStars>;
 } {
   // Keyed on the viewer too: a spectator switching seats under a paused sim holds one snapshot, and
   // the fog is the viewer's, so every fog-filtered memo keys on it as well.
@@ -136,6 +146,7 @@ export function createSnapshotProjections(
             isLivestockTribe: hearts.isLivestockTribe,
             playerColourOf: hearts.playerColourOf,
             selected: hearts.selection?.ids(),
+            viewer: viewer.seat(),
           },
           box,
         );
@@ -147,6 +158,20 @@ export function createSnapshotProjections(
   // The hearts key on the selection; a seat switch, rare beside a pick, replaces the memo instead.
   let heartsViewer = viewer.version();
   let lifeHearts = heartsMemo();
+  const starRules = hearts.starRules;
+  const experienceStarsFor = memoByScreen(
+    (snapshot, box) => {
+      if (starRules === undefined) return [];
+      const stars = computeExperienceStars(
+        snapshot,
+        { ...starRules, viewer: viewer.seat(), selected: hearts.selection?.ids() },
+        box,
+      );
+      const fog = fogGates.current();
+      return fog === null ? stars : stars.filter((s) => fogTileVisible(fog, s.x / ONE, s.y / ONE));
+    },
+    () => viewer.version() + (hearts.selection?.version() ?? 0),
+  );
   const doorBadges: DoorBadgeCache = { held: new Map() };
   return {
     hudModelFor,
@@ -171,6 +196,7 @@ export function createSnapshotProjections(
       const fog = fogGates.current();
       return fog === null ? bubbles : bubbles.filter((b) => fogTileVisible(fog, b.x / ONE, b.y / ONE));
     }, viewerVersion),
+    experienceStarsFor,
     lifeHeartsFor: (snapshot, viewport) => {
       if (viewer.version() !== heartsViewer) {
         heartsViewer = viewer.version();

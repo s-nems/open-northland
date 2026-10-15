@@ -6,6 +6,7 @@ export * from './construction-signs.js';
 export * from './diplomacy-rows.js';
 export * from './door-badges.js';
 export * from './entity-anchor.js';
+export * from './experience-stars.js';
 export * from './fog-gates.js';
 export * from './geometry-debug-items.js';
 export * from './hud-labels.js';

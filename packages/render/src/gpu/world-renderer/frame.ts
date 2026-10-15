@@ -6,6 +6,7 @@ import type { GpuSpan } from '../gpu-frame-timer.js';
 import type {
   ConstructionSign,
   DoorBadge,
+  ExperienceStar,
   HudFrame,
   LifeHeart,
   LostGoalMarker,
@@ -95,6 +96,7 @@ export const NO_BADGES: readonly DoorBadge[] = [];
 export const NO_SIGNS: readonly ConstructionSign[] = [];
 export const NO_BUBBLES: readonly SettlerBubble[] = [];
 export const NO_HEARTS: readonly LifeHeart[] = [];
+export const NO_STARS: readonly ExperienceStar[] = [];
 export const NO_GROUP_NUMBERS: ReadonlyMap<number, readonly string[]> = new Map();
 export const NO_RANGE_RINGS: readonly RangeRing[] = [];
 export const NO_ORDER_MARKERS: readonly OrderMarker[] = [];
@@ -118,6 +120,8 @@ export interface WorldFrame {
   readonly constructionSigns?: readonly ConstructionSign[] | undefined;
   readonly settlerBubbles?: readonly SettlerBubble[] | undefined;
   readonly lifeHearts?: readonly LifeHeart[] | undefined;
+  /** The experience stars over the people on screen (default none). */
+  readonly experienceStars?: readonly ExperienceStar[] | undefined;
   /** Entity id → the numbers of its control groups, drawn while the numbers are shown (default none). */
   readonly groupNumbers?: ReadonlyMap<number, readonly string[]> | undefined;
   /** Work flag entity ids belonging to selected gatherers; highlighted with an amber outline. */

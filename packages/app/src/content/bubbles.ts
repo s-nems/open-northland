@@ -1,5 +1,12 @@
 import type { JobType } from '@open-northland/data';
-import type { ImportMarkerGfx, SettlerBubbleGfx, SettlerBubbleKind } from '@open-northland/render';
+import {
+  type AtlasFrame,
+  type ExperienceStarGfx,
+  type ImportMarkerGfx,
+  type SettlerBubbleGfx,
+  type SettlerBubbleKind,
+  STAR_TIERS,
+} from '@open-northland/render';
 import { importMarkerExemptJobs } from '@open-northland/render/data';
 import { loadLayer, MissingAtlasError } from './ir/load.js';
 
@@ -11,6 +18,10 @@ const BUBBLE_ATLAS_STEM = 'ls_gui_bubbles.gui_bubbles';
  *  against the running original): icon 10 of the sheet, between the stars (6 to 9) and the life bars
  *  (11 to 21). */
 const IMPORT_MARKER_FRAME_ID = 10;
+
+/** The `ls_gui_bubbles` bob of the smallest experience star; each larger tier is the bob before it, so
+ *  the largest is bob 6. Original behavior (reading, unconfirmed against the running original). */
+const SMALLEST_STAR_FRAME_ID = 9;
 
 /** The `ls_gui_bubbles` bob index each bubble kind draws. Source basis: observation, since no readable
  *  ini names the frames. */
@@ -34,6 +45,19 @@ export async function loadSettlerBubbleGfx(): Promise<SettlerBubbleGfx | null> {
     return null; // a stale atlas missing the frames
   }
   return { source: layer.source, frameByKind: { child, partner, sleepy, hungry } };
+}
+
+/** The experience star in each size, smallest first; `null` without the sheet or any of its frames. */
+export async function loadExperienceStarGfx(): Promise<ExperienceStarGfx | null> {
+  const layer = await loadIconSheet();
+  if (layer === null) return null;
+  const frameByTier: AtlasFrame[] = [];
+  for (let tier = 1; tier <= STAR_TIERS; tier++) {
+    const frame = layer.atlas.frames.get(SMALLEST_STAR_FRAME_ID + 1 - tier);
+    if (frame === undefined) return null;
+    frameByTier.push(frame);
+  }
+  return { source: layer.source, frameByTier };
 }
 
 /** The import marker's icon and the jobs exempt from it; `null` without the sheet or its frame. */

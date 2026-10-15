@@ -66,6 +66,7 @@ const SLOTS = [
   'orderMarkers',
   'constructionSigns',
   'bubbles',
+  'experienceStars',
   'hearts',
   'importMarkers',
   'groupNumbers',

@@ -122,6 +122,7 @@ export {
   rawXpForRepeats,
   requirementRepeats,
   scoutVisionBonusNodes,
+  weaponClassHits,
   withFightExperience,
 } from './progression/bonus.js';
 export {

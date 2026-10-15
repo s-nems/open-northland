@@ -31,6 +31,7 @@ const heartsOf = (entities: Ent[], selected?: ReadonlySet<number>) =>
   computeLifeHearts(snapshotOf(entities), {
     isLivestockTribe: (tribe) => tribe === LIVESTOCK_TRIBE,
     selected,
+    viewer: PLAYER,
   });
 
 const hearts = (...entities: Ent[]) => heartsOf(entities);
@@ -56,22 +57,22 @@ describe('computeLifeHearts - the life fraction', () => {
 });
 
 describe('computeLifeHearts - who among the people wears one', () => {
-  it('an unhurt person wears none until the player selects them', () => {
-    const whole = person(1, { hitpoints: 100, max: 100 });
-    expect(hearts(whole)).toHaveLength(0);
-    expect(heartsOf([whole], new Set([1]))[0]?.life).toBe(1);
+  it('a person wears none, however wounded, until his own player selects him', () => {
+    const hurt = person(1, { hitpoints: 10, max: 100 });
+    expect(hearts(hurt)).toHaveLength(0);
+    expect(heartsOf([hurt], new Set([1]))[0]?.life).toBe(0.1);
   });
 
-  it('one percent of the pool spent is enough to show the wound', () => {
-    expect(hearts(person(1, { hitpoints: 99, max: 100 }))).toHaveLength(1);
-    expect(hearts(person(2, { hitpoints: 999, max: 1000 }))).toHaveLength(0);
-  });
-
-  it('a wounded enemy wears its own faction colour, not ours', () => {
-    const ours = person(1, { hitpoints: 50, max: 100 });
-    const theirs = person(2, { hitpoints: 50, max: 100 }, ENEMY);
-    const [mine, enemy] = hearts(ours, theirs);
-    expect(mine?.colour).not.toBe(enemy?.colour);
+  it('a selected enemy, or a selection without a seat, wears none', () => {
+    const theirs = person(1, { hitpoints: 50, max: 100 }, ENEMY);
+    expect(heartsOf([theirs], new Set([1]))).toHaveLength(0);
+    const ours = person(2, { hitpoints: 50, max: 100 });
+    const unseated = computeLifeHearts(snapshotOf([ours]), {
+      isLivestockTribe: () => false,
+      selected: new Set([2]),
+      viewer: null,
+    });
+    expect(unseated).toHaveLength(0);
   });
 
   it('a selected person inside a building (Resting - not drawn) still gets no heart', () => {
@@ -80,23 +81,23 @@ describe('computeLifeHearts - who among the people wears one', () => {
     expect(heartsOf([inside], new Set([1]))).toHaveLength(0);
   });
 
-  it('a wounded carrier mid-exchange inside a store (not drawn either) gets no heart', () => {
+  it('a selected carrier mid-exchange inside a store (not drawn either) gets no heart', () => {
     const store = building(9, STORE_TYPE, 1, 1);
-    const hurt = person(1, { hitpoints: 50, max: 100 });
+    const carrier = person(1, { hitpoints: 50, max: 100 });
     const inside: Ent = {
       id: 1,
-      components: { ...hurt.components, CurrentAtomic: { effect: { kind: 'pileup', store: store.id } } },
+      components: { ...carrier.components, CurrentAtomic: { effect: { kind: 'pileup', store: store.id } } },
     };
-    expect(hearts(hurt)).toHaveLength(1); // the same settler, still outside
-    expect(heartsOf([store, inside])).toHaveLength(0);
+    expect(heartsOf([carrier], new Set([1]))).toHaveLength(1); // the same settler, still outside
+    expect(heartsOf([store, inside], new Set([1]))).toHaveLength(0);
   });
 
-  it('lists stock, the wounded and the selected by ascending id, whatever order the selection holds', () => {
+  it('lists stock and the selected by ascending id, whatever order the selection holds', () => {
     const entities = [
       person(1, { hitpoints: 100, max: 100 }),
       animal(2),
       person(3, { hitpoints: 50, max: 100 }),
-      person(4, { hitpoints: 100, max: 100 }),
+      person(4, { hitpoints: 50, max: 100 }),
       person(5, { hitpoints: 100, max: 100 }),
     ];
     const ids = heartsOf(entities, new Set([5, 1, 3])).map((heart) => heart.id);
@@ -105,7 +106,7 @@ describe('computeLifeHearts - who among the people wears one', () => {
 });
 
 describe('computeLifeHearts - only the units under the screen', () => {
-  it('reads the wounded standing in the box and none beyond it, still by ascending id', () => {
+  it('reads the stock and selected standing in the box and none beyond it, still by ascending id', () => {
     const at = (e: Ent, tileX: number): Ent => ({
       id: e.id,
       components: { ...e.components, Position: { x: fx.fromInt(tileX), y: fx.fromInt(1) } },
@@ -114,7 +115,11 @@ describe('computeLifeHearts - only the units under the screen', () => {
     const far = at(person(1, { hitpoints: 50, max: 100 }), 200);
     const near = at(person(2, { hitpoints: 50, max: 100 }), 5);
     const stock = at(animal(3), 2);
-    const inputs = { isLivestockTribe: (tribe: number) => tribe === LIVESTOCK_TRIBE };
+    const inputs = {
+      isLivestockTribe: (tribe: number) => tribe === LIVESTOCK_TRIBE,
+      selected: new Set([1, 2]),
+      viewer: PLAYER,
+    };
     const world = snapshotOf([far, near, stock]);
     expect(computeLifeHearts(world, inputs, box).map((heart) => heart.id)).toEqual([2, 3]);
     expect(computeLifeHearts(world, inputs).map((heart) => heart.id)).toEqual([1, 2, 3]);

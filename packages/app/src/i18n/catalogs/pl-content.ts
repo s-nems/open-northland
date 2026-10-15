@@ -197,6 +197,11 @@ export const plContent = {
       summary:
         '1000 na 1000 na powiększonym polu bitwy: rozproszone oddziały, pięć rodzajów broni i różne pancerze.',
     },
+    'overhead-icons': {
+      title: 'Ikony nad głową',
+      summary:
+        'Każdy miecznik nosi gwiazdkę, która rośnie co ćwierć zadanych trafień; żołnierz oznaczony przez skrypt nosi nad nią znacznik. Zaznacz wszystkich, by w kolumnie stanęły serca życia i gwiazdka fachu mistrza zbieracza.',
+    },
     'bow-flight': {
       title: 'Lot strzały',
       summary: 'Czterech łuczników pokazuje strzały w naturalnej skali w poziomie, pionie i po przekątnej.',

@@ -49,6 +49,7 @@ function frameOf(over: Partial<WorldMarksFrame> = {}): WorldMarksFrame {
     constructionSigns: [],
     settlerBubbles: [],
     lifeHearts: [],
+    experienceStars: [],
     groupNumbers: new Map(),
     ...over,
   };

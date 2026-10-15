@@ -23,12 +23,6 @@ import {
 
 const UNKNOWN_PLAYER_HEART_COLOUR = 0xffffff;
 
-/**
- * At or below this life fraction a person wears a heart unasked. Approximation: the original's own
- * damage-tell threshold is not established. The mark is permanent, since no system heals a person.
- */
-export const WOUNDED_LIFE_FRACTION = 0.99;
-
 /** Reused output of the box query; the slots past a query's count hold earlier frames' bodies. */
 const boxed: SnapshotEntity[] = [];
 
@@ -38,12 +32,15 @@ export interface LifeHeartInputs {
   /** Owner slot to swatch slot; absent = identity. */
   readonly playerColourOf?: ((player: number) => number) | undefined;
   readonly selected?: ReadonlySet<number> | undefined;
+  /** The seat whose selected people show their heart; null or absent for a spectator. */
+  readonly viewer?: number | null | undefined;
 }
 
 /**
  * One faction-coloured heart per unit, filled to its remaining life fraction, ascending by id. Only units
  * standing in `box` are read; no box reads the whole map. Source basis: the permanent heart over claimed
- * stock is observed in the original; hearts on selected or wounded people are an approximation.
+ * stock is observed in the original. Original behavior (reading, unconfirmed against the running
+ * original): a person wears it only while his own player has him selected, however wounded.
  */
 export function computeLifeHearts(
   snapshot: WorldSnapshot,
@@ -61,7 +58,7 @@ export function computeLifeHearts(
     const tribe = settlerTribeOf(e);
     if (tribe === undefined) continue;
     const life = lifeFractionOf(e);
-    if (!wearsHeart(e.id, tribe, life, inputs)) continue;
+    if (!wearsHeart(e.id, player, tribe, inputs)) continue;
     // The scene draws nobody indoors to hang the heart over.
     if (isIndoorSettler(snapshot, e.components)) continue;
     const pos = positionOf(e);
@@ -74,7 +71,7 @@ export function computeLifeHearts(
 }
 
 /** The units in `box`'s position buckets that may wear a heart, written over {@link boxed}: the indexed
- *  animals and wounded, then the selected ones the index does not hold. Returns the count. */
+ *  animals, then the selected ones the index does not hold. Returns the count. */
 function collectCandidates(snapshot: WorldSnapshot, box: TileBox, inputs: LifeHeartInputs): number {
   const wearers = indexesOf(snapshot).get(UNASKED_WEARERS);
   let count = wearers.collect(box, boxed);
@@ -89,8 +86,8 @@ function collectCandidates(snapshot: WorldSnapshot, box: TileBox, inputs: LifeHe
 }
 
 /** The owned units that may wear a heart whatever the selection, bucketed by `Position`: every owned
- *  animal (the stock test is content's, so the reader applies it) and every wounded person. A walker's
- *  step lands in `swapAll`, which re-buckets a held unit with its new object. */
+ *  animal (the stock test is content's, so the reader applies it). A walker's step lands in `swapAll`,
+ *  which re-buckets a held unit with its new object. */
 const UNASKED_WEARERS: SnapshotIndexSpec<TileBuckets<EntitySnapshot>> = {
   name: 'heart wearers',
   reads: { values: ['Settler', 'Owner', 'Health'], presence: ['Person', 'Position'] },
@@ -118,13 +115,13 @@ function placeWearer(buckets: TileBuckets<EntitySnapshot>, e: EntitySnapshot): v
 
 function mayWearUnasked(e: SnapshotEntity): boolean {
   if (!isSettler(e) || ownerPlayerOf(e) === undefined || settlerTribeOf(e) === undefined) return false;
-  return e.components.Person === undefined || lifeFractionOf(e) <= WOUNDED_LIFE_FRACTION;
+  return e.components.Person === undefined;
 }
 
-/** Claimed stock always; a person only while the player has it selected or it is wounded. */
-function wearsHeart(id: number, tribe: number, life: number, inputs: LifeHeartInputs): boolean {
+/** Claimed stock always; a person only while his own player has him selected. */
+function wearsHeart(id: number, player: number, tribe: number, inputs: LifeHeartInputs): boolean {
   if (inputs.isLivestockTribe(tribe)) return true;
-  return inputs.selected?.has(id) === true || life <= WOUNDED_LIFE_FRACTION;
+  return inputs.selected?.has(id) === true && inputs.viewer != null && player === inputs.viewer;
 }
 
 /** The unit's `Health` as a `[0, 1]` fill level; a missing or empty pool projects as full. */

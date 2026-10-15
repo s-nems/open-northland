@@ -11,6 +11,7 @@ import {
   type WorldSnapshot,
 } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
+import { HUMAN_PLAYER } from '../src/game/rules.js';
 import { workerRoleOf } from '../src/game/sandbox/worker-roles.js';
 import {
   actorsOf,
@@ -143,7 +144,7 @@ function expectReadersMatchWalk(live: WorldSnapshot): void {
   }
 }
 
-/** Scenes whose runs raise the projected marks: bubbles, wounds and stock hearts, sites, staff and homes. */
+/** Scenes whose runs raise the projected marks: bubbles, selected and stock hearts, sites, staff and homes. */
 const PROJECTION_SCENES = ['family', 'battle-weary', 'livestock', 'construction', 'ai-defence'] as const;
 /** Every how-many-th settler of the list stands selected, so selected people join the heart candidates. */
 const SELECTED_STRIDE = 5;
@@ -242,7 +243,11 @@ describe('snapshot readers and per-tick projections over a mirror', () => {
       const live = mirror.snapshot();
       if (checkReaders) expectReadersMatchWalk(live);
       if (checkProjections) {
-        expectProjectionsMatchWalk(live, { isLivestockTribe, selected: everyFewSettlers(live) }, badges);
+        expectProjectionsMatchWalk(
+          live,
+          { isLivestockTribe, selected: everyFewSettlers(live), viewer: HUMAN_PLAYER },
+          badges,
+        );
       }
       expect(mirror.verifyIndexes()).toEqual([]);
     }

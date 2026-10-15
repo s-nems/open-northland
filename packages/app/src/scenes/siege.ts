@@ -14,7 +14,7 @@ import {
   WEAPON_SPEAR,
   WEAPON_SWORD,
 } from '../game/sandbox/index.js';
-import { computeLifeHearts, WOUNDED_LIFE_FRACTION } from '../view/projections/life-hearts.js';
+import { computeLifeHearts } from '../view/projections/life-hearts.js';
 import { enemyBuildings } from './sandbox-queries.js';
 import type { SceneDefinition } from './types.js';
 
@@ -149,24 +149,15 @@ export const siegeScene: SceneDefinition = {
       predicate: enemyDefendersDead,
     },
     {
-      label: 'exactly the wounded warriors wear a life heart',
+      label: 'no unselected warrior wears a life heart, however wounded',
       predicate: (sim) => {
-        const wounded = new Set<number>();
-        let unhurt = 0;
+        let wounded = 0;
         for (const e of sim.world.query(components.Settler, components.Owner, Health)) {
           const h = sim.world.get(e, Health);
-          if (h.hitpoints / h.max <= WOUNDED_LIFE_FRACTION) wounded.add(e);
-          else unhurt++;
+          if (h.hitpoints < h.max) wounded++;
         }
-        // No animal on this field and no warrior enters a building, so every heart the projection
-        // returns belongs to a warrior.
         const hearts = computeLifeHearts(sim.snapshot(), { isLivestockTribe: () => false });
-        return (
-          wounded.size > 0 &&
-          unhurt > 0 &&
-          hearts.length === wounded.size &&
-          hearts.every((heart) => wounded.has(heart.id))
-        );
+        return wounded > 0 && hearts.length === 0;
       },
     },
   ],

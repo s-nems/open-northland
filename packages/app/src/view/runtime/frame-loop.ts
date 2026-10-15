@@ -35,6 +35,7 @@ import type {
 import {
   type computeConstructionSigns,
   type computeDoorBadges,
+  type computeExperienceStars,
   type computeLifeHearts,
   type computeSettlerBubbles,
   type FogGates,
@@ -95,6 +96,11 @@ export interface FrameLoopDeps {
   readonly settlerBubblesFor: (snap: WorldSnapshot) => ReturnType<typeof computeSettlerBubbles>;
   /** Memoized by snapshot identity, the screen and the selection version, and fog-filtered. */
   readonly lifeHeartsFor: (snap: WorldSnapshot, viewport?: Viewport) => ReturnType<typeof computeLifeHearts>;
+  /** Memoized by snapshot identity, the screen and the selection version, and fog-filtered. */
+  readonly experienceStarsFor: (
+    snap: WorldSnapshot,
+    viewport?: Viewport,
+  ) => ReturnType<typeof computeExperienceStars>;
   readonly canPlaceAt: (
     typeId: number,
     tribe: number,
@@ -156,6 +162,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     constructionSignsFor,
     settlerBubblesFor,
     lifeHeartsFor,
+    experienceStarsFor,
     canPlaceAt,
     defenceRangeAt,
     blessingRangeFor,
@@ -371,6 +378,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     );
     const doorBadges = doorBadgesFor(snap, markViewport);
     const lifeHearts = lifeHeartsFor(snap, markViewport);
+    const experienceStars = experienceStarsFor(snap, markViewport);
     const world0 = performance.now();
     renderer.update({
       snapshot: snap,
@@ -383,6 +391,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       constructionSigns,
       settlerBubbles,
       lifeHearts,
+      experienceStars,
       flagged: controls.flaggedFlagIds(),
       focused: controls.focusedIds(),
       groupNumbers: controls.groupNumbers(),

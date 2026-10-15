@@ -24,6 +24,7 @@ export interface WorldSceneLayers {
   readonly bloodGround: Container;
   readonly constructionSigns: Container;
   readonly bubbles: Container;
+  readonly experienceStars: Container;
   readonly hearts: Container;
   readonly importMarkers: Container;
   readonly groupNumbers: Container;
@@ -51,6 +52,7 @@ export function mountPainterOrder(world: Container, layers: WorldSceneLayers): v
     layers.orderMarkers,
     layers.constructionSigns,
     layers.bubbles,
+    layers.experienceStars,
     layers.hearts,
     layers.importMarkers,
     layers.groupNumbers,

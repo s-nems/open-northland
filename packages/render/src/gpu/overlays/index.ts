@@ -12,6 +12,12 @@ export { type ConstructionPlotFrame, ConstructionPlotLayer } from './constructio
 export { type ConstructionSign, ConstructionSignLayer } from './construction-sign-layer.js';
 export { type BadgeAnchor, badgeAnchor, type DoorBadge } from './door-badge.js';
 export { CombatEffectsLayer } from './effects-layer.js';
+export {
+  type ExperienceStar,
+  type ExperienceStarGfx,
+  ExperienceStarLayer,
+  STAR_TIERS,
+} from './experience-star-layer.js';
 export { FogLayer, type FogWashMask } from './fog-layer.js';
 export { hitsGarrisonFlag } from './garrison-flag.js';
 export { type GeometryDebugCell, type GeometryDebugItem, GeometryDebugLayer } from './geometry-debug.js';

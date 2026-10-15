@@ -2,7 +2,7 @@ import type { SoundDriver } from '@open-northland/audio';
 import type { JobType } from '@open-northland/data';
 import type { WorldRenderer } from '@open-northland/render';
 import { createSoundDriver } from '../../content/audio.js';
-import { loadImportMarkerGfx, loadSettlerBubbleGfx } from '../../content/bubbles.js';
+import { loadExperienceStarGfx, loadImportMarkerGfx, loadSettlerBubbleGfx } from '../../content/bubbles.js';
 import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadMusicManifest } from '../../content/music.js';
@@ -74,6 +74,7 @@ export async function mountGamePresentation(
     renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
     renderer.setWreckGfx(ir !== null ? await loadWreckDebris(ir) : null);
     renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());
+    renderer.setExperienceStarGfx(await loadExperienceStarGfx());
     renderer.setImportMarkerGfx(await loadImportMarkerGfx(jobs));
     renderer.setBuildingSignGfx(await loadBuildingSignGfx());
     return sound;

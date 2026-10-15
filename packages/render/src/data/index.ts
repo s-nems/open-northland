@@ -32,6 +32,7 @@ export {
   roadRevisionOf,
   roadShardOf,
 } from './scene/snapshot-index.js';
+export { readEquipmentWeaponGood } from './scene/snapshot-readers/index.js';
 export { type SceneGround, type SceneTerrain, terrainMapToScene } from './scene/terrain-scene.js';
 export {
   linkedPosts,

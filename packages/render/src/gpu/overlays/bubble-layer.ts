@@ -1,5 +1,6 @@
 import { Container, Sprite, type TextureSource } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
+import type { OverheadColumn } from '../../data/scene/overhead-column.js';
 import type { AtlasFrame } from '../../data/sprites/index.js';
 import type { TextureCache } from '../texture-cache.js';
 import { type MarkAnchorFrame, type MarkedEntity, markAnchor } from './entity-anchor.js';
@@ -34,6 +35,8 @@ interface BubbleGfx extends SettlerBubbleGfx {
 
 export interface SettlerBubbleFrame extends MarkAnchorFrame {
   readonly bubbles: readonly SettlerBubble[];
+  /** Lifts a bubble over the stars and heart its settler wears; absent = nothing below. */
+  readonly column?: OverheadColumn | undefined;
 }
 
 /** World-px the bubble's tip floats above the settler's head (the sprite-bounds top, or the feet estimate). */
@@ -55,6 +58,11 @@ export class SettlerBubbleLayer {
   /** Reused per-frame scratch of ids drawn this frame (avoids a per-frame allocation). */
   private readonly seen = new Set<number>();
   private gfx: BubbleGfx | undefined;
+
+  /** Whether bubbles draw at all, so the over-head column lifts nothing for a bubble no art draws. */
+  get drawsBubbles(): boolean {
+    return this.gfx !== undefined;
+  }
 
   /** Provide (or clear) the decoded `ls_gui_bubbles` art. Clearing retires every live bubble. */
   setGfx(gfx: BubbleGfx | undefined): void {
@@ -83,7 +91,10 @@ export class SettlerBubbleLayer {
           entry = { node, kind: bubble.kind };
           this.bubbles.set(bubble.id, entry);
         }
-        entry.node.position.set(head.x, head.y - BUBBLE_GAP);
+        entry.node.position.set(
+          head.x,
+          head.y - BUBBLE_GAP - (frame.column?.riseOf(bubble.id, 'bubble') ?? 0),
+        );
         this.seen.add(bubble.id);
       }
     }

@@ -1,5 +1,6 @@
 import { Container, Graphics, GraphicsPath, Polygon } from 'pixi.js';
 import type { Viewport } from '../../data/projection/index.js';
+import type { OverheadColumn } from '../../data/scene/overhead-column.js';
 import { type MarkAnchorFrame, type MarkedEntity, markAnchor } from './entity-anchor.js';
 import { retireUndrawn } from './retained-pool.js';
 
@@ -7,7 +8,8 @@ import { retireUndrawn } from './retained-pool.js';
  * The life-heart layer - a faction-coloured gauge over a unit whose life the player tracks. The app's
  * life-heart projection decides who wears one and carries that rule's source basis; this layer draws the
  * list. Retained per on-screen unit and re-minted on return, like the settler bubbles. The heart art is a
- * placeholder vector shape until the original's glyph is identified.
+ * placeholder vector shape: the original's are bobs 11 (full) to 21 (empty) of `ls_gui_bubbles`, a
+ * tenth of life per frame drawn in the owner's player palette, which no served page recolours yet.
  */
 
 /** One unit's heart: the owning faction's `0xRRGGBB` colour and remaining life as a `[0, 1]` fraction. */
@@ -18,6 +20,8 @@ export interface LifeHeart extends MarkedEntity {
 
 export interface LifeHeartFrame extends MarkAnchorFrame {
   readonly hearts: readonly LifeHeart[];
+  /** Lifts a heart over the weapon star its unit wears; absent = nothing below. */
+  readonly column?: OverheadColumn | undefined;
 }
 
 /** World-px the heart floats above the unit's back (the sprite-bounds top, or the feet estimate). */
@@ -79,7 +83,7 @@ export class LifeHeartLayer {
         this.hearts.set(heart.id, entry);
       }
       setFillLevel(entry, heart.life);
-      entry.node.position.set(top.x, top.y - HEART_GAP);
+      entry.node.position.set(top.x, top.y - HEART_GAP - (frame.column?.riseOf(heart.id, 'heart') ?? 0));
       this.seen.add(heart.id);
     }
     retireUndrawn(this.hearts, this.seen, (entry) => entry.node.destroy({ children: true }));

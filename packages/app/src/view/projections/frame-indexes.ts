@@ -9,6 +9,7 @@ import {
 } from '@open-northland/render/data';
 import {
   entitiesWith,
+  indexesOf,
   positionedWithin,
   type SignpostReachView,
   type TileBox,
@@ -32,6 +33,7 @@ import { assistantBookingsOf } from '../assistant-bookings.js';
 import { gearTalliesOf } from '../assistant-shortages.js';
 import { ownRoadSiteAt } from '../runtime/own-road-sites.js';
 import { builderSitesOf } from '../unit-controls/highlights/own-building-picks.js';
+import { SEASONED_FIGHTERS } from './experience-stars.js';
 import { computeSettlerBubbles } from './settler-bubbles.js';
 
 /** A box holding no tile: a read that only registers the position index. */
@@ -79,6 +81,7 @@ export const FRAME_INDEX_READERS: readonly AppFrameIndexReader[] = [
   { name: 'construction signs', read: (snapshot) => entitiesWith(snapshot, 'UnderConstruction') },
   { name: 'assistant gear tallies', read: (snapshot) => gearTalliesOf(snapshot) },
   { name: 'settler bubbles', read: (snapshot) => computeSettlerBubbles(snapshot) },
+  { name: 'star wearers', read: (snapshot) => indexesOf(snapshot).get(SEASONED_FIGHTERS) },
   { name: 'position buckets', read: (snapshot) => positionedWithin(snapshot, NO_TILES) },
   // The object ambience reads it on every frame that advanced a tick.
   { name: 'landscape sound sectors', read: (snapshot) => landscapeSectorsOf(snapshot) },

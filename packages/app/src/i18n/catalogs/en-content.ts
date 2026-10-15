@@ -199,6 +199,11 @@ export const enContent = {
       summary:
         '1000 against 1000 on an expanded battlefield: scattered troops, five weapon classes and mixed armour.',
     },
+    'overhead-icons': {
+      title: 'Over-head icons',
+      summary:
+        'Every sword soldier wears a star that grows a size per quarter of his landed hits; a script-marked soldier wears the marker over it. Select everyone to stack each life heart, and the master collector’s trade star, into the column.',
+    },
     'bow-flight': {
       title: 'Bow flight',
       summary:

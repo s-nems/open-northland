@@ -62,6 +62,7 @@ import { meleeFrontScene } from './melee-front.js';
 import { movementContinuityScene } from './movement-continuity.js';
 import { netPanelScene } from './net-panel.js';
 import { openGateAttackScene } from './open-gate-attack.js';
+import { overheadIconsScene } from './overhead-icons.js';
 import { palisadeScene } from './palisade.js';
 import { personalNamesScene } from './personal-names.js';
 import { porterFlagScene } from './porter-flag.js';
@@ -121,6 +122,7 @@ export const SCENES: readonly SceneDefinition[] = [
   collisionScene,
   battleScene,
   bowFlightScene,
+  overheadIconsScene,
   weaponFacingsScene,
   armedIdleScene,
   clayGatherersScene,
