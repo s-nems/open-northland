@@ -34,6 +34,17 @@ export function localizedText(text: LocalizedText, language: MapTextLanguage): s
   return (chosen === undefined ? undefined : text[chosen]) ?? '';
 }
 
+/** The campaign's title artwork in a language, falling back like texts; `undefined` without artwork. */
+export function campaignLogo(
+  campaign: Pick<Campaign, 'logo'>,
+  language: MapTextLanguage,
+): string | undefined {
+  const { logo } = campaign;
+  if (logo === undefined) return undefined;
+  const chosen = fallbackLanguage(presentIn(logo), language);
+  return chosen === undefined ? undefined : logo[chosen];
+}
+
 export function campaignMovies(
   campaign: Pick<Campaign, 'movies'>,
   language: MapTextLanguage,

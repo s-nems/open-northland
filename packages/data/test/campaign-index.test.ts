@@ -13,7 +13,7 @@ const campaign = {
   ],
   stages: [{ mapId: 'wonder-1', title: { pol: 'Początek' }, x: 0.2, y: 0.3 }],
   background: '/campaigns/wonder/map.png',
-  logo: '/campaigns/wonder/logo.png',
+  logo: { pol: '/campaigns/wonder/logo-pol.png', eng: '/campaigns/wonder/logo-eng.png' },
   movies: {
     pol: {
       intro: { url: '/campaigns/wonder/pol/intro.webm', width: 640, height: 480 },
@@ -31,8 +31,10 @@ describe('campaign index', () => {
   it('rejects the previous format version', () => {
     expect(CampaignIndex.safeParse({ version: 1, campaigns: [campaign] }).success).toBe(false);
   });
-  it('rejects empty texts, missing languages and unknown stages', () => {
+  it('rejects empty texts and logos, missing languages and unknown stages', () => {
     expect(Campaign.safeParse({ ...campaign, title: {} }).success).toBe(false);
+    expect(Campaign.safeParse({ ...campaign, logo: {} }).success).toBe(false);
+    expect(Campaign.safeParse({ ...campaign, logo: '/campaigns/wonder/logo.png' }).success).toBe(false);
     expect(Campaign.safeParse({ ...campaign, languages: [] }).success).toBe(false);
     expect(Campaign.safeParse({ ...campaign, languages: ['pol', 'pol'] }).success).toBe(false);
     expect(

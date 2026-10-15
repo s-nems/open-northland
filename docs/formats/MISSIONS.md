@@ -1071,9 +1071,10 @@ boundary and play centred on black without upscaling. Restoring a pending movie 
 Campaign presentation and stage order come from the validated `campaigns-index.json` manifest
 (version 2, `CampaignIndex` in `packages/data`). Each original game is one campaign with an `order`
 on the campaign screen; its maps exist once, carry the text languages in `languages`, and texts
-(`title`, stage titles) and films (`movies`, per language: optional `intro`, numbered `videos`) are
-per language. The campaign plays in the UI language, else English, else its first language; texts and
-films fall back the same way. A mission launch is `?map=<id>&missions=on&lang=<language>`, plus
+(`title`, stage titles), title artwork (`logo`) and films (`movies`, per language: optional `intro`,
+numbered `videos`) are per language. A stage may carry a `route`, the dotted path drawn into it from
+the previous stage, placed as fractions of the background. The campaign plays in the UI language,
+else English, else its first language; texts, artwork and films fall back the same way. A mission launch is `?map=<id>&missions=on&lang=<language>`, plus
 `tribe=<id>` when the person picks a civilization for their own seat; map AIs keep theirs, and
 sub-missions and related-world loads keep the choice.
 

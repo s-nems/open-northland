@@ -21,6 +21,12 @@ export const LocalizedText = z
   .refine((text) => Object.keys(text).length > 0, 'Text has no language');
 export type LocalizedText = z.infer<typeof LocalizedText>;
 
+/** One image in the languages that carry it, such as title artwork drawn with the translated name. */
+export const LocalizedAsset = z
+  .partialRecord(Language, MapAsset)
+  .refine((asset) => Object.keys(asset).length > 0, 'Asset has no language');
+export type LocalizedAsset = z.infer<typeof LocalizedAsset>;
+
 /** The films of one language: the intro before the first stage and the script's numbered videos. */
 const LanguageMovies = z
   .strictObject({
@@ -69,7 +75,7 @@ export const Campaign = z
       )
       .min(1),
     background: MapAsset,
-    logo: MapAsset.optional(),
+    logo: LocalizedAsset.optional(),
     movies: z.partialRecord(Language, LanguageMovies),
   })
   .superRefine((campaign, ctx) => {

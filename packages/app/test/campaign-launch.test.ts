@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CAMPAIGN_TRIBES, campaignMissionQuery, RECOMMENDED_CAMPAIGN_TRIBE } from '../src/campaign/launch.js';
-import { campaignLanguage, campaignMovies, localizedText } from '../src/campaign/locale.js';
+import { campaignLanguage, campaignLogo, campaignMovies, localizedText } from '../src/campaign/locale.js';
 import { mapSession } from '../src/game/session-url.js';
 import { campaignFixture } from './support/campaign.js';
 
@@ -11,12 +11,19 @@ describe('campaign language', () => {
     expect(campaignLanguage(campaign, 'ger')).toBe('eng');
     expect(campaignLanguage({ languages: ['rus', 'pol'] }, 'ger')).toBe('rus');
   });
-  it('falls back the same way for texts and films', () => {
+  it('falls back the same way for texts, title artwork and films', () => {
     expect(localizedText({ pol: 'Kampania', eng: 'Campaign' }, 'pol')).toBe('Kampania');
     expect(localizedText({ pol: 'Kampania', eng: 'Campaign' }, 'rus')).toBe('Campaign');
     expect(localizedText({ ger: 'Feldzug', pol: 'Kampania' }, 'rus')).toBe('Kampania');
     expect(campaignMovies(campaign, 'ger').videos[0]?.url).toBe('/campaigns/test/eng/video-1.webm');
     expect(campaignMovies({ movies: {} }, 'pol').videos).toEqual([]);
+    const logo = { pol: '/campaigns/test/logo-pol.png', eng: '/campaigns/test/logo-eng.png' };
+    expect(campaignLogo({ logo }, 'pol')).toBe('/campaigns/test/logo-pol.png');
+    expect(campaignLogo({ logo }, 'ger')).toBe('/campaigns/test/logo-eng.png');
+    expect(campaignLogo({ logo: { ger: '/campaigns/test/logo-ger.png' } }, 'pol')).toBe(
+      '/campaigns/test/logo-ger.png',
+    );
+    expect(campaignLogo({}, 'pol')).toBeUndefined();
   });
 });
 
