@@ -972,6 +972,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       requestEquipPicks: (entity, group) => host.equipPickList(entity as Entity, group),
       requestSelectionEquipPicks: (entities) => host.equipPicksForSelection(entities as readonly Entity[]),
       standsTo: answers.standsTo,
+      canUnloadPeople: answers.canUnloadPeople,
       traderView: answers.traderView,
       signpostReach: answers.signpostReach,
       tradeOffersAt: answers.tradeOffersAt,

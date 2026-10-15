@@ -79,6 +79,8 @@ export interface HostAnswers {
   /** Versioned with the job choices, since the residents filter asks both of one row. */
   readonly hasEarnedGood: (entity: number, goodType: number) => boolean;
   readonly standsTo: (entity: number) => boolean;
+  /** False while unanswered, which keeps the unload button off. */
+  readonly canUnloadPeople: (vehicle: number) => boolean;
   /** Undefined while unanswered, which leaves the status detail out. */
   readonly workStatus: (entity: number) => WorkStatus | undefined;
   /** The notice sweeps' own diagnoses, asked once per sweep tick rather than per tick, in a cache of
@@ -146,6 +148,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
   };
   const statuses = cache<UnlockStatus>({ same: samePlainData });
   const stands = cache<boolean>();
+  const unloads = cache<boolean>();
   const workStatuses = cache<WorkStatus | undefined>({ same: samePlainData });
   const noticeStatuses = cache<WorkAnswer>({ capacity: NOTICE_STATUS_CAPACITY, same: samePlainData });
   const noticeSupplies = cache<StatusAnswer<ConstructionSupply | undefined>>({
@@ -206,6 +209,8 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
         PER_TICK,
       ),
     standsTo: (entity) => perTick(stands, `${entity}`, () => host.standsTo(entity as Entity)) === true,
+    canUnloadPeople: (vehicle) =>
+      perTick(unloads, `${vehicle}`, () => host.canUnloadPeople(vehicle as Entity)) === true,
     workStatus: (entity) => perTick(workStatuses, `${entity}`, () => host.workStatus(entity as Entity)),
     noticeWorkStatus: (entity, asked) =>
       noticeStatuses.read(
@@ -245,6 +250,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
       unitPanel: () =>
         statuses.version +
         stands.version +
+        unloads.version +
         workStatuses.version +
         traders.version +
         offersAt.version +

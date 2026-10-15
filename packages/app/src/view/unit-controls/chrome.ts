@@ -384,6 +384,7 @@ export async function createUnitChrome(
     jobExperience: opts.content.jobExperience,
     tribes: opts.content.tribes,
     ...(opts.standsTo !== undefined ? { standsTo: opts.standsTo } : {}),
+    ...(opts.canUnloadPeople !== undefined ? { canUnloadPeople: opts.canUnloadPeople } : {}),
     vehicles: opts.content.vehicles,
     weapons: opts.content.weapons,
     armor: opts.content.armor,

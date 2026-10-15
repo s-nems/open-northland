@@ -116,6 +116,8 @@ export interface UnitControlsOptions {
   /** The sim's battle-alert read seam (`SessionHost.standsTo`); absent leaves a unit holding its ground
    *  under fire captioned as idle. */
   readonly standsTo?: (entity: number) => boolean;
+  /** The sim's unload rule (`SessionHost.canUnloadPeople`). */
+  readonly canUnloadPeople?: (vehicle: number) => boolean;
   /** The sim's trader read seams (`SessionHost.traderView` / `tradeOffersAt`); absent hides trade. */
   readonly signpostReach?: (player: number) => SignpostReachView | null;
   readonly traderView?: (entity: number) => TraderView | undefined;

@@ -147,6 +147,7 @@ import {
   canAttachToVehicle,
   type MooringProbe,
   mooringProbe,
+  unloadLandingOf,
   type VehicleView,
   vehiclesOf,
   vehicleView,
@@ -774,6 +775,15 @@ export class Simulation {
   /** {@link mooringProbe}'s spots, as plain data. */
   mooringAnswer(vehicle: Entity): MooringAnswer | null {
     return mooringAnswerFor(this.world, this.content, this.terrain, vehicle);
+  }
+
+  /** Whether the unload-people order would set `vehicle`'s riders down: the landing that order uses. */
+  canUnloadPeople(vehicle: Entity): boolean {
+    const ctx =
+      this.terrain === undefined
+        ? { content: this.content }
+        : { content: this.content, terrain: this.terrain };
+    return unloadLandingOf(this.world, ctx, vehicle) !== null;
   }
 
   /** Every mission of the map's script with its live flags, for the mission window's goal list;

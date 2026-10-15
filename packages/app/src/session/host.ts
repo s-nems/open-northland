@@ -203,6 +203,8 @@ export interface SessionHost {
   equipPicksForSelection(entities: readonly Entity[]): Promise<readonly EquipSelectionPick[]>;
   /** Whether a unit is holding its ground on battle alert. */
   standsTo(entity: Entity): Promise<boolean>;
+  /** Whether an unload order would set the vehicle's riders down here: a door point on land. */
+  canUnloadPeople(vehicle: Entity): Promise<boolean>;
   /** Why a tradesman works or stands idle; undefined when no status applies. */
   workStatus(entity: Entity): Promise<WorkStatus | undefined>;
   /** What a building site's bill still lacks and whether the seat holds each missing good; undefined for

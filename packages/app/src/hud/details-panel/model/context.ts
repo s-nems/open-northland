@@ -75,6 +75,9 @@ export interface UnitPanelModelContext {
   /** The sim's battle-alert read seam (`SessionHost.standsTo`): whether a unit is holding its ground
    *  because fighting is going on around it. Absent leaves such a unit reading as idle. */
   readonly standsTo?: ((entity: number) => boolean) | undefined;
+  /** The sim's unload rule (`SessionHost.canUnloadPeople`): whether an unload order would set the riders
+   *  down. Absent leaves an unmoored ship's unload button off. */
+  readonly canUnloadPeople?: ((vehicle: number) => boolean) | undefined;
   /** The open panel's memory across snapshots that bridges the tick between two atomics; absent reads
    *  every snapshot alone. */
   readonly holdSettlerState?: SettlerStateHold | undefined;

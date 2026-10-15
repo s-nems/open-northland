@@ -732,6 +732,7 @@ export const enGame = {
         atSea: 'Moor at the shore first',
         noSeat: 'No free seats',
         notMoored: 'Moor at the shore first',
+        noShore: 'Sail up to the shore first',
         deckFull: 'The deck is taken',
       },
       stances: { attack: 'Attack', defence: 'Defence', hold: 'Ignorant' },

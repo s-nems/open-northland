@@ -157,14 +157,30 @@ describe('vehicle panel model', () => {
     expect(moored.crew.deck?.capacity).toBe(ship.vehicleCapacity);
     expect(moored.status.label).toBe(messages().hud.vehiclePanel.status.moored);
 
-    const atSea = modelOf(
-      { ...world, snapshot: withVehicle(world.snapshot, ship.entity, (v) => (v.moored = false)) },
-      ship.entity,
-    );
+    const unmoored = withVehicle(world.snapshot, ship.entity, (v) => (v.moored = false));
+    const atSea = modelOf({ ...world, snapshot: unmoored }, ship.entity);
     const refusal = messages().hud.vehiclePanel.refusals.atSea;
-    expect(atSea.crew.unload).toBe(refusal);
+    expect(atSea.crew.unload).toBe(messages().hud.vehiclePanel.refusals.noShore);
     expect(atSea.crew.assign).toBe(refusal);
     expect(atSea.crew.load).toBe(messages().hud.vehiclePanel.refusals.notMoored);
+
+    const asked: number[] = [];
+    const besideLand = modelOf(
+      {
+        snapshot: unmoored,
+        ctx: { ...world.ctx, canUnloadPeople: (vehicle) => asked.push(vehicle) > 0 },
+      },
+      ship.entity,
+    );
+    expect(besideLand.crew.unload).toBe(true);
+    expect(besideLand.crew.assign).toBe(refusal);
+    expect(asked).toEqual([ship.entity]);
+  });
+
+  it("answers the unload rule off the sim's landing for a ship at its shore", () => {
+    const world = vehiclesWorld();
+    const ship = ownVehicle(world.sim, VEHICLE_SHIP_SMALL).entity;
+    expect(world.sim.canUnloadPeople(ship)).toBe(true);
   });
 
   it('shows a carried cart riding its ship, leaving only while the ship is moored', () => {

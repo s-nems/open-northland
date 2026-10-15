@@ -24,6 +24,7 @@ export {
   detachFromVehicle,
   forcesDetach,
   passengerJobAllowed,
+  unloadLandingOf,
   unloadPeople,
 } from './crew.js';
 export { dockVehicle, type MooringProbe, type MooringSpots, mooringProbe, mooringSpotsOf } from './dock.js';

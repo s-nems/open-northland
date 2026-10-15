@@ -342,6 +342,7 @@ function ordinarySeats(slots: unknown): (VehicleSeatSnapshot | null)[] {
 }
 
 interface CrewInputs {
+  readonly entityId: number;
   readonly vehicleClass: VehicleClass;
   readonly foreign: boolean;
   readonly carried: boolean;
@@ -391,7 +392,7 @@ function crewModel(
     deck,
     assign: own ? (full ? copy.noSeat : doorless) : null,
     leave: own ? doorless : null,
-    unload: own && passengers.length > 0 ? doorless : null,
+    unload: own && passengers.length > 0 ? unloadControl(ctx, inputs, doorless) : null,
     load:
       own && deck !== null
         ? !inputs.moored
@@ -402,6 +403,15 @@ function crewModel(
         : null,
     unloadVehicle: own && deck !== null ? (inputs.moored ? true : atSea) : null,
   };
+}
+
+/** An unmoored ship unloads wherever the sim finds land at its door point; anything else follows the
+ *  ordinary door rule. */
+function unloadControl(ctx: UnitPanelModelContext, inputs: CrewInputs, doorless: SeatControl): SeatControl {
+  if (!inputs.atSea) return doorless;
+  return ctx.canUnloadPeople?.(inputs.entityId) === true
+    ? true
+    : messages().hud.vehiclePanel.refusals.noShore;
 }
 
 function holdModel(
@@ -532,6 +542,7 @@ export function vehiclePanelModel(
     attackOrders,
     stance: !foreign && vehicleClass === 'siege' ? stanceOf(v.stance) : null,
     crew: crewModel(ctx, snapshot, v, commanderId, {
+      entityId: ent.id,
       vehicleClass,
       foreign,
       carried,
