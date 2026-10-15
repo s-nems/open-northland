@@ -29,7 +29,7 @@ it.each([false, true])(
       return () => live.delete(name);
     };
     vi.spyOn(presentation, 'mountGamePresentation').mockImplementation(
-      async (_params, _renderer, _music, signal) => {
+      async (_params, _renderer, _jobs, _music, signal) => {
         const releaseBinding = acquire('sound binding');
         signal?.addEventListener('abort', releaseBinding, { once: true });
         return { close: acquire('sound') } as unknown as SoundDriver;

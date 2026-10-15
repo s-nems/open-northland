@@ -444,6 +444,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const soundDriver = await mountGamePresentation(
       params,
       renderer,
+      host.content.jobs,
       deps.musicType ?? null,
       lifetime.signal,
     );

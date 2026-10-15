@@ -16,6 +16,8 @@ import {
   type GeometryDebugItem,
   GeometryDebugLayer,
   GroupNumberLayer,
+  type ImportMarkerGfx,
+  ImportMarkerLayer,
   type LifeHeart,
   LifeHeartLayer,
   type LostGoalMarker,
@@ -48,6 +50,7 @@ export type MarkSlots = Pick<
   | 'constructionSigns'
   | 'bubbles'
   | 'hearts'
+  | 'importMarkers'
   | 'groupNumbers'
   | 'geometryDebug'
 >;
@@ -104,6 +107,7 @@ export class WorldMarks {
   private readonly constructionSigns: ConstructionSignLayer;
   private readonly bubbles = new SettlerBubbleLayer();
   private readonly hearts = new LifeHeartLayer();
+  private readonly importMarkers = new ImportMarkerLayer();
   private readonly groupNumbers = new GroupNumberLayer();
   private readonly geometryDebug = new GeometryDebugLayer();
   readonly slots: MarkSlots;
@@ -134,6 +138,7 @@ export class WorldMarks {
       constructionSigns: this.constructionSigns.container,
       bubbles: this.bubbles.container,
       hearts: this.hearts.container,
+      importMarkers: this.importMarkers.container,
       groupNumbers: this.groupNumbers.container,
       geometryDebug: this.geometryDebug.container,
     };
@@ -175,6 +180,11 @@ export class WorldMarks {
     this.bubbles.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textures });
   }
 
+  /** `null` leaves the import-marker layer drawing nothing. */
+  setImportMarkerGfx(gfx: ImportMarkerGfx | null): void {
+    this.importMarkers.setGfx(gfx === null ? undefined : { ...gfx, textures: this.textures });
+  }
+
   /** Both sign layers read the one art set, so a door badge and a site stand cannot disagree. */
   setSignGfx(gfx: BuildingSignGfx | null): void {
     const signGfx = gfx === null ? undefined : { ...gfx, textures: this.textures };
@@ -212,6 +222,7 @@ export class WorldMarks {
     this.constructionSigns.draw(frame.constructionSigns, elevation, viewport);
     this.bubbles.draw({ bubbles: frame.settlerBubbles, drawn, elevation }, viewport);
     this.hearts.draw({ hearts: frame.lifeHearts, drawn, elevation }, viewport);
+    this.importMarkers.draw({ snapshot: frame.snapshot, drawn, elevation }, viewport);
     this.groupNumbers.draw(
       { snapshot: frame.snapshot, drawn, zoom: frame.zoom },
       frame.groupNumbers,
@@ -236,6 +247,7 @@ export class WorldMarks {
     this.constructionSigns.destroy();
     this.bubbles.destroy();
     this.hearts.destroy();
+    this.importMarkers.destroy();
     this.groupNumbers.destroy();
     this.geometryDebug.destroy();
   }

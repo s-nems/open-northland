@@ -29,6 +29,7 @@ import {
   ConstructionPlotLayer,
   type GeometryDebugItem,
   HudLayer,
+  type ImportMarkerGfx,
   type MapViewFrame,
   MapViewLayer,
   type PlacementGhost,
@@ -365,6 +366,10 @@ export class WorldRenderer {
 
   setSettlerBubbleGfx(gfx: SettlerBubbleGfx | null): void {
     this.marks.setBubbleGfx(gfx);
+  }
+
+  setImportMarkerGfx(gfx: ImportMarkerGfx | null): void {
+    this.marks.setImportMarkerGfx(gfx);
   }
 
   setBuildingSignGfx(gfx: BuildingSignGfx | null): void {

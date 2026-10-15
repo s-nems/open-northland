@@ -1,6 +1,7 @@
 import { entitiesWith, type WorldSnapshot } from '@open-northland/sim';
 import { collectBonePiles } from './effects/index.js';
 import { hudTotalsOf } from './hud/totals.js';
+import { importMarkersOf } from './scene/import-markers.js';
 import { collectRebuiltPositioned, touchedIdsOf } from './scene/scene-feeds.js';
 import {
   enterableStoresOf,
@@ -29,6 +30,7 @@ export const RENDER_FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
   },
   { name: 'enterable stores', read: (snapshot) => enterableStoresOf(snapshot) },
   { name: 'wanted targets', read: (snapshot) => targetPositionsOf(snapshot) },
+  { name: 'import markers', read: (snapshot) => importMarkersOf(snapshot, NO_JOBS) },
   { name: 'palisades', read: (snapshot) => palisadesOf(snapshot) },
   { name: 'siege shots', read: (snapshot) => siegeShotsOf(snapshot) },
   { name: 'fog ghost vehicles', read: (snapshot) => entitiesWith(snapshot, 'Vehicle') },
@@ -41,6 +43,9 @@ export const RENDER_FRAME_INDEX_READERS: readonly FrameIndexReader[] = [
     read: (snapshot) => collectRebuiltPositioned(snapshot, EMPTY_BOX, []),
   },
 ];
+
+/** No exempt job, for a reader that only registers its index. */
+const NO_JOBS: ReadonlySet<number> = new Set();
 
 /** A box no bucket answers, for a reader that only registers its index. */
 const EMPTY_BOX = { minX: 0, minY: 0, maxX: -1, maxY: -1 };

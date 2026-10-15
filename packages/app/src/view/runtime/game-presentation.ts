@@ -1,7 +1,8 @@
 import type { SoundDriver } from '@open-northland/audio';
+import type { JobType } from '@open-northland/data';
 import type { WorldRenderer } from '@open-northland/render';
 import { createSoundDriver } from '../../content/audio.js';
-import { loadSettlerBubbleGfx } from '../../content/bubbles.js';
+import { loadImportMarkerGfx, loadSettlerBubbleGfx } from '../../content/bubbles.js';
 import { loadBuildingSignGfx } from '../../content/building-signs.js';
 import { loadIr } from '../../content/ir/load.js';
 import { loadMusicManifest } from '../../content/music.js';
@@ -42,6 +43,8 @@ async function preloadSounds(sound: SoundDriver): Promise<void> {
 export async function mountGamePresentation(
   params: URLSearchParams,
   renderer: WorldRenderer,
+  /** The running content's job rows, which decide who never wears the import marker. */
+  jobs: readonly JobType[],
   /** The map's `[misc_music]` code; null for a world that plays no music. */
   musicType: number | null,
   /** The view's lifetime; it ends the gesture listeners that start and restore audio. */
@@ -71,6 +74,7 @@ export async function mountGamePresentation(
     renderer.setCombatBonesGfx(ir !== null ? await loadCombatBones(ir) : null);
     renderer.setWreckGfx(ir !== null ? await loadWreckDebris(ir) : null);
     renderer.setSettlerBubbleGfx(await loadSettlerBubbleGfx());
+    renderer.setImportMarkerGfx(await loadImportMarkerGfx(jobs));
     renderer.setBuildingSignGfx(await loadBuildingSignGfx());
     return sound;
   } catch (error) {

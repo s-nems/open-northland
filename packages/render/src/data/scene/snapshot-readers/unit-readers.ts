@@ -158,6 +158,12 @@ export function readBehaviourGlow(components: Readonly<Record<string, unknown>>)
   return (flags & simComponents.MISSION_BEHAVIOUR.GLOWS) !== 0;
 }
 
+/** Whether a human's mission behaviour mask carries the scripted import marker. */
+export function readBehaviourImported(components: Readonly<Record<string, unknown>>): boolean {
+  const flags = readNumField(components, 'MissionBehaviour', 'flags') ?? 0;
+  return (flags & simComponents.MISSION_BEHAVIOUR.IMPORTED) !== 0;
+}
+
 /** The map-authored palette recipes laid over a settler (`ScriptedLook.recipes`), or undefined. */
 export function readScriptedLook(
   components: Readonly<Record<string, unknown>>,

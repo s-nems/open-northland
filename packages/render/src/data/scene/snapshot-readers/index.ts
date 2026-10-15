@@ -29,6 +29,7 @@ export {
   readAtomicElapsed,
   readAtomicTargetEntity,
   readBehaviourGlow,
+  readBehaviourImported,
   readCarrying,
   readCraftPerformance,
   readCraftWorkplace,
