@@ -476,7 +476,7 @@ the encoding). Bits with a known effect (reading; each is a hypothesis to confir
 | 13 | 8192 | aggressive target search; also hidden from animal aggression |
 | 14 | 16384 | leaves no cadaver |
 | 15 | 32768 | a hit does not spread to nearby units |
-| 16 | 65536 | for the two non-settler tribes: alert military mode instead of the default |
+| 16 | 65536 | a weresnake or werewolf starts defensive instead of aggressive; every other human starts defensive anyway |
 | 17 | 131072 | walks faster |
 | 19 | 524288 | drawn with the owner-coloured glow a hero wears, except on the Frankish heroine slot |
 

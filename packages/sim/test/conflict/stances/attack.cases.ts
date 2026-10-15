@@ -66,7 +66,7 @@ describe('ATTACK - a fighter walks back to its own place once the fight is over'
     });
     const [soldier, civilian] = [...sim.world.query(Settler)] as Entity[];
     if (soldier === undefined || civilian === undefined) throw new Error('spawn failed');
-    expect(sim.world.get(soldier, Stance).mode).toBe(MILITARY_MODE.ATTACK);
+    expect(sim.world.get(soldier, Stance).mode).toBe(MILITARY_MODE.DEFEND);
     expect(anchorOf(sim, soldier)).toBe(sim.terrain?.nodeAtClamped(2, 0)); // the spawn's own node
     expect(anchorOf(sim, civilian)).toBeNull();
   });

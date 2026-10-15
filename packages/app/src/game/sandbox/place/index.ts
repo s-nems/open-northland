@@ -27,5 +27,11 @@ export {
   resourceSpecFor,
   spawnBoundGatherer,
 } from './resources.js';
-export { spawnIdleSettler, spawnSandboxSettler, spawnSettlerAtNode, spawnSettlerDirect } from './settlers.js';
+export {
+  spawnIdleSettler,
+  spawnSandboxSettler,
+  spawnSandboxSettlerDirect,
+  spawnSettlerAtNode,
+  spawnSettlerDirect,
+} from './settlers.js';
 export { spawnVehicleDirect } from './vehicles.js';

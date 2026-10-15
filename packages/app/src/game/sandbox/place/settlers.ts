@@ -10,24 +10,24 @@ import { JOB_IDLE } from '../../../catalog/jobs.js';
 import { HUMAN_PLAYER, PRIMARY_TRIBE } from '../../rules.js';
 import { weaponEquipmentFor } from '../ids/index.js';
 
-/** Spawn a settler with the given job via the `spawnSettler` command. */
-export function spawnSandboxSettler(
+interface SandboxSettlerOptions {
+  readonly hitpoints?: number;
+  readonly weaponTypeId?: number;
+  readonly equipment?: SettlerEquipment;
+  readonly tribe?: number;
+}
+
+function sandboxSettlerSpec(
   sim: Simulation,
   jobType: number,
   x: number,
   y: number,
-  owner: number = HUMAN_PLAYER,
-  opts: {
-    readonly hitpoints?: number;
-    readonly weaponTypeId?: number;
-    readonly equipment?: SettlerEquipment;
-    readonly tribe?: number;
-  } = {},
-): void {
+  owner: number,
+  opts: SandboxSettlerOptions,
+) {
   const node = cellAnchorNode(x, y);
   const equipment = opts.equipment ?? weaponEquipmentFor(jobType, sim.content.goods);
-  sim.enqueueSetup({
-    kind: 'spawnSettler',
+  return {
     jobType,
     x: node.hx,
     y: node.hy,
@@ -36,7 +36,37 @@ export function spawnSandboxSettler(
     ...(opts.hitpoints !== undefined ? { hitpoints: opts.hitpoints } : {}),
     ...(opts.weaponTypeId !== undefined ? { weaponTypeId: opts.weaponTypeId } : {}),
     ...(equipment !== undefined ? { equipment } : {}),
-  });
+  };
+}
+
+/** Spawn a settler with the given job via the `spawnSettler` command. */
+export function spawnSandboxSettler(
+  sim: Simulation,
+  jobType: number,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+  opts: SandboxSettlerOptions = {},
+): void {
+  sim.enqueueSetup({ kind: 'spawnSettler', ...sandboxSettlerSpec(sim, jobType, x, y, owner, opts) });
+}
+
+/**
+ * {@link spawnSandboxSettler} created at once (scene setup, pre-tick-0) and returned, so a scene can layer
+ * authored state such as a stance on it. Without the command handler it gets no stance anchor.
+ */
+export function spawnSandboxSettlerDirect(
+  sim: Simulation,
+  jobType: number,
+  x: number,
+  y: number,
+  owner: number = HUMAN_PLAYER,
+  opts: SandboxSettlerOptions = {},
+): Entity {
+  const spec = sandboxSettlerSpec(sim, jobType, x, y, owner, opts);
+  const e = systems.createSettler(sim.world, sim.content, sim.rng, spec, sim.names);
+  if (e === null) throw new Error(`spawnSandboxSettlerDirect: unknown settler job ${jobType}`);
+  return e;
 }
 
 /**

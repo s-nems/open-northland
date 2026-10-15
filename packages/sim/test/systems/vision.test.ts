@@ -788,12 +788,11 @@ describe('first contact - the vision-driven discovery of other players', () => {
   });
 });
 
-describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', () => {
+describe('fog gates - flee reacts only to SEEN enemies, combat auto-acquire to any', () => {
   // Geometry shared by the gate tests: attacker at cell (2,2) (node (4,4)), enemy 7 cells east at
   // (9,2) (node (18,4)) - Manhattan node distance 14, INSIDE the 16-node combat sight radius but
   // 476 px east, OUTSIDE the attacker's eye: job 1 is an age class to the engine (5 nodes), and even a
-  // civilian's 408 px (12-node) ellipse falls short. Without fog the drive fires;
-  // under classic fog the enemy is unseen and it must not.
+  // civilian's 408 px (12-node) ellipse falls short. Under classic fog the enemy is unseen.
   const ATTACKER = { x: 2, y: 2 } as const;
   const ENEMY = { x: 9, y: 2 } as const;
 
@@ -808,9 +807,9 @@ describe('fog gates - combat auto-acquire and flee react only to SEEN enemies', 
     expect((ENEMY.x - ATTACKER.x) * 68).toBeGreaterThan(CIVILIAN_VISION_NODES * 34);
   });
 
-  it('ATTACK auto-acquire ignores an enemy in the fog - and engages it with fog off', () => {
+  it('ATTACK auto-acquire engages an enemy in the fog as with fog off (original: no sight check)', () => {
     for (const [mode, engages] of [
-      [FOG_MODE.CLASSIC, false],
+      [FOG_MODE.CLASSIC, true],
       [FOG_MODE.OFF, true],
     ] as const) {
       const sim = simOn(mode);

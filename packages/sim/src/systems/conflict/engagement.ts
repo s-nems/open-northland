@@ -30,7 +30,6 @@ import {
 } from '../readviews/index.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import { playerSeesEntity } from '../vision/index.js';
 import { onStride, REPATH_CADENCE } from './chase.js';
 import type { SearchMetric } from './combat-grid.js';
 import type { CombatIndex } from './combat-index.js';
@@ -73,7 +72,7 @@ export const IGNORE_LEASH_NODES = 18;
 const ANIMAL_BLIND_BEHAVIOUR = MISSION_BEHAVIOUR.INVULNERABLE | MISSION_BEHAVIOUR.HIDDEN_FROM_ANIMALS;
 
 export interface CombatantStance {
-  /** Whether the unit has an {@link Owner}; an unowned combatant has no fog and carries no {@link Stance}. */
+  /** Whether the unit has an {@link Owner}; an unowned combatant carries no {@link Stance}. */
   readonly owned: boolean;
   /** Whether an explicit {@link AttackOrder} is in flight - it overrides `mode`'s auto-behavior. */
   readonly ordered: boolean;
@@ -99,17 +98,12 @@ export class EngagementSpecs {
         here: NodeId;
         attacker: SettlerIdentity;
         weapon: ArmedWith;
-        viewer: number | undefined;
         bank: number;
         givenUp: ((t: Entity) => boolean) | undefined;
         anchor: NodeId;
         kind: 'advance' | 'post' | 'defend' | 'ignore';
       }
     | undefined;
-  private readonly seesTarget = (t: Entity): boolean => {
-    const i = this.current();
-    return i.viewer === undefined || playerSeesEntity(this.world, this.ctx.fog, i.viewer, t);
-  };
   private readonly reachable = (t: Entity): boolean => {
     const i = this.current();
     return targetReachable(this.world, this.ctx, this.terrain, i.here, i.weapon, t, i.bank);
@@ -125,13 +119,12 @@ export class EngagementSpecs {
       hexNodeDistance(this.terrain, i.here, combatTargetNode(this.world, this.ctx, this.terrain, i.here, t)),
     );
   };
+  // Original behavior: the search has no sight or fog check; hostility (war only for two players) and
+  // reach decide.
   private readonly advanceAccept = (t: Entity): boolean => {
     const i = this.current();
     return (
-      this.hostile(t) &&
-      this.seesTarget(t) &&
-      (i.givenUp === undefined || !i.givenUp(t) || this.inBand(t)) &&
-      this.reachable(t)
+      this.hostile(t) && (i.givenUp === undefined || !i.givenUp(t) || this.inBand(t)) && this.reachable(t)
     );
   };
   // Original behavior, unconfirmed against the running original: a wild animal looking for a victim
@@ -149,7 +142,7 @@ export class EngagementSpecs {
     if (i.kind === 'ignore' && !this.inBand(t)) return false;
     return this.advanceAccept(t);
   };
-  // A held hostile bypasses fog, retaining the original target until its stance leash or reach rejects it.
+  // A held hostile stays the target until its stance leash or reach rejects it.
   private readonly keep = (t: Entity): boolean => {
     const i = this.current();
     if (i.kind === 'post')
@@ -158,6 +151,8 @@ export class EngagementSpecs {
         this.reachable(t) &&
         inReachOf(this.terrain, this.world, this.ctx, i.here, t, i.weapon.maxRange)
       );
+    // Hostility first: it also drops a target with no position, such as a rider inside a vehicle.
+    if (!this.hostile(t)) return false;
     if (
       i.kind === 'ignore' &&
       hexNodeDistance(this.terrain, i.anchor, entityNode(this.world, this.terrain, t)) > IGNORE_LEASH_NODES
@@ -168,7 +163,7 @@ export class EngagementSpecs {
       hexNodeDistance(this.terrain, i.anchor, entityNode(this.world, this.terrain, t)) > DEFEND_LEASH_NODES
     )
       return false;
-    return this.hostile(t) && this.reachable(t);
+    return this.reachable(t);
   };
 
   private readonly lowPriority = (t: Entity): boolean => this.index.isLowPriorityBuilding(t);
@@ -232,13 +227,12 @@ export class EngagementSpecs {
               isFighterJob(ctx.content, attacker.jobType)
             ? 'ignore'
             : 'advance';
-    this.input ??= { e, here, attacker, weapon, viewer, bank, givenUp, anchor, kind };
+    this.input ??= { e, here, attacker, weapon, bank, givenUp, anchor, kind };
     const input = this.input;
     input.e = e;
     input.here = here;
     input.attacker = attacker;
     input.weapon = weapon;
-    input.viewer = viewer;
     input.bank = bank;
     input.givenUp = givenUp;
     input.anchor = anchor;

@@ -29,7 +29,7 @@ import type { NodeId } from '../../nav/terrain/index.js';
 import type { SystemContext } from '../context.js';
 import { clearNavState } from '../movement/nav-state.js';
 import {
-  defaultStanceForJob,
+  defaultStance,
   isFighterJob,
   isMilitaryMode,
   keepsAnchor,
@@ -39,7 +39,7 @@ import { recordAiOrder } from './ai-lifecycle.js';
 import { isOrderableSettler, supersedeStandingOrders } from './guards.js';
 
 /**
- * Stamp the job-based default military stance on an owned settler. The anchor resets to null until
+ * Stamp the default military stance on an owned settler. The anchor resets to null until
  * {@link anchorAtFeet} or an order sets one. The caller guarantees `e` is owned, and Stance stays owned-only.
  */
 export function stampDefaultStance(
@@ -48,7 +48,7 @@ export function stampDefaultStance(
   e: Entity,
   jobType: number | null,
 ): void {
-  world.add(e, Stance, { mode: defaultStanceForJob(content, jobType), anchorCell: null });
+  world.add(e, Stance, { mode: defaultStance(world, content, e, jobType), anchorCell: null });
 }
 
 /** Anchor a fighter where a spawn or a new trade leaves it. Any other settler keeps its null anchor until

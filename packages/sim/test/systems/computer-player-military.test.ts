@@ -168,7 +168,11 @@ function spawnAt(
     sim.enqueueSetup({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner });
   }
   sim.step();
-  return [...sim.world.query(Settler)].filter((e) => !before.has(e));
+  const spawned = [...sim.world.query(Settler)].filter((e) => !before.has(e));
+  // Already in the ATTACK stance the muster holds its men in, so the cases see only the walks it orders.
+  for (const entity of spawned) sim.enqueueSetup({ kind: 'setStance', entity, mode: MILITARY_MODE.ATTACK });
+  sim.step();
+  return spawned;
 }
 
 function buildingOfType(sim: Simulation, buildingType: number, owner: number): Entity {
@@ -255,7 +259,7 @@ describe('military module - the muster', () => {
     const rally = rallyOf(sim);
     pack(sim, 3, { x: rally.x, y: rally.y });
 
-    // They keep the fighter default ATTACK stance, so the settlement stays defended while they wait.
+    // Already in the ATTACK stance the muster wants, so the settlement stays defended while they wait.
     expect(run(sim)).toEqual([]);
   });
 
@@ -901,7 +905,7 @@ describe('military module - the campaign', () => {
     expect(walks(commands)).toHaveLength(1);
     expect(gatheringAt(sim, commands, rally)).toBe(1);
     expect(commands.some((c) => c.kind === 'attackMoveUnit' && c.entity === survivor)).toBe(true);
-    expect(stanceModes(commands)).toEqual([]); // a fighter already defaults to ATTACK - nothing to restate
+    expect(stanceModes(commands)).toEqual([]); // already ATTACK - nothing to restate
   });
 
   it('gathers the next rank into a wave of its own instead of trickling it out behind the first', () => {

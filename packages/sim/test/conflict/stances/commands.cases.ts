@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addPerson, Position, Settler, Stance } from '../../../src/components/index.js';
+import { addPerson, MISSION_BEHAVIOUR, Position, Settler, Stance } from '../../../src/components/index.js';
 import { fx } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
@@ -9,11 +9,15 @@ import { spawnSettler } from '../../../src/systems/spawn/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { cell, combatant, ctxOf, grassMap, P0, VIKING, WOODCUTTER } from './support.js';
 
+const SOLDIER_UNARMED = 31;
+const WERESNAKE = 5;
+const WEREWOLF = 6;
+
 describe('stance defaults - the job → military-mode lookup', () => {
-  it('classifies the roster: soldiers/heroes ATTACK, scout/hunter IGNORE, everyone else FLEE', () => {
+  it('classifies the roster: soldiers/heroes DEFEND, scout/hunter IGNORE, everyone else FLEE', () => {
     const content = testContent();
-    expect(defaultStanceForJob(content, 31)).toBe(MILITARY_MODE.ATTACK); // soldier_unarmed
-    expect(defaultStanceForJob(content, 45)).toBe(MILITARY_MODE.ATTACK); // hero_saber
+    expect(defaultStanceForJob(content, 31)).toBe(MILITARY_MODE.DEFEND); // soldier_unarmed
+    expect(defaultStanceForJob(content, 45)).toBe(MILITARY_MODE.DEFEND); // hero_saber
     expect(defaultStanceForJob(content, 27)).toBe(MILITARY_MODE.IGNORE); // scout
     expect(defaultStanceForJob(content, 15)).toBe(MILITARY_MODE.IGNORE); // hunter (toward humans)
     expect(defaultStanceForJob(content, 1)).toBe(MILITARY_MODE.FLEE); // woodcutter (civilian)
@@ -38,6 +42,27 @@ describe('stance defaults - the job → military-mode lookup', () => {
     const [owned, unowned] = [...sim.world.query(Settler)];
     expect(sim.world.get(owned as Entity, Stance).mode).toBe(MILITARY_MODE.FLEE); // owned civilian → FLEE
     expect(sim.world.has(unowned as Entity, Stance)).toBe(false); // unowned carries no Stance (golden-safe)
+  });
+
+  it('starts a weresnake or werewolf soldier ATTACK unless its mask asks for DEFEND', () => {
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    const ctx = ctxOf(sim);
+    const spawn = (x: number, tribe: number, behaviourFlags?: number): Entity | null =>
+      spawnSettler(sim.world, ctx, {
+        kind: 'spawnSettler',
+        jobType: SOLDIER_UNARMED,
+        x,
+        y: 0,
+        tribe,
+        owner: P0,
+        ...(behaviourFlags === undefined ? {} : { behaviourFlags }),
+      });
+    const modeOf = (e: Entity | null): number | undefined =>
+      e === null ? undefined : sim.world.get(e, Stance).mode;
+    expect(modeOf(spawn(0, VIKING))).toBe(MILITARY_MODE.DEFEND);
+    expect(modeOf(spawn(1, WERESNAKE))).toBe(MILITARY_MODE.ATTACK);
+    expect(modeOf(spawn(2, WEREWOLF))).toBe(MILITARY_MODE.ATTACK);
+    expect(modeOf(spawn(3, WEREWOLF, MISSION_BEHAVIOUR.STARTS_DEFENSIVE))).toBe(MILITARY_MODE.DEFEND);
   });
 
   it('re-stamps the default on a profession change', () => {

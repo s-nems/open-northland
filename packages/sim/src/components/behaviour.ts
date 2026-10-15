@@ -34,6 +34,8 @@ export const MISSION_BEHAVIOUR = {
   HIDDEN_FROM_ANIMALS: 1 << 13,
   /** Walks at half pace. */
   WALKS_SLOWLY: 1 << 9,
+  /** A weresnake or werewolf starts in the DEFEND stance instead of ATTACK. */
+  STARTS_DEFENSIVE: 1 << 16,
   /** Walks faster than its trade would. */
   WALKS_FAST: 1 << 17,
   /** Drawn with the owner-coloured glow a hero wears; no rule reads it. */

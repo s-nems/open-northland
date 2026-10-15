@@ -8,6 +8,7 @@ import {
   placeBuiltSandboxBuilding,
   placeSandboxSite,
   spawnSandboxSettler,
+  spawnSandboxSettlerDirect,
   spawnSettlerDirect,
   WEAPON_BROADSWORD,
   WEAPON_SHORT_BOW,
@@ -74,7 +75,11 @@ const { Building, Health } = components;
 function build(sim: Simulation): void {
   for (let y = RANK_Y_FIRST; y <= RANK_Y_LAST; y++) {
     for (const rank of BLUE_RANKS) {
-      spawnSandboxSettler(sim, rank.job, rank.x, y, HUMAN_PLAYER, { weaponTypeId: rank.weapon });
+      const warrior = spawnSandboxSettlerDirect(sim, rank.job, rank.x, y, HUMAN_PLAYER, {
+        weaponTypeId: rank.weapon,
+      });
+      // A fighter starts DEFEND; the warband takes the attack stance the scene signs off.
+      sim.world.mut(warrior, components.Stance).mode = systems.MILITARY_MODE.ATTACK;
     }
   }
   placeBuiltSandboxBuilding(sim, ENEMY_HQ[0], ENEMY_HQ[1], ENEMY_HQ[2], ENEMY_PLAYER);
@@ -123,14 +128,14 @@ function enemyDefendersDead(sim: Simulation): boolean {
 }
 
 // `runTicks` must land after the high-value tier is razed but before the warband turns on the plain
-// homes, so the end state itself shows the auto-focus priority. All checks hold at ticks 585..800 in the
+// homes, so the end state itself shows the auto-focus priority. All checks hold at ticks 590..740 in the
 // headless fixture, sampled every 5 ticks; leave margin on both sides.
 export const siegeScene: SceneDefinition = {
   id: 'siege',
   seed: 11,
   terrain: grassTerrain(MAP_W, MAP_H),
   build,
-  runTicks: 725,
+  runTicks: 665,
   initialZoom: 0.8,
   checks: [
     {
