@@ -56,6 +56,16 @@ describe('computeLifeHearts - the life fraction', () => {
   });
 });
 
+describe("computeLifeHearts - the owner's colour slot", () => {
+  it('takes the owner slot through the roster recolouring, else the owner slot itself', () => {
+    const theirs = unit(1, LIVESTOCK_TRIBE, ENEMY);
+    const isLivestockTribe = (tribe: number) => tribe === LIVESTOCK_TRIBE;
+    expect(computeLifeHearts(snapshotOf([theirs]), { isLivestockTribe })[0]?.colourSlot).toBe(ENEMY);
+    const recoloured = computeLifeHearts(snapshotOf([theirs]), { isLivestockTribe, playerColourOf: () => 7 });
+    expect(recoloured[0]?.colourSlot).toBe(7);
+  });
+});
+
 describe('computeLifeHearts - who among the people wears one', () => {
   it('a person wears none, however wounded, until his own player selects him', () => {
     const hurt = person(1, { hitpoints: 10, max: 100 });

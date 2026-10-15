@@ -196,7 +196,7 @@ const PALETTE_INDEX_INI = `${INIS}/palettes/palettes.ini`;
  * decodable binding (landscapes.cif and palettes.ini both checked), so it is hand-authored here.
  * Decoded frame layout: bob 0 is the post, bobs 1..18 the direction board in ~20 degree steps around
  * the post top. `bridge01` is a named approximation, the single-colour fallback for the per-player
- * atlases `convertGuidepostPlayerAtlases` bakes.
+ * atlases `convertPlayerPaletteAtlases` bakes.
  */
 const GUIDEPOST_BINDING: BmdPaletteBinding = {
   bmd: 'data/engine2d/bin/bobs/ls_guidepost.bmd',

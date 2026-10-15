@@ -3,11 +3,15 @@ import {
   type AtlasFrame,
   type ExperienceStarGfx,
   type ImportMarkerGfx,
+  LIFE_HEART_STEPS,
+  type LifeHeartGfx,
+  type LifeHeartSheet,
   type SettlerBubbleGfx,
   type SettlerBubbleKind,
   STAR_TIERS,
 } from '@open-northland/render';
 import { importMarkerExemptJobs } from '@open-northland/render/data';
+import { PLAYER_COLOR_COUNT } from '../catalog/roster.js';
 import { loadLayer, MissingAtlasError } from './ir/load.js';
 
 /** The served stem of the `ls_gui_bubbles` over-head icon sheet: the RGBA preview in the sheet's own
@@ -22,6 +26,13 @@ const IMPORT_MARKER_FRAME_ID = 10;
 /** The `ls_gui_bubbles` bob of the smallest experience star; each larger tier is the bob before it, so
  *  the largest is bob 6. Original behavior (reading, unconfirmed against the running original). */
 const SMALLEST_STAR_FRAME_ID = 9;
+
+/** The `ls_gui_bubbles` bob of the full life heart; each tenth of life lost is the next bob, to the
+ *  empty heart at bob 21. */
+const FULL_HEART_FRAME_ID = 11;
+
+/** The served stem of one colour slot's hearts: `ls_gui_bubbles` baked through that player's palette. */
+const heartAtlasStem = (slot: number): string => `ls_gui_bubbles.player_${String(slot).padStart(2, '0')}`;
 
 /** The `ls_gui_bubbles` bob index each bubble kind draws. Source basis: observation, since no readable
  *  ini names the frames. */
@@ -68,6 +79,33 @@ export async function loadImportMarkerGfx(
   const frame = layer?.atlas.frames.get(IMPORT_MARKER_FRAME_ID);
   if (layer === null || frame === undefined) return null;
   return { source: layer.source, frame, exemptJobs: importMarkerExemptJobs(jobs) };
+}
+
+/** The life hearts per colour slot; `null` when no slot's page loads. Original behavior: the hearts
+ *  draw in the owner's player palette, every pixel inside its player ramp. */
+export async function loadLifeHeartGfx(): Promise<LifeHeartGfx | null> {
+  const byPlayer = await Promise.all(
+    Array.from({ length: PLAYER_COLOR_COUNT }, (_, slot) => loadHeartSheet(slot)),
+  );
+  return byPlayer.some((sheet) => sheet !== undefined) ? { byPlayer } : null;
+}
+
+/** One slot's heart page, or `undefined` when it is missing or lacks a frame. */
+async function loadHeartSheet(slot: number): Promise<LifeHeartSheet | undefined> {
+  let layer: Awaited<ReturnType<typeof loadLayer>>;
+  try {
+    layer = await loadLayer(heartAtlasStem(slot));
+  } catch (err) {
+    if (err instanceof MissingAtlasError) return undefined;
+    throw err;
+  }
+  const frames: AtlasFrame[] = [];
+  for (let step = 0; step < LIFE_HEART_STEPS; step++) {
+    const frame = layer.atlas.frames.get(FULL_HEART_FRAME_ID + step);
+    if (frame === undefined) return undefined;
+    frames.push(frame);
+  }
+  return { source: layer.source, frames };
 }
 
 async function loadIconSheet(): Promise<Awaited<ReturnType<typeof loadLayer>> | null> {

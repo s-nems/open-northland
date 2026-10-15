@@ -31,6 +31,7 @@ import {
   type GeometryDebugItem,
   HudLayer,
   type ImportMarkerGfx,
+  type LifeHeartGfx,
   type MapViewFrame,
   MapViewLayer,
   type PlacementGhost,
@@ -376,6 +377,10 @@ export class WorldRenderer {
 
   setImportMarkerGfx(gfx: ImportMarkerGfx | null): void {
     this.marks.setImportMarkerGfx(gfx);
+  }
+
+  setLifeHeartGfx(gfx: LifeHeartGfx | null): void {
+    this.marks.setLifeHeartGfx(gfx);
   }
 
   setBuildingSignGfx(gfx: BuildingSignGfx | null): void {

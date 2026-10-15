@@ -1,110 +1,104 @@
-import type { Container, Graphics } from 'pixi.js';
+import { type Sprite, TextureSource } from 'pixi.js';
 import { describe, expect, it } from 'vitest';
+import type { AtlasFrame } from '../src/data/sprites/index.js';
 import {
-  heartBelow,
+  heartStepOf,
+  LIFE_HEART_STEPS,
   type LifeHeart,
   type LifeHeartFrame,
   LifeHeartLayer,
+  type LifeHeartSheet,
 } from '../src/gpu/overlays/heart-layer.js';
+import { TextureCache } from '../src/gpu/texture-cache.js';
 import { ONE, tileToScreen } from '../src/index.js';
 import { drawnGeometry } from './support/fixtures.js';
 
-/**
- * The heart is a life gauge: the faction-coloured fill is the silhouette cut at the bottom `life`
- * fraction of its height. Pinned against the full-life fill rather than the shape's constants, so
- * replacing the placeholder art cannot fail these.
- */
+const EMPTY_STEP = LIFE_HEART_STEPS - 1;
+const RED_SLOT = 1;
 
-const heart = (life: number, colour = 0xff0000): LifeHeart => ({ id: 1, x: ONE, y: ONE, colour, life });
+/** A heart bob's size and hot spot, as the decoded frames author them: the tip on the bottom row. */
+const bob = (x: number): AtlasFrame => ({ x, y: 0, width: 17, height: 15, offsetX: -8, offsetY: -14 });
+const sheet = (): LifeHeartSheet => ({
+  source: new TextureSource({ width: 17 * LIFE_HEART_STEPS, height: 15 }),
+  frames: Array.from({ length: LIFE_HEART_STEPS }, (_, step) => bob(17 * step)),
+});
+const blue = sheet();
+const red = sheet();
 
-/** A heart node's children are drained, fill, rim, in that order. */
-function drawnFill(layer: LifeHeartLayer, h: LifeHeart): Graphics {
-  layer.draw({ hearts: [h] });
-  const node = layer.container.children[0] as Container;
-  return node.children[1] as Graphics;
+function layerWithArt(): LifeHeartLayer {
+  const layer = new LifeHeartLayer();
+  layer.setGfx({ byPlayer: [blue, red], textures: new TextureCache() });
+  return layer;
 }
 
-/** The fill's local bounds; the tip sits at y 0 and the heart grows up into negative y. */
-function fillBounds(layer: LifeHeartLayer, h: LifeHeart): { minY: number; maxY: number } {
-  const { minY, maxY } = drawnFill(layer, h).getLocalBounds();
-  return { minY, maxY };
-}
+const heart = (life: number, colourSlot = 0): LifeHeart => ({ id: 1, x: ONE, y: ONE, colourSlot, life });
 
-describe('LifeHeartLayer - the fill level is the life fraction', () => {
-  it('cuts the fill to the bottom half at half life - it drains from the top, not the tip', () => {
-    const layer = new LifeHeartLayer();
-    const full = fillBounds(layer, heart(1));
-    const half = fillBounds(new LifeHeartLayer(), heart(0.5));
-    expect(full.minY).toBeLessThan(0);
-    expect(half.minY).toBeCloseTo(full.minY / 2);
-    expect(half.maxY).toBeCloseTo(full.maxY); // the bottom stays pinned at the tip
-    expect(drawnFill(layer, heart(0.5)).mask).toBeFalsy();
+const drawnSprite = (layer: LifeHeartLayer): Sprite => layer.container.children[0] as Sprite;
+
+describe('heartStepOf - a tenth of life per frame', () => {
+  it('draws full life on the first frame and none on the last', () => {
+    expect(heartStepOf(1)).toBe(0);
+    expect(heartStepOf(0)).toBe(EMPTY_STEP);
   });
 
-  it('keeps the outline below the cut and puts the cut on the level line', () => {
-    const full = heartBelow(-1e9);
-    const cut = heartBelow(-5);
-    for (let i = 1; i < cut.length; i += 2) expect(cut[i]).toBeGreaterThanOrEqual(-5);
-    expect(cut.filter((_, i) => i % 2 === 1 && cut[i] === -5).length).toBeGreaterThanOrEqual(2);
-    expect(full.length).toBeGreaterThan(cut.length);
+  it('takes the nearest step', () => {
+    expect(heartStepOf(0.5)).toBe(5);
+    expect(heartStepOf(0.94)).toBe(1);
+    expect(heartStepOf(0.96)).toBe(0);
+    expect(heartStepOf(0.04)).toBe(EMPTY_STEP);
   });
 
-  it('clamps beyond the range and hides the fill at zero', () => {
-    const full = fillBounds(new LifeHeartLayer(), heart(1));
-    expect(fillBounds(new LifeHeartLayer(), heart(2)).minY).toBeCloseTo(full.minY);
-    expect(drawnFill(new LifeHeartLayer(), heart(0)).visible).toBe(false);
+  it('clamps beyond the range', () => {
+    expect(heartStepOf(2)).toBe(0);
+    expect(heartStepOf(-1)).toBe(EMPTY_STEP);
+  });
+});
+
+describe('LifeHeartLayer - the owner palette and the life step', () => {
+  it('draws the frame of the life step from the owner slot page', () => {
+    const layer = layerWithArt();
+    layer.draw({ hearts: [heart(0.3, RED_SLOT)] });
+    const texture = drawnSprite(layer).texture;
+    expect(texture.source).toBe(red.source);
+    expect(texture.frame.x).toBe(red.frames[heartStepOf(0.3)]?.x);
   });
 
-  it('the rim is a constant-width border over both fills, not a scaled copy behind them', () => {
-    const layer = new LifeHeartLayer();
-    layer.draw({ hearts: [heart(0.5)] });
-    const node = layer.container.children[0] as Container;
-    expect(node.children).toHaveLength(3);
-    const [drained, fill, rim] = node.children as [Graphics, Graphics, Graphics];
-    // Painted last, so the drained top wears the same border as the filled bottom.
-    expect(node.children.indexOf(rim)).toBe(node.children.length - 1);
-    for (const part of [drained, fill, rim]) {
-      expect(part.scale.x).toBe(1);
-      expect(part.scale.y).toBe(1);
-    }
-    // A stroke pads the silhouette's bounds equally on every side, while a scaled copy grows in
-    // proportion to the distance from the scale origin, so its four margins would disagree.
-    const body = drained.getLocalBounds();
-    const border = rim.getLocalBounds();
-    const margins = [
-      body.minX - border.minX,
-      border.maxX - body.maxX,
-      body.minY - border.minY,
-      border.maxY - body.maxY,
-    ];
-    expect(margins[0]).toBeGreaterThan(0);
-    for (const margin of margins) expect(margin).toBeCloseTo(margins[0] as number);
+  it('a slot without a page draws slot 0 hearts', () => {
+    const layer = layerWithArt();
+    layer.draw({ hearts: [heart(1, 9)] });
+    expect(drawnSprite(layer).texture.source).toBe(blue.source);
   });
 
-  it('a life change recuts the fill on the retained node; only a colour change rebuilds it', () => {
-    const layer = new LifeHeartLayer();
+  it('keeps the retained sprite and swaps its frame when life changes', () => {
+    const layer = layerWithArt();
     layer.draw({ hearts: [heart(1)] });
-    const node = layer.container.children[0];
-    const full = fillBounds(layer, heart(1));
-    layer.draw({ hearts: [heart(0.25)] });
-    expect(layer.container.children[0]).toBe(node);
-    expect(fillBounds(layer, heart(0.25)).minY).toBeCloseTo(full.minY / 4);
-    layer.draw({ hearts: [heart(0.25, 0x00ff00)] });
-    expect(layer.container.children[0]).not.toBe(node);
+    const sprite = drawnSprite(layer);
+    layer.draw({ hearts: [heart(0)] });
+    expect(drawnSprite(layer)).toBe(sprite);
+    expect(sprite.texture.frame.x).toBe(blue.frames[EMPTY_STEP]?.x);
+  });
+
+  it('draws nothing without art, and says so to the column', () => {
+    const layer = new LifeHeartLayer();
+    expect(layer.drawsHearts).toBe(false);
+    layer.draw({ hearts: [heart(1)] });
+    expect(layer.container.children).toHaveLength(0);
+    expect(layerWithArt().drawsHearts).toBe(true);
   });
 });
 
 /** The shared mark anchor picks the estimate; these pin what the heart layer contributes to it - its own
- *  back height and float gap. */
+ *  back height and float gap, the bob's tip standing on the anchor. */
 describe('LifeHeartLayer back anchoring', () => {
   const HEART_GAP = 4;
   const BACK_ABOVE_FEET = 26;
 
   function tipOf(frame: LifeHeartFrame): { x: number; y: number } {
-    const layer = new LifeHeartLayer();
+    const layer = layerWithArt();
     layer.draw(frame);
-    const node = layer.container.children[0] as Container;
-    return { x: node.position.x, y: node.position.y };
+    const sprite = drawnSprite(layer);
+    expect(sprite.anchor.y).toBeCloseTo(14 / 15);
+    return { x: sprite.position.x, y: sprite.position.y };
   }
 
   it('floats the gap above the drawn sprite box, centred on it', () => {
@@ -132,7 +126,7 @@ describe('LifeHeartLayer viewport cull', () => {
   const excluding = { minX: p.x + 1000, minY: p.y + 1000, maxX: p.x + 2000, maxY: p.y + 2000 };
 
   it('retires the pooled node when its unit scrolls off-screen, and re-mints it on return', () => {
-    const layer = new LifeHeartLayer();
+    const layer = layerWithArt();
     layer.draw({ hearts: [culled] }, framing);
     expect(layer.container.children.length).toBe(1);
 

@@ -14,6 +14,8 @@ const FIRST_X = 5;
 const SPACING = 2;
 /** Landed sword hits per soldier, one per star size. */
 const SWORD_HITS = [25, 50, 75, 100] as const;
+/** The life each of those soldiers keeps, in percent, so a selection shows the heart's steps. */
+const SOLDIER_LIFE_PERCENT = [100, 70, 30, 10] as const;
 /** The wounded soldier's hits and the life he keeps, in percent. */
 const WOUNDED_HITS = 75;
 const WOUNDED_LIFE_PERCENT = 40;
@@ -29,14 +31,14 @@ function placeSoldier(sim: Simulation, x: number, hits: number): Entity {
   return soldier;
 }
 
-function wound(sim: Simulation, e: Entity): void {
+function wound(sim: Simulation, e: Entity, lifePercent = WOUNDED_LIFE_PERCENT): void {
   const health = sim.world.mut(e, Health);
-  health.hitpoints = Math.trunc((health.max * WOUNDED_LIFE_PERCENT) / 100);
+  health.hitpoints = Math.trunc((health.max * lifePercent) / 100);
 }
 
 function build(sim: Simulation): void {
   SWORD_HITS.forEach((hits, i) => {
-    placeSoldier(sim, FIRST_X + i * SPACING, hits);
+    wound(sim, placeSoldier(sim, FIRST_X + i * SPACING, hits), SOLDIER_LIFE_PERCENT[i]);
   });
   const column = placeSoldier(sim, FIRST_X + SWORD_HITS.length * SPACING, WOUNDED_HITS);
   wound(sim, column);
