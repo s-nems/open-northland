@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { missionRecords, Person as PersonComponent, Position } from '../../src/components/index.js';
+import { missionRecords, Person as PersonComponent, Position, Rider } from '../../src/components/index.js';
 import type { Simulation } from '../../src/index.js';
 import { positionOfNode } from '../../src/nav/halfcell.js';
 import type { MissionGoalOp } from '../../src/systems/missions/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
+import { boardRider, createVehicle } from '../../src/systems/vehicles/index.js';
+import { ctxOf } from '../fixtures/context.js';
 import {
   goalSim,
   HUT,
@@ -16,6 +18,7 @@ import {
   POINT,
   SOLDIER,
   spawn,
+  stamped,
   VIKING,
   WILD,
   WOLF,
@@ -28,6 +31,8 @@ import {
  */
 
 const OWNER = 2;
+const HANDCART = 1;
+const SCOUT = 27;
 const HERE = 61;
 const THERE = 62;
 const AREA = 10;
@@ -81,6 +86,43 @@ describe('FindPosByHumans', () => {
     const sim = goalSim(goal);
     spawn(sim, { player: OWNER });
     expect(judged(sim)).toBe(false);
+  });
+
+  it('holds for a human aboard a vehicle standing inside the area', () => {
+    const sim = goalSim(goal);
+    const vehicle = createVehicle(sim.world, ctxOf(sim), {
+      vehicleType: HANDCART,
+      x: POINT.hx,
+      y: POINT.hy,
+      tribe: VIKING,
+      owner: OWNER,
+    });
+    if (vehicle === null) throw new Error('setup: no cart');
+    spawn(sim, { player: OWNER, missionId: HERE, job: SCOUT });
+    sim.step();
+    const rider = stamped(sim, HERE);
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: rider, vehicle });
+    sim.step();
+    boardRider(sim.world, rider, vehicle);
+    expect(sim.world.has(rider, Rider) && !sim.world.has(rider, Position)).toBe(true);
+    expect(judged(sim)).toBe(true);
+  });
+
+  describe('with id 0', () => {
+    const anyone = { ...goal, humanId: 0 };
+
+    it('holds for a human of any player carrying no id inside the area', () => {
+      const sim = goalSim(anyone);
+      spawn(sim, { player: OWNER + 1 });
+      expect(judged(sim)).toBe(true);
+    });
+
+    it('does not hold for a numbered human inside it or an unnumbered one outside', () => {
+      const sim = goalSim(anyone);
+      spawn(sim, { player: OWNER, missionId: HERE });
+      spawn(sim, { player: OWNER, at: FAR });
+      expect(judged(sim)).toBe(false);
+    });
   });
 });
 

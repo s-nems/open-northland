@@ -1,6 +1,7 @@
 import {
   Building,
   isValidPlayer,
+  MissionObjectId,
   ownerOf,
   Person,
   Position,
@@ -9,14 +10,21 @@ import {
 } from '../../../components/index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistance } from '../../../nav/halfcell.js';
 import type { ContentContext } from '../../context.js';
 import { isHeroJob, isSoldierJob } from '../../readviews/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { groupsWithinRange } from '../nearby.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionGoalOp } from '../script.js';
-import { isMissionAnimal, missionHouses, missionHumans, ownedBy, withinRange } from '../targets.js';
+import {
+  carriedPoint,
+  isMissionAnimal,
+  missionHouses,
+  missionHumans,
+  ownedBy,
+  withinRange,
+} from '../targets.js';
 import { neededMatches } from './count.js';
 
 /**
@@ -28,12 +36,28 @@ import { neededMatches } from './count.js';
  * moves, which a walking human breaks, so these goals scan rather than index.
  */
 
-/** Any human with the id stands within `range` of the point. */
+/** The id a placement or spawn authoring none carries, which the index does not hold. */
+const NO_MISSION_ID = 0;
+
+/**
+ * Any human with the id stands within `range` of the point, a passenger where its carrier stands.
+ * Original behavior: the id lookup compares with no exception for 0, so id 0 names every human carrying
+ * none, and maps use it for "anyone reaches the point". Those humans are not indexed, so that case
+ * walks the population.
+ */
 export function humansNearPoint(
   world: World,
   op: Extract<MissionGoalOp, { opcode: 'FindPosByHumans' }>,
 ): boolean {
-  return missionHumans(world, op.humanId).some((e) => withinRange(world, e, op.point, op.range));
+  const near = (e: Entity): boolean => {
+    const at = carriedPoint(world, e);
+    return at !== undefined && hexDistance(at, op.point) <= op.range;
+  };
+  if (op.humanId !== NO_MISSION_ID) return missionHumans(world, op.humanId).some(near);
+  for (const e of world.query(Person)) {
+    if (!world.has(e, MissionObjectId) && near(e)) return true;
+  }
+  return false;
 }
 
 /** Any human of the player stands within `range` of the point; the vehicle half of the goal lives with

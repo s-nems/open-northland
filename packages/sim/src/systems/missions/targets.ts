@@ -85,8 +85,8 @@ export function missionCentre(world: World, kind: MissionGroupKind, id: number):
 const MAX_CARRIERS = 2;
 
 /** Where `e` is on the map, as the original reads one carried: a rider aboard stands where its vehicle
- *  stands, a vehicle inside a ship where the ship does. Mission continent checks and briefing
- *  callbacks use this; proximity checks still treat passengers as off the map. */
+ *  stands, a vehicle inside a ship where the ship does. Mission continent checks, `FindPosByHumans` and
+ *  briefing callbacks use this; the other proximity checks still treat passengers as off the map. */
 export function carriedPoint(world: World, e: Entity): HalfCellNode | undefined {
   const own = entityPoint(world, e);
   if (own !== undefined) return own;

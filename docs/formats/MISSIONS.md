@@ -251,7 +251,7 @@ writes.
 | 8 | `FindHumans` | 1, 10 | any human with the id stands on a point explored by the player | 0 |
 | 9 | `FindVehicles` | 1, 12 | as above for vehicles | 6 |
 | 10 | `FindHouses` | 1, 14 | as above for houses | 0 |
-| 11 | `FindPosByHumans` | 10, 16, 17, 9 | any human with the id is within `range` of the point | 589 |
+| 11 | `FindPosByHumans` | 10, 16, 17, 9 | any human with the id is within `range` of the point, a human aboard a vehicle where the vehicle stands; id 0 names every human carrying no id, of any player (the original's id lookup has no exception for 0) | 589 |
 | 12 | `FindPosByVehicles` | 12, 16, 17, 9 | as above for vehicles | 46 |
 | 13 | `FindHumansByHumans` | 10, 11, 9 | any human with id A is within `range` of any human with id B | 20 |
 | 14 | `FindHumansByVehicles` | 12, 10, 9 | any vehicle with id A is within `range` of any human with id B | 0 |
