@@ -1,4 +1,5 @@
 export { extractBuildingLandscapeOverlays } from './landscape-overlays.js';
+export { gfxHouseRecords } from './shared.js';
 export {
   type ByTribe,
   extractBuildingFootprints,

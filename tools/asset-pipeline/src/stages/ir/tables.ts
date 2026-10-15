@@ -30,15 +30,32 @@ import {
   extractVehicles,
   extractWeapons,
   iniBytesToSections,
+  type RuleSection,
   type SourceRef,
 } from '@open-northland/formats/ini';
+import { BASE_BUILDING_GRAPHICS_FILE, BUILDING_GRAPHICS_FILE } from '../../data-layout.js';
 import { readSourceFile, type SourceRoots } from '../../roots.js';
+import { loadBaseOnlyHouseRecords } from '../base-houses.js';
 import type { BuildingGraphicsOverlays } from './building-overlays.js';
 import type { IniSource } from './sources.js';
 
 /** Folds one source's overlay rows into the accumulated map: a later source wins per typeId. */
 function foldOverlay<V>(into: Map<number, V>, rows: ReadonlyMap<number, V>): void {
   for (const [typeId, value] of rows) into.set(typeId, value);
+}
+
+/** Adds a fallback layer's overlay rows for the typeIds no earlier source described. */
+function fillOverlay<V>(into: Map<number, V>, rows: ReadonlyMap<number, V>): void {
+  for (const [typeId, value] of rows) if (!into.has(typeId)) into.set(typeId, value);
+}
+
+/** {@link fillOverlay} per `(typeId, tribe)`: a fallback tribe joins a type other tribes describe. */
+function fillTribeOverlay<V>(into: Map<number, ByTribe<V>>, rows: ReadonlyMap<number, ByTribe<V>>): void {
+  for (const [typeId, byTribe] of rows) {
+    const merged = new Map(into.get(typeId));
+    for (const [tribe, value] of byTribe) if (!merged.has(tribe)) merged.set(tribe, value);
+    into.set(typeId, merged);
+  }
 }
 
 /**
@@ -64,23 +81,34 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
   const gfxInHousePrograms = [];
   const rawFrameAtomics = [];
   const rawFrameGaits = [];
-  const buildingBobs = [];
-  const constructionLayers = [];
-  const buildingOverlays = [];
-  const buildingLandscapeOverlays = [];
-  const buildingFlagPoints = [];
-  const buildingSoldierFlagPoints = [];
-  const buildingHolyFirePoints = [];
+  const buildingBobs: ReturnType<typeof extractBuildingBobs> = [];
+  const constructionLayers: ReturnType<typeof extractConstructionLayers> = [];
+  const buildingOverlays: ReturnType<typeof extractBuildingOverlays> = [];
+  const buildingLandscapeOverlays: ReturnType<typeof extractBuildingLandscapeOverlays> = [];
+  const buildingFlagPoints: ReturnType<typeof extractBuildingFlagPoints> = [];
+  const buildingSoldierFlagPoints: ReturnType<typeof extractBuildingSoldierFlagPoints> = [];
+  const buildingHolyFirePoints: ReturnType<typeof extractBuildingHolyFirePoints> = [];
   const buildingGraphicsOverlays = {
     constructionCosts: new Map<number, GoodQuantity[]>(),
     hitpoints: new Map<number, ByTribe<number>>(),
     upgradeTargets: new Map<number, number>(),
     footprints: new Map<number, ByTribe<BuildingFootprint>>(),
   } satisfies BuildingGraphicsOverlays;
+  const pushHouseVisuals = (sections: readonly RuleSection[], src: SourceRef): void => {
+    buildingBobs.push(...extractBuildingBobs(sections, src));
+    constructionLayers.push(...extractConstructionLayers(sections, src));
+    buildingOverlays.push(...extractBuildingOverlays(sections, src));
+    buildingLandscapeOverlays.push(...extractBuildingLandscapeOverlays(sections, src));
+    buildingFlagPoints.push(...extractBuildingFlagPoints(sections, src));
+    buildingSoldierFlagPoints.push(...extractBuildingSoldierFlagPoints(sections, src));
+    buildingHolyFirePoints.push(...extractBuildingHolyFirePoints(sections, src));
+  };
 
+  let ruleHouses: RuleSection[] = [];
   for (const { path, file, layer } of sources) {
     const sections = iniBytesToSections(await readSourceFile(roots, path));
     const src: SourceRef = { file, layer };
+    if (file === BUILDING_GRAPHICS_FILE) ruleHouses = sections;
     goods.push(...extractGoods(sections, src));
     jobs.push(...extractJobs(sections, src));
     jobExperience.push(...extractJobExperience(sections, src));
@@ -98,18 +126,20 @@ export async function extractIniTables(roots: SourceRoots, sources: readonly Ini
     gfxInHousePrograms.push(...extractGfxInHousePrograms(sections, src));
     rawFrameAtomics.push(...extractRawFrameAtomics(sections));
     rawFrameGaits.push(...extractRawFrameGaits(sections));
-    buildingBobs.push(...extractBuildingBobs(sections, src));
-    constructionLayers.push(...extractConstructionLayers(sections, src));
-    buildingOverlays.push(...extractBuildingOverlays(sections, src));
-    buildingLandscapeOverlays.push(...extractBuildingLandscapeOverlays(sections, src));
-    buildingFlagPoints.push(...extractBuildingFlagPoints(sections, src));
-    buildingSoldierFlagPoints.push(...extractBuildingSoldierFlagPoints(sections, src));
-    buildingHolyFirePoints.push(...extractBuildingHolyFirePoints(sections, src));
+    pushHouseVisuals(sections, src);
     foldOverlay(buildingGraphicsOverlays.constructionCosts, extractConstructionCosts(sections));
     foldOverlay(buildingGraphicsOverlays.hitpoints, extractHouseHitpoints(sections));
     foldOverlay(buildingGraphicsOverlays.upgradeTargets, extractUpgradeTargets(sections));
     foldOverlay(buildingGraphicsOverlays.footprints, extractBuildingFootprints(sections));
   }
+
+  // Houses only the base table defines join after every rule source, filling what no rule row described.
+  const baseHouses = await loadBaseOnlyHouseRecords(roots, ruleHouses);
+  pushHouseVisuals(baseHouses, { file: BASE_BUILDING_GRAPHICS_FILE, layer: 'base' });
+  fillOverlay(buildingGraphicsOverlays.constructionCosts, extractConstructionCosts(baseHouses));
+  fillTribeOverlay(buildingGraphicsOverlays.hitpoints, extractHouseHitpoints(baseHouses));
+  fillOverlay(buildingGraphicsOverlays.upgradeTargets, extractUpgradeTargets(baseHouses));
+  fillTribeOverlay(buildingGraphicsOverlays.footprints, extractBuildingFootprints(baseHouses));
 
   return {
     goods,
