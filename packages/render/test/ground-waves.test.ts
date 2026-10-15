@@ -73,4 +73,18 @@ describe('GroundWaveLayer', () => {
     layer.suspend(false);
     expect(filter?.enabled).toBe(true);
   });
+
+  it('lets go of a lift map before destroying it on a resize and on teardown', () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+    try {
+      const layer = new GroundWaveLayer(fakeRenderer().renderer, new Container());
+      layer.set([wave()]);
+      layer.update(WIDE, CAMERA, SCREEN, SCREEN, 0, true);
+      layer.update(WIDE, CAMERA, SCREEN / 2, SCREEN, 1, true);
+      layer.destroy();
+      expect(warn).not.toHaveBeenCalled();
+    } finally {
+      warn.mockRestore();
+    }
+  });
 });

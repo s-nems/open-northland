@@ -127,9 +127,12 @@ export class GroundWaveLayer {
     const zoom = camera.scale ?? 1;
     this.view.scale.set(zoom);
     this.view.position.set(camera.offsetX, camera.offsetY);
+    const retired = this.map;
     const map = this.mapSized(screenW, screenH);
     this.renderer.render({ container: this.root, target: map, clear: true });
     this.filterFor(map).bind(map.source, screenW, screenH, zoom, this.renderer.resolution);
+    // Only once the filter samples the new map: a bound texture destroyed under a shader is a Pixi warning.
+    if (retired !== null && retired !== map) retired.destroy(true);
     this.setApplied(true);
   }
 
@@ -144,10 +147,10 @@ export class GroundWaveLayer {
     this.dropTextures();
     this.root.destroy({ children: true });
     this.sprites.length = 0;
-    this.map?.destroy(true);
-    this.map = null;
     this.waveFilter?.filter.destroy();
     this.waveFilter = null;
+    this.map?.destroy(true);
+    this.map = null;
   }
 
   private setApplied(applied: boolean): void {
@@ -169,7 +172,6 @@ export class GroundWaveLayer {
     ) {
       return map;
     }
-    map?.destroy(true);
     const next = RenderTexture.create({ width, height, resolution, antialias: false });
     next.source.scaleMode = 'nearest';
     this.map = next;
