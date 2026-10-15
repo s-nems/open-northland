@@ -1,11 +1,18 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { BobsIndex, MapScript, MapsIndex, mapDocumentsFingerprint } from '@open-northland/data';
+import {
+  BobsIndex,
+  CampaignIndex,
+  MapScript,
+  MapsIndex,
+  mapDocumentsFingerprint,
+} from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { writeFileWithParents } from '../src/files.js';
 import {
   BOBS_INDEX_FILE,
   bobsIndexEntries,
+  CAMPAIGNS_INDEX_FILE,
   MAPS_INDEX_FILE,
   mapsIndexEntries,
   writeListings,
@@ -160,12 +167,16 @@ describe('bobsIndexEntries', () => {
 });
 
 describe('writeListings', () => {
-  it('writes both listings at the content root in the shapes the app parses', async () => {
+  it('writes every listing at the content root in the shapes the app parses', async () => {
     await outputWith(['body.bear01.atlas.json', 'body.bear01.png']);
     await writeListings(out, [converted('arena', { script })]);
     const maps = MapsIndex.parse(JSON.parse(await readFile(join(out, MAPS_INDEX_FILE), 'utf8')));
     const bobs = BobsIndex.parse(JSON.parse(await readFile(join(out, BOBS_INDEX_FILE), 'utf8')));
+    const campaigns = CampaignIndex.parse(
+      JSON.parse(await readFile(join(out, CAMPAIGNS_INDEX_FILE), 'utf8')),
+    );
     expect(maps.map((entry) => entry.id)).toEqual(['arena']);
     expect(bobs).toEqual([{ stem: 'body.bear01', base: 'body', variant: 'bear01' }]);
+    expect(campaigns).toEqual({ version: 3, campaigns: [] });
   });
 });

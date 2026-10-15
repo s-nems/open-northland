@@ -10,6 +10,7 @@ content/
   ir.json                 validated rules and presentation bindings
   maps-index.json         one entry per decoded map: name, provenance, fingerprint, lobby seats, listing header
   bobs-index.json         the viewable atlases, for the icon gallery
+  campaigns-index.json    the installed campaigns; empty unless the campaign build replaces it
   maps/
     <id>.json             decoded terrain
     <id>.meta.json        menu metadata and the map's provenance

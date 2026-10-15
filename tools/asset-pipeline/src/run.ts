@@ -18,7 +18,7 @@ import { convertGuiStage } from './stages/gui/index.js';
 import { HYPERTEXT_PICTURES_DIR } from './stages/gui/paths.js';
 import { writeIr } from './stages/ir/index.js';
 import { loadVehicleGraphicsBindings } from './stages/ir/vehicle-graphics.js';
-import { BOBS_INDEX_FILE, MAPS_INDEX_FILE, writeListings } from './stages/listings.js';
+import { BOBS_INDEX_FILE, CAMPAIGNS_INDEX_FILE, MAPS_INDEX_FILE, writeListings } from './stages/listings.js';
 import { assertStaticVerbsKnown, convertMapDatTree } from './stages/maps/index.js';
 import { createMinimapSynthesizer } from './stages/maps/synth-minimap.js';
 import { renderMusicStage } from './stages/music/index.js';
@@ -181,7 +181,9 @@ export async function runPipeline(args: Args): Promise<void> {
 
   // Last, so the bobs listing sees every atlas the stages above wrote.
   await writeListings(args.out, terrains);
-  console.log(`[pipeline] listings: ${MAPS_INDEX_FILE}, ${BOBS_INDEX_FILE} into ${args.out}`);
+  console.log(
+    `[pipeline] listings: ${MAPS_INDEX_FILE}, ${BOBS_INDEX_FILE}, ${CAMPAIGNS_INDEX_FILE} into ${args.out}`,
+  );
 
   corrections.assertApplied();
   stringCorrections.assertApplied();
