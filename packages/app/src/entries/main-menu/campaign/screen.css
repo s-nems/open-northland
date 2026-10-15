@@ -48,8 +48,7 @@
     .campaign-map__point,
     .campaign-screen__mission,
     .campaign-screen__skip,
-    .lobby-tribe__button,
-    .lobby-tribe__option
+    .campaign-tribe__option
   ):focus-visible {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
@@ -149,21 +148,23 @@
 
 /* ---- Map and mission panel ---- */
 
-/* The map and the panel are one composition drawn in --k, its unit: the largest that fits the body
-   at the picture's own proportions (--map-aspect from map.ts), capped so a large screen does not
-   blow the map up past the rest of the menu. Inside the map --u is --k, so markers and labels grow
-   with the picture; the panel grows halfway between the menu's --u and --k, never taller than the map. */
+/* The map, the panel and the foot row under them are one composition drawn in --k, its unit: the
+   largest that fits the body at the picture's own proportions (--map-aspect from map.ts) once the foot
+   row has its height, capped so a large screen does not blow the map up past the rest of the menu.
+   Inside the map --u is --k, so markers and labels grow with the picture; the panel grows halfway
+   between the menu's --u and --k, never taller than the map. */
 .campaign-screen__body {
   --map-aspect: 1;
-  --campaign-map-width: 524;
-  --campaign-side-width: 400;
-  --campaign-gap: 40;
+  --campaign-map-width: 560;
+  --campaign-side-width: 300;
+  --campaign-gap: 36;
+  --campaign-foot-height: 64;
   --campaign-max-scale: 1.3;
   --menu-u: var(--u);
   --k: min(
     100cqw /
     (var(--campaign-map-width) + var(--campaign-gap) + var(--campaign-side-width)),
-    100cqh *
+    (100cqh - var(--u) * var(--campaign-foot-height)) *
     var(--map-aspect) /
     var(--campaign-map-width),
     var(--u) *
@@ -171,10 +172,15 @@
   );
   flex: 1;
   min-height: 0;
+  display: grid;
+  grid-template-columns: max-content;
+  place-content: center;
+  container-type: size;
+}
+
+.campaign-screen__stage {
   display: flex;
   align-items: center;
-  justify-content: center;
-  container-type: size;
 }
 
 .campaign-map {
@@ -335,8 +341,8 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--u) * 14);
-  padding: calc(var(--u) * 22) calc(var(--u) * 22) calc(var(--u) * 14);
+  gap: calc(var(--u) * 10);
+  padding: calc(var(--u) * 14) calc(var(--u) * 14) calc(var(--u) * 14);
   border: 1px solid var(--bronze-lo);
   border-radius: 4px;
   background: linear-gradient(135deg, #273832f5, #182521fa);
@@ -348,8 +354,9 @@
 
 .campaign-screen__side-title {
   margin: 0;
+  padding-inline: calc(var(--u) * 2);
   color: var(--text-hi);
-  font: 700 calc(var(--u) * 22) / 1.25 var(--font-title);
+  font: 700 calc(var(--u) * 18) / 1.2 var(--font-title);
 }
 
 .campaign-screen__missions {
@@ -361,7 +368,7 @@
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: calc(var(--u) * 6);
+  gap: calc(var(--u) * 3);
   overflow-y: auto;
   scrollbar-color: var(--wood-hi) transparent;
   scrollbar-width: thin;
@@ -373,11 +380,10 @@
   width: 100%;
   display: flex;
   align-items: center;
-  gap: calc(var(--u) * 12);
-  padding: calc(var(--u) * 8) calc(var(--u) * 12) calc(var(--u) * 8) calc(var(--u) * 8);
-  border: 1px solid #7a5f4066;
+  gap: calc(var(--u) * 8);
+  padding: calc(var(--u) * 4) calc(var(--u) * 8) calc(var(--u) * 4) calc(var(--u) * 5);
+  border: 1px solid transparent;
   border-radius: 3px;
-  background: #18252199;
   cursor: var(--cursor-pointer, pointer);
   transition:
     border-color 120ms ease-out,
@@ -385,7 +391,7 @@
 }
 
 .campaign-screen__mission:hover:not(:disabled) {
-  border-color: var(--bronze-lo);
+  border-color: #7a5f4066;
   background: #c9a2621a;
 }
 
@@ -398,15 +404,15 @@
 /* The same medallion as the stage's marker on the map. */
 .campaign-screen__mission-number {
   flex: none;
-  width: calc(var(--u) * 26);
-  height: calc(var(--u) * 26);
+  width: calc(var(--u) * 21);
+  height: calc(var(--u) * 21);
   display: grid;
   place-items: center;
   border: 1px solid var(--bronze-lo);
   border-radius: 50%;
   background: radial-gradient(circle at 40% 35%, var(--wood-hi), var(--wood-lo) 75%);
   color: var(--bronze-hi);
-  font: 700 calc(var(--u) * 13) / 1 var(--font-title);
+  font: 700 calc(var(--u) * 11) / 1 var(--font-title);
   box-shadow: inset 0 1px #fff3;
 }
 
@@ -419,7 +425,7 @@
 .campaign-screen__mission-title {
   min-width: 0;
   color: var(--text);
-  font: 500 calc(var(--u) * 16) / 1.25 var(--font-body);
+  font: 500 calc(var(--u) * 14) / 1.25 var(--font-body);
 }
 
 .campaign-screen__mission[aria-pressed="true"] .campaign-screen__mission-title {
@@ -427,118 +433,21 @@
   font-weight: 700;
 }
 
-.campaign-screen__launch {
-  display: flex;
-  flex-direction: column;
-  gap: calc(var(--u) * 12);
-  padding-top: calc(var(--u) * 14);
-  border-top: 1px solid #7a5f4066;
-}
-
-/* The lobby's civilization picker, compact and named, on one row with its label. */
-.campaign-screen__tribe {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: calc(var(--u) * 12);
-}
-
-.campaign-screen__tribe .lobby-tribe__label {
-  color: var(--muted);
-  font-size: calc(var(--u) * 15);
-}
-
-.campaign-screen .campaign-screen__tribe .lobby-tribe__button {
-  align-items: center;
-  gap: calc(var(--u) * 10);
-  min-width: 0;
-  padding: calc(var(--u) * 3) calc(var(--u) * 30) calc(var(--u) * 3) calc(var(--u) * 3);
-  border: 1px solid var(--wood-hi);
-  border-radius: 3px;
-  background: var(--deep);
-  position: relative;
-}
-
-.campaign-screen .campaign-screen__tribe .lobby-tribe__button::after {
-  content: "";
-  position: absolute;
-  right: calc(var(--u) * 12);
-  top: 50%;
-  width: calc(var(--u) * 7);
-  height: calc(var(--u) * 7);
-  border: solid var(--muted);
-  border-width: 0 1.5px 1.5px 0;
-  transform: translateY(-70%) rotate(45deg);
-}
-
-.campaign-screen .campaign-screen__tribe .lobby-tribe__button:hover:not(:disabled),
-.campaign-screen .campaign-screen__tribe .lobby-tribe__button[aria-expanded="true"] {
-  border-color: var(--bronze);
-  background: var(--fill);
-}
-
-.campaign-screen__tribe .lobby-tribe__button .lobby-tribe__emblem {
-  width: calc(var(--u) * 34);
-  height: calc(var(--u) * 34);
-  font-size: calc(var(--u) * 16);
-}
-
-.campaign-screen__tribe .lobby-tribe__button .lobby-tribe__name {
-  font-size: calc(var(--u) * 16);
-}
-
-.campaign-screen__tribe .lobby-tribe__note {
-  color: var(--bronze-hi);
-  font-size: calc(var(--u) * 13);
-}
-
-.campaign-screen__tribe .lobby-tribe__star {
-  width: calc(var(--u) * 12);
-  height: calc(var(--u) * 12);
-}
-
-/* The opened list sits in the top layer but stays in the screen's tree, so it keeps its tokens. */
-.campaign-screen .lobby-tribe__menu {
-  border: 1px solid var(--bronze-lo);
-  border-radius: 4px;
-  background: linear-gradient(135deg, #273832, #182521);
-}
-
-.campaign-screen .lobby-tribe__option .lobby-tribe__emblem {
-  width: calc(var(--u) * 44);
-  height: calc(var(--u) * 44);
-}
-
-.campaign-screen .lobby-tribe__option .lobby-tribe__name {
-  font-size: calc(var(--u) * 17);
-}
-
-.campaign-screen .lobby-tribe__option.is-current {
-  border-color: var(--bronze);
-  background: #c9a26229;
-}
-
-.campaign-screen .lobby-tribe__option:hover {
-  background: #c9a2621a;
-}
-
-.campaign-screen .lobby-tribe__note {
-  color: var(--bronze-hi);
-}
-
 .campaign-screen .campaign-screen__start {
   display: flex;
+  flex: none;
   justify-content: center;
   align-items: center;
   width: 100%;
-  min-height: calc(var(--u) * 46);
-  padding: calc(var(--u) * 10) calc(var(--u) * 16);
+  min-height: calc(var(--u) * 40);
+  margin-top: calc(var(--u) * 4);
+  padding: calc(var(--u) * 8) calc(var(--u) * 14);
   border: 1px solid var(--bronze-hi);
   border-radius: 3px;
   background: linear-gradient(var(--bronze-hi), var(--bronze));
   box-shadow: none;
   color: var(--ink);
-  font: 700 calc(var(--u) * 18) / 1.25 var(--font-body);
+  font: 700 calc(var(--u) * 16) / 1.25 var(--font-body);
   letter-spacing: 0.02em;
   text-align: center;
   transform: none;
@@ -550,10 +459,135 @@
   transform: none;
 }
 
-/* The alpha recovery: small, quiet and out of the primary action's way. */
+/* ---- Foot row: the civilization on the left, the alpha recovery on the far right ---- */
+
+.campaign-screen__foot {
+  height: calc(var(--u) * var(--campaign-foot-height));
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: calc(var(--u) * 24);
+}
+
+.campaign-tribe {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 12);
+  min-width: 0;
+}
+
+.campaign-tribe__label {
+  color: var(--muted);
+  font-size: calc(var(--u) * 14);
+}
+
+.campaign-tribe__options {
+  display: flex;
+  gap: calc(var(--u) * 6);
+}
+
+.campaign-tribe__option {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  width: calc(var(--u) * 40);
+  height: calc(var(--u) * 40);
+  border: 1px solid var(--wood-hi);
+  border-radius: 4px;
+  background: radial-gradient(circle at 50% 40%, #8fb8ad38, #08101ae6);
+  cursor: var(--cursor-pointer, pointer);
+  transition:
+    border-color 120ms ease-out,
+    box-shadow 120ms ease-out;
+}
+
+.campaign-tribe__option:hover:not(:disabled) {
+  border-color: var(--bronze);
+}
+
+.campaign-tribe__option[aria-checked="true"] {
+  border-color: var(--bronze-hi);
+  box-shadow:
+    0 0 0 1px var(--bronze-hi),
+    0 0 calc(var(--u) * 12) #efd28f73;
+}
+
+.campaign-tribe__emblem {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 3px;
+  color: var(--bronze-hi);
+  font: 700 calc(var(--u) * 17) / 1 var(--font-title);
+  opacity: 0.6;
+  filter: saturate(0.6);
+  transition:
+    opacity 120ms ease-out,
+    filter 120ms ease-out;
+}
+
+.campaign-tribe__emblem > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.campaign-tribe__option:hover .campaign-tribe__emblem,
+.campaign-tribe__option[aria-checked="true"] .campaign-tribe__emblem {
+  opacity: 1;
+  filter: none;
+}
+
+/* The campaign's recommended civilization carries a small bronze star. */
+.campaign-tribe__option.is-recommended::after {
+  content: "\2605";
+  position: absolute;
+  top: calc(var(--u) * -6);
+  right: calc(var(--u) * -6);
+  width: calc(var(--u) * 15);
+  height: calc(var(--u) * 15);
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--bronze-lo);
+  border-radius: 50%;
+  background: #182521;
+  color: var(--bronze-hi);
+  font-size: calc(var(--u) * 9);
+  line-height: 1;
+}
+
+.campaign-tribe__chosen {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--u) * 1);
+  min-width: 0;
+}
+
+.campaign-tribe__name {
+  color: var(--text-hi);
+  font: 700 calc(var(--u) * 16) / 1.15 var(--font-body);
+}
+
+.campaign-tribe__note {
+  color: var(--muted);
+  font-size: calc(var(--u) * 12);
+  line-height: 1.2;
+}
+
+.campaign-tribe__note.is-recommended {
+  color: var(--bronze-hi);
+}
+
+.campaign-tribe__note.is-recommended::before {
+  content: "\2605  ";
+}
+
+/* The alpha recovery: small, quiet and far from the primary action. */
 .campaign-screen__skip {
   all: unset;
-  align-self: flex-end;
+  flex: none;
   padding: calc(var(--u) * 4) calc(var(--u) * 2);
   color: var(--muted);
   font: calc(var(--u) * 13) / 1.2 var(--font-body);
@@ -606,9 +640,19 @@
   .campaign-screen__body {
     --k: var(--u);
     flex: none;
+    grid-template-columns: 100%;
+    container-type: inline-size;
+  }
+
+  .campaign-screen__stage {
     flex-direction: column;
     gap: calc(var(--u) * var(--campaign-gap));
-    container-type: inline-size;
+  }
+
+  .campaign-screen__foot {
+    height: auto;
+    margin-top: calc(var(--u) * 20);
+    flex-wrap: wrap;
   }
 
   .campaign-map {

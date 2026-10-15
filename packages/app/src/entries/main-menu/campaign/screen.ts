@@ -12,10 +12,9 @@ import {
 import { createHudPlane } from '../../../hud/dom/root.js';
 import { createSystemConfirm, type SystemConfirmCopy } from '../../../hud/dom/system-confirm.js';
 import { displayViewOf, uiScaleFor } from '../../../hud/ui-scale.js';
-import { currentLocale, formatMessage, messages } from '../../../i18n/index.js';
+import { currentLocale, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { node } from '../dom.js';
-import { tribePicker } from '../lobby-controls/tribe.js';
 import type { MenuScreen, MountedScreen } from '../model.js';
 import { screenHead } from '../screen-head.js';
 import { targetSearch } from '../target-search.js';
@@ -31,6 +30,7 @@ import {
   unlockedStages,
 } from './model.js';
 import './screen.css';
+import { campaignTribeChoice } from './tribe-choice.js';
 
 /** Window storage, or none where reading the accessor itself throws. */
 function viewerStorage(): Storage | undefined {
@@ -176,16 +176,9 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
       return { mapId: stage.mapId, row };
     });
 
-    const picker = tribePicker(
-      RECOMMENDED_CAMPAIGN_TRIBE,
-      (next) => {
-        tribe = next;
-        picker.update(tribe, busy);
-      },
-      'campaign-screen__tribe',
-      { wording: { note: copy.tribeNote, choice: copy.tribeChoice, title: copy.tribeTitle }, named: true },
-    );
-    picker.update(tribe, busy);
+    const tribeChoice = campaignTribeChoice(tribe, (next) => {
+      tribe = next;
+    });
 
     const start = node('button', 'main-menu__primary campaign-screen__start', copy.start);
     start.type = 'button';
@@ -215,9 +208,9 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
       });
     });
 
-    const launchRow = node('div', 'campaign-screen__launch');
-    launchRow.append(picker.root, start);
-    side.append(heading, list, launchRow);
+    side.append(heading, list, start);
+    const foot = node('div', 'campaign-screen__foot');
+    foot.append(tribeChoice.root);
 
     const next = nextCampaignStage(campaign, progress);
     const nextStage = campaign.stages.find((stage) => stage.mapId === next);
@@ -231,7 +224,7 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
         void askInHud(
           {
             title: copy.skip,
-            message: formatMessage(copy.confirm, { mission: localizedText(nextStage.title, language) }),
+            message: copy.confirm,
             cancel: copy.cancel,
             confirm: copy.unlock,
           },
@@ -255,7 +248,7 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
           body.querySelector<HTMLElement>('.campaign-screen__mission[aria-pressed="true"]')?.focus();
         });
       });
-      side.append(skip);
+      foot.append(skip);
     }
 
     // Scrolls the list alone, so a long campaign keeps the chosen row in sight without moving the screen.
@@ -273,7 +266,9 @@ export function campaignScreen(open: (screen: MenuScreen) => void, launch: Launc
       }
       start.disabled = busy;
     };
-    body.replaceChildren(map.root, side);
+    const stage = node('div', 'campaign-screen__stage');
+    stage.append(map.root, side);
+    body.replaceChildren(stage, foot);
     if (selected !== undefined) choose(selected);
     else start.disabled = true;
   };

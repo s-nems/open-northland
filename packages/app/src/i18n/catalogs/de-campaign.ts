@@ -9,8 +9,7 @@ export const deCampaign = {
   tribeTitle:
     'Der Stamm, mit dem du diese Mission spielst: seine Siedler und Gebäude. Die Kampagne wurde für den mit einem Stern markierten Stamm entworfen.',
   skip: 'Mission überspringen',
-  confirm:
-    'Nächste Mission freischalten: {mission}?\nDas ist eine Hilfsfunktion der Alpha-Version von Open Northland.',
+  confirm: 'Nächste Mission freischalten?\nDas ist eine Hilfsfunktion der Alpha-Version von Open Northland.',
   cancel: 'Abbrechen',
   unlock: 'Mission freischalten',
   storage:

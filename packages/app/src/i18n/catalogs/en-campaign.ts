@@ -9,7 +9,7 @@ export const enCampaign = {
   tribeTitle:
     'The tribe you play this mission as: its settlers and buildings. The campaign was designed for the starred one.',
   skip: 'Skip mission',
-  confirm: 'Unlock the next mission: {mission}?\nThis is a helper of the Open Northland alpha version.',
+  confirm: 'Unlock the next mission?\nThis is a helper of the Open Northland alpha version.',
   cancel: 'Cancel',
   unlock: 'Unlock mission',
   storage: 'Campaign progress could not be saved. Free browser storage and retry.',

@@ -9,7 +9,7 @@ export const plCampaign = {
   tribeTitle:
     'Plemię, którym grasz w tej misji: jego osadnicy i budynki. Kampanię zaprojektowano pod plemię oznaczone gwiazdką.',
   skip: 'Przewiń misję',
-  confirm: 'Odblokować kolejną misję: {mission}?\nTo funkcja pomocnicza wersji alpha Open Northland.',
+  confirm: 'Odblokować kolejną misję?\nTo funkcja pomocnicza wersji alpha Open Northland.',
   cancel: 'Anuluj',
   unlock: 'Odblokuj misję',
   storage:
