@@ -99,8 +99,7 @@ export function missionCentre(world: World, kind: MissionGroupKind, id: number):
 const MAX_CARRIERS = 2;
 
 /** Where `e` is on the map, as the original reads one carried: a rider aboard stands where its vehicle
- *  stands, a vehicle inside a ship where the ship does. Mission continent checks, `FindPosByHumans` and
- *  briefing callbacks use this; the other proximity checks still treat passengers as off the map. */
+ *  stands, a vehicle inside a ship where the ship does. */
 export function carriedPoint(world: World, e: Entity): HalfCellNode | undefined {
   const own = entityPoint(world, e);
   if (own !== undefined) return own;
@@ -113,6 +112,12 @@ export function carriedPoint(world: World, e: Entity): HalfCellNode | undefined 
     at = carrier;
   }
   return undefined;
+}
+
+/** Where a mission goal finds `e`: a human aboard counts where its carrier stands, as the original's
+ *  human position, commander included; anything else only where it stands itself. */
+export function missionPoint(world: World, e: Entity): HalfCellNode | undefined {
+  return world.has(e, Person) ? carriedPoint(world, e) : entityPoint(world, e);
 }
 
 /** Everything `player` owns within `range` map points of `point`, ascending by entity id. */

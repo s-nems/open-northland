@@ -1,5 +1,6 @@
 import {
   Building,
+  isAboardVehicle,
   isValidPlayer,
   MissionObjectId,
   ownerOf,
@@ -7,6 +8,8 @@ import {
   Position,
   Settler,
   Signpost,
+  Vehicle,
+  vehiclePassengers,
 } from '../../../components/index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -60,14 +63,16 @@ export function humansNearPoint(
   return false;
 }
 
-/** Any human of the player stands within `range` of the point; the vehicle half of the goal lives with
- *  the vehicle goals. */
+/** Any human of the player stands within `range` of the point, a passenger where its carrier stands;
+ *  the vehicle half of the goal lives with the vehicle goals. */
 export function playerNearPoint(
   world: World,
   op: Extract<MissionGoalOp, { opcode: 'FindPosByPlayersMapMoveable' }>,
 ): boolean {
-  for (const e of world.query(Person, Position)) {
-    if (ownedBy(world, e, op.player) && withinRange(world, e, op.point, op.range)) return true;
+  for (const e of world.query(Person)) {
+    if (!ownedBy(world, e, op.player)) continue;
+    const at = carriedPoint(world, e);
+    if (at !== undefined && hexDistance(at, op.point) <= op.range) return true;
   }
   return false;
 }
@@ -112,7 +117,7 @@ export function playerNearHumans(
 }
 
 function* playerMoveables(world: World, player: number): Generator<Entity> {
-  for (const e of world.query(Person, Position)) if (ownedBy(world, e, player)) yield e;
+  for (const e of world.query(Person)) if (ownedBy(world, e, player)) yield e;
   if (isValidPlayer(player)) yield* vehicleIndex(world).ownedBy(player);
 }
 
@@ -223,7 +228,9 @@ export function countAnimals(
   return count;
 }
 
-/** A count needs no order and no array: these goals run over the player's humans every pass. */
+/** A count needs no order and no array: these goals run over the player's humans every pass. Original
+ *  behavior: the humans on the map, then the commander and passengers aboard each of the player's
+ *  vehicles standing in range, counted at the vehicle whoever owns them. */
 function countPlayerHumansInRange(
   world: World,
   player: number,
@@ -234,6 +241,13 @@ function countPlayerHumansInRange(
   let count = 0;
   for (const e of world.query(Person, Settler, Position)) {
     if (ownedBy(world, e, player) && withinRange(world, e, point, range) && keep(e)) count++;
+  }
+  if (!isValidPlayer(player)) return count;
+  for (const vehicle of vehicleIndex(world).ownedBy(player)) {
+    if (!withinRange(world, vehicle, point, range)) continue;
+    for (const { entity } of vehiclePassengers(world.get(vehicle, Vehicle))) {
+      if (isAboardVehicle(world, entity) && world.has(entity, Settler) && keep(entity)) count++;
+    }
   }
   return count;
 }

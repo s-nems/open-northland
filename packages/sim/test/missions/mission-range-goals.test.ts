@@ -33,11 +33,14 @@ import {
 
 const OWNER = 2;
 const HANDCART = 1;
+const CATAPULT = 5;
+const CARRIER = 24;
 const SCOUT = 27;
 const HERE = 61;
 const THERE = 62;
 const AREA = 10;
 const FAR = { hx: POINT.hx + 22, hy: POINT.hy };
+const NEAR_POINT = { hx: POINT.hx + 4, hy: POINT.hy };
 
 function judged(sim: Simulation): boolean {
   sim.run(LOAD_PASS);
@@ -61,6 +64,43 @@ function houseAt(
     force: true,
     underConstruction: asSite,
   });
+}
+
+/** Never elapses, so the mission stays active and the next pass judges the boarded stand. */
+const NEVER: MissionGoalOp = { opcode: 'TimeGone', seconds: 1_000_000 };
+
+/** A human of `OWNER` carrying `HERE`, set down at `groundAt` and seated on the owner's vehicle standing
+ *  at `cartAt`; `before` adds the rest of the world. Returns whether the first pass after boarding holds
+ *  the goal. */
+function heldAboard(
+  goal: MissionGoalOp,
+  cartAt: { hx: number; hy: number },
+  groundAt: { hx: number; hy: number },
+  {
+    job = SCOUT,
+    vehicleType = HANDCART,
+    before,
+  }: { job?: number; vehicleType?: number; before?: (sim: Simulation) => void } = {},
+): boolean {
+  const sim = missionSim([{ ...goalMission(goal), goals: [goal, NEVER] }], houseContent());
+  const vehicle = createVehicle(sim.world, ctxOf(sim), {
+    vehicleType,
+    x: cartAt.hx,
+    y: cartAt.hy,
+    tribe: VIKING,
+    owner: OWNER,
+  });
+  if (vehicle === null) throw new Error('setup: no cart');
+  spawn(sim, { player: OWNER, missionId: HERE, job, at: groundAt });
+  before?.(sim);
+  sim.step();
+  const rider = stamped(sim, HERE);
+  sim.enqueueSetup({ kind: 'attachToVehicle', entity: rider, vehicle });
+  sim.step();
+  boardRider(sim.world, rider, vehicle);
+  expect(sim.world.has(rider, Rider) && !sim.world.has(rider, Position)).toBe(true);
+  sim.run(PASS_TICKS);
+  return missionRecords(sim.world)[0]?.goalsHeld[0] === true;
 }
 
 describe('FindPosByHumans', () => {
@@ -90,38 +130,12 @@ describe('FindPosByHumans', () => {
   });
 
   describe('aboard a vehicle', () => {
-    /** Never elapses, so the mission stays active and the next pass judges the boarded stand. */
-    const NEVER: MissionGoalOp = { opcode: 'TimeGone', seconds: 1_000_000 };
-
-    /** A scout carrying `HERE`, set down at `groundAt`, seated on a cart standing at `cartAt`;
-     *  returns whether the first pass after boarding holds the goal. */
-    function heldAboard(cartAt: { hx: number; hy: number }, groundAt: { hx: number; hy: number }): boolean {
-      const sim = missionSim([{ ...goalMission(goal), goals: [goal, NEVER] }]);
-      const vehicle = createVehicle(sim.world, ctxOf(sim), {
-        vehicleType: HANDCART,
-        x: cartAt.hx,
-        y: cartAt.hy,
-        tribe: VIKING,
-        owner: OWNER,
-      });
-      if (vehicle === null) throw new Error('setup: no cart');
-      spawn(sim, { player: OWNER, missionId: HERE, job: SCOUT, at: groundAt });
-      sim.step();
-      const rider = stamped(sim, HERE);
-      sim.enqueueSetup({ kind: 'attachToVehicle', entity: rider, vehicle });
-      sim.step();
-      boardRider(sim.world, rider, vehicle);
-      expect(sim.world.has(rider, Rider) && !sim.world.has(rider, Position)).toBe(true);
-      sim.run(PASS_TICKS);
-      return missionRecords(sim.world)[0]?.goalsHeld[0] === true;
-    }
-
     it('holds where the vehicle stands inside the area, boarded from outside', () => {
-      expect(heldAboard(POINT, FAR)).toBe(true);
+      expect(heldAboard(goal, POINT, FAR)).toBe(true);
     });
 
     it('does not hold where the vehicle stands outside, boarded from inside', () => {
-      expect(heldAboard(FAR, POINT)).toBe(false);
+      expect(heldAboard(goal, FAR, POINT)).toBe(false);
     });
   });
 
@@ -223,6 +237,12 @@ describe('FindHumansByHumans', () => {
     spawn(sim, { player: OWNER, missionId: THERE, at: FAR });
     expect(judged(sim)).toBe(false);
   });
+
+  it('finds a passenger where its cart stands', () => {
+    const other = (sim: Simulation): void => spawn(sim, { player: OWNER, missionId: THERE });
+    expect(heldAboard(goal, POINT, FAR, { before: other })).toBe(true);
+    expect(heldAboard(goal, FAR, POINT, { before: other })).toBe(false);
+  });
 });
 
 describe('FindHumansByPlayersMM', () => {
@@ -285,6 +305,21 @@ describe('FindHousesByHumans', () => {
     });
     expect(judged(sim)).toBe(false);
   });
+
+  it('finds a passenger where its cart stands', () => {
+    const house = (sim: Simulation): void =>
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HUT_LARGE,
+        tribe: VIKING,
+        x: NEAR_POINT.hx,
+        y: NEAR_POINT.hy,
+        owner: OWNER,
+        missionId: THERE,
+      });
+    expect(heldAboard(goal, POINT, FAR, { before: house })).toBe(true);
+    expect(heldAboard(goal, FAR, POINT, { before: house })).toBe(false);
+  });
 });
 
 describe('the head-count goals near a point', () => {
@@ -332,6 +367,26 @@ describe('the head-count goals near a point', () => {
     });
     spawn(sim, { player: OWNER, job: SOLDIER });
     expect(judged(sim)).toBe(false);
+  });
+
+  it('counts a soldier aboard the player’s catapult where the catapult stands', () => {
+    const one = { ...soldiers, amount: 1 };
+    const crew = { job: SOLDIER, vehicleType: CATAPULT };
+    expect(heldAboard(one, POINT, FAR, crew)).toBe(true);
+    expect(heldAboard(one, FAR, POINT, crew)).toBe(false);
+  });
+
+  it('counts a civilian aboard the other way round', () => {
+    const civilians: MissionGoalOp = {
+      opcode: 'NumberOfCivilainsNearPos',
+      player: OWNER,
+      point: POINT,
+      range: AREA,
+      amount: 1,
+    };
+    expect(heldAboard(civilians, POINT, FAR, { job: CARRIER })).toBe(true);
+    expect(heldAboard(civilians, FAR, POINT, { job: CARRIER })).toBe(false);
+    expect(heldAboard(civilians, POINT, FAR, { job: SOLDIER, vehicleType: CATAPULT })).toBe(false);
   });
 });
 

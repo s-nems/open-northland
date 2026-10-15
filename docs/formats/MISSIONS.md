@@ -313,6 +313,14 @@ writes.
 Range tests use the original's hexagonal map-point distance. "Explored" is the per-player seen bit
 of a map point, set once and never cleared (reading), which matches the classic map without fog of war.
 
+A human aboard a vehicle, commander or passenger, has no map point of its own. The human goals that
+measure a position (11, 13, 14, 16, 22, 34 and 49) find it where its vehicle stands. Goals 51 and 52
+count the humans on the map, then add the commander and passengers aboard each of the player's
+vehicles within `range`, counted at the vehicle by job and whoever owns them. Heroes need no
+exception: the position goals treat them as any human, and goals 51 and 52 leave them out of both
+counts wherever they stand. These are readings of original behavior, unconfirmed against the running
+original.
+
 ## Results
 
 Same conventions. The result reference corroborates 102 of the 103 names and every arity;

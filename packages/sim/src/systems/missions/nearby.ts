@@ -1,13 +1,14 @@
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, rowReachLeft, rowReachRight } from '../../nav/halfcell.js';
-import { entityPoint } from './targets.js';
+import { missionPoint } from './targets.js';
 
 interface PointRow {
   readonly hy: number;
   readonly columns: number[];
 }
 
-/** A check-local position index: moving humans cannot use the standing-entity region cache. */
+/** A check-local position index: moving humans cannot use the standing-entity region cache. A human
+ *  aboard is found where its carrier stands. */
 export function groupsWithinRange(
   world: World,
   sources: Iterable<Entity>,
@@ -17,7 +18,7 @@ export function groupsWithinRange(
   if (range < 0) return false;
   const columnsByRow = new Map<number, Set<number>>();
   for (const e of targets) {
-    const at = entityPoint(world, e);
+    const at = missionPoint(world, e);
     if (at === undefined) continue;
     let columns = columnsByRow.get(at.hy);
     if (columns === undefined) {
@@ -33,7 +34,7 @@ export function groupsWithinRange(
   rows.sort((a, b) => a.hy - b.hy);
   if (rows.length === 0) return false;
   for (const e of sources) {
-    const at = entityPoint(world, e);
+    const at = missionPoint(world, e);
     if (at !== undefined && nearRows(rows, at, range)) return true;
   }
   return false;
