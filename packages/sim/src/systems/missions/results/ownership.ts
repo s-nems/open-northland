@@ -15,7 +15,7 @@ import { syncScenarioIdentity } from '../../lifecycle/unit-health.js';
 import { relinkSignpost } from '../../signposts/index.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
-import { missionHouses, missionHumans, ownedBy, ownedInRange, withinRange } from '../targets.js';
+import { missionHouses, ownedBy, ownedInRange, scriptedHumans, withinRange } from '../targets.js';
 
 /** How many animals one `ChangeAnimalPlayerIdInArea` may take, whatever it asks for (reading). */
 const ANIMAL_HANDOVER_CAP = 50;
@@ -24,7 +24,7 @@ const ANIMAL_HANDOVER_CAP = 50;
  *  under its old owner (reading). */
 export function handHumansToPlayer(pass: MissionPass, id: number, player: number): void {
   if (!isValidPlayer(player)) return;
-  for (const e of missionHumans(pass.world, id)) {
+  for (const e of scriptedHumans(pass.world, id)) {
     detachFromHouses(pass.world, pass.ctx, e);
     stampOwner(pass.world, e, player);
     syncScenarioIdentity(pass.world, pass.ctx.content, e);

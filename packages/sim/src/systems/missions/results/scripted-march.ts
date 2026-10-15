@@ -14,7 +14,7 @@ import { sendUnit } from '../../orders/movement.js';
 import { isFighterJob } from '../../readviews/index.js';
 import { detachBeforeOrder } from '../../vehicles/crew.js';
 import type { MissionPass } from '../pass.js';
-import { missionHumans } from '../targets.js';
+import { scriptedHumans } from '../targets.js';
 
 /** How far past its formation a band's man may stand and still hold it, so a band a fight has thinned
  *  or pushed about keeps its orders. Authored. */
@@ -34,7 +34,7 @@ const FORMATION_HOLD_SLACK_NODES = 8;
 export function sendScriptedHumans(pass: MissionPass, id: number, point: HalfCellNode): void {
   const { world, ctx } = pass;
   const terrain = ctx.terrain;
-  const humans = missionHumans(world, id).filter((e) => {
+  const humans = scriptedHumans(world, id).filter((e) => {
     const held = world.tryGet(e, Rider)?.leaving;
     if (held !== undefined && held !== null && !world.has(e, Position)) {
       world.mut(e, Rider).leaving = { to: { hx: point.hx, hy: point.hy } };

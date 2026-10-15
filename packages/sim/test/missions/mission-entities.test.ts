@@ -38,6 +38,8 @@ import {
   POINT,
   SOLDIER,
   scriptedSim,
+  spawn,
+  stamped,
   VIKING,
   WILD,
   WOLF,
@@ -333,6 +335,15 @@ describe('the removal results', () => {
     removing.run(LOAD_PASS);
     expect(missionObjects(removing.world, 77)).toHaveLength(0);
     expect(removing.events.current().filter((e) => e.kind === 'settlerDied')).toHaveLength(0);
+  });
+
+  it('reads id 0 as every human never given an id, of every player', () => {
+    const sim = firingSim([{ opcode: 'RemoveHumans', humanId: 0 }]);
+    spawn(sim, { player: 0 });
+    spawn(sim, { player: 1 });
+    spawn(sim, { player: 1, missionId: 77 });
+    sim.run(LOAD_PASS);
+    expect([...sim.world.query(Person)]).toEqual([stamped(sim, 77)]);
   });
 
   it('takes animals and houses the same way', () => {

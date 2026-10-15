@@ -335,6 +335,16 @@ describe('MoveHuman', () => {
     sim.run(LOAD_PASS);
     expect(crowdNear(sim, OWNER, FAR, LANDING_SPREAD)).toBe(20);
   });
+
+  it('reads id 0 as the humans never given an id, of every player', () => {
+    const sim = firingSim([{ opcode: 'MoveHuman', humanId: 0, point: FAR }]);
+    spawn(sim, { player: OWNER });
+    spawn(sim, { player: STRANGER });
+    spawn(sim, { player: OWNER, missionId: GROUP });
+    sim.run(LOAD_PASS);
+    expect(crowdNear(sim, OWNER, FAR, LANDING_SPREAD)).toBe(1);
+    expect(crowdNear(sim, STRANGER, FAR, LANDING_SPREAD)).toBe(1);
+  });
 });
 
 describe('MoveUnitsInArea', () => {

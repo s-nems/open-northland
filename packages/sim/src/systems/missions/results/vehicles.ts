@@ -29,7 +29,7 @@ import { vehicleIndex } from '../../vehicles/registry.js';
 import { removeVehicle } from '../../vehicles/remove.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
-import { missionHumans, missionVehicles, withinRange } from '../targets.js';
+import { missionVehicles, scriptedHumans, withinRange } from '../targets.js';
 
 // The vehicle results of docs/formats/VEHICLES.md "Map scripts": every one goes through the seams a
 // seat command or a map load takes, so a scripted vehicle and a placed one are the same entity.
@@ -132,7 +132,7 @@ export function attachScriptedHumans(pass: MissionPass, humanId: number, vehicle
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined) return;
   const owner = ownerOf(world, vehicle);
-  for (const e of missionHumans(world, humanId)) {
+  for (const e of scriptedHumans(world, humanId)) {
     if (ownerOf(world, e) !== owner) continue;
     if (!passengerJobAllowed(type, world.tryGet(e, Settler)?.jobType ?? null)) continue;
     if (!world.get(vehicle, Vehicle).passengers.includes(null)) break; // full: nobody else fits
@@ -150,7 +150,7 @@ export function attachScriptedHumans(pass: MissionPass, humanId: number, vehicle
  */
 export function detachScriptedHumans(pass: MissionPass, humanId: number): void {
   const { world, ctx } = pass;
-  for (const e of missionHumans(world, humanId)) {
+  for (const e of scriptedHumans(world, humanId)) {
     const rider = world.tryGet(e, Rider);
     if (rider === undefined) continue;
     if (!world.has(e, Position) && landingOf(world, ctx, rider.vehicle) === null) {

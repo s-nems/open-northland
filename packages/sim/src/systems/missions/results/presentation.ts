@@ -5,7 +5,7 @@ import type { SimEvent } from '../../../core/events.js';
 import { type HalfCellNode, hexagonRing } from '../../../nav/halfcell.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
-import { missionHumans } from '../targets.js';
+import { scriptedHumans } from '../targets.js';
 
 /** The GUI marker slots the original keeps (reading). */
 const GUI_MARKER_SLOTS = 10;
@@ -45,7 +45,7 @@ export function selectScriptedHuman(
   mission: number,
   op: Extract<MissionResultOp, { opcode: 'SelectHuman' }>,
 ): void {
-  const [first] = missionHumans(pass.world, op.humanId);
+  const [first] = scriptedHumans(pass.world, op.humanId);
   if (first === undefined) {
     pass.reportFailed(mission, op.opcode);
     return;
@@ -59,7 +59,7 @@ export function nameScriptedHuman(
   mission: number,
   op: Extract<MissionResultOp, { opcode: 'SetHumanName' }>,
 ): void {
-  const [first] = missionHumans(pass.world, op.humanId);
+  const [first] = scriptedHumans(pass.world, op.humanId);
   if (first === undefined) {
     pass.reportFailed(mission, op.opcode);
     return;

@@ -5,7 +5,7 @@ import {
   setMissionBehaviour,
 } from '../../../components/index.js';
 import type { MissionPass } from '../pass.js';
-import { missionHouses, missionHumans, ownedBy } from '../targets.js';
+import { missionHouses, ownedBy, scriptedHumans } from '../targets.js';
 
 /** The shift-count mask a 32-bit word imposes: the original uses only the index's low five bits,
  *  so an out-of-range index wraps rather than clearing the word. */
@@ -13,7 +13,7 @@ const BIT_INDEX_MASK = 31;
 
 /** Set or clear a mask on every human with the id. */
 export function setHumansBehaviour(pass: MissionPass, id: number, mask: number, on: boolean): void {
-  for (const e of missionHumans(pass.world, id)) setMissionBehaviour(pass.world, e, mask, on);
+  for (const e of scriptedHumans(pass.world, id)) setMissionBehaviour(pass.world, e, mask, on);
 }
 
 /** Set or clear a mask on every human the player owns right now. Humans it gains later do not inherit

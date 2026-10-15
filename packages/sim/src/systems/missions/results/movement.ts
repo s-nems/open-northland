@@ -9,7 +9,7 @@ import { dockVehicle } from '../../vehicles/dock.js';
 import { moveVehicle } from '../../vehicles/movement.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionResultOp } from '../script.js';
-import { missionHumans, missionVehicles, ownedBy, withinRange } from '../targets.js';
+import { missionVehicles, ownedBy, scriptedHumans, withinRange } from '../targets.js';
 import { teleportVehiclesInArea } from './vehicles.js';
 
 /** How many humans one teleport line may carry, whatever it addresses (reading: the original fills a
@@ -63,7 +63,7 @@ export function dockScriptedVehicles(pass: MissionPass, id: number, point: HalfC
 export function teleportScriptedHumans(pass: MissionPass, id: number, point: HalfCellNode): void {
   if (!landable(pass, point)) return;
   const claimed = new Set<NodeId>();
-  for (const e of missionHumans(pass.world, id).slice(0, TELEPORT_CAP)) {
+  for (const e of scriptedHumans(pass.world, id).slice(0, TELEPORT_CAP)) {
     teleportHuman(pass.world, pass.ctx, e, point, claimed);
   }
 }

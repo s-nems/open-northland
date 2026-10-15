@@ -3,12 +3,12 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { removeBuildingSilently } from '../../lifecycle/cleanup.js';
 import { removeSettlerSilently } from '../../lifecycle/death.js';
 import type { MissionPass } from '../pass.js';
-import { missionAnimals, missionHouses, missionHumans, withinRange } from '../targets.js';
+import { missionAnimals, missionHouses, scriptedHumans, withinRange } from '../targets.js';
 
 /** Take every entity stamped with the line's object id off the board, without killing it - see
  *  `PlayerTally` for what a script removal deliberately does not count. */
 export function removeScriptedHumans(pass: MissionPass, id: number): void {
-  for (const e of missionHumans(pass.world, id)) removeSettlerSilently(pass.world, e);
+  for (const e of scriptedHumans(pass.world, id)) removeSettlerSilently(pass.world, e);
 }
 
 export function removeScriptedAnimals(pass: MissionPass, id: number): void {

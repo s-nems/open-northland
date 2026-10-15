@@ -2,6 +2,7 @@ import {
   Building,
   isValidPlayer,
   isWildlife,
+  MissionObjectId,
   Owner,
   ownerOf,
   Person,
@@ -41,6 +42,19 @@ export function isMissionVehicle(world: World, e: Entity): boolean {
  *  Each answers a fresh array, so a caller may remove or re-stamp what it got back. */
 export function missionHumans(world: World, id: number): Entity[] {
   return missionObjects(world, id).filter((e) => isMissionHuman(world, e));
+}
+
+/** The id every human carries until a map or a script gives it one; the id index does not hold it. */
+const NO_MISSION_ID = 0;
+
+/**
+ * The humans a script line's human id names, ascending by entity id. Original behavior: ids compare
+ * by equality with no exception for 0, so id 0 names every human that was never given one, of every
+ * player. Those humans are not indexed, so that case walks the population.
+ */
+export function scriptedHumans(world: World, id: number): Entity[] {
+  if (id !== NO_MISSION_ID) return missionHumans(world, id);
+  return world.canonicalQuery(Person).filter((e) => !world.has(e, MissionObjectId));
 }
 
 export function missionHouses(world: World, id: number): Entity[] {

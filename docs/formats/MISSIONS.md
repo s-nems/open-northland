@@ -116,6 +116,12 @@ and match the format the original itself writes when it exports a `[StaticObject
 | `setanimal` | `<player> "<species>" "<animal type>" <x> <y> <id> <behaviour>` |
 | `setguide` | `<player> <x> <y>` |
 
+An id is compared for equality, and 0 is the id of every object never given one, a human spawned
+in play included. Every result line that takes a human id (`RemoveHumans`, `MoveHuman`, `SendHuman`,
+`ChangeHumanPlayerId`, the behaviour flags, vehicle attach and detach, `SelectHuman`, `SetHumanName`)
+reads id 0 as every such human of every player, as the original does; `FindPosByHumans` is the one
+goal that does so here.
+
 A `setanimal`'s player is 20 for a wild herd; its second column is the species (the animal tribe the
 extractor keeps) and its third the animal type, `adult_animal` throughout the corpus. A
 run of `addgoods "<good>" <count>` after a `sethouse` or a `setvehicle` stocks what it just placed;
@@ -322,7 +328,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 2 | `SetVehicle` | 1, 3, 5, 16, 17, 12, 30 | spawn a vehicle with the id; with the captain flag also spawn its commander of the type's `logiccommander` trade at the door, carrying the vehicle's id, attach and board it, and take the human back when either is refused ([VEHICLES.md](VEHICLES.md#map-scripts)) | sim | 154 |
 | 3 | `SetHouse` | 1, 19, 8, 20, 16, 17, 14 | place a house of the named type at the nearest buildable spot within 12 points, finished when the built flag is set and as a construction site when it is 0, with the id; warns when no spot exists | sim | 30 |
 | 4 | `SetLandscape` | 16, 17, 18, 8, 32 | lay the named graphic at the point at the given size, replacing what is anchored there; size 0 clears the point, and the force flag skips the free-ground check (rules below) | both | 760 |
-| 5 | `RemoveHumans` | 10 | remove every human with the id, silently (no death statistics, no cadaver) | sim | 96 |
+| 5 | `RemoveHumans` | 10 | remove every human with the id, silently (no death statistics, no cadaver); id 0 removes every human without an id, of every player | sim | 96 |
 | 6 | `RemoveVehicles` | 12 | remove every vehicle with the id, no wreck and no spill; a crew steps onto a door on land | sim | 16 |
 | 7 | `RemoveHouses` | 14 | remove every house with the id | sim | 3 |
 | 8 | `RemoveLandscape` | 16, 17 | remove the live landscape at the point and its sprite | both | 446 |
@@ -409,7 +415,7 @@ reports `missionUnsupported` once; the same tickets carry them.
 | 89 | `AttachHumanToVehicle` | 10, 12 | the seat's attach order for every human with the id that the attach gate admits (same owner, allowed trade, free slot), on the first vehicle with the vehicle id | sim | 77 |
 | 90 | `DetachHumanFromVehicle` | 10 | the seat's detach order for every rider with the id | sim | 74 |
 | 91 | `SetHouseBuildForbiddenArea` | 16, 17, 9, 32 | forbid or allow building within `range` | sim | 150 |
-| 92 | `MoveHuman` | 10, 16, 17 | teleport up to 20 humans with the id to the point, then let them settle with a walk order; explores around the destination | sim | 166 |
+| 92 | `MoveHuman` | 10, 16, 17 | teleport up to 20 humans with the id (id 0: without an id, any player, lowest entity first) to the point, then let them settle with a walk order; explores around the destination | sim | 166 |
 | 93 | `SetHouseBehaviourFlag` | 14, 36, 32 | set or clear bit `index` on houses with the id | sim | 113 |
 | 94 | `ChangeMissionIdOfVehiclesInRange` | 1, 12, 16, 17, 9 | give the player's vehicles within `range` the id | sim | 0 |
 | 95 | `RemoveVehiclesWithMissionId` | 12, 32 | remove up to 50 vehicles with the id, and their crews first when the flag is set; the presentation callback the original stages around each is not mirrored (open) | sim | 0 |
