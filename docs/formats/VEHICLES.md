@@ -315,7 +315,8 @@ start; on the last node of a dock walk the dock clip (atomic 84) plays, and when
 clears and the moored flag is set. A goto arrival with no commander inside re-moors the ship when a
 land continent borders the ring; with the commander inside it stays at sea. No message is raised on
 arrival. No port building is involved. Unload people on a ship empties the crew onto the door cell only when it is on
-land. When a vehicle leaves the map with its door on land, riders who are aboard are put on the door
+land; for a ship not moored the door cell, or a node beside it, counts, so unloading needs no
+mooring. When a vehicle leaves the map with its door on land, riders who are aboard are put on the door
 cell and riders still walking to it are only detached where they stand, and a carried vehicle is set
 down on the door cell; with the door at sea the
 crew dies and a carried vehicle is removed with the ship. Ships leave no wreck and no cargo.
@@ -330,8 +331,12 @@ ring node is open when the ship's walk-block admits it, which adds other vehicle
 class test, and lies in a part of the sea the ship can sail into, however far (the deviation of
 "Movement"); a ship already on a ring node moors in place and drops any drive under way (approximation: the original ends the order with nothing set); no ring node raises `vehicleNoPath` whether or not the commander is inside; the
 ship moors on the arrival tick with a `vehicleDocked` event (approximation: the tribe binds atomic 84
-to a 12-tick dock clip, which is not played); a goto clears the pending mooring point and never re-moors on
-arrival (the commander-less re-mooring is not implemented, a goto needs a commander anyway); a dock
+to a 12-tick dock clip, which is not played); a goto clears the pending mooring point; any drive that
+was no dock and ends with the commander not inside moors the ship on the first walkable node of its
+door ring, with the same event (`moorByShore`, `movement.ts`), and with the commander inside the ship stays
+at sea; unload people on a ship lying unmoored sets the crew down on its door point when that is
+walkable land, else on the first walkable node of the ring around it, and is ignored when neither is
+(`unloadLandingOf`, `crew.ts`); the player's crew panel still disables the button at sea; a dock
 walk that loses its route drops the mooring point behind the `vehicleNoPath` note. A sunk ship's
 crew aboard is reaped like any death, so the owner's casualty tallies count it. Deviation (owner's
 choice): a rider still walking to a ship lost at sea, and a cart still driving to it, stand on land

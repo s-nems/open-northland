@@ -577,8 +577,13 @@ export function nodeOf(terrain: TerrainGraph, node: NodeId): HalfCellNode {
  * graphics record here, so the ship moors on the arrival tick).
  */
 export function moorVehicle(world: World, ctx: SystemContext, vehicle: Entity): void {
+  world.mut(vehicle, Vehicle).task = 'none';
+  moorAtMooring(world, ctx, vehicle);
+}
+
+/** Lay the ship moored, its door on the stored mooring point, and tell its owner. */
+function moorAtMooring(world: World, ctx: SystemContext, vehicle: Entity): void {
   const live = world.mut(vehicle, Vehicle);
-  live.task = 'none';
   if (live.mooring === null) return;
   live.moored = true;
   ctx.events.emit({
@@ -587,6 +592,33 @@ export function moorVehicle(world: World, ctx: SystemContext, vehicle: Entity): 
     player: world.tryGet(vehicle, Owner)?.player ?? null,
     at: { hx: live.mooring.hx, hy: live.mooring.hy },
   });
+}
+
+/**
+ * A ship ending a drive that was no dock moors by itself when its commander is not aboard and walkable
+ * land lies on the ring at its door distance, the first such node in ring order becoming its mooring
+ * point; with the commander aboard it stays at sea (original behavior, unconfirmed against the running
+ * original).
+ */
+function moorByShore(world: World, ctx: SystemContext, terrain: TerrainGraph, vehicle: Entity): void {
+  const state = world.get(vehicle, Vehicle);
+  if (state.moored || commanderAboard(state)) return;
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  const vector = type?.passengerVector;
+  const anchor = vehicleAnchor(world, vehicle);
+  if (type === undefined || vector === undefined || anchor === null || !isShipVehicle(type)) return;
+  for (const { point } of hexagonRing(anchor, vector.distance)) {
+    if (!terrain.inBounds(point.hx, point.hy) || !terrain.isWalkable(terrain.nodeAt(point.hx, point.hy))) {
+      continue;
+    }
+    world.mut(vehicle, Vehicle).mooring = { hx: point.hx, hy: point.hy };
+    moorAtMooring(world, ctx, vehicle);
+    return;
+  }
+}
+
+function commanderAboard(state: VehicleStateView): boolean {
+  return state.passengers[state.passengers.length - 1]?.inside === true;
 }
 
 /** A dock drive that lost its way forgets the shore it aimed at, the way the original's task 1 falls
@@ -807,6 +839,7 @@ export const vehicleMovementSystem: System = (world, ctx) => {
       if (state.task !== 'interrupted' && settleOutOfGap(world, ctx, terrain, e)) continue;
       endDrive(world, e); // arrived, or stopped on its node
       if (state.task === 'docks') moorVehicle(world, ctx, e);
+      else moorByShore(world, ctx, terrain, e);
       reanchorGuard(world, e);
       continue;
     }

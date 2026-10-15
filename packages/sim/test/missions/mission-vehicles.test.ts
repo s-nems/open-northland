@@ -453,6 +453,71 @@ describe('the crew results', () => {
   });
 });
 
+describe('SendHuman for a passenger', () => {
+  const INLAND = { hx: SEA.hx - 6, hy: SEA.hy + 6 };
+
+  /** A scout with the crew id boarded on a ship in {@link splitMap}'s water column. */
+  function boardedShip(sim: Simulation): { ship: Entity; crew: Entity } {
+    const ship = cart(sim, { type: SHIP_SMALL, at: SEA });
+    spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: SEA.hx - 4, hy: SEA.hy } });
+    sim.step();
+    const [crew] = missionObjects(sim.world, CREW_ID);
+    if (crew === undefined) throw new Error('no crew');
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: ship });
+    sim.run(BOARD_TICKS);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+    return { ship, crew };
+  }
+
+  function sendSim(): Simulation {
+    return scriptedSim(
+      [firingMission([{ opcode: 'SendHuman', humanId: CREW_ID, point: INLAND }])],
+      testContent(),
+      splitMap(),
+    );
+  }
+
+  it('steps a passenger of a moored ship out at the door and walks him to the point', () => {
+    const sim = sendSim();
+    const { ship, crew } = boardedShip(sim);
+    expect(sim.world.get(ship, Vehicle).moored).toBe(true);
+    runLoadPass(sim);
+    expect(sim.world.has(crew, Rider)).toBe(false);
+    expect(sim.world.has(crew, MoveGoal)).toBe(true);
+  });
+
+  it('drops the order silently for a passenger of a ship at sea, keeping nothing for landfall', () => {
+    const sim = sendSim();
+    const { ship, crew } = boardedShip(sim);
+    sim.world.mut(ship, Vehicle).moored = false; // cast off
+    runLoadPass(sim);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+    expect(sim.world.get(crew, Rider).leaving).toBeNull();
+    expect(sim.events.current().filter((e) => e.kind === 'riderRefused')).toEqual([]);
+    sim.world.mut(ship, Vehicle).moored = true;
+    sim.step();
+    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+  });
+
+  it('stops a moving land vehicle and drops its passenger walk', () => {
+    const sim = scriptedSim([firingMission([{ opcode: 'SendHuman', humanId: CREW_ID, point: INLAND }])]);
+    const e = cart(sim);
+    spawn(sim, { player: OWNER, job: SCOUT, missionId: CREW_ID, at: { hx: POINT.hx + 2, hy: POINT.hy } });
+    sim.step();
+    const [crew] = missionObjects(sim.world, CREW_ID);
+    if (crew === undefined) throw new Error('no crew');
+    sim.enqueueSetup({ kind: 'attachToVehicle', entity: crew, vehicle: e });
+    sim.run(BOARD_TICKS);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+    sim.enqueueSetup({ kind: 'moveVehicle', vehicle: e, x: FAR.hx, y: FAR.hy });
+    sim.step();
+    expect(sim.world.has(e, VehicleDrive)).toBe(true);
+    runLoadPass(sim);
+    expect(isAboardVehicle(sim.world, crew)).toBe(true);
+    expect(sim.world.get(e, Vehicle).task).toBe('interrupted');
+  });
+});
+
 describe('MoveUnitsInArea', () => {
   it("stacks the player's vehicles at the destination and submits their move orders", () => {
     const destination = { hx: POINT.hx, hy: POINT.hy + 20 };

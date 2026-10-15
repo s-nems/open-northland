@@ -1,4 +1,12 @@
-import { Engagement, MoveGoal, PlayerOrder, Position, Rider, Settler } from '../../../components/index.js';
+import {
+  Engagement,
+  MoveGoal,
+  PlayerOrder,
+  Position,
+  Rider,
+  Settler,
+  VehicleDrive,
+} from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { pairBySpace } from '../../../nav/formation.js';
 import { type HalfCellNode, hexDistance, nodeOfPosition } from '../../../nav/halfcell.js';
@@ -12,9 +20,26 @@ import { standingPostGrid, unitWalkBlocks } from '../../movement/collision/stand
 import { formationSlotGroups, type Occupancy } from '../../orders/formation-slots.js';
 import { sendUnit } from '../../orders/movement.js';
 import { isFighterJob } from '../../readviews/index.js';
-import { detachBeforeOrder } from '../../vehicles/crew.js';
+import { detachBeforeOrder, landingOf } from '../../vehicles/crew.js';
+import { stopVehicle } from '../../vehicles/movement.js';
 import type { MissionPass } from '../pass.js';
 import { scriptedHumans } from '../targets.js';
+
+/**
+ * Whether the script's walk may take `e` out of a vehicle it sits in. Original behavior (unconfirmed
+ * against the running original): a passenger of a moored ship or a standing land vehicle steps out at
+ * the door and walks; aboard a ship at sea the order is dropped without a note and nothing is kept for
+ * landfall; a moving land vehicle is stopped and the walk dropped. A rider not yet aboard is detached
+ * as any walker is.
+ */
+function riderMayWalk(world: World, ctx: SystemContext, e: Entity): boolean {
+  const rider = world.tryGet(e, Rider);
+  if (rider === undefined || world.has(e, Position)) return true;
+  if (landingOf(world, ctx, rider.vehicle) === null) return false;
+  if (!world.has(rider.vehicle, VehicleDrive)) return true;
+  stopVehicle(world, { kind: 'stopVehicle', vehicle: rider.vehicle });
+  return false;
+}
 
 /** How far past its formation a band's man may stand and still hold it, so a band a fight has thinned
  *  or pushed about keeps its orders. Authored. */
@@ -40,9 +65,7 @@ export function sendScriptedHumans(pass: MissionPass, id: number, point: HalfCel
       world.mut(e, Rider).leaving = { to: { hx: point.hx, hy: point.hy } };
       return false; // walks on from the shore once the ship moors
     }
-    // A rider aboard steps off first, as the original's walk command does; one aboard a ship at sea
-    // is refused and left out, as the original leaves it.
-    return detachBeforeOrder(world, ctx, e) && world.has(e, Position);
+    return riderMayWalk(world, ctx, e) && detachBeforeOrder(world, ctx, e) && world.has(e, Position);
   });
   if (terrain === undefined || humans.length === 0) return;
   const fighter = (e: Entity): boolean =>
