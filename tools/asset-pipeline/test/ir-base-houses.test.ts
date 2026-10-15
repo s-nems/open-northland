@@ -94,10 +94,10 @@ describe('base-only houses', () => {
   });
 
   it('binds and bakes the base-only art, never the base art of a ruled name', async () => {
-    const { bindings, buildTimeBmds } = await resolveGraphicsBindings({ data: tree.game });
+    const { bindings, buildTimeBobs } = await resolveGraphicsBindings({ data: tree.game });
     const bmds = bindings.map((b) => b.bmd);
     expect(bmds).toContain(BASE_PALACE_BMD);
     expect(bmds).not.toContain(BASE_TENT_BMD);
-    expect(buildTimeBmds.has(BASE_PALACE_BMD)).toBe(true);
+    expect(buildTimeBobs.has(BASE_PALACE_BMD)).toBe(true);
   });
 });

@@ -60,7 +60,7 @@ describe('bmdToAtlas', () => {
       atlas.image.rgba[((rect?.y ?? 0) * atlas.image.width + (rect?.x ?? 0) + x) * 4 + 3] ?? -1;
     expect(alphaAt(graded, 0)).toBe(0x60); // the alpha byte rides into the sheet
     expect(alphaAt(graded, 1)).toBe(0xff);
-    const buildTime = bmdToAtlas(bytes, rampPalette(), 'build-time');
+    const buildTime = bmdToAtlas(bytes, rampPalette(), new Set([10]));
     expect(alphaAt(buildTime, 0)).toBe(0xff); // house colour plane replays the opaque blit
     expect(alphaAt(buildTime, 1)).toBe(0xff);
     // The second byte lands in the same-placement time sheet (grayscale threshold, alpha = written).
@@ -107,7 +107,7 @@ describe('convertBmdTree', () => {
     const { bindings, palettes } = sampleBinding();
 
     const done = await convertBmdTree(
-      { bindings, palettes, buildTimeBmds: new Set() },
+      { bindings, palettes, buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     );
@@ -147,7 +147,7 @@ describe('convertBmdTree', () => {
     ];
 
     const done = await convertBmdTree(
-      { bindings, palettes, buildTimeBmds: new Set() },
+      { bindings, palettes, buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     );
@@ -185,7 +185,7 @@ describe('convertBmdTree', () => {
     ];
 
     const done = await convertBmdTree(
-      { bindings, palettes, buildTimeBmds: new Set() },
+      { bindings, palettes, buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     );
@@ -211,7 +211,7 @@ describe('convertBmdTree', () => {
           },
         ],
         palettes: [{ name: 'house', gfxFile: 'data/pal/house.pcx' }],
-        buildTimeBmds: new Set(),
+        buildTimeBobs: new Map(),
       },
       out,
       await indexSourceAssets({ data: out }),
@@ -234,7 +234,7 @@ describe('convertBmdTree', () => {
 
     await expect(
       convertBmdTree(
-        { bindings, palettes, buildTimeBmds: new Set() },
+        { bindings, palettes, buildTimeBobs: new Map() },
         out,
         await indexSourceAssets({ data: out }),
       ),
@@ -259,7 +259,7 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      { bindings, palettes, buildTimeBmds: new Set() },
+      { bindings, palettes, buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     );
@@ -275,7 +275,7 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      { bindings, palettes: [], buildTimeBmds: new Set() },
+      { bindings, palettes: [], buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     ); // empty palette index
@@ -293,7 +293,7 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      { bindings, palettes, buildTimeBmds: new Set() },
+      { bindings, palettes, buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     );
@@ -312,7 +312,7 @@ describe('convertBmdTree', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
 
     const done = await convertBmdTree(
-      { bindings, palettes, buildTimeBmds: new Set() },
+      { bindings, palettes, buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     );
@@ -358,7 +358,7 @@ describe('convertShadowBmdTree', () => {
 
   const convert = async (bindings: BmdPaletteBinding[]): Promise<string[]> =>
     convertShadowBmdTree(
-      { bindings, palettes: [], buildTimeBmds: new Set() },
+      { bindings, palettes: [], buildTimeBobs: new Map() },
       out,
       await indexSourceAssets({ data: out }),
     );
@@ -418,16 +418,20 @@ describe('convertBmdTree build-time bake', () => {
     await rm(out, { recursive: true, force: true });
   });
 
-  it('bakes a claimed .bmd opaque for EVERY palette; an unclaimed one keeps per-pixel alpha', async () => {
-    // A Double8Bit bob with a graded alpha byte (0x40) - the observable the modes differ on.
+  it('bakes claimed bobs opaque for EVERY palette; unclaimed bobs keep per-pixel alpha', async () => {
+    // Two Double8Bit bobs sharing one graded pixel (alpha byte 0x40), the observable the modes differ on:
+    // a house draws bob 10, while bob 11 is a landscape element in the same file (the lighthouse light).
     const doubleBmd: Bmd = {
       version: 0,
       firstBobId: 10,
-      bobCount: 1,
+      bobCount: 2,
       generatedNonEmptyLines: 0,
       generatedEmptyLines: 0,
       generatedPackedLines: 0,
-      bobs: [{ type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 0 }],
+      bobs: [
+        { type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 0 },
+        { type: BOB_TYPE_DOUBLE8BIT, area: { x: 0, y: 0, width: 1, height: 1 }, misc: 0 },
+      ],
       packedLineData: Uint8Array.from([0x01, 4, 0x40, 0x00]),
       lineControl: Uint32Array.from([packLineControl(0, 0)]),
     };
@@ -467,18 +471,20 @@ describe('convertBmdTree build-time bake', () => {
     ];
 
     await convertBmdTree(
-      { bindings, palettes, buildTimeBmds: new Set(['data/bobs/house.bmd']) },
+      { bindings, palettes, buildTimeBobs: new Map([['data/bobs/house.bmd', new Set([10])]]) },
       out,
       await indexSourceAssets({ data: out }),
     );
 
-    const alphaOf = async (png: string): Promise<number> => {
+    // The 1x1 frames sit side by side from the gutter origin: bob 10 at x=1, bob 11 at x=3.
+    const alphaOf = async (png: string, x = 1): Promise<number> => {
       const img = await decodePng(await readFile(join(out, BOBS_DIR, png)));
-      return img.rgba[(1 * img.width + 1) * 4 + 3] ?? -1; // the 1x1 frame sits at the gutter origin
+      return img.rgba[(1 * img.width + x) * 4 + 3] ?? -1;
     };
     expect(await alphaOf('house.house01.png')).toBe(255); // claimed → opaque colour plane
     expect(await alphaOf('house.ruins01.png')).toBe(255); // ...for every recolour of that bmd
-    expect(await alphaOf('fern.house01.png')).toBe(0x40); // unclaimed → per-pixel alpha survives
+    expect(await alphaOf('house.house01.png', 3)).toBe(0x40); // unclaimed bob of the same bmd
+    expect(await alphaOf('fern.house01.png')).toBe(0x40); // unclaimed bmd → per-pixel alpha survives
 
     // The claimed bmd's second byte lands in the sibling time sheet + the manifest announces it.
     const timeSheet = await decodePng(await readFile(join(out, BOBS_DIR, 'house.house01.build.png')));

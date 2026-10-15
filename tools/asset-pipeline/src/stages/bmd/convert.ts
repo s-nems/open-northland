@@ -1,7 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import type { LandscapeGfx } from '@open-northland/data';
 import {
-  type AtlasAlphaMode,
   type BobAtlas,
   packBobAtlas,
   packIndexedBobAtlas,
@@ -17,15 +16,15 @@ import { bindingKey, type GraphicsBindingSet } from './bindings.js';
 
 /**
  * `.bmd` bytes plus a 768-byte RGB palette to a packed bob atlas. Throws a `bmd:`/`atlas:`-prefixed
- * error for a malformed container or a wrong-sized palette. `alpha` picks the bake mode
- * ({@link AtlasAlphaMode}); the house atlases need `'build-time'`.
+ * error for a malformed container or a wrong-sized palette. `buildTimeBobs` bake `'build-time'` alpha
+ * (`AtlasAlphaMode`); every other bob bakes per-pixel.
  */
 export function bmdToAtlas(
   bmdBytes: Uint8Array,
   palette: Uint8Array,
-  alpha: AtlasAlphaMode = 'per-pixel',
+  buildTimeBobs: ReadonlySet<number> = new Set(),
 ): BobAtlas {
-  return packBobAtlas(decodeBmd(bmdBytes), palette, { alpha });
+  return packBobAtlas(decodeBmd(bmdBytes), palette, { buildTimeBobs });
 }
 
 /** One emitted bob atlas: the binding it came from plus the relative atlas PNG / manifest JSON paths. */
@@ -60,17 +59,17 @@ function paletteSlug(name: string): string {
  * Per-binding boundary failures are warned and skipped; a basename collision is the one fatal case
  * ({@link assertDistinctBobBasenames}), having no per-binding answer.
  *
- * `buildTimeBmds` (the `.bmd` paths a `[GfxHouse]` record claims) bake `'build-time'` alpha. It is keyed
- * on the `.bmd` path alone, not `(bmd, palette)`, because the build-time bytes live in the bob geometry
- * the recolours share. Required with no default, since an accidentally-empty set silently ghosts every
- * building.
+ * `buildTimeBobs` (per `.bmd`, the bobs a `[GfxHouse]` record draws) bake `'build-time'` alpha. It is
+ * keyed on the `.bmd` path alone, not `(bmd, palette)`, because the build-time bytes live in the bob
+ * geometry the recolours share. Required with no default, since an accidentally-empty map silently ghosts
+ * every building.
  */
 export async function convertBmdTree(
   graphics: GraphicsBindingSet,
   outDir: string,
   tree: SourceAssetIndex,
 ): Promise<BmdConversion[]> {
-  const { bindings, palettes, buildTimeBmds } = graphics;
+  const { bindings, palettes, buildTimeBobs } = graphics;
   assertDistinctBobBasenames(bindings.map((b) => b.bmd).filter((ref) => tree.has(ref)));
   const done: BmdConversion[] = [];
   const paletteByName = paletteAliasMap(palettes);
@@ -98,8 +97,7 @@ export async function convertBmdTree(
         console.warn(`[pipeline] skipped ${binding.bmd}: palette ${pcxRel} has no trailer`);
         continue;
       }
-      const alpha: AtlasAlphaMode = buildTimeBmds.has(binding.bmd) ? 'build-time' : 'per-pixel';
-      atlas = bmdToAtlas(await readFile(bmdSource.path), palette, alpha);
+      atlas = bmdToAtlas(await readFile(bmdSource.path), palette, buildTimeBobs.get(binding.bmd));
     } catch (err) {
       console.warn(`[pipeline] skipped ${binding.bmd}: ${errorMessage(err)}`);
       continue;

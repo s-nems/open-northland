@@ -1,7 +1,10 @@
 import {
   type BmdPaletteBinding,
   cifBytesToSections,
+  extractBuildingBobs,
   extractBuildingGraphics,
+  extractBuildingOverlays,
+  extractConstructionLayers,
   extractGraphicsBindings,
   extractJobBaseGraphics,
   extractJobChangeGraphics,
@@ -23,13 +26,13 @@ import { readSourceFile, resolveSourceFile, type SourceRoots } from '../../roots
 import { loadBaseOnlyHouseRecords } from '../base-houses.js';
 
 /**
- * One graphics-binding resolution: every `(bmd, palette)` binding, the palette `editname` index, and the
- * `.bmd`s that bake build-time alpha.
+ * One graphics-binding resolution: every `(bmd, palette)` binding, the palette `editname` index, and per
+ * `.bmd` the bob ids that bake build-time alpha.
  */
 export interface GraphicsBindingSet {
   readonly bindings: readonly BmdPaletteBinding[];
   readonly palettes: readonly PaletteAlias[];
-  readonly buildTimeBmds: ReadonlySet<string>;
+  readonly buildTimeBobs: ReadonlyMap<string, ReadonlySet<number>>;
 }
 
 /** The `(bmd, palette)` identity of a binding - the unit an atlas file is emitted (and deduped) per. */
@@ -95,8 +98,24 @@ interface GraphicsBindingSource {
   readonly load?: (roots: SourceRoots) => Promise<RuleSection[] | undefined>;
   readonly read: (sections: readonly RuleSection[]) => readonly BmdPaletteBinding[];
   readonly dedupe?: true;
-  /** The source's `.bmd`s bake construction-progress thresholds rather than coverage (`AtlasAlphaMode`). */
-  readonly buildTime?: true;
+  /** The bobs whose second byte is a construction-progress threshold rather than coverage
+   *  (`AtlasAlphaMode`). */
+  readonly buildTimeBobs?: (sections: readonly RuleSection[]) => Iterable<HouseDrawnBob>;
+}
+
+interface HouseDrawnBob {
+  readonly bmd: string;
+  readonly bobId: number;
+}
+
+/** Every bob a `[GfxHouse]` record draws: finished bodies, construction stages and state overlays. Other
+ *  bobs of the same `.bmd` (a landscape element such as the lighthouse light) keep per-pixel alpha. */
+function* houseDrawnBobs(sections: readonly RuleSection[]): Generator<HouseDrawnBob> {
+  const src = { file: 'GfxHouse' }; // the extractors stamp provenance; only bmd and bob ids are kept
+  for (const row of extractBuildingBobs(sections, src)) yield row;
+  for (const row of extractConstructionLayers(sections, src)) yield row;
+  for (const row of extractBuildingOverlays(sections, src))
+    for (const bobId of row.frames) yield { bmd: row.bmd, bobId };
 }
 
 const INIS = 'Data/engine2d/inis';
@@ -151,12 +170,12 @@ const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
   },
   /** Every settlement house bound to its `ls_houses_*.bmd` body and palette. Records repeat a
    *  bob+palette across tribes and levels (the ~25 viking-home records all bind `ls_houses_viking` with
-   *  `house01`/`house02`). The only source claiming build-time `.bmd`s. */
+   *  `house01`/`house02`). The only source claiming build-time bobs. */
   {
     path: BUILDING_GRAPHICS_FILE,
     read: extractBuildingGraphics,
     dedupe: true,
-    buildTime: true,
+    buildTimeBobs: houseDrawnBobs,
   },
   /** The base houses whose names the readable table above does not define. */
   {
@@ -165,7 +184,7 @@ const GRAPHICS_BINDING_SOURCES: readonly GraphicsBindingSource[] = [
       loadBaseOnlyHouseRecords(roots, (await readSections(roots, BUILDING_GRAPHICS_FILE)) ?? []),
     read: extractBuildingGraphics,
     dedupe: true,
-    buildTime: true,
+    buildTimeBobs: houseDrawnBobs,
   },
 ];
 
@@ -223,12 +242,19 @@ async function readSections(
  */
 export async function resolveGraphicsBindings(roots: SourceRoots): Promise<GraphicsBindingSet> {
   const bindings: BmdPaletteBinding[] = [];
-  const buildTimeBmds = new Set<string>();
+  const buildTimeBobs = new Map<string, Set<number>>();
   for (const source of GRAPHICS_BINDING_SOURCES) {
     const sections = await (source.load?.(roots) ?? readSections(roots, source.path, source.encrypted));
     if (sections === undefined) continue;
     const records = source.read(sections);
-    if (source.buildTime) for (const record of records) buildTimeBmds.add(record.bmd);
+    for (const { bmd, bobId } of source.buildTimeBobs?.(sections) ?? []) {
+      let bobs = buildTimeBobs.get(bmd);
+      if (bobs === undefined) {
+        bobs = new Set();
+        buildTimeBobs.set(bmd, bobs);
+      }
+      bobs.add(bobId);
+    }
     bindings.push(...(source.dedupe ? dedupeBindings(records) : records));
   }
   bindings.push(FISH_BINDING, GUIDEPOST_BINDING);
@@ -236,6 +262,6 @@ export async function resolveGraphicsBindings(roots: SourceRoots): Promise<Graph
   return {
     bindings,
     palettes: palettesIni ? extractPaletteIndex(palettesIni) : [],
-    buildTimeBmds,
+    buildTimeBobs,
   };
 }

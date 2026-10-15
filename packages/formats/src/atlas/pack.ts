@@ -6,7 +6,7 @@
 
 import { type Bmd, decodeBobFrame } from '../bmd/index.js';
 import type { RgbaImage } from '../image.js';
-import { type AtlasAlphaMode, type BobBake, colouredBake, INDEXED_BAKE, SHADOW_BAKE } from './bake.js';
+import { type BobBake, colouredBake, INDEXED_BAKE, SHADOW_BAKE } from './bake.js';
 
 /** Transparent gutter (in pixels) left between packed frames so sampling can't bleed across them. */
 export const ATLAS_GUTTER = 1;
@@ -34,7 +34,7 @@ export interface AtlasManifest {
   readonly width: number;
   readonly height: number;
   readonly frames: readonly AtlasFrame[];
-  /** Present when the `'build-time'` bake also emitted the sibling `<stem>.build.png` time sheet. */
+  /** Present when a `'build-time'` frame also emitted the sibling `<stem>.build.png` time sheet. */
   readonly build?: true;
 }
 
@@ -49,8 +49,8 @@ export interface BobAtlas {
 export interface PackBobAtlasOptions {
   /** Shelf-packer wrap width (default {@link DEFAULT_ATLAS_MAX_WIDTH}). */
   readonly maxWidth?: number;
-  /** Alpha bake mode (default `'per-pixel'` - see {@link AtlasAlphaMode}). */
-  readonly alpha?: AtlasAlphaMode;
+  /** Bob ids that bake `'build-time'`; every other bob bakes `'per-pixel'` (see `AtlasAlphaMode`). */
+  readonly buildTimeBobs?: ReadonlySet<number>;
 }
 
 /**
@@ -59,8 +59,10 @@ export interface PackBobAtlasOptions {
  * bob id. A frame wider than `maxWidth` is still packed; its row is just wider.
  */
 export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtlasOptions = {}): BobAtlas {
-  const { maxWidth = DEFAULT_ATLAS_MAX_WIDTH, alpha = 'per-pixel' } = options;
-  return packBobAtlasWith(bmd, colouredBake(palette, alpha), maxWidth);
+  const { maxWidth = DEFAULT_ATLAS_MAX_WIDTH, buildTimeBobs } = options;
+  const perPixel = colouredBake(palette, 'per-pixel');
+  const buildTime = colouredBake(palette, 'build-time');
+  return packBobAtlasWith(bmd, (bobId) => (buildTimeBobs?.has(bobId) ? buildTime : perPixel), maxWidth);
 }
 
 /**
@@ -68,7 +70,7 @@ export function packBobAtlas(bmd: Bmd, palette: Uint8Array, options: PackBobAtla
  * pre-baked black-at-`SHADOW_ALPHA` silhouettes, so a cast shadow draws as a plain batched sprite.
  */
 export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
-  return packBobAtlasWith(bmd, SHADOW_BAKE, DEFAULT_ATLAS_MAX_WIDTH);
+  return packBobAtlasWith(bmd, () => SHADOW_BAKE, DEFAULT_ATLAS_MAX_WIDTH);
 }
 
 /**
@@ -77,13 +79,20 @@ export function packShadowBobAtlas(bmd: Bmd): BobAtlas {
  * type-4 bobs' authored feathered translucency survives into the drawn sprite.
  */
 export function packIndexedBobAtlas(bmd: Bmd): BobAtlas {
-  return packBobAtlasWith(bmd, INDEXED_BAKE, DEFAULT_ATLAS_MAX_WIDTH);
+  return packBobAtlasWith(bmd, () => INDEXED_BAKE, DEFAULT_ATLAS_MAX_WIDTH);
 }
 
-function packBobAtlasWith(bmd: Bmd, bake: BobBake, maxWidth: number): BobAtlas {
-  const prepared = prepareFrames(bmd, bake);
+/** Picks the bake of one bob by its id (`bmd.firstBobId + index`). */
+type BakeFor = (bobId: number) => BobBake;
+
+function packBobAtlasWith(bmd: Bmd, bakeFor: BakeFor, maxWidth: number): BobAtlas {
+  const prepared = prepareFrames(bmd, bakeFor);
   const layout = shelfPack(prepared, maxWidth);
-  return emitAtlas(prepared, layout, bake.secondByte === 'time');
+  return emitAtlas(
+    prepared,
+    layout,
+    prepared.some((frame) => frame.timeImage !== undefined),
+  );
 }
 
 /** A frame's pre-packing record: its baked pixels (or `undefined` if 0×0) plus the metadata to emit. */
@@ -102,11 +111,13 @@ interface PreparedFrame {
 
 /** `bobs` is `bobCount` long by the {@link Bmd} contract, so the index guard only discharges the
  *  checked-index `| undefined`. */
-function prepareFrames(bmd: Bmd, bake: BobBake): PreparedFrame[] {
+function prepareFrames(bmd: Bmd, bakeFor: BakeFor): PreparedFrame[] {
   const prepared: PreparedFrame[] = [];
   for (let i = 0; i < bmd.bobCount; i++) {
     const bob = bmd.bobs[i];
     if (bob === undefined) continue;
+    const bobId = bmd.firstBobId + i;
+    const bake = bakeFor(bobId);
     const frame = decodeBobFrame(bmd, i, bake.secondByte);
     const hasPixels = frame.width > 0 && frame.height > 0;
     let opaque = false;
@@ -119,7 +130,7 @@ function prepareFrames(bmd: Bmd, bake: BobBake): PreparedFrame[] {
       }
     }
     prepared.push({
-      bobId: bmd.firstBobId + i,
+      bobId,
       type: bob.type,
       offsetX: bob.area.x,
       offsetY: bob.area.y,

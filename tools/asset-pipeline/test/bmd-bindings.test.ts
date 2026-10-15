@@ -202,26 +202,31 @@ describe('resolveGraphicsBindings', () => {
     expect(bindings[3]?.jobId).toBeUndefined();
   });
 
-  it('claims [GfxHouse] .bmds for the opaque-alpha bake (mod houses.ini leg)', async () => {
+  it('claims the bobs a [GfxHouse] draws for the opaque-alpha bake (mod houses.ini leg)', async () => {
     await mkdir(join(game, 'rules/buildings'), { recursive: true });
     await writeFile(
       join(game, 'rules/buildings', 'houses.ini'),
-      '[GfxHouse]\nEditName "viking home"\n' +
+      '[GfxHouse]\nEditName "viking home"\nLogicTribeType 1\nLogicType 0 2\n' +
         'GfxBobLibs "Data\\Bobs\\ls_houses_viking.bmd" "Data\\Bobs\\ls_houses_viking_s.bmd"\n' +
-        'GfxPalette "house01" "house02"\n',
+        'GfxPalette "house01" "house02"\nGfxBobId 0 1\nGfxBobConstructionLayer 0 0 3 -1 10 70\n' +
+        'GfxOverlay 0 4 0 0 0 1 7 8\n',
     );
 
-    const { bindings, buildTimeBmds } = await resolveGraphicsBindings({ data: game });
+    const { bindings, buildTimeBobs } = await resolveGraphicsBindings({ data: game });
 
-    // Every palette recolour becomes a binding, and the CLAIM is on the .bmd path alone, so the
-    // landscape twins of the same geometry bake opaque too (convertBmdTree keys on the bmd).
+    // Every palette recolour becomes a binding, and the claim is on the .bmd path alone, so the
+    // landscape twins of the same geometry bake opaque too (convertBmdTree keys on the bmd). Only the
+    // body, stage and overlay bobs are claimed; another bob of the file keeps per-pixel alpha.
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/ls_houses_viking.bmd', 'house01'],
       ['data/bobs/ls_houses_viking.bmd', 'house02'],
       FISH_BINDING,
       GUIDEPOST_BINDING,
     ]);
-    expect([...buildTimeBmds]).toEqual(['data/bobs/ls_houses_viking.bmd']);
+    expect([...buildTimeBobs.keys()]).toEqual(['data/bobs/ls_houses_viking.bmd']);
+    expect([...(buildTimeBobs.get('data/bobs/ls_houses_viking.bmd') ?? [])].sort((x, y) => x - y)).toEqual([
+      1, 3, 7, 8,
+    ]);
   });
 
   it('merges every binding skin in source-table order, guidepost last', async () => {
@@ -276,10 +281,11 @@ describe('resolveGraphicsBindings', () => {
     );
     await writeFile(
       join(game, 'rules/buildings', 'houses.ini'),
-      '[GfxHouse]\nEditName "viking home"\n' + 'GfxBobLibs "Data\\Bobs\\Houses.bmd"\nGfxPalette "House01"\n',
+      '[GfxHouse]\nEditName "viking home"\nLogicTribeType 1\nLogicType 0 2\n' +
+        'GfxBobLibs "Data\\Bobs\\Houses.bmd"\nGfxPalette "House01"\nGfxBobId 0 1\n',
     );
 
-    const { bindings, buildTimeBmds } = await resolveGraphicsBindings({ data: game });
+    const { bindings, buildTimeBobs } = await resolveGraphicsBindings({ data: game });
 
     expect(bindings.map((b) => [b.bmd, b.paletteName])).toEqual([
       ['data/bobs/animal.bmd', 'animal01'],
@@ -293,7 +299,7 @@ describe('resolveGraphicsBindings', () => {
       GUIDEPOST_BINDING,
     ]);
     // Only the [GfxHouse] leg claims a build-time bake.
-    expect([...buildTimeBmds]).toEqual(['data/bobs/houses.bmd']);
+    expect([...buildTimeBobs.keys()]).toEqual(['data/bobs/houses.bmd']);
   });
 
   it('returns only the engine-owned bindings with a warning when every source is missing', async () => {
