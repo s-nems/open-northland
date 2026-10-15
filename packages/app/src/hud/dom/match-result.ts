@@ -35,6 +35,18 @@ export interface MatchResultOverlay {
 }
 
 /** The result is permanent; dismissing its window returns to local play or a shared spectator view. */
+/** Whether a script's `Exit` is ignored because the player plays on past a verdict: always on a shared
+ *  clock, and after any verdict except a victory the map's script ends itself. */
+export function keepsPlayingAfterResult(
+  outcome: MatchOutcome,
+  sharedClock: boolean,
+  scriptEndsVictory: boolean,
+): boolean {
+  if (sharedClock) return true;
+  if (outcome === 'victory') return !scriptEndsVictory;
+  return outcome === 'defeat';
+}
+
 export function createMatchResultOverlay(deps: MatchResultDeps): MatchResultOverlay {
   const state = matchResultState();
   let close: (() => void) | null = null;

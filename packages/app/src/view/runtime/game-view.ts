@@ -66,7 +66,11 @@ import type { DiplomacyPanelRow } from '../../hud/dom/diplomacy-window/model.js'
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
 import { createLinkLostScreen, type LinkLostScreen } from '../../hud/dom/link-lost-screen.js';
-import { createMatchResultOverlay, type MatchResultOverlay } from '../../hud/dom/match-result.js';
+import {
+  createMatchResultOverlay,
+  keepsPlayingAfterResult,
+  type MatchResultOverlay,
+} from '../../hud/dom/match-result.js';
 import { mountHudDomRoot } from '../../hud/dom/root.js';
 import { createSystemMenu } from '../../hud/dom/system-menu.js';
 import { type BuildingHoverContext, buildingHoverModel } from '../../hud/hover-card/building.js';
@@ -1071,7 +1075,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       goodLabel: (typeId) => goodLabelByType.get(typeId),
       now: () => performance.now(),
       keepPlayingAfterResult: () =>
-        sharedClock || (!scriptEndsVictory && host.matchOutcome(localPlayer) !== 'undecided'),
+        keepsPlayingAfterResult(host.matchOutcome(localPlayer), sharedClock, scriptEndsVictory),
       exit: () => queueMicrotask(quitToMenu),
     });
 

@@ -3,7 +3,11 @@
 import type { MatchRank } from '@open-northland/sim';
 import { afterEach, expect, it, vi } from 'vitest';
 import { createLinkLostScreen } from '../src/hud/dom/link-lost-screen.js';
-import { createMatchResultOverlay, type MatchResultOverlay } from '../src/hud/dom/match-result.js';
+import {
+  createMatchResultOverlay,
+  keepsPlayingAfterResult,
+  type MatchResultOverlay,
+} from '../src/hud/dom/match-result.js';
 import { formatMessage, messages } from '../src/i18n/index.js';
 
 const overlays: MatchResultOverlay[] = [];
@@ -73,15 +77,25 @@ it('lets a defeated player watch without pausing and inspect the map after the m
   expect(h.body.children).toHaveLength(0);
 });
 
-it('leaves a won mission to a script that ends it, and still reports its defeat', () => {
-  const h = setup(false, () => [], false);
-  h.overlay.onEvents([{ kind: 'playerWon', player: 0 }]);
-  h.overlay.announce('victory');
-  expect(h.body.children).toHaveLength(0);
-  expect(h.pause).not.toHaveBeenCalled();
-  h.overlay.onEvents([{ kind: 'playerDefeated', player: 0 }]);
-  expect(h.body.children).toHaveLength(1);
-  expect(h.pause).toHaveBeenCalledOnce();
+it('leaves a won mission to a script that ends it, and still reports a lost one', () => {
+  const won = setup(false, () => [], false);
+  won.overlay.onEvents([{ kind: 'playerWon', player: 0 }]);
+  won.overlay.announce('victory');
+  expect(won.body.children).toHaveLength(0);
+  expect(won.pause).not.toHaveBeenCalled();
+  const lost = setup(false, () => [], false);
+  lost.overlay.onEvents([{ kind: 'playerDefeated', player: 0 }]);
+  expect(lost.body.children).toHaveLength(1);
+  expect(lost.pause).toHaveBeenCalledOnce();
+});
+
+it('lets a script that ends won missions exit after a victory, but not after a defeat the player watches', () => {
+  const SCRIPT_ENDS_VICTORY = true;
+  expect(keepsPlayingAfterResult('victory', false, SCRIPT_ENDS_VICTORY)).toBe(false);
+  expect(keepsPlayingAfterResult('defeat', false, SCRIPT_ENDS_VICTORY)).toBe(true);
+  expect(keepsPlayingAfterResult('undecided', false, SCRIPT_ENDS_VICTORY)).toBe(false);
+  expect(keepsPlayingAfterResult('victory', false, !SCRIPT_ENDS_VICTORY)).toBe(true);
+  expect(keepsPlayingAfterResult('undecided', true, SCRIPT_ENDS_VICTORY)).toBe(true);
 });
 
 it('lists the goal table ranking in verdict order, naming the roster seat and numbering the rest', () => {
