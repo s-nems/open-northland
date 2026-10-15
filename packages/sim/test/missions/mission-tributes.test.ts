@@ -1,3 +1,4 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
@@ -11,6 +12,7 @@ import { playerCommand, type Simulation } from '../../src/index.js';
 import type { HalfCellNode } from '../../src/nav/halfcell.js';
 import type { MissionDefinition, MissionResultOp } from '../../src/systems/missions/index.js';
 import { SUCCESSFUL_IF } from '../../src/systems/missions/index.js';
+import { testContent } from '../fixtures/content.js';
 import {
   failedResultsUntil,
   firingSim,
@@ -46,6 +48,8 @@ const BREAD = 7;
 const SAWMILL = 2;
 const WAREHOUSE = 7;
 const KITCHEN = 21;
+/** A test-local home type that shelves wood. */
+const HOME = 90;
 /** What the fixture headquarters opens with. */
 const HQ_WOOD = 10;
 const ELSEWHERE = { hx: 8, hy: 8 };
@@ -98,7 +102,11 @@ function clear(slot = SLOT): MissionResultOp {
 }
 
 /** Mission 0 fires the results on the load pass; mission 1 then asks `PayTribute` in the same pass. */
-function tributeSim(results: readonly MissionResultOp[], slot = SLOT): Simulation {
+function tributeSim(
+  results: readonly MissionResultOp[],
+  slot = SLOT,
+  content: ContentSet = testContent(),
+): Simulation {
   const opening: MissionDefinition = {
     successfullIf: SUCCESSFUL_IF.all,
     active: true,
@@ -113,7 +121,19 @@ function tributeSim(results: readonly MissionResultOp[], slot = SLOT): Simulatio
     goals: [{ opcode: 'PayTribute', slot }],
     results: [],
   };
-  return missionSim([opening, asking]);
+  return missionSim([opening, asking], content);
+}
+
+/** The fixture content plus {@link HOME}, a home with a wood shelf. */
+function contentWithHome(): ContentSet {
+  const base = testContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      { typeId: HOME, id: 'home', kind: 'home', stock: [{ goodType: WOOD, capacity: 20 }] },
+    ],
+  });
 }
 
 function paidHolds(sim: Simulation): boolean {
@@ -407,6 +427,39 @@ describe('the payTribute command', () => {
     expect(stockAt(sim, HEADQUARTERS, WOOD)).toBe(HQ_WOOD - 4);
     expect(stockAt(sim, WAREHOUSE, WOOD)).toBe(6);
     expect(tributeSlot(sim.world, SLOT)?.paid).toBe(true);
+  });
+
+  it('drains the headquarters, then a warehouse, then a workplace, and never a home', () => {
+    const sim = tributeSim([create(), demand(PLANK, 9), demand(WOOD, HQ_WOOD + 1)], SLOT, contentWithHome());
+    place(sim, { type: HOME, goods: [{ good: WOOD, amount: 20 }] });
+    place(sim, { type: SAWMILL, at: FAR_CORNER, goods: [{ good: PLANK, amount: 5 }] });
+    place(sim, {
+      type: WAREHOUSE,
+      at: ELSEWHERE,
+      goods: [
+        { good: PLANK, amount: 4 },
+        { good: WOOD, amount: 1 },
+      ],
+    });
+    place(sim, { type: HEADQUARTERS, goods: [{ good: PLANK, amount: 2 }] });
+    sim.run(LOAD_PASS);
+    pay(sim);
+    // The home placed first holds twenty wood yet gives none; the planks run HQ, warehouse, sawmill.
+    expect(stockAt(sim, HOME, WOOD)).toBe(20);
+    expect(stockAt(sim, HEADQUARTERS, PLANK)).toBe(0);
+    expect(stockAt(sim, HEADQUARTERS, WOOD)).toBe(0);
+    expect(stockAt(sim, WAREHOUSE, PLANK)).toBe(0);
+    expect(stockAt(sim, WAREHOUSE, WOOD)).toBe(0);
+    expect(stockAt(sim, SAWMILL, PLANK)).toBe(2);
+    expect(tributeSlot(sim.world, SLOT)?.paid).toBe(true);
+
+    const homeOnly = tributeSim([create(), demand(WOOD, 1)], SLOT, contentWithHome());
+    place(homeOnly, { type: HOME, goods: [{ good: WOOD, amount: 20 }] });
+    homeOnly.run(LOAD_PASS);
+    expect(homeOnly.openTributes(OWNER)[0]).toMatchObject({ demands: [{ onHand: 0 }], payable: false });
+    pay(homeOnly);
+    expect(stockAt(homeOnly, HOME, WOOD)).toBe(20);
+    expect(tributeSlot(homeOnly.world, SLOT)?.paid).toBe(false);
   });
 
   it('takes nothing while the stores cannot cover a demand, and nothing twice', () => {

@@ -776,7 +776,9 @@ A reading of the original's tributes, which the goal `PayTribute` and results 27
   answers with the same stocked good both count it. A food demand is met by the first good of the
   same food class (simple or extra) the house stores, walking the food goods in id order
   (`food_simple` and `food_extra` first, then the dishes), so a warehouse pays bread out of its
-  `food_simple` and a bakery out of its bread.
+  `food_simple` and a bakery out of its bread. Homes, towers and every other house type never count,
+  and no technology or warehouse permission is checked: a payer with neither a warehouse nor a
+  workplace can never pay a slot (byte-level).
 - Paying takes goods out of a copy of the demands, house by house until every demand reaches zero:
   the first house of the headquarters type, then every warehouse in array order, then every
   workplace, each giving what it holds of what is still owed, so a payment can drain several houses
