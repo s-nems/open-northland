@@ -12,6 +12,14 @@ describe('installed map writes from the renderer', () => {
     });
   });
 
+  it('accepts a briefing voice and refuses one in another language folder', () => {
+    expect(parseInstalledMapFileWrite('island', '.voice-pol-0001.wav', BYTES).suffix).toBe(
+      '.voice-pol-0001.wav',
+    );
+    expect(() => parseInstalledMapFileWrite('island', '.voice-../0001.wav', BYTES)).toThrow(/suffix/);
+    expect(() => parseInstalledMapFileWrite('island', '.voice-xyz-0001.wav', BYTES)).toThrow(/suffix/);
+  });
+
   it.each([
     ['a path in the id', '../escape', '.json', BYTES, /map id/],
     ['a separator in the id', 'a/b', '.json', BYTES, /map id/],

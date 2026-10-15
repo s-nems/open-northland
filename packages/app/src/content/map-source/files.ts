@@ -1,4 +1,10 @@
-import type { MapBriefing } from '@open-northland/data';
+import {
+  BRIEFING_VOICE_SUFFIX,
+  type BriefingVoice,
+  briefingVoiceSuffix,
+  briefingVoices,
+  type MapBriefing,
+} from '@open-northland/data';
 
 /** The sidecars a converted map ships under `/maps/<id><suffix>`: terrain, the four optional JSON
  *  sidecars and the authored picture. The pipeline's `.map.png` minimap is not among them, since a
@@ -11,13 +17,30 @@ export const MAP_FILE_SUFFIXES = [
   '.briefing.json',
   '.png',
 ] as const;
-export type MapFileSuffix = (typeof MAP_FILE_SUFFIXES)[number] | `.pictures-${string}.png`;
+export type MapFileSuffix =
+  | (typeof MAP_FILE_SUFFIXES)[number]
+  | `.pictures-${string}.png`
+  | `.voice-${string}.wav`;
 const BRIEFING_PICTURE_SUFFIX = /^\.pictures-[0-9a-f]{16}\.png$/;
 export function isMapFileSuffix(value: unknown): value is MapFileSuffix {
   return (
     typeof value === 'string' &&
-    (MAP_FILE_SUFFIXES.some((suffix) => suffix === value) || BRIEFING_PICTURE_SUFFIX.test(value))
+    (MAP_FILE_SUFFIXES.some((suffix) => suffix === value) ||
+      BRIEFING_PICTURE_SUFFIX.test(value) ||
+      BRIEFING_VOICE_SUFFIX.test(value))
   );
+}
+
+/** The stored suffix of one briefing voice. */
+export function voiceFileSuffix(voice: BriefingVoice): MapFileSuffix {
+  const suffix = briefingVoiceSuffix(voice);
+  if (!isMapFileSuffix(suffix)) throw new Error(`Invalid briefing voice ${suffix}`);
+  return suffix;
+}
+
+/** The voice files any language's pages speak; a map may ship none of them. */
+export function briefingVoiceSuffixes(briefing: MapBriefing): MapFileSuffix[] {
+  return briefingVoices(briefing).map(voiceFileSuffix);
 }
 
 /** Where the app reads a map's files, whichever store actually holds them. */
@@ -28,11 +51,14 @@ export function mapFilePath(mapId: string, suffix: MapFileSuffix): string {
 }
 
 const PICTURE_SUFFIX: MapFileSuffix = '.png';
+const WAV_EXTENSION = '.wav';
 const JSON_TYPE = 'application/json';
 const PNG_TYPE = 'image/png';
+const WAV_TYPE = 'audio/wav';
 
 export function mapFileContentType(suffix: MapFileSuffix): string {
-  return suffix.endsWith(PICTURE_SUFFIX) ? PNG_TYPE : JSON_TYPE;
+  if (suffix.endsWith(PICTURE_SUFFIX)) return PNG_TYPE;
+  return suffix.endsWith(WAV_EXTENSION) ? WAV_TYPE : JSON_TYPE;
 }
 
 /** Reads one stored file of a map, or null when the map has none with that suffix. */

@@ -28,6 +28,7 @@ import { minimapToPng } from './minimap.js';
 import { resolveMapScript } from './script.js';
 import { type MapDatTerrainFile, mapDatToTerrain } from './terrain/index.js';
 import type { MapTree } from './tree.js';
+import { resolveBriefingVoices } from './voices.js';
 
 export type MapProvenanceKind = MapProvenance['kind'];
 
@@ -105,6 +106,8 @@ export interface ConvertedMap {
   readonly minimap?: Uint8Array;
   /** The briefing pages' pictures by file name, served from `gui/hypertext/`. */
   readonly pictures: ReadonlyMap<string, Uint8Array>;
+  /** `maps/<id><suffix>`: the briefing's spoken lines the folder ships, by `briefingVoiceSuffix`. */
+  readonly voices: ReadonlyMap<string, Uint8Array>;
   /** The map's `maps-index.json` row. */
   readonly index: MapsIndexEntry;
   /** The `[StaticObjects]` verbs the decoder skipped because it does not know them, sorted. */
@@ -301,6 +304,7 @@ export async function convertMapFolder(
     ...(picture === undefined ? {} : { picture }),
     ...(minimap === undefined ? {} : { minimap }),
     pictures: resolved?.pictures ?? new Map(),
+    voices: resolved === undefined ? new Map() : resolveBriefingVoices(folder, resolved.briefing),
     index: mapsIndexEntry({
       id,
       fingerprint: servedFingerprint(terrain, script),

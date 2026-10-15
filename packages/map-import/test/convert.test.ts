@@ -248,14 +248,56 @@ describe('mapFiles', () => {
     ]);
     expect(files.get('arena.meta.json')).toBe(`${JSON.stringify(map.meta)}\n`);
   });
+
+  it('keeps the briefing voices the pages speak and the folder ships, per language', async () => {
+    const wav = latin1('RIFF\x04\0\0\0WAVE');
+    const tree = treeOf({
+      ...plaintextMap('Voiced'),
+      'mission.inc': '[MissionData]\ndebuginfo "Briefing"\nresult "PlayCutscene" 0 1\n',
+      'text/pol/briefings/0000.hlt': '<onscreencallback:2000,1,0>\nslowo\n<onscreencallback:2000,2,0>\n',
+      'text/pol/briefings/briefings.txt': '',
+      'text/eng/briefings/0000.hlt': '<onscreencallback:2000,3,0>\nword\n',
+      'text/eng/briefings/briefings.txt': '',
+      'SFX/POL/0001.wav': wav,
+      'sfx/eng/0003.wav': latin1('not a wav'),
+      'sfx/pol/0009.wav': wav,
+    });
+    const warnings: string[] = [];
+    const map = await convertMapFolder(tree, '', {
+      provenance: 'user',
+      rootName: 'Voiced',
+      onWarning: (message) => warnings.push(message),
+    });
+    expect([...map.voices.keys()]).toEqual(['.voice-pol-0001.wav']);
+    expect(mapFiles(map).get('voiced.voice-pol-0001.wav')).toBe(wav);
+    expect(warnings).toEqual([expect.stringContaining('sfx/eng/0003.wav is not a wav')]);
+  });
 });
 
 describe('treeFromFolder', () => {
   it('reads only the files a conversion knows', async () => {
     const read = vi.fn(async (path: string) => latin1(path));
-    const tree = await treeFromFolder(['Map\\map.dat', 'Map/readme.txt', 'Map/Text/POL/strings.ini'], read);
-    expect(read.mock.calls.map(([path]) => path)).toEqual(['Map\\map.dat', 'Map/Text/POL/strings.ini']);
-    expect([...tree.names.values()]).toEqual(['Map/map.dat', 'Map/Text/POL/strings.ini']);
+    const tree = await treeFromFolder(
+      [
+        'Map\\map.dat',
+        'Map/readme.txt',
+        'Map/Text/POL/strings.ini',
+        'Map/SFX/pol/0001.wav',
+        'Map/sfx/pol/intro.wav',
+        'Map/sfx/xyz/0002.wav',
+      ],
+      read,
+    );
+    expect(read.mock.calls.map(([path]) => path)).toEqual([
+      'Map\\map.dat',
+      'Map/Text/POL/strings.ini',
+      'Map/SFX/pol/0001.wav',
+    ]);
+    expect([...tree.names.values()]).toEqual([
+      'Map/map.dat',
+      'Map/Text/POL/strings.ini',
+      'Map/SFX/pol/0001.wav',
+    ]);
   });
 });
 

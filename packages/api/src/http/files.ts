@@ -1,7 +1,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { pipeline } from 'node:stream/promises';
 import { createGunzip } from 'node:zlib';
-import { CATALOG_MAP_ID } from '@open-northland/data';
+import { BRIEFING_VOICE_SUFFIX, CATALOG_MAP_ID } from '@open-northland/data';
 import { MAP_FILE_SUFFIXES } from '@open-northland/map-import';
 import { jsonBody } from '../catalog/snapshot.js';
 import { acceptsGzip } from './encoding.js';
@@ -19,10 +19,14 @@ const CONTENT_SUFFIXES: readonly string[] = Object.entries(MAP_FILE_SUFFIXES)
   .map(([, suffix]) => suffix)
   .sort((a, b) => b.length - a.length);
 const PNG_SUFFIX = '.png';
+const WAV_SUFFIX = '.wav';
 const BRIEFING_PICTURE_SUFFIX = /\.pictures-[0-9a-f]{16}\.png$/;
+/** A briefing voice's suffix, found in a file name rather than matched whole. */
+const BRIEFING_VOICE_IN_NAME = new RegExp(BRIEFING_VOICE_SUFFIX.source.slice(1));
 /** Stable map URLs can name a new conversion; caches must validate before reusing their bytes. */
 const CONTENT_CACHE = 'public, no-cache';
 const PNG_TYPE = 'image/png';
+const WAV_TYPE = 'audio/wav';
 const GZIP = 'gzip';
 /** The catalogue names a kept file by a URL carrying its hash, like a thumbnail. */
 const KEPT_FILE_CACHE = 'public, max-age=86400';
@@ -33,10 +37,10 @@ const UNQUOTABLE = /[^\x20-\x7e]|["\\]/g;
 
 /** The map id and suffix of a content file name, or null unless both are valid. */
 function contentName(fileName: string): { mapId: string; suffix: string } | null {
-  const picture = BRIEFING_PICTURE_SUFFIX.exec(fileName);
-  if (picture !== null) {
-    const mapId = fileName.slice(0, picture.index);
-    return CATALOG_MAP_ID.test(mapId) ? { mapId, suffix: picture[0] } : null;
+  const sidecar = BRIEFING_PICTURE_SUFFIX.exec(fileName) ?? BRIEFING_VOICE_IN_NAME.exec(fileName);
+  if (sidecar !== null) {
+    const mapId = fileName.slice(0, sidecar.index);
+    return CATALOG_MAP_ID.test(mapId) ? { mapId, suffix: sidecar[0] } : null;
   }
   for (const suffix of CONTENT_SUFFIXES) {
     if (!fileName.endsWith(suffix)) continue;
@@ -84,7 +88,11 @@ export async function serveContent(
     const headers: Record<string, string> = {
       ...V1_HEADERS,
       'cache-control': CONTENT_CACHE,
-      'content-type': name.suffix.endsWith(PNG_SUFFIX) ? PNG_TYPE : JSON_TYPE,
+      'content-type': name.suffix.endsWith(PNG_SUFFIX)
+        ? PNG_TYPE
+        : name.suffix.endsWith(WAV_SUFFIX)
+          ? WAV_TYPE
+          : JSON_TYPE,
       'x-content-type-options': 'nosniff',
       vary: 'Accept-Encoding',
       etag: file.etag,

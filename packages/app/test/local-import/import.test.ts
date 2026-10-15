@@ -166,13 +166,16 @@ describe('local conversion and retained sources', () => {
       store.install('catalog', [{ record: catalog, files: firstMap.files }]),
     ).rejects.toBeInstanceOf(MapStorageFullError);
   });
-  it('keeps and serves decoded briefing pictures with the generated files', async () => {
+  it('keeps and serves decoded briefing pictures and spoken lines with the generated files', async () => {
     const files = bytes();
     files['mission.inc'] = new TextEncoder().encode('[MissionData]\nresult "PlayCutscene" 0 1\n');
     files['text/pol/briefings/briefings.txt'] = new TextEncoder().encode(
       '[blockstart:0]\nText\n[blockend:0]',
     );
-    files['text/pol/briefings/0000.hlt'] = new TextEncoder().encode('<picture:$local$\\graphics\\map.pcx>');
+    files['text/pol/briefings/0000.hlt'] = new TextEncoder().encode(
+      '<onscreencallback:2000,1,0>\n<picture:$local$\\graphics\\map.pcx>',
+    );
+    files['sfx/pol/0001.wav'] = new TextEncoder().encode('RIFF\u0004\u0000\u0000\u0000WAVE');
     files['text/pol/briefings/graphics/map.pcx'] = encodePcx({
       width: 2,
       height: 1,
@@ -192,6 +195,8 @@ describe('local conversion and retained sources', () => {
     const response = await store.fetchFor(map.record)(`/maps/${map.record.mapId}${suffix}`);
     expect(response.headers.get('content-type')).toBe('image/png');
     expect(new Uint8Array(await response.arrayBuffer()).slice(1, 4)).toEqual(new TextEncoder().encode('PNG'));
+    const voice = await store.fetchFor(map.record)(`/maps/${map.record.mapId}.voice-pol-0001.wav`);
+    expect(voice.headers.get('content-type')).toBe('audio/wav');
     expect(map.record.size).toBe([...map.files.values()].reduce((sum, data) => sum + data.byteLength, 0));
     await store.remove(map.record.entryId);
     expect(backing.files.size).toBe(0);

@@ -21,7 +21,10 @@ import {
   zipOf,
 } from './support/conversion-fixture.js';
 
-it('converts, serves and installs briefing pictures for offline use, scoped to their map', async () => {
+/** A RIFF WAVE header with no samples: what the conversion keeps and the store serves as `audio/wav`. */
+const WAV = new Uint8Array([...'RIFF\x04\0\0\0WAVE'].map((c) => c.charCodeAt(0)));
+
+it('converts, serves and installs briefing pictures and voices for offline use, scoped to their map', async () => {
   const dir = await temporaryDir();
   const entryId = 'cn-briefing';
   const mapId = `${entryId}-island`;
@@ -33,7 +36,8 @@ it('converts, serves and installs briefing pictures for offline use, scoped to t
         ...plaintextMap('Island'),
         'mission.inc': '[MissionData]\ngoal "Time" 0\nresult "PlayCutscene" 500 1\n',
         'text/pol/briefings/briefings.txt': '[blockstart:500]\nOpis\n[blockend:500]\n',
-        'text/pol/briefings/0500.hlt': '<picture:$local$\\graphics\\map.pcx>',
+        'text/pol/briefings/0500.hlt': '<onscreencallback:2000,1,0>\n<picture:$local$\\graphics\\map.pcx>',
+        'sfx/pol/0001.wav': WAV,
         'text/pol/briefings/graphics/map.pcx': encodePcx({
           width: 3,
           height: 2,
@@ -74,17 +78,23 @@ it('converts, serves and installs briefing pictures for offline use, scoped to t
     expect((await head.arrayBuffer()).byteLength).toBe(0);
     expect((await fetch(`${api}/v1/content/${IR_VERSION}/maps/cn-other${suffix}`)).status).toBe(404);
     expect((await fetch(`${base}.pictures-invalid.png`)).status).toBe(404);
+    const voice = await fetch(`${base}.voice-pol-0001.wav`);
+    expect(voice.headers.get('content-type')).toBe('audio/wav');
+    expect(new Uint8Array(await voice.arrayBuffer())).toEqual(WAV);
     const memory = memoryInstalledStorage();
     const installed = createInstalledMapStore(memory.storage, { budget: null });
     const records = await installCatalogEntry(entry, { api, store: installed });
     const record = records[0];
     if (record === undefined) throw new Error('missing installed record');
     expect(record.suffixes).toContain(suffix);
+    expect(record.suffixes).toContain('.voice-pol-0001.wav');
     // Reload the persisted store without consulting the API.
     const reloaded = createInstalledMapStore(memory.storage, { budget: null });
     const offline = await reloaded.fetchFor(record)(`/maps/${mapId}${suffix}`);
     expect(offline.headers.get('content-type')).toBe('image/png');
     expect(new Uint8Array(await offline.arrayBuffer())).toEqual(png);
+    const offlineVoice = await reloaded.fetchFor(record)(`/maps/${mapId}.voice-pol-0001.wav`);
+    expect(offlineVoice.headers.get('content-type')).toBe('audio/wav');
   } finally {
     await server.close();
     await conversion.service.stop();

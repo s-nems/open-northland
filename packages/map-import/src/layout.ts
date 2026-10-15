@@ -41,6 +41,9 @@ export const HYPERTEXT_GRAPHICS_DIR = 'graphics';
 /** The window opens cutscene `id` as the page `%4.4d.hlt`, which includes its text from `briefings.txt`. */
 export const HLT_PAGE_DIGITS = 4;
 const HLT_EXTENSION = '.hlt';
+/** A briefing's spoken lines, `sfx/<lang>/NNNN.wav` beside `text/`. */
+export const VOICE_DIR = 'sfx';
+const VOICE_FILE = /^\d{4,}\.wav$/;
 
 /** The `NNNN.hlt` page file name of one cutscene id. */
 export function hltPageFile(id: number): string {
@@ -64,6 +67,8 @@ export function isMapFile(path: string): boolean {
   const n = parts.length;
   if (MAP_FOLDER_FILES.has(parts[n - 1] ?? '')) return true;
   if (parts[n - 2] === PICTURE_PATH[0] && parts[n - 1] === PICTURE_PATH[1]) return true;
+  if (parts[n - 3] === VOICE_DIR && LANGUAGES.has(parts[n - 2] ?? ''))
+    return VOICE_FILE.test(parts[n - 1] ?? '');
   const text = parts.lastIndexOf(STRING_TABLE_DIR);
   if (text < 0 || !LANGUAGES.has(parts[text + 1] ?? '')) return false;
   const rest = parts.slice(text + 2);

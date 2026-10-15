@@ -13,7 +13,12 @@ export const INSTALLED_MAP_SUFFIXES = [
   '.json',
   '.png',
 ] as const;
-export type InstalledMapSuffix = (typeof INSTALLED_MAP_SUFFIXES)[number] | `.pictures-${string}.png`;
+export type InstalledMapSuffix =
+  | (typeof INSTALLED_MAP_SUFFIXES)[number]
+  | `.pictures-${string}.png`
+  | `.voice-${string}.wav`;
+/** A briefing picture or spoken line, named as the app's map store names them. */
+const BRIEFING_FILE_SUFFIX = /^(?:\.pictures-[0-9a-f]{16}\.png|\.voice-(?:pol|eng|ger|rus)-\d{4,}\.wav)$/;
 
 /** The app's own cap on one map document; a picture is far smaller. */
 export const MAX_INSTALLED_MAP_FILE_BYTES = 64 * 1024 * 1024;
@@ -30,8 +35,7 @@ export function parseInstalledMapId(value: unknown): string {
 }
 
 export function parseInstalledMapSuffix(value: unknown): InstalledMapSuffix {
-  if (typeof value === 'string' && /^\.pictures-[0-9a-f]{16}\.png$/.test(value))
-    return value as InstalledMapSuffix;
+  if (typeof value === 'string' && BRIEFING_FILE_SUFFIX.test(value)) return value as InstalledMapSuffix;
   const suffix = INSTALLED_MAP_SUFFIXES.find((candidate) => candidate === value);
   if (suffix === undefined) throw new Error('Invalid map file suffix');
   return suffix;

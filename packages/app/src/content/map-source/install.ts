@@ -20,7 +20,12 @@ import {
   convertedMaps,
   fetchCatalogEntry,
 } from './api.js';
-import { briefingPictureSuffixes, MAP_FILE_SUFFIXES, type MapFileSuffix } from './files.js';
+import {
+  briefingPictureSuffixes,
+  briefingVoiceSuffixes,
+  MAP_FILE_SUFFIXES,
+  type MapFileSuffix,
+} from './files.js';
 import { INSTALLED_MAP_RECORD_VERSION, type InstallableMap, type InstalledMapRecord } from './installed.js';
 import { boundedMapPicture } from './picture.js';
 import { type InstalledMapStore, installedMapStore } from './store.js';
@@ -29,13 +34,21 @@ import { type InstalledMapStore, installedMapStore } from './store.js';
 export const MAX_MAP_PICTURE_BYTES = 16 * 1024 * 1024;
 /** One map may contain many pages; their images share a bounded download budget. */
 const MAX_BRIEFING_PICTURES_BYTES = 64 * 1024 * 1024;
+/** One spoken briefing line; the longest shipped one is about a minute of ADPCM, under 2 MB. */
+const MAX_BRIEFING_VOICE_BYTES = 16 * 1024 * 1024;
+/** A map's spoken lines share one download budget. */
+const MAX_BRIEFING_VOICES_BYTES = 128 * 1024 * 1024;
 /** Bounds one in-memory installation, including all maps and their pictures. */
 const MAX_CATALOG_INSTALL_BYTES = 512 * 1024 * 1024;
 
 const TERRAIN: MapFileSuffix = '.json';
 const SCRIPT: MapFileSuffix = '.script.json';
 const PICTURE: MapFileSuffix = '.png';
+const VOICE_EXTENSION = '.wav';
 const HTTP_NOT_FOUND = 404;
+
+/** A plain sidecar or the terrain, a briefing picture the pages require, or a voice a map may lack. */
+type SidecarKind = 'document' | 'picture' | 'voice';
 
 export type CatalogInstallFailure = 'notConverted' | 'otherVersion' | 'download' | 'verify';
 
@@ -105,6 +118,8 @@ function checkSidecar(suffix: MapFileSuffix, bytes: Uint8Array, url: string): vo
     if (!boundedMapPicture(bytes)) throw new CatalogInstallError('verify', `${url} is not a PNG`);
     return;
   }
+  // A voice is a wav the narration decodes when it plays; one that does not decode stays silent.
+  if (suffix.endsWith(VOICE_EXTENSION)) return;
   const value = json(bytes, url);
   const parsed =
     suffix === '.meta.json'
@@ -154,8 +169,10 @@ export async function installCatalogEntry(
       options.signal === undefined ? download.signal : AbortSignal.any([download.signal, options.signal]),
     );
     let pictures: MapFileSuffix[] = [];
+    let voices: MapFileSuffix[] = [];
     let pictureBytes = 0;
-    const fetchSidecar = async (suffix: MapFileSuffix, required = false): Promise<void> => {
+    let voiceBytes = 0;
+    const fetchSidecar = async (suffix: MapFileSuffix, kind: SidecarKind = 'document'): Promise<void> => {
       const url = catalogSidecarUrl(options.api, irVersion, map.mapId, suffix);
       let response: Response;
       try {
@@ -163,27 +180,38 @@ export async function installCatalogEntry(
       } catch (error) {
         throw new CatalogInstallError('download', `${url}: ${String(error)}`);
       }
-      if (response.status === HTTP_NOT_FOUND && suffix !== TERRAIN && !required) {
+      if (response.status === HTTP_NOT_FOUND && suffix !== TERRAIN && kind !== 'picture') {
         await response.body?.cancel();
       } else {
         if (!response.ok) throw new CatalogInstallError('download', `${url}: HTTP ${response.status}`);
         const bytes = await readCapped(
           response,
-          suffix.endsWith(PICTURE) ? MAX_MAP_PICTURE_BYTES : MAX_MAP_DOCUMENT_BYTES,
+          kind === 'voice'
+            ? MAX_BRIEFING_VOICE_BYTES
+            : suffix.endsWith(PICTURE)
+              ? MAX_MAP_PICTURE_BYTES
+              : MAX_MAP_DOCUMENT_BYTES,
           url,
         );
         downloadedBytes += bytes.byteLength;
         if (downloadedBytes > MAX_CATALOG_INSTALL_BYTES)
           throw new CatalogInstallError('download', `${entry.id} exceeds the installation size limit`);
         checkSidecar(suffix, bytes, url);
-        if (required) {
+        if (kind === 'picture') {
           pictureBytes += bytes.byteLength;
           if (pictureBytes > MAX_BRIEFING_PICTURES_BYTES)
             throw new CatalogInstallError('download', `${map.mapId} briefing pictures exceed the size limit`);
         }
+        if (kind === 'voice') {
+          voiceBytes += bytes.byteLength;
+          if (voiceBytes > MAX_BRIEFING_VOICES_BYTES)
+            throw new CatalogInstallError('download', `${map.mapId} briefing voices exceed the size limit`);
+        }
         if (suffix === '.briefing.json') {
-          pictures = briefingPictureSuffixes(MapBriefing.parse(json(bytes, url)));
-          total += pictures.length;
+          const briefing = MapBriefing.parse(json(bytes, url));
+          pictures = briefingPictureSuffixes(briefing);
+          voices = briefingVoiceSuffixes(briefing);
+          total += pictures.length + voices.length;
         }
         files.set(suffix, bytes);
       }
@@ -197,7 +225,11 @@ export async function installCatalogEntry(
       // Page documents supply the allowlist; never fetch authored URLs or paths.
       for (const suffix of pictures) {
         signal.throwIfAborted();
-        await fetchSidecar(suffix, true);
+        await fetchSidecar(suffix, 'picture');
+      }
+      for (const suffix of voices) {
+        signal.throwIfAborted();
+        await fetchSidecar(suffix, 'voice');
       }
     } catch (error) {
       // Failed installs must not leave sibling requests reporting progress into a later retry.
@@ -219,7 +251,7 @@ export async function installCatalogEntry(
     }
     if (fingerprint !== map.fingerprint)
       throw new CatalogInstallError('verify', `${map.mapId} does not match the catalogue's fingerprint`);
-    const suffixes = [...MAP_FILE_SUFFIXES, ...pictures].filter((suffix) => files.has(suffix));
+    const suffixes = [...MAP_FILE_SUFFIXES, ...pictures, ...voices].filter((suffix) => files.has(suffix));
     installable.push({
       record: {
         version: INSTALLED_MAP_RECORD_VERSION,

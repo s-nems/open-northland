@@ -11,7 +11,7 @@ export const MAP_FILE_SUFFIXES = {
   minimap: '.map.png',
 } as const;
 
-/** Every file name a map with this id can own under `maps/`. */
+/** Every fixed file name a map with this id can own under `maps/`; its voices' names vary. */
 export function mapFileNames(id: string): string[] {
   return Object.values(MAP_FILE_SUFFIXES).map((suffix) => `${id}${suffix}`);
 }
@@ -32,5 +32,6 @@ export function mapFiles(map: ConvertedMap): Map<string, string | Uint8Array> {
   if (map.briefing !== undefined) files.set(`${map.id}${MAP_FILE_SUFFIXES.briefing}`, jsonFile(map.briefing));
   if (map.picture !== undefined) files.set(`${map.id}${MAP_FILE_SUFFIXES.picture}`, map.picture);
   if (map.minimap !== undefined) files.set(`${map.id}${MAP_FILE_SUFFIXES.minimap}`, map.minimap);
+  for (const [suffix, wav] of map.voices) files.set(`${map.id}${suffix}`, wav);
   return files;
 }

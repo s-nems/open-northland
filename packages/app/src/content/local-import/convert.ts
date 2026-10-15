@@ -120,6 +120,10 @@ export async function prepareLocalImport(
       if (!isMapFileSuffix(suffix)) throw new Error('Invalid briefing picture name');
       files.set(suffix, bytes);
     }
+    for (const [suffix, bytes] of map.voices) {
+      if (!isMapFileSuffix(suffix)) throw new Error('Invalid briefing voice name');
+      files.set(suffix, bytes);
+    }
     return {
       record: {
         version: INSTALLED_MAP_RECORD_VERSION,
