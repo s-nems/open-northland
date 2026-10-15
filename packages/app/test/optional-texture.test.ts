@@ -42,9 +42,17 @@ function warnings(): readonly { message: string; channel: string; data?: unknown
     .map((e) => ({ message: e.message, channel: e.channel, data: e.data }));
 }
 
-function serveHead(status: number): void {
-  vi.stubGlobal('fetch', (() => Promise.resolve(new Response(null, { status }))) as typeof fetch);
+/** Serve `status` to the HEAD probe and count the probes. */
+function serveHead(status: number): { readonly probes: number } {
+  const counter = { probes: 0 };
+  vi.stubGlobal('fetch', (() => {
+    counter.probes++;
+    return Promise.resolve(new Response(null, { status }));
+  }) as typeof fetch);
+  return counter;
 }
+
+const absentFromServer = (): Promise<never> => Promise.reject(new Error('404 Not Found'));
 
 beforeEach(() => {
   ringBefore = diag.entries().length;
@@ -56,15 +64,17 @@ afterEach(() => {
 });
 
 describe('loading an optional texture', () => {
-  it('returns the texture the server serves', async () => {
-    serveHead(200);
+  it('returns the texture the server serves without a probe request', async () => {
+    const head = serveHead(200);
 
     await expect(loadTextureIfPresent(LUT_URL)).resolves.toMatchObject({ label: LUT_URL });
+    expect(head.probes).toBe(0);
     expect(warnings()).toEqual([]);
   });
 
   it('degrades silently when the pipeline has not produced it', async () => {
     serveHead(404);
+    source.load = absentFromServer;
 
     await expect(loadTextureIfPresent(LUT_URL)).resolves.toBeUndefined();
     expect(warnings()).toEqual([]);
@@ -73,6 +83,7 @@ describe('loading an optional texture', () => {
   it('degrades with a warning when the request itself fails', async () => {
     const failure = new Error('transport failed');
     vi.stubGlobal('fetch', (() => Promise.reject(failure)) as typeof fetch);
+    source.load = () => Promise.reject(failure);
 
     await expect(loadTextureIfPresent(LUT_URL)).resolves.toBeUndefined();
     expect(warnings()).toEqual([

@@ -23,20 +23,29 @@ export async function fetchJsonOrNull<T>(url: string, fetchImpl: typeof fetch = 
 }
 
 /**
- * Load a texture if the server has it (HEAD probe), else `undefined` so the caller degrades. Never
- * rejects: `undefined` is the only failure signal its callers read.
+ * Load a texture if the server has it, else `undefined` so the caller degrades. Never rejects:
+ * `undefined` is the only failure signal its callers read. Only a failed load pays for a HEAD probe,
+ * which tells expected absence (quiet) from a broken file or transport (warned).
  */
 export async function loadTextureIfPresent(
   url: string,
   scaleMode: 'nearest' | 'linear' = 'nearest',
 ): Promise<TextureSource | undefined> {
   try {
-    const res = await fetch(url, { method: 'HEAD' });
-    if (!res.ok) return undefined;
     return await loadAtlasSource(url, scaleMode);
   } catch (err) {
+    if (!(await isServed(url))) return undefined;
     diag.warn('content', `net: optional texture ${url} failed to load; its caller falls back`, err);
     return undefined;
+  }
+}
+
+/** False only when the server answers that `url` is absent; an unreachable server counts as served. */
+async function isServed(url: string): Promise<boolean> {
+  try {
+    return (await fetch(url, { method: 'HEAD' })).ok;
+  } catch {
+    return true;
   }
 }
 
