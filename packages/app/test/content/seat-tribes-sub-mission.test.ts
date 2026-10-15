@@ -104,11 +104,7 @@ describe.runIf(hasRealIr())(`${PARENT} played as franks through its sub-mission`
       ]),
     );
     const { map: childMap, script: childScript } = readMap(CHILD);
-    const seating = sessionSeating(
-      mapSession(childSearch, mapLobbySlots(childScript)),
-      childScript.players,
-      ir,
-    );
+    const seating = sessionSeating(mapSession(childSearch, mapLobbySlots(childScript)), childScript, ir);
     expect(seating.players.find((row) => row.player === HUMAN_SEAT)?.tribeId).toBe(FRANK);
     expect(worldTribes(seating, childMap.entities, ir, seating.remap)).toEqual(
       expect.arrayContaining([VIKING, FRANK, BYZANTINE]),

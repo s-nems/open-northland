@@ -1,4 +1,9 @@
-import { isCivilizationTribe as isCivilization, type MapAiSeat, type MapScript } from '@open-northland/data';
+import {
+  decodeMissionResult,
+  isCivilizationTribe as isCivilization,
+  type MapAiSeat,
+  type MapScript,
+} from '@open-northland/data';
 import type { GameSession } from '@open-northland/lockstep';
 import { type MissionHouseRef, type MissionScript, systems } from '@open-northland/sim';
 import type { AuthoredPlacement } from './world/authored-placements.js';
@@ -9,22 +14,62 @@ import { mapScriptWorld } from './world/mission-script.js';
 /** Seat to the civilization the lobby chose for it, for the seats whose choice differs from the map's. */
 export type SeatTribes = ReadonlyMap<number, number>;
 
+/** The roster and script lines that decide which seats play another civilization. */
+export type SeatScript = Pick<MapScript, 'players' | 'missions'>;
+
 /**
  * The seats the session plays as another civilization than the map's roster row names. A monster seat
  * has no civilization to trade, so it keeps its own tribe whatever the session carries.
  */
-export function sessionSeatTribes(
-  session: Pick<GameSession, 'seats'>,
-  players: MapScript['players'],
-): SeatTribes {
+export function sessionSeatTribes(session: Pick<GameSession, 'seats'>, script: SeatScript): SeatTribes {
   const chosen = new Map<number, number>();
   for (const seat of session.seats) {
     if (seat.tribe === undefined || !isCivilization(seat.tribe)) continue;
-    const authored = players.find((row) => row.player === seat.player)?.tribeId;
+    const authored = script.players.find((row) => row.player === seat.player)?.tribeId;
     if (authored === undefined || !isCivilization(authored) || authored === seat.tribe) continue;
     chosen.set(seat.player, seat.tribe);
   }
+  if (chosen.size > 0) addHandedSeats(chosen, session, script);
   return chosen;
+}
+
+/**
+ * A map-AI seat the script hands whole to a re-tribed seat (`ChangePlayerPlayerId`) holds that seat's
+ * own people staged elsewhere, such as the settlers waiting aboard an opening ship, so it takes the
+ * seat's civilization too. A monster seat, or one the session itself plays or names a tribe for, keeps
+ * its own.
+ */
+function addHandedSeats(
+  chosen: Map<number, number>,
+  session: Pick<GameSession, 'seats'>,
+  script: SeatScript,
+): void {
+  const handovers: { readonly from: number; readonly to: number }[] = [];
+  for (const mission of script.missions) {
+    for (const line of mission.results) {
+      const op = decodeMissionResult(line);
+      if (op.opcode === 'ChangePlayerPlayerId') handovers.push({ from: op.player, to: op.otherPlayer });
+    }
+  }
+  const stagingSeat = (player: number): boolean => {
+    const authored = script.players.find((row) => row.player === player)?.tribeId;
+    const seat = session.seats.find((s) => s.player === player);
+    return (
+      authored !== undefined &&
+      isCivilization(authored) &&
+      (seat === undefined || (seat.mode === 'map-ai' && seat.tribe === undefined))
+    );
+  };
+  let grew = true;
+  while (grew) {
+    grew = false;
+    for (const { from, to } of handovers) {
+      const tribe = chosen.get(to);
+      if (tribe === undefined || chosen.has(from) || !stagingSeat(from)) continue;
+      chosen.set(from, tribe);
+      grew = true;
+    }
+  }
 }
 
 /**
@@ -198,11 +243,12 @@ export interface SessionSeating {
 
 export function sessionSeating(
   session: Pick<GameSession, 'seats'>,
-  players: MapScript['players'],
+  script: SeatScript | null,
   rows: Pick<AuthoredJoinRows, 'buildingBobs' | 'jobs'>,
 ): SessionSeating {
-  const seatTribes = sessionSeatTribes(session, players);
-  return { players: seatedRoster(players, seatTribes), remap: seatTribeRemap(seatTribes, rows) };
+  if (script === null) return { players: [], remap: MAP_TRIBES };
+  const seatTribes = sessionSeatTribes(session, script);
+  return { players: seatedRoster(script.players, seatTribes), remap: seatTribeRemap(seatTribes, rows) };
 }
 
 /** What a session builds its map world from: the seated script, its resolved script world and the
@@ -218,7 +264,7 @@ export function sessionMapScript(
   script: MapScript | null,
   rows: AuthoredJoinRows | null,
 ): SessionMapScript {
-  const { players, remap } = sessionSeating(session, script?.players ?? [], rows ?? {});
+  const { players, remap } = sessionSeating(session, script, rows ?? {});
   const seated = script === null ? null : seatedMapScript(script, players, remap);
   return { script: seated, world: seatedScriptWorld(mapScriptWorld(seated, rows), remap), remap };
 }

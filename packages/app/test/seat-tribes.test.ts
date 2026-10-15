@@ -60,11 +60,50 @@ describe('sessionSeatTribes', () => {
   it('keeps only a civilization seat moved to another civilization', () => {
     const chosen = sessionSeatTribes(
       { seats: [seat(0, SARACEN), seat(1, VIKING), seat(2, FRANK), seat(3, SARACEN)] },
-      roster.players,
+      roster,
     );
     // Seat 1 is a monster, seat 2 kept its own, seat 3 is off the roster.
     expect([...chosen]).toEqual([[0, SARACEN]]);
-    expect(sessionSeatTribes({ seats: [seat(0, WERESNAKE)] }, roster.players).size).toBe(0);
+    expect(sessionSeatTribes({ seats: [seat(0, WERESNAKE)] }, roster).size).toBe(0);
+  });
+
+  it('moves a map-AI seat the script hands whole to a re-tribed seat along with it', () => {
+    // Seat 3 stages the person's settlers aboard a ship and hands them over through seat 4; seat 5 is
+    // handed over too but the session names its own tribe, and seat 6 hands itself to an unchanged seat.
+    const staged = MapScript.parse({
+      players: [
+        { player: 0, type: 'human', tribeId: VIKING, colorId: 0 },
+        { player: 2, type: 'human', tribeId: FRANK, colorId: 2 },
+        { player: 3, type: 'ai', tribeId: VIKING, colorId: 3 },
+        { player: 4, type: 'ai', tribeId: VIKING, colorId: 4 },
+        { player: 5, type: 'ai', tribeId: VIKING, colorId: 5 },
+        { player: 6, type: 'ai', tribeId: VIKING, colorId: 6 },
+      ],
+      missions: [
+        {
+          goals: [{ key: 'goal', values: ['True'] }],
+          results: [
+            { key: 'result', values: ['ChangePlayerPlayerId', '3', '4'] },
+            { key: 'result', values: ['ChangePlayerPlayerId', '4', '0'] },
+            { key: 'result', values: ['ChangePlayerPlayerId', '5', '0'] },
+            { key: 'result', values: ['ChangePlayerPlayerId', '6', '2'] },
+          ],
+        },
+      ],
+    });
+    const mapAi = (player: number, tribe?: number): SessionSeat => ({
+      ...seat(player, tribe),
+      mode: 'map-ai',
+    });
+    const chosen = sessionSeatTribes(
+      { seats: [seat(0, SARACEN), seat(2), mapAi(3), mapAi(4), mapAi(5, VIKING), mapAi(6)] },
+      staged,
+    );
+    expect([...chosen].sort(([a], [b]) => a - b)).toEqual([
+      [0, SARACEN],
+      [3, SARACEN],
+      [4, SARACEN],
+    ]);
   });
 });
 

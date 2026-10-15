@@ -258,7 +258,7 @@ export async function assembleMapWorld<H extends HostedMapWorld>(
     const ir = await irLoad;
     // Every civilization the map fields brings its own building and settler pages, so the sheet loads
     // exactly the seats' and the authored entities' tribes.
-    const seating = sessionSeating(session, script?.players ?? [], ir ?? {});
+    const seating = sessionSeating(session, script, ir ?? {});
     const tribes = worldTribes(
       script === null ? null : { players: seating.players, missions: script.missions },
       loaded?.entities,

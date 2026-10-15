@@ -78,7 +78,7 @@ describe.runIf(hasRealIr())(`${MAP_ID} with lobby-chosen civilizations`, () => {
     expect(components.playerPlacementTribes(sim.world, AI_SEAT)).toEqual([EGYPT]);
     expect(seatTribes(sim, AI_SEAT).buildings).toEqual(new Set([EGYPT]));
 
-    const seating = sessionSeating(session, script.players, ir);
+    const seating = sessionSeating(session, script, ir);
     const art = worldTribes(
       { players: seating.players, missions: script.missions },
       map.entities,
@@ -116,7 +116,7 @@ describe.runIf(hasRealIr())(`${HEROES_MAP_ID} with a lobby-chosen civilization`,
     expect(tribeOf(XENA)).toEqual([BYZANTINE]);
     expect(seatTribes(sim, HUMAN_SEAT).settlers).toEqual(new Set([FRANK, VIKING, BYZANTINE]));
 
-    const seating = sessionSeating(session, script.players, ir);
+    const seating = sessionSeating(session, script, ir);
     const art = worldTribes(
       { players: seating.players, missions: script.missions },
       map.entities,
