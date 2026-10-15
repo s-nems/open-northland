@@ -233,8 +233,7 @@ describe('accepted AI order ownership', () => {
     const { sim, entity, move, apply, disable } = fixture(32, armedContent());
     sim.world.add(entity, Stance, { mode: MILITARY_MODE.ATTACK, anchorCell: null });
     apply(aiCommand(PLAYER, { ...move, kind: 'attackMoveUnit', x: 44 }, 'military'));
-    const destination = sim.world.get(entity, Stance).anchorCell;
-    expect(destination).not.toBeNull();
+    const destination = sim.world.get(entity, MoveGoal).cell;
     disable();
     expect(sim.world.get(entity, Stance).anchorCell).not.toBe(destination);
     for (let tick = 0; tick < 8; tick++) sim.step();

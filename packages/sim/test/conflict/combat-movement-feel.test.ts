@@ -180,7 +180,7 @@ describe('arrival vs the combat drive', () => {
 });
 
 describe('a move order relocates a DEFEND post', () => {
-  it('re-anchors the stance on the ordered goal, and the guard STAYS there (no march back)', () => {
+  it('re-anchors the stance where the completed walk ends, and the guard STAYS there (no march back)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(12, 1) });
     const a = fighterAt(sim, 2, 0, P0, MILITARY_MODE.DEFEND);
     const oldAnchor = sim.terrain?.nodeAtClamped(cellAnchorNode(2, 0).hx, cellAnchorNode(2, 0).hy);
@@ -190,12 +190,13 @@ describe('a move order relocates a DEFEND post', () => {
     const spot = cellAnchorNode(9, 0);
     moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: a, x: spot.hx, y: spot.hy });
     const goal = sim.terrain?.nodeAtClamped(spot.hx, spot.hy);
-    expect(sim.world.get(a, Stance).anchorCell).toBe(goal); // the post moved with the order
+    expect(sim.world.get(a, Stance).anchorCell).toBe(oldAnchor); // the post moves once the walk completes
 
     // Walk it out well past the arrival AND the hold: the guard keeps the NEW post. Without the
     // re-anchor the arrived-hold combat pass marched it straight back to the old anchor.
     for (let t = 0; t < 400; t++) sim.step();
     const p = sim.world.get(a, Position);
     expect(fx.toInt(p.x)).toBe(9);
+    expect(sim.world.get(a, Stance).anchorCell).toBe(goal);
   });
 });

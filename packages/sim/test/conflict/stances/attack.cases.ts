@@ -71,10 +71,13 @@ describe('ATTACK - a fighter walks back to its own place once the fight is over'
     expect(anchorOf(sim, civilian)).toBeNull();
   });
 
-  it('moves the anchor to where a move order sends the soldier', () => {
+  it('moves the anchor to where a move order sends the soldier once the walk completes', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(20, 1) });
     const soldier = soldierAt(sim, 2);
+    const before = anchorOf(sim, soldier);
     moveUnit(sim.world, ctxOf(sim), { kind: 'moveUnit', entity: soldier, x: 30, y: 0 });
+    expect(anchorOf(sim, soldier)).toBe(before);
+    sim.run(600);
     expect(anchorOf(sim, soldier)).toBe(cell(sim, 15, 0));
   });
 

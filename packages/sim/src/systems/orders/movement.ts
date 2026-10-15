@@ -40,6 +40,7 @@ import { breakThroughWall } from '../palisades/breach.js';
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { startDrop } from '../settlers/atomics/start.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
+import { entityNode } from '../spatial/nodes.js';
 import { heldIndoors, stepOut } from '../settlers/indoors.js';
 import { announceLostWay, liftLostWalk, markLostWay } from '../settlers/lost-way.js';
 import { navigationLimitFor } from '../signposts/index.js';
@@ -201,9 +202,6 @@ function startPlayerWalk(
   liftLostWalk(world, e); // an obeyed order is the way found; a cut-off mark waits for its own check
   // Likewise a tower posting; no other kind of worker is unemployed by a walk order.
   releaseTowerPost(world, ctx, e);
-  // A move order relocates the unit's anchor, or the combat pass would march it back to its old one the
-  // moment it found no enemy there.
-  moveAnchor(world, ctx.content, e, goal);
 
   // An attack-move walk carries its destination on the order itself: a fight overwrites the MoveGoal with
   // chase destinations, so the march would otherwise have nothing left to resume toward.
@@ -293,5 +291,8 @@ export const playerOrderSystem: System = (world, ctx) => {
       continue;
     }
     world.remove(e, PlayerOrder); // arrived - economy resumes (plannerSystem re-tasks this tick)
+    // Original behavior: a completed walk makes where it ended the guard point; a walk given up keeps the
+    // old one, so a guard never stays tied to a spot it could not reach. A rider has no spot of its own.
+    if (world.has(e, Position)) moveAnchor(world, ctx.content, e, entityNode(world, ctx.terrain, e));
   }
 };
