@@ -8,7 +8,7 @@ import {
   mapLobbySlots,
   TerrainMapFile,
 } from '@open-northland/data';
-import { components, type SimEvent, systems } from '@open-northland/sim';
+import { components, type Entity, type SimEvent, systems } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../../src/content/ir/rows.js';
 import { buildMapWorldFromInputs } from '../../src/entries/map/world-inputs.js';
@@ -88,20 +88,50 @@ function forcedScript(script: MapScript): MapScript {
   };
 }
 
+/** One run: the person's seat, and the seats the session plays as another civilization (the person's
+ *  first; any other is a computer seat). */
+interface SeatCase {
+  readonly mapId: string;
+  readonly label: string;
+  readonly person: number;
+  readonly retribed: readonly number[];
+}
+
+/** Every map from its first claimable civilization seat; a map with two also from its second, and with
+ *  both re-tribed at once, where a thing that reaches both takes the first seat's choice. */
+function seatCases(): SeatCase[] {
+  return handoverMaps().flatMap((mapId) => {
+    const seats = mapLobbySlots(readScript(mapId))
+      .filter((slot) => slot.claimable && isCivilizationTribe(slot.tribeId))
+      .map((slot) => slot.player);
+    const [first, second] = seats;
+    if (first === undefined) return [];
+    const cases: SeatCase[] = [{ mapId, label: 'its first seat', person: first, retribed: [first] }];
+    if (second !== undefined) {
+      cases.push({ mapId, label: 'its second seat', person: second, retribed: [second] });
+      cases.push({ mapId, label: 'two re-tribed seats', person: first, retribed: [first, second] });
+    }
+    return cases;
+  });
+}
+
+const otherPeople = (tribe: number): number => (tribe === BYZANTINE ? VIKING : BYZANTINE);
+
 describe.runIf(hasRealIr())('a seat played as another civilization through its handovers', () => {
-  it.each(handoverMaps())(
-    '%s moves everything handed to the seat at world build',
-    async (mapId) => {
+  it.each(seatCases())(
+    '$mapId from $label moves everything handed to a re-tribed seat at world build',
+    async ({ mapId, person, retribed }) => {
       const ir = rawIrUnderTest() as ContentIr;
       const { merge } = await loadContentUnderTest();
       const script = readScript(mapId);
       const slots = mapLobbySlots(script);
-      const seat = slots.find((slot) => slot.claimable);
-      if (seat === undefined || !isCivilizationTribe(seat.tribeId)) return;
-      const chosen = seat.tribeId === BYZANTINE ? VIKING : BYZANTINE;
+      const authored = new Map(slots.map((slot) => [slot.player, slot.tribeId]));
+      const tribes = retribed.map((seat) => `${seat}:${otherPeople(authored.get(seat) ?? VIKING)}`);
+      const computers = retribed.filter((seat) => seat !== person);
       const map = TerrainMapFile.parse(JSON.parse(readFileSync(resolve(mapsDir(), `${mapId}.json`), 'utf8')));
       const params = new URLSearchParams(
-        `map=${mapId}&player=${seat.player}&tribes=${seat.player}:${chosen}&seed=${SEED}`,
+        `map=${mapId}&player=${person}&tribes=${tribes.join(',')}&seed=${SEED}` +
+          (computers.length > 0 ? `&computer=${computers.join(',')}` : ''),
       );
       const { sim } = buildMapWorldFromInputs({
         map,
@@ -119,14 +149,22 @@ describe.runIf(hasRealIr())('a seat played as another civilization through its h
       }
       expect(corrected).toEqual([]);
 
-      const { Owner, Person, Settler } = components;
-      const authoredLeft = [...sim.world.query(Person, Settler, Owner)].filter(
-        (e) =>
-          sim.world.get(e, Owner).player === seat.player &&
-          sim.world.get(e, Settler).tribe === seat.tribeId &&
-          !systems.isHeroJob(merge.content, sim.world.get(e, Settler).jobType),
-      );
-      expect(authoredLeft).toEqual([]);
+      // Houses are left out: a type the chosen people do not draw keeps its tribe by design.
+      const { Owner, Person, Settler, Vehicle } = components;
+      for (const seat of retribed) {
+        const owned = (e: Entity) => sim.world.get(e, Owner).player === seat;
+        const people = authored.get(seat);
+        const settlersLeft = [...sim.world.query(Person, Settler, Owner)].filter(
+          (e) =>
+            owned(e) &&
+            sim.world.get(e, Settler).tribe === people &&
+            !systems.isHeroJob(merge.content, sim.world.get(e, Settler).jobType),
+        );
+        const vehiclesLeft = [...sim.world.query(Vehicle, Owner)].filter(
+          (e) => owned(e) && sim.world.get(e, Vehicle).tribe === people,
+        );
+        expect({ seat, settlersLeft, vehiclesLeft }).toEqual({ seat, settlersLeft: [], vehiclesLeft: [] });
+      }
     },
     MAP_TIMEOUT_MS,
   );

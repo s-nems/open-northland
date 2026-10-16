@@ -72,7 +72,7 @@ export function seatTribeRemap(
   const moved = (change: SeatChange | undefined, current: number): number =>
     change !== undefined && current === change.authored ? change.chosen : current;
   const reached = (kind: FlowKind, thing: FlowingThing, current: number): number =>
-    moved(flowOf(flows, kind, thing), current);
+    flowOf(flows, kind, thing, current)?.chosen ?? current;
   return {
     changed: true,
     tribe: (owner, current) => moved(owner === undefined ? undefined : flows.seats.get(owner), current),

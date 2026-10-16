@@ -1144,16 +1144,21 @@ Areas are judged at the authored places, and a spawn (`SetHuman`, `SetHumanX`, `
 people. Read from the script alone, the pass misses a unit that walks into an area later, a handover
 of id 0 (every human without an id) and an id a `Build*` goal stamps. A handover that still delivers
 the seat's authored people moves them as it runs and emits `missionSeatTribeCorrected`; a house whose
-footprint or hit points differ between the two peoples keeps its tribe, since its placement stands.
+footprint cells differ between the two peoples keeps its tribe, since its placement stands, and a
+converted house keeps its health fraction of the chosen people's hit points.
 `seat-tribes-handovers.test.ts` runs every map's spawns, stamps and handovers with the seat on another
-civilization and requires that the net never fires.
+civilization, also from a second seat and with two seats re-tribed, and requires that the net never
+fires.
 
 Another person's seat is left to the net: its things keep their people until a handover delivers
-them into a re-tribed seat. A thing that reaches two re-tribed seats takes the first seat's choice. A thing of another re-tribed
-seat keeps that seat's choice. The chosen tribes are stamped at the build and saved with the world;
-the spawns and the net read the seated script, which a restore rebuilds from the same session, so
-saves, replays and lockstep peers see the same people. Each sub-mission applies the rule to its own
-script.
+them into a re-tribed seat. A thing follows the first re-tribed seat of its own people it reaches,
+in script line order, so a re-tribed computer seat's own people follow its choice while a thing of
+another seat's people it holds follows the seat the script hands it to.
+
+The chosen tribes are stamped at the build and saved with the world; the spawns and the net read the
+seated script, which a restore rebuilds from the session, so saves, replays and lockstep peers see the
+same people. A seat resumed under another mode (a person's seat taken by the computer) stages from
+then on. Each sub-mission applies the rule to its own script.
 
 ## Sub-missions
 

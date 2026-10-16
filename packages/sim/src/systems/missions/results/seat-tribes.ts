@@ -1,8 +1,8 @@
-import { buildingFootprintFor, buildingHitpointsFor } from '@open-northland/data';
+import { type BuildingFootprint, buildingFootprintFor, buildingHitpointsFor } from '@open-northland/data';
 import { Building, ownerOf, Person, Settler, Vehicle } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
-import { changeUnitTribe } from '../../lifecycle/unit-health.js';
+import { changeUnitTribe, resizeUnitHealth } from '../../lifecycle/unit-health.js';
 import { isHeroJob } from '../../readviews/jobs.js';
 import type { MissionPass } from '../pass.js';
 import type { MissionSeatTribe } from '../script.js';
@@ -11,7 +11,8 @@ import type { MissionSeatTribe } from '../script.js';
  * The safety net behind the world build's seat pass: a thing a handover just gave a re-tribed seat
  * that still carries the seat's authored people takes the chosen people, as the build would have
  * moved it. A hero keeps his people, and so does a house the chosen people do not draw or whose
- * footprint or hit points differ between the two, since its placement already stands.
+ * footprint cells differ between the two, since its placement already stands; a converted house keeps
+ * its health fraction of the chosen people's hit points.
  */
 export function retribeHanded(
   pass: MissionPass,
@@ -53,10 +54,33 @@ function retribe(pass: MissionPass, e: Entity, seat: MissionSeatTribe): boolean 
   if (
     type !== undefined &&
     seat.drawnBuildings.includes(building.buildingType) &&
-    buildingFootprintFor(type, seat.authored) === buildingFootprintFor(type, seat.chosen) &&
-    buildingHitpointsFor(type, seat.authored) === buildingHitpointsFor(type, seat.chosen)
+    sameFootprint(buildingFootprintFor(type, seat.authored), buildingFootprintFor(type, seat.chosen))
   ) {
     world.mut(e, Building).tribe = seat.chosen;
+    const previous = buildingHitpointsFor(type, seat.authored);
+    const next = buildingHitpointsFor(type, seat.chosen);
+    if (previous !== undefined && next !== undefined) resizeUnitHealth(world, e, previous, next);
   }
   return true;
+}
+
+/** Each tribe's variant carries its own footprint object, so two footprints match by their cells, in
+ *  any order. */
+function sameFootprint(a: BuildingFootprint | undefined, b: BuildingFootprint | undefined): boolean {
+  return cellsKey(a) === cellsKey(b);
+}
+
+function cellsKey(footprint: BuildingFootprint | undefined): string {
+  if (footprint === undefined) return '';
+  return Object.entries(footprint)
+    .sort(([x], [y]) => (x < y ? -1 : 1))
+    .map(([key, value]) =>
+      Array.isArray(value)
+        ? `${key}:${value
+            .map((cell) => JSON.stringify(cell))
+            .sort()
+            .join(';')}`
+        : `${key}:${JSON.stringify(value)}`,
+    )
+    .join('|');
 }

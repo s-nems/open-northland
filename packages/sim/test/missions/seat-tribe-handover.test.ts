@@ -1,5 +1,6 @@
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, Person, Settler } from '../../src/components/index.js';
+import { Building, Health, Person, Settler } from '../../src/components/index.js';
 import type { Entity } from '../../src/ecs/world.js';
 import { Simulation } from '../../src/index.js';
 import type { MissionResultOp, MissionSeatTribe } from '../../src/systems/missions/index.js';
@@ -47,10 +48,41 @@ const spawnHuman = (tribe: number, job: number, humanId: number): MissionResultO
   behaviour: 0,
 });
 
-function handoverSim(handovers: readonly MissionResultOp[], seatTribes: readonly MissionSeatTribe[]) {
+const VIKING_HUT_HITPOINTS = 100;
+const SARACEN_HUT_HITPOINTS = 200;
+
+/** The hut as real content carries it: each people's own variant with its own footprint object and hit
+ *  points, the saracen one shifted by `shift` cells. */
+function variantContent(shift: number): ContentSet {
+  const base = houseContent();
+  const viking = base.tribes.find((tribe) => tribe.typeId === VIKING);
+  return parseContentSet({
+    ...base,
+    tribes:
+      viking === undefined ? base.tribes : [...base.tribes, { ...viking, typeId: SARACEN, id: 'saracen' }],
+    buildings: base.buildings.map((type) => {
+      const footprint = type.footprint;
+      if (type.typeId !== HUT || footprint === undefined) return type;
+      const moved = { ...footprint, blocked: footprint.blocked.map((c) => ({ dx: c.dx + shift, dy: c.dy })) };
+      return {
+        ...type,
+        tribeVariants: [
+          { tribe: VIKING, footprint: structuredClone(footprint), hitpoints: VIKING_HUT_HITPOINTS },
+          { tribe: SARACEN, footprint: moved, hitpoints: SARACEN_HUT_HITPOINTS },
+        ],
+      };
+    }),
+  });
+}
+
+function handoverSim(
+  handovers: readonly MissionResultOp[],
+  seatTribes: readonly MissionSeatTribe[],
+  content: ContentSet = variantContent(0),
+) {
   const sim = new Simulation({
     seed: 1,
-    content: houseContent(),
+    content,
     map: grassNodeMap(MAP_NODES, MAP_NODES),
     missions: {
       missions: [
@@ -97,6 +129,11 @@ describe('the handover safety net', () => {
     expect(tribeOf(sim, FRANK_ID)).toBe(FRANK);
     expect(tribeOf(sim, HERO_ID)).toBe(VIKING);
     expect(tribeOf(sim, HOUSE_ID)).toBe(SARACEN);
+    const house = missionObjects(sim.world, HOUSE_ID)[0];
+    expect(house === undefined ? undefined : sim.world.get(house, Health)).toMatchObject({
+      hitpoints: SARACEN_HUT_HITPOINTS,
+      max: SARACEN_HUT_HITPOINTS,
+    });
     expect(corrections(sim)).toEqual([
       { kind: 'missionSeatTribeCorrected', mission: 0, opcode: 'ChangePlayerPlayerId', count: 2 },
     ]);
@@ -116,6 +153,16 @@ describe('the handover safety net', () => {
       'ChangeHumanPlayerId',
       'ChangeHousesPlayerId',
     ]);
+  });
+
+  it('keeps a handed house whose footprint cells differ between the two peoples', () => {
+    const sim = handoverSim(
+      [{ opcode: 'ChangeHousesPlayerId', objectId: HOUSE_ID, player: PERSON_SEAT }],
+      [SEAT],
+      variantContent(1),
+    );
+    expect(tribeOf(sim, HOUSE_ID)).toBe(VIKING);
+    expect(corrections(sim).map((event) => event.count)).toEqual([1]);
   });
 
   it('stays silent for a seat the session plays as the map authored it', () => {

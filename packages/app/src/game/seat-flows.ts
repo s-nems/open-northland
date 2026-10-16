@@ -46,10 +46,13 @@ export interface SeatFlows {
   readonly changes: ReadonlyMap<number, SeatChange>;
   /** Owners all of whose things reach a re-tribed seat: the seat itself and the seats handed to it whole. */
   readonly seats: ReadonlyMap<number, SeatChange>;
-  readonly ids: Readonly<Record<FlowKind, ReadonlyMap<number, SeatChange>>>;
+  /** Per id, the seats it is handed to, in line order. */
+  readonly ids: Readonly<Record<FlowKind, ReadonlyMap<number, readonly SeatChange[]>>>;
   readonly areas: readonly AreaFlow[];
   /** Seats another person plays, whose things move only when a handover delivers them. A computer, map-AI
-   *  or idle seat may hold the seat's people staged for it. */
+   *  or idle seat may hold the seat's people staged for it. Read from the session as it starts or
+   *  resumes: a seat saved as a person's and resumed as a computer's stages from then on, which changes
+   *  later spawns, never what the save already holds. */
   readonly played: ReadonlySet<number>;
 }
 
@@ -119,23 +122,25 @@ function handWholeSeats(flows: SeatFlows, lines: readonly MissionResult[]): void
 function handIds(flows: SeatFlows, lines: readonly MissionResult[]): void {
   const hand = (kind: FlowKind, id: number, to: number): void => {
     const change = flows.seats.get(to);
-    const ids = flows.ids[kind] as Map<number, SeatChange>;
-    if (change !== undefined && id !== NO_MISSION_ID && !ids.has(id)) ids.set(id, change);
+    if (change === undefined || id === NO_MISSION_ID) return;
+    const ids = flows.ids[kind] as Map<number, SeatChange[]>;
+    const seats = ids.get(id) ?? [];
+    if (!seats.includes(change)) ids.set(id, [...seats, change]);
   };
   for (const op of lines) {
     if (op.opcode === 'ChangeHumanPlayerId') hand('human', op.humanId, op.player);
     else if (op.opcode === 'ChangeHousesPlayerId') hand('house', op.objectId, op.player);
     else if (op.opcode === 'ChangeVehiclesPlayerId') hand('vehicle', op.vehicleId, op.player);
   }
-  const vehicles = flows.ids.vehicle as Map<number, SeatChange>;
+  const vehicles = flows.ids.vehicle as Map<number, readonly SeatChange[]>;
   let grew = true;
   while (grew) {
     grew = false;
     for (const op of lines) {
       if (op.opcode !== 'ChangeMissionIdOfVehicles') continue;
-      const change = vehicles.get(op.index);
-      if (change === undefined || vehicles.has(op.vehicleId)) continue;
-      vehicles.set(op.vehicleId, change);
+      const handed = vehicles.get(op.index);
+      if (handed === undefined || vehicles.has(op.vehicleId)) continue;
+      vehicles.set(op.vehicleId, handed);
       grew = true;
     }
   }
@@ -153,15 +158,16 @@ function handAreas(flows: SeatFlows, lines: readonly MissionResult[]): void {
     kinds: readonly FlowKind[],
     point: MissionPoint | null,
     range: number,
-    change: SeatChange | undefined,
+    changes: readonly SeatChange[] | undefined,
   ): void => {
-    if (change !== undefined && staging(flows, player)) areas.push({ player, kinds, point, range, change });
+    if (flows.played.has(player)) return;
+    for (const change of changes ?? []) areas.push({ player, kinds, point, range, change });
   };
   const ALL: readonly FlowKind[] = ['human', 'house', 'vehicle'];
   for (const op of lines) {
     switch (op.opcode) {
       case 'ChangePlayerIdInArea':
-        add(op.player, ALL, op.point, op.range, flows.seats.get(op.otherPlayer));
+        add(op.player, ALL, op.point, op.range, seatsOf(flows.seats.get(op.otherPlayer)));
         break;
       case 'ChangeHumanObjectIdInArea':
       case 'ChangeMissionIdOfHumanInRange':
@@ -183,17 +189,33 @@ function handAreas(flows: SeatFlows, lines: readonly MissionResult[]): void {
   }
 }
 
-/** The re-tribed seat `thing` reaches, if any: through its owner, its mission id or an area. */
-export function flowOf(flows: SeatFlows, kind: FlowKind, thing: FlowingThing): SeatChange | undefined {
+function seatsOf(change: SeatChange | undefined): readonly SeatChange[] {
+  return change === undefined ? [] : [change];
+}
+
+/**
+ * The re-tribed seat whose authored people `thing` (of `tribe`) is and reaches: through its owner, its
+ * mission id or an area, in that order. A computer seat's own people follow its own choice, while a
+ * thing of another seat's people it holds follows the seat the script hands it to.
+ */
+export function flowOf(
+  flows: SeatFlows,
+  kind: FlowKind,
+  thing: FlowingThing,
+  tribe: number,
+): SeatChange | undefined {
   const { owner, missionId, at } = thing;
   if (owner === undefined) return undefined;
-  const whole = flows.seats.get(owner);
-  if (whole !== undefined) return whole;
-  if (flows.played.has(owner)) return undefined;
-  const byId = missionId === undefined ? undefined : flows.ids[kind].get(missionId);
+  const of = (change: SeatChange | undefined): SeatChange | undefined =>
+    change?.authored === tribe ? change : undefined;
+  const whole = of(flows.seats.get(owner));
+  if (whole !== undefined || flows.played.has(owner)) return whole;
+  const byId = (missionId === undefined ? undefined : flows.ids[kind].get(missionId))?.find(
+    (change) => change.authored === tribe,
+  );
   if (byId !== undefined) return byId;
   for (const area of flows.areas) {
-    if (area.player !== owner || !area.kinds.includes(kind)) continue;
+    if (area.player !== owner || !area.kinds.includes(kind) || area.change.authored !== tribe) continue;
     if (area.point === null) return area.change;
     if (at !== undefined && hexDistanceBetween(at.hx, at.hy, area.point.hx, area.point.hy) <= area.range)
       return area.change;

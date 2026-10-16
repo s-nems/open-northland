@@ -29,6 +29,7 @@ function script(...results: ReturnType<typeof line>[]): MapScript {
       { player: 1, type: 'ai', tribeId: WERESNAKE, colorId: 1 },
       { player: 2, type: 'human', tribeId: FRANK, colorId: 2 },
       ...[3, 4, 5, 6].map((player) => ({ player, type: 'ai', tribeId: VIKING, colorId: player })),
+      { player: 7, type: 'ai', tribeId: FRANK, colorId: 7 },
     ],
     missions: [{ goals: [{ key: 'goal', values: ['True'] }], results }],
   });
@@ -67,9 +68,9 @@ describe('seatFlows', () => {
       ),
     );
     expect([...flows.seats.keys()].sort()).toEqual([0, 3, 4]);
-    expect(flowOf(flows, 'human', { owner: 3 })).toEqual(CHANGE);
-    expect(flowOf(flows, 'house', { owner: 5 })).toBeUndefined();
-    expect(flowOf(flows, 'vehicle', { owner: 6 })).toBeUndefined();
+    expect(flowOf(flows, 'human', { owner: 3 }, VIKING)).toEqual(CHANGE);
+    expect(flowOf(flows, 'house', { owner: 5 }, VIKING)).toBeUndefined();
+    expect(flowOf(flows, 'vehicle', { owner: 6 }, VIKING)).toBeUndefined();
   });
 
   it('hands ids to the seat and to a seat that reaches it, and follows vehicle renumbering', () => {
@@ -85,14 +86,14 @@ describe('seatFlows', () => {
         line('ChangeHumanPlayerId', 12, 6),
       ),
     );
-    expect(flowOf(flows, 'human', { owner: 6, missionId: 7 })).toEqual(CHANGE);
-    expect(flowOf(flows, 'human', { owner: 6, missionId: 8 })).toEqual(CHANGE);
-    expect(flowOf(flows, 'house', { owner: 6, missionId: 9 })).toEqual(CHANGE);
-    expect(flowOf(flows, 'human', { owner: 6, missionId: 9 })).toBeUndefined();
-    expect(flowOf(flows, 'vehicle', { owner: 6, missionId: 5 })).toEqual(CHANGE);
-    expect(flowOf(flows, 'human', { owner: 6, missionId: 12 })).toBeUndefined();
+    expect(flowOf(flows, 'human', { owner: 6, missionId: 7 }, VIKING)).toEqual(CHANGE);
+    expect(flowOf(flows, 'human', { owner: 6, missionId: 8 }, VIKING)).toEqual(CHANGE);
+    expect(flowOf(flows, 'house', { owner: 6, missionId: 9 }, VIKING)).toEqual(CHANGE);
+    expect(flowOf(flows, 'human', { owner: 6, missionId: 9 }, VIKING)).toBeUndefined();
+    expect(flowOf(flows, 'vehicle', { owner: 6, missionId: 5 }, VIKING)).toEqual(CHANGE);
+    expect(flowOf(flows, 'human', { owner: 6, missionId: 12 }, VIKING)).toBeUndefined();
     // Seat 2 is another person's: its things move only when a handover delivers them.
-    expect(flowOf(flows, 'human', { owner: 2, missionId: 7 })).toBeUndefined();
+    expect(flowOf(flows, 'human', { owner: 2, missionId: 7 }, VIKING)).toBeUndefined();
   });
 
   it("hands what stands in an area, and a seat's humans stamped there with a handed id", () => {
@@ -106,17 +107,41 @@ describe('seatFlows', () => {
         line('ChangeHumanPlayerId', 14, 0),
       ),
     );
-    expect(flowOf(flows, 'human', { owner: 3, at: { hx: 10, hy: 11 } })).toEqual(CHANGE);
-    expect(flowOf(flows, 'human', { owner: 3, at: { hx: 30, hy: 30 } })).toBeUndefined();
-    expect(flowOf(flows, 'house', { owner: 3, at: { hx: 10, hy: 10 } })).toBeUndefined();
-    expect(flowOf(flows, 'house', { owner: 6, at: { hx: 41, hy: 40 } })).toEqual(CHANGE);
-    expect(flowOf(flows, 'vehicle', { owner: 6, at: { hx: 50, hy: 40 } })).toBeUndefined();
-    expect(flowOf(flows, 'human', { owner: 4, at: { hx: 90, hy: 90 } })).toEqual(CHANGE);
+    expect(flowOf(flows, 'human', { owner: 3, at: { hx: 10, hy: 11 } }, VIKING)).toEqual(CHANGE);
+    expect(flowOf(flows, 'human', { owner: 3, at: { hx: 30, hy: 30 } }, VIKING)).toBeUndefined();
+    expect(flowOf(flows, 'house', { owner: 3, at: { hx: 10, hy: 10 } }, VIKING)).toBeUndefined();
+    expect(flowOf(flows, 'house', { owner: 6, at: { hx: 41, hy: 40 } }, VIKING)).toEqual(CHANGE);
+    expect(flowOf(flows, 'vehicle', { owner: 6, at: { hx: 50, hy: 40 } }, VIKING)).toBeUndefined();
+    expect(flowOf(flows, 'human', { owner: 4, at: { hx: 90, hy: 90 } }, VIKING)).toEqual(CHANGE);
+  });
+
+  it("hands each thing to the first re-tribed seat of its own people, a computer seat's included", () => {
+    const BYZANTINE = 3;
+    const computer = (player: number, tribe: number): SessionSeat => ({
+      ...human(player, tribe),
+      mode: 'computer',
+    });
+    const flows = seatFlows(
+      { seats: [human(0, SARACEN), mapAi(3), computer(6, FRANK), computer(7, BYZANTINE)] },
+      script(
+        line('ChangeHumanPlayerId', 20, 6),
+        line('ChangeHumanPlayerId', 20, 0),
+        line('ChangeHumanPlayerId', 20, 7),
+        line('ChangeVehiclesPlayerId', 21, 0),
+      ),
+    );
+    const sixth = { seat: 6, authored: VIKING, chosen: FRANK };
+    const seventh = { seat: 7, authored: FRANK, chosen: BYZANTINE };
+    expect(flowOf(flows, 'human', { owner: 3, missionId: 20 }, VIKING)).toEqual(sixth);
+    expect(flowOf(flows, 'human', { owner: 3, missionId: 20 }, FRANK)).toEqual(seventh);
+    // Seat 7's own franks follow its choice; a viking ship it holds follows the seat it is handed to.
+    expect(flowOf(flows, 'vehicle', { owner: 7, missionId: 21 }, FRANK)).toEqual(seventh);
+    expect(flowOf(flows, 'vehicle', { owner: 7, missionId: 21 }, VIKING)).toEqual(CHANGE);
   });
 
   it('reads nothing when every seat plays its own people', () => {
     const flows = seatFlows({ seats: [human(0)] }, script(line('ChangePlayerPlayerId', 3, 0)));
     expect(flows.seats.size).toBe(0);
-    expect(flowOf(flows, 'human', { owner: 3 })).toBeUndefined();
+    expect(flowOf(flows, 'human', { owner: 3 }, VIKING)).toBeUndefined();
   });
 });
