@@ -6,8 +6,10 @@ import { type MovieLabels, type MusicSilencer, playCampaignMovie } from '../../.
 import {
   type CampaignProgress,
   canSkipCampaignStage,
+  hasCampaignProgress,
   nextCampaignStage,
   readCampaignProgress,
+  resetCampaignProgress,
   skipCampaignStage,
 } from '../../../campaign/progress.js';
 import { createHudPlane } from '../../../hud/dom/root.js';
@@ -21,6 +23,8 @@ import { targetSearch } from '../target-search.js';
 import { campaignMap } from './map.js';
 import {
   campaignFilms,
+  campaignResetQuestion,
+  forgetRevealedRoutes,
   initialCampaign,
   launchTribe,
   readChosenCampaign,
@@ -237,6 +241,34 @@ export function campaignTabBody(launch: LaunchEntry, silenceMusic: MusicSilencer
     const mapColumn = node('div', 'campaign-screen__map-column');
     mapColumn.append(map.root, tribeChoice.root);
     const asideFoot = node('div', 'campaign-screen__aside-foot');
+
+    if (hasCampaignProgress(campaign, progress)) {
+      const reset = node('button', 'campaign-screen__reset', copy.reset);
+      reset.type = 'button';
+      reset.addEventListener('click', () => {
+        if (busy || asking) return;
+        asking = true;
+        void askInHud(
+          campaignResetQuestion(copy, localizedText(campaign.title, language)),
+          scope.signal,
+        ).then((accepted) => {
+          asking = false;
+          if (!accepted || scope.signal.aborted) return;
+          try {
+            resetCampaignProgress(campaign, localStorage);
+          } catch {
+            status.textContent = copy.storage;
+            return;
+          }
+          forgetRevealedRoutes(storage, campaign);
+          status.textContent = '';
+          selected = undefined;
+          show(campaign);
+          body.querySelector<HTMLElement>('.campaign-screen__mission[aria-pressed="true"]')?.focus();
+        });
+      });
+      asideFoot.append(reset);
+    }
 
     if (canSkipCampaignStage(campaign, progress)) {
       const skip = node('button', 'campaign-screen__skip', copy.skip);

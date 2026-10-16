@@ -6,7 +6,9 @@ import {
   canSkipCampaignStage,
   completeCampaign,
   grantCampaignMaps,
+  hasCampaignProgress,
   readCampaignProgress,
+  resetCampaignProgress,
   skipCampaignStage,
 } from '../src/campaign/progress.js';
 import { campaignFixture, memoryStorage } from './support/campaign.js';
@@ -78,6 +80,25 @@ describe('campaign progression', () => {
     storage.setItem(campaignProgressKey(campaign), JSON.stringify({ unlocked: 'gone', completed: true }));
     expect(readCampaignProgress(campaign, storage)).toEqual({ unlocked: ['first'], completed: true });
     expect(completeCampaign(campaign, memoryStorage())).toEqual({ unlocked: ['first'], completed: true });
+  });
+  it('resets one campaign to its first stage and leaves the others alone', () => {
+    const campaign = campaignFixture();
+    const other = { ...campaign, id: 'other' };
+    const storage = memoryStorage();
+    skipCampaignStage(campaign, storage);
+    skipCampaignStage(campaign, storage);
+    skipCampaignStage(other, storage);
+    expect(hasCampaignProgress(campaign, readCampaignProgress(campaign, storage))).toBe(true);
+    const reset = resetCampaignProgress(campaign, storage);
+    expect(reset).toEqual({ unlocked: ['first'], completed: false });
+    expect(readCampaignProgress(campaign, storage)).toEqual(reset);
+    expect(hasCampaignProgress(campaign, reset)).toBe(false);
+    expect(readCampaignProgress(other, storage)).toEqual({ unlocked: ['first', 'second'], completed: false });
+  });
+  it('has progress to reset once completed, even with only the first stage', () => {
+    const campaign = campaignFixture();
+    expect(hasCampaignProgress(campaign, { unlocked: ['first'], completed: true })).toBe(true);
+    expect(hasCampaignProgress(campaign, { unlocked: ['first'], completed: false })).toBe(false);
   });
   it('surfaces write failures', () => {
     expect(() =>

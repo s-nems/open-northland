@@ -2,6 +2,8 @@ import type { Campaign, CampaignMovie, MapTextLanguage } from '@open-northland/d
 import { RECOMMENDED_CAMPAIGN_TRIBE } from '../../../campaign/launch.js';
 import { campaignFinale, campaignMovies } from '../../../campaign/locale.js';
 import type { CampaignProgress } from '../../../campaign/progress.js';
+import type { SystemConfirmCopy } from '../../../hud/dom/system-confirm.js';
+import { formatMessage, type Messages } from '../../../i18n/index.js';
 
 type ScreenStorage = Pick<Storage, 'getItem' | 'setItem'>;
 type Stage = Campaign['stages'][number];
@@ -86,6 +88,25 @@ export function readRevealedRoutes(storage: ScreenStorage | undefined, campaign:
     return [];
   }
   return Array.isArray(value) ? value.filter((id): id is string => typeof id === 'string') : [];
+}
+
+/** A reset draws each route again as its stage is unlocked anew. */
+export function forgetRevealedRoutes(storage: ScreenStorage | undefined, campaign: Campaign): void {
+  try {
+    storage?.setItem(REVEALED_ROUTES_PREFIX + campaign.id, '[]');
+  } catch {
+    // Without storage the routes simply stay drawn.
+  }
+}
+
+/** The reset question names the campaign; Cancel holds the default focus, so Enter alone never resets. */
+export function campaignResetQuestion(copy: Messages['campaign'], title: string): SystemConfirmCopy {
+  return {
+    title: copy.reset,
+    message: formatMessage(copy.resetConfirm, { campaign: title }),
+    cancel: copy.cancel,
+    confirm: copy.resetAction,
+  };
 }
 
 export function rememberRevealedRoute(

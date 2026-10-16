@@ -2,7 +2,15 @@ import { Campaign } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import { RECOMMENDED_CAMPAIGN_TRIBE } from '../src/campaign/launch.js';
 import {
+  hasCampaignProgress,
+  readCampaignProgress,
+  resetCampaignProgress,
+  skipCampaignStage,
+} from '../src/campaign/progress.js';
+import {
   campaignFilms,
+  campaignResetQuestion,
+  forgetRevealedRoutes,
   initialCampaign,
   launchTribe,
   readChosenCampaign,
@@ -13,6 +21,7 @@ import {
   unlockedStages,
 } from '../src/entries/main-menu/campaign/model.js';
 import { NOT_ON_ROUTE, routeOrder } from '../src/entries/main-menu/campaign/route-order.js';
+import { messages } from '../src/i18n/index.js';
 import { campaignFixture, memoryStorage } from './support/campaign.js';
 
 const ROUTE = { url: '/campaigns/test/route-2.png', x: 0.2, y: 0.3, width: 0.3, height: 0.3 };
@@ -74,28 +83,28 @@ describe('campaign screen stages', () => {
   });
 });
 
-describe('campaign screen films', () => {
-  const INTRO = {
-    url: '/campaigns/test/video/intro.webm',
-    audio: '/campaigns/test/pol/intro.webm',
-    width: 640,
-    height: 480,
-  };
-  const FINALE = {
-    url: '/campaigns/test/video/video-0.webm',
-    audio: '/campaigns/test/pol/video-0.webm',
-    width: 640,
-    height: 480,
-    sequence: 0,
-  };
-  const withFilms = (): Campaign => {
-    const campaign = campaignFixture();
-    return Campaign.parse({
-      ...campaign,
-      movies: { ...campaign.movies, pol: { intro: INTRO, videos: [FINALE] } },
-    });
-  };
+const INTRO = {
+  url: '/campaigns/test/video/intro.webm',
+  audio: '/campaigns/test/pol/intro.webm',
+  width: 640,
+  height: 480,
+};
+const FINALE = {
+  url: '/campaigns/test/video/video-0.webm',
+  audio: '/campaigns/test/pol/video-0.webm',
+  width: 640,
+  height: 480,
+  sequence: 0,
+};
+const withFilms = (): Campaign => {
+  const campaign = campaignFixture();
+  return Campaign.parse({
+    ...campaign,
+    movies: { ...campaign.movies, pol: { intro: INTRO, videos: [FINALE] } },
+  });
+};
 
+describe('campaign screen films', () => {
   it('offers the intro whenever there is one, the finale only once completed', () => {
     const campaign = withFilms();
     expect(campaignFilms(campaign, 'pol', { unlocked: ['first'], completed: false })).toEqual({
@@ -113,6 +122,48 @@ describe('campaign screen films', () => {
       intro: undefined,
       finale: undefined,
     });
+  });
+});
+
+describe('campaign screen reset', () => {
+  const LOCALES = ['pol', 'eng', 'ger', 'rus'] as const;
+
+  it('asks in Polish with the campaign title, Cancel first', () => {
+    expect(campaignResetQuestion(messages('pol').campaign, 'Asgard')).toEqual({
+      title: 'Zresetuj postęp kampanii',
+      message: 'Zresetować postęp kampanii Asgard?\nOdblokowane misje i ukończenie zostaną zapomniane.',
+      cancel: 'Anuluj',
+      confirm: 'Zresetuj postęp',
+    });
+    expect(campaignResetQuestion(messages('pol').campaign, 'Asgard').focusConfirm).toBeUndefined();
+  });
+
+  it('names the campaign in every catalog', () => {
+    for (const locale of LOCALES) {
+      const question = campaignResetQuestion(messages(locale).campaign, 'Asgard');
+      expect(question.title, locale).not.toBe('');
+      expect(question.confirm, locale).not.toBe('');
+      expect(question.message, locale).toContain('Asgard');
+    }
+  });
+
+  it('offers the reset only with progress and leaves stage 1 without the finale after confirming', () => {
+    const campaign = withFilms();
+    const storage = memoryStorage();
+    expect(hasCampaignProgress(campaign, readCampaignProgress(campaign, storage))).toBe(false);
+    skipCampaignStage(campaign, storage);
+    skipCampaignStage(campaign, storage);
+    const before = readCampaignProgress(campaign, storage);
+    expect(hasCampaignProgress(campaign, before)).toBe(true);
+    expect(campaignFilms(campaign, 'pol', before).finale).toEqual(FINALE);
+    rememberRevealedRoute(storage, campaign, 'second');
+
+    const after = resetCampaignProgress(campaign, storage);
+    forgetRevealedRoutes(storage, campaign);
+    expect(unlockedStages(campaign, after).map(({ stage }) => stage.mapId)).toEqual(['first']);
+    expect(campaignFilms(campaign, 'pol', after)).toEqual({ intro: INTRO, finale: undefined });
+    expect(hasCampaignProgress(campaign, after)).toBe(false);
+    expect(readRevealedRoutes(storage, campaign)).toEqual([]);
   });
 });
 

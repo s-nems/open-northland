@@ -13,6 +13,10 @@ export const enCampaign = {
   confirm: 'Unlock the next mission?\nThis is a helper of the Open Northland alpha version.',
   cancel: 'Cancel',
   unlock: 'Unlock mission',
+  reset: 'Reset campaign progress',
+  resetConfirm:
+    'Reset the progress of the campaign {campaign}?\nUnlocked missions and completion will be forgotten.',
+  resetAction: 'Reset progress',
   storage: 'Campaign progress could not be saved. Free browser storage and retry.',
   retry: 'Retry',
   play: 'Play video',

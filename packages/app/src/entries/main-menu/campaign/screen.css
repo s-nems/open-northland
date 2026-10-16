@@ -33,6 +33,7 @@
     .campaign-map__point,
     .campaign-screen__mission,
     .campaign-screen__skip,
+    .campaign-screen__reset,
     .campaign-tribe__option
   ):focus-visible {
   outline: 2px solid var(--focus);
@@ -522,7 +523,9 @@
 
 .campaign-screen__aside-foot {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
+  column-gap: calc(var(--u) * 12);
 }
 
 .campaign-tribe__label {
@@ -633,8 +636,9 @@
   content: "\2605  ";
 }
 
-/* The alpha recovery: small, quiet and far from the primary action. */
-.campaign-screen__skip {
+/* The alpha recovery and the reset: small, quiet and far from the primary action. */
+.campaign-screen__skip,
+.campaign-screen__reset {
   all: unset;
   flex: none;
   padding: calc(var(--u) * 4) calc(var(--u) * 2);
@@ -643,7 +647,8 @@
   cursor: var(--cursor-pointer, pointer);
 }
 
-.campaign-screen__skip:hover:not(:disabled) {
+.campaign-screen__skip:hover:not(:disabled),
+.campaign-screen__reset:hover:not(:disabled) {
   color: var(--text);
   text-decoration: underline;
 }

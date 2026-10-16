@@ -13,6 +13,10 @@ export const deCampaign = {
   confirm: 'Nächste Mission freischalten?\nDas ist eine Hilfsfunktion der Alpha-Version von Open Northland.',
   cancel: 'Abbrechen',
   unlock: 'Mission freischalten',
+  reset: 'Kampagnenfortschritt zurücksetzen',
+  resetConfirm:
+    'Fortschritt der Kampagne {campaign} zurücksetzen?\nFreigeschaltete Missionen und der Abschluss werden vergessen.',
+  resetAction: 'Fortschritt zurücksetzen',
   storage:
     'Kampagnenfortschritt konnte nicht gespeichert werden. Browserspeicher freigeben und erneut versuchen.',
   retry: 'Erneut versuchen',

@@ -13,6 +13,9 @@ export const plCampaign = {
   confirm: 'Odblokować kolejną misję?\nTo funkcja pomocnicza wersji alpha Open Northland.',
   cancel: 'Anuluj',
   unlock: 'Odblokuj misję',
+  reset: 'Zresetuj postęp kampanii',
+  resetConfirm: 'Zresetować postęp kampanii {campaign}?\nOdblokowane misje i ukończenie zostaną zapomniane.',
+  resetAction: 'Zresetuj postęp',
   storage:
     'Nie udało się zapisać postępu kampanii. Zwolnij miejsce w pamięci przeglądarki i spróbuj ponownie.',
   retry: 'Ponów',

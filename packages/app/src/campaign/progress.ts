@@ -99,3 +99,19 @@ export function skipCampaignStage(campaign: Campaign, storage: ProgressStorage):
 export function canSkipCampaignStage(campaign: Campaign, progress: CampaignProgress): boolean {
   return nextCampaignStage(campaign, progress) !== undefined || !progress.completed;
 }
+
+/** Back to the first stage, not completed; other campaigns keep their own keys. */
+export function resetCampaignProgress(campaign: Campaign, storage: ProgressStorage): CampaignProgress {
+  const initial = campaign.stages[0]?.mapId;
+  return writeProgress(
+    campaign,
+    { unlocked: initial === undefined ? [] : [initial], completed: false },
+    storage,
+  );
+}
+
+/** Whether a reset would forget anything: a stage past the first, or the completion. */
+export function hasCampaignProgress(campaign: Campaign, progress: CampaignProgress): boolean {
+  const initial = campaign.stages[0]?.mapId;
+  return progress.completed || progress.unlocked.some((mapId) => mapId !== initial);
+}
