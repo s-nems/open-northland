@@ -7,6 +7,7 @@ import {
   removeCurrentAtomic,
   Settler,
   type SettlerIdentity,
+  setSettlerTribe,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 
@@ -38,4 +39,15 @@ export function syncScenarioIdentity(world: World, content: ContentSet, e: Entit
   world.mut(e, Settler).scenario = scenario ? true : undefined;
   resizeUnitHealth(world, e, previous, unitHitpoints(content, world.get(e, Settler)));
   if (previousVariant !== unitVariantFor(content, world.get(e, Settler))) removeCurrentAtomic(world, e);
+}
+
+/** A settler moved to another people changes form as under {@link syncScenarioIdentity}. */
+export function changeUnitTribe(world: World, content: ContentSet, e: Entity, tribe: number): void {
+  const identity = world.get(e, Settler);
+  const previous = unitHitpoints(content, identity);
+  const previousVariant = unitVariantFor(content, identity);
+  setSettlerTribe(world, e, tribe);
+  const next = world.get(e, Settler);
+  resizeUnitHealth(world, e, previous, unitHitpoints(content, next));
+  if (previousVariant !== unitVariantFor(content, next)) removeCurrentAtomic(world, e);
 }

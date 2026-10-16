@@ -1,107 +1,67 @@
-import {
-  decodeMissionResult,
-  isCivilizationTribe as isCivilization,
-  type MapAiSeat,
-  type MapScript,
-} from '@open-northland/data';
+import type { MapAiSeat, MapScript } from '@open-northland/data';
 import type { GameSession } from '@open-northland/lockstep';
-import { type MissionHouseRef, type MissionScript, systems } from '@open-northland/sim';
+import {
+  type MissionGoalOp,
+  type MissionHouseRef,
+  type MissionResultOp,
+  type MissionScript,
+  type MissionSeatTribe,
+  systems,
+} from '@open-northland/sim';
+import {
+  type FlowingThing,
+  type FlowKind,
+  flowOf,
+  type SeatChange,
+  type SeatFlows,
+  type SeatScript,
+  seatFlows,
+} from './seat-flows.js';
 import type { AuthoredPlacement } from './world/authored-placements.js';
 import type { MapScriptWorld } from './world/build.js';
 import type { AuthoredJoinRows } from './world/content-joins.js';
 import { mapScriptWorld } from './world/mission-script.js';
 
-/** Seat to the civilization the lobby chose for it, for the seats whose choice differs from the map's. */
-export type SeatTribes = ReadonlyMap<number, number>;
-
-/** The roster and script lines that decide which seats play another civilization. */
-export type SeatScript = Pick<MapScript, 'players' | 'missions'>;
-
 /**
- * The seats the session plays as another civilization than the map's roster row names. A monster seat
- * has no civilization to trade, so it keeps its own tribe whatever the session carries.
- */
-export function sessionSeatTribes(session: Pick<GameSession, 'seats'>, script: SeatScript): SeatTribes {
-  const chosen = new Map<number, number>();
-  for (const seat of session.seats) {
-    if (seat.tribe === undefined || !isCivilization(seat.tribe)) continue;
-    const authored = script.players.find((row) => row.player === seat.player)?.tribeId;
-    if (authored === undefined || !isCivilization(authored) || authored === seat.tribe) continue;
-    chosen.set(seat.player, seat.tribe);
-  }
-  if (chosen.size > 0) addHandedSeats(chosen, session, script);
-  return chosen;
-}
-
-/**
- * A map-AI seat the script hands whole to a re-tribed seat (`ChangePlayerPlayerId`) holds that seat's
- * own people staged elsewhere, such as the settlers waiting aboard an opening ship, so it takes the
- * seat's civilization too. A monster seat, or one the session itself plays or names a tribe for, keeps
- * its own.
- */
-function addHandedSeats(
-  chosen: Map<number, number>,
-  session: Pick<GameSession, 'seats'>,
-  script: SeatScript,
-): void {
-  const handovers: { readonly from: number; readonly to: number }[] = [];
-  for (const mission of script.missions) {
-    for (const line of mission.results) {
-      const op = decodeMissionResult(line);
-      if (op.opcode === 'ChangePlayerPlayerId') handovers.push({ from: op.player, to: op.otherPlayer });
-    }
-  }
-  const stagingSeat = (player: number): boolean => {
-    const authored = script.players.find((row) => row.player === player)?.tribeId;
-    const seat = session.seats.find((s) => s.player === player);
-    return (
-      authored !== undefined &&
-      isCivilization(authored) &&
-      (seat === undefined || (seat.mode === 'map-ai' && seat.tribe === undefined))
-    );
-  };
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const { from, to } of handovers) {
-      const tribe = chosen.get(to);
-      if (tribe === undefined || chosen.has(from) || !stagingSeat(from)) continue;
-      chosen.set(from, tribe);
-      grew = true;
-    }
-  }
-}
-
-/**
- * The tribe a seat's own things take once the lobby changed its civilization: every civilization
- * settler, vehicle, building, permission row and script line of that seat, so a mixed-tribe town
- * becomes one people. A monster or an animal keeps its tribe, and so does a building type the chosen
- * civilization has no graphics for (the viking big ship, the wonders), and a hero, who is a named
- * character of the map's own people (Bjarni stays a viking).
+ * The tribe a thing takes once the lobby changed its seat's civilization (`docs/formats/MISSIONS.md`,
+ * "Seats played as another civilization"). Whatever reaches a re-tribed seat - its own placements,
+ * a seat handed to it whole, a handed id or area, a spawn for any of these - takes the chosen people
+ * when it is of the seat's authored people; a thing of another people stays that people, as do a hero
+ * (Bjarni stays a viking), a monster, an animal and a building type the chosen civilization has no
+ * graphics for (the viking big ship, the wonders).
  */
 export interface SeatTribeRemap {
   readonly changed: boolean;
+  /** A seat-wide row or line naming a people: a permission, an unlock, an AI task. */
   tribe(owner: number | undefined, tribe: number): number;
   /** A settler's tribe by its job typeId; an unresolved job counts as no hero. */
-  human(owner: number | undefined, job: number | undefined, tribe: number): number;
-  building(owner: number | undefined, typeId: number, tribe: number): number;
+  human(thing: FlowingThing, job: number | undefined, tribe: number): number;
+  vehicle(thing: FlowingThing, tribe: number): number;
+  building(thing: FlowingThing, typeId: number, tribe: number): number;
+  /** The re-tribed seats, for the handover safety net the mission script carries. */
+  readonly seatTribes: readonly MissionSeatTribe[];
 }
 
 export const MAP_TRIBES: SeatTribeRemap = {
   changed: false,
   tribe: (_owner, tribe) => tribe,
-  human: (_owner, _job, tribe) => tribe,
-  building: (_owner, _typeId, tribe) => tribe,
+  human: (_thing, _job, tribe) => tribe,
+  vehicle: (_thing, tribe) => tribe,
+  building: (_thing, _typeId, tribe) => tribe,
+  seatTribes: [],
 };
 
 export function seatTribeRemap(
-  seatTribes: SeatTribes,
+  flows: SeatFlows,
   rows: Pick<AuthoredJoinRows, 'buildingBobs' | 'jobs'>,
 ): SeatTribeRemap {
-  if (seatTribes.size === 0) return MAP_TRIBES;
-  const drawn = new Set<string>();
+  if (flows.changes.size === 0) return MAP_TRIBES;
+  const drawn = new Map<number, Set<number>>();
   for (const bob of rows.buildingBobs ?? []) {
-    if (bob.typeId !== undefined && bob.tribeId !== undefined) drawn.add(`${bob.tribeId}:${bob.typeId}`);
+    if (bob.typeId === undefined || bob.tribeId === undefined) continue;
+    const types = drawn.get(bob.tribeId) ?? new Set<number>();
+    types.add(bob.typeId);
+    drawn.set(bob.tribeId, types);
   }
   const heroJobs = new Set<number>();
   for (const job of rows.jobs ?? []) {
@@ -109,28 +69,37 @@ export function seatTribeRemap(
       heroJobs.add(job.typeId);
     }
   }
-  const tribe = (owner: number | undefined, current: number): number => {
-    const chosen = owner === undefined ? undefined : seatTribes.get(owner);
-    return chosen !== undefined && isCivilization(current) ? chosen : current;
-  };
+  const moved = (change: SeatChange | undefined, current: number): number =>
+    change !== undefined && current === change.authored ? change.chosen : current;
+  const reached = (kind: FlowKind, thing: FlowingThing, current: number): number =>
+    moved(flowOf(flows, kind, thing), current);
   return {
     changed: true,
-    tribe,
-    human: (owner, job, current) =>
-      job !== undefined && heroJobs.has(job) ? current : tribe(owner, current),
-    building: (owner, typeId, current) => {
-      const next = tribe(owner, current);
-      return drawn.has(`${next}:${typeId}`) ? next : current;
+    tribe: (owner, current) => moved(owner === undefined ? undefined : flows.seats.get(owner), current),
+    human: (thing, job, current) =>
+      job !== undefined && heroJobs.has(job) ? current : reached('human', thing, current),
+    vehicle: (thing, current) => reached('vehicle', thing, current),
+    building: (thing, typeId, current) => {
+      const next = reached('house', thing, current);
+      return drawn.get(next)?.has(typeId) === true ? next : current;
     },
+    seatTribes: [...flows.changes.values()].map((change) => ({
+      player: change.seat,
+      authored: change.authored,
+      chosen: change.chosen,
+      drawnBuildings: [...(drawn.get(change.chosen) ?? [])].sort((a, b) => a - b),
+    })),
   };
 }
 
-/** The roster as the session plays it: the chosen civilization on each changed seat's row. */
-function seatedRoster(players: MapScript['players'], seatTribes: SeatTribes): MapScript['players'] {
-  if (seatTribes.size === 0) return players;
+/** The roster as the session plays it: the chosen civilization on each changed seat's row, and on the row
+ *  of a seat handed to it whole when that seat was authored as the same people, since what it raises
+ *  reaches the changed seat too. */
+function seatedRoster(players: MapScript['players'], remap: SeatTribeRemap): MapScript['players'] {
+  if (!remap.changed) return players;
   return players.map((row) => {
-    const tribeId = seatTribes.get(row.player);
-    return tribeId === undefined ? row : { ...row, tribeId };
+    const tribeId = remap.tribe(row.player, row.tribeId);
+    return tribeId === row.tribeId ? row : { ...row, tribeId };
   });
 }
 
@@ -152,31 +121,48 @@ function seatedMapScript(script: MapScript, players: MapScript['players'], remap
   };
 }
 
-/** A resolved script line naming a player and a tribe or a house of one: its tribe follows the seat,
- *  except for a hero the line spawns. */
-function seatedOp<T extends object>(op: T, remap: SeatTribeRemap): T {
+/** A spawn line's thing: its seat, its id and its point. */
+function spawned(player: number, missionId: number, at: FlowingThing['at']): FlowingThing {
+  return { owner: player, missionId, at };
+}
+
+/** A resolved spawn line takes the tribe its thing will end with; any other line naming a player and a
+ *  tribe or a house follows its seat. */
+function seatedResult(op: MissionResultOp, remap: SeatTribeRemap): MissionResultOp {
+  switch (op.opcode) {
+    case 'SetHuman':
+    case 'SetHumanX': {
+      const tribe = remap.human(spawned(op.player, op.humanId, op.point), op.job, op.tribe);
+      return tribe === op.tribe ? op : { ...op, tribe };
+    }
+    case 'SetVehicle': {
+      const tribe = remap.vehicle(spawned(op.player, op.vehicleId, op.point), op.tribe);
+      return tribe === op.tribe ? op : { ...op, tribe };
+    }
+    case 'SetHouse': {
+      const house = op.houseName;
+      const tribe = remap.building(spawned(op.player, op.objectId, op.point), house.typeId, house.tribe);
+      return tribe === house.tribe ? op : { ...op, houseName: { ...house, tribe } };
+    }
+    default:
+      return seatedLine(op, remap);
+  }
+}
+
+function seatedLine<T extends object>(op: T, remap: SeatTribeRemap): T {
   if (!('player' in op) || typeof op.player !== 'number') return op;
   const owner = op.player;
   let seated = op;
   if ('tribe' in op && typeof op.tribe === 'number') {
-    const tribe = spawnsHuman(op) ? remap.human(owner, op.job, op.tribe) : remap.tribe(owner, op.tribe);
+    const tribe = remap.tribe(owner, op.tribe);
     if (tribe !== op.tribe) seated = { ...seated, tribe };
   }
   if ('houseName' in op && isHouseRef(op.houseName)) {
     const house = op.houseName;
-    const tribe = remap.building(owner, house.typeId, house.tribe);
+    const tribe = remap.building({ owner }, house.typeId, house.tribe);
     if (tribe !== house.tribe) seated = { ...seated, houseName: { ...house, tribe } };
   }
   return seated;
-}
-
-function spawnsHuman(op: object): op is { opcode: 'SetHuman' | 'SetHumanX'; job: number } {
-  return (
-    'opcode' in op &&
-    (op.opcode === 'SetHuman' || op.opcode === 'SetHumanX') &&
-    'job' in op &&
-    typeof op.job === 'number'
-  );
 }
 
 function isHouseRef(value: unknown): value is MissionHouseRef {
@@ -195,9 +181,10 @@ export function seatedMissions(script: MissionScript, remap: SeatTribeRemap): Mi
   return {
     missions: script.missions.map((mission) => ({
       ...mission,
-      goals: mission.goals.map((op) => seatedOp(op, remap)),
-      results: mission.results.map((op) => seatedOp(op, remap)),
+      goals: mission.goals.map((op: MissionGoalOp) => seatedLine(op, remap)),
+      results: mission.results.map((op) => seatedResult(op, remap)),
     })),
+    seatTribes: remap.seatTribes,
   };
 }
 
@@ -207,7 +194,10 @@ function seatedAi(seats: readonly MapAiSeat[], remap: SeatTribeRemap): readonly 
     ...seat,
     tasks: seat.tasks.map((task) =>
       task.kind === 'createCreatures'
-        ? { ...task, tribe: remap.human(seat.player, task.job, task.tribe) }
+        ? {
+            ...task,
+            tribe: remap.human({ owner: seat.player, missionId: task.missionId }, task.job, task.tribe),
+          }
         : task,
     ),
   }));
@@ -228,10 +218,11 @@ export function seatedPlacements(
 ): readonly AuthoredPlacement[] {
   if (!remap.changed) return placements;
   return placements.map((p): AuthoredPlacement => {
-    if (p.kind === 'building') return { ...p, tribe: remap.building(p.owner, p.typeId, p.tribe) };
-    if (p.kind === 'human') return { ...p, tribe: remap.human(p.owner, p.jobType, p.tribe) };
-    if (p.kind === 'vehicle') return { ...p, tribe: remap.tribe(p.owner, p.tribe) };
-    return p;
+    if (p.kind !== 'building' && p.kind !== 'human' && p.kind !== 'vehicle') return p;
+    const thing = { owner: p.owner, missionId: p.missionId, at: { hx: p.x, hy: p.y } };
+    if (p.kind === 'building') return { ...p, tribe: remap.building(thing, p.typeId, p.tribe) };
+    if (p.kind === 'human') return { ...p, tribe: remap.human(thing, p.jobType, p.tribe) };
+    return { ...p, tribe: remap.vehicle(thing, p.tribe) };
   });
 }
 
@@ -247,8 +238,8 @@ export function sessionSeating(
   rows: Pick<AuthoredJoinRows, 'buildingBobs' | 'jobs'>,
 ): SessionSeating {
   if (script === null) return { players: [], remap: MAP_TRIBES };
-  const seatTribes = sessionSeatTribes(session, script);
-  return { players: seatedRoster(script.players, seatTribes), remap: seatTribeRemap(seatTribes, rows) };
+  const remap = seatTribeRemap(seatFlows(session, script), rows);
+  return { players: seatedRoster(script.players, remap), remap };
 }
 
 /** What a session builds its map world from: the seated script, its resolved script world and the

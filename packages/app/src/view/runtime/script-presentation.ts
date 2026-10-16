@@ -173,6 +173,12 @@ export function createScriptPresentation(deps: ScriptPresentationDeps): ScriptPr
           case 'missionResultFailed':
             diag.warn(DIAG_CHANNEL, `mission ${event.mission}: ${event.opcode} could not act on the world`);
             break;
+          case 'missionSeatTribeCorrected':
+            diag.warn(
+              DIAG_CHANNEL,
+              `mission ${event.mission}: ${event.opcode} moved ${event.count} handed things of the seat's authored people to its chosen people`,
+            );
+            break;
           case 'missionExit':
             if (deps.keepPlayingAfterResult?.() === true) break;
             deps.exit();

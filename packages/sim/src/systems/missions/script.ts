@@ -68,6 +68,22 @@ export interface MissionDefinition {
  */
 export interface MissionScript {
   readonly missions: readonly MissionDefinition[];
+  /** The seats the session plays as another people than the map authored for them; absent when every
+   *  seat plays the map's own. */
+  readonly seatTribes?: readonly MissionSeatTribe[];
+}
+
+/**
+ * A seat played as another civilization. The world build already moved everything the script hands
+ * the seat; a handover that still delivers its authored people moves them then (`docs/formats/MISSIONS.md`,
+ * "Seats played as another civilization").
+ */
+export interface MissionSeatTribe {
+  readonly player: number;
+  readonly authored: number;
+  readonly chosen: number;
+  /** The building types the chosen civilization draws; a house of any other type keeps its people. */
+  readonly drawnBuildings: readonly number[];
 }
 
 /** Whether `held` of `total` goals satisfies the rule (`MISSIONS.md`, "Execution model"). A mission

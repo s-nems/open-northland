@@ -438,6 +438,17 @@ export type SimEvent =
       readonly mission: number;
       readonly opcode: string;
     }
+  | {
+      /**
+       * A handover delivered `count` things of a re-tribed seat's authored people into that seat, which
+       * the world build should already have moved to the chosen people; they took it now, a house whose
+       * form differs between the two excepted. Emitted per line that found any.
+       */
+      readonly kind: 'missionSeatTribeCorrected';
+      readonly mission: number;
+      readonly opcode: string;
+      readonly count: number;
+    }
   | { readonly kind: 'missionLandscapeResourceRemoved'; readonly entity: Entity }
   | { readonly kind: 'missionLandscapeChanged' }
   | { readonly kind: 'missionVertexColor' }

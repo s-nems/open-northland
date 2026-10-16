@@ -1101,7 +1101,8 @@ the player plays the picture muted and keeps the track within 0.1 s of it. A sta
 the previous stage, placed as fractions of the background. The campaign plays in the UI language,
 else English, else its first language; texts, artwork and films fall back the same way. A mission launch is `?map=<id>&missions=on&lang=<language>`, plus
 `tribe=<id>` when the person picks a civilization for their own seat; map AIs keep theirs,
-sub-missions keep the choice, and a save replays the civilization its own entry names.
+sub-missions keep the choice, and a save replays the civilization its own entry names. What the
+script hands that seat follows [the seat rule](#seats-played-as-another-civilization).
 
 `SetHouseOverlayState` writes `HouseLandscapeOverlays` on every house with the authored object id.
 Slots 0 through 9 retain independent true/false overrides; missing slots leave the initial state to
@@ -1112,6 +1113,47 @@ the renderer draws enabled slots over the completed building body, preserving th
 Missing overrides default to off. Animated overlays use the existing two-tick frame cadence, an
 approximation, and do not reproduce individual landscape timing or shadows. Repeated identical writes
 do not invalidate a component. Save format 102 includes these campaign and overlay outputs.
+
+## Seats played as another civilization
+
+A session may play a seat as another civilization than the roster row authors (`tribe=`, `tribes=`,
+a lobby choice). That seat's authored people become the chosen people, and so does everything of the
+authored people the script will hand it. Things of another people stay that people: a scenario that
+gives a viking seat saracen allies keeps them saracen, and a seat's own authored franks stay franks.
+A hero keeps his people, a monster or an animal its kind, and a house type the chosen people have no
+graphics for (the viking big ship, the wonders) its tribe; a vehicle takes the chosen people. Other
+seats keep their people, except a seat handed whole, whose roster row takes the chosen people when
+it was authored as the same people, so what it raises reaches the seat as the chosen people too. This is our rule; the original has no civilization choice for a map.
+
+The world build reads every result line of the script, whether or not it can fire, and moves what
+will reach a re-tribed seat before tick 0:
+
+- a seat `ChangePlayerPlayerId` hands to it whole, followed through chains of seats handed on, unless
+  another person plays that seat;
+- humans, houses and vehicles whose mission id `ChangeHumanPlayerId`, `ChangeHousesPlayerId` or
+  `ChangeVehiclesPlayerId` hands to such a seat, including vehicle ids `ChangeMissionIdOfVehicles`
+  renumbers onto a handed one;
+- a seat's things standing in a `ChangePlayerIdInArea` area, and its humans or vehicles in an area
+  whose id-stamping line (`ChangeHumanObjectIdInArea`, `ChangeMissionIdOfHumanInRange`,
+  `ChangeMissionIdOfVehiclesInRange`) gives them a handed id; `ChangeMissionIdOfPlayer` and
+  `ChangeMissionIdOfPlayersVehiclesOnContinent` count every human or vehicle of the seat, the
+  continent being unknown before the map is built.
+
+Areas are judged at the authored places, and a spawn (`SetHuman`, `SetHumanX`, `SetVehicle`,
+`SetHouse`) at its line's point, owner and id: a spawn that reaches the seat spawns in the chosen
+people. Read from the script alone, the pass misses a unit that walks into an area later, a handover
+of id 0 (every human without an id) and an id a `Build*` goal stamps. A handover that still delivers
+the seat's authored people moves them as it runs and emits `missionSeatTribeCorrected`; a house whose
+footprint or hit points differ between the two peoples keeps its tribe, since its placement stands.
+`seat-tribes-handovers.test.ts` runs every map's spawns, stamps and handovers with the seat on another
+civilization and requires that the net never fires.
+
+Another person's seat is left to the net: its things keep their people until a handover delivers
+them into a re-tribed seat. A thing that reaches two re-tribed seats takes the first seat's choice. A thing of another re-tribed
+seat keeps that seat's choice. The chosen tribes are stamped at the build and saved with the world;
+the spawns and the net read the seated script, which a restore rebuilds from the same session, so
+saves, replays and lockstep peers see the same people. Each sub-mission applies the rule to its own
+script.
 
 ## Sub-missions
 

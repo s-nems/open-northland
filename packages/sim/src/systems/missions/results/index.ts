@@ -53,6 +53,7 @@ import {
   removeScriptedHumans,
 } from './remove.js';
 import { sendScriptedHumans } from './scripted-march.js';
+import { retribeHanded } from './seat-tribes.js';
 import { spawnScriptedAnimal, spawnScriptedHumans } from './spawn.js';
 import {
   declareScriptedVerdict,
@@ -156,7 +157,7 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       removeScriptedVehiclesWithCrews(pass, result.vehicleId, result.flag);
       return;
     case 'ChangeVehiclesPlayerId':
-      handVehiclesToPlayer(pass, result.vehicleId, result.player);
+      retribeHanded(pass, index, result.opcode, handVehiclesToPlayer(pass, result.vehicleId, result.player));
       return;
     case 'AttachHumanToVehicle':
       attachScriptedHumans(pass, result.humanId, result.vehicleId);
@@ -193,16 +194,16 @@ export function executeResult(pass: MissionPass, index: number, result: MissionR
       removeScriptedHouses(pass, result.objectId);
       return;
     case 'ChangeHumanPlayerId':
-      handHumansToPlayer(pass, result.humanId, result.player);
+      retribeHanded(pass, index, result.opcode, handHumansToPlayer(pass, result.humanId, result.player));
       return;
     case 'ChangeHousesPlayerId':
-      handHousesToPlayer(pass, result.objectId, result.player);
+      retribeHanded(pass, index, result.opcode, handHousesToPlayer(pass, result.objectId, result.player));
       return;
     case 'ChangePlayerPlayerId':
-      handPlayerToPlayer(pass, result.player, result.otherPlayer);
+      retribeHanded(pass, index, result.opcode, handPlayerToPlayer(pass, result.player, result.otherPlayer));
       return;
     case 'ChangePlayerIdInArea':
-      handAreaToPlayer(pass, result);
+      retribeHanded(pass, index, result.opcode, handAreaToPlayer(pass, result));
       return;
     case 'ChangeAnimalPlayerIdInArea':
       handAnimalsToPlayer(pass, result);

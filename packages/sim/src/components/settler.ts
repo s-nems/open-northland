@@ -143,6 +143,7 @@ export function isWildlife(world: World, entity: Entity): boolean {
 }
 
 type SettlerTradeWrite = { jobType: number | null };
+type SettlerTribeWrite = { tribe: number };
 
 /**
  * The one write path for `Settler.jobType` (`null` = idle): the in-place write is invisible to the
@@ -151,6 +152,15 @@ type SettlerTradeWrite = { jobType: number | null };
 export function setSettlerJob(world: World, entity: Entity, jobType: number | null): void {
   const s = world.mut(entity, Settler);
   (s as SettlerTradeWrite).jobType = jobType;
+  noteSettlerProgress(world, entity);
+  for (const log of tradeLogs.get(world)?.values() ?? []) log.add(entity);
+}
+
+/** The write path for a spawned settler's tribe, which keys its trade lookups as its job does, so it
+ *  reports to the same logs as {@link setSettlerJob}. */
+export function setSettlerTribe(world: World, entity: Entity, tribe: number): void {
+  const s = world.mut(entity, Settler);
+  (s as SettlerTribeWrite).tribe = tribe;
   noteSettlerProgress(world, entity);
   for (const log of tradeLogs.get(world)?.values() ?? []) log.add(entity);
 }

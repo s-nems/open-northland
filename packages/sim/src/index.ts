@@ -259,6 +259,7 @@ export type {
   MissionHouseRef,
   MissionResultOp,
   MissionScript,
+  MissionSeatTribe,
   MissionStatus,
   OpenTribute,
   ResolvedOp,

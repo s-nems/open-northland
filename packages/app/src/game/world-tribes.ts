@@ -48,16 +48,19 @@ export function worldTribes(
       if (op.opcode !== 'SetHuman' && op.opcode !== 'SetHumanX') continue;
       const tribe = op.tribe.ref === 'id' ? op.tribe.id : joins.tribe(op.tribe.name);
       const job = op.job.ref === 'id' ? op.job.id : joins.job(op.job.name);
-      add(tribe === undefined ? undefined : seatTribes.human(op.player, job, tribe));
+      const spawn = { owner: op.player, missionId: op.humanId, at: op.point };
+      add(tribe === undefined ? undefined : seatTribes.human(spawn, job, tribe));
     }
   }
   for (const human of entities?.humans ?? []) {
     const tribe = joins.tribe(human.tribe);
-    add(tribe === undefined ? undefined : seatTribes.human(human.player, joins.job(human.role), tribe));
+    const placed = { owner: human.player, missionId: human.missionId, at: human };
+    add(tribe === undefined ? undefined : seatTribes.human(placed, joins.job(human.role), tribe));
   }
   for (const building of entities?.buildings ?? []) {
     const hit = joins.buildingBob(building.name, building.level);
-    add(hit === undefined ? undefined : seatTribes.building(building.player, hit.typeId, hit.tribeId));
+    const placed = { owner: building.player, missionId: building.missionId, at: building };
+    add(hit === undefined ? undefined : seatTribes.building(placed, hit.typeId, hit.tribeId));
   }
   return [PRIMARY_TRIBE, ...[...tribes].filter((t) => t !== PRIMARY_TRIBE).sort((a, b) => a - b)];
 }

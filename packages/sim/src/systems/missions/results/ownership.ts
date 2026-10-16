@@ -21,32 +21,37 @@ import { missionHouses, ownedBy, ownedInRange, scriptedHumans, withinRange } fro
 const ANIMAL_HANDOVER_CAP = 50;
 
 /** Hand every human stamped with the id to `player`, detaching each from the job and home it held
- *  under its old owner (reading). */
-export function handHumansToPlayer(pass: MissionPass, id: number, player: number): void {
-  if (!isValidPlayer(player)) return;
-  for (const e of scriptedHumans(pass.world, id)) {
+ *  under its old owner (reading). Returns the humans handed. */
+export function handHumansToPlayer(pass: MissionPass, id: number, player: number): readonly Entity[] {
+  if (!isValidPlayer(player)) return [];
+  const handed = scriptedHumans(pass.world, id);
+  for (const e of handed) {
     detachFromHouses(pass.world, pass.ctx, e);
     stampOwner(pass.world, e, player);
     syncScenarioIdentity(pass.world, pass.ctx.content, e);
   }
+  return handed;
 }
 
-/** Hand every house stamped with the id to `player`. */
-export function handHousesToPlayer(pass: MissionPass, id: number, player: number): void {
-  for (const e of missionHouses(pass.world, id)) stampOwner(pass.world, e, player);
+/** Hand every house stamped with the id to `player`. Returns the houses handed. */
+export function handHousesToPlayer(pass: MissionPass, id: number, player: number): readonly Entity[] {
+  const handed = missionHouses(pass.world, id);
+  for (const e of handed) stampOwner(pass.world, e, player);
+  return handed;
 }
 
 /** Hand everything one player owns to another - units, houses, vehicles and animals alike. Nobody is
  *  evicted: a town changes flag whole, so every binding inside it still points at the same owner. */
-export function handPlayerToPlayer(pass: MissionPass, from: number, to: number): void {
+export function handPlayerToPlayer(pass: MissionPass, from: number, to: number): readonly Entity[] {
   const { world } = pass;
-  if (!isValidPlayer(from) || !isValidPlayer(to) || from === to) return;
+  if (!isValidPlayer(from) || !isValidPlayer(to) || from === to) return [];
   const handed = world.canonicalQuery(Owner).filter((e) => world.get(e, Owner).player === from);
   for (const e of handed) {
     stampOwner(world, e, to);
     syncScenarioIdentity(world, pass.ctx.content, e);
   }
   relinkHandedSignposts(pass, handed);
+  return handed;
 }
 
 /** Hand everything one player owns within `range` of the point to another; its humans leave the job
@@ -54,8 +59,8 @@ export function handPlayerToPlayer(pass: MissionPass, from: number, to: number):
 export function handAreaToPlayer(
   pass: MissionPass,
   op: Extract<MissionResultOp, { opcode: 'ChangePlayerIdInArea' }>,
-): void {
-  if (!isValidPlayer(op.player) || !isValidPlayer(op.otherPlayer)) return;
+): readonly Entity[] {
+  if (!isValidPlayer(op.player) || !isValidPlayer(op.otherPlayer)) return [];
   const handed = ownedInRange(pass.world, op.player, op.point, op.range);
   for (const e of handed) {
     if (pass.world.has(e, Person)) detachFromHouses(pass.world, pass.ctx, e);
@@ -63,6 +68,7 @@ export function handAreaToPlayer(
     syncScenarioIdentity(pass.world, pass.ctx.content, e);
   }
   relinkHandedSignposts(pass, handed);
+  return handed;
 }
 
 /** Relink the signposts among `handed` once every one carries its new owner, so posts handed together

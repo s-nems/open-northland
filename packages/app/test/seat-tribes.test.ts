@@ -4,19 +4,16 @@ import { components, type Entity, exportSaveGame, type MissionScript } from '@op
 import { describe, expect, it } from 'vitest';
 import type { ContentIr } from '../src/content/ir/rows.js';
 import { buildMapWorldFromInputs } from '../src/entries/map/world-inputs.js';
-import {
-  seatedMissions,
-  seatTribeRemap,
-  sessionMapScript,
-  sessionSeatTribes,
-} from '../src/game/seat-tribes.js';
+import { seatFlows } from '../src/game/seat-flows.js';
+import { seatedMissions, seatTribeRemap, sessionMapScript } from '../src/game/seat-tribes.js';
 import type { AuthoredJoinRows } from '../src/game/world/index.js';
 import { worldTribes } from '../src/game/world-tribes.js';
 import { AUTHORED_ENTITIES, AUTHORED_ROWS } from './support/authored-entities.js';
 import { authoredMapFile } from './support/world-maps.js';
 
 /** A seat the lobby moved to another civilization takes its settlers, houses, roster row and script
- *  lines along; monsters, animals and other seats keep theirs. */
+ *  lines of its authored people along, and so does what the script hands it; another people,
+ *  monsters, animals and other seats keep theirs. */
 
 const VIKING = 1;
 const FRANK = 2;
@@ -56,104 +53,96 @@ const rows: AuthoredJoinRows = {
   jobs: [...(AUTHORED_ROWS.jobs ?? []), { typeId: HERO_BJARNI, id: 'hero_sword_bjarni' }],
 };
 
-describe('sessionSeatTribes', () => {
-  it('keeps only a civilization seat moved to another civilization', () => {
-    const chosen = sessionSeatTribes(
-      { seats: [seat(0, SARACEN), seat(1, VIKING), seat(2, FRANK), seat(3, SARACEN)] },
-      roster,
-    );
-    // Seat 1 is a monster, seat 2 kept its own, seat 3 is off the roster.
-    expect([...chosen]).toEqual([[0, SARACEN]]);
-    expect(sessionSeatTribes({ seats: [seat(0, WERESNAKE)] }, roster).size).toBe(0);
-  });
-
-  it('moves a map-AI seat the script hands whole to a re-tribed seat along with it', () => {
-    // Seat 3 stages the person's settlers aboard a ship and hands them over through seat 4; seat 5 is
-    // handed over too but the session names its own tribe, and seat 6 hands itself to an unchanged seat.
-    const staged = MapScript.parse({
-      players: [
-        { player: 0, type: 'human', tribeId: VIKING, colorId: 0 },
-        { player: 2, type: 'human', tribeId: FRANK, colorId: 2 },
-        { player: 3, type: 'ai', tribeId: VIKING, colorId: 3 },
-        { player: 4, type: 'ai', tribeId: VIKING, colorId: 4 },
-        { player: 5, type: 'ai', tribeId: VIKING, colorId: 5 },
-        { player: 6, type: 'ai', tribeId: VIKING, colorId: 6 },
-      ],
-      missions: [
-        {
-          goals: [{ key: 'goal', values: ['True'] }],
-          results: [
-            { key: 'result', values: ['ChangePlayerPlayerId', '3', '4'] },
-            { key: 'result', values: ['ChangePlayerPlayerId', '4', '0'] },
-            { key: 'result', values: ['ChangePlayerPlayerId', '5', '0'] },
-            { key: 'result', values: ['ChangePlayerPlayerId', '6', '2'] },
-          ],
-        },
-      ],
-    });
-    const mapAi = (player: number, tribe?: number): SessionSeat => ({
-      ...seat(player, tribe),
-      mode: 'map-ai',
-    });
-    const chosen = sessionSeatTribes(
-      { seats: [seat(0, SARACEN), seat(2), mapAi(3), mapAi(4), mapAi(5, VIKING), mapAi(6)] },
-      staged,
-    );
-    expect([...chosen].sort(([a], [b]) => a - b)).toEqual([
-      [0, SARACEN],
-      [3, SARACEN],
-      [4, SARACEN],
-    ]);
-  });
-});
-
 describe('seatTribeRemap', () => {
-  const remap = seatTribeRemap(new Map([[0, SARACEN]]), rows);
+  // Seat 3 is a map-AI seat the script hands to seat 0 whole; seat 4 hands id 9 to seat 0.
+  const staged = MapScript.parse({
+    ...roster,
+    missions: [
+      {
+        goals: [{ key: 'goal', values: ['True'] }],
+        results: [
+          { key: 'result', values: ['ChangePlayerPlayerId', '3', '0'] },
+          { key: 'result', values: ['ChangeHumanPlayerId', '9', '0'] },
+        ],
+      },
+    ],
+  });
+  const mapAi = (player: number): SessionSeat => ({ ...seat(player), mode: 'map-ai' });
+  const remap = seatTribeRemap(
+    seatFlows({ seats: [seat(0, SARACEN), seat(2), mapAi(3), mapAi(4)] }, staged),
+    rows,
+  );
+  const own = { owner: 0 };
+  const staging = { owner: 3 };
 
-  it("moves the seat's civilization things and leaves monsters, animals and other seats", () => {
+  it("moves the seat's authored people and leaves another people, monsters, animals and other seats", () => {
     expect(remap.tribe(0, VIKING)).toBe(SARACEN);
-    expect(remap.tribe(0, FRANK)).toBe(SARACEN);
+    expect(remap.tribe(0, FRANK)).toBe(FRANK);
     expect(remap.tribe(0, WERESNAKE)).toBe(WERESNAKE);
     expect(remap.tribe(0, WOLVES)).toBe(WOLVES);
     expect(remap.tribe(2, FRANK)).toBe(FRANK);
     expect(remap.tribe(undefined, VIKING)).toBe(VIKING);
+    expect(remap.human(staging, BUILDER, VIKING)).toBe(SARACEN);
+    expect(remap.human(staging, BUILDER, FRANK)).toBe(FRANK);
+    expect(remap.human({ owner: 4, missionId: 9 }, BUILDER, VIKING)).toBe(SARACEN);
+    expect(remap.human({ owner: 4, missionId: 8 }, BUILDER, VIKING)).toBe(VIKING);
+    expect(remap.vehicle(staging, VIKING)).toBe(SARACEN);
   });
 
   it("keeps a hero in the map's own people", () => {
-    expect(remap.human(0, HERO_BJARNI, VIKING)).toBe(VIKING);
-    expect(remap.human(0, HERO_BJARNI, FRANK)).toBe(FRANK);
-    expect(remap.human(0, BUILDER, VIKING)).toBe(SARACEN);
-    expect(remap.human(0, undefined, VIKING)).toBe(SARACEN);
+    expect(remap.human(own, HERO_BJARNI, VIKING)).toBe(VIKING);
+    expect(remap.human(staging, HERO_BJARNI, VIKING)).toBe(VIKING);
+    expect(remap.human(own, BUILDER, VIKING)).toBe(SARACEN);
+    expect(remap.human(own, undefined, VIKING)).toBe(SARACEN);
+  });
+
+  it('seats the roster row of a seat handed whole', () => {
+    const seated = sessionMapScript(
+      { seats: [seat(0, SARACEN), seat(2), mapAi(3), mapAi(4)] },
+      MapScript.parse({
+        ...staged,
+        players: [...staged.players, { player: 3, type: 'ai', tribeId: VIKING, colorId: 3 }],
+      }),
+      rows,
+    );
+    expect(seated.script?.players.map((p) => [p.player, p.tribeId])).toEqual([
+      [0, SARACEN],
+      [1, WERESNAKE],
+      [2, FRANK],
+      [3, SARACEN],
+    ]);
   });
 
   it('keeps a building type the chosen civilization has no graphics for', () => {
-    expect(remap.building(0, BARRACKS, VIKING)).toBe(SARACEN);
-    expect(remap.building(0, SHIP, VIKING)).toBe(VIKING);
+    expect(remap.building(own, BARRACKS, VIKING)).toBe(SARACEN);
+    expect(remap.building(own, SHIP, VIKING)).toBe(VIKING);
   });
 
-  it("moves the seat's script lines, including a house the chosen civilization draws but no hero", () => {
+  it('spawns what reaches the seat as the chosen people, and carries the seat for the handover net', () => {
+    const line = { successfullIf: 0, active: true, visible: false, goals: [] };
+    const human = { opcode: 'SetHuman', tribe: VIKING, job: BUILDER, point: { hx: 0, hy: 0 }, humanId: 0 };
     const script = {
       missions: [
         {
-          successfullIf: 0,
-          active: true,
-          visible: false,
-          goals: [],
+          ...line,
           results: [
             { opcode: 'AllowJob', player: 0, tribe: VIKING, job: 7 },
             { opcode: 'AllowJob', player: 2, tribe: FRANK, job: 7 },
-            { opcode: 'SetHouse', player: 0, houseName: { typeId: BARRACKS, tribe: VIKING } },
-            { opcode: 'SetHouse', player: 0, houseName: { typeId: SHIP, tribe: VIKING } },
-            { opcode: 'SetHuman', player: 0, tribe: VIKING, job: BUILDER },
-            { opcode: 'SetHumanX', player: 0, tribe: VIKING, job: HERO_BJARNI },
+            { opcode: 'SetHouse', player: 0, houseName: { typeId: BARRACKS, tribe: VIKING }, objectId: 0 },
+            { opcode: 'SetHouse', player: 0, houseName: { typeId: SHIP, tribe: VIKING }, objectId: 0 },
+            { ...human, player: 0 },
+            { ...human, player: 0, opcode: 'SetHumanX', job: HERO_BJARNI },
+            { ...human, player: 3 },
+            { ...human, player: 3, tribe: FRANK },
+            { ...human, player: 4, humanId: 9 },
+            { ...human, player: 4 },
+            { opcode: 'SetVehicle', player: 3, tribe: VIKING, vehicleId: 0, point: { hx: 0, hy: 0 } },
           ],
         },
       ],
     } as unknown as MissionScript;
-    const results = seatedMissions(script, remap).missions[0]?.results as unknown as readonly Record<
-      string,
-      unknown
-    >[];
+    const seated = seatedMissions(script, remap);
+    const results = seated.missions[0]?.results as unknown as readonly Record<string, unknown>[];
     expect(results.map((op) => op.tribe ?? op.houseName)).toEqual([
       SARACEN,
       FRANK,
@@ -161,6 +150,14 @@ describe('seatTribeRemap', () => {
       { typeId: SHIP, tribe: VIKING },
       SARACEN,
       VIKING,
+      SARACEN,
+      FRANK,
+      SARACEN,
+      VIKING,
+      SARACEN,
+    ]);
+    expect(seated.seatTribes).toEqual([
+      { player: 0, authored: VIKING, chosen: SARACEN, drawnBuildings: [BARRACKS] },
     ]);
   });
 });

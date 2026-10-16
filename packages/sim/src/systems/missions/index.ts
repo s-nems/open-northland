@@ -6,6 +6,7 @@ export type {
   MissionHouseRef,
   MissionResultOp,
   MissionScript,
+  MissionSeatTribe,
   ResolvedOp,
 } from './script.js';
 export { MISSION_HOUSE_NAME_FIELD, MISSION_LANDSCAPE_NAME_FIELD, SUCCESSFUL_IF } from './script.js';

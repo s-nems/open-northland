@@ -114,9 +114,11 @@ export function removeScriptedVehiclesWithCrews(pass: MissionPass, id: number, c
 
 /** `ChangeVehiclesPlayerId`: the vehicles with the id change flag; their crews keep their own owner and
  *  their seats (the original touches nobody aboard). */
-export function handVehiclesToPlayer(pass: MissionPass, id: number, player: number): void {
-  if (!isValidPlayer(player)) return;
-  for (const e of missionVehicles(pass.world, id)) stampOwner(pass.world, e, player);
+export function handVehiclesToPlayer(pass: MissionPass, id: number, player: number): readonly Entity[] {
+  if (!isValidPlayer(player)) return [];
+  const handed = missionVehicles(pass.world, id);
+  for (const e of handed) stampOwner(pass.world, e, player);
+  return handed;
 }
 
 /**
