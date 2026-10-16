@@ -201,14 +201,68 @@
 }
 
 .main-menu__map-row-name {
+  display: flex;
+  align-items: center;
   font:
     500 calc(var(--u) * 25) / 1.2 "Alegreya Sans",
     system-ui,
     sans-serif;
   color: var(--text-body);
+  white-space: nowrap;
+}
+
+/* A long title gives way first; the marks after it keep their size. */
+.main-menu__map-row-title {
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+}
+
+.main-menu__map-row-name > :not(.main-menu__map-row-title) {
+  flex: none;
+}
+
+/* The narrated-briefing mark: the accent pill of the row's other marks, holding a line glyph. */
+.main-menu__narrator-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: calc(var(--u) * 10);
+  width: calc(var(--u) * 34);
+  height: calc(var(--u) * 26);
+  border-radius: 999px;
+  background: rgb(var(--accent-rgb) / 0.18);
+  color: var(--accent-bright);
+}
+
+.main-menu__narrator-glyph {
+  width: calc(var(--u) * 20);
+  height: calc(var(--u) * 20);
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.9;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.main-menu__map-narration {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--u) * 8);
+  font:
+    500 calc(var(--u) * 20) / 1.2 "Alegreya Sans",
+    system-ui,
+    sans-serif;
+  color: var(--accent-bright);
+}
+
+.main-menu__map-narration[hidden] {
+  display: none;
+}
+
+.main-menu__map-narration .main-menu__narrator-glyph {
+  width: calc(var(--u) * 24);
+  height: calc(var(--u) * 24);
 }
 
 .main-menu__tutorial-start {

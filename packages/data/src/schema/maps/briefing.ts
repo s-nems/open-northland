@@ -33,11 +33,17 @@ export function briefingVoiceSuffix({ lang, id }: BriefingVoice): string {
 }
 
 export const BRIEFING_VOICE_SUFFIX = new RegExp(
-  `^\\.voice-(?:${MAP_TEXT_LANGUAGES.join('|')})-\\d{${VOICE_FILE_DIGITS},}\\.wav$`,
+  `^\\.voice-(${MAP_TEXT_LANGUAGES.join('|')})-\\d{${VOICE_FILE_DIGITS},}\\.wav$`,
 );
 
 const isMapTextLanguage = (lang: string): lang is MapTextLanguage =>
   (MAP_TEXT_LANGUAGES as readonly string[]).includes(lang);
+
+/** The languages whose narration the listed voice `suffixes` carry, in `MAP_TEXT_LANGUAGES` order. */
+export function narratedLanguages(suffixes: readonly string[] | undefined): MapTextLanguage[] {
+  const spoken = new Set(suffixes?.map((suffix) => BRIEFING_VOICE_SUFFIX.exec(suffix)?.[1]));
+  return MAP_TEXT_LANGUAGES.filter((lang) => spoken.has(lang));
+}
 
 /** The clip a callback speaks in `lang`, or null for another callback kind or language. */
 export function callbackVoice(

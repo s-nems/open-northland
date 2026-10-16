@@ -7,6 +7,7 @@ import {
   callbackVoice,
   type HypertextBlock,
   type MapBriefing,
+  narratedLanguages,
 } from '../src/index.js';
 
 describe('briefing voices', () => {
@@ -37,5 +38,20 @@ describe('briefing voices', () => {
       { lang: 'pol', id: 2 },
       { lang: 'eng', id: 1 },
     ]);
+  });
+
+  it('reads the narrated languages off the listed suffixes, in map text language order', () => {
+    expect(narratedLanguages(undefined)).toEqual([]);
+    expect(narratedLanguages([])).toEqual([]);
+    expect(narratedLanguages(['.voice-pol-0001.wav', '.voice-pol-0002.wav'])).toEqual(['pol']);
+    expect(
+      narratedLanguages([
+        '.voice-rus-0001.wav',
+        '.voice-eng-0001.wav',
+        '.voice-pol-0001.wav',
+        '.voice-ger-0003.wav',
+      ]),
+    ).toEqual(['pol', 'eng', 'ger', 'rus']);
+    expect(narratedLanguages(['.voice-fra-0001.wav', '.png'])).toEqual([]);
   });
 });

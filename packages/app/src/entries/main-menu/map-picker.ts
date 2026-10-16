@@ -2,7 +2,7 @@ import { apiBaseUrl, playableMapSources } from '../../content/map-source/index.j
 import { quietTextField } from '../../hud/dom/parts/text-field.js';
 import { bcp47Tag, formatMessage, messages, pluralForm } from '../../i18n/index.js';
 import { MAP_SCENES, SCENES } from '../../scenes/index.js';
-import { createMapDetailsCard, metaLine, paintMapThumb } from './map-card.js';
+import { createMapDetailsCard, metaLine, narratorBadge, paintMapThumb } from './map-card.js';
 import {
   filterItems,
   listedIn,
@@ -169,7 +169,12 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
     text.className = 'main-menu__map-row-text';
     const rowName = document.createElement('div');
     rowName.className = 'main-menu__map-row-name';
-    rowName.textContent = item.title;
+    const rowTitle = document.createElement('span');
+    rowTitle.className = 'main-menu__map-row-title';
+    rowTitle.textContent = item.title;
+    rowName.append(rowTitle);
+    const narrator = narratorBadge(item);
+    if (narrator !== null) rowName.append(narrator);
     if (item.tutorialStep === 1) {
       const recommended = document.createElement('span');
       recommended.className = 'main-menu__tutorial-start';

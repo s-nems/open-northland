@@ -1,5 +1,5 @@
 import type { MapsIndexEntry, MapsIndexPlayerSlot, MapTextLanguage } from '@open-northland/data';
-import { isMultiplayerMapType, MAP_TYPE } from '@open-northland/data';
+import { isMultiplayerMapType, MAP_TYPE, narratedLanguages } from '@open-northland/data';
 import { catalogEntryThumbnailUrl, type MapSource } from '../../content/map-source/index.js';
 import { localizedMapText } from '../../game/map-strings.js';
 import { hasWords, searchWords } from '../../hud/dom/parts/name-search.js';
@@ -66,6 +66,8 @@ export interface MapSelectItem {
   readonly pictureUrl?: string;
   /** The terrain minimap `/maps/<id>.map.png` exists. */
   readonly minimap: boolean;
+  /** The languages the map's briefing narrator speaks; empty when it ships no voices. */
+  readonly narration: readonly MapTextLanguage[];
 }
 
 /** The row a map lists as, its title and description read in `lang`. */
@@ -88,6 +90,7 @@ export function mapItem(entry: MapsIndexEntry, lang: MapTextLanguage = currentLo
     ...(description !== undefined ? { description } : {}),
     picture: entry.picture,
     minimap: entry.minimap,
+    narration: narratedLanguages(entry.voices),
   };
 }
 
@@ -120,6 +123,7 @@ export function sceneItem(id: string, title: string, summary: string): MapSelect
     description: summary,
     picture: false,
     minimap: false,
+    narration: [],
   };
 }
 

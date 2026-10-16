@@ -72,6 +72,8 @@ export const plSurfaces = {
       tutorialIntroBody: 'Zacznij od lekcji 1 i przechodź kolejne po kolei. Każda uczy jednej grupy zasad.',
       tutorialRecommended: 'Zacznij tutaj',
       tutorialStep: 'lekcja {step}',
+      narrated: 'Odprawa z narratorem: {languages}',
+      narratedLanguageNames: { pol: 'polski', eng: 'angielski', ger: 'niemiecki', rus: 'rosyjski' },
       loading: 'Wczytywanie map…',
       empty: 'Brak zdekodowanych map. Wygeneruj content/ albo przejrzyj sceny testowe.',
       noMatch: 'Nic nie pasuje do tego wyszukiwania ani filtra.',

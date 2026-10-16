@@ -53,6 +53,43 @@ export function metaLine(item: MapSelectItem): string {
   return `${category} · ${players}`;
 }
 
+const SVG_NS = 'http://www.w3.org/2000/svg';
+/** A rolled briefing scroll with sound waves leaving it. */
+const NARRATOR_GLYPH_PATH =
+  'M6 4h8v13a3 3 0 0 1-3 3H5a2 2 0 0 1-2-2v-1h8M6 4a2 2 0 0 0-2 2v9M8.5 8.5h3M8.5 12h3M17 9.5a3.5 3.5 0 0 1 0 5M19.5 7a7 7 0 0 1 0 10';
+
+/** "Narrated briefing: <languages>" for a map whose briefing ships narration in any language, else null. */
+export function narrationLabel(item: MapSelectItem): string | null {
+  if (item.narration.length === 0) return null;
+  const select = messages().mainMenu.mapSelect;
+  const languages = item.narration.map((lang) => select.narratedLanguageNames[lang]).join(', ');
+  return formatMessage(select.narrated, { languages });
+}
+
+function narratorGlyph(): SVGSVGElement {
+  const svg = document.createElementNS(SVG_NS, 'svg');
+  svg.setAttribute('viewBox', '0 0 24 24');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.classList.add('main-menu__narrator-glyph');
+  const path = document.createElementNS(SVG_NS, 'path');
+  path.setAttribute('d', NARRATOR_GLYPH_PATH);
+  svg.append(path);
+  return svg;
+}
+
+/** The row's narrator mark, named for a screen reader and on hover; null for an unnarrated map. */
+export function narratorBadge(item: MapSelectItem): HTMLElement | null {
+  const label = narrationLabel(item);
+  if (label === null) return null;
+  const badge = document.createElement('span');
+  badge.className = 'main-menu__narrator-badge';
+  badge.setAttribute('role', 'img');
+  badge.setAttribute('aria-label', label);
+  badge.title = label;
+  badge.append(narratorGlyph());
+  return badge;
+}
+
 function seatChip(tribeId: number, colorId: number): HTMLElement {
   const chip = document.createElement('span');
   chip.className = 'main-menu__seat-chip';
@@ -100,13 +137,17 @@ export function createMapDetailsCard(): MapDetailsCard {
   name.className = 'main-menu__map-name';
   const meta = document.createElement('div');
   meta.className = 'main-menu__map-meta';
+  const narration = document.createElement('div');
+  narration.className = 'main-menu__map-narration';
+  const narrationText = document.createElement('span');
+  narration.append(narratorGlyph(), narrationText);
   const seats = document.createElement('div');
   seats.className = 'main-menu__map-seats';
   const description = document.createElement('p');
   description.className = 'main-menu__map-desc';
   const actions = document.createElement('div');
   actions.className = 'main-menu__map-actions';
-  details.append(name, meta, seats, description, actions);
+  details.append(name, meta, narration, seats, description, actions);
   card.append(frame, details);
 
   // A missing file collapses to the empty frame instead of a broken-image glyph.
@@ -136,6 +177,9 @@ export function createMapDetailsCard(): MapDetailsCard {
       card.hidden = false;
       name.textContent = item.title;
       meta.textContent = metaLine(item);
+      const narrated = narrationLabel(item);
+      narrationText.textContent = narrated ?? '';
+      narration.hidden = narrated === null;
       const showSeats = item.tutorialStep === undefined && item.seats.length > 0;
       seats.replaceChildren(
         ...(showSeats ? item.seats.map((seat) => seatChip(seat.tribeId, seat.colorId)) : []),

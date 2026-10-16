@@ -73,6 +73,8 @@ export const enSurfaces = {
       tutorialIntroBody: 'Start with lesson 1 and continue in order. Each map teaches one group of rules.',
       tutorialRecommended: 'Start here',
       tutorialStep: 'lesson {step}',
+      narrated: 'Narrated briefing: {languages}',
+      narratedLanguageNames: { pol: 'Polish', eng: 'English', ger: 'German', rus: 'Russian' },
       loading: 'Loading maps…',
       empty: 'No decoded maps. Generate content/ or browse the test scenes.',
       noMatch: 'Nothing matches this search or filter.',

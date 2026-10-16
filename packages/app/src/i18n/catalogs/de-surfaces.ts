@@ -91,6 +91,8 @@ export const deSurfaces = {
         'Beginne mit Lektion 1 und mache der Reihe nach weiter. Jede Karte vermittelt eine Gruppe von Spielregeln.',
       tutorialRecommended: 'Hier anfangen',
       tutorialStep: 'Lektion {step}',
+      narrated: 'Briefing mit Erzähler: {languages}',
+      narratedLanguageNames: { pol: 'Polnisch', eng: 'Englisch', ger: 'Deutsch', rus: 'Russisch' },
       loading: 'Karten werden geladen…',
       empty: 'Keine dekodierten Karten. Erzeuge content/ oder sieh dir die Testszenen an.',
       noMatch: 'Keine Treffer für diese Suche oder diesen Filter.',
