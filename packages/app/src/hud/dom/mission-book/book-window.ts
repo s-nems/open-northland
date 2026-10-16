@@ -25,7 +25,7 @@ import { type BookCallback, type BookPage, displayTitle, pageSegments } from './
 import { type BookPosition, columnCount, spreadCount, turnPage } from './paging.js';
 import { type MissionHumanLookup, type UserIconBox, userIconBox } from './user-icons.js';
 import { type BookView, createUnderlayCut, maskHoles, measureViews as viewsOn } from './view-holes.js';
-import { type BriefingVoicePlayer, chapterVoice, createVoiceRows } from './voice-row.js';
+import { type BriefingVoicePlayer, chapterVoice, createVoiceRows, sameVoice } from './voice-row.js';
 
 export type { BookView } from './view-holes.js';
 
@@ -49,8 +49,8 @@ export type BookTab = 'brief' | 'goals' | 'history';
 export interface ShownCallback {
   readonly args: HypertextCallback['args'];
   readonly lang: string | null;
-  /** Names the shown spread, so the owner acts once per spread shown. */
-  readonly spread: string;
+  /** The shown chapter, whose narration the owner speaks only for a page a script delivered. */
+  readonly chapter: number;
 }
 /** The HTML language tags of the map text languages, which set the prose's hyphenation. */
 const PAGE_LANG_TAGS: Readonly<Partial<Record<string, string>>> = {
@@ -273,14 +273,13 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
         displayTitle(title, locale).toLocaleLowerCase(locale) === mission.toLocaleLowerCase(locale))
         ? ''
         : `<p class="on-book__when">${escapeHtml(mission)}</p>`;
-    const player = shownVoice === null ? '' : voiceRows.markup();
-    const head = `<p class="on-book__kicker">${fresh}${escapeHtml(formatMessage(copy.chapter, { n: roman(index + 1) }))}</p>${when}${titleMarkup(title)}${player}`;
+    const head = `<p class="on-book__kicker">${fresh}${escapeHtml(formatMessage(copy.chapter, { n: roman(index + 1) }))}</p>${when}${titleMarkup(title)}`;
     const flow =
       page.segments.length === 0
         ? `<p class="on-book__p">${escapeHtml(copy.noBriefing)}</p>`
         : flowMarkup(page, flowContext());
     const foot = `<span class="on-book__foot-chapter">${escapeHtml(formatMessage(copy.chapterOf, { n: index + 1, count }))}</span>
-      <span class="on-book__folio" data-folio="right"></span><span></span>`;
+      <span class="on-book__folio" data-folio="right"></span>${shownVoice === null ? '<span></span>' : voiceRows.markup()}`;
     return readingSpread(head, flow, foot, lang);
   };
 
@@ -346,9 +345,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     const last = reading.tab === 'brief' ? shownCallbacks(spreadEl).at(-1) : undefined;
     const callback = last === undefined ? undefined : callbacks[last];
     deps.onCallback(
-      callback === undefined
-        ? null
-        : { args: callback.args, lang: callbackLang, spread: `${reading.chapter}:${reading.spread}` },
+      callback === undefined ? null : { args: callback.args, lang: callbackLang, chapter: reading.chapter },
     );
   };
 
@@ -427,7 +424,6 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     };
     corner(-1, prev);
     corner(1, next);
-    voiceRows.place(spreadEl, spread === 0);
     measureViews();
     fireCallbacks();
   };
@@ -461,7 +457,12 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
         pictureUrl: deps.pictureUrl,
         locale,
       });
-    } else spreadEl.innerHTML = briefMarkup();
+    } else {
+      spreadEl.innerHTML = briefMarkup();
+      // A chapter with its own clip silences another chapter's; its own line plays on across the turns.
+      const playing = deps.voice?.state().voice ?? null;
+      if (shownVoice !== null && playing !== null && !sameVoice(playing, shownVoice)) deps.voice?.stop();
+    }
     layout();
   };
 

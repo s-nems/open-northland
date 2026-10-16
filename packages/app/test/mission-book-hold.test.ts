@@ -26,7 +26,7 @@ function mount(pauseStopsClock = true, briefing: MissionBriefingAnswer = { histo
   const holds: boolean[] = [];
   const openings: BookOpening[] = [];
   const dismiss: { run: () => void } = { run: () => undefined };
-  const fire: { callback: (args: HypertextCallback['args'] | null, spread?: string) => void } = {
+  const fire: { callback: (args: HypertextCallback['args'] | null, chapter?: number) => void } = {
     callback: () => undefined,
   };
   const spoken: (BriefingVoice | 'stop')[] = [];
@@ -93,8 +93,8 @@ function mount(pauseStopsClock = true, briefing: MissionBriefingAnswer = { histo
   const mission = createMissionBook(deps, {
     book: (bookDeps) => {
       dismiss.run = bookDeps.onDismiss;
-      fire.callback = (args, spread = '0:0') =>
-        bookDeps.onCallback(args === null ? null : { args, lang: 'pol', spread });
+      fire.callback = (args, chapter = 0) =>
+        bookDeps.onCallback(args === null ? null : { args, lang: 'pol', chapter });
       return book;
     },
     slip: () => slip,
@@ -251,29 +251,48 @@ describe('the briefing callbacks', () => {
     expect(second.centred).toEqual([]);
   });
 
-  it('speak a 2000 callback once per spread shown and silence it on another spread or the close', () => {
+  it('speak a delivered chapter once, on through its page turns, and silence it on the close', () => {
     const { mission, fire, spoken, centred } = mount();
-    mission.toggle();
-    spoken.length = 0;
-    fire.callback(SOUND, '0:0');
-    fire.callback(SOUND, '0:0');
+    mission.showPage(PAGE);
+    fire.callback(SOUND);
+    fire.callback(null);
+    fire.callback(NODE);
+    fire.callback(SOUND);
     expect(spoken).toEqual([{ lang: 'pol', id: 3 }]);
-    fire.callback(null, '0:1');
-    fire.callback(NODE, '0:2');
-    expect(spoken.slice(1)).toEqual(['stop', 'stop']);
-    fire.callback(SOUND, '0:0');
-    expect(spoken.at(-1)).toEqual({ lang: 'pol', id: 3 });
     mission.close();
     expect(spoken.at(-1)).toBe('stop');
     expect(centred).toEqual([{ kind: 'node', hx: 296, hy: 188 }]);
   });
 
-  it('speak a delivered page anew, a won page on the spread already shown included', () => {
+  it('start no narration in a book the reader opened, on any chapter or turn', () => {
+    const { mission, fire, spoken } = mount();
+    mission.toggle();
+    fire.callback(SOUND);
+    fire.callback(null);
+    fire.callback(SOUND, 1);
+    mission.close();
+    mission.openGoals();
+    fire.callback(SOUND);
+    expect(spoken.filter((entry) => entry !== 'stop')).toEqual([]);
+  });
+
+  it('speak a page delivered over the reader`s own open book, and only on its own chapter', () => {
+    const { mission, fire, spoken } = mount();
+    mission.toggle();
+    fire.callback(SOUND);
+    mission.showPage(PAGE);
+    fire.callback(SOUND, 1);
+    expect(spoken).toEqual([]);
+    fire.callback(SOUND);
+    expect(spoken).toEqual([{ lang: 'pol', id: 3 }]);
+  });
+
+  it('speak a delivered page anew, the chapter already shown included', () => {
     const { mission, fire, spoken } = mount();
     mission.showPage(PAGE);
-    fire.callback(SOUND, '0:0');
+    fire.callback(SOUND);
     mission.showPage(PAGE);
-    fire.callback(SOUND, '0:0');
+    fire.callback(SOUND);
     expect(spoken.filter((entry) => entry !== 'stop')).toEqual([
       { lang: 'pol', id: 3 },
       { lang: 'pol', id: 3 },

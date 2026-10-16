@@ -125,8 +125,9 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
   /** The original's one-shot flag: one callback centres the view per opening of the window, a page
    *  delivered to the open window included; one that finds nobody stamped spends it too. */
   let viewCentred = false;
-  /** The spread whose narration was started, so a relayout of the same spread does not restart it. */
-  let spokenSpread: string | null = null;
+  /** The chapter a script delivered and the clips it has spoken since: its narration starts on its own
+   *  once, where a book the reader opened only shows the player. Null while nothing awaits speaking. */
+  let delivery: { readonly chapter: number; readonly spoken: Set<string> } | null = null;
   /** A restored reading the next opening resumes, and whether a script delivered it. */
   let resume: { readonly reading: BookReading; readonly arrival: boolean } | null = null;
   let answersKey = deps.answersVersion();
@@ -150,17 +151,22 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     deps.onHold(false);
   };
 
-  /** The 2000 callback speaks once per spread shown; any other spread, tab or callback silences it. */
+  /** A 2000 callback on the delivered chapter speaks its clip once; turning that chapter's pages leaves
+   *  the line playing, and the reader's own openings start nothing. */
   const speak = (shown: ShownCallback | null): void => {
-    const spread = shown?.spread ?? null;
-    if (spread === spokenSpread) return;
-    spokenSpread = spread;
-    const voice = shown === null ? null : callbackVoice(shown.lang, shown.args);
-    if (voice === null) deps.voice?.stop();
-    else deps.voice?.play(voice);
+    if (shown === null || delivery === null || shown.chapter !== delivery.chapter) return;
+    const voice = callbackVoice(shown.lang, shown.args);
+    if (voice === null) return;
+    const key = `${voice.lang}:${voice.id}`;
+    if (delivery.spoken.has(key)) return;
+    delivery.spoken.add(key);
+    deps.voice?.play(voice);
+  };
+  const deliver = (chapter: number): void => {
+    delivery = { chapter, spoken: new Set() };
   };
   const silence = (): void => {
-    spokenSpread = null;
+    delivery = null;
     deps.voice?.stop();
   };
 
@@ -225,6 +231,8 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     resume = null;
     if (resumed !== null) {
       shown.fold(deps.briefingHistory());
+      // A remount silenced a delivered chapter, so its reopening speaks it again.
+      if (resumed.arrival) deliver(resumed.reading.chapter);
       open(resumed.reading, { delivered: resumed.arrival, resumed: true });
       return;
     }
@@ -254,10 +262,10 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     handleClick: () => false,
     showPage(page): void {
       resume = null;
-      // A delivered page speaks anew, even where its chapter and spread are the ones already shown.
-      spokenSpread = null;
       shown.fold(deps.briefingHistory());
       shown.show(page);
+      // A delivered page speaks anew, even where it is the chapter already shown.
+      deliver(chapterOf(page));
       open({ ...FIRST, chapter: chapterOf(page), pick: chapterOf(page) }, { delivered: true });
     },
     openGoals(): void {

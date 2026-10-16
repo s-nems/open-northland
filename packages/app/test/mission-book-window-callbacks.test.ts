@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import type { HypertextBlock, HypertextCallback } from '@open-northland/data';
+import type { BriefingVoice, HypertextBlock, HypertextCallback } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
   type BookReading,
   createBookWindow,
   type ShownCallback,
 } from '../src/hud/dom/mission-book/book-window.js';
+import type { BriefingVoicePlayer } from '../src/hud/dom/mission-book/voice-row.js';
 
 /** Which of a briefing chapter's on-screen callbacks the book window hands on after a layout. The
  *  document has no layout here, so every page window and marker is stubbed to one visible box. */
@@ -46,12 +47,26 @@ afterEach(() => {
   document.body.replaceChildren();
 });
 
-function mountWindow(blocks: readonly HypertextBlock[]) {
+/** A player whose current line is `playing`; it records its stops. */
+function voicePlayer(playing: BriefingVoice | null) {
+  const stops: number[] = [];
+  const player: BriefingVoicePlayer = {
+    has: () => true,
+    play: () => undefined,
+    stop: () => stops.push(stops.length),
+    toggle: () => undefined,
+    seek: () => undefined,
+    state: () => ({ voice: playing, status: 'playing', positionS: 0, durationS: 0 }),
+  };
+  return { player, stops };
+}
+
+function mountWindow(blocks: readonly HypertextBlock[], voice: BriefingVoicePlayer | null = null) {
   const shown: (ShownCallback | null)[] = [];
   const fired: HypertextCallback['args'][] = [];
   const book = createBookWindow({
     infoRows: () => [],
-    voice: null,
+    voice,
     plane: document.body,
     chapters: () => [PAGE],
     page: () => ({ title: '', blocks, lang: 'pol' }),
@@ -83,7 +98,7 @@ describe('the book window`s briefing callbacks', () => {
     book.open({ reading: brief, arrival: true, paused: false });
     expect(fired.length).toBeGreaterThan(0);
     expect(new Set(fired.map((args) => args.join()))).toEqual(new Set([SOUND.join()]));
-    expect(shown.at(-1)).toEqual({ args: SOUND, lang: 'pol', spread: '0:0' });
+    expect(shown.at(-1)).toEqual({ args: SOUND, lang: 'pol', chapter: 0 });
   });
 
   it('hands on nothing on the goals tab or while the book is closed', () => {
@@ -97,5 +112,27 @@ describe('the book window`s briefing callbacks', () => {
     const count = fired.length;
     book.rebuild();
     expect(fired).toHaveLength(count);
+  });
+});
+
+describe('the book window`s narration player', () => {
+  const voiced: readonly HypertextBlock[] = [{ kind: 'callback', args: SOUND }, text('Body')];
+
+  it('sits in the foot of a voiced chapter, outside the turning text', () => {
+    const { book } = mountWindow(voiced, voicePlayer(null).player);
+    book.open({ reading: brief, arrival: false, paused: false });
+    expect(document.querySelectorAll('.on-voice')).toHaveLength(1);
+    expect(document.querySelector('.on-book__foot .on-voice')).not.toBeNull();
+    expect(document.querySelector('.on-book__flow .on-voice')).toBeNull();
+  });
+
+  it('silences another chapter`s line, never its own', () => {
+    const own = voicePlayer({ lang: 'pol', id: SOUND[1] });
+    mountWindow(voiced, own.player).book.open({ reading: brief, arrival: false, paused: false });
+    expect(own.stops).toEqual([]);
+    document.body.replaceChildren();
+    const other = voicePlayer({ lang: 'pol', id: SOUND[1] + 1 });
+    mountWindow(voiced, other.player).book.open({ reading: brief, arrival: false, paused: false });
+    expect(other.stops).toHaveLength(1);
   });
 });

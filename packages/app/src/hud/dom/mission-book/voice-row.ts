@@ -29,7 +29,7 @@ export interface BriefingVoicePlayer {
 export const VOICE_KEY_STEP_S = 5;
 const SECONDS_PER_MINUTE = 60;
 
-const sameVoice = (a: BriefingVoice | null, b: BriefingVoice): boolean =>
+export const sameVoice = (a: BriefingVoice | null, b: BriefingVoice): boolean =>
   a !== null && a.lang === b.lang && a.id === b.id;
 
 /** The narration a chapter's player drives: the clip of its last voice callback, which the spread
@@ -84,10 +84,8 @@ const GLYPHS =
   '<svg class="on-voice__glyph" viewBox="0 0 16 16" aria-hidden="true"><path class="on-voice__play" d="M5.5 3.2v9.6l7.6-4.8z"/><path class="on-voice__pause" d="M4.6 3.4h2.3v9.2H4.6zM9.1 3.4h2.3v9.2H9.1z"/></svg>';
 
 export interface VoiceRows {
-  /** The player row a voiced chapter heads its text with. */
+  /** The player row a voiced chapter's foot carries on every spread. */
   markup(): string;
-  /** Only the copy in the shown first column takes input; the flow's other copies are inert. */
-  place(spread: HTMLElement, live: boolean): void;
   /** Once a frame while the book shows: follow the narration line. */
   refresh(spread: HTMLElement): void;
   /** The book closed: no tooltip stays up. */
@@ -104,9 +102,8 @@ export interface VoiceRowsDeps {
   readonly cue: (cue: UiCue) => void;
 }
 
-/** The briefing page's narration player: a play/pause toggle, a seek bar and the elapsed and total
- *  time, set under the chapter's title. Each page window holds the whole flow, so the row exists once
- *  per window; one is live. */
+/** The briefing chapter's narration player: a play/pause toggle, a seek bar and the elapsed and total
+ *  time, in the book's foot, so it stays in reach while the reader turns the chapter's pages. */
 export function createVoiceRows(deps: VoiceRowsDeps): VoiceRows {
   const copy = messages().hud.missionBook;
   const chip = createTooltip();
@@ -223,17 +220,14 @@ export function createVoiceRows(deps: VoiceRowsDeps): VoiceRows {
   deps.scene.addEventListener('keydown', onKeyDown);
 
   return {
-    markup:
-      () => `<div class="on-voice" role="group" aria-label="${escapeHtml(copy.voiceLabel)}" data-state="paused">
+    markup(): string {
+      // A new row starts unpainted, so the next refresh paints it whatever it showed before.
+      shownKey = '';
+      return `<div class="on-voice" role="group" aria-label="${escapeHtml(copy.voiceLabel)}" data-state="paused">
       <button type="button" class="on-voice__toggle" data-voice-toggle aria-label="${escapeHtml(copy.voicePlay)}">${GLYPHS}</button>
       <div class="on-voice__bar" role="slider" tabindex="0" aria-label="${escapeHtml(copy.voiceSeek)}" data-tip="${escapeHtml(copy.voiceSeek)}" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0"><span class="on-voice__track"><span class="on-voice__fill"></span></span><span class="on-voice__handle"></span></div>
       <span class="on-voice__time">${escapeHtml(clockText(0))} / ${escapeHtml(clockText(null))}</span>
-    </div>`,
-    place(spread, live): void {
-      shownKey = '';
-      for (const row of rowsIn(spread)) {
-        row.inert = !live || row.closest('[data-col="right"]') !== null;
-      }
+    </div>`;
     },
     refresh(spread): void {
       tips.refresh();

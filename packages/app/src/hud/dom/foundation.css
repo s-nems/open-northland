@@ -5314,15 +5314,16 @@ body.on-drag-scroll * {
   display: block;
   height: 0;
 }
-/* The narration player under a voiced chapter's title: an inked toggle, a thin seek line whose handle
+/* The narration player in a voiced chapter's foot: an inked toggle, a thin seek line whose handle
    shows on hover, focus or drag, and the elapsed and total time. */
 .on-hud .on-voice {
   --voice-at: 0;
   display: flex;
+  flex: 1 1 auto;
   align-items: center;
-  gap: 10px;
-  margin: 2px 0 12px;
-  break-inside: avoid;
+  gap: 8px;
+  min-width: 0;
+  max-width: 240px;
   color: var(--ink-muted);
 }
 .on-hud .on-voice__toggle {
@@ -5358,6 +5359,7 @@ body.on-drag-scroll * {
 .on-hud .on-voice__bar {
   position: relative;
   flex: 1;
+  min-width: 48px;
   height: 18px;
   border-radius: 2px;
   cursor: var(--cursor-pointer, pointer);
@@ -5715,6 +5717,9 @@ body.on-drag-scroll * {
   gap: 10px;
   font-size: 12.5px;
   color: var(--ink-muted);
+}
+.on-hud .on-book__foot > span {
+  white-space: nowrap;
 }
 .on-hud .on-book__foot-chapter {
   font-variant: small-caps;
