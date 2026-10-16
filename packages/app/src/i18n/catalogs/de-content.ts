@@ -606,6 +606,21 @@ export const deContent = {
       summary:
         'Eine fränkische Steinmetzhütte wächst aus ihrem Fundament, daneben werden eine Steinmetzhütte und eine Alchemistenhütte ausgebaut.',
     },
+    'wonder-levels': {
+      title: 'Ausbaustufen der Weltwunder',
+      summary:
+        'Jedes Weltwunder steht in seiner eigenen Reihe, einmal auf jeder Stufe: Stufe 0 im Westen bis zur höchsten im Osten. Die Leiste oben führt die Ansicht zum gewählten Wunder.',
+      stages: {
+        wonder_lighthouse_of_alexandria: 'Leuchtturm von Alexandria',
+        wonder_gardens_of_semiramis: 'Hängende Gärten der Semiramis',
+        wonder_rhodos: 'Koloss von Rhodos',
+        wonder_mausolos: 'Mausoleum von Halikarnassos',
+        wonder_artemis_temple: 'Tempel der Artemis',
+        wonder_zeus_statue: 'Zeus-Statue',
+        wonder_pyramid_of_gizeh: 'Pyramide von Gizeh',
+        wonder_8th_wonder: 'Achtes Weltwunder',
+      },
+    },
     'upgrade-tribes': {
       title: 'Ausbau verschiedener Kulturen',
       summary:

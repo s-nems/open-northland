@@ -602,6 +602,21 @@ export const enContent = {
       summary:
         "A Frankish mason's shop rises from its foundation while a mason's shop and an alchemist's hut upgrade beside it.",
     },
+    'wonder-levels': {
+      title: 'Wonder levels',
+      summary:
+        'Every wonder stands in its own row, once at each level: level 0 in the west up to its top level in the east. The bar at the top moves the view to a chosen wonder.',
+      stages: {
+        wonder_lighthouse_of_alexandria: 'Lighthouse of Alexandria',
+        wonder_gardens_of_semiramis: 'Hanging Gardens of Semiramis',
+        wonder_rhodos: 'Colossus of Rhodes',
+        wonder_mausolos: 'Mausoleum at Halicarnassus',
+        wonder_artemis_temple: 'Temple of Artemis',
+        wonder_zeus_statue: 'Statue of Zeus',
+        wonder_pyramid_of_gizeh: 'Pyramid of Giza',
+        wonder_8th_wonder: 'Eighth Wonder',
+      },
+    },
     'upgrade-tribes': {
       title: 'Upgrades across tribes',
       summary:

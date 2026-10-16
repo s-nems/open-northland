@@ -599,6 +599,21 @@ export const plContent = {
       summary:
         'Frankijski warsztat kamieniarski rośnie od fundamentów, a obok rozbudowują się warsztat kamieniarski i chatka alchemika.',
     },
+    'wonder-levels': {
+      title: 'Poziomy cudów',
+      summary:
+        'Każdy cud stoi w swoim rzędzie, raz na każdym poziomie: od poziomu 0 na zachodzie do najwyższego na wschodzie. Pasek u góry przenosi widok do wybranego cudu.',
+      stages: {
+        wonder_lighthouse_of_alexandria: 'Latarnia morska na Faros',
+        wonder_gardens_of_semiramis: 'Wiszące ogrody Semiramidy',
+        wonder_rhodos: 'Kolos Rodyjski',
+        wonder_mausolos: 'Mauzoleum w Halikarnasie',
+        wonder_artemis_temple: 'Świątynia Artemidy',
+        wonder_zeus_statue: 'Posąg Zeusa',
+        wonder_pyramid_of_gizeh: 'Piramida w Gizie',
+        wonder_8th_wonder: 'Ósmy cud',
+      },
+    },
     'upgrade-tribes': {
       title: 'Rozbudowa u innych plemion',
       summary:

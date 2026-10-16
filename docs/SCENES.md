@@ -55,6 +55,10 @@ The `farm-construction` scene starts at ×2 and places a working construction cr
 The `terrain-edits` scene exercises saved terrain palette edits and a scripted build ban. Its western
 patch uses a brown vertex palette entry and its eastern patch a green entry from the owned content.
 
+`?scene=wonder-levels` stands every wonder in its own row, one finished house per level from level 0
+in the west to the top level in the east. The bar at the top moves the view to one wonder. Each level
+should draw its own stage of the building.
+
 `?scene=movement-continuity` compares barefoot and shod walkers crossing a tan band with road-like
 roughness, a diagonal walker, and roaming stags. Repeatedly redirect the diagonal walker with normal
 move orders, then watch the straight walkers enter and leave the band. Check that turns preserve the

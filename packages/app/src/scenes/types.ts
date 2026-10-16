@@ -7,6 +7,7 @@ import type {
   WorldSnapshot,
 } from '@open-northland/sim';
 import type { FogModeName } from '../game/fog.js';
+import type { SandboxContentExtras } from '../game/sandbox/index.js';
 import type { WorldTribes } from '../game/world-tribes.js';
 
 export interface SceneCheck {
@@ -35,6 +36,8 @@ export interface SceneWorld {
   readonly participants?: readonly number[];
   /** A script the world runs from its first tick, written with resolved ids; omit for none. */
   readonly missions?: MissionScript;
+  /** Catalog rows the sandbox content adds for this world; served real content already carries them. */
+  readonly contentExtras?: SandboxContentExtras;
 }
 
 /**

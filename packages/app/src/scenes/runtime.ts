@@ -64,7 +64,7 @@ export function enableSceneScript(sim: Simulation, scene: SceneWorld): void {
  * both geometries.
  */
 export function createSceneWorld(scene: SceneWorld, options: WorldContentOptions = {}): Simulation {
-  const content = resolveWorldContent(scene.terrain, options);
+  const content = resolveWorldContent(scene.terrain, options, scene.contentExtras);
   const sim = new Simulation({
     seed: scene.seed,
     content,
@@ -100,7 +100,7 @@ export function restoreSceneSim(
   save: SaveGame,
   options: WorldContentOptions = {},
 ): Simulation {
-  const content = resolveWorldContent(scene.terrain, options);
+  const content = resolveWorldContent(scene.terrain, options, scene.contentExtras);
   return restoreSimulation(save, {
     content,
     map: sceneTerrain(scene, content),
