@@ -17,9 +17,9 @@ import { createSystemConfirm, type SystemConfirmCopy } from '../../../hud/dom/sy
 import { displayViewOf, uiScaleFor } from '../../../hud/ui-scale.js';
 import { currentLocale, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
+import { targetSearch } from '../../../view/target-search.js';
 import { node } from '../dom.js';
 import type { MountedScreen } from '../model.js';
-import { targetSearch } from '../target-search.js';
 import { campaignMap } from './map.js';
 import {
   campaignFilms,
