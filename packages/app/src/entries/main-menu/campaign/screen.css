@@ -1,8 +1,9 @@
 @import "../../../hud/dom/theme.css";
 
-/* The campaign screen in the reworked look of the multiplayer and catalogue screens (network.css):
-   HUD tokens, the bronze primary and deep-green bronze-ruled panels. */
-.main-menu__screen.campaign-screen {
+/* The Campaign tab of New Game in the reworked look of the multiplayer and catalogue screens
+   (network.css): HUD tokens, the bronze primary and deep-green bronze-ruled panels. It fills the
+   space the map list leaves under the screen head. */
+.campaign-screen {
   --u: clamp(1px, calc(100vh / 1080), 1.4px);
   --accent: var(--bronze);
   --accent-bright: var(--bronze-hi);
@@ -11,9 +12,10 @@
   --text-body: var(--text);
   --text-muted: var(--muted);
   --text-label: var(--muted);
-  width: min(100%, calc(var(--u) * 1600));
-  margin-inline: auto;
-  padding: calc(var(--u) * 32);
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
   gap: calc(var(--u) * 20);
   color: var(--text);
   font: calc(var(--u) * 17) / 1.4 var(--font-body);
@@ -23,23 +25,6 @@
 .campaign-screen *::before,
 .campaign-screen *::after {
   box-sizing: border-box;
-}
-
-.campaign-screen .main-menu__screen-head {
-  flex-wrap: wrap;
-  margin: 0;
-  gap: calc(var(--u) * 24);
-}
-
-.campaign-screen .main-menu__screen-title {
-  font-size: calc(var(--u) * 30);
-  line-height: 1.2;
-}
-
-.campaign-screen .main-menu__back {
-  font: inherit;
-  color: var(--muted);
-  padding-block: calc(var(--u) * 10);
 }
 
 .campaign-screen
@@ -696,9 +681,8 @@
 }
 
 @media (max-width: 800px) {
-  .main-menu__screen.campaign-screen {
+  .campaign-screen {
     overflow-y: auto;
-    padding: 16px;
   }
 
   .campaign-screen__body {

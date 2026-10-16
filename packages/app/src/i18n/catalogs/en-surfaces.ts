@@ -38,7 +38,6 @@ export const enSurfaces = {
     // A back link names the screen it returns to, not "Back".
     backLabels: { main: 'Menu', newGame: 'Map selection' },
     screenTitles: {
-      campaign: 'Campaign',
       multiplayer: 'Multiplayer',
       newGame: 'New game',
       catalogue: 'Map catalogue',

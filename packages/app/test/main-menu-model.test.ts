@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { backTarget, MAIN_NAV, mainNavFor, moveFocus } from '../src/entries/main-menu/model.js';
+import {
+  backTarget,
+  deepLinkScreen,
+  MAIN_NAV,
+  mainNavFor,
+  moveFocus,
+} from '../src/entries/main-menu/model.js';
 
 describe('backTarget', () => {
   it('keeps Esc inert on the main screen', () => {
@@ -13,6 +19,18 @@ describe('backTarget', () => {
     expect(backTarget('settings')).toBe('main');
     expect(backTarget('credits')).toBe('main');
     expect(backTarget('catalogue')).toBe('main');
+  });
+});
+
+describe('deepLinkScreen', () => {
+  it('opens ?menu=campaign as New Game on its Campaign tab', () => {
+    expect(deepLinkScreen('campaign')).toEqual({ screen: 'newGame', content: 'campaign' });
+  });
+
+  it('opens multiplayer directly and anything else on the main screen', () => {
+    expect(deepLinkScreen('multiplayer')).toEqual({ screen: 'multiplayer', content: null });
+    expect(deepLinkScreen(null)).toEqual({ screen: 'main', content: null });
+    expect(deepLinkScreen('lobby')).toEqual({ screen: 'main', content: null });
   });
 });
 

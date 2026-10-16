@@ -90,6 +90,11 @@
   min-height: 0;
 }
 
+/* `display: flex` above outweighs the UA's `[hidden]`; a content tab hides the list this way. */
+.main-menu__map-body[hidden] {
+  display: none;
+}
+
 .main-menu__map-list-col {
   width: calc(var(--u) * 620);
   flex: none;

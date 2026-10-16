@@ -1,10 +1,10 @@
 import { GAME_VERSION } from '../../build-version.js';
+import type { MapContentTab } from './map-select-model.js';
 
 export type MenuScreen =
   | 'main'
   | 'multiplayer'
   | 'newGame'
-  | 'campaign'
   | 'catalogue'
   | 'lobby'
   | 'load'
@@ -48,7 +48,6 @@ export function mainNavFor(browser: boolean): readonly MainNavItem[] {
 /** Where Esc and the back link lead; `null` on the main screen. */
 export function backTarget(screen: MenuScreen): MenuScreen | null {
   if (screen === 'main') return null;
-  if (screen === 'campaign') return 'newGame';
   if (screen === 'lobby') return 'newGame';
   return 'main';
 }
@@ -57,4 +56,15 @@ export function backTarget(screen: MenuScreen): MenuScreen | null {
 export function moveFocus(items: readonly unknown[], from: number, delta: 1 | -1): number {
   if (items.length === 0) return from;
   return (((from + delta) % items.length) + items.length) % items.length;
+}
+
+/** The first screen a `?menu=` deep link asks for: `campaign` is New Game on its Campaign tab, where
+ *  a finished campaign mission returns. */
+export function deepLinkScreen(menu: string | null): {
+  readonly screen: MenuScreen;
+  readonly content: MapContentTab | null;
+} {
+  if (menu === 'campaign') return { screen: 'newGame', content: 'campaign' };
+  if (menu === 'multiplayer') return { screen: 'multiplayer', content: null };
+  return { screen: 'main', content: null };
 }

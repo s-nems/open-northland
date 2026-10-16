@@ -6,6 +6,7 @@ import { createMapDetailsCard, metaLine, narratorBadge, paintMapThumb } from './
 import {
   filterItems,
   listedIn,
+  type MapContentTab,
   type MapFilter,
   type MapFilterTab,
   type MapListing,
@@ -24,8 +25,10 @@ export interface MapPickerOptions {
   readonly include?: (item: MapSelectItem) => boolean;
   readonly primaryLabel: (item: MapSelectItem) => string;
   readonly onPrimary: (item: MapSelectItem) => void;
+  /** Called when the player switches between the map list (`null`) and a content tab; the owner
+   *  shows that tab's body in place of `body`. Content tabs are disabled without it. */
+  readonly onContent?: (tab: MapContentTab | null) => void;
   /** The decoded maps the listing takes, once `maps-index.json` has answered. */
-  readonly onCampaign?: () => void;
   readonly onMaps?: (maps: readonly MapSelectItem[]) => void;
 }
 
@@ -58,31 +61,41 @@ export function mapPicker(options: MapPickerOptions): MapPicker {
   seg.className = 'main-menu__seg';
   seg.hidden = options.tabs.length === 0;
   const segButtons = new Map<MapFilter, HTMLButtonElement>();
+  const contentButtons = new Map<MapContentTab, HTMLButtonElement>();
+  const switchContent = (next: MapContentTab | null): void => {
+    const changed = memory.content !== next;
+    memory.content = next;
+    paintTabs();
+    if (changed) options.onContent?.(next);
+  };
   for (const tab of options.tabs) {
     const button = document.createElement('button');
     button.type = 'button';
     button.className = 'main-menu__seg-btn';
-    if (tab.kind === 'action') {
+    if (tab.kind === 'content') {
       button.textContent = select.filters[tab.id];
-      if (options.onCampaign === undefined) button.disabled = true;
-      else button.addEventListener('click', options.onCampaign);
+      if (options.onContent === undefined) button.disabled = true;
+      else button.addEventListener('click', () => switchContent(tab.id));
+      contentButtons.set(tab.id, button);
       seg.append(button);
       continue;
     }
     button.textContent = select.filters[tab.filter];
     button.addEventListener('click', () => {
       memory.filter = tab.filter;
-      paintTabs();
+      switchContent(null);
       renderList();
     });
     segButtons.set(tab.filter, button);
     seg.append(button);
   }
+  const paintTab = (button: HTMLButtonElement, active: boolean): void => {
+    button.classList.toggle('is-active', active);
+    button.setAttribute('aria-pressed', String(active));
+  };
   const paintTabs = (): void => {
-    for (const [key, b] of segButtons) {
-      b.classList.toggle('is-active', key === memory.filter);
-      b.setAttribute('aria-pressed', String(key === memory.filter));
-    }
+    for (const [key, b] of segButtons) paintTab(b, memory.content === null && key === memory.filter);
+    for (const [key, b] of contentButtons) paintTab(b, key === memory.content);
   };
 
   const body = document.createElement('div');

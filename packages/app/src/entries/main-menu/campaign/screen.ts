@@ -16,8 +16,7 @@ import { displayViewOf, uiScaleFor } from '../../../hud/ui-scale.js';
 import { currentLocale, messages } from '../../../i18n/index.js';
 import type { LaunchEntry } from '../../../launch.js';
 import { node } from '../dom.js';
-import type { MenuScreen, MountedScreen } from '../model.js';
-import { screenHead } from '../screen-head.js';
+import type { MountedScreen } from '../model.js';
 import { targetSearch } from '../target-search.js';
 import { campaignMap } from './map.js';
 import {
@@ -103,22 +102,19 @@ function movieLabels(): MovieLabels {
   return { play: copy.play, skip: copy.skipMovie, failed: copy.movieFailed, seek: copy.seekMovie };
 }
 
-export function campaignScreen(
-  open: (screen: MenuScreen) => void,
-  launch: LaunchEntry,
-  silenceMusic: MusicSilencer,
-): MountedScreen {
+/** The Campaign tab of New Game: shown in place of the map list, under the screen's own head. */
+export function campaignTabBody(launch: LaunchEntry, silenceMusic: MusicSilencer): MountedScreen {
   const scope = new AbortController();
   const copy = messages().campaign;
   const storage = viewerStorage();
-  const section = node('section', 'main-menu__screen campaign-screen');
+  const section = node('div', 'campaign-screen');
   const tabs = node('div', 'campaign-screen__campaigns');
   tabs.setAttribute('role', 'group');
   tabs.setAttribute('aria-label', copy.campaigns);
   const body = node('div', 'campaign-screen__body');
   const status = node('p', 'campaign-screen__status');
   status.setAttribute('role', 'status');
-  section.append(screenHead('campaign', open, 'newGame'), tabs, body, status);
+  section.append(tabs, body, status);
 
   let campaigns: readonly Campaign[] = [];
   let current: Campaign | undefined;

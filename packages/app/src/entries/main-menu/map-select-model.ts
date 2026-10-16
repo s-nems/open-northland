@@ -18,17 +18,17 @@ export type MapFilter = 'all' | 'tutorial' | 'free' | 'multiplayer' | 'scenes';
 /** What a map's preview shows: the authored illustration or the terrain minimap. */
 export type MapPreviewView = 'picture' | 'map';
 
-/** Navigation actions beside the map filters. */
-export type MapActionTab = 'campaign';
+/** Tabs whose own body stands in for the map list and details card. */
+export type MapContentTab = 'campaign';
 
 export type MapFilterTab =
   | { readonly kind: 'filter'; readonly filter: MapFilter }
-  | { readonly kind: 'action'; readonly id: MapActionTab };
+  | { readonly kind: 'content'; readonly id: MapContentTab };
 
 /** A room lists multiplayer maps only, so it shows no filter bar. */
 export const SINGLE_PLAYER_TABS: readonly MapFilterTab[] = [
   { kind: 'filter', filter: 'all' },
-  { kind: 'action', id: 'campaign' },
+  { kind: 'content', id: 'campaign' },
   { kind: 'filter', filter: 'tutorial' },
   { kind: 'filter', filter: 'free' },
   { kind: 'filter', filter: 'multiplayer' },
@@ -152,13 +152,15 @@ export function mapPreviewUrl(item: Pick<MapSelectItem, 'id' | 'pictureUrl'>, vi
 /** Survives leaving the screen, so a lobby round trip re-enters with the same filter and selection. */
 export interface MapSelectMemory {
   filter: MapFilter;
+  /** The content tab shown in place of the map list, or `null` while a filter tab is. */
+  content: MapContentTab | null;
   query: string;
   selectedId: string | null;
 }
 
 /** New Game opens on free play; a room shows no tab bar, so it keeps every map under `all`. */
 export function initialMapSelectMemory(filter: MapFilter): MapSelectMemory {
-  return { filter, query: '', selectedId: null };
+  return { filter, content: null, query: '', selectedId: null };
 }
 
 const has = (item: MapSelectItem, code: number): boolean => item.types.includes(code);

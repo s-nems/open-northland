@@ -39,7 +39,6 @@ export const ruSurfaces = {
       newGame: 'Выбор карты',
     },
     screenTitles: {
-      campaign: 'Кампания',
       multiplayer: 'Сетевая игра',
       newGame: 'Новая игра',
       catalogue: 'Каталог карт',

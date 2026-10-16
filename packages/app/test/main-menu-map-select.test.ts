@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import {
   defaultMapPreview,
   filterItems,
+  initialMapSelectMemory,
   listedIn,
   type MapSelectItem,
   mapCategory,
@@ -33,13 +34,18 @@ function slot(player: number, hidden = false): MapsIndexPlayerSlot {
 }
 
 describe('map filter tabs', () => {
-  it('keeps every live filter clickable and places campaign navigation next to "all"', () => {
+  it('keeps every live filter clickable and places the Campaign content tab next to "all"', () => {
     const filters = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'filter' ? [tab.filter] : []));
     expect(filters).toEqual(['all', 'tutorial', 'free', 'multiplayer', 'scenes']);
-    const action = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'action' ? [tab.id] : []));
-    expect(action).toEqual(['campaign']);
+    const content = SINGLE_PLAYER_TABS.flatMap((tab) => (tab.kind === 'content' ? [tab.id] : []));
+    expect(content).toEqual(['campaign']);
+    expect(SINGLE_PLAYER_TABS[1]).toEqual({ kind: 'content', id: 'campaign' });
     expect(SINGLE_PLAYER_TABS[0]).toEqual({ kind: 'filter', filter: 'all' });
     expect(ROOM_TABS).toEqual([]);
+  });
+
+  it('opens New Game on the map list until a content tab is chosen', () => {
+    expect(initialMapSelectMemory('free').content).toBeNull();
   });
 });
 
