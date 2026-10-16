@@ -35,6 +35,27 @@ function surface(): HTMLDialogElement {
   return dialog;
 }
 
+function tracks(): { video: HTMLVideoElement; sound: HTMLAudioElement } {
+  const video = surface().querySelector('video');
+  const sound = surface().querySelector('audio');
+  if (video === null || sound === null) throw new Error('no film tracks');
+  return { video, sound };
+}
+
+/** jsdom plays nothing; a track's natural end is its `ended` flag and event. */
+function endTrack(element: HTMLMediaElement): void {
+  Object.defineProperty(element, 'ended', { value: true });
+  element.dispatchEvent(new Event('ended'));
+}
+
+/** Resolves to whether `done` settled by the next macrotask. */
+async function settled(done: Promise<void>): Promise<boolean> {
+  let resolved = false;
+  void done.then(() => (resolved = true));
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return resolved;
+}
+
 beforeEach(() => {
   HTMLDialogElement.prototype.showModal = vi.fn();
   HTMLMediaElement.prototype.play = vi.fn(() => Promise.resolve());
@@ -72,6 +93,40 @@ describe('playCampaignMovie media', () => {
   });
 });
 
+describe('playCampaignMovie ending', () => {
+  it('keeps the film, its picture on the last frame, until the longer sound ends', async () => {
+    const done = playCampaignMovie(MOVIE, LABELS);
+    const { video, sound } = tracks();
+    endTrack(video);
+    expect(await settled(done)).toBe(false);
+    expect(video.isConnected).toBe(true);
+    expect(HTMLMediaElement.prototype.pause).not.toHaveBeenCalled();
+    endTrack(sound);
+    expect(await settled(done)).toBe(true);
+  });
+
+  it('keeps the film until the picture ends after a shorter sound', async () => {
+    const done = playCampaignMovie(MOVIE, LABELS);
+    const { video, sound } = tracks();
+    endTrack(sound);
+    expect(await settled(done)).toBe(false);
+    expect(HTMLMediaElement.prototype.pause).not.toHaveBeenCalled();
+    endTrack(video);
+    expect(await settled(done)).toBe(true);
+  });
+
+  it('ends both tracks at once on skip', async () => {
+    const done = playCampaignMovie(MOVIE, LABELS);
+    const { video, sound } = tracks();
+    endTrack(video);
+    surface().querySelectorAll('button')[1]?.click();
+    await done;
+    expect(HTMLMediaElement.prototype.pause).toHaveBeenCalled();
+    expect([video.hasAttribute('src'), sound.hasAttribute('src')]).toEqual([false, false]);
+    expect(video.isConnected).toBe(false);
+  });
+});
+
 describe('playCampaignMovie music', () => {
   it('restores the music when the viewer skips', async () => {
     const { silence, state } = silencer();
@@ -85,7 +140,9 @@ describe('playCampaignMovie music', () => {
   it('restores the music when the film ends', async () => {
     const { silence, state } = silencer();
     const done = playCampaignMovie(MOVIE, LABELS, undefined, silence);
-    surface().querySelector('video')?.dispatchEvent(new Event('ended'));
+    const { video, sound } = tracks();
+    endTrack(video);
+    endTrack(sound);
     await done;
     expect(state).toEqual({ taken: 1, given: 1 });
   });

@@ -60,8 +60,9 @@ export interface MovieLabels {
 
 /**
  * A blocking DOM movie surface; owns its media and listeners until end, skip or cancellation. The
- * silent picture and the language's sound track play as one film. While it plays, `silenceMusic`
- * holds the page's music silent.
+ * silent picture and the language's sound track play as one film, until the longer of the two ends;
+ * a picture that ends first holds its last frame. While it plays, `silenceMusic` holds the page's
+ * music silent.
  */
 export function playCampaignMovie(
   movie: CampaignMovie | undefined,
@@ -83,7 +84,8 @@ export function playCampaignMovie(
     const sound = document.createElement('audio');
     if (movie !== undefined) sound.src = movie.audio;
     sound.preload = 'auto';
-    const media = syncMovieSound(video, sound);
+    // The film closes once both tracks have ended; `finish` is bound below.
+    const media = syncMovieSound(video, sound, () => finish());
     const play = document.createElement('button');
     play.className = 'on-button';
     play.textContent = labels.play;
@@ -164,14 +166,15 @@ export function playCampaignMovie(
       frame.style.height = `${size.height}px`;
     };
     const showPosition = (): void => {
-      const duration = Number.isFinite(video.duration) ? video.duration : 0;
+      const duration = media.duration();
+      const position = Math.min(media.position(), duration);
       seek.disabled = duration <= 0;
       seek.max = String(duration);
-      seek.value = String(video.currentTime);
-      seek.setAttribute('aria-valuetext', movieClock(video.currentTime));
-      const progress = duration > 0 ? (video.currentTime / duration) * 100 : 0;
+      seek.value = String(position);
+      seek.setAttribute('aria-valuetext', movieClock(position));
+      const progress = duration > 0 ? (position / duration) * 100 : 0;
       seek.style.setProperty('--progress', `${progress}%`);
-      clock.textContent = `${movieClock(video.currentTime)} / ${movieClock(duration)}`;
+      clock.textContent = `${movieClock(position)} / ${movieClock(duration)}`;
     };
     const attempt = (): void => {
       play.hidden = true;
@@ -188,10 +191,9 @@ export function playCampaignMovie(
       media.seek(Number(seek.value));
       showPosition();
     });
-    video.addEventListener('loadedmetadata', showPosition);
-    video.addEventListener('durationchange', showPosition);
-    video.addEventListener('timeupdate', showPosition);
-    video.addEventListener('ended', finish);
+    for (const element of [video, sound])
+      for (const type of ['loadedmetadata', 'durationchange', 'timeupdate'])
+        element.addEventListener(type, showPosition);
     video.addEventListener('error', () => {
       if (done) return;
       music.release();

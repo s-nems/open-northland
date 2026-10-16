@@ -1,5 +1,19 @@
-import { describe, expect, it } from 'vitest';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { handleAppProtocol } from '../src/protocol.js';
 import { externalPageUrl, initialGameUrl, isAppUrl, routePathOf } from '../src/protocol-routing.js';
+
+type AppHandler = (request: Request) => Promise<Response>;
+const installed = vi.hoisted(() => ({ handler: undefined as AppHandler | undefined }));
+vi.mock('electron', () => ({
+  protocol: {
+    handle: (_scheme: string, handler: AppHandler) => {
+      installed.handler = handler;
+    },
+  },
+}));
 
 /**
  * Pixi workers mis-join root-relative asset URLs on a custom scheme, so `/bobs/x.png` arrives as
@@ -63,5 +77,31 @@ describe('links the game opens', () => {
     expect(initialGameUrl(game, 'http://127.0.0.1:8790')).toBe(
       'app://game/index.html?api=http%3A%2F%2F127.0.0.1%3A8790%2F',
     );
+  });
+});
+
+describe('app protocol media', () => {
+  const SOUND_BYTES = 512;
+  const SOUND_PATH = '/campaigns/test/eng/intro.webm';
+  let contentRoot: string;
+
+  beforeAll(async () => {
+    contentRoot = await mkdtemp(join(tmpdir(), 'app-protocol-'));
+    const file = join(contentRoot, SOUND_PATH);
+    await mkdir(join(file, '..'), { recursive: true });
+    await writeFile(file, new Uint8Array(SOUND_BYTES));
+    handleAppProtocol({ appRoot: join(contentRoot, 'app'), contentRoot });
+  });
+  afterAll(() => rm(contentRoot, { recursive: true, force: true }));
+
+  it('answers a ranged read of a film sound track with 206 and a webm type', async () => {
+    const handler = installed.handler;
+    if (handler === undefined) throw new Error('no app protocol handler');
+    const response = await handler(
+      new Request(`app://game${SOUND_PATH}`, { headers: { range: 'bytes=100-199' } }),
+    );
+    expect(response.status).toBe(206);
+    expect(response.headers.get('content-type')).toMatch(/^(audio|video)\/webm$/);
+    expect(response.headers.get('content-range')).toBe(`bytes 100-199/${SOUND_BYTES}`);
   });
 });
