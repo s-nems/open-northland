@@ -33,7 +33,12 @@ import type {
 import { type NotificationCue, notificationShot, type UiCue, uiCueShot } from '../data/ui-cues.js';
 import { DEFAULT_UNIT_RESPONSES, gateResponse, type UnitResponses } from '../data/unit-responses.js';
 import type { WeatherSoundInput } from '../data/weather/mix.js';
-import { type AudioEngineOptions, type SoundPreloadReport, WebAudioEngine } from './engine/index.js';
+import {
+  type AudioEngineOptions,
+  type NarrationState,
+  type SoundPreloadReport,
+  WebAudioEngine,
+} from './engine/index.js';
 import type { RandomFn } from './platform.js';
 
 /** One frame's world state, handed to {@link SoundDriver.update} once per rendered frame. */
@@ -282,9 +287,26 @@ export class SoundDriver {
     this.engine.fire(this.decide([shot], this.engine.clock));
   }
 
-  /** Speak a briefing page's narration, cutting the one still speaking (see {@link WebAudioEngine.playNarration}). */
-  narrate(wav: Uint8Array): void {
-    this.engine.playNarration(wav);
+  /** Speak a briefing page's narration from `fromS`, cutting the one still speaking (see
+   *  {@link WebAudioEngine.playNarration}). */
+  narrate(wav: Uint8Array, fromS = 0): void {
+    this.engine.playNarration(wav, fromS);
+  }
+
+  pauseNarration(): void {
+    this.engine.pauseNarration();
+  }
+
+  resumeNarration(): void {
+    this.engine.resumeNarration();
+  }
+
+  seekNarration(atS: number): void {
+    this.engine.seekNarration(atS);
+  }
+
+  narrationState(): NarrationState {
+    return this.engine.narrationState();
   }
 
   /** Fade out the briefing narration still speaking. */

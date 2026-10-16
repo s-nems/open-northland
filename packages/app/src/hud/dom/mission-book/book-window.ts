@@ -1,5 +1,10 @@
 import type { UiCue } from '@open-northland/audio';
-import type { HypertextBook, HypertextCallback, HypertextUserIcon } from '@open-northland/data';
+import type {
+  BriefingVoice,
+  HypertextBook,
+  HypertextCallback,
+  HypertextUserIcon,
+} from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 import type { MissionInfoRow } from '../../../game/info-lines.js';
 import type { MissionGoal, MissionPage } from '../../../game/mission-brief.js';
@@ -20,6 +25,7 @@ import { type BookCallback, type BookPage, displayTitle, pageSegments } from './
 import { type BookPosition, columnCount, spreadCount, turnPage } from './paging.js';
 import { type MissionHumanLookup, type UserIconBox, userIconBox } from './user-icons.js';
 import { type BookView, createUnderlayCut, maskHoles, measureViews as viewsOn } from './view-holes.js';
+import { type BriefingVoicePlayer, chapterVoice, createVoiceRows } from './voice-row.js';
 
 export type { BookView } from './view-holes.js';
 
@@ -81,6 +87,8 @@ export interface BookWindowDeps {
   /** What the spread a layout settled on acts on: a briefing chapter's on-screen callback, or null
    *  for a spread without one or another tab. */
   readonly onCallback: (shown: ShownCallback | null) => void;
+  /** Speaks the chapters' narration, which a voiced chapter's player row drives; null shows none. */
+  readonly voice: BriefingVoicePlayer | null;
   /** The goal changes the player has not seen yet, which count as seen once the goal page shows them. */
   readonly takeGoalMarks: () => ReadonlyMap<string, GoalMark>;
   /** The close medallion closed the book. */
@@ -203,6 +211,9 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
    *  acts once per opening. */
   let callbacks: readonly BookCallback[] = [];
   let callbackLang: string | null = null;
+  /** The shown chapter's narration, which its player row drives; null on a page without one. */
+  let shownVoice: BriefingVoice | null = null;
+  const voiceRows = createVoiceRows({ scene, player: deps.voice, voice: () => shownVoice, cue: deps.cue });
 
   const chapters = (): readonly (number | null)[] => {
     const list = deps.chapters();
@@ -249,6 +260,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     const { page, title, lang } = chapterPage(index);
     callbacks = page.callbacks;
     callbackLang = lang;
+    shownVoice = chapterVoice(page, lang, deps.voice);
     const fresh =
       arrival && index === count - 1
         ? `<span class="on-book__new">${escapeHtml(copy.newChapter)}</span>`
@@ -261,7 +273,8 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
         displayTitle(title, locale).toLocaleLowerCase(locale) === mission.toLocaleLowerCase(locale))
         ? ''
         : `<p class="on-book__when">${escapeHtml(mission)}</p>`;
-    const head = `<p class="on-book__kicker">${fresh}${escapeHtml(formatMessage(copy.chapter, { n: roman(index + 1) }))}</p>${when}${titleMarkup(title)}`;
+    const player = shownVoice === null ? '' : voiceRows.markup();
+    const head = `<p class="on-book__kicker">${fresh}${escapeHtml(formatMessage(copy.chapter, { n: roman(index + 1) }))}</p>${when}${titleMarkup(title)}${player}`;
     const flow =
       page.segments.length === 0
         ? `<p class="on-book__p">${escapeHtml(copy.noBriefing)}</p>`
@@ -414,6 +427,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     };
     corner(-1, prev);
     corner(1, next);
+    voiceRows.place(spreadEl, spread === 0);
     measureViews();
     fireCallbacks();
   };
@@ -433,6 +447,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
     syncTabs(goals);
     spreadEl.className = 'on-book__spread';
     callbacks = [];
+    shownVoice = null;
     if (reading.tab === 'goals') {
       for (const [key, mark] of deps.takeGoalMarks()) marks.set(key, mark);
       spreadEl.innerHTML = goalsSpread(goals, marks, displayTitle(deps.missionName, locale), infoShown);
@@ -663,6 +678,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       leaves.replaceChildren();
       waiting = [];
       setHidden(scene, true);
+      voiceRows.hide();
       arrival = false;
       shownViews = [];
       cutHoles([]);
@@ -677,6 +693,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       }
       if (performance.now() - stillsAt > STILL_REFRESH_MS) stillsDue = true;
       if (place()) relayout();
+      voiceRows.refresh(spreadEl);
       // The goal states follow the sim; the reading pages never move under the reader.
       const goals = deps.goals();
       const info = deps.infoRows();
@@ -716,6 +733,7 @@ export function createBookWindow(deps: BookWindowDeps): BookWindow {
       if (turning !== null) clearTimeout(turning);
       resizes.disconnect();
       underlay.dispose();
+      voiceRows.dispose();
       window.removeEventListener('resize', onResize);
       scene.remove();
     },

@@ -35,7 +35,7 @@ import {
 import { AmbientMixer } from './ambient-mixer.js';
 import { BusDuck, type DuckHold } from './bus-duck.js';
 import { MusicPlayer } from './music-player.js';
-import { Narration } from './narration.js';
+import { NARRATION_IDLE, Narration, type NarrationState } from './narration.js';
 import { CLICK_FREE_RAMP_S, rampParam } from './ramps.js';
 import { type PreloadSample, SampleCache, type SamplePreloadReport } from './sample-cache.js';
 import { WeatherSoundscape } from './weather-soundscape.js';
@@ -218,8 +218,9 @@ export class WebAudioEngine {
   private music: MusicPlayer | null = null;
   private weather: WeatherSoundscape | null = null;
   private narration: Narration | null = null;
-  /** A narration asked for before a gesture started the context; it speaks once audio is live. */
-  private pendingNarration: Uint8Array | null = null;
+  /** A narration asked for before a gesture started the context; it starts once audio is live, held
+   *  paused if the player paused it meanwhile. */
+  private pendingNarration: { wav: Uint8Array; fromS: number; paused: boolean } | null = null;
   /** The graphics "Weather" switch, kept here so a setter before the context exists still lands. */
   private weatherEnabled = true;
   /** Current slider positions - kept here so a setter before the context exists still lands. */
@@ -454,16 +455,41 @@ export class WebAudioEngine {
     playing.source.stop(ctx.currentTime + CLICK_FREE_RAMP_S);
   }
 
-  /** Speak the `wav` on the `ui` bus, cutting the narration still speaking. Before a gesture has
-   *  started audio it waits for that gesture; muted or closed, it stays silent. */
-  playNarration(wav: Uint8Array): void {
+  /** Speak the `wav` on the `ui` bus from `fromS`, cutting the narration still speaking. Before a
+   *  gesture has started audio it waits for that gesture; muted or closed, it stays silent. */
+  playNarration(wav: Uint8Array, fromS = 0): void {
     this.pendingNarration = null;
     if (this.canPlay()) {
-      this.narration?.play(wav);
+      this.narration?.play(wav, { fromS });
       return;
     }
     this.narration?.stop();
-    if (this.enabled && !this.closed) this.pendingNarration = wav;
+    if (this.enabled && !this.closed) this.pendingNarration = { wav, fromS, paused: false };
+  }
+
+  pauseNarration(): void {
+    if (this.pendingNarration !== null) this.pendingNarration.paused = true;
+    else this.narration?.pause();
+  }
+
+  /** Speak the held narration on; an ended one starts over. */
+  resumeNarration(): void {
+    if (this.pendingNarration !== null) this.pendingNarration.paused = false;
+    else if (this.canPlay()) this.narration?.resume();
+  }
+
+  seekNarration(atS: number): void {
+    if (this.pendingNarration !== null) this.pendingNarration.fromS = Math.max(0, atS);
+    else this.narration?.seek(atS);
+  }
+
+  /** Where the narration line stands; a waiting one has no decoded length yet. */
+  narrationState(): NarrationState {
+    const pending = this.pendingNarration;
+    if (pending !== null) {
+      return { status: pending.paused ? 'paused' : 'waiting', positionS: pending.fromS, durationS: 0 };
+    }
+    return this.narration?.state() ?? NARRATION_IDLE;
   }
 
   /** Hold the music silent until the returned release, as a film plays over it: it drops out on the
@@ -491,10 +517,10 @@ export class WebAudioEngine {
   }
 
   private assertNarration(): void {
-    const wav = this.pendingNarration;
-    if (wav === null || !this.canPlay()) return;
+    const pending = this.pendingNarration;
+    if (pending === null || !this.canPlay()) return;
     this.pendingNarration = null;
-    this.narration?.play(wav);
+    this.narration?.play(pending.wav, { fromS: pending.fromS, paused: pending.paused });
   }
 
   /** Fire one-shots outside a frame decision - a GUI cue answering an input event right away. */

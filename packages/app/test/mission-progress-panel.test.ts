@@ -89,6 +89,7 @@ it('refreshes counters on an open goal page even when the mission list stays unc
   const goals: [] = [];
   const book = createBookWindow({
     plane: document.body,
+    voice: null,
     chapters: () => [],
     page: () => ({ title: '', blocks: [], lang: null }),
     goals: () => goals,

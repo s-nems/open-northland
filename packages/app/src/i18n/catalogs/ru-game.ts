@@ -1148,6 +1148,10 @@ export const ruGame = {
       slipMore: 'и ещё {count}',
       openBook: 'Открыть книгу',
       beamMark: 'Новая запись в книге',
+      voiceLabel: 'Озвучка',
+      voicePlay: 'Воспроизвести',
+      voicePause: 'Пауза',
+      voiceSeek: 'Перемотать озвучку',
     },
     residentsWindow: {
       title: 'Жители',

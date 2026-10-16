@@ -1065,6 +1065,10 @@ export const enGame = {
       slipMore: 'and {count} more',
       openBook: 'Open the book',
       beamMark: 'New entry in the book',
+      voiceLabel: 'Narration',
+      voicePlay: 'Play',
+      voicePause: 'Pause',
+      voiceSeek: 'Seek narration',
     },
     residentsWindow: {
       title: 'Subjects',

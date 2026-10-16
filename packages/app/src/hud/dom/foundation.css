@@ -5314,6 +5314,105 @@ body.on-drag-scroll * {
   display: block;
   height: 0;
 }
+/* The narration player under a voiced chapter's title: an inked toggle, a thin seek line whose handle
+   shows on hover, focus or drag, and the elapsed and total time. */
+.on-hud .on-voice {
+  --voice-at: 0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 2px 0 12px;
+  break-inside: avoid;
+  color: var(--ink-muted);
+}
+.on-hud .on-voice__toggle {
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 1px solid #8d7549;
+  border-radius: 50%;
+  background: none;
+  color: var(--book-red);
+  transition: background-color 0.12s;
+}
+.on-hud .on-voice__toggle:hover {
+  background: #8d754933;
+}
+.on-hud .on-voice__toggle:focus-visible,
+.on-hud .on-voice__bar:focus-visible {
+  outline: 1px solid #8d7549;
+  outline-offset: 3px;
+}
+.on-hud .on-voice__glyph {
+  width: 14px;
+  height: 14px;
+  fill: currentColor;
+}
+.on-hud .on-voice[data-state="playing"] .on-voice__play,
+.on-hud .on-voice:not([data-state="playing"]) .on-voice__pause {
+  display: none;
+}
+.on-hud .on-voice__bar {
+  position: relative;
+  flex: 1;
+  height: 18px;
+  border-radius: 2px;
+  cursor: var(--cursor-pointer, pointer);
+  touch-action: none;
+}
+.on-hud .on-voice__track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2px;
+  margin-top: -1px;
+  overflow: hidden;
+  border-radius: 1px;
+  background: #8d754966;
+  transition:
+    height 0.12s,
+    margin-top 0.12s;
+}
+.on-hud .on-voice__fill {
+  position: absolute;
+  inset: 0;
+  background: var(--book-red);
+  transform-origin: left;
+  transform: scaleX(var(--voice-at));
+}
+.on-hud .on-voice__handle {
+  position: absolute;
+  top: 50%;
+  left: calc(var(--voice-at) * 100%);
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: var(--book-red);
+  box-shadow: 0 1px 2px #5c4c3755;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.on-hud .on-voice__bar:hover .on-voice__track,
+.on-hud .on-voice__bar:focus-visible .on-voice__track,
+.on-hud .on-voice--drag .on-voice__track {
+  height: 4px;
+  margin-top: -2px;
+}
+.on-hud .on-voice__bar:hover .on-voice__handle,
+.on-hud .on-voice__bar:focus-visible .on-voice__handle,
+.on-hud .on-voice--drag .on-voice__handle {
+  opacity: 1;
+}
+.on-hud .on-voice__time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
 .on-hud .on-book__kicker {
   display: flex;
   align-items: center;

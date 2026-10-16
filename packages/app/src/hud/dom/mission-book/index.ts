@@ -1,5 +1,5 @@
 import type { UiCue } from '@open-northland/audio';
-import { type BriefingVoice, callbackVoice, type HypertextBook } from '@open-northland/data';
+import { callbackVoice, type HypertextBook } from '@open-northland/data';
 import type { MapViewTarget } from '@open-northland/render';
 import type { MissionInfoRow } from '../../../game/info-lines.js';
 import type { MissionBriefingAnswer, MissionReader } from '../../../game/mission-brief.js';
@@ -17,10 +17,12 @@ import { GoalMarks, type GoalMarksState } from './goal-marks.js';
 import { createGoalSlip, type GoalSlip, type GoalSlipDeps } from './goal-slip.js';
 import { ShownPages, type ShownPagesState } from './shown-pages.js';
 import type { MissionHumanLookup } from './user-icons.js';
+import type { BriefingVoicePlayer } from './voice-row.js';
 
 export type { BookView } from './book-window.js';
 export type { BriefingViewTarget } from './callbacks.js';
 export type { MissionHumanLookup } from './user-icons.js';
+export type { BriefingVoicePlayer, BriefingVoiceState } from './voice-row.js';
 
 /** The chapters shown so far, where an open book's reader stands and the slip's fold, carried across
  *  a remount. */
@@ -70,12 +72,6 @@ export interface MissionBookDeps {
   readonly cue: (cue: UiCue) => void;
   /** Speaks a briefing page's narration; absent, the book is silent. */
   readonly voice?: BriefingVoicePlayer;
-}
-
-/** Plays one briefing narration line at a time; a missing clip is silent. */
-export interface BriefingVoicePlayer {
-  play(voice: BriefingVoice): void;
-  stop(): void;
 }
 
 /** The mission book (briefing chapters, goals, chronicle) and the goal slip on the map. The plane
@@ -209,6 +205,7 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
       for (const listener of listeners) listener();
     },
     cue: deps.cue,
+    voice: deps.voice ?? null,
   });
 
   const open = (reading: BookReading, { delivered, resumed = false }: MissionOpening): void => {
@@ -257,6 +254,8 @@ export function createMissionBook(deps: MissionBookDeps, parts: MissionBookParts
     handleClick: () => false,
     showPage(page): void {
       resume = null;
+      // A delivered page speaks anew, even where its chapter and spread are the ones already shown.
+      spokenSpread = null;
       shown.fold(deps.briefingHistory());
       shown.show(page);
       open({ ...FIRST, chapter: chapterOf(page), pick: chapterOf(page) }, { delivered: true });

@@ -159,4 +159,84 @@ describe('narration', () => {
     engine.playNarration(clip(1, ABSURD_RATE));
     expect(ctx.sources).toHaveLength(before);
   });
+
+  describe('transport', () => {
+    const lastSource = (ctx: FakeContext) => {
+      const source = ctx.sources.at(-1);
+      if (source === undefined) throw new Error('no narration source');
+      return source;
+    };
+
+    it('reports the line playing as the context clock runs', async () => {
+      const { engine, ctx } = await running();
+      expect(engine.narrationState()).toEqual({ status: 'idle', positionS: 0, durationS: 0 });
+      engine.playNarration(clip(4));
+      ctx.currentTime = 1.5;
+      expect(engine.narrationState()).toEqual({ status: 'playing', positionS: 1.5, durationS: 4 });
+    });
+
+    it('pauses at the position reached and resumes from it', async () => {
+      const { engine, ctx } = await running();
+      engine.playNarration(clip(4));
+      const first = lastSource(ctx);
+      ctx.currentTime = 1;
+      engine.pauseNarration();
+      expect(first.stoppedAt).toBe(1 + CLICK_FREE_RAMP_S);
+      ctx.currentTime = 3;
+      expect(engine.narrationState()).toEqual({ status: 'paused', positionS: 1, durationS: 4 });
+      engine.resumeNarration();
+      const second = lastSource(ctx);
+      expect(second).not.toBe(first);
+      expect(second.startOffset).toBe(1);
+      ctx.currentTime = 4;
+      expect(engine.narrationState().positionS).toBe(2);
+    });
+
+    it('seeks a playing line by restarting it at the offset, a paused one without sound', async () => {
+      const { engine, ctx } = await running();
+      engine.playNarration(clip(4));
+      const first = lastSource(ctx);
+      engine.seekNarration(2.5);
+      expect(first.stoppedAt).toBe(CLICK_FREE_RAMP_S);
+      expect(lastSource(ctx).startOffset).toBe(2.5);
+      expect(engine.narrationState()).toMatchObject({ status: 'playing', positionS: 2.5 });
+
+      engine.pauseNarration();
+      const sources = ctx.sources.length;
+      engine.seekNarration(9);
+      expect(ctx.sources).toHaveLength(sources);
+      expect(engine.narrationState()).toEqual({ status: 'paused', positionS: 4, durationS: 4 });
+    });
+
+    it('ends at the clip`s length and starts over on resume', async () => {
+      const { engine, ctx } = await running();
+      engine.playNarration(clip(2));
+      lastSource(ctx).onended?.();
+      expect(engine.narrationState()).toEqual({ status: 'ended', positionS: 2, durationS: 2 });
+      engine.resumeNarration();
+      expect(lastSource(ctx).startOffset).toBe(0);
+      expect(engine.narrationState().status).toBe('playing');
+    });
+
+    it('starts from the asked offset and stops to idle', async () => {
+      const { engine, ctx } = await running();
+      engine.playNarration(clip(3), 1);
+      expect(lastSource(ctx).startOffset).toBe(1);
+      engine.stopNarration();
+      expect(engine.narrationState().status).toBe('idle');
+    });
+
+    it('keeps a line paused before audio started paused once it starts', async () => {
+      const ctx = new FakeContext();
+      const engine = new WebAudioEngine({ createContext: () => ctx as unknown as AudioContext });
+      engine.playNarration(clip(3));
+      expect(engine.narrationState().status).toBe('waiting');
+      engine.pauseNarration();
+      await engine.resume();
+      expect(ctx.sources.filter((source) => source.started)).toHaveLength(0);
+      expect(engine.narrationState()).toEqual({ status: 'paused', positionS: 0, durationS: 3 });
+      engine.resumeNarration();
+      expect(lastSource(ctx).started).toBe(true);
+    });
+  });
 });

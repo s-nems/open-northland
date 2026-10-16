@@ -51,6 +51,7 @@ function mountWindow(blocks: readonly HypertextBlock[]) {
   const fired: HypertextCallback['args'][] = [];
   const book = createBookWindow({
     infoRows: () => [],
+    voice: null,
     plane: document.body,
     chapters: () => [PAGE],
     page: () => ({ title: '', blocks, lang: 'pol' }),

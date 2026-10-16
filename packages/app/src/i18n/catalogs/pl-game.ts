@@ -1049,6 +1049,10 @@ export const plGame = {
       slipMore: 'i {count} więcej',
       openBook: 'Otwórz księgę',
       beamMark: 'Nowy wpis w księdze',
+      voiceLabel: 'Narracja',
+      voicePlay: 'Odtwórz',
+      voicePause: 'Pauza',
+      voiceSeek: 'Przewiń narrację',
     },
     residentsWindow: {
       title: 'Poddani',

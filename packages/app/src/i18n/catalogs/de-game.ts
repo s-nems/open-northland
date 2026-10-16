@@ -1153,6 +1153,10 @@ export const deGame = {
       slipMore: 'und {count} weitere',
       openBook: 'Buch öffnen',
       beamMark: 'Neuer Eintrag im Buch',
+      voiceLabel: 'Erzählung',
+      voicePlay: 'Abspielen',
+      voicePause: 'Pause',
+      voiceSeek: 'Erzählung spulen',
     },
     residentsWindow: {
       title: 'Untertanen',

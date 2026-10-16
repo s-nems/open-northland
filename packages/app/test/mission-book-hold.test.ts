@@ -81,7 +81,14 @@ function mount(pauseStopsClock = true, briefing: MissionBriefingAnswer = { histo
     onSlipOpen: () => undefined,
     bookKey: () => null,
     cue: () => undefined,
-    voice: { play: (voice) => spoken.push(voice), stop: () => spoken.push('stop') },
+    voice: {
+      has: () => true,
+      play: (voice) => spoken.push(voice),
+      stop: () => spoken.push('stop'),
+      toggle: () => undefined,
+      seek: () => undefined,
+      state: () => ({ voice: null, status: 'idle', positionS: 0, durationS: 0 }),
+    },
   };
   const mission = createMissionBook(deps, {
     book: (bookDeps) => {
@@ -259,5 +266,17 @@ describe('the briefing callbacks', () => {
     mission.close();
     expect(spoken.at(-1)).toBe('stop');
     expect(centred).toEqual([{ kind: 'node', hx: 296, hy: 188 }]);
+  });
+
+  it('speak a delivered page anew, a won page on the spread already shown included', () => {
+    const { mission, fire, spoken } = mount();
+    mission.showPage(PAGE);
+    fire.callback(SOUND, '0:0');
+    mission.showPage(PAGE);
+    fire.callback(SOUND, '0:0');
+    expect(spoken.filter((entry) => entry !== 'stop')).toEqual([
+      { lang: 'pol', id: 3 },
+      { lang: 'pol', id: 3 },
+    ]);
   });
 });
