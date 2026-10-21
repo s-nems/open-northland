@@ -19,6 +19,6 @@
     "@open-northland/data": "*"
   },
   "devDependencies": {
-    "@types/node": "^26.6.3"
+    "@types/node": "^26.6.5"
   }
 }
