@@ -21,13 +21,13 @@
     "@open-northland/ownership": "*",
     "@open-northland/render": "*",
     "@open-northland/sim": "*",
-    "@pmndrs/detect-gpu": "6.0.25",
+    "@pmndrs/detect-gpu": "6.0.26",
     "@open-northland/map-import": "*",
     "node-unrar-js": "2.0.2"
   },
   "devDependencies": {
     "@open-northland/net-server": "*",
     "esbuild": "^0.28.2",
-    "vite": "^8.3.2"
+    "vite": "^8.3.4"
   }
 }
