@@ -69,4 +69,72 @@ describe('world hover scan', () => {
     // Every frame tests the live pixels again, since a sprite moves and animates within a tick.
     expect(tested).toEqual(Array.from({ length: frames }, () => POINTED_HOUSE));
   });
+
+  it('names the card target for the hover outline, and nothing behind a chip or a claim', () => {
+    const HOUSE = 1;
+    const SETTLER = 2;
+    const CHEST = 3;
+    const PILE = 4;
+    const pointed = (x: number): { clientX: number; clientY: number } => ({ clientX: x, clientY: -20 });
+    const items: DrawItem[] = [
+      { kind: 'building', ref: HOUSE, x: 0, y: 0, depth: 0 },
+      { kind: 'settler', ref: SETTLER, x: 200, y: 0, depth: 1 },
+      { kind: 'chest', ref: CHEST, x: 400, y: 0, depth: 2 },
+      { kind: 'grounddrop', ref: PILE, x: 600, y: 0, depth: 3, goodType: 7 },
+    ] as unknown as DrawItem[];
+    const bounds = (ref: number): EntityBounds => {
+      const x = (ref - 1) * 200;
+      return { minX: x - 50, minY: -40, maxX: x + 50, maxY: 0 };
+    };
+    const card: HoverCard = { show: () => {}, hide: () => {}, showing: () => null, dispose: () => {} };
+    const snapshot: WorldSnapshot = {
+      tick: 1,
+      events: [],
+      entities: [
+        { id: SETTLER, components: { Settler: { jobType: 0 }, Person: {} } },
+        { id: CHEST, components: { Chest: { kind: 'wooden' } } },
+      ],
+    };
+    let pointer = pointed(0);
+    let claim = false;
+    hover = createWorldHover({
+      renderer: { drawnItems: () => items, entityBounds: bounds } as unknown as WorldRenderer,
+      camera: () => ({ offsetX: 0, offsetY: 0, scale: 1 }),
+      clientToScreen: (x, y) => ({ x, y }),
+      goodLabel: () => 'Wood',
+      chestLabel: () => 'Chest',
+      chestOrderLine: () => null,
+      card,
+      buildingModel: () => ({ kind: 'building', title: 'house' }) as BuildingHoverModel,
+      settlerModel: () => null,
+      vehicleModel: () => null,
+      palisadeModel: () => null,
+      wallHovers: () => false,
+      modelVersion: () => 0,
+      pixelHitOf: undefined,
+      pointer: () => pointer,
+      suppressed: () => claim,
+    });
+    hover.update(snapshot, 0);
+    expect(hover.hovered()).toBe(HOUSE); // a building takes the outline
+
+    pointer = pointed(200);
+    hover.update(snapshot, FRAME_MS);
+    expect(hover.hovered()).toBe(SETTLER); // a settler too
+
+    pointer = pointed(400);
+    hover.update(snapshot, 2 * FRAME_MS);
+    expect(hover.hovered()).toBeNull(); // a chest shows the chip alone
+
+    pointer = pointed(600);
+    hover.update(snapshot, 3 * FRAME_MS);
+    expect(hover.hovered()).toBeNull(); // a good pile as well
+
+    pointer = pointed(0);
+    hover.update(snapshot, 4 * FRAME_MS);
+    expect(hover.hovered()).toBe(HOUSE);
+    claim = true;
+    hover.update(snapshot, 5 * FRAME_MS);
+    expect(hover.hovered()).toBeNull(); // a claimed pointer holds no outline
+  });
 });

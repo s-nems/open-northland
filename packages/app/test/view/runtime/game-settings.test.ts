@@ -55,6 +55,8 @@ const LIVE_SETTINGS: readonly LiveSetting[] = [
       applied: selectionStyle,
     }),
   ),
+  { patch: { hoverOutline: false }, seam: 'setHoverOutline', applied: false },
+  { patch: { hoverOutline: true }, seam: 'setHoverOutline', applied: true },
 ];
 
 describe('a live setting', () => {
@@ -72,6 +74,13 @@ describe('a live setting', () => {
     expect(defaultSettings().bonesFade).toBe(true);
     expect(parseStoredSettings('{"groupNumbers":"yes"}').groupNumbers).toBe(false);
     expect(parseStoredSettings('{"groupNumbers":true}').groupNumbers).toBe(true);
+  });
+
+  it('shows the hovered-target outline by default and reads it only as a boolean', () => {
+    expect(defaultSettings().hoverOutline).toBe(true);
+    expect(parseStoredSettings('{"hoverOutline":"yes"}').hoverOutline).toBe(true);
+    expect(parseStoredSettings('{"hoverOutline":false}').hoverOutline).toBe(false);
+    expect(parseStoredSettings('{}').hoverOutline).toBe(true);
   });
 });
 
@@ -91,6 +100,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
   const setGraphicsEnhancements = vi.fn();
   const setMinimapFrame = vi.fn();
   const setSelectionStyle = vi.fn();
+  const setHoverOutline = vi.fn();
   const setGroupNumbersShown = vi.fn();
   const setWeatherEnabled = vi.fn();
   const setBloodEnabled = vi.fn();
@@ -118,6 +128,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDebugToolsEnabled,
     setGraphicsEnhancements,
     setSelectionStyle,
+    setHoverOutline,
     setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,
@@ -143,6 +154,7 @@ function harness(overrides: Partial<GameSettingsRuntimeDeps> = {}) {
     setDebugToolsEnabled,
     setGraphicsEnhancements,
     setSelectionStyle,
+    setHoverOutline,
     setGroupNumbersShown,
     setMinimapFrame,
     setWeatherEnabled,

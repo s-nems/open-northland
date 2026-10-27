@@ -72,6 +72,11 @@ export interface WorldHoverOptions {
 export interface WorldHover {
   /** `nowMs` is the frame's timestamp; it times the rest the card waits for. */
   update(snapshot: WorldSnapshot, nowMs: number): void;
+  /** The card-kind target the last {@link update} picked: what the cursor rests over among settlers,
+   *  buildings, walls and vehicles. Null on nothing, on a chip target, and while the pointer is
+   *  claimed or off the canvas. The frame loop hands it to the renderer one frame later, for the
+   *  hovered-target outline. */
+  hovered(): number | null;
   destroy(): void;
 }
 
@@ -265,6 +270,9 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
   // The target the cursor is on and when it arrived; leaving one restarts the rest it owes.
   let restingOn: number | null = null;
   let restingSince = 0;
+  // The card-kind target of the current hover, for the renderer's outline; a chest, a pile, wildlife
+  // and the suppressed frames hold none, as none of them opens a card.
+  let outlined: number | null = null;
   const restedOn = (ref: number, nowMs: number): boolean => {
     if (ref !== restingOn) {
       restingOn = ref;
@@ -307,11 +315,13 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
 
   return {
     destroy: () => tooltip.destroy(),
+    hovered: () => outlined,
     update(snap: WorldSnapshot, nowMs: number): void {
       const p = opts.pointer();
       if (p === null || opts.suppressed(p.clientX, p.clientY)) {
         restAt = null;
         held = null;
+        outlined = null;
         hideAll();
         return;
       }
@@ -324,6 +334,7 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
       const info = keep ? found.heldInfo : found.person !== null ? found.personInfo : found.restInfo;
       held = ref;
       if (info === undefined || ref === null) {
+        outlined = null;
         hideAll();
         return;
       }
@@ -333,6 +344,7 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
         info.kind === 'vehicle' ||
         info.kind === 'palisade'
       ) {
+        outlined = ref;
         tooltip.hide();
         // The card's own hide, not hideCard(): a rest still running must not restart under itself.
         const model = restedOn(ref, nowMs) ? modelFor(snap, ref, info.kind) : null;
@@ -341,11 +353,13 @@ export function createWorldHover(opts: WorldHoverOptions): WorldHover {
         return;
       }
       if (info.kind === 'chest') {
+        outlined = null;
         const order = opts.chestOrderLine(snap, info.chestKind);
         const name = opts.chestLabel(info.chestKind);
         chip(p.clientX, p.clientY, order === null ? name : `${name} · ${order}`);
         return;
       }
+      outlined = null;
       const label = opts.goodLabel(info.goodType) ?? `#${info.goodType}`;
       chip(p.clientX, p.clientY, info.amount > 1 ? `${label} ×${info.amount}` : label);
     },

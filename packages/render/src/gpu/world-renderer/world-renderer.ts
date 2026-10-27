@@ -129,6 +129,7 @@ export class WorldRenderer {
   private readonly playerColourOf: ((player: number) => number) | undefined;
   private enhancements: WorldEnhancements = BASELINE_ENHANCEMENTS;
   private selectionStyle: SelectionStyle = DEFAULT_SELECTION_STYLE;
+  private hoverOutline = true;
   private groupNumbersShown = false;
   private withheldRefs: ReadonlySet<number> | undefined;
 
@@ -254,6 +255,11 @@ export class WorldRenderer {
 
   setSelectionStyle(style: SelectionStyle): void {
     this.selectionStyle = style;
+  }
+
+  /** Whether the frame's hovered-target outline draws; on by default, the player's setting gates it. */
+  setHoverOutline(enabled: boolean): void {
+    this.hoverOutline = enabled;
   }
 
   /** Whether the frame's control-group numbers show; hidden by default. */
@@ -430,6 +436,7 @@ export class WorldRenderer {
       tick = 0,
       hud,
       selection = NO_REFS,
+      hovered,
       selectionTime = 0,
       alpha = 1,
       doorBadges = NO_BADGES,
@@ -499,6 +506,7 @@ export class WorldRenderer {
       flagged,
       selectionStyle: this.selectionStyle,
       selectionTime,
+      ...(this.hoverOutline && hovered !== undefined ? { hovered } : {}),
       ...(targetFlashes !== undefined && targetFlashes.size > 0 ? { flashes: targetFlashes } : {}),
       viewport: vp,
       tick,

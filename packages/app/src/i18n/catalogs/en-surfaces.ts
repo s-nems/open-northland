@@ -214,6 +214,9 @@ export const enSurfaces = {
         'ring-white': 'White ring',
         'ring-green': 'Green ring',
       },
+      hoverOutline: 'Hover outline',
+      hoverOutlineTip:
+        'The contour a unit or building draws while the cursor rests over it, as the original shows one. Changes in game immediately.',
       groupNumbers: 'Group numbers',
       groupNumbersTip:
         'A tiny group number by each unit bound to a group. A unit in several groups shows up to three, such as 1,2,3.',

@@ -212,6 +212,9 @@ export const plSurfaces = {
         'ring-white': 'Biały pierścień',
         'ring-green': 'Zielony pierścień',
       },
+      hoverOutline: 'Obrys pod kursorem',
+      hoverOutlineTip:
+        'Kontur wokół postaci lub budynku, nad którym zatrzymuje się kursor, jak w oryginale. Zmienia się w grze od razu.',
       groupNumbers: 'Numery grup',
       groupNumbersTip:
         'Malutki numer grupy przy każdej jednostce przypisanej do grupy. Jednostka w kilku grupach pokazuje do trzech, np. 1,2,3.',

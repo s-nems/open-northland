@@ -210,6 +210,8 @@ export const chsSurfaces = {
         'ring-white': '白色圆环',
         'ring-green': '绿色圆环',
       },
+      hoverOutline: '悬停轮廓',
+      hoverOutlineTip: '鼠标悬停在单位或建筑上时显示的轮廓，与原版一致。在游戏中立即生效。',
       groupNumbers: '编队编号',
       groupNumbersTip:
         '每个已编入编队的单位旁会显示一个小小的编队编号。属于多个编队的单位最多显示三个，例如 1,2,3。',

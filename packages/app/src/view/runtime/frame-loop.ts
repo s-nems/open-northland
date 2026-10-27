@@ -454,6 +454,9 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
       camera: drawnCamera,
       tick: snap.tick,
       selection: controls.selectedIds(),
+      // The pick the worldHover.update below made against the freshly drawn list: the hovered-target
+      // outline trails the cursor's read by one frame, like the card does its rest.
+      hovered: worldHover.hovered() ?? undefined,
       selectionTime: nowMs / 1000,
       alpha: renderAlpha,
       doorBadges,

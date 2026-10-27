@@ -601,3 +601,52 @@ it('keeps work flags outlined in amber for every style and clears them when thei
   pool.destroy();
   textures.clear();
 });
+
+it('outlines the entity the frame names as hovered and clears it once the hover is gone', () => {
+  const layer = new Container();
+  const textures = new TextureCache();
+  const pool = new SpritePool(layer, textures, undefined);
+  const snapshot = snapshotOf([nth(BUILDINGS, 0)]);
+  pool.reconcile({ ...poolFrame(snapshot, FRAMES_EVERYTHING), hovered: 1 });
+  const outline = layer.children[0]?.children[0];
+  // Eight direction stamps per pass over the placeholder: the dark keyline, then the ivory core.
+  expect(outline?.children).toHaveLength(16);
+  const keyline = outline?.children[0];
+  const core = outline?.children[8];
+  if (!(keyline instanceof SelectionGraphics) || !(core instanceof SelectionGraphics))
+    throw new Error('Missing hover outline');
+  expect(keyline.tint).toBe(0x14211b);
+  expect(core.tint).toBe(0xf2e8c9);
+  const body = layer.children[0];
+  pool.reconcile(poolFrame(snapshot, FRAMES_EVERYTHING));
+  expect(outline?.destroyed).toBe(true);
+  expect(body?.children).toHaveLength(1);
+  pool.destroy();
+  textures.clear();
+});
+
+it('takes the hover outline to a held static between still frames, and moves it with the cursor', () => {
+  const layer = new Container();
+  const textures = new TextureCache();
+  const pool = new SpritePool(layer, textures, undefined);
+  const snapshot = snapshotOf(BUILDINGS);
+  const outlined = (index: number): boolean =>
+    (layer.children[index]?.children ?? []).some((c) => c.constructor === Container);
+  // Two identical frames leave every building held; the hover must still reach the held one.
+  pool.reconcile(poolFrame(snapshot, FRAMES_EVERYTHING));
+  pool.reconcile(poolFrame(snapshot, FRAMES_EVERYTHING));
+  expect(outlined(1)).toBe(false);
+
+  pool.reconcile({ ...poolFrame(snapshot, FRAMES_EVERYTHING), hovered: 2 });
+  expect(outlined(1)).toBe(true);
+  // The cursor resting on it keeps the outline through the still frames that follow.
+  pool.reconcile({ ...poolFrame(snapshot, FRAMES_EVERYTHING), hovered: 2 });
+  expect(outlined(1)).toBe(true);
+
+  // Moving on clears the old target's outline and lights the new one the same frame.
+  pool.reconcile({ ...poolFrame(snapshot, FRAMES_EVERYTHING), hovered: 3 });
+  expect(outlined(1)).toBe(false);
+  expect(outlined(2)).toBe(true);
+  pool.destroy();
+  textures.clear();
+});

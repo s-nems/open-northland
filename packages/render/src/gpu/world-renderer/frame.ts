@@ -114,6 +114,9 @@ export interface WorldFrame {
   readonly hud?: HudFrame | undefined;
   /** Selected entity ids, drawn in the chosen selection style (default none). Transient view state, never sim state. */
   readonly selection?: ReadonlySet<number> | undefined;
+  /** The entity id the cursor rests over, drawn with the selection outline's contour (default none).
+   *  Transient view state, never sim state; the app picks it and gates it on the player's setting. */
+  readonly hovered?: number | undefined;
   /** Fixed-timestep interpolation fraction: each entity draws `alpha` of the way from its previous tick
    *  anchor to its current one (default 1 draws raw tick positions). */
   readonly alpha?: number | undefined;

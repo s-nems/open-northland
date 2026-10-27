@@ -148,6 +148,11 @@ export function graphicsSettingsRows(
   );
   markSegment(selectionStyle.root, 'selection-style');
   selectionStyle.root.classList.add('main-menu__selection-styles');
+  const hoverOutline = togglePill(settings.hoverOutline, (enabled) => {
+    void store.update({ hoverOutline: enabled });
+  });
+  hoverOutline.setAttribute('aria-label', text.hoverOutline);
+  hoverOutline.dataset.settingsFocus = 'hoverOutline';
   const minimapFrame = dropdownControl<MinimapFrame>({
     label: text.minimapFrame,
     className: 'main-menu__dropdown',
@@ -204,6 +209,7 @@ export function graphicsSettingsRows(
     ...cursorSettingsRows(store, markSegment),
     settingsHeading(text.interfaceHeading),
     settingRow(text.selectionStyle, selectionStyle.root, { tip: text.selectionStyleTip }),
+    settingRow(text.hoverOutline, hoverOutline, { tip: liveTip(text.hoverOutlineTip) }),
     settingRow(text.groupNumbers, groupNumbers, { tip: liveTip(text.groupNumbersTip) }),
     settingRow(text.minimapFrame, minimapFrame.root, { tip: text.minimapFrameTip }),
     settingRow(text.fpsCounter, fpsCounter, { tip: liveTip(text.fpsCounterTip) }),

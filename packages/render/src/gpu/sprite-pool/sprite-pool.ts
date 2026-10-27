@@ -85,6 +85,9 @@ type HoldMarked = { [HELD]?: number };
 
 export interface PoolFrame {
   readonly selection?: ReadonlySet<number>;
+  /** The entity id the cursor rests over, drawn with the selection outline's contour unless it is
+   *  already selected or flagged. Absent draws no hover outline. */
+  readonly hovered?: number;
   /** Work flags belonging to selected gatherers always receive an amber outline. */
   readonly flagged?: ReadonlySet<number>;
   readonly selectionStyle?: SelectionStyle;
@@ -265,6 +268,7 @@ export class SpritePool {
   private passHighlight: PoolFrame['highlight'];
   private passErased: PoolFrame['erased'];
   private passStyle: PoolFrame['selectionStyle'];
+  private passHovered: PoolFrame['hovered'];
   private passHasPortrait = false;
   /** Bumped whenever a held entity may have to draw otherwise without its draw item changing. */
   private holdGeneration = 0;
@@ -410,7 +414,8 @@ export class SpritePool {
       const pe = (repeated ? this.lastPooled[i] : undefined) ?? this.pooledFor(item);
       this.visit(pe, item, i, frame);
     }
-    // A held entity a selection, flag or flash now names draws its emphasis, which only a visit applies.
+    // A held entity a selection, flag, hover or flash now names draws its emphasis, which only a visit
+    // applies.
     for (const refs of [frame.selection, frame.flagged, frame.flashes?.keys()]) {
       for (const ref of refs ?? NO_REFS) {
         const pe = this.pool.get(ref);
@@ -419,6 +424,12 @@ export class SpritePool {
           this.visit(pe, item as SpriteDrawItem, -1, frame);
       }
     }
+    if (frame.hovered !== undefined) {
+      const pe = this.pool.get(frame.hovered);
+      const item = pe?.bound.item;
+      if (pe !== undefined && pe.held === generation && pe.lastSeen !== this.frameId && item !== undefined)
+        this.visit(pe, item as SpriteDrawItem, -1, frame);
+    }
     this.lastItems = scene.items;
     this.drawn = drawn ?? scene.items;
     this.lastPooled.length = scene.items.length;
@@ -426,6 +437,7 @@ export class SpritePool {
     this.passHighlight = frame.highlight;
     this.passErased = frame.erased;
     this.passStyle = frame.selectionStyle;
+    this.passHovered = frame.hovered;
 
     // Iterating `attached` instead of the whole pool keeps the detach scan bounded by the screen.
     // Deleting the current entry mid-iteration is well-defined for a Set.
@@ -571,6 +583,9 @@ export class SpritePool {
     const flagged = frame.flagged?.has(item.ref) === true;
     const flash =
       item.ghost === true || item.portraitOnly === true ? undefined : frame.flashes?.get(item.ref);
+    // Artistic approximation of the original's hovered-target contour, like the selection outline: a
+    // flag keeps its amber, a selected entity its own style, and anything else the cursor rests over
+    // draws the ivory outline. Ghosts and portrait insets never take the hover emphasis.
     const style =
       item.ghost === true || item.portraitOnly === true
         ? undefined
@@ -578,7 +593,9 @@ export class SpritePool {
           ? 'outline'
           : frame.selection?.has(item.ref)
             ? frame.selectionStyle
-            : undefined;
+            : frame.hovered === item.ref
+              ? 'outline'
+              : undefined;
     this.selectionEffects.update(
       pe,
       style,
@@ -622,7 +639,8 @@ export class SpritePool {
       this.passHasPortrait ||
       frame.highlight !== this.passHighlight ||
       frame.erased !== this.passErased ||
-      frame.selectionStyle !== this.passStyle
+      frame.selectionStyle !== this.passStyle ||
+      frame.hovered !== this.passHovered
     )
       return false;
     for (const ref of frame.selection ?? NO_REFS) if (!this.movingRefs.has(ref)) return false;
@@ -1029,6 +1047,7 @@ export class SpritePool {
     this.moving.length = 0;
     this.movingRefs.clear();
     this.passEpoch = -1;
+    this.passHovered = undefined;
     this.reapCursor = undefined;
     this.sceneCache.clear();
     this.incremental.clear();

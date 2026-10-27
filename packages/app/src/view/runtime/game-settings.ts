@@ -31,6 +31,8 @@ export interface GameSettingsRuntimeDeps {
   readonly setCameraInputSettings: (settings: CameraInputSettings) => void;
   readonly setDebugToolsEnabled: (enabled: boolean) => void;
   readonly setSelectionStyle: (style: MenuSettings['selectionStyle']) => void;
+  /** The outline a hovered unit or building draws; off draws none. */
+  readonly setHoverOutline: (enabled: boolean) => void;
   readonly setGroupNumbersShown: (shown: boolean) => void;
   readonly setGraphicsEnhancements: (settings: WorldEnhancements) => void;
   readonly setMinimapFrame: (frame: MenuSettings['minimapFrame']) => void;
@@ -80,6 +82,7 @@ export function createGameSettingsRuntime(deps: GameSettingsRuntimeDeps): GameSe
     if (patch.debugToolsEnabled !== undefined) deps.setDebugToolsEnabled(patch.debugToolsEnabled);
     if (patch.minimapFrame !== undefined) deps.setMinimapFrame(patch.minimapFrame);
     if (patch.selectionStyle !== undefined) deps.setSelectionStyle(patch.selectionStyle);
+    if (patch.hoverOutline !== undefined) deps.setHoverOutline(patch.hoverOutline);
     if (patch.groupNumbers !== undefined) deps.setGroupNumbersShown(patch.groupNumbers);
     if (patch.blood !== undefined) deps.setBloodEnabled(patch.blood);
     if (patch.bonesFade !== undefined) deps.setBonesFade(patch.bonesFade);
