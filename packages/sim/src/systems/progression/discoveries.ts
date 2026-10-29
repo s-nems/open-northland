@@ -2,7 +2,6 @@ import { type ContentSet, houseDiscoveryGoods, type TribeType } from '@open-nort
 import {
   AiControl,
   discoverTechnology,
-  isMachinePlayer,
   MapPermissions,
   Owner,
   ownerOf,
@@ -297,9 +296,8 @@ export const technologySystem: System = (world, ctx) => {
         if (technologyDiscovered(world, owner, tribeId, 'house', row.house)) continue;
         if (!typeAllowed(world, ctx, owner, tribeId, 'house', row.house)) continue;
         if (
-          !(owner !== undefined && isMachinePlayer(world, owner)) &&
-          (!allJobsEnabled(world, ctx, owner, tribeId, row.jobs) ||
-            !allGoodsEnabled(world, ctx, owner, tribeId, row.goods))
+          !allJobsEnabled(world, ctx, owner, tribeId, row.jobs) ||
+          !allGoodsEnabled(world, ctx, owner, tribeId, row.goods)
         )
           continue;
         advanced = discover(entity, owner, tribeId, 'house', row.house) || advanced;

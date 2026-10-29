@@ -2,7 +2,6 @@ import type { ContentSet, JobEnablesKind, Recipe, TribeType } from '@open-northl
 import {
   AiControl,
   Building,
-  isMachinePlayer,
   MAX_PLAYERS,
   MapPermissions,
   mapPermission,
@@ -235,11 +234,10 @@ export function jobEnabled(
  * Whether the tribe's tech tree opens the target for the owner. A tribe the owner has not unlocked
  * ({@link tribeUnlockedFor}) opens nothing; only a script line enables one of its items. Original
  * behavior (unconfirmed against the running game): at init a player gets enabled flags for its own
- * tribe alone. Under a technology table the
- * player's discoveries decide, which the discovery system records at the end of every tick's commands,
- * missions and work: a job with no `needforjob` row, a good no job produces, and everything for an AI
- * seat are open from the start (reading of the original's per-player init). Without the table the
- * trades the tribe holds alive decide.
+ * tribe alone. Under a technology table the player's discoveries decide, which the discovery system
+ * records at the end of every tick's commands, missions and work: a job with no `needforjob` row and a
+ * good no job produces are open from the start (reading of the original's per-player init), for a
+ * computer seat as for a human. Without the table the trades the tribe holds alive decide.
  */
 function tribeUnlockEnabled(
   world: World,
@@ -279,7 +277,6 @@ function tribeUnlockVerdict(
   if (kind !== 'vehicle' && technologyDiscovered(world, owner, tribe, kind, targetId)) return true;
   const definition = contentIndex(ctx.content).tribes.get(tribe);
   if (definition?.technology !== undefined && kind !== 'vehicle') {
-    if (owner !== undefined && isMachinePlayer(world, owner)) return true;
     if (kind === 'house') {
       const requirement = definition.technology.houses.find((r) => r.house === targetId);
       return (

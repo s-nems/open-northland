@@ -35,6 +35,7 @@ import { type ComputerProfile, computerProfileOf, profileBuildOrder } from '../d
 import type { ComputerModule } from '../index.js';
 import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
+import { Promotions } from '../technology/promotion.js';
 import {
   allocateCollectors,
   allocateGenericCollectors,
@@ -127,6 +128,7 @@ function runWorkforce(
   const force = new SpareForce(pool);
   const tally = buildStaffingTally(world, player, owned);
   const taken: TakenFlagNodes = new Set();
+  const promotions = new Promotions(world, ctx, player);
   const seat: SeatStaffing = { player, owned, supply, profile };
   const ground = collectorGround(world, ctx, player, seat.owned, baseNode);
   const fishing = fishingPlan(world, ctx, player, ground?.flags ?? null, fishers);
@@ -158,12 +160,12 @@ function runWorkforce(
           taken,
           builderJob,
         )),
-    ...allocateOpeningHunter(world, ctx, player, base, force, builderJob),
+    ...allocateOpeningHunter(world, ctx, player, base, force, builderJob, tally),
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'first'),
     ...allocateScout(world, ctx, player, order, scouts, force, builderJob),
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
-    ...staffBuildings(world, ctx, seat, force, tally, 'min'),
+    ...staffBuildings(world, ctx, seat, force, tally, 'min', promotions),
   ];
   // The road crew comes out of the builder reserve, ahead of it, so a seat with road sites always has
   // its roadster.
@@ -191,7 +193,7 @@ function runWorkforce(
   const targets = [
     // A stalled placement blocks the whole build order, so clearing its ground outranks every top-up.
     ...(clearing > 0 ? generic() : []),
-    ...staffBuildings(world, ctx, seat, force, tally, 'target'),
+    ...staffBuildings(world, ctx, seat, force, tally, 'target', promotions),
     ...(ground === null ? [] : topUpCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken)),
   ];
   const arms = garrisonArms(world, ctx, player, profile);
@@ -201,7 +203,7 @@ function runWorkforce(
     ...essentials,
     ...targets,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
-    ...staffBuildings(world, ctx, seat, force, tally, 'surplus'),
+    ...staffBuildings(world, ctx, seat, force, tally, 'surplus', promotions),
     ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force, armyFloor, arms, profile),
     ...tuneCraftCounters(world, ctx, player, supply, profile),
@@ -340,7 +342,15 @@ function rebuildCrew(
   const seat: SeatStaffing = { player, owned, supply, profile };
   return [
     ...reserveBuilders(world, force, builderJob, profile.builders.opening, ctx),
-    ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world, player, owned), 'min'),
+    ...staffBuildings(
+      world,
+      ctx,
+      seat,
+      force,
+      buildStaffingTally(world, player, owned),
+      'min',
+      new Promotions(world, ctx, player),
+    ),
   ];
 }
 

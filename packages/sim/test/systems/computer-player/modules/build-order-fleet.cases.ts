@@ -293,7 +293,10 @@ function placeEntry(
 
 const shipJoinery = placeEntry((e) => e.role === 'ship');
 const catapultJoinery = placeEntry((e) => e.role === 'catapult');
-const toolsJoinery = placeEntry((e) => e.building === 'work_joinery_01');
+/** The tools joinery's first upper tier, which the fixture's lowest joinery stands at. */
+const toolsJoinery = orderSteps(DEFAULT_BUILD_ORDER).find(
+  (e) => e.kind === 'upgrade' && e.building === 'work_joinery_01',
+);
 const druidWell = placeEntry(
   (e) => e.building === 'work_well_00' && e.unlessWithin?.building === 'work_druid_01',
 );
@@ -505,7 +508,8 @@ describe('build order - the top-tier joineries', () => {
   ])(
     'upgrades the tools joinery a tier on %s, the top-tier joineries counting for neither of its entries',
     (_, tops) => {
-      if (toolsUpgrade === undefined) throw new Error('tools upgrade missing from the default list');
+      if (toolsUpgrade === undefined || toolsJoinery === undefined)
+        throw new Error('tools joinery steps missing from the default list');
       const TOOLS_AT = { x: 40, y: 16 };
       const topSites = [
         { buildingType: JOINERY_03_TYPE, x: 30, y: 44 },

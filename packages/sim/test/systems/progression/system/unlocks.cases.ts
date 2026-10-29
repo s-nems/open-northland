@@ -175,20 +175,16 @@ describe('settlerMeetsNeed - all needfor thresholds gating a target', () => {
     expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(false);
   });
 
-  it('never gates an AI seat, whatever the toggle says (bots skip the tech tree)', () => {
+  it('gates an AI seat like a human under the toggle, and opens both with it off', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
     const ctx = ctxOf(sim);
-    gateSoldierJob(sim);
     makeAiSeat(sim, AI_PLAYER);
     const bot: NeedSubject = { tribe: VIKING, owner: AI_PLAYER, experience: new Map(), learned: undefined };
-
-    // Progression ON (the default): the human is gated at 0 XP, the AI seat is not.
-    expect(settlerMeetsNeed(sim.world, ctx, human(), 'good', PLANK)).toBe(false);
+    expect(settlerMeetsNeed(sim.world, ctx, bot, 'good', PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, AI_PLAYER, VIKING, PLANK)).toBe(false);
+    setProfessionProgression(sim.world, false);
     expect(settlerMeetsNeed(sim.world, ctx, bot, 'good', PLANK)).toBe(true);
-    // The fighter carve-out is the toggle's, so it holds for the AI too (barracks training, not XP).
-    expect(settlerMeetsNeed(sim.world, ctx, bot, 'job', SOLDIER_JOB)).toBe(false);
-    // A neutral (unowned) settler has no seat to exempt - it stays gated.
-    expect(settlerMeetsNeed(sim.world, ctx, { ...human(), owner: undefined }, 'good', PLANK)).toBe(false);
+    expect(goodEnabled(sim.world, ctx, AI_PLAYER, VIKING, PLANK)).toBe(true);
   });
 });
 

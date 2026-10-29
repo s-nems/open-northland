@@ -342,6 +342,25 @@ export function aiContent(): ContentSet {
         kind: 'tower',
         construction: [{ goodType: 1, amount: 2 }],
       },
+      // The joinery's lower tier, which the tools line raises first and upgrades into the joinery above.
+      {
+        typeId: 91,
+        id: 'work_joinery_00',
+        kind: 'workplace',
+        upgradeTarget: 11,
+        workers: [
+          { jobType: 16, count: 1 },
+          { jobType: 24, count: 1 },
+        ],
+        recipes: [
+          { inputs: [{ goodType: 1, amount: 1 }], outputs: [{ goodType: 6, amount: 1 }], ticks: 180 },
+        ],
+        construction: [{ goodType: 1, amount: 2 }],
+        stock: [
+          { goodType: 1, capacity: 5, initial: 0 },
+          { goodType: 6, capacity: 5, initial: 0 },
+        ],
+      },
       // A workshop's hidden vehicle yard: the site a joiner's cart cycle opens, never one the list places.
       {
         typeId: 77,

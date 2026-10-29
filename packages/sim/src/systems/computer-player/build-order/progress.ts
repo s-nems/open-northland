@@ -17,6 +17,7 @@ import { seatBaseOf } from '../base.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource, knownResourceTest } from '../live-resources.js';
 import { rivalOverSea } from '../sea-route.js';
+import { technologyReach } from '../technology/reach.js';
 import {
   type BuildLineId,
   type BuildOrder,
@@ -28,8 +29,8 @@ import { grassScarce } from './grass-reserve.js';
 import { unservedAnchor } from './placement.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
 
-/** `skip` (not expressible in this content set, or nothing left to collect) counts as done for
- *  sequencing. */
+/** `skip` (not expressible in this content set, nothing left to collect, or a discovery the seat can
+ *  never make) counts as done for sequencing. */
 export type EntryStatus = 'skip' | 'satisfied' | 'unmet';
 
 /** Whether `from` sits strictly below `target` on the `upgradeTarget` chain. The visited guard bounds
@@ -202,7 +203,7 @@ export function entryStatus(
         if (needed === undefined || !liveResourceOnMap(world, ctx, player, needed.typeId, memo.live))
           return 'skip';
       }
-      return 'unmet';
+      return technologyReach(world, ctx, player, memo)?.house(type.typeId) === false ? 'skip' : 'unmet';
     }
     case 'upgrade': {
       const target = buildingTypeByContentId(ctx.content, entry.building);
@@ -215,7 +216,8 @@ export function entryStatus(
       if (inFlightUpgrades) {
         for (const [type, becoming] of tally.upgrading) if (!done.has(type) && done.has(becoming)) have++;
       }
-      return have >= entry.count ? 'satisfied' : 'unmet';
+      if (have >= entry.count) return 'satisfied';
+      return technologyReach(world, ctx, player, memo)?.house(target.typeId) === false ? 'skip' : 'unmet';
     }
     case 'collector': {
       const good = goodTypeByContentId(ctx.content, entry.good);
@@ -223,7 +225,10 @@ export function entryStatus(
       const holders = memoFlagsByGood(world, ctx, player, memo).get(good.typeId) ?? 0;
       if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
-      return liveResourceOnMap(world, ctx, player, good.typeId, memo.live) ? 'unmet' : 'skip';
+      if (!liveResourceOnMap(world, ctx, player, good.typeId, memo.live)) return 'skip';
+      return technologyReach(world, ctx, player, memo)?.target('good', good.typeId) === false
+        ? 'skip'
+        : 'unmet';
     }
     case 'towerCoverage':
     case 'storeCoverage': {

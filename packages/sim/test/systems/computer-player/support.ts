@@ -82,6 +82,8 @@ export const BAKERY_TYPE = 8;
 export const BAKERY_TOP_TYPE = 9;
 export const BREWERY_TYPE = 10;
 export const JOINERY_TYPE = 11;
+/** The joinery's lower tier, which upgrades into {@link JOINERY_TYPE}. */
+export const JOINERY_00_TYPE = 91;
 export const BARRACKS_TYPE = 12;
 export const STOCK_TYPE = 13;
 export const STOCK_TOP_TYPE = 14;
@@ -267,6 +269,68 @@ export function huntingContent(): ContentSet {
     jobs: [...base.jobs, { typeId: HUNTER, id: 'hunter' }],
     buildings: base.buildings.map((b) =>
       b.typeId === HQ_TYPE ? { ...b, workers: [...b.workers, { jobType: HUNTER, count: 3 }] } : b,
+    ),
+  });
+}
+
+/** The farmer's general track in {@link technologyContent}, the original's id; one repeat is 100 raw XP. */
+export const FARMER_TRACK = 45;
+/** The repeats on {@link FARMER_TRACK} that open the miller in {@link technologyContent}. */
+export const MILLER_GATE_REPEATS = 10;
+const FARMER_TRACK_FACTOR = 100;
+/** Raw XP clearing the miller's gate. */
+export const MILLER_GATE_XP = MILLER_GATE_REPEATS * FARMER_TRACK_FACTOR;
+/** The school {@link technologyContent} adds: a training house with no worker slot. */
+export const SCHOOL_TYPE = 92;
+/** The `trainfor*` bucket the shipped rows read. */
+const TRAINING_TRACK = 77;
+
+/** Content whose viking tribe carries a technology table: the mill needs the miller, whom a farmer earns
+ *  at {@link MILLER_GATE_REPEATS} repeats on his general track, and the school teaches him in as many
+ *  seconds, as in the shipped viking rows. */
+export function technologyContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    jobExperience: [
+      ...base.jobExperience,
+      {
+        typeId: FARMER_TRACK,
+        id: 'farmer_general',
+        jobType: FARMER,
+        goodTypes: [],
+        experienceFactor: FARMER_TRACK_FACTOR,
+      },
+    ],
+    buildings: [
+      ...base.buildings,
+      { typeId: SCHOOL_TYPE, id: 'school', kind: 'training', construction: [{ goodType: WOOD, amount: 2 }] },
+    ],
+    tribes: base.tribes.map((t) =>
+      t.typeId !== VIKING
+        ? t
+        : {
+            ...t,
+            technology: { houses: [{ house: MILL_TYPE, jobs: [MILLER], goods: [] }] },
+            jobEnables: [...t.jobEnables, { jobType: FARMER, kind: 'job', targetId: MILLER }],
+            jobRequirements: [
+              ...t.jobRequirements,
+              {
+                requirement: 'need',
+                target: 'job',
+                targetId: MILLER,
+                amount: MILLER_GATE_REPEATS,
+                experienceTypes: [FARMER_TRACK],
+              },
+              {
+                requirement: 'train',
+                target: 'job',
+                targetId: MILLER,
+                amount: MILLER_GATE_REPEATS,
+                experienceTypes: [TRAINING_TRACK],
+              },
+            ],
+          },
     ),
   });
 }

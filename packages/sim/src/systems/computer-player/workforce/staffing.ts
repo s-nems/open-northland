@@ -7,9 +7,11 @@ import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import { byExperience, experienceRank, tradeExperience } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
+import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
+import type { Promotions } from '../technology/promotion.js';
 import {
   type BuildingStaffing,
   buildingStaffing,
@@ -36,9 +38,10 @@ export function builderCap(profile: ComputerProfile, civilians: number, tick: nu
 /**
  * Staff each built workplace and storage toward its plan's tier ({@link buildingStaffing}), where an
  * operator is a non-carrier, non-gatherer slot. Each post goes to the spare man most experienced on the
- * slot trade's general track. Gatherer slots stay open, and a carrier-only workplace (the well, the hive)
- * fills itself, so it needs no staff. Workplaces fill before storage within a tier, and all tiers advance
- * one shared {@link StaffingTally} because the commands apply only next tick.
+ * slot trade's general track who qualifies for it (`settlerMeetsNeed`), and a slot no spare man qualifies
+ * for takes a promotion ({@link Promotions}). Gatherer slots stay open, and a carrier-only workplace (the
+ * well, the hive) fills itself, so it needs no staff. Workplaces fill before storage within a tier, and
+ * all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
  */
 export function staffBuildings(
   world: World,
@@ -47,6 +50,7 @@ export function staffBuildings(
   force: SpareForce,
   tally: StaffingTally,
   tier: StaffingTier,
+  promotions: Promotions,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
@@ -81,9 +85,16 @@ export function staffBuildings(
       const want = Math.min(slot.count, carrier ? carrierWant : operatorWant);
       const held = tally.get(building)?.get(slot.jobType) ?? 0;
       const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
+      const qualifies = (e: Entity): boolean =>
+        settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', slot.jobType);
       for (let i = held; i < want; i++) {
-        const spare = force.take(undefined, veteranFirst);
-        if (spare === null) return commands; // pool dry - the rest waits for grown sons
+        // A promotion seats a building's first man of the trade only, so a second post never strips the
+        // predecessor trade a second time.
+        const spare = force.take(qualifies, veteranFirst) ?? (i === 0 ? promotions.take(slot.jobType) : null);
+        if (spare === null) {
+          if (!force.any()) return commands; // pool dry - the rest waits for grown sons
+          break; // nobody qualifies for this trade yet
+        }
         commands.push({ kind: 'assignWorker', entity: spare, building, jobPriority: [slot.jobType] });
         incrementStaffing(tally, building, slot.jobType);
       }

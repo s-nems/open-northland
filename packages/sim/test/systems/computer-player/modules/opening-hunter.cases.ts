@@ -6,6 +6,7 @@ import {
   JobAssignment,
   Settler,
   StayPoint,
+  setProfessionProgression,
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
@@ -15,6 +16,7 @@ import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
   BAKERY_TOP_TYPE,
+  BREEDER,
   BUILDER,
   collectModule,
   ctxOf,
@@ -54,6 +56,41 @@ function gameContent(): ContentSet {
   });
 }
 
+/** The hunter's general track, the original's id. */
+const HUNTER_TRACK = 37;
+
+/** {@link gameContent} under a technology table whose breeder only a hunter with ten kills discovers. */
+function huntGatedContent(): ContentSet {
+  const base = gameContent();
+  return parseContentSet({
+    ...base,
+    jobs: [...base.jobs, { typeId: BREEDER, id: 'breeder' }],
+    jobExperience: [
+      ...base.jobExperience,
+      { typeId: HUNTER_TRACK, id: 'hunter_general', jobType: HUNTER, goodTypes: [], experienceFactor: 200 },
+    ],
+    tribes: base.tribes.map((t) =>
+      t.typeId !== VIKING
+        ? t
+        : {
+            ...t,
+            technology: { houses: [] },
+            jobEnables: [...t.jobEnables, { jobType: HUNTER, kind: 'job', targetId: BREEDER }],
+            jobRequirements: [
+              ...t.jobRequirements,
+              {
+                requirement: 'need',
+                target: 'job',
+                targetId: BREEDER,
+                amount: 10,
+                experienceTypes: [HUNTER_TRACK],
+              },
+            ],
+          },
+    ),
+  });
+}
+
 /** Game too tough to pick: its hit points alone reach the hunter's prey score ceiling. */
 function toughGameContent(): ContentSet {
   const base = gameContent();
@@ -74,8 +111,12 @@ function spawnDeer(sim: Simulation, x: number, y: number): Entity {
 }
 
 /** A seat with an HQ, four men and a deer grazing beside it, its hunter already posted. */
-function postedHunt(): { sim: Simulation; content: ContentSet; hunter: Entity; deer: Entity } {
-  const content = gameContent();
+function postedHunt(content: ContentSet = gameContent()): {
+  sim: Simulation;
+  content: ContentSet;
+  hunter: Entity;
+  deer: Entity;
+} {
   const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
   placeHq(sim);
   spawnMen(sim, 4);
@@ -139,6 +180,15 @@ describe('workforce module - the opening hunter', () => {
   it('hands the hunter back once the opening hunt clock runs out, game or no game', () => {
     const { sim, content, hunter } = postedHunt();
     expect(retirements(sim, content, hunter, OPENING_HUNT_UNTIL_TICKS - 1)).toEqual([]);
+    expect(retirements(sim, content, hunter, OPENING_HUNT_UNTIL_TICKS)).toEqual([
+      { kind: 'setJob', entity: hunter, jobType: BUILDER },
+    ]);
+  });
+
+  it('keeps the hunter past the clock while his kills have still to open the breeder', () => {
+    const { sim, content, hunter } = postedHunt(huntGatedContent());
+    expect(retirements(sim, content, hunter, OPENING_HUNT_UNTIL_TICKS)).toEqual([]);
+    setProfessionProgression(sim.world, false);
     expect(retirements(sim, content, hunter, OPENING_HUNT_UNTIL_TICKS)).toEqual([
       { kind: 'setJob', entity: hunter, jobType: BUILDER },
     ]);

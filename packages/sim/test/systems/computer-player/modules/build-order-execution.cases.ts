@@ -51,6 +51,7 @@ import {
   HQ_Y,
   husbandryContent,
   IRON,
+  JOINERY_00_TYPE,
   JOINERY_TYPE,
   MILL_TYPE,
   makeAiSeat,
@@ -149,26 +150,24 @@ describe('build-order module (houseBuild)', () => {
     // This content stops short of the pottery, the mason hut and the homes line's tiers, so those steps
     // skip and the homes line reaches its lanes at once. Every line raises its first new kind of building
     // in priority order (opening, bread, tools, the tower lane over the joinery out by the wood and iron,
-    // military, brewery, its well) before any line adds another of a kind the seat has: the opening's
-    // homes and their upgrade, then the bread line's second bakery, its upgrades and level-2 bakeries, and
-    // the brewery line's further breweries. The tools line holds at its iron gatherer, which the
-    // workforce module hires, and holds no other line.
+    // the joinery's upper tier, military, brewery, its well) before any line adds another of a kind the
+    // seat has: the opening's homes, then the bread line's second bakery, its upgrades and level-2
+    // bakeries, and the brewery line's further breweries. The opening holds at its iron gatherer, which
+    // the workforce module hires, before its homes' upgrade, and holds no other line.
     const place = (type: number): string => `place ${type}`;
     const upgrade = (type: number): string => `upgrade ${type}`;
     expect(walk).toEqual([
       place(HOME_TYPE),
       place(MILL_TYPE),
       place(BAKERY_TYPE),
-      place(JOINERY_TYPE),
+      place(JOINERY_00_TYPE),
       place(TOWER_TYPE),
+      upgrade(JOINERY_TYPE),
       place(BARRACKS_TYPE),
       place(BREWERY_TYPE),
       place(WELL_TYPE),
       place(HOME_TYPE),
       place(HOME_TYPE),
-      upgrade(HOME_TOP_TYPE),
-      upgrade(HOME_TOP_TYPE),
-      upgrade(HOME_TOP_TYPE),
       place(BAKERY_TYPE),
       upgrade(BAKERY_TOP_TYPE),
       upgrade(BAKERY_TOP_TYPE),

@@ -24,8 +24,8 @@ profession-general and product-specific experience tracks. `DataCnmd/types/house
   profession requires player availability and the individual qualification.
 - At the start a job with no `needforjob` row and a good no job produces count as discovered for the
   seat's own nations. Such a job, the life stages and the civilist among them, is never recorded or
-  announced as a discovery; an AI seat skips every discovery requirement and civilian experience gate
-  (authored: the progression toggle is a human-player setting and must not handicap the bots). The
+  announced as a discovery. A computer seat earns its discoveries and meets the experience gates like
+  a human; with the match's progression toggle off everything is open for every seat. The
   discovery system records discoveries after each tick's commands and mission results, and again
   after its work.
 - A seat starts with only its roster nations unlocked. Another nation unlocks for good once the seat

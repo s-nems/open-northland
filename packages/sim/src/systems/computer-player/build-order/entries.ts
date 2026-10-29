@@ -231,15 +231,29 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     {
       id: 'opening',
       steps: [
+        // Owner ruling: a seat opens on one wood, one clay and one stone gatherer, the opening hunter and
+        // the farmer beside them. The clay and stone gatherers earn the potter and the mason.
+        { kind: 'collector', good: 'wood' },
+        { kind: 'collector', good: 'mud' },
+        { kind: 'collector', good: 'stone' },
         GRAIN_FARM,
         { kind: 'place', building: 'home_level_00', count: 3 },
         { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
+        // Owner ruling: the school right after the pottery, a core building, so every trade discovered
+        // from here on is taught there rather than earned again by work.
+        { kind: 'place', building: 'school', count: 1 },
         {
           kind: 'place',
           building: 'work_mason_hut_00',
           count: 1,
           near: [{ kind: 'resource', good: 'stone' }],
         },
+        // Owner ruling: a second stone gatherer within the first 10-15 game minutes, since the roads and
+        // the mason eat the most stone.
+        { kind: 'collector', good: 'stone', count: 2 },
+        // Owner ruling: from game minute 15-30 an iron gatherer climbs the smithy tree, his iron making him
+        // the first smith; the joinery's iron tools and the smithies take his ore.
+        { kind: 'collector', good: 'iron' },
         { kind: 'upgrade', building: 'home_level_02', count: 3 },
       ],
     },
@@ -313,6 +327,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       steps: [
         { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
         { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
+        // Owner ruling: a mushroom gatherer from game minute 25-40, about when these tiers stand, whose
+        // ten mushrooms open the herb hut; not before, and only the one until potions are made in volume.
+        { kind: 'collector', good: 'mushroom' },
       ],
     },
     {
@@ -369,12 +386,14 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in
         // reach.
         wellBeside('work_animal_farm', 3),
+        // The upper tier wants wool armour, which only a sewer working the lower tier learns to make.
         {
           kind: 'place',
-          building: 'work_sewery_01',
+          building: 'work_sewery_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_animal_farm' }],
         },
+        { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
         // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
         {
           kind: 'place',
@@ -390,27 +409,29 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // carrier never walks far. The top-tier joineries of the military line work ships and catapults,
       // never tools, so they neither meet this line's steps nor its upgrade.
       steps: [
+        // The lower tier first: the furniture its upper tier wants is learned at it.
         {
           kind: 'place',
-          building: 'work_joinery_01',
+          building: 'work_joinery_00',
           count: 1,
           near: WOOD_AND_IRON,
           belowTier: 'work_joinery_03',
         },
+        { kind: 'upgrade', building: 'work_joinery_01', count: 1, belowTier: 'work_joinery_03' },
         // Soon after, a tier up for the carriers' handcarts (`workforce/craft.ts`).
         { kind: 'upgrade', building: 'work_joinery_02', count: 1, belowTier: 'work_joinery_03' },
-        // The iron gatherer, once the joinery that works the iron tools stands a tier up; the smithies
-        // forge his ore too.
-        { kind: 'collector', good: 'iron' },
       ],
     },
     {
       id: 'weapons',
       // The smithy works its wares out of iron and wood, so it stands between the two deposits.
+      // Each shop's lower tier first: mail and the long bow, which their upper tiers want, are learned there.
       steps: [
-        { kind: 'place', building: 'work_smithy_01', count: 1, near: IRON_AND_WOOD },
+        { kind: 'place', building: 'work_smithy_00', count: 1, near: IRON_AND_WOOD },
+        { kind: 'upgrade', building: 'work_smithy_01', count: 1 },
         // The armourer turns wood into bows and spear shafts, so it stands by the wood like the joinery.
-        { kind: 'place', building: 'work_armory_01', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
+        { kind: 'place', building: 'work_armory_00', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
+        { kind: 'upgrade', building: 'work_armory_01', count: 1 },
         { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD },
         { kind: 'place', building: 'work_smithy_01', count: 4, near: IRON_AND_WOOD },
         // The late game runs out of mail, plate and long bows.
@@ -450,16 +471,10 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       id: 'healing',
       // The big potion takes herbs, mushrooms and coins, and the temple waits on the druids' oil, so all of
       // it stands only where the map holds both gold and mushrooms.
+      // The herb hut opens it, once the materials line's mushroom gatherer has earned the herb trade; a
+      // gatherer step stands behind it, since a step still waiting on its discovery holds the gatherers
+      // the lines want.
       steps: [
-        {
-          kind: 'place',
-          building: 'work_coin_mint',
-          count: 2,
-          near: [{ kind: 'resource', good: 'gold' }],
-          needsResources: ['gold'],
-        },
-        { kind: 'collector', good: 'mushroom' },
-        { kind: 'collector', good: 'gold' },
         // The herb hut comes first, beside a well, so its herbs are growing when the druids it draws beside
         // it stand.
         {
@@ -470,6 +485,16 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           ground: 'plantable',
           needsResources: ['mushroom', 'gold'],
         },
+        { kind: 'collector', good: 'gold' },
+        // The lower tier first: the small food potion its upper tier wants is learned there.
+        {
+          kind: 'place',
+          building: 'work_druid_00',
+          count: 1,
+          near: [{ kind: 'building', id: 'work_herb_hut' }],
+          needsResources: ['mushroom', 'gold'],
+        },
+        { kind: 'upgrade', building: 'work_druid_01', count: 1 },
         {
           kind: 'place',
           building: 'work_druid_01',
@@ -480,6 +505,13 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The druids brew with water: each druid step is followed by a well beside the hut with none in
         // reach.
         wellBeside('work_druid_01', 5),
+        {
+          kind: 'place',
+          building: 'work_coin_mint',
+          count: 2,
+          near: [{ kind: 'resource', good: 'gold' }],
+          needsResources: ['gold'],
+        },
         // Beside the barracks: the temple stands with the army it blesses, not on a front of its own.
         {
           kind: 'place',

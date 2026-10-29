@@ -18,7 +18,7 @@ import { mayChangeTrade } from './guards.js';
 import { mayWalkToDrill, startDrill } from './training.js';
 
 /** Approximation: a lesson point takes one second of completed training atomics. */
-const SCHOOL_LESSON_TICKS = TICKS_PER_SECOND;
+export const SCHOOL_LESSON_TICKS = TICKS_PER_SECOND;
 
 /** A school, standing or still a foundation: a pupil may be sent to one before it stands. */
 export function isSchoolOrFoundation(world: World, ctx: SystemContext, house: Entity): boolean {

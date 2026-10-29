@@ -1,11 +1,5 @@
 import type { HumanJobExperienceType, JobRequirement, JobRequirementTarget } from '@open-northland/data';
-import {
-  isMachinePlayer,
-  ownerOf,
-  professionProgressionEnabled,
-  Settler,
-  SettlerProgress,
-} from '../../components/index.js';
+import { ownerOf, professionProgressionEnabled, Settler, SettlerProgress } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { ContentContext } from '../context.js';
@@ -51,19 +45,9 @@ export function needSubjectOf(world: World, settler: Entity): NeedSubject {
 }
 
 /**
- * Whether the experience tech tree gates `owner`'s settlers at all. An AI seat never pays it (authored:
- * the progression toggle is a human-player setting and must not handicap the bots); a human or neutral
- * seat follows `ProgressionRules`.
- */
-export function experienceGatesApply(world: World, owner: number | undefined): boolean {
-  if (owner !== undefined && isMachinePlayer(world, owner)) return false;
-  return professionProgressionEnabled(world);
-}
-
-/**
  * Whether a settler meets every `needfor*` XP threshold gating a `(target, targetId)` for its tribe. A
  * target with several must clear all of them, and a tribe absent from content thresholds nothing. A
- * fighter job, gated even where {@link experienceGatesApply} is false, is met by accrued XP or by the
+ * fighter job, gated even with the match's progression toggle off, is met by accrued XP or by the
  * barracks schooling {@link schoolingMet} reads.
  */
 export function settlerMeetsNeed(
@@ -77,7 +61,7 @@ export function settlerMeetsNeed(
   if (!typeAllowed(world, ctx, owner, tribe, target, targetId)) return false;
   if (subject.learned?.[target].includes(targetId)) return true;
   const fighterJob = target === 'job' && isFighterJob(ctx.content, targetId);
-  if (!experienceGatesApply(world, owner) && !fighterJob) return true;
+  if (!professionProgressionEnabled(world) && !fighterJob) return true;
   const tribeType = contentIndex(ctx.content).tribes.get(tribe);
   if (tribeType === undefined) return true;
   if (
