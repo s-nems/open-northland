@@ -149,7 +149,6 @@ export const COMMAND_ISSUER: {
   cancelRoadSite: 'seat',
   placeResource: 'trusted',
   placeSignpost: 'seat',
-  renameSettler: 'seat',
   setAlliedVision: 'trusted',
   setBioGroundWaived: 'trusted',
   setAssistantCounter: 'seat',

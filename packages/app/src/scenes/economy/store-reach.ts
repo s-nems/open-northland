@@ -18,7 +18,7 @@ const HEADQUARTERS = { x: 70, y: 10 } as const;
 const STOCKED_INPUT = 5;
 
 function workerStatus(sim: Simulation, name: string) {
-  const worker = idleWorkWorker(sim, name);
+  const worker = idleWorkWorker(name);
   return worker === undefined ? undefined : sim.workStatus(worker);
 }
 

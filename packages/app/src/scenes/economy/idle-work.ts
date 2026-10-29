@@ -16,11 +16,12 @@ export const IDLE_WORK_NAMES = {
   resources: 'Bjorn',
 } as const;
 
-export function idleWorkWorker(sim: Simulation, name: string): Entity | undefined {
-  for (const entity of sim.world.query(components.GivenName)) {
-    if (sim.world.get(entity, components.GivenName).name === name) return entity;
-  }
-  return undefined;
+/** The settlers the economy scenes name, by the name the scene gives them. No sim component carries a
+ *  scene's label any more: a rename is the player's own, and it stays on their client. */
+const namedInScenes = new Map<string, Entity>();
+
+export function idleWorkWorker(name: string): Entity | undefined {
+  return namedInScenes.get(name);
 }
 
 export function idleWorkBakery(
@@ -34,7 +35,7 @@ export function idleWorkBakery(
   spawnWorkersAtDoor(sim, building, 1);
   for (const worker of sim.world.query(components.JobAssignment)) {
     if (sim.world.get(worker, components.JobAssignment).workplace !== building) continue;
-    sim.world.add(worker, components.GivenName, { name });
+    namedInScenes.set(name, worker);
     return { building, worker };
   }
   throw new Error('The bakery has no assigned worker');
@@ -68,14 +69,14 @@ export const idleWorkScene: SceneDefinition = {
     const stock = sim.world.mut(full.building, components.Stockpile);
     for (const slot of idleWorkBakeryDefinition(sim).stock) stock.amounts.set(slot.goodType, slot.capacity);
     const collector = spawnSettlerDirect(sim, JOB_COLLECTOR, 26, 20);
-    sim.world.add(collector, components.GivenName, { name: IDLE_WORK_NAMES.resources });
+    namedInScenes.set(IDLE_WORK_NAMES.resources, collector);
   },
   runTicks: 120,
   checks: [
     {
       label: 'the collector reports no eligible resource in the work area',
       predicate: (sim) => {
-        const worker = idleWorkWorker(sim, IDLE_WORK_NAMES.resources);
+        const worker = idleWorkWorker(IDLE_WORK_NAMES.resources);
         if (worker === undefined) return false;
         const status = sim.workStatus(worker);
         return status?.kind === 'noEligibleResource' && status.goodTypes.length > 0;
@@ -84,7 +85,7 @@ export const idleWorkScene: SceneDefinition = {
     {
       label: 'the empty bakery reports both missing ingredients',
       predicate: (sim) => {
-        const worker = idleWorkWorker(sim, IDLE_WORK_NAMES.ingredients);
+        const worker = idleWorkWorker(IDLE_WORK_NAMES.ingredients);
         if (worker === undefined) return false;
         const status = sim.workStatus(worker);
         const recipe = bakeryRecipe(sim);
@@ -107,14 +108,14 @@ export const idleWorkScene: SceneDefinition = {
     {
       label: 'the stopped baker reports an empty production selection',
       predicate: (sim) => {
-        const worker = idleWorkWorker(sim, IDLE_WORK_NAMES.selection);
+        const worker = idleWorkWorker(IDLE_WORK_NAMES.selection);
         return worker !== undefined && sim.workStatus(worker)?.kind === 'nothingSelected';
       },
     },
     {
       label: 'the stocked bakery reports the full bread shelf',
       predicate: (sim) => {
-        const worker = idleWorkWorker(sim, IDLE_WORK_NAMES.storage);
+        const worker = idleWorkWorker(IDLE_WORK_NAMES.storage);
         if (worker === undefined) return false;
         const status = sim.workStatus(worker);
         return (

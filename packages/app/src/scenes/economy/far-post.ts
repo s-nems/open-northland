@@ -29,13 +29,14 @@ const POSTED_NAME = 'Olaf';
 const RUN_TICKS = 300;
 const INITIAL_ZOOM = 0.6;
 
-const { GivenName, JobAssignment, LostWay, Position } = components;
+const { JobAssignment, LostWay, Position } = components;
 
-function named(sim: Simulation, name: string): Entity | undefined {
-  for (const e of sim.world.query(GivenName)) {
-    if (sim.world.get(e, GivenName).name === name) return e;
-  }
-  return undefined;
+/** The settler this scene posts, by the name it calls it. No sim component carries a scene's label any
+ *  more: a rename is the player's own, and it stays on their client. */
+const namedInScene = new Map<string, Entity>();
+
+function named(name: string): Entity | undefined {
+  return namedInScene.get(name);
 }
 
 function build(sim: Simulation): void {
@@ -44,7 +45,7 @@ function build(sim: Simulation): void {
   const bakery = placeBuiltSandboxBuilding(sim, BUILDING_BAKERY, FAR_BAKERY.x, FAR_BAKERY.y);
   placeBuiltSandboxBuilding(sim, BUILDING_HOME_00, FAR_HOME.x, FAR_HOME.y);
   const posted = spawnSettlerDirect(sim, JOB_CIVILIST, POSTED.x, POSTED.y);
-  sim.world.add(posted, GivenName, { name: POSTED_NAME });
+  namedInScene.set(POSTED_NAME, posted);
   for (const at of CIVILIANS) spawnSettlerDirect(sim, JOB_CIVILIST, at.x, at.y);
   spawnSettlerDirect(sim, JOB_WOMAN, WOMAN.x, WOMAN.y);
   spawnSettlerDirect(sim, JOB_SCOUT, SCOUT.x, SCOUT.y);
@@ -67,14 +68,14 @@ export const farPostScene: SceneDefinition = {
     {
       label: 'Olaf keeps his post at the far bakery',
       predicate: (sim) => {
-        const olaf = named(sim, POSTED_NAME);
+        const olaf = named(POSTED_NAME);
         return olaf !== undefined && sim.world.has(olaf, JobAssignment);
       },
     },
     {
       label: 'Olaf stands lost by the camp, his status naming the workplace beyond signpost reach',
       predicate: (sim) => {
-        const olaf = named(sim, POSTED_NAME);
+        const olaf = named(POSTED_NAME);
         return (
           olaf !== undefined &&
           sim.world.has(olaf, LostWay) &&

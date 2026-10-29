@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { SCRIPTED_LOOK_MAX_RECIPES, SCRIPTED_LOOK_RECIPE_MAX_CHARS } from '../../../src/components/index.js';
-import { type Command, parseCommandEnvelope, SETTLER_NAME_MAX_CHARS } from '../../../src/index.js';
+import { type Command, HOUSE_RECORD_NAME_MAX_CHARS, parseCommandEnvelope } from '../../../src/index.js';
 
 /**
  * The per-kind field contract the parser holds an untrusted payload to. Without it a hand-edited log
@@ -226,17 +226,19 @@ describe('command payload contracts', () => {
     expect(() => parse({ ...command, takeUpTo: 1.5 })).toThrow(/command\.takeUpTo/);
   });
 
-  it('holds a settler name to a bounded plain string', () => {
-    const command = { kind: 'renameSettler', entity: UNIT, name: 'Ragnar' };
+  it('holds a command string to a bounded plain string', () => {
+    const command = { kind: 'placeBuilding', buildingType: 1, x: 0, y: 0, tribe: 1, record: 'Ragnar' };
     expect(parse(command)).toEqual(imported(command));
-    expect(() => parse({ ...command, name: 7 })).toThrow('envelope.command.name: expected a string, got 7');
-    expect(() => parse({ ...command, name: 'x'.repeat(SETTLER_NAME_MAX_CHARS + 1) })).toThrow(
-      `envelope.command.name: expected at most ${SETTLER_NAME_MAX_CHARS} characters`,
+    expect(() => parse({ ...command, record: 7 })).toThrow(
+      'envelope.command.record: expected a string, got 7',
     );
-    expect(() => parse({ ...command, name: 'Rag\nnar' })).toThrow(
-      'envelope.command.name: expected no control characters',
+    expect(() => parse({ ...command, record: 'x'.repeat(HOUSE_RECORD_NAME_MAX_CHARS + 1) })).toThrow(
+      `envelope.command.record: expected at most ${HOUSE_RECORD_NAME_MAX_CHARS} characters`,
     );
-    expect(parse({ ...command, name: 'ż'.repeat(SETTLER_NAME_MAX_CHARS) })).toBeDefined();
+    expect(() => parse({ ...command, record: 'Rag\nnar' })).toThrow(
+      'envelope.command.record: expected no control characters',
+    );
+    expect(parse({ ...command, record: 'ż'.repeat(HOUSE_RECORD_NAME_MAX_CHARS) })).toBeDefined();
   });
 
   it('refuses a value outside a fixed set', () => {

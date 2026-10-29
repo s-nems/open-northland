@@ -126,11 +126,11 @@ describe('session worker host', () => {
       direct.run(idleWorkScene.runTicks);
       const before = await session.host.hashState();
       for (const name of Object.values(IDLE_WORK_NAMES)) {
-        const worker = idleWorkWorker(direct, name);
+        const worker = idleWorkWorker(name);
         if (worker === undefined) throw new Error(`Missing scene worker ${name}`);
         expect(await session.host.workStatus(worker)).toEqual(direct.workStatus(worker));
       }
-      const baker = idleWorkWorker(direct, IDLE_WORK_NAMES.ingredients);
+      const baker = idleWorkWorker(IDLE_WORK_NAMES.ingredients);
       if (baker === undefined) throw new Error('Missing baker');
       expect(await session.host.workStatus(baker)).toMatchObject({
         kind: 'waitingInput',
