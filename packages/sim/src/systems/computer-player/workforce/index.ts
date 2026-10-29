@@ -33,7 +33,7 @@ import { seatBaseOf } from '../base.js';
 import { type BuildOrder, lineStatuses } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf, profileBuildOrder } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
-import { reachableResourceTest, workableResourceTest } from '../live-resources.js';
+import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
 import {
   allocateCollectors,
@@ -257,8 +257,10 @@ function collectorGround(
           limit.allowsNode(interactionCell(world, ctx, terrain, e, origin)) &&
           unsealed(e);
   // Every test reads state the decision cannot change, so each resource is judged once per decision.
-  const workable = (e: Entity): boolean => verdicts.judged(e, epoch, judge);
-  return { anchors: collectorAnchors(world, ctx, owned, baseNode), baseNode, flags, workable };
+  const judged = (e: Entity): boolean => verdicts.judged(e, epoch, judge);
+  const known = knownResourceTest(world, ctx, player);
+  const workable = known === null ? judged : (e: Entity): boolean => known(e) && judged(e);
+  return { anchors: collectorAnchors(world, ctx, owned, baseNode), baseNode, flags, workable, known };
 }
 
 /** False only when `limit` provably refuses `e`'s work cell: a resource's work cell lies at most

@@ -1,4 +1,12 @@
-import { Building, Position, Resource, ResourceFootprint, Settler } from '../../components/index.js';
+import {
+  Building,
+  computerControllerRuns,
+  mapBriefOf,
+  Position,
+  Resource,
+  ResourceFootprint,
+  Settler,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition } from '../../nav/halfcell.js';
@@ -19,6 +27,7 @@ import {
   goodBoxHoldsAll,
   nearestResourceOfGood,
 } from '../spatial/resources.js';
+import { fogHides, playerExploredNode } from '../vision/gates.js';
 
 /** The first expanding-box reach of the live-resource searches below (Chebyshev half-cell nodes). */
 const RESOURCE_BOX_REACH_START = 16;
@@ -31,6 +40,29 @@ const RESOURCE_BOX_REACH_MAX = 512;
 
 /** Whether a gatherer can still stand to work a resource. */
 export type WorkableTest = (e: Entity) => boolean;
+
+/**
+ * The deposits `seat` may know of, or null when it knows every one: a seat whose computer controller runs
+ * under a fog that hides anything accepts a deposit on ground it has explored, and on unexplored ground
+ * only one that stood at the map brief's scan, since the start layout is static knowledge (owner ruling
+ * on what a computer seat knows). A deposit's remaining amount is still read live.
+ */
+export function knownResourceTest(world: World, ctx: SystemContext, seat: number): WorkableTest | null {
+  const fog = ctx.fog;
+  if (!fogHides(fog) || !computerControllerRuns(world, seat)) return null;
+  const ceiling = mapBriefOf(world)?.entityCeiling ?? 0;
+  return (e) => {
+    if (e < ceiling) return true;
+    const node = anchorNodeOf(world, e);
+    return node !== null && playerExploredNode(fog, seat, node.hx, node.hy);
+  };
+}
+
+/** `workable` narrowed to the deposits `known` accepts; `workable` itself when every deposit is known. */
+export function knownAnd(known: WorkableTest | null, workable?: WorkableTest): WorkableTest | undefined {
+  if (known === null) return workable;
+  return workable === undefined ? known : (e) => known(e) && workable(e);
+}
 
 /** The decision's {@link WorkableTest}: some stance cell of the resource lies clear of the live walk-block
  *  overlay, so a deposit a building has buried whole no longer counts. A gatherer tests only the stance cell
@@ -129,7 +161,14 @@ export interface GathererReach {
 
 const NO_ATOMICS: ReadonlySet<number> = new Set();
 
-export function gathererReach(world: World, ctx: SystemContext, terrain: TerrainGraph): GathererReach {
+/** `known` narrows the resources a computer seat's holder takes to those it may know of
+ *  ({@link knownResourceTest}); null for a reader that sees them all. */
+export function gathererReach(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  known: WorkableTest | null = null,
+): GathererReach {
   const blocked = dynamicBlockOverlay(world, ctx, terrain);
   const regions = routeRegions(world, ctx, terrain);
   const judge = (holder: Entity) => {
@@ -160,6 +199,7 @@ export function gathererReach(world: World, ctx: SystemContext, terrain: Terrain
       takes: (center: NodeId, radius: number, e: Entity, wanted: (goodType: number) => boolean): boolean => {
         const res = world.get(e, Resource);
         if (res.remaining <= 0 || !wanted(res.goodType) || !allowed.has(res.harvestAtomic)) return false;
+        if (known !== null && !known(e)) return false;
         let met = needMet.get(res.goodType);
         if (met === undefined) {
           met = settlerMeetsNeed(world, ctx, subject, 'good', res.goodType);
@@ -314,7 +354,11 @@ export function nearestLiveResourceOfGoods(
   return best;
 }
 
-/** Whether any not-yet-empty resource of `goodType` stands on the map. */
-export function anyLiveResource(world: World, goodType: number): boolean {
-  return anyResourceOfGood(world, goodType, (e) => isLiveResource(world, e, goodType));
+/** Whether any not-yet-empty resource of `goodType` that `known` accepts stands on the map. */
+export function anyLiveResource(world: World, goodType: number, known: WorkableTest | null = null): boolean {
+  return anyResourceOfGood(
+    world,
+    goodType,
+    (e) => isLiveResource(world, e, goodType) && (known === null || known(e)),
+  );
 }

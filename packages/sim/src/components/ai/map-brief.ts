@@ -69,6 +69,9 @@ export interface MapBriefState {
   landComponents: BriefLandComponent[];
   /** Ascending player slot. */
   seats: BriefSeatStart[];
+  /** The world's next entity id at the scan: an entity below it stood then, since ids are never reused.
+   *  A deposit below it is part of the static start layout every computer seat may know. */
+  entityCeiling: number;
 }
 
 const mapBrief = defineWorldSingleton<MapBriefState>('MapBrief', 'players', () => ({
@@ -90,6 +93,7 @@ const mapBrief = defineWorldSingleton<MapBriefState>('MapBrief', 'players', () =
   fish: [],
   landComponents: [],
   seats: [],
+  entityCeiling: 0,
 }));
 
 export const MapBrief = mapBrief.component;

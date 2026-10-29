@@ -15,7 +15,7 @@ import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
-import { anyLiveResource } from '../live-resources.js';
+import { anyLiveResource, knownResourceTest } from '../live-resources.js';
 import { rivalOverSea } from '../sea-route.js';
 import {
   type BuildLineId,
@@ -199,7 +199,8 @@ export function entryStatus(
         return 'skip';
       for (const goodId of entry.needsResources ?? []) {
         const needed = goodTypeByContentId(ctx.content, goodId);
-        if (needed === undefined || !liveResourceOnMap(world, needed.typeId, memo.live)) return 'skip';
+        if (needed === undefined || !liveResourceOnMap(world, ctx, player, needed.typeId, memo.live))
+          return 'skip';
       }
       return 'unmet';
     }
@@ -222,7 +223,7 @@ export function entryStatus(
       const holders = memoFlagsByGood(world, ctx, player, memo).get(good.typeId) ?? 0;
       if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
-      return liveResourceOnMap(world, good.typeId, memo.live) ? 'unmet' : 'skip';
+      return liveResourceOnMap(world, ctx, player, good.typeId, memo.live) ? 'unmet' : 'skip';
     }
     case 'towerCoverage':
     case 'storeCoverage': {
@@ -233,11 +234,18 @@ export function entryStatus(
   }
 }
 
-/** Whether the map still holds a live resource of `goodType`, once per good per decision. */
-function liveResourceOnMap(world: World, goodType: number, live: Map<number, boolean>): boolean {
-  const known = live.get(goodType);
-  if (known !== undefined) return known;
-  const found = anyLiveResource(world, goodType);
+/** Whether the map still holds a live resource of `goodType` the seat knows of, once per good per
+ *  decision. */
+function liveResourceOnMap(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  goodType: number,
+  live: Map<number, boolean>,
+): boolean {
+  const held = live.get(goodType);
+  if (held !== undefined) return held;
+  const found = anyLiveResource(world, goodType, knownResourceTest(world, ctx, player));
   live.set(goodType, found);
   return found;
 }

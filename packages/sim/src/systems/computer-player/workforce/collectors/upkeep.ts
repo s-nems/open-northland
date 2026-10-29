@@ -54,7 +54,7 @@ export function upkeepHolders(
   commands: PlayerCommand[],
 ): void {
   const { workable } = ground;
-  const reach = gathererReach(world, ctx, ground.flags.terrain);
+  const reach = gathererReach(world, ctx, ground.flags.terrain, ground.known ?? null);
   const ofGood = (goodType: number): boolean => goodType === w.good.typeId;
   // Holders sharing an anchor share its drift target: nothing this pass does moves a resource.
   const driftTargets = new Map<string, HalfCellNode | null>();

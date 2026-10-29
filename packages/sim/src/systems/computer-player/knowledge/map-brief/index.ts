@@ -65,5 +65,6 @@ function scanMapBrief(world: World, ctx: SystemContext, terrain: TerrainGraph, c
     ...deposits,
     landComponents,
     seats,
+    entityCeiling: world.nextEntityId,
   });
 }

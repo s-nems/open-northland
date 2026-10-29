@@ -114,6 +114,9 @@ export interface CollectorGround {
   readonly baseNode: HalfCellNode;
   readonly flags: FlagGround;
   readonly workable: WorkableTest;
+  /** The deposits the seat may know of (`knownResourceTest`), already part of {@link workable};
+   *  absent or null when it knows every one. */
+  readonly known?: WorkableTest | null;
 }
 
 /** `w`'s holders seated on its anchors ({@link seatHolders}), with a free anchor for each post up to its
@@ -284,7 +287,7 @@ export function allocateGenericCollectors(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const { baseNode, workable } = ground;
-  const reach = gathererReach(world, ctx, ground.flags.terrain);
+  const reach = gathererReach(world, ctx, ground.flags.terrain, ground.known ?? null);
   // Each post's flag by holder: a re-plant or a hire keeps its resource clear of the others', so the
   // posts fan out.
   const flags = new Map<Entity, HalfCellNode>();

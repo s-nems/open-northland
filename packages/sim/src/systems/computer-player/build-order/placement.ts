@@ -15,7 +15,7 @@ import { shipYardProbe } from '../../footprint/placement/vehicle-site.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
 import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../joinery-role.js';
-import { nearestLiveResource } from '../live-resources.js';
+import { knownResourceTest, nearestLiveResource } from '../live-resources.js';
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, OVERFLOW_BUILD_REACH_NODES } from './entries.js';
@@ -50,7 +50,8 @@ function affinityNode(
     case 'resource': {
       const good = goodTypeByContentId(ctx.content, affinity.good);
       if (good === undefined) return null;
-      const resource = nearestLiveResource(world, good.typeId, anchor);
+      const known = knownResourceTest(world, ctx, player) ?? undefined;
+      const resource = nearestLiveResource(world, good.typeId, anchor, known);
       return resource === null
         ? stockedStoreNode(world, ctx, owned, good.typeId)
         : anchorNodeOf(world, resource);
