@@ -1,4 +1,4 @@
-import type { ContentSet, EquipCategory } from '@open-northland/data';
+import type { ContentSet, EquipCategory, MapAiSeat } from '@open-northland/data';
 import type {
   AssistantArmingIntent,
   AssistantArmorOrder,
@@ -104,6 +104,8 @@ export interface SessionHost {
   readonly landscapeTypes: readonly ScriptLandscapeType[];
   /** The map's mission script; undefined for a world that runs none. */
   readonly missions: MissionScript | undefined;
+  /** The map's `[AIData]` rows, one per seat that authored any; empty for a map without. */
+  readonly mapAiScript: readonly MapAiSeat[];
 
   // Per frame, synchronous.
 

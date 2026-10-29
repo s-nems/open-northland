@@ -37,6 +37,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     },
     landscapeTypes: sim.terrain?.landscapes?.types ?? NO_LANDSCAPE_TYPES,
     missions: sim.missions,
+    mapAiScript: sim.mapAiScript ?? [],
 
     get tick() {
       return sim.tick;

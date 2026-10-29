@@ -278,6 +278,7 @@ export class ServedSession<E> {
         mapFingerprint: sim.mapFingerprint,
         landscapeTypes: this.answers.landscapeTypes,
         missions: sim.missions,
+        mapAiScript: sim.mapAiScript ?? [],
         matchRules: sim.matchRules(),
         seed: sim.seed,
         maxStepsPerFrame: this.driver.maxStepsPerFrame,

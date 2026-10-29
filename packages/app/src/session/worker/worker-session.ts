@@ -484,6 +484,7 @@ class WorkerClient<E> {
       mapFingerprint: ready.mapFingerprint,
       landscapeTypes: ready.landscapeTypes,
       missions: ready.missions,
+      mapAiScript: ready.mapAiScript,
 
       get tick() {
         return client.tick;

@@ -1,6 +1,7 @@
 import { fx, type systems, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
 import { formatMessage, messages } from '../../../src/i18n/index.js';
+import type { SeatMind } from '../../../src/view/admin-debug/ai-mind.js';
 import { type AiSeatReading, aiSeatRows, readAiSeats } from '../../../src/view/admin-debug/ai-seats.js';
 
 const msgs = messages();
@@ -42,6 +43,8 @@ const BRIEF: systems.SeatBrief = {
   ],
 };
 
+const NO_MIND: SeatMind = { tick: 0, intel: null, staleZones: [], intent: null, pupils: [] };
+
 const DECIDED: AiSeatReading = {
   player: 2,
   difficulty: 'hard',
@@ -67,6 +70,7 @@ const DECIDED: AiSeatReading = {
     },
   },
   brief: BRIEF,
+  mind: NO_MIND,
 };
 
 describe('AI view rows', () => {
@@ -76,10 +80,12 @@ describe('AI view rows', () => {
       formatMessage(copy.seat, { player: 2, difficulty: msgs.mainMenu.lobby.difficulty.hard }),
     );
     expect(seat?.note).toBeNull();
-    const [strategy, bands, access, others] = seat?.tables ?? [];
+    const [strategy, military, forces, bands, access, others] = seat?.tables ?? [];
     expect(strategy?.rows).toContainEqual([copy.sides, 'naturalArms, fishing']);
     expect(strategy?.rows).toContainEqual([copy.evidence, 'homeRoomSmall, ironOutOfReach']);
     expect(strategy?.rows.find((row) => row[0] === copy.challenger)?.[1]).toContain('rich');
+    expect(military?.rows).toContainEqual([copy.posture, 'prepare']);
+    expect(forces?.rows).toEqual([[copy.own, '120', '-', '-', '-', '-']]);
     expect(bands?.head).toEqual([copy.band, copy.home, copy.near]);
     expect(bands?.rows).toContainEqual([copy.free, '1200', '4100']);
     expect(bands?.rows).toContainEqual([msgs.goods.wood, '80', '250']);
@@ -96,9 +102,15 @@ describe('AI view rows', () => {
   });
 
   it('names a seat the scan has not reached and one not decided yet', () => {
-    const [seat] = aiSeatRows([{ player: 5, difficulty: 'easy', strategy: null, brief: null }], msgs);
+    const [seat] = aiSeatRows(
+      [{ player: 5, difficulty: 'easy', strategy: null, brief: null, mind: NO_MIND }],
+      msgs,
+    );
     expect(seat?.note).toBe(copy.noScan);
-    expect(seat?.tables).toEqual([{ head: null, rows: [[copy.archetype, copy.undecided]] }]);
+    expect(seat?.tables.slice(0, 2)).toEqual([
+      { head: null, rows: [[copy.archetype, copy.undecided]] },
+      { head: null, rows: [[copy.plan, copy.undecided]] },
+    ]);
   });
 });
 
@@ -118,6 +130,8 @@ describe('reading the running computer seats', () => {
         { id: 4, components: { Settler: {} } },
       ],
     };
-    expect(readAiSeats(snapshot)).toEqual([{ player: 3, difficulty: 'medium', strategy: null, brief: null }]);
+    expect(readAiSeats(snapshot, null)).toEqual([
+      { player: 3, difficulty: 'medium', strategy: null, brief: null, mind: NO_MIND },
+    ]);
   });
 });

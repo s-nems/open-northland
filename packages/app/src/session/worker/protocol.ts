@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import type { ContentSet, MapAiSeat } from '@open-northland/data';
 import type {
   AssistantArmingIntent,
   AssistantArmorOrder,
@@ -236,6 +236,7 @@ export interface WorkerReady<E> {
   readonly mapFingerprint: string | undefined;
   readonly landscapeTypes: readonly ScriptLandscapeType[];
   readonly missions: MissionScript | undefined;
+  readonly mapAiScript: readonly MapAiSeat[];
   readonly matchRules: MatchRulesView;
   readonly seed: number;
   readonly maxStepsPerFrame: number;

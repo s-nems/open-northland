@@ -204,7 +204,7 @@ function mountAdminPanel(
     zoomOutUnlocked: zoomOut.unlocked,
     setZoomOutUnlocked: zoomOut.setUnlocked,
     ...(opts.paintGood !== undefined ? { paintGood: opts.paintGood } : {}),
-    aiSeats: () => readAiSeats(host.snapshot()),
+    aiSeats: () => readAiSeats(host.snapshot(), host),
   });
 }
 

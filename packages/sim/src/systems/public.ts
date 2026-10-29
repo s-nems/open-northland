@@ -33,14 +33,19 @@ export {
   seatIntelSummaryOf,
   summarizeIntel,
 } from './computer-player/knowledge/intel/index.js';
-// What the map's scripts mean for a seat - objectives and scripted attacks - for a debug view.
+// What the map's scripts mean for a seat - objectives and scripted attacks - for a debug view; the
+// static part (`seatMapIntentOf`) reads only the scripts and the brief, so a snapshot view can call it.
 export {
   type IntentStatus,
   type Objective,
   type ObjectiveSummary,
   type ProgramTaskSummary,
+  type SeatMapIntent,
   type SeatMapIntentSummary,
+  type SeatThreat,
+  seatMapIntentOf,
   seatMapIntentSummaryOf,
+  seatTerritoryOf,
   type ThreatSummary,
   type Trigger,
   type TriggerCondition,
@@ -61,6 +66,7 @@ export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './computer-play
 export {
   type MilitaryOrders,
   militaryOrdersOf,
+  ordersFor,
   type SeatMilitaryView,
   type SeatStrategyView,
   seatMilitaryViewOf,
