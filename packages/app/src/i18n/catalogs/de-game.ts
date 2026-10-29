@@ -1787,7 +1787,7 @@ export const deGame = {
       buildings: 'Gebäude',
       buildingsValue: '{buildings} ({unseen} ungesehen)',
       posts: 'Posten',
-      fightersSeen: 'Kämpfer gesehen (Tick)',
+      fightersSeen: 'Kämpfer gesehen (vor Min.)',
       startZone: 'Startzone',
       zone: 'Zone',
       unseenFor: 'Ungesehen seit (Min.)',

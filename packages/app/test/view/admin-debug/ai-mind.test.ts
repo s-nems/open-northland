@@ -71,7 +71,15 @@ const INTEL: components.ComputerIntelState = {
     },
   ],
   forces: [
-    { player: 3, peak: 4, peakAt: NOW, peakPoints: 40, peakPointsAt: NOW, lastSeenAt: NOW - 30, lastZone: 1 },
+    {
+      player: 3,
+      peak: 4,
+      peakAt: NOW,
+      peakPoints: 40,
+      peakPointsAt: NOW,
+      lastSeenAt: NOW - 3 * MINUTE,
+      lastZone: 1,
+    },
   ],
   zoneSeenAt: [NOW, NOW - 2 * MINUTE, NOW, -1],
 };
@@ -118,7 +126,7 @@ describe('AI mind rows', () => {
         '4',
         formatMessage(copy.buildingsValue, { buildings: 2, unseen: 1 }),
         '1',
-        String(NOW - 30),
+        '3.0',
       ],
     ]);
     expect(zones?.rows).toEqual([

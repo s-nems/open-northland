@@ -1656,7 +1656,7 @@ export const enGame = {
       buildings: 'Buildings',
       buildingsValue: '{buildings} ({unseen} unseen)',
       posts: 'Posts',
-      fightersSeen: 'Fighters seen (tick)',
+      fightersSeen: 'Fighters seen (min ago)',
       startZone: 'Start zone',
       zone: 'Zone',
       unseenFor: 'Unseen for (min)',

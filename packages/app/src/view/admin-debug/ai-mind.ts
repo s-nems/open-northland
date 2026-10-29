@@ -202,7 +202,7 @@ export function intelTables(mind: SeatMind, ownPoints: number | null, msgs: Mess
       count(owner.fighters),
       formatMessage(copy.buildingsValue, { buildings: owner.buildings, unseen: owner.unseenBuildings }),
       String(owner.posts),
-      owner.fightersSeenAt === null ? NO_VALUE : String(owner.fightersSeenAt),
+      owner.fightersSeenAt === null ? NO_VALUE : minutes(mind.tick - owner.fightersSeenAt),
     ]);
   }
   const tables: AdminAiTable[] = [

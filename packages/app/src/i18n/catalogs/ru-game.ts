@@ -1776,7 +1776,7 @@ export const ruGame = {
       buildings: 'Здания',
       buildingsValue: '{buildings} ({unseen} не видел)',
       posts: 'Посты',
-      fightersSeen: 'Бойцы замечены (тик)',
+      fightersSeen: 'Бойцы замечены (мин назад)',
       startZone: 'Стартовая зона',
       zone: 'Зона',
       unseenFor: 'Не видел (мин)',

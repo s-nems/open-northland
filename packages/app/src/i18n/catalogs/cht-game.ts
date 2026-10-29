@@ -1613,7 +1613,7 @@ export const chtGame = {
       buildings: '建築',
       buildingsValue: '{buildings}（{unseen} 未見）',
       posts: '崗哨',
-      fightersSeen: '最近見到戰士（刻）',
+      fightersSeen: '戰士上次出現（分鐘前）',
       startZone: '起始區域',
       zone: '區域',
       unseenFor: '未見時長（分）',

@@ -1613,7 +1613,7 @@ export const chsGame = {
       buildings: '建筑',
       buildingsValue: '{buildings}（{unseen} 未见）',
       posts: '岗哨',
-      fightersSeen: '最近见到战士（刻）',
+      fightersSeen: '战士上次出现（分钟前）',
       startZone: '起始区域',
       zone: '区域',
       unseenFor: '未见时长（分）',

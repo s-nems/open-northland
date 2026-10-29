@@ -1633,7 +1633,7 @@ export const plGame = {
       buildings: 'Budynki',
       buildingsValue: '{buildings} ({unseen} niewidzianych)',
       posts: 'Posterunki',
-      fightersSeen: 'Wojownicy widziani (tick)',
+      fightersSeen: 'Wojownicy widziani (min temu)',
       startZone: 'Strefa startu',
       zone: 'Strefa',
       unseenFor: 'Niewidziana od (min)',
