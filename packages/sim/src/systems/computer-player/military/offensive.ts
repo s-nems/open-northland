@@ -11,10 +11,11 @@ import { seatBarracksOf } from '../base.js';
 import { computerProfileOf } from '../difficulty.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { campaignTarget, objectiveNode } from './campaign.js';
-import { believedDefendingPoints, ownArmyPoints } from './enemy-strength.js';
-import { advanceWave, endMarch, launchWave } from './march/index.js';
+import { believedDefendingPoints, COUNTED_ONCE, ownArmyPoints } from './enemy-strength.js';
+import { advanceWave, endMarch, launchWave, SIEGE_MARCH_MIN_CATAPULTS } from './march/index.js';
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, rallyAt, waveWorthy } from './muster.js';
 import { abandonWave, decideWave } from './plan.js';
+import { crewedCatapults } from './siege-crew.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
  *  already out of `army`, `awaitingWeapon` is only ever called home, and `wave` holds the free men of the
@@ -87,14 +88,19 @@ export function runOffensive(
   };
   // Both sides weighed whole, garrisons and men in a fight included, so a seat whose towers hold a third
   // of its men is not benched by its own defence; the target's posted men weigh what they kill. The
-  // target's side is what the seat has seen of it.
+  // target's side is what the seat has seen of it. A siege train at home outranges the towers, so their
+  // posted men then weigh what any man does.
   const targetOwner = ownerOf(world, target);
   const own = ownArmyPoints(world, ctx, player);
+  const postedWeight =
+    crewedCatapults(world, ctx, player).length >= SIEGE_MARCH_MIN_CATAPULTS ? COUNTED_ONCE : undefined;
   const strength = {
     own: own.points,
     ownMen: own.men,
     opposing:
-      targetOwner === undefined ? 0 : believedDefendingPoints(world, ctx, player, targetOwner, own.points),
+      targetOwner === undefined
+        ? 0
+        : believedDefendingPoints(world, ctx, player, targetOwner, own.points, postedWeight),
   };
   // One wave at a time: the next gathers at the door while the last one marches.
   const charges =

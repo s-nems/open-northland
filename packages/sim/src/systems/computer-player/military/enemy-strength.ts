@@ -22,9 +22,8 @@ export function ownArmyPoints(world: World, ctx: SystemContext, player: number):
 
 /**
  * The points the seat expects a wave to meet at `owner`'s settlement, each man holding a tower post weighed
- * {@link TOWER_POST_STRENGTH} times. With nothing hidden that is the live army. An enemy the seat knows
- * nothing of counts as `own`: parity, so the launch rule neither benches a wave nor sends one into odds
- * it has seen.
+ * `postedWeight` times. With nothing hidden that is the live army. An enemy the seat knows nothing of
+ * counts as `own`: parity, so the launch rule neither benches a wave nor sends one into odds it has seen.
  */
 export function believedDefendingPoints(
   world: World,
@@ -32,11 +31,12 @@ export function believedDefendingPoints(
   seat: number,
   owner: number,
   own: number,
+  postedWeight: number = TOWER_POST_STRENGTH,
 ): number {
   if (!fogHides(ctx.fog)) {
-    return armyPointsOf(world, ctx, owner, TOWER_POST_STRENGTH, (e) => isManningPost(world, ctx, e)).points;
+    return armyPointsOf(world, ctx, owner, postedWeight, (e) => isManningPost(world, ctx, e)).points;
   }
-  return knownArmy(world, ctx, seat, owner, TOWER_POST_STRENGTH)?.points ?? own;
+  return knownArmy(world, ctx, seat, owner, postedWeight)?.points ?? own;
 }
 
 /** The strongest enemy as the seat believes him: his men, and his points, null when it knows none. */
@@ -72,7 +72,7 @@ export function strongestBelievedEnemy(world: World, ctx: SystemContext, seat: n
 const NO_ARMY: BelievedArmy = { men: 0, points: 0 };
 
 /** A posted man's weight when men are counted one to one. */
-const COUNTED_ONCE = 1;
+export const COUNTED_ONCE = 1;
 const NEVER_POSTED = (): boolean => false;
 
 /**
