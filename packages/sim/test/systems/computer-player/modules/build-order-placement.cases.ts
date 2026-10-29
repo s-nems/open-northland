@@ -700,6 +700,33 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(toHq).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // yet pulled hard toward the deposit
   });
 
+  it('takes a second resource affinity beside the first deposit, not on the far side of the base', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    // The east wood is the nearest to the HQ, the west wood the nearest to the iron.
+    const IRON_WOOD = { x: RESOURCE_SPOTS.iron.x + 2, y: RESOURCE_SPOTS.iron.y + 2 };
+    placeResources(sim, [
+      RESOURCE_SPOTS.iron,
+      RESOURCE_SPOTS.wood,
+      { ...RESOURCE_SPOTS.wood, x: IRON_WOOD.x, y: IRON_WOOD.y },
+    ]);
+    sim.step();
+    const spot = firstCommandOf(sim, [
+      {
+        kind: 'place',
+        building: 'work_bakery_00',
+        count: 1,
+        near: [
+          { kind: 'resource', good: 'iron' },
+          { kind: 'resource', good: 'wood' },
+        ],
+      },
+    ]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
+    const toIron = Math.abs(spot.x - RESOURCE_SPOTS.iron.x) + Math.abs(spot.y - RESOURCE_SPOTS.iron.y);
+    expect(toIron).toBeLessThan(Math.abs(spot.x - HQ_X) + Math.abs(spot.y - HQ_Y));
+  });
+
   it('keeps every building whose band meets the search disc when the reach is cut down to it', () => {
     const R = BUILD_SEARCH_MAX_RADIUS_NODES;
     const HQ_AT = { hx: 20, hy: 20 };
