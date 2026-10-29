@@ -4,6 +4,7 @@ import {
   type Language,
   type ObjectTableOverlay,
   objectTableSourceDigest,
+  type PersonalNameOverlay,
 } from '@open-northland/data';
 import {
   cifBytesToSections,
@@ -178,6 +179,10 @@ export async function convertGuiStrings(
     const written = await writeObjectOverlays(roots, outDir, lang, overlays);
     if (written !== undefined) done.push(written);
   }
+  for (const [lang, overlays] of roots.overlays?.names ?? []) {
+    const written = await writePersonalNameOverlays(outDir, lang, overlays);
+    if (written !== undefined) done.push(written);
+  }
   return done;
 }
 
@@ -244,4 +249,36 @@ async function writeObjectOverlays(
   const path = `${GUI_CONTENT_DIR}/strings/${lang}.json`;
   await writeJsonFile(outDir, path, tables);
   return { lang, path, tables: tableCount, strings: stringCount };
+}
+
+/**
+ * Writes an overlay language's `gui/names/<lang>.json` from its personal-name overlays, as
+ * `{ <pool>: { <rawName>: <localizedName> } }`; `tables` counts the pools and `strings` the names. A
+ * pool with no entries is left out, so a locale that has translated nothing ships no file and every
+ * settler keeps the raw name. A source language's overlays are refused, as the object tables': the
+ * pools already spell the source text, so a file repeating it would be a copy of it.
+ */
+async function writePersonalNameOverlays(
+  outDir: string,
+  lang: Language,
+  overlays: ReadonlyMap<string, PersonalNameOverlay>,
+): Promise<GuiStringsResult | undefined> {
+  if (isSourceLanguage(lang)) {
+    console.warn(
+      `[pipeline] gui: refused ${lang} personal-name overlays: source-language text belongs in corrections`,
+    );
+    return undefined;
+  }
+  const pools: Record<string, Record<string, string>> = {};
+  let stringCount = 0;
+  for (const [pool, overlay] of overlays) {
+    if (Object.keys(overlay.names).length === 0) continue;
+    pools[pool] = overlay.names;
+    stringCount += Object.keys(overlay.names).length;
+  }
+  const poolCount = Object.keys(pools).length;
+  if (poolCount === 0) return undefined;
+  const path = `${GUI_CONTENT_DIR}/names/${lang}.json`;
+  await writeJsonFile(outDir, path, pools);
+  return { lang, path, tables: poolCount, strings: stringCount };
 }

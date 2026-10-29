@@ -340,17 +340,23 @@ describe('updateSettings', () => {
   const VIKINGS = 1;
   const TRIBE_NAMES: Readonly<Record<string, string>> = { ger: 'Nordmänner', rus: 'Викинги' };
 
-  /** Answers each language's strings only when the test releases it, so installs can overlap. */
+  /** Answers each language's strings and personal names only when the test releases it, so installs
+   *  can overlap; a language change waits on both. */
   function heldStrings(): (lang: string) => void {
-    const pending = new Map<string, () => void>();
+    const pending = new Map<string, (() => void)[]>();
     vi.stubGlobal('fetch', (url: string) => {
-      const lang = /strings\/(\w+)\.json$/.exec(url)?.[1] ?? '';
-      const body = { tribes: { [VIKINGS]: TRIBE_NAMES[lang] } };
-      return new Promise<Response>((resolve) =>
-        pending.set(lang, () => resolve(new Response(JSON.stringify(body)))),
-      );
+      const lang = /(?:strings|names)\/(\w+)\.json$/.exec(url)?.[1] ?? '';
+      const body = url.includes('/strings/') ? { tribes: { [VIKINGS]: TRIBE_NAMES[lang] } } : {};
+      return new Promise<Response>((resolve) => {
+        const waiting = pending.get(lang) ?? [];
+        waiting.push(() => resolve(new Response(JSON.stringify(body))));
+        pending.set(lang, waiting);
+      });
     });
-    return (lang) => pending.get(lang)?.();
+    return (lang) => {
+      for (const release of pending.get(lang) ?? []) release();
+      pending.delete(lang);
+    };
   }
 
   // Drop the fresh graph from the shared registry too, or the next test file would import it.
