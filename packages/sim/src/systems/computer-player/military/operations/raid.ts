@@ -9,6 +9,7 @@ import {
   Person,
   type RaidOperation,
   Stance,
+  seatPeaceEndTick,
 } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../../core/loop.js';
@@ -25,7 +26,6 @@ import { entityNode } from '../../../spatial/nodes.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import { computerProfileOf } from '../../difficulty.js';
 import { WAVE_MIN_SOLDIERS } from '../muster.js';
-import { peaceEndsAt } from '../plan.js';
 import { unitPoints } from '../points.js';
 import { enter, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import {
@@ -275,7 +275,10 @@ function legEnd(op: RaidOperation): HalfCellNode {
 function open(env: OperationEnv, free: readonly Entity[], id: number) {
   const { world, ctx, terrain, seat, home, orders } = env;
   if (!orders.raidsAllowed || orders.holdHome) return null;
-  const peaceEnd = Math.max(peaceEndsAt(world, seat), computerProfileOf(world, seat).army.firstWaveFromTick);
+  const peaceEnd = Math.max(
+    seatPeaceEndTick(world, seat),
+    computerProfileOf(world, seat).army.firstWaveFromTick,
+  );
   if (ctx.tick < peaceEnd) return null;
   const land = terrain.componentOf(home);
   const ready = free.filter(

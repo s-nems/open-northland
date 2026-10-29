@@ -74,17 +74,22 @@ export interface RaidPick {
   readonly score: number;
 }
 
-/** The enemy towers `seat` believes stand, of `owner`, with the posts it last saw on them. Costs the
- *  owner's believed buildings. */
+/** The enemy towers `seat` believes stand, of `owner`, with the posts it last saw on them: a seen one with
+ *  hitpoints left, a remembered one out of sight as last seen. Costs the owner's believed buildings. */
 export function believedTowers(world: World, ctx: SystemContext, seat: number, owner: number): TowerBelief[] {
   const postedByBuilding = new Map<Entity, number>();
   for (const b of rememberedBuildings(world, seat)) postedByBuilding.set(b.entity, b.postedPoints);
   const towers: TowerBelief[] = [];
-  for (const e of believedBuildings(world, ctx, seat, owner)) {
+  const { seen, remembered } = believedBuildings(world, ctx, seat, owner);
+  for (const e of seen) {
     if (buildingCombatClass(ctx, world.get(e, Building).buildingType) !== 'tower') continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     const at = anchorNodeOf(world, e);
     if (at !== null) towers.push({ at, postedPoints: postedByBuilding.get(e) ?? 0 });
+  }
+  for (const b of remembered) {
+    if (buildingCombatClass(ctx, b.buildingType) === 'tower')
+      towers.push({ at: { hx: b.hx, hy: b.hy }, postedPoints: b.postedPoints });
   }
   return towers;
 }
@@ -167,10 +172,15 @@ export function pickRaidTarget(
       const at = nodeOfEntity(world, e);
       if (at !== null) consider(e, owner, at, RAID_GATHERER_VALUE, defence);
     }
-    for (const e of believedBuildings(world, ctx, seat, owner)) {
+    const { seen, remembered } = believedBuildings(world, ctx, seat, owner);
+    for (const e of seen) {
       if (!isEconomyBuilding(ctx, world.get(e, Building).buildingType)) continue;
       const at = anchorNodeOf(world, e);
       if (at !== null) consider(e, owner, at, RAID_ECONOMY_BUILDING_VALUE, defence);
+    }
+    for (const b of remembered) {
+      if (isEconomyBuilding(ctx, b.buildingType))
+        consider(b.entity, owner, { hx: b.hx, hy: b.hy }, RAID_ECONOMY_BUILDING_VALUE, defence);
     }
   }
   return best;

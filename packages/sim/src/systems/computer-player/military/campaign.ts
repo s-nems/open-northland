@@ -1,3 +1,4 @@
+import { buildingHitpointsFor } from '@open-northland/data';
 import {
   Building,
   fightsPlayer,
@@ -7,6 +8,7 @@ import {
   Person,
   Position,
 } from '../../../components/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import type { SystemContext } from '../../context.js';
@@ -22,17 +24,86 @@ import { believedBuildings } from '../knowledge/intel/index.js';
  *  which no warrior picks, is no objective. */
 const SIEGE_TIERS: readonly BuildingCombatClass[] = ['hq', 'tower', 'other'];
 
+/** What a wave marches on, as the seat believes it: the entity names the objective for a retarget and may
+ *  no longer exist when it is a remembered building; `owner` is the one the seat last saw. */
+export interface CampaignObjective {
+  readonly entity: Entity;
+  readonly owner: number;
+  /** Where the wave walks: a seen building's interaction cell, a remembered one's anchor node, a
+   *  person's node. */
+  readonly node: NodeId;
+}
+
+/** A candidate before its approach node is paid for: a seen entity is read live, a remembered building by
+ *  its anchor. */
+interface Candidate {
+  readonly entity: Entity;
+  readonly owner: number;
+  readonly anchor: { readonly hx: number; readonly hy: number } | null;
+}
+
 /**
  * What the seat's army marches on: the nearest enemy headquarters to its muster point (authored), with
  * the lower {@link SIEGE_TIERS} behind it so a wave never stalls for want of an HQ. Distance is Manhattan
- * over half-cell nodes from `rally` to the candidate's approach node. A candidate must belong to another
- * player, stand on ground connected to the rally, and hold a live `Health` pool, because a wave sent at a
+ * over half-cell nodes from `rally` to the candidate's approach node, the lowest id on a tie. A candidate
+ * must belong to another player, stand on ground connected to the rally, and be able to fall: a seen one
+ * holds a live `Health` pool, a remembered one is of a type with hitpoints, because a wave sent at a
  * hitpoint-less building could never resolve its objective. A construction site holds a pool from its
  * first hitpoint, so it is a candidate like any other building.
  *
  * The seat marches only on what it knows: the buildings it believes stand ({@link believedBuildings}, the
- * start layout included), else the enemy people it sees now.
+ * start layout included), else the enemy people it sees now. A remembered building that fell out of sight
+ * stays the objective until the seat sees its spot.
  */
+export function campaignObjective(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  rally: NodeId,
+): CampaignObjective | null {
+  const home = terrain.componentOf(rally);
+  if (home < 0) return null; // an unwalkable rally connects to nothing - every label would mismatch
+
+  // Bucket the enemy's standing buildings by tier first: the door and distance work below is then paid
+  // only for the best tier that has a reachable member, not for every building on the map.
+  const byTier = new Map<BuildingCombatClass, Candidate[]>();
+  const add = (tier: BuildingCombatClass, candidate: Candidate): void => {
+    const bucket = byTier.get(tier);
+    if (bucket === undefined) byTier.set(tier, [candidate]);
+    else bucket.push(candidate);
+  };
+  const { seen, remembered } = believedBuildings(world, ctx, player);
+  for (const e of seen) {
+    const owner = liveEnemyOwner(world, e, player);
+    if (owner !== null)
+      add(buildingCombatClass(ctx, world.get(e, Building).buildingType), { entity: e, owner, anchor: null });
+  }
+  for (const b of remembered) {
+    if (b.owner === player || !fightsPlayer(world, player, b.owner)) continue;
+    if (!typeCanFall(ctx, b.buildingType)) continue;
+    add(buildingCombatClass(ctx, b.buildingType), { entity: b.entity, owner: b.owner, anchor: b });
+  }
+  const approachOf = ({ entity, anchor }: Candidate): NodeId =>
+    anchor === null
+      ? objectiveNode(world, ctx, terrain, entity)
+      : terrain.nodeAtClamped(anchor.hx, anchor.hy);
+  for (const tier of SIEGE_TIERS) {
+    const winner = nearestReachable(terrain, byTier.get(tier) ?? [], rally, home, approachOf);
+    if (winner !== null) return winner;
+  }
+
+  // The Person key is what keeps a claimed herd out: it is loot, not a war aim.
+  const people: Candidate[] = [];
+  for (const e of world.canonicalQuery(Person, Owner)) {
+    const owner = liveEnemyOwner(world, e, player);
+    if (owner !== null && playerSeesEntity(world, ctx.fog, player, e))
+      people.push({ entity: e, owner, anchor: null });
+  }
+  return nearestReachable(terrain, people, rally, home, approachOf);
+}
+
+/** {@link campaignObjective}'s entity. */
 export function campaignTarget(
   world: World,
   ctx: SystemContext,
@@ -40,76 +111,55 @@ export function campaignTarget(
   player: number,
   rally: NodeId,
 ): Entity | null {
-  const home = terrain.componentOf(rally);
-  if (home < 0) return null; // an unwalkable rally connects to nothing - every label would mismatch
-
-  // Bucket the enemy's standing buildings by tier first: the door and distance work below is then paid
-  // only for the best tier that has a reachable member, not for every building on the map.
-  const byTier = new Map<BuildingCombatClass, Entity[]>();
-  for (const e of believedBuildings(world, ctx, player)) {
-    if (!isEnemy(world, e, player)) continue;
-    const tier = buildingCombatClass(ctx, world.get(e, Building).buildingType);
-    const bucket = byTier.get(tier);
-    if (bucket === undefined) byTier.set(tier, [e]);
-    else bucket.push(e);
-  }
-  const approachOf = (e: Entity): NodeId => objectiveNode(world, ctx, terrain, e);
-  for (const tier of SIEGE_TIERS) {
-    const winner = nearestReachable(terrain, byTier.get(tier) ?? [], rally, home, approachOf);
-    if (winner !== null) return winner;
-  }
-
-  // The Person key is what keeps a claimed herd out: it is loot, not a war aim.
-  const people = world
-    .canonicalQuery(Person, Owner)
-    .filter((e) => isEnemy(world, e, player) && playerSeesEntity(world, ctx.fog, player, e));
-  return nearestReachable(terrain, people, rally, home, approachOf);
+  return campaignObjective(world, ctx, terrain, player, rally)?.entity ?? null;
 }
 
-/** Where a wave walks to reach an objective: a building is measured and reached by its interaction cell
- *  (its own node is unwalkable), a person by the node he stands on. */
-export function objectiveNode(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  target: Entity,
-): NodeId {
+/** Where a wave walks to reach a live objective: a building is measured and reached by its interaction
+ *  cell (its own node is unwalkable), a person by the node he stands on. */
+function objectiveNode(world: World, ctx: SystemContext, terrain: TerrainGraph, target: Entity): NodeId {
   return world.has(target, Building)
     ? interactionCell(world, ctx, terrain, target)
     : entityNode(world, terrain, target);
 }
 
-/** The candidate nearest `rally` whose approach node shares the `home` connectivity label, or null.
- *  Candidates arrive ascending-id, so the strict `<` keeps the lowest id among equal distances. */
+/** The candidate nearest `rally` whose approach node shares the `home` connectivity label, the lowest id
+ *  on a tie, or null. */
 function nearestReachable(
   terrain: TerrainGraph,
-  candidates: readonly Entity[],
+  candidates: readonly Candidate[],
   rally: NodeId,
   home: number,
-  approachOf: (e: Entity) => NodeId,
-): Entity | null {
-  let best: Entity | null = null;
+  approachOf: (c: Candidate) => NodeId,
+): CampaignObjective | null {
+  let best: CampaignObjective | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
-  for (const e of candidates) {
-    const approach = approachOf(e);
+  for (const c of candidates) {
+    const approach = approachOf(c);
     if (terrain.componentOf(approach) !== home) continue;
     const distance = manhattan(terrain, approach, rally);
-    if (distance < bestDistance) {
-      best = e;
+    if (distance < bestDistance || (distance === bestDistance && best !== null && c.entity < best.entity)) {
+      best = { entity: c.entity, owner: c.owner, node: approach };
       bestDistance = distance;
     }
   }
   return best;
 }
 
-/** Whether `e` belongs to a player this seat fights ({@link fightsPlayer}) and can be struck at all -
- *  the same directed hostility `mayTarget` engages on, so a wave never marches on an objective the
- *  CombatSystem would refuse. */
-function isEnemy(world: World, e: Entity, player: number): boolean {
+/** The owner of `e` when this seat fights ({@link fightsPlayer}) and `e` can be struck at all - the
+ *  same directed hostility `mayTarget` engages on, so a wave never marches on an objective the
+ *  CombatSystem would refuse - else null. Reads `e` live, so only for an entity the seat sees. */
+function liveEnemyOwner(world: World, e: Entity, player: number): number | null {
   const owner = ownerOf(world, e);
-  if (owner === undefined || owner === player) return false;
-  if (!fightsPlayer(world, player, owner)) return false;
-  if (!world.has(e, Position)) return false;
+  if (owner === undefined || owner === player) return null;
+  if (!fightsPlayer(world, player, owner)) return null;
+  if (!world.has(e, Position)) return null;
   const health = world.tryGet(e, Health);
-  return health !== undefined && health.hitpoints > 0;
+  return health !== undefined && health.hitpoints > 0 ? owner : null;
+}
+
+/** Whether a building of `buildingType` carries hitpoints, a static content fact a remembered building is
+ *  judged by. */
+function typeCanFall(ctx: SystemContext, buildingType: number): boolean {
+  const type = contentIndex(ctx.content).buildings.get(buildingType);
+  return type !== undefined && buildingHitpointsFor(type, undefined) !== undefined;
 }

@@ -116,8 +116,8 @@ export function archersOn(
   return { commands, melee };
 }
 
-/** The towers near `objective` a catapult may drive up to, ascending id; a tower on another continent is
- *  left to the assault. */
+/** The towers near `objective` the seat sees and a catapult may drive up to, ascending id; a tower on
+ *  another continent is left to the assault, one remembered out of sight until the wave sees it. */
 function siegeableTowers(
   world: World,
   ctx: SystemContext,
@@ -130,7 +130,9 @@ function siegeableTowers(
     world,
     ctx,
     terrain,
-    enemyTowersNear(world, ctx, terrain, player, objective),
+    believedTowersNear(world, ctx, terrain, player, objective)
+      .filter(({ seen }) => seen)
+      .map(({ entity }) => entity),
     catapults,
   );
 }
@@ -155,32 +157,49 @@ export function onCatapultContinents(
   });
 }
 
+/** A tower the seat believes stands near an objective; `seen` when it may be read live and named in an
+ *  order. */
+interface BelievedTower {
+  readonly entity: Entity;
+  readonly node: HalfCellNode;
+  readonly seen: boolean;
+}
+
 /**
- * The standing enemy towers within {@link SIEGE_TOWER_RADIUS_NODES} of `objective` the seat believes stand
- * ({@link believedBuildings}), ascending id. Read per enemy, so the cost is their buildings, like the
- * campaign's target scan.
+ * The enemy towers within {@link SIEGE_TOWER_RADIUS_NODES} of `objective` the seat believes stand
+ * ({@link believedBuildings}): the seen ones with hitpoints left and the remembered ones out of sight,
+ * ascending id. Read per enemy, so the cost is their buildings, like the campaign's target scan.
  */
-function enemyTowersNear(
+function believedTowersNear(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
   objective: NodeId,
-): Entity[] {
+): BelievedTower[] {
   const at = nodeOf(terrain, objective);
-  const towers: Entity[] = [];
+  const near = (node: HalfCellNode): boolean => nodeManhattan(node, at) <= SIEGE_TOWER_RADIUS_NODES;
+  const towers: BelievedTower[] = [];
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (other === player || !fightsPlayer(world, player, other)) continue;
-    for (const e of believedBuildings(world, ctx, player, other)) {
+    const { seen, remembered } = believedBuildings(world, ctx, player, other);
+    for (const e of seen) {
       if (buildingCombatClass(ctx, world.get(e, Building).buildingType) !== 'tower') continue;
       if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
       const node = anchorNodeOf(world, e);
-      if (node !== null && nodeManhattan(node, at) <= SIEGE_TOWER_RADIUS_NODES) towers.push(e);
+      if (node !== null && near(node)) towers.push({ entity: e, node, seen: true });
+    }
+    for (const b of remembered) {
+      const node = { hx: b.hx, hy: b.hy };
+      if (buildingCombatClass(ctx, b.buildingType) === 'tower' && near(node))
+        towers.push({ entity: b.entity, node, seen: false });
     }
   }
-  return towers.sort((a, b) => a - b);
+  return towers.sort((x, y) => x.entity - y.entity);
 }
 
+/** The anchors of the enemy towers the seat believes stand near `objective` ({@link believedTowersNear}):
+ *  the ground a route keeps clear of. */
 export function enemyTowerNodesNear(
   world: World,
   ctx: SystemContext,
@@ -188,10 +207,7 @@ export function enemyTowerNodesNear(
   player: number,
   objective: NodeId,
 ): HalfCellNode[] {
-  return enemyTowersNear(world, ctx, terrain, player, objective).flatMap((tower) => {
-    const node = anchorNodeOf(world, tower);
-    return node === null ? [] : [node];
-  });
+  return believedTowersNear(world, ctx, terrain, player, objective).map(({ node }) => node);
 }
 
 function nearestTower(

@@ -5,7 +5,7 @@ import { Simulation } from '../../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { seatRaiders } from '../../../src/systems/ai-shared/military/defence/index.js';
 import { ownedBuildings } from '../../../src/systems/ai-shared/seat-roster.js';
-import { campaignTarget, waveBandAt } from '../../../src/systems/computer-player/index.js';
+import { campaignObjective, campaignTarget, waveBandAt } from '../../../src/systems/computer-player/index.js';
 import {
   believedDefendingPoints,
   strongestBelievedEnemy,
@@ -116,6 +116,22 @@ describe('computer seat reads under fog of war', () => {
     const ctx = fogCtx(sim, fogOfWar(sim));
     expect(campaignTarget(sim.world, ctx, terrainOf(sim), SEAT, rallyOf(sim))).toBe(hq);
     expect(nearestEnemyBuilding(sim.world, ctx, SEAT, { hx: RALLY.x, hy: RALLY.y })?.entity).toBe(hq);
+  });
+
+  it('keeps marching on a headquarters razed out of sight until it sees the spot', () => {
+    const sim = fogSim(HQ_TYPE);
+    const hq = ownedBuildings(sim.world, OTHER)[0];
+    if (hq === undefined) throw new Error('setup: no headquarters');
+    const fog = fogOfWar(sim);
+    const objective = () =>
+      campaignObjective(sim.world, fogCtx(sim, fog), terrainOf(sim), SEAT, rallyOf(sim));
+    const front = () => nearestEnemyBuilding(sim.world, fogCtx(sim, fog), SEAT, { hx: RALLY.x, hy: RALLY.y });
+    sim.world.destroy(hq);
+    expect(objective()).toMatchObject({ entity: hq, owner: OTHER });
+    expect(front()?.entity).toBe(hq);
+    lookAt(fog, OTHER_START);
+    expect(objective()).toBeNull();
+    expect(front()).toBeNull();
   });
 
   it('marches on and fronts toward a later building only once it is seen', () => {

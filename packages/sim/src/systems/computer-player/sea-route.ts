@@ -1,4 +1,11 @@
-import { Building, type DiplomacyState, diplomacyStance, MAX_PLAYERS } from '../../components/index.js';
+import {
+  Building,
+  ComputerIntel,
+  type DiplomacyState,
+  diplomacyStance,
+  type FogMode,
+  MAX_PLAYERS,
+} from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
@@ -8,52 +15,98 @@ import { ownedBuildings } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
-import { fogHides } from '../vision/gates.js';
+import { fogHides, playerSeesNode } from '../vision/gates.js';
+import type { FogState } from '../vision/state.js';
 import { seatBaseOf } from './base.js';
-import { believedBuildings } from './knowledge/intel/index.js';
+import { believedBuildings, rememberedBuildings } from './knowledge/intel/index.js';
 
-/** Another seat's building a seat measures its front or its sea route by. */
+/** Another seat's building a seat measures its front or its sea route by. `seen` when the seat sees its
+ *  spot, so the entity may be read live; a remembered one may since have fallen out of sight. */
 export interface OpposingBuilding {
   readonly entity: Entity;
   readonly node: HalfCellNode;
   readonly headquarters: boolean;
+  readonly seen: boolean;
 }
 
-const headquartersByRoster = new WeakMap<readonly Entity[], Entity | null>();
+const headquartersByRoster = new WeakMap<readonly Entity[], readonly Entity[]>();
 
 /**
- * The seat's lowest-id headquarters in any construction state, or null. Kept per {@link ownedBuildings}
- * roster copy, which is replaced whenever a building is added, removed or re-owned, so a seat's roster
- * is walked once per such change: a headquarters sits on no upgrade chain, so no type change in place
- * makes or unmakes one.
+ * The seat's headquarters in any construction state, ascending id. Kept per {@link ownedBuildings} roster
+ * copy, which is replaced whenever a building is added, removed or re-owned, so a seat's roster is walked
+ * once per such change: a headquarters sits on no upgrade chain, so no type change in place makes or
+ * unmakes one.
  */
-function seatHeadquartersOf(world: World, ctx: SystemContext, player: number): Entity | null {
+function seatHeadquartersOf(world: World, ctx: SystemContext, player: number): readonly Entity[] {
   const roster = ownedBuildings(world, player);
   const held = headquartersByRoster.get(roster);
   if (held !== undefined) return held;
-  const found = roster.find((e) => isHeadquarters(world, ctx, e)) ?? null;
+  const found = roster.filter((e) => isHeadquartersType(ctx, world.get(e, Building).buildingType));
   headquartersByRoster.set(roster, found);
   return found;
 }
 
-function isHeadquarters(world: World, ctx: SystemContext, e: Entity): boolean {
-  const type = world.get(e, Building).buildingType;
-  return contentIndex(ctx.content).buildings.get(type)?.id === HEADQUARTERS_BUILDING_ID;
+function isHeadquartersType(ctx: SystemContext, buildingType: number): boolean {
+  return contentIndex(ctx.content).buildings.get(buildingType)?.id === HEADQUARTERS_BUILDING_ID;
 }
 
-/** The headquarters of `owner` that `seat` believes stand: with nothing hidden his lowest-id one, else
- *  each it sees or remembers ({@link believedBuildings}), a start headquarters known from the map brief. */
-function believedHeadquartersOf(
+/** One seat's remembered headquarters out of sight, kept while its memory and its view stand: the build
+ *  order, the workforce and the placement all ask for the sea route in one decision. Derived read-state,
+ *  never hashed. */
+interface RememberedHeadquarters {
+  readonly fog: FogState;
+  readonly mode: FogMode;
+  readonly view: number;
+  readonly intelMembership: number;
+  readonly intelValues: number;
+  readonly list: readonly RememberedHq[];
+}
+
+interface RememberedHq extends OpposingBuilding {
+  readonly owner: number;
+}
+
+const rememberedHeadquartersBySeat = new WeakMap<World, Map<number, RememberedHeadquarters>>();
+
+/** The headquarters `seat` remembers at spots it does not see, of every owner, ascending id. One walk of
+ *  its memory per change of that memory or of its view. */
+function rememberedHeadquartersOf(
   world: World,
   ctx: SystemContext,
+  fog: FogState,
   seat: number,
-  owner: number,
-): readonly Entity[] {
-  if (!fogHides(ctx.fog)) {
-    const hq = seatHeadquartersOf(world, ctx, owner);
-    return hq === null ? [] : [hq];
+): readonly RememberedHq[] {
+  let bySeat = rememberedHeadquartersBySeat.get(world);
+  if (bySeat === undefined) {
+    bySeat = new Map();
+    rememberedHeadquartersBySeat.set(world, bySeat);
   }
-  return believedBuildings(world, ctx, seat, owner).filter((e) => isHeadquarters(world, ctx, e));
+  const view = fog.viewGeneration(seat);
+  const intelMembership = world.componentGeneration(ComputerIntel);
+  const intelValues = world.componentValueGeneration(ComputerIntel);
+  const held = bySeat.get(seat);
+  if (
+    held !== undefined &&
+    held.fog === fog &&
+    held.mode === fog.activeMode &&
+    held.view === view &&
+    held.intelMembership === intelMembership &&
+    held.intelValues === intelValues
+  )
+    return held.list;
+  const list: RememberedHq[] = [];
+  for (const b of rememberedBuildings(world, seat)) {
+    if (!isHeadquartersType(ctx, b.buildingType) || playerSeesNode(fog, seat, b.hx, b.hy)) continue;
+    list.push({
+      entity: b.entity,
+      owner: b.owner,
+      node: { hx: b.hx, hy: b.hy },
+      headquarters: true,
+      seen: false,
+    });
+  }
+  bySeat.set(seat, { fog, mode: fog.activeMode, view, intelMembership, intelValues, list });
+  return list;
 }
 
 /** Which stances a headquarters search counts: the front's enemies, or the sea route's rivals. */
@@ -64,8 +117,12 @@ const isEnemy: StanceFilter = (stance) => stance === 'enemy';
 /** A seat not held as friend: a neutral may turn enemy, so a seat plans its ships for it too. */
 const isRival: StanceFilter = (stance) => stance !== 'friend';
 
-/** The believed headquarters nearest `from` (Manhattan) of a player whose stance the seat's `counts`
- *  admits, the lowest id on a tie, or null while it knows of none standing. */
+/**
+ * The believed headquarters nearest `from` (Manhattan) of a player whose stance the seat's `counts`
+ * admits, the lowest id on a tie, or null while it knows of none standing. With nothing hidden each
+ * owner's lowest-id headquarters; else the ones the seat sees and those it remembers out of sight
+ * ({@link believedBuildings}), a start headquarters known from the map brief.
+ */
 function nearestHeadquarters(
   world: World,
   ctx: SystemContext,
@@ -73,18 +130,35 @@ function nearestHeadquarters(
   from: HalfCellNode,
   counts: StanceFilter,
 ): OpposingBuilding | null {
+  const fog = ctx.fog;
+  const hidden = fogHides(fog);
   let best: OpposingBuilding | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
+  const consider = (candidate: OpposingBuilding): void => {
+    const distance = nodeManhattan(candidate.node, from);
+    if (
+      distance < bestDistance ||
+      (distance === bestDistance && best !== null && candidate.entity < best.entity)
+    ) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  };
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (owner === player || !counts(diplomacyStance(world, player, owner))) continue;
-    for (const hq of believedHeadquartersOf(world, ctx, player, owner)) {
-      const node = anchorNodeOf(world, hq);
-      if (node === null) continue;
-      const distance = nodeManhattan(node, from);
-      if (distance < bestDistance || (distance === bestDistance && best !== null && hq < best.entity)) {
-        best = { entity: hq, node, headquarters: true };
-        bestDistance = distance;
-      }
+    const live = seatHeadquartersOf(world, ctx, owner);
+    const shown = hidden ? live.length : Math.min(live.length, 1);
+    for (let i = 0; i < shown; i++) {
+      const hq = live[i];
+      const node = hq === undefined ? null : anchorNodeOf(world, hq);
+      if (hq === undefined || node === null || (hidden && !playerSeesNode(fog, player, node.hx, node.hy)))
+        continue;
+      consider({ entity: hq, node, headquarters: true, seen: true });
+    }
+  }
+  if (hidden) {
+    for (const hq of rememberedHeadquartersOf(world, ctx, fog, player)) {
+      if (hq.owner !== player && counts(diplomacyStance(world, player, hq.owner))) consider(hq);
     }
   }
   return best;
@@ -106,24 +180,28 @@ export function nearestEnemyBuilding(
   if (hq !== null) return hq;
   let best: OpposingBuilding | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
+  const consider = (entity: Entity, node: HalfCellNode, seen: boolean): void => {
+    const distance = nodeManhattan(node, from);
+    // The seats' rosters are walked one after another, so the lowest id on a tie is kept explicitly.
+    if (distance < bestDistance || (distance === bestDistance && best !== null && entity < best.entity)) {
+      best = { entity, node, headquarters: false, seen };
+      bestDistance = distance;
+    }
+  };
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (owner === player || diplomacyStance(world, player, owner) !== 'enemy') continue;
-    for (const e of believedBuildings(world, ctx, player, owner)) {
+    const { seen, remembered } = believedBuildings(world, ctx, player, owner);
+    for (const e of seen) {
       const node = anchorNodeOf(world, e);
-      if (node === null) continue;
-      const distance = nodeManhattan(node, from);
-      // The seats' rosters are walked one after another, so the lowest id on a tie is kept explicitly.
-      if (distance < bestDistance || (distance === bestDistance && best !== null && e < best.entity)) {
-        best = { entity: e, node, headquarters: false };
-        bestDistance = distance;
-      }
+      if (node !== null) consider(e, node, true);
     }
+    for (const b of remembered) consider(b.entity, { hx: b.hx, hy: b.hy }, false);
   }
   return best;
 }
 
 /** The two static land components ({@link TerrainGraph.componentOf}) a seat's sea route joins, each read
- *  at its headquarters' or base's interaction cell. */
+ *  at its headquarters' or base's interaction cell, a remembered headquarters' at its anchor. */
 export interface SeaRoute {
   readonly home: number;
   readonly rival: number;
@@ -147,7 +225,11 @@ export function seaRouteOf(world: World, ctx: SystemContext, player: number): Se
     nearestHeadquarters(world, ctx, player, from, isRival);
   if (rival === null) return null;
   const home = terrain.componentOf(interactionCell(world, ctx, terrain, base));
-  const far = terrain.componentOf(interactionCell(world, ctx, terrain, rival.entity));
+  const far = terrain.componentOf(
+    rival.seen
+      ? interactionCell(world, ctx, terrain, rival.entity)
+      : terrain.nodeAtClamped(rival.node.hx, rival.node.hy),
+  );
   if (home === NO_COMPONENT || far === NO_COMPONENT || home === far) return null;
   return { home, rival: far };
 }

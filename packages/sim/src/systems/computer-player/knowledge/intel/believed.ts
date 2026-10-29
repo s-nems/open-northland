@@ -1,37 +1,43 @@
-import { Building, Owner } from '../../../../components/index.js';
-import type { Entity, World } from '../../../../ecs/world.js';
+import { Building, type IntelBuilding, Owner } from '../../../../components/index.js';
+import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { fogHides, playerSeesNode } from '../../../vision/gates.js';
 import { rememberedBuildings } from './read.js';
 
+/** The buildings a seat believes stand, split by what it may read of them. */
+export interface BelievedBuildings {
+  /** The ones whose spot it sees now, read live, ascending id; with nothing hidden, every building. */
+  readonly seen: readonly Entity[];
+  /** The remembered ones whose spot it does not see, as last seen, ascending id. One may since have fallen
+   *  or changed hands: it stays a place to go and look, so read only its record, never its entity. */
+  readonly remembered: readonly DeepReadonly<IntelBuilding>[];
+}
+
+const NOTHING_REMEMBERED: readonly DeepReadonly<IntelBuilding>[] = [];
+
 /**
- * The buildings `seat` believes stand, of `owner` or of everyone when null, ascending id: the ones it sees
- * now, read live, and the remembered ones whose spot it does not see. With nothing hidden that is every
- * building. A remembered building that no longer exists is left out, since an order or a door can only
- * name a live entity; approximation: the seat learns of such a loss out of sight. Relations and the live
- * state of a believed building are the caller's to read.
+ * The buildings `seat` believes stand, of `owner` or of everyone when null. A remembered building leaves
+ * the belief only when the seat sees its spot again (then it is read live, or forgotten if gone).
+ * Relations and the live state of a seen building are the caller's to read.
  */
 export function believedBuildings(
   world: World,
   ctx: SystemContext,
   seat: number,
   owner: number | null = null,
-): readonly Entity[] {
+): BelievedBuildings {
   const live = owner === null ? world.canonicalQuery(Building, Owner) : ownedBuildings(world, owner);
   const fog = ctx.fog;
-  if (!fogHides(fog)) return live;
-  const believed: Entity[] = [];
+  if (!fogHides(fog)) return { seen: live, remembered: NOTHING_REMEMBERED };
+  const seen: Entity[] = [];
   for (const e of live) {
     const node = anchorNodeOf(world, e);
-    if (node !== null && playerSeesNode(fog, seat, node.hx, node.hy)) believed.push(e);
+    if (node !== null && playerSeesNode(fog, seat, node.hx, node.hy)) seen.push(e);
   }
-  for (const b of rememberedBuildings(world, seat)) {
-    if (owner !== null && b.owner !== owner) continue;
-    // A spot in sight was read live above.
-    if (playerSeesNode(fog, seat, b.hx, b.hy) || !world.has(b.entity, Building)) continue;
-    believed.push(b.entity);
-  }
-  return believed.sort((a, b) => a - b);
+  const remembered = rememberedBuildings(world, seat).filter(
+    (b) => (owner === null || b.owner === owner) && !playerSeesNode(fog, seat, b.hx, b.hy),
+  );
+  return { seen, remembered };
 }

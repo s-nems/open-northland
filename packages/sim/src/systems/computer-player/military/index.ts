@@ -33,7 +33,7 @@ export {
   threatWatchNodes,
   towerPostOrders,
 } from '../../ai-shared/military/defence/index.js';
-export { campaignTarget } from './campaign.js';
+export { campaignObjective, campaignTarget } from './campaign.js';
 export {
   CATAPULT_REGROUP_SLACK_NODES,
   CHARGE_ARMY_DIVISOR,

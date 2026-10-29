@@ -1,4 +1,4 @@
-import { ownerOf, seatPeaceEndTick, WaveMarch } from '../../../components/index.js';
+import { seatPeaceEndTick, WaveMarch } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
@@ -10,7 +10,7 @@ import { entityNode } from '../../spatial/nodes.js';
 import { seatBarracksOf } from '../base.js';
 import { computerProfileOf } from '../difficulty.js';
 import { militaryOrdersOf } from '../strategy/military.js';
-import { campaignTarget, objectiveNode } from './campaign.js';
+import { campaignObjective } from './campaign.js';
 import { believedDefendingPoints, COUNTED_ONCE, ownArmyPoints } from './enemy-strength.js';
 import { advanceWave, endMarch, launchWave, SIEGE_MARCH_MIN_CATAPULTS } from './march/index.js';
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, rallyAt, waveWorthy } from './muster.js';
@@ -56,9 +56,9 @@ export function runOffensive(
   const peaceEnd = Math.max(seatPeaceEndTick(world, player), armyProfile.firstWaveFromTick);
   const orders = militaryOrdersOf(world, player);
   const launchRatio = orders.launchRatio;
-  const target =
-    ctx.tick < peaceEnd || launchRatio === null ? null : campaignTarget(world, ctx, terrain, player, home);
-  if (target === null || launchRatio === null) {
+  const goal =
+    ctx.tick < peaceEnd || launchRatio === null ? null : campaignObjective(world, ctx, terrain, player, home);
+  if (goal === null || launchRatio === null) {
     abandonWave(world, barracks);
     endMarch(world, barracks);
     const everyone = [...army, ...wave, ...awaitingWeapon];
@@ -66,7 +66,7 @@ export function runOffensive(
     return gatherAt(world, terrain, everyone, rally);
   }
 
-  const objective = objectiveNode(world, ctx, terrain, target);
+  const { entity: target, owner: targetOwner, node: objective } = goal;
   const marchOn = advanceWave(world, ctx, terrain, barracks, player, target, objective, wave);
   if (!atHome && (marchOn.active || wave.length === 0)) return marchOn.commands;
   // A wave spent this decision hands its men back to the muster.
@@ -90,17 +90,13 @@ export function runOffensive(
   // of its men is not benched by its own defence; the target's posted men weigh what they kill. The
   // target's side is what the seat has seen of it. A siege train at home outranges the towers, so their
   // posted men then weigh what any man does.
-  const targetOwner = ownerOf(world, target);
   const own = ownArmyPoints(world, ctx, player);
   const postedWeight =
     crewedCatapults(world, ctx, player).length >= SIEGE_MARCH_MIN_CATAPULTS ? COUNTED_ONCE : undefined;
   const strength = {
     own: own.points,
     ownMen: own.men,
-    opposing:
-      targetOwner === undefined
-        ? 0
-        : believedDefendingPoints(world, ctx, player, targetOwner, own.points, postedWeight),
+    opposing: believedDefendingPoints(world, ctx, player, targetOwner, own.points, postedWeight),
   };
   // One wave at a time: the next gathers at the door while the last one marches.
   const charges =
