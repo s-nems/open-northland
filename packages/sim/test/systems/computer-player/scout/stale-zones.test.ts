@@ -1,0 +1,140 @@
+import { describe, expect, it } from 'vitest';
+import {
+  aiControlEntity,
+  ComputerIntel,
+  FOG_MODE,
+  type MapBriefView,
+  mapBriefOf,
+  NEVER_SEEN,
+  zoneOfNode,
+} from '../../../../src/components/index.js';
+import { Simulation } from '../../../../src/index.js';
+import type { HalfCellNode } from '../../../../src/nav/halfcell.js';
+import {
+  DEFAULT_BUILD_ORDER,
+  nextSignpostTarget,
+  nextStaleZoneTarget,
+  SCOUT_OPENING_TICKS,
+  SCOUT_REVISIT_TICKS,
+  SCOUT_STALENESS_CAP_TICKS,
+  scoutingLeads,
+  scoutModule,
+} from '../../../../src/systems/computer-player/index.js';
+import type { SystemContext } from '../../../../src/systems/index.js';
+import type { FogState } from '../../../../src/systems/vision/state.js';
+import { aiContent } from '../../../fixtures/ai-content.js';
+import { grassNodeMap } from '../../../fixtures/terrain.js';
+import {
+  ctxOf,
+  HQ_TYPE,
+  makeAiSeat,
+  placeHq,
+  placeResources,
+  RESOURCE_SPOTS,
+  SCOUT,
+  SEAT,
+  VIKING,
+} from '../support.js';
+
+const MAP_W = 256;
+const MAP_H = 128;
+const OTHER = 1;
+const HOME = { x: 40, y: 64 };
+const OTHER_START = { x: 200, y: 64 };
+/** A mud deposit at the scan, in a zone off the walk between the starts. */
+const DEPOSIT = { ...RESOURCE_SPOTS.mud, x: 40, y: 112 };
+/** Late enough that a never-seen zone's staleness is capped. */
+const NOW = 2 * SCOUT_STALENESS_CAP_TICKS;
+
+/** A computer seat with a scout and an enemy seat's start headquarters, scanned, its intel never having
+ *  seen any zone. */
+function staleSim(): Simulation {
+  const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(MAP_W, MAP_H) });
+  makeAiSeat(sim, SEAT);
+  placeHq(sim, HOME.x, HOME.y);
+  sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: OTHER, tribes: [VIKING] });
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: HQ_TYPE,
+    ...OTHER_START,
+    tribe: VIKING,
+    owner: OTHER,
+  });
+  placeResources(sim, [DEPOSIT]);
+  sim.enqueueSetup({
+    kind: 'spawnSettler',
+    jobType: SCOUT,
+    x: HOME.x + 6,
+    y: HOME.y,
+    tribe: VIKING,
+    owner: SEAT,
+  });
+  sim.step();
+  sim.step();
+  zoneSeenAt(sim).fill(NEVER_SEEN);
+  return sim;
+}
+
+function zoneSeenAt(sim: Simulation): number[] {
+  const carrier = aiControlEntity(sim.world, SEAT);
+  if (carrier === null || !sim.world.has(carrier, ComputerIntel))
+    throw new Error('setup: the seat has intel');
+  return sim.world.mut(carrier, ComputerIntel).zoneSeenAt;
+}
+
+function briefOf(sim: Simulation): MapBriefView {
+  const brief = mapBriefOf(sim.world);
+  if (brief === null) throw new Error('setup: the seat scanned the map');
+  return brief;
+}
+
+function fogOfWar(sim: Simulation): FogState {
+  const fog = sim.fog;
+  if (fog === undefined) throw new Error('setup: a mapped sim has fog');
+  fog.activeMode = FOG_MODE.CLASSIC_FOG_OF_WAR;
+  return fog;
+}
+
+function ctxAt(sim: Simulation, tick: number, fog?: FogState): SystemContext {
+  return { ...ctxOf(sim, tick), ...(fog ? { fog } : {}) };
+}
+
+function zoneOf(sim: Simulation, node: HalfCellNode | null): number | null {
+  return node === null ? null : zoneOfNode(briefOf(sim), node.hx, node.hy);
+}
+
+describe('scout staleness scouting', () => {
+  it('scouts a stale enemy start zone before unexplored zones on the walk and a deposit zone', () => {
+    const sim = staleSim();
+    const brief = briefOf(sim);
+    const enemyZone = zoneOfNode(brief, OTHER_START.x, OTHER_START.y);
+    zoneSeenAt(sim)[enemyZone] = NOW - SCOUT_REVISIT_TICKS;
+    const target = nextStaleZoneTarget(sim.world, ctxAt(sim, NOW, fogOfWar(sim)), SEAT, DEFAULT_BUILD_ORDER);
+    expect(zoneOf(sim, target)).toBe(enemyZone);
+  });
+
+  it('does not revisit a zone just seen until its staleness grows back', () => {
+    const sim = staleSim();
+    const enemyZone = zoneOfNode(briefOf(sim), OTHER_START.x, OTHER_START.y);
+    const fog = fogOfWar(sim);
+    zoneSeenAt(sim)[enemyZone] = NOW - 1;
+    const soon = nextStaleZoneTarget(sim.world, ctxAt(sim, NOW, fog), SEAT, DEFAULT_BUILD_ORDER);
+    expect(soon).not.toBeNull();
+    expect(zoneOf(sim, soon)).not.toBe(enemyZone);
+    const later = NOW - 1 + SCOUT_REVISIT_TICKS;
+    const due = nextStaleZoneTarget(sim.world, ctxAt(sim, later, fog), SEAT, DEFAULT_BUILD_ORDER);
+    expect(zoneOf(sim, due)).toBe(enemyZone);
+  });
+
+  it('keeps the old orders with the fog off', () => {
+    const sim = staleSim();
+    const tick = SCOUT_OPENING_TICKS;
+    expect(scoutingLeads(tick)).toBe(true);
+    const ctx = ctxAt(sim, tick);
+    expect(nextStaleZoneTarget(sim.world, ctx, SEAT, DEFAULT_BUILD_ORDER)).toBeNull();
+    const post = nextSignpostTarget(sim.world, ctx, SEAT, DEFAULT_BUILD_ORDER);
+    if (post === null) throw new Error('setup: the lattice wants a post');
+    const [order] = scoutModule(DEFAULT_BUILD_ORDER).run(sim.world, ctx, SEAT);
+    expect(order).toMatchObject({ kind: 'placeSignpost', x: post.hx, y: post.hy });
+  });
+});

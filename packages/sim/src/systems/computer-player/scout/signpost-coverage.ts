@@ -131,6 +131,14 @@ function corridorSamples(anchor: HalfCellNode, goal: HalfCellNode): HalfCellNode
   return samples;
 }
 
+/** The goods the seat gathers, by stable content id: the standing {@link COLLECTED_GOOD_IDS} and the
+ *  `order`'s collector goods. */
+export function gatheredGoodIds(order: BuildOrder): ReadonlySet<string> {
+  const goodIds = new Set(COLLECTED_GOOD_IDS);
+  for (const entry of orderSteps(order)) if (entry.kind === 'collector') goodIds.add(entry.good);
+  return goodIds;
+}
+
 /**
  * The corridor goals the lattice reaches out to: every live work flag of the seat's settlers, and the
  * nearest live deposit on the base's ground of each good the seat gathers, the standing
@@ -156,9 +164,7 @@ function corridorGoals(
     knownResourceTest(world, ctx, player),
     reachableResourceTest(world, ctx, terrain, anchor, () => true),
   );
-  const goodIds = new Set(COLLECTED_GOOD_IDS);
-  for (const entry of orderSteps(order)) if (entry.kind === 'collector') goodIds.add(entry.good);
-  for (const goodId of goodIds) {
+  for (const goodId of gatheredGoodIds(order)) {
     const good = goodTypeByContentId(ctx.content, goodId);
     if (good === undefined) continue;
     const resource = nearestLiveResource(world, good.typeId, anchor, onOwnGround);
