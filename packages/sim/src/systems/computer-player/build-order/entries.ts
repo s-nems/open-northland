@@ -633,6 +633,11 @@ export const REBUILD_DELAY_TICKS = 30 * TICKS_PER_SECOND;
  *  (authored): tight enough that the settlement grows as one piece. Every affinity pull stays inside it. */
 export const BUILD_SEARCH_MAX_RADIUS_NODES = 32;
 
+/** How many nodes of Manhattan distance from the base anchor cost a candidate spot one ring of distance
+ *  from its search centre (authored): the affinity centre stays the main criterion and the base's
+ *  closeness decides between spots about as near to it, so a settlement grows round rather than long. */
+export const HQ_PULL_DIVISOR_NODES = 4;
+
 /** The reach a placement falls back to when nothing inside {@link BUILD_SEARCH_MAX_RADIUS_NODES} takes the
  *  building, in the same nodes (authored): a base boxed in by forest or rock builds past it rather than
  *  waiting for the gatherers to clear it. */

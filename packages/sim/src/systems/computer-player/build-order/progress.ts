@@ -234,7 +234,7 @@ export function entryStatus(
     case 'storeCoverage': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      return seatCovered(world, ctx, player, owned, coverageOf(entry)) ? 'satisfied' : 'unmet';
+      return seatCovered(world, ctx, player, owned, coverageOf(world, player, entry)) ? 'satisfied' : 'unmet';
     }
   }
 }

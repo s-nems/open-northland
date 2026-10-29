@@ -16,7 +16,6 @@ import { grassScarce } from '../../../../src/systems/computer-player/build-order
 import {
   buildReach,
   FRONT_EDGE_STEP_NODES,
-  HQ_PULL_DIVISOR_NODES,
 } from '../../../../src/systems/computer-player/build-order/placement.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -26,6 +25,7 @@ import {
   COMPUTER_DECISION_INTERVAL_TICKS,
   DEFAULT_BUILD_ORDER,
   enemyFire,
+  HQ_PULL_DIVISOR_NODES,
   OVERFLOW_BUILD_REACH_NODES,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../../src/systems/computer-player/index.js';

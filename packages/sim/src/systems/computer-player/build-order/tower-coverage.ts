@@ -12,9 +12,11 @@ import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
-import { BUILD_SEARCH_MAX_RADIUS_NODES, type BuildOrderEntry } from './entries.js';
+import { militaryOrdersOf } from '../strategy/military.js';
+import type { BuildOrderEntry } from './entries.js';
 import { grassBound } from './grass-reserve.js';
 import { buildReach } from './placement.js';
+import { DEFENCE_TOWER_RADIUS_PCT, seatDefenceFirst, seatTuning } from './seat-order.js';
 
 // The coverage circle is a planning heuristic only; what a tower does under an alarm is
 // `systems/defence/`.
@@ -37,18 +39,30 @@ const TOWER_OUTSKIRTS_PUSH_NODES = 6;
 export interface Coverage {
   readonly by: 'tower' | 'store';
   readonly radius: number;
+  /** Whether the base counts as a centre of its own. */
+  readonly baseCovers: boolean;
 }
 
+/** A tower entry's radius is scaled by the seat's military orders (`towerRadiusPct`, percent), so a
+ *  defensive plan rings its towers denser and an aggressive one sparser, and again by
+ *  {@link DEFENCE_TOWER_RADIUS_PCT} while the seat's defence comes first; then the base's own bows no longer
+ *  count as a tower, so a compact settlement still raises towers before a forecast attack. */
 export function coverageOf(
+  world: World,
+  player: number,
   entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
 ): Coverage {
-  return entry.kind === 'towerCoverage'
-    ? { by: 'tower', radius: entry.radius ?? TOWER_DEFENCE_RADIUS_NODES }
-    : { by: 'store', radius: entry.radius };
+  if (entry.kind === 'storeCoverage') return { by: 'store', radius: entry.radius, baseCovers: true };
+  const planned = Math.floor(
+    ((entry.radius ?? TOWER_DEFENCE_RADIUS_NODES) * militaryOrdersOf(world, player).towerRadiusPct) / 100,
+  );
+  if (!seatDefenceFirst(world, player)) return { by: 'tower', radius: planned, baseCovers: true };
+  return { by: 'tower', radius: Math.floor((planned * DEFENCE_TOWER_RADIUS_PCT) / 100), baseCovers: false };
 }
 
-/** The nodes a coverage entry spreads its buildings from: the seat's base plus its towers (or its stores)
- *  in any construction state, so coverage arrives with the site rather than with the finished building. */
+/** The nodes a coverage entry spreads its buildings from: the seat's base (unless `baseCovers` is off) plus
+ *  its towers (or its stores) in any construction state, so coverage arrives with the site rather than
+ *  with the finished building. */
 function coverageCentres(
   world: World,
   ctx: SystemContext,
@@ -65,7 +79,7 @@ function coverageCentres(
       coverage.by === 'tower'
         ? type !== undefined && TOWER_CONTENT_IDS.includes(type.id)
         : type?.kind === 'storage';
-    if (e !== base && !centre) continue;
+    if (!centre && !(e === base && coverage.baseCovers)) continue;
     const node = anchorNodeOf(world, e);
     if (node !== null) centres.push(node);
   }
@@ -154,9 +168,10 @@ export function coverageSpotSearch(
 ): (target: HalfCellNode) => HalfCellNode | null {
   const centroid = anchorCentroid(world, owned);
   const apartFrom = coverage.by === 'tower' ? [] : coverageCentres(world, ctx, player, owned, coverage);
-  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+  const { reachNodes } = seatTuning(world, player);
+  const fan = 2 * reachNodes;
   const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
-  const settlement = buildReach(world, owned, anchor);
+  const settlement = buildReach(world, owned, anchor, reachNodes);
   const box = nodeBoxOfCircles([{ x: 0, y: 0, r: coverage.radius }]);
   // Every node covering a target lies within this Manhattan span of it.
   const coverageSpan = box.maxX + box.maxY;

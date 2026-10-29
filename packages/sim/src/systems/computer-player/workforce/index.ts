@@ -30,8 +30,8 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { type BuildOrder, lineStatuses } from '../build-order/index.js';
-import { type ComputerProfile, computerProfileOf, profileBuildOrder } from '../difficulty.js';
+import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../build-order/index.js';
+import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
 import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
@@ -109,7 +109,7 @@ function runWorkforce(
   fullOrder: BuildOrder,
 ): readonly PlayerCommand[] {
   const profile = computerProfileOf(world, player);
-  const order = profileBuildOrder(fullOrder, profile);
+  const order = seatBuildOrder(world, player, ctx.tick, fullOrder, profile);
   const builderJob = builderJobOf(ctx);
   const base = seatBaseOf(world, ctx, player);
   if (base === null) return rebuildCrew(world, ctx, player, order, profile, builderJob);
@@ -121,7 +121,10 @@ function runWorkforce(
   const wanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const clearing = clearingCollectors(world, player, civilians);
   const baseNode = anchorNodeOf(world, base);
-  const farGround = baseNode === null ? 0 : farGroundExtras(world, ctx, owned, baseNode);
+  const farGround =
+    baseNode === null
+      ? 0
+      : farGroundExtras(world, ctx, owned, baseNode, seatTuning(world, player).clearGroundPct);
   const genericTarget = GENERIC_COLLECTOR_TARGET + clearing + farGround;
   const { pool, collectorsByGood, genericCollectors, fishers, scouts, roadsters } = classifyWorkforce(
     world,

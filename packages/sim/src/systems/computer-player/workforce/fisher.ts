@@ -17,10 +17,11 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { manhattan } from '../../spatial/metric.js';
+import { seatHasSide } from '../build-order/seat-order.js';
 import { claimFlagNode, type FlagGround, legalFlagNodeTest, type TakenFlagNodes } from './flag-spots.js';
 
 /** How many fishers the seat keeps while fish swim in reach (authored): the first is hired beside the
- *  first collector posts, the second only as a top-up. */
+ *  first collector posts, the second only as a top-up, unless the seat's economy leans on fishing. */
 const FISHER_TARGET = 2;
 
 /** How far past a fisher's own shore search his water may lie from a store's door, in Manhattan nodes
@@ -52,6 +53,9 @@ export interface FishingPlan {
   readonly stands: readonly FishingStand[];
   /** The seat's flag fishers; the decision's hires are pushed in and its retirements taken out. */
   readonly fishers: Entity[];
+  /** How many fishers the first phase hires up to: every one of {@link FISHER_TARGET} for a seat with the
+   *  `fishing` side (owner ruling: where fish exist a fisher catches a lot), one otherwise. */
+  readonly firstHires: number;
 }
 
 /**
@@ -78,13 +82,15 @@ export function fishingPlan(
     if (shore !== null) stands.push({ store: e, door, shore, trip: manhattan(terrain, door, shore) });
   }
   stands.sort((a, b) => a.trip - b.trip || a.store - b.store);
-  return { job, terrain, ground, stands, fishers: [...fishers] };
+  const firstHires = seatHasSide(world, player, 'fishing') ? FISHER_TARGET : 1;
+  return { job, terrain, ground, stands, fishers: [...fishers], firstHires };
 }
 
 /**
  * The first phase keeps every fisher's flag on fished water: a flag whose water ran dry moves to the
  * seat's nearest stand with a free bank node, and its holder is handed back as a builder when no stand
- * is left; a man mid-action is left alone. It then hires one fisher, the top-up phase toward {@link FISHER_TARGET}. A hire is a flag
+ * is left; a man mid-action is left alone. It then hires up to the plan's first hires, the top-up phase
+ * toward {@link FISHER_TARGET}. A hire is a flag
  * fisher rather than a store's employee: he drops each catch at the flag beside his water for the
  * carriers, where an employee walks every fish to the store himself.
  */
@@ -100,7 +106,7 @@ export function allocateFishers(
   if (plan === null) return [];
   const commands: PlayerCommand[] = [];
   if (phase === 'first') keepFlagsOnWater(world, plan, builderJob, taken, commands);
-  const want = phase === 'first' ? 1 : FISHER_TARGET;
+  const want = phase === 'first' ? plan.firstHires : FISHER_TARGET;
   for (const stand of plan.stands) {
     while (plan.fishers.length < want) {
       const spot = fisherFlagSpot(plan, stand, taken);

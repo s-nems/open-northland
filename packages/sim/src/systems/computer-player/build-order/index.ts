@@ -20,7 +20,7 @@ import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
-import { type ComputerProfile, computerProfileOf, profileBuildOrder } from '../difficulty.js';
+import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
 import { technologyReach } from '../technology/reach.js';
 import { billSourced, goodsMadeBy, sourcedTiers } from './bill-sources.js';
@@ -49,6 +49,7 @@ import {
   lineStatuses,
   upgradeCandidate,
 } from './progress.js';
+import { seatBuildOrder, seatSitePace } from './seat-order.js';
 import { type Siege, seatSiege } from './siege.js';
 import { StalledSearches } from './stalled-searches.js';
 import { coverageOf, coverageSpotSearch, firstUncovered } from './tower-coverage.js';
@@ -63,6 +64,15 @@ export {
   type LineStatuses,
   lineStatuses,
 } from './progress.js';
+export {
+  ARCHETYPE_TUNING,
+  DEFENCE_TOWER_RADIUS_PCT,
+  defenceFirst,
+  seatBuildOrder,
+  seatSitePace,
+  seatTuning,
+  shapeBuildOrder,
+} from './seat-order.js';
 export { type Siege, seatSiege } from './siege.js';
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
 
@@ -123,10 +133,11 @@ function runBuildOrder(
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const profile = computerProfileOf(world, player);
-  const order = profileBuildOrder(fullOrder, profile);
+  const order = seatBuildOrder(world, player, ctx.tick, fullOrder, profile);
   const owned = ownedBuildings(world, player);
   const base = seatBaseOf(world, ctx, player);
-  const siteCap = base === null ? BASELESS_CONSTRUCTION_SITES : sitePace(profile, ctx.tick).sites;
+  const siteCap =
+    base === null ? BASELESS_CONSTRUCTION_SITES : seatSitePace(world, player, profile, ctx.tick).sites;
   const sites = constructionSites(world, ctx, owned);
   if (sites.length >= siteCap) return [];
   const carrier = aiControlEntity(world, player);
@@ -552,7 +563,7 @@ function coverageCommand(
   const type = buildingTypeByContentId(ctx.content, entry.building);
   if (type === undefined) return null; // unreachable after 'skip', kept for the type system
   if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return null;
-  const coverage = coverageOf(entry);
+  const coverage = coverageOf(world, player, entry);
   const spotFor = coverageSpotSearch(
     world,
     ctx,

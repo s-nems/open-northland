@@ -18,8 +18,9 @@ import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../joinery-role.js'
 import { knownResourceTest, nearestLiveResource } from '../live-resources.js';
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
-import { BUILD_SEARCH_MAX_RADIUS_NODES, OVERFLOW_BUILD_REACH_NODES } from './entries.js';
+import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
 import { grassBound } from './grass-reserve.js';
+import { seatTuning } from './seat-order.js';
 
 /** One affinity other than `shore` ({@link shoreTarget}) resolved to a node, or null when it cannot be. A
  *  `building` affinity takes the seat's lowest-id building of that id or a tier above it, so the pick is
@@ -405,15 +406,12 @@ function footprintOnGrass(
   return true;
 }
 
-/** How many nodes of Manhattan distance from the base anchor cost a candidate spot one ring of distance
- *  from the {@link searchCentre} (authored): the affinity centre stays the main criterion and the base's
- *  closeness decides between spots about as near to it, so a settlement grows round rather than long. */
-export const HQ_PULL_DIVISOR_NODES = 4;
-
 /**
  * The legal node inside the seat's {@link BuildReach} of least ring radius from {@link searchCentre} plus
- * the {@link HQ_PULL_DIVISOR_NODES} pull toward `anchor`, or null to stall the entry. The ring budget is
- * twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
+ * the pull toward `anchor`, or null to stall the entry. The reach radius and the pull are the seat's
+ * archetype's ({@link seatTuning}), `BUILD_SEARCH_MAX_RADIUS_NODES` and `HQ_PULL_DIVISOR_NODES` on the
+ * standard one, and an archetype keeping to its own land bounds every search to the base's land
+ * component. The ring budget is twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
  * up that serves nothing, and a `shore` entry's close enough to its ship water for the ship yard.
  *
@@ -423,7 +421,8 @@ export const HQ_PULL_DIVISOR_NODES = 4;
  * (`grassReserved`) both searches run off the grass first for a building that does not need it, so
  * the grass stays for the list's grass buildings, and take grass only when no other ground is left in
  * reach. When nothing in reach takes an entry with no spot bound, the pulled search runs once more
- * over {@link OVERFLOW_BUILD_REACH_NODES}, on the base's own land component only, since the wider reach can
+ * over twice the reach (`OVERFLOW_BUILD_REACH_NODES` on the standard archetype), on the base's own
+ * land component only, since the wider reach can
  * span a strait the builders cannot walk.
  */
 export function placementSpot(
@@ -439,7 +438,8 @@ export function placementSpot(
   underFire: EnemyFire,
   reserveGrass: boolean,
 ): HalfCellNode | null {
-  const settlement = buildReach(world, owned, anchor);
+  const tuning = seatTuning(world, player);
+  const settlement = buildReach(world, owned, anchor, tuning.reachNodes);
   const acceptor = spotAcceptor(world, ctx, terrain, player, type.typeId, tribe);
   const search = searchCentre(
     world,
@@ -457,6 +457,10 @@ export function placementSpot(
   );
   if (search === null) return null;
   const { centre, within } = search;
+  const home = baseComponent(world, ctx, terrain, player);
+  const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
+  if (tuning.homeLandOnly && home === NO_COMPONENT) return null;
+  const land: SpotBound = tuning.homeLandOnly ? onHomeLand : null;
   const ground: GroundRule = entry.ground === 'plantable' ? 'on' : 'any';
   const near = (
     reach: BuildReach,
@@ -472,8 +476,10 @@ export function placementSpot(
       reach,
       acceptor,
       anchor,
+      tuning.hqPullDivisorNodes,
       from,
       bound,
+      land,
       fan,
       type,
       tribe,
@@ -484,7 +490,7 @@ export function placementSpot(
   // A `plantable` entry stands on the grass where it fits, else beside it.
   const onOrBeside = (search: (rule: GroundRule) => HalfCellNode | null) =>
     search(ground) ?? (ground === 'on' ? search('beside') : null);
-  const fan = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+  const fan = 2 * tuning.reachNodes;
   const inReach = (rule: GroundRule, spareGrass: boolean) =>
     near(settlement, centre, within, fan, rule, spareGrass) ??
     (centre.hx === anchor.hx && centre.hy === anchor.hy
@@ -495,11 +501,10 @@ export function placementSpot(
   const found = onOrBeside((rule) => inReach(rule, false));
   // A bounded entry's disc already lies in the usual reach, so only an unbounded one overflows.
   if (found !== null || within !== null) return found;
-  const home = baseComponent(world, ctx, terrain, player);
   if (home === NO_COMPONENT) return null;
-  const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
-  const overflow = buildReach(world, owned, anchor, OVERFLOW_BUILD_REACH_NODES);
-  return onOrBeside((rule) => near(overflow, centre, onHomeLand, 2 * OVERFLOW_BUILD_REACH_NODES, rule));
+  const overflowNodes = 2 * tuning.reachNodes;
+  const overflow = buildReach(world, owned, anchor, overflowNodes);
+  return onOrBeside((rule) => near(overflow, centre, onHomeLand, 2 * overflowNodes, rule));
 }
 
 function spotAround(
@@ -508,8 +513,10 @@ function spotAround(
   settlement: BuildReach,
   acceptor: SpotAcceptor,
   anchor: HalfCellNode,
+  hqPullDivisorNodes: number,
   centre: HalfCellNode,
   within: SpotBound,
+  land: SpotBound,
   fan: number,
   type: BuildingType,
   tribe: number,
@@ -520,13 +527,14 @@ function spotAround(
   const accept = acceptor.around(underFire, centre, fan, spareGrass);
   const reach = settlement.around(centre, fan);
   const hqPull = (x: number, y: number): number =>
-    Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / HQ_PULL_DIVISOR_NODES);
+    Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / hqPullDivisorNodes);
   return bestRingNode(centre.hx, centre.hy, fan, hqPull, (x, y) => {
     // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
     // entry re-walks the whole fan on every retry.
     if (!reach.contains(x, y)) return false;
     if (!terrain.inBounds(x, y)) return false; // the bound and the ground test resolve nodes
     if (within !== null && !within(x, y)) return false;
+    if (land !== null && !land(x, y)) return false;
     if (ground === 'on' && !footprintOnGrass(ctx, terrain, type, tribe, x, y)) return false;
     // The beside scan walks a diamond, so it runs last, on spots that are legal otherwise.
     return accept(x, y) && (ground !== 'beside' || acceptor.grassBeside(x, y));

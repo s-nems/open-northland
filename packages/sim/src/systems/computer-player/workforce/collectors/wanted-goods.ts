@@ -145,8 +145,9 @@ export function clearingCollectors(world: World, player: number, civilians: numb
 
 /**
  * The extra collect-anything gatherers the seat's spread calls for: one per
- * {@link NODES_PER_CLEARING_GATHERER} its farthest home (sites included) stands past
- * {@link CLEAR_GROUND_FROM_NODES} from `baseNode`, at most {@link MAX_CLEARING_COLLECTORS}. Homes are placed
+ * {@link NODES_PER_CLEARING_GATHERER} its farthest home (sites included) stands past `clearGroundPct`
+ * percent of {@link CLEAR_GROUND_FROM_NODES} from `baseNode` (the seat's archetype's, all of it on the
+ * standard one), at most {@link MAX_CLEARING_COLLECTORS}. Homes are placed
  * with no affinity, nearest the base first, so the farthest one measures how far the nearest free ground
  * has moved away from it, and felling what stands nearer makes room there again.
  */
@@ -155,8 +156,10 @@ export function farGroundExtras(
   ctx: SystemContext,
   owned: readonly Entity[],
   baseNode: HalfCellNode,
+  clearGroundPct = 100,
 ): number {
   const index = contentIndex(ctx.content);
+  const from = Math.floor((CLEAR_GROUND_FROM_NODES * clearGroundPct) / 100);
   let farthest = 0;
   for (const e of owned) {
     if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'home') continue;
@@ -164,7 +167,7 @@ export function farGroundExtras(
     if (node === null) continue;
     farthest = Math.max(farthest, Math.abs(node.hx - baseNode.hx) + Math.abs(node.hy - baseNode.hy));
   }
-  const extras = Math.floor((farthest - CLEAR_GROUND_FROM_NODES) / NODES_PER_CLEARING_GATHERER);
+  const extras = Math.floor((farthest - from) / NODES_PER_CLEARING_GATHERER);
   return Math.min(MAX_CLEARING_COLLECTORS, Math.max(0, extras));
 }
 
