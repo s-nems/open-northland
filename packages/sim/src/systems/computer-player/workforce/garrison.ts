@@ -4,6 +4,7 @@ import {
   type AssistantRecruitIntent,
   AssistantWeaponVetoes,
   Building,
+  Carrying,
   computerModuleRuns,
   Equipment,
   Female,
@@ -181,10 +182,12 @@ export function claimArmyFloor(
   const missing = draftCeiling(profile, orders.draftCapShare, floor) - arms.onHand();
   const claim = Math.min(missing, surplus);
   if (claim <= 0) return NO_CLAIM;
+  // A man the floor retrades waits until he sets his load down, since the trade change would drop it.
+  const unloaded = (e: Entity): boolean => isDraftable(world, e) || !world.has(e, Carrying);
   const reclaimable = [
     ...reserve.men.filter((e) => isReclaimable(world, e, reserve.builderJob)),
     ...(reserve.gatherers ?? []).filter((e) => isUnarmedBachelor(world, e)),
-  ];
+  ].filter(unloaded);
   const next = force.remaining().find((e) => isDraftable(world, e)) ?? reclaimable[0];
   if (next === undefined) return NO_CLAIM;
   const classes = arms.classesFor(barracks, next);
@@ -439,7 +442,8 @@ function standingOrder(
   for (const intent of GARRISON_INTENTS) wants.set(intent, booked.get(intent) ?? 0);
 
   const bare = ownedSettlers(world, player).filter((e) => isBareSoldier(world, ctx, e, player));
-  const headroom = profile.army.draftToCap ? profile.army.cap - arms.onHand() : Number.POSITIVE_INFINITY;
+  const { draftCapShare } = militaryOrdersOf(world, player);
+  const headroom = draftCeiling(profile, draftCapShare, Number.POSITIVE_INFINITY) - arms.onHand();
   const allowance = Math.max(0, Math.min(draftable.length, arms.surplus(), headroom));
   const judged = bare[0] ?? (allowance > 0 ? draftable[0] : undefined);
   if (judged === undefined) return wants; // nobody to arm or draft: the classes need no probe

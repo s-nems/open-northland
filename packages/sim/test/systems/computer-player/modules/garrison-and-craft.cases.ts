@@ -7,12 +7,14 @@ import {
   type AssistantRecruitIntent,
   aiControlEntity,
   Building,
+  Carrying,
   CompletedCycles,
   type ComputerDifficulty,
   ComputerStrategy,
   Garrison,
   Health,
   JobAssignment,
+  type MilitaryPlan,
   type MilitaryRule,
   Owner,
   Position,
@@ -31,7 +33,12 @@ import { TOWER_POST_STRENGTH } from '../../../../src/systems/ai-shared/military/
 import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { SpareForce } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { COMPUTER_PUBLISHED_COUNTERS } from '../../../../src/systems/computer-player/assistant-counters.js';
-import { AI_PROFILES, BUILDER_CAP, shareOf } from '../../../../src/systems/computer-player/difficulty.js';
+import {
+  AI_PROFILES,
+  BUILDER_CAP,
+  type ComputerProfile,
+  shareOf,
+} from '../../../../src/systems/computer-player/difficulty.js';
 import {
   gamePhase,
   MID_GAME_FROM_TICKS,
@@ -49,6 +56,7 @@ import {
   strongestBelievedEnemy,
 } from '../../../../src/systems/computer-player/military/enemy-strength.js';
 import { unitPoints } from '../../../../src/systems/computer-player/military/points.js';
+import { PLAN_TUNING } from '../../../../src/systems/computer-player/strategy/military.js';
 import {
   COIN_GLUT_UNITS,
   CRAFT_GLUT_BAND_UNITS,
@@ -63,6 +71,7 @@ import {
   calledGatherers,
   claimArmyFloor,
   garrisonArms,
+  trainGarrison,
   WEAPON_VETO_LIFT_STOCK,
   WEAPON_VETO_STOCK_MARGIN,
 } from '../../../../src/systems/computer-player/workforce/garrison.js';
@@ -1241,13 +1250,48 @@ describe('workforce module - the barracks and craft selections', () => {
 
     // The floor turns a called gatherer into a civilian for the drill.
     const arms = garrisonArms(world, seat.ctx, SEAT, AI_PROFILES.hard);
-    const claim = claimArmyFloor(world, seat.ctx, SEAT, new SpareForce([]), arms, AI_PROFILES.hard, {
-      men: [],
-      builderJob: null,
-      gatherers: [green],
-    });
+    const claimGreen = () =>
+      claimArmyFloor(world, seat.ctx, SEAT, new SpareForce([]), arms, AI_PROFILES.hard, {
+        men: [],
+        builderJob: null,
+        gatherers: [green],
+      });
+    const claim = claimGreen();
     expect(claim.men).toEqual([green]);
     expect(claim.commands).toEqual([{ kind: 'setJob', entity: green, jobType: CIVILIST }]);
+    // Mid-trip he waits: the retrade would drop his load.
+    world.add(green, Carrying, { goodType: WOOD, amount: 1 });
+    expect(claimGreen()).toEqual({ men: [], commands: [] });
+  });
+
+  it("drafts its spare men only to its plan's share of the army cap", () => {
+    const ARMY_CAP = 20;
+    const capped: ComputerProfile = {
+      ...AI_PROFILES.hard,
+      army: { ...AI_PROFILES.hard.army, cap: ARMY_CAP, draftToCap: true },
+    };
+    const draftedUnder = (plan: MilitaryPlan): number => {
+      const seat = armedSeat([{ good: SWORD, amount: SPARE_MEN }]);
+      const { world } = seat.sim;
+      const carrier = aiControlEntity(world, SEAT);
+      const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
+      if (carrier === null || military === undefined) throw new Error('setup: no strategy');
+      world.mut(carrier, ComputerStrategy).military = {
+        ...military,
+        evidence: [...military.evidence],
+        challenger: null,
+        plan,
+      };
+      const spare = ownedSettlers(world, SEAT).filter((e) => world.get(e, Settler).jobType === CIVILIST);
+      expect(spare.length).toBeGreaterThan(ARMY_CAP);
+      const arms = garrisonArms(world, seat.ctx, SEAT, capped);
+      return trainGarrison(world, seat.ctx, SEAT, new SpareForce(spare), [], arms, capped).reduce(
+        (sum, c) => sum + (c.kind === 'setAssistantCounter' ? c.value : 0),
+        0,
+      );
+    };
+    for (const plan of ['defensive', 'balanced', 'aggressive'] as const)
+      expect(draftedUnder(plan)).toBe(shareOf(ARMY_CAP, PLAN_TUNING[plan].draftCapShare));
   });
 
   it('drafts nothing for the army floor while the peace is further off than its lead', () => {

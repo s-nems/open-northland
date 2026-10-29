@@ -24,7 +24,7 @@ export function peaceDeadlineTick(world: World, seat: number): number {
 
 /** The first tick a forecast scripted attack may land: an exact tick or a window's start; null for a
  *  trigger with no forecast tick (`conditional` waits on world state, as `nearestThreatIn` leaves out). */
-export function forecastAttackTick(trigger: Trigger): number | null {
+function forecastAttackTick(trigger: Trigger): number | null {
   if (trigger.kind === 'atTick') return trigger.tick;
   if (trigger.kind === 'window') return trigger.fromTick;
   return null;

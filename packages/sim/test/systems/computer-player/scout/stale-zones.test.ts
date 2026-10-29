@@ -6,10 +6,12 @@ import {
   type MapBriefView,
   mapBriefOf,
   NEVER_SEEN,
+  Settler,
   zoneOfNode,
 } from '../../../../src/components/index.js';
-import { Simulation } from '../../../../src/index.js';
+import { positionOfNode, Simulation } from '../../../../src/index.js';
 import type { HalfCellNode } from '../../../../src/nav/halfcell.js';
+import { ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
   DEFAULT_BUILD_ORDER,
   nextSignpostTarget,
@@ -21,6 +23,7 @@ import {
   SCOUTING_ROUND_TICKS,
   scoutingLeads,
   scoutModule,
+  signpostLatticeOffset,
 } from '../../../../src/systems/computer-player/index.js';
 import { ASSUMED_PEACE_TICKS } from '../../../../src/systems/computer-player/military/deadline.js';
 import type { SystemContext } from '../../../../src/systems/index.js';
@@ -28,11 +31,14 @@ import type { FogState } from '../../../../src/systems/vision/state.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
+  BUILDER,
+  collectModule,
   ctxOf,
   HQ_TYPE,
   makeAiSeat,
   placeHq,
   placeResources,
+  plantPost,
   RESOURCE_SPOTS,
   SCOUT,
   SEAT,
@@ -48,10 +54,19 @@ const OTHER_START = { x: 200, y: 64 };
 const DEPOSIT = { ...RESOURCE_SPOTS.mud, x: 40, y: 112 };
 /** Late enough that a never-seen zone's staleness is capped. */
 const NOW = 2 * SCOUT_STALENESS_CAP_TICKS;
+/** The first ring of the signpost lattice around the base, in lattice coordinates. */
+const LATTICE_RING = [
+  [1, 0],
+  [0, 1],
+  [-1, 1],
+  [-1, 0],
+  [0, -1],
+  [1, -1],
+] as const;
 
 /** A computer seat with a scout and an enemy seat's start headquarters, scanned, its intel never having
  *  seen any zone. */
-function staleSim(): Simulation {
+function staleSim(deposits = [DEPOSIT]): Simulation {
   const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(MAP_W, MAP_H) });
   makeAiSeat(sim, SEAT);
   placeHq(sim, HOME.x, HOME.y);
@@ -63,7 +78,7 @@ function staleSim(): Simulation {
     tribe: VIKING,
     owner: OTHER,
   });
-  placeResources(sim, [DEPOSIT]);
+  placeResources(sim, deposits);
   sim.enqueueSetup({
     kind: 'spawnSettler',
     jobType: SCOUT,
@@ -139,6 +154,26 @@ describe('scout staleness scouting', () => {
     if (post === null) throw new Error('setup: the lattice wants a post');
     const [order] = scoutModule(DEFAULT_BUILD_ORDER).run(sim.world, ctx, SEAT);
     expect(order).toMatchObject({ kind: 'placeSignpost', x: post.hx, y: post.hy });
+  });
+
+  it('keeps a scout with no post to erect for the stale zones once scouting opens', () => {
+    const sim = staleSim([]);
+    plantPost(sim, positionOfNode(HOME.x, HOME.y));
+    for (const [q, r] of LATTICE_RING) {
+      const o = signpostLatticeOffset(q, r);
+      plantPost(sim, positionOfNode(HOME.x + o.dx, HOME.y + o.dy));
+    }
+    const fog = fogOfWar(sim);
+    const opensAt = ASSUMED_PEACE_TICKS - SCOUTING_DEADLINE_LEAD_TICKS;
+    expect(nextSignpostTarget(sim.world, ctxAt(sim, opensAt, fog), SEAT, DEFAULT_BUILD_ORDER)).toBeNull();
+    const scout = ownedSettlers(sim.world, SEAT).find((e) => sim.world.get(e, Settler).jobType === SCOUT);
+    if (scout === undefined) throw new Error('setup: the seat has a scout');
+    const retrades = (tick: number) =>
+      collectModule
+        .run(sim.world, ctxAt(sim, tick, fog), SEAT)
+        .filter((c) => c.kind === 'setJob' && c.entity === scout);
+    expect(retrades(opensAt - 1)).toEqual([{ kind: 'setJob', entity: scout, jobType: BUILDER }]);
+    expect(retrades(opensAt)).toEqual([]);
   });
 
   it('leaves the enemy unscouted until the military deadline nears', () => {

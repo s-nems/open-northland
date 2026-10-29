@@ -37,8 +37,8 @@ const NO_APPRENTICES: ReadonlySet<Entity> = new Set();
 /**
  * The seat's apprentices this decision: for each discovery the next {@link APPRENTICE_LOOKAHEAD_STEPS}
  * unmet steps of every line still lack (a house row's job or good, a collector step's good, and the
- * discoveries those wait on in turn), the man of an enabling trade the discovery's rows credit most, on
- * the crediting work now or with repeats on it, ascending id on ties. Each is pinned on that work, never
+ * discoveries those wait on in turn), the man of an enabling trade on the crediting work now that the
+ * discovery's rows credit most, ascending id on ties. Each is pinned on that work, never
  * released, retired, promoted or reposted, until he crosses the threshold, when the discovery is made
  * and drops out of the set. Derived from live state, so it needs no save and survives a reload. Empty
  * while the match's progression toggle is off or the seat's tribe has no technology table.
@@ -116,7 +116,7 @@ export interface ApprenticeView {
   readonly typeId: number;
   /** The content id of the building or collector good of the step that first asked for it. */
   readonly opens: string;
-  /** The man pinned on its crediting work, null while no man of an enabling trade earns it. */
+  /** The man pinned on its crediting work, null while no man of an enabling trade is on that work. */
   readonly man: Entity | null;
   /** The repeats his experience credits toward it. */
   readonly repeats: number;
@@ -215,8 +215,10 @@ function pickApprentices(
       if (!gate.enablingJobs.includes(job)) continue;
       work ??= currentWork(world, ctx, e);
       const now = work;
+      // Only a man on the crediting work is pinned: the force skips every apprentice, so one pinned
+      // off it (his farm burned, his flag gone) would idle with nothing to put him back.
+      if (!gate.needs.some((row) => row.tracks.some((t) => t.job === job && credits(t, now)))) continue;
       let score = 0;
-      let onWork = false;
       for (const row of gate.needs) {
         score += Math.min(
           row.amount,
@@ -226,9 +228,7 @@ function pickApprentices(
             row.tracks.map((t) => t.track),
           ),
         );
-        onWork ||= row.tracks.some((t) => t.job === job && credits(t, now));
       }
-      if (score === 0 && !onWork) continue;
       const known = best.get(gate);
       // The settler walk ascends by id, so the first of equal scores keeps the post.
       if (known === undefined || score > known.score) best.set(gate, { man: e, score });

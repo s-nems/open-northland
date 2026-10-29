@@ -85,4 +85,15 @@ describe('technology apprentices', () => {
     setFarmerXp(sim, practised, MILLER_GATE_XP);
     expect(apprentices(sim)).toEqual([]);
   });
+
+  it('pins only a farmer on the farm, so a practised one off it stays in the spare force', () => {
+    const { sim, practised, green } = seat();
+    // Re-hiring him as a farmer drops his farm binding: practised, but off the crediting work.
+    sim.enqueueSetup({ kind: 'setJob', entity: practised, jobType: FARMER });
+    sim.step();
+    expect(apprentices(sim)).toEqual([green]);
+    expect(sim.computerApprentices(SEAT).flatMap((view) => (view.man === null ? [] : [view.man]))).toEqual([
+      green,
+    ]);
+  });
 });

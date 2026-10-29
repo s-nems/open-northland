@@ -34,7 +34,7 @@ import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../bu
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
 import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
-import { nextLivestockCatch, nextSignpostTarget } from '../scout/index.js';
+import { nextLivestockCatch, nextSignpostTarget, nextStaleZoneTarget, scoutingOpen } from '../scout/index.js';
 import { seatApprentices } from '../technology/apprentices.js';
 import { Promotions } from '../technology/promotion.js';
 import { Schooling } from '../technology/schooling.js';
@@ -390,8 +390,8 @@ function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[
   return [...pool, ...scouts, ...genericCollectors, ...fishers, ...posted];
 }
 
-/** The scout hire and retire: one scout exists while either duty has work (`scout/index.ts`), an idle
- *  one turns back into a builder, and one mid-action is left alone because `setJob` cancels the running
+/** The scout hire and retire: one scout exists while any of his duties has work (`scout/index.ts`), an
+ *  idle one turns back into a builder, and one mid-action is left alone because `setJob` cancels the running
  *  atomic. Only an unmarried man is hired (authored: a scout is away on a mission and his wife would
  *  wait forever). The hire ignores the seat's `guideBuild` toggle, which gates only the module that
  *  orders him, so a seat with GuideBuild off still pays for a scout. */
@@ -407,12 +407,13 @@ function allocateScout(
   const commands: PlayerCommand[] = [];
   const scoutJob = scoutJobType(ctx.content);
   // Asked only when the answer decides a hire or an idle scout's keep: a busy scout keeps his job either
-  // way, and a satisfied lattice has to scan every ring to answer null. The round-up probes first even
-  // though it ranks second, so the cheaper herd scan short-circuits it.
+  // way, and a satisfied lattice has to scan every ring to answer null. The duties probe cheapest first,
+  // whatever their rank, so the herd scan and the stale zones short-circuit the lattice.
   let scoutWork: boolean | undefined;
   const hasScoutWork = (): boolean => {
     scoutWork ??=
       nextLivestockCatch(world, ctx, player) !== null ||
+      (scoutingOpen(world, ctx, player) && nextStaleZoneTarget(world, ctx, player, order) !== null) ||
       nextSignpostTarget(world, ctx, player, order) !== null;
     return scoutWork;
   };
