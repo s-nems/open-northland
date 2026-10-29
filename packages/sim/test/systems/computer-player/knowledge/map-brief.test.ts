@@ -141,6 +141,20 @@ describe('map brief', () => {
     ]);
   });
 
+  it('outlives the last carrier, so a controller enabled later keeps the start scan', () => {
+    const sim = briefSim();
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const ceiling = briefOf(sim).entityCeiling;
+    setAiControl(sim.world, ctxOf(sim), { kind: 'setAiControl', player: SEAT, enabled: false });
+    expect(briefOf(sim).entityCeiling).toBe(ceiling);
+    placeHq(sim);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    expect(briefOf(sim).entityCeiling).toBe(ceiling);
+    expect(briefOf(sim).seats.flatMap((seat) => seat.buildings)).toEqual([]);
+  });
+
   it('survives a save and restore unchanged', () => {
     const content = aiContent();
     const blockers = [{ hx: 40, hy: 10 }];

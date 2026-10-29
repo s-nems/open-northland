@@ -22,7 +22,8 @@ export const BRIEF_ZONE_NODES = REGION_NODES;
 /**
  * Take the map brief the first time a computer controller runs on a mapped world: one scan of the
  * ground, the deposits and the seat starts as they stand then. A world where no seat's computer
- * controller runs never pays for it.
+ * controller runs never pays for it. Approximation: a first controller enabled mid-game scans then, so
+ * the buildings and deposits standing at that moment count as its start layout.
  */
 export function ensureMapBrief(world: World, ctx: SystemContext): void {
   const terrain = ctx.terrain;

@@ -119,15 +119,15 @@ export function writeMapBrief(world: World, carrier: Entity, scanned: MapBriefSt
 
 /** Before `leaving`, an {@link AiControl} carrier, is destroyed: move the map brief it carries to the
  *  lowest-id remaining carrier, so a seat handed back to its human keeps the scan for the others. With no
- *  carrier left it goes with `leaving`, and the next running controller scans again. */
+ *  carrier left it moves to an entity of its own, created at this command, so a controller enabled later
+ *  reads the same start scan instead of taking a mid-game one. */
 export function handOnMapBrief(world: World, leaving: Entity): void {
   if (!world.has(leaving, MapBrief)) return;
   let heir: Entity | null = null;
   for (const e of world.query(AiControl)) {
     if (e !== leaving && (heir === null || e < heir)) heir = e;
   }
-  if (heir === null) return;
   const brief = world.mut(leaving, MapBrief);
   world.remove(leaving, MapBrief);
-  world.add(heir, MapBrief, brief);
+  world.add(heir ?? world.create(), MapBrief, brief);
 }
