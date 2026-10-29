@@ -26,6 +26,15 @@ export {
 } from './computer-player/build-order/index.js';
 // The difficulty profiles, whose craft plans and trimmed build orders the real-content suite resolves too.
 export { AI_PROFILES, profileBuildOrder } from './computer-player/difficulty.js';
+// A seat's view of the map brief (the `MapBrief` component in a snapshot), for a debug view.
+export {
+  type AccessClass,
+  type GoodAccess,
+  type SeatBrief,
+  type SeatNeighbour,
+  seatBriefOf,
+  type ZoneSums,
+} from './computer-player/knowledge/seat-brief.js';
 // The garrison an acceptance scene pins, and the outfit the real-content plan test resolves.
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './computer-player/military/index.js';
 export {

@@ -8,6 +8,7 @@ export * from './ai/control.js';
 export * from './ai/flags.js';
 export * from './ai/map-ai.js';
 export * from './ai/map-ai-defence.js';
+export * from './ai/map-brief.js';
 export * from './ai/map-escalation.js';
 export * from './ai/order.js';
 export * from './assistant.js';
