@@ -11,7 +11,7 @@ sceneAcceptance(idleWorkScene, import.meta.url);
 it('resuming a stopped baker reveals the missing ingredients through an ordinary player order', () => {
   const sim = createSceneSim(idleWorkScene);
   sim.run(idleWorkScene.runTicks);
-  const worker = idleWorkWorker(sim, IDLE_WORK_NAMES.selection);
+  const worker = idleWorkWorker(IDLE_WORK_NAMES.selection);
   expect(worker).toBeDefined();
   if (worker === undefined) return;
   expect(sim.workStatus(worker)?.kind).toBe('nothingSelected');

@@ -89,13 +89,6 @@ export const NameIdentity = defineComponent<{ readonly pool: string; readonly na
   'settlers',
 );
 
-/**
- * The name the player gave a settler with the `renameSettler` command: trimmed, 1..
- * {@link SETTLER_NAME_MAX_CHARS} code points, no control characters. It wins over the generated name and
- * loses to a map's `ScriptedName`.
- */
-export const GivenName = defineComponent<{ name: string }>('GivenName', 'settlers');
-
 /** Marks a settler as a person rather than the wildlife that shares the {@link Settler} model. Never
  *  removed, so `query(Person, …)` is a human-only system's filter. */
 export const Person = defineComponent<{ readonly person: true }>('Person', 'settlers');
