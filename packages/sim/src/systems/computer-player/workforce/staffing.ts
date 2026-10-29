@@ -256,7 +256,7 @@ function releaseSurplus(
  * rather than posting leaves the later tiers only the surplus beyond the reserve; the cap is one-way and
  * never demotes a man. Among the existing builders and again among the fresh men, the reserve takes the
  * least experienced in other trades first ({@link tradeExperience}), so a released veteran waiting in the
- * pool as a builder stays free for his trade's next post.
+ * pool as a builder stays free for his trade's next post. `reserved` lists the claimed men in claim order.
  */
 export function reserveBuilders(
   world: World,
@@ -264,21 +264,21 @@ export function reserveBuilders(
   builderJob: number | null,
   cap: number,
   ctx: SystemContext,
-): PlayerCommand[] {
-  if (builderJob === null) return [];
+): { readonly commands: PlayerCommand[]; readonly reserved: readonly Entity[] } {
+  const reserved: Entity[] = [];
+  if (builderJob === null) return { commands: [], reserved };
   const commands: PlayerCommand[] = [];
-  let builders = 0;
   const greenFirst = (e: Entity): number => -tradeExperience(world, ctx, e);
-  while (builders < cap) {
+  while (reserved.length < cap) {
     const keep = force.take((e) => world.get(e, Settler).jobType === builderJob, greenFirst);
     if (keep === null) break;
-    builders++;
+    reserved.push(keep);
   }
-  while (builders < cap) {
+  while (reserved.length < cap) {
     const spare = force.take(undefined, greenFirst);
     if (spare === null) break;
     commands.push({ kind: 'setJob', entity: spare, jobType: builderJob });
-    builders++;
+    reserved.push(spare);
   }
-  return commands;
+  return { commands, reserved };
 }

@@ -117,6 +117,13 @@ describe('military posture', () => {
     expect(posture('defensive', (3 * ENEMY_POINTS) / 2)).toBe('attack');
   });
 
+  it('never attacks with no army, even against a target taken at parity', () => {
+    // An enemy the seat knows nothing of is believed as strong as the seat: zero against zero.
+    const blind = inputs(0, { targetPoints: 0, strongestPoints: null });
+    expect(selectPosture('aggressive', blind, null).posture).toBe('prepare');
+    expect(selectPosture('balanced', blind, 'attack').posture).toBe('prepare');
+  });
+
   it('harasses for the harasser plan, and for another once it has seen a raid target', () => {
     expect(selectPosture('harasser', inputs(2 * ENEMY_POINTS), null).posture).toBe('harass');
     const weaker = ENEMY_POINTS - 1;

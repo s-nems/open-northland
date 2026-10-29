@@ -31,7 +31,7 @@ import {
 } from '../../../../src/systems/ai-shared/military/census.js';
 import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { COMPUTER_PUBLISHED_COUNTERS } from '../../../../src/systems/computer-player/assistant-counters.js';
-import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
+import { AI_PROFILES, BUILDER_CAP, shareOf } from '../../../../src/systems/computer-player/difficulty.js';
 import {
   gamePhase,
   MID_GAME_FROM_TICKS,
@@ -51,6 +51,7 @@ import {
   tuneCraftCounters,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
 import {
+  ARMY_FLOOR_BUILDER_CORE,
   ARMY_FLOOR_LEAD_TICKS,
   ARMY_FLOOR_MIN,
 } from '../../../../src/systems/computer-player/workforce/garrison.js';
@@ -70,6 +71,7 @@ import {
   BREEDER,
   BUILDER,
   CATTLE,
+  CIVILIST,
   collectModule,
   completeSites,
   ctxOf,
@@ -831,24 +833,50 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.sim.commands.log.filter((c) => c.command.kind === 'equipGood')).toEqual([]);
   });
 
-  it('vetoes a weaker weapon once, and never drafts a class only that weapon could arm', () => {
-    const seat = armedSeat([{ good: SWORD, amount: 1 }], { content: longSwordContent() });
+  it('vetoes a weaker weapon once while the best one is in store', () => {
+    const seat = armedSeat(
+      [
+        { good: SWORD, amount: 1 },
+        { good: LONG_SWORD, amount: 1 },
+      ],
+      { content: longSwordContent() },
+    );
     const first = collectModule.run(seat.sim.world, seat.ctx, SEAT);
     const vetoes = first.filter((c) => c.kind === 'setAssistantWeaponVeto');
     expect(vetoes).toEqual([{ kind: 'setAssistantWeaponVeto', player: SEAT, goodType: SWORD, vetoed: true }]);
-    // The same decision already drafts as if the veto stood: only the short swords are in store, so
-    // nobody can be armed and the men drill bare.
-    expect(first.some((c) => c.kind === 'setAssistantCounter' && c.counter === 'trainSword')).toBe(false);
     for (const veto of vetoes) seat.sim.enqueueSetup(veto);
     seat.sim.step();
 
     const again = collectModule.run(seat.sim.world, seat.ctx, SEAT);
     expect(again.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
-    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: sparePool(seat) });
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
+  });
+
+  it('arms with the weaker weapon while the best one is not in store, and lifts a standing veto', () => {
+    // Owner ruling: the smith opens on the short sword and earns the long one later.
+    const seat = armedSeat([{ good: SWORD, amount: 1 }], { content: longSwordContent() });
+    const first = collectModule.run(seat.sim.world, seat.ctx, SEAT);
+    expect(first.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
+
+    seat.sim.enqueueSetup({ kind: 'setAssistantWeaponVeto', player: SEAT, goodType: SWORD, vetoed: true });
+    seat.sim.step();
+    const lifted = collectModule.run(seat.sim.world, seat.ctx, SEAT);
+    expect(lifted.filter((c) => c.kind === 'setAssistantWeaponVeto')).toEqual([
+      { kind: 'setAssistantWeaponVeto', player: SEAT, goodType: SWORD, vetoed: false },
+    ]);
+    // The same decision already drafts as if the veto were gone.
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
   });
 
   it('arms with the weaker weapon on the easy difficulty instead of vetoing it', () => {
-    const seat = armedSeat([{ good: SWORD, amount: 1 }], { content: longSwordContent(), difficulty: 'easy' });
+    const seat = armedSeat(
+      [
+        { good: SWORD, amount: 1 },
+        { good: LONG_SWORD, amount: 1 },
+      ],
+      { content: longSwordContent(), difficulty: 'easy' },
+    );
     const first = collectModule.run(seat.sim.world, seat.ctx, SEAT);
     expect(first.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
@@ -856,7 +884,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('lifts its weapon vetoes when the AI lets go of the seat or its military module', () => {
     const vetoedSeat = (): ArmedSeat => {
-      const seat = armedSeat([], { content: longSwordContent() });
+      const seat = armedSeat([{ good: LONG_SWORD, amount: 1 }], { content: longSwordContent() });
       for (const c of collectModule.run(seat.sim.world, seat.ctx, SEAT)) {
         if (c.kind === 'setAssistantWeaponVeto') seat.sim.enqueueSetup(c);
       }
@@ -1088,7 +1116,36 @@ describe('workforce module - the barracks and craft selections', () => {
       (c) => c.kind === 'assignWorker' && c.building === joinery && c.jobPriority[0] === JOINER,
     );
     expect(joiners).toHaveLength(2);
-    expect(drafted(seat)).toBeLessThan(RIVAL_FIGHTERS);
+    // The spare men behind the joiners fall short of the rival; the floor makes up the rest out of the
+    // builder reserve past its core.
+    expect(drafted(seat)).toBe(RIVAL_FIGHTERS);
+  });
+
+  it('reclaims the builder reserve past its core for an army it can arm, and only for one', () => {
+    // A small seat: every spare man is a builder the reserve holds, under its cap.
+    const BUILDERS = 8;
+    const core = shareOf(BUILDER_CAP, ARMY_FLOOR_BUILDER_CORE);
+    const builderSeat = (arms: readonly { good: number; amount: number }[]): ArmedSeat => {
+      const seat = armedSeat(arms, { men: 0 });
+      spawnMen(seat.sim, BUILDERS, BUILDER);
+      seat.sim.step();
+      return seat;
+    };
+    const retrades = (seat: ArmedSeat): PlayerCommand[] =>
+      collectModule.run(seat.sim.world, seat.ctx, SEAT).filter((c) => c.kind === 'setJob');
+
+    const armed = builderSeat([{ good: SWORD, amount: BUILDERS }]);
+    const jobs = retrades(armed).map((c) => (c.kind === 'setJob' ? c.jobType : null));
+    // The scout's post comes first; the reserve holds the rest and gives up all past its core.
+    const reserved = BUILDERS - jobs.filter((job) => job !== CIVILIST).length;
+    expect(reserved).toBeGreaterThan(core);
+    expect(jobs.filter((job) => job === CIVILIST)).toHaveLength(reserved - core);
+    expect(counterWants(armed.sim, armed.ctx)).toEqual({ trainSword: reserved - core });
+
+    // Fists alone never take a builder off his site.
+    const unarmed = builderSeat([]);
+    expect(retrades(unarmed).some((c) => c.kind === 'setJob' && c.jobType === CIVILIST)).toBe(false);
+    expect(drafted(unarmed)).toBe(0);
   });
 
   it('drafts nothing for the army floor while the peace is further off than its lead', () => {
@@ -1179,6 +1236,65 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(
       [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'setProductionGoods'),
     ).toEqual([]);
+  });
+
+  it("hands a smith whose plate armour the seat has yet to earn the plan's next seat, the long sword", () => {
+    const base = aiContent();
+    const SMITH = 81;
+    const PLATE = 82;
+    const SWORD_LONG = 83;
+    const SMITHY = 84;
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: PLATE, id: 'armor_plate' }, { typeId: SWORD_LONG, id: 'sword_long' }],
+      jobs: [...base.jobs, { typeId: SMITH, id: 'smith' }],
+      buildings: [
+        ...base.buildings,
+        {
+          typeId: SMITHY,
+          id: 'work_smithy_01',
+          kind: 'workplace',
+          workers: [{ jobType: SMITH, count: 1 }],
+          recipes: [
+            { inputs: [], outputs: [{ goodType: PLATE, amount: 1 }] },
+            { inputs: [], outputs: [{ goodType: SWORD_LONG, amount: 1 }] },
+          ],
+          stock: [
+            { goodType: PLATE, capacity: 10 },
+            { goodType: SWORD_LONG, capacity: 10 },
+          ],
+          construction: [{ goodType: WOOD, amount: 1 }],
+        },
+      ],
+      // The plate opens with a trade nobody of the seat holds, so the seat may not make it yet.
+      tribes: base.tribes.map((t) =>
+        t.typeId !== VIKING
+          ? t
+          : { ...t, jobEnables: [...t.jobEnables, { jobType: MILLER, kind: 'good', targetId: PLATE }] },
+      ),
+    });
+    expect(CRAFT_PLANS_BY_BUILDING_ID.work_smithy_01?.seats[0]).toEqual(['armor_plate']);
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: SMITHY,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 2, BUILDER);
+    sim.step();
+    const ctx = { ...ctxOf(sim), content };
+    for (const c of collectModule.run(sim.world, ctx, SEAT)) sim.enqueueSetup(c);
+    sim.step();
+
+    const smith = [...sim.world.query(Settler, JobAssignment)].find(
+      (e) => sim.world.get(e, JobAssignment).workplace === entityOfBuilding(sim, SMITHY),
+    );
+    const tuned = collectModule.run(sim.world, ctx, SEAT).filter((c) => c.kind === 'setProductionGoods');
+    expect(tuned).toEqual([{ kind: 'setProductionGoods', entity: smith, goods: [SWORD_LONG] }]);
   });
 
   it('keeps both joiners on iron tools, and turns both to furniture while the tools pile up', () => {

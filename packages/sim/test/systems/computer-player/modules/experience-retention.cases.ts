@@ -164,10 +164,10 @@ describe('workforce module - experience retention', () => {
     grant(seat, oldBuilder, BUILDER_XP_TRACK, VETERAN_XP);
     const ctx = { ...ctxOf(seat.sim), content: seat.content };
     const civilistPool = (): SpareForce => new SpareForce([mason, oldBuilder, green]);
-    expect(reserveBuilders(seat.sim.world, civilistPool(), BUILDER, 1, ctx)).toEqual([
+    expect(reserveBuilders(seat.sim.world, civilistPool(), BUILDER, 1, ctx).commands).toEqual([
       { kind: 'setJob', entity: oldBuilder, jobType: BUILDER },
     ]);
-    expect(reserveBuilders(seat.sim.world, civilistPool(), BUILDER, 2, ctx)).toEqual([
+    expect(reserveBuilders(seat.sim.world, civilistPool(), BUILDER, 2, ctx).commands).toEqual([
       { kind: 'setJob', entity: oldBuilder, jobType: BUILDER },
       { kind: 'setJob', entity: green, jobType: BUILDER },
     ]);
@@ -181,7 +181,7 @@ describe('workforce module - experience retention', () => {
     const force = new SpareForce(seat.men);
     // Every man is a builder already, so the reserve claims without a command; the veteran mason, first
     // in pool order, is the one it leaves.
-    expect(reserveBuilders(seat.sim.world, force, BUILDER, 2, ctx)).toEqual([]);
+    expect(reserveBuilders(seat.sim.world, force, BUILDER, 2, ctx).commands).toEqual([]);
     expect(force.remaining()).toEqual([mason]);
   });
 

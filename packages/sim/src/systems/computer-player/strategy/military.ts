@@ -147,9 +147,10 @@ export function selectPosture(
     held === 'attack'
       ? { num: launch.num * ATTACK_HOLD_SHARE.num, den: launch.den * ATTACK_HOLD_SHARE.den }
       : launch;
+  // A seat with no army attacks nobody, whatever parity an unknown target is taken at.
   const ratio = fire(
     'ratioReached',
-    targetPoints !== null && launchRatioReached(ownPoints, targetPoints, edge),
+    ownPoints > 0 && targetPoints !== null && launchRatioReached(ownPoints, targetPoints, edge),
   );
   const harasser = fire('harasserPlan', plan === 'harasser');
   const raidTarget = fire('raidTargetKnown', inputs.raidTargetKnown);

@@ -6,7 +6,9 @@ import {
   PRODUCTION_UNLIMITED,
   ProductionCounters,
   type ProductionCountersView,
+  playerPlacementTribes,
   productionCountOf,
+  professionProgressionEnabled,
   Settler,
   UnderConstruction,
   Vehicle,
@@ -17,6 +19,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
+import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
@@ -380,8 +383,9 @@ export function tuneCraftCounters(
       seated.workplaces.push(assignment.workplace);
     } else crews.set(plan, { type, plan, crew: [e], workplaces: [assignment.workplace] });
   }
+  const tribe = playerPlacementTribes(world, player)?.[0];
   for (const { type, plan, crew, workplaces } of crews.values()) {
-    const products = productsOf(ctx, type);
+    const products = enabledProducts(world, ctx, player, tribe, type);
     const { seats } = plan;
     const recipeProducts = recipeProductsOf(ctx, type);
     const current = crew.map((e) => selectedGoods(world.tryGet(e, ProductionCounters), recipeProducts));
@@ -394,15 +398,14 @@ export function tuneCraftCounters(
         continue;
       }
       free.push(seat);
-      listed.push(
-        goodsOf(
-          ctx,
-          products,
-          crew.length === 1 && plan.alone !== undefined
-            ? plan.alone
-            : seatProducts(ctx, supply, fleetOf, current[seat] ?? [], seats[seat % seats.length] ?? []),
-        ),
-      );
+      const alone = crew.length === 1 && plan.alone !== undefined ? goodsOf(ctx, products, plan.alone) : [];
+      // A seat whose goods the seat may not make yet hands over to the next seat in the plan that has some.
+      let goods = alone;
+      for (let step = 0; goods.length === 0 && step < seats.length; step++) {
+        const listedSeat = seats[(seat + step) % seats.length] ?? [];
+        goods = goodsOf(ctx, products, seatProducts(ctx, supply, fleetOf, current[seat] ?? [], listedSeat));
+      }
+      listed.push(goods);
     }
     const sink = goodsOf(ctx, products, plan.sink ?? []);
     // The whole crew, since a seat of its own may work the sink's goods, as the crockery seat does.
@@ -426,6 +429,20 @@ function goodsOf(ctx: SystemContext, products: readonly number[], ids: readonly 
     if (good !== undefined && products.includes(good) && !goods.includes(good)) goods.push(good);
   }
   return goods.sort((a, b) => a - b);
+}
+
+/** The {@link productsOf} `player` may make: under the experience gates, the goods its `tribe` has
+ *  discovered ({@link goodEnabled}), so a smith is never held to a weapon his seat has still to earn. */
+function enabledProducts(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  tribe: number | undefined,
+  type: BuildingType,
+): readonly number[] {
+  const products = productsOf(ctx, type);
+  if (tribe === undefined || !professionProgressionEnabled(world)) return products;
+  return products.filter((good) => goodEnabled(world, ctx, player, tribe, good));
 }
 
 /** The goods a workplace type's recipes make, ascending: the products a selection counter can name. */

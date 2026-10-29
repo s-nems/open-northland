@@ -22,11 +22,13 @@ import { draftableTrade, isBareSoldier } from '../../assistant/index.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
+import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
 import { baseSoldierJobType, isFighterJob, isSoldierJob } from '../../readviews/index.js';
 import { INTENT_WEAPON_CLASS } from '../../settlers/atomics/effects/goods/weapon-class.js';
 import { armableIntents, armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
+import { seatStockOf } from '../../stores/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
 import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
@@ -68,8 +70,8 @@ export const ARMY_FLOOR_LEAD_TICKS = WAVE_GATHER_TICKS;
 
 /** This decision's arming judgement, shared by the army floor and the draft so both read one answer. */
 export interface GarrisonArms {
-  /** The weaker weapon goods not yet vetoed on the seat ({@link missingWeaponVetoes}); the draft sets them. */
-  readonly pendingVetoes: readonly number[];
+  /** The weapon veto changes the seat still needs ({@link weaponVetoChanges}); the draft publishes them. */
+  readonly vetoChanges: readonly WeaponVetoChange[];
   /** The classes a draft splits over ({@link draftingClasses}), judged once, for the first man asked about. */
   classesFor(barracks: Entity, next: Entity): readonly AssistantRecruitIntent[];
   /** The seat's {@link bachelorSurplus}, counted once for the floor and the draft. */
@@ -85,14 +87,17 @@ export function garrisonArms(
   profile: ComputerProfile,
 ): GarrisonArms {
   const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
-  const pendingVetoes = profile.weakerWeapons ? [] : missingWeaponVetoes(world, ctx, player, vetoed);
-  // The vetoes land a tick later, so this decision's draft already judges the arms without them.
-  const judged = [...vetoed, ...pendingVetoes];
+  const vetoChanges = weaponVetoChanges(world, ctx, player, vetoed, profile);
+  // The changes land a tick later, so this decision's draft already judges the arms as they will stand.
+  const judged = [
+    ...vetoed.filter((good) => !vetoChanges.some((c) => c.goodType === good && !c.vetoed)),
+    ...vetoChanges.filter((c) => c.vetoed).map((c) => c.goodType),
+  ];
   let classes: readonly AssistantRecruitIntent[] | undefined;
   let surplus: number | undefined;
   let onHand: number | undefined;
   return {
-    pendingVetoes,
+    vetoChanges,
     classesFor: (barracks, next) => {
       classes ??= draftingClasses(world, ctx, player, barracks, next, judged);
       return classes;
@@ -108,16 +113,45 @@ export function garrisonArms(
   };
 }
 
+/** The part of the builder reserve the army floor never reclaims (authored): a third, so the seat's
+ *  sites keep a crew while the spare men past it drill. On magiczny_las the reserve held every spare man,
+ *  one to seven builders against a cap of twelve, for the first hour and no seat drafted anyone; with a
+ *  third kept every seat drafted between game minutes 36 and 57, with half one seat never did. */
+export const ARMY_FLOOR_BUILDER_CORE: Share = { num: 1, den: 3 };
+
+/** The builder reserve's men past its core ({@link ARMY_FLOOR_BUILDER_CORE}) of `cap`, the last claimed
+ *  first: the fresh men it was about to turn builders ahead of the builders it kept. */
+export function upperReserve(reserved: readonly Entity[], cap: number): readonly Entity[] {
+  return reserved.slice(shareOf(cap, ARMY_FLOOR_BUILDER_CORE)).reverse();
+}
+
+/** The builders past the reserve's core the army floor may reclaim, and the builder trade they hold. */
+export interface ReclaimableReserve {
+  readonly men: readonly Entity[];
+  readonly builderJob: number | null;
+}
+
+/** The army floor's claim: the men it drafts, and the commands turning a reclaimed builder back into a
+ *  civilian the drill takes. */
+export interface ArmyFloorClaim {
+  readonly men: readonly Entity[];
+  readonly commands: readonly PlayerCommand[];
+}
+
+const NO_CLAIM: ArmyFloorClaim = { men: [], commands: [] };
+
 /**
  * The army floor: once the seat's peace is within {@link ARMY_FLOOR_LEAD_TICKS} of its end ({@link
  * seatPeaceEndTick}, the start when there is none), the seat keeps its profile's share of the fighters its
  * strongest enemy fields ({@link enemyInOwnMen}), scaled by its military plan and posture
- * (`strategy/military.ts`), never fewer than {@link ARMY_FLOOR_MIN} and never past a cap it drafts to. Its fighters and the recruits already in drill count toward it, so only the
- * missing men are claimed out of `force`, which the ladder calls after the target-tier posts and ahead of
- * the surplus ones: a seat staffs what it built, and the trades that could absorb every man still leave
- * an army. Capped by the {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed
- * while the draft has no class to put him in.
- * Returns the claimed men for {@link trainGarrison} to publish.
+ * (`strategy/military.ts`), never fewer than {@link ARMY_FLOOR_MIN} and never past a cap it drafts to. Its
+ * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
+ * `force`, which the ladder calls after the target-tier posts and ahead of the surplus ones: a seat staffs
+ * what it built, and the trades that could absorb every man still leave an army. While the draft can arm a
+ * class, the floor also reclaims the builder reserve past its core (`reserve`): the reserve takes every
+ * spare man of a small seat, which would otherwise never drill. Capped by the {@link bachelorSurplus} and
+ * by the men draftable at all, and nobody is claimed while the draft has no class to put him in.
+ * Returns the claimed men for {@link trainGarrison} to publish and the reclaimed builders' retrades.
  */
 export function claimArmyFloor(
   world: World,
@@ -126,13 +160,14 @@ export function claimArmyFloor(
   force: SpareForce,
   arms: GarrisonArms,
   profile: ComputerProfile,
-): readonly Entity[] {
+  reserve: ReclaimableReserve = { men: [], builderJob: null },
+): ArmyFloorClaim {
   const barracks = drillFloorOf(world, ctx, player);
-  if (barracks === null) return [];
-  if (ctx.tick < seatPeaceEndTick(world, player) - ARMY_FLOOR_LEAD_TICKS) return [];
+  if (barracks === null) return NO_CLAIM;
+  if (ctx.tick < seatPeaceEndTick(world, player) - ARMY_FLOOR_LEAD_TICKS) return NO_CLAIM;
   // The seat's own roster settles the draftable count before the enemies' rosters are walked.
   const surplus = arms.surplus();
-  if (surplus <= 0) return [];
+  if (surplus <= 0) return NO_CLAIM;
   const orders = militaryOrdersOf(world, player);
   const floor = Math.max(
     ARMY_FLOOR_MIN,
@@ -140,16 +175,27 @@ export function claimArmyFloor(
   );
   const missing = draftCeiling(profile, orders.draftCapShare, floor) - arms.onHand();
   const claim = Math.min(missing, surplus);
-  if (claim <= 0) return [];
-  const next = force.remaining().find((e) => isDraftable(world, e));
-  if (next === undefined || arms.classesFor(barracks, next).length === 0) return [];
-  const claimed: Entity[] = [];
-  while (claimed.length < claim) {
+  if (claim <= 0) return NO_CLAIM;
+  const reclaimable = reserve.men.filter((e) => isReclaimable(world, e, reserve.builderJob));
+  const next = force.remaining().find((e) => isDraftable(world, e)) ?? reclaimable[0];
+  if (next === undefined) return NO_CLAIM;
+  const classes = arms.classesFor(barracks, next);
+  if (classes.length === 0) return NO_CLAIM;
+  const men: Entity[] = [];
+  while (men.length < claim) {
     const recruit = force.take((e) => isDraftable(world, e));
     if (recruit === null) break;
-    claimed.push(recruit);
+    men.push(recruit);
   }
-  return claimed;
+  if (!classes.some(isWeaponIntent)) return { men, commands: [] };
+  const commands: PlayerCommand[] = [];
+  for (const e of reclaimable) {
+    if (men.length >= claim) break;
+    men.push(e);
+    if (world.get(e, Settler).jobType === reserve.builderJob)
+      commands.push({ kind: 'setJob', entity: e, jobType: CIVILIST_JOB });
+  }
+  return { men, commands };
 }
 
 /**
@@ -182,8 +228,8 @@ export function trainGarrison(
     const command = assistantCounterCommand(world, player, intent, wants.get(intent) ?? 0, false);
     return command === null ? [] : [command];
   });
-  const vetoes = arms.pendingVetoes.map(
-    (goodType): PlayerCommand => ({ kind: 'setAssistantWeaponVeto', player, goodType, vetoed: true }),
+  const vetoes = arms.vetoChanges.map(
+    ({ goodType, vetoed }): PlayerCommand => ({ kind: 'setAssistantWeaponVeto', player, goodType, vetoed }),
   );
   return [...vetoes, ...counters];
 }
@@ -222,19 +268,51 @@ function armyOnHand(world: World, ctx: SystemContext, player: number): number {
   return fighterStrength(world, ctx, player) + drilling.length;
 }
 
+/** One weapon good to veto or to release on the seat. */
+export interface WeaponVetoChange {
+  readonly goodType: number;
+  readonly vetoed: boolean;
+}
+
 /**
  * The AI arms its recruits only with each class's best weapon (authored): short swords, wooden spears and
  * short bows would field weak men, and the short swords and wooden spears its own shops make are inputs
- * to amulets and iron spears. The {@link weakerWeaponGoods} goods not yet among the seat's `vetoed` ones.
+ * to amulets and iron spears. A weaker good ({@link weakerWeaponGoods}) is vetoed only while the seat holds
+ * a class's best weapon it ranks below ({@link seatStockOf}), so a seat whose smiths have yet to forge the
+ * long sword arms with the short one meanwhile (owner ruling: the smith opens on the short sword, the long
+ * sword comes later). The changes from the seat's `vetoed` goods; none while the military module is off,
+ * and an easy seat ({@link ComputerProfile.weakerWeapons}) wants no veto.
  */
-function missingWeaponVetoes(
+function weaponVetoChanges(
   world: World,
   ctx: SystemContext,
   player: number,
   vetoed: readonly number[],
-): readonly number[] {
+  profile: ComputerProfile,
+): readonly WeaponVetoChange[] {
   if (!computerModuleRuns(world, player, 'military')) return [];
-  return weakerWeaponGoods(ctx.content).filter((good) => !vetoed.includes(good));
+  const wanted = profile.weakerWeapons ? new Set<number>() : outrankedWeapons(world, ctx, player);
+  const changes: WeaponVetoChange[] = [];
+  for (const goodType of weakerWeaponGoods(ctx.content)) {
+    const want = wanted.has(goodType);
+    if (want !== vetoed.includes(goodType)) changes.push({ goodType, vetoed: want });
+  }
+  return changes;
+}
+
+/** The weaker weapon goods some tribe's armed class ranks below a best weapon `player` holds. */
+function outrankedWeapons(world: World, ctx: SystemContext, player: number): ReadonlySet<number> {
+  const weaker = new Set(weakerWeaponGoods(ctx.content));
+  const stock = seatStockOf(world, player);
+  const outranked = new Set<number>();
+  for (const tribe of weaponTribes(ctx.content)) {
+    for (const intent of GARRISON_WEAPON_INTENTS) {
+      const [strongest, ...rest] = armingGoodPreference(ctx.content, tribe, intent, []);
+      if (strongest === undefined || stock.units(strongest) === 0) continue;
+      for (const good of rest) if (weaker.has(good)) outranked.add(good);
+    }
+  }
+  return outranked;
 }
 
 const weakerWeaponsByContent = new WeakMap<ContentSet, readonly number[]>();
@@ -417,6 +495,15 @@ function weaponTribes(content: ContentSet): ReadonlySet<number> {
  *  here - each of their counters carries them. */
 function draftableSpare(world: World, force: SpareForce): Entity[] {
   return force.remaining().filter((e) => isDraftable(world, e));
+}
+
+/** A reserved man the floor may draft: one {@link isDraftable} already, or an unmarried, unarmed builder the
+ *  floor turns back into a civilian first. */
+function isReclaimable(world: World, e: Entity, builderJob: number | null): boolean {
+  if (isDraftable(world, e)) return true;
+  if (builderJob === null || world.get(e, Settler).jobType !== builderJob || isMarried(world, e))
+    return false;
+  return (world.tryGet(e, Equipment)?.weapon ?? null) === null;
 }
 
 function isDraftable(world: World, e: Entity): boolean {

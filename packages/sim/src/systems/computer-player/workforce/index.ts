@@ -53,7 +53,7 @@ import { tuneCraftCounters } from './craft.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import { foodHunters } from './food.js';
-import { claimArmyFloor, garrisonArms, trainGarrison } from './garrison.js';
+import { claimArmyFloor, garrisonArms, trainGarrison, upperReserve } from './garrison.js';
 import { assignHaulingCarts } from './hauling-carts.js';
 import { allocateHunters, huntingPlan } from './hunter.js';
 import { allocateRoadCrew } from './road-crew.js';
@@ -191,22 +191,14 @@ function runWorkforce(
   // The road crew comes out of the builder reserve, ahead of it, so a seat with road sites always has
   // its roadster.
   const roadCrew = allocateRoadCrew(world, ctx, player, roadsters, force, builderJob);
-  const essentials = [
-    ...posted,
-    ...roadCrew.commands,
-    // Construction never starves; while a placement is stalled the reserve shrinks to its floor, so the
-    // clearing posts below get the men the missing sites would have had. The road crew is part of it.
-    ...reserveBuilders(
-      world,
-      force,
-      builderJob,
-      Math.max(
-        0,
-        (clearing > 0 ? STALLED_BUILDER_CAP : builderCap(profile, civilians, ctx.tick)) - roadCrew.crew,
-      ),
-      ctx,
-    ),
-  ];
+  // Construction never starves; while a placement is stalled the reserve shrinks to its floor, so the
+  // clearing posts below get the men the missing sites would have had. The road crew is part of it. The
+  // army floor may reclaim the reserve past its core (`garrison.ts`), so its fresh men's commands wait.
+  const reserveCap = Math.max(
+    0,
+    (clearing > 0 ? STALLED_BUILDER_CAP : builderCap(profile, civilians, ctx.tick)) - roadCrew.crew,
+  );
+  const reserve = reserveBuilders(world, force, builderJob, reserveCap, ctx);
   // The standing buildings' target crews and the gatherers the reached entries count come before the army
   // floor (authored): both are bounded by what stands, so a seat staffs every building it raised and
   // still leaves the rest to the army. The floor outranks the surplus tier and the generic posts, which
@@ -218,16 +210,23 @@ function runWorkforce(
     ...(ground === null ? [] : topUpCollectors(world, ctx, ground, wanted, collectorsByGood, force, taken)),
   ];
   const arms = garrisonArms(world, ctx, player, profile);
-  const armyFloor = claimArmyFloor(world, ctx, player, force, arms, profile);
+  const armyFloor = claimArmyFloor(world, ctx, player, force, arms, profile, {
+    men: upperReserve(reserve.reserved, reserveCap),
+    builderJob,
+  });
+  const drafted = new Set(armyFloor.men);
   return [
     ...flagFollowSwitch(world, player),
-    ...essentials,
+    ...posted,
+    ...roadCrew.commands,
+    ...reserve.commands.filter((c) => !('entity' in c && drafted.has(c.entity))),
     ...targets,
+    ...armyFloor.commands,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
     ...allocateHunters(world, ctx, player, hunting, force, builderJob, tally, 'surplus'),
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus', gated),
     ...(clearing > 0 ? [] : generic()),
-    ...trainGarrison(world, ctx, player, force, armyFloor, arms, profile),
+    ...trainGarrison(world, ctx, player, force, armyFloor.men, arms, profile),
     ...tuneCraftCounters(world, ctx, player, supply, profile),
     ...assignHaulingCarts(world, ctx, player),
   ];
@@ -363,7 +362,7 @@ function rebuildCrew(
   const supply = SeatSupply.of(world, ctx, player, owned, order);
   const seat: SeatStaffing = { player, owned, supply, profile };
   return [
-    ...reserveBuilders(world, force, builderJob, profile.builders.opening, ctx),
+    ...reserveBuilders(world, force, builderJob, profile.builders.opening, ctx).commands,
     ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world, player, owned), 'min', {
       promotions: new Promotions(world, ctx, player, new Set()),
       schooling: new Schooling(world, ctx, player, owned),
