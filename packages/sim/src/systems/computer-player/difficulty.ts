@@ -54,8 +54,9 @@ export interface ComputerProfile {
   /** How many children, growing up or on the way, the seat keeps at once, as a share of its wives, at
    *  least one; null books every housed wife. */
   readonly birthShare: Share | null;
-  /** The most of a building, by stable content id, that a `place` or `upgrade` entry asks for: a higher
-   *  count is cut to it, and an entry capped at zero is dropped. */
+  /** The most of a building, by stable content id, that a `place`, `upgrade` or `housing` entry asks for
+   *  (the housing lane's homes under the home chain's base tier): a higher count is cut to it, and an entry
+   *  capped at zero is dropped. */
   readonly buildingCaps: Readonly<Record<string, number>>;
   /** Whether the late game's dense tower ring runs as a lane. */
   readonly denseTowerRing: boolean;
@@ -140,7 +141,7 @@ const MEDIUM: ComputerProfile = {
   builders: { opening: 9, grown: 11, late: 12 },
   birthShare: HALF,
   buildingCaps: {
-    home_level_04: 8,
+    home_level_00: 8,
     work_smithy_01: 4,
     work_bakery_01: 4,
     work_brewery: 2,
@@ -176,7 +177,7 @@ const EASY: ComputerProfile = {
   builders: { opening: 6, grown: 8, late: 8 },
   birthShare: THIRD,
   buildingCaps: {
-    home_level_04: 5,
+    home_level_00: 5,
     work_smithy_01: 2,
     work_bakery_01: 2,
     work_brewery: 1,
@@ -241,6 +242,7 @@ function trimEntry(entry: BuildOrderEntry, profile: ComputerProfile): BuildOrder
       return cappedCount(entry, profile.buildingCaps[entry.building]);
     }
     case 'upgrade':
+    case 'housing':
       return cappedCount(entry, profile.buildingCaps[entry.building]);
     case 'towerCoverage':
       return entry.lane === true && !profile.denseTowerRing ? null : entry;

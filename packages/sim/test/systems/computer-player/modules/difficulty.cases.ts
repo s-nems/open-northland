@@ -22,7 +22,10 @@ import { SEAT } from '../support.js';
 function mostOf(order: BuildOrder, building: string): number {
   let most = 0;
   for (const entry of orderSteps(order)) {
-    if ((entry.kind === 'place' || entry.kind === 'upgrade') && entry.building === building) {
+    if (
+      (entry.kind === 'place' || entry.kind === 'upgrade' || entry.kind === 'housing') &&
+      entry.building === building
+    ) {
       most = Math.max(most, entry.count);
     }
   }
@@ -42,7 +45,7 @@ describe('AI difficulty profiles', () => {
   it('stops the lower difficulties earlier and drops what they go without', () => {
     const medium = profileBuildOrder(DEFAULT_BUILD_ORDER, AI_PROFILES.medium);
     expect(mostOf(medium, 'work_smithy_01')).toBe(AI_PROFILES.medium.buildingCaps.work_smithy_01);
-    expect(mostOf(medium, 'home_level_04')).toBe(AI_PROFILES.medium.buildingCaps.home_level_04);
+    expect(mostOf(medium, 'home_level_00')).toBe(AI_PROFILES.medium.buildingCaps.home_level_00);
     expect(orderSteps(medium).some(catapultJoinery)).toBe(true);
     expect(orderSteps(medium).some(denseTowerLane)).toBe(true);
 

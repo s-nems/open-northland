@@ -40,6 +40,7 @@ import {
   stepKey,
 } from './entries.js';
 import { grassBoundEntry, grassReserved } from './grass-reserve.js';
+import { homeTiersOf, housingPick } from './housing.js';
 import { placementSpot } from './placement.js';
 import {
   type DecisionMemo,
@@ -218,27 +219,40 @@ function runBuildOrder(
   for (const lane of earnedOnly ? [] : lanes) {
     if (statusOf(lane.line, lane.step) !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
     if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
-    if (!billSourced(world, ctx, player, lane.entry, madeGoods)) continue;
+    const entry = lane.entry;
+    if (entry.kind !== 'housing' && !billSourced(world, ctx, player, entry, madeGoods)) continue;
     if (siegeOf().attacked) return [];
-    const placed = coverageCommand(
-      world,
-      ctx,
-      terrain,
-      player,
-      owned,
-      anchor,
-      tribe,
-      lane.entry,
-      siegeOf().underFire,
-      reserveGrass,
-    );
+    const placed =
+      entry.kind === 'housing'
+        ? housingCommand(world, ctx, terrain, player, owned, anchor, tribe, entry, siegeOf().underFire, {
+            reserveGrass,
+            made: madeGoods,
+          })
+        : coverageCommand(
+            world,
+            ctx,
+            terrain,
+            player,
+            owned,
+            anchor,
+            tribe,
+            entry,
+            siegeOf().underFire,
+            reserveGrass,
+          );
     searches.searched(lane.line, lane.step, ctx.tick, placed !== null, false);
     if (placed !== null) return started(placed);
   }
-  // The lines keep the sites the lanes leave them, at least one, and count only their own.
+  // The lines keep the sites the coverage lanes leave them, at least one, and count only their own; the
+  // housing lane's site is one of theirs.
   let listSites = sites.length;
-  for (const lane of lanes) listSites -= lane.sites;
-  if (listSites >= Math.max(1, siteCap - lanes.length)) {
+  let reserved = 0;
+  for (const lane of lanes) {
+    if (lane.entry.kind === 'housing') continue;
+    listSites -= lane.sites;
+    reserved++;
+  }
+  if (listSites >= Math.max(1, siteCap - reserved)) {
     if (!earnedSiteOpen(base, profile, sites.length, siteCap)) return [];
     earnedOnly = true;
   }
@@ -303,6 +317,8 @@ function runBuildOrder(
       case 'towerCoverage':
       case 'storeCoverage':
         return null; // a seat with no placement tribe holds here; any other found a spot or was passed over
+      case 'housing':
+        return null; // always a lane, never a line's step
     }
   };
 
@@ -553,6 +569,7 @@ function searchVerdict(
     }
     case 'upgrade':
     case 'collector':
+    case 'housing':
       return ACTS;
   }
 }
@@ -561,13 +578,13 @@ function searchVerdict(
 interface OpenLane {
   readonly line: BuildLineId;
   readonly step: number;
-  readonly entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>;
+  readonly entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' | 'housing' }>;
   readonly sites: number;
 }
 
 /** The lanes the lines have reached, in line priority and step order: every step before each in its line
- *  stands met or passed over. A lane's sites are the open sites of its building or a tier above it,
- *  whichever step placed them. */
+ *  stands met or passed over, and the clock has reached the lane's `fromTick`. A lane's sites are the open
+ *  sites of its building or a tier above it, whichever step placed them. */
 function openLanes(
   world: World,
   ctx: SystemContext,
@@ -576,13 +593,16 @@ function openLanes(
   sites: readonly Entity[],
   passedOver: (line: BuildLine, step: number) => boolean,
 ): OpenLane[] {
-  const index = contentIndex(ctx.content);
   const lanes: OpenLane[] = [];
   for (const line of lines) {
     for (const [step, entry] of line.steps.entries()) {
-      if ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true) {
-        const type = buildingTypeByContentId(ctx.content, entry.building);
-        const chain = type === undefined ? new Set<number>() : tiersAtOrAbove(index, type);
+      if (
+        entry.kind === 'housing' ||
+        ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true)
+      ) {
+        const fromTick = entry.kind === 'housing' ? 0 : (entry.fromTick ?? 0);
+        if (ctx.tick < fromTick) continue;
+        const chain = laneTiers(ctx, entry);
         const own = sites.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
         lanes.push({ line: line.id, step, entry, sites: own });
         continue;
@@ -591,6 +611,46 @@ function openLanes(
     }
   }
   return lanes;
+}
+
+/** The housing lane's next site ({@link housingPick}) as a command, or null when it has none. */
+function housingCommand(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+  tribe: number,
+  entry: Extract<BuildOrderEntry, { kind: 'housing' }>,
+  underFire: EnemyFire,
+  decision: { readonly reserveGrass: boolean; readonly made: () => ReadonlySet<number> },
+): PlayerCommand | null {
+  const pick = housingPick(
+    world,
+    ctx,
+    terrain,
+    player,
+    owned,
+    anchor,
+    tribe,
+    entry,
+    underFire,
+    decision.reserveGrass,
+    decision.made,
+  );
+  if (pick === null) return null;
+  if (pick.kind === 'upgrade')
+    return { kind: 'upgradeBuilding', building: pick.building, target: pick.target };
+  return siteCommand(pick.type, pick.spot, tribe, player);
+}
+
+/** The building types whose sites a lane counts as its own: its building and the tiers above it, or the
+ *  housing lane's whole home chain. */
+function laneTiers(ctx: SystemContext, entry: OpenLane['entry']): ReadonlySet<number> {
+  if (entry.kind === 'housing') return homeTiersOf(ctx.content, entry);
+  const type = buildingTypeByContentId(ctx.content, entry.building);
+  return type === undefined ? new Set() : tiersAtOrAbove(contentIndex(ctx.content), type);
 }
 
 /**

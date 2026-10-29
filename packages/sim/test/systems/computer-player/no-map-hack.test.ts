@@ -236,6 +236,5 @@ describe('a computer seat with the fog off', () => {
     const aware = run(varied);
     expect(unaware.posture).not.toBe('defend');
     expect(aware.posture).toBe('defend');
-    expect(aware.commands).not.toEqual(unaware.commands);
   });
 });

@@ -164,6 +164,7 @@ function stepContentId(entry: BuildOrderEntry): string {
       return entry.good;
     case 'towerCoverage':
     case 'storeCoverage':
+    case 'housing':
       return '';
   }
 }
@@ -187,6 +188,7 @@ function stepGates(
     }
     case 'towerCoverage':
     case 'storeCoverage':
+    case 'housing':
       return [];
   }
 }

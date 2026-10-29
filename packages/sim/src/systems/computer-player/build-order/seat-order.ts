@@ -52,7 +52,7 @@ const STANDARD_PRIORITY = DEFAULT_BUILD_ORDER.priority;
  *  three quarters of the standard reach, twice the pull toward the base, clearing from two thirds of the
  *  standard spread, one lower-tier bakery (owner ruling: two only where there is room), the late copies of
  *  the bigger workshops and homes capped about as the medium seat's, and the economy lines in the standard
- *  order but the tile and marble upgrades and the homes' upgrades ahead of the army, mint and druid lines,
+ *  order but the tile and marble upgrades and the homes' lanes ahead of the army, mint and druid lines,
  *  which add the most buildings. */
 const CRAMPED: ArchetypeTuning = {
   priority: [
@@ -71,7 +71,7 @@ const CRAMPED: ArchetypeTuning = {
   copiesPct: 100,
   copyCaps: {
     work_bakery_00: 1,
-    home_level_04: 8,
+    home_level_00: 8,
     work_bakery_01: 4,
     work_smithy_01: 4,
     work_brewery: 2,
@@ -140,6 +140,7 @@ function matches(match: StepMatch, entry: BuildOrderEntry): boolean {
       return match.buildings.includes(entry.building);
     case 'towerCoverage':
     case 'storeCoverage':
+    case 'housing':
       return false;
   }
 }
@@ -172,7 +173,7 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
 };
 
 /** The lines a phase moves up right behind the opening (authored): from the mid game the army line, from
- *  the late game also the homes line with its warehouse and dense tower lanes. */
+ *  the late game also the homes line with its housing, warehouse and dense tower lanes. */
 const PHASE_RAISES: Readonly<Record<GamePhase, readonly BuildLineId[]>> = {
   opening: [],
   mid: ['military'],
@@ -281,7 +282,7 @@ function shapeLine(line: BuildLine, tuning: ArchetypeTuning, rules: readonly Sid
 /** A placement asking for more than one copy, its count scaled by the tuning's percent, then cut to its
  *  cap. A cap never drops the step: a count already under it stands met the sooner. */
 function copiesOf(entry: BuildOrderEntry, tuning: ArchetypeTuning): BuildOrderEntry {
-  if (entry.kind !== 'place' || entry.count <= 1) return entry;
+  if ((entry.kind !== 'place' && entry.kind !== 'housing') || entry.count <= 1) return entry;
   const scaled = Math.max(1, Math.floor((entry.count * tuning.copiesPct) / 100));
   const count = Math.min(scaled, tuning.copyCaps[entry.building] ?? scaled);
   return count === entry.count ? entry : { ...entry, count };

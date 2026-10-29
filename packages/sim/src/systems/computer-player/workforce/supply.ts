@@ -7,6 +7,7 @@ import type { SystemContext } from '../../context.js';
 import { ownedRoadSites } from '../../roads/site-index.js';
 import { roadConstructionBill } from '../../roads/sites.js';
 import { type SeatStock, seatStockOf } from '../../stores/index.js';
+import { homeTiersOf } from '../build-order/housing.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
   type BuildOrder,
@@ -93,6 +94,7 @@ function deriveLines(
   const named = new Set<number>();
   for (const entry of orderSteps(order)) {
     if (entry.kind === 'collector') addKnown(managed, index.goodTypeBySlug.get(entry.good));
+    else if (entry.kind === 'housing') for (const tier of homeTiersOf(content, entry)) named.add(tier);
     else addKnown(named, index.buildingTypeBySlug.get(entry.building));
   }
   // A placement charges the merged bill of the whole tier chain, so that is the bill a unit measures.

@@ -1,13 +1,10 @@
 import {
   Age,
-  AssistantChildOrder,
   AssistantRecruit,
   Building,
-  ChildOrder,
   Female,
   JobAssignment,
   Marriage,
-  ownerOf,
   Residence,
   Settler,
 } from '../../components/index.js';
@@ -18,12 +15,13 @@ import { isBuilt, ownedBuildings, ownedSettlers } from '../ai-shared/seat-roster
 import { builderJobOf, civilianCount, isAllocatableMan } from '../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../context.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
-import { isAdultSettler, isOnMission, mayMarry } from '../family/eligibility.js';
+import { isAdultSettler, mayMarry } from '../family/eligibility.js';
 import { homeQualityUseFor, householdGoodAllowed } from '../family/home-quality.js';
 import { familiesOf } from '../family/households.js';
 import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import { type ComputerProfile, computerProfileOf, shareOf } from './difficulty.js';
+import { bookedBirths, femaleStockOf } from './female-stock.js';
 import type { ComputerModule } from './index.js';
 import { builderCap } from './workforce/staffing.js';
 
@@ -76,17 +74,9 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     commands.push({ kind: 'assignHouse', entity: woman, house: home.entity });
   }
 
-  // Both breeding counters are absolute re-sets, issued only when the wanted state differs.
-  let femaleStock = 0;
-  for (const e of settlers) {
-    const job = world.get(e, Settler).jobType;
-    // Women, girls and baby girls fill future family slots. Female mission units do not: their job
-    // permanently excludes them from family life, just as it excludes them from `singleWomen` above.
-    if (world.has(e, Female) && !isOnMission(ctx.content, job)) femaleStock++;
-    // A pending non-assistant daughter order still becomes a female; an assistant-booked order is
-    // already accounted inside the counter itself.
-    if (world.tryGet(e, ChildOrder)?.child === 'female' && !world.has(e, AssistantChildOrder)) femaleStock++;
-  }
+  // Both breeding counters are absolute re-sets, issued only when the wanted state differs. An
+  // assistant-booked daughter is already accounted inside the counter itself.
+  const femaleStock = femaleStockOf(world, ctx, settlers);
   const profile = computerProfileOf(world, player);
   const held = idleMenHoldBirths(world, ctx, player, profile);
   const births = birthCounters(
@@ -159,17 +149,6 @@ function minorsOf(world: World, settlers: readonly Entity[]): number {
   let minors = 0;
   for (const e of settlers) if (world.has(e, Age)) minors++;
   return minors;
-}
-
-/** The seat's child orders the assistant booked and a mother still carries, by the child's sex. */
-function bookedBirths(world: World, player: number): { daughters: number; sons: number } {
-  const booked = { daughters: 0, sons: 0 };
-  for (const e of world.query(AssistantChildOrder)) {
-    if (ownerOf(world, e) !== player) continue;
-    if (world.get(e, AssistantChildOrder).sex === 'female') booked.daughters++;
-    else booked.sons++;
-  }
-  return booked;
 }
 
 /** Married to a living spouse - narrower than the family rule's `isMarried`, which also counts a widow

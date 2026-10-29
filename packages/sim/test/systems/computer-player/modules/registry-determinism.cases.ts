@@ -14,7 +14,7 @@ import {
   entityOfBuilding,
   FARM_TYPE,
   FARMER,
-  HOME_TOP_TYPE,
+  HOME_TYPE,
   HQ_TYPE,
   HQ_X,
   HQ_Y,
@@ -87,16 +87,15 @@ describe('the full strategic registry - replay', () => {
     const built = [...sim.world.query(Building)].filter(
       (e) => !sim.world.has(e, UnderConstruction) && sim.world.get(e, Building).buildingType !== HQ_TYPE,
     );
-    // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, three
-    // TOP-tier homes (the tail's further homes name a tier above this content set's chain, so they
-    // skip here), four level-2 bakeries and two breweries (the fixture's small map makes the seat
+    // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, the opening's
+    // three homes (the crew holds no woman, so the housing lane raises nothing), four level-2 bakeries and two breweries (the fixture's small map makes the seat
     // cramped, whose copy caps stop them there), the joinery and the barracks. Every building, the joinery between the wood and the iron included,
     // sits inside the HQ's store circle and both tower circles, so neither coverage entry raises anything.
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
       [
-        HOME_TOP_TYPE,
-        HOME_TOP_TYPE,
-        HOME_TOP_TYPE,
+        HOME_TYPE,
+        HOME_TYPE,
+        HOME_TYPE,
         FARM_TYPE,
         WELL_TYPE,
         MILL_TYPE,

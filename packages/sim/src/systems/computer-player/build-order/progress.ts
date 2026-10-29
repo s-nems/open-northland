@@ -28,6 +28,7 @@ import {
   type StepHold,
 } from './entries.js';
 import { grassScarce } from './grass-reserve.js';
+import { housingShort } from './housing.js';
 import { unservedAnchor } from './placement.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
 
@@ -237,6 +238,11 @@ export function entryStatus(
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
       return seatCovered(world, ctx, player, owned, coverageOf(world, player, entry)) ? 'satisfied' : 'unmet';
+    }
+    case 'housing': {
+      const type = buildingTypeByContentId(ctx.content, entry.building);
+      if (type === undefined) return 'skip';
+      return housingShort(world, ctx, player, owned, entry) ? 'unmet' : 'satisfied';
     }
   }
 }

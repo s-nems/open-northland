@@ -51,7 +51,10 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
       else if (sim.world.get(e, Building).buildingType === hqType) hq = e;
     }
     expect(hq).not.toBeNull(); // the authored headquarters resolved and stayed built
-    expect(sites).toBe(MAX_ACTIVE_CONSTRUCTION_SITES); // the concurrent-construction cap, filled at once
+    // Under the experience gates the opening's first site is the grain farm; the rest of its buildings
+    // wait on discoveries and the homes on food, so the seat need not fill its site cap at once.
+    expect(sites).toBeGreaterThan(0);
+    expect(sites).toBeLessThanOrEqual(MAX_ACTIVE_CONSTRUCTION_SITES);
     // The opening hunt: exactly one man employed on the headquarters' hunter slot, the real join
     // behind it (a hunter trade, a hunter seat on the authored HQ) proven by the seat acting on it.
     const hunters = [...sim.world.query(Settler, JobAssignment)].filter(

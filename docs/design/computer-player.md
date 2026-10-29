@@ -61,7 +61,9 @@ The build order is a set of independent lines (opening, bread, materials, tools,
 clothing, brewery, homes, healing). A step waits for the step before it in its line; lines never wait
 for each other, and a priority table chosen from the strategy decides who takes a free construction
 site. A step whose building is not discovered yet holds its own line while the discovery can still
-come; one that can never come (a map ban, no game to hunt, no deposit) is skipped.
+come; one that can never come (a map ban, no game to hunt, no deposit) is skipped. Homes are not fixed
+steps: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women, girls
+and booked daughters, one home site at a time, upgrading or placing whichever adds a slot cheapest.
 
 The seat plays under the same experience gates as a human (`docs/formats/PROGRESSION.md`); with the
 match's progression toggle off everything is open for both. The first discovery of a trade always

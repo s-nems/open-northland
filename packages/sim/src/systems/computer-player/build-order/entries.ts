@@ -75,13 +75,15 @@ export type BuildOrderEntry =
   /** Keep every owned building inside some tower's or the base's defence circle of `radius` nodes
    *  (default {@link TOWER_DEFENCE_RADIUS_NODES}). Unlike the counted entries it re-arms whenever a later
    *  building lands uncovered, so the tower count is dynamic. A `lane` entry runs beside the lines once
-   *  every counted step before it in its line stands met: it holds one site of its building at a time,
-   *  taken out of the clock's site count, never stalls the steps behind it, and they never wait on it. */
+   *  every counted step before it in its line stands met, and the game clock reaches `fromTick`: it holds
+   *  one site of its building at a time, taken out of the clock's site count, never stalls the steps
+   *  behind it, and they never wait on it. */
   | {
       readonly kind: 'towerCoverage';
       readonly building: string;
       readonly radius?: number;
       readonly lane?: true;
+      readonly fromTick?: number;
     }
   /** The same rule over the seat's stores: every owned building within `radius` nodes of the base or a
    *  warehouse, so goods never travel far to a store. */
@@ -90,10 +92,21 @@ export type BuildOrderEntry =
       readonly building: string;
       readonly radius: number;
       readonly lane?: true;
+      readonly fromTick?: number;
+    }
+  /** Keep the homes' family slots ahead of the seat's women (`./housing.ts`): always a lane, with one home
+   *  site at a time. Unlike the coverage lanes its site is one of the clock's sites, so it reserves none
+   *  while it waits. `building` is the home chain's base tier: the lane
+   *  raises and upgrades homes of its tiers, at most `count` of them, and a cap under its id cuts that. */
+  | {
+      readonly kind: 'housing';
+      readonly building: string;
+      readonly count: number;
     };
 
 /** Whether `entry` is a lane running beside the lines rather than a step of its line. */
 export function isLaneEntry(entry: BuildOrderEntry): boolean {
+  if (entry.kind === 'housing') return true;
   return (entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true;
 }
 
@@ -113,6 +126,10 @@ const HIVE_REACH_NODES = 18;
 /** How far a store's coverage reaches, in world-metric nodes (authored): well over a tower's, since a
  *  warehouse serves carriers rather than bows, and the base is a store too. */
 const STORE_COVERAGE_RADIUS_NODES = 32;
+
+/** The most homes the housing lane raises (authored): the twelve homes the fixed homes steps used to end
+ *  on. Twelve top-tier homes hold sixty families. */
+const HOUSING_HOMES_CAP = 12;
 
 /** The two deposits a joinery or a smithy draws on, in the order its recipes weigh them. */
 const WOOD_AND_IRON: readonly PlacementAffinity[] = [
@@ -276,9 +293,8 @@ export function orderSteps(order: BuildOrder): readonly BuildOrderEntry[] {
  * Authored: the build order is a plan, not extracted data. A placement charges the merged bill of its
  * whole tier chain, so the executor holds a line's step until every good of that bill is gathered, made
  * by a building the seat owns, or in store; within a line, the steps keep the order the materials and
- * the workshops they feed come in. Its `_01` workshop and `home_level_04` steps build straight to that
- * tier because the extracted `jobEnablesHouse` rows enable each tier as a separately placeable house type
- * charging its own non-cumulative bill. The weapon shops have a line of their own rather than a place in
+ * the workshops they feed come in. Its `_01` workshop steps build straight to that tier because the
+ * extracted `jobEnablesHouse` rows enable each tier as a separately placeable house type. The weapon shops have a line of their own rather than a place in
  * a late tail, since the garrison rung publishes only the classes it can arm right now.
  */
 export const DEFAULT_BUILD_ORDER: BuildOrder = {
@@ -306,7 +322,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // Owner ruling: a second stone gatherer within the first 10-15 game minutes, since the roads and
         // the mason eat the most stone.
         { kind: 'collector', good: 'stone', count: 2 },
-        { kind: 'upgrade', building: 'home_level_02', count: 3 },
+        // Owner ruling: the homes grow with the women, since their family slots bound the daughters. The
+        // lane opens behind the pottery, school and mason, so the first upgrades find bricks and pillars.
+        { kind: 'housing', building: 'home_level_00', count: HOUSING_HOMES_CAP },
       ],
     },
     {
@@ -365,21 +383,26 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     },
     {
       id: 'homes',
-      // The opening's homes, raised further once tiles and marble come in; the line runs behind the
-      // workshops, which its upgrades would otherwise draw the tiles and marble from.
       steps: [
-        { kind: 'upgrade', building: 'home_level_03', count: 3 },
-        { kind: 'upgrade', building: 'home_level_04', count: 3 },
-        { kind: 'place', building: 'home_level_04', count: 5 },
-        { kind: 'place', building: 'home_level_04', count: 8 },
-        // From here the warehouses and the denser tower ring run as lanes beside the lines, one site each out
+        // From the late game the warehouses and the denser tower ring run as lanes, one site each out
         // of the four the late game opens (authored): a warehouse wherever a workshop or a work flag stands
         // beyond every store's reach, so the smithies unload nearby and the ore piled at the mines gets
         // carried in; a tower wherever the ring leaves a building out. A filled settlement with no room for
         // a tower holds the lane, not the line.
-        { kind: 'storeCoverage', building: 'stock_02', radius: STORE_COVERAGE_RADIUS_NODES, lane: true },
-        { kind: 'towerCoverage', building: 'tower_01', radius: DENSE_TOWER_RADIUS_NODES, lane: true },
-        { kind: 'place', building: 'home_level_04', count: 12 },
+        {
+          kind: 'storeCoverage',
+          building: 'stock_02',
+          radius: STORE_COVERAGE_RADIUS_NODES,
+          lane: true,
+          fromTick: LATE_GAME_FROM_TICKS,
+        },
+        {
+          kind: 'towerCoverage',
+          building: 'tower_01',
+          radius: DENSE_TOWER_RADIUS_NODES,
+          lane: true,
+          fromTick: LATE_GAME_FROM_TICKS,
+        },
       ],
     },
     {
@@ -597,7 +620,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
   // Owner ruling: the economy first. The opening, so the farm, the first homes and the material workshops
   // take the first sites; then bread and drink, clothing (boots speed every trade up), the tools and the
   // first smithy steps, and only then the tile and marble tiers, which are needed a bit later; the army
-  // the garrison waits on, the mint, the herb hut and druids, and the homes' upgrades last.
+  // the garrison waits on, the mint, the herb hut and druids. The homes line holds only lanes.
   priority: [
     'opening',
     'bread',
