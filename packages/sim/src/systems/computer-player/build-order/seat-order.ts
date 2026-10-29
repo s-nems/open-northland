@@ -15,6 +15,7 @@ import {
   type BuildOrder,
   type BuildOrderEntry,
   DEFAULT_BUILD_ORDER,
+  EARLY_SECOND_TAILOR,
   HQ_PULL_DIVISOR_NODES,
   type SitePace,
   sitePace,
@@ -49,23 +50,27 @@ const STANDARD_PRIORITY = DEFAULT_BUILD_ORDER.priority;
 
 /** Owner ruling: a cramped seat (mroczny_las) has little room and digs the forest out. Authored figures:
  *  three quarters of the standard reach, twice the pull toward the base, clearing from two thirds of the
- *  standard spread, the late copies of the bigger workshops and homes capped about as the medium seat's,
- *  and the tile and marble upgrades and the homes' upgrades ahead of the lines that add more buildings. */
+ *  standard spread, one lower-tier bakery (owner ruling: two only where there is room), the late copies of
+ *  the bigger workshops and homes capped about as the medium seat's, and the economy lines in the standard
+ *  order but the tile and marble upgrades and the homes' upgrades ahead of the army, mint and druid lines,
+ *  which add the most buildings. */
 const CRAMPED: ArchetypeTuning = {
   priority: [
     'opening',
-    'materials',
     'bread',
-    'homes',
+    'brewery',
+    'clothing',
     'tools',
     'weapons',
+    'materials',
+    'homes',
     'military',
+    'coins',
     'healing',
-    'clothing',
-    'brewery',
   ],
   copiesPct: 100,
   copyCaps: {
+    work_bakery_00: 1,
     home_level_04: 8,
     work_bakery_01: 4,
     work_smithy_01: 4,
@@ -114,13 +119,15 @@ export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTunin
 };
 
 /** The steps a side rule names: placements and upgrades of these buildings, or of a building serving one
- *  of them (a well's `unlessWithin`), and collectors of these goods. */
+ *  of them (a well's `unlessWithin`), collectors of these goods, and the named steps themselves. */
 interface StepMatch {
   readonly buildings: readonly string[];
   readonly collectors: readonly string[];
+  readonly steps?: readonly BuildOrderEntry[];
 }
 
 function matches(match: StepMatch, entry: BuildOrderEntry): boolean {
+  if (match.steps?.includes(entry) === true) return true;
   switch (entry.kind) {
     case 'collector':
       return match.collectors.includes(entry.good);
@@ -148,18 +155,17 @@ const GOLD_LINE: StepMatch = {
   collectors: ['mushroom', 'gold'],
 };
 
-/** What each side changes (authored): the steps it drops, the steps only it keeps, and the lines it moves
- *  up right behind another. `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps the
- *  grass reserve rules as they are (`./grass-reserve.ts`). */
+/** What each side changes (authored): the steps it drops and the steps only it keeps. `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps the
+ *  grass reserve rules as they are (`./grass-reserve.ts`). The clothing line already runs ahead of the
+ *  weapons, so a seat arming from tunics only adds its early second tailor. */
 interface SideRule {
   readonly drops?: StepMatch;
   readonly keeps?: StepMatch;
-  readonly raises?: { readonly lines: readonly BuildLineId[]; readonly behind: BuildLineId };
 }
 
 const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
   ironArms: {},
-  naturalArms: { drops: IRON_ARMS, raises: { lines: ['clothing'], behind: 'weapons' } },
+  naturalArms: { drops: IRON_ARMS, keeps: { buildings: [], collectors: [], steps: [EARLY_SECOND_TAILOR] } },
   goldLine: { keeps: GOLD_LINE },
   fishing: {},
   herbs: {},
@@ -218,7 +224,7 @@ const shapedOrders = new WeakMap<BuildOrder, Map<string, BuildOrder>>();
 
 /**
  * `order` as `shape` plays it: the archetype's priority, copies and leading steps, each side's dropped and
- * kept steps and raised lines, then the phase's and the defence's raised lines. Memoized per order and
+ * kept steps, then the phase's and the defence's raised lines. Memoized per order and
  * shape, so the caches keyed on an order stay shared; the steps depend only on the archetype and sides,
  * which a seat brief keeps steady, so a line's step keys stay put while the phase and posture move
  * priorities.
@@ -236,8 +242,6 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   const rules = sideRules(shape.sides);
   const lines = order.lines.map((line) => shapeLine(line, tuning, rules));
   let priority = tuning === STANDARD ? order.priority : tuning.priority;
-  for (const rule of rules)
-    if (rule.raises !== undefined) priority = raised(priority, rule.raises.lines, rule.raises.behind);
   priority = raised(priority, PHASE_RAISES[shape.phase], 'opening');
   if (shape.defenceFirst) priority = raised(priority, DEFENCE_LINES, 'opening');
   const shaped: BuildOrder =

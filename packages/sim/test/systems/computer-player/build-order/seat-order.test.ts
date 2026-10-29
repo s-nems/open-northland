@@ -19,6 +19,7 @@ import {
   DEFAULT_BUILD_ORDER,
   DEFENCE_TOWER_RADIUS_PCT,
   defenceFirst,
+  EARLY_SECOND_TAILOR,
   linesByPriority,
   orderSteps,
   PLAN_TUNING,
@@ -28,7 +29,9 @@ import {
 } from '../../../../src/systems/computer-player/index.js';
 import {
   aiSim,
+  BAKERY_TYPE,
   BARRACKS_TYPE,
+  completeSites,
   ctxOf,
   HOME_TYPE,
   HQ_X,
@@ -39,6 +42,7 @@ import {
   placeResources,
   RESOURCE_SPOTS,
   SEAT,
+  VIKING,
 } from '../support.js';
 
 const BUILDING_UP: MilitaryStrategyState = {
@@ -122,9 +126,50 @@ describe('the seat strategy shapes the build order', () => {
     const natural = shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides: ['naturalArms'] });
     expect(ironFree(natural)).toBe(true);
     expect(orderSteps(natural).some((e) => e.kind === 'place' && e.building === 'work_armory_00')).toBe(true);
-    // The tunics come up beside the armory's weapons.
+    // The tunics come before the armory's weapons, from a second tailor only the iron-poor seat raises early.
     const ids = linesByPriority(natural).map((line) => line.id);
-    expect(ids.indexOf('clothing')).toBe(ids.indexOf('weapons') + 1);
+    expect(ids.indexOf('clothing')).toBeLessThan(ids.indexOf('weapons'));
+    expect(orderSteps(natural)).toContain(EARLY_SECOND_TAILOR);
+    const ironRich = shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides: ['ironArms'] });
+    expect(orderSteps(ironRich)).not.toContain(EARLY_SECOND_TAILOR);
+  });
+
+  it('puts up the second bakery at once only where the seat has room', () => {
+    const shape = { sides: ECONOMIC_SIDES, phase: 'opening', defenceFirst: false } as const;
+    const lowerBakeries = (order: BuildOrder) =>
+      orderSteps(order).flatMap((e) =>
+        e.kind === 'place' && e.building === 'work_bakery_00' ? [e.count] : [],
+      );
+    expect(lowerBakeries(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, archetype: 'standard' }))).toEqual([
+      1, 2,
+    ]);
+    expect(lowerBakeries(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, archetype: 'cramped' }))).toEqual([
+      1, 1,
+    ]);
+  });
+
+  it('holds a step until the building it waits on stands, and passes a hold it can never meet', () => {
+    const waits = (building: string) =>
+      oneLine([
+        { kind: 'place', building: 'home_level_00', count: 1, holdUntil: { kind: 'built', building } },
+      ]);
+    const sim = seatWith({ archetype: 'standard' });
+    expect(firstCommand(sim, waits('work_bakery_00'))).toBeUndefined();
+    // A rising site does not count.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.step();
+    expect(firstCommand(sim, waits('work_bakery_00'))).toBeUndefined();
+    completeSites(sim);
+    expect(firstCommand(sim, waits('work_bakery_00'))).toMatchObject({ buildingType: HOME_TYPE });
+    expect(firstCommand(seatWith({}), waits('no_such_building'))).toMatchObject({ buildingType: HOME_TYPE });
   });
 
   it('keeps a cramped seat within a tighter reach of its buildings', () => {

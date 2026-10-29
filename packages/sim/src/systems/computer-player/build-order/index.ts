@@ -48,6 +48,7 @@ import {
   entryStatus,
   type LineStatuses,
   lineStatuses,
+  stepHeld,
   upgradeCandidate,
 } from './progress.js';
 import { seatBuildOrder, seatSitePace } from './seat-order.js';
@@ -94,7 +95,8 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * a line never waits for another. A free construction site goes to the first line with a ready step in
  * {@link turnOrder}, the order's priority within each turn, one command a decision. A placed site meets
  * its step at once, so up to the clock's {@link sitePace} sites go up side by side, each line within its
- * lookahead of its own oldest unfinished step. A lane step a line has reached runs beside the lines
+ * lookahead of its own oldest unfinished step, and {@link EARNED_WORKSHOP_EXTRA_SITES} more for an earned
+ * workshop. A lane step a line has reached runs beside the lines
  * ({@link openLanes}): it takes one of those sites for itself and leaves the lines the rest, so a tower
  * ring with no room left stalls nothing.
  * An unmet step with no legal action stalls its line rather than being skipped, so no later site of the
@@ -106,7 +108,8 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. A step whose building
  * the seat has not discovered yet holds its line too, while the technology module earns it, so a later
  * step never runs ahead of the workshop it feeds on; one whose discovery can never come is skipped
- * ({@link entryStatus}), and a seat with no technology table, whose lock can only be a ban, passes it.
+ * ({@link entryStatus}), and a seat with no technology table, whose lock can only be a ban, passes it. A
+ * step's `holdUntil` holds its line the same way until the building stands or the good is discovered.
  * The exceptions are passed over instead ({@link Verdict}): a serving placement with no room beside what
  * it serves, a grass building other than an `essential` one with no grass left in reach, and a coverage
  * step with no target it can cover. Builders are never pinned to a site; the builder drive picks its own.
@@ -140,9 +143,11 @@ function runBuildOrder(
   const siteCap =
     base === null ? BASELESS_CONSTRUCTION_SITES : seatSitePace(world, player, profile, ctx.tick).sites;
   const sites = constructionSites(world, ctx, owned);
-  if (sites.length >= siteCap) return [];
+  // With the pace's sites taken, only an earned workshop may still go up, on the one site kept for it.
+  let earnedOnly = sites.length >= siteCap;
+  if (earnedOnly && !earnedSiteOpen(base, profile, sites.length, siteCap)) return [];
   const carrier = aiControlEntity(world, player);
-  if (base !== null && waitsOnFreeSite(world, carrier, profile, ctx.tick)) return [];
+  if (!earnedOnly && base !== null && waitsOnFreeSite(world, carrier, profile, ctx.tick)) return [];
   const started = (command: PlayerCommand): readonly PlayerCommand[] => {
     if (carrier !== null && world.has(carrier, BuildOrderPause)) world.remove(carrier, BuildOrderPause);
     return [command];
@@ -169,6 +174,7 @@ function runBuildOrder(
   let made: ReadonlySet<number> | undefined;
   const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
   const locked = (entry: BuildOrderEntry): boolean => stepLocked(world, ctx, player, owned, tribe, entry);
+  const held = (entry: BuildOrderEntry): boolean => stepHeld(world, ctx, player, owned, entry, memo);
   // A locked step holds its line while the technology module earns its discovery; with nothing gated
   // for the seat (no technology table) it can only be a ban, and is passed over.
   const lockHolds = technologyReach(world, ctx, player, memo) !== null;
@@ -205,10 +211,11 @@ function runBuildOrder(
   const lanes = openLanes(world, ctx, lines, statuses, sites, (line, step) => {
     const entry = line.steps[step];
     if (entry === undefined) return true;
+    if (held(entry)) return false;
     if (locked(entry)) return !lockHolds;
     return billSourced(world, ctx, player, entry, madeGoods) && verdictOf(line, step).kind === 'pass';
   });
-  for (const lane of lanes) {
+  for (const lane of earnedOnly ? [] : lanes) {
     if (statusOf(lane.line, lane.step) !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
     if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
     if (!billSourced(world, ctx, player, lane.entry, madeGoods)) continue;
@@ -231,7 +238,10 @@ function runBuildOrder(
   // The lines keep the sites the lanes leave them, at least one, and count only their own.
   let listSites = sites.length;
   for (const lane of lanes) listSites -= lane.sites;
-  if (listSites >= Math.max(1, siteCap - lanes.length)) return [];
+  if (listSites >= Math.max(1, siteCap - lanes.length)) {
+    if (!earnedSiteOpen(base, profile, sites.length, siteCap)) return [];
+    earnedOnly = true;
+  }
 
   const firstUnmet = (line: BuildLine): number =>
     line.steps.findIndex((entry, step) => !isLaneEntry(entry) && statusOf(line.id, step) === 'unmet');
@@ -301,6 +311,7 @@ function runBuildOrder(
   const lineCommand = (line: BuildLine): PlayerCommand | null => {
     for (const [step, entry] of line.steps.entries()) {
       if (isLaneEntry(entry) || statusOf(line.id, step) !== 'unmet') continue;
+      if (held(entry)) return null;
       if (locked(entry)) {
         if (lockHolds) return null;
         continue;
@@ -325,7 +336,8 @@ function runBuildOrder(
     if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
   const gated = lockHolds && tribe !== undefined ? technologyTable(ctx.content, tribe) : null;
   const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated);
-  for (const line of byTurn) {
+  for (const { line, turn } of byTurn) {
+    if (earnedOnly && turn !== TURN.earned) continue;
     const command = lineCommand(line);
     if (command !== null) return started(command);
   }
@@ -337,8 +349,8 @@ function runBuildOrder(
  *  kind it lacks, no rising site, a site of its own still rising. */
 const TURN = { earned: 0, newKind: 1, more: 2, rising: 3 } as const;
 
-/** `lines`, stable in priority order, by {@link TURN}. `gated` holds the seat's technology table while its
- *  progression gates apply. */
+/** `lines`, stable in priority order, by {@link TURN}, each with its turn. `gated` holds the seat's
+ *  technology table while its progression gates apply. */
 function turnOrder(
   world: World,
   ctx: SystemContext,
@@ -348,7 +360,7 @@ function turnOrder(
   statusOf: (line: BuildLineId, step: number) => EntryStatus | undefined,
   memo: DecisionMemo,
   gated: TechnologyTable | null,
-): BuildLine[] {
+): { readonly line: BuildLine; readonly turn: number }[] {
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
   const ownedTypes = new Set(owned.map((e) => world.get(e, Building).buildingType));
   const rank = (line: BuildLine): number => {
@@ -371,8 +383,24 @@ function turnOrder(
     for (const kind of kinds) if (ownedTypes.has(kind)) return TURN.more;
     return earnedWorkshop(gated, type) ? TURN.earned : TURN.newKind;
   };
-  const ranks = new Map(lines.map((line) => [line.id, rank(line)]));
-  return [...lines].sort((a, b) => (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0));
+  return lines.map((line) => ({ line, turn: rank(line) })).sort((a, b) => a.turn - b.turn);
+}
+
+/** Construction sites over the pace kept for a workshop whose discovery the seat earned (authored): owner
+ *  ruling, once a trade is discovered its building goes up promptly; on magiczny_las the bakery waited up to
+ *  six game minutes after its discovery while the pace's sites were taken. */
+export const EARNED_WORKSHOP_EXTRA_SITES = 1;
+
+/** Whether a seat at `sites` open sites of its pace's `siteCap` may still open one for an earned workshop:
+ *  only with a base and a profile that never pauses between sites, since the slower profiles' pace is their
+ *  throttle. */
+function earnedSiteOpen(
+  base: Entity | null,
+  profile: ComputerProfile,
+  sites: number,
+  siteCap: number,
+): boolean {
+  return base !== null && profile.freeSitePauseTicks === 0 && sites < siteCap + EARNED_WORKSHOP_EXTRA_SITES;
 }
 
 /**

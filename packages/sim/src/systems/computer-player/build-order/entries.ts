@@ -17,6 +17,14 @@ export type PlacementAffinity =
   | { readonly kind: 'front' }
   | { readonly kind: 'shore' };
 
+/** What a placement waits for while its line holds on it: a built building of the id (at that tier or
+ *  above, a rising site not counting), or a good the seat has discovered how to make. A hold the seat can
+ *  never meet, a building or good missing from the content or a discovery it can never make, lets the
+ *  step act (`./progress.ts`). */
+export type StepHold =
+  | { readonly kind: 'built'; readonly building: string }
+  | { readonly kind: 'good'; readonly good: string };
+
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
    *  `ground: 'plantable'` puts the footprint on sowable ground, or where none fits, beside free sowable
@@ -30,7 +38,8 @@ export type BuildOrderEntry =
    *  the seat has grass enough (`./grass-reserve.ts`). An entry of a grass building with no grass left
    *  for it is passed over unless `essential`, which holds its line until it stands. `belowTier` stops the
    *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
-   *  joineries holding that role (`../joinery-role.ts`). */
+   *  joineries holding that role (`../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
+   *  acting on nothing, until its {@link StepHold} is met. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -43,6 +52,7 @@ export type BuildOrderEntry =
       readonly essential?: true;
       readonly belowTier?: string;
       readonly role?: JoineryRole;
+      readonly holdUntil?: StepHold;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. */
@@ -143,7 +153,13 @@ function breweryWithHiveAndWell(count: number, wellCap: number): BuildOrderEntry
   ];
 }
 
-/** Druid huts on the big healing potion up to `count`, beside the ones standing. */
+/** The seat makes the big healing potion. */
+const BIG_POTION: StepHold = { kind: 'good', good: 'potion_heal_big' };
+
+/** Owner ruling: the herb hut never goes up before the seat's first bakery stands. */
+const AFTER_FIRST_BAKERY: StepHold = { kind: 'built', building: 'work_bakery_00' };
+
+/** Druid huts on the big healing potion up to `count`, beside the ones standing, once the seat makes it. */
 function druidHuts(count: number): BuildOrderEntry {
   return {
     kind: 'place',
@@ -151,8 +167,29 @@ function druidHuts(count: number): BuildOrderEntry {
     count,
     near: [{ kind: 'building', id: 'work_druid_01' }],
     needsResources: ['mushroom', 'gold'],
+    holdUntil: BIG_POTION,
   };
 }
+
+/** Mints up to `count`, by the gold. */
+function mints(count: number): Extract<BuildOrderEntry, { kind: 'place' }> {
+  return {
+    kind: 'place',
+    building: 'work_coin_mint',
+    count,
+    near: [{ kind: 'resource', good: 'gold' }],
+    needsResources: ['gold'],
+  };
+}
+
+/** Owner ruling: an iron-poor seat arms with tunics and gets its second tailor right after the first; an
+ *  iron-rich one sews leather and boots at one tailor until the upper tier stands (`./seat-order.ts`). */
+export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
+  kind: 'place',
+  building: 'work_sewery_00',
+  count: 2,
+  near: [{ kind: 'building', id: 'work_sewery_00' }],
+};
 
 /** The grain farm. Every bakery, brewery and animal farm downstream waits on its grain, so each of their
  *  lines opens on it, met by whichever line raised it, and holds until it stands. */
@@ -171,6 +208,10 @@ export const IRON_CLIMB_FROM_TICKS = minutesToTicks(15);
 /** Owner ruling: the mushroom gatherer who opens the herb hut starts in game minute 25-40. */
 export const MUSHROOMS_FROM_TICKS = minutesToTicks(25);
 
+/** The gold gatherer who earns the coiner starts with the iron climb (authored): the mint's bill waits on
+ *  the tile and marble tiers anyway, which stand around then on magiczny_las. */
+export const GOLD_FROM_TICKS = IRON_CLIMB_FROM_TICKS;
+
 /** The build order's independent lines (authored). Each is an ordered list of steps: a step waits for the
  *  step before it in its line, never for another line. */
 export type BuildLineId =
@@ -183,7 +224,8 @@ export type BuildLineId =
   | 'tools'
   | 'weapons'
   | 'military'
-  | 'healing';
+  | 'healing'
+  | 'coins';
 
 export interface BuildLine {
   readonly id: BuildLineId;
@@ -277,11 +319,12 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           count: 1,
           near: [{ kind: 'building', id: 'work_farm_00' }],
         },
-        // Bread is the food the seat runs short of first, so the second bakery follows the first at once.
+        // Owner ruling: bread is the food the seat runs short of first, and little food means few children,
+        // so one bakery follows the mill at once and its well right after.
         {
           kind: 'place',
           building: 'work_bakery_00',
-          count: 2,
+          count: 1,
           near: [{ kind: 'building', id: 'work_mill_00' }],
         },
         {
@@ -293,11 +336,19 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
             { kind: 'building', id: 'work_bakery_00' },
           ],
         },
-        { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
+        // Owner ruling: a second bakery at once where the seat has room; a cramped seat caps this at one
+        // (`./seat-order.ts`), so its next bakery waits for the upper tier.
+        {
+          kind: 'place',
+          building: 'work_bakery_00',
+          count: 2,
+          near: [{ kind: 'building', id: 'work_mill_00' }],
+        },
+        { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
         {
           kind: 'place',
           building: 'work_bakery_01',
-          count: 4,
+          count: 3,
           near: [{ kind: 'building', id: 'work_mill_00' }],
         },
         // Every bakery drinks water like the brewery: one standing beyond a well's reach gets a well
@@ -306,7 +357,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         {
           kind: 'place',
           building: 'work_bakery_01',
-          count: 5,
+          count: 4,
           near: [{ kind: 'building', id: 'work_mill_00' }],
         },
         wellBeside('work_bakery_00', 14),
@@ -333,7 +384,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     },
     {
       id: 'materials',
-      // Tiles and marble come only from these tiers, and homes, the armory and the bakeries all wait on them.
+      // Tiles and marble come only from these tiers, and homes, the armory, the upper bakeries and druids and
+      // the mint all wait on them.
       steps: [
         { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
         { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
@@ -368,6 +420,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           ground: 'plantable',
           needsResources: ['mushroom', 'gold'],
           onlyWhen: 'grassScarce',
+          holdUntil: AFTER_FIRST_BAKERY,
         },
         // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
         // it otherwise.
@@ -400,6 +453,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           count: 1,
           near: [{ kind: 'building', id: 'work_animal_farm' }],
         },
+        EARLY_SECOND_TAILOR,
         { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
         // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
         {
@@ -494,8 +548,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'building', id: 'work_well_00' }],
           ground: 'plantable',
           needsResources: ['mushroom', 'gold'],
+          holdUntil: AFTER_FIRST_BAKERY,
         },
-        { kind: 'collector', good: 'gold' },
         // The lower tier first: the small food potion its upper tier wants is learned there.
         {
           kind: 'place',
@@ -505,23 +559,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           needsResources: ['mushroom', 'gold'],
         },
         { kind: 'upgrade', building: 'work_druid_01', count: 1 },
-        {
-          kind: 'place',
-          building: 'work_druid_01',
-          count: 2,
-          near: [{ kind: 'building', id: 'work_herb_hut' }],
-          needsResources: ['mushroom', 'gold'],
-        },
         // The druids brew with water: each druid step is followed by a well beside the hut with none in
         // reach.
         wellBeside('work_druid_01', 5),
-        {
-          kind: 'place',
-          building: 'work_coin_mint',
-          count: 2,
-          near: [{ kind: 'resource', good: 'gold' }],
-          needsResources: ['gold'],
-        },
         // Beside the barracks: the temple stands with the army it blesses, not on a front of its own.
         {
           kind: 'place',
@@ -530,39 +570,45 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'building', id: 'barracks' }],
           needsResources: ['mushroom', 'gold'],
         },
-        // The strength-amulet mint, and two more druid huts on the big healing potion with a mushroom
-        // gatherer to feed them.
-        {
-          kind: 'place',
-          building: 'work_coin_mint',
-          count: 3,
-          near: [{ kind: 'resource', good: 'gold' }],
-          needsResources: ['gold'],
-        },
+        // Owner ruling: one druid until he has learned the big healing potion; the huts after him make only
+        // big potions, with a second mushroom gatherer to feed them.
         { kind: 'collector', good: 'mushroom', count: 2 },
-        druidHuts(4),
+        druidHuts(2),
         wellBeside('work_druid_01', 10),
-        druidHuts(6),
+        druidHuts(4),
         wellBeside('work_druid_01', 13),
-        druidHuts(8),
+        druidHuts(6),
         wellBeside('work_druid_01', 17),
       ],
     },
+    {
+      id: 'coins',
+      // Owner ruling: one mint early enough to earn experience, since the coiner learns the amulets the
+      // big potion also wants and the druids pay in coins; never two at once as the first. More come once
+      // the upper druid stands, the third, for the strength amulets, once the big potion is made.
+      steps: [
+        { kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS },
+        mints(1),
+        { ...mints(2), holdUntil: { kind: 'built', building: 'work_druid_01' } },
+        { ...mints(3), holdUntil: BIG_POTION },
+      ],
+    },
   ],
-  // The opening first, so the farm, the first homes and the material workshops take the first sites; then
-  // bread, the materials' upgrades, the tools, weapons and army the garrison waits on, the herb hut and
-  // the druids the mushroom gatherer opens (a turn before clothing, so the druid is not left waiting on
-  // the last free site), clothing and drink, and the homes' upgrades.
+  // Owner ruling: the economy first. The opening, so the farm, the first homes and the material workshops
+  // take the first sites; then bread and drink, clothing (boots speed every trade up), the tools and the
+  // first smithy steps, and only then the tile and marble tiers, which are needed a bit later; the army
+  // the garrison waits on, the mint, the herb hut and druids, and the homes' upgrades last.
   priority: [
     'opening',
     'bread',
-    'materials',
+    'brewery',
+    'clothing',
     'tools',
     'weapons',
+    'materials',
     'military',
+    'coins',
     'healing',
-    'clothing',
-    'brewery',
     'homes',
   ],
 };

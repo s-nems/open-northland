@@ -1,5 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, UnderConstruction, Upgrading } from '../../../components/index.js';
+import { Building, playerPlacementTribes, UnderConstruction, Upgrading } from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -13,6 +13,7 @@ import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
+import { goodEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource, knownResourceTest } from '../live-resources.js';
@@ -24,6 +25,7 @@ import {
   type BuildOrderEntry,
   isLaneEntry,
   linesByPriority,
+  type StepHold,
 } from './entries.js';
 import { grassScarce } from './grass-reserve.js';
 import { unservedAnchor } from './placement.js';
@@ -235,6 +237,51 @@ export function entryStatus(
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
       return seatCovered(world, ctx, player, owned, coverageOf(world, player, entry)) ? 'satisfied' : 'unmet';
+    }
+  }
+}
+
+/** Whether an unmet placement still holds its line on its `holdUntil` ({@link StepHold}): the seat has no
+ *  standing building of the id at that tier or above, or has not discovered the good, while it still could.
+ *  `owned` is the seat's {@link ownedBuildings} list. */
+export function stepHeld(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  entry: BuildOrderEntry,
+  memo: DecisionMemo,
+): boolean {
+  if (entry.kind !== 'place' || entry.holdUntil === undefined) return false;
+  return holdOpen(world, ctx, player, owned, entry.holdUntil, memo);
+}
+
+function holdOpen(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  hold: StepHold,
+  memo: DecisionMemo,
+): boolean {
+  const reach = technologyReach(world, ctx, player, memo);
+  switch (hold.kind) {
+    case 'built': {
+      const type = buildingTypeByContentId(ctx.content, hold.building);
+      if (type === undefined) return false;
+      const counted = countedTiers(ctx.content, type, undefined);
+      for (const e of owned) {
+        if (!counted.has(world.get(e, Building).buildingType)) continue;
+        if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
+      }
+      return reach?.house(type.typeId) !== false;
+    }
+    case 'good': {
+      const good = goodTypeByContentId(ctx.content, hold.good);
+      const tribe = playerPlacementTribes(world, player)?.[0];
+      if (good === undefined || tribe === undefined) return false;
+      if (goodEnabled(world, ctx, player, tribe, good.typeId)) return false;
+      return reach?.target('good', good.typeId) !== false;
     }
   }
 }

@@ -152,30 +152,29 @@ describe('build-order module (houseBuild)', () => {
     }
     // This content stops short of the pottery, the mason hut and the homes line's tiers, so those steps
     // skip and the homes line reaches its lanes at once. Every line raises its first new kind of building
-    // in priority order (opening, bread, tools, the tower lane over the joinery out by the wood and iron,
-    // the joinery's upper tier, military, brewery, its well) before any line adds another of a kind the
-    // seat has: the opening's homes, then the bread line's second bakery, its upgrades and level-2
-    // bakeries, and the brewery line's further breweries, with the opening's homes upgraded in between.
-    // The weapons line holds at its iron gatherer, whose clock has not come, and holds no other line.
+    // in priority order (opening, bread with its first bakery's well, brewery, tools, the tower lane over
+    // the joinery out by the wood and iron, the joinery's upper tier, military) before any line adds
+    // another of a kind the seat has: the opening's homes, then the bread line's second bakery, its upgrade
+    // and level-2 bakeries, and the brewery line's further breweries, with the opening's homes upgraded in
+    // between. The weapons line holds at its iron gatherer, whose clock has not come, and holds no other line.
     const place = (type: number): string => `place ${type}`;
     const upgrade = (type: number): string => `upgrade ${type}`;
     expect(walk).toEqual([
       place(HOME_TYPE),
       place(MILL_TYPE),
       place(BAKERY_TYPE),
+      place(WELL_TYPE),
+      place(BREWERY_TYPE),
       place(JOINERY_00_TYPE),
       place(TOWER_TYPE),
       upgrade(JOINERY_TYPE),
       place(BARRACKS_TYPE),
-      place(BREWERY_TYPE),
-      place(WELL_TYPE),
       place(HOME_TYPE),
       place(HOME_TYPE),
       upgrade(HOME_TOP_TYPE),
       upgrade(HOME_TOP_TYPE),
       upgrade(HOME_TOP_TYPE),
       place(BAKERY_TYPE),
-      upgrade(BAKERY_TOP_TYPE),
       upgrade(BAKERY_TOP_TYPE),
       place(BAKERY_TOP_TYPE),
       place(BAKERY_TOP_TYPE),
@@ -1007,6 +1006,35 @@ describe('build order - independent lines', () => {
     expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: HOME_TYPE });
     discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
     expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('opens one site over the pace for a workshop whose discovery the seat earned', () => {
+    const content = technologyContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    for (const x of [HQ_X - 10, HQ_X + 10]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    }
+    sim.step();
+    const order = twoLines([MILL_STEP], [{ ...HOME_STEP, count: 5 }]);
+    // The opening's two sites are taken: nothing else goes up, the mill not yet earned.
+    expect(decide(sim, order, 0, content)).toBeUndefined();
+    discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
+    const mill = decide(sim, order, 0, content);
+    expect(mill).toMatchObject({ buildingType: MILL_TYPE });
+    if (mill === undefined) return;
+    sim.enqueueSetup(mill);
+    sim.step();
+    // One site over the pace only, and only for the earned workshop.
+    expect(decide(sim, order, 0, content)).toBeUndefined();
   });
 
   it('goes on with the other lines while one is held', () => {
