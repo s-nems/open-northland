@@ -7,6 +7,7 @@ import type { SystemContext } from '../../context.js';
 import { isScoutJob } from '../../readviews/index.js';
 import type { BuildOrder } from '../build-order/entries.js';
 import type { ComputerModule } from '../index.js';
+import { militaryDeadlineTick } from '../military/deadline.js';
 import { nextLivestockCatch } from './livestock-catch.js';
 import { nextSignpostTarget } from './signpost-coverage.js';
 import { nextStaleZoneTarget } from './stale-zones.js';
@@ -32,6 +33,16 @@ export const SCOUT_OPENING_TICKS = 6 * 60 * TICKS_PER_SECOND;
 /** After the opening the scout's duties take turns in rounds of this length (authored, untuned): two game
  *  minutes. */
 export const SCOUTING_ROUND_TICKS = 2 * 60 * TICKS_PER_SECOND;
+/** How long before the seat's military deadline its scout starts scouting (owner ruling: scout once the
+ *  peace ends, a trip before it is wasted; authored lead): five game minutes, about one walk out to a near
+ *  enemy start, so the first look lands as the deadline comes. */
+export const SCOUTING_DEADLINE_LEAD_TICKS = 5 * 60 * TICKS_PER_SECOND;
+
+/** Whether `player`'s scout scouts at all at `ctx.tick`: from {@link SCOUTING_DEADLINE_LEAD_TICKS} before
+ *  its {@link militaryDeadlineTick}. Signposts and the round-up run from the start regardless. */
+export function scoutingOpen(world: World, ctx: SystemContext, player: number): boolean {
+  return ctx.tick >= militaryDeadlineTick(world, ctx, player) - SCOUTING_DEADLINE_LEAD_TICKS;
+}
 
 /** Whether scouting leads the scout's duties at `tick`: every other round after the opening. A trip only
  *  starts on a decision, so a round decides which duty the next free scout takes up, not how long he
@@ -45,8 +56,8 @@ export function scoutingLeads(tick: number): boolean {
  * order the same man in one decision. Signposts outrank the round-up (authored): a lattice target is
  * static, while an animal that wanders off is picked up again next decision. Scouting stale zones comes
  * last in the opening, where the signposts gate where the gatherers may work, and first in every
- * {@link scoutingLeads} round after it, so the network keeps growing between trips. With the fog off
- * nothing is stale and the order is the two duties alone.
+ * {@link scoutingLeads} round after it, so the network keeps growing between trips. Before
+ * {@link scoutingOpen} and with the fog off (nothing is stale) the order is the two duties alone.
  */
 function runScout(
   world: World,
@@ -62,14 +73,15 @@ function runScout(
   // starts an atomic, so an eating scout would otherwise look order-free and be re-ordered every beat.
   if (world.has(scout, CurrentAtomic)) return [];
   if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) return []; // busy
-  const leads = scoutingLeads(ctx.tick);
+  const scouts = scoutingOpen(world, ctx, player);
+  const leads = scouts && scoutingLeads(ctx.tick);
   const zone = leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
   if (zone !== null) return [{ kind: 'moveUnit', entity: scout, x: zone.hx, y: zone.hy }];
   const post = nextSignpostTarget(world, ctx, player, order);
   if (post !== null) return [{ kind: 'placeSignpost', entity: scout, x: post.hx, y: post.hy }];
   const animal = nextLivestockCatch(world, ctx, player);
   if (animal !== null) return [{ kind: 'moveUnit', entity: scout, x: animal.hx, y: animal.hy }];
-  const late = leads ? null : nextStaleZoneTarget(world, ctx, player, order);
+  const late = scouts && !leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
   return late === null ? [] : [{ kind: 'moveUnit', entity: scout, x: late.hx, y: late.hy }];
 }
 

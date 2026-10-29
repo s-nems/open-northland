@@ -17,9 +17,12 @@ import {
   SCOUT_OPENING_TICKS,
   SCOUT_REVISIT_TICKS,
   SCOUT_STALENESS_CAP_TICKS,
+  SCOUTING_DEADLINE_LEAD_TICKS,
+  SCOUTING_ROUND_TICKS,
   scoutingLeads,
   scoutModule,
 } from '../../../../src/systems/computer-player/index.js';
+import { ASSUMED_PEACE_TICKS } from '../../../../src/systems/computer-player/military/deadline.js';
 import type { SystemContext } from '../../../../src/systems/index.js';
 import type { FogState } from '../../../../src/systems/vision/state.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
@@ -136,5 +139,27 @@ describe('scout staleness scouting', () => {
     if (post === null) throw new Error('setup: the lattice wants a post');
     const [order] = scoutModule(DEFAULT_BUILD_ORDER).run(sim.world, ctx, SEAT);
     expect(order).toMatchObject({ kind: 'placeSignpost', x: post.hx, y: post.hy });
+  });
+
+  it('leaves the enemy unscouted until the military deadline nears', () => {
+    const sim = staleSim();
+    const fog = fogOfWar(sim);
+    const leadingRound = (from: number): number => {
+      const round = Math.ceil(from / SCOUTING_ROUND_TICKS);
+      return (round % 2 === 1 ? round : round + 1) * SCOUTING_ROUND_TICKS;
+    };
+    const opensAt = ASSUMED_PEACE_TICKS - SCOUTING_DEADLINE_LEAD_TICKS;
+    const early = leadingRound(NOW);
+    const open = leadingRound(opensAt);
+    expect(early).toBeLessThan(opensAt);
+    const guide = scoutModule(DEFAULT_BUILD_ORDER);
+    expect(guide.run(sim.world, ctxAt(sim, early, fog), SEAT)[0]).toMatchObject({ kind: 'placeSignpost' });
+    const zone = nextStaleZoneTarget(sim.world, ctxAt(sim, open, fog), SEAT, DEFAULT_BUILD_ORDER);
+    if (zone === null) throw new Error('setup: a zone is stale');
+    expect(guide.run(sim.world, ctxAt(sim, open, fog), SEAT)[0]).toMatchObject({
+      kind: 'moveUnit',
+      x: zone.hx,
+      y: zone.hy,
+    });
   });
 });
