@@ -140,8 +140,15 @@ starting autonomous expansion or campaigns. `AiControl` is machine-player identi
 either controller may run. The computer master permission gates every autonomous module, including
 new ones; module permissions cannot override it. Map task soldiers have one active assignment.
 Planner commands name their decision source so disabling a controller and diagnosing an order do
-not depend on guessing its origin from command kind. Map AI, computer player, and common unit rules
-must remain distinct in names, state, tests and debug output. `systems/map-escalation` spawns, equips and
+not depend on guessing its origin from command kind.
+
+A computer seat reads other players' in-game state only through its own sight and its saved memory
+(`computer-player/knowledge/`); the static map, the seats' starts and the map scripts are known to it.
+A new computer-player read of another seat's entities goes through those seams, never a raw world
+query. The scripted map AI keeps its own reads. Layers and rules: `docs/design/computer-player.md`.
+
+Map AI, computer player, and common unit rules must remain distinct in names, state, tests and debug
+output. `systems/map-escalation` spawns, equips and
 ships: an attack's men belong to a raider seat but stand off its scripted handler's list, and the
 escalation alone orders them, as that seat's map-AI orders: an attack-move onto their seat's aim.
 The guard it refills, the tower archers it posts and the catapults it raises again are posted and
