@@ -11,6 +11,7 @@ export * from './ai/map-ai.js';
 export * from './ai/map-ai-defence.js';
 export * from './ai/map-brief.js';
 export * from './ai/map-escalation.js';
+export * from './ai/operations.js';
 export * from './ai/order.js';
 export * from './ai/strategy.js';
 export * from './assistant.js';

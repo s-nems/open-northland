@@ -1,12 +1,17 @@
+import { mapBriefOf } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { planSettlementDefence } from '../../ai-shared/military/settlement-defence.js';
 import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
+import { interactionCell } from '../../settlers/targets/index.js';
+import { seatBarracksOf } from '../base.js';
 import type { ComputerModule } from '../index.js';
-
+import { militaryOrdersOf } from '../strategy/military.js';
 import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
+import { type OperationEnv, runOperations } from './operations/index.js';
 import { outfitGrantOrders } from './outfit.js';
 import { siegeCrewOrders } from './siege-crew.js';
 
@@ -51,6 +56,17 @@ export {
   rallyAt,
   WAVE_MIN_SOLDIERS,
 } from './muster.js';
+export {
+  type OperationView,
+  seatOperationsOf,
+} from './operations/index.js';
+export {
+  RAID_BAND_MEN,
+  RAID_COOLDOWN_TICKS,
+  RAID_HOME_FLOOR_MEN,
+  RAID_LOOK_EVERY_DECISIONS,
+  RAID_MIN_MEN,
+} from './operations/raid.js';
 export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
 export {
   ARMY_CAP_SOLDIERS,
@@ -90,13 +106,44 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     wave?.catapults ?? NONE_MARCHING,
     raid,
   );
-  const field = available.filter((e) => !siege.drafted.has(e));
+  const free = available.filter((e) => !siege.drafted.has(e));
+  const env = operationEnvOf(world, ctx, terrain, player);
+  // A raid takes its band before the muster sorts the rest, so no man is the muster's and a raid's.
+  const raids = env === null ? null : runOperations(env, 'beforeCampaign', free);
+  const field = raids === null ? free : free.filter((e) => !raids.members.has(e));
   const campaign = runOffensive(world, ctx, terrain, player, {
     army: field,
     awaitingWeapon: army.awaitingWeapon,
     wave: wave === null ? [] : army.ready.filter((e) => wave.men.has(e)),
   });
-  return [...siege.commands, ...campaign, ...outfitGrantOrders(world, ctx, player)];
+  const assault = env === null ? null : runOperations(env, 'afterCampaign', []);
+  return [
+    ...siege.commands,
+    ...(raids?.commands ?? []),
+    ...campaign,
+    ...(assault?.commands ?? []),
+    ...outfitGrantOrders(world, ctx, player),
+  ];
+}
+
+/** The seat's operations read its barracks door as home, else its start anchor in the map brief, so a
+ *  band out when the barracks falls still comes back; none with neither. */
+function operationEnvOf(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  seat: number,
+): OperationEnv | null {
+  const barracks = seatBarracksOf(world, ctx, seat);
+  const start = mapBriefOf(world)?.seats.find((s) => s.player === seat);
+  const home: NodeId | null =
+    barracks !== null
+      ? interactionCell(world, ctx, terrain, barracks)
+      : start === undefined
+        ? null
+        : terrain.nodeAtClamped(start.hx, start.hy);
+  if (home === null) return null;
+  return { world, ctx, terrain, seat, home, orders: militaryOrdersOf(world, seat) };
 }
 
 const NONE_MARCHING: ReadonlySet<Entity> = new Set();

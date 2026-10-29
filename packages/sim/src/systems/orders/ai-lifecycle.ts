@@ -2,6 +2,8 @@ import type { AiOrderOrigin } from '../../components/ai/order.js';
 import {
   AiOrder,
   AttackOrder,
+  aiControlEntity,
+  ComputerOperations,
   CurrentAtomic,
   DeferredOrder,
   Engagement,
@@ -53,6 +55,8 @@ export function withdrawAiOrders(
 
 /** A future re-enable starts a fresh decision rather than resuming a stale invasion. */
 export function retireComputerCampaign(world: World, player: number): void {
+  const carrier = aiControlEntity(world, player);
+  if (carrier !== null) world.remove(carrier, ComputerOperations);
   for (const entity of new Set([...world.query(MusterPlan, Owner), ...world.query(WaveMarch, Owner)])) {
     if (world.get(entity, Owner).player !== player) continue;
     world.remove(entity, MusterPlan);

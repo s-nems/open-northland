@@ -6,6 +6,7 @@ import {
   MapAiDefence,
   type MapAiDefenceState,
   Owner,
+  operationMembersOf,
   WaveMarch,
 } from '../../../components/index.js';
 import { aiCommand, type PlayerCommand } from '../../../core/commands/index.js';
@@ -118,7 +119,8 @@ function deriveSettlementDefence(
     ready: without(census.ready, claimed),
     awaitingWeapon: without(census.awaitingWeapon, claimed),
   };
-  const marching = new Set<Entity>();
+  // The marching wave's men and those of the seat's other operations (a raid) stay theirs.
+  const marching = autonomous ? operationMembersOf(world, player) : new Set<Entity>();
   if (autonomous) {
     for (const carrier of world.query(WaveMarch, Owner)) {
       if (world.get(carrier, Owner).player !== player) continue;
