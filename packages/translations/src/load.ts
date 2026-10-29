@@ -11,6 +11,7 @@ import {
   MapOverlay,
   ObjectTableOverlay,
   OVERLAY_EDIT_SUFFIX,
+  PersonalNameOverlay,
   splitOverlayEdit,
 } from '@open-northland/data';
 import { MapOverlayFiling, type MapOverlaysByDatKey } from './map-filing.js';
@@ -19,7 +20,7 @@ import { MapOverlayFiling, type MapOverlaysByDatKey } from './map-filing.js';
 export const TRANSLATIONS_ROOT = fileURLToPath(new URL('../../../translations/', import.meta.url));
 
 /** The folders under `translations/<lang>/`, one per overlay schema. */
-export const OVERLAY_KINDS = ['maps', 'objects', 'books', 'campaigns'] as const;
+export const OVERLAY_KINDS = ['maps', 'objects', 'books', 'campaigns', 'names'] as const;
 export type OverlayKind = (typeof OVERLAY_KINDS)[number];
 
 const OVERLAY_EXTENSION = '.json';
@@ -29,6 +30,7 @@ interface OverlayByKind {
   readonly objects: ObjectTableOverlay;
   readonly books: BookOverlay;
   readonly campaigns: CampaignOverlay;
+  readonly names: PersonalNameOverlay;
 }
 
 /** The part of a zod schema the loader uses, so this package needs no zod import of its own. */
@@ -48,6 +50,7 @@ const SCHEMAS: { readonly [K in OverlayKind]: Schema<OverlayByKind[K]> } = {
   objects: ObjectTableOverlay,
   books: BookOverlay,
   campaigns: CampaignOverlay,
+  names: PersonalNameOverlay,
 };
 
 /** Every overlay of the repository, validated, keyed the way the stages look them up. */
@@ -61,6 +64,9 @@ export interface TranslationOverlays {
   readonly books: ReadonlyMap<Language, ReadonlyMap<string, BookOverlay>>;
   /** Campaign titles by language, then campaign id. */
   readonly campaigns: ReadonlyMap<Language, ReadonlyMap<string, CampaignOverlay>>;
+  /** Localized personal names by language, then the pool the file name names (`viking-male`), each with
+   *  the pool's raw spelling as its key. */
+  readonly names: ReadonlyMap<Language, ReadonlyMap<string, PersonalNameOverlay>>;
 }
 
 /** A path as a diagnostic names it: `/`-separated on every platform, so one overlay is reported the
@@ -171,6 +177,7 @@ export async function loadTranslationOverlays(
   const objects = new Map<Language, ReadonlyMap<string, FiledObjectTableOverlay>>();
   const books = new Map<Language, ReadonlyMap<string, BookOverlay>>();
   const campaigns = new Map<Language, ReadonlyMap<string, CampaignOverlay>>();
+  const names = new Map<Language, ReadonlyMap<string, PersonalNameOverlay>>();
   const present = new Set((await listDirectory(root)).filter((e) => e.isDirectory()).map((e) => e.name));
   for (const lang of LANGUAGES) {
     if (!present.has(lang)) continue;
@@ -181,6 +188,7 @@ export async function loadTranslationOverlays(
     put(objects, await readObjects(root, lang));
     put(books, await readKind(root, lang, 'books'));
     put(campaigns, await readKind(root, lang, 'campaigns'));
+    put(names, await readKind(root, lang, 'names'));
   }
-  return { maps: maps.maps, objects, books, campaigns };
+  return { maps: maps.maps, objects, books, campaigns, names };
 }
