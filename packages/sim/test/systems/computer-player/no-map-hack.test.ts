@@ -11,18 +11,21 @@ import {
   type MilitaryStrategyState,
   mapBriefOf,
   Position,
+  Resource,
   Settler,
 } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { ownedBuildings, ownedSettlers } from '../../../src/systems/ai-shared/seat-roster.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../src/systems/computer-player/index.js';
+import { knownResourceTest } from '../../../src/systems/computer-player/live-resources.js';
 import { playerSeesEntity } from '../../../src/systems/vision/gates.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 import {
   BARRACKS_TYPE,
   BOWMAN,
+  ctxOf,
   HQ_TYPE,
   makeAiSeat,
   placeHq,
@@ -183,9 +186,20 @@ function twins(fogMode: number, at: { x: number; y: number }) {
   return { plain, varied, later };
 }
 
-describe('a computer seat under fog of war knows only what it sees', () => {
-  it('decides the same whatever the other seat does out of its sight', () => {
-    const { plain, varied, later } = twins(FOG_MODE.CLASSIC_FOG_OF_WAR, FAR);
+/** The fog modes that hide the other seat: the classic one, and recon, whose terrain reads explored
+ *  everywhere from the start. */
+const HIDING_MODES = [
+  ['classic fog of war', FOG_MODE.CLASSIC_FOG_OF_WAR],
+  ['recon', FOG_MODE.RECON],
+] as const;
+
+describe('a computer seat under fog knows only what it sees', () => {
+  it.each(HIDING_MODES)('decides the same whatever the other seat does out of its sight (%s)', (_, mode) => {
+    const { plain, varied, later } = twins(mode, FAR);
+    const deposit = later.find((e) => varied.world.has(e, Resource));
+    if (deposit === undefined) throw new Error('setup: no later deposit');
+    const ctx = { ...ctxOf(varied, varied.tick), ...(varied.fog ? { fog: varied.fog } : {}) };
+    expect(knownResourceTest(varied.world, ctx, SEAT)?.(deposit)).toBe(false);
     const expected = run(plain);
     const actual = run(varied, later);
     // The later world stayed out of reach: it drew no shared roll and caused no extra entity.

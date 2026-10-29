@@ -27,7 +27,7 @@ import {
   goodBoxHoldsAll,
   nearestResourceOfGood,
 } from '../spatial/resources.js';
-import { fogHides, playerExploredNode } from '../vision/gates.js';
+import { fogHides, playerSawNode } from '../vision/gates.js';
 
 /** The first expanding-box reach of the live-resource searches below (Chebyshev half-cell nodes). */
 const RESOURCE_BOX_REACH_START = 16;
@@ -43,9 +43,10 @@ export type WorkableTest = (e: Entity) => boolean;
 
 /**
  * The deposits `seat` may know of, or null when it knows every one: a seat whose computer controller runs
- * under a fog that hides anything accepts a deposit on ground it has explored, and on unexplored ground
- * only one that stood at the map brief's scan, since the start layout is static knowledge (owner ruling
- * on what a computer seat knows). A deposit's remaining amount is still read live.
+ * under a fog that hides anything accepts a deposit on ground its own sight has reached (a RECON map's known
+ * terrain shows no entities, so it does not count), and elsewhere only one that stood at the map brief's
+ * scan, since the start layout is static knowledge (owner ruling on what a computer seat knows). A
+ * deposit's remaining amount is still read live.
  */
 export function knownResourceTest(world: World, ctx: SystemContext, seat: number): WorkableTest | null {
   const fog = ctx.fog;
@@ -54,7 +55,7 @@ export function knownResourceTest(world: World, ctx: SystemContext, seat: number
   return (e) => {
     if (e < ceiling) return true;
     const node = anchorNodeOf(world, e);
-    return node !== null && playerExploredNode(fog, seat, node.hx, node.hy);
+    return node !== null && playerSawNode(fog, seat, node.hx, node.hy);
   };
 }
 
