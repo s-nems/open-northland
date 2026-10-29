@@ -1,6 +1,6 @@
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { ComputerProfile } from '../difficulty.js';
-import { LATE_GAME_FROM_TICKS, SITES_GROW_FROM_TICKS } from '../game-phase.js';
+import { LATE_GAME_FROM_TICKS, minutesToTicks, SITES_GROW_FROM_TICKS } from '../game-phase.js';
 import type { JoineryRole } from '../joinery-role.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
@@ -54,8 +54,14 @@ export type BuildOrderEntry =
     }
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
    *  and keeps at least that many. Posts past the first come out of spare men only, so its line holds
-   *  here until the seat has them. A good with no live resource is skipped. */
-  | { readonly kind: 'collector'; readonly good: string; readonly count?: number }
+   *  here until the seat has them. A good with no live resource is skipped. `fromTick` holds the line
+   *  here, hiring nobody, until the game clock reaches it. */
+  | {
+      readonly kind: 'collector';
+      readonly good: string;
+      readonly count?: number;
+      readonly fromTick?: number;
+    }
   /** Keep every owned building inside some tower's or the base's defence circle of `radius` nodes
    *  (default {@link TOWER_DEFENCE_RADIUS_NODES}). Unlike the counted entries it re-arms whenever a later
    *  building lands uncovered, so the tower count is dynamic. A `lane` entry runs beside the lines once
@@ -158,6 +164,13 @@ const GRAIN_FARM: BuildOrderEntry = {
   essential: true,
 };
 
+/** Owner ruling: the iron gatherer who climbs the smithy tree starts in game minute 15-30, once the
+ *  opening's clay and stone gatherers have earned the potter and the mason. */
+export const IRON_CLIMB_FROM_TICKS = minutesToTicks(15);
+
+/** Owner ruling: the mushroom gatherer who opens the herb hut starts in game minute 25-40. */
+export const MUSHROOMS_FROM_TICKS = minutesToTicks(25);
+
 /** The build order's independent lines (authored). Each is an ordered list of steps: a step waits for the
  *  step before it in its line, never for another line. */
 export type BuildLineId =
@@ -251,9 +264,6 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // Owner ruling: a second stone gatherer within the first 10-15 game minutes, since the roads and
         // the mason eat the most stone.
         { kind: 'collector', good: 'stone', count: 2 },
-        // Owner ruling: from game minute 15-30 an iron gatherer climbs the smithy tree, his iron making him
-        // the first smith; the joinery's iron tools and the smithies take his ore.
-        { kind: 'collector', good: 'iron' },
         { kind: 'upgrade', building: 'home_level_02', count: 3 },
       ],
     },
@@ -327,9 +337,6 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       steps: [
         { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
         { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
-        // Owner ruling: a mushroom gatherer from game minute 25-40, about when these tiers stand, whose
-        // ten mushrooms open the herb hut; not before, and only the one until potions are made in volume.
-        { kind: 'collector', good: 'mushroom' },
       ],
     },
     {
@@ -427,6 +434,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // The smithy works its wares out of iron and wood, so it stands between the two deposits.
       // Each shop's lower tier first: mail and the long bow, which their upper tiers want, are learned there.
       steps: [
+        // Owner ruling: from game minute 15-30 an iron gatherer climbs the smithy tree, his iron making him
+        // the first smith; the joinery's iron tools and the smithies take his ore.
+        { kind: 'collector', good: 'iron', fromTick: IRON_CLIMB_FROM_TICKS },
         { kind: 'place', building: 'work_smithy_00', count: 1, near: IRON_AND_WOOD },
         { kind: 'upgrade', building: 'work_smithy_01', count: 1 },
         // The armourer turns wood into bows and spear shafts, so it stands by the wood like the joinery.
@@ -471,10 +481,10 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       id: 'healing',
       // The big potion takes herbs, mushrooms and coins, and the temple waits on the druids' oil, so all of
       // it stands only where the map holds both gold and mushrooms.
-      // The herb hut opens it, once the materials line's mushroom gatherer has earned the herb trade; a
-      // gatherer step stands behind it, since a step still waiting on its discovery holds the gatherers
-      // the lines want.
+      // Owner ruling: a mushroom gatherer from game minute 25-40, whose ten mushrooms open the herb hut; not
+      // before, and only the one until potions are made in volume.
       steps: [
+        { kind: 'collector', good: 'mushroom', fromTick: MUSHROOMS_FROM_TICKS },
         // The herb hut comes first, beside a well, so its herbs are growing when the druids it draws beside
         // it stand.
         {
@@ -540,8 +550,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     },
   ],
   // The opening first, so the farm, the first homes and the material workshops take the first sites; then
-  // bread, the materials' upgrades, the tools, weapons and army the garrison waits on, clothing and drink,
-  // the homes' upgrades, and the healing line last.
+  // bread, the materials' upgrades, the tools, weapons and army the garrison waits on, the herb hut and
+  // the druids the mushroom gatherer opens (a turn before clothing, so the druid is not left waiting on
+  // the last free site), clothing and drink, and the homes' upgrades.
   priority: [
     'opening',
     'bread',
@@ -549,10 +560,10 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     'tools',
     'weapons',
     'military',
+    'healing',
     'clothing',
     'brewery',
     'homes',
-    'healing',
   ],
 };
 

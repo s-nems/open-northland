@@ -22,6 +22,7 @@ import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
 import { type ComputerProfile, computerProfileOf, profileBuildOrder } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
+import { technologyReach } from '../technology/reach.js';
 import { billSourced, goodsMadeBy, sourcedTiers } from './bill-sources.js';
 import {
   BASE_REPLACEMENT_ENTRY,
@@ -91,11 +92,13 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * upgrade while a bill good only it or another site could make is not yet in store, or while it would idle
  * a good's last working maker ({@link suppliedUpgrade}). An upgrade raises its building straight to the
  * highest tier that step and the unmet upgrade steps right after it in its line want, as far as the seat
- * has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. The exceptions are
- * passed over instead ({@link Verdict}): a step whose building the seat has not enabled yet, a serving
- * placement with no room beside what it serves, a grass building other than an `essential` one with no
- * grass left in reach, and a coverage step with no target it can cover. Builders are never pinned to a
- * site; the builder drive picks its own.
+ * has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. A step whose building
+ * the seat has not discovered yet holds its line too, while the technology module earns it, so a later
+ * step never runs ahead of the workshop it feeds on; one whose discovery can never come is skipped
+ * ({@link entryStatus}), and a seat with no technology table, whose lock can only be a ban, passes it.
+ * The exceptions are passed over instead ({@link Verdict}): a serving placement with no room beside what
+ * it serves, a grass building other than an `essential` one with no grass left in reach, and a coverage
+ * step with no target it can cover. Builders are never pinned to a site; the builder drive picks its own.
  *
  * Three rules keep a site from rising under the enemy's bows only to be knocked down again, and a razed
  * building from being re-placed into the same fire ({@link seatSiege}): nothing is placed or upgraded while
@@ -154,6 +157,9 @@ function runBuildOrder(
   let made: ReadonlySet<number> | undefined;
   const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
   const locked = (entry: BuildOrderEntry): boolean => stepLocked(world, ctx, player, owned, tribe, entry);
+  // A locked step holds its line while the technology module earns its discovery; with nothing gated
+  // for the seat (no technology table) it can only be a ban, and is passed over.
+  const lockHolds = technologyReach(world, ctx, player, memo) !== null;
   // One search per step a decision: the lanes and the lines share each verdict.
   const verdicts = new Map<StepKey, Verdict>();
   const verdictOf = (line: BuildLine, step: number): Verdict => {
@@ -162,8 +168,7 @@ function runBuildOrder(
     if (known !== undefined) return known;
     const entry = line.steps[step];
     let verdict = ACTS;
-    if (entry !== undefined && locked(entry)) verdict = PASSED_OVER;
-    else if (entry !== undefined && passesOver(ctx, entry)) {
+    if (entry !== undefined && passesOver(ctx, entry)) {
       if (searches.waits(line.id, step, ctx.tick)) verdict = PASSED_OVER;
       else {
         verdict = searchVerdict(
@@ -187,7 +192,8 @@ function runBuildOrder(
 
   const lanes = openLanes(world, ctx, lines, statuses, sites, (line, step) => {
     const entry = line.steps[step];
-    if (entry === undefined || locked(entry)) return true;
+    if (entry === undefined) return true;
+    if (locked(entry)) return !lockHolds;
     return billSourced(world, ctx, player, entry, madeGoods) && verdictOf(line, step).kind === 'pass';
   });
   for (const lane of lanes) {
@@ -282,7 +288,11 @@ function runBuildOrder(
    *  the line or the line has none. */
   const lineCommand = (line: BuildLine): PlayerCommand | null => {
     for (const [step, entry] of line.steps.entries()) {
-      if (isLaneEntry(entry) || statusOf(line.id, step) !== 'unmet' || locked(entry)) continue;
+      if (isLaneEntry(entry) || statusOf(line.id, step) !== 'unmet') continue;
+      if (locked(entry)) {
+        if (lockHolds) return null;
+        continue;
+      }
       if (!billSourced(world, ctx, player, entry, madeGoods)) return null;
       const verdict = verdictOf(line, step);
       if (verdict.kind === 'pass') continue;
@@ -402,11 +412,10 @@ function waitsOnFreeSite(
 type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
 
 /**
- * What a line makes of an unmet step this decision. A step whose building the seat has not enabled yet,
- * a serving placement with no room beside what it serves, a grass building with no grass left for it, or
- * a coverage step with no target it can cover, is passed over: the workshop still runs, slower, and the
- * goods still travel, only farther, while a stalled line would not, and gatherers felling trees free no
- * grass where the map has none. A passed-over step holds neither its line nor the lanes and moves neither
+ * What a line makes of an unmet step this decision. A serving placement with no room beside what it
+ * serves, a grass building with no grass left for it, or a coverage step with no target it can cover, is
+ * passed over: the workshop still runs, slower, and the goods still travel, only farther, while a stalled
+ * line would not, and gatherers felling trees free no grass where the map has none. A passed-over step holds neither its line nor the lanes and moves neither
  * the frontier nor the stall record. Every other unmet step acts, carrying the placement its search found
  * when it is one of those kinds.
  */

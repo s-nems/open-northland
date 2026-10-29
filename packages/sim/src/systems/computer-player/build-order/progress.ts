@@ -315,13 +315,18 @@ function collectorCount(entry: Extract<BuildOrderEntry, { kind: 'collector' }>):
 }
 
 /**
- * The collector goods the lines have reached, in line priority order, each with the most gatherers a
- * reached step asks for: a step is reached while every step before it in its line is satisfied or
- * skipped, a lane running beside the lines never holding it. Reached state is re-derived each decision,
- * so a regressing earlier step drops a later collector and returns its holder to the pool until its line
- * re-reaches the step.
+ * The collector goods the lines have reached by `tick`, in line priority order, each with the most
+ * gatherers a reached step asks for: a step is reached while every step before it in its line is
+ * satisfied or skipped, a lane running beside the lines never holding it, as the executor holds a line on
+ * its first unmet step, a locked one included. An unmet collector step whose `fromTick` lies ahead
+ * holds its line unreached. Reached state is re-derived each decision, so a regressing earlier step drops a later
+ * collector and returns its holder to the pool until its line re-reaches the step.
  */
-export function collectorGoodsWanted(order: BuildOrder, statuses: LineStatuses): ReadonlyMap<string, number> {
+export function collectorGoodsWanted(
+  order: BuildOrder,
+  statuses: LineStatuses,
+  tick: number,
+): ReadonlyMap<string, number> {
   const wanted = new Map<string, number>();
   for (const line of linesByPriority(order)) {
     const lineStatus = statuses.get(line.id) ?? [];
@@ -329,6 +334,7 @@ export function collectorGoodsWanted(order: BuildOrder, statuses: LineStatuses):
       if (isLaneEntry(entry)) continue;
       const status = lineStatus[i];
       if (entry.kind === 'collector' && status !== 'skip') {
+        if (status === 'unmet' && tick < (entry.fromTick ?? 0)) break;
         wanted.set(entry.good, Math.max(wanted.get(entry.good) ?? 0, collectorCount(entry)));
       }
       if (status === 'unmet') break;

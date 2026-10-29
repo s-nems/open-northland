@@ -226,7 +226,7 @@ export function wantedCollectorGoods(
   supply: SeatSupply,
 ): WantedGood[] {
   const goodIds = [...COLLECTED_GOOD_IDS];
-  const entryCounts = collectorGoodsWanted(order, statuses);
+  const entryCounts = collectorGoodsWanted(order, statuses, ctx.tick);
   for (const goodId of entryCounts.keys()) {
     if (!goodIds.includes(goodId)) goodIds.push(goodId);
   }

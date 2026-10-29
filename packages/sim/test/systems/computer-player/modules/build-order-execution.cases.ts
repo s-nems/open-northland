@@ -152,8 +152,8 @@ describe('build-order module (houseBuild)', () => {
     // in priority order (opening, bread, tools, the tower lane over the joinery out by the wood and iron,
     // the joinery's upper tier, military, brewery, its well) before any line adds another of a kind the
     // seat has: the opening's homes, then the bread line's second bakery, its upgrades and level-2
-    // bakeries, and the brewery line's further breweries. The opening holds at its iron gatherer, which
-    // the workforce module hires, before its homes' upgrade, and holds no other line.
+    // bakeries, and the brewery line's further breweries, with the opening's homes upgraded in between.
+    // The weapons line holds at its iron gatherer, whose clock has not come, and holds no other line.
     const place = (type: number): string => `place ${type}`;
     const upgrade = (type: number): string => `upgrade ${type}`;
     expect(walk).toEqual([
@@ -168,6 +168,9 @@ describe('build-order module (houseBuild)', () => {
       place(WELL_TYPE),
       place(HOME_TYPE),
       place(HOME_TYPE),
+      upgrade(HOME_TOP_TYPE),
+      upgrade(HOME_TOP_TYPE),
+      upgrade(HOME_TOP_TYPE),
       place(BAKERY_TYPE),
       upgrade(BAKERY_TOP_TYPE),
       upgrade(BAKERY_TOP_TYPE),
