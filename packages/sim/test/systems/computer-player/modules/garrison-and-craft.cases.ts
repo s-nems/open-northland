@@ -24,11 +24,7 @@ import {
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { Entity, World } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
-import {
-  defendingStrength,
-  strongestEnemyStrength,
-  TOWER_POST_STRENGTH,
-} from '../../../../src/systems/ai-shared/military/census.js';
+import { TOWER_POST_STRENGTH } from '../../../../src/systems/ai-shared/military/census.js';
 import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { COMPUTER_PUBLISHED_COUNTERS } from '../../../../src/systems/computer-player/assistant-counters.js';
 import { AI_PROFILES, BUILDER_CAP, shareOf } from '../../../../src/systems/computer-player/difficulty.js';
@@ -43,6 +39,12 @@ import {
   SeatSupply,
   supplyLines,
 } from '../../../../src/systems/computer-player/index.js';
+import {
+  believedDefendingPoints,
+  COUNTED_ONCE,
+  strongestBelievedEnemy,
+} from '../../../../src/systems/computer-player/military/enemy-strength.js';
+import { unitPoints } from '../../../../src/systems/computer-player/military/points.js';
 import {
   COIN_GLUT_UNITS,
   CRAFT_GLUT_BAND_UNITS,
@@ -1074,8 +1076,11 @@ describe('workforce module - the barracks and craft selections', () => {
     world.add(archer, Garrison, { post: tower, returnTo: { x: post.x, y: post.y } });
     world.add(archer, Position, { x: post.x, y: post.y });
     // A wave marching on him meets the post's weight; the floor counts him as the one man he is.
-    expect(defendingStrength(world, seat.ctx, RIVAL)).toBe(RIVAL_FIGHTERS + TOWER_POST_STRENGTH);
-    expect(strongestEnemyStrength(world, seat.ctx, SEAT)).toBe(RIVAL_FIGHTERS + 1);
+    const countedOnce = believedDefendingPoints(world, seat.ctx, SEAT, RIVAL, 0, COUNTED_ONCE);
+    expect(believedDefendingPoints(world, seat.ctx, SEAT, RIVAL, 0)).toBe(
+      countedOnce + unitPoints(world, seat.ctx, archer) * (TOWER_POST_STRENGTH - COUNTED_ONCE),
+    );
+    expect(strongestBelievedEnemy(world, seat.ctx, SEAT).men).toBe(RIVAL_FIGHTERS + 1);
     expect(drafted(seat)).toBe(RIVAL_FIGHTERS + 1);
   });
 
@@ -1086,13 +1091,13 @@ describe('workforce module - the barracks and craft selections', () => {
     if (fallen === undefined || turncoat === undefined || retired === undefined) {
       throw new Error('setup: three rival spearmen');
     }
-    expect(strongestEnemyStrength(world, seat.ctx, SEAT)).toBe(RIVAL_FIGHTERS);
+    expect(strongestBelievedEnemy(world, seat.ctx, SEAT).men).toBe(RIVAL_FIGHTERS);
     world.mut(fallen, Health).hitpoints = 0;
-    expect(strongestEnemyStrength(world, seat.ctx, SEAT)).toBe(RIVAL_FIGHTERS - 1);
+    expect(strongestBelievedEnemy(world, seat.ctx, SEAT).men).toBe(RIVAL_FIGHTERS - 1);
     world.mut(turncoat, Owner).player = SEAT;
-    expect(strongestEnemyStrength(world, seat.ctx, SEAT)).toBe(RIVAL_FIGHTERS - 2);
+    expect(strongestBelievedEnemy(world, seat.ctx, SEAT).men).toBe(RIVAL_FIGHTERS - 2);
     setSettlerJob(world, retired, null);
-    expect(strongestEnemyStrength(world, seat.ctx, SEAT)).toBe(RIVAL_FIGHTERS - 3);
+    expect(strongestBelievedEnemy(world, seat.ctx, SEAT).men).toBe(RIVAL_FIGHTERS - 3);
   });
 
   it("fills a standing workshop's target crew before the army floor claims its men", () => {

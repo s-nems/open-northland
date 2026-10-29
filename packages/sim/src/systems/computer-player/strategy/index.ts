@@ -101,35 +101,8 @@ function sameList<T>(a: readonly T[], b: readonly T[]): boolean {
 
 /** One seat's strategy and the seat brief it was chosen from, for a debug view. */
 export interface SeatStrategyView {
-  /** A copy of the saved record; null before the seat's first decision. */
+  /** The saved record; null before the seat's first decision. */
   readonly strategy: ComputerStrategyState | null;
   /** Null before the map brief, or for a seat the brief holds no start for. */
   readonly brief: SeatBrief | null;
-}
-
-export function seatStrategyOf(world: World, player: number): SeatStrategyView {
-  const mapBrief = mapBriefOf(world);
-  const carrier = aiControlEntity(world, player);
-  const held = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
-  return {
-    strategy: held === undefined ? null : copyStrategy(held),
-    brief: mapBrief === null ? null : seatBriefOf(mapBrief, player),
-  };
-}
-
-function copyStrategy({ economy, military }: DeepReadonly<ComputerStrategyState>): ComputerStrategyState {
-  return {
-    economy: {
-      archetype: economy.archetype,
-      sides: [...economy.sides],
-      evidence: [...economy.evidence],
-      decidedAt: economy.decidedAt,
-      challenger: economy.challenger === null ? null : { ...economy.challenger },
-    },
-    military: {
-      ...military,
-      evidence: [...military.evidence],
-      challenger: military.challenger === null ? null : { ...military.challenger },
-    },
-  };
 }

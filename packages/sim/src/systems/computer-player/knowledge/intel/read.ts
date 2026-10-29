@@ -102,12 +102,6 @@ export interface SeatIntelSummary {
   readonly zones: number;
 }
 
-/** A plain-data digest of `seat`'s memory at `tick`, or null before its first intel pass. */
-export function seatIntelSummaryOf(world: World, seat: number, tick: number): SeatIntelSummary | null {
-  const intel = intelOf(world, seat);
-  return intel === undefined ? null : summarizeIntel(intel, tick);
-}
-
 /** A plain-data digest of one seat's memory at `tick`; takes the `ComputerIntel` component itself, so a
  *  debug view can feed it a snapshot's copy. */
 export function summarizeIntel(intel: IntelView, tick: number): SeatIntelSummary {

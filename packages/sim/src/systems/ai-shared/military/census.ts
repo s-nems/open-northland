@@ -2,14 +2,10 @@ import type { WeaponType } from '@open-northland/data';
 import {
   AssistantRecruit,
   AttackOrder,
-  diplomacyStance,
   Engagement,
   Health,
   hasMissionBehaviour,
-  MAX_PLAYERS,
   MISSION_BEHAVIOUR,
-  Owner,
-  Person,
   Position,
   Rider,
   Settler,
@@ -17,10 +13,9 @@ import {
   Weapon,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { isManningPost, towerPostFor } from '../../conflict/tower-post.js';
+import { towerPostFor } from '../../conflict/tower-post.js';
 import { attackerWeapon } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
-import { ownedFighters } from '../../movement/collision/owned-fighters.js';
 import { isFighterJob, isRangedWeapon, WEAPON_MAIN_TYPE, weaponClassOf } from '../../readviews/index.js';
 import { ownedSettlers } from '../seat-roster.js';
 
@@ -74,82 +69,17 @@ export function takeCensus(world: World, ctx: SystemContext, player: number): Ar
  * settlement a wave would have to take. A fighter at zero hitpoints is a body awaiting removal, not a man.
  */
 export function fighterStrength(world: World, ctx: SystemContext, player: number): number {
-  return armyStrength(world, ctx, player, 1);
+  let strength = 0;
+  for (const e of ownedSettlers(world, player)) {
+    if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
+    if ((world.tryGet(e, Health)?.hitpoints ?? 0) > 0) strength++;
+  }
+  return strength;
 }
 
 /** What one fighter holding a tower post is worth to the army that must march into his reach (authored):
  *  his post's boosted range and the wall around him let him kill several men before he falls. */
 export const TOWER_POST_STRENGTH = 3;
-
-/** The strength a wave meets when it marches on `player`: his live fighters, each man holding a tower post
- *  weighed {@link TOWER_POST_STRENGTH}. The live count, blind to the fog like
- *  {@link strongestEnemyStrength}. */
-export function defendingStrength(world: World, ctx: SystemContext, player: number): number {
-  return armyStrength(world, ctx, player, TOWER_POST_STRENGTH);
-}
-
-function armyStrength(world: World, ctx: SystemContext, player: number, postedWeight: number): number {
-  let strength = 0;
-  for (const e of ownedSettlers(world, player)) {
-    if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
-    if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
-    strength += isManningPost(world, ctx, e) ? postedWeight : 1;
-  }
-  return strength;
-}
-
-/**
- * The {@link fighterStrength} of the strongest player `player` holds an `enemy` stance toward, 0 when no
- * enemy fields anyone: the men he could march with, counted one to one like the seat's own, so the army
- * floor (`workforce/garrison.ts`) can be met. The weight his tower posts add is the offensive's concern
- * ({@link defendingStrength}), read for the one target it picks. One pass over the owned fighters serves
- * every seat, so the cost is the map's fighters, not its people. The live count, blind to the fog: a
- * computer seat reads it only with nothing hidden (`computer-player/military/enemy-strength.ts`).
- */
-export function strongestEnemyStrength(world: World, ctx: SystemContext, player: number): number {
-  let counts: readonly number[] | null = null;
-  let strongest = 0;
-  for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === player || diplomacyStance(world, player, other) !== 'enemy') continue;
-    counts ??= liveFightersByPlayer(world, ctx);
-    strongest = Math.max(strongest, counts[other] ?? 0);
-  }
-  return strongest;
-}
-
-/** The live fighters per player slot under one store key, shared by every seat until a man is born, killed,
- *  hurt, re-owned or re-jobbed. Derived read-state, never hashed. */
-interface FighterTally {
-  readonly key: readonly number[];
-  readonly content: SystemContext['content'];
-  readonly counts: readonly number[];
-}
-
-const fighterTallies = new WeakMap<World, FighterTally>();
-
-/** Every store the tally reads, membership and in-place writes. */
-const TALLY_STORES = [Person, Owner, Health, Settler] as const;
-
-function liveFightersByPlayer(world: World, ctx: SystemContext): readonly number[] {
-  const key: number[] = [];
-  for (const store of TALLY_STORES) {
-    key.push(world.componentGeneration(store), world.componentValueGeneration(store));
-  }
-  const held = fighterTallies.get(world);
-  if (held !== undefined && held.content === ctx.content && held.key.every((v, i) => v === key[i])) {
-    return held.counts;
-  }
-  const counts = new Array<number>(MAX_PLAYERS).fill(0);
-  for (const e of ownedFighters(world, ctx.content)) {
-    if (!world.has(e, Person)) continue;
-    const owner = world.get(e, Owner).player;
-    const count = counts[owner];
-    if (count === undefined || (world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
-    counts[owner] = count + 1;
-  }
-  fighterTallies.set(world, { key, content: ctx.content, counts });
-  return counts;
-}
 
 /** The weapon mix of one body of fighters. A man with nothing to fight with counts as melee: he has no
  *  reach to keep, so he goes in with the front rank. */

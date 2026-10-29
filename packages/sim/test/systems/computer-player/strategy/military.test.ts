@@ -14,7 +14,6 @@ import {
   type PostureInputs,
   PREPARE_LEAD_TICKS,
   reviewMilitary,
-  seatStrategyOf,
   selectPosture,
 } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
@@ -55,16 +54,16 @@ describe('military plan', () => {
     makeAiSeat(sim, SEAT);
     placeHq(sim);
     sim.step();
-    const first = seatStrategyOf(sim.world, SEAT).strategy?.military;
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no carrier');
+    const first = sim.world.tryGet(carrier, ComputerStrategy)?.military;
     expect(MILITARY_PLANS).toContain(first?.plan);
     // Another plan than the draw, so a redraw would show.
     const other = MILITARY_PLANS.find((plan) => plan !== first?.plan) ?? 'balanced';
-    const carrier = aiControlEntity(sim.world, SEAT);
-    if (carrier === null) throw new Error('setup: no carrier');
     sim.world.mut(carrier, ComputerStrategy).military.plan = other;
     for (let i = 0; i < 2 * POSTURE_REVIEW_EVERY_DECISIONS * COMPUTER_DECISION_INTERVAL_TICKS; i++)
       sim.step();
-    expect(seatStrategyOf(sim.world, SEAT).strategy?.military.plan).toBe(other);
+    expect(sim.world.tryGet(carrier, ComputerStrategy)?.military.plan).toBe(other);
   });
 });
 

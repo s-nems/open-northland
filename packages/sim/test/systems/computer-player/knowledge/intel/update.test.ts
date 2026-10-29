@@ -22,7 +22,7 @@ import {
   computerDecisionDue,
   FORCE_PEAK_HALF_LIFE_TICKS,
   INTEL_DECISION_PHASE,
-  seatIntelSummaryOf,
+  summarizeIntel,
   updateComputerIntel,
 } from '../../../../../src/systems/computer-player/index.js';
 import type { SystemContext } from '../../../../../src/systems/index.js';
@@ -148,9 +148,12 @@ describe('computer seat intel', () => {
     while (sim.tick <= due) sim.step();
     const later = newestOther(sim);
     expect(believed(sim)).toContain(later);
-    const summary = seatIntelSummaryOf(sim.world, SEAT, sim.tick);
-    expect(summary?.zonesSeen).toBe(summary?.zones);
-    expect(summary?.owners.map((o) => [o.owner, o.unseenBuildings])).toEqual([[OTHER, 0]]);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const intel = carrier === null ? undefined : sim.world.tryGet(carrier, ComputerIntel);
+    if (intel === undefined) throw new Error('the seat has no intel');
+    const summary = summarizeIntel(intel, sim.tick);
+    expect(summary.zonesSeen).toBe(summary.zones);
+    expect(summary.owners.map((o) => [o.owner, o.unseenBuildings])).toEqual([[OTHER, 0]]);
   });
 
   it('remembers the most fighters seen at once and lets the peak decay', () => {

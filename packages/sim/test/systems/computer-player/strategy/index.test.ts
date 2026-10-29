@@ -4,6 +4,7 @@ import {
   aiControlEntity,
   ComputerStrategy,
   type EconomicStrategyState,
+  mapBriefOf,
 } from '../../../../src/components/index.js';
 import {
   exportSaveGame,
@@ -15,7 +16,7 @@ import {
 import {
   reviewEconomy,
   STRATEGY_SWITCH_REVIEWS,
-  seatStrategyOf,
+  seatBriefOf,
 } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
@@ -32,6 +33,12 @@ function strategySim(): Simulation {
   return sim;
 }
 
+/** The seat's saved strategy, as the debug view reads it off the carrier. */
+function strategyOf(sim: Simulation) {
+  const carrier = aiControlEntity(sim.world, SEAT);
+  return carrier === null ? undefined : sim.world.tryGet(carrier, ComputerStrategy);
+}
+
 describe('computer strategy step', () => {
   it('decides only the seats whose computer controller runs, once the map brief exists', () => {
     const sim = strategySim();
@@ -42,10 +49,11 @@ describe('computer strategy step', () => {
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: 6, x: 50, y: 10, tribe: VIKING, owner: MAP_AI_SEAT });
     sim.step();
     // The small test map leaves the home band little room.
-    expect(seatStrategyOf(sim.world, SEAT).strategy?.economy).toEqual(
+    expect(strategyOf(sim)?.economy).toEqual(
       expect.objectContaining({ archetype: 'cramped', challenger: null }),
     );
-    expect(seatStrategyOf(sim.world, SEAT).brief?.player).toBe(SEAT);
+    const brief = mapBriefOf(sim.world);
+    expect(brief === null ? null : seatBriefOf(brief, SEAT)?.player).toBe(SEAT);
     expect(sim.world.has(mapOnly, ComputerStrategy)).toBe(false);
   });
 
@@ -76,12 +84,12 @@ describe('computer strategy step', () => {
   it('survives a save and restore unchanged', () => {
     const sim = strategySim();
     sim.step();
-    const before = seatStrategyOf(sim.world, SEAT).strategy;
-    expect(before).not.toBeNull();
+    const before = strategyOf(sim);
+    expect(before).toBeDefined();
     const restored = restoreSimulation(parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim)))), {
       content: aiContent(),
       map: grassNodeMap(MAP_W, MAP_H),
     });
-    expect(seatStrategyOf(restored.world, SEAT).strategy).toEqual(before);
+    expect(strategyOf(restored)).toEqual(before);
   });
 });

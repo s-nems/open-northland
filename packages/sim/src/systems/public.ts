@@ -30,23 +30,16 @@ export { AI_PROFILES, profileBuildOrder } from './computer-player/difficulty.js'
 export {
   type IntelOwnerSummary,
   type SeatIntelSummary,
-  seatIntelSummaryOf,
   summarizeIntel,
 } from './computer-player/knowledge/intel/index.js';
 // What the map's scripts mean for a seat - objectives and scripted attacks - for a debug view; the
 // static part (`seatMapIntentOf`) reads only the scripts and the brief, so a snapshot view can call it.
 export {
-  type IntentStatus,
   type Objective,
-  type ObjectiveSummary,
-  type ProgramTaskSummary,
   type SeatMapIntent,
-  type SeatMapIntentSummary,
   type SeatThreat,
   seatMapIntentOf,
-  seatMapIntentSummaryOf,
   seatTerritoryOf,
-  type ThreatSummary,
   type Trigger,
   type TriggerCondition,
 } from './computer-player/knowledge/map-intent/index.js';
@@ -72,7 +65,6 @@ export {
   type SeatMilitaryView,
   type SeatStrategyView,
   seatMilitaryViewOf,
-  seatStrategyOf,
 } from './computer-player/strategy/index.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
