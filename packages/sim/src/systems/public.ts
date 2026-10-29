@@ -26,6 +26,13 @@ export {
 } from './computer-player/build-order/index.js';
 // The difficulty profiles, whose craft plans and trimmed build orders the real-content suite resolves too.
 export { AI_PROFILES, profileBuildOrder } from './computer-player/difficulty.js';
+// What a computer seat remembers of the other seats, for a debug view.
+export {
+  type IntelOwnerSummary,
+  type SeatIntelSummary,
+  seatIntelSummaryOf,
+  summarizeIntel,
+} from './computer-player/knowledge/intel/index.js';
 // A seat's view of the map brief (the `MapBrief` component in a snapshot), for a debug view.
 export {
   type AccessClass,

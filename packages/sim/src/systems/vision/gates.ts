@@ -34,7 +34,7 @@ export function viewedFogState(raw: number, mode: FogMode): number {
  * Whether `player` currently sees the half-cell node (hx, hy). With fog off, or with no fog resource at all
  * in a mapless sim, everything is seen, so pre-fog behaviour stays byte-identical.
  */
-function playerSeesNode(fog: FogState | undefined, player: number, hx: number, hy: number): boolean {
+export function playerSeesNode(fog: FogState | undefined, player: number, hx: number, hy: number): boolean {
   if (fog === undefined || fog.activeMode === FOG_MODE.OFF) return true;
   const { cx, cy } = cellOfNode(hx, hy);
   return fog.stateAt(player, cx, cy) === FOG_STATE.VISIBLE;

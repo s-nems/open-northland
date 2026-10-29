@@ -2,8 +2,9 @@ import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { defineWorldSingleton } from '../../ecs/world-singleton.js';
 import { AiControl } from './control.js';
 
-/** A seat's building as the map brief saw it at the scan: its type and anchor node. */
+/** A seat's building as the map brief saw it at the scan: the entity, its type and anchor node. */
 export interface BriefBuilding {
+  entity: Entity;
   buildingType: number;
   hx: number;
   hy: number;
@@ -99,6 +100,11 @@ export type MapBriefView = DeepReadonly<MapBriefState>;
 export function mapBriefOf(world: World): MapBriefView | null {
   const brief = mapBrief.read(world);
   return brief.scanned ? brief : null;
+}
+
+/** The zone holding half-cell node (hx, hy), row-major over the brief's zone grid. */
+export function zoneOfNode(brief: MapBriefView, hx: number, hy: number): number {
+  return Math.floor(hy / brief.zoneNodes) * brief.zonesWide + Math.floor(hx / brief.zoneNodes);
 }
 
 /** Store the scan's result, once per world, on an existing `carrier` rather than a fresh entity: a new

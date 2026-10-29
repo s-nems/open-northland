@@ -6,6 +6,7 @@
 export * from './ai/computer-player.js';
 export * from './ai/control.js';
 export * from './ai/flags.js';
+export * from './ai/intel.js';
 export * from './ai/map-ai.js';
 export * from './ai/map-ai-defence.js';
 export * from './ai/map-brief.js';

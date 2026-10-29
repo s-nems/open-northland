@@ -6,6 +6,7 @@ import { computerDecisionDue, moduleBeatDue } from '../ai-shared/cadence.js';
 import type { System, SystemContext } from '../context.js';
 import { catchUpSeatStock } from '../stores/index.js';
 import { buildOrderModule, DEFAULT_BUILD_ORDER } from './build-order/index.js';
+import { updateComputerIntel } from './knowledge/intel/index.js';
 import { ensureMapBrief } from './knowledge/map-brief/index.js';
 import { militaryModule } from './military/index.js';
 import { populationModule } from './population.js';
@@ -19,6 +20,7 @@ export * from './base.js';
 export * from './build-order/index.js';
 export * from './difficulty.js';
 export * from './diplomacy.js';
+export * from './knowledge/intel/index.js';
 export * from './knowledge/map-brief/index.js';
 export * from './knowledge/seat-brief.js';
 export * from './military/index.js';
@@ -78,8 +80,8 @@ export const COMPUTER_MODULE_PHASE_TICKS = 1;
  * One tick of the computer player over `modules`. Seats run in ascending player order (the canonical
  * decision order); a seat's module is due when the tick lands on its slot ({@link computerDecisionDue}) plus
  * the module's phase, so the seats and their modules spread their decision cost across the interval
- * instead of spiking on one tick or a run of them. The map brief is taken, and each seat's strategy
- * decided or reviewed, before the modules decide.
+ * instead of spiking on one tick or a run of them. The map brief is taken, each seat's strategy
+ * decided or reviewed and its intel refreshed on its own phase, before the modules decide.
  */
 export function runComputerModules(
   world: World,
@@ -92,6 +94,7 @@ export function runComputerModules(
   for (const e of world.query(AiControl)) seats.push(world.get(e, AiControl).player);
   seats.sort((a, b) => a - b);
   reviewComputerStrategies(world, ctx, seats);
+  updateComputerIntel(world, ctx, seats);
   for (const seat of seats) {
     for (let phase = 0; phase < modules.length; phase++) {
       const module = modules[phase];

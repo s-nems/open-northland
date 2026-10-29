@@ -1,4 +1,4 @@
-import type { MapBriefView } from '../../../components/index.js';
+import { type MapBriefView, zoneOfNode } from '../../../components/index.js';
 import type { Fixed } from '../../../core/fixed.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { NO_COMPONENT } from '../../../nav/terrain/index.js';
@@ -99,8 +99,7 @@ export function seatBriefOf(brief: MapBriefView, player: number): SeatBrief | nu
 
 function deriveSeatBrief(brief: MapBriefView, start: SeatStartView): SeatBrief {
   const anchor = { hx: start.hx, hy: start.hy };
-  const zone =
-    Math.floor(start.hy / brief.zoneNodes) * brief.zonesWide + Math.floor(start.hx / brief.zoneNodes);
+  const zone = zoneOfNode(brief, start.hx, start.hy);
   const home: number[] = [];
   const near: number[] = [];
   const continent: number[] = [];

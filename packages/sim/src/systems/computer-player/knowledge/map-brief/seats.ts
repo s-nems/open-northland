@@ -31,7 +31,12 @@ export function scanSeatStarts(world: World, ctx: SystemContext, terrain: Terrai
     for (const e of buildings) {
       const node = anchorNodeOf(world, e);
       if (node === null) continue;
-      start.buildings.push({ buildingType: world.get(e, Building).buildingType, hx: node.hx, hy: node.hy });
+      start.buildings.push({
+        entity: e,
+        buildingType: world.get(e, Building).buildingType,
+        hx: node.hx,
+        hy: node.hy,
+      });
     }
     seats.push(start);
   }
