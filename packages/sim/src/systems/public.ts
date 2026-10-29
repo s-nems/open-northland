@@ -33,6 +33,18 @@ export {
   seatIntelSummaryOf,
   summarizeIntel,
 } from './computer-player/knowledge/intel/index.js';
+// What the map's scripts mean for a seat - objectives and scripted attacks - for a debug view.
+export {
+  type IntentStatus,
+  type Objective,
+  type ObjectiveSummary,
+  type ProgramTaskSummary,
+  type SeatMapIntentSummary,
+  seatMapIntentSummaryOf,
+  type ThreatSummary,
+  type Trigger,
+  type TriggerCondition,
+} from './computer-player/knowledge/map-intent/index.js';
 // A seat's view of the map brief (the `MapBrief` component in a snapshot), for a debug view.
 export {
   type AccessClass,
