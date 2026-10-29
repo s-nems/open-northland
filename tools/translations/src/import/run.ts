@@ -26,7 +26,7 @@ import { formatCsv, glossaryFromLanguageUnion } from './glossary.js';
 import { normalizeWhitespace } from './map-xml.js';
 import { importMaps, type MapImport, type OverlayFile } from './maps.js';
 import { driftedIds, readLocalizedObjectTable, translateObjectNames } from './object-tables.js';
-import { glossaryCharacterNames, importPersonalNames, type PersonalNameResult } from './personal-names.js';
+import { importPersonalNames, type PersonalNameResult } from './personal-names.js';
 
 const TEXT_DIR = ['Localization', 'text'] as const;
 const GLOSSARY_SOURCE = 'language_union.csv';
@@ -172,7 +172,7 @@ export async function importCulturesLocalization(options: ImportOptions): Promis
   const glossaryRows = glossaryFromLanguageUnion(
     await readFile(join(options.source, GLOSSARY_SOURCE), 'utf8'),
   );
-  const personalNames = await importPersonalNames(textRoot, glossaryCharacterNames(glossaryRows), files);
+  const personalNames = await importPersonalNames(textRoot, files);
   return {
     maps,
     tables,

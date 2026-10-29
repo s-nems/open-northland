@@ -136,8 +136,7 @@ export function formatReport(result: ImportResult, sourceCommit: string): string
   for (const lang of OVERLAY_LANGUAGES) {
     const counts = result.personalNames.languages[lang];
     if (counts === undefined) continue;
-    const glossary = counts.fromGlossary === 0 ? '' : `; ${counts.fromGlossary} from the campaign characters`;
-    add(`Personal names ${lang}: ${counts.names} of the pool names translated${glossary}`);
+    add(`Personal names ${lang}: ${counts.names} of the pool names translated`);
   }
   add(
     `Glossary: rewrote ${GLOSSARY_FILE} with the ${result.glossaryTerms} upstream terms; the project's ` +
