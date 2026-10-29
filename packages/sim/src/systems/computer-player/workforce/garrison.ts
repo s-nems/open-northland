@@ -29,10 +29,11 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
-import { type ComputerProfile, shareOf } from '../difficulty.js';
-import { strongestBelievedEnemy } from '../military/enemy-strength.js';
+import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
+import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { WAVE_GATHER_TICKS } from '../military/plan.js';
+import { militaryOrdersOf } from '../strategy/military.js';
 import { productsOf } from './craft.js';
 
 /** The army's armed classes; publication order breaks a draft tie, leaving the odd man in reach. */
@@ -110,8 +111,8 @@ export function garrisonArms(
 /**
  * The army floor: once the seat's peace is within {@link ARMY_FLOOR_LEAD_TICKS} of its end ({@link
  * seatPeaceEndTick}, the start when there is none), the seat keeps its profile's share of the fighters its
- * strongest enemy fields ({@link strongestBelievedEnemy}), never fewer than {@link ARMY_FLOOR_MIN} and never
- * past a cap it drafts to. Its fighters and the recruits already in drill count toward it, so only the
+ * strongest enemy fields ({@link enemyInOwnMen}), scaled by its military plan and posture
+ * (`strategy/military.ts`), never fewer than {@link ARMY_FLOOR_MIN} and never past a cap it drafts to. Its fighters and the recruits already in drill count toward it, so only the
  * missing men are claimed out of `force`, which the ladder calls after the target-tier posts and ahead of
  * the surplus ones: a seat staffs what it built, and the trades that could absorb every man still leave
  * an army. Capped by the {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed
@@ -132,11 +133,12 @@ export function claimArmyFloor(
   // The seat's own roster settles the draftable count before the enemies' rosters are walked.
   const surplus = arms.surplus();
   if (surplus <= 0) return [];
+  const orders = militaryOrdersOf(world, player);
   const floor = Math.max(
     ARMY_FLOOR_MIN,
-    shareOf(strongestBelievedEnemy(world, ctx, player), profile.army.floorShare),
+    shareOf(shareOf(enemyInOwnMen(world, ctx, player), profile.army.floorShare), orders.floorShare),
   );
-  const missing = draftCeiling(profile, floor) - arms.onHand();
+  const missing = draftCeiling(profile, orders.draftCapShare, floor) - arms.onHand();
   const claim = Math.min(missing, surplus);
   if (claim <= 0) return [];
   const next = force.remaining().find((e) => isDraftable(world, e));
@@ -194,9 +196,21 @@ function drillFloorOf(world: World, ctx: SystemContext, player: number): Entity 
   return seatBarracksOf(world, ctx, player);
 }
 
-/** The most fighters `profile`'s seat drafts toward: `wanted`, or its army cap where it drafts to one. */
-function draftCeiling(profile: ComputerProfile, wanted: number): number {
-  return profile.army.draftToCap ? Math.min(wanted, profile.army.cap) : wanted;
+/** The most fighters `profile`'s seat drafts toward: `wanted`, or where it drafts to its army cap, the
+ *  `capShare` of that cap its plan drafts to. */
+function draftCeiling(profile: ComputerProfile, capShare: Share, wanted: number): number {
+  return profile.army.draftToCap ? Math.min(wanted, shareOf(profile.army.cap, capShare)) : wanted;
+}
+
+/** The strongest believed enemy's army ({@link strongestBelievedEnemy}) in men of the seat's own average
+ *  points, so a better-armed seat needs fewer; his head count while the seat has no army or knows no
+ *  points. */
+function enemyInOwnMen(world: World, ctx: SystemContext, player: number): number {
+  const enemy = strongestBelievedEnemy(world, ctx, player);
+  if (enemy.points === null) return enemy.men;
+  const own = ownArmyPoints(world, ctx, player);
+  if (own.men === 0 || own.points === 0) return enemy.men;
+  return Math.ceil((enemy.points * own.men) / own.points);
 }
 
 /** The seat's army as the floor counts it: its live fighters ({@link fighterStrength}) plus the booked

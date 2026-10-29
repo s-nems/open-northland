@@ -68,6 +68,36 @@ export function damageTakenBy(world: World, ctx: SystemContext, target: Entity, 
   return takenPct === undefined ? damage : Math.trunc((damage * takenPct) / PERCENT);
 }
 
+/** The fight effects `e`'s misc row carries, each as {@link damageDealtBy} and {@link damageTakenBy} read
+ *  them: absent when no live slot grants it. */
+export interface CarriedCombatEffects {
+  readonly damageDealtPct: number | undefined;
+  readonly criticalHit: EquipClass['criticalHit'];
+  readonly damageTakenPct: number | undefined;
+}
+
+export function carriedCombatEffects(world: World, content: ContentSet, e: Entity): CarriedCombatEffects {
+  return {
+    damageDealtPct: carriedEffect(world, content, e, 'damageDealtPct'),
+    criticalHit: carriedEffect(world, content, e, 'criticalHit'),
+    damageTakenPct: carriedEffect(world, content, e, 'damageTakenPct'),
+  };
+}
+
+/** The hitpoints the healing potions in `e`'s misc row still hold: each live slot's sip of its bearer's
+ *  `max` times the sips left, rounded up as a part-used potion still gives a whole sip. */
+export function healingReserveOf(world: World, content: ContentSet, e: Entity, max: number): number {
+  let reserve = 0;
+  for (const slot of world.tryGet(e, Equipment)?.misc ?? []) {
+    const equip = liveEquipOf(content, slot);
+    const sip = equip?.restorePct?.healthMax;
+    if (slot == null || equip?.uses === undefined || sip === undefined) continue;
+    const sipsLeft = Math.ceil((equip.uses * (ONE - slot.degreeOfUse)) / ONE);
+    reserve += Math.floor((max * sip) / PERCENT) * sipsLeft;
+  }
+  return reserve;
+}
+
 /** Ticks `e`'s carried items take off each walked step (the speed amulet's 2). */
 export function carriedStepTicksSaved(world: World, content: ContentSet, e: Entity): number {
   return carriedEffect(world, content, e, 'walkStepTicksSaved') ?? 0;

@@ -2,15 +2,16 @@ import { ownerOf, seatPeaceEndTick, WaveMarch } from '../../../components/index.
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { fighterStrength, weaponMix } from '../../ai-shared/military/census.js';
+import { weaponMix } from '../../ai-shared/military/census.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
 import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { seatBarracksOf } from '../base.js';
 import { computerProfileOf } from '../difficulty.js';
+import { militaryOrdersOf } from '../strategy/military.js';
 import { campaignTarget, objectiveNode } from './campaign.js';
-import { believedDefendingStrength } from './enemy-strength.js';
+import { believedDefendingPoints, ownArmyPoints } from './enemy-strength.js';
 import { advanceWave, endMarch, launchWave } from './march/index.js';
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, rallyAt, waveWorthy } from './muster.js';
 import { abandonWave, decideWave } from './plan.js';
@@ -30,9 +31,10 @@ const NO_CAMPAIGN: readonly PlayerCommand[] = [];
  * One strategic decision for the seat's campaign: the marching wave takes its next step
  * ({@link advanceWave}), then the rest of `army` is sorted around the barracks door ({@link musterAround})
  * and, with no wave out, the launch is judged ({@link decideWave}). Until the peace ends
- * ({@link seatPeaceEndTick}) and the difficulty's first wave may march, the army only gathers at the door, as
- * it does with no target. The men at the door set out as a wave when the muster is the one it was
- * gathering and the target's owner does not outnumber the seat; a body already nearer the objective goes
+ * ({@link seatPeaceEndTick}) and the difficulty's first wave may march, and while the seat's posture holds the
+ * army home (`strategy/military.ts`), the army only gathers at the door, as it does with no target, a
+ * marching wave called back. The men at the door set out as a wave when the muster is the one it was
+ * gathering and the seat's points reach its plan's edge over the target owner's; a body already nearer the objective goes
  * in whatever the muster says, having nowhere safe to wait; everybody else is called in.
  */
 export function runOffensive(
@@ -51,8 +53,11 @@ export function runOffensive(
   const home = interactionCell(world, ctx, terrain, barracks);
   const { army: armyProfile } = computerProfileOf(world, player);
   const peaceEnd = Math.max(seatPeaceEndTick(world, player), armyProfile.firstWaveFromTick);
-  const target = ctx.tick < peaceEnd ? null : campaignTarget(world, ctx, terrain, player, home);
-  if (target === null) {
+  const orders = militaryOrdersOf(world, player);
+  const launchRatio = orders.launchRatio;
+  const target =
+    ctx.tick < peaceEnd || launchRatio === null ? null : campaignTarget(world, ctx, terrain, player, home);
+  if (target === null || launchRatio === null) {
     abandonWave(world, barracks);
     endMarch(world, barracks);
     const everyone = [...army, ...wave, ...awaitingWeapon];
@@ -84,10 +89,12 @@ export function runOffensive(
   // of its men is not benched by its own defence; the target's posted men weigh what they kill. The
   // target's side is what the seat has seen of it.
   const targetOwner = ownerOf(world, target);
-  const own = fighterStrength(world, ctx, player);
+  const own = ownArmyPoints(world, ctx, player);
   const strength = {
-    own,
-    opposing: targetOwner === undefined ? 0 : believedDefendingStrength(world, ctx, player, targetOwner, own),
+    own: own.points,
+    ownMen: own.men,
+    opposing:
+      targetOwner === undefined ? 0 : believedDefendingPoints(world, ctx, player, targetOwner, own.points),
   };
   // One wave at a time: the next gathers at the door while the last one marches.
   const charges =
@@ -102,6 +109,7 @@ export function runOffensive(
       peaceEnd,
       strength,
       armyProfile.cap,
+      launchRatio,
     );
   const launch = charges
     ? launchedWaveOrders(world, ctx, terrain, { barracks, player, home, target, objective }, formed)

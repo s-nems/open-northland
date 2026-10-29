@@ -1,93 +1,111 @@
-import {
-  diplomacyStance,
-  Health,
-  MAX_PLAYERS,
-  Person,
-  Position,
-  seatPeaceEndTick,
-} from '../../../components/index.js';
+import { diplomacyStance, MAX_PLAYERS, Position, seatPeaceEndTick } from '../../../components/index.js';
 import { isPlayerDead } from '../../../components/match.js';
 import type { World } from '../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
-import {
-  defendingStrength,
-  strongestEnemyStrength,
-  TOWER_POST_STRENGTH,
-} from '../../ai-shared/military/census.js';
+import { TOWER_POST_STRENGTH } from '../../ai-shared/military/census.js';
 import { isManningPost } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { ownedFightersOf } from '../../movement/collision/owned-fighters.js';
 import { fogHides, playerSeesNode } from '../../vision/gates.js';
-import { believedEnemyBuildings, believedFighterStrength } from '../knowledge/intel/index.js';
+import {
+  believedEnemyBuildings,
+  believedFighterPoints,
+  believedFighterStrength,
+} from '../knowledge/intel/index.js';
 import { waveBandAt } from './plan.js';
+import { type ArmyPoints, armyPointsOf, isLiveFighter, unitPoints } from './points.js';
+
+/** `player`'s own fighters and points, tower garrisons counted once: the army the seat commands. */
+export function ownArmyPoints(world: World, ctx: SystemContext, player: number): ArmyPoints {
+  return armyPointsOf(world, ctx, player, COUNTED_ONCE, NEVER_POSTED);
+}
 
 /**
- * The strength the seat expects a wave to meet at `owner`'s settlement, weighed like `census.ts`
- * `defendingStrength`. With nothing hidden that is the live count. An enemy the seat knows nothing of
- * counts as `own`: parity, so the launch rule neither benches a wave nor sends one into odds it has seen.
+ * The points the seat expects a wave to meet at `owner`'s settlement, each man holding a tower post weighed
+ * {@link TOWER_POST_STRENGTH} times. With nothing hidden that is the live army. An enemy the seat knows
+ * nothing of counts as `own`: parity, so the launch rule neither benches a wave nor sends one into odds
+ * it has seen.
  */
-export function believedDefendingStrength(
+export function believedDefendingPoints(
   world: World,
   ctx: SystemContext,
   seat: number,
   owner: number,
   own: number,
 ): number {
-  if (!fogHides(ctx.fog)) return defendingStrength(world, ctx, owner);
-  return knownStrength(world, ctx, seat, owner, TOWER_POST_STRENGTH) ?? own;
+  if (!fogHides(ctx.fog)) {
+    return armyPointsOf(world, ctx, owner, TOWER_POST_STRENGTH, (e) => isManningPost(world, ctx, e)).points;
+  }
+  return knownArmy(world, ctx, seat, owner, TOWER_POST_STRENGTH)?.points ?? own;
+}
+
+/** The strongest enemy as the seat believes him: his men, and his points, null when it knows none. */
+export interface BelievedArmy {
+  readonly men: number;
+  readonly points: number | null;
 }
 
 /**
- * The fighters the strongest enemy the seat knows of fields, counted one to one like `census.ts`
- * `strongestEnemyStrength`, which is the live count read with nothing hidden; 0 with no live enemy.
- * Enemies it knows nothing of are left out while it knows another; when it knows none, they count as
- * the opening band of a wave sent at the seat's own phase of the game, so a blind seat still arms.
+ * The strongest enemy the seat knows of, by points, his tower posts counted once; with nothing hidden the
+ * live armies, and none with no live enemy. Enemies it knows nothing of are left out while it knows
+ * another; when it knows none, they count as the opening band of a wave sent at the seat's own phase of
+ * the game, points unknown, so a blind seat still arms. Costs the enemies' fighters.
  */
-export function strongestBelievedEnemy(world: World, ctx: SystemContext, seat: number): number {
-  if (!fogHides(ctx.fog)) return strongestEnemyStrength(world, ctx, seat);
-  let strongest: number | null = null;
+export function strongestBelievedEnemy(world: World, ctx: SystemContext, seat: number): BelievedArmy {
+  const hidden = fogHides(ctx.fog);
+  let strongest: ArmyPoints | null = null;
   let anyEnemy = false;
   for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy' || isPlayerDead(world, other))
-      continue;
+    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
+    if (hidden && isPlayerDead(world, other)) continue;
     anyEnemy = true;
-    const known = knownStrength(world, ctx, seat, other, COUNTED_ONCE);
-    if (known !== null) strongest = Math.max(strongest ?? 0, known);
+    const army = hidden
+      ? knownArmy(world, ctx, seat, other, COUNTED_ONCE)
+      : armyPointsOf(world, ctx, other, COUNTED_ONCE, NEVER_POSTED);
+    if (army !== null && (strongest === null || army.points > strongest.points)) strongest = army;
   }
   if (strongest !== null) return strongest;
-  return anyEnemy ? waveBandAt(ctx.tick - seatPeaceEndTick(world, seat)).min : 0;
+  if (!hidden || !anyEnemy) return NO_ARMY;
+  return { men: waveBandAt(ctx.tick - seatPeaceEndTick(world, seat)).min, points: null };
 }
+
+const NO_ARMY: BelievedArmy = { men: 0, points: 0 };
 
 /** A posted man's weight when men are counted one to one. */
 const COUNTED_ONCE = 1;
+const NEVER_POSTED = (): boolean => false;
 
 /**
- * `owner`'s fighters as `seat` knows them, each man holding a post weighed `postedWeight`: the larger of
- * those in sight now and the remembered peak with the posts it saw manned; null when it has neither.
- * Costs `owner`'s fighters and the seat's memory.
+ * `owner`'s army as `seat` knows it, each man holding a post weighed `postedWeight`: the larger of those in
+ * sight now and the remembered peak with the posts it saw manned; null when it has neither. Costs
+ * `owner`'s fighters and the seat's memory.
  */
-function knownStrength(
+function knownArmy(
   world: World,
   ctx: SystemContext,
   seat: number,
   owner: number,
   postedWeight: number,
-): number | null {
-  let seen = 0;
-  let inSight = 0;
+): ArmyPoints | null {
+  let men = 0;
+  let points = 0;
   for (const e of ownedFightersOf(world, ctx.content, owner)) {
-    if (!world.has(e, Person) || (world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
+    if (!isLiveFighter(world, e)) continue;
     const pos = world.tryGet(e, Position);
     if (pos === undefined) continue;
     if (!playerSeesNode(ctx.fog, seat, nodeHxOfPosition(pos.x, pos.y), nodeHyOfPosition(pos.x, pos.y)))
       continue;
-    inSight++;
-    seen += isManningPost(world, ctx, e) ? postedWeight : 1;
+    men++;
+    const value = unitPoints(world, ctx, e);
+    points += postedWeight !== COUNTED_ONCE && isManningPost(world, ctx, e) ? value * postedWeight : value;
   }
-  const peak = believedFighterStrength(world, seat, owner, ctx.tick);
-  if (peak === null) return inSight > 0 ? seen : null;
-  let posted = 0;
-  for (const b of believedEnemyBuildings(world, seat)) if (b.owner === owner) posted += b.posted;
+  const peakPoints = believedFighterPoints(world, seat, owner, ctx.tick);
+  if (peakPoints === null) return men > 0 ? { men, points } : null;
+  let postedPoints = 0;
+  for (const b of believedEnemyBuildings(world, seat)) if (b.owner === owner) postedPoints += b.postedPoints;
   // The peak counts each posted man once already.
-  return Math.max(seen, peak + posted * (postedWeight - 1));
+  return {
+    men: Math.max(men, believedFighterStrength(world, seat, owner, ctx.tick) ?? 0),
+    points: Math.max(points, peakPoints + postedPoints * (postedWeight - COUNTED_ONCE)),
+  };
 }

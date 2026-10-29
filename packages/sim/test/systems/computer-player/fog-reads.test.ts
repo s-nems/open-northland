@@ -7,10 +7,11 @@ import { seatRaiders } from '../../../src/systems/ai-shared/military/defence/ind
 import { ownedBuildings } from '../../../src/systems/ai-shared/seat-roster.js';
 import { campaignTarget, waveBandAt } from '../../../src/systems/computer-player/index.js';
 import {
-  believedDefendingStrength,
+  believedDefendingPoints,
   strongestBelievedEnemy,
 } from '../../../src/systems/computer-player/military/enemy-strength.js';
 import { enemyTowerNodesNear } from '../../../src/systems/computer-player/military/march/siege.js';
+import { unitPoints } from '../../../src/systems/computer-player/military/points.js';
 import { nearestEnemyBuilding } from '../../../src/systems/computer-player/sea-route.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { ownedFightersOf } from '../../../src/systems/movement/collision/owned-fighters.js';
@@ -143,29 +144,39 @@ describe('computer seat reads under fog of war', () => {
     expect(towers()).toHaveLength(1);
   });
 
-  it('weighs unseen fighters as unknown and seen ones as counted', () => {
+  it('weighs unseen fighters as unknown and seen ones by their points', () => {
     const sim = fogSim(STOCK_TYPE);
     spawnFighters(sim);
     const fog = fogOfWar(sim);
     const own = 4;
     const ctx = fogCtx(sim, fog);
     // Unknown: the launch assumes parity, the floor the opening band of the seat's phase.
-    expect(believedDefendingStrength(sim.world, ctx, SEAT, OTHER, own)).toBe(own);
-    expect(strongestBelievedEnemy(sim.world, ctx, SEAT)).toBe(waveBandAt(sim.tick).min);
+    expect(believedDefendingPoints(sim.world, ctx, SEAT, OTHER, own)).toBe(own);
+    expect(strongestBelievedEnemy(sim.world, ctx, SEAT)).toEqual({
+      men: waveBandAt(sim.tick).min,
+      points: null,
+    });
     lookAt(fog, FIGHTERS_AT, ARMY_SIGHT_RADIUS);
-    expect(believedDefendingStrength(sim.world, ctx, SEAT, OTHER, own)).toBe(FIGHTERS);
-    expect(strongestBelievedEnemy(sim.world, ctx, SEAT)).toBe(FIGHTERS);
+    const points = armyPoints(sim, ctx);
+    expect(believedDefendingPoints(sim.world, ctx, SEAT, OTHER, own)).toBe(points);
+    expect(strongestBelievedEnemy(sim.world, ctx, SEAT)).toEqual({ men: FIGHTERS, points });
   });
 
-  it('agrees with the live count with the fog off', () => {
+  it('agrees with the live army with the fog off', () => {
     const sim = fogSim(STOCK_TYPE);
     spawnFighters(sim);
     const ctx = fogCtx(sim);
-    expect(ownedFightersOf(sim.world, sim.content, OTHER)).toHaveLength(FIGHTERS);
-    expect(strongestBelievedEnemy(sim.world, ctx, SEAT)).toBe(FIGHTERS);
-    expect(believedDefendingStrength(sim.world, ctx, SEAT, OTHER, 0)).toBe(FIGHTERS);
+    const points = armyPoints(sim, ctx);
+    expect(strongestBelievedEnemy(sim.world, ctx, SEAT)).toEqual({ men: FIGHTERS, points });
+    expect(believedDefendingPoints(sim.world, ctx, SEAT, OTHER, 0)).toBe(points);
   });
 });
+
+function armyPoints(sim: Simulation, ctx: SystemContext): number {
+  const fighters = ownedFightersOf(sim.world, sim.content, OTHER);
+  expect(fighters).toHaveLength(FIGHTERS);
+  return fighters.reduce((sum, e) => sum + unitPoints(sim.world, ctx, e), 0);
+}
 
 describe('shared enemy reads by controller', () => {
   it('lists an unseen raider for a map-AI seat but not for a computer seat until it sees him', () => {

@@ -5,9 +5,11 @@ import {
   type AssistantCounterKind,
   AssistantRecruit,
   type AssistantRecruitIntent,
+  aiControlEntity,
   Building,
   CompletedCycles,
   type ComputerDifficulty,
+  ComputerStrategy,
   Garrison,
   Health,
   JobAssignment,
@@ -293,6 +295,19 @@ function rivalSeat(
   seat.sim.enqueueSetup({ kind: 'setPeaceTime', untilTick: peaceUntil, players: [SEAT] });
   setup?.(seat.sim);
   seat.sim.step();
+  const carrier = aiControlEntity(seat.sim.world, SEAT);
+  if (carrier === null) throw new Error('setup: no AI seat');
+  // The floor read plain: a posture that holds the army home keeps more (`strategy/military.ts`).
+  const military = seat.sim.world.tryGet(carrier, ComputerStrategy)?.military;
+  if (military !== undefined) {
+    seat.sim.world.mut(carrier, ComputerStrategy).military = {
+      ...military,
+      evidence: [...military.evidence],
+      challenger: null,
+      plan: 'balanced',
+      posture: 'attack',
+    };
+  }
   return seat;
 }
 

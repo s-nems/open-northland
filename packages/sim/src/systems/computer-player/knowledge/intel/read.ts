@@ -50,8 +50,25 @@ export function believedFighterStrength(
   return forces === undefined ? null : peakOrUnknown(forces, tick);
 }
 
+/** The most fighter points of `owner` that `seat` saw at once, aged to `tick` like
+ *  {@link believedFighterStrength}; null when none is remembered. */
+export function believedFighterPoints(
+  world: World,
+  seat: number,
+  owner: number,
+  tick: number,
+): number | null {
+  const forces = intelOf(world, seat)?.forces.find((f) => f.player === owner);
+  return forces === undefined ? null : pointsOrUnknown(forces, tick);
+}
+
 function peakOrUnknown(forces: DeepReadonly<IntelForces>, tick: number): number | null {
   const peak = decayedPeak(forces.peak, forces.peakAt, tick);
+  return peak > 0 ? peak : null;
+}
+
+function pointsOrUnknown(forces: DeepReadonly<IntelForces>, tick: number): number | null {
+  const peak = decayedPeak(forces.peakPoints, forces.peakPointsAt, tick);
   return peak > 0 ? peak : null;
 }
 
@@ -70,6 +87,8 @@ export interface IntelOwnerSummary {
   readonly posts: number;
   /** The aged peak of fighters seen at once, null when none is remembered. */
   readonly fighters: number | null;
+  /** The aged peak of fighter points seen at once, null when none is remembered. */
+  readonly points: number | null;
   /** The last fighter sighting and the zone most stood in, null before any. */
   readonly fightersSeenAt: number | null;
   readonly fightersZone: number | null;
@@ -116,6 +135,7 @@ export function summarizeIntel(intel: IntelView, tick: number): SeatIntelSummary
         owner,
         ...tally(owner),
         fighters: forces === undefined ? null : peakOrUnknown(forces, tick),
+        points: forces === undefined ? null : pointsOrUnknown(forces, tick),
         fightersSeenAt: forces?.lastSeenAt ?? null,
         fightersZone: forces?.lastZone ?? null,
       };

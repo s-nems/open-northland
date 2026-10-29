@@ -14,8 +14,9 @@ export interface IntelBuilding {
   hy: number;
   /** {@link NEVER_SEEN} for a start building not yet seen. */
   seenAt: number;
-  /** The fighters seen holding a post on it at the last sighting. */
+  /** The fighters seen holding a post on it at the last sighting, and their points. */
   posted: number;
+  postedPoints: number;
 }
 
 /** What one other seat's fighters have shown of themselves. */
@@ -24,6 +25,10 @@ export interface IntelForces {
   /** The most fighters seen at once, as of {@link peakAt}; reads decay it with age. */
   peak: number;
   peakAt: number;
+  /** The most fighter points seen at once (`military/points.ts`), as of {@link peakPointsAt}; decays
+   *  like {@link peak}. */
+  peakPoints: number;
+  peakPointsAt: number;
   /** The last tick any of its fighters was seen, and the zone most of them stood in then. */
   lastSeenAt: number;
   lastZone: number;

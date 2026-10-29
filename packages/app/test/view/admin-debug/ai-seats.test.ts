@@ -53,6 +53,18 @@ const DECIDED: AiSeatReading = {
       decidedAt: 120,
       challenger: { archetype: 'rich', reviews: 2 },
     },
+    military: {
+      plan: 'balanced',
+      posture: 'prepare',
+      evidence: ['forecastThreat'],
+      ownPoints: 120,
+      targetOwner: 3,
+      targetPoints: 300,
+      strongestPoints: 300,
+      threatInTicks: 600,
+      decidedAt: 120,
+      challenger: null,
+    },
   },
   brief: BRIEF,
 };

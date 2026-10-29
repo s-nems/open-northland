@@ -12,8 +12,16 @@ import type { DeepReadonly, World } from '../../../ecs/world.js';
 import { computerDecisionDue, moduleBeatDue } from '../../ai-shared/cadence.js';
 import type { SystemContext } from '../../context.js';
 import { type SeatBrief, seatBriefOf } from '../knowledge/seat-brief.js';
+import {
+  firstMilitary,
+  POSTURE_REVIEW_EVERY_DECISIONS,
+  postureInputsOf,
+  reviewMilitary,
+  selectPosture,
+} from './military.js';
 import { selectEconomy } from './select.js';
 
+export * from './military.js';
 export * from './select.js';
 
 /** Every how many of a seat's decisions its strategy is reviewed: 3 game minutes at the 4 s decision
@@ -24,8 +32,9 @@ export const STRATEGY_REVIEW_EVERY_DECISIONS = 45;
 export const STRATEGY_SWITCH_REVIEWS = 3;
 
 /**
- * Decide each running computer seat's strategy once the map brief exists, then review it on its own
- * slow beat. A seat whose computer controller does not run (the master permission) is never decided.
+ * Decide each running computer seat's strategy once the map brief exists, drawing its military plan, then
+ * review the economy and the military posture each on its own beat. A seat whose computer controller does
+ * not run (the master permission) is never decided.
  */
 export function reviewComputerStrategies(world: World, ctx: SystemContext, seats: readonly number[]): void {
   const brief = mapBriefOf(world);
@@ -34,21 +43,26 @@ export function reviewComputerStrategies(world: World, ctx: SystemContext, seats
     const carrier = aiControlEntity(world, seat);
     if (carrier === null || !computerControllerRuns(world, seat) || isPlayerDead(world, seat)) continue;
     const held = world.tryGet(carrier, ComputerStrategy);
-    if (held !== undefined && !reviewDue(ctx.tick, seat)) continue;
+    if (held !== undefined && !computerDecisionDue(ctx.tick, seat)) continue;
     const seatBrief = seatBriefOf(brief, seat);
     if (seatBrief === null) continue;
-    const choice = selectEconomy(seatBrief);
     if (held === undefined) {
-      world.add(carrier, ComputerStrategy, { economy: { ...choice, decidedAt: ctx.tick, challenger: null } });
+      world.add(carrier, ComputerStrategy, {
+        economy: { ...selectEconomy(seatBrief), decidedAt: ctx.tick, challenger: null },
+        military: firstMilitary(world, ctx, seat),
+      });
       continue;
     }
-    const next = reviewEconomy(held.economy, choice, ctx.tick);
-    if (next !== null) world.mut(carrier, ComputerStrategy).economy = next;
+    if (moduleBeatDue(ctx.tick, seat, STRATEGY_REVIEW_EVERY_DECISIONS)) {
+      const next = reviewEconomy(held.economy, selectEconomy(seatBrief), ctx.tick);
+      if (next !== null) world.mut(carrier, ComputerStrategy).economy = next;
+    }
+    if (moduleBeatDue(ctx.tick, seat, POSTURE_REVIEW_EVERY_DECISIONS)) {
+      const military = world.get(carrier, ComputerStrategy).military;
+      const choice = selectPosture(military.plan, postureInputsOf(world, ctx, seat), military.posture);
+      world.mut(carrier, ComputerStrategy).military = reviewMilitary(military, choice, ctx.tick);
+    }
   }
-}
-
-function reviewDue(tick: number, seat: number): boolean {
-  return computerDecisionDue(tick, seat) && moduleBeatDue(tick, seat, STRATEGY_REVIEW_EVERY_DECISIONS);
 }
 
 /**
@@ -97,20 +111,25 @@ export function seatStrategyOf(world: World, player: number): SeatStrategyView {
   const mapBrief = mapBriefOf(world);
   const carrier = aiControlEntity(world, player);
   const held = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
-  const economy = held?.economy;
   return {
-    strategy:
-      economy === undefined
-        ? null
-        : {
-            economy: {
-              archetype: economy.archetype,
-              sides: [...economy.sides],
-              evidence: [...economy.evidence],
-              decidedAt: economy.decidedAt,
-              challenger: economy.challenger === null ? null : { ...economy.challenger },
-            },
-          },
+    strategy: held === undefined ? null : copyStrategy(held),
     brief: mapBrief === null ? null : seatBriefOf(mapBrief, player),
+  };
+}
+
+function copyStrategy({ economy, military }: DeepReadonly<ComputerStrategyState>): ComputerStrategyState {
+  return {
+    economy: {
+      archetype: economy.archetype,
+      sides: [...economy.sides],
+      evidence: [...economy.evidence],
+      decidedAt: economy.decidedAt,
+      challenger: economy.challenger === null ? null : { ...economy.challenger },
+    },
+    military: {
+      ...military,
+      evidence: [...military.evidence],
+      challenger: military.challenger === null ? null : { ...military.challenger },
+    },
   };
 }

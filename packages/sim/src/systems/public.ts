@@ -56,8 +56,16 @@ export {
 } from './computer-player/knowledge/seat-brief.js';
 // The garrison an acceptance scene pins, and the outfit the real-content plan test resolves.
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './computer-player/military/index.js';
-// A seat's economic strategy and the seat brief it was chosen from, for a debug view.
-export { type SeatStrategyView, seatStrategyOf } from './computer-player/strategy/index.js';
+// A seat's strategy (economy, military plan and posture) and the seat brief it was chosen from, and its
+// army, strongest believed enemy and next forecast attack, for a debug view.
+export {
+  type MilitaryOrders,
+  militaryOrdersOf,
+  type SeatMilitaryView,
+  type SeatStrategyView,
+  seatMilitaryViewOf,
+  seatStrategyOf,
+} from './computer-player/strategy/index.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,

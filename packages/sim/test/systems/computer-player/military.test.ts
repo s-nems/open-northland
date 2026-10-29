@@ -1,11 +1,17 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   AssistantRecruit,
   AttackOrder,
+  aiControlEntity,
   Building,
   type ComputerModuleEnables,
+  ComputerStrategy,
+  computerModuleEnables,
   Engagement,
   endPeace,
+  type MilitaryPlan,
+  type MilitaryPosture,
   MoveGoal,
   MusterPlan,
   Owner,
@@ -43,6 +49,7 @@ import {
   OPENING_WAVE,
   RALLY_HOLD_RADIUS_NODES,
   rallyAt,
+  selectPosture,
   TOWER_POST_STRENGTH,
   takeCensus,
   WAVE_GATHER_TICKS,
@@ -238,6 +245,40 @@ function assaulting(sim: Simulation, commands: readonly Command[], target: Entit
   const legs = walks(commands).flatMap((d) => (wave.has(d.entity) ? [d.entity] : []));
   return [...new Set([...walksInto(sim, commands, door, ASSAULT_RING_RADIUS_NODES), ...legs])];
 }
+
+/** Give the seat a decided strategy holding `plan` and `posture`, as its strategy step would. */
+function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPosture): void {
+  let carrier = aiControlEntity(sim.world, SEAT);
+  if (carrier === null) {
+    carrier = sim.world.create();
+    sim.world.add(carrier, AiControl, {
+      player: SEAT,
+      computerEnabled: true,
+      modules: computerModuleEnables(),
+      mapAiEnabled: true,
+      difficulty: 'hard',
+    });
+  }
+  const military = {
+    ...selectPosture(plan, NO_POSTURE_INPUTS, null),
+    posture,
+    plan,
+    decidedAt: 0,
+    challenger: null,
+  };
+  const economy = { archetype: 'standard' as const, sides: [], evidence: [], decidedAt: 0, challenger: null };
+  sim.world.add(carrier, ComputerStrategy, { economy, military });
+}
+
+const NO_POSTURE_INPUTS = {
+  ownPoints: 0,
+  targetOwner: null,
+  targetPoints: null,
+  strongestPoints: null,
+  threatInTicks: null,
+  underAttack: false,
+  raidTargetKnown: false,
+};
 
 function stanceModes(commands: readonly Command[]): number[] {
   return commands.flatMap((c) => (c.kind === 'setStance' ? [c.mode] : []));
@@ -523,6 +564,34 @@ describe('military module - the campaign', () => {
     // One enemy fighter fewer and the armies match: the band goes in.
     sim.world.destroy(fallen);
     expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toHaveLength(WAVE_MIN_SOLDIERS);
+  });
+
+  it('sends no wave while its posture defends or prepares, whatever the odds', () => {
+    for (const posture of ['defend', 'prepare'] as const) {
+      const sim = bandSim(WAVE_MIN_SOLDIERS);
+      holdPosture(sim, 'aggressive', posture);
+      const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+      run(sim, PATIENT_SEED);
+      expect(assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq)).toEqual([]);
+    }
+  });
+
+  it('sends a band an aggressive plan finds strong enough and a balanced or defensive one holds', () => {
+    // The enemy fields one man more than the band, all armed alike: short of parity, within the
+    // aggressive edge.
+    const outnumbered = (plan: 'aggressive' | 'balanced' | 'defensive') => {
+      const sim = bandSim(WAVE_MIN_SOLDIERS);
+      spawn(sim, WAVE_MIN_SOLDIERS + 1, { x: FOE_HQ.x - 20, y: FOE_HQ.y }, SPEARMAN, FOE);
+      // After the setup steps, so the strategy step never reviews it.
+      holdPosture(sim, plan, 'attack');
+      const foeHq = buildingOfType(sim, HQ_TYPE, FOE);
+      // The first decision draws the wave; the band then waits out its window.
+      run(sim, PATIENT_SEED);
+      return assaulting(sim, run(sim, PATIENT_SEED, WAVE_GATHER_TICKS), foeHq).length;
+    };
+    expect(outnumbered('aggressive')).toBe(WAVE_MIN_SOLDIERS);
+    expect(outnumbered('balanced')).toBe(0);
+    expect(outnumbered('defensive')).toBe(0);
   });
 
   it('weighs each fighter holding an enemy tower post as several men, so the band waits for a bigger army', () => {

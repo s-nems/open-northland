@@ -4,14 +4,12 @@ import {
   ComputerIntel,
   type ComputerIntelState,
   computerControllerRuns,
-  Health,
   type IntelBuilding,
   MAX_PLAYERS,
   type MapBriefView,
   mapBriefOf,
   NEVER_SEEN,
   Owner,
-  Person,
   Position,
   zoneOfNode,
 } from '../../../../components/index.js';
@@ -25,6 +23,7 @@ import type { SystemContext } from '../../../context.js';
 import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import type { FogState } from '../../../vision/state.js';
+import { isLiveFighter, unitPoints } from '../../military/points.js';
 
 /** Ticks after a seat's decision slot its intel is updated (authored): off the workforce's and build
  *  order's dear phases, one phase before the military decision reads it. */
@@ -61,6 +60,7 @@ function seededIntel(brief: MapBriefView, seat: number): ComputerIntelState {
         hy: b.hy,
         seenAt: NEVER_SEEN,
         posted: 0,
+        postedPoints: 0,
       });
     }
   }
@@ -79,7 +79,7 @@ function observe(
   seat: number,
   intel: ComputerIntelState,
 ): void {
-  const posted = new Map<Entity, number>();
+  const posted = new Map<Entity, PostSighting>();
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (other === seat) continue;
     observeForces(world, ctx, brief, seat, other, intel, posted);
@@ -89,7 +89,14 @@ function observe(
   sampleZones(ctx.fog, brief, seat, ctx.tick, intel.zoneSeenAt);
 }
 
-/** Count the fighters of `other` the seat sees now, tallying the posts they hold into `posted`. */
+/** The men seen holding one post and their points. */
+interface PostSighting {
+  men: number;
+  points: number;
+}
+
+/** Count the fighters of `other` the seat sees now and their points, tallying the posts they hold into
+ *  `posted`. */
 function observeForces(
   world: World,
   ctx: SystemContext,
@@ -97,33 +104,54 @@ function observeForces(
   seat: number,
   other: number,
   intel: ComputerIntelState,
-  posted: Map<Entity, number>,
+  posted: Map<Entity, PostSighting>,
 ): void {
   let seen = 0;
+  let seenPoints = 0;
   const byZone = new Map<number, number>();
   for (const e of ownedFightersOf(world, ctx.content, other)) {
-    if (!world.has(e, Person) || (world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
+    if (!isLiveFighter(world, e)) continue;
     const pos = world.tryGet(e, Position);
     if (pos === undefined) continue;
     const hx = nodeHxOfPosition(pos.x, pos.y);
     const hy = nodeHyOfPosition(pos.x, pos.y);
     if (!playerSeesNode(ctx.fog, seat, hx, hy)) continue;
+    const points = unitPoints(world, ctx, e);
     seen++;
+    seenPoints += points;
     const zone = zoneOfNode(brief, hx, hy);
     byZone.set(zone, (byZone.get(zone) ?? 0) + 1);
     const post = mannedPostOf(world, ctx, e);
-    if (post !== null) posted.set(post, (posted.get(post) ?? 0) + 1);
+    if (post === null) continue;
+    const sighting = posted.get(post);
+    if (sighting === undefined) posted.set(post, { men: 1, points });
+    else {
+      sighting.men++;
+      sighting.points += points;
+    }
   }
   if (seen === 0) return;
   let record = intel.forces.find((f) => f.player === other);
   if (record === undefined) {
-    record = { player: other, peak: 0, peakAt: ctx.tick, lastSeenAt: ctx.tick, lastZone: 0 };
+    record = {
+      player: other,
+      peak: 0,
+      peakAt: ctx.tick,
+      peakPoints: 0,
+      peakPointsAt: ctx.tick,
+      lastSeenAt: ctx.tick,
+      lastZone: 0,
+    };
     intel.forces.push(record);
     intel.forces.sort((a, b) => a.player - b.player);
   }
   if (seen >= decayedPeak(record.peak, record.peakAt, ctx.tick)) {
     record.peak = seen;
     record.peakAt = ctx.tick;
+  }
+  if (seenPoints >= decayedPeak(record.peakPoints, record.peakPointsAt, ctx.tick)) {
+    record.peakPoints = seenPoints;
+    record.peakPointsAt = ctx.tick;
   }
   record.lastSeenAt = ctx.tick;
   record.lastZone = busiestZone(byZone);
@@ -162,7 +190,7 @@ function observeBuildings(
   other: number,
   tick: number,
   memory: IntelBuilding[],
-  posted: ReadonlyMap<Entity, number>,
+  posted: ReadonlyMap<Entity, PostSighting>,
 ): void {
   for (const e of ownedBuildings(world, other)) {
     const pos = world.tryGet(e, Position);
@@ -177,7 +205,8 @@ function observeBuildings(
       hx,
       hy,
       seenAt: tick,
-      posted: posted.get(e) ?? 0,
+      posted: posted.get(e)?.men ?? 0,
+      postedPoints: posted.get(e)?.points ?? 0,
     };
     const at = lowerBound(memory, e);
     if (memory[at]?.entity === e) memory[at] = seen;

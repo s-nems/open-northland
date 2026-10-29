@@ -3,6 +3,7 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { WeaponMix } from '../../ai-shared/military/census.js';
 import type { SystemContext } from '../../context.js';
+import type { Share } from '../difficulty.js';
 import { WAVE_MIN_SOLDIERS, waveWorthy } from './muster.js';
 
 /** How long one wave gathers before it marches without its drawn size. Absolute rather than keyed on
@@ -46,12 +47,13 @@ export function waveBandAt(sincePeace: number): WaveBand {
   };
 }
 
-/** The seat's whole fighter head count against the strength it believes the target's owner defends with
- *  (`enemy-strength.ts`): garrisons and men in a fight included on both sides, his tower posts weighed for
- *  the men they kill. */
+/** The seat's whole army in points against the points it believes the target's owner defends with
+ *  (`enemy-strength.ts`, `points.ts`): garrisons and men in a fight included on both sides, his tower posts
+ *  weighed for the men they kill. `ownMen` is the seat's head count, which the army cap counts. */
 export interface Strength {
   readonly own: number;
   readonly opposing: number;
+  readonly ownMen: number;
 }
 
 /** The seat's free men as its door counts them this decision. */
@@ -66,10 +68,10 @@ export interface DoorCount {
   readonly walkingIn: number;
 }
 
-/** Whether the target's owner defends with more than the seat's whole army (authored): a wave marches
- *  only from parity or better, since a tower-held settlement eats an army that merely matches it. */
-function outnumbered({ own, opposing }: Strength): boolean {
-  return opposing > own;
+/** Whether `own` points reach `ratio` of `opposing`: the launch edge the seat's plan sets
+ *  (`strategy/military.ts`), cross-multiplied so nothing divides. */
+export function launchRatioReached(own: number, opposing: number, ratio: Share): boolean {
+  return own * ratio.den >= opposing * ratio.num;
 }
 
 /**
@@ -79,13 +81,12 @@ function outnumbered({ own, opposing }: Strength): boolean {
  * in {@link MusterPlan} rather than drawn per decision, where the smallest draw would always be the one
  * that decides, and redrawn once the band it was drawn from has grown past it.
  *
- * Nothing marches while the target's owner {@link outnumbered} the seat by `strength`, not even on a spent
- * window: the band keeps gathering and the plan is kept. Both sides are whole armies, the seat's own beyond
+ * Nothing marches while the seat's points fall short of `launchRatio` of the target owner's
+ * ({@link launchRatioReached}), not even on a spent window: the band keeps gathering and the plan is kept. Both sides are whole armies, the seat's own beyond
  * `door.mustered`, since a garrison defends what a wave would take and the seat's towers should not bench
  * the band at its door. The one rule above all of that is the seat's `armyCap` ({@link ARMY_CAP_SOLDIERS}
  * on hard): an army that size goes in whole, once its men walking in have arrived or the window has run
- * out on a man who never does. A first strength judgement: head counts and tower posts, blind to weapons,
- * armour, amulets, potions and experience.
+ * out on a man who never does.
  */
 export function decideWave(
   world: World,
@@ -97,6 +98,7 @@ export function decideWave(
   peaceEnd: number,
   strength: Strength,
   armyCap: number,
+  launchRatio: Share,
 ): boolean {
   if (door.mustered < WAVE_MIN_SOLDIERS) {
     abandonWave(world, barracks);
@@ -105,14 +107,14 @@ export function decideWave(
   if (!waveWorthy(band, meleeCore)) return false;
   const plan = wavePlan(world, ctx, barracks, peaceEnd);
   const windowOpen = ctx.tick - plan.drawnAt < WAVE_GATHER_TICKS;
-  if (strength.own >= armyCap) {
+  if (strength.ownMen >= armyCap) {
     const cappedAt = plan.cappedAt ?? ctx.tick;
     if (plan.cappedAt === null) world.mut(barracks, MusterPlan).cappedAt = cappedAt;
     if (door.walkingIn > 0 && ctx.tick - cappedAt < WAVE_GATHER_TICKS) return false;
     abandonWave(world, barracks);
     return true;
   }
-  if (outnumbered(strength)) return false;
+  if (!launchRatioReached(strength.own, strength.opposing, launchRatio)) return false;
   if (band.total < plan.waveSize) {
     if (windowOpen) return false;
     if (band.total < Math.min(waveBandAt(ctx.tick - peaceEnd).min, door.gatherable)) return false;
