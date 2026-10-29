@@ -161,6 +161,8 @@ export interface SeatStaffing {
   readonly owned: readonly Entity[];
   readonly supply: SeatSupply;
   readonly profile: ComputerProfile;
+  /** The men pinned on the work earning a discovery (`technology/apprentices.ts`), never released. */
+  readonly apprentices?: ReadonlySet<Entity>;
 }
 
 /** The operators a workplace type's plan staffs at the target tier, each operator trade capped by its

@@ -1454,6 +1454,7 @@ describe('workforce module (collectResources)', () => {
       new SpareForce([]),
       new Set(),
       BUILDER,
+      new Set(),
     );
     // The last qualified holder costs stone the least; he alone leaves its list.
     expect(collectorsByGood.get(IRON)).toEqual([junior]);

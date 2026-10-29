@@ -12,6 +12,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';
+import type { Schooling } from '../technology/schooling.js';
 import {
   type BuildingStaffing,
   buildingStaffing,
@@ -35,12 +36,20 @@ export function builderCap(profile: ComputerProfile, civilians: number, tick: nu
   return civilians >= LATE_GAME_CIVILIANS ? builders.grown : builders.opening;
 }
 
+/** Where a gated slot no spare man qualifies for gets its man: a school lesson while a standing school
+ *  teaches the trade, else a promotion. */
+export interface GatedSlotSources {
+  readonly schooling: Schooling;
+  readonly promotions: Promotions;
+}
+
 /**
  * Staff each built workplace and storage toward its plan's tier ({@link buildingStaffing}), where an
  * operator is a non-carrier, non-gatherer slot. Each post goes to the spare man most experienced on the
- * slot trade's general track who qualifies for it (`settlerMeetsNeed`), and a slot no spare man qualifies
- * for takes a promotion ({@link Promotions}). Gatherer slots stay open, and a carrier-only workplace (the
- * well, the hive) fills itself, so it needs no staff. Workplaces fill before storage within a tier, and
+ * slot trade's general track who qualifies for it (`settlerMeetsNeed`). A slot no spare man qualifies for
+ * takes a pupil of the trade's school lesson ({@link Schooling}), counted as filling it until he
+ * graduates, or with no school teaching the trade a promotion ({@link Promotions}). Gatherer slots stay
+ * open, and a carrier-only workplace (the well, the hive) fills itself, so it needs no staff. Workplaces fill before storage within a tier, and
  * all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
  */
 export function staffBuildings(
@@ -50,7 +59,7 @@ export function staffBuildings(
   force: SpareForce,
   tally: StaffingTally,
   tier: StaffingTier,
-  promotions: Promotions,
+  gated: GatedSlotSources,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
@@ -83,14 +92,21 @@ export function staffBuildings(
       if (!carrier && index.harvestJobs.has(slot.jobType)) continue; // gatherer slots stay open
       if (type.kind === 'storage' && !carrier) continue; // storage staffs transport only
       const want = Math.min(slot.count, carrier ? carrierWant : operatorWant);
-      const held = tally.get(building)?.get(slot.jobType) ?? 0;
+      const held =
+        (tally.get(building)?.get(slot.jobType) ?? 0) + gated.schooling.promised(building, slot.jobType);
       const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
       const qualifies = (e: Entity): boolean =>
         settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', slot.jobType);
       for (let i = held; i < want; i++) {
-        // A promotion seats a building's first man of the trade only, so a second post never strips the
-        // predecessor trade a second time.
-        const spare = force.take(qualifies, veteranFirst) ?? (i === 0 ? promotions.take(slot.jobType) : null);
+        let spare = force.take(qualifies, veteranFirst);
+        if (spare === null) {
+          const lesson = gated.schooling.enrol(slot.jobType, building, force);
+          if (lesson.kind === 'learn') commands.push(lesson.command);
+          if (lesson.kind === 'learn' || lesson.kind === 'promised') continue;
+          // A promotion seats a building's first man of the trade only, so a second post never strips the
+          // predecessor trade a second time.
+          if (lesson.kind === 'none' && i === 0) spare = gated.promotions.take(slot.jobType);
+        }
         if (spare === null) {
           if (!force.any()) return commands; // pool dry - the rest waits for grown sons
           break; // nobody qualifies for this trade yet
@@ -227,6 +243,7 @@ function releaseSurplus(
       if (staff.length <= kept) continue;
       for (const e of byExperience(staff, experienceRank(world, ctx, job)).slice(kept)) {
         if (world.has(e, CurrentAtomic) || world.has(e, Carrying)) continue;
+        if (seat.apprentices?.has(e) ?? false) continue; // earning a discovery at this post
         commands.push({ kind: 'setJob', entity: e, jobType: builderJob });
       }
     }

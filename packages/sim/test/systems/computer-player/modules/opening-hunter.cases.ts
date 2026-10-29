@@ -29,6 +29,7 @@ import {
   placeHq,
   SCOUT,
   SEAT,
+  STOCK_TYPE,
   spawnMen,
   VIKING,
 } from '../support.js';
@@ -44,6 +45,11 @@ const MEAT_HARVEST = 34;
 const NEAR_GAME_DX = 10;
 const FAR_GAME_DX = 90;
 const WIDE_MAP_NODES = 128;
+/** A crew with men to spare once the opening posts and the builder reserve are filled. */
+const SURPLUS_CREW = 16;
+/** The fixture's eaten good, and a store of it that feeds every settler twice over. */
+const FOOD = 3;
+const FULL_LARDER = 200;
 
 /** {@link huntingContent} plus a deer, a warrantable type and so game. */
 function gameContent(): ContentSet {
@@ -263,5 +269,42 @@ describe('workforce module - the opening hunter', () => {
     expect(
       [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'assignWorker'),
     ).toEqual([]);
+  });
+
+  it('sends food hunters out while the store runs short of food, and calls them back once it fills', () => {
+    const content = gameContent();
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    spawnMen(sim, SURPLUS_CREW);
+    spawnDeer(sim, HQ_X + NEAR_GAME_DX, HQ_Y);
+    const ctx = { ...ctxOf(sim), content };
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    const hires = [...collectModule.run(sim.world, ctx, SEAT)].filter(
+      (c) => c.kind === 'assignWorker' && c.building === hq && c.jobPriority[0] === HUNTER,
+    );
+    // The opening hunter, and a food hunter out of the men the other posts leave.
+    expect(hires).toHaveLength(2);
+    for (const c of hires) sim.enqueueSetup(c);
+    sim.step();
+    const hunters = [...sim.world.query(Settler, JobAssignment)].filter(
+      (e) => sim.world.get(e, Settler).jobType === HUNTER,
+    );
+    expect(hunters).toHaveLength(2);
+
+    // A full store feeds the seat: one hunter goes back, the other keeps the opening post.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      x: HQ_X - 10,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      initialGoods: [{ good: FOOD, amount: FULL_LARDER }],
+    });
+    sim.step();
+    const back = [...collectModule.run(sim.world, ctx, SEAT)].filter(
+      (c) => c.kind === 'setJob' && hunters.includes(c.entity),
+    );
+    expect(back).toHaveLength(1);
   });
 });

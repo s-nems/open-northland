@@ -12,6 +12,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { byExperience, experienceRank } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import {
   groundDistance,
@@ -31,44 +32,79 @@ import { OPENING_HUNT_UNTIL_TICKS } from '../game-phase.js';
 import { technologyTable } from '../technology/requirements.js';
 import type { StaffingTally } from './tally.js';
 
-/**
- * The opening hunter: one man employed at the seat's base on its hunter slot, handed back to the civilian
- * pool once {@link OPENING_HUNT_UNTIL_TICKS} passes, and earlier once he idles with no game left on the
- * base's hunting ground (authored). Under the experience gates the post outlasts the clock while his
- * kills still have a trade to open or fill ({@link huntOpensTrades}), and is re-filled after the hunter
- * was promoted into one: the owner's ruling keeps the hunter until the breeder and the sewer open.
- * Employed rather than flag-bound because the post gives him the base as his hunting ground and banks his
- * kills as food. Content missing the hunter trade or the base's hunter seat hires nobody.
- */
-export function allocateOpeningHunter(
+/** One decision's base hunters: the hunter trade, the men posted at the base, and how many it keeps. */
+export interface HuntingPlan {
+  readonly base: Entity;
+  readonly job: number;
+  /** The base's hunters; the decision's hire is pushed in. */
+  readonly posted: Entity[];
+  /** The opening hunter, plus the food-shortage hunters while the seat runs short ({@link foodHunters}). */
+  readonly want: number;
+  readonly apprentices: ReadonlySet<Entity>;
+}
+
+/** The seat's {@link HuntingPlan}, or null when the content lacks the hunter trade or the base's hunter
+ *  seat. `extraFor` gives the food-shortage hunters the seat wants beside the opening one, from how many
+ *  it holds now. */
+export function huntingPlan(
   world: World,
   ctx: SystemContext,
   player: number,
   base: Entity,
+  extraFor: (held: number) => number,
+  apprentices: ReadonlySet<Entity>,
+): HuntingPlan | null {
+  const job = hunterJobType(ctx.content);
+  if (job === null || !offersHunterSeat(world, ctx, base, job)) return null;
+  const posted = huntersAt(world, ctx, player, base);
+  return { base, job, posted, want: 1 + extraFor(Math.max(0, posted.length - 1)), apprentices };
+}
+
+/**
+ * The base hunters: one man employed at the seat's base on its hunter slot, handed back to the civilian
+ * pool once {@link OPENING_HUNT_UNTIL_TICKS} passes, and earlier once he idles with no game left on the
+ * base's hunting ground (authored). Under the experience gates the post outlasts the clock while his
+ * kills still have a trade to open or fill ({@link huntOpensTrades}), and is re-filled after the hunter
+ * was promoted into one: the owner's ruling keeps the hunter until the breeder and the sewer open. An
+ * apprentice earning a discovery by his kills is never retired. The first phase keeps and hires the one
+ * post; the surplus phase, out of the men the other posts leave, hires the food-shortage hunters the plan
+ * wants, and the first phase hands the extra ones back once the plan no longer wants them, the least
+ * practised first. Employed rather than flag-bound because the post gives him the base as his hunting
+ * ground and banks his kills as food.
+ */
+export function allocateHunters(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  plan: HuntingPlan | null,
   force: SpareForce,
   builderJob: number | null,
   tally: StaffingTally,
+  phase: 'first' | 'surplus',
 ): PlayerCommand[] {
-  const hunterJob = hunterJobType(ctx.content);
-  if (hunterJob === null) return [];
-  if (!offersHunterSeat(world, ctx, base, hunterJob)) return [];
-  const posted = huntersAt(world, ctx, player, base);
+  if (plan === null) return [];
+  const { base, job, posted } = plan;
+  const free = (e: Entity): boolean => !plan.apprentices.has(e);
   if (ctx.tick >= OPENING_HUNT_UNTIL_TICKS && !huntOpensTrades(world, ctx, player, tally))
-    return retireHunters(world, posted, builderJob);
+    return phase === 'first' ? retireHunters(world, posted.filter(free), builderJob) : [];
   if (posted.length > 0) {
     // Not mid-action, walking included: a walk carries no CurrentAtomic.
     const idle = posted.some((e) => !world.has(e, CurrentAtomic));
-    if (idle && !huntWorkLeft(world, ctx, base, hunterJob, posted, HUNT_CHASE_SLACK_NODES)) {
-      return retireHunters(world, posted, builderJob);
+    if (idle && !huntWorkLeft(world, ctx, base, job, posted, HUNT_CHASE_SLACK_NODES))
+      return phase === 'first' ? retireHunters(world, posted.filter(free), builderJob) : [];
+    if (phase === 'first') {
+      const extra = byExperience([...posted], experienceRank(world, ctx, job)).slice(plan.want);
+      return retireHunters(world, extra.filter(free), builderJob);
     }
-    return [];
-  }
-  if (!huntWorkLeft(world, ctx, base, hunterJob, posted, 0)) return [];
+  } else if (!huntWorkLeft(world, ctx, base, job, posted, 0)) return [];
+  const want = phase === 'first' ? 1 : plan.want;
+  if (posted.length >= want) return [];
   // Only the per-settler half of the command's own gate is left to ask of a candidate: `posted` above
   // is already this building's whole hunter headcount, since a workplace employs its owner's men alone.
-  const spare = force.take((e) => settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', hunterJob));
+  const spare = force.take((e) => settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job));
   if (spare === null) return [];
-  return [{ kind: 'assignWorker', entity: spare, building: base, jobPriority: [hunterJob] }];
+  posted.push(spare);
+  return [{ kind: 'assignWorker', entity: spare, building: base, jobPriority: [job] }];
 }
 
 /** Whether the seat's base hunter could earn hunting experience: one is posted there, or the base offers

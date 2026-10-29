@@ -17,7 +17,8 @@ import { technologyTable } from './requirements.js';
  * trade an experience row gates, the man of an enabling trade who earned it moves up, the farmer to the
  * mill or the clay gatherer to the pottery, and the next allocation refills his old post with a fresh
  * civilian. Men of an open trade go first, since anyone can take their post; then ascending id. A man
- * holding a load waits until he sets it down, since the trade change would drop it.
+ * holding a load waits until he sets it down, since the trade change would drop it, and an apprentice
+ * stays on the work earning his discovery.
  */
 export class Promotions {
   private readonly promoted = new Set<Entity>();
@@ -26,6 +27,7 @@ export class Promotions {
     private readonly world: World,
     private readonly ctx: SystemContext,
     private readonly player: number,
+    private readonly apprentices: ReadonlySet<Entity>,
   ) {}
 
   /** The man to move into a slot of `job`, claimed for this decision, or null when none qualifies. */
@@ -38,7 +40,7 @@ export class Promotions {
     let best: Entity | null = null;
     let bestOpen = false;
     for (const e of ownedSettlers(world, player)) {
-      if (this.promoted.has(e) || !isAllocatableMan(world, ctx, e)) continue;
+      if (this.promoted.has(e) || this.apprentices.has(e) || !isAllocatableMan(world, ctx, e)) continue;
       if (world.has(e, BuildMode) || world.has(e, Carrying)) continue;
       const settler = world.get(e, Settler);
       const current = settler.jobType;

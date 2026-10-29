@@ -66,6 +66,7 @@ function veteranToSteal(
   w: WantedGood,
   wanted: readonly WantedGood[],
   collectorsByGood: ReadonlyMap<number, Entity[]>,
+  apprentices: ReadonlySet<Entity>,
 ): VeteranSteal | null {
   for (const other of wanted) {
     if (other === w) continue;
@@ -77,7 +78,8 @@ function veteranToSteal(
     let veteran: Entity | undefined;
     for (let i = otherHolders.length - 1; i >= 0 && veteran === undefined; i--) {
       const holder = otherHolders[i];
-      if (holder !== undefined && meetsNeed(world, ctx, holder, w.good.typeId)) veteran = holder;
+      if (holder !== undefined && !apprentices.has(holder) && meetsNeed(world, ctx, holder, w.good.typeId))
+        veteran = holder;
     }
     if (veteran !== undefined) return { veteran, vacatedGood: other };
   }
@@ -154,7 +156,8 @@ function seatBuilders(world: World, player: number, force: SpareForce, builderJo
  * collect-anything gatherer before any spare man, dropping him from `genericCollectors` so the generic
  * upkeep leaves his flag to the post: the seat's least pointed man goes before a builder. Every other
  * post, here as in the top-ups and the generic posts, goes to the spare man most experienced on the
- * track it trains. No-op on a mapless sim, which has no cells to place flags over.
+ * track it trains. An apprentice (`technology/apprentices.ts`) is never moved off his good. No-op on a
+ * mapless sim, which has no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
@@ -167,6 +170,7 @@ export function allocateCollectors(
   force: SpareForce,
   taken: TakenFlagNodes,
   builderJob: number | null,
+  apprentices: ReadonlySet<Entity>,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const { workable } = ground;
@@ -181,7 +185,7 @@ export function allocateCollectors(
     // The spot search floods from the anchor and the deposit, so it runs only once someone can take it.
     const qualifies = (e: Entity): boolean => meetsNeed(world, ctx, e, w.good.typeId);
     const menQualify = (holders.length > 0 && genericCollectors.some(qualifies)) || force.any(qualifies);
-    let steal = menQualify ? null : veteranToSteal(world, ctx, w, wanted, collectorsByGood);
+    let steal = menQualify ? null : veteranToSteal(world, ctx, w, wanted, collectorsByGood, apprentices);
     if (!menQualify && steal === null) continue;
     const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
@@ -189,7 +193,7 @@ export function allocateCollectors(
       builders ??= seatBuilders(world, player, force, builderJob);
     const keepBuilders = holders.length > 0 && builders !== undefined && builders <= SHORTAGE_BUILDER_FLOOR;
     const spare =
-      (holders.length > 0 ? takeGenericCollector(world, ctx, genericCollectors, w) : null) ??
+      (holders.length > 0 ? takeGenericCollector(world, ctx, genericCollectors, w, apprentices) : null) ??
       force.take(
         (e) => qualifies(e) && !(keepBuilders && isBuilder(e)),
         experienceRank(world, ctx, w.job, w.good.typeId),
@@ -199,7 +203,7 @@ export function allocateCollectors(
       postCollector(spare, w, spot, holders, collectorsByGood, taken, commands);
       continue;
     }
-    steal ??= veteranToSteal(world, ctx, w, wanted, collectorsByGood);
+    steal ??= veteranToSteal(world, ctx, w, wanted, collectorsByGood, apprentices);
     if (steal !== null) postVeteran(world, steal, w, spot, holders, collectorsByGood, taken, commands);
   }
   return commands;
@@ -212,13 +216,14 @@ function takeGenericCollector(
   ctx: SystemContext,
   genericCollectors: Entity[],
   w: WantedGood,
+  apprentices: ReadonlySet<Entity>,
 ): Entity | null {
   const rank = experienceRank(world, ctx, w.job, w.good.typeId);
   let best: Entity | null = null;
   let bestScore = Number.NEGATIVE_INFINITY;
   let at = -1;
   for (const [i, e] of genericCollectors.entries()) {
-    if (!meetsNeed(world, ctx, e, w.good.typeId)) continue;
+    if (apprentices.has(e) || !meetsNeed(world, ctx, e, w.good.typeId)) continue;
     const score = rank(e);
     if (score > bestScore) {
       best = e;
