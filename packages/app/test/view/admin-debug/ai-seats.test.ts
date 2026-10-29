@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { formatMessage, messages } from '../../../src/i18n/index.js';
 import type { SeatMind } from '../../../src/view/admin-debug/ai-mind.js';
 import { type AiSeatReading, aiSeatRows, readAiSeats } from '../../../src/view/admin-debug/ai-seats.js';
+import { NO_WORK } from '../../../src/view/admin-debug/ai-work.js';
 
 const msgs = messages();
 const copy = msgs.admin.ai;
@@ -71,6 +72,7 @@ const DECIDED: AiSeatReading = {
   },
   brief: BRIEF,
   mind: NO_MIND,
+  work: NO_WORK,
 };
 
 describe('AI view rows', () => {
@@ -103,7 +105,7 @@ describe('AI view rows', () => {
 
   it('names a seat the scan has not reached and one not decided yet', () => {
     const [seat] = aiSeatRows(
-      [{ player: 5, difficulty: 'easy', strategy: null, brief: null, mind: NO_MIND }],
+      [{ player: 5, difficulty: 'easy', strategy: null, brief: null, mind: NO_MIND, work: NO_WORK }],
       msgs,
     );
     expect(seat?.note).toBe(copy.noScan);
@@ -131,7 +133,7 @@ describe('reading the running computer seats', () => {
       ],
     };
     expect(readAiSeats(snapshot, null)).toEqual([
-      { player: 3, difficulty: 'medium', strategy: null, brief: null, mind: NO_MIND },
+      { player: 3, difficulty: 'medium', strategy: null, brief: null, mind: NO_MIND, work: NO_WORK },
     ]);
   });
 });

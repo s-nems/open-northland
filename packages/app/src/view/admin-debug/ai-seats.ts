@@ -11,6 +11,7 @@ import {
   type SeatMind,
   technologyTables,
 } from './ai-mind.js';
+import { readSeatWork, type SeatWork, workTables } from './ai-work.js';
 
 const { COMPUTER_DIFFICULTIES } = components;
 
@@ -19,7 +20,11 @@ export interface AiSeatReading extends systems.SeatStrategyView {
   readonly player: number;
   readonly difficulty: components.ComputerDifficulty;
   readonly mind: SeatMind;
+  readonly work: SeatWork;
 }
+
+/** The sim's last answer on a computer seat's apprentices; undefined until one landed. */
+export type ApprenticesOf = (player: number) => readonly systems.ApprenticeView[] | undefined;
 
 /** The goods whose deposits the band table sums, in row order. */
 const BAND_GOOD_IDS: readonly string[] = ['wood', 'stone', 'mud'];
@@ -32,9 +37,13 @@ function isDifficulty(value: unknown): value is components.ComputerDifficulty {
 }
 
 /** Every seat whose lowest-id `AiControl` carrier lets the computer controller run, ascending by slot,
- *  with its saved strategy, its seat brief and its mind. Reads the indexed carriers and lessons, never
- *  the entity list. */
-export function readAiSeats(snapshot: WorldSnapshot, scripts: AiScriptInputs | null): AiSeatReading[] {
+ *  with its saved strategy, its seat brief, its mind and its work. Reads the indexed carriers and
+ *  lessons, never the entity list. */
+export function readAiSeats(
+  snapshot: WorldSnapshot,
+  scripts: AiScriptInputs | null,
+  apprenticesOf: ApprenticesOf = () => undefined,
+): AiSeatReading[] {
   const scan = entitiesWith(snapshot, 'MapBrief')[0]?.components.MapBrief as
     | components.MapBriefView
     | undefined;
@@ -57,6 +66,7 @@ export function readAiSeats(snapshot: WorldSnapshot, scripts: AiScriptInputs | n
       strategy: strategy ?? null,
       brief: brief === null ? null : systems.seatBriefOf(brief, player),
       mind: readSeatMind(snapshot.tick, carrier, player, brief, scripts, pupils.get(player)),
+      work: readSeatWork(snapshot, carrier, scripts?.content ?? null, apprenticesOf(player)),
     });
   }
   return seats.sort((a, b) => a.player - b.player);
@@ -65,9 +75,9 @@ export function readAiSeats(snapshot: WorldSnapshot, scripts: AiScriptInputs | n
 const listed = (items: readonly string[]): string => (items.length === 0 ? NO_VALUE : items.join(', '));
 
 /** The AI tab's blocks: per seat its strategy, military plan and posture, the forces and zones it
- *  remembers, the map's objectives and forecast attacks, its pupils, then the home and near bands, the
- *  access to the goods it plans by, and the other seats' starts. Codes (archetype, sides, evidence) show
- *  raw. */
+ *  remembers, the map's objectives and forecast attacks, its pupils, operations and apprentices, then
+ *  the home and near bands, the access to the goods it plans by, and the other seats' starts. Codes
+ *  (archetype, sides, evidence) show raw. */
 export function aiSeatRows(seats: readonly AiSeatReading[], msgs: Messages): AdminAiSeat[] {
   const copy = msgs.admin.ai;
   const goodName = (id: string): string => msgs.goods[id as keyof Messages['goods']] ?? id;
@@ -96,6 +106,7 @@ export function aiSeatRows(seats: readonly AiSeatReading[], msgs: Messages): Adm
       ...intelTables(seat.mind, military?.ownPoints ?? null, msgs),
       ...intentTables(seat.mind, msgs),
       ...technologyTables(seat.mind, msgs),
+      ...workTables(seat.work, msgs),
     ];
     const brief = seat.brief;
     if (brief === null) return { title, note: copy.noScan, tables };

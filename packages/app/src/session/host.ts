@@ -38,6 +38,7 @@ import type {
   ScriptLandscapeType,
   SignpostReachView,
   SimEvent,
+  systems,
   TradeOffer,
   TraderView,
   UnlockKind,
@@ -220,6 +221,8 @@ export interface SessionHost {
   equipPicksForSelection(entities: readonly Entity[]): Promise<readonly EquipSelectionPick[]>;
   /** Whether a unit is holding its ground on battle alert. */
   standsTo(entity: Entity): Promise<boolean>;
+  /** The discoveries computer seat `player` earns ahead of time and the man pinned on each; admin debug. */
+  computerApprentices(player: number): Promise<readonly systems.ApprenticeView[]>;
   /** Whether an unload order would set the vehicle's riders down here: a door point on land. */
   canUnloadPeople(vehicle: Entity): Promise<boolean>;
   /** Why a tradesman works or stands idle; undefined when no status applies. */

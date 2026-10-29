@@ -91,6 +91,10 @@ import {
   SyncDigestRecorder,
   type SyncDigestRecorderOptions,
 } from './simulation/sync-digest.js';
+import {
+  type ApprenticeView,
+  seatApprenticeViews,
+} from './systems/computer-player/technology/apprentices.js';
 import { BattleFront, holdsGround } from './systems/conflict/battle-alert.js';
 import type { MapContext, SystemContext } from './systems/context.js';
 import type { PlacementProbe } from './systems/footprint/index.js';
@@ -572,6 +576,12 @@ export class Simulation {
    */
   signpostProbe(player: number): SignpostProbe | null {
     return signpostProbeFor(this.world, this.content, this.terrain, player);
+  }
+
+  /** The discoveries computer seat `player` earns ahead of time and the man pinned on each, for a
+   *  debug view. Reads the world as it stands and issues no command. */
+  computerApprentices(player: number): readonly ApprenticeView[] {
+    return seatApprenticeViews(this.world, this.context(), player);
   }
 
   /** {@link signpostProbe}'s verdict over every node of `area`, as plain data. */

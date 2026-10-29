@@ -103,6 +103,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     equipPickList: (entity, group) => Promise.resolve(sim.equipPickList(entity, group)),
     equipPicksForSelection: (entities) => Promise.resolve(sim.equipPicksForSelection(entities)),
     standsTo: (entity) => Promise.resolve(sim.standsTo(entity)),
+    computerApprentices: (player) => Promise.resolve(sim.computerApprentices(player)),
     canUnloadPeople: (vehicle) => Promise.resolve(sim.canUnloadPeople(vehicle)),
     workStatus: (entity) => Promise.resolve(sim.workStatus(entity)),
     constructionSupply: (site) => Promise.resolve(sim.constructionSupply(site)),

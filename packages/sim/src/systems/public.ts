@@ -66,6 +66,8 @@ export {
   type SeatStrategyView,
   seatMilitaryViewOf,
 } from './computer-player/strategy/index.js';
+// The discoveries a seat earns ahead of time and the men pinned on them, for a debug view.
+export type { ApprenticeView } from './computer-player/technology/apprentices.js';
 export {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,

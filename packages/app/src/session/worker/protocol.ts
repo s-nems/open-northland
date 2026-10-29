@@ -61,6 +61,7 @@ export const HOST_REQUESTS = [
   'equipPickList',
   'equipPicksForSelection',
   'standsTo',
+  'computerApprentices',
   'canUnloadPeople',
   'workStatus',
   'constructionSupply',

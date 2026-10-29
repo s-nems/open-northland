@@ -75,6 +75,11 @@ describe('technology apprentices', () => {
       (c) => (c.kind === 'setJob' || c.kind === 'assignWorker') && c.entity === practised,
     );
     expect(moves).toEqual([]);
+    // The debug read names the same man and leaves the world as it was.
+    const before = sim.hashState();
+    const pinned = sim.computerApprentices(SEAT).filter((view) => view.man !== null);
+    expect(pinned.map((view) => view.man)).toEqual([practised]);
+    expect(sim.hashState()).toBe(before);
 
     // Over the threshold the miller is discovered, and nothing is left to pin him for.
     setFarmerXp(sim, practised, MILLER_GATE_XP);

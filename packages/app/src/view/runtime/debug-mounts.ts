@@ -1,7 +1,7 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import type { SessionClock } from '@open-northland/lockstep';
 import type { ElevationField, WorldRenderer } from '@open-northland/render';
-import type { Command } from '@open-northland/sim';
+import type { Command, systems } from '@open-northland/sim';
 import type { Application } from 'pixi.js';
 import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { hasDebugFlag, setDebugFlag } from '../../diag/index.js';
@@ -10,7 +10,7 @@ import { vehicleLabel } from '../../game/technology.js';
 import type { GoodIconPainter } from '../../hud/dom/good-art.js';
 import type { StandingStructure } from '../../hud/tool-panel/placement.js';
 import { bcp47Tag, compareLabels, currentLocale } from '../../i18n/index.js';
-import type { SessionHost } from '../../session/index.js';
+import { createLastAnswerCache, type SessionHost, samePlainData } from '../../session/index.js';
 import { readAiSeats } from '../admin-debug/ai-seats.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { type AdminDebugHandle, mountAdminDebug } from '../admin-debug/index.js';
@@ -24,6 +24,9 @@ import {
   type GeometryBuildingInfoOf,
   type GeometryDebugOverlay,
 } from '../projections/index.js';
+
+const NO_INPUTS = '';
+const PER_TICK = true;
 
 /** The `?debug=` value that turns on the building-geometry diagram. */
 export const GEOMETRY_DEBUG_FLAG = 'geometry';
@@ -150,6 +153,11 @@ function mountAdminPanel(
   zoomOut: { readonly unlocked: () => boolean; readonly setUnlocked: (unlocked: boolean) => void },
 ): AdminDebugHandle {
   const { app, canvas, host, renderer } = opts;
+  // The AI tab's apprentice read, asked again once the tick moved; the tab reads it once a second.
+  const apprentices = createLastAnswerCache<readonly systems.ApprenticeView[]>({
+    tick: () => host.tick,
+    same: samePlainData,
+  });
   return mountAdminDebug({
     canvas,
     plane: opts.plane,
@@ -204,7 +212,10 @@ function mountAdminPanel(
     zoomOutUnlocked: zoomOut.unlocked,
     setZoomOutUnlocked: zoomOut.setUnlocked,
     ...(opts.paintGood !== undefined ? { paintGood: opts.paintGood } : {}),
-    aiSeats: () => readAiSeats(host.snapshot(), host),
+    aiSeats: () =>
+      readAiSeats(host.snapshot(), host, (player) =>
+        apprentices.read(`${player}`, () => host.computerApprentices(player), NO_INPUTS, PER_TICK),
+      ),
   });
 }
 
