@@ -9,7 +9,7 @@ import { liveWorkFlag } from '../../economy/work-flag.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { signpostNetwork, signpostProbe } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import type { BuildOrderEntry } from '../build-order/entries.js';
+import { type BuildOrder, orderSteps } from '../build-order/entries.js';
 import { nearestLiveResource, reachableResourceTest } from '../live-resources.js';
 import { COLLECTED_GOOD_IDS } from '../workforce/collectors/wanted-goods.js';
 
@@ -137,7 +137,7 @@ function corridorGoals(
   ctx: SystemContext,
   player: number,
   anchor: HalfCellNode,
-  order: readonly BuildOrderEntry[],
+  order: BuildOrder,
 ): HalfCellNode[] {
   const goals: HalfCellNode[] = [];
   for (const e of ownedSettlers(world, player)) {
@@ -149,7 +149,7 @@ function corridorGoals(
   if (terrain === undefined) return goals;
   const onOwnGround = reachableResourceTest(world, ctx, terrain, anchor, () => true);
   const goodIds = new Set(COLLECTED_GOOD_IDS);
-  for (const entry of order) if (entry.kind === 'collector') goodIds.add(entry.good);
+  for (const entry of orderSteps(order)) if (entry.kind === 'collector') goodIds.add(entry.good);
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
     if (good === undefined) continue;
@@ -177,7 +177,7 @@ export function nextSignpostTarget(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  order: BuildOrder,
 ): HalfCellNode | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return null;

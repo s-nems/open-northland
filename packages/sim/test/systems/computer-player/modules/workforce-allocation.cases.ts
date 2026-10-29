@@ -117,6 +117,7 @@ import {
   JOINERY_TYPE,
   MUD,
   makeAiSeat,
+  oneLine,
   ordinaryDecisionTick,
   placeHq,
   placeResources,
@@ -252,8 +253,8 @@ function wantedRow(
   entries: readonly BuildOrderEntry[] = [],
 ): WantedGood | undefined {
   const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), DEFAULT_BUILD_ORDER);
-  const reached = entries.map((): EntryStatus => 'satisfied');
-  return wantedCollectorGoods(sim.world, ctx, SEAT, entries, reached, supply).find(
+  const reached = new Map([['opening' as const, entries.map((): EntryStatus => 'satisfied')]]);
+  return wantedCollectorGoods(sim.world, ctx, SEAT, oneLine(entries), reached, supply).find(
     (w) => w.good.typeId === good,
   );
 }
@@ -773,8 +774,8 @@ describe('workforce module (collectResources)', () => {
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
     sim.world.add(carrier, StalledPlacements, {
-      retryTicks: new Map([[0, Number.MAX_SAFE_INTEGER]]),
-      holding: 0,
+      retryTicks: new Map([['opening:0', Number.MAX_SAFE_INTEGER]]),
+      holding: new Map([['opening', 'opening:0']]),
     });
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
@@ -821,8 +822,8 @@ describe('workforce module (collectResources)', () => {
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
     sim.world.add(carrier, StalledPlacements, {
-      retryTicks: new Map([[0, Number.MAX_SAFE_INTEGER]]),
-      holding: 0,
+      retryTicks: new Map([['opening:0', Number.MAX_SAFE_INTEGER]]),
+      holding: new Map([['opening', 'opening:0']]),
     });
 
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
@@ -846,8 +847,8 @@ describe('workforce module (collectResources)', () => {
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
     sim.world.add(carrier, StalledPlacements, {
-      retryTicks: new Map([[0, Number.MAX_SAFE_INTEGER]]),
-      holding: 0,
+      retryTicks: new Map([['opening:0', Number.MAX_SAFE_INTEGER]]),
+      holding: new Map([['opening', 'opening:0']]),
     });
 
     const selections = [...collectModule.run(sim.world, ctxOf(sim), SEAT)].filter(
@@ -1094,9 +1095,9 @@ describe('workforce module (collectResources)', () => {
     sim.step();
     const ctx = ctxOf(sim);
     const ironTarget = (count: number, status: 'unmet' | 'skip'): number | undefined => {
-      const order: BuildOrderEntry[] = [{ kind: 'collector', good: 'iron', count }];
+      const order = oneLine([{ kind: 'collector', good: 'iron', count }]);
       const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), order);
-      return wantedCollectorGoods(sim.world, ctx, SEAT, order, [status], supply).find(
+      return wantedCollectorGoods(sim.world, ctx, SEAT, order, new Map([['opening', [status]]]), supply).find(
         (w) => w.good.typeId === IRON,
       )?.target;
     };
@@ -1317,10 +1318,12 @@ describe('workforce module (collectResources)', () => {
     sim.world.mut(veteran, SettlerProgress).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
 
     // The gate: iron is listed after the farm entry, so an unmet farm keeps it unwanted.
-    const gated = workforceModule([
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'collector', good: 'iron' },
-    ]);
+    const gated = workforceModule(
+      oneLine([
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'collector', good: 'iron' },
+      ]),
+    );
     const before = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(before.filter((c) => c.kind === 'setGatherGood')).toEqual([]);
 
@@ -1348,7 +1351,7 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
     spawnMen(sim, 1);
     sim.step();
-    const both = workforceModule([]);
+    const both = workforceModule(oneLine([]));
     for (const c of both.run(sim.world, ctxOf(sim), SEAT)) sim.enqueueSetup(c);
     sim.step();
 
@@ -1368,7 +1371,7 @@ describe('workforce module (collectResources)', () => {
     placeResources(sim, [RESOURCE_SPOTS.stone, RESOURCE_SPOTS.iron]);
     spawnMen(sim, 3);
     sim.step();
-    const gated = workforceModule([{ kind: 'collector', good: 'iron' }]);
+    const gated = workforceModule(oneLine([{ kind: 'collector', good: 'iron' }]));
 
     // Fresh men: stone hires (ungated); iron finds no qualified spare and no veteran - it waits.
     const fresh = [...gated.run(sim.world, ctxOf(sim), SEAT)];

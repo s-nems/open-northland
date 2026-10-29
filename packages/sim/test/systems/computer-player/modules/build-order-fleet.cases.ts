@@ -21,6 +21,7 @@ import {
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
   entryStatuses,
+  orderSteps,
   SeatSupply,
   WELL_REACH_NODES,
 } from '../../../../src/systems/computer-player/index.js';
@@ -50,6 +51,7 @@ import {
   JOINER,
   JOINERY_TYPE,
   MILL_TYPE,
+  oneLine,
   SEAT,
   spawnMen,
   TOOL_IRON,
@@ -278,13 +280,14 @@ function fleetCtx(sim: Simulation): SystemContext {
 }
 
 function first(sim: Simulation, order: readonly BuildOrderEntry[]): Command | undefined {
-  return [...buildOrderModule(order).run(sim.world, fleetCtx(sim), SEAT)][0];
+  return [...buildOrderModule(oneLine(order)).run(sim.world, fleetCtx(sim), SEAT)][0];
 }
 
 function placeEntry(
   test: (entry: Extract<BuildOrderEntry, { kind: 'place' }>) => boolean,
 ): Extract<BuildOrderEntry, { kind: 'place' }> {
-  for (const entry of DEFAULT_BUILD_ORDER) if (entry.kind === 'place' && test(entry)) return entry;
+  for (const entry of orderSteps(DEFAULT_BUILD_ORDER))
+    if (entry.kind === 'place' && test(entry)) return entry;
   throw new Error('entry missing from the default list');
 }
 
@@ -301,7 +304,7 @@ const shoreJoinery: BuildOrderEntry = {
   count: 1,
   near: [{ kind: 'shore' }],
 };
-const toolsUpgrade = DEFAULT_BUILD_ORDER.find(
+const toolsUpgrade = orderSteps(DEFAULT_BUILD_ORDER).find(
   (e) => e.kind === 'upgrade' && e.building === 'work_joinery_02',
 );
 

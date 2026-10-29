@@ -20,6 +20,7 @@ import {
 } from '../../../../src/systems/computer-player/build-order/placement.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
+  type BuildOrder,
   type BuildOrderEntry,
   buildOrderModule,
   COMPUTER_DECISION_INTERVAL_TICKS,
@@ -42,6 +43,7 @@ import {
   IRON,
   MUD,
   makeAiSeat,
+  oneLine,
   placeHq,
   placeResources,
   RESOURCE_SPOTS,
@@ -68,8 +70,20 @@ describe('build-order placement - affinity and ground rules', () => {
     return { resolution: 'half-cell', width, height, typeIds };
   }
 
-  function firstCommandOf(sim: Simulation, order: readonly BuildOrderEntry[]): Command | undefined {
-    return [...buildOrderModule(order).run(sim.world, ctxOf(sim), SEAT)][0];
+  const ESSENTIAL_FARM: BuildOrderEntry = {
+    kind: 'place',
+    building: 'work_farm_00',
+    count: 1,
+    ground: 'plantable',
+    essential: true,
+  };
+
+  function firstCommandOf(
+    sim: Simulation,
+    order: readonly BuildOrderEntry[] | BuildOrder,
+  ): Command | undefined {
+    const lines = 'lines' in order ? order : oneLine(order);
+    return [...buildOrderModule(lines).run(sim.world, ctxOf(sim), SEAT)][0];
   }
 
   it('places the farm only on plantable ground - a barren pocket is skipped, a barren map stalls', () => {
@@ -91,7 +105,7 @@ describe('build-order placement - affinity and ground rules', () => {
     const barren = new Simulation({ seed: 1, content: aiContent(), map: mapWithSand(64, 32, () => true) });
     placeHq(barren);
     barren.step();
-    expect(firstCommandOf(barren, DEFAULT_BUILD_ORDER)).toBeUndefined();
+    expect(firstCommandOf(barren, [ESSENTIAL_FARM])).toBeUndefined();
     const home = firstCommandOf(barren, [{ kind: 'place', building: 'home_level_00', count: 1 }]);
     expect(home?.kind).toBe('placeBuilding');
   });
@@ -161,7 +175,9 @@ describe('build-order placement - affinity and ground rules', () => {
     });
     placeHq(sim);
     sim.step();
-    const home = [...buildOrderModule(HOME_BEFORE_WELL).run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
+    const home = [
+      ...buildOrderModule(oneLine(HOME_BEFORE_WELL)).run(sim.world, { ...ctxOf(sim), content }, SEAT),
+    ][0];
     if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
     expect(Math.abs(home.x - HQ_X) + Math.abs(home.y - HQ_Y)).toBeLessThanOrEqual(GRASS_RADIUS);
   });
@@ -198,7 +214,7 @@ describe('build-order placement - affinity and ground rules', () => {
     // The clearing gatherers answer only a search that holds the list.
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
-    expect(sim.world.tryGet(carrier, StalledPlacements)?.holding ?? null).toBeNull();
+    expect(sim.world.tryGet(carrier, StalledPlacements)?.holding.size ?? 0).toBe(0);
   });
 
   it('frees the reserved grass once the last grass building of the list is placed', () => {
@@ -338,7 +354,7 @@ describe('build-order placement - affinity and ground rules', () => {
     });
     placeHq(island);
     island.step();
-    expect(firstCommandOf(island, DEFAULT_BUILD_ORDER)).toBeUndefined();
+    expect(firstCommandOf(island, [ESSENTIAL_FARM])).toBeUndefined();
   });
 
   it('places a stalled placement on the first retry after room frees, not the first decision', () => {
@@ -362,9 +378,9 @@ describe('build-order placement - affinity and ground rules', () => {
     makeAiSeat(sim, SEAT);
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('expected a mapped sim');
-    const farm = buildOrderModule([
-      { kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable', essential: true },
-    ]);
+    const farm = buildOrderModule(
+      oneLine([{ kind: 'place', building: 'work_farm_00', count: 1, ground: 'plantable', essential: true }]),
+    );
 
     let placedAt: number | null = null;
     for (
@@ -776,9 +792,11 @@ describe('build-order placement - affinity and ground rules', () => {
       canPlaceBuilding(sim.world, { ...ctxOf(sim), content }, terrain, PIT_HOUSE, VIKING, clayX, clayY),
     ).toBe(true);
 
-    const [spot] = buildOrderModule([
-      { kind: 'place', building: 'test_pit_house', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
-    ]).run(sim.world, { ...ctxOf(sim), content }, SEAT);
+    const [spot] = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'test_pit_house', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
+      ]),
+    ).run(sim.world, { ...ctxOf(sim), content }, SEAT);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement beside the clay');
     const covered = pitFootprint.reserved.some(
       (c) => spot.x + footprintCellDx(spot.y, c) === clayX && spot.y + c.dy === clayY,

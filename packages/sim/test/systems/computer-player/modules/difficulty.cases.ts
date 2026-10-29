@@ -8,8 +8,10 @@ import {
 } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   AI_PROFILES,
+  type BuildOrder,
   type BuildOrderEntry,
   DEFAULT_BUILD_ORDER,
+  orderSteps,
   profileBuildOrder,
   sitePace,
 } from '../../../../src/systems/computer-player/index.js';
@@ -17,9 +19,9 @@ import { aiContent } from '../../../fixtures/ai-content.js';
 import { SEAT } from '../support.js';
 
 /** The most any entry of `order` asks for of `building`. */
-function mostOf(order: readonly BuildOrderEntry[], building: string): number {
+function mostOf(order: BuildOrder, building: string): number {
   let most = 0;
-  for (const entry of order) {
+  for (const entry of orderSteps(order)) {
     if ((entry.kind === 'place' || entry.kind === 'upgrade') && entry.building === building) {
       most = Math.max(most, entry.count);
     }
@@ -41,8 +43,8 @@ describe('AI difficulty profiles', () => {
     const medium = profileBuildOrder(DEFAULT_BUILD_ORDER, AI_PROFILES.medium);
     expect(mostOf(medium, 'work_smithy_01')).toBe(AI_PROFILES.medium.buildingCaps.work_smithy_01);
     expect(mostOf(medium, 'home_level_04')).toBe(AI_PROFILES.medium.buildingCaps.home_level_04);
-    expect(medium.some(catapultJoinery)).toBe(true);
-    expect(medium.some(denseTowerLane)).toBe(true);
+    expect(orderSteps(medium).some(catapultJoinery)).toBe(true);
+    expect(orderSteps(medium).some(denseTowerLane)).toBe(true);
 
     const easy = profileBuildOrder(DEFAULT_BUILD_ORDER, AI_PROFILES.easy);
     for (const [building, cap] of Object.entries(AI_PROFILES.easy.buildingCaps)) {
@@ -50,9 +52,9 @@ describe('AI difficulty profiles', () => {
     }
     expect(mostOf(easy, 'work_coin_mint')).toBe(1);
     expect(mostOf(easy, 'work_druid_01')).toBe(1);
-    expect(easy.some(catapultJoinery)).toBe(false);
-    expect(easy.some(denseTowerLane)).toBe(false);
-    // The same list object every decision, so the caches keyed on it hold.
+    expect(orderSteps(easy).some(catapultJoinery)).toBe(false);
+    expect(orderSteps(easy).some(denseTowerLane)).toBe(false);
+    // The same order object every decision, so the caches keyed on it hold.
     expect(profileBuildOrder(DEFAULT_BUILD_ORDER, AI_PROFILES.easy)).toBe(easy);
   });
 

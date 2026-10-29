@@ -30,7 +30,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { type BuildOrderEntry, entryStatuses } from '../build-order/index.js';
+import { type BuildOrder, lineStatuses } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf, profileBuildOrder } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
 import { reachableResourceTest, workableResourceTest } from '../live-resources.js';
@@ -101,7 +101,7 @@ function runWorkforce(
   world: World,
   ctx: SystemContext,
   player: number,
-  fullOrder: readonly BuildOrderEntry[],
+  fullOrder: BuildOrder,
 ): readonly PlayerCommand[] {
   const profile = computerProfileOf(world, player);
   const order = profileBuildOrder(fullOrder, profile);
@@ -110,7 +110,7 @@ function runWorkforce(
   if (base === null) return rebuildCrew(world, ctx, player, order, profile, builderJob);
   const owned = ownedBuildings(world, player);
   const supply = SeatSupply.of(world, ctx, player, owned, order);
-  const statuses = entryStatuses(world, ctx, player, order);
+  const statuses = lineStatuses(world, ctx, player, owned, order);
   const civilians = civilianCount(world, ctx, player);
   const wanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const clearing = clearingCollectors(world, player, civilians);
@@ -327,7 +327,7 @@ function rebuildCrew(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  order: BuildOrder,
   profile: ComputerProfile,
   builderJob: number | null,
 ): readonly PlayerCommand[] {
@@ -365,7 +365,7 @@ function allocateScout(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  order: BuildOrder,
   scouts: readonly Entity[],
   force: SpareForce,
   builderJob: number | null,
@@ -397,7 +397,7 @@ function allocateScout(
   return commands;
 }
 
-export function workforceModule(order: readonly BuildOrderEntry[]): ComputerModule {
+export function workforceModule(order: BuildOrder): ComputerModule {
   return {
     id: 'collectResources',
     run: (world, ctx, player) => runWorkforce(world, ctx, player, order),

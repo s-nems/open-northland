@@ -26,7 +26,13 @@ import {
   COMPUTER_DECISION_INTERVAL_TICKS,
   WORKFORCE_EVERY_DECISIONS,
 } from '../../../src/systems/ai-shared/cadence.js';
-import { DEFAULT_BUILD_ORDER, workforceModule } from '../../../src/systems/computer-player/index.js';
+import {
+  type BuildLineId,
+  type BuildOrder,
+  type BuildOrderEntry,
+  DEFAULT_BUILD_ORDER,
+  workforceModule,
+} from '../../../src/systems/computer-player/index.js';
 import { FLAG_RELOCATE_EVERY_RUNS } from '../../../src/systems/computer-player/workforce/collectors/upkeep.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { createSignpost, stampResourceFootprintData } from '../../../src/systems/index.js';
@@ -116,7 +122,13 @@ export const SAND = 2;
 export const HQ_X = 30;
 export const HQ_Y = 16;
 
-/** The default workforce allocator - collector gating follows the default opening list. */
+/** A build order of one line holding `steps` in order: the executor's rules within a line, with no other
+ *  line competing for the sites. */
+export function oneLine(steps: readonly BuildOrderEntry[], id: BuildLineId = 'opening'): BuildOrder {
+  return { lines: [{ id, steps }], priority: [id] };
+}
+
+/** The default workforce allocator - collector gating follows the default build order. */
 export const collectModule = workforceModule(DEFAULT_BUILD_ORDER);
 
 /** Fixture resource spots, apart from each other and the HQ so flags and placements never collide.

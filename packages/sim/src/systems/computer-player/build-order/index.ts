@@ -13,7 +13,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
-import { buildingTypeByContentId, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
+import { buildingTypeByContentId, countedTiers, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../ai-shared/seat-roster.js';
@@ -22,13 +22,20 @@ import { buildingEnabled } from '../../progression/index.js';
 import { seatBaseOf } from '../base.js';
 import { type ComputerProfile, computerProfileOf, profileBuildOrder } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
+import { billSourced, goodsMadeBy, sourcedTiers } from './bill-sources.js';
 import {
   BASE_REPLACEMENT_ENTRY,
   BASELESS_CONSTRUCTION_SITES,
+  type BuildLine,
+  type BuildLineId,
+  type BuildOrder,
   type BuildOrderEntry,
   isLaneEntry,
+  linesByPriority,
   REBUILD_DELAY_TICKS,
+  type StepKey,
   sitePace,
+  stepKey,
 } from './entries.js';
 import { grassBoundEntry, grassReserved } from './grass-reserve.js';
 import { placementSpot } from './placement.js';
@@ -37,6 +44,8 @@ import {
   decisionMemo,
   type EntryStatus,
   entryStatus,
+  type LineStatuses,
+  lineStatuses,
   upgradeCandidate,
 } from './progress.js';
 import { type Siege, seatSiege } from './siege.js';
@@ -50,6 +59,8 @@ export {
   collectorGoodsWanted,
   type EntryStatus,
   entryStatuses,
+  type LineStatuses,
+  lineStatuses,
 } from './progress.js';
 export { type Siege, seatSiege } from './siege.js';
 export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
@@ -66,30 +77,34 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
 }
 
 /**
- * Acts on the first unmet entry, so a razed building is re-placed, after {@link REBUILD_DELAY_TICKS},
- * before any entry the seat has not reached yet. A placed site meets its entry at once, so up to the
- * clock's {@link sitePace} sites go up side by side, within its lookahead of the oldest unfinished one.
- * A lane entry the list has reached runs beside it ({@link openLanes}): it takes one of those sites for
- * itself and leaves the list the rest, so a tower ring with no room left stalls nothing.
- * An unmet entry with no legal action stalls rather than being skipped, so no later site draws off the
- * goods it waits for: most retry next decision, a placement that found no spot every
- * {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an upgrade holds while a bill good only it or
- * another site could make is not yet in store, or while it would idle a good's last working maker
- * ({@link suppliedUpgrade}). An upgrade raises its building straight to the highest tier that entry and
- * the unmet upgrade entries right after it want, as far as the seat has the tiers enabled
- * ({@link upgradeReach}) and the store backs the merged bill. The exceptions are passed over instead
- * ({@link Verdict}): a serving placement with no room beside what it serves, a grass building other than
- * an `essential` one with no grass left in reach, and a coverage entry with no target it can cover.
- * Builders are never pinned to a site; the builder drive picks its own.
+ * Runs the order's lines side by side. Each line acts on its first unmet step, so a razed building is
+ * re-placed, after {@link REBUILD_DELAY_TICKS}, before any step of its line the seat has not reached yet;
+ * a line never waits for another. A free construction site goes to the first line with a ready step in
+ * {@link turnOrder}, the order's priority within each turn, one command a decision. A placed site meets
+ * its step at once, so up to the clock's {@link sitePace} sites go up side by side, each line within its
+ * lookahead of its own oldest unfinished step. A lane step a line has reached runs beside the lines
+ * ({@link openLanes}): it takes one of those sites for itself and leaves the lines the rest, so a tower
+ * ring with no room left stalls nothing.
+ * An unmet step with no legal action stalls its line rather than being skipped, so no later site of the
+ * line draws off the goods it waits for: a step whose bill has no source yet ({@link billSourced}), a
+ * placement that found no spot, retried every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an
+ * upgrade while a bill good only it or another site could make is not yet in store, or while it would idle
+ * a good's last working maker ({@link suppliedUpgrade}). An upgrade raises its building straight to the
+ * highest tier that step and the unmet upgrade steps right after it in its line want, as far as the seat
+ * has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. The exceptions are
+ * passed over instead ({@link Verdict}): a step whose building the seat has not enabled yet, a serving
+ * placement with no room beside what it serves, a grass building other than an `essential` one with no
+ * grass left in reach, and a coverage step with no target it can cover. Builders are never pinned to a
+ * site; the builder drive picks its own.
  *
  * Three rules keep a site from rising under the enemy's bows only to be knocked down again, and a razed
  * building from being re-placed into the same fire ({@link seatSiege}): nothing is placed or upgraded while
  * the seat is under attack; no spot inside an enemy fighter's reach is ever picked, a tower garrison's
- * included, since a garrison never raids; and a razed building's entry waits {@link REBUILD_DELAY_TICKS}
+ * included, since a garrison never raids; and a razed building's step waits {@link REBUILD_DELAY_TICKS}
  * from the last decision that saw the attack. The engine's own contested-ground rule, which every seat
  * shares, is narrower than the second and adds nothing here.
  */
-export function buildOrderModule(order: readonly BuildOrderEntry[]): ComputerModule {
+export function buildOrderModule(order: BuildOrder): ComputerModule {
   return {
     id: 'houseBuild',
     run: (world, ctx, player) => runBuildOrder(world, ctx, player, order),
@@ -100,7 +115,7 @@ function runBuildOrder(
   world: World,
   ctx: SystemContext,
   player: number,
-  fullOrder: readonly BuildOrderEntry[],
+  fullOrder: BuildOrder,
 ): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
@@ -119,7 +134,7 @@ function runBuildOrder(
   };
 
   const tribe = playerPlacementTribes(world, player)?.[0];
-  // Scanned once the list has something to do: an idle decision never walks the map's people.
+  // Scanned once the order has something to do: an idle decision never walks the map's people.
   let siege: Siege | null = null;
   const siegeOf = (): Siege => (siege ??= seatSiege(world, ctx, terrain, player, owned));
   if (base === null) {
@@ -129,20 +144,27 @@ function runBuildOrder(
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
   const index = contentIndex(ctx.content);
+  const lines = linesByPriority(order);
 
   const memo = decisionMemo();
-  const statuses = order.map((entry) => entryStatus(world, ctx, player, owned, entry, memo));
+  const statuses = lineStatuses(world, ctx, player, owned, order, memo);
+  const statusOf = (line: BuildLineId, step: number): EntryStatus | undefined => statuses.get(line)?.[step];
   const reserveGrass = grassReserved(ctx, terrain, anchor, order, statuses);
-  const searches = new StalledSearches(world, player, statuses);
-  // One search per entry a decision: the lanes and the list share each verdict.
-  const verdicts = new Map<number, Verdict>();
-  const verdictOf = (entryIndex: number): Verdict => {
-    const known = verdicts.get(entryIndex);
+  const searches = new StalledSearches(world, player, keyedStatuses(order, statuses));
+  let made: ReadonlySet<number> | undefined;
+  const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
+  const locked = (entry: BuildOrderEntry): boolean => stepLocked(world, ctx, player, owned, tribe, entry);
+  // One search per step a decision: the lanes and the lines share each verdict.
+  const verdicts = new Map<StepKey, Verdict>();
+  const verdictOf = (line: BuildLine, step: number): Verdict => {
+    const key = stepKey(line.id, step);
+    const known = verdicts.get(key);
     if (known !== undefined) return known;
-    const entry = order[entryIndex];
+    const entry = line.steps[step];
     let verdict = ACTS;
-    if (entry !== undefined && passesOver(ctx, entry)) {
-      if (searches.waits(entryIndex, ctx.tick)) verdict = PASSED_OVER;
+    if (entry !== undefined && locked(entry)) verdict = PASSED_OVER;
+    else if (entry !== undefined && passesOver(ctx, entry)) {
+      if (searches.waits(line.id, step, ctx.tick)) verdict = PASSED_OVER;
       else {
         verdict = searchVerdict(
           world,
@@ -156,18 +178,22 @@ function runBuildOrder(
           siegeOf().underFire,
           reserveGrass,
         );
-        if (tribe !== undefined) searches.searched(entryIndex, ctx.tick, verdict.kind === 'act', false);
+        if (tribe !== undefined) searches.searched(line.id, step, ctx.tick, verdict.kind === 'act', false);
       }
     }
-    verdicts.set(entryIndex, verdict);
+    verdicts.set(key, verdict);
     return verdict;
   };
-  const passedOver = (entryIndex: number): boolean => verdictOf(entryIndex).kind === 'pass';
 
-  const lanes = openLanes(world, ctx, order, statuses, sites, passedOver);
+  const lanes = openLanes(world, ctx, lines, statuses, sites, (line, step) => {
+    const entry = line.steps[step];
+    if (entry === undefined || locked(entry)) return true;
+    return billSourced(world, ctx, player, entry, madeGoods) && verdictOf(line, step).kind === 'pass';
+  });
   for (const lane of lanes) {
-    if (statuses[lane.entryIndex] !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
-    if (searches.waits(lane.entryIndex, ctx.tick)) continue;
+    if (statusOf(lane.line, lane.step) !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
+    if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
+    if (!billSourced(world, ctx, player, lane.entry, madeGoods)) continue;
     if (siegeOf().attacked) return [];
     const placed = coverageCommand(
       world,
@@ -181,34 +207,33 @@ function runBuildOrder(
       siegeOf().underFire,
       reserveGrass,
     );
-    searches.searched(lane.entryIndex, ctx.tick, placed !== null, false);
+    searches.searched(lane.line, lane.step, ctx.tick, placed !== null, false);
     if (placed !== null) return started(placed);
   }
-  // The list keeps the sites the lanes leave it, at least one, and counts only its own.
+  // The lines keep the sites the lanes leave them, at least one, and count only their own.
   let listSites = sites.length;
   for (const lane of lanes) listSites -= lane.sites;
   if (listSites >= Math.max(1, siteCap - lanes.length)) return [];
 
-  for (const [entryIndex, entry] of order.entries()) {
-    if (isLaneEntry(entry) || statuses[entryIndex] !== 'unmet') continue;
-    const { attacked, underFire } = siegeOf();
-    if (attacked) {
-      holdRebuildUnderAttack(world, player, entryIndex, entry, ctx.tick);
-      return [];
+  const firstUnmet = (line: BuildLine): number =>
+    line.steps.findIndex((entry, step) => !isLaneEntry(entry) && statusOf(line.id, step) === 'unmet');
+  if (lines.some((line) => firstUnmet(line) >= 0) && siegeOf().attacked) {
+    for (const line of lines) {
+      const step = firstUnmet(line);
+      const entry = line.steps[step];
+      if (entry !== undefined) holdRebuildUnderAttack(world, player, line.id, step, entry, ctx.tick);
     }
-    const verdict = verdictOf(entryIndex);
-    if (verdict.kind === 'pass') continue;
-    if (awaitingRebuild(world, player, entryIndex, entry, ctx.tick)) return [];
-    if (listSites > 0 && outrunsSites(world, ctx, player, owned, order, entryIndex, memo)) return [];
-    searches.acting(entryIndex);
-    if (verdict.placement !== null) return started(verdict.placement);
+    return [];
+  }
+
+  /** The command of `line`'s step at `step`, which acts this decision, or null while it holds its line. */
+  const stepCommand = (line: BuildLine, step: number, entry: BuildOrderEntry): PlayerCommand | null => {
     switch (entry.kind) {
       case 'place': {
-        if (tribe === undefined) return [];
+        if (tribe === undefined) return null;
         const type = buildingTypeByContentId(ctx.content, entry.building);
-        if (type === undefined) return []; // unreachable after 'skip', kept for the type system
-        if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return [];
-        if (searches.waits(entryIndex, ctx.tick)) return [];
+        if (type === undefined) return null; // unreachable after 'skip', kept for the type system
+        if (searches.waits(line.id, step, ctx.tick)) return null;
         const spot = placementSpot(
           world,
           ctx,
@@ -219,33 +244,143 @@ function runBuildOrder(
           type,
           tribe,
           entry,
-          underFire,
+          siegeOf().underFire,
           reserveGrass,
         );
-        searches.searched(entryIndex, ctx.tick, spot !== null, true);
-        return spot === null ? [] : started(siteCommand(type, spot, tribe, player));
+        searches.searched(line.id, step, ctx.tick, spot !== null, true);
+        return spot === null ? null : siteCommand(type, spot, tribe, player);
       }
       case 'upgrade': {
         const target = buildingTypeByContentId(ctx.content, entry.building);
-        if (target === undefined) return []; // unreachable after 'skip', kept for the type system
+        if (target === undefined) return null; // unreachable after 'skip', kept for the type system
         const candidate = upgradeCandidate(world, index, owned, target);
-        if (candidate === null) return [];
-        // A jump the store cannot back yet falls back to the highest tier it can, down to the next one.
-        const tiers = upgradeReach(world, ctx, player, order, statuses, entryIndex, candidate);
+        if (candidate === null) return null;
+        // A jump stops below a tier whose bill has no source yet, and one the store cannot back yet falls
+        // back to the highest tier it can, down to the next one.
+        const wanted = upgradeReach(
+          world,
+          ctx,
+          player,
+          line.steps,
+          statuses.get(line.id) ?? [],
+          step,
+          candidate,
+        );
+        const tiers = sourcedTiers(world, ctx, player, wanted, madeGoods);
         const reach = suppliedUpgrade(world, ctx, player, owned, candidate, tiers);
-        return reach === undefined
-          ? []
-          : started({ kind: 'upgradeBuilding', building: candidate, target: reach });
+        return reach === undefined ? null : { kind: 'upgradeBuilding', building: candidate, target: reach };
       }
       case 'collector':
-        return []; // the workforce module hires it
+        return null; // the workforce module hires it
       case 'towerCoverage':
       case 'storeCoverage':
-        return []; // a seat with no placement tribe holds here; any other found a spot or was passed over
+        return null; // a seat with no placement tribe holds here; any other found a spot or was passed over
     }
+  };
+
+  /** The command of `line`'s first unmet step that is not passed over, or null while that step holds
+   *  the line or the line has none. */
+  const lineCommand = (line: BuildLine): PlayerCommand | null => {
+    for (const [step, entry] of line.steps.entries()) {
+      if (isLaneEntry(entry) || statusOf(line.id, step) !== 'unmet' || locked(entry)) continue;
+      if (!billSourced(world, ctx, player, entry, madeGoods)) return null;
+      const verdict = verdictOf(line, step);
+      if (verdict.kind === 'pass') continue;
+      if (awaitingRebuild(world, player, line.id, step, entry, ctx.tick)) return null;
+      if (listSites > 0 && outrunsSites(world, ctx, player, owned, line.steps, step, memo)) return null;
+      searches.acting(line.id, step);
+      return verdict.placement ?? stepCommand(line, step, entry);
+    }
+    advanceFrontier(world, player, line.id, line.steps.length);
+    return null;
+  };
+  // Turns, priority deciding within each: a line with no site of its own rising goes before one with,
+  // and a line whose next step raises a building the seat has none of before one adding another of a kind
+  // it owns, so no line takes every site or runs its later copies while another still lacks its first.
+  // A line that stands met moves its frontier now, whichever line acts first, so its later losses wait.
+  for (const line of lines)
+    if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
+  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo);
+  for (const line of byTurn) {
+    const command = lineCommand(line);
+    if (command !== null) return started(command);
   }
-  advanceFrontier(world, player, order.length);
   return [];
+}
+
+/** `lines`, stable in priority order, by turn: rank 0 holds no rising site and its next step raises a
+ *  building kind the seat lacks, rank 1 holds no rising site, rank 2 has a site of its own still rising. */
+function turnOrder(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  lines: readonly BuildLine[],
+  statusOf: (line: BuildLineId, step: number) => EntryStatus | undefined,
+  memo: DecisionMemo,
+): BuildLine[] {
+  const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
+  const ownedTypes = new Set(owned.map((e) => world.get(e, Building).buildingType));
+  const rank = (line: BuildLine): number => {
+    let next: BuildOrderEntry | undefined;
+    for (const [step, entry] of line.steps.entries()) {
+      if (isLaneEntry(entry)) continue;
+      const status = statusOf(line.id, step);
+      if (status === 'satisfied' && entryStatus(world, ctx, player, standing, entry, memo, false) === 'unmet')
+        return 2;
+      if (status === 'unmet') next ??= entry;
+    }
+    if (next === undefined || next.kind === 'collector') return 0;
+    const type = buildingTypeByContentId(ctx.content, next.building);
+    if (type === undefined) return 0;
+    const kinds = countedTiers(
+      ctx.content,
+      type,
+      next.kind === 'place' || next.kind === 'upgrade' ? next.belowTier : undefined,
+    );
+    for (const kind of kinds) if (ownedTypes.has(kind)) return 1;
+    return 0;
+  };
+  const ranks = new Map(lines.map((line) => [line.id, rank(line)]));
+  return [...lines].sort((a, b) => (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0));
+}
+
+/** Whether `entry`'s building is one the seat cannot raise yet: a placed tier not enabled for the seat's
+ *  placement tribe, or an upgrade whose candidate's next tier is not, so an upgrade still rises as far as
+ *  the seat may ({@link upgradeReach}). A seat with no placement tribe holds rather than passes. */
+function stepLocked(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  tribe: number | undefined,
+  entry: BuildOrderEntry,
+): boolean {
+  if (tribe === undefined || entry.kind === 'collector') return false;
+  const type = buildingTypeByContentId(ctx.content, entry.building);
+  if (type === undefined) return false;
+  if (entry.kind !== 'upgrade') return !buildingEnabled(world, ctx, player, tribe, type.typeId);
+  const index = contentIndex(ctx.content);
+  const candidate = upgradeCandidate(world, index, owned, type);
+  if (candidate === null) return false;
+  const building = world.get(candidate, Building);
+  const next = index.buildings.get(building.buildingType)?.upgradeTarget;
+  return next !== undefined && !buildingEnabled(world, ctx, player, building.tribe, next);
+}
+
+/** Every step's status by its {@link StepKey}, built only when a stalled-search record asks. */
+function keyedStatuses(order: BuildOrder, statuses: LineStatuses): (key: StepKey) => EntryStatus | undefined {
+  let byKey: Map<StepKey, EntryStatus> | undefined;
+  return (key) => {
+    if (byKey === undefined) {
+      byKey = new Map();
+      for (const line of order.lines) {
+        for (const [step, status] of (statuses.get(line.id) ?? []).entries())
+          byKey.set(stepKey(line.id, step), status);
+      }
+    }
+    return byKey.get(key);
+  };
 }
 
 /** Whether the seat's free site still waits out its profile's {@link ComputerProfile.freeSitePauseTicks}: the
@@ -267,19 +402,21 @@ function waitsOnFreeSite(
 type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
 
 /**
- * What the list makes of an unmet entry this decision. A serving placement with no room beside what it
- * serves, a grass building with no grass left for it, or a coverage entry with no target it can
- * cover, is passed over: the workshop still runs, slower, and the goods still travel, only farther, while
- * a stalled list would not, and gatherers felling trees free no grass where the map has none. A passed-over
- * entry holds neither the list nor the lanes and moves neither the frontier nor the stall record. Every
- * other unmet entry acts, carrying the placement its search found when it is one of those kinds.
+ * What a line makes of an unmet step this decision. A step whose building the seat has not enabled yet,
+ * a serving placement with no room beside what it serves, a grass building with no grass left for it, or
+ * a coverage step with no target it can cover, is passed over: the workshop still runs, slower, and the
+ * goods still travel, only farther, while a stalled line would not, and gatherers felling trees free no
+ * grass where the map has none. A passed-over step holds neither its line nor the lanes and moves neither
+ * the frontier nor the stall record. Every other unmet step acts, carrying the placement its search found
+ * when it is one of those kinds.
  */
 type Verdict = { readonly kind: 'pass' } | { readonly kind: 'act'; readonly placement: PlaceCommand | null };
 
 const ACTS: Verdict = { kind: 'act', placement: null };
 const PASSED_OVER: Verdict = { kind: 'pass' };
 
-/** Whether an unmet `entry` is one the list passes over rather than stalls on when its search finds nothing. */
+/** Whether an unmet `entry` is one its line passes over rather than stalls on when its search finds
+ *  nothing. */
 function passesOver(ctx: SystemContext, entry: BuildOrderEntry): boolean {
   if (entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') return true;
   return entry.kind === 'place' && placementPassesOver(ctx, entry);
@@ -312,7 +449,7 @@ function searchVerdict(
     case 'place': {
       if (!placementPassesOver(ctx, entry)) return ACTS;
       const type = buildingTypeByContentId(ctx.content, entry.building);
-      if (type === undefined || !buildingEnabled(world, ctx, player, tribe, type.typeId)) return ACTS;
+      if (type === undefined) return ACTS;
       const spot = placementSpot(
         world,
         ctx,
@@ -350,36 +487,38 @@ function searchVerdict(
   }
 }
 
-/** One lane of the list ({@link isLaneEntry}) and the sites of its building the seat has open. */
+/** One lane of a line ({@link isLaneEntry}) and the sites of its building the seat has open. */
 interface OpenLane {
-  readonly entryIndex: number;
+  readonly line: BuildLineId;
+  readonly step: number;
   readonly entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>;
   readonly sites: number;
 }
 
-/** The lanes the list has reached, in list order: every entry before each stands met or passed over. A
- *  lane's sites are the open sites of its building or a tier above it, whichever entry placed them. */
+/** The lanes the lines have reached, in line priority and step order: every step before each in its line
+ *  stands met or passed over. A lane's sites are the open sites of its building or a tier above it,
+ *  whichever step placed them. */
 function openLanes(
   world: World,
   ctx: SystemContext,
-  order: readonly BuildOrderEntry[],
-  statuses: readonly EntryStatus[],
+  lines: readonly BuildLine[],
+  statuses: LineStatuses,
   sites: readonly Entity[],
-  passedOver: (entryIndex: number) => boolean,
+  passedOver: (line: BuildLine, step: number) => boolean,
 ): OpenLane[] {
   const index = contentIndex(ctx.content);
   const lanes: OpenLane[] = [];
-  let held = false;
-  for (const [entryIndex, entry] of order.entries()) {
-    if (held) break;
-    if ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true) {
-      const type = buildingTypeByContentId(ctx.content, entry.building);
-      const chain = type === undefined ? new Set<number>() : tiersAtOrAbove(index, type);
-      const own = sites.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
-      lanes.push({ entryIndex, entry, sites: own });
-      continue;
+  for (const line of lines) {
+    for (const [step, entry] of line.steps.entries()) {
+      if ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true) {
+        const type = buildingTypeByContentId(ctx.content, entry.building);
+        const chain = type === undefined ? new Set<number>() : tiersAtOrAbove(index, type);
+        const own = sites.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
+        lanes.push({ line: line.id, step, entry, sites: own });
+        continue;
+      }
+      if (statuses.get(line.id)?.[step] === 'unmet' && !passedOver(line, step)) break;
     }
-    if (statuses[entryIndex] === 'unmet' && !passedOver(entryIndex)) held = true;
   }
   return lanes;
 }
@@ -423,9 +562,9 @@ function coverageCommand(
 }
 
 /**
- * Whether the acting entry is a razed building's, fallen back below the seat's frontier, still inside
+ * Whether the acting step is a razed building's, fallen back below its line's frontier, still inside
  * {@link REBUILD_DELAY_TICKS} of the decision that first saw it or, later, of the last one that saw the
- * seat `attacked`. Only a counted building entry regresses this way; a coverage entry re-arms by design
+ * seat `attacked`. Only a counted building step regresses this way; a coverage step re-arms by design
  * and a collector is hired, not built, so neither moves the frontier. A passed-over placement that
  * finds room again falls below the frontier the same way and waits the delay once. A seat with no AI
  * carrier (a module run directly) keeps no frontier and never waits.
@@ -433,86 +572,95 @@ function coverageCommand(
 function awaitingRebuild(
   world: World,
   player: number,
-  entryIndex: number,
+  line: BuildLineId,
+  step: number,
   entry: BuildOrderEntry,
   tick: number,
 ): boolean {
   const carrier = aiControlEntity(world, player);
   if (carrier === null) return false;
-  const frontier = world.tryGet(carrier, BuildOrderFrontier);
-  if (frontier === undefined || entryIndex >= frontier.entry) {
-    advanceFrontier(world, player, entryIndex);
+  const frontier = world.tryGet(carrier, BuildOrderFrontier)?.lines.get(line);
+  if (frontier === undefined || step >= frontier.step) {
+    advanceFrontier(world, player, line, step);
     return false;
   }
   if (entry.kind !== 'place' && entry.kind !== 'upgrade') return false;
   const held = frontier.rebuildTick;
   if (held === null) {
-    world.mut(carrier, BuildOrderFrontier).rebuildTick = tick + REBUILD_DELAY_TICKS;
+    world
+      .mut(carrier, BuildOrderFrontier)
+      .lines.set(line, { step: frontier.step, rebuildTick: tick + REBUILD_DELAY_TICKS });
     return true;
   }
   return tick < held;
 }
 
-/** Under siege the list acts on nothing and searches nothing, so a lost entry below the frontier only has
- *  its rebuild wait pushed out to run from the siege's end; the frontier stays where it is. */
+/** Under siege the lines act on nothing and search nothing, so a lost step below its line's frontier only
+ *  has its rebuild wait pushed out to run from the siege's end; the frontier stays where it is. */
 function holdRebuildUnderAttack(
   world: World,
   player: number,
-  entryIndex: number,
+  line: BuildLineId,
+  step: number,
   entry: BuildOrderEntry,
   tick: number,
 ): void {
   const carrier = aiControlEntity(world, player);
   if (carrier === null) return;
-  const frontier = world.tryGet(carrier, BuildOrderFrontier);
-  if (frontier === undefined || entryIndex >= frontier.entry) return;
+  const frontier = world.tryGet(carrier, BuildOrderFrontier)?.lines.get(line);
+  if (frontier === undefined || step >= frontier.step) return;
   if (entry.kind !== 'place' && entry.kind !== 'upgrade') return;
   const held = frontier.rebuildTick;
   if (held === null || held < tick + REBUILD_DELAY_TICKS)
-    world.mut(carrier, BuildOrderFrontier).rebuildTick = tick + REBUILD_DELAY_TICKS;
+    world
+      .mut(carrier, BuildOrderFrontier)
+      .lines.set(line, { step: frontier.step, rebuildTick: tick + REBUILD_DELAY_TICKS });
 }
 
-/** Raise the seat's frontier to `entryIndex`, the first unmet entry at or past it (the list's length once all
- *  are met), and end any rebuild wait, since nothing below the frontier is unmet any more. Only this raises
+/** Raise `line`'s frontier to `step`, its first unmet step at or past it (the line's length once all are
+ *  met), and end any rebuild wait, since nothing below the frontier is unmet any more. Only this raises
  *  it, so every later loss below it waits out the delay again. */
-function advanceFrontier(world: World, player: number, entryIndex: number): void {
+function advanceFrontier(world: World, player: number, line: BuildLineId, step: number): void {
   const carrier = aiControlEntity(world, player);
   if (carrier === null) return;
-  const frontier = world.tryGet(carrier, BuildOrderFrontier);
-  if (frontier !== undefined && frontier.entry === entryIndex && frontier.rebuildTick === null) return;
-  world.add(carrier, BuildOrderFrontier, { entry: entryIndex, rebuildTick: null });
+  const record = world.tryGet(carrier, BuildOrderFrontier);
+  const current = record?.lines.get(line);
+  if (current !== undefined && current.step === step && current.rebuildTick === null) return;
+  const frontier = { step, rebuildTick: null };
+  if (record === undefined) world.add(carrier, BuildOrderFrontier, { lines: new Map([[line, frontier]]) });
+  else world.mut(carrier, BuildOrderFrontier).lines.set(line, frontier);
 }
 
 /**
- * Whether acting on `entryIndex` would take the list more than the clock's lookahead ({@link sitePace})
- * past the oldest one met only by a fresh site still going up. That entry is found by re-reading the list
- * over the buildings that stand, a building mid-upgrade counted at the tier it has. An entry unmet over
- * the sites too was passed over, not met by one, so it never holds the list; skipped entries and lanes
- * do not count toward the lookahead.
+ * Whether acting on `step` of a line's `steps` would take the line more than the clock's lookahead
+ * ({@link sitePace}) past its oldest step met only by a fresh site still going up. That step is found by
+ * re-reading the line over the buildings that stand, a building mid-upgrade counted at the tier it has.
+ * A step unmet over the sites too was passed over, not met by one, so it never holds the line; skipped
+ * steps and lanes do not count toward the lookahead.
  */
 function outrunsSites(
   world: World,
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
-  order: readonly BuildOrderEntry[],
-  entryIndex: number,
+  steps: readonly BuildOrderEntry[],
+  step: number,
   memo: DecisionMemo,
 ): boolean {
   const { lookahead } = sitePace(computerProfileOf(world, player), ctx.tick);
-  if (entryIndex <= lookahead) return false;
+  if (step <= lookahead) return false;
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
   let oldest = -1;
-  for (let i = 0; i < entryIndex && oldest < 0; i++) {
-    const entry = order[i];
+  for (let i = 0; i < step && oldest < 0; i++) {
+    const entry = steps[i];
     if (entry === undefined || isLaneEntry(entry)) continue;
     if (entryStatus(world, ctx, player, standing, entry, memo, false) !== 'unmet') continue;
     if (entryStatus(world, ctx, player, owned, entry, memo) !== 'unmet') oldest = i;
   }
   if (oldest < 0) return false;
   let ahead = 0;
-  for (let i = oldest + 1; i <= entryIndex; i++) {
-    const entry = order[i];
+  for (let i = oldest + 1; i <= step; i++) {
+    const entry = steps[i];
     if (entry === undefined || isLaneEntry(entry)) continue;
     if (entryStatus(world, ctx, player, owned, entry, memo) !== 'skip') ahead++;
   }

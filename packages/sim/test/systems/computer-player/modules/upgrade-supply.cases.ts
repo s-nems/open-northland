@@ -17,6 +17,7 @@ import {
   entityOfBuilding,
   HQ_TYPE,
   MILL_TYPE,
+  oneLine,
   placeHq,
   SEAT,
   VIKING,
@@ -83,10 +84,12 @@ function materialsContent(): ContentSet {
   });
 }
 
-const UPGRADES = buildOrderModule([
-  { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
-  { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
-]);
+const UPGRADES = buildOrderModule(
+  oneLine([
+    { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
+    { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
+  ]),
+);
 
 function workshopsSeat(): { sim: Simulation; content: ContentSet; next: () => Command | undefined } {
   const content = materialsContent();
@@ -166,7 +169,7 @@ describe('build order - material gates', () => {
       { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
       { kind: 'upgrade', building: 'work_pottery_03', count: 1 },
     ];
-    const toTop = buildOrderModule(order);
+    const toTop = buildOrderModule(oneLine(order));
     const next = () => [...toTop.run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
     // The jump bills both tiers' bricks summed; one short of that covers only the next tier, so the order
     // falls back to it.
@@ -207,7 +210,7 @@ describe('build order - material gates', () => {
     sim.step();
     store(sim, BRICK, 2 * POTTERY_BILL.bricks);
     store(sim, PILLAR, 2 * POTTERY_BILL.pillars);
-    const both = buildOrderModule([{ kind: 'upgrade', building: 'work_pottery_01', count: 2 }]);
+    const both = buildOrderModule(oneLine([{ kind: 'upgrade', building: 'work_pottery_01', count: 2 }]));
     const next = () => [...both.run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
     const first = next();
     if (first?.kind !== 'upgradeBuilding') throw new Error('expected the first pottery upgrade');
@@ -246,7 +249,7 @@ describe('build order - material gates', () => {
         });
       }
       sim.step();
-      return [...buildOrderModule(order).run(sim.world, ctxOf(sim), SEAT)][0];
+      return [...buildOrderModule(oneLine(order)).run(sim.world, ctxOf(sim), SEAT)][0];
     }
 
     it('skips the second well while the first stands beside the brewery, or no brewery stands', () => {

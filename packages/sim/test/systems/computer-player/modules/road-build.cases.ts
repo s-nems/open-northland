@@ -58,6 +58,7 @@ import {
   HQ_TYPE,
   HQ_X,
   HQ_Y,
+  oneLine,
   SEAT,
   STONE,
   VIKING,
@@ -379,8 +380,9 @@ describe('road build module (roadBuild)', () => {
         ownedBuildings(sim.world, SEAT),
         DEFAULT_BUILD_ORDER,
       );
-      return wantedCollectorGoods(sim.world, ctx, SEAT, [], [], supply).find((w) => w.good.typeId === STONE)
-        ?.target;
+      return wantedCollectorGoods(sim.world, ctx, SEAT, oneLine([]), new Map(), supply).find(
+        (w) => w.good.typeId === STONE,
+      )?.target;
     };
     const calm = stoneTarget();
     if (calm === undefined) throw new Error('setup: stone is not a wanted good');

@@ -9,8 +9,9 @@ import { roadConstructionBill } from '../../roads/sites.js';
 import { type SeatStock, seatStockOf } from '../../stores/index.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
-  type BuildOrderEntry,
+  type BuildOrder,
   MAX_ACTIVE_CONSTRUCTION_SITES,
+  orderSteps,
 } from '../build-order/index.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { type GamePhase, gamePhase, HOARD_UNITS_BY_PHASE } from '../game-phase.js';
@@ -46,7 +47,7 @@ const FALLBACK_SUPPLY_UNIT = 1;
 /** Per content set, per build order, per game phase: the lines of every managed good, by good type. */
 const linesCache = new WeakMap<
   ContentSet,
-  WeakMap<readonly BuildOrderEntry[], Map<GamePhase, ReadonlyMap<number, SupplyLines>>>
+  WeakMap<BuildOrder, Map<GamePhase, ReadonlyMap<number, SupplyLines>>>
 >();
 
 /**
@@ -59,7 +60,7 @@ const linesCache = new WeakMap<
  */
 export function supplyLines(
   content: ContentSet,
-  order: readonly BuildOrderEntry[],
+  order: BuildOrder,
   phase: GamePhase,
 ): ReadonlyMap<number, SupplyLines> {
   let byOrder = linesCache.get(content);
@@ -82,7 +83,7 @@ export function supplyLines(
 
 function deriveLines(
   content: ContentSet,
-  order: readonly BuildOrderEntry[],
+  order: BuildOrder,
   phase: GamePhase,
 ): ReadonlyMap<number, SupplyLines> {
   const index = contentIndex(content);
@@ -90,7 +91,7 @@ function deriveLines(
   for (const id of [...COLLECTED_GOOD_IDS, ...STOCKED_PRODUCT_GOOD_IDS])
     addKnown(managed, index.goodTypeBySlug.get(id));
   const named = new Set<number>();
-  for (const entry of order) {
+  for (const entry of orderSteps(order)) {
     if (entry.kind === 'collector') addKnown(managed, index.goodTypeBySlug.get(entry.good));
     else addKnown(named, index.buildingTypeBySlug.get(entry.building));
   }
@@ -176,7 +177,7 @@ export class SeatSupply {
     ctx: SystemContext,
     player: number,
     owned: readonly Entity[],
-    order: readonly BuildOrderEntry[],
+    order: BuildOrder,
   ): SeatSupply {
     const lines = supplyLines(ctx.content, order, gamePhase(ctx.tick));
     const owed = sitesShortfalls(world, ctx, owned);

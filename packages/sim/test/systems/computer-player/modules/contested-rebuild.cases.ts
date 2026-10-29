@@ -49,6 +49,7 @@ import {
   HQ_Y,
   MILL_TYPE,
   makeAiSeat,
+  oneLine,
   placeHq,
   SEAT,
   STOCK_TOP_TYPE,
@@ -183,7 +184,7 @@ function offTheHq(sim: Simulation, distance: number): Spot {
 }
 
 describe('build-order module - rebuilding under the enemy', () => {
-  const module = buildOrderModule(ORDER);
+  const module = buildOrderModule(oneLine(ORDER));
   const decide = (sim: Simulation): readonly Command[] => module.run(sim.world, ctxOf(sim), SEAT);
 
   it('holds the placement while an enemy fighter stands in a watch band, until he clears the margin', () => {
@@ -336,7 +337,7 @@ describe('build-order module - rebuilding under the enemy', () => {
   });
 
   it("keeps a tower coverage placement out of a manned enemy tower's reach", () => {
-    const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
+    const coverage = buildOrderModule(oneLine([{ kind: 'towerCoverage', building: 'tower_01' }]));
     const sim = aiSim();
     placeHq(sim);
     // An outlying home outside the HQ's circle arms the coverage entry.
@@ -367,9 +368,9 @@ describe('build-order module - rebuilding under the enemy', () => {
     const bakery = { x: HQ_X + 29, y: HQ_Y };
     place(sim, BAKERY_TYPE, bakery);
     sim.step();
-    const stores = buildOrderModule([
-      { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
-    ]);
+    const stores = buildOrderModule(
+      oneLine([{ kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS }]),
+    );
     expect(placementOf(stores.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TOP_TYPE);
     mannedFoeTower(sim, { x: bakery.x, y: bakery.y - 4 });
     mannedFoeTower(sim, { x: bakery.x, y: bakery.y + 4 });
@@ -379,10 +380,12 @@ describe('build-order module - rebuilding under the enemy', () => {
   }
 
   it("passes a store coverage entry over while its only spots lie in an enemy tower's reach", () => {
-    const order = buildOrderModule([
-      { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-    ]);
+    const order = buildOrderModule(
+      oneLine([
+        { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+      ]),
+    );
     const sim = besiegedStoreTarget();
     // The list goes on to the farm instead of stalling on the warehouse.
     expect(placementOf(order.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(FARM_TYPE);
@@ -391,13 +394,15 @@ describe('build-order module - rebuilding under the enemy', () => {
   it('never counts a passed-over entry as the one the lookahead waits on', () => {
     // The farm's site is the oldest entry waiting on a site; the passed-over store entry before it
     // would put the mill one entry past the lookahead if it counted.
-    const order = buildOrderModule([
-      { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'place', building: 'home_level_00', count: 1 },
-      { kind: 'place', building: 'work_well_00', count: 1 },
-      { kind: 'place', building: 'work_mill_00', count: 1 },
-    ]);
+    const order = buildOrderModule(
+      oneLine([
+        { kind: 'storeCoverage', building: 'stock_02', radius: SMALL_STORE_RADIUS },
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'place', building: 'home_level_00', count: 1 },
+        { kind: 'place', building: 'work_well_00', count: 1 },
+        { kind: 'place', building: 'work_mill_00', count: 1 },
+      ]),
+    );
     const sim = besiegedStoreTarget();
     const act = (): (Spot & { buildingType: number }) | null => {
       const commands = [...order.run(sim.world, ctxOf(sim), SEAT)];
@@ -417,7 +422,7 @@ describe('build-order module - rebuilding under the enemy', () => {
   });
 
   it('holds a tower coverage placement while the seat is attacked', () => {
-    const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
+    const coverage = buildOrderModule(oneLine([{ kind: 'towerCoverage', building: 'tower_01' }]));
     const sim = aiSim();
     placeHq(sim);
     // An outlying home outside the HQ's circle arms the coverage entry.

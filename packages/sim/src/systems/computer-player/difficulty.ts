@@ -2,6 +2,7 @@ import { AiControl, aiControlEntity, type ComputerDifficulty } from '../../compo
 import type { World } from '../../ecs/world.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
+  type BuildOrder,
   type BuildOrderEntry,
   SITE_PACE_STEPS,
   type SitePace,
@@ -204,18 +205,12 @@ export function computerProfileOf(world: World, player: number): ComputerProfile
   return AI_PROFILES[carrier === null ? 'hard' : world.get(carrier, AiControl).difficulty];
 }
 
-const trimmedOrders = new WeakMap<
-  readonly BuildOrderEntry[],
-  Map<ComputerDifficulty, readonly BuildOrderEntry[]>
->();
+const trimmedOrders = new WeakMap<BuildOrder, Map<ComputerDifficulty, BuildOrder>>();
 
 /** `order` as `profile` plays it: counts cut to its {@link ComputerProfile.buildingCaps}, and the catapult
- *  joinery and the dense tower ring dropped where it goes without them. The hard profile gets `order`
- *  itself, so the caches keyed on the list stay shared. */
-export function profileBuildOrder(
-  order: readonly BuildOrderEntry[],
-  profile: ComputerProfile,
-): readonly BuildOrderEntry[] {
+ *  joinery and the dense tower ring dropped from their lines where it goes without them; the priority
+ *  stays. The hard profile gets `order` itself, so the caches keyed on the order stay shared. */
+export function profileBuildOrder(order: BuildOrder, profile: ComputerProfile): BuildOrder {
   if (profile.difficulty === 'hard') return order;
   let byDifficulty = trimmedOrders.get(order);
   if (byDifficulty === undefined) {
@@ -224,10 +219,16 @@ export function profileBuildOrder(
   }
   let trimmed = byDifficulty.get(profile.difficulty);
   if (trimmed === undefined) {
-    trimmed = order.flatMap((entry) => {
-      const kept = trimEntry(entry, profile);
-      return kept === null ? [] : [kept];
-    });
+    trimmed = {
+      lines: order.lines.map((line) => ({
+        id: line.id,
+        steps: line.steps.flatMap((entry) => {
+          const kept = trimEntry(entry, profile);
+          return kept === null ? [] : [kept];
+        }),
+      })),
+      priority: order.priority,
+    };
     byDifficulty.set(profile.difficulty, trimmed);
   }
   return trimmed;

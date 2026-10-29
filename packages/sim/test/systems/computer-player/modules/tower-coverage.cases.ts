@@ -18,6 +18,7 @@ import {
   HOME_TYPE,
   HQ_X,
   HQ_Y,
+  oneLine,
   placeHq,
   SAND,
   SEAT,
@@ -28,7 +29,7 @@ import {
 } from '../support.js';
 
 describe('build-order tower and store coverage', () => {
-  const coverage = buildOrderModule([{ kind: 'towerCoverage', building: 'tower_01' }]);
+  const coverage = buildOrderModule(oneLine([{ kind: 'towerCoverage', building: 'tower_01' }]));
 
   it('rests while every building sits in the HQ circle, then covers an outlying one', () => {
     const sim = aiSim();
@@ -104,10 +105,12 @@ describe('build-order tower and store coverage', () => {
     });
     sim.step();
     // A well still to place keeps the reservation on.
-    const reserving = buildOrderModule([
-      { kind: 'towerCoverage', building: 'tower_01' },
-      { kind: 'place', building: 'work_well_00', count: 1 },
-    ]);
+    const reserving = buildOrderModule(
+      oneLine([
+        { kind: 'towerCoverage', building: 'tower_01' },
+        { kind: 'place', building: 'work_well_00', count: 1 },
+      ]),
+    );
     const order = [...reserving.run(sim.world, ctxOf(sim), SEAT)][0];
     if (order?.kind !== 'placeBuilding') throw new Error('expected a tower placement');
     expect(onGrass(order.x, order.y)).toBe(false);
@@ -144,7 +147,7 @@ describe('build-order tower and store coverage', () => {
   describe('store coverage', () => {
     /** A store circle small enough for the fixture map to hold ground outside it. */
     const radius = 19;
-    const stores = buildOrderModule([{ kind: 'storeCoverage', building: 'stock_02', radius }]);
+    const stores = buildOrderModule(oneLine([{ kind: 'storeCoverage', building: 'stock_02', radius }]));
     const place = (sim: Simulation, buildingType: number, x: number, y: number): void =>
       sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
     const next = (sim: Simulation) => [...stores.run(sim.world, ctxOf(sim), SEAT)][0];

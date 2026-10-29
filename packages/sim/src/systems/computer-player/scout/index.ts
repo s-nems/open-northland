@@ -4,7 +4,7 @@ import type { World } from '../../../ecs/world.js';
 import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isScoutJob } from '../../readviews/index.js';
-import type { BuildOrderEntry } from '../build-order/entries.js';
+import type { BuildOrder } from '../build-order/entries.js';
 import type { ComputerModule } from '../index.js';
 import { nextLivestockCatch } from './livestock-catch.js';
 import { nextSignpostTarget } from './signpost-coverage.js';
@@ -26,7 +26,7 @@ function runScout(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  order: BuildOrder,
 ): readonly PlayerCommand[] {
   const scout = ownedSettlers(world, player).find((e) =>
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
@@ -45,7 +45,7 @@ function runScout(
 
 /** The scout module over the seat's build order, whose collector goods name the deposits the lattice
  *  reaches out to. */
-export function scoutModule(order: readonly BuildOrderEntry[]): ComputerModule {
+export function scoutModule(order: BuildOrder): ComputerModule {
   return {
     id: 'guideBuild',
     run: (world, ctx, player) => runScout(world, ctx, player, order),

@@ -80,6 +80,7 @@ import {
   JOINERY_TYPE,
   MILL_TYPE,
   MUD,
+  oneLine,
   ordinaryDecisionTick,
   placeHq,
   placeResources,
@@ -665,7 +666,7 @@ describe('workforce module - stone gatherers keep the anchor their flag serves',
     expect(slots).toEqual([hut, hq]);
     expect(seatHolders(sim.world, [low, high], slots, hq).anchors).toEqual([hq, hut]);
     // So the periodic upkeep of a seat wanting both posts moves neither flag.
-    const twoStonePosts = workforceModule([{ kind: 'collector', good: 'stone', count: 2 }]);
+    const twoStonePosts = workforceModule(oneLine([{ kind: 'collector', good: 'stone', count: 2 }]));
     for (const man of [low, high]) {
       const upkeep = [
         ...twoStonePosts.run(sim.world, { ...ctxOf(sim, flagRelocationTick(man)), content }, SEAT),

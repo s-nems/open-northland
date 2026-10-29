@@ -8,23 +8,23 @@ import { type BuildOrderEntry, isLaneEntry } from './entries.js';
 import type { EntryStatus } from './progress.js';
 
 /**
- * The tiers the upgrade entry at `entryIndex` may raise `candidate` to, ascending from its next tier,
- * empty while that tier is not enabled for the seat. The entry's tier is extended by the unmet upgrade
- * entries right after it whose tier stands at or above it on the same chain and still counts for every
- * entry before it, so one site jumps the building as far as that run wants instead of one tier per site.
- * The list stops below the first tier the seat has not enabled, the check `upgradeBuilding` itself
- * makes. Lanes and skipped entries do not break a run.
+ * The tiers the upgrade step at `entryIndex` of its line's `steps` may raise `candidate` to, ascending
+ * from its next tier, empty while that tier is not enabled for the seat. The step's tier is extended by
+ * the unmet upgrade steps right after it in the line whose tier stands at or above it on the same chain
+ * and still counts for every step before it, so one site jumps the building as far as that run wants
+ * instead of one tier per site. The list stops below the first tier the seat has not enabled, the check
+ * `upgradeBuilding` itself makes. Lanes and skipped steps do not break a run.
  */
 export function upgradeReach(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  steps: readonly BuildOrderEntry[],
   statuses: readonly EntryStatus[],
   entryIndex: number,
   candidate: Entity,
 ): readonly number[] {
-  const top = wantedTop(ctx, order, statuses, entryIndex);
+  const top = wantedTop(ctx, steps, statuses, entryIndex);
   if (top === undefined) return [];
   const index = contentIndex(ctx.content);
   const building = world.get(candidate, Building);
@@ -38,21 +38,21 @@ export function upgradeReach(
   return tiers;
 }
 
-/** The highest tier the run of upgrade entries starting at `entryIndex` wants. */
+/** The highest tier the run of upgrade steps starting at `entryIndex` wants. */
 function wantedTop(
   ctx: SystemContext,
-  order: readonly BuildOrderEntry[],
+  steps: readonly BuildOrderEntry[],
   statuses: readonly EntryStatus[],
   entryIndex: number,
 ): number | undefined {
-  const first = order[entryIndex];
+  const first = steps[entryIndex];
   if (first?.kind !== 'upgrade') return undefined;
   const firstType = buildingTypeByContentId(ctx.content, first.building);
   if (firstType === undefined) return undefined;
   const counting = [countedTiers(ctx.content, firstType, first.belowTier)];
   let top = firstType.typeId;
-  for (let i = entryIndex + 1; i < order.length; i++) {
-    const entry = order[i];
+  for (let i = entryIndex + 1; i < steps.length; i++) {
+    const entry = steps[i];
     const status = statuses[i];
     if (entry === undefined || status === 'skip' || isLaneEntry(entry)) continue;
     if (entry.kind !== 'upgrade' || status !== 'unmet') break;

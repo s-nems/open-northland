@@ -1,3 +1,4 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
@@ -19,6 +20,7 @@ import {
   SITES_GROW_FROM_TICKS,
 } from '../../../../src/systems/computer-player/game-phase.js';
 import {
+  type BuildOrder,
   type BuildOrderEntry,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
@@ -52,6 +54,7 @@ import {
   JOINERY_TYPE,
   MILL_TYPE,
   makeAiSeat,
+  oneLine,
   placeHq,
   placeResources,
   RESOURCE_SPOTS,
@@ -67,6 +70,14 @@ import {
 
 describe('build-order module (houseBuild)', () => {
   const module = buildOrderModule(DEFAULT_BUILD_ORDER);
+  /** The default opening alone: this content stops short of the homes line's tiers, so the default
+   *  order's lanes open at once and take sites of their own. */
+  const opening = buildOrderModule(
+    oneLine([
+      { kind: 'place', building: 'work_farm_00', count: 1 },
+      { kind: 'place', building: 'home_level_00', count: 3 },
+    ]),
+  );
 
   function nextPlacement(sim: Simulation): Command | undefined {
     return [...module.run(sim.world, ctxOf(sim), SEAT)][0];
@@ -109,107 +120,65 @@ describe('build-order module (houseBuild)', () => {
     });
   });
 
-  it('executes the opening list in order near the HQ, two open sites at a time', () => {
+  it("runs the lines side by side near the HQ, each line's first new building before more of one", () => {
     const sim = aiSim();
     placeHq(sim);
-    placeResources(sim, [RESOURCE_SPOTS.iron]); // a live iron node keeps the collector entry waiting
+    placeResources(sim, [RESOURCE_SPOTS.iron]); // a live iron node keeps the collector step waiting
     sim.step();
 
     // Farm first - on a free node close to the HQ, as a construction site owned by the seat.
     const first = nextPlacement(sim);
-    expect(first?.kind).toBe('placeBuilding');
-    if (first?.kind !== 'placeBuilding') return;
+    if (first?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
     expect(first.buildingType).toBe(FARM_TYPE);
     expect(first.underConstruction).toBe(true);
     expect(first.owner).toBe(SEAT);
     const dist = Math.abs(first.x - HQ_X) + Math.abs(first.y - HQ_Y);
     expect(dist).toBeGreaterThan(0); // never on the HQ's own node
     expect(dist).toBeLessThanOrEqual(4); // the closest free ring, not a far scatter
-    sim.enqueueSetup(first);
-    sim.step();
+    applyAndFinish(sim, first);
 
-    // A second site goes up beside the first; with two open the executor stalls until one finishes.
-    const second = nextPlacement(sim);
-    if (second?.kind !== 'placeBuilding') throw new Error('expected a second placement');
-    expect(second.buildingType).toBe(HOME_TYPE);
-    sim.enqueueSetup(second);
-    sim.step();
-    expect(nextPlacement(sim)).toBeUndefined();
-    completeSites(sim);
-
-    // Homes fill to their count of three; the entries absent from this content (pottery, mason)
-    // are skipped, and the farm→mill→bakery pair→well chain follows.
-    for (const expected of [HOME_TYPE, HOME_TYPE, MILL_TYPE, BAKERY_TYPE, BAKERY_TYPE, WELL_TYPE]) {
+    const walk: string[] = [];
+    for (let decision = 0; decision < 40; decision++) {
       const next = nextPlacement(sim);
-      if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
-      expect(next.buildingType).toBe(expected);
+      if (next === undefined) break;
+      if (next.kind === 'placeBuilding') walk.push(`place ${next.buildingType}`);
+      else if (next.kind === 'upgradeBuilding') walk.push(`upgrade ${next.target}`);
+      else throw new Error(`unexpected ${next.kind}`);
       applyAndFinish(sim, next);
     }
-
-    // The home-upgrade entry raises each home straight to the top tier, skipping the middle one.
-    for (let i = 0; i < 3; i++) {
-      const next = nextPlacement(sim);
-      if (next?.kind !== 'upgradeBuilding') throw new Error(`expected upgrade ${i}, got ${next?.kind}`);
-      expect(next.target).toBe(HOME_TOP_TYPE);
-      applyAndFinish(sim, next);
-    }
-    const homes = [...sim.world.query(Building)]
-      .map((e) => sim.world.get(e, Building).buildingType)
-      .filter((t) => t === HOME_TYPE || t === HOME_TOP_TYPE);
-    expect(homes).toEqual([HOME_TOP_TYPE, HOME_TOP_TYPE, HOME_TOP_TYPE]);
-
-    // The hive/animal-farm/sewery entries are absent from this content (the animal farm's well skips with
-    // no farm standing); the brewery and the level-2 joinery follow before the gated iron-collector entry.
-    for (const expected of [BREWERY_TYPE, JOINERY_TYPE]) {
-      const next = nextPlacement(sim);
-      if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
-      expect(next.buildingType).toBe(expected);
-      applyAndFinish(sim, next);
-    }
-
-    // The gated iron-collector entry: the executor waits (the workforce module does the hiring); a
-    // standing collector unblocks the tail.
-    expect(nextPlacement(sim)).toBeUndefined();
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: COLLECTOR, x: 12, y: 24, tribe: VIKING, owner: SEAT });
-    sim.step();
-    const settler = [...sim.world.query(Settler)].at(-1);
-    if (settler === undefined) throw new Error('setup: collector missing');
-    sim.enqueueSetup({ kind: 'setWorkFlag', entity: settler, x: 14, y: 26 });
-    sim.enqueueSetup({ kind: 'setGatherGood', entity: settler, goodType: IRON });
-    sim.step();
-
-    // Past the gate: the barracks, both bakery upgrades, then the late tail - the pair of level-2 bakeries
-    // and the second brewery follow, with a tower wherever one lands outside the tower circles, then the
-    // third brewery, and a fifth bakery and a fourth brewery close the list. The home entries name `home_level_04`, a tier this
-    // content set stops short of, so they skip here - the direct top-tier placement has its own test
-    // below. The smithy and armory entries are absent from this fixture, so both skip.
-    const barracks = nextPlacement(sim);
-    if (barracks?.kind !== 'placeBuilding') throw new Error('expected the barracks placement');
-    expect(barracks.buildingType).toBe(BARRACKS_TYPE);
-    applyAndFinish(sim, barracks);
-    for (let i = 0; i < 2; i++) {
-      const upgrade = nextPlacement(sim);
-      if (upgrade?.kind !== 'upgradeBuilding') throw new Error('expected a bakery upgrade');
-      expect(sim.world.get(upgrade.building, Building).buildingType).toBe(BAKERY_TYPE);
-      applyAndFinish(sim, upgrade);
-    }
-    // The joinery stands between the wood and the iron, out past the base's defence circle, so the opening
-    // tower entry raises one tower over it; every other building sits inside the store and tower circles.
-    for (const expected of [
-      TOWER_TYPE,
-      BAKERY_TOP_TYPE,
-      BAKERY_TOP_TYPE,
-      BREWERY_TYPE,
-      BREWERY_TYPE,
-      BAKERY_TOP_TYPE,
-      BREWERY_TYPE,
-    ]) {
-      const next = nextPlacement(sim);
-      if (next?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
-      expect(next.buildingType).toBe(expected);
-      applyAndFinish(sim, next);
-    }
-    expect(nextPlacement(sim)).toBeUndefined();
+    // This content stops short of the pottery, the mason hut and the homes line's tiers, so those steps
+    // skip and the homes line reaches its lanes at once. Every line raises its first new kind of building
+    // in priority order (opening, bread, tools, the tower lane over the joinery out by the wood and iron,
+    // military, brewery, its well) before any line adds another of a kind the seat has: the opening's
+    // homes and their upgrade, then the bread line's second bakery, its upgrades and level-2 bakeries, and
+    // the brewery line's further breweries. The tools line holds at its iron gatherer, which the
+    // workforce module hires, and holds no other line.
+    const place = (type: number): string => `place ${type}`;
+    const upgrade = (type: number): string => `upgrade ${type}`;
+    expect(walk).toEqual([
+      place(HOME_TYPE),
+      place(MILL_TYPE),
+      place(BAKERY_TYPE),
+      place(JOINERY_TYPE),
+      place(TOWER_TYPE),
+      place(BARRACKS_TYPE),
+      place(BREWERY_TYPE),
+      place(WELL_TYPE),
+      place(HOME_TYPE),
+      place(HOME_TYPE),
+      upgrade(HOME_TOP_TYPE),
+      upgrade(HOME_TOP_TYPE),
+      upgrade(HOME_TOP_TYPE),
+      place(BAKERY_TYPE),
+      upgrade(BAKERY_TOP_TYPE),
+      upgrade(BAKERY_TOP_TYPE),
+      place(BAKERY_TOP_TYPE),
+      place(BAKERY_TOP_TYPE),
+      place(BAKERY_TOP_TYPE),
+      place(BREWERY_TYPE),
+      place(BREWERY_TYPE),
+      place(BREWERY_TYPE),
+    ]);
   });
 
   it('keeps placing beside the vehicle yard a workshop crew opened, which holds no site slot', () => {
@@ -217,7 +186,7 @@ describe('build-order module (houseBuild)', () => {
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.iron]);
     sim.step();
-    const first = nextPlacement(sim);
+    const first = [...opening.run(sim.world, ctxOf(sim), SEAT)][0];
     if (first?.kind !== 'placeBuilding') throw new Error('expected the opening placement');
     sim.enqueueSetup(first);
     // A joiner's cart cycle opened a yard site of its own; the list did not place it.
@@ -234,12 +203,12 @@ describe('build-order module (houseBuild)', () => {
     expect([...sim.world.query(UnderConstruction)]).toHaveLength(2);
 
     // Two sites stand, yet only the farm counts: the second slot of the opening pace is still free.
-    const second = nextPlacement(sim);
+    const second = [...opening.run(sim.world, ctxOf(sim), SEAT)][0];
     expect(second).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
     if (second?.kind !== 'placeBuilding') return;
     sim.enqueueSetup(second);
     sim.step();
-    expect(nextPlacement(sim)).toBeUndefined();
+    expect([...opening.run(sim.world, ctxOf(sim), SEAT)][0]).toBeUndefined();
   });
 
   it('re-places a destroyed building (the count repairs itself)', () => {
@@ -271,14 +240,16 @@ describe('build-order module (houseBuild)', () => {
     });
     // The bakery waits on iron the map lacks, so it skips and takes no place in the lookahead.
     const skipped: BuildOrderEntry = { ...place('work_bakery_00'), needsResources: ['iron'] };
-    const chain = buildOrderModule([
-      place('work_farm_00'),
-      place('work_mill_00'),
-      skipped,
-      place('work_well_00'),
-      place('work_brewery'),
-      place('work_joinery_01'),
-    ]);
+    const chain = buildOrderModule(
+      oneLine([
+        place('work_farm_00'),
+        place('work_mill_00'),
+        skipped,
+        place('work_well_00'),
+        place('work_brewery'),
+        place('work_joinery_01'),
+      ]),
+    );
     const next = (): Command | undefined => [...chain.run(sim.world, ctxOf(sim), SEAT)][0];
     const raise = (expected: number, finish: boolean): void => {
       const placed = next();
@@ -310,11 +281,13 @@ describe('build-order module (houseBuild)', () => {
     makeAiSeat(sim, SEAT, { houseBuild: false });
     sim.step();
     // The opening coverage entry sits between the two buildings: re-arming it must not lower the frontier.
-    const chain = buildOrderModule([
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'towerCoverage', building: 'tower_01' },
-      { kind: 'place', building: 'work_mill_00', count: 1 },
-    ]);
+    const chain = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'towerCoverage', building: 'tower_01' },
+        { kind: 'place', building: 'work_mill_00', count: 1 },
+      ]),
+    );
     const decide = (tick: number): Command[] => [...chain.run(sim.world, ctxOf(sim, tick), SEAT)];
     for (const expected of [FARM_TYPE, MILL_TYPE]) {
       const placed = decide(0)[0];
@@ -360,11 +333,13 @@ describe('build-order module (houseBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
-    const chain = buildOrderModule([
-      { kind: 'place', building: 'work_bakery_00', count: 1 },
-      { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-    ]);
+    const chain = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_bakery_00', count: 1 },
+        { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+      ]),
+    );
     const next = (): Command | undefined => [...chain.run(sim.world, ctxOf(sim), SEAT)][0];
     const bakery = next();
     if (bakery?.kind !== 'placeBuilding') throw new Error('expected the bakery placement');
@@ -388,7 +363,7 @@ describe('build-order module (houseBuild)', () => {
     expect(new Set(paces).size).toBe(paces.length);
 
     const openAt = (tick: number): Command | undefined =>
-      [...module.run(sim.world, ctxOf(sim, tick), SEAT)][0];
+      [...opening.run(sim.world, ctxOf(sim, tick), SEAT)][0];
     const sites = (): number => [...sim.world.query(UnderConstruction)].length;
     for (let open = 0; open < sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS).sites; open++) {
       expect(sites()).toBe(open);
@@ -432,11 +407,13 @@ describe('build-order module (houseBuild)', () => {
   });
 
   it('runs a reached lane beside the list: one site of its own, the rest of the clock to the list', () => {
-    const laned = buildOrderModule([
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'towerCoverage', building: 'tower_01', lane: true },
-      { kind: 'place', building: 'home_level_00', count: 4 },
-    ]);
+    const laned = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'towerCoverage', building: 'tower_01', lane: true },
+        { kind: 'place', building: 'home_level_00', count: 4 },
+      ]),
+    );
     const sim = aiSim();
     placeHq(sim);
     sim.step();
@@ -475,11 +452,13 @@ describe('build-order module (houseBuild)', () => {
     // A store lane whose one target, a gatherer's flag, lies far past any spot the seat may build on: the
     // lane finds nothing, and the list goes on regardless.
     const STORE_RADIUS = 19;
-    const laned = buildOrderModule([
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'storeCoverage', building: 'stock_02', radius: STORE_RADIUS, lane: true },
-      { kind: 'place', building: 'home_level_00', count: 2 },
-    ]);
+    const laned = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'storeCoverage', building: 'stock_02', radius: STORE_RADIUS, lane: true },
+        { kind: 'place', building: 'home_level_00', count: 2 },
+      ]),
+    );
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(240, 32) });
     placeHq(sim);
     const FAR_FLAG = { x: HQ_X + 190, y: HQ_Y };
@@ -506,14 +485,16 @@ describe('build-order module (houseBuild)', () => {
   });
 
   it('looks one entry further past the oldest open site from each pace step', () => {
-    const paced = buildOrderModule([
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'place', building: 'home_level_00', count: 1 },
-      { kind: 'place', building: 'work_well_00', count: 1 },
-      { kind: 'place', building: 'work_mill_00', count: 1 },
-      { kind: 'place', building: 'work_bakery_00', count: 1 },
-      { kind: 'place', building: 'work_brewery', count: 1 },
-    ]);
+    const paced = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'place', building: 'home_level_00', count: 1 },
+        { kind: 'place', building: 'work_well_00', count: 1 },
+        { kind: 'place', building: 'work_mill_00', count: 1 },
+        { kind: 'place', building: 'work_bakery_00', count: 1 },
+        { kind: 'place', building: 'work_brewery', count: 1 },
+      ]),
+    );
     const sim = aiSim();
     placeHq(sim);
     sim.step();
@@ -545,13 +526,15 @@ describe('build-order module (houseBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
-    const bakeries = buildOrderModule([
-      { kind: 'place', building: 'work_bakery_00', count: 2 },
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'place', building: 'work_mill_00', count: 1 },
-      { kind: 'place', building: 'work_well_00', count: 1 },
-      { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
-    ]);
+    const bakeries = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_bakery_00', count: 2 },
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'place', building: 'work_mill_00', count: 1 },
+        { kind: 'place', building: 'work_well_00', count: 1 },
+        { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
+      ]),
+    );
     const next = (): Command | undefined => [...bakeries.run(sim.world, ctxOf(sim), SEAT)][0];
     for (let i = 0; i < 5; i++) {
       const placed = next();
@@ -574,10 +557,12 @@ describe('build-order module (houseBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
-    const gated = buildOrderModule([
-      { kind: 'place', building: 'work_bakery_00', count: 1, needsResources: ['iron'] },
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-    ]);
+    const gated = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_bakery_00', count: 1, needsResources: ['iron'] },
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+      ]),
+    );
     const passedOver = [...gated.run(sim.world, ctxOf(sim), SEAT)][0];
     if (passedOver?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
     expect(passedOver.buildingType).toBe(FARM_TYPE);
@@ -594,10 +579,12 @@ describe('build-order module (houseBuild)', () => {
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.iron]);
     sim.step();
-    const order = buildOrderModule([
-      { kind: 'collector', good: 'iron', count: 2 },
-      { kind: 'place', building: 'work_farm_00', count: 1 },
-    ]);
+    const order = buildOrderModule(
+      oneLine([
+        { kind: 'collector', good: 'iron', count: 2 },
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+      ]),
+    );
     const flagIronGatherer = (): void => {
       sim.enqueueSetup({
         kind: 'spawnSettler',
@@ -626,7 +613,7 @@ describe('build-order module (houseBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
-    const upgradeOnly = buildOrderModule([{ kind: 'upgrade', building: 'home_level_02', count: 1 }]);
+    const upgradeOnly = buildOrderModule(oneLine([{ kind: 'upgrade', building: 'home_level_02', count: 1 }]));
     expect([...upgradeOnly.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 
@@ -636,7 +623,7 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     // The tail's housing rule: the opening homes walk the upgrade chain, but every home after them
     // is placed at the top tier outright - its own construction bill.
-    const topHomes = buildOrderModule([{ kind: 'place', building: 'home_level_02', count: 1 }]);
+    const topHomes = buildOrderModule(oneLine([{ kind: 'place', building: 'home_level_02', count: 1 }]));
     const first = [...topHomes.run(sim.world, ctxOf(sim), SEAT)][0];
     if (first?.kind !== 'placeBuilding') throw new Error('expected the top-tier home placement');
     expect(first.buildingType).toBe(HOME_TOP_TYPE);
@@ -646,7 +633,7 @@ describe('build-order module (houseBuild)', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
-    const placeOnly = buildOrderModule([{ kind: 'place', building: 'work_bakery_00', count: 1 }]);
+    const placeOnly = buildOrderModule(oneLine([{ kind: 'place', building: 'work_bakery_00', count: 1 }]));
     const first = [...placeOnly.run(sim.world, ctxOf(sim), SEAT)][0];
     if (first?.kind !== 'placeBuilding') throw new Error('expected the bakery placement');
     applyAndFinish(sim, first);
@@ -674,7 +661,7 @@ it('does not issue an upgrade blocked by map permissions and resumes once a scri
   const target = sim.content.buildings.find((b) => b.typeId === HOME_TOP_TYPE);
   const next = sim.content.buildings.find((b) => b.typeId === HOME_TYPE)?.upgradeTarget;
   if (target === undefined || next === undefined) throw new Error('Missing fixture upgrade chain');
-  const module = buildOrderModule([{ kind: 'upgrade', building: target.id, count: 1 }]);
+  const module = buildOrderModule(oneLine([{ kind: 'upgrade', building: target.id, count: 1 }]));
   setMapPermission(sim.world, { player: SEAT, tribe: VIKING, kind: 'house', typeId: next, allowed: false });
   expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   // An Enable grant leaves the ban in place; only an Allow lifts it.
@@ -727,7 +714,7 @@ describe('build order - the bakery wells', () => {
     for (const site of sites)
       sim.enqueueSetup({ kind: 'placeBuilding', ...site, tribe: VIKING, owner: SEAT });
     sim.step();
-    return [...buildOrderModule(order).run(sim.world, ctxOf(sim), SEAT)][0];
+    return [...buildOrderModule(oneLine(order)).run(sim.world, ctxOf(sim), SEAT)][0];
   }
 
   it('raises a well beside the bakery that has none in reach, an upgraded one included', () => {
@@ -787,7 +774,7 @@ describe('build order - the bakery wells', () => {
 
   it('passes the well over, rather than stalling the list, when no spot in reach of the bakery is legal', () => {
     const sim = wellUnderFireSeat();
-    expect([...buildOrderModule(order).run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
+    expect([...buildOrderModule(oneLine(order)).run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,
     });
@@ -798,7 +785,9 @@ describe('build order - the bakery wells', () => {
     // below it next decision, would read as a razed building and hold the list for the rebuild delay.
     const sim = wellUnderFireSeat();
     makeAiSeat(sim, SEAT);
-    const homesToo = buildOrderModule([...order, { kind: 'place', building: 'home_level_00', count: 3 }]);
+    const homesToo = buildOrderModule(
+      oneLine([...order, { kind: 'place', building: 'home_level_00', count: 3 }]),
+    );
     const placed: number[] = [];
     for (let decision = 0; decision < 5; decision++) {
       const tick = SEAT + decision * COMPUTER_DECISION_INTERVAL_TICKS;
@@ -813,11 +802,13 @@ describe('build order - the bakery wells', () => {
     expect(placed).toEqual([MILL_TYPE, HOME_TYPE, HOME_TYPE, HOME_TYPE]);
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
-    expect(sim.world.tryGet(carrier, BuildOrderFrontier)).toEqual({ entry: 3, rebuildTick: null });
+    expect(sim.world.tryGet(carrier, BuildOrderFrontier)?.lines).toEqual(
+      new Map([['opening', { step: 3, rebuildTick: null }]]),
+    );
     // The well's failed search waits out its retry like any other; it holds nothing.
     const stalled = sim.world.tryGet(carrier, StalledPlacements);
-    expect(stalled?.holding).toBeNull();
-    expect([...(stalled?.retryTicks.keys() ?? [])]).toEqual([0]);
+    expect(stalled?.holding.size).toBe(0);
+    expect([...(stalled?.retryTicks.keys() ?? [])]).toEqual(['opening:0']);
   });
 
   it('opens the lanes behind a passed-over well', () => {
@@ -832,11 +823,13 @@ describe('build order - the bakery wells', () => {
       owner: SEAT,
     });
     sim.step();
-    const laned = buildOrderModule([
-      order[0] ?? { kind: 'collector', good: 'wood' },
-      { kind: 'towerCoverage', building: 'tower_01', lane: true },
-      { kind: 'place', building: 'work_mill_00', count: 1 },
-    ]);
+    const laned = buildOrderModule(
+      oneLine([
+        order[0] ?? { kind: 'collector', good: 'wood' },
+        { kind: 'towerCoverage', building: 'tower_01', lane: true },
+        { kind: 'place', building: 'work_mill_00', count: 1 },
+      ]),
+    );
     expect([...laned.run(sim.world, ctxOf(sim, LATE_GAME_FROM_TICKS), SEAT)][0]).toMatchObject({
       kind: 'placeBuilding',
       buildingType: TOWER_TYPE,
@@ -876,7 +869,7 @@ describe('build order - the animal farm well', () => {
       sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y: FARM.y, tribe: VIKING, owner: SEAT });
     }
     sim.step();
-    return [...buildOrderModule(order).run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
+    return [...buildOrderModule(oneLine(order)).run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
   }
 
   it('skips the well while one already stands beside the animal farm', () => {
@@ -929,13 +922,174 @@ describe('build order - a coverage entry with no spot', () => {
   it('passes a tower entry over, like a store entry, when no target it has can be covered', () => {
     const sim = islandSim();
     expect(sim.world.get(entityOfBuilding(sim, HOME_TYPE), Building).buildingType).toBe(HOME_TYPE);
-    const towersFirst = buildOrderModule([
-      { kind: 'towerCoverage', building: 'tower_01' },
-      { kind: 'place', building: 'work_mill_00', count: 1 },
-    ]);
+    const towersFirst = buildOrderModule(
+      oneLine([
+        { kind: 'towerCoverage', building: 'tower_01' },
+        { kind: 'place', building: 'work_mill_00', count: 1 },
+      ]),
+    );
     expect([...towersFirst.run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
       kind: 'placeBuilding',
       buildingType: MILL_TYPE,
     });
+  });
+});
+
+describe('build order - independent lines', () => {
+  /** The fixture's wooden tools, made only by the joinery; the sand ground type. */
+  const TOOL_WOODEN = 6;
+  const SAND = 2;
+  const HOME_STEP: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 1 };
+  const MILL_STEP: BuildOrderEntry = { kind: 'place', building: 'work_mill_00', count: 1 };
+
+  function twoLines(
+    bread: readonly BuildOrderEntry[],
+    homes: readonly BuildOrderEntry[],
+    priority: BuildOrder['priority'] = ['bread', 'homes'],
+  ): BuildOrder {
+    return {
+      lines: [
+        { id: 'bread', steps: bread },
+        { id: 'homes', steps: homes },
+      ],
+      priority,
+    };
+  }
+
+  function decide(sim: Simulation, order: BuildOrder, tick = 0, content = aiContent()): Command | undefined {
+    return [...buildOrderModule(order).run(sim.world, { ...ctxOf(sim, tick), content }, SEAT)][0];
+  }
+
+  it('gives one free site to the ready step of the higher-priority line', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    expect(decide(sim, twoLines([MILL_STEP], [HOME_STEP]))).toMatchObject({ buildingType: MILL_TYPE });
+    expect(decide(sim, twoLines([MILL_STEP], [HOME_STEP], ['homes', 'bread']))).toMatchObject({
+      buildingType: HOME_TYPE,
+    });
+  });
+
+  it('gives the free site to a line raising its first building of a kind before one adding more', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const twoHomes: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 2 };
+    const order = twoLines([twoHomes], [MILL_STEP]);
+    // The higher line's first home is new to the seat, so it goes first.
+    const home = decide(sim, order);
+    if (home?.kind !== 'placeBuilding') throw new Error('expected the first home');
+    expect(home.buildingType).toBe(HOME_TYPE);
+    sim.enqueueSetup(home);
+    sim.step();
+    completeSites(sim);
+    // Its second home adds one more of a kind the seat owns: the mill, new to it, goes first.
+    expect(decide(sim, order)).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('goes on with the other lines while one is held', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.iron]);
+    sim.step();
+    // The bread line waits on an iron gatherer nobody hired; a single list would stall behind it.
+    const order = twoLines([{ kind: 'collector', good: 'iron' }, MILL_STEP], [HOME_STEP]);
+    expect(decide(sim, order)).toMatchObject({ buildingType: HOME_TYPE });
+  });
+
+  it('passes over a step whose building the seat may not build yet', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    setMapPermission(sim.world, {
+      player: SEAT,
+      tribe: VIKING,
+      kind: 'house',
+      typeId: MILL_TYPE,
+      allowed: false,
+    });
+    expect(decide(sim, twoLines([MILL_STEP, HOME_STEP], []))).toMatchObject({ buildingType: HOME_TYPE });
+    grantScriptUnlock(sim.world, 'allowed', SEAT, VIKING, 'house', MILL_TYPE);
+    expect(decide(sim, twoLines([MILL_STEP, HOME_STEP], []))).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('holds a step whose bill nothing the seat gathers, owns or stores can fill', () => {
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      buildings: base.buildings.map((b) =>
+        b.id === 'work_mill_00' ? { ...b, construction: [{ goodType: TOOL_WOODEN, amount: 1 }] } : b,
+      ),
+    });
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.step();
+    const order = twoLines([MILL_STEP], [HOME_STEP]);
+    // The wooden tools come only from the joinery, which the seat lacks: the bread line waits.
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: HOME_TYPE });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: JOINERY_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.step();
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('keys the stalled search and the rebuild wait by line and step', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    makeAiSeat(sim, SEAT, { houseBuild: false });
+    sim.step();
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    const order = twoLines([MILL_STEP], [HOME_STEP, { kind: 'place', building: 'home_level_00', count: 2 }]);
+    for (const expected of [MILL_TYPE, HOME_TYPE]) {
+      const placed = decide(sim, order);
+      if (placed?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);
+      expect(placed.buildingType).toBe(expected);
+      sim.enqueueSetup(placed);
+      sim.step();
+    }
+    completeSites(sim);
+
+    // The razed mill waits out the rebuild delay on its own line; the homes line places beside it.
+    sim.enqueueSetup({ kind: 'demolish', building: entityOfBuilding(sim, MILL_TYPE) });
+    sim.step();
+    const razedAt = 100;
+    expect(decide(sim, order, razedAt)).toMatchObject({ buildingType: HOME_TYPE });
+    expect(sim.world.tryGet(carrier, BuildOrderFrontier)?.lines.get('bread')).toEqual({
+      step: 1,
+      rebuildTick: razedAt + REBUILD_DELAY_TICKS,
+    });
+    expect(decide(sim, order, razedAt + REBUILD_DELAY_TICKS)).toMatchObject({ buildingType: MILL_TYPE });
+
+    // A farm with no grass anywhere arms its own step's retry and holds only its own line.
+    const sand = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: { resolution: 'half-cell', width: 64, height: 32, typeIds: new Array<number>(64 * 32).fill(SAND) },
+    });
+    sand.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    placeHq(sand);
+    makeAiSeat(sand, SEAT, { houseBuild: false });
+    sand.step();
+    const farm: BuildOrderEntry = {
+      kind: 'place',
+      building: 'work_farm_00',
+      count: 1,
+      ground: 'plantable',
+      essential: true,
+    };
+    expect(decide(sand, twoLines([farm], [HOME_STEP]))).toMatchObject({ buildingType: HOME_TYPE });
+    const sandCarrier = aiControlEntity(sand.world, SEAT);
+    if (sandCarrier === null) throw new Error('setup: no AI carrier');
+    const stalled = sand.world.tryGet(sandCarrier, StalledPlacements);
+    expect([...(stalled?.retryTicks.keys() ?? [])]).toEqual(['bread:0']);
+    expect(stalled?.holding).toEqual(new Map([['bread', 'bread:0']]));
   });
 });

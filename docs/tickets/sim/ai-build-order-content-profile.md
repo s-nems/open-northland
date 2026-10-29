@@ -9,12 +9,13 @@ original strategic AI's internals, so this is authored content, not pipeline out
 
 ## Scope
 
-Add a strict content schema mirroring the ordered `BuildOrderEntry` union: `place` with its
+Add a strict content schema mirroring the `BuildOrder` (named lines of ordered steps and a line
+priority) and its `BuildOrderEntry` union: `place` with its
 affinities, ground rule, resource gate and `unlessWithin` skip, `upgrade`, `collector`,
 `towerCoverage` and `storeCoverage`, with the list's site pace and lane rules. Move the current
 authored table into the committed fallback catalog, resolve the selected profile once per AI seat,
 and leave no content-id table in sim source. The difficulty profiles' building caps and dropped entries
-(`computer-player/difficulty.ts`) trim the resolved list and move with it. Workforce policy remains separate in
+(`computer-player/difficulty.ts`) trim the resolved lines and move with it. Workforce policy remains separate in
 [ai-workforce-content-profile](ai-workforce-content-profile.md).
 
 ## Verify

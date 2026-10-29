@@ -28,6 +28,7 @@ import {
   entityOfBuilding,
   HQ_TYPE,
   MILL_TYPE,
+  oneLine,
   placeHq,
   SCOUT,
   SEAT,
@@ -78,7 +79,7 @@ function allocateAndApply(sim: Simulation): void {
 }
 
 describe('build-order module - rebuilding what combat took', () => {
-  const module = buildOrderModule(ORDER);
+  const module = buildOrderModule(oneLine(ORDER));
 
   it('re-places a razed building before the entry the seat has not reached yet', () => {
     const sim = aiSim();

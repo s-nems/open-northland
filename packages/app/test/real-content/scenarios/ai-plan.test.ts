@@ -19,6 +19,8 @@ const {
   supplyLines,
 } = systems;
 
+const DEFAULT_STEPS = DEFAULT_BUILD_ORDER.lines.flatMap((line) => line.steps);
+
 /**
  * Pin the AI opening plan's content bindings against the real extracted content. The sim silently
  * `skip`s a plan entry whose id is unknown, so a typo amputates the AI's plan with no test failure
@@ -36,7 +38,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
     const byTypeId = new Map(content.buildings.map((b) => [b.typeId, b]));
 
-    for (const entry of [BASE_REPLACEMENT_ENTRY, ...DEFAULT_BUILD_ORDER]) {
+    for (const entry of [BASE_REPLACEMENT_ENTRY, ...DEFAULT_STEPS]) {
       if (entry.kind === 'collector') {
         expect(
           content.goods.some((g) => g.id === entry.good),
@@ -68,62 +70,32 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     }
   });
 
-  it('raises every weapon shop in the opening, never in the late tail', async () => {
+  it('builds nothing whose bill no gathered good or building of the order can supply', async () => {
     const { merge } = await loadContentUnderTest();
     const content = merge.content;
     const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
-    // Every good some class could be armed with, deliberately wider than the three main types the
-    // garrison orders: a shop is worth checking whoever ends up carrying its output.
-    const armingGoods = new Set(
-      content.weapons.flatMap((w) =>
-        w.goodType !== undefined && w.jobType !== undefined ? [w.goodType] : [],
-      ),
-    );
-    // The perpetual tower-coverage entry opens the late tail.
-    const tail = DEFAULT_BUILD_ORDER.findIndex((entry) => entry.kind === 'towerCoverage');
-    expect(tail, 'a tower-coverage entry').toBeGreaterThanOrEqual(0);
-
-    const firstPlaced = new Map<string, number>();
-    for (const [i, entry] of DEFAULT_BUILD_ORDER.entries()) {
-      if (entry.kind === 'place' && !firstPlaced.has(entry.building)) firstPlaced.set(entry.building, i);
-    }
-    for (const [id, placed] of firstPlaced) {
-      const makesArms = (buildingById.get(id)?.recipes ?? []).some((r) =>
-        r.outputs.some((o) => armingGoods.has(o.goodType)),
-      );
-      // The ordering rule and its reason live on `DEFAULT_BUILD_ORDER`.
-      if (makesArms) expect(placed, `${id} in the opening`).toBeLessThan(tail);
-    }
-  });
-
-  it('never reaches an entry whose bill the entries before it cannot supply', async () => {
-    const { merge } = await loadContentUnderTest();
-    const content = merge.content;
-    const buildingById = new Map(content.buildings.map((b) => [b.id, b]));
-    // Why an unbuildable bill is fatal rather than merely slow lives on `DEFAULT_BUILD_ORDER`.
+    // The executor holds a step until its bill has a source (`build-order/bill-sources.ts`), so a good
+    // nothing in the order makes would hold that step's line for good.
     // Seeded with every harvestable good rather than the plan's own collector list - an upper bound on
     // gathered income, since a farm declares no recipe and its wheat can only enter through `harvest`.
     const available = new Set(
       content.goods.flatMap((g) => (g.atomics?.harvest === undefined ? [] : [g.typeId])),
     );
     const goodName = new Map(content.goods.map((g) => [g.typeId, g.id]));
-
-    for (const entry of DEFAULT_BUILD_ORDER) {
+    for (const entry of DEFAULT_STEPS) {
+      if (entry.kind === 'collector') continue;
+      for (const recipe of buildingById.get(entry.building)?.recipes ?? []) {
+        for (const output of recipe.outputs) available.add(output.goodType);
+      }
+    }
+    for (const entry of DEFAULT_STEPS) {
       if (entry.kind === 'collector') continue;
       const building = buildingById.get(entry.building);
       if (building === undefined) continue; // absent from this content set - the sim skips the entry
-      // The two bill shapes are `stores/construction.ts`'s rule.
-      const bill =
-        entry.kind === 'upgrade'
-          ? building.construction
-          : constructionBillForType(content.buildings, building.typeId);
-      const missing = bill
+      const missing = constructionBillForType(content.buildings, building.typeId)
         .filter((line) => !available.has(line.goodType))
         .map((line) => goodName.get(line.goodType) ?? line.goodType);
       expect(missing, `${entry.kind} ${entry.building} needs`).toEqual([]);
-      for (const recipe of building.recipes) {
-        for (const output of recipe.outputs) available.add(output.goodType);
-      }
     }
   });
 
@@ -305,13 +277,15 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const operatorSeats = building?.workers
         .filter((w) => w.jobType !== carrierJob)
         .reduce((most, w) => Math.max(most, w.count), 0);
-      const planned = order.reduce(
-        (most, entry) =>
-          (entry.kind === 'place' || entry.kind === 'upgrade') && tiersFrom(entry.building).has(id)
-            ? Math.max(most, entry.count)
-            : most,
-        0,
-      );
+      const planned = order.lines
+        .flatMap((line) => line.steps)
+        .reduce(
+          (most, entry) =>
+            (entry.kind === 'place' || entry.kind === 'upgrade') && tiersFrom(entry.building).has(id)
+              ? Math.max(most, entry.count)
+              : most,
+          0,
+        );
       if (own) {
         expect(
           (operatorSeats ?? 0) * planned,
@@ -370,7 +344,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(good?.equip?.category, `outfit good ${goodId}`).toBe('misc');
     }
     // A resource-gated entry must name a map good, or no map could ever satisfy the gate.
-    for (const entry of DEFAULT_BUILD_ORDER) {
+    for (const entry of DEFAULT_STEPS) {
       if (entry.kind !== 'place') continue;
       for (const goodId of entry.needsResources ?? []) {
         const good = content.goods.find((g) => g.id === goodId);

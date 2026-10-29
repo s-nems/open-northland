@@ -20,9 +20,9 @@ import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { ownedRoadSites } from '../../../roads/site-index.js';
 import { roadPavingGood } from '../../../roads/sites.js';
 import {
-  type BuildOrderEntry,
+  type BuildOrder,
   collectorGoodsWanted,
-  type EntryStatus,
+  type LineStatuses,
   sitePace,
 } from '../../build-order/index.js';
 import { type ComputerProfile, computerProfileOf } from '../../difficulty.js';
@@ -211,7 +211,7 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
   return best;
 }
 
-/** The wanted collector goods - the base set plus the build order's reached `collector` entries - in
+/** The wanted collector goods - the base set plus the build order's reached `collector` steps - in
  *  plan order. A target is the good's fixed row, else its entries' largest `count` (at least
  *  {@link DEFAULT_COLLECTOR_TARGET}) grown by {@link OPERATORS_PER_EXTRA_GATHERER}, either grown by the
  *  good's {@link EXTRA_GATHERERS_BY_GOOD_ID} schedule, plus the shortage posts ({@link shortageGatherers});
@@ -221,8 +221,8 @@ export function wantedCollectorGoods(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
-  statuses: readonly EntryStatus[],
+  order: BuildOrder,
+  statuses: LineStatuses,
   supply: SeatSupply,
 ): WantedGood[] {
   const goodIds = [...COLLECTED_GOOD_IDS];

@@ -3,9 +3,9 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
-import type { BuildOrderEntry } from './entries.js';
+import type { BuildOrder, BuildOrderEntry } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
-import type { EntryStatus } from './progress.js';
+import type { LineStatuses } from './progress.js';
 
 /** A seat with fewer buildable grass nodes than this within {@link BUILD_SEARCH_MAX_RADIUS_NODES} of its
  *  base is short of grass (authored): about the reserved zones of the full list's farm, wells, hives and
@@ -59,16 +59,18 @@ export function grassBoundEntry(ctx: SystemContext, entry: BuildOrderEntry): boo
   return type !== undefined && grassBound(type, entry);
 }
 
-/** Whether a seat short of grass still keeps it for the list: while some grass-bound entry of `order`
- *  stands unmet. Once the last of them is placed, the herb hut on the default list, the other buildings
+/** Whether a seat short of grass still keeps it for the order: while some grass-bound step of a line
+ *  stands unmet. Once the last of them is placed, the herb hut on the default order, the other buildings
  *  may take the grass that is left. */
 export function grassReserved(
   ctx: SystemContext,
   terrain: TerrainGraph,
   base: HalfCellNode,
-  order: readonly BuildOrderEntry[],
-  statuses: readonly EntryStatus[],
+  order: BuildOrder,
+  statuses: LineStatuses,
 ): boolean {
   if (!grassScarce(terrain, base)) return false;
-  return order.some((entry, i) => statuses[i] === 'unmet' && grassBoundEntry(ctx, entry));
+  return order.lines.some((line) =>
+    line.steps.some((entry, i) => statuses.get(line.id)?.[i] === 'unmet' && grassBoundEntry(ctx, entry)),
+  );
 }

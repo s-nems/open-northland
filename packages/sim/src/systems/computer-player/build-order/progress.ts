@@ -17,7 +17,13 @@ import { seatBaseOf } from '../base.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource } from '../live-resources.js';
 import { rivalOverSea } from '../sea-route.js';
-import { type BuildOrderEntry, isLaneEntry } from './entries.js';
+import {
+  type BuildLineId,
+  type BuildOrder,
+  type BuildOrderEntry,
+  isLaneEntry,
+  linesByPriority,
+} from './entries.js';
 import { grassScarce } from './grass-reserve.js';
 import { unservedAnchor } from './placement.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
@@ -236,19 +242,41 @@ function liveResourceOnMap(world: World, goodType: number, live: Map<number, boo
   return found;
 }
 
+/** Each line's step statuses, in step order, by line id. */
+export type LineStatuses = ReadonlyMap<BuildLineId, readonly EntryStatus[]>;
+
 /**
- * Every entry's status in list order. Statuses are recomputed each decision and can regress (a razed
+ * The statuses of `entries` in order. Statuses are recomputed each decision and can regress (a razed
  * home, a fringe building re-arming `towerCoverage`), so consumers must tolerate a temporary drop.
  */
 export function entryStatuses(
   world: World,
   ctx: SystemContext,
   player: number,
-  order: readonly BuildOrderEntry[],
+  entries: readonly BuildOrderEntry[],
 ): EntryStatus[] {
   const owned = ownedBuildings(world, player);
   const memo = decisionMemo();
-  return order.map((entry) => entryStatus(world, ctx, player, owned, entry, memo));
+  return entries.map((entry) => entryStatus(world, ctx, player, owned, entry, memo));
+}
+
+/** Every step's status of every line of `order`, one decision's {@link entryStatus} answers. */
+export function lineStatuses(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  order: BuildOrder,
+  memo: DecisionMemo = decisionMemo(),
+): LineStatuses {
+  const statuses = new Map<BuildLineId, readonly EntryStatus[]>();
+  for (const line of order.lines) {
+    statuses.set(
+      line.id,
+      line.steps.map((entry) => entryStatus(world, ctx, player, owned, entry, memo)),
+    );
+  }
+  return statuses;
 }
 
 /** The lowest-id built building the seat can upgrade toward `target`; a site, including an in-flight
@@ -274,23 +302,24 @@ function collectorCount(entry: Extract<BuildOrderEntry, { kind: 'collector' }>):
 }
 
 /**
- * The collector goods the list has reached, in order, each with the most gatherers a reached entry asks
- * for: an entry is reached while every entry before it is satisfied or skipped, a lane running beside the
- * list never holding it. Reached state is re-derived each decision, so a regressing earlier entry drops a
- * later collector and returns its holder to the pool until the list re-reaches the entry.
+ * The collector goods the lines have reached, in line priority order, each with the most gatherers a
+ * reached step asks for: a step is reached while every step before it in its line is satisfied or
+ * skipped, a lane running beside the lines never holding it. Reached state is re-derived each decision,
+ * so a regressing earlier step drops a later collector and returns its holder to the pool until its line
+ * re-reaches the step.
  */
-export function collectorGoodsWanted(
-  order: readonly BuildOrderEntry[],
-  statuses: readonly EntryStatus[],
-): ReadonlyMap<string, number> {
+export function collectorGoodsWanted(order: BuildOrder, statuses: LineStatuses): ReadonlyMap<string, number> {
   const wanted = new Map<string, number>();
-  for (const [i, entry] of order.entries()) {
-    if (isLaneEntry(entry)) continue;
-    const status = statuses[i];
-    if (entry.kind === 'collector' && status !== 'skip') {
-      wanted.set(entry.good, Math.max(wanted.get(entry.good) ?? 0, collectorCount(entry)));
+  for (const line of linesByPriority(order)) {
+    const lineStatus = statuses.get(line.id) ?? [];
+    for (const [i, entry] of line.steps.entries()) {
+      if (isLaneEntry(entry)) continue;
+      const status = lineStatus[i];
+      if (entry.kind === 'collector' && status !== 'skip') {
+        wanted.set(entry.good, Math.max(wanted.get(entry.good) ?? 0, collectorCount(entry)));
+      }
+      if (status === 'unmet') break;
     }
-    if (status === 'unmet') break;
   }
   return wanted;
 }

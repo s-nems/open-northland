@@ -1,5 +1,6 @@
 import { defineComponent, type Entity } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
+import type { BuildLineId, StepKey } from '../../systems/computer-player/build-order/entries.js';
 import type { AttackLeash } from '../combat.js';
 
 export interface MusterPlanState {
@@ -50,35 +51,39 @@ export interface WaveMarchState {
 export const WaveMarch = defineComponent<WaveMarchState>('WaveMarch', 'players');
 
 export interface StalledPlacementsState {
-  /** The first tick each entry, by its index in the seat's build order, searches a spot again after a
-   *  search that found nothing. */
-  retryTicks: Map<number, number>;
-  /** The entry whose failed search holds the list, or null while the list places freely: a passed-over
-   *  serving entry or a lane that finds nothing holds nothing. */
-  holding: number | null;
+  /** The first tick each build-order step, by its line and index, searches a spot again after a search
+   *  that found nothing. */
+  retryTicks: Map<StepKey, number>;
+  /** Per line, the step whose failed search holds it; a line placing freely has none. A passed-over
+   *  serving step or a lane that finds nothing holds nothing. */
+  holding: Map<BuildLineId, StepKey>;
 }
 
 /**
  * The build-order spot searches that last found nothing, held on the seat's {@link AiControl} carrier so
- * they die with the seat. The build order skips an entry's search until its retry tick, drops the retry
- * once the entry places or stands met, and drops the holding entry's once another entry acts. Absent
- * while no search is pending.
+ * they die with the seat. The build order skips a step's search until its retry tick, drops the retry
+ * once the step places or stands met, and drops a line's holding step's once another step of that line
+ * acts. Absent while no search is pending.
  */
 export const StalledPlacements = defineComponent<StalledPlacementsState>('StalledPlacements', 'players');
 
-export interface BuildOrderFrontierState {
-  /** The first unmet entry's index at the seat's last build-order decision. */
-  entry: number;
-  /** The first tick a razed building's entry, one below `entry`, may be raised again; null until such
-   *  a regression is seen. */
+export interface LineFrontier {
+  /** The line's first unmet step at the seat's last build-order decision that reached it. */
+  step: number;
+  /** The first tick a razed building's step, one below `step`, may be raised again; null until such a
+   *  regression is seen. */
   rebuildTick: number | null;
 }
 
 /**
- * How far the seat's build order had got, held on its {@link AiControl} carrier, so a razed building shows
- * as an entry falling back below it and waits out the rebuild delay instead of being re-placed at once.
+ * How far each line of the seat's build order had got, by line id, held on its {@link AiControl}
+ * carrier, so a razed building shows as a step falling back below its line's frontier and waits out the
+ * rebuild delay instead of being re-placed at once.
  */
-export const BuildOrderFrontier = defineComponent<BuildOrderFrontierState>('BuildOrderFrontier', 'players');
+export const BuildOrderFrontier = defineComponent<{ lines: Map<BuildLineId, LineFrontier> }>(
+  'BuildOrderFrontier',
+  'players',
+);
 
 /**
  * The tick before which the seat's build order starts nothing on a free construction site, held on its
