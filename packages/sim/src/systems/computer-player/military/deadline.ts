@@ -1,10 +1,4 @@
-import {
-  aiControlEntity,
-  ComputerStrategy,
-  diplomacyStance,
-  mapBriefOf,
-  seatPeaceEndTick,
-} from '../../../components/index.js';
+import { diplomacyStance, mapBriefOf, seatPeaceEndTick } from '../../../components/index.js';
 import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { minutesToTicks } from '../game-phase.js';
@@ -13,6 +7,25 @@ import { seatMapIntentOf, seatTerritoryOf, type Trigger } from '../knowledge/map
 /** The peace a seat outside a lobby peace plans for (owner ruling): an hour of game time, economy first,
  *  as under the lobby's usual peace. Being attacked still brings the defence forward at once. */
 export const ASSUMED_PEACE_TICKS = minutesToTicks(60);
+
+/** How long before its deadline the seat's barracks stands (owner ruling): about 15 game minutes, so a
+ *  peace of 60 minutes sees it by minute 45, the army drilling in it before the peace ends. */
+export const BARRACKS_STANDS_BEFORE_TICKS = minutesToTicks(15);
+
+/** How long a barracks site takes to rise (measured): 2.5-20 game minutes from placement to standing on
+ *  magiczny_las and mroczny_las, about 7 the median. */
+const BARRACKS_SITE_TICKS = minutesToTicks(7);
+
+/** How long before its deadline the seat places its barracks, and its defence lines go first ahead of a
+ *  forecast attack (`build-order/seat-order.ts`): the barracks then stands about
+ *  {@link BARRACKS_STANDS_BEFORE_TICKS} ahead of it. */
+export const BARRACKS_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS + BARRACKS_SITE_TICKS;
+
+/** How long before its deadline the seat raises its first tower ring (measured, owner ruling: towers
+ *  finish just before the deadline, never earlier, since an early tower wastes builders and goods): near a
+ *  60-minute deadline on magiczny_las a tower site took 6-22 game minutes to stand and the ring waits for
+ *  the barracks' site first; at a 12-minute lead the first towers stood at minutes 60-81, at this one 55-74. */
+export const TOWER_LEAD_TICKS = minutesToTicks(20);
 
 /** The tick `seat`'s peace ends for its planning: the lobby peace binding it ({@link seatPeaceEndTick}),
  *  else {@link ASSUMED_PEACE_TICKS}. Unlike `seatPeaceEndTick`, whose 0 lets a seat without a peace march
@@ -59,10 +72,12 @@ export function militaryDeadlineTick(world: World, ctx: SystemContext, seat: num
   return earliestDeadline(peaceEnd, attacks);
 }
 
-/** Whether `seat` is fighting off a raid on its settlement now, as its last posture review saw it (the
- *  `underAttack` evidence of a `defend` posture). False before its strategy is decided. */
-export function seatUnderAttack(world: World, seat: number): boolean {
-  const carrier = aiControlEntity(world, seat);
-  const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
-  return military?.posture === 'defend' && military.evidence.includes('underAttack');
+/** Whether the clock still lies more than `leadTicks` before `seat`'s {@link militaryDeadlineTick}. */
+export function beforeDeadlineLead(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  leadTicks: number,
+): boolean {
+  return ctx.tick < militaryDeadlineTick(world, ctx, seat) - leadTicks;
 }

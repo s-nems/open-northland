@@ -75,6 +75,11 @@ after the pottery, iron from game minute 15, mushrooms from minute 25.
 
 ## Military
 
+Each seat has a military deadline (`military/deadline.ts`): the end of its lobby peace, 60 minutes
+without one, or the first forecast scripted attack, whichever comes first. The barracks waits until 22
+minutes before it, so it stands about 15 minutes ahead, the first tower ring until 20 minutes before, the
+army floor drafts from 15 minutes before; a seat whose defence comes first stops waiting at once.
+
 Settlement defence is shared with the map AI (`systems/ai-shared/military`), filtered by sight for a
 computer seat. Offensive work runs as operations (`military/operations/`): saved records with a kind,
 members, target and a lifecycle (`forming`, `moving`, `acting`, `withdrawing`, `done`, `failed`). The

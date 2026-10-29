@@ -7,7 +7,6 @@ import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
   BAKERY_TOP_TYPE,
-  BARRACKS_TYPE,
   BREWERY_TYPE,
   BUILDER,
   CARRIER,
@@ -89,7 +88,7 @@ describe('the full strategic registry - replay', () => {
     );
     // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, the opening's
     // three homes (the crew holds no woman, so the housing lane raises nothing), four level-2 bakeries and two breweries (the fixture's small map makes the seat
-    // cramped, whose copy caps stop them there), the joinery and the barracks. Every building, the joinery between the wood and the iron included,
+    // cramped, whose copy caps stop them there) and the joinery; the barracks waits for the military deadline. Every building, the joinery between the wood and the iron included,
     // sits inside the HQ's store circle and both tower circles, so neither coverage entry raises anything.
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
       [
@@ -106,7 +105,6 @@ describe('the full strategic registry - replay', () => {
         BREWERY_TYPE,
         BREWERY_TYPE,
         JOINERY_TYPE,
-        BARRACKS_TYPE,
       ].sort((a, b) => a - b),
     );
     // The crew clears the reserve, so the farm reaches its target-tier hands and the bakery keeps

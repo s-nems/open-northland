@@ -37,7 +37,6 @@ import {
   aiSim,
   BAKERY_TOP_TYPE,
   BAKERY_TYPE,
-  BARRACKS_TYPE,
   BOWMAN,
   BREWERY_TYPE,
   COLLECTOR,
@@ -152,8 +151,8 @@ describe('build-order module (houseBuild)', () => {
     }
     // This content stops short of the pottery and the mason hut, so those steps skip. Every line raises its
     // first new kind of building in priority order (opening, bread with its first bakery's well, brewery,
-    // tools, the joinery's upper tier, military with its tower) before any line adds another of a kind the
-    // seat has: the opening's homes, then the bread line's second bakery, its upgrade and level-2 bakeries,
+    // tools, the joinery's upper tier; the military line waits for its deadline) before any line adds
+    // another of a kind the seat has: the opening's homes, then the bread line's second bakery, its upgrade and level-2 bakeries,
     // and the brewery line's further breweries. The seat holds no woman, so the housing lane raises nothing.
     // The weapons line holds at its iron gatherer, whose clock has not come, and holds no other line.
     const place = (type: number): string => `place ${type}`;
@@ -166,8 +165,6 @@ describe('build-order module (houseBuild)', () => {
       place(BREWERY_TYPE),
       place(JOINERY_00_TYPE),
       upgrade(JOINERY_TYPE),
-      place(BARRACKS_TYPE),
-      place(TOWER_TYPE),
       place(HOME_TYPE),
       place(HOME_TYPE),
       place(BAKERY_TYPE),

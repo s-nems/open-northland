@@ -1184,6 +1184,8 @@ describe('workforce module - the barracks and craft selections', () => {
     const builderSeat = (arms: readonly { good: number; amount: number }[]): ArmedSeat => {
       const seat = armedSeat(arms, { men: 0 });
       spawnMen(seat.sim, BUILDERS, BUILDER);
+      // The peace is over, so the army floor drafts.
+      seat.sim.enqueueSetup({ kind: 'setPeaceTime', untilTick: seat.sim.tick, players: [SEAT] });
       seat.sim.step();
       return seat;
     };

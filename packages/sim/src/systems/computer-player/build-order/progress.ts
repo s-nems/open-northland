@@ -14,6 +14,7 @@ import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { goodEnabled } from '../../progression/index.js';
+import { seatStockOf } from '../../stores/index.js';
 import { seatBaseOf } from '../base.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource, knownResourceTest } from '../live-resources.js';
@@ -30,10 +31,11 @@ import {
 import { grassScarce } from './grass-reserve.js';
 import { housingShort } from './housing.js';
 import { unservedAnchor } from './placement.js';
+import { militaryWaits } from './seat-order.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
 
-/** `skip` (not expressible in this content set, nothing left to collect, or a discovery the seat can
- *  never make) counts as done for sequencing. */
+/** `skip` (not expressible in this content set, nothing left to collect, enough of it stored, or a
+ *  discovery the seat can never make) counts as done for sequencing. */
 export type EntryStatus = 'skip' | 'satisfied' | 'unmet';
 
 /** Whether `from` sits strictly below `target` on the `upgradeTarget` chain. The visited guard bounds
@@ -226,6 +228,7 @@ export function entryStatus(
       const good = goodTypeByContentId(ctx.content, entry.good);
       if (good?.atomics?.harvest === undefined) return 'skip';
       const holders = memoFlagsByGood(world, ctx, player, memo).get(good.typeId) ?? 0;
+      if (collectorStocked(world, player, entry, good.typeId, holders)) return 'skip';
       if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
       if (!liveResourceOnMap(world, ctx, player, good.typeId, memo.live)) return 'skip';
@@ -247,9 +250,10 @@ export function entryStatus(
   }
 }
 
-/** Whether an unmet placement still holds its line on its `holdUntil` ({@link StepHold}): the seat has no
- *  standing building of the id at that tier or above, or has not discovered the good, while it still could.
- *  `owned` is the seat's {@link ownedBuildings} list. */
+/** Whether an unmet placement or tower ring still holds its line on its `holdUntil` ({@link StepHold}): the
+ *  seat has no standing building of the id at that tier or above, or has not discovered the good, while it
+ *  still could, or its military deadline lies further off than the lead while its defence does not come
+ *  first. `owned` is the seat's {@link ownedBuildings} list. */
 export function stepHeld(
   world: World,
   ctx: SystemContext,
@@ -258,7 +262,8 @@ export function stepHeld(
   entry: BuildOrderEntry,
   memo: DecisionMemo,
 ): boolean {
-  if (entry.kind !== 'place' || entry.holdUntil === undefined) return false;
+  if ((entry.kind !== 'place' && entry.kind !== 'towerCoverage') || entry.holdUntil === undefined)
+    return false;
   return holdOpen(world, ctx, player, owned, entry.holdUntil, memo);
 }
 
@@ -289,6 +294,8 @@ function holdOpen(
       if (goodEnabled(world, ctx, player, tribe, good.typeId)) return false;
       return reach?.target('good', good.typeId) !== false;
     }
+    case 'deadline':
+      return militaryWaits(world, ctx, player, hold.leadTicks);
   }
 }
 
@@ -365,6 +372,20 @@ export function upgradeCandidate(
 
 function collectorCount(entry: Extract<BuildOrderEntry, { kind: 'collector' }>): number {
   return entry.count ?? 1;
+}
+
+/** Whether the seat stores the collector entry's `stockedAt` units of its good, or, with nobody gathering
+ *  it, still half of them, so a released post is not hired back at the next unit drawn. */
+function collectorStocked(
+  world: World,
+  player: number,
+  entry: Extract<BuildOrderEntry, { kind: 'collector' }>,
+  goodType: number,
+  holders: number,
+): boolean {
+  if (entry.stockedAt === undefined) return false;
+  const line = holders > 0 ? entry.stockedAt : Math.floor(entry.stockedAt / 2);
+  return seatStockOf(world, player).units(goodType) >= line;
 }
 
 /**

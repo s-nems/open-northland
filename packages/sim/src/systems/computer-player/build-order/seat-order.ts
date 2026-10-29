@@ -6,8 +6,10 @@ import {
   type MilitaryStrategyState,
 } from '../../../components/index.js';
 import type { DeepReadonly, World } from '../../../ecs/world.js';
+import type { SystemContext } from '../../context.js';
 import { type ComputerProfile, profileBuildOrder } from '../difficulty.js';
-import { type GamePhase, gamePhase, minutesToTicks } from '../game-phase.js';
+import { type GamePhase, gamePhase } from '../game-phase.js';
+import { BARRACKS_LEAD_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   type BuildLine,
@@ -173,7 +175,7 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
 };
 
 /** The lines a phase moves up right behind the opening (authored): from the mid game the army line, from
- *  the late game also the homes line with its housing, warehouse and dense tower lanes. */
+ *  the late game also the homes line with its warehouse lane. */
 const PHASE_RAISES: Readonly<Record<GamePhase, readonly BuildLineId[]>> = {
   opening: [],
   mid: ['military'],
@@ -183,18 +185,20 @@ const PHASE_RAISES: Readonly<Record<GamePhase, readonly BuildLineId[]>> = {
 /** The army, tower and weapon lines a seat raises right behind the opening while its defence comes first. */
 const DEFENCE_LINES: readonly BuildLineId[] = ['military', 'weapons'];
 
-/** How long before a forecast scripted attack the seat raises its defence lines (authored): a barracks,
- *  towers and the first weapon shop take about this long on mroczny_las, whose first wave lands in game
- *  minute 25. Longer than the posture's own lead, which only holds the army home. */
-export const DEFENCE_BUILD_LEAD_TICKS = minutesToTicks(20);
-
-/** Whether the seat's defence lines go ahead of its economy's later steps: while it defends, prepares
- *  against a forecast attack, or knows one within {@link DEFENCE_BUILD_LEAD_TICKS}. A seat that prepares
- *  only because it is still building up keeps its economy first. */
+/** Whether the seat's defence lines go ahead of its economy's later steps and its military steps stop
+ *  waiting on the deadline: while it defends, prepares against a forecast attack, or knows one within the
+ *  barracks' lead ({@link BARRACKS_LEAD_TICKS}), the one clock its military buildings keep. A seat that
+ *  prepares only because it is still building up keeps its economy first. */
 export function defenceFirst(military: DeepReadonly<MilitaryStrategyState>): boolean {
   if (military.posture === 'defend') return true;
   if (military.posture === 'prepare' && military.evidence.includes('forecastThreat')) return true;
-  return military.threatInTicks !== null && military.threatInTicks <= DEFENCE_BUILD_LEAD_TICKS;
+  return military.threatInTicks !== null && military.threatInTicks <= BARRACKS_LEAD_TICKS;
+}
+
+/** Whether `player`'s seat still waits on what it needs ready `leadTicks` before its military deadline
+ *  (`../military/deadline.ts`): the clock has not reached the lead and its defence does not come first. */
+export function militaryWaits(world: World, ctx: SystemContext, player: number, leadTicks: number): boolean {
+  return !seatDefenceFirst(world, player) && beforeDeadlineLead(world, ctx, player, leadTicks);
 }
 
 /** How dense the tower ring stands while the seat's defence comes first, in percent of its plan's radius

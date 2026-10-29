@@ -2,6 +2,7 @@ import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks, SITES_GROW_FROM_TICKS } from '../game-phase.js';
 import type { JoineryRole } from '../joinery-role.js';
+import { BARRACKS_LEAD_TICKS, TOWER_LEAD_TICKS } from '../military/deadline.js';
 
 /** Where a placement gravitates, on top of the always-on near-base rule; `placement.ts` resolves
  *  each kind to a node. `resource` is the good's nearest live deposit, or the seat's store holding the
@@ -17,13 +18,15 @@ export type PlacementAffinity =
   | { readonly kind: 'front' }
   | { readonly kind: 'shore' };
 
-/** What a placement waits for while its line holds on it: a built building of the id (at that tier or
- *  above, a rising site not counting), or a good the seat has discovered how to make. A hold the seat can
- *  never meet, a building or good missing from the content or a discovery it can never make, lets the
- *  step act (`./progress.ts`). */
+/** What a step waits for while its line holds on it: a built building of the id (at that tier or
+ *  above, a rising site not counting), a good the seat has discovered how to make, or the clock reaching
+ *  `leadTicks` before the seat's military deadline (`../military/deadline.ts`), which its defence coming
+ *  first lifts at once. A hold the seat can never meet, a building or good missing from the content or a
+ *  discovery it can never make, lets the step act (`./progress.ts`). */
 export type StepHold =
   | { readonly kind: 'built'; readonly building: string }
-  | { readonly kind: 'good'; readonly good: string };
+  | { readonly kind: 'good'; readonly good: string }
+  | { readonly kind: 'deadline'; readonly leadTicks: number };
 
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
@@ -65,25 +68,29 @@ export type BuildOrderEntry =
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
    *  and keeps at least that many. Posts past the first come out of spare men only, so its line holds
    *  here until the seat has them. A good with no live resource is skipped. `fromTick` holds the line
-   *  here, hiring nobody, until the game clock reaches it. */
+   *  here, hiring nobody, until the game clock reaches it. `stockedAt` passes the entry over, its posts
+   *  released, while the seat stores that many units of the good, and until it falls under half of them
+   *  again once nobody gathers it. */
   | {
       readonly kind: 'collector';
       readonly good: string;
       readonly count?: number;
       readonly fromTick?: number;
+      readonly stockedAt?: number;
     }
   /** Keep every owned building inside some tower's or the base's defence circle of `radius` nodes
    *  (default {@link TOWER_DEFENCE_RADIUS_NODES}). Unlike the counted entries it re-arms whenever a later
    *  building lands uncovered, so the tower count is dynamic. A `lane` entry runs beside the lines once
    *  every counted step before it in its line stands met, and the game clock reaches `fromTick`: it holds
    *  one site of its building at a time, taken out of the clock's site count, never stalls the steps
-   *  behind it, and they never wait on it. */
+   *  behind it, and they never wait on it. `holdUntil` holds a line's ring as a placement's. */
   | {
       readonly kind: 'towerCoverage';
       readonly building: string;
       readonly radius?: number;
       readonly lane?: true;
       readonly fromTick?: number;
+      readonly holdUntil?: StepHold;
     }
   /** The same rule over the seat's stores: every owned building within `radius` nodes of the base or a
    *  warehouse, so goods never travel far to a store. */
@@ -224,6 +231,10 @@ export const IRON_CLIMB_FROM_TICKS = minutesToTicks(15);
 
 /** Owner ruling: the mushroom gatherer who opens the herb hut starts in game minute 25-40. */
 export const MUSHROOMS_FROM_TICKS = minutesToTicks(25);
+
+/** The mushrooms the seat stores before its gatherers stop (owner ruling: they piled up to 199-306 by game
+ *  minute 110 on magiczny_las): every druid shelf the healing line raises full, six huts of ten. */
+const MUSHROOMS_STOCKED = 60;
 
 /** The gold gatherer who earns the coiner starts with the iron climb (authored): the mint's bill waits on
  *  the tile and marble tiers anyway, which stand around then on magiczny_las. */
@@ -384,22 +395,13 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     {
       id: 'homes',
       steps: [
-        // From the late game the warehouses and the denser tower ring run as lanes, one site each out
-        // of the four the late game opens (authored): a warehouse wherever a workshop or a work flag stands
-        // beyond every store's reach, so the smithies unload nearby and the ore piled at the mines gets
-        // carried in; a tower wherever the ring leaves a building out. A filled settlement with no room for
-        // a tower holds the lane, not the line.
+        // From the late game the warehouses run as a lane, one site out of the four the late game opens
+        // (authored): a warehouse wherever a workshop or a work flag stands beyond every store's reach, so
+        // the smithies unload nearby and the ore piled at the mines gets carried in.
         {
           kind: 'storeCoverage',
           building: 'stock_02',
           radius: STORE_COVERAGE_RADIUS_NODES,
-          lane: true,
-          fromTick: LATE_GAME_FROM_TICKS,
-        },
-        {
-          kind: 'towerCoverage',
-          building: 'tower_01',
-          radius: DENSE_TOWER_RADIUS_NODES,
           lane: true,
           fromTick: LATE_GAME_FROM_TICKS,
         },
@@ -529,11 +531,12 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     },
     {
       id: 'military',
+      // Owner ruling: the economy first, the army shortly before the military deadline. The barracks and the
+      // tower ring wait for their leads before it, the catapult joinery behind them; the seat's defence
+      // coming first lifts the waits at once.
       steps: [
-        // On the settlement's edge toward the nearest enemy, where the attacks come from; the barracks also
-        // holds the line in defence.
-        { kind: 'place', building: 'barracks', count: 1, near: [{ kind: 'front' }] },
-        // Where only a ship reaches the nearest rival, the joinery that builds it goes up by the water early.
+        // Where only a ship reaches the nearest rival, the joinery that builds it goes up by the water early:
+        // it is the economy's way across, not a wait for the deadline.
         {
           kind: 'place',
           building: 'work_joinery_03',
@@ -542,7 +545,30 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           onlyWhen: 'rivalOverSea',
           role: 'ship',
         },
-        { kind: 'towerCoverage', building: 'tower_01' },
+        // On the settlement's edge toward the nearest enemy, where the attacks come from; the barracks also
+        // holds the line in defence.
+        {
+          kind: 'place',
+          building: 'barracks',
+          count: 1,
+          near: [{ kind: 'front' }],
+          holdUntil: { kind: 'deadline', leadTicks: BARRACKS_LEAD_TICKS },
+        },
+        {
+          kind: 'towerCoverage',
+          building: 'tower_01',
+          holdUntil: { kind: 'deadline', leadTicks: TOWER_LEAD_TICKS },
+        },
+        // From the late game the denser ring runs as a lane behind the first, one site out of the four the
+        // late game opens (authored): a tower wherever it leaves a building out. A filled settlement with no
+        // room for a tower holds the lane, not the line.
+        {
+          kind: 'towerCoverage',
+          building: 'tower_01',
+          radius: DENSE_TOWER_RADIUS_NODES,
+          lane: true,
+          fromTick: LATE_GAME_FROM_TICKS,
+        },
         // The catapult joinery stands by the barracks, where the army musters. A land map gets one top-tier
         // joinery, a sea map two.
         {
@@ -561,7 +587,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // Owner ruling: a mushroom gatherer from game minute 25-40, whose ten mushrooms open the herb hut; not
       // before, and only the one until potions are made in volume.
       steps: [
-        { kind: 'collector', good: 'mushroom', fromTick: MUSHROOMS_FROM_TICKS },
+        { kind: 'collector', good: 'mushroom', fromTick: MUSHROOMS_FROM_TICKS, stockedAt: MUSHROOMS_STOCKED },
         // The herb hut comes first, beside a well, so its herbs are growing when the druids it draws beside
         // it stand.
         {
@@ -594,9 +620,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           needsResources: ['mushroom', 'gold'],
         },
         // Owner ruling: one druid until he has learned the big healing potion; the huts after him make only
-        // big potions, with a second mushroom gatherer to feed them.
-        { kind: 'collector', good: 'mushroom', count: 2 },
+        // big potions, with a second mushroom gatherer to feed them once they stand.
         druidHuts(2),
+        { kind: 'collector', good: 'mushroom', count: 2, stockedAt: MUSHROOMS_STOCKED },
         wellBeside('work_druid_01', 10),
         druidHuts(4),
         wellBeside('work_druid_01', 13),

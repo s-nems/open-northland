@@ -11,7 +11,6 @@ import {
   ownerOf,
   playerGoodList,
   Settler,
-  seatPeaceEndTick,
   TrainingOrder,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
@@ -33,10 +32,11 @@ import { networkLimitAt } from '../../signposts/index.js';
 import { seatStockOf } from '../../stores/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
+import { militaryWaits } from '../build-order/seat-order.js';
 import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
+import { BARRACKS_STANDS_BEFORE_TICKS } from '../military/deadline.js';
 import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
-import { WAVE_GATHER_TICKS } from '../military/plan.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { COLLECTED_GOOD_IDS } from './collectors/index.js';
 import { productsOf } from './craft.js';
@@ -68,9 +68,10 @@ const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ..
  *  can march while another still holds the door. */
 export const ARMY_FLOOR_MIN = 2 * WAVE_MIN_SOLDIERS;
 
-/** How long before the seat's peace ends the army floor starts drafting (authored): one wave gather
- *  window, so the first band stands at the door when the peace runs out. */
-export const ARMY_FLOOR_LEAD_TICKS = WAVE_GATHER_TICKS;
+/** How long before the seat's military deadline the army floor starts drafting: from when its barracks
+ *  stands (owner ruling: the army ready by the deadline). One wave gather window drafted 4-10 men by the end
+ *  of a 60-minute peace on magiczny_las. */
+export const ARMY_FLOOR_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS;
 
 /** This decision's arming judgement, shared by the army floor and the draft so both read one answer. */
 export interface GarrisonArms {
@@ -147,8 +148,8 @@ export interface ArmyFloorClaim {
 const NO_CLAIM: ArmyFloorClaim = { men: [], commands: [] };
 
 /**
- * The army floor: once the seat's peace is within {@link ARMY_FLOOR_LEAD_TICKS} of its end ({@link
- * seatPeaceEndTick}, the start when there is none), the seat keeps its profile's share of the fighters its
+ * The army floor: once the seat's military deadline (`military/deadline.ts`) is within {@link
+ * ARMY_FLOOR_LEAD_TICKS}, or its defence comes first (`build-order/seat-order.ts`), the seat keeps its profile's share of the fighters its
  * strongest enemy fields ({@link enemyInOwnMen}), scaled by its military plan and posture
  * (`strategy/military.ts`), never fewer than {@link ARMY_FLOOR_MIN} and never past a cap it drafts to. Its
  * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
@@ -170,7 +171,7 @@ export function claimArmyFloor(
 ): ArmyFloorClaim {
   const barracks = drillFloorOf(world, ctx, player);
   if (barracks === null) return NO_CLAIM;
-  if (ctx.tick < seatPeaceEndTick(world, player) - ARMY_FLOOR_LEAD_TICKS) return NO_CLAIM;
+  if (militaryWaits(world, ctx, player, ARMY_FLOOR_LEAD_TICKS)) return NO_CLAIM;
   // The seat's own roster settles the draftable count before the enemies' rosters are walked.
   const surplus = arms.surplus();
   if (surplus <= 0) return NO_CLAIM;
