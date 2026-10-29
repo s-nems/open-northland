@@ -23,6 +23,7 @@ import { seatBaseOf } from '../base.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
 import { technologyReach } from '../technology/reach.js';
+import { type TechnologyTable, technologyTable } from '../technology/requirements.js';
 import { billSourced, goodsMadeBy, sourcedTiers } from './bill-sources.js';
 import {
   BASE_REPLACEMENT_ENTRY,
@@ -317,11 +318,13 @@ function runBuildOrder(
   };
   // Turns, priority deciding within each: a line with no site of its own rising goes before one with,
   // and a line whose next step raises a building the seat has none of before one adding another of a kind
-  // it owns, so no line takes every site or runs its later copies while another still lacks its first.
+  // it owns, so no line takes every site or runs its later copies while another still lacks its first. A
+  // workshop whose discovery the seat just earned goes before them all.
   // A line that stands met moves its frontier now, whichever line acts first, so its later losses wait.
   for (const line of lines)
     if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
-  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo);
+  const gated = lockHolds && tribe !== undefined ? technologyTable(ctx.content, tribe) : null;
+  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated);
   for (const line of byTurn) {
     const command = lineCommand(line);
     if (command !== null) return started(command);
@@ -329,8 +332,13 @@ function runBuildOrder(
   return [];
 }
 
-/** `lines`, stable in priority order, by turn: rank 0 holds no rising site and its next step raises a
- *  building kind the seat lacks, rank 1 holds no rising site, rank 2 has a site of its own still rising. */
+/** A line's turn, the lower first: no rising site of its own and a next step raising a workshop the
+ *  seat lacks whose discovery it earned ({@link earnedWorkshop}), no rising site and a next step raising a
+ *  kind it lacks, no rising site, a site of its own still rising. */
+const TURN = { earned: 0, newKind: 1, more: 2, rising: 3 } as const;
+
+/** `lines`, stable in priority order, by {@link TURN}. `gated` holds the seat's technology table while its
+ *  progression gates apply. */
 function turnOrder(
   world: World,
   ctx: SystemContext,
@@ -339,6 +347,7 @@ function turnOrder(
   lines: readonly BuildLine[],
   statusOf: (line: BuildLineId, step: number) => EntryStatus | undefined,
   memo: DecisionMemo,
+  gated: TechnologyTable | null,
 ): BuildLine[] {
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
   const ownedTypes = new Set(owned.map((e) => world.get(e, Building).buildingType));
@@ -348,22 +357,35 @@ function turnOrder(
       if (isLaneEntry(entry)) continue;
       const status = statusOf(line.id, step);
       if (status === 'satisfied' && entryStatus(world, ctx, player, standing, entry, memo, false) === 'unmet')
-        return 2;
+        return TURN.rising;
       if (status === 'unmet') next ??= entry;
     }
-    if (next === undefined || next.kind === 'collector') return 0;
+    if (next === undefined || next.kind === 'collector') return TURN.newKind;
     const type = buildingTypeByContentId(ctx.content, next.building);
-    if (type === undefined) return 0;
+    if (type === undefined) return TURN.newKind;
     const kinds = countedTiers(
       ctx.content,
       type,
       next.kind === 'place' || next.kind === 'upgrade' ? next.belowTier : undefined,
     );
-    for (const kind of kinds) if (ownedTypes.has(kind)) return 1;
-    return 0;
+    for (const kind of kinds) if (ownedTypes.has(kind)) return TURN.more;
+    return earnedWorkshop(gated, type) ? TURN.earned : TURN.newKind;
   };
   const ranks = new Map(lines.map((line) => [line.id, rank(line)]));
   return [...lines].sort((a, b) => (ranks.get(a.id) ?? 0) - (ranks.get(b.id) ?? 0));
+}
+
+/**
+ * Whether `type` is a workshop a discovery opens for the seat (its `gated` technology row asks for a job
+ * or a good). Owner ruling: once a trade is discovered its building goes up promptly, the apprentice who
+ * earned it waiting to move in; on magiczny_las and diamentowa_dolina the opening's home upgrades and the
+ * tower ring took the two opening sites for five to twenty game minutes after the mill, animal farm and
+ * smithy were discovered. A locked step still holds its line, so the turn only matters once it opens.
+ */
+function earnedWorkshop(gated: TechnologyTable | null, type: BuildingType): boolean {
+  if (gated === null || type.kind !== BUILDING_KIND.workplace) return false;
+  const row = gated.houses.get(type.typeId);
+  return row !== undefined && row.jobs.length + row.goods.length > 0;
 }
 
 /** Whether `entry`'s building is one the seat cannot raise yet: a placed tier not enabled for the seat's

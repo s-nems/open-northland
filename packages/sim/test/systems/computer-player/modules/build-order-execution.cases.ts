@@ -4,6 +4,7 @@ import {
   aiControlEntity,
   Building,
   BuildOrderFrontier,
+  discoverTechnology,
   grantScriptUnlock,
   Owner,
   Settler,
@@ -54,6 +55,7 @@ import {
   JOINERY_00_TYPE,
   JOINERY_TYPE,
   MILL_TYPE,
+  MILLER,
   makeAiSeat,
   oneLine,
   placeHq,
@@ -62,6 +64,7 @@ import {
   SEAT,
   STOCK_TYPE,
   TOWER_TYPE,
+  technologyContent,
   VEHICLE_YARD_TYPE,
   VIKING,
   WELL_TYPE,
@@ -987,6 +990,23 @@ describe('build order - independent lines', () => {
     completeSites(sim);
     // Its second home adds one more of a kind the seat owns: the mill, new to it, goes first.
     expect(decide(sim, order)).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('gives the free site to a workshop whose discovery the seat earned, ahead of a higher line', () => {
+    const order = twoLines([MILL_STEP], [HOME_STEP], ['homes', 'bread']);
+    const open = aiSim();
+    placeHq(open);
+    open.step();
+    // With no technology table the mill was never earned: the higher line's home goes first.
+    expect(decide(open, order)).toMatchObject({ buildingType: HOME_TYPE });
+
+    const content = technologyContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.step();
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: HOME_TYPE });
+    discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
   });
 
   it('goes on with the other lines while one is held', () => {

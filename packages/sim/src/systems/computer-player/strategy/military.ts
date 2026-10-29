@@ -11,7 +11,6 @@ import {
   type MilitaryStrategyState,
   mapBriefOf,
   NEVER_SEEN,
-  ownerOf,
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { DeepReadonly, World } from '../../../ecs/world.js';
@@ -23,7 +22,7 @@ import { seatBarracksOf } from '../base.js';
 import type { Share } from '../difficulty.js';
 import { believedEnemyBuildings } from '../knowledge/intel/index.js';
 import { type SeatThreat, seatMapIntentOf, seatTerritoryOf } from '../knowledge/map-intent/index.js';
-import { campaignTarget } from '../military/campaign.js';
+import { campaignObjective } from '../military/campaign.js';
 import {
   type BelievedArmy,
   believedDefendingPoints,
@@ -233,11 +232,11 @@ export function postureInputsOf(world: World, ctx: SystemContext, seat: number):
   let underAttack = false;
   if (terrain !== undefined) {
     const barracks = seatBarracksOf(world, ctx, seat);
-    const target =
+    targetOwner =
       barracks === null
         ? null
-        : campaignTarget(world, ctx, terrain, seat, interactionCell(world, ctx, terrain, barracks));
-    targetOwner = target === null ? null : (ownerOf(world, target) ?? null);
+        : (campaignObjective(world, ctx, terrain, seat, interactionCell(world, ctx, terrain, barracks))
+            ?.owner ?? null);
     const owned = ownedBuildings(world, seat);
     underAttack =
       raidOnTheSettlement(world, ctx, terrain, owned, seatRaiders(world, ctx, terrain, seat)) !== null;
@@ -297,6 +296,9 @@ export interface MilitaryOrders {
   readonly draftCapShare: Share;
   /** For the build order's tower lanes: the coverage radius in percent of their authored one. */
   readonly towerRadiusPct: number;
+  /** The army floor may call gatherers of goods in comfortable stock to arms: the seat prepares against a
+   *  forecast attack within its lead (`workforce/garrison.ts`). */
+  readonly callsGatherers: boolean;
 }
 
 /** A seat with no military section yet: the parity launch and authored figures it had before plans. */
@@ -309,6 +311,7 @@ const UNDECIDED: MilitaryOrders = {
   floorShare: WHOLE,
   draftCapShare: WHOLE,
   towerRadiusPct: PLAN_TUNING.balanced.towerRadiusPct,
+  callsGatherers: false,
 };
 
 /** The execution's reading of `seat`'s military section. */
@@ -316,10 +319,15 @@ export function militaryOrdersOf(world: World, seat: number): MilitaryOrders {
   const carrier = aiControlEntity(world, seat);
   const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
   if (military === undefined) return UNDECIDED;
-  return ordersFor(military.plan, military.posture);
+  return ordersFor(military.plan, military.posture, military.evidence);
 }
 
-export function ordersFor(plan: MilitaryPlan, posture: MilitaryPosture): MilitaryOrders {
+/** The orders of `plan` in `posture`, with the `evidence` that put the seat in it. */
+export function ordersFor(
+  plan: MilitaryPlan,
+  posture: MilitaryPosture,
+  evidence: readonly MilitaryRule[] = [],
+): MilitaryOrders {
   const tuning = PLAN_TUNING[plan];
   const holdHome = posture === 'defend' || posture === 'prepare';
   return {
@@ -336,6 +344,7 @@ export function ordersFor(plan: MilitaryPlan, posture: MilitaryPosture): Militar
       : tuning.floorShare,
     draftCapShare: tuning.draftCapShare,
     towerRadiusPct: tuning.towerRadiusPct,
+    callsGatherers: posture === 'prepare' && evidence.includes('forecastThreat'),
   };
 }
 

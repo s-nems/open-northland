@@ -13,6 +13,7 @@ import {
   Garrison,
   Health,
   JobAssignment,
+  type MilitaryRule,
   Owner,
   Position,
   ProductionCounters,
@@ -26,6 +27,7 @@ import type { Entity, World } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
 import { TOWER_POST_STRENGTH } from '../../../../src/systems/ai-shared/military/census.js';
 import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
+import { SpareForce } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { COMPUTER_PUBLISHED_COUNTERS } from '../../../../src/systems/computer-player/assistant-counters.js';
 import { AI_PROFILES, BUILDER_CAP, shareOf } from '../../../../src/systems/computer-player/difficulty.js';
 import {
@@ -56,6 +58,11 @@ import {
   ARMY_FLOOR_BUILDER_CORE,
   ARMY_FLOOR_LEAD_TICKS,
   ARMY_FLOOR_MIN,
+  calledGatherers,
+  claimArmyFloor,
+  garrisonArms,
+  WEAPON_VETO_LIFT_STOCK,
+  WEAPON_VETO_STOCK_MARGIN,
 } from '../../../../src/systems/computer-player/workforce/garrison.js';
 import { mayMarry } from '../../../../src/systems/family/eligibility.js';
 import { isFighterJob, type SystemContext } from '../../../../src/systems/index.js';
@@ -74,6 +81,7 @@ import {
   BUILDER,
   CATTLE,
   CIVILIST,
+  COLLECTOR,
   collectModule,
   completeSites,
   ctxOf,
@@ -93,6 +101,7 @@ import {
   SEAT,
   SPEAR,
   SPEARMAN,
+  STONE,
   SWORD,
   SWORDSMAN,
   spawnMen,
@@ -835,11 +844,11 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.sim.commands.log.filter((c) => c.command.kind === 'equipGood')).toEqual([]);
   });
 
-  it('vetoes a weaker weapon once while the best one is in store', () => {
+  it('vetoes a weaker weapon once the best one is stocked past its margin', () => {
     const seat = armedSeat(
       [
         { good: SWORD, amount: 1 },
-        { good: LONG_SWORD, amount: 1 },
+        { good: LONG_SWORD, amount: WEAPON_VETO_STOCK_MARGIN },
       ],
       { content: longSwordContent() },
     );
@@ -852,6 +861,24 @@ describe('workforce module - the barracks and craft selections', () => {
     const again = collectModule.run(seat.sim.world, seat.ctx, SEAT);
     expect(again.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
+  });
+
+  it('neither vetoes nor lifts while the best weapon lies between its two marks', () => {
+    const between = WEAPON_VETO_STOCK_MARGIN - 1;
+    expect(between).toBeGreaterThanOrEqual(WEAPON_VETO_LIFT_STOCK);
+    const seat = armedSeat(
+      [
+        { good: SWORD, amount: 1 },
+        { good: LONG_SWORD, amount: between },
+      ],
+      { content: longSwordContent() },
+    );
+    const vetoes = (): readonly unknown[] =>
+      collectModule.run(seat.sim.world, seat.ctx, SEAT).filter((c) => c.kind === 'setAssistantWeaponVeto');
+    expect(vetoes()).toEqual([]);
+    seat.sim.enqueueSetup({ kind: 'setAssistantWeaponVeto', player: SEAT, goodType: SWORD, vetoed: true });
+    seat.sim.step();
+    expect(vetoes()).toEqual([]);
   });
 
   it('arms with the weaker weapon while the best one is not in store, and lifts a standing veto', () => {
@@ -886,7 +913,9 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('lifts its weapon vetoes when the AI lets go of the seat or its military module', () => {
     const vetoedSeat = (): ArmedSeat => {
-      const seat = armedSeat([{ good: LONG_SWORD, amount: 1 }], { content: longSwordContent() });
+      const seat = armedSeat([{ good: LONG_SWORD, amount: WEAPON_VETO_STOCK_MARGIN }], {
+        content: longSwordContent(),
+      });
       for (const c of collectModule.run(seat.sim.world, seat.ctx, SEAT)) {
         if (c.kind === 'setAssistantWeaponVeto') seat.sim.enqueueSetup(c);
       }
@@ -1151,6 +1180,61 @@ describe('workforce module - the barracks and craft selections', () => {
     const unarmed = builderSeat([]);
     expect(retrades(unarmed).some((c) => c.kind === 'setJob' && c.jobType === CIVILIST)).toBe(false);
     expect(drafted(unarmed)).toBe(0);
+  });
+
+  it('calls the gatherers of a comfortable good to arms only against a forecast attack, keeping the last', () => {
+    // Owner ruling: on mroczny_las every man held a post before the first scripted wave.
+    const seat = armedSeat(
+      [
+        { good: SWORD, amount: 4 },
+        { good: WOOD, amount: 400 },
+      ],
+      { men: 0 },
+    );
+    const { world } = seat.sim;
+    spawnMen(seat.sim, 4, COLLECTOR);
+    seat.sim.step();
+    const [practised, green, stoneman, apprentice] = ownedSettlers(world, SEAT).filter(
+      (e) => world.get(e, Settler).jobType === COLLECTOR,
+    );
+    if (practised === undefined || green === undefined || stoneman === undefined || apprentice === undefined)
+      throw new Error('setup: four gatherers');
+    const supply = SeatSupply.of(world, seat.ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
+    const posts = new Map([
+      [WOOD, [practised, apprentice, green]],
+      [STONE, [stoneman]],
+    ]);
+    const called = (apprentices: ReadonlySet<Entity> = new Set()) =>
+      calledGatherers(world, seat.ctx, SEAT, posts, supply, apprentices);
+    const prepare = (evidence: MilitaryRule[]): void => {
+      const carrier = aiControlEntity(world, SEAT);
+      const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
+      if (carrier === null || military === undefined) throw new Error('setup: no strategy');
+      world.mut(carrier, ComputerStrategy).military = {
+        ...military,
+        challenger: null,
+        posture: 'prepare',
+        evidence,
+      };
+    };
+
+    prepare(['buildingUp']);
+    expect(called()).toEqual([]);
+    prepare(['forecastThreat']);
+    // The least practised first; wood's most practised gatherer stays, and stone, short, keeps its man.
+    expect(called()).toEqual([green, apprentice]);
+    // An apprentice is never called, and as he stays on the wood the most practised man may go.
+    expect(called(new Set([apprentice]))).toEqual([green, practised]);
+
+    // The floor turns a called gatherer into a civilian for the drill.
+    const arms = garrisonArms(world, seat.ctx, SEAT, AI_PROFILES.hard);
+    const claim = claimArmyFloor(world, seat.ctx, SEAT, new SpareForce([]), arms, AI_PROFILES.hard, {
+      men: [],
+      builderJob: null,
+      gatherers: [green],
+    });
+    expect(claim.men).toEqual([green]);
+    expect(claim.commands).toEqual([{ kind: 'setJob', entity: green, jobType: CIVILIST }]);
   });
 
   it('drafts nothing for the army floor while the peace is further off than its lead', () => {

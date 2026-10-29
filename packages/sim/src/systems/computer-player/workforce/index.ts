@@ -53,7 +53,7 @@ import { tuneCraftCounters } from './craft.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import { foodHunters } from './food.js';
-import { claimArmyFloor, garrisonArms, trainGarrison, upperReserve } from './garrison.js';
+import { calledGatherers, claimArmyFloor, garrisonArms, trainGarrison, upperReserve } from './garrison.js';
 import { assignHaulingCarts } from './hauling-carts.js';
 import { allocateHunters, huntingPlan } from './hunter.js';
 import { allocateRoadCrew } from './road-crew.js';
@@ -213,13 +213,15 @@ function runWorkforce(
   const armyFloor = claimArmyFloor(world, ctx, player, force, arms, profile, {
     men: upperReserve(reserve.reserved, reserveCap),
     builderJob,
+    gatherers: calledGatherers(world, ctx, player, collectorsByGood, supply, apprentices),
   });
   const drafted = new Set(armyFloor.men);
+  const undrafted = (c: PlayerCommand): boolean => !('entity' in c && drafted.has(c.entity));
   return [
     ...flagFollowSwitch(world, player),
-    ...posted,
+    ...posted.filter(undrafted),
     ...roadCrew.commands,
-    ...reserve.commands.filter((c) => !('entity' in c && drafted.has(c.entity))),
+    ...reserve.commands.filter(undrafted),
     ...targets,
     ...armyFloor.commands,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),
