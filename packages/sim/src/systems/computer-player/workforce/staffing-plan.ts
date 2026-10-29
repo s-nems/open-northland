@@ -1,4 +1,5 @@
 import type { BuildingType, ContentSet } from '@open-northland/data';
+import { playerPlacementTribes, professionProgressionEnabled } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import {
@@ -8,6 +9,7 @@ import {
 } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
+import { goodEnabled, jobEnabled, typeAllowed } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { CORE_CREW_FROM_TICKS, LATE_GAME_FROM_TICKS, STORE_CARRIERS_FROM_TICKS } from '../game-phase.js';
@@ -58,6 +60,18 @@ export interface StaffingRow extends StaffingTiers {
   readonly productGated?: true;
   /** The tiers from the late game ({@link LATE_GAME_FROM_TICKS}) on, over the rest of the row. */
   readonly late?: StaffingTiers;
+  /** A discovery until which the building keeps one operator: a discovery's experience counts on one
+   *  man, so a second hand would halve the first one's share of the work. */
+  readonly aloneUntil?: DiscoveryTarget;
+  /** A discovery until which the building runs a carrier at the minimum tier, so its operator works
+   *  instead of fetching his inputs and earns it sooner. */
+  readonly porterUntil?: DiscoveryTarget;
+}
+
+/** A job or good the seat discovers, by stable content id. */
+export interface DiscoveryTarget {
+  readonly kind: 'job' | 'good';
+  readonly id: string;
 }
 
 /** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (authored),
@@ -72,7 +86,8 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_farm_00: { operatorTarget: 2, operatorSurplus: 4, productGated: true, late: { gateFloor: 2 } },
   // One miller while the flour keeps up; one farm grows roughly what one miller grinds, so the second seat
   // is worth filling only out of surplus and only while the flour runs short.
-  work_mill_00: { operatorSurplus: 2, productGated: true },
+  // Owner ruling: a porter feeds the miller wheat until the bakery's baker is earned.
+  work_mill_00: { operatorSurplus: 2, productGated: true, porterUntil: { kind: 'job', id: 'baker' } },
   work_brewery: { operatorTarget: 2, carrierTarget: 1 },
   // Both breeders keep the cattle (CRAFT_PLANS_BY_BUILDING_ID), so the pair doubles the one herd's
   // output from the start.
@@ -106,8 +121,14 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // One herbalist keeps the early druids in herbs, and a second is worth a man only out of surplus. The
   // late game's druid huts take the hut's three: two at the target tier, the third out of surplus.
   work_herb_hut: { operatorSurplus: 2, late: { operatorTarget: 2, operatorSurplus: 3 } },
-  work_druid_01: { operatorTarget: 2, carrierTarget: 1 },
-  work_coin_mint: { operatorTarget: 2, carrierTarget: 1 },
+  // Owner ruling: one druid earns the healing potions alone, more brew once the big one is earned.
+  work_druid_01: { operatorTarget: 2, carrierTarget: 1, aloneUntil: { kind: 'good', id: 'potion_heal_big' } },
+  // Owner ruling: the first coiner earns the amulets alone, his coins feeding the druids meanwhile.
+  work_coin_mint: {
+    operatorTarget: 2,
+    carrierTarget: 1,
+    aloneUntil: { kind: 'good', id: 'amulet_strength' },
+  },
   // The well and the hive stay unstaffed: the brewery's carrier draws its water and honey himself.
 };
 
@@ -195,7 +216,13 @@ function rowPlan(ctx: SystemContext, type: BuildingType): RowPlan {
 }
 
 function deriveRowPlan(type: BuildingType, lateGame: boolean): RowPlan {
-  const { productGated: _, late, ...row } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
+  const {
+    productGated: _,
+    aloneUntil: __,
+    porterUntil: ___,
+    late,
+    ...row
+  } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
   const { gateFloor, ...tiers } = {
     gateFloor: DEFAULT_GATE_FLOOR,
     ...row,
@@ -235,13 +262,18 @@ export function buildingStaffing(
       ? gatedOperators(ctx, seat, type, held.operators)
       : null;
   const gate = gated === null ? null : Math.max(gated, gateFloor);
-  if (opening) plan = capOperators(plan, 1);
+  const authored = STAFFING_BY_BUILDING_ID[type.id];
+  if (opening || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
+    plan = capOperators(plan, 1);
   else if (gate !== null) {
     const crafting = craftGlutPending(ctx, seat.supply, seat.profile, type, held.operators > gate);
     plan = capOperators(plan, gate, crafting ? Number.POSITIVE_INFINITY : gate);
   }
   const holdsCarrier = held.carriers > 0;
-  if (suppliesShort(ctx, seat, type, holdsCarrier)) {
+  if (
+    suppliesShort(ctx, seat, type, holdsCarrier) ||
+    discoveryPending(world, ctx, seat.player, authored?.porterUntil)
+  ) {
     plan = {
       ...plan,
       carrierMin: Math.max(plan.carrierMin, 1),
@@ -252,6 +284,29 @@ export function buildingStaffing(
   if (!opening && productsRest(world, ctx, seat, building, type, held.operators))
     plan = withoutCarriers(capOperators(plan, 0));
   return plan;
+}
+
+/** Whether the seat may still make the `target` discovery under the experience gates and has not yet;
+ *  false with no target, with the gates off, for a banned one or one the content lacks. */
+function discoveryPending(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  target: DiscoveryTarget | undefined,
+): boolean {
+  if (target === undefined || !professionProgressionEnabled(world)) return false;
+  const index = contentIndex(ctx.content);
+  const typeId = (target.kind === 'job' ? index.jobTypeBySlug : index.goodTypeBySlug).get(target.id);
+  const tribe = playerPlacementTribes(world, player)?.[0];
+  if (
+    typeId === undefined ||
+    tribe === undefined ||
+    !typeAllowed(world, ctx, player, tribe, target.kind, typeId)
+  )
+    return false;
+  return target.kind === 'job'
+    ? !jobEnabled(world, ctx, player, tribe, typeId)
+    : !goodEnabled(world, ctx, player, tribe, typeId);
 }
 
 function withoutCarriers(plan: BuildingStaffing): BuildingStaffing {

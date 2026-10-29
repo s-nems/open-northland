@@ -1,10 +1,14 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import {
   AiControl,
+  aiControlEntity,
   Building,
   type ComputerDifficulty,
   type ComputerModuleEnables,
+  ComputerStrategy,
   computerModuleEnables,
+  type EconomicArchetype,
+  type EconomicSide,
   Livestock,
   Owner,
   Position,
@@ -220,6 +224,30 @@ export function makeAiSeat(
     modules: computerModuleEnables(modules),
     mapAiEnabled: true,
     difficulty,
+  });
+}
+
+/** Give the seat (a computer carrier made for it when it has none) the economic strategy `archetype` with
+ *  `sides`, and a military plan building up with no target. */
+export function seatEconomy(sim: Simulation, archetype: EconomicArchetype, sides: EconomicSide[] = []): void {
+  if (aiControlEntity(sim.world, SEAT) === null) makeAiSeat(sim, SEAT);
+  const carrier = aiControlEntity(sim.world, SEAT);
+  if (carrier === null) throw new Error('setup: no computer carrier');
+  if (sim.world.has(carrier, ComputerStrategy)) sim.world.remove(carrier, ComputerStrategy);
+  sim.world.add(carrier, ComputerStrategy, {
+    economy: { archetype, sides, evidence: [], decidedAt: 0, challenger: null },
+    military: {
+      posture: 'prepare',
+      evidence: ['noTarget', 'buildingUp'],
+      ownPoints: 0,
+      targetOwner: null,
+      targetPoints: null,
+      strongestPoints: null,
+      threatInTicks: null,
+      plan: 'balanced',
+      decidedAt: 0,
+      challenger: null,
+    },
   });
 }
 

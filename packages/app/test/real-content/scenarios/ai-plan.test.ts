@@ -8,6 +8,7 @@ const {
   COLLECTOR_TARGET_BY_GOOD_ID,
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
+  NATURAL_ARMS_CRAFT_PLANS,
   DEFAULT_BUILD_ORDER,
   HEADQUARTERS_BUILDING_ID,
   SOLDIER_OUTFIT_GOOD_IDS,
@@ -237,6 +238,12 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     /** The goods a seat may list, its fallback seats included. */
     const seatGoods = (seat: Seat): string[] => {
       if ('firstFed' in seat) return seat.firstFed.map((line) => line.good);
+      if ('firstEnabled' in seat) return [...seat.firstEnabled];
+      if ('whileOwned' in seat) {
+        // A stale building id would hold the seat on its fallback for good.
+        expect(buildingById.get(seat.whileOwned), `seat building ${seat.whileOwned}`).toBeDefined();
+        return [...seatGoods(seat.works), ...seatGoods(seat.otherwise)];
+      }
       if ('fleet' in seat) return [seat.fleet, ...(seat.beside ?? []), ...seatGoods(seat.otherwise)];
       if (!('goods' in seat)) return [...seat];
       return [...seat.goods, ...(seat.otherwise === undefined ? [] : seatGoods(seat.otherwise))];
@@ -268,6 +275,8 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         ),
       ];
     });
+    for (const [id, plan] of Object.entries(NATURAL_ARMS_CRAFT_PLANS))
+      plans.push({ id, plan, order: DEFAULT_BUILD_ORDER, own: true });
     for (const { id, plan, order, own } of plans) {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();

@@ -3,6 +3,8 @@ import {
   AiControl,
   aiControlEntity,
   Building,
+  ComputerStrategy,
+  type EconomicArchetype,
   JobAssignment,
   Settler,
   StalledPlacements,
@@ -58,9 +60,10 @@ export interface ExtraPostsStep {
 /**
  * The posts a good gains by the game clock (authored), steps ascending, filled at the top-up rung once
  * the seat can spare the men. Until the mid game only the shortage posts grow a good past its row. From
- * the mid game every good whose standing resource takes ground a building could use holds posts whatever
- * the stock, wood most: a settlement that has spread out by then fells and digs itself room for its
- * late-game buildings, and a stretched one most of all. Clay and mushrooms block nothing and gain none.
+ * the mid game every good whose standing resource takes ground a building could use holds posts, wood
+ * most: a settlement that has spread out by then fells and digs itself room for its late-game buildings.
+ * Only a ground-clearing seat keeps them whatever the stock ({@link keptExtraPosts}). Clay and
+ * mushrooms block nothing and gain none.
  */
 export const EXTRA_GATHERERS_BY_GOOD_ID: Readonly<Record<string, readonly ExtraPostsStep[]>> = {
   wood: [
@@ -74,6 +77,28 @@ export const EXTRA_GATHERERS_BY_GOOD_ID: Readonly<Record<string, readonly ExtraP
   iron: [{ fromTick: MID_GAME_FROM_TICKS, posts: 1 }],
   gold: [{ fromTick: MID_GAME_FROM_TICKS, posts: 1 }],
 };
+
+/** The archetype that digs its room out of the forest and keeps its scheduled posts whatever the stock
+ *  (owner ruling: piling wood up is fine on a map that must be cleared, as mroczny_las). */
+const GROUND_CLEARING_ARCHETYPE: EconomicArchetype = 'cramped';
+
+/** Whether `player`'s seat clears ground with its scheduled gatherers ({@link GROUND_CLEARING_ARCHETYPE}). */
+function seatClearsGround(world: World, player: number): boolean {
+  const carrier = aiControlEntity(world, player);
+  const strategy = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
+  return strategy?.economy.archetype === GROUND_CLEARING_ARCHETYPE;
+}
+
+/**
+ * The extra posts over a good's row it keeps this decision (owner ruling: gatherers past the need piled
+ * wood up on magiczny_las, mushrooms and clay elsewhere): dropped at the good's glut line and taken back
+ * under its comfort line, `held` telling whether its men work them now. A good without supply lines keeps
+ * them. The consuming workshops' posts and, on a seat that does not clear ground, the schedule's read it.
+ */
+function keptExtraPosts(supply: SeatSupply, goodType: number, posts: number, held: boolean): number {
+  if (posts === 0 || supply.lines(goodType) === undefined) return posts;
+  return supply.isUnder(goodType, held ? 'glut' : 'comfort') ? posts : 0;
+}
 
 /** The scheduled extra posts of `goodId` at `tick`: its last step reached, else none. */
 export function extraGatherers(goodId: string, tick: number): number {
@@ -217,7 +242,8 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
 /** The wanted collector goods - the base set plus the build order's reached `collector` steps - in
  *  plan order. A target is the good's fixed row, else its entries' largest `count` (at least
  *  {@link DEFAULT_COLLECTOR_TARGET}) grown by {@link OPERATORS_PER_EXTRA_GATHERER}, either grown by the
- *  good's {@link EXTRA_GATHERERS_BY_GOOD_ID} schedule, plus the shortage posts ({@link shortageGatherers});
+ *  good's {@link EXTRA_GATHERERS_BY_GOOD_ID} schedule, the extras as far as they are kept
+ *  ({@link keptExtraPosts}), plus the shortage posts ({@link shortageGatherers});
  *  nothing lowers it below a reached entry's `count`, since a released holder would regress the entry and
  *  stall the order. A good missing from the content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
@@ -237,6 +263,7 @@ export function wantedCollectorGoods(
   const profile = computerProfileOf(world, player);
   const roadGood = roadPavingGood(ctx.content);
   const wanted: WantedGood[] = [];
+  const clearsGround = seatClearsGround(world, player);
   let holdersByGood: ReadonlyMap<number, number> | undefined;
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
@@ -247,13 +274,16 @@ export function wantedCollectorGoods(
     const consumers = supply.plannedConsumers(good.typeId);
     const fixed = COLLECTOR_TARGET_BY_GOOD_ID[goodId];
     const entryCount = entryCounts.get(goodId) ?? 0;
-    const scheduled = extraGatherers(goodId, ctx.tick);
-    let target =
-      fixed === undefined
-        ? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount) +
-          Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER) +
-          scheduled
-        : Math.max(fixed + scheduled, entryCount);
+    const base = fixed ?? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount);
+    let consumerPosts = fixed === undefined ? Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER) : 0;
+    let scheduled = extraGatherers(goodId, ctx.tick);
+    if (consumerPosts + scheduled > 0) {
+      holdersByGood ??= flagHoldersByGood(world, ctx, player);
+      const held = (holdersByGood.get(good.typeId) ?? 0) > base;
+      consumerPosts = keptExtraPosts(supply, good.typeId, consumerPosts, held);
+      if (!clearsGround) scheduled = keptExtraPosts(supply, good.typeId, scheduled, held);
+    }
+    let target = Math.max(base + consumerPosts + scheduled, entryCount);
     const sitePosts =
       (fixed === undefined ? 0 : siteShortagePosts(profile, ctx.tick)) +
       (good.typeId === roadGood ? roadShortagePosts(world, ctx, player) : 0);

@@ -77,7 +77,11 @@ export {
   COLLECTOR_WORKSHOP_BY_GOOD_ID,
   DEFAULT_COLLECTOR_TARGET,
 } from './collectors/index.js';
-export { CRAFT_PLANS_BY_BUILDING_ID, CRAFT_PLANS_BY_JOINERY_ROLE } from './craft.js';
+export {
+  CRAFT_PLANS_BY_BUILDING_ID,
+  CRAFT_PLANS_BY_JOINERY_ROLE,
+  NATURAL_ARMS_CRAFT_PLANS,
+} from './craft.js';
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export {
   BACKLOG_ROAD_CREW,
@@ -93,7 +97,7 @@ export {
   STAFFING_BY_BUILDING_ID,
   SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
 } from './staffing-plan.js';
-export { SeatSupply, type SupplyLines, supplyLines } from './supply.js';
+export { SeatSupply, type SupplyLine, type SupplyLines, supplyLines } from './supply.js';
 
 /**
  * The CollectResources module - the seat's one workforce allocator: no other module ever claims a

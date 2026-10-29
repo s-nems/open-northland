@@ -18,11 +18,13 @@ import {
   Position,
   ProductionCounters,
   Settler,
+  setProfessionProgression,
   setSettlerJob,
   setStockAmount,
   TrainingOrder,
 } from '../../../../src/components/index.js';
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
+import { contentIndex } from '../../../../src/core/content-index.js';
 import type { Entity, World } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
 import { TOWER_POST_STRENGTH } from '../../../../src/systems/ai-shared/military/census.js';
@@ -64,6 +66,7 @@ import {
   WEAPON_VETO_LIFT_STOCK,
   WEAPON_VETO_STOCK_MARGIN,
 } from '../../../../src/systems/computer-player/workforce/garrison.js';
+import { buildingStaffing } from '../../../../src/systems/computer-player/workforce/staffing-plan.js';
 import { mayMarry } from '../../../../src/systems/family/eligibility.js';
 import { isFighterJob, type SystemContext } from '../../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../../src/systems/readviews/index.js';
@@ -74,6 +77,7 @@ import {
   ANIMAL_FARM_TYPE,
   aiSim,
   armedContent,
+  BAKER,
   BARRACKS_TYPE,
   BOW,
   BOWMAN,
@@ -104,6 +108,7 @@ import {
   STONE,
   SWORD,
   SWORDSMAN,
+  seatEconomy,
   spawnMen,
   TOOL_IRON,
   TOWER_TYPE,
@@ -415,6 +420,14 @@ const TILE = 27;
 const CROCKERY = 28;
 /** The largest bill line of each building material in {@link potteryContent} (authored for the fixture). */
 const MATERIAL_BILL_UNITS = 3;
+/** Free fixture slots for the tailors', breeders' and druids' goods and the temple. */
+const TUNIC = 60;
+const SHEEP_HERD = 61;
+const CATTLE_HERD = 62;
+const HOLY_OIL = 63;
+const POTION_SMALL = 64;
+const POTION_BIG = 65;
+const TEMPLE_TYPE = 66;
 
 /** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
 /** The fixture joinery recast as the workshop `id`, one wood recipe per product, so the type's own plan
@@ -1725,5 +1738,166 @@ describe('workforce module - the barracks and craft selections', () => {
       { kind: 'setProductionGoods', entity: tailors[0], goods: [SHOES] },
       { kind: 'setProductionGoods', entity: tailors[1], goods: [LEATHER_ARMOUR] },
     ]);
+  });
+
+  it('sews tunics instead of leather armour on a seat arming without iron', () => {
+    const tailors = crewedWorkshops(
+      joineryRecastAs('work_sewery_01', [
+        { typeId: SHOES, id: 'shoes' },
+        { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
+        { typeId: TUNIC, id: 'armor_wool' },
+      ]),
+      1,
+      2,
+    );
+    tailors.hire(0, 2);
+    expect(tailors.products()).toEqual([[SHOES], [LEATHER_ARMOUR]]);
+    seatEconomy(tailors.sim, 'standard', ['naturalArms']);
+    expect(tailors.products()).toEqual([[TUNIC]]);
+  });
+
+  it('keeps one breeder on sheep for the wool on a seat arming without iron', () => {
+    const breeders = crewedWorkshops(
+      joineryRecastAs('work_animal_farm', [
+        { typeId: SHEEP_HERD, id: 'sheep' },
+        { typeId: CATTLE_HERD, id: 'cattle' },
+      ]),
+      1,
+      2,
+    );
+    breeders.hire(0, 2);
+    expect(breeders.products()).toEqual([[CATTLE_HERD], [CATTLE_HERD]]);
+    seatEconomy(breeders.sim, 'standard', ['naturalArms']);
+    expect(breeders.products()).toEqual([[SHEEP_HERD]]);
+  });
+
+  /** The fixture joinery recast as the upper druid hut, its potions gated behind a trade nobody of the
+   *  seat holds as `unearned` lists, and a temple type the seat can raise. */
+  function druidContent(unearned: readonly number[]): ContentSet {
+    const recast = joineryRecastAs('work_druid_01', [
+      { typeId: HOLY_OIL, id: 'holy_oil' },
+      { typeId: POTION_SMALL, id: 'potion_heal_small' },
+      { typeId: POTION_BIG, id: 'potion_heal_big' },
+    ]);
+    return parseContentSet({
+      ...recast,
+      buildings: [
+        ...recast.buildings,
+        {
+          typeId: TEMPLE_TYPE,
+          id: 'work_temple',
+          kind: 'workplace',
+          workers: [],
+          construction: [{ goodType: WOOD, amount: 1 }],
+        },
+      ],
+      tribes: recast.tribes.map((t) =>
+        t.typeId !== VIKING
+          ? t
+          : {
+              ...t,
+              jobEnables: [
+                ...t.jobEnables,
+                ...unearned.map((good) => ({ jobType: MILLER, kind: 'good' as const, targetId: good })),
+              ],
+            },
+      ),
+    });
+  }
+
+  it('climbs the druids from holy oil to the small and then the big healing potion as each is earned', () => {
+    const products = (unearned: readonly number[]) => {
+      const druids = crewedWorkshops(druidContent(unearned), 1, 2);
+      druids.hire(0, 2);
+      return druids.products();
+    };
+    expect(products([POTION_SMALL, POTION_BIG])).toEqual([[HOLY_OIL], [HOLY_OIL]]);
+    expect(products([POTION_BIG])).toEqual([[POTION_SMALL], [POTION_SMALL]]);
+    expect(products([])).toEqual([[POTION_BIG], [POTION_BIG]]);
+  });
+
+  it("keeps one druid on the temple's holy oil only while the seat owns a temple or its site", () => {
+    const druids = crewedWorkshops(druidContent([]), 1, 2);
+    druids.hire(0, 2);
+    expect(druids.products()).toEqual([[POTION_BIG], [POTION_BIG]]);
+    druids.sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TEMPLE_TYPE,
+      x: 100,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    druids.sim.step();
+    expect(druids.products()).toEqual([[HOLY_OIL]]);
+  });
+
+  it("staffs one druid until the big potion is earned, and the hut's second once it is", () => {
+    const operatorsAt = (unearned: readonly number[]) => {
+      const content = druidContent(unearned);
+      const druids = crewedWorkshops(content, 1, 0);
+      const [hut] = druids.buildings;
+      if (hut === undefined) throw new Error('setup: no druid hut');
+      const ctx = { ...ctxOf(druids.sim), content };
+      const owned = ownedBuildings(druids.sim.world, SEAT);
+      const supply = SeatSupply.of(druids.sim.world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER);
+      const seat = { player: SEAT, owned, supply, profile: AI_PROFILES.hard };
+      const type = contentIndex(content).buildings.get(JOINERY_TYPE);
+      if (type === undefined) throw new Error('setup: no druid hut type');
+      return buildingStaffing(druids.sim.world, ctx, seat, hut, type, { operators: 0, carriers: 0 })
+        ?.operatorTarget;
+    };
+    expect(operatorsAt([POTION_BIG])).toBe(1);
+    expect(operatorsAt([])).toBe(2);
+  });
+
+  it('runs a porter at the mill until the seat has earned the baker, and none once it has', () => {
+    const base = aiContent();
+    // The baker opens from the miller's work, a trade nobody of the seat holds yet.
+    const content = parseContentSet({
+      ...base,
+      tribes: base.tribes.map((t) =>
+        t.typeId !== VIKING
+          ? t
+          : {
+              ...t,
+              jobEnables: [...t.jobEnables, { jobType: MILLER, kind: 'job' as const, targetId: BAKER }],
+              jobRequirements: [
+                ...t.jobRequirements,
+                {
+                  requirement: 'need' as const,
+                  target: 'job' as const,
+                  targetId: BAKER,
+                  amount: 10,
+                  experienceTypes: [],
+                },
+              ],
+            },
+      ),
+    });
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: MILL_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const mill = entityOfBuilding(sim, MILL_TYPE);
+    const type = contentIndex(content).buildings.get(MILL_TYPE);
+    if (type === undefined) throw new Error('setup: no mill type');
+    const porters = () => {
+      const ctx = { ...ctxOf(sim), content };
+      const owned = ownedBuildings(sim.world, SEAT);
+      const supply = SeatSupply.of(sim.world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER);
+      const seat = { player: SEAT, owned, supply, profile: AI_PROFILES.hard };
+      return buildingStaffing(sim.world, ctx, seat, mill, type, { operators: 1, carriers: 0 })?.carrierMin;
+    };
+    expect(porters()).toBe(1);
+    setProfessionProgression(sim.world, false);
+    expect(porters()).toBe(0);
   });
 });
