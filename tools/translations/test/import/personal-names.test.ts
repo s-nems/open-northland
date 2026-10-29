@@ -1,10 +1,10 @@
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import type { OverlayLanguage, PersonalNamePool } from '@open-northland/data';
+import type { PersonalNamePool } from '@open-northland/data';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { OverlayFile } from '../../src/import/maps.js';
-import { glossaryCharacterNames, importPersonalNames } from '../../src/import/personal-names.js';
+import { importPersonalNames } from '../../src/import/personal-names.js';
 
 /** The sex tag settles two pools that carry one name; the rest of the lines carry one name each. */
 const ENGLISH = [
@@ -83,7 +83,7 @@ function overlayOf(files: readonly OverlayFile[], path: string): Record<string, 
 describe('importPersonalNames', () => {
   it('takes the line the pool sex names, so a shared name keeps two translations', async () => {
     const files: OverlayFile[] = [];
-    await importPersonalNames(await source(), {}, files, [
+    await importPersonalNames(await source(), files, [
       pool('viking-male', 'male', ['Ali']),
       pool('viking-female', 'female', ['Ali']),
     ]);
@@ -93,20 +93,20 @@ describe('importPersonalNames', () => {
 
   it('writes one file per language, translated from that language folder', async () => {
     const files: OverlayFile[] = [];
-    await importPersonalNames(await source(), {}, files, [pool('viking-male', 'male', ['Adam'])]);
+    await importPersonalNames(await source(), files, [pool('viking-male', 'male', ['Adam'])]);
     expect(overlayOf(files, 'chs/names/viking-male.json')).toEqual({ Adam: '亚当' });
     expect(overlayOf(files, 'cht/names/viking-male.json')).toEqual({ Adam: '亞當' });
   });
 
   it('keeps only the names its pool generates, and writes no file for an empty pool', async () => {
     const files: OverlayFile[] = [];
-    const result = await importPersonalNames(await source(), {}, files, [
+    const result = await importPersonalNames(await source(), files, [
       pool('viking-male', 'male', ['Adam', 'Nobody']),
       pool('frank-male', 'male', ['Nobody']),
     ]);
     expect(overlayOf(files, 'chs/names/viking-male.json')).toEqual({ Adam: '亚当' });
     expect(overlayOf(files, 'chs/names/frank-male.json')).toBeUndefined();
-    expect(result.languages.chs).toEqual({ names: 1, fromGlossary: 0 });
+    expect(result.languages.chs).toEqual({ names: 1 });
   });
 
   it('takes a sole translation even when the pool sorts the name under the other sex', async () => {
@@ -115,61 +115,45 @@ describe('importPersonalNames', () => {
     const english = ['[names]', 'logictribe 1', 'Name 0 "Gunnlaug"', ''].join('\r\n');
     const text = ['[names]', 'logictribe 1', 'Name 0 "贡劳格"', ''].join('\r\n');
     const files: OverlayFile[] = [];
-    await importPersonalNames(await source(english, text, text), {}, files, [
+    await importPersonalNames(await source(english, text, text), files, [
       pool('viking-female', 'female', ['Gunnlaug']),
     ]);
     expect(overlayOf(files, 'chs/names/viking-female.json')).toEqual({ Gunnlaug: '贡劳格' });
   });
 
-  it('takes a name the table lacks from the campaign characters', async () => {
-    const characters: Partial<Record<OverlayLanguage, ReadonlyMap<string, string>>> = {
-      chs: new Map([['Bjarni', '比雅尼']]),
-      cht: new Map([['Bjarni', '比雅尼']]),
-    };
+  it('leaves out a name the table spells twice with two different translations', async () => {
+    // The localization gives one name two readings in the same sex; picking either would be a guess.
+    const english = ['[names]', 'logictribe 1', 'Name 0 "Thorkel"', 'Name 0 "Thorkel"', ''].join('\r\n');
+    const text = ['[names]', 'logictribe 1', 'Name 0 "托尔克尔"', 'Name 0 "索尔克尔"', ''].join('\r\n');
     const files: OverlayFile[] = [];
-    const result = await importPersonalNames(await source(), characters, files, [
-      pool('viking-male', 'male', ['Bjarni']),
+    await importPersonalNames(await source(english, text, text), files, [
+      pool('viking-male', 'male', ['Thorkel']),
     ]);
-    expect(overlayOf(files, 'chs/names/viking-male.json')).toEqual({ Bjarni: '比雅尼' });
-    expect(result.languages.chs).toEqual({ names: 1, fromGlossary: 1 });
+    expect(overlayOf(files, 'chs/names/viking-male.json')).toBeUndefined();
+  });
+
+  it('never translates the line the original leaves a settler unnamed on', async () => {
+    const english = ['[names]', 'logictribe 5', 'Name 1 "Unnamed weresnake woman"', ''].join('\r\n');
+    const text = ['[names]', 'logictribe 5', 'Name 1 "未命名蛇人女性"', ''].join('\r\n');
+    const files: OverlayFile[] = [];
+    await importPersonalNames(await source(english, text, text), files, [
+      pool('weresnake-neutral', 'neutral', ['Unnamed weresnake woman']),
+    ]);
+    expect(overlayOf(files, 'chs/names/weresnake-neutral.json')).toBeUndefined();
   });
 
   it('ignores a translated line whose sex tag the English line does not repeat', async () => {
     // The translation moved a name onto the other sex's line: its row is not this name's text.
     const shifted = SIMPLIFIED.replace('Name 0 "亚当"', 'Name 1 "亚当"');
     const files: OverlayFile[] = [];
-    await importPersonalNames(await source(ENGLISH, shifted), {}, files, [
-      pool('viking-male', 'male', ['Adam']),
-    ]);
+    await importPersonalNames(await source(ENGLISH, shifted), files, [pool('viking-male', 'male', ['Adam'])]);
     expect(overlayOf(files, 'chs/names/viking-male.json')).toBeUndefined();
   });
 
   it('leaves a name out when its line is missing from the translation', async () => {
     const short = SIMPLIFIED.replace('Name 0 "哈伦"\n', '').replace('Name 0 "哈伦"\r\n', '');
     const files: OverlayFile[] = [];
-    await importPersonalNames(await source(ENGLISH, short), {}, files, [
-      pool('saracen-male', 'male', ['Harun']),
-    ]);
+    await importPersonalNames(await source(ENGLISH, short), files, [pool('saracen-male', 'male', ['Harun'])]);
     expect(overlayOf(files, 'chs/names/saracen-male.json')).toBeUndefined();
-  });
-});
-
-describe('glossaryCharacterNames', () => {
-  const header = ['ger', 'eng', 'pol', 'chs', 'cht', 'type', 'description', 'references'];
-
-  it('keeps the rows typed as a character name, keyed by the English spelling', () => {
-    const names = glossaryCharacterNames([
-      header,
-      ['Bjarni', 'Bjarni', 'Bjarni', '比雅尼', '比雅尼', '人名', '主角', 'campaign_01_01'],
-      ['Bjarnis Stamm', "Bjarni's Tribe", 'Plemię', '比雅尼的部族', '比雅尼的部族', '种族', '部族', ''],
-    ]);
-    expect(names.chs?.get('Bjarni')).toBe('比雅尼');
-    expect(names.chs?.get("Bjarni's Tribe")).toBeUndefined();
-    expect(names.cht?.get('Bjarni')).toBe('比雅尼');
-  });
-
-  it('reads no names from a table without the columns it matches on', () => {
-    expect(glossaryCharacterNames([['eng', 'chs']])).toEqual({});
-    expect(glossaryCharacterNames([])).toEqual({});
   });
 });
