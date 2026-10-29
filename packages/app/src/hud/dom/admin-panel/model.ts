@@ -1,7 +1,8 @@
 import type { GoodIconPainter } from '../good-art.js';
 
-/** The debug tools' tabs: drop things on the map, act on what stands there, change the world's rules. */
-export type AdminTab = 'spawn' | 'act' | 'world';
+/** The debug tools' tabs: drop things on the map, act on what stands there, change the world's rules,
+ *  read what each computer seat thinks. */
+export type AdminTab = 'spawn' | 'act' | 'world' | 'ai';
 
 /** A per-spawn setting. Owner and health stand above every group; the rest show with a group whose
  *  tools apply them. */
@@ -67,6 +68,20 @@ export interface AdminWorldState {
   readonly speed: number | null;
 }
 
+/** A plain debug table: an optional header row over rows of text cells. */
+export interface AdminAiTable {
+  readonly head: readonly string[] | null;
+  readonly rows: readonly (readonly string[])[];
+}
+
+/** One computer seat's block in the AI tab. */
+export interface AdminAiSeat {
+  readonly title: string;
+  /** Why some of the tables are missing, such as a map scan not taken yet; null when all are there. */
+  readonly note: string | null;
+  readonly tables: readonly AdminAiTable[];
+}
+
 export interface AdminPanelSpec {
   readonly owners: readonly AdminOwner[];
   readonly owner: number;
@@ -88,6 +103,8 @@ export interface AdminPanelSpec {
 export interface AdminPanelHandlers {
   /** The panel opened (to refresh its world state) or closed. */
   readonly onOpen: (open: boolean) => void;
+  /** The AI tab came into view (the panel open on it) or left it; it is refreshed only while shown. */
+  readonly onAiView: (shown: boolean) => void;
   /** A tool's tile was pressed; the controller arms or disarms it. */
   readonly onTool: (key: string) => void;
   readonly onDisarm: () => void;

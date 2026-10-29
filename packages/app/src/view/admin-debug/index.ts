@@ -17,6 +17,7 @@ import type { GoodIconPainter } from '../../hud/dom/good-art.js';
 import type { StandingStructure } from '../../hud/tool-panel/placement.js';
 import { formatMessage, messages } from '../../i18n/index.js';
 import type { DebugAction, DebugTargetKind } from './actions-catalog.js';
+import { type AiSeatReading, aiSeatRows } from './ai-seats.js';
 import { createHoldRepeat } from './hold-repeat.js';
 import { createAdminLabels } from './labels.js';
 import { adminOwners } from './owners.js';
@@ -95,6 +96,9 @@ export interface AdminDebugDeps {
   /** The session's own clock, for the debug tempos. Absent (a shared clock) hides the row. */
   readonly clock?: Pick<SessionClock, 'speed' | 'setSpeed'>;
   readonly paintGood?: GoodIconPainter;
+  /** The running computer seats as the world stands now, read only while the AI tab shows. Absent
+   *  leaves the tab empty. */
+  readonly aiSeats?: () => readonly AiSeatReading[];
 }
 
 export interface AdminDebugHandle {
@@ -110,6 +114,9 @@ const DEFAULT_HITPOINTS = systems.HUMAN_HITPOINTS;
 const DEFAULT_HEALTH_PERCENT = 1;
 /** The debug tempos beyond the HUD's ×1..×3, for watching a map script's slow chains. */
 const DEBUG_GAME_SPEEDS: readonly number[] = [5, 10, 20, 30, 60];
+/** How often the shown AI tab reads the world again. A strategy review comes every few game minutes, so
+ *  once a second keeps up even at the debug tempos without a per-frame read. */
+const AI_REFRESH_MS = 1000;
 
 const FOG_MAP_SETTINGS: Readonly<Record<Exclude<FogMapKey, 'off'>, boolean>> = {
   classic: false,
@@ -175,6 +182,16 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     panel.showWorld(worldState());
   };
 
+  let aiTimer: ReturnType<typeof setInterval> | undefined;
+  const showAi = (): void => panel.showAi(aiSeatRows(deps.aiSeats?.() ?? [], msgs));
+  const setAiShown = (shown: boolean): void => {
+    clearInterval(aiTimer);
+    aiTimer = undefined;
+    if (!shown) return;
+    showAi();
+    aiTimer = setInterval(showAi, AI_REFRESH_MS);
+  };
+
   const setArmed = (next: Armed | null): void => {
     stopHold();
     if (next !== null) deps.cancelPlacement?.();
@@ -214,6 +231,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
         if (deps.fogMode !== undefined) fog = fogSettings(deps.fogMode());
         panel.showWorld(worldState());
       },
+      onAiView: setAiShown,
       onTool: (key) => {
         const choice = catalogue.choiceOf(key);
         if (choice === undefined) return;
@@ -402,6 +420,7 @@ export function mountAdminDebug(deps: AdminDebugDeps): AdminDebugHandle {
     setVisible: (visible) => panel.setVisible(visible),
     dispose(): void {
       stopHold();
+      setAiShown(false);
       canvas.style.cursor = '';
       window.removeEventListener('mousedown', onPointerDown, { capture: true });
       window.removeEventListener('mouseup', onPointerUp, { capture: true });

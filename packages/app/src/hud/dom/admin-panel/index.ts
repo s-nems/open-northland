@@ -4,7 +4,15 @@ import { TOP_BAR_HEIGHT } from '../../regions.js';
 import { GLYPH } from '../icons.js';
 import { button, element, setAttribute, setHidden, write } from '../parts/dom.js';
 import { createActTab } from './act-tab.js';
-import type { AdminArmed, AdminPanelHandlers, AdminPanelSpec, AdminTab, AdminWorldState } from './model.js';
+import { createAiTab } from './ai-tab.js';
+import type {
+  AdminAiSeat,
+  AdminArmed,
+  AdminPanelHandlers,
+  AdminPanelSpec,
+  AdminTab,
+  AdminWorldState,
+} from './model.js';
 import { createSpawnTab } from './spawn-tab.js';
 import { createWorldTab } from './world-tab.js';
 
@@ -12,7 +20,7 @@ import { createWorldTab } from './world-tab.js';
 const PANEL_GAP_PX = 6;
 /** How long the copy button reads "copied" before it turns back. */
 const COPIED_FLASH_MS = 1500;
-const TABS: readonly AdminTab[] = ['spawn', 'act', 'world'];
+const TABS: readonly AdminTab[] = ['spawn', 'act', 'world', 'ai'];
 
 /**
  * The debug tools: a toggle that stands in the system bar's lead and a panel it drops below the bar at
@@ -27,6 +35,7 @@ export interface AdminPanel {
   setVisible(visible: boolean): void;
   showArmed(armed: AdminArmed | null): void;
   showWorld(state: AdminWorldState): void;
+  showAi(seats: readonly AdminAiSeat[]): void;
   showCursor(text: string): void;
   dispose(): void;
 }
@@ -67,10 +76,12 @@ export function createAdminPanel(
   const spawn = createSpawnTab(spec, handlers);
   const act = createActTab(spec, handlers);
   const world = createWorldTab(spec, handlers);
+  const ai = createAiTab();
   const panes: Readonly<Record<AdminTab, HTMLElement>> = {
     spawn: spawn.element,
     act: act.element,
     world: world.element,
+    ai: ai.element,
   };
   const body = element('div', 'on-admin__body');
   let tab: AdminTab = 'spawn';
@@ -85,6 +96,7 @@ export function createAdminPanel(
     tabButton.addEventListener('click', () => {
       tab = key;
       paintTab();
+      syncAiView();
     });
     tabStrip.append(tabButton);
     body.append(pane);
@@ -139,12 +151,20 @@ export function createAdminPanel(
   plane.append(panel);
 
   let open = false;
+  let aiShown = false;
+  const syncAiView = (): void => {
+    const next = open && tab === 'ai';
+    if (next === aiShown) return;
+    aiShown = next;
+    handlers.onAiView(next);
+  };
   const setOpen = (next: boolean): void => {
     if (next === open) return;
     open = next;
     panel.hidden = !next;
     setAttribute(toggle, 'aria-expanded', String(next));
     handlers.onOpen(next);
+    syncAiView();
   };
   toggle.addEventListener('click', () => setOpen(!open));
   close.addEventListener('click', () => setOpen(false));
@@ -180,6 +200,7 @@ export function createAdminPanel(
     },
     showArmed,
     showWorld: (state) => world.show(state),
+    showAi: (seats) => ai.show(seats),
     showCursor: (text) => write(cursor, text),
     dispose(): void {
       clearTimeout(copiedTimer);

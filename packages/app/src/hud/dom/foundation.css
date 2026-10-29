@@ -9409,7 +9409,8 @@ body.on-drag-scroll.on-drag-scroll-free * {
 }
 .on-hud .on-admin__tabs {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-auto-flow: column;
+  grid-auto-columns: 1fr;
   margin: 0 14px;
   border: 1px solid var(--bronze-lo);
   border-radius: 4px;
@@ -9652,6 +9653,31 @@ body.on-drag-scroll.on-drag-scroll-free * {
   margin: 10px 0 5px;
   font: 700 12px var(--font-caps);
   letter-spacing: 0.1em;
+  color: var(--bronze);
+}
+.on-hud .on-admin__ai-table {
+  width: 100%;
+  margin: 4px 0 8px;
+  border-collapse: collapse;
+  font-size: 12px;
+  line-height: 1.3;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-hi);
+}
+.on-hud .on-admin__ai-table th,
+.on-hud .on-admin__ai-table td {
+  padding: 2px 6px 2px 0;
+  border-bottom: 1px solid #c9a2621f;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.on-hud .on-admin__ai-table th {
+  font-weight: 400;
+  color: var(--muted);
+}
+.on-hud .on-admin__ai-table thead th {
+  font-weight: 700;
   color: var(--bronze);
 }
 .on-hud .on-admin__grid {

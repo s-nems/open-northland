@@ -11,6 +11,7 @@ import type { GoodIconPainter } from '../../hud/dom/good-art.js';
 import type { StandingStructure } from '../../hud/tool-panel/placement.js';
 import { bcp47Tag, compareLabels, currentLocale } from '../../i18n/index.js';
 import type { SessionHost } from '../../session/index.js';
+import { readAiSeats } from '../admin-debug/ai-seats.js';
 import { createAdminEntityPicker } from '../admin-debug/entity-picker.js';
 import { type AdminDebugHandle, mountAdminDebug } from '../admin-debug/index.js';
 import { armorEntriesOf, everyJobExperience } from '../admin-debug/spawn-catalog.js';
@@ -203,6 +204,7 @@ function mountAdminPanel(
     zoomOutUnlocked: zoomOut.unlocked,
     setZoomOutUnlocked: zoomOut.setUnlocked,
     ...(opts.paintGood !== undefined ? { paintGood: opts.paintGood } : {}),
+    aiSeats: () => readAiSeats(host.snapshot()),
   });
 }
 

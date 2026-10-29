@@ -83,6 +83,7 @@ function mount(overrides: Partial<AdminPanelHandlers> = {}) {
     };
   const handlers: AdminPanelHandlers = {
     onOpen: log('open'),
+    onAiView: log('ai'),
     onTool: log('tool'),
     onDisarm: log('disarm'),
     onOwner: log('owner'),
@@ -118,6 +119,26 @@ function mount(overrides: Partial<AdminPanelHandlers> = {}) {
 }
 
 describe('admin panel', () => {
+  it('reports the AI tab shown only while the panel stands open on it', () => {
+    const { panel, plane, calls } = mount();
+    const tabs = [...plane.querySelectorAll<HTMLButtonElement>('.on-admin__tab')];
+    const aiTab = tabs.find((tab) => tab.textContent === messages().admin.tabs.ai);
+    panel.toggle.click();
+    aiTab?.click();
+    panel.toggle.click();
+    panel.toggle.click();
+    tabs[0]?.click();
+    expect(calls).toEqual([
+      'open:true',
+      'ai:true',
+      'open:false',
+      'ai:false',
+      'open:true',
+      'ai:true',
+      'ai:false',
+    ]);
+  });
+
   it('drops open from its toggle and closes on the toggle, the close medallion and Esc', () => {
     const { panel, q, calls } = mount();
     const section = q<HTMLElement>('.on-admin');
