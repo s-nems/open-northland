@@ -30,6 +30,12 @@ export function viewedFogState(raw: number, mode: FogMode): number {
   return raw;
 }
 
+/** Whether `fog` can hide anything: false with fog off or no fog resource at all, when every gate here
+ *  reads true. */
+export function fogHides(fog: FogState | undefined): fog is FogState {
+  return fog !== undefined && fog.activeMode !== FOG_MODE.OFF;
+}
+
 /**
  * Whether `player` currently sees the half-cell node (hx, hy). With fog off, or with no fog resource at all
  * in a mapless sim, everything is seen, so pre-fog behaviour stays byte-identical.

@@ -14,6 +14,8 @@ import { type BuildingCombatClass, buildingCombatClass } from '../../readviews/i
 import { interactionCell } from '../../settlers/targets/index.js';
 import { manhattan } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
+import { playerSeesEntity } from '../../vision/gates.js';
+import { believedBuildings } from '../knowledge/intel/index.js';
 
 /** The objective tiers, best first. The building order is the CombatSystem's own siege priority
  *  ({@link buildingCombatClass}), so a wave marches on what a warrior in the field would pick; a wall,
@@ -27,6 +29,9 @@ const SIEGE_TIERS: readonly BuildingCombatClass[] = ['hq', 'tower', 'other'];
  * player, stand on ground connected to the rally, and hold a live `Health` pool, because a wave sent at a
  * hitpoint-less building could never resolve its objective. A construction site holds a pool from its
  * first hitpoint, so it is a candidate like any other building.
+ *
+ * The seat marches only on what it knows: the buildings it believes stand ({@link believedBuildings}, the
+ * start layout included), else the enemy people it sees now.
  */
 export function campaignTarget(
   world: World,
@@ -41,7 +46,7 @@ export function campaignTarget(
   // Bucket the enemy's standing buildings by tier first: the door and distance work below is then paid
   // only for the best tier that has a reachable member, not for every building on the map.
   const byTier = new Map<BuildingCombatClass, Entity[]>();
-  for (const e of world.canonicalQuery(Building, Owner)) {
+  for (const e of believedBuildings(world, ctx, player)) {
     if (!isEnemy(world, e, player)) continue;
     const tier = buildingCombatClass(ctx, world.get(e, Building).buildingType);
     const bucket = byTier.get(tier);
@@ -55,7 +60,9 @@ export function campaignTarget(
   }
 
   // The Person key is what keeps a claimed herd out: it is loot, not a war aim.
-  const people = world.canonicalQuery(Person, Owner).filter((e) => isEnemy(world, e, player));
+  const people = world
+    .canonicalQuery(Person, Owner)
+    .filter((e) => isEnemy(world, e, player) && playerSeesEntity(world, ctx.fog, player, e));
   return nearestReachable(terrain, people, rally, home, approachOf);
 }
 

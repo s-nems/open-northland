@@ -1,5 +1,6 @@
 import {
   Building,
+  computerControllerRuns,
   DefenceMode,
   DiplomacyRules,
   fightsPlayer,
@@ -24,6 +25,8 @@ import { ownedFighters } from '../../../movement/collision/owned-fighters.js';
 import { houseBow } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
+import { fogHides, playerSeesNode } from '../../../vision/gates.js';
+import type { FogState } from '../../../vision/state.js';
 
 /** An enemy fighter, at the node he stands on this decision, with the walkable component that node
  *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him - and
@@ -97,9 +100,9 @@ export function watchBandOf(world: World, ctx: SystemContext, building: Entity):
  * A man holding his own tower is dropped because `conflict/targeting.ts` refuses him as a target: a
  * garrison parked within reach of this seat's edge would otherwise hold the town in cover forever.
  *
- * Not fog-gated, like the campaign's own target scan: an alarm behind the fog would ring only once the
- * town had been walked into. One scan a tick per seat, shared by every reader in that tick. The list is
- * rewritten in place by the seat's next rescan: read it within the decision, never keep it.
+ * A seat whose computer controller runs keeps only the men it sees now ({@link sightOf}); the scripted
+ * map AI's seats see every one. One scan a tick per seat, shared by every reader in that tick. The list
+ * is rewritten in place by the seat's next rescan: read it within the decision, never keep it.
  */
 export function seatRaiders(
   world: World,
@@ -113,23 +116,41 @@ export function seatRaiders(
     scans = new Map();
     raiderScans.set(world, scans);
   }
+  const sight = sightOf(world, ctx, player);
+  const view = sight === null ? UNGATED_VIEW : sight.viewGeneration(player);
   let held = scans.get(player);
   if (held === undefined) {
-    held = { stamp: fighters.stamp - 1, raiders: [] };
+    held = { stamp: fighters.stamp - 1, view, raiders: [] };
     scans.set(player, held);
   }
-  if (held.stamp !== fighters.stamp) {
-    enemiesAmong(world, fighters.fighters, player, held.raiders);
+  if (held.stamp !== fighters.stamp || held.view !== view) {
+    enemiesAmong(world, fighters.fighters, player, sight, held.raiders);
     held.stamp = fighters.stamp;
+    held.view = view;
   }
   return held.raiders;
 }
 
-/** One seat's raider scan, kept while the fighter scan it was read from stands: the build order and the
- *  military module both read a seat's raiders in its decision tick. Derived read-state, never hashed. */
+/** One seat's raider scan, kept while the fighter scan it was read from and the seat's view stand: the
+ *  build order and the military module both read a seat's raiders in its decision tick. Derived
+ *  read-state, never hashed. */
 interface RaiderScan {
   stamp: number;
+  /** The fog's {@link FogState.viewGeneration} for the seat when its scan is gated, else
+   *  {@link UNGATED_VIEW}. */
+  view: number;
   readonly raiders: Raider[];
+}
+
+/** {@link RaiderScan.view} of a scan no fog gates; below every view generation. */
+const UNGATED_VIEW = -1;
+
+/**
+ * The fog a seat's enemy reads are gated by, or null when it sees every enemy: a seat whose computer
+ * controller runs plays by its own sight under a fog that hides anything; the scripted map AI does not.
+ */
+export function sightOf(world: World, ctx: SystemContext, player: number): FogState | null {
+  return fogHides(ctx.fog) && computerControllerRuns(world, player) ? ctx.fog : null;
 }
 
 const raiderScans = new WeakMap<World, Map<number, RaiderScan>>();
@@ -384,12 +405,15 @@ function enemiesAmong(
   world: World,
   fighters: readonly LooseFighter[],
   player: number,
+  sight: FogState | null,
   raiders: Raider[],
 ): void {
   stanceOf.fill(UNREAD);
   let count = 0;
   for (const fighter of fighters) {
-    if (engages(world, fighter.owner, player)) raiders[count++] = fighter;
+    if (!engages(world, fighter.owner, player)) continue;
+    if (sight !== null && !playerSeesNode(sight, player, fighter.x, fighter.y)) continue;
+    raiders[count++] = fighter;
   }
   raiders.length = count;
 }
@@ -430,8 +454,9 @@ function weaponReach(world: World, ctx: SystemContext, e: Entity): number {
 /**
  * Every enemy fighter manning a tower post, with the post's boosted reach: the fortification the raider
  * scan leaves out, which still shoots a site raised inside its band. Read off the garrison markers, so
- * the walk is over the few posted men, not over every person. A fresh list per call, of records kept per
- * man while his tower, node and reach stand.
+ * the walk is over the few posted men, not over every person. A seat whose computer controller runs
+ * keeps only the posts it sees now ({@link sightOf}). A fresh list per call, of records kept per man
+ * while his tower, node and reach stand.
  */
 export function enemyPosts(
   world: World,
@@ -445,6 +470,7 @@ export function enemyPosts(
     postRecords.set(world, kept);
   }
   stanceOf.fill(UNREAD);
+  const sight = sightOf(world, ctx, player);
   const posts: PostedShooter[] = [];
   for (const e of world.query(Garrison)) {
     const owner = world.tryGet(e, Owner)?.player;
@@ -458,6 +484,8 @@ export function enemyPosts(
     const at = entityNode(world, terrain, e);
     const x = terrain.xOf(at);
     const y = terrain.yOf(at);
+    // Out of sight he is not listed, but his record stays for when he is seen again.
+    if (sight !== null && !playerSeesNode(sight, player, x, y)) continue;
     const reach = garrisonReach(held).maxRange;
     let post = kept.get(e);
     if (post === undefined || post.tower !== tower || post.x !== x || post.y !== y || post.reach !== reach) {

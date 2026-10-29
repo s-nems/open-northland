@@ -46,9 +46,9 @@ export function waveBandAt(sincePeace: number): WaveBand {
   };
 }
 
-/** The seat's whole fighter head count against the strength the target's owner defends with
- *  (`census.ts` `defendingStrength`): garrisons and men in a fight included on both sides, his tower
- *  posts weighed for the men they kill. */
+/** The seat's whole fighter head count against the strength it believes the target's owner defends with
+ *  (`enemy-strength.ts`): garrisons and men in a fight included on both sides, his tower posts weighed for
+ *  the men they kill. */
 export interface Strength {
   readonly own: number;
   readonly opposing: number;

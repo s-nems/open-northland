@@ -2,7 +2,7 @@ import { ownerOf, seatPeaceEndTick, WaveMarch } from '../../../components/index.
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
-import { defendingStrength, fighterStrength, weaponMix } from '../../ai-shared/military/census.js';
+import { fighterStrength, weaponMix } from '../../ai-shared/military/census.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
 import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
@@ -10,6 +10,7 @@ import { entityNode } from '../../spatial/nodes.js';
 import { seatBarracksOf } from '../base.js';
 import { computerProfileOf } from '../difficulty.js';
 import { campaignTarget, objectiveNode } from './campaign.js';
+import { believedDefendingStrength } from './enemy-strength.js';
 import { advanceWave, endMarch, launchWave } from './march/index.js';
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, rallyAt, waveWorthy } from './muster.js';
 import { abandonWave, decideWave } from './plan.js';
@@ -80,11 +81,13 @@ export function runOffensive(
     walkingIn: homing.filter(onDoorSide).length,
   };
   // Both sides weighed whole, garrisons and men in a fight included, so a seat whose towers hold a third
-  // of its men is not benched by its own defence; the target's posted men weigh what they kill.
+  // of its men is not benched by its own defence; the target's posted men weigh what they kill. The
+  // target's side is what the seat has seen of it.
   const targetOwner = ownerOf(world, target);
+  const own = fighterStrength(world, ctx, player);
   const strength = {
-    own: fighterStrength(world, ctx, player),
-    opposing: targetOwner === undefined ? 0 : defendingStrength(world, ctx, targetOwner),
+    own,
+    opposing: targetOwner === undefined ? 0 : believedDefendingStrength(world, ctx, player, targetOwner, own),
   };
   // One wave at a time: the next gathers at the door while the last one marches.
   const charges =

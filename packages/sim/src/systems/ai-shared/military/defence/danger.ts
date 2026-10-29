@@ -23,6 +23,8 @@ import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
 import { isAnimalTribe, isFighterJob, isScoutJob, shelterCapacityOf } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { assignedWorkers } from '../../../stores/assigned-workers.js';
+import { playerSeesNode } from '../../../vision/gates.js';
+import type { FogState } from '../../../vision/state.js';
 import { isBuilt } from '../../seat-roster.js';
 import { fighterWeaponClass } from '../census.js';
 import { garrisonSlots } from './posts.js';
@@ -32,6 +34,7 @@ import {
   raidersNearAny,
   type SettlementBox,
   settlementBox,
+  sightOf,
   THREAT_STAND_DOWN_MARGIN_NODES,
   watchBandOf,
 } from './threat.js';
@@ -196,7 +199,8 @@ export function assessSeatThreat(
   return { zones };
 }
 
-/** The enemy units inside the box round the seat's buildings, ascending id. */
+/** The enemy units inside the box round the seat's buildings, ascending id. A seat whose computer
+ *  controller runs counts only those it sees now ({@link sightOf}); its raiders arrive gated already. */
 function intrudersOf(
   world: World,
   ctx: SystemContext,
@@ -208,6 +212,7 @@ function intrudersOf(
 ): Intruder[] {
   const box = settlementBox(world, ctx, terrain, owned);
   if (box === null) return [];
+  const sight = sightOf(world, ctx, player);
   const remembered = new Set<Entity>();
   for (const o of offenders) remembered.add(o.entity);
   const intruders: Intruder[] = [];
@@ -223,7 +228,7 @@ function intrudersOf(
   for (const e of combatGridOf(world, ctx, terrain).ownedUnitsInBox(world, ctx.tick, enemies, box)) {
     if (!world.has(e, Person) || !isCivilian(world, ctx, e) || !isAdultSettler(world, e)) continue;
     const at = boxedNode(world, terrain, box, e);
-    if (at === null || unitDanger(world, ctx, e) === 0) continue;
+    if (at === null || !seen(sight, player, at) || unitDanger(world, ctx, e) === 0) continue;
     listed.add(e);
     intruders.push(intruderOf(world, ctx, e, at.x, at.y, at.component, remembered.has(e), false));
   }
@@ -233,11 +238,16 @@ function intrudersOf(
     const side = world.tryGet(e, Owner)?.player;
     if (side === undefined || !fightsPlayer(world, side, player)) continue;
     const at = boxedNode(world, terrain, box, e);
-    if (at === null) continue;
+    if (at === null || !seen(sight, player, at)) continue;
     const civilian = isCivilian(world, ctx, e);
     intruders.push(intruderOf(world, ctx, e, at.x, at.y, at.component, true, !civilian));
   }
   return intruders.sort((a, b) => a.entity - b.entity);
+}
+
+/** Whether `player` sees the node `at`, always when no `sight` gates it. */
+function seen(sight: FogState | null, player: number, at: { x: number; y: number }): boolean {
+  return sight === null || playerSeesNode(sight, player, at.x, at.y);
 }
 
 /** The node `e` stands on with its walkable component, or null when it has no place inside `box`. */

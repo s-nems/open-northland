@@ -82,7 +82,8 @@ export function fighterStrength(world: World, ctx: SystemContext, player: number
 export const TOWER_POST_STRENGTH = 3;
 
 /** The strength a wave meets when it marches on `player`: his live fighters, each man holding a tower post
- *  weighed {@link TOWER_POST_STRENGTH}. */
+ *  weighed {@link TOWER_POST_STRENGTH}. The live count, blind to the fog like
+ *  {@link strongestEnemyStrength}. */
 export function defendingStrength(world: World, ctx: SystemContext, player: number): number {
   return armyStrength(world, ctx, player, TOWER_POST_STRENGTH);
 }
@@ -102,8 +103,8 @@ function armyStrength(world: World, ctx: SystemContext, player: number, postedWe
  * enemy fields anyone: the men he could march with, counted one to one like the seat's own, so the army
  * floor (`workforce/garrison.ts`) can be met. The weight his tower posts add is the offensive's concern
  * ({@link defendingStrength}), read for the one target it picks. One pass over the owned fighters serves
- * every seat, so the cost is the map's fighters, not its people. Not fog-gated, like the campaign's
- * target scan; that the original's AI sees through the fog too is unconfirmed.
+ * every seat, so the cost is the map's fighters, not its people. The live count, blind to the fog: a
+ * computer seat reads it only with nothing hidden (`computer-player/military/enemy-strength.ts`).
  */
 export function strongestEnemyStrength(world: World, ctx: SystemContext, player: number): number {
   let counts: readonly number[] | null = null;

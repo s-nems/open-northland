@@ -20,6 +20,11 @@ function intelOf(world: World, seat: number): IntelView | undefined {
   return carrier === null ? undefined : world.tryGet(carrier, ComputerIntel);
 }
 
+/** Every building `seat` remembers, of any owner, ascending entity id. */
+export function rememberedBuildings(world: World, seat: number): readonly IntelBuildingView[] {
+  return intelOf(world, seat)?.buildings ?? NOTHING;
+}
+
 /** The buildings `seat` believes stand, of the owners it holds an `enemy` stance toward now (relations
  *  read live), ascending entity id. */
 export function believedEnemyBuildings(world: World, seat: number): readonly IntelBuildingView[] {

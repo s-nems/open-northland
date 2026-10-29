@@ -24,6 +24,7 @@ import { MILITARY_MODE } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { VEHICLE_TARGET_SNAP_RADIUS } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
+import { playerSeesEntity } from '../../../vision/gates.js';
 import { seatBarracksOf } from '../../base.js';
 import { meleeCoreFor, waveWorthy } from '../muster.js';
 import { crewedCatapults, PARK_RING_MAX_NODES, PARK_SPACING_NODES } from '../siege-crew.js';
@@ -197,7 +198,7 @@ export function advanceWave(
   const wave = state.arrived ? marching : withoutStaleFighters(world, ctx, barracks, marching);
 
   const charge =
-    shellingCatapult(world, terrain, player, wave) ?? chargePoint(world, ctx, terrain, player, wave);
+    shellingCatapult(world, ctx, terrain, player, wave) ?? chargePoint(world, ctx, terrain, player, wave);
   if (charge !== null) {
     // A charge scatters the ranks: the leg and siege timeouts count from its end, not through it.
     world.mut(barracks, WaveMarch).legSince = ctx.tick;
@@ -521,10 +522,12 @@ function fireOver(
 /**
  * The node of the enemy catapult firing at one of the wave's men, on the continent of the man nearest the
  * wave's centre: the one nearest that centre, the lowest id on a tie, or null. One firing at the wave's
- * catapults is their duel and leaves the men marching. Read off the enemies' vehicle lists.
+ * catapults is their duel and leaves the men marching. Read off the enemies' vehicle lists, of those the
+ * seat sees now.
  */
 function shellingCatapult(
   world: World,
+  ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
   wave: Wave,
@@ -539,6 +542,7 @@ function shellingCatapult(
     for (const vehicle of vehicleIndex(world).ownedBy(other)) {
       const target = world.get(vehicle, Vehicle).attack?.target;
       if (target?.kind !== 'entity' || !men.has(target.entity)) continue;
+      if (!playerSeesEntity(world, ctx.fog, player, vehicle)) continue;
       const at = vehicleAnchor(world, vehicle);
       if (at === null || terrain.componentOf(terrain.nodeAtClamped(at.hx, at.hy)) !== reachable) continue;
       const distance = nodeManhattan(at, wave.centre);

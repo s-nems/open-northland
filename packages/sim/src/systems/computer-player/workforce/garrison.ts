@@ -15,11 +15,7 @@ import {
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import {
-  fighterStrength,
-  fighterWeaponClass,
-  strongestEnemyStrength,
-} from '../../ai-shared/military/census.js';
+import { fighterStrength, fighterWeaponClass } from '../../ai-shared/military/census.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import { draftableTrade, isBareSoldier } from '../../assistant/index.js';
@@ -34,6 +30,7 @@ import { networkLimitAt } from '../../signposts/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
 import { type ComputerProfile, shareOf } from '../difficulty.js';
+import { strongestBelievedEnemy } from '../military/enemy-strength.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { WAVE_GATHER_TICKS } from '../military/plan.js';
 import { productsOf } from './craft.js';
@@ -113,7 +110,7 @@ export function garrisonArms(
 /**
  * The army floor: once the seat's peace is within {@link ARMY_FLOOR_LEAD_TICKS} of its end ({@link
  * seatPeaceEndTick}, the start when there is none), the seat keeps its profile's share of the fighters its
- * strongest enemy fields ({@link strongestEnemyStrength}), never fewer than {@link ARMY_FLOOR_MIN} and never
+ * strongest enemy fields ({@link strongestBelievedEnemy}), never fewer than {@link ARMY_FLOOR_MIN} and never
  * past a cap it drafts to. Its fighters and the recruits already in drill count toward it, so only the
  * missing men are claimed out of `force`, which the ladder calls after the target-tier posts and ahead of
  * the surplus ones: a seat staffs what it built, and the trades that could absorb every man still leave
@@ -137,7 +134,7 @@ export function claimArmyFloor(
   if (surplus <= 0) return [];
   const floor = Math.max(
     ARMY_FLOOR_MIN,
-    shareOf(strongestEnemyStrength(world, ctx, player), profile.army.floorShare),
+    shareOf(strongestBelievedEnemy(world, ctx, player), profile.army.floorShare),
   );
   const missing = draftCeiling(profile, floor) - arms.onHand();
   const claim = Math.min(missing, surplus);

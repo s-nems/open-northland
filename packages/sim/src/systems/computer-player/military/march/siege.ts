@@ -6,13 +6,13 @@ import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../nav/terrain/index.js';
 import { isRangedFighter } from '../../../ai-shared/military/census.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { vehicleAnchor } from '../../../footprint/index.js';
 import { buildingCombatClass, MILITARY_MODE } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { VEHICLE_TARGET_SNAP_RADIUS } from '../../../vehicles/movement.js';
+import { believedBuildings } from '../../knowledge/intel/index.js';
 import { formation, type WaveMarchView } from './formation.js';
 import { clampNode, continentOf, nodeOf } from './geometry.js';
 import { driveCatapult, type Fire, orderable, placeOrders, ringOrders, type Wave } from './orders.js';
@@ -156,8 +156,9 @@ export function onCatapultContinents(
 }
 
 /**
- * The standing enemy towers within {@link SIEGE_TOWER_RADIUS_NODES} of `objective`, ascending id. Read off
- * the rosters of the seat's enemies, so the cost is their buildings, like the campaign's target scan.
+ * The standing enemy towers within {@link SIEGE_TOWER_RADIUS_NODES} of `objective` the seat believes stand
+ * ({@link believedBuildings}), ascending id. Read per enemy, so the cost is their buildings, like the
+ * campaign's target scan.
  */
 function enemyTowersNear(
   world: World,
@@ -170,7 +171,7 @@ function enemyTowersNear(
   const towers: Entity[] = [];
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (other === player || !fightsPlayer(world, player, other)) continue;
-    for (const e of ownedBuildings(world, other)) {
+    for (const e of believedBuildings(world, ctx, player, other)) {
       if (buildingCombatClass(ctx, world.get(e, Building).buildingType) !== 'tower') continue;
       if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
       const node = anchorNodeOf(world, e);
