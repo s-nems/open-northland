@@ -39,7 +39,14 @@ import { type GameOutTemp, makeGameOutTemp } from '../support/game-tree.js';
 const BASIS = { lang: 'pol', digest: '0'.repeat(64) } as const;
 
 function overlays(parts: Partial<TranslationOverlays> = {}): TranslationOverlays {
-  return { maps: new Map(), objects: new Map(), books: new Map(), campaigns: new Map(), ...parts };
+  return {
+    maps: new Map(),
+    objects: new Map(),
+    books: new Map(),
+    campaigns: new Map(),
+    names: new Map(),
+    ...parts,
+  };
 }
 
 function mapOverlay(strings: Record<string, string>, basis: MapOverlay['basis'] = BASIS): MapOverlay {
