@@ -43,6 +43,7 @@ import {
 } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   BUILDER_CAP,
+  BUILDERS_PER_OPEN_SITE,
   type BuildOrderEntry,
   CIVILIANS_PER_CLEARING_COLLECTOR,
   COLLECTOR_TARGET_BY_GOOD_ID,
@@ -757,6 +758,53 @@ describe('workforce module (collectResources)', () => {
     expect(holdersOf(sim, STONE)).toHaveLength((COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0) + 2);
   });
 
+  it("keeps the open sites' builders ahead of the shortage posts and sends the extra posts back to them", () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    const site = (spot: { x: number; y: number }) =>
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        ...spot,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    const sitesFloor = 3 * BUILDERS_PER_OPEN_SITE;
+    expect(sitesFloor).toBeGreaterThan(SHORTAGE_BUILDER_FLOOR);
+    for (const spot of [FIRST_WORKSHOP_SPOT, SECOND_WORKSHOP_SPOT, THIRD_WORKSHOP_SPOT]) site(spot);
+    // Four men for the row posts and the scout, and one builder past the three sites' floor. The store is
+    // empty from the growth clock, so stone and wood each want a shortage post ahead of the reserve.
+    spawnMen(sim, 4);
+    spawnMen(sim, sitesFloor + 1, BUILDER);
+    sim.step();
+    const tick = BUILDING_GOODS_GROW_FROM_TICKS;
+    const decide = () => {
+      const commands = [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands;
+    };
+    const builders = () =>
+      [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === BUILDER);
+
+    expect(posted(decide())).toEqual([MUD, STONE, WOOD]);
+    expect(builders()).toHaveLength(sitesFloor + 1);
+    // Only the builder past the floor takes a shortage post.
+    expect(posted(decide())).toEqual([STONE]);
+    expect(builders()).toHaveLength(sitesFloor);
+    expect(posted(decide())).toEqual([]);
+
+    // A fourth site raises the floor past the builders: the stone post beyond the row goes back to them.
+    site({ x: 50, y: 16 });
+    sim.step();
+    const back = decide().filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
+    expect(back).toHaveLength(1);
+    expect(builders()).toHaveLength(sitesFloor + 1);
+    expect(holdersOf(sim, STONE)).toHaveLength(COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0);
+  });
+
   it("hands a collect-anything gatherer to a short good's post before it takes a builder", () => {
     const sim = aiSim();
     placeHq(sim);
@@ -886,6 +934,25 @@ describe('workforce module (collectResources)', () => {
       (c) => c.kind === 'setGatherGood',
     );
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
+  });
+
+  it('reads a retry with no step holding its line as no stall: no clearing posts, the full reserve', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    spawnMen(sim, BUILDER_CAP + 7);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    sim.world.add(carrier, StalledPlacements, {
+      retryTicks: new Map([['opening:0', Number.MAX_SAFE_INTEGER]]),
+      holding: new Map(),
+    });
+
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    expect(commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER)).toHaveLength(BUILDER_CAP);
+    expect(posted(commands)).toEqual([MUD, STONE, WOOD, ...Array(GENERIC_COLLECTOR_TARGET).fill(null)]);
   });
 
   it('moves a generic collector whose circle holds nothing its trade can harvest, or retires it', () => {

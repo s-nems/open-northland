@@ -46,6 +46,8 @@ import {
   collectorAnchors,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
+  rowPosts,
+  SHORTAGE_BUILDER_FLOOR,
   topUpCollectors,
   wantedCollectorGoods,
 } from './collectors/index.js';
@@ -64,6 +66,8 @@ import {
   releaseSurplusOperators,
   reserveBuilders,
   STALLED_BUILDER_CAP,
+  seatBuilderCount,
+  siteBuilderFloor,
   staffBuildings,
 } from './staffing.js';
 import type { SeatStaffing } from './staffing-plan.js';
@@ -91,7 +95,7 @@ export {
   ROAD_CREW,
   roadCrewTarget,
 } from './road-crew.js';
-export { STALLED_BUILDER_CAP } from './staffing.js';
+export { BUILDERS_PER_OPEN_SITE, STALLED_BUILDER_CAP } from './staffing.js';
 export {
   LATE_GAME_CIVILIANS,
   STAFFING_BY_BUILDING_ID,
@@ -122,11 +126,19 @@ function runWorkforce(
   const statuses = lineStatuses(world, ctx, player, owned, order);
   const apprentices = seatApprentices(world, ctx, player, order, statuses);
   const civilians = civilianCount(world, ctx, player);
-  const wanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const clearing = clearingCollectors(world, player, civilians);
+  // The open sites' builders come before every gatherer post past a good's row: while the seat has fewer,
+  // the extra posts and the far-ground posts go back to the sites, and no shortage post takes a builder.
+  // While a placement is stalled the reserve shrinks to its floor, so the clearing posts get the men the
+  // missing sites would have had.
+  const builderLimit = clearing > 0 ? STALLED_BUILDER_CAP : builderCap(profile, civilians, ctx.tick);
+  const builderFloor = siteBuilderFloor(world, owned, builderLimit);
+  const shortOfBuilders = seatBuilderCount(world, player, builderJob) < builderFloor;
+  const allWanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
+  const wanted = shortOfBuilders ? rowPosts(allWanted) : allWanted;
   const baseNode = anchorNodeOf(world, base);
   const farGround =
-    baseNode === null
+    baseNode === null || shortOfBuilders
       ? 0
       : farGroundExtras(world, ctx, owned, baseNode, seatTuning(world, player).clearGroundPct);
   const genericTarget = GENERIC_COLLECTOR_TARGET + clearing + farGround;
@@ -184,6 +196,7 @@ function runWorkforce(
           taken,
           builderJob,
           apprentices,
+          Math.max(SHORTAGE_BUILDER_FLOOR, builderFloor),
         )),
     ...allocateHunters(world, ctx, player, hunting, force, builderJob, tally, 'first'),
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'first'),
@@ -195,13 +208,9 @@ function runWorkforce(
   // The road crew comes out of the builder reserve, ahead of it, so a seat with road sites always has
   // its roadster.
   const roadCrew = allocateRoadCrew(world, ctx, player, roadsters, force, builderJob);
-  // Construction never starves; while a placement is stalled the reserve shrinks to its floor, so the
-  // clearing posts below get the men the missing sites would have had. The road crew is part of it. The
-  // army floor may reclaim the reserve past its core (`garrison.ts`), so its fresh men's commands wait.
-  const reserveCap = Math.max(
-    0,
-    (clearing > 0 ? STALLED_BUILDER_CAP : builderCap(profile, civilians, ctx.tick)) - roadCrew.crew,
-  );
+  // Construction never starves. The road crew is part of the reserve. The army floor may reclaim the
+  // reserve past its core (`garrison.ts`), so its fresh men's commands wait.
+  const reserveCap = Math.max(0, builderLimit - roadCrew.crew);
   const reserve = reserveBuilders(world, force, builderJob, reserveCap, ctx);
   // The standing buildings' target crews and the gatherers the reached entries count come before the army
   // floor (authored): both are bounded by what stands, so a seat staffs every building it raised and

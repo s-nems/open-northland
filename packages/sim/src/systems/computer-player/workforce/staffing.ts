@@ -1,5 +1,12 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, Carrying, CurrentAtomic, JobAssignment, Settler } from '../../../components/index.js';
+import {
+  Building,
+  Carrying,
+  CurrentAtomic,
+  JobAssignment,
+  Settler,
+  UnderConstruction,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -28,6 +35,26 @@ export type StaffingTier = 'min' | 'target' | 'surplus';
 /** The reserve while a build-order placement finds no spot (authored): the few sites the stall leaves
  *  need few hands, and every other man fells and digs the room the placement waits for. */
 export const STALLED_BUILDER_CAP = 4;
+
+/** The builders each open construction site of the seat keeps out of the gatherer posts (authored): one
+ *  carries the bill while another raises it. Basis: on mroczny_las (seed 7) a seat with three sites and
+ *  two or three builders left a site at 60% for over fifteen minutes with its wood and stone in stock. */
+export const BUILDERS_PER_OPEN_SITE = 2;
+
+/** The builders the seat's open sites among `owned` call for, upgrades included, at most `cap`. */
+export function siteBuilderFloor(world: World, owned: readonly Entity[], cap: number): number {
+  let sites = 0;
+  for (const e of owned) if (world.has(e, UnderConstruction)) sites++;
+  return Math.min(cap, sites * BUILDERS_PER_OPEN_SITE);
+}
+
+/** The seat's men of the builder trade, spare or bound to a site. */
+export function seatBuilderCount(world: World, player: number, builderJob: number | null): number {
+  if (builderJob === null) return 0;
+  let builders = 0;
+  for (const e of ownedSettlers(world, player)) if (world.get(e, Settler).jobType === builderJob) builders++;
+  return builders;
+}
 
 /** The builder reserve of `profile`'s seat of `civilians` non-fighting settlers deciding at `tick`. */
 export function builderCap(profile: ComputerProfile, civilians: number, tick: number): number {

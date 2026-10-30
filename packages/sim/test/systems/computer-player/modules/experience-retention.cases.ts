@@ -230,7 +230,7 @@ describe('workforce module - experience retention', () => {
     const wood = seat.content.goods.find((g) => g.typeId === WOOD);
     if (wood === undefined) throw new Error('setup: wood missing');
     const wantedWood = (target: number): WantedGood[] => [
-      { good: wood, harvestAtomic: WOOD_HARVEST, job: COLLECTOR, target, min: 1 },
+      { good: wood, harvestAtomic: WOOD_HARVEST, job: COLLECTOR, target, min: 1, row: 1 },
     ];
 
     const one = classifyWorkforce(seat.sim.world, ctx, SEAT, wantedWood(1));

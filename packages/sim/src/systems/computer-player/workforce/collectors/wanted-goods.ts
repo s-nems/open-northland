@@ -159,7 +159,8 @@ export const NODES_PER_CLEARING_GATHERER = 8;
  *  while the stall lasts. */
 export function clearingCollectors(world: World, player: number, civilians: number): number {
   const carrier = aiControlEntity(world, player);
-  if (carrier === null || (world.tryGet(carrier, StalledPlacements)?.holding ?? null) === null) return 0;
+  // Only a step holding its line is a stalled placement: a passed-over step's retry alone is not one.
+  if (carrier === null || (world.tryGet(carrier, StalledPlacements)?.holding.size ?? 0) === 0) return 0;
   // Only the build order clears the record, so a seat whose script switched it off keeps a stale one.
   if (!(world.tryGet(carrier, AiControl)?.modules.houseBuild ?? false)) return 0;
   return Math.min(
@@ -206,6 +207,15 @@ export interface WantedGood {
    *  a building good's whole {@link COLLECTOR_TARGET_BY_GOOD_ID} row, and every one while a good the sites
    *  build with ({@link COLLECTED_GOOD_IDS}) runs short from {@link BUILDING_GOODS_GROW_FROM_TICKS} on. */
   readonly min: number;
+  /** The posts held whatever the stock: the good's fixed row, else its reached entries' count, at least
+   *  {@link DEFAULT_COLLECTOR_TARGET}. */
+  readonly row: number;
+}
+
+/** `wanted` cut to each good's {@link WantedGood.row}: what a seat short of builders keeps, its extra posts
+ *  going back to the sites. */
+export function rowPosts(wanted: readonly WantedGood[]): WantedGood[] {
+  return wanted.map((w) => ({ ...w, target: Math.min(w.target, w.row), min: Math.min(w.min, w.row) }));
 }
 
 /** The lowest gatherer trade whose grants include this harvest atomic, or null. */
@@ -304,7 +314,7 @@ export function wantedCollectorGoods(
         if (COLLECTED_GOOD_IDS.includes(goodId) && ctx.tick >= BUILDING_GOODS_GROW_FROM_TICKS) min = target;
       }
     }
-    wanted.push({ good, harvestAtomic, job, target, min });
+    wanted.push({ good, harvestAtomic, job, target, min, row: Math.max(base, entryCount) });
   }
   return wanted;
 }

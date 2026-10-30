@@ -152,7 +152,8 @@ function seatBuilders(world: World, player: number, force: SpareForce, builderJo
  * First posts: keep at least one flag-bound gatherer per wanted good, and a short good's extra ones up to
  * `min`, each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), over the
  * upkeep of every current holder ({@link upkeepHolders}). One post per good per decision, and none beyond
- * a good's first that would break the {@link SHORTAGE_BUILDER_FLOOR}. A post beyond the first takes a
+ * a good's first takes a builder from a seat down to `builderFloor` of them ({@link SHORTAGE_BUILDER_FLOOR}
+ * unless the open sites call for more). A post beyond the first takes a
  * collect-anything gatherer before any spare man, dropping him from `genericCollectors` so the generic
  * upkeep leaves his flag to the post: the seat's least pointed man goes before a builder. Every other
  * post, here as in the top-ups and the generic posts, goes to the spare man most experienced on the
@@ -171,6 +172,7 @@ export function allocateCollectors(
   taken: TakenFlagNodes,
   builderJob: number | null,
   apprentices: ReadonlySet<Entity>,
+  builderFloor = SHORTAGE_BUILDER_FLOOR,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const { workable } = ground;
@@ -191,7 +193,7 @@ export function allocateCollectors(
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     if (holders.length > 0 && builderJob !== null)
       builders ??= seatBuilders(world, player, force, builderJob);
-    const keepBuilders = holders.length > 0 && builders !== undefined && builders <= SHORTAGE_BUILDER_FLOOR;
+    const keepBuilders = holders.length > 0 && builders !== undefined && builders <= builderFloor;
     const spare =
       (holders.length > 0 ? takeGenericCollector(world, ctx, genericCollectors, w, apprentices) : null) ??
       force.take(

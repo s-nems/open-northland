@@ -27,6 +27,7 @@ export {
   OPENING_SITE_SHORTAGE_POSTS,
   OPERATORS_PER_EXTRA_GATHERER,
   ROAD_SITE_SHORTAGE_POSTS,
+  rowPosts,
   siteShortagePosts,
   type WantedGood,
   wantedCollectorGoods,
