@@ -15,6 +15,8 @@ import {
   profileBuildOrder,
   sitePace,
 } from '../../../../src/systems/computer-player/index.js';
+import { LATE_GAME_CIVILIANS } from '../../../../src/systems/computer-player/workforce/index.js';
+import { builderCap } from '../../../../src/systems/computer-player/workforce/staffing.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { SEAT } from '../support.js';
 
@@ -66,6 +68,17 @@ describe('AI difficulty profiles', () => {
       expect(sitePace(AI_PROFILES.easy, tick).sites).toBe(1);
       expect(sitePace(AI_PROFILES.medium, tick).sites).toBe(tick < MID_GAME_FROM_TICKS ? 1 : 2);
     }
+  });
+
+  it("grows a large seat's builder reserve with its civilians, except on easy", () => {
+    const { hard, medium, easy } = AI_PROFILES;
+    expect(builderCap(hard, LATE_GAME_CIVILIANS - 1, 0)).toBe(hard.builders.opening);
+    expect(builderCap(hard, LATE_GAME_CIVILIANS, 0)).toBe(hard.builders.grown);
+    expect(builderCap(hard, LATE_GAME_CIVILIANS + 160, LATE_GAME_FROM_TICKS)).toBe(hard.builders.late + 10);
+    expect(builderCap(medium, LATE_GAME_CIVILIANS + 160, LATE_GAME_FROM_TICKS)).toBe(
+      medium.builders.late + 5,
+    );
+    expect(builderCap(easy, LATE_GAME_CIVILIANS + 160, LATE_GAME_FROM_TICKS)).toBe(easy.builders.late);
   });
 
   it('sets the difficulty through setAiControl and keeps it when a later command omits it', () => {

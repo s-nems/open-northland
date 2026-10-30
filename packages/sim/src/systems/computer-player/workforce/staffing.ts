@@ -10,7 +10,7 @@ import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import type { ComputerProfile } from '../difficulty.js';
+import { type ComputerProfile, shareOf } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';
 import type { Schooling } from '../technology/schooling.js';
@@ -51,11 +51,16 @@ export function seatBuilderCount(world: World, player: number, builderJob: numbe
   return builders;
 }
 
-/** The builder reserve of `profile`'s seat of `civilians` non-fighting settlers deciding at `tick`. */
+/** The builder reserve of `profile`'s seat of `civilians` non-fighting settlers deciding at `tick`: the
+ *  phase's figure, grown by the profile's share of the civilians past {@link LATE_GAME_CIVILIANS}. The
+ *  reserve claims only spare men after the minimum crews, and the army floor may reclaim it past the open
+ *  sites' builders, so the growth takes no workshop's first hands and no draft. */
 export function builderCap(profile: ComputerProfile, civilians: number, tick: number): number {
   const { builders } = profile;
-  if (tick >= LATE_GAME_FROM_TICKS) return builders.late;
-  return civilians >= LATE_GAME_CIVILIANS ? builders.grown : builders.opening;
+  const grown = civilians >= LATE_GAME_CIVILIANS;
+  const base = tick >= LATE_GAME_FROM_TICKS ? builders.late : grown ? builders.grown : builders.opening;
+  if (builders.perCivilian === null || !grown) return base;
+  return base + shareOf(civilians - LATE_GAME_CIVILIANS, builders.perCivilian);
 }
 
 /** Where a gated slot no spare man qualifies for gets its man: a school lesson while a standing school

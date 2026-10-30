@@ -48,9 +48,15 @@ export interface ComputerProfile {
   /** How long a construction site the seat's pace frees stays empty before the build order starts the
    *  next site or upgrade on it. */
   readonly freeSitePauseTicks: number;
-  /** The builder reserve in the opening, once the seat has grown, and from the late game on
+  /** The builder reserve in the opening, once the seat has grown, and from the late game on, plus
+   *  `perCivilian` of the seat's civilians past the grown head count, none when null
    *  (`workforce/staffing.ts`). */
-  readonly builders: { readonly opening: number; readonly grown: number; readonly late: number };
+  readonly builders: {
+    readonly opening: number;
+    readonly grown: number;
+    readonly late: number;
+    readonly perCivilian: Share | null;
+  };
   /** How many children, growing up or on the way, the seat keeps at once, as a share of its wives, at
    *  least one; null books every housed wife. */
   readonly birthShare: Share | null;
@@ -92,6 +98,16 @@ const GROWN_SEAT_BUILDER_CAP = 14;
  *  keeps four sites open (`build-order/entries.ts`). */
 export const LATE_GAME_BUILDER_CAP = 16;
 
+/** The share of a hard seat's civilians past the grown head count it adds to its builder reserve (owner
+ *  ruling: a large seat keeps more builders, 20 and more in the late game of a rich map; authored rate).
+ *  Basis: on magiczny_las (seed 7) the seats held 128 to 279 people at minute 90 with 10 to 15 builders,
+ *  the late figure reached on every seat. One in sixteen gives a late seat of 250 civilians 27 builders
+ *  and one of 150 21. */
+const HARD_BUILDERS_PER_CIVILIAN: Share = { num: 1, den: 16 };
+
+/** The medium seat's share (authored): it keeps two sites open, so half the hard rate. */
+const MEDIUM_BUILDERS_PER_CIVILIAN: Share = { num: 1, den: 32 };
+
 const WHOLE: Share = { num: 1, den: 1 };
 const HALF: Share = { num: 1, den: 2 };
 const THIRD: Share = { num: 1, den: 3 };
@@ -101,7 +117,12 @@ const HARD: ComputerProfile = {
   difficulty: 'hard',
   sitePace: SITE_PACE_STEPS,
   freeSitePauseTicks: 0,
-  builders: { opening: BUILDER_CAP, grown: GROWN_SEAT_BUILDER_CAP, late: LATE_GAME_BUILDER_CAP },
+  builders: {
+    opening: BUILDER_CAP,
+    grown: GROWN_SEAT_BUILDER_CAP,
+    late: LATE_GAME_BUILDER_CAP,
+    perCivilian: HARD_BUILDERS_PER_CIVILIAN,
+  },
   birthShare: null,
   buildingCaps: {},
   denseTowerRing: true,
@@ -138,7 +159,7 @@ const MEDIUM: ComputerProfile = {
     },
   ],
   freeSitePauseTicks: MEDIUM_FREE_SITE_PAUSE_TICKS,
-  builders: { opening: 9, grown: 11, late: 12 },
+  builders: { opening: 9, grown: 11, late: 12, perCivilian: MEDIUM_BUILDERS_PER_CIVILIAN },
   birthShare: HALF,
   buildingCaps: {
     home_level_00: 8,
@@ -173,7 +194,8 @@ const EASY: ComputerProfile = {
     { fromTick: LATE_GAME_FROM_TICKS, sites: ONE_SITE, lookahead: BUILD_ORDER_LOOKAHEAD_ENTRIES + 2 },
   ],
   freeSitePauseTicks: EASY_FREE_SITE_PAUSE_TICKS,
-  builders: { opening: 6, grown: 8, late: 8 },
+  // One open site in every phase: a larger crew would stand idle.
+  builders: { opening: 6, grown: 8, late: 8, perCivilian: null },
   birthShare: THIRD,
   buildingCaps: {
     home_level_00: 5,
