@@ -143,7 +143,6 @@ const MEDIUM: ComputerProfile = {
   buildingCaps: {
     home_level_00: 8,
     work_smithy_01: 4,
-    work_bakery_01: 4,
     work_brewery: 2,
     work_hive_00: 2,
     work_druid_01: 4,
@@ -179,7 +178,6 @@ const EASY: ComputerProfile = {
   buildingCaps: {
     home_level_00: 5,
     work_smithy_01: 2,
-    work_bakery_01: 2,
     work_brewery: 1,
     work_hive_00: 1,
     work_druid_01: 1,

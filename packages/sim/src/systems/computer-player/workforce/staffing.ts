@@ -14,13 +14,8 @@ import type { ComputerProfile } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';
 import type { Schooling } from '../technology/schooling.js';
-import {
-  type BuildingStaffing,
-  buildingStaffing,
-  type HeldStaff,
-  LATE_GAME_CIVILIANS,
-  type SeatStaffing,
-} from './staffing-plan.js';
+import { buildingStaffing, type HeldStaff, LATE_GAME_CIVILIANS, type SeatStaffing } from './staffing-plan.js';
+import type { BuildingStaffing } from './staffing-rows.js';
 import { incrementStaffing, type StaffingTally } from './tally.js';
 
 /** Whichever tier a staffing pass fills toward - see {@link staffBuildings}. */

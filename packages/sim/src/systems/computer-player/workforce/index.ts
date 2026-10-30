@@ -97,11 +97,8 @@ export {
   roadCrewTarget,
 } from './road-crew.js';
 export { BUILDERS_PER_OPEN_SITE, STALLED_BUILDER_CAP } from './staffing.js';
-export {
-  LATE_GAME_CIVILIANS,
-  STAFFING_BY_BUILDING_ID,
-  SUPPLY_CARRIER_GOODS_BY_BUILDING_ID,
-} from './staffing-plan.js';
+export { LATE_GAME_CIVILIANS, SUPPLY_CARRIER_GOODS_BY_BUILDING_ID } from './staffing-plan.js';
+export { STAFFING_BY_BUILDING_ID } from './staffing-rows.js';
 export { SeatSupply, type SupplyLine, type SupplyLines, supplyLines } from './supply.js';
 
 /**

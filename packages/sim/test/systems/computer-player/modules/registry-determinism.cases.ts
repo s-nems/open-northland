@@ -87,9 +87,11 @@ describe('the full strategic registry - replay', () => {
       (e) => !sim.world.has(e, UnderConstruction) && sim.world.get(e, Building).buildingType !== HQ_TYPE,
     );
     // The whole fixture-expressible list stands finished: the farm/mill/bakery/well chain, the opening's
-    // three homes (the crew holds no woman, so the housing lane raises nothing), four level-2 bakeries and two breweries (the fixture's small map makes the seat
-    // cramped, whose copy caps stop them there) and the joinery; the barracks waits for the military deadline. Every building, the joinery between the wood and the iron included,
-    // sits inside the HQ's store circle and both tower circles, so neither coverage entry raises anything.
+    // three homes (the crew holds no woman, so the housing lane raises nothing), one level-2 bakery and two
+    // breweries (the fixture's small map makes the seat cramped, whose copy caps stop them there) and the
+    // joinery; the barracks waits for the military deadline. Every building, the joinery between the wood
+    // and the iron included, sits inside the HQ's store circle and both tower circles, so neither coverage
+    // entry raises anything.
     expect(built.map((e) => sim.world.get(e, Building).buildingType).sort((a, b) => a - b)).toEqual(
       [
         HOME_TYPE,
@@ -98,9 +100,6 @@ describe('the full strategic registry - replay', () => {
         FARM_TYPE,
         WELL_TYPE,
         MILL_TYPE,
-        BAKERY_TOP_TYPE,
-        BAKERY_TOP_TYPE,
-        BAKERY_TOP_TYPE,
         BAKERY_TOP_TYPE,
         BREWERY_TYPE,
         BREWERY_TYPE,

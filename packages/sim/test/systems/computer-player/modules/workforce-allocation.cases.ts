@@ -1981,8 +1981,8 @@ describe('workforce module (collectResources)', () => {
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const bakery = entityOfBuilding(sim, BAKERY_TOP_TYPE);
     const staffing = commands.filter((c) => c.kind === 'assignWorker').filter((c) => c.building === bakery);
-    // Min tier: the first baker and the bakery's carrier; target tier: the second baker.
-    expect(staffing.map((c) => c.jobPriority)).toEqual([[BAKER], [CARRIER], [BAKER]]);
+    // Min tier: both bakers (owner ruling: a full crew before another bakery) and the carrier.
+    expect(staffing.map((c) => c.jobPriority)).toEqual([[BAKER], [BAKER], [CARRIER]]);
   });
 
   it('hires only an unmarried man as the scout', () => {

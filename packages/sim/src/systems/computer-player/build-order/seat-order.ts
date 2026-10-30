@@ -19,6 +19,7 @@ import {
   DEFAULT_BUILD_ORDER,
   EARLY_SECOND_TAILOR,
   HQ_PULL_DIVISOR_NODES,
+  ROOMY_OPENING_HOMES,
   type SitePace,
   sitePace,
 } from './entries.js';
@@ -45,6 +46,8 @@ export interface ArchetypeTuning {
   readonly leadOnlyWhen: 'rivalOverSea' | null;
   /** Whether every placement stays on the base's own land component, not only the overflow search. */
   readonly homeLandOnly: boolean;
+  /** Steps of the order the archetype leaves out. */
+  readonly drops: readonly BuildOrderEntry[];
 }
 
 /** The default order's priority (`./entries.ts`), which a standard seat plays. */
@@ -52,10 +55,10 @@ const STANDARD_PRIORITY = DEFAULT_BUILD_ORDER.priority;
 
 /** Owner ruling: a cramped seat (mroczny_las) has little room and digs the forest out. Authored figures:
  *  three quarters of the standard reach, twice the pull toward the base, clearing from two thirds of the
- *  standard spread, one lower-tier bakery (owner ruling: two only where there is room), the late copies of
- *  the bigger workshops and homes capped about as the medium seat's, and the economy lines in the standard
- *  order but the tile and marble upgrades and the homes' lanes ahead of the army, mint and druid lines,
- *  which add the most buildings. */
+ *  standard spread, one bakery and the three first homes (owner ruling: two bakeries and more homes only
+ *  where there is room), the late copies of the bigger workshops and homes capped about as the medium
+ *  seat's, and the economy lines in the standard order but the tile and marble upgrades and the homes'
+ *  lanes ahead of the army, mint and druid lines, which add the most buildings. */
 const CRAMPED: ArchetypeTuning = {
   priority: [
     'opening',
@@ -74,7 +77,7 @@ const CRAMPED: ArchetypeTuning = {
   copyCaps: {
     work_bakery_00: 1,
     home_level_00: 8,
-    work_bakery_01: 4,
+    work_bakery_01: 1,
     work_smithy_01: 4,
     work_brewery: 2,
     work_hive_00: 2,
@@ -87,6 +90,7 @@ const CRAMPED: ArchetypeTuning = {
   clearGroundPct: 67,
   leadOnlyWhen: null,
   homeLandOnly: false,
+  drops: [ROOMY_OPENING_HOMES],
 };
 
 const STANDARD: ArchetypeTuning = {
@@ -99,6 +103,7 @@ const STANDARD: ArchetypeTuning = {
   clearGroundPct: 100,
   leadOnlyWhen: null,
   homeLandOnly: false,
+  drops: [],
 };
 
 /** The tuning per archetype. A rich seat (room and building deposits to spare) opens one site more and a
@@ -270,7 +275,9 @@ function sideRules(sides: readonly EconomicSide[]): SideRule[] {
 
 function shapeLine(line: BuildLine, tuning: ArchetypeTuning, rules: readonly SideRule[]): BuildLine {
   let steps = line.steps.filter(
-    (entry) => !rules.some((rule) => rule.drops !== undefined && matches(rule.drops, entry)),
+    (entry) =>
+      !tuning.drops.includes(entry) &&
+      !rules.some((rule) => rule.drops !== undefined && matches(rule.drops, entry)),
   );
   if (tuning !== STANDARD) steps = steps.map((entry) => copiesOf(entry, tuning));
   if (tuning.leadOnlyWhen !== null) {
@@ -283,10 +290,11 @@ function shapeLine(line: BuildLine, tuning: ArchetypeTuning, rules: readonly Sid
     : { id: line.id, steps };
 }
 
-/** A placement asking for more than one copy, its count scaled by the tuning's percent, then cut to its
- *  cap. A cap never drops the step: a count already under it stands met the sooner. */
+/** A placement or upgrade asking for more than one copy, its count scaled by the tuning's percent, then
+ *  cut to its cap. A cap never drops the step: a count already under it stands met the sooner. */
 function copiesOf(entry: BuildOrderEntry, tuning: ArchetypeTuning): BuildOrderEntry {
-  if ((entry.kind !== 'place' && entry.kind !== 'housing') || entry.count <= 1) return entry;
+  if ((entry.kind !== 'place' && entry.kind !== 'upgrade' && entry.kind !== 'housing') || entry.count <= 1)
+    return entry;
   const scaled = Math.max(1, Math.floor((entry.count * tuning.copiesPct) / 100));
   const count = Math.min(scaled, tuning.copyCaps[entry.building] ?? scaled);
   return count === entry.count ? entry : { ...entry, count };

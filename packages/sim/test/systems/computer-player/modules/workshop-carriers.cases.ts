@@ -50,13 +50,15 @@ import {
   flagSpotNear,
 } from '../../../../src/systems/computer-player/workforce/flag-spots.js';
 import {
-  type BuildingStaffing,
   buildingStaffing,
   type HeldStaff,
-  plannedOperators,
   type SeatStaffing,
   STORE_CARRIERS,
 } from '../../../../src/systems/computer-player/workforce/staffing-plan.js';
+import {
+  type BuildingStaffing,
+  plannedOperators,
+} from '../../../../src/systems/computer-player/workforce/staffing-rows.js';
 import { EAT_ATOMIC_ID } from '../../../../src/systems/settlers/atomics/start.js';
 import { networkLimitAt } from '../../../../src/systems/signposts/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';

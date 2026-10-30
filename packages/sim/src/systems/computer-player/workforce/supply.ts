@@ -17,7 +17,7 @@ import {
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { type GamePhase, gamePhase, HOARD_UNITS_BY_PHASE } from '../game-phase.js';
 import { COLLECTED_GOOD_IDS } from './collectors/index.js';
-import { plannedOperators } from './staffing-plan.js';
+import { plannedOperators } from './staffing-rows.js';
 
 /** A managed good's stock lines, in units of the seat's stock beyond what its sites still lack. */
 export interface SupplyLines {

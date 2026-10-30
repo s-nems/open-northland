@@ -216,6 +216,11 @@ export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
   near: [{ kind: 'building', id: 'work_sewery_00' }],
 };
 
+/** Owner ruling: a seat with room opens on four or five lower-tier homes, so more of its couples have
+ *  children from the start: four, five on a rich seat's copies (`./seat-order.ts`); a cramped seat keeps
+ *  to the first three. */
+export const ROOMY_OPENING_HOMES: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 4 };
+
 /** The grain farm. Every bakery, brewery and animal farm downstream waits on its grain, so each of their
  *  lines opens on it, met by whichever line raised it, and holds until it stands. */
 const GRAIN_FARM: BuildOrderEntry = {
@@ -321,6 +326,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         { kind: 'collector', good: 'stone' },
         GRAIN_FARM,
         { kind: 'place', building: 'home_level_00', count: 3 },
+        ROOMY_OPENING_HOMES,
         { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
         // Owner ruling: the school right after the pottery, a core building, so every trade discovered
         // from here on is taught there rather than earned again by work.
@@ -367,31 +373,22 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
             { kind: 'building', id: 'work_bakery_00' },
           ],
         },
-        // Owner ruling: a second bakery at once where the seat has room; a cramped seat caps this at one
-        // (`./seat-order.ts`), so its next bakery waits for the upper tier.
+        // Owner ruling: a second bakery where the seat has room; a cramped seat caps this at one
+        // (`./seat-order.ts`). It waits for the first one's baker like every copy (`./progress.ts`).
         {
           kind: 'place',
           building: 'work_bakery_00',
           count: 2,
           near: [{ kind: 'building', id: 'work_mill_00' }],
         },
-        { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
-        {
-          kind: 'place',
-          building: 'work_bakery_01',
-          count: 3,
-          near: [{ kind: 'building', id: 'work_mill_00' }],
-        },
         // Every bakery drinks water like the brewery: one standing beyond a well's reach gets a well
         // beside it.
         wellBeside('work_bakery_00', 7),
-        {
-          kind: 'place',
-          building: 'work_bakery_01',
-          count: 4,
-          near: [{ kind: 'building', id: 'work_mill_00' }],
-        },
-        wellBeside('work_bakery_00', 14),
+        // Owner ruling: the adults live on mead and the bread feeds the children, so one upper-tier bakery
+        // supplies a large village; the seat upgrades the bakeries it has and fills their crews rather than
+        // raising a third.
+        { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
+        { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
       ],
     },
     {

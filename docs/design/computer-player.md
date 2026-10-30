@@ -66,9 +66,13 @@ the discovery can still come; one that can never come (a map ban, no game to hun
 skipped. A step may also hold its line on a building standing, a good discovered or the military
 deadline (`holdUntil`), and a gatherer step may pause while its good lies stocked (`stockedAt`). A
 workshop whose discovery the seat just earned takes the next free site, one site over the pace if need
-be, except that a seat whose defence comes first gives its army and weapon lines that turn. Homes are not fixed
-steps: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women, girls
-and booked daughters, one home site at a time, upgrading or placing whichever adds a slot cheapest.
+be, except that a seat whose defence comes first gives its army and weapon lines that turn. One more
+workshop of a kind the seat runs waits until those standing hold their full crews (owner ruling: upgrades
+and full crews before copies), so the bread line ends on one bakery, a second where there is room, both
+upgraded. Homes are not fixed steps beyond the opening's three, four on a seat with room and five on a
+rich one: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women,
+girls and booked daughters, one home site at a time, upgrading or placing whichever adds a slot
+cheapest.
 It follows food (owner ruling: an upgraded home bears no children while food is short): no home site
 while the store holds under one child's food a woman; a food-rich seat (fishing, or five meals a settler in
 store) may run it from the start of the opening while the daughters are blocked; any other seat opens

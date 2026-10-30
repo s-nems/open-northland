@@ -20,6 +20,7 @@ import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource, knownResourceTest } from '../live-resources.js';
 import { rivalOverSea } from '../sea-route.js';
 import { technologyReach } from '../technology/reach.js';
+import { crewAt, fullCrew, plannedOperators } from '../workforce/staffing-rows.js';
 import {
   type BuildLineId,
   type BuildOrder,
@@ -250,11 +251,13 @@ export function entryStatus(
   }
 }
 
-/** Whether an unmet placement or tower ring still holds its line on its `holdUntil` ({@link StepHold}): the
- *  seat has no standing building of the id at that tier or above, or has not discovered the good, while it
- *  still could and `order` may still raise that building or one making the good ({@link orderMayRaise}),
- *  or its military deadline lies further off than the lead while its defence does not come first. `owned`
- *  is the seat's {@link ownedBuildings} list and `statuses` this decision's {@link lineStatuses} of `order`. */
+/** Whether an unmet step still holds its line: a placement of one more workshop while the ones standing
+ *  lack crews ({@link copyAwaitsCrews}), or a placement or tower ring on its `holdUntil` ({@link StepHold})
+ *  while the seat has no standing building of the id at that tier or above, or has not discovered the
+ *  good, while it still could and `order` may still raise that building or one making the good
+ *  ({@link orderMayRaise}), or while its military deadline lies further off than the lead and its defence
+ *  does not come first. `owned` is the seat's {@link ownedBuildings} list and `statuses` this decision's
+ *  {@link lineStatuses} of `order`. */
 export function stepHeld(
   world: World,
   ctx: SystemContext,
@@ -265,10 +268,38 @@ export function stepHeld(
   entry: BuildOrderEntry,
   memo: DecisionMemo,
 ): boolean {
+  if (entry.kind === 'place' && copyAwaitsCrews(world, ctx, player, owned, entry)) return true;
   if ((entry.kind !== 'place' && entry.kind !== 'towerCoverage') || entry.holdUntil === undefined)
     return false;
   const mayRaise = (typeId: number) => orderMayRaise(world, ctx, owned, order, statuses, entry, typeId);
   return holdOpen(world, ctx, player, owned, entry.holdUntil, memo, mayRaise);
+}
+
+/**
+ * Whether a placement of one more workshop employing craftsmen waits for those of its chain the seat has
+ * (owner ruling: upgrades and full crews come before copies, so no third bakery while two stand half
+ * staffed): one still rises, or stands short of its {@link fullCrew}. A joinery placed for a role is
+ * counted apart (`../joinery-role.ts`) and never waits.
+ */
+function copyAwaitsCrews(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+): boolean {
+  if (entry.role !== undefined) return false;
+  const type = buildingTypeByContentId(ctx.content, entry.building);
+  if (type === undefined || plannedOperators(ctx, type) === 0) return false;
+  const index = contentIndex(ctx.content);
+  const counted = countedTiers(ctx.content, type, entry.belowTier);
+  for (const e of owned) {
+    const copy = index.buildings.get(world.get(e, Building).buildingType);
+    if (copy === undefined || !counted.has(copy.typeId)) continue;
+    if (world.has(e, UnderConstruction)) return true;
+    if (crewAt(world, ctx, e) < fullCrew(world, ctx, player, copy)) return true;
+  }
+  return false;
 }
 
 function holdOpen(
