@@ -1,6 +1,7 @@
 import type { ContentSet, EquipCategory, EquipClass } from '@open-northland/data';
 import {
   AssistantGrants,
+  AssistantRecruit,
   assistantCivilianOnlyGoods,
   assistantSoldierOnlyGoods,
   Carrying,
@@ -99,6 +100,9 @@ export function dispatchAssistantGrants(pass: PlannerPass): void {
     const wanted = grants.get(owner);
     if (wanted === undefined) continue;
     if (world.has(e, EquipOrder) || anotherSystemOwns(world, e)) continue;
+    // A booked recruit still owed his weapon waits for the arming pass: a grant errand first would hold
+    // the equip order his weapon fetch needs, and he would fight bare-handed while out for mead.
+    if (awaitsRecruitWeapon(world, e)) continue;
     if (!mayChangeEquipment(world, ctx.content, e)) continue; // a woman, a child and a hero take no gear
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue; // the ladder never plans a jobless settler
@@ -174,6 +178,12 @@ function grantRouteFor(pass: PlannerPass, e: Entity, owner: number): GrantRoute 
     gate: pass.targets.bands.goodsGate(here, owner, limit ?? undefined),
     veto: unreachableGoalVeto(world, ctx, e),
   };
+}
+
+/** Whether `e` holds an arming booking ({@link AssistantRecruit}) whose weapon is not yet paid. */
+function awaitsRecruitWeapon(world: World, e: Entity): boolean {
+  const booking = world.tryGet(e, AssistantRecruit);
+  return booking !== undefined && booking.intent !== 'trainSoldiers' && !booking.armed;
 }
 
 function holdsSoloSite(world: World, e: Entity): boolean {

@@ -5,6 +5,7 @@ import {
   AssistantCivilianOnlyGrants,
   type AssistantGrantAudience,
   AssistantGrants,
+  AssistantRecruit,
   AssistantSoldierOnlyGrants,
   addPerson,
   Building,
@@ -172,6 +173,16 @@ function setAudience(
   player = HUMAN_PLAYER,
 ): void {
   sim.enqueueSetup({ kind: 'setAssistantGrantAudience', player, goodType, audience });
+}
+
+function swordCounter(sim: Simulation, infinite: boolean): void {
+  sim.enqueueSetup({
+    kind: 'setAssistantCounter',
+    player: HUMAN_PLAYER,
+    counter: 'trainSword',
+    value: 0,
+    infinite,
+  });
 }
 
 /** The shared fixture plus the big healing potion: the small one's effect in a five-sip bottle. */
@@ -586,6 +597,26 @@ describe('assistant auto-equip - dispatch and reservation', () => {
     expect(sim.world.get(soldier, Equipment).misc[0]?.goodType).toBe(STRENGTH_AMULET);
     expect(sim.world.has(soldier, EquipOrder)).toBe(false);
     expect(nodeOf(sim, soldier)).toBe(post);
+  });
+
+  it('leaves a booked recruit owed his weapon to the arming pass, and dresses him once he is armed', () => {
+    const sim = freshSim();
+    const recruit = ownedSettler(sim, 2, 2);
+    enlist(sim, recruit);
+    sim.world.add(recruit, AssistantRecruit, { intent: 'trainSword', armed: false, barracks: recruit });
+    swordCounter(sim, true); // keeps the booking past the release sweep
+    pileAt(sim, 12, 2, SHOES, 1);
+    grant(sim, SHOES);
+
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.tryGet(recruit, Equipment)?.boots ?? null).toBeNull();
+    expect(sim.world.has(recruit, EquipOrder)).toBe(false);
+
+    // Paid: with no armour in reach the arming pass settles the booking, and the grant lands.
+    swordCounter(sim, false); // and no counter books the bare man again
+    sim.world.mut(recruit, AssistantRecruit).armed = true;
+    sim.run(ERRAND_TICKS);
+    expect(sim.world.get(recruit, Equipment).boots?.goodType).toBe(SHOES);
   });
 
   it('sends a soldier for his gear while a comrade fights beside him', () => {
