@@ -1,8 +1,9 @@
-import { Building } from '../../../components/index.js';
+import { Building, mapBriefOf } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import { intSqrt } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { HALF_ROW_PX, NODE_STEP_PX } from '../../../nav/node-circle.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { seatBaseOf } from '../base.js';
@@ -14,19 +15,16 @@ import {
 } from '../military/deadline.js';
 import { nearestEnemyBuilding } from '../sea-route.js';
 
-// The world-metric node pitch of `nav/node-circle.ts`: 34 px E/W, 19 px N/S per half-cell node, so a
-// line measured in these px stands straight on screen.
-const NODE_STEP_PX = 34;
-const HALF_ROW_PX = 19;
-
 /** Covering towers are an id allowlist, not `kind === 'tower'`: `work_pottery_02` shares the kind but
  *  is the defence wall. */
 export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
 
 /** How far ahead of the seat's base its tower line stands toward the attacks, in world-metric nodes
  *  (authored): inside a cramped seat's build reach on every heading (29 rows straight north), with the
- *  base's own workshops behind it. A settlement already reaching past it moves the line out by whole
- *  steps of this depth, so one stray building does not shift every slot. */
+ *  base's own workshops behind it. Buildings already reaching past it move the line out by whole steps of
+ *  this depth, so one stray building does not shift every slot: on a scripted front only the seat's start
+ *  buildings, since a building the economy places beyond the line when nothing fits behind it would
+ *  otherwise walk the line out step by step (on mroczny_las 75 rows north of the base by minute 60). */
 export const FRONT_LINE_DEPTH_NODES = 16;
 
 /** How many rows of tower slots a seat whose defence comes first holds on its front, the second half a
@@ -91,7 +89,8 @@ export function seatFrontLine(
   const base = baseNode(world, ctx, player);
   if (base === null) return null;
   const forecast = forecastAttackOrigin(world, ctx, player);
-  if (forecast !== null) return frontLine(world, ctx, owned, base, forecast, true);
+  if (forecast !== null)
+    return frontLine(world, ctx, owned, base, forecast, true, startBuildingNodes(world, ctx, player));
   const rival = nearestEnemyBuilding(world, ctx, player, base);
   return rival === null ? null : frontLine(world, ctx, owned, base, rival.node, false);
 }
@@ -106,7 +105,21 @@ export function scriptedFrontLine(
 ): FrontLine | null {
   const base = baseNode(world, ctx, player);
   const forecast = base === null ? null : forecastAttackOrigin(world, ctx, player);
-  return base === null || forecast === null ? null : frontLine(world, ctx, owned, base, forecast, true);
+  return base === null || forecast === null
+    ? null
+    : frontLine(world, ctx, owned, base, forecast, true, startBuildingNodes(world, ctx, player));
+}
+
+/** The anchor nodes of `player`'s start buildings other than towers, from the map brief. */
+function startBuildingNodes(world: World, ctx: SystemContext, player: number): HalfCellNode[] {
+  const index = contentIndex(ctx.content);
+  const start = mapBriefOf(world)?.seats.find((seat) => seat.player === player);
+  const nodes: HalfCellNode[] = [];
+  for (const b of start?.buildings ?? []) {
+    const type = index.buildings.get(b.buildingType);
+    if (type !== undefined && !TOWER_CONTENT_IDS.includes(type.id)) nodes.push({ hx: b.hx, hy: b.hy });
+  }
+  return nodes;
 }
 
 function baseNode(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
@@ -116,8 +129,8 @@ function baseNode(world: World, ctx: SystemContext, player: number): HalfCellNod
 
 /**
  * The line across the heading from `base` to `origin`, {@link FRONT_LINE_DEPTH_NODES} ahead of the base,
- * or as many whole depths further as the farthest of `owned` other than a tower already stands; null when
- * the two coincide.
+ * or as many whole depths further as the farthest of `depthFrom` stands, by default `owned` other than
+ * its towers; null when the two coincide. The slots span the width of `owned`.
  * Integer px arithmetic with truncating division, byte-identical across engines.
  */
 export function frontLine(
@@ -127,6 +140,7 @@ export function frontLine(
   base: HalfCellNode,
   origin: HalfCellNode,
   scripted: boolean,
+  depthFrom?: readonly HalfCellNode[],
 ): FrontLine | null {
   const hx = (origin.hx - base.hx) * NODE_STEP_PX;
   const hy = (origin.hy - base.hy) * HALF_ROW_PX;
@@ -145,9 +159,10 @@ export function frontLine(
     if (type !== undefined && TOWER_CONTENT_IDS.includes(type.id)) continue;
     const node = anchorNodeOf(world, e);
     if (node === null) continue;
-    farthest = Math.max(farthest, ahead(node.hx, node.hy));
+    if (depthFrom === undefined) farthest = Math.max(farthest, ahead(node.hx, node.hy));
     widest = Math.max(widest, Math.abs(across(node.hx, node.hy)));
   }
+  for (const node of depthFrom ?? []) farthest = Math.max(farthest, ahead(node.hx, node.hy));
   const depthPx = stepPx * Math.max(1, Math.ceil(farthest / stepPx));
   return {
     scripted,

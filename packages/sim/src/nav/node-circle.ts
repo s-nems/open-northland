@@ -9,9 +9,9 @@ import type { NodeId } from './terrain/index.js';
  */
 
 /** One node's E/W pitch in native px, the radius unit. The integer-px form of `HALF_COLUMN`. */
-const NODE_STEP_PX = 34;
+export const NODE_STEP_PX = 34;
 /** One node's N/S pitch in native px, the integer-px form of `HALF_ROW`. */
-const HALF_ROW_PX = 19;
+export const HALF_ROW_PX = 19;
 
 /** An axis-aligned box on the node lattice, bounds inclusive. */
 export interface NodeBox {

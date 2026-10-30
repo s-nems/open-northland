@@ -584,6 +584,20 @@ describe('build-order placement - affinity and ground rules', () => {
     const raided = spotIn({ ...ctxOf(sim), missions: { missions: [raid] } });
     expect(raided.x).toBeGreaterThan(HQ_X);
     expect(raided.x).toBeLessThanOrEqual(HQ_X + FRONT_LINE_DEPTH_NODES);
+    // A building that went up past the line later does not walk the scripted line out: its depth reads
+    // the start buildings alone.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      x: HQ_X + 3 * FRONT_LINE_DEPTH_NODES,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    expect(spotIn({ ...ctxOf(sim), missions: { missions: [raid] } }).x).toBeLessThanOrEqual(
+      HQ_X + FRONT_LINE_DEPTH_NODES,
+    );
   });
 
   it('pulls a front-affinity placement toward the nearest enemy headquarters, or the map centre without one', () => {
