@@ -64,6 +64,7 @@ import {
   entryStatus,
   type LineStatuses,
   lineStatuses,
+  nothingToUpgrade,
   stepHeld,
   upgradeCandidate,
 } from './progress.js';
@@ -450,6 +451,12 @@ function runBuildOrder(
         if (lockHolds) return null;
         continue;
       }
+      // An upgrade with nothing left below its tier is passed over, so a seat of fewer towers than the
+      // army line upgrades still reaches the catapult joinery behind them.
+      if (entry.kind === 'upgrade') {
+        const target = buildingTypeByContentId(ctx.content, entry.building);
+        if (target !== undefined && nothingToUpgrade(world, index, owned, target)) continue;
+      }
       if (!billSourced(world, ctx, player, entry, madeGoods)) return null;
       const verdict = verdictOf(line, step);
       if (verdict.kind === 'pass') continue;
@@ -522,8 +529,9 @@ function turnOrder(
       type,
       next.kind === 'place' || next.kind === 'upgrade' ? next.belowTier : undefined,
     );
-    const copyAhead = next.kind === 'place' && next.aheadOfCrews === true;
-    if (!copyAhead) for (const kind of kinds) if (ownedTypes.has(kind)) return TURN.more;
+    for (const kind of kinds)
+      if (ownedTypes.has(kind))
+        return next.kind === 'place' && next.aheadOfCrews === true ? TURN.newKind : TURN.more;
     return earnedWorkshop(gated, type) ? TURN.earned : TURN.newKind;
   };
   return lines.map((line) => ({ line, turn: rank(line) })).sort((a, b) => a.turn - b.turn);

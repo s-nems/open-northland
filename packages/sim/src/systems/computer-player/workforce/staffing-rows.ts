@@ -1,10 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import {
-  type EconomicSide,
-  playerPlacementTribes,
-  professionProgressionEnabled,
-  Settler,
-} from '../../../components/index.js';
+import { playerPlacementTribes, professionProgressionEnabled, Settler } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -62,12 +57,9 @@ export interface StaffingRow extends StaffingTiers {
   /** A discovery until which the building runs a carrier at the minimum tier, so its operator works
    *  instead of fetching his inputs and earns it sooner. */
   readonly porterUntil?: DiscoveryTarget;
-  /** The tiers on a seat dressing its army in tunics ({@link TUNIC_SIDES}), over the rest of the row. */
+  /** The tiers on a seat dressing its army in tunics (`TUNIC_SIDES`, `../build-order/seat-order.ts`), over the rest of the row. */
   readonly tunicSeat?: Partial<BuildingStaffing>;
 }
-
-/** The economic sides whose army wears tunics and shoes instead of plate and chain (`craft.ts`). */
-export const TUNIC_SIDES: readonly EconomicSide[] = ['naturalArms', 'ironWeapons'];
 
 /** A job or good the seat discovers, by stable content id. */
 export interface DiscoveryTarget {

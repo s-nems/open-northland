@@ -20,6 +20,11 @@ export function minutesToTicks(minutes: number): number {
 export const MID_GAME_FROM_TICKS = minutesToTicks(60);
 export const LATE_GAME_FROM_TICKS = minutesToTicks(90);
 
+/** The settlement from which the seat raises the late late game's buildings (owner ruling: the second
+ *  armory and the catapult joinery come last). Authored figure: magiczny_las seats counted 128-279
+ *  settlers at game minute 90, so only the largest reach it by then. */
+export const LATE_LATE_GAME_SETTLERS = 200;
+
 /** From when the headquarters and the warehouses run transport carriers (owner ruling): the late game. */
 export const STORE_CARRIERS_FROM_TICKS = LATE_GAME_FROM_TICKS;
 

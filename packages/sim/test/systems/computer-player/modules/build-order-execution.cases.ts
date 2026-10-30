@@ -593,6 +593,29 @@ describe('build-order module (houseBuild)', () => {
     expect(act(LATE_GAME_FROM_TICKS)?.kind).toBe('placeBuilding');
   });
 
+  it('passes over an upgrade with nothing left below its tier, so the steps behind it still act', () => {
+    // The army line's catapult joinery stands behind six tower upgrades, more than a small seat has towers.
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TOP_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const order = buildOrderModule(
+      oneLine([
+        { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
+        { kind: 'place', building: 'work_brewery', count: 1 },
+      ]),
+    );
+    const next = [...order.run(sim.world, ctxOf(sim), SEAT)][0];
+    expect(next).toMatchObject({ kind: 'placeBuilding', buildingType: BREWERY_TYPE });
+  });
+
   it('upgrades two buildings side by side, each in-flight upgrade meeting its share of the entry', () => {
     const FIRST_BAKERY = { x: HQ_X + 8, y: HQ_Y };
     const SECOND_BAKERY = { x: HQ_X + 24, y: HQ_Y + 8 };

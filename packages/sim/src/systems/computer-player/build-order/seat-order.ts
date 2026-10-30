@@ -198,7 +198,7 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
 
 /** The sides dressing the army in tunics, whose seat moves its clothing line up right behind the brewery
  *  (owner ruling: many tunics fast, the shoes along). */
-const TUNIC_SIDES: readonly EconomicSide[] = (Object.keys(SIDE_RULES) as EconomicSide[]).filter(
+export const TUNIC_SIDES: readonly EconomicSide[] = (Object.keys(SIDE_RULES) as EconomicSide[]).filter(
   (side) => SIDE_RULES[side].keeps === TUNIC_ARMS,
 );
 

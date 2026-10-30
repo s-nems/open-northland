@@ -1,4 +1,4 @@
-import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
+import { LATE_GAME_FROM_TICKS, LATE_LATE_GAME_SETTLERS } from '../game-phase.js';
 import { BARRACKS_LEAD_TICKS, TOWER_LEAD_TICKS } from '../military/deadline.js';
 import type { BuildLine, BuildOrderEntry } from './entries.js';
 
@@ -18,10 +18,10 @@ const TOWER_UPGRADES: readonly BuildOrderEntry[] = Array.from({ length: UPGRADED
   count: i + 1,
 }));
 
-/** Owner ruling: the catapult joinery belongs to the late late game, so it waits for the settlement the
- *  second armory waits for (`./entries.ts`) and for the late game's clock: magiczny_las seats reached 200
- *  settlers by game minute 71-85, which the owner still found too early. */
-const CATAPULT_JOINERY_FROM_SETTLERS = 200;
+/** Owner ruling: the catapult joinery belongs to the late late game, so it waits for its settlement and
+ *  for the late game's clock: magiczny_las seats reached that settlement by game minute 71-85, which the
+ *  owner still found too early. */
+const CATAPULT_JOINERY_FROM_SETTLERS = LATE_LATE_GAME_SETTLERS;
 
 /** The army line: the tower ring, the barracks, the towers' upgrades and the catapult joinery
  *  (`./entries.ts`). */

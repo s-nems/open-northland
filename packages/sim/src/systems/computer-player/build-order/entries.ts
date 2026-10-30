@@ -1,6 +1,11 @@
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { ComputerProfile } from '../difficulty.js';
-import { LATE_GAME_FROM_TICKS, minutesToTicks, SITES_GROW_FROM_TICKS } from '../game-phase.js';
+import {
+  LATE_GAME_FROM_TICKS,
+  LATE_LATE_GAME_SETTLERS,
+  minutesToTicks,
+  SITES_GROW_FROM_TICKS,
+} from '../game-phase.js';
 import type { JoineryRole } from '../joinery-role.js';
 import { MILITARY_LINE } from './military-line.js';
 
@@ -183,9 +188,8 @@ const THIRD_BAKERY_FROM_SETTLERS = 150;
 const FOURTH_BAKERY_FROM_SETTLERS = 220;
 
 /** Owner ruling: one armory with two armourers and a porter lasts very long, so the second comes only in
- *  the late late game, at the third brewery's figure: by game minute 90 on magiczny_las (128-279 settlers)
- *  only the largest seats reach it. */
-const SECOND_ARMORY_FROM_SETTLERS = THIRD_BREWERY_FROM_SETTLERS;
+ *  the late late game. */
+const SECOND_ARMORY_FROM_SETTLERS = LATE_LATE_GAME_SETTLERS;
 
 /** The `count`th brewery beside the others once the seat counts `fromSettlers` settlers, then a hive and a
  *  well beside it unless theirs stand in reach. */
@@ -611,7 +615,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         },
         SECOND_UPPER_TAILOR,
         { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
-        // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
+        // The second tailor, counted with the upgraded one, so this adds one building: the upper tier
+        // outright once the seat sources it (`./direct-tier.ts`), else the small tailor as a shoemaker.
         {
           kind: 'place',
           building: 'work_sewery_00',

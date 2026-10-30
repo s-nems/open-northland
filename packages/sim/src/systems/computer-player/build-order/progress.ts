@@ -41,7 +41,7 @@ export type EntryStatus = 'skip' | 'satisfied' | 'unmet';
 
 /** Whether `from` sits strictly below `target` on the `upgradeTarget` chain. The visited guard bounds
  *  a malformed cyclic chain. */
-function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingType): boolean {
+export function upgradesInto(index: ContentIndex, from: BuildingType, target: BuildingType): boolean {
   const visited = new Set<number>();
   let step: BuildingType | undefined = from;
   while (step !== undefined && !visited.has(step.typeId)) {
@@ -455,6 +455,21 @@ export function lineStatuses(
 /** The lowest-id built building the seat can upgrade toward `target`; a site, including an in-flight
  *  upgrade, has `built < ONE` and is skipped. `owned` is canonical ascending, so the first hit is
  *  deterministic. */
+/** Whether the seat owns no building, built or a site, below `target` on its chain: an upgrade step
+ *  asking for more of the tier than the seat has buildings of the chain has nothing left to lift. */
+export function nothingToUpgrade(
+  world: World,
+  index: ContentIndex,
+  owned: readonly Entity[],
+  target: BuildingType,
+): boolean {
+  for (const e of owned) {
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type !== undefined && upgradesInto(index, type, target)) return false;
+  }
+  return true;
+}
+
 export function upgradeCandidate(
   world: World,
   index: ContentIndex,

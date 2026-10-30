@@ -8,7 +8,7 @@ import {
 } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
-import { seatHasSide } from '../build-order/seat-order.js';
+import { seatHasSide, TUNIC_SIDES } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
 import {
   CORE_CREW_FROM_TICKS,
@@ -22,7 +22,6 @@ import {
   discoveryPending,
   rowPlan,
   STAFFING_BY_BUILDING_ID,
-  TUNIC_SIDES,
 } from './staffing-rows.js';
 import type { SeatSupply } from './supply.js';
 
