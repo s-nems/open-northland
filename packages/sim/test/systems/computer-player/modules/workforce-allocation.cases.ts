@@ -134,6 +134,7 @@ import {
   seatEconomy,
   spawnMen,
   TOOL_IRON,
+  VEHICLE_YARD_TYPE,
   VIKING,
   WELL_TYPE,
   WOOD,
@@ -762,10 +763,10 @@ describe('workforce module (collectResources)', () => {
     const sim = aiSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
-    const site = (spot: { x: number; y: number }) =>
+    const site = (spot: { x: number; y: number }, buildingType = HOME_TYPE) =>
       sim.enqueueSetup({
         kind: 'placeBuilding',
-        buildingType: HOME_TYPE,
+        buildingType,
         ...spot,
         tribe: VIKING,
         owner: SEAT,
@@ -796,8 +797,14 @@ describe('workforce module (collectResources)', () => {
     expect(builders()).toHaveLength(sitesFloor);
     expect(posted(decide())).toEqual([]);
 
+    // A workshop's vehicle site raises no floor: builders never serve it.
+    site({ x: 50, y: 16 }, VEHICLE_YARD_TYPE);
+    sim.step();
+    expect(decide().filter((c) => c.kind === 'setJob' && c.jobType === BUILDER)).toEqual([]);
+    expect(builders()).toHaveLength(sitesFloor);
+
     // A fourth site raises the floor past the builders: the stone post beyond the row goes back to them.
-    site({ x: 50, y: 16 });
+    site({ x: 56, y: 16 });
     sim.step();
     const back = decide().filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
     expect(back).toHaveLength(1);

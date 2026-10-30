@@ -1,12 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import {
-  Building,
-  Carrying,
-  CurrentAtomic,
-  JobAssignment,
-  Settler,
-  UnderConstruction,
-} from '../../../components/index.js';
+import { Building, Carrying, CurrentAtomic, JobAssignment, Settler } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -15,6 +8,7 @@ import { byExperience, experienceRank, tradeExperience } from '../../ai-shared/w
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
+import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
@@ -41,10 +35,16 @@ export const STALLED_BUILDER_CAP = 4;
  *  two or three builders left a site at 60% for over fifteen minutes with its wood and stone in stock. */
 export const BUILDERS_PER_OPEN_SITE = 2;
 
-/** The builders the seat's open sites among `owned` call for, upgrades included, at most `cap`. */
-export function siteBuilderFloor(world: World, owned: readonly Entity[], cap: number): number {
+/** The builders the seat's open sites among `owned` call for, upgrades included, at most `cap`. A
+ *  workshop's vehicle site is left out: builders never serve it. */
+export function siteBuilderFloor(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  cap: number,
+): number {
   let sites = 0;
-  for (const e of owned) if (world.has(e, UnderConstruction)) sites++;
+  for (const e of owned) if (isServedConstructionSite(world, ctx.content, e)) sites++;
   return Math.min(cap, sites * BUILDERS_PER_OPEN_SITE);
 }
 

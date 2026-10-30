@@ -19,6 +19,7 @@ import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
+import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
@@ -82,12 +83,7 @@ export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.
 /** The seat's open sites that count against its pace: a workshop's hidden vehicle yard is the crew's own
  *  cycle, never a placement the list made, so it holds no slot. */
 function constructionSites(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity[] {
-  const index = contentIndex(ctx.content);
-  return owned.filter(
-    (e) =>
-      world.has(e, UnderConstruction) &&
-      index.buildings.get(world.get(e, Building).buildingType)?.kind !== BUILDING_KIND.vehicle,
-  );
+  return owned.filter((e) => isServedConstructionSite(world, ctx.content, e));
 }
 
 /**

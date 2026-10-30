@@ -132,7 +132,7 @@ function runWorkforce(
   // While a placement is stalled the reserve shrinks to its floor, so the clearing posts get the men the
   // missing sites would have had.
   const builderLimit = clearing > 0 ? STALLED_BUILDER_CAP : builderCap(profile, civilians, ctx.tick);
-  const builderFloor = siteBuilderFloor(world, owned, builderLimit);
+  const builderFloor = siteBuilderFloor(world, ctx, owned, builderLimit);
   const shortOfBuilders = seatBuilderCount(world, player, builderJob) < builderFloor;
   const allWanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const wanted = shortOfBuilders ? rowPosts(allWanted) : allWanted;
