@@ -5,11 +5,23 @@ import {
   type MissionScript,
   SUCCESSFUL_IF,
 } from '../../../missions/script.js';
-import type { IntentPoint, MissionTiming } from './triggers.js';
+import type { IntentPoint, MissionTiming, Trigger } from './triggers.js';
 
 export interface IntentArea {
   readonly point: IntentPoint;
+  /** In map points (`hexDistance`), as the mission range goals measure. */
   readonly range: number;
+}
+
+/** How a script pays for holding an area: a presence check on a repeating timer that hands over goods a
+ *  deciding deliver objective counts. */
+export interface HoldReward {
+  /** The repeating timer's first tick, its cadence when it re-arms itself from the map start. */
+  readonly everyTicks: number;
+  /** How many rewarded checks the deciding objective needs. */
+  readonly checks: number;
+  /** The deliver objective's mission the rewards feed. */
+  readonly feeds: number;
 }
 
 /**
@@ -25,6 +37,8 @@ export type Objective =
       readonly player: number;
       readonly area: IntentArea;
       readonly minUnits: number;
+      /** Null for a one-time check; set for an area the script rewards holding again and again. */
+      readonly reward: HoldReward | null;
     }
   | { readonly kind: 'reachArea'; readonly player: number | null; readonly area: IntentArea }
   | {
@@ -139,7 +153,10 @@ export function scriptObjectivesOf(
               timing,
               supplier,
             )) {
-              push({ verdict, role: 'supply', mission: supplier, objective: supply });
+              const objectiveOf =
+                holdOfSupply(supply, supplied.results, timing.fireOf(supplier), objective, next.mission) ??
+                supply;
+              push({ verdict, role: 'supply', mission: supplier, objective: objectiveOf });
             }
           }
         }
@@ -172,6 +189,54 @@ function missionObjectives(
   if (defeated.length > 0)
     out.unshift({ kind: 'defeatPlayers', players: [...new Set(defeated)].sort((a, b) => a - b) });
   return out;
+}
+
+/**
+ * A supply goal read as holding an area: a presence goal on an area whose mission fires on a repeating
+ * timer and hands over the deliver objective's good each time, so holding the area is what wins it. Null
+ * for any other supply.
+ */
+function holdOfSupply(
+  supply: Objective,
+  results: readonly MissionResultOp[],
+  fire: Trigger,
+  deliver: Extract<Objective, { kind: 'deliverGoods' }>,
+  feeds: number,
+): Objective | null {
+  if (supply.kind !== 'reachArea' && supply.kind !== 'holdArea') return null;
+  if (supply.player === null) return null;
+  const everyTicks = repeatingTimerTick(fire);
+  if (everyTicks === null) return null;
+  let granted = 0;
+  for (const r of results) if (isGoodsGrant(r) && r.good === deliver.good) granted += r.amount;
+  if (granted <= 0) return null;
+  return {
+    kind: 'holdArea',
+    player: supply.player,
+    area: supply.area,
+    minUnits: supply.kind === 'holdArea' ? supply.minUnits : 1,
+    reward: { everyTicks, checks: Math.ceil(deliver.amount / granted), feeds },
+  };
+}
+
+/** The tick of the first repeating timer a trigger waits on, null when none repeats. */
+function repeatingTimerTick(t: Trigger): number | null {
+  switch (t.kind) {
+    case 'atTick':
+      return t.repeats ? t.tick : null;
+    case 'window':
+      return t.repeats ? t.fromTick : null;
+    case 'conditional':
+      for (const c of t.conditions) {
+        if (c.kind !== 'nested') continue;
+        const tick = repeatingTimerTick(c.trigger);
+        if (tick !== null) return tick;
+      }
+      return null;
+    case 'always':
+    case 'never':
+      return null;
+  }
 }
 
 function missionsWhere(script: MissionScript, test: (result: MissionResultOp) => boolean): number[] {
@@ -235,6 +300,7 @@ export function objectiveOfGoal(
         player: goal.player,
         area: { point: goal.point, range: goal.range },
         minUnits: goal.amount,
+        reward: null,
       };
     case 'NumberOfGoodsInArea':
     case 'NumberOfGoodsInHousesInArea':

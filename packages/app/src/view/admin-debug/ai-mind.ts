@@ -226,6 +226,16 @@ export function intelTables(mind: SeatMind, ownPoints: number | null, msgs: Mess
   return tables;
 }
 
+/** An objective's kind code; a held area adds its centre node and range, and the reward cadence in minutes
+ *  with the checks it needs. */
+function objectiveLabel(objective: systems.Objective): string {
+  if (objective.kind !== 'holdArea') return objective.kind;
+  const { point, range } = objective.area;
+  const area = `${objective.kind} ${point.hx},${point.hy} r${range}`;
+  const reward = objective.reward;
+  return reward === null ? area : `${area} /${minutes(reward.everyTicks)} x${reward.checks}`;
+}
+
 /** The map's objectives for the seat and the scripted attacks forecast to reach it. */
 export function intentTables(mind: SeatMind, msgs: Messages): AdminAiTable[] {
   const intent = mind.intent;
@@ -235,7 +245,7 @@ export function intentTables(mind: SeatMind, msgs: Messages): AdminAiTable[] {
   if (intent.objectives.length > 0) {
     tables.push({
       head: [copy.objective, copy.verdict, copy.role, copy.mission],
-      rows: intent.objectives.map((o) => [o.objective.kind, o.verdict, o.role, String(o.mission)]),
+      rows: intent.objectives.map((o) => [objectiveLabel(o.objective), o.verdict, o.role, String(o.mission)]),
     });
   }
   if (intent.threats.length > 0) {

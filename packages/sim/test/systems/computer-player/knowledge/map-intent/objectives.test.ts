@@ -42,7 +42,7 @@ describe('goal classification', () => {
     ],
     [
       { opcode: 'NumberOfSoldiersNearPos', player: SEAT, point: POINT, range: RANGE, amount: 8 },
-      { kind: 'holdArea', player: SEAT, area, minUnits: 8 },
+      { kind: 'holdArea', player: SEAT, area, minUnits: 8, reward: null },
     ],
     [
       { opcode: 'FindPosByPlayersMapMoveable', player: SEAT, point: POINT, range: RANGE },
@@ -171,6 +171,62 @@ describe('script objectives of a seat', () => {
       ['decides', 'deliverGoods'],
       ['supply', 'reachArea'],
     ]);
+  });
+
+  it('reads a presence check on a repeating timer that pays a deliver objective as holding the area', () => {
+    const centre = { hx: 180, hy: 180 };
+    const everySeconds = 300;
+    const grant = {
+      opcode: 'AddGoodsToMapArea',
+      good: DIAMOND,
+      amount: 1,
+      point: POINT,
+      range: RANGE,
+      flag: false,
+      player: SEAT,
+    } as const;
+    const found = objectivesOf([
+      // The timer re-arms itself through mission 2, sampling presence at mission 1 each time.
+      mission({
+        active: true,
+        goals: [{ opcode: 'TimeGone', seconds: everySeconds }],
+        results: [
+          { opcode: 'ActivateMission', missionIndex: 1 },
+          { opcode: 'ActivateMission', missionIndex: 2 },
+        ],
+      }),
+      mission({
+        goals: [{ opcode: 'FindPosByPlayersMapMoveable', player: SEAT, point: centre, range: 13 }],
+        results: [grant],
+      }),
+      mission({ goals: [{ opcode: 'True' }], results: [{ opcode: 'ActivateMission', missionIndex: 0 }] }),
+      mission({
+        active: true,
+        goals: [
+          {
+            opcode: 'NumberOfGoodsInArea',
+            player: SEAT,
+            good: DIAMOND,
+            amount: 10,
+            point: POINT,
+            range: RANGE,
+          },
+        ],
+        results: [{ opcode: 'MissionWon', player: SEAT }],
+      }),
+    ]);
+    expect(found.find((o) => o.role === 'supply')).toEqual({
+      verdict: 'win',
+      role: 'supply',
+      mission: 1,
+      objective: {
+        kind: 'holdArea',
+        player: SEAT,
+        area: { point: centre, range: 13 },
+        minUnits: 1,
+        reward: { everyTicks: everySeconds * TICKS_PER_SECOND, checks: 10, feeds: 3 },
+      },
+    });
   });
 
   it('gives a seat no verdict names no objective', () => {

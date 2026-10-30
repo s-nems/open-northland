@@ -200,13 +200,28 @@ describe('AI mind rows', () => {
         seat: 2,
         objectives: [
           { verdict: 'win', role: 'decides', mission: 4, objective: { kind: 'defeatPlayers', players: [1] } },
+          {
+            verdict: 'win',
+            role: 'supply',
+            mission: 5,
+            objective: {
+              kind: 'holdArea',
+              player: 2,
+              area: { point: { hx: 179, hy: 179 }, range: 13 },
+              minUnits: 1,
+              reward: { everyTicks: 5 * MINUTE, checks: 10, feeds: 4 },
+            },
+          },
         ],
         threats: [threat],
         program: [],
       },
     };
     const [objectives, threats] = intentTables(mind, msgs);
-    expect(objectives?.rows).toEqual([['defeatPlayers', 'win', 'decides', '4']]);
+    expect(objectives?.rows).toEqual([
+      ['defeatPlayers', 'win', 'decides', '4'],
+      ['holdArea 179,179 r13 /5.0 x10', 'win', 'supply', '5'],
+    ]);
     expect(threats?.rows).toEqual([
       ['mapAiAttack', formatMessage(copy.player, { player: 1 }), 'atTick', '2.0'],
     ]);
