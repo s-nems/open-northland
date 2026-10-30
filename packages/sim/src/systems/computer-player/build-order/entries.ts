@@ -20,7 +20,8 @@ export type PlacementAffinity =
 
 /** What a step waits for while its line holds on it: a built building of the id (at that tier or
  *  above, a rising site not counting), a good the seat has discovered how to make, the seat counting
- *  `count` settlers, or the clock reaching `leadTicks` before the seat's military deadline
+ *  `count` settlers, the seat's stock of one of `goods` (the summary bar's figure) falling under `units`,
+ *  or the clock reaching `leadTicks` before the seat's military deadline
  *  (`../military/deadline.ts`), which its defence coming first lifts at once. A hold the seat can never
  *  meet, a building or good missing from the content, a discovery it can never make, or a building (or the
  *  good's maker) no unskipped step of the order raises, lets the step act (`./progress.ts`). */
@@ -28,6 +29,7 @@ export type StepHold =
   | { readonly kind: 'built'; readonly building: string }
   | { readonly kind: 'good'; readonly good: string }
   | { readonly kind: 'settlers'; readonly count: number }
+  | { readonly kind: 'short'; readonly goods: readonly string[]; readonly units: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number };
 
 export type BuildOrderEntry =
@@ -226,6 +228,16 @@ function mints(count: number): Extract<BuildOrderEntry, { kind: 'place' }> {
   };
 }
 
+/** The second and third mint; a seat with little gold keeps to the first (`./seat-order.ts`). */
+export const LATER_MINTS: readonly BuildOrderEntry[] = [{ ...mints(2), holdUntil: AMULETS }, mints(3)];
+
+/** The third and fourth upper smithy, plate and mail arming the army; a seat with little iron forges its
+ *  weapons in two (`./seat-order.ts`). */
+export const LATE_SMITHIES: readonly BuildOrderEntry[] = [
+  { kind: 'place', building: 'work_smithy_01', count: 3, near: IRON_AND_WOOD },
+  { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
+];
+
 /** Owner ruling: an iron-poor seat arms with tunics and gets its second tailor right after the first; an
  *  iron-rich one sews leather and boots at one tailor until the upper tier stands (`./seat-order.ts`). */
 export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
@@ -235,10 +247,37 @@ export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
   near: [{ kind: 'building', id: 'work_sewery_00' }],
 };
 
+/** Owner ruling: a seat dressing its army in tunics runs two upper tailors, two of the four tailors on
+ *  shoes and two on tunics (`workforce/craft.ts`). */
+export const SECOND_UPPER_TAILOR: BuildOrderEntry = { kind: 'upgrade', building: 'work_sewery_01', count: 2 };
+
+/** The leather or wool in stock under which a tunic seat raises a second animal farm once both upper
+ *  tailors stand (authored): about one cycle's input for each of the four tailors. With both breeders on
+ *  cattle and one tailor, leather lay at 23-65 from game minute 40 on krwawa_rzeka, so a stock under this
+ *  with the breeders split means the tailors outrun the herds. */
+const ANIMAL_FARM_SHORT_UNITS = 8;
+
+/** Owner ruling: a second animal farm, its breeders split as the first's, only while the first cannot keep
+ *  the tailors in leather and wool. */
+export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
+  kind: 'place',
+  building: 'work_animal_farm',
+  count: 2,
+  near: [
+    { kind: 'building', id: 'work_animal_farm' },
+    { kind: 'building', id: 'work_farm_00' },
+  ],
+  holdUntil: { kind: 'short', goods: ['leather', 'wool'], units: ANIMAL_FARM_SHORT_UNITS },
+};
+
 /** Owner ruling: a seat with room opens on four or five lower-tier homes, so more of its couples have
  *  children from the start: four, five on a rich seat's copies (`./seat-order.ts`); a cramped seat keeps
  *  to the first three. */
 export const ROOMY_OPENING_HOMES: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 4 };
+
+/** A well beside the second animal farm when the first one's stands out of reach; its cap counts every
+ *  water drinker the lines raise before the late druid huts. */
+export const SECOND_ANIMAL_FARM_WELL: BuildOrderEntry = wellBeside('work_animal_farm', 12);
 
 /** The grain farm. Every bakery, brewery and animal farm downstream waits on its grain, so each of their
  *  lines opens on it, met by whichever line raised it, and holds until it stands. */
@@ -504,6 +543,10 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           count: 2,
           near: [{ kind: 'building', id: 'work_sewery_01' }],
         },
+        // A seat dressing its army in tunics only (`./seat-order.ts`).
+        SECOND_UPPER_TAILOR,
+        SECOND_ANIMAL_FARM,
+        SECOND_ANIMAL_FARM_WELL,
       ],
     },
     {
@@ -537,11 +580,11 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         { kind: 'upgrade', building: 'work_smithy_01', count: 1 },
         // Owner ruling: on a seat with iron the upper smithies' mail and plate arm the army, so once the
         // smith has learned them (the upper tier is enabled by that discovery) more upper smithies follow,
-        // up to four, five on a rich seat; a seat without iron in reach raises none (`./seat-order.ts`).
+        // up to four, five on a rich seat; a seat with little iron stops at two, and one without iron in
+        // reach raises none (`./seat-order.ts`).
         // Each waits for the crews of those standing (`./progress.ts`).
         { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD },
-        { kind: 'place', building: 'work_smithy_01', count: 3, near: IRON_AND_WOOD },
-        { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
+        ...LATE_SMITHIES,
       ],
     },
     {
@@ -670,12 +713,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // big potion also wants and the druids pay in coins; never two at once as the first. Once he has
       // learned the amulets, the late game's move into high-end equipment, two more follow, each waiting
       // for the crews of those standing (`./progress.ts`).
-      steps: [
-        { kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS },
-        mints(1),
-        { ...mints(2), holdUntil: AMULETS },
-        mints(3),
-      ],
+      steps: [{ kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS }, mints(1), ...LATER_MINTS],
     },
   ],
   // Owner ruling: the economy first. The opening, so the farm, the first homes and the material workshops

@@ -2,6 +2,7 @@ import type { BuildingType, ContentSet } from '@open-northland/data';
 import {
   Building,
   CompletedCycles,
+  type EconomicSide,
   JobAssignment,
   PRODUCTION_UNLIMITED,
   ProductionCounters,
@@ -39,8 +40,8 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * or the whole list when there is none. A `firstFed` seat works the first of its lines whose `input` the
  * seat holds a unit of, and every line while it holds none of them. A good with supply lines
  * ({@link SeatSupply}) takes no authored glut: {@link CraftPlan.sink} covers it. A `firstEnabled` seat
- * works the first of its groups with a good the seat may make, so a better product replaces weaker ones
- * once earned. A `whileOwned` seat works `works` while the seat owns a building of that type, standing or
+ * works the first of its seats that names a good the seat may make right now, so a better product
+ * replaces weaker ones once earned. A `whileOwned` seat works `works` while the seat owns a building of that type, standing or
  * a site (with `siteOnly`, a site still under construction), and `otherwise` meanwhile.
  */
 export type CraftSeat =
@@ -51,7 +52,7 @@ export type CraftSeat =
       readonly otherwise?: CraftSeat;
     }
   | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] }
-  | { readonly firstEnabled: readonly (readonly string[])[] }
+  | { readonly firstEnabled: readonly CraftSeat[] }
   | {
       readonly whileOwned: string;
       readonly siteOnly?: true;
@@ -190,15 +191,28 @@ const MINT_SEATS: readonly CraftSeat[] = [
  *  wooden spears at which the second armourer turns to long bows alone (authored). */
 const ARMOURY_GLUT_UNITS = 20;
 
+/** The long bows in stock at which an armourer turns to wooden spears (authored): about a tower ring's
+ *  archers and a wave's, beside the other armourer goods' line. Without it they piled to 13-103 by game
+ *  minute 90 on magiczny_las. */
+export const LONG_BOW_GLUT_UNITS = 24;
+
+/** An armourer's long-bow seat: long bows until they reach {@link LONG_BOW_GLUT_UNITS}, wooden spears
+ *  meanwhile. */
+const LONG_BOW_SEAT: CraftSeat = {
+  goods: ['bow_long'],
+  glut: { bow_long: LONG_BOW_GLUT_UNITS },
+  otherwise: ['spear_wooden'],
+};
+
 /** Owner ruling: the first armourer makes wooden spears and short bows until the seat has earned the long
  *  bow, and from then on long bows alone. */
-const FIRST_ARMOURER_SEAT: CraftSeat = { firstEnabled: [['bow_long'], ['bow_short', 'spear_wooden']] };
+const FIRST_ARMOURER_SEAT: CraftSeat = { firstEnabled: [LONG_BOW_SEAT, ['bow_short', 'spear_wooden']] };
 
 /** Owner ruling: the second armourer alternates wooden spears, which the smithy's iron spear takes, and
- *  long bows; the spears pause while they pile up. */
+ *  long bows; each pauses while it piles up. */
 const SECOND_ARMOURER_SEAT: CraftSeat = {
   goods: ['bow_long', 'spear_wooden'],
-  glut: { spear_wooden: ARMOURY_GLUT_UNITS },
+  glut: { bow_long: LONG_BOW_GLUT_UNITS, spear_wooden: ARMOURY_GLUT_UNITS },
 };
 
 /** How many druids a seat's six huts employ. */
@@ -301,10 +315,11 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   },
   // The lower armoury's one armourer earns the long bow on wooden spears and short bows; the upgraded
   // armoury's first armourer keeps them until it is earned and then makes long bows alone, the second
-  // alternates long bows and the iron spear's wooden shafts, and the rest make long bows.
+  // alternates long bows and the iron spear's wooden shafts, and the rest make long bows; each turns to
+  // the shafts while the long bows pile up.
   work_armory_00: { seats: [['bow_short', 'spear_wooden']] },
   work_armory_01: {
-    seats: [FIRST_ARMOURER_SEAT, SECOND_ARMOURER_SEAT, ['bow_long'], ['bow_long']],
+    seats: [FIRST_ARMOURER_SEAT, SECOND_ARMOURER_SEAT, LONG_BOW_SEAT, LONG_BOW_SEAT],
   },
   // The druids boil holy oil until the big healing potion is earned and brew only it from then on; the
   // first keeps a unit of oil in store for a temple site.
@@ -370,19 +385,35 @@ export const EASY_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
 };
 
 /**
- * The plans of a seat arming without iron over its difficulty's (owner ruling): one breeder raises sheep
- * for the tunics' wool and the other cattle for the shoes' leather, and the upgraded tailor's second man
- * sews tunics, shoes while they pile up.
+ * The plans of a seat dressing its army in tunics over its difficulty's (owner ruling): one breeder of each
+ * farm raises sheep for the tunics' wool and the other cattle for the shoes' leather, and each upgraded
+ * tailor's first man sews shoes and his second tunics, so two upper tailors put two men on each.
  */
 export const NATURAL_ARMS_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
   work_animal_farm: { seats: [['sheep'], ['cattle']] },
   work_sewery_01: { seats: [SHOE_SEAT, TUNIC_SEAT] },
 };
 
-/** `profile`'s plans with {@link NATURAL_ARMS_CRAFT_PLANS} over them, per profile plan table. */
-const naturalArmsPlans = new WeakMap<
+/**
+ * The plans of a seat with little iron over its difficulty's (owner ruling on krwawa_rzeka): the tunic
+ * seat's breeders and tailors, and smiths on weapons alone, long swords and iron spears and a few short
+ * swords for the mint's strength amulet, since plate for the army is out of reach.
+ */
+export const IRON_WEAPONS_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
+  ...NATURAL_ARMS_CRAFT_PLANS,
+  work_smithy_01: { seats: [WEAPON_SMITH_SEAT, ['sword_long', 'spear_iron']] },
+};
+
+/** The sides whose rows lie over a seat's difficulty plans, and those rows. */
+const SIDE_CRAFT_PLANS: readonly (readonly [EconomicSide, Readonly<Record<string, CraftPlan>>])[] = [
+  ['naturalArms', NATURAL_ARMS_CRAFT_PLANS],
+  ['ironWeapons', IRON_WEAPONS_CRAFT_PLANS],
+];
+
+/** `profile`'s plans with a side's rows over them, per side rows and profile plan table. */
+const sidePlans = new WeakMap<
   Readonly<Record<string, CraftPlan>>,
-  Readonly<Record<string, CraftPlan>>
+  Map<EconomicSide, Readonly<Record<string, CraftPlan>>>
 >();
 
 /** The craft plans `player`'s seat works: its difficulty's, with its sides' rows over them. */
@@ -391,11 +422,18 @@ export function seatCraftPlans(
   player: number,
   profile: ComputerProfile,
 ): Readonly<Record<string, CraftPlan>> {
-  if (!seatHasSide(world, player, 'naturalArms')) return profile.craftPlans;
-  let plans = naturalArmsPlans.get(profile.craftPlans);
+  const held = SIDE_CRAFT_PLANS.find(([side]) => seatHasSide(world, player, side));
+  if (held === undefined) return profile.craftPlans;
+  const [side, rows] = held;
+  let bySide = sidePlans.get(profile.craftPlans);
+  if (bySide === undefined) {
+    bySide = new Map();
+    sidePlans.set(profile.craftPlans, bySide);
+  }
+  let plans = bySide.get(side);
   if (plans === undefined) {
-    plans = { ...profile.craftPlans, ...NATURAL_ARMS_CRAFT_PLANS };
-    naturalArmsPlans.set(profile.craftPlans, plans);
+    plans = { ...profile.craftPlans, ...rows };
+    bySide.set(side, plans);
   }
   return plans;
 }
@@ -731,8 +769,13 @@ function seatProducts(choice: SeatChoice, current: readonly number[], seat: Craf
     const owned = choice.owns(seat.whileOwned, seat.siteOnly === true);
     return seatProducts(choice, current, owned ? seat.works : seat.otherwise);
   }
-  if ('firstEnabled' in seat)
-    return seat.firstEnabled.find((group) => goodsOf(ctx, choice.products, group).length > 0) ?? [];
+  if ('firstEnabled' in seat) {
+    for (const option of seat.firstEnabled) {
+      const goods = seatProducts(choice, current, option);
+      if (goodsOf(ctx, choice.products, goods).length > 0) return goods;
+    }
+    return [];
+  }
   if ('firstFed' in seat) {
     const fed = seat.firstFed.find((line) => {
       const input = goodTypeByContentId(ctx.content, line.input);

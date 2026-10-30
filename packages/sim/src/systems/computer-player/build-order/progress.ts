@@ -255,7 +255,8 @@ export function entryStatus(
  *  lack crews ({@link copyAwaitsCrews}), or a placement or tower ring on its `holdUntil` ({@link StepHold})
  *  while the seat has no standing building of the id at that tier or above, or has not discovered the
  *  good, while it still could and `order` may still raise that building or one making the good
- *  ({@link orderMayRaise}), while it counts fewer settlers than the hold names, or while its military
+ *  ({@link orderMayRaise}), while it counts fewer settlers than the hold names, while it stores the
+ *  hold's line of every good it names, or while its military
  *  deadline lies further off than the lead and its defence does not come first. `owned` is the seat's
  *  {@link ownedBuildings} list and `statuses` this decision's
  *  {@link lineStatuses} of `order`. */
@@ -337,6 +338,18 @@ function holdOpen(
     }
     case 'settlers':
       return ownedSettlers(world, player).length < hold.count;
+    case 'short': {
+      // Holds while every good the content knows lies at the line; one the content lacks never holds.
+      const stock = seatStockOf(world, player);
+      let known = false;
+      for (const id of hold.goods) {
+        const good = goodTypeByContentId(ctx.content, id);
+        if (good === undefined) continue;
+        if (stock.units(good.typeId) < hold.units) return false;
+        known = true;
+      }
+      return known;
+    }
     case 'deadline':
       return militaryWaits(world, ctx, player, hold.leadTicks);
   }

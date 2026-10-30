@@ -83,8 +83,8 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_mill_00: { operatorSurplus: 2, productGated: true, porterUntil: { kind: 'job', id: 'baker' } },
   // Owner ruling: the vikings live on mead, so the brewery's second brewer is a minimum post.
   work_brewery: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1 },
-  // Both breeders keep the cattle (CRAFT_PLANS_BY_BUILDING_ID), so the pair doubles the one herd's
-  // output from the start.
+  // Both breeders keep the cattle (CRAFT_PLANS_BY_BUILDING_ID), or a tunic seat's one cattle and one
+  // sheep, so the pair works from the start.
   work_animal_farm: { operatorMin: 2, operatorTarget: 2 },
   // The level-0 bakery offers a single baker slot, so only its carrier is planned.
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },

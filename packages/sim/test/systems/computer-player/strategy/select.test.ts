@@ -30,6 +30,16 @@ function sums(over: Partial<ZoneSums> = {}): ZoneSums {
   };
 }
 
+/** Iron and gold plentiful but short of rich. */
+function nearDeposits(iron = 1_800, gold = 1_200): ReadonlyMap<string, number> {
+  return new Map([
+    ['stone', 1_000],
+    ['mud', 1_000],
+    ['iron', iron],
+    ['gold', gold],
+  ]);
+}
+
 function neighbour(sameLand: boolean): SeatNeighbour {
   return { player: 1, anchor: { hx: 200, hy: 80 }, direction: 'e', distance: fx.fromInt(80), sameLand };
 }
@@ -44,7 +54,7 @@ function seat(over: Partial<SeatBrief> = {}, access: Record<string, GoodAccess> 
     zone: 0,
     component: OWN_LAND,
     home: sums(),
-    near: sums({ zones: 30, land: 28_000, free: 16_000 }),
+    near: sums({ zones: 30, land: 28_000, free: 16_000, deposits: nearDeposits() }),
     continent: sums(),
     access: new Map(
       Object.entries({
@@ -85,20 +95,40 @@ describe('economic strategy selector', () => {
     expect(choice.evidence).toContain(rule);
   });
 
-  it('reads plenty of free ground and building deposits near as rich', () => {
-    const near = sums({
-      free: 22_000,
-      deposits: new Map([
-        ['stone', 3_000],
-        ['mud', 1_500],
-      ]),
-    });
-    expect(selectEconomy(seat({ near })).archetype).toBe('rich');
+  it('reads free ground with iron and gold to spare as rich', () => {
+    const rich = (free: number, iron: number, gold: number) =>
+      selectEconomy(seat({ near: sums({ free, deposits: nearDeposits(iron, gold) }) })).archetype;
+    expect(rich(14_000, 2_600, 2_600)).toBe('rich');
+    expect(rich(10_000, 2_600, 2_600)).toBe('standard');
+    expect(rich(14_000, 2_600, 1_800)).toBe('standard');
+  });
+
+  it('forges weapons only and sews tunics where little iron lies within reach, counting a share of its land', () => {
+    const armsWith = (nearIron: number, landIron: number) =>
+      selectEconomy(
+        seat({
+          near: sums({ free: 16_000, deposits: nearDeposits(nearIron) }),
+          continent: sums({ deposits: new Map([['iron', landIron]]) }),
+        }),
+      );
+    const scarce = armsWith(600, 0);
+    expect(scarce.sides).toContain('ironWeapons');
+    expect(scarce.sides).not.toContain('ironArms');
+    expect(scarce.evidence).toContain('ironScarce');
+    // Two seats share the land, so half its 2000 iron counts.
+    expect(armsWith(600, 2_000).sides).toContain('ironArms');
+  });
+
+  it('keeps to one mint where little gold lies within reach', () => {
+    const gold = (units: number) =>
+      selectEconomy(seat({ near: sums({ free: 16_000, deposits: nearDeposits(1_800, units) }) })).sides;
+    expect(gold(600)).toContain('oneMint');
+    expect(gold(1_200)).not.toContain('oneMint');
   });
 
   it('arms with iron or nature, never both, by how far the iron lies on its land', () => {
     const arms = (iron: GoodAccess) =>
-      selectEconomy(seat({}, { iron })).sides.filter((s) => s.endsWith('Arms'));
+      selectEconomy(seat({}, { iron })).sides.filter((s) => s.startsWith('iron') || s === 'naturalArms');
     expect(arms({ access: 'near', zones: 2 })).toEqual(['ironArms']);
     expect(arms({ access: 'continent', zones: 4 })).toEqual(['ironArms']);
     expect(arms({ access: 'continent', zones: 8 })).toEqual(['naturalArms']);

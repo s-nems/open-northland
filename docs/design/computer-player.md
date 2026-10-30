@@ -40,10 +40,14 @@ holds); nothing caches who is an enemy.
 
 The economic strategy is chosen from the seat brief and reviewed every few game minutes with
 hysteresis. Archetypes: `standard`, `cramped` (little free ground or ground mostly under forest: compact
-placement, early clearing, upgrades over copies), `rich` (more construction sites and copies),
-`islands` (no rival on the seat's land: ship joinery first, economy kept on its own land). Sides:
-`ironArms` or `naturalArms` (no reachable iron: arm from wood and tunics), `goldLine` (coins, druids,
-temple), `fishing`, `herbs`. The tables live in `build-order/seat-order.ts`.
+placement, early clearing, upgrades over copies), `rich` (room, iron and gold to spare: more construction
+sites and copies), `islands` (no rival on the seat's land: ship joinery first, economy kept on its own
+land). The metals are weighed by amount, not only distance: the near band's deposit plus the seat's share
+of its land's. Sides: `ironArms` (iron to spare: plate and mail, leather armour as the fallback),
+`ironWeapons` (little iron: two smithies on long swords, iron spears and the amulets' short swords, the
+army in tunics) or `naturalArms` (no reachable iron: arm from wood and tunics), `goldLine` (coins,
+druids, temple), `oneMint` (little gold: one mint), `fishing`, `herbs`. The tables live in
+`build-order/seat-order.ts` and `workforce/craft.ts`.
 
 The military plan (`aggressive`, `defensive`, `harasser`, `balanced`) is drawn once per seat from the
 seeded RNG. The posture (`defend`, `attack`, `harass`, `prepare`) is reviewed every few decisions from
@@ -71,8 +75,11 @@ turn. One more workshop of a kind the seat runs waits until those standing hold 
 ruling: upgrades and full crews before copies), so the bread line ends on one bakery, a second where
 there is room, both upgraded. One brewery feeds many adults (owner ruling): the second waits for 100
 settlers, the third, the last, for 200. The armory goes up right after the first smithy in a line of its
-own; once the smith has learned mail and plate, a seat with iron in reach raises upper smithies up to
-four, five on a rich seat. A second and third mint follow once the coiner has learned the amulets, and
+own; once the smith has learned mail and plate, a seat with iron to spare raises upper smithies up to
+four, five on a rich seat, and one with little iron stops at two. A seat dressing its army in tunics
+raises its second tailor right after the first, upgrades both (two tailors on shoes, two on tunics, its
+breeders split between cattle and sheep), and a second animal farm only while leather or wool runs short.
+A second and third mint follow, on a seat with gold to spare, once the coiner has learned the amulets, and
 further druid huts once the druid has learned the big healing potion. A seat that lost its base raises
 the top warehouse tier it can source in its place (owner ruling).
 
@@ -106,10 +113,12 @@ off: the seat schools a man for one post and puts him there itself, where the sw
 the nearest free slot of his trade, a workshop the seat keeps short on purpose included.
 
 The workshops' product plans (`workforce/craft.ts`) follow the same rulings: a seat with iron sews
-leather and shoes from its cattle, one without breeds sheep for woollen armour; the first armourer makes
-short bows and wooden spears until he learns the long bow and long bows only after, a second one long
-bows and the wooden spears the iron spear takes; the first upper smithy's smiths split armour (plate,
-mail) from weapons (long swords, iron spears, short swords for a standing mint); a druid boils holy oil
+leather and shoes from its cattle, one dressing its army in tunics splits its breeders between cattle
+and sheep; the first armourer makes short bows and wooden spears until he learns the long bow and long
+bows only after, a second one long bows and the wooden spears the iron spear takes, each turning to the
+spears while long bows pile up; the first upper smithy's smiths split armour (plate, mail) from weapons
+(long swords, iron spears, short swords for a standing mint), and a seat with little iron forges only
+the weapons; a druid boils holy oil
 only for the experience until he learns the big healing potion and brews only that once he knows it;
 the first coiner strikes coins until he learns amulets; joineries turn to furniture once tools pile up. Extra gatherer posts are
 released at their good's glut, and gatherers never take the builders a seat's open sites need.

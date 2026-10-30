@@ -22,14 +22,22 @@ export const CRAMPED_HOME_CLEARABLE_PERCENT = 60;
  *  0, 2 and 3 hold 2900-3500, magiczny_las 6 1900; the roomiest seats under it hold 4300-4500. */
 export const CRAMPED_HOME_FREE_NODES = 4000;
 
-/** Rich from this many free nodes in the near band. Only diamentowa_dolina 8 (30k) holds more; every
- *  other seat holds 8.9-20k. */
-export const RICH_NEAR_FREE_NODES = 20_000;
-/** And this much stone and mud in the near band. Specjalna_forteca's seats hold 4.3-8.3k, every other
- *  seat 1.1-3.4k. */
-export const RICH_NEAR_BUILDING_DEPOSITS = 4_000;
-/** The deposits a building site eats that do not grow back. */
-export const BUILDING_DEPOSIT_GOOD_IDS: readonly string[] = ['stone', 'mud'];
+/** Rich from this many free nodes in the near band, beside both metals in plenty
+ *  ({@link RICH_METAL_UNITS}). Every diamentowa_dolina and magiczny_las seat holds 13-20k, specjalna_forteca
+ *  1 10k. */
+export const RICH_NEAR_FREE_NODES = 12_000;
+/** And at least this much iron and this much gold in {@link reachableDeposit}: owner ruling, diamentowa_dolina
+ *  and magiczny_las unleash their expansion. Their seats reach 2.7-4.3k iron and 2.6-3.9k gold;
+ *  specjalna_forteca's, the next, at most 1.7k iron and 1.4k gold. */
+export const RICH_METAL_UNITS = 2_200;
+/** Iron in {@link reachableDeposit} under which a seat forges weapons only and dresses its army in tunics
+ *  (owner ruling on krwawa_rzeka: little iron, so plate is hard to come by). Krwawa_rzeka's seats reach
+ *  0.57-1.0k, mroczny_las's 0.39-0.6k; specjalna_forteca's, the next, 1.46-1.73k. */
+export const IRON_PLENTY_UNITS = 1_200;
+/** Gold in {@link reachableDeposit} under which a seat keeps to one mint (owner ruling on krwawa_rzeka:
+ *  less gold, fewer mints). Krwawa_rzeka's seats reach 350-530, mroczny_las's 430-600;
+ *  specjalna_forteca's, the next, 890-1420. */
+export const GOLD_PLENTY_UNITS = 750;
 
 /** Iron further on the seat's own land still arms it with iron within this many zones. Diamentowa_dolina
  *  8's nearest iron lies 4 zones out, mroczny_las 3's 8. */
@@ -58,11 +66,11 @@ export function selectEconomy(seat: SeatBrief): EconomicChoice {
     home.clearable * 100 >= home.free * CRAMPED_HOME_CLEARABLE_PERCENT,
   );
   const roomSmall = fire('homeRoomSmall', home.free < CRAMPED_HOME_FREE_NODES);
-  let buildingDeposits = 0;
-  for (const good of BUILDING_DEPOSIT_GOOD_IDS) buildingDeposits += near.deposits.get(good) ?? 0;
+  const iron = reachableDeposit(seat, 'iron');
+  const gold = reachableDeposit(seat, 'gold');
   const rich = fire(
     'nearRich',
-    near.free >= RICH_NEAR_FREE_NODES && buildingDeposits >= RICH_NEAR_BUILDING_DEPOSITS,
+    near.free >= RICH_NEAR_FREE_NODES && iron >= RICH_METAL_UNITS && gold >= RICH_METAL_UNITS,
   );
   const archetype: EconomicArchetype = islands
     ? 'islands'
@@ -73,18 +81,24 @@ export function selectEconomy(seat: SeatBrief): EconomicChoice {
         : 'standard';
 
   const sides = new Set<EconomicSide>();
-  const iron = seat.access.get('iron');
+  const ironAccess = seat.access.get('iron');
   const ironInReach =
-    iron !== undefined &&
-    (NEARBY.includes(iron.access) ||
-      (iron.access === 'continent' && iron.zones !== null && iron.zones <= IRON_CONTINENT_REACH_ZONES));
+    ironAccess !== undefined &&
+    (NEARBY.includes(ironAccess.access) ||
+      (ironAccess.access === 'continent' &&
+        ironAccess.zones !== null &&
+        ironAccess.zones <= IRON_CONTINENT_REACH_ZONES));
   fired.add(ironInReach ? 'ironInReach' : 'ironOutOfReach');
-  sides.add(ironInReach ? 'ironArms' : 'naturalArms');
+  if (!ironInReach) sides.add('naturalArms');
+  else sides.add(fire('ironScarce', iron < IRON_PLENTY_UNITS) ? 'ironWeapons' : 'ironArms');
   const onLand = (good: string): boolean => {
     const access = seat.access.get(good);
     return access !== undefined && ON_LAND.includes(access.access);
   };
-  if (fire('goldAndMushroomOnLand', onLand('gold') && onLand('mushroom'))) sides.add('goldLine');
+  if (fire('goldAndMushroomOnLand', onLand('gold') && onLand('mushroom'))) {
+    sides.add('goldLine');
+    if (fire('goldScarce', gold < GOLD_PLENTY_UNITS)) sides.add('oneMint');
+  }
   const fish = seat.access.get(FISH_ACCESS_KEY);
   if (fire('fishNearby', fish !== undefined && NEARBY.includes(fish.access))) sides.add('fishing');
   if (fire('grassAtHome', home.plantable >= HERBS_HOME_GRASS_NODES)) sides.add('herbs');
@@ -94,6 +108,17 @@ export function selectEconomy(seat: SeatBrief): EconomicChoice {
     sides: ECONOMIC_SIDES.filter((side) => sides.has(side)),
     evidence: ECONOMIC_RULES.filter((rule) => fired.has(rule)),
   };
+}
+
+/** How much of `good` the seat may count on: the near band's deposit plus its share of the deposit on its
+ *  whole land, split evenly between the starts the brief records there, map-scripted ones included. The
+ *  near band counts twice, as it lies on the seat's land too, so a deposit beside the seat outweighs one
+ *  a rival sits on. */
+export function reachableDeposit(seat: SeatBrief, good: string): number {
+  const near = seat.near.deposits.get(good) ?? 0;
+  if (seat.component === NO_COMPONENT) return near;
+  const seatsOnLand = 1 + seat.others.filter((other) => other.sameLand).length;
+  return near + Math.floor((seat.continent.deposits.get(good) ?? 0) / seatsOnLand);
 }
 
 /** No other seat starts on the seat's land, and at least one starts on another. */

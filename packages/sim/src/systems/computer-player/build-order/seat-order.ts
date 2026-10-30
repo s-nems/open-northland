@@ -19,7 +19,12 @@ import {
   DEFAULT_BUILD_ORDER,
   EARLY_SECOND_TAILOR,
   HQ_PULL_DIVISOR_NODES,
+  LATE_SMITHIES,
+  LATER_MINTS,
   ROOMY_OPENING_HOMES,
+  SECOND_ANIMAL_FARM,
+  SECOND_ANIMAL_FARM_WELL,
+  SECOND_UPPER_TAILOR,
   type SitePace,
   sitePace,
 } from './entries.js';
@@ -107,7 +112,7 @@ const STANDARD: ArchetypeTuning = {
   drops: [],
 };
 
-/** The tuning per archetype. A rich seat (room and building deposits to spare) opens one site more and a
+/** The tuning per archetype. A rich seat (room, iron and gold to spare) opens one site more and a
  *  quarter more copies; an island seat raises its ship joinery first and its army line right after the
  *  opening, and builds on its own land only. Authored. */
 export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTuning>> = {
@@ -154,7 +159,7 @@ function matches(match: StepMatch, entry: BuildOrderEntry): boolean {
 }
 
 /** Owner ruling: a seat arming without iron drops the iron gatherer and the smithies, and arms from the
- *  armory's wood and the sewery's tunics. */
+ *  armory's wood and the tailors' tunics. */
 const IRON_ARMS: StepMatch = { buildings: ['work_smithy_00', 'work_smithy_01'], collectors: ['iron'] };
 
 /** The herb, druid, mint and temple steps and the mushroom and gold gatherers feeding them, raised only
@@ -164,9 +169,19 @@ const GOLD_LINE: StepMatch = {
   collectors: ['mushroom', 'gold'],
 };
 
-/** What each side changes (authored): the steps it drops and the steps only it keeps. `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps the
- *  grass reserve rules as they are (`./grass-reserve.ts`). The clothing line already runs ahead of the
- *  weapons, so a seat arming from tunics only adds its early second tailor. */
+/** Owner ruling: a seat dressing its army in tunics gets its second tailor right after the first, then
+ *  upgrades both, and raises a second animal farm while leather or wool runs short. The clothing line
+ *  already runs ahead of the weapons. */
+const TUNIC_ARMS: StepMatch = {
+  buildings: [],
+  collectors: [],
+  steps: [EARLY_SECOND_TAILOR, SECOND_UPPER_TAILOR, SECOND_ANIMAL_FARM, SECOND_ANIMAL_FARM_WELL],
+};
+
+/** What each side changes (authored): the steps it drops and the steps only the sides keeping them play.
+ *  `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps the grass reserve rules as they
+ *  are (`./grass-reserve.ts`). Owner ruling: a seat with little iron forges weapons in two upper smithies
+ *  and a seat with little gold strikes coins in one mint. */
 interface SideRule {
   readonly drops?: StepMatch;
   readonly keeps?: StepMatch;
@@ -174,8 +189,10 @@ interface SideRule {
 
 const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
   ironArms: {},
-  naturalArms: { drops: IRON_ARMS, keeps: { buildings: [], collectors: [], steps: [EARLY_SECOND_TAILOR] } },
+  ironWeapons: { drops: { buildings: [], collectors: [], steps: LATE_SMITHIES }, keeps: TUNIC_ARMS },
+  naturalArms: { drops: IRON_ARMS, keeps: TUNIC_ARMS },
   goldLine: { keeps: GOLD_LINE },
+  oneMint: { drops: { buildings: [], collectors: [], steps: LATER_MINTS } },
   fishing: {},
   herbs: {},
 };
@@ -250,8 +267,8 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   const known = byShape.get(key);
   if (known !== undefined) return known;
   const tuning = ARCHETYPE_TUNING[shape.archetype];
-  const rules = sideRules(shape.sides);
-  const lines = order.lines.map((line) => shapeLine(line, tuning, rules));
+  const drops = sideDrops(shape.sides);
+  const lines = order.lines.map((line) => shapeLine(line, tuning, drops));
   let priority = tuning === STANDARD ? order.priority : tuning.priority;
   priority = raised(priority, PHASE_RAISES[shape.phase], 'opening');
   if (shape.defenceFirst) priority = raised(priority, DEFENCE_LINES, 'opening');
@@ -263,23 +280,25 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   return shaped;
 }
 
-/** The rules of the sides held and, for each side lacking, the steps only it keeps, as a drop. */
-function sideRules(sides: readonly EconomicSide[]): SideRule[] {
-  const rules: SideRule[] = [];
+/** Whether a step goes, given the sides held: a held side drops it, or every side keeping it is lacking. */
+type SideDrop = (entry: BuildOrderEntry) => boolean;
+
+function sideDrops(sides: readonly EconomicSide[]): SideDrop {
+  const held: SideRule[] = [];
+  const lacking: StepMatch[] = [];
   for (const side of Object.keys(SIDE_RULES) as EconomicSide[]) {
     const rule = SIDE_RULES[side];
-    if (sides.includes(side)) rules.push(rule);
-    else if (rule.keeps !== undefined) rules.push({ drops: rule.keeps });
+    if (sides.includes(side)) held.push(rule);
+    else if (rule.keeps !== undefined) lacking.push(rule.keeps);
   }
-  return rules;
+  return (entry) =>
+    held.some((rule) => rule.drops !== undefined && matches(rule.drops, entry)) ||
+    (lacking.some((keeps) => matches(keeps, entry)) &&
+      !held.some((rule) => rule.keeps !== undefined && matches(rule.keeps, entry)));
 }
 
-function shapeLine(line: BuildLine, tuning: ArchetypeTuning, rules: readonly SideRule[]): BuildLine {
-  let steps = line.steps.filter(
-    (entry) =>
-      !tuning.drops.includes(entry) &&
-      !rules.some((rule) => rule.drops !== undefined && matches(rule.drops, entry)),
-  );
+function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop): BuildLine {
+  let steps = line.steps.filter((entry) => !tuning.drops.includes(entry) && !dropped(entry));
   if (tuning !== STANDARD) steps = steps.map((entry) => copiesOf(entry, tuning));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;

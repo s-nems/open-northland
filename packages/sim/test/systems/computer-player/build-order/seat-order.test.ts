@@ -3,6 +3,7 @@ import {
   aiControlEntity,
   ComputerStrategy,
   ECONOMIC_SIDES,
+  type EconomicSide,
   type EconomicStrategyState,
   type MilitaryStrategyState,
 } from '../../../../src/components/index.js';
@@ -21,9 +22,13 @@ import {
   DEFENCE_TOWER_RADIUS_PCT,
   defenceFirst,
   EARLY_SECOND_TAILOR,
+  LATE_SMITHIES,
+  LATER_MINTS,
   linesByPriority,
   orderSteps,
   PLAN_TUNING,
+  SECOND_ANIMAL_FARM,
+  SECOND_UPPER_TAILOR,
   seatSitePace,
   shapeBuildOrder,
   sitePace,
@@ -134,6 +139,27 @@ describe('the seat strategy shapes the build order', () => {
     expect(orderSteps(natural)).toContain(EARLY_SECOND_TAILOR);
     const ironRich = shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides: ['ironArms'] });
     expect(orderSteps(ironRich)).not.toContain(EARLY_SECOND_TAILOR);
+  });
+
+  it('forges weapons in two smithies and dresses in tunics from two upper tailors on little iron', () => {
+    const shape = { archetype: 'standard', phase: 'opening', defenceFirst: false } as const;
+    const scarce = orderSteps(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides: ['ironWeapons'] }));
+    for (const step of LATE_SMITHIES) expect(scarce).not.toContain(step);
+    for (const step of [EARLY_SECOND_TAILOR, SECOND_UPPER_TAILOR, SECOND_ANIMAL_FARM])
+      expect(scarce).toContain(step);
+    const plenty = orderSteps(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides: ['ironArms'] }));
+    for (const step of LATE_SMITHIES) expect(plenty).toContain(step);
+    expect(plenty).not.toContain(SECOND_ANIMAL_FARM);
+  });
+
+  it('keeps to one mint on little gold', () => {
+    const shape = { archetype: 'standard', phase: 'opening', defenceFirst: false } as const;
+    const mints = (sides: readonly EconomicSide[]) =>
+      orderSteps(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides })).filter((step) =>
+        LATER_MINTS.includes(step),
+      ).length;
+    expect(mints(['ironArms', 'goldLine'])).toBe(LATER_MINTS.length);
+    expect(mints(['ironArms', 'goldLine', 'oneMint'])).toBe(0);
   });
 
   it('puts up the second bakery at once only where the seat has room', () => {

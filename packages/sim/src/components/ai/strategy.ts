@@ -5,9 +5,19 @@ import { defineComponent } from '../../ecs/world.js';
 export const ECONOMIC_ARCHETYPES = ['standard', 'cramped', 'rich', 'islands'] as const;
 export type EconomicArchetype = (typeof ECONOMIC_ARCHETYPES)[number];
 
-/** The production lines a seat leans on beside its archetype; `ironArms` and `naturalArms` exclude each
- *  other. Canonical order: a record lists its sides in this order. */
-export const ECONOMIC_SIDES = ['ironArms', 'naturalArms', 'goldLine', 'fishing', 'herbs'] as const;
+/** The production lines a seat leans on beside its archetype; `ironArms` (iron to spare: plate and mail),
+ *  `ironWeapons` (little iron: weapons only, tunics for armour) and `naturalArms` (none in reach) exclude
+ *  each other, and `oneMint` (little gold) trims the gold line. Canonical order: a record lists its sides
+ *  in this order. */
+export const ECONOMIC_SIDES = [
+  'ironArms',
+  'ironWeapons',
+  'naturalArms',
+  'goldLine',
+  'oneMint',
+  'fishing',
+  'herbs',
+] as const;
 export type EconomicSide = (typeof ECONOMIC_SIDES)[number];
 
 /** The selector rules that can fire, the evidence a debug view shows. Canonical order as for sides. */
@@ -18,8 +28,10 @@ export const ECONOMIC_RULES = [
   'homeRoomSmall',
   'nearRich',
   'ironInReach',
+  'ironScarce',
   'ironOutOfReach',
   'goldAndMushroomOnLand',
+  'goldScarce',
   'fishNearby',
   'grassAtHome',
 ] as const;
