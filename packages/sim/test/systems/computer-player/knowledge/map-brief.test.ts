@@ -10,9 +10,11 @@ import {
   type TerrainMap,
 } from '../../../../src/index.js';
 import { stampResourceFootprintData } from '../../../../src/systems/index.js';
+import { setAiControl } from '../../../../src/systems/orders/ai.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
+  ctxOf,
   HQ_TYPE,
   makeAiSeat,
   placeHq,
@@ -123,6 +125,20 @@ describe('map brief', () => {
     sim.step();
     expect(mapBriefOf(sim.world)).toBeNull();
     expect([...sim.world.query(MapBrief)]).toEqual([]);
+  });
+
+  it('passes to the next seat when its carrier hands its seat back to a human', () => {
+    const sim = briefSim();
+    const SECOND_SEAT = SEAT + 1;
+    makeAiSeat(sim, SEAT);
+    makeAiSeat(sim, SECOND_SEAT);
+    sim.step();
+    const brief = briefOf(sim);
+    setAiControl(sim.world, ctxOf(sim), { kind: 'setAiControl', player: SEAT, enabled: false });
+    expect(mapBriefOf(sim.world)).toBe(brief);
+    expect([...sim.world.query(MapBrief)].map((e) => sim.world.get(e, AiControl).player)).toEqual([
+      SECOND_SEAT,
+    ]);
   });
 
   it('survives a save and restore unchanged', () => {

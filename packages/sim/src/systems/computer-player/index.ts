@@ -11,6 +11,7 @@ import { militaryModule } from './military/index.js';
 import { populationModule } from './population.js';
 import { roadBuildModule } from './road-build.js';
 import { scoutModule } from './scout/index.js';
+import { reviewComputerStrategies } from './strategy/index.js';
 import { workforceModule } from './workforce/index.js';
 
 export * from '../ai-shared/cadence.js';
@@ -24,6 +25,7 @@ export * from './military/index.js';
 export * from './population.js';
 export * from './road-build.js';
 export * from './scout/index.js';
+export * from './strategy/index.js';
 export * from './traffic.js';
 export * from './workforce/index.js';
 
@@ -76,7 +78,8 @@ export const COMPUTER_MODULE_PHASE_TICKS = 1;
  * One tick of the computer player over `modules`. Seats run in ascending player order (the canonical
  * decision order); a seat's module is due when the tick lands on its slot ({@link computerDecisionDue}) plus
  * the module's phase, so the seats and their modules spread their decision cost across the interval
- * instead of spiking on one tick or a run of them. The map brief is taken before the first decision.
+ * instead of spiking on one tick or a run of them. The map brief is taken, and each seat's strategy
+ * decided or reviewed, before the modules decide.
  */
 export function runComputerModules(
   world: World,
@@ -88,6 +91,7 @@ export function runComputerModules(
   const seats: number[] = [];
   for (const e of world.query(AiControl)) seats.push(world.get(e, AiControl).player);
   seats.sort((a, b) => a - b);
+  reviewComputerStrategies(world, ctx, seats);
   for (const seat of seats) {
     for (let phase = 0; phase < modules.length; phase++) {
       const module = modules[phase];

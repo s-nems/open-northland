@@ -6,6 +6,7 @@ import {
   type ComputerModuleEnables,
   computerModuleEnables,
   DefenceMode,
+  handOnMapBrief,
   Owner,
   playerPlacementTribes,
   Settler,
@@ -67,6 +68,7 @@ function applyAiControl(
     disbandMilitia(world, ctx, command.player);
     withdrawAiOrders(world, ctx, command.player, () => true);
     retireComputerCampaign(world, command.player);
+    handOnMapBrief(world, carrier);
     world.destroy(carrier);
     for (const { kinds } of COMPUTER_PUBLISHED_COUNTERS) resetAssistantCounters(world, command.player, kinds);
     withdrawMilitaryPublications(world, ctx, command.player);

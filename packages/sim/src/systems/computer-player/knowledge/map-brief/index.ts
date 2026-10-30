@@ -35,7 +35,8 @@ export function ensureMapBrief(world: World, ctx: SystemContext): void {
   if (carrier !== null) scanMapBrief(world, ctx, terrain, carrier);
 }
 
-/** Held on the lowest-id running seat's {@link AiControl} carrier, which no command removes. */
+/** Held on the lowest-id running seat's {@link AiControl} carrier; a `setAiControl` that removes that
+ *  carrier hands the brief on first (`handOnMapBrief`). */
 function scanMapBrief(world: World, ctx: SystemContext, terrain: TerrainGraph, carrier: Entity): void {
   const grid = zoneGridOf(terrain, BRIEF_ZONE_NODES);
   const ground = scanGround(world, ctx.content, terrain, grid);

@@ -1,5 +1,6 @@
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import { defineWorldSingleton } from '../../ecs/world-singleton.js';
+import { AiControl } from './control.js';
 
 /** A seat's building as the map brief saw it at the scan: its type and anchor node. */
 export interface BriefBuilding {
@@ -104,4 +105,19 @@ export function mapBriefOf(world: World): MapBriefView | null {
  *  entity would shift the id of every entity created after it, and with them the id-keyed beats. */
 export function writeMapBrief(world: World, carrier: Entity, scanned: MapBriefState): void {
   world.add(carrier, MapBrief, scanned);
+}
+
+/** Before `leaving`, an {@link AiControl} carrier, is destroyed: move the map brief it carries to the
+ *  lowest-id remaining carrier, so a seat handed back to its human keeps the scan for the others. With no
+ *  carrier left it goes with `leaving`, and the next running controller scans again. */
+export function handOnMapBrief(world: World, leaving: Entity): void {
+  if (!world.has(leaving, MapBrief)) return;
+  let heir: Entity | null = null;
+  for (const e of world.query(AiControl)) {
+    if (e !== leaving && (heir === null || e < heir)) heir = e;
+  }
+  if (heir === null) return;
+  const brief = world.mut(leaving, MapBrief);
+  world.remove(leaving, MapBrief);
+  world.add(heir, MapBrief, brief);
 }
