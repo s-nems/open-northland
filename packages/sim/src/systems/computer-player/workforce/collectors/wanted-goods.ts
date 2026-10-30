@@ -59,12 +59,10 @@ export interface ExtraPostsStep {
 
 /**
  * The posts a good gains by the game clock (authored), steps ascending, filled at the top-up rung once
- * the seat can spare the men. Until the mid game only the shortage posts grow a good past its row, but on a
- * ground-clearing seat ({@link CLEARING_EXTRAS_FROM_TICKS}). From
- * the mid game every good whose standing resource takes ground a building could use holds posts, wood
- * most: a settlement that has spread out by then fells and digs itself room for its late-game buildings.
- * Only a ground-clearing seat keeps them whatever the stock ({@link keptExtraPosts}). Clay and
- * mushrooms block nothing and gain none.
+ * the seat can spare the men. From the mid game every good whose standing resource takes ground a
+ * building could use holds posts, wood most: a settlement that has spread out by then fells and digs
+ * itself room for its late-game buildings. A seat that digs its room out holds its {@link DIGGING_BY_ARCHETYPE}
+ * posts earlier. Clay and mushrooms block nothing and gain none.
  */
 export const EXTRA_GATHERERS_BY_GOOD_ID: Readonly<Record<string, readonly ExtraPostsStep[]>> = {
   wood: [
@@ -79,22 +77,39 @@ export const EXTRA_GATHERERS_BY_GOOD_ID: Readonly<Record<string, readonly ExtraP
   gold: [{ fromTick: MID_GAME_FROM_TICKS, posts: 1 }],
 };
 
-/** The archetype that digs its room out of the forest and keeps its scheduled posts whatever the stock
- *  (owner ruling: piling wood up is fine on a map that must be cleared, as mroczny_las). */
-const GROUND_CLEARING_ARCHETYPE: EconomicArchetype = 'cramped';
+/** The extra posts of the {@link CLEARING_GOOD_IDS} a seat that must dig out its room to build holds from
+ *  `fromTick`, by stable content id. With `whateverStock` it keeps them, and its scheduled posts, however
+ *  much of the good lies in store; otherwise they drop at the glut like the schedule's. */
+export interface DiggingShare {
+  readonly fromTick: number;
+  readonly posts: Readonly<Record<string, number>>;
+  readonly whateverStock: boolean;
+}
 
-/** Whether `player`'s seat clears ground with its scheduled gatherers ({@link GROUND_CLEARING_ARCHETYPE}). */
-function seatClearsGround(world: World, player: number): boolean {
+/**
+ * Each archetype's {@link DiggingShare} (owner ruling: the cramped seat, as on mroczny_las, puts its free
+ * men on wood and stone from the start and piling wood up is fine there; the standard seat of medium room,
+ * as on krwawa_rzeka, digs some from the growth clock, when the opening's first sites stand; a rich seat
+ * has room and digs only by the schedule, since its extra wood piled up on magiczny_las). The cramped
+ * share is the schedule's first step, the standard one smaller (authored). Islands seats are left out.
+ */
+export const DIGGING_BY_ARCHETYPE: Readonly<Partial<Record<EconomicArchetype, DiggingShare>>> = {
+  cramped: { fromTick: 0, posts: { wood: 3, stone: 2 }, whateverStock: true },
+  standard: { fromTick: BUILDING_GOODS_GROW_FROM_TICKS, posts: { wood: 2, stone: 1 }, whateverStock: false },
+};
+
+/** `player`'s seat's {@link DiggingShare}, or null when its archetype digs none or it has no strategy. */
+function seatDigging(world: World, player: number): DiggingShare | null {
   const carrier = aiControlEntity(world, player);
   const strategy = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
-  return strategy?.economy.archetype === GROUND_CLEARING_ARCHETYPE;
+  return strategy === undefined ? null : (DIGGING_BY_ARCHETYPE[strategy.economy.archetype] ?? null);
 }
 
 /**
  * The extra posts over a good's row it keeps this decision (owner ruling: gatherers past the need piled
  * wood up on magiczny_las, mushrooms and clay elsewhere): dropped at the good's glut line and taken back
  * under its comfort line, `held` telling whether its men work them now. A good without supply lines keeps
- * them. The consuming workshops' posts and, on a seat that does not clear ground, the schedule's read it.
+ * them. The consuming workshops' posts and, unless the seat digs whatever the stock, the schedule's read it.
  */
 function keptExtraPosts(supply: SeatSupply, goodType: number, posts: number, held: boolean): number {
   if (posts === 0 || supply.lines(goodType) === undefined) return posts;
@@ -106,22 +121,15 @@ function keptExtraPosts(supply: SeatSupply, goodType: number, posts: number, hel
  *  build; clay and mushrooms block nothing and the ore lies up in the mountains. */
 export const CLEARING_GOOD_IDS: readonly string[] = ['wood', 'stone'];
 
-/** From this tick a ground-clearing seat already holds the first scheduled extra posts of a
- *  {@link CLEARING_GOOD_IDS} good, not only from the mid game (owner ruling: where the room to build has to
- *  be dug out, as on mroczny_las, the wood and stone gatherers get going early, wood the most since it
- *  frees the most room). The growth clock, when the opening's first sites stand (authored). */
-export const CLEARING_EXTRAS_FROM_TICKS = BUILDING_GOODS_GROW_FROM_TICKS;
-
-/** The scheduled extra posts of `goodId` at `tick`: its last step reached, else none; on a seat that
- *  `clearsGround`, at least its first step from {@link CLEARING_EXTRAS_FROM_TICKS} for a clearing good. */
-export function extraGatherers(goodId: string, tick: number, clearsGround = false): number {
-  const steps = EXTRA_GATHERERS_BY_GOOD_ID[goodId] ?? [];
+/** The scheduled extra posts of `goodId` at `tick`: its last step reached, else none, at least the
+ *  `digging` share's posts of the good once that share's clock is reached. */
+export function extraGatherers(goodId: string, tick: number, digging: DiggingShare | null = null): number {
   let posts = 0;
-  for (const step of steps) {
+  for (const step of EXTRA_GATHERERS_BY_GOOD_ID[goodId] ?? []) {
     if (tick >= step.fromTick) posts = step.posts;
   }
-  const clearing = clearsGround && CLEARING_GOOD_IDS.includes(goodId) && tick >= CLEARING_EXTRAS_FROM_TICKS;
-  return clearing ? Math.max(posts, steps[0]?.posts ?? 0) : posts;
+  const dug = digging !== null && tick >= digging.fromTick ? (digging.posts[goodId] ?? 0) : 0;
+  return Math.max(posts, dug);
 }
 
 /** The shortage posts one site's drain justifies until {@link BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS}. */
@@ -288,7 +296,7 @@ export function wantedCollectorGoods(
   const profile = computerProfileOf(world, player);
   const roadGood = roadPavingGood(ctx.content);
   const wanted: WantedGood[] = [];
-  const clearsGround = seatClearsGround(world, player);
+  const digging = seatDigging(world, player);
   let holdersByGood: ReadonlyMap<number, number> | undefined;
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
@@ -301,12 +309,12 @@ export function wantedCollectorGoods(
     const entryCount = entryCounts.get(goodId) ?? 0;
     const base = fixed ?? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount);
     let consumerPosts = fixed === undefined ? Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER) : 0;
-    let scheduled = extraGatherers(goodId, ctx.tick, clearsGround);
+    let scheduled = extraGatherers(goodId, ctx.tick, digging);
     if (consumerPosts + scheduled > 0) {
       holdersByGood ??= flagHoldersByGood(world, ctx, player);
       const held = (holdersByGood.get(good.typeId) ?? 0) > base;
       consumerPosts = keptExtraPosts(supply, good.typeId, consumerPosts, held);
-      if (!clearsGround) scheduled = keptExtraPosts(supply, good.typeId, scheduled, held);
+      if (digging?.whateverStock !== true) scheduled = keptExtraPosts(supply, good.typeId, scheduled, held);
     }
     let target = Math.max(base + consumerPosts + scheduled, entryCount);
     const sitePosts =

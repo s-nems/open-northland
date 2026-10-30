@@ -69,8 +69,8 @@ import { collectorAnchors } from '../../../../src/systems/computer-player/workfo
 import {
   allocateCollectors,
   CLEAR_GROUND_FROM_NODES,
-  CLEARING_EXTRAS_FROM_TICKS,
   CLEARING_SPREAD_NODES,
+  DIGGING_BY_ARCHETYPE,
   extraGatherers,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
@@ -452,7 +452,7 @@ describe('workforce module (collectResources)', () => {
     men: number,
     tick: number,
     stock: (lines: SupplyLines) => number,
-    archetype: EconomicArchetype = 'standard',
+    archetype: EconomicArchetype = 'rich',
   ): (Pick<WantedGood, 'target' | 'min'> | undefined)[] => {
     const sim = aiSim();
     const ctx = ctxOf(sim, tick);
@@ -474,16 +474,14 @@ describe('workforce module (collectResources)', () => {
   const stoneBase = COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0;
   const LARGE_SEAT = 60;
 
-  it('grows both targets from the growth clock on, at the top-up tier, whatever the stock on a ground-clearing seat', () => {
-    // Both goods stocked past the glut: only the schedule rides on the target and only the base row
-    // jumps the builder reserve, whatever the crew. A cramped seat digs its room out: before the growth
-    // clock the schedule adds nothing, from it the first step's posts, from the late game the last.
+  it('digs room from the start, at the top-up tier, whatever the stock on a cramped seat', () => {
+    // Both goods stocked past the glut: only the digging share and the schedule ride on the target and only
+    // the base row jumps the builder reserve, whatever the crew. A cramped seat digs its room out from the
+    // start, the schedule's first step until the late game, its last from it.
     const glut = (lines: SupplyLines) => lines.glut;
-    expect(buildingPosts(LARGE_SEAT, CLEARING_EXTRAS_FROM_TICKS - 1, glut, 'cramped')).toEqual([
-      { target: woodBase, min: woodBase },
-      { target: stoneBase, min: stoneBase },
-    ]);
-    for (const tick of [CLEARING_EXTRAS_FROM_TICKS, MID_GAME_FROM_TICKS - 1, MID_GAME_FROM_TICKS]) {
+    const cramped = DIGGING_BY_ARCHETYPE.cramped;
+    expect(cramped?.fromTick).toBe(0);
+    for (const tick of [0, MID_GAME_FROM_TICKS - 1, MID_GAME_FROM_TICKS]) {
       expect(buildingPosts(1, tick, glut, 'cramped')).toEqual([
         { target: woodBase + 3, min: woodBase },
         { target: stoneBase + 2, min: stoneBase },
@@ -494,10 +492,29 @@ describe('workforce module (collectResources)', () => {
       { target: stoneBase + 3, min: stoneBase },
     ]);
     // Neither the iron schedule nor any other good's comes early.
-    expect(extraGatherers('iron', CLEARING_EXTRAS_FROM_TICKS, true)).toBe(0);
+    expect(extraGatherers('iron', 0, cramped ?? null)).toBe(0);
   });
 
-  it("keeps the schedule's posts only under the glut on a seat that does not clear ground", () => {
+  it('digs a smaller share from the growth clock on a standard seat, under the glut only', () => {
+    const comfort = (lines: SupplyLines) => lines.comfort - 1;
+    expect(buildingPosts(1, BUILDING_GOODS_GROW_FROM_TICKS - 1, comfort, 'standard')).toEqual([
+      { target: woodBase, min: woodBase },
+      { target: stoneBase, min: stoneBase },
+    ]);
+    // A rich seat has room and digs nothing before the mid game: the standard seat's targets stand the
+    // share above it.
+    const [wood, stone] = buildingPosts(1, BUILDING_GOODS_GROW_FROM_TICKS, comfort, 'standard');
+    const [richWood, richStone] = buildingPosts(1, BUILDING_GOODS_GROW_FROM_TICKS, comfort);
+    expect((wood?.target ?? 0) - (richWood?.target ?? 0)).toBe(DIGGING_BY_ARCHETYPE.standard?.posts.wood);
+    expect((stone?.target ?? 0) - (richStone?.target ?? 0)).toBe(DIGGING_BY_ARCHETYPE.standard?.posts.stone);
+    // At the glut the share drops, as the schedule's does.
+    expect(buildingPosts(1, BUILDING_GOODS_GROW_FROM_TICKS, (lines) => lines.glut, 'standard')).toEqual([
+      { target: woodBase, min: woodBase },
+      { target: stoneBase, min: stoneBase },
+    ]);
+  });
+
+  it("keeps the schedule's posts only under the glut on a seat with room", () => {
     // At the glut the schedule adds nothing; under comfort it comes back, the sites' shortage posts too.
     const glut = (lines: SupplyLines) => lines.glut;
     expect(buildingPosts(1, LATE_GAME_FROM_TICKS, glut)).toEqual([
@@ -856,6 +873,7 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, BUILDER_CAP + 7);
     makeAiSeat(sim, SEAT);
     sim.step();
+    seatEconomy(sim, 'rich'); // a seat with room: no digging posts ride on the ladder
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
     sim.world.add(carrier, StalledPlacements, {
@@ -949,6 +967,7 @@ describe('workforce module (collectResources)', () => {
     spawnMen(sim, BUILDER_CAP + 7);
     makeAiSeat(sim, SEAT);
     sim.step();
+    seatEconomy(sim, 'rich'); // a seat with room: no digging posts ride on the ladder
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
     sim.world.add(carrier, StalledPlacements, {
