@@ -434,6 +434,8 @@ const TILE = 27;
 const CROCKERY = 28;
 /** The largest bill line of each building material in {@link potteryContent} (authored for the fixture). */
 const MATERIAL_BILL_UNITS = 3;
+/** The wood {@link potteryContent}'s recipes find in store: a cycle of each. */
+const POTTERY_WOOD_UNITS = 10;
 /** Free fixture slots for the tailors', breeders' and druids' goods and the temple. */
 const TUNIC = 60;
 const SHEEP_HERD = 61;
@@ -442,6 +444,10 @@ const HOLY_OIL = 63;
 const POTION_SMALL = 64;
 const POTION_BIG = 65;
 const TEMPLE_TYPE = 66;
+/** Free fixture slots for the tailors' inputs and the upgraded joinery's handcart. */
+const LEATHER = 67;
+const WOOL = 68;
+const HANDCART = 69;
 /** Free fixture slots for the armourers' and smiths' goods and a mint building beside the smithy. */
 const BOW_SHORT = 70;
 const BOW_LONG = 71;
@@ -1729,6 +1735,8 @@ describe('workforce module - the barracks and craft selections', () => {
     if (bricks === undefined || tiles === undefined) throw new Error('setup: bricks and tiles take lines');
     // Tiles sit at their comfort line: short in no phase, and under the glut the crockery sink waits for.
     pottery.stock(TILE, tiles.comfort);
+    // Every recipe's wood in store, so no product's input decides a seat.
+    pottery.stock(WOOD, POTTERY_WOOD_UNITS);
     return { ...pottery, bricks };
   }
 
@@ -1852,6 +1860,92 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(breeders.products()).toEqual([[CATTLE_HERD], [CATTLE_HERD]]);
     seatEconomy(breeders.sim, 'standard', ['naturalArms']);
     expect(breeders.products()).toEqual([[SHEEP_HERD]]);
+  });
+
+  /** The fixture joinery recast as the upper tailor: shoes and leather armour from leather, tunics from
+   *  wool, at the real recipes' amounts. */
+  function tailorContent(): ContentSet {
+    const recast = joineryRecastAs('work_sewery_01', [
+      { typeId: SHOES, id: 'shoes' },
+      { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
+      { typeId: TUNIC, id: 'armor_wool' },
+    ]);
+    const inputs: Readonly<Record<number, { goodType: number; amount: number }>> = {
+      [SHOES]: { goodType: LEATHER, amount: 1 },
+      [LEATHER_ARMOUR]: { goodType: LEATHER, amount: 2 },
+      [TUNIC]: { goodType: WOOL, amount: 2 },
+    };
+    return parseContentSet({
+      ...recast,
+      goods: [
+        ...recast.goods,
+        { typeId: LEATHER, id: 'leather', weight: 1 },
+        { typeId: WOOL, id: 'wool', weight: 1 },
+      ],
+      buildings: recast.buildings.map((b) =>
+        b.typeId !== JOINERY_TYPE
+          ? b
+          : {
+              ...b,
+              recipes: b.recipes.map((r) => {
+                const input = inputs[r.outputs[0]?.goodType ?? -1];
+                return input === undefined ? r : { ...r, inputs: [input] };
+              }),
+            },
+      ),
+    });
+  }
+
+  it('turns the tailors to tunics while the leather is out, and back once it comes in', () => {
+    const tailors = crewedWorkshops(tailorContent(), 1, 2);
+    tailors.hire(0, 2);
+    // Neither input in store: each keeps his own seat.
+    expect(tailors.products()).toEqual([[SHOES], [LEATHER_ARMOUR]]);
+    tailors.stock(WOOL, 10);
+    expect(tailors.products()).toEqual([[TUNIC], [TUNIC]]);
+    tailors.stock(LEATHER, 10);
+    expect(tailors.products()).toEqual([[SHOES], [LEATHER_ARMOUR]]);
+  });
+
+  it("hands a tunic seat's tunic tailor the shoes while the wool is out, holding a half-fed tunic", () => {
+    const tailors = crewedWorkshops(tailorContent(), 1, 2);
+    tailors.hire(0, 2);
+    seatEconomy(tailors.sim, 'standard', ['naturalArms']);
+    tailors.stock(LEATHER, 10);
+    expect(tailors.products()).toEqual([[SHOES], [SHOES]]);
+    tailors.stock(WOOL, 2);
+    expect(tailors.products()).toEqual([[TUNIC]]);
+    // One unit short of a cycle keeps the man on tunics; none turns him back to shoes.
+    tailors.stock(WOOL, 1);
+    expect(tailors.products()).toEqual([]);
+    tailors.stock(WOOL, 0);
+    expect(tailors.products()).toEqual([[SHOES]]);
+  });
+
+  it('keeps the upgraded joinery on iron tools while the seat has yet to earn the handcart', () => {
+    const base = aiContent();
+    const content = withUnearned(
+      parseContentSet({
+        ...base,
+        goods: [...base.goods, { typeId: HANDCART, id: 'handcart', weight: 1 }],
+        buildings: base.buildings.map((b) =>
+          b.typeId !== JOINERY_TYPE
+            ? b
+            : {
+                ...b,
+                id: 'work_joinery_02',
+                recipes: [
+                  ...b.recipes,
+                  { inputs: [], outputs: [{ goodType: HANDCART, amount: 1 }], ticks: 180 },
+                ],
+              },
+        ),
+      }),
+      [HANDCART],
+    );
+    const joiners = crewedWorkshops(content, 1, 1);
+    joiners.hire(0, 1);
+    expect(joiners.products()).toEqual([[TOOL_IRON]]);
   });
 
   /** `content` with the goods `unearned` lists gated behind a trade nobody of the seat holds, and with

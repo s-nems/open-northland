@@ -43,6 +43,8 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * works the first of its seats that names a good the seat may make right now, so a better product
  * replaces weaker ones once earned. A `whileOwned` seat works `works` while the seat owns a building of that type, standing or
  * a site (with `siteOnly`, a site still under construction), and `otherwise` meanwhile.
+ * Over every kind, a seat whose goods all lack their inputs ({@link inputsInStock}) works the next seat's in
+ * the plan with one that has them, {@link CraftPlan.unfed} last, and its own while none has.
  */
 export type CraftSeat =
   | readonly string[]
@@ -64,9 +66,9 @@ export type CraftSeat =
 /**
  * A seat on a vehicle good (`fleet`) with a cap on the seat's fleet of it, counting the vehicles standing
  * and the yards still building one: the seat works `otherwise` from `cap` on, or where the content has no
- * such good, and takes the vehicle back once the fleet has fallen to `resume`. In between it keeps its
- * current selection, so no state beyond the live selection is kept. While it builds the vehicle it works
- * the goods `beside` it in rotation.
+ * such good or the seat has yet to earn it, and takes the vehicle back once the fleet has fallen to
+ * `resume`. In between it keeps its current selection, so no state beyond the live selection is kept.
+ * While it builds the vehicle it works the goods `beside` it in rotation.
  */
 export interface FleetSeat {
   readonly fleet: string;
@@ -85,6 +87,9 @@ export interface CraftPlan {
   readonly seats: readonly CraftSeat[];
   /** What the type's only operator works while it employs just one, instead of the first seat. */
   readonly alone?: readonly string[];
+  /** What an operator works while no good of his seat nor of any other seat has its inputs in stock
+   *  ({@link inputsInStock}), before he waits on his own seat's inputs. */
+  readonly unfed?: readonly string[];
   /** What every operator works while each product of the type with supply lines ({@link SeatSupply}) lies
    *  at its glut line, until one falls under its comfort line. A type without a sink rests its crew
    *  instead (`staffing-plan.ts`). */
@@ -283,9 +288,11 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // The small tailor's one man sews shoes, and leather armour meanwhile; the first tailor sews shoes and
   // the second leather armour, each turning to the other's good while his own piles up, as the armour
   // does once plate armour has come in. A seat arming without iron sews tunics instead
-  // ({@link NATURAL_ARMS_CRAFT_PLANS}).
+  // ({@link NATURAL_ARMS_CRAFT_PLANS}). Owner ruling: while the leather is out, the upper tailors sew
+  // tunics from wool rather than stand idle.
   work_sewery_00: { seats: [SHOE_SEAT] },
   work_sewery_01: {
+    unfed: ['armor_wool'],
     seats: [
       SHOE_SEAT,
       {
@@ -300,7 +307,9 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // plate and mail the seat has yet to earn works the weapon seat meanwhile, and the weapon seat strikes
   // the mint's short swords. The three later smithies the build order raises put one product on each
   // smith: two on plate and long swords, one on iron spears and mail. A rich seat's fifth smithy takes
-  // the first one's split again.
+  // the first one's split again, and its sixth the weapon seat and plate and long swords once more. A smith
+  // whose goods lack their iron, or the iron spear its wooden shaft, works the next seat whose goods have
+  // theirs.
   work_smithy_01: {
     seats: [
       ARMOUR_SMITH_SEAT,
@@ -554,6 +563,8 @@ export function tuneCraftCounters(
     const recipeProducts = recipeProductsOf(ctx, type);
     const choice: SeatChoice = { ctx, supply, fleetOf, owns, products };
     const current = crew.map((e) => selectedGoods(world.tryGet(e, ProductionCounters), recipeProducts));
+    const fed = (good: number, selected: boolean): boolean =>
+      inputsInStock(ctx, supply, type, good, selected);
     const listed: (readonly number[])[] = [];
     const free: number[] = []; // the crew members off any opening run
     for (let seat = 0; seat < workplaces.length; seat++) {
@@ -564,19 +575,33 @@ export function tuneCraftCounters(
       }
       free.push(seat);
       const alone = crew.length === 1 && plan.alone !== undefined ? goodsOf(ctx, products, plan.alone) : [];
-      // A seat whose goods the seat may not make yet hands over to the next seat in the plan that has some.
+      // A seat whose goods the seat may not make yet hands over to the next seat in the plan that has some,
+      // and one whose goods all lack their inputs to the next with a good that has them.
+      const held = current[seat] ?? [];
+      const seatGoods = (step: number): number[] =>
+        goodsOf(ctx, products, seatProducts(choice, held, seats[(seat + step) % seats.length] ?? []));
+      // A list keeps a good of its own that lacks its inputs while another has them: the worker's rotation
+      // passes over an unsourced recipe by itself.
+      const anyFed = (goods: readonly number[]): boolean =>
+        goods.some((good) => fed(good, held.includes(good)));
       let goods = alone;
-      for (let step = 0; goods.length === 0 && step < seats.length; step++) {
-        const listedSeat = seats[(seat + step) % seats.length] ?? [];
-        goods = goodsOf(ctx, products, seatProducts(choice, current[seat] ?? [], listedSeat));
+      for (let step = 0; goods.length === 0 && step < seats.length; step++) goods = seatGoods(step);
+      let stocked = anyFed(goods) ? goods : [];
+      for (let step = 1; stocked.length === 0 && step <= seats.length; step++) {
+        const next = seatGoods(step);
+        if (anyFed(next)) stocked = next;
       }
-      listed.push(goods);
+      const unfed = goodsOf(ctx, products, plan.unfed ?? []);
+      if (stocked.length === 0 && anyFed(unfed)) stocked = unfed;
+      listed.push(stocked.length > 0 ? stocked : goods);
     }
-    const sink = goodsOf(ctx, products, plan.sink ?? []);
+    const sinkGoods = goodsOf(ctx, products, plan.sink ?? []);
     // The whole crew, since a seat of its own may work the sink's goods, as the crockery seat does.
-    const sinking = free.length > 0 && free.every((seat) => sameGoods(current[seat] ?? [], sink));
+    const sinking = free.length > 0 && free.every((seat) => sameGoods(current[seat] ?? [], sinkGoods));
+    // A sink none of whose goods has its inputs takes nobody.
+    const sink = sinkGoods.some((good) => fed(good, sinking)) ? sinkGoods : [];
     if (sink.length > 0 && sinkHolds(supply, products, sinking)) for (const seat of free) listed[seat] = sink;
-    else shortFirst(supply, gamePhase(ctx.tick), products, free, listed, current);
+    else shortFirst(supply, gamePhase(ctx.tick), products, free, listed, current, fed);
     for (let seat = 0; seat < crew.length; seat++) {
       const goods = listed[seat] ?? [];
       if (goods.length === 0 || sameGoods(current[seat] ?? [], goods)) continue;
@@ -584,6 +609,24 @@ export function tuneCraftCounters(
     }
   }
   return commands;
+}
+
+/**
+ * Whether the seat's stock (stores, shelves, hands, heaps in reach) holds the inputs of one cycle of
+ * `good` at `type`: each input's recipe amount, or while the worker already has the good `selected`, a
+ * unit of each, so a cycle half fed keeps its man through the band. True for a good without a recipe or
+ * inputs, as a vehicle built on its yard.
+ */
+function inputsInStock(
+  ctx: SystemContext,
+  supply: SeatSupply,
+  type: BuildingType,
+  good: number,
+  selected: boolean,
+): boolean {
+  const recipe = contentIndex(ctx.content).recipeByProductByBuilding.get(type.typeId)?.get(good);
+  if (recipe === undefined) return true;
+  return recipe.inputs.every((input) => supply.units(input.goodType) >= (selected ? 1 : input.amount));
 }
 
 /** The goods named by content `ids` that the type makes (`products`), each once, ascending. */
@@ -676,7 +719,8 @@ const SHORT_PRODUCT_LINES: Readonly<
  * goods all lie at or above their comfort lines, those already working the product alone first, then the
  * last. A seat the plan itself lists on the product alone is neither counted nor taken: the seats here come
  * on top of it. While a seat works it the product holds to the hold line, otherwise it reads the hire line.
- * Selection changes cost nothing, so the two lines are the whole hysteresis.
+ * Selection changes cost nothing, so the two lines are the whole hysteresis. A product whose inputs are
+ * out (`fed`) takes no seat.
  */
 function shortFirst(
   supply: SeatSupply,
@@ -685,6 +729,7 @@ function shortFirst(
   free: readonly number[],
   listed: (readonly number[])[],
   current: readonly (readonly number[])[],
+  fed: (good: number, selected: boolean) => boolean,
 ): void {
   const { hire, hold } = SHORT_PRODUCT_LINES[phase];
   const plentiful = free.filter((seat) => (listed[seat] ?? []).every((good) => !supply.isShort(good, true)));
@@ -695,7 +740,7 @@ function shortFirst(
     if (lines === undefined || surplus === undefined) continue;
     const extra = plentiful.filter((seat) => !onlyGood(listed[seat], good));
     const holders = extra.filter((seat) => onlyGood(current[seat], good));
-    if (!supply.isUnder(good, holders.length > 0 ? hold : hire)) continue;
+    if (!supply.isUnder(good, holders.length > 0 ? hold : hire) || !fed(good, holders.length > 0)) continue;
     const seats = Math.min(Math.ceil((lines[hold] - surplus) / lines.unit), SHORT_PRODUCT_SEATS);
     const others = extra.filter((seat) => !holders.includes(seat)).reverse();
     for (const seat of [...holders, ...others].slice(0, seats)) {
@@ -779,8 +824,10 @@ interface SeatChoice {
 function seatProducts(choice: SeatChoice, current: readonly number[], seat: CraftSeat): readonly string[] {
   const { ctx, supply, fleetOf } = choice;
   if ('fleet' in seat) {
+    // A vehicle the seat has yet to earn: the crew works `otherwise`, which earns it.
     const good = goodTypeByContentId(ctx.content, seat.fleet);
-    if (good === undefined) return seatProducts(choice, current, seat.otherwise);
+    if (good === undefined || !choice.products.includes(good.typeId))
+      return seatProducts(choice, current, seat.otherwise);
     const limit = current.includes(good.typeId) ? seat.cap : seat.resume + 1;
     return fleetOf(good.typeId, seat.freeOnly === true) < limit
       ? [seat.fleet, ...(seat.beside ?? [])]

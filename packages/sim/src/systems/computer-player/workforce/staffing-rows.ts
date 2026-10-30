@@ -114,7 +114,9 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // Owner ruling: the upgraded smithy's two smiths split the core arms between them, so the second is a
   // minimum post; another smithy rises only once the standing ones are fully crewed.
   work_smithy_01: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1 },
-  work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
+  // Owner ruling: one upgraded armoury with two armourers and a porter arms the seat for most of the game,
+  // so its whole crew are minimum posts.
+  work_armory_01: { operatorMin: 2, operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
   // One herbalist keeps the early druids in herbs, and a second is worth a man only out of surplus. The
   // late game's druid huts take the hut's three: two at the target tier, the third out of surplus.
   work_herb_hut: { operatorSurplus: 2, late: { operatorTarget: 2, operatorSurplus: 3 } },
