@@ -120,6 +120,10 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // seat's upper tailor its second tailor as a minimum post, so its two shops' four tailors stand early.
   work_sewery_00: { carrierTarget: 1 },
   work_sewery_01: { operatorTarget: 2, carrierTarget: 1, tunicSeat: { operatorMin: 2 } },
+  // A porter fetches the lower smith's iron and wood until chain mail, which opens the upper tier, is
+  // earned, so he forges rather than walks: a lone smith forging about a piece every two to three minutes
+  // took 20-30 game minutes for its ten forgings (diamentowa_dolina, magiczny_las).
+  work_smithy_00: { porterUntil: { kind: 'good', id: 'armor_chain' } },
   // Owner ruling: the upgraded smithy's two smiths split the core arms between them, so the second is a
   // minimum post; another smithy rises only once the standing ones are fully crewed.
   work_smithy_01: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1 },
