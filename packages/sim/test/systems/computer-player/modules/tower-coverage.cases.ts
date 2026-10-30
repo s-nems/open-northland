@@ -6,12 +6,14 @@ import { withinNodeRadius } from '../../../../src/nav/node-circle.js';
 import { anchorNodeOf } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { firstUncovered } from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
+import { LATE_GAME_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   buildOrderModule,
   TOWER_DEFENCE_RADIUS_NODES,
 } from '../../../../src/systems/computer-player/index.js';
 import { seatTerritoryOf } from '../../../../src/systems/computer-player/knowledge/map-intent/index.js';
+import { ASSUMED_PEACE_TICKS } from '../../../../src/systems/computer-player/military/deadline.js';
 import { SUCCESSFUL_IF } from '../../../../src/systems/missions/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
@@ -182,6 +184,69 @@ describe('build-order tower and store coverage', () => {
     // An even ring (the base covering) offers every building by id.
     firstUncovered(sim.world, ctx, SEAT, owned, { by: 'tower', radius: 1, baseCovers: true }, offer);
     expect(offered).toContainEqual(west);
+
+    // One tower whose circle reaches every building: the even ring rests, the facing one still wants a
+    // second circle over each building on the attack side.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TOWER_TYPE,
+      ...EAST,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const towered = ownedBuildings(sim.world, SEAT);
+    expect(towered).toHaveLength(owned.length + 1);
+    const WIDE = 40;
+    offered.length = 0;
+    firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: WIDE, baseCovers: true }, offer);
+    expect(offered).toEqual([]);
+    firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: WIDE, baseCovers: false }, offer);
+    expect(offered).toContainEqual(east);
+  });
+
+  it('holds a ring lane until its deadline lead, then keeps two tower sites open at once', () => {
+    const LEAD = 0;
+    const ring = buildOrderModule(
+      oneLine([
+        {
+          kind: 'towerCoverage',
+          building: 'tower_01',
+          lane: true,
+          holdUntil: { kind: 'deadline', leadTicks: LEAD },
+        },
+      ]),
+    );
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(240, 32) });
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    placeHq(sim);
+    // Three homes out east, far apart: no one tower covers two of them.
+    for (const dx of [31, 90, 150]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: HQ_X + dx,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    sim.step();
+    const act = (tick: number) => {
+      const commands = [...ring.run(sim.world, ctxOf(sim, tick), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands[0];
+    };
+    // A seat outside a lobby peace plans for the assumed one; before it the ring waits.
+    expect(act(0)).toBeUndefined();
+    const due = Math.max(ASSUMED_PEACE_TICKS, LATE_GAME_FROM_TICKS);
+    expect(act(due)).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
+    expect(act(due)).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
+    // A third home still lies uncovered, but the ring keeps to its two sites until one stands.
+    expect(act(due)).toBeUndefined();
+    completeSites(sim);
+    expect(act(due)).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
   });
 
   it('never counts the defence wall (shared kind, different id) as a covering tower', () => {

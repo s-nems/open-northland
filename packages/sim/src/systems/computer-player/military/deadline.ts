@@ -28,9 +28,9 @@ const BARRACKS_SITE_TICKS = minutesToTicks(7);
 export const BARRACKS_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS + BARRACKS_SITE_TICKS;
 
 /** How long before its deadline the seat raises its first tower ring (measured, owner ruling: towers
- *  finish just before the deadline, never earlier, since an early tower wastes builders and goods): near a
- *  60-minute deadline on magiczny_las a tower site took 6-22 game minutes to stand and the ring waits for
- *  the barracks' site first; at a 12-minute lead the first towers stood at minutes 60-81, at this one 55-74. */
+ *  finish just before the deadline, never much earlier, since an early tower wastes builders and goods):
+ *  on krwawa_rzeka under a 60-minute peace a lower tower placed at minute 45 stood at minutes 54-64, so a
+ *  ring opening at this lead stands about as the peace ends. */
 export const TOWER_LEAD_TICKS = minutesToTicks(20);
 
 /** The tick `seat`'s peace ends for its planning: the lobby peace binding it ({@link seatPeaceEndTick}),

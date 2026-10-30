@@ -68,6 +68,26 @@ export function coverageOf(
   return { by: 'tower', radius: Math.floor((planned * DEFENCE_TOWER_RADIUS_PCT) / 100), baseCovers: false };
 }
 
+/** How many tower sites a ring lane keeps open at once (owner ruling: the ring stands by the military
+ *  deadline, so it never waits on one far site), and how many while the seat's defence comes first, when
+ *  the ring is the defence against a forecast attack (authored). A store lane keeps one. */
+const TOWER_RING_SITES = 2;
+const DEFENCE_TOWER_RING_SITES = 3;
+
+/** How many tower sites a ring lane of `player`'s keeps open at once. */
+export function towerRingSites(world: World, player: number): number {
+  return seatDefenceFirst(world, player) ? DEFENCE_TOWER_RING_SITES : TOWER_RING_SITES;
+}
+
+/** How many sites of its own a coverage lane of `entry` keeps open at once for `player`. */
+export function coverageLaneSites(
+  world: World,
+  player: number,
+  entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
+): number {
+  return entry.kind === 'storeCoverage' ? 1 : towerRingSites(world, player);
+}
+
 /** The nodes a coverage entry spreads its buildings from: the seat's base (unless `baseCovers` is off) plus
  *  its towers (or its stores) in any construction state, so coverage arrives with the site rather than
  *  with the finished building. */
@@ -97,7 +117,8 @@ function coverageCentres(
 /**
  * The first node the coverage must reach that lies outside every coverage circle and that `found` takes,
  * or null: each uncovered node is offered in turn, so a status read stops at the first. A tower covers
- * the owned buildings {@link towerTargets} offers. A store covers what fills it: the seat's workplaces, so a
+ * the owned buildings {@link towerTargets} offers, each facing an attack inside
+ * {@link FACING_RING_DEPTH} circles. A store covers what fills it: the seat's workplaces, so a
  * far production cluster has somewhere to unload, and then its gatherers' work flags (canonical settler
  * order), where the mined and quarried goods pile up; homes and towers pass, since a tower rings the
  * settlement's edge and would pull warehouses out to it.
@@ -112,13 +133,18 @@ export function firstUncovered<T>(
 ): T | null {
   const index = contentIndex(ctx.content);
   const centres = coverageCentres(world, ctx, player, owned, coverage);
+  const facing = coverage.by === 'tower' ? towerTargets(world, ctx, player, owned, coverage) : null;
+  const depth = facing === null ? 1 : FACING_RING_DEPTH;
   const offer = (e: Entity): T | null => {
     const node = anchorNodeOf(world, e);
     if (node === null) return null;
-    for (const c of centres) if (withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius)) return null;
+    let circles = 0;
+    for (const c of centres) {
+      if (withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius) && ++circles >= depth) return null;
+    }
     return found(node);
   };
-  for (const e of coverage.by === 'tower' ? towerTargets(world, ctx, player, owned, coverage) : owned) {
+  for (const e of facing ?? owned) {
     if (
       coverage.by === 'store' &&
       index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'workplace'
@@ -152,21 +178,26 @@ function towerFront(
   return forecastAttackOrigin(world, ctx, player);
 }
 
-/** The buildings a tower ring covers, in the order it is offered them: every owned one by ascending id for
- *  an even ring; facing a {@link towerFront}, only those no farther from it than the seat's base, the
- *  nearest the base first (ascending id on a tie), so the towers stand between the attack and the heart of
- *  the settlement before its outskirts. */
+/** How many tower circles a building facing a forecast attack stands in (owner ruling: the defence of a
+ *  seat whose defence comes first rings densely on the attack side). On mroczny_las a single circle each
+ *  left a cramped seat two or three towers against a wave of 30-50 raiders. */
+const FACING_RING_DEPTH = 2;
+
+/** The buildings a tower ring facing a {@link towerFront} covers, in the order it is offered them: only
+ *  those no farther from it than the seat's base, the nearest the base first (ascending id on a tie), so
+ *  the towers stand between the attack and the heart of the settlement before its outskirts; null for an
+ *  even ring, which covers every owned building by ascending id. */
 function towerTargets(
   world: World,
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
   coverage: Coverage,
-): readonly Entity[] {
+): readonly Entity[] | null {
   const front = towerFront(world, ctx, player, coverage);
   const base = seatBaseOf(world, ctx, player);
   const baseNode = base === null ? null : anchorNodeOf(world, base);
-  if (front === null || baseNode === null) return owned;
+  if (front === null || baseNode === null) return null;
   const reach = hexDistance(baseNode, front);
   const facing: { e: Entity; fromBase: number }[] = [];
   for (const e of owned) {

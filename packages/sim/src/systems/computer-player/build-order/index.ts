@@ -67,7 +67,14 @@ import {
 import { DEFENCE_LINES, seatBuildOrder, seatDefenceFirst, seatSitePace } from './seat-order.js';
 import { type Siege, seatSiege } from './siege.js';
 import { StalledSearches } from './stalled-searches.js';
-import { coverageOf, coverageSpotSearch, firstUncovered } from './tower-coverage.js';
+import {
+  coverageLaneSites,
+  coverageOf,
+  coverageSpotSearch,
+  firstUncovered,
+  TOWER_CONTENT_IDS,
+  towerRingSites,
+} from './tower-coverage.js';
 import { upgradeReach } from './upgrade-reach.js';
 import { suppliedUpgrade } from './upgrade-supply.js';
 
@@ -125,6 +132,21 @@ function homeSiteBudget(
   };
 }
 
+/** Whether a tower ring's sites stand beyond the clock's sites (owner ruling: towers are always good, and
+ *  the ring stands by the military deadline): on a profile that never pauses, so the slower profiles' pace
+ *  stays their throttle. On krwawa_rzeka, with the ring inside the clock's sites, the first tower went up
+ *  only as the clock grew at minute 45 and one or two stood by minute 70. */
+function ringApart(base: Entity | null, profile: ComputerProfile): boolean {
+  return base !== null && profile.freeSitePauseTicks === 0;
+}
+
+/** Whether `e` is a new tower site of a ring, not a standing tower rising a tier. */
+function ringTowerSite(world: World, ctx: SystemContext, e: Entity): boolean {
+  if (world.has(e, Upgrading)) return false;
+  const type = contentIndex(ctx.content).buildings.get(world.get(e, Building).buildingType);
+  return type !== undefined && TOWER_CONTENT_IDS.includes(type.id);
+}
+
 /** Whether the housing lane's home sites all stand beyond the clock's sites (authored): on a profile that
  *  never pauses, once the clock has grown ({@link SITES_GROW_FROM_TICKS}). On magiczny_las, with the first
  *  home counted, two home sites and two tower sites held every site of the third quarter hour past the
@@ -141,8 +163,10 @@ function homesApart(profile: ComputerProfile, tick: number): boolean {
  * its step at once, so up to the clock's {@link sitePace} sites go up side by side, each line within its
  * lookahead of its own oldest unfinished step, and {@link EARNED_WORKSHOP_EXTRA_SITES} more for an earned
  * workshop. A lane step a line has reached runs beside the lines
- * ({@link openLanes}): it takes one of those sites for itself and leaves the lines the rest, so a tower
- * ring with no room left stalls nothing. The housing lane's further home sites, as its food stage allows
+ * ({@link openLanes}) while unmet and not held: it takes one of those sites for itself, a tower ring up to
+ * {@link coverageLaneSites} while the lines keep one, and leaves the lines the rest, so a tower ring with
+ * no room left stalls nothing; on a profile that never pauses a tower ring's sites stand beyond the clock's
+ * instead ({@link ringApart}). The housing lane's further home sites, as its food stage allows
  * ({@link homeSiteBudget}), stand past the clock's sites, and all of them once the clock has grown
  * ({@link homesApart}). A line's tower or store ring keeps one site of its building at a time.
  * An unmet step with no legal action stalls its line rather than being skipped, so no later site of the
@@ -199,11 +223,15 @@ function runBuildOrder(
     siteCap,
     homesApart(profile, ctx.tick),
   );
-  // The home sites past the lane's first stand beyond the clock's, so the lines never count them.
-  const paced = sites.length - homeSites.beyond;
-  // With the pace's sites taken, only an earned workshop or a home site may still go up.
+  const apartRing = ringApart(base, profile);
+  const ringSites = apartRing ? sites.filter((e) => ringTowerSite(world, ctx, e)).length : 0;
+  const ringOpen = apartRing && ringSites < towerRingSites(world, player);
+  // The home sites past the lane's first and the ring's tower sites stand beyond the clock's, so the
+  // lines never count them.
+  const paced = sites.length - homeSites.beyond - ringSites;
+  // With the pace's sites taken, only an earned workshop, a home site or a ring tower may still go up.
   let earnedOnly = paced >= siteCap;
-  if (earnedOnly && !homeSites.open && !earnedSiteOpen(base, profile, paced, siteCap)) return [];
+  if (earnedOnly && !homeSites.open && !ringOpen && !earnedSiteOpen(base, profile, paced, siteCap)) return [];
   const carrier = aiControlEntity(world, player);
   if (!earnedOnly && base !== null && waitsOnFreeSite(world, carrier, profile, ctx.tick)) return [];
   const started = (command: PlayerCommand): readonly PlayerCommand[] => {
@@ -284,10 +312,16 @@ function runBuildOrder(
     },
     () => housingGateOf() === 'early',
   );
+  const laneActive = (lane: OpenLane): boolean =>
+    statusOf(lane.line, lane.step) === 'unmet' && !held(lane.entry);
   for (const lane of lanes) {
-    if (statusOf(lane.line, lane.step) !== 'unmet' || tribe === undefined) continue;
+    if (tribe === undefined || !laneActive(lane)) continue;
     const entry = lane.entry;
-    if (entry.kind === 'housing' ? !homeSites.open : earnedOnly || lane.sites > 0) continue;
+    if (entry.kind === 'housing') {
+      if (!homeSites.open) continue;
+    } else if (apartRing && entry.kind === 'towerCoverage') {
+      if (lane.sites >= coverageLaneSites(world, player, entry)) continue;
+    } else if (earnedOnly || !laneSiteOpen(world, player, entry, lane.sites, paced, siteCap)) continue;
     if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
     if (entry.kind === 'housing') {
       if (housingGateOf() === 'closed') continue;
@@ -317,13 +351,14 @@ function runBuildOrder(
     if (placed !== null) return started(placed);
   }
   // The lines keep the sites the coverage lanes leave them, at least one, and count only their own; the
-  // housing lane's first site is one of theirs.
+  // housing lane's first site is one of theirs. A coverage lane reserves a site only while it has work it
+  // may do, so a held or met ring costs the lines nothing.
   let listSites = paced;
   let reserved = 0;
   for (const lane of lanes) {
-    if (lane.entry.kind === 'housing') continue;
+    if (lane.entry.kind === 'housing' || (apartRing && lane.entry.kind === 'towerCoverage')) continue;
     listSites -= lane.sites;
-    reserved++;
+    if (laneActive(lane)) reserved++;
   }
   if (listSites >= Math.max(1, siteCap - reserved)) {
     if (!earnedSiteOpen(base, profile, paced, siteCap)) return [];
@@ -705,6 +740,20 @@ function openLanes(
     }
   }
   return lanes;
+}
+
+/** Whether a coverage lane holding `own` sites may open another: its first always, more up to its
+ *  {@link coverageLaneSites} while the seat's `paced` sites still leave the lines one of the `siteCap`. */
+function laneSiteOpen(
+  world: World,
+  player: number,
+  entry: Extract<OpenLane['entry'], { kind: 'towerCoverage' | 'storeCoverage' }>,
+  own: number,
+  paced: number,
+  siteCap: number,
+): boolean {
+  if (own === 0) return true;
+  return own < coverageLaneSites(world, player, entry) && paced + 1 < siteCap;
 }
 
 /** The housing lane's next site ({@link housingPick}) as a command, or null when it has none. */

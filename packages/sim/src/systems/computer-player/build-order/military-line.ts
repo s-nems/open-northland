@@ -1,17 +1,29 @@
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import { BARRACKS_LEAD_TICKS, TOWER_LEAD_TICKS } from '../military/deadline.js';
-import type { BuildLine } from './entries.js';
+import type { BuildLine, BuildOrderEntry } from './entries.js';
 
 /** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
  *  tower circle (`./tower-coverage.ts`), so the finished settlement stands under overlapping towers. */
 const DENSE_TOWER_RADIUS_NODES = 14;
 
-/** The army line: the barracks, the tower ring and the catapult joinery (`./entries.ts`). */
+/** How many of the seat's towers the line upgrades to the upper tier (authored): about the ring a
+ *  settlement of medium room stands under, the late dense ring's further towers staying at the lower tier. */
+const UPGRADED_TOWERS = 6;
+
+/** One upgrade step per tower, so each upgrade is its own site and the line's lookahead paces them. */
+const TOWER_UPGRADES: readonly BuildOrderEntry[] = Array.from({ length: UPGRADED_TOWERS }, (_, i) => ({
+  kind: 'upgrade',
+  building: 'tower_01',
+  count: i + 1,
+}));
+
+/** The army line: the tower ring, the barracks, the catapult joinery and the towers' upgrades
+ *  (`./entries.ts`). */
 export const MILITARY_LINE: BuildLine = {
   id: 'military',
-  // Owner ruling: the economy first, the army shortly before the military deadline. The barracks and the
-  // tower ring wait for their leads before it, the catapult joinery behind them; the seat's defence
-  // coming first lifts the waits at once.
+  // Owner ruling: the economy first, the army shortly before the military deadline. The tower ring and
+  // the barracks wait for their leads before it, the catapult joinery behind the barracks; the seat's
+  // defence coming first lifts the waits at once.
   steps: [
     // Where only a ship reaches the nearest rival, the joinery that builds it goes up by the water early:
     // it is the economy's way across, not a wait for the deadline.
@@ -23,6 +35,14 @@ export const MILITARY_LINE: BuildLine = {
       onlyWhen: 'rivalOverSea',
       role: 'ship',
     },
+    // Owner ruling: the ring rises as the cheap lower tower, which stands in a fraction of the upper one's
+    // time and bill, and runs as a lane, so no later step of the line ever waits on it.
+    {
+      kind: 'towerCoverage',
+      building: 'tower_00',
+      lane: true,
+      holdUntil: { kind: 'deadline', leadTicks: TOWER_LEAD_TICKS },
+    },
     // On the settlement's edge toward the nearest enemy, where the attacks come from; the barracks also
     // holds the line in defence.
     {
@@ -31,21 +51,6 @@ export const MILITARY_LINE: BuildLine = {
       count: 1,
       near: [{ kind: 'front' }],
       holdUntil: { kind: 'deadline', leadTicks: BARRACKS_LEAD_TICKS },
-    },
-    {
-      kind: 'towerCoverage',
-      building: 'tower_01',
-      holdUntil: { kind: 'deadline', leadTicks: TOWER_LEAD_TICKS },
-    },
-    // From the late game the denser ring runs as a lane behind the first, one site out of the four the
-    // late game opens (authored): a tower wherever it leaves a building out. A filled settlement with no
-    // room for a tower holds the lane, not the line.
-    {
-      kind: 'towerCoverage',
-      building: 'tower_01',
-      radius: DENSE_TOWER_RADIUS_NODES,
-      lane: true,
-      fromTick: LATE_GAME_FROM_TICKS,
     },
     // The catapult joinery stands by the barracks, where the army musters. A land map gets one top-tier
     // joinery, a sea map two.
@@ -56,5 +61,17 @@ export const MILITARY_LINE: BuildLine = {
       near: [{ kind: 'building', id: 'barracks' }],
       role: 'catapult',
     },
+    // From the late game the denser ring runs as a second lane (authored): a tower wherever the first
+    // leaves a building out. A filled settlement with no room for a tower holds the lane, not the line.
+    {
+      kind: 'towerCoverage',
+      building: 'tower_00',
+      radius: DENSE_TOWER_RADIUS_NODES,
+      lane: true,
+      fromTick: LATE_GAME_FROM_TICKS,
+    },
+    // Owner ruling: the standing towers go up to the upper tier slowly, once the seat makes the bricks and
+    // pillars its bill asks for; an upgrade step holds its line until its bill has a source.
+    ...TOWER_UPGRADES,
   ],
 };
