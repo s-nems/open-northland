@@ -63,7 +63,7 @@ import {
 const FOOD_GOOD = 3;
 
 /** How near a deposit an affinity placement that keeps off it still lands (a reserved ring plus one). */
-const CLAY_NEIGHBOURHOOD_NODES = 4;
+const DEPOSIT_NEIGHBOURHOOD_NODES = 4;
 
 describe('build-order placement - affinity and ground rules', () => {
   /** A half-cell node map that is grass except where `sandy(x, y)` says otherwise. */
@@ -823,8 +823,9 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(toOutpost).toBeGreaterThan(BUILD_SEARCH_MAX_RADIUS_NODES / 2); // pulled out toward the deposit
   });
 
-  it('keeps the reserved zone off a clay deposit, which carries no block the engine would refuse, not off a mushroom', () => {
-    // A clay deposit as the real records stamp it: walkable, no walk or build block, dug from its own node.
+  it('keeps the reserved zone off an iron deposit the engine would not refuse, not off clay or a mushroom', () => {
+    // A walk-free deposit as the real records stamp clay: walkable, no walk or build block, dug from its own
+    // node. Iron is scarce and stays uncovered; clay builds over (owner ruling: build wherever there is room).
     const PIT_HOUSE = 34;
     const pitFootprint = {
       blocked: [{ dx: 0, dy: 0 }],
@@ -848,10 +849,15 @@ describe('build-order placement - affinity and ground rules', () => {
     const sim = aiSim(1, content);
     placeHq(sim);
     sim.step();
+    const iron = sim.world.create();
+    const { x: ironX, y: ironY, harvest } = RESOURCE_SPOTS.iron;
+    sim.world.add(iron, Position, positionOfNode(ironX, ironY));
+    sim.world.add(iron, Resource, { goodType: IRON, remaining: 5, harvestAtomic: harvest });
+    stampResourceFootprintData(sim.world, iron, { walk: [], build: [], work: [{ dx: 0, dy: 0 }] });
     const clay = sim.world.create();
-    const { x: clayX, y: clayY, harvest } = RESOURCE_SPOTS.mud;
+    const { x: clayX, y: clayY, harvest: clayHarvest } = RESOURCE_SPOTS.mud;
     sim.world.add(clay, Position, positionOfNode(clayX, clayY));
-    sim.world.add(clay, Resource, { goodType: MUD, remaining: 5, harvestAtomic: harvest });
+    sim.world.add(clay, Resource, { goodType: MUD, remaining: 5, harvestAtomic: clayHarvest });
     stampResourceFootprintData(sim.world, clay, { walk: [], build: [], work: [{ dx: 0, dy: 0 }] });
     // A meadow mushroom, walk-free like the clay: the seat may build over it.
     const MUSHROOM_SPOT = { x: 12, y: 14 };
@@ -862,20 +868,22 @@ describe('build-order placement - affinity and ground rules', () => {
     const terrain = sim.terrain;
     if (terrain === undefined) throw new Error('mapped sim');
     expect(
-      canPlaceBuilding(sim.world, { ...ctxOf(sim), content }, terrain, PIT_HOUSE, VIKING, clayX, clayY),
+      canPlaceBuilding(sim.world, { ...ctxOf(sim), content }, terrain, PIT_HOUSE, VIKING, ironX, ironY),
     ).toBe(true);
 
     const [spot] = buildOrderModule(
       oneLine([
-        { kind: 'place', building: 'test_pit_house', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
+        { kind: 'place', building: 'test_pit_house', count: 1, near: [{ kind: 'resource', good: 'iron' }] },
       ]),
     ).run(sim.world, { ...ctxOf(sim), content }, SEAT);
-    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement beside the clay');
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement beside the iron');
     const covered = pitFootprint.reserved.some(
-      (c) => spot.x + footprintCellDx(spot.y, c) === clayX && spot.y + c.dy === clayY,
+      (c) => spot.x + footprintCellDx(spot.y, c) === ironX && spot.y + c.dy === ironY,
     );
     expect(covered).toBe(false);
-    expect(Math.abs(spot.x - clayX) + Math.abs(spot.y - clayY)).toBeLessThanOrEqual(CLAY_NEIGHBOURHOOD_NODES);
+    expect(Math.abs(spot.x - ironX) + Math.abs(spot.y - ironY)).toBeLessThanOrEqual(
+      DEPOSIT_NEIGHBOURHOOD_NODES,
+    );
 
     const accept = spotAcceptor(
       sim.world,
@@ -884,8 +892,9 @@ describe('build-order placement - affinity and ground rules', () => {
       SEAT,
       PIT_HOUSE,
       VIKING,
-    ).around(enemyFire([]), { hx: clayX, hy: clayY }, 0);
-    expect(accept(clayX, clayY)).toBe(false);
+    ).around(enemyFire([]), { hx: ironX, hy: ironY }, 0);
+    expect(accept(ironX, ironY)).toBe(false);
+    expect(accept(clayX, clayY)).toBe(true);
     expect(accept(MUSHROOM_SPOT.x, MUSHROOM_SPOT.y)).toBe(true);
   });
 });

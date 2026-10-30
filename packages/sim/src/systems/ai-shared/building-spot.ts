@@ -18,10 +18,11 @@ import { anchorNodeOf } from './node-geometry.js';
  *  workers sow within. */
 export const GRASS_BESIDE_NODES = 6;
 
-/** The deposits a workshop's gatherers dig, which a seat building never covers (authored). The engine's
- *  blockers already keep a zone off every walk body, so this adds only the walk-free deposits; mushrooms,
- *  herbs, trunks and carcasses stay coverable. */
-const DEPOSIT_GOOD_IDS: readonly string[] = ['mud', 'stone', 'iron', 'gold'];
+/** The deposits a workshop's gatherers dig, which a seat building never covers (authored): the scarce
+ *  ones a covered deposit would lose. The engine's blockers already keep a zone off every walk body, so
+ *  this adds only the walk-free deposits. Owner ruling: a seat builds wherever there is room, so clay,
+ *  mushrooms, herbs, trunks and carcasses stay coverable. */
+const DEPOSIT_GOOD_IDS: readonly string[] = ['stone', 'iron', 'gold'];
 
 /** How far out from its anchor a building of the type's chain ever has a wall, in Manhattan nodes: what an
  *  enemy shot at the building reaches for. */
