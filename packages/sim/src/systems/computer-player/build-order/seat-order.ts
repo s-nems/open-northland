@@ -67,6 +67,7 @@ const CRAMPED: ArchetypeTuning = {
     'clothing',
     'tools',
     'weapons',
+    'armory',
     'materials',
     'homes',
     'military',
@@ -188,7 +189,7 @@ const PHASE_RAISES: Readonly<Record<GamePhase, readonly BuildLineId[]>> = {
 };
 
 /** The army, tower and weapon lines a seat raises right behind the opening while its defence comes first. */
-export const DEFENCE_LINES: readonly BuildLineId[] = ['military', 'weapons'];
+export const DEFENCE_LINES: readonly BuildLineId[] = ['military', 'weapons', 'armory'];
 
 /** Whether the seat's defence lines go ahead of its economy's later steps and its military steps stop
  *  waiting on the deadline: while it defends, prepares against a forecast attack, or knows one within the

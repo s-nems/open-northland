@@ -255,8 +255,9 @@ export function entryStatus(
  *  lack crews ({@link copyAwaitsCrews}), or a placement or tower ring on its `holdUntil` ({@link StepHold})
  *  while the seat has no standing building of the id at that tier or above, or has not discovered the
  *  good, while it still could and `order` may still raise that building or one making the good
- *  ({@link orderMayRaise}), or while its military deadline lies further off than the lead and its defence
- *  does not come first. `owned` is the seat's {@link ownedBuildings} list and `statuses` this decision's
+ *  ({@link orderMayRaise}), while it counts fewer settlers than the hold names, or while its military
+ *  deadline lies further off than the lead and its defence does not come first. `owned` is the seat's
+ *  {@link ownedBuildings} list and `statuses` this decision's
  *  {@link lineStatuses} of `order`. */
 export function stepHeld(
   world: World,
@@ -334,6 +335,8 @@ function holdOpen(
       }
       return false;
     }
+    case 'settlers':
+      return ownedSettlers(world, player).length < hold.count;
     case 'deadline':
       return militaryWaits(world, ctx, player, hold.leadTicks);
   }

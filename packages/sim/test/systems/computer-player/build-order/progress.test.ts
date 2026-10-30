@@ -27,6 +27,7 @@ import {
   placeResources,
   RESOURCE_SPOTS,
   SEAT,
+  spawnMen,
   VIKING,
 } from '../support.js';
 
@@ -106,6 +107,23 @@ describe('build order progress', () => {
     // With iron on the map the brewery may still come; with none its only step is skipped for good.
     expect(held(seat(), after, order)).toBe(true);
     expect(held(seat(0, false), after, order)).toBe(false);
+  });
+
+  it('holds a step until the seat counts the settlers its hold names', () => {
+    const SETTLERS = 3;
+    const brewery: BuildOrderEntry = {
+      kind: 'place',
+      building: 'work_brewery',
+      count: 1,
+      holdUntil: { kind: 'settlers', count: SETTLERS },
+    };
+    const sim = seat();
+    spawnMen(sim, SETTLERS - 1);
+    sim.step();
+    expect(held(sim, brewery)).toBe(true);
+    spawnMen(sim, 1);
+    sim.step();
+    expect(held(sim, brewery)).toBe(false);
   });
 
   it('passes a collector over while its good lies stocked, hiring again under half of it', () => {

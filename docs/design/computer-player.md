@@ -58,18 +58,23 @@ the same.
 
 ## Economy
 
-The build order is a set of independent lines (opening, bread, brewery, clothing, tools, weapons,
+The build order is a set of independent lines (opening, bread, brewery, clothing, tools, weapons, armory,
 materials, military, coins, healing, homes, in the standard priority). A step waits for the step before
 it in its line; lines never wait for each other, and a priority table chosen from the strategy decides
 who takes a free construction site. A step whose building is not discovered yet holds its own line while
 the discovery can still come; one that can never come (a map ban, no game to hunt, no deposit) is
-skipped. A step may also hold its line on a building standing, a good discovered or the military
-deadline (`holdUntil`), and a gatherer step may pause while its good lies stocked (`stockedAt`). A
-workshop whose discovery the seat just earned takes the next free site, one site over the pace if need
-be, except that a seat whose defence comes first gives its army and weapon lines that turn. One more
-workshop of a kind the seat runs waits until those standing hold their full crews (owner ruling: upgrades
-and full crews before copies), so the bread line ends on one bakery, a second where there is room, both
-upgraded. Homes are not fixed steps beyond the opening's three, four on a seat with room and five on a
+skipped. A step may also hold its line on a building standing, a good discovered, the seat's settler
+count or the military deadline (`holdUntil`), and a gatherer step may pause while its good lies stocked
+(`stockedAt`). A workshop whose discovery the seat just earned takes the next free site, one site over
+the pace if need be, except that a seat whose defence comes first gives its army and weapon lines that
+turn. One more workshop of a kind the seat runs waits until those standing hold their full crews (owner
+ruling: upgrades and full crews before copies), so the bread line ends on one bakery, a second where
+there is room, both upgraded. One brewery feeds many adults (owner ruling): the second waits for 100
+settlers, the third, the last, for 200. The armory goes up right after the first smithy in a line of its
+own; once the smith has learned mail and plate, a seat with iron in reach raises upper smithies up to
+four, five on a rich seat. A second and third mint follow once the coiner has learned the amulets, and
+further druid huts once the druid has learned the big healing potion.
+Homes are not fixed steps beyond the opening's three, four on a seat with room and five on a
 rich one: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women,
 girls and booked daughters, one home site at a time, upgrading or placing whichever adds a slot
 cheapest.

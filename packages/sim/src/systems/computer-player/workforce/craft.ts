@@ -283,9 +283,10 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   },
   work_bakery_01: { seats: [['bread']] },
   // The first smithy's two smiths cover the core arms, armour and weapons (owner ruling); a smith whose
-  // plate and mail the seat has yet to earn works the weapon seat meanwhile. The six later smithies put
-  // one product on each smith: three each on plate, long swords and iron spears, two on mail and one on
-  // short swords.
+  // plate and mail the seat has yet to earn works the weapon seat meanwhile, and the weapon seat strikes
+  // the mint's short swords. The three later smithies the build order raises put one product on each
+  // smith: two on plate and long swords, one on iron spears and mail. A rich seat's fifth smithy takes
+  // the first one's split again.
   work_smithy_01: {
     seats: [
       ARMOUR_SMITH_SEAT,
@@ -296,12 +297,6 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       ['armor_chain'],
       ['armor_plate'],
       ['sword_long'],
-      ['spear_iron'],
-      ['sword_shord'],
-      ['armor_plate'],
-      ['armor_chain'],
-      ['sword_long'],
-      ['spear_iron'],
     ],
   },
   // The lower armoury's one armourer earns the long bow on wooden spears and short bows; the upgraded

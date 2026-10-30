@@ -19,14 +19,15 @@ export type PlacementAffinity =
   | { readonly kind: 'shore' };
 
 /** What a step waits for while its line holds on it: a built building of the id (at that tier or
- *  above, a rising site not counting), a good the seat has discovered how to make, or the clock reaching
- *  `leadTicks` before the seat's military deadline (`../military/deadline.ts`), which its defence coming
- *  first lifts at once. A hold the seat can never meet, a building or good missing from the content, a
- *  discovery it can never make, or a building (or the good's maker) no unskipped step of the order raises,
- *  lets the step act (`./progress.ts`). */
+ *  above, a rising site not counting), a good the seat has discovered how to make, the seat counting
+ *  `count` settlers, or the clock reaching `leadTicks` before the seat's military deadline
+ *  (`../military/deadline.ts`), which its defence coming first lifts at once. A hold the seat can never
+ *  meet, a building or good missing from the content, a discovery it can never make, or a building (or the
+ *  good's maker) no unskipped step of the order raises, lets the step act (`./progress.ts`). */
 export type StepHold =
   | { readonly kind: 'built'; readonly building: string }
   | { readonly kind: 'good'; readonly good: string }
+  | { readonly kind: 'settlers'; readonly count: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number };
 
 export type BuildOrderEntry =
@@ -163,10 +164,24 @@ function wellBeside(building: string, cap: number): BuildOrderEntry {
   };
 }
 
-/** The `count`th brewery beside the others, then a hive and a well beside it unless theirs stand in reach. */
-function breweryWithHiveAndWell(count: number, wellCap: number): BuildOrderEntry[] {
+/** Owner ruling: the adults live on mead and one brewery feeds many of them, so a further brewery waits
+ *  for the people to drink it, but not too long. Authored figures from magiczny_las at game minute 90: two
+ *  breweries piled 87-158 mead at 101-209 settlers, while one left 0-11 in store at 120-175 on most seats,
+ *  so the second comes from 100 settlers, standing by about 120, and the third from 200. */
+const SECOND_BREWERY_FROM_SETTLERS = 100;
+const THIRD_BREWERY_FROM_SETTLERS = 200;
+
+/** The `count`th brewery beside the others once the seat counts `fromSettlers` settlers, then a hive and a
+ *  well beside it unless theirs stand in reach. */
+function breweryWithHiveAndWell(count: number, wellCap: number, fromSettlers: number): BuildOrderEntry[] {
   return [
-    { kind: 'place', building: 'work_brewery', count, near: [{ kind: 'building', id: 'work_brewery' }] },
+    {
+      kind: 'place',
+      building: 'work_brewery',
+      count,
+      near: [{ kind: 'building', id: 'work_brewery' }],
+      holdUntil: { kind: 'settlers', count: fromSettlers },
+    },
     {
       kind: 'place',
       building: 'work_hive_00',
@@ -180,6 +195,9 @@ function breweryWithHiveAndWell(count: number, wellCap: number): BuildOrderEntry
 
 /** The seat makes the big healing potion. */
 const BIG_POTION: StepHold = { kind: 'good', good: 'potion_heal_big' };
+
+/** The coiner has learned the amulets: the strength and the defence amulet share one discovery threshold. */
+const AMULETS: StepHold = { kind: 'good', good: 'amulet_strength' };
 
 /** Owner ruling: the herb hut never goes up before the seat's first bakery stands. */
 const AFTER_FIRST_BAKERY: StepHold = { kind: 'built', building: 'work_bakery_00' };
@@ -257,6 +275,7 @@ export type BuildLineId =
   | 'clothing'
   | 'tools'
   | 'weapons'
+  | 'armory'
   | 'military'
   | 'healing'
   | 'coins';
@@ -447,11 +466,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           holdUntil: AFTER_FIRST_BAKERY,
         },
         // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
-        // it otherwise.
-        ...breweryWithHiveAndWell(2, 8),
-        // The third brewery beside the first two, with its own hive and well by the same rule.
-        ...breweryWithHiveAndWell(3, 11),
-        ...breweryWithHiveAndWell(4, 15),
+        // it otherwise. The third, the last, beside the first two by the same rule.
+        ...breweryWithHiveAndWell(2, 8, SECOND_BREWERY_FROM_SETTLERS),
+        ...breweryWithHiveAndWell(3, 11, THIRD_BREWERY_FROM_SETTLERS),
       ],
     },
     {
@@ -510,22 +527,39 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     {
       id: 'weapons',
       // The smithy works its wares out of iron and wood, so it stands between the two deposits.
-      // Each shop's lower tier first: mail and the long bow, which their upper tiers want, are learned there.
+      // Its lower tier first: mail and plate, which its upper tier wants, are learned there.
       steps: [
         // Owner ruling: from game minute 15-30 an iron gatherer climbs the smithy tree, his iron making him
         // the first smith; the joinery's iron tools and the smithies take his ore.
         { kind: 'collector', good: 'iron', fromTick: IRON_CLIMB_FROM_TICKS },
         { kind: 'place', building: 'work_smithy_00', count: 1, near: IRON_AND_WOOD },
         { kind: 'upgrade', building: 'work_smithy_01', count: 1 },
-        // The armourer turns wood into bows and spear shafts, so it stands by the wood like the joinery.
-        { kind: 'place', building: 'work_armory_00', count: 1, near: [{ kind: 'resource', good: 'wood' }] },
-        { kind: 'upgrade', building: 'work_armory_01', count: 1 },
+        // Owner ruling: on a seat with iron the upper smithies' mail and plate arm the army, so once the
+        // smith has learned them (the upper tier is enabled by that discovery) more upper smithies follow,
+        // up to four, five on a rich seat; a seat without iron in reach raises none (`./seat-order.ts`).
+        // Each waits for the crews of those standing (`./progress.ts`).
         { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD },
-        { kind: 'place', building: 'work_smithy_01', count: 4, near: IRON_AND_WOOD },
-        // The late game runs out of mail, plate and long bows.
-        { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
+        { kind: 'place', building: 'work_smithy_01', count: 3, near: IRON_AND_WOOD },
+        { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
+      ],
+    },
+    {
+      id: 'armory',
+      // Owner ruling: the armourer's workshop right after the first smithy, not behind the smithy's upgrade.
+      // It turns wood into bows and spear shafts, so it stands by the wood like the joinery; its lower tier
+      // first, where the long bow its upper tier wants is learned. A seat without iron raises no smithy,
+      // which lets its armory go up at once.
+      steps: [
+        {
+          kind: 'place',
+          building: 'work_armory_00',
+          count: 1,
+          near: [{ kind: 'resource', good: 'wood' }],
+          holdUntil: { kind: 'built', building: 'work_smithy_00' },
+        },
+        { kind: 'upgrade', building: 'work_armory_01', count: 1 },
+        // The late game runs out of long bows.
         { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'resource', good: 'wood' }] },
-        { kind: 'place', building: 'work_smithy_01', count: 7, near: IRON_AND_WOOD },
       ],
     },
     {
@@ -632,13 +666,14 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     {
       id: 'coins',
       // Owner ruling: one mint early enough to earn experience, since the coiner learns the amulets the
-      // big potion also wants and the druids pay in coins; never two at once as the first. More come once
-      // the upper druid stands, the third, for the strength amulets, once the big potion is made.
+      // big potion also wants and the druids pay in coins; never two at once as the first. Once he has
+      // learned the amulets, the late game's move into high-end equipment, two more follow, each waiting
+      // for the crews of those standing (`./progress.ts`).
       steps: [
         { kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS },
         mints(1),
-        { ...mints(2), holdUntil: { kind: 'built', building: 'work_druid_01' } },
-        { ...mints(3), holdUntil: BIG_POTION },
+        { ...mints(2), holdUntil: AMULETS },
+        mints(3),
       ],
     },
   ],
@@ -653,6 +688,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     'clothing',
     'tools',
     'weapons',
+    'armory',
     'materials',
     'military',
     'coins',
