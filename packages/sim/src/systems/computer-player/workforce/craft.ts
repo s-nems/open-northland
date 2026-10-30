@@ -384,14 +384,35 @@ export const EASY_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
   },
 };
 
+/** A tunic seat's upper shoe tailor: shoes until they reach {@link SHOES_GLUT_UNITS}, tunics meanwhile. */
+const TUNIC_SHOE_SEAT: CraftSeat = {
+  goods: ['shoes'],
+  glut: { shoes: SHOES_GLUT_UNITS },
+  otherwise: ['armor_wool'],
+};
+
+/** A tunic seat's small tailor, who sews no tunics: shoes, leather armour while they pile up, and shoes
+ *  again once the armour piles up too, since every settler wears shoes out. */
+const SMALL_TAILOR_TUNIC_SEAT: CraftSeat = {
+  goods: ['shoes'],
+  glut: { shoes: SHOES_GLUT_UNITS },
+  otherwise: {
+    goods: ['armor_leather'],
+    glut: { armor_leather: LEATHER_ARMOUR_GLUT_UNITS },
+    otherwise: ['shoes'],
+  },
+};
+
 /**
  * The plans of a seat dressing its army in tunics over its difficulty's (owner ruling): one breeder of each
  * farm raises sheep for the tunics' wool and the other cattle for the shoes' leather, and each upgraded
- * tailor's first man sews shoes and his second tunics, so two upper tailors put two men on each.
+ * tailor's first man sews shoes and his second tunics, so two upper tailors put two men on each; the shoe
+ * men turn to tunics, not leather armour, while shoes pile up.
  */
 export const NATURAL_ARMS_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
   work_animal_farm: { seats: [['sheep'], ['cattle']] },
-  work_sewery_01: { seats: [SHOE_SEAT, TUNIC_SEAT] },
+  work_sewery_00: { seats: [SMALL_TAILOR_TUNIC_SEAT] },
+  work_sewery_01: { seats: [TUNIC_SHOE_SEAT, TUNIC_SEAT] },
 };
 
 /**
