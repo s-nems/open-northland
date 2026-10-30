@@ -1,11 +1,17 @@
 import {
   Building,
   Carrying,
+  JobAssignment,
+  ProductionCounters,
   playerPlacementTribes,
+  productionCountOf,
   professionProgressionEnabled,
+  Settler,
+  SettlerProgress,
   TrainingOrder,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeManhattan } from '../../../nav/halfcell.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
@@ -13,9 +19,16 @@ import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import { tradeExperience } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
+import { schoolMethodJob } from '../../orders/education.js';
 import { trainingSeats } from '../../orders/training-seats.js';
-import { jobEnabled } from '../../progression/index.js';
-import { technologyTable } from './requirements.js';
+import {
+  goodEnabled,
+  jobEnabled,
+  needSubjectOf,
+  requirementRepeats,
+  settlerMeetsNeed,
+} from '../../progression/index.js';
+import { type DiscoveryGate, technologyTable } from './requirements.js';
 
 /** What fills one more slot of a gated trade when no spare man qualifies for it: a pupil already in the
  *  trade's lesson (`promised`), a spare sent to school now (`learn`), `wait` while the school is full or
@@ -61,10 +74,7 @@ export class Schooling {
     if (tribe === undefined || gate === undefined || gate.needs.length === 0 || gate.school === null)
       return NONE;
     if (!jobEnabled(world, ctx, player, tribe, job)) return NONE;
-    const { schools } = gate.school;
-    const standing = this.owned.filter(
-      (e) => schools.includes(world.get(e, Building).buildingType) && isBuilt(world, e),
-    );
+    const standing = this.standingSchools(gate.school.schools);
     if (standing.length === 0) return NONE;
     this.pupils ??= this.livePupils();
     const waiting = this.pupils.get(job) ?? 0;
@@ -87,6 +97,82 @@ export class Schooling {
       kind: 'learn',
       command: { kind: 'learn', entity: spare, house: school, target: 'job', typeId: job },
     };
+  }
+
+  /**
+   * Good lessons for the seat's workshop operators whose every listed product still waits on their own
+   * experience: the rotation would put such a man on an earned product off his list instead (the smith on
+   * short swords toward the long sword's 5 repeats and plate's 10). A lesson of 10 points takes 10 s at the
+   * school besides the walk, where earning it costs about 10 cycles of 15 s and their inputs, so the man
+   * learns the listed product he lacks the most repeats for (lowest id on a tie), a good the seat has
+   * discovered and his own trade makes. One lesson per man suffices: crafting it credits the trade's track
+   * toward the rest. Seats come after this decision's job lessons.
+   */
+  teachMethods(): PlayerCommand[] {
+    const { world, ctx, player } = this;
+    if (!professionProgressionEnabled(world)) return [];
+    const tribe = playerPlacementTribes(world, player)?.[0];
+    const table = tribe === undefined ? null : technologyTable(ctx.content, tribe);
+    if (tribe === undefined || table === null) return [];
+    const commands: PlayerCommand[] = [];
+    let standing: readonly Entity[] | undefined;
+    for (const e of ownedSettlers(world, player)) {
+      const workplace = world.tryGet(e, JobAssignment)?.workplace;
+      if (workplace === undefined || world.has(e, TrainingOrder) || world.has(e, Carrying)) continue;
+      const good = this.lessonFor(e, workplace, tribe, table.goods);
+      if (good === undefined) continue;
+      const school = table.goods.get(good)?.school;
+      if (school === undefined || school === null) continue;
+      // Every course is held by the same school buildings.
+      standing ??= this.standingSchools(school.schools);
+      const house = this.nearestWithSeat(workplace, standing);
+      if (house === null) break;
+      this.freeSeats.set(house, (this.freeSeats.get(house) ?? 0) - 1);
+      commands.push({ kind: 'learn', entity: e, house, target: 'good', typeId: good });
+    }
+    return commands;
+  }
+
+  /** The good {@link teachMethods} sends `operator` to learn, or undefined when one of his listed
+   *  products is open to him or none of the locked ones is taught. */
+  private lessonFor(
+    operator: Entity,
+    workplace: Entity,
+    tribe: number,
+    goods: ReadonlyMap<number, DiscoveryGate>,
+  ): number | undefined {
+    const { world, ctx, player } = this;
+    const buildingType = world.tryGet(workplace, Building)?.buildingType;
+    const recipes =
+      buildingType === undefined
+        ? undefined
+        : contentIndex(ctx.content).recipeByProductByBuilding.get(buildingType);
+    if (recipes === undefined) return undefined;
+    const job = world.get(operator, Settler).jobType;
+    const selection = world.tryGet(operator, ProductionCounters);
+    const subject = needSubjectOf(world, operator);
+    let best: number | undefined;
+    let bestMissing = 0;
+    for (const good of recipes.keys()) {
+      if (productionCountOf(selection, good) <= 0) continue;
+      if (settlerMeetsNeed(world, ctx, subject, 'good', good)) return undefined;
+      const gate = goods.get(good);
+      if (gate === undefined || gate.school === null || !goodEnabled(world, ctx, player, tribe, good))
+        continue;
+      if (schoolMethodJob(ctx.content, tribe, good, job) !== job) continue;
+      const missing = missingRepeats(ctx, world.get(operator, SettlerProgress).experience, gate);
+      if (best === undefined || missing > bestMissing || (missing === bestMissing && good < best)) {
+        best = good;
+        bestMissing = missing;
+      }
+    }
+    return best;
+  }
+
+  private standingSchools(schools: readonly number[]): readonly Entity[] {
+    return this.owned.filter(
+      (e) => schools.includes(this.world.get(e, Building).buildingType) && isBuilt(this.world, e),
+    );
   }
 
   private promise(building: Entity, job: number): void {
@@ -140,4 +226,22 @@ export class Schooling {
     }
     return left;
   }
+}
+
+/** The repeats `experience` still lacks across `gate`'s rows. */
+function missingRepeats(
+  ctx: SystemContext,
+  experience: ReadonlyMap<number, number>,
+  gate: DiscoveryGate,
+): number {
+  let missing = 0;
+  for (const row of gate.needs) {
+    const repeats = requirementRepeats(
+      ctx.content.jobExperience,
+      experience,
+      row.tracks.map((t) => t.track),
+    );
+    missing += Math.max(0, row.amount - repeats);
+  }
+  return missing;
 }

@@ -250,6 +250,7 @@ function runWorkforce(
     ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force, armyFloor.men, arms, profile),
     ...tuneCraftCounters(world, ctx, player, supply, profile),
+    ...gated.schooling.teachMethods(),
     ...assignHaulingCarts(world, ctx, player),
   ];
 }
