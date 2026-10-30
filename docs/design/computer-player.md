@@ -40,8 +40,8 @@ holds); nothing caches who is an enemy.
 
 The economic strategy is chosen from the seat brief and reviewed every few game minutes with
 hysteresis. Archetypes: `standard`, `cramped` (little free ground or ground mostly under forest: compact
-placement, early clearing, upgrades over copies), `rich` (room, iron and gold to spare: more construction
-sites and copies), `islands` (no rival on the seat's land: ship joinery first, economy kept on its own
+placement, early clearing, upgrades over copies), `rich` (room, iron and gold to spare: one more
+construction site and the largest late workshop counts), `islands` (no rival on the seat's land: ship joinery first, economy kept on its own
 land). The metals are weighed by amount, not only distance: the near band's deposit plus the seat's share
 of its land's. Sides: `ironArms` (iron to spare: plate and mail, leather armour as the fallback),
 `ironWeapons` (little iron: two smithies on long swords, iron spears and the amulets' short swords, the
@@ -69,26 +69,35 @@ who takes a free construction site. A step whose building is not discovered yet 
 the discovery can still come; one that can never come (a map ban, no game to hunt, no deposit) is
 skipped. A step may also hold its line on a building standing, a good discovered, the seat's settler
 count or the military deadline (`holdUntil`), and a gatherer step may pause while its good lies stocked
-(`stockedAt`). A workshop whose discovery the seat just earned takes the next free site, one site over
+(`stockedAt`). Owner ruling on priorities: food, then population, then the weapons and the joiner, then
+the special paths, so the gold and mushroom gatherers, the first mint and the herb hut wait until the
+upper bakery, the brewery, the upper smithy and the upper joinery stand. A workshop whose discovery the seat just earned takes the next free site, one site over
 the pace if need be, except that a seat whose defence comes first gives its army and weapon lines that
 turn. One more workshop of a kind the seat runs waits until those standing hold their full crews (owner
 ruling: upgrades and full crews before copies), so the bread line ends on one bakery, a second where
 there is room, both upgraded. One brewery feeds many adults (owner ruling): the second waits for 100
 settlers, the third, the last, for 200. The armory goes up right after the first smithy in a line of its
-own; once the smith has learned mail and plate, a seat with iron to spare raises upper smithies up to
-four, five on a rich seat, and one with little iron stops at two. A seat dressing its army in tunics
-raises its second tailor right after the first, upgrades both (two tailors on shoes, two on tunics, its
-breeders split between cattle and sheep), and a second animal farm only while leather or wool runs short.
-A second and third mint follow, on a seat with gold to spare, once the coiner has learned the amulets, and
-further druid huts once the druid has learned the big healing potion. A seat that lost its base raises
-the top warehouse tier it can source in its place (owner ruling).
+own; one armory with two armourers lasts long, so the second waits for 200 settlers. Once the smith has
+learned mail and plate, a seat with iron to spare raises its second and third upper smithy at once,
+ahead of the crew wait, then more up to four, six on a rich seat; one with little iron stops at two. A
+seat dressing its army in tunics raises its second tailor and its second animal farm right after the
+first ones and upgrades both tailors (two tailors on shoes, two on tunics, its breeders split between
+cattle and sheep). A second and third mint follow, on a seat with gold to spare, once the coiner has
+learned the amulets, and further druid huts once the druid has learned the big healing potion. The late
+targets per archetype (owner ruling for a rich seat: 3 mints, 3 breweries, 6 druid huts, 6 smithies, 2
+armories, 14 homes, 4 upper bakeries, the third and fourth bakery at 150 and 220 settlers) are pinned in
+`build-order/seat-order.ts`; a standard seat stops at 10 homes and 2 bakeries, a cramped one at 8 homes and
+1 bakery. A seat that lost its base raises one warehouse, the top tier it can source, where its start
+headquarters stood, and nothing else until it stands (owner ruling).
 
 Homes are not fixed steps beyond the opening's three, four on a seat with room and five on a
 rich one: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women,
 girls and booked daughters. Its pace follows the food stage (owner ruling): before any workshop makes
 food or a fisher fishes it keeps two slots ahead on one home site, upgrading or placing whichever adds a
-slot cheapest; once food is made it keeps four ahead on two sites; once the brewery and an upper-tier
-bakery stand, eight ahead on three. Home sites past the first stand beyond the clock's sites, at most the
+slot cheapest; while only the animal farm feeds the seat it keeps that pace and raises one home to the
+third tier, two with food in store or game to hunt, and none higher; once the first bakery stands or a
+fisher fishes it keeps four ahead on two sites; once the brewery and an upper-tier bakery stand, eight
+ahead on three. Home sites past the first stand beyond the clock's sites, at most the
 clock's sites but one, so the one-site difficulties keep one. From the food stage on an upgrade goes
 before a new home, the lowest-tier home first, and a home left below the highest tier is upgraded even
 while the slots suffice. Every home without an affinity stands on the far side of the base from the
@@ -120,8 +129,13 @@ spears while long bows pile up; the first upper smithy's smiths split armour (pl
 (long swords, iron spears, short swords for a standing mint), and a seat with little iron forges only
 the weapons; a druid boils holy oil
 only for the experience until he learns the big healing potion and brews only that once he knows it;
-the first coiner strikes coins until he learns amulets; joineries turn to furniture once tools pile up. Extra gatherer posts are
-released at their good's glut, and gatherers never take the builders a seat's open sites need.
+the first coiner strikes coins until he learns amulets; joineries turn to furniture once tools pile up. A
+seat whose goods all lack their inputs takes the next seat's goods that have them, so a tailor out of
+leather sews tunics; the upper armory keeps two armourers and a porter. Extra gatherer posts are
+released at their good's glut, and gatherers never take the builders a seat's open sites need. The
+builder reserve grows with the civilians past 60 (a sixteenth of them on hard). A cramped seat digs room
+with three extra wood and two extra stone collectors from the start, a standard one with two and one from
+game minute 10.
 
 ## Military
 
@@ -130,8 +144,16 @@ without one, or the first forecast scripted attack, whichever comes first. The b
 minutes before it, so it stands about 15 minutes ahead, the first tower ring until 20 minutes before, the
 army floor drafts from 15 minutes before. A seat whose defence comes first raises its barracks and towers
 at once; its army floor still waits for its lead unless the seat is under attack. A seat that starts with
-soldiers and no barracks turns them into builders in its first game minute (owner ruling: they build
+soldiers and no barracks turns them all into builders in its first game minute (owner ruling: they build
 more, and defend as hunters and in defensive mode).
+
+The tower ring is a lane of the cheap lower tier (owner ruling: it builds far faster), two sites at a
+time, three while the seat's defence comes first, standing beyond the site clock on hard; facing a
+forecast attack it covers the buildings on that side twice. Standing towers are upgraded to the upper
+tier once the seat makes bricks and pillars. The catapult joinery follows the barracks without waiting
+for the ring. A seat sends two hunters at each attacking wild animal it sees within reach of its
+buildings, hiring up to two more from its spare men while the threat lasts; beasts stronger than two
+bows (lions) are left to the towers and the army.
 
 Settlement defence is shared with the map AI (`systems/ai-shared/military`), filtered by sight for a
 computer seat. Offensive work runs as operations (`military/operations/`): saved records with a kind,
@@ -154,8 +176,9 @@ inside; it draws reinforcements as the enemy it sees grows, and withdraws when o
 losses, retrying after a cooldown. A seat whose start lies in the area counts with its whole believed
 army; when no computer player runs it and its map program names no attack, it never leaves the area, so
 the posture review does not count it as a threat to the home. A friend's people in the area with no
-enemy leave it to him. Defending or preparing for a forecast attack stops holds; a defensive plan holds
-only while it attacks.
+enemy leave it to him. On a map won by holding an area, a seat with no stronger enemy and no forecast
+attack prepares: its army builds up at home for the hold and marches nowhere else. A clearly stronger
+enemy or a forecast attack stops holds; a raid on the settlement only keeps a new hold from forming.
 
 ## Difficulty
 
