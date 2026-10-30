@@ -1,4 +1,4 @@
-import type { ContentSet } from '@open-northland/data';
+import type { BuildingType, ContentSet } from '@open-northland/data';
 import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -50,21 +50,27 @@ export function storedFoodUnits(content: ContentSet, stock: Pick<SeatStock, 'uni
   return food;
 }
 
-/** Whether any built workplace among `owned` makes food: a recipe output, or a produced good such as the
- *  meat an animal farm's breeder butchers (`produces`), not the mill's flour. */
+/** Whether a workplace of `type` makes food: a recipe output, or a produced good such as the meat an
+ *  animal farm's breeder butchers (`produces`), not the mill's flour. */
+function makesFood(ctx: SystemContext, type: BuildingType): boolean {
+  const outputs = contentIndex(ctx.content).mergedRecipeByBuilding.get(type.typeId)?.outputs ?? [];
+  return (
+    outputs.some((o) => isEdibleFoodIn(ctx.content, o.goodType)) ||
+    type.produces.some((good) => isEdibleFoodIn(ctx.content, good))
+  );
+}
+
+/** Whether any built workplace among `owned` makes food ({@link makesFood}). */
 export function foodWorkshopBuilt(world: World, ctx: SystemContext, owned: readonly Entity[]): boolean {
   const index = contentIndex(ctx.content);
   for (const e of owned) {
     const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type?.kind !== 'workplace' || !isBuilt(world, e)) continue;
-    const outputs = index.mergedRecipeByBuilding.get(type.typeId)?.outputs ?? [];
-    if (outputs.some((o) => isEdibleFoodIn(ctx.content, o.goodType))) return true;
-    if (type.produces.some((good) => isEdibleFoodIn(ctx.content, good))) return true;
+    if (type?.kind === 'workplace' && isBuilt(world, e) && makesFood(ctx, type)) return true;
   }
   return false;
 }
 
-/** Whether a built workplace whose recipes make food employs anybody. */
+/** Whether a built workplace that makes food ({@link makesFood}) employs anybody. */
 function foodWorkshopWorks(
   world: World,
   ctx: SystemContext,
@@ -73,10 +79,8 @@ function foodWorkshopWorks(
 ): boolean {
   const index = contentIndex(ctx.content);
   for (const e of owned) {
-    const typeId = world.get(e, Building).buildingType;
-    if (index.buildings.get(typeId)?.kind !== 'workplace' || !isBuilt(world, e)) continue;
-    const outputs = index.mergedRecipeByBuilding.get(typeId)?.outputs ?? [];
-    if (!outputs.some((o) => isEdibleFoodIn(ctx.content, o.goodType))) continue;
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type?.kind !== 'workplace' || !isBuilt(world, e) || !makesFood(ctx, type)) continue;
     for (const count of tally.get(e)?.values() ?? []) if (count > 0) return true;
   }
   return false;

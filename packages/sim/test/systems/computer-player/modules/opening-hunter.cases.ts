@@ -10,7 +10,14 @@ import {
 } from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
+import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { OPENING_HUNT_UNTIL_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
+import { DEFAULT_BUILD_ORDER, SeatSupply } from '../../../../src/systems/computer-player/index.js';
+import {
+  FOOD_SHORTAGE_HUNTERS,
+  foodHunters,
+} from '../../../../src/systems/computer-player/workforce/food.js';
+import type { StaffingTally } from '../../../../src/systems/computer-player/workforce/tally.js';
 import { HUNT_PREY_SCORE_CEILING } from '../../../../src/systems/conflict/hunting/index.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
@@ -108,6 +115,29 @@ function toughGameContent(): ContentSet {
   });
 }
 
+/** A free fixture id for {@link animalFarmContent}'s farm. */
+const ANIMAL_FARM_TYPE = 40;
+
+/** {@link gameContent} plus an animal farm whose breeder makes the eaten good through `produces`, with
+ *  no recipe, as the real farm butchers meat. */
+function animalFarmContent(): ContentSet {
+  const base = gameContent();
+  return parseContentSet({
+    ...base,
+    jobs: [...base.jobs, { typeId: BREEDER, id: 'breeder' }],
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: ANIMAL_FARM_TYPE,
+        id: 'work_animal_farm',
+        kind: 'workplace',
+        workers: [{ jobType: BREEDER, count: 1 }],
+        produces: [FOOD],
+      },
+    ],
+  });
+}
+
 function spawnDeer(sim: Simulation, x: number, y: number): Entity {
   sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: DEER, x, y, count: 1 });
   sim.step();
@@ -145,6 +175,30 @@ function retirements(sim: Simulation, content: ContentSet, hunter: Entity, tick 
 }
 
 describe('workforce module - the opening hunter', () => {
+  it('calls the food hunters back once an animal farm making food through `produces` has its breeder', () => {
+    const content = animalFarmContent();
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: ANIMAL_FARM_TYPE,
+      x: HQ_X - 10,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, SURPLUS_CREW);
+    sim.step();
+    const ctx = { ...ctxOf(sim), content };
+    const owned = ownedBuildings(sim.world, SEAT);
+    const supply = SeatSupply.of(sim.world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER);
+    const hunters = (tally: StaffingTally) =>
+      foodHunters(sim.world, ctx, SEAT, owned, supply, tally, 0, false);
+    expect(hunters(new Map())).toBe(FOOD_SHORTAGE_HUNTERS);
+    const farm = entityOfBuilding(sim, ANIMAL_FARM_TYPE);
+    expect(hunters(new Map([[farm, new Map([[BREEDER, 1]])]]))).toBe(0);
+  });
+
   it('posts one headquarters hunter and keeps him while the game grazes and the clock runs', () => {
     const content = gameContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
