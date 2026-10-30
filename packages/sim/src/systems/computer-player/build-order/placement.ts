@@ -1,4 +1,4 @@
-import { type BuildingType, footprintCellDx } from '@open-northland/data';
+import { BUILDING_KIND, type BuildingType, type ContentSet, footprintCellDx } from '@open-northland/data';
 import { Building, Stockpile } from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -8,7 +8,13 @@ import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terra
 import { type SpotAcceptor, spotAcceptor } from '../../ai-shared/building-spot.js';
 import { countedTiers, goodTypeByContentId, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
-import { anchorNodeOf, bestRingNode, firstRingNode, towardNode } from '../../ai-shared/node-geometry.js';
+import {
+  anchorCentroid,
+  anchorNodeOf,
+  bestRingNode,
+  firstRingNode,
+  towardNode,
+} from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
 import { shipYardProbe } from '../../footprint/placement/vehicle-site.js';
@@ -253,6 +259,67 @@ function mapCentreNode(terrain: TerrainGraph): HalfCellNode {
 /** Where the spot must land beyond the reach and the acceptor, or null for anywhere. */
 type SpotBound = ((x: number, y: number) => boolean) | null;
 
+/** How far past a field farm's field radius a home keeps off the farm's anchor, in Manhattan nodes
+ *  (authored, owner ruling: room beside the grain farm stays for the mill and the animal farm that use its
+ *  grain, and beside the mill for the bakery): about one workshop's footprint beyond the fields. */
+export const HOME_FARM_MARGIN_NODES = 6;
+
+/** How far a home's search centre moves off the base anchor, away from the seat's field farms, in
+ *  Manhattan nodes (authored, owner ruling: the homes go up on the other side of the base from the farm
+ *  and need to stand beside nothing): a little over a third of the build reach, so the homes stay close. */
+export const HOME_FAR_SIDE_PUSH_NODES = 12;
+
+const fieldRadiusCache = new WeakMap<ContentSet, ReadonlyMap<number, number>>();
+
+/** The building types that sow fields (a `produces` good with a `farming` block: the grain farm, the herb
+ *  hut), with their widest field radius. */
+function fieldRadiusByType(content: ContentSet): ReadonlyMap<number, number> {
+  let radii = fieldRadiusCache.get(content);
+  if (radii === undefined) {
+    const index = contentIndex(content);
+    const built = new Map<number, number>();
+    for (const type of content.buildings) {
+      for (const good of type.produces) {
+        const radius = index.goods.get(good)?.farming?.fieldRadius;
+        if (radius !== undefined) built.set(type.typeId, Math.max(radius, built.get(type.typeId) ?? 0));
+      }
+    }
+    radii = built;
+    fieldRadiusCache.set(content, radii);
+  }
+  return radii;
+}
+
+/** Where a home without affinities looks (owner ruling): its search centre pushed
+ *  {@link HOME_FAR_SIDE_PUSH_NODES} from `anchor` away from the centroid of the seat's field farms, sites
+ *  included, and `nearFarm`, which says whether a node lies within a farm's field radius plus
+ *  {@link HOME_FARM_MARGIN_NODES}. Null while the seat has no field farm. */
+function homeFarSide(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+): { readonly centre: HalfCellNode; readonly nearFarm: (x: number, y: number) => boolean } | null {
+  const radii = fieldRadiusByType(ctx.content);
+  if (radii.size === 0) return null;
+  const farms: Entity[] = [];
+  const zones: { readonly node: HalfCellNode; readonly radius: number }[] = [];
+  for (const e of owned) {
+    const radius = radii.get(world.get(e, Building).buildingType);
+    const node = radius === undefined ? null : anchorNodeOf(world, e);
+    if (radius === undefined || node === null) continue;
+    farms.push(e);
+    zones.push({ node, radius: radius + HOME_FARM_MARGIN_NODES });
+  }
+  const farm = anchorCentroid(world, farms);
+  if (farm === null) return null;
+  const away = { hx: 2 * anchor.hx - farm.hx, hy: 2 * anchor.hy - farm.hy };
+  return {
+    centre: towardNode(anchor, away, HOME_FAR_SIDE_PUSH_NODES),
+    nearFarm: (x, y) => zones.some((z) => Math.abs(x - z.node.hx) + Math.abs(y - z.node.hy) <= z.radius),
+  };
+}
+
 /** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
  *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. The first
  *  `resource` deposit is the one nearest the anchor and every later one the one nearest that first deposit
@@ -421,6 +488,8 @@ function footprintOnGrass(
  * component. The ring budget is twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
  * up that serves nothing, and a `shore` entry's close enough to its ship water for the ship yard.
+ * A home with no affinity searches from the far side of the base from the seat's field farms and takes a
+ * spot near one only when nothing else is left ({@link homeFarSide}).
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
@@ -463,7 +532,18 @@ export function placementSpot(
     underFire,
   );
   if (search === null) return null;
-  const { centre, within } = search;
+  const { within } = search;
+  let { centre } = search;
+  // A home stays off the field farms' ground and leans to the far side of the base from them; a spot near
+  // a farm costs the whole ring budget, so it is taken only when no other spot is left in the fan.
+  const fan = 2 * tuning.reachNodes;
+  const farSide =
+    type.kind === BUILDING_KIND.home && (entry.near ?? []).length === 0
+      ? homeFarSide(world, ctx, owned, anchor)
+      : null;
+  if (farSide !== null) centre = settlement.clamp(farSide.centre);
+  const nearFarm = farSide?.nearFarm;
+  const avoid = nearFarm === undefined ? null : (x: number, y: number) => (nearFarm(x, y) ? fan : 0);
   const home = baseComponent(world, ctx, terrain, player);
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   if (tuning.homeLandOnly && home === NO_COMPONENT) return null;
@@ -484,6 +564,7 @@ export function placementSpot(
       acceptor,
       anchor,
       tuning.hqPullDivisorNodes,
+      avoid,
       from,
       bound,
       land,
@@ -497,7 +578,6 @@ export function placementSpot(
   // A `plantable` entry stands on the grass where it fits, else beside it.
   const onOrBeside = (search: (rule: GroundRule) => HalfCellNode | null) =>
     search(ground) ?? (ground === 'on' ? search('beside') : null);
-  const fan = 2 * tuning.reachNodes;
   const inReach = (rule: GroundRule, spareGrass: boolean) =>
     near(settlement, centre, within, fan, rule, spareGrass) ??
     (centre.hx === anchor.hx && centre.hy === anchor.hy
@@ -521,6 +601,7 @@ function spotAround(
   acceptor: SpotAcceptor,
   anchor: HalfCellNode,
   hqPullDivisorNodes: number,
+  avoid: ((x: number, y: number) => number) | null,
   centre: HalfCellNode,
   within: SpotBound,
   land: SpotBound,
@@ -534,7 +615,8 @@ function spotAround(
   const accept = acceptor.around(underFire, centre, fan, spareGrass);
   const reach = settlement.around(centre, fan);
   const hqPull = (x: number, y: number): number =>
-    Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / hqPullDivisorNodes);
+    Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / hqPullDivisorNodes) +
+    (avoid === null ? 0 : avoid(x, y));
   return bestRingNode(centre.hx, centre.hy, fan, hqPull, (x, y) => {
     // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
     // entry re-walks the whole fan on every retry.

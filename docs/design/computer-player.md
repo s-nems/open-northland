@@ -76,8 +76,14 @@ four, five on a rich seat. A second and third mint follow once the coiner has le
 further druid huts once the druid has learned the big healing potion.
 Homes are not fixed steps beyond the opening's three, four on a seat with room and five on a
 rich one: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women,
-girls and booked daughters, one home site at a time, upgrading or placing whichever adds a slot
-cheapest.
+girls and booked daughters. Its pace follows the food stage (owner ruling): before any workshop makes
+food or a fisher fishes it keeps two slots ahead on one home site, upgrading or placing whichever adds a
+slot cheapest; once food is made it keeps four ahead on two sites; once the brewery and an upper-tier
+bakery stand, eight ahead on three. Home sites past the first stand beyond the clock's sites, at most the
+clock's sites but one, so the one-site difficulties keep one. From the food stage on an upgrade goes
+before a new home, the lowest-tier home first, and a home left below the highest tier is upgraded even
+while the slots suffice. Every home without an affinity stands on the far side of the base from the
+field farms, off their fields, so the mill, animal farm and bakery find room beside the farm.
 It follows food (owner ruling: an upgraded home bears no children while food is short): no home site
 while the store holds under one child's food a woman; a food-rich seat (fishing, or five meals a settler in
 store) may run it from the start of the opening while the daughters are blocked; any other seat opens

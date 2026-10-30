@@ -41,7 +41,16 @@ import {
   stepKey,
 } from './entries.js';
 import { grassBoundEntry, grassReserved } from './grass-reserve.js';
-import { daughtersBlocked, type HousingGate, homeTiersOf, housingGate, housingPick } from './housing.js';
+import {
+  daughtersBlocked,
+  HOUSING_PACE,
+  type HousingGate,
+  homeTiersOf,
+  housingExtraSites,
+  housingGate,
+  housingPick,
+  housingStage,
+} from './housing.js';
 import { placementSpot } from './placement.js';
 import {
   type DecisionMemo,
@@ -86,6 +95,32 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
   return owned.filter((e) => isServedConstructionSite(world, ctx.content, e));
 }
 
+/** The housing lane's share of the open `sites`: `beyond` is how many of its home sites stand past the
+ *  clock's `siteCap` (all but its first, up to {@link housingExtraSites}), and `open` whether it may open
+ *  one more: below its stage's sites ({@link HOUSING_PACE}) and below the clock's sites plus its extra. */
+function homeSiteBudget(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  order: BuildOrder,
+  sites: readonly Entity[],
+  siteCap: number,
+): { readonly beyond: number; readonly open: boolean } {
+  const entry = order.lines.flatMap((line) => line.steps).find((step) => step.kind === 'housing');
+  if (entry?.kind !== 'housing') return { beyond: 0, open: false };
+  const chain = homeTiersOf(ctx.content, entry);
+  const homes = sites.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
+  // The stage walks the seat's buildings, so it is read only when a home site could stand past the clock.
+  if (homes === 0 && sites.length < siteCap) return { beyond: 0, open: true };
+  const stage = housingStage(world, ctx, player, owned);
+  const extra = housingExtraSites(stage, siteCap);
+  return {
+    beyond: Math.max(0, Math.min(homes - 1, extra)),
+    open: homes < HOUSING_PACE[stage].sites && sites.length < siteCap + extra,
+  };
+}
+
 /**
  * Runs the order's lines side by side. Each line acts on its first unmet step, so a razed building is
  * re-placed, after {@link REBUILD_DELAY_TICKS}, before any step of its line the seat has not reached yet;
@@ -95,7 +130,8 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * lookahead of its own oldest unfinished step, and {@link EARNED_WORKSHOP_EXTRA_SITES} more for an earned
  * workshop. A lane step a line has reached runs beside the lines
  * ({@link openLanes}): it takes one of those sites for itself and leaves the lines the rest, so a tower
- * ring with no room left stalls nothing.
+ * ring with no room left stalls nothing. The housing lane's further home sites, as its food stage allows
+ * ({@link homeSiteBudget}), stand past the clock's sites.
  * An unmet step with no legal action stalls its line rather than being skipped, so no later site of the
  * line draws off the goods it waits for: a step whose bill has no source yet ({@link billSourced}), a
  * placement that found no spot, retried every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an
@@ -140,9 +176,12 @@ function runBuildOrder(
   const siteCap =
     base === null ? BASELESS_CONSTRUCTION_SITES : seatSitePace(world, player, profile, ctx.tick).sites;
   const sites = constructionSites(world, ctx, owned);
-  // With the pace's sites taken, only an earned workshop may still go up, on the one site kept for it.
-  let earnedOnly = sites.length >= siteCap;
-  if (earnedOnly && !earnedSiteOpen(base, profile, sites.length, siteCap)) return [];
+  const homeSites = homeSiteBudget(world, ctx, player, owned, order, sites, siteCap);
+  // The home sites past the lane's first stand beyond the clock's, so the lines never count them.
+  const paced = sites.length - homeSites.beyond;
+  // With the pace's sites taken, only an earned workshop or a home site may still go up.
+  let earnedOnly = paced >= siteCap;
+  if (earnedOnly && !homeSites.open && !earnedSiteOpen(base, profile, paced, siteCap)) return [];
   const carrier = aiControlEntity(world, player);
   if (!earnedOnly && base !== null && waitsOnFreeSite(world, carrier, profile, ctx.tick)) return [];
   const started = (command: PlayerCommand): readonly PlayerCommand[] => {
@@ -223,10 +262,11 @@ function runBuildOrder(
     },
     () => housingGateOf() === 'early',
   );
-  for (const lane of earnedOnly ? [] : lanes) {
-    if (statusOf(lane.line, lane.step) !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
-    if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
+  for (const lane of lanes) {
+    if (statusOf(lane.line, lane.step) !== 'unmet' || tribe === undefined) continue;
     const entry = lane.entry;
+    if (entry.kind === 'housing' ? !homeSites.open : earnedOnly || lane.sites > 0) continue;
+    if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
     if (entry.kind === 'housing') {
       if (housingGateOf() === 'closed') continue;
       // Ahead of its place in the line, the lane takes a site only while the daughters are blocked.
@@ -255,8 +295,8 @@ function runBuildOrder(
     if (placed !== null) return started(placed);
   }
   // The lines keep the sites the coverage lanes leave them, at least one, and count only their own; the
-  // housing lane's site is one of theirs.
-  let listSites = sites.length;
+  // housing lane's first site is one of theirs.
+  let listSites = paced;
   let reserved = 0;
   for (const lane of lanes) {
     if (lane.entry.kind === 'housing') continue;
@@ -264,7 +304,7 @@ function runBuildOrder(
     reserved++;
   }
   if (listSites >= Math.max(1, siteCap - reserved)) {
-    if (!earnedSiteOpen(base, profile, sites.length, siteCap)) return [];
+    if (!earnedSiteOpen(base, profile, paced, siteCap)) return [];
     earnedOnly = true;
   }
 

@@ -7,7 +7,7 @@ import type { BuildOrderEntry } from '../../../../src/systems/computer-player/bu
 import {
   FOOD_RICH_UNITS_PER_SETTLER,
   HOUSING_FOOD_UNITS_PER_WOMAN,
-  HOUSING_FREE_SLOTS,
+  HOUSING_PACE,
 } from '../../../../src/systems/computer-player/build-order/housing.js';
 import { buildOrderModule } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
@@ -31,6 +31,7 @@ import {
   spawnMen,
   VIKING,
   WOMAN,
+  WOOD,
 } from '../support.js';
 
 /** Family slots of the fixture's base home tier. */
@@ -38,6 +39,8 @@ const BASE_SLOTS = 2;
 const HOMES_CAP = 4;
 /** The fixture's edible good. */
 const FOOD_SIMPLE = 3;
+/** Wood in store, the fixture homes' only bill good: enough for every upgrade a test asks. */
+const UPGRADE_WOOD = 20;
 
 const HOUSING: BuildOrderEntry = { kind: 'housing', building: 'home_level_00', count: HOMES_CAP };
 const housing = buildOrderModule(oneLine([HOUSING]));
@@ -76,7 +79,7 @@ function seatWithWomen(women: number, perSettler: number, content: ContentSet = 
 describe('the housing lane', () => {
   it('keeps the family slots ahead of the women: new homes up to the cap, then upgrades', () => {
     // One woman more than the capped base homes hold with the lane's free slots, so one upgrade follows.
-    const women = HOMES_CAP * BASE_SLOTS - HOUSING_FREE_SLOTS + 1;
+    const women = HOMES_CAP * BASE_SLOTS - HOUSING_PACE.opening.freeSlots + 1;
     const sim = seatWithWomen(women, FOOD_RICH_UNITS_PER_SETTLER);
     const walk: string[] = [];
     for (let decision = 0; decision < HOMES_CAP + 2; decision++) {
@@ -139,5 +142,61 @@ describe('the housing lane', () => {
     expect(decide(sim, order)).toBeUndefined();
     seatEconomy(sim, 'standard', ['fishing']);
     expect(homePlaced(decide(sim, order))).toBe(true);
+  });
+
+  describe('once a workshop makes food', () => {
+    const content = bakingContent();
+
+    /** A seat of `women` in the feeding stage, wood for every upgrade in store, with built homes of
+     *  `homeTypes` west of its HQ. */
+    function feedingSeat(women: number, homeTypes: readonly number[]): Simulation {
+      const sim = seatWithWomen(women, HOUSING_FOOD_UNITS_PER_WOMAN, content);
+      const place = (buildingType: number, x: number, y: number) =>
+        sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
+      place(BAKERY_TYPE, HQ_X + 6, HQ_Y);
+      for (const [i, type] of homeTypes.entries()) place(type, HQ_X - 6, HQ_Y - 6 + 6 * i);
+      sim.step();
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), WOOD, UPGRADE_WOOD);
+      return sim;
+    }
+
+    it('upgrades the base-tier home before placing a new one, on a second home site at once', () => {
+      // The stage's lead keeps the slots short of two women.
+      const sim = feedingSeat(BASE_SLOTS, [HOME_TYPE]);
+      const first = decide(sim, housing, content);
+      expect(first).toMatchObject({ kind: 'upgradeBuilding', target: HOME_TOP_TYPE });
+      if (first === undefined) throw new Error('expected the upgrade');
+      sim.enqueueSetup(first);
+      sim.step();
+      // The stage holds two home sites, the second beyond the clock's.
+      expect(HOUSING_PACE.feeding.sites).toBe(2);
+      const second = decide(sim, housing, content);
+      expect(homePlaced(second)).toBe(true);
+      if (second === undefined) throw new Error('expected the placement');
+      sim.enqueueSetup(second);
+      sim.step();
+      expect(decide(sim, housing, content)).toBeUndefined();
+    });
+
+    it('upgrades a home lagging below the highest tier while the slots are not short', () => {
+      // One woman: a base and a top home hold her with the stage's whole lead.
+      const women = 1;
+      expect(BASE_SLOTS + 3).toBeGreaterThanOrEqual(women + HOUSING_PACE.feeding.freeSlots);
+      const sim = feedingSeat(women, [HOME_TOP_TYPE, HOME_TYPE]);
+      expect(decide(sim, housing, content)).toMatchObject({ kind: 'upgradeBuilding', target: HOME_TOP_TYPE });
+      // Before any food is made the same homes stand as they are.
+      const opening = seatWithWomen(women, FOOD_RICH_UNITS_PER_SETTLER);
+      for (const [i, type] of [HOME_TOP_TYPE, HOME_TYPE].entries())
+        opening.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: type,
+          x: HQ_X - 6,
+          y: HQ_Y - 6 + 6 * i,
+          tribe: VIKING,
+          owner: SEAT,
+        });
+      opening.step();
+      expect(decide(opening)).toBeUndefined();
+    });
   });
 });

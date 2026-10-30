@@ -28,9 +28,65 @@ import { suppliedUpgrade } from './upgrade-supply.js';
 
 type HousingEntry = Extract<BuildOrderEntry, { kind: 'housing' }>;
 
-/** Family slots the housing lane keeps free beyond the seat's female demand (authored): one for the next
- *  daughter the assistant books, one more for the one after while the next home rises. */
-export const HOUSING_FREE_SLOTS = 2;
+/**
+ * How far the housing lane runs ahead, by the seat's food (owner ruling: homes come slowly at the very
+ * start while no workshop makes food and no fisher fishes; once food is made the lane stokes the furnace,
+ * and once the brewery and an upper-tier bakery stand the seat is safe and raises many children):
+ * `opening` before any food is made, `feeding` once a workshop making food stands or the seat fishes,
+ * `thriving` once every {@link HOUSING_THRIVING_BUILDINGS} building stands too.
+ */
+export type HousingStage = 'opening' | 'feeding' | 'thriving';
+
+/** The buildings, by stable content id (or a tier above), whose standing makes the seat `thriving` (owner
+ *  ruling): the brewery for the adults' mead and the upper-tier bakery for the children's bread. */
+export const HOUSING_THRIVING_BUILDINGS: readonly string[] = ['work_brewery', 'work_bakery_01'];
+
+/** What the lane keeps at each stage: `freeSlots` family slots beyond the seat's female demand, and up to
+ *  `sites` home sites at once, the first one of the clock's sites and the others beyond them
+ *  ({@link housingExtraSites}). */
+export interface HousingPace {
+  readonly freeSlots: number;
+  readonly sites: number;
+}
+
+/** Authored, owner ruling on the order. `opening`: two free slots, one for the next daughter the assistant
+ *  books and one for the one after while the next home rises, on one site. `feeding` doubles the lead on a
+ *  second site, `thriving` doubles it again on a third: on magiczny_las two free slots held six to eight
+ *  women for the first forty game minutes while the bread and the meat already ran. */
+export const HOUSING_PACE: Readonly<Record<HousingStage, HousingPace>> = {
+  opening: { freeSlots: 2, sites: 1 },
+  feeding: { freeSlots: 4, sites: 2 },
+  thriving: { freeSlots: 8, sites: 3 },
+};
+
+/** Whether the seat has a built building of each {@link HOUSING_THRIVING_BUILDINGS} id or a tier above. */
+function thrivingBuilt(world: World, ctx: SystemContext, owned: readonly Entity[]): boolean {
+  const index = contentIndex(ctx.content);
+  return HOUSING_THRIVING_BUILDINGS.every((id) => {
+    const type = buildingTypeByContentId(ctx.content, id);
+    if (type === undefined) return false;
+    const tiers = tiersAtOrAbove(index, type);
+    return owned.some((e) => tiers.has(world.get(e, Building).buildingType) && isBuilt(world, e));
+  });
+}
+
+/** The seat's {@link HousingStage}. */
+export function housingStage(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+): HousingStage {
+  if (!seatHasSide(world, player, 'fishing') && !foodWorkshopBuilt(world, ctx, owned)) return 'opening';
+  return thrivingBuilt(world, ctx, owned) ? 'thriving' : 'feeding';
+}
+
+/** The home sites the lane may hold beyond the clock's `siteCap` at `stage`: its pace's sites but the one
+ *  that is the clock's own, and never more than the clock's sites but one, so a one-site difficulty keeps
+ *  its single site and a two-site one at most doubles it (`../difficulty.ts`). */
+export function housingExtraSites(stage: HousingStage, siteCap: number): number {
+  return Math.max(0, Math.min(HOUSING_PACE[stage].sites - 1, siteCap - 1));
+}
 
 /** The home tiers `entry`'s lane raises: its base tier and every tier above it; none when the content
  *  lacks the base. */
@@ -62,8 +118,39 @@ function familySlots(
 }
 
 /** Whether the {@link familySlots} fall short of the seat's women, girls and booked daughters
- *  ({@link femaleDemand}) plus {@link HOUSING_FREE_SLOTS}. The population module books daughters only up
- *  to the built homes' slots, so the lane keeps them ahead. */
+ *  ({@link femaleDemand}) plus the stage's free slots ({@link HOUSING_PACE}). The population module books
+ *  daughters only up to the built homes' slots, so the lane keeps them ahead. */
+function slotsShort(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  entry: HousingEntry,
+  stage: HousingStage,
+): boolean {
+  return (
+    familySlots(world, ctx, owned, entry) < femaleDemand(world, ctx, player) + HOUSING_PACE[stage].freeSlots
+  );
+}
+
+/** Whether a built home of `entry`'s chain stands below the seat's highest home tier, sites counted at
+ *  the tier they are becoming. */
+function homesLag(world: World, ctx: SystemContext, owned: readonly Entity[], entry: HousingEntry): boolean {
+  const index = contentIndex(ctx.content);
+  let lowest = Number.POSITIVE_INFINITY;
+  let highest = 0;
+  for (const e of homesOf(world, ctx, owned, entry)) {
+    const tier = world.tryGet(e, Upgrading)?.target ?? world.get(e, Building).buildingType;
+    const size = index.buildings.get(tier)?.homeSize ?? 0;
+    highest = Math.max(highest, size);
+    if (isBuilt(world, e) && !world.has(e, UnderConstruction)) lowest = Math.min(lowest, size);
+  }
+  return lowest < highest;
+}
+
+/** Whether the lane wants a site: the family slots fall short ({@link slotsShort}), or, once the seat
+ *  makes food, a home lags below the highest tier (owner ruling: the opening's lower-tier homes are
+ *  upgraded rather than left standing). */
 export function housingShort(
   world: World,
   ctx: SystemContext,
@@ -71,7 +158,11 @@ export function housingShort(
   owned: readonly Entity[],
   entry: HousingEntry,
 ): boolean {
-  return familySlots(world, ctx, owned, entry) < femaleDemand(world, ctx, player) + HOUSING_FREE_SLOTS;
+  const stage = housingStage(world, ctx, player, owned);
+  return (
+    slotsShort(world, ctx, player, owned, entry, stage) ||
+    (stage !== 'opening' && homesLag(world, ctx, owned, entry))
+  );
 }
 
 /** Whether the seat has women or daughters and no family slot left for the next daughter. */
@@ -146,13 +237,29 @@ function billUnits(bill: readonly GoodsLine[]): number {
   return units;
 }
 
+/** Whether upgrade `a` goes before `b`: in the `opening` stage the cheaper slot, later the home of the
+ *  lower tier first (owner ruling: the opening's homes are upgraded rather than left), the cheaper slot
+ *  among one tier's upgrades. */
+function upgradeFirst(
+  a: Option<HousingPick> & { readonly from: number },
+  b: typeof a | null,
+  stage: HousingStage,
+): boolean {
+  if (b === null) return true;
+  if (stage !== 'opening' && a.from !== b.from) return a.from < b.from;
+  return cheaper(a, b);
+}
+
 /**
- * The cheapest family slot the seat can build now, by bill units per slot gained (authored approximation:
+ * The family slot the seat builds next, priced in bill units per slot gained (authored approximation:
  * every good weighs one unit): an upgrade of a built home to any enabled tier above it whose bill the store
- * backs ({@link suppliedUpgrade}), or, below `entry.count` homes, a new home of any enabled tier whose
- * merged bill has a source ({@link billSourced}), beside the seat's homes. A tie goes to the upgrade, which
- * needs no room, then to the higher tier. A new home with no spot yields to the best upgrade, so a cramped
- * seat grows its homes upward. Null when nothing can be raised.
+ * backs ({@link suppliedUpgrade}), or, while the slots fall short and below `entry.count` homes, a new home
+ * of any enabled tier whose merged bill has a source ({@link billSourced}), placed by the home rule of
+ * {@link placementSpot}. In the `opening` stage the cheapest slot wins, a tie going to the upgrade, which
+ * needs no room, then to the higher tier. From the `feeding` stage any upgrade wins over a new home and the
+ * lowest-tier home goes first, so no home is left at the base tier; with the slots not short only a home
+ * below the highest tier is upgraded. A new home with no spot yields to the best upgrade, so a cramped seat
+ * grows its homes upward. Null when nothing can be raised.
  */
 export function housingPick(
   world: World,
@@ -168,8 +275,15 @@ export function housingPick(
   made: () => ReadonlySet<number>,
 ): HousingPick | null {
   const index = contentIndex(ctx.content);
+  const stage = housingStage(world, ctx, player, owned);
+  const short = slotsShort(world, ctx, player, owned, entry, stage);
   const homes = homesOf(world, ctx, owned, entry);
-  let upgrade: Option<HousingPick> | null = null;
+  let highest = 0;
+  for (const home of homes) {
+    const tier = world.tryGet(home, Upgrading)?.target ?? world.get(home, Building).buildingType;
+    highest = Math.max(highest, index.buildings.get(tier)?.homeSize ?? 0);
+  }
+  let upgrade: (Option<HousingPick> & { readonly from: number }) | null = null;
   // Homes of one type offer the same upgrades, so only the lowest-id built one of each is asked.
   const asked = new Set<number>();
   for (const home of homes) {
@@ -178,7 +292,7 @@ export function housingPick(
       continue;
     asked.add(building.buildingType);
     const from = index.buildings.get(building.buildingType);
-    if (from === undefined) continue;
+    if (from === undefined || (!short && from.homeSize >= highest)) continue;
     const seen = new Set<number>();
     for (let tier = from.upgradeTarget; tier !== undefined && !seen.has(tier); ) {
       seen.add(tier);
@@ -189,20 +303,22 @@ export function housingPick(
         pick: { kind: 'upgrade', building: home, target: tier } as const,
         cost: bill === undefined ? 0 : billUnits(bill),
         slots: to.homeSize - from.homeSize,
+        from: from.homeSize,
       };
       if (
         bill !== undefined &&
         option.slots > 0 &&
-        cheaper(option, upgrade) &&
+        upgradeFirst(option, upgrade, stage) &&
         suppliedUpgrade(world, ctx, player, owned, home, [tier]) === tier
       )
         upgrade = option;
       tier = to.upgradeTarget;
     }
   }
+  if (upgrade !== null && stage !== 'opening') return upgrade.pick;
 
   let place: Option<BuildingType> | null = null;
-  if (homes.length < entry.count) {
+  if (short && homes.length < entry.count) {
     const types = [...homeTiersOf(ctx.content, entry)]
       .flatMap((id) => index.buildings.get(id) ?? [])
       .sort((a, b) => b.homeSize - a.homeSize);
@@ -219,11 +335,10 @@ export function housingPick(
   }
 
   if (place !== null && (upgrade === null || cheaper(place, upgrade))) {
-    const near: Extract<BuildOrderEntry, { kind: 'place' }> = {
+    const step: Extract<BuildOrderEntry, { kind: 'place' }> = {
       kind: 'place',
       building: place.pick.id,
       count: 1,
-      near: [{ kind: 'building', id: entry.building }],
     };
     const spot = placementSpot(
       world,
@@ -234,7 +349,7 @@ export function housingPick(
       anchor,
       place.pick,
       tribe,
-      near,
+      step,
       underFire,
       reserveGrass,
     );

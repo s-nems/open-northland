@@ -16,6 +16,7 @@ import { grassScarce } from '../../../../src/systems/computer-player/build-order
 import {
   buildReach,
   FRONT_EDGE_STEP_NODES,
+  HOME_FARM_MARGIN_NODES,
 } from '../../../../src/systems/computer-player/build-order/placement.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -36,6 +37,7 @@ import {
   aiSim,
   ctxOf,
   entityOfBuilding,
+  FARM_TYPE,
   HOME_TYPE,
   HQ_TYPE,
   HQ_X,
@@ -56,6 +58,9 @@ import {
   VIKING,
   WELL_TYPE,
 } from '../support.js';
+
+/** The fixture's edible good, field-farmed where a test gives it a `farming` block. */
+const FOOD_GOOD = 3;
 
 /** How near a deposit an affinity placement that keeps off it still lands (a reserved ring plus one). */
 const CLAY_NEIGHBOURHOOD_NODES = 4;
@@ -473,6 +478,47 @@ describe('build-order placement - affinity and ground rules', () => {
     ]);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
     expect(Math.abs(spot.x - WELL_AT.x) + Math.abs(spot.y - WELL_AT.y)).toBeLessThanOrEqual(2);
+  });
+
+  it('stands a home on the far side of the base from the field farm, off its fields', () => {
+    const FIELD_RADIUS = 4;
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      goods: base.goods.map((g) =>
+        g.id === 'food_simple'
+          ? { ...g, farming: { stages: 5, yieldPerField: 1, fieldRadius: FIELD_RADIUS, maxFields: 25 } }
+          : g,
+      ),
+      buildings: base.buildings.map((b) => (b.id === 'work_farm_00' ? { ...b, produces: [FOOD_GOOD] } : b)),
+    });
+    const homeBeside = (farmX: number) => {
+      const sim = aiSim(1, content);
+      placeHq(sim);
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: FARM_TYPE,
+        x: farmX,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+      const home = [
+        ...buildOrderModule(oneLine([{ kind: 'place', building: 'home_level_00', count: 1 }])).run(
+          sim.world,
+          { ...ctxOf(sim), content },
+          SEAT,
+        ),
+      ][0];
+      if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
+      expect(Math.abs(home.x - farmX) + Math.abs(home.y - HQ_Y)).toBeGreaterThan(
+        FIELD_RADIUS + HOME_FARM_MARGIN_NODES,
+      );
+      return home.x;
+    };
+    expect(homeBeside(HQ_X + 10)).toBeLessThan(HQ_X);
+    expect(homeBeside(HQ_X - 10)).toBeGreaterThan(HQ_X);
   });
 
   it('pulls a mapCentre-affinity placement toward the middle of the map', () => {
