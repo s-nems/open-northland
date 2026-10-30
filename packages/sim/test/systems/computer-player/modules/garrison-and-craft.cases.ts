@@ -59,15 +59,15 @@ import {
 import { unitPoints } from '../../../../src/systems/computer-player/military/points.js';
 import { PLAN_TUNING } from '../../../../src/systems/computer-player/strategy/military.js';
 import {
-  COIN_GLUT_UNITS,
+  COINS_PER_BIG_POTION,
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
-  CRAFT_PLANS_BY_BUILDING_ID,
-  LONG_BOW_GLUT_UNITS,
-  MINT_SHORT_SWORD_UNITS,
+  JOINERY_TOOL_GLUT_UNITS,
+  SHOES_STOCK_UNITS,
   TEMPLE_SITE_OIL_UNITS,
   tuneCraftCounters,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
+import { ARMY_RESERVE_UNITS } from '../../../../src/systems/computer-player/workforce/craft-stock.js';
 import {
   ARMY_FLOOR_BUILDER_CORE,
   ARMY_FLOOR_LEAD_TICKS,
@@ -400,6 +400,8 @@ function unarmedSmithySeat(peaceUntil: number): ArmedSeat {
 }
 
 const FURNITURE = 13;
+/** The fixture joinery's wooden tool. */
+const TOOL_WOODEN = 6;
 
 /** The AI content with the joinery's furniture line, so its joiners have a product to turn to. */
 function furnitureContent(): ContentSet {
@@ -450,7 +452,7 @@ const TEMPLE_TYPE = 66;
 const LEATHER = 67;
 const WOOL = 68;
 const HANDCART = 69;
-/** Free fixture slots for the armourers' and smiths' goods and a mint building beside the smithy. */
+/** Free fixture slots for the armourers' and smiths' goods. */
 const BOW_SHORT = 70;
 const BOW_LONG = 71;
 const SPEAR_WOODEN = 72;
@@ -458,7 +460,6 @@ const ARMOUR_PLATE = 73;
 const ARMOUR_CHAIN = 74;
 const SWORD_LONG = 75;
 const SPEAR_IRON = 76;
-const MINT_TYPE = 96;
 
 /** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
 /** The fixture joinery recast as the workshop `id`, one wood recipe per product, so the type's own plan
@@ -508,7 +509,14 @@ function potteryContent(): ContentSet {
   });
 }
 
-/** The mint with its amulet inputs as plain goods, so the seat's stock of them can feed an amulet seat. */
+/** A druid hut type of {@link COIN_CONSUMER_OPERATORS} druids whose potion takes coins, the mint's coin
+ *  consumer. */
+const COIN_CONSUMER_TYPE = 97;
+const COIN_CONSUMER_OPERATORS = 2;
+const POTION_OF_COINS = 98;
+
+/** The mint with its amulet inputs as plain goods, so the seat's stock of them can feed an amulet seat,
+ *  and a druid hut drawing its coins. */
 function mintContent(): ContentSet {
   const recast = joineryRecastAs('work_coin_mint', [
     { typeId: COIN, id: 'coin' },
@@ -521,16 +529,37 @@ function mintContent(): ContentSet {
       ...recast.goods,
       { typeId: LEATHER_ARMOUR, id: 'armor_leather', weight: 1 },
       { typeId: SWORD_SHORT, id: 'sword_shord', weight: 1 },
+      { typeId: POTION_OF_COINS, id: 'potion_heal_big', weight: 1 },
+    ],
+    buildings: [
+      ...recast.buildings,
+      {
+        typeId: COIN_CONSUMER_TYPE,
+        id: 'work_druid_01',
+        kind: 'workplace' as const,
+        workers: [{ jobType: JOINER, count: COIN_CONSUMER_OPERATORS }],
+        recipes: [
+          {
+            inputs: [{ goodType: COIN, amount: COINS_PER_BIG_POTION }],
+            outputs: [{ goodType: POTION_OF_COINS, amount: 1 }],
+            ticks: 180,
+          },
+        ],
+        construction: [{ goodType: WOOD, amount: 1 }],
+      },
     ],
   });
 }
 
-/** The glut a plan's seat `index` drops `goodId` at, or a failure when the plan does not cap it. */
-function glutOf(buildingId: string, index: number, goodId: string): number {
-  const seat = CRAFT_PLANS_BY_BUILDING_ID[buildingId]?.seats[index];
-  const glut = seat === undefined || !('goods' in seat) ? undefined : seat.glut[goodId];
-  if (glut === undefined) throw new Error(`setup: ${buildingId} seat ${index} does not cap ${goodId}`);
-  return glut;
+/** Each operator's changed selection in `commands`: his goods, or `rest` when every product is stopped. */
+function decisions(commands: readonly PlayerCommand[]): (readonly number[] | 'rest')[] {
+  return commands.flatMap((c) => {
+    if (c.kind !== 'setProductionGoods') return [];
+    const stops = commands.some(
+      (o) => o.kind === 'setProductionCount' && o.entity === c.entity && o.count === 0,
+    );
+    return [stops ? 'rest' : c.goods];
+  });
 }
 
 /** One decision's craft selections, over the seat's supply at the time. */
@@ -568,11 +597,11 @@ function crewedWorkshop(content: ContentSet, crew: number) {
     stock: (good: number, units: number) =>
       setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), good, units),
     /** The decision's product changes, applied. */
-    products(): (readonly number[])[] {
+    products(): (readonly number[] | 'rest')[] {
       const commands = tune(sim.world, ctx);
       for (const c of commands) sim.enqueueSetup(c);
       sim.step();
-      return commands.flatMap((c) => (c.kind === 'setProductionGoods' ? [c.goods] : []));
+      return decisions(commands);
     },
   };
 }
@@ -1431,7 +1460,64 @@ describe('workforce module - the barracks and craft selections', () => {
     ).toEqual([]);
   });
 
-  it("hands a smith whose plate armour the seat has yet to earn the plan's next seat, the long sword", () => {
+  it('shares a plan between smithy tiers per tier, so the lower smith is never handed plate', () => {
+    const base = aiContent();
+    const SMITH = 81;
+    const PLATE = 82;
+    const LONG = 83;
+    const LOWER = 84;
+    const UPPER = 85;
+    const smithy = (typeId: number, id: string, goods: readonly number[]) => ({
+      typeId,
+      id,
+      kind: 'workplace' as const,
+      workers: [{ jobType: SMITH, count: 1 }],
+      recipes: goods.map((good) => ({ inputs: [], outputs: [{ goodType: good, amount: 1 }] })),
+      stock: goods.map((good) => ({ goodType: good, capacity: 10 })),
+      construction: [{ goodType: WOOD, amount: 1 }],
+    });
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: PLATE, id: 'armor_plate' }, { typeId: LONG, id: 'sword_long' }],
+      jobs: [...base.jobs, { typeId: SMITH, id: 'smith' }],
+      buildings: [
+        ...base.buildings,
+        smithy(LOWER, 'work_smithy_00', [LONG]),
+        smithy(UPPER, 'work_smithy_01', [PLATE, LONG]),
+      ],
+    });
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    for (const [buildingType, x] of [
+      [LOWER, 40],
+      [UPPER, 60],
+    ] as const)
+      sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y: 16, tribe: VIKING, owner: SEAT });
+    spawnMen(sim, 2, BUILDER);
+    sim.step();
+    const ctx = { ...ctxOf(sim), content };
+    const men = [...sim.world.query(Settler)]
+      .filter((e) => sim.world.get(e, Settler).jobType === BUILDER)
+      .sort((a, b) => a - b);
+    for (const [i, buildingType] of [LOWER, UPPER].entries()) {
+      const man = men[i];
+      if (man === undefined) throw new Error('setup: two men');
+      sim.enqueueSetup({
+        kind: 'assignWorker',
+        entity: man,
+        building: entityOfBuilding(sim, buildingType),
+        jobPriority: [SMITH],
+      });
+      sim.enqueueSetup({ kind: 'setProductionGoods', entity: man, goods: [] });
+    }
+    sim.step();
+    expect(tune(sim.world, ctx)).toEqual([
+      { kind: 'setProductionGoods', entity: men[0], goods: [LONG] },
+      { kind: 'setProductionGoods', entity: men[1], goods: [PLATE] },
+    ]);
+  });
+
+  it('hands a smith whose plate armour the seat has yet to earn the long sword', () => {
     const base = aiContent();
     const SMITH = 81;
     const PLATE = 82;
@@ -1466,7 +1552,6 @@ describe('workforce module - the barracks and craft selections', () => {
           : { ...t, jobEnables: [...t.jobEnables, { jobType: MILLER, kind: 'good', targetId: PLATE }] },
       ),
     });
-    expect(CRAFT_PLANS_BY_BUILDING_ID.work_smithy_01?.seats[0]).toEqual(['armor_plate', 'armor_chain']);
     const sim = aiSim(1, content);
     placeHq(sim);
     sim.enqueueSetup({
@@ -1490,19 +1575,24 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(tuned).toEqual([{ kind: 'setProductionGoods', entity: smith, goods: [SWORD_LONG] }]);
   });
 
-  it('keeps both joiners on iron tools, and turns both to furniture while the tools pile up', () => {
+  it('keeps both joiners on iron tools to their stock line and rests them there, never on furniture', () => {
     const seat = crewedWorkshop(furnitureContent(), 2);
-    const glut = glutOf('work_joinery_01', 0, 'tool_iron');
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
-    seat.stock(TOOL_IRON, glut - 1);
+    seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS - 1);
     expect(seat.products()).toEqual([]);
-    seat.stock(TOOL_IRON, glut);
-    expect(seat.products()).toEqual([[FURNITURE], [FURNITURE]]);
-    // The tools come back only under the band, so the stock hovering at the glut flips nothing.
-    seat.stock(TOOL_IRON, glut - CRAFT_GLUT_BAND_UNITS);
+    seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS);
+    expect(seat.products()).toEqual(['rest', 'rest']);
     expect(seat.products()).toEqual([]);
-    seat.stock(TOOL_IRON, glut - CRAFT_GLUT_BAND_UNITS - 1);
+    // The tools come back only under the band, so the stock hovering at the line flips nothing.
+    seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS);
+    expect(seat.products()).toEqual([]);
+    seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS - 1);
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
+  });
+
+  it('makes wooden tools only until the iron tool is earned', () => {
+    const seat = crewedWorkshop(withUnearned(aiContent(), [TOOL_IRON]), 1);
+    expect(seat.products()).toEqual([[TOOL_WOODEN]]);
   });
 
   it('opens an upgraded mason hut on a marble run, then alternates stone blocks and marble', () => {
@@ -1665,11 +1755,11 @@ describe('workforce module - the barracks and craft selections', () => {
         sim.step();
       },
       /** The decision's product changes, applied. */
-      products(): (readonly number[])[] {
+      products(): (readonly number[] | 'rest')[] {
         const commands = tune(sim.world, ctx);
         for (const c of commands) sim.enqueueSetup(c);
         sim.step();
-        return commands.flatMap((c) => (c.kind === 'setProductionGoods' ? [c.goods] : []));
+        return decisions(commands);
       },
     };
   }
@@ -1677,50 +1767,70 @@ describe('workforce module - the barracks and craft selections', () => {
   /** Three mints of two coiners' seats each with `crew` builders to hire. */
   function crewedMints(crew: number) {
     const mints = crewedWorkshops(mintContent(), 3, crew);
-    return { ...mints, stockCoins: (units: number) => mints.stock(COIN, units) };
+    return {
+      ...mints,
+      stockCoins: (units: number) => mints.stock(COIN, units),
+      /** Raise a standing druid hut whose potion takes the mint's coins. */
+      raiseCoinConsumer(): void {
+        mints.sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: COIN_CONSUMER_TYPE,
+          x: 160,
+          y: 16,
+          tribe: VIKING,
+          owner: SEAT,
+        });
+        mints.sim.step();
+      },
+    };
   }
 
-  it('keeps one coiner on coins for good and two more only under the coin glut; the rest make amulets', () => {
+  it('keeps coins for the druids, two a big potion each, and strikes amulets with the rest', () => {
     const mints = crewedMints(6);
-    // At the glut the plan's lists stand: one coiner, and every other seat on both amulet lines, since the
-    // seat holds neither a leather armour nor a short sword to feed one line first.
-    mints.stockCoins(COIN_GLUT_UNITS);
     mints.hire(0, 6);
+    // No druid hut: no coin is wanted, and every seat strikes amulets, both lines while neither input is in.
     const amulets = [DEFENCE_AMULET, STRENGTH_AMULET];
-    expect(mints.products()).toEqual([[COIN], amulets, amulets, amulets, amulets, amulets]);
-    // Under the glut by the band the two top-up seats turn to coins; the amulet seats stay.
-    mints.stockCoins(COIN_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS);
+    expect(mints.products()).toEqual([amulets, amulets, amulets, amulets, amulets, amulets]);
+    mints.raiseCoinConsumer();
+    expect(mints.products()).toEqual([[COIN]]);
+    const target = COIN_CONSUMER_OPERATORS * COINS_PER_BIG_POTION;
+    mints.stockCoins(target - 1);
     expect(mints.products()).toEqual([]);
-    mints.stockCoins(COIN_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS - 1);
+    mints.stockCoins(target);
+    expect(mints.products()).toEqual([amulets]);
+    // Taken up again only under the band.
+    mints.stockCoins(target - 1);
+    expect(mints.products()).toEqual([]);
+    mints.stockCoins(0);
+    expect(mints.products()).toEqual([[COIN]]);
+  });
+
+  it('strikes coins to earn the amulets while they are unearned', () => {
+    const mints = crewedWorkshops(withUnearned(mintContent(), [DEFENCE_AMULET, STRENGTH_AMULET]), 1, 2);
+    mints.hire(0, 2);
     expect(mints.products()).toEqual([[COIN], [COIN]]);
-    // They hold to the glut, and go back to amulets there; the first coiner never moves.
-    mints.stockCoins(COIN_GLUT_UNITS - 1);
-    expect(mints.products()).toEqual([]);
-    mints.stockCoins(COIN_GLUT_UNITS);
-    expect(mints.products()).toEqual([amulets, amulets]);
   });
 
   it('alternates strength-first and defence-first amulet seats, each falling back to the other line while its own input is out', () => {
     const mints = crewedMints(6);
-    mints.stockCoins(COIN_GLUT_UNITS);
     mints.stock(LEATHER_ARMOUR, 1);
     mints.stock(SWORD_SHORT, 1);
     mints.hire(0, 6);
-    // Both inputs in store: the five amulet seats split three strength, two defence.
+    // Both inputs in store: the six amulet seats split three strength, three defence.
     const strength = [STRENGTH_AMULET];
     const defence = [DEFENCE_AMULET];
-    expect(mints.products()).toEqual([[COIN], strength, defence, strength, defence, strength]);
+    expect(mints.products()).toEqual([strength, defence, strength, defence, strength, defence]);
     // No short sword: the strength-first seats turn to defence amulets.
     mints.stock(SWORD_SHORT, 0);
     expect(mints.products()).toEqual([defence, defence, defence]);
     // No leather armour: every seat strikes strength amulets.
     mints.stock(LEATHER_ARMOUR, 0);
     mints.stock(SWORD_SHORT, 1);
-    expect(mints.products()).toEqual([strength, strength, strength, strength, strength]);
+    expect(mints.products()).toEqual([strength, strength, strength, strength, strength, strength]);
     // Neither in store: every seat works both lines.
     mints.stock(SWORD_SHORT, 0);
     const amulets = [DEFENCE_AMULET, STRENGTH_AMULET];
-    expect(mints.products()).toEqual([amulets, amulets, amulets, amulets, amulets]);
+    expect(mints.products()).toEqual([amulets, amulets, amulets, amulets, amulets, amulets]);
   });
 
   /** One pottery past its opening run with both potters hired, deciding at `tick`; the bricks' lines then. */
@@ -1770,7 +1880,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('releases the crew of a workshop without a plan to every product', () => {
     const seat = crewedWorkshop(
-      joineryRecastAs('work_smithy_00', [
+      joineryRecastAs('work_brewery', [
         { typeId: SHOES, id: 'shoes' },
         { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
       ]),
@@ -1789,7 +1899,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('hands the seats out across every building of the type, not per building', () => {
     // One tailor in each of two sewing huts: counted per building each would be a lone man on the first
-    // seat's shoes, counted across the type they are the pair the table splits.
+    // want, the leather armour the army lacks, counted across the type they are the pair the wants split.
     const content = joineryRecastAs('work_sewery_01', [
       { typeId: SHOES, id: 'shoes' },
       { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
@@ -1828,25 +1938,24 @@ describe('workforce module - the barracks and craft selections', () => {
       .sort((a, b) => a - b);
     expect(tailors).toHaveLength(2);
     expect(tune(sim.world, ctx)).toEqual([
-      { kind: 'setProductionGoods', entity: tailors[0], goods: [SHOES] },
-      { kind: 'setProductionGoods', entity: tailors[1], goods: [LEATHER_ARMOUR] },
+      { kind: 'setProductionGoods', entity: tailors[0], goods: [LEATHER_ARMOUR] },
+      { kind: 'setProductionGoods', entity: tailors[1], goods: [SHOES] },
     ]);
   });
 
-  it('sews tunics instead of leather armour on a seat arming without iron', () => {
-    const tailors = crewedWorkshops(
-      joineryRecastAs('work_sewery_01', [
-        { typeId: SHOES, id: 'shoes' },
-        { typeId: LEATHER_ARMOUR, id: 'armor_leather' },
-        { typeId: TUNIC, id: 'armor_wool' },
-      ]),
-      1,
-      2,
-    );
+  it('sews tunics and shoes, never leather armour, on a seat arming without iron', () => {
+    const tailors = crewedWorkshops(tailorContent(), 1, 2);
+    tailors.stock(LEATHER, 10);
+    tailors.stock(WOOL, 10);
     tailors.hire(0, 2);
-    expect(tailors.products()).toEqual([[SHOES], [LEATHER_ARMOUR]]);
+    // Plate is out of reach of this content: the iron seat's army takes leather armour and tunics.
+    expect(tailors.products()).toEqual([[LEATHER_ARMOUR], [TUNIC]]);
     seatEconomy(tailors.sim, 'standard', ['naturalArms']);
-    expect(tailors.products()).toEqual([[TUNIC]]);
+    expect(tailors.products()).toEqual([[SHOES]]);
+    // Past the army's tunics and the shoes, both rest.
+    tailors.stock(TUNIC, ARMY_RESERVE_UNITS);
+    tailors.stock(SHOES, SHOES_STOCK_UNITS);
+    expect(tailors.products()).toEqual(['rest', 'rest']);
   });
 
   it('keeps one breeder on sheep for the wool on a seat arming without iron', () => {
@@ -1898,15 +2007,20 @@ describe('workforce module - the barracks and craft selections', () => {
     });
   }
 
-  it('turns the tailors to tunics while the leather is out, and back once it comes in', () => {
-    const tailors = crewedWorkshops(tailorContent(), 1, 2);
-    tailors.hire(0, 2);
-    // Neither input in store: each keeps his own seat.
-    expect(tailors.products()).toEqual([[SHOES], [LEATHER_ARMOUR]]);
-    tailors.stock(WOOL, 10);
-    expect(tailors.products()).toEqual([[TUNIC], [TUNIC]]);
+  it('sews leather armour on an iron seat only until plate is earned or for the amulets, and rests past the shoes', () => {
+    const base = tailorContent();
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: ARMOUR_PLATE, id: 'armor_plate', weight: 1 }],
+    });
+    const tailors = crewedWorkshops(content, 1, 2);
     tailors.stock(LEATHER, 10);
-    expect(tailors.products()).toEqual([[SHOES], [LEATHER_ARMOUR]]);
+    tailors.stock(WOOL, 10);
+    tailors.hire(0, 2);
+    // Plate earned: no armour for the army, the shoes alone; past them both tailors rest.
+    expect(tailors.products()).toEqual([[SHOES], [SHOES]]);
+    tailors.stock(SHOES, SHOES_STOCK_UNITS);
+    expect(tailors.products()).toEqual(['rest', 'rest']);
   });
 
   it("hands a tunic seat's tunic tailor the shoes while the wool is out, holding a half-fed tunic", () => {
@@ -1994,30 +2108,36 @@ describe('workforce module - the barracks and craft selections', () => {
     return withUnearned(recast, unearned, { typeId: TEMPLE_TYPE, id: 'work_temple' });
   }
 
-  it('keeps the first armourer on wooden spears and short bows until the long bow is earned, then on long bows alone', () => {
-    const products = (unearned: readonly number[]) => {
+  it('arms the archers and spearmen from the armoury until the long bow and iron spear are earned, and rests past the army', () => {
+    const armoury = (unearned: readonly number[], ironSpear: boolean) => {
       const recast = joineryRecastAs('work_armory_01', [
         { typeId: BOW_SHORT, id: 'bow_short' },
         { typeId: BOW_LONG, id: 'bow_long' },
         { typeId: SPEAR_WOODEN, id: 'spear_wooden' },
       ]);
-      const armourers = crewedWorkshops(withUnearned(recast, unearned), 1, 2);
+      const content = ironSpear
+        ? parseContentSet({
+            ...recast,
+            goods: [...recast.goods, { typeId: SPEAR_IRON, id: 'spear_iron', weight: 1 }],
+          })
+        : recast;
+      const armourers = crewedWorkshops(withUnearned(content, unearned), 1, 2);
       armourers.hire(0, 2);
       return armourers;
     };
-    // Before the long bow, the second armourer's alternation keeps only its wooden spears.
-    expect(products([BOW_LONG]).products()).toEqual([[BOW_SHORT, SPEAR_WOODEN], [SPEAR_WOODEN]]);
-    const earned = products([]);
-    expect(earned.products()).toEqual([[BOW_LONG], [BOW_LONG, SPEAR_WOODEN]]);
-    // The second armourer's spears pause while they pile up.
-    earned.stock(SPEAR_WOODEN, glutOf('work_armory_01', 1, 'spear_wooden'));
-    expect(earned.products()).toEqual([[BOW_LONG]]);
-    // And the long bows too: the first turns to the shafts, the second works both again.
-    earned.stock(BOW_LONG, LONG_BOW_GLUT_UNITS);
-    expect(earned.products()).toEqual([[SPEAR_WOODEN], [BOW_LONG, SPEAR_WOODEN]]);
+    // Before the long bow: short bows for the archers and wooden spears for the spearmen.
+    expect(armoury([BOW_LONG], false).products()).toEqual([[BOW_SHORT], [SPEAR_WOODEN]]);
+    const earned = armoury([], false);
+    expect(earned.products()).toEqual([[BOW_LONG], [SPEAR_WOODEN]]);
+    // Both at the army's line: the armourers rest rather than pile up bows or shafts.
+    earned.stock(BOW_LONG, ARMY_RESERVE_UNITS);
+    earned.stock(SPEAR_WOODEN, ARMY_RESERVE_UNITS);
+    expect(earned.products()).toEqual(['rest', 'rest']);
+    // With the iron spear earned and no smith to feed, no wooden spear is wanted.
+    expect(armoury([], true).products()).toEqual([[BOW_LONG], [BOW_LONG]]);
   });
 
-  it("splits the first smithy's smiths between armour and weapons, short swords added while a mint stands and they run low", () => {
+  it('shares the smiths out over the armour and weapons the army lacks, and rests them past it', () => {
     const recast = joineryRecastAs('work_smithy_01', [
       { typeId: ARMOUR_PLATE, id: 'armor_plate' },
       { typeId: ARMOUR_CHAIN, id: 'armor_chain' },
@@ -2025,28 +2145,26 @@ describe('workforce module - the barracks and craft selections', () => {
       { typeId: SPEAR_IRON, id: 'spear_iron' },
       { typeId: SWORD_SHORT, id: 'sword_shord' },
     ]);
-    const smiths = crewedWorkshops(
-      withUnearned(recast, [], { typeId: MINT_TYPE, id: 'work_coin_mint' }),
-      1,
-      2,
-    );
+    const smiths = crewedWorkshops(recast, 1, 2);
     smiths.hire(0, 2);
-    expect(smiths.products()).toEqual([
-      [ARMOUR_PLATE, ARMOUR_CHAIN],
-      [SWORD_LONG, SPEAR_IRON],
+    expect(smiths.products()).toEqual([[ARMOUR_PLATE, ARMOUR_CHAIN], [SWORD_LONG]]);
+    // The long swords at the army's line: the weapon smith turns to iron spears.
+    smiths.stock(SWORD_LONG, ARMY_RESERVE_UNITS);
+    expect(smiths.products()).toEqual([[SPEAR_IRON]]);
+    // Every want met: both smiths rest, so the iron gathers for the next want.
+    smiths.stock(SPEAR_IRON, ARMY_RESERVE_UNITS);
+    smiths.stock(ARMOUR_PLATE, ARMY_RESERVE_UNITS);
+    expect(smiths.products()).toEqual(['rest', 'rest']);
+  });
+
+  it('forges short swords for the swordsmen only until the long sword is earned', () => {
+    const recast = joineryRecastAs('work_smithy_00', [
+      { typeId: SWORD_LONG, id: 'sword_long' },
+      { typeId: SWORD_SHORT, id: 'sword_shord' },
     ]);
-    smiths.sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: MINT_TYPE,
-      x: 100,
-      y: 16,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    smiths.sim.step();
-    expect(smiths.products()).toEqual([[SWORD_SHORT, SWORD_LONG, SPEAR_IRON]]);
-    smiths.stock(SWORD_SHORT, MINT_SHORT_SWORD_UNITS);
-    expect(smiths.products()).toEqual([[SWORD_LONG, SPEAR_IRON]]);
+    const smiths = crewedWorkshops(withUnearned(recast, [SWORD_LONG]), 1, 1);
+    smiths.hire(0, 1);
+    expect(smiths.products()).toEqual([[SWORD_SHORT]]);
   });
 
   it('boils holy oil until the big healing potion is earned, the small one skipped, and then brews only it', () => {

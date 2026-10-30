@@ -234,11 +234,25 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       expect(building, `tower id ${towerId}`).toBeDefined();
       expect(building?.kind, `tower kind of ${towerId}`).toBe('tower');
     }
-    type Seat = (typeof CRAFT_PLANS_BY_BUILDING_ID)[string]['seats'][number];
+    type Plan = (typeof CRAFT_PLANS_BY_BUILDING_ID)[string];
+    type Seat = Extract<Plan, { seats: unknown }>['seats'][number];
+    /** A good id the plan names must exist, or a gate on it would never open. */
+    const known = (goodId: string, what: string): string => {
+      expect(
+        content.goods.find((g) => g.id === goodId),
+        `${what} ${goodId}`,
+      ).toBeDefined();
+      return goodId;
+    };
     /** The goods a seat may list, its fallback seats included. */
     const seatGoods = (seat: Seat): string[] => {
+      if ('rest' in seat) return [];
       if ('firstFed' in seat) return seat.firstFed.map((line) => line.good);
       if ('firstEnabled' in seat) return seat.firstEnabled.flatMap(seatGoods);
+      if ('until' in seat) {
+        known(seat.until, 'seat gate');
+        return [...seatGoods(seat.works), ...seatGoods(seat.otherwise)];
+      }
       if ('whileOwned' in seat) {
         // A stale building id would hold the seat on its fallback for good.
         expect(buildingById.get(seat.whileOwned), `seat building ${seat.whileOwned}`).toBeDefined();
@@ -281,6 +295,33 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
       const building = buildingById.get(id);
       expect(building, `craft restriction ${id}`).toBeDefined();
       const produced = new Set(building?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)));
+      if ('wants' in plan) {
+        // A stock plan is shared by a type's tiers: each good it names is made by some tier of the chain, and
+        // each want by this one or a later one, so a want stays inert only until the upgrade.
+        const chain = [...tiersFrom(id)].map((tier) => buildingById.get(tier));
+        const chainMakes = new Set(
+          chain.flatMap((b) => b?.recipes.flatMap((r) => r.outputs.map((o) => o.goodType)) ?? []),
+        );
+        const named = [
+          ...plan.wants.flatMap((want) => [
+            ...want.goods,
+            ...(want.counts ?? []),
+            ...(want.until === undefined ? [] : [want.until]),
+          ]),
+          ...plan.overflow.flatMap(seatGoods),
+        ];
+        for (const goodId of named) known(goodId, `${id} names`);
+        for (const goodId of [
+          ...plan.wants.flatMap((want) => want.goods),
+          ...plan.overflow.flatMap(seatGoods),
+        ]) {
+          const good = content.goods.find((g) => g.id === goodId);
+          expect(good !== undefined && chainMakes.has(good.typeId), `${id}'s chain produces ${goodId}`).toBe(
+            true,
+          );
+        }
+        continue;
+      }
       // One list per operator seat across the type - the buildings the plan raises must offer every seat
       // the table splits. An entry plans a building for every tier its chain may upgrade it into.
       const operatorSeats = building?.workers
@@ -306,12 +347,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
         listed.push(...seatGoods(seat));
         if ('firstFed' in seat) {
           // A line fed by a good the content lacks would never be picked first.
-          for (const line of seat.firstFed) {
-            expect(
-              content.goods.find((g) => g.id === line.input),
-              `${id} input ${line.input}`,
-            ).toBeDefined();
-          }
+          for (const line of seat.firstFed) known(line.input, `${id} input`);
           continue;
         }
         if (!('goods' in seat)) continue;
