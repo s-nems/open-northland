@@ -26,6 +26,7 @@ import {
   type BuildOrderEntry,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
+  MEN_PER_OPEN_SITE,
   REBUILD_DELAY_TICKS,
   sitePace,
   WELL_REACH_NODES,
@@ -63,6 +64,7 @@ import {
   RESOURCE_SPOTS,
   SEAT,
   STOCK_TOP_TYPE,
+  spawnMen,
   TOWER_TYPE,
   technologyContent,
   VEHICLE_YARD_TYPE,
@@ -423,6 +425,40 @@ describe('build-order module (houseBuild)', () => {
       sim.step();
     }
     expect(openAt(LATE_GAME_FROM_TICKS)).toBeUndefined();
+  });
+
+  it('opens no tower site past the sites its men can staff', () => {
+    const laned = buildOrderModule(
+      oneLine([
+        { kind: 'place', building: 'work_farm_00', count: 1 },
+        { kind: 'towerCoverage', building: 'tower_01', lane: true },
+      ]),
+    );
+    const sim = aiSim();
+    placeHq(sim);
+    // A home out at the edge arms the ring; three men staff one site, the farm's.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: HQ_X + 31,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, MEN_PER_OPEN_SITE);
+    sim.step();
+    const act = (): Command | undefined => {
+      const commands = [...laned.run(sim.world, ctxOf(sim, LATE_GAME_FROM_TICKS), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands[0];
+    };
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: FARM_TYPE });
+    expect(act()).toBeUndefined();
+    // Three more men staff a second site: the tower goes up.
+    spawnMen(sim, MEN_PER_OPEN_SITE);
+    sim.step();
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
   });
 
   it('leaves a freed site empty for the profile’s pause below the hard difficulty', () => {

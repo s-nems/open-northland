@@ -63,6 +63,7 @@ import { allocateHunters, huntingPlan } from './hunter.js';
 import { allocateRoadCrew } from './road-crew.js';
 import {
   builderCap,
+  coreBuilderFloor,
   type GatedSlotSources,
   releaseSurplusCarriers,
   releaseSurplusOperators,
@@ -98,7 +99,7 @@ export {
   ROAD_CREW,
   roadCrewTarget,
 } from './road-crew.js';
-export { BUILDERS_PER_OPEN_SITE, STALLED_BUILDER_CAP } from './staffing.js';
+export { BUILDERS_PER_OPEN_SITE, CORE_BUILDERS, STALLED_BUILDER_CAP } from './staffing.js';
 export { LATE_GAME_CIVILIANS, SUPPLY_CARRIER_GOODS_BY_BUILDING_ID } from './staffing-plan.js';
 export { STAFFING_BY_BUILDING_ID } from './staffing-rows.js';
 export { SeatSupply, type SupplyLine, type SupplyLines, supplyLines } from './supply.js';
@@ -141,14 +142,17 @@ function runWorkforce(
     baseNode === null || shortOfBuilders
       ? 0
       : farGroundExtras(world, ctx, owned, baseNode, seatTuning(world, player).clearGroundPct);
-  const genericTarget = GENERIC_COLLECTOR_TARGET + clearing + farGround;
-  const { pool, collectorsByGood, genericCollectors, fishers, scouts, roadsters } = classifyWorkforce(
-    world,
-    ctx,
-    player,
-    wanted,
-    genericTarget,
-  );
+  // A seat short of its core builders keeps no optional post: its standing generic posts and its free
+  // scout go back to the pool the core claims from.
+  const coreFloor = coreBuilderFloor(builderFloor);
+  const shortHanded = seatBuilderCount(world, player, builderJob) < coreFloor;
+  const genericTarget = (shortHanded ? 0 : GENERIC_COLLECTOR_TARGET) + clearing + farGround;
+  const classified = classifyWorkforce(world, ctx, player, wanted, genericTarget);
+  const { collectorsByGood, genericCollectors, fishers, roadsters } = classified;
+  const freedScouts = shortHanded ? classified.scouts.filter((e) => scoutFree(world, e)) : [];
+  const scouts =
+    freedScouts.length === 0 ? classified.scouts : classified.scouts.filter((e) => !freedScouts.includes(e));
+  const pool = freedScouts.length === 0 ? classified.pool : [...classified.pool, ...freedScouts];
   // An apprentice stays on the work earning his discovery, so no post takes him off it.
   const unschooled = apprentices.size === 0 ? pool : pool.filter((e) => !apprentices.has(e));
   // The wildlife answer comes first: the men it sends at an animal are off every other post.
@@ -205,18 +209,25 @@ function runWorkforce(
         )),
     ...allocateHunters(world, ctx, player, hunting, force, builderJob, tally, 'first'),
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'first'),
-    ...allocateScout(world, ctx, player, order, scouts, force, builderJob),
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
     ...staffBuildings(world, ctx, seat, force, tally, 'min', gated),
   ];
+  // The core builders come after the standing buildings' first hands and before the scout, so a seat of
+  // few men raises its sites before it explores.
+  const core = reserveBuilders(world, force, builderJob, coreFloor, ctx);
+  const scouting = allocateScout(world, ctx, player, order, scouts, force, builderJob);
   // The road crew comes out of the builder reserve, ahead of it, so a seat with road sites always has
   // its roadster.
   const roadCrew = allocateRoadCrew(world, ctx, player, roadsters, force, builderJob);
   // Construction never starves. The road crew is part of the reserve. The army floor may reclaim the
   // reserve past its core (`garrison.ts`), so its fresh men's commands wait.
   const reserveCap = Math.max(0, builderLimit - roadCrew.crew);
-  const reserve = reserveBuilders(world, force, builderJob, reserveCap, ctx);
+  const rest = reserveBuilders(world, force, builderJob, reserveCap - core.reserved.length, ctx);
+  const reserve = {
+    commands: [...core.commands, ...rest.commands],
+    reserved: [...core.reserved, ...rest.reserved],
+  };
   // The standing buildings' target crews and the gatherers the reached entries count come before the army
   // floor (authored): both are bounded by what stands, so a seat staffs every building it raised and
   // still leaves the rest to the army. The floor outranks the surplus tier and the generic posts, which
@@ -240,6 +251,7 @@ function runWorkforce(
     ...settlementGrantOrders(world, ctx, player),
     ...wild.commands,
     ...posted.filter(undrafted),
+    ...scouting,
     ...roadCrew.commands,
     ...reserve.commands.filter(undrafted),
     ...targets,
@@ -440,13 +452,20 @@ function allocateScout(
     if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: scoutJob });
   }
   for (const [i, scout] of scouts.entries()) {
-    if (world.has(scout, CurrentAtomic)) continue;
-    if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) continue;
-    if (builderJob === null) continue;
+    if (!scoutFree(world, scout) || builderJob === null) continue;
     if (i === 0 && scoutJob !== null && hasScoutWork()) continue; // the working scout - keep
     commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });
   }
   return commands;
+}
+
+/** Whether a scout may change trade: not mid-action, which `setJob` would cancel, and on no order. */
+function scoutFree(world: World, scout: Entity): boolean {
+  return !(
+    world.has(scout, CurrentAtomic) ||
+    world.has(scout, ErectSignpostOrder) ||
+    world.has(scout, PlayerOrder)
+  );
 }
 
 export function workforceModule(order: BuildOrder): ComputerModule {

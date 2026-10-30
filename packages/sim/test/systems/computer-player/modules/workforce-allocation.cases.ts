@@ -48,6 +48,7 @@ import {
   type BuildOrderEntry,
   CIVILIANS_PER_CLEARING_COLLECTOR,
   COLLECTOR_TARGET_BY_GOOD_ID,
+  CORE_BUILDERS,
   DEFAULT_BUILD_ORDER,
   DEFAULT_COLLECTOR_TARGET,
   FLAG_MAX_DISTANCE_NODES,
@@ -2056,6 +2057,44 @@ describe('workforce module (collectResources)', () => {
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const scoutHires = commands.filter((c) => c.kind === 'setJob').filter((c) => c.jobType === SCOUT);
     expect(scoutHires.map((c) => c.entity)).toEqual([second]);
+  });
+
+  it('claims the core builders of an open site ahead of the scout hire', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      ...FIRST_WORKSHOP_SPOT,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    spawnMen(sim, CORE_BUILDERS);
+    sim.step();
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const jobs = commands.flatMap((c) => (c.kind === 'setJob' ? [c.jobType] : []));
+    expect(jobs).toEqual(Array.from({ length: CORE_BUILDERS }, () => BUILDER));
+  });
+
+  it('turns a working scout into a builder while an open site lacks its core builders', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      ...FIRST_WORKSHOP_SPOT,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 4, y: 4, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const scout = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === SCOUT);
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    expect(commands.filter((c) => c.kind === 'setJob')).toEqual([
+      { kind: 'setJob', entity: scout, jobType: BUILDER },
+    ]);
   });
 
   it('turns an idle scout back into a builder once the wanted lattice is done', () => {

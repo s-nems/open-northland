@@ -17,7 +17,8 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId, countedTiers, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../ai-shared/seat-roster.js';
+import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
@@ -106,6 +107,21 @@ export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.
  *  cycle, never a placement the list made, so it holds no slot. */
 function constructionSites(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity[] {
   return owned.filter((e) => isServedConstructionSite(world, ctx.content, e));
+}
+
+/** The adult men the seat keeps per open construction site before it opens a tower site (authored): the
+ *  open sites' builder pair (`workforce/staffing.ts`) and a gatherer feeding them. Basis: on magiczny_las
+ *  (seed 7) the seats held four or more men a site and grew; on specjalna_forteca a seat of six men
+ *  opened three tower sites beside its homes and mill and finished none in 90 minutes. */
+export const MEN_PER_OPEN_SITE = 3;
+
+/** The open sites `player`'s men can staff ({@link MEN_PER_OPEN_SITE}), at least one: no tower site
+ *  opens past it. Infinite for a seat with no man yet, whose sites wait for the men a script
+ *  brings and keep the clock's pace alone. */
+export function crewSiteCap(world: World, ctx: SystemContext, player: number): number {
+  let men = 0;
+  for (const e of ownedSettlers(world, player)) if (isAllocatableMan(world, ctx, e)) men++;
+  return men === 0 ? Number.POSITIVE_INFINITY : Math.max(1, Math.floor(men / MEN_PER_OPEN_SITE));
 }
 
 /** The housing lane's share of the open `sites`, a ring's towers standing apart left out: `beyond` is
@@ -232,7 +248,10 @@ function runBuildOrder(
     siteCap,
     homesApart(profile, ctx.tick),
   );
-  const ringOpen = apartRing && ringSites < towerRingSites(world, player);
+  // A tower site opens only while the seat's men can staff one more site: the lines' and the homes'
+  // sites come first on a seat of few men.
+  const crewRoom = sites.length < crewSiteCap(world, ctx, player);
+  const ringOpen = apartRing && crewRoom && ringSites < towerRingSites(world, player);
   // The home sites past the lane's first and the ring's tower sites stand beyond the clock's, so the
   // lines never count them.
   const paced = sites.length - homeSites.beyond - ringSites;
@@ -321,6 +340,7 @@ function runBuildOrder(
   for (const lane of lanes) {
     if (tribe === undefined || !laneActive(lane)) continue;
     const entry = lane.entry;
+    if (entry.kind === 'towerCoverage' && !crewRoom) continue;
     if (entry.kind === 'housing') {
       if (!homeSites.open) continue;
     } else if (apartRing && entry.kind === 'towerCoverage') {

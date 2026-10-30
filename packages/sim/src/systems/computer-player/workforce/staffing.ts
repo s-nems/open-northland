@@ -43,6 +43,16 @@ export function siteBuilderFloor(
   return Math.min(cap, sites * BUILDERS_PER_OPEN_SITE);
 }
 
+/** The builders a seat with open sites keeps ahead of its scout and its generic posts (authored, the
+ *  pair {@link BUILDERS_PER_OPEN_SITE} puts on one site). Basis: on specjalna_forteca (seed 7) a seat of six
+ *  men posted its gatherers, hunter, scout and farmer and kept no builder for 90 minutes. */
+export const CORE_BUILDERS = 2;
+
+/** The core of the open sites' `builderFloor` ({@link siteBuilderFloor}): none while no site is open. */
+export function coreBuilderFloor(builderFloor: number): number {
+  return Math.min(builderFloor, CORE_BUILDERS);
+}
+
 /** The seat's men of the builder trade, spare or bound to a site. */
 export function seatBuilderCount(world: World, player: number, builderJob: number | null): number {
   if (builderJob === null) return 0;
