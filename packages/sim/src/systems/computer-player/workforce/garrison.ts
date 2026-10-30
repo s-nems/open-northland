@@ -16,6 +16,7 @@ import {
   TrainingOrder,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { fighterStrength, fighterWeaponClass } from '../../ai-shared/military/census.js';
@@ -40,7 +41,7 @@ import { BARRACKS_STANDS_BEFORE_TICKS, beforeDeadlineLead } from '../military/de
 import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { militaryOrdersOf } from '../strategy/military.js';
-import { COLLECTED_GOOD_IDS } from './collectors/index.js';
+import { COLLECTED_GOOD_IDS, fedAhead } from './collectors/index.js';
 import { productsOf } from './craft.js';
 import type { SeatSupply } from './supply.js';
 
@@ -234,8 +235,9 @@ export function claimArmyFloor(
 /**
  * The gatherers the army floor may call to arms while the seat prepares against a forecast attack within
  * its lead (`callsGatherers`, {@link militaryOrdersOf}): holders of a good whose stock lies at or above its
- * comfort line ({@link SeatSupply.lines}), the least practised first, never an apprentice and never a
- * building good's last gatherer ({@link COLLECTED_GOOD_IDS}). Owner ruling: on mroczny_las every man of a
+ * comfort line ({@link SeatSupply.lines}), the least practised first, never an apprentice, never a
+ * building good's last gatherer ({@link COLLECTED_GOOD_IDS}) and never a holder of a good the seat feeds
+ * ahead ({@link fedAhead}): an iron-arms seat's iron stock is mostly its smithies' shelves. Owner ruling: on mroczny_las every man of a
  * seat held a post and its army grew by two to five before the first scripted wave. A soldier never turns
  * back, so the posts are refilled by the seat's next civilians once the call ends with the threat.
  * `collectorsByGood` lists each good's holders most practised first, as the workforce classifies them.
@@ -250,7 +252,10 @@ export function calledGatherers(
 ): readonly Entity[] {
   if (!militaryOrdersOf(world, player).callsGatherers) return [];
   const called: Entity[] = [];
+  const index = contentIndex(ctx.content);
   for (const [goodType, holders] of [...collectorsByGood].sort(([a], [b]) => a - b)) {
+    const id = index.goods.get(goodType)?.id;
+    if (id !== undefined && fedAhead(world, player, id)) continue;
     const lines = supply.lines(goodType);
     const surplus = supply.surplus(goodType);
     if (lines === undefined || surplus === undefined || surplus < lines.comfort) continue;

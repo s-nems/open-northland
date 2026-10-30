@@ -11,6 +11,7 @@ import {
   CompletedCycles,
   type ComputerDifficulty,
   ComputerStrategy,
+  type EconomicSide,
   Garrison,
   Health,
   JobAssignment,
@@ -1342,6 +1343,42 @@ describe('workforce module - the barracks and craft selections', () => {
     // Mid-trip he waits: the retrade would drop his load.
     world.add(green, Carrying, { goodType: WOOD, amount: 1 });
     expect(claimGreen()).toEqual({ men: [], commands: [] });
+  });
+
+  it("keeps an iron-arms seat's iron gatherers off the call to arms, its iron stock being shelves", () => {
+    const seat = armedSeat(
+      [
+        { good: SWORD, amount: 4 },
+        { good: IRON, amount: 400 },
+      ],
+      { men: 0 },
+    );
+    const { world } = seat.sim;
+    seat.sim.enqueueSetup({ kind: 'setPeaceTime', untilTick: ARMY_FLOOR_LEAD_TICKS, players: [SEAT] });
+    spawnMen(seat.sim, 2, COLLECTOR);
+    seat.sim.step();
+    const [practised, green] = ownedSettlers(world, SEAT).filter(
+      (e) => world.get(e, Settler).jobType === COLLECTOR,
+    );
+    if (practised === undefined || green === undefined) throw new Error('setup: two gatherers');
+    const posts = new Map([[IRON, [practised, green]]]);
+    const calledOn = (sides: EconomicSide[]): readonly Entity[] => {
+      seatEconomy(seat.sim, 'rich', sides);
+      const carrier = aiControlEntity(world, SEAT);
+      const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
+      if (carrier === null || military === undefined) throw new Error('setup: no strategy');
+      world.mut(carrier, ComputerStrategy).military = {
+        ...military,
+        challenger: null,
+        posture: 'prepare',
+        evidence: ['forecastThreat'],
+      };
+      const supply = SeatSupply.of(world, seat.ctx, SEAT, ownedBuildings(world, SEAT), DEFAULT_BUILD_ORDER);
+      return calledGatherers(world, seat.ctx, SEAT, posts, supply, new Set());
+    };
+    // Elsewhere both go, the least practised first.
+    expect(calledOn([])).toEqual([green, practised]);
+    expect(calledOn(['ironArms'])).toEqual([]);
   });
 
   it("drafts its spare men only to its plan's share of the army cap", () => {

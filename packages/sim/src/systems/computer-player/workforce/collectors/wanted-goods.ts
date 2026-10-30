@@ -246,7 +246,7 @@ export const FED_AHEAD_GOOD_IDS_BY_SIDE: Readonly<Partial<Record<EconomicSide, r
 
 /** Whether `player`'s seat fills `goodId`'s planned posts ahead of the reserve
  *  ({@link FED_AHEAD_GOOD_IDS_BY_SIDE}). */
-function fedAhead(world: World, player: number, goodId: string): boolean {
+export function fedAhead(world: World, player: number, goodId: string): boolean {
   for (const [side, goods] of Object.entries(FED_AHEAD_GOOD_IDS_BY_SIDE) as [
     EconomicSide,
     readonly string[],

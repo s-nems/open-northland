@@ -24,6 +24,7 @@ export {
   extraGatherers,
   FED_AHEAD_GOOD_IDS_BY_SIDE,
   farGroundExtras,
+  fedAhead,
   GENERIC_COLLECTOR_TARGET,
   MAX_CLEARING_COLLECTORS,
   NODES_PER_CLEARING_GATHERER,
