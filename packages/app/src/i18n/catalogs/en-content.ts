@@ -905,12 +905,12 @@ export const enContent = {
     'ai-siege-march': {
       title: 'AI siege march',
       summary:
-        'The red AI seat drafts its two bare-handed men as catapult commanders and sends its first wave across the map. It marches in legs, closing up at each stop, catapults in front, swordsmen behind them and archers last. At the blue settlement the catapults and archers break the defence tower while the swordsmen hold back, then everybody goes in on the headquarters.',
+        'The red AI seat drafts its four bare-handed men as catapult commanders and sends its first wave across the map. The wave walks to a gathering point short of the blue settlement and, once most of its men have arrived, goes in on the headquarters without waiting for the slower catapults. The catapults come up behind, break the defence tower beside the base, then drive in on the headquarters too. The headquarters is made extra tough so the men are still at it when the catapults arrive.',
     },
-    'ai-siege-charge': {
-      title: 'AI siege charge',
+    'ai-siege-band': {
+      title: 'AI siege march meets a band',
       summary:
-        'The AI siege march with a tough blue band standing across the route. The catapults shell it as the wave closes in, and once the band is near enough the whole wave charges it before marching on to the defence tower.',
+        'The AI siege march with a blue band standing across the route. The catapults at home shell the band and stay behind to defend the settlement, while the men walk into it on their way to the gathering point, cut it down, then gather and take the headquarters.',
     },
     'home-roofs': {
       title: 'Home roofs',

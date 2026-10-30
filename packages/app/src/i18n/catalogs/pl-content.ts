@@ -902,12 +902,12 @@ export const plContent = {
     'ai-siege-march': {
       title: 'Marsz oblężniczy AI',
       summary:
-        'Czerwone AI sadza dwóch nieuzbrojonych żołnierzy na katapultach i wysyła pierwszą falę przez mapę. Fala maszeruje odcinkami i zwiera szyk na każdym postoju: katapulty z przodu, miecznicy za nimi, łucznicy na końcu. Pod niebieską osadą katapulty i łucznicy burzą wieżę, a miecznicy czekają, po czym wszyscy ruszają na kwaterę główną.',
+        'Czerwone AI sadza czterech nieuzbrojonych żołnierzy na katapultach i wysyła pierwszą falę przez mapę. Fala idzie do punktu zbiórki przed niebieską osadą, a gdy dotrze tam większość ludzi, rusza na kwaterę główną, nie czekając na wolniejsze katapulty. Katapulty dojeżdżają za nią, burzą wieżę obok osady, a potem też ruszają na kwaterę. Kwatera jest wyjątkowo wytrzymała, żeby żołnierze wciąż ją burzyli, gdy katapulty dotrą.',
     },
-    'ai-siege-charge': {
-      title: 'Szarża oblężnicza AI',
+    'ai-siege-band': {
+      title: 'Marsz oblężniczy AI i oddział na drodze',
       summary:
-        'Marsz oblężniczy AI z wytrzymałym niebieskim oddziałem na drodze fali. Katapulty ostrzeliwują go, gdy fala się zbliża, a gdy oddział jest dość blisko, cała fala szarżuje, zanim ruszy dalej na wieżę.',
+        'Marsz oblężniczy AI z niebieskim oddziałem stojącym w poprzek drogi. Katapulty w osadzie ostrzeliwują oddział i zostają w domu jako obrona, a żołnierze wpadają na niego w drodze do punktu zbiórki, rozbijają go, po czym zbierają się i zdobywają kwaterę główną.',
     },
     'home-roofs': {
       title: 'Dachy domów',

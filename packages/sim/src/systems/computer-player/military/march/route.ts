@@ -22,10 +22,6 @@ export const GATHER_STANDOFF_NODES = 40;
  *  a tower post shoots, and a few cells to spare. */
 export const GATHER_TOWER_CLEARANCE_HEX = 36;
 
-/** How far short of an enemy tower (Manhattan half-cell nodes) a raid band stops
- *  (`operations/raid-target.ts`): a catapult's longest reach and a few ranks behind it. */
-export const SIEGE_TOWER_STANDOFF_NODES = 30;
-
 /** The step of the straight line a wave walks when no path leads to its objective. */
 const STRAIGHT_STEP_NODES = 12;
 

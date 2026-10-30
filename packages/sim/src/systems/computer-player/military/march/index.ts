@@ -28,7 +28,6 @@ import { enemyTowerNodesNear, siegeOrders } from './siege.js';
 export {
   GATHER_STANDOFF_NODES,
   GATHER_TOWER_CLEARANCE_HEX,
-  SIEGE_TOWER_STANDOFF_NODES,
 } from './route.js';
 export { SIEGE_TIMEOUT_TICKS, SIEGE_TOWER_RADIUS_NODES } from './siege.js';
 

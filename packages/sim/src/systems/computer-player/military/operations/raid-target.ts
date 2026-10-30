@@ -24,7 +24,6 @@ import { combatClassOfType } from '../../../readviews/buildings.js';
 import { buildingCombatClass, isFighterJob } from '../../../readviews/index.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import { believedBuildings, rememberedBuildings } from '../../knowledge/intel/index.js';
-import { SIEGE_TOWER_STANDOFF_NODES } from '../march/route.js';
 import { isLiveFighter, unitPoints } from '../points.js';
 
 // Where a raid strikes and how it gets there: what the seat sees or remembers of the enemy's economy,
@@ -39,9 +38,9 @@ export const RAID_ECONOMY_BUILDING_VALUE = 60;
 /** What a tower counts as on top of its believed garrison (authored): more than any target is worth, so a
  *  target in a tower's reach never wins. */
 export const RAID_TOWER_DEFENCE = 1000;
-/** How far a tower reaches over a raid, in half-cell nodes: the standoff a wave's melee keeps out of a
- *  garrison's sight (`march/route.ts`). */
-export const RAID_TOWER_CLEARANCE_NODES = SIEGE_TOWER_STANDOFF_NODES;
+/** How far a tower reaches over a raid, in half-cell nodes (authored): a catapult's longest reach and a
+ *  few ranks behind it, so a band stops that far short of a tower. */
+export const RAID_TOWER_CLEARANCE_NODES = 30;
 /** How near a target or the band an enemy fighter counts as defending it, in half-cell nodes (authored:
  *  about a soldier's sight). */
 export const RAID_DEFENCE_RADIUS_NODES = 20;

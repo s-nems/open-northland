@@ -8,7 +8,7 @@ import { livestockYardScene } from './animals/livestock-yard.js';
 import { wildlifeScene } from './animals/wildlife.js';
 import { wolfPackScene } from './animals/wolf-pack.js';
 import { aiDefenceScene } from './army/ai-defence.js';
-import { aiSiegeChargeScene, aiSiegeMarchScene } from './army/ai-siege-march.js';
+import { aiSiegeBandScene, aiSiegeMarchScene } from './army/ai-siege-march.js';
 import { armyControlScene } from './army/army-control.js';
 import { armyPassageScene } from './army/army-passage.js';
 import { attackMoveScene } from './army/attack-move.js';
@@ -244,7 +244,7 @@ export const SCENES: readonly SceneDefinition[] = [
   homeRoofsScene,
   aiDefenceScene,
   aiSiegeMarchScene,
-  aiSiegeChargeScene,
+  aiSiegeBandScene,
   deathLootScene,
   victoryScene,
   defeatScene,

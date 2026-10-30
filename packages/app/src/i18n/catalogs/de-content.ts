@@ -912,12 +912,12 @@ export const deContent = {
     'ai-siege-march': {
       title: 'KI-Belagerungsmarsch',
       summary:
-        'Die rote KI weist ihre beiden unbewaffneten Männer als Katapultführer zu und schickt ihre erste Angriffswelle quer über die Karte. Sie marschiert in Etappen und sammelt sich an jedem Halt: Katapulte vorn, Schwertkämpfer dahinter und Bogenschützen zuletzt. Bei der blauen Siedlung zerstören Katapulte und Bogenschützen den Wachturm, während die Schwertkämpfer zurückbleiben. Danach greifen alle das Hauptquartier an.',
+        'Die rote KI setzt ihre vier unbewaffneten Männer als Katapultführer ein und schickt ihre erste Angriffswelle quer über die Karte. Die Welle zieht zu einem Sammelpunkt vor der blauen Siedlung und greift das Hauptquartier an, sobald die meisten Männer dort sind, ohne auf die langsameren Katapulte zu warten. Die Katapulte rücken nach, zerstören den Wachturm neben der Siedlung und fahren danach ebenfalls zum Hauptquartier. Das Hauptquartier ist besonders widerstandsfähig, damit die Männer noch daran arbeiten, wenn die Katapulte eintreffen.',
     },
-    'ai-siege-charge': {
-      title: 'KI-Belagerungsangriff',
+    'ai-siege-band': {
+      title: 'KI-Belagerungsmarsch trifft auf einen Trupp',
       summary:
-        'Der KI-Belagerungsmarsch trifft auf einen widerstandsfähigen blauen Trupp, der den Weg versperrt. Während die Angriffswelle näher rückt, beschießen die Katapulte den Trupp. Sobald er nah genug ist, stürmt die gesamte Welle auf ihn los, bevor sie zum Wachturm weitermarschiert.',
+        'Der KI-Belagerungsmarsch mit einem blauen Trupp, der quer auf dem Weg steht. Die Katapulte zu Hause beschießen den Trupp und bleiben zur Verteidigung der Siedlung zurück, während die Männer auf dem Weg zum Sammelpunkt auf ihn stoßen, ihn niedermachen, sich dann sammeln und das Hauptquartier einnehmen.',
     },
     'home-roofs': {
       title: 'Dächer der Wohnhäuser',
