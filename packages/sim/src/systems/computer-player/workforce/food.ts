@@ -5,6 +5,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isEdibleFoodIn } from '../../readviews/index.js';
+import type { SeatStock } from '../../stores/index.js';
 import type { SeatSupply } from './supply.js';
 import type { StaffingTally } from './tally.js';
 
@@ -37,10 +38,30 @@ export function foodHunters(
 ): number {
   if (fishing || foodWorkshopWorks(world, ctx, owned, tally)) return 0;
   const perSettler = held > 0 ? FOOD_COMFORT_UNITS_PER_SETTLER : FOOD_SHORT_UNITS_PER_SETTLER;
-  const settlers = ownedSettlers(world, player).length;
+  return storedFoodUnits(ctx.content, supply) < ownedSettlers(world, player).length * perSettler
+    ? FOOD_SHORTAGE_HUNTERS
+    : 0;
+}
+
+/** The edible units in `stock`, the summary bar's figure, so food a home already holds does not count. */
+export function storedFoodUnits(content: ContentSet, stock: Pick<SeatStock, 'units'>): number {
   let food = 0;
-  for (const good of edibleGoods(ctx.content)) food += supply.units(good);
-  return food < settlers * perSettler ? FOOD_SHORTAGE_HUNTERS : 0;
+  for (const good of edibleGoods(content)) food += stock.units(good);
+  return food;
+}
+
+/** Whether any built workplace among `owned` makes food: a recipe output, or a produced good such as the
+ *  meat an animal farm's breeder butchers (`produces`), not the mill's flour. */
+export function foodWorkshopBuilt(world: World, ctx: SystemContext, owned: readonly Entity[]): boolean {
+  const index = contentIndex(ctx.content);
+  for (const e of owned) {
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type?.kind !== 'workplace' || !isBuilt(world, e)) continue;
+    const outputs = index.mergedRecipeByBuilding.get(type.typeId)?.outputs ?? [];
+    if (outputs.some((o) => isEdibleFoodIn(ctx.content, o.goodType))) return true;
+    if (type.produces.some((good) => isEdibleFoodIn(ctx.content, good))) return true;
+  }
+  return false;
 }
 
 /** Whether a built workplace whose recipes make food employs anybody. */

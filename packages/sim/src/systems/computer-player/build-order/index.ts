@@ -40,7 +40,7 @@ import {
   stepKey,
 } from './entries.js';
 import { grassBoundEntry, grassReserved } from './grass-reserve.js';
-import { homeTiersOf, housingPick } from './housing.js';
+import { daughtersBlocked, type HousingGate, homeTiersOf, housingGate, housingPick } from './housing.js';
 import { placementSpot } from './placement.js';
 import {
   type DecisionMemo,
@@ -209,18 +209,32 @@ function runBuildOrder(
     return verdict;
   };
 
-  const lanes = openLanes(world, ctx, lines, statuses, sites, (line, step) => {
-    const entry = line.steps[step];
-    if (entry === undefined) return true;
-    if (held(entry)) return false;
-    if (locked(entry)) return !lockHolds;
-    return billSourced(world, ctx, player, entry, madeGoods) && verdictOf(line, step).kind === 'pass';
-  });
+  let housing: HousingGate | undefined;
+  const housingGateOf = (): HousingGate => (housing ??= housingGate(world, ctx, player, owned));
+  const lanes = openLanes(
+    world,
+    ctx,
+    lines,
+    statuses,
+    sites,
+    (line, step) => {
+      const entry = line.steps[step];
+      if (entry === undefined) return true;
+      if (held(entry)) return false;
+      if (locked(entry)) return !lockHolds;
+      return billSourced(world, ctx, player, entry, madeGoods) && verdictOf(line, step).kind === 'pass';
+    },
+    () => housingGateOf() === 'early',
+  );
   for (const lane of earnedOnly ? [] : lanes) {
     if (statusOf(lane.line, lane.step) !== 'unmet' || lane.sites > 0 || tribe === undefined) continue;
     if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
     const entry = lane.entry;
-    if (entry.kind !== 'housing' && !billSourced(world, ctx, player, entry, madeGoods)) continue;
+    if (entry.kind === 'housing') {
+      if (housingGateOf() === 'closed') continue;
+      // Ahead of its place in the line, the lane takes a site only while the daughters are blocked.
+      if (lane.early && !daughtersBlocked(world, ctx, player, owned, entry)) continue;
+    } else if (!billSourced(world, ctx, player, entry, madeGoods)) continue;
     if (siegeOf().attacked) return [];
     const placed =
       entry.kind === 'housing'
@@ -580,11 +594,14 @@ interface OpenLane {
   readonly step: number;
   readonly entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' | 'housing' }>;
   readonly sites: number;
+  /** A housing lane opened ahead of its place in the line on a food-rich seat. */
+  readonly early: boolean;
 }
 
 /** The lanes the lines have reached, in line priority and step order: every step before each in its line
- *  stands met or passed over, and the clock has reached the lane's `fromTick`. A lane's sites are the open
- *  sites of its building or a tier above it, whichever step placed them. */
+ *  stands met or passed over, and the clock has reached the lane's `fromTick`; a housing lane also opens
+ *  ahead of that while `housingEarly` holds. A lane's sites are the open sites of its building or a tier
+ *  above it, whichever step placed them. */
 function openLanes(
   world: World,
   ctx: SystemContext,
@@ -592,22 +609,26 @@ function openLanes(
   statuses: LineStatuses,
   sites: readonly Entity[],
   passedOver: (line: BuildLine, step: number) => boolean,
+  housingEarly: () => boolean,
 ): OpenLane[] {
   const lanes: OpenLane[] = [];
   for (const line of lines) {
+    let reached = true;
     for (const [step, entry] of line.steps.entries()) {
       if (
         entry.kind === 'housing' ||
         ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && entry.lane === true)
       ) {
+        const early = !reached && entry.kind === 'housing' && housingEarly();
+        if (!reached && !early) continue;
         const fromTick = entry.kind === 'housing' ? 0 : (entry.fromTick ?? 0);
         if (ctx.tick < fromTick) continue;
         const chain = laneTiers(ctx, entry);
         const own = sites.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
-        lanes.push({ line: line.id, step, entry, sites: own });
+        lanes.push({ line: line.id, step, entry, sites: own, early });
         continue;
       }
-      if (statuses.get(line.id)?.[step] === 'unmet' && !passedOver(line, step)) break;
+      if (reached && statuses.get(line.id)?.[step] === 'unmet' && !passedOver(line, step)) reached = false;
     }
   }
   return lanes;

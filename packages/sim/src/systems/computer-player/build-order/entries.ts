@@ -334,7 +334,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // the mason eat the most stone.
         { kind: 'collector', good: 'stone', count: 2 },
         // Owner ruling: the homes grow with the women, since their family slots bound the daughters. The
-        // lane opens behind the pottery, school and mason, so the first upgrades find bricks and pillars.
+        // lane opens behind the pottery, school and mason, so the first upgrades find bricks and pillars,
+        // and earlier on a food-rich seat (`./housing.ts`).
         { kind: 'housing', building: 'home_level_00', count: HOUSING_HOMES_CAP },
       ],
     },

@@ -1,18 +1,29 @@
 import type { BuildingType, ContentSet } from '@open-northland/data';
-import { Building, type GoodsLine, UnderConstruction, Upgrading } from '../../../components/index.js';
+import {
+  Building,
+  CHILD_FOOD_UNITS,
+  Female,
+  type GoodsLine,
+  UnderConstruction,
+  Upgrading,
+} from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
-import { isBuilt } from '../../ai-shared/seat-roster.js';
+import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
+import { isAdultSettler } from '../../family/eligibility.js';
 import { buildingEnabled } from '../../progression/index.js';
+import { seatStockOf } from '../../stores/index.js';
 import { femaleDemand } from '../female-stock.js';
+import { foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
 import { billSourced } from './bill-sources.js';
 import type { BuildOrderEntry } from './entries.js';
 import { placementSpot } from './placement.js';
+import { seatHasSide } from './seat-order.js';
 import { suppliedUpgrade } from './upgrade-supply.js';
 
 type HousingEntry = Extract<BuildOrderEntry, { kind: 'housing' }>;
@@ -34,11 +45,25 @@ function homesOf(world: World, ctx: SystemContext, owned: readonly Entity[], ent
   return owned.filter((e) => tiers.has(world.get(e, Building).buildingType));
 }
 
-/**
- * Whether the family slots the seat's homes will hold, a site counted at the tier it is becoming, fall
- * short of its women, girls and booked daughters ({@link femaleDemand}) plus {@link HOUSING_FREE_SLOTS}.
- * The population module books daughters only up to the built homes' slots, so the lane keeps them ahead.
- */
+/** The family slots the seat's homes will hold, a site counted at the tier it is becoming. */
+function familySlots(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  entry: HousingEntry,
+): number {
+  const index = contentIndex(ctx.content);
+  let slots = 0;
+  for (const e of homesOf(world, ctx, owned, entry)) {
+    const tier = world.tryGet(e, Upgrading)?.target ?? world.get(e, Building).buildingType;
+    slots += index.buildings.get(tier)?.homeSize ?? 0;
+  }
+  return slots;
+}
+
+/** Whether the {@link familySlots} fall short of the seat's women, girls and booked daughters
+ *  ({@link femaleDemand}) plus {@link HOUSING_FREE_SLOTS}. The population module books daughters only up
+ *  to the built homes' slots, so the lane keeps them ahead. */
 export function housingShort(
   world: World,
   ctx: SystemContext,
@@ -46,13 +71,54 @@ export function housingShort(
   owned: readonly Entity[],
   entry: HousingEntry,
 ): boolean {
-  const index = contentIndex(ctx.content);
-  let slots = 0;
-  for (const e of homesOf(world, ctx, owned, entry)) {
-    const tier = world.tryGet(e, Upgrading)?.target ?? world.get(e, Building).buildingType;
-    slots += index.buildings.get(tier)?.homeSize ?? 0;
-  }
-  return slots < femaleDemand(world, ctx, player) + HOUSING_FREE_SLOTS;
+  return familySlots(world, ctx, owned, entry) < femaleDemand(world, ctx, player) + HOUSING_FREE_SLOTS;
+}
+
+/** Whether the seat has women or daughters and no family slot left for the next daughter. */
+export function daughtersBlocked(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  entry: HousingEntry,
+): boolean {
+  const demand = femaleDemand(world, ctx, player);
+  return demand > 0 && familySlots(world, ctx, owned, entry) <= demand;
+}
+
+/** Stored edible units a settler from which a seat counts as food-rich (authored): above every focus
+ *  map's start stock (75 for 18-19 settlers on magiczny_las and diamentowa_dolina, 25-35 for 17-40 on
+ *  mroczny_las, krwawa_rzeka and specjalna_forteca), so a seat starts rich by fishing or grows rich. */
+export const FOOD_RICH_UNITS_PER_SETTLER = 5;
+
+/** The seat's food runs short for the housing lane while its store holds under one child's food
+ *  ({@link CHILD_FOOD_UNITS}) a woman: then its families cannot all stock a larder for the next child.
+ *  Authored; a line a settler sat under it on magiczny_las from minute 20 to 50 while children were born. */
+export const HOUSING_FOOD_UNITS_PER_WOMAN = CHILD_FOOD_UNITS;
+
+/**
+ * When the housing lane may open a home site (owner ruling: an upgraded home bears no children while
+ * food is short): `closed` while the store's food runs short ({@link HOUSING_FOOD_UNITS_PER_WOMAN}), or
+ * on a seat that is not food-rich until a workshop making food beyond the grain farm stands; `early` on
+ * a food-rich seat (the `fishing` side, or {@link FOOD_RICH_UNITS_PER_SETTLER} in store), which may run
+ * the lane from the start of the opening; `inLine` otherwise, from the lane's place in its line.
+ */
+export type HousingGate = 'closed' | 'inLine' | 'early';
+
+export function housingGate(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+): HousingGate {
+  const food = storedFoodUnits(ctx.content, seatStockOf(world, player));
+  const settlers = ownedSettlers(world, player);
+  let women = 0;
+  for (const e of settlers) if (world.has(e, Female) && isAdultSettler(world, e)) women++;
+  if (food < women * HOUSING_FOOD_UNITS_PER_WOMAN) return 'closed';
+  if (seatHasSide(world, player, 'fishing') || food >= settlers.length * FOOD_RICH_UNITS_PER_SETTLER)
+    return 'early';
+  return foodWorkshopBuilt(world, ctx, owned) ? 'inLine' : 'closed';
 }
 
 /** What the housing lane raises next: an upgrade of a built home, or a new home of a tier at a spot. */

@@ -64,6 +64,10 @@ site. A step whose building is not discovered yet holds its own line while the d
 come; one that can never come (a map ban, no game to hunt, no deposit) is skipped. Homes are not fixed
 steps: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women, girls
 and booked daughters, one home site at a time, upgrading or placing whichever adds a slot cheapest.
+It follows food (owner ruling: an upgraded home bears no children while food is short): no home site
+while the store holds under one child's food a woman; a food-rich seat (fishing, or five meals a settler in
+store) may run it from the start of the opening while the daughters are blocked; any other seat opens
+it behind the pottery, school and mason once a workshop making food (animal farm, bakery) stands.
 
 The seat plays under the same experience gates as a human (`docs/formats/PROGRESSION.md`); with the
 match's progression toggle off everything is open for both. The first discovery of a trade always
@@ -85,7 +89,19 @@ computer seat. Offensive work runs as operations (`military/operations/`): saved
 members, target and a lifecycle (`forming`, `moving`, `acting`, `withdrawing`, `done`, `failed`). The
 wave march is the `assault` kind. A `raid` sends a small band, archers first, around the flank to the
 gatherers at the edge of an enemy base and withdraws when defence answers. A new behaviour such as
-holding an area or supporting an ally is one more kind with its handler.
+supporting an ally is one more kind with its handler.
+
+A `hold` takes an area the map pays for holding. The map intent reads one from the script's shape, not
+the map id: a presence goal on a repeating timer whose mission hands over goods a deciding deliver
+objective counts becomes a `holdArea` objective with its centre, range and reward cadence
+(diamentowa_dolina's centre: one amulet per team every 5 minutes a seat's people stand within 13 map
+points, ten win). Past the military deadline and any lobby peace, a band of the plan's share of the men
+past the home floor, and more until it is clearly stronger than the defence the seat believes there,
+marches to the area and keeps its men inside; it draws reinforcements as the enemy it sees grows, and
+withdraws when outmatched or after heavy losses, retrying after a cooldown. A seat whose start lies in
+the area counts with its whole believed army. A friend's people in the area with no enemy leave it to
+him. Defending or preparing for a forecast attack stops holds; a defensive plan holds only while it
+attacks.
 
 ## Difficulty
 
