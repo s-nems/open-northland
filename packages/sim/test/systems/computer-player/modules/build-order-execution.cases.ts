@@ -4,6 +4,7 @@ import {
   aiControlEntity,
   Building,
   BuildOrderFrontier,
+  ComputerStrategy,
   discoverTechnology,
   grantScriptUnlock,
   Owner,
@@ -999,6 +1000,33 @@ describe('build order - independent lines', () => {
     expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: HOME_TYPE });
     discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
     expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('gives the free site to a defence line before an earned workshop while the defence comes first', () => {
+    const content = technologyContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    makeAiSeat(sim, SEAT, { houseBuild: false });
+    sim.step();
+    discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
+    const order: BuildOrder = {
+      lines: [
+        { id: 'bread', steps: [MILL_STEP] },
+        { id: 'military', steps: [HOME_STEP] },
+      ],
+      priority: ['bread', 'military'],
+    };
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    const strategy = sim.world.tryGet(carrier, ComputerStrategy);
+    if (strategy === undefined) throw new Error('setup: no strategy');
+    sim.world.mut(carrier, ComputerStrategy).military = {
+      ...strategy.military,
+      posture: 'defend',
+      evidence: ['underAttack'],
+    };
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: HOME_TYPE });
   });
 
   it('opens one site over the pace for a workshop whose discovery the seat earned', () => {

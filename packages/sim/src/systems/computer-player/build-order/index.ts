@@ -52,7 +52,7 @@ import {
   stepHeld,
   upgradeCandidate,
 } from './progress.js';
-import { seatBuildOrder, seatSitePace } from './seat-order.js';
+import { DEFENCE_LINES, seatBuildOrder, seatDefenceFirst, seatSitePace } from './seat-order.js';
 import { type Siege, seatSiege } from './siege.js';
 import { StalledSearches } from './stalled-searches.js';
 import { coverageOf, coverageSpotSearch, firstUncovered } from './tower-coverage.js';
@@ -360,12 +360,14 @@ function runBuildOrder(
   // Turns, priority deciding within each: a line with no site of its own rising goes before one with,
   // and a line whose next step raises a building the seat has none of before one adding another of a kind
   // it owns, so no line takes every site or runs its later copies while another still lacks its first. A
-  // workshop whose discovery the seat just earned goes before them all.
+  // workshop whose discovery the seat just earned goes before them all, and while the seat's defence comes
+  // first its defence lines go before that.
   // A line that stands met moves its frontier now, whichever line acts first, so its later losses wait.
   for (const line of lines)
     if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
   const gated = lockHolds && tribe !== undefined ? technologyTable(ctx.content, tribe) : null;
-  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated);
+  const defending = seatDefenceFirst(world, player);
+  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated, defending);
   for (const { line, turn } of byTurn) {
     if (earnedOnly && turn !== TURN.earned) continue;
     const command = lineCommand(line);
@@ -374,13 +376,15 @@ function runBuildOrder(
   return [];
 }
 
-/** A line's turn, the lower first: no rising site of its own and a next step raising a workshop the
- *  seat lacks whose discovery it earned ({@link earnedWorkshop}), no rising site and a next step raising a
- *  kind it lacks, no rising site, a site of its own still rising. */
-const TURN = { earned: 0, newKind: 1, more: 2, rising: 3 } as const;
+/** A line's turn, the lower first: a defence line ({@link DEFENCE_LINES}) with no rising site of its own
+ *  while the seat's defence comes first, no rising site and a next step raising a workshop the seat lacks
+ *  whose discovery it earned ({@link earnedWorkshop}), no rising site and a next step raising a kind it
+ *  lacks, no rising site, a site of its own still rising. On mroczny_las a seat defending from the first
+ *  minute gave every freed site to its earned workshops and raised no barracks before the scripted wave. */
+const TURN = { defence: 0, earned: 1, newKind: 2, more: 3, rising: 4 } as const;
 
 /** `lines`, stable in priority order, by {@link TURN}, each with its turn. `gated` holds the seat's
- *  technology table while its progression gates apply. */
+ *  technology table while its progression gates apply; `defending` whether its defence comes first. */
 function turnOrder(
   world: World,
   ctx: SystemContext,
@@ -390,6 +394,7 @@ function turnOrder(
   statusOf: (line: BuildLineId, step: number) => EntryStatus | undefined,
   memo: DecisionMemo,
   gated: TechnologyTable | null,
+  defending: boolean,
 ): { readonly line: BuildLine; readonly turn: number }[] {
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
   const ownedTypes = new Set(owned.map((e) => world.get(e, Building).buildingType));
@@ -402,6 +407,7 @@ function turnOrder(
         return TURN.rising;
       if (status === 'unmet') next ??= entry;
     }
+    if (defending && next !== undefined && DEFENCE_LINES.includes(line.id)) return TURN.defence;
     if (next === undefined || next.kind === 'collector') return TURN.newKind;
     const type = buildingTypeByContentId(ctx.content, next.building);
     if (type === undefined) return TURN.newKind;
