@@ -18,7 +18,7 @@ import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../joinery-role.js'
 import { knownResourceTest, nearestLiveResource } from '../live-resources.js';
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
-import { BUILD_SEARCH_MAX_RADIUS_NODES } from './entries.js';
+import { BUILD_SEARCH_MAX_RADIUS_NODES, overflowBuildReachNodes } from './entries.js';
 import { grassBound } from './grass-reserve.js';
 import { seatTuning } from './seat-order.js';
 
@@ -428,7 +428,7 @@ function footprintOnGrass(
  * (`grassReserved`) both searches run off the grass first for a building that does not need it, so
  * the grass stays for the list's grass buildings, and take grass only when no other ground is left in
  * reach. When nothing in reach takes an entry with no spot bound, the pulled search runs once more
- * over twice the reach (`OVERFLOW_BUILD_REACH_NODES` on the standard archetype), on the base's own
+ * over the wider {@link overflowBuildReachNodes}, on the base's own
  * land component only, since the wider reach can
  * span a strait the builders cannot walk.
  */
@@ -509,7 +509,7 @@ export function placementSpot(
   // A bounded entry's disc already lies in the usual reach, so only an unbounded one overflows.
   if (found !== null || within !== null) return found;
   if (home === NO_COMPONENT) return null;
-  const overflowNodes = 2 * tuning.reachNodes;
+  const overflowNodes = overflowBuildReachNodes(tuning.reachNodes);
   const overflow = buildReach(world, owned, anchor, overflowNodes);
   return onOrBeside((rule) => near(overflow, centre, onHomeLand, 2 * overflowNodes, rule));
 }

@@ -106,7 +106,7 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
  * the seat has not discovered yet holds its line too, while the technology module earns it, so a later
  * step never runs ahead of the workshop it feeds on; one whose discovery can never come is skipped
  * ({@link entryStatus}), and a seat with no technology table, whose lock can only be a ban, passes it. A
- * step's `holdUntil` holds its line the same way until the building stands or the good is discovered.
+ * step's `holdUntil` holds its line the same way, on the cases {@link StepHold} names.
  * The exceptions are passed over instead ({@link Verdict}): a serving placement with no room beside what
  * it serves, a grass building other than an `essential` one with no grass left in reach, and a coverage
  * step with no target it can cover. Builders are never pinned to a site; the builder drive picks its own.

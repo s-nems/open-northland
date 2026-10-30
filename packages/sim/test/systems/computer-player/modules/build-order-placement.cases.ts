@@ -26,7 +26,7 @@ import {
   DEFAULT_BUILD_ORDER,
   enemyFire,
   HQ_PULL_DIVISOR_NODES,
-  OVERFLOW_BUILD_REACH_NODES,
+  overflowBuildReachNodes,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../../src/systems/computer-player/index.js';
 import { canPlaceBuilding, stampResourceFootprintData } from '../../../../src/systems/index.js';
@@ -160,7 +160,7 @@ describe('build-order placement - affinity and ground rules', () => {
     });
     const GRASS_RADIUS = 8;
     const BELT = BUILD_SEARCH_MAX_RADIUS_NODES + 4;
-    const WIDE = 2 * (HQ_X + OVERFLOW_BUILD_REACH_NODES);
+    const WIDE = 2 * (HQ_X + overflowBuildReachNodes(BUILD_SEARCH_MAX_RADIUS_NODES));
     const typeIds = new Array<number>(WIDE * 32);
     for (let y = 0; y < 32; y++) {
       for (let x = 0; x < WIDE; x++) {
@@ -322,7 +322,7 @@ describe('build-order placement - affinity and ground rules', () => {
     // Sand out to beyond the reach around the HQ, grass past it: the farm stops at the reach's edge,
     // beside the grass its workers sow.
     const BELT = BUILD_SEARCH_MAX_RADIUS_NODES + 4;
-    const WIDE = 2 * (HQ_X + OVERFLOW_BUILD_REACH_NODES);
+    const WIDE = 2 * (HQ_X + overflowBuildReachNodes(BUILD_SEARCH_MAX_RADIUS_NODES));
     const barrenBelt = (x: number, y: number) => Math.abs(x - HQ_X) + Math.abs(y - HQ_Y) <= BELT;
     const overflow = new Simulation({
       seed: 1,

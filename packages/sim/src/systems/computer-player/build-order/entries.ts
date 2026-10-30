@@ -734,10 +734,15 @@ export const BUILD_SEARCH_MAX_RADIUS_NODES = 32;
  *  closeness decides between spots about as near to it, so a settlement grows round rather than long. */
 export const HQ_PULL_DIVISOR_NODES = 4;
 
-/** The reach a placement falls back to when nothing inside {@link BUILD_SEARCH_MAX_RADIUS_NODES} takes the
- *  building, in the same nodes (authored): a base boxed in by forest or rock builds past it rather than
- *  waiting for the gatherers to clear it. */
-export const OVERFLOW_BUILD_REACH_NODES = 2 * BUILD_SEARCH_MAX_RADIUS_NODES;
+/** How many times its usual reach a placement falls back to when nothing inside that reach takes the
+ *  building (authored): a base boxed in by forest or rock builds past it rather than waiting for the
+ *  gatherers to clear it. */
+const OVERFLOW_REACH_FACTOR = 2;
+
+/** The fallback reach, in the same nodes, of a seat whose usual placement reach is `reachNodes`. */
+export function overflowBuildReachNodes(reachNodes: number): number {
+  return OVERFLOW_REACH_FACTOR * reachNodes;
+}
 
 /** Decisions between the spot searches of an entry whose last search found nothing, a lane's and a
  *  passed-over entry's included, about 60 s at the decision interval. It never gives up, since felled
