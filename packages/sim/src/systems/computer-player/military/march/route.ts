@@ -1,7 +1,7 @@
 import { Vehicle } from '../../../../components/index.js';
 import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistance, nodeManhattan } from '../../../../nav/halfcell.js';
 import { findPath } from '../../../../nav/pathfinding/index.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { towardNode } from '../../../ai-shared/node-geometry.js';
@@ -11,25 +11,32 @@ import { vehicleTraversal } from '../../../readviews/vehicles.js';
 import { snapVehicleTarget, vehicleWalkBlocks } from '../../../vehicles/movement.js';
 import { nodeOf } from './geometry.js';
 
-// The route a wave marches, cut into legs. Every distance is an approximation.
+// Where a wave gathers before it goes in. Every distance is an approximation: the original's army
+// gathering is unobserved.
 
-/** How far one leg reaches along the route. Well inside one catapult hop. */
-export const LEG_NODES = 12;
+/** How far short of its objective (Manhattan half-cell nodes) the wave gathers: outside the enemy
+ *  base around it. */
+export const GATHER_STANDOFF_NODES = 40;
 
-/** How far short of its objective the route ends: the wave closes up there before the siege. */
-export const SIEGE_STANDOFF_NODES = 20;
+/** How far from an enemy tower (hex) the wave gathers: the house bow's extracted 29 hex reach, the longest
+ *  a tower post shoots, and a few cells to spare. */
+export const GATHER_TOWER_CLEARANCE_HEX = 36;
 
-/** How far short of such a tower the route ends: a catapult's longest reach and the ranks behind it, so
- *  the melee closes up out of the garrison's sight while the catapults drive in to fire. */
+/** How far short of an enemy tower (Manhattan half-cell nodes) a raid band stops
+ *  (`operations/raid-target.ts`): a catapult's longest reach and a few ranks behind it. */
 export const SIEGE_TOWER_STANDOFF_NODES = 30;
 
+/** The step of the straight line a wave walks when no path leads to its objective. */
+const STRAIGHT_STEP_NODES = 12;
+
 /**
- * The leg ends from `start` toward `objective`, {@link LEG_NODES} apart along the route and ending at the
- * first node within {@link SIEGE_STANDOFF_NODES} of it or {@link SIEGE_TOWER_STANDOFF_NODES} of one of its
- * `towers`; empty when `start` stands that near already. The route is the lead catapult's own when it has
- * one, else a man's walk around what blocks him, else the straight line.
+ * The gathering point on the way from `start` to `objective`: the last node of the route before it comes
+ * within {@link GATHER_STANDOFF_NODES} of the objective or {@link GATHER_TOWER_CLEARANCE_HEX} of one of
+ * the enemy `towers`; null when `start` stands that near already, and the wave goes straight in. The route
+ * is the lead catapult's own when it has one, so the catapults can stand there too, else a man's walk
+ * around what blocks him, else the straight line. One path search per launch or retarget.
  */
-export function routeTo(
+export function gatheringPoint(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
@@ -37,31 +44,23 @@ export function routeTo(
   objective: NodeId,
   towers: readonly HalfCellNode[],
   lead: Entity | null,
-): HalfCellNode[] {
+): HalfCellNode | null {
   const goal = nodeOf(terrain, objective);
-  const standsOff = (node: HalfCellNode): boolean =>
-    nodeManhattan(node, goal) <= SIEGE_STANDOFF_NODES ||
-    towers.some((tower) => nodeManhattan(node, tower) <= SIEGE_TOWER_STANDOFF_NODES);
+  const tooNear = (node: HalfCellNode): boolean =>
+    nodeManhattan(node, goal) <= GATHER_STANDOFF_NODES ||
+    towers.some((tower) => hexDistance(node, tower) <= GATHER_TOWER_CLEARANCE_HEX);
   const path =
     (lead === null ? null : catapultPath(world, ctx, terrain, lead, goal)) ??
     findPath(terrain, start, objective, dynamicBlockOverlay(world, ctx, terrain))?.map((n) =>
       nodeOf(terrain, n),
     ) ??
     straightLine(nodeOf(terrain, start), goal);
-  const ends: HalfCellNode[] = [];
-  let last = path[0];
-  if (last === undefined || standsOff(last)) return ends;
+  let last: HalfCellNode | null = null;
   for (const node of path) {
-    if (standsOff(node)) {
-      ends.push(node);
-      return ends;
-    }
-    if (nodeManhattan(node, last) < LEG_NODES) continue;
-    ends.push(node);
+    if (tooNear(node)) return last;
     last = node;
   }
-  ends.push(goal);
-  return ends;
+  return last;
 }
 
 function catapultPath(
@@ -86,7 +85,7 @@ function straightLine(from: HalfCellNode, to: HalfCellNode): HalfCellNode[] {
   const line = [from];
   let at = from;
   while (at.hx !== to.hx || at.hy !== to.hy) {
-    at = towardNode(at, to, LEG_NODES);
+    at = towardNode(at, to, STRAIGHT_STEP_NODES);
     line.push(at);
   }
   return line;

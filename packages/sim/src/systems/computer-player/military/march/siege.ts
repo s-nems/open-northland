@@ -4,71 +4,58 @@ import { TICKS_PER_SECOND } from '../../../../core/loop.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../nav/terrain/index.js';
-import { isRangedFighter } from '../../../ai-shared/military/census.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import { vehicleAnchor } from '../../../footprint/index.js';
-import { buildingCombatClass, MILITARY_MODE } from '../../../readviews/index.js';
+import { buildingCombatClass } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
-import { entityNode } from '../../../spatial/nodes.js';
 import { VEHICLE_TARGET_SNAP_RADIUS } from '../../../vehicles/movement.js';
 import { believedBuildings } from '../../knowledge/intel/index.js';
-import { formation, type WaveMarchView } from './formation.js';
 import { clampNode, continentOf, nodeOf } from './geometry.js';
-import { driveCatapult, type Fire, orderable, placeOrders, ringOrders, type Wave } from './orders.js';
+import { driveCatapult } from './orders.js';
 
-// A wave at its objective: the towers first, then everybody in. Every radius is an approximation.
+// A wave's catapults at its objective: the towers first, then the objective. Every radius is an
+// approximation.
 
 /** How far around the objective an enemy tower is part of the siege. */
 export const SIEGE_TOWER_RADIUS_NODES = 40;
 
-/** How long the siege lasts before everybody goes in on the objective whatever towers still stand: a
- *  tower no catapult can find a firing spot for would otherwise hold the wave forever. */
+/** How long the catapults stay on the towers before they go in on the objective whatever towers still
+ *  stand: a tower no catapult can find a firing spot for would otherwise hold them forever. */
 export const SIEGE_TIMEOUT_TICKS = 180 * TICKS_PER_SECOND;
 
 /**
- * The wave at its last leg end. With catapults and an enemy tower within {@link SIEGE_TOWER_RADIUS_NODES}
- * of the objective whose door stands on a catapult's continent, the catapults and the archers go at the
- * towers, each at the one nearest it, while the melee holds its ranks behind the catapult line on the IGNORE
- * stance. Otherwise, or once the siege has lasted {@link SIEGE_TIMEOUT_TICKS}, everybody goes in on the
- * objective: the men as `marchOrders` (`muster.ts`) sends a wave, the catapults on an attack-move to it.
+ * The catapults of a wave sent in on `objective`: while the siege lasts, each one not already firing at one
+ * goes at the enemy tower nearest it within {@link SIEGE_TOWER_RADIUS_NODES} of the objective whose door
+ * stands on its continent; with no such tower, or once the siege has lasted {@link SIEGE_TIMEOUT_TICKS}
+ * from `since`, they attack-move onto the objective. The men never wait for them.
  */
-export function arrivalOrders(
+export function siegeOrders(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
-  state: WaveMarchView,
-  wave: Wave,
+  catapults: readonly Entity[],
   objective: NodeId,
-  fire: readonly Fire[],
+  since: number,
 ): PlayerCommand[] {
-  const besieging = wave.catapults.length > 0 && ctx.tick - state.legSince < SIEGE_TIMEOUT_TICKS;
-  const towers = besieging ? siegeableTowers(world, ctx, terrain, player, objective, wave.catapults) : [];
+  if (catapults.length === 0) return [];
+  const besieging = ctx.tick - since < SIEGE_TIMEOUT_TICKS;
+  const towers = besieging ? siegeableTowers(world, ctx, terrain, player, objective, catapults) : [];
   if (towers.length === 0) {
     const goal = nodeOf(terrain, objective);
-    return [
-      ...ringOrders(world, terrain, wave.men, objective),
-      ...wave.catapults.flatMap((vehicle) => driveCatapult(world, vehicle, goal, VEHICLE_TARGET_SNAP_RADIUS)),
-    ];
+    return catapults.flatMap((vehicle) => driveCatapult(world, vehicle, goal, VEHICLE_TARGET_SNAP_RADIUS));
   }
   const commands: PlayerCommand[] = [];
   const towerSet = new Set(towers.map(({ tower }) => tower));
-  for (const vehicle of wave.catapults) {
+  for (const vehicle of catapults) {
     const attack = world.get(vehicle, Vehicle).attack;
     if (attack?.ordered === true && attack.target.kind === 'entity' && towerSet.has(attack.target.entity))
       continue;
     const command = catapultOnNearest(world, terrain, vehicle, towers);
     if (command !== null) commands.push(command);
   }
-  const archers = archersOn(world, ctx, terrain, wave.men, [...towerSet]);
-  // IGNORE, not DEFEND: a tower inside a defender's search would draw the melee into its fire.
-  const places = formation(world, ctx, terrain, state, wave.members, wave.catapults);
-  return [
-    ...commands,
-    ...archers.commands,
-    ...placeOrders(world, ctx, terrain, archers.melee, places, fire, MILITARY_MODE.IGNORE),
-  ];
+  return commands;
 }
 
 /** A building the catapults may drive up to, with the continent its door stands on. */
@@ -92,28 +79,6 @@ export function catapultOnNearest(
   return tower === null
     ? null
     : { kind: 'attackWithVehicle', vehicle, target: { kind: 'entity', entity: tower } };
-}
-
-/** Each orderable archer of `men` on the target nearest him, and the melee men left over. */
-export function archersOn(
-  world: World,
-  ctx: SystemContext,
-  terrain: TerrainGraph,
-  men: readonly Entity[],
-  targets: readonly Entity[],
-): { readonly commands: PlayerCommand[]; readonly melee: Entity[] } {
-  const commands: PlayerCommand[] = [];
-  const melee: Entity[] = [];
-  for (const e of men) {
-    if (!isRangedFighter(world, ctx, e)) {
-      melee.push(e);
-      continue;
-    }
-    if (!orderable(world, e)) continue;
-    const tower = nearestTower(world, terrain, targets, nodeOf(terrain, entityNode(world, terrain, e)));
-    if (tower !== null) commands.push({ kind: 'attackUnit', entity: e, target: tower });
-  }
-  return { commands, melee };
 }
 
 /** The towers near `objective` the seat sees and a catapult may drive up to, ascending id; a tower on
@@ -199,7 +164,7 @@ function believedTowersNear(
 }
 
 /** The anchors of the enemy towers the seat believes stand near `objective` ({@link believedTowersNear}):
- *  the ground a route keeps clear of. */
+ *  the ground the gathering point keeps clear of. */
 export function enemyTowerNodesNear(
   world: World,
   ctx: SystemContext,

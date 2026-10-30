@@ -1,17 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import {
-  AttackOrder,
-  Building,
-  MoveGoal,
-  Owner,
-  PlayerOrder,
-  Position,
-  Settler,
-  Vehicle,
-  VehicleDrive,
-  WaveMarch,
-} from '../../../src/components/index.js';
+import { Building, Owner, Position, Settler, Vehicle, WaveMarch } from '../../../src/components/index.js';
 import { CommandQueue } from '../../../src/core/command-queue.js';
 import type { Command, PlayerCommand } from '../../../src/core/commands/index.js';
 import { PersonalNames } from '../../../src/core/personal-names.js';
@@ -27,28 +16,27 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../../src/index.js';
-import { type HalfCellNode, positionOfNode } from '../../../src/nav/halfcell.js';
+import { type HalfCellNode, hexDistance, positionOfNode } from '../../../src/nav/halfcell.js';
 import {
   ASSAULT_RING_RADIUS_NODES,
-  CHARGE_ARMY_DIVISOR,
-  CHARGE_MIN_ENEMIES,
-  FIGHT_HOLD_TIMEOUT_TICKS,
-  LEG_TIMEOUT_TICKS,
+  GATHER_MARCH_TIMEOUT_TICKS,
+  GATHER_STANDOFF_NODES,
+  GATHER_TOWER_CLEARANCE_HEX,
+  GATHER_WAIT_TICKS,
   militaryModule,
   RALLY_HOLD_RADIUS_NODES,
   SIEGE_MARCH_MIN_CATAPULTS,
   SIEGE_TIMEOUT_TICKS,
 } from '../../../src/systems/computer-player/index.js';
 import type { SystemContext } from '../../../src/systems/index.js';
-import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { interactionCell } from '../../../src/systems/settlers/targets/index.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { boardRider, createVehicle, removeVehicle } from '../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../fixtures/terrain.js';
 
-// A launched wave marching in legs: it closes up before each next leg, its catapults lead, it charges an
-// enemy body big enough, and at its objective it breaks the towers before it goes in.
+// A launched wave gathers short of the enemy base, goes in as one group attack-move once most of it has
+// arrived or a timeout runs out, and its catapults break the towers by the objective first.
 
 const VIKING = 1;
 const SEAT = 2;
@@ -64,17 +52,6 @@ const CATAPULT = 5;
 const EAGER_SEED = 7;
 const BARRACKS = { x: 30, y: 30 };
 const FOE_HQ = { x: 110, y: 70 };
-/** A far corner the enemy's men wait in, out of sight of everyone, until a case moves them in. */
-const FOE_CAMP = { x: 100, y: 6 };
-/** Open ground between the two seats, out of the watch band of either settlement and well south of the
- *  march route, so a band marching on reads no charge. */
-const MIDFIELD = { hx: 70, hy: 58 };
-/** How far east of the wave the enemy body stands, in files of {@link ENEMY_FILE} men two nodes apart:
- *  inside the charge radius of the wave's centre. */
-const ENEMY_OFFSET = 12;
-const ENEMY_FILE = 4;
-/** How far from its first man the enemy body reaches. */
-const ENEMY_BODY_SPREAD = 8;
 /** An enemy tower beside the objective, inside the siege radius. */
 const FOE_TOWER = { x: 96, y: 70 };
 const BAND = 5;
@@ -251,9 +228,13 @@ function march(sim: Simulation) {
   return state;
 }
 
-function walks(commands: readonly Command[]): Map<Entity, HalfCellNode> {
+/** Each man's goal in the wave's group attack-moves of `commands`. */
+function groupWalks(commands: readonly Command[]): Map<Entity, HalfCellNode> {
   const goals = new Map<Entity, HalfCellNode>();
-  for (const c of commands) if (c.kind === 'attackMoveUnit') goals.set(c.entity, { hx: c.x, hy: c.y });
+  for (const c of commands) {
+    if (c.kind !== 'attackMoveUnitGroup') continue;
+    for (const m of c.members) goals.set(m.entity, { hx: m.x, hy: m.y });
+  }
   return goals;
 }
 
@@ -274,445 +255,161 @@ function manhattan(a: HalfCellNode, b: { x: number; y: number } | HalfCellNode):
   return Math.abs(a.hx - bx) + Math.abs(a.hy - by);
 }
 
-/** How far along the leg from `from` to `to` a node lies, in units of the leg's Manhattan length. */
-function along(from: HalfCellNode, to: HalfCellNode, at: HalfCellNode): number {
-  return (at.hx - from.hx) * (to.hx - from.hx) + (at.hy - from.hy) * (to.hy - from.hy);
+function gatherPointOf(sim: Simulation): HalfCellNode {
+  const at = march(sim).gatherAt;
+  if (at === null) throw new Error('expected a gathering wave');
+  return at;
 }
 
-function legLength(from: HalfCellNode, to: HalfCellNode): number {
-  return Math.abs(to.hx - from.hx) + Math.abs(to.hy - from.hy);
+/** The men `commands` send into the ring around the objective. */
+function sentIn(sim: Simulation, commands: readonly Command[]): Entity[] {
+  const objective = objectiveOf(sim);
+  return [...groupWalks(commands)]
+    .filter(([, g]) => manhattan(g, objective) <= ASSAULT_RING_RADIUS_NODES)
+    .map(([e]) => e);
 }
 
-describe('military module - the wave marches in legs', () => {
-  it('orders nobody past the leg end, and gives the next leg only once the straggler has closed up', () => {
+/** Set `men` down on their goals in `commands`, as if they had walked there. */
+function arrive(sim: Simulation, commands: readonly Command[], men: readonly Entity[]): void {
+  const goals = groupWalks(commands);
+  for (const e of men) {
+    const goal = goals.get(e);
+    if (goal === undefined) throw new Error('expected a goal');
+    teleport(sim, e, goal);
+  }
+}
+
+describe('military module - the wave gathers, then goes in', () => {
+  it('walks to a gathering point short of the base and goes in once most of it stands there', () => {
     const sim = marchSim();
     const band = pack(sim, BAND, SPEARMAN);
-    const first = walks(run(sim));
+    const first = run(sim);
     const state = march(sim);
     expect(state.men).toEqual(band);
-    expect(state.leg).toBe(0);
-    expect(state.waypoints.length).toBeGreaterThan(2);
-    const [end] = state.waypoints;
-    if (end === undefined) throw new Error('expected a leg end');
-    // Every man walks to his own place in a rank on the leg end, never beyond it.
-    expect([...first.keys()]).toEqual(band);
-    const reach = along(state.origin, end, end) + legLength(state.origin, end);
-    for (const goal of first.values()) expect(along(state.origin, end, goal)).toBeLessThanOrEqual(reach);
+    const gather = gatherPointOf(sim);
+    const objective = objectiveOf(sim);
+    expect(manhattan(gather, objective)).toBeGreaterThan(GATHER_STANDOFF_NODES);
+    expect(manhattan(gather, objective)).toBeLessThan(
+      manhattan(gather, rallyOf(sim)) + GATHER_STANDOFF_NODES,
+    );
+    // One group attack-move, as a player's selection click gives, onto the ring around the point.
+    expect(first.filter((c) => c.kind === 'attackMoveUnit')).toEqual([]);
+    const goals = groupWalks(first);
+    expect([...goals.keys()]).toEqual(band);
+    for (const g of goals.values())
+      expect(manhattan(g, gather)).toBeLessThanOrEqual(ASSAULT_RING_RADIUS_NODES);
 
-    // Four close up, one lags at the door: the wave waits for him, and only he is walked on.
-    const [straggler, ...fast] = band;
-    if (straggler === undefined) throw new Error('setup: no band');
-    for (const e of fast) {
-      const goal = first.get(e);
-      if (goal !== undefined) teleport(sim, e, goal);
-    }
-    const waiting = walks(run(sim));
-    expect(march(sim).leg).toBe(0);
-    expect([...waiting.keys()]).toEqual([straggler]);
-    expect(waiting.get(straggler)).toEqual(first.get(straggler));
+    // Three of five arrive: too few, so the wave waits and walks only the other two on.
+    const [a, b, c, d, e] = band;
+    if (a === undefined || b === undefined || c === undefined || d === undefined || e === undefined)
+      throw new Error('setup: no band');
+    arrive(sim, first, [a, b, c]);
+    const waiting = run(sim);
+    expect(march(sim).gatherAt).not.toBeNull();
+    expect(march(sim).firstArrival).toBe(sim.tick);
+    expect([...groupWalks(waiting).keys()]).toEqual([d, e]);
 
-    // He arrives: the whole wave gets the next leg, and still nobody goes past its end.
-    const goal = first.get(straggler);
-    if (goal === undefined) throw new Error('expected a place for the straggler');
-    teleport(sim, straggler, goal);
-    const next = walks(run(sim));
-    const after = march(sim);
-    expect(after.leg).toBe(1);
-    expect([...next.keys()]).toEqual(band);
-    const nextEnd = after.waypoints[1];
-    if (nextEnd === undefined) throw new Error('expected a second leg end');
-    const nextReach = along(end, nextEnd, nextEnd) + legLength(end, nextEnd);
-    for (const g of next.values()) expect(along(end, nextEnd, g)).toBeLessThanOrEqual(nextReach);
+    // A fourth arrives: the wave goes in on the objective, the straggler with it.
+    arrive(sim, first, [d]);
+    const assault = run(sim);
+    expect(march(sim).gatherAt).toBeNull();
+    expect(sentIn(sim, assault)).toEqual(band);
   });
 
-  it('puts the catapults in front, the melee ranks behind them and the archers last', () => {
+  it('goes in with whoever stands there once the wait for the stragglers runs out', () => {
     const sim = marchSim();
-    const catapults = siegeTrain(sim);
-    const spearmen = pack(sim, BAND, SPEARMAN);
-    const bowmen = pack(sim, 2, BOWMAN, BAND);
-    const commands = run(sim);
-    const state = march(sim);
-    expect(state.catapults).toEqual(catapults);
-    const [end] = state.waypoints;
-    if (end === undefined) throw new Error('expected a leg end');
+    const band = pack(sim, BAND, SPEARMAN);
+    const first = run(sim);
+    const [vanguard] = band;
+    if (vanguard === undefined) throw new Error('setup: no band');
+    arrive(sim, first, [vanguard]);
+    run(sim);
+    expect(march(sim).gatherAt).not.toBeNull();
 
-    const drove = drives(commands);
-    expect(drove.map((c) => c.vehicle)).toEqual(catapults);
-    expect(drove.every((c) => c.attackMove === true)).toBe(true);
-    const goals = walks(commands);
-    const progress = (at: HalfCellNode): number => along(state.origin, end, at);
-    const front = Math.min(...drove.map((c) => progress({ hx: c.x, hy: c.y })));
-    const melee = spearmen
-      .map((e) => goals.get(e))
-      .filter((g) => g !== undefined)
-      .map(progress);
-    const archers = bowmen
-      .map((e) => goals.get(e))
-      .filter((g) => g !== undefined)
-      .map(progress);
-    expect(melee).toHaveLength(BAND);
-    expect(archers).toHaveLength(2);
-    expect(Math.max(...melee)).toBeLessThan(front);
-    expect(Math.max(...archers)).toBeLessThan(Math.min(...melee));
-
-    // Marching, the catapults are the wave's: no park order ever calls them home.
-    expect(drives(run(sim)).every((c) => c.attackMove === true)).toBe(true);
+    sim.world.mut(barracksOf(sim), WaveMarch).firstArrival = sim.tick - GATHER_WAIT_TICKS;
+    const assault = run(sim);
+    expect(march(sim).gatherAt).toBeNull();
+    expect(sentIn(sim, assault)).toEqual(band);
   });
 
-  it('marches on without the stragglers once the leg times out, and hands them back', () => {
+  it('goes in once the march has taken too long, even with nobody there', () => {
     const sim = marchSim();
-    const catapults = siegeTrain(sim);
-    const band = pack(sim, BAND + 1, SPEARMAN);
-    const first = walks(run(sim));
-    expect(march(sim).catapults).toEqual(catapults);
-    // All but one man close up; he and the catapults never leave the door.
-    const [straggler, ...fast] = band;
-    if (straggler === undefined) throw new Error('setup: no band');
-    for (const e of fast) {
-      const goal = first.get(e);
-      if (goal !== undefined) teleport(sim, e, goal);
-    }
-    expect(march(sim).leg).toBe(0);
-    expect(walks(run(sim)).has(straggler)).toBe(true);
-    expect(march(sim).leg).toBe(0);
+    const band = pack(sim, BAND, SPEARMAN);
+    run(sim);
+    expect(march(sim).firstArrival).toBeNull();
+    sim.world.mut(barracksOf(sim), WaveMarch).since = sim.tick - GATHER_MARCH_TIMEOUT_TICKS;
+    expect(sentIn(sim, run(sim))).toEqual(band);
+  });
 
-    sim.world.mut(barracksOf(sim), WaveMarch).legSince = sim.tick - LEG_TIMEOUT_TICKS;
-    const next = run(sim);
-    const state = march(sim);
-    expect(state.leg).toBe(1);
-    expect(state.men).toEqual(fast);
-    expect(state.catapults).toEqual([]);
-    expect([...walks(next).keys()]).toEqual(fast);
-    expect(drives(next).filter((c) => c.attackMove === true)).toEqual([]);
+  it('gathers out of reach of an enemy tower on the way', () => {
+    const sim = marchSim();
+    place(sim, TOWER_TYPE, FOE_TOWER, FOE);
+    pack(sim, BAND, SPEARMAN);
+    run(sim);
+    const towerNode = entityNode(sim.world, terrainOf(sim), foeBuilding(sim, TOWER_TYPE));
+    const { x, y } = terrainOf(sim).coordsOf(towerNode);
+    expect(hexDistance(gatherPointOf(sim), { hx: x, hy: y })).toBeGreaterThan(GATHER_TOWER_CLEARANCE_HEX);
   });
 });
 
 describe('military module - the siege march needs four catapults', () => {
-  it('leaves fewer than four catapults parked at home and marches as a plain wave', () => {
+  it('leaves fewer than four catapults parked at home', () => {
     const sim = marchSim();
     const catapults = siegeTrain(sim, SIEGE_MARCH_MIN_CATAPULTS - 1);
-    const band = pack(sim, BAND, SPEARMAN);
+    pack(sim, BAND, SPEARMAN);
     const commands = run(sim);
-    const state = march(sim);
-    expect(state.catapults).toEqual([]);
+    expect(march(sim).catapults).toEqual([]);
     expect(drives(commands).filter((c) => catapults.includes(c.vehicle) && c.attackMove === true)).toEqual(
       [],
     );
-    // Without catapults the melee ranks stand on the leg end itself.
-    const [end] = state.waypoints;
-    if (end === undefined) throw new Error('expected a leg end');
-    const goals = [...walks(commands).values()];
-    expect(goals).toHaveLength(band.length);
-    expect(Math.min(...goals.map((g) => manhattan(g, end)))).toBeLessThanOrEqual(2);
   });
 
-  it('sends the rest home and marches on at once when a catapult is lost on the way', () => {
-    const sim = marchSim();
-    const catapults = siegeTrain(sim);
-    const band = pack(sim, BAND, SPEARMAN);
-    const first = walks(run(sim));
-    expect(march(sim).catapults).toEqual(catapults);
-    // The men close up, the catapults are still on their way when one of them is destroyed.
-    for (const [e, goal] of first) {
-      teleport(sim, e, goal);
-      sim.world.remove(e, PlayerOrder);
-    }
-    const [lost] = catapults;
-    if (lost === undefined) throw new Error('setup');
-    removeVehicle(sim.world, ctxOf(sim), lost, 'destroyed');
-    // The men walk on at once to the plain wave's places, forward onto the leg end the catapults held.
-    const next = walks(run(sim));
-    const state = march(sim);
-    expect(state.catapults).toEqual([]);
-    const [end] = state.waypoints;
-    if (end === undefined) throw new Error('expected a leg end');
-    for (const e of band) {
-      const goal = next.get(e);
-      const was = first.get(e);
-      if (goal === undefined) throw new Error('expected a new place');
-      if (was === undefined) throw new Error('expected a first place');
-      expect(along(state.origin, end, goal)).toBeGreaterThan(along(state.origin, end, was));
-    }
-  });
-});
-
-describe('military module - the leg goes out while the catapults still drive', () => {
-  it('gives the next leg once every catapult is near its place, driving or not', () => {
+  it('drives the catapults to the gathering point with the men', () => {
     const sim = marchSim();
     const catapults = siegeTrain(sim);
     pack(sim, BAND, SPEARMAN);
     const commands = run(sim);
-    for (const c of commands) sim.enqueue(playerCommand(SEAT, c));
-    sim.step();
-    expect(catapults.every((v) => sim.world.has(v, VehicleDrive))).toBe(true);
-    for (const [e, goal] of walks(commands)) {
-      teleport(sim, e, goal);
-      sim.world.remove(e, PlayerOrder);
-    }
-    // Two nodes short of each place along the column: still under way, near enough.
-    for (const c of drives(commands)) teleport(sim, c.vehicle, { hx: c.x, hy: c.y - 2 });
-    expect(march(sim).leg).toBe(0);
-    const next = run(sim);
-    expect(march(sim).leg).toBe(1);
-    expect(drives(next).map((c) => c.vehicle)).toEqual(catapults);
-  });
-
-  it('orders on a man left standing on a walk nobody owns', () => {
-    const sim = marchSim();
-    const band = pack(sim, BAND, SPEARMAN);
-    const first = walks(run(sim));
-    const [stray, ...rest] = band;
-    if (stray === undefined) throw new Error('setup');
-    for (const e of rest) {
-      const goal = first.get(e);
-      if (goal !== undefined) teleport(sim, e, goal);
-      sim.world.remove(e, PlayerOrder);
-    }
-    // His march order is gone and a stale goal of no order's holds him where he stands.
-    sim.world.remove(stray, PlayerOrder);
-    sim.world.add(stray, MoveGoal, { cell: entityNode(sim.world, terrainOf(sim), stray) });
-    expect(walks(run(sim)).get(stray)).toEqual(first.get(stray));
-  });
-});
-
-describe('military module - the wave holds while its catapults fight', () => {
-  /** A launched wave of four catapults, spearmen and bowmen standing on their places, with the first
-   *  catapult firing at `target` on its own and the leg already due to time out. */
-  function fighting(target: 'tower' | 'man') {
-    const sim = marchSim();
-    const catapults = siegeTrain(sim);
-    const spearmen = pack(sim, BAND, SPEARMAN);
-    const bowmen = pack(sim, 2, BOWMAN, BAND);
-    for (const [e, goal] of walks(run(sim))) {
-      teleport(sim, e, goal);
-      sim.world.remove(e, PlayerOrder);
-    }
-    place(sim, TOWER_TYPE, FOE_TOWER, FOE);
-    const tower = foeBuilding(sim, TOWER_TYPE);
-    const [foe] = spawnAt(sim, [FOE_CAMP], SPEARMAN, FOE);
-    const [shooter, ...others] = catapults;
-    if (shooter === undefined || foe === undefined) throw new Error('setup');
-    const entity = target === 'tower' ? tower : foe;
-    sim.world.mut(shooter, Vehicle).attack = {
-      target: { kind: 'entity', entity },
-      ordered: false,
-      clipStart: null,
-    };
-    sim.world.mut(barracksOf(sim), WaveMarch).legSince = sim.tick - LEG_TIMEOUT_TICKS;
-    return { sim, catapults, shooter, others, spearmen, bowmen, tower };
-  }
-
-  function stances(commands: readonly Command[], men: readonly Entity[]): number[] {
-    return men.map((e) => {
-      const set = commands.find((c) => c.kind === 'setStance' && c.entity === e);
-      return set?.kind === 'setStance' ? set.mode : -1;
-    });
-  }
-
-  it('holds its leg, the archers and the idle catapults join the fight on a tower, the melee waits', () => {
-    const { sim, catapults, shooter, others, spearmen, bowmen, tower } = fighting('tower');
-    const commands = run(sim);
-    const state = march(sim);
-    expect(state.leg).toBe(0);
-    expect(state.catapults).toEqual(catapults);
-    expect(state.holdSince).toBe(sim.tick);
-    expect(state.legSince).toBe(sim.tick);
-    expect(commands.filter((c) => c.kind === 'attackWithVehicle')).toEqual(
-      others.map((vehicle) => ({
-        kind: 'attackWithVehicle',
-        vehicle,
-        target: { kind: 'entity', entity: tower },
-      })),
-    );
-    expect(drives(commands)).toEqual([]);
-    const focused = commands.flatMap((c) => (c.kind === 'attackUnit' ? [c] : []));
-    expect(focused).toEqual(bowmen.map((entity) => ({ kind: 'attackUnit', entity, target: tower })));
-    expect(walks(commands).size).toBe(0);
-    expect(stances(commands, spearmen)).toEqual(spearmen.map(() => MILITARY_MODE.IGNORE));
-
-    // The fight ends: the wave keeps its catapults, gives the one fallen behind its place a whole leg to
-    // drive back, and forms up again.
-    for (const vehicle of catapults) sim.world.mut(vehicle, Vehicle).attack = null;
-    teleport(sim, shooter, { hx: BARRACKS.x, hy: BARRACKS.y + 8 });
-    const after = run(sim);
-    const reformed = march(sim);
-    expect(reformed.holdSince).toBeNull();
-    expect(reformed.catapults).toEqual(catapults);
-    expect(reformed.leg).toBe(0);
-    expect(drives(after).map((c) => c.vehicle)).toContain(shooter);
-  });
-
-  it('leaves the fight with men to the archers and the melee on their places', () => {
-    const { sim, catapults, spearmen, bowmen } = fighting('man');
-    const commands = run(sim);
-    expect(march(sim).leg).toBe(0);
     expect(march(sim).catapults).toEqual(catapults);
-    expect(commands.some((c) => c.kind === 'attackUnit' || c.kind === 'attackWithVehicle')).toBe(false);
-    const men = [...spearmen, ...bowmen];
-    expect(stances(commands, men)).toEqual(men.map(() => MILITARY_MODE.DEFEND));
+    const drove = drives(commands);
+    expect(drove.map((c) => c.vehicle)).toEqual(catapults);
+    expect(drove.every((c) => c.attackMove === true)).toBe(true);
+    // Each drive is a hop toward the gathering point, never past it.
+    const gather = gatherPointOf(sim);
+    const door = rallyOf(sim);
+    for (const c of drove)
+      expect(manhattan({ hx: c.x, hy: c.y }, door)).toBeLessThan(manhattan(gather, door));
   });
 
-  it('marches on without the catapult still fighting once the hold has lasted too long', () => {
-    const { sim, shooter, others } = fighting('man');
-    run(sim);
-    sim.world.mut(barracksOf(sim), WaveMarch).holdSince = sim.tick - FIGHT_HOLD_TIMEOUT_TICKS;
-    run(sim);
-    const state = march(sim);
-    expect(state.holdSince).toBeNull();
-    expect(sim.world.get(shooter, Vehicle).attack).not.toBeNull();
-    expect(state.catapults).toEqual(others);
-    // Three are too few for a siege march: they go home, and the wave marches on without them.
-    const next = run(sim);
-    expect(march(sim).catapults).toEqual([]);
-    expect(drives(next)).toEqual([]);
-    expect(walks(next).size).toBeGreaterThan(0);
-  });
-
-  it('calls its archers off a tower the catapults no longer fight, and marches on', () => {
-    const { sim, catapults, bowmen, tower } = fighting('tower');
-    const hold = run(sim);
-    for (const c of hold) sim.enqueue(playerCommand(SEAT, c));
-    sim.step();
-    expect(bowmen.every((e) => sim.world.get(e, AttackOrder).target === tower)).toBe(true);
-
-    // Every catapult is lost: the hold is over, and the archers the wave set at the tower walk back.
-    const ctx = ctxOf(sim);
-    for (const vehicle of catapults) removeVehicle(sim.world, ctx, vehicle, 'destroyed');
-    const after = run(sim);
-    expect(march(sim).catapults).toEqual([]);
-    expect(march(sim).holdSince).toBeNull();
-    expect([...walks(after).keys()]).toEqual(expect.arrayContaining(bowmen));
-  });
-});
-
-describe('military module - the wave charges', () => {
-  /** A wave of `size` launched and standing in midfield, with `enemies` fighters moved in beside it. Both
-   *  are set down between decisions, so nobody is in a fight yet. */
-  function standoff(
-    size: number,
-    enemies: number,
-    map?: TerrainMap,
-  ): { sim: Simulation; band: Entity[]; foes: Entity[] } {
-    const sim = marchSim(map);
-    const foes = spawnAt(
-      sim,
-      Array.from({ length: enemies }, (_, i) => ({ x: FOE_CAMP.x + 2 * i, y: FOE_CAMP.y })),
-      SPEARMAN,
-      FOE,
-    );
-    const band = pack(sim, size, SPEARMAN);
-    run(sim);
-    for (const [i, e] of band.entries()) {
-      teleport(sim, e, { hx: MIDFIELD.hx + 2 * (i % 8), hy: MIDFIELD.hy + 2 * Math.floor(i / 8) });
-    }
-    for (const [i, e] of foes.entries()) {
-      teleport(sim, e, {
-        hx: MIDFIELD.hx + ENEMY_OFFSET + 2 * (i % ENEMY_FILE),
-        hy: MIDFIELD.hy + 2 * Math.floor(i / ENEMY_FILE),
-      });
-    }
-    return { sim, band, foes };
-  }
-
-  /** The men of `band` `commands` send into the ring around the enemy body, counting those already
-   *  standing in it, whom the charge leaves to fight where they are. */
-  function chargedAt(
-    commands: readonly Command[],
-    band: readonly Entity[],
-    foe: { x: number; y: number },
-  ): number {
-    const goals = walks(commands);
-    const reach = ASSAULT_RING_RADIUS_NODES + ENEMY_BODY_SPREAD;
-    return band.filter((e) => {
-      const goal = goals.get(e);
-      return goal === undefined || manhattan(goal, foe) <= reach;
-    }).length;
-  }
-
-  const enemyBody = { x: MIDFIELD.hx + ENEMY_OFFSET, y: MIDFIELD.hy };
-
-  it('charges an enemy body of the floor size, and keeps marching past one smaller', () => {
-    const below = standoff(BAND, CHARGE_MIN_ENEMIES - 1);
-    expect(chargedAt(run(below.sim), below.band, enemyBody)).toBe(0);
-
-    const at = standoff(BAND, CHARGE_MIN_ENEMIES);
-    expect(chargedAt(run(at.sim), at.band, enemyBody)).toBe(BAND);
-  });
-
-  it('raises the charge floor to a third of a big wave', () => {
-    const size = 3 * CHARGE_ARMY_DIVISOR * 2;
-    const needed = Math.ceil(size / CHARGE_ARMY_DIVISOR);
-    expect(needed).toBeGreaterThan(CHARGE_MIN_ENEMIES);
-    const below = standoff(size, needed - 1);
-    expect(chargedAt(run(below.sim), below.band, enemyBody)).toBe(0);
-    const at = standoff(size, needed);
-    expect(chargedAt(run(at.sim), at.band, enemyBody)).toBe(size);
-  });
-
-  /** An enemy catapult beside the standing wave, firing at `target`. */
-  function shelledBy(sim: Simulation, target: Entity): { vehicle: Entity; at: HalfCellNode } {
-    const at = { hx: MIDFIELD.hx + ENEMY_OFFSET, hy: MIDFIELD.hy + ENEMY_OFFSET };
-    const vehicle = createVehicle(sim.world, ctxOf(sim), {
-      vehicleType: CATAPULT,
-      x: at.hx,
-      y: at.hy,
-      tribe: VIKING,
-      owner: FOE,
-    });
-    if (vehicle === null) throw new Error('setup: no enemy catapult');
-    sim.world.mut(vehicle, Vehicle).attack = {
-      target: { kind: 'entity', entity: target },
-      ordered: false,
-      clipStart: null,
-    };
-    return { vehicle, at };
-  }
-
-  it('charges an enemy catapult firing at its men at once, however few stand by it', () => {
-    const { sim, band } = standoff(BAND, 0);
-    const [man] = band;
-    if (man === undefined) throw new Error('setup');
-    const { at } = shelledBy(sim, man);
-    expect(chargedAt(run(sim), band, { x: at.hx, y: at.hy })).toBe(BAND);
-  });
-
-  it('leaves an enemy catapult duelling its own catapults to them', () => {
-    const { sim, band } = standoff(BAND, 0);
-    const [ours] = siegeTrain(sim, 1);
-    if (ours === undefined) throw new Error('setup');
-    const { at } = shelledBy(sim, ours);
-    expect(chargedAt(run(sim), band, { x: at.hx, y: at.hy })).toBe(0);
-  });
-
-  it('ignores an enemy body of the floor size across the water', () => {
-    const island = {
-      x0: enemyBody.x - 2,
-      y0: enemyBody.y - 2,
-      x1: enemyBody.x + 2 * ENEMY_FILE,
-      y1: enemyBody.y + 2 * ENEMY_FILE,
-    };
-    const across = standoff(BAND, CHARGE_MIN_ENEMIES, moatMap(island));
-    const terrain = across.sim.terrain;
-    const [foe] = across.foes;
-    const [man] = across.band;
-    if (terrain === undefined || foe === undefined || man === undefined) throw new Error('setup');
-    const componentOf = (e: Entity): number => terrain.componentOf(entityNode(across.sim.world, terrain, e));
-    expect(componentOf(foe)).not.toBe(componentOf(man));
-    expect(chargedAt(run(across.sim), across.band, enemyBody)).toBe(0);
-  });
-});
-
-describe('military module - the siege', () => {
-  it('turns the catapults and archers on the towers while the melee waits, then sends everyone in', () => {
+  it('sends the rest home when a catapult is lost on the way', () => {
     const sim = marchSim();
     const catapults = siegeTrain(sim);
-    const spearmen = pack(sim, BAND, SPEARMAN);
-    const bowmen = pack(sim, 2, BOWMAN, BAND);
+    pack(sim, BAND, SPEARMAN);
     run(sim);
-    sim.world.mut(barracksOf(sim), WaveMarch).arrived = true;
-    place(sim, TOWER_TYPE, FOE_TOWER, FOE);
-    const tower = foeBuilding(sim, TOWER_TYPE);
+    const [lost] = catapults;
+    if (lost === undefined) throw new Error('setup');
+    removeVehicle(sim.world, ctxOf(sim), lost, 'destroyed');
+    const next = run(sim);
+    expect(march(sim).catapults).toEqual([]);
+    expect(drives(next).filter((c) => c.attackMove === true)).toEqual([]);
+  });
+});
 
+describe('military module - the catapults at the objective', () => {
+  /** A wave of four catapults and spearmen sent in, with an enemy tower beside its objective. */
+  function sentInBeside(map?: TerrainMap) {
+    const sim = marchSim(map);
+    const catapults = siegeTrain(sim);
+    const men = pack(sim, BAND, SPEARMAN);
+    run(sim);
+    sim.world.mut(barracksOf(sim), WaveMarch).since = sim.tick - GATHER_MARCH_TIMEOUT_TICKS;
+    run(sim);
+    expect(march(sim).gatherAt).toBeNull();
+    place(sim, TOWER_TYPE, FOE_TOWER, FOE);
+    return { sim, catapults, men, tower: foeBuilding(sim, TOWER_TYPE) };
+  }
+
+  it('turns the catapults on the tower while the men go in at once, then drives them in once it falls', () => {
+    const { sim, catapults, men, tower } = sentInBeside();
     const siege = run(sim);
     expect(siege.filter((c) => c.kind === 'attackWithVehicle')).toEqual(
       catapults.map((vehicle) => ({
@@ -721,80 +418,50 @@ describe('military module - the siege', () => {
         target: { kind: 'entity', entity: tower },
       })),
     );
-    const focused = siege.flatMap((c) => (c.kind === 'attackUnit' ? [c] : []));
-    expect(focused).toEqual(bowmen.map((entity) => ({ kind: 'attackUnit', entity, target: tower })));
-    // The melee holds its ranks rather than walking into the objective's fire.
-    const objective = objectiveOf(sim);
-    const goals = walks(siege);
-    for (const e of spearmen) {
-      const goal = goals.get(e);
-      if (goal !== undefined) expect(manhattan(goal, objective)).toBeGreaterThan(ASSAULT_RING_RADIUS_NODES);
-    }
+    expect(sentIn(sim, siege)).toEqual(men);
 
-    // The tower falls: everybody goes in on the objective.
     sim.world.destroy(tower);
     const assault = run(sim);
-    const inRing = [...walks(assault)].filter(
-      ([, g]) => manhattan(g, objective) <= ASSAULT_RING_RADIUS_NODES,
-    );
-    expect(inRing.map(([e]) => e)).toEqual([...spearmen, ...bowmen]);
     expect(drives(assault).map((c) => [c.vehicle, c.attackMove])).toEqual(catapults.map((v) => [v, true]));
   });
 
-  /** An arrived wave of four catapults, spearmen and bowmen, with an enemy tower beside its objective. */
-  function arrivedBeside(map?: TerrainMap) {
-    const sim = marchSim(map);
-    const catapults = siegeTrain(sim);
-    const spearmen = pack(sim, BAND, SPEARMAN);
-    const bowmen = pack(sim, 2, BOWMAN, BAND);
-    run(sim);
-    sim.world.mut(barracksOf(sim), WaveMarch).arrived = true;
-    place(sim, TOWER_TYPE, FOE_TOWER, FOE);
-    return { sim, catapults, men: [...spearmen, ...bowmen] };
-  }
-
-  function assaulted(sim: Simulation, commands: readonly Command[]): Entity[] {
-    const objective = objectiveOf(sim);
-    return [...walks(commands)]
-      .filter(([, g]) => manhattan(g, objective) <= ASSAULT_RING_RADIUS_NODES)
-      .map(([e]) => e);
-  }
-
-  it('leaves a tower across the water to the assault', () => {
+  it('leaves a tower across the water to the men', () => {
     const moat = { x0: FOE_TOWER.x - 6, y0: FOE_TOWER.y - 6, x1: FOE_TOWER.x + 6, y1: FOE_TOWER.y + 6 };
-    const { sim, catapults, men } = arrivedBeside(moatMap(moat));
+    const { sim, catapults } = sentInBeside(moatMap(moat));
     const commands = run(sim);
-    expect(commands.some((c) => c.kind === 'attackWithVehicle' || c.kind === 'attackUnit')).toBe(false);
-    expect(assaulted(sim, commands)).toEqual(men);
+    expect(commands.some((c) => c.kind === 'attackWithVehicle')).toBe(false);
     expect(drives(commands).map((c) => c.vehicle)).toEqual(catapults);
   });
 
-  it('gives the siege up for the assault once it has lasted too long', () => {
-    const { sim, catapults, men } = arrivedBeside();
+  it('gives the towers up for the objective once the siege has lasted too long', () => {
+    const { sim, catapults } = sentInBeside();
     expect(run(sim).some((c) => c.kind === 'attackWithVehicle')).toBe(true);
-
-    sim.world.mut(barracksOf(sim), WaveMarch).legSince = sim.tick - SIEGE_TIMEOUT_TICKS;
+    for (const v of catapults) sim.world.mut(v, Vehicle).attack = null;
+    sim.world.mut(barracksOf(sim), WaveMarch).since = sim.tick - SIEGE_TIMEOUT_TICKS;
     const commands = run(sim);
-    expect(commands.some((c) => c.kind === 'attackWithVehicle' || c.kind === 'attackUnit')).toBe(false);
-    expect(assaulted(sim, commands)).toEqual(men);
+    expect(commands.some((c) => c.kind === 'attackWithVehicle')).toBe(false);
     expect(drives(commands).map((c) => c.vehicle)).toEqual(catapults);
   });
 });
 
 describe('military module - a marching wave through a save', { timeout: 60_000 }, () => {
-  /** Ticks to wait for the seat to launch its wave and close up on its first leg end. */
+  /** Ticks to wait for the seat to launch its wave. */
   const LAUNCH_TICKS = 6000;
+  /** Ticks the wave walks before the save, so it is under way. */
+  const WALK_TICKS = 200;
 
-  it('restores a wave mid-march', () => {
+  it('restores a wave on its way to the gathering point', () => {
     const sim = marchSim();
     pack(sim, BAND, SPEARMAN);
     sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true });
     sim.step();
     const barracks = barracksOf(sim);
-    while ((sim.world.tryGet(barracks, WaveMarch)?.leg ?? 0) === 0) {
-      if (sim.tick > LAUNCH_TICKS) throw new Error('setup: the wave never reached its second leg');
+    while (!sim.world.has(barracks, WaveMarch)) {
+      if (sim.tick > LAUNCH_TICKS) throw new Error('setup: the wave never launched');
       sim.step();
     }
+    for (let i = 0; i < WALK_TICKS; i++) sim.step();
+    expect(sim.world.get(barracks, WaveMarch).gatherAt).not.toBeNull();
 
     const bytes = serializeSaveGame(exportSaveGame(sim));
     const restored = restoreSimulation(parseSaveGame(JSON.parse(bytes)), {

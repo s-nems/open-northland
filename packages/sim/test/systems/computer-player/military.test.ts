@@ -206,8 +206,12 @@ function run(sim: Simulation, seed = EAGER_SEED, tick = 0): Command[] {
 
 /** Every walk the module orders. The recall and the march are both attack-moves - a man crossing contested
  *  ground can answer what shoots at him either way - so where they lead is what tells them apart. */
+/** Every attack-move of `commands`, a group's members one by one. */
 function walks(commands: readonly Command[]): { entity: Entity; x: number; y: number }[] {
-  return commands.flatMap((c) => (c.kind === 'attackMoveUnit' ? [{ entity: c.entity, x: c.x, y: c.y }] : []));
+  return commands.flatMap((c) => {
+    if (c.kind === 'attackMoveUnit') return [{ entity: c.entity, x: c.x, y: c.y }];
+    return c.kind === 'attackMoveUnitGroup' ? c.members.map(({ entity, x, y }) => ({ entity, x, y })) : [];
+  });
 }
 
 /** The men `commands` walk to their own spot in the ring of `radius` around `centre` - a body spreads out,
@@ -236,14 +240,14 @@ function gatheringAt(sim: Simulation, commands: readonly Command[], rally: { x: 
 }
 
 /** The men `commands` send in on `target`: each onto his own spot in the ring around its door, or out
- *  on the first leg of the wave marching on it. */
+ *  to the gathering point of the wave marching on it. */
 function assaulting(sim: Simulation, commands: readonly Command[], target: Entity): Entity[] {
   const terrain = terrainOf(sim);
   const door = terrain.coordsOf(interactionCell(sim.world, ctxOf(sim), terrain, target));
   const march = sim.world.tryGet(buildingOfType(sim, BARRACKS_TYPE, SEAT), WaveMarch);
   const wave = march?.target === target ? new Set(march.men) : new Set<Entity>();
-  const legs = walks(commands).flatMap((d) => (wave.has(d.entity) ? [d.entity] : []));
-  return [...new Set([...walksInto(sim, commands, door, ASSAULT_RING_RADIUS_NODES), ...legs])];
+  const gathering = walks(commands).flatMap((d) => (wave.has(d.entity) ? [d.entity] : []));
+  return [...new Set([...walksInto(sim, commands, door, ASSAULT_RING_RADIUS_NODES), ...gathering])];
 }
 
 /** Give the seat a decided strategy holding `plan` and `posture`, as its strategy step would. */

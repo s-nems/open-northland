@@ -22,31 +22,25 @@ export interface MusterPlanState {
 export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan', 'players');
 
 export interface WaveMarchState {
-  /** The objective the wave was routed to; a new campaign target routes it again. */
+  /** The objective the wave was sent on; a new campaign target sends it again. */
   target: Entity;
-  /** Where the route starts: the direction of the first leg. */
-  origin: HalfCellNode;
-  /** The leg ends along the route, one leg apart, the last one short of the objective. */
-  waypoints: HalfCellNode[];
-  /** The index of the leg end the wave is ordered to. */
-  leg: number;
-  /** The tick the current leg was ordered, the wave arrived, or it last charged or held for its catapults'
-   *  fight: the leg and siege timeouts count from it. */
-  legSince: number;
-  /** Whether the wave has closed up on its last leg end and now besieges or assaults. */
-  arrived: boolean;
-  /** The tick the wave's catapults opened the fight it holds for on the way, null while none fights. */
-  holdSince: number | null;
-  /** The men and catapults the wave marched with, ascending id; the dead and the stragglers a leg timeout
-   *  leaves behind drop out at the next leg, a catapult still fighting when the hold times out at once. */
+  /** Where the wave gathers before it goes in; null once it has been sent in on its target. */
+  gatherAt: HalfCellNode | null;
+  /** The tick the wave set out for its gathering point, or was sent in: the march and siege timeouts
+   *  count from it. */
+  since: number;
+  /** The tick the first man reached the gathering point, null before: the wait for the rest counts from
+   *  it. */
+  firstArrival: number | null;
+  /** The men and catapults the wave marched with, ascending id. */
   men: Entity[];
   catapults: Entity[];
 }
 
 /**
- * The wave a seat's barracks has launched, marching in legs toward its objective, held on the muster
- * barracks beside its {@link MusterPlan}. Minted at the launch, removed when the wave is spent or the
- * campaign loses its objective (`military/march.ts`).
+ * The wave a seat's barracks has launched, gathering short of its objective and then sent in on it, held
+ * on the muster barracks beside its {@link MusterPlan}. Minted at the launch, removed when the wave is
+ * spent or the campaign loses its objective (`military/march/index.ts`).
  */
 export const WaveMarch = defineComponent<WaveMarchState>('WaveMarch', 'players');
 

@@ -245,8 +245,11 @@ describe('military module - the catapult drivers', () => {
 
     expect(takeCensus(sim.world, ctxOf(sim), SEAT).ready).not.toContain(driver);
     const commands = run(sim);
-    expect(commands.some((c) => c.kind === 'attackMoveUnit')).toBe(true); // the band still marches
+    expect(commands.some((c) => c.kind === 'attackMoveUnitGroup')).toBe(true); // the band still marches
     expect(commands.some((c) => 'entity' in c && c.entity === driver)).toBe(false);
+    expect(
+      commands.some((c) => c.kind === 'attackMoveUnitGroup' && c.members.some((m) => m.entity === driver)),
+    ).toBe(false);
   });
 });
 
@@ -439,7 +442,7 @@ describe('military module - a parked catapult and the launching wave', () => {
     expect(crewedCatapults(sim.world, ctxOf(sim), SEAT).length).toBeLessThan(SIEGE_MARCH_MIN_CATAPULTS);
     readyToLaunch(sim);
     const commands = run(sim);
-    expect(commands.some((c) => c.kind === 'attackMoveUnit')).toBe(true);
+    expect(commands.some((c) => c.kind === 'attackMoveUnitGroup')).toBe(true);
     const barracks = [...sim.world.query(WaveMarch)][0];
     if (barracks === undefined) throw new Error('expected a launched wave');
     expect(sim.world.get(barracks, WaveMarch).catapults).toEqual([]);

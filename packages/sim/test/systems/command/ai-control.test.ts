@@ -86,12 +86,9 @@ describe('AI control transitions', () => {
     sim.world.add(unit, MusterPlan, { waveSize: 10, drawnAt: 0, cappedAt: null });
     sim.world.add(unit, WaveMarch, {
       target: mapUnit,
-      origin: { hx: 0, hy: 0 },
-      waypoints: [],
-      leg: 0,
-      legSince: 0,
-      arrived: false,
-      holdSince: null,
+      gatherAt: null,
+      since: 0,
+      firstArrival: null,
       men: [unit],
       catapults: [],
     });

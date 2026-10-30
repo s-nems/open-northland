@@ -139,7 +139,7 @@ interface Launch {
   readonly objective: NodeId;
 }
 
-/** Send `formed` out as the seat's wave, with the catapults parked at home, and give its first leg. */
+/** Send `formed` out as the seat's wave, with the catapults parked at home, toward its gathering point. */
 function launchedWaveOrders(
   world: World,
   ctx: SystemContext,

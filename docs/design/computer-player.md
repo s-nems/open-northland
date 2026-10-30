@@ -108,7 +108,10 @@ army floor drafts from 15 minutes before; a seat whose defence comes first stops
 Settlement defence is shared with the map AI (`systems/ai-shared/military`), filtered by sight for a
 computer seat. Offensive work runs as operations (`military/operations/`): saved records with a kind,
 members, target and a lifecycle (`forming`, `moving`, `acting`, `withdrawing`, `done`, `failed`). The
-wave march is the `assault` kind. A `raid` sends a small band, archers first, around the flank to the
+wave march is the `assault` kind: the wave walks to a gathering point short of the enemy base and out
+of its known towers' reach, waits there until three quarters of it have arrived (at most 45 seconds after
+the first, 5 minutes after setting out), then goes in as one group attack-move while its catapults take
+the towers by the objective. A `raid` sends a small band, archers first, around the flank to the
 gatherers at the edge of an enemy base and withdraws when defence answers. A new behaviour such as
 supporting an ally is one more kind with its handler.
 

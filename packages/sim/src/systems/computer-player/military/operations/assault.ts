@@ -16,7 +16,7 @@ import { enter, type OperationEnv, type OperationHandler } from './lifecycle.js'
 // men count as held and the debug view lists it. The muster gathering at the door is not an operation:
 // its men stay free until they march.
 
-/** The wave on the seat's barracks into `op`: its men, its objective, `acting` once it has arrived, and
+/** The wave on the seat's barracks into `op`: its men, its objective, `acting` once it has been sent in, and
  *  `done` once it is spent or called back. Returns whether a wave still marches. */
 function mirror(env: OperationEnv, op: AssaultOperation): boolean {
   const { world, ctx, seat } = env;
@@ -29,7 +29,7 @@ function mirror(env: OperationEnv, op: AssaultOperation): boolean {
   }
   op.members = [...march.men];
   op.target = believedTarget(env, march.target, op.target);
-  const state = march.arrived ? 'acting' : 'moving';
+  const state = march.gatherAt === null ? 'acting' : 'moving';
   if (op.state !== state) enter(op, state, ctx.tick);
   return true;
 }
