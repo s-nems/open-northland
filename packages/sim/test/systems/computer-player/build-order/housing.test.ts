@@ -35,6 +35,7 @@ import {
   SEAT,
   seatEconomy,
   spawnMen,
+  TOWER_TYPE,
   VIKING,
   WOMAN,
   WOOD,
@@ -47,6 +48,8 @@ const HOMES_CAP = 4;
 const ROOMY_TOP_HOME_SLOTS = 8;
 /** The fixture's edible good. */
 const FOOD_SIMPLE = 3;
+/** A fixture good no building makes and nobody gathers. */
+const TOOL_WOODEN = 6;
 /** Wood in store, the fixture homes' only bill good: enough for every upgrade a test asks. */
 const UPGRADE_WOOD = 20;
 
@@ -227,6 +230,67 @@ describe('the housing lane', () => {
       expect(at(0)).toBeUndefined();
       // Grown, the lane's sites stand apart from them.
       expect(homePlaced(at(SITES_GROW_FROM_TICKS))).toBe(true);
+    });
+
+    it("keeps the tower ring's sites, which stand beyond the clock's, off the home sites", () => {
+      const sim = feedingSeat(BASE_SLOTS, []);
+      // As many ring towers rising as the clock's sites and the feeding stage's extra.
+      const towers = sitePace(AI_PROFILES.hard, 0).sites + HOUSING_PACE.feeding.sites - 1;
+      for (let i = 0; i < towers; i++)
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: TOWER_TYPE,
+          x: HQ_X + 12 + 6 * i,
+          y: HQ_Y + 6,
+          tribe: VIKING,
+          owner: SEAT,
+          underConstruction: true,
+        });
+      sim.step();
+      expect(homePlaced(decide(sim, housing, content))).toBe(true);
+    });
+
+    it('starts a second upgrade only while the standing homes keep a slot free, else places a home', () => {
+      // Two base homes hold the women exactly: with one upgrading, the other leaves no room to grow.
+      const sim = feedingSeat(2 * BASE_SLOTS, [HOME_TYPE, HOME_TYPE]);
+      const first = decide(sim, housing, content);
+      expect(first).toMatchObject({ kind: 'upgradeBuilding', target: HOME_TOP_TYPE });
+      if (first === undefined) throw new Error('expected the upgrade');
+      sim.enqueueSetup(first);
+      sim.step();
+      expect(homePlaced(decide(sim, housing, content))).toBe(true);
+      // A top and two lagging base homes for one woman: the homes standing beside the first lift keep
+      // room, so the second goes on.
+      const roomy = feedingSeat(1, [HOME_TOP_TYPE, HOME_TYPE, HOME_TYPE]);
+      const lift = decide(roomy, housing, content);
+      if (lift === undefined) throw new Error('expected the upgrade');
+      roomy.enqueueSetup(lift);
+      roomy.step();
+      expect(decide(roomy, housing, content)).toMatchObject({
+        kind: 'upgradeBuilding',
+        target: HOME_TOP_TYPE,
+      });
+    });
+
+    it('lifts a home through no tier whose bill nothing the seat owns makes and the store lacks', () => {
+      // The top tier asks for wooden tools, which no building of the fixture makes.
+      const toolTop = parseContentSet({
+        ...content,
+        buildings: content.buildings.map((b) =>
+          b.typeId === HOME_TOP_TYPE ? { ...b, construction: [{ goodType: TOOL_WOODEN, amount: 1 }] } : b,
+        ),
+      });
+      const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN, toolTop);
+      const place = (buildingType: number, x: number, y: number) =>
+        sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
+      place(BAKERY_TYPE, HQ_X + 6, HQ_Y);
+      place(HOME_TYPE, HQ_X - 6, HQ_Y - 6);
+      sim.step();
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), WOOD, UPGRADE_WOOD);
+      // The middle tier adds no slot, so with the top one unsourced a new home is the only way.
+      expect(homePlaced(decide(sim, housing, toolTop))).toBe(true);
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), TOOL_WOODEN, 1);
+      expect(decide(sim, housing, toolTop)).toMatchObject({ kind: 'upgradeBuilding', target: HOME_TOP_TYPE });
     });
 
     it('upgrades a home lagging below the highest tier while the slots are not short', () => {

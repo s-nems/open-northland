@@ -21,7 +21,7 @@ import { seatStockOf } from '../../stores/index.js';
 import { femaleDemand } from '../female-stock.js';
 import { foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
 import { seatHuntsGame } from '../workforce/hunter.js';
-import { billSourced } from './bill-sources.js';
+import { billSourced, sourcedTiers } from './bill-sources.js';
 import type { BuildOrderEntry } from './entries.js';
 import { placementSpot } from './placement.js';
 import { seatHasSide } from './seat-order.js';
@@ -338,17 +338,41 @@ function upgradeFirst(
 }
 
 /**
+ * Whether the seat may start upgrading a standing home of `size` slots: while no home of the lane is
+ * upgrading, or while the standing homes without it still keep a slot free beyond the seat's female
+ * demand ({@link femaleDemand}). An upgrading home holds no slot the population module books a daughter
+ * into, so several at once leave the seat no room to grow while they rise (authored: on krwawa_rzeka a
+ * seat upgraded all four of its base homes at once and stayed at 4-5 women from game minute 40 to 80).
+ */
+function upgradeLeavesRoom(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  homes: readonly Entity[],
+): (size: number) => boolean {
+  if (!homes.some((e) => world.has(e, Upgrading))) return () => true;
+  const index = contentIndex(ctx.content);
+  let standing = 0;
+  for (const e of homes)
+    if (isBuilt(world, e) && !world.has(e, UnderConstruction))
+      standing += index.buildings.get(world.get(e, Building).buildingType)?.homeSize ?? 0;
+  const demand = femaleDemand(world, ctx, player);
+  return (size) => standing - size > demand;
+}
+
+/**
  * The family slot the seat builds next, priced in bill units per slot gained (authored approximation:
- * every good weighs one unit): an upgrade of a built home to any enabled tier above it whose bill the store
- * backs ({@link suppliedUpgrade}), or, while the slots fall short and below `entry.count` homes, a new home
- * of any enabled tier whose merged bill has a source ({@link billSourced}), placed by the home rule of
- * {@link placementSpot}. In the `opening` stage the cheapest slot wins, a tie going to the upgrade, which
- * needs no room, then to the higher tier. The `herding` stage picks as the opening does, but raises no
- * home, new or upgraded, above its ceiling ({@link HerdingCeiling}) and, with the slots not short, only a
- * home to the cap while the ceiling has room. From the `feeding` stage any upgrade wins over a new home and the
- * lowest-tier home goes first, so no home is left at the base tier; with the slots not short only a home
- * below the highest tier is upgraded. A new home with no spot yields to the best upgrade, so a cramped seat
- * grows its homes upward. Null when nothing can be raised.
+ * every good weighs one unit): an upgrade of a built home, while it leaves room ({@link upgradeLeavesRoom}),
+ * to any enabled tier above it, every tier on the way with a source for its own bill ({@link sourcedTiers}),
+ * whose bill the store backs ({@link suppliedUpgrade}), or, while the slots fall short and below
+ * `entry.count` homes, a new home of any enabled tier whose merged bill has a source ({@link billSourced}),
+ * placed by the home rule of {@link placementSpot}. In the `opening` stage the cheapest slot wins, a tie
+ * going to the upgrade, which needs no room, then to the higher tier. The `herding` stage picks as the
+ * opening does, but raises no home, new or upgraded, above its ceiling ({@link HerdingCeiling}) and, with
+ * the slots not short, only a home to the cap while the ceiling has room. From the `feeding` stage any
+ * upgrade wins over a new home and the lowest-tier home goes first, so no home is left at the base tier;
+ * with the slots not short only a home below the highest tier is upgraded. A new home with no spot yields
+ * to the best upgrade, so a cramped seat grows its homes upward. Null when nothing can be raised.
  */
 export function housingPick(
   world: World,
@@ -373,6 +397,7 @@ export function housingPick(
     highest = Math.max(highest, index.buildings.get(tier)?.homeSize ?? 0);
   }
   const ceiling = herdingCeiling(world, ctx, player, homes, stage);
+  const upgradeOpen = upgradeLeavesRoom(world, ctx, player, homes);
   let upgrade: (Option<HousingPick> & { readonly from: number }) | null = null;
   // Homes of one type offer the same upgrades, so only the lowest-id built one of each is asked.
   const asked = new Set<number>();
@@ -382,12 +407,13 @@ export function housingPick(
       continue;
     asked.add(building.buildingType);
     const from = index.buildings.get(building.buildingType);
-    if (from === undefined) continue;
+    if (from === undefined || !upgradeOpen(from.homeSize)) continue;
     const seen = new Set<number>();
     for (let tier = from.upgradeTarget; tier !== undefined && !seen.has(tier); ) {
       seen.add(tier);
       const to = index.buildings.get(tier);
       if (to === undefined || !buildingEnabled(world, ctx, player, building.tribe, tier)) break;
+      if (sourcedTiers(world, ctx, player, [tier], made).length === 0) break;
       if (ceiling?.capped.has(tier) && (tier !== ceiling.cap || ceiling.left === 0)) break;
       const lags = ceiling === null ? from.homeSize < highest : tier === ceiling.cap;
       if (!short && !lags) {

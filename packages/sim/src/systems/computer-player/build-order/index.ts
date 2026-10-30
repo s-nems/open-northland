@@ -108,10 +108,10 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
   return owned.filter((e) => isServedConstructionSite(world, ctx.content, e));
 }
 
-/** The housing lane's share of the open `sites`: `beyond` is how many of its home sites stand past the
- *  clock's `siteCap` (all but its first, or all of them while `apart`, up to {@link housingExtraSites}),
- *  and `open` whether it may open one more: below its stage's sites ({@link HOUSING_PACE}) and below the
- *  clock's sites plus its extra. */
+/** The housing lane's share of the open `sites`, a ring's towers standing apart left out: `beyond` is
+ *  how many of its home sites stand past the clock's `siteCap` (all but its first, or all of them while
+ *  `apart`, up to {@link housingExtraSites}), and `open` whether it may open one more: below its stage's
+ *  sites ({@link HOUSING_PACE}) and below the clock's sites plus its extra. */
 function homeSiteBudget(
   world: World,
   ctx: SystemContext,
@@ -218,18 +218,20 @@ function runBuildOrder(
   const sites = constructionSites(world, ctx, owned);
   if (base === null) return replaceMissingBase(world, ctx, terrain, player, owned, sites);
   const siteCap = seatSitePace(world, player, profile, ctx.tick).sites;
+  const apartRing = ringApart(profile);
+  const ringTowers = apartRing ? sites.filter((e) => ringTowerSite(world, ctx, e)) : [];
+  const ringSites = ringTowers.length;
+  // The ring's towers stand beyond the clock's sites, so they never close the housing lane's.
   const homeSites = homeSiteBudget(
     world,
     ctx,
     player,
     owned,
     order,
-    sites,
+    ringSites === 0 ? sites : sites.filter((e) => !ringTowers.includes(e)),
     siteCap,
     homesApart(profile, ctx.tick),
   );
-  const apartRing = ringApart(profile);
-  const ringSites = apartRing ? sites.filter((e) => ringTowerSite(world, ctx, e)).length : 0;
   const ringOpen = apartRing && ringSites < towerRingSites(world, player);
   // The home sites past the lane's first and the ring's tower sites stand beyond the clock's, so the
   // lines never count them.
