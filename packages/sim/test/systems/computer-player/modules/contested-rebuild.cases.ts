@@ -44,7 +44,6 @@ import {
   ctxOf,
   entityOfBuilding,
   FARM_TYPE,
-  HOME_TOP_TYPE,
   HOME_TYPE,
   HQ_TYPE,
   HQ_X,
@@ -413,7 +412,7 @@ describe('build-order module - rebuilding under the enemy', () => {
       return placementOf(commands);
     };
     expect(act()?.buildingType).toBe(FARM_TYPE); // its site stays open
-    for (const finished of [HOME_TOP_TYPE, WELL_TYPE]) {
+    for (const finished of [HOME_TYPE, WELL_TYPE]) {
       expect(act()?.buildingType).toBe(finished);
       const built = entityOfBuilding(sim, finished);
       sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: built });

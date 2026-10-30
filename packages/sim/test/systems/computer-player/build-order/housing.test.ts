@@ -43,6 +43,8 @@ import {
 /** Family slots of the fixture's base home tier. */
 const BASE_SLOTS = 2;
 const HOMES_CAP = 4;
+/** Family slots of the capped home tier in the herding walk, past the base tier's per bill unit. */
+const ROOMY_TOP_HOME_SLOTS = 8;
 /** The fixture's edible good. */
 const FOOD_SIMPLE = 3;
 /** Wood in store, the fixture homes' only bill good: enough for every upgrade a test asks. */
@@ -254,8 +256,8 @@ describe('the housing lane', () => {
 
     /** A seat of one woman with its animal farm, wood for every upgrade in store, and `homes` built base
      *  homes, which hold her with the opening's free slots to spare. */
-    function herdingSeat(homes: number): Simulation {
-      const sim = seatWithWomen(1, HOUSING_FOOD_UNITS_PER_WOMAN, content);
+    function herdingSeat(homes: number, seatContent: ContentSet = content): Simulation {
+      const sim = seatWithWomen(1, HOUSING_FOOD_UNITS_PER_WOMAN, seatContent);
       const place = (buildingType: number, x: number, y: number) =>
         sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
       place(ANIMAL_FARM_TYPE, HQ_X + 6, HQ_Y);
@@ -283,6 +285,39 @@ describe('the housing lane', () => {
       upgradeOnce(sim);
       // The ceiling is reached: the other homes stand at the base tier.
       expect(decide(sim, housing, content)).toBeUndefined();
+    });
+
+    it('places a new home at the capped tier only while the ceiling has room', () => {
+      // The capped tier holds so many families that it is the cheapest slot whenever the ceiling allows it.
+      const roomyTop = parseContentSet({
+        ...content,
+        buildings: content.buildings.map((b) =>
+          b.typeId === HOME_TOP_TYPE ? { ...b, homeSize: ROOMY_TOP_HOME_SLOTS } : b,
+        ),
+      });
+      // Women enough that the slots stay short through the walk, and no home yet: every pick is a new home.
+      const sim = herdingSeat(0, roomyTop);
+      const women = HOMES_CAP * ROOMY_TOP_HOME_SLOTS;
+      spawnMen(sim, women, WOMAN);
+      sim.step();
+      // Food enough for these women and the seat's first one to want homes, short of a well-fed seat's.
+      setStockAmount(
+        sim.world,
+        entityOfBuilding(sim, HQ_TYPE),
+        FOOD_SIMPLE,
+        (women + 1) * HOUSING_FOOD_UNITS_PER_WOMAN,
+      );
+      const placed: number[] = [];
+      for (let decision = 0; decision < HOMES_CAP; decision++) {
+        const next = decide(sim, housing, roomyTop);
+        if (next?.kind !== 'placeBuilding') throw new Error(`expected a new home, got ${next?.kind}`);
+        placed.push(next.buildingType);
+        sim.enqueueSetup(next);
+        sim.step();
+        completeSites(sim);
+      }
+      expect(placed.length).toBeGreaterThan(HERDING_TOP_HOMES.lean);
+      expect(placed.filter((type) => type === HOME_TOP_TYPE)).toHaveLength(HERDING_TOP_HOMES.lean);
     });
 
     it('raises a second home with much food in store, and every lagging home once the seat fishes', () => {

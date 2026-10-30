@@ -1,4 +1,4 @@
-import type { BuildingType } from '@open-northland/data';
+import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
 import { UnderConstruction } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -26,7 +26,8 @@ const EARLY_ATTACKS_BEFORE_TICKS = MID_GAME_FROM_TICKS;
  * the lower one to upgrade later): the highest tier of the step's chain, below its `belowTier` cap, that
  * the seat has enabled up the chain without a gap, whose own bill has a source ({@link sourcedTiers}), and
  * whose merged bill the store backs as an upgrade's ({@link stockBacks}); else the step's own tier. A tower
- * ring keeps the lower tier while the seat's attacks come early ({@link attacksComeEarly}).
+ * ring keeps the lower tier while the seat's attacks come early ({@link attacksComeEarly}), and a home its
+ * step's: the housing lane paces the home tiers by the seat's food (`./housing.ts`).
  */
 export function directTier(
   world: World,
@@ -38,7 +39,7 @@ export function directTier(
   made: () => ReadonlySet<number>,
 ): BuildingType | undefined {
   const base = buildingTypeByContentId(ctx.content, entry.building);
-  if (base?.upgradeTarget === undefined) return base;
+  if (base?.upgradeTarget === undefined || base.kind === BUILDING_KIND.home) return base;
   const index = contentIndex(ctx.content);
   const allowed = countedTiers(ctx.content, base, entry.kind === 'place' ? entry.belowTier : undefined);
   const tiers: number[] = [];

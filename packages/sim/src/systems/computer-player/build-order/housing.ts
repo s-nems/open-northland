@@ -344,8 +344,8 @@ function upgradeFirst(
  * of any enabled tier whose merged bill has a source ({@link billSourced}), placed by the home rule of
  * {@link placementSpot}. In the `opening` stage the cheapest slot wins, a tie going to the upgrade, which
  * needs no room, then to the higher tier. The `herding` stage picks as the opening does, but raises no
- * home above its ceiling ({@link HerdingCeiling}) and, with the slots not short, only a home to the cap
- * while the ceiling has room. From the `feeding` stage any upgrade wins over a new home and the
+ * home, new or upgraded, above its ceiling ({@link HerdingCeiling}) and, with the slots not short, only a
+ * home to the cap while the ceiling has room. From the `feeding` stage any upgrade wins over a new home and the
  * lowest-tier home goes first, so no home is left at the base tier; with the slots not short only a home
  * below the highest tier is upgraded. A new home with no spot yields to the best upgrade, so a cramped seat
  * grows its homes upward. Null when nothing can be raised.
@@ -420,6 +420,7 @@ export function housingPick(
       .sort((a, b) => b.homeSize - a.homeSize);
     for (const type of types) {
       if (type.homeSize <= 0 || !buildingEnabled(world, ctx, player, tribe, type.typeId)) continue;
+      if (ceiling?.capped.has(type.typeId) && (type.typeId !== ceiling.cap || ceiling.left === 0)) continue;
       const option = {
         pick: type,
         cost: billUnits(index.constructionBillByBuilding.get(type.typeId) ?? []),

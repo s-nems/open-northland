@@ -154,22 +154,23 @@ describe('build-order module (houseBuild)', () => {
     // first new kind of building in priority order (opening, bread with its first bakery's well, brewery,
     // tools; the military line waits for its deadline) before any line adds another of a kind the seat
     // has: the opening's homes, five with no archetype dropping the rich seat's fifth. No progression gate
-    // is on and every bill is wood, so each place step raises its chain's top tier outright. The seat has
+    // is on and every bill is wood, so each place step but a home's raises its chain's top tier outright;
+    // the homes keep their step's tier, the housing lane pacing their tiers by the food. The seat has
     // no man to staff its bakery and brewery, so their lines hold their second copies, and the seat holds
     // no woman, so the housing lane raises nothing. The weapons line holds at its iron gatherer, whose
     // clock has not come, and holds no other line.
     const place = (type: number): string => `place ${type}`;
     expect(walk).toEqual([
-      place(HOME_TOP_TYPE),
+      place(HOME_TYPE),
       place(MILL_TYPE),
       place(BAKERY_TOP_TYPE),
       place(WELL_TYPE),
       place(BREWERY_TYPE),
       place(JOINERY_TYPE),
-      place(HOME_TOP_TYPE),
-      place(HOME_TOP_TYPE),
-      place(HOME_TOP_TYPE),
-      place(HOME_TOP_TYPE),
+      place(HOME_TYPE),
+      place(HOME_TYPE),
+      place(HOME_TYPE),
+      place(HOME_TYPE),
     ]);
   });
 
