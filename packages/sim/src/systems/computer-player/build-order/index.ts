@@ -138,8 +138,8 @@ function homeSiteBudget(
  *  the ring stands by the military deadline): on a profile that never pauses, so the slower profiles' pace
  *  stays their throttle. On krwawa_rzeka, with the ring inside the clock's sites, the first tower went up
  *  only as the clock grew at minute 45 and one or two stood by minute 70. */
-function ringApart(base: Entity | null, profile: ComputerProfile): boolean {
-  return base !== null && profile.freeSitePauseTicks === 0;
+function ringApart(profile: ComputerProfile): boolean {
+  return profile.freeSitePauseTicks === 0;
 }
 
 /** Whether `e` is a new tower site of a ring, not a standing tower rising a tier. */
@@ -225,7 +225,7 @@ function runBuildOrder(
     siteCap,
     homesApart(profile, ctx.tick),
   );
-  const apartRing = ringApart(base, profile);
+  const apartRing = ringApart(profile);
   const ringSites = apartRing ? sites.filter((e) => ringTowerSite(world, ctx, e)).length : 0;
   const ringOpen = apartRing && ringSites < towerRingSites(world, player);
   // The home sites past the lane's first and the ring's tower sites stand beyond the clock's, so the
@@ -987,8 +987,8 @@ function startHeadquartersNode(world: World, ctx: SystemContext, player: number)
 
 /** A seat that holds buildings but no base rebuilds one where its start headquarters stood, else at the
  *  centroid of what stands (owner ruling: one warehouse in the headquarters' place). Every other step and
- *  lane waits meanwhile, and it keeps to {@link BASELESS_CONSTRUCTION_SITES} open `sites`, so the warehouse
- *  is placed once and gets the whole crew. */
+ *  lane waits meanwhile; the sites already open go on rising, and the warehouse is placed once, at most
+ *  {@link BASELESS_CONSTRUCTION_SITES} store sites among `sites` open at a time. */
 function replaceMissingBase(
   world: World,
   ctx: SystemContext,
@@ -997,7 +997,11 @@ function replaceMissingBase(
   owned: readonly Entity[],
   sites: readonly Entity[],
 ): readonly PlayerCommand[] {
-  if (sites.length >= BASELESS_CONSTRUCTION_SITES) return [];
+  const buildings = contentIndex(ctx.content).buildings;
+  const storeSites = sites.filter(
+    (e) => buildings.get(world.get(e, Building).buildingType)?.kind === 'storage',
+  );
+  if (storeSites.length >= BASELESS_CONSTRUCTION_SITES) return [];
   const tribe = playerPlacementTribes(world, player)?.[0];
   if (tribe === undefined) return [];
   const siege = seatSiege(world, ctx, terrain, player, owned);

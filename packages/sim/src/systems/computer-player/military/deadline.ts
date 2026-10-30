@@ -72,7 +72,7 @@ export function militaryDeadlineTick(world: World, ctx: SystemContext, seat: num
 }
 
 /** The first tick a forecast scripted attack on `seat` may land, past ones included, or null for none. */
-export function firstForecastAttackTick(world: World, ctx: SystemContext, seat: number): number | null {
+function firstForecastAttackTick(world: World, ctx: SystemContext, seat: number): number | null {
   const first = earliestDeadline(
     Number.POSITIVE_INFINITY,
     forecastThreats(world, ctx, seat).map((threat) => threat.trigger),

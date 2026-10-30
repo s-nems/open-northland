@@ -315,9 +315,10 @@ export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
  *  shoes and two on tunics (`workforce/craft.ts`). */
 export const SECOND_UPPER_TAILOR: BuildOrderEntry = { kind: 'upgrade', building: 'work_sewery_01', count: 2 };
 
-/** Owner ruling: a tunic seat raises its second animal farm, its breeders split as the first's, right
- *  after the first tailor: the tailors dressing the army want its leather and wool, and its meat feeds the
- *  opening. Ahead of the tailor it held the tailor back to game minute 26-63 on krwawa_rzeka (authored). */
+/** Owner ruling: a tunic seat raises its second animal farm, its breeders split as the first's, early and
+ *  without waiting for the first one's crew: the tailors dressing the army want its leather and wool, and
+ *  its meat feeds the opening. It is a step of the bread line, so the clothing line's tailors never wait
+ *  behind it. */
 export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
   kind: 'place',
   building: 'work_animal_farm',
@@ -326,11 +327,12 @@ export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
     { kind: 'building', id: 'work_animal_farm' },
     { kind: 'building', id: 'work_farm_00' },
   ],
+  aheadOfCrews: true,
 };
 
-/** A well beside the second animal farm when the first one's stands out of reach, one over the first
- *  farm's well cap. */
-export const SECOND_ANIMAL_FARM_WELL: BuildOrderEntry = wellBeside('work_animal_farm', 4);
+/** A well beside the second animal farm when the first one's stands out of reach; its cap counts every
+ *  water drinker the lines raise before the late druid huts. */
+export const SECOND_ANIMAL_FARM_WELL: BuildOrderEntry = wellBeside('work_animal_farm', 12);
 
 /** The grain farm. Every bakery, brewery and animal farm downstream waits on its grain, so each of their
  *  lines opens on it, met by whichever line raised it, and holds until it stands. */
@@ -486,6 +488,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
             { kind: 'building', id: 'work_bakery_00' },
           ],
         },
+        // A seat dressing its army in tunics only (`./seat-order.ts`).
+        SECOND_ANIMAL_FARM,
+        SECOND_ANIMAL_FARM_WELL,
         // Owner ruling: a second bakery where the seat has room; a cramped seat caps this at one
         // (`./seat-order.ts`). It waits for the first one's baker like every copy (`./progress.ts`).
         {
@@ -583,17 +588,13 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in
         // reach.
         wellBeside('work_animal_farm', 3),
-        // The upper tier wants wool armour, which only a sewer working the lower tier learns to make, so the
-        // first tailor comes before any second farm.
+        // The upper tier wants wool armour, which only a sewer working the lower tier learns to make.
         {
           kind: 'place',
           building: 'work_sewery_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_animal_farm' }],
         },
-        // A seat dressing its army in tunics only (`./seat-order.ts`).
-        SECOND_ANIMAL_FARM,
-        SECOND_ANIMAL_FARM_WELL,
         EARLY_SECOND_TAILOR,
         { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
         // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
@@ -779,8 +780,8 @@ export const BASE_REPLACEMENT_ENTRY: Extract<BuildOrderEntry, { kind: 'place' }>
  *  lines size their short line by it in every phase. */
 export const MAX_ACTIVE_CONSTRUCTION_SITES = 2;
 
-/** A seat that lost its base keeps to one site, so the replacement warehouse gets the whole crew and is
- *  never placed twice while its first site still stands unbuilt (authored). */
+/** The store sites a seat that lost its base keeps open (authored): one, so the replacement warehouse is
+ *  never placed twice while its first site still stands unbuilt. */
 export const BASELESS_CONSTRUCTION_SITES = 1;
 
 /** The opening's lookahead: how many steps of a line past its first one still waiting on a construction

@@ -205,7 +205,7 @@ describe('build-order module - rebuilding what combat took', () => {
     expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 
-  it('crews the site blocking its recovery after the raid took every builder', () => {
+  it('places its replacement beside an open site and crews both after the raid took every builder', () => {
     const sim = aiSim();
     placeHq(sim);
     place(sim, BAKERY_TYPE, 34, 16);
@@ -223,17 +223,18 @@ describe('build-order module - rebuilding what combat took', () => {
     sim.step();
     raze(sim, entityOfBuilding(sim, HQ_TYPE));
 
-    // The one-site gate holds the replacement back until the mill finishes, and this allocator is
-    // the only thing that mints builders - without the rebuild crew the seat could never get either.
-    expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+    // Only a store site holds the replacement back, so it goes up beside the mill; this allocator is the
+    // only thing that mints builders - without the rebuild crew the seat could finish neither.
+    const replacement = placementOf(module.run(sim.world, ctxOf(sim), SEAT));
+    expect(replacement?.buildingType).toBe(STOCK_TOP_TYPE);
+    if (replacement === null) return;
+    sim.enqueueSetup(replacement);
+    sim.step();
     const hires = collectModule
       .run(sim.world, ctxOf(sim), SEAT)
       .filter((c) => c.kind === 'setJob' && c.jobType === BUILDER);
     expect(hires.length).toBeGreaterThan(0);
-
-    sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: entityOfBuilding(sim, MILL_TYPE) });
-    sim.step();
-    expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TOP_TYPE);
+    expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
   });
 
   /** The crew is drawn from every class, because the phases that would recycle a scout or a gatherer
