@@ -42,8 +42,8 @@ export type HousingStage = 'opening' | 'feeding' | 'thriving';
 export const HOUSING_THRIVING_BUILDINGS: readonly string[] = ['work_brewery', 'work_bakery_01'];
 
 /** What the lane keeps at each stage: `freeSlots` family slots beyond the seat's female demand, and up to
- *  `sites` home sites at once, the first one of the clock's sites and the others beyond them
- *  ({@link housingExtraSites}). */
+ *  `sites` home sites at once, the first one of the clock's sites, or none once they stand apart, and the
+ *  others beyond them ({@link housingExtraSites}). */
 export interface HousingPace {
   readonly freeSlots: number;
   readonly sites: number;
@@ -83,9 +83,11 @@ export function housingStage(
 
 /** The home sites the lane may hold beyond the clock's `siteCap` at `stage`: its pace's sites but the one
  *  that is the clock's own, and never more than the clock's sites but one, so a one-site difficulty keeps
- *  its single site and a two-site one at most doubles it (`../difficulty.ts`). */
-export function housingExtraSites(stage: HousingStage, siteCap: number): number {
-  return Math.max(0, Math.min(HOUSING_PACE[stage].sites - 1, siteCap - 1));
+ *  its single site and a two-site one at most doubles it (`../difficulty.ts`). With `apart` every home site
+ *  stands beyond the clock, never more than the clock's sites. */
+export function housingExtraSites(stage: HousingStage, siteCap: number, apart: boolean): number {
+  const counted = apart ? 0 : 1;
+  return Math.max(0, Math.min(HOUSING_PACE[stage].sites - counted, siteCap - counted));
 }
 
 /** The home tiers `entry`'s lane raises: its base tier and every tier above it; none when the content

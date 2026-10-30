@@ -223,7 +223,7 @@ function runWorkforce(
   ];
   const arms = garrisonArms(world, ctx, player, profile);
   const armyFloor = claimArmyFloor(world, ctx, player, force, arms, profile, {
-    men: upperReserve(reserve.reserved, reserveCap),
+    men: upperReserve(reserve.reserved, reserveCap, builderFloor),
     builderJob,
     gatherers: calledGatherers(world, ctx, player, collectorsByGood, supply, apprentices),
   });

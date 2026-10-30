@@ -22,6 +22,7 @@ import { buildingEnabled } from '../../progression/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
+import { SITES_GROW_FROM_TICKS } from '../game-phase.js';
 import type { ComputerModule } from '../index.js';
 import { technologyReach } from '../technology/reach.js';
 import { type TechnologyTable, technologyTable } from '../technology/requirements.js';
@@ -97,8 +98,9 @@ function constructionSites(world: World, ctx: SystemContext, owned: readonly Ent
 }
 
 /** The housing lane's share of the open `sites`: `beyond` is how many of its home sites stand past the
- *  clock's `siteCap` (all but its first, up to {@link housingExtraSites}), and `open` whether it may open
- *  one more: below its stage's sites ({@link HOUSING_PACE}) and below the clock's sites plus its extra. */
+ *  clock's `siteCap` (all but its first, or all of them while `apart`, up to {@link housingExtraSites}),
+ *  and `open` whether it may open one more: below its stage's sites ({@link HOUSING_PACE}) and below the
+ *  clock's sites plus its extra. */
 function homeSiteBudget(
   world: World,
   ctx: SystemContext,
@@ -107,19 +109,28 @@ function homeSiteBudget(
   order: BuildOrder,
   sites: readonly Entity[],
   siteCap: number,
+  apart: boolean,
 ): { readonly beyond: number; readonly open: boolean } {
   const entry = order.lines.flatMap((line) => line.steps).find((step) => step.kind === 'housing');
   if (entry?.kind !== 'housing') return { beyond: 0, open: false };
   const chain = homeTiersOf(ctx.content, entry);
   const homes = sites.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
   // The stage walks the seat's buildings, so it is read only when a home site could stand past the clock.
-  if (homes === 0 && sites.length < siteCap) return { beyond: 0, open: true };
+  if (!apart && homes === 0 && sites.length < siteCap) return { beyond: 0, open: true };
   const stage = housingStage(world, ctx, player, owned);
-  const extra = housingExtraSites(stage, siteCap);
+  const extra = housingExtraSites(stage, siteCap, apart);
   return {
-    beyond: Math.max(0, Math.min(homes - 1, extra)),
-    open: homes < HOUSING_PACE[stage].sites && sites.length < siteCap + extra,
+    beyond: Math.max(0, Math.min(homes - (apart ? 0 : 1), extra)),
+    open: homes < HOUSING_PACE[stage].sites && (apart ? homes < extra : sites.length < siteCap + extra),
   };
+}
+
+/** Whether the housing lane's home sites all stand beyond the clock's sites (authored): on a profile that
+ *  never pauses, once the clock has grown ({@link SITES_GROW_FROM_TICKS}). On magiczny_las, with the first
+ *  home counted, two home sites and two tower sites held every site of the third quarter hour past the
+ *  peace and the second smithy, mint and brewery waited with a spot found. */
+function homesApart(profile: ComputerProfile, tick: number): boolean {
+  return profile.freeSitePauseTicks === 0 && tick >= SITES_GROW_FROM_TICKS;
 }
 
 /**
@@ -132,7 +143,8 @@ function homeSiteBudget(
  * workshop. A lane step a line has reached runs beside the lines
  * ({@link openLanes}): it takes one of those sites for itself and leaves the lines the rest, so a tower
  * ring with no room left stalls nothing. The housing lane's further home sites, as its food stage allows
- * ({@link homeSiteBudget}), stand past the clock's sites.
+ * ({@link homeSiteBudget}), stand past the clock's sites, and all of them once the clock has grown
+ * ({@link homesApart}). A line's tower or store ring keeps one site of its building at a time.
  * An unmet step with no legal action stalls its line rather than being skipped, so no later site of the
  * line draws off the goods it waits for: a step whose bill has no source yet ({@link billSourced}), a
  * placement that found no spot, retried every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an
@@ -177,7 +189,16 @@ function runBuildOrder(
   const siteCap =
     base === null ? BASELESS_CONSTRUCTION_SITES : seatSitePace(world, player, profile, ctx.tick).sites;
   const sites = constructionSites(world, ctx, owned);
-  const homeSites = homeSiteBudget(world, ctx, player, owned, order, sites, siteCap);
+  const homeSites = homeSiteBudget(
+    world,
+    ctx,
+    player,
+    owned,
+    order,
+    sites,
+    siteCap,
+    homesApart(profile, ctx.tick),
+  );
   // The home sites past the lane's first stand beyond the clock's, so the lines never count them.
   const paced = sites.length - homeSites.beyond;
   // With the pace's sites taken, only an earned workshop or a home site may still go up.
@@ -374,12 +395,20 @@ function runBuildOrder(
     }
   };
 
+  const coverageRising = (entry: OpenLane['entry']): boolean => {
+    const chain = laneTiers(ctx, entry);
+    return sites.some((e) => chain.has(world.get(e, Building).buildingType));
+  };
+
   /** The command of `line`'s first unmet step that is not passed over, or null while that step holds
    *  the line or the line has none. */
   const lineCommand = (line: BuildLine): PlayerCommand | null => {
     for (const [step, entry] of line.steps.entries()) {
       if (isLaneEntry(entry) || statusOf(line.id, step) !== 'unmet') continue;
       if (held(entry)) return null;
+      // A ring step raises one site at a time, so its slow far sites never take every free site.
+      if ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && coverageRising(entry))
+        return null;
       if (locked(entry)) {
         if (lockHolds) return null;
         continue;

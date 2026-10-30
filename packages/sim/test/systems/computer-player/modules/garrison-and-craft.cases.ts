@@ -63,6 +63,7 @@ import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
+  LONG_BOW_GLUT_UNITS,
   MINT_SHORT_SWORD_UNITS,
   TEMPLE_SITE_OIL_UNITS,
   tuneCraftCounters,
@@ -78,6 +79,7 @@ import {
   WEAPON_VETO_LIFT_STOCK,
   WEAPON_VETO_STOCK_MARGIN,
 } from '../../../../src/systems/computer-player/workforce/garrison.js';
+import { BUILDERS_PER_OPEN_SITE } from '../../../../src/systems/computer-player/workforce/staffing.js';
 import { buildingStaffing } from '../../../../src/systems/computer-player/workforce/staffing-plan.js';
 import { mayMarry } from '../../../../src/systems/family/eligibility.js';
 import { isFighterJob, type SystemContext } from '../../../../src/systems/index.js';
@@ -1216,6 +1218,27 @@ describe('workforce module - the barracks and craft selections', () => {
     const unarmed = builderSeat([]);
     expect(retrades(unarmed).some((c) => c.kind === 'setJob' && c.jobType === CIVILIST)).toBe(false);
     expect(drafted(unarmed)).toBe(0);
+
+    // Open sites keep the builders they call for, past the core.
+    const SITES = 3;
+    const building = builderSeat([{ good: SWORD, amount: BUILDERS }]);
+    for (let i = 0; i < SITES; i++) {
+      building.sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: JOINERY_TYPE,
+        x: SMITHY_AT.x + 6 * i,
+        y: SMITHY_AT.y,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    }
+    building.sim.step();
+    const siteJobs = retrades(building).map((c) => (c.kind === 'setJob' ? c.jobType : null));
+    const siteReserved = BUILDERS - siteJobs.filter((job) => job !== CIVILIST).length;
+    const siteNeed = SITES * BUILDERS_PER_OPEN_SITE;
+    expect(siteNeed).toBeGreaterThan(core);
+    expect(siteJobs.filter((job) => job === CIVILIST)).toHaveLength(siteReserved - siteNeed);
   });
 
   it('calls the gatherers of a comfortable good to arms only against a forecast attack, keeping the last', () => {
@@ -1893,6 +1916,9 @@ describe('workforce module - the barracks and craft selections', () => {
     // The second armourer's spears pause while they pile up.
     earned.stock(SPEAR_WOODEN, glutOf('work_armory_01', 1, 'spear_wooden'));
     expect(earned.products()).toEqual([[BOW_LONG]]);
+    // And the long bows too: the first turns to the shafts, the second works both again.
+    earned.stock(BOW_LONG, LONG_BOW_GLUT_UNITS);
+    expect(earned.products()).toEqual([[SPEAR_WOODEN], [BOW_LONG, SPEAR_WOODEN]]);
   });
 
   it("splits the first smithy's smiths between armour and weapons, short swords added while a mint stands and they run low", () => {

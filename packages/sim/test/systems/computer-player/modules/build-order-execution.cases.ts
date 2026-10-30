@@ -481,6 +481,36 @@ describe('build-order module (houseBuild)', () => {
     expect(placed()).toHaveLength(sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS).sites);
   });
 
+  it("raises a line's tower ring one site at a time", () => {
+    const ringed = buildOrderModule(oneLine([{ kind: 'towerCoverage', building: 'tower_01' }]));
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(160, 32) });
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    placeHq(sim);
+    // Two homes out east, far apart: no one tower covers both.
+    for (const dx of [31, 90]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: HQ_X + dx,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    sim.step();
+    const act = (): Command | undefined => {
+      const commands = [...ringed.run(sim.world, ctxOf(sim, LATE_GAME_FROM_TICKS), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+      return commands[0];
+    };
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
+    // The clock has free sites, but the ring waits for its tower to stand.
+    expect(act()).toBeUndefined();
+    completeSites(sim);
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
+  });
+
   it('never holds the list on a lane with no room for its building', () => {
     // A store lane whose one target, a gatherer's flag, lies far past any spot the seat may build on: the
     // lane finds nothing, and the list goes on regardless.

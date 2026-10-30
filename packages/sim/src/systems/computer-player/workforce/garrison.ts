@@ -141,10 +141,12 @@ export function garrisonArms(
  *  third kept every seat drafted between game minutes 36 and 57, with half one seat never did. */
 export const ARMY_FLOOR_BUILDER_CORE: Share = { num: 1, den: 3 };
 
-/** The builder reserve's men past its core ({@link ARMY_FLOOR_BUILDER_CORE}) of `cap`, the last claimed
- *  first: the fresh men it was about to turn builders ahead of the builders it kept. */
-export function upperReserve(reserved: readonly Entity[], cap: number): readonly Entity[] {
-  return reserved.slice(shareOf(cap, ARMY_FLOOR_BUILDER_CORE)).reverse();
+/** The builder reserve's men past its core of `cap`, the last claimed first: the fresh men it was about to
+ *  turn builders ahead of the builders it kept. The core is {@link ARMY_FLOOR_BUILDER_CORE} of the cap, or
+ *  the `siteNeed` builders the open sites call for when that is more, so the army never takes a man off a
+ *  site the seat keeps open. */
+export function upperReserve(reserved: readonly Entity[], cap: number, siteNeed: number): readonly Entity[] {
+  return reserved.slice(Math.max(shareOf(cap, ARMY_FLOOR_BUILDER_CORE), siteNeed)).reverse();
 }
 
 /** The builders past the reserve's core the army floor may reclaim, and the builder trade they hold, and
@@ -172,9 +174,10 @@ const NO_CLAIM: ArmyFloorClaim = { men: [], commands: [] };
  * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
  * `force`, which the ladder calls after the target-tier posts and ahead of the surplus ones: a seat staffs
  * what it built, and the trades that could absorb every man still leave an army. While the draft can arm a
- * class, the floor also reclaims the builder reserve past its core (`reserve`): the reserve takes every
- * spare man of a small seat, which would otherwise never drill. Capped by the {@link bachelorSurplus} and
- * by the men draftable at all, and nobody is claimed while the draft has no class to put him in.
+ * class, the floor also reclaims the called gatherers and then the builder reserve past its core (`reserve`,
+ * {@link upperReserve}): the reserve takes every spare man of a small seat, which would otherwise never
+ * drill. Capped by the {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed while
+ * the draft has no class to put him in.
  * Returns the claimed men for {@link trainGarrison} to publish and the reclaimed builders' retrades.
  */
 export function claimArmyFloor(
@@ -202,9 +205,10 @@ export function claimArmyFloor(
   if (claim <= 0) return NO_CLAIM;
   // A man the floor retrades waits until he sets his load down, since the trade change would drop it.
   const unloaded = (e: Entity): boolean => isDraftable(world, e) || !world.has(e, Carrying);
+  // The called gatherers go before the builders: the sites keep their hands while a post can spare one.
   const reclaimable = [
-    ...reserve.men.filter((e) => isReclaimable(world, e, reserve.builderJob)),
     ...(reserve.gatherers ?? []).filter((e) => isUnarmedBachelor(world, e)),
+    ...reserve.men.filter((e) => isReclaimable(world, e, reserve.builderJob)),
   ].filter(unloaded);
   const next = force.remaining().find((e) => isDraftable(world, e)) ?? reclaimable[0];
   if (next === undefined) return NO_CLAIM;

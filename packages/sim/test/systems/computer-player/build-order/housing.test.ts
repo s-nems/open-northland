@@ -4,11 +4,14 @@ import { setStockAmount } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import type { BuildOrderEntry } from '../../../../src/systems/computer-player/build-order/entries.js';
+import { sitePace } from '../../../../src/systems/computer-player/build-order/entries.js';
 import {
   FOOD_RICH_UNITS_PER_SETTLER,
   HOUSING_FOOD_UNITS_PER_WOMAN,
   HOUSING_PACE,
 } from '../../../../src/systems/computer-player/build-order/housing.js';
+import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
+import { SITES_GROW_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
 import { buildOrderModule } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
@@ -17,6 +20,7 @@ import {
   completeSites,
   ctxOf,
   entityOfBuilding,
+  FARM_TYPE,
   HOME_TOP_TYPE,
   HOME_TYPE,
   HQ_TYPE,
@@ -176,6 +180,31 @@ describe('the housing lane', () => {
       sim.enqueueSetup(second);
       sim.step();
       expect(decide(sim, housing, content)).toBeUndefined();
+    });
+
+    it("stands its home sites apart from the clock's once the clock has grown", () => {
+      const sim = feedingSeat(BASE_SLOTS, []);
+      const fillSites = (count: number): void => {
+        for (let i = 0; i < count; i++)
+          sim.enqueueSetup({
+            kind: 'placeBuilding',
+            buildingType: FARM_TYPE,
+            x: HQ_X + 12 + 6 * i,
+            y: HQ_Y + 6,
+            tribe: VIKING,
+            owner: SEAT,
+            underConstruction: true,
+          });
+        sim.step();
+      };
+      const at = (tick: number): Command | undefined =>
+        [...housing.run(sim.world, { ...ctxOf(sim, tick), content }, SEAT)][0];
+      // The grown clock's sites and the feeding stage's extra all taken by other buildings: before the
+      // growth the first home site would be one of the clock's, so none is left.
+      fillSites(sitePace(AI_PROFILES.hard, SITES_GROW_FROM_TICKS).sites + HOUSING_PACE.feeding.sites - 1);
+      expect(at(0)).toBeUndefined();
+      // Grown, the lane's sites stand apart from them.
+      expect(homePlaced(at(SITES_GROW_FROM_TICKS))).toBe(true);
     });
 
     it('upgrades a home lagging below the highest tier while the slots are not short', () => {
