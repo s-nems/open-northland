@@ -53,7 +53,6 @@ import {
   HQ_Y,
   husbandryContent,
   IRON,
-  JOINERY_00_TYPE,
   JOINERY_TYPE,
   MILL_TYPE,
   MILLER,
@@ -76,11 +75,11 @@ import {
 describe('build-order module (houseBuild)', () => {
   const module = buildOrderModule(DEFAULT_BUILD_ORDER);
   /** The default opening alone: this content stops short of the homes line's tiers, so the default
-   *  order's lanes open at once and take sites of their own. */
+   *  order's lanes open at once and take sites of their own. Its homes stay at the lowest tier. */
   const opening = buildOrderModule(
     oneLine([
       { kind: 'place', building: 'work_farm_00', count: 1 },
-      { kind: 'place', building: 'home_level_00', count: 3 },
+      { kind: 'place', building: 'home_level_00', count: 3, belowTier: 'home_level_01' },
     ]),
   );
 
@@ -153,26 +152,24 @@ describe('build-order module (houseBuild)', () => {
     }
     // This content stops short of the pottery and the mason hut, so those steps skip. Every line raises its
     // first new kind of building in priority order (opening, bread with its first bakery's well, brewery,
-    // tools, the joinery's upper tier; the military line waits for its deadline) before any line adds
-    // another of a kind the seat has: the opening's homes, five with no archetype dropping the rich seat's
-    // fifth. The seat has no man to
-    // staff its bakery and brewery, so their lines hold their second copies, and the seat holds no woman,
-    // so the housing lane raises nothing. The weapons line holds at its iron gatherer, whose clock has not
-    // come, and holds no other line.
+    // tools; the military line waits for its deadline) before any line adds another of a kind the seat
+    // has: the opening's homes, five with no archetype dropping the rich seat's fifth. No progression gate
+    // is on and every bill is wood, so each place step raises its chain's top tier outright. The seat has
+    // no man to staff its bakery and brewery, so their lines hold their second copies, and the seat holds
+    // no woman, so the housing lane raises nothing. The weapons line holds at its iron gatherer, whose
+    // clock has not come, and holds no other line.
     const place = (type: number): string => `place ${type}`;
-    const upgrade = (type: number): string => `upgrade ${type}`;
     expect(walk).toEqual([
-      place(HOME_TYPE),
+      place(HOME_TOP_TYPE),
       place(MILL_TYPE),
-      place(BAKERY_TYPE),
+      place(BAKERY_TOP_TYPE),
       place(WELL_TYPE),
       place(BREWERY_TYPE),
-      place(JOINERY_00_TYPE),
-      upgrade(JOINERY_TYPE),
-      place(HOME_TYPE),
-      place(HOME_TYPE),
-      place(HOME_TYPE),
-      place(HOME_TYPE),
+      place(JOINERY_TYPE),
+      place(HOME_TOP_TYPE),
+      place(HOME_TOP_TYPE),
+      place(HOME_TOP_TYPE),
+      place(HOME_TOP_TYPE),
     ]);
   });
 
@@ -182,8 +179,8 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     const bakeries = buildOrderModule(
       oneLine([
-        { kind: 'place', building: 'work_bakery_00', count: 1 },
-        { kind: 'place', building: 'work_bakery_00', count: 2 },
+        { kind: 'place', building: 'work_bakery_00', count: 1, belowTier: 'work_bakery_01' },
+        { kind: 'place', building: 'work_bakery_00', count: 2, belowTier: 'work_bakery_01' },
       ]),
     );
     const next = (): Command | undefined => [...bakeries.run(sim.world, ctxOf(sim), SEAT)][0];
@@ -376,9 +373,16 @@ describe('build-order module (houseBuild)', () => {
       ]),
     );
     const next = (): Command | undefined => [...chain.run(sim.world, ctxOf(sim), SEAT)][0];
-    const bakery = next();
-    if (bakery?.kind !== 'placeBuilding') throw new Error('expected the bakery placement');
-    applyAndFinish(sim, bakery);
+    // The lower bakery stands by hand: the order itself would raise the enabled upper tier outright.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
     const upgrade = next();
     if (upgrade?.kind !== 'upgradeBuilding') throw new Error('expected the bakery upgrade');
     sim.enqueueSetup(upgrade);
@@ -446,7 +450,7 @@ describe('build-order module (houseBuild)', () => {
       oneLine([
         { kind: 'place', building: 'work_farm_00', count: 1 },
         { kind: 'towerCoverage', building: 'tower_01', lane: true },
-        { kind: 'place', building: 'home_level_00', count: 4 },
+        { kind: 'place', building: 'home_level_00', count: 4, belowTier: 'home_level_01' },
       ]),
     );
     const sim = aiSim();
@@ -522,7 +526,7 @@ describe('build-order module (houseBuild)', () => {
       oneLine([
         { kind: 'place', building: 'work_farm_00', count: 1 },
         { kind: 'storeCoverage', building: 'stock_02', radius: STORE_RADIUS, lane: true },
-        { kind: 'place', building: 'home_level_00', count: 2 },
+        { kind: 'place', building: 'home_level_00', count: 2, belowTier: 'home_level_01' },
       ]),
     );
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(240, 32) });
@@ -554,10 +558,10 @@ describe('build-order module (houseBuild)', () => {
     const paced = buildOrderModule(
       oneLine([
         { kind: 'place', building: 'work_farm_00', count: 1 },
-        { kind: 'place', building: 'home_level_00', count: 1 },
+        { kind: 'place', building: 'home_level_00', count: 1, belowTier: 'home_level_01' },
         { kind: 'place', building: 'work_well_00', count: 1 },
         { kind: 'place', building: 'work_mill_00', count: 1 },
-        { kind: 'place', building: 'work_bakery_00', count: 1 },
+        { kind: 'place', building: 'work_bakery_00', count: 1, belowTier: 'work_bakery_01' },
         { kind: 'place', building: 'work_brewery', count: 1 },
       ]),
     );
@@ -589,6 +593,7 @@ describe('build-order module (houseBuild)', () => {
   });
 
   it('upgrades two buildings side by side, each in-flight upgrade meeting its share of the entry', () => {
+    const FIRST_BAKERY = { x: HQ_X + 8, y: HQ_Y };
     const SECOND_BAKERY = { x: HQ_X + 24, y: HQ_Y + 8 };
     const ownedOfType = (sim: Simulation, type: number): number =>
       [...sim.world.query(Building)].filter((e) => sim.world.get(e, Building).buildingType === type).length;
@@ -605,21 +610,23 @@ describe('build-order module (houseBuild)', () => {
       ]),
     );
     const next = (): Command | undefined => [...bakeries.run(sim.world, ctxOf(sim), SEAT)][0];
-    for (let i = 0; i < 4; i++) {
+    // Both lower bakeries stand by hand: the order would raise the enabled upper tier outright, and a
+    // second one only once the first had its baker.
+    for (const at of [FIRST_BAKERY, SECOND_BAKERY]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: BAKERY_TYPE,
+        ...at,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    sim.step();
+    for (let i = 0; i < 3; i++) {
       const placed = next();
       if (placed?.kind !== 'placeBuilding') throw new Error('expected a placement');
       applyAndFinish(sim, placed);
     }
-    // The second bakery stands by hand: the order would raise it only once the first one had its baker.
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: BAKERY_TYPE,
-      x: SECOND_BAKERY.x,
-      y: SECOND_BAKERY.y,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    sim.step();
     expect(ownedOfType(sim, BAKERY_TYPE)).toBe(2);
     const first = next();
     if (first?.kind !== 'upgradeBuilding') throw new Error('expected the first upgrade');
@@ -639,7 +646,13 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     const gated = buildOrderModule(
       oneLine([
-        { kind: 'place', building: 'work_bakery_00', count: 1, needsResources: ['iron'] },
+        {
+          kind: 'place',
+          building: 'work_bakery_00',
+          count: 1,
+          needsResources: ['iron'],
+          belowTier: 'work_bakery_01',
+        },
         { kind: 'place', building: 'work_farm_00', count: 1 },
       ]),
     );
@@ -714,9 +727,15 @@ describe('build-order module (houseBuild)', () => {
     placeHq(sim);
     sim.step();
     const placeOnly = buildOrderModule(oneLine([{ kind: 'place', building: 'work_bakery_00', count: 1 }]));
-    const first = [...placeOnly.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (first?.kind !== 'placeBuilding') throw new Error('expected the bakery placement');
-    applyAndFinish(sim, first);
+    // The lower bakery stands by hand: the entry itself would place the enabled upper tier outright.
+    applyAndFinish(sim, {
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     const bakery = entityOfBuilding(sim, BAKERY_TYPE);
     applyAndFinish(sim, { kind: 'upgradeBuilding', building: bakery });
     // The building now stands at the upper tier - the level-0 place entry stays satisfied.
@@ -866,7 +885,7 @@ describe('build order - the bakery wells', () => {
     const sim = wellUnderFireSeat();
     makeAiSeat(sim, SEAT);
     const homesToo = buildOrderModule(
-      oneLine([...order, { kind: 'place', building: 'home_level_00', count: 3 }]),
+      oneLine([...order, { kind: 'place', building: 'home_level_00', count: 3, belowTier: 'home_level_01' }]),
     );
     const placed: number[] = [];
     for (let decision = 0; decision < 5; decision++) {
@@ -1019,7 +1038,13 @@ describe('build order - independent lines', () => {
   /** The fixture's wooden tools, made only by the joinery; the sand ground type. */
   const TOOL_WOODEN = 6;
   const SAND = 2;
-  const HOME_STEP: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 1 };
+  /** Capped at the lowest home tier, which every step below expects. */
+  const HOME_STEP: BuildOrderEntry = {
+    kind: 'place',
+    building: 'home_level_00',
+    count: 1,
+    belowTier: 'home_level_01',
+  };
   const MILL_STEP: BuildOrderEntry = { kind: 'place', building: 'work_mill_00', count: 1 };
 
   function twoLines(
@@ -1054,7 +1079,7 @@ describe('build order - independent lines', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.step();
-    const twoHomes: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 2 };
+    const twoHomes: BuildOrderEntry = { ...HOME_STEP, count: 2 };
     const order = twoLines([twoHomes], [MILL_STEP]);
     // The higher line's first home is new to the seat, so it goes first.
     const home = decide(sim, order);
@@ -1200,7 +1225,7 @@ describe('build order - independent lines', () => {
     sim.step();
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI carrier');
-    const order = twoLines([MILL_STEP], [HOME_STEP, { kind: 'place', building: 'home_level_00', count: 2 }]);
+    const order = twoLines([MILL_STEP], [HOME_STEP, { ...HOME_STEP, count: 2 }]);
     for (const expected of [MILL_TYPE, HOME_TYPE]) {
       const placed = decide(sim, order);
       if (placed?.kind !== 'placeBuilding') throw new Error(`expected a placement of type ${expected}`);

@@ -43,7 +43,7 @@ import {
 import {
   gamePhase,
   MID_GAME_FROM_TICKS,
-  STORE_CARRIERS_FROM_TICKS,
+  TRAINING_CARRIERS_FROM_TICKS,
 } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   DEFAULT_BUILD_ORDER,
@@ -80,7 +80,10 @@ import {
   WEAPON_VETO_STOCK_MARGIN,
 } from '../../../../src/systems/computer-player/workforce/garrison.js';
 import { BUILDERS_PER_OPEN_SITE } from '../../../../src/systems/computer-player/workforce/staffing.js';
-import { buildingStaffing } from '../../../../src/systems/computer-player/workforce/staffing-plan.js';
+import {
+  buildingStaffing,
+  TRAINING_CARRIERS,
+} from '../../../../src/systems/computer-player/workforce/staffing-plan.js';
 import { mayMarry } from '../../../../src/systems/family/eligibility.js';
 import { isFighterJob, type SystemContext } from '../../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../../src/systems/readviews/index.js';
@@ -607,7 +610,7 @@ function crewedWorkshop(content: ContentSet, crew: number) {
 }
 
 describe('workforce module - the barracks and craft selections', () => {
-  it('never staffs the barracks: it is a military building, not a workplace the plan crews', () => {
+  it('posts only porters to the barracks, from the late game, and never a fighter trade', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueueSetup({
@@ -618,20 +621,21 @@ describe('workforce module - the barracks and craft selections', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    // Men to spare past the builder reserve, at the store-carrier time, so the HQ staffs its carriers at all.
+    // Men to spare past the builder reserve, so every carrier tier is reached.
     spawnMen(sim, LATE_GAME_CIVILIANS, BUILDER);
     sim.step();
-
-    // The barracks declares carrier slots like any store, but the seat posts nobody to them (user
-    // rule) and stamps no fighter trade by command: a soldier is made by the drill, never
-    // by `setJob` - and a seat that is not AI-flagged runs no garrison hire at all.
-    const commands = [...collectModule.run(sim.world, ctxOf(sim, STORE_CARRIERS_FROM_TICKS), SEAT)];
     const barracks = entityOfBuilding(sim, BARRACKS_TYPE);
-    const posted = commands.filter((c) => c.kind === 'assignWorker');
-    // The staffing pass ran - the HQ took its carriers - and skipped the barracks beside it.
-    expect(posted.length).toBeGreaterThan(0);
-    expect(posted.every((c) => c.building === entityOfBuilding(sim, HQ_TYPE))).toBe(true);
-    expect(posted.filter((c) => c.building === barracks)).toEqual([]);
+    const postedAt = (tick: number): number =>
+      [...collectModule.run(sim.world, ctxOf(sim, tick), SEAT)].filter(
+        (c) => c.kind === 'assignWorker' && c.building === barracks,
+      ).length;
+
+    // Before the late game the barracks runs no porter; from it, its target-tier pair.
+    expect(postedAt(TRAINING_CARRIERS_FROM_TICKS - 1)).toBe(0);
+    expect(postedAt(TRAINING_CARRIERS_FROM_TICKS)).toBe(TRAINING_CARRIERS.carrierTarget);
+    // A soldier is made by the drill, never by `setJob`, and a seat that is not AI-flagged runs no
+    // garrison hire at all.
+    const commands = [...collectModule.run(sim.world, ctxOf(sim, TRAINING_CARRIERS_FROM_TICKS), SEAT)];
     expect(commands.filter((c) => c.kind === 'setJob' && isFighterJob(sim.content, c.jobType))).toEqual([]);
     expect(commands.filter((c) => c.kind === 'trainSoldier')).toEqual([]);
   });

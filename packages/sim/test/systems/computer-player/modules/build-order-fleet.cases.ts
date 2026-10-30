@@ -292,7 +292,10 @@ function placeEntry(
 }
 
 const shipJoinery = placeEntry((e) => e.role === 'ship');
-const catapultJoinery = placeEntry((e) => e.role === 'catapult');
+const heldCatapultJoinery = placeEntry((e) => e.role === 'catapult');
+/** The catapult joinery's step without its hold for the late game's settlement and clock, which these
+ *  seats never reach. */
+const { holdUntil: _lateGame, ...catapultJoinery } = heldCatapultJoinery;
 /** The tools joinery's first upper tier, which the fixture's lowest joinery stands at. */
 const toolsJoinery = orderSteps(DEFAULT_BUILD_ORDER).find(
   (e) => e.kind === 'upgrade' && e.building === 'work_joinery_01',
@@ -494,9 +497,10 @@ describe('build order - the top-tier joineries', () => {
   });
 
   it('puts the catapult joinery beside the barracks', () => {
-    const spot = first(world(landMap(), [{ buildingType: BARRACKS_TYPE, ...BARRACKS_AT }]), [
-      catapultJoinery,
-    ]);
+    const sim = world(landMap(), [{ buildingType: BARRACKS_TYPE, ...BARRACKS_AT }]);
+    // The default step waits for the late game's settlement and clock.
+    expect(first(sim, [heldCatapultJoinery])).toBeUndefined();
+    const spot = first(sim, [catapultJoinery]);
     if (spot?.kind !== 'placeBuilding') throw new Error('expected the catapult joinery placement');
     expect(spot.buildingType).toBe(JOINERY_03_TYPE);
     expect(withinNodeRadius(BARRACKS_AT.x, BARRACKS_AT.y, spot.x, spot.y, BESIDE_BARRACKS_NODES)).toBe(true);

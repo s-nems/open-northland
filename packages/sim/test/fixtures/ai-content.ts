@@ -10,7 +10,7 @@ import { WEAPON_MAIN_TYPE } from '../../src/systems/readviews/index.js';
  * mill/bakery/well trio backs the chain-affinity entries, the bakery chain (00→01) backs the
  * upgrade tail and its two-baker target, and the iron good - gated by the viking `needforgood` row
  * over the collector XP tracks - backs the gated collector entry and its experience rule. The
- * brewery/joinery/barracks/storage/tower rows back the 2026-07-25 tail: the joinery's two recipes
+ * brewery/joinery/barracks/storage/tower rows back the order's tail: the joinery's two recipes
  * drive the craft restriction, the storages the carrier staffing and the store coverage, and the
  * tower pair the coverage entry (the kind-'tower' wall row proves the id allowlist). Numeric ids
  * follow the original's job/good bands where they exist (woman 5, civilist 6, builder 7, collector
@@ -286,7 +286,7 @@ export function aiContent(): ContentSet {
           { goodType: 7, capacity: 5, initial: 0 },
         ],
       },
-      // The barracks: carrier slots only, the real shape - and the seat still staffs none of them.
+      // The barracks: carrier slots only, the real shape - the seat posts porters to them from the late game.
       {
         typeId: 12,
         id: 'barracks',
@@ -295,7 +295,7 @@ export function aiContent(): ContentSet {
         construction: [{ goodType: 1, amount: 2 }],
         stock: [{ goodType: 3, capacity: 5, initial: 0 }],
       },
-      // Storages share the HQ's worker shape - up to three target-tier carriers, harvest slots open.
+      // Storages share the HQ's worker shape - one surplus-tier carrier from the late game, harvest slots open.
       {
         typeId: 13,
         id: 'stock_00',
@@ -342,7 +342,7 @@ export function aiContent(): ContentSet {
         kind: 'tower',
         construction: [{ goodType: 1, amount: 2 }],
       },
-      // The joinery's lower tier, which the tools line raises first and upgrades into the joinery above.
+      // The joinery's lower tier, which the tools line places only while the joinery above is not enabled.
       {
         typeId: 91,
         id: 'work_joinery_00',

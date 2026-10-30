@@ -21,7 +21,12 @@ import {
 } from '../support.js';
 
 const MILL_STEP: BuildOrderEntry = { kind: 'place', building: 'work_mill_00', count: 1 };
-const HOME_STEP: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 1 };
+const HOME_STEP: BuildOrderEntry = {
+  kind: 'place',
+  building: 'home_level_00',
+  count: 1,
+  belowTier: 'home_level_01',
+};
 const WELL_STEP: BuildOrderEntry = { kind: 'place', building: 'work_well_00', count: 1 };
 
 describe('technology reach', () => {

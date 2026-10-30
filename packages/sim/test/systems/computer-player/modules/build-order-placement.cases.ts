@@ -218,7 +218,7 @@ describe('build-order placement - affinity and ground rules', () => {
     makeAiSeat(sim, SEAT);
     const command = firstCommandOf(sim, [
       { kind: 'place', building: 'work_well_00', count: 1 },
-      { kind: 'place', building: 'home_level_00', count: 1 },
+      { kind: 'place', building: 'home_level_00', count: 1, belowTier: 'home_level_01' },
     ]);
     expect(command).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
     // The clearing gatherers answer only a search that holds the list.
@@ -280,7 +280,7 @@ describe('build-order placement - affinity and ground rules', () => {
     const sim = new Simulation({ seed: 1, content: aiContent(), map: mapWithSand(64, 32, () => true) });
     placeHq(sim);
     sim.step();
-    const after = { kind: 'place', building: 'home_level_00', count: 1 } as const;
+    const after = { kind: 'place', building: 'home_level_00', count: 1, belowTier: 'home_level_01' } as const;
     expect(
       firstCommandOf(sim, [
         { kind: 'place', building: 'work_mill_00', count: 1, ground: 'plantable' },

@@ -108,7 +108,10 @@ describe('the seat strategy shapes the build order', () => {
     // With one free site the executor gives it to the barracks only while the attack is forecast.
     const order: BuildOrder = {
       lines: [
-        { id: 'bread', steps: [{ kind: 'place', building: 'home_level_00', count: 1 }] },
+        {
+          id: 'bread',
+          steps: [{ kind: 'place', building: 'home_level_00', count: 1, belowTier: 'home_level_01' }],
+        },
         { id: 'military', steps: [{ kind: 'place', building: 'barracks', count: 1 }] },
       ],
       priority: DEFAULT_BUILD_ORDER.priority,
@@ -225,7 +228,13 @@ describe('the seat strategy shapes the build order', () => {
         {
           id: 'opening',
           steps: [
-            { kind: 'place', building: 'home_level_00', count: 1, holdUntil: { kind: 'built', building } },
+            {
+              kind: 'place',
+              building: 'home_level_00',
+              count: 1,
+              belowTier: 'home_level_01',
+              holdUntil: { kind: 'built', building },
+            },
           ],
         },
         { id: 'bread', steps: [bakeryLater] },
