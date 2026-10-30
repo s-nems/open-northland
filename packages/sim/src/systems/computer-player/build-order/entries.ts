@@ -316,8 +316,8 @@ export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
 export const SECOND_UPPER_TAILOR: BuildOrderEntry = { kind: 'upgrade', building: 'work_sewery_01', count: 2 };
 
 /** Owner ruling: a tunic seat raises its second animal farm, its breeders split as the first's, right
- *  after the first: the tailors dressing the army want its leather and wool, and its meat feeds the
- *  opening. */
+ *  after the first tailor: the tailors dressing the army want its leather and wool, and its meat feeds the
+ *  opening. Ahead of the tailor it held the tailor back to game minute 26-63 on krwawa_rzeka (authored). */
 export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
   kind: 'place',
   building: 'work_animal_farm',
@@ -583,16 +583,17 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in
         // reach.
         wellBeside('work_animal_farm', 3),
-        // A seat dressing its army in tunics only (`./seat-order.ts`).
-        SECOND_ANIMAL_FARM,
-        SECOND_ANIMAL_FARM_WELL,
-        // The upper tier wants wool armour, which only a sewer working the lower tier learns to make.
+        // The upper tier wants wool armour, which only a sewer working the lower tier learns to make, so the
+        // first tailor comes before any second farm.
         {
           kind: 'place',
           building: 'work_sewery_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_animal_farm' }],
         },
+        // A seat dressing its army in tunics only (`./seat-order.ts`).
+        SECOND_ANIMAL_FARM,
+        SECOND_ANIMAL_FARM_WELL,
         EARLY_SECOND_TAILOR,
         { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
         // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
