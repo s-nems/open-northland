@@ -27,12 +27,14 @@ import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
-import { seatHasSide } from '../build-order/seat-order.js';
+import { militaryWaits, seatHasSide } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID } from '../joinery-role.js';
+import { BARRACKS_LEAD_TICKS } from '../military/deadline.js';
 import { rivalOverSea } from '../sea-route.js';
 import {
+  ARMY_RESERVE_UNITS,
   needCounters,
   REST_SEAT,
   type StockCraftPlan,
@@ -176,6 +178,16 @@ const ARMY_SPEAR: StockTarget = { kind: 'army', need: 'spear' };
 const ARMY_BOW: StockTarget = { kind: 'army', need: 'bow' };
 const INPUT_BUFFER: StockTarget = { kind: 'consumers', perConsumer: INPUT_UNITS_PER_CONSUMER };
 
+/** Owner ruling: the economy first, the army shortly before the deadline. An iron-rich seat stocks two
+ *  waves of each iron arm from its barracks lead on, so the draft, which takes no more men into a class
+ *  than the arms in stock, finds plate, chain and iron weapons rather than short bows and leather. Without
+ *  it the upper smiths of a crowded diamentowa_dolina seat rested at a wave's reserve while its army fought
+ *  in leather from game minute 60. */
+const IRON_ARMS_READY_UNITS = 2 * ARMY_RESERVE_UNITS;
+const READY_ARMOUR: StockTarget = { ...ARMY_ARMOUR, readyStock: IRON_ARMS_READY_UNITS };
+const READY_SWORD: StockTarget = { ...ARMY_SWORD, readyStock: IRON_ARMS_READY_UNITS };
+const READY_SPEAR: StockTarget = { ...ARMY_SPEAR, readyStock: IRON_ARMS_READY_UNITS };
+
 /** Owner ruling: short swords only as the strength amulet's input and, until the long sword is earned, to
  *  arm the swordsmen and earn it. */
 const SHORT_SWORD_WANTS: readonly StockWant[] = [
@@ -196,13 +208,28 @@ const SMITH_OVERFLOW: readonly CraftSeat[] = [
   { until: 'sword_long', works: ['sword_shord'], otherwise: REST_SEAT },
 ];
 
-/** Owner ruling: on a seat rich in iron the army wears plate and chain mail, forged beside the weapons. */
+/** On a seat rich in iron the smith past every want keeps forging long swords until he has earned chain
+ *  mail, whose discovery opens the upper smithy: resting there left a lone lower smith short of it at game
+ *  minute 90 on a crowded diamentowa_dolina seat. Short swords only while the long sword is still to earn. */
+const IRON_ARMS_SMITH_OVERFLOW: readonly CraftSeat[] = [
+  {
+    until: 'sword_long',
+    works: ['sword_shord'],
+    otherwise: { until: 'armor_chain', works: ['sword_long'], otherwise: REST_SEAT },
+  },
+];
+
+/** Owner ruling: on a seat rich in iron the army wears plate and chain mail, forged beside the weapons. The
+ *  armour want reads the iron armour alone: the leather the tailors sewed before plate was earned would
+ *  otherwise stand in for it. */
 const IRON_ARMS_SMITHY: StockCraftPlan = {
   wants: [
-    { goods: ['armor_plate', 'armor_chain'], target: ARMY_ARMOUR, counts: ARMOUR_GOOD_IDS },
-    ...WEAPON_WANTS,
+    { goods: ['armor_plate', 'armor_chain'], target: READY_ARMOUR },
+    { goods: ['sword_long'], target: READY_SWORD },
+    { goods: ['spear_iron'], target: READY_SPEAR },
+    ...SHORT_SWORD_WANTS,
   ],
-  overflow: SMITH_OVERFLOW,
+  overflow: IRON_ARMS_SMITH_OVERFLOW,
 };
 
 /** Owner ruling: a seat with little iron forges weapons alone and dresses its army in tunics. */
@@ -913,6 +940,7 @@ function stockReads(
     units: (good) => supply.units(good),
     consumers: (good) => supply.plannedConsumers(good),
     earned,
+    readying: () => !militaryWaits(world, ctx, player, BARRACKS_LEAD_TICKS),
     recruits(need) {
       if (counters === undefined) {
         const carrier = assistantCountersEntity(world, player);

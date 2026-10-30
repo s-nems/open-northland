@@ -34,6 +34,7 @@ function reads(
   stock: Readonly<Partial<Record<number, number>>> = {},
   recruits: Readonly<Partial<Record<ArmyNeed, number>>> = {},
   unearned: readonly string[] = [],
+  readying = false,
 ): StockReads {
   return {
     typeOf: (id) => GOODS[id],
@@ -41,6 +42,7 @@ function reads(
     consumers: (good) => (good === SHORT ? SHORT_CONSUMERS : 0),
     recruits: (need) => recruits[need] ?? 0,
     earned: (id) => !unearned.includes(id),
+    readying: () => readying,
   };
 }
 
@@ -73,6 +75,23 @@ describe('stock-driven craft seats', () => {
     expect(stockSeats(PLAN, reads({ [SWORD]: target }, { sword: 7 }), [SWORD], [[SWORD]]).seats).toEqual([
       ['sword', 'spear'],
     ]);
+  });
+
+  it('stocks a ready want past the reserve once the seat readies for its deadline', () => {
+    const READY = 3 * ARMY_RESERVE_UNITS;
+    const plan: StockCraftPlan = {
+      wants: [{ goods: ['sword'], target: { kind: 'army', need: 'sword', readyStock: READY } }],
+      overflow: [],
+    };
+    const work = (readying: boolean) =>
+      stockSeats(
+        plan,
+        reads({ [SWORD]: ARMY_RESERVE_UNITS + 1 }, { sword: 1 }, [], readying),
+        [SWORD],
+        [[SWORD]],
+      ).seats;
+    expect(work(false)).toEqual([REST_SEAT]);
+    expect(work(true)).toEqual([['sword']]);
   });
 
   it('takes a want nobody works up again only under its band', () => {

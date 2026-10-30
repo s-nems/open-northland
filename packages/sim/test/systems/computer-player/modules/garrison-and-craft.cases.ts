@@ -2202,6 +2202,24 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(smiths.products()).toEqual(['rest', 'rest']);
   });
 
+  it('keeps a lone lower smith on long swords past the army until chain mail is earned', () => {
+    const recast = joineryRecastAs('work_smithy_00', [
+      { typeId: SWORD_LONG, id: 'sword_long' },
+      { typeId: SPEAR_IRON, id: 'spear_iron' },
+      { typeId: SWORD_SHORT, id: 'sword_shord' },
+    ]);
+    const withChain = parseContentSet({
+      ...recast,
+      goods: [...recast.goods, { typeId: ARMOUR_CHAIN, id: 'armor_chain', weight: 1 }],
+    });
+    const smiths = crewedWorkshops(withUnearned(withChain, [ARMOUR_CHAIN]), 1, 1);
+    smiths.hire(0, 1);
+    smiths.stock(SWORD_LONG, ARMY_RESERVE_UNITS);
+    smiths.stock(SPEAR_IRON, ARMY_RESERVE_UNITS);
+    // Every want met, yet his forgings still earn the upper smithy's chain mail.
+    expect(smiths.products()).toEqual([[SWORD_LONG]]);
+  });
+
   it('forges short swords for the swordsmen only until the long sword is earned', () => {
     const recast = joineryRecastAs('work_smithy_00', [
       { typeId: SWORD_LONG, id: 'sword_long' },

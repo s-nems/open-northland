@@ -8,8 +8,9 @@ export type ArmyNeed = 'armour' | 'sword' | 'spear' | 'bow';
 
 /** What a want holds its stock to. */
 export type StockTarget =
-  /** The recruits still to arm ({@link ArmyNeed}) plus {@link ARMY_RESERVE_UNITS}. */
-  | { readonly kind: 'army'; readonly need: ArmyNeed }
+  /** The recruits still to arm ({@link ArmyNeed}) plus {@link ARMY_RESERVE_UNITS}, or plus `readyStock`
+   *  once the seat readies its army for its deadline ({@link StockReads.readying}). */
+  | { readonly kind: 'army'; readonly need: ArmyNeed; readonly readyStock?: number }
   /** `perConsumer` units per planned operator of the seat's built workshops that consume the good. */
   | { readonly kind: 'consumers'; readonly perConsumer: number }
   | { readonly kind: 'units'; readonly units: number };
@@ -50,6 +51,8 @@ export interface StockReads {
   recruits(need: ArmyNeed): number;
   /** Whether the seat may make the good with this content id (its experience gates). */
   earned(id: string): boolean;
+  /** Whether the seat readies its army for its military deadline: the arms go into stock ahead of it. */
+  readying(): boolean;
 }
 
 /** The arms a stock-driven type keeps in hand beyond the recruits still to arm (authored): a wave's draft,
@@ -89,8 +92,10 @@ interface LiveWant {
 /** The units `target` asks for this decision. */
 function targetUnits(reads: StockReads, target: StockTarget, goods: readonly number[]): number {
   switch (target.kind) {
-    case 'army':
-      return reads.recruits(target.need) + ARMY_RESERVE_UNITS;
+    case 'army': {
+      const ready = target.readyStock !== undefined && reads.readying() ? target.readyStock : 0;
+      return reads.recruits(target.need) + Math.max(ARMY_RESERVE_UNITS, ready);
+    }
     case 'consumers': {
       let consumers = 0;
       for (const good of goods) consumers = Math.max(consumers, reads.consumers(good));
