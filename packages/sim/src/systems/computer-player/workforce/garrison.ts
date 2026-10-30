@@ -102,6 +102,10 @@ export interface GarrisonArms {
   surplus(): number;
   /** The seat's {@link armyOnHand}, counted once for the floor and the draft. */
   onHand(): number;
+  /** The seat's bare soldiers ({@link isBareSoldier}), listed once for the floor and the draft. */
+  bare(): readonly Entity[];
+  /** The {@link weaponRoom} for `next`'s tribe, judged once, for the first man asked about. */
+  roomFor(next: Entity): ReadonlyMap<GarrisonWeaponIntent, number>;
 }
 
 export function garrisonArms(
@@ -120,6 +124,8 @@ export function garrisonArms(
   let classes: readonly AssistantRecruitIntent[] | undefined;
   let surplus: number | undefined;
   let onHand: number | undefined;
+  let bare: readonly Entity[] | undefined;
+  let room: ReadonlyMap<GarrisonWeaponIntent, number> | undefined;
   return {
     vetoChanges,
     classesFor: (barracks, next) => {
@@ -134,7 +140,41 @@ export function garrisonArms(
       onHand ??= armyOnHand(world, ctx, player);
       return onHand;
     },
+    bare: () => {
+      bare ??= ownedSettlers(world, player).filter((e) => isBareSoldier(world, ctx, e, player));
+      return bare;
+    },
+    roomFor: (next) => {
+      room ??= weaponRoom(world, ctx, player, world.get(next, Settler).tribe, judged);
+      return room;
+    },
   };
+}
+
+/**
+ * Per armed class, the weapons the seat holds ({@link seatStockOf}) that its arming would hand out
+ * ({@link armingGoodPreference} past the `vetoed` goods), less the class's recruits already booked and
+ * waiting for one. The draft takes no more men into a class than this: a recruit drilled past the arms
+ * in stock waits unarmed at the barracks and fights bare when the settlement is raided. On magiczny_las
+ * the sword counter of one seat stood at 38 against 6 long swords at game minute 90, and its 40 recruits
+ * waiting for a weapon were over a third of its soldiers.
+ */
+function weaponRoom(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  tribe: number,
+  vetoed: readonly number[],
+): ReadonlyMap<GarrisonWeaponIntent, number> {
+  const stock = seatStockOf(world, player);
+  const waiting = bookedByIntent(world, ctx, player);
+  const room = new Map<GarrisonWeaponIntent, number>();
+  for (const intent of GARRISON_WEAPON_INTENTS) {
+    let units = 0;
+    for (const good of armingGoodPreference(ctx.content, tribe, intent, vetoed)) units += stock.units(good);
+    room.set(intent, Math.max(0, units - (waiting.get(intent) ?? 0)));
+  }
+  return room;
 }
 
 /** The part of the builder reserve the army floor never reclaims (authored): a third, so the seat's
@@ -178,8 +218,9 @@ const NO_CLAIM: ArmyFloorClaim = { men: [], commands: [] };
  * what it built, and the trades that could absorb every man still leave an army. While the draft can arm a
  * class, the floor also reclaims the called gatherers and then the builder reserve past its core (`reserve`,
  * {@link upperReserve}): the reserve takes every spare man of a small seat, which would otherwise never
- * drill. Capped by the {@link bachelorSurplus} and by the men draftable at all, and nobody is claimed while
- * the draft has no class to put him in.
+ * drill. Capped by the {@link bachelorSurplus}, by the men draftable at all and, for the armed classes, by
+ * the weapons in stock past the bare soldiers ({@link armsToSpare}); nobody is claimed while the draft has
+ * no class to put him in.
  * Returns the claimed men for {@link trainGarrison} to publish and the reclaimed builders' retrades.
  */
 export function claimArmyFloor(
@@ -203,8 +244,8 @@ export function claimArmyFloor(
     shareOf(shareOf(enemyInOwnMen(world, ctx, player), profile.army.floorShare), orders.floorShare),
   );
   const missing = draftCeiling(profile, orders.draftCapShare, floor) - arms.onHand();
-  const claim = Math.min(missing, surplus);
-  if (claim <= 0) return NO_CLAIM;
+  const wanted = Math.min(missing, surplus);
+  if (wanted <= 0) return NO_CLAIM;
   // A man the floor retrades waits until he sets his load down, since the trade change would drop it.
   const unloaded = (e: Entity): boolean => isDraftable(world, e) || !world.has(e, Carrying);
   // The called gatherers go before the builders: the sites keep their hands while a post can spare one.
@@ -216,13 +257,16 @@ export function claimArmyFloor(
   if (next === undefined) return NO_CLAIM;
   const classes = arms.classesFor(barracks, next);
   if (classes.length === 0) return NO_CLAIM;
+  const armed = classes.some(isWeaponIntent);
+  const claim = armed ? Math.min(wanted, armsToSpare(arms, next, classes)) : wanted;
+  if (claim <= 0) return NO_CLAIM;
   const men: Entity[] = [];
   while (men.length < claim) {
     const recruit = force.take((e) => isDraftable(world, e));
     if (recruit === null) break;
     men.push(recruit);
   }
-  if (!classes.some(isWeaponIntent)) return { men, commands: [] };
+  if (!armed) return { men, commands: [] };
   const commands: PlayerCommand[] = [];
   for (const e of reclaimable) {
     if (men.length >= claim) break;
@@ -315,6 +359,15 @@ export function trainGarrison(
     ({ goodType, vetoed }): PlayerCommand => ({ kind: 'setAssistantWeaponVeto', player, goodType, vetoed }),
   );
   return [...vetoes, ...counters];
+}
+
+/** The weapons the armed `classes` still hold for new recruits once the bare soldiers, armed first, have
+ *  taken theirs ({@link weaponRoom}). */
+function armsToSpare(arms: GarrisonArms, next: Entity, classes: readonly AssistantRecruitIntent[]): number {
+  const room = arms.roomFor(next);
+  let units = 0;
+  for (const intent of classes) if (isWeaponIntent(intent)) units += room.get(intent) ?? 0;
+  return Math.max(0, units - arms.bare().length);
 }
 
 /** The seat's barracks when it may drill at all: the military module runs, the content has a soldier
@@ -451,9 +504,9 @@ function weakerWeaponGoods(content: ContentSet): readonly number[] {
  * bare-handed soldiers, whom the dispatcher arms before it drafts anyone ({@link isBareSoldier}), and of
  * the `draftable` men (the army floor's first, then the spare), so the headroom the dispatcher sees
  * (`counter - bookings`) sums to exactly that number. Each man goes to the armable class furthest below
- * its field share ({@link fieldedByIntent}, {@link FULL_FIELD_SHARES}), the earlier class on a tie. A seat
- * that can arm none of them leaves its bare soldiers as they stand and drafts by {@link draftingClasses}'
- * fallback: `trainSoldiers`, or nobody.
+ * its field share ({@link fieldedByIntent}, {@link FULL_FIELD_SHARES}), the earlier class on a tie, and no
+ * class takes more men than its {@link weaponRoom}. A seat that can arm none of them leaves its bare
+ * soldiers as they stand and drafts by {@link draftingClasses}' fallback: `trainSoldiers`, or nobody.
  */
 function standingOrder(
   world: World,
@@ -470,7 +523,7 @@ function standingOrder(
   const booked = bookedByIntent(world, ctx, player);
   for (const intent of GARRISON_INTENTS) wants.set(intent, booked.get(intent) ?? 0);
 
-  const bare = ownedSettlers(world, player).filter((e) => isBareSoldier(world, ctx, e, player));
+  const bare = arms.bare();
   const { draftCapShare } = militaryOrdersOf(world, player);
   const headroom = draftCeiling(profile, draftCapShare, Number.POSITIVE_INFINITY) - arms.onHand();
   const allowance = Math.max(0, Math.min(draftable.length, arms.surplus(), headroom));
@@ -479,14 +532,22 @@ function standingOrder(
   const classes = arms.classesFor(barracks, judged);
   if (classes.length === 0) return wants;
   const fielded = fieldedByIntent(world, ctx, player, booked);
-  shareOut(bare.length, classes.filter(isWeaponIntent), fielded, wants);
+  const room = new Map(arms.roomFor(judged));
+  shareOut(bare.length, classes.filter(isWeaponIntent), fielded, wants, room);
   // The empty towers take their first archer ahead of the field share. Those archers are posted before
   // any band marches, so the field split below still counts only the men who stay in it.
   const towerBows = classes.includes('trainBow')
-    ? Math.min(allowance, emptyTowers(world, ctx, player) - (fielded.get('trainBow') ?? 0))
+    ? Math.min(
+        allowance,
+        room.get('trainBow') ?? 0,
+        emptyTowers(world, ctx, player) - (fielded.get('trainBow') ?? 0),
+      )
     : 0;
-  if (towerBows > 0) wants.set('trainBow', (wants.get('trainBow') ?? 0) + towerBows);
-  shareOut(allowance - Math.max(0, towerBows), classes, fielded, wants);
+  if (towerBows > 0) {
+    wants.set('trainBow', (wants.get('trainBow') ?? 0) + towerBows);
+    room.set('trainBow', (room.get('trainBow') ?? 0) - towerBows);
+  }
+  shareOut(allowance - Math.max(0, towerBows), classes, fielded, wants, room);
   return wants;
 }
 
@@ -513,12 +574,14 @@ function emptyTowers(world: World, ctx: SystemContext, player: number): number {
 }
 
 /** Add `count` men to `wants`, each to the class of `classes` furthest below its field share in `fielded`,
- *  which counts him there. Full shares apply only over all three armed classes. */
+ *  which counts him there, while the class keeps `room` ({@link weaponRoom}), which he spends. Full shares
+ *  apply only over all three armed classes. Men past every armed class's room are not added. */
 function shareOut(
   count: number,
   classes: readonly AssistantRecruitIntent[],
   fielded: Map<AssistantRecruitIntent, number>,
   wants: Map<AssistantRecruitIntent, number>,
+  room: Map<GarrisonWeaponIntent, number>,
 ): void {
   if (count === 0 || classes.length === 0) return;
   const full = GARRISON_WEAPON_INTENTS.every((intent) => classes.includes(intent));
@@ -527,11 +590,16 @@ function shareOut(
   // standing / share compared by cross-multiplication, so the pick stays in integers.
   const behind = (i: number, j: number): boolean =>
     (standing[i] ?? 0) * (shares[j] ?? 1) < (standing[j] ?? 0) * (shares[i] ?? 1);
+  const open = (i: number): boolean => {
+    const intent = classes[i];
+    return intent !== undefined && (!isWeaponIntent(intent) || (room.get(intent) ?? 0) > 0);
+  };
   for (let added = 0; added < count; added++) {
-    let rank = 0;
-    for (let i = 1; i < classes.length; i++) if (behind(i, rank)) rank = i;
+    let rank = -1;
+    for (let i = 0; i < classes.length; i++) if (open(i) && (rank < 0 || behind(i, rank))) rank = i;
     const intent = classes[rank];
     if (intent === undefined) break;
+    if (isWeaponIntent(intent)) room.set(intent, (room.get(intent) ?? 0) - 1);
     standing[rank] = (standing[rank] ?? 0) + 1;
     fielded.set(intent, standing[rank] ?? 0);
     wants.set(intent, (wants.get(intent) ?? 0) + 1);

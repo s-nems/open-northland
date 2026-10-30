@@ -143,6 +143,10 @@ import {
  *  cases count as spare anyway and publishes them in the same counters, so their totals hold. */
 const SPARE_MEN = 40;
 
+/** Each stocked weapon's units in a case that reads the draft's size: one for every man the seat could
+ *  draft, since the draft takes no more men into a class than its weapons in store. */
+const ARMOURY = 2 * SPARE_MEN;
+
 interface ArmedSeat {
   readonly sim: Simulation;
   readonly ctx: SystemContext;
@@ -316,7 +320,7 @@ function rivalSeat(
   options: SeatOptions & { readonly setup?: (sim: Simulation) => void } = {},
 ): ArmedSeat {
   const { setup, ...seatOptions } = options;
-  const seat = armedSeat([{ good: SWORD, amount: 1 }], { men: FLOOR_CREW, ...seatOptions });
+  const seat = armedSeat([{ good: SWORD, amount: ARMOURY }], { men: FLOOR_CREW, ...seatOptions });
   placeResources(seat.sim);
   for (let i = 0; i < rivals; i++) {
     seat.sim.enqueueSetup({
@@ -785,10 +789,9 @@ describe('workforce module - the barracks and craft selections', () => {
   });
 
   it('splits the standing order between swordsmen and archers once both arms are in store', () => {
-    // One unit of each is enough: the counter is a standing want, and the smithy keeps making more.
     const both = [
-      { good: SWORD, amount: 1 },
-      { good: BOW, amount: 1 },
+      { good: SWORD, amount: ARMOURY },
+      { good: BOW, amount: ARMOURY },
     ];
     // The ladder's claims set the pool's parity, so of two crews one man apart, one splits evenly.
     const [even, odd] = [armedSeat(both), armedSeat(both, { men: SPARE_MEN - 1 })].sort(
@@ -813,8 +816,8 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('drafts toward an even field army, leaving the tower archers out of the count', () => {
     const seat = armedSeat([
-      { good: SWORD, amount: 1 },
-      { good: BOW, amount: 1 },
+      { good: SWORD, amount: ARMOURY },
+      { good: BOW, amount: ARMOURY },
     ]);
     const FIELD_ARCHERS = 4;
     for (let i = 0; i < FIELD_ARCHERS; i++) {
@@ -861,9 +864,9 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('drafts four archers to three swordsmen and three spearmen while every class can be armed', () => {
     const seat = armedSeat([
-      { good: SWORD, amount: 1 },
-      { good: SPEAR, amount: 1 },
-      { good: BOW, amount: 1 },
+      { good: SWORD, amount: ARMOURY },
+      { good: SPEAR, amount: ARMOURY },
+      { good: BOW, amount: ARMOURY },
     ]);
     const total = sparePool(seat);
     const wants = counterWants(seat.sim, seat.ctx);
@@ -876,8 +879,8 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('splits evenly over the classes it can arm when one weapon line runs dry', () => {
     const seat = armedSeat([
-      { good: SWORD, amount: 1 },
-      { good: SPEAR, amount: 1 },
+      { good: SWORD, amount: ARMOURY },
+      { good: SPEAR, amount: ARMOURY },
     ]);
     const total = sparePool(seat);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({
@@ -887,7 +890,7 @@ describe('workforce module - the barracks and craft selections', () => {
   });
 
   it('counts its bare-handed soldiers into the class counters, on top of the draft', () => {
-    const seat = armedSeat([{ good: SWORD, amount: 1 }]);
+    const seat = armedSeat([{ good: SWORD, amount: ARMOURY }]);
     const total = sparePool(seat);
     spawnBareSoldiers(seat, BARE_SOLDIERS);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: total + BARE_SOLDIERS });
@@ -896,8 +899,8 @@ describe('workforce module - the barracks and craft selections', () => {
   it('shares its bare-handed soldiers out over the classes it can arm', () => {
     const seat = armedSeat(
       [
-        { good: SWORD, amount: 1 },
-        { good: BOW, amount: 1 },
+        { good: SWORD, amount: ARMOURY },
+        { good: BOW, amount: ARMOURY },
       ],
       { men: 0 },
     );
@@ -925,7 +928,7 @@ describe('workforce module - the barracks and craft selections', () => {
   it('vetoes a weaker weapon once the best one is stocked past its margin', () => {
     const seat = armedSeat(
       [
-        { good: SWORD, amount: 1 },
+        { good: SWORD, amount: ARMOURY },
         { good: LONG_SWORD, amount: WEAPON_VETO_STOCK_MARGIN },
       ],
       { content: longSwordContent() },
@@ -938,7 +941,8 @@ describe('workforce module - the barracks and craft selections', () => {
 
     const again = collectModule.run(seat.sim.world, seat.ctx, SEAT);
     expect(again.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
-    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
+    // The vetoed short swords arm nobody, so only the long swords open the draft.
+    expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: WEAPON_VETO_STOCK_MARGIN });
   });
 
   it('neither vetoes nor lifts while the best weapon lies between its two marks', () => {
@@ -946,7 +950,7 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(between).toBeGreaterThanOrEqual(WEAPON_VETO_LIFT_STOCK);
     const seat = armedSeat(
       [
-        { good: SWORD, amount: 1 },
+        { good: SWORD, amount: ARMOURY },
         { good: LONG_SWORD, amount: between },
       ],
       { content: longSwordContent() },
@@ -961,7 +965,7 @@ describe('workforce module - the barracks and craft selections', () => {
 
   it('arms with the weaker weapon while the best one is not in store, and lifts a standing veto', () => {
     // Owner ruling: the smith opens on the short sword and earns the long one later.
-    const seat = armedSeat([{ good: SWORD, amount: 1 }], { content: longSwordContent() });
+    const seat = armedSeat([{ good: SWORD, amount: ARMOURY }], { content: longSwordContent() });
     const first = collectModule.run(seat.sim.world, seat.ctx, SEAT);
     expect(first.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
@@ -979,8 +983,8 @@ describe('workforce module - the barracks and craft selections', () => {
   it('arms with the weaker weapon on the easy difficulty instead of vetoing it', () => {
     const seat = armedSeat(
       [
-        { good: SWORD, amount: 1 },
-        { good: LONG_SWORD, amount: 1 },
+        { good: SWORD, amount: ARMOURY },
+        { good: LONG_SWORD, amount: ARMOURY },
       ],
       { content: longSwordContent(), difficulty: 'easy' },
     );
@@ -1018,7 +1022,7 @@ describe('workforce module - the barracks and craft selections', () => {
   });
 
   it('puts the whole order on the one class it can arm, never on fists', () => {
-    const seat = armedSeat([{ good: BOW, amount: 1 }]);
+    const seat = armedSeat([{ good: BOW, amount: ARMOURY }]);
     // Swords unmade: a swordsman would stand around weaponless, so every recruit becomes an archer
     // (user rule - the fist is the last resort, not half the plan).
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainBow: sparePool(seat) });
@@ -1029,8 +1033,8 @@ describe('workforce module - the barracks and craft selections', () => {
     const total = sparePool(seat);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: total });
 
-    // The fallback follows the STORE, not the content: one delivered sword flips the whole order.
-    setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), SWORD, 1);
+    // The fallback follows the STORE, not the content: delivered swords flip the whole order.
+    setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), SWORD, ARMOURY);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: total });
   });
 
@@ -1038,7 +1042,7 @@ describe('workforce module - the barracks and craft selections', () => {
     // The store a long march from the drill floor, with no signpost network bridging the two: the
     // arming pass would never fetch these swords, and a `trainSword` order would fill the barracks
     // with men who stand around bare-handed forever - and, being booked, never march either.
-    const seat = armedSeat([{ good: SWORD, amount: 1 }], { confined: true, barracks: FAR_BARRACKS });
+    const seat = armedSeat([{ good: SWORD, amount: ARMOURY }], { confined: true, barracks: FAR_BARRACKS });
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSoldiers: sparePool(seat) });
 
     // One post between the two puts the store back inside the drill floor's own network.

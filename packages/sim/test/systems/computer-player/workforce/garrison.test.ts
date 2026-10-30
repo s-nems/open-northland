@@ -95,8 +95,12 @@ describe('the draft and the empty towers', () => {
   const SPARE = 40;
   const TOWERS = 2;
 
-  /** The counter wants of a seat holding swords and bows, a barracks and `towers` standing empty towers. */
-  function wants(towers: number): { trainSword: number; trainBow: number } {
+  /** The counter wants of a seat holding `arms` swords and bows each, a barracks and `towers` standing
+   *  empty towers. */
+  function wants(
+    towers: number,
+    arms = { swords: SPARE, bows: SPARE },
+  ): { trainSword: number; trainBow: number } {
     const content = armedContent();
     const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
     sim.enqueueSetup({
@@ -107,8 +111,8 @@ describe('the draft and the empty towers', () => {
       tribe: VIKING,
       owner: SEAT,
       initialGoods: [
-        { good: SWORD, amount: 1 },
-        { good: BOW, amount: 1 },
+        { good: SWORD, amount: arms.swords },
+        { good: BOW, amount: arms.bows },
       ],
     });
     sim.enqueueSetup({
@@ -149,5 +153,12 @@ describe('the draft and the empty towers', () => {
       trainSword: Math.ceil(rest / 2),
       trainBow: TOWERS + Math.floor(rest / 2),
     });
+  });
+
+  it('drafts no more men into a class than the weapons it holds for them', () => {
+    const arms = { swords: 2, bows: 3 };
+    expect(wants(0, arms)).toEqual({ trainSword: arms.swords, trainBow: arms.bows });
+    // The empty towers' archers spend the same bows.
+    expect(wants(TOWERS, arms)).toEqual({ trainSword: arms.swords, trainBow: arms.bows });
   });
 });
