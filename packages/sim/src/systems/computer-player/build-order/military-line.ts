@@ -6,8 +6,9 @@ import type { BuildLine, BuildOrderEntry } from './entries.js';
  *  tower circle (`./tower-coverage.ts`), so the finished settlement stands under overlapping towers. */
 const DENSE_TOWER_RADIUS_NODES = 14;
 
-/** How many of the seat's towers the line upgrades to the upper tier (authored): about the ring a
- *  settlement of medium room stands under, the late dense ring's further towers staying at the lower tier. */
+/** How many of the seat's towers stand at the upper tier (authored): about the ring a settlement of medium
+ *  room stands under. A tower the rings raised straight at the upper tier counts, so the upgrades only lift
+ *  the lower towers of a seat whose attacks came early (`./direct-tier.ts`). */
 const UPGRADED_TOWERS = 6;
 
 /** One upgrade step per tower, so each upgrade is its own site and the line's lookahead paces them. */
@@ -17,13 +18,17 @@ const TOWER_UPGRADES: readonly BuildOrderEntry[] = Array.from({ length: UPGRADED
   count: i + 1,
 }));
 
-/** The army line: the tower ring, the barracks, the catapult joinery and the towers' upgrades
+/** Owner ruling: the catapult joinery belongs to the late late game, so it waits for the settlement the
+ *  second armory waits for (`./entries.ts`): by game minute 90 on magiczny_las (128-279 settlers) only the
+ *  largest seats reach it. */
+const CATAPULT_JOINERY_FROM_SETTLERS = 200;
+
+/** The army line: the tower ring, the barracks, the towers' upgrades and the catapult joinery
  *  (`./entries.ts`). */
 export const MILITARY_LINE: BuildLine = {
   id: 'military',
   // Owner ruling: the economy first, the army shortly before the military deadline. The tower ring and
-  // the barracks wait for their leads before it, the catapult joinery behind the barracks; the seat's
-  // defence coming first lifts the waits at once.
+  // the barracks wait for their leads before it; the seat's defence coming first lifts the waits at once.
   steps: [
     // Where only a ship reaches the nearest rival, the joinery that builds it goes up by the water early:
     // it is the economy's way across, not a wait for the deadline.
@@ -35,8 +40,9 @@ export const MILITARY_LINE: BuildLine = {
       onlyWhen: 'rivalOverSea',
       role: 'ship',
     },
-    // Owner ruling: the ring rises as the cheap lower tower, which stands in a fraction of the upper one's
-    // time and bill, and runs as a lane, so no later step of the line ever waits on it.
+    // The ring runs as a lane, so no later step of the line ever waits on it. Owner ruling: a tower rises at
+    // the upper tier once the seat may raise it, the cheap lower one only while that tier is locked or
+    // unsourced, or where the attacks come early (`./direct-tier.ts`).
     {
       kind: 'towerCoverage',
       building: 'tower_00',
@@ -52,15 +58,6 @@ export const MILITARY_LINE: BuildLine = {
       near: [{ kind: 'front' }],
       holdUntil: { kind: 'deadline', leadTicks: BARRACKS_LEAD_TICKS },
     },
-    // The catapult joinery stands by the barracks, where the army musters. A land map gets one top-tier
-    // joinery, a sea map two.
-    {
-      kind: 'place',
-      building: 'work_joinery_03',
-      count: 1,
-      near: [{ kind: 'building', id: 'barracks' }],
-      role: 'catapult',
-    },
     // From the late game the denser ring runs as a second lane (authored): a tower wherever the first
     // leaves a building out. A filled settlement with no room for a tower holds the lane, not the line.
     {
@@ -73,5 +70,15 @@ export const MILITARY_LINE: BuildLine = {
     // Owner ruling: the standing towers go up to the upper tier slowly, once the seat makes the bricks and
     // pillars its bill asks for; an upgrade step holds its line until its bill has a source.
     ...TOWER_UPGRADES,
+    // The catapult joinery stands by the barracks, where the army musters. A land map gets one top-tier
+    // joinery, a sea map two. Last in the line, so its hold keeps no tower waiting.
+    {
+      kind: 'place',
+      building: 'work_joinery_03',
+      count: 1,
+      near: [{ kind: 'building', id: 'barracks' }],
+      role: 'catapult',
+      holdUntil: { kind: 'settlers', count: CATAPULT_JOINERY_FROM_SETTLERS },
+    },
   ],
 };

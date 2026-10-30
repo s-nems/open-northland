@@ -38,11 +38,13 @@ import { aiContent } from '../../../fixtures/ai-content.js';
 import { waterColumnMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
+  BAKERY_TOP_TYPE,
   BAKERY_TYPE,
   CIVILIST,
   ctxOf,
   entityOfBuilding,
   FARM_TYPE,
+  HOME_TOP_TYPE,
   HOME_TYPE,
   HQ_TYPE,
   HQ_X,
@@ -190,7 +192,7 @@ describe('build-order module - rebuilding under the enemy', () => {
   it('holds the placement while an enemy fighter stands in a watch band, until he clears the margin', () => {
     const sim = razedBakerySim();
     const home = placementOf(decide(sim));
-    expect(home?.buildingType).toBe(BAKERY_TYPE);
+    expect(home?.buildingType).toBe(BAKERY_TOP_TYPE);
     const watch = threatWatchNodes(ctxOf(sim), VIKING);
 
     const raider = onlyOne(spawnAt(sim, offTheHq(sim, watch), SPEARMAN));
@@ -217,7 +219,7 @@ describe('build-order module - rebuilding under the enemy', () => {
     const settler = onlyOne(spawnAt(sim, { x: FAR_CORNER.x + 2, y: FAR_CORNER.y }, CIVILIST, SEAT));
     const raider = onlyOne(spawnAt(sim, FAR_CORNER, SPEARMAN));
     sim.world.add(raider, AttackOrder, { target: settler });
-    expect(placementOf(decide(sim))?.buildingType).toBe(BAKERY_TYPE);
+    expect(placementOf(decide(sim))?.buildingType).toBe(BAKERY_TOP_TYPE);
   });
 
   it('does not hold for a fighter on ground the seat cannot walk to', () => {
@@ -229,7 +231,7 @@ describe('build-order module - rebuilding under the enemy', () => {
     expect(Math.abs(at.x - mill.x) + Math.abs(at.y - mill.y)).toBeLessThan(
       threatWatchNodes(ctxOf(sim), VIKING),
     );
-    expect(placementOf(decide(sim))?.buildingType).toBe(BAKERY_TYPE);
+    expect(placementOf(decide(sim))?.buildingType).toBe(BAKERY_TOP_TYPE);
   });
 
   it('does not hold for an enemy archer holding his own tower, but keeps the site out of his reach', () => {
@@ -240,13 +242,13 @@ describe('build-order module - rebuilding under the enemy', () => {
     const post = nodeOf(sim, archer);
     const reach = bowReach(sim) + TOWER_RANGE_BONUS_NODES;
     // The old spot lies under the tower's bow: the garrison would shoot the site down as it rose.
-    expect(wallDistance(sim, BAKERY_TYPE, near, post)).toBeLessThanOrEqual(reach);
+    expect(wallDistance(sim, BAKERY_TOP_TYPE, near, post)).toBeLessThanOrEqual(reach);
 
     const moved = placementOf(decide(sim));
-    expect(moved?.buildingType).toBe(BAKERY_TYPE);
+    expect(moved?.buildingType).toBe(BAKERY_TOP_TYPE);
     if (moved === null) throw new Error('expected the bakery re-placed out of reach');
     // Judged at the walls: every wall cell of the site, not only its anchor, lies past the reach.
-    expect(wallDistance(sim, BAKERY_TYPE, moved, post)).toBeGreaterThan(reach);
+    expect(wallDistance(sim, BAKERY_TOP_TYPE, moved, post)).toBeGreaterThan(reach);
 
     // An empty tower shoots nothing: the old spot is back.
     sim.world.destroy(archer);
@@ -260,10 +262,10 @@ describe('build-order module - rebuilding under the enemy', () => {
     // Stand the bakery back up so the list completes and the frontier passes it, then lose it again.
     const home = placementOf(decideAt(0));
     if (home === null) throw new Error('expected the bakery placed');
-    place(sim, BAKERY_TYPE, home);
+    place(sim, BAKERY_TOP_TYPE, home);
     sim.step();
     expect(decideAt(0)).toEqual([]);
-    razeBuilding(sim.world, ctxOf(sim), entityOfBuilding(sim, BAKERY_TYPE));
+    razeBuilding(sim.world, ctxOf(sim), entityOfBuilding(sim, BAKERY_TOP_TYPE));
 
     const band = spawnAt(sim, BAKERY, SPEARMAN, FOE, 3);
     const lastAttacked = 2 * REBUILD_DELAY_TICKS;
@@ -274,7 +276,7 @@ describe('build-order module - rebuilding under the enemy', () => {
     expect(decideAt(lastAttacked + REBUILD_DELAY_TICKS - 1)).toEqual([]);
     expect(placementOf(decideAt(lastAttacked + REBUILD_DELAY_TICKS))).toEqual({
       ...home,
-      buildingType: BAKERY_TYPE,
+      buildingType: BAKERY_TOP_TYPE,
     });
   });
 
@@ -411,7 +413,7 @@ describe('build-order module - rebuilding under the enemy', () => {
       return placementOf(commands);
     };
     expect(act()?.buildingType).toBe(FARM_TYPE); // its site stays open
-    for (const finished of [HOME_TYPE, WELL_TYPE]) {
+    for (const finished of [HOME_TOP_TYPE, WELL_TYPE]) {
       expect(act()?.buildingType).toBe(finished);
       const built = entityOfBuilding(sim, finished);
       sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: built });

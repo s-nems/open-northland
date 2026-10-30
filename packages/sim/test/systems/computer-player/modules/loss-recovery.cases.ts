@@ -21,6 +21,7 @@ import { razeBuilding } from '../../../../src/systems/lifecycle/cleanup.js';
 import {
   aiSim,
   BAKER,
+  BAKERY_TOP_TYPE,
   BAKERY_TYPE,
   BREWERY_TYPE,
   BUILDER,
@@ -98,8 +99,9 @@ describe('build-order module - rebuilding what combat took', () => {
     expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(BREWERY_TYPE);
 
     raze(sim, entityOfBuilding(sim, BAKERY_TYPE));
-    // Its entry regressed to unmet and the walk stops there: the rebuild outranks the brewery.
-    expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(BAKERY_TYPE);
+    // Its entry regressed to unmet and the walk stops there: the rebuild outranks the brewery, at the
+    // upper tier the seat may raise outright.
+    expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(BAKERY_TOP_TYPE);
   });
 
   it('replaces a razed base with the top warehouse tier at the centre of what still stands', () => {

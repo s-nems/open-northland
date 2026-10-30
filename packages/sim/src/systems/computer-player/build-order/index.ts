@@ -29,6 +29,7 @@ import type { ComputerModule } from '../index.js';
 import { technologyReach } from '../technology/reach.js';
 import { type TechnologyTable, technologyTable } from '../technology/requirements.js';
 import { billSourced, goodsMadeBy, sourcedTiers } from './bill-sources.js';
+import { directTier } from './direct-tier.js';
 import {
   BASE_REPLACEMENT_ENTRY,
   BASE_REPLACEMENT_IDS,
@@ -177,7 +178,8 @@ function homesApart(profile: ComputerProfile, tick: number): boolean {
  * upgrade while a bill good only it or another site could make is not yet in store, or while it would idle
  * a good's last working maker ({@link suppliedUpgrade}). An upgrade raises its building straight to the
  * highest tier that step and the unmet upgrade steps right after it in its line want, as far as the seat
- * has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. A step whose building
+ * has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. A placement or a ring
+ * raises the highest tier the same tests allow straight away ({@link directTier}). A step whose building
  * the seat has not discovered yet holds its line too, while the technology module earns it, so a later
  * step never runs ahead of the workshop it feeds on; one whose discovery can never come is skipped
  * ({@link entryStatus}), and a seat with no technology table, whose lock can only be a ban, passes it. A
@@ -285,6 +287,7 @@ function runBuildOrder(
           entry,
           siegeOf().underFire,
           reserveGrass,
+          madeGoods,
         );
         if (tribe !== undefined) searches.searched(line.id, step, ctx.tick, verdict.kind === 'act', false);
       }
@@ -344,6 +347,7 @@ function runBuildOrder(
             entry,
             siegeOf().underFire,
             reserveGrass,
+            madeGoods,
           );
     searches.searched(lane.line, lane.step, ctx.tick, placed !== null, false);
     if (placed !== null) return started(placed);
@@ -379,9 +383,9 @@ function runBuildOrder(
     switch (entry.kind) {
       case 'place': {
         if (tribe === undefined) return null;
-        const type = buildingTypeByContentId(ctx.content, entry.building);
-        if (type === undefined) return null; // unreachable after 'skip', kept for the type system
         if (searches.waits(line.id, step, ctx.tick)) return null;
+        const type = directTier(world, ctx, player, owned, tribe, entry, madeGoods);
+        if (type === undefined) return null; // unreachable after 'skip', kept for the type system
         const spot = placementSpot(
           world,
           ctx,
@@ -649,12 +653,13 @@ function searchVerdict(
   entry: BuildOrderEntry,
   underFire: EnemyFire,
   reserveGrass: boolean,
+  made: () => ReadonlySet<number>,
 ): Verdict {
   if (tribe === undefined) return ACTS;
   switch (entry.kind) {
     case 'place': {
       if (!placementPassesOver(ctx, entry)) return ACTS;
-      const type = buildingTypeByContentId(ctx.content, entry.building);
+      const type = directTier(world, ctx, player, owned, tribe, entry, made);
       if (type === undefined) return ACTS;
       const spot = placementSpot(
         world,
@@ -684,6 +689,7 @@ function searchVerdict(
         entry,
         underFire,
         reserveGrass,
+        made,
       );
       return placed === null ? PASSED_OVER : { kind: 'act', placement: placed };
     }
@@ -797,7 +803,8 @@ function laneTiers(ctx: SystemContext, entry: OpenLane['entry']): ReadonlySet<nu
 /**
  * The site a coverage entry raises next, or null when no target has a legal spot: the first target with
  * one, in target order; a target none covers, a flag beyond the seat's build reach or ground another
- * store already serves, is passed over. Nothing while the building's tier is not enabled yet.
+ * store already serves, is passed over, at the tier {@link directTier} picks. Nothing while the entry's
+ * own tier is not enabled yet.
  */
 function coverageCommand(
   world: World,
@@ -810,10 +817,12 @@ function coverageCommand(
   entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
   underFire: EnemyFire,
   reserveGrass: boolean,
+  made: () => ReadonlySet<number>,
 ): PlaceCommand | null {
-  const type = buildingTypeByContentId(ctx.content, entry.building);
-  if (type === undefined) return null; // unreachable after 'skip', kept for the type system
-  if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) return null;
+  const base = buildingTypeByContentId(ctx.content, entry.building);
+  if (base === undefined) return null; // unreachable after 'skip', kept for the type system
+  if (!buildingEnabled(world, ctx, player, tribe, base.typeId)) return null;
+  const type = directTier(world, ctx, player, owned, tribe, entry, made) ?? base;
   const coverage = coverageOf(world, player, entry);
   const spotFor = coverageSpotSearch(
     world,
