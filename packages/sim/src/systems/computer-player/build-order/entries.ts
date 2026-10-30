@@ -454,6 +454,14 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         ROOMY_OPENING_HOMES,
         RICH_OPENING_HOMES,
         { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
+        // The mason before the school: the school's bill wants his pillars beside the potter's bricks, and
+        // the bakery and the animal farm want them too, so the school's wait on the pottery never holds him.
+        {
+          kind: 'place',
+          building: 'work_mason_hut_00',
+          count: 1,
+          near: [{ kind: 'resource', good: 'stone' }],
+        },
         // Owner ruling: the school once the pottery stands, never before it, a core building, so every
         // trade discovered from here on is taught there rather than earned again by work.
         {
@@ -461,12 +469,6 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           building: 'school',
           count: 1,
           holdUntil: { kind: 'built', building: 'work_pottery_00' },
-        },
-        {
-          kind: 'place',
-          building: 'work_mason_hut_00',
-          count: 1,
-          near: [{ kind: 'resource', good: 'stone' }],
         },
         // Owner ruling: a second stone gatherer within the first 10-15 game minutes, since the roads and
         // the mason eat the most stone.
