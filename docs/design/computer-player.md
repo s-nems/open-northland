@@ -144,10 +144,10 @@ gatherer posts are released at their good's glut, and gatherers never take the b
 sites need. On a seat with iron to spare the iron posts its smithies plan come ahead of the builder
 reserve, its consumers' input shelves do not count as iron to spare, and its iron gatherers are never
 called to arms. Porters: one for the headquarters and each warehouse, last in the ladder, and two for
-the barracks, both from the late game; one for the animal farms, the tailors and the tools joineries
-from the start. The builder reserve grows with the civilians past 60 (a sixteenth of them on hard). A
-cramped seat digs room with three extra wood and two extra stone collectors from the start, a standard
-one with two and one from game minute 10.
+the barracks, both from the late game; one for the animal farms, the tailors and the tools joinery once
+the builder reserve stands, and one for the handcarts' joinery ahead of it. The builder reserve grows
+with the civilians past 60 (a sixteenth of them on hard). A cramped seat digs room with three extra wood
+and two extra stone collectors from the start, a standard one with two and one from game minute 10.
 
 ## Military
 

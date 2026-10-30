@@ -752,12 +752,11 @@ describe('workforce module (collectResources)', () => {
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
     placeWorkshop(sim, JOINERY_TYPE);
-    // Four men for the first posts and the scout, then builders: one each for the joiner and his porter,
-    // two past the floor.
+    // Four men for the first posts and the scout, then builders: one for the joiner, two past the floor.
     // From the follow-sites clock, when every open site's shortage posts jump the reserve; the store is
     // empty, so wood and stone both want two.
     spawnMen(sim, 4);
-    spawnMen(sim, SHORTAGE_BUILDER_FLOOR + 4, BUILDER);
+    spawnMen(sim, SHORTAGE_BUILDER_FLOOR + 3, BUILDER);
     sim.step();
     const tick = BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS;
     expect(siteShortagePosts(AI_PROFILES.hard, tick)).toBe(2);
@@ -773,7 +772,7 @@ describe('workforce module (collectResources)', () => {
     const first = decide();
     expect(posted(first)).toEqual([MUD, STONE, WOOD]);
     expect(first.filter((c) => c.kind === 'setJob' && c.jobType === SCOUT)).toHaveLength(1);
-    expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR + 2); // the joiner and porter came out of them
+    expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR + 2); // the joiner came out of them
     expect(posted(decide())).toEqual([STONE, WOOD]); // the sites' first shortage posts: two builders go
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
     expect(posted(decide())).toEqual([]); // both still want one more, but not from the last four

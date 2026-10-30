@@ -1043,21 +1043,27 @@ describe('workforce module - the barracks, tailor, animal farm and joinery porte
     expect(hires(next)).toEqual([]);
   });
 
-  it('runs a porter at the animal farm and the tools joinery as a minimum post', () => {
+  it('runs a porter at the animal farm and the tools joinery at the target tier, behind the builders', () => {
     const farmSeat = seatOn(husbandryContent(), [ANIMAL_FARM_TYPE], BUILDER_CAP + SPARE_MEN);
     const farm = entityOfBuilding(farmSeat.sim, ANIMAL_FARM_TYPE);
-    expect(planOf(farmSeat, husbandryContent(), farm, crewOf(0))).toMatchObject({ carrierMin: 1 });
+    expect(planOf(farmSeat, husbandryContent(), farm, crewOf(0))).toMatchObject({
+      carrierMin: 0,
+      carrierTarget: 1,
+    });
     const joinerySeat = seatOn(aiContent(), [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
     const joinery = entityOfBuilding(joinerySeat.sim, JOINERY_TYPE);
-    expect(planOf(joinerySeat, aiContent(), joinery, crewOf(0))).toMatchObject({ carrierMin: 1 });
+    expect(planOf(joinerySeat, aiContent(), joinery, crewOf(0))).toMatchObject({
+      carrierMin: 0,
+      carrierTarget: 1,
+    });
   });
 
   it("makes a tunic seat's second upper tailor a minimum post", () => {
     const content = upperTailorContent();
     const seat = seatOn(content, [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
     const tailor = entityOfBuilding(seat.sim, JOINERY_TYPE);
-    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 1, carrierMin: 1 });
+    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 1, carrierTarget: 1 });
     seatEconomy(seat.sim, 'standard', ['naturalArms']);
-    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 2, carrierMin: 1 });
+    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 2, carrierTarget: 1 });
   });
 });
