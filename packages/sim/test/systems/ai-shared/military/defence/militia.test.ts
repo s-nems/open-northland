@@ -37,6 +37,7 @@ import {
   COMPUTER_DECISION_INTERVAL_TICKS,
   MILITARY_DECISION_PHASE,
 } from '../../../../../src/systems/computer-player/index.js';
+import { DEMOBILIZE_UNTIL_TICK } from '../../../../../src/systems/computer-player/workforce/demobilize.js';
 import { noteOffence } from '../../../../../src/systems/conflict/offenders.js';
 import { setAiControl } from '../../../../../src/systems/orders/ai.js';
 import { assignWorker } from '../../../../../src/systems/orders/work/employment.js';
@@ -165,6 +166,15 @@ function shelterFull(sim: Simulation, hq: Entity, people: readonly Entity[]): En
   return people.slice(HQ_SHELTER_ROOM);
 }
 
+/** The computer player turns the soldiers a seat holds at the start into builders, so a fixture keeping
+ *  its soldier spawns him once that window has passed and decides on a slot after it. */
+function pastStartSoldiers(sim: Simulation): void {
+  sim.run(DEMOBILIZE_UNTIL_TICK);
+}
+const LATE_DEFENCE_TICK =
+  DEFENCE_TICK +
+  Math.ceil(DEMOBILIZE_UNTIL_TICK / COMPUTER_DECISION_INTERVAL_TICKS) * COMPUTER_DECISION_INTERVAL_TICKS;
+
 function decide(sim: Simulation, tick = DEFENCE_TICK): void {
   settlementDefenceSystem(sim.world, { ...ctxOf(sim), tick });
 }
@@ -237,16 +247,17 @@ describe('computer defence - desperate militia', () => {
 
   it('arms nobody against a raid its soldiers roughly match, even with them already in the fight', () => {
     const { sim, hq } = town();
+    pastStartSoldiers(sim);
     control(sim, 'computer');
     const soldier = spawn(sim, SPEARMAN, HQ_AT.x, HQ_AT.y + 6, SEAT);
     shelterFull(sim, hq, crowd(sim, CROWD));
     const raider = raiderIn(sim);
 
-    decide(sim);
+    decide(sim, LATE_DEFENCE_TICK);
     expect(militia(sim)).toEqual([]);
 
     sim.world.add(soldier, AttackOrder, { target: raider });
-    decide(sim, DEFENCE_TICK + COMPUTER_DECISION_INTERVAL_TICKS);
+    decide(sim, LATE_DEFENCE_TICK + COMPUTER_DECISION_INTERVAL_TICKS);
     expect(militia(sim)).toEqual([]);
   });
 
@@ -448,12 +459,13 @@ describe('computer defence - scout chasers', () => {
 
   it('sends a free soldier at the scout instead, and arms nobody', () => {
     const { sim, hq } = town();
+    pastStartSoldiers(sim);
     control(sim, 'computer');
     const soldier = spawn(sim, SPEARMAN, HQ_AT.x, HQ_AT.y + 6, SEAT);
     crowd(sim, CROWD);
     const scout = scoutAt(sim, hq, RAIDER_OFFSET);
 
-    decide(sim);
+    decide(sim, LATE_DEFENCE_TICK);
 
     expect(militia(sim)).toEqual([]);
     expect(sim.world.get(soldier, AttackOrder).target).toBe(scout);

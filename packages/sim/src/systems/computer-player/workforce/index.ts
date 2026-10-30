@@ -52,6 +52,7 @@ import {
   wantedCollectorGoods,
 } from './collectors/index.js';
 import { tuneCraftCounters } from './craft.js';
+import { demobilizeStartSoldiers } from './demobilize.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import { foodHunters } from './food.js';
@@ -443,7 +444,10 @@ function allocateScout(
 export function workforceModule(order: BuildOrder): ComputerModule {
   return {
     id: 'collectResources',
-    run: (world, ctx, player) => runWorkforce(world, ctx, player, order),
+    run: (world, ctx, player) => [
+      ...demobilizeStartSoldiers(world, ctx, player, builderJobOf(ctx)),
+      ...runWorkforce(world, ctx, player, order),
+    ],
     everyDecisions: WORKFORCE_EVERY_DECISIONS,
   };
 }

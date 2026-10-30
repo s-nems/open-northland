@@ -3,8 +3,10 @@ import {
   AssistantRecruit,
   type AssistantRecruitIntent,
   AssistantWeaponVetoes,
+  aiControlEntity,
   Building,
   Carrying,
+  ComputerStrategy,
   computerModuleRuns,
   Equipment,
   Female,
@@ -32,9 +34,8 @@ import { networkLimitAt } from '../../signposts/index.js';
 import { seatStockOf } from '../../stores/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
-import { militaryWaits } from '../build-order/seat-order.js';
 import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
-import { BARRACKS_STANDS_BEFORE_TICKS } from '../military/deadline.js';
+import { BARRACKS_STANDS_BEFORE_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { militaryOrdersOf } from '../strategy/military.js';
@@ -72,6 +73,22 @@ export const ARMY_FLOOR_MIN = 2 * WAVE_MIN_SOLDIERS;
  *  stands (owner ruling: the army ready by the deadline). One wave gather window drafted 4-10 men by the end
  *  of a 60-minute peace on magiczny_las. */
 export const ARMY_FLOOR_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS;
+
+/** Whether the army floor still waits: the clock lies more than {@link ARMY_FLOOR_LEAD_TICKS} before the
+ *  seat's military deadline, which counts a forecast scripted attack, and no raid is on the settlement. A
+ *  defence put first by a forecast attack or a stronger enemy alone does not open the floor earlier (owner
+ *  ruling: until then the seat defends through its towers, hunters and the defensive mode, so start
+ *  soldiers turned builders are not drafted straight back). */
+function floorWaits(world: World, ctx: SystemContext, player: number): boolean {
+  return !underAttack(world, player) && beforeDeadlineLead(world, ctx, player, ARMY_FLOOR_LEAD_TICKS);
+}
+
+/** Whether the seat's last posture review found a raid on its settlement. */
+function underAttack(world: World, player: number): boolean {
+  const carrier = aiControlEntity(world, player);
+  const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
+  return military?.posture === 'defend' && military.evidence.includes('underAttack');
+}
 
 /** This decision's arming judgement, shared by the army floor and the draft so both read one answer. */
 export interface GarrisonArms {
@@ -149,8 +166,8 @@ const NO_CLAIM: ArmyFloorClaim = { men: [], commands: [] };
 
 /**
  * The army floor: once the seat's military deadline (`military/deadline.ts`) is within {@link
- * ARMY_FLOOR_LEAD_TICKS}, or its defence comes first (`build-order/seat-order.ts`), the seat keeps its profile's share of the fighters its
- * strongest enemy fields ({@link enemyInOwnMen}), scaled by its military plan and posture
+ * ARMY_FLOOR_LEAD_TICKS}, or a raid is on its settlement ({@link floorWaits}), the seat keeps its
+ * profile's share of the fighters its strongest enemy fields ({@link enemyInOwnMen}), scaled by its military plan and posture
  * (`strategy/military.ts`), never fewer than {@link ARMY_FLOOR_MIN} and never past a cap it drafts to. Its
  * fighters and the recruits already in drill count toward it, so only the missing men are claimed out of
  * `force`, which the ladder calls after the target-tier posts and ahead of the surplus ones: a seat staffs
@@ -171,7 +188,7 @@ export function claimArmyFloor(
 ): ArmyFloorClaim {
   const barracks = drillFloorOf(world, ctx, player);
   if (barracks === null) return NO_CLAIM;
-  if (militaryWaits(world, ctx, player, ARMY_FLOOR_LEAD_TICKS)) return NO_CLAIM;
+  if (floorWaits(world, ctx, player)) return NO_CLAIM;
   // The seat's own roster settles the draftable count before the enemies' rosters are walked.
   const surplus = arms.surplus();
   if (surplus <= 0) return NO_CLAIM;
