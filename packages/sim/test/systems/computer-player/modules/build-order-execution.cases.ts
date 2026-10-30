@@ -441,7 +441,7 @@ describe('build-order module (houseBuild)', () => {
     expect(at(2 * pause + 1)?.kind).toBe('placeBuilding');
   });
 
-  it('runs a reached lane beside the list: one site of its own, the rest of the clock to the list', () => {
+  it('runs a reached lane beside the list: on the hard profile its tower stands beyond the clock', () => {
     const laned = buildOrderModule(
       oneLine([
         { kind: 'place', building: 'work_farm_00', count: 1 },
@@ -475,12 +475,13 @@ describe('build-order module (houseBuild)', () => {
     });
     sim.step();
     expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: TOWER_TYPE });
-    // The late clock keeps four sites: the lane holds one, so the list still opens a third of its own
-    // beside the farm and the home, then stops at the clock's four.
+    // The late clock keeps four sites, all the list's: the tower stands beyond them, so the list opens two
+    // more homes beside the farm and the home, then stops at the clock's four.
     expect(placed().sort((a, b) => a - b)).toEqual([FARM_TYPE, HOME_TYPE, TOWER_TYPE].sort((a, b) => a - b));
     expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
+    expect(act()).toMatchObject({ kind: 'placeBuilding', buildingType: HOME_TYPE });
     expect(act()).toBeUndefined();
-    expect(placed()).toHaveLength(sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS).sites);
+    expect(placed()).toHaveLength(sitePace(AI_PROFILES.hard, LATE_GAME_FROM_TICKS).sites + 1);
   });
 
   it("raises a line's tower ring one site at a time", () => {
