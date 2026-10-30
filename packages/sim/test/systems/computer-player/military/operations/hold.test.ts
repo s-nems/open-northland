@@ -157,6 +157,18 @@ function band(sim: Simulation, count: number, at: { x: number; y: number }, owne
   return [...sim.world.query(Settler)].filter((e) => !before.has(e));
 }
 
+/** Gives `player` machine identity with only its map AI on: no computer controller runs it. */
+function mapAiSeat(sim: Simulation, player: number): void {
+  const carrier = sim.world.create();
+  sim.world.add(carrier, AiControl, {
+    player,
+    computerEnabled: false,
+    modules: computerModuleEnables(),
+    mapAiEnabled: true,
+    difficulty: 'hard',
+  });
+}
+
 function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPosture): void {
   let carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null) {
@@ -272,12 +284,20 @@ describe('hold operations', () => {
   });
 
   it('weighs a guardian starting in the area with his whole army, and never as a threat to the home', () => {
-    const { sim } = holdWorld((at) => place(at, HQ_TYPE, { x: CENTRE.hx, y: CENTRE.hy + RANGE }, FOE));
+    const { sim } = holdWorld((at) => {
+      mapAiSeat(at, FOE);
+      place(at, HQ_TYPE, { x: CENTRE.hx, y: CENTRE.hy + RANGE }, FOE);
+    });
     // His army stands far from the area, out of the watch margin.
     band(sim, ARMY, { x: 110, y: 88 }, FOE);
     expect([...stayingGuardians(sim.world, ctxOf(sim, LOOK), SEAT)]).toEqual([FOE]);
     decide(sim, LOOK);
     expect(holds(sim)).toEqual([]);
+  });
+
+  it('never counts a human seat starting in the area as a guardian that stays', () => {
+    const { sim } = holdWorld((at) => place(at, HQ_TYPE, { x: CENTRE.hx, y: CENTRE.hy + RANGE }, FOE));
+    expect([...stayingGuardians(sim.world, ctxOf(sim, LOOK), SEAT)]).toEqual([]);
   });
 
   it('leaves an area a friend already holds to him', () => {

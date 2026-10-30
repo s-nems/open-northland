@@ -308,6 +308,7 @@ function draftCeiling(profile: ComputerProfile, capShare: Share, wanted: number)
  *  points, so a better-armed seat needs fewer; his head count while the seat has no army or knows no
  *  points. */
 function enemyInOwnMen(world: World, ctx: SystemContext, player: number): number {
+  // Staying guardians count here, unlike in the posture: a hold on their area needs men past their army.
   const enemy = strongestBelievedEnemy(world, ctx, player);
   if (enemy.points === null) return enemy.men;
   const own = ownArmyPoints(world, ctx, player);

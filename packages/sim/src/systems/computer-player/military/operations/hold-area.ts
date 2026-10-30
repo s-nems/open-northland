@@ -1,6 +1,7 @@
 import {
   computerControllerRuns,
   diplomacyStance,
+  isMachinePlayer,
   MAX_PLAYERS,
   mapBriefOf,
 } from '../../../../components/index.js';
@@ -103,15 +104,15 @@ function areaGuardians(world: World, area: IntentArea): Set<number> {
 }
 
 /**
- * The guardians of the area `seat` wins by holding that never leave it: no computer player runs them and
- * their map program names no attack. Such a seat threatens a band in the area, never the seat's home.
+ * The guardians of the area `seat` wins by holding that never leave it: map-AI seats no computer player
+ * runs whose map program names no attack. A human guardian may walk anywhere, so he never stays. Such a seat threatens a band in the area, never the seat's home.
  */
 export function stayingGuardians(world: World, ctx: SystemContext, seat: number): ReadonlySet<number> {
   const area = holdAreaOf(ctx, seat);
   if (area === null) return NO_SEATS;
   const staying = new Set<number>();
   for (const guardian of areaGuardians(world, area)) {
-    if (computerControllerRuns(world, guardian)) continue;
+    if (!isMachinePlayer(world, guardian) || computerControllerRuns(world, guardian)) continue;
     const program = ctx.mapAiScript?.find((s) => s.player === guardian);
     if (program?.tasks.some((task) => task.kind === 'attack')) continue;
     staying.add(guardian);
