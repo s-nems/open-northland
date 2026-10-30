@@ -1,5 +1,5 @@
 import { LATE_GAME_FROM_TICKS, LATE_LATE_GAME_SETTLERS } from '../game-phase.js';
-import { BARRACKS_LEAD_TICKS, TOWER_LEAD_TICKS } from '../military/deadline.js';
+import { BARRACKS_LEAD_TICKS, UPPER_TOWER_LEAD_TICKS } from '../military/deadline.js';
 import type { BuildLine, BuildOrderEntry } from './entries.js';
 
 /** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
@@ -47,7 +47,7 @@ export const MILITARY_LINE: BuildLine = {
       kind: 'towerCoverage',
       building: 'tower_00',
       lane: true,
-      holdUntil: { kind: 'deadline', leadTicks: TOWER_LEAD_TICKS },
+      holdUntil: { kind: 'deadline', leadTicks: UPPER_TOWER_LEAD_TICKS },
     },
     // On the settlement's edge toward the nearest enemy, where the attacks come from; the barracks also
     // holds the line in defence.

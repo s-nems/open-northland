@@ -33,6 +33,11 @@ export const BARRACKS_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS + BARRACKS_SITE_
  *  ring opening at this lead stands about as the peace ends. */
 export const TOWER_LEAD_TICKS = minutesToTicks(20);
 
+/** {@link TOWER_LEAD_TICKS} for a ring that rises at the upper tier, a seat whose attacks come late
+ *  (`build-order/direct-tier.ts`; measured): on magiczny_las under a 60-minute peace upper towers placed at
+ *  minute 40 stood at minutes 59-69, one seat's not by minute 90. */
+export const UPPER_TOWER_LEAD_TICKS = minutesToTicks(30);
+
 /** The tick `seat`'s peace ends for its planning: the lobby peace binding it ({@link seatPeaceEndTick}),
  *  else {@link ASSUMED_PEACE_TICKS}. Unlike `seatPeaceEndTick`, whose 0 lets a seat without a peace march
  *  at once, this is when the seat must be ready. */

@@ -153,11 +153,12 @@ and two extra stone collectors from the start, a standard one with two and one f
 
 Each seat has a military deadline (`military/deadline.ts`): the end of its lobby peace, 60 minutes
 without one, or the first forecast scripted attack, whichever comes first. The barracks waits until 22
-minutes before it, so it stands about 15 minutes ahead, the first tower ring until 20 minutes before, the
-army floor drafts from 15 minutes before. A seat whose defence comes first raises its barracks and towers
-at once; its army floor still waits for its lead unless the seat is under attack. A seat that starts with
-soldiers and no barracks turns them all into builders in its first game minute (owner ruling: they build
-more, and defend as hunters and in defensive mode).
+minutes before it, so it stands about 15 minutes ahead, the first tower ring until 30 minutes before (it
+rises at the upper tier where attacks come late), the army floor drafts from 15 minutes before. A seat
+whose defence comes first raises its barracks and towers at once; its army floor still waits for its
+lead unless the seat is under attack. A seat that starts with soldiers and no barracks turns them all
+into builders in its first game minute (owner ruling: they build more, and defend as hunters and in
+defensive mode).
 
 The tower ring is a lane, two sites at a time, three while the seat's defence comes first, standing
 beyond the site clock on hard. Where attacks come before game minute 60 it raises the cheap lower tier
