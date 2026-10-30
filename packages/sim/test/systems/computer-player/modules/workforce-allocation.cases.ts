@@ -4,6 +4,7 @@ import {
   aiControlEntity,
   CurrentAtomic,
   type EconomicArchetype,
+  type EconomicSide,
   Marriage,
   Position,
   ReplantMisses,
@@ -1186,6 +1187,40 @@ describe('workforce module (collectResources)', () => {
     const iron = wantedRow(sim, ctx, IRON, entry);
     expect(iron?.target).toBe(3); // the entry's one, one grown, one for the shortage
     expect(iron?.min).toBe(1);
+  });
+
+  it("fills an iron-arms seat's planned iron posts ahead of the reserve, its shortage posts after", () => {
+    const content = workshopContent();
+    const ironRow = (sides: EconomicSide[]): WantedGood | undefined => {
+      const sim = aiSim(1, content);
+      const ctx = { ...ctxOf(sim), content };
+      placeHq(sim);
+      placeWorkshop(sim, SMITHY_TYPE);
+      sim.step();
+      seatEconomy(sim, 'rich', sides);
+      return wantedRow(sim, ctx, IRON, [{ kind: 'collector', good: 'iron', count: 1 }]);
+    };
+    // The entry's one and the smithy crew's one stand ahead of the reserve; the shortage post waits.
+    expect(ironRow(['ironArms'])).toMatchObject({ target: 3, min: 2 });
+    // A seat with little iron keeps every post past the first behind the reserve.
+    expect(ironRow(['ironWeapons'])).toMatchObject({ target: 3, min: 1 });
+  });
+
+  it("leaves the iron on an iron-arms seat's smithy shelves out of the surplus its posts read", () => {
+    const content = workshopContent();
+    const ironRow = (sides: EconomicSide[]): WantedGood | undefined => {
+      const sim = aiSim(1, content);
+      const ctx = { ...ctxOf(sim), content };
+      placeHq(sim);
+      placeWorkshop(sim, SMITHY_TYPE);
+      sim.step();
+      seatEconomy(sim, 'rich', sides);
+      stockAt(sim, ctx, IRON, 'comfort', 0);
+      return wantedRow(sim, ctx, IRON, [{ kind: 'collector', good: 'iron', count: 1 }]);
+    };
+    // At the comfort line the smithy crew's post drops; a full shelf of it is the smithy's, not stock.
+    expect(ironRow(['ironWeapons'])).toMatchObject({ target: 1, min: 1 });
+    expect(ironRow(['ironArms'])).toMatchObject({ target: 2, min: 2 });
   });
 
   it("never governs a reached entry's gatherers below its count", () => {

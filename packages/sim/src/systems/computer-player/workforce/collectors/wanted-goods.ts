@@ -5,6 +5,7 @@ import {
   Building,
   ComputerStrategy,
   type EconomicArchetype,
+  type EconomicSide,
   JobAssignment,
   Settler,
   StalledPlacements,
@@ -14,7 +15,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import { goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../../ai-shared/seat-roster.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
@@ -27,6 +28,7 @@ import {
   type LineStatuses,
   sitePace,
 } from '../../build-order/index.js';
+import { seatHasSide } from '../../build-order/seat-order.js';
 import { type ComputerProfile, computerProfileOf } from '../../difficulty.js';
 import {
   BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS,
@@ -110,10 +112,19 @@ function seatDigging(world: World, player: number): DiggingShare | null {
  * wood up on magiczny_las, mushrooms and clay elsewhere): dropped at the good's glut line and taken back
  * under its comfort line, `held` telling whether its men work them now. A good without supply lines keeps
  * them. The consuming workshops' posts and, unless the seat digs whatever the stock, the schedule's read it.
+ * The surplus leaves out the `shelved` units ({@link consumerShelfUnits}).
  */
-function keptExtraPosts(supply: SeatSupply, goodType: number, posts: number, held: boolean): number {
-  if (posts === 0 || supply.lines(goodType) === undefined) return posts;
-  return supply.isUnder(goodType, held ? 'glut' : 'comfort') ? posts : 0;
+function keptExtraPosts(
+  supply: SeatSupply,
+  goodType: number,
+  posts: number,
+  held: boolean,
+  shelved: number,
+): number {
+  const lines = supply.lines(goodType);
+  const surplus = supply.surplus(goodType);
+  if (posts === 0 || lines === undefined || surplus === undefined) return posts;
+  return surplus - shelved < lines[held ? 'glut' : 'comfort'] ? posts : 0;
 }
 
 /** The goods whose standing resource takes ground a building could use, by stable content id, the one
@@ -220,6 +231,50 @@ export function farGroundExtras(
   return Math.min(MAX_CLEARING_COLLECTORS, Math.max(0, extras));
 }
 
+/**
+ * The goods whose planned posts a seat of each side fills ahead of the builder reserve, by stable content
+ * id (owner ruling: an iron-rich seat dresses its army in plate and chain from four to six upper smithies).
+ * On magiczny_las, seed 7, such seats held one iron gatherer each to minute 90 while eight to twelve smiths
+ * stood, since the consumers' posts waited behind the reserve as best-effort top-ups, and those take only
+ * spare men who have already earned iron's dig experience. As minimum posts they take a
+ * collect-anything gatherer, a qualified spare or a stone or clay veteran, one per decision, and the
+ * {@link SHORTAGE_BUILDER_FLOOR} still keeps the builders. The shortage posts stay best-effort.
+ */
+export const FED_AHEAD_GOOD_IDS_BY_SIDE: Readonly<Partial<Record<EconomicSide, readonly string[]>>> = {
+  ironArms: ['iron'],
+};
+
+/** Whether `player`'s seat fills `goodId`'s planned posts ahead of the reserve
+ *  ({@link FED_AHEAD_GOOD_IDS_BY_SIDE}). */
+function fedAhead(world: World, player: number, goodId: string): boolean {
+  for (const [side, goods] of Object.entries(FED_AHEAD_GOOD_IDS_BY_SIDE) as [
+    EconomicSide,
+    readonly string[],
+  ][]) {
+    if (goods.includes(goodId) && seatHasSide(world, player, side)) return true;
+  }
+  return false;
+}
+
+/**
+ * The units of `goodType` the input shelves of the seat's built workshops consuming it hold when full. The
+ * seat's stock counts what lies on those shelves, so for a {@link FED_AHEAD_GOOD_IDS_BY_SIDE} good they are
+ * left out of the surplus its posts read: on magiczny_las, seed 7, four upper smithies with a joinery and a
+ * mint shelve some 70 iron, and a stock of 30-40 there meant empty stores, yet it sat over the comfort line
+ * of one shelf and dropped the smithies' gatherer posts.
+ */
+function consumerShelfUnits(world: World, ctx: SystemContext, player: number, goodType: number): number {
+  const index = contentIndex(ctx.content);
+  let units = 0;
+  for (const e of ownedBuildings(world, player)) {
+    if (!isBuilt(world, e)) continue;
+    const typeId = world.get(e, Building).buildingType;
+    const consumes = index.mergedRecipeByBuilding.get(typeId)?.inputs.some((i) => i.goodType === goodType);
+    if (consumes === true) units += index.stockSlotCapacityByBuilding.get(typeId)?.get(goodType) ?? 0;
+  }
+  return units;
+}
+
 /** A wanted collector good with its resolved gatherer trade, harvest atomic, and staffing target. */
 export interface WantedGood {
   readonly good: ContentSet['goods'][number];
@@ -227,8 +282,9 @@ export interface WantedGood {
   readonly job: number;
   readonly target: number;
   /** How many of the target's posts are filled ahead of the builder reserve, one per decision: the first,
-   *  a building good's whole {@link COLLECTOR_TARGET_BY_GOOD_ID} row, and every one while a good the sites
-   *  build with ({@link COLLECTED_GOOD_IDS}) runs short from {@link BUILDING_GOODS_GROW_FROM_TICKS} on. */
+   *  a building good's whole {@link COLLECTOR_TARGET_BY_GOOD_ID} row, every one while a good the sites
+   *  build with ({@link COLLECTED_GOOD_IDS}) runs short from {@link BUILDING_GOODS_GROW_FROM_TICKS} on,
+   *  and the planned posts of a {@link FED_AHEAD_GOOD_IDS_BY_SIDE} good. */
   readonly min: number;
   /** The posts held whatever the stock: the good's fixed row, else its reached entries' count, at least
    *  {@link DEFAULT_COLLECTOR_TARGET}. */
@@ -308,26 +364,30 @@ export function wantedCollectorGoods(
     const fixed = COLLECTOR_TARGET_BY_GOOD_ID[goodId];
     const entryCount = entryCounts.get(goodId) ?? 0;
     const base = fixed ?? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount);
+    const fed = fixed === undefined && fedAhead(world, player, goodId);
+    const shelved = fed ? consumerShelfUnits(world, ctx, player, good.typeId) : 0;
     let consumerPosts = fixed === undefined ? Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER) : 0;
     let scheduled = extraGatherers(goodId, ctx.tick, digging);
     if (consumerPosts + scheduled > 0) {
       holdersByGood ??= flagHoldersByGood(world, ctx, player);
       const held = (holdersByGood.get(good.typeId) ?? 0) > base;
-      consumerPosts = keptExtraPosts(supply, good.typeId, consumerPosts, held);
-      if (digging?.whateverStock !== true) scheduled = keptExtraPosts(supply, good.typeId, scheduled, held);
+      consumerPosts = keptExtraPosts(supply, good.typeId, consumerPosts, held, shelved);
+      if (digging?.whateverStock !== true)
+        scheduled = keptExtraPosts(supply, good.typeId, scheduled, held, shelved);
     }
     let target = Math.max(base + consumerPosts + scheduled, entryCount);
+    const planned = target;
     const sitePosts =
       (fixed === undefined ? 0 : siteShortagePosts(profile, ctx.tick)) +
       (good.typeId === roadGood ? roadShortagePosts(world, ctx, player) : 0);
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
     // A building good's row stands whole before the reserve (authored): the standard one gatherer
     // each is what a seat of fifteen men keeps in its first minutes, its other men building.
-    let min = fixed ?? 1;
+    let min = fixed ?? (fed ? planned : 1);
     if (mostExtra > 0) {
       holdersByGood ??= flagHoldersByGood(world, ctx, player);
       const heldExtra = Math.max(0, (holdersByGood.get(good.typeId) ?? 0) - target);
-      const extra = shortageGatherers(supply, good.typeId, heldExtra, mostExtra, phase);
+      const extra = shortageGatherers(supply, good.typeId, heldExtra, mostExtra, phase, shelved);
       if (extra > 0) {
         target += extra;
         // Iron or gold running short idles the smiths, not the builders, so its posts wait behind the
@@ -354,6 +414,7 @@ export function wantedCollectorGoods(
  * opening, then comfort and glut from the mid game, when the seat hoards its building goods. From the
  * growth clock a building good's posts are filled ahead of the builder reserve, since a settlement with
  * no stone to build with has no use for builders; before it they wait behind the reserve like any extra.
+ * The surplus leaves out the `shelved` units ({@link consumerShelfUnits}).
  */
 function shortageGatherers(
   supply: SeatSupply,
@@ -361,10 +422,12 @@ function shortageGatherers(
   heldExtra: number,
   mostExtra: number,
   phase: GamePhase,
+  shelved: number,
 ): number {
   const lines = supply.lines(goodType);
-  const surplus = supply.surplus(goodType);
-  if (lines === undefined || surplus === undefined) return 0;
+  const stocked = supply.surplus(goodType);
+  if (lines === undefined || stocked === undefined) return 0;
+  const surplus = stocked - shelved;
   const opening = phase === 'opening';
   const hireLine = opening ? lines.short : lines.comfort;
   const holdLine = opening ? lines.comfort : lines.glut;

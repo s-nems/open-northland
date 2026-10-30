@@ -22,6 +22,7 @@ export {
   EXTRA_GATHERERS_BY_GOOD_ID,
   type ExtraPostsStep,
   extraGatherers,
+  FED_AHEAD_GOOD_IDS_BY_SIDE,
   farGroundExtras,
   GENERIC_COLLECTOR_TARGET,
   MAX_CLEARING_COLLECTORS,
