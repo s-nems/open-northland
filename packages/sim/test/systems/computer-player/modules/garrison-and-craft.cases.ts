@@ -327,6 +327,8 @@ function rivalSeat(
   seat.sim.enqueueSetup({ kind: 'setPeaceTime', untilTick: peaceUntil, players: [SEAT] });
   setup?.(seat.sim);
   seat.sim.step();
+  // A roomy seat opens no digging posts, so the spare men read here go to the floor alone.
+  seatEconomy(seat.sim, 'rich');
   const carrier = aiControlEntity(seat.sim.world, SEAT);
   if (carrier === null) throw new Error('setup: no AI seat');
   // The floor read plain: a posture that holds the army home keeps more (`strategy/military.ts`).
