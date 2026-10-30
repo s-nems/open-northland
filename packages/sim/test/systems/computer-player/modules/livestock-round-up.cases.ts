@@ -22,6 +22,7 @@ import {
   plantPost,
   SCOUT,
   SEAT,
+  STOCK_TYPE,
   spawnMen,
   VIKING,
   WOMAN,
@@ -34,6 +35,10 @@ const guideBuild = scoutModule(DEFAULT_BUILD_ORDER);
 
 /** A lobby peace still holding through every decision these cases run. */
 const PEACE_UNTIL = 1000;
+
+/** More lattice posts than an outpost one catch radius out can ask for, so a lattice bug fails the case
+ *  instead of looping. */
+const LATTICE_POSTS_CAP = 20;
 
 describe('scout module (guideBuild) - the livestock round-up', () => {
   const CENTER = { x: 128, y: 128 };
@@ -85,6 +90,31 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     const sim = tiledSim();
     placeAnimal(sim, CENTER.x + SCOUT_CATCH_RADIUS_NODES + 1, CENTER.y);
     expect([...guideBuild.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
+  it('reaches out from an outlying building as the settlement grows', () => {
+    const sim = tiledSim();
+    const outpost = { x: CENTER.x + SCOUT_CATCH_RADIUS_NODES, y: CENTER.y };
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: STOCK_TYPE,
+      ...outpost,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+    });
+    sim.step();
+    const beside = { x: outpost.x + 10, y: outpost.y };
+    placeAnimal(sim, beside.x, beside.y);
+
+    // The lattice reaches out to the new building first; stand its posts so the scout drops to the round-up.
+    let order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
+    for (let posts = 0; order?.kind === 'placeSignpost' && posts < LATTICE_POSTS_CAP; posts++) {
+      plantPost(sim, positionOfNode(order.x, order.y));
+      order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
+    }
+    if (order?.kind !== 'moveUnit') throw new Error('expected a round-up walk');
+    expect({ x: order.x, y: order.y }).toEqual(beside);
   });
 
   it('skips an animal sealed away from the settlement, and retires the scout for it', () => {
