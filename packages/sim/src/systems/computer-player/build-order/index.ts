@@ -228,7 +228,7 @@ function runBuildOrder(
   const terrain = ctx.terrain;
   if (terrain === undefined) return [];
   const profile = computerProfileOf(world, player);
-  const order = seatBuildOrder(world, player, ctx.tick, fullOrder, profile);
+  const order = seatBuildOrder(world, ctx, player, fullOrder, profile);
   const owned = ownedBuildings(world, player);
   const base = seatBaseOf(world, ctx, player);
   const sites = constructionSites(world, ctx, owned);
@@ -251,7 +251,7 @@ function runBuildOrder(
   // A tower site opens only while the seat's men can staff one more site: the lines' and the homes'
   // sites come first on a seat of few men.
   const crewRoom = sites.length < crewSiteCap(world, ctx, player);
-  const ringOpen = apartRing && crewRoom && ringSites < towerRingSites(world, player);
+  const ringOpen = apartRing && crewRoom && ringSites < towerRingSites(world, ctx, player);
   // The home sites past the lane's first and the ring's tower sites stand beyond the clock's, so the
   // lines never count them.
   const paced = sites.length - homeSites.beyond - ringSites;
@@ -344,8 +344,8 @@ function runBuildOrder(
     if (entry.kind === 'housing') {
       if (!homeSites.open) continue;
     } else if (apartRing && entry.kind === 'towerCoverage') {
-      if (lane.sites >= coverageLaneSites(world, player, entry)) continue;
-    } else if (earnedOnly || !laneSiteOpen(world, player, entry, lane.sites, paced, siteCap)) continue;
+      if (lane.sites >= coverageLaneSites(world, ctx, player, entry)) continue;
+    } else if (earnedOnly || !laneSiteOpen(world, ctx, player, entry, lane.sites, paced, siteCap)) continue;
     if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
     if (entry.kind === 'housing') {
       if (housingGateOf() === 'closed') continue;
@@ -499,7 +499,7 @@ function runBuildOrder(
   for (const line of lines)
     if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
   const gated = lockHolds && tribe !== undefined ? technologyTable(ctx.content, tribe) : null;
-  const defending = seatDefenceFirst(world, player);
+  const defending = seatDefenceFirst(world, ctx, player);
   const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated, defending);
   for (const { line, turn } of byTurn) {
     if (earnedOnly && turn !== TURN.earned) continue;
@@ -783,6 +783,7 @@ function openLanes(
  *  {@link coverageLaneSites} while the seat's `paced` sites still leave the lines one of the `siteCap`. */
 function laneSiteOpen(
   world: World,
+  ctx: SystemContext,
   player: number,
   entry: Extract<OpenLane['entry'], { kind: 'towerCoverage' | 'storeCoverage' }>,
   own: number,
@@ -790,7 +791,7 @@ function laneSiteOpen(
   siteCap: number,
 ): boolean {
   if (own === 0) return true;
-  return own < coverageLaneSites(world, player, entry) && paced + 1 < siteCap;
+  return own < coverageLaneSites(world, ctx, player, entry) && paced + 1 < siteCap;
 }
 
 /** The housing lane's next site ({@link housingPick}) as a command, or null when it has none. */
@@ -856,7 +857,7 @@ function coverageCommand(
   if (base === undefined) return null; // unreachable after 'skip', kept for the type system
   if (!buildingEnabled(world, ctx, player, tribe, base.typeId)) return null;
   const type = directTier(world, ctx, player, owned, tribe, entry, made) ?? base;
-  const coverage = coverageOf(world, player, entry);
+  const coverage = coverageOf(world, ctx, player, entry);
   const spotFor = coverageSpotSearch(
     world,
     ctx,

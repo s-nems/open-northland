@@ -71,6 +71,12 @@ const FORECAST: MilitaryStrategyState = {
   threatInTicks: 0,
 };
 
+const OUTMATCHED: MilitaryStrategyState = {
+  ...BUILDING_UP,
+  posture: 'defend',
+  evidence: ['outmatched', 'noTarget'],
+};
+
 /** A seat whose strategy step has run once, its record then overwritten with `economy` and `military`. */
 function seatWith(
   economy: Partial<EconomicStrategyState>,
@@ -94,8 +100,8 @@ function firstCommand(sim: Simulation, order: BuildOrder) {
 
 describe('the seat strategy shapes the build order', () => {
   it('raises the army line over a later economy step while a scripted attack is forecast', () => {
-    expect(defenceFirst(BUILDING_UP)).toBe(false);
-    expect(defenceFirst(FORECAST)).toBe(true);
+    expect(defenceFirst(BUILDING_UP, true)).toBe(false);
+    expect(defenceFirst(FORECAST, false)).toBe(true);
     const shape = { archetype: 'standard', sides: ECONOMIC_SIDES, phase: 'opening' } as const;
     const rank = (order: BuildOrder, id: string) =>
       linesByPriority(order).findIndex((line) => line.id === id);
@@ -122,6 +128,12 @@ describe('the seat strategy shapes the build order', () => {
     expect(firstCommand(seatWith({ archetype: 'standard' }, FORECAST), order)).toMatchObject({
       buildingType: BARRACKS_TYPE,
     });
+  });
+
+  it('keeps the economy first against a stronger enemy until the deadline nears or a raid lands', () => {
+    expect(defenceFirst(OUTMATCHED, false)).toBe(false);
+    expect(defenceFirst(OUTMATCHED, true)).toBe(true);
+    expect(defenceFirst({ ...OUTMATCHED, evidence: ['underAttack', 'outmatched'] }, false)).toBe(true);
   });
 
   it('drops the smithies and the iron gatherer from a seat arming without iron', () => {
@@ -294,13 +306,13 @@ describe('the seat strategy shapes the build order', () => {
     const towers = { kind: 'towerCoverage', building: 'tower_01' } as const;
     for (const plan of ['defensive', 'aggressive', 'balanced'] as const) {
       const sim = seatWith({}, { plan, posture: 'attack', evidence: ['ratioReached'] });
-      expect(coverageOf(sim.world, SEAT, towers).radius).toBe(
+      expect(coverageOf(sim.world, ctxOf(sim), SEAT, towers).radius).toBe(
         Math.floor((TOWER_DEFENCE_RADIUS_NODES * PLAN_TUNING[plan].towerRadiusPct) / 100),
       );
     }
     // Denser again while a forecast attack puts the defence first.
     const braced = seatWith({}, FORECAST);
-    expect(coverageOf(braced.world, SEAT, towers)).toEqual({
+    expect(coverageOf(braced.world, ctxOf(braced), SEAT, towers)).toEqual({
       by: 'tower',
       radius: Math.floor((TOWER_DEFENCE_RADIUS_NODES * DEFENCE_TOWER_RADIUS_PCT) / 100),
       baseCovers: false,

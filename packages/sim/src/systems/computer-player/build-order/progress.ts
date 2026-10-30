@@ -241,7 +241,9 @@ export function entryStatus(
     case 'storeCoverage': {
       const type = buildingTypeByContentId(ctx.content, entry.building);
       if (type === undefined) return 'skip';
-      return seatCovered(world, ctx, player, owned, coverageOf(world, player, entry)) ? 'satisfied' : 'unmet';
+      return seatCovered(world, ctx, player, owned, coverageOf(world, ctx, player, entry))
+        ? 'satisfied'
+        : 'unmet';
     }
     case 'housing': {
       const type = buildingTypeByContentId(ctx.content, entry.building);

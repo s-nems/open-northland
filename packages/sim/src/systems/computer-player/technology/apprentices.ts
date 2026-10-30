@@ -132,13 +132,7 @@ export function seatApprenticeViews(
   player: number,
 ): readonly ApprenticeView[] {
   if (seatBaseOf(world, ctx, player) === null) return [];
-  const order = seatBuildOrder(
-    world,
-    player,
-    ctx.tick,
-    DEFAULT_BUILD_ORDER,
-    computerProfileOf(world, player),
-  );
+  const order = seatBuildOrder(world, ctx, player, DEFAULT_BUILD_ORDER, computerProfileOf(world, player));
   const statuses = lineStatuses(world, ctx, player, ownedBuildings(world, player), order);
   const missing = missingDiscoveries(world, ctx, player, order, statuses);
   const picked = pickApprentices(world, ctx, player, missing);

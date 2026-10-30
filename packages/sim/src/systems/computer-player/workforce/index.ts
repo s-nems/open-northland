@@ -118,7 +118,7 @@ function runWorkforce(
   fullOrder: BuildOrder,
 ): readonly PlayerCommand[] {
   const profile = computerProfileOf(world, player);
-  const order = seatBuildOrder(world, player, ctx.tick, fullOrder, profile);
+  const order = seatBuildOrder(world, ctx, player, fullOrder, profile);
   const builderJob = builderJobOf(ctx);
   const base = seatBaseOf(world, ctx, player);
   if (base === null) return rebuildCrew(world, ctx, player, order, profile, builderJob);

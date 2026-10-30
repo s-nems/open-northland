@@ -214,11 +214,14 @@ const PHASE_RAISES: Readonly<Record<GamePhase, readonly BuildLineId[]>> = {
 export const DEFENCE_LINES: readonly BuildLineId[] = ['military', 'weapons', 'armory'];
 
 /** Whether the seat's defence lines go ahead of its economy's later steps and its military steps stop
- *  waiting on the deadline: while it defends, prepares against a forecast attack, or knows one within the
- *  barracks' lead ({@link BARRACKS_LEAD_TICKS}), the one clock its military buildings keep. A seat that
- *  prepares only because it is still building up keeps its economy first. */
-export function defenceFirst(military: DeepReadonly<MilitaryStrategyState>): boolean {
-  if (military.posture === 'defend') return true;
+ *  waiting on the deadline: while it fights off a raid, prepares against a forecast attack, knows one
+ *  within the barracks' lead ({@link BARRACKS_LEAD_TICKS}), the one clock its military buildings keep, or
+ *  defends against a stronger enemy once `deadlineNear` (the clock within that lead of its military
+ *  deadline). Owner ruling, food before arms: a stronger enemy the peace still holds off leaves the economy
+ *  first. A seat that prepares only because it is still building up keeps its economy first. */
+export function defenceFirst(military: DeepReadonly<MilitaryStrategyState>, deadlineNear: boolean): boolean {
+  if (military.posture === 'defend' && (deadlineNear || military.evidence.includes('underAttack')))
+    return true;
   if (military.posture === 'prepare' && military.evidence.includes('forecastThreat')) return true;
   return military.threatInTicks !== null && military.threatInTicks <= BARRACKS_LEAD_TICKS;
 }
@@ -226,7 +229,7 @@ export function defenceFirst(military: DeepReadonly<MilitaryStrategyState>): boo
 /** Whether `player`'s seat still waits on what it needs ready `leadTicks` before its military deadline
  *  (`../military/deadline.ts`): the clock has not reached the lead and its defence does not come first. */
 export function militaryWaits(world: World, ctx: SystemContext, player: number, leadTicks: number): boolean {
-  return !seatDefenceFirst(world, player) && beforeDeadlineLead(world, ctx, player, leadTicks);
+  return !seatDefenceFirst(world, ctx, player) && beforeDeadlineLead(world, ctx, player, leadTicks);
 }
 
 /** How dense the tower ring stands while the seat's defence comes first, in percent of its plan's radius
@@ -235,10 +238,15 @@ export function militaryWaits(world: World, ctx: SystemContext, player: number, 
 export const DEFENCE_TOWER_RADIUS_PCT = 60;
 
 /** {@link defenceFirst} for `player`'s seat; false before its strategy is decided. */
-export function seatDefenceFirst(world: World, player: number): boolean {
+export function seatDefenceFirst(world: World, ctx: SystemContext, player: number): boolean {
   const carrier = aiControlEntity(world, player);
   const strategy = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
-  return strategy !== undefined && defenceFirst(strategy.military);
+  return strategy !== undefined && defenceFirst(strategy.military, deadlineNear(world, ctx, player));
+}
+
+/** Whether the clock stands within the barracks' lead of `player`'s military deadline. */
+function deadlineNear(world: World, ctx: SystemContext, player: number): boolean {
+  return !beforeDeadlineLead(world, ctx, player, BARRACKS_LEAD_TICKS);
 }
 
 /** The inputs a seat's build order is shaped by. */
@@ -354,12 +362,12 @@ export function seatHasSide(world: World, player: number, side: EconomicSide): b
   return strategy?.economy.sides.includes(side) ?? false;
 }
 
-/** The build order `player`'s seat plays at `tick`: `order` shaped by its strategy, then trimmed by its
+/** The build order `player`'s seat plays now: `order` shaped by its strategy, then trimmed by its
  *  difficulty `profile`. A seat with no strategy decided yet plays the order with every side's steps. */
 export function seatBuildOrder(
   world: World,
+  ctx: SystemContext,
   player: number,
-  tick: number,
   order: BuildOrder,
   profile: ComputerProfile,
 ): BuildOrder {
@@ -371,8 +379,8 @@ export function seatBuildOrder(
       : shapeBuildOrder(order, {
           archetype: strategy.economy.archetype,
           sides: strategy.economy.sides,
-          phase: gamePhase(tick),
-          defenceFirst: defenceFirst(strategy.military),
+          phase: gamePhase(ctx.tick),
+          defenceFirst: defenceFirst(strategy.military, deadlineNear(world, ctx, player)),
         });
   return profileBuildOrder(shaped, profile);
 }

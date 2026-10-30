@@ -62,6 +62,7 @@ export interface Coverage {
  *  count as a tower, so a compact settlement still raises towers before a forecast attack. */
 export function coverageOf(
   world: World,
+  ctx: SystemContext,
   player: number,
   entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
 ): Coverage {
@@ -69,7 +70,7 @@ export function coverageOf(
   const planned = Math.floor(
     ((entry.radius ?? TOWER_DEFENCE_RADIUS_NODES) * militaryOrdersOf(world, player).towerRadiusPct) / 100,
   );
-  if (!seatDefenceFirst(world, player)) return { by: 'tower', radius: planned, baseCovers: true };
+  if (!seatDefenceFirst(world, ctx, player)) return { by: 'tower', radius: planned, baseCovers: true };
   return { by: 'tower', radius: Math.floor((planned * DEFENCE_TOWER_RADIUS_PCT) / 100), baseCovers: false };
 }
 
@@ -80,17 +81,18 @@ const TOWER_RING_SITES = 2;
 const DEFENCE_TOWER_RING_SITES = 3;
 
 /** How many tower sites a ring lane of `player`'s keeps open at once. */
-export function towerRingSites(world: World, player: number): number {
-  return seatDefenceFirst(world, player) ? DEFENCE_TOWER_RING_SITES : TOWER_RING_SITES;
+export function towerRingSites(world: World, ctx: SystemContext, player: number): number {
+  return seatDefenceFirst(world, ctx, player) ? DEFENCE_TOWER_RING_SITES : TOWER_RING_SITES;
 }
 
 /** How many sites of its own a coverage lane of `entry` keeps open at once for `player`. */
 export function coverageLaneSites(
   world: World,
+  ctx: SystemContext,
   player: number,
   entry: Extract<BuildOrderEntry, { kind: 'towerCoverage' | 'storeCoverage' }>,
 ): number {
-  return entry.kind === 'storeCoverage' ? 1 : towerRingSites(world, player);
+  return entry.kind === 'storeCoverage' ? 1 : towerRingSites(world, ctx, player);
 }
 
 /** The nodes a coverage entry spreads its buildings from: the seat's base (unless `baseCovers` is off) plus

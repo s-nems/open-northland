@@ -65,7 +65,8 @@ export function directTier(
 function attacksComeEarly(world: World, ctx: SystemContext, player: number): boolean {
   if (ctx.tick >= EARLY_ATTACKS_BEFORE_TICKS) return false;
   return (
-    seatDefenceFirst(world, player) || militaryDeadlineTick(world, ctx, player) < EARLY_ATTACKS_BEFORE_TICKS
+    seatDefenceFirst(world, ctx, player) ||
+    militaryDeadlineTick(world, ctx, player) < EARLY_ATTACKS_BEFORE_TICKS
   );
 }
 
