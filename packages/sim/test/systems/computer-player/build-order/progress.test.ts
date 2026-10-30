@@ -7,6 +7,7 @@ import type {
   BuildOrderEntry,
 } from '../../../../src/systems/computer-player/build-order/entries.js';
 import {
+  collectorGoodsWanted,
   decisionMemo,
   entryStatuses,
   lineStatuses,
@@ -18,6 +19,7 @@ import {
 } from '../../../../src/systems/computer-player/military/deadline.js';
 import {
   aiSim,
+  BAKERY_TYPE,
   ctxOf,
   HQ_TYPE,
   HQ_X,
@@ -136,5 +138,65 @@ describe('build order progress', () => {
     expect(status(STOCKED)).toBe('skip');
     expect(status(STOCKED / 2)).toBe('skip');
     expect(status(STOCKED / 2 - 1)).toBe('unmet');
+  });
+
+  it('holds a gatherer until every building of an all-hold stands, dropping one the order never raises', () => {
+    const waitsOn = (building: string): BuildOrderEntry => ({
+      kind: 'collector',
+      good: 'iron',
+      holdUntil: {
+        kind: 'all',
+        holds: [
+          { kind: 'built', building: 'work_bakery_00' },
+          { kind: 'built', building },
+        ],
+      },
+    });
+    const wanted = (sim: Simulation, gatherer: BuildOrderEntry, brewery = false): boolean => {
+      const order: BuildOrder = {
+        lines: [
+          { id: 'bread', steps: [{ kind: 'place', building: 'work_bakery_00', count: 1 }] },
+          { id: 'brewery', steps: brewery ? [{ kind: 'place', building: 'work_brewery', count: 1 }] : [] },
+          { id: 'weapons', steps: [gatherer] },
+        ],
+        priority: [],
+      };
+      const statuses = lineStatuses(sim.world, ctxOf(sim), SEAT, ownedBuildings(sim.world, SEAT), order);
+      return collectorGoodsWanted(order, statuses, sim.tick).has('iron');
+    };
+    const sim = seat();
+    // Nothing raises the second building, so only the bakery holds the gatherer back.
+    const gatherer = waitsOn('no_such_building');
+    expect(wanted(sim, gatherer)).toBe(false);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    expect(wanted(sim, gatherer)).toBe(true);
+    // A brewery no step raises drops out too; one the order may still raise holds.
+    expect(wanted(sim, waitsOn('work_brewery'))).toBe(true);
+    expect(wanted(sim, waitsOn('work_brewery'), true)).toBe(false);
+  });
+
+  it('places a copy ahead of crews only when its step says so', () => {
+    const sim = seat();
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.step();
+    const copy: BuildOrderEntry = { kind: 'place', building: 'work_bakery_00', count: 2 };
+    expect(held(sim, copy)).toBe(true);
+    expect(held(sim, { ...copy, aheadOfCrews: true })).toBe(false);
   });
 });

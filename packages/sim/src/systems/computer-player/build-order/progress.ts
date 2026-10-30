@@ -252,13 +252,12 @@ export function entryStatus(
 }
 
 /** Whether an unmet step still holds its line: a placement of one more workshop while the ones standing
- *  lack crews ({@link copyAwaitsCrews}), or a placement or tower ring on its `holdUntil` ({@link StepHold})
- *  while the seat has no standing building of the id at that tier or above, or has not discovered the
- *  good, while it still could and `order` may still raise that building or one making the good
- *  ({@link orderMayRaise}), while it counts fewer settlers than the hold names, while it stores the
- *  hold's line of every good it names, or while its military
- *  deadline lies further off than the lead and its defence does not come first. `owned` is the seat's
- *  {@link ownedBuildings} list and `statuses` this decision's
+ *  lack crews ({@link copyAwaitsCrews}), or a placement, collector or tower ring on its `holdUntil`
+ *  ({@link StepHold}) while the seat has no standing building of the id at that tier or above, or has not
+ *  discovered the good, while it still could and `order` may still raise that building or one making the
+ *  good ({@link orderMayRaise}), while it counts fewer settlers than the hold names, while its military
+ *  deadline lies further off than the lead and its defence does not come first, or while any of an `all`
+ *  hold's parts holds. `owned` is the seat's {@link ownedBuildings} list and `statuses` this decision's
  *  {@link lineStatuses} of `order`. */
 export function stepHeld(
   world: World,
@@ -271,7 +270,10 @@ export function stepHeld(
   memo: DecisionMemo,
 ): boolean {
   if (entry.kind === 'place' && copyAwaitsCrews(world, ctx, player, owned, entry)) return true;
-  if ((entry.kind !== 'place' && entry.kind !== 'towerCoverage') || entry.holdUntil === undefined)
+  if (
+    (entry.kind !== 'place' && entry.kind !== 'collector' && entry.kind !== 'towerCoverage') ||
+    entry.holdUntil === undefined
+  )
     return false;
   const mayRaise = (typeId: number) => orderMayRaise(world, ctx, owned, order, statuses, entry, typeId);
   return holdOpen(world, ctx, player, owned, entry.holdUntil, memo, mayRaise);
@@ -281,7 +283,7 @@ export function stepHeld(
  * Whether a placement of one more workshop employing craftsmen waits for those of its chain the seat has
  * (owner ruling: upgrades and full crews come before copies, so no third bakery while two stand half
  * staffed): one still rises, or stands short of its {@link fullCrew}. A joinery placed for a role is
- * counted apart (`../joinery-role.ts`) and never waits.
+ * counted apart (`../joinery-role.ts`) and never waits, nor does a step placed `aheadOfCrews`.
  */
 function copyAwaitsCrews(
   world: World,
@@ -290,7 +292,7 @@ function copyAwaitsCrews(
   owned: readonly Entity[],
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
 ): boolean {
-  if (entry.role !== undefined) return false;
+  if (entry.role !== undefined || entry.aheadOfCrews === true) return false;
   const type = buildingTypeByContentId(ctx.content, entry.building);
   if (type === undefined || plannedOperators(ctx, type) === 0) return false;
   const index = contentIndex(ctx.content);
@@ -338,20 +340,10 @@ function holdOpen(
     }
     case 'settlers':
       return ownedSettlers(world, player).length < hold.count;
-    case 'short': {
-      // Holds while every good the content knows lies at the line; one the content lacks never holds.
-      const stock = seatStockOf(world, player);
-      let known = false;
-      for (const id of hold.goods) {
-        const good = goodTypeByContentId(ctx.content, id);
-        if (good === undefined) continue;
-        if (stock.units(good.typeId) < hold.units) return false;
-        known = true;
-      }
-      return known;
-    }
     case 'deadline':
       return militaryWaits(world, ctx, player, hold.leadTicks);
+    case 'all':
+      return hold.holds.some((part) => holdOpen(world, ctx, player, owned, part, memo, mayRaise));
   }
 }
 
@@ -409,8 +401,12 @@ function liveResourceOnMap(
   return found;
 }
 
-/** Each line's step statuses, in step order, by line id. */
-export type LineStatuses = ReadonlyMap<BuildLineId, readonly EntryStatus[]>;
+/** Each line's step statuses, in step order, by line id. `heldCollectors` names the unmet collector steps
+ *  their `holdUntil` holds this decision, which {@link lineStatuses} works out for the workforce's
+ *  {@link collectorGoodsWanted}. */
+export interface LineStatuses extends ReadonlyMap<BuildLineId, readonly EntryStatus[]> {
+  readonly heldCollectors?: ReadonlySet<BuildOrderEntry>;
+}
 
 /**
  * The statuses of `entries` in order. Statuses are recomputed each decision and can regress (a razed
@@ -443,7 +439,15 @@ export function lineStatuses(
       line.steps.map((entry) => entryStatus(world, ctx, player, owned, entry, memo)),
     );
   }
-  return statuses;
+  const heldCollectors = new Set<BuildOrderEntry>();
+  for (const line of order.lines) {
+    for (const [step, entry] of line.steps.entries()) {
+      if (entry.kind !== 'collector' || entry.holdUntil === undefined) continue;
+      if (statuses.get(line.id)?.[step] !== 'unmet') continue;
+      if (stepHeld(world, ctx, player, owned, order, statuses, entry, memo)) heldCollectors.add(entry);
+    }
+  }
+  return heldCollectors.size === 0 ? statuses : Object.assign(statuses, { heldCollectors });
 }
 
 /** The lowest-id built building the seat can upgrade toward `target`; a site, including an in-flight
@@ -486,8 +490,8 @@ function collectorStocked(
  * The collector goods the lines have reached by `tick`, in line priority order, each with the most
  * gatherers a reached step asks for: a step is reached while every step before it in its line is
  * satisfied or skipped, a lane running beside the lines never holding it, as the executor holds a line on
- * its first unmet step, a locked one included. An unmet collector step whose `fromTick` lies ahead
- * holds its line unreached. Reached state is re-derived each decision, so a regressing earlier step drops a later
+ * its first unmet step, a locked one included. An unmet collector step whose `fromTick` lies ahead, or
+ * whose hold holds it (`heldCollectors`), holds its line unreached. Reached state is re-derived each decision, so a regressing earlier step drops a later
  * collector and returns its holder to the pool until its line re-reaches the step.
  */
 export function collectorGoodsWanted(
@@ -502,7 +506,8 @@ export function collectorGoodsWanted(
       if (isLaneEntry(entry)) continue;
       const status = lineStatus[i];
       if (entry.kind === 'collector' && status !== 'skip') {
-        if (status === 'unmet' && tick < (entry.fromTick ?? 0)) break;
+        if (status === 'unmet' && (tick < (entry.fromTick ?? 0) || statuses.heldCollectors?.has(entry)))
+          break;
         wanted.set(entry.good, Math.max(wanted.get(entry.good) ?? 0, collectorCount(entry)));
       }
       if (status === 'unmet') break;

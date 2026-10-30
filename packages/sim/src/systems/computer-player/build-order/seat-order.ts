@@ -21,6 +21,7 @@ import {
   HQ_PULL_DIVISOR_NODES,
   LATE_SMITHIES,
   LATER_MINTS,
+  RICH_STEPS,
   ROOMY_OPENING_HOMES,
   SECOND_ANIMAL_FARM,
   SECOND_ANIMAL_FARM_WELL,
@@ -34,8 +35,6 @@ export interface ArchetypeTuning {
   /** The line priority the seat starts from, first id first, before its sides, phase and posture move
    *  lines up. */
   readonly priority: readonly BuildLineId[];
-  /** A placement asking for more than one copy asks for this percent of them, rounded down, at least one. */
-  readonly copiesPct: number;
   /** The most copies of a building, by stable content id, a placement asks for. */
   readonly copyCaps: Readonly<Record<string, number>>;
   /** Construction sites over the difficulty's pace, in every phase. */
@@ -61,8 +60,8 @@ const STANDARD_PRIORITY = DEFAULT_BUILD_ORDER.priority;
 /** Owner ruling: a cramped seat (mroczny_las) has little room and digs the forest out. Authored figures:
  *  three quarters of the standard reach, twice the pull toward the base, clearing from two thirds of the
  *  standard spread, one bakery and the three first homes (owner ruling: two bakeries and more homes only
- *  where there is room), the late copies of the bigger workshops and homes capped about as the medium
- *  seat's, and the economy lines in the standard order but the tile and marble upgrades and the homes'
+ *  where there is room), the late copies of the bigger workshops capped about as the medium seat's and
+ *  eight homes, and the economy lines in the standard order but the tile and marble upgrades and the homes'
  *  lanes ahead of the army, mint and druid lines, which add the most buildings. */
 const CRAMPED: ArchetypeTuning = {
   priority: [
@@ -79,12 +78,10 @@ const CRAMPED: ArchetypeTuning = {
     'coins',
     'healing',
   ],
-  copiesPct: 100,
   copyCaps: {
     work_bakery_00: 1,
     home_level_00: 8,
     work_bakery_01: 1,
-    work_smithy_01: 4,
     work_brewery: 2,
     work_hive_00: 2,
     work_druid_01: 4,
@@ -96,29 +93,31 @@ const CRAMPED: ArchetypeTuning = {
   clearGroundPct: 67,
   leadOnlyWhen: null,
   homeLandOnly: false,
-  drops: [ROOMY_OPENING_HOMES],
+  drops: [ROOMY_OPENING_HOMES, ...RICH_STEPS],
 };
+
+/** Owner ruling: a seat with medium room (krwawa_rzeka) keeps to ten homes. */
+const STANDARD_HOMES = 10;
 
 const STANDARD: ArchetypeTuning = {
   priority: STANDARD_PRIORITY,
-  copiesPct: 100,
-  copyCaps: {},
+  copyCaps: { home_level_00: STANDARD_HOMES },
   extraSites: 0,
   reachNodes: BUILD_SEARCH_MAX_RADIUS_NODES,
   hqPullDivisorNodes: HQ_PULL_DIVISOR_NODES,
   clearGroundPct: 100,
   leadOnlyWhen: null,
   homeLandOnly: false,
-  drops: [],
+  drops: RICH_STEPS,
 };
 
-/** The tuning per archetype. A rich seat (room, iron and gold to spare) opens one site more and a
- *  quarter more copies; an island seat raises its ship joinery first and its army line right after the
- *  opening, and builds on its own land only. Authored. */
+/** The tuning per archetype. A rich seat (room, iron and gold to spare) opens one site more and plays the
+ *  rich steps (`./entries.ts`) with every home of the housing lane; an island seat raises its ship joinery
+ *  first and its army line right after the opening, and builds on its own land only. Authored. */
 export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTuning>> = {
   standard: STANDARD,
   cramped: CRAMPED,
-  rich: { ...STANDARD, copiesPct: 125, extraSites: 1 },
+  rich: { ...STANDARD, copyCaps: {}, extraSites: 1, drops: [] },
   islands: {
     ...STANDARD,
     priority: [
@@ -169,9 +168,9 @@ const GOLD_LINE: StepMatch = {
   collectors: ['mushroom', 'gold'],
 };
 
-/** Owner ruling: a seat dressing its army in tunics gets its second tailor right after the first, then
- *  upgrades both, and raises a second animal farm while leather or wool runs short. The clothing line
- *  already runs ahead of the weapons. */
+/** Owner ruling: a seat dressing its army in tunics raises its second animal farm right after the first
+ *  and its second tailor right after the first tailor, then upgrades both. The clothing line already runs
+ *  ahead of the weapons. */
 const TUNIC_ARMS: StepMatch = {
   buildings: [],
   collectors: [],
@@ -298,8 +297,9 @@ function sideDrops(sides: readonly EconomicSide[]): SideDrop {
 }
 
 function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop): BuildLine {
-  let steps = line.steps.filter((entry) => !tuning.drops.includes(entry) && !dropped(entry));
-  if (tuning !== STANDARD) steps = steps.map((entry) => copiesOf(entry, tuning));
+  let steps = line.steps
+    .filter((entry) => !tuning.drops.includes(entry) && !dropped(entry))
+    .map((entry) => copiesOf(entry, tuning));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;
     const leading = (entry: BuildOrderEntry) => entry.kind === 'place' && entry.onlyWhen === lead;
@@ -310,13 +310,12 @@ function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop):
     : { id: line.id, steps };
 }
 
-/** A placement or upgrade asking for more than one copy, its count scaled by the tuning's percent, then
- *  cut to its cap. A cap never drops the step: a count already under it stands met the sooner. */
+/** A placement, upgrade or housing lane asking for more than one copy, its count cut to the tuning's cap.
+ *  A cap never drops the step: a count already under it stands met the sooner. */
 function copiesOf(entry: BuildOrderEntry, tuning: ArchetypeTuning): BuildOrderEntry {
   if ((entry.kind !== 'place' && entry.kind !== 'upgrade' && entry.kind !== 'housing') || entry.count <= 1)
     return entry;
-  const scaled = Math.max(1, Math.floor((entry.count * tuning.copiesPct) / 100));
-  const count = Math.min(scaled, tuning.copyCaps[entry.building] ?? scaled);
+  const count = Math.min(entry.count, tuning.copyCaps[entry.building] ?? entry.count);
   return count === entry.count ? entry : { ...entry, count };
 }
 

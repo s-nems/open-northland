@@ -162,6 +162,38 @@ describe('the seat strategy shapes the build order', () => {
     expect(mints(['ironArms', 'goldLine', 'oneMint'])).toBe(0);
   });
 
+  it('ends each archetype on the owner-ruled counts of its late workshops and homes', () => {
+    const top = (archetype: 'rich' | 'standard' | 'cramped', building: string): number => {
+      const order = shapeBuildOrder(DEFAULT_BUILD_ORDER, {
+        archetype,
+        sides: ['ironArms', 'goldLine'],
+        phase: 'late',
+        defenceFirst: false,
+      });
+      return Math.max(
+        0,
+        ...orderSteps(order).flatMap((e) =>
+          (e.kind === 'place' || e.kind === 'upgrade' || e.kind === 'housing') && e.building === building
+            ? [e.count]
+            : [],
+        ),
+      );
+    };
+    const buildings = [
+      'work_coin_mint',
+      'work_brewery',
+      'work_druid_01',
+      'work_smithy_01',
+      'work_armory_01',
+      'home_level_00',
+      'work_bakery_01',
+    ];
+    const counts = (archetype: 'rich' | 'standard' | 'cramped') => buildings.map((b) => top(archetype, b));
+    expect(counts('rich')).toEqual([3, 3, 6, 6, 2, 14, 4]);
+    expect(counts('standard')).toEqual([3, 3, 6, 4, 2, 10, 2]);
+    expect(counts('cramped')).toEqual([2, 2, 4, 4, 2, 8, 1]);
+  });
+
   it('puts up the second bakery at once only where the seat has room', () => {
     const shape = { sides: ECONOMIC_SIDES, phase: 'opening', defenceFirst: false } as const;
     const lowerBakeries = (order: BuildOrder) =>

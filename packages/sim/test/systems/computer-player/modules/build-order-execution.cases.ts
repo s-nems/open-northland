@@ -154,7 +154,8 @@ describe('build-order module (houseBuild)', () => {
     // This content stops short of the pottery and the mason hut, so those steps skip. Every line raises its
     // first new kind of building in priority order (opening, bread with its first bakery's well, brewery,
     // tools, the joinery's upper tier; the military line waits for its deadline) before any line adds
-    // another of a kind the seat has: the opening's homes, four on a seat with room. The seat has no man to
+    // another of a kind the seat has: the opening's homes, five with no archetype dropping the rich seat's
+    // fifth. The seat has no man to
     // staff its bakery and brewery, so their lines hold their second copies, and the seat holds no woman,
     // so the housing lane raises nothing. The weapons line holds at its iron gatherer, whose clock has not
     // come, and holds no other line.
@@ -168,6 +169,7 @@ describe('build-order module (houseBuild)', () => {
       place(BREWERY_TYPE),
       place(JOINERY_00_TYPE),
       upgrade(JOINERY_TYPE),
+      place(HOME_TYPE),
       place(HOME_TYPE),
       place(HOME_TYPE),
       place(HOME_TYPE),

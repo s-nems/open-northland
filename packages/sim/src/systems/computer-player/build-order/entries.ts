@@ -20,17 +20,17 @@ export type PlacementAffinity =
 
 /** What a step waits for while its line holds on it: a built building of the id (at that tier or
  *  above, a rising site not counting), a good the seat has discovered how to make, the seat counting
- *  `count` settlers, the seat's stock of one of `goods` (the summary bar's figure) falling under `units`,
- *  or the clock reaching `leadTicks` before the seat's military deadline
- *  (`../military/deadline.ts`), which its defence coming first lifts at once. A hold the seat can never
- *  meet, a building or good missing from the content, a discovery it can never make, or a building (or the
- *  good's maker) no unskipped step of the order raises, lets the step act (`./progress.ts`). */
+ *  `count` settlers, the clock reaching `leadTicks` before the seat's military deadline
+ *  (`../military/deadline.ts`), which its defence coming first lifts at once, or every one of `holds`. A
+ *  hold the seat can never meet, a building or good missing from the content, a discovery it can never
+ *  make, or a building (or the good's maker) no unskipped step of the order raises, lets the step act
+ *  (`./progress.ts`); within `all` only that hold drops out. */
 export type StepHold =
   | { readonly kind: 'built'; readonly building: string }
   | { readonly kind: 'good'; readonly good: string }
   | { readonly kind: 'settlers'; readonly count: number }
-  | { readonly kind: 'short'; readonly goods: readonly string[]; readonly units: number }
-  | { readonly kind: 'deadline'; readonly leadTicks: number };
+  | { readonly kind: 'deadline'; readonly leadTicks: number }
+  | { readonly kind: 'all'; readonly holds: readonly StepHold[] };
 
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
@@ -46,7 +46,8 @@ export type BuildOrderEntry =
    *  for it is passed over unless `essential`, which holds its line until it stands. `belowTier` stops the
    *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
    *  joineries holding that role (`../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
-   *  acting on nothing, until its {@link StepHold} is met. */
+   *  acting on nothing, until its {@link StepHold} is met. `aheadOfCrews` places the copy without waiting
+   *  for the crews of those standing (`./progress.ts`). */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -60,6 +61,7 @@ export type BuildOrderEntry =
       readonly belowTier?: string;
       readonly role?: JoineryRole;
       readonly holdUntil?: StepHold;
+      readonly aheadOfCrews?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. */
@@ -72,14 +74,15 @@ export type BuildOrderEntry =
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
    *  and keeps at least that many. Posts past the first come out of spare men only, so its line holds
    *  here until the seat has them. A good with no live resource is skipped. `fromTick` holds the line
-   *  here, hiring nobody, until the game clock reaches it. `stockedAt` passes the entry over, its posts
-   *  released, while the seat stores that many units of the good, and until it falls under half of them
-   *  again once nobody gathers it. */
+   *  here, hiring nobody, until the game clock reaches it, and `holdUntil` until its {@link StepHold} is
+   *  met. `stockedAt` passes the entry over, its posts released, while the seat stores that many units of
+   *  the good, and until it falls under half of them again once nobody gathers it. */
   | {
       readonly kind: 'collector';
       readonly good: string;
       readonly count?: number;
       readonly fromTick?: number;
+      readonly holdUntil?: StepHold;
       readonly stockedAt?: number;
     }
   /** Keep every owned building inside some tower's or the base's defence circle of `radius` nodes
@@ -135,9 +138,9 @@ const HIVE_REACH_NODES = 18;
  *  warehouse serves carriers rather than bows, and the base is a store too. */
 const STORE_COVERAGE_RADIUS_NODES = 32;
 
-/** The most homes the housing lane raises (authored): the twelve homes the fixed homes steps used to end
- *  on. Twelve top-tier homes hold sixty families. */
-const HOUSING_HOMES_CAP = 12;
+/** The most homes the housing lane raises (owner ruling): about fourteen top-tier homes on a rich seat;
+ *  the other archetypes cap it lower (`./seat-order.ts`). */
+const HOUSING_HOMES_CAP = 14;
 
 /** The two deposits a joinery or a smithy draws on, in the order its recipes weigh them. */
 const WOOD_AND_IRON: readonly PlacementAffinity[] = [
@@ -170,6 +173,18 @@ function wellBeside(building: string, cap: number): BuildOrderEntry {
 const SECOND_BREWERY_FROM_SETTLERS = 100;
 const THIRD_BREWERY_FROM_SETTLERS = 200;
 
+/** Owner ruling: a rich seat bakes in about four upper bakeries, the third and fourth, like the breweries,
+ *  once the people eat that much bread. Authored figures: magiczny_las seats counted 128-279 settlers at
+ *  game minute 90, so the third comes from 150 on most rich seats by then, the fourth from 220 on the
+ *  larger ones. */
+const THIRD_BAKERY_FROM_SETTLERS = 150;
+const FOURTH_BAKERY_FROM_SETTLERS = 220;
+
+/** Owner ruling: one armory with two armourers and a porter lasts very long, so the second comes only in
+ *  the late late game, at the third brewery's figure: by game minute 90 on magiczny_las (128-279 settlers)
+ *  only the largest seats reach it. */
+const SECOND_ARMORY_FROM_SETTLERS = THIRD_BREWERY_FROM_SETTLERS;
+
 /** The `count`th brewery beside the others once the seat counts `fromSettlers` settlers, then a hive and a
  *  well beside it unless theirs stand in reach. */
 function breweryWithHiveAndWell(count: number, wellCap: number, fromSettlers: number): BuildOrderEntry[] {
@@ -198,8 +213,19 @@ const BIG_POTION: StepHold = { kind: 'good', good: 'potion_heal_big' };
 /** The coiner has learned the amulets: the strength and the defence amulet share one discovery threshold. */
 const AMULETS: StepHold = { kind: 'good', good: 'amulet_strength' };
 
-/** Owner ruling: the herb hut never goes up before the seat's first bakery stands. */
-const AFTER_FIRST_BAKERY: StepHold = { kind: 'built', building: 'work_bakery_00' };
+/** Owner ruling: food first, then the people, then the weapons and the joiner, and only then the special
+ *  paths: the gold and mushroom gatherers, the first mint and the herb hut wait until the upper bakery, the
+ *  brewery, the upper smithy and the upper joinery stand. A building the seat can never raise (the smithy of
+ *  a seat without iron) drops out of the wait. */
+const AFTER_FOOD_AND_ARMS: StepHold = {
+  kind: 'all',
+  holds: [
+    { kind: 'built', building: 'work_bakery_01' },
+    { kind: 'built', building: 'work_brewery' },
+    { kind: 'built', building: 'work_smithy_01' },
+    { kind: 'built', building: 'work_joinery_01' },
+  ],
+};
 
 /** Druid huts on the big healing potion up to `count`, beside the ones standing, once the seat makes it. */
 function druidHuts(count: number): BuildOrderEntry {
@@ -228,33 +254,70 @@ function mints(count: number): Extract<BuildOrderEntry, { kind: 'place' }> {
 export const LATER_MINTS: readonly BuildOrderEntry[] = [{ ...mints(2), holdUntil: AMULETS }, mints(3)];
 
 /** The third and fourth upper smithy, plate and mail arming the army; a seat with little iron forges its
- *  weapons in two (`./seat-order.ts`). */
+ *  weapons in two (`./seat-order.ts`). Owner ruling: the second and third come practically at once after
+ *  the smith learns plate and mail, not behind the crews of those standing. */
 export const LATE_SMITHIES: readonly BuildOrderEntry[] = [
-  { kind: 'place', building: 'work_smithy_01', count: 3, near: IRON_AND_WOOD },
+  { kind: 'place', building: 'work_smithy_01', count: 3, near: IRON_AND_WOOD, aheadOfCrews: true },
   { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
 ];
 
+/** Owner ruling: a seat with room opens on four or five lower-tier homes, so more of its couples have
+ *  children from the start; a cramped seat keeps to the first three (`./seat-order.ts`). */
+export const ROOMY_OPENING_HOMES: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 4 };
+
+/** Owner ruling: a rich seat (room, iron and gold to spare) opens on five homes, ends on six upper smithies
+ *  and about four upper bakeries; every other archetype leaves these steps out (`./seat-order.ts`). */
+const RICH_OPENING_HOMES: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 5 };
+const RICH_SMITHIES: readonly BuildOrderEntry[] = [
+  { kind: 'place', building: 'work_smithy_01', count: 5, near: [{ kind: 'resource', good: 'iron' }] },
+  { kind: 'place', building: 'work_smithy_01', count: 6, near: [{ kind: 'resource', good: 'iron' }] },
+];
+const RICH_BAKERIES: readonly BuildOrderEntry[] = [
+  {
+    kind: 'place',
+    building: 'work_bakery_00',
+    count: 3,
+    near: [{ kind: 'building', id: 'work_mill_00' }],
+    holdUntil: { kind: 'settlers', count: THIRD_BAKERY_FROM_SETTLERS },
+  },
+  // Counted after every other water drinker the order raises, the last druid well's 17 included.
+  wellBeside('work_bakery_00', 18),
+  { kind: 'upgrade', building: 'work_bakery_01', count: 3 },
+  {
+    kind: 'place',
+    building: 'work_bakery_00',
+    count: 4,
+    near: [{ kind: 'building', id: 'work_mill_00' }],
+    holdUntil: { kind: 'settlers', count: FOURTH_BAKERY_FROM_SETTLERS },
+  },
+  wellBeside('work_bakery_00', 19),
+  { kind: 'upgrade', building: 'work_bakery_01', count: 4 },
+];
+export const RICH_STEPS: readonly BuildOrderEntry[] = [
+  RICH_OPENING_HOMES,
+  ...RICH_SMITHIES,
+  ...RICH_BAKERIES,
+];
+
 /** Owner ruling: an iron-poor seat arms with tunics and gets its second tailor right after the first; an
- *  iron-rich one sews leather and boots at one tailor until the upper tier stands (`./seat-order.ts`). */
+ *  iron-rich one sews leather and boots at one tailor until the upper tier stands (`./seat-order.ts`). It
+ *  does not wait for the first one's second sewer (authored: on krwawa_rzeka the first tailor kept one
+ *  sewer to game minute 60-80 while the builders took the spare men, holding both upgrades back). */
 export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
   kind: 'place',
   building: 'work_sewery_00',
   count: 2,
   near: [{ kind: 'building', id: 'work_sewery_00' }],
+  aheadOfCrews: true,
 };
 
 /** Owner ruling: a seat dressing its army in tunics runs two upper tailors, two of the four tailors on
  *  shoes and two on tunics (`workforce/craft.ts`). */
 export const SECOND_UPPER_TAILOR: BuildOrderEntry = { kind: 'upgrade', building: 'work_sewery_01', count: 2 };
 
-/** The leather or wool in stock under which a tunic seat raises a second animal farm once both upper
- *  tailors stand (authored): about one cycle's input for each of the four tailors. With both breeders on
- *  cattle and one tailor, leather lay at 23-65 from game minute 40 on krwawa_rzeka, so a stock under this
- *  with the breeders split means the tailors outrun the herds. */
-const ANIMAL_FARM_SHORT_UNITS = 8;
-
-/** Owner ruling: a second animal farm, its breeders split as the first's, only while the first cannot keep
- *  the tailors in leather and wool. */
+/** Owner ruling: a tunic seat raises its second animal farm, its breeders split as the first's, right
+ *  after the first: the tailors dressing the army want its leather and wool, and its meat feeds the
+ *  opening. */
 export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
   kind: 'place',
   building: 'work_animal_farm',
@@ -263,17 +326,11 @@ export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
     { kind: 'building', id: 'work_animal_farm' },
     { kind: 'building', id: 'work_farm_00' },
   ],
-  holdUntil: { kind: 'short', goods: ['leather', 'wool'], units: ANIMAL_FARM_SHORT_UNITS },
 };
 
-/** Owner ruling: a seat with room opens on four or five lower-tier homes, so more of its couples have
- *  children from the start: four, five on a rich seat's copies (`./seat-order.ts`); a cramped seat keeps
- *  to the first three. */
-export const ROOMY_OPENING_HOMES: BuildOrderEntry = { kind: 'place', building: 'home_level_00', count: 4 };
-
-/** A well beside the second animal farm when the first one's stands out of reach; its cap counts every
- *  water drinker the lines raise before the late druid huts. */
-export const SECOND_ANIMAL_FARM_WELL: BuildOrderEntry = wellBeside('work_animal_farm', 12);
+/** A well beside the second animal farm when the first one's stands out of reach, one over the first
+ *  farm's well cap. */
+export const SECOND_ANIMAL_FARM_WELL: BuildOrderEntry = wellBeside('work_animal_farm', 4);
 
 /** The grain farm. Every bakery, brewery and animal farm downstream waits on its grain, so each of their
  *  lines opens on it, met by whichever line raised it, and holds until it stands. */
@@ -382,6 +439,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         GRAIN_FARM,
         { kind: 'place', building: 'home_level_00', count: 3 },
         ROOMY_OPENING_HOMES,
+        RICH_OPENING_HOMES,
         { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
         // Owner ruling: the school right after the pottery, a core building, so every trade discovered
         // from here on is taught there rather than earned again by work.
@@ -440,10 +498,11 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // beside it.
         wellBeside('work_bakery_00', 7),
         // Owner ruling: the adults live on mead and the bread feeds the children, so one upper-tier bakery
-        // supplies a large village; the seat upgrades the bakeries it has and fills their crews rather than
-        // raising a third.
+        // supplies a large village; the seat upgrades the bakeries it has and fills their crews before it
+        // raises a third, and only a rich seat raises one.
         { kind: 'upgrade', building: 'work_bakery_01', count: 1 },
         { kind: 'upgrade', building: 'work_bakery_01', count: 2 },
+        ...RICH_BAKERIES,
       ],
     },
     {
@@ -489,8 +548,12 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'building', id: 'work_brewery' }],
         },
         wellBeside('work_brewery', 2),
-        // A seat short of grass puts its herb hut on the grass it keeps now, after which its other buildings
-        // may take the rest; a green seat raises it with the druids of the healing line.
+        // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
+        // it otherwise. The third, the last, beside the first two by the same rule.
+        ...breweryWithHiveAndWell(2, 8, SECOND_BREWERY_FROM_SETTLERS),
+        // A seat short of grass puts its herb hut on the grass it keeps, ahead of the healing line, after
+        // which its other buildings may take the rest; a green seat raises it with the druids of that line.
+        // After the second brewery, so its special-path hold never keeps that brewery waiting.
         {
           kind: 'place',
           building: 'work_herb_hut',
@@ -499,11 +562,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           ground: 'plantable',
           needsResources: ['mushroom', 'gold'],
           onlyWhen: 'grassScarce',
-          holdUntil: AFTER_FIRST_BAKERY,
+          holdUntil: AFTER_FOOD_AND_ARMS,
         },
-        // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
-        // it otherwise. The third, the last, beside the first two by the same rule.
-        ...breweryWithHiveAndWell(2, 8, SECOND_BREWERY_FROM_SETTLERS),
         ...breweryWithHiveAndWell(3, 11, THIRD_BREWERY_FROM_SETTLERS),
       ],
     },
@@ -523,6 +583,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in
         // reach.
         wellBeside('work_animal_farm', 3),
+        // A seat dressing its army in tunics only (`./seat-order.ts`).
+        SECOND_ANIMAL_FARM,
+        SECOND_ANIMAL_FARM_WELL,
         // The upper tier wants wool armour, which only a sewer working the lower tier learns to make.
         {
           kind: 'place',
@@ -541,8 +604,6 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         },
         // A seat dressing its army in tunics only (`./seat-order.ts`).
         SECOND_UPPER_TAILOR,
-        SECOND_ANIMAL_FARM,
-        SECOND_ANIMAL_FARM_WELL,
       ],
     },
     {
@@ -576,11 +637,12 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         { kind: 'upgrade', building: 'work_smithy_01', count: 1 },
         // Owner ruling: on a seat with iron the upper smithies' mail and plate arm the army, so once the
         // smith has learned them (the upper tier is enabled by that discovery) more upper smithies follow,
-        // up to four, five on a rich seat; a seat with little iron stops at two, and one without iron in
-        // reach raises none (`./seat-order.ts`).
-        // Each waits for the crews of those standing (`./progress.ts`).
-        { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD },
+        // up to four, six on a rich seat; a seat with little iron stops at two, and one without iron in
+        // reach raises none (`./seat-order.ts`). The second and third go up at once, the later ones each
+        // wait for the crews of those standing (`./progress.ts`).
+        { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD, aheadOfCrews: true },
         ...LATE_SMITHIES,
+        ...RICH_SMITHIES,
       ],
     },
     {
@@ -598,8 +660,14 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           holdUntil: { kind: 'built', building: 'work_smithy_00' },
         },
         { kind: 'upgrade', building: 'work_armory_01', count: 1 },
-        // The late game runs out of long bows.
-        { kind: 'place', building: 'work_armory_01', count: 2, near: [{ kind: 'resource', good: 'wood' }] },
+        // The late late game runs out of long bows.
+        {
+          kind: 'place',
+          building: 'work_armory_01',
+          count: 2,
+          near: [{ kind: 'resource', good: 'wood' }],
+          holdUntil: { kind: 'settlers', count: SECOND_ARMORY_FROM_SETTLERS },
+        },
       ],
     },
     MILITARY_LINE,
@@ -608,9 +676,15 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // The big potion takes herbs, mushrooms and coins, and the temple waits on the druids' oil, so all of
       // it stands only where the map holds both gold and mushrooms.
       // Owner ruling: a mushroom gatherer from game minute 25-40, whose ten mushrooms open the herb hut; not
-      // before, and only the one until potions are made in volume.
+      // before, nor before the food and arms, and only the one until potions are made in volume.
       steps: [
-        { kind: 'collector', good: 'mushroom', fromTick: MUSHROOMS_FROM_TICKS, stockedAt: MUSHROOMS_STOCKED },
+        {
+          kind: 'collector',
+          good: 'mushroom',
+          fromTick: MUSHROOMS_FROM_TICKS,
+          holdUntil: AFTER_FOOD_AND_ARMS,
+          stockedAt: MUSHROOMS_STOCKED,
+        },
         // The herb hut comes first, beside a well, so its herbs are growing when the druids it draws beside
         // it stand.
         {
@@ -620,7 +694,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'building', id: 'work_well_00' }],
           ground: 'plantable',
           needsResources: ['mushroom', 'gold'],
-          holdUntil: AFTER_FIRST_BAKERY,
+          holdUntil: AFTER_FOOD_AND_ARMS,
         },
         // The lower tier first: the small food potion its upper tier wants is learned there.
         {
@@ -658,14 +732,20 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // Owner ruling: one mint early enough to earn experience, since the coiner learns the amulets the
       // big potion also wants and the druids pay in coins; never two at once as the first. Once he has
       // learned the amulets, the late game's move into high-end equipment, two more follow, each waiting
-      // for the crews of those standing (`./progress.ts`).
-      steps: [{ kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS }, mints(1), ...LATER_MINTS],
+      // for the crews of those standing (`./progress.ts`). The gold gatherer and the first mint wait for the
+      // food and arms like the herb hut.
+      steps: [
+        { kind: 'collector', good: 'gold', fromTick: GOLD_FROM_TICKS, holdUntil: AFTER_FOOD_AND_ARMS },
+        { ...mints(1), holdUntil: AFTER_FOOD_AND_ARMS },
+        ...LATER_MINTS,
+      ],
     },
   ],
   // Owner ruling: the economy first. The opening, so the farm, the first homes and the material workshops
   // take the first sites; then bread and drink, clothing (boots speed every trade up), the tools and the
   // first smithy steps, and only then the tile and marble tiers, which are needed a bit later; the army
-  // the garrison waits on, the mint, the herb hut and druids. The homes line holds only lanes.
+  // the garrison waits on, the mint, the herb hut and druids, whose first steps also wait for the food and
+  // arms to stand ({@link AFTER_FOOD_AND_ARMS}). The homes line holds only lanes.
   priority: [
     'opening',
     'bread',
