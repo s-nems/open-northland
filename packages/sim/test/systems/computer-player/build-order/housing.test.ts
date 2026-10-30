@@ -7,6 +7,7 @@ import type { BuildOrderEntry } from '../../../../src/systems/computer-player/bu
 import { sitePace } from '../../../../src/systems/computer-player/build-order/entries.js';
 import {
   FOOD_RICH_UNITS_PER_SETTLER,
+  HERDING_TOP_HOMES,
   HOUSING_FOOD_UNITS_PER_WOMAN,
   HOUSING_PACE,
 } from '../../../../src/systems/computer-player/build-order/housing.js';
@@ -15,6 +16,7 @@ import { SITES_GROW_FROM_TICKS } from '../../../../src/systems/computer-player/g
 import { buildOrderModule } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
+  ANIMAL_FARM_TYPE,
   aiSim,
   BAKERY_TYPE,
   completeSites,
@@ -59,6 +61,24 @@ function bakingContent(): ContentSet {
         ? { ...b, recipes: [{ inputs: [], outputs: [{ goodType: FOOD_SIMPLE, amount: 1 }], ticks: 180 }] }
         : b,
     ),
+  });
+}
+
+/** The fixture with an animal farm that makes the edible good, so it counts as a food workshop. */
+function herdingContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: ANIMAL_FARM_TYPE,
+        id: 'work_animal_farm',
+        kind: 'workplace' as const,
+        recipes: [{ inputs: [], outputs: [{ goodType: FOOD_SIMPLE, amount: 1 }], ticks: 180 }],
+        construction: [{ goodType: WOOD, amount: 2 }],
+      },
+    ],
   });
 }
 
@@ -226,6 +246,55 @@ describe('the housing lane', () => {
         });
       opening.step();
       expect(decide(opening)).toBeUndefined();
+    });
+  });
+
+  describe('while only the animal farm makes food', () => {
+    const content = herdingContent();
+
+    /** A seat of one woman with its animal farm, wood for every upgrade in store, and `homes` built base
+     *  homes, which hold her with the opening's free slots to spare. */
+    function herdingSeat(homes: number): Simulation {
+      const sim = seatWithWomen(1, HOUSING_FOOD_UNITS_PER_WOMAN, content);
+      const place = (buildingType: number, x: number, y: number) =>
+        sim.enqueueSetup({ kind: 'placeBuilding', buildingType, x, y, tribe: VIKING, owner: SEAT });
+      place(ANIMAL_FARM_TYPE, HQ_X + 6, HQ_Y);
+      for (let i = 0; i < homes; i++) place(HOME_TYPE, HQ_X - 6, HQ_Y - 6 + 6 * i);
+      sim.step();
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), WOOD, UPGRADE_WOOD);
+      return sim;
+    }
+
+    function upgradeOnce(sim: Simulation): void {
+      const next = decide(sim, housing, content);
+      expect(next).toMatchObject({ kind: 'upgradeBuilding', target: HOME_TOP_TYPE });
+      if (next === undefined) throw new Error('expected the upgrade');
+      sim.enqueueSetup(next);
+      sim.step();
+      // One home site at a time, as in the opening.
+      expect(decide(sim, housing, content)).toBeUndefined();
+      completeSites(sim);
+    }
+
+    it("keeps the opening's pace and raises one home to the capped tier on a lean seat", () => {
+      expect(HOUSING_PACE.herding).toEqual(HOUSING_PACE.opening);
+      expect(HERDING_TOP_HOMES.lean).toBe(1);
+      const sim = herdingSeat(3);
+      upgradeOnce(sim);
+      // The ceiling is reached: the other homes stand at the base tier.
+      expect(decide(sim, housing, content)).toBeUndefined();
+    });
+
+    it('raises a second home with much food in store, and every lagging home once the seat fishes', () => {
+      expect(HERDING_TOP_HOMES.wellFed).toBe(2);
+      const sim = herdingSeat(3);
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), FOOD_SIMPLE, FOOD_RICH_UNITS_PER_SETTLER);
+      upgradeOnce(sim);
+      upgradeOnce(sim);
+      expect(decide(sim, housing, content)).toBeUndefined();
+      // A fisher feeds the homes as the bakery does: the last base home lags and is upgraded.
+      seatEconomy(sim, 'standard', ['fishing']);
+      upgradeOnce(sim);
     });
   });
 });

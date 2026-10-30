@@ -20,6 +20,7 @@ import { buildingEnabled } from '../../progression/index.js';
 import { seatStockOf } from '../../stores/index.js';
 import { femaleDemand } from '../female-stock.js';
 import { foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
+import { seatHuntsGame } from '../workforce/hunter.js';
 import { billSourced } from './bill-sources.js';
 import type { BuildOrderEntry } from './entries.js';
 import { placementSpot } from './placement.js';
@@ -30,12 +31,18 @@ type HousingEntry = Extract<BuildOrderEntry, { kind: 'housing' }>;
 
 /**
  * How far the housing lane runs ahead, by the seat's food (owner ruling: homes come slowly at the very
- * start while no workshop makes food and no fisher fishes; once food is made the lane stokes the furnace,
- * and once the brewery and an upper-tier bakery stand the seat is safe and raises many children):
- * `opening` before any food is made, `feeding` once a workshop making food stands or the seat fishes,
- * `thriving` once every {@link HOUSING_THRIVING_BUILDINGS} building stands too.
+ * start while no workshop makes food and no fisher fishes; the animal farm's meat feeds the homes only
+ * somewhat; once bread or fish is made the lane stokes the furnace, and once the brewery and an
+ * upper-tier bakery stand the seat is safe and raises many children): `opening` before any food is made,
+ * `herding` once a workshop making food stands but no {@link HOUSING_STAPLE_BUILDING} and no fisher,
+ * `feeding` once the bakery stands or the seat fishes, `thriving` once every
+ * {@link HOUSING_THRIVING_BUILDINGS} building stands too.
  */
-export type HousingStage = 'opening' | 'feeding' | 'thriving';
+export type HousingStage = 'opening' | 'herding' | 'feeding' | 'thriving';
+
+/** The building, by stable content id (or a tier above), whose standing ends the `herding` stage (owner
+ *  ruling): the first bakery, from which food grows to meet the population. */
+export const HOUSING_STAPLE_BUILDING = 'work_bakery_00';
 
 /** The buildings, by stable content id (or a tier above), whose standing makes the seat `thriving` (owner
  *  ruling): the brewery for the adults' mead and the upper-tier bakery for the children's bread. */
@@ -49,25 +56,27 @@ export interface HousingPace {
   readonly sites: number;
 }
 
-/** Authored, owner ruling on the order. `opening`: two free slots, one for the next daughter the assistant
- *  books and one for the one after while the next home rises, on one site. `feeding` doubles the lead on a
- *  second site, `thriving` doubles it again on a third: on magiczny_las two free slots held six to eight
- *  women for the first forty game minutes while the bread and the meat already ran. */
+/** Authored: two free slots, one for the next daughter the assistant books and one for the one after
+ *  while the next home rises, on one site. */
+const OPENING_PACE: HousingPace = { freeSlots: 2, sites: 1 };
+
+/** Authored, owner ruling on the order. `opening` keeps {@link OPENING_PACE} and `herding` keeps it too
+ *  (owner ruling: the animal farm alone does not speed the homes). `feeding` doubles the lead on a second
+ *  site, `thriving` doubles it again on a third: on magiczny_las two free slots held six to eight women for
+ *  the first forty game minutes while the bread and the meat already ran. */
 export const HOUSING_PACE: Readonly<Record<HousingStage, HousingPace>> = {
-  opening: { freeSlots: 2, sites: 1 },
+  opening: OPENING_PACE,
+  herding: OPENING_PACE,
   feeding: { freeSlots: 4, sites: 2 },
   thriving: { freeSlots: 8, sites: 3 },
 };
 
-/** Whether the seat has a built building of each {@link HOUSING_THRIVING_BUILDINGS} id or a tier above. */
-function thrivingBuilt(world: World, ctx: SystemContext, owned: readonly Entity[]): boolean {
-  const index = contentIndex(ctx.content);
-  return HOUSING_THRIVING_BUILDINGS.every((id) => {
-    const type = buildingTypeByContentId(ctx.content, id);
-    if (type === undefined) return false;
-    const tiers = tiersAtOrAbove(index, type);
-    return owned.some((e) => tiers.has(world.get(e, Building).buildingType) && isBuilt(world, e));
-  });
+/** Whether the seat has a built building of content id `id` or a tier above. */
+function builtAtOrAbove(world: World, ctx: SystemContext, owned: readonly Entity[], id: string): boolean {
+  const type = buildingTypeByContentId(ctx.content, id);
+  if (type === undefined) return false;
+  const tiers = tiersAtOrAbove(contentIndex(ctx.content), type);
+  return owned.some((e) => tiers.has(world.get(e, Building).buildingType) && isBuilt(world, e));
 }
 
 /** The seat's {@link HousingStage}. */
@@ -77,8 +86,75 @@ export function housingStage(
   player: number,
   owned: readonly Entity[],
 ): HousingStage {
-  if (!seatHasSide(world, player, 'fishing') && !foodWorkshopBuilt(world, ctx, owned)) return 'opening';
-  return thrivingBuilt(world, ctx, owned) ? 'thriving' : 'feeding';
+  if (!seatHasSide(world, player, 'fishing')) {
+    if (!foodWorkshopBuilt(world, ctx, owned)) return 'opening';
+    if (!builtAtOrAbove(world, ctx, owned, HOUSING_STAPLE_BUILDING)) return 'herding';
+  }
+  return HOUSING_THRIVING_BUILDINGS.every((id) => builtAtOrAbove(world, ctx, owned, id))
+    ? 'thriving'
+    : 'feeding';
+}
+
+/** The home tier, by stable content id, the `herding` stage raises at most {@link HERDING_TOP_HOMES} homes
+ *  to and none beyond (owner ruling: the animal farm satisfies the homes only somewhat, the third tier). */
+export const HERDING_HOME_TIER_CAP = 'home_level_02';
+
+/** The homes the `herding` stage keeps at {@link HERDING_HOME_TIER_CAP}, `wellFed` on a seat with extra
+ *  food: {@link FOOD_RICH_UNITS_PER_SETTLER} in store, or game on its hunting ground (owner ruling). */
+export const HERDING_TOP_HOMES = { lean: 1, wellFed: 2 } as const;
+
+/** The `herding` stage's limit on home upgrades: `capped` the chain's tiers from the cap up, of which only
+ *  `cap` itself is a target, and that while `left` homes may still reach it. */
+interface HerdingCeiling {
+  readonly cap: number;
+  readonly capped: ReadonlySet<number>;
+  readonly left: number;
+}
+
+/** The seat's {@link HerdingCeiling}; null outside the `herding` stage or when the content lacks the cap
+ *  tier, which leaves the upgrades free. */
+function herdingCeiling(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  homes: readonly Entity[],
+  stage: HousingStage,
+): HerdingCeiling | null {
+  if (stage !== 'herding') return null;
+  const cap = buildingTypeByContentId(ctx.content, HERDING_HOME_TIER_CAP);
+  if (cap === undefined) return null;
+  const capped = tiersAtOrAbove(contentIndex(ctx.content), cap);
+  let top = 0;
+  for (const e of homes)
+    if (capped.has(world.tryGet(e, Upgrading)?.target ?? world.get(e, Building).buildingType)) top++;
+  const settlers = ownedSettlers(world, player).length;
+  const wellFed =
+    storedFoodUnits(ctx.content, seatStockOf(world, player)) >= settlers * FOOD_RICH_UNITS_PER_SETTLER ||
+    seatHuntsGame(world, ctx, player);
+  const quota = wellFed ? HERDING_TOP_HOMES.wellFed : HERDING_TOP_HOMES.lean;
+  return { cap: cap.typeId, capped, left: Math.max(0, quota - top) };
+}
+
+/** Whether the `herding` stage still raises a built home below its cap to the cap: the ceiling has room
+ *  and such a home may be upgraded to the cap tier. */
+function herdingUpgradeLeft(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  homes: readonly Entity[],
+  ceiling: HerdingCeiling | null,
+): boolean {
+  if (ceiling === null || ceiling.left === 0) return false;
+  return homes.some((e) => {
+    const building = world.get(e, Building);
+    return (
+      isBuilt(world, e) &&
+      !world.has(e, UnderConstruction) &&
+      !world.has(e, Upgrading) &&
+      !ceiling.capped.has(building.buildingType) &&
+      buildingEnabled(world, ctx, player, building.tribe, ceiling.cap)
+    );
+  });
 }
 
 /** The home sites the lane may hold beyond the clock's `siteCap` at `stage`: its pace's sites but the one
@@ -150,9 +226,10 @@ function homesLag(world: World, ctx: SystemContext, owned: readonly Entity[], en
   return lowest < highest;
 }
 
-/** Whether the lane wants a site: the family slots fall short ({@link slotsShort}), or, once the seat
- *  makes food, a home lags below the highest tier (owner ruling: the opening's lower-tier homes are
- *  upgraded rather than left standing). */
+/** Whether the lane wants a site: the family slots fall short ({@link slotsShort}); in the `herding`
+ *  stage, a home may still rise to its ceiling ({@link herdingUpgradeLeft}); from the `feeding` stage, a
+ *  home lags below the highest tier (owner ruling: the opening's lower-tier homes are upgraded rather
+ *  than left standing). */
 export function housingShort(
   world: World,
   ctx: SystemContext,
@@ -161,10 +238,13 @@ export function housingShort(
   entry: HousingEntry,
 ): boolean {
   const stage = housingStage(world, ctx, player, owned);
-  return (
-    slotsShort(world, ctx, player, owned, entry, stage) ||
-    (stage !== 'opening' && homesLag(world, ctx, owned, entry))
-  );
+  if (slotsShort(world, ctx, player, owned, entry, stage)) return true;
+  if (stage === 'opening') return false;
+  if (stage === 'herding') {
+    const homes = homesOf(world, ctx, owned, entry);
+    return herdingUpgradeLeft(world, ctx, player, homes, herdingCeiling(world, ctx, player, homes, stage));
+  }
+  return homesLag(world, ctx, owned, entry);
 }
 
 /** Whether the seat has women or daughters and no family slot left for the next daughter. */
@@ -239,16 +319,21 @@ function billUnits(bill: readonly GoodsLine[]): number {
   return units;
 }
 
-/** Whether upgrade `a` goes before `b`: in the `opening` stage the cheaper slot, later the home of the
- *  lower tier first (owner ruling: the opening's homes are upgraded rather than left), the cheaper slot
- *  among one tier's upgrades. */
+/** Whether the stage puts any upgrade before a new home and lifts the lowest-tier homes first (owner
+ *  ruling: from the `feeding` stage the opening's homes are upgraded rather than left). */
+function upgradesLead(stage: HousingStage): boolean {
+  return stage === 'feeding' || stage === 'thriving';
+}
+
+/** Whether upgrade `a` goes before `b`: while {@link upgradesLead}, the home of the lower tier first, the
+ *  cheaper slot among one tier's upgrades; otherwise the cheaper slot. */
 function upgradeFirst(
   a: Option<HousingPick> & { readonly from: number },
   b: typeof a | null,
   stage: HousingStage,
 ): boolean {
   if (b === null) return true;
-  if (stage !== 'opening' && a.from !== b.from) return a.from < b.from;
+  if (upgradesLead(stage) && a.from !== b.from) return a.from < b.from;
   return cheaper(a, b);
 }
 
@@ -258,7 +343,9 @@ function upgradeFirst(
  * backs ({@link suppliedUpgrade}), or, while the slots fall short and below `entry.count` homes, a new home
  * of any enabled tier whose merged bill has a source ({@link billSourced}), placed by the home rule of
  * {@link placementSpot}. In the `opening` stage the cheapest slot wins, a tie going to the upgrade, which
- * needs no room, then to the higher tier. From the `feeding` stage any upgrade wins over a new home and the
+ * needs no room, then to the higher tier. The `herding` stage picks as the opening does, but raises no
+ * home above its ceiling ({@link HerdingCeiling}) and, with the slots not short, only a home to the cap
+ * while the ceiling has room. From the `feeding` stage any upgrade wins over a new home and the
  * lowest-tier home goes first, so no home is left at the base tier; with the slots not short only a home
  * below the highest tier is upgraded. A new home with no spot yields to the best upgrade, so a cramped seat
  * grows its homes upward. Null when nothing can be raised.
@@ -285,6 +372,7 @@ export function housingPick(
     const tier = world.tryGet(home, Upgrading)?.target ?? world.get(home, Building).buildingType;
     highest = Math.max(highest, index.buildings.get(tier)?.homeSize ?? 0);
   }
+  const ceiling = herdingCeiling(world, ctx, player, homes, stage);
   let upgrade: (Option<HousingPick> & { readonly from: number }) | null = null;
   // Homes of one type offer the same upgrades, so only the lowest-id built one of each is asked.
   const asked = new Set<number>();
@@ -294,12 +382,18 @@ export function housingPick(
       continue;
     asked.add(building.buildingType);
     const from = index.buildings.get(building.buildingType);
-    if (from === undefined || (!short && from.homeSize >= highest)) continue;
+    if (from === undefined) continue;
     const seen = new Set<number>();
     for (let tier = from.upgradeTarget; tier !== undefined && !seen.has(tier); ) {
       seen.add(tier);
       const to = index.buildings.get(tier);
       if (to === undefined || !buildingEnabled(world, ctx, player, building.tribe, tier)) break;
+      if (ceiling?.capped.has(tier) && (tier !== ceiling.cap || ceiling.left === 0)) break;
+      const lags = ceiling === null ? from.homeSize < highest : tier === ceiling.cap;
+      if (!short && !lags) {
+        tier = to.upgradeTarget;
+        continue;
+      }
       const bill = index.upgradeBillByTarget.get(from.typeId)?.get(tier);
       const option = {
         pick: { kind: 'upgrade', building: home, target: tier } as const,
@@ -317,7 +411,7 @@ export function housingPick(
       tier = to.upgradeTarget;
     }
   }
-  if (upgrade !== null && stage !== 'opening') return upgrade.pick;
+  if (upgrade !== null && upgradesLead(stage)) return upgrade.pick;
 
   let place: Option<BuildingType> | null = null;
   if (short && homes.length < entry.count) {
