@@ -17,6 +17,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import { disbandMilitia } from '../ai-shared/military/defence/militia.js';
 import { COMPUTER_PUBLISHED_COUNTERS } from '../computer-player/assistant-counters.js';
 import { soldierOutfitGoods } from '../computer-player/military/outfit.js';
+import { settlementGrantGoods } from '../computer-player/workforce/grants.js';
 import { forgetAllOffenders } from '../conflict/offenders.js';
 import type { SystemContext } from '../context.js';
 import { defaultStance, MILITARY_MODE, seatLeftToMapAi } from '../readviews/stances.js';
@@ -73,6 +74,7 @@ function applyAiControl(
     for (const { kinds } of COMPUTER_PUBLISHED_COUNTERS) resetAssistantCounters(world, command.player, kinds);
     withdrawMilitaryPublications(world, ctx, command.player);
     setAssistantSwitch(world, AssistantMovesFlags, command.player, false);
+    revokeAssistantGrants(world, command.player, settlementGrantGoods(ctx));
     standDownAlarms(world, command.player);
     return;
   }
@@ -120,8 +122,10 @@ function applyAiControl(
     }
   }
   if (previous.military && !next.military) withdrawMilitaryPublications(world, ctx, command.player);
-  if (previous.collectResources && !next.collectResources)
+  if (previous.collectResources && !next.collectResources) {
     setAssistantSwitch(world, AssistantMovesFlags, command.player, false);
+    revokeAssistantGrants(world, command.player, settlementGrantGoods(ctx));
+  }
   const seat = world.mut(carrier, AiControl);
   seat.modules = modules;
   seat.mapAiEnabled = mapAiEnabled;

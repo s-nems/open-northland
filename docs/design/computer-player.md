@@ -82,6 +82,12 @@ further workers of a discovered trade are schooled instead. Owner ruling on the 
 clay and one stone collector, a second stone collector early, a hunter and a farmer, the school right
 after the pottery, iron from game minute 15, mushrooms from minute 25.
 
+The seat switches the settlement assistant on as a player would (owner ruling): mead, shoes and both
+tools for every settler, since the adults live on mead and the bread feeds the children; the healing
+potions and every amulet for the soldiers alone; gatherers moving their flags. Posting graduates stays
+off: the seat schools a man for one post and puts him there itself, where the switch would bind him to
+the nearest free slot of his trade, a workshop the seat keeps short on purpose included.
+
 The workshops' product plans (`workforce/craft.ts`) follow the same rulings: a seat with iron sews
 leather and shoes from its cattle, one without breeds sheep for woollen armour; a druid brews oil until
 he learns the small healing potion and only big potions once he knows them; the first coiner strikes

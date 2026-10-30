@@ -5,14 +5,18 @@ import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 
 /** The misc goods the seat grants its soldiers through the assistant, one slot each as a store holds a
- *  unit (authored). The seat's druids and coiners make the big potion and the two amulets; the small
- *  potion is granted with the big one, as the player's healing switch does, so a watched seat's window
- *  reads the switch as on. */
+ *  unit. Owner ruling: the healing potions and every amulet go to the soldiers alone. The small potion is
+ *  granted with the big one, as the player's healing switch does, so a watched seat's window reads the
+ *  switch as on. */
 export const SOLDIER_OUTFIT_GOOD_IDS: readonly string[] = [
   'potion_heal_big',
   'potion_heal_small',
   'amulet_defense',
   'amulet_strength',
+  'amulet_food',
+  'amulet_stamina',
+  'amulet_crithit',
+  'amulet_speed',
 ];
 
 /** The good types of {@link SOLDIER_OUTFIT_GOOD_IDS} that are wearables in this content set. */

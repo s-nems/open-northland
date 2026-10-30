@@ -20,6 +20,7 @@ import {
   FLAG_RELOCATE_EVERY_RUNS,
   flagRelocateDue,
 } from '../../../src/systems/computer-player/workforce/collectors/upkeep.js';
+import { settlementGrantOrders } from '../../../src/systems/computer-player/workforce/grants.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { testContent } from '../../fixtures/content.js';
 import { ctxOf } from '../../fixtures/context.js';
@@ -42,14 +43,24 @@ function fresh(seed = 1): Simulation {
   return new Simulation({ seed, content: testContent() });
 }
 
-/** Fixture goods the soldier outfit names: the two amulets and the small healing potion ship, the big
- *  potion is appended. */
-const SHOES = 8;
+/** Fixture goods the soldier outfit names: the amulets and the small healing potion ship, the big potion
+ *  is appended. */
 const HEAL_SMALL = 16;
+const FOOD_AMULET = 23;
+const STAMINA_AMULET = 24;
 const STRENGTH_AMULET = 25;
 const DEFENCE_AMULET = 26;
-const HEAL_BIG = 60;
+const CRIT_AMULET = 27;
 const SPEED_AMULET = 28;
+const HEAL_BIG = 60;
+/** Fixture goods the settlement grants name. */
+const SHOES = 8;
+const WOODEN_TOOL = 11;
+const IRON_TOOL = 12;
+const MEAD = 13;
+/** Fixture goods neither the soldier outfit nor the settlement grants name. */
+const FUR_BOOTS = 10;
+const STAMINA_POTION = 15;
 /** Ticks for every module of a seat to take one decision. */
 const DECISION_ROUND_TICKS = COMPUTER_DECISION_INTERVAL_TICKS + COMPUTER_MODULES.length;
 
@@ -170,14 +181,23 @@ describe('setAiControl - the AI seat flag', () => {
     sim.step();
     const published = outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT);
     // Each good's limit before its grant, so no civilian is dressed in the tick between.
-    const outfit = [HEAL_BIG, HEAL_SMALL, DEFENCE_AMULET, STRENGTH_AMULET];
+    const outfit = [
+      HEAL_BIG,
+      HEAL_SMALL,
+      DEFENCE_AMULET,
+      STRENGTH_AMULET,
+      FOOD_AMULET,
+      STAMINA_AMULET,
+      CRIT_AMULET,
+      SPEED_AMULET,
+    ];
     expect(published).toEqual(
       outfit.flatMap((goodType) => [
         { kind: 'setAssistantGrantAudience', player: AI_SEAT, goodType, audience: 'soldiers' },
         { kind: 'setAssistantGrant', player: AI_SEAT, goodType, enabled: true },
       ]),
     );
-    const standing = [HEAL_SMALL, STRENGTH_AMULET, DEFENCE_AMULET, HEAL_BIG];
+    const standing = [...outfit].sort((a, b) => a - b);
     // The live module publishes the same within a decision round.
     sim.run(DECISION_ROUND_TICKS);
     expect(outfitGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]); // standing: nothing to re-issue
@@ -195,19 +215,56 @@ describe('setAiControl - the AI seat flag', () => {
 
     // A grant and a limit another hand set survive the withdrawal of the outfit.
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });
-    sim.enqueueSetup({ kind: 'setAssistantGrant', player: AI_SEAT, goodType: SHOES, enabled: true });
+    sim.enqueueSetup({ kind: 'setAssistantGrant', player: AI_SEAT, goodType: FUR_BOOTS, enabled: true });
     sim.enqueueSetup({
       kind: 'setAssistantGrantAudience',
       player: AI_SEAT,
-      goodType: SPEED_AMULET,
+      goodType: STAMINA_POTION,
       audience: 'soldiers',
     });
     for (const command of published) sim.enqueueSetup(command);
     sim.step();
     sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: false });
     sim.step();
-    expect(sim.assistantGrants(AI_SEAT)).toEqual([SHOES]);
-    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([SPEED_AMULET]);
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([FUR_BOOTS]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([STAMINA_POTION]);
+  });
+
+  it('grants mead, shoes and tools to every settler, and withdraws them with the workforce module or the seat', () => {
+    const sim = new Simulation({ seed: 1, content: outfitContent(), map: grassNodeMap(32, 32) });
+    sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });
+    sim.step();
+    const published = settlementGrantOrders(sim.world, ctxOf(sim), AI_SEAT);
+    expect(published).toEqual(
+      [MEAD, SHOES, IRON_TOOL, WOODEN_TOOL].map((goodType) => ({
+        kind: 'setAssistantGrant',
+        player: AI_SEAT,
+        goodType,
+        enabled: true,
+      })),
+    );
+    for (const command of published) sim.enqueueSetup(command);
+    sim.step();
+    expect(settlementGrantOrders(sim.world, ctxOf(sim), AI_SEAT)).toEqual([]);
+    expect(sim.assistantSoldierOnlyGrants(AI_SEAT)).toEqual([]);
+
+    sim.enqueueSetup({
+      kind: 'setAiControl',
+      player: AI_SEAT,
+      enabled: true,
+      modules: { collectResources: false, military: false },
+    });
+    sim.step();
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
+
+    // The seat handed back to a player loses them too.
+    sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: true });
+    for (const command of published) sim.enqueueSetup(command);
+    sim.step();
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([SHOES, WOODEN_TOOL, IRON_TOOL, MEAD]);
+    sim.enqueueSetup({ kind: 'setAiControl', player: AI_SEAT, enabled: false });
+    sim.step();
+    expect(sim.assistantGrants(AI_SEAT)).toEqual([]);
   });
 
   it('switches the flag follow off on disable, and when the workforce module turns off', () => {

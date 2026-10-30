@@ -56,6 +56,7 @@ import { allocateFishers, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import { foodHunters } from './food.js';
 import { calledGatherers, claimArmyFloor, garrisonArms, trainGarrison, upperReserve } from './garrison.js';
+import { settlementGrantOrders } from './grants.js';
 import { assignHaulingCarts } from './hauling-carts.js';
 import { allocateHunters, huntingPlan } from './hunter.js';
 import { allocateRoadCrew } from './road-crew.js';
@@ -232,6 +233,7 @@ function runWorkforce(
   const undrafted = (c: PlayerCommand): boolean => !('entity' in c && drafted.has(c.entity));
   return [
     ...flagFollowSwitch(world, player),
+    ...settlementGrantOrders(world, ctx, player),
     ...posted.filter(undrafted),
     ...roadCrew.commands,
     ...reserve.commands.filter(undrafted),
