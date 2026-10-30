@@ -3,9 +3,10 @@ import type { HalfCellNode } from '../../nav/halfcell.js';
 import { aiControlEntity } from './control.js';
 
 /** What an operation is for. `assault` is the seat's marching wave (its mechanics live on the barracks'
- *  `WaveMarch`); `raid` is a small band sent at the enemy's gatherers. A new kind is one more entry and
- *  one more handler (`systems/computer-player/military/operations`). */
-export const OPERATION_KINDS = ['assault', 'raid'] as const;
+ *  `WaveMarch`); `hold` is a band that takes and keeps an area the map rewards holding; `raid` is a small
+ *  band sent at the enemy's gatherers. A new kind is one more entry and one more handler
+ *  (`systems/computer-player/military/operations`); kinds open in this order. */
+export const OPERATION_KINDS = ['assault', 'hold', 'raid'] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
 
 /** An operation's lifecycle. `done` and `failed` are terminal: the operation lets its men go and is
@@ -69,7 +70,18 @@ export interface RaidOperation extends OperationBase {
   killed: number;
 }
 
-export type Operation = AssaultOperation | RaidOperation;
+/** A band holding an area: `target` is the area's centre, the band's men stand within `range` of it. */
+export interface HoldOperation extends OperationBase {
+  kind: 'hold';
+  /** The area's radius in map points, as the script measures presence. */
+  range: number;
+  /** The node on the band's land the men walk to: the reachable node nearest the centre. */
+  post: HalfCellNode;
+  /** The men it set out with plus every reinforcement, for its losses. */
+  sentMen: number;
+}
+
+export type Operation = AssaultOperation | HoldOperation | RaidOperation;
 
 export interface ComputerOperationsState {
   /** The next operation's id, per seat. */

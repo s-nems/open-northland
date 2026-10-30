@@ -16,6 +16,7 @@ import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { mapAiSoldierClaims } from '../../../ai-shared/military/ownership.js';
 import { assaultHandler } from './assault.js';
+import { holdHandler } from './hold.js';
 import { isOpen, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { raidHandler } from './raid.js';
 
@@ -24,7 +25,7 @@ export { enter, isOpen, type Opened, type OperationEnv, type OperationHandler } 
 type Handlers = { readonly [K in OperationKind]: OperationHandler<Extract<Operation, { kind: K }>> };
 
 /** Every kind's handler: a new kind is one entry here and one in `OPERATION_KINDS`. */
-const HANDLERS: Handlers = { assault: assaultHandler, raid: raidHandler };
+const HANDLERS: Handlers = { assault: assaultHandler, hold: holdHandler, raid: raidHandler };
 
 const FIRST_ID = 1;
 
@@ -63,6 +64,9 @@ export function runOperations(
   const carrier = aiControlEntity(world, seat);
   if (carrier === null) return { commands: [], members: new Set() };
   const commands: PlayerCommand[] = [];
+  const heldBefore = operationMembersOf(world, seat);
+  // The men no operation holds: a step may take reinforcements from them.
+  const pool = free.filter((e) => !heldBefore.has(e));
   // Written only when an operation runs, ends or opens, so a seat with none changes nothing.
   const held = world.tryGet(carrier, ComputerOperations);
   if (held?.operations.some((op) => !isOpen(op) || HANDLERS[op.kind].phase === phase)) {
@@ -72,12 +76,12 @@ export function runOperations(
     for (const op of state.operations) {
       if (!isOpen(op) || HANDLERS[op.kind].phase !== phase) continue;
       op.members = op.members.filter((e) => stillServes(world, seat, claimed, e));
-      commands.push(...stepOf(env, op));
+      commands.push(...stepOf(env, op, pool));
       if (!isOpen(op)) state.readyAt[op.kind] = ctx.tick + HANDLERS[op.kind].cooldownTicks;
     }
   }
   const members = operationMembersOf(world, seat);
-  let left = free.filter((e) => !members.has(e));
+  let left = pool.filter((e) => !members.has(e));
   for (const kind of OPERATION_KINDS) {
     const handler = HANDLERS[kind];
     const now = world.tryGet(carrier, ComputerOperations);
@@ -96,12 +100,14 @@ export function runOperations(
   return { commands, members: operationMembersOf(world, seat) };
 }
 
-function stepOf(env: OperationEnv, op: Operation): readonly PlayerCommand[] {
+function stepOf(env: OperationEnv, op: Operation, pool: Entity[]): readonly PlayerCommand[] {
   switch (op.kind) {
     case 'assault':
-      return HANDLERS.assault.step(env, op);
+      return HANDLERS.assault.step(env, op, pool);
+    case 'hold':
+      return HANDLERS.hold.step(env, op, pool);
     case 'raid':
-      return HANDLERS.raid.step(env, op);
+      return HANDLERS.raid.step(env, op, pool);
   }
 }
 
@@ -119,6 +125,12 @@ export interface OperationView {
     readonly owner: number | null;
   };
   readonly reason: OperationEndReason | null;
+  /** A hold's radius around its target, its post, and the men it sent with every reinforcement. */
+  readonly hold: {
+    readonly range: number;
+    readonly post: { readonly hx: number; readonly hy: number };
+    readonly sentMen: number;
+  } | null;
   /** A raid's flank waypoints and leg, head count at the start, people struck and killed. */
   readonly raid: {
     readonly waypoints: readonly { readonly hx: number; readonly hy: number }[];
@@ -139,6 +151,10 @@ export function seatOperationsOf(world: World, seat: number): readonly Operation
     members: [...op.members],
     target: { ...op.target },
     reason: op.reason,
+    hold:
+      op.kind === 'hold'
+        ? { range: op.range, post: { hx: op.post.hx, hy: op.post.hy }, sentMen: op.sentMen }
+        : null,
     raid:
       op.kind === 'raid'
         ? {

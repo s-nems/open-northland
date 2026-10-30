@@ -27,6 +27,8 @@ export interface SeatOperation {
   readonly owner: number | null;
   readonly hx: number;
   readonly hy: number;
+  /** A hold's radius around its node in map points; null for another kind. */
+  readonly range: number | null;
   readonly inStateTicks: number;
   readonly reason: components.OperationEndReason | null;
 }
@@ -73,6 +75,7 @@ export function readSeatWork(
       owner: op.target.owner,
       hx: op.target.hx,
       hy: op.target.hy,
+      range: op.kind === 'hold' ? op.range : null,
       inStateTicks: snapshot.tick - op.since,
       reason: op.reason,
     })),
@@ -151,7 +154,7 @@ export function workTables(work: SeatWork, msgs: Messages): AdminAiTable[] {
         String(op.men),
         aim(op.aim),
         op.owner === null ? NO_VALUE : formatMessage(copy.player, { player: op.owner }),
-        `${op.hx},${op.hy}`,
+        op.range === null ? `${op.hx},${op.hy}` : `${op.hx},${op.hy} r${op.range}`,
         (op.inStateTicks / TICKS_PER_MINUTE).toFixed(1),
         op.reason ?? NO_VALUE,
       ]),

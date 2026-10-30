@@ -14,8 +14,8 @@ const carrier = {
   id: CARRIER,
   components: {
     ComputerOperations: {
-      nextId: 3,
-      readyAt: { assault: 0, raid: 0 },
+      nextId: 4,
+      readyAt: { assault: 0, hold: 0, raid: 0 },
       operations: [
         {
           id: 1,
@@ -39,6 +39,18 @@ const carrier = {
           startMen: 2,
           struck: [],
           killed: 0,
+        },
+        {
+          id: 3,
+          kind: 'hold',
+          state: 'acting',
+          since: TICKS_PER_MINUTE,
+          members: [RAIDER],
+          target: { hx: 179, hy: 179, entity: null, owner: null },
+          reason: null,
+          range: 13,
+          post: { hx: 179, hy: 179 },
+          sentMen: 1,
         },
       ],
     },
@@ -71,6 +83,8 @@ describe('a computer seat at work', () => {
       ],
       // A target gone from the world shows as a bare unit.
       ['#2 raid', 'failed', '0', copy.unit, '-', '4,6', '1.0', 'wiped'],
+      // A hold aims at a place and shows its radius.
+      ['#3 hold', 'acting', '1', copy.place, '-', '179,179 r13', '1.0', '-'],
     ]);
     expect(apprentices?.rows).toEqual([
       ['12', 'work_smithy', '#6 7', '4'],

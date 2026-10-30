@@ -105,6 +105,21 @@ describe('military posture', () => {
     }
   });
 
+  it('holds an area only away from a defence, and a defensive plan only while it attacks', () => {
+    for (const plan of MILITARY_PLANS) {
+      expect(ordersFor(plan, 'defend').hold).toBeNull();
+      expect(ordersFor(plan, 'prepare', ['forecastThreat']).hold).toBeNull();
+      expect(ordersFor(plan, 'attack').hold).not.toBeNull();
+    }
+    expect(ordersFor('defensive', 'prepare', ['buildingUp']).hold).toBeNull();
+    expect(ordersFor('aggressive', 'prepare', ['buildingUp']).hold).not.toBeNull();
+    const share = (plan: 'aggressive' | 'defensive') => {
+      const tuning = ordersFor(plan, 'attack').hold;
+      return tuning === null ? 0 : tuning.spareShare.num / tuning.spareShare.den;
+    };
+    expect(share('aggressive')).toBeGreaterThan(share('defensive'));
+  });
+
   it('attacks at a lower edge for an aggressive plan than for a defensive one', () => {
     const posture = (plan: 'aggressive' | 'balanced' | 'defensive', own: number) =>
       selectPosture(plan, inputs(own), null).posture;

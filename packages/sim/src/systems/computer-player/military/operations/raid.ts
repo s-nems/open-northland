@@ -3,10 +3,8 @@ import {
   Building,
   DefenceMode,
   diplomacyStance,
-  Health,
   MAX_PLAYERS,
   type OperationEndReason,
-  Person,
   type RaidOperation,
   Stance,
   seatPeaceEndTick,
@@ -20,13 +18,13 @@ import { isRangedFighter } from '../../../ai-shared/military/census.js';
 import { spokenFor } from '../../../ai-shared/military/errand.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../ai-shared/seat-roster.js';
-import { isTravelling } from '../../../movement/nav-state.js';
 import { MILITARY_MODE } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import { computerProfileOf } from '../../difficulty.js';
 import { WAVE_MIN_SOLDIERS } from '../muster.js';
 import { unitPoints } from '../points.js';
+import { bandCentre, gatheredAt, homeOf, isAlive, walkTo } from './band.js';
 import { enter, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import {
   believedTowers,
@@ -71,57 +69,20 @@ export const RAID_LOSS_PCT = 50;
 
 const PERCENT = 100;
 
-function isAlive(world: World, e: Entity): boolean {
-  return world.has(e, Person) && (world.tryGet(e, Health)?.hitpoints ?? 0) > 0;
-}
-
-/** The integer-mean node of the band. */
-function bandCentre(world: World, members: readonly Entity[]): HalfCellNode | null {
-  let hx = 0;
-  let hy = 0;
-  let count = 0;
-  for (const e of members) {
-    const at = nodeOfEntity(world, e);
-    if (at === null) continue;
-    hx += at.hx;
-    hy += at.hy;
-    count++;
-  }
-  return count === 0 ? null : { hx: Math.floor(hx / count), hy: Math.floor(hy / count) };
-}
-
-/** Whether every man of the band stands within {@link RAID_GATHER_RADIUS_NODES} of `at`. */
-function gatheredAt(world: World, members: readonly Entity[], at: HalfCellNode): boolean {
-  return members.every((e) => {
-    const node = nodeOfEntity(world, e);
-    return node !== null && nodeManhattan(node, at) <= RAID_GATHER_RADIUS_NODES;
-  });
-}
-
-/** Walk the men of the band who are neither near `at` nor already walking there; all of them when
- *  `everyone` (a new leg or the turn home). */
-function walkTo(
-  { world }: OperationEnv,
+/** The band's men who are neither near `at` nor already walking there walk on; all of them when
+ *  `everyone`. */
+function walkBand(
+  env: OperationEnv,
   members: readonly Entity[],
   at: HalfCellNode,
   kind: 'moveUnit' | 'attackMoveUnit',
   everyone: boolean,
 ): PlayerCommand[] {
-  const commands: PlayerCommand[] = [];
-  for (const e of members) {
-    if (!everyone) {
-      const node = nodeOfEntity(world, e);
-      if (isTravelling(world, e) || (node !== null && nodeManhattan(node, at) <= RAID_GATHER_RADIUS_NODES))
-        continue;
-    }
-    commands.push({ kind, entity: e, x: at.hx, y: at.hy });
-  }
-  return commands;
+  return walkTo(env.world, members, at, kind, everyone, RAID_GATHER_RADIUS_NODES);
 }
 
-function homeOf(env: OperationEnv): HalfCellNode {
-  const { x, y } = env.terrain.coordsOf(env.home);
-  return { hx: x, hy: y };
+function gathered(world: World, members: readonly Entity[], at: HalfCellNode): boolean {
+  return gatheredAt(world, members, at, RAID_GATHER_RADIUS_NODES);
 }
 
 function targetNode(op: RaidOperation): HalfCellNode {
@@ -131,7 +92,7 @@ function targetNode(op: RaidOperation): HalfCellNode {
 /** Turn the band home for `reason`. */
 function withdraw(env: OperationEnv, op: RaidOperation, reason: OperationEndReason): PlayerCommand[] {
   enter(op, 'withdrawing', env.ctx.tick, reason);
-  return walkTo(env, op.members, homeOf(env), 'moveUnit', true);
+  return walkBand(env, op.members, homeOf(env), 'moveUnit', true);
 }
 
 /** Why the band should turn back now, or null: its posture no longer raids, the target's owner is no
@@ -192,9 +153,9 @@ function strike(env: OperationEnv, op: RaidOperation): PlayerCommand[] {
     .sort((a, b) => a.distance - b.distance || a.e - b.e)
     .map(({ e }) => e);
   if (prey.length === 0) {
-    if (gatheredAt(world, op.members, at) && ctx.tick - op.since >= RAID_IDLE_TICKS)
+    if (gathered(world, op.members, at) && ctx.tick - op.since >= RAID_IDLE_TICKS)
       return withdraw(env, op, 'nothingToStrike');
-    return walkTo(env, op.members, at, 'attackMoveUnit', false);
+    return walkBand(env, op.members, at, 'attackMoveUnit', false);
   }
   const hunted = new Set(prey);
   const commands: PlayerCommand[] = [];
@@ -222,21 +183,21 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
   switch (op.state) {
     case 'forming': {
       if (!env.orders.raidsAllowed) return withdraw(env, op, 'postureChanged');
-      if (!gatheredAt(world, op.members, home) && tick - op.since < RAID_FORM_TIMEOUT_TICKS)
-        return walkTo(env, op.members, home, 'attackMoveUnit', false);
+      if (!gathered(world, op.members, home) && tick - op.since < RAID_FORM_TIMEOUT_TICKS)
+        return walkBand(env, op.members, home, 'attackMoveUnit', false);
       enter(op, 'moving', tick);
-      return walkTo(env, op.members, legEnd(op), 'attackMoveUnit', true);
+      return walkBand(env, op.members, legEnd(op), 'attackMoveUnit', true);
     }
     case 'moving': {
       const reason = abortReason(env, op);
       if (reason !== null) return withdraw(env, op, reason);
       const end = legEnd(op);
-      if (!gatheredAt(world, op.members, end) && tick - op.since < RAID_LEG_TIMEOUT_TICKS)
-        return walkTo(env, op.members, end, 'attackMoveUnit', false);
+      if (!gathered(world, op.members, end) && tick - op.since < RAID_LEG_TIMEOUT_TICKS)
+        return walkBand(env, op.members, end, 'attackMoveUnit', false);
       if (op.leg < op.waypoints.length) {
         op.leg++;
         enter(op, 'moving', tick);
-        return walkTo(env, op.members, legEnd(op), 'attackMoveUnit', true);
+        return walkBand(env, op.members, legEnd(op), 'attackMoveUnit', true);
       }
       enter(op, 'acting', tick);
       return strike(env, op);
@@ -248,11 +209,11 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
       return strike(env, op);
     }
     case 'withdrawing': {
-      if (gatheredAt(world, op.members, home) || tick - op.since >= RAID_WITHDRAW_TIMEOUT_TICKS) {
+      if (gathered(world, op.members, home) || tick - op.since >= RAID_WITHDRAW_TIMEOUT_TICKS) {
         enter(op, 'done', tick);
         return [];
       }
-      return walkTo(env, op.members, home, 'moveUnit', false);
+      return walkBand(env, op.members, home, 'moveUnit', false);
     }
     case 'done':
     case 'failed':
@@ -324,7 +285,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
     if (world.tryGet(e, Stance)?.mode !== MILITARY_MODE.ATTACK)
       commands.push({ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK });
   }
-  commands.push(...walkTo(env, members, homeOf(env), 'attackMoveUnit', false));
+  commands.push(...walkBand(env, members, homeOf(env), 'attackMoveUnit', false));
   return { op, commands };
 }
 

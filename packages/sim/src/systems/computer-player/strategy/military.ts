@@ -78,6 +78,23 @@ export const PLAN_TUNING: Readonly<Record<MilitaryPlan, PlanTuning>> = {
   },
 };
 
+/** How a plan holds an area the map rewards holding (`military/operations/hold.ts`). */
+export interface HoldTuning {
+  /** Of the free men past the home floor, the share a hold sets out with; it takes more when the defence
+   *  it believes at the area needs them. */
+  readonly spareShare: Share;
+}
+
+/** Owner ruling: the hold is a seat's main offensive use of its army when the map rewards one; an
+ *  aggressive seat holds with more men, a defensive one only once its home is safe (it attacks). The
+ *  shares are authored. */
+export const HOLD_TUNING: Readonly<Record<MilitaryPlan, HoldTuning>> = {
+  aggressive: { spareShare: WHOLE },
+  defensive: { spareShare: { num: 1, den: 2 } },
+  harasser: { spareShare: { num: 2, den: 3 } },
+  balanced: { spareShare: { num: 3, den: 4 } },
+};
+
 /** Every how many of a seat's decisions its posture is reviewed (authored): 12 s at the 4 s beat, quick
  *  enough to call an army home before a forecast attack lands. */
 export const POSTURE_REVIEW_EVERY_DECISIONS = 3;
@@ -290,6 +307,8 @@ export interface MilitaryOrders {
   readonly holdHome: boolean;
   /** Raids on enemy gatherers may run (the next step's operations read it). */
   readonly raidsAllowed: boolean;
+  /** Null: no hold may run. Else a hold on an area the map rewards holding may, with these figures. */
+  readonly hold: HoldTuning | null;
   /** Multiplies the difficulty's army floor share. */
   readonly floorShare: Share;
   /** Of the difficulty's army cap, the part a seat that drafts to its cap drafts to. */
@@ -308,6 +327,7 @@ const UNDECIDED: MilitaryOrders = {
   launchRatio: WHOLE,
   holdHome: false,
   raidsAllowed: false,
+  hold: null,
   floorShare: WHOLE,
   draftCapShare: WHOLE,
   towerRadiusPct: PLAN_TUNING.balanced.towerRadiusPct,
@@ -336,6 +356,7 @@ export function ordersFor(
     launchRatio: holdHome ? null : tuning.launchRatio,
     holdHome,
     raidsAllowed: posture === 'harass',
+    hold: holdsIn(plan, posture, evidence) ? HOLD_TUNING[plan] : null,
     floorShare: holdHome
       ? {
           num: tuning.floorShare.num * HOLD_FLOOR_SHARE.num,
@@ -346,6 +367,21 @@ export function ordersFor(
     towerRadiusPct: tuning.towerRadiusPct,
     callsGatherers: posture === 'prepare' && evidence.includes('forecastThreat'),
   };
+}
+
+/** Whether `plan` holds an area in `posture`: never while it defends or prepares against a forecast
+ *  attack; a defensive plan only while it attacks, the others also while they build up or harass. */
+function holdsIn(plan: MilitaryPlan, posture: MilitaryPosture, evidence: readonly MilitaryRule[]): boolean {
+  switch (posture) {
+    case 'defend':
+      return false;
+    case 'prepare':
+      return plan !== 'defensive' && !evidence.includes('forecastThreat');
+    case 'harass':
+      return plan !== 'defensive';
+    case 'attack':
+      return true;
+  }
 }
 
 /** A seat's army as its posture review reads it, for a debug view. */
