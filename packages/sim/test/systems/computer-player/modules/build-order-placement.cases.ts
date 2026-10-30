@@ -2,6 +2,7 @@ import { footprintCellDx, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
+  mapBriefOf,
   Position,
   Resource,
   StalledPlacements,
@@ -12,6 +13,7 @@ import { positionOfNode, Simulation, type TerrainMap } from '../../../../src/ind
 import { GRASS_BESIDE_NODES, spotAcceptor } from '../../../../src/systems/ai-shared/building-spot.js';
 import { bestRingNode } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
+import { FRONT_LINE_DEPTH_NODES } from '../../../../src/systems/computer-player/build-order/front.js';
 import { grassScarce } from '../../../../src/systems/computer-player/build-order/grass-reserve.js';
 import {
   buildReach,
@@ -30,7 +32,9 @@ import {
   overflowBuildReachNodes,
   STALLED_PLACEMENT_RETRY_DECISIONS,
 } from '../../../../src/systems/computer-player/index.js';
+import { seatTerritoryOf } from '../../../../src/systems/computer-player/knowledge/map-intent/index.js';
 import { canPlaceBuilding, stampResourceFootprintData } from '../../../../src/systems/index.js';
+import { SUCCESSFUL_IF } from '../../../../src/systems/missions/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
@@ -51,6 +55,7 @@ import {
   RESOURCE_SPOTS,
   SAND,
   SEAT,
+  SPEARMAN,
   STOCK_TYPE,
   STONE,
   STONE_HARVEST,
@@ -536,6 +541,49 @@ describe('build-order placement - affinity and ground rules', () => {
     // The pull points at the map centre (128,128), east and south of this HQ.
     expect(spot.x).toBeGreaterThan(HQ_FAR.x);
     expect(spot.y).toBeGreaterThan(HQ_FAR.y);
+  });
+
+  it('keeps a placement behind the tower line toward a forecast attack', () => {
+    // The map centre lies east of the base, where the raiders come from.
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(160, 32) });
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    placeHq(sim);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const anchor = seatTerritoryOf(mapBriefOf(sim.world), SEAT)?.anchor;
+    if (anchor === undefined) throw new Error('setup: the seat has no start in the map brief');
+    const RAIDER = 6;
+    const raid = {
+      successfullIf: SUCCESSFUL_IF.all,
+      active: true,
+      visible: false,
+      goals: [],
+      results: [
+        {
+          opcode: 'SetHumanX' as const,
+          player: RAIDER,
+          tribe: VIKING,
+          job: SPEARMAN,
+          point: { hx: 159, hy: HQ_Y },
+          humanId: 1,
+          behaviour: 0,
+          amount: 6,
+        },
+        { opcode: 'SendHuman' as const, humanId: 1, point: anchor },
+      ],
+    };
+    const centred = buildOrderModule(
+      oneLine([{ kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'mapCentre' }] }]),
+    );
+    const spotIn = (ctx: ReturnType<typeof ctxOf>) => {
+      const spot = [...centred.run(sim.world, ctx, SEAT)][0];
+      if (spot?.kind !== 'placeBuilding') throw new Error('expected a centre-pulled placement');
+      return spot;
+    };
+    expect(spotIn(ctxOf(sim)).x).toBeGreaterThan(HQ_X + FRONT_LINE_DEPTH_NODES);
+    const raided = spotIn({ ...ctxOf(sim), missions: { missions: [raid] } });
+    expect(raided.x).toBeGreaterThan(HQ_X);
+    expect(raided.x).toBeLessThanOrEqual(HQ_X + FRONT_LINE_DEPTH_NODES);
   });
 
   it('pulls a front-affinity placement toward the nearest enemy headquarters, or the map centre without one', () => {

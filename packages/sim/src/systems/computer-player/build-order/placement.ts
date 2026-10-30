@@ -25,6 +25,7 @@ import { knownResourceTest, nearestLiveResource } from '../live-resources.js';
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, overflowBuildReachNodes } from './entries.js';
+import { scriptedFrontLine } from './front.js';
 import { grassBound } from './grass-reserve.js';
 import { seatTuning } from './seat-order.js';
 
@@ -500,6 +501,10 @@ function footprintOnGrass(
  * over the wider {@link overflowBuildReachNodes}, on the base's own
  * land component only, since the wider reach can
  * span a strait the builders cannot walk.
+ *
+ * On a seat with forecast scripted attacks every search first keeps behind its tower line
+ * ({@link scriptedFrontLine}, owner ruling: the town's buildings go behind the towers, never in front of
+ * them toward the attacks), and only a seat with no room left behind it places beyond.
  */
 export function placementSpot(
   world: World,
@@ -513,6 +518,41 @@ export function placementSpot(
   entry: Extract<BuildOrderEntry, { kind: 'place' }>,
   underFire: EnemyFire,
   reserveGrass: boolean,
+): HalfCellNode | null {
+  const line = scriptedFrontLine(world, ctx, player, owned);
+  const spot = (front: SpotBound) =>
+    boundedSpot(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      type,
+      tribe,
+      entry,
+      underFire,
+      reserveGrass,
+      front,
+    );
+  if (line === null) return spot(null);
+  return spot((x, y) => !line.beyond(x, y)) ?? spot(null);
+}
+
+/** {@link placementSpot} with every spot also inside `front`, or anywhere for null. */
+function boundedSpot(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  anchor: HalfCellNode,
+  type: BuildingType,
+  tribe: number,
+  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+  underFire: EnemyFire,
+  reserveGrass: boolean,
+  front: SpotBound,
 ): HalfCellNode | null {
   const tuning = seatTuning(world, player);
   const settlement = buildReach(world, owned, anchor, tuning.reachNodes);
@@ -547,7 +587,7 @@ export function placementSpot(
   const home = baseComponent(world, ctx, terrain, player);
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   if (tuning.homeLandOnly && home === NO_COMPONENT) return null;
-  const land: SpotBound = tuning.homeLandOnly ? onHomeLand : null;
+  const land = bothBounds(tuning.homeLandOnly ? onHomeLand : null, front);
   const ground: GroundRule = entry.ground === 'plantable' ? 'on' : 'any';
   const near = (
     reach: BuildReach,
@@ -592,6 +632,12 @@ export function placementSpot(
   const overflowNodes = overflowBuildReachNodes(tuning.reachNodes);
   const overflow = buildReach(world, owned, anchor, overflowNodes);
   return onOrBeside((rule) => near(overflow, centre, onHomeLand, 2 * overflowNodes, rule));
+}
+
+function bothBounds(a: SpotBound, b: SpotBound): SpotBound {
+  if (a === null) return b;
+  if (b === null) return a;
+  return (x, y) => a(x, y) && b(x, y);
 }
 
 function spotAround(

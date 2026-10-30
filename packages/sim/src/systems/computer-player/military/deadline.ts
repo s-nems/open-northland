@@ -80,30 +80,41 @@ function firstForecastAttackTick(world: World, ctx: SystemContext, seat: number)
   return first === Number.POSITIVE_INFINITY ? null : first;
 }
 
+/** The distinct ticks the forecast scripted attacks on `seat` may first land, ascending, past ones included;
+ *  a conditional attack has none. */
+export function forecastAttackTicks(world: World, ctx: SystemContext, seat: number): number[] {
+  const ticks = new Set<number>();
+  for (const threat of forecastThreats(world, ctx, seat)) {
+    const at = forecastAttackTick(threat.trigger);
+    if (at !== null) ticks.add(at);
+  }
+  return [...ticks].sort((a, b) => a - b);
+}
+
 /**
- * Where `seat`'s first forecast scripted attack sets out from: the mean of the points its scripts name
- * ({@link SeatThreat.from}), taken from the earliest forecast attack naming any (source order on a tie, a
- * conditional one last), or null when none does.
+ * Where `seat`'s forecast scripted attacks set out from: the mean over every forecast attack naming any
+ * origin of the rounded mean of the points its scripts name ({@link SeatThreat.from}), or null when none does.
+ * Owner ruling: the towers stand as a line on the side the attacks come from, so the line faces all the
+ * waves, not only the first.
  */
 export function forecastAttackOrigin(world: World, ctx: SystemContext, seat: number): IntentPoint | null {
-  let best: SeatThreat | null = null;
-  let bestTick = Number.POSITIVE_INFINITY;
-  for (const threat of forecastThreats(world, ctx, seat)) {
-    if (threat.from.length === 0) continue;
-    const at = forecastAttackTick(threat.trigger) ?? Number.POSITIVE_INFINITY;
-    if (best === null || at < bestTick) {
-      best = threat;
-      bestTick = at;
-    }
-  }
-  if (best === null) return null;
   let hx = 0;
   let hy = 0;
-  for (const point of best.from) {
-    hx += point.hx;
-    hy += point.hy;
+  let attacks = 0;
+  for (const threat of forecastThreats(world, ctx, seat)) {
+    if (threat.from.length === 0) continue;
+    let sx = 0;
+    let sy = 0;
+    for (const point of threat.from) {
+      sx += point.hx;
+      sy += point.hy;
+    }
+    hx += Math.round(sx / threat.from.length);
+    hy += Math.round(sy / threat.from.length);
+    attacks++;
   }
-  return { hx: Math.round(hx / best.from.length), hy: Math.round(hy / best.from.length) };
+  if (attacks === 0) return null;
+  return { hx: Math.round(hx / attacks), hy: Math.round(hy / attacks) };
 }
 
 /** The scripted attacks forecast on `seat` by an enemy or an unknown owner, from the map's scripts, the

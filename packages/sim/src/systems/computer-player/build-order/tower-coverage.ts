@@ -22,6 +22,13 @@ import { seatBaseOf } from '../base.js';
 import { forecastAttackOrigin } from '../military/deadline.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import type { BuildOrderEntry } from './entries.js';
+import {
+  DEFENCE_FRONT_ROWS,
+  EVEN_FRONT_ROWS,
+  scheduledTowers,
+  seatFrontLine,
+  TOWER_CONTENT_IDS,
+} from './front.js';
 import { grassBound } from './grass-reserve.js';
 import { buildReach } from './placement.js';
 import { DEFENCE_TOWER_RADIUS_PCT, seatDefenceFirst, seatTuning } from './seat-order.js';
@@ -34,9 +41,7 @@ import { DEFENCE_TOWER_RADIUS_PCT, seatDefenceFirst, seatTuning } from './seat-o
  *  settlement grow (authored): towers ringed at full bow range stand too far out to read as part of it. */
 export const TOWER_DEFENCE_RADIUS_NODES = 19;
 
-/** Covering towers are an id allowlist, not `kind === 'tower'`: `work_pottery_02` shares the kind but
- *  is the defence wall. */
-export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
+export { TOWER_CONTENT_IDS };
 
 /** How far past the covering target the search seed is pushed out from the settlement centroid, in
  *  nodes. Approximation: far enough to bias the pick outward, short enough to land just beyond the
@@ -114,14 +119,27 @@ function coverageCentres(
   return centres;
 }
 
+/** How near one of its slots a tower stands to hold it, in percent of the line's spacing (authored): half,
+ *  so neighbouring slots never share a tower and each slot takes its own. */
+const FRONT_SLOT_RADIUS_PCT = 50;
+
 /**
- * The first node the coverage must reach that lies outside every coverage circle and that `found` takes,
- * or null: each uncovered node is offered in turn, so a status read stops at the first. A tower covers
- * the owned buildings {@link towerTargets} offers, each facing an attack inside
- * {@link FACING_RING_DEPTH} circles. A store covers what fills it: the seat's workplaces, so a
- * far production cluster has somewhere to unload, and then its gatherers' work flags (canonical settler
- * order), where the mined and quarried goods pile up; homes and towers pass, since a tower rings the
- * settlement's edge and would pull warehouses out to it.
+ * The first node the coverage must reach that is not yet covered and that `found` takes, or null: each
+ * target is offered in turn, so a status read stops at the first. `found` gets the radius its spot must
+ * lie within, or null for a target the coverage circle must reach.
+ *
+ * A tower ring first holds its seat's front ({@link seatFrontLine}, owner ruling: the towers stand as a
+ * line on the side the attacks come from, the town behind it): each line slot without a tower within
+ * {@link FRONT_SLOT_RADIUS_PCT} of the spacing, spaced one coverage radius apart, {@link DEFENCE_FRONT_ROWS}
+ * rows while the seat's defence comes first and {@link EVEN_FRONT_ROWS} otherwise. Then it covers the owned
+ * buildings {@link towerTargets} offers, each facing an attack inside {@link FACING_RING_DEPTH} circles. A
+ * seat with forecast attacks raises no more towers, sites included, than {@link scheduledTowers} wants by
+ * now (owner ruling: the towers finish a bit before each wave).
+ *
+ * A store covers what fills it: the seat's workplaces, so a far production cluster has somewhere to
+ * unload, and then its gatherers' work flags (canonical settler order), where the mined and quarried goods
+ * pile up; homes and towers pass, since a tower rings the settlement's edge and would pull warehouses out
+ * to it.
  */
 export function firstUncovered<T>(
   world: World,
@@ -129,10 +147,19 @@ export function firstUncovered<T>(
   player: number,
   owned: readonly Entity[],
   coverage: Coverage,
-  found: (target: HalfCellNode) => T | null,
+  found: (target: HalfCellNode, within: number | null) => T | null,
 ): T | null {
   const index = contentIndex(ctx.content);
   const centres = coverageCentres(world, ctx, player, owned, coverage);
+  if (coverage.by === 'tower') {
+    const towers = coverage.baseCovers
+      ? coverageCentres(world, ctx, player, owned, { ...coverage, baseCovers: false })
+      : centres;
+    const wanted = scheduledTowers(world, ctx, player);
+    if (wanted !== null && towers.length >= wanted) return null;
+    const hit = frontSlotTarget(world, ctx, player, owned, towers, coverage, found);
+    if (hit !== null) return hit;
+  }
   const facing = coverage.by === 'tower' ? towerTargets(world, ctx, player, owned, coverage) : null;
   const depth = facing === null ? 1 : FACING_RING_DEPTH;
   const offer = (e: Entity): T | null => {
@@ -142,7 +169,7 @@ export function firstUncovered<T>(
     for (const c of centres) {
       if (withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius) && ++circles >= depth) return null;
     }
-    return found(node);
+    return found(node, null);
   };
   for (const e of facing ?? owned) {
     if (
@@ -163,9 +190,38 @@ export function firstUncovered<T>(
   return null;
 }
 
+/** The first front slot no tower holds that `found` takes, or null ({@link firstUncovered}). */
+function frontSlotTarget<T>(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  towers: readonly HalfCellNode[],
+  coverage: Coverage,
+  found: (target: HalfCellNode, within: number | null) => T | null,
+): T | null {
+  const line = seatFrontLine(world, ctx, player, owned);
+  const base = seatBaseOf(world, ctx, player);
+  const anchor = base === null ? null : anchorNodeOf(world, base);
+  if (line === null || anchor === null) return null;
+  const within = Math.max(1, Math.floor((coverage.radius * FRONT_SLOT_RADIUS_PCT) / 100));
+  const rows = coverage.baseCovers ? EVEN_FRONT_ROWS : DEFENCE_FRONT_ROWS;
+  const settlement = buildReach(world, owned, anchor, seatTuning(world, player).reachNodes);
+  const box = nodeBoxOfCircles([{ x: 0, y: 0, r: within }]);
+  for (const slot of line.slots(coverage.radius, rows)) {
+    // A slot off the map or out of every building's reach is no work the ring could do.
+    if (ctx.terrain?.inBounds(slot.hx, slot.hy) !== true) continue;
+    if (!settlement.meets(slot, box.maxX + box.maxY)) continue;
+    if (towers.some((t) => withinNodeRadius(t.hx, t.hy, slot.hx, slot.hy, within))) continue;
+    const hit = found(slot, within);
+    if (hit !== null) return hit;
+  }
+  return null;
+}
+
 /**
- * The point a tower ring faces while the seat's defence comes first (`baseCovers` off): where its first
- * forecast scripted attack sets out from ({@link forecastAttackOrigin}), else null for an even ring. Owner
+ * The point a tower ring faces while the seat's defence comes first (`baseCovers` off): where its
+ * forecast scripted attacks set out from ({@link forecastAttackOrigin}), else null for an even ring. Owner
  * ruling: on a map whose scripted waves come from one side, the towers stand on that side.
  */
 function towerFront(
@@ -224,11 +280,11 @@ const uncovered = (): true => true;
 
 /**
  * The search for the next covering building, built once a coverage entry: a tower is seeded just past the
- * target, out from the settlement or, facing a {@link towerFront}, toward it, a warehouse on the target
- * itself. Two towers side by side double the
- * defence, but two stores side by side serve the same ground, so a warehouse's spot also lies outside
- * every standing store's own circle. The accept combines two metrics: world-metric coverage of the target
- * and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
+ * target, out from the settlement or, facing a {@link towerFront}, toward it; a front slot's tower and a
+ * warehouse on the target itself, the slot's spot within the radius `firstUncovered` hands with it. Two
+ * towers side by side double the defence, but two stores side by side serve the same ground, so a
+ * warehouse's spot also lies outside every standing store's own circle. The accept combines two metrics:
+ * world-metric coverage of the target and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
  * anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice the coverage radius
  * in rows from the target. A target no building's reach comes near enough to cover, a flag far out on the
  * map, is turned down before the walk. With `reserveGrass` it looks off the grass first, as
@@ -246,7 +302,7 @@ export function coverageSpotSearch(
   coverage: Coverage,
   underFire: EnemyFire,
   reserveGrass: boolean,
-): (target: HalfCellNode) => HalfCellNode | null {
+): (target: HalfCellNode, within: number | null) => HalfCellNode | null {
   const centroid = anchorCentroid(world, owned);
   const front = towerFront(world, ctx, player, coverage);
   const apartFrom = coverage.by === 'tower' ? [] : coverageCentres(world, ctx, player, owned, coverage);
@@ -258,10 +314,11 @@ export function coverageSpotSearch(
   // Every node covering a target lies within this Manhattan span of it.
   const coverageSpan = box.maxX + box.maxY;
   const spareGrass = reserveGrass && !grassBound(type);
-  return (target) => {
+  return (target, within) => {
     if (!settlement.meets(target, coverageSpan)) return null;
+    const radius = within ?? coverage.radius;
     const seed =
-      coverage.by !== 'tower'
+      coverage.by !== 'tower' || within !== null
         ? target
         : front !== null
           ? towardNode(target, front, TOWER_OUTSKIRTS_PUSH_NODES)
@@ -271,7 +328,7 @@ export function coverageSpotSearch(
       const accept = acceptor.around(underFire, seed, fan, offGrass);
       return firstRingNode(seed.hx, seed.hy, fan, (x, y) => {
         // Coverage first: one distance test, and it passes only nodes near the target, itself in the reach.
-        if (!withinNodeRadius(x, y, target.hx, target.hy, coverage.radius)) return false;
+        if (!withinNodeRadius(x, y, target.hx, target.hy, radius)) return false;
         if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
         if (!reach.contains(x, y)) return false;
         return accept(x, y);

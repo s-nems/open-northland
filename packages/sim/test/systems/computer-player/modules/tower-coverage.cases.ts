@@ -5,15 +5,22 @@ import { Simulation } from '../../../../src/index.js';
 import { withinNodeRadius } from '../../../../src/nav/node-circle.js';
 import { anchorNodeOf } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
+import {
+  FRONT_LINE_DEPTH_NODES,
+  scheduledTowers,
+} from '../../../../src/systems/computer-player/build-order/front.js';
 import { firstUncovered } from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
-import { LATE_GAME_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
+import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   buildOrderModule,
   TOWER_DEFENCE_RADIUS_NODES,
 } from '../../../../src/systems/computer-player/index.js';
 import { seatTerritoryOf } from '../../../../src/systems/computer-player/knowledge/map-intent/index.js';
-import { ASSUMED_PEACE_TICKS } from '../../../../src/systems/computer-player/military/deadline.js';
+import {
+  ASSUMED_PEACE_TICKS,
+  TOWER_LEAD_TICKS,
+} from '../../../../src/systems/computer-player/military/deadline.js';
 import { SUCCESSFUL_IF } from '../../../../src/systems/missions/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
@@ -127,7 +134,29 @@ describe('build-order tower and store coverage', () => {
     expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, TOWER_DEFENCE_RADIUS_NODES)).toBe(true);
   });
 
-  it('faces a forecast attack: offers only the buildings on its side, the nearest the base first', () => {
+  /** A seat raided at `tick` by spearmen spawned at the map's east edge, with the context that forecasts it. */
+  const raidedFromEast = (sim: Simulation, tick = 0) => {
+    const anchor = seatTerritoryOf(mapBriefOf(sim.world), SEAT)?.anchor;
+    if (anchor === undefined) throw new Error('setup: the seat has no start in the map brief');
+    const RAIDER = 6;
+    const results = [
+      {
+        opcode: 'SetHumanX' as const,
+        player: RAIDER,
+        tribe: VIKING,
+        job: SPEARMAN,
+        point: { hx: 63, hy: HQ_Y },
+        humanId: 1,
+        behaviour: 0,
+        amount: 6,
+      },
+      { opcode: 'SendHuman' as const, humanId: 1, point: anchor },
+    ];
+    const mission = { successfullIf: SUCCESSFUL_IF.all, active: true, visible: false, goals: [], results };
+    return { ...ctxOf(sim, tick), missions: { missions: [mission] } };
+  };
+
+  it('faces a forecast attack: holds a line across its heading, then the buildings on its side', () => {
     const sim = aiSim();
     placeHq(sim);
     const EAST = { x: HQ_X + 12, y: HQ_Y };
@@ -137,72 +166,80 @@ describe('build-order tower and store coverage', () => {
     }
     makeAiSeat(sim, SEAT);
     sim.step();
-    const anchor = seatTerritoryOf(mapBriefOf(sim.world), SEAT)?.anchor;
-    if (anchor === undefined) throw new Error('setup: the seat has no start in the map brief');
-    // Raiders spawn at the map's east edge and walk to the seat.
-    const RAIDER = 6;
-    const ctx = {
-      ...ctxOf(sim),
-      missions: {
-        missions: [
-          {
-            successfullIf: SUCCESSFUL_IF.all,
-            active: true,
-            visible: false,
-            goals: [],
-            results: [
-              {
-                opcode: 'SetHumanX' as const,
-                player: RAIDER,
-                tribe: VIKING,
-                job: SPEARMAN,
-                point: { hx: 63, hy: HQ_Y },
-                humanId: 1,
-                behaviour: 0,
-                amount: 6,
-              },
-              { opcode: 'SendHuman' as const, humanId: 1, point: anchor },
-            ],
-          },
-        ],
-      },
-    };
+    const ctx = raidedFromEast(sim);
     const owned = ownedBuildings(sim.world, SEAT);
+    const slots: { hx: number; hy: number }[] = [];
     const offered: { hx: number; hy: number }[] = [];
-    const offer = (target: { hx: number; hy: number }): null => {
-      offered.push(target);
+    const offer = (target: { hx: number; hy: number }, within: number | null): null => {
+      (within === null ? offered : slots).push(target);
       return null;
     };
     const nodeOf = (e: Entity | undefined) => (e === undefined ? null : anchorNodeOf(sim.world, e));
     const homes = owned.filter((e) => nodeOf(e)?.hx !== nodeOf(owned[0])?.hx);
     const [west, east] = homes.map(nodeOf);
-    firstUncovered(sim.world, ctx, SEAT, owned, { by: 'tower', radius: 1, baseCovers: false }, offer);
+    const RADIUS = 4;
+    firstUncovered(sim.world, ctx, SEAT, owned, { by: 'tower', radius: RADIUS, baseCovers: false }, offer);
+    // The line stands its depth east of the base, the slot straight ahead first, then across the heading.
+    expect(slots[0]).toEqual({ hx: HQ_X + FRONT_LINE_DEPTH_NODES, hy: HQ_Y });
+    expect(slots.every((slot) => slot.hx > HQ_X)).toBe(true);
     // The base, then the east home; the west one lies behind the settlement.
     expect(offered).toEqual([nodeOf(owned[0]), east]);
     expect(offered).not.toContainEqual(west);
+    slots.length = 0;
     offered.length = 0;
-    // An even ring (the base covering) offers every building by id.
-    firstUncovered(sim.world, ctx, SEAT, owned, { by: 'tower', radius: 1, baseCovers: true }, offer);
+    // An even ring (the base covering) holds its front, then offers every building by id.
+    firstUncovered(sim.world, ctx, SEAT, owned, { by: 'tower', radius: RADIUS, baseCovers: true }, offer);
+    expect(slots[0]).toEqual({ hx: HQ_X + FRONT_LINE_DEPTH_NODES, hy: HQ_Y });
     expect(offered).toContainEqual(west);
 
-    // One tower whose circle reaches every building: the even ring rests, the facing one still wants a
-    // second circle over each building on the attack side.
+    // A tower on the line's first slot holds it; the next slot is offered first.
+    const SLOT = { x: HQ_X + FRONT_LINE_DEPTH_NODES, y: HQ_Y };
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: TOWER_TYPE,
-      ...EAST,
+      ...SLOT,
       tribe: VIKING,
       owner: SEAT,
     });
     sim.step();
     const towered = ownedBuildings(sim.world, SEAT);
-    expect(towered).toHaveLength(owned.length + 1);
+    slots.length = 0;
+    firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: RADIUS, baseCovers: false }, offer);
+    expect(slots).not.toContainEqual({ hx: SLOT.x, hy: SLOT.y });
+    // One tower whose circle reaches every building: the even ring rests on the buildings, the facing one
+    // still wants a second circle over each building on the attack side.
     const WIDE = 40;
     offered.length = 0;
     firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: WIDE, baseCovers: true }, offer);
     expect(offered).toEqual([]);
     firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: WIDE, baseCovers: false }, offer);
     expect(offered).toContainEqual(east);
+  });
+
+  it('raises the towers a forecast attack wants wave by wave, from the tower lead before each', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const RAID_MINUTES = 40;
+    const SECONDS_PER_MINUTE = 60;
+    const RAID_TICK = minutesToTicks(RAID_MINUTES);
+    const at = (tick: number) => {
+      const ctx = raidedFromEast(sim, tick);
+      const mission = ctx.missions.missions[0];
+      if (mission === undefined) throw new Error('setup: no raid');
+      // The raid fires on a timer, so it is forecast at its tick.
+      const timed = {
+        ...mission,
+        goals: [{ opcode: 'TimeGone' as const, seconds: RAID_MINUTES * SECONDS_PER_MINUTE }],
+      };
+      return scheduledTowers(sim.world, { ...ctx, missions: { missions: [timed] } }, SEAT);
+    };
+    expect(at(0)).toBe(0);
+    expect(at(RAID_TICK - TOWER_LEAD_TICKS - 1)).toBe(0);
+    expect(at(RAID_TICK - TOWER_LEAD_TICKS)).toBeGreaterThan(0);
+    // The assumed peace end is the last deadline: past its lead nothing caps the ring.
+    expect(at(ASSUMED_PEACE_TICKS - TOWER_LEAD_TICKS)).toBeNull();
   });
 
   it('holds a ring lane until its deadline lead, then keeps two tower sites open at once', () => {
