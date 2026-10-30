@@ -65,6 +65,8 @@ export interface DiscoveryTarget {
   readonly id: string;
 }
 
+const BIG_HEALING_POTION: DiscoveryTarget = { kind: 'good', id: 'potion_heal_big' };
+
 /** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (authored),
  *  applied per building instance. A second hand is a target-tier extra unless its row says otherwise,
  *  so a farm knowingly runs on one farmer until men are actually spare. A workshop's product lines, not
@@ -109,13 +111,23 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   },
   work_mason_hut_01: { operatorTarget: 2, productGated: true },
   work_sewery_01: { operatorTarget: 2 },
-  work_smithy_01: { operatorTarget: 2, carrierTarget: 1 },
+  // Owner ruling: the upgraded smithy's two smiths split the core arms between them, so the second is a
+  // minimum post; another smithy rises only once the standing ones are fully crewed.
+  work_smithy_01: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1 },
   work_armory_01: { operatorTarget: 2, carrierTarget: 1 },
   // One herbalist keeps the early druids in herbs, and a second is worth a man only out of surplus. The
   // late game's druid huts take the hut's three: two at the target tier, the third out of surplus.
   work_herb_hut: { operatorSurplus: 2, late: { operatorTarget: 2, operatorSurplus: 3 } },
-  // Owner ruling: one druid earns the healing potions alone, more brew once the big one is earned.
-  work_druid_01: { operatorTarget: 2, carrierTarget: 1, aloneUntil: { kind: 'good', id: 'potion_heal_big' } },
+  // Owner ruling: one druid earns the big healing potion alone, more brew once it is earned. Until then
+  // both huts run a porter: the oil he trains on takes a mushroom a brew, and without one the druid
+  // averaged a brew in 75 seconds against the recipe's 15, his mushroom shelf empty (magiczny_las).
+  work_druid_00: { porterUntil: BIG_HEALING_POTION },
+  work_druid_01: {
+    operatorTarget: 2,
+    carrierTarget: 1,
+    aloneUntil: BIG_HEALING_POTION,
+    porterUntil: BIG_HEALING_POTION,
+  },
   // Owner ruling: the first coiner earns the amulets alone, his coins feeding the druids meanwhile.
   work_coin_mint: {
     operatorTarget: 2,

@@ -24,6 +24,7 @@ import {
   setSettlerJob,
   setStockAmount,
   TrainingOrder,
+  UnderConstruction,
 } from '../../../../src/components/index.js';
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import { contentIndex } from '../../../../src/core/content-index.js';
@@ -62,6 +63,8 @@ import {
   CRAFT_GLUT_BAND_UNITS,
   CRAFT_OPENING_RUN_BY_BUILDING_ID,
   CRAFT_PLANS_BY_BUILDING_ID,
+  MINT_SHORT_SWORD_UNITS,
+  TEMPLE_SITE_OIL_UNITS,
   tuneCraftCounters,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
 import {
@@ -437,6 +440,15 @@ const HOLY_OIL = 63;
 const POTION_SMALL = 64;
 const POTION_BIG = 65;
 const TEMPLE_TYPE = 66;
+/** Free fixture slots for the armourers' and smiths' goods and a mint building beside the smithy. */
+const BOW_SHORT = 70;
+const BOW_LONG = 71;
+const SPEAR_WOODEN = 72;
+const ARMOUR_PLATE = 73;
+const ARMOUR_CHAIN = 74;
+const SWORD_LONG = 75;
+const SPEAR_IRON = 76;
+const MINT_TYPE = 96;
 
 /** The fixture joinery recast as the mint: two operator seats, one recipe per coin or amulet. */
 /** The fixture joinery recast as the workshop `id`, one wood recipe per product, so the type's own plan
@@ -1216,6 +1228,8 @@ describe('workforce module - the barracks and craft selections', () => {
       { men: 0 },
     );
     const { world } = seat.sim;
+    // A forecast attack lies inside the army floor's lead, as the posture's forecast lead always does.
+    seat.sim.enqueueSetup({ kind: 'setPeaceTime', untilTick: ARMY_FLOOR_LEAD_TICKS, players: [SEAT] });
     spawnMen(seat.sim, 4, COLLECTOR);
     seat.sim.step();
     const [practised, green, stoneman, apprentice] = ownedSettlers(world, SEAT).filter(
@@ -1421,7 +1435,7 @@ describe('workforce module - the barracks and craft selections', () => {
           : { ...t, jobEnables: [...t.jobEnables, { jobType: MILLER, kind: 'good', targetId: PLATE }] },
       ),
     });
-    expect(CRAFT_PLANS_BY_BUILDING_ID.work_smithy_01?.seats[0]).toEqual(['armor_plate']);
+    expect(CRAFT_PLANS_BY_BUILDING_ID.work_smithy_01?.seats[0]).toEqual(['armor_plate', 'armor_chain']);
     const sim = aiSim(1, content);
     placeHq(sim);
     sim.enqueueSetup({
@@ -1817,27 +1831,26 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(breeders.products()).toEqual([[SHEEP_HERD]]);
   });
 
-  /** The fixture joinery recast as the upper druid hut, its potions gated behind a trade nobody of the
-   *  seat holds as `unearned` lists, and a temple type the seat can raise. */
-  function druidContent(unearned: readonly number[]): ContentSet {
-    const recast = joineryRecastAs('work_druid_01', [
-      { typeId: HOLY_OIL, id: 'holy_oil' },
-      { typeId: POTION_SMALL, id: 'potion_heal_small' },
-      { typeId: POTION_BIG, id: 'potion_heal_big' },
-    ]);
+  /** `content` with the goods `unearned` lists gated behind a trade nobody of the seat holds, and with
+   *  `building`, a crewless type the seat can raise. */
+  function withUnearned(
+    content: ContentSet,
+    unearned: readonly number[],
+    building?: { readonly typeId: number; readonly id: string },
+  ): ContentSet {
+    const extra = building === undefined ? [] : [building];
     return parseContentSet({
-      ...recast,
+      ...content,
       buildings: [
-        ...recast.buildings,
-        {
-          typeId: TEMPLE_TYPE,
-          id: 'work_temple',
-          kind: 'workplace',
+        ...content.buildings,
+        ...extra.map((b) => ({
+          ...b,
+          kind: 'workplace' as const,
           workers: [],
           construction: [{ goodType: WOOD, amount: 1 }],
-        },
+        })),
       ],
-      tribes: recast.tribes.map((t) =>
+      tribes: content.tribes.map((t) =>
         t.typeId !== VIKING
           ? t
           : {
@@ -1851,35 +1864,115 @@ describe('workforce module - the barracks and craft selections', () => {
     });
   }
 
-  it('climbs the druids from holy oil to the small and then the big healing potion as each is earned', () => {
+  /** The fixture joinery recast as the upper druid hut, its potions in `unearned` not yet earned, and a
+   *  temple type the seat can raise. */
+  function druidContent(unearned: readonly number[]): ContentSet {
+    const recast = joineryRecastAs('work_druid_01', [
+      { typeId: HOLY_OIL, id: 'holy_oil' },
+      { typeId: POTION_SMALL, id: 'potion_heal_small' },
+      { typeId: POTION_BIG, id: 'potion_heal_big' },
+    ]);
+    return withUnearned(recast, unearned, { typeId: TEMPLE_TYPE, id: 'work_temple' });
+  }
+
+  it('keeps the first armourer on wooden spears and short bows until the long bow is earned, then on long bows alone', () => {
+    const products = (unearned: readonly number[]) => {
+      const recast = joineryRecastAs('work_armory_01', [
+        { typeId: BOW_SHORT, id: 'bow_short' },
+        { typeId: BOW_LONG, id: 'bow_long' },
+        { typeId: SPEAR_WOODEN, id: 'spear_wooden' },
+      ]);
+      const armourers = crewedWorkshops(withUnearned(recast, unearned), 1, 2);
+      armourers.hire(0, 2);
+      return armourers;
+    };
+    // Before the long bow, the second armourer's alternation keeps only its wooden spears.
+    expect(products([BOW_LONG]).products()).toEqual([[BOW_SHORT, SPEAR_WOODEN], [SPEAR_WOODEN]]);
+    const earned = products([]);
+    expect(earned.products()).toEqual([[BOW_LONG], [BOW_LONG, SPEAR_WOODEN]]);
+    // The second armourer's spears pause while they pile up.
+    earned.stock(SPEAR_WOODEN, glutOf('work_armory_01', 1, 'spear_wooden'));
+    expect(earned.products()).toEqual([[BOW_LONG]]);
+  });
+
+  it("splits the first smithy's smiths between armour and weapons, short swords added while a mint stands and they run low", () => {
+    const recast = joineryRecastAs('work_smithy_01', [
+      { typeId: ARMOUR_PLATE, id: 'armor_plate' },
+      { typeId: ARMOUR_CHAIN, id: 'armor_chain' },
+      { typeId: SWORD_LONG, id: 'sword_long' },
+      { typeId: SPEAR_IRON, id: 'spear_iron' },
+      { typeId: SWORD_SHORT, id: 'sword_shord' },
+    ]);
+    const smiths = crewedWorkshops(
+      withUnearned(recast, [], { typeId: MINT_TYPE, id: 'work_coin_mint' }),
+      1,
+      2,
+    );
+    smiths.hire(0, 2);
+    expect(smiths.products()).toEqual([
+      [ARMOUR_PLATE, ARMOUR_CHAIN],
+      [SWORD_LONG, SPEAR_IRON],
+    ]);
+    smiths.sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: MINT_TYPE,
+      x: 100,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    smiths.sim.step();
+    expect(smiths.products()).toEqual([[SWORD_SHORT, SWORD_LONG, SPEAR_IRON]]);
+    smiths.stock(SWORD_SHORT, MINT_SHORT_SWORD_UNITS);
+    expect(smiths.products()).toEqual([[SWORD_LONG, SPEAR_IRON]]);
+  });
+
+  it('boils holy oil until the big healing potion is earned, the small one skipped, and then brews only it', () => {
     const products = (unearned: readonly number[]) => {
       const druids = crewedWorkshops(druidContent(unearned), 1, 2);
       druids.hire(0, 2);
       return druids.products();
     };
     expect(products([POTION_SMALL, POTION_BIG])).toEqual([[HOLY_OIL], [HOLY_OIL]]);
-    expect(products([POTION_BIG])).toEqual([[POTION_SMALL], [POTION_SMALL]]);
+    expect(products([POTION_BIG])).toEqual([[HOLY_OIL], [HOLY_OIL]]);
     expect(products([])).toEqual([[POTION_BIG], [POTION_BIG]]);
   });
 
-  it("keeps one druid on the temple's holy oil only while the seat owns a temple or its site", () => {
+  it('keeps a unit of holy oil in store while the temple is a site, and none once it stands', () => {
     const druids = crewedWorkshops(druidContent([]), 1, 2);
     druids.hire(0, 2);
     expect(druids.products()).toEqual([[POTION_BIG], [POTION_BIG]]);
-    druids.sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: TEMPLE_TYPE,
-      x: 100,
-      y: 16,
-      tribe: VIKING,
-      owner: SEAT,
-    });
-    druids.sim.step();
+    const placeTemple = (underConstruction: boolean) => {
+      druids.sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: TEMPLE_TYPE,
+        x: 100,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction,
+      });
+      druids.sim.step();
+    };
+    placeTemple(true);
     expect(druids.products()).toEqual([[HOLY_OIL]]);
+    // A unit short of the line he holds to keeps him boiling; at the line he goes back to the potion.
+    druids.stock(HOLY_OIL, TEMPLE_SITE_OIL_UNITS - 1);
+    expect(druids.products()).toEqual([]);
+    druids.stock(HOLY_OIL, TEMPLE_SITE_OIL_UNITS);
+    expect(druids.products()).toEqual([[POTION_BIG]]);
+    // He takes the oil back only once the store is out.
+    druids.stock(HOLY_OIL, 1);
+    expect(druids.products()).toEqual([]);
+    druids.stock(HOLY_OIL, 0);
+    expect(druids.products()).toEqual([[HOLY_OIL]]);
+    const site = entityOfBuilding(druids.sim, TEMPLE_TYPE);
+    druids.sim.world.remove(site, UnderConstruction);
+    expect(druids.products()).toEqual([[POTION_BIG]]);
   });
 
-  it("staffs one druid until the big potion is earned, and the hut's second once it is", () => {
-    const operatorsAt = (unearned: readonly number[]) => {
+  it("staffs one druid and a porter until the big potion is earned, and the hut's second druid once it is", () => {
+    const staffingAt = (unearned: readonly number[]) => {
       const content = druidContent(unearned);
       const druids = crewedWorkshops(content, 1, 0);
       const [hut] = druids.buildings;
@@ -1890,11 +1983,11 @@ describe('workforce module - the barracks and craft selections', () => {
       const seat = { player: SEAT, owned, supply, profile: AI_PROFILES.hard };
       const type = contentIndex(content).buildings.get(JOINERY_TYPE);
       if (type === undefined) throw new Error('setup: no druid hut type');
-      return buildingStaffing(druids.sim.world, ctx, seat, hut, type, { operators: 0, carriers: 0 })
-        ?.operatorTarget;
+      const plan = buildingStaffing(druids.sim.world, ctx, seat, hut, type, { operators: 0, carriers: 0 });
+      return { operators: plan?.operatorTarget, porters: plan?.carrierMin };
     };
-    expect(operatorsAt([POTION_BIG])).toBe(1);
-    expect(operatorsAt([])).toBe(2);
+    expect(staffingAt([POTION_BIG])).toEqual({ operators: 1, porters: 1 });
+    expect(staffingAt([])).toEqual({ operators: 2, porters: 0 });
   });
 
   it('runs a porter at the mill until the seat has earned the baker, and none once it has', () => {

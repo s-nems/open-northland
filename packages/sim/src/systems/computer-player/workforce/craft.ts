@@ -39,9 +39,9 @@ import type { SeatSupply, SupplyLine } from './supply.js';
  * or the whole list when there is none. A `firstFed` seat works the first of its lines whose `input` the
  * seat holds a unit of, and every line while it holds none of them. A good with supply lines
  * ({@link SeatSupply}) takes no authored glut: {@link CraftPlan.sink} covers it. A `firstEnabled` seat
- * works the first of its goods the seat may make, so a better product replaces a weaker one once earned.
- * A `whileOwned` seat works `works` while the seat owns a building of that type, standing or a site, and
- * `otherwise` meanwhile.
+ * works the first of its groups with a good the seat may make, so a better product replaces weaker ones
+ * once earned. A `whileOwned` seat works `works` while the seat owns a building of that type, standing or
+ * a site (with `siteOnly`, a site still under construction), and `otherwise` meanwhile.
  */
 export type CraftSeat =
   | readonly string[]
@@ -51,8 +51,13 @@ export type CraftSeat =
       readonly otherwise?: CraftSeat;
     }
   | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] }
-  | { readonly firstEnabled: readonly string[] }
-  | { readonly whileOwned: string; readonly works: CraftSeat; readonly otherwise: CraftSeat }
+  | { readonly firstEnabled: readonly (readonly string[])[] }
+  | {
+      readonly whileOwned: string;
+      readonly siteOnly?: true;
+      readonly works: CraftSeat;
+      readonly otherwise: CraftSeat;
+    }
   | FleetSeat;
 
 /**
@@ -181,19 +186,59 @@ const MINT_SEATS: readonly CraftSeat[] = [
   STRENGTH_AMULET_SEAT,
 ];
 
-/** The bows and wooden spears in stock at which the first armourer drops that line (authored). */
+/** The bows and wooden spears in stock at which the easy seat's first armourer drops that line, and the
+ *  wooden spears at which the second armourer turns to long bows alone (authored). */
 const ARMOURY_GLUT_UNITS = 20;
 
-/** How many druids a seat's six huts employ; one boils the temple's oil, the rest brew potions. */
+/** Owner ruling: the first armourer makes wooden spears and short bows until the seat has earned the long
+ *  bow, and from then on long bows alone. */
+const FIRST_ARMOURER_SEAT: CraftSeat = { firstEnabled: [['bow_long'], ['bow_short', 'spear_wooden']] };
+
+/** Owner ruling: the second armourer alternates wooden spears, which the smithy's iron spear takes, and
+ *  long bows; the spears pause while they pile up. */
+const SECOND_ARMOURER_SEAT: CraftSeat = {
+  goods: ['bow_long', 'spear_wooden'],
+  glut: { spear_wooden: ARMOURY_GLUT_UNITS },
+};
+
+/** How many druids a seat's six huts employ. */
 const DRUID_SEATS = 12;
 
-/** Owner ruling: a druid boils holy oil until the small healing potion is earned, brews that until the
- *  big one is, and then only the big one, the small being pointless beside it. Every brew trains the
- *  druid's general track, which both potions' discoveries read. */
-const POTION_SEAT: CraftSeat = { firstEnabled: ['potion_heal_big', 'potion_heal_small', 'holy_oil'] };
+/** Owner ruling: a druid boils holy oil, the cheapest brew, only to earn the big healing potion, and from
+ *  then on brews the big potion alone. Every brew trains the druid's general track, which the potion's
+ *  discovery reads, so the oil's one herb buys the same experience as a potion's eight inputs. */
+const POTION_SEAT: CraftSeat = { firstEnabled: [['potion_heal_big'], ['holy_oil']] };
 
-/** Owner ruling: one druid keeps the temple in holy oil, only while the seat owns a temple or its site. */
-const TEMPLE_OIL_SEAT: CraftSeat = { whileOwned: 'work_temple', works: ['holy_oil'], otherwise: POTION_SEAT };
+/** The holy oil in stock at which the temple-site druid turns back to potions (authored). The site takes
+ *  one unit, so he takes oil back only once the stock is out (the line less {@link CRAFT_GLUT_BAND_UNITS}). */
+export const TEMPLE_SITE_OIL_UNITS = CRAFT_GLUT_BAND_UNITS + 1;
+
+/** The first druid keeps a unit of holy oil in store while the seat's temple is a site, whose bill takes
+ *  one: the homes may have burned the oil the druids boiled while they earned the big potion. */
+const TEMPLE_SITE_SEAT: CraftSeat = {
+  whileOwned: 'work_temple',
+  siteOnly: true,
+  works: { goods: ['holy_oil'], glut: { holy_oil: TEMPLE_SITE_OIL_UNITS }, otherwise: POTION_SEAT },
+  otherwise: POTION_SEAT,
+};
+
+/** The short swords in stock under which the first smithy's second smith adds them to his long swords and
+ *  iron spears while the seat owns a mint (authored): the strength amulet takes one each. */
+export const MINT_SHORT_SWORD_UNITS = 12;
+
+/** Owner ruling: the first smithy's first smith forges the armour, plate and chain mail in turn. */
+const ARMOUR_SMITH_SEAT: CraftSeat = ['armor_plate', 'armor_chain'];
+
+/** Owner ruling: the first smithy's second smith forges the weapons, long swords and iron spears in turn,
+ *  and short swords beside them for the mint's strength amulet while their stock runs low. */
+const WEAPON_SMITH_SEAT: CraftSeat = {
+  whileOwned: 'work_coin_mint',
+  works: {
+    goods: ['sword_long', 'spear_iron', 'sword_shord'],
+    glut: { sword_shord: MINT_SHORT_SWORD_UNITS },
+  },
+  otherwise: ['sword_long', 'spear_iron'],
+};
 
 /**
  * The product plans per workplace type (authored). The lists interleave so a partly staffed type already
@@ -237,12 +282,14 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
     ],
   },
   work_bakery_01: { seats: [['bread']] },
-  // The smithies open on plate armour and long swords, then add the iron spear, whose wooden shaft the
-  // first armourer makes between his long bows, and mail. Five smithies' ten smiths forge three plate,
-  // two mail, two long swords, two iron spears and one short sword, the weapon only the strength amulet
-  // takes; the late game's two more smithies add a short sword, an iron spear, a plate and a mail.
+  // The first smithy's two smiths cover the core arms, armour and weapons (owner ruling); a smith whose
+  // plate and mail the seat has yet to earn works the weapon seat meanwhile. The six later smithies put
+  // one product on each smith: three each on plate, long swords and iron spears, two on mail and one on
+  // short swords.
   work_smithy_01: {
     seats: [
+      ARMOUR_SMITH_SEAT,
+      WEAPON_SMITH_SEAT,
       ['armor_plate'],
       ['sword_long'],
       ['spear_iron'],
@@ -250,32 +297,24 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
       ['armor_plate'],
       ['sword_long'],
       ['spear_iron'],
-      ['armor_chain'],
+      ['sword_shord'],
       ['armor_plate'],
-      ['sword_shord'],
-      ['sword_shord'],
+      ['armor_chain'],
+      ['sword_long'],
       ['spear_iron'],
-      ['armor_plate'],
-      ['armor_chain'],
     ],
   },
-  // The first armourer works long bows and wooden spears, dropping whichever has piled up so the other,
-  // the spear the smithy's iron spear needs or the bow, gets his whole time; the rest make long bows.
+  // The lower armoury's one armourer earns the long bow on wooden spears and short bows; the upgraded
+  // armoury's first armourer keeps them until it is earned and then makes long bows alone, the second
+  // alternates long bows and the iron spear's wooden shafts, and the rest make long bows.
+  work_armory_00: { seats: [['bow_short', 'spear_wooden']] },
   work_armory_01: {
-    seats: [
-      {
-        goods: ['bow_long', 'spear_wooden'],
-        glut: { bow_long: ARMOURY_GLUT_UNITS, spear_wooden: ARMOURY_GLUT_UNITS },
-      },
-      ['bow_long'],
-      ['bow_long'],
-      ['bow_long'],
-    ],
+    seats: [FIRST_ARMOURER_SEAT, SECOND_ARMOURER_SEAT, ['bow_long'], ['bow_long']],
   },
-  // One druid in twelve boils holy oil for the temple while it stands or is being built, and the rest
-  // climb from oil to the small and then the big healing potion as each is earned.
+  // The druids boil holy oil until the big healing potion is earned and brew only it from then on; the
+  // first keeps a unit of oil in store for a temple site.
   work_druid_01: {
-    seats: [TEMPLE_OIL_SEAT, ...Array.from({ length: DRUID_SEATS - 1 }, (): CraftSeat => POTION_SEAT)],
+    seats: [TEMPLE_SITE_SEAT, ...Array.from({ length: DRUID_SEATS - 1 }, (): CraftSeat => POTION_SEAT)],
   },
   // One coiner on coins for good, two more only while the coins run under the glut line, and the rest
   // on amulets, the seats with an amulet line alternating strength-first and defence-first.
@@ -446,11 +485,12 @@ export function tuneCraftCounters(
   }
   const tribe = playerPlacementTribes(world, player)?.[0];
   const ownedTypes = new Map<string, boolean>();
-  const owns = (buildingId: string): boolean => {
-    let owned = ownedTypes.get(buildingId);
+  const owns = (buildingId: string, siteOnly: boolean): boolean => {
+    const key = `${buildingId}:${siteOnly}`;
+    let owned = ownedTypes.get(key);
     if (owned === undefined) {
-      owned = ownsBuildingOf(world, ctx, player, buildingId);
-      ownedTypes.set(buildingId, owned);
+      owned = ownsBuildingOf(world, ctx, player, buildingId, siteOnly);
+      ownedTypes.set(key, owned);
     }
     return owned;
   };
@@ -670,8 +710,9 @@ interface SeatChoice {
   readonly ctx: SystemContext;
   readonly supply: SeatSupply;
   readonly fleetOf: (good: number, freeOnly: boolean) => number;
-  /** Whether the seat owns a building of the type with this stable content id, standing or a site. */
-  readonly owns: (buildingId: string) => boolean;
+  /** Whether the seat owns a building of the type with this stable content id, standing or a site, or
+   *  with `siteOnly` a site still under construction. */
+  readonly owns: (buildingId: string, siteOnly: boolean) => boolean;
   /** The goods the type makes that the seat may make ({@link enabledProducts}). */
   readonly products: readonly number[];
 }
@@ -691,12 +732,12 @@ function seatProducts(choice: SeatChoice, current: readonly number[], seat: Craf
       ? [seat.fleet, ...(seat.beside ?? [])]
       : seatProducts(choice, current, seat.otherwise);
   }
-  if ('whileOwned' in seat)
-    return seatProducts(choice, current, choice.owns(seat.whileOwned) ? seat.works : seat.otherwise);
-  if ('firstEnabled' in seat) {
-    const first = seat.firstEnabled.find((id) => goodsOf(ctx, choice.products, [id]).length > 0);
-    return first === undefined ? [] : [first];
+  if ('whileOwned' in seat) {
+    const owned = choice.owns(seat.whileOwned, seat.siteOnly === true);
+    return seatProducts(choice, current, owned ? seat.works : seat.otherwise);
   }
+  if ('firstEnabled' in seat)
+    return seat.firstEnabled.find((group) => goodsOf(ctx, choice.products, group).length > 0) ?? [];
   if ('firstFed' in seat) {
     const fed = seat.firstFed.find((line) => {
       const input = goodTypeByContentId(ctx.content, line.input);
@@ -716,12 +757,20 @@ function seatProducts(choice: SeatChoice, current: readonly number[], seat: Craf
   return seat.otherwise === undefined ? seat.goods : seatProducts(choice, current, seat.otherwise);
 }
 
-/** Whether `player` owns a building of the type with stable content id `buildingId`, standing or a site. */
-function ownsBuildingOf(world: World, ctx: SystemContext, player: number, buildingId: string): boolean {
+/** Whether `player` owns a building of the type with stable content id `buildingId`, standing or a site,
+ *  or with `siteOnly` a site still under construction. */
+function ownsBuildingOf(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  buildingId: string,
+  siteOnly: boolean,
+): boolean {
   const type = contentIndex(ctx.content).buildingTypeBySlug.get(buildingId);
   if (type === undefined) return false;
   for (const e of ownedBuildings(world, player))
-    if (world.get(e, Building).buildingType === type) return true;
+    if (world.get(e, Building).buildingType === type && (!siteOnly || world.has(e, UnderConstruction)))
+      return true;
   return false;
 }
 
