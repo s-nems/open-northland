@@ -4,6 +4,7 @@ import {
   Building,
   BuildOrderFrontier,
   BuildOrderPause,
+  mapBriefOf,
   playerPlacementTribes,
   UnderConstruction,
   Upgrading,
@@ -19,6 +20,7 @@ import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
+import { HEADQUARTERS_BUILDING_ID } from '../../readviews/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
@@ -210,9 +212,9 @@ function runBuildOrder(
   const order = seatBuildOrder(world, player, ctx.tick, fullOrder, profile);
   const owned = ownedBuildings(world, player);
   const base = seatBaseOf(world, ctx, player);
-  const siteCap =
-    base === null ? BASELESS_CONSTRUCTION_SITES : seatSitePace(world, player, profile, ctx.tick).sites;
   const sites = constructionSites(world, ctx, owned);
+  if (base === null) return replaceMissingBase(world, ctx, terrain, player, owned, sites);
+  const siteCap = seatSitePace(world, player, profile, ctx.tick).sites;
   const homeSites = homeSiteBudget(
     world,
     ctx,
@@ -243,10 +245,6 @@ function runBuildOrder(
   // Scanned once the order has something to do: an idle decision never walks the map's people.
   let siege: Siege | null = null;
   const siegeOf = (): Siege => (siege ??= seatSiege(world, ctx, terrain, player, owned));
-  if (base === null) {
-    if (tribe === undefined || siegeOf().attacked) return [];
-    return replaceMissingBase(world, ctx, terrain, player, owned, tribe, siegeOf().underFire);
-  }
   const anchor = anchorNodeOf(world, base);
   if (anchor === null) return [];
   const index = contentIndex(ctx.content);
@@ -978,17 +976,33 @@ function baseReplacementType(
   return lowest;
 }
 
-/** A seat that holds buildings but no base rebuilds one at the centroid of what stands. */
+/** Where the seat's start headquarters stood, as the map brief recorded it, or null. */
+function startHeadquartersNode(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
+  const hq = buildingTypeByContentId(ctx.content, HEADQUARTERS_BUILDING_ID);
+  if (hq === undefined) return null;
+  const start = mapBriefOf(world)?.seats.find((seat) => seat.player === player);
+  const record = start?.buildings.find((b) => b.buildingType === hq.typeId);
+  return record === undefined ? null : { hx: record.hx, hy: record.hy };
+}
+
+/** A seat that holds buildings but no base rebuilds one where its start headquarters stood, else at the
+ *  centroid of what stands (owner ruling: one warehouse in the headquarters' place). Every other step and
+ *  lane waits meanwhile, and it keeps to {@link BASELESS_CONSTRUCTION_SITES} open `sites`, so the warehouse
+ *  is placed once and gets the whole crew. */
 function replaceMissingBase(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
   owned: readonly Entity[],
-  tribe: number,
-  underFire: EnemyFire,
+  sites: readonly Entity[],
 ): readonly PlayerCommand[] {
-  const centre = anchorCentroid(world, owned);
+  if (sites.length >= BASELESS_CONSTRUCTION_SITES) return [];
+  const tribe = playerPlacementTribes(world, player)?.[0];
+  if (tribe === undefined) return [];
+  const siege = seatSiege(world, ctx, terrain, player, owned);
+  if (siege.attacked) return [];
+  const centre = startHeadquartersNode(world, ctx, player) ?? anchorCentroid(world, owned);
   if (centre === null) return [];
   const type = baseReplacementType(world, ctx, player, owned, tribe);
   if (type === undefined) return []; // content without a warehouse expresses no replacement
@@ -1002,7 +1016,7 @@ function replaceMissingBase(
     type,
     tribe,
     BASE_REPLACEMENT_ENTRY,
-    underFire,
+    siege.underFire,
     false,
   );
   if (spot === null) return [];

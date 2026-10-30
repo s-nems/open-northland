@@ -10,11 +10,13 @@ import {
 import type { Command } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { positionOfNode, type Simulation } from '../../../../src/index.js';
+import { SITES_GROW_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   BUILDER_CAP,
   type BuildOrderEntry,
   buildOrderModule,
 } from '../../../../src/systems/computer-player/index.js';
+import { ensureMapBrief } from '../../../../src/systems/computer-player/knowledge/map-brief/index.js';
 import { razeBuilding } from '../../../../src/systems/lifecycle/cleanup.js';
 import {
   aiSim,
@@ -28,7 +30,10 @@ import {
   ctxOf,
   entityOfBuilding,
   HQ_TYPE,
+  HQ_X,
+  HQ_Y,
   MILL_TYPE,
+  makeAiSeat,
   oneLine,
   placeHq,
   SCOUT,
@@ -114,6 +119,21 @@ describe('build-order module - rebuilding what combat took', () => {
     expect({ x: replacement?.x, y: replacement?.y }).toEqual({ x: 36, y: 16 });
   });
 
+  it('replaces a razed headquarters in its own place once the map brief recorded the start', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    place(sim, BAKERY_TYPE, 34, 16);
+    place(sim, MILL_TYPE, 38, 16);
+    sim.step();
+    makeAiSeat(sim, SEAT);
+    ensureMapBrief(sim.world, ctxOf(sim));
+    raze(sim, entityOfBuilding(sim, HQ_TYPE));
+
+    const replacement = placementOf(module.run(sim.world, ctxOf(sim), SEAT));
+    expect(replacement?.buildingType).toBe(STOCK_TOP_TYPE);
+    expect({ x: replacement?.x, y: replacement?.y }).toEqual({ x: HQ_X, y: HQ_Y });
+  });
+
   it('replaces a razed base with the lowest warehouse tier while the top one is banned', () => {
     const sim = aiSim();
     placeHq(sim);
@@ -158,6 +178,24 @@ describe('build-order module - rebuilding what combat took', () => {
     expect([...sim.world.query(UnderConstruction)]).toHaveLength(1);
     // Still baseless (the site is unbuilt), but the one-site gate outranks the recovery rung.
     expect([...module.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
+  });
+
+  it('opens no second replacement while its homes lane wants a site beyond the clock', () => {
+    const housed = buildOrderModule(
+      oneLine([{ kind: 'housing', building: 'home_level_00', count: 4 }, ...ORDER]),
+    );
+    const sim = aiSim();
+    placeHq(sim);
+    place(sim, BAKERY_TYPE, 34, 16);
+    sim.step();
+    raze(sim, entityOfBuilding(sim, HQ_TYPE));
+    const first = placementOf(housed.run(sim.world, ctxOf(sim, SITES_GROW_FROM_TICKS), SEAT));
+    expect(first?.buildingType).toBe(STOCK_TOP_TYPE);
+    if (first === null) return;
+
+    sim.enqueueSetup(first);
+    sim.step();
+    expect([...housed.run(sim.world, ctxOf(sim, SITES_GROW_FROM_TICKS), SEAT)]).toEqual([]);
   });
 
   it('leaves a seat holding no buildings idle - it never had a base to lose', () => {
