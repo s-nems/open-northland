@@ -1,5 +1,5 @@
 import type { BuildingType } from '@open-northland/data';
-import { Stockpile, UnderConstruction } from '../../../components/index.js';
+import { UnderConstruction } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
@@ -11,7 +11,7 @@ import { militaryDeadlineTick } from '../military/deadline.js';
 import { goodsMadeBy, sourcedTiers } from './bill-sources.js';
 import type { BuildOrderEntry } from './entries.js';
 import { seatDefenceFirst } from './seat-order.js';
-import { sitesShortfalls } from './upgrade-supply.js';
+import { sitesClaims } from './upgrade-supply.js';
 
 /** A step that raises a new building of its chain. */
 export type PlacingEntry = Extract<BuildOrderEntry, { kind: 'place' | 'towerCoverage' | 'storeCoverage' }>;
@@ -97,15 +97,4 @@ function stockBacks(
     if (!stock.exceeds(line.goodType, (claimed.get(line.goodType) ?? 0) + line.amount - 1)) return false;
   }
   return true;
-}
-
-/** What the seat's sites hold or still lack, by good type: seat stock counts a site's delivered hold. */
-function sitesClaims(world: World, ctx: SystemContext, owned: readonly Entity[]): Map<number, number> {
-  const claims = sitesShortfalls(world, ctx, owned);
-  for (const e of owned) {
-    if (!world.has(e, UnderConstruction)) continue;
-    for (const [good, held] of world.tryGet(e, Stockpile)?.amounts ?? [])
-      claims.set(good, (claims.get(good) ?? 0) + held);
-  }
-  return claims;
 }

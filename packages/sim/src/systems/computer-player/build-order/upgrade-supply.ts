@@ -88,7 +88,7 @@ function makersOf(
  * What the seat's construction sites hold or still lack, by good type. Seat stock counts a site's
  * delivered hold too, and the bill is paid only when the site finishes, so both are spoken for.
  */
-function sitesClaims(world: World, ctx: SystemContext, owned: readonly Entity[]): Map<number, number> {
+export function sitesClaims(world: World, ctx: SystemContext, owned: readonly Entity[]): Map<number, number> {
   const claims = sitesShortfalls(world, ctx, owned);
   for (const e of owned) {
     if (!world.has(e, UnderConstruction)) continue;
