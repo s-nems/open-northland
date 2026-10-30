@@ -661,13 +661,10 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
 
   it('turns the computer seats’ soldiers into civilians at the start, the human seat keeping its own', async () => {
     const SETTLE_TICKS = 5 * TICKS_PER_SECOND;
-    const started = async (demobilizeComputerSeats: boolean) => {
-      const sim = await earlyAttackWorld({ ...ragnarok(), demobilizeComputerSeats });
-      sim.run(SETTLE_TICKS);
-      return sim;
-    };
-    const armed = await started(false);
-    const demobilized = await started(true);
+    // The placed army, before the computer player's first decision disarms its own start soldiers.
+    const armed = await earlyAttackWorld({ ...ragnarok(), demobilizeComputerSeats: false });
+    const demobilized = await earlyAttackWorld({ ...ragnarok(), demobilizeComputerSeats: true });
+    demobilized.run(SETTLE_TICKS);
     const soldiers = (sim: Simulation, seat: number) =>
       owned(sim, seat).filter((e) =>
         systems.isSoldierJob(sim.content, sim.world.get(e, components.Settler).jobType),
