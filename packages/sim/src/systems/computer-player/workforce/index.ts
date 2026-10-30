@@ -75,6 +75,7 @@ import {
 import type { SeatStaffing } from './staffing-plan.js';
 import { SeatSupply } from './supply.js';
 import { buildStaffingTally } from './tally.js';
+import { defendAgainstWildlife } from './wild-threats.js';
 
 export { builderJobOf } from '../../ai-shared/workforce/pool.js';
 export {
@@ -149,7 +150,12 @@ function runWorkforce(
     genericTarget,
   );
   // An apprentice stays on the work earning his discovery, so no post takes him off it.
-  const force = new SpareForce(apprentices.size === 0 ? pool : pool.filter((e) => !apprentices.has(e)));
+  const unschooled = apprentices.size === 0 ? pool : pool.filter((e) => !apprentices.has(e));
+  // The wildlife answer comes first: the men it sends at an animal are off every other post.
+  const wild = defendAgainstWildlife(world, ctx, player, owned, unschooled);
+  const force = new SpareForce(
+    wild.held.size === 0 ? unschooled : unschooled.filter((e) => !wild.held.has(e)),
+  );
   const tally = buildStaffingTally(world, player, owned);
   const taken: TakenFlagNodes = new Set();
   const gated: GatedSlotSources = {
@@ -232,6 +238,7 @@ function runWorkforce(
   return [
     ...flagFollowSwitch(world, player),
     ...settlementGrantOrders(world, ctx, player),
+    ...wild.commands,
     ...posted.filter(undrafted),
     ...roadCrew.commands,
     ...reserve.commands.filter(undrafted),

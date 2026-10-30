@@ -1,4 +1,5 @@
 import {
+  AttackOrder,
   Building,
   CurrentAtomic,
   JobAssignment,
@@ -187,10 +188,11 @@ function huntWorkLeft(
   return false;
 }
 
-/** Hand the opening hunters back to the pool as builders, leaving a man mid-action alone. */
+/** Hand the opening hunters back to the pool as builders, leaving a man mid-action or sent at an animal
+ *  (`wild-threats.ts`) alone. */
 function retireHunters(world: World, posted: readonly Entity[], builderJob: number | null): PlayerCommand[] {
   if (builderJob === null) return [];
   return posted
-    .filter((e) => !world.has(e, CurrentAtomic))
+    .filter((e) => !world.has(e, CurrentAtomic) && !world.has(e, AttackOrder))
     .map((e) => ({ kind: 'setJob', entity: e, jobType: builderJob }));
 }
