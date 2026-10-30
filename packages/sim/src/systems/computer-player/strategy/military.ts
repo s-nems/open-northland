@@ -29,6 +29,7 @@ import {
   ownArmyPoints,
   strongestBelievedEnemy,
 } from '../military/enemy-strength.js';
+import { stayingGuardians } from '../military/operations/hold-area.js';
 import { launchRatioReached, WAVE_GATHER_TICKS } from '../military/plan.js';
 import type { ArmyPoints } from '../military/points.js';
 
@@ -239,8 +240,9 @@ export function firstMilitary(world: World, ctx: SystemContext, seat: number): M
 
 /**
  * The seat's posture inputs: own points, the believed points of its campaign target's owner and of its
- * strongest enemy, the nearest forecast scripted attack on it, a raid on its settlement now, and whether
- * it has seen an enemy building. Costs the campaign target pick and the enemies' fighters.
+ * strongest enemy (a guardian that never leaves the area the seat holds for is no threat to its home),
+ * the nearest forecast scripted attack on it, a raid on its settlement now, and whether it has seen an
+ * enemy building. Costs the campaign target pick and the enemies' fighters.
  */
 export function postureInputsOf(world: World, ctx: SystemContext, seat: number): PostureInputs {
   const own = ownArmyPoints(world, ctx, seat).points;
@@ -262,7 +264,7 @@ export function postureInputsOf(world: World, ctx: SystemContext, seat: number):
     ownPoints: own,
     targetOwner,
     targetPoints: targetOwner === null ? null : believedDefendingPoints(world, ctx, seat, targetOwner, own),
-    strongestPoints: strongestBelievedEnemy(world, ctx, seat).points,
+    strongestPoints: strongestBelievedEnemy(world, ctx, seat, stayingGuardians(world, ctx, seat)).points,
     threatInTicks: nearestThreatIn(world, ctx, seat),
     underAttack,
     raidTargetKnown: believedEnemyBuildings(world, seat).some((b) => b.seenAt !== NEVER_SEEN),

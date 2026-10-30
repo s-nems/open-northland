@@ -49,14 +49,20 @@ export interface BelievedArmy {
  * The strongest enemy the seat knows of, by points, his tower posts counted once; with nothing hidden the
  * live armies, and none with no live enemy. Enemies it knows nothing of are left out while it knows
  * another; when it knows none, they count as the opening band of a wave sent at the seat's own phase of
- * the game, points unknown, so a blind seat still arms. Costs the enemies' fighters.
+ * the game, points unknown, so a blind seat still arms. Seats in `skip` are left out. Costs the enemies'
+ * fighters.
  */
-export function strongestBelievedEnemy(world: World, ctx: SystemContext, seat: number): BelievedArmy {
+export function strongestBelievedEnemy(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  skip: ReadonlySet<number> = NOBODY,
+): BelievedArmy {
   const hidden = fogHides(ctx.fog);
   let strongest: ArmyPoints | null = null;
   let anyEnemy = false;
   for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
+    if (other === seat || skip.has(other) || diplomacyStance(world, seat, other) !== 'enemy') continue;
     if (hidden && isPlayerDead(world, other)) continue;
     anyEnemy = true;
     const army = hidden
@@ -70,6 +76,7 @@ export function strongestBelievedEnemy(world: World, ctx: SystemContext, seat: n
 }
 
 const NO_ARMY: BelievedArmy = { men: 0, points: 0 };
+const NOBODY: ReadonlySet<number> = new Set();
 
 /** A posted man's weight when men are counted one to one. */
 export const COUNTED_ONCE = 1;

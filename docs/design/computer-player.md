@@ -93,15 +93,17 @@ supporting an ally is one more kind with its handler.
 
 A `hold` takes an area the map pays for holding. The map intent reads one from the script's shape, not
 the map id: a presence goal on a repeating timer whose mission hands over goods a deciding deliver
-objective counts becomes a `holdArea` objective with its centre, range and reward cadence
-(diamentowa_dolina's centre: one amulet per team every 5 minutes a seat's people stand within 13 map
-points, ten win). Past the military deadline and any lobby peace, a band of the plan's share of the men
-past the home floor, and more until it is clearly stronger than the defence the seat believes there,
-marches to the area and keeps its men inside; it draws reinforcements as the enemy it sees grows, and
-withdraws when outmatched or after heavy losses, retrying after a cooldown. A seat whose start lies in
-the area counts with its whole believed army. A friend's people in the area with no enemy leave it to
-him. Defending or preparing for a forecast attack stops holds; a defensive plan holds only while it
-attacks.
+objective counts becomes a `holdArea` objective with its centre, range and reward cadence. On
+diamentowa_dolina every 5-minute check pays each seat with people within 13 map points of the centre one
+amulet at its team's corner, and ten of one seat's amulets win for the team. Past the military deadline
+and any lobby peace, a band of the plan's share of the men past the home floor, and more until it is
+clearly stronger than the defence the seat believes there, marches to the area and keeps its men
+inside; it draws reinforcements as the enemy it sees grows, and withdraws when outmatched or after heavy
+losses, retrying after a cooldown. A seat whose start lies in the area counts with its whole believed
+army; when no computer player runs it and its map program names no attack, it never leaves the area, so
+the posture review does not count it as a threat to the home. A friend's people in the area with no
+enemy leave it to him. Defending or preparing for a forecast attack stops holds; a defensive plan holds
+only while it attacks.
 
 ## Difficulty
 

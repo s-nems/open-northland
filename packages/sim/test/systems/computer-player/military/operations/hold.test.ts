@@ -37,6 +37,7 @@ import {
   HOLD_LOOK_EVERY_DECISIONS,
   HOLD_RETRY_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/hold.js';
+import { stayingGuardians } from '../../../../../src/systems/computer-player/military/operations/hold-area.js';
 import type { SystemContext } from '../../../../../src/systems/index.js';
 import { type MissionScript, SUCCESSFUL_IF } from '../../../../../src/systems/missions/index.js';
 import { interactionCell } from '../../../../../src/systems/settlers/targets/index.js';
@@ -47,6 +48,7 @@ const VIKING = 1;
 const SEAT = 2;
 const FOE = 3;
 const FRIEND = 4;
+const HQ_TYPE = 1;
 const BARRACKS_TYPE = 12;
 const SPEARMAN = 32;
 const SEED = 7;
@@ -182,9 +184,11 @@ function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPostu
   sim.world.add(carrier, ComputerStrategy, { economy, military });
 }
 
-/** A balanced seat building up (no wave marches) with its barracks and men at the door. */
-function holdWorld() {
+/** A balanced seat building up (no wave marches) with its barracks and men at the door; `before` sets up
+ *  what stands ahead of the seat's first decision, so its map brief records it. */
+function holdWorld(before: (sim: Simulation) => void = () => {}) {
   const sim = aiSim();
+  before(sim);
   holdPosture(sim, 'balanced', 'prepare');
   const barracks = place(sim, BARRACKS_TYPE, BARRACKS, SEAT);
   const terrain = terrainOf(sim);
@@ -263,6 +267,15 @@ describe('hold operations', () => {
   it('forms no band short of the edge over the defence it sees there', () => {
     const { sim } = holdWorld();
     band(sim, ARMY, AT_CENTRE, FOE);
+    decide(sim, LOOK);
+    expect(holds(sim)).toEqual([]);
+  });
+
+  it('weighs a guardian starting in the area with his whole army, and never as a threat to the home', () => {
+    const { sim } = holdWorld((at) => place(at, HQ_TYPE, { x: CENTRE.hx, y: CENTRE.hy + RANGE }, FOE));
+    // His army stands far from the area, out of the watch margin.
+    band(sim, ARMY, { x: 110, y: 88 }, FOE);
+    expect([...stayingGuardians(sim.world, ctxOf(sim, LOOK), SEAT)]).toEqual([FOE]);
     decide(sim, LOOK);
     expect(holds(sim)).toEqual([]);
   });

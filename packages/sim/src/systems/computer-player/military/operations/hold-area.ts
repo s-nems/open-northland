@@ -1,4 +1,9 @@
-import { diplomacyStance, MAX_PLAYERS, mapBriefOf } from '../../../../components/index.js';
+import {
+  computerControllerRuns,
+  diplomacyStance,
+  MAX_PLAYERS,
+  mapBriefOf,
+} from '../../../../components/index.js';
 import type { World } from '../../../../ecs/world.js';
 import { type HalfCellNode, hexDistance, hexDistanceBetween } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../../nav/terrain/index.js';
@@ -96,6 +101,25 @@ function areaGuardians(world: World, area: IntentArea): Set<number> {
   }
   return guardians;
 }
+
+/**
+ * The guardians of the area `seat` wins by holding that never leave it: no computer player runs them and
+ * their map program names no attack. Such a seat threatens a band in the area, never the seat's home.
+ */
+export function stayingGuardians(world: World, ctx: SystemContext, seat: number): ReadonlySet<number> {
+  const area = holdAreaOf(ctx, seat);
+  if (area === null) return NO_SEATS;
+  const staying = new Set<number>();
+  for (const guardian of areaGuardians(world, area)) {
+    if (computerControllerRuns(world, guardian)) continue;
+    const program = ctx.mapAiScript?.find((s) => s.player === guardian);
+    if (program?.tasks.some((task) => task.kind === 'attack')) continue;
+    staying.add(guardian);
+  }
+  return staying;
+}
+
+const NO_SEATS: ReadonlySet<number> = new Set();
 
 /** Whether a friend of `seat` holds `area` as far as the seat sees: one of his people inside it and no
  *  enemy fighter. Relations are read live. Costs the friends' people and the enemies' fighters. */
