@@ -22,6 +22,7 @@ import { atomicBlocksOrder } from '../../orders/guards.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import {
   animalCannotBeAttacked,
+  animalHitpoints,
   hunterJobType,
   isAggressiveAnimal,
   isHunterJob,
@@ -43,6 +44,9 @@ export const WILD_DEFENCE_CALL_NODES = 2 * ANIMAL_AGGRO_RADIUS_NODES;
 export const HUNTERS_PER_WILD_THREAT = 2;
 /** The most hunters the seat holds hired for defence, beside the hunters its base employs. */
 export const WILD_DEFENCE_HIRES_MAX = 2;
+/** The strongest adult animal type, in hitpoints, the hunters are sent at: twice a wolf's 1000. Lions
+ *  (9000-10000) and the evil hares (20000) outlast two bows and are left to the towers and the army. */
+export const HUNTERS_PREY_MAX_HITPOINTS = 2000;
 
 /** The decision's wildlife answer: its commands, and the spare men it took out of the pool. */
 export interface WildDefence {
@@ -117,7 +121,8 @@ export function defendAgainstWildlife(
 }
 
 /**
- * The adult wild animals of an `aggressive` type, alive and attackable, that `player` sees now and that
+ * The adult wild animals of an `aggressive` type no stronger than {@link HUNTERS_PREY_MAX_HITPOINTS}, alive
+ * and attackable, that `player` sees now and that
  * stand within {@link WILD_THREAT_REACH_NODES} of one of its buildings `owned`, ascending id. A provoked
  * animal of a passive type is the hunt's own business and is left out.
  */
@@ -134,6 +139,7 @@ export function seatWildThreats(
     if (world.has(e, Owner) || world.has(e, YoungAnimal)) continue;
     const tribe = world.get(e, Settler).tribe;
     if (!isAggressiveAnimal(ctx.content, tribe) || animalCannotBeAttacked(ctx.content, tribe)) continue;
+    if ((animalHitpoints(ctx.content, tribe) ?? 0) > HUNTERS_PREY_MAX_HITPOINTS) continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     if (!playerSeesEntity(world, ctx.fog, player, e)) continue;
     homes ??= buildingNodes(world, owned);

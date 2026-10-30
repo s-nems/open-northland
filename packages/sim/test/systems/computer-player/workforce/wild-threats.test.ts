@@ -4,7 +4,10 @@ import { FOG_MODE, Settler, StayPoint } from '../../../../src/components/index.j
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
-import { WILD_DEFENCE_HIRES_MAX } from '../../../../src/systems/computer-player/workforce/wild-threats.js';
+import {
+  HUNTERS_PREY_MAX_HITPOINTS,
+  WILD_DEFENCE_HIRES_MAX,
+} from '../../../../src/systems/computer-player/workforce/wild-threats.js';
 import type { SystemContext } from '../../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../../src/systems/readviews/index.js';
 import { cellOfNode } from '../../../../src/systems/vision/gates.js';
@@ -36,14 +39,14 @@ const SPARE_MEN = 6;
 const WOLVES = 3;
 
 /** {@link huntingContent} plus an aggressive wolf and a bow for the viking hunter. */
-function wolfContent(): ContentSet {
+function wolfContent(hitpoints = WOLF_HITPOINTS): ContentSet {
   const base = huntingContent();
   return parseContentSet({
     ...base,
     tribes: [...base.tribes, { typeId: WOLF, id: 'wolves' }],
     animals: [
       ...base.animals,
-      { id: 'wolves', tribeType: WOLF, aggressive: true, hitpointsAdult: WOLF_HITPOINTS },
+      { id: 'wolves', tribeType: WOLF, aggressive: true, hitpointsAdult: hitpoints },
     ],
     weapons: [
       ...base.weapons,
@@ -64,8 +67,13 @@ function wolfContent(): ContentSet {
 
 /** A seat with a headquarters, `hunters` unposted hunters, `spare` civilians and `wolves` wolves beside
  *  the headquarters, after one step. */
-function wolfSim(hunters: number, spare: number, wolves = 1): { sim: Simulation; wolves: Entity[] } {
-  const sim = new Simulation({ seed: 1, content: wolfContent(), map: grassNodeMap(64, 32) });
+function wolfSim(
+  hunters: number,
+  spare: number,
+  wolves = 1,
+  hitpoints = WOLF_HITPOINTS,
+): { sim: Simulation; wolves: Entity[] } {
+  const sim = new Simulation({ seed: 1, content: wolfContent(hitpoints), map: grassNodeMap(64, 32) });
   placeHq(sim);
   spawnMen(sim, hunters, HUNTER);
   for (let i = 0; i < spare; i++) {
@@ -98,6 +106,11 @@ describe('workforce module - hunters against wild animals', () => {
     const { sim, wolves } = wolfSim(1, 0);
     const hunter = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === HUNTER);
     expect(attacks(decide(sim))).toEqual([{ kind: 'attackUnit', entity: hunter, target: wolves[0] }]);
+  });
+
+  it('leaves a beast stronger than its hunters to the towers', () => {
+    const { sim } = wolfSim(1, 0, 1, HUNTERS_PREY_MAX_HITPOINTS + 1);
+    expect(attacks(decide(sim))).toEqual([]);
   });
 
   it('ignores a wolf outside its own sight, and answers it once the seat sees it', () => {
