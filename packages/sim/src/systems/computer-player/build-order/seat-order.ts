@@ -68,8 +68,8 @@ const CRAMPED: ArchetypeTuning = {
     'opening',
     'bread',
     'brewery',
-    'clothing',
     'tools',
+    'clothing',
     'weapons',
     'armory',
     'materials',
@@ -169,8 +169,8 @@ const GOLD_LINE: StepMatch = {
 };
 
 /** Owner ruling: a seat dressing its army in tunics raises its second animal farm right after the first
- *  and its second tailor right after the first tailor, then upgrades both. The clothing line already runs
- *  ahead of the weapons. */
+ *  and both tailors at once, then upgrades both, its clothing line ahead of the tools
+ *  ({@link TUNIC_SIDES}). The clothing line already runs ahead of the weapons. */
 const TUNIC_ARMS: StepMatch = {
   buildings: [],
   collectors: [],
@@ -195,6 +195,12 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
   fishing: {},
   herbs: {},
 };
+
+/** The sides dressing the army in tunics, whose seat moves its clothing line up right behind the brewery
+ *  (owner ruling: many tunics fast, the shoes along). */
+const TUNIC_SIDES: readonly EconomicSide[] = (Object.keys(SIDE_RULES) as EconomicSide[]).filter(
+  (side) => SIDE_RULES[side].keeps === TUNIC_ARMS,
+);
 
 /** The lines a phase moves up right behind the opening (authored): from the mid game the army line, from
  *  the late game also the homes line with its warehouse lane. */
@@ -251,7 +257,7 @@ const shapedOrders = new WeakMap<BuildOrder, Map<string, BuildOrder>>();
 
 /**
  * `order` as `shape` plays it: the archetype's priority, copies and leading steps, each side's dropped and
- * kept steps, then the phase's and the defence's raised lines. Memoized per order and
+ * kept steps, then the tunic sides', the phase's and the defence's raised lines. Memoized per order and
  * shape, so the caches keyed on an order stay shared; the steps depend only on the archetype and sides,
  * which a seat brief keeps steady, so a line's step keys stay put while the phase and posture move
  * priorities.
@@ -269,6 +275,8 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   const drops = sideDrops(shape.sides);
   const lines = order.lines.map((line) => shapeLine(line, tuning, drops));
   let priority = tuning === STANDARD ? order.priority : tuning.priority;
+  if (shape.sides.some((side) => TUNIC_SIDES.includes(side)))
+    priority = raised(priority, ['clothing'], 'brewery');
   priority = raised(priority, PHASE_RAISES[shape.phase], 'opening');
   if (shape.defenceFirst) priority = raised(priority, DEFENCE_LINES, 'opening');
   const shaped: BuildOrder =

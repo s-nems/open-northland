@@ -253,12 +253,12 @@ function mints(count: number): Extract<BuildOrderEntry, { kind: 'place' }> {
 /** The second and third mint; a seat with little gold keeps to the first (`./seat-order.ts`). */
 export const LATER_MINTS: readonly BuildOrderEntry[] = [{ ...mints(2), holdUntil: AMULETS }, mints(3)];
 
-/** The third and fourth upper smithy, plate and mail arming the army; a seat with little iron forges its
- *  weapons in two (`./seat-order.ts`). Owner ruling: the second and third come practically at once after
- *  the smith learns plate and mail, not behind the crews of those standing. */
+/** The second to fourth upper smithy, plate and mail arming the army; a seat with little iron forges its
+ *  weapons in two (`./seat-order.ts`). Owner ruling: on an iron-rich seat the army wears plate and mail, so
+ *  all three come as soon as the smith learns them, one step not behind the crews of those standing, which
+ *  never waits for one copy's site to finish before placing the next. */
 export const LATE_SMITHIES: readonly BuildOrderEntry[] = [
-  { kind: 'place', building: 'work_smithy_01', count: 3, near: IRON_AND_WOOD, aheadOfCrews: true },
-  { kind: 'place', building: 'work_smithy_01', count: 4, near: [{ kind: 'resource', good: 'iron' }] },
+  { kind: 'place', building: 'work_smithy_01', count: 4, near: IRON_AND_WOOD, aheadOfCrews: true },
 ];
 
 /** Owner ruling: a seat with room opens on four or five lower-tier homes, so more of its couples have
@@ -299,20 +299,25 @@ export const RICH_STEPS: readonly BuildOrderEntry[] = [
   ...RICH_BAKERIES,
 ];
 
-/** Owner ruling: an iron-poor seat arms with tunics and gets its second tailor right after the first; an
- *  iron-rich one sews leather and boots at one tailor until the upper tier stands (`./seat-order.ts`). It
- *  does not wait for the first one's second sewer (authored: on krwawa_rzeka the first tailor kept one
- *  sewer to game minute 60-80 while the builders took the spare men, holding both upgrades back). */
+/** Owner ruling: an iron-poor seat arms with tunics and wants many of them fast, so its two tailors are
+ *  one step placed before the first tailor's, the second not waiting for the first one's site or crew; an
+ *  iron-rich one sews leather and boots at one tailor until the upper tier stands (`./seat-order.ts`).
+ *  Authored: as a step after the first tailor's, the second waited for that site to finish and then for a
+ *  free site behind every line raising a building the seat lacked, to game minute 55-80 on krwawa_rzeka. */
 export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
   kind: 'place',
   building: 'work_sewery_00',
   count: 2,
-  near: [{ kind: 'building', id: 'work_sewery_00' }],
+  near: [
+    { kind: 'building', id: 'work_sewery_00' },
+    { kind: 'building', id: 'work_animal_farm' },
+  ],
   aheadOfCrews: true,
 };
 
 /** Owner ruling: a seat dressing its army in tunics runs two upper tailors, two of the four tailors on
- *  shoes and two on tunics (`workforce/craft.ts`). */
+ *  shoes and two on tunics (`workforce/craft.ts`), and upgrades both as soon as the sewer learns the wool
+ *  armour: one step ahead of the single upgrade, so the second never waits for the first one's site. */
 export const SECOND_UPPER_TAILOR: BuildOrderEntry = { kind: 'upgrade', building: 'work_sewery_01', count: 2 };
 
 /** Owner ruling: a tunic seat raises its second animal farm, its breeders split as the first's, early and
@@ -443,9 +448,14 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         ROOMY_OPENING_HOMES,
         RICH_OPENING_HOMES,
         { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
-        // Owner ruling: the school right after the pottery, a core building, so every trade discovered
-        // from here on is taught there rather than earned again by work.
-        { kind: 'place', building: 'school', count: 1 },
+        // Owner ruling: the school once the pottery stands, never before it, a core building, so every
+        // trade discovered from here on is taught there rather than earned again by work.
+        {
+          kind: 'place',
+          building: 'school',
+          count: 1,
+          holdUntil: { kind: 'built', building: 'work_pottery_00' },
+        },
         {
           kind: 'place',
           building: 'work_mason_hut_00',
@@ -588,14 +598,16 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in
         // reach.
         wellBeside('work_animal_farm', 3),
-        // The upper tier wants wool armour, which only a sewer working the lower tier learns to make.
+        // The upper tier wants wool armour, which only a sewer working the lower tier learns to make. A seat
+        // dressing its army in tunics only raises and upgrades both its tailors first (`./seat-order.ts`).
+        EARLY_SECOND_TAILOR,
         {
           kind: 'place',
           building: 'work_sewery_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_animal_farm' }],
         },
-        EARLY_SECOND_TAILOR,
+        SECOND_UPPER_TAILOR,
         { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
         // The small tailor, a second shoemaker: counted with the upgraded one, so this adds one building.
         {
@@ -604,8 +616,6 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           count: 2,
           near: [{ kind: 'building', id: 'work_sewery_01' }],
         },
-        // A seat dressing its army in tunics only (`./seat-order.ts`).
-        SECOND_UPPER_TAILOR,
       ],
     },
     {
@@ -640,10 +650,10 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // Owner ruling: on a seat with iron the upper smithies' mail and plate arm the army, so once the
         // smith has learned them (the upper tier is enabled by that discovery) more upper smithies follow,
         // up to four, six on a rich seat; a seat with little iron stops at two, and one without iron in
-        // reach raises none (`./seat-order.ts`). The second and third go up at once, the later ones each
-        // wait for the crews of those standing (`./progress.ts`).
-        { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD, aheadOfCrews: true },
+        // reach raises none (`./seat-order.ts`). Up to the fourth they go up at once, the rich seat's fifth
+        // and sixth each wait for the crews of those standing (`./progress.ts`).
         ...LATE_SMITHIES,
+        { kind: 'place', building: 'work_smithy_01', count: 2, near: IRON_AND_WOOD, aheadOfCrews: true },
         ...RICH_SMITHIES,
       ],
     },
@@ -744,16 +754,17 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     },
   ],
   // Owner ruling: the economy first. The opening, so the farm, the first homes and the material workshops
-  // take the first sites; then bread and drink, clothing (boots speed every trade up), the tools and the
-  // first smithy steps, and only then the tile and marble tiers, which are needed a bit later; the army
+  // take the first sites; then bread and drink, the tools (the handcarts matter a great deal), clothing
+  // (boots speed every trade up; a seat dressing its army in tunics raises it ahead of the tools,
+  // `./seat-order.ts`) and the first smithy steps, and only then the tile and marble tiers, which are needed a bit later; the army
   // the garrison waits on, the mint, the herb hut and druids, whose first steps also wait for the food and
   // arms to stand ({@link AFTER_FOOD_AND_ARMS}). The homes line holds only lanes.
   priority: [
     'opening',
     'bread',
     'brewery',
-    'clothing',
     'tools',
+    'clothing',
     'weapons',
     'armory',
     'materials',

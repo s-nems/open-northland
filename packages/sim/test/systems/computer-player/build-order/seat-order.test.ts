@@ -133,12 +133,16 @@ describe('the seat strategy shapes the build order', () => {
     const natural = shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides: ['naturalArms'] });
     expect(ironFree(natural)).toBe(true);
     expect(orderSteps(natural).some((e) => e.kind === 'place' && e.building === 'work_armory_00')).toBe(true);
-    // The tunics come before the armory's weapons, from a second tailor only the iron-poor seat raises early.
+    // The tunics come before the joinery and the armory's weapons, from both tailors at once, which only the
+    // iron-poor seat raises; an iron-rich seat raises its joinery ahead of its tailor.
     const ids = linesByPriority(natural).map((line) => line.id);
+    expect(ids.indexOf('clothing')).toBeLessThan(ids.indexOf('tools'));
     expect(ids.indexOf('clothing')).toBeLessThan(ids.indexOf('weapons'));
     expect(orderSteps(natural)).toContain(EARLY_SECOND_TAILOR);
     const ironRich = shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, sides: ['ironArms'] });
     expect(orderSteps(ironRich)).not.toContain(EARLY_SECOND_TAILOR);
+    const richIds = linesByPriority(ironRich).map((line) => line.id);
+    expect(richIds.indexOf('tools')).toBeLessThan(richIds.indexOf('clothing'));
   });
 
   it('forges weapons in two smithies and dresses in tunics from two upper tailors on little iron', () => {
