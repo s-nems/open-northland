@@ -483,7 +483,9 @@ function runBuildOrder(
 /** A line's turn, the lower first: a defence line ({@link DEFENCE_LINES}) with no rising site of its own
  *  while the seat's defence comes first, no rising site and a next step raising a workshop the seat lacks
  *  whose discovery it earned ({@link earnedWorkshop}), no rising site and a next step raising a kind it
- *  lacks, no rising site, a site of its own still rising. On mroczny_las a seat defending from the first
+ *  lacks or a copy placed ahead of the crews (owner ruling: a tunic seat's second tailor shop lost every
+ *  freed site to new kinds until game minute 37-83 on krwawa_rzeka), no rising site, a site of its own
+ *  still rising. On mroczny_las a seat defending from the first
  *  minute gave every freed site to its earned workshops and raised no barracks before the scripted wave. */
 const TURN = { defence: 0, earned: 1, newKind: 2, more: 3, rising: 4 } as const;
 
@@ -520,7 +522,8 @@ function turnOrder(
       type,
       next.kind === 'place' || next.kind === 'upgrade' ? next.belowTier : undefined,
     );
-    for (const kind of kinds) if (ownedTypes.has(kind)) return TURN.more;
+    const copyAhead = next.kind === 'place' && next.aheadOfCrews === true;
+    if (!copyAhead) for (const kind of kinds) if (ownedTypes.has(kind)) return TURN.more;
     return earnedWorkshop(gated, type) ? TURN.earned : TURN.newKind;
   };
   return lines.map((line) => ({ line, turn: rank(line) })).sort((a, b) => a.turn - b.turn);

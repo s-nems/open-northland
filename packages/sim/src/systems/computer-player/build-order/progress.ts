@@ -342,6 +342,8 @@ function holdOpen(
       return ownedSettlers(world, player).length < hold.count;
     case 'deadline':
       return militaryWaits(world, ctx, player, hold.leadTicks);
+    case 'tick':
+      return ctx.tick < hold.tick;
     case 'all':
       return hold.holds.some((part) => holdOpen(world, ctx, player, owned, part, memo, mayRaise));
   }

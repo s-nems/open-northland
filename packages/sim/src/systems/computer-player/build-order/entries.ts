@@ -21,7 +21,8 @@ export type PlacementAffinity =
 /** What a step waits for while its line holds on it: a built building of the id (at that tier or
  *  above, a rising site not counting), a good the seat has discovered how to make, the seat counting
  *  `count` settlers, the clock reaching `leadTicks` before the seat's military deadline
- *  (`../military/deadline.ts`), which its defence coming first lifts at once, or every one of `holds`. A
+ *  (`../military/deadline.ts`), which its defence coming first lifts at once, the clock reaching `tick`,
+ *  or every one of `holds`. A
  *  hold the seat can never meet, a building or good missing from the content, a discovery it can never
  *  make, or a building (or the good's maker) no unskipped step of the order raises, lets the step act
  *  (`./progress.ts`); within `all` only that hold drops out. */
@@ -30,6 +31,7 @@ export type StepHold =
   | { readonly kind: 'good'; readonly good: string }
   | { readonly kind: 'settlers'; readonly count: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number }
+  | { readonly kind: 'tick'; readonly tick: number }
   | { readonly kind: 'all'; readonly holds: readonly StepHold[] };
 
 export type BuildOrderEntry =

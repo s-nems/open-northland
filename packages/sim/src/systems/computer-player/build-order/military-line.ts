@@ -19,8 +19,8 @@ const TOWER_UPGRADES: readonly BuildOrderEntry[] = Array.from({ length: UPGRADED
 }));
 
 /** Owner ruling: the catapult joinery belongs to the late late game, so it waits for the settlement the
- *  second armory waits for (`./entries.ts`): by game minute 90 on magiczny_las (128-279 settlers) only the
- *  largest seats reach it. */
+ *  second armory waits for (`./entries.ts`) and for the late game's clock: magiczny_las seats reached 200
+ *  settlers by game minute 71-85, which the owner still found too early. */
 const CATAPULT_JOINERY_FROM_SETTLERS = 200;
 
 /** The army line: the tower ring, the barracks, the towers' upgrades and the catapult joinery
@@ -78,7 +78,13 @@ export const MILITARY_LINE: BuildLine = {
       count: 1,
       near: [{ kind: 'building', id: 'barracks' }],
       role: 'catapult',
-      holdUntil: { kind: 'settlers', count: CATAPULT_JOINERY_FROM_SETTLERS },
+      holdUntil: {
+        kind: 'all',
+        holds: [
+          { kind: 'settlers', count: CATAPULT_JOINERY_FROM_SETTLERS },
+          { kind: 'tick', tick: LATE_GAME_FROM_TICKS },
+        ],
+      },
     },
   ],
 };
