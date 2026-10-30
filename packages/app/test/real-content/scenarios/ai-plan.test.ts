@@ -238,7 +238,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
     /** The goods a seat may list, its fallback seats included. */
     const seatGoods = (seat: Seat): string[] => {
       if ('firstFed' in seat) return seat.firstFed.map((line) => line.good);
-      if ('firstEnabled' in seat) return seat.firstEnabled.flat();
+      if ('firstEnabled' in seat) return seat.firstEnabled.flatMap(seatGoods);
       if ('whileOwned' in seat) {
         // A stale building id would hold the seat on its fallback for good.
         expect(buildingById.get(seat.whileOwned), `seat building ${seat.whileOwned}`).toBeDefined();
@@ -301,7 +301,7 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
           `operator seats of every planned ${id}`,
         ).toBeGreaterThanOrEqual(plan.seats.length);
       }
-      const listed: string[] = [...(plan.alone ?? []), ...(plan.sink ?? [])];
+      const listed: string[] = [...(plan.alone ?? []), ...(plan.sink ?? []), ...(plan.unfed ?? [])];
       for (const seat of plan.seats) {
         listed.push(...seatGoods(seat));
         if ('firstFed' in seat) {

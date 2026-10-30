@@ -127,7 +127,7 @@ describe('workforce module - hunters against wild animals', () => {
   it('hires hunters out of its spare men while it has too few, up to the cap', () => {
     const { sim } = wolfSim(0, SPARE_MEN, WOLVES);
     const commands = decide(sim);
-    const hires = commands.filter((c) => c.kind === 'setJob' && c.jobType === HUNTER);
+    const hires = commands.flatMap((c) => (c.kind === 'setJob' && c.jobType === HUNTER ? [c] : []));
     expect(hires).toHaveLength(WILD_DEFENCE_HIRES_MAX);
     const sent = attacks(commands).map((c) => c.entity);
     for (const hire of hires) expect(sent).toContain(hire.entity);
