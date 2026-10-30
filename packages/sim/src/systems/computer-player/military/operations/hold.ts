@@ -232,8 +232,9 @@ function arrived(world: World, op: HoldOperation): boolean {
 }
 
 /**
- * A new hold when the seat's posture allows one, its military deadline and any lobby peace are past, the
- * map rewards it for holding an area it can walk to, and no friend holds that area already: from the spare
+ * A new hold when the seat's posture allows one and no raid on its settlement is going on, its military
+ * deadline and any lobby peace are past, the map rewards it for holding an area it can walk to, and no
+ * friend holds that area already: from the spare
  * men ({@link spareMen}), the plan's share and more until the band reaches {@link HOLD_EDGE} of the
  * defence believed there, looked for on every {@link HOLD_LOOK_EVERY_DECISIONS}th decision. None with
  * fewer than {@link HOLD_MIN_MEN} or a band short of the edge.
@@ -241,7 +242,12 @@ function arrived(world: World, op: HoldOperation): boolean {
 function open(env: OperationEnv, free: readonly Entity[], id: number) {
   const { world, ctx, terrain, seat, home, orders } = env;
   const tuning = orders.hold;
-  if (tuning === null || !moduleBeatDue(ctx.tick, seat, HOLD_LOOK_EVERY_DECISIONS)) return null;
+  if (
+    tuning === null ||
+    orders.posture === 'defend' ||
+    !moduleBeatDue(ctx.tick, seat, HOLD_LOOK_EVERY_DECISIONS)
+  )
+    return null;
   const from = Math.max(
     militaryDeadlineTick(world, ctx, seat),
     seatPeaceEndTick(world, seat),

@@ -34,6 +34,7 @@ function inputs(own: number, overrides: Partial<PostureInputs> = {}): PostureInp
     threatInTicks: null,
     underAttack: false,
     raidTargetKnown: false,
+    holdAimed: false,
     ...overrides,
   };
 }
@@ -105,14 +106,16 @@ describe('military posture', () => {
     }
   });
 
-  it('holds an area only away from a defence, and a defensive plan only while it attacks', () => {
+  it('holds an area while it builds up or attacks, never against a stronger enemy or a forecast attack', () => {
     for (const plan of MILITARY_PLANS) {
-      expect(ordersFor(plan, 'defend').hold).toBeNull();
+      expect(ordersFor(plan, 'defend', ['outmatched']).hold).toBeNull();
       expect(ordersFor(plan, 'prepare', ['forecastThreat']).hold).toBeNull();
+      expect(ordersFor(plan, 'prepare', ['buildingUp']).hold).not.toBeNull();
       expect(ordersFor(plan, 'attack').hold).not.toBeNull();
+      // A raid on the settlement leaves a hold already out there in the area.
+      expect(ordersFor(plan, 'defend', ['underAttack']).hold).not.toBeNull();
     }
-    expect(ordersFor('defensive', 'prepare', ['buildingUp']).hold).toBeNull();
-    expect(ordersFor('aggressive', 'prepare', ['buildingUp']).hold).not.toBeNull();
+    expect(ordersFor('defensive', 'harass').hold).toBeNull();
     const share = (plan: 'aggressive' | 'defensive') => {
       const tuning = ordersFor(plan, 'attack').hold;
       return tuning === null ? 0 : tuning.spareShare.num / tuning.spareShare.den;
@@ -136,6 +139,18 @@ describe('military posture', () => {
     const blind = inputs(0, { targetPoints: 0, strongestPoints: null });
     expect(selectPosture('aggressive', blind, null).posture).toBe('prepare');
     expect(selectPosture('balanced', blind, 'attack').posture).toBe('prepare');
+  });
+
+  it('builds up for the hold on a map won by holding an area, unless a stronger enemy or an attack comes', () => {
+    const rich = inputs(2 * ENEMY_POINTS, { holdAimed: true, raidTargetKnown: true });
+    for (const plan of MILITARY_PLANS) {
+      expect(selectPosture(plan, rich, null)).toEqual(
+        expect.objectContaining({ posture: 'prepare', evidence: expect.arrayContaining(['buildingUp']) }),
+      );
+    }
+    expect(selectPosture('balanced', { ...rich, underAttack: true }, null).posture).toBe('defend');
+    expect(selectPosture('balanced', { ...rich, ownPoints: ENEMY_POINTS / 2 }, null).posture).toBe('defend');
+    expect(selectPosture('balanced', { ...rich, threatInTicks: 0 }, null).posture).toBe('prepare');
   });
 
   it('harasses for the harasser plan, and for another once it has seen a raid target', () => {

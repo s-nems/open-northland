@@ -7,6 +7,7 @@ import {
   computerModuleEnables,
   type MilitaryPlan,
   type MilitaryPosture,
+  type MilitaryRule,
   Owner,
   Settler,
   setDiplomacyStance,
@@ -169,7 +170,12 @@ function mapAiSeat(sim: Simulation, player: number): void {
   });
 }
 
-function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPosture): void {
+function holdPosture(
+  sim: Simulation,
+  plan: MilitaryPlan,
+  posture: MilitaryPosture,
+  evidence?: MilitaryRule[],
+): void {
   let carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null) {
     carrier = sim.world.create();
@@ -189,8 +195,17 @@ function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPostu
     threatInTicks: null,
     underAttack: false,
     raidTargetKnown: false,
+    holdAimed: false,
   };
-  const military = { ...selectPosture(plan, inputs, null), posture, plan, decidedAt: 0, challenger: null };
+  const chosen = selectPosture(plan, inputs, null);
+  const military = {
+    ...chosen,
+    posture,
+    evidence: evidence ?? chosen.evidence,
+    plan,
+    decidedAt: 0,
+    challenger: null,
+  };
   const economy = { archetype: 'standard' as const, sides: [], evidence: [], decidedAt: 0, challenger: null };
   if (sim.world.has(carrier, ComputerStrategy)) sim.world.remove(carrier, ComputerStrategy);
   sim.world.add(carrier, ComputerStrategy, { economy, military });
@@ -274,6 +289,23 @@ describe('hold operations', () => {
     decide(sim, LOOK + 3 * DECISION);
     expect(onlyHold(sim).state).toBe('withdrawing');
     expect(onlyHold(sim).reason).toBe('outmatched');
+  });
+
+  it('keeps a band out in the area through a raid on the settlement, and forms none while it lasts', () => {
+    const { sim } = holdWorld();
+    holdPosture(sim, 'balanced', 'defend', ['underAttack']);
+    decide(sim, LOOK);
+    expect(holds(sim)).toEqual([]);
+    holdPosture(sim, 'balanced', 'prepare');
+    decide(sim, lookFrom(LOOK + DECISION));
+    holdPosture(sim, 'balanced', 'defend', ['underAttack']);
+    decide(sim, lookFrom(LOOK + DECISION) + DECISION);
+    expect(onlyHold(sim).state).toBe('moving');
+    holdPosture(sim, 'balanced', 'defend', ['outmatched']);
+    decide(sim, lookFrom(LOOK + DECISION) + 2 * DECISION);
+    expect(onlyHold(sim)).toEqual(
+      expect.objectContaining({ state: 'withdrawing', reason: 'postureChanged' }),
+    );
   });
 
   it('forms no band short of the edge over the defence it sees there', () => {

@@ -14,6 +14,7 @@ import {
 } from '../../../components/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { DeepReadonly, World } from '../../../ecs/world.js';
+import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { raidOnTheSettlement, seatRaiders } from '../../ai-shared/military/defence/index.js';
 import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
@@ -29,7 +30,7 @@ import {
   ownArmyPoints,
   strongestBelievedEnemy,
 } from '../military/enemy-strength.js';
-import { stayingGuardians } from '../military/operations/hold-area.js';
+import { friendHoldsArea, holdAreaOf, postOf, stayingGuardians } from '../military/operations/hold-area.js';
 import { launchRatioReached, WAVE_GATHER_TICKS } from '../military/plan.js';
 import type { ArmyPoints } from '../military/points.js';
 
@@ -87,8 +88,8 @@ export interface HoldTuning {
 }
 
 /** Owner ruling: the hold is a seat's main offensive use of its army when the map rewards one; an
- *  aggressive seat holds with more men, a defensive one only once its home is safe (it attacks). The
- *  shares are authored. */
+ *  aggressive seat sets out with more of its spare men, a defensive one with fewer. The shares are
+ *  authored. */
 export const HOLD_TUNING: Readonly<Record<MilitaryPlan, HoldTuning>> = {
   aggressive: { spareShare: WHOLE },
   defensive: { spareShare: { num: 1, den: 2 } },
@@ -130,13 +131,17 @@ export interface PostureInputs {
   readonly threatInTicks: number | null;
   readonly underAttack: boolean;
   readonly raidTargetKnown: boolean;
+  /** The map rewards the seat for holding an area it can walk to and no friend holds ({@link holdAimOf}). */
+  readonly holdAimed: boolean;
 }
 
 /**
  * The posture the inputs argue for: defend under a raid, else prepare inside a forecast attack's lead
- * time, else defend against a clearly stronger enemy, else attack once own points reach the plan's edge over the target's owner
- * (harass for the harasser), else harass a known raid target, else prepare while building up. `held` is the
- * current posture, which widens its own thresholds. Pure; `evidence` lists every rule that fired.
+ * time, else defend against a clearly stronger enemy, else on a map won by holding an area prepare: the
+ * army builds up at home for the hold and goes nowhere else (owner ruling: such a map is about taking the
+ * area). Else attack once own points reach the plan's edge over the target's owner (harass for the
+ * harasser), else harass a known raid target, else prepare while building up. `held` is the current
+ * posture, which widens its own thresholds. Pure; `evidence` lists every rule that fired.
  */
 export function selectPosture(
   plan: MilitaryPlan,
@@ -175,7 +180,10 @@ export function selectPosture(
   if (underAttack) posture = 'defend';
   else if (threatened) posture = 'prepare';
   else if (outmatched) posture = 'defend';
-  else if (harasser) posture = 'harass';
+  else if (inputs.holdAimed) {
+    fired.add('buildingUp');
+    posture = 'prepare';
+  } else if (harasser) posture = 'harass';
   else if (ratio) posture = 'attack';
   else if (raidTarget) posture = 'harass';
   else {
@@ -268,7 +276,19 @@ export function postureInputsOf(world: World, ctx: SystemContext, seat: number):
     threatInTicks: nearestThreatIn(world, ctx, seat),
     underAttack,
     raidTargetKnown: believedEnemyBuildings(world, seat).some((b) => b.seenAt !== NEVER_SEEN),
+    holdAimed: terrain !== undefined && holdAimOf(world, ctx, terrain, seat),
   };
+}
+
+/** Whether `seat` builds up for a hold: the map rewards it for holding an area with a spot on its home's
+ *  land, and no friend holds that area already. Costs the friends' people and the enemies' fighters. */
+export function holdAimOf(world: World, ctx: SystemContext, terrain: TerrainGraph, seat: number): boolean {
+  const area = holdAreaOf(ctx, seat);
+  if (area === null) return false;
+  const start = mapBriefOf(world)?.seats.find((s) => s.player === seat);
+  if (start === undefined) return false;
+  const land = terrain.componentOf(terrain.nodeAtClamped(start.hx, start.hy));
+  return postOf(terrain, area, land) !== null && !friendHoldsArea(world, ctx, seat, area);
 }
 
 /** Ticks until the nearest forecast scripted attack on `seat` by an enemy or an unknown owner: 0 inside a
@@ -371,14 +391,17 @@ export function ordersFor(
   };
 }
 
-/** Whether `plan` holds an area in `posture`: never while it defends or prepares against a forecast
- *  attack; a defensive plan only while it attacks, the others also while they build up or harass. */
+/** Whether `plan` holds an area in `posture`: never while a clearly stronger enemy or a forecast attack
+ *  keeps the army home. A raid on the settlement alone leaves a hold out there (the home defence takes the
+ *  men at home); a new one waits it out (`military/operations/hold.ts`). Every plan holds while it builds
+ *  up, which on a map won by holding is building up for the hold; a defensive plan never while it
+ *  harasses. */
 function holdsIn(plan: MilitaryPlan, posture: MilitaryPosture, evidence: readonly MilitaryRule[]): boolean {
   switch (posture) {
     case 'defend':
-      return false;
+      return !evidence.includes('outmatched');
     case 'prepare':
-      return plan !== 'defensive' && !evidence.includes('forecastThreat');
+      return !evidence.includes('forecastThreat');
     case 'harass':
       return plan !== 'defensive';
     case 'attack':

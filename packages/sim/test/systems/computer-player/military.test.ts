@@ -282,6 +282,7 @@ const NO_POSTURE_INPUTS = {
   threatInTicks: null,
   underAttack: false,
   raidTargetKnown: false,
+  holdAimed: false,
 };
 
 function stanceModes(commands: readonly Command[]): number[] {

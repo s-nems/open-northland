@@ -141,6 +141,7 @@ function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPostu
     threatInTicks: null,
     underAttack: false,
     raidTargetKnown: false,
+    holdAimed: false,
   };
   const military = { ...selectPosture(plan, inputs, null), posture, plan, decidedAt: 0, challenger: null };
   const economy = { archetype: 'standard' as const, sides: [], evidence: [], decidedAt: 0, challenger: null };
