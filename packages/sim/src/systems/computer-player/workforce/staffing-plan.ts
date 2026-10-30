@@ -8,8 +8,13 @@ import {
 } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
+import { seatHasSide } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
-import { CORE_CREW_FROM_TICKS, STORE_CARRIERS_FROM_TICKS } from '../game-phase.js';
+import {
+  CORE_CREW_FROM_TICKS,
+  STORE_CARRIERS_FROM_TICKS,
+  TRAINING_CARRIERS_FROM_TICKS,
+} from '../game-phase.js';
 import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
 import { craftGlutPending, openingRunPending, productsOf } from './craft.js';
 import {
@@ -17,6 +22,7 @@ import {
   discoveryPending,
   rowPlan,
   STAFFING_BY_BUILDING_ID,
+  TUNIC_SIDES,
 } from './staffing-rows.js';
 import type { SeatSupply } from './supply.js';
 
@@ -24,7 +30,7 @@ import type { SeatSupply } from './supply.js';
  *  sites the farthest apart. */
 export const LATE_GAME_CIVILIANS = 60;
 
-/** The storage plan before {@link STORE_CARRIERS_FROM_TICKS}: no carrier (authored). The builders
+/** The storage and training plan before their carrier clocks: no carrier (authored). The builders
  *  fetch from the gatherers' piles themselves, and the supply governor counts those piles as the seat's
  *  stock, so a store carrier would only cost a civilian a craftsman could use. */
 const EARLY_STORAGE_STAFFING: BuildingStaffing = {
@@ -35,19 +41,27 @@ const EARLY_STORAGE_STAFFING: BuildingStaffing = {
   carrierSurplus: 0,
 };
 
-/** The transport carriers the HQ and every warehouse run from {@link STORE_CARRIERS_FROM_TICKS} (authored):
- *  one ahead of the builder reserve, a second at the target tier, a third from the surplus. */
-export const STORE_CARRIERS: Readonly<Record<'carrierMin' | 'carrierTarget' | 'carrierSurplus', number>> = {
-  carrierMin: 1,
-  carrierTarget: 2,
-  carrierSurplus: 3,
-};
+type CarrierTiers = Readonly<Record<'carrierMin' | 'carrierTarget' | 'carrierSurplus', number>>;
+
+/** The transport carriers the HQ and every warehouse run from {@link STORE_CARRIERS_FROM_TICKS} (owner
+ *  ruling): one each, from the surplus tier, after every workshop's crew. */
+export const STORE_CARRIERS: CarrierTiers = { carrierMin: 0, carrierTarget: 0, carrierSurplus: 1 };
+
+/** The transport carriers a training building runs from {@link TRAINING_CARRIERS_FROM_TICKS} (owner
+ *  ruling): two at the target tier, bringing the arms the drill hands out. */
+export const TRAINING_CARRIERS: CarrierTiers = { carrierMin: 0, carrierTarget: 2, carrierSurplus: 2 };
 
 const LATE_STORAGE_STAFFING: BuildingStaffing = { ...EARLY_STORAGE_STAFFING, ...STORE_CARRIERS };
+const LATE_TRAINING_STAFFING: BuildingStaffing = { ...EARLY_STORAGE_STAFFING, ...TRAINING_CARRIERS };
 
 /** The storage plan at `tick`. */
 function storageStaffing(tick: number): BuildingStaffing {
   return tick >= STORE_CARRIERS_FROM_TICKS ? LATE_STORAGE_STAFFING : EARLY_STORAGE_STAFFING;
+}
+
+/** The training building plan at `tick`. */
+function trainingStaffing(tick: number): BuildingStaffing {
+  return tick >= TRAINING_CARRIERS_FROM_TICKS ? LATE_TRAINING_STAFFING : EARLY_STORAGE_STAFFING;
 }
 
 /** The goods whose shortage puts a carrier into the workshop at the minimum tier (authored), by stable
@@ -75,9 +89,9 @@ export interface SeatStaffing {
 }
 
 /**
- * One building's plan this decision, or null for the kinds the allocator never staffs: homes, towers and
- * the barracks are military or residential, not production. A store runs the carriers of its
- * {@link storageStaffing}. A workshop on its opening run keeps to its first craftsman so the run
+ * One building's plan this decision, or null for the kinds the allocator never staffs: homes and towers.
+ * A store runs the carriers of its {@link storageStaffing}, a training building those of its
+ * {@link trainingStaffing}. A workshop on its opening run keeps to its first craftsman so the run
  * is not split; `held` is who works there already, which keeps a supply carrier or a product-gated
  * craftsman through the band below the line that hired him. A raw good's own workshop runs without a
  * carrier while that good is short for the sites ({@link rawGoodShort}), and a workshop with nothing left
@@ -92,16 +106,17 @@ export function buildingStaffing(
   held: HeldStaff,
 ): BuildingStaffing | null {
   if (type.kind === 'storage') return storageStaffing(ctx.tick);
+  if (type.kind === 'training') return trainingStaffing(ctx.tick);
   if (type.kind !== 'workplace') return null;
   const { plan: row, gateFloor } = rowPlan(ctx, type);
-  let plan = row;
-  const opening = openingRunPending(world, ctx, building, type);
-  const gated =
-    STAFFING_BY_BUILDING_ID[type.id]?.productGated === true
-      ? gatedOperators(ctx, seat, type, held.operators)
-      : null;
-  const gate = gated === null ? null : Math.max(gated, gateFloor);
   const authored = STAFFING_BY_BUILDING_ID[type.id];
+  let plan =
+    authored?.tunicSeat !== undefined && TUNIC_SIDES.some((side) => seatHasSide(world, seat.player, side))
+      ? { ...row, ...authored.tunicSeat }
+      : row;
+  const opening = openingRunPending(world, ctx, building, type);
+  const gated = authored?.productGated === true ? gatedOperators(ctx, seat, type, held.operators) : null;
+  const gate = gated === null ? null : Math.max(gated, gateFloor);
   if (opening || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
     plan = capOperators(plan, 1);
   else if (gate !== null) {

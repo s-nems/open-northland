@@ -20,8 +20,11 @@ export function minutesToTicks(minutes: number): number {
 export const MID_GAME_FROM_TICKS = minutesToTicks(60);
 export const LATE_GAME_FROM_TICKS = minutesToTicks(90);
 
-/** From when the headquarters and the warehouses run transport carriers (authored): the late game. */
+/** From when the headquarters and the warehouses run transport carriers (owner ruling): the late game. */
 export const STORE_CARRIERS_FROM_TICKS = LATE_GAME_FROM_TICKS;
+
+/** From when a training building (the barracks) runs transport carriers (owner ruling): the late game. */
+export const TRAINING_CARRIERS_FROM_TICKS = LATE_GAME_FROM_TICKS;
 
 /** From when a core workshop (farm, mill, pottery, mason hut) never rests its first craftsman, whatever
  *  its products' stock (authored): a resting farm loses its sown fields and the miller his experience. */

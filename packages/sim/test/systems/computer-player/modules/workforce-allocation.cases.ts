@@ -383,7 +383,7 @@ describe('workforce module (collectResources)', () => {
     );
   });
 
-  it('tops wood/stone up to their late-game targets once the reserve and the store carriers stand', () => {
+  it('tops wood/stone up toward their late-game targets once the reserve stands, ahead of the store carrier', () => {
     const sim = aiSim();
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
@@ -403,9 +403,19 @@ describe('workforce module (collectResources)', () => {
     const commands = [...collectModule.run(sim.world, late(), SEAT)];
     const selections = commands.filter((c) => c.kind === 'setGatherGood');
     // First posts in plan order, then the stone/wood top-ups (mud stays at one): 3 first posts, the
-    // scout, the HQ's two late-game carriers and the late-game builder reserve claimed, the top-ups take
-    // the four men left, stone's three before wood's, and nobody is left to go generic.
-    expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD, STONE, STONE, STONE, WOOD]);
+    // scout and the late-game builder reserve claimed, the top-ups take the six men left ahead of the
+    // HQ's surplus-tier carrier, stone's three before wood's, and nobody is left to go generic.
+    expect(selections.map((s) => s.goodType)).toEqual([
+      MUD,
+      STONE,
+      WOOD,
+      STONE,
+      STONE,
+      STONE,
+      WOOD,
+      WOOD,
+      WOOD,
+    ]);
     // Each post gets a node of its own. A good's top-up re-derives the same nearest resource as its
     // first post, so without the decision's claimed-node set the two flags land on one tile - one
     // delivery yard, one pile cap, two gatherers.
@@ -741,11 +751,12 @@ describe('workforce module (collectResources)', () => {
     placeHq(sim);
     placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
     placeWorkshop(sim, JOINERY_TYPE);
-    // Four men for the first posts and the scout, then builders: one for the joiner, two past the floor.
+    // Four men for the first posts and the scout, then builders: one each for the joiner and his porter,
+    // two past the floor.
     // From the follow-sites clock, when every open site's shortage posts jump the reserve; the store is
     // empty, so wood and stone both want two.
     spawnMen(sim, 4);
-    spawnMen(sim, SHORTAGE_BUILDER_FLOOR + 3, BUILDER);
+    spawnMen(sim, SHORTAGE_BUILDER_FLOOR + 4, BUILDER);
     sim.step();
     const tick = BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS;
     expect(siteShortagePosts(AI_PROFILES.hard, tick)).toBe(2);
@@ -761,7 +772,7 @@ describe('workforce module (collectResources)', () => {
     const first = decide();
     expect(posted(first)).toEqual([MUD, STONE, WOOD]);
     expect(first.filter((c) => c.kind === 'setJob' && c.jobType === SCOUT)).toHaveLength(1);
-    expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR + 2); // the joiner came out of the builders
+    expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR + 2); // the joiner and porter came out of them
     expect(posted(decide())).toEqual([STONE, WOOD]); // the sites' first shortage posts: two builders go
     expect(builders()).toHaveLength(SHORTAGE_BUILDER_FLOOR);
     expect(posted(decide())).toEqual([]); // both still want one more, but not from the last four
@@ -1360,7 +1371,7 @@ describe('workforce module (collectResources)', () => {
     expect(staffJoinery(BUILDER_CAP + 6)).toBe(2);
   });
 
-  it('staffs the HQ and a warehouse with three carriers each in the deep late game', () => {
+  it('staffs the HQ and a warehouse with one carrier each in the late game', () => {
     const sim = aiSim();
     placeHq(sim);
     sim.enqueueSetup({
@@ -1378,19 +1389,11 @@ describe('workforce module (collectResources)', () => {
     const hq = entityOfBuilding(sim, HQ_TYPE);
     const stock = entityOfBuilding(sim, STOCK_TYPE);
     const staffing = commands.filter((c) => c.kind === 'assignWorker');
-    // The storage posts are surplus-tier extras, so all six carriers come out of the men left
-    // past the builder reserve and every target post. The collector slots both storages declare are
-    // harvest trades and stay open.
-    expect(staffing.filter((c) => c.building === hq).map((c) => c.jobPriority)).toEqual([
-      [CARRIER],
-      [CARRIER],
-      [CARRIER],
-    ]);
-    expect(staffing.filter((c) => c.building === stock).map((c) => c.jobPriority)).toEqual([
-      [CARRIER],
-      [CARRIER],
-      [CARRIER],
-    ]);
+    // The storage post is a surplus-tier extra, so both carriers come out of the men left past the
+    // builder reserve and every target post. The collector slots both storages declare are harvest trades
+    // and stay open.
+    expect(staffing.filter((c) => c.building === hq).map((c) => c.jobPriority)).toEqual([[CARRIER]]);
+    expect(staffing.filter((c) => c.building === stock).map((c) => c.jobPriority)).toEqual([[CARRIER]]);
   });
 
   it("staffs the bakery with its carrier on top of the baker (the plan's one carrier post)", () => {
@@ -1523,7 +1526,7 @@ describe('workforce module (collectResources)', () => {
     sim.step();
 
     // The vacated stone post is rehired once a spare man exists again - self-healing. (The first
-    // decision's ladder claimed every original man: collector, scout, HQ carrier.)
+    // decision's ladder claimed every original man: collector and scout.)
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: CIVILIST, x: 6, y: 6, tribe: VIKING, owner: SEAT });
     sim.step();
     const rehire = [...gated.run(sim.world, ctxOf(sim), SEAT)];
@@ -1992,7 +1995,7 @@ describe('workforce module (collectResources)', () => {
       tribe: VIKING,
       owner: SEAT,
     });
-    // Enough men that the target tier still has surplus behind the scout + reserve + HQ carriers.
+    // Enough men that the target tier still has surplus behind the scout and the reserve.
     spawnMen(sim, BUILDER_CAP + 6, BUILDER);
     sim.step();
 

@@ -76,7 +76,8 @@ export interface GatedSlotSources {
  * slot trade's general track who qualifies for it (`settlerMeetsNeed`). A slot no spare man qualifies for
  * takes a pupil of the trade's school lesson ({@link Schooling}), counted as filling it until he
  * graduates, or with no school teaching the trade a promotion ({@link Promotions}). Gatherer slots stay
- * open, and a carrier-only workplace (the well, the hive) fills itself, so it needs no staff. Workplaces fill before storage within a tier, and
+ * open, and a carrier-only workplace (the well, the hive) fills itself, so it needs no staff. Workplaces fill
+ * before training buildings and those before storage within a tier, and
  * all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
  */
 export function staffBuildings(
@@ -90,12 +91,9 @@ export function staffBuildings(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
-  const ordered = [
-    ...seat.owned.filter(
-      (e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === 'workplace',
-    ),
-    ...seat.owned.filter((e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === 'storage'),
-  ];
+  const ofKind = (kind: BuildingType['kind']): Entity[] =>
+    seat.owned.filter((e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === kind);
+  const ordered = [...ofKind('workplace'), ...ofKind('training'), ...ofKind('storage')];
   for (const building of ordered) {
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
@@ -117,7 +115,7 @@ export function staffBuildings(
     for (const slot of type.workers) {
       const carrier = isCarrierJob(ctx, slot.jobType);
       if (!carrier && index.harvestJobs.has(slot.jobType)) continue; // gatherer slots stay open
-      if (type.kind === 'storage' && !carrier) continue; // storage staffs transport only
+      if (type.kind !== 'workplace' && !carrier) continue; // a store or a barracks staffs transport only
       const want = Math.min(slot.count, carrier ? carrierWant : operatorWant);
       const held =
         (tally.get(building)?.get(slot.jobType) ?? 0) + gated.schooling.promised(building, slot.jobType);
@@ -208,9 +206,10 @@ export function releaseSurplusOperators(
     tally,
     builderJob,
     (job) => isOperatorJob(ctx, job),
-    // A store staffs transport only, so its hunters and fishers are not the plan's to release.
+    // A store or a barracks staffs transport only, so its hunters, fishers and trainees are not the plan's
+    // to release.
     (plan, type) =>
-      type.kind === 'storage'
+      type.kind !== 'workplace'
         ? Number.POSITIVE_INFINITY
         : Math.max(plan.operatorMin, plan.operatorTarget, plan.operatorSurplus ?? 0),
   );

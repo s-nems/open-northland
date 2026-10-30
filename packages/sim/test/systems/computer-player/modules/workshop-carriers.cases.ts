@@ -24,6 +24,7 @@ import {
   CORE_CREW_FROM_TICKS,
   LATE_GAME_FROM_TICKS,
   STORE_CARRIERS_FROM_TICKS,
+  TRAINING_CARRIERS_FROM_TICKS,
 } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   BUILDER_CAP,
@@ -54,6 +55,7 @@ import {
   type HeldStaff,
   type SeatStaffing,
   STORE_CARRIERS,
+  TRAINING_CARRIERS,
 } from '../../../../src/systems/computer-player/workforce/staffing-plan.js';
 import {
   type BuildingStaffing,
@@ -63,8 +65,10 @@ import { EAT_ATOMIC_ID } from '../../../../src/systems/settlers/atomics/start.js
 import { networkLimitAt } from '../../../../src/systems/signposts/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
+  ANIMAL_FARM_TYPE,
   aiSim,
   BAKERY_TYPE,
+  BARRACKS_TYPE,
   BUILDER,
   CARRIER,
   COLLECTOR,
@@ -78,6 +82,7 @@ import {
   HQ_TYPE,
   HQ_X,
   HQ_Y,
+  husbandryContent,
   JOINER,
   JOINERY_TYPE,
   MILL_TYPE,
@@ -89,6 +94,7 @@ import {
   RESOURCE_SPOTS,
   SEAT,
   STONE,
+  seatEconomy,
   spawnMen,
   VIKING,
   WOOD,
@@ -944,7 +950,7 @@ describe('workforce module - the stores staff carriers only late in the game', (
     });
   });
 
-  it('hires the store carriers, one per tier, from the store-carrier time', () => {
+  it('hires the one store carrier at the surplus tier from the store-carrier time', () => {
     const seat = seatOn(aiContent(), [], GROWN_SEAT_MEN);
     const hq = entityOfBuilding(seat.sim, HQ_TYPE);
     expect(planOf(seat, aiContent(), hq, crewOf(0), STORE_CARRIERS_FROM_TICKS)).toMatchObject(STORE_CARRIERS);
@@ -1001,5 +1007,57 @@ describe('workforce module - the joinery crews', () => {
     seat.apply(seat.decide());
     expect(seat.crew(joinery, JOINER)).toHaveLength(TOP_JOINERY_JOINERS);
     expect(seat.crew(joinery, CARRIER)).toHaveLength(1);
+  });
+});
+
+describe('workforce module - the barracks, tailor, animal farm and joinery porters', () => {
+  /** The fixture joinery recast as the upper tailor, its two operator seats the tailors'. */
+  function upperTailorContent(): ContentSet {
+    const base = aiContent();
+    return parseContentSet({
+      ...base,
+      buildings: base.buildings.map((b) => (b.typeId === JOINERY_TYPE ? { ...b, id: 'work_sewery_01' } : b)),
+    });
+  }
+
+  it('posts no barracks carrier before the late game, and two from it, who stay at their posts', () => {
+    const seat = seatOn(aiContent(), [BARRACKS_TYPE], GROWN_SEAT_MEN);
+    const barracks = entityOfBuilding(seat.sim, BARRACKS_TYPE);
+    const hires = (commands: readonly Command[]) =>
+      commands.filter((c) => c.kind === 'assignWorker' && c.building === barracks);
+    expect(hires(seat.decide(TRAINING_CARRIERS_FROM_TICKS - 1))).toEqual([]);
+    expect(planOf(seat, aiContent(), barracks, crewOf(0), TRAINING_CARRIERS_FROM_TICKS)).toMatchObject(
+      TRAINING_CARRIERS,
+    );
+    const late = seat.decide(TRAINING_CARRIERS_FROM_TICKS);
+    expect(hires(late).map((c) => c.kind === 'assignWorker' && c.jobPriority)).toEqual([
+      [CARRIER],
+      [CARRIER],
+    ]);
+    // The employment order seats a carrier at a training building like at a workshop.
+    seat.apply(late);
+    const carriers = seat.crew(barracks, CARRIER);
+    expect(carriers).toHaveLength(TRAINING_CARRIERS.carrierTarget);
+    const next = seat.decide(TRAINING_CARRIERS_FROM_TICKS);
+    expect(next.filter((c) => 'entity' in c && carriers.includes(c.entity))).toEqual([]);
+    expect(hires(next)).toEqual([]);
+  });
+
+  it('runs a porter at the animal farm and the tools joinery as a minimum post', () => {
+    const farmSeat = seatOn(husbandryContent(), [ANIMAL_FARM_TYPE], BUILDER_CAP + SPARE_MEN);
+    const farm = entityOfBuilding(farmSeat.sim, ANIMAL_FARM_TYPE);
+    expect(planOf(farmSeat, husbandryContent(), farm, crewOf(0))).toMatchObject({ carrierMin: 1 });
+    const joinerySeat = seatOn(aiContent(), [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
+    const joinery = entityOfBuilding(joinerySeat.sim, JOINERY_TYPE);
+    expect(planOf(joinerySeat, aiContent(), joinery, crewOf(0))).toMatchObject({ carrierMin: 1 });
+  });
+
+  it("makes a tunic seat's second upper tailor a minimum post", () => {
+    const content = upperTailorContent();
+    const seat = seatOn(content, [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
+    const tailor = entityOfBuilding(seat.sim, JOINERY_TYPE);
+    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 1, carrierMin: 1 });
+    seatEconomy(seat.sim, 'standard', ['naturalArms']);
+    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 2, carrierMin: 1 });
   });
 });

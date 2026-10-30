@@ -1,5 +1,10 @@
 import type { BuildingType } from '@open-northland/data';
-import { playerPlacementTribes, professionProgressionEnabled, Settler } from '../../../components/index.js';
+import {
+  type EconomicSide,
+  playerPlacementTribes,
+  professionProgressionEnabled,
+  Settler,
+} from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
@@ -57,7 +62,12 @@ export interface StaffingRow extends StaffingTiers {
   /** A discovery until which the building runs a carrier at the minimum tier, so its operator works
    *  instead of fetching his inputs and earns it sooner. */
   readonly porterUntil?: DiscoveryTarget;
+  /** The tiers on a seat dressing its army in tunics ({@link TUNIC_SIDES}), over the rest of the row. */
+  readonly tunicSeat?: Partial<BuildingStaffing>;
 }
+
+/** The economic sides whose army wears tunics and shoes instead of plate and chain (`craft.ts`). */
+export const TUNIC_SIDES: readonly EconomicSide[] = ['naturalArms', 'ironWeapons'];
 
 /** A job or good the seat discovers, by stable content id. */
 export interface DiscoveryTarget {
@@ -84,15 +94,18 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // Owner ruling: the vikings live on mead, so the brewery's second brewer is a minimum post.
   work_brewery: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1 },
   // Both breeders keep the cattle (CRAFT_PLANS_BY_BUILDING_ID), or a tunic seat's one cattle and one
-  // sheep, so the pair works from the start.
-  work_animal_farm: { operatorMin: 2, operatorTarget: 2 },
+  // sheep, so the pair works from the start. Owner ruling: a porter feeds them wheat and water, a
+  // minimum post since the farm stands only one to a seat or two.
+  work_animal_farm: { operatorMin: 2, operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
   // The level-0 bakery offers a single baker slot, so only its carrier is planned.
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },
   // Owner ruling: an upgraded bakery runs its full crew before the seat raises another.
   work_bakery_01: { operatorMin: 2, operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
-  // The tools joinery runs two joiners and a carrier at both tiers the seat keeps it at.
-  work_joinery_01: { operatorTarget: 2, carrierTarget: 1 },
-  work_joinery_02: { operatorTarget: 2, carrierTarget: 1 },
+  // The tools joinery runs two joiners and a carrier at both tiers the seat keeps it at. Owner ruling:
+  // the carrier is a minimum post, since a joiner fetches a handcart's bill from his own shelves first
+  // and the carts speed every haul.
+  work_joinery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
+  work_joinery_02: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
   work_joinery_03: { operatorTarget: 3, carrierTarget: 1 },
   // The first potter and mason work alone, so a carrier hauls for them once the builder reserve is full.
   // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID),
@@ -110,7 +123,10 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
     late: { carrierTarget: 1 },
   },
   work_mason_hut_01: { operatorTarget: 2, productGated: true },
-  work_sewery_01: { operatorTarget: 2 },
+  // Owner ruling: each tailor runs a porter as a minimum post, and a tunic seat's upper tailor its second
+  // tailor too, so its two shops' four tailors stand early.
+  work_sewery_00: { carrierMin: 1, carrierTarget: 1 },
+  work_sewery_01: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1, tunicSeat: { operatorMin: 2 } },
   // Owner ruling: the upgraded smithy's two smiths split the core arms between them, so the second is a
   // minimum post; another smithy rises only once the standing ones are fully crewed.
   work_smithy_01: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1 },
@@ -193,6 +209,7 @@ function deriveRowPlan(type: BuildingType, lateGame: boolean): RowPlan {
     productGated: _,
     aloneUntil: __,
     porterUntil: ___,
+    tunicSeat: ____,
     late,
     ...row
   } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
