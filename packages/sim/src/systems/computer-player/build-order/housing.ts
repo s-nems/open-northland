@@ -19,12 +19,12 @@ import { isAdultSettler } from '../../family/eligibility.js';
 import { buildingEnabled } from '../../progression/index.js';
 import { seatStockOf } from '../../stores/index.js';
 import { femaleDemand } from '../female-stock.js';
+import { seatFishes } from '../workforce/fisher.js';
 import { foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
 import { seatHuntsGame } from '../workforce/hunter.js';
 import { billSourced, sourcedTiers } from './bill-sources.js';
 import type { BuildOrderEntry } from './entries.js';
 import { placementSpot } from './placement.js';
-import { seatHasSide } from './seat-order.js';
 import { suppliedUpgrade } from './upgrade-supply.js';
 
 type HousingEntry = Extract<BuildOrderEntry, { kind: 'housing' }>;
@@ -86,7 +86,7 @@ export function housingStage(
   player: number,
   owned: readonly Entity[],
 ): HousingStage {
-  if (!seatHasSide(world, player, 'fishing')) {
+  if (!seatFishes(world, ctx, player)) {
     if (!foodWorkshopBuilt(world, ctx, owned)) return 'opening';
     if (!builtAtOrAbove(world, ctx, owned, HOUSING_STAPLE_BUILDING)) return 'herding';
   }
@@ -273,7 +273,7 @@ export const HOUSING_FOOD_UNITS_PER_WOMAN = CHILD_FOOD_UNITS;
  * When the housing lane may open a home site (owner ruling: an upgraded home bears no children while
  * food is short): `closed` while the store's food runs short ({@link HOUSING_FOOD_UNITS_PER_WOMAN}), or
  * on a seat that is not food-rich until a workshop making food beyond the grain farm stands; `early` on
- * a food-rich seat (the `fishing` side, or {@link FOOD_RICH_UNITS_PER_SETTLER} in store), which may run
+ * a food-rich seat (one that fishes, or holds {@link FOOD_RICH_UNITS_PER_SETTLER} in store), which may run
  * the lane from the start of the opening; `inLine` otherwise, from the lane's place in its line.
  */
 export type HousingGate = 'closed' | 'inLine' | 'early';
@@ -289,8 +289,7 @@ export function housingGate(
   let women = 0;
   for (const e of settlers) if (world.has(e, Female) && isAdultSettler(world, e)) women++;
   if (food < women * HOUSING_FOOD_UNITS_PER_WOMAN) return 'closed';
-  if (seatHasSide(world, player, 'fishing') || food >= settlers.length * FOOD_RICH_UNITS_PER_SETTLER)
-    return 'early';
+  if (seatFishes(world, ctx, player) || food >= settlers.length * FOOD_RICH_UNITS_PER_SETTLER) return 'early';
   return foodWorkshopBuilt(world, ctx, owned) ? 'inLine' : 'closed';
 }
 

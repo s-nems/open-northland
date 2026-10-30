@@ -1,11 +1,11 @@
-import { Building, CurrentAtomic, FishSwarm } from '../../../components/index.js';
+import { Building, CurrentAtomic, FishSwarm, Settler } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { anchorNodeOf, nearestRingNode } from '../../ai-shared/node-geometry.js';
-import { isBuilt, ownedBuildings } from '../../ai-shared/seat-roster.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { FISH_SHORE_SEARCH_RADIUS } from '../../economy/fish.js';
@@ -84,6 +84,12 @@ export function fishingPlan(
   stands.sort((a, b) => a.trip - b.trip || a.store - b.store);
   const firstHires = seatHasSide(world, player, 'fishing') ? FISHER_TARGET : 1;
   return { job, terrain, ground, stands, fishers: [...fishers], firstHires };
+}
+
+/** Whether one of the seat's men works as a fisher: the side names water in the seat's near band, which
+ *  can lie beyond every store's fishing trip, so only a hired fisher shows the seat fishes. */
+export function seatFishes(world: World, ctx: SystemContext, player: number): boolean {
+  return ownedSettlers(world, player).some((e) => isFisherJob(ctx.content, world.get(e, Settler).jobType));
 }
 
 /**

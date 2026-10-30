@@ -87,6 +87,20 @@ function herdingContent(): ContentSet {
   });
 }
 
+/** The fixture's fisher trade, spelled `fisher` since the role is read off the id. */
+const FISHER = 22;
+
+/** `content` with the fisher trade. */
+function withFisher(content: ContentSet): ContentSet {
+  return parseContentSet({ ...content, jobs: [...content.jobs, { typeId: FISHER, id: 'fisher' }] });
+}
+
+/** One man of the seat set to fishing, as the workforce posts him. */
+function hireFisher(sim: Simulation): void {
+  spawnMen(sim, 1, FISHER);
+  sim.step();
+}
+
 function decide(sim: Simulation, order = housing, content: ContentSet = aiContent()): Command | undefined {
   return [...order.run(sim.world, { ...ctxOf(sim), content }, SEAT)][0];
 }
@@ -134,16 +148,17 @@ describe('the housing lane', () => {
   });
 
   it('opens no home site while the store runs short of food, even on a fishing seat', () => {
-    const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN - 1);
-    seatEconomy(sim, 'standard', ['fishing']);
-    expect(decide(sim)).toBeUndefined();
+    const content = withFisher(aiContent());
+    const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN - 1, content);
+    hireFisher(sim);
+    expect(decide(sim, housing, content)).toBeUndefined();
     setStockAmount(
       sim.world,
       entityOfBuilding(sim, HQ_TYPE),
       FOOD_SIMPLE,
       BASE_SLOTS * HOUSING_FOOD_UNITS_PER_WOMAN,
     );
-    expect(homePlaced(decide(sim))).toBe(true);
+    expect(homePlaced(decide(sim, housing, content))).toBe(true);
   });
 
   it('waits on a seat that is not food-rich until a workshop making food stands', () => {
@@ -162,15 +177,18 @@ describe('the housing lane', () => {
     expect(homePlaced(decide(sim, housing, content))).toBe(true);
   });
 
-  it('runs ahead of its place in the line on a fishing seat while the daughters are blocked', () => {
+  it('runs ahead of its place in the line once the seat fishes while the daughters are blocked', () => {
     // A live iron node keeps the collector step before the lane unmet.
     const order = buildOrderModule(oneLine([{ kind: 'collector', good: 'iron' }, HOUSING]));
-    const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN);
+    const content = withFisher(aiContent());
+    const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN, content);
     placeResources(sim, [RESOURCE_SPOTS.iron]);
     sim.step();
-    expect(decide(sim, order)).toBeUndefined();
+    // The fishing side alone names water in the near band, which may lie beyond every fishing trip.
     seatEconomy(sim, 'standard', ['fishing']);
-    expect(homePlaced(decide(sim, order))).toBe(true);
+    expect(decide(sim, order, content)).toBeUndefined();
+    hireFisher(sim);
+    expect(homePlaced(decide(sim, order, content))).toBe(true);
   });
 
   describe('once a workshop makes food', () => {
@@ -316,7 +334,7 @@ describe('the housing lane', () => {
   });
 
   describe('while only the animal farm makes food', () => {
-    const content = herdingContent();
+    const content = withFisher(herdingContent());
 
     /** A seat of one woman with its animal farm, wood for every upgrade in store, and `homes` built base
      *  homes, which hold her with the opening's free slots to spare. */
@@ -392,7 +410,7 @@ describe('the housing lane', () => {
       upgradeOnce(sim);
       expect(decide(sim, housing, content)).toBeUndefined();
       // A fisher feeds the homes as the bakery does: the last base home lags and is upgraded.
-      seatEconomy(sim, 'standard', ['fishing']);
+      hireFisher(sim);
       upgradeOnce(sim);
     });
   });
