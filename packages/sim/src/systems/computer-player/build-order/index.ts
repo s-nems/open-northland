@@ -171,7 +171,8 @@ function runBuildOrder(
   let made: ReadonlySet<number> | undefined;
   const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
   const locked = (entry: BuildOrderEntry): boolean => stepLocked(world, ctx, player, owned, tribe, entry);
-  const held = (entry: BuildOrderEntry): boolean => stepHeld(world, ctx, player, owned, entry, memo);
+  const held = (entry: BuildOrderEntry): boolean =>
+    stepHeld(world, ctx, player, owned, order, statuses, entry, memo);
   // A locked step holds its line while the technology module earns its discovery; with nothing gated
   // for the seat (no technology table) it can only be a ban, and is passed over.
   const lockHolds = technologyReach(world, ctx, player, memo) !== null;

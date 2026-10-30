@@ -15,6 +15,7 @@ import {
   AI_PROFILES,
   ARCHETYPE_TUNING,
   type BuildOrder,
+  type BuildOrderEntry,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
   DEFENCE_TOWER_RADIUS_PCT,
@@ -27,6 +28,7 @@ import {
   shapeBuildOrder,
   sitePace,
 } from '../../../../src/systems/computer-player/index.js';
+import { TOWER_LEAD_TICKS } from '../../../../src/systems/computer-player/military/deadline.js';
 import {
   aiSim,
   BAKERY_TYPE,
@@ -149,10 +151,25 @@ describe('the seat strategy shapes the build order', () => {
   });
 
   it('holds a step until the building it waits on stands, and passes a hold it can never meet', () => {
-    const waits = (building: string) =>
-      oneLine([
-        { kind: 'place', building: 'home_level_00', count: 1, holdUntil: { kind: 'built', building } },
-      ]);
+    // The bakery's own step waits for the military deadline, so only the held home could act at first.
+    const bakeryLater: BuildOrderEntry = {
+      kind: 'place',
+      building: 'work_bakery_00',
+      count: 1,
+      holdUntil: { kind: 'deadline', leadTicks: TOWER_LEAD_TICKS },
+    };
+    const waits = (building: string): BuildOrder => ({
+      lines: [
+        {
+          id: 'opening',
+          steps: [
+            { kind: 'place', building: 'home_level_00', count: 1, holdUntil: { kind: 'built', building } },
+          ],
+        },
+        { id: 'bread', steps: [bakeryLater] },
+      ],
+      priority: ['opening', 'bread'],
+    });
     const sim = seatWith({ archetype: 'standard' });
     expect(firstCommand(sim, waits('work_bakery_00'))).toBeUndefined();
     // A rising site does not count.

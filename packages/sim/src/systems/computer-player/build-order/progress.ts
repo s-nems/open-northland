@@ -252,19 +252,23 @@ export function entryStatus(
 
 /** Whether an unmet placement or tower ring still holds its line on its `holdUntil` ({@link StepHold}): the
  *  seat has no standing building of the id at that tier or above, or has not discovered the good, while it
- *  still could, or its military deadline lies further off than the lead while its defence does not come
- *  first. `owned` is the seat's {@link ownedBuildings} list. */
+ *  still could and `order` may still raise that building or one making the good ({@link orderMayRaise}),
+ *  or its military deadline lies further off than the lead while its defence does not come first. `owned`
+ *  is the seat's {@link ownedBuildings} list and `statuses` this decision's {@link lineStatuses} of `order`. */
 export function stepHeld(
   world: World,
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
+  order: BuildOrder,
+  statuses: LineStatuses,
   entry: BuildOrderEntry,
   memo: DecisionMemo,
 ): boolean {
   if ((entry.kind !== 'place' && entry.kind !== 'towerCoverage') || entry.holdUntil === undefined)
     return false;
-  return holdOpen(world, ctx, player, owned, entry.holdUntil, memo);
+  const mayRaise = (typeId: number) => orderMayRaise(world, ctx, owned, order, statuses, entry, typeId);
+  return holdOpen(world, ctx, player, owned, entry.holdUntil, memo, mayRaise);
 }
 
 function holdOpen(
@@ -274,6 +278,7 @@ function holdOpen(
   owned: readonly Entity[],
   hold: StepHold,
   memo: DecisionMemo,
+  mayRaise: (typeId: number) => boolean,
 ): boolean {
   const reach = technologyReach(world, ctx, player, memo);
   switch (hold.kind) {
@@ -285,18 +290,60 @@ function holdOpen(
         if (!counted.has(world.get(e, Building).buildingType)) continue;
         if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
       }
-      return reach?.house(type.typeId) !== false;
+      return reach?.house(type.typeId) !== false && mayRaise(type.typeId);
     }
     case 'good': {
       const good = goodTypeByContentId(ctx.content, hold.good);
       const tribe = playerPlacementTribes(world, player)?.[0];
       if (good === undefined || tribe === undefined) return false;
       if (goodEnabled(world, ctx, player, tribe, good.typeId)) return false;
-      return reach?.target('good', good.typeId) !== false;
+      if (reach?.target('good', good.typeId) === false) return false;
+      for (const maker of contentIndex(ctx.content).buildings.values()) {
+        if (makesGood(maker, good.typeId) && mayRaise(maker.typeId)) return true;
+      }
+      return false;
     }
     case 'deadline':
       return militaryWaits(world, ctx, player, hold.leadTicks);
   }
+}
+
+function makesGood(type: BuildingType, goodType: number): boolean {
+  return (
+    type.produces.includes(goodType) ||
+    type.recipes.some((recipe) => recipe.outputs.some((output) => output.goodType === goodType))
+  );
+}
+
+/**
+ * Whether the seat may yet have a building of `typeId`'s tier: it owns one at or below that tier on its
+ * chain, or a step of `order` other than `held` that places such a tier is not skipped. A hold on a
+ * building only a skipped step would raise, like a druid behind a dry mushroom map, then lets its step act.
+ */
+function orderMayRaise(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  order: BuildOrder,
+  statuses: LineStatuses,
+  held: BuildOrderEntry,
+  typeId: number,
+): boolean {
+  const index = contentIndex(ctx.content);
+  const reaches = (building: number | undefined): boolean => {
+    const type = building === undefined ? undefined : index.buildings.get(building);
+    return type !== undefined && countedTiers(ctx.content, type, undefined).has(typeId);
+  };
+  if (owned.some((e) => reaches(world.get(e, Building).buildingType))) return true;
+  for (const line of order.lines) {
+    const lineStatus = statuses.get(line.id);
+    for (const [step, entry] of line.steps.entries()) {
+      if (entry === held || entry.kind === 'upgrade' || entry.kind === 'collector') continue;
+      if (lineStatus?.[step] === 'skip') continue;
+      if (reaches(buildingTypeByContentId(ctx.content, entry.building)?.typeId)) return true;
+    }
+  }
+  return false;
 }
 
 /** Whether the map still holds a live resource of `goodType` the seat knows of, once per good per
