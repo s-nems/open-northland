@@ -19,6 +19,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { fighterStrength, fighterWeaponClass } from '../../ai-shared/military/census.js';
+import { garrisonSlots } from '../../ai-shared/military/defence/posts.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import { draftableTrade, isBareSoldier } from '../../assistant/index.js';
@@ -474,8 +475,36 @@ function standingOrder(
   if (classes.length === 0) return wants;
   const fielded = fieldedByIntent(world, ctx, player, booked);
   shareOut(bare.length, classes.filter(isWeaponIntent), fielded, wants);
-  shareOut(allowance, classes, fielded, wants);
+  // The empty towers take their first archer ahead of the field share. Those archers are posted before
+  // any band marches, so the field split below still counts only the men who stay in it.
+  const towerBows = classes.includes('trainBow')
+    ? Math.min(allowance, emptyTowers(world, ctx, player) - (fielded.get('trainBow') ?? 0))
+    : 0;
+  if (towerBows > 0) wants.set('trainBow', (wants.get('trainBow') ?? 0) + towerBows);
+  shareOut(allowance - Math.max(0, towerBows), classes, fielded, wants);
   return wants;
+}
+
+/**
+ * The seat's standing towers no archer holds yet, each owed one bowman ahead of the field army. Owner
+ * ruling: until the army floor opens the seat defends through its towers, hunters and the defensive mode,
+ * so the few men it drafts meanwhile man the walls first. On mroczny_las, where every start soldier turns
+ * civilian, 4 to 11 towers per seat stood with at most one archer among them at game minute 40 while
+ * enemy wolves bit the seat's people.
+ */
+function emptyTowers(world: World, ctx: SystemContext, player: number): number {
+  const towers = ownedBuildings(world, player).filter(
+    (b) => isBuilt(world, b) && garrisonSlots(world, ctx, b).size > 0,
+  );
+  if (towers.length === 0) return 0;
+  const held = new Set<Entity>();
+  for (const e of ownedSettlers(world, player)) {
+    const jobType = world.get(e, Settler).jobType;
+    if (jobType === null) continue;
+    const post = towerPostFor(world, ctx, e, jobType);
+    if (post !== null) held.add(post);
+  }
+  return towers.filter((t) => !held.has(t)).length;
 }
 
 /** Add `count` men to `wants`, each to the class of `classes` furthest below its field share in `fielded`,

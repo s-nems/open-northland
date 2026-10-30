@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { aiControlEntity, ComputerStrategy, type MilitaryRule } from '../../../../src/components/index.js';
-import type { Simulation } from '../../../../src/index.js';
+import { Simulation } from '../../../../src/index.js';
 import { ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { SpareForce } from '../../../../src/systems/ai-shared/workforce/pool.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
@@ -10,11 +10,14 @@ import {
   garrisonArms,
 } from '../../../../src/systems/computer-player/workforce/garrison.js';
 import type { SystemContext } from '../../../../src/systems/context.js';
+import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
   armedContent,
   BARRACKS_TYPE,
+  BOW,
   CIVILIST,
+  collectModule,
   ctxOf,
   HQ_TYPE,
   HQ_X,
@@ -23,6 +26,7 @@ import {
   SEAT,
   SWORD,
   spawnMen,
+  TOWER_TYPE,
   VIKING,
 } from '../support.js';
 
@@ -83,5 +87,67 @@ describe('the army floor before its lead', () => {
     expect(claimed(sim, ctx)).toBe(0);
     standDefending(sim, ['underAttack']);
     expect(claimed(sim, ctx)).toBeGreaterThan(0);
+  });
+});
+
+describe('the draft and the empty towers', () => {
+  /** Men enough that the ladder leaves a draft past the towers' archers. */
+  const SPARE = 40;
+  const TOWERS = 2;
+
+  /** The counter wants of a seat holding swords and bows, a barracks and `towers` standing empty towers. */
+  function wants(towers: number): { trainSword: number; trainBow: number } {
+    const content = armedContent();
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(128, 32) });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HQ_TYPE,
+      x: HQ_X,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      initialGoods: [
+        { good: SWORD, amount: 1 },
+        { good: BOW, amount: 1 },
+      ],
+    });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      ...BARRACKS_AT,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    for (let i = 0; i < towers; i++) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: TOWER_TYPE,
+        x: 60 + 8 * i,
+        y: 8,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    spawnMen(sim, SPARE, CIVILIST);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const out = { trainSword: 0, trainBow: 0 };
+    for (const c of collectModule.run(sim.world, { ...ctxOf(sim, sim.tick), content }, SEAT)) {
+      if (c.kind === 'setAssistantCounter' && (c.counter === 'trainSword' || c.counter === 'trainBow')) {
+        out[c.counter] = c.value;
+      }
+    }
+    return out;
+  }
+
+  it('gives each empty tower its first archer, then splits the rest as before', () => {
+    const open = wants(0);
+    const drafted = open.trainSword + open.trainBow;
+    expect(drafted).toBeGreaterThan(TOWERS);
+    const rest = drafted - TOWERS;
+    expect(wants(TOWERS)).toEqual({
+      trainSword: Math.ceil(rest / 2),
+      trainBow: TOWERS + Math.floor(rest / 2),
+    });
   });
 });

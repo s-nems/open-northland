@@ -1,12 +1,14 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE, Settler, StayPoint } from '../../../../src/components/index.js';
+import { Engagement, FOG_MODE, Owner, Settler, StayPoint } from '../../../../src/components/index.js';
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
 import {
   HUNTERS_PREY_MAX_HITPOINTS,
+  WILD_DEFENCE_CALL_NODES,
   WILD_DEFENCE_HIRES_MAX,
+  WILD_THREAT_REACH_NODES,
 } from '../../../../src/systems/computer-player/workforce/wild-threats.js';
 import type { SystemContext } from '../../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../../src/systems/readviews/index.js';
@@ -34,6 +36,10 @@ const WOLF_HITPOINTS = 100;
 const WOLF_DX = 8;
 /** Sight stamped around the wolf by hand, in cells. */
 const SIGHT_RADIUS = 2;
+/** The map player a wolf pack is handed to, as mroczny_las gives its packs to the forest's people. */
+const PACK_KEEPER = 3;
+/** A map wide enough to hold a wolf past the settlement's reach with a hunter in call of it. */
+const WIDE_MAP_NODES = 128;
 /** More spare men than the hire cap, and more wolves than one hunter per wolf could answer. */
 const SPARE_MEN = 6;
 const WOLVES = 3;
@@ -72,6 +78,7 @@ function wolfSim(
   spare: number,
   wolves = 1,
   hitpoints = WOLF_HITPOINTS,
+  keeper?: { player: number; stance: 'enemy' | 'friend' },
 ): { sim: Simulation; wolves: Entity[] } {
   const sim = new Simulation({ seed: 1, content: wolfContent(hitpoints), map: grassNodeMap(64, 32) });
   placeHq(sim);
@@ -86,7 +93,17 @@ function wolfSim(
       owner: SEAT,
     });
   }
-  sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: WOLF, x: HQ_X + WOLF_DX, y: HQ_Y, count: wolves });
+  if (keeper !== undefined) {
+    sim.enqueueSetup({ kind: 'setDiplomacy', from: SEAT, to: keeper.player, state: keeper.stance });
+  }
+  sim.enqueueSetup({
+    kind: 'spawnAnimalHerd',
+    tribe: WOLF,
+    x: HQ_X + WOLF_DX,
+    y: HQ_Y,
+    count: wolves,
+    ...(keeper !== undefined ? { owner: keeper.player } : {}),
+  });
   sim.step();
   const spawned = [...sim.world.query(StayPoint, Settler)].filter(
     (e) => sim.world.get(e, Settler).tribe === WOLF,
@@ -106,6 +123,13 @@ describe('workforce module - hunters against wild animals', () => {
     const { sim, wolves } = wolfSim(1, 0);
     const hunter = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === HUNTER);
     expect(attacks(decide(sim))).toEqual([{ kind: 'attackUnit', entity: hunter, target: wolves[0] }]);
+  });
+
+  it("answers a pack a map hands to an enemy player, and spares a friend's", () => {
+    const enemy = wolfSim(1, 0, 1, WOLF_HITPOINTS, { player: PACK_KEEPER, stance: 'enemy' });
+    expect(attacks(decide(enemy.sim))).toEqual([expect.objectContaining({ target: enemy.wolves[0] })]);
+    const friend = wolfSim(1, 0, 1, WOLF_HITPOINTS, { player: PACK_KEEPER, stance: 'friend' });
+    expect(attacks(decide(friend.sim))).toEqual([]);
   });
 
   it('leaves a beast stronger than its hunters to the towers', () => {
@@ -131,5 +155,27 @@ describe('workforce module - hunters against wild animals', () => {
     expect(hires).toHaveLength(WILD_DEFENCE_HIRES_MAX);
     const sent = attacks(commands).map((c) => c.entity);
     for (const hire of hires) expect(sent).toContain(hire.entity);
+  });
+
+  it('answers a wolf biting one of its people out past the settlement', () => {
+    const sim = new Simulation({ seed: 1, content: wolfContent(), map: grassNodeMap(WIDE_MAP_NODES, 32) });
+    placeHq(sim);
+    const wolfX = HQ_X + 2 * WILD_THREAT_REACH_NODES;
+    const near = wolfX - WILD_DEFENCE_CALL_NODES / 2;
+    for (const jobType of [HUNTER, 6]) {
+      sim.enqueueSetup({ kind: 'spawnSettler', jobType, x: near, y: HQ_Y, tribe: VIKING, owner: SEAT });
+    }
+    sim.enqueueSetup({ kind: 'spawnAnimalHerd', tribe: WOLF, x: wolfX, y: HQ_Y, count: 1 });
+    sim.step();
+    const [wolf] = [...sim.world.query(StayPoint, Settler)].filter(
+      (e) => sim.world.get(e, Settler).tribe === WOLF,
+    );
+    const victim = [...sim.world.query(Settler, Owner)].find((e) => sim.world.get(e, Settler).jobType === 6);
+    if (wolf === undefined || victim === undefined) throw new Error('setup: a wolf and its victim');
+    expect(attacks(decide(sim))).toEqual([]);
+    sim.world.add(wolf, Engagement, { repathAt: 0, target: victim });
+    const sent = attacks(decide(sim));
+    expect(sent.length).toBeGreaterThan(0);
+    for (const order of sent) expect(order).toMatchObject({ target: wolf });
   });
 });

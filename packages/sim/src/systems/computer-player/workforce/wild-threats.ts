@@ -1,10 +1,12 @@
 import {
   AttackOrder,
+  Engagement,
+  fightsPlayer,
   Garrison,
   Health,
   JobAssignment,
   Militia,
-  Owner,
+  ownerOf,
   Position,
   Settler,
   Sheltering,
@@ -29,10 +31,10 @@ import {
 } from '../../readviews/index.js';
 import { playerSeesEntity } from '../../vision/gates.js';
 
-// The computer seat's answer to wild animals that attack people inside its settlement: it sends its
-// hunters at them, and hires a hunter or two out of its spare men while it has too few near. The general
-// alarm rule is untouched: this is the seat's own order, as a player would give it. Every number here is
-// authored.
+// The computer seat's answer to wild animals that attack its people, the ownerless ones and those a map
+// gives an enemy player (mroczny_las hands its wolf packs to the forest's people): it sends its hunters at
+// them, and hires a hunter or two out of its spare men while it has too few near. The general alarm rule
+// is untouched: this is the seat's own order, as a player would give it. Every number here is authored.
 
 /** How near one of the seat's buildings (map points) an attacking animal counts as inside the settlement:
  *  the reach a wild leader takes up a victim in, so any animal that could pick on a man at that building. */
@@ -121,10 +123,11 @@ export function defendAgainstWildlife(
 }
 
 /**
- * The adult wild animals of an `aggressive` type no stronger than {@link HUNTERS_PREY_MAX_HITPOINTS}, alive
- * and attackable, that `player` sees now and that
- * stand within {@link WILD_THREAT_REACH_NODES} of one of its buildings `owned`, ascending id. A provoked
- * animal of a passive type is the hunt's own business and is left out.
+ * The adult animals of an `aggressive` type no stronger than {@link HUNTERS_PREY_MAX_HITPOINTS}, alive and
+ * attackable, ownerless or owned by a player `player` fights, that `player` sees now and that either stand
+ * within {@link WILD_THREAT_REACH_NODES} of one of its buildings `owned` or are attacking one of its people
+ * wherever he works, ascending id. A provoked animal of a passive type is the hunt's own business and is
+ * left out, and so is a friend's or a peace partner's herd.
  */
 export function seatWildThreats(
   world: World,
@@ -137,12 +140,19 @@ export function seatWildThreats(
   // Wildlife is the StayPoint carrier set, run on the workforce beat: 428-459 animals among 23-37
   // thousand positioned entities on mroczny_las and magiczny_las at game minute 5, 0.10-0.12 ms a seat.
   for (const e of world.query(StayPoint, Settler, Position)) {
-    if (world.has(e, Owner) || world.has(e, YoungAnimal)) continue;
+    if (world.has(e, YoungAnimal)) continue;
+    const keeper = ownerOf(world, e);
+    if (keeper !== undefined && !fightsPlayer(world, player, keeper)) continue;
     const tribe = world.get(e, Settler).tribe;
     if (!isAggressiveAnimal(ctx.content, tribe) || animalCannotBeAttacked(ctx.content, tribe)) continue;
     if ((animalHitpoints(ctx.content, tribe) ?? 0) > HUNTERS_PREY_MAX_HITPOINTS) continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     if (!playerSeesEntity(world, ctx.fog, player, e)) continue;
+    const victim = world.tryGet(e, Engagement)?.target;
+    if (victim !== undefined && world.isAlive(victim) && ownerOf(world, victim) === player) {
+      threats.push(e);
+      continue;
+    }
     homes ??= buildingNodes(world, owned);
     const at = nodeOf(world, e);
     if (homes.some((h) => hexDistanceBetween(h.hx, h.hy, at.hx, at.hy) <= WILD_THREAT_REACH_NODES))
