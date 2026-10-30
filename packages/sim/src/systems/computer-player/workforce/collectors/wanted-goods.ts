@@ -59,7 +59,8 @@ export interface ExtraPostsStep {
 
 /**
  * The posts a good gains by the game clock (authored), steps ascending, filled at the top-up rung once
- * the seat can spare the men. Until the mid game only the shortage posts grow a good past its row. From
+ * the seat can spare the men. Until the mid game only the shortage posts grow a good past its row, but on a
+ * ground-clearing seat ({@link CLEARING_EXTRAS_FROM_TICKS}). From
  * the mid game every good whose standing resource takes ground a building could use holds posts, wood
  * most: a settlement that has spread out by then fells and digs itself room for its late-game buildings.
  * Only a ground-clearing seat keeps them whatever the stock ({@link keptExtraPosts}). Clay and
@@ -100,13 +101,27 @@ function keptExtraPosts(supply: SeatSupply, goodType: number, posts: number, hel
   return supply.isUnder(goodType, held ? 'glut' : 'comfort') ? posts : 0;
 }
 
-/** The scheduled extra posts of `goodId` at `tick`: its last step reached, else none. */
-export function extraGatherers(goodId: string, tick: number): number {
+/** The goods whose standing resource takes ground a building could use, by stable content id, the one
+ *  the generic posts go for first ahead (authored): a tree blocks the walk and the build, a rock the
+ *  build; clay and mushrooms block nothing and the ore lies up in the mountains. */
+export const CLEARING_GOOD_IDS: readonly string[] = ['wood', 'stone'];
+
+/** From this tick a ground-clearing seat already holds the first scheduled extra posts of a
+ *  {@link CLEARING_GOOD_IDS} good, not only from the mid game (owner ruling: where the room to build has to
+ *  be dug out, as on mroczny_las, the wood and stone gatherers get going early, wood the most since it
+ *  frees the most room). The growth clock, when the opening's first sites stand (authored). */
+export const CLEARING_EXTRAS_FROM_TICKS = BUILDING_GOODS_GROW_FROM_TICKS;
+
+/** The scheduled extra posts of `goodId` at `tick`: its last step reached, else none; on a seat that
+ *  `clearsGround`, at least its first step from {@link CLEARING_EXTRAS_FROM_TICKS} for a clearing good. */
+export function extraGatherers(goodId: string, tick: number, clearsGround = false): number {
+  const steps = EXTRA_GATHERERS_BY_GOOD_ID[goodId] ?? [];
   let posts = 0;
-  for (const step of EXTRA_GATHERERS_BY_GOOD_ID[goodId] ?? []) {
+  for (const step of steps) {
     if (tick >= step.fromTick) posts = step.posts;
   }
-  return posts;
+  const clearing = clearsGround && CLEARING_GOOD_IDS.includes(goodId) && tick >= CLEARING_EXTRAS_FROM_TICKS;
+  return clearing ? Math.max(posts, steps[0]?.posts ?? 0) : posts;
 }
 
 /** The shortage posts one site's drain justifies until {@link BUILDING_GOODS_FOLLOW_SITES_FROM_TICKS}. */
@@ -286,7 +301,7 @@ export function wantedCollectorGoods(
     const entryCount = entryCounts.get(goodId) ?? 0;
     const base = fixed ?? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount);
     let consumerPosts = fixed === undefined ? Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER) : 0;
-    let scheduled = extraGatherers(goodId, ctx.tick);
+    let scheduled = extraGatherers(goodId, ctx.tick, clearsGround);
     if (consumerPosts + scheduled > 0) {
       holdersByGood ??= flagHoldersByGood(world, ctx, player);
       const held = (holdersByGood.get(good.typeId) ?? 0) > base;

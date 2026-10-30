@@ -29,7 +29,13 @@ import {
   retireToBuilder,
   upkeepHolders,
 } from './upkeep.js';
-import { genericCollectorJob, meetsNeed, needsVeteran, type WantedGood } from './wanted-goods.js';
+import {
+  CLEARING_GOOD_IDS,
+  genericCollectorJob,
+  meetsNeed,
+  needsVeteran,
+  type WantedGood,
+} from './wanted-goods.js';
 
 /** Post `spare` as a flag gatherer of `w` at `spot`, recorded into the decision's `holders` list and
  *  `taken` nodes so later phases count the hire and keep off its spot before its commands apply. */
@@ -367,11 +373,6 @@ function farFromNearest(
   if (node === null) return false;
   return nodeManhattan(baseNode, flagNode) - nodeManhattan(baseNode, node) > FLAG_MAX_DISTANCE_NODES;
 }
-
-/** The goods whose standing resource takes ground a building could use, by stable content id, the one
- *  the generic posts go for first ahead (authored): a tree blocks the walk and the build, a rock the
- *  build; clay and mushrooms block nothing and the ore lies up in the mountains. */
-export const CLEARING_GOOD_IDS: readonly string[] = ['wood', 'stone'];
 
 /** How much farther than the nearest rock the nearest tree may stand and still be the pick, in lattice
  *  Manhattan nodes (authored): the wood is what walls a base in, so a post goes for it unless the rock

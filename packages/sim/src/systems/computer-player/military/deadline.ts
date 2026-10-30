@@ -2,7 +2,13 @@ import { diplomacyStance, mapBriefOf, seatPeaceEndTick } from '../../../componen
 import type { World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { minutesToTicks } from '../game-phase.js';
-import { seatMapIntentOf, seatTerritoryOf, type Trigger } from '../knowledge/map-intent/index.js';
+import {
+  type IntentPoint,
+  type SeatThreat,
+  seatMapIntentOf,
+  seatTerritoryOf,
+  type Trigger,
+} from '../knowledge/map-intent/index.js';
 
 /** The peace a seat outside a lobby peace plans for (owner ruling): an hour of game time, economy first,
  *  as under the lobby's usual peace. Being attacked still brings the defence forward at once. */
@@ -57,19 +63,57 @@ export function earliestDeadline(peaceEnd: number, attacks: readonly Trigger[]):
 /**
  * The tick by which `seat` must stand ready to fight (owner ruling: economy first, the military shortly
  * before this): the end of its peace ({@link peaceDeadlineTick}) or the first forecast scripted attack on
- * it by an enemy or an unknown owner, whichever comes first. Derived from the map's scripts, the seat's
- * start and live relations; nothing is saved.
+ * it ({@link firstForecastAttackTick}), whichever comes first. Nothing is saved.
  */
 export function militaryDeadlineTick(world: World, ctx: SystemContext, seat: number): number {
   const peaceEnd = peaceDeadlineTick(world, seat);
-  const territory = seatTerritoryOf(mapBriefOf(world), seat);
-  if (territory === null) return peaceEnd;
-  const attacks: Trigger[] = [];
-  for (const threat of seatMapIntentOf(ctx, seat, territory).threats) {
-    if (threat.player !== null && diplomacyStance(world, seat, threat.player) !== 'enemy') continue;
-    attacks.push(threat.trigger);
+  const attack = firstForecastAttackTick(world, ctx, seat);
+  return attack === null ? peaceEnd : Math.min(peaceEnd, attack);
+}
+
+/** The first tick a forecast scripted attack on `seat` may land, past ones included, or null for none. */
+export function firstForecastAttackTick(world: World, ctx: SystemContext, seat: number): number | null {
+  const first = earliestDeadline(
+    Number.POSITIVE_INFINITY,
+    forecastThreats(world, ctx, seat).map((threat) => threat.trigger),
+  );
+  return first === Number.POSITIVE_INFINITY ? null : first;
+}
+
+/**
+ * Where `seat`'s first forecast scripted attack sets out from: the mean of the points its scripts name
+ * ({@link SeatThreat.from}), taken from the earliest forecast attack naming any (source order on a tie, a
+ * conditional one last), or null when none does.
+ */
+export function forecastAttackOrigin(world: World, ctx: SystemContext, seat: number): IntentPoint | null {
+  let best: SeatThreat | null = null;
+  let bestTick = Number.POSITIVE_INFINITY;
+  for (const threat of forecastThreats(world, ctx, seat)) {
+    if (threat.from.length === 0) continue;
+    const at = forecastAttackTick(threat.trigger) ?? Number.POSITIVE_INFINITY;
+    if (best === null || at < bestTick) {
+      best = threat;
+      bestTick = at;
+    }
   }
-  return earliestDeadline(peaceEnd, attacks);
+  if (best === null) return null;
+  let hx = 0;
+  let hy = 0;
+  for (const point of best.from) {
+    hx += point.hx;
+    hy += point.hy;
+  }
+  return { hx: Math.round(hx / best.from.length), hy: Math.round(hy / best.from.length) };
+}
+
+/** The scripted attacks forecast on `seat` by an enemy or an unknown owner, from the map's scripts, the
+ *  seat's start and live relations. */
+function forecastThreats(world: World, ctx: SystemContext, seat: number): SeatThreat[] {
+  const territory = seatTerritoryOf(mapBriefOf(world), seat);
+  if (territory === null) return [];
+  return seatMapIntentOf(ctx, seat, territory).threats.filter(
+    (threat) => threat.player === null || diplomacyStance(world, seat, threat.player) === 'enemy',
+  );
 }
 
 /** Whether the clock still lies more than `leadTicks` before `seat`'s {@link militaryDeadlineTick}. */

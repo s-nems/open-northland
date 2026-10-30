@@ -1,7 +1,6 @@
 export {
   allocateCollectors,
   allocateGenericCollectors,
-  CLEARING_GOOD_IDS,
   CLEARING_SPREAD_NODES,
   type CollectorGround,
   SHORTAGE_BUILDER_FLOOR,
@@ -13,6 +12,8 @@ export { FLAG_RELOCATE_EVERY_RUNS, REPLANT_MISSES_BEFORE_RETIRE } from './upkeep
 export {
   CIVILIANS_PER_CLEARING_COLLECTOR,
   CLEAR_GROUND_FROM_NODES,
+  CLEARING_EXTRAS_FROM_TICKS,
+  CLEARING_GOOD_IDS,
   COLLECTED_GOOD_IDS,
   COLLECTOR_TARGET_BY_GOOD_ID,
   clearingCollectors,

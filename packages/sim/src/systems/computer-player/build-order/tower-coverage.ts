@@ -3,15 +3,23 @@ import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { hexDistance } from '../../../nav/halfcell.js';
 import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { spotAcceptor } from '../../ai-shared/building-spot.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
-import { anchorCentroid, anchorNodeOf, firstRingNode, outwardNode } from '../../ai-shared/node-geometry.js';
+import {
+  anchorCentroid,
+  anchorNodeOf,
+  firstRingNode,
+  outwardNode,
+  towardNode,
+} from '../../ai-shared/node-geometry.js';
 import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
+import { forecastAttackOrigin } from '../military/deadline.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import type { BuildOrderEntry } from './entries.js';
 import { grassBound } from './grass-reserve.js';
@@ -89,7 +97,7 @@ function coverageCentres(
 /**
  * The first node the coverage must reach that lies outside every coverage circle and that `found` takes,
  * or null: each uncovered node is offered in turn, so a status read stops at the first. A tower covers
- * every owned building (canonical ascending id). A store covers what fills it: the seat's workplaces, so a
+ * the owned buildings {@link towerTargets} offers. A store covers what fills it: the seat's workplaces, so a
  * far production cluster has somewhere to unload, and then its gatherers' work flags (canonical settler
  * order), where the mined and quarried goods pile up; homes and towers pass, since a tower rings the
  * settlement's edge and would pull warehouses out to it.
@@ -110,7 +118,7 @@ export function firstUncovered<T>(
     for (const c of centres) if (withinNodeRadius(c.hx, c.hy, node.hx, node.hy, coverage.radius)) return null;
     return found(node);
   };
-  for (const e of owned) {
+  for (const e of coverage.by === 'tower' ? towerTargets(world, ctx, player, owned, coverage) : owned) {
     if (
       coverage.by === 'store' &&
       index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'workplace'
@@ -129,6 +137,47 @@ export function firstUncovered<T>(
   return null;
 }
 
+/**
+ * The point a tower ring faces while the seat's defence comes first (`baseCovers` off): where its first
+ * forecast scripted attack sets out from ({@link forecastAttackOrigin}), else null for an even ring. Owner
+ * ruling: on a map whose scripted waves come from one side, the towers stand on that side.
+ */
+function towerFront(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  coverage: Coverage,
+): HalfCellNode | null {
+  if (coverage.by !== 'tower' || coverage.baseCovers) return null;
+  return forecastAttackOrigin(world, ctx, player);
+}
+
+/** The buildings a tower ring covers, in the order it is offered them: every owned one by ascending id for
+ *  an even ring; facing a {@link towerFront}, only those no farther from it than the seat's base, the
+ *  nearest the base first (ascending id on a tie), so the towers stand between the attack and the heart of
+ *  the settlement before its outskirts. */
+function towerTargets(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  coverage: Coverage,
+): readonly Entity[] {
+  const front = towerFront(world, ctx, player, coverage);
+  const base = seatBaseOf(world, ctx, player);
+  const baseNode = base === null ? null : anchorNodeOf(world, base);
+  if (front === null || baseNode === null) return owned;
+  const reach = hexDistance(baseNode, front);
+  const facing: { e: Entity; fromBase: number }[] = [];
+  for (const e of owned) {
+    const node = anchorNodeOf(world, e);
+    if (node === null || hexDistance(node, front) > reach) continue;
+    facing.push({ e, fromBase: hexDistance(node, baseNode) });
+  }
+  facing.sort((a, b) => a.fromBase - b.fromBase || a.e - b.e);
+  return facing.map((f) => f.e);
+}
+
 /** Whether the seat stands covered: no node is left outside the coverage ({@link firstUncovered}). */
 export function seatCovered(
   world: World,
@@ -144,7 +193,8 @@ const uncovered = (): true => true;
 
 /**
  * The search for the next covering building, built once a coverage entry: a tower is seeded just past the
- * target, out from the settlement, a warehouse on the target itself. Two towers side by side double the
+ * target, out from the settlement or, facing a {@link towerFront}, toward it, a warehouse on the target
+ * itself. Two towers side by side double the
  * defence, but two stores side by side serve the same ground, so a warehouse's spot also lies outside
  * every standing store's own circle. The accept combines two metrics: world-metric coverage of the target
  * and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
@@ -167,6 +217,7 @@ export function coverageSpotSearch(
   reserveGrass: boolean,
 ): (target: HalfCellNode) => HalfCellNode | null {
   const centroid = anchorCentroid(world, owned);
+  const front = towerFront(world, ctx, player, coverage);
   const apartFrom = coverage.by === 'tower' ? [] : coverageCentres(world, ctx, player, owned, coverage);
   const { reachNodes } = seatTuning(world, player);
   const fan = 2 * reachNodes;
@@ -179,7 +230,11 @@ export function coverageSpotSearch(
   return (target) => {
     if (!settlement.meets(target, coverageSpan)) return null;
     const seed =
-      coverage.by === 'tower' ? outwardNode(centroid ?? target, target, TOWER_OUTSKIRTS_PUSH_NODES) : target;
+      coverage.by !== 'tower'
+        ? target
+        : front !== null
+          ? towardNode(target, front, TOWER_OUTSKIRTS_PUSH_NODES)
+          : outwardNode(centroid ?? target, target, TOWER_OUTSKIRTS_PUSH_NODES);
     const reach = settlement.around(seed, fan);
     const search = (offGrass: boolean) => {
       const accept = acceptor.around(underFire, seed, fan, offGrass);

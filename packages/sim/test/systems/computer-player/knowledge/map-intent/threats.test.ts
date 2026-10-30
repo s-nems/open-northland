@@ -145,6 +145,7 @@ describe('scripted threats toward a seat', () => {
         source: 'missionSend',
         player: RAIDER,
         units: [{ job: SOLDIER, count: 6 }],
+        from: [FAR],
         trigger: { kind: 'atTick', tick: 120, repeats: false },
         mission: 0,
       }),

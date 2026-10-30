@@ -69,6 +69,7 @@ import { collectorAnchors } from '../../../../src/systems/computer-player/workfo
 import {
   allocateCollectors,
   CLEAR_GROUND_FROM_NODES,
+  CLEARING_EXTRAS_FROM_TICKS,
   CLEARING_SPREAD_NODES,
   extraGatherers,
   farGroundExtras,
@@ -473,29 +474,27 @@ describe('workforce module (collectResources)', () => {
   const stoneBase = COLLECTOR_TARGET_BY_GOOD_ID.stone ?? 0;
   const LARGE_SEAT = 60;
 
-  it('grows both targets from the mid game on, at the top-up tier, whatever the stock on a ground-clearing seat', () => {
+  it('grows both targets from the growth clock on, at the top-up tier, whatever the stock on a ground-clearing seat', () => {
     // Both goods stocked past the glut: only the schedule rides on the target and only the base row
-    // jumps the builder reserve, whatever the crew. Until the mid game the schedule adds nothing; from
-    // then a cramped seat's posts clear ground for the late-game buildings, so they come whatever the stock.
+    // jumps the builder reserve, whatever the crew. A cramped seat digs its room out: before the growth
+    // clock the schedule adds nothing, from it the first step's posts, from the late game the last.
     const glut = (lines: SupplyLines) => lines.glut;
-    for (const tick of [
-      BUILDING_GOODS_GROW_FROM_TICKS - 1,
-      BUILDING_GOODS_GROW_FROM_TICKS,
-      MID_GAME_FROM_TICKS - 1,
-    ]) {
-      expect(buildingPosts(LARGE_SEAT, tick, glut, 'cramped')).toEqual([
-        { target: woodBase, min: woodBase },
-        { target: stoneBase, min: stoneBase },
+    expect(buildingPosts(LARGE_SEAT, CLEARING_EXTRAS_FROM_TICKS - 1, glut, 'cramped')).toEqual([
+      { target: woodBase, min: woodBase },
+      { target: stoneBase, min: stoneBase },
+    ]);
+    for (const tick of [CLEARING_EXTRAS_FROM_TICKS, MID_GAME_FROM_TICKS - 1, MID_GAME_FROM_TICKS]) {
+      expect(buildingPosts(1, tick, glut, 'cramped')).toEqual([
+        { target: woodBase + 3, min: woodBase },
+        { target: stoneBase + 2, min: stoneBase },
       ]);
     }
-    expect(buildingPosts(1, MID_GAME_FROM_TICKS, glut, 'cramped')).toEqual([
-      { target: woodBase + 3, min: woodBase },
-      { target: stoneBase + 2, min: stoneBase },
-    ]);
     expect(buildingPosts(1, LATE_GAME_FROM_TICKS, glut, 'cramped')).toEqual([
       { target: woodBase + 4, min: woodBase },
       { target: stoneBase + 3, min: stoneBase },
     ]);
+    // Neither the iron schedule nor any other good's comes early.
+    expect(extraGatherers('iron', CLEARING_EXTRAS_FROM_TICKS, true)).toBe(0);
   });
 
   it("keeps the schedule's posts only under the glut on a seat that does not clear ground", () => {

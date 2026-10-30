@@ -185,6 +185,7 @@ describe('AI mind rows', () => {
       units: [],
       soldiers: { min: 4, max: 8 },
       rally: null,
+      from: [],
       trigger: { kind: 'atTick', tick: NOW + 2 * MINUTE, repeats: false },
       mission: null,
       task: 3,

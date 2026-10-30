@@ -36,6 +36,9 @@ export interface ScriptedThreat {
   /** An attack's soldier bounds (`max` 0 for no cap). */
   readonly soldiers: { readonly min: number; readonly max: number } | null;
   readonly rally: IntentPoint | null;
+  /** Where its fighters set out from, as far as the scripts say: a spawn's point, the spawn points of the
+   *  men a walk sends, an attack's rally; empty for map-placed men and a teleport. */
+  readonly from: readonly IntentPoint[];
   readonly trigger: Trigger;
   /** The mission index for a mission source. */
   readonly mission: number | null;
@@ -104,6 +107,7 @@ function mapAiThreats(content: ContentSet, seat: MapAiSeat, timing: MissionTimin
       units: [],
       soldiers: { min: task.min, max: task.max },
       rally: { hx: task.rallyX, hy: task.rallyY },
+      from: [{ hx: task.rallyX, hy: task.rallyY }],
       trigger: slotTrigger(seat, task.condition, timing),
       mission: null,
       task: index,
@@ -146,22 +150,34 @@ function missionThreats(content: ContentSet, script: MissionScript, timing: Miss
     const groups = perMission[index] ?? [];
     const fire = () => timing.fireOf(index);
     for (const group of groups) {
-      push(missionThreat('missionSpawn', group.player, group.point, unitsOf([group]), fire(), index));
+      push(
+        missionThreat(
+          'missionSpawn',
+          group.player,
+          group.point,
+          unitsOf([group]),
+          [group.point],
+          fire(),
+          index,
+        ),
+      );
     }
     for (const result of mission.results) {
       if (result.opcode === 'SendHuman') {
         const own = groups.filter((g) => g.humanId === result.humanId);
         const sent = own.length > 0 ? own : (spawnsById.get(result.humanId) ?? []);
         const owners = [...new Set(sent.map((g) => g.player))].sort((a, b) => a - b);
-        if (owners.length === 0) push(missionThreat('missionSend', null, result.point, [], fire(), index));
+        if (owners.length === 0)
+          push(missionThreat('missionSend', null, result.point, [], [], fire(), index));
         for (const owner of owners) {
-          const units = unitsOf(sent.filter((g) => g.player === owner));
-          push(missionThreat('missionSend', owner, result.point, units, fire(), index));
+          const groups = sent.filter((g) => g.player === owner);
+          const from = groups.map((g) => g.point);
+          push(missionThreat('missionSend', owner, result.point, unitsOf(groups), from, fire(), index));
         }
       } else if (result.opcode === 'MoveUnitsInArea') {
         // The one line that spells its destination with the generic index and extra kinds.
         const destination = { hx: result.index, hy: result.extra };
-        push(missionThreat('missionMove', result.player, destination, [], fire(), index));
+        push(missionThreat('missionMove', result.player, destination, [], [], fire(), index));
       }
     }
   });
@@ -173,6 +189,7 @@ function missionThreat(
   player: number | null,
   target: IntentPoint,
   units: readonly ThreatUnits[],
+  from: readonly IntentPoint[],
   trigger: Trigger,
   mission: number,
 ): ScriptedThreat {
@@ -184,6 +201,7 @@ function missionThreat(
     units,
     soldiers: null,
     rally: null,
+    from,
     trigger,
     mission,
     task: null,
