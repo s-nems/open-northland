@@ -33,7 +33,8 @@ the seat's sight must not change one of its commands.
 | Technology: requirements, apprentices, promotions, school lessons | `technology/` | derived |
 | Execution: build order lines, workforce, roads, scout, population, military and operations | the other folders | saved where a plan spans decisions |
 
-Relations between seats are always read live through `diplomacyStance`; nothing caches who is an enemy.
+Relations between seats are always read live (`diplomacyStance`, and `fightsPlayer` while a lobby peace
+holds); nothing caches who is an enemy.
 
 ## Strategy
 
@@ -57,11 +58,15 @@ the same.
 
 ## Economy
 
-The build order is a set of independent lines (opening, bread, materials, tools, weapons, military,
-clothing, brewery, homes, healing). A step waits for the step before it in its line; lines never wait
-for each other, and a priority table chosen from the strategy decides who takes a free construction
-site. A step whose building is not discovered yet holds its own line while the discovery can still
-come; one that can never come (a map ban, no game to hunt, no deposit) is skipped. Homes are not fixed
+The build order is a set of independent lines (opening, bread, brewery, clothing, tools, weapons,
+materials, military, coins, healing, homes, in the standard priority). A step waits for the step before
+it in its line; lines never wait for each other, and a priority table chosen from the strategy decides
+who takes a free construction site. A step whose building is not discovered yet holds its own line while
+the discovery can still come; one that can never come (a map ban, no game to hunt, no deposit) is
+skipped. A step may also hold its line on a building standing, a good discovered or the military
+deadline (`holdUntil`), and a gatherer step may pause while its good lies stocked (`stockedAt`). A
+workshop whose discovery the seat just earned takes the next free site, one site over the pace if need
+be, except that a seat whose defence comes first gives its army and weapon lines that turn. Homes are not fixed
 steps: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women, girls
 and booked daughters, one home site at a time, upgrading or placing whichever adds a slot cheapest.
 It follows food (owner ruling: an upgraded home bears no children while food is short): no home site
@@ -76,6 +81,12 @@ and promotes him into the new building when it stands, refilling his old post. O
 further workers of a discovered trade are schooled instead. Owner ruling on the opening: one wood, one
 clay and one stone collector, a second stone collector early, a hunter and a farmer, the school right
 after the pottery, iron from game minute 15, mushrooms from minute 25.
+
+The workshops' product plans (`workforce/craft.ts`) follow the same rulings: a seat with iron sews
+leather and shoes from its cattle, one without breeds sheep for woollen armour; a druid brews oil until
+he learns the small healing potion and only big potions once he knows them; the first coiner strikes
+coins until he learns amulets; joineries turn to furniture once tools pile up. Extra gatherer posts are
+released at their good's glut, and gatherers never take the builders a seat's open sites need.
 
 ## Military
 
@@ -121,4 +132,5 @@ with every entity.
 ## Inspecting a seat
 
 The admin debug panel's AI tab shows each computer seat's strategy and evidence, the seat brief, own
-and believed enemy points, remembered buildings, zone staleness, objectives and forecast attacks.
+and believed enemy points, remembered buildings, zone staleness, objectives and forecast attacks, its
+live operations, and the discoveries it works toward with the apprentice pinned on each.
