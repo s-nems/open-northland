@@ -12,7 +12,7 @@ import { militaryOrdersOf } from '../strategy/military.js';
 import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
 import { type OperationEnv, runOperations } from './operations/index.js';
-import { outfitGrantOrders } from './outfit.js';
+import { armourFetchOrders, outfitGrantOrders } from './outfit.js';
 import { siegeCrewOrders } from './siege-crew.js';
 
 export {
@@ -77,7 +77,8 @@ export {
  * settlement defence. The shared defence system owns the home orders. Owner's ruling: the assistant arms
  * and dresses the army through the counters and grants the seat publishes, where the original's computer
  * player drafts and outfits its soldiers itself, matching its weapons and armour to its enemies' gear and
- * dressing armed men later. */
+ * dressing armed men later. The seat still sends its armed men at home for the armour made after their
+ * weapon ({@link armourFetchOrders}), which the assistant's arming never revisits. */
 function runMilitary(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return []; // mapless sim: no ground to march over
@@ -105,12 +106,20 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     wave: wave === null ? [] : army.ready.filter((e) => wave.men.has(e)),
   });
   const assault = env === null ? null : runOperations(env, 'afterCampaign', []);
+  // The men the campaign leaves standing at home this decision may go for armour.
+  const sent = orderedMen([...campaign, ...(assault?.commands ?? [])]);
   return [
     ...siege.commands,
     ...(raids?.commands ?? []),
     ...campaign,
     ...(assault?.commands ?? []),
     ...outfitGrantOrders(world, ctx, player),
+    ...armourFetchOrders(
+      world,
+      ctx,
+      player,
+      field.filter((e) => !sent.has(e)),
+    ),
   ];
 }
 
@@ -135,6 +144,15 @@ function operationEnvOf(
 }
 
 const NONE_MARCHING: ReadonlySet<Entity> = new Set();
+
+/** The men `commands` move or put to work; a stance change alone leaves a man where he stands. */
+function orderedMen(commands: readonly PlayerCommand[]): ReadonlySet<Entity> {
+  const men = new Set<Entity>();
+  for (const command of commands) {
+    if (command.kind !== 'setStance' && 'entity' in command) men.add(command.entity);
+  }
+  return men;
+}
 
 export const militaryModule: ComputerModule = {
   id: 'military',
