@@ -4,6 +4,7 @@ import {
   JobAssignment,
   Position,
   Settler,
+  setMapPermission,
   UnderConstruction,
 } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
@@ -32,6 +33,7 @@ import {
   placeHq,
   SCOUT,
   SEAT,
+  STOCK_TOP_TYPE,
   STOCK_TYPE,
   spawnMen,
   VIKING,
@@ -95,7 +97,7 @@ describe('build-order module - rebuilding what combat took', () => {
     expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(BAKERY_TYPE);
   });
 
-  it('replaces a razed base with a level-1 warehouse at the centre of what still stands', () => {
+  it('replaces a razed base with the top warehouse tier at the centre of what still stands', () => {
     const sim = aiSim();
     placeHq(sim);
     place(sim, BAKERY_TYPE, 34, 16);
@@ -104,12 +106,28 @@ describe('build-order module - rebuilding what combat took', () => {
     raze(sim, entityOfBuilding(sim, HQ_TYPE));
 
     const replacement = placementOf(module.run(sim.world, ctxOf(sim), SEAT));
-    expect(replacement?.buildingType).toBe(STOCK_TYPE);
+    expect(replacement?.buildingType).toBe(STOCK_TOP_TYPE);
     expect(replacement?.owner).toBe(SEAT);
     expect(replacement?.tribe).toBe(VIKING);
     expect(replacement?.underConstruction).toBe(true);
     // The survivors' centroid, not the razed headquarters' node at x=30.
     expect({ x: replacement?.x, y: replacement?.y }).toEqual({ x: 36, y: 16 });
+  });
+
+  it('replaces a razed base with the lowest warehouse tier while the top one is banned', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    place(sim, BAKERY_TYPE, 34, 16);
+    sim.step();
+    setMapPermission(sim.world, {
+      player: SEAT,
+      tribe: VIKING,
+      kind: 'house',
+      typeId: STOCK_TOP_TYPE,
+      allowed: false,
+    });
+    raze(sim, entityOfBuilding(sim, HQ_TYPE));
+    expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TYPE);
   });
 
   it('resumes the opening list once the replacement warehouse stands', () => {
@@ -132,7 +150,7 @@ describe('build-order module - rebuilding what combat took', () => {
     sim.step();
     raze(sim, entityOfBuilding(sim, HQ_TYPE));
     const first = placementOf(module.run(sim.world, ctxOf(sim), SEAT));
-    expect(first?.buildingType).toBe(STOCK_TYPE);
+    expect(first?.buildingType).toBe(STOCK_TOP_TYPE);
     if (first === null) return;
 
     sim.enqueueSetup(first);
@@ -177,7 +195,7 @@ describe('build-order module - rebuilding what combat took', () => {
 
     sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: entityOfBuilding(sim, MILL_TYPE) });
     sim.step();
-    expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TYPE);
+    expect(placementOf(module.run(sim.world, ctxOf(sim), SEAT))?.buildingType).toBe(STOCK_TOP_TYPE);
   });
 
   /** The crew is drawn from every class, because the phases that would recycle a scout or a gatherer

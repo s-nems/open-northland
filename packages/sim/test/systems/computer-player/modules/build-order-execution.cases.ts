@@ -63,7 +63,7 @@ import {
   placeResources,
   RESOURCE_SPOTS,
   SEAT,
-  STOCK_TYPE,
+  STOCK_TOP_TYPE,
   TOWER_TYPE,
   technologyContent,
   VEHICLE_YARD_TYPE,
@@ -120,7 +120,7 @@ describe('build-order module (houseBuild)', () => {
     sim.step();
     expect(nextPlacement(sim)).toMatchObject({
       kind: 'placeBuilding',
-      buildingType: STOCK_TYPE,
+      buildingType: STOCK_TOP_TYPE,
       tribe: VIKING,
     });
   });

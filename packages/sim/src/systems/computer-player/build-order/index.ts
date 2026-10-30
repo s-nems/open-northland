@@ -28,6 +28,7 @@ import { type TechnologyTable, technologyTable } from '../technology/requirement
 import { billSourced, goodsMadeBy, sourcedTiers } from './bill-sources.js';
 import {
   BASE_REPLACEMENT_ENTRY,
+  BASE_REPLACEMENT_IDS,
   BASELESS_CONSTRUCTION_SITES,
   type BuildLine,
   type BuildLineId,
@@ -873,6 +874,32 @@ function siteCommand(type: BuildingType, spot: HalfCellNode, tribe: number, play
   };
 }
 
+/** The first of {@link BASE_REPLACEMENT_IDS} the seat may raise and has a source for every good of its
+ *  bill ({@link billSourced}), else the lowest tier the content has. */
+function baseReplacementType(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  tribe: number,
+): BuildingType | undefined {
+  let made: ReadonlySet<number> | undefined;
+  const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
+  let lowest: BuildingType | undefined;
+  for (const id of BASE_REPLACEMENT_IDS) {
+    const type = buildingTypeByContentId(ctx.content, id);
+    if (type === undefined) continue;
+    lowest = type;
+    const entry = { ...BASE_REPLACEMENT_ENTRY, building: id };
+    if (
+      buildingEnabled(world, ctx, player, tribe, type.typeId) &&
+      billSourced(world, ctx, player, entry, madeGoods)
+    )
+      return type;
+  }
+  return lowest;
+}
+
 /** A seat that holds buildings but no base rebuilds one at the centroid of what stands. */
 function replaceMissingBase(
   world: World,
@@ -885,8 +912,8 @@ function replaceMissingBase(
 ): readonly PlayerCommand[] {
   const centre = anchorCentroid(world, owned);
   if (centre === null) return [];
-  const type = buildingTypeByContentId(ctx.content, BASE_REPLACEMENT_ENTRY.building);
-  if (type === undefined) return []; // content without the warehouse expresses no replacement
+  const type = baseReplacementType(world, ctx, player, owned, tribe);
+  if (type === undefined) return []; // content without a warehouse expresses no replacement
   const spot = placementSpot(
     world,
     ctx,

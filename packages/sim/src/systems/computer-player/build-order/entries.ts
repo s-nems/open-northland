@@ -103,10 +103,11 @@ export type BuildOrderEntry =
       readonly lane?: true;
       readonly fromTick?: number;
     }
-  /** Keep the homes' family slots ahead of the seat's women (`./housing.ts`): always a lane, with one home
-   *  site at a time. Unlike the coverage lanes its site is one of the clock's sites, so it reserves none
-   *  while it waits. `building` is the home chain's base tier: the lane
-   *  raises and upgrades homes of its tiers, at most `count` of them, and a cap under its id cuts that. */
+  /** Keep the homes' family slots ahead of the seat's women (`./housing.ts`): always a lane, its home
+   *  sites paced by the seat's food stage. Unlike the coverage lanes its first site is one of the clock's
+   *  sites, so it reserves none while it waits, and the further ones stand beyond the clock. `building` is
+   *  the home chain's base tier: the lane raises and upgrades homes of its tiers, at most `count` of them,
+   *  and a cap under its id cuts that. */
   | {
       readonly kind: 'housing';
       readonly building: string;
@@ -697,12 +698,15 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
   ],
 };
 
-/** What a seat with no base puts up: the headquarters declares an empty construction bill and would
- *  raise for free, so a warehouse takes the goods hub over instead. Only `building` and the placement
- *  modifiers are read; `count` is structural. */
+/** The warehouse tiers a seat with no base puts up, best first: the headquarters declares an empty
+ *  construction bill and would raise for free, so a warehouse takes the goods hub over instead. Owner
+ *  ruling: the top tier, a lower one only while the seat cannot raise it (`./index.ts`). */
+export const BASE_REPLACEMENT_IDS: readonly string[] = ['stock_02', 'stock_01', 'stock_00'];
+
+/** The replacement's placement modifiers; `building` names the top tier and `count` is structural. */
 export const BASE_REPLACEMENT_ENTRY: Extract<BuildOrderEntry, { kind: 'place' }> = {
   kind: 'place',
-  building: 'stock_00',
+  building: 'stock_02',
   count: 1,
 };
 

@@ -73,7 +73,9 @@ there is room, both upgraded. One brewery feeds many adults (owner ruling): the 
 settlers, the third, the last, for 200. The armory goes up right after the first smithy in a line of its
 own; once the smith has learned mail and plate, a seat with iron in reach raises upper smithies up to
 four, five on a rich seat. A second and third mint follow once the coiner has learned the amulets, and
-further druid huts once the druid has learned the big healing potion.
+further druid huts once the druid has learned the big healing potion. A seat that lost its base raises
+the top warehouse tier it can source in its place (owner ruling).
+
 Homes are not fixed steps beyond the opening's three, four on a seat with room and five on a
 rich one: a housing lane (`build-order/housing.ts`) keeps the homes' family slots ahead of the women,
 girls and booked daughters. Its pace follows the food stage (owner ruling): before any workshop makes
@@ -104,9 +106,12 @@ off: the seat schools a man for one post and puts him there itself, where the sw
 the nearest free slot of his trade, a workshop the seat keeps short on purpose included.
 
 The workshops' product plans (`workforce/craft.ts`) follow the same rulings: a seat with iron sews
-leather and shoes from its cattle, one without breeds sheep for woollen armour; a druid brews oil until
-he learns the small healing potion and only big potions once he knows them; the first coiner strikes
-coins until he learns amulets; joineries turn to furniture once tools pile up. Extra gatherer posts are
+leather and shoes from its cattle, one without breeds sheep for woollen armour; the first armourer makes
+short bows and wooden spears until he learns the long bow and long bows only after, a second one long
+bows and the wooden spears the iron spear takes; the first upper smithy's smiths split armour (plate,
+mail) from weapons (long swords, iron spears, short swords for a standing mint); a druid boils holy oil
+only for the experience until he learns the big healing potion and brews only that once he knows it;
+the first coiner strikes coins until he learns amulets; joineries turn to furniture once tools pile up. Extra gatherer posts are
 released at their good's glut, and gatherers never take the builders a seat's open sites need.
 
 ## Military
@@ -114,7 +119,10 @@ released at their good's glut, and gatherers never take the builders a seat's op
 Each seat has a military deadline (`military/deadline.ts`): the end of its lobby peace, 60 minutes
 without one, or the first forecast scripted attack, whichever comes first. The barracks waits until 22
 minutes before it, so it stands about 15 minutes ahead, the first tower ring until 20 minutes before, the
-army floor drafts from 15 minutes before; a seat whose defence comes first stops waiting at once.
+army floor drafts from 15 minutes before. A seat whose defence comes first raises its barracks and towers
+at once; its army floor still waits for its lead unless the seat is under attack. A seat that starts with
+soldiers and no barracks turns them into builders in its first game minute (owner ruling: they build
+more, and defend as hunters and in defensive mode).
 
 Settlement defence is shared with the map AI (`systems/ai-shared/military`), filtered by sight for a
 computer seat. Offensive work runs as operations (`military/operations/`): saved records with a kind,
