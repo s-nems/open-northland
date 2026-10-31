@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { mapBriefOf, Settler } from '../../../../src/components/index.js';
-import type { Entity } from '../../../../src/ecs/world.js';
+import { Building, mapBriefOf, Settler } from '../../../../src/components/index.js';
 import { Simulation } from '../../../../src/index.js';
+import { hexDistanceBetween } from '../../../../src/nav/halfcell.js';
 import { withinNodeRadius } from '../../../../src/nav/node-circle.js';
-import { anchorNodeOf } from '../../../../src/systems/ai-shared/node-geometry.js';
+import type { EnemyFire } from '../../../../src/systems/ai-shared/military/defence/index.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
   FRONT_LINE_DEPTH_NODES,
@@ -11,12 +11,20 @@ import {
   TOWER_UPGRADE_QUIET_TICKS,
   towerUpgradeWaits,
 } from '../../../../src/systems/computer-player/build-order/front.js';
-import { firstUncovered } from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
+import {
+  defenceAt,
+  defenceCircleOf,
+  defenceGain,
+  seatDefenceCircles,
+  TOWER_UPGRADE_FIRST_FROM_TICKS,
+  towerPlan,
+  towerSpot,
+  towerToUpgrade,
+} from '../../../../src/systems/computer-player/build-order/tower-defence.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
   buildOrderModule,
-  TOWER_DEFENCE_RADIUS_NODES,
 } from '../../../../src/systems/computer-player/index.js';
 import { seatTerritoryOf } from '../../../../src/systems/computer-player/knowledge/map-intent/index.js';
 import {
@@ -37,6 +45,7 @@ import {
   HQ_Y,
   makeAiSeat,
   oneLine,
+  PAST_HQ_DEFENCE_DX,
   placeHq,
   SAND,
   SEAT,
@@ -47,17 +56,32 @@ import {
   WALL_TYPE,
 } from '../support.js';
 
+/** No enemy shooter anywhere. */
+const NO_FIRE: EnemyFire = { reaches: () => false, around: () => NO_FIRE };
+
 describe('build-order tower and store coverage', () => {
   const coverage = buildOrderModule(oneLine([{ kind: 'towerCoverage', building: 'tower_01' }]));
 
+  /** The defence circle a fixture tower throws from `(x, y)`. */
+  const towerCircle = (x: number, y: number) => {
+    const circle = defenceCircleOf(
+      ctxOf(aiSim()),
+      { buildingType: TOWER_TYPE, tribe: VIKING },
+      { hx: x, hy: y },
+    );
+    if (circle === null) throw new Error('setup: the fixture tower has no defence circle');
+    return circle;
+  };
+
   it('rests while every building sits in the HQ circle, then covers an outlying one', () => {
-    const sim = aiSim();
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(160, 32) });
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
     placeHq(sim);
     sim.step();
     expect([...coverage.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
 
-    // A home 31 columns east leaves the 29-node circle: the next decision places a covering tower.
-    const FAR = { x: HQ_X + 31, y: HQ_Y };
+    // A home just past the HQ's defence circle: the next decision places a tower whose circle holds it.
+    const FAR = { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y };
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
@@ -71,16 +95,17 @@ describe('build-order tower and store coverage', () => {
     if (order?.kind !== 'placeBuilding') throw new Error('expected a tower placement');
     expect(order.buildingType).toBe(TOWER_TYPE);
     expect(order.underConstruction).toBe(true);
-    // The spot actually covers the target (world-metric circle) and stays within building reach.
-    expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, TOWER_DEFENCE_RADIUS_NODES)).toBe(true);
+    expect(hexDistanceBetween(order.x, order.y, FAR.x, FAR.y)).toBeLessThanOrEqual(
+      towerCircle(order.x, order.y).radius,
+    );
     const nearest = Math.min(
       Math.abs(order.x - HQ_X) + Math.abs(order.y - HQ_Y),
       Math.abs(order.x - FAR.x) + Math.abs(order.y - FAR.y),
     );
     expect(nearest).toBeLessThanOrEqual(BUILD_SEARCH_MAX_RADIUS_NODES);
 
-    // The tower SITE already counts as coverage; a finished tower keeps the entry satisfied - and
-    // the entry is perpetual: another far building re-arms it.
+    // The tower SITE already defends; a finished tower keeps the entry met - and the entry is perpetual:
+    // a home past the tower's circle re-arms it.
     sim.enqueueSetup(order);
     sim.step();
     expect([...coverage.run(sim.world, ctxOf(sim), SEAT)]).toEqual([]);
@@ -89,7 +114,7 @@ describe('build-order tower and store coverage', () => {
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
-      x: HQ_X - 30,
+      x: order.x + towerCircle(order.x, order.y).radius + 1,
       y: HQ_Y,
       tribe: VIKING,
       owner: SEAT,
@@ -100,7 +125,7 @@ describe('build-order tower and store coverage', () => {
 
   it('keeps a covering tower off the grass on a seat short of it', () => {
     // Grass round the HQ and round an outlying home, far under the scarcity line together; sand elsewhere.
-    const FAR = { x: HQ_X + 31, y: HQ_Y };
+    const FAR = { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y };
     const HQ_PATCH = 8;
     const FAR_PATCH = 12;
     const onGrass = (x: number, y: number) =>
@@ -133,7 +158,9 @@ describe('build-order tower and store coverage', () => {
     const order = [...reserving.run(sim.world, ctxOf(sim), SEAT)][0];
     if (order?.kind !== 'placeBuilding') throw new Error('expected a tower placement');
     expect(onGrass(order.x, order.y)).toBe(false);
-    expect(withinNodeRadius(order.x, order.y, FAR.x, FAR.y, TOWER_DEFENCE_RADIUS_NODES)).toBe(true);
+    expect(hexDistanceBetween(order.x, order.y, FAR.x, FAR.y)).toBeLessThanOrEqual(
+      towerCircle(order.x, order.y).radius,
+    );
   });
 
   /** A seat raided at `tick` by spearmen spawned at the map's east edge, with the context that forecasts it. */
@@ -158,64 +185,133 @@ describe('build-order tower and store coverage', () => {
     return { ...ctxOf(sim, tick), missions: { missions: [mission] } };
   };
 
-  it('faces a forecast attack: holds a line across its heading, then the buildings on its side', () => {
+  it('scores each building and front slot by the defence circles over it, the lowest share first', () => {
     const sim = aiSim();
     placeHq(sim);
     const EAST = { x: HQ_X + 12, y: HQ_Y };
+    const BEYOND = { x: HQ_X + FRONT_LINE_DEPTH_NODES + 4, y: HQ_Y + 2 };
     const WEST = { x: HQ_X - 12, y: HQ_Y };
     for (const at of [WEST, EAST]) {
       sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, ...at, tribe: VIKING, owner: SEAT });
     }
     makeAiSeat(sim, SEAT);
     sim.step();
-    const ctx = raidedFromEast(sim);
-    const owned = ownedBuildings(sim.world, SEAT);
-    const slots: { hx: number; hy: number }[] = [];
-    const offered: { hx: number; hy: number }[] = [];
-    const offer = (target: { hx: number; hy: number }, within: number | null): null => {
-      (within === null ? offered : slots).push(target);
-      return null;
-    };
-    const nodeOf = (e: Entity | undefined) => (e === undefined ? null : anchorNodeOf(sim.world, e));
-    const homes = owned.filter((e) => nodeOf(e)?.hx !== nodeOf(owned[0])?.hx);
-    const [west, east] = homes.map(nodeOf);
-    const RADIUS = 4;
-    firstUncovered(sim.world, ctx, SEAT, owned, { by: 'tower', radius: RADIUS, baseCovers: false }, offer);
-    // The line stands its depth east of the base, the slot straight ahead first, then across the heading.
-    expect(slots[0]).toEqual({ hx: HQ_X + FRONT_LINE_DEPTH_NODES, hy: HQ_Y });
-    expect(slots.every((slot) => slot.hx > HQ_X)).toBe(true);
-    // The base, then the east home; the west one lies behind the settlement.
-    expect(offered).toEqual([nodeOf(owned[0]), east]);
-    expect(offered).not.toContainEqual(west);
-    slots.length = 0;
-    offered.length = 0;
-    // An even ring (the base covering) holds its front, then offers every building by id.
-    firstUncovered(sim.world, ctx, SEAT, owned, { by: 'tower', radius: RADIUS, baseCovers: true }, offer);
-    expect(slots[0]).toEqual({ hx: HQ_X + FRONT_LINE_DEPTH_NODES, hy: HQ_Y });
-    expect(offered).toContainEqual(west);
-
-    // A tower on the line's first slot holds it; the next slot is offered first.
-    const SLOT = { x: HQ_X + FRONT_LINE_DEPTH_NODES, y: HQ_Y };
+    // Raised after the start, so the line stays where the start buildings put it.
     sim.enqueueSetup({
       kind: 'placeBuilding',
-      buildingType: TOWER_TYPE,
-      ...SLOT,
+      buildingType: HOME_TYPE,
+      ...BEYOND,
       tribe: VIKING,
       owner: SEAT,
     });
     sim.step();
-    const towered = ownedBuildings(sim.world, SEAT);
-    slots.length = 0;
-    firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: RADIUS, baseCovers: false }, offer);
-    expect(slots).not.toContainEqual({ hx: SLOT.x, hy: SLOT.y });
-    // One tower whose circle reaches every building: the even ring rests on the buildings, the facing one
-    // still wants a second circle over each building on the attack side.
-    const WIDE = 40;
-    offered.length = 0;
-    firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: WIDE, baseCovers: true }, offer);
-    expect(offered).toEqual([]);
-    firstUncovered(sim.world, ctx, SEAT, towered, { by: 'tower', radius: WIDE, baseCovers: false }, offer);
-    expect(offered).toContainEqual(east);
+    const ctx = raidedFromEast(sim);
+    const owned = ownedBuildings(sim.world, SEAT);
+    // The HQ's circle holds its garrison, from content, over every node its house bow reaches.
+    const circles = seatDefenceCircles(sim.world, ctx, owned);
+    expect(circles).toHaveLength(1);
+    const hq = circles[0];
+    if (hq === undefined) throw new Error('setup: no HQ circle');
+    expect(hq.value).toBe(aiContent().buildings.find((b) => b.id === 'headquarters')?.shelterCapacity);
+    expect(defenceAt(circles, BEYOND.x, BEYOND.y)).toBe(hq.value);
+    expect(defenceAt(circles, hq.hx + hq.radius + 1, hq.hy)).toBe(0);
+
+    const tower = { by: 'tower', building: 'tower_01' } as const;
+    const planOf = (village: number, front: number) =>
+      towerPlan(sim.world, ctx, SEAT, owned, { ...tower, wants: { village, front } })?.short ?? [];
+    // Wants the HQ meets leave nothing short.
+    expect(planOf(hq.value, hq.value)).toEqual([]);
+    // A front want past it offers the slot straight ahead of the base toward the raid and the home beyond
+    // the line; the homes behind it hold the village want.
+    const front = planOf(hq.value, 2 * hq.value);
+    expect(front.map((t) => t.node)).toEqual([
+      { hx: HQ_X + FRONT_LINE_DEPTH_NODES, hy: HQ_Y },
+      { hx: BEYOND.x, hy: BEYOND.y },
+    ]);
+    expect(front.every((t) => t.front && t.want === 2 * hq.value && t.has === hq.value)).toBe(true);
+    // The lowest covered share goes first: the front's quarter before the village's half.
+    const both = planOf(2 * hq.value, 4 * hq.value);
+    expect(both.map((t) => t.front)).toEqual([true, true, false, false]);
+    expect(both.map((t) => t.node)).toContainEqual({ hx: WEST.x, hy: WEST.y });
+  });
+
+  it('places no tower where the defence already meets its want, so towers never clump', () => {
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(160, 32) });
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    placeHq(sim);
+    const FAR = { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y };
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, ...FAR, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const ctx = ctxOf(sim);
+    const tower = { by: 'tower', building: 'tower_01' } as const;
+    const value = towerCircle(FAR.x, FAR.y).value;
+    // Two towers' worth wanted over the home: the first tower halves its gap, the second closes it.
+    const wants = { village: 2 * value, front: 2 * value };
+    const shortOf = () =>
+      towerPlan(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), { ...tower, wants })?.short ?? [];
+    for (const has of [0, value]) {
+      const short = shortOf();
+      expect(short.map((t) => [t.node, t.has])).toEqual([[{ hx: FAR.x, hy: FAR.y }, has]]);
+      const plan = towerPlan(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), { ...tower, wants });
+      if (plan === null) throw new Error('setup: no plan');
+      const terrain = sim.terrain;
+      const type = aiContent().buildings.find((b) => b.typeId === TOWER_TYPE);
+      if (terrain === undefined || type === undefined) throw new Error('setup: no terrain or tower type');
+      const spot = towerSpot(sim.world, ctx, terrain, SEAT, plan, type, VIKING, NO_FIRE, false);
+      if (spot === null) throw new Error('expected a tower spot');
+      expect(defenceGain(plan, spot.hx, spot.hy, towerCircle(spot.hx, spot.hy).radius, value)).toBe(value);
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: TOWER_TYPE,
+        x: spot.hx,
+        y: spot.hy,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+    }
+    expect(shortOf()).toEqual([]);
+  });
+
+  it('upgrades a lower tower that lifts a short target ahead of a new tower, from the mid game on', () => {
+    const base = aiContent();
+    const upper = base.buildings.find((b) => b.typeId === TOWER_TYPE);
+    if (upper === undefined) throw new Error('setup: no fixture tower');
+    const LOWER_TYPE = 90;
+    const lower = {
+      ...upper,
+      typeId: LOWER_TYPE,
+      id: 'tower_00',
+      shelterCapacity: upper.shelterCapacity / 2,
+      upgradeTarget: TOWER_TYPE,
+    };
+    const content = { ...base, buildings: [...base.buildings, lower] };
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(160, 32) });
+    sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
+    placeHq(sim);
+    const FAR = { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y };
+    sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HOME_TYPE, ...FAR, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: LOWER_TYPE,
+      x: FAR.x + 2,
+      y: FAR.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    completeSites(sim);
+    const owned = ownedBuildings(sim.world, SEAT);
+    const pick = (tick: number) => {
+      const ctx = { ...ctxOf(sim, tick), content };
+      const wants = { village: upper.shelterCapacity, front: upper.shelterCapacity };
+      const plan = towerPlan(sim.world, ctx, SEAT, owned, { by: 'tower', building: 'tower_01', wants });
+      if (plan === null) throw new Error('setup: no plan');
+      return towerToUpgrade(sim.world, ctx, owned, plan, upper);
+    };
+    const tower = owned.find((e) => sim.world.get(e, Building).buildingType === LOWER_TYPE);
+    expect(pick(TOWER_UPGRADE_FIRST_FROM_TICKS - 1)).toBeNull();
+    expect(pick(TOWER_UPGRADE_FIRST_FROM_TICKS)).toBe(tower);
   });
 
   it('raises the towers a forecast attack wants wave by wave, from the tower lead before each', () => {
@@ -286,7 +382,7 @@ describe('build-order tower and store coverage', () => {
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
     placeHq(sim);
     // Three homes out east, far apart: no one tower covers two of them.
-    for (const dx of [31, 90, 150]) {
+    for (const dx of [PAST_HQ_DEFENCE_DX, 90, 150]) {
       sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: HOME_TYPE,
@@ -317,7 +413,7 @@ describe('build-order tower and store coverage', () => {
   it('never counts the defence wall (shared kind, different id) as a covering tower', () => {
     const sim = aiSim();
     placeHq(sim);
-    const FAR = { x: HQ_X + 31, y: HQ_Y };
+    const FAR = { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y };
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,

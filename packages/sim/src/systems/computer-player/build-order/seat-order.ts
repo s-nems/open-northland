@@ -260,11 +260,6 @@ export function militaryWaits(world: World, ctx: SystemContext, player: number, 
   return !seatDefenceFirst(world, ctx, player) && beforeDeadlineLead(world, ctx, player, leadTicks);
 }
 
-/** How dense the tower ring stands while the seat's defence comes first, in percent of its plan's radius
- *  (authored): on mroczny_las a cramped seat's whole settlement sits inside its base's own circle, so at
- *  the plan's radius it raised no tower before the first scripted wave. */
-export const DEFENCE_TOWER_RADIUS_PCT = 60;
-
 /** {@link defenceFirst} for `player`'s seat; false before its strategy is decided. */
 export function seatDefenceFirst(world: World, ctx: SystemContext, player: number): boolean {
   const carrier = aiControlEntity(world, player);

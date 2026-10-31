@@ -82,8 +82,10 @@ import {
   coverageSpotSearch,
   firstUncovered,
   TOWER_CONTENT_IDS,
+  type TowerCoverage,
   towerRingSites,
 } from './tower-coverage.js';
+import { towerPlan, towerSpot, towerToUpgrade } from './tower-defence.js';
 import { upgradeReach } from './upgrade-reach.js';
 import { starvedUpgrade, suppliedUpgrade } from './upgrade-supply.js';
 
@@ -97,7 +99,6 @@ export {
 } from './progress.js';
 export {
   ARCHETYPE_TUNING,
-  DEFENCE_TOWER_RADIUS_PCT,
   defenceFirst,
   seatBuildOrder,
   seatSitePace,
@@ -105,7 +106,8 @@ export {
   shapeBuildOrder,
 } from './seat-order.js';
 export { type Siege, seatSiege } from './siege.js';
-export { TOWER_CONTENT_IDS, TOWER_DEFENCE_RADIUS_NODES } from './tower-coverage.js';
+export { TOWER_CONTENT_IDS } from './tower-coverage.js';
+export { DEFENCE_FIRST_WANT_PCT, OPENING_DEFENCE } from './tower-defence.js';
 
 /** The seat's open sites that count against its pace: a workshop's hidden vehicle yard is the crew's own
  *  cycle, never a placement the list made, so it holds no slot. */
@@ -782,7 +784,7 @@ type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
  * the frontier nor the stall record. Every other unmet step acts, carrying the placement its search found
  * when it is one of those kinds.
  */
-type Verdict = { readonly kind: 'pass' } | { readonly kind: 'act'; readonly placement: PlaceCommand | null };
+type Verdict = { readonly kind: 'pass' } | { readonly kind: 'act'; readonly placement: PlayerCommand | null };
 
 const ACTS: Verdict = { kind: 'act', placement: null };
 const PASSED_OVER: Verdict = { kind: 'pass' };
@@ -967,10 +969,10 @@ function laneTiers(ctx: SystemContext, entry: OpenLane['entry']): ReadonlySet<nu
 }
 
 /**
- * The site a coverage entry raises next, or null when no target has a legal spot: the first target with
- * one, in target order; a target none covers, a flag beyond the seat's build reach or ground another
- * store already serves, is passed over, at the tier {@link directTier} picks. Nothing while the entry's
- * own tier is not enabled yet.
+ * The site a coverage entry raises next, or null when no target has a legal spot: a tower ring's
+ * ({@link towerCommand}), or a store ring's first target with one, in target order, a flag beyond the
+ * seat's build reach or ground another store already serves passed over, at the tier {@link directTier}
+ * picks. Nothing while the entry's own tier is not enabled yet.
  */
 function coverageCommand(
   world: World,
@@ -984,12 +986,17 @@ function coverageCommand(
   underFire: EnemyFire,
   reserveGrass: boolean,
   made: () => ReadonlySet<number>,
-): PlaceCommand | null {
+): PlayerCommand | null {
   const base = buildingTypeByContentId(ctx.content, entry.building);
   if (base === undefined) return null; // unreachable after 'skip', kept for the type system
   if (!buildingEnabled(world, ctx, player, tribe, base.typeId)) return null;
   const type = directTier(world, ctx, player, owned, tribe, entry, made) ?? base;
   const coverage = coverageOf(world, ctx, player, entry);
+  if (coverage.by === 'tower')
+    return towerCommand(world, ctx, terrain, player, owned, tribe, base, type, coverage, underFire, {
+      reserveGrass,
+      made,
+    });
   const spotFor = coverageSpotSearch(
     world,
     ctx,
@@ -1004,6 +1011,44 @@ function coverageCommand(
     reserveGrass,
   );
   const spot = firstUncovered(world, ctx, player, owned, coverage, spotFor);
+  return spot === null ? null : siteCommand(type, spot, tribe, player);
+}
+
+/** A short tower ring's next command (`./tower-defence.ts`): the upgrade of a lower tower that lifts its
+ *  defence, while the seat may start one, else a new tower of `type` where it lifts the lowest covered
+ *  target most. */
+function towerCommand(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  tribe: number,
+  base: BuildingType,
+  type: BuildingType,
+  coverage: TowerCoverage,
+  underFire: EnemyFire,
+  decision: { readonly reserveGrass: boolean; readonly made: () => ReadonlySet<number> },
+): PlayerCommand | null {
+  const plan = towerPlan(world, ctx, player, owned, coverage);
+  if (plan === null || plan.short.length === 0) return null;
+  const upper =
+    base.upgradeTarget === undefined
+      ? undefined
+      : contentIndex(ctx.content).buildings.get(base.upgradeTarget);
+  if (
+    upper !== undefined &&
+    buildingEnabled(world, ctx, player, tribe, upper.typeId) &&
+    !towerUpgradeWaits(world, ctx, player, upper.id)
+  ) {
+    const candidate = towerToUpgrade(world, ctx, owned, plan, upper);
+    const tiers = candidate === null ? [] : sourcedTiers(world, ctx, player, [upper.typeId], decision.made);
+    const reach =
+      candidate === null ? undefined : suppliedUpgrade(world, ctx, player, owned, candidate, tiers);
+    if (candidate !== null && reach !== undefined)
+      return { kind: 'upgradeBuilding', building: candidate, target: reach };
+  }
+  const spot = towerSpot(world, ctx, terrain, player, plan, type, tribe, underFire, decision.reserveGrass);
   return spot === null ? null : siteCommand(type, spot, tribe, player);
 }
 

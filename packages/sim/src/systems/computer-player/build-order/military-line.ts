@@ -1,10 +1,11 @@
 import { LATE_GAME_FROM_TICKS, LATE_LATE_GAME_SETTLERS, MID_GAME_FROM_TICKS } from '../game-phase.js';
 import { BARRACKS_LEAD_TICKS, UPPER_TOWER_LEAD_TICKS } from '../military/deadline.js';
-import type { BuildLine, BuildOrderEntry, StepHold } from './entries.js';
+import type { BuildLine, BuildOrderEntry, DefenceWants, StepHold } from './entries.js';
 
-/** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
- *  tower circle (`./tower-coverage.ts`), so the finished settlement stands under overlapping towers. */
-const DENSE_TOWER_RADIUS_NODES = 14;
+/** The settled ring's wants once the seat's economy is safe (owner ruling: later in the game towers cover
+ *  the whole settlement): every building under an upper tower's garrison (20 in content), the front under
+ *  two upper towers or the headquarters and a lower one, double the opening ring's (`./tower-defence.ts`). */
+const SETTLED_DEFENCE: DefenceWants = { village: 20, front: 40 };
 
 /** When the seat's economy is safe for the denser ring (owner ruling: towers over the whole settlement
  *  come later in the game): the brewery and the upper bakery stand, the food stage the housing lane calls
@@ -100,14 +101,14 @@ export const MILITARY_LINE: BuildLine = {
       near: [{ kind: 'front' }],
       holdUntil: { kind: 'deadline', leadTicks: BARRACKS_LEAD_TICKS },
     },
-    // Once the seat's economy is safe the denser ring runs as a second lane (owner ruling: later in the
-    // game towers cover the whole settlement, so no flank is left open): a tower wherever the first leaves
-    // a building out. Both rings count the same tower sites, so together they keep the first ring's pace.
-    // A filled settlement with no room for a tower holds the lane, not the line.
+    // Once the seat's economy is safe the settled ring runs as a second lane (owner ruling: later in the
+    // game towers cover the whole settlement, so no flank is left open): a tower wherever the defence
+    // stays short of its higher wants. Both rings count the same tower sites, so together they keep the
+    // first ring's pace. A filled settlement with no room for a tower holds the lane, not the line.
     {
       kind: 'towerCoverage',
       building: 'tower_00',
-      radius: DENSE_TOWER_RADIUS_NODES,
+      defence: SETTLED_DEFENCE,
       lane: true,
       holdUntil: ECONOMY_SAFE,
     },

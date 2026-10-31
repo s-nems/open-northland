@@ -51,6 +51,7 @@ import {
   MILL_TYPE,
   makeAiSeat,
   oneLine,
+  PAST_HQ_DEFENCE_DX,
   placeHq,
   SEAT,
   STOCK_TOP_TYPE,
@@ -342,7 +343,7 @@ describe('build-order module - rebuilding under the enemy', () => {
     const sim = aiSim();
     placeHq(sim);
     // An outlying home outside the HQ's circle arms the coverage entry.
-    const home = { x: HQ_X + 31, y: HQ_Y };
+    const home = { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y };
     place(sim, HOME_TYPE, home);
     sim.step();
     const open = placementOf(coverage.run(sim.world, ctxOf(sim), SEAT));
@@ -427,7 +428,7 @@ describe('build-order module - rebuilding under the enemy', () => {
     const sim = aiSim();
     placeHq(sim);
     // An outlying home outside the HQ's circle arms the coverage entry.
-    place(sim, HOME_TYPE, { x: HQ_X + 31, y: HQ_Y });
+    place(sim, HOME_TYPE, { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y });
     sim.step();
     const band = spawnAt(sim, { x: HQ_X, y: HQ_Y + 4 }, SPEARMAN);
     expect(coverage.run(sim.world, ctxOf(sim), SEAT)).toEqual([]);

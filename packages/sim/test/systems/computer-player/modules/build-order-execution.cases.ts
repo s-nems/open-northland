@@ -60,6 +60,7 @@ import {
   MILLER,
   makeAiSeat,
   oneLine,
+  PAST_HQ_DEFENCE_DX,
   placeHq,
   placeResources,
   RESOURCE_SPOTS,
@@ -354,7 +355,7 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
-      x: HQ_X + 31,
+      x: HQ_X + PAST_HQ_DEFENCE_DX,
       y: HQ_Y,
       tribe: VIKING,
       owner: SEAT,
@@ -443,7 +444,7 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
-      x: HQ_X + 31,
+      x: HQ_X + PAST_HQ_DEFENCE_DX,
       y: HQ_Y,
       tribe: VIKING,
       owner: SEAT,
@@ -512,7 +513,7 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
-      x: HQ_X + 31,
+      x: HQ_X + PAST_HQ_DEFENCE_DX,
       y: HQ_Y,
       tribe: VIKING,
       owner: SEAT,
@@ -534,7 +535,7 @@ describe('build-order module (houseBuild)', () => {
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
     placeHq(sim);
     // Two homes out east, far apart: no one tower covers both.
-    for (const dx of [31, 90]) {
+    for (const dx of [PAST_HQ_DEFENCE_DX, 90]) {
       sim.enqueueSetup({
         kind: 'placeBuilding',
         buildingType: HOME_TYPE,
@@ -979,7 +980,7 @@ describe('build order - the bakery wells', () => {
     sim.enqueueSetup({
       kind: 'placeBuilding',
       buildingType: HOME_TYPE,
-      x: HQ_X + 31,
+      x: HQ_X + PAST_HQ_DEFENCE_DX,
       y: HQ_Y,
       tribe: VIKING,
       owner: SEAT,
@@ -1049,7 +1050,7 @@ describe('build order - the animal farm well', () => {
 describe('build order - a coverage entry with no spot', () => {
   const WATER = 1;
   const POCKET_RADIUS = 10;
-  const ISLAND = { x: HQ_X + 31, y: HQ_Y };
+  const ISLAND = { x: HQ_X + PAST_HQ_DEFENCE_DX, y: HQ_Y };
 
   /** Grass in a pocket round the HQ and on one far node, water everywhere else: nothing within a tower's
    *  reach of the far node is buildable, so no tower can ever cover a home standing on it. */

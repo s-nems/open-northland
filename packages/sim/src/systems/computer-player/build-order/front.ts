@@ -31,18 +31,10 @@ export const FRONT_LINE_DEPTH_NODES = 16;
 /** How far ahead of the seat's farthest building toward its nearest rival that rival's line stands at
  *  least, and the steps it moves out by, in world-metric nodes (authored, owner ruling: the line stands
  *  forward so the town grows behind it). The farthest building then stands 10 to 17 nodes behind the
- *  line, inside the towers' planning circle (`TOWER_DEFENCE_RADIUS_NODES`, 19), where a rounding to whole
+ *  line, well inside a tower's defence circle (the house bow's 29 map points), where a rounding to whole
  *  {@link FRONT_LINE_DEPTH_NODES} left it 0 to 16 behind. */
 export const RIVAL_LINE_ADVANCE_NODES = 10;
 const RIVAL_LINE_STEP_NODES = 8;
-
-/** How many rows of tower slots a seat whose defence comes first holds on its front, the second half a
- *  spacing behind the first and staggered (owner ruling: the defence rings densely on the attack side). */
-export const DEFENCE_FRONT_ROWS = 2;
-
-/** How many rows an even ring puts on its front before it covers the rest of the town (owner ruling:
- *  the facing side first). */
-export const EVEN_FRONT_ROWS = 1;
 
 /** Towers the seat wants standing, sites included, from {@link TOWER_LEAD_TICKS} before its first
  *  deadline, and how many more from that lead before each later one (owner ruling: the towers finish a

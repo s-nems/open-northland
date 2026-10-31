@@ -40,6 +40,13 @@ export type StepHold =
   | { readonly kind: 'tick'; readonly tick: number }
   | { readonly kind: 'all'; readonly holds: readonly StepHold[] };
 
+/** The defence a tower ring wants, in garrison seats summed over the defence circles covering a node:
+ *  `village` over every building, `front` over the front's band (`./tower-defence.ts`). */
+export interface DefenceWants {
+  readonly village: number;
+  readonly front: number;
+}
+
 export type BuildOrderEntry =
   /** Place `count` buildings of the stable content id. `near` pulls the spot toward its anchors,
    *  `ground: 'plantable'` puts the footprint on sowable ground, or where none fits, beside free sowable
@@ -101,16 +108,16 @@ export type BuildOrderEntry =
       readonly holdUntil?: StepHold;
       readonly stockedAt?: number;
     }
-  /** Keep every owned building inside some tower's or the base's defence circle of `radius` nodes
-   *  (default {@link TOWER_DEFENCE_RADIUS_NODES}). Unlike the counted entries it re-arms whenever a later
-   *  building lands uncovered, so the tower count is dynamic. A `lane` entry runs beside the lines once
+  /** Keep the seat's defence at the `defence` wants (default `OPENING_DEFENCE`, `./tower-defence.ts`): a
+   *  tower wherever the defence circles leave a building or the front short. Unlike the counted entries it
+   *  re-arms whenever a later building lands short, so the tower count is dynamic. A `lane` entry runs beside the lines once
    *  every counted step before it in its line stands met, and the game clock reaches `fromTick`: it holds
    *  one site of its building at a time, taken out of the clock's site count, never stalls the steps
    *  behind it, and they never wait on it. `holdUntil` holds a line's ring as a placement's. */
   | {
       readonly kind: 'towerCoverage';
       readonly building: string;
-      readonly radius?: number;
+      readonly defence?: DefenceWants;
       readonly lane?: true;
       readonly fromTick?: number;
       readonly holdUntil?: StepHold;

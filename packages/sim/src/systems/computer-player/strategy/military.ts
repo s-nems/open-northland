@@ -44,7 +44,8 @@ export interface PlanTuning {
   readonly floorShare: Share;
   /** Of the difficulty's army cap, the part a seat that drafts to its cap drafts to. */
   readonly draftCapShare: Share;
-  /** The tower coverage radius in percent of the build order's: below 100 rings towers denser. */
+  /** How sparse the tower ring stands, in percent: the ring's defence wants scale by its inverse, so
+   *  below 100 rings more towers (`build-order/tower-defence.ts`). */
   readonly towerRadiusPct: number;
 }
 
@@ -335,7 +336,7 @@ export interface MilitaryOrders {
   readonly floorShare: Share;
   /** Of the difficulty's army cap, the part a seat that drafts to its cap drafts to. */
   readonly draftCapShare: Share;
-  /** For the build order's tower lanes: the coverage radius in percent of their authored one. */
+  /** For the build order's tower lanes: how sparse they stand, in percent (`PlanTuning.towerRadiusPct`). */
   readonly towerRadiusPct: number;
   /** The army floor may call gatherers of goods in comfortable stock to arms: the seat prepares against a
    *  forecast attack within its lead (`workforce/garrison.ts`). */

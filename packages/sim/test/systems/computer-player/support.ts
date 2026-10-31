@@ -38,6 +38,7 @@ import {
   workforceModule,
 } from '../../../src/systems/computer-player/index.js';
 import { FLAG_RELOCATE_EVERY_RUNS } from '../../../src/systems/computer-player/workforce/collectors/upkeep.js';
+import { shelterFireRadius } from '../../../src/systems/conflict/shelter-fire.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { createSignpost, stampResourceFootprintData } from '../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../src/systems/readviews/index.js';
@@ -127,6 +128,11 @@ export const SAND = 2;
 
 export const HQ_X = 30;
 export const HQ_Y = 16;
+
+/** How far east of the HQ a building first stands outside the HQ's defence circle, so a tower ring wants
+ *  a tower for it. */
+export const PAST_HQ_DEFENCE_DX =
+  (shelterFireRadius(aiContent(), { buildingType: HQ_TYPE, tribe: VIKING }, HQ_X, HQ_Y) ?? 0) + 1;
 
 /** A build order of one line holding `steps` in order: the executor's rules within a line, with no other
  *  line competing for the sites. */

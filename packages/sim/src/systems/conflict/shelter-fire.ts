@@ -77,15 +77,38 @@ function fires(bow: WeaponType | undefined): bow is FiringBow {
   return bow?.munitionType !== undefined && bow.speed !== undefined && bow.speed > 0;
 }
 
+/** Each content's defence radii by type, tribe, house record and anchor row parity, the only part of the
+ *  anchor the reach depends on. */
+const fireRadii = new WeakMap<ContentSet, Map<string, number | undefined>>();
+
 /**
  * How far in map points from its anchor node (`hx`, `hy`) a `house` reaches all around in
  * defence mode: the widest ring every node of which stands within the house bow's reach of some wall cell,
  * the way the fire measures. A long building reaches further along its length. Undefined for a type with no
- * defence mode and when `tribe` fires no house bow. Walks only the rings between the reach its nearest wall
- * guarantees and the reach its farthest wall bounds, each a box scan of about the bow's reach squared: a few
- * milliseconds for a large building, worth remembering per type.
+ * defence mode and when `tribe` fires no house bow. Working one out takes a few milliseconds for a large
+ * building, and a held tower asks every frame, so each is remembered per content.
  */
 export function shelterFireRadius(
+  content: ContentSet,
+  house: HouseKey,
+  hx: number,
+  hy: number,
+): number | undefined {
+  let radii = fireRadii.get(content);
+  if (radii === undefined) {
+    radii = new Map();
+    fireRadii.set(content, radii);
+  }
+  const key = `${house.buildingType}:${house.tribe}:${house.record ?? ''}:${hy & 1}`;
+  if (radii.has(key)) return radii.get(key);
+  const radius = measuredFireRadius(content, house, hx, hy);
+  radii.set(key, radius);
+  return radius;
+}
+
+/** {@link shelterFireRadius} worked out: walks only the rings between the reach its nearest wall guarantees
+ *  and the reach its farthest wall bounds, each a box scan of about the bow's reach squared. */
+function measuredFireRadius(
   content: ContentSet,
   house: HouseKey,
   hx: number,

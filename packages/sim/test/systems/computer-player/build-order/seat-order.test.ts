@@ -9,10 +9,8 @@ import {
 } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import { CATAPULT_JOINERY } from '../../../../src/systems/computer-player/build-order/military-line.js';
-import {
-  coverageOf,
-  TOWER_DEFENCE_RADIUS_NODES,
-} from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
+import { coverageOf } from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
+import { OPENING_DEFENCE } from '../../../../src/systems/computer-player/build-order/tower-defence.js';
 import {
   AI_PROFILES,
   ARCHETYPE_TUNING,
@@ -20,7 +18,7 @@ import {
   type BuildOrderEntry,
   buildOrderModule,
   DEFAULT_BUILD_ORDER,
-  DEFENCE_TOWER_RADIUS_PCT,
+  DEFENCE_FIRST_WANT_PCT,
   defenceFirst,
   EARLY_SECOND_TAILOR,
   LATE_SMITHIES,
@@ -400,18 +398,24 @@ describe('the seat strategy shapes the build order', () => {
 
   it('rings towers as densely as the military plan asks', () => {
     const towers = { kind: 'towerCoverage', building: 'tower_01' } as const;
+    const scaled = (num: number, den: number) => ({
+      village: Math.ceil((OPENING_DEFENCE.village * num) / den),
+      front: Math.ceil((OPENING_DEFENCE.front * num) / den),
+    });
     for (const plan of ['defensive', 'aggressive', 'balanced'] as const) {
       const sim = seatWith({}, { plan, posture: 'attack', evidence: ['ratioReached'] });
-      expect(coverageOf(sim.world, ctxOf(sim), SEAT, towers).radius).toBe(
-        Math.floor((TOWER_DEFENCE_RADIUS_NODES * PLAN_TUNING[plan].towerRadiusPct) / 100),
-      );
+      expect(coverageOf(sim.world, ctxOf(sim), SEAT, towers)).toEqual({
+        by: 'tower',
+        building: 'tower_01',
+        wants: scaled(100, PLAN_TUNING[plan].towerRadiusPct),
+      });
     }
-    // Denser again while a forecast attack puts the defence first.
+    // More defence again while a forecast attack puts the defence first.
     const braced = seatWith({}, FORECAST);
     expect(coverageOf(braced.world, ctxOf(braced), SEAT, towers)).toEqual({
       by: 'tower',
-      radius: Math.floor((TOWER_DEFENCE_RADIUS_NODES * DEFENCE_TOWER_RADIUS_PCT) / 100),
-      baseCovers: false,
+      building: 'tower_01',
+      wants: scaled(DEFENCE_FIRST_WANT_PCT, 100),
     });
   });
 });

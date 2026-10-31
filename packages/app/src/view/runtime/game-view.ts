@@ -134,7 +134,6 @@ import { nodeBounds } from '../picking.js';
 import { createPlacementGates } from '../placement/gates.js';
 import {
   createFogGates,
-  defenceRadiusAt,
   diplomacyMetSeats,
   diplomacyPanelRows,
   entityAnchor,
@@ -1463,7 +1462,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       experienceStarsFor,
       canPlaceAt,
       defenceRangeAt: (typeId, tribe, col, row) =>
-        defenceRadiusAt(host.content, { buildingType: typeId, tribe }, col, row),
+        systems.shelterFireRadius(host.content, { buildingType: typeId, tribe }, col, row),
       blessingRangeFor: (typeId) => templeAuraRadius(host.content, typeId),
       canPlaceSignpostAt,
       soundDriver,
