@@ -3,9 +3,8 @@ import { fileURLToPath } from 'node:url';
 import { MAP_TEXT_LANGUAGES } from '@open-northland/data';
 import type { MapStringTables } from '@open-northland/map-import';
 import { errorMessage } from './errors.js';
-import { HELP_TABLE_SCOPES } from './stages/gui/help.js';
 import { GUI_LANGS } from './stages/gui/paths.js';
-import { EXPORTED_TABLES } from './stages/gui/strings.js';
+import { EXPORTED_TABLES, OBJECT_HELP_TABLES } from './stages/gui/strings.js';
 
 /** The committed fixes to decoded display strings; this package's AGENTS.md sets the rules. */
 export const STRING_CORRECTIONS_FILE = fileURLToPath(
@@ -56,7 +55,7 @@ interface CorrectionKind {
   checkScope(value: string): string | undefined;
 }
 
-const CORRECTABLE_TABLES: readonly string[] = [...EXPORTED_TABLES, ...HELP_TABLE_SCOPES];
+const CORRECTABLE_TABLES: readonly string[] = [...EXPORTED_TABLES, ...OBJECT_HELP_TABLES];
 
 const TABLE_KIND: CorrectionKind = {
   scopeKey: 'table',

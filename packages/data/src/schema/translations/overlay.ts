@@ -112,7 +112,8 @@ export type MapOverlay = z.infer<typeof MapOverlay>;
 
 /**
  * `translations/<lang>/objects/<table>.json`: one game-object name table (`goods`, `houses`, `jobs`,
- * `experiences`, `tribes`) by type id, with the plural where the table has one.
+ * `experiences`, `tribes`) by type id, with the plural where the table has one, or a description table
+ * (`goodsHelp`, `housesHelp`), whose `names` are the display texts, a line break as `\n`.
  */
 export const ObjectTableOverlay = z.strictObject({
   version: z.literal(OVERLAY_VERSION),

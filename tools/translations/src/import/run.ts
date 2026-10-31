@@ -1,10 +1,6 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import {
-  GAME_OBJECT_TABLES,
-  type GameObjectTable,
-  HISTORY_BOOK,
-} from '@open-northland/asset-pipeline/sources';
+import { HISTORY_BOOK } from '@open-northland/asset-pipeline/sources';
 import {
   BookOverlay,
   ObjectTableOverlay,
@@ -15,6 +11,8 @@ import {
 import {
   type BookBlocks,
   bookSourceDigest,
+  OBJECT_OVERLAY_TABLES,
+  type ObjectOverlayTable,
   objectTableSourceDigest,
   type PackText,
   readPackText,
@@ -83,7 +81,7 @@ export interface ImportResult {
 async function importTable(
   textRoot: string,
   pack: PackText,
-  table: GameObjectTable,
+  table: ObjectOverlayTable,
   corrections: GermanCorrections,
   files: OverlayFile[],
 ): Promise<TableResult> {
@@ -156,8 +154,8 @@ async function importBook(
 
 /**
  * Converts a CulturesGameLocalization checkout into overlay files against the pack's German text:
- * map overlays, the game-object name tables, the history book and the glossary. A pack without a
- * readable German object table fails the run, since every table overlay is written against one.
+ * map overlays, the game-object name and description tables, the history book and the glossary. A pack
+ * without a readable German object table fails the run, since every table overlay is written against one.
  */
 export async function importCulturesLocalization(options: ImportOptions): Promise<ImportResult> {
   const textRoot = join(options.source, ...TEXT_DIR);
@@ -166,7 +164,7 @@ export async function importCulturesLocalization(options: ImportOptions): Promis
   const maps = await importMaps(options.source, await pack.maps(), corrections);
   const files: OverlayFile[] = [...maps.files];
   const tables: TableResult[] = [];
-  for (const table of GAME_OBJECT_TABLES)
+  for (const table of OBJECT_OVERLAY_TABLES)
     tables.push(await importTable(textRoot, pack, table, corrections, files));
   const book = await importBook(textRoot, pack, files);
   const glossaryRows = glossaryFromLanguageUnion(

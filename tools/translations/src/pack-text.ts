@@ -3,13 +3,18 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   campaignMapId,
+  GAME_OBJECT_TABLES,
   type GameObjectNames,
   type GameObjectTable,
   historyDir,
+  isObjectHelpTable,
+  OBJECT_HELP_TABLES,
+  type ObjectHelpTable,
   readBaseMapTree,
   readCampaignMapTree,
   readGameObjectNames,
   readHistoryBlocks,
+  readObjectHelp,
   type SourceRoots,
   takesSourceLanguageOverlays,
 } from '@open-northland/asset-pipeline/sources';
@@ -28,6 +33,15 @@ import {
   readMapSourceText,
 } from '@open-northland/map-import';
 import { type CampaignSource, parseDataManifest, readCampaigns } from '../../../scripts/data-pack.mjs';
+
+/** The tables `translations/<lang>/objects/` holds: the name tables and the description tables. */
+export type ObjectOverlayTable = GameObjectTable | ObjectHelpTable;
+export const OBJECT_OVERLAY_TABLES: readonly ObjectOverlayTable[] = [
+  ...GAME_OBJECT_TABLES,
+  ...OBJECT_HELP_TABLES,
+];
+export const isObjectOverlayTable = (name: string): name is ObjectOverlayTable =>
+  (OBJECT_OVERLAY_TABLES as readonly string[]).includes(name);
 
 /** One map of the pack and the text it ships. */
 export interface PackMap {
@@ -55,8 +69,9 @@ export interface PackText {
    *  the whole pack. */
   maps(): Promise<ReadonlyMap<string, readonly PackMap[]>>;
   readonly campaigns: ReadonlySet<string>;
-  /** One language's game-object table; throws when the pack lacks it or it does not decode. */
-  objectNames(lang: SourceLanguage, table: GameObjectTable): Promise<GameObjectNames>;
+  /** One language's game-object or description table; throws when the pack lacks it or it does not
+   *  decode. */
+  objectNames(lang: SourceLanguage, table: ObjectOverlayTable): Promise<GameObjectNames>;
   /** One language's history book, or undefined when the pack lacks it. */
   historyBlocks(lang: SourceLanguage): Promise<BookBlocks | undefined>;
 }
@@ -137,7 +152,8 @@ export async function readPackText(dataRoot: string): Promise<PackText> {
       return maps;
     },
     campaigns: new Set(campaigns.map((campaign) => campaign.id)),
-    objectNames: (lang, table) => readGameObjectNames(roots, lang, table),
+    objectNames: (lang, table) =>
+      isObjectHelpTable(table) ? readObjectHelp(roots, lang, table) : readGameObjectNames(roots, lang, table),
     historyBlocks: async (lang) => {
       const dir = await historyDir(roots, lang);
       return dir === undefined ? undefined : readHistoryBlocks(dir, textEncoding(lang));

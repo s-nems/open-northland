@@ -562,7 +562,7 @@ describe('auditTranslations: copies of one map.dat with other text', () => {
 });
 
 describe('readPackText', () => {
-  it('reads the maps, object tables and history book as the pack shipped them', async () => {
+  it('reads the maps, object and description tables and history book as the pack shipped them', async () => {
     const dat = buildMapDat(1, 1, [2, 2, 2, 2]);
     const manifest = {
       format: 'open-northland-data',
@@ -584,6 +584,10 @@ describe('readPackText', () => {
     await put(
       'pack/base/Data/text/pol/strings/gameobjects/goods.ini',
       '[text]\nstringn 1 " Drewno "\nstring "Drewna"\n',
+    );
+    await put(
+      'pack/base/Data/text/pol/strings/help/goodshelp.ini',
+      '[text]\nstringn 1 " Opis{newline}drewna "\n',
     );
     await put(
       'pack/base/Data/text/pol/hypertext/history/History.txt',
@@ -609,6 +613,10 @@ describe('readPackText', () => {
       plurals: { 1: 'Drewna' },
     });
     await expect(pack.objectNames('eng', 'goods')).rejects.toThrow(/goods\.cif not found/);
+    expect(await pack.objectNames('pol', 'goodsHelp')).toEqual({
+      names: { 1: 'Opis\ndrewna' },
+      plurals: {},
+    });
     expect(bookSourceDigest((await pack.historyBlocks('pol')) ?? new Map())).toBe(
       bookSourceDigest(new Map([['history.txt', new Map([['00', 'Dawno']])]])),
     );

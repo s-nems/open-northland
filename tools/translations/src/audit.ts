@@ -4,13 +4,7 @@ import { existsSync, realpathSync } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import {
-  GAME_OBJECT_TABLES,
-  type GameObjectNames,
-  type GameObjectTable,
-  HISTORY_BOOK,
-  isGameObjectTable,
-} from '@open-northland/asset-pipeline/sources';
+import { type GameObjectNames, HISTORY_BOOK } from '@open-northland/asset-pipeline/sources';
 import {
   type BookOverlay,
   isLanguage,
@@ -39,6 +33,9 @@ import { woff2CodePoints } from './font-coverage.js';
 import { blockMarkupDiffers, stringMarkupDiffers } from './markup.js';
 import {
   bookSourceDigest,
+  isObjectOverlayTable,
+  OBJECT_OVERLAY_TABLES,
+  type ObjectOverlayTable,
   objectTableSourceDigest,
   type PackMap,
   type PackText,
@@ -84,9 +81,9 @@ function misnamed(kind: OverlayKind, id: string): string | undefined {
     case 'maps':
       return parseMapOverlayFileId(name) === undefined ? MAP_OVERLAY_NAMING : undefined;
     case 'objects':
-      return isGameObjectTable(name)
+      return isObjectOverlayTable(name)
         ? undefined
-        : `an object table is one of ${GAME_OBJECT_TABLES.join(', ')}`;
+        : `an object table is one of ${OBJECT_OVERLAY_TABLES.join(', ')}`;
     case 'books':
       return id === HISTORY_BOOK ? undefined : `the only book is ${HISTORY_BOOK}`;
     case 'campaigns':
@@ -116,7 +113,7 @@ interface MapOverlayFile {
 interface ObjectTableOverlayFile {
   readonly file: string;
   readonly lang: Language;
-  readonly table: GameObjectTable;
+  readonly table: ObjectOverlayTable;
   readonly overlay: ObjectTableOverlay;
 }
 
@@ -245,7 +242,7 @@ async function readLayout(root: string, errors: AuditFinding[]): Promise<ValidOv
             }
             case 'objects': {
               const { name, edit } = splitOverlayEdit(id);
-              if (isGameObjectTable(name)) {
+              if (isObjectOverlayTable(name)) {
                 const overlay = await readOverlayFile('objects', path);
                 (edit ? valid.objectEdits : valid.objects).push({ file, lang, table: name, overlay });
               }

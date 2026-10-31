@@ -25,8 +25,9 @@ Imported:
 - `<lang>/maps/`: the strings and briefing blocks of each `Localization/map_xml/*.xml` whose
   `map_md5` names a `map.dat` of the pack: the 57 campaign maps and 14 base maps (`tutorial_001` to
   `tutorial_007` and seven community maps). The other 56 XMLs name maps the pack does not ship.
-- `<lang>/objects/`: the `goods`, `houses`, `jobs`, `experiences` and `tribes` name tables. House 22
-  and tribe 18 are left out: the localization's German names another object under those ids.
+- `<lang>/objects/`: the `goods`, `houses`, `jobs`, `experiences` and `tribes` name tables, and the
+  `goodsHelp` and `housesHelp` descriptions from `strings/help/`. House 22 and tribe 18 of the name
+  tables are left out: the localization's German names another object under those ids.
 - `<lang>/names/`: the `Name` lines of `strings/gameobjects/humannames.ini`, one file per
   personal-name pool, keyed by the raw name the pool generates. `Name 0` and `Name 1` mark the sex
   the line's tribe gives the name, which settles a name that both a male and a female pool carry.
@@ -44,8 +45,8 @@ Imported:
 
 Not imported: the German, English and Polish text of the XMLs and text folders (the pack carries that
 text), the other language columns, `Localization/map_xml_user/` (its maps are not in the pack),
-`history.txt` (the pack's history book has no page that includes it), the `.hlt` pages, the GUI and
-help tables, `mapdata/`, `OriginalText/`, the movie folders and the tools.
+`history.txt` (the pack's history book has no page that includes it), the `.hlt` pages, the GUI tables,
+`mischelp.ini`, `mapdata/`, `OriginalText/`, the movie folders and the tools.
 
 Re-import from a checkout of the repository at the recorded commit, against the unpacked pack:
 
@@ -64,6 +65,9 @@ Overlays the project wrote itself, edited in place:
 - `chs/campaigns/` and `cht/campaigns/`: the four campaign titles.
 - `glossary-project.csv`: the names and terms of the community maps, written for the project's own
   translation of those maps, in the columns of `glossary.csv`.
+- `chs/objects/goodsHelp.edit.json` and `housesHelp.edit.json`: the descriptions the project corrected
+  to match the game, written from the imported Chinese and the Polish corrections, with the name tables'
+  terms; unreviewed by a native speaker. Their `cht/objects/` twins are OpenCC conversions.
 - `chs/maps/` files for community maps the import did not cover: the project's translation from the
   Polish text, machine-translated with the glossary and edited by a reviewer; unreviewed by a native
   speaker. Their `cht/maps/` twins are OpenCC conversions (`npm run translations:derive-cht`).

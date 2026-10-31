@@ -3,25 +3,41 @@ import { join } from 'node:path';
 import {
   findPathCaseInsensitive,
   type GameObjectNames,
-  type GameObjectTable,
+  helpText,
+  isObjectHelpTable,
+  OBJECT_HELP_FILES,
 } from '@open-northland/asset-pipeline/sources';
-import { decodeIni, extractStringnNames, parseIniSections } from '@open-northland/formats/ini';
+import {
+  decodeIni,
+  extractStringnNames,
+  extractStringTable,
+  parseIniSections,
+} from '@open-northland/formats/ini';
+import type { ObjectOverlayTable } from '../pack-text.js';
 
 const UTF8 = 'utf-8';
 
-/** One UTF-8 `.ini` table of the localization repository's `text/<folder>/strings/gameobjects/`. */
+/** One UTF-8 `.ini` table of the localization repository's `text/<folder>/strings/gameobjects/` or, for
+ *  a description table, `strings/help/`, read as the pipeline reads the pack's. */
 export async function readLocalizedObjectTable(
   textRoot: string,
   folder: string,
-  table: GameObjectTable,
+  table: ObjectOverlayTable,
 ): Promise<GameObjectNames | undefined> {
-  const path = await findPathCaseInsensitive(join(textRoot, folder), [
-    'strings',
-    'gameobjects',
-    `${table}.ini`,
-  ]);
+  const file = isObjectHelpTable(table)
+    ? ['help', `${OBJECT_HELP_FILES[table]}.ini`]
+    : ['gameobjects', `${table}.ini`];
+  const path = await findPathCaseInsensitive(join(textRoot, folder), ['strings', ...file]);
   if (path === undefined) return undefined;
-  const { singular, plural } = extractStringnNames(parseIniSections(decodeIni(await readFile(path), UTF8)));
+  const sections = parseIniSections(decodeIni(await readFile(path), UTF8));
+  if (isObjectHelpTable(table)) {
+    const texts = Object.entries(extractStringTable(sections));
+    return {
+      names: Object.fromEntries(texts.map(([id, text]) => [Number(id), helpText(text)])),
+      plurals: {},
+    };
+  }
+  const { singular, plural } = extractStringnNames(sections);
   return { names: singular, plurals: plural };
 }
 

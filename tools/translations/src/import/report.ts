@@ -109,7 +109,7 @@ export function formatReport(result: ImportResult, sourceCommit: string): string
   }
   add();
 
-  add('Object tables (translated entries; ids whose German name differs from ours are left out):');
+  add('Object tables (translated entries; ids whose German text differs from ours are left out):');
   for (const table of result.tables) {
     const parts = OVERLAY_LANGUAGES.map((lang) => {
       const counts = table.languages[lang];

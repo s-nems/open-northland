@@ -1,6 +1,6 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { campaignMapId, GAME_OBJECT_TABLES } from '@open-northland/asset-pipeline/sources';
+import { campaignMapId } from '@open-northland/asset-pipeline/sources';
 import { mapOverlayDatKey, splitOverlayEdit } from '@open-northland/data';
 import { MAP_DAT_FILE, type MapLanguageText, mapIdFromPath } from '@open-northland/map-import';
 import {
@@ -9,6 +9,7 @@ import {
   type MapOverlaysByDatKey,
   readOverlayFile,
 } from '@open-northland/translations';
+import { OBJECT_OVERLAY_TABLES } from '../pack-text.js';
 import { BASIS_LANGUAGE } from './columns.js';
 
 /**
@@ -91,7 +92,7 @@ export async function readGermanCorrections(dir: string, translations: string): 
   const tables = new Map<string, Set<string>>();
   const mapStrings = new Map<string, Set<string>>();
   const briefingLines = new Map<string, Set<string>>();
-  const known: readonly string[] = GAME_OBJECT_TABLES;
+  const known: readonly string[] = OBJECT_OVERLAY_TABLES;
   for (const entry of await readArray(join(dir, ...STRING_TABLES_FILE))) {
     if (!isRecord(entry) || entry.lang !== BASIS_LANGUAGE || typeof entry.table !== 'string') continue;
     const table = entry.table.replace(PLURAL_TABLE_SUFFIX, '');

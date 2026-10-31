@@ -57,8 +57,8 @@ const SCHEMAS: { readonly [K in OverlayKind]: Schema<OverlayByKind[K]> } = {
 export interface TranslationOverlays {
   /** Map overlays by the raw `map.dat` SHA-256 hex digest, then language. */
   readonly maps: MapOverlaysByDatKey;
-  /** Game-object name tables by language, then table (`goods`, `houses`, `jobs`, ...), each with its
-   *  project edit when one is filed. */
+  /** Game-object name and description tables by language, then table (`goods`, `goodsHelp`, ...), each
+   *  with its project edit when one is filed. */
   readonly objects: ReadonlyMap<Language, ReadonlyMap<string, FiledObjectTableOverlay>>;
   /** Hypertext books by language, then book (`history`). */
   readonly books: ReadonlyMap<Language, ReadonlyMap<string, BookOverlay>>;

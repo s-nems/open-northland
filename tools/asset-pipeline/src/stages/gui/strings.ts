@@ -43,6 +43,18 @@ export const STRING_TABLES = [
  */
 export const GAME_OBJECT_TABLES = ['goods', 'houses', 'jobs', 'experiences', 'tribes'] as const;
 
+/**
+ * The object description tables (`Data/text/<lang>/strings/help/<file>.{ini,cif}`) by the name an overlay
+ * file or string correction gives them, each with its source file. Their ids are type ids; `goods` alone
+ * would name the name table.
+ */
+export const OBJECT_HELP_FILES = { goodsHelp: 'goodshelp', housesHelp: 'houseshelp' } as const;
+export type ObjectHelpTable = keyof typeof OBJECT_HELP_FILES;
+export const OBJECT_HELP_TABLES = Object.keys(OBJECT_HELP_FILES) as readonly ObjectHelpTable[];
+
+export const isObjectHelpTable = (name: string): name is ObjectHelpTable =>
+  (OBJECT_HELP_TABLES as readonly string[]).includes(name);
+
 /** The game-object tables whose plurals are exported too, each beside its singulars under this key. */
 const PLURAL_TABLES: Readonly<Partial<Record<(typeof GAME_OBJECT_TABLES)[number], string>>> = {
   jobs: 'jobsPlural',
@@ -203,18 +215,18 @@ export async function convertGuiStrings(
   return done;
 }
 
-/** `overlay` with `edit`'s names over its own when the edit's basis is still the shipped table of its
- *  language; otherwise the edit is left out with a warning. */
-async function withObjectEdit(
-  roots: SourceRoots,
+/** The overlay with its edit's names over its own when the edit's basis is still `readShipped`'s table in
+ *  that language, as the pack shipped it; otherwise the edit is left out with a warning. */
+export async function withObjectEdit(
   lang: Language,
-  table: GameObjectTable,
-  overlay: ObjectTableOverlay,
-  edit: ObjectTableOverlay,
+  table: string,
+  { edit, ...overlay }: FiledObjectTableOverlay,
+  readShipped: (lang: string) => Promise<GameObjectNames>,
 ): Promise<ObjectTableOverlay> {
+  if (edit === undefined) return overlay;
   let shipped: GameObjectNames;
   try {
-    shipped = await readGameObjectNames({ data: roots.data }, edit.basis.lang, table);
+    shipped = await readShipped(edit.basis.lang);
   } catch (err) {
     console.warn(`[pipeline] gui: ${lang} ${table} edit left out: ${errorMessage(err)}`);
     return overlay;
@@ -250,12 +262,14 @@ async function writeObjectOverlays(
   const tables: DecodedTables = {};
   let stringCount = 0;
   for (const [table, filed] of overlays) {
+    if (isObjectHelpTable(table)) continue;
     if (!isGameObjectTable(table)) {
       console.warn(`[pipeline] gui: ignored ${lang} object-table overlay ${table}: no such table`);
       continue;
     }
-    const { edit, ...overlay } = filed;
-    const names = edit === undefined ? overlay : await withObjectEdit(roots, lang, table, overlay, edit);
+    const names = await withObjectEdit(lang, table, filed, (basis) =>
+      readGameObjectNames({ data: roots.data }, basis, table),
+    );
     for (const [key, byId] of Object.entries(exportedNames(table, names))) {
       tables[key] = byId;
       stringCount += Object.keys(byId).length;

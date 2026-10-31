@@ -23,7 +23,9 @@ translations/
                                  a further overlay of that map.dat and alias, for a copy with other text
     maps/<name>.edit.json        the project's edit over the imported maps/<name>.json: the keys the
                                  project's corrections changed, in the overlay's language  (MapOverlay)
-    objects/<table>.json         goods, houses, jobs, experiences, tribes by type id  (ObjectTableOverlay)
+    objects/<table>.json         goods, houses, jobs, experiences, tribes by type id, and the
+                                 descriptions goodsHelp, housesHelp, whose `names` are the display
+                                 text, a line break as \n  (ObjectTableOverlay)
     objects/<table>.edit.json    the project's edit over the imported objects/<table>.json
     names/<pool>.json            one personal-name pool's localized names, by the raw name the pool
                                  spells  (PersonalNameOverlay)

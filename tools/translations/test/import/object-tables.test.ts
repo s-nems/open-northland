@@ -1,7 +1,15 @@
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import type { GameObjectNames } from '@open-northland/asset-pipeline/sources';
 import { describe, expect, it } from 'vitest';
 import { formatCsv, glossaryFromLanguageUnion, parseCsv } from '../../src/import/glossary.js';
-import { driftedIds, sameGermanName, translateObjectNames } from '../../src/import/object-tables.js';
+import {
+  driftedIds,
+  readLocalizedObjectTable,
+  sameGermanName,
+  translateObjectNames,
+} from '../../src/import/object-tables.js';
 
 describe('sameGermanName', () => {
   it('reads a Han character of their garbled table as the umlaut and the byte it swallowed', () => {
@@ -37,6 +45,28 @@ describe('object names', () => {
       plurals: { '1': '箱子' },
       unknown: 1,
     });
+  });
+});
+
+describe('description tables', () => {
+  it("read a UTF-8 help table like the pack's, by explicit and running ids with marked line breaks", async () => {
+    const root = await mkdtemp(join(tmpdir(), 'opennorthland-help-import-'));
+    try {
+      const dir = join(root, 'l10', 'strings', 'help');
+      await mkdir(dir, { recursive: true });
+      await writeFile(
+        join(dir, 'goodshelp.ini'),
+        '[control]\nstringidmultiplier 1\n[text]\nstringn 3 " 黏土 "\nstring "木头{newline}{newline}石头"\n',
+      );
+
+      expect(await readLocalizedObjectTable(root, 'l10', 'goodsHelp')).toEqual({
+        names: { 3: '黏土', 4: '木头\n\n石头' },
+        plurals: {},
+      });
+      expect(await readLocalizedObjectTable(root, 'l10', 'housesHelp')).toBeUndefined();
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });
 

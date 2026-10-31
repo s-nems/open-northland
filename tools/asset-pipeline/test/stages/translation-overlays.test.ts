@@ -211,6 +211,7 @@ describe('gui strings stage', () => {
             'chs',
             new Map([
               ['goods', table({ '1': ' 木头 ' }, { '1': '木头们' })],
+              ['goodsHelp', table({ '1': '木头的说明' })],
               ['jobs', table({ '2': '樵夫' }, { '2': '樵夫们' })],
               ['weather', table({ '1': '雨' })],
             ]),
