@@ -4,6 +4,7 @@ import { mergeRecipes } from '../../../../../core/content-index/production.js';
 import type { Entity, World } from '../../../../../ecs/world.js';
 import { claimProductionCycle, productionAssignments } from '../../../../economy/production/assignments.js';
 import {
+  isYardBuilt,
   outputRoomForCycles,
   shelfBlockedOutputs,
   skipUnfundedRecipe,
@@ -107,6 +108,23 @@ export class WorkSeatClaims {
     return recipes;
   }
 
+  /**
+   * The recipe a bound carrier restocks `workplace` against: its crew's selected recipes merged, so an input
+   * no operator there may use, every product of it stopped, stays in storage for the seat's other consumers
+   * and sites. The whole shop while no operator is employed there, or while the crew has a yard-built
+   * product, whose site draws on the shelf. Our rule: the original's carrier restocking to capacity is
+   * observed, its regard for stopped products is not.
+   */
+  carrierRecipe(world: World, ctx: PlannerContext['ctx'], workplace: Entity): Recipe | undefined {
+    const whole = mergedRecipeOf(world, ctx, workplace);
+    if (whole === undefined) return undefined;
+    this.workforce ??= workshopWorkforce(world, ctx);
+    if (this.workforce.operatorsAt(workplace).length === 0) return whole;
+    const crew = this.recipesFor(world, ctx, workplace);
+    if (crew.some((recipe) => isYardBuilt(ctx, recipe))) return whole;
+    return crew.length === 0 ? NO_SUPPLY : mergedRotation(crew);
+  }
+
   /** Record `settler`'s errand stamped this pass; it replaces whatever the index held for that settler. */
   noteErrand(settler: Entity, errand: PassErrand): void {
     const replaced = this.errands.get(settler);
@@ -138,6 +156,8 @@ export class WorkSeatClaims {
  *  the units other settlers are bringing: the original's producer fetches with no regard to them. */
 const OWN_SHORTFALL: InputShortfall = { restockToCapacity: false };
 const CARRIER_SHORTFALL: InputShortfall = { restockToCapacity: true };
+/** A crew that may make nothing here wants no input brought. */
+const NO_SUPPLY: Recipe = { inputs: [], outputs: [], ticks: 1 };
 
 /** A loitering worker is not idle to the planner, so its ladder runs every tick. */
 const LOITER_PLAN_PERIOD_TICKS = 1;
@@ -270,11 +290,12 @@ export function planWorkshopSupplier(
   const { world, ctx } = plan;
   const worker = plan;
   const recipe = mergedRecipeOf(world, ctx, workplace);
+  const supply = seatClaims.carrierRecipe(world, ctx, workplace);
   const area = haulFlagArea(plan);
-  if (recipe !== undefined) {
+  if (supply !== undefined) {
     const source =
-      (area === null ? null : nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL, area)) ??
-      nearestMissingInputSource(plan, workplace, recipe, CARRIER_SHORTFALL);
+      (area === null ? null : nearestMissingInputSource(plan, workplace, supply, CARRIER_SHORTFALL, area)) ??
+      nearestMissingInputSource(plan, workplace, supply, CARRIER_SHORTFALL);
     if (source !== null) {
       routeToInputSource(plan, workplace, source, seatClaims);
       return;

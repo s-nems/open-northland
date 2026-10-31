@@ -330,6 +330,25 @@ describe('producer self-service - hauling the finished output', () => {
     expect(atomic.effect).toEqual({ kind: 'pickup', goodType: WOOD, amount: 1, from: hq });
   });
 
+  it('a bound CARRIER restocks only the inputs its crew may use, leaving a stopped product’s in storage', () => {
+    // The food-pinned baker stopped the plank, so the shop's wood is no one's input here: the carrier walks
+    // past the near HQ wood to the farther wheat, and with every product stopped it fetches neither.
+    const carrierGoal = (goods: readonly number[]): number | undefined => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+      const shop = buildingAt(sim, BAKEHOUSE, 0, 0);
+      buildingAt(sim, HEADQUARTERS, 2, 0, [[WOOD, 5]]);
+      pileAt(sim, 5, 0, [[WHEAT, 5]]);
+      pinProducts(sim, settlerAt(sim, 7, 0, CARPENTER, shop), goods);
+      const porter = settlerAt(sim, 0, 0, CARRIER, shop);
+      plannerSystem(sim.world, ctxOf(sim));
+      return sim.world.tryGet(porter, MoveGoal)?.cell;
+    };
+    const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(8, 1) });
+    expect(carrierGoal([FOOD_SIMPLE])).toBe(cell(sim, 5, 0));
+    const idle = carrierGoal([]);
+    expect(idle === cell(sim, 2, 0) || idle === cell(sim, 5, 0)).toBe(false);
+  });
+
   it('a bound CARRIER hauls the finished output out once the inputs are covered', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
     // Input slot full (10/10), a finished plank waiting - the carrier's next trip is the output run.
