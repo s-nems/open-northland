@@ -187,9 +187,11 @@ function gatedOperators(
  * Whether a workshop has nothing worth making: it has no craft sink (the profile's craft plans) and sows
  * no fields, every product has supply lines, and each lies at its glut line, or, once its crew has gone,
  * none is short yet. A product without supply lines keeps the crew on, as does a type with no product at
- * all. A farm never rests, since a resting farm loses its sown fields. From {@link CORE_CREW_FROM_TICKS}
- * the first craftsman stays to keep his experience, unless a recipe input of the workshop runs short for
- * the sites ({@link inputsShortForSites}): then the scarce good goes to the sites, not to a glutted shelf.
+ * all. A farm never rests, since a resting farm loses its sown fields. While a recipe input of the
+ * workshop runs short for the sites ({@link inputsShortForSites}), at any clock, it rests once none of
+ * its products is short, read at the comfort line while it works: the scarce good goes to the sites, not
+ * to a shelf filling toward its glut. Otherwise, from {@link CORE_CREW_FROM_TICKS}, the first craftsman
+ * stays to keep his experience.
  */
 function productsRest(
   world: World,
@@ -203,8 +205,9 @@ function productsRest(
   if (farmWorkGood(world, ctx, building) !== null) return false;
   const products = productsOf(ctx, type);
   if (products.length === 0 || products.some((good) => seat.supply.lines(good) === undefined)) return false;
-  if (ctx.tick >= CORE_CREW_FROM_TICKS && !inputsShortForSites(ctx, seat, type, operators === 0))
-    return false;
+  if (inputsShortForSites(ctx, seat, type, operators === 0))
+    return products.every((good) => !seat.supply.isShort(good, operators > 0));
+  if (ctx.tick >= CORE_CREW_FROM_TICKS) return false;
   return operators === 0
     ? products.every((good) => !seat.supply.isShort(good, false))
     : products.every((good) => seat.supply.atGlut(good));

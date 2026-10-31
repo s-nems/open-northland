@@ -572,27 +572,33 @@ describe('workforce module - a workshop with nothing left to make', () => {
     }
   });
 
-  it('rests the mason from the core-crew time on while his pillars lie at glut and the sites run short of stone', () => {
+  it('rests the mason at any clock while the sites run short of stone and his pillars reach their comfort line', () => {
     const seat = workshopSeat();
     seat.apply(seat.decide());
     const content = workshopsContent();
     const hut = entityOfBuilding(seat.sim, MASON_HUT);
-    const tiers = (held: HeldStaff) => planOf(seat, content, hut, held, CORE_CREW_FROM_TICKS);
+    for (const tick of [0, CORE_CREW_FROM_TICKS]) {
+      const tiers = (held: HeldStaff) => planOf(seat, content, hut, held, tick);
+      stockAtLine(seat, [STONE], 'short', -1);
+      stockAtLine(seat, [PILLAR], 'comfort');
+      expect(tiers(alone)).toMatchObject({ operatorMin: 0, operatorTarget: 0 });
+      // Pillars under their comfort line keep him at work while the stone runs short.
+      stockAtLine(seat, [PILLAR], 'comfort', -1);
+      expect(tiers(alone)).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
+      // The empty hut waits until the pillars run short or the stone reaches its comfort line.
+      stockAtLine(seat, [PILLAR], 'short');
+      stockAtLine(seat, [STONE], 'comfort', -1);
+      expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 0, operatorTarget: 0 });
+      stockAtLine(seat, [PILLAR], 'short', -1);
+      expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
+    }
+    // From the core-crew time on, stone at its comfort line brings him back whatever the pillars.
     stockAtLine(seat, [PILLAR], 'glut');
-    stockAtLine(seat, [STONE], 'short', -1);
-    expect(tiers(alone)).toMatchObject({ operatorMin: 0, operatorTarget: 0 });
-    // Pillars under glut keep him at work, stone short or not.
-    stockAtLine(seat, [PILLAR], 'glut', -1);
-    expect(tiers(alone)).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
-    // The empty hut waits until the stone reaches its comfort line or the pillars run short.
-    stockAtLine(seat, [PILLAR], 'short');
-    stockAtLine(seat, [STONE], 'comfort', -1);
-    expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 0, operatorTarget: 0 });
     stockAtLine(seat, [STONE], 'comfort');
-    expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
-    stockAtLine(seat, [STONE], 'short', -1);
-    stockAtLine(seat, [PILLAR], 'short', -1);
-    expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
+    expect(planOf(seat, content, hut, crewOf(0), CORE_CREW_FROM_TICKS)).toMatchObject({
+      operatorMin: 1,
+      operatorTarget: 1,
+    });
   });
 
   it('keeps a mason hut on its opening run whatever lies in store', () => {
