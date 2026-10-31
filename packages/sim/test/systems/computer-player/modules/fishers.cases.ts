@@ -248,8 +248,11 @@ describe('workforce module - the fishers', () => {
     expect(storedFish(sim, hq)).toBeGreaterThan(0);
   });
 
-  it('employs no far fisher beside water within a trip, and hands him back once his water runs dry', () => {
-    expect(farPosts(fishingSeat(BUILDER_CAP + 6, [NEAR_SWARM, BAND_SWARM]))).toEqual([]);
+  it('employs no far fisher beside water within a trip, fished out or not, and hands him back once his water runs dry', () => {
+    const near = fishingSeat(BUILDER_CAP + 6, [NEAR_SWARM, BAND_SWARM]);
+    expect(farPosts(near)).toEqual([]);
+    drySwarms(near, [NEAR_SWARM]);
+    expect(farPosts(near)).toEqual([]);
     const sim = fishingSeat(4, [BAND_SWARM]);
     const [post] = farPosts(sim);
     if (post === undefined) throw new Error('expected a far fisher post');

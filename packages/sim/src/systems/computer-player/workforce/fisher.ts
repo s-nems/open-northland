@@ -92,8 +92,11 @@ export interface FishingPlan {
   /** How many fishers the first phase hires up to: every one of {@link FISHER_TARGET} for a seat with the
    *  `fishing` side (owner ruling: where fish exist a fisher catches a lot), one otherwise. */
   readonly firstHires: number;
-  /** The water of the seat's far fisher while no store has a stand: the fished shore nearest a store's door
-   *  within {@link FAR_FISHING_RADIUS_NODES}, or null. */
+  /** The water of the seat's far fisher while no swarm, fished out or not, lies within a trip of a store's
+   *  door: the fished shore nearest a store's door within {@link FAR_FISHING_RADIUS_NODES}, or null. A seat
+   *  that fished out its near water hires none (authored: on diamentowa_dolina, seed 7, far fishers hired
+   *  after the near swarms ran dry each brought 13-25 fish home in 45 minutes, and the summed population
+   *  at minute 60 fell 3%). */
   readonly far: FishingStand | null;
   /** The seat's fishers employed at a store, the far fisher among them. */
   readonly employed: readonly Entity[];
@@ -114,23 +117,23 @@ export function fishingPlan(
   const job = ctx.content.jobs.find((j) => isFisherJob(ctx.content, j.typeId))?.typeId;
   if (terrain === undefined || ground === null || job === undefined) return null;
   const index = contentIndex(ctx.content);
-  const stores: Entity[] = [];
+  const stores: { store: Entity; door: NodeId }[] = [];
   for (const e of ownedBuildings(world, player)) {
     if (!isBuilt(world, e)) continue;
     if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'storage') continue;
-    stores.push(e);
+    stores.push({ store: e, door: interactionCell(world, ctx, terrain, e) });
   }
   const standsWithin = (reach: FishingReach): FishingStand[] => {
     const found: FishingStand[] = [];
-    for (const e of stores) {
-      const door = interactionCell(world, ctx, terrain, e);
-      const shore = fishedShoreNear(world, ctx, terrain, player, e, door, reach);
-      if (shore !== null) found.push({ store: e, door, shore, trip: manhattan(terrain, door, shore) });
+    for (const { store, door } of stores) {
+      const shore = fishedShoreNear(world, ctx, terrain, player, store, door, reach);
+      if (shore !== null) found.push({ store, door, shore, trip: manhattan(terrain, door, shore) });
     }
     return found.sort((a, b) => a.trip - b.trip || a.store - b.store);
   };
   const stands = standsWithin(TRIP_REACH);
-  const far = stands.length === 0 ? (standsWithin(FAR_REACH)[0] ?? null) : null;
+  const waterNear = stores.some(({ door }) => swarmWithinTrip(world, terrain, door));
+  const far = stands.length === 0 && !waterNear ? (standsWithin(FAR_REACH)[0] ?? null) : null;
   const firstHires = seatHasSide(world, player, 'fishing') ? FISHER_TARGET : 1;
   const employed = ownedSettlers(world, player).filter(
     (e) => world.has(e, JobAssignment) && world.get(e, Settler).jobType === job,
@@ -212,12 +215,12 @@ function keepFlagsOnWater(
 }
 
 /**
- * The seat's one far fisher (owner ruling: a fisher needs no store by the water): while no store has a
- * stand, a man employed at the store nearest fished water within {@link FAR_FISHING_RADIUS_NODES} fishes
+ * The seat's one far fisher (owner ruling: a fisher needs no store by the water): while the plan names far
+ * water, a man employed at the store nearest fished water within {@link FAR_FISHING_RADIUS_NODES} fishes
  * from a flag beside it and walks every catch home. Employed rather than flag-bound: a flag fisher drops
  * his catch at the flag for the store's carriers, who lift piles only near their store, so far off it
  * lay where it fell, only the housewives walking out for it. The others are handed back as builders, as
- * is he once a store has a stand or his water runs dry; a man mid-action is left alone. False when the
+ * is he once the plan names none or his water runs dry; a man mid-action is left alone. False when the
  * spare force ran out, which ends the phase's hiring.
  */
 function keepFarFisher(
@@ -343,6 +346,21 @@ function shoreWalk(
   });
   held.set(store, found);
   return found;
+}
+
+/** Whether a swarm, fished out or not, has its shore within {@link FISHING_TRIP_RADIUS_NODES} of `door`. */
+function swarmWithinTrip(world: World, terrain: TerrainGraph, door: NodeId): boolean {
+  const at = terrain.coordsOf(door);
+  for (const e of fishSwarmsNearNode(
+    world,
+    at.x,
+    at.y,
+    FISHING_TRIP_RADIUS_NODES + FISH_SHORE_SEARCH_RADIUS,
+  )) {
+    const shore = world.get(e, FishSwarm).shore;
+    if (shore !== null && manhattan(terrain, door, shore) <= FISHING_TRIP_RADIUS_NODES) return true;
+  }
+  return false;
 }
 
 /** Whether a swarm holding fish has its shore inside a fisher's shore search from `from`, which walks
