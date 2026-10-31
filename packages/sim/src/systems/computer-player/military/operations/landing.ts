@@ -30,7 +30,7 @@ import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf } from '../../difficulty.js';
 import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
-import { LANDING_FLEET_MIN_SHIPS } from '../../workforce/craft.js';
+import { landingFleetShips } from '../../workforce/craft.js';
 import { campaignObjective } from '../campaign.js';
 import { believedDefendingPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
@@ -39,8 +39,8 @@ import { unitPoints } from '../points.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import {
   believedTowers,
-  fighterPointsNear,
   nodeOfEntity,
+  RAID_DEFENCE_RADIUS_NODES,
   towerInReach,
   visibleFighters,
 } from './raid-target.js';
@@ -52,6 +52,10 @@ import {
 
 const SECONDS_PER_MINUTE = 60;
 
+/** Owner ruling: ships are spent only on a big landing, never on a small band. A landing sails with the
+ *  seat's whole landing fleet ({@link landingFleetShips}) loaded to at least this share of its seats, in
+ *  percent, the commanders' included: full, or as near as the army at home allows. */
+export const LANDING_LOAD_PCT = 90;
 /** How long after a landing ends before the next one forms. */
 export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most a landing waits for its men to walk to their ships and board. */
@@ -193,16 +197,20 @@ function abortReason(env: OperationEnv, op: LandingOperation): OperationEndReaso
   return null;
 }
 
-/** Whether the enemy fighters the seat sees near `shore` weigh at least the men aboard the ships still
- *  out. Costs the enemies' fighters. */
-function outmatchedAt(env: OperationEnv, op: LandingOperation, shore: HalfCellNode): boolean {
+/** Whether the enemy fighters the seat sees near any of the ships' shores, each counted once, weigh at
+ *  least the men aboard: the ships moor one by one, so the first to arrive judges for the whole wave.
+ *  Costs the enemies' fighters. */
+function outmatchedAshore(env: OperationEnv, op: LandingOperation): boolean {
   const { world, ctx, seat } = env;
   let own = 0;
   for (const e of op.members) own += unitPoints(world, ctx, e);
   let enemy = 0;
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
-    enemy += fighterPointsNear(visibleFighters(world, ctx, seat, other), shore);
+    for (const f of visibleFighters(world, ctx, seat, other)) {
+      if (op.ships.some((ship) => nodeManhattan(f.at, ship.shore) <= RAID_DEFENCE_RADIUS_NODES))
+        enemy += f.points;
+    }
   }
   return enemy > 0 && enemy >= own;
 }
@@ -243,7 +251,7 @@ function forming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
 
 /**
  * Sailing out: a ship moored at its shore sets every man but its commander ashore and sails home, unless
- * nobody is ashore yet and the enemy the seat sees there outweighs the men aboard, which turns the whole
+ * nobody is ashore yet and the enemy the seat sees at the shores outweighs the men aboard, which turns the whole
  * landing back. A ship that stopped short is sent again. Once no ship is out the landed men fight.
  */
 function sailing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
@@ -260,7 +268,7 @@ function sailing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
     const state = shipState(world, ship);
     if (state === undefined) continue;
     if (mooredAt(state, ship.shore)) {
-      if (op.landed === 0 && outmatchedAt(env, op, ship.shore)) return withdraw(env, op, 'outmatched');
+      if (op.landed === 0 && outmatchedAshore(env, op)) return withdraw(env, op, 'outmatched');
       const commander = vehicleCommander(state);
       for (const seat of vehiclePassengers(state)) {
         if (seat.entity === commander || !world.isAlive(seat.entity)) continue;
@@ -393,9 +401,9 @@ function step(env: OperationEnv, op: LandingOperation): readonly PlayerCommand[]
 
 /**
  * A landing when the seat's posture attacks, its peace is over, its rival lies over the sea
- * ({@link seaRouteOf}) and is an enemy, and the free men on its home land fill at least
- * {@link LANDING_FLEET_MIN_SHIPS} of its free ships, whose men weigh the posture's launch ratio of what the
- * seat believes defends the rival. The men fill the ships in id order, the first one each ship takes
+ * ({@link seaRouteOf}) and is an enemy, its whole landing fleet lies moored free and the free men on its
+ * home land load it to {@link LANDING_LOAD_PCT}, weighing the posture's launch ratio of what the seat
+ * believes defends the rival. The men fill the ships in id order, the first one each ship takes
  * holding its helm; each ship docks at its own shore point ({@link landingShores}).
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
@@ -404,23 +412,25 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   if (ratio === null || ctx.tick < landingFromTick(world, seat)) return null;
   const route = seaRouteOf(world, ctx, seat);
   if (route === null) return null;
-  const ships = freeShips(env, route.home);
-  if (ships.length < LANDING_FLEET_MIN_SHIPS) return null;
+  const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
+  const ships = freeShips(env, route.home).slice(0, fleet);
+  if (ships.length < fleet) return null;
   const owner = route.headquarters.owner;
   if (diplomacyStance(world, seat, owner) !== 'enemy') return null;
   const men = free.filter((e) => {
     const node = standingNode(world, terrain, e);
     return node !== null && terrain.componentOf(node) === route.home && !busy(world, e);
   });
+  let capacity = 0;
+  for (const ship of ships) capacity += world.get(ship, Vehicle).passengers.length;
+  if (men.length * PERCENT < capacity * LANDING_LOAD_PCT) return null;
   const crews: { readonly ship: Entity; readonly men: readonly Entity[] }[] = [];
   let next = 0;
   for (const ship of ships) {
-    if (next >= men.length) break;
     const seats = world.get(ship, Vehicle).passengers.length;
     crews.push({ ship, men: men.slice(next, next + seats) });
     next += seats;
   }
-  if (crews.length < LANDING_FLEET_MIN_SHIPS) return null;
   const wave = crews.flatMap((crew) => crew.men);
   let points = 0;
   for (const e of wave) points += unitPoints(world, ctx, e);

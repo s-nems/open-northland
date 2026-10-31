@@ -150,7 +150,11 @@ export interface OperationView {
   } | null;
   /** A landing's ships and where each is on its voyage, head count at the start, men set ashore. */
   readonly landing: {
-    readonly ships: readonly { readonly vehicle: Entity; readonly leg: LandingLeg }[];
+    readonly ships: readonly {
+      readonly vehicle: Entity;
+      readonly leg: LandingLeg;
+      readonly shore: { readonly hx: number; readonly hy: number };
+    }[];
     readonly startShips: number;
     readonly startMen: number;
     readonly landed: number;
@@ -184,7 +188,11 @@ export function seatOperationsOf(world: World, seat: number): readonly Operation
     landing:
       op.kind === 'landing'
         ? {
-            ships: op.ships.map((ship) => ({ vehicle: ship.vehicle, leg: ship.leg })),
+            ships: op.ships.map((ship) => ({
+              vehicle: ship.vehicle,
+              leg: ship.leg,
+              shore: { hx: ship.shore.hx, hy: ship.shore.hy },
+            })),
             startShips: op.startShips,
             startMen: op.startMen,
             landed: op.landed,
