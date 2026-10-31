@@ -79,6 +79,11 @@ single spaces, a help text's line breaks as `\n`), our `to` text and a Polish `r
 only while it still reads `from`, and an entry the run did not apply fails the pipeline the same way,
 so a data release that fixes the text forces its removal.
 
+A `goodsHelp` / `housesHelp` entry quotes as little as it can: its `from` is a phrase that occurs exactly
+once in the text, kept as short as that allows, and `to` replaces that phrase alone. Several entries may
+name one id; they apply in file order, each to the text the one before left, and a phrase that is
+missing or occurs twice leaves its entry unapplied. Only a text rewritten whole quotes the whole text.
+
 A map-string entry may use `"from": null` to add a missing id in an existing language table. It applies
 only if that id is absent; an occupied id, even one already reading `to`, fails the correction check.
 It never creates a missing language table. GUI table entries still require an existing `from` string.

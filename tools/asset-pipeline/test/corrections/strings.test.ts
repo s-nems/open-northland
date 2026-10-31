@@ -134,6 +134,67 @@ const MAP_ENTRY = {
   reason: 'test',
 };
 
+describe('help text corrections', () => {
+  const ID = 3;
+  const TEXT = 'Made from gold. Carried by men. Gold is rare.';
+  const entry = (from: string, to: string) => ({
+    lang: 'eng',
+    table: 'goodsHelp',
+    id: ID,
+    from,
+    to,
+    reason: 'test',
+  });
+  let temp: GameOutTemp;
+
+  const corrected = async (
+    entries: unknown,
+    text = TEXT,
+  ): Promise<{ text: string | undefined; corrections: StringCorrections }> => {
+    const file = join(temp.root, 'tables.json');
+    await writeFile(file, JSON.stringify(entries));
+    const corrections = await loadStringCorrections(file);
+    return { text: corrections.correct('eng', 'goodsHelp', { [ID]: text })[ID], corrections };
+  };
+
+  beforeEach(async () => {
+    temp = await makeGameOutTemp('help-corrections');
+  });
+  afterEach(() => temp.cleanup());
+
+  it('replaces a phrase alone, and several entries for one id apply in file order', async () => {
+    const { text, corrections } = await corrected([
+      entry('from gold', 'from coins'),
+      entry('coins. Carried', 'coins. Worn'),
+      entry('Gold is rare.', ''),
+    ]);
+    expect(text).toBe('Made from coins. Worn by men. ');
+    expect(() => corrections.assertApplied()).not.toThrow();
+  });
+
+  it('refuses a phrase that occurs twice, leaving the text alone', async () => {
+    const { text, corrections } = await corrected([entry('old', 'new')]);
+    expect(text).toBe(TEXT);
+    expect(corrections.unapplied()[0]?.why).toContain('occurs 2 times');
+    expect(() => corrections.assertApplied()).toThrow('occurs 2 times');
+  });
+
+  it('fails a missing phrase and keeps applying the entries after it', async () => {
+    const { text, corrections } = await corrected([entry('silver', 'tin'), entry('Carried', 'Worn')]);
+    expect(text).toBe('Made from gold. Worn by men. Gold is rare.');
+    expect(corrections.unapplied().map(({ entry: e }) => e.from)).toEqual(['silver']);
+  });
+
+  it('rejects an empty phrase, and still matches any other table whole', async () => {
+    await expect(corrected([entry('', 'x')])).rejects.toThrow('must name a phrase');
+    const file = join(temp.root, 'tables.json');
+    await writeFile(file, JSON.stringify([{ ...entry('gold', 'coins'), table: 'goods' }]));
+    const corrections = await loadStringCorrections(file);
+    expect(corrections.correct('eng', 'goods', { [ID]: TEXT })[ID]).toBe(TEXT);
+    expect(corrections.unapplied()).toHaveLength(1);
+  });
+});
+
 describe('map string corrections', () => {
   let temp: GameOutTemp;
   let file: string;

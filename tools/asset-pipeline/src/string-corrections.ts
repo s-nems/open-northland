@@ -16,7 +16,8 @@ export const MAP_STRING_CORRECTIONS_FILE = fileURLToPath(
   new URL('../corrections/strings/maps.json', import.meta.url),
 );
 
-/** One display string replaced while it reads `from`, or a missing map string added with `from: null`. */
+/** One display string replaced while it reads `from`, a phrase of a help text, or a missing map string
+ *  added with `from: null`. */
 export interface StringCorrection {
   /** The text folder, e.g. `rus`. */
   readonly lang: string;
@@ -53,6 +54,8 @@ interface CorrectionKind {
   readonly langs: readonly string[];
   /** Why a scope value is invalid, or undefined when it is valid. */
   checkScope(value: string): string | undefined;
+  /** This scope's `from` is a phrase of the text rather than the whole text. */
+  isPhrased(scope: string): boolean;
 }
 
 const CORRECTABLE_TABLES: readonly string[] = [...EXPORTED_TABLES, ...OBJECT_HELP_TABLES];
@@ -62,13 +65,22 @@ const TABLE_KIND: CorrectionKind = {
   langs: GUI_LANGS,
   checkScope: (table) =>
     CORRECTABLE_TABLES.includes(table) ? undefined : `table must be one of ${CORRECTABLE_TABLES.join(', ')}`,
+  isPhrased: (table) => (OBJECT_HELP_TABLES as readonly string[]).includes(table),
 };
 
 const MAP_KIND: CorrectionKind = {
   scopeKey: 'map',
   langs: MAP_TEXT_LANGUAGES,
   checkScope: (map) => (map.trim() === '' ? 'map must name a map id' : undefined),
+  isPhrased: () => false,
 };
+
+/** How many times `phrase` occurs in `text`, overlaps included. */
+function occurrences(text: string, phrase: string): number {
+  let count = 0;
+  for (let at = text.indexOf(phrase); at !== -1; at = text.indexOf(phrase, at + 1)) count += 1;
+  return count;
+}
 
 /** Loads the display-table corrections at `path`; a missing file holds none, a malformed one throws. */
 export function loadStringCorrections(path: string): Promise<StringCorrections> {
@@ -121,19 +133,16 @@ async function loadCorrections(path: string, kind: CorrectionKind): Promise<Stri
       const corrected: Record<number, string> = { ...byId };
       for (const entry of list) {
         if (entry.lang !== lang || entry.scope !== scope) continue;
-        const actual = byId[entry.id];
-        const matches = entry.from === null ? !Object.hasOwn(byId, entry.id) : actual === entry.from;
-        if (matches) {
-          corrected[entry.id] = entry.to;
+        const actual = corrected[entry.id];
+        const fixed = kind.isPhrased(scope)
+          ? phraseFixed(entry, actual)
+          : wholeFixed(entry, actual, Object.hasOwn(byId, entry.id));
+        if (typeof fixed === 'string') {
+          corrected[entry.id] = fixed;
           applied.add(entry);
         } else {
           applied.delete(entry);
-          failures.set(
-            entry,
-            actual === undefined
-              ? 'the table has no such id'
-              : `the text is now ${JSON.stringify(actual)}; check whether the mod now fixes it`,
-          );
+          failures.set(entry, fixed.why);
         }
       }
       return corrected;
@@ -149,6 +158,33 @@ async function loadCorrections(path: string, kind: CorrectionKind): Promise<Stri
       }
     },
   };
+}
+
+/** Why an entry does not apply to the text it read. */
+interface Refusal {
+  readonly why: string;
+}
+
+function textChanged(actual: string | undefined): Refusal {
+  return {
+    why:
+      actual === undefined
+        ? 'the table has no such id'
+        : `the text is now ${JSON.stringify(actual)}; check whether the mod now fixes it`,
+  };
+}
+
+function wholeFixed(entry: StringCorrection, actual: string | undefined, present: boolean): string | Refusal {
+  return (entry.from === null ? !present : actual === entry.from) ? entry.to : textChanged(actual);
+}
+
+/** `actual` with the entry's phrase swapped; earlier entries for the id have already changed it. */
+function phraseFixed({ from, to }: StringCorrection, actual: string | undefined): string | Refusal {
+  if (actual === undefined || from === null) return textChanged(actual);
+  const count = occurrences(actual, from);
+  if (count === 0) return textChanged(actual);
+  if (count > 1) return { why: `the phrase occurs ${count} times in ${JSON.stringify(actual)}` };
+  return actual.replace(from, () => to);
 }
 
 function parseJson(path: string, text: string): unknown {
@@ -186,8 +222,10 @@ function parseStringCorrections(path: string, kind: CorrectionKind, raw: unknown
       return at('"from" and "to" must be two different strings');
     }
     if (typeof reason !== 'string' || reason.trim() === '') return at('reason must say why the fix exists');
+    const phrased = kind.isPhrased(scope);
+    if (phrased && from === '') at('"from" must name a phrase of the text');
     const key = `${lang}/${scope}/${id}`;
-    if (seen.has(key)) at(`a second entry for ${key}`);
+    if (!phrased && seen.has(key)) at(`a second entry for ${key}`);
     seen.add(key);
     return { lang, scope, id, from, to, reason };
   });
