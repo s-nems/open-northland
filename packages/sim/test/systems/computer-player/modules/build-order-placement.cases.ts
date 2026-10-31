@@ -805,6 +805,31 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(pulledBy(EAST, WEST)).toBeGreaterThan(0);
   });
 
+  it('keeps a front-affinity placement by the base while enemy seats surround it', () => {
+    const HQ_AT = { x: 128, y: 128 };
+    const ENEMY_HQS = [
+      { x: HQ_AT.x - 80, y: HQ_AT.y },
+      { x: HQ_AT.x, y: HQ_AT.y - 80 },
+      { x: HQ_AT.x + 80, y: HQ_AT.y },
+    ];
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    placeHq(sim, HQ_AT.x, HQ_AT.y);
+    for (const [i, at] of ENEMY_HQS.entries()) {
+      const owner = SEAT + 1 + i;
+      sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: owner, tribes: [VIKING] });
+      sim.enqueueSetup({ kind: 'placeBuilding', buildingType: HQ_TYPE, ...at, tribe: VIKING, owner });
+    }
+    // The computer seat's first decision scans the map brief, every seat's start in it.
+    makeAiSeat(sim, SEAT, { houseBuild: false });
+    sim.step();
+    const spot = firstCommandOf(sim, [
+      { kind: 'place', building: 'work_well_00', count: 1, near: [{ kind: 'front' }] },
+    ]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement');
+    // The base's own search ring, not a front edge pushed toward the nearest of them.
+    expect(Math.abs(spot.x - HQ_AT.x) + Math.abs(spot.y - HQ_AT.y)).toBeLessThan(FRONT_EDGE_STEP_NODES);
+  });
+
   it('searches from the base when the affinity-pulled fan finds no room, so a wide settlement never stalls on its far side', () => {
     // Grass west of the water line, water east of it; a home stands far out on the water side (forced) and
     // the enemy beyond it, so the front-pulled centre lands east of the home and its fan never reaches the

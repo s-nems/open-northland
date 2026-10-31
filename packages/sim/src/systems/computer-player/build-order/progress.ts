@@ -32,7 +32,7 @@ import {
 import { grassScarce } from './grass-reserve.js';
 import { housingShort } from './housing.js';
 import { unservedAnchor } from './placement.js';
-import { militaryWaits } from './seat-order.js';
+import { militaryWaits, seatDefenceFirst } from './seat-order.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
 
 /** `skip` (not expressible in this content set, nothing left to collect, enough of it stored, or a
@@ -255,7 +255,8 @@ export function entryStatus(
 
 /** Whether an unmet step still holds its line: a placement of one more workshop while the ones standing
  *  lack crews ({@link copyAwaitsCrews}), or a placement, collector or tower ring on its `holdUntil`
- *  ({@link StepHold}) while the seat has no standing building of the id at that tier or above, or has not
+ *  ({@link StepHold}) while the seat has no standing building of the id at that tier or above (no site
+ *  either for a placed hold, while its defence does not come first), or has not
  *  discovered the good, while it still could and `order` may still raise that building or one making the
  *  good ({@link orderMayRaise}), while it counts fewer settlers than the hold names, while its military
  *  deadline lies further off than the lead and its defence does not come first, or while any of an `all`
@@ -327,6 +328,13 @@ function holdOpen(
         if (!counted.has(world.get(e, Building).buildingType)) continue;
         if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
       }
+      return reach?.house(type.typeId) !== false && mayRaise(type.typeId);
+    }
+    case 'placedUnlessDefending': {
+      const type = buildingTypeByContentId(ctx.content, hold.building);
+      if (type === undefined || seatDefenceFirst(world, ctx, player)) return false;
+      const counted = countedTiers(ctx.content, type, undefined);
+      if (owned.some((e) => counted.has(world.get(e, Building).buildingType))) return false;
       return reach?.house(type.typeId) !== false && mayRaise(type.typeId);
     }
     case 'good': {

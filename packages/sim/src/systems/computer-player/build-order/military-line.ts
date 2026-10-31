@@ -42,15 +42,25 @@ export const MILITARY_LINE: BuildLine = {
     },
     // The ring runs as a lane, so no later step of the line ever waits on it. Owner ruling: a tower rises at
     // the upper tier once the seat may raise it, the cheap lower one only while that tier is locked or
-    // unsourced, or where the attacks come early (`./direct-tier.ts`).
+    // unsourced, or where the attacks come early (`./direct-tier.ts`). Owner ruling: the barracks goes up
+    // before the ring, since it shoots like a tower and trains the army, so the ring waits for its site
+    // past its own lead; a seat whose defence comes first raises its towers at once, the barracks beside
+    // them.
     {
       kind: 'towerCoverage',
       building: 'tower_00',
       lane: true,
-      holdUntil: { kind: 'deadline', leadTicks: UPPER_TOWER_LEAD_TICKS },
+      holdUntil: {
+        kind: 'all',
+        holds: [
+          { kind: 'deadline', leadTicks: UPPER_TOWER_LEAD_TICKS },
+          { kind: 'placedUnlessDefending', building: 'barracks' },
+        ],
+      },
     },
-    // On the settlement's edge toward the nearest enemy, where the attacks come from; the barracks also
-    // holds the line in defence.
+    // On the settlement's edge toward the nearest enemy, where the attacks come from, or by the base while
+    // enemies surround the seat (`./front.ts`); the barracks also holds the line in defence. Owner ruling:
+    // it opens at its own lead, the economy growing until then.
     {
       kind: 'place',
       building: 'barracks',

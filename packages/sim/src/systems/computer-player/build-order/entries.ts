@@ -13,7 +13,7 @@ import { MILITARY_LINE } from './military-line.js';
  *  each kind to a node. `resource` is the good's nearest live deposit, or the seat's store holding the
  *  most of the good once none stands. `front` is the settlement's own edge toward the nearest enemy seat,
  *  its headquarters before any other building, and toward the map centre while no enemy has a building
- *  standing. `shore` is the nearest water beside the seat's land a ship can sail, a body that also
+ *  standing; the base itself while enemies surround the seat (`./front.ts`). `shore` is the nearest water beside the seat's land a ship can sail, a body that also
  *  touches the enemy's continent first; unlike the others it is a hard rule, the spot landing close
  *  enough to that water for the workshop's ship yard. */
 export type PlacementAffinity =
@@ -24,15 +24,16 @@ export type PlacementAffinity =
   | { readonly kind: 'shore' };
 
 /** What a step waits for while its line holds on it: a built building of the id (at that tier or
- *  above, a rising site not counting), a good the seat has discovered how to make, the seat counting
- *  `count` settlers, the clock reaching `leadTicks` before the seat's military deadline
- *  (`../military/deadline.ts`), which its defence coming first lifts at once, the clock reaching `tick`,
- *  or every one of `holds`. A
+ *  above, a rising site not counting), a placed one (its site counting) unless the seat's defence comes
+ *  first, a good the seat has discovered how to make, the seat counting `count` settlers, the clock
+ *  reaching `leadTicks` before the seat's military deadline (`../military/deadline.ts`), which its
+ *  defence coming first lifts at once, the clock reaching `tick`, or every one of `holds`. A
  *  hold the seat can never meet, a building or good missing from the content, a discovery it can never
  *  make, or a building (or the good's maker) no unskipped step of the order raises, lets the step act
  *  (`./progress.ts`); within `all` only that hold drops out. */
 export type StepHold =
   | { readonly kind: 'built'; readonly building: string }
+  | { readonly kind: 'placedUnlessDefending'; readonly building: string }
   | { readonly kind: 'good'; readonly good: string }
   | { readonly kind: 'settlers'; readonly count: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number }

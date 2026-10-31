@@ -24,7 +24,8 @@ const BARRACKS_SITE_TICKS = minutesToTicks(7);
 
 /** How long before its deadline the seat places its barracks, and its defence lines go first ahead of a
  *  forecast attack (`build-order/seat-order.ts`): the barracks then stands about
- *  {@link BARRACKS_STANDS_BEFORE_TICKS} ahead of it. */
+ *  {@link BARRACKS_STANDS_BEFORE_TICKS} ahead of it, and the first tower ring follows its site
+ *  (`build-order/military-line.ts`). */
 export const BARRACKS_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS + BARRACKS_SITE_TICKS;
 
 /** How long before its deadline the seat raises its first tower ring (measured, owner ruling: towers

@@ -32,7 +32,7 @@ import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
 import { workedDeposit } from '../workforce/collectors/anchor.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, overflowBuildReachNodes } from './entries.js';
-import { scriptedFrontLine } from './front.js';
+import { enemiesSurround, scriptedFrontLine } from './front.js';
 import { grassBound } from './grass-reserve.js';
 import { seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
@@ -79,6 +79,8 @@ function affinityNode(
     case 'mapCentre':
       return mapCentreNode(terrain);
     case 'front':
+      // With enemies all around the seat no side is its front, so the pull stays by the base.
+      if (enemiesSurround(world, player, anchor)) return anchor;
       // The pull points down the road the attacks come by rather than at the middle of the map.
       return frontEdgeNode(
         world,

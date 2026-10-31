@@ -1,4 +1,4 @@
-import { Building, mapBriefOf } from '../../../components/index.js';
+import { Building, diplomacyStance, mapBriefOf } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import { intSqrt } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -27,6 +27,14 @@ export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
  *  buildings, since a building the economy places beyond the line when nothing fits behind it would
  *  otherwise walk the line out step by step (on mroczny_las 75 rows north of the base by minute 60). */
 export const FRONT_LINE_DEPTH_NODES = 16;
+
+/** How far ahead of the seat's farthest building toward its nearest rival that rival's line stands at
+ *  least, and the steps it moves out by, in world-metric nodes (authored, owner ruling: the line stands
+ *  forward so the town grows behind it). The farthest building then stands 10 to 17 nodes behind the
+ *  line, inside the towers' planning circle (`TOWER_DEFENCE_RADIUS_NODES`, 19), where a rounding to whole
+ *  {@link FRONT_LINE_DEPTH_NODES} left it 0 to 16 behind. */
+export const RIVAL_LINE_ADVANCE_NODES = 10;
+const RIVAL_LINE_STEP_NODES = 8;
 
 /** How many rows of tower slots a seat whose defence comes first holds on its front, the second half a
  *  spacing behind the first and staggered (owner ruling: the defence rings densely on the attack side). */
@@ -94,8 +102,9 @@ export interface FrontLine {
   slots(spacingNodes: number, rows: number): HalfCellNode[];
 }
 
-/** {@link frontLine} toward where `player`'s forecast attacks come from ({@link forecastAttackOrigin}),
- *  else toward its nearest believed enemy building; null with neither, or without a base. */
+/** {@link frontLine} toward where `player`'s forecast attacks come from ({@link scriptedFrontLine}),
+ *  else toward its nearest believed enemy building; null with neither, while {@link enemiesSurround} the
+ *  seat, or without a base. */
 export function seatFrontLine(
   world: World,
   ctx: SystemContext,
@@ -104,11 +113,57 @@ export function seatFrontLine(
 ): FrontLine | null {
   const base = baseNode(world, ctx, player);
   if (base === null) return null;
-  const forecast = forecastAttackOrigin(world, ctx, player);
-  if (forecast !== null)
-    return frontLine(world, ctx, owned, base, forecast, true, startBuildingNodes(world, ctx, player));
+  const scripted = scriptedLineFrom(world, ctx, player, owned, base);
+  if (scripted !== null) return scripted;
+  if (enemiesSurround(world, player, base)) return null;
   const rival = nearestEnemyBuilding(world, ctx, player, base);
   return rival === null ? null : frontLine(world, ctx, owned, base, rival.node, false);
+}
+
+/** How far apart, as the cosine in percent, the bearings of two enemy groups from a seat's base lie for it
+ *  to hold no single front (authored): 71, about 45 degrees. bogata_kotlina's 1v1v1v1 seats see their two
+ *  neighbours 59 to 120 degrees apart; magiczny_las's seats see the map's own guardians in the middle at
+ *  most 26 degrees off the enemy team's bearing. */
+const SPLIT_FRONT_MAX_COSINE_PCT = 71;
+
+/** Fixed-point scale of a unit bearing in {@link enemiesSurround}. */
+const BEARING_UNIT = 1024;
+
+/**
+ * Whether `player`'s enemies come at its `base` from several sides rather than one (owner ruling: with
+ * enemies on every side, a front toward one of them leaves the others' side open). The enemy seat starts
+ * of the map brief fall into groups, a seat joining the first group whose first member does not hold it as
+ * enemy, so a team marches as one; the seat holds no single front while two groups' summed unit bearings
+ * lie more than {@link SPLIT_FRONT_MAX_COSINE_PCT} apart. Integer px arithmetic, byte-identical across
+ * engines.
+ */
+export function enemiesSurround(world: World, player: number, base: HalfCellNode): boolean {
+  const groups: { readonly lead: number; x: number; y: number }[] = [];
+  for (const seat of mapBriefOf(world)?.seats ?? []) {
+    if (seat.player === player || diplomacyStance(world, player, seat.player) !== 'enemy') continue;
+    const bearing = unitBearing((seat.hx - base.hx) * NODE_STEP_PX, (seat.hy - base.hy) * HALF_ROW_PX);
+    if (bearing === null) continue;
+    let group = groups.find((g) => diplomacyStance(world, g.lead, seat.player) !== 'enemy');
+    if (group === undefined) {
+      group = { lead: seat.player, x: 0, y: 0 };
+      groups.push(group);
+    }
+    group.x += bearing.x;
+    group.y += bearing.y;
+  }
+  const bearings = groups.flatMap((g) => unitBearing(g.x, g.y) ?? []);
+  return bearings.some((a, i) =>
+    bearings
+      .slice(i + 1)
+      .some((b) => (a.x * b.x + a.y * b.y) * 100 < SPLIT_FRONT_MAX_COSINE_PCT * BEARING_UNIT * BEARING_UNIT),
+  );
+}
+
+/** `(x, y)` scaled to {@link BEARING_UNIT} length, truncating; null for the zero vector. */
+function unitBearing(x: number, y: number): { x: number; y: number } | null {
+  const length = intSqrt(x * x + y * y);
+  if (length === 0) return null;
+  return { x: Math.trunc((x * BEARING_UNIT) / length), y: Math.trunc((y * BEARING_UNIT) / length) };
 }
 
 /** The {@link FrontLine} toward `player`'s forecast attacks only, or null for none: the one the seat's
@@ -120,10 +175,26 @@ export function scriptedFrontLine(
   owned: readonly Entity[],
 ): FrontLine | null {
   const base = baseNode(world, ctx, player);
-  const forecast = base === null ? null : forecastAttackOrigin(world, ctx, player);
-  return base === null || forecast === null
-    ? null
-    : frontLine(world, ctx, owned, base, forecast, true, startBuildingNodes(world, ctx, player));
+  return base === null ? null : scriptedLineFrom(world, ctx, player, owned, base);
+}
+
+/** The line toward `player`'s {@link forecastAttackOrigin}, or null when none is forecast or it lies
+ *  within {@link FRONT_LINE_DEPTH_NODES} of `base`: a line ahead of the base would then stand beyond the
+ *  attacks it faces (krwawa_rzeka's forecast attacks all aim at the seat's own base). */
+function scriptedLineFrom(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  base: HalfCellNode,
+): FrontLine | null {
+  const forecast = forecastAttackOrigin(world, ctx, player);
+  if (forecast === null) return null;
+  const dx = (forecast.hx - base.hx) * NODE_STEP_PX;
+  const dy = (forecast.hy - base.hy) * HALF_ROW_PX;
+  const depthPx = FRONT_LINE_DEPTH_NODES * NODE_STEP_PX;
+  if (dx * dx + dy * dy <= depthPx * depthPx) return null;
+  return frontLine(world, ctx, owned, base, forecast, true, startBuildingNodes(world, ctx, player));
 }
 
 /** The anchor nodes of `player`'s start buildings other than towers, from the map brief. */
@@ -145,8 +216,9 @@ function baseNode(world: World, ctx: SystemContext, player: number): HalfCellNod
 
 /**
  * The line across the heading from `base` to `origin`, {@link FRONT_LINE_DEPTH_NODES} ahead of the base,
- * or as many whole depths further as the farthest of `depthFrom` stands, by default `owned` other than
- * its towers; null when the two coincide. The slots span the width of `owned`.
+ * or as many whole depths further as the farthest of `depthFrom` stands; null when the two coincide.
+ * Without `depthFrom`, toward a rival, it stands {@link RIVAL_LINE_ADVANCE_NODES} past the farthest of
+ * `owned` other than its towers, rounded out to whole steps. The slots span the width of `owned`.
  * Integer px arithmetic with truncating division, byte-identical across engines.
  */
 export function frontLine(
@@ -179,7 +251,14 @@ export function frontLine(
     widest = Math.max(widest, Math.abs(across(node.hx, node.hy)));
   }
   for (const node of depthFrom ?? []) farthest = Math.max(farthest, ahead(node.hx, node.hy));
-  const depthPx = stepPx * Math.max(1, Math.ceil(farthest / stepPx));
+  const rivalStepPx = RIVAL_LINE_STEP_NODES * NODE_STEP_PX;
+  const depthPx =
+    depthFrom === undefined
+      ? Math.max(
+          stepPx,
+          rivalStepPx * Math.ceil((farthest + RIVAL_LINE_ADVANCE_NODES * NODE_STEP_PX) / rivalStepPx),
+        )
+      : stepPx * Math.max(1, Math.ceil(farthest / stepPx));
   return {
     scripted,
     beyond: (x, y) => ahead(x, y) > depthPx,

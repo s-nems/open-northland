@@ -20,6 +20,7 @@ import {
 import {
   aiSim,
   BAKERY_TYPE,
+  BARRACKS_TYPE,
   ctxOf,
   HQ_TYPE,
   HQ_X,
@@ -84,6 +85,40 @@ describe('build order progress', () => {
     const strategy = sim.world.mut(carrier, ComputerStrategy);
     strategy.military = { ...strategy.military, posture: 'defend', evidence: ['underAttack'] };
     expect(held(sim, towersDue(TOWER_LEAD_TICKS))).toBe(false);
+  });
+
+  it('holds the tower ring until the barracks is placed, unless the defence comes first', () => {
+    const barracks: BuildOrderEntry = { kind: 'place', building: 'barracks', count: 1 };
+    const ring: BuildOrderEntry = {
+      kind: 'towerCoverage',
+      building: 'tower_01',
+      lane: true,
+      holdUntil: { kind: 'placedUnlessDefending', building: 'barracks' },
+    };
+    const order: BuildOrder = { lines: [{ id: 'military', steps: [ring, barracks] }], priority: [] };
+    const sim = seat();
+    expect(held(sim, ring, order)).toBe(true);
+
+    const defending = seat();
+    const carrier = aiControlEntity(defending.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI seat');
+    const strategy = defending.world.mut(carrier, ComputerStrategy);
+    strategy.military = { ...strategy.military, posture: 'defend', evidence: ['underAttack'] };
+    expect(held(defending, ring, order)).toBe(false);
+
+    // A barracks site is enough: the towers follow while it rises.
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BARRACKS_TYPE,
+      x: HQ_X + 12,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+      force: true,
+    });
+    sim.step();
+    expect(held(sim, ring, order)).toBe(false);
   });
 
   it('lets a step held on a building act once the order can never raise that building', () => {
