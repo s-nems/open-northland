@@ -11,10 +11,11 @@ import {
   vehicleReservedLoad,
   vehicleWantedLoad,
 } from '../../components/index.js';
+import { isFighterRole, jobRoleOfId } from '../../core/content-index/jobs.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
+import { isAdultSettler, isFemaleJobId } from '../family/eligibility.js';
 import { edibleGoodFormOf } from '../readviews/food.js';
-import { isCarrierJobRow } from '../readviews/jobs.js';
 
 /** A hold as the world hands it out: read-only lines. */
 type HoldView = { lines: ReadonlyMap<number, DeepReadonly<VehicleStockLine>> };
@@ -50,34 +51,42 @@ export function vehicleIsFullSoon(type: VehicleType, stock: HoldView): boolean {
 }
 
 /**
- * Whether `rider` works `vehicle`'s hold: a rider of the carrier trade in any seat, as in the original,
- * or the vehicle's commander, whatever its trade (owner's choice: a trader's cart and a ship's crew load
- * and unload without a carrier seated beside them).
+ * Whether `rider` works `vehicle`'s hold: a rider of a loading trade in any seat, or the vehicle's
+ * commander, whatever its trade (owner's choice: a trader's cart and a ship's crew load and unload
+ * without a loader seated beside them).
  */
 export function isCargoHand(world: World, content: ContentSet, vehicle: Entity, rider: Entity): boolean {
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined) return false;
   if (vehicleCommander(state) === rider) return true;
   if (!state.passengers.some((seat) => seat !== null && seat.entity === rider)) return false;
-  return isCarrierRider(world, content, rider);
+  return isLoaderRider(world, content, rider);
 }
 
-/** A rider of the carrier trade: the cargo hand that fetches from anywhere its signpost area reaches. */
-export function isCarrierRider(world: World, content: ContentSet, rider: Entity): boolean {
-  const jobType = world.tryGet(rider, Settler)?.jobType;
-  if (jobType === undefined || jobType === null) return false;
-  const job = contentIndex(content).jobs.get(jobType);
-  return job !== undefined && isCarrierJobRow(job);
+/** A grown man of a loading trade: the cargo hand that fetches from anywhere its signpost area reaches. */
+export function isLoaderRider(world: World, content: ContentSet, rider: Entity): boolean {
+  return isAdultSettler(world, rider) && isLoaderJob(content, world.get(rider, Settler).jobType);
 }
 
-/** Some rider of the carrier trade sits in `vehicle`, in any seat. */
-export function hasCarrierSeated(world: World, content: ContentSet, vehicle: Entity): boolean {
+/**
+ * Whether a grown person's trade loads and unloads a vehicle it rides: every man's trade but the
+ * soldier's, hero's, scout's and druid's (owner's choice; the original loads with its carriers only).
+ */
+export function isLoaderJob(content: ContentSet, jobType: number | null): boolean {
+  const job = jobType === null ? undefined : contentIndex(content).jobs.get(jobType);
+  if (job === undefined || isFemaleJobId(job.id)) return false;
+  const role = jobRoleOfId(job.id);
+  return !isFighterRole(role) && role !== 'scout' && role !== 'druid';
+}
+
+/** Some rider of a loading trade sits in `vehicle`, in any seat. */
+export function hasLoaderSeated(world: World, content: ContentSet, vehicle: Entity): boolean {
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined) return false;
-  return vehiclePassengers(state).some((seat) => isCarrierRider(world, content, seat.entity));
+  return vehiclePassengers(state).some((seat) => isLoaderRider(world, content, seat.entity));
 }
 
-/** Some rider works the hold: a carrier seated anywhere, or a commander. */
+/** Some rider works the hold: a loader seated anywhere, or a commander. */
 export function hasCargoHand(world: World, content: ContentSet, vehicle: Entity): boolean {
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined) return false;

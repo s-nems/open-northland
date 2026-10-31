@@ -461,6 +461,11 @@ export const plContent = {
       summary:
         'Dwa wozy z tragarzami: wózek ręczny, dla którego gracz zamówił drewno, tragarz przynosi je sztuka po sztuce ze stert obok wozu; zaprzęg zaczyna załadowany kamieniem, którego nikt nie zamówił, więc jego tragarz wynosi go do magazynu. Wózek zmienia się w załadowany po pierwszej sztuce, zaprzęg w pusty po ostatniej.',
     },
+    'vehicle-ship-cargo': {
+      title: 'Ładunek statku',
+      summary:
+        'Zacumowany statek zamawia drewno ze stert na brzegu. Przynoszą je sztuka po sztuce tragarz i płynący z nim kowal; żołnierz wsiada i zostaje na pokładzie.',
+    },
     'hauling-cart': {
       title: 'Wózek tragarza',
       summary:

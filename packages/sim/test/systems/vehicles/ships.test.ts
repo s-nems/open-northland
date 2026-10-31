@@ -62,6 +62,8 @@ const P0 = 0;
 const HANDCART = 1;
 const SHIP_SMALL = 3;
 const SCOUT = 27;
+const SMITH = 13;
+const SOLDIER = 31;
 const GRASS = 0;
 const WATER = 1;
 const MAP_W = 24;
@@ -142,8 +144,8 @@ function spawn(s: Simulation, vehicleType: number, x: number, y: number, mission
   return e;
 }
 
-function spawnSettler(s: Simulation, x: number, y: number): Entity {
-  s.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x, y, tribe: VIKING, owner: P0 });
+function spawnSettler(s: Simulation, x: number, y: number, jobType = SCOUT): Entity {
+  s.enqueueSetup({ kind: 'spawnSettler', jobType, x, y, tribe: VIKING, owner: P0 });
   s.step();
   const settlers = [...s.world.query(Settler)];
   const settler = settlers[settlers.length - 1];
@@ -411,6 +413,31 @@ describe('dockVehicle', () => {
     expect(holdOf(s, ship, WOOD)).toBe(0);
     expect(groundOf(s, WOOD)).toBe(CARGO);
     expect(s.world.get(commander, Rider).vehicle).toBe(ship);
+  });
+
+  it('lands a seated smith beside the commander to unload, and keeps a seated soldier aboard', () => {
+    const s = sim();
+    const { ship } = crewedShip(s, 20, MID_ROW);
+    const [smith, soldier] = [SMITH, SOLDIER].map((job) => {
+      const rider = spawnSettler(s, 2, 2, job);
+      if (!seatPassenger(s.world, ship, rider)) throw new Error('no seat');
+      boardRider(s.world, rider, ship);
+      return rider;
+    });
+    if (smith === undefined || soldier === undefined) throw new Error('no crew');
+    stockVehicleGoods(s.world, ship, s.content, WOOD, CARGO);
+    dock(s, ship, EAST_SHORE_X + 1, MID_ROW);
+    sailOut(s, ship);
+    s.enqueue(playerCommand(P0, { kind: 'clearVehicleWanted', vehicle: ship }));
+    let smithLanded = false;
+    let soldierLanded = false;
+    for (let tick = 0; tick < UNLOAD_TICKS; tick++) {
+      s.step();
+      smithLanded ||= s.world.has(smith, Position);
+      soldierLanded ||= s.world.has(soldier, Position);
+    }
+    expect({ smithLanded, soldierLanded }).toEqual({ smithLanded: true, soldierLanded: false });
+    expect(holdOf(s, ship, WOOD)).toBe(0);
   });
 
   it('refuses a ship nobody commands with the no-commander note', () => {

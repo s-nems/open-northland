@@ -8,6 +8,7 @@ import {
   Settler,
   Stance,
   Stockpile,
+  seatPassenger,
   Vehicle,
   VehicleDrive,
   VehicleStock,
@@ -50,6 +51,7 @@ const HANDCART_SLOTS = 15;
 const CARRIER = 24;
 const SCOUT = 27;
 const SOLDIER = 31;
+const SMITH = 13;
 const HEADQUARTERS = 1;
 const WOOD = 1;
 const PLANK = 2;
@@ -259,6 +261,17 @@ describe('the commander as cargo hand', () => {
     // Parked, it steps out for the planks, finds none anywhere, drops the request and boards again.
     expect(line(s, cart, PLANK)).toEqual({ current: 0, wanted: 0, reserved: 0 });
     expect(s.world.has(scout, Position)).toBe(false);
+  });
+
+  it('keeps a request nobody can fill while a smith commands, waiting as a carrier does', () => {
+    const s = sim();
+    const cart = spawnCart(s);
+    const smith = spawnSettler(s, 22, 20, SMITH);
+    if (!seatPassenger(s.world, cart, smith)) throw new Error('no seat');
+    boardRider(s.world, smith, cart);
+    want(s, cart, PLANK, 2);
+    s.run(TRIP_TICKS);
+    expect(line(s, cart, PLANK)).toEqual({ current: 0, wanted: 2, reserved: 0 });
   });
 
   it('fetches what the commander can find and drops the rest of the request', () => {

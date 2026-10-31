@@ -19,9 +19,9 @@ import { isLoosePile } from '../../../stores/index.js';
 import { abandonCargoRun } from '../../../vehicles/cargo.js';
 import { boardingNode, isShipAtSea } from '../../../vehicles/crew.js';
 import {
-  hasCarrierSeated,
+  hasLoaderSeated,
   isCargoHand,
-  isCarrierRider,
+  isLoaderRider,
   modifyVehicleReserved,
   setVehicleWanted,
   vehicleIsFull,
@@ -50,7 +50,7 @@ export const VEHICLE_CARGO_SEARCH_RADIUS = 40;
 const CARGO_UNIT = 1;
 
 /**
- * VEHICLE CARGO - a cargo hand of a cart or moored ship, a carrier or the commander, serves its hold
+ * VEHICLE CARGO - a cargo hand of a cart or moored ship, a loader or the commander, serves its hold
  * (docs/formats/VEHICLES.md "Cargo", which also names the approximations): while a good's wanted amount exceeds its booking it
  * fetches a unit, loose goods within {@link VEHICLE_CARGO_SEARCH_RADIUS} of the door first, then a house
  * within it, then whatever its signpost area reaches, every source on the door's continent; with a unit
@@ -211,9 +211,9 @@ function shortfallGoods(stock: DeepReadonly<{ lines: Map<number, VehicleStockLin
 /**
  * Fetch one unit of a good the hold is short of, from the nearest source the search finds, claiming it so
  * another hand picks a different unit. Nothing is booked in the hold yet: the booking is made when the
- * unit is on the carrier's back, as the original's carrier does.
- * A commander with no carrier seated beside it lets a request no source can fill lapse to what is
- * booked, so it does not stand by the door for goods nobody has.
+ * unit is on the hand's back, as the original's carrier does.
+ * A commander of no loading trade, with no loader seated beside it, lets a request no source can fill
+ * lapse to what is booked, so it does not stand by the door for goods nobody has.
  */
 function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType, door: NodeId): boolean {
   const { world, ctx, entity: e, here } = plan;
@@ -223,7 +223,7 @@ function fetchShortfall(plan: PlannerContext, vehicle: Entity, type: VehicleType
   if (goods.length === 0) return false;
   const source = nearestCargoSource(plan, goods, door);
   if (source === null) {
-    if (!isCarrierRider(world, ctx.content, e) && !hasCarrierSeated(world, ctx.content, vehicle))
+    if (!isLoaderRider(world, ctx.content, e) && !hasLoaderSeated(world, ctx.content, vehicle))
       lapseShortfall(plan, vehicle, goods);
     return false;
   }

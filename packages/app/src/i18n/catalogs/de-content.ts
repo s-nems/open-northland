@@ -465,6 +465,11 @@ export const deContent = {
       summary:
         'Zwei Karren und ihre Träger: ein Handkarren, für den der Spieler Holz angefordert hat, das sein Träger Stück für Stück von den Haufen daneben holt, und ein Ochsenkarren, der anfangs mit nicht angefordertem Bruchstein beladen ist, den sein Träger deshalb zum Lagerhaus bringt. Der Handkarren erscheint nach der ersten Einheit beladen, der Ochsenkarren nach der letzten leer.',
     },
+    'vehicle-ship-cargo': {
+      title: 'Schiffsladung',
+      summary:
+        'Ein vertäutes Schiff fordert Holz von den Haufen am Ufer an. Sein Träger und ein mitfahrender Schmied holen es Stück für Stück; ein mitfahrender Soldat steigt ein und bleibt an Bord.',
+    },
     'hauling-cart': {
       title: 'Trägerkarren',
       summary:

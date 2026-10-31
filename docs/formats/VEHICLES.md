@@ -216,11 +216,12 @@ and `addGoodsToVehicle` the script result. The seat orders are `setVehicleWanted
 `clearVehicleWanted`; `unloadPeople` is the passenger half of unload people (the carried-vehicle half
 is not mirrored, *open*). The cargo rung (`systems/settlers/drives/economy/vehicle-cargo.ts`) runs
 above the rider rung for a cargo hand and its booking rides on the hand as `CargoRun`, given back when
-it detaches or dies. Owner's choice: a cargo hand is a seated carrier or the vehicle's commander of any
-trade, so a cart's and a ship's commander serve the wanted amounts without a carrier; the
+it detaches or dies. Owner's choice: a cargo hand is a seated loader, a grown man of any trade but
+soldier, hero, scout or druid (so a smith on a ship loads beside the carriers), or the vehicle's
+commander of any trade, so a cart's and a ship's commander serve the wanted amounts without a carrier; the
 wanted-follows-actual rule and message 0x3a read the same widened test (`isCargoHand`). A hand riding
 inside a cart that stands still or a moored ship steps out onto the door while the hold has a trip for
-it (`cargoHandDisembarkSystem`). A commander of another trade than the carrier's, with no carrier
+it (`cargoHandDisembarkSystem`). A commander of no loading trade, with no loader
 seated, lowers a request no source can fill to what is booked instead of waiting by the door. No hand
 takes food out of a home, the trader's rule that every fetch keeps (owner's choice). The alias goes through the shared
 dish-to-edible seam, which also maps meat and sausage (approximation: the original's table lists

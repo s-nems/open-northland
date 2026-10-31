@@ -104,8 +104,8 @@ export function boardCrew(world: World, ctx: SystemContext, vehicle: Entity): bo
 
 /**
  * Whether a rider steps in as soon as it reaches the door, unasked: everyone but the crew that works its
- * vehicle from outside, a carrier serving the hold or a commander with cargo to move, who wait by the
- * door for their own rungs until the vehicle asks. Deviation (owner's choice): the
+ * vehicle from outside, a carrier serving the hold or another cargo hand with cargo to move, who wait by
+ * the door for their own rungs until the vehicle asks. Deviation (owner's choice): the
  * original keeps every rider outside until the vehicle's order asks it in.
  */
 function boardsUnasked(world: World, ctx: SystemContext, vehicle: Entity, e: Entity): boolean {

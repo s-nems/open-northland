@@ -1,5 +1,5 @@
 import { entityById, ONE, systems, TICKS_PER_SECOND, type WorldSnapshot } from '@open-northland/sim';
-import { JOB_CARRIER, JOB_CIVILIST } from '../../../catalog/jobs.js';
+import { JOB_CIVILIST } from '../../../catalog/jobs.js';
 import {
   assistantBarracksOf,
   isFemale,
@@ -12,7 +12,6 @@ import {
   settlerNeedsOf,
   trainingHouseOf,
   vehicleCommanderOf,
-  vehicleSeatsOf,
   workFlagOf,
   workplaceOf,
 } from '../../../game/snapshot/index.js';
@@ -88,15 +87,10 @@ function isIdleNoteOver(
   return workplaceOf(e) !== undefined || workFlagOf(e) !== undefined;
 }
 
-/** Someone aboard to work a vehicle's wanted amounts: its commander, whatever the trade, or a carrier in
- *  any seat, as the sim's cargo rule reads them. */
-function hasCargoHand(snapshot: WorldSnapshot, vehicle: SnapshotEntity): boolean {
-  if (vehicleCommanderOf(vehicle) !== undefined) return true;
-  const passengers = (vehicle.components.Vehicle as { passengers?: unknown } | undefined)?.passengers;
-  return vehicleSeatsOf(passengers).some((seat) => {
-    const rider = entityById(snapshot, seat.entity);
-    return rider !== undefined && settlerJobType(rider) === JOB_CARRIER;
-  });
+/** Someone aboard to work a vehicle's wanted amounts: the sim's cargo rule also counts a seated loader,
+ *  but any seated rider leaves the commander's seat taken, so the commander answers it. */
+function hasCargoHand(vehicle: SnapshotEntity): boolean {
+  return vehicleCommanderOf(vehicle) !== undefined;
 }
 
 /** A workshop's refusal memo of a vehicle yard search stands for as long as the search keeps failing:
@@ -214,7 +208,7 @@ export class NoteRetirement {
       case USER_MESSAGE_TYPE.vehicleNoAnimal:
         return (e.components.Vehicle as { harnessed?: unknown } | undefined)?.harnessed === true;
       case USER_MESSAGE_TYPE.vehicleNoCarrier:
-        return hasCargoHand(snapshot, e);
+        return hasCargoHand(e);
       case USER_MESSAGE_TYPE.vehicleNoPath:
         return this.droveSince(m.id, e);
       default:

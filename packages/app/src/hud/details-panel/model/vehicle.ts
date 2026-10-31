@@ -131,7 +131,7 @@ export interface VehicleHoldModel {
   readonly goods: readonly VehicleCargoGood[];
   /** A trader rides or pulls it: the route writes the wanted amounts, so the hold is read-only. */
   readonly routed: boolean;
-  /** Someone works the hold: the commander, a carrier in any seat (`hasCargoHand`), or the carrier
+  /** Someone works the hold: the commander, a loader in any seat (`hasCargoHand`), or the carrier
    *  pulling it. */
   readonly cargoHand: boolean;
   /** A carrier has the cart in hand: its lifts fill the hold, so the hold is read-only. */

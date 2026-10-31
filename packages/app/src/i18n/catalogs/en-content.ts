@@ -463,6 +463,11 @@ export const enContent = {
       summary:
         'Two carts and their carriers: a handcart whose player asked for wood, which its carrier fetches unit by unit from the piles beside it, and an ox cart that starts loaded with stone nobody asked for, so its carrier carries it out to the warehouse. The handcart turns loaded after the first unit, the ox cart empty after the last.',
     },
+    'vehicle-ship-cargo': {
+      title: 'Ship cargo',
+      summary:
+        'A moored ship asks for wood from the shore piles. Its carrier and a smith riding with him fetch it unit by unit; a soldier riding along boards and stays aboard.',
+    },
     'hauling-cart': {
       title: 'Hauling cart',
       summary:

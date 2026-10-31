@@ -296,7 +296,7 @@ describe('note retirement', () => {
     expect(isNoteOver(note(USER_MESSAGE_TYPE.vehicleNoAnimal, vehicle), cart(true))).toBe(true);
   });
 
-  it('ends a no-carrier note once a carrier or a commander boards, not for any other rider', () => {
+  it('ends a no-carrier note once a commander boards', () => {
     const vehicle = { kind: 'vehicle', entity: SETTLER } as const;
     const RIDER = SETTLER + 1;
     const aboard = (slots: readonly (number | null)[], riderJob: number): WorldSnapshot => ({
@@ -313,9 +313,7 @@ describe('note retirement', () => {
       ],
     });
     const noCarrier = note(USER_MESSAGE_TYPE.vehicleNoCarrier, vehicle);
-    expect(isNoteOver(noCarrier, aboard([null, null], JOB_CARRIER))).toBe(false);
-    expect(isNoteOver(noCarrier, aboard([RIDER, null], JOB_SOLDIER))).toBe(false);
-    expect(isNoteOver(noCarrier, aboard([RIDER, null], JOB_CARRIER))).toBe(true);
+    expect(isNoteOver(noCarrier, aboard([null, null], JOB_SOLDIER))).toBe(false);
     expect(isNoteOver(noCarrier, aboard([null, RIDER], JOB_SOLDIER))).toBe(true);
   });
 
