@@ -196,6 +196,31 @@ function workshopContent(): ContentSet {
   });
 }
 
+/** The fixture's eaten food good (`food_simple`). */
+const FOOD = 3;
+
+/** The AI fixture whose bakery bakes the eaten food out of wood, so it makes food. */
+function bakingContent(): ContentSet {
+  const base = aiContent();
+  return parseContentSet({
+    ...base,
+    buildings: base.buildings.map((b) =>
+      b.typeId === BAKERY_TYPE
+        ? {
+            ...b,
+            recipes: [
+              {
+                inputs: [{ goodType: WOOD, amount: 1 }],
+                outputs: [{ goodType: FOOD, amount: 1 }],
+                ticks: 180,
+              },
+            ],
+          }
+        : b,
+    ),
+  });
+}
+
 /** A free fixture id for {@link shedContent}'s one-node building. */
 const SHED_TYPE = 33;
 
@@ -2142,6 +2167,36 @@ describe('workforce module (collectResources)', () => {
     const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
     const jobs = commands.flatMap((c) => (c.kind === 'setJob' ? [c.jobType] : []));
     expect(jobs).toEqual(Array.from({ length: CORE_BUILDERS }, () => BUILDER));
+  });
+
+  it("posts a food workshop's first hand ahead of an open site's core builders", () => {
+    const content = bakingContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      ...FIRST_WORKSHOP_SPOT,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      ...SECOND_WORKSHOP_SPOT,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, CORE_BUILDERS);
+    sim.step();
+    const commands = [...collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)];
+    const bakery = entityOfBuilding(sim, BAKERY_TYPE);
+    const hires = commands.filter((c) => c.kind === 'assignWorker' && c.building === bakery);
+    expect(hires.map((c) => (c.kind === 'assignWorker' ? c.jobPriority : []))).toEqual([[BAKER]]);
+    expect(commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER)).toHaveLength(
+      CORE_BUILDERS - 1,
+    );
   });
 
   it('turns a working scout into a builder while an open site lacks its core builders', () => {

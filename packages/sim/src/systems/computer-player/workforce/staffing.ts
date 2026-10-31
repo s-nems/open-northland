@@ -14,12 +14,20 @@ import { type ComputerProfile, shareOf } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';
 import type { Schooling } from '../technology/schooling.js';
+import { inFoodChain } from './food.js';
 import { buildingStaffing, type HeldStaff, LATE_GAME_CIVILIANS, type SeatStaffing } from './staffing-plan.js';
 import type { BuildingStaffing } from './staffing-rows.js';
 import { incrementStaffing, type StaffingTally } from './tally.js';
 
-/** Whichever tier a staffing pass fills toward - see {@link staffBuildings}. */
-export type StaffingTier = 'min' | 'target' | 'surplus';
+/** Whichever tier a staffing pass fills toward - see {@link staffBuildings}. `food` is the first hand of
+ *  each food chain workplace ({@link inFoodChain}) within its minimum tier, carriers left out. */
+export type StaffingTier = 'food' | 'min' | 'target' | 'surplus';
+
+/** The operators the `food` tier posts per food chain workplace (owner ruling: food production outranks
+ *  population and weapons). Authored: on battle_for_the_four_hills_multiplayer (seed 7) seats of twelve
+ *  men whose builders, gatherers, potter and mason came first left the farm, the animal farm and the
+ *  bakery without a hand for 30-60 minutes, their store food at 0-3 and the homes closed. */
+export const FOOD_CHAIN_FIRST_HANDS = 1;
 
 /** The reserve's floor while a build-order placement finds no spot (authored): every man the open sites
  *  do not call for ({@link stalledBuilderLimit}) fells and digs the room the placement waits for. */
@@ -118,25 +126,32 @@ export function staffBuildings(
   const index = contentIndex(ctx.content);
   const ofKind = (kind: BuildingType['kind']): Entity[] =>
     seat.owned.filter((e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === kind);
-  const ordered = [...ofKind('workplace'), ...ofKind('training'), ...ofKind('storage')];
+  const ordered =
+    tier === 'food'
+      ? ofKind('workplace')
+      : [...ofKind('workplace'), ...ofKind('training'), ...ofKind('storage')];
   for (const building of ordered) {
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
-    if (type === undefined) continue;
+    if (type === undefined || (tier === 'food' && !inFoodChain(ctx, type))) continue;
     const staffing = buildingStaffing(world, ctx, seat, building, type, heldAt(ctx, tally, building));
     if (staffing === null) continue;
     const operatorWant =
-      tier === 'min'
-        ? staffing.operatorMin
-        : tier === 'target'
-          ? staffing.operatorTarget
-          : (staffing.operatorSurplus ?? staffing.operatorTarget);
+      tier === 'food'
+        ? Math.min(staffing.operatorMin, FOOD_CHAIN_FIRST_HANDS)
+        : tier === 'min'
+          ? staffing.operatorMin
+          : tier === 'target'
+            ? staffing.operatorTarget
+            : (staffing.operatorSurplus ?? staffing.operatorTarget);
     const carrierWant =
-      tier === 'min'
-        ? staffing.carrierMin
-        : tier === 'target'
-          ? staffing.carrierTarget
-          : (staffing.carrierSurplus ?? staffing.carrierTarget);
+      tier === 'food'
+        ? 0
+        : tier === 'min'
+          ? staffing.carrierMin
+          : tier === 'target'
+            ? staffing.carrierTarget
+            : (staffing.carrierSurplus ?? staffing.carrierTarget);
     for (const slot of type.workers) {
       const carrier = isCarrierJob(ctx, slot.jobType);
       if (!carrier && index.harvestJobs.has(slot.jobType)) continue; // gatherer slots stay open

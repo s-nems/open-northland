@@ -60,6 +60,43 @@ function makesFood(ctx: SystemContext, type: BuildingType): boolean {
   );
 }
 
+/** Whether a workplace of `type` belongs to the food chain: it makes food ({@link makesFood}), or a good a
+ *  food chain workplace's recipe takes, as the mill's flour for the bakery and the farm's grain for the
+ *  mill and the animal farm. */
+export function inFoodChain(ctx: SystemContext, type: BuildingType): boolean {
+  return foodChainTypes(ctx).has(type.typeId);
+}
+
+const foodChainByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
+
+/** The food chain's workplace types ({@link inFoodChain}), grown upstream to a fixed point:
+ *  content-static, so memoized per content. */
+function foodChainTypes(ctx: SystemContext): ReadonlySet<number> {
+  let chain = foodChainByContent.get(ctx.content);
+  if (chain !== undefined) return chain;
+  const index = contentIndex(ctx.content);
+  const workplaces = ctx.content.buildings.filter((b) => b.kind === 'workplace');
+  const types = new Set(workplaces.filter((b) => makesFood(ctx, b)).map((b) => b.typeId));
+  const outputsOf = (b: BuildingType): number[] => [
+    ...(index.mergedRecipeByBuilding.get(b.typeId)?.outputs ?? []).map((o) => o.goodType),
+    ...b.produces,
+  ];
+  for (let grown = true; grown; ) {
+    grown = false;
+    const wanted = new Set<number>();
+    for (const typeId of types)
+      for (const input of index.mergedRecipeByBuilding.get(typeId)?.inputs ?? []) wanted.add(input.goodType);
+    for (const b of workplaces) {
+      if (types.has(b.typeId) || !outputsOf(b).some((good) => wanted.has(good))) continue;
+      types.add(b.typeId);
+      grown = true;
+    }
+  }
+  chain = types;
+  foodChainByContent.set(ctx.content, chain);
+  return chain;
+}
+
 /** Whether any built workplace among `owned` makes food ({@link makesFood}). */
 export function foodWorkshopBuilt(world: World, ctx: SystemContext, owned: readonly Entity[]): boolean {
   const index = contentIndex(ctx.content);

@@ -224,6 +224,7 @@ function runWorkforce(
         );
   const sitePosts = firstPosts(buildsSites);
   const firstFood = [
+    ...staffBuildings(world, ctx, seat, force, tally, 'food', gated),
     ...allocateHunters(world, ctx, player, hunting, force, builderJob, tally, 'first'),
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'first'),
   ];
@@ -231,7 +232,8 @@ function runWorkforce(
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
   ];
-  // The core builders come after the posts of the goods the sites draw on and the food, and before the
+  // The core builders come after the posts of the goods the sites draw on and the food (each food chain
+  // workshop's first hand, the hunters and the fishers), and before the
   // other goods' posts, the standing buildings' first hands and the scout: on a seat of few men the ore
   // posts and the workshops otherwise took every man and left five sites without a builder for half an
   // hour (authored, battle_for_the_four_hills_multiplayer seeds 7 and 11).
