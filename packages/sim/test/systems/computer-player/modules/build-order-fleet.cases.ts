@@ -227,7 +227,7 @@ const LAKE = { x0: 28, x1: 40, y0: 2, y1: 14 };
 /** A bay the sea reaches into our land by: its south shore is where a ship yard fits, since the yard's
  *  door stands south of its hull and the sea's straight west shore admits none. */
 const BAY = { x0: 44, x1: SEA_WEST, y0: 36, y1: 44 };
-/** The same bay further south, beyond the reach of a settlement of the headquarters alone. */
+/** The same bay further south, far from the barracks. */
 const FAR_BAY = { ...BAY, y0: 50, y1: 58 };
 
 interface MapShape {
@@ -324,6 +324,10 @@ const shoreJoinery: BuildOrderEntry = {
   count: 1,
   near: [{ kind: 'shore' }],
 };
+/** The step lifting the seat's joinery by the water to the top tier. */
+const shipUpgrade = orderSteps(DEFAULT_BUILD_ORDER).find(
+  (e): e is Extract<BuildOrderEntry, { kind: 'upgrade' }> => e.kind === 'upgrade' && e.role === 'ship',
+);
 const toolsUpgrade = orderSteps(DEFAULT_BUILD_ORDER).find(
   (e) => e.kind === 'upgrade' && e.building === 'work_joinery_02',
 );
@@ -468,11 +472,9 @@ describe('build order - the top-tier joineries', () => {
     expect(rolesOf(sim)).toEqual(['ship', 'catapult']);
   });
 
-  it('still raises the ship joinery once the shore comes in reach after the catapult joinery stands', () => {
+  it('still raises the ship joinery by the bay after a catapult joinery stands away from the water', () => {
     const FROM_THE_BARRACKS = { x: 30, y: 12 };
-    const TOWARD_THE_BAY = { x: 40, y: 50 };
-    const map = seaMap({ bay: FAR_BAY });
-    const sim = world(map, [
+    const sim = world(seaMap({ bay: FAR_BAY }), [
       { buildingType: BARRACKS_TYPE, ...BARRACKS_AT },
       { buildingType: JOINERY_03_TYPE, ...FROM_THE_BARRACKS },
     ]);
@@ -480,16 +482,6 @@ describe('build order - the top-tier joineries', () => {
       'unmet',
       'satisfied',
     ]);
-    expect(first(sim, [shipJoinery])).toBeUndefined();
-    sim.enqueueSetup({
-      kind: 'placeBuilding',
-      buildingType: TOWER_TYPE,
-      ...TOWARD_THE_BAY,
-      tribe: VIKING,
-      owner: SEAT,
-      force: true,
-    });
-    sim.step();
     buildOut(sim, [shipJoinery, catapultJoinery]);
     expect(rolesOf(sim)).toEqual(['catapult', 'ship']);
     expect(entryStatuses(sim.world, fleetCtx(sim), SEAT, [shipJoinery, catapultJoinery])).toEqual([
@@ -508,6 +500,29 @@ describe('build order - the top-tier joineries', () => {
       'skip',
       'satisfied',
     ]);
+  });
+
+  it('lifts a lower joinery by the water to the top tier for ships, not the one inland', () => {
+    const INLAND = { x: 12, y: 20 };
+    const BY_THE_BAY = { x: 44, y: 50 };
+    const sim = world(seaMap(), [
+      { buildingType: JOINERY_TYPE, ...INLAND },
+      { buildingType: JOINERY_TYPE, ...BY_THE_BAY },
+    ]);
+    if (shipUpgrade === undefined) throw new Error('ship upgrade missing from the default list');
+    const ctx = fleetCtx(sim);
+    const roleOf = joineryRoles(sim.world, ctx, SEAT, () => seaRoute.rivalOverSea(sim.world, ctx, SEAT));
+    const [inland, byTheBay] = ownedBuildings(sim.world, SEAT).filter(
+      (e) => sim.world.get(e, Building).buildingType === JOINERY_TYPE,
+    );
+    if (inland === undefined || byTheBay === undefined) throw new Error('setup: joineries missing');
+    expect([roleOf(inland), roleOf(byTheBay)]).toEqual(['catapult', 'ship']);
+    const command = first(sim, [shipUpgrade]);
+    if (command?.kind !== 'upgradeBuilding') throw new Error('expected the ship joinery upgrade');
+    expect(command.building).toBe(byTheBay);
+    // Where the enemy lies over land the step is skipped and no joinery takes the ship role.
+    const bridged = world(seaMap({ bridge: true }), [{ buildingType: JOINERY_TYPE, ...BY_THE_BAY }]);
+    expect(first(bridged, [shipUpgrade])).toBeUndefined();
   });
 
   it('puts the catapult joinery beside the barracks', () => {

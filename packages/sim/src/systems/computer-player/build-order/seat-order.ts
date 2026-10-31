@@ -358,7 +358,8 @@ function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop, 
     .flatMap((entry) => copiesOf(entry, caps));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;
-    const leading = (entry: BuildOrderEntry) => entry.kind === 'place' && entry.onlyWhen === lead;
+    const leading = (entry: BuildOrderEntry) =>
+      (entry.kind === 'place' || entry.kind === 'upgrade') && entry.onlyWhen === lead;
     steps = [...steps.filter(leading), ...steps.filter((entry) => !leading(entry))];
   }
   return steps.length === line.steps.length && steps.every((entry, i) => entry === line.steps[i])

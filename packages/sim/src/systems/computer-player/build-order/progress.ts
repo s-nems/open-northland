@@ -149,6 +149,20 @@ function memoOverSea(world: World, ctx: SystemContext, player: number, memo: Dec
   return memo.rivalOverSea;
 }
 
+/** The owned buildings an upgrade `entry` may lift: every one, or with a `role` only the joineries holding
+ *  it this decision. */
+export function upgradeFilter(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  entry: Extract<BuildOrderEntry, { kind: 'upgrade' }>,
+  memo: DecisionMemo,
+): ((e: Entity) => boolean) | undefined {
+  if (entry.role === undefined) return undefined;
+  const roleOf = memoRoles(world, ctx, player, memo);
+  return (e) => roleOf(e) === entry.role;
+}
+
 function memoRoles(
   world: World,
   ctx: SystemContext,
@@ -216,14 +230,26 @@ export function entryStatus(
       const target = buildingTypeByContentId(ctx.content, entry.building);
       if (target === undefined) return 'skip';
       const done = countedTiers(ctx.content, target, entry.belowTier);
-      const tally = ownedTally(world, index, owned, memo);
-      let have = countOfTypes(tally, done);
       // `upgradeBuilding` keeps the lower type until the site finishes, so a site counts by the tier it is
       // becoming, which may skip tiers and so meet several entries at once.
-      if (inFlightUpgrades) {
-        for (const [type, becoming] of tally.upgrading) if (!done.has(type) && done.has(becoming)) have++;
+      let have = 0;
+      if (entry.role === undefined) {
+        const tally = ownedTally(world, index, owned, memo);
+        have = countOfTypes(tally, done);
+        if (inFlightUpgrades) {
+          for (const [type, becoming] of tally.upgrading) if (!done.has(type) && done.has(becoming)) have++;
+        }
+      } else {
+        const roleOf = memoRoles(world, ctx, player, memo);
+        for (const e of owned) {
+          if (roleOf(e) !== entry.role) continue;
+          const becoming = inFlightUpgrades ? world.tryGet(e, Upgrading)?.target : undefined;
+          if (done.has(world.get(e, Building).buildingType) || (becoming !== undefined && done.has(becoming)))
+            have++;
+        }
       }
       if (have >= entry.count) return 'satisfied';
+      if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
       return technologyReach(world, ctx, player, memo)?.house(target.typeId) === false ? 'skip' : 'unmet';
     }
     case 'collector': {
@@ -463,31 +489,36 @@ export function lineStatuses(
   return heldCollectors.size === 0 ? statuses : Object.assign(statuses, { heldCollectors });
 }
 
-/** The lowest-id built building the seat can upgrade toward `target`; a site, including an in-flight
- *  upgrade, has `built < ONE` and is skipped. `owned` is canonical ascending, so the first hit is
- *  deterministic. */
-/** Whether the seat owns no building, built or a site, below `target` on its chain: an upgrade step
- *  asking for more of the tier than the seat has buildings of the chain has nothing left to lift. */
+/** Whether the seat owns no building `accept` takes, built or a site, below `target` on its chain: an
+ *  upgrade step asking for more of the tier than the seat has buildings of the chain has nothing left to
+ *  lift. */
 export function nothingToUpgrade(
   world: World,
   index: ContentIndex,
   owned: readonly Entity[],
   target: BuildingType,
+  accept?: (e: Entity) => boolean,
 ): boolean {
   for (const e of owned) {
+    if (accept !== undefined && !accept(e)) continue;
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type !== undefined && upgradesInto(index, type, target)) return false;
   }
   return true;
 }
 
+/** The lowest-id built building `accept` takes that the seat can upgrade toward `target`; a site,
+ *  including an in-flight upgrade, has `built < ONE` and is skipped. `owned` is canonical ascending, so the
+ *  first hit is deterministic. */
 export function upgradeCandidate(
   world: World,
   index: ContentIndex,
   owned: readonly Entity[],
   target: BuildingType,
+  accept?: (e: Entity) => boolean,
 ): Entity | null {
   for (const e of owned) {
+    if (accept !== undefined && !accept(e)) continue;
     const building = world.get(e, Building);
     if (building.built < ONE || world.has(e, UnderConstruction)) continue;
     const type = index.buildings.get(building.buildingType);

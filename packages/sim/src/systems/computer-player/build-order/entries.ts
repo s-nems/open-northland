@@ -59,8 +59,8 @@ export type BuildOrderEntry =
    *  the headquarters the seat sails for (`../sea-route.ts`) can be reached by land, `'grassScarce'` while
    *  the seat has grass enough (`./grass-reserve.ts`). An entry of a grass building with no grass left
    *  for it is passed over unless `essential`, which holds its line until it stands. `belowTier` stops the
-   *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
-   *  joineries holding that role (`../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
+   *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the
+   *  joineries of the counted tiers holding that role (`../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
    *  acting on nothing, until its {@link StepHold} is met. `aheadOfCrews` places the copy without waiting
    *  for the crews of those standing (`./progress.ts`). `room` names the buildings that later stand
    *  beside this one: the spot is scored by the free ground around it against their footprints
@@ -91,12 +91,16 @@ export type BuildOrderEntry =
       readonly lockPasses?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
-   *  named tier, and below `belowTier` when given. */
+   *  named tier, and below `belowTier` when given. `role` counts and lifts only the joineries holding that
+   *  role; `onlyWhen` and `lockPasses` act as a placement's. */
   | {
       readonly kind: 'upgrade';
       readonly building: string;
       readonly count: number;
       readonly belowTier?: string;
+      readonly role?: JoineryRole;
+      readonly onlyWhen?: 'rivalOverSea';
+      readonly lockPasses?: true;
     }
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
    *  and keeps at least that many. Posts past the first come out of spare men only, so its line holds

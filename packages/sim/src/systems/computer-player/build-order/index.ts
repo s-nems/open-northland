@@ -72,6 +72,7 @@ import {
   nothingToUpgrade,
   stepHeld,
   upgradeCandidate,
+  upgradeFilter,
 } from './progress.js';
 import { DEFENCE_LINES, seatBuildOrder, seatDefenceFirst, seatSitePace } from './seat-order.js';
 import { type Siege, seatSiege } from './siege.js';
@@ -300,7 +301,8 @@ function runBuildOrder(
   const searches = new StalledSearches(world, player, keyedStatuses(order, statuses));
   let made: ReadonlySet<number> | undefined;
   const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
-  const locked = (entry: BuildOrderEntry): boolean => stepLocked(world, ctx, player, owned, tribe, entry);
+  const locked = (entry: BuildOrderEntry): boolean =>
+    stepLocked(world, ctx, player, owned, tribe, entry, memo);
   const held = (entry: BuildOrderEntry): boolean =>
     stepHeld(world, ctx, player, owned, order, statuses, entry, memo);
   /** A locked step its line passes over this decision rather than waits on. */
@@ -404,7 +406,13 @@ function runBuildOrder(
         const target = buildingTypeByContentId(ctx.content, entry.building);
         if (target === undefined) return null; // unreachable after 'skip', kept for the type system
         if (towerUpgradeWaits(world, ctx, player, entry.building)) return null;
-        const candidate = upgradeCandidate(world, index, owned, target);
+        const candidate = upgradeCandidate(
+          world,
+          index,
+          owned,
+          target,
+          upgradeFilter(world, ctx, player, entry, memo),
+        );
         if (candidate === null) return null;
         // A jump stops below a tier whose bill has no source yet, and one the store cannot back yet falls
         // back to the highest tier it can, down to the next one.
@@ -453,7 +461,8 @@ function runBuildOrder(
       // army line upgrades still reaches the catapult joinery behind them.
       if (entry.kind === 'upgrade') {
         const target = buildingTypeByContentId(ctx.content, entry.building);
-        if (target !== undefined && nothingToUpgrade(world, index, owned, target)) continue;
+        const accept = upgradeFilter(world, ctx, player, entry, memo);
+        if (target !== undefined && nothingToUpgrade(world, index, owned, target, accept)) continue;
       }
       if (!billSourced(world, ctx, player, entry, madeGoods)) return null;
       const verdict = verdictOf(line, step);
@@ -638,6 +647,8 @@ function turnOrder(
   const ownedTypes = new Set(owned.map((e) => world.get(e, Building).buildingType));
   /** Whether the seat owns a building `entry` counts, so the step adds another of a kind it has. */
   const ownsKind = (entry: BuildOrderEntry, type: BuildingType): boolean => {
+    // An unmet role step has no building of its tiers holding the role, so it raises a kind the seat lacks.
+    if (entry.kind === 'place' && entry.role !== undefined) return false;
     const below = entry.kind === 'place' || entry.kind === 'upgrade' ? entry.belowTier : undefined;
     for (const kind of countedTiers(ctx.content, type, below)) if (ownedTypes.has(kind)) return true;
     return false;
@@ -728,7 +739,7 @@ function earnedWorkshop(gated: TechnologyTable | null, type: BuildingType): bool
 
 /** Whether `entry` is passed over rather than holding its line while its building's tier is locked. */
 function lockPasses(entry: BuildOrderEntry): boolean {
-  return entry.kind === 'place' && entry.lockPasses === true;
+  return (entry.kind === 'place' || entry.kind === 'upgrade') && entry.lockPasses === true;
 }
 
 /** Whether `entry`'s building is one the seat cannot raise yet: a placed tier not enabled for the seat's
@@ -741,13 +752,20 @@ function stepLocked(
   owned: readonly Entity[],
   tribe: number | undefined,
   entry: BuildOrderEntry,
+  memo: DecisionMemo,
 ): boolean {
   if (tribe === undefined || entry.kind === 'collector') return false;
   const type = buildingTypeByContentId(ctx.content, entry.building);
   if (type === undefined) return false;
   if (entry.kind !== 'upgrade') return !buildingEnabled(world, ctx, player, tribe, type.typeId);
   const index = contentIndex(ctx.content);
-  const candidate = upgradeCandidate(world, index, owned, type);
+  const candidate = upgradeCandidate(
+    world,
+    index,
+    owned,
+    type,
+    upgradeFilter(world, ctx, player, entry, memo),
+  );
   if (candidate === null) return false;
   const building = world.get(candidate, Building);
   const next = index.buildings.get(building.buildingType)?.upgradeTarget;

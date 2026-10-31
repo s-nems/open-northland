@@ -53,6 +53,41 @@ export const CATAPULT_JOINERY: BuildOrderEntry = {
   },
 };
 
+/** The ship joinery's steps where only a ship reaches the nearest rival: a joinery by the water, the
+ *  upper pottery whose tiles the top tier's bill takes, that joinery lifted to the top tier, and a fresh
+ *  top-tier joinery by the water where none could claim the shore. While a tier is locked each lets the
+ *  barracks and the rest of the line pass rather than hold them. */
+const SHIP_JOINERY_STEPS: readonly BuildOrderEntry[] = [
+  {
+    kind: 'place',
+    building: 'work_joinery_00',
+    count: 1,
+    near: [{ kind: 'shore' }],
+    onlyWhen: 'rivalOverSea',
+    role: 'ship',
+    lockPasses: true,
+    core: true,
+  },
+  { kind: 'upgrade', building: 'work_pottery_01', count: 1, onlyWhen: 'rivalOverSea', lockPasses: true },
+  {
+    kind: 'upgrade',
+    building: 'work_joinery_03',
+    count: 1,
+    onlyWhen: 'rivalOverSea',
+    role: 'ship',
+    lockPasses: true,
+  },
+  {
+    kind: 'place',
+    building: 'work_joinery_03',
+    count: 1,
+    near: [{ kind: 'shore' }],
+    onlyWhen: 'rivalOverSea',
+    role: 'ship',
+    lockPasses: true,
+  },
+];
+
 /** The army line: the tower ring, the barracks, the towers' upgrades and the catapult joinery
  *  (`./entries.ts`). */
 export const MILITARY_LINE: BuildLine = {
@@ -60,19 +95,12 @@ export const MILITARY_LINE: BuildLine = {
   // Owner ruling: the economy first, the army shortly before the military deadline. The tower ring and
   // the barracks wait for their leads before it; the seat's defence coming first lifts the waits at once.
   steps: [
-    // Where only a ship reaches the nearest rival, the joinery that builds it goes up by the water early:
-    // it is the economy's way across, not a wait for the deadline. Its top tier waits on the tile and ship
-    // discoveries, which most arabskie_wyspy seats still lack at game minute 52, so while locked it lets the
-    // barracks and the rest of the line pass rather than hold them.
-    {
-      kind: 'place',
-      building: 'work_joinery_03',
-      count: 1,
-      near: [{ kind: 'shore' }],
-      onlyWhen: 'rivalOverSea',
-      role: 'ship',
-      lockPasses: true,
-    },
+    // Where only a ship reaches the nearest rival, the joinery that builds it is the economy's way across,
+    // not a wait for the deadline. The top tier waits on the tile and ship discoveries, which arabskie_wyspy
+    // seats made at game minute 36-48 or later (seed 7), and by then the settlement had taken every shore
+    // spot it fits (seats 0-2), so a joinery claims the shore at once, at the tier the seat may raise, or
+    // the seat's own joinery serves where it already stands by the water (`../joinery-role.ts`).
+    ...SHIP_JOINERY_STEPS,
     // The ring runs as a lane, so no later step of the line ever waits on it. Owner ruling: a tower rises at
     // the upper tier once the seat may raise it, the cheap lower one only while that tier is locked or
     // unsourced, or where the attacks come early (`./direct-tier.ts`). Owner ruling: the barracks goes up
