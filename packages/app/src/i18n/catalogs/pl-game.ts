@@ -561,9 +561,10 @@ export const plGame = {
       cancelRoadLineHint: 'lewy przycisk usuwa twoje place pod drogę na linii, puść Alt, by wytyczać drogę',
       placeRoadLineHint:
         'lewy przycisk wytycza drogę, z Ctrl/Cmd ciągnie dalej, Shift trzyma prostą, prawy anuluje linię',
-      overUpgradeGround: 'przez teren rozbudowy',
-      overUpgradeGroundHint: '{key} buduje na terenie rozbudowy, rozbudowa to potem zburzy',
-      skirtUpgradeGroundHint: '{key} znów omija teren rozbudowy',
+      overUpgradeGround: 'także na miejscu pod rozbudowę budynków',
+      overUpgradeGroundHint:
+        '{key} pozwala budować na miejscu pod rozbudowę budynków, rozbudowa to potem usunie',
+      skirtUpgradeGroundHint: '{key} znów omija miejsce pod rozbudowę budynków',
       placePaperHint: 'z papierów: wskaż miejsce, budynek stanie gotowy',
       heldPaper: 'Papiery',
       heldPaperHint: 'wybierz budynek z okna',

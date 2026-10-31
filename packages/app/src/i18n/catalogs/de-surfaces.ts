@@ -470,7 +470,7 @@ export const deSurfaces = {
         workFlagOrder: 'Arbeitsfahne setzen',
         roadTool: 'Straßenwerkzeug',
         palisadeTool: 'Palisadenwerkzeug',
-        upgradeGround: 'Palisade oder Straße auf Ausbaufläche platzieren',
+        upgradeGround: 'Straße und Palisade: auch auf Platz für den Gebäudeausbau',
       },
       keySpace: 'Leertaste',
       mouseLeft: 'linke Maustaste',

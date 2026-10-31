@@ -433,7 +433,7 @@ export const enSurfaces = {
         workFlagOrder: 'Set a work flag',
         roadTool: 'Road tool',
         palisadeTool: 'Stockade tool',
-        upgradeGround: 'Stockade or road over upgrade ground',
+        upgradeGround: 'Road and stockade: also on room for building upgrades',
       },
       keySpace: 'Space',
       mouseLeft: 'left mouse button',

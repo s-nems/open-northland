@@ -617,9 +617,10 @@ export const deGame = {
         'Linksklick hebt deine Straßenbaustellen unter der Linie auf; lass Alt los, um Straßen zu planen',
       placeRoadLineHint:
         'Linksklick legt die Straße fest, mit Ctrl/Cmd ziehst du sie weiter, Shift hält sie gerade, Rechtsklick verwirft die Linie',
-      overUpgradeGround: 'Ausbauflächen überbauen',
-      overUpgradeGroundHint: '{key}: Auf Ausbauflächen bauen; diese Bauten werden beim Ausbau abgerissen',
-      skirtUpgradeGroundHint: '{key}: Ausbauflächen wieder umgehen',
+      overUpgradeGround: 'auch auf Platz für den Gebäudeausbau',
+      overUpgradeGroundHint:
+        '{key}: Auch auf Platz für den Gebäudeausbau bauen; der Ausbau entfernt es später',
+      skirtUpgradeGroundHint: '{key}: Platz für den Gebäudeausbau wieder umgehen',
       placePaperHint: 'Aus einem Brief: Zeige auf eine Stelle, das Gebäude ist sofort fertig',
       heldPaper: 'Brief',
       heldPaperHint: 'Wähle ein Gebäude im Fenster aus',

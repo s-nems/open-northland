@@ -420,7 +420,7 @@ export const chtSurfaces = {
         workFlagOrder: '設置工作旗幟',
         roadTool: '道路工具',
         palisadeTool: '木柵欄工具',
-        upgradeGround: '在升級用地上鋪設木柵欄或道路',
+        upgradeGround: '道路和木柵欄：也可建在建築升級用地上',
       },
       keySpace: '空白鍵',
       mouseLeft: '滑鼠左鍵',

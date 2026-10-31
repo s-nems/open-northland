@@ -420,7 +420,7 @@ export const chsSurfaces = {
         workFlagOrder: '设置工作旗帜',
         roadTool: '道路工具',
         palisadeTool: '木栅栏工具',
-        upgradeGround: '在升级预留地上建造木栅栏或道路',
+        upgradeGround: '道路和木栅栏：也可建在建筑升级预留地上',
       },
       keySpace: '空格',
       mouseLeft: '鼠标左键',

@@ -430,7 +430,7 @@ export const plSurfaces = {
         workFlagOrder: 'Ustaw flagę pracy',
         roadTool: 'Narzędzie drogi',
         palisadeTool: 'Narzędzie palisady',
-        upgradeGround: 'Palisada lub droga przez teren rozbudowy',
+        upgradeGround: 'Droga i palisada: także na miejscu pod rozbudowę budynków',
       },
       keySpace: 'Spacja',
       mouseLeft: 'lewy przycisk myszy',
