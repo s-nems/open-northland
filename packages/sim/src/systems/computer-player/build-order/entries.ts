@@ -189,6 +189,10 @@ function wellBeside(building: string, cap: number): BuildOrderEntry {
   };
 }
 
+/** The wells the seat may own when the bread line raises one beside its mill (authored): the mill's own,
+ *  and one more the seat may own already out of the mill's reach. */
+const OPENING_WELLS_CAP = 2;
+
 /** Owner ruling: the adults live on mead and one brewery feeds many of them, so a further brewery waits
  *  for the people to drink it, but not too long. Authored figures from magiczny_las at game minute 90: two
  *  breweries piled 87-158 mead at 101-209 settlers, while one left 0-11 in store at 120-175 on most seats,
@@ -512,20 +516,17 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'building', id: 'work_farm_00' }],
         },
         // Owner ruling: bread is the food the seat runs short of first, and little food means few children,
-        // so one bakery follows the mill at once and its well right after.
+        // so one bakery follows the mill at once. Its well goes up first, beside the mill, while the baker
+        // is still being earned, so it stands when the bakery does; a mill with a well in reach, or with no
+        // room for one, passes it over. The cap counts a far well the seat may already own.
+        wellBeside('work_mill_00', OPENING_WELLS_CAP),
         {
           kind: 'place',
           building: 'work_bakery_00',
           count: 1,
-          near: [{ kind: 'building', id: 'work_mill_00' }],
-        },
-        {
-          kind: 'place',
-          building: 'work_well_00',
-          count: 1,
           near: [
             { kind: 'building', id: 'work_mill_00' },
-            { kind: 'building', id: 'work_bakery_00' },
+            { kind: 'building', id: 'work_well_00' },
           ],
         },
         // A seat dressing its army in tunics only (`./seat-order.ts`).

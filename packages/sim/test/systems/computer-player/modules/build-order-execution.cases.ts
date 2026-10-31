@@ -157,7 +157,7 @@ describe('build-order module (houseBuild)', () => {
       applyAndFinish(sim, next);
     }
     // This content stops short of the pottery and the mason hut, so those steps skip. Every line raises its
-    // first new kind of building in priority order (opening, bread with its first bakery's well, brewery,
+    // first new kind of building in priority order (opening, bread with its mill's well before the bakery, brewery,
     // tools; the military line waits for its deadline) before any line adds another of a kind the seat
     // has: the opening's homes, five with no archetype dropping the rich seat's fifth. No progression gate
     // is on and every bill is wood, so each place step but a home's raises its chain's top tier outright;
@@ -169,8 +169,8 @@ describe('build-order module (houseBuild)', () => {
     expect(walk).toEqual([
       place(HOME_TYPE),
       place(MILL_TYPE),
-      place(BAKERY_TOP_TYPE),
       place(WELL_TYPE),
+      place(BAKERY_TOP_TYPE),
       place(BREWERY_TYPE),
       place(JOINERY_TYPE),
       place(HOME_TYPE),

@@ -30,6 +30,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
+import { breadFocusSite } from '../build-order/food-first.js';
 import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
@@ -58,6 +59,7 @@ import { tuneCraftCounters } from './craft.js';
 import { demobilizeStartSoldiers } from './demobilize.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
+import { focusCrewOrders } from './focus-crew.js';
 import { foodHunters } from './food.js';
 import { calledGatherers, claimArmyFloor, garrisonArms, trainGarrison, upperReserve } from './garrison.js';
 import { settlementGrantOrders } from './grants.js';
@@ -265,6 +267,14 @@ function runWorkforce(
     commands: [...core.commands, ...rest.commands],
     reserved: [...core.reserved, ...rest.reserved],
   };
+  // The bread chain's next site takes the reserve's builders ahead of every other site.
+  const focus = breadFocusSite(world, ctx, owned);
+  const focusCrew =
+    focus === null
+      ? []
+      : focusCrewOrders(world, ctx, player, owned, focus, reserve.reserved, builderJob, (good) =>
+          supply.units(good),
+        );
   // The standing buildings' target crews and the gatherers the reached entries count come before the army
   // floor (authored): both are bounded by what stands, so a seat staffs every building it raised and
   // still leaves the rest to the army. The floor outranks the surplus tier and the generic posts, which
@@ -291,6 +301,7 @@ function runWorkforce(
     ...scouting,
     ...roadCrew.commands,
     ...reserve.commands.filter(undrafted),
+    ...focusCrew.filter(undrafted),
     ...targets,
     ...armyFloor.commands,
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'topUp'),

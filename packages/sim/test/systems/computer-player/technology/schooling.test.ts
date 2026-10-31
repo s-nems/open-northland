@@ -45,11 +45,25 @@ function smallSchoolContent(): ContentSet {
   });
 }
 
-const content = smallSchoolContent();
+const SMALL_SCHOOL = smallSchoolContent();
+
+/** {@link smallSchoolContent} whose gated workshop is no bread chain workshop, so its post waits for the
+ *  school like any other discovered trade's. */
+function plainWorkshopContent(): ContentSet {
+  const base = smallSchoolContent();
+  return parseContentSet({
+    ...base,
+    buildings: base.buildings.map((b) => (b.typeId === MILL_TYPE ? { ...b, id: 'work_gated_00' } : b)),
+  });
+}
 
 /** A seat with a standing farm, two mills and a school, its farmer past the miller's gate, so the miller
  *  is discovered and the mills wait for millers. */
-function seat(): { sim: Simulation; farmer: Entity; run: () => PlayerCommand[] } {
+function seat(content: ContentSet = SMALL_SCHOOL): {
+  sim: Simulation;
+  farmer: Entity;
+  run: () => PlayerCommand[];
+} {
   const sim = aiSim(1, content);
   placeHq(sim);
   for (const [buildingType, dx, dy] of [
@@ -90,7 +104,7 @@ const lessons = (commands: readonly PlayerCommand[]): PlayerCommand[] =>
 
 describe('technology schooling', () => {
   it('sends a spare man to school for a discovered trade instead of promoting the working farmer', () => {
-    const { sim, farmer, run } = seat();
+    const { sim, farmer, run } = seat(plainWorkshopContent());
     const first = run();
     const school = entityOfBuilding(sim, SCHOOL_TYPE);
     const sent = lessons(first);
@@ -112,6 +126,18 @@ describe('technology schooling', () => {
     const next = run();
     expect(lessons(next)).toEqual([]);
     expect(next.some((c) => c.kind === 'assignWorker' && c.entity === farmer)).toBe(false);
+  });
+
+  it('moves the farmer who earned the miller into the first mill ahead of the school', () => {
+    const { farmer, run } = seat();
+    const first = run();
+    expect(
+      first.some((c) => c.kind === 'assignWorker' && c.entity === farmer && c.jobPriority?.[0] === MILLER),
+    ).toBe(true);
+    // The second mill's miller still goes to school.
+    const sent = lessons(first);
+    expect(sent).toHaveLength(1);
+    expect(sent[0]?.kind === 'learn' && sent[0].entity !== farmer).toBe(true);
   });
 });
 

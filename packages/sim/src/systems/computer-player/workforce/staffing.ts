@@ -10,6 +10,7 @@ import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
+import { breadChainWorkshop } from '../build-order/food-first.js';
 import { type ComputerProfile, shareOf } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';
@@ -97,7 +98,7 @@ export function builderCap(profile: ComputerProfile, civilians: number, tick: nu
 }
 
 /** Where a gated slot no spare man qualifies for gets its man: a school lesson while a standing school
- *  teaches the trade, else a promotion. */
+ *  teaches the trade, else a promotion; the mill's and the bakery's first slot try the promotion first. */
 export interface GatedSlotSources {
   readonly schooling: Schooling;
   readonly promotions: Promotions;
@@ -108,7 +109,8 @@ export interface GatedSlotSources {
  * operator is a non-carrier, non-gatherer slot. Each post goes to the spare man most experienced on the
  * slot trade's general track who qualifies for it (`settlerMeetsNeed`). A slot no spare man qualifies for
  * takes a pupil of the trade's school lesson ({@link Schooling}), counted as filling it until he
- * graduates, or with no school teaching the trade a promotion ({@link Promotions}). Gatherer slots stay
+ * graduates, or with no school teaching the trade a promotion ({@link Promotions}), which the mill's and
+ * the bakery's first slot try before the school. Gatherer slots stay
  * open unless the plan names gatherers, and a carrier-only workplace (the well, the hive) fills itself,
  * so it needs no staff. Workplaces fill before training buildings and those before storage within a
  * tier, and all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
@@ -173,13 +175,18 @@ export function staffBuildings(
       const ofTrade = (e: Entity): boolean => world.get(e, Settler).jobType === slot.jobType && qualifies(e);
       for (let i = held; i < want; i++) {
         let spare = force.take(ofTrade, veteranFirst) ?? force.take(qualifies, veteranFirst);
+        // A promotion seats a building's first man of the trade only, so a second post never strips the
+        // predecessor trade a second time. The mill and the bakery take the man who earned their trade
+        // ahead of a school lesson (owner ruling: the farmer who earned the mill becomes its miller, and
+        // the miller who earned the bakery its baker).
+        const promotesFirst = i === 0 && breadChainWorkshop(ctx, type);
+        if (spare === null && promotesFirst) spare = gated.promotions.take(slot.jobType);
         if (spare === null) {
           const lesson = gated.schooling.enrol(slot.jobType, building, force);
           if (lesson.kind === 'learn') commands.push(lesson.command);
           if (lesson.kind === 'learn' || lesson.kind === 'promised') continue;
-          // A promotion seats a building's first man of the trade only, so a second post never strips the
-          // predecessor trade a second time.
-          if (lesson.kind === 'none' && i === 0) spare = gated.promotions.take(slot.jobType);
+          if (lesson.kind === 'none' && i === 0 && !promotesFirst)
+            spare = gated.promotions.take(slot.jobType);
         }
         if (spare === null) {
           if (!force.any()) return commands; // pool dry - the rest waits for grown sons
