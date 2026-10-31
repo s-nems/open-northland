@@ -1,10 +1,11 @@
-import { Building, type GoodsLine } from '../../../components/index.js';
+import { Building, type GoodsLine, UnderConstruction } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { seatStockOf } from '../../stores/index.js';
 import type { BuildOrderEntry } from './entries.js';
+import { ownProductsLacking } from './upgrade-supply.js';
 
 /**
  * Whether the seat has a source for every good of the step's merged tier-chain bill: a good with a
@@ -59,19 +60,24 @@ function linesSourced(
   return true;
 }
 
-/** Every good one of `owned`'s buildings makes by recipe or produces. */
+/** Every good one of `owned`'s buildings makes by recipe or produces. A site counts for the goods it
+ *  will make once standing, except one its own bill still lacks ({@link ownProductsLacking}): a pottery
+ *  upgrading without its bricks is no source of bricks. */
 export function goodsMadeBy(world: World, ctx: SystemContext, owned: readonly Entity[]): ReadonlySet<number> {
   const index = contentIndex(ctx.content);
   const made = new Set<number>();
   const seen = new Set<number>();
   for (const e of owned) {
     const typeId = world.get(e, Building).buildingType;
-    if (seen.has(typeId)) continue;
-    seen.add(typeId);
+    const site = world.has(e, UnderConstruction);
+    if (!site && seen.has(typeId)) continue;
     const type = index.buildings.get(typeId);
     if (type === undefined) continue;
-    for (const recipe of type.recipes) for (const output of recipe.outputs) made.add(output.goodType);
-    for (const good of type.produces) made.add(good);
+    const lacking = site ? ownProductsLacking(world, ctx, e) : undefined;
+    if (!site) seen.add(typeId);
+    for (const recipe of type.recipes)
+      for (const output of recipe.outputs) if (!lacking?.has(output.goodType)) made.add(output.goodType);
+    for (const good of type.produces) if (!lacking?.has(good)) made.add(good);
   }
   return made;
 }

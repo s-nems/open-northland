@@ -84,7 +84,7 @@ import {
   towerRingSites,
 } from './tower-coverage.js';
 import { upgradeReach } from './upgrade-reach.js';
-import { suppliedUpgrade } from './upgrade-supply.js';
+import { starvedUpgrade, suppliedUpgrade } from './upgrade-supply.js';
 
 export * from './entries.js';
 export {
@@ -196,12 +196,13 @@ function homesApart(profile: ComputerProfile, tick: number): boolean {
  * line draws off the goods it waits for: a step whose bill has no source yet ({@link billSourced}), a
  * placement that found no spot, retried every {@link STALLED_PLACEMENT_RETRY_DECISIONS} decisions, and an
  * upgrade while a bill good only it or another site could make is not yet in store, or while it would idle
- * a good's last working maker ({@link suppliedUpgrade}). An upgrade raises its building straight to the
- * highest tier that step and the unmet upgrade steps right after it in its line want, as far as the seat
- * has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. A placement or a ring
- * raises the highest tier the same tests allow straight away ({@link directTier}). A step whose building
- * the seat has not discovered yet holds its line too, while the technology module earns it, so a later
- * step never runs ahead of the workshop it feeds on; one whose discovery can never come is skipped
+ * a good's last working maker ({@link suppliedUpgrade}); one already open whose site lacks a good only it
+ * could make, with no free stock of it left, is called off ({@link starvedUpgrade}). An upgrade raises its
+ * building straight to the highest tier that step and the unmet upgrade steps right after it in its line want,
+ * as far as the seat has the tiers enabled ({@link upgradeReach}) and the store backs the merged bill. A
+ * placement or a ring raises the highest tier the same tests allow straight away ({@link directTier}). A step
+ * whose building the seat has not discovered yet holds its line too, while the technology module earns it, so
+ * a later step never runs ahead of the workshop it feeds on; one whose discovery can never come is skipped
  * ({@link entryStatus}), and a seat with no technology table, whose lock can only be a ban, passes it. A
  * step's `holdUntil` holds its line the same way, on the cases {@link StepHold} names.
  * The exceptions are passed over instead ({@link Verdict}): a serving placement with no room beside what
@@ -236,6 +237,10 @@ function runBuildOrder(
   const base = seatBaseOf(world, ctx, player);
   const sites = constructionSites(world, ctx, owned);
   if (base === null) return replaceMissingBase(world, ctx, terrain, player, owned, sites);
+  // An upgrade that waits on a good only it could make would hold its site, and every line whose bill
+  // needs that good, for good: it is called off so the workshop makes the good again.
+  const starved = starvedUpgrade(world, ctx, player, owned, sites);
+  if (starved !== null) return [{ kind: 'cancelUpgrade', building: starved }];
   const siteCap = seatSitePace(world, player, profile, ctx.tick).sites;
   const apartRing = ringApart(profile);
   const ringTowers = apartRing ? sites.filter((e) => ringTowerSite(world, ctx, e)) : [];

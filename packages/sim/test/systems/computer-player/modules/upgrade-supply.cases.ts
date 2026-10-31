@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { Stockpile } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
 import type { Simulation } from '../../../../src/index.js';
+import { goodsMadeBy } from '../../../../src/systems/computer-player/build-order/bill-sources.js';
 import {
   type BuildOrderEntry,
   buildOrderModule,
@@ -160,6 +161,70 @@ describe('build order - material gates', () => {
       kind: 'upgradeBuilding',
       building: entityOfBuilding(sim, POTTERY),
       target: POTTERY_UPGRADED,
+    });
+  });
+
+  it("keeps the pottery's own pile beyond its bill aside, as the upgrade stashes it", () => {
+    const { sim, next } = workshopsSeat();
+    const hut = entityOfBuilding(sim, MASON_HUT);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: hut });
+    sim.step();
+    // The hut's site holds its pillar and lacks only its bricks; the pottery's pillars come from store.
+    sim.world.mut(hut, Stockpile).amounts.set(PILLAR, MASON_BILL.pillars);
+    store(sim, PILLAR, POTTERY_BILL.pillars);
+    // The pottery's own pile covers its bill and the hut's lack in sum, yet the part past its bill would
+    // sit in the stash until the upgrade finishes, out of the hut's reach.
+    const pile = POTTERY_BILL.bricks + MASON_BILL.bricks;
+    sim.world.mut(entityOfBuilding(sim, POTTERY), Stockpile).amounts.set(BRICK, pile);
+    expect(next()).toBeUndefined();
+    store(sim, BRICK, MASON_BILL.bricks);
+    expect(next()).toMatchObject({ kind: 'upgradeBuilding', target: POTTERY_UPGRADED });
+  });
+
+  describe('an upgrade starved of its own product', () => {
+    /** The pottery upgrading with its pillars in hand, the bricks it went for gone from store. */
+    function starvedPottery() {
+      const seat = workshopsSeat();
+      const { sim, next } = seat;
+      store(sim, BRICK, POTTERY_BILL.bricks);
+      const upgrade = next();
+      if (upgrade === undefined) throw new Error('expected the pottery upgrade');
+      sim.enqueueSetup(upgrade);
+      sim.step();
+      const pottery = entityOfBuilding(sim, POTTERY);
+      sim.world.mut(pottery, Stockpile).amounts.set(PILLAR, POTTERY_BILL.pillars);
+      // Another site took the stored bricks.
+      sim.world.mut(entityOfBuilding(sim, HQ_TYPE), Stockpile).amounts.delete(BRICK);
+      return { ...seat, pottery };
+    }
+
+    it('calls the upgrade off once the bricks it lacks are nowhere left', () => {
+      const { sim, next, pottery } = starvedPottery();
+      expect(next()).toEqual({ kind: 'cancelUpgrade', building: pottery });
+      store(sim, BRICK, POTTERY_BILL.bricks);
+      expect(next()?.kind).not.toBe('cancelUpgrade');
+    });
+
+    it('lets the upgrade wait while another pottery still makes bricks', () => {
+      const { sim, next } = starvedPottery();
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: POTTERY,
+        x: 30,
+        y: 16,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      sim.step();
+      expect(next()?.kind).not.toBe('cancelUpgrade');
+    });
+
+    it('counts the pottery as a source of bricks only once its own bill has them', () => {
+      const { sim, content, pottery } = starvedPottery();
+      const made = () => goodsMadeBy(sim.world, { ...ctxOf(sim), content }, [pottery]);
+      expect(made().has(BRICK)).toBe(false);
+      sim.world.mut(pottery, Stockpile).amounts.set(BRICK, POTTERY_BILL.bricks);
+      expect(made().has(BRICK)).toBe(true);
     });
   });
 
