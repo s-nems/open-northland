@@ -51,6 +51,7 @@ import {
 } from '../../diag/index.js';
 import { setReportGameView } from '../../diag/report/view.js';
 import { settlerName } from '../../game/character-names/index.js';
+import { installPetNames, petNamesOf } from '../../game/character-names/pet-names.js';
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
 import { mapStartFocus } from '../../game/map/start.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
@@ -176,6 +177,8 @@ import {
   savedView,
 } from './save-load/index.js';
 import { otherWorldLoader } from './save-load/other-world.js';
+import { browserPetNameArchive } from './save-load/pet-name-store.js';
+import { playthroughKey } from './save-load/playthroughs.js';
 import { worldScreenshot, worldThumbnail } from './save-load/thumbnail.js';
 import { noteRestartOnLeave } from './settings-restart.js';
 import { createSubMissions, type PrepareSubMission } from './sub-missions.js';
@@ -627,6 +630,15 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const vehicleSiteTypes = new Set(
       host.content.buildings.filter((b) => b.kind === BUILDING_KIND.vehicle).map((b) => b.typeId),
     );
+    // The player's renames, kept under the key this playthrough's saves share, so they come back with
+    // the world and never leave this client. A world whose seed the entry does not know keeps them
+    // for the page alone.
+    const seed = deps.worldSeed;
+    if (seed !== undefined && seed !== null) {
+      installPetNames(
+        await petNamesOf(browserPetNameArchive(), playthroughKey(deps.worldToken ?? null, seed)),
+      );
+    }
     const toolPanel = await mountGameToolPanel({
       settlerName: (entity) => settlerName({ jobs: host.content.jobs, mapText }, entity),
       app,

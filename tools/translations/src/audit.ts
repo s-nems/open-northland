@@ -18,6 +18,8 @@ import {
   type Language,
   type MapOverlay,
   type ObjectTableOverlay,
+  PERSONAL_NAMES,
+  type PersonalNameOverlay,
   parseMapOverlayFileId,
   type SourceLanguage,
   splitOverlayEdit,
@@ -89,6 +91,10 @@ function misnamed(kind: OverlayKind, id: string): string | undefined {
       return id === HISTORY_BOOK ? undefined : `the only book is ${HISTORY_BOOK}`;
     case 'campaigns':
       return CAMPAIGN_FILE.test(id) ? undefined : 'a campaign overlay is named by the campaign id';
+    case 'names':
+      return PERSONAL_NAMES.some((pool) => pool.id === id)
+        ? undefined
+        : 'a names overlay is named by the personal-name pool it translates';
   }
 }
 
@@ -123,6 +129,7 @@ interface ValidOverlays {
   readonly objectEdits: ObjectTableOverlayFile[];
   readonly books: { readonly file: string; readonly overlay: BookOverlay }[];
   readonly campaigns: { readonly file: string; readonly id: string }[];
+  readonly names: { readonly file: string; readonly overlay: PersonalNameOverlay }[];
 }
 
 /** Campaign directories hold authored film subtitles alongside the title overlays. */
@@ -164,6 +171,7 @@ async function readLayout(root: string, errors: AuditFinding[]): Promise<ValidOv
     objectEdits: [],
     books: [],
     campaigns: [],
+    names: [],
   };
   const filing = new MapOverlayFiling();
   /** Map edits attach after every overlay is filed, since `.edit.json` sorts before `.json`. */
@@ -250,6 +258,17 @@ async function readLayout(root: string, errors: AuditFinding[]): Promise<ValidOv
               await readOverlayFile('campaigns', path);
               valid.campaigns.push({ file, id });
               break;
+            case 'names': {
+              const overlay = await readOverlayFile('names', path);
+              // The file name is the pool; the field repeats it, so a file moved under another pool's
+              // name would look up names the game never generates.
+              if (overlay.pool !== id) {
+                errors.push({ file, message: `names the pool ${overlay.pool}, not ${id}` });
+                break;
+              }
+              valid.names.push({ file, overlay });
+              break;
+            }
           }
         } catch (err) {
           // The loader names the file through `diagnosticPath`, not with the host's own separator.
@@ -498,7 +517,8 @@ export async function auditTranslations(root: string, pack?: PackText): Promise<
     valid.objects.length +
     valid.objectEdits.length +
     valid.books.length +
-    valid.campaigns.length;
+    valid.campaigns.length +
+    valid.names.length;
   let unmatchedMaps = 0;
   if (pack !== undefined) {
     const maps = valid.maps.length === 0 ? new Map<string, readonly PackMap[]>() : await pack.maps();
@@ -541,6 +561,13 @@ export async function auditTranslations(root: string, pack?: PackText): Promise<
     for (const { file, id } of valid.campaigns) {
       if (!pack.campaigns.has(id)) warn(file, `the pack has no campaign ${id}`);
     }
+  }
+  // A name its pool never generates is a typo nothing else reports: the entry silently never applies.
+  for (const { file, overlay } of valid.names) {
+    const pool = PERSONAL_NAMES.find((row) => row.id === overlay.pool);
+    const unknown =
+      pool === undefined ? undefined : missingKeys(overlay.names, (name) => pool.names.includes(name));
+    if (unknown !== undefined) warn(file, `names the ${overlay.pool} pool lacks: ${unknown}`);
   }
   const byFile = (a: AuditFinding, b: AuditFinding): number =>
     a.file < b.file ? -1 : a.file > b.file ? 1 : 0;

@@ -25,6 +25,8 @@ translations/
                                  project's corrections changed, in the overlay's language  (MapOverlay)
     objects/<table>.json         goods, houses, jobs, experiences, tribes by type id  (ObjectTableOverlay)
     objects/<table>.edit.json    the project's edit over the imported objects/<table>.json
+    names/<pool>.json            one personal-name pool's localized names, by the raw name the pool
+                                 spells  (PersonalNameOverlay)
     books/<book>.json            hypertext books: history  (BookOverlay)
     campaigns/<campaign>.json    campaign title  (CampaignOverlay)
     campaigns/<campaign>/films/<slot>.srt
@@ -45,6 +47,11 @@ of the same language, `map.dat` and alias adds the first 12 hex digits of its `b
   the pipeline refuses a source-language overlay on a campaign map, on the original game's tutorials
   the mod bundles (`tutorial_001` to `tutorial_007`), on an object table and on a book, because that
   would be a committed copy of the original text. Those keep `tools/asset-pipeline/corrections/`.
+- A `names` overlay carries no `basis`: the pools are the project's own independently selected names,
+  not text the pack ships, so no source-language text exists for a digest to pin it to. Its file id is
+  the pool id it translates, which its `pool` field repeats, and its keys are the raw names the pool
+  spells; the audit warns of a key its pool lacks, a typo nothing else would surface. A locale fills as
+  much of a pool as it likes, and a name it leaves out keeps the raw one.
 - When the pack or archive ships the overlay's language itself, the shipped text wins and the
   translations audit lists the overlay as redundant, unless the overlay's basis is that language.
 - An overlay whose basis is its own language is the project's edit of a community map's text: a typo,

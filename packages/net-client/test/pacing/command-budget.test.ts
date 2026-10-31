@@ -8,7 +8,13 @@ import {
   type ServerMessage,
   TICK_MS,
 } from '@open-northland/net-protocol';
-import { MAX_UNIT_ORDER_MEMBERS, parseCommandEnvelope, playerCommand, Simulation } from '@open-northland/sim';
+import {
+  type Entity,
+  MAX_UNIT_ORDER_MEMBERS,
+  parseCommandEnvelope,
+  playerCommand,
+  Simulation,
+} from '@open-northland/sim';
 import { expect, it } from 'vitest';
 import { testContent } from '../../../sim/test/fixtures/content.js';
 
@@ -87,36 +93,47 @@ it('refuses a valid oversized army gesture atomically without sending it or dist
   expect(client.tick).toBe(2);
 });
 
-it.each(['x', 'ą', '兵', '🚩'])(
-  'checks the exact serialized UTF-8 boundary with %s before the envelope reaches transport validation',
-  async (character) => {
-    const { client, sim, sent, observed } = await runningClient();
-    // The budget gate is independent of the sim's name-length validation: use one string to place
-    // ASCII, two/three-byte characters and surrogate pairs exactly at the transport boundary.
-    const entity = sim.world.create();
-    const renamed = (name: string) => playerCommand(0, { kind: 'renameSettler', entity, name });
-    const available = MAX_ENVELOPE_BYTES - jsonBytes(renamed(''));
-    const width = new TextEncoder().encode(character).byteLength;
-    const name = character.repeat(Math.floor(available / width)) + 'x'.repeat(available % width);
-    const exact = renamed(name);
-    const over = renamed(`${name}x`);
-    expect(jsonBytes(exact)).toBe(MAX_ENVELOPE_BYTES);
-    expect(jsonBytes(over)).toBe(MAX_ENVELOPE_BYTES + 1);
-    client.submit(exact);
-    client.submit(over);
-    expect(sent).toEqual([{ kind: 'command', envelope: exact, fromTick: 0 }]);
-    expect(jsonBytes(sent[0])).toBeLessThanOrEqual(MAX_CLIENT_MESSAGE_BYTES);
-    expect(observed).toEqual([{ kind: 'rejected', of: 'command', reason: { code: 'envelopeTooLarge' } }]);
-  },
-);
+/**
+ * A group order filled out to an exact serialized size. No player command carries free text any more,
+ * so the fill is one member's job list: its first entry is one byte, every later one two, and a
+ * two-digit last entry adds the odd byte a two-bytes-per-entry fill cannot reach.
+ */
+function filledOrder(bytes: number, entity: Entity): ReturnType<typeof playerCommand> {
+  const base = jsonBytes(
+    playerCommand(0, {
+      kind: 'assignWorkerGroup',
+      building: entity,
+      members: [{ entity, jobPriority: [0] }],
+    }),
+  );
+  const rest = bytes - base;
+  if (rest < 0) throw new Error(`an assignWorkerGroup order is at least ${base} bytes`);
+  const entries = Math.floor(rest / 2) + 1;
+  const jobPriority = new Array<number>(entries).fill(0);
+  if (rest % 2 === 1) jobPriority[entries - 1] = 10;
+  return playerCommand(0, {
+    kind: 'assignWorkerGroup',
+    building: entity,
+    members: [{ entity, jobPriority }],
+  });
+}
+
+it('checks the exact serialized boundary before the envelope reaches transport validation', async () => {
+  const { client, sim, sent, observed } = await runningClient();
+  const exact = filledOrder(MAX_ENVELOPE_BYTES, sim.world.create());
+  const over = filledOrder(MAX_ENVELOPE_BYTES + 1, sim.world.create());
+  expect(jsonBytes(exact)).toBe(MAX_ENVELOPE_BYTES);
+  expect(jsonBytes(over)).toBe(MAX_ENVELOPE_BYTES + 1);
+  client.submit(exact);
+  client.submit(over);
+  expect(sent).toEqual([{ kind: 'command', envelope: exact, fromTick: 0 }]);
+  expect(jsonBytes(sent[0])).toBeLessThanOrEqual(MAX_CLIENT_MESSAGE_BYTES);
+  expect(observed).toEqual([{ kind: 'rejected', of: 'command', reason: { code: 'envelopeTooLarge' } }]);
+});
 
 it('holds a large gesture back while the ones in flight would push its tick past the byte budget', async () => {
   const { client, sim, sent } = await runningClient();
-  const entity = sim.world.create();
-  const renamed = (name: string) => playerCommand(0, { kind: 'renameSettler', entity, name });
-  const largest = (mark: string) =>
-    renamed(mark + 'x'.repeat(MAX_ENVELOPE_BYTES - jsonBytes(renamed('')) - mark.length));
-  const orders = ['a', 'b', 'c'].map(largest);
+  const orders = [0, 1, 2].map(() => filledOrder(MAX_ENVELOPE_BYTES, sim.world.create()));
   for (const order of orders) expect(jsonBytes(order)).toBe(MAX_ENVELOPE_BYTES);
   const fitting = Math.floor(MAX_COMMAND_BYTES_PER_TICK / MAX_ENVELOPE_BYTES);
   for (const order of orders) client.submit(order);

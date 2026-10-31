@@ -140,13 +140,29 @@ describe('gestures past the relay per-tick budget', () => {
   it('lands large orders over successive ticks instead of crossing the byte budget of one', async () => {
     const { stage, clients } = await room();
     const [ania, bartek] = clients;
-    // An id no world holds: the rename changes nothing, only its size matters.
-    const entity = new Simulation({ seed: SEED, content: testContent() }).world.create();
-    const renamed = (name: string) => playerCommand(0, { kind: 'renameSettler', entity, name });
+    // A group order filled to the budget: the order changes nothing, only its size matters. Its first
+    // job entry is one serialized byte, every later one two, and a two-digit last one adds the odd byte.
     const jsonBytes = (value: unknown) => new TextEncoder().encode(JSON.stringify(value)).byteLength;
-    const largest = (mark: string) =>
-      renamed(mark + 'x'.repeat(MAX_ENVELOPE_BYTES - jsonBytes(renamed('')) - mark.length));
-    const orders = ['a', 'b', 'c'].map(largest);
+    // An id no world holds: the order changes nothing, only its size matters.
+    const entity = new Simulation({ seed: SEED, content: testContent() }).world.create();
+    const base = jsonBytes(
+      playerCommand(0, {
+        kind: 'assignWorkerGroup',
+        building: entity,
+        members: [{ entity, jobPriority: [0] }],
+      }),
+    );
+    const largest = (): ReturnType<typeof playerCommand> => {
+      const entries = Math.floor((MAX_ENVELOPE_BYTES - base) / 2) + 1;
+      const jobPriority = new Array<number>(entries).fill(0);
+      if ((MAX_ENVELOPE_BYTES - base) % 2 === 1) jobPriority[entries - 1] = 10;
+      return playerCommand(0, {
+        kind: 'assignWorkerGroup',
+        building: entity,
+        members: [{ entity, jobPriority }],
+      });
+    };
+    const orders = [largest(), largest(), largest()];
     for (const order of orders) ania.submit(order);
     await runFor(stage, clients, RUN_MS);
     expect(ania.rejections).toEqual([]);

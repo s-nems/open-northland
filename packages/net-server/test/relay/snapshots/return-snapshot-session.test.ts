@@ -61,7 +61,7 @@ async function buildHeavyWorld(session: GameSession): Promise<Simulation> {
   let name = '';
   for (let i = 0; i < NOISE_CHARACTERS; i++)
     name += NOISE_ALPHABET[Math.floor(random() * NOISE_ALPHABET.length)];
-  sim.world.add(sim.world.create(), components.GivenName, { name });
+  sim.world.add(sim.world.create(), components.ScriptedLook, { recipes: [name] });
   return sim;
 }
 

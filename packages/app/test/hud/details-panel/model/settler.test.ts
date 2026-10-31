@@ -13,6 +13,7 @@ import {
   JOB_TRADER,
   JOB_WOMAN,
 } from '../../../../src/catalog/jobs.js';
+import { installPetNames, memoryPetNames } from '../../../../src/game/character-names/pet-names.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
   BUILDING_HOME_00,
@@ -103,14 +104,20 @@ function workshop(ctx: UnitPanelModelContext): { type: number; operator: number;
 }
 
 describe('the settler panel model', () => {
-  it('names a settler by the player-given name over the generated one, and the map name over both', () => {
+  it('names a settler by the player’s own name over the generated one, and the map name over both', () => {
+    const pet = memoryPetNames();
+    installPetNames(pet);
+    pet.set(SETTLER, 'Bjorn');
     const named = settlerModel([
       {
         id: SETTLER,
-        components: owned({ Settler: { tribe: 1, jobType: JOB_COLLECTOR }, GivenName: { name: 'Bjorn' } }),
+        components: owned({
+          Settler: { tribe: 1, jobType: JOB_COLLECTOR },
+          NameIdentity: { pool: 'viking-female', name: 'Ragna' },
+        }),
       },
     ]);
-    expect(named.name).toBe('Bjorn');
+    expect(named.name).toBe('Bjorn (Ragna)');
 
     const scripted = settlerModel(
       [
@@ -118,7 +125,7 @@ describe('the settler panel model', () => {
           id: SETTLER,
           components: owned({
             Settler: { tribe: 1, jobType: JOB_COLLECTOR },
-            GivenName: { name: 'Bjorn' },
+            NameIdentity: { pool: 'viking-female', name: 'Ragna' },
             ScriptedName: { stringId: 7 },
           }),
         },
@@ -126,6 +133,7 @@ describe('the settler panel model', () => {
       { ...sandboxCtx(), mapText: (id) => (id === 7 ? 'Ykol' : undefined) },
     );
     expect(scripted.name).toBe('Ykol');
+    installPetNames(memoryPetNames());
   });
 
   it('links the workplace, the home, the spouse and the growing child by entity id', () => {

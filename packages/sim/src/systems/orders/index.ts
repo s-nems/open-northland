@@ -8,7 +8,6 @@ export * from './explore.js';
 export * from './family.js';
 export * from './livestock.js';
 export * from './movement.js';
-export * from './naming.js';
 export * from './needs.js';
 export * from './pending.js';
 export * from './queue.js';

@@ -4,6 +4,7 @@ export type {
   AssistantCounterValues,
 } from './components/assistant.js';
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
+export { HOUSE_RECORD_NAME_MAX_CHARS } from './components/economy/infrastructure.js';
 export {
   PRODUCTION_COUNT_MAX,
   PRODUCTION_UNLIMITED,
@@ -92,6 +93,7 @@ export { type Fixed, fx, ONE } from './core/fixed.js';
 export { FixedTimestep, MS_PER_TICK, TICKS_PER_SECOND } from './core/loop.js';
 export { PersonalNames } from './core/personal-names.js';
 export { Rng } from './core/rng.js';
+export { codePointLength, hasControlCharacter } from './core/untrusted.js';
 export type { Component, Entity, MutationSink, SyncDomain } from './ecs/world.js';
 export { SYNC_DOMAINS, World } from './ecs/world.js';
 export { CORE_INVARIANTS, checkInvariants, type Invariant } from './harness/invariants.js';

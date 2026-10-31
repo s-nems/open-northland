@@ -1,6 +1,7 @@
 import type { UiCue } from '@open-northland/audio';
 import { projectNode } from '@open-northland/render';
 import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
+import { petNames } from '../../../game/character-names/pet-names.js';
 import { nodeOfId } from '../../../game/node-id.js';
 import { postFlagTradeOf } from '../../../game/snapshot/index.js';
 import { discoveryProgressOf, technologyReason } from '../../../game/technology.js';
@@ -125,9 +126,10 @@ export async function createUnitChrome(
   equipPicker: EquipPickController | null,
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
-  // The settler panel's commands of the sim contract (`ProductionCounters.counters`, `renameSettler`).
+  // The settler panel's commands: `setProductionCount` is the sim's, while a rename is the player's
+  // own and stays here, where no other seat's screen can be made to show it.
   const contract: SettlerContractCommands = {
-    rename: (id, name) => opts.enqueue({ kind: 'renameSettler', entity: id as Entity, name }),
+    rename: (id, name) => petNames().set(id, name),
     setProductionCount: (id, goodType, count) =>
       opts.enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
   };

@@ -86,6 +86,52 @@ describe('auditTranslations: layout and schema', () => {
     expect(report).toEqual({ files: 5, errors: [], warnings: [], unmatchedMaps: 0 });
   });
 
+  it('accepts a personal-name overlay per pool, and refuses one named, filed or placed for another', async () => {
+    await put('chs/names/viking-male.json', {
+      version: OVERLAY_VERSION,
+      pool: 'viking-male',
+      names: { Bjarni: '比亚尔尼' },
+    });
+    await put('chs/names/not-a-pool.json', { version: OVERLAY_VERSION, pool: 'not-a-pool', names: {} });
+    await put('cht/names/frank-female.json', { version: OVERLAY_VERSION, pool: 'viking-female', names: {} });
+    await put('eng/names/viking-male.json', { version: OVERLAY_VERSION, pool: 'viking-male', names: {} });
+
+    const report = await auditTranslations(dir);
+
+    expect(report.files).toBe(1);
+    expect(report.errors).toEqual([
+      {
+        file: 'chs/names/not-a-pool.json',
+        message: 'a names overlay is named by the personal-name pool it translates',
+      },
+      { file: 'cht/names/frank-female.json', message: 'names the pool viking-female, not frank-female' },
+      {
+        file: 'eng/names/viking-male.json',
+        message: 'a source language overlays only community maps; its own text keeps corrections',
+      },
+    ]);
+    expect(report.warnings).toEqual([]);
+  });
+
+  it('warns of a personal name the pool the overlay translates never generates', async () => {
+    await put('chs/names/werewolf-neutral.json', {
+      version: OVERLAY_VERSION,
+      pool: 'werewolf-neutral',
+      names: { Bjarni: '比亚尔尼', Garm: '加姆' },
+    });
+
+    const report = await auditTranslations(dir);
+
+    expect(report.files).toBe(1);
+    expect(report.errors).toEqual([]);
+    expect(report.warnings).toEqual([
+      {
+        file: 'chs/names/werewolf-neutral.json',
+        message: 'names the werewolf-neutral pool lacks: Bjarni, Garm',
+      },
+    ]);
+  });
+
   it('accepts authored film subtitles in source and overlay languages beside campaign titles', async () => {
     await put('chs/campaigns/saga.json', { version: OVERLAY_VERSION, title: '傳奇' });
     for (const lang of ['eng', 'chs']) {

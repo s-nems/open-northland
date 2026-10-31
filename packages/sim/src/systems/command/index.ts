@@ -50,7 +50,6 @@ import {
   orderNeed,
   orderOpenChest,
   placeSignpost,
-  renameSettler,
   setAssistantArmorOrder,
   setAssistantCounter,
   setAssistantGrant,
@@ -454,9 +453,6 @@ function applyCommand(
       return;
     case 'marry':
       marry(world, ctx, command);
-      return;
-    case 'renameSettler':
-      renameSettler(world, ctx, command);
       return;
     case 'assignHouse':
       assignHouse(world, ctx, command);

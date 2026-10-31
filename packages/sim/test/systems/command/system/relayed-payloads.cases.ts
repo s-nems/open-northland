@@ -290,7 +290,6 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
       { vehicle: t.ship, ...node, queued: true },
       { vehicle: t.ship, ...node, dock: { x: node.x + 4, y: node.y } },
     ],
-    renameSettler: [{ entity: t.worker, name: 'Ragna' }],
     openChest: [
       { entity: t.worker, chest: t.hq },
       { entity: t.worker, chest: t.hq, queued: true },

@@ -96,7 +96,7 @@ describe('stalled workshop notes over real runs', () => {
     const bakery = idleWorkBakeryDefinition(sim);
     const inputs = bakery.recipes[0]?.inputs ?? [];
     const storeBeside = (name: string): Map<number, number> => {
-      const worker = idleWorkWorker(sim, name);
+      const worker = idleWorkWorker(name);
       if (worker === undefined) throw new Error(`no ${name}`);
       const at = sim.world.get(worker, components.Position);
       const x = fx.toInt(at.x) + NEW_STORE_OFFSET;

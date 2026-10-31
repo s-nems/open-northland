@@ -4,6 +4,7 @@ import type { Application } from 'pixi.js';
 import { loadBerthPostArt } from '../../content/gui/berth-post-art.js';
 import { loadGuiStrings } from '../../content/gui/gfx.js';
 import { installOriginalNames } from '../../content/gui/original-names.js';
+import { installPersonalNames } from '../../content/gui/personal-names.js';
 import { loadPlanRoadArt } from '../../content/gui/plan-road-art.js';
 import { loadPlanStakeArt } from '../../content/gui/plan-stake-art.js';
 import {
@@ -28,7 +29,11 @@ import type { GameViewDeps } from './game-view.js';
  */
 export async function loadLocalizedRealContent(params: URLSearchParams): Promise<RealContentMerge | null> {
   const locale = localeParam(params);
-  const [realContent, strings] = await Promise.all([loadRuntimeRealContent(), loadGuiStrings(locale)]);
+  const [realContent, strings] = await Promise.all([
+    loadRuntimeRealContent(),
+    loadGuiStrings(locale),
+    installPersonalNames(locale),
+  ]);
   if (realContent === null) return null;
   logRealContentGaps(realContent);
   if (strings !== null) installOriginalNames(locale, strings, realContent.content);
