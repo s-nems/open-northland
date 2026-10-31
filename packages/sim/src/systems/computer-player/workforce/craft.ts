@@ -165,9 +165,15 @@ const SHORT_PRODUCT_SEATS = 2;
  *  operator of the seat's workshops that take it. */
 export const INPUT_UNITS_PER_CONSUMER = 1;
 
-/** Owner ruling: the mint keeps coins for the druids, two for each big healing potion (its recipe takes
- *  two), one potion's worth per druid. */
+/** The coins a big healing potion's recipe takes. */
 export const COINS_PER_BIG_POTION = 2;
+
+/** The big potions' worth of coins the mint keeps in stock per druid (authored, owner ruling that the
+ *  coins cover the druids). A druid spends two coins a cycle and a coiner strikes one, so the stock drains
+ *  whatever the mint does; at two potions a druid a two-druid hut's lack spans two coiners' shares
+ *  (`OPERATOR_SHARE_UNITS`), the whole crew of a mint strikes coins under it, and the amulets take the gold
+ *  only once the druids are covered. */
+export const COIN_POTIONS_PER_DRUID = 2;
 
 /** Every armour a recruit may take: an army want for armour reads them all. */
 const ARMOUR_GOOD_IDS: readonly string[] = ['armor_plate', 'armor_chain', 'armor_leather', 'armor_wool'];
@@ -202,15 +208,16 @@ const WEAPON_WANTS: readonly StockWant[] = [
   ...SHORT_SWORD_WANTS,
 ];
 
-/** Past every want a smith forges short swords while the long sword is still to earn, and rests from then
- *  on, so the iron gathers for the next want instead of piling up arms nobody drafts. */
+/** Past every want a smith forges short swords while the long sword is still to earn, and from then on the
+ *  army's arms for stock (the surplus wants, `./craft-stock.ts`). */
 const SMITH_OVERFLOW: readonly CraftSeat[] = [
   { until: 'sword_long', works: ['sword_shord'], otherwise: REST_SEAT },
 ];
 
 /** On a seat rich in iron the smith past every want keeps forging long swords until he has earned chain
  *  mail, whose discovery opens the upper smithy: resting there left a lone lower smith short of it at game
- *  minute 90 on a crowded diamentowa_dolina seat. Short swords only while the long sword is still to earn. */
+ *  minute 90 on a crowded diamentowa_dolina seat. Short swords only while the long sword is still to earn,
+ *  the army's arms for stock once chain mail is earned. */
 const IRON_ARMS_SMITH_OVERFLOW: readonly CraftSeat[] = [
   {
     until: 'sword_long',
@@ -238,7 +245,7 @@ const IRON_WEAPONS_SMITHY: StockCraftPlan = { wants: WEAPON_WANTS, overflow: SMI
 /** Owner ruling: short bows only to arm the archers and earn the long bow, then long bows alone; wooden
  *  spears as the iron spear's input and, until the iron spear is earned or where no smith forges one, for
  *  the spearmen. Past every want an armourer makes both earners while the long bow is still to earn, and
- *  rests from then on. */
+ *  from then on the wanted goods for stock. */
 const ARMORY: StockCraftPlan = {
   wants: [
     { goods: ['bow_long'], target: ARMY_BOW },
@@ -250,8 +257,8 @@ const ARMORY: StockCraftPlan = {
 };
 
 /** Owner ruling: on a seat rich in iron leather armour is only the defence amulet's input and the army's
- *  armour until plate is earned; the tailors keep shoes in stock and rest past their wants. Tunics stand in
- *  for the leather armour until plate is earned. */
+ *  armour until plate is earned; the tailors keep shoes in stock and sew the wanted goods for stock past
+ *  their wants. Tunics stand in for the leather armour until plate is earned. */
 const IRON_ARMS_SEWERY: StockCraftPlan = {
   wants: [
     { goods: ['armor_leather'], target: ARMY_ARMOUR, counts: ARMOUR_GOOD_IDS, until: 'armor_plate' },
@@ -262,8 +269,8 @@ const IRON_ARMS_SEWERY: StockCraftPlan = {
   overflow: [],
 };
 
-/** Owner ruling: a seat with little or no iron sews no leather armour, only tunics for the army and shoes;
- *  past them the tailors rest. */
+/** Owner ruling: a seat with little or no iron sews no leather armour, only tunics for the army and shoes,
+ *  past their stock lines too. */
 const TUNIC_SEWERY: StockCraftPlan = {
   wants: [
     { goods: ['armor_wool'], target: ARMY_ARMOUR, counts: ARMOUR_GOOD_IDS },
@@ -284,7 +291,12 @@ const DEFENCE_AMULET_SEAT: CraftSeat = { firstFed: [DEFENCE_AMULET_LINE, STRENGT
  *  inputs in store, strength-first and defence-first seats in turn; it strikes coins meanwhile to earn the
  *  amulets. */
 const MINT: StockCraftPlan = {
-  wants: [{ goods: ['coin'], target: { kind: 'consumers', perConsumer: COINS_PER_BIG_POTION } }],
+  wants: [
+    {
+      goods: ['coin'],
+      target: { kind: 'consumers', perConsumer: COIN_POTIONS_PER_DRUID * COINS_PER_BIG_POTION },
+    },
+  ],
   overflow: [
     { until: 'amulet_strength', works: ['coin'], otherwise: STRENGTH_AMULET_SEAT },
     { until: 'amulet_defense', works: ['coin'], otherwise: DEFENCE_AMULET_SEAT },
@@ -593,6 +605,7 @@ export function tuneCraftCounters(
     /** A crew member's goods, or null while he rests. */
     const listed: (readonly number[] | null)[] = [];
     const free: number[] = []; // the crew members off any opening run, at work
+    let surplusTurn = 0; // the surplus wants rotate over the operators past every want
     for (let seat = 0; seat < workplaces.length; seat++) {
       const opening = openingRun(world, ctx, workplaces[seat] as Entity, type);
       if (opening !== null) {
@@ -608,7 +621,21 @@ export function tuneCraftCounters(
         const work = seatProducts(choice, held, option ?? []);
         return work === REST ? null : goodsOf(ctx, products, work);
       };
-      const own = workOf(seats[seat % Math.max(1, seats.length)]);
+      // A list keeps a good of its own that lacks its inputs while another has them: the worker's rotation
+      // passes over an unsourced recipe by itself.
+      const anyFed = (goods: readonly number[]): boolean =>
+        goods.some((good) => fed(good, held.includes(good)));
+      let own = workOf(seats[seat % Math.max(1, seats.length)]);
+      if (own === null && stock !== null) {
+        // A stock plan's operator past every want makes a surplus good with its inputs in stock, in turn,
+        // and only from inputs the sites can spare.
+        const spare = (good: number): boolean =>
+          inputsSpare(ctx, supply, type, good, held.includes(good)) && fed(good, held.includes(good));
+        const sourced = stock.surplus
+          .map((ids) => goodsOf(ctx, products, ids).filter(spare))
+          .filter((goods) => goods.length > 0);
+        own = sourced[surplusTurn++ % Math.max(1, sourced.length)] ?? null;
+      }
       if (own === null) {
         listed.push(null);
         continue;
@@ -616,10 +643,6 @@ export function tuneCraftCounters(
       free.push(seat);
       const alone =
         crew.length === 1 && seatPlan?.alone !== undefined ? goodsOf(ctx, products, seatPlan.alone) : [];
-      // A list keeps a good of its own that lacks its inputs while another has them: the worker's rotation
-      // passes over an unsourced recipe by itself.
-      const anyFed = (goods: readonly number[]): boolean =>
-        goods.some((good) => fed(good, held.includes(good)));
       let goods = alone.length > 0 ? alone : own;
       for (let step = 0; goods.length === 0 && step < others.length; step++)
         goods = workOf(others[step]) ?? [];
@@ -673,6 +696,22 @@ function inputsInStock(
   const recipe = contentIndex(ctx.content).recipeByProductByBuilding.get(type.typeId)?.get(good);
   if (recipe === undefined) return true;
   return recipe.inputs.every((input) => supply.units(input.goodType) >= (selected ? 1 : input.amount));
+}
+
+/**
+ * Whether every input of `good` at `type` with supply lines lies at or above its comfort line, or while the
+ * worker already makes the good (`selected`) above its short line: a surplus product never eats the wood
+ * or stone the sites and homes still want. True for an input without supply lines.
+ */
+function inputsSpare(
+  ctx: SystemContext,
+  supply: SeatSupply,
+  type: BuildingType,
+  good: number,
+  selected: boolean,
+): boolean {
+  const recipe = contentIndex(ctx.content).recipeByProductByBuilding.get(type.typeId)?.get(good);
+  return recipe === undefined || recipe.inputs.every((input) => !supply.isShort(input.goodType, !selected));
 }
 
 /** The goods named by content `ids` that the type makes (`products`), each once, ascending. */

@@ -31,7 +31,8 @@ export interface StockWant {
  * A workplace type whose crew is shared out over its wants by stock each decision. Every want under its
  * target takes one operator, the most lacking army want first, then each spare operator goes to the want
  * that lacks the most beyond {@link OPERATOR_SHARE_UNITS} per operator it already has. Operators past every
- * want work the `overflow` seats in turn, or rest while there are none.
+ * want work the `overflow` seats in turn; one whose overflow seat rests works a surplus want instead
+ * ({@link StockSeats.surplus}), and rests only while none of those has its inputs.
  */
 export interface StockCraftPlan {
   readonly wants: readonly StockWant[];
@@ -148,8 +149,14 @@ function liveWants(
 export interface StockSeats {
   /** Each operator's seat, index for index with the crew: a want's goods, an overflow seat, or rest. */
   readonly seats: readonly CraftSeat[];
-  /** What an operator whose seat lacks its inputs turns to: the live wants by rank, then the overflow. */
+  /** What an operator whose seat lacks its inputs turns to: the live wants by rank, then the overflow, then
+   *  the surplus wants. */
   readonly fallbacks: readonly CraftSeat[];
+  /** The goods an operator past every want makes for stock rather than rest (owner ruling: a surplus
+   *  beats an idle crafter): every want the seat may still work and that has a use, met or not, the army
+   *  wants first, then in authored order. A want ended by `until` or with no target this decision (an
+   *  input nobody consumes) is no use and never listed, so a surplus keeps to the seat's own rules. */
+  readonly surplus: readonly (readonly string[])[];
 }
 
 /**
@@ -201,10 +208,35 @@ export function stockSeats(
     }
     seats[op] = plan.overflow[overflow++ % Math.max(1, plan.overflow.length)] ?? REST_SEAT;
   }
+  const surplus = surplusWants(plan, reads, products);
   return {
     seats: seats.map((seat) => seat ?? REST_SEAT),
-    fallbacks: [...wants.map((want) => want.want.goods), ...plan.overflow],
+    fallbacks: [...wants.map((want) => want.want.goods), ...plan.overflow, ...surplus],
+    surplus,
   };
+}
+
+/** The plan's {@link StockSeats.surplus} this decision, each goods list once. */
+function surplusWants(
+  plan: StockCraftPlan,
+  reads: StockReads,
+  products: readonly number[],
+): (readonly string[])[] {
+  const useful = plan.wants.filter((want) => {
+    if (want.until !== undefined && reads.earned(want.until)) return false;
+    const goods = typesOf(reads, want.goods, products);
+    return goods.length > 0 && targetUnits(reads, want.target, goods) > 0;
+  });
+  const army = (want: StockWant): number => Number(want.target.kind === 'army');
+  const ranked = [...useful].sort((a, b) => army(b) - army(a));
+  const surplus: (readonly string[])[] = [];
+  for (const want of ranked)
+    if (!surplus.some((goods) => sameIds(goods, want.goods))) surplus.push(want.goods);
+  return surplus;
+}
+
+function sameIds(a: readonly string[], b: readonly string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i]);
 }
 
 /** The seat of an operator with nothing worth making: every product of his stopped. */

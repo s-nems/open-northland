@@ -130,6 +130,29 @@ describe('stock-driven craft seats', () => {
     ]);
   });
 
+  it('lists the useful wants as surplus, the army first, each goods list once', () => {
+    const met = reads({ [PLATE]: 10, [SWORD]: 10, [SPEAR]: 10, [SHORT]: 10 });
+    // The army short sword ended by the long sword shares its goods with the input buffer: listed once.
+    expect(stockSeats(PLAN, met, PRODUCTS, fresh(1)).surplus).toEqual([
+      ['plate'],
+      ['sword'],
+      ['spear'],
+      ['short'],
+    ]);
+    const inputFirst: StockCraftPlan = {
+      wants: [
+        { goods: ['short'], target: { kind: 'consumers', perConsumer: 1 } },
+        { goods: ['plate'], target: { kind: 'army', need: 'armour' } },
+      ],
+      overflow: [],
+    };
+    expect(stockSeats(inputFirst, met, PRODUCTS, fresh(1)).surplus).toEqual([['plate'], ['short']]);
+    // A good the seat may not make is no surplus, nor an input nobody consumes.
+    expect(stockSeats(inputFirst, met, [SHORT], fresh(1)).surplus).toEqual([['short']]);
+    const noConsumers: StockReads = { ...met, consumers: () => 0 };
+    expect(stockSeats(inputFirst, noConsumers, PRODUCTS, fresh(1)).surplus).toEqual([['plate']]);
+  });
+
   it('counts a spare operator against the share each man already covers', () => {
     // Lacks of four shares and one: the first man of each covers his share, so the third and fourth both
     // go to the armour.
