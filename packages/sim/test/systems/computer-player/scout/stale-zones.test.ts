@@ -16,6 +16,7 @@ import {
   DEFAULT_BUILD_ORDER,
   nextSignpostTarget,
   nextStaleZoneTarget,
+  SCOUT_LOSS_MEMORY_TICKS,
   SCOUT_OPENING_TICKS,
   SCOUT_REVISIT_TICKS,
   SCOUT_STALENESS_CAP_TICKS,
@@ -93,6 +94,13 @@ function staleSim(deposits = [DEPOSIT]): Simulation {
   return sim;
 }
 
+function scoutLostAt(sim: Simulation): number[] {
+  const carrier = aiControlEntity(sim.world, SEAT);
+  if (carrier === null || !sim.world.has(carrier, ComputerIntel))
+    throw new Error('setup: the seat has intel');
+  return sim.world.mut(carrier, ComputerIntel).scoutLostAt;
+}
+
 function zoneSeenAt(sim: Simulation): number[] {
   const carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null || !sim.world.has(carrier, ComputerIntel))
@@ -142,6 +150,32 @@ describe('scout staleness scouting', () => {
     const later = NOW - 1 + SCOUT_REVISIT_TICKS;
     const due = nextStaleZoneTarget(sim.world, ctxAt(sim, later, fog), SEAT, DEFAULT_BUILD_ORDER);
     expect(zoneOf(sim, due)).toBe(enemyZone);
+  });
+
+  it('scouts on the near side of a zone that took a scout, and past it once the loss is old', () => {
+    const sim = staleSim();
+    const brief = briefOf(sim);
+    const fog = fogOfWar(sim);
+    const enemyZone = zoneOfNode(brief, OTHER_START.x, OTHER_START.y);
+    const midX = (HOME.x + OTHER_START.x) / 2;
+    scoutLostAt(sim)[zoneOfNode(brief, midX, HOME.y)] = NOW;
+    const near = nextStaleZoneTarget(sim.world, ctxAt(sim, NOW, fog), SEAT, DEFAULT_BUILD_ORDER);
+    if (near === null) throw new Error('the scout keeps scouting elsewhere');
+    expect(near.hx).toBeLessThan(midX);
+    const later = NOW + SCOUT_LOSS_MEMORY_TICKS;
+    const due = nextStaleZoneTarget(sim.world, ctxAt(sim, later, fog), SEAT, DEFAULT_BUILD_ORDER);
+    expect(zoneOf(sim, due)).toBe(enemyZone);
+  });
+
+  it('erects no signpost in a zone that took a scout', () => {
+    const sim = staleSim();
+    const ctx = ctxAt(sim, NOW);
+    const post = nextSignpostTarget(sim.world, ctx, SEAT, DEFAULT_BUILD_ORDER);
+    if (post === null) throw new Error('setup: the lattice wants a post');
+    const lostZone = zoneOf(sim, post);
+    if (lostZone === null) throw new Error('setup: a zone');
+    scoutLostAt(sim)[lostZone] = NOW;
+    expect(zoneOf(sim, nextSignpostTarget(sim.world, ctx, SEAT, DEFAULT_BUILD_ORDER))).not.toBe(lostZone);
   });
 
   it('keeps the old orders with the fog off', () => {

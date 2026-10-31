@@ -11,16 +11,18 @@ import {
   NEVER_SEEN,
   Owner,
   Position,
+  Settler,
   zoneOfNode,
 } from '../../../../components/index.js';
 import { isPlayerDead } from '../../../../components/match.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import { computerDecisionDue } from '../../../ai-shared/cadence.js';
-import { ownedBuildings } from '../../../ai-shared/seat-roster.js';
+import { ownedBuildings, ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import { mannedPostOf } from '../../../conflict/tower-post.js';
 import type { SystemContext } from '../../../context.js';
 import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
+import { isScoutJob } from '../../../readviews/index.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import type { FogState } from '../../../vision/state.js';
 import { isLiveFighter, unitPoints } from '../../military/points.js';
@@ -69,6 +71,8 @@ function seededIntel(brief: MapBriefView, seat: number): ComputerIntelState {
     buildings,
     forces: [],
     zoneSeenAt: new Array<number>(brief.zonesWide * brief.zonesHigh).fill(NEVER_SEEN),
+    scout: null,
+    scoutLostAt: new Array<number>(brief.zonesWide * brief.zonesHigh).fill(NEVER_SEEN),
   };
 }
 
@@ -87,6 +91,34 @@ function observe(
   }
   forgetVanished(world, ctx.fog, seat, intel.buildings);
   sampleZones(ctx.fog, brief, seat, ctx.tick, intel.zoneSeenAt);
+  trackScout(world, ctx, brief, seat, intel);
+}
+
+/** Record the zone the seat's scout of the last observation stood in as a loss when he is gone now, then
+ *  remember the scout of this one. A scout who changed trade is alive and lost nowhere, and a zone holding
+ *  one of the seat's buildings is its settlement, never avoided. */
+function trackScout(
+  world: World,
+  ctx: SystemContext,
+  brief: MapBriefView,
+  seat: number,
+  intel: ComputerIntelState,
+): void {
+  const last = intel.scout;
+  const gone =
+    last !== null && (!world.has(last.entity, Settler) || world.tryGet(last.entity, Owner)?.player !== seat);
+  if (gone && !settledZone(world, brief, seat, last.zone)) intel.scoutLostAt[last.zone] = ctx.tick;
+  const scout = ownedSettlers(world, seat).find((e) =>
+    isScoutJob(ctx.content, world.get(e, Settler).jobType),
+  );
+  const pos = scout === undefined ? undefined : world.tryGet(scout, Position);
+  intel.scout =
+    scout === undefined || pos === undefined
+      ? null
+      : {
+          entity: scout,
+          zone: zoneOfNode(brief, nodeHxOfPosition(pos.x, pos.y), nodeHyOfPosition(pos.x, pos.y)),
+        };
 }
 
 /** The men seen holding one post and their points. */
@@ -238,6 +270,17 @@ function lowerBound(memory: readonly IntelBuilding[], e: Entity): number {
     else hi = mid;
   }
   return lo;
+}
+
+/** Whether one of the seat's buildings stands in `zone`. */
+function settledZone(world: World, brief: MapBriefView, seat: number, zone: number): boolean {
+  return ownedBuildings(world, seat).some((e) => {
+    const pos = world.tryGet(e, Position);
+    return (
+      pos !== undefined &&
+      zoneOfNode(brief, nodeHxOfPosition(pos.x, pos.y), nodeHyOfPosition(pos.x, pos.y)) === zone
+    );
+  });
 }
 
 /** Where in a zone, in eighths of its edge, the seat's sight is sampled: the centre and the four quarter

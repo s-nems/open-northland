@@ -17,6 +17,7 @@ import {
   reachableResourceTest,
 } from '../live-resources.js';
 import { COLLECTED_GOOD_IDS } from '../workforce/collectors/wanted-goods.js';
+import { scoutLostZones } from './lost-zones.js';
 
 /**
  * The signpost lattice the scout tiles the settlement with (authored): the covered field grows with the
@@ -183,8 +184,8 @@ function anyWithin(points: readonly HalfCellNode[], tx: number, ty: number, radi
 /**
  * The next erectable lattice target for the seat: the first spot, rings inside-out, that is wanted (ring
  * within {@link BASE_RING}, an owned building within one lattice spacing, or a {@link corridorGoals}
- * corridor passing within {@link CORRIDOR_HALF_WIDTH_NODES}), has no own post within the tolerance, and
- * offers a legal node to erect
+ * corridor passing within {@link CORRIDOR_HALF_WIDTH_NODES}), has no own post within the tolerance, lies
+ * outside the zones the seat lost a scout in ({@link scoutLostZones}), and offers a legal node to erect
  * on. Null when the wanted lattice stands complete or every remaining target is unbuildable.
  */
 export function nextSignpostTarget(
@@ -225,6 +226,7 @@ export function nextSignpostTarget(
   // A spot on other land than the base, such as another island, is one the scout cannot walk to.
   const landmass = terrain.componentOf(refNode);
   const maxRing = latticeRingBound(anchor, [...buildings, ...corridors.flat()]);
+  const lost = scoutLostZones(world, player, ctx.tick);
   for (let ring = 0; ring <= maxRing; ring++) {
     for (const { q, r } of latticeRing(ring)) {
       const offset = signpostLatticeOffset(q, r);
@@ -233,7 +235,7 @@ export function nextSignpostTarget(
         ring === 0 && door !== null ? { hx: door.x - CENTRE_DOOR_CLEARANCE_NODES, hy: door.y } : anchor;
       const tx = centre.hx + offset.dx;
       const ty = centre.hy + offset.dy;
-      if (anyWithin(posts, tx, ty, SIGNPOST_TARGET_TOLERANCE_NODES)) continue;
+      if (anyWithin(posts, tx, ty, SIGNPOST_TARGET_TOLERANCE_NODES) || lost.node(tx, ty)) continue;
       const wanted =
         ring <= BASE_RING ||
         anyWithin(buildings, tx, ty, SIGNPOST_LATTICE_SPACING_NODES) ||

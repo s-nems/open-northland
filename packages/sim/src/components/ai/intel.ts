@@ -42,6 +42,16 @@ export interface ComputerIntelState {
   forces: IntelForces[];
   /** Per map-brief zone, row-major, the last tick the seat saw into it, else {@link NEVER_SEEN}. */
   zoneSeenAt: number[];
+  /** The seat's scout at the last observation and the zone he stood in, or null with none. */
+  scout: IntelScout | null;
+  /** Per map-brief zone, row-major, the last tick the seat lost a scout there, else {@link NEVER_SEEN}. */
+  scoutLostAt: number[];
+}
+
+/** The scout as the seat last saw him: gone by the next observation, he died in {@link zone}. */
+export interface IntelScout {
+  entity: Entity;
+  zone: number;
 }
 
 /** Held on the seat's `AiControl` carrier, so it dies with the seat (`systems/computer-player/knowledge/intel`). */

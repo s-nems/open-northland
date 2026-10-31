@@ -10,6 +10,7 @@ import { claimableBy } from '../../livestock/index.js';
 import { peaceGroundFor } from '../../match/peace.js';
 import { forEachBuildingNear } from '../../spatial/buildings.js';
 import { seatBaseOf } from '../base.js';
+import { scoutLostZones } from './lost-zones.js';
 
 /**
  * How far (half-cell node Manhattan) from the nearest of the seat's standing buildings an animal is still the settlement's to
@@ -39,7 +40,8 @@ export const SCOUT_CATCH_RADIUS_NODES = 64;
  * it, and one sealed away from the settlement would otherwise win the pick every decision and pin a
  * man as a scout for good, so the candidates run the same sealed-pocket veto `nextSignpostTarget`
  * does, judged from the base door. An animal on a peace partner's ground is skipped too: the peace
- * refuses the walk, so it would win every decision while the scout never moves.
+ * refuses the walk, so it would win every decision while the scout never moves. So is one in a zone the
+ * seat lost a scout in ({@link scoutLostZones}).
  */
 export function nextLivestockCatch(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
   const terrain = ctx.terrain;
@@ -83,8 +85,10 @@ export function nextLivestockCatch(world: World, ctx: SystemContext, player: num
   const regions = routeRegions(world, ctx, terrain);
   const veto = regions.pocketed(reference) ? null : regions;
   const peace = peaceGroundFor(world, player);
+  const lost = scoutLostZones(world, player, ctx.tick);
   for (const candidate of candidates) {
     if (peace?.bars(candidate.node.hx, candidate.node.hy) === true) continue;
+    if (lost.node(candidate.node.hx, candidate.node.hy)) continue;
     const at = terrain.nodeAt(candidate.node.hx, candidate.node.hy);
     if (veto?.unroutable(reference, at) === true) continue;
     return candidate.node;

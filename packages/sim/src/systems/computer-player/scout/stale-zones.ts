@@ -10,6 +10,7 @@ import { fogHides, playerSeesNode } from '../../vision/gates.js';
 import { seatBaseOf } from '../base.js';
 import type { BuildOrder } from '../build-order/entries.js';
 import { believedTowerPosts, zoneStaleness } from '../knowledge/intel/index.js';
+import { scoutLostZones } from './lost-zones.js';
 import { gatheredGoodIds } from './signpost-coverage.js';
 
 const TICKS_PER_MINUTE = 60 * TICKS_PER_SECOND;
@@ -47,8 +48,10 @@ interface StaleZone {
  * neutrals, relations read live, friends left out), the zones the straight walk to them crosses, and
  * zones never seen that hold a deposit the seat gathers. Score = importance x staleness (capped; a zone
  * never seen counts the cap), best first, ties to the lower zone index; a zone seen within
- * {@link SCOUT_REVISIT_TICKS} is not due. The goal is the node nearest the zone's centre on that land and
- * clear of every remembered manned enemy tower. With nothing hidden by the fog nothing is stale: null.
+ * {@link SCOUT_REVISIT_TICKS} is not due, and neither is a zone the seat lost a scout in
+ * ({@link scoutLostZones}) or one whose straight walk crosses such a zone. The goal is the node nearest the
+ * zone's centre on that land and clear of every remembered manned enemy tower. With nothing hidden by the
+ * fog nothing is stale: null.
  */
 export function nextStaleZoneTarget(
   world: World,
@@ -67,9 +70,10 @@ export function nextStaleZoneTarget(
   if (component === NO_COMPONENT) return null;
 
   const importance = candidateZones(world, brief, player, anchor, order, ctx.tick);
+  const lost = scoutLostZones(world, player, ctx.tick);
   const due: StaleZone[] = [];
   for (const [zone, weight] of importance) {
-    if (brief.dominantLand[zone] !== component) continue;
+    if (brief.dominantLand[zone] !== component || lost.zone(zone)) continue;
     const staleness = zoneStaleness(world, player, zone, ctx.tick);
     if (staleness !== null && staleness < SCOUT_REVISIT_TICKS) continue;
     due.push({
@@ -87,7 +91,9 @@ export function nextStaleZoneTarget(
   for (const { zone } of due) {
     const goal = zoneGoal(brief, terrain, zone, clear);
     // The intel samples zones on its own beat: a goal in sight now is already being looked at.
-    if (goal !== null && !playerSeesNode(fog, player, goal.hx, goal.hy)) return goal;
+    if (goal === null || playerSeesNode(fog, player, goal.hx, goal.hy)) continue;
+    // Approximation: the straight walk stands in for the pathfinder's route past a zone that took a scout.
+    if (![...zonesOnLine(brief, anchor, goal)].some(lost.zone)) return goal;
   }
   return null;
 }

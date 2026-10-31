@@ -13,6 +13,7 @@ import { nextSignpostTarget } from './signpost-coverage.js';
 import { nextStaleZoneTarget } from './stale-zones.js';
 
 export { nextLivestockCatch, SCOUT_CATCH_RADIUS_NODES } from './livestock-catch.js';
+export { type LostZones, SCOUT_LOSS_MEMORY_TICKS, scoutLostZones } from './lost-zones.js';
 export {
   nextSignpostTarget,
   SIGNPOST_LATTICE_SPACING_NODES,

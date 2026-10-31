@@ -4,7 +4,10 @@ import {
   aiControlEntity,
   ComputerIntel,
   FOG_MODE,
+  mapBriefOf,
   NEVER_SEEN,
+  Settler,
+  zoneOfNode,
 } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import {
@@ -15,23 +18,38 @@ import {
   serializeSaveGame,
 } from '../../../../../src/index.js';
 import { anchorNodeOf } from '../../../../../src/systems/ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../../../../src/systems/ai-shared/seat-roster.js';
+import { ownedBuildings, ownedSettlers } from '../../../../../src/systems/ai-shared/seat-roster.js';
 import {
   believedEnemyBuildings,
   believedFighterStrength,
   computerDecisionDue,
   FORCE_PEAK_HALF_LIFE_TICKS,
   INTEL_DECISION_PHASE,
+  SCOUT_LOSS_MEMORY_TICKS,
+  scoutLossZones,
   summarizeIntel,
   updateComputerIntel,
 } from '../../../../../src/systems/computer-player/index.js';
 import type { SystemContext } from '../../../../../src/systems/index.js';
+import { removeSettlerSilently } from '../../../../../src/systems/lifecycle/death.js';
 import { ownedFightersOf } from '../../../../../src/systems/movement/collision/owned-fighters.js';
 import { cellOfNode } from '../../../../../src/systems/vision/gates.js';
 import type { FogState } from '../../../../../src/systems/vision/state.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../../fixtures/terrain.js';
-import { ctxOf, makeAiSeat, placeHq, SEAT, STOCK_TYPE, UNARMED, VIKING } from '../../support.js';
+import {
+  BUILDER,
+  ctxOf,
+  HQ_X,
+  HQ_Y,
+  makeAiSeat,
+  placeHq,
+  SCOUT,
+  SEAT,
+  STOCK_TYPE,
+  UNARMED,
+  VIKING,
+} from '../../support.js';
 
 const MAP_W = 128;
 const MAP_H = 64;
@@ -115,6 +133,45 @@ function seenThenFogged(): { sim: Simulation; fog: FogState; later: Entity; tick
   lookAway(fog);
   return { sim, fog, later, tick };
 }
+
+/** The seat's scout spawned at `at`, observed once there. */
+function scoutObservedAt(sim: Simulation, at: { x: number; y: number }): { scout: Entity; tick: number } {
+  sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, ...at, tribe: VIKING, owner: SEAT });
+  sim.step();
+  const scout = ownedSettlers(sim.world, SEAT).find((e) => sim.world.get(e, Settler).jobType === SCOUT);
+  if (scout === undefined) throw new Error('setup: the seat has a scout');
+  const tick = intelTick(sim.tick);
+  observeAt(sim, tick);
+  return { scout, tick };
+}
+
+describe('computer seat intel - lost scouts', () => {
+  it('remembers the zone a scout was lost in for the loss memory', () => {
+    const sim = intelSim();
+    const { scout, tick } = scoutObservedAt(sim, OTHER_LATER);
+    removeSettlerSilently(sim.world, scout);
+    const next = intelTick(tick + 1);
+    observeAt(sim, next);
+    const brief = mapBriefOf(sim.world);
+    if (brief === null) throw new Error('setup: the seat scanned the map');
+    const lost = zoneOfNode(brief, OTHER_LATER.x, OTHER_LATER.y);
+    expect(scoutLossZones(sim.world, SEAT, next, SCOUT_LOSS_MEMORY_TICKS)).toEqual([lost]);
+    expect(scoutLossZones(sim.world, SEAT, next + SCOUT_LOSS_MEMORY_TICKS, SCOUT_LOSS_MEMORY_TICKS)).toEqual(
+      [],
+    );
+  });
+
+  it('records no loss for a scout who changed trade, nor for one lost in the settlement', () => {
+    const sim = intelSim();
+    const away = scoutObservedAt(sim, OTHER_LATER);
+    sim.world.add(away.scout, Settler, { ...sim.world.get(away.scout, Settler), jobType: BUILDER });
+    const home = scoutObservedAt(sim, { x: HQ_X - 4, y: HQ_Y });
+    removeSettlerSilently(sim.world, home.scout);
+    const next = intelTick(home.tick + 1);
+    observeAt(sim, next);
+    expect(scoutLossZones(sim.world, SEAT, next, SCOUT_LOSS_MEMORY_TICKS)).toEqual([]);
+  });
+});
 
 describe('computer seat intel', () => {
   it('knows the start buildings of the other seats before seeing them', () => {

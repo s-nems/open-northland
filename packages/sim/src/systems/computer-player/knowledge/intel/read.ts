@@ -78,6 +78,18 @@ export function zoneStaleness(world: World, seat: number, zone: number, tick: nu
   return seenAt === NEVER_SEEN ? null : tick - seenAt;
 }
 
+/** The zones where `seat` lost a scout within `memory` ticks before `tick`, ascending. */
+export function scoutLossZones(world: World, seat: number, tick: number, memory: number): number[] {
+  const lostAt = intelOf(world, seat)?.scoutLostAt;
+  const zones: number[] = [];
+  if (lostAt === undefined) return zones;
+  for (let zone = 0; zone < lostAt.length; zone++) {
+    const at = lostAt[zone] ?? NEVER_SEEN;
+    if (at !== NEVER_SEEN && tick - at < memory) zones.push(zone);
+  }
+  return zones;
+}
+
 /** One other seat as a computer seat believes it, for a debug view. */
 export interface IntelOwnerSummary {
   readonly owner: number;
