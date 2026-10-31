@@ -490,11 +490,38 @@ function step(env: OperationEnv, op: LandingOperation): readonly PlayerCommand[]
 }
 
 /**
+ * The men each ship takes, its helm first: the weakest men at home hold the helms, since a commander stays
+ * aboard, and the strongest of the rest fill the seats behind them, so the best-armed go ashore. Ranked by
+ * {@link unitPoints}, the lower id first on a tie.
+ */
+function crewsOf(
+  env: OperationEnv,
+  ships: readonly Entity[],
+  men: readonly Entity[],
+): { readonly ship: Entity; readonly men: readonly Entity[] }[] {
+  const { world, ctx } = env;
+  const ranked = men
+    .map((e) => ({ e, points: unitPoints(world, ctx, e) }))
+    .sort((a, b) => b.points - a.points || a.e - b.e)
+    .map((m) => m.e);
+  const helms = ranked.splice(Math.max(0, ranked.length - ships.length)).reverse();
+  const crews: { readonly ship: Entity; readonly men: readonly Entity[] }[] = [];
+  let next = 0;
+  ships.forEach((ship, i) => {
+    const helm = helms[i];
+    const seats = world.get(ship, Vehicle).passengers.length - 1;
+    crews.push({ ship, men: [...(helm === undefined ? [] : [helm]), ...ranked.slice(next, next + seats)] });
+    next += seats;
+  });
+  return crews;
+}
+
+/**
  * A landing when the seat's posture attacks, its peace is over, its rival lies over the sea
  * ({@link seaRouteOf}) and is an enemy, and the free men on its home land load at least
  * {@link LANDING_BIG_SHIPS} of its free moored ships to {@link LANDING_LOAD_PCT}, as many as they fill,
  * weighing the posture's launch ratio of what the seat believes defends the rival. The men fill the ships
- * in id order, the first one each ship takes holding its helm; each ship docks at its own shore point
+ * by {@link crewsOf}; each ship docks at its own shore point
  * ({@link landingShores}).
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
@@ -523,13 +550,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
     capacity += seats;
   }
   if (ships.length < fewest) return null;
-  const crews: { readonly ship: Entity; readonly men: readonly Entity[] }[] = [];
-  let next = 0;
-  for (const ship of ships) {
-    const seats = world.get(ship, Vehicle).passengers.length;
-    crews.push({ ship, men: men.slice(next, next + seats) });
-    next += seats;
-  }
+  const crews = crewsOf(env, ships, men);
   const wave = crews.flatMap((crew) => crew.men);
   let points = 0;
   for (const e of wave) points += unitPoints(world, ctx, e);
