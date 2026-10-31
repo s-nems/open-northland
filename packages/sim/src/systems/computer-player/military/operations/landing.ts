@@ -29,7 +29,7 @@ import { atomicHoldsSettler } from '../../../settlers/atomics/busy.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { crewInside } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
-import { computerProfileOf } from '../../difficulty.js';
+import { computerProfileOf, type Share } from '../../difficulty.js';
 import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
 import { LANDING_BIG_SHIPS, landingFewestShips, landingFleetShips } from '../../workforce/craft.js';
 import { campaignObjective } from '../campaign.js';
@@ -75,6 +75,12 @@ export const LANDING_SHORE_WAIT_TICKS = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 export const LANDING_STRANDED_GRACE_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 /** The share of its ships, in percent, a landing may lose before setting anyone ashore and still sail on. */
 export const LANDING_SHIP_LOSS_PCT = 50;
+
+/** The least a landing outweighs what the seat believes defends the rival, whatever its posture's launch
+ *  ratio. Authored: on arabskie_wyspy_wolna_gra_mieszana (seed 7) 68 men landed at parity with a rival's
+ *  79 soldiers all fell in two and a half minutes for 28 of his, and 68 landed against a twelfth of their
+ *  weight fell too, to his towers and the fire of his sheltering people: landed men cannot fall back. */
+export const LANDING_EDGE: Share = { num: 3, den: 2 };
 
 const PERCENT = 100;
 
@@ -177,8 +183,7 @@ function stoppedShort(world: World, ship: LandingShip, at: HalfCellNode): boolea
 
 /** Turn every ship still out for home for `reason`: one still moored on home land frees its crew there. */
 function withdraw(env: OperationEnv, op: LandingOperation, reason: OperationEndReason): PlayerCommand[] {
-  const { world, ctx } = env;
-  enter(op, 'withdrawing', ctx.tick, reason);
+  enter(op, 'withdrawing', env.ctx.tick, reason);
   const commands: PlayerCommand[] = [];
   for (const ship of op.ships) {
     if (ship.leg !== 'out') continue;
@@ -520,7 +525,8 @@ function crewsOf(
  * A landing when the seat's posture attacks, its peace is over, its rival lies over the sea
  * ({@link seaRouteOf}) and is an enemy, and the free men on its home land load at least
  * {@link LANDING_BIG_SHIPS} of its free moored ships to {@link LANDING_LOAD_PCT}, as many as they fill,
- * weighing the posture's launch ratio of what the seat believes defends the rival. The men fill the ships
+ * weighing the posture's launch ratio, at least {@link LANDING_EDGE}, of what the seat believes defends
+ * the rival. The men fill the ships
  * by {@link crewsOf}; each ship docks at its own shore point
  * ({@link landingShores}).
  */
@@ -554,7 +560,8 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   const wave = crews.flatMap((crew) => crew.men);
   let points = 0;
   for (const e of wave) points += unitPoints(world, ctx, e);
-  if (!launchRatioReached(points, believedDefendingPoints(world, ctx, seat, owner, points), ratio))
+  const edge = ratio.num * LANDING_EDGE.den >= LANDING_EDGE.num * ratio.den ? ratio : LANDING_EDGE;
+  if (!launchRatioReached(points, believedDefendingPoints(world, ctx, seat, owner, points), edge))
     return null;
   const first = crews[0];
   const shores = first === undefined ? [] : landingShores(env, first.ship, route, crews.length);
