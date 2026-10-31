@@ -1,16 +1,15 @@
-import { data, esc, goodById, goodIcon } from './model.js';
+import { data, esc, goodIcon } from './model.js';
 import { PLAN_PAGE, SCREENS } from './screens.js';
-import { CATEGORIES, encyclopediaView } from './view-encyclopedia.js';
-import { ARTICLES, howtoView, mechanicsView } from './view-mechanics.js';
-import { productionView } from './view-production.js';
-import { TABLES, tablesView } from './view-tables.js';
+import { spotlight } from './tree.js';
+import { encyclopediaView, placeOf } from './view-encyclopedia.js';
+import { ARTICLE_LIST, mechanicsView } from './view-mechanics.js';
+import { buildingsTree, goodsTree, relateBuilding, relateGood } from './view-trees.js';
 
 const TABS = [
-  { id: 'production', name: 'Produkcja' },
+  { id: 'goods', name: 'Towary' },
+  { id: 'buildings', name: 'Budynki' },
   { id: 'encyclopedia', name: 'Encyklopedia' },
   { id: 'mechanics', name: 'Mechaniki' },
-  { id: 'tables', name: 'Tabele' },
-  { id: 'howto', name: 'Jak grać' },
 ];
 const FRAMES = [
   { id: 'min', name: '1024×768 (najmniejszy)', width: 1024, height: 768 },
@@ -23,6 +22,9 @@ const MINIMAP_RIGHT = 285;
 const WINDOW_MAX_W = 1240;
 const WINDOW_MIN_W = 920;
 const MAX_STAGE_SCALE = 1.5;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 1.3;
+const ZOOM_STEP = 0.05;
 
 const base = {
   screen: 'overview',
@@ -32,39 +34,25 @@ const base = {
   tribe: 1,
   onlyMap: true,
   query: '',
-  zoom: 1,
+  zoom: { goods: 1, buildings: 1 },
   matrix: { metric: 'damage', direction: 100, hits: 0, strength: false, defense: false, heroes: false },
 };
-const NAV_DEFAULT = {
-  tab: 'production',
-  lens: 'goods',
-  entry: null,
-  onlyChain: false,
-  category: 'goods',
-  table: 'matrix',
-  article: 'tools',
-  howto: 'why',
-};
+const NAV_DEFAULT = { tab: 'goods', entry: null, category: 'goods', article: 'tools', show: null };
 let state = { ...base, ...NAV_DEFAULT };
+/** Where the player came from. One back button covers every link, tab and search hit. */
 const past = [];
-const future = [];
 
 const navOf = (s) => ({
   tab: s.tab,
-  lens: s.lens,
   entry: s.entry,
-  onlyChain: s.onlyChain,
   category: s.category,
-  table: s.table,
   article: s.article,
-  howto: s.howto,
+  show: s.show,
 });
 
-/** One navigation owner: every link goes through here, so back and forward cover all of it. */
 function go(change) {
   past.push(navOf(state));
-  future.length = 0;
-  state = { ...state, query: '', ...change };
+  state = { ...state, query: '', show: null, ...change };
   render();
 }
 
@@ -73,42 +61,25 @@ function parseEntry(key) {
   return { kind: key.slice(0, at), id: key.slice(at + 1) };
 }
 
-const categoryOf = (entry) =>
-  ({
-    good: 'goods',
-    building: 'buildings',
-    job: 'jobs',
-    vehicle: 'vehicles',
-    animal: 'animals',
-    tribe: 'tribes',
-    world: 'world',
-  })[entry.kind];
+const openEntry = (entry) => go({ tab: 'encyclopedia', ...placeOf(entry) });
 
 function searchIndex() {
   const pages = [];
   for (const g of data.goods)
-    pages.push({
-      group: 'Towary',
-      name: g.name,
-      go: { tab: 'encyclopedia', category: 'goods', entry: { kind: 'good', id: g.id } },
-      picture: goodIcon(g),
-    });
+    pages.push({ group: 'Towary', name: g.name, entry: { kind: 'good', id: g.id }, picture: goodIcon(g) });
   for (const b of data.buildings)
-    pages.push({
-      group: 'Budynki',
-      name: b.name,
-      go: { tab: 'encyclopedia', category: 'buildings', entry: { kind: 'building', id: b.id } },
-    });
-  for (const j of data.jobs)
-    pages.push({
-      group: 'Zawody',
-      name: j.name,
-      go: { tab: 'encyclopedia', category: 'jobs', entry: { kind: 'job', id: j.id } },
-    });
-  for (const a of ARTICLES.flatMap((g) => g.items))
-    pages.push({ group: 'Mechaniki', name: a.name, go: { tab: 'mechanics', article: a.id } });
-  for (const t of TABLES.flatMap((g) => g.items))
-    pages.push({ group: 'Tabele', name: t.name, go: { tab: 'tables', table: t.id } });
+    pages.push({ group: 'Budynki', name: b.name, entry: { kind: 'building', id: b.id } });
+  for (const j of data.jobs) pages.push({ group: 'Zawody', name: j.name, entry: { kind: 'job', id: j.id } });
+  for (const a of data.animals)
+    pages.push({ group: 'Zwierzęta', name: a.name, entry: { kind: 'animal', id: String(a.tribe) } });
+  for (const a of ARTICLE_LIST) {
+    pages.push({ group: 'Mechaniki', name: a.name, article: a.id });
+    for (const block of a.blocks) {
+      if (block.h !== undefined) {
+        pages.push({ group: 'Mechaniki', name: `${a.name}: ${block.h}`, article: a.id });
+      }
+    }
+  }
   return pages;
 }
 const INDEX = searchIndex();
@@ -119,7 +90,7 @@ function searchView(query) {
   const words = fold(query).split(/\s+/).filter(Boolean);
   const hits = INDEX.filter((page) => words.every((w) => fold(page.name).includes(w)));
   if (hits.length === 0) {
-    return `<div class="on-parchment kn-page kn-search-empty"><h3>Nic nie znaleziono</h3><p>Szukamy w nazwach towarów, budynków, zawodów, mechanik i tabel. Spróbuj krótszego słowa.</p></div>`;
+    return `<div class="on-parchment kn-page kn-search-empty"><h3>Nic nie znaleziono</h3><p>Szukamy w nazwach towarów, budynków, zawodów, zwierząt i mechanik. Spróbuj krótszego słowa.</p></div>`;
   }
   const groups = [...new Set(hits.map((h) => h.group))];
   const body = groups
@@ -138,30 +109,6 @@ function searchView(query) {
   return `<div class="on-parchment kn-page">${body}</div>`;
 }
 
-function crumbs() {
-  const trail = [TABS.find((t) => t.id === state.tab).name];
-  if (state.tab === 'production')
-    trail.push({ goods: 'Towary', buildings: 'Budynki', jobs: 'Zawody' }[state.lens]);
-  if (state.tab === 'encyclopedia') trail.push(CATEGORIES.find((c) => c.id === state.category).name);
-  if (state.tab === 'mechanics')
-    trail.push(ARTICLES.flatMap((g) => g.items).find((a) => a.id === state.article).name);
-  if (state.tab === 'tables')
-    trail.push(TABLES.flatMap((g) => g.items).find((t) => t.id === state.table).name);
-  const e = state.entry;
-  if (e !== null && (state.tab === 'production' || state.tab === 'encyclopedia')) {
-    const name =
-      e.kind === 'good'
-        ? goodById.get(e.id)?.name
-        : e.kind === 'building'
-          ? data.buildings.find((b) => b.id === e.id)?.name
-          : e.kind === 'job'
-            ? data.jobs.find((j) => j.id === e.id)?.name
-            : e.id;
-    if (name !== undefined) trail.push(name);
-  }
-  return trail.map((t) => `<span>${esc(t)}</span>`).join('<i>›</i>');
-}
-
 function knowledgeBody() {
   const tabs = TABS.map(
     (t) =>
@@ -178,18 +125,16 @@ function knowledgeBody() {
       ? `<label class="kn-toggle"><input type="checkbox" data-only-map ${state.onlyMap ? 'checked' : ''}> Stan mojej osady</label>`
       : `<span class="kn-mapnote">Wszystkie mapy</span>`;
   const views = {
-    production: productionView,
+    goods: goodsTree,
+    buildings: buildingsTree,
     encyclopedia: encyclopediaView,
     mechanics: mechanicsView,
-    tables: tablesView,
-    howto: howtoView,
   };
   const main = state.query.trim() === '' ? views[state.tab](state) : searchView(state.query);
   return `<div class="kn-tabs on-tabs" role="tablist">${tabs}</div>
     <div class="kn-tool">
-      <button class="on-medallion kn-nav" data-back ${past.length === 0 ? 'disabled' : ''} aria-label="Wstecz">‹</button>
-      <button class="on-medallion kn-nav" data-forward ${future.length === 0 ? 'disabled' : ''} aria-label="Dalej">›</button>
-      <div class="kn-crumbs">${crumbs()}</div>
+      <button class="on-button on-button--rounded kn-back" data-back ${past.length === 0 ? 'disabled' : ''}>‹ Wróć</button>
+      <span class="kn-tool__gap"></span>
       <label class="on-res-field on-res-field--search kn-search"><input type="search" placeholder="Szukaj w Wiedzy" value="${esc(state.query)}" data-search></label>
       <label class="kn-tribe">Plemię <select data-tribe>${tribes}</select></label>
       ${mapToggle}
@@ -282,12 +227,19 @@ function fitFrame() {
   frame.style.transform = `scale(${scale})`;
 }
 
-let shownEntry = 'null';
+/** Scroll offsets by name, kept past the view that owned them, so going back lands where the player was. */
+const scrolls = new Map();
+
+function rememberScrolls() {
+  for (const node of document.querySelectorAll('[data-keep-scroll]')) {
+    scrolls.set(node.dataset.keepScroll, [node.scrollLeft, node.scrollTop]);
+  }
+}
+
+const relateOf = (key) => (key.startsWith('good:') ? relateGood(key) : relateBuilding(key));
 
 function render() {
-  const keep = new Map();
-  for (const node of document.querySelectorAll('[data-keep-scroll]'))
-    keep.set(node.dataset.keepScroll, [node.scrollLeft, node.scrollTop]);
+  rememberScrolls();
   const size = FRAMES.find((f) => f.id === state.frame);
   const focused = document.activeElement?.matches?.('[data-search]') ?? false;
   const surfaces = { game: gameFrame, menuHome, menuScreen, plan: () => PLAN_PAGE };
@@ -295,7 +247,7 @@ function render() {
   document.querySelector('#frame').innerHTML =
     `<div class="on-hud" style="--on-surface:url('/app/assets/ui/foundation/surface.png');--on-icons:url('/app/assets/ui/foundation/icons.png')">${surface}</div>`;
   for (const node of document.querySelectorAll('[data-keep-scroll]')) {
-    const at = keep.get(node.dataset.keepScroll);
+    const at = scrolls.get(node.dataset.keepScroll);
     if (at !== undefined) [node.scrollLeft, node.scrollTop] = at;
   }
   if (focused) {
@@ -303,27 +255,29 @@ function render() {
     input?.focus();
     input?.setSelectionRange(input.value.length, input.value.length);
   }
-  const picked = JSON.stringify(state.entry);
-  if (picked !== shownEntry) {
-    shownEntry = picked;
-    document
-      .querySelector(
-        '.kn-map .is-selected, .kn-list .is-selected, .kn-tiers .is-selected, .kn-jobs .is-selected',
-      )
-      ?.scrollIntoView({ block: 'center', inline: 'nearest' });
-  }
+  document.querySelector('.kn-list .is-selected')?.scrollIntoView({ block: 'nearest' });
   renderStory();
   renderNotes();
   fitFrame();
+  const view = document.querySelector('.kn-treeview');
+  if (view !== null && state.show !== null) {
+    view.querySelector(`[data-node="${state.show}"]`)?.scrollIntoView({ block: 'center' });
+    spotlight(view, state.show, relateOf);
+  }
 }
 
 function showScreen(id) {
   const screen = SCREENS.find((s) => s.id === id);
   past.length = 0;
-  future.length = 0;
+  scrolls.clear();
   const frame = state.screen === 'small' ? base.frame : state.frame;
   state = { ...base, frame, ...NAV_DEFAULT, screen: id, ...screen.state };
   render();
+  if (screen.point !== undefined) {
+    const view = document.querySelector('.kn-treeview');
+    view?.querySelector(`[data-node="${screen.point}"]`)?.scrollIntoView({ block: 'center' });
+    if (view !== null) spotlight(view, screen.point, relateOf);
+  }
 }
 
 document.addEventListener('click', (event) => {
@@ -331,63 +285,23 @@ document.addEventListener('click', (event) => {
   if (target === null || target.disabled) return;
   const d = target.dataset;
   if (d.screen !== undefined) return showScreen(d.screen);
-  if (d.tab !== undefined) return go({ tab: d.tab, entry: d.tab === state.tab ? state.entry : null });
-  if (d.lens !== undefined) return go({ lens: d.lens, entry: null, onlyChain: false });
-  if (d.lane !== undefined) {
-    const map = document.querySelector('.kn-map');
-    const lane = document.querySelector(`[data-lane-at="${d.lane}"]`);
-    if (map !== null && lane !== null) map.scrollTop = lane.offsetTop * state.zoom;
-    return undefined;
-  }
-  if (d.zoom !== undefined) {
-    state = { ...state, zoom: Number(d.zoom) };
-    return render();
-  }
-  if (d.pick !== undefined) {
-    const entry = parseEntry(d.pick);
-    if (state.tab === 'encyclopedia') return go({ entry });
-    return go({ entry, onlyChain: entry.kind === 'good' });
-  }
-  if (d.go !== undefined) {
-    const entry = parseEntry(d.go);
-    if (state.tab === 'production')
-      return go({
-        entry,
-        onlyChain: entry.kind === 'good',
-        lens: entry.kind === 'good' ? 'goods' : entry.kind === 'building' ? 'buildings' : 'jobs',
-      });
-    return go({ tab: 'encyclopedia', category: categoryOf(entry), entry });
-  }
-  if (d.open !== undefined) {
-    const entry = parseEntry(d.open);
-    return go({ tab: 'encyclopedia', category: categoryOf(entry), entry });
-  }
-  if (d.show !== undefined) {
-    const [tab, kind, id] = d.show.split(':');
-    return go({ tab, lens: 'goods', entry: { kind, id }, onlyChain: true });
-  }
+  if (d.tab !== undefined) return go({ tab: d.tab });
+  if (d.pick !== undefined) return go({ entry: parseEntry(d.pick) });
+  if (d.go !== undefined) return openEntry(parseEntry(d.go));
+  if (d.show !== undefined) return go({ tab: 'goods', show: d.show });
   if (d.category !== undefined) return go({ category: d.category, entry: null });
-  if (d.table !== undefined) return go({ tab: 'tables', table: d.table });
   if (d.article !== undefined) return go({ tab: 'mechanics', article: d.article });
-  if (d.howto !== undefined) return go({ howto: d.howto });
-  if (d.toggle !== undefined) {
-    state = { ...state, onlyChain: !state.onlyChain };
-    return render();
-  }
   if (d.matrix !== undefined) {
     const [name, value] = d.matrix.split(':');
     state = { ...state, matrix: { ...state.matrix, [name]: name === 'metric' ? value : Number(value) } };
     return render();
   }
-  if (d.searchHit !== undefined) return go(INDEX[Number(d.searchHit)].go);
-  if (d.back !== undefined && past.length > 0) {
-    future.push(navOf(state));
-    state = { ...state, ...past.pop() };
-    return render();
+  if (d.searchHit !== undefined) {
+    const hit = INDEX[Number(d.searchHit)];
+    return hit.article === undefined ? openEntry(hit.entry) : go({ tab: 'mechanics', article: hit.article });
   }
-  if (d.forward !== undefined && future.length > 0) {
-    past.push(navOf(state));
-    state = { ...state, ...future.pop() };
+  if (d.back !== undefined && past.length > 0) {
+    state = { ...state, query: '', ...past.pop() };
     return render();
   }
   if (d.menuOpen !== undefined) {
@@ -400,6 +314,39 @@ document.addEventListener('click', (event) => {
   }
   return undefined;
 });
+
+/** Pointing at a card lights its chain. A card shown from an entry stays lit until the pointer really
+ *  moves: a re-render under a still pointer fires over events, never a move. */
+let pointed = null;
+document.addEventListener('pointermove', (event) => {
+  const view = event.target.closest?.('.kn-treeview');
+  if (view === null || view === undefined) return;
+  const key = event.target.closest('[data-node]')?.dataset.node ?? null;
+  if (key === pointed) return;
+  pointed = key;
+  spotlight(view, key, relateOf);
+});
+
+function setZoom(id, value) {
+  const zoom = Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, Math.round(value / ZOOM_STEP) * ZOOM_STEP));
+  state = { ...state, zoom: { ...state.zoom, [id]: zoom } };
+  const view = document.querySelector('.kn-treeview');
+  view.querySelector('.kn-treezoom').style.zoom = String(zoom);
+  view.querySelector('.kn-zoom input').value = String(Math.round(zoom * 100));
+  view.querySelector('.kn-zoom output').textContent = `${Math.round(zoom * 100)}%`;
+}
+
+document.addEventListener(
+  'wheel',
+  (event) => {
+    const view = event.target.closest?.('.kn-treeview');
+    if (view === null || view === undefined || !(event.ctrlKey || event.metaKey)) return;
+    event.preventDefault();
+    const id = view.dataset.tree;
+    setZoom(id, state.zoom[id] + (event.deltaY < 0 ? ZOOM_STEP : -ZOOM_STEP));
+  },
+  { passive: false },
+);
 
 document.addEventListener('input', (event) => {
   const target = event.target;
@@ -415,6 +362,7 @@ document.addEventListener('input', (event) => {
     state = { ...state, frame: target.value };
     render();
   }
+  if (target.matches('[data-zoom]')) setZoom(target.dataset.zoom, Number(target.value) / 100);
   if (target.matches('[data-only-map]')) {
     state = { ...state, onlyMap: target.checked, mode: target.checked ? 'game' : 'free' };
     render();

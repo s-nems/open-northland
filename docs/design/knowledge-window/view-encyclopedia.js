@@ -1,5 +1,16 @@
 import {
+  animalEntryHtml,
+  armourOf,
+  armourSheet,
+  tribeEntryHtml,
+  vehicleEntryHtml,
+  weaponOf,
+  weaponSheet,
+} from './entry-stats.js';
+import {
+  animalPicture,
   buildingByType,
+  buildingHitpoints,
   buildingLink,
   buildingStatus,
   buildingsCosting,
@@ -13,7 +24,6 @@ import {
   goodLink,
   jobByType,
   jobLink,
-  LANES,
   number,
   producersOf,
   rawCost,
@@ -32,47 +42,58 @@ const KIND_NAME = {
   wonder: 'Cud',
 };
 
+const ARMS = /^(spear|sword|bow|armor)_/;
+const VEHICLE_IDS = new Set(data.vehicles.map((v) => v.id));
+
+const inGoods = (g) => !ARMS.test(g.id) && !VEHICLE_IDS.has(g.id);
+const plainBuildings = () => data.buildings.filter((b) => b.kind !== 'vehicle' && b.kind !== 'wonder');
+const wonders = () => data.buildings.filter((b) => b.kind === 'wonder');
+
 export const CATEGORIES = [
-  { id: 'goods', name: 'Towary', count: () => data.goods.length },
-  { id: 'buildings', name: 'Budynki', count: () => data.buildings.length },
+  { id: 'goods', name: 'Towary', count: () => data.goods.filter(inGoods).length },
+  { id: 'arms', name: 'Uzbrojenie', count: () => data.goods.filter((g) => ARMS.test(g.id)).length },
+  { id: 'buildings', name: 'Budynki', count: () => plainBuildings().length },
+  { id: 'wonders', name: 'Cuda', count: () => wonders().length },
   { id: 'jobs', name: 'Zawody', count: () => data.jobs.length },
-  { id: 'arms', name: 'Broń i pancerze', count: () => 14 },
   { id: 'vehicles', name: 'Pojazdy', count: () => data.vehicles.length },
   { id: 'animals', name: 'Zwierzęta', count: () => data.animals.length },
   { id: 'tribes', name: 'Plemiona', count: () => data.tribes.length },
-  { id: 'world', name: 'Świat', count: () => 6 },
 ];
 
-function listItems(category) {
-  if (category === 'buildings') {
-    return data.buildings
-      .filter((b) => b.kind !== 'vehicle')
-      .map((b) => ({ key: `building:${b.id}`, name: b.name, picture: buildingThumb(b) }));
+/** The category an entry lists under, and the entry a tree card opens. */
+export function placeOf(entry) {
+  if (entry.kind === 'good' && VEHICLE_IDS.has(entry.id)) {
+    return { category: 'vehicles', entry: { kind: 'vehicle', id: entry.id } };
   }
+  if (entry.kind === 'good') return { category: ARMS.test(entry.id) ? 'arms' : 'goods', entry };
+  if (entry.kind === 'building') {
+    const kind = data.buildings.find((b) => b.id === entry.id)?.kind;
+    if (kind === 'vehicle') return { category: 'vehicles', entry: { kind: 'vehicle', id: entry.id } };
+    return { category: kind === 'wonder' ? 'wonders' : 'buildings', entry };
+  }
+  const category = { job: 'jobs', vehicle: 'vehicles', animal: 'animals', tribe: 'tribes' };
+  return { category: category[entry.kind], entry };
+}
+
+function listItems(category) {
+  const goodRow = (g) => ({ key: `good:${g.id}`, name: g.name, picture: goodIcon(g) });
+  const buildingRow = (b) => ({ key: `building:${b.id}`, name: b.name, picture: buildingThumb(b) });
+  if (category === 'buildings') return plainBuildings().map(buildingRow);
+  if (category === 'wonders') return wonders().map(buildingRow);
   if (category === 'jobs') return data.jobs.map((j) => ({ key: `job:${j.id}`, name: j.name, picture: '' }));
-  if (category === 'vehicles')
+  if (category === 'vehicles') {
     return data.vehicles.map((v) => ({
       key: `vehicle:${v.id}`,
-      name: v.name === 'oxcart' ? 'Zaprzęg' : v.name,
-      picture: '',
+      name: v.name,
+      picture: goodIcon(goodById.get(v.id)),
     }));
+  }
   if (category === 'animals')
-    return data.animals.map((a) => ({ key: `animal:${a.tribe}`, name: a.name, picture: '' }));
+    return data.animals.map((a) => ({ key: `animal:${a.tribe}`, name: a.name, picture: animalPicture(a) }));
   if (category === 'tribes')
     return data.tribes.map((t) => ({ key: `tribe:${t.typeId}`, name: t.name, picture: '' }));
-  if (category === 'world') {
-    return ['Skrzynie', 'Papiery', 'Palisady i bramy', 'Drogi', 'Drogowskazy', 'Teren'].map((name) => ({
-      key: `world:${name}`,
-      name,
-      picture: '',
-    }));
-  }
-  if (category === 'arms') {
-    return data.goods
-      .filter((g) => /^(spear|sword|bow|armor)_/.test(g.id))
-      .map((g) => ({ key: `good:${g.id}`, name: g.name, picture: goodIcon(g) }));
-  }
-  return data.goods.map((g) => ({ key: `good:${g.id}`, name: g.name, picture: goodIcon(g) }));
+  if (category === 'arms') return data.goods.filter((g) => ARMS.test(g.id)).map(goodRow);
+  return data.goods.filter(inGoods).map(goodRow);
 }
 
 function statusLine(status) {
@@ -94,58 +115,102 @@ function originalText(help) {
     : `<blockquote class="kn-origin">${esc(help).replaceAll('\n', '<br>')}<cite>opis z oryginału</cite></blockquote>`;
 }
 
-function goodEntry(good, state) {
+function howToGet(good) {
   const sources = recipesOf.get(good.typeId) ?? [];
-  const sourceRows = sources
+  const rows = sources
     .map(
       ({ building, recipe }) =>
         `<tr><td>${buildingLink(building)}</td>${recipeRow(recipe).replace('<tr>', '').replace('</tr>', '')}</tr>`,
     )
     .join('');
   const fills = producersOf(good);
+  const workers = data.gatheredBy[good.typeId] ?? [];
+  return `<h3 class="kn-h">Jak zdobyć</h3>
+    ${rows === '' ? '' : `<table class="kn-table kn-table--plain"><tbody>${rows}</tbody></table>`}
+    ${fills.length === 0 ? '' : `<p>Powstaje w: ${fills.map(buildingLink).join(', ')}</p>`}
+    ${workers.length > 0 && sources.length === 0 ? `<p>Pozyskuje: ${workers.map((w) => (jobByType.has(w.job) ? jobLink(jobByType.get(w.job)) : esc(w.name))).join(', ')}</p>` : ''}`;
+}
+
+function usesOfGood(good) {
   const uses = usesOf.get(good.typeId) ?? [];
   const costs = buildingsCosting(good);
+  const outputs = [
+    ...new Map(
+      uses.flatMap((u) => u.recipe.outputs.map((o) => [o.goodType, goodByType.get(o.goodType)])),
+    ).values(),
+  ];
+  const usable =
+    good.equip !== null
+      ? 'Osadnik nosi to przy sobie.'
+      : good.edibleForm !== null
+        ? 'Jedzenie.'
+        : 'Nie jest składnikiem ani materiałem.';
+  return `<h3 class="kn-h">Do czego służy</h3>
+    ${outputs.length === 0 ? '' : `<p>Składnik: ${outputs.map((g) => goodLink(g)).join(' ')}</p>`}
+    ${costs.length === 0 ? '' : `<p>Materiał na: ${costs.slice(0, 12).map(buildingLink).join(', ')}${costs.length > 12 ? ` i ${costs.length - 12} więcej` : ''}</p>`}
+    ${outputs.length === 0 && costs.length === 0 ? `<p>${usable}</p>` : ''}`;
+}
+
+function rawCostHtml(good) {
   const raw = [...rawCost(good.typeId)];
+  return raw.length > 0 && raw[0][0] !== good.typeId
+    ? `<h3 class="kn-h">Koszt w surowcach</h3><div class="kn-links">${raw.map(([t, a]) => goodLink(goodByType.get(t), a)).join('')}</div>`
+    : '';
+}
+
+function treeLink(good) {
+  return `<button class="kn-link" data-show="good:${good.id}"><span>Pokaż w drzewie</span></button>`;
+}
+
+function kicker(good) {
+  if (armourOf(good) !== undefined) return 'Uzbrojenie · Pancerz';
+  if (ARMS.test(good.id)) return 'Uzbrojenie · Broń';
+  return good.equip === null ? 'Towar' : 'Towar · Wyposażenie';
+}
+
+function goodEntry(good, state) {
+  const armour = armourOf(good);
+  const sheet =
+    armour !== undefined
+      ? armourSheet(good, state.tribe)
+      : ARMS.test(good.id) && weaponOf(good, state.tribe) !== undefined
+        ? weaponSheet(good, state.tribe)
+        : null;
   const equip = good.equip;
-  const lane = LANES.find((l) => l.id === good.lane)?.name ?? '';
   return `<article class="kn-entry">
-    <header class="kn-entry__head">${goodIcon(good)}<div><h2>${esc(good.name)}</h2><p>Towar · ${esc(lane)}</p></div></header>
+    <header class="kn-entry__head">${goodIcon(good)}<div><h2>${esc(good.name)}</h2><p>${kicker(good)}</p></div></header>
     ${state.mode === 'game' && good.name === 'Długi Miecz' ? statusLine({ kind: 'locked', text: 'Jeszcze nieodkryty: 5 × Kowalstwo' }) : ''}
     <div class="kn-entry__cols">
       <div>
-        ${originalText(good.help)}
-        <h3 class="kn-h">Jak zdobyć</h3>
-        ${sourceRows === '' ? '' : `<table class="kn-table kn-table--plain"><tbody>${sourceRows}</tbody></table>`}
-        ${fills.length === 0 ? '' : `<p>Powstaje w: ${fills.map(buildingLink).join(', ')}</p>`}
-        ${(data.gatheredBy[good.typeId] ?? []).length > 0 && sources.length === 0 ? `<p>Pozyskuje: ${data.gatheredBy[good.typeId].map((w) => (jobByType.has(w.job) ? jobLink(jobByType.get(w.job)) : esc(w.name))).join(', ')}</p>` : ''}
-        <h3 class="kn-h">Do czego służy</h3>
-        ${
-          uses.length === 0
-            ? ''
-            : `<p>Składnik: ${[
-                ...new Map(
-                  uses.flatMap((u) => u.recipe.outputs.map((o) => [o.goodType, goodByType.get(o.goodType)])),
-                ).values(),
-              ]
-                .slice(0, 12)
-                .map((g) => goodLink(g))
-                .join(' ')}</p>`
-        }
-        ${costs.length === 0 ? '' : `<p>Materiał na: ${costs.slice(0, 12).map(buildingLink).join(', ')}${costs.length > 12 ? ` i ${costs.length - 12} więcej` : ''}</p>`}
-        ${uses.length === 0 && costs.length === 0 ? `<p>${equip !== null ? 'Osadnik nosi to przy sobie.' : good.edibleForm !== null ? 'Jedzenie.' : 'Nie jest składnikiem ani materiałem.'}</p>` : ''}
+        ${sheet === null ? originalText(good.help) : sheet.left}
+        ${howToGet(good)}
+        ${usesOfGood(good)}
+        ${sheet === null ? '' : originalText(good.help)}
       </div>
       <aside class="kn-facts">
+        ${sheet === null ? '' : sheet.right}
         ${equip === null ? '' : `<h3 class="kn-h">Na wyposażeniu</h3><dl><dt>Miejsce</dt><dd>${esc(equip.slot)}</dd><dt>Działanie</dt><dd>${esc(equip.effect)}</dd><dt>Trwałość</dt><dd>${esc(equip.wears)}</dd></dl>`}
-        ${raw.length > 0 && raw[0][0] !== good.typeId ? `<h3 class="kn-h">Koszt w surowcach</h3><div class="kn-links">${raw.map(([t, a]) => goodLink(goodByType.get(t), a)).join('')}</div>` : ''}
+        ${good.food === null ? '' : `<h3 class="kn-h">Posiłek</h3><dl><dt>Poza domem</dt><dd>${esc(good.food.outside)}</dd>${good.food.home === null ? '' : `<dt>W domu</dt><dd>${esc(good.food.home)}</dd>`}</dl>`}
+        ${rawCostHtml(good)}
         <h3 class="kn-h">Zobacz też</h3>
-        <div class="kn-links"><button class="kn-link" data-show="production:good:${good.id}"><span>Pokaż w drzewie produkcji</span></button>
-        ${/armor|sword|spear|bow/.test(good.id) ? '<button class="kn-link" data-table="matrix"><span>Tabela: broń i pancerz</span></button>' : ''}
-        ${/tool/.test(good.id) ? '<button class="kn-link" data-article="tools"><span>Mechanika: narzędzia</span></button>' : ''}</div>
+        <div class="kn-links">${treeLink(good)}
+        ${ARMS.test(good.id) ? '<button class="kn-link" data-article="damage"><span>Mechanika: broń i obrażenia</span></button>' : ''}
+        ${/tool/.test(good.id) ? '<button class="kn-link" data-article="tools"><span>Mechanika: narzędzia</span></button>' : ''}
+        ${good.food === null ? '' : '<button class="kn-link" data-article="food"><span>Mechanika: jedzenie</span></button>'}</div>
       </aside>
     </div></article>`;
 }
 
+function wonderEntry(building) {
+  return `<article class="kn-entry">
+    <header class="kn-entry__head kn-entry__head--building">${buildingThumb(building)}<div><h2>${esc(building.name)}</h2><p>Cud</p></div></header>
+    ${originalText(building.help)}
+    <h3 class="kn-h">W grze</h3>
+    <p>Cud stoi na mapach, które go przewidują, i nie daje żadnego działania w rozgrywce.</p></article>`;
+}
+
 function buildingEntry(building, state) {
+  if (building.kind === 'wonder') return wonderEntry(building);
   const previous = data.buildings.find((b) => b.upgradeTarget === building.typeId);
   const next = building.upgradeTarget == null ? undefined : buildingByType.get(building.upgradeTarget);
   const recipes = building.recipes.map(recipeRow).join('');
@@ -169,7 +234,7 @@ function buildingEntry(building, state) {
         <h3 class="kn-h">Budowa</h3>
         <div class="kn-links">${building.cost.map((c) => goodLink(goodByType.get(c.good), c.amount)).join('') || '<span>Nie buduje się</span>'}</div>
         <dl>
-          <dt>Wytrzymałość</dt><dd>${building.hitpoints === null ? '-' : number(building.hitpoints)}</dd>
+          <dt>Zdrowie</dt><dd>${building.hitpoints === null ? '-' : number(buildingHitpoints(building, state.tribe))}</dd>
           ${building.homeSize > 0 ? `<dt>Rodziny</dt><dd>${building.homeSize}</dd>` : ''}
           ${building.schoolSize > 0 ? `<dt>Miejsca nauki</dt><dd>${building.schoolSize}</dd>` : ''}
         </dl>
@@ -200,27 +265,9 @@ function jobEntry(job) {
         <h3 class="kn-h">Miejsca pracy</h3>
         <p>${places.length === 0 ? 'Bez przypisanego budynku' : places.slice(0, 8).map(buildingLink).join(', ')}</p>
         <h3 class="kn-h">Zobacz też</h3>
-        <div class="kn-links"><button class="kn-link" data-article="experience"><span>Mechanika: doświadczenie</span></button></div>
+        <div class="kn-links"><button class="kn-link" data-article="trades"><span>Mechanika: zawody i szkoła</span></button></div>
       </aside>
     </div></article>`;
-}
-
-function vehicleEntry(id) {
-  const vehicle = data.vehicles.find((v) => v.id === id);
-  const name = vehicle.name === 'oxcart' ? 'Zaprzęg' : vehicle.name;
-  return `<article class="kn-entry"><header class="kn-entry__head"><div><h2>${esc(name)}</h2><p>Pojazd</p></div></header>
-    <dl class="kn-facts__wide"><dt>Ładownia</dt><dd>${vehicle.stockSlots}</dd><dt>Pasażerowie</dt><dd>${vehicle.passengerSlots}</dd><dt>Wytrzymałość</dt><dd>${number(vehicle.hitpoints)}</dd></dl></article>`;
-}
-
-function animalEntry(tribe) {
-  const animal = data.animals.find((a) => String(a.tribe) === tribe);
-  return `<article class="kn-entry"><header class="kn-entry__head"><div><h2>${esc(animal.name)}</h2><p>Zwierzę</p></div></header>
-    <dl class="kn-facts__wide"><dt>Zdrowie</dt><dd>${number(animal.hitpoints)}</dd><dt>Agresywne</dt><dd>${animal.aggressive ? 'tak' : animal.getAngry ? 'gdy zaatakowane' : 'nie'}</dd><dt>Można oswoić</dt><dd>${animal.catchable ? 'tak' : 'nie'}</dd><dt>Stado do</dt><dd>${animal.groupSize}</dd></dl></article>`;
-}
-
-function placeholderEntry(title, kicker) {
-  return `<article class="kn-entry"><header class="kn-entry__head"><div><h2>${esc(title)}</h2><p>${esc(kicker)}</p></div></header>
-    <p class="kn-todo">Hasło do napisania. Układ taki sam jak w pozostałych: opis, liczby po prawej, odnośniki.</p></article>`;
 }
 
 function entryHtml(entry, state) {
@@ -232,11 +279,14 @@ function entryHtml(entry, state) {
       state,
     );
   if (entry.kind === 'job') return jobEntry(data.jobs.find((j) => j.id === entry.id));
-  if (entry.kind === 'vehicle') return vehicleEntry(entry.id);
-  if (entry.kind === 'animal') return animalEntry(entry.id);
-  if (entry.kind === 'tribe')
-    return placeholderEntry(data.tribes.find((t) => String(t.typeId) === entry.id).name, 'Plemię');
-  return placeholderEntry(entry.id, 'Świat');
+  if (entry.kind === 'vehicle') return vehicleEntryHtml(data.vehicles.find((v) => v.id === entry.id));
+  if (entry.kind === 'animal') {
+    return animalEntryHtml(
+      data.animals.find((a) => String(a.tribe) === entry.id),
+      state.tribe,
+    );
+  }
+  return tribeEntryHtml(data.tribes.find((t) => String(t.typeId) === entry.id));
 }
 
 export function encyclopediaView(state) {
@@ -252,16 +302,9 @@ export function encyclopediaView(state) {
         `<button class="kn-row${item.key === selected ? ' is-selected' : ''}" data-pick="${esc(item.key)}">${item.picture}<span>${esc(item.name)}</span></button>`,
     )
     .join('');
-  const at = items.findIndex((item) => item.key === selected);
-  const step = (item, label) =>
-    item === undefined
-      ? '<span></span>'
-      : `<button class="kn-link" data-pick="${esc(item.key)}"><span>${label} ${esc(item.name)}</span></button>`;
-  const pager =
-    at < 0 ? '' : `<nav class="kn-pager">${step(items[at - 1], '‹')}${step(items[at + 1], '›')}</nav>`;
   return `<div class="kn-enc">
     <nav class="kn-rail">${rail}</nav>
     <div class="kn-list" data-keep-scroll="enc-list">${list}</div>
-    <div class="on-parchment kn-page" data-keep-scroll="enc-page">${pager}${entryHtml(state.entry, state)}</div>
+    <div class="on-parchment kn-page" data-keep-scroll="entry-${esc(selected)}">${entryHtml(state.entry, state)}</div>
   </div>`;
 }

@@ -2,23 +2,33 @@
 // the content set: nothing here lists a recipe by hand.
 export const data = await (await fetch('/review/data.json')).json();
 
-export const goodByType = new Map(data.goods.map((g) => [g.typeId, g]));
+/** Goods no player handles under that name: a dish is a meal once it leaves the bakery, so recipes that
+ *  name a meal show the dish. Sausage has no producer in the data. */
+const MEAL_DISH = { food_simple: 'bread', food_extra: 'candy' };
+const HIDDEN_GOODS = new Set([...Object.keys(MEAL_DISH), 'sausage']);
+
+const allGoods = data.goods;
+data.goods = allGoods.filter((g) => !HIDDEN_GOODS.has(g.id));
 export const goodById = new Map(data.goods.map((g) => [g.id, g]));
+export const goodByType = new Map(data.goods.map((g) => [g.typeId, g]));
+for (const good of allGoods) {
+  const dish = MEAL_DISH[good.id];
+  if (dish !== undefined) goodByType.set(good.typeId, goodById.get(dish));
+}
+/** The filmed cycles, present only when the local review art has them. */
+const stripManifest = async (name) => {
+  const response = await fetch(`/review/${name}.json`);
+  return response.ok ? response.json() : {};
+};
+export const STRIPS = {
+  ...(await stripManifest('anims-animals')),
+  ...(await stripManifest('anims-soldiers')),
+};
+
 export const buildingByType = new Map(data.buildings.map((b) => [b.typeId, b]));
 export const buildingById = new Map(data.buildings.map((b) => [b.id, b]));
 export const jobByType = new Map(data.jobs.map((j) => [j.typeId, j]));
 export const jobById = new Map(data.jobs.map((j) => [j.id, j]));
-
-export const LANES = [
-  { id: 'food', name: 'Żywność' },
-  { id: 'animals', name: 'Zwierzęta' },
-  { id: 'wood', name: 'Drewno' },
-  { id: 'clay', name: 'Glina' },
-  { id: 'stone', name: 'Kamień' },
-  { id: 'ore', name: 'Ruda i kruszce' },
-  { id: 'druid', name: 'Druid' },
-  { id: 'military', name: 'Wojsko' },
-];
 
 export const esc = (text) =>
   String(text)
@@ -31,12 +41,21 @@ export const SECONDS_PER_TICK = 1 / 12;
 export const seconds = (ticks) =>
   (ticks * SECONDS_PER_TICK).toLocaleString('pl-PL', { maximumFractionDigits: 1 });
 export const number = (value) => Number(value).toLocaleString('pl-PL', { maximumFractionDigits: 1 });
+export const precise = (value) =>
+  Number(value).toLocaleString('pl-PL', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+/** A picture the review set lacks stays an empty dashed ring. */
+const NO_ART =
+  "this.onerror=null;this.classList.add('is-missing');this.src='data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw=='";
 
 export function goodIcon(good) {
-  return `<img class="kn-good" alt="" src="/review/icons/${good.id}.png" onerror="this.classList.add('is-missing');this.removeAttribute('src')">`;
+  return `<img class="kn-good" alt="" src="/review/icons/${good.id}.png" onerror="${NO_ART}">`;
 }
 export function buildingThumb(building) {
-  return `<img class="kn-thumb" alt="" src="/review/thumbs/${building.id}.png" onerror="this.classList.add('is-missing');this.removeAttribute('src')">`;
+  return `<img class="kn-thumb" alt="" src="/review/thumbs/${building.id}.png" onerror="${NO_ART}">`;
+}
+export function animalPicture(animal) {
+  return `<img class="kn-good" alt="" src="/review/animals/${animal.tribe}.png" onerror="${NO_ART}">`;
 }
 /** A link that navigates the window to an entry. */
 export function goodLink(good, amount) {
@@ -66,6 +85,9 @@ for (const building of data.buildings) {
     }
   }
 }
+/** A building's durability for a tribe: some tribes build a type sturdier than its base row. */
+export const buildingHitpoints = (building, tribe) => building.tribeHitpoints[tribe] ?? building.hitpoints;
+
 export const buildingsCosting = (good) =>
   data.buildings.filter((b) => b.cost.some((c) => c.good === good.typeId));
 
@@ -77,12 +99,14 @@ export const producersOf = (good) =>
       !b.recipes.some((r) => r.outputs.some((o) => o.goodType === good.typeId)),
   );
 
-/** The graph's edges, unique per pair: a recipe, a slaughter, a hunt or a dish becoming a meal. */
+/** The graph's edges, unique per pair: a recipe, a slaughter or a hunt. */
 export const edges = [];
 const seen = new Set();
-const addEdge = (from, to, kind) => {
+const addEdge = (fromType, toType, kind) => {
+  const from = goodByType.get(fromType)?.typeId;
+  const to = goodByType.get(toType)?.typeId;
   const key = `${from}>${to}`;
-  if (seen.has(key) || !goodByType.has(from) || !goodByType.has(to)) return;
+  if (from === undefined || to === undefined || seen.has(key)) return;
   seen.add(key);
   edges.push({ from, to, kind });
 };
@@ -101,24 +125,9 @@ const prey = goodById.get('prey');
 for (const id of ['meat', 'leather']) addEdge(prey.typeId, goodById.get(id).typeId, 'hunt');
 const meat = goodById.get('meat');
 for (const id of ['sheep', 'cattle']) addEdge(goodById.get(id).typeId, meat.typeId, 'slaughter');
-for (const good of data.goods) {
-  if (good.edibleForm !== null) addEdge(good.typeId, goodById.get(good.edibleForm).typeId, 'meal');
-}
 
 export const inputsOf = (type) => edges.filter((e) => e.to === type);
 export const outputsOf = (type) => edges.filter((e) => e.from === type);
-
-/** A good's processing stage: raw is 0. A dish becoming a meal adds no stage, so a meal sits one past
- *  its dish and an amulet made from a meal one past that. */
-const depthMemo = new Map();
-export function depthOf(type) {
-  if (depthMemo.has(type)) return depthMemo.get(type);
-  depthMemo.set(type, 0);
-  const incoming = inputsOf(type);
-  const depth = incoming.length === 0 ? 0 : 1 + Math.max(...incoming.map((e) => depthOf(e.from)));
-  depthMemo.set(type, depth);
-  return depth;
-}
 
 function walk(start, neighbours) {
   const found = new Set();
@@ -174,7 +183,9 @@ export const DEMO = {
 
 /** A house's status in the example settlement. */
 export function buildingStatus(building) {
-  if (DEMO.closedOnMap.has(building.id)) return { kind: 'map', text: 'Ta mapa nie pozwala na ten budynek' };
+  if (DEMO.closedOnMap.has(building.id)) {
+    return { kind: 'map', text: 'Ta mapa nie pozwala na ten budynek', short: 'poza mapą' };
+  }
   if (building.tech === null) return { kind: 'ok', text: 'Dostępny' };
   const missing = [
     ...building.tech.jobs.filter((j) => !DEMO.jobs.has(j.name)).map((j) => j.name),
@@ -185,5 +196,6 @@ export function buildingStatus(building) {
     : {
         kind: 'locked',
         text: `Czeka na: ${missing.slice(0, 3).join(', ')}${missing.length > 3 ? ` i ${missing.length - 3} więcej` : ''}`,
+        short: `Brak: ${missing[0]}${missing.length > 1 ? ` +${missing.length - 1}` : ''}`,
       };
 }

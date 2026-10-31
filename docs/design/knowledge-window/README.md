@@ -9,5 +9,9 @@ node docs/design/knowledge-window/build-data.mjs content <mod>/Data/text/pol/str
 node docs/design/knowledge-window/serve.mjs 5186 <review-dir>
 ```
 
-The review directory also takes `icons/<good-id>.png`, `thumbs/<building-id>.png` and `menu.png`, cut from
-the running game. A missing picture shows as a dashed placeholder.
+The review directory also takes `icons/<good-id>.png`, `thumbs/<building-id>.png`, `animals/<tribe>.png`,
+`anims/<clip>.png` with `anims-*.json` frame counts, and `menu.png`, cut from the running game. A missing
+picture shows as a dashed placeholder.
+
+`articles/` holds the Mechaniki text as data, one file per group, rendered by `blocks.js`. A
+`{ data: 'name' }` block is a live table from `data-blocks.js`.

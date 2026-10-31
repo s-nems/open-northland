@@ -113,31 +113,41 @@ const EQUIP = {
   shoes: {
     slot: 'Buty',
     wears: '10000 punktów',
-    effect: 'Krok krótszy o 2 takty. Bez butów chodzenie kosztuje też jedzenie.',
+    effect: 'Krok krótszy o 0,17 s. Bez butów chodzenie kosztuje też Energię.',
   },
   tool_wooden: { slot: 'Narzędzie', wears: '100 użyć', effect: 'Praca ×1,25, produkcja +0,2 sztuki na cykl' },
   tool_iron: { slot: 'Narzędzie', wears: '100 użyć', effect: 'Praca ×1,75, produkcja +0,7 sztuki na cykl' },
-  mead: { slot: 'Inne', wears: '2 łyki', effect: '+50% jedzenia i odpoczynku' },
-  potion_food_small: { slot: 'Inne', wears: '2 łyki', effect: '+100% jedzenia' },
-  potion_food_big: { slot: 'Inne', wears: '5 łyków', effect: '+100% jedzenia' },
-  potion_stamina_small: { slot: 'Inne', wears: '2 łyki', effect: '+100% odpoczynku' },
-  potion_stamina_big: { slot: 'Inne', wears: '5 łyków', effect: '+100% odpoczynku' },
+  mead: { slot: 'Inne', wears: '2 łyki', effect: '+50% Energii i Wytrzymałości' },
+  potion_food_small: { slot: 'Inne', wears: '2 łyki', effect: '+100% Energii' },
+  potion_food_big: { slot: 'Inne', wears: '5 łyków', effect: '+100% Energii' },
+  potion_stamina_small: { slot: 'Inne', wears: '2 łyki', effect: '+100% Wytrzymałości' },
+  potion_stamina_big: { slot: 'Inne', wears: '5 łyków', effect: '+100% Wytrzymałości' },
   potion_heal_small: {
     slot: 'Inne',
     wears: '2 łyki',
-    effect: '+40% zdrowia, sam wypija przy ranie poniżej 50%',
+    effect: '+40% zdrowia, sam wypija, gdy rana zeszłaby poniżej 50%',
   },
   potion_heal_big: {
     slot: 'Inne',
     wears: '5 łyków',
-    effect: '+40% zdrowia, sam wypija przy ranie poniżej 50%',
+    effect: '+40% zdrowia, sam wypija, gdy rana zeszłaby poniżej 50%',
   },
-  amulet_food: { slot: 'Inne', wears: 'nie zużywa się', effect: 'Uzupełnia głód o 40%' },
-  amulet_stamina: { slot: 'Inne', wears: 'nie zużywa się', effect: 'Uzupełnia zmęczenie o 40%' },
+  amulet_food: { slot: 'Inne', wears: 'nie zużywa się', effect: '+40% Energii przy 20% paska' },
+  amulet_stamina: { slot: 'Inne', wears: 'nie zużywa się', effect: '+40% Wytrzymałości przy 20% paska' },
   amulet_strength: { slot: 'Inne', wears: 'nie zużywa się', effect: 'Obrażenia ×1,5' },
   amulet_defense: { slot: 'Inne', wears: 'nie zużywa się', effect: 'Otrzymane obrażenia ×0,5' },
   amulet_crithit: { slot: 'Inne', wears: 'nie zużywa się', effect: '20% szans na cios ×2' },
-  amulet_speed: { slot: 'Inne', wears: 'nie zużywa się', effect: 'Krok krótszy o 2 takty' },
+  amulet_speed: { slot: 'Inne', wears: 'nie zużywa się', effect: 'Krok krótszy o 0,17 s' },
+};
+
+/** What eating a good gives, as the sim's meal rules set it. */
+const PLAIN_MEAL = { outside: '+40% Energii', home: '+80% Energii' };
+const FOOD = {
+  bread: PLAIN_MEAL,
+  meat: PLAIN_MEAL,
+  fish: PLAIN_MEAL,
+  fruit: { outside: '+40% Energii, zjadany na miejscu', home: null },
+  candy: { outside: '+60% Energii, +40% Towarzystwa', home: '+120% Energii, +40% Towarzystwa' },
 };
 
 const goods = ir.goods
@@ -157,6 +167,7 @@ const goods = ir.goods
     slaughterInputs: slaughterInputs(g),
     edibleForm: EDIBLE_FORM[g.id] ?? null,
     equip: EQUIP[g.id] ?? null,
+    food: FOOD[g.id] ?? null,
   }));
 
 const buildings = ir.buildings
@@ -170,6 +181,9 @@ const buildings = ir.buildings
     schoolSize: b.schoolSize ?? 0,
     shelterCapacity: b.shelterCapacity ?? 0,
     hitpoints: b.hitpoints ?? null,
+    tribeHitpoints: Object.fromEntries(
+      (b.tribeVariants ?? []).filter((v) => v.hitpoints !== undefined).map((v) => [v.tribe, v.hitpoints]),
+    ),
     upgradeTarget: b.upgradeTarget ?? null,
     workers: (b.workers ?? []).map((w) => ({ job: w.jobType, name: jobName(w.jobType), count: w.count })),
     cost: (b.construction ?? []).map((c) => ({
@@ -247,12 +261,26 @@ for (const [key, rows] of Object.entries(reqs)) {
 
 const clipOf = new Map(ir.atomicAnimations.map((a) => [a.id, a]));
 const ATTACK_ATOMIC = 81;
+/** The clip event that lands a blow; a clip may carry several. */
+const BLOW_EVENT = 25;
+/** The app joins the unarmed hero's weapon row to this job, whatever the row itself names. */
+const HERO_UNARMED_JOB = 42;
 const PLAYABLE = [1, 2, 3, 4, 7];
-const tribes = PLAYABLE.map((typeId) => ({ typeId, name: pol.tribes[typeId] ?? String(typeId) }));
+/** A tribe-wide shorter step; a reduction tied to one job is that unit's own, not the people's. */
+const tribes = PLAYABLE.map((typeId) => {
+  const reduction = ir.tribes.find((t) => t.typeId === typeId).walkStepReduction;
+  return {
+    typeId,
+    name: pol.tribes[typeId] ?? String(typeId),
+    stepReduction: reduction === undefined || reduction.jobType !== undefined ? 0 : reduction.ticks,
+  };
+});
 const weapons = {};
 for (const tribe of PLAYABLE) {
   const record = ir.tribes.find((t) => t.typeId === tribe);
   const binding = new Map(record.atomicBindings.map((b) => [`${b.jobType}:${b.atomicId}`, b.animation]));
+  const attackClip = (w) =>
+    clipOf.get(binding.get(`${w.id === 'hero_fist' ? HERO_UNARMED_JOB : w.jobType}:${ATTACK_ATOMIC}`));
   weapons[tribe] = ir.weapons
     .filter((w) => w.tribeType === tribe)
     .map((w) => ({
@@ -260,12 +288,15 @@ for (const tribe of PLAYABLE) {
       id: w.id,
       job: w.jobType ?? null,
       jobName: w.jobType === undefined ? null : jobName(w.jobType),
+      goodType: w.goodType ?? null,
       goodName: w.goodType === undefined ? null : goodName(w.goodType),
       mainType: w.mainType ?? null,
+      weight: w.weight,
       minRange: w.minRange,
       maxRange: w.maxRange,
       damage: w.damage,
-      clipTicks: clipOf.get(binding.get(`${w.jobType}:${ATTACK_ATOMIC}`))?.length ?? null,
+      clipTicks: attackClip(w)?.length ?? null,
+      blows: Math.max(1, (attackClip(w)?.events ?? []).filter((e) => e.type === BLOW_EVENT).length),
       /** No tribe's permissions name the saber and axe trades, so those rows never fight. */
       usable: w.jobType === undefined || record.permissions.job.includes(w.jobType),
     }));
@@ -286,6 +317,7 @@ for (const building of buildings) {
 
 const armor = ir.armor.map((a) => ({
   typeId: a.typeId,
+  goodType: a.goodType,
   name: goodName(a.goodType),
   material: a.materialType,
   weight: a.weight,
@@ -296,25 +328,41 @@ const vehicles = ir.vehicles
   .filter((v) => v.id !== 'cart_no_ox')
   .map((v) => ({
     id: v.id,
-    name: pol.houses[ir.buildings.find((b) => b.vehicleType === v.typeId)?.typeId] ?? v.name,
+    name: goodName(ir.goods.find((g) => g.id === v.id)?.typeId),
     stockSlots: v.stockSlots,
     passengerSlots: v.passengerSlots,
     hitpoints: v.hitpoints,
+    commander: v.commanderJob === undefined ? null : jobName(v.commanderJob),
   }));
 
-const animals = ir.animals
-  .filter((a) => a.hitpointsAdult > 0)
-  .map((a) => ({
-    tribe: a.tribeType,
-    name: pol.tribes[a.tribeType] ?? a.id,
-    hitpoints: a.hitpointsAdult,
-    aggressive: a.aggressive,
-    getAngry: a.getAngry,
-    catchable: a.catchable,
-    moveSpeed: a.moveSpeed,
-    runSpeed: a.runSpeed,
-    groupSize: a.maximumGroupSize,
-  }));
+/** The hunter skips an aggressive adult and anything scoring at this; hit points alone reach it. */
+const HUNT_PREY_SCORE_CEILING = 10000;
+/** An animal's own attack, off the weapon rows its tribe owns; a peaceful animal has none. */
+const animalWeapon = (tribe) => {
+  const weapon = ir.weapons.find((w) => w.tribeType === tribe);
+  return weapon === undefined
+    ? null
+    : { damage: weapon.damage, minRange: weapon.minRange, maxRange: weapon.maxRange };
+};
+const animals = [
+  ...new Map(ir.animals.filter((a) => a.hitpointsAdult > 0).map((a) => [a.tribeType, a])).values(),
+].map((a) => ({
+  tribe: a.tribeType,
+  name: pol.tribes[a.tribeType] ?? a.id,
+  hitpoints: a.hitpointsAdult,
+  hitpointsYoung: a.hitpointsBaby,
+  // An animal with no weapon row never swings, whatever its flag says.
+  aggressive: a.aggressive && animalWeapon(a.tribeType) !== null,
+  getAngry: a.getAngry,
+  angryTicks: a.angryGameTime ?? 0,
+  catchable: a.catchable,
+  huntable: a.warrantable && !a.aggressive && a.hitpointsAdult < HUNT_PREY_SCORE_CEILING,
+  moveSpeed: a.moveSpeed,
+  runSpeed: a.runSpeed,
+  groupSize: a.maximumGroupSize,
+  leash: a.maximumDistanceToStayPoint,
+  weapon: animalWeapon(a.tribeType),
+}));
 
 mkdirSync(reviewDir, { recursive: true });
 writeFileSync(
