@@ -73,7 +73,9 @@ stocked (`stockedAt`). Owner ruling on priorities: food, then population, then t
 joiner, then the special paths, so the gold and mushroom gatherers, the first mint and the herb hut wait
 until the upper bakery, the brewery, the upper smithy and the upper joinery stand. A workshop whose
 discovery the seat just earned takes the next free site, one site over the pace if need be, except that
-a seat whose defence comes first gives its army and weapon lines that turn. One more workshop of a kind
+a seat whose defence comes first gives its army and weapon lines that turn. A placement held on the
+military deadline, the barracks among them, goes ahead of the earned workshops once its lead opens and
+may take their extra site (owner ruling: the barracks stands a bit before the deadline). One more workshop of a kind
 the seat runs waits until those standing hold their full crews (owner ruling: upgrades and full crews
 before copies), so the bread line ends on one bakery, a second where there is room, both upgraded. A
 place step raises the highest tier of its chain the seat has learned, whose bill has a source and the
@@ -103,22 +105,24 @@ cheapest; while only the animal farm feeds the seat it keeps that pace and raise
 tier, two with food in store or game to hunt, and no home, new or upgraded, higher; once the first
 bakery stands or a fisher fishes it keeps four ahead on two sites; once the brewery and an upper-tier
 bakery stand, eight ahead on three. Home sites past the first stand beyond the clock's sites, at most
-the clock's sites but one, so the one-site difficulties keep one. From the food stage on an upgrade goes
-before a new home, the lowest-tier home first, and a home left below the highest tier is upgraded even
-while the slots suffice. Every home without an affinity stands on the far side of the base from the
+the clock's sites but one, so the one-site difficulties keep one; a tower ring's sites standing apart
+never count against them. From the food stage on an upgrade goes before a new home, the lowest-tier home
+first, and a home left below the highest tier is upgraded even while the slots suffice. A second upgrade
+starts only while the standing homes still keep a slot free past the women's demand, otherwise the lane
+places a new home, and no upgrade climbs past a tier whose own bill nothing the seat makes. Every home without an affinity stands on the far side of the base from the
 field farms, off their fields, so the mill, animal farm and bakery find room beside the farm. It follows
 food (owner ruling: an upgraded home bears no children while food is short): no home site while the
-store holds under one child's food a woman; a food-rich seat (fishing, or five meals a settler in store)
+store holds under one child's food a woman; a food-rich seat (a hired fisher, or five meals a settler in store)
 may run it from the start of the opening while the daughters are blocked; any other seat opens it behind
-the pottery, school and mason once a workshop making food (animal farm, bakery) stands.
+the pottery, mason and school once a workshop making food (animal farm, bakery) stands.
 
 The seat plays under the same experience gates as a human (`docs/formats/PROGRESSION.md`); with the
 match's progression toggle off everything is open for both. The first discovery of a trade always comes
 from work: the technology module pins an apprentice on the work that credits the needed track and
 promotes him into the new building when it stands, refilling his old post. Once a school stands, further
 workers of a discovered trade are schooled instead. Owner ruling on the opening: one wood, one clay and
-one stone collector, a second stone collector early, a hunter and a farmer, the school once the pottery
-stands, iron from game minute 15, mushrooms from minute 25. An operator whose every listed product is
+one stone collector, a second stone collector early, a hunter and a farmer, the mason hut, then the school (its bill
+wants his pillars) once the pottery stands, iron from game minute 15, mushrooms from minute 25. An operator whose every listed product is
 still locked for him learns one of them at school (the one he lacks the most repeats for) instead of
 grinding the weaker product he has earned: a fresh smith otherwise forged about ten short swords before
 his first long sword.
@@ -127,24 +131,29 @@ The seat switches the settlement assistant on as a player would (owner ruling): 
 tools for every settler, since the adults live on mead and the bread feeds the children; the healing
 potions and every amulet for the soldiers alone; gatherers moving their flags. Posting graduates stays
 off: the seat schools a man for one post and puts him there itself, where the switch would bind him to
-the nearest free slot of his trade, a workshop the seat keeps short on purpose included.
+the nearest free slot of his trade, a workshop the seat keeps short on purpose included. The grants
+skip a recruit whose weapon is still unpaid, so he never goes out for mead before he is armed.
 
 Smithies, armouries, tailors and mints choose their products from stock (`workforce/craft.ts`,
 `workforce/craft-stock.ts`; owner ruling): each type keeps an ordered list of wants, army goods held to
-the recruits still to arm plus a wave's reserve, input goods to one unit per operator that consumes
+the recruits still to arm plus a wave's reserve (two waves of iron arms on an iron-arms seat from the
+barracks lead on), input goods to one unit per operator that consumes
 them, coins to two per druid, shoes and iron tools to a fixed stock. Every want under its target takes
 one operator, the most lacking army want first, the spare men follow the largest lack, and a crew with
-nothing wanted rests, so iron waits for the next want. A weaker good is made only to arm the army or
+nothing wanted rests, so iron waits for the next want. On an iron-arms seat the smith past every want
+keeps forging long swords (short ones before the long sword is earned) until chain mail, which opens the
+upper smithy, is earned. A weaker good is made only to arm the army or
 earn the better one: wooden tools, short bows, holy oil and coins before the amulets, and short swords
 and wooden spears beyond that only as the strength amulet's and the iron spear's inputs. Nobody makes
 furniture. A seat with iron dresses its army in plate and mail, leather armour only before plate and as
 the defence amulet's input; a seat with little or none sews tunics and shoes and no leather armour. The
 druids boil holy oil only until the big healing potion is learned and brew only that afterwards. Extra
 gatherer posts are released at their good's glut, and gatherers never take the builders a seat's open
-sites need. On a seat with iron to spare the iron posts its smithies plan come ahead of the builder
+sites need. While sites are open, two core builders come ahead of the scout and the generic posts; a seat
+short of them returns those posts and a free scout to the pool. On a seat with iron to spare the iron posts its smithies plan come ahead of the builder
 reserve, its consumers' input shelves do not count as iron to spare, and its iron gatherers are never
 called to arms. Porters: one for the headquarters and each warehouse, last in the ladder, and two for
-the barracks, both from the late game; one for the animal farms, the tailors and the tools joinery once
+the barracks, both from the late game; one for the lower smithy until chain mail is earned; one for the animal farms, the tailors and the tools joinery once
 the builder reserve stands, and one for the handcarts' joinery ahead of it. The builder reserve grows
 with the civilians past 60 (a sixteenth of them on hard). A cramped seat digs room with three extra wood
 and two extra stone collectors from the start, a standard one with two and one from game minute 10.
@@ -156,14 +165,17 @@ without one, or the first forecast scripted attack, whichever comes first. The b
 minutes before it, so it stands about 15 minutes ahead, the first tower ring until 30 minutes before (it
 rises at the upper tier where attacks come late), the army floor drafts from 15 minutes before. A seat
 whose defence comes first raises its barracks and towers at once; its army floor still waits for its
-lead unless the seat is under attack. A seat that starts with soldiers and no barracks turns them all
+lead unless the seat is under attack. Defence comes first while the seat fights off an attack, prepares
+against a forecast attack or knows one within the barracks lead, or, against a stronger enemy alone, once
+the clock is within the barracks lead of its deadline (owner ruling: food before arms). A seat that starts with soldiers and no barracks turns them all
 into builders in its first game minute (owner ruling: they build more, and defend as hunters and in
 defensive mode).
 
 The tower ring is a lane, two sites at a time, three while the seat's defence comes first, standing
-beyond the site clock on hard. Where attacks come before game minute 60 it raises the cheap lower tier
+beyond the site clock on hard; a tower site opens only while the open sites stay under a third of the
+seat's men, at least one. Where attacks come before game minute 60 it raises the cheap lower tier
 (owner ruling: it builds far faster) and the standing towers are upgraded once the seat makes bricks and
-pillars; elsewhere, and from minute 60 everywhere, it raises the upper tier outright once learned and
+pillars, though none opens within 15 minutes of a forecast attack (an upgrading tower shoots no one); elsewhere, and from minute 60 everywhere, it raises the upper tier outright once learned and
 sourced. Facing forecast scripted attacks the ring is timed per wave (owner ruling: the towers finish a
 bit before each attack): three towers from 20 minutes before the first deadline, two more before each
 later one, and it first fills a line across the attack's heading 16 nodes ahead of the base (whole steps
@@ -174,10 +186,18 @@ each attacking wild animal it sees within reach of its buildings, unowned or own
 (mroczny_las's wolves belong to the map's forest seat), and at any such animal biting one of its people
 anywhere, hiring up to two more from its spare men while the threat lasts; beasts stronger than two bows
 (lions) are left to the towers and the army. The draft mans each standing empty tower with its first
-archer before it fills the field army, since a tower shoots only through its garrison.
+archer before it fills the field army, since a tower shoots only through its garrison. No armed class takes more men than its weapons in stock
+less its recruits already waiting for one, the bare soldiers and the tower archers served first.
+
+The seat dresses its armed men at home with the player's equip order, three each decision, the best
+armour in stock first, since the assistant dresses a recruit only when his weapon lands. Each finished
+barracks marks the seat's weapons, armour, healing potions, mead and amulets as store priority, so its
+porters fetch the army's gear.
 
 Settlement defence is shared with the map AI (`systems/ai-shared/military`), filtered by sight for a
-computer seat. Offensive work runs as operations (`military/operations/`): saved records with a kind,
+computer seat. An outmatched seat (its posture review found the strongest enemy clearly stronger) sorties
+only for raiders at its towers and stores, and its army waits at its base door, not at a barracks on the
+front (owner ruling: survive at any cost); recruits awaiting a weapon stay at the barracks. Offensive work runs as operations (`military/operations/`): saved records with a kind,
 members, target and a lifecycle (`forming`, `moving`, `acting`, `withdrawing`, `done`, `failed`). The
 wave march is the `assault` kind: the wave walks to a gathering point short of the enemy base and out
 of its known towers' reach, waits there until three quarters of it have arrived (at most 45 seconds after
