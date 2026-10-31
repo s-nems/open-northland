@@ -37,6 +37,9 @@ export const SEA_SCOUT_INTERVAL_TICKS = 8 * SECONDS_PER_MINUTE * TICKS_PER_SECON
 /** The most a trip sails before it turns home, and sails home before it lets the ship go (authored): a
  *  loop round a large island of the island maps with room to spare. */
 export const SEA_SCOUT_TRIP_TIMEOUT_TICKS = 20 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+/** How long past {@link SEA_SCOUT_TRIP_TIMEOUT_TICKS} a ship still at sea on its way home keeps its trip
+ *  open before the trip lets it go with its soldier aboard (authored). */
+export const SEA_SCOUT_STRANDED_GRACE_TICKS = SEA_SCOUT_TRIP_TIMEOUT_TICKS;
 /** The sectors round the rival's island, one waypoint each: the eight octants about its coast's centre. */
 export const SEA_SCOUT_SECTORS = 8;
 
@@ -224,14 +227,24 @@ function sailing(env: OperationEnv, op: SeaScoutOperation): PlayerCommand[] {
 }
 
 /** Withdrawing: the ship docks at home, at another shore of home when that dock is refused or spent short
- *  ({@link homeShore}), and lets its soldier go there; past the trip timeout the operation lets go of a
- *  ship that never made it. */
+ *  ({@link homeShore}), and lets its soldier go there. Past the trip timeout a ship moored on any shore
+ *  lets him go where it lies, and one still at sea is let go with him aboard
+ *  {@link SEA_SCOUT_STRANDED_GRACE_TICKS} after that. */
 function withdrawing(env: OperationEnv, op: SeaScoutOperation): PlayerCommand[] {
   const { world, ctx } = env;
   if (mooredHomeLand(env, op)) return homecoming(env, op);
-  if (ctx.tick - op.since >= SEA_SCOUT_TRIP_TIMEOUT_TICKS) {
-    enter(op, 'done', ctx.tick, 'timedOut');
-    return [];
+  const waited = ctx.tick - op.since;
+  if (waited >= SEA_SCOUT_TRIP_TIMEOUT_TICKS) {
+    const state = shipState(world, op);
+    const mooring = state?.moored === true ? state.mooring : null;
+    if (mooring !== null && mooring !== undefined) {
+      enter(op, 'done', ctx.tick, 'timedOut');
+      return [unload(op, mooring)];
+    }
+    if (waited >= SEA_SCOUT_TRIP_TIMEOUT_TICKS + SEA_SCOUT_STRANDED_GRACE_TICKS) {
+      enter(op, 'done', ctx.tick, 'timedOut');
+      return [];
+    }
   }
   if (!lyingStill(world, op)) return [];
   return [dockAt(op, homeShore(env, op) ?? op.home)];
