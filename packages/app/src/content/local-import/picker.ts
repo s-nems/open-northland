@@ -27,7 +27,7 @@ export function localFilePicker(
   input.type = 'file';
   input.hidden = true;
   if (folder) input.setAttribute('webkitdirectory', '');
-  else input.accept = '.zip,.rar,.c2m';
+  else input.accept = '.zip,.rar,.c2m,.exe';
   input.addEventListener('change', () => {
     const files = Array.from(input.files ?? []);
     input.value = '';

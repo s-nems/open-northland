@@ -2,6 +2,7 @@ import { isC2m } from '@open-northland/formats/c2m';
 import { MapImportError } from '../errors.js';
 import type { ImportLimits } from '../limits.js';
 import { isMapTreePath, normalizePath, type TreeBuilder } from '../tree.js';
+import { isNsisInstaller } from './nsis.js';
 import { isTar } from './tar.js';
 
 /** One kept archive entry: a map file, or a nested archive to open in place. */
@@ -18,13 +19,14 @@ export type Unpack = (
 ) => Promise<ArchiveEntry[]>;
 
 /** The archive formats an import opens, told apart by their leading bytes (a tar by its ustar magic). */
-export type ArchiveFormat = 'zip' | 'rar' | 'c2m' | 'tar';
+export type ArchiveFormat = 'zip' | 'rar' | 'c2m' | 'tar' | 'nsis';
 
 const NESTED_EXTENSIONS: Readonly<Record<string, ArchiveFormat>> = {
   '.zip': 'zip',
   '.rar': 'rar',
   '.c2m': 'c2m',
   '.tar': 'tar',
+  '.exe': 'nsis',
 };
 
 const ZIP_MAGIC = [0x50, 0x4b] as const;
@@ -40,6 +42,7 @@ export function detectArchiveFormat(bytes: Uint8Array): ArchiveFormat | undefine
   if (startsWith(bytes, RAR_MAGIC)) return 'rar';
   if (isC2m(bytes)) return 'c2m';
   if (isTar(bytes)) return 'tar';
+  if (isNsisInstaller(bytes)) return 'nsis';
   return undefined;
 }
 
@@ -70,9 +73,12 @@ export async function fillTree(
     if (inner === undefined) {
       builder.add(path, entry.bytes);
     } else {
-      // The leading bytes win over a mislabelled extension.
-      const format = detectArchiveFormat(entry.bytes) ?? inner;
-      await fillTree(entry.bytes, format, builder, unpackers, path.slice(0, path.lastIndexOf('.')), true);
+      // The leading bytes win over a mislabelled extension, and an `.exe` is NSIS only when they say so.
+      const format = detectArchiveFormat(entry.bytes) ?? (inner === 'nsis' ? undefined : inner);
+      if (format === undefined) {
+        if (inner !== 'nsis') builder.add(path, entry.bytes);
+      } else
+        await fillTree(entry.bytes, format, builder, unpackers, path.slice(0, path.lastIndexOf('.')), true);
     }
   }
 }

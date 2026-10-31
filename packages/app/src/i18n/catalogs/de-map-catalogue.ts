@@ -8,10 +8,10 @@ export const deMapCatalogue = {
   },
   localImport: {
     open: 'Karte laden…',
-    formats: 'ZIP, RAR, C2M oder Kartenordner',
+    formats: 'ZIP, RAR, C2M, Setup-EXE oder Kartenordner',
     file: 'Aus Datei laden',
     folder: 'Ordner laden',
-    hint: 'ZIP, RAR, C2M oder Ordner. Du kannst sie auch hierher ziehen.',
+    hint: 'ZIP, RAR, C2M, Setup-EXE oder Ordner. Du kannst sie auch hierher ziehen.',
     drop: 'Datei hierher ziehen',
     cancel: 'Abbrechen',
     reading: 'Dateien werden gelesen…',
@@ -26,7 +26,7 @@ export const deMapCatalogue = {
     noMap: 'In dieser Datei oder diesem Ordner wurde keine Karte gefunden.',
     decode:
       'Die Karte konnte nicht gelesen werden. Die Datei ist möglicherweise beschädigt oder wird nicht unterstützt.',
-    unsupported: 'Nicht unterstütztes Archiv. Wähle ZIP, RAR, C2M oder einen Kartenordner.',
+    unsupported: 'Nicht unterstütztes Archiv. Wähle ZIP, RAR, C2M, eine Setup-EXE oder einen Kartenordner.',
     tooLarge:
       'Dieses Paket überschreitet das sichere Importlimit. Wähle ein kleineres Paket oder eine einzelne Karte.',
     readFailed: 'Dateien konnten nicht gelesen werden. Wähle sie erneut.',

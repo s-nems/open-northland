@@ -152,7 +152,7 @@ export function createWindow({
   const localPicker = createLocalMapPicker(async (kind) => {
     const selected = await dialog.showOpenDialog(win, {
       properties: kind === 'folder' ? ['openDirectory', 'dontAddToRecent'] : ['openFile', 'dontAddToRecent'],
-      ...(kind === 'folder' ? {} : { filters: [{ name: 'Maps', extensions: ['zip', 'rar', 'c2m'] }] }),
+      ...(kind === 'folder' ? {} : { filters: [{ name: 'Maps', extensions: ['zip', 'rar', 'c2m', 'exe'] }] }),
     });
     return selected.canceled ? undefined : selected.filePaths[0];
   });
