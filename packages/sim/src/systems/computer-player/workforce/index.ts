@@ -309,7 +309,7 @@ function runWorkforce(
     ...staffBuildings(world, ctx, seat, force, tally, 'surplus', gated),
     ...(clearing > 0 ? [] : generic()),
     ...trainGarrison(world, ctx, player, force, armyFloor.men, arms, profile),
-    ...tuneCraftCounters(world, ctx, player, supply, profile),
+    ...tuneCraftCounters(world, ctx, player, supply, profile, apprentices),
     ...gated.schooling.teachMethods(),
     ...assignHaulingCarts(world, ctx, player),
   ];

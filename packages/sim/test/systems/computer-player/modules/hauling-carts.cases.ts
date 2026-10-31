@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { Building, HaulingCart, Settler } from '../../../../src/components/index.js';
+import { Building, HaulingCart, Settler, setStockAmount } from '../../../../src/components/index.js';
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation } from '../../../../src/index.js';
@@ -9,6 +9,7 @@ import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.
 import { DEFAULT_BUILD_ORDER, SeatSupply } from '../../../../src/systems/computer-player/index.js';
 import {
   AI_FREE_HANDCARTS,
+  JOINERY_TOOL_GLUT_UNITS,
   tuneCraftCounters,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
 import { assignHaulingCarts } from '../../../../src/systems/computer-player/workforce/hauling-carts.js';
@@ -20,6 +21,7 @@ import {
   CARRIER,
   ctxOf,
   entityOfBuilding,
+  HQ_TYPE,
   JOINER,
   JOINERY_TYPE,
   placeHq,
@@ -34,6 +36,8 @@ const HANDCART_GOOD = 50;
 const HANDCART_HOUSE = 78;
 const JOINERY_AT = { x: 40, y: 16 };
 const CART_ROW_Y = 28;
+/** Columns between two free carts parked on {@link CART_ROW_Y}. */
+const CART_SPACING = 4;
 
 /** The fixture joinery recast as the upgraded tools joinery, with a handcart recipe and its vehicle. */
 function cartContent(): ContentSet {
@@ -156,13 +160,44 @@ describe('workforce module - the carriers’ handcarts', () => {
       [TOOL_IRON, HANDCART_GOOD],
     ];
     expect(seat.products()).toEqual(both);
-    // The yard a joiner has opened counts as a free cart: one more makes the spare pair.
-    expect(seat.yards()).toBe(AI_FREE_HANDCARTS - 1);
+    // A yard a joiner has opened is no free cart: the crew finishes it while the carts stand short.
+    expect(seat.yards()).toBe(1);
+    for (let free = 1; free < AI_FREE_HANDCARTS; free++) {
+      seat.cart(JOINERY_AT.x + CART_SPACING * free);
+      expect(seat.products()).toEqual([]);
+    }
     seat.cart(JOINERY_AT.x);
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
     // The carrier takes the cart, so a free one is short again.
     expect(seat.assign()).toHaveLength(1);
     expect(seat.products()).toEqual(both);
+  });
+
+  it('keeps an apprentice joiner on iron tools past their glut, where his workmate rests', () => {
+    const seat = joinery(3, 2);
+    for (let free = 0; free < AI_FREE_HANDCARTS; free++) seat.cart(JOINERY_AT.x + CART_SPACING * free);
+    setStockAmount(seat.sim.world, entityOfBuilding(seat.sim, HQ_TYPE), TOOL_IRON, JOINERY_TOOL_GLUT_UNITS);
+    const [apprentice, workmate] = seat.men;
+    if (apprentice === undefined || workmate === undefined) throw new Error('setup: two joiners');
+    const ctx = { ...ctxOf(seat.sim), content: cartContent() };
+    const supply = SeatSupply.of(
+      seat.sim.world,
+      ctx,
+      SEAT,
+      ownedBuildings(seat.sim.world, SEAT),
+      DEFAULT_BUILD_ORDER,
+    );
+    const commands = tuneCraftCounters(
+      seat.sim.world,
+      ctx,
+      SEAT,
+      supply,
+      AI_PROFILES.hard,
+      new Set([apprentice]),
+    );
+    const of = (e: Entity) => commands.filter((c) => 'entity' in c && c.entity === e);
+    expect(of(apprentice)).toEqual([{ kind: 'setProductionGoods', entity: apprentice, goods: [TOOL_IRON] }]);
+    expect(of(workmate).some((c) => c.kind === 'setProductionCount')).toBe(true);
   });
 
   it('hands a free cart to the nearest posted carrier without one, once', () => {

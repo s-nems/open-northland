@@ -21,7 +21,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
@@ -30,10 +30,11 @@ import { vehicleIndex } from '../../vehicles/registry.js';
 import { militaryWaits, seatHasSide } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
-import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID } from '../joinery-role.js';
+import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID, smallestShipHouse } from '../joinery-role.js';
 import { BARRACKS_LEAD_TICKS } from '../military/deadline.js';
 import { rivalOverSea } from '../sea-route.js';
 import { militaryOrdersOf } from '../strategy/military.js';
+import { COLLECTED_GOOD_IDS } from './collectors/wanted-goods.js';
 import {
   ARMY_RESERVE_UNITS,
   needCounters,
@@ -84,7 +85,7 @@ export type CraftSeat =
 
 /**
  * A seat on a vehicle good (`fleet`) with a cap on the seat's fleet of it, counting the vehicles standing
- * and the yards still building one: the seat works `otherwise` from `cap` on, or where the content has no
+ * ({@link seatFleet}): the seat works `otherwise` from `cap` on, or where the content has no
  * such good or the seat has yet to earn it, and takes the vehicle back once the fleet has fallen to
  * `resume`. In between it keeps its current selection, so no state beyond the live selection is kept.
  * A {@link LANDING_FLEET} cap is the seat's landing fleet ({@link landingFleetShips}), taken back as soon as
@@ -93,7 +94,7 @@ export type CraftSeat =
 export type FleetSeat = {
   readonly fleet: string;
   readonly beside?: readonly string[];
-  /** Count only the vehicles standing free ({@link standsFree}) beside the yards. */
+  /** Count only the vehicles standing free ({@link standsFree}). */
   readonly freeOnly?: true;
   readonly otherwise: CraftSeat;
 } & ({ readonly cap: number; readonly resume: number } | { readonly cap: typeof LANDING_FLEET });
@@ -155,12 +156,12 @@ const JOINERY_SEAT: CraftSeat = {
   otherwise: { goods: ['tool_iron'], glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS }, otherwise: REST_SEAT },
 };
 
-/** The handcarts standing free, in yards included, at which the seat stops building more (authored): a
+/** The handcarts standing free at which the seat stops building more (authored): a
  *  spare one waits for the next carrier hired. */
 export const AI_FREE_HANDCARTS = 2;
 
 /** A joiner of the upgraded tools joinery: handcarts and iron tools in turn while fewer than
- *  {@link AI_FREE_HANDCARTS} carts stand free or in a yard, a {@link JOINERY_SEAT} otherwise. */
+ *  {@link AI_FREE_HANDCARTS} carts stand free, a {@link JOINERY_SEAT} otherwise. */
 const HANDCART_SEAT: CraftSeat = {
   fleet: 'handcart',
   beside: ['tool_iron'],
@@ -396,7 +397,7 @@ export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   work_coin_mint: MINT,
 };
 
-/** The catapults a hard seat keeps at most (authored): at this many, standing or in a yard, the catapult
+/** The catapults a hard seat keeps at most (authored): at this many standing, the catapult
  *  joinery's crew turns to iron tools. */
 export const AI_CATAPULT_CAP = 15;
 
@@ -536,7 +537,10 @@ interface RestrictedCrew {
  *
  * Over the lists, the plan's sink takes the whole crew while the type's products with supply lines lie at
  * glut ({@link sinkHolds}), and otherwise a short product takes one or two seats whose own goods are
- * plentiful ({@link shortFirst}). A crew member on an opening run keeps it.
+ * plentiful ({@link shortFirst}). A crew member on an opening run keeps it. An apprentice
+ * (`technology/apprentices.ts`) works past his seat's glut and rest, since a resting man earns no repeats
+ * toward his discovery. No good takes an input the landing fleet's missing ships hold back
+ * ({@link fleetReserve}).
  */
 export function tuneCraftCounters(
   world: World,
@@ -544,6 +548,7 @@ export function tuneCraftCounters(
   player: number,
   supply: SeatSupply,
   profile: ComputerProfile,
+  apprentices: ReadonlySet<Entity> = NO_APPRENTICES,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
@@ -623,6 +628,7 @@ export function tuneCraftCounters(
     return known;
   };
   const reads = stockReads(world, ctx, player, supply, earned);
+  const reserve = fleetReserve(world, ctx, player, roleOf, landingShips);
   for (const { type, plan, crew, workplaces } of [...crews.values()].flatMap((byType) => [
     ...byType.values(),
   ])) {
@@ -632,7 +638,7 @@ export function tuneCraftCounters(
     const counters = crew.map((e) => world.tryGet(e, ProductionCounters));
     const current = counters.map((selection) => selectedGoods(selection, recipeProducts));
     const fed = (good: number, selected: boolean): boolean =>
-      inputsInStock(ctx, supply, type, good, selected);
+      inputsInStock(ctx, supply, reserve, type, good, selected);
     const stock = 'wants' in plan ? stockSeats(plan, reads, products, current) : null;
     const seatPlan = 'wants' in plan ? null : plan;
     const seats = stock?.seats ?? seatPlan?.seats ?? [];
@@ -660,6 +666,10 @@ export function tuneCraftCounters(
       const anyFed = (goods: readonly number[]): boolean =>
         goods.some((good) => fed(good, held.includes(good)));
       let own = workOf(seats[seat % Math.max(1, seats.length)]);
+      if (own === null && seatPlan !== null && apprentices.has(crew[seat] as Entity)) {
+        const work = seatProducts({ ...choice, pastGlut: true }, held, seats[seat % seats.length] ?? []);
+        own = work === REST ? null : goodsOf(ctx, products, work);
+      }
       if (own === null && stock !== null) {
         // A stock plan's operator past every want makes a surplus good with its inputs in stock, in turn,
         // and only from inputs the sites can spare.
@@ -696,6 +706,12 @@ export function tuneCraftCounters(
     const sink = sinkGoods.some((good) => fed(good, sinking)) ? sinkGoods : [];
     if (sink.length > 0 && sinkHolds(supply, products, sinking)) for (const seat of free) listed[seat] = sink;
     else shortFirst(supply, gamePhase(ctx.tick), products, free, listed, current, fed);
+    if (reserve.size > 0) {
+      for (const seat of free) {
+        const kept = listed[seat]?.filter((good) => !heldBack(ctx, supply, reserve, type, good)) ?? null;
+        listed[seat] = kept === null || kept.length === 0 ? null : kept;
+      }
+    }
     for (let seat = 0; seat < crew.length; seat++) {
       const entity = crew[seat] as Entity;
       const goods = listed[seat];
@@ -723,14 +739,74 @@ export function tuneCraftCounters(
 function inputsInStock(
   ctx: SystemContext,
   supply: SeatSupply,
+  reserve: ReadonlyMap<number, number>,
   type: BuildingType,
   good: number,
   selected: boolean,
 ): boolean {
   const recipe = contentIndex(ctx.content).recipeByProductByBuilding.get(type.typeId)?.get(good);
   if (recipe === undefined) return true;
-  return recipe.inputs.every((input) => supply.units(input.goodType) >= (selected ? 1 : input.amount));
+  return recipe.inputs.every(
+    (input) =>
+      supply.units(input.goodType) - (reserve.get(input.goodType) ?? 0) >= (selected ? 1 : input.amount),
+  );
 }
+
+/** Whether a cycle of `good` at `type` would take an input below what the {@link fleetReserve} holds
+ *  back. */
+function heldBack(
+  ctx: SystemContext,
+  supply: SeatSupply,
+  reserve: ReadonlyMap<number, number>,
+  type: BuildingType,
+  good: number,
+): boolean {
+  const recipe = contentIndex(ctx.content).recipeByProductByBuilding.get(type.typeId)?.get(good);
+  return (
+    recipe?.inputs.some((input) => {
+      const held = reserve.get(input.goodType) ?? 0;
+      return held > 0 && supply.units(input.goodType) - held < input.amount;
+    }) === true
+  );
+}
+
+/**
+ * The units of each good the seat's crafts leave in stock for the ships its landing fleet still lacks,
+ * while its ship joinery stands: the missing ships' share of every line of the smallest ship's bill that
+ * no collector gathers (the wood and the like come through the supply lines and their gatherers).
+ * Authored: on arabskie_wyspy_wolna_gra_mieszana (seed 7) a seat's tailors sewed the leather it started
+ * with into shoes, and its ship yard then waited 40 minutes on the leather of its bill.
+ */
+function fleetReserve(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  roleOf: (joinery: Entity) => JoineryRole,
+  landingShips: () => number,
+): ReadonlyMap<number, number> {
+  const index = contentIndex(ctx.content);
+  const house = smallestShipHouse(index);
+  const joinery = index.buildingTypeBySlug.get(ROLE_JOINERY_ID);
+  const vehicleType = house === null ? undefined : index.buildings.get(house)?.vehicleType;
+  if (house === null || joinery === undefined || vehicleType === undefined) return NO_RESERVE;
+  const shipYard = ownedBuildings(world, player).some(
+    (e) => world.get(e, Building).buildingType === joinery && isBuilt(world, e) && roleOf(e) === 'ship',
+  );
+  if (!shipYard) return NO_RESERVE;
+  let standing = 0;
+  for (const e of vehicleIndex(world).ownedBy(player))
+    if (world.get(e, Vehicle).vehicleType === vehicleType) standing++;
+  const missing = landingShips() - standing;
+  if (missing <= 0) return NO_RESERVE;
+  const collected = new Set(COLLECTED_GOOD_IDS.flatMap((id) => index.goodTypeBySlug.get(id) ?? []));
+  const reserve = new Map<number, number>();
+  for (const line of index.constructionBillByBuilding.get(house) ?? [])
+    if (!collected.has(line.goodType)) reserve.set(line.goodType, missing * line.amount);
+  return reserve;
+}
+
+const NO_RESERVE: ReadonlyMap<number, number> = new Map();
+const NO_APPRENTICES: ReadonlySet<Entity> = new Set();
 
 /**
  * Whether every input of `good` at `type` with supply lines lies at or above its comfort line, or while the
@@ -937,6 +1013,8 @@ interface SeatChoice {
   readonly earned: (id: string) => boolean;
   /** The goods the type makes that the seat may make ({@link enabledProducts}). */
   readonly products: readonly number[];
+  /** Read a glutted goods list as still wanted rather than handing over to its `otherwise`. */
+  readonly pastGlut?: true;
 }
 
 /** What a {@link CraftSeat} resolves to when its operator rests. */
@@ -997,7 +1075,7 @@ function seatProducts(
     const dropAt = current.includes(good.typeId) ? glut : glut - CRAFT_GLUT_BAND_UNITS;
     return !supply.exceeds(good.typeId, dropAt - 1);
   });
-  if (kept.length > 0) return kept;
+  if (kept.length > 0 || choice.pastGlut === true) return kept.length > 0 ? kept : seat.goods;
   return seat.otherwise === undefined ? seat.goods : seatProducts(choice, current, seat.otherwise);
 }
 
@@ -1051,8 +1129,9 @@ function ownsBuildingOf(
 }
 
 /** How many of the vehicle made as `good` the seat owns: standing on the map or carried, or with
- *  `freeOnly` standing free, and in its yards still under construction. The cost is the seat's vehicles
- *  and buildings. */
+ *  `freeOnly` standing free. A yard still under construction does not count, so its crew finishes it
+ *  while the fleet stands under its cap rather than leaving it half built at the cap; the crew reuses an
+ *  unfinished yard before it opens another (`vehicle-yard.ts`). The cost is the seat's vehicles. */
 function seatFleet(
   world: World,
   ctx: SystemContext,
@@ -1067,9 +1146,6 @@ function seatFleet(
   let owned = 0;
   for (const e of vehicleIndex(world).ownedBy(player)) {
     if (world.get(e, Vehicle).vehicleType === vehicleType && (!freeOnly || standsFree(world, e))) owned++;
-  }
-  for (const e of ownedBuildings(world, player)) {
-    if (world.get(e, Building).buildingType === house && world.has(e, UnderConstruction)) owned++;
   }
   return owned;
 }

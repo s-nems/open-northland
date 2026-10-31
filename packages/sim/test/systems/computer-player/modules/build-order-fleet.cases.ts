@@ -83,6 +83,8 @@ const CATAPULT_LOGIC_SIZE = 1;
 /** The vehicle goods the top-tier joinery's crew builds on a yard. */
 const SHIP_GOOD = 40;
 const CATAPULT_GOOD = 41;
+/** A good no collector gathers, in the small ship's bill under {@link fleetContent}'s `hidesInShips`. */
+const HIDE_GOOD = 42;
 /** The real top-tier joinery's joiner seats. */
 const TOP_JOINERY_JOINERS = 3;
 /** The real small-ship yard body, rows -2..2 and five wide at the middle, its door on the shore. */
@@ -122,10 +124,12 @@ const CATAPULT_DOOR = { dx: -1, dy: 2 };
 
 /** The AI fixture with the joinery chain up to its top tier, the druid hut, and the yards of a small ship
  *  raised on water, whose `logicSize` the shore affinity reads, and of a catapult. The top tier's three
- *  joiners build the two vehicles out of the stores' wood, and iron tools. */
-function fleetContent(): ContentSet {
+ *  joiners build the two vehicles out of the stores' wood, and iron tools; with `hidesInShips` the ship's
+ *  bill and the iron tool also take a hide each. */
+function fleetContent(hidesInShips = false): ContentSet {
   const base = aiContent();
   const bill = [{ goodType: WOOD, amount: 2 }];
+  const hide = { goodType: HIDE_GOOD, amount: 1 };
   return parseContentSet({
     ...base,
     landscape: [...(base.landscape ?? []), { typeId: SCREE, id: 'scree', walkable: true, buildable: false }],
@@ -133,6 +137,7 @@ function fleetContent(): ContentSet {
       ...base.goods,
       { typeId: SHIP_GOOD, id: 'ship_small', weight: 0, vehicleHouse: SHIP_HOUSE_TYPE },
       { typeId: CATAPULT_GOOD, id: 'catapult', weight: 0, vehicleHouse: CATAPULT_HOUSE_TYPE },
+      { typeId: HIDE_GOOD, id: 'leather', weight: 1 },
     ],
     buildings: [
       ...base.buildings.map((b) =>
@@ -156,7 +161,7 @@ function fleetContent(): ContentSet {
         ],
         produces: [SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON],
         recipes: [SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON].map((goodType) => ({
-          inputs: [],
+          inputs: hidesInShips && goodType === TOOL_IRON ? [hide] : [],
           outputs: [{ goodType, amount: 1 }],
           ticks: 180,
         })),
@@ -168,7 +173,7 @@ function fleetContent(): ContentSet {
         kind: 'vehicle',
         vehicleType: SHIP_SMALL,
         ignoreContinents: true,
-        construction: bill,
+        construction: hidesInShips ? [...bill, hide] : bill,
         footprint: { blocked: SHIP_HULL, familyBody: SHIP_HULL, reserved: SHIP_HULL, door: SHIP_DOOR },
       },
       {
@@ -263,8 +268,13 @@ interface Site {
 }
 
 /** Our HQ, the enemy's unless `enemyHq` is false, and `sites`, all standing. */
-function world(map: TerrainMap, sites: readonly Site[] = [], enemyHq = true): Simulation {
-  const sim = new Simulation({ seed: 1, content: fleetContent(), map });
+function world(
+  map: TerrainMap,
+  sites: readonly Site[] = [],
+  enemyHq = true,
+  content = fleetContent(),
+): Simulation {
+  const sim = new Simulation({ seed: 1, content, map });
   for (const player of [SEAT, ENEMY])
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player, tribes: [VIKING] });
   const all: Site[] = [
@@ -617,11 +627,20 @@ describe('workforce - the top-tier joineries’ roles', () => {
     return byWorkplace;
   }
 
-  function crewedJoineries(map: TerrainMap, spots: readonly { x: number; y: number }[]) {
-    const sim = world(map, [
-      { buildingType: BARRACKS_TYPE, ...BARRACKS_AT },
-      ...spots.map((at) => ({ buildingType: JOINERY_03_TYPE, ...at })),
-    ]);
+  function crewedJoineries(
+    map: TerrainMap,
+    spots: readonly { x: number; y: number }[],
+    content = fleetContent(),
+  ) {
+    const sim = world(
+      map,
+      [
+        { buildingType: BARRACKS_TYPE, ...BARRACKS_AT },
+        ...spots.map((at) => ({ buildingType: JOINERY_03_TYPE, ...at })),
+      ],
+      true,
+      content,
+    );
     const joineries = spots.map((at) => topJoineryAt(sim, at));
     for (const joinery of joineries) crew(sim, joinery);
     return { sim, joineries };
@@ -690,17 +709,19 @@ describe('workforce - the top-tier joineries’ roles', () => {
     );
   });
 
-  it('turns the ship crew to tools at the landing fleet, and back to ships once one is lost', () => {
+  it('keeps the ship crew on its yard under the landing fleet, turns it to tools at the fleet, and back once one is lost', () => {
     const { sim, joineries } = crewedJoineries(seaMap(), [AWAY]);
     const [joinery] = joineries;
     if (joinery === undefined) throw new Error('setup: one joinery');
     expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
-    // The untuned crew's yard on the water counts toward the fleet.
-    const yards = ownedBuildings(sim.world, SEAT).filter(
-      (e) => sim.world.get(e, Building).buildingType === SHIP_HOUSE_TYPE,
-    ).length;
+    // The untuned crew's yard on the water is no ship yet: one short of the fleet, the crew finishes it.
+    expect(
+      ownedBuildings(sim.world, SEAT).some(
+        (e) => sim.world.get(e, Building).buildingType === SHIP_HOUSE_TYPE,
+      ),
+    ).toBe(true);
     const target = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard);
-    const fleet = Array.from({ length: target - yards - 1 }, (_, i) => fleetShip(sim, i));
+    const fleet = Array.from({ length: target - 1 }, (_, i) => fleetShip(sim, i));
     expect(tuned(sim)).toEqual(new Map());
     fleet.push(fleetShip(sim, fleet.length));
     expect(tuned(sim)).toEqual(new Map([[joinery, all(TOOL_IRON)]]));
@@ -708,6 +729,42 @@ describe('workforce - the top-tier joineries’ roles', () => {
     if (sunk === undefined) throw new Error('setup: a ship');
     removeVehicle(sim.world, fleetCtx(sim), sunk, 'script');
     expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+  });
+
+  it('keeps the hides the missing ships of the landing fleet take out of every craft', () => {
+    const content = fleetContent(true);
+    const { sim, joineries } = crewedJoineries(seaMap(), [BY_BARRACKS, AWAY], content);
+    const [byBarracks] = joineries;
+    if (byBarracks === undefined) throw new Error('setup: two joineries');
+    for (let i = 0; i < AI_CATAPULT_CAP; i++) fleetCatapult(sim, i);
+    const hq = ownedBuildings(sim.world, SEAT).find(
+      (e) => sim.world.get(e, Building).buildingType === HQ_TYPE,
+    );
+    if (hq === undefined) throw new Error('setup: our headquarters');
+    const ctx = { ...ctxOf(sim), content };
+    const catapultCrewOn = (hides: number): (readonly number[] | 'rest')[] => {
+      setStockAmount(sim.world, hq, HIDE_GOOD, hides);
+      const supply = SeatSupply.of(
+        sim.world,
+        ctx,
+        SEAT,
+        ownedBuildings(sim.world, SEAT),
+        DEFAULT_BUILD_ORDER,
+      );
+      const commands = tuneCraftCounters(sim.world, ctx, SEAT, supply, AI_PROFILES.hard);
+      const crew = [...sim.world.query(JobAssignment)]
+        .filter((e) => sim.world.get(e, JobAssignment).workplace === byBarracks)
+        .filter((e) => sim.world.get(e, Settler).jobType === JOINER);
+      return crew.map((e) => {
+        const mine = commands.filter((c) => 'entity' in c && c.entity === e);
+        return mine.some((c) => c.kind === 'setProductionCount') ? 'rest' : (mine[0]?.goods ?? []);
+      });
+    };
+    // No ship stands yet: the whole landing fleet's hides are held back, so the catapult crew past its
+    // cap rests instead of making iron tools out of them, and takes them up once a hide is spare.
+    const missing = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard);
+    expect(catapultCrewOn(missing)).toEqual(['rest', 'rest', 'rest']);
+    expect(catapultCrewOn(missing + 1)).toEqual(all(TOOL_IRON));
   });
 
   /** A small ship of the seat's on the open sea, the `i`-th of a column down its middle. */
