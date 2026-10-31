@@ -12,9 +12,13 @@ import {
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../../core/loop.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistance, nodeManhattan } from '../../../../nav/halfcell.js';
 import { moduleBeatDue } from '../../../ai-shared/cadence.js';
 import { isRangedFighter } from '../../../ai-shared/military/census.js';
+import {
+  THREAT_STAND_DOWN_MARGIN_NODES,
+  threatWatchNodes,
+} from '../../../ai-shared/military/defence/index.js';
 import { spokenFor } from '../../../ai-shared/military/errand.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../ai-shared/seat-roster.js';
@@ -40,6 +44,12 @@ import {
 // A raid (owner ruling): a small band, archers first, leaves from the barracks door, swings out to the
 // flank of the enemy base, strikes the gatherers it finds at its target and comes home as soon as it sees
 // the enemy answer. Every figure below is authored.
+
+/** The stance a raid's men hold while out: they walk to no fight of their own, so a building, a soldier or
+ *  a militiaman on the way never pulls the band into the base, yet they strike back at what stands in reach
+ *  and their strike orders still run. Authored: a band in the attacking stance spends most of its blows on
+ *  buildings and soldiers while the town arms against it. */
+export const RAID_STANCE = MILITARY_MODE.IGNORE;
 
 const SECONDS_PER_MINUTE = 60;
 
@@ -74,16 +84,15 @@ export const RAID_LOSS_PCT = 50;
 
 const PERCENT = 100;
 
-/** The band's men who are neither near `at` nor already walking there walk on; all of them when
- *  `everyone`. */
+/** The band's men who are neither near `at` nor already walking there walk on, a plain walk that stops for
+ *  no fight; all of them when `everyone`. */
 function walkBand(
   env: OperationEnv,
   members: readonly Entity[],
   at: HalfCellNode,
-  kind: 'moveUnit' | 'attackMoveUnit',
   everyone: boolean,
 ): PlayerCommand[] {
-  return walkTo(env.world, members, at, kind, everyone, RAID_GATHER_RADIUS_NODES);
+  return walkTo(env.world, members, at, 'moveUnit', everyone, RAID_GATHER_RADIUS_NODES);
 }
 
 function gathered(world: World, members: readonly Entity[], at: HalfCellNode): boolean {
@@ -99,7 +108,7 @@ function targetNode(op: RaidOperation): HalfCellNode {
 function withdraw(env: OperationEnv, op: RaidOperation, reason: OperationEndReason): PlayerCommand[] {
   enter(op, 'withdrawing', env.ctx.tick, reason);
   op.leg = Math.min(op.leg, op.waypoints.length);
-  return walkBand(env, op.members, wayBack(env, op), 'moveUnit', true);
+  return walkBand(env, op.members, wayBack(env, op), true);
 }
 
 /** Where the band's walk home leads next: the last waypoint it has yet to walk back through, else home. */
@@ -109,9 +118,10 @@ function wayBack(env: OperationEnv, op: RaidOperation): HalfCellNode {
 
 /** Why the band should turn back now, or null: its seat calls its raids home, the target's owner is no
  *  enemy, it lost {@link RAID_LOSS_PCT} of its men, the rest of its way or its target lies in a believed
- *  tower's reach, it sees the target's buildings switched to defence, or the enemy fighters it sees near it
- *  outweigh its own points. Passing near a tower whose reach its way keeps clear of turns no band back.
- *  Costs the enemies' fighters and believed buildings. */
+ *  tower's reach, it sees an enemy building switched to defence near its target or with the band in its
+ *  shooting reach, or the enemy fighters and militia it sees near it outweigh its own points. Passing near
+ *  a tower whose reach its way keeps clear of turns no band back. Costs the enemies' fighters, militia and
+ *  buildings. */
 function abortReason(env: OperationEnv, op: RaidOperation): OperationEndReason | null {
   const { world, ctx, seat } = env;
   const owner = op.target.owner;
@@ -122,7 +132,7 @@ function abortReason(env: OperationEnv, op: RaidOperation): OperationEndReason |
   if (centre === null) return null;
   if (routeUnderTower(believedEnemyTowers(world, ctx, seat), op.waypoints, op.leg, targetNode(op)))
     return 'towerInReach';
-  if (defenceModeNear(env, owner, targetNode(op))) return 'defenceMode';
+  if (defenceModeNear(env, owner, targetNode(op), centre)) return 'defenceMode';
   let ownPoints = 0;
   for (const e of op.members) ownPoints += unitPoints(world, ctx, e);
   let enemyPoints = 0;
@@ -133,14 +143,28 @@ function abortReason(env: OperationEnv, op: RaidOperation): OperationEndReason |
   return enemyPoints > ownPoints ? 'outmatched' : null;
 }
 
-/** Whether `seat` sees a building of `owner` within {@link RAID_STRIKE_RADIUS_NODES} of `at` in defence
- *  mode. */
-function defenceModeNear({ world, ctx, seat }: OperationEnv, owner: number, at: HalfCellNode): boolean {
-  for (const e of ownedBuildings(world, owner)) {
-    if (!world.has(e, DefenceMode) || !world.has(e, Building)) continue;
-    const node = anchorNodeOf(world, e);
-    if (node === null || nodeManhattan(node, at) > RAID_STRIKE_RADIUS_NODES) continue;
-    if (playerSeesNode(ctx.fog, seat, node.hx, node.hy)) return true;
+/** Whether `seat` sees a building in defence mode of `owner` within {@link RAID_STRIKE_RADIUS_NODES} of
+ *  `target`, or of any enemy with the band's `centre` inside the reach its house bow fires from it plus the
+ *  stand-down margin ({@link threatWatchNodes}): an alarmed building shoots whoever stands there. */
+function defenceModeNear(
+  { world, ctx, seat }: OperationEnv,
+  owner: number,
+  target: HalfCellNode,
+  centre: HalfCellNode,
+): boolean {
+  for (let other = 0; other < MAX_PLAYERS; other++) {
+    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
+    for (const e of ownedBuildings(world, other)) {
+      if (!world.has(e, DefenceMode)) continue;
+      const building = world.tryGet(e, Building);
+      const node = anchorNodeOf(world, e);
+      if (building === undefined || node === null) continue;
+      const fire = threatWatchNodes(ctx, building.tribe) + THREAT_STAND_DOWN_MARGIN_NODES;
+      const covers =
+        hexDistance(node, centre) <= fire ||
+        (other === owner && nodeManhattan(node, target) <= RAID_STRIKE_RADIUS_NODES);
+      if (covers && playerSeesNode(ctx.fog, seat, node.hx, node.hy)) return true;
+    }
   }
   return false;
 }
@@ -169,7 +193,7 @@ function strike(env: OperationEnv, op: RaidOperation): PlayerCommand[] {
   if (prey.length === 0) {
     if (gathered(world, op.members, at) && ctx.tick - op.since >= RAID_IDLE_TICKS)
       return withdraw(env, op, 'nothingToStrike');
-    return walkBand(env, op.members, at, 'attackMoveUnit', false);
+    return walkBand(env, op.members, at, false);
   }
   const hunted = new Set(prey);
   const commands: PlayerCommand[] = [];
@@ -198,20 +222,20 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
     case 'forming': {
       if (!env.orders.raidsAllowed) return withdraw(env, op, 'postureChanged');
       if (!gathered(world, op.members, home) && tick - op.since < RAID_FORM_TIMEOUT_TICKS)
-        return walkBand(env, op.members, home, 'attackMoveUnit', false);
+        return walkBand(env, op.members, home, false);
       enter(op, 'moving', tick);
-      return walkBand(env, op.members, legEnd(op), legWalk(op), true);
+      return walkBand(env, op.members, legEnd(op), true);
     }
     case 'moving': {
       const reason = abortReason(env, op);
       if (reason !== null) return withdraw(env, op, reason);
       const end = legEnd(op);
       if (!gathered(world, op.members, end) && tick - op.since < RAID_LEG_TIMEOUT_TICKS)
-        return walkBand(env, op.members, end, legWalk(op), false);
+        return walkBand(env, op.members, end, false);
       if (op.leg < op.waypoints.length) {
         op.leg++;
         enter(op, 'moving', tick);
-        return walkBand(env, op.members, legEnd(op), legWalk(op), true);
+        return walkBand(env, op.members, legEnd(op), true);
       }
       enter(op, 'acting', tick);
       return strike(env, op);
@@ -226,27 +250,21 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
       const back = wayBack(env, op);
       if (op.leg > 0) {
         if (!gathered(world, op.members, back) && tick - op.since < RAID_LEG_TIMEOUT_TICKS)
-          return walkBand(env, op.members, back, 'moveUnit', false);
+          return walkBand(env, op.members, back, false);
         op.leg--;
         enter(op, 'withdrawing', tick);
-        return walkBand(env, op.members, wayBack(env, op), 'moveUnit', true);
+        return walkBand(env, op.members, wayBack(env, op), true);
       }
       if (gathered(world, op.members, home) || tick - op.since >= RAID_WITHDRAW_TIMEOUT_TICKS) {
         enter(op, 'done', tick);
         return [];
       }
-      return walkBand(env, op.members, home, 'moveUnit', false);
+      return walkBand(env, op.members, home, false);
     }
     case 'done':
     case 'failed':
       return [];
   }
-}
-
-/** How the band walks its current leg: a plain walk to a flank waypoint, so it stops to fight nothing on the
- *  way and its turn-back rules alone answer what it meets; attack-move on the last leg onto the target. */
-function legWalk(op: RaidOperation): 'moveUnit' | 'attackMoveUnit' {
-  return op.leg < op.waypoints.length ? 'moveUnit' : 'attackMoveUnit';
 }
 
 /** Where the band's current leg ends: the next flank waypoint, else the target. */
@@ -307,10 +325,10 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
   };
   const commands: PlayerCommand[] = [];
   for (const e of members) {
-    if (world.tryGet(e, Stance)?.mode !== MILITARY_MODE.ATTACK)
-      commands.push({ kind: 'setStance', entity: e, mode: MILITARY_MODE.ATTACK });
+    if (world.tryGet(e, Stance)?.mode !== RAID_STANCE)
+      commands.push({ kind: 'setStance', entity: e, mode: RAID_STANCE });
   }
-  commands.push(...walkBand(env, members, homeOf(env), 'attackMoveUnit', false));
+  commands.push(...walkBand(env, members, homeOf(env), false));
   return { op, commands };
 }
 

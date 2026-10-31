@@ -6,10 +6,12 @@ import {
   type ComputerDifficulty,
   ComputerStrategy,
   computerModuleEnables,
+  DefenceMode,
   type EconomicArchetype,
   FOG_MODE,
   type MilitaryPlan,
   type MilitaryPosture,
+  Militia,
   Owner,
   Position,
   Settler,
@@ -41,6 +43,7 @@ import {
   seatOperationsOf,
   selectPosture,
 } from '../../../../../src/systems/computer-player/index.js';
+import { RAID_STANCE } from '../../../../../src/systems/computer-player/military/operations/raid.js';
 import {
   flankRoute,
   RAID_TOWER_CLEARANCE_NODES,
@@ -56,6 +59,7 @@ const VIKING = 1;
 const SEAT = 2;
 const FOE = 3;
 const HQ_TYPE = 1;
+const HOME_TYPE = 2;
 const BARRACKS_TYPE = 12;
 const TOWER_TYPE = 15;
 const COLLECTOR = 8;
@@ -268,6 +272,54 @@ describe('raid operations', () => {
     const raid = onlyRaid(sim);
     expect(raid.state).toBe('withdrawing');
     expect(raid.reason).toBe('outmatched');
+  });
+
+  it('walks out in a stance that seeks no fight and never attack-moves', () => {
+    const { sim } = raidWorld([EXPOSED], ARMY, SPEARMAN);
+    const commands = [...decide(sim, LOOK)];
+    const raiders = onlyRaid(sim).members;
+    for (const e of raiders)
+      expect(commands).toContainEqual({ kind: 'setStance', entity: e, mode: RAID_STANCE });
+    for (let k = 1; k <= 3; k++) commands.push(...decide(sim, LOOK + k * DECISION));
+    const walks = commands.filter(
+      (c) => 'entity' in c && raiders.includes(c.entity) && c.kind !== 'setStance',
+    );
+    expect(walks.length).toBeGreaterThan(0);
+    for (const c of walks) expect(c.kind).toBe('moveUnit');
+  });
+
+  it('counts the militia it sees near it among the forces that outweigh it', () => {
+    const { sim, door } = raidWorld([EXPOSED], ARMY, SPEARMAN);
+    decide(sim, LOOK);
+    decide(sim, LOOK + DECISION);
+    const armed = band(sim, 3 * RAID_BAND_MEN, door, COLLECTOR, FOE);
+    decide(sim, LOOK + 2 * DECISION);
+    expect(onlyRaid(sim).state, 'unarmed civilians turn no band').toBe('moving');
+    const terrain = terrainOf(sim);
+    const at = terrain.nodeAtClamped(door.x, door.y);
+    for (const e of armed)
+      sim.world.add(e, Militia, {
+        zone: e,
+        leash: { at, radius: 0 },
+        previousJob: COLLECTOR,
+        previousWorkplace: null,
+        releaseTick: 0,
+        quarry: null,
+      });
+    decide(sim, LOOK + 3 * DECISION);
+    expect(onlyRaid(sim).reason).toBe('outmatched');
+  });
+
+  it('turns back once an alarmed building has the band in its shooting reach', () => {
+    const { sim, door } = raidWorld([EXPOSED], ARMY, SPEARMAN);
+    decide(sim, LOOK);
+    decide(sim, LOOK + DECISION);
+    const house = place(sim, HOME_TYPE, { x: door.x + 24, y: door.y }, FOE);
+    decide(sim, LOOK + 2 * DECISION);
+    expect(onlyRaid(sim).state, 'a house at peace turns no band').toBe('moving');
+    sim.world.add(house, DefenceMode, {});
+    decide(sim, LOOK + 3 * DECISION);
+    expect(onlyRaid(sim).reason).toBe('defenceMode');
   });
 
   it('walks on past a tower its way keeps clear of, turns back once its target comes under one, and walks home the way it came', () => {

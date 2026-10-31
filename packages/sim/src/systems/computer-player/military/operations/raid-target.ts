@@ -6,8 +6,10 @@ import {
   Health,
   isScriptedEconomySeat,
   MAX_PLAYERS,
+  Militia,
   mapBriefOf,
   type OperationTarget,
+  Owner,
   Person,
   Position,
   Settler,
@@ -114,8 +116,9 @@ export function believedEnemyTowers(world: World, ctx: SystemContext, seat: numb
   return towers;
 }
 
-/** `owner`'s fighters `seat` sees now and their points, leaving out the men posted in a tower (the tower
- *  belief weighs them). Costs the owner's fighters. */
+/** `owner`'s fighters and militiamen `seat` sees now and their points, leaving out the men posted in a
+ *  tower (the tower belief weighs them): an armed civilian shoots a band as surely as a soldier. Costs the
+ *  owner's fighters and every seat's militia. */
 export function visibleFighters(
   world: World,
   ctx: SystemContext,
@@ -128,6 +131,12 @@ export function visibleFighters(
     const at = nodeOfEntity(world, e);
     if (at === null || !playerSeesNode(ctx.fog, seat, at.hx, at.hy)) continue;
     seen.push({ at, points: unitPoints(world, ctx, e) });
+  }
+  for (const e of world.query(Militia)) {
+    if (world.tryGet(e, Owner)?.player !== owner || !isLiveFighter(world, e)) continue;
+    const at = nodeOfEntity(world, e);
+    if (at !== null && playerSeesNode(ctx.fog, seat, at.hx, at.hy))
+      seen.push({ at, points: unitPoints(world, ctx, e) });
   }
   return seen;
 }
@@ -221,9 +230,10 @@ export function visibleGatherers(world: World, ctx: SystemContext, seat: number,
   return seen;
 }
 
-/** A live person whose trade takes goods off the map and who is no fighter. */
+/** A live person whose trade takes goods off the map and who is no fighter, nor a civilian armed as militia. */
 export function isGatherer(world: World, ctx: SystemContext, e: Entity): boolean {
-  if (!world.has(e, Person) || (world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) return false;
+  if (!world.has(e, Person) || world.has(e, Militia) || (world.tryGet(e, Health)?.hitpoints ?? 0) <= 0)
+    return false;
   const jobType = world.tryGet(e, Settler)?.jobType;
   if (jobType === undefined || jobType === null || isFighterJob(ctx.content, jobType)) return false;
   return jobGatherGoods(ctx, jobType).length > 0;
