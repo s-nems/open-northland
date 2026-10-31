@@ -21,6 +21,7 @@ import {
   type TakenFlagNodes,
 } from '../flag-spots.js';
 import { type CollectorAnchors, type SeatedHolders, seatHolders } from './anchor.js';
+import { nearestAimed } from './clearing-aim.js';
 import {
   everyResource,
   flagRelocateDue,
@@ -300,9 +301,13 @@ export function allocateGenericCollectors(
   taken: TakenFlagNodes,
   builderJob: number | null,
   target: number,
+  aim: ReadonlySet<Entity> = new Set(),
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const { baseNode, workable } = ground;
+  // The patch a stalled placement waits on goes first, every post on it at once (`./clearing-aim.ts`).
+  const aimed = (open: WorkableTest): Entity | null =>
+    aim.size === 0 ? null : nearestAimed(world, aim, baseNode, (e) => workable(e) && open(e));
   const reach = gathererReach(world, ctx, ground.flags.terrain, ground.known ?? null);
   // Each post's flag by holder: a re-plant or a hire keeps its resource clear of the others', so the
   // posts fan out.
@@ -321,6 +326,7 @@ export function allocateGenericCollectors(
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
     const others = [...flags].flatMap(([holder, f]) => (holder === g ? [] : [f]));
     const nearest = (open: WorkableTest): Entity | null =>
+      aimed(open) ??
       clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
     if (!patchWorked(world, reach, g, flagNode, flag.radius, harvests)) {
       // The flag follow moves a worked-out flag; the upkeep only retires a hopeless post.
@@ -329,10 +335,14 @@ export function allocateGenericCollectors(
       continue;
     }
     if (!flagRelocateDue(ctx, g)) continue;
+    const target = aimed(everyResource);
+    const targetNode = target === null ? null : anchorNodeOf(world, target);
+    if (targetNode !== null && nodeManhattan(targetNode, flagNode) <= flag.radius) continue; // on the patch
     // The flag follow aims at whatever stands nearest, so posts may bunch up on one grove: a crowded post
     // re-aims at a clearing resource of its own, as a far one does at the nearer one.
     const crowded = others.some((f) => nodeManhattan(f, flagNode) < CLEARING_SPREAD_NODES);
-    if (!crowded && !farFromNearest(world, baseNode, flagNode, nearest(everyResource))) continue;
+    if (targetNode === null && !crowded && !farFromNearest(world, baseNode, flagNode, nearest(everyResource)))
+      continue;
     const replant = replantSpot(world, ground.flags, g, flag.radius, nearest, baseNode, reach, taken);
     if (replant === 'dry' || replant === null) continue;
     const { target: resource, spot } = replant;
@@ -348,6 +358,7 @@ export function allocateGenericCollectors(
   for (let hired = genericCollectors.length; hired < target; hired++) {
     if (!force.any()) break;
     const resource =
+      aimed(everyResource) ??
       clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags.values())) ??
       clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up
     if (resource === null) break; // no clearing good stands anywhere - no generic post

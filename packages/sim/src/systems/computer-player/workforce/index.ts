@@ -43,6 +43,7 @@ import {
   allocateGenericCollectors,
   COLLECTED_GOOD_IDS,
   type CollectorGround,
+  clearingAim,
   clearingCollectors,
   collectorAnchors,
   farGroundExtras,
@@ -209,6 +210,7 @@ function runWorkforce(
           taken,
           builderJob,
           genericTarget,
+          clearing > 0 ? clearingAim(world, ctx, player, order, ground.baseNode) : undefined,
         );
   const firstPosts = (posts: (w: WantedGood) => boolean): PlayerCommand[] =>
     ground === null
