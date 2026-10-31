@@ -314,9 +314,9 @@ function fieldFarms(
   return farms;
 }
 
-/** Where a home without affinities looks (owner ruling): its search centre pushed
- *  {@link HOME_FAR_SIDE_PUSH_NODES} from `anchor` away from the centroid of the seat's field farms, and
- *  `nearFarm`, which says whether a node lies within a farm's field radius plus
+/** Where a home without affinities, or an `amongHomes` entry, looks (owner ruling): its search centre
+ *  pushed {@link HOME_FAR_SIDE_PUSH_NODES} from `anchor` away from the centroid of the seat's field farms,
+ *  and `nearFarm`, which says whether a node lies within a farm's field radius plus
  *  {@link HOME_FARM_MARGIN_NODES}. Null while the seat has no field farm. */
 function homeFarSide(
   world: World,
@@ -587,10 +587,10 @@ function footprintOnGrass(
  * component. The ring budget is twice the reach radius, so a centre inside one building's disc reaches every node of that disc. An
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
  * up that serves nothing, and a `shore` entry's close enough to its ship water for the ship yard.
- * A home with no affinity searches from the far side of the base from the seat's field farms and takes a
- * spot near one only when nothing else is left ({@link homeFarSide}); a deposit-pulled spot pays
- * {@link FARM_ROOM_RESOURCE_PENALTY_RINGS} beside a farm. A `room` entry's spot pays for the free ground
- * it lacks around it ({@link roomPenalty}).
+ * A home with no affinity, and an `amongHomes` entry, searches from the far side of the base from the
+ * seat's field farms and takes a spot near one only when nothing else is left ({@link homeFarSide}); a
+ * deposit-pulled spot pays {@link FARM_ROOM_RESOURCE_PENALTY_RINGS} beside a farm. A `room` entry's spot
+ * pays for the free ground it lacks around it ({@link roomPenalty}).
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
@@ -679,7 +679,8 @@ function boundedSpot(
   // pulled toward a deposit pays a few rings for the ground beside a farm that its chain will want.
   const fan = 2 * tuning.reachNodes;
   const affinities = entry.near ?? [];
-  const amongHomes = type.kind === BUILDING_KIND.home && affinities.length === 0;
+  const amongHomes =
+    entry.amongHomes === true || (type.kind === BUILDING_KIND.home && affinities.length === 0);
   const deposit = affinities.some((a) => a.kind === 'resource');
   const farms = amongHomes || deposit ? fieldFarms(world, ctx, owned) : [];
   const farSide = amongHomes ? homeFarSide(world, farms, anchor) : null;

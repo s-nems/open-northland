@@ -499,7 +499,7 @@ describe('build-order placement - affinity and ground rules', () => {
       ),
       buildings: base.buildings.map((b) => (b.id === 'work_farm_00' ? { ...b, produces: [FOOD_GOOD] } : b)),
     });
-    const homeBeside = (farmX: number) => {
+    const homeBeside = (farmX: number, entry: BuildOrderEntry) => {
       const sim = aiSim(1, content);
       placeHq(sim);
       sim.enqueueSetup({
@@ -512,11 +512,7 @@ describe('build-order placement - affinity and ground rules', () => {
       });
       sim.step();
       const home = [
-        ...buildOrderModule(oneLine([{ kind: 'place', building: 'home_level_00', count: 1 }])).run(
-          sim.world,
-          { ...ctxOf(sim), content },
-          SEAT,
-        ),
+        ...buildOrderModule(oneLine([entry])).run(sim.world, { ...ctxOf(sim), content }, SEAT),
       ][0];
       if (home?.kind !== 'placeBuilding') throw new Error('expected the home placement');
       expect(Math.abs(home.x - farmX) + Math.abs(home.y - HQ_Y)).toBeGreaterThan(
@@ -524,8 +520,14 @@ describe('build-order placement - affinity and ground rules', () => {
       );
       return home.x;
     };
-    expect(homeBeside(HQ_X + 10)).toBeLessThan(HQ_X);
-    expect(homeBeside(HQ_X - 10)).toBeGreaterThan(HQ_X);
+    // A school-like `amongHomes` workshop searches as the homes do.
+    for (const entry of [
+      { kind: 'place', building: 'home_level_00', count: 1 },
+      { kind: 'place', building: 'work_mill_00', count: 1, amongHomes: true },
+    ] as const) {
+      expect(homeBeside(HQ_X + 10, entry)).toBeLessThan(HQ_X);
+      expect(homeBeside(HQ_X - 10, entry)).toBeGreaterThan(HQ_X);
+    }
   });
 
   it("moves a deposit-pulled workshop off a field farm's chain ground when a spot a few rings off is free", () => {

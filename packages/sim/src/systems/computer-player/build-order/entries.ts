@@ -56,7 +56,8 @@ export type BuildOrderEntry =
    *  acting on nothing, until its {@link StepHold} is met. `aheadOfCrews` places the copy without waiting
    *  for the crews of those standing (`./progress.ts`). `room` names the buildings that later stand
    *  beside this one: the spot is scored by the free ground around it against their footprints
-   *  (`placement.ts`). */
+   *  (`placement.ts`). `amongHomes` searches as a home does, on the far side of the base from the field
+   *  farms. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -72,6 +73,7 @@ export type BuildOrderEntry =
       readonly holdUntil?: StepHold;
       readonly aheadOfCrews?: true;
       readonly room?: readonly string[];
+      readonly amongHomes?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. */
@@ -469,12 +471,14 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'resource', good: 'stone' }],
         },
         // Owner ruling: the school once the pottery stands, never before it, a core building, so every
-        // trade discovered from here on is taught there rather than earned again by work.
+        // trade discovered from here on is taught there rather than earned again by work. It has no
+        // production ties, so it stands among the homes and leaves the farm's ground to its chain.
         {
           kind: 'place',
           building: 'school',
           count: 1,
           holdUntil: { kind: 'built', building: 'work_pottery_00' },
+          amongHomes: true,
         },
         // Owner ruling: a second stone gatherer within the first 10-15 game minutes, since the roads and
         // the mason eat the most stone.
