@@ -208,7 +208,7 @@ describe('linkPrograms', () => {
   it('requests every link before waiting, then ends each once the driver completes it', async () => {
     const { gl, calls, complete } = fakeContext(new Set(['decor-shadow']));
     let finished = 0;
-    const links = linkPrograms(gl, programs, true, () => finished++);
+    const links = linkPrograms(gl, programs, () => finished++);
     await tick(40);
     expect(calls.links).toBe(programs.length);
     expect(calls.statusReadsBeforeCompletion).toBeGreaterThan(0);
@@ -225,7 +225,7 @@ describe('linkPrograms', () => {
   it('keeps the links of a stalled driver, freeing the context only once they complete', async () => {
     const { gl, calls, complete } = fakeContext();
     let finished = 0;
-    const links = linkPrograms(gl, programs, true, () => finished++);
+    const links = linkPrograms(gl, programs, () => finished++);
     await tick(60);
     expect(calls.deletedPrograms).toBe(0);
     expect(finished).toBe(0);
@@ -238,7 +238,7 @@ describe('linkPrograms', () => {
   it('ends every pending link failed once the context is lost', async () => {
     const { gl, lose } = fakeContext();
     let finished = 0;
-    const links = linkPrograms(gl, programs, true, () => finished++);
+    const links = linkPrograms(gl, programs, () => finished++);
     lose();
     expect((await ended(links)).every((outcome) => outcome === 'failed')).toBe(true);
     expect(finished).toBe(1);
@@ -252,7 +252,7 @@ describe('linkPrograms', () => {
       link(program);
       if (calls.links === lostAfter) lose();
     };
-    const outcomes = await ended(linkPrograms(gl, programs, true));
+    const outcomes = await ended(linkPrograms(gl, programs));
     expect(calls.links).toBe(lostAfter);
     expect(outcomes.every((outcome) => outcome === 'failed')).toBe(true);
   });
@@ -262,32 +262,9 @@ describe('linkPrograms', () => {
     let created = 0;
     gl.createProgram = () => (created++ === 0 ? (null as unknown as WebGLProgram) : ({} as WebGLProgram));
     gl.getProgramParameter = () => true;
-    const outcomes = await ended(linkPrograms(gl, programs, true));
+    const outcomes = await ended(linkPrograms(gl, programs));
     expect(outcomes[0]).toBe('failed');
     expect(outcomes.slice(1).every((outcome) => outcome === 'linked')).toBe(true);
-  });
-
-  it('links one program per turn without the parallel extension', async () => {
-    const { gl, calls } = fakeContext();
-    let finished = 0;
-    const outcomes = await ended(linkPrograms(gl, programs, false, () => finished++));
-    expect(outcomes.every((outcome) => outcome === 'linked')).toBe(true);
-    expect(calls.statusReadsBeforeCompletion).toBe(0);
-    expect(finished).toBe(1);
-  });
-
-  it('requests no further link one by one once the context is lost', async () => {
-    const { gl, calls, lose } = fakeContext();
-    const lostAfter = 2;
-    const link = gl.linkProgram;
-    gl.linkProgram = (program) => {
-      link(program);
-      if (calls.links === lostAfter) lose();
-    };
-    const outcomes = await ended(linkPrograms(gl, programs, false));
-    expect(calls.links).toBe(lostAfter);
-    // The second link was requested before the loss, so its outcome reads as failed too.
-    expect(outcomes).toEqual(programs.map((_, index) => (index === 0 ? 'linked' : 'failed')));
   });
 });
 
@@ -449,39 +426,47 @@ describe('starting a warm-up', () => {
     vi.resetModules();
     warmup = await import('../../../src/gpu/shaders/warmup.js');
   });
+  /** The programs a warm-up settled with; every context here offers parallel links unless a test says. */
+  const warmed = (asked: WarmupSettings): Promise<readonly WarmedProgram[]> => {
+    const started = warmup.startShaderWarmup(asked);
+    if (started === null) throw new Error('the warm-up linked nothing');
+    return started.done;
+  };
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
   it('settles without probing a context that is lost from the start', async () => {
     const seen = stubContexts(() => ({ lost: true }));
-    expect(await warmup.startShaderWarmup(settings).done).toEqual([]);
-    expect(warmup.startBackgroundShaderWarmup(settings)).not.toBeNull();
+    expect(await warmed(settings)).toEqual([]);
     // Pixi's if-limit probe never returns on a lost context, so it must not run.
     expect(seen.probeCompiles).toBe(0);
   });
 
   it('gives up its probe on a context that fails every compile, as one lost mid-probe does', async () => {
     const seen = stubContexts(() => ({ compileAnswer: () => false }));
-    expect(await warmup.startShaderWarmup(settings).done).toEqual([]);
+    expect(await warmed(settings)).toEqual([]);
     expect(seen.probeCompiles).toBeLessThan(10);
     expect(seen.programs).toBe(0);
     expect(seen.released).toBe(1);
   });
 
-  it('leaves the background warm-up undone where links would block, and frees its context', () => {
+  it('warms nothing where links would block, asking only the first context', () => {
     const seen = stubContexts(() => ({ parallel: false }));
-    expect(warmup.startBackgroundShaderWarmup(settings)).toBeNull();
+    expect(warmup.startShaderWarmup(settings)).toBeNull();
+    expect(warmup.startShaderWarmup({ ...settings, weather: false })).toBeNull();
     expect(seen.probeCompiles).toBe(0);
+    expect(seen.contexts).toBe(1);
     expect(seen.released).toBe(1);
   });
 
   it('links each program once, however many warm-ups ask for it', async () => {
     const seen = stubContexts(() => ({}));
-    const first = warmup.startShaderWarmup(settings);
-    const second = warmup.startShaderWarmup({ ...settings, weather: false });
-    const third = warmup.startShaderWarmup(settings);
-    const [all, some, again] = await Promise.all([first.done, second.done, third.done]);
+    const [all, some, again] = await Promise.all([
+      warmed(settings),
+      warmed({ ...settings, weather: false }),
+      warmed(settings),
+    ]);
     expect(all.every((program) => program.outcome === 'linked')).toBe(true);
     expect(some.length).toBeLessThan(all.length);
     expect(again).toEqual(all.map((program) => ({ ...program, ms: expect.any(Number) })));
@@ -492,20 +477,20 @@ describe('starting a warm-up', () => {
 
   it('gives up its probe on an answer from a context lost mid-probe', async () => {
     const seen = stubContexts(() => ({ compileAnswer: () => null }));
-    expect(await warmup.startShaderWarmup(settings).done).toEqual([]);
+    expect(await warmed(settings)).toEqual([]);
     expect(seen.programs).toBe(0);
   });
 
   it('names the batch variant for the limit the renderer will find, as Pixi halves it', async () => {
     const seen = stubContexts(() => ({ compileAnswer: (n) => n > 1 }));
-    await warmup.startShaderWarmup(settings).done;
+    await warmed(settings);
     expect(seen.linkedNames).toContain('world-batch/textures8/xbr/shadow');
   });
 
   it('opens a context only for the programs no earlier warm-up asked for', async () => {
     const seen = stubContexts(() => ({}));
-    const some = await warmup.startShaderWarmup({ ...settings, weather: false }).done;
-    const all = await warmup.startShaderWarmup(settings).done;
+    const some = await warmed({ ...settings, weather: false });
+    const all = await warmed(settings);
     expect(seen.contexts).toBe(2);
     expect(seen.programs).toBe(all.length);
     expect(seen.linkedNames.slice(some.length).every((name) => name.startsWith('weather-'))).toBe(true);
@@ -513,27 +498,27 @@ describe('starting a warm-up', () => {
 
   it('asks again for a program whose context was lost', async () => {
     const seen = stubContexts((index) => ({ loseOnLink: index === 0 }));
-    const lost = await warmup.startShaderWarmup(settings).done;
+    const lost = await warmed(settings);
     expect(lost.every((program) => program.outcome === 'failed')).toBe(true);
-    const retried = await warmup.startShaderWarmup(settings).done;
+    const retried = await warmed(settings);
     expect(retried.every((program) => program.outcome === 'linked')).toBe(true);
     expect(seen.contexts).toBe(2);
   });
 
   it('links every program again once the links are forgotten, as after a GPU process restart', async () => {
     const seen = stubContexts(() => ({}));
-    const first = await warmup.startShaderWarmup(settings).done;
+    const first = await warmed(settings);
     warmup.forgetShaderLinks();
-    await warmup.startShaderWarmup(settings).done;
+    await warmed(settings);
     expect(seen.contexts).toBe(2);
     expect(seen.programs).toBe(2 * first.length);
   });
 
   it('does not link again a program the driver rejected', async () => {
     const seen = stubContexts(() => ({ links: false }));
-    const rejected = await warmup.startShaderWarmup(settings).done;
+    const rejected = await warmed(settings);
     expect(rejected.every((program) => program.outcome === 'failed')).toBe(true);
-    await warmup.startShaderWarmup(settings).done;
+    await warmed(settings);
     expect(seen.contexts).toBe(1);
   });
 });

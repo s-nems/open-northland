@@ -30,6 +30,7 @@ import { currentLocale, messages } from '../../i18n/index.js';
 import { ambientWeatherFor } from '../../view/ambient-weather.js';
 import { cameraCenteredOnTile, createCameraController } from '../../view/camera/index.js';
 import { mapZoomParam } from '../../view/camera/map-zoom.js';
+import { linkGameRenderer } from '../../view/graphics/shader-warmup.js';
 import { bindStaticLayer } from '../../view/map-objects/static-layer.js';
 import type { NetReadout } from '../../view/net/readout.js';
 import { formatSearch } from '../../view/params.js';
@@ -195,6 +196,7 @@ export async function presentMapWorld(
   // a frozen interface.
   await boot.begin('shaders');
   await world.shaders.done;
+  await linkGameRenderer(app.renderer);
   await boot.begin('hud');
   let markShown: () => void = () => undefined;
   const shown = new Promise<true>((resolve) => {

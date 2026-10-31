@@ -125,7 +125,7 @@ import {
   palisadeToolsOf,
 } from '../game-tool-panel.js';
 import { holdWorldAfterContextRestore } from '../graphics/context-restore.js';
-import { applyWhenWarmed, rewarmAfterContextRestore } from '../graphics/shader-warmup.js';
+import { applyWhenWarmed, relinkAfterContextRestore } from '../graphics/shader-warmup.js';
 import { createSignpostMapOverlay } from '../map-overlays/signposts.js';
 import { mountNetOverlays } from '../net/overlays.js';
 import type { NetReadout } from '../net/readout.js';
@@ -359,7 +359,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
   let destroyed = false;
   const lifetime = new AbortController();
   logGpuContextLoss(canvas, () => host.tick, lifetime.signal);
-  const worldHeld = holdWorldAfterContextRestore(canvas, lifetime.signal, rewarmAfterContextRestore);
+  const worldHeld = holdWorldAfterContextRestore(canvas, lifetime.signal, () =>
+    relinkAfterContextRestore(app.renderer, lifetime.signal),
+  );
   const teardownWorld = createWorldTeardown({
     app,
     canvas,

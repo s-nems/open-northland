@@ -10,9 +10,10 @@ import { type GlslProgramSource, glProgramFor } from './program-source.js';
  * caches linked programs by their text across contexts and, on disk, across runs, so the renderer's own
  * link of the same text is answered from the cache instead of compiling: on Direct3D that compile is
  * seconds per program, and with `KHR_parallel_shader_compile` the driver runs it on its own threads
- * while the caller keeps loading. Without the extension each link blocks this thread, one program per
- * turn so a progress label can paint between them. The cache key also covers the shader-visible
- * extensions and the bound attribute locations, which the renderer leaves as this context has them.
+ * while the caller keeps loading. Without the extension a link here would block this thread as long as
+ * the renderer's own link, so nothing is warmed: Firefox keeps no linked programs, not even within one
+ * context, and lacks the extension. The cache key also covers the shader-visible extensions and the
+ * bound attribute locations, which the renderer leaves as this context has them.
  */
 export interface ShaderWarmup {
   /** Settles once no program is waited for: each linked, failed, or still with a driver that stopped
@@ -103,7 +104,7 @@ export type WarmupSettings = Pick<
   readonly blood: boolean;
 };
 
-function shaderSelection(settings: WarmupSettings): ShaderSelection {
+export function shaderSelection(settings: WarmupSettings): ShaderSelection {
   return {
     ...worldShaderSettings(settings),
     weather: settings.weather,
@@ -119,6 +120,8 @@ const requested = new Map<string, Promise<LinkResult>>();
 let batchTextureLimit: number | null = null;
 
 const SETTLED: ShaderWarmup = { done: Promise.resolve([]) };
+/** Whether the first probed context offered parallel links; every context of one browser answers alike. */
+let parallelLinks: boolean | null = null;
 
 /** Forgets every link requested so far, so the next warm-up links its programs again: a GPU process
  *  that restarted holds none of them, and a restored renderer would link them all in its first frame. */
@@ -126,17 +129,9 @@ export function forgetShaderLinks(): void {
   requested.clear();
 }
 
-/** Warm-up for a loading screen: without parallel links each one blocks this thread in turn. */
-export function startShaderWarmup(settings: WarmupSettings): ShaderWarmup {
-  return openWarmup(settings, false) ?? SETTLED;
-}
-
-/** Warm-up while an interface stays live: null, and nothing linked, where a link would block it. */
-export function startBackgroundShaderWarmup(settings: WarmupSettings): ShaderWarmup | null {
-  return openWarmup(settings, true);
-}
-
-function openWarmup(settings: WarmupSettings, parallelOnly: boolean): ShaderWarmup | null {
+/** The warm-up for `settings`: null, and nothing linked, where the driver cannot link off this thread. */
+export function startShaderWarmup(settings: WarmupSettings): ShaderWarmup | null {
+  if (parallelLinks === false) return null;
   const selection = shaderSelection(settings);
   if (batchTextureLimit !== null) {
     const programs = bootShaderPrograms(batchTextureLimit, selection);
@@ -149,8 +144,8 @@ function openWarmup(settings: WarmupSettings, parallelOnly: boolean): ShaderWarm
   // No usable WebGL 2 here: the renderer will say so itself.
   if (gl === null || gl.isContextLost()) return SETTLED;
   const release = (): void => gl.getExtension('WEBGL_lose_context')?.loseContext();
-  const parallel = gl.getExtension(KHR_PARALLEL_SHADER_COMPILE) !== null;
-  if (parallelOnly && !parallel) {
+  parallelLinks = gl.getExtension(KHR_PARALLEL_SHADER_COMPILE) !== null;
+  if (!parallelLinks) {
     release();
     return null;
   }
@@ -161,7 +156,7 @@ function openWarmup(settings: WarmupSettings, parallelOnly: boolean): ShaderWarm
   }
   const programs = bootShaderPrograms(batchTextureLimit, selection);
   const fresh = programs.filter((program) => !requested.has(program.name));
-  for (const [name, link] of linkPrograms(gl, fresh, parallel, release)) {
+  for (const [name, link] of linkPrograms(gl, fresh, release)) {
     requested.set(
       name,
       link.then((result) => {
@@ -267,13 +262,13 @@ export function waitForLinks(
 }
 
 /**
- * Links `programs` on `gl`, each link's end by program name; `onFinished` runs once none is left with
- * the driver, so the context can be freed. A program is deleted only after its link has ended.
+ * Links `programs` on `gl` through the driver's own threads, each link's end by program name;
+ * `onFinished` runs once none is left with the driver, so the context can be freed. A program is
+ * deleted only after its link has ended.
  */
 export function linkPrograms(
   gl: LinkingContext,
   programs: readonly GlslProgramSource[],
-  parallel: boolean,
   onFinished: () => void = () => undefined,
 ): ReadonlyMap<string, Promise<LinkResult>> {
   // Every source is resolved before the first GL call, so a dropped one leaves no link behind.
@@ -290,8 +285,7 @@ export function linkPrograms(
   }
   const resolverOf = (name: string): ((result: LinkResult) => void) =>
     resolvers.get(name) ?? (() => undefined);
-  if (parallel) linkInParallel(gl, sources, resolverOf, onFinished);
-  else void linkInTurns(gl, sources, resolverOf, onFinished);
+  linkInParallel(gl, sources, resolverOf, onFinished);
   return ends;
 }
 
@@ -339,21 +333,6 @@ function linkInParallel(
   };
   if (pending.length === 0) onFinished();
   else setTimeout(poll, COMPLETION_POLL_MS);
-}
-
-/** One blocking link per turn, so the label a caller wrote can paint before the next one. */
-async function linkInTurns(
-  gl: LinkingContext,
-  sources: readonly ProgramText[],
-  resolverOf: (name: string) => (result: LinkResult) => void,
-  onFinished: () => void,
-): Promise<void> {
-  for (const source of sources) {
-    await new Promise((resolve) => setTimeout(resolve, 0));
-    const link = requestLink(gl, source, resolverOf(source.name));
-    if (link !== null) finishLink(gl, link);
-  }
-  onFinished();
 }
 
 /**

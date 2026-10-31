@@ -4,6 +4,7 @@
 // backdrop is a boot the app gave up on.
 
 import { skipOriginalGameGate } from '../../browser/original-game-gate.mjs';
+import { readProgramLinks, watchProgramLinks } from './program-links.mjs';
 
 const VIEWPORT = { width: 1280, height: 720 };
 const POLL_MS = 250;
@@ -134,8 +135,11 @@ async function bootPage(page, result, { origin, mapId, seed, timeoutMs, matchesB
   }
   result.renderer = await readRenderer(page);
   result.colours = await distinctColours(page);
+  const links = await withTimeout(readProgramLinks(page), PAGE_CALL_TIMEOUT_MS, 'the program link record');
 
   if (!matchesBackend(result.renderer)) return 'the game ran on another renderer than the one requested';
+  if (links.ahead === 0) return 'the renderer linked no program behind the loading card';
+  if (links.late.length > 0) return `the drawn world linked ${[...new Set(links.late)].join(', ')} again`;
   if (latest.drawn === 0) return 'the world renderer drew no sprite';
   if (result.colours < MIN_DISTINCT_COLOURS)
     return `the screen centre shows ${result.colours} colours, a blank canvas`;
@@ -185,6 +189,7 @@ export async function bootMap({
       page = await withTimeout(
         browser.newContext({ viewport: VIEWPORT }).then(async (context) => {
           await skipOriginalGameGate(context);
+          await watchProgramLinks(context);
           return context.newPage();
         }),
         PAGE_CALL_TIMEOUT_MS,

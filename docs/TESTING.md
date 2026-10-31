@@ -288,7 +288,7 @@ path changes, or through the CI workflow's manual `shaders` checkbox.
 
 | Option | Effect |
 | --- | --- |
-| `--relink` | Once every program has linked, links each a second time in another context with the renderer's context attributes and prints that time beside the first. It measures the browser's program cache, which the game's shader warm-up (`gpu/shaders/warmup.ts`) relies on to link the renderer's programs without a second compile, so CI passes it on Direct3D. |
+| `--relink` | Once every program has linked, links each a second time in another context with the renderer's context attributes and prints that time beside the first. It measures the browser's program cache, which lets the renderer's own links behind the loading card answer from the shader warm-up (`gpu/shaders/warmup.ts`) instead of compiling again, so CI passes it on Direct3D. |
 | `--dump-translated=<dir>` | Writes each program's source as the backend compiles it (HLSL on Direct3D, MSL on Metal) through `WEBGL_debug_shaders`, so a Windows run shows whether FXC got a sampler chain it must flatten. |
 | `--cdp=<endpoint>` | Drives a Chromium already running at that DevTools endpoint instead of launching one, such as Windows Chrome reached from WSL. Start it fresh for the run, with a new profile, `--use-gl=angle --use-angle=<backend> --disable-gpu-shader-disk-cache`: a browser that has compiled these programs before answers from its program cache and times nothing. |
 
@@ -310,8 +310,9 @@ backends, not that the picture is right or that a real GPU boots as fast. It nee
 a built `dist`, so it never runs in CI.
 
 A boot passes when, within `--boot-timeout-ms` (default 90000), the loading screen closes, the world
-draws at least three frames with sprites, the screen centre is not a blank canvas, and the page logs
-no error. A renderer string that is not the requested backend is refused, since Chromium falls back to
+draws at least three frames with sprites, the screen centre is not a blank canvas, the page logs no
+error, and the renderer linked its catalogue programs during the `shaders` step without linking a
+program of those families again once the world draws. A renderer string that is not the requested backend is refused, since Chromium falls back to
 SwiftShader silently. The table lists the renderer string, when each boot phase began, the boot time
 and the frames drawn; a failed boot leaves a screenshot under `bench-out/boot-check/`.
 

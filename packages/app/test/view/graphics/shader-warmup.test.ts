@@ -1,20 +1,24 @@
 import type { ShaderWarmup, WarmedProgram } from '@open-northland/render';
+import type { Renderer } from 'pixi.js';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { defaultSettings, type MenuSettings } from '../../../src/view/settings/store.js';
 
 type WarmupModule = typeof import('../../../src/view/graphics/shader-warmup.js');
 
 interface FakeWarmup {
-  readonly background: boolean;
   /** Settles `done` as the real warm-up would once its links finish or stall. */
   readonly settle: (outcome: WarmedProgram['outcome']) => void;
 }
 
 const warmups = vi.hoisted(() => ({
   started: [] as FakeWarmup[],
+  /** Calls to the render warm-up, including those it answered with null. */
+  asked: 0,
   parallel: true,
   failing: false,
   forgotten: 0,
+  /** Renderers the game linked its programs in. */
+  rendererLinks: 0,
 }));
 const stored = vi.hoisted(() => ({ settings: null as MenuSettings | null }));
 
@@ -24,7 +28,7 @@ vi.mock('../../../src/view/settings/store.js', async (original) => {
 });
 
 vi.mock('@open-northland/render', async (original) => {
-  const fresh = (background: boolean): ShaderWarmup => {
+  const fresh = (): ShaderWarmup => {
     if (warmups.failing) throw new Error('createProgram failed for world-batch');
     let resolve: (programs: readonly WarmedProgram[]) => void = () => undefined;
     const done = new Promise<readonly WarmedProgram[]>((settle) => {
@@ -32,15 +36,21 @@ vi.mock('@open-northland/render', async (original) => {
     });
     const settle = (outcome: WarmedProgram['outcome']): void =>
       resolve([{ name: 'world-batch', outcome, ms: 0 }]);
-    warmups.started.push({ background, settle });
+    warmups.started.push({ settle });
     return { done };
   };
   return {
     ...(await original<typeof import('@open-northland/render')>()),
-    startShaderWarmup: () => fresh(false),
-    startBackgroundShaderWarmup: () => (warmups.parallel ? fresh(true) : null),
+    startShaderWarmup: () => {
+      warmups.asked++;
+      return warmups.parallel ? fresh() : null;
+    },
     forgetShaderLinks: () => {
       warmups.forgotten++;
+    },
+    linkRendererPrograms: async () => {
+      warmups.rendererLinks++;
+      return [];
     },
   };
 });
@@ -50,16 +60,24 @@ let applyWhenWarmed: WarmupModule['applyWhenWarmed'];
 let graphicsShaderWarmup: WarmupModule['graphicsShaderWarmup'];
 let warmGraphicsInBackground: WarmupModule['warmGraphicsInBackground'];
 let rewarmAfterContextRestore: WarmupModule['rewarmAfterContextRestore'];
+let relinkAfterContextRestore: WarmupModule['relinkAfterContextRestore'];
 
 beforeEach(async () => {
   warmups.started.length = 0;
+  warmups.asked = 0;
   warmups.parallel = true;
   warmups.failing = false;
   warmups.forgotten = 0;
+  warmups.rendererLinks = 0;
   stored.settings = null;
   vi.resetModules();
-  ({ applyWhenWarmed, graphicsShaderWarmup, rewarmAfterContextRestore, warmGraphicsInBackground } =
-    await import('../../../src/view/graphics/shader-warmup.js'));
+  ({
+    applyWhenWarmed,
+    graphicsShaderWarmup,
+    relinkAfterContextRestore,
+    rewarmAfterContextRestore,
+    warmGraphicsInBackground,
+  } = await import('../../../src/view/graphics/shader-warmup.js'));
 });
 
 /** Changes a stored setting that picks programs, so the next warm-up asks for another program set. */
@@ -89,16 +107,19 @@ it('lets a map boot take over the menu warm-up of the same settings', () => {
   toggleWeather();
   warmGraphicsInBackground();
   graphicsShaderWarmup();
-  expect(warmups.started.map((warmup) => warmup.background)).toEqual([true]);
+  expect(warmups.started).toHaveLength(1);
 });
 
-it('leaves the warm-up to the map boot where links would block the menu', () => {
+it('asks once and settles at once where links would block, leaving them to the game renderer', async () => {
   warmups.parallel = false;
   toggleWeather();
   warmGraphicsInBackground();
-  expect(warmups.started).toHaveLength(0);
-  graphicsShaderWarmup();
-  expect(warmups.started.map((warmup) => warmup.background)).toEqual([false]);
+  expect(await graphicsShaderWarmup().done).toEqual([]);
+  expect(warmups.asked).toBe(1);
+  const apply = vi.fn();
+  applyWhenWarmed(apply)('on');
+  await turns();
+  expect(apply.mock.calls).toEqual([['on']]);
 });
 
 it('keeps the menu up when the background warm-up cannot start', () => {
@@ -191,4 +212,28 @@ it('warms again after a context restore, though a warm-up of the same settings a
   expect(warmups.forgotten).toBe(1);
   expect(warmups.started).toHaveLength(2);
   expect(graphicsShaderWarmup()).toBe(restored);
+});
+
+it('holds a restored world until the renderer has linked its programs after the warm-up', async () => {
+  toggleWeather();
+  let settled = false;
+  void relinkAfterContextRestore({} as Renderer, new AbortController().signal).done.then(() => {
+    settled = true;
+  });
+  await turns();
+  expect(warmups.rendererLinks).toBe(0);
+  warmups.started.at(-1)?.settle('linked');
+  await turns();
+  expect(warmups.rendererLinks).toBe(1);
+  expect(settled).toBe(true);
+});
+
+it('links nothing after a context restore once its view is torn down', async () => {
+  toggleWeather();
+  const lifetime = new AbortController();
+  const restored = relinkAfterContextRestore({} as Renderer, lifetime.signal);
+  lifetime.abort();
+  warmups.started.at(-1)?.settle('linked');
+  await restored.done;
+  expect(warmups.rendererLinks).toBe(0);
 });

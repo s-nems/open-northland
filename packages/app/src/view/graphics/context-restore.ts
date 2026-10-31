@@ -3,9 +3,10 @@ import { type DiagLog, diag } from '../../diag/log.js';
 
 /**
  * Whether the world waits for its programs after the game canvas got its WebGL context back. Pixi
- * links every program again in the first frame it draws, which blocks the page for seconds on
- * Direct3D, so the world stays still until `rewarm` has linked them off this thread; the HUD, sound
- * and simulation run on. A stalled driver holds it no longer than the warm-up waits for one.
+ * would link every program again in the first frame it draws, which blocks the page for seconds on
+ * Direct3D, so the world stays still until `rewarm` has linked them, one per turn where the driver
+ * cannot link off this thread; the HUD, sound and simulation run on. A stalled driver holds it no
+ * longer than the warm-up waits for one.
  */
 export function holdWorldAfterContextRestore(
   canvas: EventTarget,

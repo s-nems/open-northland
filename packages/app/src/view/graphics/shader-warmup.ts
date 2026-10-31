@@ -1,11 +1,12 @@
 import {
   forgetShaderLinks,
+  linkRendererPrograms,
   type ShaderWarmup,
-  startBackgroundShaderWarmup,
   startShaderWarmup,
   type WarmedProgram,
   type WarmupSettings,
 } from '@open-northland/render';
+import type { Renderer } from 'pixi.js';
 import { diag } from '../../diag/log.js';
 import { readStoredSettings } from '../settings/store.js';
 
@@ -25,17 +26,21 @@ function settingsKey(settings: WarmupSettings): string {
   ].join('/');
 }
 
-function sharedWarmup<W extends ShaderWarmup | null>(
-  start: (settings: WarmupSettings) => W,
-): ShaderWarmup | W {
+/** Stands for a warm-up the driver cannot run off this thread: the game renderer links its programs
+ *  behind the map's loading card instead. */
+const NOTHING_WARMED: ShaderWarmup = { done: Promise.resolve([]) };
+/** A renderer link at least this long is named in the boot log; one from a program cache takes a few ms. */
+const SLOW_LINK_MS = 50;
+
+function sharedWarmup(): ShaderWarmup {
   const settings = readStoredSettings();
   const key = settingsKey(settings);
   if (current?.key === key && !current.stalled) return current.warmup;
   const startedAt = performance.now();
-  const warmup = start(settings);
-  if (warmup === null) return warmup;
-  const entry = { key, warmup, stalled: false };
-  current = entry;
+  const warmup = startShaderWarmup(settings);
+  current = { key, warmup: warmup ?? NOTHING_WARMED, stalled: false };
+  if (warmup === null) return current.warmup;
+  const entry = current;
   void warmup.done.then((programs) => {
     // A superseded warm-up still finishes, but its report belongs to settings no longer in use.
     if (current !== entry) return;
@@ -65,7 +70,20 @@ function logWarmup(programs: readonly WarmedProgram[], ms: number): void {
  * usually finds its programs linked.
  */
 export function graphicsShaderWarmup(): ShaderWarmup {
-  return sharedWarmup(startShaderWarmup);
+  return sharedWarmup();
+}
+
+/** Links the stored settings' programs in a game's renderer before its first frame, naming slow links:
+ *  a slow one compiled where the warm-up should have answered it. */
+export async function linkGameRenderer(renderer: Renderer): Promise<void> {
+  const startedAt = performance.now();
+  const links = await linkRendererPrograms(renderer, readStoredSettings());
+  diag.info('boot', 'renderer programs linked', {
+    ms: Math.round(performance.now() - startedAt),
+    slow: links
+      .filter((link) => link.ms >= SLOW_LINK_MS)
+      .map((link) => `${link.name} ${Math.round(link.ms)} ms`),
+  });
 }
 
 /** The warm-up again, every program linked anew, for a game canvas whose WebGL context came back: a
@@ -76,11 +94,23 @@ export function rewarmAfterContextRestore(): ShaderWarmup {
   return graphicsShaderWarmup();
 }
 
+/** The warm-up after a context restore, settled once the game renderer has linked its programs again
+ *  too: Pixi dropped them with the old context. A view torn down by then links nothing. */
+export function relinkAfterContextRestore(renderer: Renderer, signal: AbortSignal): ShaderWarmup {
+  const warmup = rewarmAfterContextRestore();
+  return {
+    done: warmup.done.then(async (programs) => {
+      if (!signal.aborted) await linkGameRenderer(renderer);
+      return programs;
+    }),
+  };
+}
+
 /** Starts the warm-up while the menu stays interactive; where links would block the menu's thread it
  *  leaves them to the map's loading card. */
 export function warmGraphicsInBackground(): void {
   try {
-    sharedWarmup(startBackgroundShaderWarmup);
+    sharedWarmup();
   } catch (err) {
     // An optimisation must not take the menu down; the map boot tries again behind its card.
     diag.error('boot', 'background shader warm-up failed to start', err);
@@ -106,7 +136,8 @@ async function settingsWarmed(): Promise<void> {
 /**
  * `apply` for a live graphics change, run once the programs the stored settings now pick are linked:
  * the renderer's own link of a program it had no use for blocks the frame it happens in, seconds on
- * Direct3D. A change `needsPrograms` says draws nothing new applies at once. A change that another
+ * Direct3D. Without parallel links nothing is warmed, so the change applies at once and that frame
+ * still blocks. A change `needsPrograms` says draws nothing new applies at once. A change that another
  * supersedes before its programs link is dropped.
  */
 export function applyWhenWarmed<T>(
