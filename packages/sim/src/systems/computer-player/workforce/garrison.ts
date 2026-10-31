@@ -40,6 +40,7 @@ import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
 import { BARRACKS_STANDS_BEFORE_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
+import { type ReachableStockUnits, seatArmsStock } from '../military/outfit.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { COLLECTED_GOOD_IDS, fedAhead } from './collectors/index.js';
 import { productsOf } from './craft.js';
@@ -115,7 +116,8 @@ export function garrisonArms(
   profile: ComputerProfile,
 ): GarrisonArms {
   const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
-  const vetoChanges = weaponVetoChanges(world, ctx, player, vetoed, profile);
+  const stock = armsStockOf(world, ctx, player);
+  const vetoChanges = weaponVetoChanges(world, ctx, player, vetoed, profile, stock);
   // The changes land a tick later, so this decision's draft already judges the arms as they will stand.
   const judged = [
     ...vetoed.filter((good) => !vetoChanges.some((c) => c.goodType === good && !c.vetoed)),
@@ -145,19 +147,25 @@ export function garrisonArms(
       return bare;
     },
     roomFor: (next) => {
-      room ??= weaponRoom(world, ctx, player, world.get(next, Settler).tribe, judged);
+      room ??= weaponRoom(world, ctx, player, world.get(next, Settler).tribe, judged, stock);
       return room;
     },
   };
 }
 
+/** The arms the seat's recruits can fetch ({@link seatArmsStock}); its seat stock ({@link seatStockOf})
+ *  without a barracks or a map. */
+function armsStockOf(world: World, ctx: SystemContext, player: number): ReachableStockUnits {
+  return seatArmsStock(world, ctx, player) ?? seatStockOf(world, player);
+}
+
 /**
- * Per armed class, the weapons the seat holds ({@link seatStockOf}) that its arming would hand out
- * ({@link armingGoodPreference} past the `vetoed` goods), less the class's recruits already booked and
- * waiting for one. The draft takes no more men into a class than this: a recruit drilled past the arms
- * in stock waits unarmed at the barracks and fights bare when the settlement is raided. On magiczny_las
- * the sword counter of one seat stood at 38 against 6 long swords at game minute 90, and its 40 recruits
- * waiting for a weapon were over a third of its soldiers.
+ * Per armed class, the weapons the seat's recruits can fetch ({@link armsStockOf}) that its arming would hand
+ * out ({@link armingGoodPreference} past the `vetoed` goods), less the class's recruits already booked and
+ * waiting for one. The draft takes no more men into a class than this: a recruit drilled past the arms in
+ * stock waits unarmed at the barracks and fights bare when the settlement is raided. On magiczny_las the
+ * sword counter of one seat stood at 38 against 6 long swords at game minute 90, and its 40 recruits waiting
+ * for a weapon were over a third of its soldiers.
  */
 function weaponRoom(
   world: World,
@@ -165,8 +173,8 @@ function weaponRoom(
   player: number,
   tribe: number,
   vetoed: readonly number[],
+  stock: ReachableStockUnits,
 ): ReadonlyMap<GarrisonWeaponIntent, number> {
-  const stock = seatStockOf(world, player);
   const waiting = bookedByIntent(world, ctx, player);
   const room = new Map<GarrisonWeaponIntent, number>();
   for (const intent of GARRISON_WEAPON_INTENTS) {
@@ -423,9 +431,9 @@ export const WEAPON_VETO_LIFT_STOCK = 1;
 
 /**
  * The AI arms its recruits only with each class's best weapon (authored): short swords, wooden spears and
- * short bows would field weak men, and the short swords and wooden spears its own shops make are inputs
- * to amulets and iron spears. A weaker good ({@link weakerWeaponGoods}) is vetoed once the seat holds
- * enough of a best weapon it ranks below ({@link seatStockOf}) to arm that class's waiting recruits and
+ * short bows would field weak men, and the short swords and wooden spears its own shops make are inputs to
+ * amulets and iron spears. A weaker good ({@link weakerWeaponGoods}) is vetoed once the seat's recruits can
+ * fetch enough of a best weapon it ranks below ({@link armsStockOf}) to arm that class's waiting recruits and
  * {@link WEAPON_VETO_STOCK_MARGIN} more, and the veto is lifted only when no best weapon above it is left
  * ({@link WEAPON_VETO_LIFT_STOCK}), so the veto does not flip with every weapon forged and taken. A seat
  * whose smiths have yet to forge the long sword arms with the short one meanwhile (owner ruling: the smith
@@ -438,9 +446,10 @@ function weaponVetoChanges(
   player: number,
   vetoed: readonly number[],
   profile: ComputerProfile,
+  stock: ReachableStockUnits,
 ): readonly WeaponVetoChange[] {
   if (!computerModuleRuns(world, player, 'military')) return [];
-  const marks = profile.weakerWeapons ? null : bestWeaponMarks(world, ctx, player);
+  const marks = profile.weakerWeapons ? null : bestWeaponMarks(world, ctx, player, stock);
   const changes: WeaponVetoChange[] = [];
   for (const goodType of weakerWeaponGoods(ctx.content)) {
     const held = vetoed.includes(goodType);
@@ -457,9 +466,13 @@ interface BestWeaponMarks {
   readonly lift: ReadonlySet<number>;
 }
 
-function bestWeaponMarks(world: World, ctx: SystemContext, player: number): BestWeaponMarks {
+function bestWeaponMarks(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  stock: ReachableStockUnits,
+): BestWeaponMarks {
   const weaker = new Set(weakerWeaponGoods(ctx.content));
-  const stock = seatStockOf(world, player);
   const waiting = bookedByIntent(world, ctx, player);
   const veto = new Set<number>();
   const kept = new Set<number>();
@@ -527,9 +540,17 @@ function standingOrder(
   const { draftCapShare } = militaryOrdersOf(world, player);
   const headroom = draftCeiling(profile, draftCapShare, Number.POSITIVE_INFINITY) - arms.onHand();
   const allowance = Math.max(0, Math.min(draftable.length, arms.surplus(), headroom));
-  const judged = bare[0] ?? (allowance > 0 ? draftable[0] : undefined);
+  const waiting = waitingRecruits(world, ctx, player);
+  const judged = bare[0] ?? (allowance > 0 ? draftable[0] : waiting[0]);
   if (judged === undefined) return wants; // nobody to arm or draft: the classes need no probe
   const classes = arms.classesFor(barracks, judged);
+  // A class the seat can no longer arm keeps only its men still in drill: the men waiting out of it are
+  // released, stand as bare soldiers, and the share below arms them for a class it can.
+  for (const intent of GARRISON_WEAPON_INTENTS) {
+    if (classes.includes(intent)) continue;
+    const out = waiting.filter((e) => world.get(e, AssistantRecruit).intent === intent).length;
+    wants.set(intent, (wants.get(intent) ?? 0) - out);
+  }
   if (classes.length === 0) return wants;
   const fielded = fieldedByIntent(world, ctx, player, booked);
   const room = new Map(arms.roomFor(judged));
@@ -747,6 +768,13 @@ function bookedByIntent(
     booked.set(intent, (booked.get(intent) ?? 0) + 1);
   }
   return booked;
+}
+
+/** The seat's unpaid recruits of an armed class out of drill, waiting for their weapon. */
+function waitingRecruits(world: World, ctx: SystemContext, player: number): Entity[] {
+  return unpaidBookings(world, ctx, player).filter(
+    (e) => !world.has(e, TrainingOrder) && isWeaponIntent(world.get(e, AssistantRecruit).intent),
+  );
 }
 
 /** The seat's recruits booked on a garrison counter and still unpaid (`armed` marks the payment for a

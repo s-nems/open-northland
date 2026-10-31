@@ -189,6 +189,35 @@ export function armableIntents<Intent extends keyof typeof INTENT_WEAPON_CLASS>(
   reach: NavigationLimit | null,
   vetoed: readonly number[],
 ): readonly Intent[] {
+  const stock = reachableStock(world, ctx, terrain, player, reach);
+  // An intent whose tribe data binds no craftable class row can never be armed: its goods are empty.
+  return intents.filter((intent) =>
+    armingGoodPreference(ctx.content, tribe, intent, vetoed).some((good) => stock.holds(good)),
+  );
+}
+
+/** The stock an errand on `player`'s side can draw on inside one reach ({@link reachableStock}). */
+export interface ReachableStock {
+  /** Whether some store lends a unit of `good`. */
+  holds(good: number): boolean;
+  /** The units of `good` the stores lend, each store's storage minimum held back. */
+  units(good: number): number;
+}
+
+/**
+ * The stock inside `reach` (null: anywhere) that `player`'s arming and dressing errands can fetch: the
+ * stores the {@link FetchableStock} ledger lists that {@link storeYieldsGood} accepts, the side's own or
+ * nobody's, a standing place inside the reach. The seat stock ledger also counts goods in a carrier's
+ * hands, goods kept aside for an upgrade and heaps past the network, none of which an errand reaches, so a
+ * seat sizing its draft or its vetoes on it books recruits who wait unarmed beside a vetoed weapon.
+ */
+export function reachableStock(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  reach: NavigationLimit | null,
+): ReachableStock {
   const ledger = FetchableStock.of(world, ctx);
   let walls: ReadonlySet<NodeId> | undefined;
   const reachedStores = new Map<Entity, boolean>();
@@ -201,18 +230,24 @@ export function armableIntents<Intent extends keyof typeof INTENT_WEAPON_CLASS>(
     }
     return known;
   };
-  const armable = (goods: readonly number[]): boolean => {
-    for (const good of goods) {
-      for (const store of ledger.holders(good)) {
-        if (!ownersCompatible(player, ownerOf(world, store))) continue;
-        walls ??= buildingBlockedCells(world, ctx, terrain);
-        if (storeYieldsGood(world, ctx, terrain, walls, store, good) && reached(store)) return true;
-      }
-    }
-    return false;
+  const lends = (store: Entity, good: number): boolean => {
+    if (!ownersCompatible(player, ownerOf(world, store))) return false;
+    walls ??= buildingBlockedCells(world, ctx, terrain);
+    return storeYieldsGood(world, ctx, terrain, walls, store, good) && reached(store);
   };
-  // An intent whose tribe data binds no craftable class row can never be armed: its goods are empty.
-  return intents.filter((intent) => armable(armingGoodPreference(ctx.content, tribe, intent, vetoed)));
+  return {
+    holds: (good) => {
+      for (const store of ledger.holders(good)) if (lends(store, good)) return true;
+      return false;
+    },
+    units: (good) => {
+      let units = 0;
+      for (const store of ledger.holders(good)) {
+        if (lends(store, good)) units += unclaimedStockOf(world, ctx, undefined, store, good);
+      }
+      return units;
+    },
+  };
 }
 
 /** Where a fetcher stands to draw on a store: a building at its door, a ground pile at its own node. */

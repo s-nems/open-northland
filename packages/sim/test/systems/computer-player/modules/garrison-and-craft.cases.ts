@@ -12,6 +12,7 @@ import {
   type ComputerDifficulty,
   ComputerStrategy,
   type EconomicSide,
+  Equipment,
   Garrison,
   Health,
   JobAssignment,
@@ -30,7 +31,7 @@ import {
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import { contentIndex } from '../../../../src/core/content-index.js';
 import type { Entity, World } from '../../../../src/ecs/world.js';
-import { Simulation } from '../../../../src/index.js';
+import { fx, Simulation } from '../../../../src/index.js';
 import { TOWER_POST_STRENGTH } from '../../../../src/systems/ai-shared/military/census.js';
 import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { SpareForce } from '../../../../src/systems/ai-shared/workforce/pool.js';
@@ -57,6 +58,7 @@ import {
   COUNTED_ONCE,
   strongestBelievedEnemy,
 } from '../../../../src/systems/computer-player/military/enemy-strength.js';
+import { armourFetchOrders } from '../../../../src/systems/computer-player/military/outfit.js';
 import { unitPoints } from '../../../../src/systems/computer-player/military/points.js';
 import { PLAN_TUNING } from '../../../../src/systems/computer-player/strategy/military.js';
 import {
@@ -92,6 +94,7 @@ import {
 import { mayMarry } from '../../../../src/systems/family/eligibility.js';
 import { isFighterJob, type SystemContext } from '../../../../src/systems/index.js';
 import { WEAPON_MAIN_TYPE } from '../../../../src/systems/readviews/index.js';
+import { seatStockOf } from '../../../../src/systems/stores/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import { stampPost } from '../../signposts/support.js';
@@ -967,6 +970,36 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(vetoes()).toEqual([]);
   });
 
+  it('vetoes no weaker weapon for best ones no recruit can fetch, such as those in a carrier hands', () => {
+    const seat = armedSeat([{ good: SWORD, amount: ARMOURY }], { content: longSwordContent() });
+    const [carrier] = ownedSettlers(seat.sim.world, SEAT);
+    if (carrier === undefined) throw new Error('setup: no settler to carry');
+    seat.sim.world.add(carrier, Carrying, { goodType: LONG_SWORD, amount: WEAPON_VETO_STOCK_MARGIN });
+    // The seat stock counts the carried swords, which would have vetoed the short ones.
+    expect(seatStockOf(seat.sim.world, SEAT).units(LONG_SWORD)).toBe(WEAPON_VETO_STOCK_MARGIN);
+
+    const commands = collectModule.run(seat.sim.world, seat.ctx, SEAT);
+    expect(commands.some((c) => c.kind === 'setAssistantWeaponVeto')).toBe(false);
+  });
+
+  it('calls off a waiting recruit of a class it cannot arm, and the assistant arms him for another', () => {
+    const seat = armedSeat([{ good: SWORD, amount: ARMOURY }], { men: 0 });
+    spawnBareSoldiers(seat, 1);
+    const [man] = ownedSettlers(seat.sim.world, SEAT).filter(
+      (e) => seat.sim.world.get(e, Settler).jobType === BARE_SOLDIER,
+    );
+    const barracks = ownedBuildings(seat.sim.world, SEAT).find(
+      (b) => seat.sim.world.get(b, Building).buildingType === BARRACKS_TYPE,
+    );
+    if (man === undefined || barracks === undefined) throw new Error('setup: no bare soldier or barracks');
+    // Booked for a bow the seat holds none of: before, his counter held him waiting for good.
+    seat.sim.world.add(man, AssistantRecruit, { intent: 'trainBow', armed: false, barracks });
+    expect(counterWants(seat.sim, seat.ctx).trainBow ?? 0).toBe(0);
+
+    seat.sim.run(ARMING_TICKS);
+    expect(seat.sim.world.get(man, Settler).jobType).toBe(SWORDSMAN);
+  });
+
   it('arms with the weaker weapon while the best one is not in store, and lifts a standing veto', () => {
     // Owner ruling: the smith opens on the short sword and earns the long one later.
     const seat = armedSeat([{ good: SWORD, amount: ARMOURY }], { content: longSwordContent() });
@@ -1052,6 +1085,39 @@ describe('workforce module - the barracks and craft selections', () => {
     // One post between the two puts the store back inside the drill floor's own network.
     stampPost(seat.sim, BRIDGE_POST.x, BRIDGE_POST.y, SEAT);
     expect(counterWants(seat.sim, seat.ctx)).toEqual({ trainSword: sparePool(seat) });
+  });
+
+  it('sends no armed man for armour his barracks network cannot reach', () => {
+    const ARMOR_CHAIN = 62;
+    const base = armedContent();
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: ARMOR_CHAIN, id: 'armor_chain', equip: { category: 'armor' } }],
+      armor: [{ typeId: 3, id: 'armor_chain', mainType: 2, goodType: ARMOR_CHAIN, materialType: 3 }],
+    });
+    const seat = armedSeat([{ good: ARMOR_CHAIN, amount: ARMOURY }], {
+      content,
+      confined: true,
+      barracks: FAR_BARRACKS,
+      men: 0,
+    });
+    seat.sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SWORDSMAN,
+      x: FAR_BARRACKS.x,
+      y: FAR_BARRACKS.y + 4,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    seat.sim.step();
+    const men = ownedSettlers(seat.sim.world, SEAT);
+    for (const e of men) {
+      seat.sim.world.mut(e, Equipment).weapon = { goodType: SWORD, degreeOfUse: fx.fromInt(0) };
+    }
+    expect(armourFetchOrders(seat.sim.world, seat.ctx, SEAT, men)).toEqual([]);
+
+    stampPost(seat.sim, BRIDGE_POST.x, BRIDGE_POST.y, SEAT);
+    expect(armourFetchOrders(seat.sim.world, seat.ctx, SEAT, men)).toHaveLength(men.length);
   });
 
   it('keeps each counter carrying its own recruits, so a new weapon drafts nobody extra', () => {
