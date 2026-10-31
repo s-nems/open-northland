@@ -66,7 +66,6 @@ export const plKnowledge = {
     animal: 'Zwierzę',
   },
   entry: {
-    empty: 'Wybierz hasło z listy.',
     notFound: 'Tego hasła nie ma w danych tej gry.',
     original: 'Opis z oryginału',
     categories: {
@@ -111,8 +110,7 @@ export const plKnowledge = {
     },
     unit: {
       seconds: '{value} s',
-      halfCells: '{value} półpól',
-      footprint: '{width} × {height} półpól',
+      steps: { one: '{value} krok', few: '{value} kroki', many: '{value} kroków' },
     },
     cadence: {
       many: '{blows} {word} co {time}',
@@ -239,7 +237,6 @@ export const plKnowledge = {
       weapon: 'Broń',
       train: 'Jak wyszkolić',
       trainAt: 'Szkolenie:',
-      filmWork: 'Praca',
     },
     vehicle: {
       purpose: 'Do czego',
@@ -454,7 +451,7 @@ export const plKnowledge = {
   },
   mechanics: {
     railLabel: 'Spis artykułów',
-    speedNote: 'Czasy podano przy prędkości ×1. Prędkości ×2 i ×3 je skracają.',
+    speedNote: 'Czasy podano przy prędkości ×1. Wyższa prędkość gry je skraca.',
     seeAlso: 'Zobacz też:',
     loading: 'Wczytywanie artykułów...',
     loadFailed: 'Nie udało się wczytać artykułów. Otwórz tę kartę ponownie.',

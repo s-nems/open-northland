@@ -14,7 +14,7 @@ import type { Locale } from '../../../src/i18n/index.js';
 const REFERENCE: Locale = 'pol';
 const DECIMAL_COMMA = /(\d),(\d)/g;
 const NUMBER = /\d+(?:\.\d+)?/g;
-const LINK_OR_TOKEN = /\[\[[^\]]*\]\]|\{\{\w+\}\}/g;
+const LINK_OR_TOKEN = /\[\[[^\]]*\]\]|\{\{[\w.]+\}\}/g;
 
 /** The numbers a string states of its own, whatever separator the language writes decimals with. */
 const digitsOf = (text: string): readonly string[] =>
