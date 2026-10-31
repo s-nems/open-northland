@@ -526,6 +526,49 @@ describe('build-order placement - affinity and ground rules', () => {
     expect(homeBeside(HQ_X - 10)).toBeGreaterThan(HQ_X);
   });
 
+  it('stands a room placement where the free ground around it holds the buildings it names', () => {
+    // Water west of the HQ, open ground east of it; the mill the farm names wants a large reserved zone.
+    const WATER = 1;
+    const SHORE_X = HQ_X - 6;
+    const MILL_ROOM = 22;
+    const typeIds = new Array<number>(64 * 32);
+    for (let y = 0; y < 32; y++) for (let x = 0; x < 64; x++) typeIds[y * 64 + x] = x < SHORE_X ? WATER : 0;
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      buildings: base.buildings.map((b) =>
+        b.id === 'work_mill_00'
+          ? {
+              ...b,
+              footprint: {
+                reserved: Array.from({ length: MILL_ROOM * MILL_ROOM }, (_, i) => ({
+                  dx: i % MILL_ROOM,
+                  dy: Math.floor(i / MILL_ROOM),
+                })),
+              },
+            }
+          : b,
+      ),
+    });
+    const farmX = (entry: BuildOrderEntry): number => {
+      const sim = new Simulation({
+        seed: 1,
+        content,
+        map: { resolution: 'half-cell', width: 64, height: 32, typeIds },
+      });
+      placeHq(sim);
+      sim.step();
+      const farm = [
+        ...buildOrderModule(oneLine([entry])).run(sim.world, { ...ctxOf(sim), content }, SEAT),
+      ][0];
+      if (farm?.kind !== 'placeBuilding') throw new Error('expected the farm placement');
+      return farm.x;
+    };
+    // The ring walk reaches the shore side first, so a farm with no room named stands west of the HQ.
+    expect(farmX(ESSENTIAL_FARM)).toBeLessThan(HQ_X);
+    expect(farmX({ ...ESSENTIAL_FARM, room: ['work_mill_00'] })).toBeGreaterThan(HQ_X);
+  });
+
   it('pulls a mapCentre-affinity placement toward the middle of the map', () => {
     const HQ_FAR = { x: 20, y: 20 };
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });

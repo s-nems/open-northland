@@ -6,7 +6,12 @@ import { type HalfCellNode, hexDistanceBetween, nodeManhattan } from '../../../n
 import { withinNodeRadius } from '../../../nav/node-circle.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../nav/terrain/index.js';
 import { type SpotAcceptor, spotAcceptor } from '../../ai-shared/building-spot.js';
-import { countedTiers, goodTypeByContentId, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
+import {
+  buildingTypeByContentId,
+  countedTiers,
+  goodTypeByContentId,
+  tiersAtOrAbove,
+} from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import {
   anchorCentroid,
@@ -17,6 +22,7 @@ import {
 } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { buildingFootprintOf } from '../../footprint/geometry.js';
+import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { shipYardProbe } from '../../footprint/placement/vehicle-site.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBaseOf } from '../base.js';
@@ -321,6 +327,84 @@ function homeFarSide(
   };
 }
 
+/** How far around a `room` placement the buildings it names land, in Manhattan nodes (authored): the
+ *  mill, bakery and well searches grow outward from the farm, and this diamond of 545 nodes holds the
+ *  reserved zones of the farm and its chain (443 nodes on the default content) with the gaps between. */
+export const CHAIN_ROOM_RADIUS_NODES = 16;
+
+/** How many nodes of free ground a `room` spot lacks per ring of distance it costs (authored): about a
+ *  well's reserved zone, so a spot a few rings farther out with room for one more workshop wins. */
+export const ROOM_SHORTFALL_NODES_PER_RING = 16;
+
+/** The most rings a `room` spot's shortfall costs (authored): a crowded seat still keeps its farm within
+ *  about one chain's radius of the nearest roomy spot rather than across the map. */
+export const ROOM_SHORTFALL_MAX_RINGS = 12;
+
+/** The reserved nodes of the type's footprint, the anchor alone for a type with none. */
+function reservedNodes(ctx: SystemContext, typeId: number, tribe: number): number {
+  return Math.max(1, buildingFootprintOf(ctx.content, typeId, tribe)?.reserved.length ?? 0);
+}
+
+/**
+ * The cost in rings of a `room` entry's spot: the free ground within {@link CHAIN_ROOM_RADIUS_NODES}
+ * (buildable, no obstacle or building zone on it) short of the reserved zones of the building and every
+ * one its `room` names, per {@link ROOM_SHORTFALL_NODES_PER_RING}, at most
+ * {@link ROOM_SHORTFALL_MAX_RINGS}. Null for an entry with no `room`. Free nodes are summed by row
+ * prefixes built on first use, so a spot costs one span per row of the diamond. Read only on accepted
+ * spots and within one search, since the placement grid is live.
+ */
+function roomPenalty(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  type: BuildingType,
+  tribe: number,
+  entry: Extract<BuildOrderEntry, { kind: 'place' }>,
+): ((x: number, y: number) => number) | null {
+  if (entry.room === undefined) return null;
+  let need = reservedNodes(ctx, type.typeId, tribe);
+  for (const id of entry.room) {
+    const named = buildingTypeByContentId(ctx.content, id);
+    if (named !== undefined) need += reservedNodes(ctx, named.typeId, tribe);
+  }
+  const grid = placementBlockerGrid(world, ctx.content, terrain);
+  const { width, height } = terrain;
+  const rows = new Map<number, Int32Array>();
+  const freeRow = (y: number): Int32Array => {
+    let prefix = rows.get(y);
+    if (prefix !== undefined) return prefix;
+    prefix = new Int32Array(width + 1);
+    for (let x = 0; x < width; x++) {
+      const slot = y * width + x;
+      const free =
+        terrain.isBuildable(terrain.nodeAt(x, y)) &&
+        (grid.obstacle[slot] ?? 0) === 0 &&
+        (grid.buildingZone[slot] ?? 0) === 0;
+      prefix[x + 1] = (prefix[x] ?? 0) + (free ? 1 : 0);
+    }
+    rows.set(y, prefix);
+    return prefix;
+  };
+  const radius = CHAIN_ROOM_RADIUS_NODES;
+  return (x, y) => {
+    let free = 0;
+    for (let dy = -radius; dy <= radius; dy++) {
+      const cy = y + dy;
+      if (cy < 0 || cy >= height) continue;
+      const span = radius - Math.abs(dy);
+      const lo = Math.max(0, x - span);
+      const hi = Math.min(width - 1, x + span);
+      if (lo > hi) continue;
+      const prefix = freeRow(cy);
+      free += (prefix[hi + 1] ?? 0) - (prefix[lo] ?? 0);
+    }
+    const short = need - free;
+    return short <= 0
+      ? 0
+      : Math.min(ROOM_SHORTFALL_MAX_RINGS, Math.ceil(short / ROOM_SHORTFALL_NODES_PER_RING));
+  };
+}
+
 /** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
  *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. The first
  *  `resource` deposit is the one nearest the anchor and every later one the one nearest that first deposit
@@ -490,7 +574,8 @@ function footprintOnGrass(
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
  * up that serves nothing, and a `shore` entry's close enough to its ship water for the ship yard.
  * A home with no affinity searches from the far side of the base from the seat's field farms and takes a
- * spot near one only when nothing else is left ({@link homeFarSide}).
+ * spot near one only when nothing else is left ({@link homeFarSide}). A `room` entry's spot pays for the
+ * free ground it lacks around it ({@link roomPenalty}).
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
@@ -584,6 +669,7 @@ function boundedSpot(
   if (farSide !== null) centre = settlement.clamp(farSide.centre);
   const nearFarm = farSide?.nearFarm;
   const avoid = nearFarm === undefined ? null : (x: number, y: number) => (nearFarm(x, y) ? fan : 0);
+  const room = roomPenalty(world, ctx, terrain, type, tribe, entry);
   const home = baseComponent(world, ctx, terrain, player);
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   if (tuning.homeLandOnly && home === NO_COMPONENT) return null;
@@ -614,6 +700,7 @@ function boundedSpot(
       rule,
       underFire,
       spareGrass,
+      room,
     );
   // A `plantable` entry stands on the grass where it fits, else beside it.
   const onOrBeside = (search: (rule: GroundRule) => HalfCellNode | null) =>
@@ -657,21 +744,29 @@ function spotAround(
   ground: GroundRule,
   underFire: EnemyFire,
   spareGrass: boolean,
+  room: ((x: number, y: number) => number) | null,
 ): HalfCellNode | null {
   const accept = acceptor.around(underFire, centre, fan, spareGrass);
   const reach = settlement.around(centre, fan);
   const hqPull = (x: number, y: number): number =>
     Math.floor((Math.abs(x - anchor.hx) + Math.abs(y - anchor.hy)) / hqPullDivisorNodes) +
     (avoid === null ? 0 : avoid(x, y));
-  return bestRingNode(centre.hx, centre.hy, fan, hqPull, (x, y) => {
-    // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
-    // entry re-walks the whole fan on every retry.
-    if (!reach.contains(x, y)) return false;
-    if (!terrain.inBounds(x, y)) return false; // the bound and the ground test resolve nodes
-    if (within !== null && !within(x, y)) return false;
-    if (land !== null && !land(x, y)) return false;
-    if (ground === 'on' && !footprintOnGrass(ctx, terrain, type, tribe, x, y)) return false;
-    // The beside scan walks a diamond, so it runs last, on spots that are legal otherwise.
-    return accept(x, y) && (ground !== 'beside' || acceptor.grassBeside(x, y));
-  });
+  return bestRingNode(
+    centre.hx,
+    centre.hy,
+    fan,
+    hqPull,
+    (x, y) => {
+      // The reach first: an affinity-pulled centre puts much of every ring outside it, and a stalled
+      // entry re-walks the whole fan on every retry.
+      if (!reach.contains(x, y)) return false;
+      if (!terrain.inBounds(x, y)) return false; // the bound and the ground test resolve nodes
+      if (within !== null && !within(x, y)) return false;
+      if (land !== null && !land(x, y)) return false;
+      if (ground === 'on' && !footprintOnGrass(ctx, terrain, type, tribe, x, y)) return false;
+      // The beside scan walks a diamond, so it runs last, on spots that are legal otherwise.
+      return accept(x, y) && (ground !== 'beside' || acceptor.grassBeside(x, y));
+    },
+    room ?? undefined,
+  );
 }

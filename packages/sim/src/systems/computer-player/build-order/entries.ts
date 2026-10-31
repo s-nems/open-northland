@@ -54,7 +54,9 @@ export type BuildOrderEntry =
    *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the top-tier
    *  joineries holding that role (`../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
    *  acting on nothing, until its {@link StepHold} is met. `aheadOfCrews` places the copy without waiting
-   *  for the crews of those standing (`./progress.ts`). */
+   *  for the crews of those standing (`./progress.ts`). `room` names the buildings that later stand
+   *  beside this one: the spot is scored by the free ground around it against their footprints
+   *  (`placement.ts`). */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -69,6 +71,7 @@ export type BuildOrderEntry =
       readonly role?: JoineryRole;
       readonly holdUntil?: StepHold;
       readonly aheadOfCrews?: true;
+      readonly room?: readonly string[];
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. */
@@ -346,13 +349,16 @@ export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
 export const SECOND_ANIMAL_FARM_WELL: BuildOrderEntry = wellBeside('work_animal_farm', 12);
 
 /** The grain farm. Every bakery, brewery and animal farm downstream waits on its grain, so each of their
- *  lines opens on it, met by whichever line raised it, and holds until it stands. */
+ *  lines opens on it, met by whichever line raised it, and holds until it stands. Owner ruling: it takes a
+ *  large free area, since the animal farm, the mill, two bakeries and a well follow beside it and a short
+ *  chain helps a lot. */
 const GRAIN_FARM: BuildOrderEntry = {
   kind: 'place',
   building: 'work_farm_00',
   count: 1,
   ground: 'plantable',
   essential: true,
+  room: ['work_animal_farm', 'work_mill_00', 'work_bakery_00', 'work_bakery_00', 'work_well_00'],
 };
 
 /** Owner ruling: the iron gatherer who climbs the smithy tree starts in game minute 15-30, once the
