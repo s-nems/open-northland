@@ -41,6 +41,7 @@ import { Schooling } from '../technology/schooling.js';
 import {
   allocateCollectors,
   allocateGenericCollectors,
+  COLLECTED_GOOD_IDS,
   type CollectorGround,
   clearingCollectors,
   collectorAnchors,
@@ -49,6 +50,7 @@ import {
   rowPosts,
   SHORTAGE_BUILDER_FLOOR,
   topUpCollectors,
+  type WantedGood,
   wantedCollectorGoods,
 } from './collectors/index.js';
 import { tuneCraftCounters } from './craft.js';
@@ -68,10 +70,10 @@ import {
   releaseSurplusCarriers,
   releaseSurplusOperators,
   reserveBuilders,
-  STALLED_BUILDER_CAP,
   seatBuilderCount,
   siteBuilderFloor,
   staffBuildings,
+  stalledBuilderLimit,
 } from './staffing.js';
 import type { SeatStaffing } from './staffing-plan.js';
 import { SeatSupply } from './supply.js';
@@ -104,6 +106,11 @@ export { LATE_GAME_CIVILIANS, SUPPLY_CARRIER_GOODS_BY_BUILDING_ID } from './staf
 export { STAFFING_BY_BUILDING_ID } from './staffing-rows.js';
 export { SeatSupply, type SupplyLine, type SupplyLines, supplyLines } from './supply.js';
 
+/** Whether `w`'s good is one the construction sites draw on ({@link COLLECTED_GOOD_IDS}). */
+function buildsSites(w: WantedGood): boolean {
+  return COLLECTED_GOOD_IDS.includes(w.good.id);
+}
+
 /**
  * The CollectResources module - the seat's one workforce allocator: no other module ever claims a
  * settler. The returned array's order is the allocation priority: essentials first, then the clearing posts,
@@ -130,9 +137,10 @@ function runWorkforce(
   const clearing = clearingCollectors(world, player, civilians);
   // The open sites' builders come before every gatherer post past a good's row: while the seat has fewer,
   // the extra posts and the far-ground posts go back to the sites, and no shortage post takes a builder.
-  // While a placement is stalled the reserve shrinks to its floor, so the clearing posts get the men the
-  // missing sites would have had.
-  const builderLimit = clearing > 0 ? STALLED_BUILDER_CAP : builderCap(profile, civilians, ctx.tick);
+  // While a placement is stalled the reserve shrinks to the open sites' pairs, so the clearing posts get
+  // the men the missing sites would have had.
+  const reserveLimit = builderCap(profile, civilians, ctx.tick);
+  const builderLimit = clearing > 0 ? stalledBuilderLimit(world, ctx, owned, reserveLimit) : reserveLimit;
   const builderFloor = siteBuilderFloor(world, ctx, owned, builderLimit);
   const shortOfBuilders = seatBuilderCount(world, player, builderJob) < builderFloor;
   const allWanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
@@ -142,12 +150,18 @@ function runWorkforce(
     baseNode === null || shortOfBuilders
       ? 0
       : farGroundExtras(world, ctx, owned, baseNode, seatTuning(world, player).clearGroundPct);
-  // A seat short of its core builders keeps no optional post: its standing generic posts and its free
-  // scout go back to the pool the core claims from.
+  // A seat short of its core builders keeps no optional post: its standing generic posts, its free scout
+  // and the gatherers of every good the sites do not build with go back to the pool the core claims from.
   const coreFloor = coreBuilderFloor(builderFloor);
   const shortHanded = seatBuilderCount(world, player, builderJob) < coreFloor;
   const genericTarget = (shortHanded ? 0 : GENERIC_COLLECTOR_TARGET) + clearing + farGround;
-  const classified = classifyWorkforce(world, ctx, player, wanted, genericTarget);
+  const classified = classifyWorkforce(
+    world,
+    ctx,
+    player,
+    shortHanded ? wanted.filter(buildsSites) : wanted,
+    genericTarget,
+  );
   const { collectorsByGood, genericCollectors, fishers, roadsters } = classified;
   const freedScouts = shortHanded ? classified.scouts.filter((e) => scoutFree(world, e)) : [];
   const scouts =
@@ -190,8 +204,8 @@ function runWorkforce(
           builderJob,
           genericTarget,
         );
-  const posted = [
-    ...(ground === null
+  const firstPosts = (posts: (w: WantedGood) => boolean): PlayerCommand[] =>
+    ground === null
       ? []
       : allocateCollectors(
           world,
@@ -206,16 +220,29 @@ function runWorkforce(
           builderJob,
           apprentices,
           Math.max(SHORTAGE_BUILDER_FLOOR, builderFloor),
-        )),
+          posts,
+        );
+  const sitePosts = firstPosts(buildsSites);
+  const firstFood = [
     ...allocateHunters(world, ctx, player, hunting, force, builderJob, tally, 'first'),
     ...allocateFishers(world, ctx, fishing, force, builderJob, taken, 'first'),
+  ];
+  const released = [
     ...releaseSurplusCarriers(world, ctx, seat, tally, builderJob),
     ...releaseSurplusOperators(world, ctx, seat, tally, builderJob),
+  ];
+  // The core builders come after the posts of the goods the sites draw on and the food, and before the
+  // other goods' posts, the standing buildings' first hands and the scout: on a seat of few men the ore
+  // posts and the workshops otherwise took every man and left five sites without a builder for half an
+  // hour (authored, battle_for_the_four_hills_multiplayer seeds 7 and 11).
+  const core = reserveBuilders(world, force, builderJob, coreFloor, ctx);
+  const posted = [
+    ...sitePosts,
+    ...firstFood,
+    ...released,
+    ...firstPosts((w) => !buildsSites(w)),
     ...staffBuildings(world, ctx, seat, force, tally, 'min', gated),
   ];
-  // The core builders come after the standing buildings' first hands and before the scout, so a seat of
-  // few men raises its sites before it explores.
-  const core = reserveBuilders(world, force, builderJob, coreFloor, ctx);
   const scouting = allocateScout(world, ctx, player, order, scouts, force, builderJob);
   // The road crew comes out of the builder reserve, ahead of it, so a seat with road sites always has
   // its roadster.

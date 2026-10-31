@@ -163,8 +163,9 @@ function seatBuilders(world: World, player: number, force: SpareForce, builderJo
  * collect-anything gatherer before any spare man, dropping him from `genericCollectors` so the generic
  * upkeep leaves his flag to the post: the seat's least pointed man goes before a builder. Every other
  * post, here as in the top-ups and the generic posts, goes to the spare man most experienced on the
- * track it trains. An apprentice (`technology/apprentices.ts`) is never moved off his good. No-op on a
- * mapless sim, which has no cells to place flags over.
+ * track it trains. An apprentice (`technology/apprentices.ts`) is never moved off his good. Only the goods
+ * `posts` picks are posted; a veteran may still be moved off any wanted good. No-op on a mapless sim, which
+ * has no cells to place flags over.
  */
 export function allocateCollectors(
   world: World,
@@ -179,12 +180,14 @@ export function allocateCollectors(
   builderJob: number | null,
   apprentices: ReadonlySet<Entity>,
   builderFloor = SHORTAGE_BUILDER_FLOOR,
+  posts: (w: WantedGood) => boolean = () => true,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const { workable } = ground;
   const isBuilder = (e: Entity): boolean => world.get(e, Settler).jobType === builderJob;
   let builders: number | undefined; // counted once a post beyond a good's first needs a man
   for (const w of wanted) {
+    if (!posts(w)) continue;
     const holders = collectorsByGood.get(w.good.typeId) ?? [];
     const seated = seatGood(world, ground, w, holders);
     upkeepHolders(world, ctx, ground, w, holders, seated.anchors, taken, builderJob, commands);

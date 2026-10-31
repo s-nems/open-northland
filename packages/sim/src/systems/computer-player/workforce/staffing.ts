@@ -21,8 +21,8 @@ import { incrementStaffing, type StaffingTally } from './tally.js';
 /** Whichever tier a staffing pass fills toward - see {@link staffBuildings}. */
 export type StaffingTier = 'min' | 'target' | 'surplus';
 
-/** The reserve while a build-order placement finds no spot (authored): the few sites the stall leaves
- *  need few hands, and every other man fells and digs the room the placement waits for. */
+/** The reserve's floor while a build-order placement finds no spot (authored): every man the open sites
+ *  do not call for ({@link stalledBuilderLimit}) fells and digs the room the placement waits for. */
 export const STALLED_BUILDER_CAP = 4;
 
 /** The builders each open construction site of the seat keeps out of the gatherer posts (authored): one
@@ -41,6 +41,21 @@ export function siteBuilderFloor(
   let sites = 0;
   for (const e of owned) if (isServedConstructionSite(world, ctx.content, e)) sites++;
   return Math.min(cap, sites * BUILDERS_PER_OPEN_SITE);
+}
+
+/** The builder reserve while a placement is stalled, out of the seat's `cap`: {@link STALLED_BUILDER_CAP},
+ *  or the open sites' pairs ({@link siteBuilderFloor}) when they call for more, so the sites already standing
+ *  still rise while the clearing posts take the rest. Authored: on ciezka_wspolpraca and smocza_kraina
+ *  (cramped seats, seed 7) seats whose steps found no spot kept 2-4 builders for five to eight open sites
+ *  from minute 15 to 70, home sites and the bakery open 20-50 minutes, while 9-18 gatherers piled 150-1060
+ *  wood and 100-285 stone. */
+export function stalledBuilderLimit(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  cap: number,
+): number {
+  return Math.min(cap, Math.max(STALLED_BUILDER_CAP, siteBuilderFloor(world, ctx, owned, cap)));
 }
 
 /** The builders a seat with open sites keeps ahead of its scout and its generic posts (authored, the

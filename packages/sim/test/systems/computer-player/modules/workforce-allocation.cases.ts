@@ -952,6 +952,36 @@ describe('workforce module (collectResources)', () => {
     expect(flags).toEqual([1, -1, ...Array(flags.length - 2).fill(1)]);
   });
 
+  it("keeps the open sites' builders while a placement is stalled, past the stalled floor", () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    for (const spot of [FIRST_WORKSHOP_SPOT, SECOND_WORKSHOP_SPOT, THIRD_WORKSHOP_SPOT])
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        ...spot,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    spawnMen(sim, BUILDER_CAP + 7);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    seatEconomy(sim, 'rich');
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    sim.world.add(carrier, StalledPlacements, {
+      retryTicks: new Map([['opening:0', Number.MAX_SAFE_INTEGER]]),
+      holding: new Map([['opening', 'opening:0']]),
+    });
+
+    const sitesFloor = 3 * BUILDERS_PER_OPEN_SITE;
+    expect(sitesFloor).toBeGreaterThan(STALLED_BUILDER_CAP);
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    expect(commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER)).toHaveLength(sitesFloor);
+  });
+
   it('ignores a stall record the switched-off build order can no longer clear', () => {
     const sim = aiSim();
     placeHq(sim);
@@ -1505,6 +1535,43 @@ describe('workforce module (collectResources)', () => {
     const after = [...gated.run(sim.world, ctxOf(sim), SEAT)];
     expect(after.filter((c) => c.kind === 'setGatherGood')).toEqual([
       { kind: 'setGatherGood', entity: veteran, goodType: IRON },
+    ]);
+  });
+
+  it("keeps a short-handed seat's core builders ahead of a good the sites do not draw on", () => {
+    // One open site, an iron deposit and `men` fresh men, the first of them a qualified digger.
+    const decide = (men: number) => {
+      const sim = aiSim();
+      placeHq(sim);
+      placeResources(sim, [RESOURCE_SPOTS.iron]);
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        ...FIRST_WORKSHOP_SPOT,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+      spawnMen(sim, men);
+      sim.step();
+      const [veteran] = [...sim.world.query(Settler)].filter(
+        (e) => sim.world.get(e, Settler).jobType === CIVILIST,
+      );
+      if (veteran === undefined) throw new Error('setup: no spawned man');
+      sim.world.mut(veteran, SettlerProgress).experience.set(STONE_XP_TRACK, IRON_GATE_XP);
+      const ironLine = workforceModule(oneLine([{ kind: 'collector', good: 'iron' }]));
+      return { veteran, commands: [...ironLine.run(sim.world, ctxOf(sim), SEAT)] };
+    };
+
+    // Alone, the digger raises the site rather than mine the iron.
+    const alone = decide(1);
+    expect(alone.commands.filter((c) => c.kind === 'setGatherGood')).toEqual([]);
+    expect(alone.commands).toContainEqual({ kind: 'setJob', entity: alone.veteran, jobType: BUILDER });
+
+    // With two more men for the core builders, the digger goes to the iron.
+    const crewed = decide(1 + CORE_BUILDERS);
+    expect(crewed.commands.filter((c) => c.kind === 'setGatherGood')).toEqual([
+      { kind: 'setGatherGood', entity: crewed.veteran, goodType: IRON },
     ]);
   });
 
