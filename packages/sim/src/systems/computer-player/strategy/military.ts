@@ -33,6 +33,7 @@ import {
 import { friendHoldsArea, holdAreaOf, postOf, stayingGuardians } from '../military/operations/hold-area.js';
 import { launchRatioReached, WAVE_GATHER_TICKS } from '../military/plan.js';
 import type { ArmyPoints } from '../military/points.js';
+import { seaRouteOf } from '../sea-route.js';
 
 const SECONDS_PER_MINUTE = 60;
 
@@ -247,8 +248,16 @@ export function firstMilitary(world: World, ctx: SystemContext, seat: number): M
   return { ...choice, plan, decidedAt: ctx.tick, challenger: null };
 }
 
+/** The owner of the headquarters the seat's sea route sails for ({@link seaRouteOf}) while it is an enemy:
+ *  a seat whose rivals all lie over the sea weighs its landing against him. */
+function seaTargetOwner(world: World, ctx: SystemContext, seat: number): number | null {
+  const owner = seaRouteOf(world, ctx, seat)?.headquarters.owner;
+  return owner !== undefined && diplomacyStance(world, seat, owner) === 'enemy' ? owner : null;
+}
+
 /**
- * The seat's posture inputs: own points, the believed points of its campaign target's owner and of its
+ * The seat's posture inputs: own points, the believed points of its campaign target's owner (the one over
+ * the sea when the land holds none) and of its
  * strongest enemy (a guardian that never leaves the area the seat holds for is no threat to its home),
  * the nearest forecast scripted attack on it, a raid on its settlement now, and whether it has seen an
  * enemy building. Costs the campaign target pick and the enemies' fighters.
@@ -264,7 +273,7 @@ export function postureInputsOf(world: World, ctx: SystemContext, seat: number):
       barracks === null
         ? null
         : (campaignObjective(world, ctx, terrain, seat, interactionCell(world, ctx, terrain, barracks))
-            ?.owner ?? null);
+            ?.owner ?? seaTargetOwner(world, ctx, seat));
     const owned = ownedBuildings(world, seat);
     underAttack =
       raidOnTheSettlement(world, ctx, terrain, owned, seatRaiders(world, ctx, terrain, seat)) !== null;
