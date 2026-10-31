@@ -465,6 +465,13 @@ function runBuildOrder(
   // A line that stands met moves its frontier now, whichever line acts first, so its later losses wait.
   for (const line of lines)
     if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
+  // The extra site also goes to a step on its military deadline, which a defence line ranks under its
+  // defence turn while the seat's defence comes first.
+  const takesExtraSite = (line: BuildLine, turn: number, extraSite: boolean): boolean => {
+    if (extraSite) return true;
+    const next = line.steps[firstUnmet(line)];
+    return turn === TURN.defence && next !== undefined && deadlineStep(next);
+  };
   const gated = lockHolds && tribe !== undefined ? technologyTable(ctx.content, tribe) : null;
   const defending = seatDefenceFirst(world, ctx, player);
   // A step waits for a site once neither its hold nor a discovery still to come keeps it back.
@@ -481,7 +488,7 @@ function runBuildOrder(
   if (foodFailing && !siegeOf().attacked) {
     for (const { line, turn, extraSite } of byTurn) {
       if (turn > TURN.food) break;
-      if (paced >= siteCap && !(extraSite && extraSiteOpen)) continue;
+      if (paced >= siteCap && !(takesExtraSite(line, turn, extraSite) && extraSiteOpen)) continue;
       tried.add(line.id);
       const command = lineCommand(line);
       if (command !== null) return started(command);
@@ -539,8 +546,8 @@ function runBuildOrder(
     return [];
   }
 
-  for (const { line, extraSite } of byTurn) {
-    if ((earnedOnly && !extraSite) || tried.has(line.id)) continue;
+  for (const { line, turn, extraSite } of byTurn) {
+    if ((earnedOnly && !takesExtraSite(line, turn, extraSite)) || tried.has(line.id)) continue;
     const command = lineCommand(line);
     if (command !== null) return started(command);
   }

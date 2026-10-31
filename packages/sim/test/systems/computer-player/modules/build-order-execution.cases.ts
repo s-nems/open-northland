@@ -40,6 +40,7 @@ import {
   BAKER,
   BAKERY_TOP_TYPE,
   BAKERY_TYPE,
+  BARRACKS_TYPE,
   BOWMAN,
   BREWERY_TYPE,
   COLLECTOR,
@@ -1294,6 +1295,49 @@ describe('build order - independent lines', () => {
     // Once the miller is discovered the mill is ready and goes first.
     discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
     expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('opens the site over the pace for the barracks on its deadline while the defence comes first', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    makeAiSeat(sim, SEAT, { houseBuild: false });
+    for (const x of [HQ_X - 10, HQ_X + 10]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    }
+    sim.step();
+    const barracks: BuildOrderEntry = {
+      kind: 'place',
+      building: 'barracks',
+      count: 1,
+      holdUntil: { kind: 'deadline', leadTicks: 0 },
+    };
+    const order: BuildOrder = {
+      lines: [
+        { id: 'bread', steps: [MILL_STEP] },
+        { id: 'military', steps: [barracks] },
+      ],
+      priority: ['bread', 'military'],
+    };
+    // The opening's two sites are taken and the barracks still holds for its deadline.
+    expect(decide(sim, order)).toBeUndefined();
+    const carrier = aiControlEntity(sim.world, SEAT);
+    const strategy = carrier === null ? undefined : sim.world.tryGet(carrier, ComputerStrategy);
+    if (carrier === null || strategy === undefined) throw new Error('setup: no strategy');
+    sim.world.mut(carrier, ComputerStrategy).military = {
+      ...strategy.military,
+      posture: 'defend',
+      evidence: ['underAttack'],
+    };
+    // A raid lifts the hold, and the barracks takes the site over the pace; the mill does not.
+    expect(decide(sim, order)).toMatchObject({ buildingType: BARRACKS_TYPE });
   });
 
   it('goes on with the other lines while one is held', () => {
