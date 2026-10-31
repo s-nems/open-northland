@@ -35,6 +35,23 @@ const TOWER_UPGRADES: readonly BuildOrderEntry[] = Array.from({ length: UPGRADED
  *  owner still found too early. */
 const CATAPULT_JOINERY_FROM_SETTLERS = LATE_LATE_GAME_SETTLERS;
 
+/** The catapult joinery stands by the barracks, where the army musters. A land map gets one top-tier
+ *  joinery, a sea map two. */
+export const CATAPULT_JOINERY: BuildOrderEntry = {
+  kind: 'place',
+  building: 'work_joinery_03',
+  count: 1,
+  near: [{ kind: 'building', id: 'barracks' }],
+  role: 'catapult',
+  holdUntil: {
+    kind: 'all',
+    holds: [
+      { kind: 'settlers', count: CATAPULT_JOINERY_FROM_SETTLERS },
+      { kind: 'tick', tick: LATE_GAME_FROM_TICKS },
+    ],
+  },
+};
+
 /** The army line: the tower ring, the barracks, the towers' upgrades and the catapult joinery
  *  (`./entries.ts`). */
 export const MILITARY_LINE: BuildLine = {
@@ -94,21 +111,7 @@ export const MILITARY_LINE: BuildLine = {
     // Owner ruling: the standing towers go up to the upper tier slowly, once the seat makes the bricks and
     // pillars its bill asks for; an upgrade step holds its line until its bill has a source.
     ...TOWER_UPGRADES,
-    // The catapult joinery stands by the barracks, where the army musters. A land map gets one top-tier
-    // joinery, a sea map two. Last in the line, so its hold keeps no tower waiting.
-    {
-      kind: 'place',
-      building: 'work_joinery_03',
-      count: 1,
-      near: [{ kind: 'building', id: 'barracks' }],
-      role: 'catapult',
-      holdUntil: {
-        kind: 'all',
-        holds: [
-          { kind: 'settlers', count: CATAPULT_JOINERY_FROM_SETTLERS },
-          { kind: 'tick', tick: LATE_GAME_FROM_TICKS },
-        ],
-      },
-    },
+    // Last in the line, so its hold keeps no tower waiting.
+    CATAPULT_JOINERY,
   ],
 };

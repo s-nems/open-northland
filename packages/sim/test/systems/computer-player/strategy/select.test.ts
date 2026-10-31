@@ -55,7 +55,7 @@ function seat(over: Partial<SeatBrief> = {}, access: Record<string, GoodAccess> 
     component: OWN_LAND,
     home: sums(),
     near: sums({ zones: 30, land: 28_000, free: 16_000, deposits: nearDeposits() }),
-    continent: sums(),
+    continent: sums({ zones: 180, land: 170_000, free: 85_000 }),
     access: new Map(
       Object.entries({
         iron: HOME,
@@ -93,6 +93,22 @@ describe('economic strategy selector', () => {
     const choice = selectEconomy(seat({ home: sums(home) }));
     expect(choice.archetype).toBe('cramped');
     expect(choice.evidence).toContain(rule);
+  });
+
+  it('judges the room of a seat on its whole land, island or not', () => {
+    const land = (free: number, island: boolean) =>
+      selectEconomy(
+        seat({
+          continent: sums({ free }),
+          ...(island ? { component: OTHER_LAND, others: [neighbour(false)] } : {}),
+        }),
+      );
+    const islet = land(4_000, true);
+    expect(islet.archetype).toBe('islands');
+    expect(islet.sides).toContain('noRoom');
+    expect(islet.evidence).toContain('landRoomSmall');
+    expect(land(4_000, false).sides).toContain('noRoom');
+    expect(land(30_000, true).sides).not.toContain('noRoom');
   });
 
   it('reads free ground with iron and gold to spare as rich', () => {

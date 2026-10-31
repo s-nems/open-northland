@@ -8,6 +8,7 @@ import {
   type MilitaryStrategyState,
 } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
+import { CATAPULT_JOINERY } from '../../../../src/systems/computer-player/build-order/military-line.js';
 import {
   coverageOf,
   TOWER_DEFENCE_RADIUS_NODES,
@@ -265,8 +266,51 @@ describe('the seat strategy shapes the build order', () => {
     expect(counts('cramped')).toEqual([2, 2, 4, 4, 2, 8, 1]);
   });
 
+  it('keeps one of each workshop, fewer homes and no catapults on a seat with no room', () => {
+    const order = shapeBuildOrder(DEFAULT_BUILD_ORDER, {
+      archetype: 'islands',
+      sides: ['ironArms', 'fishing', 'noRoom'],
+      phase: 'late',
+      defenceFirst: false,
+    });
+    const steps = orderSteps(order);
+    const top = (building: string) =>
+      Math.max(
+        0,
+        ...steps.flatMap((e) =>
+          (e.kind === 'place' || e.kind === 'upgrade' || e.kind === 'housing') && e.building === building
+            ? [e.count]
+            : [],
+        ),
+      );
+    for (const building of [
+      'work_smithy_01',
+      'work_bakery_00',
+      'work_bakery_01',
+      'work_animal_farm',
+      'work_sewery_00',
+      'work_sewery_01',
+      'work_brewery',
+      'work_armory_01',
+    ])
+      expect(top(building), building).toBe(1);
+    expect(top('home_level_00')).toBeLessThan(ARCHETYPE_TUNING.cramped.copyCaps.home_level_00 ?? 0);
+    expect(steps).not.toContain(CATAPULT_JOINERY);
+    // No gold on its land: no herb hut, druid, temple or mint.
+    for (const building of ['work_herb_hut', 'work_druid_00', 'work_temple', 'work_coin_mint'])
+      expect(top(building), building).toBe(0);
+    // The island's ship joinery still leads the army line.
+    const military = order.lines.find((line) => line.id === 'military');
+    const ship = military?.steps[0];
+    expect(ship?.kind === 'place' && ship.role).toBe('ship');
+  });
+
   it('puts up the second bakery at once only where the seat has room', () => {
-    const shape = { sides: ECONOMIC_SIDES, phase: 'opening', defenceFirst: false } as const;
+    const shape = {
+      sides: ECONOMIC_SIDES.filter((side) => side !== 'noRoom'),
+      phase: 'opening',
+      defenceFirst: false,
+    } as const;
     const lowerBakeries = (order: BuildOrder) =>
       orderSteps(order).flatMap((e) =>
         e.kind === 'place' && e.building === 'work_bakery_00' ? [e.count] : [],

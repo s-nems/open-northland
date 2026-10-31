@@ -22,6 +22,12 @@ export const CRAMPED_HOME_CLEARABLE_PERCENT = 60;
  *  0, 2 and 3 hold 2900-3500, magiczny_las 6 1900; the roomiest seats under it hold 4300-4500. */
 export const CRAMPED_HOME_FREE_NODES = 4000;
 
+/** No room below this many free nodes on the seat's whole land: an island start, whose home band is about
+ *  as cramped as mroczny_las's but which can never grow past it. Arabskie_wyspy_wolna_gra_mieszana's
+ *  islands hold 3.8-4.5k; the smallest shared lands, smocza_kraina's and ciezka_wspolpraca's, 30k and 37k,
+ *  every other map 69k or more. */
+export const NO_ROOM_LAND_FREE_NODES = 10_000;
+
 /** Rich from this many free nodes in the near band, beside both metals in plenty
  *  ({@link RICH_METAL_UNITS}). Every diamentowa_dolina and magiczny_las seat holds 13-20k, specjalna_forteca
  *  1 10k. */
@@ -66,6 +72,10 @@ export function selectEconomy(seat: SeatBrief): EconomicChoice {
     home.clearable * 100 >= home.free * CRAMPED_HOME_CLEARABLE_PERCENT,
   );
   const roomSmall = fire('homeRoomSmall', home.free < CRAMPED_HOME_FREE_NODES);
+  const noRoom = fire(
+    'landRoomSmall',
+    seat.component !== NO_COMPONENT && seat.continent.free < NO_ROOM_LAND_FREE_NODES,
+  );
   const iron = reachableDeposit(seat, 'iron');
   const gold = reachableDeposit(seat, 'gold');
   const rich = fire(
@@ -102,6 +112,7 @@ export function selectEconomy(seat: SeatBrief): EconomicChoice {
   const fish = seat.access.get(FISH_ACCESS_KEY);
   if (fire('fishNearby', fish !== undefined && NEARBY.includes(fish.access))) sides.add('fishing');
   if (fire('grassAtHome', home.plantable >= HERBS_HOME_GRASS_NODES)) sides.add('herbs');
+  if (noRoom) sides.add('noRoom');
 
   return {
     archetype,

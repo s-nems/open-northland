@@ -29,6 +29,7 @@ import {
   type SitePace,
   sitePace,
 } from './entries.js';
+import { CATAPULT_JOINERY } from './military-line.js';
 
 /** What an economic archetype changes about the build order and its placements (authored). */
 export interface ArchetypeTuning {
@@ -177,13 +178,36 @@ const TUNIC_ARMS: StepMatch = {
   steps: [EARLY_SECOND_TAILOR, SECOND_UPPER_TAILOR, SECOND_ANIMAL_FARM, SECOND_ANIMAL_FARM_WELL],
 };
 
-/** What each side changes (authored): the steps it drops and the steps only the sides keeping them play.
- *  `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps the grass reserve rules as they
- *  are (`./grass-reserve.ts`). Owner ruling: a seat with little iron forges weapons in two upper smithies
- *  and a seat with little gold strikes coins in one mint. */
+/** The homes of a seat with no room (authored): a cramped seat fits eight homes on 3.3-3.5k free nodes of
+ *  home band, about 420 nodes a home, and the islands' home bands hold 1.5-3.2k, 2.6k on average. */
+const NO_ROOM_HOMES = 6;
+
+/** Owner ruling: a seat with almost no room to grow (arabskie_wyspy_wolna_gra_mieszana's islands) limits
+ *  its expansion hard: one smithy, bakery, animal farm, tailor, brewery and armory, fewer homes, no
+ *  catapults. Its gold line already goes where no gold lies on its land. */
+const NO_ROOM_COPY_CAPS: Readonly<Record<string, number>> = {
+  work_smithy_00: 1,
+  work_smithy_01: 1,
+  work_bakery_00: 1,
+  work_bakery_01: 1,
+  work_animal_farm: 1,
+  work_sewery_00: 1,
+  work_sewery_01: 1,
+  work_brewery: 1,
+  work_hive_00: 1,
+  work_armory_00: 1,
+  work_armory_01: 1,
+  home_level_00: NO_ROOM_HOMES,
+};
+
+/** What each side changes (authored): the steps it drops, the steps only the sides keeping them play, and
+ *  copy caps under the archetype's. `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps
+ *  the grass reserve rules as they are (`./grass-reserve.ts`). Owner ruling: a seat with little iron forges
+ *  weapons in two upper smithies and a seat with little gold strikes coins in one mint. */
 interface SideRule {
   readonly drops?: StepMatch;
   readonly keeps?: StepMatch;
+  readonly copyCaps?: Readonly<Record<string, number>>;
 }
 
 const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
@@ -194,6 +218,10 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
   oneMint: { drops: { buildings: [], collectors: [], steps: LATER_MINTS } },
   fishing: {},
   herbs: {},
+  noRoom: {
+    drops: { buildings: [], collectors: [], steps: [ROOMY_OPENING_HOMES, CATAPULT_JOINERY] },
+    copyCaps: NO_ROOM_COPY_CAPS,
+  },
 };
 
 /** The sides dressing the army in tunics, whose seat moves its clothing line up right behind the brewery
@@ -281,7 +309,8 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   if (known !== undefined) return known;
   const tuning = ARCHETYPE_TUNING[shape.archetype];
   const drops = sideDrops(shape.sides);
-  const lines = order.lines.map((line) => shapeLine(line, tuning, drops));
+  const caps = copyCapsOf(tuning, shape.sides);
+  const lines = order.lines.map((line) => shapeLine(line, tuning, drops, caps));
   let priority = tuning === STANDARD ? order.priority : tuning.priority;
   if (shape.sides.some((side) => TUNIC_SIDES.includes(side)))
     priority = raised(priority, ['clothing'], 'brewery');
@@ -312,10 +341,26 @@ function sideDrops(sides: readonly EconomicSide[]): SideDrop {
       !held.some((rule) => rule.keeps !== undefined && matches(rule.keeps, entry)));
 }
 
-function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop): BuildLine {
+type CopyCaps = Readonly<Record<string, number>>;
+
+/** The archetype's copy caps with each held side's laid over them, the lower cap winning. */
+function copyCapsOf(tuning: ArchetypeTuning, sides: readonly EconomicSide[]): CopyCaps {
+  let caps = tuning.copyCaps;
+  for (const side of sides) {
+    const sideCaps = SIDE_RULES[side].copyCaps;
+    if (sideCaps === undefined) continue;
+    const merged: Record<string, number> = { ...caps };
+    for (const [building, cap] of Object.entries(sideCaps))
+      merged[building] = Math.min(cap, merged[building] ?? cap);
+    caps = merged;
+  }
+  return caps;
+}
+
+function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop, caps: CopyCaps): BuildLine {
   let steps = line.steps
     .filter((entry) => !tuning.drops.includes(entry) && !dropped(entry))
-    .map((entry) => copiesOf(entry, tuning));
+    .map((entry) => copiesOf(entry, caps));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;
     const leading = (entry: BuildOrderEntry) => entry.kind === 'place' && entry.onlyWhen === lead;
@@ -326,12 +371,12 @@ function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop):
     : { id: line.id, steps };
 }
 
-/** A placement, upgrade or housing lane asking for more than one copy, its count cut to the tuning's cap.
+/** A placement, upgrade or housing lane asking for more than one copy, its count cut to the seat's cap.
  *  A cap never drops the step: a count already under it stands met the sooner. */
-function copiesOf(entry: BuildOrderEntry, tuning: ArchetypeTuning): BuildOrderEntry {
+function copiesOf(entry: BuildOrderEntry, caps: CopyCaps): BuildOrderEntry {
   if ((entry.kind !== 'place' && entry.kind !== 'upgrade' && entry.kind !== 'housing') || entry.count <= 1)
     return entry;
-  const count = Math.min(entry.count, tuning.copyCaps[entry.building] ?? entry.count);
+  const count = Math.min(entry.count, caps[entry.building] ?? entry.count);
   return count === entry.count ? entry : { ...entry, count };
 }
 

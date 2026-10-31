@@ -397,6 +397,9 @@ export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans 
   };
 }
 
+/** The role plans of a seat keeping no catapults (owner ruling: a seat with no room to grow builds none). */
+const NO_CATAPULT_ROLE_PLANS: JoineryRolePlans = joineryRolePlans(0, 0);
+
 /** The hard seat's role plans. */
 export const CRAFT_PLANS_BY_JOINERY_ROLE: JoineryRolePlans = joineryRolePlans(
   AI_CATAPULT_CAP,
@@ -521,6 +524,7 @@ export function tuneCraftCounters(
   const index = contentIndex(ctx.content);
   const plans = seatCraftPlans(world, player, profile);
   const roleOf = joineryRoles(world, ctx, player, () => rivalOverSea(world, ctx, player));
+  const rolePlans = seatHasSide(world, player, 'noRoom') ? NO_CATAPULT_ROLE_PLANS : profile.joineryRolePlans;
   const fleets = new Map<string, number>();
   const fleetOf = (good: number, freeOnly: boolean): number => {
     const key = `${good}:${freeOnly}`;
@@ -544,7 +548,7 @@ export function tuneCraftCounters(
     const building = world.tryGet(assignment.workplace, Building);
     const type = building === undefined ? undefined : index.buildings.get(building.buildingType);
     if (type === undefined) continue;
-    const roles = profile.joineryRolePlans[type.id];
+    const roles = rolePlans[type.id];
     const plan = roles === undefined ? plans[type.id] : roles[roleOf(assignment.workplace)];
     if (plan === undefined) {
       // An unplanned workshop's crew works every product, while a fresh hire starts on the first alone.
