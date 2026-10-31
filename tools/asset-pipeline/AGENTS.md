@@ -73,8 +73,9 @@ misplaced or missing authored object, such as a gap in a wall line.
 
 `corrections/strings/tables.json` is the one place for display-string fixes in all four languages,
 whether the table ships as `.ini` or `.cif`. Each entry names `lang`, `table` (its key in
-`gui/strings/<lang>.json`), the string `id`, the exact decoded `from` text (game-object names arrive
-trimmed, with single spaces), our `to` text and a Polish `reason`. The strings stage swaps the text
+`gui/strings/<lang>.json`, or `goodsHelp` / `housesHelp` for the two tables of `gui/help/<lang>.json`),
+the string `id`, the exact decoded `from` text (game-object names and help text arrive trimmed, with
+single spaces, a help text's line breaks as `\n`), our `to` text and a Polish `reason`. The strings stage swaps the text
 only while it still reads `from`, and an entry the run did not apply fails the pipeline the same way,
 so a data release that fixes the text forces its removal.
 

@@ -1,4 +1,4 @@
-import { HypertextBook } from '@open-northland/data';
+import { HypertextBook, ObjectHelp } from '@open-northland/data';
 import type { SpriteLayer, TextureSource } from '@open-northland/render';
 import { diag } from '../../diag/index.js';
 import { loadLayer } from '../ir/load.js';
@@ -102,6 +102,22 @@ export async function loadGuiHistory(
   const parsed = HypertextBook.safeParse(raw);
   if (!parsed.success) {
     diag.warn('content', `loadGuiHistory: rejected /gui/history/${lang}.json (${parsed.error.message})`);
+    return null;
+  }
+  return parsed.data;
+}
+
+/** One language's goods and houses descriptions, fetched only when a reader asks; `null` for a language
+ *  that ships none (the overlay languages) or a checkout without them. */
+export async function loadObjectHelp(
+  locale: string,
+  fetchImpl: ContentFetch = contentFetch,
+): Promise<ObjectHelp | null> {
+  const raw = await fetchJsonOrNull<unknown>(`${GUI_ROOT}/help/${locale}.json`, fetchImpl);
+  if (raw === null) return null;
+  const parsed = ObjectHelp.safeParse(raw);
+  if (!parsed.success) {
+    diag.warn('content', `loadObjectHelp: rejected /gui/help/${locale}.json (${parsed.error.message})`);
     return null;
   }
   return parsed.data;

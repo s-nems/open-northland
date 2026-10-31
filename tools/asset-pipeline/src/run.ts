@@ -141,6 +141,7 @@ export async function runPipeline(args: Args): Promise<void> {
     `[pipeline] gui: ${gui.atlases} atlas(es) (${gui.frames} frames), ${gui.palettes}-palette LUT, ` +
       `${gui.strings.map((s) => `${s.lang}:${s.tables}t/${s.strings}s`).join(' ') || 'no strings'}, ` +
       `${gui.history.map((h) => `${h.lang}:${h.pages}p`).join(' ') || 'no history'}, ` +
+      `${gui.help.map((h) => `${h.lang}:${h.strings}h`).join(' ') || 'no help'}, ` +
       `${gui.cursors} cursor(s) into ${join(args.out, 'gui')}`,
   );
 

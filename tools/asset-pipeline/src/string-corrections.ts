@@ -3,6 +3,7 @@ import { fileURLToPath } from 'node:url';
 import { MAP_TEXT_LANGUAGES } from '@open-northland/data';
 import type { MapStringTables } from '@open-northland/map-import';
 import { errorMessage } from './errors.js';
+import { HELP_TABLE_SCOPES } from './stages/gui/help.js';
 import { GUI_LANGS } from './stages/gui/paths.js';
 import { EXPORTED_TABLES } from './stages/gui/strings.js';
 
@@ -20,7 +21,7 @@ export const MAP_STRING_CORRECTIONS_FILE = fileURLToPath(
 export interface StringCorrection {
   /** The text folder, e.g. `rus`. */
   readonly lang: string;
-  /** The table key in `gui/strings/<lang>.json`, or the map id for a map string. */
+  /** The table key in `gui/strings/<lang>.json`, a help table's scope, or the map id for a map string. */
   readonly scope: string;
   /** The string id within that table. */
   readonly id: number;
@@ -55,11 +56,13 @@ interface CorrectionKind {
   checkScope(value: string): string | undefined;
 }
 
+const CORRECTABLE_TABLES: readonly string[] = [...EXPORTED_TABLES, ...HELP_TABLE_SCOPES];
+
 const TABLE_KIND: CorrectionKind = {
   scopeKey: 'table',
   langs: GUI_LANGS,
   checkScope: (table) =>
-    EXPORTED_TABLES.includes(table) ? undefined : `table must be one of ${EXPORTED_TABLES.join(', ')}`,
+    CORRECTABLE_TABLES.includes(table) ? undefined : `table must be one of ${CORRECTABLE_TABLES.join(', ')}`,
 };
 
 const MAP_KIND: CorrectionKind = {

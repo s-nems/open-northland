@@ -73,7 +73,7 @@ async function readGuiTable(roots: SourceRoots, lang: string, table: string): Pr
 }
 
 /** Some shipped names carry a trailing space or a doubled one, which no label wants. */
-function normalizeName(text: string): string {
+export function normalizeName(text: string): string {
   return text.trim().replace(/\s+/g, ' ');
 }
 
@@ -92,24 +92,41 @@ export interface GameObjectNames {
 const decodedNames = (table: StringTable, decode: (text: string) => string): StringTable =>
   Object.fromEntries(Object.entries(table).map(([id, text]) => [Number(id), decode(text)]));
 
+/** One text table's sections, and how to turn a value of theirs into display text. */
+export interface TextTableSource {
+  readonly sections: readonly RuleSection[];
+  readonly decode: (text: string) => string;
+}
+
 /** Reads the readable `.ini` when the language ships one (Polish, some English and German tables),
  *  else the encrypted `.cif`. */
+export async function readTextTable(
+  roots: SourceRoots,
+  lang: string,
+  stem: string,
+): Promise<TextTableSource> {
+  const encoding = textEncoding(lang);
+  if ((await resolveSourceFile(roots, `${stem}.ini`)) !== undefined) {
+    const text = decodeIni(await readShippedSourceFile(roots, `${stem}.ini`), encoding);
+    return { sections: parseIniSections(text), decode: (display) => display };
+  }
+  return {
+    sections: cifBytesToSections(await readShippedSourceFile(roots, `${stem}.cif`)),
+    decode: (display) => decodeDisplayText(display, encoding),
+  };
+}
+
+/** One game-object table's names as `lang` ships them. */
 export async function readGameObjectNames(
   roots: SourceRoots,
   lang: string,
   table: GameObjectTable,
 ): Promise<GameObjectNames> {
-  const stem = `Data/text/${lang}/strings/gameobjects/${table}`;
-  const encoding = textEncoding(lang);
-  let sections: RuleSection[];
-  let decode: (text: string) => string;
-  if ((await resolveSourceFile(roots, `${stem}.ini`)) !== undefined) {
-    sections = parseIniSections(decodeIni(await readShippedSourceFile(roots, `${stem}.ini`), encoding));
-    decode = (text) => text;
-  } else {
-    sections = cifBytesToSections(await readShippedSourceFile(roots, `${stem}.cif`));
-    decode = (text) => decodeDisplayText(text, encoding);
-  }
+  const { sections, decode } = await readTextTable(
+    roots,
+    lang,
+    `Data/text/${lang}/strings/gameobjects/${table}`,
+  );
   const { singular, plural } = extractStringnNames(sections);
   return { names: decodedNames(singular, decode), plurals: decodedNames(plural, decode) };
 }

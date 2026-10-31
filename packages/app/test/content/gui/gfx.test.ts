@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { loadGuiHistory, loadGuiStrings } from '../../../src/content/gui/gfx.js';
+import { loadGuiHistory, loadGuiStrings, loadObjectHelp } from '../../../src/content/gui/gfx.js';
 import { diag } from '../../../src/diag/index.js';
 
 /** The history book loader: `/gui/history/<lang>.json` validated through the data schema, null otherwise. */
@@ -15,6 +15,27 @@ const BOOK = {
     mythology_00: [{ kind: 'text', style: 'body', text: 'Back', link: 'index' }],
   },
 };
+
+describe('loadObjectHelp', () => {
+  it("fetches the language's help file and degrades to null without a valid one", async () => {
+    const help = { goods: { 1: 'Water.' }, houses: {} };
+    const urls: string[] = [];
+    const fetchImpl = (async (url: string) => {
+      urls.push(url);
+      return jsonResponse(help);
+    }) as unknown as typeof fetch;
+    await expect(loadObjectHelp('pol', fetchImpl)).resolves.toEqual(help);
+    expect(urls[0]).toContain('/gui/help/pol.json');
+
+    const missing = vi.fn(async () => jsonResponse(null, false));
+    await expect(loadObjectHelp('chs', missing as unknown as typeof fetch)).resolves.toBeNull();
+    const warn = vi.spyOn(diag, 'warn').mockImplementation(() => undefined);
+    const malformed = vi.fn(async () => jsonResponse({ goods: {} }));
+    await expect(loadObjectHelp('eng', malformed as unknown as typeof fetch)).resolves.toBeNull();
+    expect(warn).toHaveBeenCalledOnce();
+    warn.mockRestore();
+  });
+});
 
 describe('loadGuiHistory', () => {
   it('fetches the language book and returns it validated', async () => {
