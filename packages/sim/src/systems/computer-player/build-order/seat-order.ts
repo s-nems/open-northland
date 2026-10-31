@@ -391,11 +391,16 @@ function raised(
   return result.every((id, i) => id === priority[i]) ? priority : result;
 }
 
-/** The seat's archetype tuning; a seat with no strategy decided yet plays the standard one. */
-export function seatTuning(world: World, player: number): ArchetypeTuning {
+/** The seat's economic archetype; null before its strategy is decided. */
+export function seatArchetype(world: World, player: number): EconomicArchetype | null {
   const carrier = aiControlEntity(world, player);
   const strategy = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
-  return ARCHETYPE_TUNING[strategy?.economy.archetype ?? 'standard'];
+  return strategy?.economy.archetype ?? null;
+}
+
+/** The seat's archetype tuning; a seat with no strategy decided yet plays the standard one. */
+export function seatTuning(world: World, player: number): ArchetypeTuning {
+  return ARCHETYPE_TUNING[seatArchetype(world, player) ?? 'standard'];
 }
 
 /** Whether the seat's economy leans on `side`; false before its strategy is decided. */

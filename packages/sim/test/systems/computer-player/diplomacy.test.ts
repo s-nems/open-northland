@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { type DiplomacyState, diplomacyStance, setDiplomacyLock } from '../../../src/components/index.js';
+import {
+  aiControlEntity,
+  ComputerStrategy,
+  type DiplomacyState,
+  diplomacyStance,
+  type EconomicArchetype,
+  setDiplomacyLock,
+} from '../../../src/components/index.js';
 import { Simulation } from '../../../src/index.js';
 import { AI_HANDLER_ROUND_TICKS } from '../../../src/systems/ai-shared/cadence.js';
 import { testContent } from '../../fixtures/content.js';
@@ -13,6 +20,8 @@ import { grassMap } from '../conflict/engagement/support.js';
 const HUMAN = 0;
 const COMPUTER = 1;
 const THIRD = 2;
+/** A slot outside every match below. */
+const OUTSIDE = 3;
 /** The rounds in which the computer's cursor has reached the third slot. */
 const ROUNDS_TO_THIRD = 3;
 /** The slots the cursor walks before it looks at the same player again. */
@@ -114,5 +123,77 @@ describe('the computer seat answering a stance', () => {
     );
     sim.run(AI_HANDLER_ROUND_TICKS);
     expect(diplomacyStance(sim.world, COMPUTER, HUMAN)).toBe('neutral');
+  });
+});
+
+describe('an islands seat declaring war', () => {
+  /** A match of the human, the computer and the third seat beside a slot outside it, every stance neutral
+   *  both ways, the computer playing `archetype`, under a lobby peace that ends after the first round. */
+  function islandMatch(
+    archetype: EconomicArchetype,
+    extra: { from: number; to: number; state: DiplomacyState }[] = [],
+    { scriptedThird = false } = {},
+  ) {
+    const players = [HUMAN, COMPUTER, THIRD];
+    const seats = [...players, OUTSIDE];
+    const rows = seats.flatMap((from) =>
+      seats.filter((to) => to !== from).map((to) => ({ from, to, state: 'neutral' as const })),
+    );
+    const sim = stances([...rows, ...extra]);
+    if (scriptedThird)
+      sim.enqueueSetup({ kind: 'setAiControl', player: THIRD, enabled: true, computerEnabled: false });
+    sim.enqueueSetup({ kind: 'setMatchParticipants', players });
+    sim.enqueueSetup({ kind: 'setPeaceTime', untilTick: AI_HANDLER_ROUND_TICKS, players });
+    sim.run(1);
+    const carrier = aiControlEntity(sim.world, COMPUTER);
+    if (carrier === null) throw new Error('the computer seat has no AI carrier');
+    sim.world.add(carrier, ComputerStrategy, {
+      economy: { archetype, sides: [], evidence: [], decidedAt: 0, challenger: null },
+      military: {
+        plan: 'balanced',
+        posture: 'prepare',
+        evidence: [],
+        ownPoints: 0,
+        targetOwner: null,
+        targetPoints: null,
+        strongestPoints: null,
+        threatInTicks: null,
+        decidedAt: 0,
+        challenger: null,
+      },
+    });
+    return sim;
+  }
+
+  it('turns every neutral player enemy once the peace ends, and not before', () => {
+    const sim = islandMatch('islands');
+    sim.run(AI_HANDLER_ROUND_TICKS);
+    expect(diplomacyStance(sim.world, COMPUTER, HUMAN)).toBe('neutral');
+    sim.run(PLAYER_SLOTS * AI_HANDLER_ROUND_TICKS);
+    expect(diplomacyStance(sim.world, COMPUTER, HUMAN)).toBe('enemy');
+    expect(diplomacyStance(sim.world, COMPUTER, THIRD)).toBe('enemy');
+  });
+
+  it('keeps a friend set by the map a friend', () => {
+    const sim = islandMatch('islands', [
+      { from: COMPUTER, to: THIRD, state: 'friend' },
+      { from: THIRD, to: COMPUTER, state: 'friend' },
+    ]);
+    sim.run((PLAYER_SLOTS + 1) * AI_HANDLER_ROUND_TICKS);
+    expect(diplomacyStance(sim.world, COMPUTER, THIRD)).toBe('friend');
+  });
+
+  it('leaves a seat of another archetype neutral', () => {
+    const sim = islandMatch('standard');
+    sim.run((PLAYER_SLOTS + 1) * AI_HANDLER_ROUND_TICKS);
+    expect(diplomacyStance(sim.world, COMPUTER, HUMAN)).toBe('neutral');
+  });
+
+  it('never declares on a map-scripted seat or a slot outside the match', () => {
+    const sim = islandMatch('islands', [], { scriptedThird: true });
+    sim.run((PLAYER_SLOTS + 1) * AI_HANDLER_ROUND_TICKS);
+    expect(diplomacyStance(sim.world, COMPUTER, THIRD)).toBe('neutral');
+    expect(diplomacyStance(sim.world, COMPUTER, OUTSIDE)).toBe('neutral');
+    expect(diplomacyStance(sim.world, COMPUTER, HUMAN)).toBe('enemy');
   });
 });
