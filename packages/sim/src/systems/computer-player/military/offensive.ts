@@ -17,6 +17,7 @@ import { advanceWave, endMarch, launchWave, SIEGE_MARCH_MIN_CATAPULTS } from './
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, rallyAt, waveWorthy } from './muster.js';
 import { abandonWave, decideWave } from './plan.js';
 import { crewedCatapults } from './siege-crew.js';
+import { towerStandOf } from './tower-stand.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
  *  already out of `army`, `awaitingWeapon` (the men still to be armed or dressed) is only ever called
@@ -34,7 +35,7 @@ const NO_CAMPAIGN: readonly PlayerCommand[] = [];
  * ({@link advanceWave}), then the rest of `army` is sorted around the barracks door ({@link musterAround})
  * and, with no wave out, the launch is judged ({@link decideWave}). Until the peace ends
  * ({@link seatPeaceEndTick}) and the difficulty's first wave may march, and while the seat's posture holds the
- * army home (`strategy/military.ts`), the army only gathers at the door (an outmatched seat's at its base),
+ * army home (`strategy/military.ts`), the army only gathers at home ({@link armedStandOf}),
  * as it does with no target, a marching wave called back. The men at the door set out as a wave when the
  * muster is the one it was gathering and the seat's points reach its plan's edge over the target owner's; a
  * body already nearer the objective goes in whatever the muster says, having nowhere safe to wait;
@@ -63,16 +64,14 @@ export function runOffensive(
   if (goal === null || launchRatio === null) {
     abandonWave(world, barracks);
     endMarch(world, barracks);
-    // An outmatched seat keeps its armed men at its base, under its towers, rather than at a barracks out
-    // on the front, where they would meet a wave before the towers could shoot it (owner ruling: survive
-    // at any cost). The men awaiting a weapon stay by the barracks that arms them.
-    const base = seatOutmatched(world, player) ? seatBaseOf(world, ctx, player) : null;
-    if (base !== null) {
+    // The men awaiting a weapon stay by the barracks that arms them.
+    const stand = armedStandOf(world, ctx, terrain, player, home);
+    if (stand !== null) {
       const armed = [...army, ...wave];
-      const atBase = rallyAt(world, ctx, terrain, interactionCell(world, ctx, terrain, base), armed);
+      const atStand = rallyAt(world, ctx, terrain, stand, armed);
       const atDoor = rallyAt(world, ctx, terrain, home, awaitingWeapon);
       return [
-        ...gatherAt(world, terrain, armed, atBase),
+        ...gatherAt(world, terrain, armed, atStand),
         ...gatherAt(world, terrain, awaitingWeapon, atDoor),
       ];
     }
@@ -144,6 +143,25 @@ export function runOffensive(
     ...marchOrders(world, terrain, pressOn ? forward : [], objective),
     ...gatherAt(world, terrain, waiting, rally),
   ];
+}
+
+/**
+ * Where the armed men at home gather apart from the barracks door `home`, or null for the door: a seat
+ * awaiting a scripted attack under its tower line ({@link towerStandOf}); else an outmatched seat at its
+ * base, under its towers, rather than at a barracks out on the front, where they would meet a wave before
+ * the towers could shoot it (owner ruling: survive at any cost).
+ */
+function armedStandOf(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  home: NodeId,
+): NodeId | null {
+  const stand = towerStandOf(world, ctx, terrain, player, home);
+  if (stand !== null) return stand;
+  const base = seatOutmatched(world, player) ? seatBaseOf(world, ctx, player) : null;
+  return base === null ? null : interactionCell(world, ctx, terrain, base);
 }
 
 interface Launch {

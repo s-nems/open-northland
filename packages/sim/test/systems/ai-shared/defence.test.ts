@@ -38,6 +38,7 @@ import {
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { mapDefenceLeashSystem } from '../../../src/systems/ai-shared/military/map-defence-leash.js';
 import {
+  BIG_ATTACK_FIGHTERS,
   planSettlementDefence,
   settlementDefenceSystem,
 } from '../../../src/systems/ai-shared/military/settlement-defence.js';
@@ -55,6 +56,10 @@ import {
   threatWatchNodes,
   WAVE_MIN_SOLDIERS,
 } from '../../../src/systems/computer-player/index.js';
+import {
+  STAND_BEHIND_TOWERS_NODES,
+  towerStandToward,
+} from '../../../src/systems/computer-player/military/tower-stand.js';
 import { standsAtPost } from '../../../src/systems/conflict/tower-post.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { setAiControl } from '../../../src/systems/orders/ai.js';
@@ -220,6 +225,19 @@ function drawOff(sim: Simulation, e: Entity, nodes: number): void {
 
 /** Make the seat a computer seat whose last posture review found its strongest enemy clearly stronger. */
 function outmatchedSeat(sim: Simulation): void {
+  reviewedSeat(sim, ['outmatched'], null);
+}
+
+/** Make the seat a computer seat whose last posture review found a scripted attack on it under way. */
+function awaitingSeat(sim: Simulation): void {
+  reviewedSeat(sim, ['forecastThreat'], 0);
+}
+
+function reviewedSeat(
+  sim: Simulation,
+  evidence: ('outmatched' | 'forecastThreat')[],
+  threatInTicks: number | null,
+): void {
   const carrier = sim.world.create();
   sim.world.add(carrier, AiControl, {
     player: SEAT,
@@ -231,13 +249,13 @@ function outmatchedSeat(sim: Simulation): void {
   sim.world.add(carrier, ComputerStrategy, {
     economy: { archetype: 'standard', sides: [], evidence: [], decidedAt: 0, challenger: null },
     military: {
-      posture: 'defend',
-      evidence: ['outmatched'],
+      posture: threatInTicks === null ? 'defend' : 'prepare',
+      evidence,
       ownPoints: 0,
       targetOwner: null,
       targetPoints: null,
       strongestPoints: null,
-      threatInTicks: null,
+      threatInTicks,
       plan: 'balanced',
       decidedAt: 0,
       challenger: null,
@@ -679,6 +697,94 @@ describe('ai defence - the sortie', () => {
     // so what tells a sortie apart is where it sends them.
     const at = terrainOf(sim).coordsOf(entityNode(sim.world, terrainOf(sim), raider));
     expect(attackMoves(run(sim)).filter((m) => m.x === at.x && m.y === at.y)).toEqual([]);
+  });
+});
+
+describe('ai defence - the tower stand', () => {
+  /** A tower east of the barracks, toward where the attacks come from, and the base west of both. */
+  const STAND_TOWER = { x: 56, y: 40 };
+  const STAND_BASE = { x: 16, y: 40 };
+  const ATTACK_ORIGIN = { hx: 120, hy: 40 };
+  /** Far south of the town: past every watch band but the outlying site's. */
+  const OUTLYING_SITE = { x: 60, y: 88 };
+
+  /** The seat with its base, barracks and a tower whose archers have walked in and taken their posts. */
+  function mannedTowerSim(): { sim: Simulation; tower: Entity } {
+    const sim = aiSim();
+    place(sim, HQ_TYPE, STAND_BASE);
+    place(sim, BARRACKS_TYPE, { x: STAND_TOWER.x - 8, y: STAND_TOWER.y - 10 });
+    const tower = place(sim, TOWER_TYPE, STAND_TOWER);
+    const archers = spawn(
+      sim,
+      TOWER_GARRISON_ARCHERS,
+      { x: STAND_TOWER.x - 4, y: STAND_TOWER.y - 6 },
+      BOWMAN,
+    );
+    apply(sim, run(sim));
+    for (let i = 0; i < WALK_IN_TICKS; i++) sim.step();
+    if (!archers.every((e) => standsAtPost(sim.world, e) === tower))
+      throw new Error('setup: tower not manned');
+    return { sim, tower };
+  }
+
+  function owned(sim: Simulation): Entity[] {
+    return [...sim.world.query(Building)].filter((e) => sim.world.get(e, Owner).player === SEAT);
+  }
+
+  it('stands behind the manned tower facing the attacks, toward the base and under its reach', () => {
+    const { sim, tower } = mannedTowerSim();
+    const terrain = terrainOf(sim);
+    const ctx = ctxOf(sim);
+    const towerAt = nodeOf(sim, tower);
+    const base = { hx: STAND_BASE.x, hy: STAND_BASE.y };
+    const door = terrain.nodeAt(STAND_BASE.x, STAND_BASE.y);
+    const stand = towerStandToward(sim.world, ctx, terrain, owned(sim), base, ATTACK_ORIGIN, door);
+    if (stand === null) throw new Error('expected a stand behind the tower');
+    const at = terrain.coordsOf(stand);
+    expect(at.x).toBeLessThan(towerAt.x);
+    expect(at.x).toBeGreaterThan(STAND_BASE.x);
+    expect(towerAt.x - at.x).toBeLessThanOrEqual(STAND_BEHIND_TOWERS_NODES + 1);
+    expect(Math.abs(at.y - towerAt.y)).toBeLessThanOrEqual(1);
+  });
+
+  it('has no stand without a manned tower', () => {
+    const sim = aiSim();
+    place(sim, HQ_TYPE, STAND_BASE);
+    place(sim, TOWER_TYPE, STAND_TOWER);
+    const terrain = terrainOf(sim);
+    const door = terrain.nodeAt(STAND_BASE.x, STAND_BASE.y);
+    const base = { hx: STAND_BASE.x, hy: STAND_BASE.y };
+    expect(
+      towerStandToward(sim.world, ctxOf(sim), terrain, owned(sim), base, ATTACK_ORIGIN, door),
+    ).toBeNull();
+  });
+
+  it('meets a big attack only under its towers while it awaits a scripted attack, and a small band anywhere', () => {
+    const { sim, tower } = mannedTowerSim();
+    const site = placeSite(sim, TOWER_TYPE, OUTLYING_SITE);
+    spawn(sim, 2, { x: STAND_TOWER.x - 10, y: STAND_TOWER.y - 4 }, SPEARMAN);
+    awaitingSeat(sim);
+    const siteAt = nodeOf(sim, site);
+    const near = { x: siteAt.x + 2, y: siteAt.y };
+    const aimedAt = (men: readonly Entity[]): boolean => {
+      const nodes = men.map((e) => nodeOf(sim, e));
+      return attackMoves(run(sim)).some((m) => nodes.some((n) => n.x === m.x && n.y === m.y));
+    };
+
+    // A small band at the outlying site is answered as ever.
+    const few = spawn(sim, BIG_ATTACK_FIGHTERS - 1, near, SPEARMAN, FOE);
+    expect(aimedAt(few)).toBe(true);
+
+    // One more makes a big attack, which the army waits for under its towers.
+    const many = [...few, ...spawn(sim, 1, { x: near.x, y: near.y + 6 }, SPEARMAN, FOE)];
+    expect(aimedAt(many)).toBe(false);
+
+    // Once one of them comes within the tower's reach, the army goes at him.
+    const first = many[0];
+    if (first === undefined) throw new Error('setup: the attack spawn was refused');
+    const towerAt = nodeOf(sim, tower);
+    sim.world.add(first, Position, positionOfNode(towerAt.x + watchOf(sim) - 2, towerAt.y));
+    expect(aimedAt([first])).toBe(true);
   });
 });
 

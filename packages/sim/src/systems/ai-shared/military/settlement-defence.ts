@@ -31,6 +31,7 @@ import {
   alarmOrders,
   enlistOrders,
   MAP_AI_DEFENCE_REACH_POINTS,
+  mannedTowers,
   raidOnTheSettlement,
   seatRaiders,
   sortieOrders,
@@ -46,6 +47,7 @@ import { musterMilitia } from './defence/militia.js';
 import { garrisonSlots } from './defence/posts.js';
 import {
   type Raider,
+  raidersNearAny,
   THREAT_STAND_DOWN_MARGIN_NODES,
   threatWatchNodes,
   watchBandOf,
@@ -148,7 +150,7 @@ function deriveSettlementDefence(
   // whole home band in refused orders for as long as he stands there.
   const peace = peaceGroundFor(world, player);
   const raidable = peace === null ? raiders : raiders.filter((raider) => !peace.bars(raider.x, raider.y));
-  const guarded = autonomous && seatOutmatched(world, player) ? coveredCore(world, ctx, owned) : owned;
+  const guarded = autonomous ? computerGuard(world, ctx, terrain, player, owned, raidable) : owned;
   const raid = raidOnTheSettlement(world, ctx, terrain, guarded, raidable);
   const threat = autonomous
     ? assessSeatThreat(
@@ -239,12 +241,60 @@ function deriveSettlementDefence(
   };
 }
 
+/** The fewest enemy fighters about a settlement that make a big attack (authored): mroczny_las's scripted
+ *  waves bring 30 to 61 men, while a skirmish raid band is 4 and a wolf pack a handful. */
+export const BIG_ATTACK_FIGHTERS = 10;
+
 /** Whether a computer seat's last posture review found its strongest enemy clearly stronger: such a seat
  *  fights under its towers ({@link coveredCore}), and its army waits at its base while it launches no wave. */
 export function seatOutmatched(world: World, player: number): boolean {
+  return militaryStrategyOf(world, player)?.evidence.includes('outmatched') === true;
+}
+
+/** Whether a computer seat's last posture review found a scripted or map-AI attack on it ahead or under
+ *  way: such a seat's army stands under its towers on the attack side and meets a big attack there. */
+export function seatAwaitsScriptedAttack(world: World, player: number): boolean {
+  const threatIn = militaryStrategyOf(world, player)?.threatInTicks;
+  return threatIn !== undefined && threatIn !== null;
+}
+
+function militaryStrategyOf(world: World, player: number) {
   const carrier = aiControlEntity(world, player);
-  const strategy = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
-  return strategy?.military.evidence.includes('outmatched') === true;
+  return carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
+}
+
+/**
+ * The buildings a computer seat sorties for. A seat awaiting a scripted attack meets one of
+ * {@link BIG_ATTACK_FIGHTERS} or more only inside its manned towers' reach, or at its stores behind them
+ * (owner ruling: the army meets the big attacks together under the tower line, never out past it); a
+ * smaller band is answered as anywhere else. An outmatched seat fights under its towers and stores
+ * ({@link coveredCore}); every other seat for all it owns.
+ */
+function computerGuard(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  raiders: readonly Raider[],
+): readonly Entity[] {
+  if (
+    seatAwaitsScriptedAttack(world, player) &&
+    raidersNearAny(world, ctx, terrain, owned, raiders).length >= BIG_ATTACK_FIGHTERS
+  ) {
+    const towers = mannedTowers(world, ctx, owned);
+    if (towers.length > 0) return [...towers, ...storesOf(world, ctx, owned)].sort((a, b) => a - b);
+  }
+  return seatOutmatched(world, player) ? coveredCore(world, ctx, owned) : owned;
+}
+
+/** The standing stores of `owned`. */
+function storesOf(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity[] {
+  const buildings = contentIndex(ctx.content).buildings;
+  return owned.filter(
+    (e) =>
+      isBuilt(world, e) && buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
+  );
 }
 
 /**

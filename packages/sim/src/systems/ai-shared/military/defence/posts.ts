@@ -126,6 +126,13 @@ export function garrisonSlots(
   return slots;
 }
 
+/** The standing towers of `owned` with a garrison posted: the ones that shoot. In `owned`'s order. */
+export function mannedTowers(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity[] {
+  return owned.filter(
+    (e) => isBuilt(world, e) && garrisonSlots(world, ctx, e).size > 0 && assignedWorkers(world, e).length > 0,
+  );
+}
+
 /** One standing tower this decision mans: the men it wants of each class and in all, the men of each
  *  class it keeps before sending one out, where its door is, and who holds it, counted as men are posted. */
 interface Wall {

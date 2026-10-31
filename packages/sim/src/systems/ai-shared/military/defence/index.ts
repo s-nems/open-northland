@@ -36,6 +36,7 @@ export {
 export {
   MAP_AI_DEFENCE_REACH_POINTS,
   MAP_AI_PEACE_ARCHERS_PER_CLASS,
+  mannedTowers,
   TOWER_GARRISON_ARCHERS,
   type TowerCrewRule,
   towerPostOrders,
