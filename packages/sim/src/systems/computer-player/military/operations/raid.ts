@@ -50,6 +50,11 @@ export const RAID_MIN_MEN = 3;
 export const RAID_HOME_FLOOR_MEN = WAVE_MIN_SOLDIERS;
 /** How long after a raid ends before the next one forms. */
 export const RAID_COOLDOWN_TICKS = 3 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+/** How long after a flank raid ends before the next one forms, the harassing posture aside (owner ruling:
+ *  a hard seat raids "every so often"; authored figure). A raid out walks, strikes and comes home in five
+ *  to eight minutes, so a seat sends about one every fifteen, two or three in the half hour after a
+ *  60-minute peace. */
+export const FLANK_RAID_INTERVAL_TICKS = 8 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** How near the door, and then each waypoint or home, the band counts as gathered there. */
 export const RAID_GATHER_RADIUS_NODES = 10;
 /** The most a raid waits for its band at the door, walks one leg, strikes, or walks home. */
@@ -95,7 +100,7 @@ function withdraw(env: OperationEnv, op: RaidOperation, reason: OperationEndReas
   return walkBand(env, op.members, homeOf(env), 'moveUnit', true);
 }
 
-/** Why the band should turn back now, or null: its posture no longer raids, the target's owner is no
+/** Why the band should turn back now, or null: its orders no longer allow raids, the target's owner is no
  *  enemy, it lost {@link RAID_LOSS_PCT} of its men, it stands in a believed tower's reach, it sees the
  *  target's buildings switched to defence, or the enemy fighters it sees near it weigh at least its own
  *  points. Costs the enemies' fighters and the target owner's buildings. */
@@ -227,7 +232,8 @@ function legEnd(op: RaidOperation): HalfCellNode {
 }
 
 /**
- * A new raid when the seat's posture allows raids and its peace is over: from the free men on the door's
+ * A new raid when the seat's orders allow raids (its harassing posture, or a hard seat's flank raids) and
+ * its peace is over: from the free men on the door's
  * land and on no errand, leaving {@link RAID_HOME_FLOOR_MEN} of them, up to {@link RAID_BAND_MEN}, archers
  * first, then the nearest the door, then by id; at the best target ({@link pickRaidTarget}), by its flank
  * ({@link flankRoute}), looked for on every {@link RAID_LOOK_EVERY_DECISIONS}th decision. None with fewer
@@ -235,7 +241,7 @@ function legEnd(op: RaidOperation): HalfCellNode {
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number) {
   const { world, ctx, terrain, seat, home, orders } = env;
-  if (!orders.raidsAllowed || orders.holdHome) return null;
+  if (!orders.raidsAllowed) return null;
   const peaceEnd = Math.max(
     seatPeaceEndTick(world, seat),
     computerProfileOf(world, seat).army.firstWaveFromTick,
@@ -291,7 +297,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
 
 export const raidHandler: OperationHandler<RaidOperation> = {
   phase: 'beforeCampaign',
-  cooldownTicks: RAID_COOLDOWN_TICKS,
+  cooldownTicks: ({ orders }) => (orders.flankRaids ? FLANK_RAID_INTERVAL_TICKS : RAID_COOLDOWN_TICKS),
   step,
   open,
 };

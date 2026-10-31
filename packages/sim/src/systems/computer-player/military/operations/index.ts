@@ -84,7 +84,7 @@ export function runOperations(
       if (!isOpen(op) || HANDLERS[op.kind].phase !== phase) continue;
       op.members = op.members.filter((e) => stillServes(world, seat, claimed, e));
       commands.push(...stepOf(env, op, pool));
-      if (!isOpen(op)) state.readyAt[op.kind] = ctx.tick + HANDLERS[op.kind].cooldownTicks;
+      if (!isOpen(op)) state.readyAt[op.kind] = ctx.tick + HANDLERS[op.kind].cooldownTicks(env);
     }
   }
   const members = operationMembersOf(world, seat);

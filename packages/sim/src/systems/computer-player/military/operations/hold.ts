@@ -286,7 +286,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
 
 export const holdHandler: OperationHandler<HoldOperation> = {
   phase: 'beforeCampaign',
-  cooldownTicks: HOLD_RETRY_TICKS,
+  cooldownTicks: () => HOLD_RETRY_TICKS,
   step,
   open,
 };

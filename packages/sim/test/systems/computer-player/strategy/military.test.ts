@@ -106,6 +106,22 @@ describe('military posture', () => {
     }
   });
 
+  it('lets a flank-raiding seat raid in every posture but defence and a forecast attack', () => {
+    for (const plan of MILITARY_PLANS) {
+      expect(ordersFor(plan, 'attack', [], true)).toEqual(
+        expect.objectContaining({ raidsAllowed: true, flankRaids: true }),
+      );
+      expect(ordersFor(plan, 'prepare', ['buildingUp'], true).raidsAllowed).toBe(true);
+      expect(ordersFor(plan, 'prepare', ['forecastThreat'], true).raidsAllowed).toBe(false);
+      expect(ordersFor(plan, 'defend', ['underAttack'], true).raidsAllowed).toBe(false);
+      expect(ordersFor(plan, 'defend', ['outmatched'], true).raidsAllowed).toBe(false);
+      expect(ordersFor(plan, 'harass', [], true)).toEqual(
+        expect.objectContaining({ raidsAllowed: true, flankRaids: false }),
+      );
+      expect(ordersFor(plan, 'attack').raidsAllowed).toBe(false);
+    }
+  });
+
   it('holds an area while it builds up or attacks, never against a stronger enemy or a forecast attack', () => {
     for (const plan of MILITARY_PLANS) {
       expect(ordersFor(plan, 'defend', ['outmatched']).hold).toBeNull();

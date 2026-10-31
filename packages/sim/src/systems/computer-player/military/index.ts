@@ -55,7 +55,12 @@ export {
   type OperationView,
   seatOperationsOf,
 } from './operations/index.js';
-export { RAID_BAND_MEN, RAID_COOLDOWN_TICKS, RAID_LOOK_EVERY_DECISIONS } from './operations/raid.js';
+export {
+  FLANK_RAID_INTERVAL_TICKS,
+  RAID_BAND_MEN,
+  RAID_COOLDOWN_TICKS,
+  RAID_LOOK_EVERY_DECISIONS,
+} from './operations/raid.js';
 export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
 export {
   ARMY_CAP_SOLDIERS,

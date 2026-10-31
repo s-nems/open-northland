@@ -20,7 +20,7 @@ import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBarracksOf } from '../base.js';
-import type { Share } from '../difficulty.js';
+import { computerProfileOf, type Share } from '../difficulty.js';
 import { believedEnemyBuildings } from '../knowledge/intel/index.js';
 import { type SeatThreat, seatMapIntentOf, seatTerritoryOf } from '../knowledge/map-intent/index.js';
 import { campaignObjective } from '../military/campaign.js';
@@ -337,8 +337,11 @@ export interface MilitaryOrders {
   readonly launchRatio: Share | null;
   /** The army stays at home: no wave out, a marching one called back. */
   readonly holdHome: boolean;
-  /** Raids on enemy gatherers may run (the next step's operations read it). */
+  /** Raids on enemy gatherers may run (`military/operations/raid.ts`). */
   readonly raidsAllowed: boolean;
+  /** The raids that run are the seat's periodic flank raids, not its harassing posture's, so they wait the
+   *  longer interval between them. */
+  readonly flankRaids: boolean;
   /** Null: no hold may run. Else a hold on an area the map rewards holding may, with these figures. */
   readonly hold: HoldTuning | null;
   /** Multiplies the difficulty's army floor share. */
@@ -359,6 +362,7 @@ const UNDECIDED: MilitaryOrders = {
   launchRatio: WHOLE,
   holdHome: false,
   raidsAllowed: false,
+  flankRaids: false,
   hold: null,
   floorShare: WHOLE,
   draftCapShare: WHOLE,
@@ -369,25 +373,38 @@ const UNDECIDED: MilitaryOrders = {
 /** The execution's reading of `seat`'s military section. */
 export function militaryOrdersOf(world: World, seat: number): MilitaryOrders {
   const carrier = aiControlEntity(world, seat);
-  const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
-  if (military === undefined) return UNDECIDED;
-  return ordersFor(military.plan, military.posture, military.evidence);
+  const strategy = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
+  if (strategy === undefined) return UNDECIDED;
+  const { military } = strategy;
+  const flankSeat = computerProfileOf(world, seat).flankRaids && strategy.economy.archetype !== 'islands';
+  return ordersFor(military.plan, military.posture, military.evidence, flankSeat);
 }
 
-/** The orders of `plan` in `posture`, with the `evidence` that put the seat in it. */
+/** Whether a seat that flank-raids may send one in `posture` (owner ruling): not while it defends (under
+ *  attack or outmatched) nor while it prepares against a forecast attack. */
+function flankRaidsIn(posture: MilitaryPosture, evidence: readonly MilitaryRule[]): boolean {
+  if (posture === 'defend') return false;
+  return !(posture === 'prepare' && evidence.includes('forecastThreat'));
+}
+
+/** The orders of `plan` in `posture`, with the `evidence` that put the seat in it. `flankSeat`: the seat
+ *  sends periodic flank raids (`difficulty.ts`, never from an island start). */
 export function ordersFor(
   plan: MilitaryPlan,
   posture: MilitaryPosture,
   evidence: readonly MilitaryRule[] = [],
+  flankSeat = false,
 ): MilitaryOrders {
   const tuning = PLAN_TUNING[plan];
   const holdHome = posture === 'defend' || posture === 'prepare';
+  const flank = flankSeat && posture !== 'harass' && flankRaidsIn(posture, evidence);
   return {
     plan,
     posture,
     launchRatio: holdHome ? null : tuning.launchRatio,
     holdHome,
-    raidsAllowed: posture === 'harass',
+    raidsAllowed: posture === 'harass' || flank,
+    flankRaids: flank,
     hold: holdsIn(plan, posture, evidence) ? HOLD_TUNING[plan] : null,
     floorShare: holdHome
       ? {

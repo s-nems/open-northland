@@ -53,7 +53,7 @@ function believedTarget(
 
 export const assaultHandler: OperationHandler<AssaultOperation> = {
   phase: 'afterCampaign',
-  cooldownTicks: 0,
+  cooldownTicks: () => 0,
   step(env, op) {
     mirror(env, op);
     return [];

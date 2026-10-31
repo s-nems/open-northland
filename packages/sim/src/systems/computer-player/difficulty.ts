@@ -73,6 +73,9 @@ export interface ComputerProfile {
   readonly joineryRolePlans: JoineryRolePlans;
   /** Whether recruits may be armed with a class's weaker weapons too, not only its best. */
   readonly weakerWeapons: boolean;
+  /** Whether the seat sends a flank raid every so often after its peace, whatever its plan and posture
+   *  (owner ruling: only the hard computer harasses this way; `strategy/military.ts`). */
+  readonly flankRaids: boolean;
   /** The army at which the barracks sends the whole band. With `draftToCap`, also the most fighters the
    *  seat drafts. `floorShare` is the part of the strongest enemy's army the seat keeps as its floor.
    *  No wave marches before `firstWaveFromTick`, nor before the seat's peace ends, and the wave band
@@ -130,6 +133,7 @@ const HARD: ComputerProfile = {
   craftPlans: CRAFT_PLANS_BY_BUILDING_ID,
   joineryRolePlans: CRAFT_PLANS_BY_JOINERY_ROLE,
   weakerWeapons: false,
+  flankRaids: true,
   army: { cap: ARMY_CAP_SOLDIERS, draftToCap: false, floorShare: WHOLE, firstWaveFromTick: 0 },
 };
 
@@ -175,6 +179,7 @@ const MEDIUM: ComputerProfile = {
   craftPlans: CRAFT_PLANS_BY_BUILDING_ID,
   joineryRolePlans: joineryRolePlans(MEDIUM_CATAPULT_CAP, MEDIUM_CATAPULT_RESUME),
   weakerWeapons: false,
+  flankRaids: false,
   army: {
     cap: 100,
     draftToCap: true,
@@ -211,6 +216,7 @@ const EASY: ComputerProfile = {
   craftPlans: { ...CRAFT_PLANS_BY_BUILDING_ID, ...EASY_CRAFT_PLANS },
   joineryRolePlans: joineryRolePlans(0, 0),
   weakerWeapons: true,
+  flankRaids: false,
   army: { cap: 60, draftToCap: true, floorShare: HALF, firstWaveFromTick: EASY_FIRST_WAVE_FROM_TICKS },
 };
 

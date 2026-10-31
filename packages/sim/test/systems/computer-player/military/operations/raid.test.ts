@@ -3,8 +3,10 @@ import {
   AiControl,
   aiControlEntity,
   Building,
+  type ComputerDifficulty,
   ComputerStrategy,
   computerModuleEnables,
+  type EconomicArchetype,
   FOG_MODE,
   type MilitaryPlan,
   type MilitaryPosture,
@@ -28,6 +30,7 @@ import type { TerrainGraph } from '../../../../../src/nav/terrain/index.js';
 import { moduleBeatDue } from '../../../../../src/systems/ai-shared/cadence.js';
 import { planSettlementDefence } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
 import {
+  FLANK_RAID_INTERVAL_TICKS,
   militaryModule,
   type OperationView,
   RAID_BAND_MEN,
@@ -121,7 +124,12 @@ function band(sim: Simulation, count: number, at: { x: number; y: number }, jobT
   return spawnAt(sim, spots, jobType, owner);
 }
 
-function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPosture): void {
+function holdPosture(
+  sim: Simulation,
+  plan: MilitaryPlan,
+  posture: MilitaryPosture,
+  seat: { difficulty?: ComputerDifficulty; archetype?: EconomicArchetype } = {},
+): void {
   let carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null) {
     carrier = sim.world.create();
@@ -130,7 +138,7 @@ function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPostu
       computerEnabled: true,
       modules: computerModuleEnables(),
       mapAiEnabled: true,
-      difficulty: 'hard',
+      difficulty: seat.difficulty ?? 'hard',
     });
   }
   const inputs = {
@@ -144,7 +152,13 @@ function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPostu
     holdAimed: false,
   };
   const military = { ...selectPosture(plan, inputs, null), posture, plan, decidedAt: 0, challenger: null };
-  const economy = { archetype: 'standard' as const, sides: [], evidence: [], decidedAt: 0, challenger: null };
+  const economy = {
+    archetype: seat.archetype ?? 'standard',
+    sides: [],
+    evidence: [],
+    decidedAt: 0,
+    challenger: null,
+  };
   if (sim.world.has(carrier, ComputerStrategy)) sim.world.remove(carrier, ComputerStrategy);
   sim.world.add(carrier, ComputerStrategy, { economy, military });
 }
@@ -282,5 +296,63 @@ describe('raid operations', () => {
     fog.stampSight(SEAT, seen.cx, seen.cy, 2);
     decide(sim, lookFrom(LOOK + DECISION), fog);
     expect(onlyRaid(sim).target.entity).toBe(prey[0]);
+  });
+
+  describe('flank raids of a hard seat', () => {
+    /** The raid world with the seat building up at home instead of harassing. */
+    function buildingUp(seat: Parameters<typeof holdPosture>[3] = {}) {
+      const world = raidWorld([EXPOSED]);
+      const carrier = aiControlEntity(world.sim.world, SEAT);
+      if (carrier !== null && seat.difficulty !== undefined)
+        world.sim.world.mut(carrier, AiControl).difficulty = seat.difficulty;
+      holdPosture(world.sim, 'balanced', 'prepare', seat);
+      return world;
+    }
+
+    it('raids from any plan and posture but defence', () => {
+      const { sim } = buildingUp();
+      decide(sim, LOOK);
+      expect(onlyRaid(sim).members).toHaveLength(RAID_BAND_MEN);
+      holdPosture(sim, 'balanced', 'defend');
+      decide(sim, LOOK + DECISION);
+      expect(onlyRaid(sim).reason).toBe('postureChanged');
+    });
+
+    it('leaves the medium seat and the island start at home', () => {
+      for (const seat of [{ difficulty: 'medium' as const }, { archetype: 'islands' as const }]) {
+        const { sim } = buildingUp(seat);
+        decide(sim, LOOK);
+        expect(raids(sim), JSON.stringify(seat)).toEqual([]);
+      }
+    });
+
+    it('waits the flank interval, not the harassing cooldown, before the next', () => {
+      const { sim } = buildingUp();
+      band(sim, 2 * ARMY, FOE_HQ, SPEARMAN, FOE);
+      decide(sim, LOOK);
+      holdPosture(sim, 'balanced', 'defend');
+      decide(sim, LOOK + DECISION);
+      holdPosture(sim, 'balanced', 'prepare');
+      const ended = LOOK + 2 * DECISION;
+      decide(sim, ended);
+      expect(onlyRaid(sim).state).toBe('done');
+      decide(sim, lookFrom(ended + RAID_COOLDOWN_TICKS));
+      expect(raids(sim)).toEqual([]);
+      decide(sim, lookFrom(ended + FLANK_RAID_INTERVAL_TICKS));
+      expect(onlyRaid(sim).state).toBe('forming');
+    });
+
+    it('never raids a map-scripted seat', () => {
+      const { sim } = buildingUp();
+      sim.world.add(sim.world.create(), AiControl, {
+        player: FOE,
+        computerEnabled: true,
+        modules: computerModuleEnables({ collectResources: false }),
+        mapAiEnabled: true,
+        difficulty: 'hard',
+      });
+      decide(sim, LOOK);
+      expect(raids(sim)).toEqual([]);
+    });
   });
 });

@@ -31,8 +31,8 @@ export interface OperationEnv {
  */
 export interface OperationHandler<O extends Operation = Operation> {
   readonly phase: 'beforeCampaign' | 'afterCampaign';
-  /** Ticks after one ends before the kind may open again. */
-  readonly cooldownTicks: number;
+  /** Ticks after one ends, on the decision it ends, before the kind may open again. */
+  readonly cooldownTicks: (env: OperationEnv) => number;
   /** One decision for an open operation: its orders. It updates `op` in place through {@link enter}, and
    *  may take reinforcements from `free`, the men no operation holds, in which case it removes them. */
   readonly step: (env: OperationEnv, op: O, free: Entity[]) => readonly PlayerCommand[];

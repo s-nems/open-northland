@@ -3,6 +3,7 @@ import {
   Building,
   diplomacyStance,
   Health,
+  isScriptedEconomySeat,
   MAX_PLAYERS,
   mapBriefOf,
   type OperationTarget,
@@ -133,7 +134,8 @@ export function towerInReach(towers: readonly TowerBelief[], at: HalfCellNode): 
 }
 
 /**
- * The best raid target for `seat` from `home`: an enemy gatherer it sees, or an enemy economy building it
+ * The best raid target for `seat` from `home`: of an enemy player seat (no map-scripted one), a gatherer it
+ * sees, or an enemy economy building it
  * believes stands (`knowledge/intel`), on `home`'s land, scored value minus believed defence minus trip
  * length; the highest positive score, ties to the lower entity id. Null when nothing scores above zero.
  * Costs the enemies' people, fighters and believed buildings.
@@ -163,6 +165,8 @@ export function pickRaidTarget(
   };
   for (let owner = 0; owner < MAX_PLAYERS; owner++) {
     if (owner === seat || diplomacyStance(world, seat, owner) !== 'enemy') continue;
+    // Owner ruling: a raid hurts a player's production, never a map-scripted seat's camps.
+    if (isScriptedEconomySeat(world, owner)) continue;
     const defence = {
       towers: believedTowers(world, ctx, seat, owner),
       fighters: visibleFighters(world, ctx, seat, owner),
