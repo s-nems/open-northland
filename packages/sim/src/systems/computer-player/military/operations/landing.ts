@@ -473,7 +473,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
 
 export const landingHandler: OperationHandler<LandingOperation> = {
   phase: 'beforeCampaign',
-  cooldownTicks: LANDING_COOLDOWN_TICKS,
+  cooldownTicks: () => LANDING_COOLDOWN_TICKS,
   step: (env, op) => step(env, op),
   open,
 };
