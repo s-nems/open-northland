@@ -1,7 +1,7 @@
 export const chtKnowledge = {
   menuScreen: {
     loading: '正在載入知識…',
-    unavailable: '知識需要遊戲資料，此副本尚未具備。',
+    unavailable: '這份遊戲副本還沒有知識所需的資料。',
   },
   shell: {
     title: '知識',
@@ -32,7 +32,7 @@ export const chtKnowledge = {
     missing: '缺少：{first}',
     missingMore: '缺少：{first} +{more}',
     mapForbidden: '本圖停用',
-    mapForbiddenLong: '此地圖不允許這種建築',
+    mapForbiddenLong: '此地圖禁止這種建築',
     closePane: '關閉詞條',
   },
   lanes: {
@@ -104,7 +104,7 @@ export const chtKnowledge = {
       available: '可用',
       missing: '缺少：{names}',
       missingMore: '缺少：{names}等{more}項',
-      mapForbidden: '此地圖不允許',
+      mapForbidden: '此地圖禁止',
       stock: '聚落庫存：{amount}',
     },
     unit: {
@@ -115,7 +115,7 @@ export const chtKnowledge = {
       many: '每{time}{blows}{word}',
       blows: { one: '擊', few: '擊', many: '擊' },
     },
-    weaponClass: { unarmed: '徒手', melee: '近戰', ranged: '遠端' },
+    weaponClass: { unarmed: '徒手', melee: '近戰', ranged: '遠程' },
     strip: { type: '類型', range: '範圍', cadence: '攻擊間隔', perSecond: '每秒傷害' },
     table: {
       weapon: '武器',
@@ -126,7 +126,7 @@ export const chtKnowledge = {
       timeToKill: '擊殺用時',
       protection: '防護',
       moreColumns: '其餘列',
-      trait: '專案',
+      trait: '項目',
     },
     weapon: {
       obtain: '獲取方式',
@@ -171,7 +171,7 @@ export const chtKnowledge = {
       ingredient: '原料：',
       material: '材料：',
       moreOf: '還有{count}項',
-      nothing: '不是任何原料或材料。',
+      nothing: '不用作原料或材料。',
       rawCost: '原料成本',
       durability: '耐久',
       mealOutside: '在外',
@@ -187,7 +187,7 @@ export const chtKnowledge = {
       health: '生命值+{pct}%',
       dealt: '傷害×{factor}',
       taken: '受到傷害×{factor}',
-      critical: '{chance}%機率造成×{factor}攻擊',
+      critical: '{chance}%機率造成×{factor}傷害',
       step: '每步縮短{time}',
       barefoot: '赤腳走路還會消耗體力',
       usesBoots: '{count}點',
@@ -405,7 +405,7 @@ export const chtKnowledge = {
     gate: {
       segments: '一線{count}段',
       passage: '通道',
-      outerStay: '兩端的段保留',
+      outerStay: '兩端柵欄段保留',
       own: '己方',
       enemy: '敵人',
       open: '開啟',

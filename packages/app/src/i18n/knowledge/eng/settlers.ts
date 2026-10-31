@@ -56,10 +56,7 @@ export const SETTLERS: ArticleGroup = {
                 '{{need.drivePct}}%',
                 'Finishes his task and drops work. On Stamina, each step takes {{step.tiredExtra}} s longer.',
               ],
-              [
-                '{{need.satedPct}}%',
-                'At home the settler tops up Stamina, then Energy, to this level and leaves.',
-              ],
+              ['{{need.satedPct}}%', 'At home he tops up Stamina, then Energy, to this level and leaves.'],
               [
                 '{{need.overfillPct}}%',
                 'The ceiling. A meal at home or sleep on Furniture stores a reserve above 100%.',
@@ -94,7 +91,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Who', 'Sleep time', 'Away from home', 'At home', 'At home with Furniture'],
+            head: ['Who', 'Sleep time', 'Away from home', 'At home', 'With Furniture'],
             rows: [
               [
                 'Man with a dwelling',
@@ -440,7 +437,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Only the Marry order makes a wedding. Settlers never marry on their own.',
+            'Settlers marry only on the Marry order, never on their own.',
             'The order pairs the settler with the nearest adult of the opposite sex, same tribe, same player.',
             'The candidate must be within the settler\'s [[article:roads|signpost]] reach. With no candidate the order is lost and the game shows "No match".',
             'Soldiers, heroes, Scouts and anyone sent to the [[building:barracks|Barracks]] or [[building:school|School]] do not marry.',
@@ -589,7 +586,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Switch', 'At start', 'Who receives it'],
+            head: ['Switch', 'At start', 'Who gets it'],
             rows: [
               ['[[good:shoes|Shoes]]', 'on', 'adult man'],
               [
@@ -621,7 +618,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Daughters first, then sons. Daughters have no ∞ setting, or sons would never get a turn.',
             'A counter of 3 means at most 3 couples at once.',
-            'A couple takes one order at a time. The blocks are the same as with the direct order: [[article:family|Family and Home]].',
+            'A couple takes one order at a time. The same things block it as a direct order: [[article:family|Family and Home]].',
             'Lowering the counter does not cancel an order a couple already has.',
           ],
         },
@@ -654,7 +651,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Skips women, children, [[article:heroes|heroes]] and tower garrisons.',
-            'One trip to the store, and he picks up the rest there.',
+            'He makes one trip to the store and picks up the rest there.',
             'One settler goes for each piece in the store. Stock below the [[article:hauling|storage minimum]] stays put.',
             'Fills empty slots only, never swaps for better. Iron tools go before wooden, a large bottle before a small one.',
             "A settler with a small potion doesn't fetch a large one. Potion and amulet slots: {{amulet.slots}}. See [[article:draughts|Potions and Amulets]].",
@@ -666,7 +663,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             "A graduate goes once, to the nearest free post in his profession, even a workshop construction site. A workshop making the course's product beats a closer one.",
-            'With no free post he waits at the School. Skips the [[job:collector|Extractor]], [[job:hunter|Hunter]], [[job:fisher|Fisherman]] and soldiers.',
+            'With no free post he waits at the School. Does not apply to [[job:collector|Extractors]], [[job:hunter|Hunters]], [[job:fisher|Fishermen]] or soldiers.',
           ],
         },
         {

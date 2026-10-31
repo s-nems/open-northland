@@ -43,7 +43,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Kein Handel“',
                 'Bemerkenswert',
-                'Das Ziel des Händlers verlangt ein beiderseits freundliches Verhältnis',
+                'Der Händler braucht zum Ziel ein beiderseits freundliches Verhältnis',
                 'Prüfe die [[article:diplomacy|Diplomatie]]',
               ],
               [
@@ -65,7 +65,7 @@ export const PROBLEMS: ArticleGroup = {
                 'Gib den Befehl, wenn jemand frei ist',
               ],
               [
-                '„Paar benötigt: Ware“',
+                '„Paar benötigt: [Ware]“',
                 'Bemerkenswert',
                 'In der [[article:livestock|Viehzüchterei]] ist nur ein Tier',
                 'Schicke einen Kundschafter nach dem zweiten',
@@ -113,7 +113,7 @@ export const PROBLEMS: ArticleGroup = {
                 'Wechsle seinen Beruf',
               ],
               [
-                '„Keine Tiere: Ware“',
+                '„Keine Tiere: [Ware]“',
                 'Bemerkenswert',
                 'In der [[article:livestock|Viehzüchterei]] gibt es diese Art nicht',
                 'Schicke einen Kundschafter zu den Wildtieren',
@@ -131,13 +131,13 @@ export const PROBLEMS: ArticleGroup = {
                 'Versetze die Fahne dorthin, wo Wild weidet',
               ],
               [
-                '„Kein Holz“ (je nach Ware), „Ware: nicht vorhanden“',
+                '„Kein Holz“ (je nach Ware), „[Ware]: nicht vorhanden“',
                 'Normal, Werkstatt: Bemerkenswert',
                 'Bauarbeiter: Baustellen warten auf Ware, die in den Lagern ihrer Reichweite fehlt. Werkstatt: Der Rohstoff fehlt in den Lagern, und niemand stellt ihn her',
                 'Stelle ihn her, liefere ihn oder besetze die Werkstatt',
               ],
               [
-                '„Baustelle: Ware fehlt“',
+                '„Baustelle: [Ware] fehlt“',
                 'Wichtig',
                 'Die Ware liegt in keinem Lager in Wegweiser-Reichweite der Baustelle',
                 'Stelle sie her, liefere sie oder verbinde ein Lager über Wegweiser',
@@ -193,7 +193,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Lager zu weit weg“',
                 'Normal, Werkstatt: Bemerkenswert',
-                'Die Lager, die annehmen würden, liegen außerhalb der Wegweiser-Reichweite',
+                'Die Lager, die die Ware annehmen, liegen außerhalb der Wegweiser-Reichweite',
                 'Verbinde sie über Wegweiser oder baue ein Lager näher dran',
               ],
               [
@@ -223,7 +223,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Kein Weg zum Schiff“',
                 'Bemerkenswert',
-                'Die Tür des Schiffs liegt an anderem Land',
+                'Die Tür des Schiffs liegt auf einer anderen Landmasse',
                 'Lege an einem erreichbaren Ufer an',
               ],
               [
@@ -246,7 +246,7 @@ export const PROBLEMS: ArticleGroup = {
               ],
               ['„An Bord gefangen“', 'Bemerkenswert', 'Das Schiff ist auf See', 'Lege am Ufer an'],
               [
-                '„Niemand baut ab: Ware“, „Niemand jagt für: Ware“, „Niemand fischt nach: Ware“',
+                '„Niemand baut ab: [Ware]“, „Niemand jagt für: [Ware]“, „Niemand fischt nach: [Ware]“',
                 'Bemerkenswert',
                 'Die Werkstatt steht seit {{notice.noGathererSeconds}} s ohne Rohstoff, und niemand beschafft ihn',
                 'Weise einen Siedler zu oder schalte die Ware bei den vorhandenen ein',
@@ -258,7 +258,7 @@ export const PROBLEMS: ArticleGroup = {
                 'Nimm ein Schiff oder mache den Platz frei: [[article:vehicles|Fahrzeuge und Schiffe]]',
               ],
               [
-                '„Lager voll: Ware“',
+                '„Lager voll: [Ware]“',
                 'Normal',
                 'Das Regal des Herstellers und jedes Lager mit dieser Ware sind seit {{notice.storageFullSeconds}} s voll',
                 'Baue ein Lager oder verbrauche den Vorrat',
@@ -353,7 +353,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Die Werkstatt steht leer',
-              'Status „Keine Arbeiter“: Niemand hat dort einen Arbeitsplatz. Ein Siedler kommt nur mit passendem Beruf und freiem Platz hinein, sonst heißt es „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter holt ihn selbst, wenn er bis {{reach.goods}} Schritte von einem Wegweiser liegt.',
+              'Status „Keine Arbeiter“: Niemand hat dort einen Arbeitsplatz. Ein Siedler kommt nur mit passendem Beruf und freiem Platz hinein, sonst heißt es „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter holt ihn selbst, wenn er höchstens {{reach.goods}} Schritte von einem Wegweiser entfernt liegt.',
             ],
             [
               'Waffenbauer, Schmied oder Näher arbeitet nicht',
@@ -361,15 +361,15 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Träger tragen nichts',
-              'Ein Träger trägt nur mit Arbeitsplatz in einem Gebäude. Status „Nichts zum Tragen in Reichweite“: Bis {{flag.radius}} Schritte vom Gebäude, mit Arbeitsfahne von der Fahne, liegt nichts zum Abholen. „Kein Ziel nimmt diese Ware an“ heißt, die Lager sind voll.',
+              'Ein Träger trägt nur mit Arbeitsplatz in einem Gebäude. Status „Nichts zum Tragen in Reichweite“: Im Umkreis von {{flag.radius}} Schritten um das Gebäude oder um seine Arbeitsfahne liegt nichts zum Abholen. „Kein Ziel nimmt diese Ware an“ heißt, die Lager sind voll.',
             ],
             [
               'Die Zucht steht',
-              'Der Viehzüchter vermehrt bei genau {{livestock.pair}} erwachsenen Tieren einer Art. Der Status der Viehzüchterei lautet „Keine Tiere“, „Nur ein Tier“, „Jungtiere wachsen heran“ oder „Herde voll“: [[article:livestock|Viehzucht]].',
+              'Der Viehzüchter züchtet nur bei genau {{livestock.pair}} erwachsenen Tieren einer Art. Der Status der Viehzüchterei lautet „Keine Tiere“, „Nur ein Tier“, „Jungtiere wachsen heran“ oder „Herde voll“: [[article:livestock|Viehzucht]].',
             ],
             [
               'Der Jäger bringt nichts',
-              'Status „Kein verfügbares Wild im Jagdgebiet“: Bis {{flag.hunter}} Schritte von Arbeitsfahne oder Arbeitsplatz ist kein Wild. Wolf, Löwe, Bär, Elefant, Hund und Huhn jagt er nicht. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
+              'Status „Kein verfügbares Wild im Jagdgebiet“: Im Umkreis von {{flag.hunter}} Schritten um Arbeitsfahne oder Arbeitsplatz ist kein Wild. Wolf, Löwe, Bär, Elefant, Hund und Huhn jagt er nicht. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
             ],
           ],
         },
@@ -384,11 +384,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Hunger trotz vollem Lager',
-              'Prüfe das „Lagerminimum“: Unter dieser Summe nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Zweite Ursache ist die Entfernung: Das Lager muss in Gehreichweite des Siedlers liegen, {{reach.walk}} Schritte oder das Wegweisernetz.',
+              'Prüfe das „Lagerminimum“: Unter dieser Summe nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Die zweite Ursache ist die Entfernung: Das Lager muss in Gehreichweite des Siedlers liegen, {{reach.walk}} Schritte oder das Wegweisernetz.',
             ],
             [
               'Der Beruf fehlt auf der Schulliste',
-              'Die Liste zeigt nur Kurse, die entdeckt und in dieser Mission erlaubt sind. Eine Zeile ohne Auswahl nennt den Grund: „Bereits erlernt“ oder „Diese Siedler können an dieser Schule nicht lernen“. Kurse entdeckst du durch [[article:exp-work|Arbeitserfahrung]].',
+              'Die Liste zeigt nur Kurse, die entdeckt und in dieser Mission erlaubt sind. Eine Zeile, die sich nicht wählen lässt, nennt den Grund: „Bereits erlernt“ oder „Diese Siedler können an dieser Schule nicht lernen“. Kurse entdeckst du durch [[article:exp-work|Arbeitserfahrung]].',
             ],
           ],
         },
@@ -403,11 +403,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Der Bau steht',
-              'Der Baustatus sagt, was fehlt: „Material fehlt“, „Lieferung unterwegs“ oder „Kein Bauarbeiter“. „Baustelle: Ware fehlt“ heißt, dass die Ware in keinem Lager in Wegweiser-Reichweite der Baustelle liegt, {{reach.goods}} Schritte von einem Wegweiser. Der Bauarbeiter trägt das Material selbst.',
+              'Der Baustatus sagt, was fehlt: „Material fehlt“, „Lieferung unterwegs“ oder „Kein Bauarbeiter“. „Baustelle: [Ware] fehlt“ heißt, dass die Ware in keinem Lager in Wegweiser-Reichweite der Baustelle liegt, {{reach.goods}} Schritte von einem Wegweiser. Der Bauarbeiter trägt das Material selbst.',
             ],
             [
               'Das Feld wächst nicht',
-              'Es wächst nur durch Gießen eines [[job:farmer|Farmers]] mit Arbeitsplatz auf der [[building:work_farm_00|Farm]]. Der Farmer sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Gesät wird nur auf Gras, abseits von Straßen, bis {{field.radius}} Schritte von der Farm.',
+              'Es wächst nur, wenn ein [[job:farmer|Farmer]] mit Arbeitsplatz auf der [[building:work_farm_00|Farm]] es gießt. Der Farmer sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Gesät wird nur auf Gras, abseits von Straßen, bis {{field.radius}} Schritte von der Farm.',
             ],
           ],
         },
@@ -418,15 +418,15 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Der Soldat greift nicht an',
-              'Prüfe den Modus: [[article:stances|Soldatenmodi]]. Als Ignorant rührt er sich nicht und schlägt nur in Waffenreichweite. Angriff und Befehl wirken nur gegen Stämme, zu denen dein Verhältnis „Feindlich“ ist, und nur außerhalb der „Friedenszeit“.',
+              'Prüfe den Modus: [[article:stances|Soldatenmodi]]. Im Modus Ignorant rührt er sich nicht und schlägt nur in Waffenreichweite. Angriff und Befehl wirken nur gegen Stämme, zu denen dein Verhältnis „Feindlich“ ist, und nur außerhalb der „Friedenszeit“.',
             ],
             [
               'Das Schiff legt nicht ab',
-              'Status „Wartet auf einen Kommandanten“: Weise einen zu, das kann jeder Erwachsene sein. „Wartet auf seine Besatzung“: Jemand Zugewiesenes läuft noch zur Tür, und ein Siedler von anderem Land fällt aus der Besatzung. „Kein Weg“ heißt, das Ziel liegt nicht auf diesem Wasser. Auf See nimmt das Schiff niemanden auf, also erst „Andocken“.',
+              'Status „Wartet auf einen Kommandanten“: Weise einen zu, das kann jeder Erwachsene sein. „Wartet auf seine Besatzung“: Jemand Zugewiesenes läuft noch zur Tür, und ein Siedler auf einer anderen Landmasse fällt aus der Besatzung. „Kein Weg“ heißt, das Ziel liegt nicht auf diesem Wasser. Auf See nimmt das Schiff niemanden auf, also erst „Andocken“.',
             ],
             [
               'Der Ochsenkarren steht',
-              'Status „Wartet auf sein Zugtier“. Der Karren nimmt einen [[good:cattle|Ochsen]] aus deiner Herde auf demselben Land, aber jede Viehzüchterei behält {{livestock.pair}} erwachsene Tiere. Nötig sind {{livestock.pairPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{livestock.pairPlusOne}} außerhalb. Erst dann lässt sich ein Kommandant zuweisen.',
+              'Status „Wartet auf sein Zugtier“. Der Karren nimmt einen [[good:cattle|Ochsen]] aus deiner Herde auf derselben Landmasse, aber jede Viehzüchterei behält {{livestock.pair}} erwachsene Tiere. Nötig sind {{livestock.pairPlusOne}} erwachsene Tiere in einer Viehzüchterei oder {{livestock.pairPlusOne}} außerhalb. Erst dann lässt sich ein Kommandant zuweisen.',
             ],
           ],
         },
@@ -437,7 +437,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Ändern Regen, Schnee oder Nacht etwas?',
-              'Nein. Wetter, die Einstellung „Winter“ und die Tageszeit sind nur Bild und Ton. Leute, Arbeit, Felder und Kampf laufen gleich. Langsamer geht es nur auf dem Gelände der Karte: Sand, Gebirge und Schnee, der dort von Anfang an liegt.',
+              'Nein. Wetter, die Einstellung „Winter“ und die Tageszeit betreffen nur Bild und Ton. Leute, Arbeit, Felder und Kampf laufen unverändert. Bremsen kann nur das Gelände der Karte: Sand, Gebirge und Schnee, der dort von Anfang an liegt.',
             ],
           ],
         },

@@ -79,7 +79,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '睡眠時長', '在外', '在家', '在家有傢俱'],
+            head: ['對象', '睡眠時長', '在外', '在家', '在家有傢俱'],
             rows: [
               [
                 '有住所的男性',
@@ -106,7 +106,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '需求條'],
+            head: ['對象', '需求條'],
             rows: [
               ['嬰兒、兒童', '沒有。成年時每條都是100%。'],
               ['[[article:heroes|英雄]]', '沒有。'],
@@ -149,7 +149,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '體力到{{need.criticalPct}}%時，居民離開行軍、偵察或命令佇列。狀態顯示「肚子餓，去吃東西」。',
+            '體力到{{need.criticalPct}}%時，居民離開行軍、偵察或命令隊列。狀態顯示「肚子餓，去吃東西」。',
             '吃到{{need.satedPct}}%，然後從頭執行命令。',
             '找不到吃的就回去執行命令，{{meal.breakRetrySeconds}}秒後再找。',
             '給飢餓的人下新命令時新命令優先：{{meal.breakRetrySeconds}}秒內飢餓不會打斷他。',
@@ -321,7 +321,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             '[[good:potion_heal_small|小型治療藥水]]有{{draught.smallUses}}口，共{{draught.healSmallTotal}}點。[[good:potion_heal_big|大型治療藥水]]有{{draught.bigUses}}口，共{{draught.healBigTotal}}點。',
             '居民一口接一口地喝，直到扣除傷害後至少還剩{{draught.healBelow}}點。',
-            '致命一擊不會致死，只要藥水足以抵消傷害。',
+            '只要藥水夠抵消傷害，致命一擊也殺不死。',
             '餓到生命值低於{{draught.healBelow}}時也會喝。',
             '先喝開過封的，再喝小瓶，最後喝大瓶。',
           ],
@@ -389,7 +389,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'family',
       name: '家庭與住所',
-      lead: '一個孩子要花{{family.childFood}}份存糧，一對夫妻同時只能有一個孩子。',
+      lead: '生一個孩子花{{family.childFood}}份存糧，一對夫妻一次只養一個孩子。',
       blocks: [
         {
           h: '指派住所',
@@ -408,7 +408,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             '只有「結婚」命令才能結婚，居民不會自己成婚。',
             '命令把居民和最近的異性成人配對，須同一民族、同一玩家。',
-            '物件必須在該居民的[[article:roads|路標]]範圍內。找不到物件時命令作廢，顯示「找不到對象」。',
+            '對象必須在該居民的[[article:roads|路標]]範圍內。找不到對象時命令作廢，顯示「找不到對象」。',
             '士兵、英雄、偵察兵，以及被派往[[building:barracks|兵營]]或[[building:school|學校]]的居民不能結婚。',
             '夫妻住在妻子家。妻子沒有住所時住在丈夫家。',
           ],
@@ -496,7 +496,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '結果'],
+            head: ['對象', '結果'],
             rows: [
               ['鰥夫', '孩子成年或夭折後失去住所。'],
               ['寡婦', '留在家中。'],
@@ -553,7 +553,7 @@ export const SETTLERS: ArticleGroup = {
               ['學校畢業生自動分派到工坊', '關', '[[building:school|學校]]畢業生'],
               ['採集者自動移動旗幟', '開', '插了旗的[[job:collector|採集者]]'],
             ],
-            foot: '飲品和護符可用「平民」和「士兵」按鈕選擇發放物件，初始都開。關掉不會收回任何東西，已有的繼續留著。',
+            foot: '飲品和護符可用「平民」和「士兵」按鈕選擇發放對象，初始都開。關掉不會收回任何東西，已有的繼續留著。',
           },
         },
         {
@@ -584,7 +584,7 @@ export const SETTLERS: ArticleGroup = {
               ['沒有空閒平民', '手動派人去兵營。'],
               ['徒手士兵在等該兵種的武器', '提供武器。在此之前他佔著新兵的名額。'],
             ],
-            foot: '每秒最多{{assistant.draftsPerSecond}}人。在路上的新兵計入計數器，損失的新兵回到佇列。',
+            foot: '每秒最多{{assistant.draftsPerSecond}}人。在路上的新兵計入計數器，損失的新兵回到隊列。',
           },
         },
         {
@@ -604,7 +604,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '畢業生只指派一次，去本職業最近的空缺，工坊工地也算。生產課程對應產品的工坊優先於更近的工坊。',
+            '畢業生只指派一次，去本職業最近的空缺，工坊工地也算。能做該課程產品的工坊優先，哪怕離得更遠。',
             '沒有空缺就在學校旁等待。[[job:collector|採集者]]、[[job:hunter|獵人]]、[[job:fisher|漁夫]]和士兵不參與。',
           ],
         },
@@ -710,7 +710,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '可攜帶'],
+            head: ['對象', '可攜帶'],
             rows: [
               ['成年男性', '飲品和護符共{{amulet.slots}}個欄位，任何職業都一樣。'],
               ['[[article:heroes|英雄]]', '治療藥水以及力量、精準、防禦、疾風護符。'],

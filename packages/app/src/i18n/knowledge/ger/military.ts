@@ -6,7 +6,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'damage',
       name: 'Waffen, Rüstung und Schaden',
-      lead: 'Ein Mensch hat {{health.human}} Gesundheit. Ein Schlag nimmt den Tabellenwert, die Faktoren unten ändern ihn.',
+      lead: 'Ein Mensch hat {{health.human}} Gesundheit. Ein Schlag zieht den Tabellenwert ab, die Faktoren unten ändern ihn.',
       blocks: [
         {
           data: 'matrix',
@@ -37,7 +37,7 @@ export const MILITARY: ArticleGroup = {
               ],
               ['[[good:amulet_defense|Verteidigungsamulett]] des Ziels', '×{{amulet.defenseFactor}}'],
             ],
-            foot: 'Sie wirken in dieser Reihenfolge. Vorne und vordere Flanke zählen ×1. Pfeil und Stein steigen nicht mit Treffern, ihre Richtung zählt ab dem Schussort. Richtung und Verteidigungsamulett wirken nur bei Menschen. Treffer wirken nicht gegen Fahrzeuge und Palisaden. Der Stein des Katapults bekommt keine Amulette des Kommandanten. Palisaden rechnen Schaden eigens: [[article:walls|Palisaden und Tore]].',
+            foot: 'Sie wirken in dieser Reihenfolge. Vorne und vordere Flanke zählen ×1. Pfeile und Steine werden durch Treffer nicht stärker, ihre Richtung zählt vom Abschussort aus. Richtung und Verteidigungsamulett wirken nur bei Menschen. Gegen Fahrzeuge und Palisaden zählen Treffer nicht. Der Stein des Katapults bekommt keine Amulette des Kommandanten. Palisaden berechnen Schaden eigens: [[article:walls|Palisaden und Tore]].',
           },
         },
         {
@@ -122,11 +122,11 @@ export const MILITARY: ArticleGroup = {
               ['Nur eines von beiden', 'Nimmt es und holt den Rest'],
               ['Nichts', 'Holt erst die Waffe, dann die Rüstung'],
             ],
-            foot: 'Liegt ein höherer Eintrag der Leiste in einem Lager in Reichweite, holt der Rekrut ihn dort und lässt das Schlechtere in der Kaserne. Nach dem Gang kehrt er zur Kaserne zurück, auch ein vom Zähler bewaffneter Soldat.',
+            foot: 'Liegt ein höherer Eintrag der Leiste in einem Lager in Reichweite, holt der Rekrut ihn dort und lässt das Schlechtere in der Kaserne. Danach kehrt er zur Kaserne zurück, ebenso ein vom Zähler bewaffneter Soldat.',
           },
         },
         {
-          h: 'Leisten Waffe und Rüstung',
+          h: 'Waffen- und Rüstungsleisten',
         },
         {
           p: 'Jede Klasse hat eigene Leisten. Ein Soldat nimmt von links den ersten Eintrag aus dem Lager und übergeht durchgestrichene. Anfangs steht das Stärkste vorn. Ein Klick streicht durch, Halten und Ziehen ändert die Reihenfolge.',
@@ -152,7 +152,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Münze]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Mit Vorrang kommt Ware in die Kaserne, {{barracks.carriers}} Plätze für Träger: [[article:hauling|Träger und Lager]].',
+            foot: 'Ware für die Kaserne hat Vorrang, dazu {{barracks.carriers}} Trägerplätze: [[article:hauling|Träger und Lager]].',
           },
         },
         {
@@ -171,7 +171,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Der Siedler holt die Sache und kehrt an den Ort des Befehls zurück.',
+            'Der Siedler holt den Gegenstand und kehrt an den Ort des Befehls zurück.',
             'Findet er unterwegs keine Quelle, kommt er mit leeren Händen zurück.',
             'Eine Waffe ändert sofort die Klasse des Soldaten. Ohne Waffe bleibt er [[job:soldier_unarmed|Soldat]].',
             'Getauschte und abgelegte Schuhe, Werkzeuge und angebrochene Flaschen gehen verloren.',
@@ -262,7 +262,7 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          h: 'Streuung daneben gegangener Pfeile',
+          h: 'Streuung von Fehlschüssen',
         },
         {
           list: [
@@ -704,7 +704,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Kampferfahrung erhöht den Schlag gegen Palisaden nicht.',
-            'Das Stärkeamulett rechnet ab den Punkten: 5 wird 7, 2 wird 3, 1 bleibt 1.',
+            'Das Stärkeamulett wirkt auf die Punkte: 5 wird 7, 2 wird 3, 1 bleibt 1.',
             'Ein Soldat wählt keine Palisade von selbst. Er schlägt sie auf Befehl oder wenn sie ihm den Weg zum Feind versperrt.',
             'Fällt ein Abschnitt, gehen die Soldaten durch die Bresche und lassen die Nachbarn in Ruhe.',
           ],
@@ -842,7 +842,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Ziel näher als {{catapult.min}} Schritte: Das Katapult fährt weg. Ziel weiter als {{catapult.max}}: Es fährt heran auf {{catapult.bandMin}}-{{catapult.max}} Schritte.',
+            'Ziel näher als {{catapult.min}} Schritte: Das Katapult fährt weg. Ziel weiter als {{catapult.max}}: Es rückt auf {{catapult.bandMin}}-{{catapult.max}} Schritte heran.',
             'Es schießt nur im Stand und nur, wenn es kein anderes Fahrzeug berührt.',
             'Ein Befehl kann einen Punkt am Boden wählen. Palisaden beschießt es nur auf Befehl.',
           ],
@@ -878,7 +878,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'computer',
       name: 'Computergegner',
-      lead: 'Die Schwierigkeit stellst du in der Lobby ein. Schwer kann die erste Welle gleich nach Friedensende schicken.',
+      lead: 'Die Stufe stellst du in der Lobby ein. Schwer kann die erste Welle gleich nach Friedensende schicken.',
       blocks: [
         {
           table: {
@@ -927,7 +927,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Es marschiert immer nur eine Welle. Die nächste sammelt sich an der [[building:barracks|Kaserne]].',
-            'Das Sammeln dauert bis zu {{ai.gatherMinutes}} Minuten. Danach zieht die Untergrenze des Bereichs los, und sind es weniger, alle, die hinkommen.',
+            'Das Sammeln dauert bis zu {{ai.gatherMinutes}} Minuten. Danach ziehen so viele los, wie die Untergrenze des Bereichs verlangt. Sind es weniger, gehen alle, die hinkommen.',
           ],
         },
         {
@@ -935,7 +935,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Die Welle wartet, wenn du mehr Punkte hast: Soldat und Held 1, Bogenschütze im Turm 3. Der Computer zählt für jeden 1.',
+            'Die Welle wartet, wenn du mehr Punkte hast: Soldat und Held 1, Bogenschütze im Turm 3. Der Computer zählt jeden seiner Leute mit 1.',
             'Waffen, Rüstung, Amulette, Tränke und Erfahrung zählen nicht.',
             'Sie wartet an der Kaserne, auch nach dem Sammeln.',
             'Hat die Computerarmee ihre Grenze erreicht, zieht die Welle trotzdem los.',
@@ -963,17 +963,17 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Ein Ziel muss auf demselben Land stehen wie die Computerkaserne. Wellen steigen nicht auf Schiffe.',
-            'Steht das Hauptquartier des Rivalen auf anderem Land, baut der Computer am Ufer eine [[building:work_joinery_03|Schreinerei 4]] und baut [[good:ship_small|Schiffe]], transportiert damit aber keine Truppen.',
-            'Dein Gebäude oder Mensch auf dem Land des Computers wird zum Ziel.',
-            'Landungen von See bringt ein Kartenmodus, zum Beispiel Ragnarök.',
+            'Ein Ziel muss auf derselben Landmasse stehen wie die Computerkaserne. Wellen steigen nicht auf Schiffe.',
+            'Steht das Hauptquartier des Rivalen auf einer anderen Landmasse, errichtet der Computer am Ufer eine [[building:work_joinery_03|Schreinerei 4]] und baut [[good:ship_small|Schiffe]], transportiert damit aber keine Truppen.',
+            'Deine Gebäude und Leute auf der Landmasse des Computers werden zum Ziel.',
+            'Landungen von See sind ein Kartenmodus, zum Beispiel Ragnarök.',
           ],
         },
         {
           h: 'Wiederaufbau',
         },
         {
-          p: 'Die „Karten-KI“ baut Gebäude wieder auf, wenn bis {{ai.rebuildNear}} Schritte kein Feind ist. Das Hauptquartier nicht.',
+          p: 'Die „Karten-KI“ baut Gebäude wieder auf, wenn im Umkreis von {{ai.rebuildNear}} Schritten kein Feind steht. Das Hauptquartier nicht.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

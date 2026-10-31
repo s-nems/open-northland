@@ -289,7 +289,7 @@ export const WORLD: ArticleGroup = {
           list: [
             '民居、箭塔、[[building:barracks|兵营]]、[[building:school|学校]]和地面堆垛不参与支付。',
             '要求食物时，同类的任何食物都行。',
-            '“最低库存”不保护物资免于缴贡。',
+            '“最低库存”挡不住贡品扣除。',
           ],
         },
       ],

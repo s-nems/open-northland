@@ -6,7 +6,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'damage',
       name: 'Weapons, Armour and Damage',
-      lead: 'A person has {{health.human}} health. A blow takes the table value, and the multipliers below change it.',
+      lead: 'A person has {{health.human}} health. A blow deals the table value, changed by the multipliers below.',
       blocks: [
         {
           data: 'matrix',
@@ -14,7 +14,7 @@ export const MILITARY: ArticleGroup = {
         {
           figure: {
             id: 'direction',
-            caption: 'Where a blow lands from',
+            caption: 'Direction of the blow',
           },
         },
         {
@@ -37,7 +37,7 @@ export const MILITARY: ArticleGroup = {
               ],
               ["Target's [[good:amulet_defense|Amulet of Defence]]", '×{{amulet.defenseFactor}}'],
             ],
-            foot: "They apply in this order. Front and front flank give ×1. Arrows and catapult stones don't grow with hits, and they take direction from where the shot came. Direction and the Amulet of Defence work only on people. Hits don't work on vehicles and stockades. A Catapult stone gets none of the commander's amulets. Stockades count damage their own way: [[article:walls|Stockades and Gates]].",
+            foot: "They apply in this order. Front and front flank give ×1. Hits don't raise arrows or catapult stones, and their direction counts from where the shot was fired. Direction and the Amulet of Defence work only on people. Hits don't count against vehicles and stockades. A Catapult stone gets none of the commander's amulets. Stockades count damage their own way: [[article:walls|Stockades and Gates]].",
           },
         },
         {
@@ -130,7 +130,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'No weapon to take: he waits, and the window shows "waits for a weapon".',
-            "No armour to take: he goes without. He'll only put it on later by order.",
+            'No armour to take: he goes without. Later he puts it on only when ordered.',
           ],
         },
         {
@@ -148,7 +148,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Coin]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Priority brings goods to the Barracks, {{barracks.carriers}} Carrier places: [[article:hauling|Carriers and Warehouses]].',
+            foot: 'Goods for the Barracks get priority, with {{barracks.carriers}} Carrier places: [[article:hauling|Carriers and Warehouses]].',
           },
         },
         {
@@ -323,7 +323,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'A soldier on Attack returns to his standing point if the fight ends more than {{stance.attackReturn}} steps from it.',
-            'Seeking enemies does not depend on [[article:fog|fog]].',
+            '[[article:fog|Fog]] does not stop a soldier finding enemies.',
             'An attack order works in every stance.',
             "An archer on post shoots at what's in range, in every stance.",
             'A plain move order keeps a soldier on his route, even under blows. With "Attack on the way" he turns on his attacker.',
@@ -619,7 +619,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Stockades and Gates',
-      lead: 'A blow takes 1 health from a stockade for every full {{wall.damagePerPoint}} damage against buildings. Under {{wall.damagePerPoint}} does nothing.',
+      lead: 'A blow takes 1 health from a stockade for every full {{wall.damagePerPoint}} damage against buildings. Anything under {{wall.damagePerPoint}} does nothing.',
       blocks: [
         {
           table: {
@@ -696,7 +696,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             "Combat experience doesn't raise a blow on a stockade.",
-            'The Amulet of Strength works from the points: 5 gives 7, 2 gives 3, 1 stays 1.',
+            'The Amulet of Strength acts on the points: 5 gives 7, 2 gives 3, 1 stays 1.',
             "Soldiers don't pick a stockade on their own. They strike it on orders or when it blocks their way to an enemy.",
             'Once a segment falls, soldiers go through the breach and stop hacking at its neighbours.',
           ],
@@ -947,7 +947,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Stockades and the [[building:work_pottery_02|Defence wall]] are not targets: [[article:walls|Stockades and Gates]].',
-            'The computer also aims through fog.',
+            'Fog hides nothing from the computer.',
           ],
         },
         {
@@ -965,7 +965,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Rebuilding',
         },
         {
-          p: '"Map AI" rebuilds buildings when no enemy is within {{ai.rebuildNear}} steps. Not the Headquarters.',
+          p: '"Map AI" rebuilds buildings, but not the Headquarters, when no enemy is within {{ai.rebuildNear}} steps.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

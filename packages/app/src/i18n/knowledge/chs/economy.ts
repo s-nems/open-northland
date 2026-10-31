@@ -227,7 +227,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          h: '计数器的去向',
+          h: '计数器何时变化',
         },
         {
           p: '每次更换工作场所或职业都会清空，建筑被拆时也一样。升级会保留，新等级增加的产品为0。每名工人的计数器各自独立：同一工坊的2个人可以做2种产品。',
@@ -588,7 +588,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:headquarters|大本营]]', '{{haul.hq}}'],
             ],
             num: [1],
-            foot: '这些建筑各可容纳[[job:carrier|搬运工]]、采集者、渔夫和猎人各{{haul.storeSeats}}名。',
+            foot: '这些建筑可容纳[[job:carrier|搬运工]]、采集者、渔夫和猎人各{{haul.storeSeats}}名。',
           },
         },
         {
@@ -619,7 +619,7 @@ export const ECONOMY: ArticleGroup = {
             '放下手上的东西。',
             '运来本建筑标记为优先的物资。',
             '在仓库和大本营运来低于最低库存的物资。',
-            '拾取最近的本建筑可收的堆垛。',
+            '拾取本建筑可收的最近堆垛。',
             '把工坊的成品运回本建筑。',
           ],
         },
@@ -881,7 +881,7 @@ export const ECONOMY: ArticleGroup = {
               ['雪地', '{{step.snow}}秒', '{{step.road}}秒', '{{step.roadSavedOnSnowPct}}%'],
             ],
             num: [1, 2, 3],
-            foot: '穿鞋、空手的居民。鞋子走道路的磨损比走陆地慢{{shoes.roadWear}}倍。',
+            foot: '穿鞋、空手的居民。鞋子走道路的磨损比走陆地慢：×{{shoes.roadWear}}。',
           },
         },
         {
@@ -922,7 +922,7 @@ export const ECONOMY: ArticleGroup = {
               ['雪地', '{{step.snow}}秒', '{{step.snowBare}}秒', '{{shoes.snow}}'],
             ],
             num: [1, 2, 3],
-            foot: '手上拿货时鞋子磨损快{{shoes.carryWear}}倍。赤脚每步的体力消耗见[[article:needs|需求]]。',
+            foot: '手上拿货时鞋子磨损更快：×{{shoes.carryWear}}。赤脚每步的体力消耗见[[article:needs|需求]]。',
           },
         },
         {

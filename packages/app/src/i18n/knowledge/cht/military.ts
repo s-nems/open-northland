@@ -34,7 +34,7 @@ export const MILITARY: ArticleGroup = {
               ],
               ['目標的[[good:amulet_defense|防禦護符]]', '×{{amulet.defenseFactor}}'],
             ],
-            foot: '按此順序生效。正面和前側為×1。箭矢和石彈不隨命中次數增長，方向從發射點算起。方向和防禦護符只對人有效。命中次數對載具和木柵欄無效。投石機的石彈不享受指揮官的護符。木柵欄的傷害另算：[[article:walls|木柵欄與柵門]]。',
+            foot: '按此順序生效。正面和前側為×1。箭矢和石彈不隨命中次數增長，方向從發射點算起。方向和防禦護符只對人有效。命中次數對載具和木柵欄無效。指揮官的護符對投石機的石彈無效。木柵欄的傷害另算：[[article:walls|木柵欄與柵門]]。',
           },
         },
         {
@@ -42,7 +42,7 @@ export const MILITARY: ArticleGroup = {
             '結果不大於0時不造成傷害，也不給經驗。',
             '兒童不會受傷。',
             '武器和護甲不會耗損。',
-            '只有成年男效能穿戴武器和護甲。',
+            '只有成年男性能裝備武器和護甲。',
           ],
         },
         {
@@ -149,7 +149,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '可更換'],
+            head: ['對象', '可更換'],
             rows: [
               ['士兵', '武器、護甲、鞋子、裝備'],
               ['有職業的男性', '工具、鞋子、裝備'],
@@ -189,7 +189,7 @@ export const MILITARY: ArticleGroup = {
       lead: '近戰只有在出手瞬間目標超出武器範圍時才落空。弓手的命中率隨弓的命中次數上升。',
       blocks: [
         {
-          h: '遠端武器',
+          h: '遠程武器',
         },
         {
           table: {
@@ -320,11 +320,11 @@ export const MILITARY: ArticleGroup = {
           p: '士兵不會主動選擇木柵欄和防禦牆：[[article:walls|木柵欄與柵門]]。',
         },
         {
-          h: '誰會對攻擊作出反應',
+          h: '誰會響應攻擊',
         },
         {
           table: {
-            head: ['物件', '距傷者（步）', '反應'],
+            head: ['對象', '距傷者（步）', '反應'],
             rows: [
               ['進攻或防禦姿態的士兵和英雄', '{{stance.soldierAlarm}}', '衝向攻擊者'],
               ['無視姿態的士兵和英雄', '-', '只打武器範圍內的目標'],
@@ -337,7 +337,7 @@ export const MILITARY: ArticleGroup = {
               ['露天睡覺的平民', '-', '繼續睡，被打才逃'],
             ],
             num: [1],
-            foot: '只有人受到攻擊才會引發反應。',
+            foot: '只有人被攻擊才會觸發響應。',
           },
         },
         {
@@ -346,7 +346,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '平民為無視姿態，不參與戰鬥。只有士兵和英雄能設定姿態。',
-            '平民只因受到攻擊而逃跑，看見敵人不會動。',
+            '平民只有挨打才逃跑，看見敵人不會動。',
             '逃跑時扔下攜帶的貨物。搬運工丟下推車。',
           ],
         },
@@ -360,7 +360,7 @@ export const MILITARY: ArticleGroup = {
       blocks: [
         {
           table: {
-            head: ['專案', '士兵', '英雄'],
+            head: ['項目', '士兵', '英雄'],
             rows: [
               ['視野', '{{vision.soldier}}', '{{vision.hero}}'],
               ['弓箭命中率', '隨命中次數上升', '百發百中'],
@@ -469,7 +469,7 @@ export const MILITARY: ArticleGroup = {
             '找不到位置的人繼續工作。',
             '防禦模式優先於飢餓和睡眠。躲藏者只吃隨身帶的，不工作。',
             '躲藏者不會受到攻擊。',
-            '建築被摧毀時躲藏者被放出來。',
+            '建築被摧毀時，躲藏者回到外面。',
           ],
         },
         {
@@ -520,7 +520,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             '射程為從建築最近的牆起{{shelter.range}}步，沒有下限。',
             '建築也會射擊迷霧中的敵人。',
-            '箭不花錢，也不給經驗。',
+            '箭不耗材料，也不給經驗。',
             '目標順序：士兵和英雄、野獸、建築、其他人。',
           ],
         },
@@ -554,7 +554,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             '職位只接受對應兵種：[[job:soldier_bow_short|短弓手]]或[[job:soldier_bow_long|長弓手]]。指派方式與工作地點相同。',
             '換別的武器會改變兵種並失去職位。',
-            '駐軍不下塔，吃塔記憶體糧，在職位上睡覺。存糧空了才去找吃的。',
+            '駐軍不下塔，吃塔內存糧，在職位上睡覺。存糧空了才去找吃的。',
             '助手不會把駐軍調離箭塔，發裝備也不會。',
             '「撤出駐軍」：弓手離開箭塔並保持選中，等待下一條命令。移動命令也能讓弓手離崗。',
             '「已駐守」狀態：箭塔已指派弓手。「沒有駐軍」：一個都沒有。',
@@ -678,7 +678,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['專案', '數值'],
+            head: ['項目', '數值'],
             rows: [
               ['射程', '{{catapult.min}}-{{catapult.max}}步'],
               ['射擊間隔', '{{catapult.seconds}}秒'],
@@ -689,7 +689,7 @@ export const MILITARY: ArticleGroup = {
                 '[[building:catapult|投石機]]：[[good:wood|木材]]{{catapult.wood}}份，[[good:iron|鐵礦]]{{catapult.iron}}份',
               ],
             ],
-            foot: '沒有指揮官的投石機不能移動也不能射擊。石彈不花錢。',
+            foot: '沒有指揮官的投石機不能移動也不能射擊。石彈不耗材料。',
           },
         },
         {
@@ -818,7 +818,7 @@ export const MILITARY: ArticleGroup = {
       blocks: [
         {
           table: {
-            head: ['專案', '簡單', '中等', '困難'],
+            head: ['項目', '簡單', '中等', '困難'],
             rows: [
               ['第一波', '{{ai.easy.firstWaveMinutes}}分鐘', '{{ai.medium.firstWaveMinutes}}分鐘', '立刻'],
               ['軍隊上限', '{{ai.easy.armyCap}}', '{{ai.medium.armyCap}}', '{{ai.hard.armyCap}}'],

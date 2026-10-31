@@ -71,7 +71,7 @@ export const SETTLERS: ArticleGroup = {
                 'Obergrenze. Eine Mahlzeit zu Hause und Schlaf auf Möbeln legen Vorrat über 100% an.',
               ],
             ],
-            foot: 'Von selbst beten gehen nur [[job:armorer|Waffenbauer]] und [[job:smith|Schmied]]. Der [[job:sewer|Näher]] verbraucht Religion, betet aber nur auf Befehl.',
+            foot: 'Von selbst beten gehen nur [[job:armorer|Waffenbauer]] und [[job:smith|Schmiede]]. Der [[job:sewer|Näher]] verbraucht Religion, betet aber nur auf Befehl.',
           },
         },
         {
@@ -90,7 +90,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Gibt es nichts zu essen und keinen Ort zum Beten, geht der Siedler zurück an die Arbeit, und der Balken sinkt weiter. Ohne Wohnhaus in {{reach.walk}} Schritten Reichweite schläft er im Freien.',
+          p: 'Gibt es nichts zu essen und keinen Ort zum Beten, geht der Siedler zurück an die Arbeit, und der Balken sinkt weiter. Ohne Wohnhaus im Umkreis von {{reach.walk}} Schritten schläft er im Freien.',
         },
         {
           p: 'Ein Soldat im Kampf isst nur, was er bei sich trägt, oder aus dem Turmvorrat. Der Befehl Iss unterbricht den Kampf.',
@@ -136,7 +136,7 @@ export const SETTLERS: ArticleGroup = {
               ['Mitfahrer im Karren', 'Balken und Gesundheit stehen still.'],
               [
                 'Passagier auf dem Schiff',
-                'Isst aus dem Frachtraum, schläft wie außer Haus, redet. Religion wartet aufs Land.',
+                'Isst aus dem Frachtraum, schläft wie außer Haus, redet. Religion wartet bis zum Landgang.',
               ],
             ],
           },
@@ -147,7 +147,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Der Befehl wirkt bei jedem Balkenstand. Er unterbricht Marsch, Angriff und Kampf.',
-            'Fehlt das Mittel gegen das Bedürfnis, wartet der Befehl. Warten weitere Befehle, verfällt er.',
+            'Lässt sich das Bedürfnis nicht stillen, wartet der Befehl. Stehen weitere Befehle an, verfällt er.',
             'Helden nehmen diese Befehle nicht an. „Bete“ wirkt nur in einem Beruf, der beten kann.',
           ],
         },
@@ -166,7 +166,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: '„Verboten“ ohne Getränke endet im Hunger. Da hilft der Befehl Iss oder die Rückkehr zu „Erlaubt“.',
+          p: '„Verboten“ ohne Getränke endet im Hungertod. Da hilft der Befehl Iss oder die Rückkehr zu „Erlaubt“.',
         },
         {
           h: 'Hunger und lange Befehle',
@@ -232,7 +232,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Essen',
-      lead: 'Nahrung sind Brot, Fleisch und Fisch. Zu Hause bringt dieselbe Mahlzeit doppelt so viel Energie.',
+      lead: 'Als Nahrung zählen Brot, Fleisch und Fisch. Zu Hause bringt dieselbe Mahlzeit doppelt so viel Energie.',
       blocks: [
         {
           h: 'Was eine Mahlzeit bringt',
@@ -283,8 +283,8 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             'Eigene Speisekammer, wenn die Haustür höchstens {{reach.walk}} Schritte entfernt ist.',
-            'Nächstes Lager, nächste Werkstatt oder nächster Haufen in {{reach.goods}} Schritten Reichweite, oder ein reifer Strauch näher als {{reach.bushAtHand}} Schritte.',
-            'Nächster reifer Strauch in {{reach.goods}} Schritten Reichweite.',
+            'Nächstes Lager, nächste Werkstatt oder nächster Haufen im Umkreis von {{reach.goods}} Schritten, oder ein reifer Strauch näher als {{reach.bushAtHand}} Schritte.',
+            'Nächster reifer Strauch im Umkreis von {{reach.goods}} Schritten.',
             'Nächstes Essen irgendwo in Gehreichweite, auch das ferne eigene Wohnhaus.',
           ],
         },
@@ -334,7 +334,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 'Heiltrank',
                 '+{{draught.healSip}} je Schluck',
-                'Wunde drückt unter {{draught.healBelow}}',
+                'Wunde senkt unter {{draught.healBelow}}',
                 '-',
               ],
               [
@@ -595,7 +595,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Schalter', 'Anfangs', 'Wer bekommt'],
+            head: ['Schalter', 'Anfangs', 'Empfänger'],
             rows: [
               ['[[good:shoes|Schuhe]]', 'an', 'erwachsene Männer'],
               [
@@ -627,7 +627,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Zuerst Töchter, dann Söhne. Töchter haben kein ∞, sonst kämen die Söhne nie an die Reihe.',
             'Zähler 3 bedeutet höchstens 3 Paare gleichzeitig.',
-            'Ein Paar nimmt je eine Bestellung an. Es gelten dieselben Hindernisse wie beim Befehl: [[article:family|Familie und Wohnhaus]].',
+            'Ein Paar nimmt immer nur eine Bestellung an. Es gelten dieselben Hindernisse wie beim Befehl: [[article:family|Familie und Wohnhaus]].',
             'Einen Zähler zu senken nimmt einem Paar die laufende Bestellung nicht weg.',
           ],
         },
@@ -671,7 +671,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Der Absolvent geht einmal zum nächsten freien Platz seines Berufs, auch auf die Baustelle einer Werkstatt. Eine Werkstatt mit dem Kursprodukt schlägt eine nähere.',
+            'Der Absolvent geht einmal zum nächsten freien Platz seines Berufs, auch auf die Baustelle einer Werkstatt. Eine Werkstatt mit dem Kursprodukt geht einer näheren vor.',
             'Ohne freien Platz wartet er an der Schule. [[job:collector|Abbauer]], [[job:hunter|Jäger]], [[job:fisher|Fischer]] und Soldaten sind ausgenommen.',
           ],
         },
@@ -725,7 +725,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:potion_heal_small|Kleiner]] / [[good:potion_heal_big|Großer Heiltrank]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.healSip}} Gesundheit',
-                'Wunde drückt unter {{draught.healBelow}} Gesundheit',
+                'Wunde senkt unter {{draught.healBelow}} Gesundheit',
               ],
             ],
             num: [1],
@@ -742,12 +742,12 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:amulet_food|Nahrungsamulett]]',
                 '+{{amulet.needPct}}% Energie',
-                'jedes Mal, wenn die Energie höchstens {{need.drivePct}}% hat',
+                'jedes Mal, wenn die Energie auf höchstens {{need.drivePct}}% steht',
               ],
               [
                 '[[good:amulet_stamina|Wachbleibamulett]]',
                 '+{{amulet.needPct}}% Kondition',
-                'jedes Mal, wenn die Kondition höchstens {{need.drivePct}}% hat',
+                'jedes Mal, wenn die Kondition auf höchstens {{need.drivePct}}% steht',
               ],
               [
                 '[[good:amulet_strength|Stärkeamulett]]',

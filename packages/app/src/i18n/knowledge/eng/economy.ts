@@ -283,7 +283,7 @@ export const ECONOMY: ArticleGroup = {
               ['Product shelf full', 'The turn moves on. Batches in progress count as taken space.'],
               ['No ingredient in the building', 'The turn moves on'],
               [
-                'Some of the ingredient in the building',
+                'Not enough of an ingredient in the building',
                 "Waits for the rest. Gives up the turn when there's nowhere to get it.",
               ],
               ['All counters at 0', 'The worker starts nothing'],
@@ -479,7 +479,7 @@ export const ECONOMY: ArticleGroup = {
           p: "A field needs tillable ground: sand and roads are out. Wild fields on the map within the building's radius count toward its limit.",
         },
         {
-          p: "A field the building's door has had no way to reach for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
+          p: "A field cut off from the building's door for {{field.reclaimSeconds}} s disappears and frees a place in the limit.",
         },
         {
           h: 'What grows back',

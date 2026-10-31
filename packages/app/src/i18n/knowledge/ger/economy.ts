@@ -128,7 +128,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Ein Gebäude ohne Kosten braucht 1 Schlag.',
             'Ein Palisadenabschnitt und ein Straßenstück brauchen nach der Materiallieferung 1 Schlag von 1 Bauarbeiter.',
-            'Material tragen der Bauarbeiter und ein der Baustelle zugewiesener Arbeiter, je 1 Stück.',
+            'Material tragen der Bauarbeiter und Arbeiter, die der Baustelle zugewiesen sind, je 1 Stück.',
           ],
         },
         {
@@ -144,7 +144,7 @@ export const ECONOMY: ArticleGroup = {
           ],
         },
         {
-          p: 'Ein vom Spieler einer Baustelle zugewiesener Bauarbeiter bleibt dort, auch wenn es anderswo Arbeit gibt.',
+          p: 'Weist der Spieler einer Baustelle einen Bauarbeiter zu, bleibt er dort, auch wenn es anderswo Arbeit gibt.',
         },
         {
           h: 'Ausbau',
@@ -155,7 +155,7 @@ export const ECONOMY: ArticleGroup = {
             'Waren aus den Kosten, die das Gebäude auf Vorrat hat, gehen sofort auf die Baustelle. Die übrigen Vorräte kehren nach dem Ausbau zurück.',
             'Arbeiter und Bewohner gehen hinaus, behalten ihren Platz und kehren nach dem Ausbau zurück.',
             'Die Gesundheit steht währenddessen still und ist danach für die neue Stufe voll.',
-            'Der Start des Ausbaus beendet den Verteidigungsmodus.',
+            'Mit dem Ausbau endet der Verteidigungsmodus.',
             'Palisaden und Straßen unter dem neuen Gebäude verschwinden ohne Rückgabe.',
             'Ein Abbruch gibt die Vorräte und die daraus genommenen Waren zurück, geliefertes Material geht verloren.',
           ],
@@ -196,7 +196,7 @@ export const ECONOMY: ArticleGroup = {
                 'Dasselbe für die aktuelle Stufe, plus eingelagerte Vorräte und Ausbaumaterial',
               ],
             ],
-            foot: 'Die Waren verteilen sich bis {{reach.spill}} Schritte am Boden, auf demselben Land. Was nicht passt, geht verloren.',
+            foot: 'Die Waren verteilen sich bis zu {{reach.spill}} Schritte weit am Boden, auf derselben Landmasse. Was nicht passt, geht verloren.',
           },
         },
       ],
@@ -238,13 +238,13 @@ export const ECONOMY: ArticleGroup = {
                 '-',
                 'Diese Ware: von 0 auf ∞, von jedem anderen Wert auf 0. Rest bleibt.',
               ],
-              ['Weniger', '-1. Von 0 Sprung auf ∞, von ∞ auf {{workshop.counterMax}}', '-10', 'Auf 0'],
-              ['Mehr', '+1. Von {{workshop.counterMax}} Sprung auf ∞, von ∞ auf 0', '+10', 'Auf ∞'],
+              ['Weniger', '-1. Springt von 0 auf ∞, von ∞ auf {{workshop.counterMax}}', '-10', 'Auf 0'],
+              ['Mehr', '+1. Springt von {{workshop.counterMax}} auf ∞, von ∞ auf 0', '+10', 'Auf ∞'],
             ],
           },
         },
         {
-          h: 'Start eines neuen Arbeiters',
+          h: 'Startwerte neuer Arbeiter',
         },
         {
           table: {
@@ -286,7 +286,7 @@ export const ECONOMY: ArticleGroup = {
               ],
               ['Keine Zutat im Gebäude', 'Das nächste Produkt ist dran'],
               [
-                'Ein Teil der Zutat im Gebäude',
+                'Zu wenig von einer Zutat im Gebäude',
                 'Wartet auf den Rest. Gibt die Reihe ab, wenn es den Rest nirgends gibt.',
               ],
               ['Alle Zähler auf 0', 'Der Arbeiter beginnt nichts'],
@@ -315,7 +315,7 @@ export const ECONOMY: ArticleGroup = {
           h: 'Abbauer',
         },
         {
-          p: 'Dasselbe Panel dient dem Abbauer. Der Warenknopf heißt hier „Nur diese Ware“.',
+          p: 'Der Abbauer nutzt dasselbe Panel. Der Warenknopf heißt hier „Nur diese Ware“.',
         },
         {
           table: {
@@ -742,8 +742,8 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Karren nehmen nur Träger mit Arbeitsplatz und [[job:trader|Händler]]. Der Träger behält seinen Arbeitsplatz und nutzt den Karren wie ein Werkzeug.',
-            'Der Karren muss dir gehören und frei sein: ohne Besatzung, ohne anderen Fahrer, auf demselben Land.',
+            'Einen Karren nehmen nur Träger mit Arbeitsplatz und [[job:trader|Händler]]. Der Träger behält seinen Arbeitsplatz und nutzt den Karren wie ein Werkzeug.',
+            'Der Karren muss dir gehören und frei sein: ohne Besatzung, ohne anderen Fahrer, auf derselben Landmasse.',
             'Ein Lagerträger mit Platz auf dem Karren nimmt dieselbe Ware von Haufen und fertigen Produkten bis {{haul.cartTopUp}} Schritte um sich mit und fährt dann zurück.',
             'Verliert er den Arbeitsplatz, bleibt der Karren stehen.',
           ],
@@ -945,7 +945,7 @@ export const ECONOMY: ArticleGroup = {
                 'Gebäude auf Wegweiser',
                 '{{reach.displace}}',
                 '{{reach.displace}}',
-                'Der Wegweiser rückt beiseite, darüber hinaus ist er weg',
+                'Der Wegweiser rückt beiseite, geht das nicht, ist er weg',
               ],
             ],
             num: [1, 2],
@@ -1164,7 +1164,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'Das fremde Gebäude gehört einem Computerspieler, ist fertig und hat ein von der Karte festgelegtes Angebot.',
-            'Zum Eintragen in die Route muss das Verhältnis beiderseits freundlich sein, für jede Fahrt nur beim Stamm des Händlers: [[article:diplomacy|Diplomatie]].',
+            'Um es in die Route einzutragen, muss das Verhältnis beiderseits freundlich sein, für jede Fahrt nur beim Stamm des Händlers: [[article:diplomacy|Diplomatie]].',
             'Ein Angebot lautet N Stück einer Ware gegen M Stück einer anderen, die Zahlen legt die Karte fest. Eine Route handelt ein Angebot zur Zeit. Das Computerlager füllt sich alle {{trade.refillSeconds}} s auf {{trade.refillLevel}} Stück jeder Angebotsware auf.',
             'Der Händler nimmt so viele volle Chargen, wie in den Frachtraum passen, Platz für die Rückware eingerechnet. Bei kleinem Frachtraum verteilt sich eine Charge auf mehrere Fahrten.',
             'Er gibt die Charge ab, nimmt die Bezahlung und wiederholt das, solange er Ware hat. Ohne Bezahlung im Gebäude wartet er und gibt nichts ab. „behalten“ N lässt N Stück Verkaufsware im Gebäude. Rückgrenze N: Stopp, wenn das Gebäude N Stück Bezahlung hat.',

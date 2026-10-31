@@ -124,7 +124,7 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|投石機]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: '單位為步/秒。滿載指手推車{{haul.handcart}}/{{haul.handcart}}、牛車{{haul.oxcart}}/{{haul.oxcart}}。按赤腳車伕計算，穿鞋更快。船不受載重影響，約{{pace.ship}}步/秒。拉車的搬運工步速也按相同比例下降。路線選車見[[article:trade|貿易]]。',
+            foot: '單位為步/秒。滿載指手推車{{haul.handcart}}/{{haul.handcart}}、牛車{{haul.oxcart}}/{{haul.oxcart}}。按赤腳車夫計算，穿鞋更快。船不受載重影響，約{{pace.ship}}步/秒。拉車的搬運工步速也按相同比例下降。路線選車見[[article:trade|貿易]]。',
           },
         },
         {
@@ -195,7 +195,7 @@ export const WORLD: ArticleGroup = {
             '「由搬運工」：有工作地點的搬運工拉車，車上裝的是他每趟搬起的貨物。目標被鎖定。',
             '車輛停下或船靠岸時，指揮官或搬運工下來工作。海上沒人工作。',
             '每次拿1份：貨堆、{{vehicle.cargoSearch}}步內的建築，然後更遠處。',
-            '來源必須在船門所在的陸地上。不拿民居里的食物。',
+            '來源必須在船門所在的陸地上。不拿民居裡的食物。',
             '目標為0或低於現有數量：多餘的運到{{vehicle.cargoSearch}}步內最近的有空位的倉庫或大本營。沒有就卸在地上。',
             '船上沒有搬運工時，指揮官在貨物無處可取時調低目標。有搬運工時目標不變。',
             '移動命令會在出發前召回乘員。',
@@ -289,7 +289,7 @@ export const WORLD: ArticleGroup = {
           list: [
             '民居、箭塔、[[building:barracks|兵營]]、[[building:school|學校]]和地面貨堆不參與支付。',
             '要求食物時，同類的任何食物都行。',
-            '「最低庫存」不保護貨物免於繳貢。',
+            '「最低庫存」擋不住貢品扣除。',
           ],
         },
       ],
@@ -329,7 +329,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '範圍（步）'],
+            head: ['對象', '範圍（步）'],
             rows: [
               ['[[job:scout|偵察兵]]、[[building:headquarters|大本營]]', '{{vision.scout}}'],
               ['英雄、[[good:ship_small|船]]、[[good:ship_big|大船]]', '{{vision.hero}}'],
@@ -445,7 +445,7 @@ export const WORLD: ArticleGroup = {
           list: [
             '獵場是工作旗幟或工作地點周圍{{flag.hunter}}步。追擊可超出獵場{{wild.huntChase}}步。',
             '優先選擇又近又弱的動物。',
-            '一次只獵1只，收完獵物才找下一隻。',
+            '一次只獵1隻，收完獵物才找下一隻。',
             '獵人的弓每箭造成{{wild.hunterShot}}，射程{{hunterBow.min}}-{{hunterBow.max}}步。',
             '不會主動獵成年野山羊，其幼崽可獵。',
             '跳過有主人的動物、被激怒的動物和其他陸地上的動物。',
@@ -476,7 +476,7 @@ export const WORLD: ArticleGroup = {
         {
           figure: {
             id: 'livestock-cycle',
-            caption: '畜牧迴圈',
+            caption: '畜牧循環',
           },
         },
         {
@@ -484,7 +484,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '做法', '範圍（步）'],
+            head: ['對象', '做法', '範圍（步）'],
             rows: [
               [
                 '[[job:scout|偵察兵]]',
@@ -602,12 +602,12 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['專案', '數值'],
+            head: ['項目', '數值'],
             rows: [
               ['範圍', '{{aura.range}}步'],
               ['生命值', '每秒+{{aura.perSecond}}，上限{{aura.ceiling}}'],
               ['信仰', '需求條不超過{{need.satedPct}}%時每秒+{{aura.pietyPct}}%'],
-              ['物件', '神廟所有者的全部人員。兒童獲得生命值'],
+              ['對象', '神廟所有者的全部人員。兒童獲得生命值'],
               ['條件', '神廟已完工且無損傷'],
               ['多座神廟', '只有一層光環，數值不疊加'],
             ],
@@ -627,7 +627,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['箱子', '物件'],
+            head: ['箱子', '對象'],
             rows: [
               ['箱子', '任何成人'],
               ['魔法箱子', '[[job:druid|德魯伊]]、英雄'],

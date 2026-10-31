@@ -35,7 +35,7 @@ export const WORLD: ArticleGroup = {
               [
                 'Waren',
                 'Vorrat in den Regalen der Gebäude. Haufen am Boden, Frachträume und Ware in den Händen zählen nicht',
-                'Sieg bei voller Mengenliste',
+                'Sieg, wenn alle Mengen erreicht sind',
               ],
               ['„Einwohner“', 'Jeder Mensch des Spielers, auch Kinder', 'Sieg bei der geforderten Zahl'],
               [
@@ -56,7 +56,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Zuerst zählt der Mangel an Männern, dann die Liste in der Reihenfolge der Karte.',
+            'Zuerst prüft das Spiel, ob noch erwachsene Männer leben, dann die Liste in der Reihenfolge der Karte.',
             'Die erste erfüllte Bedingung entscheidet endgültig über den Spieler. Ein Sieger, der danach seine Leute verliert, bleibt Sieger.',
             'Der Sieg eines Spielers beendet das Spiel für die anderen nicht.',
             'Eine Karte kann einen bestimmten Spieler von der Regel mit dem erwachsenen Mann ausnehmen.',
@@ -68,7 +68,7 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'Kein erwachsener Mann: Fahrzeuge verschwinden sofort.',
-            'Die Niederlage fällt bei der nächsten Zielprüfung.',
+            'Die Niederlage folgt bei der nächsten Zielprüfung.',
             'Bei der folgenden verschwinden Gebäude, Leute, Fahrzeuge und Wegweiser.',
             'Die Tiere des Spielers verwildern, wo sie stehen.',
           ],
@@ -181,7 +181,7 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'Ein fertiger Ochsenkarren hat den Status „Wartet auf sein Zugtier“.',
-            'Er nimmt den nächsten erwachsenen [[good:cattle|Ochsen]] des Spielers vom selben Land, frei und nicht im Inneren einer Viehzüchterei.',
+            'Er nimmt den nächsten erwachsenen [[good:cattle|Ochsen]] des Spielers auf derselben Landmasse, frei und nicht im Inneren einer Viehzüchterei.',
             'Jede Viehzüchterei behält ihre ersten {{livestock.pair}} erwachsenen Tiere. Ochsen ohne Viehzüchterei behalten ebenfalls {{livestock.pair}}.',
             'Der Ochse geht zum Karren und verschwindet, erst dann fährt der Ochsenkarren.',
           ],
@@ -193,7 +193,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Der Frachtraum ist für alle Waren gemeinsam.',
             'Ein Schiff transportiert 1 Fahrzeug: Handkarren, Ochsenkarren oder Katapult. Dessen Besatzung muss an Bord passen. Ein Großes Schiff transportiert keine Fahrzeuge.',
-            '„Andocken“ verlangt die Wahl eines Ufers. Das Schiff hält {{vehicle.mooringDistance}} Schritte vom gewählten Ort, ein Hafengebäude ist nicht nötig.',
+            'Bei „Andocken“ wählst du ein Ufer. Das Schiff hält {{vehicle.mooringDistance}} Schritte vom gewählten Ort, ein Hafengebäude ist nicht nötig.',
             'Auf See steigt niemand ein oder aus.',
             'Ctrl/Cmd + Klick dockt an und setzt die Besatzung ab.',
           ],
@@ -207,7 +207,7 @@ export const WORLD: ArticleGroup = {
             '„durch den Träger“: Ein Träger mit Arbeitsplatz zieht den Karren und fährt, was er auf jeder Fahrt aufhebt. Die Zielmengen sind gesperrt.',
             'Kommandant oder Träger steigen aus, wenn der Karren steht oder das Schiff angedockt ist. Auf See arbeitet niemand.',
             'Geladen wird je 1 Stück: Haufen, Gebäude bis {{vehicle.cargoSearch}} Schritte, dann weiter weg.',
-            'Die Quelle muss auf dem Land liegen, auf dem die Tür steht. Essen aus Wohnhäusern bleibt dort.',
+            'Die Quelle muss auf derselben Landmasse liegen wie die Tür. Essen aus Wohnhäusern bleibt dort.',
             'Zielmenge 0 oder unter dem Inhalt: Der Überschuss geht ins nächste Lagerhaus oder Hauptquartier mit Platz, bis {{vehicle.cargoSearch}} Schritte von der Tür. Sonst landet er am Boden.',
             'Ein Kommandant ohne Träger an Bord senkt die Zielmenge, wenn es die Ware nirgends gibt. Mit Träger bleibt die Zielmenge.',
             'Ein Fahrbefehl ruft die Besatzung vor der Abfahrt an Bord.',
@@ -419,7 +419,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Der Befehl wirkt nur auf Kundschafter, auch auf mehrere ausgewählte zugleich.',
             'Er geht in Ringen vom Befehlsort aus, immer zum nächsten unerkundeten Land.',
-            'Er bleibt auf einem Land. Auf ein anderes bringt ihn nur ein [[article:vehicles|Schiff]].',
+            'Er bleibt auf einer Landmasse. Auf eine andere bringt ihn nur ein [[article:vehicles|Schiff]].',
             'Er lässt schmale Streifen an Ufern und Kartenrändern aus, kleine Flecken bleiben also unerkundet.',
             'Unterwegs isst und schläft er und geht dann von seinem Standort aus weiter.',
           ],
@@ -498,7 +498,7 @@ export const WORLD: ArticleGroup = {
             'Er jagt je 1 Beute und nimmt die nächste erst, wenn er die Beute eingesammelt hat.',
             'Der Jägerbogen nimmt {{wild.hunterShot}} je Schuss, Reichweite {{hunterBow.min}}-{{hunterBow.max}} Schritte.',
             'Erwachsene Wildziegen jagt er nicht von selbst, ihre Jungtiere schon.',
-            'Er übergeht Tiere mit Besitzer, wütende Tiere und Tiere auf anderem Land.',
+            'Er übergeht Tiere mit Besitzer, wütende Tiere und Tiere auf einer anderen Landmasse.',
           ],
         },
         {
@@ -529,7 +529,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'livestock',
       name: 'Viehzucht',
-      lead: 'Der Viehzüchter vermehrt nur bei genau {{livestock.pair}} erwachsenen Tieren einer Art. Das dritte ausgewachsene Tier wird geschlachtet.',
+      lead: 'Der Viehzüchter züchtet nur bei genau {{livestock.pair}} erwachsenen Tieren einer Art. Das dritte ausgewachsene Tier wird geschlachtet.',
       blocks: [
         {
           figure: {
@@ -612,7 +612,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'religion',
       name: 'Religion und Tempel',
-      lead: 'Der Religionsbalken sinkt nur bei der Herstellung von Waffen und Rüstungen. Bei 0% beginnt ein Handwerker keine Charge, die Religion kostet.',
+      lead: 'Der Religionsbalken sinkt nur, wenn Waffen und Rüstungen entstehen. Bei 0% beginnt ein Handwerker keine Charge, die Religion kostet.',
       blocks: [
         {
           h: 'Kosten je Charge',

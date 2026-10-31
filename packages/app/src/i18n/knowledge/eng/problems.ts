@@ -76,7 +76,12 @@ export const PROBLEMS: ArticleGroup = {
                 'No free ground next to the workshop for the vehicle',
                 'Clear some space. The next try comes after {{notice.yardRetrySeconds}} s',
               ],
-              ['"No fish"', 'Notable', 'No fish left within reach of the shore', 'Flag water that has fish'],
+              [
+                '"No fish"',
+                'Notable',
+                'No fish left within reach of the shore',
+                'Put the flag on water with fish',
+              ],
               [
                 '"No carrier"',
                 'Notable',
@@ -165,10 +170,10 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Starving"',
                 'Important',
-                'The settler is losing health from hunger',
+                'Losing health from hunger',
                 'Get food to a store in his reach, fast',
               ],
-              ['"Hungry"', 'Regular', 'The settler is hungry', 'Get food to a store in his reach'],
+              ['"Hungry"', 'Regular', 'Needs food', 'Get food to a store in his reach'],
               [
                 '"Land explored"',
                 'Notable',
@@ -196,7 +201,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Nothing to do"',
                 'Regular',
-                'A settler with a workplace has stood 10 s with no named reason. Does not apply to soldiers, settlers on Defence or Carriers with no flag',
+                'A settler with a workplace has stood idle 10 s for no named reason. Does not apply to soldiers, settlers on Defence or Carriers with no flag',
                 'Check the building or change his profession',
               ],
               [
@@ -211,12 +216,7 @@ export const PROBLEMS: ArticleGroup = {
                 "The ship's door is on another landmass",
                 'Moor at a shore he can reach',
               ],
-              [
-                '"Wrong trade"',
-                'Notable',
-                'The settler lacks the profession the building needs',
-                'Change his profession',
-              ],
+              ['"Wrong trade"', 'Notable', 'Wrong profession for this building', 'Change his profession'],
               [
                 '"Peace: no entry", "Peace: no site"',
                 'Notable',
@@ -271,15 +271,10 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"All set to 0"',
                 'Regular',
-                "All the settler's counters are at 0",
+                'All his counters are at 0',
                 'Choose in the panel what he should do',
               ],
-              [
-                '"Dying"',
-                'Important',
-                'The settler is close to death',
-                'Get him out of danger and give him food',
-              ],
+              ['"Dying"', 'Important', 'Close to death', 'Get him out of danger and give him food'],
               [
                 '"No workplace"',
                 'Notable',
@@ -301,7 +296,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Lacks experience"',
                 'Notable',
-                'The settler has too little experience for this profession',
+                'Too little experience for this profession',
                 'Send someone more experienced: [[article:exp-work|Work Experience]]',
               ],
               [
@@ -310,7 +305,7 @@ export const PROBLEMS: ArticleGroup = {
                 'No path to the destination, or the workplace, work flag or site is out of signpost reach. Stays put until you change something',
                 '"Show the goal" points to the place. Place a [[article:roads|signpost]] or give another order',
               ],
-              ['"Exhausted"', 'Regular', 'The settler needs sleep', 'Let him rest'],
+              ['"Exhausted"', 'Regular', 'Needs sleep', 'Let him rest'],
               [
                 '"Prey cut off"',
                 'Notable',
@@ -332,7 +327,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "The Armourer, Blacksmith or Tailor won't work",
-              'Religion under "Wellbeing" is at 0%. A run of weapons or armour costs 15% or 30%, a prayer gives {{pray.pct}}%. "Wants to pray" means nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. Tailors do not pray on their own, so give the "Pray" order.',
+              'Religion under "Wellbeing" is at 0%. A batch of weapons or armour costs 15% or 30%, a prayer gives {{pray.pct}}%. "Wants to pray" means nowhere to pray: you need a [[building:work_temple|Temple]], [[building:headquarters|Headquarters]] or a holy fire in the dwelling. Tailors do not pray on their own, so give the "Pray" order.',
             ],
             [
               "Carriers aren't carrying",
@@ -397,7 +392,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "A ship won't sail",
-              'Status "Waiting for a commander": assign one, any adult will do. "Waiting for its crew": someone assigned is still walking to the door, and a settler from another landmass drops off the crew. The message "No route" means the destination is not on this water. A ship picks nobody up at sea, so "Moor" first.',
+              'Status "Waiting for a commander": assign one, any adult will do. "Waiting for its crew": someone assigned is still walking to the door, and a settler from another landmass drops out of the crew. The message "No route" means the destination is not on this water. A ship picks nobody up at sea, so "Moor" first.',
             ],
             [
               "An Ox Cart won't move",

@@ -321,7 +321,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             '[[good:potion_heal_small|小型治疗药水]]有{{draught.smallUses}}口，共{{draught.healSmallTotal}}点。[[good:potion_heal_big|大型治疗药水]]有{{draught.bigUses}}口，共{{draught.healBigTotal}}点。',
             '居民一口接一口地喝，直到扣除伤害后至少还剩{{draught.healBelow}}点。',
-            '致命一击不会致死，只要药水足以抵消伤害。',
+            '只要药水够抵消伤害，致命一击也杀不死。',
             '饿到生命值低于{{draught.healBelow}}时也会喝。',
             '先喝开过封的，再喝小瓶，最后喝大瓶。',
           ],
@@ -389,7 +389,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'family',
       name: '家庭与住所',
-      lead: '一个孩子要花{{family.childFood}}份存粮，一对夫妇同时只能有一个孩子。',
+      lead: '生一个孩子花{{family.childFood}}份存粮，一对夫妇一次只养一个孩子。',
       blocks: [
         {
           h: '分配住所',
@@ -604,7 +604,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '毕业生只分配一次，去本职业最近的空缺，工坊工地也算。生产课程对应产品的工坊优先于更近的工坊。',
+            '毕业生只分配一次，去本职业最近的空缺，工坊工地也算。能做该课程产品的工坊优先，哪怕离得更远。',
             '没有空缺就在学校旁等待。[[job:collector|采集者]]、[[job:hunter|猎人]]、[[job:fisher|渔夫]]和士兵不参与。',
           ],
         },

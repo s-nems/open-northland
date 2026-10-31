@@ -145,7 +145,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['目標', '每擊回覆生命值', '同時工作的工人數'],
+            head: ['目標', '每擊回復生命值', '同時工作的工人數'],
             rows: [
               ['建築', '{{repair.minPerSwing}}-{{repair.maxPerSwing}}', '{{repair.crew}}'],
               ['木柵欄段', 5, '{{repair.wallCrew}}'],
@@ -216,7 +216,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '初始計數'],
+            head: ['對象', '初始計數'],
             rows: [
               ['工匠', '工坊第一種產品∞，其餘0'],
               ['[[building:work_animal_farm|畜牧場]]的[[job:breeder|畜牧師]]', '牛∞，綿羊0'],
@@ -227,7 +227,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          h: '計數器的去向',
+          h: '計數器何時變化',
         },
         {
           p: '每次更換工作地點或職業都會清空，建築被拆時也一樣。升級會保留，新等級增加的產品為0。每名工人的計數器各自獨立：同一工坊的2個人可以做2種產品。',
@@ -348,12 +348,12 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['途徑', '條件', '適用物件'],
+            head: ['途徑', '條件', '適用對象'],
             rows: [
               [
                 '工作',
                 '[[good:mud|黏土]]和[[good:stone|毛石]]合計{{gather.oreNeed}}份',
-                '該居民本人。第一人為全聚落髮現該貨物。',
+                '該居民本人。第一人為全聚落發現該貨物。',
               ],
               ['[[building:school|學校]]', '貨物已發現後上課', '畢業生'],
             ],
@@ -401,7 +401,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [1, 4],
-            foot: '斜向半徑約{{field.diagonal}}步。田數上限按建築計算，人多隻是週轉更快。',
+            foot: '斜向半徑約{{field.diagonal}}步。田數上限按建築計算，人多只是周轉更快。',
           },
         },
         {
@@ -471,7 +471,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '收益'],
+            head: ['對象', '收益'],
             rows: [
               ['工坊裡的工匠', '每批多產'],
               ['[[job:collector|採集者]]', '少敲幾下，蘑菇除外'],
@@ -552,7 +552,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['工作', '工具耗損'],
             rows: [
               ['工坊批次', '每完成一批算1次'],
-              ['採集敲擊', '每擊1次，沒采出來也算'],
+              ['採集敲擊', '每擊1次，沒採出來也算'],
               ['拋竿', '每竿1次，沒釣到也算'],
               ['建築工人敲擊', '每擊1次，修理和沒有進度的敲擊也算'],
               ['澆水', '每次澆水1次'],
@@ -588,7 +588,7 @@ export const ECONOMY: ArticleGroup = {
               ['[[building:headquarters|大本營]]', '{{haul.hq}}'],
             ],
             num: [1],
-            foot: '這些建築各可容納[[job:carrier|搬運工]]、採集者、漁夫和獵人各{{haul.storeSeats}}名。',
+            foot: '這些建築可容納[[job:carrier|搬運工]]、採集者、漁夫和獵人各{{haul.storeSeats}}名。',
           },
         },
         {
@@ -596,7 +596,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['專案', '優先', '最低庫存'],
+            head: ['項目', '優先', '最低庫存'],
             rows: [
               ['適用範圍', '單座建築：倉庫、大本營、兵營、箭塔', '玩家所有倉庫和大本營合計'],
               ['誰來運', '該建築的搬運工', '倉庫、大本營、水井和蜂房的搬運工'],
@@ -619,7 +619,7 @@ export const ECONOMY: ArticleGroup = {
             '放下手上的東西。',
             '運來本建築標記為優先的貨物。',
             '在倉庫和大本營運來低於最低庫存的貨物。',
-            '拾取最近的本建築可收的貨堆。',
+            '拾取本建築可收的最近貨堆。',
             '把工坊的成品運回本建築。',
           ],
         },
@@ -654,7 +654,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             '只有有工作地點的搬運工和[[job:trader|商人]]能用車。搬運工保留工作地點，把車當工具用。',
-            '車必須是自己的且空閒：沒有乘員，沒有別的車伕，在同一片陸地上。',
+            '車必須是自己的且空閒：沒有乘員，沒有別的車夫，在同一片陸地上。',
             '車上有空位時，倉庫搬運工順路拾取{{haul.cartTopUp}}步內貨堆和成品中的同種貨物，然後返回。',
             '失去工作地點後車留在原地。',
           ],
@@ -674,7 +674,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '計算起點', '橫向、縱向', '斜向'],
+            head: ['對象', '計算起點', '橫向、縱向', '斜向'],
             rows: [
               ['[[job:collector|採集者]]', '工作旗幟', '{{flag.radius}}', '約{{flag.diagonal}}'],
               ['搬運工', '工作旗幟或建築', '{{flag.radius}}', '約{{flag.diagonal}}'],
@@ -720,10 +720,10 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['專案', '無工作地點', '有工作地點'],
+            head: ['項目', '無工作地點', '有工作地點'],
             rows: [
               [
-                '物件',
+                '對象',
                 '[[job:collector|採集者]]、[[job:fisher|漁夫]]、[[job:hunter|獵人]]',
                 '同左，另加倉庫、大本營或工坊的[[job:carrier|搬運工]]',
               ],
@@ -745,7 +745,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '無旗幟時'],
+            head: ['對象', '無旗幟時'],
             rows: [
               ['採集者', '整個路標範圍'],
               ['搬運工', '倉庫：建築{{flag.radius}}步內的貨堆'],
@@ -856,7 +856,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['專案', '含義'],
+            head: ['項目', '含義'],
             rows: [
               ['「網路中的貨物」', '整個相連網路範圍內的貨物：建築、貨堆、車輛、手上。每份只算一次。'],
               ['「路標：N」', '相連路標數，含當前路標'],
@@ -881,7 +881,7 @@ export const ECONOMY: ArticleGroup = {
               ['雪地', '{{step.snow}}秒', '{{step.road}}秒', '{{step.roadSavedOnSnowPct}}%'],
             ],
             num: [1, 2, 3],
-            foot: '穿鞋、空手的居民。鞋子走道路的磨損比走陸地慢{{shoes.roadWear}}倍。',
+            foot: '穿鞋、空手的居民。鞋子走道路的磨損比走陸地慢：×{{shoes.roadWear}}。',
           },
         },
         {
@@ -922,7 +922,7 @@ export const ECONOMY: ArticleGroup = {
               ['雪地', '{{step.snow}}秒', '{{step.snowBare}}秒', '{{shoes.snow}}'],
             ],
             num: [1, 2, 3],
-            foot: '手上拿貨時鞋子磨損快{{shoes.carryWear}}倍。赤腳每步的體力消耗見[[article:needs|需求]]。',
+            foot: '手上拿貨時鞋子磨損更快：×{{shoes.carryWear}}。赤腳每步的體力消耗見[[article:needs|需求]]。',
           },
         },
         {
@@ -969,7 +969,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['物件', '地形', '每步'],
+            head: ['對象', '地形', '每步'],
             rows: [
               ['搬運工，穿鞋，手上拿貨', '道路', '{{step.carrierOnRoad}}秒'],
               ['士兵，長劍，板甲，穿鞋', '陸地', '{{step.plateSoldierOnLand}}秒'],

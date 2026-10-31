@@ -1,7 +1,7 @@
 export const chsKnowledge = {
   menuScreen: {
     loading: '正在载入知识…',
-    unavailable: '知识需要游戏数据，此副本尚未具备。',
+    unavailable: '这份游戏副本还没有知识所需的数据。',
   },
   shell: {
     title: '知识',
@@ -32,7 +32,7 @@ export const chsKnowledge = {
     missing: '缺少：{first}',
     missingMore: '缺少：{first} +{more}',
     mapForbidden: '本图禁用',
-    mapForbiddenLong: '此地图不允许这种建筑',
+    mapForbiddenLong: '此地图禁止这种建筑',
     closePane: '关闭词条',
   },
   lanes: {
@@ -104,7 +104,7 @@ export const chsKnowledge = {
       available: '可用',
       missing: '缺少：{names}',
       missingMore: '缺少：{names}等{more}项',
-      mapForbidden: '此地图不允许',
+      mapForbidden: '此地图禁止',
       stock: '聚落库存：{amount}',
     },
     unit: {
@@ -171,7 +171,7 @@ export const chsKnowledge = {
       ingredient: '原料：',
       material: '材料：',
       moreOf: '还有{count}项',
-      nothing: '不是任何原料或材料。',
+      nothing: '不用作原料或材料。',
       rawCost: '原料成本',
       durability: '耐久',
       mealOutside: '在外',
@@ -187,7 +187,7 @@ export const chsKnowledge = {
       health: '生命值+{pct}%',
       dealt: '伤害×{factor}',
       taken: '受到伤害×{factor}',
-      critical: '{chance}%几率造成×{factor}攻击',
+      critical: '{chance}%几率造成×{factor}伤害',
       step: '每步缩短{time}',
       barefoot: '赤脚走路还会消耗体力',
       usesBoots: '{count}点',
@@ -405,7 +405,7 @@ export const chsKnowledge = {
     gate: {
       segments: '一线{count}段',
       passage: '通道',
-      outerStay: '两端的段保留',
+      outerStay: '两端栅栏段保留',
       own: '己方',
       enemy: '敌人',
       open: '开启',

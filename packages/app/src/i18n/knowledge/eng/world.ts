@@ -35,11 +35,11 @@ export const WORLD: ArticleGroup = {
               [
                 'Goods',
                 "Stock on building shelves. Ground piles, ship holds and goods in hand don't count",
-                'Victory once the amount list is complete',
+                'Victory once every amount is met',
               ],
               [
                 '"Inhabitants"',
-                "Every person of the player's, children included",
+                "All the player's people, children included",
                 'Victory at the required number',
               ],
               [
@@ -60,7 +60,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'The lack of men is checked first, then the list in map order.',
+            'The game checks for adult men first, then the list in map order.',
             "The first condition met settles a player's fate for good. A winner who then loses his people is still a winner.",
             "One player's victory doesn't end the game for the others.",
             'A map can exempt a given player from the adult man rule.',
@@ -72,13 +72,13 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'No adult man: vehicles vanish at once.',
-            'Defeat falls at the next goal check.',
+            'Defeat comes at the next goal check.',
             'At the check after that, buildings, people, vehicles and signposts vanish.',
             "The player's animals go wild where they stand.",
           ],
         },
         {
-          p: "That's on multiplayer maps. In story missions and on maps with no script only vehicles vanish, and the computer stops playing. Buildings and people stay.",
+          p: "That's for multiplayer maps. In story missions and on maps with no script only vehicles vanish, and the computer stops playing. Buildings and people stay.",
         },
       ],
       see: ['article:diplomacy', 'article:family', 'article:heroes'],
@@ -185,7 +185,7 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'A finished Ox Cart shows status "Waiting for its draught animal".',
-            "It takes the nearest adult [[good:cattle|Ox]] of the player's on the same landmass, free and not inside a Cattle Farm.",
+            'It takes the nearest adult [[good:cattle|Ox]] you own on the same landmass, free and not inside a Cattle Farm.',
             'Every Cattle Farm keeps its first {{livestock.pair}} adults. Oxen with no farm also keep {{livestock.pair}}.',
             'The Ox walks to the cart and vanishes, and only then does the Ox Cart move.',
           ],
@@ -588,7 +588,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'religion',
       name: 'Religion and the Temple',
-      lead: "The Religion bar drains only when making weapons and armour. At 0% a craftsman won't start a run that costs Religion.",
+      lead: "The Religion bar drains only when making weapons and armour. At 0% a craftsman won't start a batch that costs Religion.",
       blocks: [
         {
           h: 'Run cost',
@@ -620,7 +620,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Below {{need.drivePct}}% Armourers and Blacksmiths go to pray, and with nowhere to pray you get "Wants to pray" at {{need.criticalPct}}%.',
             'Tailors don\'t go on their own, so order them to "Pray".',
-            'At 0% a craftsman finishes a run already paid for.',
+            'At 0% a craftsman finishes a batch already paid for.',
           ],
         },
         {
@@ -723,7 +723,7 @@ export const WORLD: ArticleGroup = {
               ["Place 'name'", 'The named building, up at once'],
               ["Place 'name' and fill its store", 'The named building with its store full to the brim'],
             ],
-            foot: 'A paper is used up on use. A refused spot doesn\'t use it. You\'ll find the list in the build window under "Papers".',
+            foot: 'A paper disappears once used. A refused spot doesn\'t use it. You\'ll find the list in the build window under "Papers".',
           },
         },
         {
