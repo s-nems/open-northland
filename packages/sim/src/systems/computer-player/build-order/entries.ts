@@ -58,7 +58,8 @@ export type BuildOrderEntry =
    *  for the crews of those standing (`./progress.ts`). `room` names the buildings that later stand
    *  beside this one: the spot is scored by the free ground around it against their footprints
    *  (`placement.ts`). `amongHomes` searches as a home does, on the far side of the base from the field
-   *  farms. `core` gives the step an earned workshop's turn while no food turn waits (`./index.ts`). */
+   *  farms. `core` gives the step an earned workshop's turn while no food turn waits (`./index.ts`).
+   *  `lockPasses` passes over the entry while its building's tier is locked instead of holding its line. */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -76,6 +77,7 @@ export type BuildOrderEntry =
       readonly room?: readonly string[];
       readonly amongHomes?: true;
       readonly core?: true;
+      readonly lockPasses?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. */

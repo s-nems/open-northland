@@ -293,6 +293,8 @@ function runBuildOrder(
   const locked = (entry: BuildOrderEntry): boolean => stepLocked(world, ctx, player, owned, tribe, entry);
   const held = (entry: BuildOrderEntry): boolean =>
     stepHeld(world, ctx, player, owned, order, statuses, entry, memo);
+  /** A locked step its line passes over this decision rather than waits on. */
+  const lockPassed = (entry: BuildOrderEntry): boolean => lockPasses(entry) && locked(entry);
   // A locked step holds its line while the technology module earns its discovery; with nothing gated
   // for the seat (no technology table) it can only be a ban, and is passed over.
   const lockHolds = technologyReach(world, ctx, player, memo) !== null;
@@ -434,7 +436,7 @@ function runBuildOrder(
       if ((entry.kind === 'towerCoverage' || entry.kind === 'storeCoverage') && coverageRising(entry))
         return null;
       if (locked(entry)) {
-        if (lockHolds) return null;
+        if (lockHolds && !lockPasses(entry)) return null;
         continue;
       }
       // An upgrade with nothing left below its tier is passed over, so a seat of fewer towers than the
@@ -477,7 +479,7 @@ function runBuildOrder(
   // A step waits for a site once neither its hold nor a discovery still to come keeps it back.
   const ready = (entry: BuildOrderEntry): boolean => !held(entry) && !(locked(entry) && lockHolds);
   const foodFailing = seatFoodFailing(world, ctx, player, owned);
-  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated, defending, {
+  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated, defending, lockPassed, {
     foodFailing,
     ready,
   });
@@ -598,7 +600,8 @@ interface LineTurn {
 }
 
 /** `lines`, stable in priority order, by {@link TURN}, each with its turn. `gated` holds the seat's
- *  technology table while its progression gates apply; `defending` whether its defence comes first. */
+ *  technology table while its progression gates apply; `defending` whether its defence comes first; a
+ *  `passed` step never heads its line. */
 function turnOrder(
   world: World,
   ctx: SystemContext,
@@ -609,6 +612,7 @@ function turnOrder(
   memo: DecisionMemo,
   gated: TechnologyTable | null,
   defending: boolean,
+  passed: (entry: BuildOrderEntry) => boolean,
   food: FoodTurn,
 ): LineTurn[] {
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
@@ -631,7 +635,7 @@ function turnOrder(
         entryStatus(world, ctx, player, standing, entry, memo, false) === 'unmet'
       )
         rising = true;
-      if (status === 'unmet') next ??= entry;
+      if (status === 'unmet' && !passed(entry)) next ??= entry;
       if (rising && next !== undefined) break;
     }
     const type =
@@ -700,6 +704,11 @@ function earnedWorkshop(gated: TechnologyTable | null, type: BuildingType): bool
   if (gated === null || type.kind !== BUILDING_KIND.workplace) return false;
   const row = gated.houses.get(type.typeId);
   return row !== undefined && row.jobs.length + row.goods.length > 0;
+}
+
+/** Whether `entry` is passed over rather than holding its line while its building's tier is locked. */
+function lockPasses(entry: BuildOrderEntry): boolean {
+  return entry.kind === 'place' && entry.lockPasses === true;
 }
 
 /** Whether `entry`'s building is one the seat cannot raise yet: a placed tier not enabled for the seat's

@@ -60,7 +60,9 @@ export const MILITARY_LINE: BuildLine = {
   // the barracks wait for their leads before it; the seat's defence coming first lifts the waits at once.
   steps: [
     // Where only a ship reaches the nearest rival, the joinery that builds it goes up by the water early:
-    // it is the economy's way across, not a wait for the deadline.
+    // it is the economy's way across, not a wait for the deadline. Its top tier waits on the tile and ship
+    // discoveries, which most arabskie_wyspy seats still lack at game minute 52, so while locked it lets the
+    // barracks and the rest of the line pass rather than hold them.
     {
       kind: 'place',
       building: 'work_joinery_03',
@@ -68,6 +70,7 @@ export const MILITARY_LINE: BuildLine = {
       near: [{ kind: 'shore' }],
       onlyWhen: 'rivalOverSea',
       role: 'ship',
+      lockPasses: true,
     },
     // The ring runs as a lane, so no later step of the line ever waits on it. Owner ruling: a tower rises at
     // the upper tier once the seat may raise it, the cheap lower one only while that tier is locked or

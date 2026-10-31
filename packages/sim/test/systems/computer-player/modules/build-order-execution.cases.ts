@@ -1172,6 +1172,22 @@ describe('build order - independent lines', () => {
     expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
   });
 
+  it('passes over a locked lockPasses step to the next one, and raises it once its discovery is earned', () => {
+    const content = technologyContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.step();
+    const held: BuildOrder = { lines: [{ id: 'bread', steps: [MILL_STEP, HOME_STEP] }], priority: ['bread'] };
+    expect(decide(sim, held, 0, content)).toBeUndefined();
+    const passing: BuildOrder = {
+      lines: [{ id: 'bread', steps: [{ ...MILL_STEP, lockPasses: true }, HOME_STEP] }],
+      priority: ['bread'],
+    };
+    expect(decide(sim, passing, 0, content)).toMatchObject({ buildingType: HOME_TYPE });
+    discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
+    expect(decide(sim, passing, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
   it('gives the free site to a defence line before an earned workshop while the defence comes first', () => {
     const content = technologyContent();
     const sim = aiSim(1, content);
