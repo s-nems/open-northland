@@ -94,11 +94,11 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },
   // Owner ruling: an upgraded bakery runs its full crew before the seat raises another.
   work_bakery_01: { operatorMin: 2, operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
-  // The tools joinery runs two joiners and a carrier at both tiers the seat keeps it at. Owner ruling:
-  // the handcarts' joinery runs its carrier as a minimum post, since a joiner fetches a cart's bill from
-  // his own shelves first and the carts speed every haul.
+  // The tools joinery runs two joiners and a carrier. Owner ruling: the handcarts' joinery runs its carrier
+  // as a minimum post, since a joiner fetches a cart's bill from his own shelves first and the carts speed
+  // every haul, and fills its third joiner slot, since iron tools and handcarts are always short.
   work_joinery_01: { operatorTarget: 2, carrierTarget: 1 },
-  work_joinery_02: { operatorTarget: 2, carrierMin: 1, carrierTarget: 1 },
+  work_joinery_02: { operatorTarget: 3, carrierMin: 1, carrierTarget: 1 },
   work_joinery_03: { operatorTarget: 3, carrierTarget: 1 },
   // The first potter and mason work alone, so a carrier hauls for them once the builder reserve is full.
   // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID),

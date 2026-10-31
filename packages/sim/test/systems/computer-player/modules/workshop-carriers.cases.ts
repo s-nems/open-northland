@@ -119,7 +119,7 @@ const MASON_HUT = 52;
 const MASON_HUT_UPGRADED = 53;
 /** Enough men that the pool still has a spare hand after the builder reserve and every early post. */
 const SPARE_MEN = 20;
-/** The top joinery's joiner seats. */
+/** The upper joineries' joiner seats. */
 const TOP_JOINERY_JOINERS = 3;
 /** The top home's own bill lines of the materials, so each good's supply unit is its own number. */
 const TOP_HOME_MATERIALS = [
@@ -975,8 +975,8 @@ describe('workforce module - the stores staff carriers only late in the game', (
 });
 
 describe('workforce module - the joinery crews', () => {
-  /** The fixture joinery recast as the top tier, whose joiner slot seats three. */
-  function topJoineryContent(): ContentSet {
+  /** The fixture joinery recast as `id`, whose joiner slot seats three. */
+  function threeJoinerContent(id: string): ContentSet {
     const base = aiContent();
     return parseContentSet({
       ...base,
@@ -984,7 +984,7 @@ describe('workforce module - the joinery crews', () => {
         b.typeId === JOINERY_TYPE
           ? {
               ...b,
-              id: 'work_joinery_03',
+              id,
               workers: [
                 { jobType: JOINER, count: TOP_JOINERY_JOINERS },
                 { jobType: CARRIER, count: 1 },
@@ -995,13 +995,16 @@ describe('workforce module - the joinery crews', () => {
     });
   }
 
-  it('staffs the top joinery with three joiners and a carrier at the target tier', () => {
-    const content = topJoineryContent();
+  it.each([
+    { id: 'work_joinery_02', carrierMin: 1 },
+    { id: 'work_joinery_03', carrierMin: 0 },
+  ])('staffs $id with three joiners and a carrier at the target tier', ({ id, carrierMin }) => {
+    const content = threeJoinerContent(id);
     const seat = seatOn(content, [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
     const joinery = entityOfBuilding(seat.sim, JOINERY_TYPE);
     expect(planOf(seat, content, joinery, crewOf(0))).toMatchObject({
       operatorTarget: TOP_JOINERY_JOINERS,
-      carrierMin: 0,
+      carrierMin,
       carrierTarget: 1,
     });
     seat.apply(seat.decide());
