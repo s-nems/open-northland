@@ -10,6 +10,7 @@ import {
   HERDING_TOP_HOMES,
   HOUSING_FOOD_UNITS_PER_WOMAN,
   HOUSING_PACE,
+  HOUSING_WOMEN_PER_FOOD_SOURCE,
 } from '../../../../src/systems/computer-player/build-order/housing.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
 import { SITES_GROW_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
@@ -28,6 +29,8 @@ import {
   HQ_TYPE,
   HQ_X,
   HQ_Y,
+  HUNTER,
+  huntingContent,
   oneLine,
   placeHq,
   placeResources,
@@ -154,17 +157,25 @@ describe('the housing lane', () => {
     expect(decide(sim)).toBeUndefined();
   });
 
-  it('opens no home site while the store runs short of food, even on a fishing seat', () => {
-    const content = withFisher(aiContent());
+  it('opens no home site while the store runs short of food and no staple source works', () => {
+    const content = withFisher(huntingContent());
     const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN - 1, content);
-    hireFisher(sim);
+    // The opening hunter alone does not feed the women past a short store.
+    spawnMen(sim, 1, HUNTER);
+    sim.step();
     expect(decide(sim, housing, content)).toBeUndefined();
-    setStockAmount(
-      sim.world,
-      entityOfBuilding(sim, HQ_TYPE),
-      FOOD_SIMPLE,
-      BASE_SLOTS * HOUSING_FOOD_UNITS_PER_WOMAN,
-    );
+    hireFisher(sim);
+    expect(homePlaced(decide(sim, housing, content))).toBe(true);
+  });
+
+  it('lets each food source at work carry its women past a short store, and no more', () => {
+    const content = withFisher(huntingContent());
+    const sim = seatWithWomen(HOUSING_WOMEN_PER_FOOD_SOURCE, HOUSING_FOOD_UNITS_PER_WOMAN - 1, content);
+    hireFisher(sim);
+    // One fisher carries no woman beyond the start's.
+    expect(decide(sim, housing, content)).toBeUndefined();
+    spawnMen(sim, 1, HUNTER);
+    sim.step();
     expect(homePlaced(decide(sim, housing, content))).toBe(true);
   });
 

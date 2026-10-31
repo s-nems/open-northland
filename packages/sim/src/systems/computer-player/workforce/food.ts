@@ -1,10 +1,11 @@
 import type { BuildingType, ContentSet } from '@open-northland/data';
-import { Building } from '../../../components/index.js';
+import { Building, Settler } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
-import { isEdibleFoodIn } from '../../readviews/index.js';
+import { isEdibleFoodIn, isFisherJob, isHunterJob } from '../../readviews/index.js';
+import { assignedWorkers } from '../../stores/assigned-workers.js';
 import type { SeatStock } from '../../stores/index.js';
 import type { SeatSupply } from './supply.js';
 import type { StaffingTally } from './tally.js';
@@ -105,6 +106,36 @@ export function foodWorkshopBuilt(world: World, ctx: SystemContext, owned: reado
     if (type?.kind === 'workplace' && isBuilt(world, e) && makesFood(ctx, type)) return true;
   }
   return false;
+}
+
+/** The seat's food sources at work: `staples`, its built workplaces making food ({@link makesFood}) that
+ *  employ anybody and its fishers, and `hunters`, its hunting men. */
+export interface FoodSources {
+  readonly staples: number;
+  readonly hunters: number;
+}
+
+/** The seat's {@link FoodSources}. */
+export function foodSourcesAtWork(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+): FoodSources {
+  const index = contentIndex(ctx.content);
+  let staples = 0;
+  let hunters = 0;
+  for (const e of owned) {
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type?.kind !== 'workplace' || !isBuilt(world, e) || !makesFood(ctx, type)) continue;
+    if (assignedWorkers(world, e).length > 0) staples++;
+  }
+  for (const e of ownedSettlers(world, player)) {
+    const job = world.get(e, Settler).jobType;
+    if (isFisherJob(ctx.content, job)) staples++;
+    else if (isHunterJob(ctx.content, job)) hunters++;
+  }
+  return { staples, hunters };
 }
 
 /** Whether a built workplace that makes food ({@link makesFood}) employs anybody. */

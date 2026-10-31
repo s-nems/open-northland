@@ -20,7 +20,7 @@ import { buildingEnabled } from '../../progression/index.js';
 import { seatStockOf } from '../../stores/index.js';
 import { femaleDemand } from '../female-stock.js';
 import { seatFishes } from '../workforce/fisher.js';
-import { foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
+import { foodSourcesAtWork, foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
 import { seatHuntsGame } from '../workforce/hunter.js';
 import { billSourced, sourcedTiers } from './bill-sources.js';
 import type { BuildOrderEntry } from './entries.js';
@@ -269,10 +269,34 @@ export const FOOD_RICH_UNITS_PER_SETTLER = 5;
  *  Authored; a line a settler sat under it on magiczny_las from minute 20 to 50 while children were born. */
 export const HOUSING_FOOD_UNITS_PER_WOMAN = CHILD_FOOD_UNITS;
 
+/** The women and daughters one food source at work carries past a short store (owner ruling: more homes,
+ *  more women, more people, held back only at the very start with no fisher and no bakery). Authored: the
+ *  four women every start brings; on battle_for_the_four_hills_multiplayer a seat with its bakery and
+ *  animal farm staffed made three to five food a minute from minute 40 and fed 30 to 37 settlers with an
+ *  empty store, its homes' larders taking the bread as it was baked. */
+export const HOUSING_WOMEN_PER_FOOD_SOURCE = 4;
+
+/** Whether the seat feeds its women steadily whatever its store holds: a staple source works (a staffed
+ *  workshop making food, or a fisher) and its sources, hunters added, carry
+ *  {@link HOUSING_WOMEN_PER_FOOD_SOURCE} each beyond its female demand. */
+function foodMadeCarriesWomen(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+): boolean {
+  const sources = foodSourcesAtWork(world, ctx, player, owned);
+  if (sources.staples === 0) return false;
+  return (
+    femaleDemand(world, ctx, player) < (sources.staples + sources.hunters) * HOUSING_WOMEN_PER_FOOD_SOURCE
+  );
+}
+
 /**
  * When the housing lane may open a home site (owner ruling: an upgraded home bears no children while
- * food is short): `closed` while the store's food runs short ({@link HOUSING_FOOD_UNITS_PER_WOMAN}), or
- * on a seat that is not food-rich until a workshop making food beyond the grain farm stands; `early` on
+ * food is short): `closed` while the store's food runs short ({@link HOUSING_FOOD_UNITS_PER_WOMAN}) and
+ * the food made does not carry the women ({@link foodMadeCarriesWomen}), or on a seat that is not
+ * food-rich until a workshop making food beyond the grain farm stands; `early` on
  * a food-rich seat (one that fishes, or holds {@link FOOD_RICH_UNITS_PER_SETTLER} in store), which may run
  * the lane from the start of the opening; `inLine` otherwise, from the lane's place in its line.
  */
@@ -288,7 +312,8 @@ export function housingGate(
   const settlers = ownedSettlers(world, player);
   let women = 0;
   for (const e of settlers) if (world.has(e, Female) && isAdultSettler(world, e)) women++;
-  if (food < women * HOUSING_FOOD_UNITS_PER_WOMAN) return 'closed';
+  if (food < women * HOUSING_FOOD_UNITS_PER_WOMAN && !foodMadeCarriesWomen(world, ctx, player, owned))
+    return 'closed';
   if (seatFishes(world, ctx, player) || food >= settlers.length * FOOD_RICH_UNITS_PER_SETTLER) return 'early';
   return foodWorkshopBuilt(world, ctx, owned) ? 'inLine' : 'closed';
 }
