@@ -171,6 +171,10 @@ describe('military posture', () => {
     expect(ordersFor('defensive', 'attack', chosen.evidence).launchRatio).toEqual({ num: 1, den: 1 });
     expect(ordersFor('defensive', 'attack').launchRatio).toEqual({ num: 3, den: 2 });
     expect(selectPosture('defensive', big(), 'attack').posture).toBe('attack');
+    // Once landing, a few men and points lost keep the attack inside its hold band.
+    const thinned = big({ ownMen: DEFENSIVE_SEA_ARMY_MEN - 1, ownPoints: ENEMY_POINTS - 1 });
+    expect(selectPosture('defensive', thinned, 'attack').posture).toBe('attack');
+    expect(selectPosture('defensive', thinned, null).posture).toBe('prepare');
     // Smaller, on the same land, or short of what it believes defends the target: it keeps building up.
     expect(selectPosture('defensive', big({ ownMen: DEFENSIVE_SEA_ARMY_MEN - 1 }), null).posture).toBe(
       'prepare',

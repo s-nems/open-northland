@@ -191,14 +191,16 @@ export function selectPosture(
     'ratioReached',
     ownPoints > 0 && targetPoints !== null && launchRatioReached(ownPoints, targetPoints, edge),
   );
+  // An attack it holds keeps the same band below the sea army and parity as the launch edge.
+  const hold = held === 'attack' ? ATTACK_HOLD_SHARE : WHOLE;
   const outgrown = fire(
     'armyOutgrown',
     !ratio &&
       plan === 'defensive' &&
       inputs.targetOverSea &&
-      inputs.ownMen >= DEFENSIVE_SEA_ARMY_MEN &&
+      inputs.ownMen * hold.den >= DEFENSIVE_SEA_ARMY_MEN * hold.num &&
       targetPoints !== null &&
-      launchRatioReached(ownPoints, targetPoints, WHOLE),
+      launchRatioReached(ownPoints, targetPoints, hold),
   );
   const harasser = fire('harasserPlan', plan === 'harasser');
   const raidTarget = fire('raidTargetKnown', inputs.raidTargetKnown);
