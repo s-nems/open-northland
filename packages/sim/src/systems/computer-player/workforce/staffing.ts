@@ -109,9 +109,9 @@ export interface GatedSlotSources {
  * slot trade's general track who qualifies for it (`settlerMeetsNeed`). A slot no spare man qualifies for
  * takes a pupil of the trade's school lesson ({@link Schooling}), counted as filling it until he
  * graduates, or with no school teaching the trade a promotion ({@link Promotions}). Gatherer slots stay
- * open, and a carrier-only workplace (the well, the hive) fills itself, so it needs no staff. Workplaces fill
- * before training buildings and those before storage within a tier, and
- * all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
+ * open unless the plan names gatherers, and a carrier-only workplace (the well, the hive) fills itself,
+ * so it needs no staff. Workplaces fill before training buildings and those before storage within a
+ * tier, and all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
  */
 export function staffBuildings(
   world: World,
@@ -152,11 +152,17 @@ export function staffBuildings(
           : tier === 'target'
             ? staffing.carrierTarget
             : (staffing.carrierSurplus ?? staffing.carrierTarget);
+    const gathererWant =
+      tier === 'food' || tier === 'min'
+        ? 0
+        : tier === 'target'
+          ? (staffing.gathererTarget ?? 0)
+          : (staffing.gathererSurplus ?? staffing.gathererTarget ?? 0);
     for (const slot of type.workers) {
       const carrier = isCarrierJob(ctx, slot.jobType);
-      if (!carrier && index.harvestJobs.has(slot.jobType)) continue; // gatherer slots stay open
+      const gatherer = !carrier && index.harvestJobs.has(slot.jobType);
       if (type.kind !== 'workplace' && !carrier) continue; // a store or a barracks staffs transport only
-      const want = Math.min(slot.count, carrier ? carrierWant : operatorWant);
+      const want = Math.min(slot.count, carrier ? carrierWant : gatherer ? gathererWant : operatorWant);
       const held =
         (tally.get(building)?.get(slot.jobType) ?? 0) + gated.schooling.promised(building, slot.jobType);
       const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;

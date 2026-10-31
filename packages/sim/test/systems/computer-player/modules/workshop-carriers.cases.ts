@@ -958,6 +958,40 @@ describe('workforce module - the herb hut crew', () => {
   });
 });
 
+const DRUID_HUT = 72;
+const DRUID = 30;
+
+describe("workforce module - the druid hut's own gatherers", () => {
+  it('posts one gatherer to the upper druid hut at the target tier and a second from surplus', () => {
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      jobs: [...base.jobs, { typeId: DRUID, id: 'druid' }],
+      buildings: [
+        ...base.buildings,
+        {
+          typeId: DRUID_HUT,
+          id: 'work_druid_01',
+          kind: 'workplace',
+          workers: [
+            { jobType: DRUID, count: 2 },
+            { jobType: CARRIER, count: 1 },
+            { jobType: COLLECTOR, count: 2 },
+          ],
+          construction: [{ goodType: WOOD, amount: 1 }],
+        },
+      ],
+    });
+    const seat = seatOn(content, [DRUID_HUT], BUILDER_CAP + SPARE_MEN);
+    const hut = entityOfBuilding(seat.sim, DRUID_HUT);
+    expect(planOf(seat, content, hut, alone)).toMatchObject({ gathererTarget: 1, gathererSurplus: 2 });
+    const gatherers = seat
+      .decide()
+      .filter((c) => c.kind === 'assignWorker' && c.building === hut && c.jobPriority[0] === COLLECTOR);
+    expect(gatherers).toHaveLength(2);
+  });
+});
+
 /** Enough men that the surplus tier reaches the stores past every earlier post. */
 const GROWN_SEAT_MEN = 60;
 
