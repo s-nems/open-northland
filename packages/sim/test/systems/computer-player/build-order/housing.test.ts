@@ -55,6 +55,13 @@ const UPGRADE_WOOD = 20;
 
 const HOUSING: BuildOrderEntry = { kind: 'housing', building: 'home_level_00', count: HOMES_CAP };
 const housing = buildOrderModule(oneLine([HOUSING]));
+/** A mill step held past every test's clock: it holds its line unmet. */
+const HELD_MILL: BuildOrderEntry = {
+  kind: 'place',
+  building: 'work_mill_00',
+  count: 1,
+  holdUntil: { kind: 'tick', tick: Number.MAX_SAFE_INTEGER },
+};
 
 /** The fixture with a bakery that bakes the edible good, so it counts as a food workshop. */
 function bakingContent(): ContentSet {
@@ -178,16 +185,32 @@ describe('the housing lane', () => {
   });
 
   it('runs ahead of its place in the line once the seat fishes while the daughters are blocked', () => {
-    // A live iron node keeps the collector step before the lane unmet.
-    const order = buildOrderModule(oneLine([{ kind: 'collector', good: 'iron' }, HOUSING]));
+    // A held mill keeps the step before the lane unmet.
+    const order = buildOrderModule(oneLine([HELD_MILL, HOUSING]));
     const content = withFisher(aiContent());
     const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN, content);
-    placeResources(sim, [RESOURCE_SPOTS.iron]);
-    sim.step();
     // The fishing side alone names water in the near band, which may lie beyond every fishing trip.
     seatEconomy(sim, 'standard', ['fishing']);
     expect(decide(sim, order, content)).toBeUndefined();
     hireFisher(sim);
+    expect(homePlaced(decide(sim, order, content))).toBe(true);
+  });
+
+  it('opens behind an unmet gatherer step: the workforce fills it, not the build order', () => {
+    // A live iron node keeps the collector step before the lane unmet, as no man digs it.
+    const order = buildOrderModule(oneLine([{ kind: 'collector', good: 'iron' }, HOUSING]));
+    const content = bakingContent();
+    const sim = seatWithWomen(BASE_SLOTS, HOUSING_FOOD_UNITS_PER_WOMAN, content);
+    placeResources(sim, [RESOURCE_SPOTS.iron]);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: HQ_X + 6,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
     expect(homePlaced(decide(sim, order, content))).toBe(true);
   });
 

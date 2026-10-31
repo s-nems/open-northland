@@ -785,7 +785,7 @@ interface OpenLane {
 }
 
 /** The lanes the lines have reached, in line priority and step order: every step before each in its line
- *  stands met or passed over, and the clock has reached the lane's `fromTick`; a housing lane also opens
+ *  but the gatherer steps stands met or passed over, and the clock has reached the lane's `fromTick`; a housing lane also opens
  *  ahead of that while `housingEarly` holds. A lane's sites are the open sites of its building or a tier
  *  above it, whichever step placed them. */
 function openLanes(
@@ -814,6 +814,9 @@ function openLanes(
         lanes.push({ line: line.id, step, entry, sites: own, early });
         continue;
       }
+      // A gatherer step holds the line's sites, never its lanes: the workforce fills it out of spare men,
+      // which a seat of few men may not have for an hour.
+      if (entry.kind === 'collector') continue;
       if (reached && statuses.get(line.id)?.[step] === 'unmet' && !passedOver(line, step)) reached = false;
     }
   }
