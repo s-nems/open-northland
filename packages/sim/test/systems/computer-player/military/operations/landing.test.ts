@@ -262,8 +262,10 @@ describe('landing operations', () => {
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
       const op = landings(sim)[0];
       const ship = op?.landing?.ships[0];
-      if (ship === undefined || first !== null) return first !== null && op?.state === 'done';
+      if (ship === undefined) return false;
       const state = sim.world.get(ship.vehicle, Vehicle);
+      // Home once moored at the shore it docked at, its commander let off there.
+      if (first !== null) return ship.leg === 'home' && vehiclePassengers(state).length === 0;
       if (state.moored && state.mooring !== null) home = { ...state.mooring };
       else if (home !== null) {
         first = { vehicle: ship.vehicle, home };
