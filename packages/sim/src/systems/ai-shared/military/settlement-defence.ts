@@ -241,9 +241,11 @@ function deriveSettlementDefence(
   };
 }
 
-/** The fewest enemy fighters about a settlement that make a big attack (authored): mroczny_las's scripted
- *  waves bring 30 to 61 men, while a skirmish raid band is 4 and a wolf pack a handful. */
-export const BIG_ATTACK_FIGHTERS = 10;
+/** The fewest enemy fighters seen about a settlement that make a big attack (authored): a computer raid
+ *  band's size. A seat sees a scripted wave of 30 to 61 men come into sight a few at a time (mroczny_las:
+ *  5 seen as its first men reached the towers), so anything from a raid band up is read as the wave's
+ *  head, and a lone scout or a pair of wolves is chased as anywhere else. */
+export const BIG_ATTACK_FIGHTERS = 4;
 
 /** Whether a computer seat's last posture review found its strongest enemy clearly stronger: such a seat
  *  fights under its towers ({@link coveredCore}), and its army waits at its base while it launches no wave. */
