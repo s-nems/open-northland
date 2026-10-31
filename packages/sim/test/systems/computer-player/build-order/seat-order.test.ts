@@ -33,7 +33,10 @@ import {
   shapeBuildOrder,
   sitePace,
 } from '../../../../src/systems/computer-player/index.js';
-import { TOWER_LEAD_TICKS } from '../../../../src/systems/computer-player/military/deadline.js';
+import {
+  ASSUMED_PEACE_TICKS,
+  TOWER_LEAD_TICKS,
+} from '../../../../src/systems/computer-player/military/deadline.js';
 import {
   aiSim,
   BAKERY_TYPE,
@@ -49,6 +52,7 @@ import {
   placeResources,
   RESOURCE_SPOTS,
   SEAT,
+  TOWER_TYPE,
   VIKING,
 } from '../support.js';
 
@@ -128,6 +132,54 @@ describe('the seat strategy shapes the build order', () => {
     expect(firstCommand(seatWith({ archetype: 'standard' }, FORECAST), order)).toMatchObject({
       buildingType: BARRACKS_TYPE,
     });
+  });
+
+  it('gives the next free site to a placement whose military deadline lead has opened', () => {
+    const order = (leadTicks: number): BuildOrder => ({
+      lines: [
+        {
+          id: 'bread',
+          steps: [{ kind: 'place', building: 'home_level_00', count: 1, belowTier: 'home_level_01' }],
+        },
+        {
+          id: 'military',
+          steps: [
+            { kind: 'place', building: 'barracks', count: 1, holdUntil: { kind: 'deadline', leadTicks } },
+          ],
+        },
+      ],
+      priority: DEFAULT_BUILD_ORDER.priority,
+    });
+    // A lead as long as the whole peace has opened at once; a lead of nothing still holds the barracks.
+    expect(firstCommand(seatWith({ archetype: 'standard' }), order(ASSUMED_PEACE_TICKS))).toMatchObject({
+      buildingType: BARRACKS_TYPE,
+    });
+    expect(firstCommand(seatWith({ archetype: 'standard' }), order(0))).toMatchObject({
+      buildingType: HOME_TYPE,
+    });
+
+    // A later step of its line met by a rising site, as a ring tower raised at the upper tier meets a tower
+    // upgrade, keeps the opened barracks ahead.
+    const withUpgrade: BuildOrder = {
+      ...order(ASSUMED_PEACE_TICKS),
+      lines: order(ASSUMED_PEACE_TICKS).lines.map((line) =>
+        line.id === 'military'
+          ? { ...line, steps: [...line.steps, { kind: 'upgrade', building: 'tower_01', count: 1 }] }
+          : line,
+      ),
+    };
+    const rising = seatWith({ archetype: 'standard' });
+    rising.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: TOWER_TYPE,
+      x: HQ_X + 12,
+      y: HQ_Y + 8,
+      tribe: VIKING,
+      owner: SEAT,
+      underConstruction: true,
+    });
+    rising.step();
+    expect(firstCommand(rising, withUpgrade)).toMatchObject({ buildingType: BARRACKS_TYPE });
   });
 
   it('keeps the economy first against a stronger enemy until the deadline nears or a raid lands', () => {

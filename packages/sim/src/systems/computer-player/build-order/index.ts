@@ -42,6 +42,7 @@ import {
   isLaneEntry,
   linesByPriority,
   REBUILD_DELAY_TICKS,
+  type StepHold,
   type StepKey,
   sitePace,
   stepKey,
@@ -493,8 +494,8 @@ function runBuildOrder(
   // Turns, priority deciding within each: a line with no site of its own rising goes before one with,
   // and a line whose next step raises a building the seat has none of before one adding another of a kind
   // it owns, so no line takes every site or runs its later copies while another still lacks its first. A
-  // workshop whose discovery the seat just earned goes before them all, and while the seat's defence comes
-  // first its defence lines go before that.
+  // workshop whose discovery the seat just earned goes before them all, a step on its military deadline
+  // before that, and while the seat's defence comes first its defence lines go first.
   // A line that stands met moves its frontier now, whichever line acts first, so its later losses wait.
   for (const line of lines)
     if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
@@ -502,7 +503,7 @@ function runBuildOrder(
   const defending = seatDefenceFirst(world, ctx, player);
   const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated, defending);
   for (const { line, turn } of byTurn) {
-    if (earnedOnly && turn !== TURN.earned) continue;
+    if (earnedOnly && turn !== TURN.earned && turn !== TURN.due) continue;
     const command = lineCommand(line);
     if (command !== null) return started(command);
   }
@@ -510,13 +511,27 @@ function runBuildOrder(
 }
 
 /** A line's turn, the lower first: a defence line ({@link DEFENCE_LINES}) with no rising site of its own
- *  while the seat's defence comes first, no rising site and a next step raising a workshop the seat lacks
- *  whose discovery it earned ({@link earnedWorkshop}), no rising site and a next step raising a kind it
+ *  while the seat's defence comes first; a next placement waiting on the military deadline
+ *  ({@link deadlineStep}), even beside a rising site of its own, and it takes the earned workshops' extra
+ *  site too (owner ruling: the barracks stands a bit before the deadline; on krwawa_rzeka and magiczny_las
+ *  under a 60-minute peace, with every site of the pace taken, it waited behind the economy's new kinds and
+ *  earned workshops until minute 60-90); no rising site and a next step raising a workshop the seat lacks
+ *  whose discovery it earned ({@link earnedWorkshop}); no rising site and a next step raising a kind it
  *  lacks or a copy placed ahead of the crews (owner ruling: a tunic seat's second tailor shop lost every
- *  freed site to new kinds until game minute 37-83 on krwawa_rzeka), no rising site, a site of its own
+ *  freed site to new kinds until game minute 37-83 on krwawa_rzeka); no rising site; a site of its own
  *  still rising. On mroczny_las a seat defending from the first
  *  minute gave every freed site to its earned workshops and raised no barracks before the scripted wave. */
-const TURN = { defence: 0, earned: 1, newKind: 2, more: 3, rising: 4 } as const;
+const TURN = { defence: 0, due: 1, earned: 2, newKind: 3, more: 4, rising: 5 } as const;
+
+/** Whether `entry` is a placement its line holds until the military deadline's lead: once the hold opens
+ *  it takes the next free site; while it holds, its line acts on nothing, so the turn costs no site. */
+function deadlineStep(entry: BuildOrderEntry): boolean {
+  return entry.kind === 'place' && entry.holdUntil !== undefined && waitsOnDeadline(entry.holdUntil);
+}
+
+function waitsOnDeadline(hold: StepHold): boolean {
+  return hold.kind === 'deadline' || (hold.kind === 'all' && hold.holds.some(waitsOnDeadline));
+}
 
 /** `lines`, stable in priority order, by {@link TURN}, each with its turn. `gated` holds the seat's
  *  technology table while its progression gates apply; `defending` whether its defence comes first. */
@@ -535,14 +550,24 @@ function turnOrder(
   const ownedTypes = new Set(owned.map((e) => world.get(e, Building).buildingType));
   const rank = (line: BuildLine): number => {
     let next: BuildOrderEntry | undefined;
+    let rising = false;
     for (const [step, entry] of line.steps.entries()) {
       if (isLaneEntry(entry)) continue;
       const status = statusOf(line.id, step);
-      if (status === 'satisfied' && entryStatus(world, ctx, player, standing, entry, memo, false) === 'unmet')
-        return TURN.rising;
+      if (
+        !rising &&
+        status === 'satisfied' &&
+        entryStatus(world, ctx, player, standing, entry, memo, false) === 'unmet'
+      )
+        rising = true;
       if (status === 'unmet') next ??= entry;
+      if (rising && next !== undefined) break;
     }
+    // A later step met by a rising site, such as a tower upgrade met by a ring tower raised at the upper
+    // tier, never puts a deadline step behind the economy.
+    if (rising) return next !== undefined && deadlineStep(next) ? TURN.due : TURN.rising;
     if (defending && next !== undefined && DEFENCE_LINES.includes(line.id)) return TURN.defence;
+    if (next !== undefined && deadlineStep(next)) return TURN.due;
     if (next === undefined || next.kind === 'collector') return TURN.newKind;
     const type = buildingTypeByContentId(ctx.content, next.building);
     if (type === undefined) return TURN.newKind;
