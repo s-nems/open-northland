@@ -27,12 +27,14 @@ export function createTreePane(context: KnowledgeContext, onClose: () => void): 
   return {
     element,
     show: (ref) => {
+      context.leavePage();
       body.dataset.keepScroll = `pane-${ref.kind}-${ref.id}`;
       body.replaceChildren(renderEntry(context, ref));
       body.scrollTop = 0;
       element.hidden = false;
     },
     hide: () => {
+      context.leavePage();
       element.hidden = true;
       delete body.dataset.keepScroll;
       body.replaceChildren();

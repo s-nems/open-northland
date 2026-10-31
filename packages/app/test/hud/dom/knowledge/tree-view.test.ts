@@ -20,6 +20,8 @@ const context: KnowledgeContext = {
   settlement: null,
   tribe: () => 1,
   go: () => undefined,
+  onPageLeft: () => undefined,
+  leavePage: () => undefined,
 };
 
 function mount(scales: TreeScales = { goods: 100, buildings: 100 }) {

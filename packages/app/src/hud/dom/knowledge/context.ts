@@ -61,6 +61,10 @@ export interface KnowledgeContext extends KnowledgeDeps {
   /** The tribe the numbers are for: the seat's in a game, the reader's pick otherwise. */
   tribe(): number;
   go(target: KnowledgeTarget): void;
+  /** Queues what the page being built must free once it leaves; a hidden window reports no removal. */
+  onPageLeft(release: () => void): void;
+  /** Runs the queue, before a swap builds the next page. */
+  leavePage(): void;
 }
 
 export interface KnowledgeView {
@@ -69,5 +73,7 @@ export interface KnowledgeView {
   open(target?: KnowledgeTarget): void;
   /** Takes the Esc that belongs to the view (a pin, a search); false leaves it to the surface around it. */
   escape(): boolean;
+  /** The surface stopped showing the view: the page frees what it holds, and the next open draws it anew. */
+  close(): void;
   dispose(): void;
 }

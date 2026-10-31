@@ -65,6 +65,8 @@ const DISH_OF_MEAL: ReadonlyMap<string, string> = new Map([
 /** Goods no player handles under that name, or that nothing in the game makes. */
 const HIDDEN_GOODS: ReadonlySet<string> = new Set([...DISH_OF_MEAL.keys(), 'sausage', 'fruit']);
 const BREEDER_JOB_ID = 'breeder';
+/** A building shoots it on its own clock, set by who shelters inside, so its row's clip times nothing. */
+const SHELTER_WEAPON = 'house_bow';
 
 /** The edible a dish eaten on the candy slot turns into. */
 const CANDY_MEAL_GOOD = 'food_extra';
@@ -346,7 +348,7 @@ function weaponRow(joins: Joins, tribe: TribeType, w: WeaponType): KnowledgeWeap
     minRange: w.minRange,
     maxRange: w.maxRange,
     damage: w.damage,
-    clipTicks: clip?.length ?? null,
+    clipTicks: w.id === SHELTER_WEAPON ? null : (clip?.length ?? null),
     blows: Math.max(1, blows),
     usable: w.jobType === undefined || permitted === undefined || permitted.includes(w.jobType),
   };

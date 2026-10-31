@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
   KnowledgeArt,
+  KnowledgeContext,
   KnowledgeSettlement,
   KnowledgeView,
 } from '../../../../src/hud/dom/knowledge/context.js';
@@ -9,6 +10,10 @@ import { createKnowledgeView } from '../../../../src/hud/dom/knowledge/view.js';
 import { createKnowledgeBase } from '../../../../src/hud/knowledge/base.js';
 import type { EntryRef } from '../../../../src/hud/knowledge/model.js';
 import { knowledgeContent } from '../../../support/knowledge-content.js';
+
+/** What the stub entries still hold, by the page that took it. */
+const held = vi.hoisted(() => new Set<string>());
+let plays = 0;
 
 const page = (className: string, text: string): HTMLElement => {
   const node = document.createElement('div');
@@ -18,8 +23,10 @@ const page = (className: string, text: string): HTMLElement => {
 };
 
 vi.mock('../../../../src/hud/dom/knowledge/entry-view.js', () => ({
-  renderEntry: (_context: unknown, ref: EntryRef) => {
+  renderEntry: (context: KnowledgeContext, ref: EntryRef) => {
     const entry = page('stub-entry', `${ref.kind}:${ref.id}`);
+    held.add(ref.id);
+    context.onPageLeft(() => held.delete(ref.id));
     const link = (go: string): HTMLButtonElement => {
       const node = document.createElement('button');
       node.dataset.go = go;
@@ -32,8 +39,15 @@ vi.mock('../../../../src/hud/dom/knowledge/entry-view.js', () => ({
 vi.mock('../../../../src/hud/dom/knowledge/encyclopedia-view.js', () => ({
   ENCYCLOPEDIA_LIST_SCROLL: 'enc-list',
   firstEntry: (): EntryRef => ({ kind: 'good', id: 'wood' }),
-  renderEncyclopedia: (_context: unknown, ref: EntryRef | null, onCategory: (first: EntryRef) => void) => {
+  renderEncyclopedia: (
+    context: KnowledgeContext,
+    ref: EntryRef | null,
+    onCategory: (first: EntryRef) => void,
+  ) => {
     const encyclopedia = page('stub-encyclopedia', ref === null ? '' : `${ref.kind}:${ref.id}`);
+    held.add('encyclopedia');
+    plays += 1;
+    context.onPageLeft(() => held.delete('encyclopedia'));
     const category = document.createElement('button');
     category.className = 'stub-category';
     category.addEventListener('click', () => onCategory({ kind: 'job', id: 'carrier' }));
@@ -85,8 +99,51 @@ describe('the Knowledge view', () => {
 
   beforeEach(() => {
     document.body.replaceChildren();
+    held.clear();
   });
   afterEach(() => view.dispose());
+
+  it('frees a page when another replaces it, and only then', () => {
+    mount();
+    click('[data-tab="encyclopedia"]');
+    expect([...held]).toEqual(['encyclopedia']);
+    click('[data-tab="mechanics"]');
+    expect([...held]).toEqual([]);
+  });
+
+  it('keeps the page a swap just built', () => {
+    mount();
+    click('[data-tab="encyclopedia"]');
+    click('.stub-category');
+    expect([...held]).toEqual(['encyclopedia']);
+  });
+
+  it('frees a pinned entry when the pin moves or the tree goes', () => {
+    mount();
+    click(card('good:wood'));
+    click(card('good:iron'));
+    expect([...held]).toEqual(['iron']);
+    click('[data-tab="mechanics"]');
+    expect([...held]).toEqual([]);
+  });
+
+  it('frees the page on a close and draws it anew on the next open', () => {
+    mount();
+    click('[data-tab="encyclopedia"]');
+    const before = plays;
+    view.close();
+    expect([...held]).toEqual([]);
+    view.open();
+    expect([...held]).toEqual(['encyclopedia']);
+    expect(plays).toBe(before + 1);
+  });
+
+  it('frees the page on dispose', () => {
+    mount();
+    click('[data-tab="encyclopedia"]');
+    view.dispose();
+    expect([...held]).toEqual([]);
+  });
 
   it('steps back through every move it made, tab by tab', () => {
     mount();

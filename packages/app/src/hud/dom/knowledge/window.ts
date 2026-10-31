@@ -63,6 +63,12 @@ export function createKnowledgeWindow(deps: KnowledgeWindowDeps): KnowledgeWindo
   /** Bumped by every open, so only the last one renders when its reads land. */
   let opens = 0;
 
+  const close = (): void => {
+    window.close();
+    view?.close();
+  };
+  window.onDismiss(() => view?.close());
+
   const show = (target?: KnowledgeTarget): void => {
     window.open();
     placeWindow();
@@ -85,8 +91,8 @@ export function createKnowledgeWindow(deps: KnowledgeWindowDeps): KnowledgeWindo
 
   return {
     isOpen: window.isOpen,
-    toggle: () => (window.isOpen() ? window.close() : show()),
-    close: window.close,
+    toggle: () => (window.isOpen() ? close() : show()),
+    close,
     show,
     showBuilding: (typeId) => {
       const id = deps.buildingId(typeId);

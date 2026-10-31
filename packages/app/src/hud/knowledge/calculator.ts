@@ -338,11 +338,16 @@ export function blowResult(base: KnowledgeBase, state: CalculatorState): BlowRes
 
 export interface RankingRow extends BlowOutcome {
   readonly weapon: KnowledgeWeapon;
-  /** The row's bar, the fastest kill being 1 and a blow that cannot kill 0. */
+  /** The row's bar, the fastest kill being 1 and a row with no time 0. */
   readonly share: number;
 }
 
-/** Every weapon on show, fastest kill of the chosen target first; what cannot kill goes last. */
+/** Where a row sorts: its time, then what cannot kill, then a row with no clip to time it by. */
+function killOrder({ seconds, hits }: BlowOutcome): number {
+  return seconds ?? (hits === null ? Number.MAX_VALUE : Infinity);
+}
+
+/** Every weapon on show, fastest kill of the chosen target first. */
 export function ranking(base: KnowledgeBase, state: CalculatorState): readonly RankingRow[] {
   const target = resolveTarget(base, state.target);
   if (target === undefined) return [];
@@ -353,7 +358,7 @@ export function ranking(base: KnowledgeBase, state: CalculatorState): readonly R
       weapon,
       ...outcome(weapon, landedOf(breakdown(weapon, target.combat, modifiers)), target.health),
     }))
-    .sort((a, b) => (a.seconds ?? Infinity) - (b.seconds ?? Infinity));
+    .sort((a, b) => killOrder(a) - killOrder(b));
   const fastest = rows[0]?.seconds ?? null;
   return rows.map((row) => ({
     ...row,

@@ -136,6 +136,11 @@ describe('the knowledge base fighters', () => {
     });
   });
 
+  it('times no house bow by the clip of the job its row names', () => {
+    const rows = base().weapons.get(VIKING) ?? [];
+    expect(rows.find((w) => w.id === 'house_bow')?.clipTicks).toBeNull();
+  });
+
   it('keeps only a tribe-wide step reduction, one tied to a job is that unit', () => {
     const knowledge = base();
     expect(knowledge.tribes.find((t) => t.typeId === FRANK)?.stepReduction).toBe(2);

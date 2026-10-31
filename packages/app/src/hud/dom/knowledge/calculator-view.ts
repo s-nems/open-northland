@@ -332,7 +332,7 @@ function rankingList(
     const name = element('span', 'kn-calc__rank-name');
     write(name, weaponLabel(row.weapon));
     const time = element('span', 'kn-calc__rank-time');
-    write(time, row.seconds === null ? copy.neverKills : seconds(row.seconds));
+    write(time, row.hits === null ? copy.neverKills : seconds(row.seconds));
     const bar = element('span', 'kn-calc__bar');
     setStyleVar(bar, '--share', row.share.toFixed(3));
     pressable.append(name, time, bar);
@@ -608,11 +608,14 @@ function fighterPanel(
   const entries = (): readonly DropdownEntry<string>[] =>
     weaponGroups(base, fighter().tribe, read().heroes).map((group) => ({
       group: copy.weaponGroups[group.id],
-      choices: group.weapons.map((w) => ({
-        id: w.id,
-        label: weaponLabel(w),
-        ...(goodIdOf(context, w) === null ? {} : { goodId: goodIdOf(context, w) ?? '' }),
-      })),
+      // A row with no clip has no clock to race on.
+      choices: group.weapons
+        .filter((w) => w.clipTicks !== null)
+        .map((w) => ({
+          id: w.id,
+          label: weaponLabel(w),
+          ...(goodIdOf(context, w) === null ? {} : { goodId: goodIdOf(context, w) ?? '' }),
+        })),
     }));
   const activeWeapon = (): string => weaponFor(base, fighter().tribe, fighter().weapon)?.id ?? '';
   const weapon = dropdownControl<string>({

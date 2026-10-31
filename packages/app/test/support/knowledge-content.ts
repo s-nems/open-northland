@@ -146,6 +146,14 @@ export function knowledgeContent(): ContentSet {
     ],
     weapons: [
       {
+        typeId: 20,
+        id: 'house_bow',
+        tribeType: VIKING,
+        jobType: SOLDIER_SPEAR_JOB,
+        mainType: 1,
+        damage: { '0': 100 },
+      },
+      {
         typeId: 4,
         id: 'wooden_spear',
         tribeType: VIKING,

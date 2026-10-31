@@ -109,6 +109,10 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
   const scrolls = new Map<string, readonly [left: number, top: number]>();
   const scales: TreeScales = { goods: SCALE_DEFAULT_PCT, buildings: SCALE_DEFAULT_PCT };
   let tree: { readonly id: KnowledgeTree; readonly view: TreeView } | null = null;
+  const pageReleases: (() => void)[] = [];
+  const leavePage = (): void => {
+    for (const release of pageReleases.splice(0)) release();
+  };
 
   const go = (target: KnowledgeTarget): void => {
     const next = placeOf(place, target);
@@ -117,7 +121,13 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     place = next;
     render();
   };
-  const context: KnowledgeContext = { ...deps, tribe: () => tribe, go };
+  const context: KnowledgeContext = {
+    ...deps,
+    tribe: () => tribe,
+    go,
+    onPageLeft: (release) => pageReleases.push(release),
+    leavePage,
+  };
 
   const root = element('div', 'kn-view');
   const tabs = element('div', 'kn-tabs on-tabs');
@@ -238,6 +248,7 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     const fresh = tree?.id !== id;
     if (fresh || tree === null) {
       dropTree();
+      leavePage();
       const view = createTreeView(context, id, {
         scales,
         onClosePane: () => go({ tree: id, pin: null }),
@@ -250,9 +261,10 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     if (restored !== null) applyScrolls(restored);
   };
 
-  const showPage = (page: HTMLElement, restored: Scrolls | null): void => {
+  const showPage = (build: () => HTMLElement, restored: Scrolls | null): void => {
     dropTree();
-    main.replaceChildren(page);
+    leavePage();
+    main.replaceChildren(build());
     applyScrolls(restored ?? scrolls);
   };
 
@@ -262,16 +274,17 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     }
     back.disabled = past.length === 0;
     if (search.value !== place.query) search.value = place.query;
-    if (place.query.trim() !== '') showPage(searchPage(place.query), restored);
+    if (place.query.trim() !== '') showPage(() => searchPage(place.query), restored);
     else if (isTree(place.tab)) showTree(place.tab, restored);
     else if (place.tab === 'encyclopedia') {
       // Picking for the reader takes no step of theirs, so the place is rewritten rather than left.
-      place = { ...place, entry: place.entry ?? firstEntry(deps.base) };
-      showPage(renderEncyclopedia(context, place.entry, openCategory), restored);
+      const entry = place.entry ?? firstEntry(deps.base);
+      place = { ...place, entry };
+      showPage(() => renderEncyclopedia(context, entry, openCategory), restored);
     } else {
       const focus = place.calculator === null ? {} : { calculator: place.calculator };
       const article = place.article ?? articleGroups()[0]?.items[0]?.id ?? '';
-      showPage(renderArticle(context, article, focus), restored);
+      showPage(() => renderArticle(context, article, focus), restored);
     }
   }
 
@@ -368,6 +381,10 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
       else if (target !== undefined) go(target);
     },
     escape: dropLayer,
-    dispose: dropTree,
+    close: leavePage,
+    dispose: () => {
+      dropTree();
+      leavePage();
+    },
   };
 }

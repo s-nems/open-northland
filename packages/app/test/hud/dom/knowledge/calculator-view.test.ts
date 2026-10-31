@@ -37,6 +37,8 @@ const makeContext = (): KnowledgeContext =>
     settlement: null,
     tribe: () => VIKING,
     go: () => undefined,
+    onPageLeft: () => undefined,
+    leavePage: () => undefined,
   }) as unknown as KnowledgeContext;
 
 const mount = (context: KnowledgeContext): HTMLElement => {

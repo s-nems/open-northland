@@ -18,8 +18,6 @@ export type Child = Node | string | null;
 export interface EntryBlock {
   readonly node: HTMLElement;
   readonly side?: boolean;
-  /** Frees what the block holds once its page leaves the document. */
-  readonly release?: () => void;
 }
 
 const copy = () => messages().knowledge.entry;
@@ -180,24 +178,16 @@ export function filmBlock(
 ): EntryBlock | null {
   const motion = context.art.motion;
   if (motion === null) return null;
-  const stops: (() => void)[] = [];
   const figure = element('figure', 'kn-motion');
   for (const { clip, fallback, name, text } of films) {
     const stage = element('div', 'kn-motion__stage');
     const stop = motion.play(stage, clip) ?? (fallback === undefined ? null : motion.play(stage, fallback));
     if (stop === null) continue;
-    stops.push(stop);
+    context.onPageLeft(stop);
     const caption = name === undefined ? null : node('figcaption', '', node('b', '', name), text ?? '');
     figure.append(node('div', 'kn-motion__clip', stage, caption));
   }
-  if (stops.length === 0) return null;
-  return {
-    node: figure,
-    side,
-    release: () => {
-      for (const stop of stops) stop();
-    },
-  };
+  return figure.childElementCount === 0 ? null : { node: figure, side };
 }
 
 /** The status chip; a plain "available" says something only about a building. */
@@ -269,16 +259,6 @@ export function buildingPicture(
   return context.art.buildingThumb(image, building.typeId, boxPx, context.tribe()) ? image : null;
 }
 
-/** Stops `release` once `root` leaves the document; an entry has no dispose of its own to call. */
-function releaseWhenRemoved(root: HTMLElement, release: () => void): void {
-  const observer = new IntersectionObserver(() => {
-    if (root.isConnected) return;
-    observer.disconnect();
-    release();
-  });
-  observer.observe(root);
-}
-
 /**
  * One entry page: `blocks` in reading order. A wide page splits them into a main and a side column; a
  * narrow one dissolves the columns, and each block's `order` keeps the sequence.
@@ -296,7 +276,7 @@ export function entryPage(head: EntryHead, blocks: readonly (EntryBlock | null)[
   columns.append(main);
   if (side.childElementCount > 0) columns.append(side);
   else columns.classList.add('kn-entry__cols--single');
-  const root = node(
+  return node(
     'article',
     'kn-entry',
     node(
@@ -308,13 +288,6 @@ export function entryPage(head: EntryHead, blocks: readonly (EntryBlock | null)[
     columns,
     ...present.filter((block) => block.node instanceof HTMLQuoteElement).map((block) => block.node),
   );
-  const releases = [head.film ?? null, ...present].flatMap((block) => block?.release ?? []);
-  if (releases.length > 0) {
-    releaseWhenRemoved(root, () => {
-      for (const release of releases) release();
-    });
-  }
-  return root;
 }
 
 export const emptyEntry = (text: string): HTMLElement => {

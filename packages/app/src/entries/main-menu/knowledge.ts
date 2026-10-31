@@ -34,15 +34,20 @@ async function loadView(wanted: () => boolean): Promise<LoadedView | null> {
     names.originalTribeNameOverlay(locale),
   ]);
   if (content === null || !wanted()) return null;
-  if (strings !== null) names.installOriginalNames(locale, strings, content);
-  return {
-    view: view.createKnowledgeView({
-      base: base.createKnowledgeBase(content, help),
-      art: art.createKnowledgeArt({ ir, goodIcon: icons.createGoodIconPainter(null, content) }),
-      settlement: null,
-    }),
-    menuNames,
-  };
+  try {
+    if (strings !== null) names.installOriginalNames(locale, strings, content);
+    return {
+      view: view.createKnowledgeView({
+        base: base.createKnowledgeBase(content, help),
+        art: art.createKnowledgeArt({ ir, goodIcon: icons.createGoodIconPainter(null, content) }),
+        settlement: null,
+      }),
+      menuNames,
+    };
+  } catch (error) {
+    installNameOverlay(locale, menuNames);
+    throw error;
+  }
 }
 
 /** Knowledge with no game running: fills the view, reads the served content when it opens, and hands the
@@ -78,6 +83,7 @@ export function knowledgeScreen(open: (screen: MenuScreen) => void): MountedScre
     escape: () => loaded?.view.escape() === true,
     dispose: () => {
       left = true;
+      loaded?.view.close();
       loaded?.view.dispose();
       if (loaded !== null) installNameOverlay(currentLocale(), loaded.menuNames);
     },

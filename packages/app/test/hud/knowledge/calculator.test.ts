@@ -179,6 +179,16 @@ describe('ranking', () => {
     expect(rows.map((r) => r.weapon.id)).toEqual(['iron_spear', 'wooden_spear', 'long_sword']);
     expect(rows.map((r) => r.share)).toEqual([1, 0.5, 0]);
   });
+
+  it('puts a row with no clip after the blow that cannot kill, with no time and no bar', () => {
+    const shelter = row({ id: 'long_bow', clipTicks: null });
+    const armed = armedBase([shelter, row({ id: 'long_sword', damage: {} }), row()]);
+    const start = initialCalculator(armed, VIKING);
+    const rows = ranking(armed, { ...start, target: { ...start.target, armour: 'bare' } });
+    expect(rows.map((r) => r.weapon.id)).toEqual(['iron_spear', 'long_sword', 'long_bow']);
+    expect(rows.at(-1)).toMatchObject({ seconds: null, perSecond: null, share: 0 });
+    expect(rows.at(-1)?.hits).not.toBeNull();
+  });
 });
 
 describe('weapon lists', () => {

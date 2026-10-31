@@ -16,6 +16,7 @@ function stubView() {
       layers -= 1;
       return layers >= 0;
     },
+    close: vi.fn(),
     dispose: vi.fn(),
   };
   return { view, opened, setLayers: (n: number) => (layers = n) };
@@ -41,6 +42,18 @@ function mount() {
 
 describe('the Knowledge window', () => {
   afterEach(() => document.body.replaceChildren());
+
+  it('tells the view every way it closes', async () => {
+    const { window, view } = mount();
+    window.toggle();
+    await settle();
+    window.toggle();
+    window.show();
+    window.close();
+    window.show();
+    document.querySelector<HTMLElement>('.on-window__close')?.click();
+    expect(view.close).toHaveBeenCalledTimes(3);
+  });
 
   it('builds nothing until the first open, then only once', async () => {
     const { window, createView, refresh, opened } = mount();
