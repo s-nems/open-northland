@@ -33,7 +33,7 @@ import { computerProfileOf, type Share } from '../../difficulty.js';
 import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
 import { LANDING_BIG_SHIPS, landingFewestShips, landingFleetShips } from '../../workforce/craft.js';
 import { campaignObjective } from '../campaign.js';
-import { believedDefendingPoints } from '../enemy-strength.js';
+import { knownDefendingPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
 import { launchRatioReached } from '../plan.js';
 import { unitPoints } from '../points.js';
@@ -525,8 +525,8 @@ function crewsOf(
  * A landing when the seat's posture attacks, its peace is over, its rival lies over the sea
  * ({@link seaRouteOf}) and is an enemy, and the free men on its home land load at least
  * {@link LANDING_BIG_SHIPS} of its free moored ships to {@link LANDING_LOAD_PCT}, as many as they fill,
- * weighing the posture's launch ratio, at least {@link LANDING_EDGE}, of what the seat believes defends
- * the rival. The men fill the ships
+ * weighing the posture's launch ratio, at least {@link LANDING_EDGE} against an army it knows, of what the
+ * seat believes defends the rival. The men fill the ships
  * by {@link crewsOf}; each ship docks at its own shore point
  * ({@link landingShores}).
  */
@@ -560,9 +560,11 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   const wave = crews.flatMap((crew) => crew.men);
   let points = 0;
   for (const e of wave) points += unitPoints(world, ctx, e);
-  const edge = ratio.num * LANDING_EDGE.den >= LANDING_EDGE.num * ratio.den ? ratio : LANDING_EDGE;
-  if (!launchRatioReached(points, believedDefendingPoints(world, ctx, seat, owner, points), edge))
-    return null;
+  // An enemy it knows nothing of is taken at parity on the posture's own ratio, as every launch takes him.
+  const known = knownDefendingPoints(world, ctx, seat, owner);
+  const edge =
+    known === null || ratio.num * LANDING_EDGE.den >= LANDING_EDGE.num * ratio.den ? ratio : LANDING_EDGE;
+  if (!launchRatioReached(points, known ?? points, edge)) return null;
   const first = crews[0];
   const shores = first === undefined ? [] : landingShores(env, first.ship, route, crews.length);
   if (shores.length === 0) return null;

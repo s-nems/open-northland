@@ -38,10 +38,21 @@ export function believedDefendingPoints(
   own: number,
   postedWeight: number = TOWER_POST_STRENGTH,
 ): number {
+  return knownDefendingPoints(world, ctx, seat, owner, postedWeight) ?? own;
+}
+
+/** {@link believedDefendingPoints}, null for an enemy the seat knows nothing of. */
+export function knownDefendingPoints(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  owner: number,
+  postedWeight: number = TOWER_POST_STRENGTH,
+): number | null {
   if (!fogHides(ctx.fog)) {
     return armyPointsOf(world, ctx, owner, postedWeight, (e) => isManningPost(world, ctx, e)).points;
   }
-  return knownArmy(world, ctx, seat, owner, postedWeight)?.points ?? own;
+  return knownArmy(world, ctx, seat, owner, postedWeight)?.points ?? null;
 }
 
 /** The strongest enemy as the seat believes him: his men, and his points, null when it knows none. */
