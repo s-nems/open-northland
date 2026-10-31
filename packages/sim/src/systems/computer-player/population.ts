@@ -22,8 +22,13 @@ import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import { type ComputerProfile, computerProfileOf, shareOf } from './difficulty.js';
 import { bookedBirths, femaleStockOf } from './female-stock.js';
+import { minutesToTicks } from './game-phase.js';
 import type { ComputerModule } from './index.js';
 import { builderCap } from './workforce/staffing.js';
+
+/** Until when single builders are wed ahead of the other men, in ticks (owner ruling: the first 30 game
+ *  minutes). */
+export const BUILDER_HUSBANDS_UNTIL_TICKS = minutesToTicks(30);
 
 /** How many idle men beyond the builder reserve hold the sons counter at zero (authored). */
 export const IDLE_MEN_HOLD_BIRTHS = 3;
@@ -42,16 +47,20 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   const settlers = ownedSettlers(world, player);
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));
 
-  // One marry order per single woman, capped by the single-men count so the command log does not fill
-  // with orders that would only auto-cancel.
+  // One marry order per possible couple, capped by the smaller side so the command log does not fill with
+  // orders that would only auto-cancel. In the opening single builders order first, each wedding the woman
+  // nearest him; the rest go from the women's side.
   const singleWomen = women.filter((e) => mayMarry(world, ctx.content, e));
   const singleMen = settlers.filter(
     (e) => !world.has(e, Female) && isAdultSettler(world, e) && mayMarry(world, ctx.content, e),
   );
-  for (let i = 0; i < Math.min(singleWomen.length, singleMen.length); i++) {
-    const woman = singleWomen[i];
-    if (woman !== undefined) commands.push({ kind: 'marry', entity: woman });
+  let orders = Math.min(singleWomen.length, singleMen.length);
+  for (const builder of builderHusbands(world, ctx, singleMen)) {
+    if (orders === 0) break;
+    commands.push({ kind: 'marry', entity: builder });
+    orders--;
   }
+  for (const woman of singleWomen.slice(0, orders)) commands.push({ kind: 'marry', entity: woman });
 
   // A married, unhoused woman's family takes the first free family slot, in canonical order; slots
   // claimed this decision are tracked so two families never target the same one.
@@ -97,6 +106,18 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
     commands.push({ kind: 'setHouseholdGoodUse', player, effect: 'piety', allowed: true });
   }
   return commands;
+}
+
+/**
+ * The single builder-trade men who propose first while the tick is before {@link BUILDER_HUSBANDS_UNTIL_TICKS}:
+ * a builder's bride walks to him, so the gatherers and the farmer or miller stay at work and no woman's
+ * order pulls one of them home. A priority only: the women's orders still wed every woman left.
+ */
+function builderHusbands(world: World, ctx: SystemContext, singleMen: readonly Entity[]): Entity[] {
+  if (ctx.tick >= BUILDER_HUSBANDS_UNTIL_TICKS) return [];
+  const builderJob = builderJobOf(ctx);
+  if (builderJob === null) return [];
+  return singleMen.filter((e) => world.get(e, Settler).jobType === builderJob);
 }
 
 /**

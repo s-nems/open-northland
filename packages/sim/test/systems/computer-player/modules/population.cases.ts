@@ -15,7 +15,10 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
 import { populationModule } from '../../../../src/systems/computer-player/index.js';
-import { IDLE_MEN_HOLD_BIRTHS } from '../../../../src/systems/computer-player/population.js';
+import {
+  BUILDER_HUSBANDS_UNTIL_TICKS,
+  IDLE_MEN_HOLD_BIRTHS,
+} from '../../../../src/systems/computer-player/population.js';
 import { builderCap } from '../../../../src/systems/computer-player/workforce/staffing.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
@@ -111,6 +114,40 @@ describe('population module (homeExpansion)', () => {
     const commands = [...populationModule.run(sim.world, ctxOf(sim), SEAT)];
     const weddings = commands.filter((c) => c.kind === 'marry');
     expect(weddings.map((c) => c.entity)).toEqual(womenOf(sim));
+  });
+
+  it('weds single builders first in the opening, and every woman still marries', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    for (let i = 0; i < 2; i++) {
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: WOMAN,
+        x: 6 + 2 * i,
+        y: 8,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    }
+    spawnMen(sim, 1);
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: BUILDER, x: 30, y: 30, tribe: VIKING, owner: SEAT });
+    sim.step();
+    const builder = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === BUILDER);
+    const [firstWoman] = womenOf(sim);
+    const opening = [...populationModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'marry');
+    expect(opening.map((c) => c.entity)).toEqual([builder, firstWoman]);
+
+    const later = { ...ctxOf(sim), tick: BUILDER_HUSBANDS_UNTIL_TICKS };
+    const after = [...populationModule.run(sim.world, later, SEAT)].filter((c) => c.kind === 'marry');
+    expect(after.map((c) => c.entity)).toEqual(womenOf(sim));
+
+    for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) {
+      for (const c of populationModule.run(sim.world, ctxOf(sim), SEAT))
+        if (c.kind === 'marry') sim.enqueueSetup(c);
+      sim.step();
+    }
+    expect(womenOf(sim).every((w) => sim.world.has(w, Marriage))).toBe(true);
+    expect(builder !== undefined && sim.world.has(builder, Marriage)).toBe(true);
   });
 
   it('houses married women and drives the birth counters: daughters to the slots, sons infinite', () => {
