@@ -2,17 +2,21 @@ import {
   AssistantRecruit,
   assistantGrantedGoods,
   assistantSoldierOnlyGoods,
+  Building,
   Equipment,
+  storePriorityGoods,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
 import type { SystemContext } from '../../context.js';
-import { armorGoodsByProtection, mayChangeEquipSlot } from '../../readviews/index.js';
+import { armorGoodsByProtection, isBarracks, mayChangeEquipSlot } from '../../readviews/index.js';
 import { EQUIP_FETCH_UNITS } from '../../settlers/atomics/effects/goods/index.js';
 import { equipFetchesHeld } from '../../settlers/drives/equip-fetches.js';
 import { FetchableStock } from '../../settlers/targets/index.js';
+import { keepsStorePriority, stockCapacity } from '../../stores/index.js';
 
 /** The misc goods the seat grants its soldiers through the assistant, one slot each as a store holds a
  *  unit. Owner ruling: the healing potions and every amulet go to the soldiers alone. The small potion is
@@ -95,6 +99,58 @@ export function armourFetchOrders(
     if (goodType === undefined) break; // the stock lends no armour
     held.set(goodType, (held.get(goodType) ?? 0) + EQUIP_FETCH_UNITS);
     commands.push({ kind: 'equipGood', entity: e, group: 'armor', slot: 0, goodType });
+  }
+  return commands;
+}
+
+/** The healing potions the barracks marks as priority. */
+const BARRACKS_POTION_GOOD_IDS: readonly string[] = ['potion_heal_big', 'potion_heal_small'];
+const BARRACKS_MEAD_GOOD_IDS: readonly string[] = ['mead'];
+/** The amulets the barracks marks, the ones the seat grants its soldiers. */
+const BARRACKS_AMULET_GOOD_IDS: readonly string[] = SOLDIER_OUTFIT_GOOD_IDS.filter((id) =>
+  id.startsWith('amulet_'),
+);
+
+/**
+ * The goods a barracks of `tribe` marks as priority, in the owner's ranking: weapons arming a trade of
+ * that tribe, every armour, the healing potions, mead, the amulets. Owner ruling; the store marks a set,
+ * so the ranking orders only the commands.
+ */
+function barracksPriorityGoods(ctx: SystemContext, tribe: number): number[] {
+  const goods: number[] = [];
+  const weapons = contentIndex(ctx.content).weaponByTribeAndGoodType.get(tribe);
+  for (const [goodType, weapon] of weapons ?? []) if (weapon.jobType !== undefined) goods.push(goodType);
+  goods.push(...armorGoodsByProtection(ctx.content));
+  for (const ids of [BARRACKS_POTION_GOOD_IDS, BARRACKS_MEAD_GOOD_IDS, BARRACKS_AMULET_GOOD_IDS]) {
+    for (const id of ids) {
+      const good = goodTypeByContentId(ctx.content, id);
+      if (good !== undefined) goods.push(good.typeId);
+    }
+  }
+  return goods;
+}
+
+/**
+ * The store-priority marks each finished barracks among `owned` still lacks: every good of
+ * {@link barracksPriorityGoods} it shelves, so its porters fetch the army's gear from the seat's other
+ * stores. The same command a player clicks; a mark already set is never sent again, and a barracks
+ * rebuilt or newly finished is a fresh entity without marks. Work is bounded by the seat's buildings.
+ */
+export function barracksPriorityOrders(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+): PlayerCommand[] {
+  const commands: PlayerCommand[] = [];
+  for (const barracks of owned) {
+    if (!isBarracks(world, ctx, barracks)) continue;
+    const { buildingType, tribe } = world.get(barracks, Building);
+    if (!keepsStorePriority(ctx.content, buildingType)) continue;
+    const marked = storePriorityGoods(world, barracks);
+    for (const goodType of barracksPriorityGoods(ctx, tribe)) {
+      if (marked.includes(goodType) || stockCapacity(world, ctx, barracks, goodType) <= 0) continue;
+      commands.push({ kind: 'setStorePriority', building: barracks, goodType, priority: true });
+    }
   }
   return commands;
 }

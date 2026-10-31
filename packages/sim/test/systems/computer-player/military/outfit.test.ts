@@ -11,16 +11,28 @@ import {
   Position,
   Stockpile,
 } from '../../../../src/components/index.js';
+import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { fx, Simulation } from '../../../../src/index.js';
+import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
   ARMOUR_FETCHES_PER_DECISION,
   armourFetchOrders,
+  barracksPriorityOrders,
 } from '../../../../src/systems/computer-player/military/outfit.js';
 import { armorGoodsByProtection } from '../../../../src/systems/readviews/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { grassCellMap } from '../../../fixtures/terrain.js';
+import {
+  SEAT as AI_SEAT,
+  SWORD as AI_SWORD,
+  aiSim,
+  armedContent,
+  BARRACKS_TYPE,
+  BOW,
+  SPEAR,
+} from '../support.js';
 
 /** The computer seat's armour orders for soldiers armed before their armour was made. */
 
@@ -156,5 +168,138 @@ describe('armourFetchOrders - dressing armed soldiers later', () => {
     });
 
     expect(ordered(sim, [busy, soldierAt(sim, 2)]).size).toBe(0);
+  });
+});
+
+const BARRACKS_AT = { x: 20, y: 10 };
+const SECOND_BARRACKS_AT = { x: 40, y: 10 };
+const ARMOR_33 = 33;
+const MEAD = 43;
+const POTION_HEAL_BIG = 49;
+const AMULET_FOOD = 50;
+const AMULET_SPEED = 55;
+/** A weapon good arming only another tribe's soldier. */
+const FOREIGN_AXE = 70;
+const OTHER_TRIBE = 2;
+const SHELF = 60;
+/** The fixture's food, shelved by the barracks but never its priority. */
+const FOOD = 3;
+
+/** The armed fixture with gear goods, a foreign weapon, and a barracks shelving all but the short bow
+ *  and the food amulet. */
+function barracksContent(): ContentSet {
+  const base = armedContent();
+  const shelved = [AI_SWORD, SPEAR, ARMOR_33, MEAD, POTION_HEAL_BIG, AMULET_SPEED, FOREIGN_AXE, FOOD];
+  return parseContentSet({
+    ...base,
+    goods: [
+      ...base.goods,
+      { typeId: ARMOR_33, id: 'armor_wool', equip: { category: 'armor' } },
+      { typeId: MEAD, id: 'mead' },
+      { typeId: POTION_HEAL_BIG, id: 'potion_heal_big', equip: { category: 'misc' } },
+      { typeId: AMULET_FOOD, id: 'amulet_food', equip: { category: 'misc' } },
+      { typeId: AMULET_SPEED, id: 'amulet_speed', equip: { category: 'misc' } },
+      { typeId: FOREIGN_AXE, id: 'axe' },
+    ],
+    armor: [{ typeId: 1, id: 'armor_wool', mainType: 1, goodType: ARMOR_33, materialType: 1 }],
+    weapons: [
+      ...base.weapons,
+      {
+        typeId: 9,
+        id: 'foreign_axe',
+        tribeType: OTHER_TRIBE,
+        jobType: 34,
+        mainType: 1,
+        goodType: FOREIGN_AXE,
+        minRange: 1,
+        maxRange: 1,
+      },
+    ],
+    buildings: base.buildings.map((b) =>
+      b.typeId === BARRACKS_TYPE
+        ? { ...b, stock: shelved.map((goodType) => ({ goodType, capacity: SHELF, initial: 0 })) }
+        : b,
+    ),
+  });
+}
+
+function placeBarracks(sim: Simulation, at: { x: number; y: number }, underConstruction = false): void {
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: BARRACKS_TYPE,
+    x: at.x,
+    y: at.y,
+    tribe: VIKING,
+    owner: AI_SEAT,
+    underConstruction,
+  });
+  sim.step();
+}
+
+function barracksOrders(sim: Simulation): PlayerCommand[] {
+  return barracksPriorityOrders(sim.world, ctxOf(sim), ownedBuildings(sim.world, AI_SEAT));
+}
+
+/** The goods each barracks is ordered to mark, by entity. */
+function marksByBarracks(commands: readonly PlayerCommand[]): Map<Entity, number[]> {
+  const marks = new Map<Entity, number[]>();
+  for (const c of commands) {
+    if (c.kind !== 'setStorePriority' || !c.priority) throw new Error(`unexpected order ${c.kind}`);
+    marks.set(c.building, [...(marks.get(c.building) ?? []), c.goodType]);
+  }
+  return marks;
+}
+
+function apply(sim: Simulation, commands: readonly PlayerCommand[]): void {
+  for (const c of commands) sim.enqueueSetup(c);
+  sim.step();
+}
+
+const BARRACKS_GEAR = [SPEAR, AI_SWORD, ARMOR_33, POTION_HEAL_BIG, MEAD, AMULET_SPEED];
+
+describe('barracksPriorityOrders - the barracks fetches the army gear', () => {
+  it('marks every gear good the barracks shelves once, in the ranking weapons, armour, potions, mead, amulets', () => {
+    const sim = aiSim(1, barracksContent());
+    placeBarracks(sim, BARRACKS_AT);
+
+    const marks = [...marksByBarracks(barracksOrders(sim)).values()];
+
+    expect(marks).toHaveLength(1);
+    const [goods = []] = marks;
+    expect([...goods].sort((a, b) => a - b)).toEqual([...BARRACKS_GEAR].sort((a, b) => a - b));
+    expect(goods.slice(-4)).toEqual([ARMOR_33, POTION_HEAL_BIG, MEAD, AMULET_SPEED]);
+    expect(goods).not.toContain(BOW); // the seat's weapon the barracks has no shelf for
+    expect(goods).not.toContain(FOREIGN_AXE);
+    expect(goods).not.toContain(FOOD);
+
+    apply(sim, barracksOrders(sim));
+    expect(barracksOrders(sim)).toEqual([]);
+  });
+
+  it('leaves an unfinished barracks unmarked until it stands', () => {
+    const sim = aiSim(1, barracksContent());
+    placeBarracks(sim, BARRACKS_AT, true);
+
+    expect(barracksOrders(sim)).toEqual([]);
+  });
+
+  it('marks a barracks built after the first, and a rebuilt one, leaving the marked one alone', () => {
+    const sim = aiSim(1, barracksContent());
+    placeBarracks(sim, BARRACKS_AT);
+    apply(sim, barracksOrders(sim));
+    const [first] = ownedBuildings(sim.world, AI_SEAT);
+    if (first === undefined) throw new Error('setup: barracks missing');
+    placeBarracks(sim, SECOND_BARRACKS_AT);
+
+    const second = marksByBarracks(barracksOrders(sim));
+    expect(second.has(first)).toBe(false);
+    expect(second.size).toBe(1);
+
+    apply(sim, barracksOrders(sim));
+    sim.world.destroy(first);
+    placeBarracks(sim, BARRACKS_AT);
+    const rebuilt = marksByBarracks(barracksOrders(sim));
+    expect(rebuilt.size).toBe(1);
+    expect([...rebuilt.values()][0]).toHaveLength(BARRACKS_GEAR.length);
   });
 });

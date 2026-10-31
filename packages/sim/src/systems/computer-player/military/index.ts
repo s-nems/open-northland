@@ -12,7 +12,7 @@ import { militaryOrdersOf } from '../strategy/military.js';
 import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
 import { type OperationEnv, runOperations } from './operations/index.js';
-import { armourFetchOrders, outfitGrantOrders } from './outfit.js';
+import { armourFetchOrders, barracksPriorityOrders, outfitGrantOrders } from './outfit.js';
 import { siegeCrewOrders } from './siege-crew.js';
 
 export {
@@ -78,7 +78,8 @@ export {
  * and dresses the army through the counters and grants the seat publishes, where the original's computer
  * player drafts and outfits its soldiers itself, matching its weapons and armour to its enemies' gear and
  * dressing armed men later. The seat still sends its armed men at home for the armour made after their
- * weapon ({@link armourFetchOrders}), which the assistant's arming never revisits. */
+ * weapon ({@link armourFetchOrders}), which the assistant's arming never revisits, and marks its barracks'
+ * gear as store priority ({@link barracksPriorityOrders}) so the barracks porters fetch it. */
 function runMilitary(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return []; // mapless sim: no ground to march over
@@ -114,6 +115,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     ...campaign,
     ...(assault?.commands ?? []),
     ...outfitGrantOrders(world, ctx, player),
+    ...barracksPriorityOrders(world, ctx, owned),
     ...armourFetchOrders(
       world,
       ctx,
