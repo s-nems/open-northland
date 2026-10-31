@@ -297,33 +297,42 @@ function fieldRadiusByType(content: ContentSet): ReadonlyMap<number, number> {
   return radii;
 }
 
-/** Where a home without affinities looks (owner ruling): its search centre pushed
- *  {@link HOME_FAR_SIDE_PUSH_NODES} from `anchor` away from the centroid of the seat's field farms, sites
- *  included, and `nearFarm`, which says whether a node lies within a farm's field radius plus
- *  {@link HOME_FARM_MARGIN_NODES}. Null while the seat has no field farm. */
-function homeFarSide(
+/** The seat's field farms, sites included, with their anchors and field radii. */
+function fieldFarms(
   world: World,
   ctx: SystemContext,
   owned: readonly Entity[],
-  anchor: HalfCellNode,
-): { readonly centre: HalfCellNode; readonly nearFarm: (x: number, y: number) => boolean } | null {
+): { readonly e: Entity; readonly node: HalfCellNode; readonly radius: number }[] {
   const radii = fieldRadiusByType(ctx.content);
-  if (radii.size === 0) return null;
-  const farms: Entity[] = [];
-  const zones: { readonly node: HalfCellNode; readonly radius: number }[] = [];
+  const farms: { e: Entity; node: HalfCellNode; radius: number }[] = [];
+  if (radii.size === 0) return farms;
   for (const e of owned) {
     const radius = radii.get(world.get(e, Building).buildingType);
     const node = radius === undefined ? null : anchorNodeOf(world, e);
-    if (radius === undefined || node === null) continue;
-    farms.push(e);
-    zones.push({ node, radius: radius + HOME_FARM_MARGIN_NODES });
+    if (radius !== undefined && node !== null) farms.push({ e, node, radius });
   }
-  const farm = anchorCentroid(world, farms);
+  return farms;
+}
+
+/** Where a home without affinities looks (owner ruling): its search centre pushed
+ *  {@link HOME_FAR_SIDE_PUSH_NODES} from `anchor` away from the centroid of the seat's field farms, and
+ *  `nearFarm`, which says whether a node lies within a farm's field radius plus
+ *  {@link HOME_FARM_MARGIN_NODES}. Null while the seat has no field farm. */
+function homeFarSide(
+  world: World,
+  farms: ReturnType<typeof fieldFarms>,
+  anchor: HalfCellNode,
+): { readonly centre: HalfCellNode; readonly nearFarm: (x: number, y: number) => boolean } | null {
+  const farm = anchorCentroid(
+    world,
+    farms.map((f) => f.e),
+  );
   if (farm === null) return null;
   const away = { hx: 2 * anchor.hx - farm.hx, hy: 2 * anchor.hy - farm.hy };
   return {
     centre: towardNode(anchor, away, HOME_FAR_SIDE_PUSH_NODES),
-    nearFarm: (x, y) => zones.some((z) => Math.abs(x - z.node.hx) + Math.abs(y - z.node.hy) <= z.radius),
+    nearFarm: (x, y) =>
+      farms.some((f) => nodeManhattan(f.node, { hx: x, hy: y }) <= f.radius + HOME_FARM_MARGIN_NODES),
   };
 }
 
@@ -339,6 +348,11 @@ export const ROOM_SHORTFALL_NODES_PER_RING = 16;
 /** The most rings a `room` spot's shortfall costs (authored): a crowded seat still keeps its farm within
  *  about one chain's radius of the nearest roomy spot rather than across the map. */
 export const ROOM_SHORTFALL_MAX_RINGS = 12;
+
+/** How many rings a spot pulled toward a deposit pays for standing within {@link CHAIN_ROOM_RADIUS_NODES}
+ *  of a field farm (authored, owner ruling: a mason or potter beside the farm leaves no room for its
+ *  chain): a deposit spot a few rings off still beats taking that ground. */
+export const FARM_ROOM_RESOURCE_PENALTY_RINGS = 6;
 
 /** The reserved nodes of the type's footprint, the anchor alone for a type with none. */
 function reservedNodes(ctx: SystemContext, typeId: number, tribe: number): number {
@@ -574,8 +588,9 @@ function footprintOnGrass(
  * `unlessWithin` entry's spot must lie within that radius of the building it serves, or a well would go
  * up that serves nothing, and a `shore` entry's close enough to its ship water for the ship yard.
  * A home with no affinity searches from the far side of the base from the seat's field farms and takes a
- * spot near one only when nothing else is left ({@link homeFarSide}). A `room` entry's spot pays for the
- * free ground it lacks around it ({@link roomPenalty}).
+ * spot near one only when nothing else is left ({@link homeFarSide}); a deposit-pulled spot pays
+ * {@link FARM_ROOM_RESOURCE_PENALTY_RINGS} beside a farm. A `room` entry's spot pays for the free ground
+ * it lacks around it ({@link roomPenalty}).
  *
  * An affinity pull that finds nothing yields to the same search from `anchor` (authored): a
  * settlement wider than the fan keeps room on its far side that the pulled centre never reaches, and a
@@ -660,15 +675,25 @@ function boundedSpot(
   const { within } = search;
   let { centre } = search;
   // A home stays off the field farms' ground and leans to the far side of the base from them; a spot near
-  // a farm costs the whole ring budget, so it is taken only when no other spot is left in the fan.
+  // a farm costs the whole ring budget, so it is taken only when no other spot is left in the fan. A spot
+  // pulled toward a deposit pays a few rings for the ground beside a farm that its chain will want.
   const fan = 2 * tuning.reachNodes;
-  const farSide =
-    type.kind === BUILDING_KIND.home && (entry.near ?? []).length === 0
-      ? homeFarSide(world, ctx, owned, anchor)
-      : null;
+  const affinities = entry.near ?? [];
+  const amongHomes = type.kind === BUILDING_KIND.home && affinities.length === 0;
+  const deposit = affinities.some((a) => a.kind === 'resource');
+  const farms = amongHomes || deposit ? fieldFarms(world, ctx, owned) : [];
+  const farSide = amongHomes ? homeFarSide(world, farms, anchor) : null;
   if (farSide !== null) centre = settlement.clamp(farSide.centre);
   const nearFarm = farSide?.nearFarm;
-  const avoid = nearFarm === undefined ? null : (x: number, y: number) => (nearFarm(x, y) ? fan : 0);
+  const avoid =
+    nearFarm !== undefined
+      ? (x: number, y: number) => (nearFarm(x, y) ? fan : 0)
+      : deposit && farms.length > 0
+        ? (x: number, y: number) =>
+            farms.some((f) => nodeManhattan(f.node, { hx: x, hy: y }) <= CHAIN_ROOM_RADIUS_NODES)
+              ? FARM_ROOM_RESOURCE_PENALTY_RINGS
+              : 0
+        : null;
   const room = roomPenalty(world, ctx, terrain, type, tribe, entry);
   const home = baseComponent(world, ctx, terrain, player);
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;

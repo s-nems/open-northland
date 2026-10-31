@@ -17,6 +17,8 @@ import { FRONT_LINE_DEPTH_NODES } from '../../../../src/systems/computer-player/
 import { grassScarce } from '../../../../src/systems/computer-player/build-order/grass-reserve.js';
 import {
   buildReach,
+  CHAIN_ROOM_RADIUS_NODES,
+  FARM_ROOM_RESOURCE_PENALTY_RINGS,
   FRONT_EDGE_STEP_NODES,
   HOME_FARM_MARGIN_NODES,
 } from '../../../../src/systems/computer-player/build-order/placement.js';
@@ -524,6 +526,58 @@ describe('build-order placement - affinity and ground rules', () => {
     };
     expect(homeBeside(HQ_X + 10)).toBeLessThan(HQ_X);
     expect(homeBeside(HQ_X - 10)).toBeGreaterThan(HQ_X);
+  });
+
+  it("moves a deposit-pulled workshop off a field farm's chain ground when a spot a few rings off is free", () => {
+    const base = aiContent();
+    const content = parseContentSet({
+      ...base,
+      goods: base.goods.map((g) =>
+        g.id === 'food_simple'
+          ? { ...g, farming: { stages: 5, yieldPerField: 1, fieldRadius: 4, maxFields: 25 } }
+          : g,
+      ),
+      buildings: base.buildings.map((b) => (b.id === 'work_farm_00' ? { ...b, produces: [FOOD_GOOD] } : b)),
+    });
+    // The farm stands west of the stone, the deposit just inside its chain's ground.
+    const FARM_AT = { x: RESOURCE_SPOTS.stone.x - CHAIN_ROOM_RADIUS_NODES + 2, y: RESOURCE_SPOTS.stone.y };
+    const depositSpot = (withFarm: boolean) => {
+      const sim = aiSim(1, content);
+      placeHq(sim);
+      placeResources(sim, [RESOURCE_SPOTS.stone]);
+      if (withFarm)
+        sim.enqueueSetup({
+          kind: 'placeBuilding',
+          buildingType: FARM_TYPE,
+          x: FARM_AT.x,
+          y: FARM_AT.y,
+          tribe: VIKING,
+          owner: SEAT,
+        });
+      sim.step();
+      const spot = [
+        ...buildOrderModule(
+          oneLine([
+            {
+              kind: 'place',
+              building: 'work_bakery_00',
+              count: 1,
+              near: [{ kind: 'resource', good: 'stone' }],
+            },
+          ]),
+        ).run(sim.world, { ...ctxOf(sim), content }, SEAT),
+      ][0];
+      if (spot?.kind !== 'placeBuilding') throw new Error('expected the deposit placement');
+      return spot;
+    };
+    const toFarm = (spot: { x: number; y: number }) =>
+      Math.abs(spot.x - FARM_AT.x) + Math.abs(spot.y - FARM_AT.y);
+    expect(toFarm(depositSpot(false))).toBeLessThanOrEqual(CHAIN_ROOM_RADIUS_NODES);
+    const moved = depositSpot(true);
+    expect(toFarm(moved)).toBeGreaterThan(CHAIN_ROOM_RADIUS_NODES);
+    expect(
+      Math.abs(moved.x - RESOURCE_SPOTS.stone.x) + Math.abs(moved.y - RESOURCE_SPOTS.stone.y),
+    ).toBeLessThanOrEqual(FARM_ROOM_RESOURCE_PENALTY_RINGS);
   });
 
   it('stands a room placement where the free ground around it holds the buildings it names', () => {
