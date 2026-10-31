@@ -1,10 +1,22 @@
-import { LATE_GAME_FROM_TICKS, LATE_LATE_GAME_SETTLERS } from '../game-phase.js';
+import { LATE_GAME_FROM_TICKS, LATE_LATE_GAME_SETTLERS, MID_GAME_FROM_TICKS } from '../game-phase.js';
 import { BARRACKS_LEAD_TICKS, UPPER_TOWER_LEAD_TICKS } from '../military/deadline.js';
-import type { BuildLine, BuildOrderEntry } from './entries.js';
+import type { BuildLine, BuildOrderEntry, StepHold } from './entries.js';
 
 /** The late tail's denser tower ring, in world-metric nodes (authored): tighter than the opening
  *  tower circle (`./tower-coverage.ts`), so the finished settlement stands under overlapping towers. */
 const DENSE_TOWER_RADIUS_NODES = 14;
+
+/** When the seat's economy is safe for the denser ring (owner ruling: towers over the whole settlement
+ *  come later in the game): the brewery and the upper bakery stand, the food stage the housing lane calls
+ *  thriving (`HOUSING_THRIVING_BUILDINGS`), and the mid game has begun. */
+const ECONOMY_SAFE: StepHold = {
+  kind: 'all',
+  holds: [
+    { kind: 'built', building: 'work_brewery' },
+    { kind: 'built', building: 'work_bakery_01' },
+    { kind: 'tick', tick: MID_GAME_FROM_TICKS },
+  ],
+};
 
 /** How many of the seat's towers stand at the upper tier (authored): about the ring a settlement of medium
  *  room stands under. A tower the rings raised straight at the upper tier counts, so the upgrades only lift
@@ -68,14 +80,16 @@ export const MILITARY_LINE: BuildLine = {
       near: [{ kind: 'front' }],
       holdUntil: { kind: 'deadline', leadTicks: BARRACKS_LEAD_TICKS },
     },
-    // From the late game the denser ring runs as a second lane (authored): a tower wherever the first
-    // leaves a building out. A filled settlement with no room for a tower holds the lane, not the line.
+    // Once the seat's economy is safe the denser ring runs as a second lane (owner ruling: later in the
+    // game towers cover the whole settlement, so no flank is left open): a tower wherever the first leaves
+    // a building out. Both rings count the same tower sites, so together they keep the first ring's pace.
+    // A filled settlement with no room for a tower holds the lane, not the line.
     {
       kind: 'towerCoverage',
       building: 'tower_00',
       radius: DENSE_TOWER_RADIUS_NODES,
       lane: true,
-      fromTick: LATE_GAME_FROM_TICKS,
+      holdUntil: ECONOMY_SAFE,
     },
     // Owner ruling: the standing towers go up to the upper tier slowly, once the seat makes the bricks and
     // pillars its bill asks for; an upgrade step holds its line until its bill has a source.
