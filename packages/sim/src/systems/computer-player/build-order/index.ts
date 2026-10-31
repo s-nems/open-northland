@@ -47,6 +47,7 @@ import {
   sitePace,
   stepKey,
 } from './entries.js';
+import { towerUpgradeWaits } from './front.js';
 import { grassBoundEntry, grassReserved } from './grass-reserve.js';
 import {
   daughtersBlocked,
@@ -429,6 +430,7 @@ function runBuildOrder(
       case 'upgrade': {
         const target = buildingTypeByContentId(ctx.content, entry.building);
         if (target === undefined) return null; // unreachable after 'skip', kept for the type system
+        if (towerUpgradeWaits(world, ctx, player, entry.building)) return null;
         const candidate = upgradeCandidate(world, index, owned, target);
         if (candidate === null) return null;
         // A jump stops below a tier whose bill has no source yet, and one the store cannot back yet falls

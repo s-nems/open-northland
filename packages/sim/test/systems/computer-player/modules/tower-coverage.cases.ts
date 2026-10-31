@@ -8,6 +8,8 @@ import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js
 import {
   FRONT_LINE_DEPTH_NODES,
   scheduledTowers,
+  TOWER_UPGRADE_QUIET_TICKS,
+  towerUpgradeWaits,
 } from '../../../../src/systems/computer-player/build-order/front.js';
 import { firstUncovered } from '../../../../src/systems/computer-player/build-order/tower-coverage.js';
 import { LATE_GAME_FROM_TICKS, minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
@@ -240,6 +242,32 @@ describe('build-order tower and store coverage', () => {
     expect(at(RAID_TICK - TOWER_LEAD_TICKS)).toBeGreaterThan(0);
     // The assumed peace end is the last deadline: past its lead nothing caps the ring.
     expect(at(ASSUMED_PEACE_TICKS - TOWER_LEAD_TICKS)).toBeNull();
+  });
+
+  it('opens no tower upgrade within the quiet window before a forecast attack', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    const RAID_MINUTES = 40;
+    const SECONDS_PER_MINUTE = 60;
+    const RAID_TICK = minutesToTicks(RAID_MINUTES);
+    const waits = (tick: number, target = 'tower_01') => {
+      const ctx = raidedFromEast(sim, tick);
+      const mission = ctx.missions.missions[0];
+      if (mission === undefined) throw new Error('setup: no raid');
+      const timed = {
+        ...mission,
+        goals: [{ opcode: 'TimeGone' as const, seconds: RAID_MINUTES * SECONDS_PER_MINUTE }],
+      };
+      return towerUpgradeWaits(sim.world, { ...ctx, missions: { missions: [timed] } }, SEAT, target);
+    };
+    expect(waits(RAID_TICK - TOWER_UPGRADE_QUIET_TICKS - 1)).toBe(false);
+    expect(waits(RAID_TICK - TOWER_UPGRADE_QUIET_TICKS)).toBe(true);
+    expect(waits(RAID_TICK)).toBe(true);
+    // Once the wave has landed the towers may go up again, and only towers ever wait.
+    expect(waits(RAID_TICK + 1)).toBe(false);
+    expect(waits(RAID_TICK, 'work_bakery_01')).toBe(false);
   });
 
   it('holds a ring lane until its deadline lead, then keeps two tower sites open at once', () => {

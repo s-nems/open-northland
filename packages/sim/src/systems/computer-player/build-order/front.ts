@@ -7,6 +7,7 @@ import { HALF_ROW_PX, NODE_STEP_PX } from '../../../nav/node-circle.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { seatBaseOf } from '../base.js';
+import { minutesToTicks } from '../game-phase.js';
 import {
   forecastAttackOrigin,
   forecastAttackTicks,
@@ -63,6 +64,21 @@ export function scheduledTowers(world: World, ctx: SystemContext, player: number
   }
   if (counted === deadlines.length) return null;
   return counted === 0 ? 0 : FIRST_DEADLINE_TOWERS + (counted - 1) * LATER_DEADLINE_TOWERS;
+}
+
+/** How long before a forecast scripted attack no tower upgrade opens (authored): an upgrading tower
+ *  stands as a site and shoots no one, and on mroczny_las a lower tower's upgrade stood 9 to over 12 game
+ *  minutes after it opened; upgrades opened from minute 40 left every seat a tower or two short in the
+ *  minute-50 wave. */
+export const TOWER_UPGRADE_QUIET_TICKS = minutesToTicks(15);
+
+/** Whether `player`'s seat holds its upgrade to the tower tier `target` (content id): a forecast scripted
+ *  attack lands within {@link TOWER_UPGRADE_QUIET_TICKS} (owner ruling: towers first, upgraded later). */
+export function towerUpgradeWaits(world: World, ctx: SystemContext, player: number, target: string): boolean {
+  if (!TOWER_CONTENT_IDS.includes(target)) return false;
+  return forecastAttackTicks(world, ctx, player).some(
+    (at) => at >= ctx.tick && at - ctx.tick <= TOWER_UPGRADE_QUIET_TICKS,
+  );
 }
 
 /** A seat's front: the straight line across the heading its attacks come from, a fixed depth ahead of its
