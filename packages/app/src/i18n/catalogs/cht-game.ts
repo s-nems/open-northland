@@ -584,9 +584,6 @@ export const chtGame = {
       speed: '速度 ×{factor}',
       menu: '遊戲選單',
       close: '關閉',
-      pending: '準備中',
-      knowledgePending:
-        '知識（生產與發展、百科、遊戲玩法）正在建置中。之後可在這裡查看已鎖定的建築還在等待什麼。',
     },
     signpostPanel: {
       stock: '網路中的貨物',

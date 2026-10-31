@@ -22,5 +22,5 @@ export {
   speciesHerdOf,
 } from './herd.js';
 export { herdedFarms, herdOf, summonedAnimals } from './herd-index.js';
-export { slayDepositGoods, stockDepositsAt } from './slay-clip.js';
+export { slayDepositGoods, slayYield, stockDepositsAt } from './slay-clip.js';
 export { livestockSummonSystem } from './summon.js';

@@ -15,7 +15,7 @@ import { isAtOwnHome } from '../../indoors.js';
 // already played.
 
 /** How much more a rest or food event counts at home: a meal there, or rest on a furnished bed. */
-const AT_HOME_FACTOR = 2;
+export const AT_HOME_FACTOR = 2;
 /** How much a rest event counts away from home, for a trade that goes home at all. */
 const AWAY_REST_DIVISOR = 2;
 

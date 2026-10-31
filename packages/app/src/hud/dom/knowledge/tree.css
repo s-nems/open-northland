@@ -1,0 +1,308 @@
+.on-hud .kn-treeview {
+  position: relative;
+  display: flex;
+  min-height: 0;
+  margin: 8px 10px 10px;
+  border: 1px solid #8d7549;
+  background: var(--paper-grain), linear-gradient(170deg, #d6c7a2, #bcab84);
+  box-shadow: inset 0 0 22px #6b532a55;
+  overflow: hidden;
+}
+.on-hud .kn-treeside {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+.on-hud .kn-treescroll {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  pointer-events: auto;
+  color: var(--ink);
+  padding-bottom: 34px;
+}
+.on-hud .kn-treezoom {
+  position: relative;
+  width: fit-content;
+  min-width: 100%;
+}
+.on-hud .kn-lanes {
+  padding: 8px;
+}
+.on-hud .kn-lanes--columns {
+  column-width: 556px;
+  column-gap: 8px;
+}
+.on-hud .kn-lanes--columns .kn-lane {
+  break-inside: avoid;
+  margin-bottom: 8px;
+}
+.on-hud .kn-lanes--rows {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.on-hud .kn-lanes--rows .kn-lane {
+  flex: 1 0 var(--lane-w);
+  max-width: 100%;
+}
+.on-hud .kn-lane {
+  border: 1px solid #8d754977;
+  background: #f4ead233;
+}
+.on-hud .kn-lane__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+  padding: 4px 10px;
+  background: #3a2f2022;
+  border-bottom: 1px solid #8d754977;
+  font: 700 12.5px var(--font-caps);
+  letter-spacing: 0.08em;
+  color: var(--ink);
+}
+.on-hud .kn-lane__head small {
+  font: 500 12px var(--font-body);
+  letter-spacing: 0;
+  color: var(--ink-muted);
+}
+.on-hud .kn-lane__plane {
+  position: relative;
+}
+.on-hud .kn-lane__plane svg {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ---- lines ---- */
+.on-hud .kn-line {
+  color: #4b3a26;
+  transition: opacity 120ms;
+}
+.on-hud .kn-line path,
+.on-hud .kn-spotline path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+.on-hud .kn-line .kn-line__head,
+.on-hud .kn-spotline .kn-line__head {
+  fill: currentColor;
+  stroke: none;
+}
+.on-hud .is-spot .kn-line {
+  opacity: 0.16;
+}
+.on-hud .is-spot .kn-line.is-up,
+.on-hud .is-spot .kn-line.is-down {
+  opacity: 1;
+}
+.on-hud .kn-line.is-up {
+  color: #a8560f;
+}
+.on-hud .kn-line.is-down {
+  color: #2f6a2c;
+}
+.on-hud .kn-spot {
+  position: absolute;
+  left: 0;
+  top: 0;
+  pointer-events: none;
+  overflow: visible;
+}
+.on-hud .kn-spotline--up {
+  color: #a8560f;
+}
+.on-hud .kn-spotline--down {
+  color: #2f6a2c;
+}
+/* A link crosses cards and other lanes on its way; the pale casing keeps it legible over them. */
+.on-hud .kn-spotline path.kn-spotline__halo {
+  stroke: #f4ead2;
+  stroke-width: 6;
+  stroke-opacity: 0.85;
+}
+
+/* ---- cards ---- */
+.on-hud .kn-card {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px 6px 2px 4px;
+  pointer-events: auto;
+  border: 1px solid #7d6640;
+  border-radius: 3px;
+  background: linear-gradient(#f3e8cb, #dfd0ac);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: 0 1px 2px #0005;
+  transition:
+    opacity 120ms,
+    box-shadow 120ms;
+}
+.on-hud .kn-card > .kn-thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  object-fit: contain;
+}
+.on-hud .kn-card__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.on-hud .kn-card__text b {
+  font: 700 12.5px / 1.05 var(--font-body);
+}
+.on-hud .kn-card__from {
+  overflow: hidden;
+  font: 500 11.5px / 1.05 var(--font-body);
+  color: var(--ink-muted);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.on-hud .kn-card__in {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  height: 17px;
+}
+.on-hud .kn-card__input {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+.on-hud .kn-card__amount {
+  font: 700 11px var(--font-body);
+  font-variant-numeric: tabular-nums;
+}
+.on-hud .kn-card__or {
+  font: 500 10.5px var(--font-body);
+  color: var(--ink-muted);
+}
+.on-hud .is-spot .kn-card {
+  opacity: 0.32;
+}
+.on-hud .is-spot .kn-card.is-self,
+.on-hud .is-spot .kn-card.is-pinned,
+.on-hud .is-spot .kn-card.is-up,
+.on-hud .is-spot .kn-card.is-down {
+  opacity: 1;
+}
+.on-hud .kn-card.is-self,
+.on-hud .kn-card.is-pinned {
+  box-shadow:
+    0 0 0 2px #7a2e12,
+    0 1px 4px #0007;
+  background: #fff6df;
+}
+.on-hud .kn-card.is-up {
+  box-shadow: 0 0 0 2px #a8560f;
+}
+.on-hud .kn-card.is-down {
+  box-shadow: 0 0 0 2px #2f6a2c;
+}
+.on-hud .kn-card--locked .kn-thumb {
+  filter: grayscale(0.85);
+}
+.on-hud .kn-card--locked .kn-card__from {
+  color: #7a4a10;
+}
+.on-hud .kn-card--map {
+  opacity: 0.55;
+}
+.on-hud .kn-card--map .kn-card__from {
+  color: var(--paper-error);
+}
+
+/* ---- legend and scale ---- */
+.on-hud .kn-legend {
+  position: absolute;
+  left: 8px;
+  bottom: 6px;
+  display: flex;
+  gap: 12px;
+  padding: 3px 9px;
+  border: 1px solid #8d754977;
+  background: #e6d9b8e6;
+  color: var(--ink);
+  font-size: 12px;
+}
+.on-hud .kn-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.on-hud .kn-swatch {
+  width: 20px;
+  height: 4px;
+}
+.on-hud .kn-swatch--up {
+  background: #a8560f;
+}
+.on-hud .kn-swatch--down {
+  background: #2f6a2c;
+}
+.on-hud .kn-zoom {
+  position: absolute;
+  right: 18px;
+  bottom: 6px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 3px 9px;
+  border: 1px solid #8d754977;
+  background: #e6d9b8e6;
+  color: var(--ink);
+  font-size: 12px;
+  pointer-events: auto;
+}
+.on-hud .kn-zoom input {
+  width: 130px;
+  pointer-events: auto;
+  accent-color: #7a5a2f;
+}
+.on-hud .kn-zoom output {
+  min-width: 34px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- the pinned entry ---- */
+.on-hud .kn-pane {
+  position: relative;
+  flex: 0 0 520px;
+  max-width: 62%;
+  display: flex;
+  min-height: 0;
+  border-left: 1px solid #8d7549;
+  box-shadow: -3px 0 10px #3a2f2055;
+  pointer-events: auto;
+}
+.on-hud .kn-pane[hidden] {
+  display: none;
+}
+.on-hud .kn-pane__body {
+  flex: 1;
+  min-width: 0;
+  overflow: auto;
+  pointer-events: auto;
+}
+.on-hud .kn-pane__close {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  z-index: 1;
+  pointer-events: auto;
+}
+/* The legend and the scale share what the pane leaves of the tree. */
+.on-hud .kn-treeview:has(.kn-pane:not([hidden])) .kn-zoom input {
+  width: 64px;
+}

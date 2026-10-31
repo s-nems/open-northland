@@ -69,6 +69,7 @@ export {
   type HumanPaletteIdentity,
   headPaletteBand,
   type LoadLayout,
+  UNARMORED_TIER,
   type WeaponLayout,
 } from './data/palettes/human-palettes.js';
 export {

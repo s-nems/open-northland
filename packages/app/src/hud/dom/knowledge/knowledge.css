@@ -1,0 +1,93 @@
+.on-hud .kn-window .on-window__head {
+  padding: 8px 14px 7px;
+}
+.on-hud .kn-body {
+  flex: 1;
+  min-height: 0;
+}
+.on-hud .kn-view {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.on-hud .kn-tabs {
+  position: absolute;
+  left: 230px;
+  top: 11px;
+  padding: 0;
+}
+.on-hud .kn-tabs .on-tab {
+  padding: 7px 16px 12px;
+  pointer-events: auto;
+}
+.on-hud .kn-tool {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding: 7px 12px;
+  border-bottom: 1px solid #c9a26233;
+}
+.on-hud .kn-tool__gap {
+  flex: 1;
+}
+.on-hud .kn-back {
+  height: 28px;
+  padding: 0 12px;
+  pointer-events: auto;
+}
+.on-hud .kn-back .on-glyph {
+  width: 14px;
+  height: 14px;
+}
+.on-hud .kn-back:disabled {
+  opacity: 0.4;
+}
+.on-hud .kn-search {
+  flex: 0 0 210px;
+  pointer-events: auto;
+}
+.on-hud .kn-search input {
+  width: 100%;
+  pointer-events: auto;
+}
+.on-hud .kn-tribe {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  font-size: 12px;
+  color: var(--muted);
+  white-space: nowrap;
+}
+.on-hud .kn-tribe select {
+  pointer-events: auto;
+  background: #1b2823;
+  color: var(--text);
+  border: 1px solid var(--wood-lo);
+  font: 12px var(--font-body);
+  padding: 4px;
+}
+.on-hud .kn-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+.on-hud .kn-main > * {
+  flex: 1;
+  min-width: 0;
+}
+.on-hud .kn-main > .on-parchment {
+  margin: 8px 10px 10px;
+  overflow: auto;
+  pointer-events: auto;
+}
+.on-hud .kn-hits {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 2px 8px;
+  margin-bottom: 10px;
+}
+.on-hud .kn-search-empty {
+  text-align: center;
+}

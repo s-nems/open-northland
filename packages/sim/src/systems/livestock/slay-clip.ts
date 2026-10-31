@@ -29,6 +29,21 @@ export function slayDepositGoods(
   return goods;
 }
 
+/** One slaughter's whole yield by good: every unit the clip deposits, in clip order. */
+export function slayYield(
+  ctx: ContentContext,
+  settler: SettlerIdentity,
+  speciesGood: number,
+): ReadonlyMap<number, number> {
+  const atomicId = slayAtomicOfSpecies(ctx.content, speciesGood);
+  const amounts = new Map<number, number>();
+  if (atomicId === null) return amounts;
+  for (const good of stockEventGoods(ctx, settler, atomicId)) {
+    amounts.set(good, (amounts.get(good) ?? 0) + 1);
+  }
+  return amounts;
+}
+
 /** The goods `settler`'s running clip puts in the house at the frame `elapsed` ticks in - one entry per
  *  unit, so a clip depositing two of a good lands both. */
 export function stockDepositsAt(

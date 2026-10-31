@@ -3,13 +3,13 @@ import type { Paper } from '@open-northland/sim';
 import type { AssistantWindow } from '../dom/assistant-window/index.js';
 import type { ConstructionWindow } from '../dom/construction-window.js';
 import type { DiplomacyWindow } from '../dom/diplomacy-window/index.js';
+import type { KnowledgeWindow } from '../dom/knowledge/window.js';
 import type { MissionBook } from '../dom/mission-book/index.js';
 import type { NetworkWindow } from '../dom/network/window.js';
 import type { ResidentsWindow } from '../dom/residents-window.js';
 import type { StatisticsWindow } from '../dom/statistics-window.js';
 import type { MenuBuildingEntry } from './building-menu.js';
 import type { HeldPaperController } from './held-paper.js';
-import type { PendingWindow } from './pending-window.js';
 import type { BuildingPick } from './placement.js';
 import type { ToolWindow } from './window-shell.js';
 
@@ -26,9 +26,6 @@ const MOUNT_ORDER = [
 ] as const;
 
 export type ToolWindowId = (typeof MOUNT_ORDER)[number];
-
-/** The central windows whose contents a later ticket owns; the registry shows a pending note for them. */
-export type PendingWindowId = Extract<ToolWindowId, 'knowledge'>;
 
 /** The entry of a window the session does not mount: never open, toggling does nothing. */
 const NO_WINDOW: ToolWindow = {
@@ -52,8 +49,8 @@ export interface ConstructionWindowSeam {
 }
 
 export interface ToolWindowsDeps {
-  /** The pending note window for an entry without contents yet, mounted on the DOM plane. */
-  readonly pendingWindow: (id: PendingWindowId) => PendingWindow;
+  /** The Knowledge window, mounted on the DOM plane. */
+  readonly knowledgeWindow: () => KnowledgeWindow;
   /** The construction window, mounted on the DOM plane. */
   readonly constructionWindow: (seam: ConstructionWindowSeam) => ConstructionWindow;
   /** The residents window, mounted on the DOM plane. */
@@ -82,6 +79,7 @@ export interface ToolWindows {
     readonly residents: ResidentsWindow;
     readonly assistant: AssistantWindow;
     readonly diplomacy: DiplomacyWindow;
+    readonly knowledge: KnowledgeWindow;
   };
   /** The mission book itself, for the page a script opens it on. */
   readonly mission: MissionBook;
@@ -102,16 +100,15 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
   const diplomacy = deps.diplomacyWindow();
   const residents = deps.residentsWindow();
   const assistant = deps.assistantWindow();
-  const knowledge = deps.pendingWindow('knowledge');
+  const knowledge = deps.knowledgeWindow();
   const mission = deps.missionBook();
   const network = deps.networkWindow?.() ?? null;
   const networkEntry: ToolWindow = network ?? NO_WINDOW;
-  /** Show `target` alone, as a beam press would. */
-  const openOnly = (target: ToolWindow): void => {
+  /** Close every central window but `target`, as a beam press would. */
+  const closeOthers = (target: ToolWindow): void => {
     for (const id of MOUNT_ORDER) {
       if (entries[id].window !== target) entries[id].window.close();
     }
-    if (!target.isOpen()) target.toggle();
   };
   const menu = deps.constructionWindow({
     entries: deps.buildings,
@@ -124,8 +121,10 @@ export function createToolWindows(deps: ToolWindowsDeps): ToolWindows {
       if (paper.kind === 'placeAny') heldPaper.hold(paper);
       else deps.onPickBuilding({ typeId: paper.param, tribe, paper });
     },
-    // The building's Knowledge page is the knowledge ticket's; until then the pending note stands in.
-    onHelp: () => openOnly(knowledge),
+    onHelp: (typeId) => {
+      closeOthers(knowledge);
+      knowledge.showBuilding(typeId);
+    },
   });
 
   const entries: Readonly<Record<ToolWindowId, ToolWindowEntry>> = {

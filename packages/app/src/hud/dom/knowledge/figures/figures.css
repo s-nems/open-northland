@@ -1,0 +1,335 @@
+/* Mechanics figures: inline drawings on the reading surface. */
+.on-hud .kn-fig {
+  width: 100%;
+  max-width: 640px;
+  margin: 12px auto;
+  padding: 10px 12px;
+  border: 1px solid var(--parchment-lo);
+  border-radius: 3px;
+  background: var(--parchment-hi);
+  color: var(--ink);
+}
+.on-hud .kn-fig:empty {
+  display: none;
+}
+.on-hud .kn-fig__svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.on-hud .kn-fig__caption {
+  margin-top: 8px;
+  color: var(--ink-muted);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.35;
+  text-align: center;
+}
+
+.on-hud .kn-fig__svg text {
+  font-family: var(--font-body);
+  font-size: 16px;
+  fill: var(--ink);
+}
+.on-hud .kn-fig__svg .kn-fig__t--strong {
+  font-weight: 700;
+}
+.on-hud .kn-fig__svg .kn-fig__t--halo {
+  paint-order: stroke;
+  stroke: var(--parchment-hi);
+  stroke-width: 4px;
+  stroke-linejoin: round;
+}
+.on-hud .kn-fig__svg .kn-fig__t--small {
+  font-size: 14.5px;
+  fill: var(--ink-muted);
+}
+.on-hud .kn-fig__svg .kn-fig__t--danger {
+  font-size: 14.5px;
+  font-weight: 700;
+  fill: var(--paper-error);
+}
+
+.on-hud .kn-fig__ring {
+  fill: none;
+  stroke: var(--ink-muted);
+  stroke-width: 1.4;
+}
+.on-hud .kn-fig__ring--dash {
+  stroke-dasharray: 6 4;
+}
+.on-hud .kn-fig__zone {
+  fill: color-mix(in srgb, var(--bronze) 22%, transparent);
+  stroke: var(--bronze-lo);
+  stroke-width: 1.4;
+}
+.on-hud .kn-fig__zone--danger {
+  fill: color-mix(in srgb, var(--wax-danger) 14%, transparent);
+  stroke: var(--wax-danger);
+}
+.on-hud .kn-fig__hole {
+  fill: var(--parchment-hi);
+}
+.on-hud .kn-fig__union {
+  fill: var(--bronze);
+  opacity: 0.2;
+}
+.on-hud .kn-fig__guide {
+  stroke: var(--ink-muted);
+  stroke-width: 0.8;
+  stroke-dasharray: 2 3;
+}
+.on-hud .kn-fig__gridline {
+  stroke: var(--parchment-lo);
+  stroke-width: 1;
+}
+.on-hud .kn-fig__axis,
+.on-hud .kn-fig__tick {
+  stroke: var(--ink-muted);
+  stroke-width: 1.4;
+}
+.on-hud .kn-fig__mark {
+  fill: var(--ink);
+}
+.on-hud .kn-fig__mark--enemy {
+  fill: var(--wax-danger);
+  stroke: var(--parchment-hi);
+  stroke-width: 2;
+}
+.on-hud .kn-fig__cross {
+  stroke: var(--ink);
+  stroke-width: 2;
+}
+.on-hud .kn-fig__lattice {
+  fill: var(--parchment-lo);
+}
+.on-hud .kn-fig__lattice--in {
+  fill: var(--paper-error);
+}
+
+.on-hud .kn-fig__ink {
+  --fig-line: var(--ink);
+}
+.on-hud .kn-fig__ink--own {
+  --fig-line: var(--wax-ok);
+}
+.on-hud .kn-fig__ink--enemy {
+  --fig-line: var(--wax-danger);
+}
+.on-hud .kn-fig__arrow-shaft {
+  fill: none;
+  stroke: var(--fig-line, var(--ink-muted));
+  stroke-width: 1.8;
+}
+.on-hud .kn-fig__ink--thin .kn-fig__arrow-shaft {
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+.on-hud .kn-fig__arrow-head {
+  fill: var(--fig-line, var(--ink-muted));
+}
+.on-hud .kn-fig__arrow-fill {
+  fill: var(--ink-muted);
+}
+
+.on-hud .kn-fig__blow {
+  stroke: var(--parchment-hi);
+  stroke-width: 2;
+}
+.on-hud .kn-fig__blow--0,
+.on-hud .kn-fig__blow--1 {
+  fill: color-mix(in srgb, var(--parchment-lo) 70%, transparent);
+}
+.on-hud .kn-fig__blow--2 {
+  fill: color-mix(in srgb, var(--wax-warn) 62%, transparent);
+}
+.on-hud .kn-fig__blow--3 {
+  fill: color-mix(in srgb, var(--wax-danger) 60%, transparent);
+}
+.on-hud .kn-fig__body {
+  fill: var(--wood);
+}
+.on-hud .kn-fig__head {
+  fill: var(--bronze-lo);
+}
+.on-hud .kn-fig__person--ok .kn-fig__body {
+  fill: var(--wax-ok);
+}
+.on-hud .kn-fig__person--lost .kn-fig__body,
+.on-hud .kn-fig__person--lost .kn-fig__head {
+  fill: var(--wax-danger);
+}
+.on-hud .kn-fig__spear {
+  stroke: var(--wood-lo);
+  stroke-width: 2.4;
+}
+.on-hud .kn-fig__post {
+  stroke: var(--wood);
+  stroke-width: 3;
+}
+.on-hud .kn-fig__sign {
+  fill: var(--wax-danger);
+}
+
+.on-hud .kn-fig__level--danger {
+  fill: var(--wax-danger);
+}
+.on-hud .kn-fig__level--warn {
+  fill: var(--wax-warn);
+}
+.on-hud .kn-fig__level--ok {
+  fill: var(--wax-ok);
+}
+.on-hud .kn-fig__level--reserve {
+  fill: color-mix(in srgb, var(--wax-ok) 40%, var(--parchment-hi));
+}
+
+.on-hud .kn-fig__curve {
+  fill: none;
+  stroke: var(--wax-danger);
+  stroke-width: 2.4;
+  stroke-linejoin: round;
+}
+.on-hud .kn-fig__curve-mark {
+  fill: var(--wax-danger);
+  stroke: var(--parchment-hi);
+  stroke-width: 2;
+}
+
+.on-hud .kn-fig__disc {
+  fill: color-mix(in srgb, var(--wax-danger) 34%, var(--parchment-hi));
+  stroke: var(--wax-danger);
+  stroke-width: 1.4;
+}
+.on-hud .kn-fig__disc--hit {
+  fill: color-mix(in srgb, var(--wax-danger) 62%, var(--parchment-hi));
+}
+
+.on-hud .kn-fig__wall {
+  fill: var(--wood);
+}
+.on-hud .kn-fig__gate-post {
+  fill: var(--wood-lo);
+}
+.on-hud .kn-fig__gate-bar {
+  fill: var(--bronze-lo);
+}
+
+.on-hud .kn-fig__soil {
+  fill: var(--wood-hi);
+}
+.on-hud .kn-fig__seed {
+  fill: var(--parchment-hi);
+}
+.on-hud .kn-fig__stem {
+  stroke: var(--wax-ok);
+  stroke-width: 2.4;
+}
+.on-hud .kn-fig__stem--ripe {
+  stroke: var(--wax-warn);
+  stroke-width: 2.4;
+}
+.on-hud .kn-fig__ear {
+  fill: var(--paper-warn);
+}
+.on-hud .kn-fig__drop {
+  fill: var(--fill);
+}
+
+.on-hud .kn-fig__flow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 6px 4px;
+}
+.on-hud .kn-fig__flow--single {
+  flex-wrap: nowrap;
+}
+.on-hud .kn-fig__homes {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
+  gap: 6px;
+}
+.on-hud .kn-fig__step {
+  display: flex;
+  flex: 0 1 auto;
+  flex-direction: column;
+  align-items: center;
+  min-width: 78px;
+  max-width: 116px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.2;
+}
+.on-hud .kn-fig__homes .kn-fig__step {
+  min-width: 0;
+  max-width: none;
+}
+.on-hud .kn-fig__pictures {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-height: 62px;
+}
+.on-hud .kn-fig__step-name {
+  font-weight: 700;
+}
+.on-hud .kn-fig__step-note {
+  color: var(--ink-muted);
+  font-size: 13px;
+}
+.on-hud .kn-fig__flow-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 38px;
+  margin-top: 20px;
+}
+.on-hud .kn-fig__flow-arrow svg {
+  width: 32px;
+}
+.on-hud .kn-fig__person {
+  width: 64px;
+}
+.on-hud .kn-fig__good {
+  position: relative;
+  display: inline-flex;
+}
+.on-hud .kn-fig__amount {
+  position: absolute;
+  right: -3px;
+  bottom: -2px;
+  padding: 0 2px;
+  border-radius: 2px;
+  background: var(--parchment-hi);
+  font-size: 12px;
+  font-weight: 700;
+}
+.on-hud .kn-fig__good .on-good__frame:not([style]) {
+  display: block;
+  width: 26px;
+  height: 26px;
+  border: 1px dashed var(--ink-muted);
+  border-radius: 50%;
+}
+.on-hud .kn-fig__thumb {
+  display: block;
+  height: auto;
+}
+.on-hud .kn-fig__placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 64px;
+  height: 56px;
+  border: 1px dashed var(--ink-muted);
+  border-radius: 3px;
+  color: var(--ink-muted);
+  font-size: 12px;
+}

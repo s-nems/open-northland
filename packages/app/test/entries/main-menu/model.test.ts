@@ -19,10 +19,23 @@ describe('backTarget', () => {
     expect(backTarget('settings')).toBe('main');
     expect(backTarget('credits')).toBe('main');
     expect(backTarget('catalogue')).toBe('main');
+    expect(backTarget('knowledge')).toBe('main');
+  });
+});
+
+describe('MAIN_NAV', () => {
+  it('lists Knowledge between the map catalogue and the settings', () => {
+    const order = MAIN_NAV.map((item) => item.id);
+    expect(order.indexOf('knowledge')).toBe(order.indexOf('catalogue') + 1);
+    expect(order.indexOf('settings')).toBe(order.indexOf('knowledge') + 1);
   });
 });
 
 describe('deepLinkScreen', () => {
+  it('opens ?menu=knowledge on its screen', () => {
+    expect(deepLinkScreen('knowledge')).toEqual({ screen: 'knowledge', content: null });
+  });
+
   it('opens ?menu=campaign as New Game on its Campaign tab', () => {
     expect(deepLinkScreen('campaign')).toEqual({ screen: 'newGame', content: 'campaign' });
   });

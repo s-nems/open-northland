@@ -171,6 +171,7 @@ import { startFrameLoop } from './frame-loop.js';
 import { createLiveGameSettings } from './game-live-settings.js';
 import { mountGamePresentation } from './game-presentation.js';
 import { createHostAnswers } from './host-answers.js';
+import { createKnowledgeSource } from './knowledge-source.js';
 import { orderAnswerOf } from './order-answer.js';
 import { ownRoadSiteAt } from './own-road-sites.js';
 import { createPauseHolds } from './pause-holds.js';
@@ -762,6 +763,14 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
         ...entry,
         availability: (tribe) => buildAvailability(viewerPlayer(), entry.typeId, tribe),
       })),
+      knowledge: createKnowledgeSource({
+        content: host.content,
+        tribe: seatTribeOf(localPlayer),
+        seat: () => viewer.seat(),
+        unlockStatus: (kind, typeId, tribe, player) => host.unlockStatus(kind, typeId, tribe, player),
+        snapshot: () => host.snapshot(),
+        goodIcon: goodIcons,
+      }),
       buildingLabels: buildingLabelsFromContent(host.content, lang),
       technologyName: (kind, typeId) => technologyName(host.content, kind, typeId),
       goodLabel: (typeId) => goodLabelByType.get(typeId),

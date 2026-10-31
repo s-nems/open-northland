@@ -13,6 +13,7 @@ import { catalogueScreen } from './catalogue/screen.js';
 import { initialCatalogueMemory } from './catalogue/view.js';
 import { creditsScreen } from './credits.js';
 import { mountFullscreenPrompt } from './fullscreen-prompt.js';
+import { knowledgeScreen } from './knowledge.js';
 import { loadSelectScreen } from './load-select.js';
 import { lobbyScreen } from './lobby/index.js';
 import type { RosterState } from './lobby/roster-state.js';
@@ -129,6 +130,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
   const sound = startMenuMusic(scope.signal);
   const fullscreenPrompt = mountFullscreenPrompt(root, params, scope.signal);
   let disposeScreen = (): void => undefined;
+  let screenEscape: (() => boolean) | undefined;
 
   const closeMenu = (): void => {
     disposeScreen();
@@ -191,6 +193,8 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
         return settingsScreen(show, settingsMemory, scope.signal, fullscreenPrompt.relabel, sound);
       case 'credits':
         return { element: creditsScreen(show) };
+      case 'knowledge':
+        return knowledgeScreen(show);
     }
   };
   const show = (next: MenuScreen): void => {
@@ -202,6 +206,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
     root.classList.toggle('is-sub', next !== 'main');
     const mounted = screenFor(next);
     if (mounted.dispose !== undefined) disposeScreen = mounted.dispose;
+    screenEscape = mounted.escape;
     content.replaceChildren(mounted.element);
     content.classList.remove('is-entering');
     void content.offsetWidth; // reflow so the crossfade animation restarts
@@ -234,6 +239,7 @@ export async function renderMainMenu(canvas: HTMLCanvasElement, params: URLSearc
         field.value !== ''
       )
         return;
+      if (screenEscape?.() === true) return;
       const target = backOf(screen);
       if (target !== null) show(target);
       return;

@@ -101,7 +101,7 @@ function withHeroArmor(job: JobType): JobType {
 /** Repair the Byzantine and Egyptian `hero fist` rows whose readable `weapons.ini` anomalously binds job
  * 32: the same named type-3 row with the same stats binds unarmed-hero job 42 for all three other playable
  * tribes. This inferred correction keeps the raw pipeline faithful and closes the runtime join here. */
-function withHeroFistJob(weapon: WeaponType): WeaponType {
+export function withHeroFistJob(weapon: WeaponType): WeaponType {
   return weapon.id === 'hero_fist' && weapon.typeId === 3 && weapon.jobType === 32
     ? { ...weapon, jobType: 42 }
     : weapon;
@@ -109,7 +109,7 @@ function withHeroFistJob(weapon: WeaponType): WeaponType {
 
 /** Overlay the garrison size: the flag decides who offers the mode, so an unflagged row is zeroed whatever
  *  it arrived with. */
-function withShelterCapacity(building: BuildingType): BuildingType {
+export function withShelterCapacity(building: BuildingType): BuildingType {
   return { ...building, shelterCapacity: shelterCapacityFor(building) };
 }
 
@@ -131,6 +131,11 @@ function withGatheringBalance(good: GoodType): GoodType {
   };
 }
 
+/** A decoded good with its clean-room overlays; idempotent, so a good already merged passes unchanged. */
+export function withGoodOverlays(good: GoodType): GoodType {
+  return withEquipClass(withGatheringBalance(withFarmingBalance(good)));
+}
+
 /**
  * Ready the real content for the sim: apply the clean-room overlays the pipeline cannot extract, keyed by
  * good id off the same tables the sandbox reads, then report the gaps they cannot fill rather than
@@ -141,7 +146,7 @@ function withGatheringBalance(good: GoodType): GoodType {
  * band that never aliases them. Idempotent, so a class row already present is not duplicated.
  */
 export function mergeRealContent(real: ContentSet): RealContentMerge {
-  const goods = real.goods.map((raw) => withEquipClass(withGatheringBalance(withFarmingBalance(raw))));
+  const goods = real.goods.map(withGoodOverlays);
   const unfarmedFieldGoods = goods
     .filter((g) => hasFieldFarmAtomics(g) && g.farming === undefined)
     .map((g) => g.id);

@@ -616,9 +616,6 @@ export const enGame = {
       speed: 'Speed ×{factor}',
       menu: 'Game menu',
       close: 'Close',
-      pending: 'In preparation',
-      knowledgePending:
-        'Knowledge (production and development, encyclopedia, how to play) is being built. What a locked building still waits for will be read here.',
     },
     signpostPanel: {
       stock: 'Network goods',

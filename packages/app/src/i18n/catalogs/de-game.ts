@@ -656,9 +656,6 @@ export const deGame = {
       speed: 'Geschwindigkeit ×{factor}',
       menu: 'Spielmenü',
       close: 'Schließen',
-      pending: 'In Vorbereitung',
-      knowledgePending:
-        'Der Bereich „Wissen“ (Produktion und Entwicklung, Enzyklopädie, Spielanleitung) ist noch im Aufbau. Hier wird stehen, welche Voraussetzungen für gesperrte Gebäude noch fehlen.',
     },
     signpostPanel: {
       stock: 'Waren im Wegweisernetz',

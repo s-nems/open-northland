@@ -584,9 +584,6 @@ export const chsGame = {
       speed: '速度 ×{factor}',
       menu: '游戏菜单',
       close: '关闭',
-      pending: '准备中',
-      knowledgePending:
-        '知识（生产与发展、百科、玩法说明）正在制作中。锁定的建筑还缺什么条件，将来可以在这里查看。',
     },
     signpostPanel: {
       stock: '网络内物资',

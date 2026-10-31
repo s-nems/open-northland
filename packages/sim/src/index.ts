@@ -43,7 +43,11 @@ export type {
   NeedLevels,
   SettlerNeedsView,
 } from './components/settler.js';
-export { WALK_RANGE_NODES } from './components/signpost.js';
+export {
+  CARRIER_WALK_RANGE_NODES,
+  SIGNPOST_LINK_RANGE_NODES,
+  WALK_RANGE_NODES,
+} from './components/signpost.js';
 export { TRADE_LIMIT_NONE, TRADE_ROUTE_HOUSES, type TradeImportMark } from './components/trade.js';
 export type { AtomicEffect } from './core/atomic-effect.js';
 export type { Brand } from './core/brand.js';
@@ -188,6 +192,7 @@ export {
   cellOfAnchorNode,
   cellOfNode,
   type HalfCellNode,
+  HEX_HEADING_COUNT,
   hexDistanceBetween,
   hexNeighboursOf,
   type NodeArea,
@@ -201,6 +206,8 @@ export { type ReachArea, reachContains, unionReachAreas } from './nav/range-sear
 export {
   buildTerrainGraph,
   type CellTerrainMap,
+  DEFAULT_NODE_ROUGHNESS,
+  DEFAULT_WATER_ROUGHNESS,
   halfCellMapFromCells,
   type NodeId,
   nodeLatticeDistance,

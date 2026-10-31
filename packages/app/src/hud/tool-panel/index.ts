@@ -1,6 +1,13 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
-import type { HudModel, MapViewFrame, MapViewTarget, SpriteSheet, TargetMark } from '@open-northland/render';
+import type {
+  HudModel,
+  MapViewFrame,
+  MapViewTarget,
+  SpriteSheet,
+  StockCount,
+  TargetMark,
+} from '@open-northland/render';
 import type {
   Command,
   Entity,
@@ -31,12 +38,14 @@ import { messages, professionLabel } from '../../i18n/index.js';
 import type { PresentationPack } from '../../presentation/pack.js';
 import { type AssistantSource, createAssistantWindow } from '../dom/assistant-window/index.js';
 import type { BuildingPanelWindows } from '../dom/building-panel/actions.js';
-import { createBuildingThumbs } from '../dom/building-thumb.js';
+import { type BuildingThumbs, createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
 import { createNationEmblems, type NationEmblemPainter } from '../dom/diplomacy-window/emblems.js';
 import { createDiplomacyWindow } from '../dom/diplomacy-window/index.js';
 import type { DiplomacySource } from '../dom/diplomacy-window/model.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
+import type { KnowledgeView } from '../dom/knowledge/context.js';
+import { createKnowledgeWindow } from '../dom/knowledge/window.js';
 import { minimapReserve } from '../dom/minimap-reserve.js';
 import {
   type BookView,
@@ -78,7 +87,6 @@ import {
 import { applyNavEntry, NAV_ENTRY_IDS, NAV_KEYS, type NavEntryId, navEntryForWindow } from './nav-effects.js';
 import type { PapersSeam } from './paper-cards.js';
 import { paperLabel } from './paper-label.js';
-import { createPendingWindow } from './pending-window.js';
 import {
   type BuildingPick,
   createPlacementController,
@@ -99,8 +107,18 @@ import { createToolWindows } from './windows.js';
 
 /** Painted-icon size in a window head (design px). */
 const TITLE_ART_PX = 43;
+/** The Knowledge window's head is compact, its tabs stand beside the title. */
+const KNOWLEDGE_ART_PX = 34;
 /** Design px between the notification column's foot and the minimap's top edge. */
 const NOTICE_MINIMAP_GAP = 16;
+
+/** The Knowledge window's seam: everything but the thumbnails, which the panel already keeps. */
+export interface KnowledgeSource {
+  createView(thumbs: BuildingThumbs): Promise<KnowledgeView>;
+  /** Read the seat as of now, with the stock the HUD last counted. */
+  refresh(stocks: readonly StockCount[]): Promise<void>;
+  buildingId(typeId: number): string | undefined;
+}
 
 /** Graphics rows for the quick row's palisade tools; null when the map catalog has no such row. */
 export interface PalisadeTools {
@@ -111,12 +129,14 @@ export interface PalisadeTools {
 export interface ToolPanelOptions {
   readonly settlerName: (entity: SnapshotEntity) => string;
   readonly canvas: HTMLCanvasElement;
-  /** The DOM plane the beam, the system bar, the notification column and the pending windows mount on. */
+  /** The DOM plane the beam, the system bar, the notification column and the central windows mount on. */
   readonly plane: HTMLElement;
   /** The caller's node standing first in the system bar (`HudSystemBarDeps.lead`). */
   readonly barLead?: HTMLElement;
   /** The buildings the construction window lists. */
   readonly buildings: readonly MenuBuildingEntry[];
+  /** What the Knowledge window reads; its view loads on the first open. */
+  readonly knowledge: KnowledgeSource;
   /** Every building type's localized name, for the notes, the papers and the placement strip. */
   readonly buildingLabels: ReadonlyMap<number, string>;
   /** Localized name of a profession, good, or building a note names; undefined when no catalog names it. */
@@ -544,16 +564,19 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       opts.playerColourOf,
     );
     const residentFigures = new LiveFigures(opts.sheet, figureFrames, opts.playerColourOf);
+    let latestStocks: readonly StockCount[] = [];
     const windows = createToolWindows({
-      pendingWindow: (id) => {
-        const window = createPendingWindow(plane, {
-          title: shellCopy.nav[id],
-          art: paintedIcon(id, TITLE_ART_PX),
-          kicker: shellCopy.pending,
-          text: shellCopy.knowledgePending,
+      knowledgeWindow: () => {
+        const window = createKnowledgeWindow({
+          plane,
+          title: shellCopy.nav.knowledge,
+          art: paintedIcon('knowledge', KNOWLEDGE_ART_PX),
           closeLabel: shellCopy.close,
+          createView: () => opts.knowledge.createView(thumbs),
+          refresh: () => opts.knowledge.refresh(latestStocks),
+          buildingId: opts.knowledge.buildingId,
         });
-        window.onDismiss(() => focusOwner?.(navEntryForWindow(id)));
+        window.onDismiss(() => focusOwner?.('knowledge'));
         return window;
       },
       missionBook: () => {
@@ -832,6 +855,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const closeWindow = (): boolean => {
       const open = windows.openId();
       if (open === null) return opts.diplomacyMap.close();
+      if (open === 'knowledge' && windows.byId.knowledge.escape()) return true;
       windows.byId[open].close();
       focusOwner?.(navEntryForWindow(open));
       return true;
@@ -947,11 +971,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
               scrollTop: 0,
             });
           }),
-        // The building's Knowledge page is the knowledge ticket's; until then the pending note stands in.
-        knowledge: () =>
-          applyNavEntry(surfaces, 'knowledge', () => {
-            if (!windows.byId.knowledge.isOpen()) windows.byId.knowledge.toggle();
-          }),
+        knowledge: (typeId) =>
+          applyNavEntry(surfaces, 'knowledge', () => windows.byId.knowledge.showBuilding(typeId)),
       },
       claimsPointer: () => held.some((mode) => mode.isActive()),
       placementBuilding: () => placement.activeBuilding(),
@@ -992,6 +1013,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       update(model, peaceHoldsUntil): void {
         systemBar.update(model, peaceHoldsUntil);
         speed.refresh();
+        latestStocks = model.stocks;
         windows.presentModel(model);
         windows.refresh();
         const open = windows.openId();

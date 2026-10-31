@@ -1,0 +1,250 @@
+/* The Mechaniki tab: rail, article page and the tables an article holds. */
+.kn-book {
+  display: grid;
+  grid-template-columns: 204px minmax(0, 1fr);
+  min-height: 0;
+  height: 100%;
+  padding: 8px 0 0;
+}
+.kn-rail {
+  overflow: auto;
+  padding: 0 8px 10px 10px;
+  pointer-events: auto;
+}
+.kn-rail h4 {
+  margin: 10px 0 3px;
+  font: 700 11px var(--font-caps);
+  letter-spacing: 0.1em;
+  color: var(--bronze);
+}
+.kn-rail h4:first-child {
+  margin-top: 0;
+}
+.on-hud .kn-rail__item {
+  display: block;
+  width: 100%;
+  padding: 5px 8px;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: 13.5px var(--font-body);
+  text-align: left;
+}
+.on-hud .kn-rail__item:hover {
+  background: #fff1;
+}
+.on-hud .kn-rail__item[aria-current="true"] {
+  background: linear-gradient(90deg, var(--parchment-hi), var(--parchment));
+  color: var(--ink);
+  font-weight: 700;
+}
+.on-hud .kn-page {
+  margin: 0 10px 10px;
+  min-height: 0;
+  padding: 14px 18px;
+  font-size: 14.5px;
+  line-height: 1.42;
+  pointer-events: auto;
+  container-type: inline-size;
+}
+.kn-article p {
+  margin: 6px 0;
+}
+.kn-title {
+  margin: 0 0 4px;
+  font: 700 21px / 1.15 var(--font-title);
+  color: var(--ink);
+}
+.kn-speed {
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  font-style: italic;
+}
+.kn-lead {
+  color: var(--ink-muted);
+  font-size: 15px;
+}
+.kn-h {
+  margin: 13px 0 4px;
+  font: 700 12px var(--font-caps);
+  letter-spacing: 0.1em;
+  color: var(--paper-warn);
+}
+.kn-steps,
+.kn-formula {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+.kn-steps li,
+.kn-formula li {
+  margin-bottom: 4px;
+}
+.kn-seealso {
+  margin-top: 12px;
+  font-size: 13.5px;
+}
+.kn-empty {
+  color: var(--ink-muted);
+}
+.kn-foot {
+  color: var(--ink-muted);
+  font-size: 12.5px;
+}
+.kn-block {
+  margin: 8px 0;
+}
+.on-hud .kn-article .kn-link {
+  display: inline;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: #7a5a2f99;
+  text-underline-offset: 2px;
+}
+.on-hud .kn-article .kn-link:hover {
+  color: #7a2e12;
+}
+.on-hud .kn-article .kn-link .on-good {
+  display: inline-flex;
+  vertical-align: middle;
+  margin-right: 3px;
+}
+/* Fixed columns: a long cell wraps, so a table never pushes the page sideways. */
+.kn-article .kn-table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  overflow-wrap: break-word;
+}
+.kn-article .kn-table th,
+.kn-article .kn-table td {
+  padding: 3px 7px;
+  border-bottom: 1px solid #8d754955;
+  text-align: left;
+  font-weight: 500;
+  vertical-align: top;
+}
+.kn-article .kn-table thead th {
+  position: sticky;
+  top: -14px;
+  z-index: 1;
+  background: #d3c39c;
+  font: 700 11.5px / 1.1 var(--font-caps);
+  letter-spacing: 0.05em;
+  color: var(--ink-muted);
+  vertical-align: bottom;
+}
+.kn-article .kn-table tbody th {
+  font-weight: 700;
+}
+.kn-article .kn-table th.kn-num,
+.kn-article .kn-table td.kn-num {
+  text-align: right;
+}
+.kn-article .kn-table .kn-dim {
+  color: var(--ink-muted);
+}
+.kn-article .kn-table tbody .kn-table__group th {
+  padding-top: 9px;
+  font: 700 11.5px var(--font-caps);
+  letter-spacing: 0.09em;
+  color: var(--paper-warn);
+}
+.on-hud .kn-article .kn-table--matrix thead .on-good {
+  margin-left: auto;
+}
+.kn-article .kn-table.kn-table--matrix {
+  font-size: 12.5px;
+}
+.kn-article .kn-table.kn-table--matrix th,
+.kn-article .kn-table.kn-table--matrix td {
+  padding: 3px 4px;
+}
+.kn-article .kn-table.kn-table--matrix th:first-child {
+  width: 22%;
+}
+.kn-heat {
+  background: color-mix(in srgb, #a8412f calc(var(--heat) * 52%), transparent);
+}
+.kn-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 14px;
+  align-items: center;
+  margin: 8px 0;
+  padding: 6px 8px;
+  background: #2738321a;
+  border: 1px solid #8d754966;
+  font-size: 12.5px;
+}
+.kn-controls__field {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.on-hud .kn-controls .on-segmented {
+  width: auto;
+}
+.on-hud .kn-controls .on-segmented button {
+  padding: 3px 9px;
+}
+.kn-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.kn-filter {
+  position: sticky;
+  top: -14px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  background: #d3c39c;
+}
+.kn-filter__input {
+  flex: 1;
+  min-width: 0;
+  padding: 5px 8px;
+  border: 1px solid #8d7549;
+  background: #fff5;
+  color: var(--ink);
+  font: inherit;
+}
+.kn-filter__count {
+  color: var(--ink-muted);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+/* The field stands in the sticky spot, so the table head parks just under it. */
+.kn-article .kn-block--filter .kn-table thead th {
+  top: 31px;
+}
+.kn-faq {
+  margin-bottom: 6px;
+  padding: 5px 9px;
+  border: 1px solid #8d754977;
+  background: #fff2;
+}
+.kn-faq summary {
+  font-weight: 700;
+  cursor: var(--cursor-pointer, pointer);
+}
+.kn-faq p {
+  margin: 3px 0 0;
+}
+@container (max-width: 640px) {
+  .kn-article .kn-table {
+    font-size: 12px;
+  }
+  .kn-matrix__aux {
+    display: none;
+  }
+}

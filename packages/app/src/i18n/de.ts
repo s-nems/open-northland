@@ -2,6 +2,7 @@ import { deBugReport } from './catalogs/de-bug-report.js';
 import { deCampaign } from './catalogs/de-campaign.js';
 import { deContent } from './catalogs/de-content.js';
 import { deGame } from './catalogs/de-game.js';
+import { deKnowledge } from './catalogs/de-knowledge.js';
 import { deMapCatalogue } from './catalogs/de-map-catalogue.js';
 import { deNetwork } from './catalogs/de-network.js';
 import { deNetworkRelay } from './catalogs/de-network-relay.js';
@@ -12,6 +13,7 @@ import type { Messages } from './en.js';
 export const de = {
   bugReport: deBugReport,
   campaign: deCampaign,
+  knowledge: deKnowledge,
   network: deNetwork,
   mapCatalogue: deMapCatalogue,
   networkRoom: deNetworkRoom,

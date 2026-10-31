@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ANIMAL_TRIBE_HARES } from '../../src/catalog/animal-tribes.js';
 import { sandboxContent } from '../../src/game/sandbox/content/index.js';
 import { bobAtlasDocument } from '../support/bob-atlases.js';
 
@@ -36,6 +37,9 @@ const FISH_SIDE_BOB = 4;
 const GOLD_BAR_BOB = 20;
 const OXCART_STEM = 'cr_veh_body_00.oxcart';
 const COW_STEM = 'cr_ani_body_00.cattle01';
+const HARE_STEM = 'cr_ani_body_00.house01';
+const HARE_WAIT_START = 200;
+const HARE_STANDING_BOB = HARE_WAIT_START + 2;
 
 const ir = {
   vehicleGraphics: [
@@ -77,9 +81,23 @@ const ir = {
       dirFrames: Array.from({ length: FACINGS }, () => [COW_STANDING_BOB - COW_WAIT_START]),
       mode: LOOP_MODE,
     },
+    {
+      tribe: ANIMAL_TRIBE_HARES,
+      job: ADULT_ANIMAL_JOB,
+      action: WAIT_ACTION,
+      bodySeq: 'hare_wait',
+      dirFrames: Array.from({ length: FACINGS }, () => [HARE_STANDING_BOB - HARE_WAIT_START]),
+      mode: LOOP_MODE,
+    },
   ],
   bobSequences: [
-    { imagelib: 'cr_ani_body_00.bmd', sequences: [{ name: 'cow_wait', start: COW_WAIT_START, length: 16 }] },
+    {
+      imagelib: 'cr_ani_body_00.bmd',
+      sequences: [
+        { name: 'cow_wait', start: COW_WAIT_START, length: 16 },
+        { name: 'hare_wait', start: HARE_WAIT_START, length: 16 },
+      ],
+    },
   ],
 };
 
@@ -102,6 +120,7 @@ const served: Record<string, unknown> = {
     [CART_STEM]: atlas(CART_STEM, [CART_OTHER_BOB, CART_STANDING_BOB]),
     [OXCART_STEM]: atlas(OXCART_STEM, [CART_STANDING_BOB]),
     [COW_STEM]: atlas(COW_STEM, [COW_WAIT_START + 1, COW_STANDING_BOB]),
+    [HARE_STEM]: atlas(HARE_STEM, [HARE_WAIT_START + 1, HARE_STANDING_BOB]),
     [FISH_STEM]: atlas(FISH_STEM, [FISH_SIDE_BOB - 1, FISH_SIDE_BOB]),
     'ls_goods.goods_gold': atlas('ls_goods.goods_gold', [GOLD_BAR_BOB]),
   }),
@@ -172,6 +191,17 @@ describe('a good with no pile icon', { timeout: LOADER_TIMEOUT_MS }, () => {
     const source = await goodIconSource('cattle', null, sandboxContent());
     expect(source).toEqual({
       url: `/bobs/${sheetOf(COW_STEM)}`,
+      sheet: { width: 20, height: 20 },
+      rect: { x: 10, y: 0, width: 10, height: 20 },
+    });
+  });
+
+  it('draws the prey token as the hare, the one animal standing in for it', async () => {
+    stubServer();
+    const goodIconSource = await freshIconSource();
+    const source = await goodIconSource('prey', null, sandboxContent());
+    expect(source).toEqual({
+      url: `/bobs/${sheetOf(HARE_STEM)}`,
       sheet: { width: 20, height: 20 },
       rect: { x: 10, y: 0, width: 10, height: 20 },
     });

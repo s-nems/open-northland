@@ -22,6 +22,15 @@ export function technologyReason(
 ): string | null {
   if (!status.allowed) return messages().hud.technologyForbidden;
   if (status.enabled) return null;
+  return `${messages().hud.technologyRequires} ${technologyMissing(content, status, progressOf).join(', ')}`;
+}
+
+/** What an undiscovered status still waits for, each named for the player. */
+export function technologyMissing(
+  content: ContentSet,
+  status: UnlockStatus,
+  progressOf?: DiscoveryProgressRead,
+): readonly string[] {
   const jobs = (
     status.requiredJobs.length > 0 || status.requiredGoods.length > 0
       ? status.requiredJobs
@@ -38,7 +47,7 @@ export function technologyReason(
       return formatMessage(messages().hud.technologyGoodProgress, { good: label, jobs: byJobs, ...progress });
     return byJobs === '' ? label : `${label} (${byJobs})`;
   });
-  return `${messages().hud.technologyRequires} ${[...jobs, ...goods].join(', ')}`;
+  return [...jobs, ...goods];
 }
 
 /**

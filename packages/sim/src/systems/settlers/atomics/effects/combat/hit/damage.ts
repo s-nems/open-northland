@@ -21,8 +21,8 @@ import { hexHeadingOfWalk, INITIAL_WALK_DIRECTION } from '../../../../../movemen
 
 const PERCENT = 100;
 /** Original behavior: a blow from the back sides lands x1.25, from behind x1.5, in percent. */
-const BACK_SIDE_HIT_PCT = 125;
-const BEHIND_HIT_PCT = 150;
+export const BACK_SIDE_HIT_PCT = 125;
+export const BEHIND_HIT_PCT = 150;
 
 /**
  * A blow's damage multiplier in percent by how far the victim faces away from where the blow comes from,
@@ -30,7 +30,7 @@ const BEHIND_HIT_PCT = 150;
  * Intentional deviation from the original: it takes the unwrapped difference, so one back side and one
  * front side count as behind there, depending on the headings' numbering; here the bins are symmetric.
  */
-const HIT_DIRECTION_PCT: readonly number[] = [PERCENT, PERCENT, BACK_SIDE_HIT_PCT, BEHIND_HIT_PCT];
+export const HIT_DIRECTION_PCT: readonly number[] = [PERCENT, PERCENT, BACK_SIDE_HIT_PCT, BEHIND_HIT_PCT];
 
 /**
  * The hitpoints one landed blow takes from `target`, from `base`: the weapon's column for the target,

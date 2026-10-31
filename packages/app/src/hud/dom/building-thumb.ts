@@ -9,7 +9,7 @@ import { createStaticPictures, showPicture } from './static-picture.js';
  */
 
 /** Backing pixels per design px, so the thumb stays crisp on a scaled plane. */
-const THUMB_BACKING_SCALE = 2;
+export const THUMB_BACKING_SCALE = 2;
 
 export interface ThumbFit {
   /** The source rect to take from the frame. */
@@ -39,11 +39,17 @@ export interface BuildingThumbs {
    *  default); false leaves the image empty (no sheet, no bound frame, or a GPU-only page) and the card
    *  shows its glyph instead. */
   paint(image: HTMLImageElement, typeId: number, boxPx: number, tribe?: number): boolean;
+  /** Whether the sheet holds `tribe`'s own body of the type; a type it lacks paints the base tribe's. */
+  holds(typeId: number, tribe: number): boolean;
 }
 
 export function createBuildingThumbs(sheet: SpriteSheet | undefined, seatTribe: number): BuildingThumbs {
   const pictures = createStaticPictures();
   return {
+    holds: (typeId, tribe) => {
+      const binding = sheet?.bindings.building;
+      return typeof binding === 'object' && binding.byTribe?.[tribe]?.byType[typeId] !== undefined;
+    },
     paint: (image, typeId, boxPx, tribe = seatTribe) => {
       if (sheet === undefined) return false;
       const ref = boundBuildingRef(sheet.bindings.building, typeId, tribe);

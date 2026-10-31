@@ -6,6 +6,7 @@ export type MenuScreen =
   | 'multiplayer'
   | 'newGame'
   | 'catalogue'
+  | 'knowledge'
   | 'lobby'
   | 'load'
   | 'settings'
@@ -16,6 +17,8 @@ export type MenuScreen =
 export interface MountedScreen {
   readonly element: HTMLElement;
   readonly dispose?: () => void;
+  /** Takes an Esc the screen has a use for; false lets it lead back. */
+  readonly escape?: () => boolean;
 }
 
 export const VERSION_LINE = `alpha ${GAME_VERSION} · AGPL-3.0`;
@@ -24,7 +27,7 @@ export type MainNavItem =
   | {
       readonly id: Extract<
         MenuScreen,
-        'newGame' | 'load' | 'multiplayer' | 'catalogue' | 'settings' | 'credits'
+        'newGame' | 'load' | 'multiplayer' | 'catalogue' | 'knowledge' | 'settings' | 'credits'
       >;
       readonly kind: 'open';
     }
@@ -36,6 +39,7 @@ export const MAIN_NAV: readonly MainNavItem[] = [
   { id: 'load', kind: 'open' },
   { id: 'multiplayer', kind: 'open' },
   { id: 'catalogue', kind: 'open' },
+  { id: 'knowledge', kind: 'open' },
   { id: 'settings', kind: 'open' },
   { id: 'credits', kind: 'open' },
   { id: 'exit', kind: 'exit' },
@@ -67,5 +71,6 @@ export function deepLinkScreen(menu: string | null): {
 } {
   if (menu === 'campaign') return { screen: 'newGame', content: 'campaign' };
   if (menu === 'multiplayer') return { screen: 'multiplayer', content: null };
+  if (menu === 'knowledge') return { screen: 'knowledge', content: null };
   return { screen: 'main', content: null };
 }

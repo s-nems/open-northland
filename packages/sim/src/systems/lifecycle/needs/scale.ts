@@ -23,13 +23,13 @@ export const NEED_DRAIN_UNITS_PER_TICK = 1;
  * drops its work below 2001, tops a bar up at home below 8001, and marks a need
  * for the player below 1001.
  */
-const NEED_DRIVE_UNITS = 2000;
-const NEED_SATED_UNITS = 8000;
-const NEED_CRITICAL_UNITS = 1000;
+export const NEED_DRIVE_UNITS = 2000;
+export const NEED_SATED_UNITS = 8000;
+export const NEED_CRITICAL_UNITS = 1000;
 
 /** The reserve a bar banks above full. Original behavior: each need caps at its own maximum plus
  *  half again, derived from the maximum rather than authored as a level of its own. */
-const NEED_OVERFILL_UNITS = NEED_RESERVE_UNITS / 2;
+export const NEED_OVERFILL_UNITS = NEED_RESERVE_UNITS / 2;
 
 /** Reserve units as a fraction of a full bar. */
 export function needBar(units: number): Fixed {

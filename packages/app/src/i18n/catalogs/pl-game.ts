@@ -600,9 +600,6 @@ export const plGame = {
       speed: 'Tempo ×{factor}',
       menu: 'Menu gry',
       close: 'Zamknij',
-      pending: 'W przygotowaniu',
-      knowledgePending:
-        'Wiedza (produkcja i rozwój, encyklopedia, jak grać) powstaje. To, na co czeka zablokowany budynek, przeczytasz tutaj.',
     },
     signpostPanel: {
       stock: 'Towary w sieci',

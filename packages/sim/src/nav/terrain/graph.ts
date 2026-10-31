@@ -22,7 +22,7 @@ export const DEFAULT_NODE_ROUGHNESS = 2;
 
 /** The roughness a water node of such a map reads: the owned corpus's open-water value (nine in ten
  *  all-water cells read 1). */
-const DEFAULT_WATER_ROUGHNESS = 1;
+export const DEFAULT_WATER_ROUGHNESS = 1;
 
 /** The {@link TerrainGraph.componentOf} label of a node no mover class enters. */
 export const NO_COMPONENT = -1;

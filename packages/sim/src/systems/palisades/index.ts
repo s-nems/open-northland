@@ -387,6 +387,9 @@ function hasStoredGoods(world: World, e: Entity): boolean {
   return false;
 }
 
+/** The wall run a gate converts, in steps along its axis from the centre. */
+export const GATE_SPAN_OFFSETS = [-2, -1, 0, 1, 2] as const;
+
 /**
  * Authoritative five-wall conversion query used by both the UI preview and command application.
  *
@@ -524,7 +527,7 @@ function probeGateRow(
   if (type?.wall?.gate?.open !== false || axis === null) return empty;
   const center = wallAt(byNode, world, hx, hy);
   const axial = axialOf(hx, hy);
-  const span = [-2, -1, 0, 1, 2].map((offset) => axisNode(axial, axis, offset));
+  const span = GATE_SPAN_OFFSETS.map((offset) => axisNode(axial, axis, offset));
   if (center === null) return { ...empty, span };
   const centerWall = world.get(center, Palisade);
   const owner = ownerOf(world, center);

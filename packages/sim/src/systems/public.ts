@@ -83,8 +83,17 @@ export {
 // The battle alert's rest clearance, so the details panel captions a unit standing to on the same radius
 // the drive ladder holds it at.
 export { REST_CLEARANCE_NODES } from './conflict/battle-alert.js';
+// The radii and ranges the reference window's figures draw.
+export { ATTACK_RETURN_SLACK_NODES } from './conflict/chase.js';
+export { CONTESTED_GROUND_RADIUS_NODES } from './conflict/contested-ground.js';
+export {
+  DEFEND_LEASH_NODES,
+  DEFEND_RADIUS_NODES,
+  IGNORE_LEASH_NODES,
+} from './conflict/engagement.js';
 export { FLEE_STEP_NODES } from './conflict/flee.js';
 export { ALARM_SOLDIER_RADIUS_NODES } from './conflict/hit-alarm.js';
+export { HUNT_PREY_SCORE_CEILING } from './conflict/hunting/index.js';
 // The ground a defence-capable building covers, drawn when it is selected or placed.
 export { shelterFireRadius } from './conflict/shelter-fire.js';
 export { ANIMAL_AGGRO_RADIUS_NODES, SIGHT_RADIUS_NODES } from './conflict/targeting.js';
@@ -108,6 +117,7 @@ export {
   worksFieldFromPost,
 } from './economy/haul-flag.js';
 export { OUTPUT_TENTHS_PER_UNIT } from './economy/production/bonus-output.js';
+export { BREEDING_PAIR } from './economy/production/cycles.js';
 // The repair crew cap, so the app's right-click and site pick fall through where assignBuilder refuses.
 export { REPAIR_CREW_LIMIT } from './economy/repair.js';
 export { insideBuildingReservedZone } from './economy/reserved-decor.js';
@@ -133,8 +143,13 @@ export {
   isNearDeath,
   mutNeeds,
   NEED_CRITICAL_THRESHOLD,
+  NEED_CRITICAL_UNITS,
   NEED_DRIVE_THRESHOLD,
+  NEED_DRIVE_UNITS,
   NEED_OVERFILL_FLOOR,
+  NEED_OVERFILL_UNITS,
+  NEED_RESERVE_UNITS,
+  NEED_SATED_UNITS,
   needLevel,
   needLevels,
 } from './lifecycle/needs/index.js';
@@ -142,7 +157,8 @@ export { TEMPLE_AURA_RANGE } from './lifecycle/temple-aura.js';
 // The herding ring bound and the farm herd's leash, asserted by the livestock scenes; the slaughter
 // clip's wares, so the real-content suite reads them the way the sim does.
 export { FARM_HERD_LEASH_NODES, LIVESTOCK_GRAZE_RANGE_NODES } from './livestock/assignment.js';
-export { slayDepositGoods } from './livestock/slay-clip.js';
+export { ANIMAL_ADULT_AGE_TICKS } from './livestock/growth.js';
+export { slayDepositGoods, slayYield } from './livestock/slay-clip.js';
 // The match cadence, so an acceptance scene can run past the first verdict without restating it.
 export {
   MATCH_DEATH_CHECK_INTERVAL_TICKS,
@@ -159,19 +175,24 @@ export {
   SUPPORTED_GOALS,
   SUPPORTED_RESULTS,
 } from './missions/index.js';
+export { walkStepTicks } from './movement/walk-cost.js';
 // So the school dialog offers exactly the courses the `learn` command accepts.
 export { knowsCourse } from './orders/education.js';
-export { createPalisade, palisadeType } from './palisades/index.js';
+export { GATE_ENEMY_NEAR_POINTS } from './palisades/gate-control.js';
+export { createPalisade, GATE_SPAN_OFFSETS, palisadeType } from './palisades/index.js';
 export {
+  EXPERIENCE_MASTERY_POINTS,
   experienceBonus,
   experiencePercent,
   experiencePoints,
   experienceRepeats,
+  FIGHT_EXPERIENCE_DAMAGE_CAP_HITS,
   rawXpForRepeats,
   requirementRepeats,
   weaponClassHits,
   withFightExperience,
 } from './progression/bonus.js';
+export { EXPERIENCE_PCT_PER_SAVED_STROKE } from './progression/efficiency.js';
 export {
   FIGHT_EXPERIENCE_TYPE,
   SOLDIER_GENERAL_EXPERIENCE_TYPE,
@@ -183,6 +204,7 @@ export {
 // need clips on the same ids the sim reads back.
 export {
   ATOMIC_EVENT_CHANNEL,
+  ATOMIC_EVENT_TYPE_ATTACK,
   ATOMIC_EVENT_TYPE_PICKUP,
   ATOMIC_EVENT_TYPE_PLAY_SOUND_FX,
   ATOMIC_EVENT_TYPE_PUT_GOOD_IN_STOCK,
@@ -201,7 +223,7 @@ export {
 } from './readviews/buildings.js';
 // The weapon and armour classes the data's `mainType` carries, which the HUD groups soldiers by.
 export { ARMOR_MAIN_TYPE } from './readviews/classes/armor.js';
-export { WEAPON_MAIN_TYPE } from './readviews/combat.js';
+export { ARMOR_MATERIAL, WEAPON_MAIN_TYPE } from './readviews/combat.js';
 export { heroMayChangeSlot } from './readviews/equip-pick.js';
 export { EDIBLE_FORM_BY_DISH, edibleGoodFormOf, isFoodIn } from './readviews/food.js';
 // The content-derived job roles, so the profession picker and the action ring offer exactly what the
@@ -229,6 +251,7 @@ export { MILITARY_MODE } from './readviews/stances.js';
 // Exported so the app's livestock-heart projection keys on the same content read as the capture drive,
 // and so a real-content scenario stands its herd on the same pool the spawn would give it.
 export { animalCannotBeAttacked, animalHitpoints, isCatchableAnimal } from './readviews/tribes/animals.js';
+export { playableTribes } from './readviews/tribes/civilizations.js';
 // The livestock join, so the details panel names a farm's herds from the same table the sim breeds by
 // and the real-content suite can pin the slug join on the extracted ids.
 export {
@@ -240,9 +263,21 @@ export {
 export { awaitsDraughtAnimal, isShipVehicle, isSiegeVehicle } from './readviews/vehicles.js';
 // The laid road count, which the road scene's acceptance reads.
 export { roadNodeCount } from './roads/index.js';
+// What a blow and a meal are worth, for the reference window's own arithmetic.
+export {
+  BACK_SIDE_HIT_PCT,
+  BEHIND_HIT_PCT,
+  HIT_DIRECTION_PCT,
+} from './settlers/atomics/effects/combat/hit/damage.js';
+export { AT_HOME_FACTOR } from './settlers/atomics/effects/need-events.js';
 // jobCanBuild is the "can this trade raise a foundation" gate, so the app's right-click on a site cannot
 // drift from the rule assignBuilder and the builder drive ask; PRAY_ATOMIC_ID keys the app's pray gate.
-export { jobCanBuild, PRAY_ATOMIC_ID } from './settlers/atomics/start.js';
+export {
+  EAT_ATOMIC_ID,
+  EAT_CANDY_ATOMIC_ID,
+  jobCanBuild,
+  PRAY_ATOMIC_ID,
+} from './settlers/atomics/start.js';
 export { STROKE_REST_ATOMIC_IDS } from './settlers/atomics/stroke-cadence.js';
 // Whom the assistant hands a tool: the trades that work with one.
 export { toolHelpsJob } from './settlers/planner/assistant-grants.js';
@@ -270,6 +305,15 @@ export {
   stockVehicleGoods,
   type VehicleStockView,
   type VehicleView,
+  vehicleMovePeriod,
   vehicleStockGood,
 } from './vehicles/index.js';
 export { cellOfNode } from './vision/gates.js';
+export {
+  CART_VISION_NODES,
+  CHILD_VISION_NODES,
+  CIVILIAN_VISION_NODES,
+  HERO_VISION_NODES,
+  SCOUT_VISION_NODES,
+  SOLDIER_VISION_NODES,
+} from './vision/system.js';

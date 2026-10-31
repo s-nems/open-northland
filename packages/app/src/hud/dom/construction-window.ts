@@ -88,7 +88,7 @@ export interface ConstructionWindowDeps {
   /** A plan card was pressed: the owner starts the placement it pays for (a named house), or holds
    *  it for the catalogue pick (a place-any plan), which the window has already turned to. */
   readonly onPickPaper: (paper: Paper, tribe: number) => void;
-  /** A card's "?": the building's Knowledge page; the pending note until the knowledge ticket. */
+  /** A card's "?": the building's Knowledge entry. */
   readonly onHelp: (typeId: number) => void;
   readonly cue: (cue: UiCue) => void;
 }

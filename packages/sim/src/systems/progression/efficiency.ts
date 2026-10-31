@@ -4,7 +4,7 @@
 const PERCENT = 100;
 
 /** Experience percent that saves one stroke per unit: a master saves five. */
-const EXPERIENCE_PCT_PER_SAVED_STROKE = 20;
+export const EXPERIENCE_PCT_PER_SAVED_STROKE = 20;
 
 /**
  * Strokes (chops, strikes, casts) one unit costs a worker: the trade's base count, divided by the tool's

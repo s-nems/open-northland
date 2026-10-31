@@ -19,6 +19,14 @@ describe.runIf(hasRealIr())('profession icons in the decoded content', () => {
     vi.unstubAllGlobals();
   });
 
+  it('cuts the prey token from a served animal sheet', async () => {
+    const { merge } = await loadContentUnderTest();
+    vi.stubGlobal('fetch', serveContent);
+    vi.resetModules();
+    const { goodIconSource } = await import('../../../src/hud/dom/good-art.js');
+    expect(await goodIconSource('prey', null, merge.content)).not.toBeNull();
+  });
+
   it('cuts every trade icon from a served sheet', async () => {
     const { merge } = await loadContentUnderTest();
     vi.stubGlobal('fetch', serveContent);

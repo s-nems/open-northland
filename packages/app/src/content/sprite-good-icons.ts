@@ -1,7 +1,8 @@
 import type { ContentSet } from '@open-northland/data';
-import { DEFAULT_FACING, frameOf, type SpriteFrameRef } from '@open-northland/render';
+import { type AtlasManifest, DEFAULT_FACING, frameOf, type SpriteFrameRef } from '@open-northland/render';
 import { systems } from '@open-northland/sim';
 import { ANIMAL_BODY_IMAGELIB, ANIMAL_PALETTE_BY_TRIBE, animalBodyStem } from '../catalog/animal-roster.js';
+import { ANIMAL_TRIBE_HARES } from '../catalog/animal-tribes.js';
 import { animalBinding } from './animal-gfx/bindings.js';
 import { loadAtlasManifest } from './bob-atlases.js';
 import { FISH_ATLAS } from './fish-gfx.js';
@@ -37,10 +38,10 @@ export interface ServedAtlas {
   }[];
 }
 
-const atlasByStem = new Map<string, Promise<ServedAtlas | null>>();
+const atlasByStem = new Map<string, Promise<AtlasManifest | null>>();
 
 /** A stem's manifest, decoded once per page; null when not served. */
-export function servedAtlas(stem: string): Promise<ServedAtlas | null> {
+export function servedAtlas(stem: string): Promise<AtlasManifest | null> {
   let pending = atlasByStem.get(stem);
   if (pending === undefined) {
     pending = loadAtlasManifest(stem);
@@ -95,14 +96,23 @@ async function vehicleIcon(ir: ContentIr, content: ContentSet, vehicleHouse: num
   return null;
 }
 
-async function animalIcon(ir: ContentIr, tribe: number) {
+/** The stem and bob an animal tribe stands in; null for a tribe with no bound body. */
+export function animalIconBob(
+  ir: ContentIr,
+  tribe: number,
+): { readonly stem: string; readonly bobId: number } | null {
   const palette = ANIMAL_PALETTE_BY_TRIBE.get(tribe);
   const binding = animalBinding(ir, tribe, sequencesFor(ir, ANIMAL_BODY_IMAGELIB));
   if (palette === undefined || binding === null) return null;
-  const stem = animalBodyStem(palette);
-  const atlas = await servedAtlas(stem);
   const idle: SpriteFrameRef = binding.idle;
-  return atlas === null ? null : { stem, atlas, bobId: frameOf(idle, ANIMAL_ICON_FACING, 0) };
+  return { stem: animalBodyStem(palette), bobId: frameOf(idle, ANIMAL_ICON_FACING, 0) };
+}
+
+async function animalIcon(ir: ContentIr, tribe: number) {
+  const bob = animalIconBob(ir, tribe);
+  if (bob === null) return null;
+  const atlas = await servedAtlas(bob.stem);
+  return atlas === null ? null : { ...bob, atlas };
 }
 
 /** The swarm fish seen side on, head to the right. */
@@ -120,13 +130,19 @@ export async function swarmFishIcon(content: ContentSet, goodId: string): Promis
   return atlas === null ? null : { stem: FISH_ATLAS, atlas, bobId: FISH_ICON_BOB };
 }
 
+/** Goods that name no species of their own, by the animal drawn for them: the hunter's prey is a token. */
+const STAND_IN_SPECIES_BY_GOOD: Readonly<Record<string, number | undefined>> = {
+  prey: ANIMAL_TRIBE_HARES,
+};
+
 /** The sprite frame a vehicle or species good draws as its icon; null for any other good, or when the
  *  IR or the atlas is not served. */
 export async function spriteGoodIcon(content: ContentSet, goodId: string): Promise<SpriteIconFrame | null> {
   const good = content.goods.find((g) => g.id === goodId);
   if (good === undefined) return null;
   const { vehicleHouse } = good;
-  const tribe = systems.livestockTribeOfGood(content, good.typeId);
+  const tribe =
+    systems.livestockTribeOfGood(content, good.typeId) ?? STAND_IN_SPECIES_BY_GOOD[good.id] ?? null;
   if (vehicleHouse === undefined && tribe === null) return null;
   const ir = await loadIr();
   if (ir === null) return null;

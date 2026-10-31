@@ -22,7 +22,7 @@ import {
 } from '../../support/tool-panel-stubs/construction-window.js';
 import { stubDiplomacyWindow } from '../../support/tool-panel-stubs/diplomacy-window.js';
 import { stubMissionBook } from '../../support/tool-panel-stubs/mission-book.js';
-import { stubPendingWindow } from '../../support/tool-panel-stubs/pending-window.js';
+import { stubKnowledgeWindow } from '../../support/tool-panel-stubs/knowledge-window.js';
 import { stubPlacementStrip } from '../../support/tool-panel-stubs/placement-strip.js';
 import { stubResidentsWindow } from '../../support/tool-panel-stubs/residents-window.js';
 import { stubStatisticsWindow } from '../../support/tool-panel-stubs/statistics-window.js';
@@ -67,9 +67,10 @@ describe('tool windows registry', () => {
     let menu: ConstructionWindowStub | null = null;
     const stats = stubStatisticsWindow();
     const heldPaper = createHeldPaperController(ctx, stubPlacementStrip());
+    const knowledge = stubKnowledgeWindow();
     const windows = createToolWindows({
       buildings,
-      pendingWindow: stubPendingWindow,
+      knowledgeWindow: () => knowledge,
       residentsWindow: stubResidentsWindow,
       constructionWindow: (seam) => {
         menu = stubConstructionWindow(seam);
@@ -83,7 +84,7 @@ describe('tool windows registry', () => {
       onPickBuilding: (pick) => picks.push(pick),
     });
     if (menu === null) throw new Error('the registry did not mount the construction window');
-    return { windows, picks, heldPaper, stats, menu: menu as ConstructionWindowStub };
+    return { windows, picks, heldPaper, stats, knowledge, menu: menu as ConstructionWindowStub };
   }
 
   it('a house plan goes straight to placement; a place-any plan is held for the next catalogue pick, which spends it once', () => {
@@ -151,12 +152,13 @@ describe('tool windows registry', () => {
     expect(menu.isOpen()).toBe(true);
   });
 
-  it("a card's help opens the knowledge note in place of the catalogue", () => {
-    const { windows, menu } = mountWindows();
+  it("a card's help opens that building's entry in place of the catalogue", () => {
+    const { windows, menu, knowledge } = mountWindows();
     menu.toggle();
     menu.seam.onHelp(23);
     expect(menu.isOpen()).toBe(false);
     expect(windows.openId()).toBe('knowledge');
+    expect(knowledge.shown).toEqual([23]);
   });
 });
 

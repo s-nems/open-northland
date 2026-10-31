@@ -24,6 +24,7 @@ import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/build
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import {
   mountToolPanel,
+  type KnowledgeSource,
   type PalisadeTools,
   type ToolPanelController,
   type ToolPanelOptions,
@@ -97,6 +98,8 @@ export interface GameToolPanelDeps {
   /** Terrain-height field, so a click on a lifted hill resolves to the tile drawn there. */
   readonly elevation?: ElevationField;
   readonly buildings: readonly MenuBuildingEntry[];
+  /** What the Knowledge window reads. */
+  readonly knowledge: KnowledgeSource;
   /** Every building type's localized name, catalogue or not: notes, papers and the strip name them. */
   readonly buildingLabels: ReadonlyMap<number, string>;
   /** Localized name of a profession, good, or building a note names; undefined when no catalog names it. */
@@ -287,6 +290,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     plane: deps.plane,
     ...(deps.barLead !== undefined ? { barLead: deps.barLead } : {}),
     buildings: deps.buildings,
+    knowledge: deps.knowledge,
     buildingLabels: deps.buildingLabels,
     technologyName: deps.technologyName,
     goodLabel: deps.goodLabel,

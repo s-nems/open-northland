@@ -15,7 +15,7 @@ import {
 } from '../../support/tool-panel-stubs/construction-window.js';
 import { stubDiplomacyWindow } from '../../support/tool-panel-stubs/diplomacy-window.js';
 import { stubMissionBook } from '../../support/tool-panel-stubs/mission-book.js';
-import { stubPendingWindow } from '../../support/tool-panel-stubs/pending-window.js';
+import { stubKnowledgeWindow } from '../../support/tool-panel-stubs/knowledge-window.js';
 import { stubPlacementStrip } from '../../support/tool-panel-stubs/placement-strip.js';
 import { stubResidentsWindow } from '../../support/tool-panel-stubs/residents-window.js';
 import { stubStatisticsWindow } from '../../support/tool-panel-stubs/statistics-window.js';
@@ -47,7 +47,7 @@ function mountSurfaces() {
   });
   let menu: ConstructionWindowStub | null = null;
   windows = createToolWindows({
-    pendingWindow: stubPendingWindow,
+    knowledgeWindow: stubKnowledgeWindow,
     residentsWindow: stubResidentsWindow,
     constructionWindow: (seam) => {
       menu = stubConstructionWindow(seam);
