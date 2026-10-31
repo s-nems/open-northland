@@ -10,7 +10,6 @@ import {
   Vehicle,
   vehiclePassengers,
 } from '../../../../../src/components/index.js';
-import { TICKS_PER_SECOND } from '../../../../../src/core/loop.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import {
   halfCellMapFromCells,
@@ -19,8 +18,13 @@ import {
   type TerrainMap,
 } from '../../../../../src/index.js';
 import type { TerrainGraph } from '../../../../../src/nav/terrain/index.js';
+import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../src/systems/ai-shared/cadence.js';
 import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
 import { type OperationView, seatOperationsOf } from '../../../../../src/systems/computer-player/index.js';
+import {
+  LANDING_FORM_TIMEOUT_TICKS,
+  LANDING_SAIL_TIMEOUT_TICKS,
+} from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { landingFleetShips } from '../../../../../src/systems/computer-player/workforce/craft.js';
 import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
 import { createVehicle } from '../../../../../src/systems/vehicles/index.js';
@@ -56,8 +60,10 @@ const GUARD_FACTOR = 2;
 const GUARD_RANK = 8;
 const GUARD_OFFSET = 6;
 const ARMY_RANK = 6;
-/** Long enough for the men to board, the crossing, the landing and the voyage home. */
-const RUN_SECONDS = 900;
+/** The most a landing may take to board, cross and sail home: a run ending sooner stops at once. */
+const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * LANDING_SAIL_TIMEOUT_TICKS;
+/** Twice the decisions a full fleet with its full band takes to open its landing here. */
+const DECISIONS_TO_OPEN = 8;
 
 /** {@link aiContent} with a small ship that admits spearmen. */
 function landingContent(): ContentSet {
@@ -176,13 +182,21 @@ function menAcross(sim: Simulation): Entity[] {
   });
 }
 
-/** Step the sim `seconds`, calling `watch` after every tick. */
-function run(sim: Simulation, seconds: number, watch: () => void): void {
-  const end = sim.tick + seconds * TICKS_PER_SECOND;
+/** Step the sim at most `ticks`, calling `watch` after every tick, until it answers true. */
+function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
+  const end = sim.tick + ticks;
   while (sim.tick < end) {
     sim.step();
-    watch();
+    if (watch()) return;
   }
+}
+
+/** Whether every one of the seat's ships lies moored empty. */
+function shipsHomeEmpty(sim: Simulation): boolean {
+  return seatShips(sim).every((e) => {
+    const state = sim.world.get(e, Vehicle);
+    return state.moored && vehiclePassengers(state).length === 0;
+  });
 }
 
 describe('landing operations', () => {
@@ -191,9 +205,10 @@ describe('landing operations', () => {
     const homes = new Map(seatShips(sim).map((e) => [e, { ...sim.world.get(e, Vehicle).mooring }]));
     let landedMost = 0;
     let seen: OperationView | undefined;
-    run(sim, RUN_SECONDS, () => {
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
       landedMost = Math.max(landedMost, menAcross(sim).length);
       seen = landings(sim)[0] ?? seen;
+      return landedMost > 0 && shipsHomeEmpty(sim);
     });
     expect(seen?.landing?.startShips).toBe(fleet);
     // Every man but the commanders went ashore.
@@ -211,8 +226,9 @@ describe('landing operations', () => {
   it('keeps a half-ready fleet home', () => {
     const { sim, fleet } = landingWorld({ shipsShort: 1 });
     expect(fleet).toBeGreaterThan(1);
-    run(sim, RUN_SECONDS / 4, () => {
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       expect(landings(sim)).toEqual([]);
+      return false;
     });
   });
 
@@ -220,8 +236,9 @@ describe('landing operations', () => {
     const { sim, fleet } = landingWorld({ menShort: MEN_PER_SHIP + 1 });
     // The men left still fill all but one ship and part of it.
     expect((fleet - 1) * MEN_PER_SHIP).toBeGreaterThan(0);
-    run(sim, RUN_SECONDS / 4, () => {
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       expect(landings(sim)).toEqual([]);
+      return false;
     });
   });
 
@@ -229,15 +246,17 @@ describe('landing operations', () => {
     const { sim, fleet } = landingWorld();
     let seen: OperationView | undefined;
     let guarded = false;
-    run(sim, RUN_SECONDS, () => {
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
       seen = landings(sim)[0] ?? seen;
+      if (seen?.state === 'done') return shipsHomeEmpty(sim);
       // The guards arrive once the ships are under way, so the launch never saw them.
-      if (guarded || seen?.state !== 'moving') return;
+      if (guarded || seen?.state !== 'moving') return false;
       guarded = true;
       const shore = seen.landing?.ships[0]?.shore;
       if (shore === undefined) throw new Error('a sailing landing has a ship');
       const post = { x: shore.hx + GUARD_OFFSET / 2, y: shore.hy - GUARD_OFFSET };
       spawnBand(sim, GUARD_FACTOR * fleet * MEN_PER_SHIP, post, GUARD_RANK, FOE);
+      return false;
     });
     expect(guarded).toBe(true);
     expect(seen?.reason).toBe('outmatched');
