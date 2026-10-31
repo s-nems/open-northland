@@ -4,9 +4,10 @@ import { aiControlEntity } from './control.js';
 
 /** What an operation is for. `assault` is the seat's marching wave (its mechanics live on the barracks'
  *  `WaveMarch`); `hold` is a band that takes and keeps an area the map rewards holding; `raid` is a small
- *  band sent at the enemy's gatherers. A new kind is one more entry and one more handler
- *  (`systems/computer-player/military/operations`); kinds open in this order. */
-export const OPERATION_KINDS = ['assault', 'hold', 'raid'] as const;
+ *  band sent at the enemy's gatherers; `landing` is a wave carried over the sea by the seat's ships. A new
+ *  kind is one more entry and one more handler (`systems/computer-player/military/operations`); kinds open
+ *  in this order. */
+export const OPERATION_KINDS = ['assault', 'hold', 'raid', 'landing'] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
 
 /** An operation's lifecycle. `done` and `failed` are terminal: the operation lets its men go and is
@@ -81,7 +82,34 @@ export interface HoldOperation extends OperationBase {
   sentMen: number;
 }
 
-export type Operation = AssaultOperation | HoldOperation | RaidOperation;
+/** Where one ship of a landing is on its voyage: sailing out to its shore, sailing back once it set its men
+ *  ashore or turned back, or moored at home with its crew freed. */
+export const LANDING_LEGS = ['out', 'back', 'home'] as const;
+export type LandingLeg = (typeof LANDING_LEGS)[number];
+
+export interface LandingShip {
+  vehicle: Entity;
+  /** The shore point it lay moored at when the landing took it, where it docks again on its return. */
+  home: HalfCellNode;
+  /** The shore point on the rival's land it docks at to set its men ashore. */
+  shore: HalfCellNode;
+  leg: LandingLeg;
+}
+
+/** A wave carried over the sea: `target` is the rival headquarters it sails for, the members are the men
+ *  aboard or set ashore and each ship's commander until his ship is home. */
+export interface LandingOperation extends OperationBase {
+  kind: 'landing';
+  /** Ascending vehicle id; a sunk ship is dropped. */
+  ships: LandingShip[];
+  /** The ships and men it set out with, for its losses. */
+  startShips: number;
+  startMen: number;
+  /** How many men its ships set ashore. */
+  landed: number;
+}
+
+export type Operation = AssaultOperation | HoldOperation | LandingOperation | RaidOperation;
 
 export interface ComputerOperationsState {
   /** The next operation's id, per seat. */

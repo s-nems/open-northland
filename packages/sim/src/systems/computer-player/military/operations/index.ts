@@ -3,6 +3,7 @@ import {
   ComputerOperations,
   type ComputerOperationsState,
   Health,
+  type LandingLeg,
   OPERATION_KINDS,
   type Operation,
   type OperationEndReason,
@@ -17,6 +18,7 @@ import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { mapAiSoldierClaims } from '../../../ai-shared/military/ownership.js';
 import { assaultHandler } from './assault.js';
 import { holdHandler } from './hold.js';
+import { landingHandler } from './landing.js';
 import { isOpen, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { raidHandler } from './raid.js';
 
@@ -25,7 +27,12 @@ export { enter, isOpen, type Opened, type OperationEnv, type OperationHandler } 
 type Handlers = { readonly [K in OperationKind]: OperationHandler<Extract<Operation, { kind: K }>> };
 
 /** Every kind's handler: a new kind is one entry here and one in `OPERATION_KINDS`. */
-const HANDLERS: Handlers = { assault: assaultHandler, hold: holdHandler, raid: raidHandler };
+const HANDLERS: Handlers = {
+  assault: assaultHandler,
+  hold: holdHandler,
+  raid: raidHandler,
+  landing: landingHandler,
+};
 
 const FIRST_ID = 1;
 
@@ -108,6 +115,8 @@ function stepOf(env: OperationEnv, op: Operation, pool: Entity[]): readonly Play
       return HANDLERS.hold.step(env, op, pool);
     case 'raid':
       return HANDLERS.raid.step(env, op, pool);
+    case 'landing':
+      return HANDLERS.landing.step(env, op, pool);
   }
 }
 
@@ -139,6 +148,13 @@ export interface OperationView {
     readonly struck: number;
     readonly killed: number;
   } | null;
+  /** A landing's ships and where each is on its voyage, head count at the start, men set ashore. */
+  readonly landing: {
+    readonly ships: readonly { readonly vehicle: Entity; readonly leg: LandingLeg }[];
+    readonly startShips: number;
+    readonly startMen: number;
+    readonly landed: number;
+  } | null;
 }
 
 /** `seat`'s operations, ascending id, for a debug view; the ones ended this decision included. */
@@ -163,6 +179,15 @@ export function seatOperationsOf(world: World, seat: number): readonly Operation
             startMen: op.startMen,
             struck: op.struck.length,
             killed: op.killed,
+          }
+        : null,
+    landing:
+      op.kind === 'landing'
+        ? {
+            ships: op.ships.map((ship) => ({ vehicle: ship.vehicle, leg: ship.leg })),
+            startShips: op.startShips,
+            startMen: op.startMen,
+            landed: op.landed,
           }
         : null,
   }));

@@ -59,10 +59,11 @@ interface RememberedHeadquarters {
   readonly view: number;
   readonly intelMembership: number;
   readonly intelValues: number;
-  readonly list: readonly RememberedHq[];
+  readonly list: readonly OwnedHeadquarters[];
 }
 
-interface RememberedHq extends OpposingBuilding {
+/** A headquarters with the seat that owns it, as the seat last saw it. */
+export interface OwnedHeadquarters extends OpposingBuilding {
   readonly owner: number;
 }
 
@@ -75,7 +76,7 @@ function rememberedHeadquartersOf(
   ctx: SystemContext,
   fog: FogState,
   seat: number,
-): readonly RememberedHq[] {
+): readonly OwnedHeadquarters[] {
   let bySeat = rememberedHeadquartersBySeat.get(world);
   if (bySeat === undefined) {
     bySeat = new Map();
@@ -94,7 +95,7 @@ function rememberedHeadquartersOf(
     held.intelValues === intelValues
   )
     return held.list;
-  const list: RememberedHq[] = [];
+  const list: OwnedHeadquarters[] = [];
   for (const b of rememberedBuildings(world, seat)) {
     if (!isHeadquartersType(ctx, b.buildingType) || playerSeesNode(fog, seat, b.hx, b.hy)) continue;
     list.push({
@@ -129,12 +130,12 @@ function nearestHeadquarters(
   player: number,
   from: HalfCellNode,
   counts: StanceFilter,
-): OpposingBuilding | null {
+): OwnedHeadquarters | null {
   const fog = ctx.fog;
   const hidden = fogHides(fog);
-  let best: OpposingBuilding | null = null;
+  let best: OwnedHeadquarters | null = null;
   let bestDistance = Number.POSITIVE_INFINITY;
-  const consider = (candidate: OpposingBuilding): void => {
+  const consider = (candidate: OwnedHeadquarters): void => {
     const distance = nodeManhattan(candidate.node, from);
     if (
       distance < bestDistance ||
@@ -153,7 +154,7 @@ function nearestHeadquarters(
       const node = hq === undefined ? null : anchorNodeOf(world, hq);
       if (hq === undefined || node === null || (hidden && !playerSeesNode(fog, player, node.hx, node.hy)))
         continue;
-      consider({ entity: hq, node, headquarters: true, seen: true });
+      consider({ entity: hq, node, headquarters: true, seen: true, owner });
     }
   }
   if (hidden) {
@@ -201,10 +202,12 @@ export function nearestEnemyBuilding(
 }
 
 /** The two static land components ({@link TerrainGraph.componentOf}) a seat's sea route joins, each read
- *  at its headquarters' or base's interaction cell, a remembered headquarters' at its anchor. */
+ *  at its headquarters' or base's interaction cell, a remembered headquarters' at its anchor, and the
+ *  rival headquarters it sails for with the seat that owned it when last seen. */
 export interface SeaRoute {
   readonly home: number;
   readonly rival: number;
+  readonly headquarters: OwnedHeadquarters;
 }
 
 /**
@@ -231,7 +234,7 @@ export function seaRouteOf(world: World, ctx: SystemContext, player: number): Se
       : terrain.nodeAtClamped(rival.node.hx, rival.node.hy),
   );
   if (home === NO_COMPONENT || far === NO_COMPONENT || home === far) return null;
-  return { home, rival: far };
+  return { home, rival: far, headquarters: rival };
 }
 
 /** Whether the seat needs a ship to reach the headquarters it sails for ({@link seaRouteOf}). */
