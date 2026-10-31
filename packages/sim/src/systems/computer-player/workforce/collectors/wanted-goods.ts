@@ -24,6 +24,7 @@ import { ownedRoadSites } from '../../../roads/site-index.js';
 import { roadPavingGood } from '../../../roads/sites.js';
 import {
   type BuildOrder,
+  collectorGoodStocked,
   collectorGoodsWanted,
   type LineStatuses,
   sitePace,
@@ -287,7 +288,7 @@ export interface WantedGood {
    *  and the planned posts of a {@link FED_AHEAD_GOOD_IDS_BY_SIDE} good. */
   readonly min: number;
   /** The posts held whatever the stock: the good's fixed row, else its reached entries' count, at least
-   *  {@link DEFAULT_COLLECTOR_TARGET}. */
+   *  {@link DEFAULT_COLLECTOR_TARGET} unless every collector step of the good stands stocked. */
   readonly row: number;
 }
 
@@ -354,6 +355,10 @@ export function wantedCollectorGoods(
   const wanted: WantedGood[] = [];
   const digging = seatDigging(world, player);
   let holdersByGood: ReadonlyMap<number, number> | undefined;
+  const holdersOf = (goodType: number): number => {
+    holdersByGood ??= flagHoldersByGood(world, ctx, player);
+    return holdersByGood.get(goodType) ?? 0;
+  };
   for (const goodId of goodIds) {
     const good = goodTypeByContentId(ctx.content, goodId);
     const harvestAtomic = good?.atomics?.harvest;
@@ -363,14 +368,18 @@ export function wantedCollectorGoods(
     const consumers = supply.plannedConsumers(good.typeId);
     const fixed = COLLECTOR_TARGET_BY_GOOD_ID[goodId];
     const entryCount = entryCounts.get(goodId) ?? 0;
-    const base = fixed ?? Math.max(DEFAULT_COLLECTOR_TARGET, entryCount);
+    // A good whose every collector step stands stocked keeps no base post either.
+    const stocked =
+      fixed === undefined &&
+      entryCount === 0 &&
+      collectorGoodStocked(world, player, order, goodId, good.typeId, holdersOf(good.typeId));
+    const base = fixed ?? (stocked ? 0 : Math.max(DEFAULT_COLLECTOR_TARGET, entryCount));
     const fed = fixed === undefined && fedAhead(world, player, goodId);
     const shelved = fed ? consumerShelfUnits(world, ctx, player, good.typeId) : 0;
     let consumerPosts = fixed === undefined ? Math.floor(consumers / OPERATORS_PER_EXTRA_GATHERER) : 0;
     let scheduled = extraGatherers(goodId, ctx.tick, digging);
     if (consumerPosts + scheduled > 0) {
-      holdersByGood ??= flagHoldersByGood(world, ctx, player);
-      const held = (holdersByGood.get(good.typeId) ?? 0) > base;
+      const held = holdersOf(good.typeId) > base;
       consumerPosts = keptExtraPosts(supply, good.typeId, consumerPosts, held, shelved);
       if (digging?.whateverStock !== true)
         scheduled = keptExtraPosts(supply, good.typeId, scheduled, held, shelved);
@@ -383,10 +392,9 @@ export function wantedCollectorGoods(
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
     // A building good's row stands whole before the reserve (authored): the standard one gatherer
     // each is what a seat of fifteen men keeps in its first minutes, its other men building.
-    let min = fixed ?? (fed ? planned : 1);
+    let min = fixed ?? (fed ? planned : Math.min(1, planned));
     if (mostExtra > 0) {
-      holdersByGood ??= flagHoldersByGood(world, ctx, player);
-      const heldExtra = Math.max(0, (holdersByGood.get(good.typeId) ?? 0) - target);
+      const heldExtra = Math.max(0, holdersOf(good.typeId) - target);
       const extra = shortageGatherers(supply, good.typeId, heldExtra, mostExtra, phase, shelved);
       if (extra > 0) {
         target += extra;

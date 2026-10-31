@@ -91,6 +91,7 @@ import { starvedUpgrade, suppliedUpgrade } from './upgrade-supply.js';
 
 export * from './entries.js';
 export {
+  collectorGoodStocked,
   collectorGoodsWanted,
   type EntryStatus,
   entryStatuses,

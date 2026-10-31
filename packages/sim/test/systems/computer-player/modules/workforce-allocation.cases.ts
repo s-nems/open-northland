@@ -1382,6 +1382,26 @@ describe('workforce module (collectResources)', () => {
     expect(ironTarget(IRON_BASE_TARGET + 2, 'skip')).toBeUndefined(); // a skipped entry wants nobody
   });
 
+  it('releases even the base clay post while every clay step stands stocked, and takes it back under half', () => {
+    const STOCKED = 30;
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const ctx = ctxOf(sim);
+    const order = oneLine([{ kind: 'collector', good: 'mud', stockedAt: STOCKED }]);
+    const clay = (stock: number): WantedGood | undefined => {
+      setStockAmount(sim.world, entityOfBuilding(sim, HQ_TYPE), MUD, stock);
+      const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), order);
+      return wantedCollectorGoods(sim.world, ctx, SEAT, order, new Map([['opening', ['skip']]]), supply).find(
+        (w) => w.good.typeId === MUD,
+      );
+    };
+    expect(clay(STOCKED)).toMatchObject({ target: 0, min: 0, row: 0 });
+    // With nobody gathering it the post stays released down to half the line.
+    expect(clay(STOCKED / 2)).toMatchObject({ target: 0, min: 0 });
+    expect(clay(STOCKED / 2 - 1)).toMatchObject({ target: DEFAULT_COLLECTOR_TARGET, min: 1 });
+  });
+
   it('claims at most the builder reserve; leftover men keep their trade', () => {
     const sim = aiSim();
     placeHq(sim);

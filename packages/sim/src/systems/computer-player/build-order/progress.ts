@@ -27,6 +27,7 @@ import {
   type BuildOrderEntry,
   isLaneEntry,
   linesByPriority,
+  orderSteps,
   type StepHold,
 } from './entries.js';
 import { grassScarce } from './grass-reserve.js';
@@ -511,6 +512,25 @@ function collectorStocked(
   if (entry.stockedAt === undefined) return false;
   const line = holders > 0 ? entry.stockedAt : Math.floor(entry.stockedAt / 2);
   return seatStockOf(world, player).units(goodType) >= line;
+}
+
+/** Whether `order` names a collector step for `goodId` and every one passes over as stocked
+ *  ({@link collectorStocked}), with `holders` gathering the good: then even the good's base post goes. */
+export function collectorGoodStocked(
+  world: World,
+  player: number,
+  order: BuildOrder,
+  goodId: string,
+  goodType: number,
+  holders: number,
+): boolean {
+  let named = false;
+  for (const entry of orderSteps(order)) {
+    if (entry.kind !== 'collector' || entry.good !== goodId) continue;
+    if (!collectorStocked(world, player, entry, goodType, holders)) return false;
+    named = true;
+  }
+  return named;
 }
 
 /**

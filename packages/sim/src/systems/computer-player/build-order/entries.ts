@@ -385,6 +385,12 @@ export const IRON_CLIMB_FROM_TICKS = minutesToTicks(15);
 /** Owner ruling: the mushroom gatherer who opens the herb hut starts in game minute 25-40. */
 export const MUSHROOMS_FROM_TICKS = minutesToTicks(25);
 
+/** The clay the seat stores before its clay gatherer goes back to the builders (authored): over the mud's
+ *  mid-game glut line (`../workforce/supply.ts`, 26 units on the default order); on
+ *  battle_for_the_four_hills_multiplayer the one clay gatherer piled 45-90 clay by game minute 60 while
+ *  2-3 builders served 4-7 open sites. */
+const CLAY_STOCKED = 30;
+
 /** The mushrooms the seat stores before its gatherers stop (owner ruling: they piled up to 199-306 by game
  *  minute 110 on magiczny_las): every druid shelf the healing line raises full, six huts of ten. */
 const MUSHROOMS_STOCKED = 60;
@@ -470,7 +476,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         // Owner ruling: a seat opens on one wood, one clay and one stone gatherer, the opening hunter and
         // the farmer beside them. The clay and stone gatherers earn the potter and the mason.
         { kind: 'collector', good: 'wood' },
-        { kind: 'collector', good: 'mud' },
+        { kind: 'collector', good: 'mud', stockedAt: CLAY_STOCKED },
         { kind: 'collector', good: 'stone' },
         GRAIN_FARM,
         { kind: 'place', building: 'home_level_00', count: 3 },
