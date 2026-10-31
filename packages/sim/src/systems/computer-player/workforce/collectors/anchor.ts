@@ -4,8 +4,11 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../../../ai-shared/content-lookup.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
+import { ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
+import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
+import { nearestLiveResource, type WorkableTest } from '../../live-resources.js';
 
 /** The workshop a good's gatherers supply, and how many of its holders do (all when `posts` is absent). */
 interface CollectorWorkshop {
@@ -98,4 +101,36 @@ export function collectorAnchors(
   return {
     slotsOf: (goodId, count) => Array.from({ length: count }, (_, rank) => anchorOf(goodId, rank)),
   };
+}
+
+/**
+ * The deposit of a {@link COLLECTOR_WORKSHOP_BY_GOOD_ID} good the seat's gatherers work: the live one
+ * nearest the flag of its holder nearest `from` (the lowest id on a tie), or null while none holds a flag
+ * of it. The holders' flags were planted on deposits they walk to, so a workshop pulled here stands
+ * beside the dig that feeds it rather than by a nearer deposit no one works, across a river perhaps.
+ */
+export function workedDeposit(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  goodId: string,
+  goodType: number,
+  from: HalfCellNode,
+  known?: WorkableTest,
+): Entity | null {
+  if (COLLECTOR_WORKSHOP_BY_GOOD_ID[goodId] === undefined) return null;
+  let flag: HalfCellNode | null = null;
+  let flagDistance = Number.POSITIVE_INFINITY;
+  for (const e of ownedSettlers(world, player)) {
+    if (heldGatherGood(world, ctx, e) !== goodType) continue;
+    const held = liveWorkFlag(world, e);
+    const at = held === undefined ? null : anchorNodeOf(world, held.flag);
+    if (at === null) continue;
+    const distance = nodeManhattan(at, from);
+    if (distance < flagDistance) {
+      flag = at;
+      flagDistance = distance;
+    }
+  }
+  return flag === null ? null : nearestLiveResource(world, goodType, flag, known);
 }

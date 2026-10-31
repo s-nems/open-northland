@@ -29,6 +29,7 @@ import { seatBaseOf } from '../base.js';
 import { SHIP_JOINERY_SHORE_RINGS, smallestShipHouse } from '../joinery-role.js';
 import { knownResourceTest, nearestLiveResource } from '../live-resources.js';
 import { coastsOf, nearestEnemyBuilding, seaRouteOf } from '../sea-route.js';
+import { workedDeposit } from '../workforce/collectors/anchor.js';
 import type { BuildOrderEntry, PlacementAffinity } from './entries.js';
 import { BUILD_SEARCH_MAX_RADIUS_NODES, overflowBuildReachNodes } from './entries.js';
 import { scriptedFrontLine } from './front.js';
@@ -40,7 +41,8 @@ import { baseWalkTest } from './spot-walk.js';
  *  `building` affinity takes the seat's lowest-id building of that id or a tier above it, so the pick is
  *  deterministic and an upgraded workshop still anchors; when the entry's `unlessWithin` names the same
  *  id, it takes the first such building with none of the entry's counted kind in reach, the one the
- *  placement exists to serve. A `resource` deposit is the one nearest `from`. */
+ *  placement exists to serve. A `resource` deposit is the one the seat's gatherers of it work
+ *  ({@link workedDeposit}), else the one nearest `from`. */
 function affinityNode(
   world: World,
   ctx: SystemContext,
@@ -67,7 +69,9 @@ function affinityNode(
       const good = goodTypeByContentId(ctx.content, affinity.good);
       if (good === undefined) return null;
       const known = knownResourceTest(world, ctx, player) ?? undefined;
-      const resource = nearestLiveResource(world, good.typeId, from, known);
+      const resource =
+        workedDeposit(world, ctx, player, affinity.good, good.typeId, from, known) ??
+        nearestLiveResource(world, good.typeId, from, known);
       return resource === null
         ? stockedStoreNode(world, ctx, owned, good.typeId)
         : anchorNodeOf(world, resource);
@@ -422,7 +426,7 @@ function roomPenalty(
 
 /** The centre the ring search grows from: the integer mean of the entry's resolved affinity nodes,
  *  clamped back into the seat's {@link BuildReach}, or the anchor itself when nothing resolves. The first
- *  `resource` deposit is the one nearest the anchor and every later one the one nearest that first deposit
+ *  `resource` deposit is the worked one or the one nearest the anchor, every later one the one nearest it
  *  (authored): a smithy wants its iron and wood side by side, and the wood nearest the base often lies on
  *  the far side of it from the iron, which drew the mean to the base and the smithy away from both. `within`
  *  keeps the spot in reach of what it serves: the building an `unlessWithin` entry's affinity picked, or

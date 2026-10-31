@@ -5,6 +5,7 @@ import {
   mapBriefOf,
   Position,
   Resource,
+  Settler,
   StalledPlacements,
   setStockAmount,
 } from '../../../../src/components/index.js';
@@ -41,6 +42,7 @@ import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
+  COLLECTOR,
   ctxOf,
   entityOfBuilding,
   FARM_TYPE,
@@ -932,6 +934,43 @@ describe('build-order placement - affinity and ground rules', () => {
     if (spot?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
     const toIron = Math.abs(spot.x - RESOURCE_SPOTS.iron.x) + Math.abs(spot.y - RESOURCE_SPOTS.iron.y);
     expect(toIron).toBeLessThan(Math.abs(spot.x - HQ_X) + Math.abs(spot.y - HQ_Y));
+  });
+
+  it('pulls a gathered-good affinity toward the deposit its gatherers work, not a nearer idle one', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    const IDLE_STONE = { ...RESOURCE_SPOTS.stone, x: HQ_X - 10, y: HQ_Y };
+    const WORKED_FLAG = { x: RESOURCE_SPOTS.stone.x, y: RESOURCE_SPOTS.stone.y + 5 };
+    placeResources(sim, [IDLE_STONE, RESOURCE_SPOTS.stone]);
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: COLLECTOR,
+      x: HQ_X,
+      y: HQ_Y + 4,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const gatherer = [...sim.world.query(Settler)].find(
+      (e) => sim.world.get(e, Settler).jobType === COLLECTOR,
+    );
+    if (gatherer === undefined) throw new Error('setup: the gatherer');
+    const order: BuildOrderEntry[] = [
+      { kind: 'place', building: 'work_bakery_00', count: 1, near: [{ kind: 'resource', good: 'stone' }] },
+    ];
+    const toWorked = (spot: { x: number; y: number }) =>
+      Math.abs(spot.x - RESOURCE_SPOTS.stone.x) + Math.abs(spot.y - RESOURCE_SPOTS.stone.y);
+    const toIdle = (spot: { x: number; y: number }) =>
+      Math.abs(spot.x - IDLE_STONE.x) + Math.abs(spot.y - IDLE_STONE.y);
+    const unworked = firstCommandOf(sim, order);
+    if (unworked?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
+    expect(toIdle(unworked)).toBeLessThan(toWorked(unworked)); // no one digs: the nearest deposit
+    sim.enqueueSetup({ kind: 'setWorkFlag', entity: gatherer, ...WORKED_FLAG });
+    sim.enqueueSetup({ kind: 'setGatherGood', entity: gatherer, goodType: STONE });
+    sim.step();
+    const worked = firstCommandOf(sim, order);
+    if (worked?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
+    expect(toWorked(worked)).toBeLessThan(toIdle(worked));
   });
 
   it('keeps a placement off the far bank of a river the builders only cross at a ford far downstream', () => {
