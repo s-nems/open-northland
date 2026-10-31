@@ -137,6 +137,7 @@ function workshop(
   crafters: number,
   outputs: readonly number[],
   upgradeTarget?: number,
+  inputs: readonly number[] = [],
 ) {
   return {
     typeId,
@@ -146,7 +147,10 @@ function workshop(
       { jobType: craft, count: crafters },
       { jobType: CARRIER, count: 1 },
     ],
-    recipes: outputs.map((goodType) => ({ inputs: [], outputs: [{ goodType, amount: 1 }] })),
+    recipes: outputs.map((goodType) => ({
+      inputs: inputs.map((input) => ({ goodType: input, amount: 1 })),
+      outputs: [{ goodType, amount: 1 }],
+    })),
     stock: outputs.map((goodType) => ({ goodType, capacity: 10 })),
     construction: [{ goodType: 1, amount: 1 }],
     ...(upgradeTarget === undefined ? {} : { upgradeTarget }),
@@ -176,7 +180,7 @@ function workshopsContent(): ContentSet {
       ),
       workshop(POTTERY, 'work_pottery_00', POTTER, 1, [BRICK], POTTERY_UPGRADED),
       workshop(POTTERY_UPGRADED, 'work_pottery_01', POTTER, 2, [BRICK, TILE, CROCKERY]),
-      workshop(MASON_HUT, 'work_mason_hut_00', MASON, 1, [PILLAR], MASON_HUT_UPGRADED),
+      workshop(MASON_HUT, 'work_mason_hut_00', MASON, 1, [PILLAR], MASON_HUT_UPGRADED, [STONE]),
       workshop(MASON_HUT_UPGRADED, 'work_mason_hut_01', MASON, 2, [PILLAR, ORNAMENT]),
     ],
   });
@@ -553,7 +557,7 @@ describe('workforce module - a workshop with nothing left to make', () => {
     expect(masonHires()).toHaveLength(1);
   });
 
-  it('keeps the lone mason from the core-crew time on, whatever lies in store', () => {
+  it('keeps the lone mason from the core-crew time on while the stone he works is plentiful', () => {
     const seat = workshopSeat();
     seat.apply(seat.decide());
     const content = workshopsContent();
@@ -566,6 +570,29 @@ describe('workforce module - a workshop with nothing left to make', () => {
         operatorTarget: 1,
       });
     }
+  });
+
+  it('rests the mason from the core-crew time on while his pillars lie at glut and the sites run short of stone', () => {
+    const seat = workshopSeat();
+    seat.apply(seat.decide());
+    const content = workshopsContent();
+    const hut = entityOfBuilding(seat.sim, MASON_HUT);
+    const tiers = (held: HeldStaff) => planOf(seat, content, hut, held, CORE_CREW_FROM_TICKS);
+    stockAtLine(seat, [PILLAR], 'glut');
+    stockAtLine(seat, [STONE], 'short', -1);
+    expect(tiers(alone)).toMatchObject({ operatorMin: 0, operatorTarget: 0 });
+    // Pillars under glut keep him at work, stone short or not.
+    stockAtLine(seat, [PILLAR], 'glut', -1);
+    expect(tiers(alone)).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
+    // The empty hut waits until the stone reaches its comfort line or the pillars run short.
+    stockAtLine(seat, [PILLAR], 'short');
+    stockAtLine(seat, [STONE], 'comfort', -1);
+    expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 0, operatorTarget: 0 });
+    stockAtLine(seat, [STONE], 'comfort');
+    expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
+    stockAtLine(seat, [STONE], 'short', -1);
+    stockAtLine(seat, [PILLAR], 'short', -1);
+    expect(tiers(crewOf(0))).toMatchObject({ operatorMin: 1, operatorTarget: 1 });
   });
 
   it('keeps a mason hut on its opening run whatever lies in store', () => {

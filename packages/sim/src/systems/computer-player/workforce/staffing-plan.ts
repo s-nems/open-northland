@@ -94,7 +94,8 @@ export interface SeatStaffing {
  * is not split; `held` is who works there already, which keeps a supply carrier or a product-gated
  * craftsman through the band below the line that hired him. A raw good's own workshop runs without a
  * carrier while that good is short for the sites ({@link rawGoodShort}), and a workshop with nothing left
- * to make runs with nobody early in the game ({@link productsRest}), whatever the rows above say.
+ * to make runs with nobody early in the game, or later while its input runs short for the sites
+ * ({@link productsRest}), whatever the rows above say.
  */
 export function buildingStaffing(
   world: World,
@@ -183,11 +184,12 @@ function gatedOperators(
 }
 
 /**
- * Whether a workshop has nothing worth making before {@link CORE_CREW_FROM_TICKS}: it has no craft sink
- * (the profile's craft plans) and sows no fields, every product has supply lines, and each lies at
- * its glut line, or, once its crew has gone, none is short yet. A product without supply lines keeps the
- * crew on, as does a type with no product at all. A farm never rests, since a resting farm loses its sown
- * fields, and from the core-crew time no workshop does: its first craftsman keeps his experience.
+ * Whether a workshop has nothing worth making: it has no craft sink (the profile's craft plans) and sows
+ * no fields, every product has supply lines, and each lies at its glut line, or, once its crew has gone,
+ * none is short yet. A product without supply lines keeps the crew on, as does a type with no product at
+ * all. A farm never rests, since a resting farm loses its sown fields. From {@link CORE_CREW_FROM_TICKS}
+ * the first craftsman stays to keep his experience, unless a recipe input of the workshop runs short for
+ * the sites ({@link inputsShortForSites}): then the scarce good goes to the sites, not to a glutted shelf.
  */
 function productsRest(
   world: World,
@@ -197,15 +199,49 @@ function productsRest(
   type: BuildingType,
   operators: number,
 ): boolean {
-  if (ctx.tick >= CORE_CREW_FROM_TICKS) return false;
   if (seat.profile.craftPlans[type.id]?.sink !== undefined) return false;
   if (farmWorkGood(world, ctx, building) !== null) return false;
   const products = productsOf(ctx, type);
   if (products.length === 0 || products.some((good) => seat.supply.lines(good) === undefined)) return false;
+  if (ctx.tick >= CORE_CREW_FROM_TICKS && !inputsShortForSites(ctx, seat, type, operators === 0))
+    return false;
   return operators === 0
     ? products.every((good) => !seat.supply.isShort(good, false))
     : products.every((good) => seat.supply.atGlut(good));
 }
+
+/**
+ * Whether a recipe input of `type` that the sites build with ({@link COLLECTED_GOOD_IDS}) runs short for
+ * them: under its short line, or while the
+ * workshop already rests (`resting`), under its comfort line, so the rest holds until the sites have
+ * enough. Authored: on battle_for_the_four_hills_multiplayer (seed 7) a seat's mason turned the 2-8 stone
+ * its sites waited for into 23-52 pillars nobody used.
+ */
+function inputsShortForSites(
+  ctx: SystemContext,
+  seat: SeatStaffing,
+  type: BuildingType,
+  resting: boolean,
+): boolean {
+  const inputs = contentIndex(ctx.content).mergedRecipeByBuilding.get(type.typeId)?.inputs ?? [];
+  const siteGoods = siteGoodsOf(ctx.content);
+  return inputs.some(
+    (input) => siteGoods.has(input.goodType) && seat.supply.isShort(input.goodType, resting),
+  );
+}
+
+/** The {@link COLLECTED_GOOD_IDS} the content has, by good type: content-static, so memoized. */
+function siteGoodsOf(content: ContentSet): ReadonlySet<number> {
+  let goods = siteGoodsByContent.get(content);
+  if (goods === undefined) {
+    const index = contentIndex(content);
+    goods = new Set(COLLECTED_GOOD_IDS.flatMap((id) => index.goodTypeBySlug.get(id) ?? []));
+    siteGoodsByContent.set(content, goods);
+  }
+  return goods;
+}
+
+const siteGoodsByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
 
 /** Whether one of the type's supply goods is short: below its short line, or while a carrier already
  *  works there, below its comfort line. */
