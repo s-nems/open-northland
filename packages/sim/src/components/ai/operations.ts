@@ -90,7 +90,8 @@ export type LandingLeg = (typeof LANDING_LEGS)[number];
 
 export interface LandingShip {
   vehicle: Entity;
-  /** The shore point it lay moored at when the landing took it, where it docks again on its return. */
+  /** The shore point on its own land it docks at on its return: where it lay moored when the landing took
+   *  it, or another one once that shore took it no more. */
   home: HalfCellNode;
   /** The shore point on the rival's land it docks at to set its men ashore. */
   shore: HalfCellNode;
@@ -108,6 +109,8 @@ export interface LandingOperation extends OperationBase {
   startMen: number;
   /** How many men its ships set ashore. */
   landed: number;
+  /** The tick its first ship lay moored at its shore with the men still aboard, or null before. */
+  firstMooredAt: number | null;
 }
 
 export type Operation = AssaultOperation | HoldOperation | LandingOperation | RaidOperation;

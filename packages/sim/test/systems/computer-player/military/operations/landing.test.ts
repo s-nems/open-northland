@@ -17,6 +17,7 @@ import {
   Simulation,
   type TerrainMap,
 } from '../../../../../src/index.js';
+import { type HalfCellNode, hexagonRing } from '../../../../../src/nav/halfcell.js';
 import type { TerrainGraph } from '../../../../../src/nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../src/systems/ai-shared/cadence.js';
 import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
@@ -30,6 +31,7 @@ import {
 import { landingFleetShips } from '../../../../../src/systems/computer-player/workforce/craft.js';
 import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
 import { createVehicle } from '../../../../../src/systems/vehicles/index.js';
+import { crewInside } from '../../../../../src/systems/vehicles/movement.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
 import { ctxOf } from '../../../../fixtures/context.js';
 
@@ -42,6 +44,8 @@ const SPEARMAN = 32;
 const SHIP = 3;
 /** The ship's seats besides the commander's: each ship carries one more man than this. */
 const SHIP_SEATS = 3;
+/** The ship's door distance: it moors this many hex steps off its shore point. */
+const SHIP_DOOR_DISTANCE = 4;
 const MEN_PER_SHIP = SHIP_SEATS + 1;
 
 /** Cells: the west island, the strait, the east island. */
@@ -81,7 +85,7 @@ function landingContent(): ContentSet {
         logicSize: 2,
         passengerJobs: [SPEARMAN],
         commanderJob: 24,
-        passengerVector: { direction: 2, distance: 4 },
+        passengerVector: { direction: 2, distance: SHIP_DOOR_DISTANCE },
         hitpoints: 5000,
       },
     ],
@@ -226,6 +230,69 @@ describe('landing operations', () => {
     for (const e of sim.world.query(Settler, Owner)) expect(sim.world.has(e, Rider)).toBe(false);
   });
 
+  it('casts the fleet off together and sets the wave ashore once every ship lies at its shore', () => {
+    const { sim } = landingWorld();
+    let castOff = false;
+    let landedFirst = false;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      const op = landings(sim)[0];
+      if (op?.landing === undefined) return false;
+      const states = op.landing.ships.map((ship) => ({ ship, state: sim.world.get(ship.vehicle, Vehicle) }));
+      if (!castOff && states.some(({ state }) => !state.moored)) {
+        castOff = true;
+        for (const { state } of states) expect(crewInside(state)).toBe(true);
+      }
+      if (menAcross(sim).length === 0) return false;
+      landedFirst = true;
+      for (const { ship, state } of states) {
+        const atShore = state.mooring?.hx === ship.shore.hx && state.mooring.hy === ship.shore.hy;
+        expect(ship.leg !== 'out' || (state.moored && atShore)).toBe(true);
+      }
+      return true;
+    });
+    expect(castOff).toBe(true);
+    expect(landedFirst).toBe(true);
+  });
+
+  it('docks a returning ship at another shore of home once hulls took every berth of its own', () => {
+    const { sim } = landingWorld();
+    const terrain = terrainOf(sim);
+    let home: HalfCellNode | null = null;
+    let first: { readonly vehicle: Entity; readonly home: HalfCellNode } | null = null;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      const op = landings(sim)[0];
+      const ship = op?.landing?.ships[0];
+      if (ship === undefined || first !== null) return first !== null && op?.state === 'done';
+      const state = sim.world.get(ship.vehicle, Vehicle);
+      if (state.moored && state.mooring !== null) home = { ...state.mooring };
+      else if (home !== null) {
+        first = { vehicle: ship.vehicle, home };
+        // New ships launched on every water node the first one could moor from at home.
+        for (const { point } of hexagonRing(home, SHIP_DOOR_DISTANCE)) {
+          if (!terrain.inBounds(point.hx, point.hy) || !terrain.isWater(terrain.nodeAt(point.hx, point.hy)))
+            continue;
+          createVehicle(sim.world, ctxOf(sim), {
+            vehicleType: SHIP,
+            x: point.hx,
+            y: point.hy,
+            tribe: VIKING,
+            owner: SEAT,
+          });
+        }
+      }
+      return false;
+    });
+    const cast = first as { readonly vehicle: Entity; readonly home: HalfCellNode } | null;
+    if (cast === null) throw new Error('the landing never cast off');
+    const state = sim.world.get(cast.vehicle, Vehicle);
+    expect(state.moored).toBe(true);
+    expect(state.mooring).not.toEqual(cast.home);
+    expect(terrain.componentOf(terrain.nodeAt(state.mooring?.hx ?? 0, state.mooring?.hy ?? 0))).toBe(
+      terrain.componentOf(terrain.nodeAt(cast.home.hx, cast.home.hy)),
+    );
+    expect(vehiclePassengers(state)).toEqual([]);
+  });
+
   it('sails the ships its men fill when they are fewer than the whole fleet', () => {
     const { sim, fleet } = landingWorld({ men: LANDING_BIG_SHIPS * MEN_PER_SHIP });
     expect(fleet).toBeGreaterThan(LANDING_BIG_SHIPS);
@@ -263,11 +330,14 @@ describe('landing operations', () => {
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
       seen = landings(sim)[0] ?? seen;
       if (seen?.state === 'done') return shipsHomeEmpty(sim);
-      // The guards arrive once the ships are under way, so the launch never saw them.
-      if (guarded || seen?.state !== 'moving') return false;
+      // The guards arrive with the first ship at its shore, so neither the launch nor the posture saw them.
+      const ashore = seen?.landing?.ships.find((ship) => {
+        const state = sim.world.get(ship.vehicle, Vehicle);
+        return state.moored && state.mooring?.hx === ship.shore.hx && state.mooring.hy === ship.shore.hy;
+      });
+      if (guarded || seen?.state !== 'moving' || ashore === undefined) return false;
       guarded = true;
-      const shore = seen.landing?.ships[0]?.shore;
-      if (shore === undefined) throw new Error('a sailing landing has a ship');
+      const shore = ashore.shore;
       const post = { x: shore.hx + GUARD_OFFSET / 2, y: shore.hy - GUARD_OFFSET };
       spawnBand(sim, GUARD_FACTOR * fleet * MEN_PER_SHIP, post, GUARD_RANK, FOE);
       return false;
