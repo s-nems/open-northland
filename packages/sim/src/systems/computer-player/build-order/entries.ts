@@ -58,7 +58,7 @@ export type BuildOrderEntry =
    *  for the crews of those standing (`./progress.ts`). `room` names the buildings that later stand
    *  beside this one: the spot is scored by the free ground around it against their footprints
    *  (`placement.ts`). `amongHomes` searches as a home does, on the far side of the base from the field
-   *  farms. */
+   *  farms. `core` gives the step an earned workshop's turn while no food turn waits (`./index.ts`). */
   | {
       readonly kind: 'place';
       readonly building: string;
@@ -75,6 +75,7 @@ export type BuildOrderEntry =
       readonly aheadOfCrews?: true;
       readonly room?: readonly string[];
       readonly amongHomes?: true;
+      readonly core?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. */
@@ -480,6 +481,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           count: 1,
           holdUntil: { kind: 'built', building: 'work_pottery_00' },
           amongHomes: true,
+          core: true,
         },
         // Owner ruling: a second stone gatherer within the first 10-15 game minutes, since the roads and
         // the mason eat the most stone.

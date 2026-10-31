@@ -47,6 +47,7 @@ import {
   sitePace,
   stepKey,
 } from './entries.js';
+import { foodChainStep, seatFoodFailing } from './food-first.js';
 import { towerUpgradeWaits } from './front.js';
 import { grassBoundEntry, grassReserved } from './grass-reserve.js';
 import {
@@ -350,44 +351,6 @@ function runBuildOrder(
   );
   const laneActive = (lane: OpenLane): boolean =>
     statusOf(lane.line, lane.step) === 'unmet' && !held(lane.entry);
-  for (const lane of lanes) {
-    if (tribe === undefined || !laneActive(lane)) continue;
-    const entry = lane.entry;
-    if (entry.kind === 'towerCoverage' && !crewRoom) continue;
-    if (entry.kind === 'housing') {
-      if (!homeSites.open) continue;
-    } else if (apartRing && entry.kind === 'towerCoverage') {
-      if (lane.sites >= coverageLaneSites(world, ctx, player, entry)) continue;
-    } else if (earnedOnly || !laneSiteOpen(world, ctx, player, entry, lane.sites, paced, siteCap)) continue;
-    if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
-    if (entry.kind === 'housing') {
-      if (housingGateOf() === 'closed') continue;
-      // Ahead of its place in the line, the lane takes a site only while the daughters are blocked.
-      if (lane.early && !daughtersBlocked(world, ctx, player, owned, entry)) continue;
-    } else if (!billSourced(world, ctx, player, entry, madeGoods)) continue;
-    if (siegeOf().attacked) return [];
-    const placed =
-      entry.kind === 'housing'
-        ? housingCommand(world, ctx, terrain, player, owned, anchor, tribe, entry, siegeOf().underFire, {
-            reserveGrass,
-            made: madeGoods,
-          })
-        : coverageCommand(
-            world,
-            ctx,
-            terrain,
-            player,
-            owned,
-            anchor,
-            tribe,
-            entry,
-            siegeOf().underFire,
-            reserveGrass,
-            madeGoods,
-          );
-    searches.searched(lane.line, lane.step, ctx.tick, placed !== null, false);
-    if (placed !== null) return started(papered(placed, entry));
-  }
   // The lines keep the sites the coverage lanes leave them, at least one, and count only their own; the
   // housing lane's first site is one of theirs. A coverage lane reserves a site only while it has work it
   // may do, so a held or met ring costs the lines nothing.
@@ -398,22 +361,9 @@ function runBuildOrder(
     listSites -= lane.sites;
     if (laneActive(lane)) reserved++;
   }
-  if (listSites >= Math.max(1, siteCap - reserved)) {
-    if (!earnedSiteOpen(base, profile, paced, siteCap)) return [];
-    earnedOnly = true;
-  }
 
   const firstUnmet = (line: BuildLine): number =>
     line.steps.findIndex((entry, step) => !isLaneEntry(entry) && statusOf(line.id, step) === 'unmet');
-  if (lines.some((line) => firstUnmet(line) >= 0) && siegeOf().attacked) {
-    for (const line of lines) {
-      const step = firstUnmet(line);
-      const entry = line.steps[step];
-      if (entry !== undefined) holdRebuildUnderAttack(world, player, line.id, step, entry, ctx.tick);
-    }
-    return [];
-  }
-
   /** The command of `line`'s step at `step`, which acts this decision, or null while it holds its line. */
   const stepCommand = (line: BuildLine, step: number, entry: BuildOrderEntry): PlayerCommand | null => {
     switch (entry.kind) {
@@ -517,9 +467,80 @@ function runBuildOrder(
     if (firstUnmet(line) < 0) advanceFrontier(world, player, line.id, line.steps.length);
   const gated = lockHolds && tribe !== undefined ? technologyTable(ctx.content, tribe) : null;
   const defending = seatDefenceFirst(world, ctx, player);
-  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated, defending);
-  for (const { line, turn } of byTurn) {
-    if (earnedOnly && turn !== TURN.earned && turn !== TURN.due) continue;
+  // A step waits for a site once neither its hold nor a discovery still to come keeps it back.
+  const ready = (entry: BuildOrderEntry): boolean => !held(entry) && !(locked(entry) && lockHolds);
+  const foodFailing = seatFoodFailing(world, ctx, player, owned);
+  const byTurn = turnOrder(world, ctx, player, owned, lines, statusOf, memo, gated, defending, {
+    foodFailing,
+    ready,
+  });
+  const extraSiteOpen = earnedSiteOpen(base, profile, paced, siteCap);
+  // A seat whose food production is missing gives its food turn, and a step already due, the free site
+  // ahead of the lanes too, so a tower ring or a home never takes it first; under attack the lines hold.
+  const tried = new Set<BuildLineId>();
+  if (foodFailing && !siegeOf().attacked) {
+    for (const { line, turn, extraSite } of byTurn) {
+      if (turn > TURN.food) break;
+      if (paced >= siteCap && !(extraSite && extraSiteOpen)) continue;
+      tried.add(line.id);
+      const command = lineCommand(line);
+      if (command !== null) return started(command);
+    }
+  }
+  for (const lane of lanes) {
+    if (tribe === undefined || !laneActive(lane)) continue;
+    const entry = lane.entry;
+    if (entry.kind === 'towerCoverage' && !crewRoom) continue;
+    if (entry.kind === 'housing') {
+      if (!homeSites.open) continue;
+    } else if (apartRing && entry.kind === 'towerCoverage') {
+      if (lane.sites >= coverageLaneSites(world, ctx, player, entry)) continue;
+    } else if (earnedOnly || !laneSiteOpen(world, ctx, player, entry, lane.sites, paced, siteCap)) continue;
+    if (searches.waits(lane.line, lane.step, ctx.tick)) continue;
+    if (entry.kind === 'housing') {
+      if (housingGateOf() === 'closed') continue;
+      // Ahead of its place in the line, the lane takes a site only while the daughters are blocked.
+      if (lane.early && !daughtersBlocked(world, ctx, player, owned, entry)) continue;
+    } else if (!billSourced(world, ctx, player, entry, madeGoods)) continue;
+    if (siegeOf().attacked) return [];
+    const placed =
+      entry.kind === 'housing'
+        ? housingCommand(world, ctx, terrain, player, owned, anchor, tribe, entry, siegeOf().underFire, {
+            reserveGrass,
+            made: madeGoods,
+          })
+        : coverageCommand(
+            world,
+            ctx,
+            terrain,
+            player,
+            owned,
+            anchor,
+            tribe,
+            entry,
+            siegeOf().underFire,
+            reserveGrass,
+            madeGoods,
+          );
+    searches.searched(lane.line, lane.step, ctx.tick, placed !== null, false);
+    if (placed !== null) return started(papered(placed, entry));
+  }
+  if (listSites >= Math.max(1, siteCap - reserved)) {
+    if (!extraSiteOpen) return [];
+    earnedOnly = true;
+  }
+
+  if (lines.some((line) => firstUnmet(line) >= 0) && siegeOf().attacked) {
+    for (const line of lines) {
+      const step = firstUnmet(line);
+      const entry = line.steps[step];
+      if (entry !== undefined) holdRebuildUnderAttack(world, player, line.id, step, entry, ctx.tick);
+    }
+    return [];
+  }
+
+  for (const { line, extraSite } of byTurn) {
+    if ((earnedOnly && !extraSite) || tried.has(line.id)) continue;
     const command = lineCommand(line);
     if (command !== null) return started(command);
   }
@@ -536,8 +557,14 @@ function runBuildOrder(
  *  lacks or a copy placed ahead of the crews (owner ruling: a tunic seat's second tailor shop lost every
  *  freed site to new kinds until game minute 37-83 on krwawa_rzeka); no rising site; a site of its own
  *  still rising. On mroczny_las a seat defending from the first
- *  minute gave every freed site to its earned workshops and raised no barracks before the scripted wave. */
-const TURN = { defence: 0, due: 1, earned: 2, newKind: 3, more: 4, rising: 5 } as const;
+ *  minute gave every freed site to its earned workshops and raised no barracks before the scripted wave.
+ *  On a seat whose food production is missing ({@link seatFoodFailing}), a step ready to raise the first
+ *  of a food chain kind comes right after the due steps, a rising site of its line or not, ahead of the
+ *  lanes too, and takes the extra site only as an earned workshop (owner ruling: food before the
+ *  population, weapons and joiner). A `core` step takes the earned turn and its extra site while no food
+ *  turn waits: as a new kind the school never won a freed site from the earned workshops, and ahead of the
+ *  food it beat the mill and bakery. */
+const TURN = { defence: 0, due: 1, food: 2, earned: 3, newKind: 4, more: 5, rising: 6 } as const;
 
 /** Whether `entry` is a placement its line holds until the military deadline's lead: once the hold opens
  *  it takes the next free site; while it holds, its line acts on nothing, so the turn costs no site. */
@@ -547,6 +574,20 @@ function deadlineStep(entry: BuildOrderEntry): boolean {
 
 function waitsOnDeadline(hold: StepHold): boolean {
   return hold.kind === 'deadline' || (hold.kind === 'all' && hold.holds.some(waitsOnDeadline));
+}
+
+/** What the food rule asks of {@link turnOrder}: whether the seat's food fails ({@link seatFoodFailing}),
+ *  and whether a step is ready for a site rather than held or waiting on a discovery. */
+interface FoodTurn {
+  readonly foodFailing: boolean;
+  readonly ready: (entry: BuildOrderEntry) => boolean;
+}
+
+/** A line's {@link TURN}, and whether it may take the earned workshops' site over the pace. */
+interface LineTurn {
+  readonly line: BuildLine;
+  readonly turn: number;
+  readonly extraSite: boolean;
 }
 
 /** `lines`, stable in priority order, by {@link TURN}, each with its turn. `gated` holds the seat's
@@ -561,10 +602,17 @@ function turnOrder(
   memo: DecisionMemo,
   gated: TechnologyTable | null,
   defending: boolean,
-): { readonly line: BuildLine; readonly turn: number }[] {
+  food: FoodTurn,
+): LineTurn[] {
   const standing = owned.filter((e) => !world.has(e, UnderConstruction) || world.has(e, Upgrading));
   const ownedTypes = new Set(owned.map((e) => world.get(e, Building).buildingType));
-  const rank = (line: BuildLine): number => {
+  /** Whether the seat owns a building `entry` counts, so the step adds another of a kind it has. */
+  const ownsKind = (entry: BuildOrderEntry, type: BuildingType): boolean => {
+    const below = entry.kind === 'place' || entry.kind === 'upgrade' ? entry.belowTier : undefined;
+    for (const kind of countedTiers(ctx.content, type, below)) if (ownedTypes.has(kind)) return true;
+    return false;
+  };
+  const heads = lines.map((line) => {
     let next: BuildOrderEntry | undefined;
     let rising = false;
     for (const [step, entry] of line.steps.entries()) {
@@ -579,25 +627,42 @@ function turnOrder(
       if (status === 'unmet') next ??= entry;
       if (rising && next !== undefined) break;
     }
+    const type =
+      next === undefined || next.kind === 'collector'
+        ? undefined
+        : buildingTypeByContentId(ctx.content, next.building);
+    // The food turn raises the first of a food chain kind; copies wait their turn like any other.
+    const feeds =
+      food.foodFailing &&
+      next !== undefined &&
+      type !== undefined &&
+      foodChainStep(ctx, next) &&
+      !ownsKind(next, type) &&
+      food.ready(next);
+    return { line, next, type, rising, feeds };
+  });
+  const foodWaits = heads.some((head) => head.feeds);
+  const rank = (head: (typeof heads)[number]): Omit<LineTurn, 'line'> => {
+    const { line, next, type, rising, feeds } = head;
+    const plain = (turn: number): Omit<LineTurn, 'line'> => ({
+      turn,
+      extraSite: turn === TURN.due || turn === TURN.earned,
+    });
+    if (defending && !rising && next !== undefined && DEFENCE_LINES.includes(line.id))
+      return plain(TURN.defence);
     // A later step met by a rising site, such as a tower upgrade met by a ring tower raised at the upper
     // tier, never puts a deadline step behind the economy.
-    if (rising) return next !== undefined && deadlineStep(next) ? TURN.due : TURN.rising;
-    if (defending && next !== undefined && DEFENCE_LINES.includes(line.id)) return TURN.defence;
-    if (next !== undefined && deadlineStep(next)) return TURN.due;
-    if (next === undefined || next.kind === 'collector') return TURN.newKind;
-    const type = buildingTypeByContentId(ctx.content, next.building);
-    if (type === undefined) return TURN.newKind;
-    const kinds = countedTiers(
-      ctx.content,
-      type,
-      next.kind === 'place' || next.kind === 'upgrade' ? next.belowTier : undefined,
-    );
-    for (const kind of kinds)
-      if (ownedTypes.has(kind))
-        return next.kind === 'place' && next.aheadOfCrews === true ? TURN.newKind : TURN.more;
-    return earnedWorkshop(gated, type) ? TURN.earned : TURN.newKind;
+    if (next !== undefined && deadlineStep(next)) return plain(TURN.due);
+    const earned = type !== undefined && earnedWorkshop(gated, type);
+    if (feeds) return { turn: TURN.food, extraSite: earned };
+    if (rising) return plain(TURN.rising);
+    if (next === undefined || next.kind === 'collector' || type === undefined) return plain(TURN.newKind);
+    if (ownsKind(next, type))
+      return plain(next.kind === 'place' && next.aheadOfCrews === true ? TURN.newKind : TURN.more);
+    if (earned || (next.kind === 'place' && next.core === true && !foodWaits)) return plain(TURN.earned);
+    return plain(TURN.newKind);
   };
-  return lines.map((line) => ({ line, turn: rank(line) })).sort((a, b) => a.turn - b.turn);
+  return heads.map((head) => ({ line: head.line, ...rank(head) })).sort((a, b) => a.turn - b.turn);
 }
 
 /** Construction sites over the pace kept for a workshop whose discovery the seat earned (authored): owner

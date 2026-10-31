@@ -1,4 +1,4 @@
-import { parseContentSet } from '@open-northland/data';
+import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
@@ -62,6 +62,7 @@ import {
   placeHq,
   placeResources,
   RESOURCE_SPOTS,
+  SCHOOL_TYPE,
   SEAT,
   STOCK_TOP_TYPE,
   spawnMen,
@@ -70,6 +71,7 @@ import {
   VEHICLE_YARD_TYPE,
   VIKING,
   WELL_TYPE,
+  WOOD,
 } from '../support.js';
 
 /** The build-order executor: entry order, the counts it repairs, the open-site cap and the rebuild delay. */
@@ -1223,6 +1225,75 @@ describe('build order - independent lines', () => {
     sim.step();
     // One site over the pace only, and only for the earned workshop.
     expect(decide(sim, order, 0, content)).toBeUndefined();
+  });
+
+  /** The fixture's edible good, `food_simple`. */
+  const FOOD = 3;
+
+  /** `content` whose mill turns wood into the fixture's food, so the mill heads a food chain. */
+  function millFeeds(content: ContentSet): ContentSet {
+    return parseContentSet({
+      ...content,
+      buildings: content.buildings.map((b) =>
+        b.id === 'work_mill_00'
+          ? {
+              ...b,
+              recipes: [
+                {
+                  inputs: [{ goodType: WOOD, amount: 1 }],
+                  outputs: [{ goodType: FOOD, amount: 1 }],
+                  ticks: 180,
+                },
+              ],
+            }
+          : b,
+      ),
+    });
+  }
+
+  it('gives the free site to a food chain step ahead of a higher line while the seat makes no food', () => {
+    const order = twoLines([MILL_STEP], [HOME_STEP], ['homes', 'bread']);
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    // A mill making nothing edible is an ordinary workshop: the higher line's home goes first.
+    expect(decide(sim, order)).toMatchObject({ buildingType: HOME_TYPE });
+    expect(decide(sim, order, 0, millFeeds(aiContent()))).toMatchObject({ buildingType: MILL_TYPE });
+  });
+
+  it('gives a core step the earned turn and its extra site once no food chain step is ready', () => {
+    const content = millFeeds(technologyContent());
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    for (const x of [HQ_X - 10, HQ_X + 10]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    }
+    sim.step();
+    const newSchool: BuildOrderEntry = { kind: 'place', building: 'school', count: 1 };
+    const school: BuildOrderEntry = { ...newSchool, core: true };
+    const order: BuildOrder = {
+      lines: [
+        { id: 'opening', steps: [school] },
+        { id: 'bread', steps: [MILL_STEP] },
+      ],
+      priority: ['opening', 'bread'],
+    };
+    // Without the core mark the school, a new kind, waits for a site of the pace.
+    const plain: BuildOrder = { ...order, lines: [{ id: 'opening', steps: [newSchool] }] };
+    expect(decide(sim, plain, 0, content)).toBeUndefined();
+    // The mill waits on its discovery, so the school takes the site over the pace.
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: SCHOOL_TYPE });
+    // Once the miller is discovered the mill is ready and goes first.
+    discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
+    expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
   });
 
   it('goes on with the other lines while one is held', () => {
