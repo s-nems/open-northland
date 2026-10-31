@@ -582,8 +582,17 @@ function runBuildOrder(
  *  lanes too, and takes the extra site only as an earned workshop (owner ruling: food before the
  *  population, weapons and joiner). A `core` step takes the earned turn and its extra site while no food
  *  turn waits: as a new kind the school never won a freed site from the earned workshops, and ahead of the
- *  food it beat the mill and bakery. */
+ *  food it beat the mill and bakery. A `firstRank` step keeps the turn of a first new kind, the earned one
+ *  once discovered, beside a rising site of its line and as another of a kind the seat owns (owner
+ *  ruling: the first brewery, its hive and well rank with the bakery; on magiczny_las the hive, unlocked
+ *  with the brewery, waited out the brewery's eight to ten minute site in the rising turn, and the brewery
+ *  brews nothing without honey). */
 const TURN = { defence: 0, due: 1, food: 2, earned: 3, newKind: 4, more: 5, rising: 6 } as const;
+
+/** Whether `entry` ranks with the bread chain's first buildings ({@link BuildOrderEntry} `firstRank`). */
+function firstRankStep(entry: BuildOrderEntry): boolean {
+  return entry.kind === 'place' && entry.firstRank === true;
+}
 
 /** Whether `entry` is a placement its line holds until the military deadline's lead: once the hold opens
  *  it takes the next free site; while it holds, its line acts on nothing, so the turn costs no site. */
@@ -676,9 +685,10 @@ function turnOrder(
     if (next !== undefined && deadlineStep(next)) return plain(TURN.due);
     const earned = type !== undefined && earnedWorkshop(gated, type);
     if (feeds) return { turn: TURN.food, extraSite: earned };
-    if (rising) return plain(TURN.rising);
+    const ranked = next !== undefined && firstRankStep(next);
+    if (rising && !ranked) return plain(TURN.rising);
     if (next === undefined || next.kind === 'collector' || type === undefined) return plain(TURN.newKind);
-    if (ownsKind(next, type))
+    if (!ranked && ownsKind(next, type))
       return plain(next.kind === 'place' && next.aheadOfCrews === true ? TURN.newKind : TURN.more);
     if (earned || (next.kind === 'place' && next.core === true && !foodWaits)) return plain(TURN.earned);
     return plain(TURN.newKind);

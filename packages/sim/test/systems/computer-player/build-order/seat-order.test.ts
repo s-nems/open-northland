@@ -321,6 +321,14 @@ describe('the seat strategy shapes the build order', () => {
     ]);
   });
 
+  it('ranks only the first brewery, its hive and its well with the bakery', () => {
+    const brewery = DEFAULT_BUILD_ORDER.lines.find((line) => line.id === 'brewery');
+    const ranked = (brewery?.steps ?? []).flatMap((e) =>
+      e.kind === 'place' && e.firstRank === true ? [`${e.building}:${e.count}`] : [],
+    );
+    expect(ranked).toEqual(['work_brewery:1', 'work_hive_00:1', 'work_well_00:2']);
+  });
+
   it('holds a step until the building it waits on stands, and passes a hold it can never meet', () => {
     // The bakery's own step waits for the military deadline, so only the held home could act at first.
     const bakeryLater: BuildOrderEntry = {

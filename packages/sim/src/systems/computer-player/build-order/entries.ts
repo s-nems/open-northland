@@ -66,6 +66,9 @@ export type BuildOrderEntry =
    *  beside this one: the spot is scored by the free ground around it against their footprints
    *  (`placement.ts`). `amongHomes` searches as a home does, on the far side of the base from the field
    *  farms. `core` gives the step an earned workshop's turn while no food turn waits (`./index.ts`).
+   *  `firstRank` keeps the turn of a first new kind, or the earned one, beside a rising site of its own
+   *  line and when the seat owns a building of its kind, so it goes up with the bread chain's first
+   *  buildings.
    *  `lockPasses` passes over the entry while its building's tier is locked instead of holding its line. */
   | {
       readonly kind: 'place';
@@ -84,6 +87,7 @@ export type BuildOrderEntry =
       readonly room?: readonly string[];
       readonly amongHomes?: true;
       readonly core?: true;
+      readonly firstRank?: true;
       readonly lockPasses?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
@@ -179,7 +183,7 @@ const IRON_AND_WOOD: readonly PlacementAffinity[] = [
  *  has one. `cap` only caps the seat's wells: one for the opening mill and bakeries and one for every
  *  other water-drinking building the order raises up to this step, counted as if the lines ran one after
  *  another, so it bounds the wells rather than matching the other lines' progress. */
-function wellBeside(building: string, cap: number): BuildOrderEntry {
+function wellBeside(building: string, cap: number): Extract<BuildOrderEntry, { kind: 'place' }> {
   return {
     kind: 'place',
     building: 'work_well_00',
@@ -585,21 +589,26 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       id: 'brewery',
       steps: [
         GRAIN_FARM,
-        // The brewery comes first and fixes where its honey and water come from: the hive beside it, and a
-        // second well beside it too when the first one stands farther off.
+        // Owner ruling: the first brewery, with its hive and well, ranks with the bakery and goes up the
+        // moment the baker's work unlocks it, since mead speeds the whole economy. It comes first and fixes
+        // where its honey and water come from: the hive beside it, unlocked with it and raised while its
+        // site still rises, since the brewery brews nothing without honey, and a second well beside it too
+        // when the first one stands farther off.
         {
           kind: 'place',
           building: 'work_brewery',
           count: 1,
           near: [{ kind: 'building', id: 'work_well_00' }],
+          firstRank: true,
         },
         {
           kind: 'place',
           building: 'work_hive_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_brewery' }],
+          firstRank: true,
         },
-        wellBeside('work_brewery', 2),
+        { ...wellBeside('work_brewery', 2), firstRank: true },
         // Beside the first, sharing its hive and well when they stand in reach; a second hive and well beside
         // it otherwise. The third, the last, beside the first two by the same rule.
         ...breweryWithHiveAndWell(2, 8, SECOND_BREWERY_FROM_SETTLERS),

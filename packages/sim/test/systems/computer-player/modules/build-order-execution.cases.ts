@@ -1314,6 +1314,24 @@ describe('build order - independent lines', () => {
     expect(decide(sim, order, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
   });
 
+  it('keeps a firstRank step in its line priority beside a rising site of its own line', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.step();
+    const secondMill: BuildOrderEntry = { ...MILL_STEP, count: 2, aheadOfCrews: true };
+    const orderWith = (next: BuildOrderEntry): BuildOrder => twoLines([MILL_STEP, next], [HOME_STEP]);
+    const mill = decide(sim, twoLines([MILL_STEP], []));
+    if (mill?.kind !== 'placeBuilding') throw new Error('setup: expected the mill site');
+    sim.enqueueSetup(mill);
+    sim.step();
+    // The first mill's site still rises: a plain second one waits behind the lower line's new home, a
+    // firstRank one keeps its line's priority.
+    expect(decide(sim, orderWith(secondMill))).toMatchObject({ buildingType: HOME_TYPE });
+    expect(decide(sim, orderWith({ ...secondMill, firstRank: true }))).toMatchObject({
+      buildingType: MILL_TYPE,
+    });
+  });
+
   it('opens the site over the pace for the barracks on its deadline while the defence comes first', () => {
     const sim = aiSim();
     placeHq(sim);
