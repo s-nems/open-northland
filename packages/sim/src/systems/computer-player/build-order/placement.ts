@@ -34,6 +34,7 @@ import { BUILD_SEARCH_MAX_RADIUS_NODES, overflowBuildReachNodes } from './entrie
 import { scriptedFrontLine } from './front.js';
 import { grassBound } from './grass-reserve.js';
 import { seatTuning } from './seat-order.js';
+import { baseWalkTest } from './spot-walk.js';
 
 /** One affinity other than `shore` ({@link shoreTarget}) resolved to a node, or null when it cannot be. A
  *  `building` affinity takes the seat's lowest-id building of that id or a tier above it, so the pick is
@@ -600,7 +601,8 @@ function footprintOnGrass(
  * reach. When nothing in reach takes an entry with no spot bound, the pulled search runs once more
  * over the wider {@link overflowBuildReachNodes}, on the base's own
  * land component only, since the wider reach can
- * span a strait the builders cannot walk.
+ * span a strait the builders cannot walk. Every search takes only a spot a fair walk from the base door
+ * ({@link baseWalkTest}), never one across a river that is near only as the crow flies.
  *
  * On a seat with forecast scripted attacks every search first keeps behind its tower line
  * ({@link scriptedFrontLine}, owner ruling: the town's buildings go behind the towers, never in front of
@@ -700,6 +702,7 @@ function boundedSpot(
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   if (tuning.homeLandOnly && home === NO_COMPONENT) return null;
   const land = bothBounds(tuning.homeLandOnly ? onHomeLand : null, front);
+  const walkable = baseWalkTest(world, ctx, terrain, player);
   const ground: GroundRule = entry.ground === 'plantable' ? 'on' : 'any';
   const near = (
     reach: BuildReach,
@@ -727,6 +730,7 @@ function boundedSpot(
       underFire,
       spareGrass,
       room,
+      walkable,
     );
   // A `plantable` entry stands on the grass where it fits, else beside it.
   const onOrBeside = (search: (rule: GroundRule) => HalfCellNode | null) =>
@@ -771,6 +775,7 @@ function spotAround(
   underFire: EnemyFire,
   spareGrass: boolean,
   room: ((x: number, y: number) => number) | null,
+  walkable: SpotBound,
 ): HalfCellNode | null {
   const accept = acceptor.around(underFire, centre, fan, spareGrass);
   const reach = settlement.around(centre, fan);
@@ -790,8 +795,12 @@ function spotAround(
       if (within !== null && !within(x, y)) return false;
       if (land !== null && !land(x, y)) return false;
       if (ground === 'on' && !footprintOnGrass(ctx, terrain, type, tribe, x, y)) return false;
-      // The beside scan walks a diamond, so it runs last, on spots that are legal otherwise.
-      return accept(x, y) && (ground !== 'beside' || acceptor.grassBeside(x, y));
+      // The beside scan walks a diamond and the walk test floods, so they run last, on spots legal otherwise.
+      return (
+        accept(x, y) &&
+        (ground !== 'beside' || acceptor.grassBeside(x, y)) &&
+        (walkable === null || walkable(x, y))
+      );
     },
     room ?? undefined,
   );

@@ -38,7 +38,7 @@ import { seatTerritoryOf } from '../../../../src/systems/computer-player/knowled
 import { canPlaceBuilding, stampResourceFootprintData } from '../../../../src/systems/index.js';
 import { SUCCESSFUL_IF } from '../../../../src/systems/missions/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
-import { grassNodeMap } from '../../../fixtures/terrain.js';
+import { grassNodeMap, waterColumnMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
   ctxOf,
@@ -932,6 +932,32 @@ describe('build-order placement - affinity and ground rules', () => {
     if (spot?.kind !== 'placeBuilding') throw new Error('expected an affinity placement');
     const toIron = Math.abs(spot.x - RESOURCE_SPOTS.iron.x) + Math.abs(spot.y - RESOURCE_SPOTS.iron.y);
     expect(toIron).toBeLessThan(Math.abs(spot.x - HQ_X) + Math.abs(spot.y - HQ_Y));
+  });
+
+  it('keeps a placement off the far bank of a river the builders only cross at a ford far downstream', () => {
+    // Nodes 64 x 128: the river's water stands at node columns 38-39 down to the bottom cell row.
+    const RIVER_CELL_COLUMN = 19;
+    const RIVER_WEST_NODE = 2 * RIVER_CELL_COLUMN;
+    const sim = new Simulation({
+      seed: 1,
+      content: aiContent(),
+      map: waterColumnMap(32, 64, RIVER_CELL_COLUMN, 1),
+    });
+    placeHq(sim);
+    const FAR_BANK_STONE = { ...RESOURCE_SPOTS.stone, x: RIVER_WEST_NODE + 8, y: HQ_Y };
+    placeResources(sim, [FAR_BANK_STONE]);
+    sim.step();
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: a map');
+    // One land: the ford joins the banks, so only the walk tells them apart.
+    expect(terrain.componentOf(terrain.nodeAt(FAR_BANK_STONE.x - 3, FAR_BANK_STONE.y))).toBe(
+      terrain.componentOf(terrain.nodeAt(HQ_X, HQ_Y + 3)),
+    );
+    const spot = firstCommandOf(sim, [
+      { kind: 'place', building: 'work_bakery_00', count: 1, near: [{ kind: 'resource', good: 'stone' }] },
+    ]);
+    if (spot?.kind !== 'placeBuilding') throw new Error('expected a placement on the near bank');
+    expect(spot.x).toBeLessThan(RIVER_WEST_NODE);
   });
 
   it('keeps every building whose band meets the search disc when the reach is cut down to it', () => {

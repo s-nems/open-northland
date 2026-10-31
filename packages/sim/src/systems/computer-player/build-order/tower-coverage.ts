@@ -32,6 +32,7 @@ import {
 import { grassBound } from './grass-reserve.js';
 import { buildReach } from './placement.js';
 import { DEFENCE_TOWER_RADIUS_PCT, seatDefenceFirst, seatTuning } from './seat-order.js';
+import { baseWalkTest } from './spot-walk.js';
 
 // The coverage circle is a planning heuristic only; what a tower does under an alarm is
 // `systems/defence/`.
@@ -289,8 +290,8 @@ const uncovered = (): true => true;
  * world-metric coverage of the target and the seat's Manhattan build reach. It needs the full ring budget because the world metric is
  * anisotropic (34 px E/W against 19 px N/S), so a covering node can sit almost twice the coverage radius
  * in rows from the target. A target no building's reach comes near enough to cover, a flag far out on the
- * map, is turned down before the walk. With `reserveGrass` it looks off the grass first, as
- * `placementSpot` does.
+ * map, is turned down before the walk. With `reserveGrass` it looks off the grass first, and it takes only
+ * a spot a fair walk from the base door, as `placementSpot` does.
  */
 export function coverageSpotSearch(
   world: World,
@@ -316,6 +317,7 @@ export function coverageSpotSearch(
   // Every node covering a target lies within this Manhattan span of it.
   const coverageSpan = box.maxX + box.maxY;
   const spareGrass = reserveGrass && !grassBound(type);
+  const walkable = baseWalkTest(world, ctx, terrain, player);
   return (target, within) => {
     if (!settlement.meets(target, coverageSpan)) return null;
     const radius = within ?? coverage.radius;
@@ -333,7 +335,7 @@ export function coverageSpotSearch(
         if (!withinNodeRadius(x, y, target.hx, target.hy, radius)) return false;
         if (apartFrom.some((c) => withinNodeRadius(c.hx, c.hy, x, y, coverage.radius))) return false;
         if (!reach.contains(x, y)) return false;
-        return accept(x, y);
+        return accept(x, y) && (walkable === null || walkable(x, y));
       });
     };
     return (spareGrass ? search(true) : null) ?? search(false);

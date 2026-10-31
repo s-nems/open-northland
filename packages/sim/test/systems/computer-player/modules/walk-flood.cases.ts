@@ -87,6 +87,19 @@ describe('computer-player walk flood', () => {
     expect(spent.costFloor(far)).toBeUndefined();
   });
 
+  it('answers a capped ask with the cost within the cap, none past it, and floods no further than the cap', () => {
+    const terrain = bank();
+    const far = terrain.nodeAt(WEST_FAR.hx, WEST_FAR.hy);
+    const farCost = flood(terrain, SEED).costTo(far);
+    if (farCost === undefined) throw new Error('bank walkable');
+    const capped = flood(terrain, SEED);
+    expect(capped.costWithin(far, fx.sub(farCost, fx.fromInt(1)))).toBeUndefined();
+    // Stopped under the cap, the flood still floors the node there and settles it on the next ask.
+    expect(capped.costFloor(far)).toBeGreaterThanOrEqual(fx.sub(farCost, fx.fromInt(1)));
+    expect(capped.costWithin(far, farCost)).toBe(farCost);
+    expect(capped.costWithin(terrain.nodeAt(EAST.hx, EAST.hy), farCost)).toBeUndefined();
+  });
+
   it('bounds no step above its cost, from an even and an odd row', () => {
     const terrain = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(8, 8) }).terrain;
     if (terrain === undefined) throw new Error('mapped sim');

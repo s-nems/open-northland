@@ -242,12 +242,25 @@ export class WalkFlood implements WalkDistances {
   }
 
   costTo(node: NodeId): Fixed | undefined {
+    return this.settleTo(node, null);
+  }
+
+  /** {@link costTo} for a caller that only needs to know whether the walk costs at most `cap`: the flood
+   *  stops once every walk still open costs more, and `node` then reads undefined. */
+  costWithin(node: NodeId, cap: Fixed): Fixed | undefined {
+    const cost = this.settleTo(node, cap);
+    return cost !== undefined && cost <= cap ? cost : undefined;
+  }
+
+  private settleTo(node: NodeId, cap: Fixed | null): Fixed | undefined {
     this.assertHeldCurrent();
     const known = this.costs.settledCost(node);
     if (known !== undefined) return known;
     const { costs, frontier, steps, terrain } = this;
     const blocked = passOverlay(this.blocked);
     while (frontier.size > 0 && costs.settledCount < this.budget) {
+      // The frontier's least cost floors every walk not yet settled, stale entries included.
+      if (cap !== null && (frontier.peekCost() ?? cap) > cap) return undefined;
       const next = frontier.pop();
       const cost = frontier.poppedCost;
       const page = costs.page(next);
