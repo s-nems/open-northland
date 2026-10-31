@@ -31,7 +31,7 @@ function sums(over: Partial<ZoneSums> = {}): ZoneSums {
 }
 
 /** Iron and gold plentiful but short of rich. */
-function nearDeposits(iron = 1_800, gold = 1_200): ReadonlyMap<string, number> {
+function nearDeposits(iron = 2_400, gold = 1_200): ReadonlyMap<string, number> {
   return new Map([
     ['stone', 1_000],
     ['mud', 1_000],
@@ -131,13 +131,13 @@ describe('economic strategy selector', () => {
     expect(scarce.sides).toContain('ironWeapons');
     expect(scarce.sides).not.toContain('ironArms');
     expect(scarce.evidence).toContain('ironScarce');
-    // Two seats share the land, so half its 2000 iron counts.
-    expect(armsWith(600, 2_000).sides).toContain('ironArms');
+    // Two seats share the land, so half its 4000 iron counts.
+    expect(armsWith(600, 4_000).sides).toContain('ironArms');
   });
 
   it('keeps to one mint where little gold lies within reach', () => {
     const gold = (units: number) =>
-      selectEconomy(seat({ near: sums({ free: 16_000, deposits: nearDeposits(1_800, units) }) })).sides;
+      selectEconomy(seat({ near: sums({ free: 16_000, deposits: nearDeposits(2_400, units) }) })).sides;
     expect(gold(600)).toContain('oneMint');
     expect(gold(1_200)).not.toContain('oneMint');
   });

@@ -37,9 +37,11 @@ export const RICH_NEAR_FREE_NODES = 12_000;
  *  specjalna_forteca's, the next, at most 1.7k iron and 1.4k gold. */
 export const RICH_METAL_UNITS = 2_200;
 /** Iron in {@link reachableDeposit} under which a seat forges weapons only and dresses its army in tunics
- *  (owner ruling on krwawa_rzeka: little iron, so plate is hard to come by). Krwawa_rzeka's seats reach
- *  0.57-1.0k, mroczny_las's 0.39-0.6k; specjalna_forteca's, the next, 1.46-1.73k. */
-export const IRON_PLENTY_UNITS = 1_200;
+ *  (owner ruling: krwawa_rzeka and specjalna_forteca hold too little iron for plate; the forteca's Ragnarok
+ *  variant, its deposits tripled, dresses in chain and plate). Krwawa_rzeka's seats reach 0.57-1.0k,
+ *  mroczny_las's 0.39-0.6k, specjalna_forteca's 1.33-1.73k; magiczny_las and diamentowa_dolina's
+ *  2.7-4.3k, the Ragnarok forteca's 4.0-5.2k. */
+export const IRON_PLENTY_UNITS = 2_200;
 /** Gold in {@link reachableDeposit} under which a seat keeps to one mint (owner ruling on krwawa_rzeka:
  *  less gold, fewer mints). Krwawa_rzeka's seats reach 350-530, mroczny_las's 430-600;
  *  specjalna_forteca's, the next, 890-1420. */
