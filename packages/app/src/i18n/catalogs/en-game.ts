@@ -16,6 +16,10 @@ export const enGame = {
       notices: {
         fortecaAttack: { title: 'The Fortress enforcers march to attack!' },
         fortecaLanding: { title: 'Darkland ships are landing on the shore!' },
+        fortecaReinforcements: {
+          title: 'Lord Usurper has called for reinforcements!',
+          detail: 'A huge landing fleet is on its way.',
+        },
         fortecaLightArmor: {
           title: 'The Fortress warriors grow stronger.',
           detail: 'They received better weapons and light armour.',

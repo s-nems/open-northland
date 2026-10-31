@@ -15,6 +15,7 @@ export const chsGame = {
       notices: {
         fortecaAttack: { title: '要塞的爪牙发起了进攻！' },
         fortecaLanding: { title: '暗地人的战船正在靠岸！' },
+        fortecaReinforcements: { title: '篡位领主召来了援军！', detail: '一支庞大的登陆舰队正在驶来。' },
         fortecaLightArmor: { title: '要塞的战士变得更强了。', detail: '他们获得了更好的武器和轻甲。' },
         fortecaHeavyArmor: { title: '要塞的战士变得更强了。', detail: '他们获得了重甲。' },
         fortecaAmulets: { title: '要塞的战士变得更强了。', detail: '他们获得了护身符。' },

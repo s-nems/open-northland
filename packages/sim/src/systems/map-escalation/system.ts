@@ -91,10 +91,16 @@ function launch(world: World, ctx: SystemContext, config: MapEscalation, index: 
   writeMapEscalation(world, (progress) => {
     progress.attack = { wave, launchedTick: ctx.tick, sent: men.length, men: men.sort((a, b) => a - b) };
   });
-  ctx.events.emit({ kind: 'mapEscalationAttackLaunched', wave, seats });
-  const noticeKey = config.landings?.noticeKey;
-  if (landed.length > 0 && noticeKey !== undefined)
-    ctx.events.emit({ kind: 'mapEscalationLanding', wave, seats: landed, noticeKey });
+  const attackNotice = config.attacks.launches[index]?.noticeKey ?? config.attacks.noticeKey;
+  ctx.events.emit({
+    kind: 'mapEscalationAttackLaunched',
+    wave,
+    seats,
+    ...(attackNotice === undefined ? {} : { noticeKey: attackNotice }),
+  });
+  const landingNotice = config.landings?.noticeKey;
+  if (landed.length > 0 && landingNotice !== undefined)
+    ctx.events.emit({ kind: 'mapEscalationLanding', wave, seats: landed, noticeKey: landingNotice });
 }
 
 /**

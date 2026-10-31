@@ -594,10 +594,12 @@ export type SimEvent =
     }
   // A map escalation's steps (`systems/map-escalation`); each later step adds a kind of its own here.
   | {
-      /** An attack set out: its men stand at the keep, one band for each of `seats`. */
+      /** An attack set out: its men stand at the keep, one band for each of `seats`. `noticeKey` names
+       *  the notice the app shows, absent for none. */
       readonly kind: 'mapEscalationAttackLaunched';
       readonly wave: number;
       readonly seats: readonly number[];
+      readonly noticeKey?: MapEscalationNoticeKey;
     }
   | {
       /** The running attack is over: the variant's dead share of its men fell, the men against a seat

@@ -16,6 +16,10 @@ export const ruGame = {
       notices: {
         fortecaAttack: { title: 'Приспешники Крепости идут в атаку!' },
         fortecaLanding: { title: 'Корабли Страны Тьмы причаливают к берегу!' },
+        fortecaReinforcements: {
+          title: 'Лорд Узурпатор призвал подкрепление!',
+          detail: 'Огромный десантный флот уже в пути.',
+        },
         fortecaLightArmor: {
           title: 'Воины Крепости становятся сильнее.',
           detail: 'Они получили лучшее оружие и лёгкие доспехи.',

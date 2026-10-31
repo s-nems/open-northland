@@ -42,13 +42,12 @@ export function mountSiegePresentation(deps: SiegePresentationDeps): SiegePresen
   const queue = new NoticeQueue<SiegeNoticeId>();
   const banner = createCentreNotice(deps.plane, NOTICE_SHOWN_MS);
   const siegeRows = createSiegeRows();
-  const attackNoticeKey = deps.variant?.escalation?.attacks.noticeKey;
   let night = false;
   let marked = false;
   let showing: NoticeShowing<SiegeNoticeId> | null = null;
   return {
     onEvents(events) {
-      for (const id of siegeNoticesOf(events, attackNoticeKey)) queue.push(id);
+      for (const id of siegeNoticesOf(events)) queue.push(id);
       if (events.some((event) => event.kind === 'mapEscalationAttackLaunched')) deps.playAttackMusic();
     },
     frame() {

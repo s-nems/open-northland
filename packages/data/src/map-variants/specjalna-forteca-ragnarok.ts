@@ -31,6 +31,8 @@ const RAIDS = [
       { spawnX: 490, spawnY: 219, x: 481, y: 263 },
       { spawnX: 490, spawnY: 168, x: 455, y: 168 },
       { spawnX: 490, spawnY: 374, x: 461, y: 375 },
+      { spawnX: 490, spawnY: 187, x: 475, y: 187 },
+      { spawnX: 490, spawnY: 330, x: 484, y: 330 },
     ],
   },
   {
@@ -42,6 +44,8 @@ const RAIDS = [
       { spawnX: 9, spawnY: 169, x: 65, y: 169 },
       { spawnX: 9, spawnY: 223, x: 27, y: 224 },
       { spawnX: 9, spawnY: 93, x: 65, y: 93 },
+      { spawnX: 9, spawnY: 186, x: 44, y: 186 },
+      { spawnX: 9, spawnY: 297, x: 28, y: 297 },
     ],
   },
   {
@@ -53,6 +57,8 @@ const RAIDS = [
       { spawnX: 351, spawnY: 9, x: 386, y: 84 },
       { spawnX: 490, spawnY: 152, x: 453, y: 152 },
       { spawnX: 367, spawnY: 9, x: 367, y: 32 },
+      { spawnX: 404, spawnY: 9, x: 404, y: 44 },
+      { spawnX: 490, spawnY: 112, x: 452, y: 112 },
     ],
   },
   {
@@ -64,6 +70,8 @@ const RAIDS = [
       { spawnX: 85, spawnY: 490, x: 108, y: 443 },
       { spawnX: 9, spawnY: 385, x: 61, y: 385 },
       { spawnX: 165, spawnY: 490, x: 198, y: 419 },
+      { spawnX: 9, spawnY: 421, x: 68, y: 421 },
+      { spawnX: 201, spawnY: 490, x: 201, y: 451 },
     ],
   },
   {
@@ -75,6 +83,8 @@ const RAIDS = [
       { spawnX: 213, spawnY: 9, x: 256, y: 103 },
       { spawnX: 179, spawnY: 9, x: 180, y: 48 },
       { spawnX: 288, spawnY: 9, x: 288, y: 30 },
+      { spawnX: 322, spawnY: 9, x: 322, y: 18 },
+      { spawnX: 147, spawnY: 9, x: 147, y: 34 },
     ],
   },
   {
@@ -86,6 +96,8 @@ const RAIDS = [
       { spawnX: 271, spawnY: 490, x: 294, y: 437 },
       { spawnX: 356, spawnY: 490, x: 368, y: 461 },
       { spawnX: 238, spawnY: 490, x: 243, y: 475 },
+      { spawnX: 298, spawnY: 490, x: 298, y: 467 },
+      { spawnX: 345, spawnY: 490, x: 345, y: 475 },
     ],
   },
 ];
@@ -121,6 +133,8 @@ const LIGHT_ARMOR = ['armor_wool', 'armor_leather'];
 const HEAVY_ARMOR = ['armor_chain', 'armor_plate'];
 const COMBAT_AMULETS = ['amulet_strength', 'amulet_defense', 'amulet_speed', 'amulet_crithit'];
 const SECOND_AMULET_CHANCE_PCT = 30;
+/** Owner ruling: only every other soldier gets the healing draught. */
+const HEAL_DRAUGHT_CHANCE_PCT = 50;
 /** How long a lost fortress catapult stays gone. */
 const CATAPULT_RESPAWN_MINUTES = 10;
 
@@ -356,13 +370,14 @@ export const SPECJALNA_FORTECA_RAGNAROK: MapVariantInput = {
     ],
     attacks: {
       launches: [
-        { atSeconds: 30 * MINUTE, landMen: 6, ships: 0 },
-        { atSeconds: 45 * MINUTE, landMen: 12, ships: 0 },
+        { atSeconds: 30 * MINUTE, landMen: 10, ships: 0 },
+        { atSeconds: 45 * MINUTE, landMen: 15, ships: 0 },
         { atSeconds: 65 * MINUTE, landMen: 25, ships: 0 },
-        { atSeconds: 90 * MINUTE, landMen: 25, ships: 1 },
-        { atSeconds: 110 * MINUTE, landMen: 35, ships: 2 },
-        { atSeconds: 130 * MINUTE, landMen: 90, ships: 0 },
-        { atSeconds: 150 * MINUTE, landMen: 60, ships: 3 },
+        { atSeconds: 90 * MINUTE, landMen: 35, ships: 1 },
+        { atSeconds: 110 * MINUTE, landMen: 45, ships: 2 },
+        { atSeconds: 130 * MINUTE, landMen: 120, ships: 0 },
+        // Lord Usurper's great fleet: a ship at every landing.
+        { atSeconds: 150 * MINUTE, landMen: 20, ships: 5, noticeKey: 'forteca.reinforcements' },
       ],
       repeat: { everySeconds: 20 * MINUTE, waves: [{ landMen: 60, ships: 3 }] },
       endDeadPct: 80,
@@ -396,7 +411,7 @@ export const SPECJALNA_FORTECA_RAGNAROK: MapVariantInput = {
         {
           atSeconds: 150 * MINUTE,
           noticeKey: 'forteca.gear.healDraughts',
-          grants: [{ goods: ['potion_heal_big'] }],
+          grants: [{ goods: ['potion_heal_big'], chancePct: HEAL_DRAUGHT_CHANCE_PCT }],
         },
       ],
     },

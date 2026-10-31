@@ -11,6 +11,7 @@ const mapPoint = z.number().int().nonnegative();
 export const MapEscalationNoticeKey = z.enum([
   'forteca.attack',
   'forteca.landing',
+  'forteca.reinforcements',
   'forteca.gear.lightArmor',
   'forteca.gear.heavyArmor',
   'forteca.gear.amulets',
@@ -26,7 +27,7 @@ export const MapEscalationJobShare = z.strictObject({
 export type MapEscalationJobShare = z.infer<typeof MapEscalationJobShare>;
 
 /** The most ships one attack sends against a seat, each from its own landing points. */
-export const MAP_ESCALATION_MAX_SHIPS = 3;
+export const MAP_ESCALATION_MAX_SHIPS = 5;
 
 /** What one attack sends against each targeted seat: men on foot from the keep, and ships, each
  *  sailing from the next of the seat's landing points. */
@@ -144,8 +145,12 @@ export const MapEscalation = z
     tribe: z.number().int().nonnegative(),
     jobMix: z.array(MapEscalationJobShare).min(1),
     attacks: z.strictObject({
-      /** The scheduled launches, ascending. */
-      launches: z.array(MapEscalationWaveSize.extend({ atSeconds: seconds })).min(1),
+      /** The scheduled launches, ascending; a launch's `noticeKey` replaces the attack notice for it. */
+      launches: z
+        .array(
+          MapEscalationWaveSize.extend({ atSeconds: seconds, noticeKey: MapEscalationNoticeKey.optional() }),
+        )
+        .min(1),
       /** After the last launch, one more every `everySeconds`, cycling through `waves`. */
       repeat: z.strictObject({
         everySeconds: z.number().int().positive(),

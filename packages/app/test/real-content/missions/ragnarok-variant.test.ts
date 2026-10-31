@@ -330,7 +330,7 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
   /** How far march ground the band covers at the least, in map points. */
   const MARCHED = 20;
   /** The most ships a wave sends against one seat, each from its own landing point. */
-  const MAX_SHIPS = 3;
+  const MAX_SHIPS = 5;
   /** The mean distance of the garrison from the keep: its Defend posts lie within 40 of it. */
   const GARRISON_REACH = 40;
 
@@ -566,9 +566,12 @@ describe.runIf(hasRealIr())('a Ragnarök attack on specjalna_forteca', () => {
       );
       expect(sim.world.get(e, components.Settler).jobType).toBe(worn?.jobType);
       expect(misc(e).some((good) => amulets.includes(good))).toBe(true);
-      expect(misc(e)).toContain(healDraught);
     }
     expect(garrison.some((e) => misc(e).filter((good) => amulets.includes(good)).length === 2)).toBe(true);
+    // The healing draught is a draw, so some soldiers carry one and some do not.
+    const drawn = garrison.filter((e) => misc(e).includes(healDraught)).length;
+    expect(drawn).toBeGreaterThan(0);
+    expect(drawn).toBeLessThan(garrison.length);
 
     const [lost] = catapults;
     if (lost === undefined) throw new Error('no catapult');

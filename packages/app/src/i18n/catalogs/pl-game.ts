@@ -16,6 +16,10 @@ export const plGame = {
       notices: {
         fortecaAttack: { title: 'Siepacze Twierdzy ruszają do ataku!' },
         fortecaLanding: { title: 'Okręty Krainy Ciemności przybijają do brzegu!' },
+        fortecaReinforcements: {
+          title: 'Lord Uzurpator wezwał wsparcie!',
+          detail: 'Płynie ogromna flota desantowa.',
+        },
         fortecaLightArmor: {
           title: 'Wojownicy Twierdzy rosną w siłę.',
           detail: 'Otrzymali lepszą broń i lekkie zbroje.',

@@ -8,23 +8,20 @@ export type SiegeNoticeId = keyof Messages['hud']['escalation']['notices'];
 const NOTICE_BY_KEY: Readonly<Record<MapEscalationNoticeKey, SiegeNoticeId>> = {
   'forteca.attack': 'fortecaAttack',
   'forteca.landing': 'fortecaLanding',
+  'forteca.reinforcements': 'fortecaReinforcements',
   'forteca.gear.lightArmor': 'fortecaLightArmor',
   'forteca.gear.heavyArmor': 'fortecaHeavyArmor',
   'forteca.gear.amulets': 'fortecaAmulets',
   'forteca.gear.healDraughts': 'fortecaHealDraughts',
 };
 
-/** The centre-screen notices a batch of sim events raises, in order. An attack launch shows
- *  `attackNoticeKey`, the variant's own, or nothing when it names none. */
-export function siegeNoticesOf(
-  events: readonly SimEvent[],
-  attackNoticeKey: MapEscalationNoticeKey | undefined,
-): SiegeNoticeId[] {
+/** The centre-screen notices a batch of sim events raises, in order. */
+export function siegeNoticesOf(events: readonly SimEvent[]): SiegeNoticeId[] {
   const out: SiegeNoticeId[] = [];
   for (const event of events) {
     switch (event.kind) {
       case 'mapEscalationAttackLaunched':
-        if (attackNoticeKey !== undefined) out.push(NOTICE_BY_KEY[attackNoticeKey]);
+        if (event.noticeKey !== undefined) out.push(NOTICE_BY_KEY[event.noticeKey]);
         break;
       case 'mapEscalationGearStep':
       case 'mapEscalationLanding':

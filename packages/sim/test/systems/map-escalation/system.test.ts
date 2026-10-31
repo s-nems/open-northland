@@ -84,6 +84,26 @@ describe('map escalation - an attack', () => {
     expect(sim.checkInvariants()).toEqual([]);
   });
 
+  it('names the attack notice on its launch, a launch’s own in place of the schedule’s', () => {
+    const [first, second] = ESCALATION.attacks.launches;
+    if (first === undefined || second === undefined) throw new Error('two launches');
+    const { sim } = keepWorld({
+      ...ESCALATION,
+      attacks: {
+        ...ESCALATION.attacks,
+        noticeKey: 'forteca.attack',
+        launches: [first, { ...second, noticeKey: 'forteca.reinforcements' }],
+      },
+    });
+    const notices: (string | undefined)[] = [];
+    while (sim.tick < (second.atSeconds + 1) * TICKS_PER_SECOND) {
+      sim.step();
+      for (const ev of sim.events.current())
+        if (ev.kind === 'mapEscalationAttackLaunched') notices.push(ev.noticeKey);
+    }
+    expect(notices).toEqual(['forteca.attack', 'forteca.reinforcements']);
+  });
+
   it('ends once its dead share reaches the configured part, the survivors fighting on, or when its time runs out', () => {
     const killed = keepWorld().sim;
     runToSecond(killed, FIRST_LAUNCH_SECONDS + 1);

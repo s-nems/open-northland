@@ -3,20 +3,20 @@ import { describe, expect, it } from 'vitest';
 import { NOTICE_SHOWN_MS, NoticeQueue, siegeNoticesOf } from '../../../src/view/escalation/notices.js';
 
 describe('siegeNoticesOf', () => {
-  it('announces each attack launch under the variant’s key, every landing and gear step', () => {
+  it('announces each attack launch under the key it carries, every landing and gear step', () => {
     const events: SimEvent[] = [
-      { kind: 'mapEscalationAttackLaunched', wave: 1, seats: [0] },
-      { kind: 'mapEscalationAttackLaunched', wave: 2, seats: [0] },
+      { kind: 'mapEscalationAttackLaunched', wave: 1, seats: [0], noticeKey: 'forteca.attack' },
+      { kind: 'mapEscalationAttackLaunched', wave: 2, seats: [0], noticeKey: 'forteca.reinforcements' },
+      { kind: 'mapEscalationAttackLaunched', wave: 3, seats: [0] },
       { kind: 'mapEscalationLanding', wave: 3, seats: [0], noticeKey: 'forteca.landing' },
       { kind: 'mapEscalationGearStep', step: 1, noticeKey: 'forteca.gear.lightArmor' },
     ];
-    expect(siegeNoticesOf(events, 'forteca.attack')).toEqual([
+    expect(siegeNoticesOf(events)).toEqual([
       'fortecaAttack',
-      'fortecaAttack',
+      'fortecaReinforcements',
       'fortecaLanding',
       'fortecaLightArmor',
     ]);
-    expect(siegeNoticesOf(events.slice(0, 1), undefined)).toEqual([]);
   });
 });
 

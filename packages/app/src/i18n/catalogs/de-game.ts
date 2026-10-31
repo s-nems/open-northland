@@ -16,6 +16,10 @@ export const deGame = {
       notices: {
         fortecaAttack: { title: 'Die Schlächter der Festung ziehen zum Angriff!' },
         fortecaLanding: { title: 'Schiffe der Dunkelländer legen am Ufer an!' },
+        fortecaReinforcements: {
+          title: 'Lord Usurpator hat Verstärkung gerufen!',
+          detail: 'Eine riesige Landungsflotte ist unterwegs.',
+        },
         fortecaLightArmor: {
           title: 'Die Krieger der Festung werden stärker.',
           detail: 'Sie haben bessere Waffen und leichte Rüstungen erhalten.',
