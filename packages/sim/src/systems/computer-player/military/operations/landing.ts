@@ -101,7 +101,7 @@ function busy(world: World, e: Entity): boolean {
 
 /** The seat's ships a landing may take, ascending id: on the map, moored at a shore of `home`, crewless,
  *  not under way and riding no carrier. */
-function freeShips(env: OperationEnv, home: number): Entity[] {
+export function freeShips(env: OperationEnv, home: number): Entity[] {
   const { world, ctx, terrain, seat } = env;
   const vehicles = contentIndex(ctx.content).vehicles;
   const ships: Entity[] = [];

@@ -21,6 +21,7 @@ import { holdHandler } from './hold.js';
 import { landingHandler } from './landing.js';
 import { isOpen, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { raidHandler } from './raid.js';
+import { seaScoutHandler } from './sea-scout.js';
 
 export { enter, isOpen, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 
@@ -32,6 +33,7 @@ const HANDLERS: Handlers = {
   hold: holdHandler,
   raid: raidHandler,
   landing: landingHandler,
+  seaScout: seaScoutHandler,
 };
 
 const FIRST_ID = 1;
@@ -117,6 +119,8 @@ function stepOf(env: OperationEnv, op: Operation, pool: Entity[]): readonly Play
       return HANDLERS.raid.step(env, op, pool);
     case 'landing':
       return HANDLERS.landing.step(env, op, pool);
+    case 'seaScout':
+      return HANDLERS.seaScout.step(env, op, pool);
   }
 }
 

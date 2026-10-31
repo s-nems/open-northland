@@ -4,10 +4,10 @@ import { aiControlEntity } from './control.js';
 
 /** What an operation is for. `assault` is the seat's marching wave (its mechanics live on the barracks'
  *  `WaveMarch`); `hold` is a band that takes and keeps an area the map rewards holding; `raid` is a small
- *  band sent at the enemy's gatherers; `landing` is a wave carried over the sea by the seat's ships. A new
- *  kind is one more entry and one more handler (`systems/computer-player/military/operations`); kinds open
+ *  band sent at the enemy's gatherers; `landing` is a wave carried over the sea by the seat's ships;
+ *  `seaScout` is one ship with one soldier aboard sailing round the rival's island for sight. A new kind is one more entry and one more handler (`systems/computer-player/military/operations`); kinds open
  *  in this order. */
-export const OPERATION_KINDS = ['assault', 'hold', 'raid', 'landing'] as const;
+export const OPERATION_KINDS = ['assault', 'hold', 'raid', 'landing', 'seaScout'] as const;
 export type OperationKind = (typeof OPERATION_KINDS)[number];
 
 /** An operation's lifecycle. `done` and `failed` are terminal: the operation lets its men go and is
@@ -113,7 +113,25 @@ export interface LandingOperation extends OperationBase {
   firstMooredAt: number | null;
 }
 
-export type Operation = AssaultOperation | HoldOperation | LandingOperation | RaidOperation;
+/** One ship sailing round the rival's island so the seat sees it: `target` is the rival headquarters the
+ *  seat sails for, the one member the soldier aboard. */
+export interface SeaScoutOperation extends OperationBase {
+  kind: 'seaScout';
+  ship: Entity;
+  /** The shore point it lay moored at when the scouting took it, where it docks again on its return. */
+  home: HalfCellNode;
+  /** The shore points round the rival's island the ship sails off, in sailing order. */
+  waypoints: HalfCellNode[];
+  /** The index of the waypoint it sails for; past the last it sails home. */
+  leg: number;
+}
+
+export type Operation =
+  | AssaultOperation
+  | HoldOperation
+  | LandingOperation
+  | RaidOperation
+  | SeaScoutOperation;
 
 export interface ComputerOperationsState {
   /** The next operation's id, per seat. */
