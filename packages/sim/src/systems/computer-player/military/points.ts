@@ -219,6 +219,8 @@ function hasHitpoints(world: World, e: Entity): boolean {
   return (world.tryGet(e, Health)?.hitpoints ?? 0) > 0;
 }
 
+const EVERY_FIGHTER = (): boolean => true;
+
 /** A body of fighters: its head count and its points. */
 export interface ArmyPoints {
   readonly men: number;
@@ -227,7 +229,8 @@ export interface ArmyPoints {
 
 /**
  * `player`'s live fighters and their points, tower garrisons and men aboard a vehicle included, each man holding a post weighed
- * `postedWeight` times (`isPosted`). The live read, blind to the fog. Costs `player`'s fighters.
+ * `postedWeight` times (`isPosted`), only those `counts` admits. The live read, blind to the fog. Costs
+ * `player`'s fighters.
  */
 export function armyPointsOf(
   world: World,
@@ -235,11 +238,12 @@ export function armyPointsOf(
   player: number,
   postedWeight: number,
   isPosted: (e: Entity) => boolean,
+  counts: (e: Entity) => boolean = EVERY_FIGHTER,
 ): ArmyPoints {
   let men = 0;
   let points = 0;
   for (const e of ownedFightersOf(world, ctx.content, player)) {
-    if (!hasHitpoints(world, e)) continue;
+    if (!hasHitpoints(world, e) || !counts(e)) continue;
     men++;
     const value = unitPoints(world, ctx, e);
     points += postedWeight !== 1 && isPosted(e) ? value * postedWeight : value;

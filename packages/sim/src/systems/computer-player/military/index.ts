@@ -9,6 +9,7 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBarracksOf } from '../base.js';
 import type { ComputerModule } from '../index.js';
 import { militaryOrdersOf } from '../strategy/military.js';
+import { armyWearsArmour, isFitSoldier } from './fit.js';
 import { marchingWave } from './march/index.js';
 import { runOffensive } from './offensive.js';
 import { type OperationEnv, runOperations } from './operations/index.js';
@@ -78,7 +79,8 @@ export {
  * and dresses the army through the counters and grants the seat publishes, where the original's computer
  * player drafts and outfits its soldiers itself, matching its weapons and armour to its enemies' gear and
  * dressing armed men later. The seat still sends its armed men at home for the armour made after their
- * weapon ({@link armourFetchOrders}), which the assistant's arming never revisits, and marks its barracks'
+ * weapon ({@link armourFetchOrders}), which the assistant's arming never revisits, keeps every man not yet
+ * fit to fight ({@link isFitSoldier}) out of its raids and waves, and marks its barracks'
  * gear as store priority ({@link barracksPriorityOrders}) so the barracks porters fetch it. */
 function runMilitary(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
@@ -96,14 +98,21 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
     wave?.catapults ?? NONE_MARCHING,
     raid,
   );
-  const free = available.filter((e) => !siege.drafted.has(e));
+  // Only fit soldiers go out; the rest wait at the door to be armed and dressed (`fit.ts`).
+  const wearsArmour = armyWearsArmour(world, ctx, player);
+  const fit: Entity[] = [];
+  const unfit: Entity[] = [];
+  for (const e of available) {
+    if (siege.drafted.has(e)) continue;
+    (isFitSoldier(world, ctx, e, wearsArmour) ? fit : unfit).push(e);
+  }
   const env = operationEnvOf(world, ctx, terrain, player);
   // A raid takes its band before the muster sorts the rest, so no man is the muster's and a raid's.
-  const raids = env === null ? null : runOperations(env, 'beforeCampaign', free);
-  const field = raids === null ? free : free.filter((e) => !raids.members.has(e));
+  const raids = env === null ? null : runOperations(env, 'beforeCampaign', fit);
+  const field = raids === null ? fit : fit.filter((e) => !raids.members.has(e));
   const campaign = runOffensive(world, ctx, terrain, player, {
     army: field,
-    awaitingWeapon: army.awaitingWeapon,
+    awaitingWeapon: [...army.awaitingWeapon, ...unfit],
     wave: wave === null ? [] : army.ready.filter((e) => wave.men.has(e)),
   });
   const assault = env === null ? null : runOperations(env, 'afterCampaign', []);
@@ -120,7 +129,7 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
       world,
       ctx,
       player,
-      field.filter((e) => !sent.has(e)),
+      [...field, ...unfit].filter((e) => !sent.has(e)),
     ),
   ];
 }

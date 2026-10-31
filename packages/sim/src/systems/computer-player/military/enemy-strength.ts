@@ -12,12 +12,17 @@ import {
   believedFighterPoints,
   believedFighterStrength,
 } from '../knowledge/intel/index.js';
+import { armyWearsArmour, isFitSoldier } from './fit.js';
 import { waveBandAt } from './plan.js';
 import { type ArmyPoints, armyPointsOf, isLiveFighter, unitPoints } from './points.js';
 
-/** `player`'s own fighters and points, tower garrisons counted once: the army the seat commands. */
+/** `player`'s own fighters and points, tower garrisons counted once: the army the seat commands, its fit
+ *  soldiers alone ({@link isFitSoldier}). */
 export function ownArmyPoints(world: World, ctx: SystemContext, player: number): ArmyPoints {
-  return armyPointsOf(world, ctx, player, COUNTED_ONCE, NEVER_POSTED);
+  const wearsArmour = armyWearsArmour(world, ctx, player);
+  return armyPointsOf(world, ctx, player, COUNTED_ONCE, NEVER_POSTED, (e) =>
+    isFitSoldier(world, ctx, e, wearsArmour),
+  );
 }
 
 /**

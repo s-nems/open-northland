@@ -19,8 +19,8 @@ import { abandonWave, decideWave } from './plan.js';
 import { crewedCatapults } from './siege-crew.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
- *  already out of `army`, `awaitingWeapon` is only ever called home, and `wave` holds the free men of the
- *  wave already marching. */
+ *  already out of `army`, `awaitingWeapon` (the men still to be armed or dressed) is only ever called
+ *  home, and `wave` holds the free men of the wave already marching. */
 export interface CampaignForce {
   readonly army: readonly Entity[];
   readonly awaitingWeapon: readonly Entity[];

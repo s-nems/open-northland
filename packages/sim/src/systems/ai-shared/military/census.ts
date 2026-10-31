@@ -3,7 +3,6 @@ import {
   AssistantRecruit,
   AttackOrder,
   Engagement,
-  Health,
   hasMissionBehaviour,
   MISSION_BEHAVIOUR,
   Position,
@@ -62,19 +61,6 @@ export function takeCensus(world: World, ctx: SystemContext, player: number): Ar
     (bare && world.has(e, AssistantRecruit) ? awaitingWeapon : ready).push(e);
   }
   return { ready, awaitingWeapon };
-}
-
-/**
- * How many live fighters `player` owns, tower garrisons included: a man holding a tower still defends the
- * settlement a wave would have to take. A fighter at zero hitpoints is a body awaiting removal, not a man.
- */
-export function fighterStrength(world: World, ctx: SystemContext, player: number): number {
-  let strength = 0;
-  for (const e of ownedSettlers(world, player)) {
-    if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) continue;
-    if ((world.tryGet(e, Health)?.hitpoints ?? 0) > 0) strength++;
-  }
-  return strength;
 }
 
 /** What one fighter holding a tower post is worth to the army that must march into his reach (authored):

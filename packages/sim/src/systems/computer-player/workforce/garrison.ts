@@ -19,7 +19,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { fighterStrength, fighterWeaponClass } from '../../ai-shared/military/census.js';
+import { fighterWeaponClass } from '../../ai-shared/military/census.js';
 import { garrisonSlots } from '../../ai-shared/military/defence/posts.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
@@ -28,6 +28,7 @@ import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { isMarried, mayMarry } from '../../family/eligibility.js';
 import { CIVILIST_JOB } from '../../lifecycle/ageclass.js';
+import { ownedFightersOf } from '../../movement/collision/owned-fighters.js';
 import { baseSoldierJobType, isFighterJob, isSoldierJob } from '../../readviews/index.js';
 import { INTENT_WEAPON_CLASS } from '../../settlers/atomics/effects/goods/weapon-class.js';
 import { armableIntents, armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
@@ -39,8 +40,10 @@ import { seatBarracksOf } from '../base.js';
 import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
 import { BARRACKS_STANDS_BEFORE_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
+import { isFitSoldier } from '../military/fit.js';
 import { WAVE_MIN_SOLDIERS } from '../military/muster.js';
 import { type ReachableStockUnits, seatArmsStock } from '../military/outfit.js';
+import { isLiveFighter } from '../military/points.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { COLLECTED_GOOD_IDS, fedAhead } from './collectors/index.js';
 import { productsOf } from './craft.js';
@@ -404,13 +407,19 @@ function enemyInOwnMen(world: World, ctx: SystemContext, player: number): number
   return Math.ceil((enemy.points * own.men) / own.points);
 }
 
-/** The seat's army as the floor counts it: its live fighters ({@link fighterStrength}) plus the booked
- *  recruits still in drill, who are no fighters yet. */
+/** The seat's army as the floor counts it: its live armed fighters plus the booked recruits still in drill,
+ *  who are no fighters yet. A bare soldier is no army (owner ruling, {@link isFitSoldier}); the draft arms
+ *  him first and claims a man past him only for a weapon past his ({@link armsToSpare}). Armour is not
+ *  asked here: drafting men past the armour made would only add more waiting for it. */
 function armyOnHand(world: World, ctx: SystemContext, player: number): number {
   const drilling = unpaidBookings(world, ctx, player).filter(
     (e) => !isFighterJob(ctx.content, world.get(e, Settler).jobType),
   );
-  return fighterStrength(world, ctx, player) + drilling.length;
+  let armed = 0;
+  for (const e of ownedFightersOf(world, ctx.content, player)) {
+    if (isLiveFighter(world, e) && isFitSoldier(world, ctx, e, false)) armed++;
+  }
+  return armed + drilling.length;
 }
 
 /** One weapon good to veto or to release on the seat. */
