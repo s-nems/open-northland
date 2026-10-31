@@ -31,7 +31,7 @@ import { crewInside } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf } from '../../difficulty.js';
 import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
-import { LANDING_FLEET_MIN_SHIPS, landingFleetShips } from '../../workforce/craft.js';
+import { LANDING_BIG_SHIPS, landingFewestShips, landingFleetShips } from '../../workforce/craft.js';
 import { campaignObjective } from '../campaign.js';
 import { believedDefendingPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
@@ -57,10 +57,7 @@ const SECONDS_PER_MINUTE = 60;
 /** Owner ruling: ships are spent only on a big landing, never on a small band. Every ship a landing takes
  *  is loaded to at least this share of its seats, in percent, the commanders' included. */
 export const LANDING_LOAD_PCT = 90;
-/** Owner ruling: a big landing sails with at least 4 loaded ships, about 80 men, or with the seat's whole
- *  landing fleet ({@link landingFleetShips}) when that is smaller, and never fewer than
- *  {@link LANDING_FLEET_MIN_SHIPS}. */
-export const LANDING_BIG_SHIPS = 4;
+export { LANDING_BIG_SHIPS } from '../../workforce/craft.js';
 /** How long after a landing ends before the next one forms. */
 export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most a landing waits for its men to walk to their ships and board. */
@@ -507,7 +504,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   const route = seaRouteOf(world, ctx, seat);
   if (route === null) return null;
   const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
-  const fewest = Math.max(LANDING_FLEET_MIN_SHIPS, Math.min(LANDING_BIG_SHIPS, fleet));
+  const fewest = landingFewestShips(fleet);
   const moored = freeShips(env, route.home).slice(0, fleet);
   if (moored.length < fewest) return null;
   const owner = route.headquarters.owner;

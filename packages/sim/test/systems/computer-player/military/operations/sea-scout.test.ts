@@ -10,6 +10,8 @@ import {
 } from '../../../../../src/components/index.js';
 import type { Entity } from '../../../../../src/ecs/world.js';
 import { halfCellMapFromCells, Simulation, type TerrainMap } from '../../../../../src/index.js';
+import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../src/systems/ai-shared/cadence.js';
+import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
 import { type OperationView, seatOperationsOf } from '../../../../../src/systems/computer-player/index.js';
 import { believedBuildings } from '../../../../../src/systems/computer-player/knowledge/intel/index.js';
 import {
@@ -18,6 +20,10 @@ import {
   SEA_SCOUT_TRIP_TIMEOUT_TICKS,
   scoutLoop,
 } from '../../../../../src/systems/computer-player/military/operations/sea-scout.js';
+import {
+  landingFewestShips,
+  landingFleetShips,
+} from '../../../../../src/systems/computer-player/workforce/craft.js';
 import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
 import { createVehicle } from '../../../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../../../fixtures/ai-content.js';
@@ -42,6 +48,11 @@ const BARRACKS = { x: 22, y: 50 };
 /** Near enough the east shore that a ship off it sees the headquarters, out of sight from home. */
 const FOE_HQ = { x: 100, y: 40 };
 const SHIP_AT = { x: 46, y: 60 };
+/** Where the ships beyond the first lie moored, a ship every {@link SHIP_SPACING} rows down the strait. */
+const MORE_SHIPS_AT = { x: 46, y: 0 };
+const SHIP_SPACING = 10;
+/** Decisions enough for a scout to open with a free ship. */
+const DECISIONS_TO_OPEN = 4;
 const ARMY = 6;
 const ARMY_RANK = 6;
 
@@ -155,6 +166,28 @@ describe('sea scouting', () => {
     expect(state.moored).toBe(true);
     expect(state.mooring).toEqual(home);
     expect(sim.world.get(ship, Owner).player).toBe(SEAT);
+  });
+
+  it('keeps home the ship that completes the landing fleet, and sails once one more lies free', () => {
+    const { sim } = scoutWorld();
+    const fewest = landingFewestShips(landingFleetShips(sim.world, SEAT, computerProfileOf(sim.world, SEAT)));
+    const moor = (i: number) =>
+      createVehicle(sim.world, ctxOf(sim), {
+        vehicleType: SHIP,
+        x: MORE_SHIPS_AT.x,
+        y: MORE_SHIPS_AT.y + SHIP_SPACING * i,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    for (let i = 1; i < fewest; i++) moor(i);
+    const decide = () => {
+      for (let t = 0; t < DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS; t++) sim.step();
+    };
+    decide();
+    expect(scouts(sim)).toEqual([]);
+    moor(fewest);
+    decide();
+    expect(scouts(sim)).toHaveLength(1);
   });
 
   it('numbers the octants clockwise from north', () => {

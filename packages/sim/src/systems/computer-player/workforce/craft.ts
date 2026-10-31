@@ -88,8 +88,8 @@ export type CraftSeat =
  * ({@link seatFleet}): the seat works `otherwise` from `cap` on, or where the content has no
  * such good or the seat has yet to earn it, and takes the vehicle back once the fleet has fallen to
  * `resume`. In between it keeps its current selection, so no state beyond the live selection is kept.
- * A {@link LANDING_FLEET} cap is the seat's landing fleet ({@link landingFleetShips}) and its sea scout's
- * ship ({@link SEA_SCOUT_SHIPS}) when its rival lies over the sea, taken back as soon as
+ * A {@link LANDING_FLEET} cap is the seat's landing fleet ({@link landingFleetShips}), raised for a seat
+ * whose rival lies over the sea to room for its sea scout ({@link SEA_SCOUT_SHIPS}), taken back as soon as
  * the fleet falls under it. While it builds the vehicle it works the goods `beside` it in rotation.
  */
 export type FleetSeat = {
@@ -110,8 +110,18 @@ export const SOLDIERS_PER_SHIP = 20;
 export const LANDING_FLEET_MIN_SHIPS = 2;
 export const LANDING_FLEET_MAX_SHIPS = 10;
 
-/** Owner ruling: an island seat scouts its rival by sea, so its joinery builds this many ships beyond its
- *  landing fleet, and a scouting trip never leaves the landing short of its ships. */
+/** Owner ruling: a big landing sails with at least 4 loaded ships, about 80 men, or with the seat's whole
+ *  landing fleet ({@link landingFleetShips}) when that is smaller, and never fewer than
+ *  {@link LANDING_FLEET_MIN_SHIPS}. */
+export const LANDING_BIG_SHIPS = 4;
+
+/** The fewest free ships a landing sails with for a landing fleet of `fleet` ships. */
+export function landingFewestShips(fleet: number): number {
+  return Math.max(LANDING_FLEET_MIN_SHIPS, Math.min(LANDING_BIG_SHIPS, fleet));
+}
+
+/** Owner ruling: an island seat scouts its rival by sea. Its joinery builds enough ships that this many
+ *  can scout while the landing's fewest ({@link landingFewestShips}) lie free. */
 export const SEA_SCOUT_SHIPS = 1;
 
 /** The ships a seat's landing takes: its planned army, the army at which its barracks sends the whole band
@@ -604,8 +614,12 @@ export function tuneCraftCounters(
   }
   let landing: number | undefined;
   const landingShips = (): number => {
-    landing ??=
-      landingFleetShips(world, player, profile) + (rivalOverSea(world, ctx, player) ? SEA_SCOUT_SHIPS : 0);
+    if (landing === undefined) {
+      const fleet = landingFleetShips(world, player, profile);
+      landing = rivalOverSea(world, ctx, player)
+        ? Math.max(fleet, landingFewestShips(fleet) + SEA_SCOUT_SHIPS)
+        : fleet;
+    }
     return landing;
   };
   const tribe = playerPlacementTribes(world, player)?.[0];
@@ -1010,7 +1024,7 @@ interface SeatChoice {
   readonly ctx: SystemContext;
   readonly supply: SeatSupply;
   readonly fleetOf: (good: number, freeOnly: boolean) => number;
-  /** The ships the seat's joinery builds: its {@link landingFleetShips} and {@link SEA_SCOUT_SHIPS}. */
+  /** The ships the seat's joinery builds: its {@link landingFleetShips}, with room for {@link SEA_SCOUT_SHIPS}. */
   readonly landingShips: () => number;
   /** Whether the seat owns a building of the type with this stable content id, standing or a site, or
    *  with `siteOnly` a site still under construction. */

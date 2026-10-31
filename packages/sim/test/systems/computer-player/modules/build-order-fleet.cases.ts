@@ -37,7 +37,6 @@ import {
   LANDING_FLEET_MAX_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
   landingFleetShips,
-  SEA_SCOUT_SHIPS,
   SOLDIERS_PER_SHIP,
   tuneCraftCounters,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
@@ -725,7 +724,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
     );
   });
 
-  it('keeps the ship crew on its yard under the landing fleet and the sea scout, turns it to tools at the fleet, and back once one is lost', () => {
+  it('keeps the ship crew on its yard under the landing fleet, turns it to tools at the fleet, and back once one is lost', () => {
     const { sim, joineries } = crewedJoineries(seaMap(), [AWAY]);
     const [joinery] = joineries;
     if (joinery === undefined) throw new Error('setup: one joinery');
@@ -736,7 +735,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
         (e) => sim.world.get(e, Building).buildingType === SHIP_HOUSE_TYPE,
       ),
     ).toBe(true);
-    const target = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard) + SEA_SCOUT_SHIPS;
+    const target = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard);
     const fleet = Array.from({ length: target - 1 }, (_, i) => fleetShip(sim, i));
     expect(tuned(sim)).toEqual(new Map());
     fleet.push(fleetShip(sim, fleet.length));
@@ -780,7 +779,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
     };
     // No ship stands yet: the whole landing fleet's hides are held back, so the catapult crew past its
     // cap rests instead of making iron tools out of them, and takes them up once a hide is spare.
-    const missing = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard) + SEA_SCOUT_SHIPS;
+    const missing = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard);
     expect(catapultCrewOn(missing)).toEqual(['rest', 'rest', 'rest']);
     expect(catapultCrewOn(missing + 1)).toEqual(all(TOOL_IRON));
   });

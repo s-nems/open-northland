@@ -17,7 +17,9 @@ import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
+import { computerProfileOf } from '../../difficulty.js';
 import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
+import { landingFewestShips, landingFleetShips } from '../../workforce/craft.js';
 import { unitPoints } from '../points.js';
 import { freeShips, LANDING_FORM_TIMEOUT_TICKS, LANDING_SHORE_SPACING_NODES } from './landing.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
@@ -297,7 +299,8 @@ function weakest(env: OperationEnv, men: readonly Entity[]): Entity | null {
 /**
  * A scouting trip when the seat's peace is over, its rival lies over the sea ({@link seaRouteOf}) as an
  * enemy whose headquarters it does not see now, no landing is under way and it has a free moored ship
- * ({@link freeShips}): the highest-id one, so the landing keeps the ships it fills first. The weakest free
+ * ({@link freeShips}) the landing can spare, never the one that completes its fewest
+ * ({@link landingFewestShips}): the highest-id one, so the landing keeps the ships it fills first. The weakest free
  * soldier on the home land boards it and it sails the loop round the rival's island ({@link scoutLoop}).
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<SeaScoutOperation> | null {
@@ -307,7 +310,11 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<Se
   if (route === null || route.headquarters.seen) return null;
   const owner = route.headquarters.owner;
   if (diplomacyStance(world, seat, owner) !== 'enemy') return null;
-  const ship = freeShips(env, route.home).at(-1);
+  const ships = freeShips(env, route.home);
+  // The ship that completes the landing's fewest stays home for it.
+  if (ships.length === landingFewestShips(landingFleetShips(world, seat, computerProfileOf(world, seat))))
+    return null;
+  const ship = ships.at(-1);
   const mooring = ship === undefined ? null : world.get(ship, Vehicle).mooring;
   if (ship === undefined || mooring === null) return null;
   const men = free.filter((e) => {
