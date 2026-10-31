@@ -16,6 +16,7 @@ import {
   defenceCircleOf,
   defenceGain,
   seatDefenceCircles,
+  TOWER_APART_PCT,
   TOWER_UPGRADE_FIRST_FROM_TICKS,
   towerPlan,
   towerSpot,
@@ -249,6 +250,7 @@ describe('build-order tower and store coverage', () => {
     const wants = { village: 2 * value, front: 2 * value };
     const shortOf = () =>
       towerPlan(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), { ...tower, wants })?.short ?? [];
+    const placed: { hx: number; hy: number }[] = [];
     for (const has of [0, value]) {
       const short = shortOf();
       expect(short.map((t) => [t.node, t.has])).toEqual([[{ hx: FAR.x, hy: FAR.y }, has]]);
@@ -259,6 +261,12 @@ describe('build-order tower and store coverage', () => {
       if (terrain === undefined || type === undefined) throw new Error('setup: no terrain or tower type');
       const spot = towerSpot(sim.world, ctx, terrain, SEAT, plan, type, VIKING, NO_FIRE, false);
       if (spot === null) throw new Error('expected a tower spot');
+      // Never beside a tower already standing: at least half a radius off.
+      for (const t of placed)
+        expect(hexDistanceBetween(t.hx, t.hy, spot.hx, spot.hy)).toBeGreaterThanOrEqual(
+          Math.floor((towerCircle(t.hx, t.hy).radius * TOWER_APART_PCT) / 100),
+        );
+      placed.push(spot);
       expect(defenceGain(plan, spot.hx, spot.hy, towerCircle(spot.hx, spot.hy).radius, value)).toBe(value);
       sim.enqueueSetup({
         kind: 'placeBuilding',

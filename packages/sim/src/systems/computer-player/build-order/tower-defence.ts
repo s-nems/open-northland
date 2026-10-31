@@ -242,6 +242,11 @@ export function defenceGain(plan: TowerPlan, hx: number, hy: number, radius: num
  *  (authored): halfway out, so a centre still covers its target with room to reach its neighbours. */
 const CANDIDATE_OFFSET_PCT = 50;
 
+/** How near another defence building a new tower may stand at least, in percent of its radius (authored):
+ *  half, so two towers holding a front overlap over most of it without standing side by side. On
+ *  krwawa_rzeka a front slot wanting a second tower got it 6 map points from the first. */
+export const TOWER_APART_PCT = 50;
+
 /** How far around a candidate centre a tower spot is looked for, in percent of the tower's radius
  *  (authored): a quarter, so neighbouring centres' searches barely overlap. */
 const CANDIDATE_SPREAD_PCT = 25;
@@ -250,7 +255,8 @@ const CANDIDATE_SPREAD_PCT = 25;
  * The spot of the next tower of `type`, or null when no short target has one: for each short target in
  * plan order, the candidate centres around it (the target and six points halfway to its circle's edge)
  * by the defence they add ({@link defenceGain}), the farthest from the base first on a tie, so the ring
- * stands at the settlement's edge; the first legal node near a centre that still covers the target wins.
+ * stands at the settlement's edge; the first legal node near a centre that still covers the target and
+ * stands {@link TOWER_APART_PCT} of a radius from every defence building wins.
  * With `reserveGrass` it looks off the grass around every centre of a target first, and it takes only a
  * spot a fair walk from the base door, as `placementSpot` does.
  */
@@ -277,6 +283,7 @@ export function towerSpot(
     const { radius, value } = circle;
     const offset = Math.floor((radius * CANDIDATE_OFFSET_PCT) / 100);
     const spread = Math.max(1, Math.floor((radius * CANDIDATE_SPREAD_PCT) / 100));
+    const apart = Math.floor((radius * TOWER_APART_PCT) / 100);
     const { hx, hy } = target.node;
     const half = Math.floor(offset / 2);
     const centres = [
@@ -301,6 +308,7 @@ export function towerSpot(
       const accept = acceptor.around(underFire, c, spread, offGrass);
       return firstRingNode(c.hx, c.hy, spread, (x, y) => {
         if (hexDistanceBetween(x, y, hx, hy) > radius) return false;
+        if (plan.circles.some((d) => hexDistanceBetween(d.hx, d.hy, x, y) < apart)) return false;
         if (!reach.contains(x, y)) return false;
         return accept(x, y) && (walkable === null || walkable(x, y));
       });
