@@ -142,7 +142,13 @@ function runWorkforce(
   const reserveLimit = builderCap(profile, civilians, ctx.tick);
   const builderLimit = clearing > 0 ? stalledBuilderLimit(world, ctx, owned, reserveLimit) : reserveLimit;
   const builderFloor = siteBuilderFloor(world, ctx, owned, builderLimit);
-  const shortOfBuilders = seatBuilderCount(world, player, builderJob) < builderFloor;
+  const builders = seatBuilderCount(world, player, builderJob);
+  const shortOfBuilders = builders < builderFloor;
+  // The clearing posts yield the men the open sites' builders lack, so a stalled placement never keeps
+  // its gatherers while the sites already standing wait for hands (authored: on ciezka_wspolpraca and
+  // smocza_kraina, seed 7, seats with five to eight open sites kept four builders while five to seven
+  // clearing gatherers piled 150-1060 wood).
+  const clearingPosts = Math.max(0, clearing - Math.max(0, builderFloor - builders));
   const allWanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
   const wanted = shortOfBuilders ? rowPosts(allWanted) : allWanted;
   const baseNode = anchorNodeOf(world, base);
@@ -153,8 +159,8 @@ function runWorkforce(
   // A seat short of its core builders keeps no optional post: its standing generic posts, its free scout
   // and the gatherers of every good the sites do not build with go back to the pool the core claims from.
   const coreFloor = coreBuilderFloor(builderFloor);
-  const shortHanded = seatBuilderCount(world, player, builderJob) < coreFloor;
-  const genericTarget = (shortHanded ? 0 : GENERIC_COLLECTOR_TARGET) + clearing + farGround;
+  const shortHanded = builders < coreFloor;
+  const genericTarget = (shortHanded ? 0 : GENERIC_COLLECTOR_TARGET) + clearingPosts + farGround;
   const classified = classifyWorkforce(
     world,
     ctx,

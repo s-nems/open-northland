@@ -1007,6 +1007,52 @@ describe('workforce module (collectResources)', () => {
     expect(commands.filter((c) => c.kind === 'setJob' && c.jobType === BUILDER)).toHaveLength(sitesFloor);
   });
 
+  it('hands the clearing posts back while the open sites lack their builders', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    placeResources(sim, [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood]);
+    spawnMen(sim, BUILDER_CAP + 7);
+    makeAiSeat(sim, SEAT);
+    sim.step();
+    seatEconomy(sim, 'rich');
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('setup: no AI carrier');
+    sim.world.add(carrier, StalledPlacements, {
+      retryTicks: new Map([['opening:0', Number.MAX_SAFE_INTEGER]]),
+      holding: new Map([['opening', 'opening:0']]),
+    });
+    const decide = () => {
+      const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+      for (const c of commands) sim.enqueueSetup(c);
+      sim.step();
+    };
+    const generic = () =>
+      [...sim.world.query(Settler, WorkFlag)].filter((e) => gatherPick(sim, e) === undefined);
+    const builders = () =>
+      [...sim.world.query(Settler)].filter((e) => sim.world.get(e, Settler).jobType === BUILDER);
+    decide();
+    const clearing = Math.floor((BUILDER_CAP + 7) / CIVILIANS_PER_CLEARING_COLLECTOR);
+    expect(generic()).toHaveLength(GENERIC_COLLECTOR_TARGET + clearing);
+    expect(builders()).toHaveLength(STALLED_BUILDER_CAP);
+
+    // Three sites open: their pairs outnumber the builders, and the clearing posts yield the difference.
+    for (const spot of [FIRST_WORKSHOP_SPOT, SECOND_WORKSHOP_SPOT, THIRD_WORKSHOP_SPOT])
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        ...spot,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    sim.step();
+    const lacking = 3 * BUILDERS_PER_OPEN_SITE - STALLED_BUILDER_CAP;
+    expect(lacking).toBeLessThanOrEqual(clearing);
+    decide();
+    expect(generic()).toHaveLength(GENERIC_COLLECTOR_TARGET + clearing - lacking);
+    expect(builders()).toHaveLength(3 * BUILDERS_PER_OPEN_SITE);
+  });
+
   it('ignores a stall record the switched-off build order can no longer clear', () => {
     const sim = aiSim();
     placeHq(sim);
