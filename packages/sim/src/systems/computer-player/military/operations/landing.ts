@@ -30,7 +30,7 @@ import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf } from '../../difficulty.js';
 import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
-import { landingFleetShips } from '../../workforce/craft.js';
+import { LANDING_FLEET_MIN_SHIPS, landingFleetShips } from '../../workforce/craft.js';
 import { campaignObjective } from '../campaign.js';
 import { believedDefendingPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
@@ -52,10 +52,13 @@ import {
 
 const SECONDS_PER_MINUTE = 60;
 
-/** Owner ruling: ships are spent only on a big landing, never on a small band. A landing sails with the
- *  seat's whole landing fleet ({@link landingFleetShips}) loaded to at least this share of its seats, in
- *  percent, the commanders' included: full, or as near as the army at home allows. */
+/** Owner ruling: ships are spent only on a big landing, never on a small band. Every ship a landing takes
+ *  is loaded to at least this share of its seats, in percent, the commanders' included. */
 export const LANDING_LOAD_PCT = 90;
+/** Owner ruling: a big landing sails with at least 4 loaded ships, about 80 men, or with the seat's whole
+ *  landing fleet ({@link landingFleetShips}) when that is smaller, and never fewer than
+ *  {@link LANDING_FLEET_MIN_SHIPS}. */
+export const LANDING_BIG_SHIPS = 4;
 /** How long after a landing ends before the next one forms. */
 export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most a landing waits for its men to walk to their ships and board. */
@@ -401,10 +404,11 @@ function step(env: OperationEnv, op: LandingOperation): readonly PlayerCommand[]
 
 /**
  * A landing when the seat's posture attacks, its peace is over, its rival lies over the sea
- * ({@link seaRouteOf}) and is an enemy, its whole landing fleet lies moored free and the free men on its
- * home land load it to {@link LANDING_LOAD_PCT}, weighing the posture's launch ratio of what the seat
- * believes defends the rival. The men fill the ships in id order, the first one each ship takes
- * holding its helm; each ship docks at its own shore point ({@link landingShores}).
+ * ({@link seaRouteOf}) and is an enemy, and the free men on its home land load at least
+ * {@link LANDING_BIG_SHIPS} of its free moored ships to {@link LANDING_LOAD_PCT}, as many as they fill,
+ * weighing the posture's launch ratio of what the seat believes defends the rival. The men fill the ships
+ * in id order, the first one each ship takes holding its helm; each ship docks at its own shore point
+ * ({@link landingShores}).
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
   const { world, ctx, terrain, seat, orders } = env;
@@ -413,17 +417,25 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   const route = seaRouteOf(world, ctx, seat);
   if (route === null) return null;
   const fleet = landingFleetShips(world, seat, computerProfileOf(world, seat));
-  const ships = freeShips(env, route.home).slice(0, fleet);
-  if (ships.length < fleet) return null;
+  const fewest = Math.max(LANDING_FLEET_MIN_SHIPS, Math.min(LANDING_BIG_SHIPS, fleet));
+  const moored = freeShips(env, route.home).slice(0, fleet);
+  if (moored.length < fewest) return null;
   const owner = route.headquarters.owner;
   if (diplomacyStance(world, seat, owner) !== 'enemy') return null;
   const men = free.filter((e) => {
     const node = standingNode(world, terrain, e);
     return node !== null && terrain.componentOf(node) === route.home && !busy(world, e);
   });
+  // The most ships, in id order, the men at home load to the share.
+  const ships: Entity[] = [];
   let capacity = 0;
-  for (const ship of ships) capacity += world.get(ship, Vehicle).passengers.length;
-  if (men.length * PERCENT < capacity * LANDING_LOAD_PCT) return null;
+  for (const ship of moored) {
+    const seats = world.get(ship, Vehicle).passengers.length;
+    if (men.length * PERCENT < (capacity + seats) * LANDING_LOAD_PCT) break;
+    ships.push(ship);
+    capacity += seats;
+  }
+  if (ships.length < fewest) return null;
   const crews: { readonly ship: Entity; readonly men: readonly Entity[] }[] = [];
   let next = 0;
   for (const ship of ships) {

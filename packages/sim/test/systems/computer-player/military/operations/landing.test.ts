@@ -22,7 +22,9 @@ import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../src/systems/ai-
 import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
 import { type OperationView, seatOperationsOf } from '../../../../../src/systems/computer-player/index.js';
 import {
+  LANDING_BIG_SHIPS,
   LANDING_FORM_TIMEOUT_TICKS,
+  LANDING_LOAD_PCT,
   LANDING_SAIL_TIMEOUT_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import { landingFleetShips } from '../../../../../src/systems/computer-player/workforce/craft.js';
@@ -114,9 +116,10 @@ interface LandingWorld {
   readonly fleet: number;
 }
 
-/** The seat on the west island with its landing fleet moored, `shipsShort` ships missing, and the men
- *  to fill it at the barracks door, `menShort` missing; the foe's headquarters on the east island. */
-function landingWorld({ shipsShort = 0, menShort = 0 } = {}): LandingWorld {
+/** The seat on the west island with `ships` ships moored, its whole landing fleet by default, and `men`
+ *  men at the barracks door, as many as fill the fleet by default; the foe's headquarters on the east
+ *  island. */
+function landingWorld({ ships, men }: { ships?: number; men?: number } = {}): LandingWorld {
   const sim = new Simulation({ seed: 7, content: landingContent(), map: islands() });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules: militaryOnly() });
@@ -135,11 +138,11 @@ function landingWorld({ shipsShort = 0, menShort = 0 } = {}): LandingWorld {
   place(HQ_TYPE, FOE_HQ, FOE);
   sim.step();
   const fleet = landingFleetShips(sim.world, SEAT, computerProfileOf(sim.world, SEAT));
-  for (let i = 0; i < fleet - shipsShort; i++) {
+  for (let i = 0; i < (ships ?? fleet); i++) {
     const at = { x: SHIP_COLUMN, y: FIRST_SHIP_ROW + SHIP_SPACING * i };
     createVehicle(sim.world, ctxOf(sim), { vehicleType: SHIP, ...at, tribe: VIKING, owner: SEAT });
   }
-  spawnBand(sim, fleet * MEN_PER_SHIP - menShort, { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
+  spawnBand(sim, men ?? fleet * MEN_PER_SHIP, { x: BARRACKS.x - 6, y: BARRACKS.y + 8 }, ARMY_RANK, SEAT);
   return { sim, fleet };
 }
 
@@ -223,19 +226,30 @@ describe('landing operations', () => {
     for (const e of sim.world.query(Settler, Owner)) expect(sim.world.has(e, Rider)).toBe(false);
   });
 
-  it('keeps a half-ready fleet home', () => {
-    const { sim, fleet } = landingWorld({ shipsShort: 1 });
-    expect(fleet).toBeGreaterThan(1);
+  it('sails the ships its men fill when they are fewer than the whole fleet', () => {
+    const { sim, fleet } = landingWorld({ men: LANDING_BIG_SHIPS * MEN_PER_SHIP });
+    expect(fleet).toBeGreaterThan(LANDING_BIG_SHIPS);
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    expect(seen?.landing?.startShips).toBe(LANDING_BIG_SHIPS);
+    expect(seen?.landing?.startMen).toBe(LANDING_BIG_SHIPS * MEN_PER_SHIP);
+  });
+
+  it('keeps fewer ships than a big landing home', () => {
+    const { sim } = landingWorld({ ships: LANDING_BIG_SHIPS - 1 });
     runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       expect(landings(sim)).toEqual([]);
       return false;
     });
   });
 
-  it('never sails a band that leaves the fleet half empty', () => {
-    const { sim, fleet } = landingWorld({ menShort: MEN_PER_SHIP + 1 });
-    // The men left still fill all but one ship and part of it.
-    expect((fleet - 1) * MEN_PER_SHIP).toBeGreaterThan(0);
+  it('never sails a band that leaves a big landing short of its load', () => {
+    const PERCENT = 100;
+    const men = Math.ceil((LANDING_BIG_SHIPS * MEN_PER_SHIP * LANDING_LOAD_PCT) / PERCENT) - 1;
+    const { sim } = landingWorld({ men });
     runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       expect(landings(sim)).toEqual([]);
       return false;
