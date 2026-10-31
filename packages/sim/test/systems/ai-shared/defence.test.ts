@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   AiOrder,
   AttackOrder,
   Building,
+  ComputerStrategy,
+  computerModuleEnables,
   DefenceMode,
   Engagement,
   JobAssignment,
@@ -94,6 +97,9 @@ const SEAT_HQ = { x: 24, y: 20 };
 const SEAT_TOWER = { x: 24, y: 84 };
 /** West of the headquarters, so a raider standing off it to the EAST is measured against the HQ alone. */
 const BARRACKS = { x: 16, y: 20 };
+/** A headquarters well south of the barracks, and a spot far from both, for the rally cases. */
+const BASE_AWAY_FROM_BARRACKS = { x: 24, y: 60 };
+const AWAY_FROM_BOTH = { x: 80, y: 40 };
 /** The enemy seat - outside every watch band of the seat's own buildings. */
 const FOE_HQ = { x: 112, y: 20 };
 /** A seed whose first launch roll is 0, so a formed band always leaves (mirrors the muster suite). */
@@ -210,6 +216,33 @@ function nodeOf(sim: Simulation, e: Entity): { x: number; y: number } {
 function drawOff(sim: Simulation, e: Entity, nodes: number): void {
   const at = nodeOf(sim, e);
   sim.world.add(e, Position, positionOfNode(at.x + nodes, at.y));
+}
+
+/** Make the seat a computer seat whose last posture review found its strongest enemy clearly stronger. */
+function outmatchedSeat(sim: Simulation): void {
+  const carrier = sim.world.create();
+  sim.world.add(carrier, AiControl, {
+    player: SEAT,
+    computerEnabled: true,
+    modules: computerModuleEnables(),
+    mapAiEnabled: true,
+    difficulty: 'hard',
+  });
+  sim.world.add(carrier, ComputerStrategy, {
+    economy: { archetype: 'standard', sides: [], evidence: [], decidedAt: 0, challenger: null },
+    military: {
+      posture: 'defend',
+      evidence: ['outmatched'],
+      ownPoints: 0,
+      targetOwner: null,
+      targetPoints: null,
+      strongestPoints: null,
+      threatInTicks: null,
+      plan: 'balanced',
+      decidedAt: 0,
+      challenger: null,
+    },
+  });
 }
 
 function run(sim: Simulation, seed = EAGER_SEED): Command[] {
@@ -596,6 +629,42 @@ describe('ai defence - the sortie', () => {
     apply(sim, [{ kind: 'setPeaceTime', untilTick: PEACE_UNTIL, players: [SEAT, PARTNER] }]);
 
     expect(attackMoves(run(sim)).filter((m) => m.x === at.x && m.y === at.y)).toEqual([]);
+  });
+
+  it('keeps an outmatched seat under its towers and stores: no sortie for an outlying site', () => {
+    const sim = aiSim();
+    place(sim, BARRACKS_TYPE, BARRACKS);
+    const hq = place(sim, HQ_TYPE, SEAT_HQ);
+    const band = spawn(sim, 3, { x: BARRACKS.x, y: BARRACKS.y + 6 }, SPEARMAN);
+    const site = placeSite(sim, TOWER_TYPE, SEAT_TOWER);
+    outmatchedSeat(sim);
+    const far = standOff(sim, site, 2, SPEARMAN);
+    const farAt = nodeOf(sim, far);
+    expect(attackMoves(run(sim)).filter((m) => m.x === farAt.x && m.y === farAt.y)).toEqual([]);
+
+    // A raider at the headquarters is answered as ever.
+    const near = standOff(sim, hq, watchOf(sim), SPEARMAN);
+    const at = nodeOf(sim, near);
+    expect(attackMoves(run(sim))).toEqual(band.map((e) => ({ entity: e, x: at.x, y: at.y })));
+  });
+
+  it("gathers an outmatched seat's army at its base rather than at its barracks", () => {
+    const gatheredAt = (outmatched: boolean): { x: number; y: number }[] => {
+      const sim = aiSim();
+      place(sim, BARRACKS_TYPE, BARRACKS);
+      place(sim, HQ_TYPE, BASE_AWAY_FROM_BARRACKS);
+      spawn(sim, 2, AWAY_FROM_BOTH, SPEARMAN);
+      if (outmatched) outmatchedSeat(sim);
+      return attackMoves(run(sim));
+    };
+    const nearer = (m: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+      Math.abs(m.x - a.x) + Math.abs(m.y - a.y) < Math.abs(m.x - b.x) + Math.abs(m.y - b.y);
+    const even = gatheredAt(false);
+    expect(even).toHaveLength(2);
+    expect(even.every((m) => nearer(m, BARRACKS, BASE_AWAY_FROM_BARRACKS))).toBe(true);
+    const held = gatheredAt(true);
+    expect(held).toHaveLength(2);
+    expect(held.every((m) => nearer(m, BASE_AWAY_FROM_BARRACKS, BARRACKS))).toBe(true);
   });
 
   it('stays quiet while the nearest enemy fighter is outside every watch band', () => {

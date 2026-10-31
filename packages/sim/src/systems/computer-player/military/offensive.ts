@@ -4,10 +4,11 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { weaponMix } from '../../ai-shared/military/census.js';
 import { spokenFor } from '../../ai-shared/military/errand.js';
+import { seatOutmatched } from '../../ai-shared/military/settlement-defence.js';
 import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { entityNode } from '../../spatial/nodes.js';
-import { seatBarracksOf } from '../base.js';
+import { seatBarracksOf, seatBaseOf } from '../base.js';
 import { computerProfileOf } from '../difficulty.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { campaignObjective } from './campaign.js';
@@ -33,10 +34,11 @@ const NO_CAMPAIGN: readonly PlayerCommand[] = [];
  * ({@link advanceWave}), then the rest of `army` is sorted around the barracks door ({@link musterAround})
  * and, with no wave out, the launch is judged ({@link decideWave}). Until the peace ends
  * ({@link seatPeaceEndTick}) and the difficulty's first wave may march, and while the seat's posture holds the
- * army home (`strategy/military.ts`), the army only gathers at the door, as it does with no target, a
- * marching wave called back. The men at the door set out as a wave when the muster is the one it was
- * gathering and the seat's points reach its plan's edge over the target owner's; a body already nearer the objective goes
- * in whatever the muster says, having nowhere safe to wait; everybody else is called in.
+ * army home (`strategy/military.ts`), the army only gathers at the door (an outmatched seat's at its base),
+ * as it does with no target, a marching wave called back. The men at the door set out as a wave when the
+ * muster is the one it was gathering and the seat's points reach its plan's edge over the target owner's; a
+ * body already nearer the objective goes in whatever the muster says, having nowhere safe to wait;
+ * everybody else is called in.
  */
 export function runOffensive(
   world: World,
@@ -61,6 +63,19 @@ export function runOffensive(
   if (goal === null || launchRatio === null) {
     abandonWave(world, barracks);
     endMarch(world, barracks);
+    // An outmatched seat keeps its armed men at its base, under its towers, rather than at a barracks out
+    // on the front, where they would meet a wave before the towers could shoot it (owner ruling: survive
+    // at any cost). The men awaiting a weapon stay by the barracks that arms them.
+    const base = seatOutmatched(world, player) ? seatBaseOf(world, ctx, player) : null;
+    if (base !== null) {
+      const armed = [...army, ...wave];
+      const atBase = rallyAt(world, ctx, terrain, interactionCell(world, ctx, terrain, base), armed);
+      const atDoor = rallyAt(world, ctx, terrain, home, awaitingWeapon);
+      return [
+        ...gatherAt(world, terrain, armed, atBase),
+        ...gatherAt(world, terrain, awaitingWeapon, atDoor),
+      ];
+    }
     const everyone = [...army, ...wave, ...awaitingWeapon];
     const rally = rallyAt(world, ctx, terrain, home, everyone);
     return gatherAt(world, terrain, everyone, rally);

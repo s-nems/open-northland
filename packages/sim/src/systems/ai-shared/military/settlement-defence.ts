@@ -1,6 +1,9 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import {
   AiControl,
+  aiControlEntity,
   Building,
+  ComputerStrategy,
   computerModuleRuns,
   isPlayerDead,
   MapAiDefence,
@@ -10,6 +13,7 @@ import {
   WaveMarch,
 } from '../../../components/index.js';
 import { aiCommand, type PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { leashedAttack, strikeParty } from '../../conflict/leash.js';
@@ -20,7 +24,7 @@ import { peaceGroundFor } from '../../match/peace.js';
 import { hexNodeDistance } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { militaryDecisionDue } from '../cadence.js';
-import { ownedBuildings } from '../seat-roster.js';
+import { isBuilt, ownedBuildings } from '../seat-roster.js';
 import { type ArmyCensus, takeCensus } from './census.js';
 import { assessSeatThreat, NO_THREAT, type SeatThreat } from './defence/danger.js';
 import {
@@ -39,6 +43,7 @@ import {
   NO_INTRUDER_ANSWERS,
 } from './defence/intruder-answers.js';
 import { musterMilitia } from './defence/militia.js';
+import { garrisonSlots } from './defence/posts.js';
 import {
   type Raider,
   THREAT_STAND_DOWN_MARGIN_NODES,
@@ -143,7 +148,8 @@ function deriveSettlementDefence(
   // whole home band in refused orders for as long as he stands there.
   const peace = peaceGroundFor(world, player);
   const raidable = peace === null ? raiders : raiders.filter((raider) => !peace.bars(raider.x, raider.y));
-  const raid = raidOnTheSettlement(world, ctx, terrain, owned, raidable);
+  const guarded = autonomous && seatOutmatched(world, player) ? coveredCore(world, ctx, owned) : owned;
+  const raid = raidOnTheSettlement(world, ctx, terrain, guarded, raidable);
   const threat = autonomous
     ? assessSeatThreat(
         world,
@@ -231,6 +237,31 @@ function deriveSettlementDefence(
       ...sortie,
     ],
   };
+}
+
+/** Whether a computer seat's last posture review found its strongest enemy clearly stronger: such a seat
+ *  fights under its towers ({@link coveredCore}), and its army waits at its base while it launches no wave. */
+export function seatOutmatched(world: World, player: number): boolean {
+  const carrier = aiControlEntity(world, player);
+  const strategy = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy);
+  return strategy?.military.evidence.includes('outmatched') === true;
+}
+
+/**
+ * The buildings an outmatched computer seat sorties for: its standing towers and stores, the heart of the
+ * town under the towers' bows. Owner ruling (survive at any cost, heavy defence on the towers): such a seat
+ * fights raiders under its towers and never walks its army out to meet a wave past them. On mroczny_las
+ * the scripted waves of 30-50 men cut down 15 of a seat's 17 soldiers 50-80 nodes out from its base, past
+ * its towers 25-45 out, and the wave still took the towers and the barracks after.
+ */
+function coveredCore(world: World, ctx: SystemContext, owned: readonly Entity[]): readonly Entity[] {
+  const buildings = contentIndex(ctx.content).buildings;
+  return owned.filter(
+    (e) =>
+      isBuilt(world, e) &&
+      (garrisonSlots(world, ctx, e).size > 0 ||
+        buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage),
+  );
 }
 
 /** `men` less those in `taken`, in order; `men` itself when nothing is taken. */
