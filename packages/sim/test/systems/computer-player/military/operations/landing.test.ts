@@ -236,7 +236,7 @@ describe('landing operations', () => {
     let landedFirst = false;
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
       const op = landings(sim)[0];
-      if (op?.landing === undefined) return false;
+      if (op?.landing == null) return false;
       const states = op.landing.ships.map((ship) => ({ ship, state: sim.world.get(ship.vehicle, Vehicle) }));
       if (!castOff && states.some(({ state }) => !state.moored)) {
         castOff = true;

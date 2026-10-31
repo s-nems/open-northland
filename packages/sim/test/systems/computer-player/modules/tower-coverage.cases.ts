@@ -313,7 +313,7 @@ describe('build-order tower and store coverage', () => {
     const pick = (tick: number) => {
       const ctx = { ...ctxOf(sim, tick), content };
       const wants = { village: upper.shelterCapacity, front: upper.shelterCapacity };
-      const plan = towerPlan(sim.world, ctx, SEAT, owned, { by: 'tower', building: 'tower_01', wants });
+      const plan = towerPlan(sim.world, ctx, SEAT, owned, { building: 'tower_01', wants });
       if (plan === null) throw new Error('setup: no plan');
       return towerToUpgrade(sim.world, ctx, owned, plan, upper);
     };

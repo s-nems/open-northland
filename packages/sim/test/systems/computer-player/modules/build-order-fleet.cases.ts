@@ -757,7 +757,9 @@ describe('workforce - the top-tier joineries’ roles', () => {
         .filter((e) => sim.world.get(e, Settler).jobType === JOINER);
       return crew.map((e) => {
         const mine = commands.filter((c) => 'entity' in c && c.entity === e);
-        return mine.some((c) => c.kind === 'setProductionCount') ? 'rest' : (mine[0]?.goods ?? []);
+        if (mine.some((c) => c.kind === 'setProductionCount')) return 'rest';
+        const goods = mine.find((c) => c.kind === 'setProductionGoods');
+        return goods?.kind === 'setProductionGoods' ? goods.goods : [];
       });
     };
     // No ship stands yet: the whole landing fleet's hides are held back, so the catapult crew past its
