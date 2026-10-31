@@ -6,8 +6,15 @@ import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId, countedTiers, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
 import { seatPlacementProbe } from '../../conflict/contested-ground.js';
 import type { SystemContext } from '../../context.js';
-import type { BuildOrder, BuildOrderEntry } from './entries.js';
+import {
+  type BuildLine,
+  type BuildOrder,
+  type BuildOrderEntry,
+  isLaneEntry,
+  linesByPriority,
+} from './entries.js';
 import { homeTiersOf } from './housing.js';
+import type { LineStatuses } from './progress.js';
 
 type PlaceCommand = Extract<PlayerCommand, { kind: 'placeBuilding' }>;
 type PlacingEntry = Extract<
@@ -91,4 +98,59 @@ export function paperedPlacement(
     if (billUnits(ctx, tier) >= dearest && fits(tier)) return spend(tier, any);
   }
   return command;
+}
+
+function namesHouse(slot: Paper | null): slot is Paper {
+  return slot !== null && (slot.kind === 'placeHouse' || slot.kind === 'placeStockedHouse');
+}
+
+/** Whether the seat holds a paper naming the house it places. */
+export function holdsNamedPaper(world: World, player: number): boolean {
+  return playerPaperSlots(world, player).some(namesHouse);
+}
+
+/** A `place` step of `order` a named paper the seat holds covers, with the paper and the tier it names. */
+export interface PaperedStep {
+  readonly line: BuildLine;
+  readonly step: number;
+  readonly entry: Extract<BuildOrderEntry, { kind: 'place' }>;
+  readonly tier: number;
+  readonly paper: Paper;
+}
+
+/**
+ * The unmet `place` steps a named paper covers, in line priority, each line walked from its start up to its
+ * first unmet step no paper covers (a collector or a lane never stops the walk): a papered building stands
+ * finished at once, so it waits on no turn, site, hold, bill or discovery, and the steps behind it, placed
+ * near it, find it standing. Owner ruling: a map that hands the seat papers for its production line means it
+ * to stand at the start, its given craftsmen at work. The highest tier a paper names wins.
+ */
+export function* paperedSteps(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  order: BuildOrder,
+  statuses: LineStatuses,
+): Generator<PaperedStep> {
+  const named = playerPaperSlots(world, player).filter(namesHouse);
+  if (named.length === 0) return;
+  for (const line of linesByPriority(order)) {
+    const lineStatus = statuses.get(line.id) ?? [];
+    for (const [step, entry] of line.steps.entries()) {
+      if (isLaneEntry(entry) || entry.kind === 'collector' || lineStatus[step] !== 'unmet') continue;
+      if (entry.kind !== 'place') break;
+      // The chain runs from the step's building up, so the walk from its end meets the highest tier first.
+      const tiers = [...stepTiers(ctx, entry)].reverse();
+      let covered: { readonly tier: number; readonly paper: Paper } | null = null;
+      for (const tier of tiers) {
+        const paper = named.find((p) => p.param === tier);
+        if (paper !== undefined) {
+          covered = { tier, paper };
+          break;
+        }
+      }
+      if (covered === null) break;
+      yield { line, step, entry, ...covered };
+    }
+  }
 }

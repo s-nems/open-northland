@@ -67,4 +67,20 @@ describe('a computer seat spends the building papers it holds', () => {
     expect(home?.buildingType).toBe(HOME_TOP_TYPE);
     expect(home?.paper).toEqual(ANY);
   });
+
+  it('places a papered step at once, whatever holds it back', () => {
+    const paper: Paper = { kind: 'placeHouse', param: BAKERY_TYPE };
+    const held: BuildOrderEntry = { ...BAKERY, holdUntil: { kind: 'tick', tick: Number.MAX_SAFE_INTEGER } };
+    const placed = placement([held], [paper], BAKERY_TYPE);
+    expect(placed?.buildingType).toBe(BAKERY_TYPE);
+    expect(placed?.paper).toEqual(paper);
+  });
+
+  it('walks a line only up to its first unmet step no paper covers', () => {
+    const paper: Paper = { kind: 'placeHouse', param: BAKERY_TYPE };
+    const held: BuildOrderEntry = { ...BAKERY, holdUntil: { kind: 'tick', tick: Number.MAX_SAFE_INTEGER } };
+    const placed = placement([HOME, held], [paper]);
+    expect(placed?.buildingType).not.toBe(BAKERY_TYPE);
+    expect(placed?.paper).toBeUndefined();
+  });
 });

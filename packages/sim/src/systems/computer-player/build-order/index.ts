@@ -60,7 +60,7 @@ import {
   housingPick,
   housingStage,
 } from './housing.js';
-import { paperedPlacement, stepTiers } from './papers.js';
+import { holdsNamedPaper, paperedPlacement, paperedSteps, stepTiers } from './papers.js';
 import { placementSpot } from './placement.js';
 import {
   type DecisionMemo,
@@ -242,6 +242,19 @@ function runBuildOrder(
   // needs that good, for good: it is called off so the workshop makes the good again.
   const starved = starvedUpgrade(world, ctx, player, owned, sites);
   if (starved !== null) return [{ kind: 'cancelUpgrade', building: starved }];
+  const memo = decisionMemo();
+  let knownStatuses: LineStatuses | undefined;
+  const statusesNow = (): LineStatuses =>
+    (knownStatuses ??= lineStatuses(world, ctx, player, owned, order, memo));
+  const carrier = aiControlEntity(world, player);
+  const started = (command: PlayerCommand): readonly PlayerCommand[] => {
+    if (carrier !== null && world.has(carrier, BuildOrderPause)) world.remove(carrier, BuildOrderPause);
+    return [command];
+  };
+  if (holdsNamedPaper(world, player)) {
+    const papered = paperedOpening(world, ctx, terrain, player, owned, base, order, statusesNow());
+    if (papered !== null) return started(papered);
+  }
   const siteCap = seatSitePace(world, player, profile, ctx.tick).sites;
   const apartRing = ringApart(profile);
   const ringTowers = apartRing ? sites.filter((e) => ringTowerSite(world, ctx, e)) : [];
@@ -267,12 +280,7 @@ function runBuildOrder(
   // With the pace's sites taken, only an earned workshop, a home site or a ring tower may still go up.
   let earnedOnly = paced >= siteCap;
   if (earnedOnly && !homeSites.open && !ringOpen && !earnedSiteOpen(base, profile, paced, siteCap)) return [];
-  const carrier = aiControlEntity(world, player);
   if (!earnedOnly && base !== null && waitsOnFreeSite(world, carrier, profile, ctx.tick)) return [];
-  const started = (command: PlayerCommand): readonly PlayerCommand[] => {
-    if (carrier !== null && world.has(carrier, BuildOrderPause)) world.remove(carrier, BuildOrderPause);
-    return [command];
-  };
 
   const tribe = playerPlacementTribes(world, player)?.[0];
   // Scanned once the order has something to do: an idle decision never walks the map's people.
@@ -283,8 +291,7 @@ function runBuildOrder(
   const index = contentIndex(ctx.content);
   const lines = linesByPriority(order);
 
-  const memo = decisionMemo();
-  const statuses = lineStatuses(world, ctx, player, owned, order, memo);
+  const statuses = statusesNow();
   const statusOf = (line: BuildLineId, step: number): EntryStatus | undefined => statuses.get(line)?.[step];
   const reserveGrass = grassReserved(ctx, terrain, anchor, order, statuses);
   const searches = new StalledSearches(world, player, keyedStatuses(order, statuses));
@@ -1104,6 +1111,63 @@ function outrunsSites(
     if (entryStatus(world, ctx, player, owned, entry, memo) !== 'skip') ahead++;
   }
   return ahead > lookahead;
+}
+
+/** The placement spending a named paper on the first step {@link paperedSteps} finds a spot for, a line
+ *  whose papered step finds none passing to the next line; null under attack or with nothing to place. */
+function paperedOpening(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  player: number,
+  owned: readonly Entity[],
+  base: Entity,
+  order: BuildOrder,
+  statuses: LineStatuses,
+): PlaceCommand | null {
+  const tribe = playerPlacementTribes(world, player)?.[0];
+  const anchor = anchorNodeOf(world, base);
+  if (tribe === undefined || anchor === null) return null;
+  const searches = new StalledSearches(world, player, keyedStatuses(order, statuses));
+  let siege: Siege | null = null;
+  let reserveGrass: boolean | undefined;
+  const stalledLines = new Set<BuildLineId>();
+  for (const { line, step, entry, tier, paper } of paperedSteps(world, ctx, player, order, statuses)) {
+    if (stalledLines.has(line.id) || searches.waits(line.id, step, ctx.tick)) {
+      stalledLines.add(line.id);
+      continue;
+    }
+    const type = contentIndex(ctx.content).buildings.get(tier);
+    if (type === undefined) continue;
+    siege ??= seatSiege(world, ctx, terrain, player, owned);
+    if (siege.attacked) return null;
+    if (awaitingRebuild(world, player, line.id, step, entry, ctx.tick)) {
+      stalledLines.add(line.id);
+      continue;
+    }
+    reserveGrass ??= grassReserved(ctx, terrain, anchor, order, statuses);
+    const spot = placementSpot(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      type,
+      tribe,
+      entry,
+      siege.underFire,
+      reserveGrass,
+    );
+    searches.searched(line.id, step, ctx.tick, spot !== null, true);
+    if (spot === null) {
+      stalledLines.add(line.id);
+      continue;
+    }
+    searches.acting(line.id, step);
+    return { ...siteCommand(type, spot, tribe, player), paper };
+  }
+  return null;
 }
 
 function siteCommand(type: BuildingType, spot: HalfCellNode, tribe: number, player: number): PlaceCommand {

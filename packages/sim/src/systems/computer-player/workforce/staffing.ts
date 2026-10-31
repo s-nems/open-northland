@@ -168,8 +168,11 @@ export function staffBuildings(
       const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
       const qualifies = (e: Entity): boolean =>
         settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', slot.jobType);
+      // A spare man already of the slot's trade, as a map's given miller, takes it first, so a building
+      // standing at the start is worked at once and no other man is retrained for it.
+      const ofTrade = (e: Entity): boolean => world.get(e, Settler).jobType === slot.jobType && qualifies(e);
       for (let i = held; i < want; i++) {
-        let spare = force.take(qualifies, veteranFirst);
+        let spare = force.take(ofTrade, veteranFirst) ?? force.take(qualifies, veteranFirst);
         if (spare === null) {
           const lesson = gated.schooling.enrol(slot.jobType, building, force);
           if (lesson.kind === 'learn') commands.push(lesson.command);

@@ -1552,6 +1552,30 @@ describe('workforce module (collectResources)', () => {
     expect(staffing.map((c) => c.jobPriority)).toEqual([[BAKER], [CARRIER]]);
   });
 
+  it('posts the man already of the baker trade at the bakery, not a builder retrained', () => {
+    const sim = aiSim();
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: 40,
+      y: 16,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    spawnMen(sim, 6, BUILDER);
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: BAKER, x: 20, y: 24, tribe: VIKING, owner: SEAT });
+    sim.step();
+
+    const baker = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === BAKER);
+    const bakery = entityOfBuilding(sim, BAKERY_TYPE);
+    const commands = [...collectModule.run(sim.world, ctxOf(sim), SEAT)];
+    const posted = commands.find(
+      (c) => c.kind === 'assignWorker' && c.building === bakery && c.jobPriority[0] === BAKER,
+    );
+    expect(posted?.kind === 'assignWorker' ? posted.entity : undefined).toBe(baker);
+  });
+
   it('leaves a carrier-only workplace (the well) unstaffed, however grown the seat', () => {
     const sim = aiSim();
     placeHq(sim);
