@@ -88,7 +88,8 @@ export type CraftSeat =
  * ({@link seatFleet}): the seat works `otherwise` from `cap` on, or where the content has no
  * such good or the seat has yet to earn it, and takes the vehicle back once the fleet has fallen to
  * `resume`. In between it keeps its current selection, so no state beyond the live selection is kept.
- * A {@link LANDING_FLEET} cap is the seat's landing fleet ({@link landingFleetShips}), taken back as soon as
+ * A {@link LANDING_FLEET} cap is the seat's landing fleet ({@link landingFleetShips}) and its sea scout's
+ * ship ({@link SEA_SCOUT_SHIPS}) when its rival lies over the sea, taken back as soon as
  * the fleet falls under it. While it builds the vehicle it works the goods `beside` it in rotation.
  */
 export type FleetSeat = {
@@ -108,6 +109,10 @@ export const SOLDIERS_PER_SHIP = 20;
 /** Owner ruling: an island seat gathers a fleet of 2 to 10 ships for its landing. */
 export const LANDING_FLEET_MIN_SHIPS = 2;
 export const LANDING_FLEET_MAX_SHIPS = 10;
+
+/** Owner ruling: an island seat scouts its rival by sea, so its joinery builds this many ships beyond its
+ *  landing fleet, and a scouting trip never leaves the landing short of its ships. */
+export const SEA_SCOUT_SHIPS = 1;
 
 /** The ships a seat's landing takes: its planned army, the army at which its barracks sends the whole band
  *  scaled by its plan's draft share (`strategy/military.ts`), in {@link SOLDIERS_PER_SHIP}, within the
@@ -599,7 +604,8 @@ export function tuneCraftCounters(
   }
   let landing: number | undefined;
   const landingShips = (): number => {
-    landing ??= landingFleetShips(world, player, profile);
+    landing ??=
+      landingFleetShips(world, player, profile) + (rivalOverSea(world, ctx, player) ? SEA_SCOUT_SHIPS : 0);
     return landing;
   };
   const tribe = playerPlacementTribes(world, player)?.[0];
@@ -1004,7 +1010,7 @@ interface SeatChoice {
   readonly ctx: SystemContext;
   readonly supply: SeatSupply;
   readonly fleetOf: (good: number, freeOnly: boolean) => number;
-  /** The seat's {@link landingFleetShips}. */
+  /** The ships the seat's joinery builds: its {@link landingFleetShips} and {@link SEA_SCOUT_SHIPS}. */
   readonly landingShips: () => number;
   /** Whether the seat owns a building of the type with this stable content id, standing or a site, or
    *  with `siteOnly` a site still under construction. */
