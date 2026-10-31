@@ -211,6 +211,7 @@ export {
   halfCellMapFromCells,
   type NodeId,
   nodeLatticeDistance,
+  ROAD_RESISTANCE,
   TerrainGraph,
   type TerrainMap,
 } from './nav/terrain/index.js';

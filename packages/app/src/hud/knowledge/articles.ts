@@ -46,38 +46,30 @@ export interface ArticleModule {
   readonly ARTICLES: readonly ArticleGroup[];
 }
 
-/** The article text of a language, and the language it is really written in. */
 export interface LoadedArticles {
-  readonly language: Locale;
   readonly groups: readonly ArticleGroup[];
 }
 
 /** One lazy chunk per language: no article text enters the first download. */
-export const ARTICLE_MODULES: Readonly<Partial<Record<Locale, () => Promise<ArticleModule>>>> = {
+export const ARTICLE_MODULES: Readonly<Record<Locale, () => Promise<ArticleModule>>> = {
+  chs: () => import('../../i18n/knowledge/chs/index.js'),
+  cht: () => import('../../i18n/knowledge/cht/index.js'),
+  eng: () => import('../../i18n/knowledge/eng/index.js'),
+  ger: () => import('../../i18n/knowledge/ger/index.js'),
   pol: () => import('../../i18n/knowledge/pol/index.js'),
+  rus: () => import('../../i18n/knowledge/rus/index.js'),
 };
-
-const FALLBACK_LANGUAGES: readonly Locale[] = ['eng', 'pol'];
-
-/** The language `locale` reads articles in: its own, else English once it exists, else Polish. */
-export function articleLanguage(locale: Locale): Locale {
-  const chain = [locale, ...FALLBACK_LANGUAGES];
-  return chain.find((language) => ARTICLE_MODULES[language] !== undefined) ?? locale;
-}
 
 const pending = new Map<Locale, Promise<LoadedArticles | null>>();
 const loaded = new Map<Locale, LoadedArticles>();
 
 /** Loads the articles once a language; null when the chunk fails, and the next call tries again. */
-export function loadArticles(locale: Locale = currentLocale()): Promise<LoadedArticles | null> {
-  const language = articleLanguage(locale);
+export function loadArticles(language: Locale = currentLocale()): Promise<LoadedArticles | null> {
   const running = pending.get(language);
   if (running !== undefined) return running;
-  const load = ARTICLE_MODULES[language];
-  if (load === undefined) return Promise.resolve(null);
-  const started = load().then(
+  const started = ARTICLE_MODULES[language]().then(
     ({ ARTICLES }) => {
-      const articles = { language, groups: ARTICLES };
+      const articles = { groups: ARTICLES };
       loaded.set(language, articles);
       return articles;
     },
@@ -93,7 +85,7 @@ export function loadArticles(locale: Locale = currentLocale()): Promise<LoadedAr
 
 /** What {@link loadArticles} has finished for `locale`; null before that. */
 export function loadedArticles(locale: Locale = currentLocale()): LoadedArticles | null {
-  return loaded.get(articleLanguage(locale)) ?? null;
+  return loaded.get(locale) ?? null;
 }
 
 export function findArticle(articles: LoadedArticles, id: string): Article | undefined {
@@ -107,7 +99,7 @@ export type InlinePart =
   | { readonly kind: InlineLinkKind; readonly id: string; readonly label: string };
 
 const LINK = /\[\[(good|building|job|article|vehicle|animal):([^|\]]+)\|([^\]]+)\]\]/g;
-const TOKEN = /\{\{(\w+)\}\}/g;
+const TOKEN = /\{\{([\w.]+)\}\}/g;
 
 function isLinkKind(kind: string | undefined): kind is InlineLinkKind {
   return (

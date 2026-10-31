@@ -64,7 +64,7 @@ export const REGENERATION_HITPOINTS_PER_TICK = 1;
 
 /** Original behavior: a person is near death at 720 of its 5000 hitpoints, and the original's one larger
  *  pool, 20000, keeps the same share, 144 per mille. */
-const NEAR_DEATH_PER_MILLE = 144;
+export const NEAR_DEATH_PER_MILLE = 144;
 const PER_MILLE = 1000;
 
 /** Whether a living person with `hitpoints` of a `max` pool is near death, the state the original warns

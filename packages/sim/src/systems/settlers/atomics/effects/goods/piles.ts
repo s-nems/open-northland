@@ -104,7 +104,7 @@ export function placeUnitOnTile(world: World, x: Fixed, y: Fixed, good: number):
  * Greatest Manhattan ring radius in half-cell nodes {@link spillOverRings} walks before giving up.
  * Approximation: the original's drop-scatter extent is unknown.
  */
-const SPILL_MAX_RADIUS = 32;
+export const SPILL_MAX_RADIUS = 32;
 
 /**
  * Scatter `amount` units of `good` onto the ground around `from`, nearest tile first, skipping unwalkable

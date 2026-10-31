@@ -19,13 +19,13 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Atak na osadę"',
                 'Pilne',
-                'Cios w budynek lub palisadę albo do 12 kroków od nich. Ciosy do 30 kroków od siebie to jedna karta, znika po 30 s bez ciosu',
+                'Cios w budynek lub palisadę albo do {{notice.settlementReach}} kroków od nich. Ciosy do {{notice.fightRadius}} kroków od siebie to jedna karta, znika po {{notice.fightQuietSeconds}} s bez ciosu',
                 'Wyślij żołnierzy',
               ],
               [
                 '"Atakują nas"',
                 'Ważne',
-                'Cios dalej niż 12 kroków od osady',
+                'Cios dalej niż {{notice.settlementReach}} kroków od osady',
                 'Wyślij żołnierzy albo odprowadź ludzi',
               ],
               [
@@ -69,7 +69,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"Brak placu"',
                 'Ważne',
                 'Obok warsztatu nie ma wolnej ziemi na pojazd',
-                'Zrób miejsce, próba wraca po 30 s',
+                'Zrób miejsce, próba wraca po {{notice.yardRetrySeconds}} s',
               ],
               ['"Brak ryb"', 'Ważne', 'W zasięgu brzegu nie ma już ryb', 'Wskaż flagą wodę z rybami'],
               [
@@ -107,7 +107,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"Brak zwierzęcia"',
                 'Ważne',
                 'Zaprzęg nie ma Wołu',
-                'Trzymaj 3 dorosłe sztuki: [[article:vehicles|Pojazdy i statki]]',
+                'Trzymaj {{livestock.pairPlusOne}} dorosłe sztuki: [[article:vehicles|Pojazdy i statki]]',
               ],
               [
                 '"Brak zwierzyny"',
@@ -130,7 +130,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Chce się modlić"',
                 'Ważne',
-                'Religia spadła do 10% i nie ma miejsca modlitwy',
+                'Religia spadła do {{need.criticalPct}}% i nie ma miejsca modlitwy',
                 'Zbuduj [[building:work_temple|Świątynię]] albo rozpal święty ogień',
               ],
               ['"Czeka na budowę warsztatu"', '-', 'Miejsce pracy to wciąż plac budowy', 'Dokończ budowę'],
@@ -218,7 +218,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Nikt nie zbiera: towar", "Nikt nie poluje: towar", "Nikt nie łowi: towar"',
                 'Ważne',
-                'Warsztat stoi od 45 s bez surowca i nikt go nie zdobywa',
+                'Warsztat stoi od {{notice.noGathererSeconds}} s bez surowca i nikt go nie zdobywa',
                 'Przydziel osadnika albo włącz ten towar u obecnych',
               ],
               [
@@ -230,7 +230,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Pełne magazyny: towar"',
                 'Zwykłe',
-                'Półka wytwórcy i każdy magazyn z tym towarem są pełne od 15 s',
+                'Półka wytwórcy i każdy magazyn z tym towarem są pełne od {{notice.storageFullSeconds}} s',
                 'Zbuduj magazyn albo zużyj zapas',
               ],
               [
@@ -249,7 +249,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Stoi na alarmie"',
                 '-',
-                'Żołnierz w Ataku lub Obronie nie odpoczywa przy walce do 49 kroków albo przy widocznym wrogim żołnierzu do 40 kroków. Dzikie zwierzę liczy się dopiero w walce',
+                'Żołnierz w Ataku lub Obronie nie odpoczywa przy walce do {{alert.restClearance}} kroków albo przy widocznym wrogim żołnierzu do {{alert.standTo}} kroków. Dzikie zwierzę liczy się dopiero w walce',
                 'Rozkaz "Jedz" albo "Śpij" go zwalnia',
               ],
               [
@@ -318,23 +318,23 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Warsztat stoi pusty',
-              'Stan "Brak pracowników": nikt nie ma tam miejsca pracy. Osadnik wchodzi tylko z właściwym zawodem i wolnym miejscem, inaczej komunikat powie "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik sam po niego chodzi, jeśli leży do 40 kroków od drogowskazu.',
+              'Stan "Brak pracowników": nikt nie ma tam miejsca pracy. Osadnik wchodzi tylko z właściwym zawodem i wolnym miejscem, inaczej komunikat powie "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik sam po niego chodzi, jeśli leży do {{reach.goods}} kroków od drogowskazu.',
             ],
             [
               'Płatnerz, Kowal albo Krawiec nie pracuje',
-              'Religia w "Samopoczucie" ma 0%. Seria broni lub zbroi kosztuje 15% albo 30%, modlitwa daje 40%. Komunikat "Chce się modlić" oznacza brak miejsca modlitwy: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Krawiec sam się nie modli, wydaj mu rozkaz "Módl się".',
+              'Religia w "Samopoczucie" ma 0%. Seria broni lub zbroi kosztuje 15% albo 30%, modlitwa daje {{pray.pct}}%. Komunikat "Chce się modlić" oznacza brak miejsca modlitwy: potrzebna [[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]] albo święty ogień w domu. Krawiec sam się nie modli, wydaj mu rozkaz "Módl się".',
             ],
             [
               'Tragarze nic nie noszą',
-              'Tragarz nosi tylko z miejscem pracy w budynku. Stan "Nic do przeniesienia w zasięgu": do 32 kroków od budynku, a z flagą roboczą od flagi, nie ma towaru do zabrania. "Brak miejsca przyjmującego towar" to pełne magazyny.',
+              'Tragarz nosi tylko z miejscem pracy w budynku. Stan "Nic do przeniesienia w zasięgu": do {{flag.radius}} kroków od budynku, a z flagą roboczą od flagi, nie ma towaru do zabrania. "Brak miejsca przyjmującego towar" to pełne magazyny.',
             ],
             [
               'Hodowla stoi',
-              'Hodowca rozmnaża przy dokładnie 2 dorosłych sztukach gatunku. Stan Fermy mówi "Brak zwierząt", "Tylko jedno zwierzę", "Młode dorastają" albo "Stado pełne": [[article:livestock|Hodowla]].',
+              'Hodowca rozmnaża przy dokładnie {{livestock.pair}} dorosłych sztukach gatunku. Stan Fermy mówi "Brak zwierząt", "Tylko jedno zwierzę", "Młode dorastają" albo "Stado pełne": [[article:livestock|Hodowla]].',
             ],
             [
               'Myśliwy nic nie przynosi',
-              'Stan "Brak wolnej zwierzyny w terenie łowieckim": do 50 kroków od flagi roboczej albo miejsca pracy nie ma zwierzyny. Na Wilka, Lwa, Niedźwiedzia, Słonia, Psa i Kurę nie poluje. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
+              'Stan "Brak wolnej zwierzyny w terenie łowieckim": do {{flag.hunter}} kroków od flagi roboczej albo miejsca pracy nie ma zwierzyny. Na Wilka, Lwa, Niedźwiedzia, Słonia, Psa i Kurę nie poluje. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
             ],
           ],
         },
@@ -345,11 +345,11 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Nie rodzą się dzieci',
-              'Para potrzebuje wspólnego domu i 2 sztuk jedzenia w spiżarni. Komunikaty: "Mąż nie wraca" (mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem), "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". Licznik "Narodziny" w Asystencie składa zamówienia. Więcej: [[article:family|Rodzina i dom]].',
+              'Para potrzebuje wspólnego domu i {{family.childFood}} sztuk jedzenia w spiżarni. Komunikaty: "Mąż nie wraca" (mąż jest Kupcem, Zwiadowcą, żołnierzem albo bohaterem), "Para bez domu", "Dom w budowie", "Osobne domy", "Brak jedzenia". Licznik "Narodziny" w Asystencie składa zamówienia. Więcej: [[article:family|Rodzina i dom]].',
             ],
             [
               'Głód przy pełnym magazynie',
-              'Sprawdź "Minimum w magazynach": nikt nie weźmie towaru poniżej tej sumy, także na posiłek. Obniż minimum przy jedzeniu. Druga przyczyna to odległość: magazyn musi leżeć w zasięgu chodu osadnika, 50 kroków albo sieć drogowskazów.',
+              'Sprawdź "Minimum w magazynach": nikt nie weźmie towaru poniżej tej sumy, także na posiłek. Obniż minimum przy jedzeniu. Druga przyczyna to odległość: magazyn musi leżeć w zasięgu chodu osadnika, {{reach.walk}} kroków albo sieć drogowskazów.',
             ],
             [
               'Zawodu nie ma na liście w Szkole',
@@ -368,11 +368,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Budowa stoi',
-              'Stan budowy mówi, czego brak: "brak materiałów", "dostawa w drodze" albo "brak budowniczego". Komunikat "Budowa czeka: towar" oznacza, że towaru nie ma w żadnym magazynie w zasięgu drogowskazów placu, 40 kroków od drogowskazu. Budowniczy sam nosi materiał.',
+              'Stan budowy mówi, czego brak: "brak materiałów", "dostawa w drodze" albo "brak budowniczego". Komunikat "Budowa czeka: towar" oznacza, że towaru nie ma w żadnym magazynie w zasięgu drogowskazów placu, {{reach.goods}} kroków od drogowskazu. Budowniczy sam nosi materiał.',
             ],
             [
               'Pole nie rośnie',
-              'Rośnie tylko od podlewania przez [[job:farmer|Farmera]] z miejscem pracy na [[building:work_farm_00|Farmie]]. Farmer najpierw sieje, a podlewa dopiero przy 25 polach albo gdy nie ma gdzie siać. Pole dojrzewa po 4 podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Siew działa tylko na trawie, poza drogami, do 16 kroków od Farmy.',
+              'Rośnie tylko od podlewania przez [[job:farmer|Farmera]] z miejscem pracy na [[building:work_farm_00|Farmie]]. Farmer najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Siew działa tylko na trawie, poza drogami, do {{field.radius}} kroków od Farmy.',
             ],
           ],
         },
@@ -391,7 +391,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Zaprzęg stoi',
-              'Stan "Czeka na zwierzę pociągowe". Wóz bierze [[good:cattle|Wołu]] z twojego stada na tym samym lądzie, ale każda Ferma zachowuje 2 dorosłe sztuki. Potrzebne są 3 dorosłe sztuki w jednej Fermie albo 3 poza Fermą. Dopiero potem można przydzielić dowódcę.',
+              'Stan "Czeka na zwierzę pociągowe". Wóz bierze [[good:cattle|Wołu]] z twojego stada na tym samym lądzie, ale każda Ferma zachowuje {{livestock.pair}} dorosłe sztuki. Potrzebne są {{livestock.pairPlusOne}} dorosłe sztuki w jednej Fermie albo {{livestock.pairPlusOne}} poza Fermą. Dopiero potem można przydzielić dowódcę.',
             ],
           ],
         },

@@ -73,8 +73,8 @@ const SCATTER_RANGE_DIVISOR = 4;
 
 /** A settler's aim roll spans 0..99. A roll at or under its bow hits plus this base shoots true; a higher one
  *  scatters the more the further it overshoots. Original behavior. */
-const AIM_ROLL_SPAN = 100;
-const AIM_TRUE_BASE = 10;
+export const AIM_ROLL_SPAN = 100;
+export const AIM_TRUE_BASE = 10;
 
 /**
  * The scatter of a settler's shot over `distance` nodes, by the hits it has landed with a bow. A novice's

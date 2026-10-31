@@ -15,7 +15,7 @@ import { spawnNewborn } from '../../spawn/index.js';
 
 /** The make-love atomic id (`logicdefines.inc` `MAKE_LOVE = 78`), used to resolve the hearts phase's
  *  duration from the tribe's bound animation. */
-const MAKE_LOVE_ATOMIC_ID = 78;
+export const MAKE_LOVE_ATOMIC_ID = 78;
 
 /** Hearts-phase length (ticks) when no make_love animation resolves from content: the viking
  *  `viking_civilist_make_love` `length 200` (`atomicanimations.ini`), pinned as the fallback. */

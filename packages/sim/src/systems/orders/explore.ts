@@ -31,7 +31,7 @@ import { moveUnit } from './movement.js';
 
 /** How many legs in a row a sweep may find it cannot walk before it counts the rest of its landmass as
  *  out of reach and finishes. Authored. */
-const EXPLORE_MAX_FAILED_LEGS = 16;
+export const EXPLORE_MAX_FAILED_LEGS = 16;
 
 /** How many of the latest unwalkable goals a sweep keeps steering around. Authored; an older pocket
  *  costs at most a failed leg again. */

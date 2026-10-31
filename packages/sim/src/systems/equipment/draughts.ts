@@ -15,7 +15,7 @@ type DraughtNeed = keyof EquipRestorePct;
 
 /** Owner's rule, departing from the original's sip-only-at-death save: a wound that would leave the
  *  bearer under this percent of its max hitpoints is softened by healing draughts. */
-const HEALING_DRAUGHT_BELOW_PCT = 50;
+export const HEALING_DRAUGHT_BELOW_PCT = 50;
 
 interface CarriedDraught {
   readonly slot: number;

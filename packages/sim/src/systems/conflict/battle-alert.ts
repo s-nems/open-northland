@@ -36,7 +36,7 @@ import { isValidTarget, SIGHT_RADIUS_NODES } from './targeting.js';
  * alarm (`hit-alarm.ts`) answers only a blow on the player's own people; this also gets a sleeper up for a
  * fight its side started and keeps a line from lying down before the first blow.
  */
-const STAND_TO_RADIUS_NODES = 40;
+export const STAND_TO_RADIUS_NODES = 40;
 
 /**
  * How far off the fighting must be before a fighting unit lies down or leaves for its needs. The margin

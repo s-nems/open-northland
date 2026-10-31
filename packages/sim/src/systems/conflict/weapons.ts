@@ -208,7 +208,7 @@ export function targetMaterial(world: World, ctx: SystemContext, target: Entity)
 }
 
 /** How much of a blow's HOUSE damage takes one valency off a wall. */
-const HOUSE_DAMAGE_PER_WALL_VALENCY = 100;
+export const HOUSE_DAMAGE_PER_WALL_VALENCY = 100;
 
 /**
  * The valency a wall loses to a blow of `houseDamage`, the weapon's HOUSE column. Source basis:

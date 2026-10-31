@@ -64,7 +64,7 @@ export const VEHICLE_DEFENCE_LEASH_POINTS = 60;
 const MARCH_REST_TICKS = 5 * TICKS_PER_SECOND;
 /** A vehicle too far from its target drives to a node this many map points inside its far reach
  *  (original behavior: `maxRange - 5`). */
-const APPROACH_BAND_DEPTH = 5;
+export const APPROACH_BAND_DEPTH = 5;
 /** The scatter roll is a percent; the base accuracy every commander has before any catapult
  *  experience (original behavior: `skill + 10`). */
 const SCATTER_ROLL = 100;

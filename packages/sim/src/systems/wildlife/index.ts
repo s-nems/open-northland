@@ -29,8 +29,8 @@ import { stayClock } from './stay-clock.js';
  * id) falls inside the first 12 ticks of every 600th 12-tick span. Since 7200 is a multiple of 60, only a
  * leader whose id modulo 60 is 0 or 49..59 ever lands there, once every 7200 ticks; the rest never breed.
  */
-const BREEDING_SPAN_TICKS = 12;
-const BREEDING_SPANS_PER_ROUND = 600;
+export const BREEDING_SPAN_TICKS = 12;
+export const BREEDING_SPANS_PER_ROUND = 600;
 
 /**
  * Free-roaming animal life outside a fight: each herd leader's range upkeep on its 60-tick slot, then the

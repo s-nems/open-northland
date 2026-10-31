@@ -126,7 +126,7 @@ export function wearWornBoots(
 }
 
 /** A hauled good doubles each step's boot wear (`roughness << 1`). */
-const CARRYING_WEAR_FACTOR = 2;
+export const CARRYING_WEAR_FACTOR = 2;
 
 /** One work event's tool wear: a completed production cycle, a gathering stroke, a cast, a build swing or
  *  a watering, whether or not the event paid off. Original behavior. */

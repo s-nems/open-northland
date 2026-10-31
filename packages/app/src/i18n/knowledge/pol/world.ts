@@ -82,7 +82,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'vehicles',
       name: 'Pojazdy i statki',
-      lead: 'Pojazd bez dowódcy stoi. Statek zabiera 20 osób, Statek handlowy 10, razem z dowódcą.',
+      lead: 'Pojazd bez dowódcy stoi. Statek zabiera {{vehicle.shipSeats}} osób, Statek handlowy {{vehicle.bigShipSeats}}, razem z dowódcą.',
       blocks: [
         {
           data: 'vehicles',
@@ -96,8 +96,8 @@ export const WORLD: ArticleGroup = {
                 '[[job:carrier|Tragarz]], [[job:trader|Kupiec]]',
                 '1',
               ],
-              ['[[good:ship_small|Statek]]', 'każdy dorosły', '20'],
-              ['[[good:ship_big|Statek handlowy]]', 'każdy dorosły', '10'],
+              ['[[good:ship_small|Statek]]', 'każdy dorosły', '{{vehicle.shipSeats}}'],
+              ['[[good:ship_big|Statek handlowy]]', 'każdy dorosły', '{{vehicle.bigShipSeats}}'],
               ['[[good:catapult|Katapulta]]', 'żołnierz, bohater', '1'],
             ],
             num: [2],
@@ -117,12 +117,33 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Pojazd', 'Utrata, pełny', 'Droga: pusty', 'Droga: pełny', 'Ląd: pusty', 'Ląd: pełny'],
             rows: [
-              ['[[good:handcart|Wózek Ręczny]]', '60%', '2,0', '0,8', '1,5', '0,6'],
-              ['[[good:oxcart|Zaprzęg]]', '15%', '2,0', '1,7', '1,5', '1,3'],
-              ['[[good:catapult|Katapulta]]', '-', '1,0', '-', '0,75', '-'],
+              [
+                '[[good:handcart|Wózek Ręczny]]',
+                '{{vehicle.handcartLossPct}}%',
+                '{{pace.cartRoad}}',
+                '{{pace.handcartRoadFull}}',
+                '{{pace.cartLand}}',
+                '{{pace.handcartLandFull}}',
+              ],
+              [
+                '[[good:oxcart|Zaprzęg]]',
+                '{{vehicle.oxcartLossPct}}%',
+                '{{pace.cartRoad}}',
+                '{{pace.oxcartRoadFull}}',
+                '{{pace.cartLand}}',
+                '{{pace.oxcartLandFull}}',
+              ],
+              [
+                '[[good:catapult|Katapulta]]',
+                '-',
+                '{{pace.catapultRoad}}',
+                '-',
+                '{{pace.catapultLand}}',
+                '-',
+              ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Kroki na sekundę. Pełny to 15 z 15 na Wózku i 30 z 30 na Zaprzęgu. Liczone dla woźnicy bez butów, w butach jest szybciej. Statek nie zwalnia od ładunku i płynie około 2 kroków/s. Tragarz ciągnący wóz traci ten sam procent ze swojego chodu. Wybór wozu na trasę: [[article:trade|Handel]].',
+            foot: 'Kroki na sekundę. Pełny to {{haul.handcart}} z {{haul.handcart}} na Wózku i {{haul.oxcart}} z {{haul.oxcart}} na Zaprzęgu. Liczone dla woźnicy bez butów, w butach jest szybciej. Statek nie zwalnia od ładunku i płynie około {{pace.ship}} kroków/s. Tragarz ciągnący wóz traci ten sam procent ze swojego chodu. Wybór wozu na trasę: [[article:trade|Handel]].',
           },
         },
         {
@@ -135,27 +156,27 @@ export const WORLD: ArticleGroup = {
               [
                 '[[good:handcart|Wózek Ręczny]]',
                 '[[building:work_joinery_02|Warszt. ciesielski 3]], 4',
-                '2 [[good:wood|Drewno]]',
+                '{{cost.handcartWood}} [[good:wood|Drewno]]',
               ],
               [
                 '[[good:oxcart|Zaprzęg]]',
                 '[[building:work_joinery_02|Warszt. ciesielski 3]], 4',
-                '5 [[good:wood|Drewno]]',
+                '{{cost.oxcartWood}} [[good:wood|Drewno]]',
               ],
               [
                 '[[good:ship_small|Statek]]',
                 '[[building:work_joinery_03|Warszt. ciesielski 4]]',
-                '10 [[good:wood|Drewno]], 5 [[good:leather|Skóra]]',
+                '{{cost.shipWood}} [[good:wood|Drewno]], {{cost.shipLeather}} [[good:leather|Skóra]]',
               ],
               [
                 '[[good:ship_big|Statek handlowy]]',
                 '[[building:work_joinery_03|Warszt. ciesielski 4]]',
-                '15 [[good:wood|Drewno]], 5 [[good:leather|Skóra]]',
+                '{{cost.bigShipWood}} [[good:wood|Drewno]], {{cost.bigShipLeather}} [[good:leather|Skóra]]',
               ],
               [
                 '[[good:catapult|Katapulta]]',
                 '[[building:work_joinery_03|Warszt. ciesielski 4]]',
-                '9 [[good:wood|Drewno]], 1 [[good:iron|Żelazo]]',
+                '{{catapult.wood}} [[good:wood|Drewno]], {{catapult.iron}} [[good:iron|Żelazo]]',
               ],
             ],
             foot: '[[job:joiner|Cieśla]] stawia pojazd na placu obok warsztatu, statek na wodzie przy brzegu.',
@@ -168,7 +189,7 @@ export const WORLD: ArticleGroup = {
           steps: [
             'Gotowy Zaprzęg ma stan "Czeka na zwierzę pociągowe".',
             'Bierze najbliższego dorosłego [[good:cattle|Wołu]] gracza z tego samego lądu, wolnego i spoza wnętrza Fermy.',
-            'Każda Ferma zachowuje 2 pierwsze dorosłe sztuki. Woły bez Fermy też zachowują 2.',
+            'Każda Ferma zachowuje {{livestock.pair}} pierwsze dorosłe sztuki. Woły bez Fermy też zachowują {{livestock.pair}}.',
             'Wół idzie do wozu i znika, a Zaprzęg rusza dopiero z nim.',
           ],
         },
@@ -179,7 +200,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Ładownia jest wspólna na wszystkie towary.',
             'Statek przewozi 1 pojazd: Wózek Ręczny, Zaprzęg albo Katapultę. Załoga pojazdu musi się zmieścić na pokładzie. Statek handlowy nie przewozi pojazdów.',
-            '"Zacumuj" każe wskazać brzeg. Statek staje 4 kroki od wskazanego miejsca, budynek portowy nie jest potrzebny.',
+            '"Zacumuj" każe wskazać brzeg. Statek staje {{vehicle.mooringDistance}} kroki od wskazanego miejsca, budynek portowy nie jest potrzebny.',
             'Na morzu nikt nie wsiada ani nie wysiada.',
             'Ctrl/Cmd + klik cumuje i wysadza załogę.',
           ],
@@ -192,9 +213,9 @@ export const WORLD: ArticleGroup = {
             '"cel": ile sztuk ma być w ładowni. Suma celów nie przekroczy pojemności.',
             '"w rękach tragarza": wóz ciągnie Tragarz z miejscem pracy i wiezie to, co podnosi w każdym kursie. Cele są zablokowane.',
             'Dowódca albo Tragarz wysiada, gdy wóz stoi albo statek cumuje. Na morzu nikt nie pracuje.',
-            'Bierze po 1 sztuce: stos, budynek do 40 kroków, potem dalej.',
+            'Bierze po 1 sztuce: stos, budynek do {{vehicle.cargoSearch}} kroków, potem dalej.',
             'Źródło musi leżeć na lądzie, na którym stoją drzwi. Jedzenia z domu nie bierze.',
-            'Cel 0 albo niższy od zawartości: nadmiar idzie do najbliższego Magazynu lub Kwatery głównej z miejscem, do 40 kroków od drzwi. Gdy takich brak, ląduje na ziemi.',
+            'Cel 0 albo niższy od zawartości: nadmiar idzie do najbliższego Magazynu lub Kwatery głównej z miejscem, do {{vehicle.cargoSearch}} kroków od drzwi. Gdy takich brak, ląduje na ziemi.',
             'Dowódca bez Tragarza na pokładzie obniża cel, gdy towaru nie ma skąd wziąć. Z Tragarzem cel zostaje.',
             'Rozkaz jazdy woła załogę na pokład przed odjazdem.',
           ],
@@ -210,7 +231,7 @@ export const WORLD: ArticleGroup = {
                 'Wóz, [[good:catapult|Katapulta]]',
                 'Wysiada przy drzwiach',
                 '-',
-                'Rozsypany do 10 kroków wokół',
+                'Rozsypany do {{vehicle.spill}} kroków wokół',
               ],
               ['Statek cumuje', 'Wysiada na brzeg', 'Staje przy drzwiach', 'Przepada'],
               ['Statek na morzu', 'Tonie', 'Tonie razem ze swoją załogą', 'Przepada'],
@@ -265,8 +286,8 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Walka między graczami objętymi pokojem jest zablokowana.',
-            'Nie wejdziesz ani nie zbudujesz do 60 kroków od budynku partnera, chyba że bliżej ci do własnego.',
-            'Ostrzeżenia przychodzą 5 min i 1 min przed końcem.',
+            'Nie wejdziesz ani nie zbudujesz do {{peace.keepOut}} kroków od budynku partnera, chyba że bliżej ci do własnego.',
+            'Ostrzeżenia przychodzą {{peace.noticeFirstMinutes}} min i {{peace.noticeLastMinutes}} min przed końcem.',
           ],
         },
         {
@@ -334,12 +355,15 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Kto', 'Zasięg, kroki'],
             rows: [
-              ['[[job:scout|Zwiadowca]], [[building:headquarters|Kwatera główna]]', '30'],
-              ['Bohater, [[good:ship_small|Statek]], [[good:ship_big|Statek handlowy]]', '25'],
-              ['Żołnierz, budynek, także wieża i dom', '20'],
-              ['[[good:handcart|Wózek Ręczny]], [[good:oxcart|Zaprzęg]], [[good:catapult|Katapulta]]', '20'],
-              ['Dorosły cywil, Kobieta, własne zwierzę', '15'],
-              ['Dziecko', '10'],
+              ['[[job:scout|Zwiadowca]], [[building:headquarters|Kwatera główna]]', '{{vision.scout}}'],
+              ['Bohater, [[good:ship_small|Statek]], [[good:ship_big|Statek handlowy]]', '{{vision.hero}}'],
+              ['Żołnierz, budynek, także wieża i dom', '{{vision.soldier}}'],
+              [
+                '[[good:handcart|Wózek Ręczny]], [[good:oxcart|Zaprzęg]], [[good:catapult|Katapulta]]',
+                '{{vision.cart}}',
+              ],
+              ['Dorosły cywil, Kobieta, własne zwierzę', '{{vision.adult}}'],
+              ['Dziecko', '{{vision.child}}'],
               ['Plac budowy', '0'],
             ],
             num: [1],
@@ -374,7 +398,11 @@ export const WORLD: ArticleGroup = {
               ],
               ['Badanie lądu', 'Rozkaz "Badaj"', 'Poniżej'],
               ['Zwierzęta', 'Przejmuje dzikie Woły i Owce, idąc obok nich', '[[article:livestock|Hodowla]]'],
-              ['Widzenie', '30 kroków, najwięcej wśród ludzi', '[[article:fog|Mgła i widzenie]]'],
+              [
+                'Widzenie',
+                '{{vision.scout}} kroków, najwięcej wśród ludzi',
+                '[[article:fog|Mgła i widzenie]]',
+              ],
             ],
             foot: 'Zasięg drogowskazów go nie dotyczy, więc chodzi po całej mapie.',
           },
@@ -399,7 +427,10 @@ export const WORLD: ArticleGroup = {
             head: ['Zdarzenie', 'Skutek'],
             rows: [
               ['Brak lądu do odkrycia', 'Powiadomienie "Ląd zbadany", Zwiadowca czeka'],
-              ['Ponad 16 nieudanych celów z rzędu', 'Reszta uchodzi za niedostępną, "Ląd zbadany"'],
+              [
+                'Ponad {{explore.maxFailedLegs}} nieudanych celów z rzędu',
+                'Reszta uchodzi za niedostępną, "Ląd zbadany"',
+              ],
               ['Tryb mapy "Odkryta"', '"Ląd zbadany" od razu'],
               ['Nowy rozkaz', 'Badanie przepada'],
               ['Rozkaz z Shift', 'Czeka do końca badania'],
@@ -413,7 +444,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'wildlife',
       name: 'Dzikie zwierzęta i polowanie',
-      lead: 'Agresywne stado rzuca się na ludzi w promieniu 20 kroków od swojego miejsca, a za 40 krokami wraca.',
+      lead: 'Agresywne stado rzuca się na ludzi w promieniu {{wild.aggro}} kroków od swojego miejsca, a za {{wild.giveUp}} krokami wraca.',
       blocks: [
         {
           data: 'animals',
@@ -429,16 +460,16 @@ export const WORLD: ArticleGroup = {
               [
                 'Rozwścieczone po ciosie',
                 'Niedźwiedź, Słoń',
-                'Złość trwa 20 s od ostatniego ciosu, zaczęty atak trwa do śmierci celu albo jego schronienia',
+                'Złość trwa {{wild.angrySeconds}} s od ostatniego ciosu, zaczęty atak trwa do śmierci celu albo jego schronienia',
               ],
-              ['Płochliwe', 'Pozostałe', 'Uderzony przywódca ucieka do 20 kroków, stado za nim'],
+              ['Płochliwe', 'Pozostałe', 'Uderzony przywódca ucieka do {{wild.flight}} kroków, stado za nim'],
             ],
             foot: 'Dzika Koza nie atakuje i nie ucieka.',
           },
         },
         {
           list: [
-            'Cios alarmuje zwierzęta tego gatunku do 20 kroków wokół uderzonego.',
+            'Cios alarmuje zwierzęta tego gatunku do {{wild.kinAlarm}} kroków wokół uderzonego.',
             'Budynków i pojazdów zwierzęta nie atakują.',
           ],
         },
@@ -446,17 +477,17 @@ export const WORLD: ArticleGroup = {
           h: 'Przyrost stada',
         },
         {
-          p: 'Dzikie stado większe niż 1 sztuka i mniejsze od kolumny "Stado" zyskuje 1 dorosłą sztukę co 10 min, ale rośnie tylko około 1 stada na 5.',
+          p: 'Dzikie stado większe niż 1 sztuka i mniejsze od kolumny "Stado" zyskuje 1 dorosłą sztukę co {{wild.growthMinutes}} min, ale rośnie tylko około 1 stada na 5.',
         },
         {
           h: 'Na co poluje Myśliwy',
         },
         {
           list: [
-            'Teren łowiecki to 50 kroków od flagi roboczej albo miejsca pracy. Pościg wychodzi poza teren o 4 kroki.',
+            'Teren łowiecki to {{flag.hunter}} kroków od flagi roboczej albo miejsca pracy. Pościg wychodzi poza teren o {{wild.huntChase}} kroki.',
             'Wybiera bliskie i słabe zwierzę.',
             'Poluje na 1 ofiarę naraz, nową bierze dopiero po zebraniu zdobyczy.',
-            'Łuk Myśliwego zabiera 525 na strzał, zasięg 3-17 kroków.',
+            'Łuk Myśliwego zabiera {{wild.hunterShot}} na strzał, zasięg {{hunterBow.min}}-{{hunterBow.max}} kroków.',
             'Dorosłej Dzikiej Kozy sam nie weźmie, jej młode są zwierzyną.',
             'Pomija zwierzęta z właścicielem, rozwścieczone oraz stojące na innym lądzie.',
           ],
@@ -481,7 +512,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'livestock',
       name: 'Hodowla',
-      lead: 'Hodowca rozmnaża tylko przy dokładnie 2 dorosłych sztukach gatunku. Trzecia dorosła idzie na ubój.',
+      lead: 'Hodowca rozmnaża tylko przy dokładnie {{livestock.pair}} dorosłych sztukach gatunku. Trzecia dorosła idzie na ubój.',
       blocks: [
         {
           figure: {
@@ -499,7 +530,7 @@ export const WORLD: ArticleGroup = {
               [
                 '[[job:scout|Zwiadowca]]',
                 'Każdy jego krok przejmuje dzikie Woły i Owce oraz stado gracza, wobec którego masz stosunek wrogi. Pozostałe wrogie stado w pobliżu rozbiega się',
-                '2, rozbieganie 6',
+                '{{livestock.captureRange}}, rozbieganie {{livestock.scatterRange}}',
               ],
               [
                 '[[job:breeder|Hodowca]]',
@@ -524,24 +555,24 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 '[[good:sheep|Owca]]',
-                '1 [[good:water|Woda]], 2 [[good:wheat|Pszenica]]',
-                '1 [[good:wool|Wełna]], 2 [[good:meat|Mięso]]',
+                '{{livestock.calfWater}} [[good:water|Woda]], {{livestock.calfWheat}} [[good:wheat|Pszenica]]',
+                '{{livestock.sheepWool}} [[good:wool|Wełna]], {{livestock.sheepMeat}} [[good:meat|Mięso]]',
               ],
               [
                 '[[good:cattle|Wół]]',
-                '1 [[good:water|Woda]], 2 [[good:wheat|Pszenica]]',
-                '2 [[good:leather|Skóra]], 2 [[good:meat|Mięso]]',
+                '{{livestock.calfWater}} [[good:water|Woda]], {{livestock.calfWheat}} [[good:wheat|Pszenica]]',
+                '{{livestock.cattleLeather}} [[good:leather|Skóra]], {{livestock.cattleMeat}} [[good:meat|Mięso]]',
               ],
             ],
-            foot: 'Młode i ubój trwają po 8 s. Wybór produkcji Hodowcy decyduje, którym gatunkiem się zajmuje. Na Fermie mieści się po 30 sztuk Mięsa, Wełny i Skóry.',
+            foot: 'Młode i ubój trwają po 8 s. Wybór produkcji Hodowcy decyduje, którym gatunkiem się zajmuje. Na Fermie mieści się po {{livestock.farmShelf}} sztuk Mięsa, Wełny i Skóry.',
           },
         },
         {
           list: [
-            '[[building:work_animal_farm|Ferma bydła]] mieści 20 sztuk łącznie, oba gatunki i młode w drodze.',
-            'Młode dorasta 300 s (5 min) i nie liczy się do pary.',
-            'Rodzic musi być do 40 kroków od drzwi Fermy przy narodzinach. Dalej: stracony surowiec i brak młodego.',
-            'Załoga Fermy to 2 [[job:breeder|Hodowców]] i 1 [[job:carrier|Tragarz]].',
+            '[[building:work_animal_farm|Ferma bydła]] mieści {{livestock.farmHerd}} sztuk łącznie, oba gatunki i młode w drodze.',
+            'Młode dorasta {{livestock.growSeconds}} s ({{livestock.growMinutes}} min) i nie liczy się do pary.',
+            'Rodzic musi być do {{livestock.birthRange}} kroków od drzwi Fermy przy narodzinach. Dalej: stracony surowiec i brak młodego.',
+            'Załoga Fermy to {{livestock.breeders}} [[job:breeder|Hodowców]] i {{livestock.carriers}} [[job:carrier|Tragarz]].',
           ],
         },
         {
@@ -594,7 +625,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Pod 20% Płatnerz i Kowal idą się modlić, a bez miejsca modlitwy przy 10% pada komunikat "Chce się modlić".',
+            'Pod {{need.drivePct}}% Płatnerz i Kowal idą się modlić, a bez miejsca modlitwy przy {{need.criticalPct}}% pada komunikat "Chce się modlić".',
             'Krawiec sam nie idzie, trzeba mu kazać "Módl się".',
             'Przy 0% rzemieślnik dokończy opłaconą serię.',
           ],
@@ -610,14 +641,14 @@ export const WORLD: ArticleGroup = {
               ['[[building:work_temple|Świątynia]]', 'Gotowa, twoja'],
               ['[[building:headquarters|Kwatera główna]]', 'Gotowa, twoja'],
             ],
-            foot: 'Modlitwa trwa 8,3 s i daje +40% Religii. Dom bez ognia i obcy budynek nie działają.',
+            foot: 'Modlitwa trwa {{pray.seconds}} s i daje +{{pray.pct}}% Religii. Dom bez ognia i obcy budynek nie działają.',
           },
         },
         {
           h: 'Święty ogień',
         },
         {
-          p: 'Działa od Domu 3. 1 [[good:holy_oil|Oliwa]] pali się 5,5 min, pełny ogień 28 min.',
+          p: 'Działa od Domu 3. 1 [[good:holy_oil|Oliwa]] pali się {{oil.burnMinutes}} min, pełny ogień {{oil.fullBurnMinutes}} min.',
         },
         {
           h: 'Aura Świątyni',
@@ -626,14 +657,14 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Działanie', 'Wartość'],
             rows: [
-              ['Zasięg', '50 kroków'],
-              ['Zdrowie', '+50 na sekundę, do 7500'],
-              ['Religia', '+2,5% na sekundę, gdy pasek ma do 80%'],
+              ['Zasięg', '{{aura.range}} kroków'],
+              ['Zdrowie', '+{{aura.perSecond}} na sekundę, do {{aura.ceiling}}'],
+              ['Religia', '+{{aura.pietyPct}}% na sekundę, gdy pasek ma do {{need.satedPct}}%'],
               ['Kto', 'Wszyscy ludzie właściciela Świątyni. Dzieci dostają zdrowie'],
               ['Warunek', 'Świątynia gotowa i bez uszkodzeń'],
               ['Kilka Świątyń', 'Działa jedna aura, wartości się nie sumują'],
             ],
-            foot: 'Zdrowie ponad 5000 zostaje, dopóki nie zabiorą go rany.',
+            foot: 'Zdrowie ponad {{health.human}} zostaje, dopóki nie zabiorą go rany.',
           },
         },
       ],
@@ -664,21 +695,25 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Nagroda', 'Skrzynia', 'Magiczna'],
             rows: [
-              ['Mikstura albo amulet', '1', '3'],
-              ['Duże mikstury, 1 rodzaj', '12', '18'],
+              ['Mikstura albo amulet', '{{chest.singleWooden}}', '{{chest.singleMagical}}'],
+              ['Duże mikstury, 1 rodzaj', '{{chest.bulkWooden}}', '{{chest.bulkMagical}}'],
               [
                 '[[good:armor_chain|Kolczuga]], [[good:armor_plate|Zbroja Płytowa]] albo [[good:shoes|Buty]]',
-                '6',
-                '9',
+                '{{chest.wearWooden}}',
+                '{{chest.wearMagical}}',
               ],
-              ['[[good:bread|Żywność]]', '30', '48'],
+              ['[[good:bread|Żywność]]', '{{chest.foodWooden}}', '{{chest.foodMagical}}'],
               ['[[good:catapult|Katapulta]]', '1', '1'],
               [
-                '3 Cywili, 3 Kobiety, 3 wojowników z długim mieczem albo 3 łuczników z długim łukiem',
-                '3',
-                '3',
+                '{{chest.settlers}} Cywili, {{chest.settlers}} Kobiety, {{chest.settlers}} wojowników z długim mieczem albo {{chest.settlers}} łuczników z długim łukiem',
+                '{{chest.settlers}}',
+                '{{chest.settlers}}',
               ],
-              ['5 Wilków albo 3 Lwy, stado dzikie', '5 albo 3', '5 albo 3'],
+              [
+                '{{chest.wolves}} Wilków albo {{chest.lions}} Lwy, stado dzikie',
+                '{{chest.wolves}} albo {{chest.lions}}',
+                '{{chest.wolves}} albo {{chest.lions}}',
+              ],
             ],
             num: [1, 2],
             foot: 'Mapa wybiera zawartość każdej skrzyni.',

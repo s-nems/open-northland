@@ -8,7 +8,7 @@ import type { System } from '../context.js';
 import { forEachBuildingNear } from '../spatial/buildings.js';
 
 /** The match minutes before the end of a peace at which a `peaceEnding` notice fires. Project choice. */
-const PEACE_NOTICE_MINUTES = [5, 1] as const;
+export const PEACE_NOTICE_MINUTES = [5, 1] as const;
 
 /**
  * How near a peace partner's building a seat may neither send its people and vehicles nor build while the

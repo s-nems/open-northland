@@ -42,7 +42,7 @@ import { dropOrderQueue, isOrderableSettler } from '../guards.js';
  * Approximation: the original's click tolerance is unknown, and 3 tiles sits well inside the default
  * work-flag radius.
  */
-const WORK_FLAG_SNAP_MAX_RADIUS = 6;
+export const WORK_FLAG_SNAP_MAX_RADIUS = 6;
 
 /**
  * Place or move one unposted gatherer/fisher flag, or the flag a posted carrier or field worker holds, to

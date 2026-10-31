@@ -30,17 +30,41 @@ export const EXPERIENCE: ArticleGroup = {
           table: {
             head: ['Praca', 'Liczy się', 'Punkty za sztukę', 'Sztuk do 51%', 'Sztuk do 100%'],
             rows: [
-              ['Drewno', 'ścięte drzewo', '2,5', 2, 65],
-              ['Polowanie', 'sztuka z truchła', '2', 3, 81],
-              ['Połów', 'ryba', '1,5', 4, 108],
+              [
+                'Drewno',
+                'ścięte drzewo',
+                '{{exp.wood.points}}',
+                '{{exp.wood.repeatsQuoted}}',
+                '{{exp.wood.repeatsFull}}',
+              ],
+              [
+                'Polowanie',
+                'sztuka z truchła',
+                '{{exp.hunt.points}}',
+                '{{exp.hunt.repeatsQuoted}}',
+                '{{exp.hunt.repeatsFull}}',
+              ],
+              [
+                'Połów',
+                'ryba',
+                '{{exp.fish.points}}',
+                '{{exp.fish.repeatsQuoted}}',
+                '{{exp.fish.repeatsFull}}',
+              ],
               [
                 'Glina, kamień, żelazo, złoto, grzyby, pszenica, ubój, warsztat',
                 'sztuka, przy uboju zwierzę, w warsztacie partia',
-                '1',
-                5,
-                162,
+                '{{exp.craft.points}}',
+                '{{exp.craft.repeatsQuoted}}',
+                '{{exp.craft.repeatsFull}}',
               ],
-              ['Budowa, naprawa', 'cios, który coś dodał', '0,05', 100, 3240],
+              [
+                'Budowa, naprawa',
+                'cios, który coś dodał',
+                '{{exp.build.points}}',
+                '{{exp.build.repeatsQuoted}}',
+                '{{exp.build.repeatsFull}}',
+              ],
             ],
             num: [2, 3, 4],
             foot: 'Ostatnie kolumny liczą drzewa, sztuki, partie lub ciosy. Tor nazywa się jak praca i towar, np. Wydobywanie - Żelazo, Pieczenie - Chleb. Tory są takie same u wszystkich plemion.',
@@ -54,8 +78,8 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           list: [
-            '[[job:carrier|Tragarz]] zbiera Noszenie, które nie przyspiesza pracy. 10 dostaw otwiera [[job:trader|Kupca]].',
-            'Kupiec zbiera Handel, 1 punkt za rozładowaną sztukę. Handel niczego nie zmienia.',
+            '[[job:carrier|Tragarz]] zbiera Noszenie, które nie przyspiesza pracy. {{exp.carrierTrader}} dostaw otwiera [[job:trader|Kupca]].',
+            'Kupiec zbiera Handel, {{exp.tradePointPerUnit}} punkt za rozładowaną sztukę. Handel niczego nie zmienia.',
             '[[job:scout|Zwiadowca]] nie zbiera punktów. [[job:woman|Kobieta]] i dziecko nie mają torów.',
             'Sadzenie, podlewanie, [[building:school|Szkoła]] i [[building:barracks|Koszary]] nie dają punktów.',
           ],
@@ -73,17 +97,17 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           table: {
-            head: ['Trafienia', 'Mnożnik', 'Cios 1000 staje się'],
+            head: ['Trafienia', 'Mnożnik', 'Cios {{combat.sampleBlow}} staje się'],
             rows: [
-              [0, '×1', 1000],
-              [10, '×1,05', 1052],
-              [25, '×1,14', 1142],
-              [50, '×1,33', 1333],
-              [75, '×1,6', 1600],
-              [100, '×2', 2000],
+              [0, '×1', '{{combat.sampleBlow}}'],
+              [10, '×{{fight.factor.10}}', '{{fight.blow.10}}'],
+              [25, '×{{fight.factor.25}}', '{{fight.blow.25}}'],
+              [50, '×{{fight.factor.50}}', '{{fight.blow.50}}'],
+              [75, '×{{fight.factor.75}}', '{{fight.blow.75}}'],
+              ['{{combat.fightCapHits}}', '×{{combat.fightCapFactor}}', '{{combat.fightCapBlow}}'],
             ],
             num: [0, 1, 2],
-            foot: 'Powyżej 100 trafień mnożnik nie rośnie.',
+            foot: 'Powyżej {{combat.fightCapHits}} trafień mnożnik nie rośnie.',
           },
         },
         {
@@ -93,7 +117,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Celność',
         },
         {
-          p: 'Łuk i katapulta: 11% celnych strzałów przy 0 trafień, 100% przy 89. Tabela: [[article:aim|Trafienie i strzelanie]].',
+          p: 'Łuk i katapulta: {{aim.basePct}}% celnych strzałów przy 0 trafień, 100% przy {{aim.sureHits}}. Tabela: [[article:aim|Trafienie i strzelanie]].',
         },
         {
           h: 'Co liczy się jako trafienie',
@@ -112,17 +136,25 @@ export const EXPERIENCE: ArticleGroup = {
             head: ['Broń', 'Rzemieślnik', 'Wymóg'],
             rows: [
               ['[[good:spear_wooden|Drewniana Włócznia]]', '[[job:armorer|Płatnerz]]', 'brak'],
-              ['[[good:spear_iron|Żelazna Włócznia]]', '[[job:smith|Kowal]]', '5 × Kowalstwo'],
+              [
+                '[[good:spear_iron|Żelazna Włócznia]]',
+                '[[job:smith|Kowal]]',
+                '{{exp.ironSpearNeed}} × Kowalstwo',
+              ],
               ['[[good:sword_shord|Krótki Miecz]]', '[[job:smith|Kowal]]', 'brak'],
-              ['[[good:sword_long|Długi Miecz]]', '[[job:smith|Kowal]]', '5 × Kowalstwo'],
+              ['[[good:sword_long|Długi Miecz]]', '[[job:smith|Kowal]]', '{{exp.longSwordNeed}} × Kowalstwo'],
               ['[[good:bow_short|Krótki Łuk]]', '[[job:armorer|Płatnerz]]', 'brak'],
-              ['[[good:bow_long|Długi Łuk]]', '[[job:armorer|Płatnerz]]', '10 × Wyrób Broni'],
+              [
+                '[[good:bow_long|Długi Łuk]]',
+                '[[job:armorer|Płatnerz]]',
+                '{{exp.longBowNeed}} × Wyrób Broni',
+              ],
             ],
             foot: 'Tak samo u wszystkich pięciu plemion.',
           },
         },
         {
-          p: 'Trafienia nie blokują broni. Żołnierz bierze każdą broń, którą ma magazyn w zasięgu, także bez trafień, i od razu zostaje klasą tej broni. Próg 5 lub 10 trafień z [[article:trades|Zawodów i szkoły]] zapisuje tylko odkrycie klasy dla osady i otwiera jej wybór w "Zmiana zawodu".',
+          p: 'Trafienia nie blokują broni. Żołnierz bierze każdą broń, którą ma magazyn w zasięgu, także bez trafień, i od razu zostaje klasą tej broni. Próg {{exp.classLowNeed}} lub {{exp.classHighNeed}} trafień z [[article:trades|Zawodów i szkoły]] zapisuje tylko odkrycie klasy dla osady i otwiera jej wybór w "Zmiana zawodu".',
         },
         {
           h: 'Gwiazdka',
@@ -164,7 +196,7 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Wymóg z dwoma torami liczy ich sumę. [[job:builder|Budowniczy]], Zbieracz, [[job:farmer|Farmer]], [[job:hunter|Myśliwy]], [[job:fisher|Rybak]], [[job:carrier|Tragarz]] i [[job:scout|Zwiadowca]] są otwarci od początku.',
         },
         {
-          p: 'Wyrób odkrywa się tak samo, np. [[good:furniture|Meble]] przy 10 × Ciesielstwo. Wymagania są takie same u wszystkich plemion.',
+          p: 'Wyrób odkrywa się tak samo, np. [[good:furniture|Meble]] przy {{exp.furnitureNeed}} × Ciesielstwo. Wymagania są takie same u wszystkich plemion.',
         },
         {
           h: 'Jak przebiega odkrycie',
@@ -172,7 +204,7 @@ export const EXPERIENCE: ArticleGroup = {
         {
           steps: [
             'Osadnik pracuje w zawodzie poprzednika, np. [[job:collector|Zbieracz]] przy drewnie.',
-            'Po 10 ściętych drzewach spełnia wymóg [[job:joiner|Cieśli]] i gra ogłasza odkrycie.',
+            'Po {{exp.joinerNeed}} ściętych drzewach spełnia wymóg [[job:joiner|Cieśli]] i gra ogłasza odkrycie.',
             'Zawód jest odkryty dla całej osady, a ten osadnik może go objąć od razu.',
             'Pozostali idą do [[building:school|Szkoły]] albo zdobywają ten sam wymóg pracą.',
           ],
@@ -184,9 +216,9 @@ export const EXPERIENCE: ArticleGroup = {
           table: {
             head: ['Cecha', 'Szkoła', 'Koszary'],
             rows: [
-              ['Miejsca', '5', '25'],
+              ['Miejsca', '{{school.seats}}', '{{barracks.seats}}'],
               ['Uczy', 'cywilnego zawodu lub wyrobu', 'zawodu Żołnierza'],
-              ['Czas', 'tabela niżej', '16,3 s'],
+              ['Czas', 'tabela niżej', '{{barracks.drillSeconds}} s'],
               ['Kto', 'dorosły mężczyzna', 'dorosły mężczyzna, także z zawodem'],
               ['Punkty doświadczenia', '0', '0'],
               [
@@ -214,15 +246,15 @@ export const EXPERIENCE: ArticleGroup = {
             rows: [
               [
                 '[[good:armor_leather|Skórzana Zbroja]], [[good:potion_food_small|Mała Odżywcza Mikstura]], [[good:potion_stamina_small|Mała Mikstura Wytrzymałości]]',
-                '7 s',
+                '{{course.shortSeconds}} s',
               ],
-              ['zawody i większość wyrobów', '11,7 s'],
-              ['[[good:potion_heal_big|Duża Lecznicza Mikstura]]', '16,3 s'],
-              ['[[good:handcart|Wózek Ręczny]]', '21 s'],
-              ['[[good:oxcart|Zaprzęg]]', '25,7 s'],
+              ['zawody i większość wyrobów', '{{course.commonSeconds}} s'],
+              ['[[good:potion_heal_big|Duża Lecznicza Mikstura]]', '{{course.healSeconds}} s'],
+              ['[[good:handcart|Wózek Ręczny]]', '{{course.handcartSeconds}} s'],
+              ['[[good:oxcart|Zaprzęg]]', '{{course.oxcartSeconds}} s'],
               [
                 '[[good:ship_small|Statek]], [[good:ship_big|Statek handlowy]], [[good:catapult|Katapulta]]',
-                '30,3 s',
+                '{{course.shipSeconds}} s',
               ],
             ],
             num: [1],

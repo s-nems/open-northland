@@ -347,7 +347,7 @@ function consumeMaterials(world: World, building: Entity, cost: readonly GoodsLi
  * building scale with its size through its material cost: the 4-unit base home takes 120. Original
  * behavior.
  */
-const STEPS_PER_UNIT = 30;
+export const STEPS_PER_UNIT = 30;
 
 /** Labor installed by one construction step at `site`. */
 function constructionLaborPerStep(world: World, ctx: SystemContext, site: Entity): Fixed {

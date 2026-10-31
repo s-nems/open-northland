@@ -151,7 +151,7 @@ export function droppedOnDeathOf(world: World, content: ContentSet, character: E
 }
 
 /** Original behavior: shoes or a tool worn by at most a tenth of its condition drops as a new good. */
-const DROPS_AS_NEW_WEAR_DIVISOR = 10;
+export const DROPS_AS_NEW_WEAR_DIVISOR = 10;
 
 /**
  * Heap a spill on the ground where it fell, each good scattered outward from its tile in canonical

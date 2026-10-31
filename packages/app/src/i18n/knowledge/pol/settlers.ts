@@ -6,7 +6,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'needs',
       name: 'Potrzeby',
-      lead: 'Przy 20% paska osadnik rzuca pracę i idzie uzupełnić potrzebę.',
+      lead: 'Przy {{need.drivePct}}% paska osadnik rzuca pracę i idzie uzupełnić potrzebę.',
       blocks: [
         {
           p: 'Ustawienie lobby "Potrzeby osadników: Wyłączone" zatrzymuje paski i znosi głód. Ten artykuł wtedy nie obowiązuje.',
@@ -20,13 +20,13 @@ export const SETTLERS: ArticleGroup = {
             rows: [
               [
                 'Energia',
-                '100% w 15 min',
+                '100% w {{need.drainMinutes}} min',
                 'tak',
                 '[[article:food|posiłek]]',
-                '[[article:health|umiera w 3,5 min]]',
+                '[[article:health|umiera w {{need.starveMinutes}} min]]',
               ],
-              ['Wytrzymałość', '100% w 15 min', 'tak', 'sen', 'zdrowie bez zmian'],
-              ['Towarzystwo', '100% w 15 min', 'nie', 'rozmowa', 'bez kary'],
+              ['Wytrzymałość', '100% w {{need.drainMinutes}} min', 'tak', 'sen', 'zdrowie bez zmian'],
+              ['Towarzystwo', '100% w {{need.drainMinutes}} min', 'nie', 'rozmowa', 'bez kary'],
               [
                 'Religia',
                 'nie',
@@ -35,7 +35,7 @@ export const SETTLERS: ArticleGroup = {
                 'nie zacznie partii, która kosztuje Religię',
               ],
             ],
-            foot: 'Na starcie mapy każdy pasek ma losowo 50-100%. Bez [[good:shoes|Butów]] każdy krok zabiera 0,01-0,05% Energii zależnie od podłoża, z ładunkiem dwa razy tyle.',
+            foot: 'Na starcie mapy każdy pasek ma losowo {{need.startMinPct}}-100%. Bez [[good:shoes|Butów]] każdy krok zabiera {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energii zależnie od podłoża, z ładunkiem dwa razy tyle.',
           },
         },
         {
@@ -51,10 +51,19 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Poziom', 'Co się dzieje'],
             rows: [
-              ['10%', 'Powiadomienie o Energii, Wytrzymałości lub Religii.'],
-              ['20%', 'Kończy czynność i rzuca pracę. Przy Wytrzymałości krok jest wolniejszy o 0,17 s.'],
-              ['80%', 'Osadnik w domu dopełnia Wytrzymałość, potem Energię do tego poziomu i wychodzi.'],
-              ['150%', 'Górna granica. Posiłek w domu i sen na Meblach odkładają zapas ponad 100%.'],
+              ['{{need.criticalPct}}%', 'Powiadomienie o Energii, Wytrzymałości lub Religii.'],
+              [
+                '{{need.drivePct}}%',
+                'Kończy czynność i rzuca pracę. Przy Wytrzymałości krok jest wolniejszy o {{step.tiredExtra}} s.',
+              ],
+              [
+                '{{need.satedPct}}%',
+                'Osadnik w domu dopełnia Wytrzymałość, potem Energię do tego poziomu i wychodzi.',
+              ],
+              [
+                '{{need.overfillPct}}%',
+                'Górna granica. Posiłek w domu i sen na Meblach odkładają zapas ponad 100%.',
+              ],
             ],
             foot: 'Sami idą się modlić [[job:armorer|Płatnerz]] i [[job:smith|Kowal]]. [[job:sewer|Krawiec]] zużywa Religię, ale modli się tylko na rozkaz.',
           },
@@ -75,7 +84,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Gdy nie ma czego zjeść ani gdzie się modlić, osadnik wraca do pracy, a pasek spada dalej. Bez domu w zasięgu 50 kroków śpi na otwartym terenie.',
+          p: 'Gdy nie ma czego zjeść ani gdzie się modlić, osadnik wraca do pracy, a pasek spada dalej. Bez domu w zasięgu {{reach.walk}} kroków śpi na otwartym terenie.',
         },
         {
           p: 'Żołnierz w walce je tylko to, co niesie, albo z zapasu wieży. Rozkaz jedzenia przerywa walkę.',
@@ -87,10 +96,22 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Kto', 'Czas snu', 'Poza domem', 'W domu', 'W domu z Meblami'],
             rows: [
-              ['Mężczyzna z domem', '19,8 s', '+40%', '+80%', '+160%'],
-              ['[[job:woman|Kobieta]]', '8,3 s', '+20%', '+40%', '+80%'],
-              ['Kupiec, Zwiadowca', '19,8 s', '+80%', '-', '-'],
-              ['Żołnierz', '19,8 s', '+160%', '-', '-'],
+              [
+                'Mężczyzna z domem',
+                '{{sleep.manSeconds}} s',
+                '+{{sleep.manAwayPct}}%',
+                '+{{sleep.manHomePct}}%',
+                '+{{sleep.manFurnishedPct}}%',
+              ],
+              [
+                '[[job:woman|Kobieta]]',
+                '{{sleep.womanSeconds}} s',
+                '+{{sleep.womanAwayPct}}%',
+                '+{{sleep.womanHomePct}}%',
+                '+{{sleep.womanFurnishedPct}}%',
+              ],
+              ['Kupiec, Zwiadowca', '{{sleep.manSeconds}} s', '+{{sleep.manHomePct}}%', '-', '-'],
+              ['Żołnierz', '{{sleep.soldierSeconds}} s', '+{{sleep.soldierPct}}%', '-', '-'],
             ],
             num: [1, 2, 3, 4],
           },
@@ -143,10 +164,10 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Przy 10% Energii osadnik schodzi z marszu, zwiadu lub kolejki rozkazów. Stan: "Głodny, idzie coś zjeść".',
-            'Je do 80%, potem zaczyna rozkaz od nowa.',
-            'Gdy nic nie znajdzie, wraca do rozkazu i szuka znowu po 20 s.',
-            'Nowy rozkaz wydany głodnemu ma pierwszeństwo: głód nie rusza go przez 20 s.',
+            'Przy {{need.criticalPct}}% Energii osadnik schodzi z marszu, zwiadu lub kolejki rozkazów. Stan: "Głodny, idzie coś zjeść".',
+            'Je do {{need.satedPct}}%, potem zaczyna rozkaz od nowa.',
+            'Gdy nic nie znajdzie, wraca do rozkazu i szuka znowu po {{meal.breakRetrySeconds}} s.',
+            'Nowy rozkaz wydany głodnemu ma pierwszeństwo: głód nie rusza go przez {{meal.breakRetrySeconds}} s.',
             'Wytrzymałość czeka do końca rozkazów.',
           ],
         },
@@ -160,11 +181,11 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Co jest w pobliżu', 'Kroki', 'Skutek'],
             rows: [
-              ['Walka', 'do 49', 'Nie śpi, nie modli się, nie rozmawia.'],
-              ['Widoczny wróg w Ataku lub Obronie', 'do 40', 'To samo.'],
-              ['Walka przy śpiącym na otwartym terenie', 'do 40', 'Wstaje.'],
+              ['Walka', 'do {{alert.restClearance}}', 'Nie śpi, nie modli się, nie rozmawia.'],
+              ['Widoczny wróg w Ataku lub Obronie', 'do {{alert.standTo}}', 'To samo.'],
+              ['Walka przy śpiącym na otwartym terenie', 'do {{alert.standTo}}', 'Wstaje.'],
             ],
-            foot: 'Na jedzenie idzie dopiero przy 10% Energii. Dzikie zwierzęta liczą się dopiero, gdy toczy się z nimi walka. W Ignorowaniu reguła nie działa, a rozkaz potrzeby ma pierwszeństwo.',
+            foot: 'Na jedzenie idzie dopiero przy {{need.criticalPct}}% Energii. Dzikie zwierzęta liczą się dopiero, gdy toczy się z nimi walka. W Ignorowaniu reguła nie działa, a rozkaz potrzeby ma pierwszeństwo.',
           },
         },
         {
@@ -176,10 +197,10 @@ export const SETTLERS: ArticleGroup = {
             rows: [
               [
                 'Modlitwa',
-                '8,3 s',
-                '+40% Religii. Powtarza do 100%, chyba że Energia lub Wytrzymałość spadnie do 20%.',
+                '{{pray.seconds}} s',
+                '+{{pray.pct}}% Religii. Powtarza do 100%, chyba że Energia lub Wytrzymałość spadnie do {{need.drivePct}}%.',
               ],
-              ['Rozmowa', '8,3-20,6 s', 'Do +40% Towarzystwa.'],
+              ['Rozmowa', '{{talk.shortSeconds}}-{{talk.longSeconds}} s', 'Do +{{talk.pct}}% Towarzystwa.'],
               ['Dopełnianie pasków w domu, w małżeństwie', '-', 'Towarzystwo 100%.'],
             ],
             num: [1],
@@ -207,12 +228,17 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Posiłek', 'Energia poza domem', 'Energia w domu', 'Towarzystwo'],
             rows: [
-              ['[[good:bread|Żywność]]', '+40%', '+80%', '-'],
-              ['[[good:candy|Ciastko]]', '+60%', '+120%', '+40%'],
-              ['Dojrzały krzew', '+40%', '-', '-'],
+              ['[[good:bread|Żywność]]', '+{{meal.plainPct}}%', '+{{meal.plainHomePct}}%', '-'],
+              [
+                '[[good:candy|Ciastko]]',
+                '+{{meal.candyPct}}%',
+                '+{{meal.candyHomePct}}%',
+                '+{{meal.candyCompanyPct}}%',
+              ],
+              ['Dojrzały krzew', '+{{meal.plainPct}}%', '-', '-'],
             ],
             num: [1, 2, 3],
-            foot: 'Posiłek trwa 4,2 s i zjada 1 sztukę. Żołnierz nie je w domu, a Ciastko daje mu tyle co Żywność: +40%.',
+            foot: 'Posiłek trwa {{meal.seconds}} s i zjada 1 sztukę. Żołnierz nie je w domu, a Ciastko daje mu tyle co Żywność: +{{meal.plainPct}}%.',
           },
         },
         {
@@ -243,9 +269,9 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            'Własna spiżarnia, gdy drzwi domu są najwyżej 50 kroków dalej.',
-            'Najbliższy magazyn, warsztat lub stos na ziemi w zasięgu 40 kroków, albo dojrzały krzew bliżej niż 10 kroków.',
-            'Najbliższy dojrzały krzew w zasięgu 40 kroków.',
+            'Własna spiżarnia, gdy drzwi domu są najwyżej {{reach.walk}} kroków dalej.',
+            'Najbliższy magazyn, warsztat lub stos na ziemi w zasięgu {{reach.goods}} kroków, albo dojrzały krzew bliżej niż {{reach.bushAtHand}} kroków.',
+            'Najbliższy dojrzały krzew w zasięgu {{reach.goods}} kroków.',
             'Najbliższe jedzenie gdziekolwiek w zasięgu chodu, także daleki własny dom.',
           ],
         },
@@ -271,41 +297,56 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'health',
       name: 'Zdrowie i leczenie',
-      lead: 'Człowiek ma 5000 zdrowia, a pełne zdrowie wraca samo w 7 minut.',
+      lead: 'Człowiek ma {{health.human}} zdrowia, a pełne zdrowie wraca samo w {{health.regenMinutes}} minut.',
       blocks: [
         {
           h: 'Co zmienia zdrowie',
         },
         {
           table: {
-            head: ['Źródło', 'Zmiana', 'Warunek', '5000 zdrowia w'],
+            head: ['Źródło', 'Zmiana', 'Warunek', '{{health.human}} zdrowia w'],
             rows: [
-              ['Regeneracja', '+12/s', 'Energia powyżej 0%, także w walce', '6 min 57 s'],
+              [
+                'Regeneracja',
+                '+{{health.regenPerSecond}}/s',
+                'Energia powyżej 0%, także w walce',
+                '{{health.regenWholeMin}} min {{health.regenRestSec}} s',
+              ],
               [
                 '[[article:religion|Aura Świątyni]]',
-                '+50/s',
-                '50 kroków od [[building:work_temple|Świątyni]]',
-                '1 min 40 s',
+                '+{{aura.perSecond}}/s',
+                '{{aura.range}} kroków od [[building:work_temple|Świątyni]]',
+                '{{aura.wholeMin}} min {{aura.restSec}} s',
               ],
-              ['Mikstura lecznicza', '+2000 za łyk', 'rana zeszłaby poniżej 2500', '-'],
-              ['Głód', '-24/s', 'Energia 0%', '3 min 28 s'],
+              [
+                'Mikstura lecznicza',
+                '+{{draught.healSip}} za łyk',
+                'rana zeszłaby poniżej {{draught.healBelow}}',
+                '-',
+              ],
+              [
+                'Głód',
+                '-{{health.starvePerSecond}}/s',
+                'Energia 0%',
+                '{{health.starveWholeMin}} min {{health.starveRestSec}} s',
+              ],
             ],
             num: [1, 3],
-            foot: 'Regeneracja i aura sumują się do 62 na sekundę. Regeneracja kończy się na 5000, aura leczy ponad normę, do 7500. Dziecko i bohater też mają 5000 i regenerują.',
+            foot: 'Regeneracja i aura sumują się do {{aura.totalPerSecond}} na sekundę. Regeneracja kończy się na {{health.human}}, aura leczy ponad normę, do {{aura.ceiling}}. Dziecko i bohater też mają {{health.human}} i regenerują.',
           },
         },
         {
-          p: 'Przy 720 zdrowia gra pokazuje powiadomienie, że osadnik umiera.',
+          p: 'Przy {{health.nearDeath}} zdrowia gra pokazuje powiadomienie, że osadnik umiera.',
         },
         {
           h: 'Mikstury lecznicze',
         },
         {
           list: [
-            '[[good:potion_heal_small|Mała Lecznicza Mikstura]] ma 2 łyki, razem 4000. [[good:potion_heal_big|Duża Lecznicza Mikstura]] ma 5 łyków, razem 10000.',
-            'Osadnik pije łyk za łykiem, aż rana zostawi mu co najmniej 2500 zdrowia.',
+            '[[good:potion_heal_small|Mała Lecznicza Mikstura]] ma {{draught.smallUses}} łyki, razem {{draught.healSmallTotal}}. [[good:potion_heal_big|Duża Lecznicza Mikstura]] ma {{draught.bigUses}} łyków, razem {{draught.healBigTotal}}.',
+            'Osadnik pije łyk za łykiem, aż rana zostawi mu co najmniej {{draught.healBelow}} zdrowia.',
             'Cios, który by zabił, nie zabija, jeśli łyki pokrywają ranę.',
-            'Głód też wywołuje picie, gdy zdrowie schodzi poniżej 2500.',
+            'Głód też wywołuje picie, gdy zdrowie schodzi poniżej {{draught.healBelow}}.',
             'Najpierw napoczęta butelka, potem mała, potem duża.',
           ],
         },
@@ -315,7 +356,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'life',
       name: 'Życie i śmierć',
-      lead: 'Dziecko dorasta 4 minuty po narodzinach. Dorosły żyje, dopóki ma zdrowie.',
+      lead: 'Dziecko dorasta {{age.adultMinutes}} minuty po narodzinach. Dorosły żyje, dopóki ma zdrowie.',
       blocks: [
         {
           h: 'Etapy życia',
@@ -324,16 +365,26 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Etap', 'Wiek', 'Od narodzin', 'Uwagi'],
             rows: [
-              ['Niemowlę', '0-3 lata', '0-1 min 20 s', 'Krok dwa razy wolniejszy.'],
-              ['Dziecko', '4-11 lat', '1 min 20 s-4 min', 'Krok wolniejszy o 0,17 s. Chodzi wokół domu.'],
+              [
+                'Niemowlę',
+                '0-{{age.babyLastYear}} lata',
+                '0-{{age.childWholeMin}} min {{age.childRestSec}} s',
+                'Krok dwa razy wolniejszy.',
+              ],
+              [
+                'Dziecko',
+                '{{age.childYears}}-{{age.childLastYear}} lat',
+                '{{age.childWholeMin}} min {{age.childRestSec}} s-{{age.adultMinutes}} min',
+                'Krok wolniejszy o {{step.childExtra}} s. Chodzi wokół domu.',
+              ],
               [
                 'Dorosły',
-                'od 12 lat',
-                'od 4 min',
+                'od {{age.adultYears}} lat',
+                'od {{age.adultMinutes}} min',
                 'Chłopiec zostaje [[job:civilist|Cywilem]], dziewczynka [[job:woman|Kobietą]].',
               ],
             ],
-            foot: 'Rok życia trwa 20 s. Cywil bez zawodu czeka na przydział.',
+            foot: 'Rok życia trwa {{age.yearSeconds}} s. Cywil bez zawodu czeka na przydział.',
           },
         },
         {
@@ -346,7 +397,7 @@ export const SETTLERS: ArticleGroup = {
               ['Niesiony towar', 'Spada na ziemię w całości.'],
               [
                 '[[good:shoes|Buty]], narzędzie',
-                'Spadają jako nowe, jeśli są zużyte najwyżej w 10%. Inaczej przepadają.',
+                'Spadają jako nowe, jeśli są zużyte najwyżej w {{death.newWearPct}}%. Inaczej przepadają.',
               ],
               ['Broń', 'Spada tylko po żołnierzu.'],
               ['Pancerz', 'Spada zawsze.'],
@@ -365,7 +416,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'family',
       name: 'Rodzina i dom',
-      lead: 'Dziecko kosztuje 2 sztuki jedzenia ze spiżarni, a para ma jedno dziecko naraz.',
+      lead: 'Dziecko kosztuje {{family.childFood}} sztuki jedzenia ze spiżarni, a para ma jedno dziecko naraz.',
       blocks: [
         {
           h: 'Przydział domu',
@@ -395,10 +446,10 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             'Gracz wybiera: Niech ma Chłopca albo Niech ma Dziewczynkę.',
-            'Żona donosi jedzenie, gdy spiżarnia ma mniej niż 2 sztuki.',
+            'Żona donosi jedzenie, gdy spiżarnia ma mniej niż {{family.childFood}} sztuki.',
             'Oboje wchodzą do domu.',
-            'Spiżarnia traci 2 sztuki.',
-            'Dziecko rodzi się po 16,7 s u Wikingów, po 4,2 s u pozostałych plemion.',
+            'Spiżarnia traci {{family.childFood}} sztuki.',
+            'Dziecko rodzi się po {{family.birthVikingSeconds}} s u Wikingów, po {{family.birthOtherSeconds}} s u pozostałych plemion.',
           ],
         },
         {
@@ -414,7 +465,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          p: 'Następne dziecko para może mieć, gdy poprzednie dorośnie, czyli po 4 minutach. Dziecko nie zajmuje miejsca rodziny w domu.',
+          p: 'Następne dziecko para może mieć, gdy poprzednie dorośnie, czyli po {{age.adultMinutes}} minutach. Dziecko nie zajmuje miejsca rodziny w domu.',
         },
         {
           h: 'Poziomy domu',
@@ -429,7 +480,7 @@ export const SETTLERS: ArticleGroup = {
           data: 'homes',
         },
         {
-          p: 'Spiżarnia to osobny limit na Żywność i na Ciastko: Dom 1 mieści 5 + 5 sztuk. Rodzina to dorosły, jego małżonek i rosnące dziecko. Dom może należeć do dowolnego plemienia gracza.',
+          p: 'Spiżarnia to osobny limit na Żywność i na Ciastko: Dom 1 mieści {{home.larder}} + {{home.candyLarder}} sztuk. Rodzina to dorosły, jego małżonek i rosnące dziecko. Dom może należeć do dowolnego plemienia gracza.',
         },
         {
           h: 'Wyposażenie domu',
@@ -438,18 +489,30 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Towar', 'Od', 'Daje', '1 sztuka starcza na', 'Kobieta donosi poniżej'],
             rows: [
-              ['[[good:crockery|Naczynia]]', 'Dom 1', 'Dostawa jedzenia daje 2 sztuki', '20 dostaw', 1],
-              ['[[good:furniture|Meble]]', 'Dom 1', 'Sen ×2', '10 snów mężczyzny, 20 snów kobiety', 1],
+              [
+                '[[good:crockery|Naczynia]]',
+                'Dom 1',
+                'Dostawa jedzenia daje 2 sztuki',
+                '{{home.crockeryDeliveries}} dostaw',
+                '{{home.crockeryFetchBelow}}',
+              ],
+              [
+                '[[good:furniture|Meble]]',
+                'Dom 1',
+                'Sen ×2',
+                '{{home.furnitureManSleeps}} snów mężczyzny, {{home.furnitureWomanSleeps}} snów kobiety',
+                '{{home.furnitureFetchBelow}}',
+              ],
               [
                 '[[good:holy_oil|Oliwa]]',
                 'Dom 3',
                 '[[article:religion|Święty ogień]]: modlitwa przed domem',
-                '5 min 33 s',
-                3,
+                '{{oil.wholeMin}} min {{oil.restSec}} s',
+                '{{home.oilFetchBelow}}',
               ],
             ],
             num: [4],
-            foot: 'Dom trzyma do 5 sztuk każdego z tych towarów. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
+            foot: 'Dom trzyma do {{home.wareUnits}} sztuk każdego z tych towarów. Oliwa pali się bez przerwy, także gdy nikt się nie modli.',
           },
         },
         {
@@ -508,7 +571,7 @@ export const SETTLERS: ArticleGroup = {
                 'tak',
               ],
             ],
-            foot: 'Zakres 0-100, na starcie 0. Rozkaz wydany jednej osobie ma pierwszeństwo przed Asystentem. Kolejność broni i zbroi: [[article:equip|Wyposażanie żołnierzy]].',
+            foot: 'Zakres 0-{{assistant.counterMax}}, na starcie 0. Rozkaz wydany jednej osobie ma pierwszeństwo przed Asystentem. Kolejność broni i zbroi: [[article:equip|Wyposażanie żołnierzy]].',
           },
         },
         {
@@ -576,7 +639,7 @@ export const SETTLERS: ArticleGroup = {
                 'Dostarcz broń. Do tego czasu zajmuje miejsce nowego rekruta.',
               ],
             ],
-            foot: 'Najwyżej 2 osoby na sekundę. Rekruci w drodze liczą się do licznika, a stracony rekrut wraca do kolejki.',
+            foot: 'Najwyżej {{assistant.draftsPerSecond}} osoby na sekundę. Rekruci w drodze liczą się do licznika, a stracony rekrut wraca do kolejki.',
           },
         },
         {
@@ -588,7 +651,7 @@ export const SETTLERS: ArticleGroup = {
             'Jedno wyjście do magazynu, tam dobiera resztę.',
             'Na każdą sztukę w magazynie idzie jeden osadnik. Zapasu poniżej [[article:hauling|minimum magazynu]] nie rusza.',
             'Wypełnia tylko puste miejsca, nie wymienia na lepsze. Żelazne narzędzia idą przed drewnianymi, duża butelka przed małą.',
-            'Kto ma małą miksturę, nie idzie po dużą. Miejsca na napoje i amulety są 4: [[article:draughts|Napoje i amulety]].',
+            'Kto ma małą miksturę, nie idzie po dużą. Miejsca na napoje i amulety są {{amulet.slots}}: [[article:draughts|Napoje i amulety]].',
           ],
         },
         {
@@ -601,7 +664,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Flaga przesuwa się za surowcem, 6-10 kroków od niego: [[article:work-flag|Flaga robocza]].',
+          p: 'Flaga przesuwa się za surowcem, {{assistant.flagMin}}-{{assistant.flagMax}} kroków od niego: [[article:work-flag|Flaga robocza]].',
         },
         {
           p: 'Okno "Poddani" liczy braki: domu, miejsca pracy, narzędzi, butów, pary, dzieci, broni, miodu pitnego.',
@@ -630,27 +693,27 @@ export const SETTLERS: ArticleGroup = {
             rows: [
               [
                 '[[good:mead|Miód Pitny]]',
-                2,
-                '+50% Energii i +50% Wytrzymałości',
-                'Energia lub Wytrzymałość ma do 20%',
+                '{{draught.meadUses}}',
+                '+{{draught.meadPct}}% Energii i +{{draught.meadPct}}% Wytrzymałości',
+                'Energia lub Wytrzymałość ma do {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_food_small|Mała]] / [[good:potion_food_big|Duża Odżywcza Mikstura]]',
-                '2 / 5',
-                '+100% Energii',
-                'Energia ma do 20%',
+                '{{draught.smallUses}} / {{draught.bigUses}}',
+                '+{{draught.potionPct}}% Energii',
+                'Energia ma do {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_stamina_small|Mała]] / [[good:potion_stamina_big|Duża Mikstura Wytrzymałości]]',
-                '2 / 5',
-                '+100% Wytrzymałości',
-                'Wytrzymałość ma do 20%',
+                '{{draught.smallUses}} / {{draught.bigUses}}',
+                '+{{draught.potionPct}}% Wytrzymałości',
+                'Wytrzymałość ma do {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_heal_small|Mała]] / [[good:potion_heal_big|Duża Lecznicza Mikstura]]',
-                '2 / 5',
-                '+2000 zdrowia',
-                'rana zeszłaby poniżej 2500 zdrowia',
+                '{{draught.smallUses}} / {{draught.bigUses}}',
+                '+{{draught.healSip}} zdrowia',
+                'rana zeszłaby poniżej {{draught.healBelow}} zdrowia',
               ],
             ],
             num: [1],
@@ -666,18 +729,30 @@ export const SETTLERS: ArticleGroup = {
             rows: [
               [
                 '[[good:amulet_food|Odżywczy Amulet]]',
-                '+40% Energii',
-                'za każdym razem, gdy Energia ma do 20%',
+                '+{{amulet.needPct}}% Energii',
+                'za każdym razem, gdy Energia ma do {{need.drivePct}}%',
               ],
               [
                 '[[good:amulet_stamina|Amulet Wytrzymałości]]',
-                '+40% Wytrzymałości',
-                'za każdym razem, gdy Wytrzymałość ma do 20%',
+                '+{{amulet.needPct}}% Wytrzymałości',
+                'za każdym razem, gdy Wytrzymałość ma do {{need.drivePct}}%',
               ],
-              ['[[good:amulet_strength|Amulet Siły]]', 'zadawane obrażenia ×1,5', 'każdy cios'],
-              ['[[good:amulet_crithit|Amulet Precyzji]]', '20% szans na obrażenia ×2', 'każdy cios'],
-              ['[[good:amulet_defense|Amulet Obrony]]', 'otrzymywane obrażenia ×0,5', 'każdy otrzymany cios'],
-              ['[[good:amulet_speed|Amulet Wiatru]]', 'krok szybszy o 0,17 s', 'każdy krok'],
+              [
+                '[[good:amulet_strength|Amulet Siły]]',
+                'zadawane obrażenia ×{{amulet.strengthFactor}}',
+                'każdy cios',
+              ],
+              [
+                '[[good:amulet_crithit|Amulet Precyzji]]',
+                '{{amulet.critChancePct}}% szans na obrażenia ×{{amulet.critFactor}}',
+                'każdy cios',
+              ],
+              [
+                '[[good:amulet_defense|Amulet Obrony]]',
+                'otrzymywane obrażenia ×{{amulet.defenseFactor}}',
+                'każdy otrzymany cios',
+              ],
+              ['[[good:amulet_speed|Amulet Wiatru]]', 'krok szybszy o {{step.amuletSaved}} s', 'każdy krok'],
             ],
           },
         },
@@ -687,7 +762,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Drugi taki sam amulet nic nie daje.',
-            'Różne amulety działają razem: Siła i Precyzja dają ×3 przy udanym losowaniu.',
+            'Różne amulety działają razem: Siła i Precyzja dają ×{{amulet.comboFactor}} przy udanym losowaniu.',
             'Kolejność na potrzebę: napoczęta butelka, amulet, butelka z mniejszą liczbą łyków.',
             'Miód Pitny wypity z powodu Energii napełnia też Wytrzymałość.',
             'Z Odżywczym Amuletem osadnik nie szuka jedzenia, z Amuletem Wytrzymałości nie idzie spać.',
@@ -700,7 +775,7 @@ export const SETTLERS: ArticleGroup = {
           table: {
             head: ['Kto', 'Co nosi'],
             rows: [
-              ['Dorosły mężczyzna', '4 miejsca na napoje i amulety, w każdym zawodzie.'],
+              ['Dorosły mężczyzna', '{{amulet.slots}} miejsca na napoje i amulety, w każdym zawodzie.'],
               [
                 '[[article:heroes|Bohater]]',
                 'Mikstury lecznicze oraz amulety Siły, Precyzji, Obrony i Wiatru.',

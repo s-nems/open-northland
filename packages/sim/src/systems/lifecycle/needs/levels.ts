@@ -24,7 +24,7 @@ import {
 // pass, `ctx.tick - 1` in one before it (the command system), the snapshot's tick outside the sim.
 
 /** The deficit one drain pass adds: {@link NEED_DRAIN_UNITS_PER_TICK} reserve units off the bar. */
-const DRAIN_RISE: Fixed = fx.sub(ZERO, needBar(-NEED_DRAIN_UNITS_PER_TICK));
+export const DRAIN_RISE: Fixed = fx.sub(ZERO, needBar(-NEED_DRAIN_UNITS_PER_TICK));
 
 /**
  * The levels the needs pass rewrites a draining bar at when it rises to them, so a stored bar always sits

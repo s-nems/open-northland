@@ -6,7 +6,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'damage',
       name: 'Broń, pancerz i obrażenia',
-      lead: 'Człowiek ma 5000 zdrowia. Cios zabiera wartość z tabeli, a mnożniki poniżej ją zmieniają.',
+      lead: 'Człowiek ma {{health.human}} zdrowia. Cios zabiera wartość z tabeli, a mnożniki poniżej ją zmieniają.',
       blocks: [
         {
           data: 'matrix',
@@ -24,12 +24,18 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Mnożnik', 'Wartość'],
             rows: [
-              ['[[article:exp-combat|Doświadczenie z tą bronią]] (tylko wręcz)', 'do ×2'],
-              ['Cios od tylnego boku', '×1,25'],
-              ['Cios od tyłu', '×1,5'],
-              ['[[good:amulet_strength|Amulet Siły]] atakującego', '×1,5'],
-              ['[[good:amulet_crithit|Amulet Precyzji]] atakującego', '20% szans na ×2'],
-              ['[[good:amulet_defense|Amulet Obrony]] celu', '×0,5'],
+              [
+                '[[article:exp-combat|Doświadczenie z tą bronią]] (tylko wręcz)',
+                'do ×{{combat.fightCapFactor}}',
+              ],
+              ['Cios od tylnego boku', '×{{combat.backSideFactor}}'],
+              ['Cios od tyłu', '×{{combat.behindFactor}}'],
+              ['[[good:amulet_strength|Amulet Siły]] atakującego', '×{{amulet.strengthFactor}}'],
+              [
+                '[[good:amulet_crithit|Amulet Precyzji]] atakującego',
+                '{{amulet.critChancePct}}% szans na ×{{amulet.critFactor}}',
+              ],
+              ['[[good:amulet_defense|Amulet Obrony]] celu', '×{{amulet.defenseFactor}}'],
             ],
             foot: 'Działają w tej kolejności. Przód i przedni bok dają ×1. Strzała i kamień nie rosną z trafieniami, a kierunek liczą od miejsca strzału. Kierunek i Amulet Obrony działają tylko na ludzi. Trafienia nie działają na pojazdy i palisady. Kamień z Katapulty nie dostaje amuletów dowódcy. Palisada liczy obrażenia po swojemu: [[article:walls|Palisady i bramy]].',
           },
@@ -47,8 +53,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Saracen: [[good:bow_short|Krótki Łuk]] zadaje Tunice 245 zamiast 123, Kolczudze i Płytowej 120 zamiast 95.',
-            'Bizantyjczyk: wiersz [[good:spear_wooden|Drewniana Włócznia]] pokazuje Smoka z mapy: 20000 zdrowia, zasięg 1-3, seria 5 ciosów co 4,9 s, bez pancerza 500. Wyszkolony Włócznik walczy jak w innych plemionach.',
+            'Saracen: [[good:bow_short|Krótki Łuk]] zadaje Tunice {{saracen.bowOnWool}} zamiast {{viking.bowOnWool}}, Kolczudze i Płytowej {{saracen.bowOnChain}} zamiast {{viking.bowOnChain}}.',
+            'Bizantyjczyk: wiersz [[good:spear_wooden|Drewniana Włócznia]] pokazuje Smoka z mapy: {{dragon.hitpoints}} zdrowia, zasięg {{dragon.min}}-{{dragon.max}}, seria {{dragon.blows}} ciosów co {{dragon.seconds}} s, bez pancerza {{dragon.bare}}. Wyszkolony Włócznik walczy jak w innych plemionach.',
             'Reszta broni żołnierzy jest taka sama w pięciu plemionach.',
           ],
         },
@@ -136,13 +142,13 @@ export const MILITARY: ArticleGroup = {
             rows: [
               [
                 'Każda broń, zbroja, [[good:shoes|Buty]], [[good:mead|Miód Pitny]], każda mikstura i amulet',
-                '60',
+                '{{barracks.gearStock}}',
               ],
-              ['Żywność', '25'],
-              ['[[good:coin|Moneta]]', '100'],
+              ['Żywność', '{{barracks.foodStock}}'],
+              ['[[good:coin|Moneta]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Priorytet zwozi towar do Koszar, 4 miejsca dla Tragarzy: [[article:hauling|Tragarze i magazyny]].',
+            foot: 'Priorytet zwozi towar do Koszar, {{barracks.carriers}} miejsca dla Tragarzy: [[article:hauling|Tragarze i magazyny]].',
           },
         },
         {
@@ -196,14 +202,44 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Broń', 'Zasięg', 'Zasięg na wieży', 'Podchodzi na', 'Strzał co'],
             rows: [
-              ['[[good:bow_short|Krótki Łuk]]', '3-15', '0-20', '13', '1 s'],
-              ['[[good:bow_long|Długi Łuk]]', '4-23', '0-28', '21', '2,3 s'],
-              ['[[job:hunter|Myśliwy]]', '3-17', '-', '-', '2,1 s'],
-              ['[[job:heroine_bow_xena|Cyra]]', '4-20', '-', '18', '1 s'],
-              ['[[building:catapult|Katapulta]]', '8-24', '-', '19-24', '4 s'],
+              [
+                '[[good:bow_short|Krótki Łuk]]',
+                '{{shortBow.min}}-{{shortBow.max}}',
+                '0-{{shortBow.towerMax}}',
+                '{{shortBow.standoff}}',
+                '{{shortBow.seconds}} s',
+              ],
+              [
+                '[[good:bow_long|Długi Łuk]]',
+                '{{longBow.min}}-{{longBow.max}}',
+                '0-{{longBow.towerMax}}',
+                '{{longBow.standoff}}',
+                '{{longBow.seconds}} s',
+              ],
+              [
+                '[[job:hunter|Myśliwy]]',
+                '{{hunterBow.min}}-{{hunterBow.max}}',
+                '-',
+                '-',
+                '{{hunterBow.seconds}} s',
+              ],
+              [
+                '[[job:heroine_bow_xena|Cyra]]',
+                '{{heroBow.min}}-{{heroBow.max}}',
+                '-',
+                '{{heroBow.standoff}}',
+                '{{heroBow.seconds}} s',
+              ],
+              [
+                '[[building:catapult|Katapulta]]',
+                '{{catapult.min}}-{{catapult.max}}',
+                '-',
+                '{{catapult.bandMin}}-{{catapult.max}}',
+                '{{catapult.seconds}} s',
+              ],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Zasięg w krokach. Poniżej dolnej granicy łucznik nie strzela. Cyra u Franków: zasięg 3-12, strzał co 2,3 s.',
+            foot: 'Zasięg w krokach. Poniżej dolnej granicy łucznik nie strzela. Cyra u Franków: zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s.',
           },
         },
         {
@@ -213,9 +249,9 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Trafienia', 'Celny strzał'],
             rows: [
-              ['0', '11%'],
-              ['50', '61%'],
-              ['89+', '100%'],
+              ['0', '{{aim.basePct}}%'],
+              ['50', '{{aim.samplePct}}%'],
+              ['{{aim.sureHits}}+', '100%'],
             ],
             num: [0, 1],
             foot: 'Każde trafienie to +1%. Krótki i Długi Łuk mają wspólny licznik trafień, [[article:catapult|Katapulta]] własny, według tej samej tabeli. Bohater zawsze strzela celnie.',
@@ -259,13 +295,19 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Postawa', 'Szuka wroga', 'Promień', 'Rezygnuje, gdy', 'Na cios'],
             rows: [
-              ['Atak', 'Wokół siebie', '18', 'Cel padnie albo jest nieosiągalny', 'Odpowiada'],
-              ['Obrona', 'Wokół miejsca postoju', '18', 'Cel ponad 40 od miejsca postoju', 'Odpowiada'],
+              ['Atak', 'Wokół siebie', '{{stance.search}}', 'Cel padnie albo jest nieosiągalny', 'Odpowiada'],
+              [
+                'Obrona',
+                'Wokół miejsca postoju',
+                '{{stance.search}}',
+                'Cel ponad {{stance.defendLeash}} od miejsca postoju',
+                'Odpowiada',
+              ],
               [
                 'Ignorowanie',
                 'Tylko w zasięgu broni, nie podchodzi',
                 'Zasięg broni',
-                'Cel ponad 18 od miejsca postoju',
+                'Cel ponad {{stance.ignoreLeash}} od miejsca postoju',
                 'Nie odpowiada',
               ],
             ],
@@ -274,7 +316,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Żołnierz w Ataku wraca do miejsca postoju, gdy skończy walkę dalej niż 18 kroków od niego.',
+            'Żołnierz w Ataku wraca do miejsca postoju, gdy skończy walkę dalej niż {{stance.attackReturn}} kroków od niego.',
             'Szukanie wroga nie zależy od [[article:fog|mgły]].',
             'Rozkaz ataku działa w każdej postawie.',
             'Łucznik na posterunku strzela do tego, co ma w zasięgu, w każdej postawie.',
@@ -300,9 +342,13 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Kto', 'Od rannego, kroki', 'Reakcja'],
             rows: [
-              ['Żołnierze i bohaterowie w Ataku lub Obronie', '40', 'Idą na napastnika'],
+              ['Żołnierze i bohaterowie w Ataku lub Obronie', '{{stance.soldierAlarm}}', 'Idą na napastnika'],
               ['Żołnierze i bohaterowie w Ignorowaniu', '-', 'Biją tylko to, co w zasięgu broni'],
-              ['Cywile i Zwiadowcy', '20', 'Uciekają 10-15 kroków i wracają do pracy'],
+              [
+                'Cywile i Zwiadowcy',
+                '{{stance.peopleAlarm}}',
+                'Uciekają {{stance.fleeMin}}-{{stance.fleeMax}} kroków i wracają do pracy',
+              ],
               ['Ludzie w budynkach', '-', 'Nie reagują, poza łucznikiem na posterunku'],
               ['Cywil śpiący na otwartym terenie', '-', 'Śpi, ucieka tylko uderzony'],
             ],
@@ -332,7 +378,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Cecha', 'Żołnierz', 'Bohater'],
             rows: [
-              ['Zasięg widzenia', '20', '25'],
+              ['Zasięg widzenia', '{{vision.soldier}}', '{{vision.hero}}'],
               ['Celność łuku', 'Rośnie z trafieniami', 'Zawsze celny'],
               ['Doświadczenie w walce', 'Rośnie', 'Nie rośnie'],
               ['Jedzenie i sen', 'Potrzebuje', 'Nie potrzebuje'],
@@ -355,16 +401,41 @@ export const MILITARY: ArticleGroup = {
                 '[[job:hero_spear_siegfried|Sigurd]]',
                 'Włócznia',
                 '[[good:armor_plate|Zbroja Płytowa]]',
-                '1-2',
+                '{{hero.spearMin}}-{{hero.spearMax}}',
               ],
-              ['[[job:hero_sword_bjarni|Bjarni]]', 'Miecz', '[[good:armor_chain|Kolczuga]]', '1'],
-              ['[[job:hero_saber_hatschi|Hatchie]]', 'Szabla', '[[good:armor_chain|Kolczuga]]', '1'],
-              ['[[job:hero_axe|Bohater Topornik]]', 'Topór', '[[good:armor_chain|Kolczuga]]', '1'],
-              ['[[job:heroine_bow_xena|Cyra]]', 'Łuk', '[[good:armor_leather|Skórzana Zbroja]]', '4-20'],
-              ['[[job:hero_unarmed|Nieuzbrojony Bohater]]', 'Pięści', '[[good:armor_wool|Tunika]]', '1'],
+              [
+                '[[job:hero_sword_bjarni|Bjarni]]',
+                'Miecz',
+                '[[good:armor_chain|Kolczuga]]',
+                '{{hero.swordReach}}',
+              ],
+              [
+                '[[job:hero_saber_hatschi|Hatchie]]',
+                'Szabla',
+                '[[good:armor_chain|Kolczuga]]',
+                '{{hero.saberReach}}',
+              ],
+              [
+                '[[job:hero_axe|Bohater Topornik]]',
+                'Topór',
+                '[[good:armor_chain|Kolczuga]]',
+                '{{hero.axeReach}}',
+              ],
+              [
+                '[[job:heroine_bow_xena|Cyra]]',
+                'Łuk',
+                '[[good:armor_leather|Skórzana Zbroja]]',
+                '{{heroBow.min}}-{{heroBow.max}}',
+              ],
+              [
+                '[[job:hero_unarmed|Nieuzbrojony Bohater]]',
+                'Pięści',
+                '[[good:armor_wool|Tunika]]',
+                '{{hero.fistReach}}',
+              ],
             ],
             num: [3],
-            foot: 'Cios co 1 s. Obrażenia: opcja Bohaterowie w tabeli [[article:damage|Broń, pancerz i obrażenia]].',
+            foot: 'Cios co {{hero.blowSeconds}} s. Obrażenia: opcja Bohaterowie w tabeli [[article:damage|Broń, pancerz i obrażenia]].',
           },
         },
         {
@@ -374,15 +445,27 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Bohater', 'Plemię', 'Różnica'],
             rows: [
-              ['Sigurd', 'Egipcjanin', 'Kolczuga 375'],
-              ['Hatchie', 'Saracen', '2 ciosy co 1,8 s'],
-              ['Bohater Topornik', 'Wiking', 'Płytowa 945, cios co 2 s'],
+              ['Sigurd', 'Egipcjanin', 'Kolczuga {{hero.sigurdEgyptChain}}'],
+              [
+                'Hatchie',
+                'Saracen',
+                '{{hero.hatchieSaracenBlows}} ciosy co {{hero.hatchieSaracenSeconds}} s',
+              ],
+              [
+                'Bohater Topornik',
+                'Wiking',
+                'Płytowa {{hero.axeVikingPlate}}, cios co {{hero.axeVikingSeconds}} s',
+              ],
               [
                 'Cyra',
                 'Frank',
-                'Zasięg 3-12, strzał co 2,3 s, bez pancerza 60, Tunika i Skórzana 55, Kolczuga i Płytowa 35, Budynek i Pojazd 40',
+                'Zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s, bez pancerza {{hero.frankBowBare}}, Tunika i Skórzana {{hero.frankBowWool}}, Kolczuga i Płytowa {{hero.frankBowChain}}, Budynek i Pojazd {{hero.frankBowVehicle}}',
               ],
-              ['Nieuzbrojony Bohater', 'Bizantyjczyk, Egipcjanin', 'Seria 5 ciosów co 4,9 s'],
+              [
+                'Nieuzbrojony Bohater',
+                'Bizantyjczyk, Egipcjanin',
+                'Seria {{hero.fistEasternBlows}} ciosów co {{hero.fistEasternSeconds}} s',
+              ],
             ],
           },
         },
@@ -407,7 +490,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'defence',
       name: 'Wieże, alarm, schronienie',
-      lead: 'Budynek na alarmie strzela sam. Każdy schroniony daje mu 0,5 strzały na sekundę.',
+      lead: 'Budynek na alarmie strzela sam. Każdy schroniony daje mu {{shelter.shotsPerSeat}} strzały na sekundę.',
       blocks: [
         {
           h: 'Alarm',
@@ -440,10 +523,20 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Budynek', 'Miejsca', 'Strzały na sekundę', 'Posterunki'],
             rows: [
-              ['[[building:headquarters|Kwatera główna]]', '30', '15', '-'],
-              ['[[building:tower_01|Wieża obronna 2]]', '20', '10', '4 Krótki Łuk, 4 Długi Łuk'],
-              ['[[building:tower_00|Wieża obronna 1]]', '10', '5', '3 Krótki Łuk, 3 Długi Łuk'],
-              ['[[building:barracks|Koszary]]', '10', '5', '-'],
+              ['[[building:headquarters|Kwatera główna]]', '{{shelter.hq}}', '{{shelter.hqShots}}', '-'],
+              [
+                '[[building:tower_01|Wieża obronna 2]]',
+                '{{shelter.tower2}}',
+                '{{shelter.tower2Shots}}',
+                '{{tower2.posts}} Krótki Łuk, {{tower2.longPosts}} Długi Łuk',
+              ],
+              [
+                '[[building:tower_00|Wieża obronna 1]]',
+                '{{shelter.tower1}}',
+                '{{shelter.tower1Shots}}',
+                '{{tower1.posts}} Krótki Łuk, {{tower1.longPosts}} Długi Łuk',
+              ],
+              ['[[building:barracks|Koszary]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
             ],
             num: [1, 2],
             foot: 'Strzały na sekundę przy komplecie schronionych. Posterunek nie zabiera miejsca w schronieniu. Łucznik zatrudniony w wieży strzela sam, bez alarmu: [[article:aim|Trafienie i strzelanie]].',
@@ -456,20 +549,20 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Cel', 'Strzała'],
             rows: [
-              ['Bez pancerza', '375'],
-              ['Tunika', '235'],
-              ['Skórzana', '295'],
-              ['Kolczuga, Płytowa', '145'],
-              ['Pojazd', '9'],
-              ['Budynek', '50'],
+              ['Bez pancerza', '{{arrow.bare}}'],
+              ['Tunika', '{{arrow.wool}}'],
+              ['Skórzana', '{{arrow.leather}}'],
+              ['Kolczuga, Płytowa', '{{arrow.chain}}'],
+              ['Pojazd', '{{arrow.vehicle}}'],
+              ['Budynek', '{{arrow.building}}'],
             ],
             num: [1],
-            foot: 'Pancerz liczony z Blokadą 5, jak w [[article:damage|Broń, pancerz i obrażenia]]. Tak samo w każdym plemieniu, przed mnożnikami.',
+            foot: 'Pancerz liczony z Blokadą {{combat.armourBlock}}, jak w [[article:damage|Broń, pancerz i obrażenia]]. Tak samo w każdym plemieniu, przed mnożnikami.',
           },
         },
         {
           list: [
-            'Zasięg to 29 kroków od najbliższej ściany budynku, bez dolnej granicy.',
+            'Zasięg to {{shelter.range}} kroków od najbliższej ściany budynku, bez dolnej granicy.',
             'Budynek strzela także do wroga we mgle.',
             'Strzały nic nie kosztują i nie dają doświadczenia.',
             'Kolejność celów: żołnierze i bohaterowie, dzikie zwierzęta, budynki, pozostali ludzie.',
@@ -482,8 +575,20 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Wieża', 'Tragarze', 'Miód Pitny', 'Żywność', 'Każda broń żołnierza'],
             rows: [
-              ['[[building:tower_00|Wieża obronna 1]]', '3', '25', '25', '30'],
-              ['[[building:tower_01|Wieża obronna 2]]', '4', '25', '25', '40'],
+              [
+                '[[building:tower_00|Wieża obronna 1]]',
+                '{{tower1.carriers}}',
+                '{{tower1.mead}}',
+                '{{tower1.food}}',
+                '{{tower1.weapon}}',
+              ],
+              [
+                '[[building:tower_01|Wieża obronna 2]]',
+                '{{tower2.carriers}}',
+                '{{tower2.mead}}',
+                '{{tower2.food}}',
+                '{{tower2.weapon}}',
+              ],
             ],
             num: [1, 2, 3, 4],
             foot: 'Miejsca Tragarzy i pojemność zapasu.',
@@ -513,7 +618,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Palisady i bramy',
-      lead: 'Cios zabiera palisadzie 1 punkt zdrowia za każde pełne 100 obrażeń przeciw budynkom. Mniej niż 100 nie robi nic.',
+      lead: 'Cios zabiera palisadzie 1 punkt zdrowia za każde pełne {{wall.damagePerPoint}} obrażeń przeciw budynkom. Mniej niż {{wall.damagePerPoint}} nie robi nic.',
       blocks: [
         {
           table: {
@@ -554,7 +659,7 @@ export const MILITARY: ArticleGroup = {
               ['Zamknij', 'Nikt nie przechodzi, także swoi'],
               [
                 'Automatyczny',
-                'Otwarta. Zamyka się, gdy wróg jest do 12 kroków od bramy, potem znów się otwiera',
+                'Otwarta. Zamyka się, gdy wróg jest do {{wall.gateEnemyNear}} kroków od bramy, potem znów się otwiera',
               ],
             ],
             foot: 'W trybie automatycznym liczą się żywi ludzie i pojazdy gracza w stanie wojny, cywile też. Zwierzęta i budynki się nie liczą.',
@@ -599,7 +704,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Mur obronny',
         },
         {
-          p: '[[building:work_pottery_02|Mur obronny]] jest budynkiem: 100000 zdrowia, obrażenia z kolumny Budynek. Żołnierz bije go tylko na rozkaz albo gdy zagradza drogę do wroga.',
+          p: '[[building:work_pottery_02|Mur obronny]] jest budynkiem: {{wall.defenceHp}} zdrowia, obrażenia z kolumny Budynek. Żołnierz bije go tylko na rozkaz albo gdy zagradza drogę do wroga.',
         },
       ],
       see: [
@@ -625,11 +730,14 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Cecha', 'Wartość'],
             rows: [
-              ['Zasięg', '8-24 kroki'],
-              ['Strzał co', '4 s'],
-              ['Zdrowie', '3000'],
+              ['Zasięg', '{{catapult.min}}-{{catapult.max}} kroki'],
+              ['Strzał co', '{{catapult.seconds}} s'],
+              ['Zdrowie', '{{catapult.hitpoints}}'],
               ['Załoga', '1 żołnierz albo bohater, z dowolną bronią'],
-              ['Koszt', '[[building:catapult|Katapulta]]: 9 [[good:wood|Drewno]], 1 [[good:iron|Żelazo]]'],
+              [
+                'Koszt',
+                '[[building:catapult|Katapulta]]: {{catapult.wood}} [[good:wood|Drewno]], {{catapult.iron}} [[good:iron|Żelazo]]',
+              ],
             ],
             foot: 'Bez dowódcy Katapulta nie jedzie i nie strzela. Kamienie nic nie kosztują.',
           },
@@ -641,12 +749,12 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Cel', 'Obrażenia', 'Kamienie do zniszczenia'],
             rows: [
-              ['Bez pancerza', '8000', '1'],
-              ['Skórzana', '5995', '1'],
-              ['Tunika', '3995', '2'],
-              ['Kolczuga, Płytowa', '1995', '3'],
-              ['Katapulta', '350', '9'],
-              ['Budynek', '3625', '13-36'],
+              ['Bez pancerza', '{{stone.bare}}', '{{stone.bareKills}}'],
+              ['Skórzana', '{{stone.leather}}', '{{stone.leatherKills}}'],
+              ['Tunika', '{{stone.wool}}', '{{stone.woolKills}}'],
+              ['Kolczuga, Płytowa', '{{stone.chain}}', '{{stone.chainKills}}'],
+              ['Katapulta', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
+              ['Budynek', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
               ['Odcinek palisady', '36 punktów', '5'],
               ['Brama', '36 punktów', '14'],
             ],
@@ -658,12 +766,27 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Budynek', 'Zdrowie', 'Kamienie', 'Czas'],
             rows: [
-              ['[[building:tower_00|Wieża obronna 1]]', '45000', '13', '52 s'],
-              ['[[building:tower_01|Wieża obronna 2]]', '65000', '18', '72 s'],
-              ['[[building:headquarters|Kwatera główna]], Wiking', '100000', '28', '112 s'],
+              [
+                '[[building:tower_00|Wieża obronna 1]]',
+                '{{hp.tower1}}',
+                '{{stone.tower1}}',
+                '{{stone.tower1Seconds}} s',
+              ],
+              [
+                '[[building:tower_01|Wieża obronna 2]]',
+                '{{hp.tower2}}',
+                '{{stone.tower2}}',
+                '{{stone.tower2Seconds}} s',
+              ],
+              [
+                '[[building:headquarters|Kwatera główna]], Wiking',
+                '{{hp.hq}}',
+                '{{stone.hq}}',
+                '{{stone.hqSeconds}} s',
+              ],
             ],
             num: [1, 2, 3],
-            foot: 'Kwatera główna Franków: 130000 zdrowia, 36 kamieni, 144 s.',
+            foot: 'Kwatera główna Franków: {{hp.frankHq}} zdrowia, {{stone.frankHq}} kamieni, {{stone.frankHqSeconds}} s.',
           },
         },
         {
@@ -687,7 +810,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Celność',
         },
         {
-          p: 'Tabela: [[article:aim|Trafienie i strzelanie]]. Na 24 krokach niecelny kamień zbacza do 3 kroków przy 0 trafień, 2 przy 25, 1 przy 50, 0 od 75. Doświadczenie zbiera dowódca, 1 punkt za kamień, który kogoś zranił.',
+          p: 'Tabela: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} krokach niecelny kamień zbacza do 3 kroków przy 0 trafień, 2 przy 25, 1 przy 50, 0 od 75. Doświadczenie zbiera dowódca, 1 punkt za kamień, który kogoś zranił.',
         },
         {
           h: 'Postawy Katapulty',
@@ -696,16 +819,21 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Postawa', 'Szuka wroga', 'Promień', 'Rusza się'],
             rows: [
-              ['Atak', 'Wokół siebie', '40', 'Tak'],
-              ['Obrona', 'Wokół swojej pozycji', '40', 'Tak, do 60 od pozycji'],
-              ['Ignorowanie', 'Wokół swojej pozycji', '8-24', 'Nie'],
+              ['Atak', 'Wokół siebie', '{{catapult.searchRadius}}', 'Tak'],
+              [
+                'Obrona',
+                'Wokół swojej pozycji',
+                '{{catapult.searchRadius}}',
+                'Tak, do {{catapult.leash}} od pozycji',
+              ],
+              ['Ignorowanie', 'Wokół swojej pozycji', '{{catapult.min}}-{{catapult.max}}', 'Nie'],
             ],
             foot: 'Nowa Katapulta stoi w Ignorowaniu. Sama wybiera tylko cel, który widzi. Rozkaz ataku działa w każdej postawie.',
           },
         },
         {
           list: [
-            'Cel bliżej niż 8 kroków: Katapulta odjeżdża. Cel dalej niż 24: podjeżdża na 19-24 kroki.',
+            'Cel bliżej niż {{catapult.min}} kroków: Katapulta odjeżdża. Cel dalej niż {{catapult.max}}: podjeżdża na {{catapult.bandMin}}-{{catapult.max}} kroki.',
             'Strzela tylko z postoju i tylko wtedy, gdy nie styka się z innym pojazdem.',
             'Rozkaz może wskazać punkt na ziemi. Palisadę bije tylko na rozkaz.',
           ],
@@ -717,11 +845,19 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Broń', 'Obrażenia', 'Ciosy na Katapultę'],
             rows: [
-              ['Druga Katapulta', '350', '9'],
-              ['Włócznie, [[good:sword_long|Długi Miecz]], [[good:bow_long|Długi Łuk]]', '125', '24'],
-              ['[[good:sword_shord|Krótki Miecz]], [[good:bow_short|Krótki Łuk]]', '40', '75'],
-              ['Pięści', '15', '200'],
-              ['Strzała z budynku', '9', '334'],
+              ['Druga Katapulta', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
+              [
+                'Włócznie, [[good:sword_long|Długi Miecz]], [[good:bow_long|Długi Łuk]]',
+                '{{vs.catapult.spear}}',
+                '{{vs.catapult.spearHits}}',
+              ],
+              [
+                '[[good:sword_shord|Krótki Miecz]], [[good:bow_short|Krótki Łuk]]',
+                '{{vs.catapult.shortSword}}',
+                '{{vs.catapult.shortSwordHits}}',
+              ],
+              ['Pięści', '{{vs.catapult.fist}}', '{{vs.catapult.fistHits}}'],
+              ['Strzała z budynku', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],
             num: [1, 2],
             foot: 'Doświadczenie w walce nie podnosi ciosu w pojazd. Amulety atakującego działają.',
@@ -739,11 +875,26 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Cecha', 'Łatwy', 'Średni', 'Trudny'],
             rows: [
-              ['Pierwsza fala', '120 min', '90 min', 'Od razu'],
-              ['Limit armii', '60', '100', '150'],
-              ['Katapulty', '0', 'do 8', 'do 15'],
+              [
+                'Pierwsza fala',
+                '{{ai.easy.firstWaveMinutes}} min',
+                '{{ai.medium.firstWaveMinutes}} min',
+                'Od razu',
+              ],
+              ['Limit armii', '{{ai.easy.armyCap}}', '{{ai.medium.armyCap}}', '{{ai.hard.armyCap}}'],
+              [
+                'Katapulty',
+                '{{ai.easy.catapults}}',
+                'do {{ai.medium.catapults}}',
+                'do {{ai.hard.catapults}}',
+              ],
               ['Gęsty pierścień wież', 'Nie', 'Tak', 'Tak'],
-              ['Place budowy naraz', '1', '1, od 60 min 2', '2, od 45 min 3, od 90 min 4'],
+              [
+                'Place budowy naraz',
+                '{{ai.easy.sites}}',
+                '{{ai.medium.sites}}, od {{ai.medium.grownMinutes}} min {{ai.medium.grownSites}}',
+                '{{ai.hard.sites}}, od {{ai.hard.midMinutes}} min {{ai.hard.midSites}}, od {{ai.hard.lateMinutes}} min {{ai.hard.lateSites}}',
+              ],
             ],
             foot: 'Czasy to czas gry: przy ×3 mijają trzy razy szybciej. Żadna fala nie wyjdzie przed końcem "Czasu pokoju". Łatwy i Średni nie wcielają żołnierzy ponad limit armii.',
           },
@@ -755,10 +906,10 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Czas od startu fal', 'Ludzi w fali'],
             rows: [
-              ['0', '5-10'],
-              ['1 godz.', '20-40'],
-              ['2 godz.', '35-70'],
-              ['3 godz. i później', '50-100'],
+              ['0', '{{ai.wave.0.min}}-{{ai.wave.0.max}}'],
+              ['1 godz.', '{{ai.wave.1.min}}-{{ai.wave.1.max}}'],
+              ['2 godz.', '{{ai.wave.2.min}}-{{ai.wave.2.max}}'],
+              ['3 godz. i później', '{{ai.wave.3.min}}-{{ai.wave.3.max}}'],
             ],
             num: [1],
             foot: 'Fale startują w późniejszym z dwóch momentów: "Pierwsza fala" albo koniec pokoju. Wielkość losuje się z przedziału.',
@@ -767,7 +918,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Naraz idzie jedna fala. Następna zbiera się pod [[building:barracks|Koszarami]].',
-            'Zbiórka trwa do 4 minut. Po niej rusza dolna granica przedziału, a gdy tylu nie ma, wszyscy, którzy mogą dojść.',
+            'Zbiórka trwa do {{ai.gatherMinutes}} minut. Po niej rusza dolna granica przedziału, a gdy tylu nie ma, wszyscy, którzy mogą dojść.',
           ],
         },
         {
@@ -813,7 +964,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Odbudowa',
         },
         {
-          p: '"AI mapy" odbudowuje budynki, gdy wroga nie ma do 40 kroków. Kwatery głównej nie.',
+          p: '"AI mapy" odbudowuje budynki, gdy wroga nie ma do {{ai.rebuildNear}} kroków. Kwatery głównej nie.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

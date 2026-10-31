@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   type ArticleBlock,
-  articleLanguage,
   blockStrings,
   fillTokens,
   parseInline,
@@ -9,7 +8,7 @@ import {
 } from '../../../src/hud/knowledge/articles.js';
 import { createKnowledgeBase } from '../../../src/hud/knowledge/base.js';
 import { HUMAN_HITPOINTS } from '../../../src/hud/knowledge/combat.js';
-import { factText } from '../../../src/hud/knowledge/facts.js';
+import { FACTS, factText } from '../../../src/hud/knowledge/facts.js';
 import { knowledgeContent } from '../../support/knowledge-content.js';
 
 describe('parseInline', () => {
@@ -32,20 +31,28 @@ describe('tokens', () => {
   const base = createKnowledgeBase(knowledgeContent());
 
   it('fills a known fact and keeps an unknown name visible', () => {
-    const text = '{{humanHitpoints}} i {{nope}}';
-    expect(tokensOf(text)).toEqual(['humanHitpoints', 'nope']);
+    const text = '{{health.human}} i {{nope}}';
+    expect(tokensOf(text)).toEqual(['health.human', 'nope']);
     expect(fillTokens(text, (name) => factText(name, base))).toBe(`${HUMAN_HITPOINTS} i {{nope}}`);
   });
 
   it('answers nothing for a name off the object prototype', () => {
     expect(factText('toString', base)).toBeUndefined();
   });
-});
 
-describe('articleLanguage', () => {
-  it('falls back to a language that has text', () => {
-    expect(articleLanguage('pol')).toBe('pol');
-    expect(articleLanguage('ger')).toBe('pol');
+  it('writes a fact with the decimals of the language', () => {
+    expect(factText('step.land', base)).toBe('0,50');
+    expect(factText('step.landBrief', base)).toBe('0,5');
+  });
+
+  it('leaves a fact visible when the content lacks its row', () => {
+    const empty = createKnowledgeBase({ ...knowledgeContent(), goods: [] });
+    const text = '{{draught.smallUses}}';
+    expect(fillTokens(text, (name) => factText(name, empty))).toBe(text);
+  });
+
+  it('reads every fact over thin content without throwing', () => {
+    for (const name of Object.keys(FACTS)) expect(() => factText(name, base)).not.toThrow();
   });
 });
 

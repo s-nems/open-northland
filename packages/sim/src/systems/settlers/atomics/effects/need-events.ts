@@ -17,7 +17,7 @@ import { isAtOwnHome } from '../../indoors.js';
 /** How much more a rest or food event counts at home: a meal there, or rest on a furnished bed. */
 export const AT_HOME_FACTOR = 2;
 /** How much a rest event counts away from home, for a trade that goes home at all. */
-const AWAY_REST_DIVISOR = 2;
+export const AWAY_REST_DIVISOR = 2;
 
 /**
  * Apply the need events the clip `e` is playing carries at its current frame, for a settler whose bars move

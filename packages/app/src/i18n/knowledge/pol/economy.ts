@@ -6,7 +6,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'construction',
       name: 'Budowa, rozbudowa, naprawa',
-      lead: 'Dom 1 stawia jeden Budowniczy w 150 s, z Żelaznym Narzędziem w 75 s.',
+      lead: 'Dom 1 stawia jeden Budowniczy w {{build.noviceSeconds}} s, z Żelaznym Narzędziem w {{build.noviceIronSeconds}} s.',
       blocks: [
         {
           h: 'Gdzie można budować',
@@ -27,11 +27,11 @@ export const ECONOMY: ArticleGroup = {
               ['Drzewo, skała, złoże, palisada', 'Muszą stać poza obrysem'],
               [
                 'Wrogi żołnierz',
-                'Odmowa do 18 kroków, po skosie około 12. Liczy się tylko widoczny, bez załogi na stanowisku w wieży.',
+                'Odmowa do {{contest.radius}} kroków, po skosie około {{contest.diagonal}}. Liczy się tylko widoczny, bez załogi na stanowisku w wieży.',
               ],
               [
                 'Budynek gracza, z którym łączy cię pokój',
-                'Odmowa do 60 kroków od niego, także od placu budowy, chyba że twój budynek stoi bliżej.',
+                'Odmowa do {{peace.keepOut}} kroków od niego, także od placu budowy, chyba że twój budynek stoi bliżej.',
               ],
               [
                 'Teren rozbudowy',
@@ -81,12 +81,27 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['[[building:home_level_00|Dom 1]], 1 Budowniczy', 'Punkty na cios', 'Ciosy', 'Czas'],
             rows: [
-              ['Nowicjusz, bez narzędzia', 1, 120, '150 s'],
-              ['Nowicjusz, [[good:tool_iron|Żelazne Narzędzie]]', 2, 60, '75 s'],
-              ['Mistrz, [[good:tool_iron|Żelazne Narzędzie]]', 4, 30, '37,5 s'],
+              [
+                'Nowicjusz, bez narzędzia',
+                '{{build.novicePoints}}',
+                '{{build.noviceSwings}}',
+                '{{build.noviceSeconds}} s',
+              ],
+              [
+                'Nowicjusz, [[good:tool_iron|Żelazne Narzędzie]]',
+                '{{build.noviceIronPoints}}',
+                '{{build.noviceIronSwings}}',
+                '{{build.noviceIronSeconds}} s',
+              ],
+              [
+                'Mistrz, [[good:tool_iron|Żelazne Narzędzie]]',
+                '{{build.masterIronPoints}}',
+                '{{build.masterIronSwings}}',
+                '{{build.masterIronSeconds}} s',
+              ],
             ],
             num: [1, 2, 3],
-            foot: 'Sztuka materiału to 30 punktów budowy, Dom 1 to 4 sztuki, 120 punktów. Czas samych ciosów, bez noszenia materiału. 1 cios trwa 1,25 s.',
+            foot: 'Sztuka materiału to {{build.pointsPerUnit}} punktów budowy, Dom 1 to {{build.homeUnits}} sztuki, {{build.homePoints}} punktów. Czas samych ciosów, bez noszenia materiału. 1 cios trwa {{build.swingSeconds}} s.',
           },
         },
         {
@@ -101,7 +116,7 @@ export const ECONOMY: ArticleGroup = {
               ['90-100%', 2, 3, 4],
             ],
             num: [1, 2, 3],
-            foot: 'Punkty budowy na 1 cios. [[job:builder|Budowniczy]] ma 100% po 3240 ciosach, które coś dodały.',
+            foot: 'Punkty budowy na 1 cios. [[job:builder|Budowniczy]] ma 100% po {{exp.build.repeatsFull}} ciosach, które coś dodały.',
           },
         },
         {
@@ -147,17 +162,17 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Cel', 'Zdrowie na cios', 'Budowniczych naraz'],
             rows: [
-              ['Budynek', '100-400', 5],
-              ['Odcinek palisady', 5, 1],
-              ['Brama', 5, 1],
+              ['Budynek', '{{repair.minPerSwing}}-{{repair.maxPerSwing}}', '{{repair.crew}}'],
+              ['Odcinek palisady', 5, '{{repair.wallCrew}}'],
+              ['Brama', 5, '{{repair.wallCrew}}'],
             ],
             num: [1, 2],
-            foot: 'Naprawa nie kosztuje materiału. Budynek dostaje 100 zdrowia na punkt budowy. Przy palisadzie i bramie doświadczenie i narzędzie nic nie zmieniają.',
+            foot: 'Naprawa nie kosztuje materiału. Budynek dostaje {{repair.perPoint}} zdrowia na punkt budowy. Przy palisadzie i bramie doświadczenie i narzędzie nic nie zmieniają.',
           },
         },
         {
           list: [
-            'Po ciosie wroga naprawa czeka 10 s, a w promieniu 40 kroków nikt nie może walczyć. Rozkaz gracza pomija oba warunki.',
+            'Po ciosie wroga naprawa czeka {{repair.calmSeconds}} s, a w promieniu {{alert.standTo}} kroków nikt nie może walczyć. Rozkaz gracza pomija oba warunki.',
             'Plac budowy i odcinek palisady w budowie nie mają naprawy, zdrowie rośnie z budową.',
             'Uszkodzony budynek w rozbudowie: najpierw naprawa, potem rozbudowa.',
           ],
@@ -176,7 +191,7 @@ export const ECONOMY: ArticleGroup = {
                 'To samo dla obecnego poziomu, plus odłożone zapasy i materiał rozbudowy',
               ],
             ],
-            foot: 'Towar układa się na ziemi do 32 kroków, na tym samym lądzie. Co się nie zmieści, przepada.',
+            foot: 'Towar układa się na ziemi do {{reach.spill}} kroków, na tym samym lądzie. Co się nie zmieści, przepada.',
           },
         },
       ],
@@ -195,7 +210,11 @@ export const ECONOMY: ArticleGroup = {
             head: ['Licznik', 'Warsztat', 'Zbieracz'],
             rows: [
               ['0', 'Produkt stoi', 'Towar pominięty'],
-              ['1-100', 'Tyle partii, -1 przy starcie partii', 'Tyle sztuk, -1 za zdobytą sztukę'],
+              [
+                '1-{{workshop.counterMax}}',
+                'Tyle partii, -1 przy starcie partii',
+                'Tyle sztuk, -1 za zdobytą sztukę',
+              ],
               ['∞', 'Bez końca, licznik nie spada', 'Bez końca, licznik nie spada'],
             ],
             foot: 'Warsztat liczy partie, nie sztuki. Partia daje więcej sztuk przy doświadczeniu i narzędziu: [[article:tools|Narzędzia]].',
@@ -214,8 +233,8 @@ export const ECONOMY: ArticleGroup = {
                 '-',
                 'Ten towar: z 0 na ∞, z każdej innej wartości na 0. Reszta bez zmian.',
               ],
-              ['Mniej', '-1. Z 0 skok na ∞, z ∞ na 100', '-10', 'Na 0'],
-              ['Więcej', '+1. Ze 100 skok na ∞, z ∞ na 0', '+10', 'Na ∞'],
+              ['Mniej', '-1. Z 0 skok na ∞, z ∞ na {{workshop.counterMax}}', '-10', 'Na 0'],
+              ['Więcej', '+1. Ze {{workshop.counterMax}} skok na ∞, z ∞ na 0', '+10', 'Na ∞'],
             ],
           },
         },
@@ -316,7 +335,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'gathering',
       name: 'Zbieranie i uprawa',
-      lead: 'Drzewo daje 3 sztuki Drewna po 10 ciosach nowicjusza.',
+      lead: 'Drzewo daje {{gather.treeYield}} sztuki Drewna po {{gather.strokes}} ciosach nowicjusza.',
       blocks: [
         {
           h: 'Co daje zasób',
@@ -325,32 +344,50 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Zasób', 'Kto', 'Daje', 'Ciosy nowicjusza', 'Narzędzie'],
             rows: [
-              ['Drzewo', '[[job:collector|Zbieracz]]', '3 [[good:wood|Drewna]]', '10 na drzewo', 'tak'],
-              ['Skała', '[[job:collector|Zbieracz]]', '4-5 [[good:stone|Kamienia]]', '10 na sztukę', 'tak'],
+              [
+                'Drzewo',
+                '[[job:collector|Zbieracz]]',
+                '{{gather.treeYield}} [[good:wood|Drewna]]',
+                '{{gather.strokes}} na drzewo',
+                'tak',
+              ],
+              [
+                'Skała',
+                '[[job:collector|Zbieracz]]',
+                '4-5 [[good:stone|Kamienia]]',
+                '{{gather.strokes}} na sztukę',
+                'tak',
+              ],
               [
                 'Złoże',
                 '[[job:collector|Zbieracz]]',
                 '5 [[good:mud|Gliny]], [[good:iron|Żelaza]] lub [[good:gold|Złota]]',
-                '10 na sztukę',
+                '{{gather.strokes}} na sztukę',
                 'tak',
               ],
               ['Grzyb', '[[job:collector|Zbieracz]]', '1 [[good:mushroom|Grzyb]]', '1 podniesienie', 'nie'],
-              ['Pole zboża', '[[job:farmer|Farmer]]', '1 [[good:wheat|Pszenica]]', '2 na pole', 'tak'],
+              [
+                'Pole zboża',
+                '[[job:farmer|Farmer]]',
+                '1 [[good:wheat|Pszenica]]',
+                '{{gather.wheatStrokes}} na pole',
+                'tak',
+              ],
               [
                 'Pole ziół',
                 '[[job:herb_mush_guy|Zbieracz Ziół]]',
                 '1 [[good:herb|Zioło]]',
-                '10 na pole',
+                '{{gather.herbStrokes}} na pole',
                 'tak',
               ],
-              ['Ławica', '[[job:fisher|Rybak]]', '1 [[good:fish|Ryba]]', '5 rzutów', 'tak'],
+              ['Ławica', '[[job:fisher|Rybak]]', '1 [[good:fish|Ryba]]', '{{gather.casts}} rzutów', 'tak'],
               ['Krzew z owocami', 'Głodny osadnik', '1 posiłek na miejscu', '1 zjedzenie', 'nie'],
             ],
           },
         },
         {
           list: [
-            'Drzewo pada w całości, 3 sztuki leżą jako pień i Zbieracz nosi je po 1 sztuce.',
+            'Drzewo pada w całości, {{gather.treeYield}} sztuki leżą jako pień i Zbieracz nosi je po 1 sztuce.',
             'Sztuka ze skały lub złoża spada na ziemię obok złoża.',
           ],
         },
@@ -363,7 +400,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               [
                 'Praca',
-                '10 sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]] razem',
+                '{{gather.oreNeed}} sztuk [[good:mud|Gliny]] i [[good:stone|Kamienia]] razem',
                 'Tego osadnika. Pierwszy odkrywa towar dla osady.',
               ],
               ['[[building:school|Szkoła]]', 'Kurs, gdy towar jest już odkryty', 'Absolwenta'],
@@ -385,8 +422,8 @@ export const ECONOMY: ArticleGroup = {
             head: ['Etap', 'Co się dzieje'],
             rows: [
               ['1', 'Zasiane'],
-              ['2-4', 'Każde podlanie dodaje 1 etap polu i 6 sąsiednim polom'],
-              ['5', 'Dojrzałe, czeka na ścięcie'],
+              ['2-{{field.lastSeedStage}}', 'Każde podlanie dodaje 1 etap polu i 6 sąsiednim polom'],
+              ['{{field.ripeStage}}', 'Dojrzałe, czeka na ścięcie'],
               ['Po ścięciu', '1 sztuka leży na ziemi, miejsce jest wolne pod siew'],
             ],
             foot: 'Pole rośnie tylko od podlewania, czas nie ma wpływu.',
@@ -396,17 +433,23 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Budynek', 'Pola', 'Promień', 'Załoga', 'Zapas'],
             rows: [
-              ['[[building:work_farm_00|Farma]]', 25, '16 kroków', '4 Farmerów, 1 Tragarz', 25],
+              [
+                '[[building:work_farm_00|Farma]]',
+                '{{field.max}}',
+                '{{field.radius}} kroków',
+                '{{farm.farmers}} Farmerów, {{farm.carriers}} Tragarz',
+                '{{farm.stock}}',
+              ],
               [
                 '[[building:work_herb_hut|Chatka zielarza]]',
-                25,
-                '16 kroków',
-                '3 Zbieraczy Ziół, 1 Tragarz',
-                20,
+                '{{field.max}}',
+                '{{field.radius}} kroków',
+                '{{herbHut.herbalists}} Zbieraczy Ziół, {{herbHut.carriers}} Tragarz',
+                '{{herbHut.stock}}',
               ],
             ],
             num: [1, 4],
-            foot: 'Po skosie promień to około 11 kroków. Limit pól dotyczy budynku, więcej ludzi obraca polami szybciej.',
+            foot: 'Po skosie promień to około {{field.diagonal}} kroków. Limit pól dotyczy budynku, więcej ludzi obraca polami szybciej.',
           },
         },
         {
@@ -415,7 +458,7 @@ export const ECONOMY: ArticleGroup = {
         {
           steps: [
             'Zanosi ściętą sztukę do budynku.',
-            'Sieje, gdy budynek ma mniej niż 25 pól.',
+            'Sieje, gdy budynek ma mniej niż {{field.max}} pól.',
             'Ścina najbliższe dojrzałe pole.',
             'Podlewa pole o najniższym etapie.',
             'Czeka w budynku.',
@@ -425,7 +468,7 @@ export const ECONOMY: ArticleGroup = {
           p: 'Pole wymaga ziemi pod uprawę: piasek i droga odpadają. Dzikie pola z mapy w promieniu budynku liczą się do jego limitu.',
         },
         {
-          p: 'Pole budynku, do którego przez 60 s nie ma dojścia z jego drzwi, znika i zwalnia miejsce w limicie.',
+          p: 'Pole budynku, do którego przez {{field.reclaimSeconds}} s nie ma dojścia z jego drzwi, znika i zwalnia miejsce w limicie.',
         },
         {
           h: 'Co odrasta',
@@ -437,15 +480,19 @@ export const ECONOMY: ArticleGroup = {
               [
                 '[[building:work_well_00|Studnia]]',
                 '+1 [[good:water|Woda]] na sekundę, bez pracownika',
-                '1 sztuka w budynku',
+                '{{well.stock}} sztuka w budynku',
               ],
               [
                 '[[building:work_hive_00|Ul]]',
                 '+1 [[good:honey|Miód]] na sekundę, bez pracownika',
-                '1 sztuka w budynku',
+                '{{hive.stock}} sztuka w budynku',
               ],
-              ['Krzew z owocami', '100 s: 50 s do kwitnienia, 50 s do owoców', '1 posiłek'],
-              ['Ławica', '+1 ryba co 180 s', '30 ryb'],
+              [
+                'Krzew z owocami',
+                '{{bush.regrowSeconds}} s: {{bush.stageSeconds}} s do kwitnienia, {{bush.stageSeconds}} s do owoców',
+                '1 posiłek',
+              ],
+              ['Ławica', '+1 ryba co {{fish.regrowSeconds}} s', '{{fish.swarmMax}} ryb'],
               ['Drzewo, skała, złoże, grzyb', 'Nie odrastają', '-'],
             ],
           },
@@ -465,7 +512,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'tools',
       name: 'Narzędzia',
-      lead: 'Narzędzie skraca ciosy i dokłada sztuk w warsztacie, a wytrzymuje 100 użyć.',
+      lead: 'Narzędzie skraca ciosy i dokłada sztuk w warsztacie, a wytrzymuje {{tool.uses}} użyć.',
       blocks: [
         {
           h: 'Kto korzysta',
@@ -491,33 +538,38 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Doświadczenie', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
             rows: [
-              ['0%', 10, 8, 5],
-              ['20%', 9, 7, 4],
-              ['40%', 8, 6, 3],
-              ['60%', 7, 5, 2],
-              ['80%', 6, 4, 1],
-              ['100%', 5, 3, 1],
+              ['0%', '{{tool.strokes.0.bare}}', '{{tool.strokes.0.wooden}}', '{{tool.strokes.0.iron}}'],
+              ['20%', '{{tool.strokes.20.bare}}', '{{tool.strokes.20.wooden}}', '{{tool.strokes.20.iron}}'],
+              ['40%', '{{tool.strokes.40.bare}}', '{{tool.strokes.40.wooden}}', '{{tool.strokes.40.iron}}'],
+              ['60%', '{{tool.strokes.60.bare}}', '{{tool.strokes.60.wooden}}', '{{tool.strokes.60.iron}}'],
+              ['80%', '{{tool.strokes.80.bare}}', '{{tool.strokes.80.wooden}}', '{{tool.strokes.80.iron}}'],
+              [
+                '100%',
+                '{{tool.strokes.100.bare}}',
+                '{{tool.strokes.100.wooden}}',
+                '{{tool.strokes.100.iron}}',
+              ],
             ],
             num: [1, 2, 3],
-            foot: 'Zasób za 10 ciosów: drzewo, skała, złoże, pole ziół.',
+            foot: 'Zasób za {{gather.strokes}} ciosów: drzewo, skała, złoże, pole ziół.',
           },
         },
         {
           table: {
             head: ['Doświadczenie', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
             rows: [
-              ['0%', 5, 4, 2],
-              ['20%', 4, 3, 1],
-              ['40%', 3, 2, 1],
-              ['60%', 2, 1, 1],
-              ['80-100%', 1, 1, 1],
+              ['0%', '{{tool.casts.0.bare}}', '{{tool.casts.0.wooden}}', '{{tool.casts.0.iron}}'],
+              ['20%', '{{tool.casts.20.bare}}', '{{tool.casts.20.wooden}}', '{{tool.casts.20.iron}}'],
+              ['40%', '{{tool.casts.40.bare}}', '{{tool.casts.40.wooden}}', '{{tool.casts.40.iron}}'],
+              ['60%', '{{tool.casts.60.bare}}', '{{tool.casts.60.wooden}}', '{{tool.casts.60.iron}}'],
+              ['80-100%', '{{tool.casts.80.bare}}', '{{tool.casts.80.wooden}}', '{{tool.casts.80.iron}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Połów, 5 rzutów na rybę.',
+            foot: 'Połów, {{gather.casts}} rzutów na rybę.',
           },
         },
         {
-          p: '[[good:wheat|Pszenica]] kosztuje 2 ciosy na pole bez narzędzia i 1 cios z narzędziem lub od 20% doświadczenia.',
+          p: '[[good:wheat|Pszenica]] kosztuje {{gather.wheatStrokes}} ciosy na pole bez narzędzia i 1 cios z narzędziem lub od 20% doświadczenia.',
         },
         {
           h: 'Sztuki z partii w warsztacie',
@@ -526,12 +578,12 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Doświadczenie', 'Bez narzędzia', 'Drewniane', 'Żelazne'],
             rows: [
-              ['0%', '1,0', '1,2', '1,7'],
-              ['20%', '1,3', '1,5', '2,0'],
-              ['40%', '1,6', '1,8', '2,3'],
-              ['60%', '1,9', '2,1', '2,6'],
-              ['80%', '2,2', '2,4', '2,9'],
-              ['100%', '2,5', '2,7', '3,2'],
+              ['0%', '{{tool.output.0.bare}}', '{{tool.output.0.wooden}}', '{{tool.output.0.iron}}'],
+              ['20%', '{{tool.output.20.bare}}', '{{tool.output.20.wooden}}', '{{tool.output.20.iron}}'],
+              ['40%', '{{tool.output.40.bare}}', '{{tool.output.40.wooden}}', '{{tool.output.40.iron}}'],
+              ['60%', '{{tool.output.60.bare}}', '{{tool.output.60.wooden}}', '{{tool.output.60.iron}}'],
+              ['80%', '{{tool.output.80.bare}}', '{{tool.output.80.wooden}}', '{{tool.output.80.iron}}'],
+              ['100%', '{{tool.output.100.bare}}', '{{tool.output.100.wooden}}', '{{tool.output.100.iron}}'],
             ],
             num: [1, 2, 3],
             foot: 'Dla przepisu dającego 1 sztukę. Przepis na 2 sztuki: premia ×2. Składniki i czas partii zostają takie same. Doświadczenie działa też na towary z uboju.',
@@ -554,7 +606,7 @@ export const ECONOMY: ArticleGroup = {
               ['Podlewanie', '1 za podlanie'],
               ['Sianie, podnoszenie grzybów', '0'],
             ],
-            foot: 'Po 100 użyciach narzędzie znika, osadnik pracuje gołymi rękami do czasu nowego.',
+            foot: 'Po {{tool.uses}} użyciach narzędzie znika, osadnik pracuje gołymi rękami do czasu nowego.',
           },
         },
       ],
@@ -569,7 +621,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'hauling',
       name: 'Tragarze i magazyny',
-      lead: 'Tragarz bez wózka nosi 1 sztukę, a na ziemi leży do 5 sztuk jednego towaru w jednym miejscu.',
+      lead: 'Tragarz bez wózka nosi {{haul.carry}} sztukę, a na ziemi leży do {{haul.groundStack}} sztuk jednego towaru w jednym miejscu.',
       blocks: [
         {
           h: 'Pojemność',
@@ -578,13 +630,13 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Budynek', 'Sztuk jednego towaru'],
             rows: [
-              ['[[building:stock_00|Magazyn 1]]', 45],
-              ['[[building:stock_01|Magazyn 2]]', 70],
-              ['[[building:stock_02|Magazyn 3]]', 120],
-              ['[[building:headquarters|Kwatera główna]]', 150],
+              ['[[building:stock_00|Magazyn 1]]', '{{haul.store1}}'],
+              ['[[building:stock_01|Magazyn 2]]', '{{haul.store2}}'],
+              ['[[building:stock_02|Magazyn 3]]', '{{haul.store3}}'],
+              ['[[building:headquarters|Kwatera główna]]', '{{haul.hq}}'],
             ],
             num: [1],
-            foot: 'Każdy z tych budynków przyjmuje po 3 [[job:carrier|Tragarzy]], Zbieraczy, Rybaków i Myśliwych.',
+            foot: 'Każdy z tych budynków przyjmuje po {{haul.storeSeats}} [[job:carrier|Tragarzy]], Zbieraczy, Rybaków i Myśliwych.',
           },
         },
         {
@@ -602,7 +654,7 @@ export const ECONOMY: ArticleGroup = {
               ['Kto zwozi', 'Tragarze tego budynku', 'Tragarze magazynów, Kwatery głównej, Studni i Uli'],
               ['Skąd', 'Inne magazyny, wyroby warsztatów, stosy', 'Wyroby warsztatów, Studnie, Ule, stosy'],
               ['Do kiedy', 'Dopóki budynek ma miejsce', 'Dopóki suma jest poniżej minimum'],
-              ['Limit', 'Pojemność budynku', '999 sztuk towaru'],
+              ['Limit', 'Pojemność budynku', '{{haul.minimumMax}} sztuk towaru'],
               ['Blokada', 'Brak', 'Nikt nie weźmie towaru z magazynu poniżej minimum'],
             ],
             foot: 'Magazyn oddaje towar magazynowi z priorytetem tylko ponad minimum.',
@@ -643,9 +695,9 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Tragarz', 'Sztuk na kurs', 'Utrata szybkości, pełny'],
             rows: [
-              ['Bez wozu', 1, '-'],
-              ['Z [[good:handcart|Wózkiem Ręcznym]]', 15, '60%'],
-              ['Z [[good:oxcart|Zaprzęgiem]]', 30, '15%'],
+              ['Bez wozu', '{{haul.carry}}', '-'],
+              ['Z [[good:handcart|Wózkiem Ręcznym]]', '{{haul.handcart}}', '{{haul.handcartLossPct}}%'],
+              ['Z [[good:oxcart|Zaprzęgiem]]', '{{haul.oxcart}}', '{{haul.oxcartLossPct}}%'],
             ],
             num: [1, 2],
             foot: 'Utrata szybkości rośnie z ładunkiem. Wozy [[job:trader|Kupca]] mają te same liczby.',
@@ -655,7 +707,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Wóz bierze tylko Tragarz z miejscem pracy i [[job:trader|Kupiec]]. Tragarz zachowuje miejsce pracy, a wóz traktuje jak narzędzie.',
             'Wóz musi być własny i wolny: bez załogi, bez innego woźnicy, na tym samym lądzie.',
-            'Tragarz magazynu z miejscem na wozie dobiera ten sam towar ze stosów i gotowych wyrobów do 12 kroków od siebie, potem wraca.',
+            'Tragarz magazynu z miejscem na wozie dobiera ten sam towar ze stosów i gotowych wyrobów do {{haul.cartTopUp}} kroków od siebie, potem wraca.',
             'Po utracie miejsca pracy wóz zostaje na miejscu.',
           ],
         },
@@ -664,9 +716,9 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'W jednym miejscu leży 1 towar, do 5 sztuk.',
+            'W jednym miejscu leży 1 towar, do {{haul.groundStack}} sztuk.',
             'Stos nie ma właściciela, bierze każdy.',
-            'Tragarz bez flagi roboczej podnosi do 32 kroków od budynku, z flagą do 32 kroków od flagi.',
+            'Tragarz bez flagi roboczej podnosi do {{flag.radius}} kroków od budynku, z flagą do {{flag.radius}} kroków od flagi.',
           ],
         },
         {
@@ -676,11 +728,16 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Kto', 'Skąd liczony', 'Poziomo, pionowo', 'Po skosie'],
             rows: [
-              ['[[job:collector|Zbieracz]]', 'Flaga robocza', '32', 'około 21'],
-              ['Tragarz', 'Flaga robocza lub budynek', '32', 'około 21'],
-              ['[[job:hunter|Myśliwy]]', 'Flaga robocza', '50', '50'],
-              ['[[job:fisher|Rybak]]', 'Flaga robocza', '20', 'około 13'],
-              ['[[job:farmer|Farmer]], [[job:herb_mush_guy|Zbieracz Ziół]]', 'Budynek', '16', 'około 11'],
+              ['[[job:collector|Zbieracz]]', 'Flaga robocza', '{{flag.radius}}', 'około {{flag.diagonal}}'],
+              ['Tragarz', 'Flaga robocza lub budynek', '{{flag.radius}}', 'około {{flag.diagonal}}'],
+              ['[[job:hunter|Myśliwy]]', 'Flaga robocza', '{{flag.hunter}}', '{{flag.hunter}}'],
+              ['[[job:fisher|Rybak]]', 'Flaga robocza', '{{flag.fisher}}', 'około {{flag.fisherDiagonal}}'],
+              [
+                '[[job:farmer|Farmer]], [[job:herb_mush_guy|Zbieracz Ziół]]',
+                'Budynek',
+                '{{field.radius}}',
+                'około {{field.diagonal}}',
+              ],
             ],
             num: [2, 3],
             foot: 'W krokach. Obszar pracy kończy się na zasięgu drogowskazów, gdy zawód mu podlega.',
@@ -743,7 +800,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['Kto', 'Bez flagi'],
             rows: [
               ['Zbieracz', 'Cały zasięg drogowskazów'],
-              ['Tragarz', 'Magazyn: stosy do 32 kroków od budynku'],
+              ['Tragarz', 'Magazyn: stosy do {{flag.radius}} kroków od budynku'],
               ['Myśliwy', 'Wokół miejsca pracy'],
               ['Rybak', 'Szuka brzegu od miejsca, w którym stoi'],
             ],
@@ -756,7 +813,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'Towar spod flagi nie trafi do magazynu sam. Potrzebny jest Tragarz z miejscem pracy.',
-            'Tragarz magazynu sięga do 32 kroków od budynku. Dalej daj mu własną flagę przy fladze Zbieracza.',
+            'Tragarz magazynu sięga do {{flag.radius}} kroków od budynku. Dalej daj mu własną flagę przy fladze Zbieracza.',
             'Tragarz z flagą bierze stosy i gotowe wyroby wokół niej i niesie je do swojego budynku.',
             'Przeniesienie flagi nie rusza stosów, zostają na miejscu.',
           ],
@@ -770,7 +827,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               [
                 '"Wbij chorągiewkę"',
-                'Stawia flagę we wskazanym miejscu albo ją tam przenosi. Na zajętym polu szuka miejsca do 6 kroków, dalej rozkaz przepada.',
+                'Stawia flagę we wskazanym miejscu albo ją tam przenosi. Na zajętym polu szuka miejsca do {{flag.snap}} kroków, dalej rozkaz przepada.',
               ],
               ['"Zabierz chorągiewkę"', 'Tylko z miejscem pracy, usuwa flagę'],
               ['"Pokaż obszar roboczy"', 'Włącza okrąg obszaru. Działa, gdy flaga stoi.'],
@@ -780,7 +837,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Zbieracz przenosi flagę sam, gdy włączony jest przełącznik w [[article:assistant|Asystencie]]: 6-10 kroków od zasobu, a po wyczerpaniu obszaru do zasobu najbliżej własnego budynku. Flagi Myśliwego i Rybaka stoją.',
+          p: 'Zbieracz przenosi flagę sam, gdy włączony jest przełącznik w [[article:assistant|Asystencie]]: {{assistant.flagMin}}-{{assistant.flagMax}} kroków od zasobu, a po wyczerpaniu obszaru do zasobu najbliżej własnego budynku. Flagi Myśliwego i Rybaka stoją.',
         },
         {
           h: 'Flaga poza zasięgiem drogowskazów',
@@ -794,7 +851,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'roads',
       name: 'Drogi i drogowskazy',
-      lead: 'Droga kosztuje 1 Kamień i skraca krok w butach na lądzie z 0,5 s do 0,33 s.',
+      lead: 'Droga kosztuje 1 Kamień i skraca krok w butach na lądzie z {{step.landBrief}} s do {{step.road}} s.',
       blocks: [
         {
           h: 'Drogowskaz',
@@ -812,18 +869,43 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Zasięg, kroki', 'Osadnik', '[[job:carrier|Tragarz]]', 'Uwagi'],
             rows: [
-              ['Chód', '50', '63', 'Od miejsca, w którym stoi'],
-              ['Od osadnika do drogowskazu', 'mniej niż 50', 'mniej niż 63', 'Otwiera całą połączoną sieć'],
-              ['Od drogowskazu do celu', 'mniej niż 50', 'mniej niż 63', 'Od każdego drogowskazu tej sieci'],
+              ['Chód', '{{reach.walk}}', '{{reach.carrier}}', 'Od miejsca, w którym stoi'],
+              [
+                'Od osadnika do drogowskazu',
+                'mniej niż {{reach.walk}}',
+                'mniej niż {{reach.carrier}}',
+                'Otwiera całą połączoną sieć',
+              ],
+              [
+                'Od drogowskazu do celu',
+                'mniej niż {{reach.walk}}',
+                'mniej niż {{reach.carrier}}',
+                'Od każdego drogowskazu tej sieci',
+              ],
               [
                 'Połączenie dwóch drogowskazów',
-                'mniej niż 40',
-                'mniej niż 40',
-                'Trasa między nimi do 80 kroków',
+                'mniej niż {{reach.link}}',
+                'mniej niż {{reach.link}}',
+                'Trasa między nimi do {{reach.linkRoute}} kroków',
               ],
-              ['Odstęp od własnego drogowskazu', 'co najmniej 16', 'co najmniej 16', 'Bliżej nie stanie'],
-              ['Szukanie towaru', 'mniej niż 40', 'mniej niż 40', 'Także od drogowskazów w tym zasięgu'],
-              ['Budynek na drogowskazie', '16', '16', 'Drogowskaz odsuwa się, dalej przepada'],
+              [
+                'Odstęp od własnego drogowskazu',
+                'co najmniej {{reach.spacing}}',
+                'co najmniej {{reach.spacing}}',
+                'Bliżej nie stanie',
+              ],
+              [
+                'Szukanie towaru',
+                'mniej niż {{reach.goods}}',
+                'mniej niż {{reach.goods}}',
+                'Także od drogowskazów w tym zasięgu',
+              ],
+              [
+                'Budynek na drogowskazie',
+                '{{reach.displace}}',
+                '{{reach.displace}}',
+                'Drogowskaz odsuwa się, dalej przepada',
+              ],
             ],
             num: [1, 2],
           },
@@ -832,10 +914,10 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Teren', 'Szukanie towaru, kroki'],
             rows: [
-              ['Droga, ląd', 'mniej niż 40'],
-              ['Piasek', 'około 26'],
-              ['Góry', 'około 20'],
-              ['Śnieg', 'około 16'],
+              ['Droga, ląd', 'mniej niż {{reach.goods}}'],
+              ['Piasek', 'około {{reach.goodsSand}}'],
+              ['Góry', 'około {{reach.goodsMountain}}'],
+              ['Śnieg', 'około {{reach.goodsSnow}}'],
             ],
             num: [1],
           },
@@ -873,13 +955,13 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Teren pod drogą', 'Krok bez drogi', 'Krok drogą', 'Oszczędność'],
             rows: [
-              ['Ląd', '0,50 s', '0,33 s', '33%'],
-              ['Piasek', '0,67 s', '0,33 s', '50%'],
-              ['Góry', '0,83 s', '0,33 s', '60%'],
-              ['Śnieg', '1,00 s', '0,33 s', '67%'],
+              ['Ląd', '{{step.land}} s', '{{step.road}} s', '{{step.roadSavedOnLandPct}}%'],
+              ['Piasek', '{{step.sand}} s', '{{step.road}} s', '{{step.roadSavedOnSandPct}}%'],
+              ['Góry', '{{step.mountain}} s', '{{step.road}} s', '{{step.roadSavedOnMountainPct}}%'],
+              ['Śnieg', '{{step.snow}} s', '{{step.road}} s', '{{step.roadSavedOnSnowPct}}%'],
             ],
             num: [1, 2, 3],
-            foot: 'Osadnik w butach, bez ładunku. Buty na drodze zużywają się 2 razy wolniej niż na lądzie.',
+            foot: 'Osadnik w butach, bez ładunku. Buty na drodze zużywają się {{shoes.roadWear}} razy wolniej niż na lądzie.',
           },
         },
         {
@@ -904,7 +986,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'walking',
       name: 'Szybkość chodu',
-      lead: 'Krok na lądzie trwa 0,5 s w butach i 0,67 s boso.',
+      lead: 'Krok na lądzie trwa {{step.landBrief}} s w butach i {{step.landBare}} s boso.',
       blocks: [
         {
           h: 'Krok według terenu',
@@ -913,14 +995,19 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Teren', 'W butach', 'Boso', 'Kroków z pary butów'],
             rows: [
-              ['Droga, bruk', '0,33 s', '0,50 s', 10000],
-              ['Ląd', '0,50 s', '0,67 s', 5000],
-              ['Piasek, plaża, kamienista pustynia', '0,67 s', '0,83 s', 3334],
-              ['Góry', '0,83 s', '1,00 s', 2500],
-              ['Śnieg', '1,00 s', '1,17 s', 2000],
+              ['Droga, bruk', '{{step.road}} s', '{{step.roadBare}} s', '{{shoes.road}}'],
+              ['Ląd', '{{step.land}} s', '{{step.landBare}} s', '{{shoes.land}}'],
+              [
+                'Piasek, plaża, kamienista pustynia',
+                '{{step.sand}} s',
+                '{{step.sandBare}} s',
+                '{{shoes.sand}}',
+              ],
+              ['Góry', '{{step.mountain}} s', '{{step.mountainBare}} s', '{{shoes.mountain}}'],
+              ['Śnieg', '{{step.snow}} s', '{{step.snowBare}} s', '{{shoes.snow}}'],
             ],
             num: [1, 2, 3],
-            foot: 'Z ładunkiem w rękach buty zużywają się 2 razy szybciej. Energia za bosy krok: [[article:needs|Potrzeby]].',
+            foot: 'Z ładunkiem w rękach buty zużywają się {{shoes.carryWear}} razy szybciej. Energia za bosy krok: [[article:needs|Potrzeby]].',
           },
         },
         {
@@ -930,18 +1017,18 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Stan', 'Zmiana'],
             rows: [
-              ['Ładunek w rękach', '+0,08 s'],
-              ['Wytrzymałość do 20%', '+0,17 s'],
-              ['Dziecko', '+0,17 s'],
+              ['Ładunek w rękach', '+{{step.carryExtra}} s'],
+              ['Wytrzymałość do {{need.drivePct}}%', '+{{step.tiredExtra}} s'],
+              ['Dziecko', '+{{step.childExtra}} s'],
               ['Niemowlę', 'krok × 2'],
-              ['Ciężar broni i pancerza 2-3, bez bohaterów', '+0,08 s'],
-              ['Ciężar broni i pancerza 4-5, bez bohaterów', '+0,17 s'],
-              ['[[good:amulet_speed|Amulet Wiatru]]', '-0,17 s'],
-              ['Egipcjanin', '-0,17 s'],
-              ['Pełny [[good:handcart|Wózek Ręczny]]', '60% wolniej'],
-              ['Pełny [[good:oxcart|Zaprzęg]]', '15% wolniej'],
+              ['Ciężar broni i pancerza 2-3, bez bohaterów', '+{{step.weightLowExtra}} s'],
+              ['Ciężar broni i pancerza 4-5, bez bohaterów', '+{{step.weightHighExtra}} s'],
+              ['[[good:amulet_speed|Amulet Wiatru]]', '-{{step.amuletSaved}} s'],
+              ['Egipcjanin', '-{{step.egyptSaved}} s'],
+              ['Pełny [[good:handcart|Wózek Ręczny]]', '{{haul.handcartLossPct}}% wolniej'],
+              ['Pełny [[good:oxcart|Zaprzęg]]', '{{haul.oxcartLossPct}}% wolniej'],
             ],
-            foot: 'Najszybszy krok trwa 0,25 s. Spowolnienie przy wozach rośnie z ładunkiem.',
+            foot: 'Najszybszy krok trwa {{step.shortest}} s. Spowolnienie przy wozach rośnie z ładunkiem.',
           },
         },
         {
@@ -951,9 +1038,15 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Broń', 'Ciężar'],
             rows: [
-              ['[[good:sword_shord|Krótki Miecz]], [[good:bow_short|Krótki Łuk]]', 0],
-              ['[[good:spear_wooden|Drewniana Włócznia]], [[good:bow_long|Długi Łuk]]', 1],
-              ['[[good:spear_iron|Żelazna Włócznia]], [[good:sword_long|Długi Miecz]]', 2],
+              ['[[good:sword_shord|Krótki Miecz]], [[good:bow_short|Krótki Łuk]]', '{{weight.shortSword}}'],
+              [
+                '[[good:spear_wooden|Drewniana Włócznia]], [[good:bow_long|Długi Łuk]]',
+                '{{weight.woodenSpear}}',
+              ],
+              [
+                '[[good:spear_iron|Żelazna Włócznia]], [[good:sword_long|Długi Miecz]]',
+                '{{weight.ironSpear}}',
+              ],
             ],
             num: [1],
             foot: 'Taki sam dla wszystkich plemion. Ciężar broni dodaj do ciężaru pancerza z tabeli niżej.',
@@ -969,9 +1062,9 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Kto', 'Teren', 'Krok'],
             rows: [
-              ['Tragarz, w butach, z towarem', 'Droga', '0,42 s'],
-              ['Żołnierz, Długi Miecz, Zbroja Płytowa, w butach', 'Ląd', '0,67 s'],
-              ['Kupiec, w butach, pełny Wózek Ręczny', 'Ląd', '1,25 s'],
+              ['Tragarz, w butach, z towarem', 'Droga', '{{step.carrierOnRoad}} s'],
+              ['Żołnierz, Długi Miecz, Zbroja Płytowa, w butach', 'Ląd', '{{step.plateSoldierOnLand}} s'],
+              ['Kupiec, w butach, pełny Wózek Ręczny', 'Ląd', '{{step.traderFullCart}} s'],
             ],
             num: [2],
           },
@@ -982,7 +1075,7 @@ export const ECONOMY: ArticleGroup = {
     {
       id: 'trade',
       name: 'Handel',
-      lead: 'Kupiec jeździ między 2 budynkami i bez wozu bierze 1 sztukę na kurs.',
+      lead: 'Kupiec jeździ między {{trade.stops}} budynkami i bez wozu bierze {{haul.carry}} sztukę na kurs.',
       blocks: [
         {
           h: 'Czym wozi',
@@ -991,9 +1084,9 @@ export const ECONOMY: ArticleGroup = {
           table: {
             head: ['Ładownia', 'Podniesienie sztuki'],
             rows: [
-              ['Ręce', '1,7 s'],
-              ['[[good:handcart|Wózek Ręczny]]', '1,0 s'],
-              ['[[good:oxcart|Zaprzęg]]', '2,2 s'],
+              ['Ręce', '{{trade.handsSeconds}} s'],
+              ['[[good:handcart|Wózek Ręczny]]', '{{trade.handcartSeconds}} s'],
+              ['[[good:oxcart|Zaprzęg]]', '{{trade.oxcartSeconds}} s'],
             ],
             num: [1],
             foot: 'Czas podniesienia dotyczy też rozładunku. Pojemność i utrata szybkości: [[article:hauling|Tragarze i magazyny]].',
@@ -1007,7 +1100,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Trasa ma 2 gotowe budynki. Własny może być każdy budynek z zapasami, obcy najwyżej 1.',
+            'Trasa ma {{trade.stops}} gotowe budynki. Własny może być każdy budynek z zapasami, obcy najwyżej 1.',
             'Gdy budynek jest w rozbudowie, [[job:trader|Kupiec]] czeka na jej koniec.',
             'Z Domu Kupiec nie zabiera jedzenia.',
           ],
@@ -1039,7 +1132,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Obcy budynek należy do gracza komputerowego, jest gotowy i ma ofertę zapisaną przez mapę.',
             'Dodanie do trasy wymaga stosunku przyjaznego po obu stronach, każdy kurs tylko po stronie plemienia Kupca: [[article:diplomacy|Dyplomacja]].',
-            'Oferta to N sztuk jednego towaru za M sztuk drugiego, liczby ustala mapa. Trasa handluje jedną ofertą naraz. Magazyn komputera wraca do 5 sztuk towaru z oferty co 30 s.',
+            'Oferta to N sztuk jednego towaru za M sztuk drugiego, liczby ustala mapa. Trasa handluje jedną ofertą naraz. Magazyn komputera wraca do {{trade.refillLevel}} sztuk towaru z oferty co {{trade.refillSeconds}} s.',
             'Kupiec bierze tyle pełnych partii, ile mieści ładownia z miejscem na towar powrotny. Przy małej ładowni partia dzieli się na kilka kursów.',
             'Oddaje partię, bierze zapłatę i powtarza, dopóki ma towar. Bez zapłaty w budynku czeka i nie oddaje towaru. "zostaw N" zostawia w budynku N sztuk towaru na sprzedaż. Limit powrotu N: stop, gdy budynek ma N sztuk zapłaty.',
           ],

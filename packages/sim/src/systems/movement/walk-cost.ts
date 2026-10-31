@@ -88,7 +88,7 @@ const SCRIPT_FAST_TICKS = 2;
 export const MIN_STEP_TICKS = 3;
 
 /** The highest roughness the owned corpus writes (`lmpr` snow). */
-const ROUGHNESS_MAX_ON_MAPS = 5;
+export const ROUGHNESS_MAX_ON_MAPS = 5;
 
 /** The longest step an ordinary human takes: barefoot, laden, due for sleep, script-slowed, off snow.
  *  A hauling cart's drag lies outside it; obstruction scales by the captured leg cost anyway. */

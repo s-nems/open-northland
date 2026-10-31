@@ -41,7 +41,7 @@ import { herdOf } from './herd-index.js';
 
 /** How far from the farm the newborn's parent may stand (hex map points), the original's search radius
  *  for the adult a produced animal is placed beside. */
-const BIRTH_PARENT_RANGE = 40;
+export const BIRTH_PARENT_RANGE = 40;
 
 /** One species' share of a farm's herd. */
 export interface SpeciesHerd {

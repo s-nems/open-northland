@@ -17,7 +17,7 @@ import { buildStepsPerSwing, jobExperiencePercent } from '../progression/index.j
  *  material, and a swing is worth the same steps as on a construction site. Approximation: the original
  *  spends a swing's steps left over once the pool is whole on a damaged upgrade site's progress; here the
  *  repair swing ends with the pool. A wall takes its own record's gain per swing instead. */
-const HITPOINTS_PER_REPAIR_STEP = 100;
+export const HITPOINTS_PER_REPAIR_STEP = 100;
 
 /** Builders one damaged building takes at a time, the player's own orders included. Original behavior
  *  for a standing building; approximation for a damaged upgrade site, where the original also admits one

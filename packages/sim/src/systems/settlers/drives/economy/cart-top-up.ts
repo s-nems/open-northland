@@ -29,7 +29,7 @@ import { isBoundToStorageSink } from './store-policy.js';
  * in half-cell nodes: a few cells, the spread of the heaps a producer drops around its hut. Named
  * approximation: far enough to clear one yard in a trip, too short to cross a village for a second one.
  */
-const CART_TOP_UP_REACH = 12;
+export const CART_TOP_UP_REACH = 12;
 
 /**
  * CART TOP-UP - a store's porter whose cart has room left after a lift fills it from the nearest heap or
