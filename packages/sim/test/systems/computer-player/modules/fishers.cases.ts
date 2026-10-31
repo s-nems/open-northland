@@ -1,6 +1,12 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { FishSwarm, Position, Settler, WALK_RANGE_NODES } from '../../../../src/components/index.js';
+import {
+  FishSwarm,
+  Position,
+  Settler,
+  Stockpile,
+  WALK_RANGE_NODES,
+} from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import type { TerrainMap } from '../../../../src/index.js';
 import { nodeOfPosition, positionOfNode, Simulation } from '../../../../src/index.js';
@@ -17,6 +23,7 @@ import { claimFlagNode, flagGround } from '../../../../src/systems/computer-play
 import { addFishSwarms } from '../../../../src/systems/economy/fish.js';
 import { liveWorkFlag } from '../../../../src/systems/economy/work-flag.js';
 import { razeBuilding } from '../../../../src/systems/lifecycle/cleanup.js';
+import { edibleGoodFormOf } from '../../../../src/systems/readviews/food.js';
 import { networkLimitAt } from '../../../../src/systems/signposts/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap, waterColumnMap } from '../../../fixtures/terrain.js';
@@ -45,6 +52,8 @@ const NEAR_SWARM = { hx: HQ_X + 4, hy: HQ_Y };
 const FAR_SWARM = { hx: 120, hy: 60 };
 /** A swarm outside the fisher's own search from the door but inside a fishing trip. */
 const TRIP_SWARM = { hx: HQ_X + 14, hy: HQ_Y + 14 };
+/** A swarm along the headquarters row past every fishing trip, inside the near band a far fisher walks. */
+const BAND_SWARM = { hx: HQ_X + 85, hy: HQ_Y };
 /** A swarm inside a fishing trip along the headquarters row, but past a settler's signpost walk range. */
 const REMOTE_SWARM = { hx: HQ_X + WALK_RANGE_NODES + 10, hy: HQ_Y };
 /** The cell column of a river between the headquarters and {@link REMOTE_SWARM}, in the 64 x 32 cell map
@@ -59,7 +68,8 @@ const STORE_SWARM = { hx: HQ_X + 34, hy: HQ_Y };
 const FISHING_DECISIONS = 120;
 
 /** Content with the fish good, the fisher's cast and catch atomics, and the headquarters stocking the
- *  catch. The trade must be spelled `fisher`: the job role is read off the id slug. */
+ *  catch and seating fishers, as the shipped stores do. The trade must be spelled `fisher`: the job role is
+ *  read off the id slug. */
 function fishingContent(): ContentSet {
   const base = aiContent();
   return parseContentSet({
@@ -67,7 +77,13 @@ function fishingContent(): ContentSet {
     goods: [...base.goods, { typeId: FISH, id: 'fish', weight: 1 }],
     jobs: [...base.jobs, { typeId: FISHER, id: 'fisher', allowedAtomics: [36, 37, 38] }],
     buildings: base.buildings.map((b) =>
-      b.typeId === HQ_TYPE ? { ...b, stock: [...b.stock, { goodType: FISH, capacity: 50, initial: 0 }] } : b,
+      b.typeId === HQ_TYPE
+        ? {
+            ...b,
+            workers: [...b.workers, { jobType: FISHER, count: 3 }],
+            stock: [...b.stock, { goodType: FISH, capacity: 50, initial: 0 }],
+          }
+        : b,
     ),
   });
 }
@@ -108,6 +124,17 @@ function fisherPosts(sim: Simulation) {
   });
 }
 
+/** The decision's far fisher hires: each employed at a store as a fisher, his flag planted next. */
+function farPosts(sim: Simulation) {
+  const commands = decide(sim);
+  return commands.flatMap((c, i) => {
+    if (c.kind !== 'assignWorker' || c.jobPriority?.[0] !== FISHER) return [];
+    const flag = commands[i + 1];
+    if (flag?.kind !== 'setWorkFlag' || flag.entity !== c.entity) throw new Error('a hire plants its flag');
+    return [{ entity: c.entity, building: c.building, flag: { hx: flag.x, hy: flag.y } }];
+  });
+}
+
 function shoreOf(sim: Simulation, swarm: { hx: number; hy: number }): { hx: number; hy: number } {
   const terrain = sim.terrain;
   const e = [...sim.world.query(FishSwarm)].find((s) => {
@@ -122,6 +149,11 @@ function shoreOf(sim: Simulation, swarm: { hx: number; hy: number }): { hx: numb
 
 function distance(a: { hx: number; hy: number }, b: { hx: number; hy: number }): number {
   return Math.abs(a.hx - b.hx) + Math.abs(a.hy - b.hy);
+}
+
+/** The catch banked in `store`, in the edible form a catch lands in hand as. */
+function storedFish(sim: Simulation, store: Entity): number {
+  return sim.world.get(store, Stockpile).amounts.get(edibleGoodFormOf(fishingContent(), FISH)) ?? 0;
 }
 
 function fishLeft(sim: Simulation): number {
@@ -195,6 +227,38 @@ describe('workforce module - the fishers', () => {
       for (let t = 0; t < COMPUTER_DECISION_INTERVAL_TICKS; t++) sim.step();
     }
     expect(fishLeft(sim)).toBeLessThan(before);
+  });
+
+  it('employs one far fisher at the headquarters for water past every trip, who walks his catch home', () => {
+    const sim = fishingSeat(BUILDER_CAP + 6, [BAND_SWARM]);
+    expect(fisherPosts(sim)).toEqual([]);
+    const posts = farPosts(sim);
+    expect(posts).toHaveLength(1);
+    const [post] = posts;
+    if (post === undefined) throw new Error('expected a far fisher post');
+    expect(post.building).toBe(entityOfBuilding(sim, HQ_TYPE));
+    expect(distance(post.flag, shoreOf(sim, BAND_SWARM))).toBeLessThanOrEqual(FISHER_FLAG_MAX_DISTANCE_NODES);
+
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    for (let i = 0; i < FISHING_DECISIONS && storedFish(sim, hq) === 0; i++) {
+      for (const c of decide(sim)) sim.enqueueSetup(c);
+      for (let t = 0; t < COMPUTER_DECISION_INTERVAL_TICKS; t++) sim.step();
+      expect(farPosts(sim)).toEqual([]);
+    }
+    expect(storedFish(sim, hq)).toBeGreaterThan(0);
+  });
+
+  it('employs no far fisher beside water within a trip, and hands him back once his water runs dry', () => {
+    expect(farPosts(fishingSeat(BUILDER_CAP + 6, [NEAR_SWARM, BAND_SWARM]))).toEqual([]);
+    const sim = fishingSeat(4, [BAND_SWARM]);
+    const [post] = farPosts(sim);
+    if (post === undefined) throw new Error('expected a far fisher post');
+    for (const c of decide(sim)) sim.enqueueSetup(c);
+    sim.step();
+    drySwarms(sim, [BAND_SWARM]);
+    expect(decide(sim).filter((c) => 'entity' in c && c.entity === post.entity)).toEqual([
+      { kind: 'setJob', entity: post.entity, jobType: BUILDER },
+    ]);
   });
 
   it('sends no fisher to a shore across water or past the signpost walk range', () => {
