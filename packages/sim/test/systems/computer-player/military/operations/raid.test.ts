@@ -270,19 +270,29 @@ describe('raid operations', () => {
     expect(raid.reason).toBe('outmatched');
   });
 
-  it('walks on past a tower its way keeps clear of, and turns back once its target comes under one', () => {
+  it('walks on past a tower its way keeps clear of, turns back once its target comes under one, and walks home the way it came', () => {
     const { sim } = raidWorld([EXPOSED], ARMY, SPEARMAN);
     place(sim, TOWER_TYPE, PASSED_TOWER, FOE);
     decide(sim, LOOK);
     decide(sim, LOOK + DECISION);
     const out = onlyRaid(sim);
     expect(out.state).toBe('moving');
+    const [flank] = out.raid?.waypoints ?? [];
+    if (flank === undefined) throw new Error('the way round the tower has a waypoint');
     for (const e of out.members) teleport(sim, e, NEAR_PASSED_TOWER);
     decide(sim, LOOK + 2 * DECISION);
     expect(onlyRaid(sim).state, 'standing in its reach').toBe('moving');
-    place(sim, TOWER_TYPE, OVER_EXPOSED, FOE);
+    for (const e of out.members) teleport(sim, e, flank);
     decide(sim, LOOK + 3 * DECISION);
-    expect(onlyRaid(sim).reason).toBe('towerInReach');
+    expect(onlyRaid(sim).raid?.leg, 'past the waypoint').toBe(1);
+    place(sim, TOWER_TYPE, OVER_EXPOSED, FOE);
+    decide(sim, LOOK + 4 * DECISION);
+    const back = onlyRaid(sim);
+    expect(back.reason).toBe('towerInReach');
+    expect(back.raid?.leg, 'the waypoint still to walk back through').toBe(1);
+    decide(sim, LOOK + 5 * DECISION);
+    expect(onlyRaid(sim).raid?.leg, 'back at the waypoint, it heads home').toBe(0);
+    expect(onlyRaid(sim).state).toBe('withdrawing');
   });
 
   it('waits out its cooldown before the next raid forms', () => {

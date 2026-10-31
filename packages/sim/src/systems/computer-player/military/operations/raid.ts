@@ -94,10 +94,17 @@ function targetNode(op: RaidOperation): HalfCellNode {
   return { hx: op.target.hx, hy: op.target.hy };
 }
 
-/** Turn the band home for `reason`. */
+/** Turn the band home for `reason`, back the way it came: through the waypoints it has passed, the last
+ *  first, so the walk home keeps as clear of believed towers as the walk out. */
 function withdraw(env: OperationEnv, op: RaidOperation, reason: OperationEndReason): PlayerCommand[] {
   enter(op, 'withdrawing', env.ctx.tick, reason);
-  return walkBand(env, op.members, homeOf(env), 'moveUnit', true);
+  op.leg = Math.min(op.leg, op.waypoints.length);
+  return walkBand(env, op.members, wayBack(env, op), 'moveUnit', true);
+}
+
+/** Where the band's walk home leads next: the last waypoint it has yet to walk back through, else home. */
+function wayBack(env: OperationEnv, op: RaidOperation): HalfCellNode {
+  return op.waypoints[op.leg - 1] ?? homeOf(env);
 }
 
 /** Why the band should turn back now, or null: its seat calls its raids home, the target's owner is no
@@ -193,18 +200,18 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
       if (!gathered(world, op.members, home) && tick - op.since < RAID_FORM_TIMEOUT_TICKS)
         return walkBand(env, op.members, home, 'attackMoveUnit', false);
       enter(op, 'moving', tick);
-      return walkBand(env, op.members, legEnd(op), 'attackMoveUnit', true);
+      return walkBand(env, op.members, legEnd(op), legWalk(op), true);
     }
     case 'moving': {
       const reason = abortReason(env, op);
       if (reason !== null) return withdraw(env, op, reason);
       const end = legEnd(op);
       if (!gathered(world, op.members, end) && tick - op.since < RAID_LEG_TIMEOUT_TICKS)
-        return walkBand(env, op.members, end, 'attackMoveUnit', false);
+        return walkBand(env, op.members, end, legWalk(op), false);
       if (op.leg < op.waypoints.length) {
         op.leg++;
         enter(op, 'moving', tick);
-        return walkBand(env, op.members, legEnd(op), 'attackMoveUnit', true);
+        return walkBand(env, op.members, legEnd(op), legWalk(op), true);
       }
       enter(op, 'acting', tick);
       return strike(env, op);
@@ -216,6 +223,14 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
       return strike(env, op);
     }
     case 'withdrawing': {
+      const back = wayBack(env, op);
+      if (op.leg > 0) {
+        if (!gathered(world, op.members, back) && tick - op.since < RAID_LEG_TIMEOUT_TICKS)
+          return walkBand(env, op.members, back, 'moveUnit', false);
+        op.leg--;
+        enter(op, 'withdrawing', tick);
+        return walkBand(env, op.members, wayBack(env, op), 'moveUnit', true);
+      }
       if (gathered(world, op.members, home) || tick - op.since >= RAID_WITHDRAW_TIMEOUT_TICKS) {
         enter(op, 'done', tick);
         return [];
@@ -226,6 +241,12 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
     case 'failed':
       return [];
   }
+}
+
+/** How the band walks its current leg: a plain walk to a flank waypoint, so it stops to fight nothing on the
+ *  way and its turn-back rules alone answer what it meets; attack-move on the last leg onto the target. */
+function legWalk(op: RaidOperation): 'moveUnit' | 'attackMoveUnit' {
+  return op.leg < op.waypoints.length ? 'moveUnit' : 'attackMoveUnit';
 }
 
 /** Where the band's current leg ends: the next flank waypoint, else the target. */

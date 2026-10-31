@@ -60,7 +60,8 @@ export interface AssaultOperation extends OperationBase {
 
 export interface RaidOperation extends OperationBase {
   kind: 'raid';
-  /** The flank waypoints the band walks before it strikes, and the index of the one it walks to. */
+  /** The flank waypoints the band walks before it strikes, and the index of the one it walks to; on the
+   *  way home, how many of them it has yet to walk back through. */
   waypoints: HalfCellNode[];
   leg: number;
   /** The head count it set out with, for its losses. */
