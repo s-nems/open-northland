@@ -59,6 +59,7 @@ import {
   housingPick,
   housingStage,
 } from './housing.js';
+import { paperedPlacement, stepTiers } from './papers.js';
 import { placementSpot } from './placement.js';
 import {
   type DecisionMemo,
@@ -322,6 +323,11 @@ function runBuildOrder(
 
   let housing: HousingGate | undefined;
   const housingGateOf = (): HousingGate => (housing ??= housingGate(world, ctx, player, owned));
+  // A placing paper the seat holds turns the site it would open into a finished building (`./papers.ts`).
+  const papered = (command: PlayerCommand, entry: Parameters<typeof stepTiers>[1]): PlayerCommand =>
+    command.kind === 'placeBuilding'
+      ? paperedPlacement(world, ctx, terrain, player, order, command, stepTiers(ctx, entry))
+      : command;
   const lanes = openLanes(
     world,
     ctx,
@@ -375,7 +381,7 @@ function runBuildOrder(
             madeGoods,
           );
     searches.searched(lane.line, lane.step, ctx.tick, placed !== null, false);
-    if (placed !== null) return started(placed);
+    if (placed !== null) return started(papered(placed, entry));
   }
   // The lines keep the sites the coverage lanes leave them, at least one, and count only their own; the
   // housing lane's first site is one of theirs. A coverage lane reserves a site only while it has work it
@@ -488,7 +494,10 @@ function runBuildOrder(
       if (awaitingRebuild(world, player, line.id, step, entry, ctx.tick)) return null;
       if (listSites > 0 && outrunsSites(world, ctx, player, owned, line.steps, step, memo)) return null;
       searches.acting(line.id, step);
-      return verdict.placement ?? stepCommand(line, step, entry);
+      const command = verdict.placement ?? stepCommand(line, step, entry);
+      return command === null || entry.kind === 'upgrade' || entry.kind === 'collector'
+        ? command
+        : papered(command, entry);
     }
     advanceFrontier(world, player, line.id, line.steps.length);
     return null;
