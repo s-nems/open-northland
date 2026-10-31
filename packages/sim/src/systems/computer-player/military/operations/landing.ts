@@ -73,6 +73,9 @@ export const LANDING_SHORE_SPACING_NODES = 10;
  *  so the wave lands together. Authored: on arabskie_wyspy_wolna_gra_mieszana a wave whose ships cast
  *  off one by one landed in parts a minute or more apart, and the first men ashore fell alone. */
 export const LANDING_SHORE_WAIT_TICKS = SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+/** How long past {@link LANDING_SAIL_TIMEOUT_TICKS} a ship still at sea keeps its landing open on its way
+ *  home before the landing lets it go with its crew aboard. */
+export const LANDING_STRANDED_GRACE_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 /** The share of its ships, in percent, a landing may lose before setting anyone ashore and still sail on. */
 export const LANDING_SHIP_LOSS_PCT = 50;
 
@@ -175,7 +178,7 @@ function stoppedShort(world: World, ship: LandingShip, at: HalfCellNode): boolea
   );
 }
 
-/** Turn every ship still out for home for `reason`: one still moored at home frees its crew there. */
+/** Turn every ship still out for home for `reason`: one still moored on home land frees its crew there. */
 function withdraw(env: OperationEnv, op: LandingOperation, reason: OperationEndReason): PlayerCommand[] {
   const { world, ctx } = env;
   enter(op, 'withdrawing', ctx.tick, reason);
@@ -183,17 +186,45 @@ function withdraw(env: OperationEnv, op: LandingOperation, reason: OperationEndR
   for (const ship of op.ships) {
     if (ship.leg !== 'out') continue;
     ship.leg = 'back';
-    const state = shipState(world, ship);
-    if (state !== undefined && mooredAt(state, ship.home)) commands.push(...freeCrew(ship));
+    const mooring = homeMooring(env, ship);
+    if (mooring !== null) commands.push(...freeCrew(ship, mooring));
     else commands.push(dockAt(ship, ship.home));
   }
   return commands;
 }
 
-/** Free the crew of a ship moored at home and mark it home. */
-function freeCrew(ship: LandingShip): PlayerCommand[] {
+/** Where `ship` lies moored on the land of its home shore, or null while it lies anywhere else. */
+function homeMooring(env: OperationEnv, ship: LandingShip): HalfCellNode | null {
+  const state = shipState(env.world, ship);
+  const mooring = state?.moored === true ? state.mooring : null;
+  if (mooring === null) return null;
+  const home = componentOfPoint(env.terrain, ship.home);
+  return home !== NO_COMPONENT && componentOfPoint(env.terrain, mooring) === home ? mooring : null;
+}
+
+/** Free the crew of a ship moored at `mooring` and mark it home. */
+function freeCrew(ship: LandingShip, mooring: DeepReadonly<HalfCellNode>): PlayerCommand[] {
   ship.leg = 'home';
-  return [{ kind: 'unloadPeople', vehicle: ship.vehicle, mooring: { x: ship.home.hx, y: ship.home.hy } }];
+  return [{ kind: 'unloadPeople', vehicle: ship.vehicle, mooring: { x: mooring.hx, y: mooring.hy } }];
+}
+
+/**
+ * The ships a landing is done waiting for, `since` the tick its current state began: past
+ * {@link LANDING_SAIL_TIMEOUT_TICKS} a ship moored anywhere sets its crew ashore where it lies, so no man
+ * stays aboard a ship the seat no longer counts free; past {@link LANDING_STRANDED_GRACE_TICKS} more, a ship
+ * still at sea is let go.
+ */
+function releaseStranded(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
+  const waited = env.ctx.tick - op.since;
+  if (waited < LANDING_SAIL_TIMEOUT_TICKS) return [];
+  const commands: PlayerCommand[] = [];
+  for (const ship of op.ships) {
+    if (ship.leg === 'home') continue;
+    const state = shipState(env.world, ship);
+    if (state?.moored === true && state.mooring !== null) commands.push(...freeCrew(ship, state.mooring));
+    else if (waited >= LANDING_SAIL_TIMEOUT_TICKS + LANDING_STRANDED_GRACE_TICKS) ship.leg = 'home';
+  }
+  return commands;
 }
 
 /** Why the landing should turn back before setting anyone ashore, or null: its posture no longer
@@ -244,7 +275,7 @@ function forming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
     if (state === undefined) continue;
     const seats = vehiclePassengers(state);
     if (!seats.some((seat) => seat.inside)) {
-      commands.push(...freeCrew(ship));
+      commands.push(...freeCrew(ship, ship.home));
       continue;
     }
     for (const seat of seats)
@@ -313,15 +344,16 @@ function sailing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
   return [...commands, ...landedOrders(env, op).commands];
 }
 
-/** The ships sailing back: one moored at home frees its commander, one stopped short docks at another
- *  shore of home ({@link otherShore}), or at its own again when home has no other. */
+/** The ships sailing back: one moored on home land frees its commander, one stopped short docks at
+ *  another shore of home ({@link otherShore}), or at its own again when home has no other. */
 function homecoming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   for (const ship of op.ships) {
     if (ship.leg !== 'back') continue;
     const state = shipState(env.world, ship);
     if (state === undefined) continue;
-    if (mooredAt(state, ship.home)) commands.push(...freeCrew(ship));
+    const mooring = homeMooring(env, ship);
+    if (mooring !== null) commands.push(...freeCrew(ship, mooring));
     else if (stoppedShort(env.world, ship, ship.home)) {
       ship.home = otherShore(env, ship, ship.home) ?? ship.home;
       commands.push(dockAt(ship, ship.home));
@@ -401,10 +433,11 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
   return { landed, striking: true, commands: marchOrders(world, terrain, free, goal.node) };
 }
 
-/** Acting: the landed men fight, the ships sail home. Ends once no landed man is left and every ship is
- *  home or lost: `wiped` when the landed men fell, `nothingToStrike` when the land holds nothing more. */
+/** Acting: the landed men fight, the ships sail home ({@link releaseStranded} past the sail timeout). Ends
+ *  once no landed man is left and every ship is home or lost: `wiped` when the landed men fell,
+ *  `nothingToStrike` when the land holds nothing more. */
 function acting(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
-  const homeward = homecoming(env, op);
+  const homeward = [...homecoming(env, op), ...releaseStranded(env, op)];
   const { landed, striking, commands } = landedOrders(env, op);
   if (landed.length > 0 && striking) return [...homeward, ...commands];
   // Nothing left to strike: the landed men are let go where they stand.
@@ -415,13 +448,12 @@ function acting(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
   return homeward;
 }
 
-/** Withdrawing: every ship sails home and frees its crew there; past {@link LANDING_SAIL_TIMEOUT_TICKS}
- *  the landing lets go of a ship that never made it. */
+/** Withdrawing: every ship sails home and frees its crew there ({@link releaseStranded} past the sail
+ *  timeout); done once every ship is home or let go. */
 function withdrawing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
-  const { ctx } = env;
-  const commands = homecoming(env, op);
-  if (op.ships.every((ship) => ship.leg === 'home') || ctx.tick - op.since >= LANDING_SAIL_TIMEOUT_TICKS)
-    enter(op, 'done', ctx.tick, op.reason ?? 'arrivedHome');
+  const commands = [...homecoming(env, op), ...releaseStranded(env, op)];
+  if (op.ships.every((ship) => ship.leg === 'home'))
+    enter(op, 'done', env.ctx.tick, op.reason ?? 'arrivedHome');
   return commands;
 }
 
