@@ -12,6 +12,7 @@ import {
 
 export { detectArchiveFormat };
 
+import { unpackNsis } from './nsis.js';
 import { unpackRar } from './rar.js';
 import { unpackTar } from './tar.js';
 import { unpackZip } from './zip.js';
@@ -44,6 +45,8 @@ function unpackers(options: OpenOptions): (format: ArchiveFormat) => Unpack {
         return unpackC2m;
       case 'tar':
         return unpackTar;
+      case 'nsis':
+        return unpackNsis;
       case 'rar':
         return async (bytes, builder, keep) => unpackRar(bytes, builder, keep, await loadWasm());
     }
@@ -74,12 +77,21 @@ export function openC2m(bytes: Uint8Array, options: OpenOptions = {}): Promise<M
   return open(bytes, 'c2m', options);
 }
 
-/** Opens a zip, rar, c2m or plain tar, told apart by their leading bytes or the tar's ustar magic. */
+/** The map files of a community setup's NSIS installer, rooted at its install directory. */
+export function openNsis(bytes: Uint8Array, options: OpenOptions = {}): Promise<MapTree> {
+  return open(bytes, 'nsis', options);
+}
+
+/** Opens a zip, rar, c2m, plain tar or NSIS setup installer, told apart by their leading bytes or the
+ *  tar's ustar magic. */
 export function openArchive(bytes: Uint8Array, options: OpenOptions = {}): Promise<MapTree> {
   const format = detectArchiveFormat(bytes);
   if (format === undefined) {
     return Promise.reject(
-      new MapImportError('unsupported-archive', `${options.name ?? 'archive'}: not a zip, rar, c2m or tar`),
+      new MapImportError(
+        'unsupported-archive',
+        `${options.name ?? 'archive'}: not a zip, rar, c2m, tar or NSIS installer`,
+      ),
     );
   }
   return open(bytes, format, options);
