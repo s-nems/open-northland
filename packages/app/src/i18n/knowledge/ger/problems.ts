@@ -86,7 +86,7 @@ export const PROBLEMS: ArticleGroup = {
                 '„Kein Träger“',
                 'Bemerkenswert',
                 'An Bord ist niemand für die Ladung',
-                'Weise dem Fahrzeug einen Träger zu',
+                'Schicke einen Träger oder anderen Zivilisten an Bord',
               ],
               [
                 '„Kein Weg“',

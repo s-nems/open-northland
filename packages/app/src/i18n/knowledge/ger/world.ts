@@ -107,7 +107,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Der zuerst Zugewiesene wird Kommandant. Geht er, übernimmt der nächste Passagier.',
             'Wer einsteigt, verliert seinen Arbeitsplatz. Träger mit Arbeitsplatz und Händler nehmen einen freien Karren als Werkzeug und behalten den Arbeitsplatz.',
-            'Den Frachtraum bedient der Kommandant oder ein Träger an Bord. Ohne sie erscheint „Kein Träger“.',
+            'Den Frachtraum bedient der Kommandant oder jeder erwachsene Mann an Bord, außer Soldaten, Helden, [[job:scout|Kundschaftern]] und [[job:druid|Druiden]]. Ohne sie erscheint „Kein Träger“.',
           ],
         },
         {
@@ -205,11 +205,11 @@ export const WORLD: ArticleGroup = {
           list: [
             '„Zielmenge“: Wie viele Stück im Frachtraum sein sollen. Die Summe der Zielmengen übersteigt die Kapazität nicht.',
             '„durch den Träger“: Ein Träger mit Arbeitsplatz zieht den Karren und fährt, was er auf jeder Fahrt aufhebt. Die Zielmengen sind gesperrt.',
-            'Kommandant oder Träger steigen aus, wenn der Karren steht oder das Schiff angedockt ist. Auf See arbeitet niemand.',
+            'Wer lädt, steigt aus, wenn der Karren steht oder das Schiff angedockt ist. Auf See arbeitet niemand.',
             'Geladen wird je 1 Stück: Haufen, Gebäude bis {{vehicle.cargoSearch}} Schritte, dann weiter weg.',
             'Die Quelle muss auf derselben Landmasse liegen wie die Tür. Essen aus Wohnhäusern bleibt dort.',
             'Zielmenge 0 oder unter dem Inhalt: Der Überschuss geht ins nächste Lagerhaus oder Hauptquartier mit Platz, bis {{vehicle.cargoSearch}} Schritte von der Tür. Sonst landet er am Boden.',
-            'Ein Kommandant ohne Träger an Bord senkt die Zielmenge, wenn es die Ware nirgends gibt. Mit Träger bleibt die Zielmenge.',
+            'Ist der Kommandant Soldat, Held, [[job:scout|Kundschafter]] oder [[job:druid|Druide]] und lädt sonst niemand, senkt er die Zielmenge, wenn es die Ware nirgends gibt. Lädt jemand anderes mit, bleibt sie.',
             'Ein Fahrbefehl ruft die Besatzung vor der Abfahrt an Bord.',
           ],
         },

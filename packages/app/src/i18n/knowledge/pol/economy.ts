@@ -34,7 +34,7 @@ export const ECONOMY: ArticleGroup = {
                 'Odmowa do {{peace.keepOut}} kroków od niego, także od placu budowy, chyba że twój budynek stoi bliżej.',
               ],
               [
-                'Teren rozbudowy',
+                'Miejsce pod rozbudowę',
                 'Obrys wyższych poziomów stojącego budynku jest zajęty. Inny budynek tam nie stanie.',
               ],
               ['Teren pod mgłą', 'Miejsce musi być teraz widoczne'],
@@ -55,8 +55,8 @@ export const ECONOMY: ArticleGroup = {
               ['Krzew, pole, pniak, otwarta skrzynia', 'Zniszczone przy postawieniu placu'],
               ['Plac pod drogę', 'Anulowany, dostarczony Kamień ląduje obok'],
               [
-                'Droga, palisada na terenie rozbudowy',
-                'Omijają go. Klawisz przy wytyczaniu linii włącza "przez teren rozbudowy" i kładzie je na nim, a rozbudowa burzy je bez zwrotu.',
+                'Droga, palisada na miejscu pod rozbudowę',
+                'Omijają je. Klawisz przy wytyczaniu linii włącza "także na miejscu pod rozbudowę budynków" i kładzie je tam, a rozbudowa usuwa je bez zwrotu.',
               ],
             ],
           },

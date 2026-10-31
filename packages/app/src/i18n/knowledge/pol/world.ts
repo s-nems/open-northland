@@ -107,7 +107,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Pierwszy przypisany zostaje dowódcą. Po jego odejściu dowództwo przejmuje następny pasażer.',
             'Wsiadający traci miejsce pracy. Tragarz z miejscem pracy i Kupiec biorą wolny wóz jako narzędzie i miejsce pracy zachowują.',
-            'Ładownię obsługuje dowódca albo Tragarz na pokładzie. Bez nich pojawia się "Brak tragarza".',
+            'Ładownię obsługuje dowódca albo każdy dorosły mężczyzna na pokładzie, oprócz żołnierza, bohatera, [[job:scout|Zwiadowcy]] i [[job:druid|Druida]]. Bez nich pojawia się "Brak tragarza".',
           ],
         },
         {
@@ -212,11 +212,11 @@ export const WORLD: ArticleGroup = {
           list: [
             '"cel": ile sztuk ma być w ładowni. Suma celów nie przekroczy pojemności.',
             '"w rękach tragarza": wóz ciągnie Tragarz z miejscem pracy i wiezie to, co podnosi w każdym kursie. Cele są zablokowane.',
-            'Dowódca albo Tragarz wysiada, gdy wóz stoi albo statek cumuje. Na morzu nikt nie pracuje.',
+            'Ten, kto ładuje, wysiada, gdy wóz stoi albo statek cumuje. Na morzu nikt nie pracuje.',
             'Bierze po 1 sztuce: stos, budynek do {{vehicle.cargoSearch}} kroków, potem dalej.',
             'Źródło musi leżeć na lądzie, na którym stoją drzwi. Jedzenia z domu nie bierze.',
             'Cel 0 albo niższy od zawartości: nadmiar idzie do najbliższego Magazynu lub Kwatery głównej z miejscem, do {{vehicle.cargoSearch}} kroków od drzwi. Gdy takich brak, ląduje na ziemi.',
-            'Dowódca bez Tragarza na pokładzie obniża cel, gdy towaru nie ma skąd wziąć. Z Tragarzem cel zostaje.',
+            'Dowódca, który jest żołnierzem, bohaterem, [[job:scout|Zwiadowcą]] albo [[job:druid|Druidem]], bez nikogo innego do ładunku obniża cel, gdy towaru nie ma skąd wziąć. Z kimś do ładunku cel zostaje.',
             'Rozkaz jazdy woła załogę na pokład przed odjazdem.',
           ],
         },

@@ -111,7 +111,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'The first one assigned becomes commander. If he leaves, the next passenger takes over.',
             'Whoever boards loses his workplace. A Carrier with a workplace and a Merchant take a free cart as a tool and keep their workplace.',
-            'The commander or a Carrier aboard handles the hold. Without them you get "No carrier".',
+            'The commander or any grown man aboard handles the hold, except soldiers, heroes, [[job:scout|Scouts]] and [[job:druid|Druids]]. Without them you get "No carrier".',
           ],
         },
         {
@@ -209,11 +209,11 @@ export const WORLD: ArticleGroup = {
           list: [
             '"target": how many pieces should be in the hold. Targets can\'t sum past capacity.',
             '"by the carrier": a Carrier with a workplace pulls the cart and takes what he picks up on each trip. Targets are locked.',
-            'The commander or Carrier gets off when the cart stops or the ship moors. Nobody works at sea.',
+            'Whoever loads gets off when the cart stops or the ship moors. Nobody works at sea.',
             'He takes 1 piece at a time: pile, building within {{vehicle.cargoSearch}} steps, then further.',
             'The source must be on the same landmass as the door. He takes no food from dwellings.',
             'Target 0 or below the contents: the surplus goes to the nearest Warehouse or Headquarters with room, within {{vehicle.cargoSearch}} steps of the door. With none, it lands on the ground.',
-            "A commander with no Carrier aboard lowers the target when there's nowhere to get the good. With a Carrier the target stays.",
+            "A commander who is a soldier, hero, [[job:scout|Scout]] or [[job:druid|Druid]], with nobody else to load, lowers the target when there's nowhere to get the good. With a loader aboard the target stays.",
             'A move order calls the crew aboard before leaving.',
           ],
         },

@@ -34,7 +34,7 @@ export const ECONOMY: ArticleGroup = {
                 'Refused within {{peace.keepOut}} steps of it or its site, unless your building stands closer.',
               ],
               [
-                'Upgrade ground',
+                'Room for upgrades',
                 "The footprint of a standing building's higher levels is reserved. Nothing else can go there.",
               ],
               ['Ground under fog', 'The spot must be visible right now'],
@@ -55,8 +55,8 @@ export const ECONOMY: ArticleGroup = {
               ['Bush, field, stump, open chest', 'Destroyed when the site is placed'],
               ['Road site', 'Cancelled, delivered Quarrystone lands next to it'],
               [
-                'Road or stockade on upgrade ground',
-                'They route around it. A key held while drawing the line switches on "over upgrade ground" and lays them across it, and the upgrade then demolishes them with no refund.',
+                'Road or stockade on room for upgrades',
+                'They route around it. A key held while drawing the line switches on "also on room for building upgrades" and lays them there, and the upgrade then removes them with no refund.',
               ],
             ],
           },

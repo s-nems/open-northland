@@ -86,7 +86,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"No carrier"',
                 'Notable',
                 'Nobody aboard can handle cargo',
-                'Assign a Carrier to the vehicle',
+                'Put a Carrier or another civilian aboard',
               ],
               [
                 '"No route"',

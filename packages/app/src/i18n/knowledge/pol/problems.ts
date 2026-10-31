@@ -76,7 +76,7 @@ export const PROBLEMS: ArticleGroup = {
                 '"Brak tragarza"',
                 'Ważne',
                 'Na pokładzie nie ma nikogo do ładunku',
-                'Przydziel do pojazdu Tragarza',
+                'Wsadź na pokład Tragarza albo innego cywila',
               ],
               [
                 '"Brak trasy"',

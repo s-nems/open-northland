@@ -34,7 +34,7 @@ export const ECONOMY: ArticleGroup = {
                 'Abgelehnt bis {{peace.keepOut}} Schritte davon, auch von einer Baustelle, außer dein eigenes Gebäude steht näher.',
               ],
               [
-                'Ausbaufläche',
+                'Platz für den Ausbau',
                 'Der Grundriss höherer Stufen eines stehenden Gebäudes ist belegt. Andere Gebäude können dort nicht stehen.',
               ],
               ['Gelände unter Nebel', 'Der Platz muss gerade sichtbar sein'],
@@ -55,8 +55,8 @@ export const ECONOMY: ArticleGroup = {
               ['Strauch, Feld, Baumstumpf, offene Kiste', 'Werden beim Setzen der Baustelle zerstört'],
               ['Straßenbaustelle', 'Aufgehoben, gelieferter Bruchstein landet daneben'],
               [
-                'Straße, Palisade auf Ausbaufläche',
-                'Umgehen sie. Eine Taste beim Ziehen der Linie schaltet „Ausbauflächen überbauen“ ein und legt sie darauf, der Ausbau reißt sie dann ohne Rückgabe ab.',
+                'Straße, Palisade auf dem Platz für den Ausbau',
+                'Umgehen ihn. Eine Taste beim Ziehen der Linie schaltet „auch auf Platz für den Gebäudeausbau“ ein und legt sie dort hin, der Ausbau entfernt sie dann ohne Rückgabe.',
               ],
             ],
           },
