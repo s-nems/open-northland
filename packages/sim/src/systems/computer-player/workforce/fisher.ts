@@ -3,6 +3,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { originalReachBudget, type ReachTarget, reachContains } from '../../../nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { anchorNodeOf, nearestRingNode } from '../../ai-shared/node-geometry.js';
 import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
@@ -15,6 +16,7 @@ import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isFisherJob } from '../../readviews/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
+import { type ReachSpan, type TerrainReach, terrainReach } from '../../signposts/terrain-reach.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { manhattan } from '../../spatial/metric.js';
 import { seatHasSide } from '../build-order/seat-order.js';
@@ -30,6 +32,19 @@ const FISHING_WALK_NODES = 48;
 
 /** How far from a store's door a seat posts a fisher's flag, in Manhattan nodes. */
 const FISHING_TRIP_RADIUS_NODES = FISHING_WALK_NODES + FISH_SHORE_SEARCH_RADIUS;
+
+/**
+ * The walk a store's carriers may take to a fisher's flag: an original-style range search from the door,
+ * spending twice the trip in ground resistance (the goods search's convention). A shore a short line away
+ * but only reached round a long river bend lies outside it. The range is one past the trip, since the
+ * search marks only nodes strictly inside it.
+ */
+const FISHING_TRIP_SPAN: ReachSpan = {
+  range: FISHING_TRIP_RADIUS_NODES + 1,
+  budget: originalReachBudget(FISHING_TRIP_RADIUS_NODES),
+  groundCost: true,
+  readOnce: false,
+};
 
 /** How far from the shore he casts from a fisher's flag stands, in Manhattan nodes (authored): beside the
  *  water, so each catch is dropped where it is caught instead of walked to the store by the fisher. */
@@ -78,7 +93,7 @@ export function fishingPlan(
     if (!isBuilt(world, e)) continue;
     if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'storage') continue;
     const door = interactionCell(world, ctx, terrain, e);
-    const shore = fishedShoreNear(world, ctx, terrain, player, door);
+    const shore = fishedShoreNear(world, ctx, terrain, player, e, door);
     if (shore !== null) stands.push({ store: e, door, shore, trip: manhattan(terrain, door, shore) });
   }
   stands.sort((a, b) => a.trip - b.trip || a.store - b.store);
@@ -179,13 +194,15 @@ function fisherFlagSpot(plan: FishingPlan, stand: FishingStand, taken: TakenFlag
 
 /**
  * The nearest shore of a swarm holding fish within {@link FISHING_TRIP_RADIUS_NODES} of the store's `door`
- * that a man can walk to from it, on its ground and inside the seat's signpost reach, or null.
+ * that a man can walk to from it within a {@link FISHING_TRIP_SPAN} walk, on its ground and inside the
+ * seat's signpost reach, or null.
  */
 function fishedShoreNear(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
+  store: Entity,
   door: NodeId,
 ): NodeId | null {
   const at = terrain.coordsOf(door);
@@ -209,12 +226,45 @@ function fishedShoreNear(
   const veto = regions.pocketed(door) ? null : regions;
   const limit = networkLimitAt(world, terrain, player, at.x, at.y);
   const ground = terrain.componentOf(door);
+  const open: ReachTarget[] = [];
   for (const shore of shores) {
     if (terrain.componentOf(shore.node) !== ground || veto?.unroutable(door, shore.node) === true) continue;
     if (limit !== null && !limit.allowsNode(shore.node)) continue;
-    return shore.node;
+    open.push({ hx: terrain.xOf(shore.node), hy: terrain.yOf(shore.node) });
+  }
+  if (open.length === 0) return null;
+  const walk = tripReach(world, ctx, terrain, store, at.x, at.y, open);
+  for (const shore of open) {
+    if (reachContains(walk.area, shore.hx, shore.hy)) return terrain.nodeAt(shore.hx, shore.hy);
   }
   return null;
+}
+
+/** Each store's held trip search, kept while it answers as a fresh flood would (`terrainReach`). */
+const tripReaches = new WeakMap<World, Map<Entity, TerrainReach>>();
+
+/** The {@link FISHING_TRIP_SPAN} search from `store`'s door at `(hx, hy)`, exact for the `shores`. */
+function tripReach(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  store: Entity,
+  hx: number,
+  hy: number,
+  shores: readonly ReachTarget[],
+): TerrainReach {
+  let held = tripReaches.get(world);
+  if (held === undefined) {
+    held = new Map();
+    tripReaches.set(world, held);
+  }
+  for (const e of held.keys()) if (!world.isAlive(e)) held.delete(e);
+  const found = terrainReach(world, ctx.content, terrain, hx, hy, FISHING_TRIP_SPAN, held.get(store), {
+    nodes: shores,
+    count: shores.length,
+  });
+  held.set(store, found);
+  return found;
 }
 
 /** Whether a swarm holding fish has its shore inside a fisher's shore search from `from`, which walks

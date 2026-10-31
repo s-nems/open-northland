@@ -24,11 +24,11 @@ export function grassNodeMap(width: number, height: number): TerrainMap {
 /** Ground type id 1 in the synthetic fixtures - water, walkable by nothing. */
 const WATER = 1;
 
-/** {@link grassCellMap} with one full-height water column at cell column `column`, cutting the map in
- *  two banks no walk can cross. */
-export function waterColumnMap(width: number, height: number, column: number): TerrainMap {
+/** {@link grassCellMap} with one water column at cell column `column`, cutting the map in two banks no
+ *  walk can cross, except round its foot when the bottom `fordRows` cell rows stay grass. */
+export function waterColumnMap(width: number, height: number, column: number, fordRows = 0): TerrainMap {
   const typeIds = new Array<number>(width * height).fill(GRASS);
-  for (let row = 0; row < height; row++) typeIds[row * width + column] = WATER;
+  for (let row = 0; row < height - fordRows; row++) typeIds[row * width + column] = WATER;
   return halfCellMapFromCells({ width, height, typeIds });
 }
 

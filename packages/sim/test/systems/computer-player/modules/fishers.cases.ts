@@ -208,6 +208,18 @@ describe('workforce module - the fishers', () => {
     expect(fisherPosts(confined)).toEqual([]);
   });
 
+  it('sends no fisher to a shore a short line away but only walked to round a long river bend', () => {
+    // The river leaves one cell row open at the foot of a map four times the headquarters' row deep.
+    const sim = fishingSeat(4, [REMOTE_SWARM], 5, waterColumnMap(64, 64, RIVER_CELL_COLUMN, 1));
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const shore = shoreOf(sim, REMOTE_SWARM);
+    expect(terrain.componentOf(terrain.nodeAt(shore.hx, shore.hy))).toBe(
+      terrain.componentOf(terrain.nodeAt(HQ_X, HQ_Y + 2)),
+    );
+    expect(fisherPosts(sim)).toEqual([]);
+  });
+
   it('keeps a posted fisher and his flag while fish swim in its reach, wherever he stands', () => {
     const sim = fishingSeat(4, [NEAR_SWARM]);
     const fisher = hireFisher(sim);
