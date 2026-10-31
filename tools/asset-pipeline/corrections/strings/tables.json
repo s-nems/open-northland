@@ -1086,5 +1086,933 @@
     "from": "Обручиться",
     "to": "Вступить в брак",
     "reason": "Rozkaz dotyczy zawarcia małżeństwa, a nie jedynie zaręczyn; neutralna forma jest zgodna z etykietą zastępczą."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 27,
+    "from": "Marmur jest wyrabiany z bloków kamienia przez kamieniarza. Marmur jest materiałem budowlanym na lepsze budynki.",
+    "to": "Marmur jest wyrabiany z kamienia przez kamieniarza. Marmur jest materiałem budowlanym na lepsze budynki.",
+    "reason": "Marmur powstaje z dwóch sztuk kamienia (towar 3), bez kamiennych bloków."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 27,
+    "from": "Marble is made from blocks of stone by the stonemason. It is required as a building material for better buildings.",
+    "to": "Marble is made from quarrystone by the stonemason. It is required as a building material for better buildings.",
+    "reason": "Marmur powstaje z dwóch sztuk kamienia (towar 3), bez kamiennych bloków."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 27,
+    "from": "Marmor wird vom Steinmetz aus Steinblöcken gefertigt. Man benötigt Marmor als Bauware für hochwertige Gebäude.",
+    "to": "Marmor wird vom Steinmetz aus Bruchstein gefertigt. Man benötigt Marmor als Bauware für hochwertige Gebäude.",
+    "reason": "Marmur powstaje z dwóch sztuk kamienia (towar 3), bez kamiennych bloków."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 27,
+    "from": "Мрамор это блоки, которые производятся из камня каменотесом. Они вам нужны как строительный материал для домов.",
+    "to": "Мрамор это блоки, которые производятся из булыжника каменотесом. Они вам нужны как строительный материал для домов.",
+    "reason": "Marmur powstaje z dwóch sztuk kamienia (towar 3), bez kamiennych bloków."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 32,
+    "from": "Żelazne narzędzia są produkowane przez kowala używającego żelaza. Żelazne narzędzia znacznie podnoszą produktywność pracującego Wikinga.",
+    "to": "Żelazne narzędzia są produkowane przez cieślę używającego żelaza. Żelazne narzędzia znacznie podnoszą produktywność pracującego Wikinga.",
+    "reason": "Żelazne narzędzia robi cieśla w warsztacie ciesielskim, kuźnia nie ma takiej receptury."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 32,
+    "from": "Iron tools are produced by a blacksmith using iron. They considerably increase the productivity of a working Viking.",
+    "to": "Iron tools are produced by a carpenter using iron. They considerably increase the productivity of a working Viking.",
+    "reason": "Żelazne narzędzia robi cieśla w warsztacie ciesielskim, kuźnia nie ma takiej receptury."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 32,
+    "from": "Eisenwerkzeuge können von einem Schmied aus Eisen hergestellt werden. Sie erhöhen die Produktivität eines damit arbeitenden Wikingers stark.",
+    "to": "Eisenwerkzeuge können von einem Schreiner aus Eisen hergestellt werden. Sie erhöhen die Produktivität eines damit arbeitenden Wikingers stark.",
+    "reason": "Żelazne narzędzia robi cieśla w warsztacie ciesielskim, kuźnia nie ma takiej receptury."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 32,
+    "from": "Железные инструменты производятся кузнецом из железа. Они значительно повышают производительность работающего Викинга.",
+    "to": "Железные инструменты производятся столяром из железа. Они значительно повышают производительность работающего Викинга.",
+    "reason": "Żelazne narzędzia robi cieśla w warsztacie ciesielskim, kuźnia nie ma takiej receptury."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 33,
+    "from": "Tuniki są wykonywane z wełny i skóry. Żołnierze używają ich jako ubrania i jako przeszywnicy. Chronią one noszącego przed strzałami, ale nie przed mieczami i katapultami.",
+    "to": "Tuniki są wykonywane z wełny. Żołnierze używają ich jako ubrania i jako przeszywnicy. Chronią one noszącego przed strzałami, a także przed mieczami i katapultami.",
+    "reason": "Tunika powstaje z samej wełny, a przepuszcza połowę ciosu mieczy i katapult, czyli chroni także przed nimi."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 33,
+    "from": "Tunics are made from wool and leather. Soldiers use them as clothes and as a woollen armour. They protect the wearer against arrows, but not swords and catapults.",
+    "to": "Tunics are made from wool. Soldiers use them as clothes and as a woollen armour. They protect the wearer against arrows, as well as swords and catapults.",
+    "reason": "Tunika powstaje z samej wełny, a przepuszcza połowę ciosu mieczy i katapult, czyli chroni także przed nimi."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 33,
+    "from": "Waffenröcke werden aus Wolle und Leder hergestellt. Sie dienen den Soldaten als Kleidung und zum Schutz. Sie schützen besonders gut vor Pfeilen, sind aber anfällig gegen Schwerthiebe und Katapulte.",
+    "to": "Waffenröcke werden aus Wolle hergestellt. Sie dienen den Soldaten als Kleidung und zum Schutz. Sie schützen vor Pfeilen, aber auch vor Schwerthieben und Katapulten.",
+    "reason": "Tunika powstaje z samej wełny, a przepuszcza połowę ciosu mieczy i katapult, czyli chroni także przed nimi."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 33,
+    "from": "Туники сделаны из шерсти и кожи. Солдаты используют их как одежду и как доспехи. Они защищают от стрел, но не помогабт от мечей и катапульт.",
+    "to": "Туники сделаны из шерсти. Солдаты используют их как одежду и как доспехи. Они защищают от стрел, а также от мечей и катапульт.",
+    "reason": "Tunika powstaje z samej wełny, a przepuszcza połowę ciosu mieczy i katapult, czyli chroni także przed nimi."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 34,
+    "from": "Skórzana zbroja jest wykonywana ze skóry. Żołnierze używają jej jako ubrania i zapewnia wszechstronną ochronę przeciwko wszystkim rodzajom broni, oprócz długich mieczy i katapult.",
+    "to": "Skórzana zbroja jest wykonywana ze skóry. Żołnierze używają jej jako ubrania i zapewnia wszechstronną ochronę przeciwko wszystkim rodzajom broni.",
+    "reason": "Skórzana zbroja przepuszcza 75% ciosu długiego miecza i katapulty, tyle samo co krótkiego miecza i żelaznej włóczni, więc takiego wyjątku nie ma. Tunika jest od niej lepsza w każdej kolumnie, dlatego znika też pochwała jakości."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 34,
+    "from": "Leather armour is made from leather. Soldiers use it as clothing, and it is a good all-round protection against any kind of weapons, apart from longswords and catapults.",
+    "to": "Leather armour is made from leather. Soldiers use it as clothing, and it is an all-round protection against any kind of weapons.",
+    "reason": "Skórzana zbroja przepuszcza 75% ciosu długiego miecza i katapulty, tyle samo co krótkiego miecza i żelaznej włóczni, więc takiego wyjątku nie ma. Tunika jest od niej lepsza w każdej kolumnie, dlatego znika też pochwała jakości."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 34,
+    "from": "Lederrüstungen werden aus Leder hergestellt. Sie dienen den Soldaten als Kleidung und sind ein recht guter Rundum Schutz gegen alle Arten von Waffen, außer gegen Langschwerter und Katapulte.",
+    "to": "Lederrüstungen werden aus Leder hergestellt. Sie dienen den Soldaten als Kleidung und sind ein Rundum Schutz gegen alle Arten von Waffen.",
+    "reason": "Skórzana zbroja przepuszcza 75% ciosu długiego miecza i katapulty, tyle samo co krótkiego miecza i żelaznej włóczni, więc takiego wyjątku nie ma. Tunika jest od niej lepsza w każdej kolumnie, dlatego znika też pochwała jakości."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 34,
+    "from": "Кожанные доспехи сделаны из кожи. Солдаты используют их как одежду, они также являются отличной защитой от любого оружия кроме длинных мечей и катапульт.",
+    "to": "Кожанные доспехи сделаны из кожи. Солдаты используют их как одежду, они также являются защитой от любого оружия.",
+    "reason": "Skórzana zbroja przepuszcza 75% ciosu długiego miecza i katapulty, tyle samo co krótkiego miecza i żelaznej włóczni, więc takiego wyjątku nie ma. Tunika jest od niej lepsza w każdej kolumnie, dlatego znika też pochwała jakości."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 35,
+    "from": "Kolczugi są wykonane z żelaza. Żołnierze używają ich jako ubrania. Kolczuga chroni noszącego przeciwko niemal wszystkim rodzajom broni. Noszący jednak pozostaje wrażliwy na żelazne włócznie i katapulty.",
+    "to": "Kolczugi są wykonane z żelaza. Żołnierze używają ich jako ubrania. Kolczuga chroni noszącego przeciwko niemal wszystkim rodzajom broni. Noszący jednak pozostaje wrażliwy na długie miecze.",
+    "reason": "Żelazna włócznia i katapulta to najlepiej blokowane ciosy kolczugi (25%), jej słabym punktem jest długi miecz (55%)."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 35,
+    "from": "Chain mail is made from iron. Soldiers use it as clothing, and it protects the wearer against nearly all kinds of weapons. It leaves the wearer vulnerable to iron spears and catapults though.",
+    "to": "Chain mail is made from iron. Soldiers use it as clothing, and it protects the wearer against nearly all kinds of weapons. It leaves the wearer vulnerable to longswords though.",
+    "reason": "Żelazna włócznia i katapulta to najlepiej blokowane ciosy kolczugi (25%), jej słabym punktem jest długi miecz (55%)."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 35,
+    "from": "Kettenhemden werden aus Eisen hergestellt. Sie dienen den Soldaten als Kleidung und schützen den Träger gegen fast alle Arten von Waffen. Gegen Eisenspeere und Katapulte sind sie allerdings etwas anfällig.",
+    "to": "Kettenhemden werden aus Eisen hergestellt. Sie dienen den Soldaten als Kleidung und schützen den Träger gegen fast alle Arten von Waffen. Gegen Langschwerter sind sie allerdings etwas anfällig.",
+    "reason": "Żelazna włócznia i katapulta to najlepiej blokowane ciosy kolczugi (25%), jej słabym punktem jest długi miecz (55%)."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 35,
+    "from": "Кольчуга сделана из железа. Солдаты используют ее как одежду, она также является отличной защитой от любого оружия. Хотя она не защищает от железных копей и катапульт.",
+    "to": "Кольчуга сделана из железа. Солдаты используют ее как одежду, она также является отличной защитой от любого оружия. Хотя она хуже защищает от длинных мечей.",
+    "reason": "Żelazna włócznia i katapulta to najlepiej blokowane ciosy kolczugi (25%), jej słabym punktem jest długi miecz (55%)."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 36,
+    "from": "Zbroja płytowa jest wykonana z żelaza. Żołnierze używają jej jako ubrania i do ochrony. Jest to najlepsza zbroja i chroni żołnierza nawet przed katapultami.",
+    "to": "Zbroja płytowa jest wykonana z żelaza. Żołnierze używają jej jako ubrania i do ochrony. Jest to bardzo dobra zbroja i chroni żołnierza nawet przed katapultami.",
+    "reason": "Zbroja płytowa nie jest najlepsza: to lustro kolczugi, lepiej znosi długi miecz, gorzej żelazną włócznię, a w reszcie kolumn jest im równa."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 36,
+    "from": "Plate armour is made from iron. Soldiers use it as clothing and for protection. This is the best armour, and even protects the soldier against catapults.",
+    "to": "Plate armour is made from iron. Soldiers use it as clothing and for protection. This is a very good armour, and even protects the soldier against catapults.",
+    "reason": "Zbroja płytowa nie jest najlepsza: to lustro kolczugi, lepiej znosi długi miecz, gorzej żelazną włócznię, a w reszcie kolumn jest im równa."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 36,
+    "from": "Plattenrüstungen werden aus Eisen hergestellt. Sie dienen den Soldaten als Kleidung und zum Schutz. Sie sind die beste Rüstung, die man sich wünschen kann und bieten dem Träger sogar Schutz gegen Katapulte.",
+    "to": "Plattenrüstungen werden aus Eisen hergestellt. Sie dienen den Soldaten als Kleidung und zum Schutz. Sie sind eine sehr gute Rüstung und bieten dem Träger sogar Schutz gegen Katapulte.",
+    "reason": "Zbroja płytowa nie jest najlepsza: to lustro kolczugi, lepiej znosi długi miecz, gorzej żelazną włócznię, a w reszcie kolumn jest im równa."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 36,
+    "from": "Гибкая броня сделана из железа. Солдаты используют ее как одежду и как защиту. Это лучший вид доспехов, защищает даже от катапульт.",
+    "to": "Гибкая броня сделана из железа. Солдаты используют ее как одежду и как защиту. Это очень хороший вид доспехов, защищает даже от катапульт.",
+    "reason": "Zbroja płytowa nie jest najlepsza: to lustro kolczugi, lepiej znosi długi miecz, gorzej żelazną włócznię, a w reszcie kolumn jest im równa."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 39,
+    "from": "Drewniane włócznie są wykonywane z drewna przez cieślę. Drewniana włócznia jest prostą bronią do walki z bliska ze średnim zasięgiem.",
+    "to": "Drewniane włócznie są wykonywane z drewna przez płatnerza. Drewniana włócznia jest prostą bronią do walki z bliska ze średnim zasięgiem.",
+    "reason": "Drewniane włócznie robi płatnerz w warsztacie płatnerskim, warsztat ciesielski nie ma takiej receptury."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 39,
+    "from": "Wooden spears are made from wood by a carpenter. A wooden spear is a simple close combat weapon with medium range.",
+    "to": "Wooden spears are made from wood by an armourer. A wooden spear is a simple close combat weapon with medium range.",
+    "reason": "Drewniane włócznie robi płatnerz w warsztacie płatnerskim, warsztat ciesielski nie ma takiej receptury."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 39,
+    "from": "Holzspeere werden aus Holz von einem Schreiner hergestellt. Ein Holzspeer ist eine einfache Nahkampfwaffe mit mittlerer Reichweite.",
+    "to": "Holzspeere werden aus Holz von einem Waffenbauer hergestellt. Ein Holzspeer ist eine einfache Nahkampfwaffe mit mittlerer Reichweite.",
+    "reason": "Drewniane włócznie robi płatnerz w warsztacie płatnerskim, warsztat ciesielski nie ma takiej receptury."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 39,
+    "from": "Деревянные копья сделаны из дерева столяром. Деревянное копье это простейшее оружие близкого боя.",
+    "to": "Деревянные копья сделаны из дерева оружейником. Деревянное копье это простейшее оружие близкого боя.",
+    "reason": "Drewniane włócznie robi płatnerz w warsztacie płatnerskim, warsztat ciesielski nie ma takiej receptury."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 41,
+    "from": "Krótkie miecze są wykonane z żelaza przez płatnerza. Krótki miecz jest bronią do walki z bliska, z krótkim zasięgiem i umiarkowaną siłą uderzenia.",
+    "to": "Krótkie miecze są wykonane z żelaza przez kowala. Krótki miecz jest bronią do walki z bliska, z krótkim zasięgiem i umiarkowaną siłą uderzenia.",
+    "reason": "Krótkie miecze robi kowal w kuźni, nie płatnerz."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 42,
+    "from": "Długie miecze są wykonane z żelaza przez kowala. Długi miecz jest bronią do walki z bliska, ze średnim zasięgiem i dużą siłą uderzenia. Jest szczególnie skuteczny przeciwko katapultom.",
+    "to": "Długie miecze są wykonane z żelaza przez kowala. Długi miecz jest bronią do walki z bliska, ze średnim zasięgiem i dużą siłą uderzenia.",
+    "reason": "Długi miecz zadaje pojazdom 125, tyle co obie włócznie i długi łuk, więc nie jest szczególnie skuteczny przeciwko katapultom."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 42,
+    "from": "Longswords are made out of iron by the blacksmith. A longsword is a close combat weapon with a medium range and high striking force. It is especially effective against catapults.",
+    "to": "Longswords are made out of iron by the blacksmith. A longsword is a close combat weapon with a medium range and high striking force.",
+    "reason": "Długi miecz zadaje pojazdom 125, tyle co obie włócznie i długi łuk, więc nie jest szczególnie skuteczny przeciwko katapultom."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 42,
+    "from": "Langschwerter werden aus Eisen vom Schmied geschmiedet. Ein Langschwert ist eine Nahkampfwaffe mit mittlerer Reichweite und hoher Durchschlagskraft. Besonders effektiv kann man es gegen Katapulte einsetzen.",
+    "to": "Langschwerter werden aus Eisen vom Schmied geschmiedet. Ein Langschwert ist eine Nahkampfwaffe mit mittlerer Reichweite und hoher Durchschlagskraft.",
+    "reason": "Długi miecz zadaje pojazdom 125, tyle co obie włócznie i długi łuk, więc nie jest szczególnie skuteczny przeciwko katapultom."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 42,
+    "from": "Длинные мечи производятся из железа в кузнеце. Короткий меч это оружие близкого боя и большой силой удара. Оно особенно эффективно против катапульт.",
+    "to": "Длинные мечи производятся из железа в кузнеце. Короткий меч это оружие близкого боя и большой силой удара.",
+    "reason": "Długi miecz zadaje pojazdom 125, tyle co obie włócznie i długi łuk, więc nie jest szczególnie skuteczny przeciwko katapultom."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 44,
+    "from": "Małe, odżywcze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich dwukrotnie, gdy robią się głodni, dzięki czemu mogą przetrwać dłuższe trasy bez jedzenia. Wówczas napoje zużywają się. Druid potrzebuje złota na sekretne i rzadkie składniki.",
+    "to": "Małe, odżywcze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich dwukrotnie, gdy robią się głodni, dzięki czemu mogą przetrwać dłuższe trasy bez jedzenia. Wówczas napoje zużywają się. Druid potrzebuje monet na sekretne i rzadkie składniki.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 44,
+    "from": "Small nourishing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them twice when they get hungry, thus they can survive longer routes without food. The potions are then used up. The druid needs gold for the secret and rare ingredients.",
+    "to": "Small nourishing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them twice when they get hungry, thus they can survive longer routes without food. The potions are then used up. The druid needs coins for the secret and rare ingredients.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 44,
+    "from": "Kleine Nahrungstränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie zweimal automatisch, wenn ihr Magen knurrt, und können somit längere Strecken ohne Nahrung auskommen. Danach sind die Tränke verbraucht. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Kleine Nahrungstränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie zweimal automatisch, wenn ihr Magen knurrt, und können somit längere Strecken ohne Nahrung auskommen. Danach sind die Tränke verbraucht. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Münzen.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 44,
+    "from": "Малое целебное зелья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить целебное зелье. Они могут его использовать дважды, когда становятся голодными, так они могут проделывать долгий путь без еды. Зелье со временм заканчивается. Друиду нужно золото для покупки редких и секретных составляющих.",
+    "to": "Малое целебное зелья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить целебное зелье. Они могут его использовать дважды, когда становятся голодными, так они могут проделывать долгий путь без еды. Зелье со временм заканчивается. Друиду нужны монеты для покупки редких и секретных составляющих.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 45,
+    "from": "Duże, odżywcze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich pięciokrotnie, gdy robią się głodni, dzięki czemu mogą przetrwać dłuższe trasy bez jedzenia. Wówczas napoje zużywają się. Druid potrzebuje złota na sekretne i rzadkie składniki.",
+    "to": "Duże, odżywcze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich pięciokrotnie, gdy robią się głodni, dzięki czemu mogą przetrwać dłuższe trasy bez jedzenia. Wówczas napoje zużywają się. Druid potrzebuje monet na sekretne i rzadkie składniki.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 45,
+    "from": "Large nourishing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them five times when they get hungry, thus they can survive longer routes without food. The potions are then used up. The druid needs gold for the secret and rare ingredients.",
+    "to": "Large nourishing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them five times when they get hungry, thus they can survive longer routes without food. The potions are then used up. The druid needs coins for the secret and rare ingredients.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 45,
+    "from": "Große Nahrungstränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie fünfmal automatisch, wenn ihr Magen knurrt, und können somit längere Strecken ohne Nahrung auskommen. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Große Nahrungstränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie fünfmal automatisch, wenn ihr Magen knurrt, und können somit längere Strecken ohne Nahrung auskommen. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Münzen.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 45,
+    "from": "Большое целебное зелья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить целебное зелье. Они могут его использовать дважды, когда становятся голодными, так они могут проделывать долгий пкуть без еды. Зелье со временм заканчивается. Друиду нужно золото для покупки редких и секретных составляющих.",
+    "to": "Большое целебное зелья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить целебное зелье. Они могут его использовать дважды, когда становятся голодными, так они могут проделывать долгий пкуть без еды. Зелье со временм заканчивается. Друиду нужны монеты для покупки редких и секретных составляющих.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 46,
+    "from": "Małe, mikstury wytrzymałości są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich dwukrotnie, gdy stają się zmęczeni, dzięki czemu nie zasypiają i mogą być aktywni przez dłuższy czas. Wówczas napoje zużywają się. Druid potrzebuje złota na sekretne i rzadkie składniki.",
+    "to": "Małe, mikstury wytrzymałości są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich dwukrotnie, gdy stają się zmęczeni, dzięki czemu nie zasypiają i mogą być aktywni przez dłuższy czas. Wówczas napoje zużywają się. Druid potrzebuje monet na sekretne i rzadkie składniki.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 46,
+    "from": "Small stamina potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them twice when they get tired, thus they can stay awake and be active for longer. The druid needs gold for the secret and rare ingredients.",
+    "to": "Small stamina potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them twice when they get tired, thus they can stay awake and be active for longer. The druid needs coins for the secret and rare ingredients.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 46,
+    "from": "Kleine Wachtränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie zweimal automatisch, wenn sie die Müdigkeit überkommt, und können somit längere Zeit wach und damit aktiv bleiben. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Kleine Wachtränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie zweimal automatisch, wenn sie die Müdigkeit überkommt, und können somit längere Zeit wach und damit aktiv bleiben. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Münzen.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 46,
+    "from": "Малое зелье жизненной силы производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье жизненной силы. Они могут использовать зелье дважды, когда чувствуют усталость, и за счет его употребления оставаться дольше активными. Друиду нужно золото для покупки редких и секретных составляющих.",
+    "to": "Малое зелье жизненной силы производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье жизненной силы. Они могут использовать зелье дважды, когда чувствуют усталость, и за счет его употребления оставаться дольше активными. Друиду нужны монеты для покупки редких и секретных составляющих.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 47,
+    "from": "Duże, mikstury wytrzymałości są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich pięciokrotnie, gdy stają się zmęczeni, dzięki czemu nie zasypiają i mogą być aktywni przez dłuższy czas. Wówczas napoje zużywają się. Druid potrzebuje złota na sekretne i rzadkie składniki.",
+    "to": "Duże, mikstury wytrzymałości są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich pięciokrotnie, gdy stają się zmęczeni, dzięki czemu nie zasypiają i mogą być aktywni przez dłuższy czas. Wówczas napoje zużywają się. Druid potrzebuje monet na sekretne i rzadkie składniki.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 47,
+    "from": "Large stamina potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them five times when they get tired, thus they can stay awake and be active for longer. The druid needs gold for the secret and rare ingredients.",
+    "to": "Large stamina potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them five times when they get tired, thus they can stay awake and be active for longer. The druid needs coins for the secret and rare ingredients.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 47,
+    "from": "Große Wachtränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie fünfmal automatisch, wenn sie die Müdigkeit überkommt, und können somit längere Zeit wach und damit aktiv bleiben. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Große Wachtränke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie fünfmal automatisch, wenn sie die Müdigkeit überkommt, und können somit längere Zeit wach und damit aktiv bleiben. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Münzen.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 47,
+    "from": "Большое зелье жизненной силы производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье жизненной силы. Они могут использовать зелье дважды, когда чувствуют усталость, и за счет его употребления оставаться дольше активными. Друиду нужно золото для покупки редких и секретных составляющих.",
+    "to": "Большое зелье жизненной силы производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье жизненной силы. Они могут использовать зелье дважды, когда чувствуют усталость, и за счет его употребления оставаться дольше активными. Друиду нужны монеты для покупки редких и секретных составляющих.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 48,
+    "from": "Małe, lecznicze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich dwukrotnie, gdy są ranieni w walce z dzikimi bestiami lub wrogami. Wówczas napoje zużywają się. Druid potrzebuje złota na sekretne i rzadkie składniki.",
+    "to": "Małe, lecznicze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej może zostać wyposażony w te napoje. Mogą użyć ich dwukrotnie, gdy są ranieni w walce z dzikimi bestiami lub wrogami. Wówczas napoje zużywają się. Druid potrzebuje monet na sekretne i rzadkie składniki.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 48,
+    "from": "Small healing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them twice when they're injured in their fights with wild beasts or enemies. The druid needs gold for the secret and rare ingredients.",
+    "to": "Small healing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings can be equipped with these potions. They can use them twice when they're injured in their fights with wild beasts or enemies. The druid needs coins for the secret and rare ingredients.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 48,
+    "from": "Kleine Heiltranke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie zweimal automatisch, wenn sie im Kampf mit wilden Tieren oder Gegnern verletzt werden. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Kleine Heiltranke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger können mit diesen Tränken ausgerüstet werden. Sie benutzen sie zweimal automatisch, wenn sie im Kampf mit wilden Tieren oder Gegnern verletzt werden. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Münzen.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 48,
+    "from": "Малое зелье здоровья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье здоровья. Они могут использовать его дважды при ранениях вовремя борьбы с дикими зверьми. Друиду нужно золото для покупки редких и секретных составляющих.",
+    "to": "Малое зелье здоровья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье здоровья. Они могут использовать его дважды при ранениях вовремя борьбы с дикими зверьми. Друиду нужны монеты для покупки редких и секретных составляющих.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 49,
+    "from": "Duże, lecznicze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej, poza bohaterami, może zostać wyposażony w te napoje. Mogą użyć ich pięciokrotnie, gdy są ranieni w walce z dzikimi bestiami lub wrogami. Wówczas napoje zużywają się. Druid potrzebuje złota na sekretne i rzadkie składniki.",
+    "to": "Duże, lecznicze mikstury są przygotowane przez druida w dużej chatce alchemika, z użyciem wody, ziół, grzybów i sekretnych składników. Każdy Wiking płci męskiej może zostać wyposażony w te napoje. Mogą użyć ich pięciokrotnie, gdy są ranieni w walce z dzikimi bestiami lub wrogami. Wówczas napoje zużywają się. Druid potrzebuje monet na sekretne i rzadkie składniki.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 49,
+    "from": "Large healing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings apart from the heroes can be equipped with these potions. They can use them five times when they're injured in their fights with wild beasts or enemies. The druid needs gold for the secret and rare ingredients.",
+    "to": "Large healing potions are made by the druid in the big alchemist's hut using water, herbs, mushrooms and secret ingredients. Any male Vikings can be equipped with these potions. They can use them five times when they're injured in their fights with wild beasts or enemies. The druid needs coins for the secret and rare ingredients.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 49,
+    "from": "Große Heiltranke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger außer den Helden können mit diesen Tränken ausgerüstet werden. Sie benutzen sie fünfmal automatisch, wenn sie im Kampf mit wilden Tieren oder Gegnern verletzt werden. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Gold.",
+    "to": "Große Heiltranke werden vom Druiden in der großen Alchemistenhütte aus Wasser, Kräuter, Pilzen und geheimen Zutaten hergestellt. Alle männlichen Wikinger können mit diesen Tränken ausgerüstet werden. Sie benutzen sie fünfmal automatisch, wenn sie im Kampf mit wilden Tieren oder Gegnern verletzt werden. Für die geheimen und höchst seltenen Zutaten benötigt der Druide zusätzlich Münzen.",
+    "reason": "Bohater może nosić w torbie miksturę leczniczą. Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 49,
+    "from": "Большое зелье здоровья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье здоровья. Они могут использовать его дважды при ранениях вовремя борьбы с дикими зверьми. Друиду нужно золото для покупки редких и секретных составляющих.",
+    "to": "Большое зелье здоровья производится друидом в хижине алхимика из воды, трав, грибов и тайных составляющих. Любой Викинг может получить зелье здоровья. Они могут использовать его дважды при ранениях вовремя борьбы с дикими зверьми. Друиду нужны монеты для покупки редких и секретных составляющих.",
+    "reason": "Receptury mikstur biorą monety, nie złoto."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 50,
+    "from": "Odżywczy amulet chroni noszącego przed głodem. Nie może być wytworzony, może być jedynie znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "to": "Odżywczy amulet chroni noszącego przed głodem. Może być wytworzony w mennicy, może być także znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 50,
+    "from": "A nourishing amulet protects the bearer from hunger. It cannot be manufactured, but only found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "to": "A nourishing amulet protects the bearer from hunger. It can be manufactured in the coin mint, but also found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 50,
+    "from": "Ein Nahrungsamulett schützt den Träger vor Hunger. Es kann nicht hergestellt, aber gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden, können dieses Amulett tragen. Es verbraucht sich nie.",
+    "to": "Ein Nahrungsamulett schützt den Träger vor Hunger. Es kann in der Münzpräge hergestellt, aber auch gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden, können dieses Amulett tragen. Es verbraucht sich nie.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 50,
+    "from": "Исцеляющий амулет защищает его носителя от голода. Его нельзя создать, но его можно найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "to": "Исцеляющий амулет защищает его носителя от голода. Его можно создать на монетном дворе, а также найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 51,
+    "from": "Amulet wytrzymałości chroni noszącego przed zmęczeniem. Nie może być wytworzony, może być jedynie znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "to": "Amulet wytrzymałości chroni noszącego przed zmęczeniem. Może być wytworzony w mennicy, może być także znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 51,
+    "from": "An amulet of stamina protects the bearer from getting tired. It cannot be manufactured, but only found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "to": "An amulet of stamina protects the bearer from getting tired. It can be manufactured in the coin mint, but also found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 51,
+    "from": "Ein Wachbleibamulett schützt den Träger vor Müdigkeit. Es kann nicht hergestellt, aber gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden können dieses Amulett tragen. Es verbraucht sich nie.",
+    "to": "Ein Wachbleibamulett schützt den Träger vor Müdigkeit. Es kann in der Münzpräge hergestellt, aber auch gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden können dieses Amulett tragen. Es verbraucht sich nie.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 51,
+    "from": "Амулет жизненной силы дате силы своему носителю. Его нельзя создать, но его можно найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "to": "Амулет жизненной силы дате силы своему носителю. Его можно создать на монетном дворе, а также найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "Amulet siły zwiększa podczas walki siłę noszącego o 50 procent. Nie może być wytworzony, może być jedynie znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "to": "Amulet siły zwiększa podczas walki siłę noszącego o 50 procent. Może być wytworzony w mennicy, może być także znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "An amulet of strength increases the strength of the bearer by 50 percent when attacking. It cannot be manufactured, but only found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "to": "An amulet of strength increases the strength of the bearer by 50 percent when attacking. It can be manufactured in the coin mint, but also found or acquired in trade with other people. Any Vikings apart from women can wear this amulet. It is never used up.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "Ein Stärkeamulett erhöht die Stärke des Trägers beim Angriff um 50 Prozent. Es kann nicht hergestellt, aber gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden können dieses Amulett tragen. Es verbraucht sich nie.",
+    "to": "Ein Stärkeamulett erhöht die Stärke des Trägers beim Angriff um 50 Prozent. Es kann in der Münzpräge hergestellt, aber auch gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen, können dieses Amulett tragen. Es verbraucht sich nie.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 52,
+    "from": "Амулет силы увеличивает вовремя атаки силу носителя на 50 процентов. Его нельзя создать, но его можно найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "to": "Амулет силы увеличивает вовремя атаки силу носителя на 50 процентов. Его можно создать на монетном дворе, а также найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 53,
+    "from": "Amulet obrony osłabia ataki dzikich bestii i wrogów, chroniąc w ten sposób zdrowie noszącego o 50 procent. Nie może być wytworzony, może być jedynie znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "to": "Amulet obrony osłabia ataki dzikich bestii i wrogów, chroniąc w ten sposób zdrowie noszącego o 50 procent. Może być wytworzony w mennicy, może być także znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 53,
+    "from": "An amulet of defence weakens the attacks of wild beasts and enemies and thus protects the health of the bearer. It cannot be manufactured, but only found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "to": "An amulet of defence weakens the attacks of wild beasts and enemies and thus protects the health of the bearer. It can be manufactured in the coin mint, but also found or acquired in trade with other people. Any Vikings apart from women can wear this amulet. It is never used up.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 53,
+    "from": "Ein Verteidigungsamulett schwächt Angriffe wilder Tiere und feindlicher Völker ab und schützt damit die Gesundheit des Trägers. Es kann nicht hergestellt, aber gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden können dieses Amulett tragen. Es verbraucht sich nie.",
+    "to": "Ein Verteidigungsamulett schwächt Angriffe wilder Tiere und feindlicher Völker ab und schützt damit die Gesundheit des Trägers. Es kann in der Münzpräge hergestellt, aber auch gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen, können dieses Amulett tragen. Es verbraucht sich nie.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 53,
+    "from": "Амулет защиты понижает силу атаки врагов и диких животных и так спасает своего носителя. Его нельзя создать, но его можно найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "to": "Амулет защиты понижает силу атаки врагов и диких животных и так спасает своего носителя. Его можно создать на монетном дворе, а также найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "Amulet precyzji ma 20 procentową szansę podwojenia siły noszącego w czasie ataku na dzikie bestie i wrogów. Nie może być wytworzony, może być jedynie znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "to": "Amulet precyzji ma 20 procentową szansę podwojenia siły noszącego w czasie ataku na dzikie bestie i wrogów. Może być wytworzony w mennicy, może być także znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "An amulet of precision has a 20 percent chance of doubling the strength when attacking wild animals and enemies. It cannot be manufactured, but only found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "to": "An amulet of precision has a 20 percent chance of doubling the strength when attacking wild animals and enemies. It can be manufactured in the coin mint, but also found or acquired in trade with other people. Any Vikings apart from women can wear this amulet. It is never used up.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "Ein Trefferamulett verdoppelt mit einer Wahrscheinlichkeit von 20 Prozent die Stärke des Trägers bei Angriffen auf wilde Tiere und Feinde. Es kann nicht hergestellt, aber gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden können dieses Amulett tragen. Es verbraucht sich nie.",
+    "to": "Ein Trefferamulett verdoppelt mit einer Wahrscheinlichkeit von 20 Prozent die Stärke des Trägers bei Angriffen auf wilde Tiere und Feinde. Es kann in der Münzpräge hergestellt, aber auch gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen, können dieses Amulett tragen. Es verbraucht sich nie.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 54,
+    "from": "Амулет точности дает 20 процентный шанс удвоения силы удара вовремя атаки. Его нельзя создать, но его можно найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "to": "Амулет точности дает 20 процентный шанс удвоения силы удара вовремя атаки. Его можно создать на монетном дворе, а также найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 55,
+    "from": "Amulet wiatru przyspiesza podróż noszącego. Nie może być wytworzony, może być jedynie znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami i bohaterami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "to": "Amulet wiatru przyspiesza podróż noszącego. Może być wytworzony w mennicy, może być także znaleziony lub nabyty przez handel z innymi ludźmi. Każdy Wiking, poza kobietami, może nosić ten amulet. Nigdy się nie zużywa.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 55,
+    "from": "A wind amulet makes the bearer travel faster. It cannot be manufactured, but only found or acquired in trade with other people. Any Vikings apart from women and heroes can wear this amulet. It is never used up.",
+    "to": "A wind amulet makes the bearer travel faster. It can be manufactured in the coin mint, but also found or acquired in trade with other people. Any Vikings apart from women can wear this amulet. It is never used up.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 55,
+    "from": "Ein Windamulett verleiht dem Träger Geschwindigkeit und er kann sich somit schneller fortbewegen. Es kann nicht hergestellt, aber gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen und Helden können dieses Amulett tragen. Es verbraucht sich nie.",
+    "to": "Ein Windamulett verleiht dem Träger Geschwindigkeit und er kann sich somit schneller fortbewegen. Es kann in der Münzpräge hergestellt, aber auch gefunden und im Handel mit Völkern erworben werden. Alle Wikinger, bis auf Frauen, können dieses Amulett tragen. Es verbraucht sich nie.",
+    "reason": "Bohater może nosić amulety siły, obrony, precyzji i wiatru: działają bez potrzeb. Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 55,
+    "from": "Амулет ветра позволяет путешествовать быстрее. Его нельзя создать, но его можно найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "to": "Амулет ветра позволяет путешествовать быстрее. Его можно создать на монетном дворе, а также найти или выменять у других людей. Любой Викинг, кроме женщин, может носить этот амулет. Он действует неограниченное время.",
+    "reason": "Mennica wytwarza wszystkie sześć amuletów."
+  },
+  {
+    "lang": "pol",
+    "table": "goodsHelp",
+    "id": 56,
+    "from": "Myśliwy dostarcza mięsa, skórę i wełnę.",
+    "to": "Myśliwy dostarcza mięsa i skórę.",
+    "reason": "Padlina daje skórę i mięso, wełny nie ma."
+  },
+  {
+    "lang": "eng",
+    "table": "goodsHelp",
+    "id": 56,
+    "from": "A hunter gains meat, leather and wool.",
+    "to": "A hunter gains meat and leather.",
+    "reason": "Padlina daje skórę i mięso, wełny nie ma."
+  },
+  {
+    "lang": "ger",
+    "table": "goodsHelp",
+    "id": 56,
+    "from": "Zu der Beute eines Jägers zählen Fleisch, Leder und Wolle.",
+    "to": "Zu der Beute eines Jägers zählen Fleisch und Leder.",
+    "reason": "Padlina daje skórę i mięso, wełny nie ma."
+  },
+  {
+    "lang": "rus",
+    "table": "goodsHelp",
+    "id": 56,
+    "from": "охотник получает мясо, кожу и шерсть.",
+    "to": "охотник получает мясо и кожу.",
+    "reason": "Padlina daje skórę i mięso, wełny nie ma."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "W warsztacie garncarskim 3, twój wykwalifikowany rzemieślnik używa gliny do wytwarzania naczyń. Naczynia pomagają kobietom w podwojeniu ilości żywności w domu.",
+    "to": "Mur obronny jest budowany z kamienia i kamiennych bloków. Zagradza wrogom drogę do twojej wioski, ale nie może być obsadzony przez żołnierzy.",
+    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "In the pottery 3, your skilled craftsmen use clay to make crockery. Crockery helps the women double the amount of food in a house.",
+    "to": "A defence wall is built from quarrystone and stone. It bars the enemy's way to your village, but it cannot be manned by soldiers.",
+    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+  },
+  {
+    "lang": "ger",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "In der Töpferei 3 wird aus Lehm kunstvoll in liebevoller Handarbeit Geschirr geformt und gebrannt. Mit Geschirr schmeckt den Wikingern ihr Essen gleich doppelt so gut und ihr Appetit bleibt längere Zeit gestillt.",
+    "to": "Eine Mauer wird aus Bruchstein und Steinblöcken gebaut. Sie versperrt den Feinden den Weg ins Dorf, kann aber nicht mit Soldaten besetzt werden.",
+    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 22,
+    "from": "В гончарной мастерской 3 умелые мастера делают глинянную посуду. Глинянная посуда помогает женщинам удвоить количесто пищи в доме.",
+    "to": "Стена строится из булыжника и камня. Она преграждает врагам путь к вашей деревне, но в ней нельзя разместить солдат.",
+    "reason": "Rekord 22 to mur obronny (2 kamienie i 1 kamienny blok, bez receptur i bez stanowisk), a nie trzecia garncarnia, której w grze nie ma."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 25,
+    "from": "W warsztacie ciesielskim 3, jeden lub więcej cieśli może wykonywać drewniane włócznie oraz ręczne wózki. Budynek powinien być wybudowany blisko wody, abyś mógł w nim później (warsztat ciesielski 4) budować statki.",
+    "to": "W warsztacie ciesielskim 3, jeden lub więcej cieśli może wykonywać meble oraz ręczne wózki. Budynek powinien być wybudowany blisko wody, abyś mógł w nim później (warsztat ciesielski 4) budować statki.",
+    "reason": "Warsztat ciesielski 3 nie robi włóczni; z tego zdania zostają meble i wózki."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 25,
+    "from": "In the carpenter's workshop 3, one or more carpenters can make wooden spears and handcarts from wood. This building should be constructed near the water, so that you can later (carpenter's workshop 4) build ships here as well.",
+    "to": "In the carpenter's workshop 3, one or more carpenters can make furniture and handcarts from wood. This building should be constructed near the water, so that you can later (carpenter's workshop 4) build ships here as well.",
+    "reason": "Warsztat ciesielski 3 nie robi włóczni; z tego zdania zostają meble i wózki."
+  },
+  {
+    "lang": "ger",
+    "table": "housesHelp",
+    "id": 25,
+    "from": "Hier in der Schreinerei 3 stellen ein oder mehrere Schreiner Holzspeere und Handkarren aus Holz her. Sie sollte am Wasser gebaut werden, da in ihr zu einem späteren Zeitpunkt (Schreinerei 4) auch Schiffe hergestellt werden können.",
+    "to": "Hier in der Schreinerei 3 stellen ein oder mehrere Schreiner Möbel und Handkarren aus Holz her. Sie sollte am Wasser gebaut werden, da in ihr zu einem späteren Zeitpunkt (Schreinerei 4) auch Schiffe hergestellt werden können.",
+    "reason": "Warsztat ciesielski 3 nie robi włóczni; z tego zdania zostają meble i wózki."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 25,
+    "from": "В столярной мастерской 3, один или несколько плотников могут делать пики и повозки из дерева. Эта постройка должна быть сооружена возле воды, и позже (столярная мастерская 4) вы сможете строить в ней корабли.",
+    "to": "В столярной мастерской 3, один или несколько плотников могут делать мебель и повозки из дерева. Эта постройка должна быть сооружена возле воды, и позже (столярная мастерская 4) вы сможете строить в ней корабли.",
+    "reason": "Warsztat ciesielski 3 nie robi włóczni; z tego zdania zostają meble i wózki."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 27,
+    "from": "Płatnerz może wykonywać krótkie i długie łuki z drewna w warsztacie płatnerskim 1.",
+    "to": "Płatnerz może wykonywać krótkie łuki i drewniane włócznie z drewna w warsztacie płatnerskim 1.",
+    "reason": "Warsztat płatnerski 1 robi krótkie łuki i drewniane włócznie, długi łuk wymaga warsztatu 2."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 27,
+    "from": "An armourer can make bows and longbows from wood in the armourer's workshop 1.",
+    "to": "An armourer can make short bows and wooden spears from wood in the armourer's workshop 1.",
+    "reason": "Warsztat płatnerski 1 robi krótkie łuki i drewniane włócznie, długi łuk wymaga warsztatu 2."
+  },
+  {
+    "lang": "ger",
+    "table": "housesHelp",
+    "id": 27,
+    "from": "Ein Waffenbauer kann in der Waffenhütte 1 aus Holz Bogen und Langbogen herstellen.",
+    "to": "Ein Waffenbauer kann in der Waffenhütte 1 aus Holz Kurzbogen und Holzspeere herstellen.",
+    "reason": "Warsztat płatnerski 1 robi krótkie łuki i drewniane włócznie, długi łuk wymaga warsztatu 2."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 27,
+    "from": "Оружейник может изготавливать луки и длинные луки из дерева в оружейной мастерской 1.",
+    "to": "Оружейник может изготавливать короткие луки и деревянные копья из дерева в оружейной мастерской 1.",
+    "reason": "Warsztat płatnerski 1 robi krótkie łuki i drewniane włócznie, długi łuk wymaga warsztatu 2."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 28,
+    "from": "Płatnerz może wykonywać z drewna katapulty w warsztacie płatnerskim 2.",
+    "to": "Płatnerz może wykonywać z drewna krótkie i długie łuki oraz drewniane włócznie w warsztacie płatnerskim 2.",
+    "reason": "Warsztat płatnerski 2 robi łuki i drewniane włócznie. Katapulty powstają w warsztacie ciesielskim 4."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 28,
+    "from": "An armourer can make catapults from wood in the armourer's workshop 2.",
+    "to": "An armourer can make short bows, longbows and wooden spears from wood in the armourer's workshop 2.",
+    "reason": "Warsztat płatnerski 2 robi łuki i drewniane włócznie. Katapulty powstają w warsztacie ciesielskim 4."
+  },
+  {
+    "lang": "ger",
+    "table": "housesHelp",
+    "id": 28,
+    "from": "In der Waffenhütte 2 kann ein Waffenbauer aus Holz Katapulte herstellen.",
+    "to": "In der Waffenhütte 2 kann ein Waffenbauer aus Holz Kurzbogen, Langbogen und Holzspeere herstellen.",
+    "reason": "Warsztat płatnerski 2 robi łuki i drewniane włócznie. Katapulty powstają w warsztacie ciesielskim 4."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 28,
+    "from": "Оружейник может изготавливать катапульты из дерева в оружейной мастерской 2.",
+    "to": "Оружейник может изготавливать короткие и длинные луки и деревянные копья из дерева в оружейной мастерской 2.",
+    "reason": "Warsztat płatnerski 2 robi łuki i drewniane włócznie. Katapulty powstają w warsztacie ciesielskim 4."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 31,
+    "from": "Kowal w kuźni 1 produkuje żelazne narzędzia. Narzędzia zwiększają produktywność Wikingów, którzy ich używają. W dodatku, w kuźni 1 mogą być wyrabiane dla twoich żołnierzy żelazne włócznie i krótkie miecze.",
+    "to": "Kowal w kuźni 1 produkuje dla twoich żołnierzy żelazne włócznie i krótkie miecze.",
+    "reason": "Kuźnia 1 nie robi narzędzi, więc znika też zdanie o ich działaniu."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 31,
+    "from": "A blacksmith can produce iron tools in a smithy 1. They increase the productivity of the Vikings who use them. In addition, iron spears and shortswords are made here for your soldiers.",
+    "to": "A blacksmith can produce iron spears and shortswords for your soldiers in a smithy 1.",
+    "reason": "Kuźnia 1 nie robi narzędzi, więc znika też zdanie o ich działaniu."
+  },
+  {
+    "lang": "ger",
+    "table": "housesHelp",
+    "id": 31,
+    "from": "In der Schmiede 1 kann ein Schmied Eisenwerkzeuge herstellen, welche die Produktivität eines damit arbeitenden Wikingers erhöhen. Aber auch Eisenspeere und Kurzschwerter werden hier für die Soldaten geschmiedet.",
+    "to": "In der Schmiede 1 kann ein Schmied Eisenspeere und Kurzschwerter für die Soldaten herstellen.",
+    "reason": "Kuźnia 1 nie robi narzędzi, więc znika też zdanie o ich działaniu."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 31,
+    "from": "Кузнец изготавлвает инструменты из железа в кузнице 1. Они увеличивают продуктивность Викингов, которые их используют. К тому же здесь производятся железные пики и короткие мечи для солдат.",
+    "to": "Кузнец изготавливает железные пики и короткие мечи для солдат в кузнице 1.",
+    "reason": "Kuźnia 1 nie robi narzędzi, więc znika też zdanie o ich działaniu."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 32,
+    "from": "W kuźni 2 płatnerz wyrabia z żelaza miecze. Aby ogień płonący w kuźni nie wygasł, niezbędny jest wystarczający zapas drewna. W kuźni tej, mogą być również produkowane żelazne zbroje, które ochraniają twoich żołnierzy podczas bitwy.",
+    "to": "W kuźni 2 kowal wyrabia z żelaza miecze. Aby ogień płonący w kuźni nie wygasł, niezbędny jest wystarczający zapas drewna. W kuźni tej, mogą być również produkowane żelazne zbroje, które ochraniają twoich żołnierzy podczas bitwy.",
+    "reason": "W kuźni 2 pracuje kowal, płatnerz nie ma tu stanowiska."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 32,
+    "from": "The armourer can produce swords from iron in the smithy 2. To keep the smithy's fire burning, a sufficient amount of wood is required. Iron armour, which protects soldiers during battle, can be produced in this smithy as well.",
+    "to": "The blacksmith can produce swords from iron in the smithy 2. To keep the smithy's fire burning, a sufficient amount of wood is required. Iron armour, which protects soldiers during battle, can be produced in this smithy as well.",
+    "reason": "W kuźni 2 pracuje kowal, płatnerz nie ma tu stanowiska."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 32,
+    "from": "В кузнице 2 оружейник может изготавливать железные мечи. Для того чтобы поддерживать огонь в печи кузницы необходимо определенное количество древесины. В кузнице также можно изготавливать железную броню для ваших воинов.",
+    "to": "В кузнице 2 кузнец может изготавливать железные мечи. Для того чтобы поддерживать огонь в печи кузницы необходимо определенное количество древесины. В кузнице также можно изготавливать железную броню для ваших воинов.",
+    "reason": "W kuźni 2 pracuje kowal, płatnerz nie ma tu stanowiska."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 36,
+    "from": "Większa chatka alchemika jest niezbędna, aby dostarczać Wikingom odżywcze, lecznicze i bitewne mikstury. Mikstury te wymagają nie tylko grzybów i oleju, ale również wody, ziół i złota.",
+    "to": "Większa chatka alchemika jest niezbędna, aby dostarczać Wikingom odżywcze, lecznicze i bitewne mikstury. Mikstury te wymagają nie tylko grzybów i ziół, ale również wody i monet.",
+    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 36,
+    "from": "The larger alchemist's hut is necessary to provide the Vikings with nourishing, healing and fighting potions. Their mixture does not only require mushrooms and oil, but also water, herbs and gold.",
+    "to": "The larger alchemist's hut is necessary to provide the Vikings with nourishing, healing and fighting potions. Their mixture does not only require mushrooms and herbs, but also water and coins.",
+    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+  },
+  {
+    "lang": "ger",
+    "table": "housesHelp",
+    "id": 36,
+    "from": "Die große Alchemistenhütte ist nötig, um die Wikinger mit Versorgungs-, Heil-, und Kampftränken auszustatten. Für die Herstellung dieser werden nicht nur Pilze und Öl gebraucht, sondern auch Wasser, Kräuter und Gold.",
+    "to": "Die große Alchemistenhütte ist nötig, um die Wikinger mit Versorgungs-, Heil-, und Kampftränken auszustatten. Für die Herstellung dieser werden nicht nur Pilze und Kräuter gebraucht, sondern auch Wasser und Münzen.",
+    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 36,
+    "from": "Большие домики алхимика необходимы для производства питательных, лекарственных и прочих снадобий для Викингов. Для этих смесей нужны не только грибы и масло, а также вода, травы и золото.",
+    "to": "Большие домики алхимика необходимы для производства питательных, лекарственных и прочих снадобий для Викингов. Для этих смесей нужны не только грибы и травы, а также вода и монеты.",
+    "reason": "Receptury mikstur biorą wodę, monety, zioła i grzyby, bez oliwy i złota."
+  },
+  {
+    "lang": "pol",
+    "table": "housesHelp",
+    "id": 37,
+    "from": "Świątynia służy zwiększania religijnej motywacji. Jest to jedyny budynek, który rozprzestrzenia magię Świętego Ognia na otaczające go budynki, dlatego też powinien być wybudowany blisko miejsc pracy, które wymagają tej motywacji: warsztatu płatnerza i kuźni.",
+    "to": "Świątynia służy zwiększania religijnej motywacji. Jest to jedyny budynek, który rozprzestrzenia magię Świętego Ognia na otaczających go ludzi, dlatego też powinien być wybudowany blisko miejsc pracy, które wymagają tej motywacji: warsztatu ciesielskiego, warsztatu płatnerza i kuźni.",
+    "reason": "Błogosławieństwo świątyni działa na ludzi jej właściciela w zasięgu, nie na budynki, a motywacji wymagają trzy zawody: cieśla, płatnerz i kowal."
+  },
+  {
+    "lang": "eng",
+    "table": "housesHelp",
+    "id": 37,
+    "from": "The temple serves the purpose of increasing religious motivation. This is the only building that spreads the magic of the Holy Fire to the buildings surrounding it, and should therefore be built close to work places that require this motivation: the armourer's workshop and the smithy.",
+    "to": "The temple serves the purpose of increasing religious motivation. This is the only building that spreads the magic of the Holy Fire to the people surrounding it, and should therefore be built close to work places that require this motivation: the carpenter's workshop, the armourer's workshop and the smithy.",
+    "reason": "Błogosławieństwo świątyni działa na ludzi jej właściciela w zasięgu, nie na budynki, a motywacji wymagają trzy zawody: cieśla, płatnerz i kowal."
+  },
+  {
+    "lang": "ger",
+    "table": "housesHelp",
+    "id": 37,
+    "from": "Der Tempel dient der religiösen Motivation. Er ist das einzige Gebäude, welches die Magie des heiligen Feuers an die Umgebung abstrahlt und sollte folglich in der Nähe von Berufsstätten gebaut werden, die auf dies Motivation angewiesen sind, also in die Nähe von Waffenbauer und Schmied.",
+    "to": "Der Tempel dient der religiösen Motivation. Er ist das einzige Gebäude, welches die Magie des heiligen Feuers an die Umgebung abstrahlt und sollte folglich in der Nähe von Berufsstätten gebaut werden, die auf dies Motivation angewiesen sind, also in die Nähe von Schreiner, Waffenbauer und Schmied.",
+    "reason": "Błogosławieństwo świątyni działa na ludzi jej właściciela w zasięgu, nie na budynki, a motywacji wymagają trzy zawody: cieśla, płatnerz i kowal."
+  },
+  {
+    "lang": "rus",
+    "table": "housesHelp",
+    "id": 37,
+    "from": "Храм служит для увеличения религиозной мотивации. Это единственное здание, которое распространяет магию Святого Огня на строения, которые его окружают, и поэтому должен строиться около зданий, в которых требуется мотивация: мастерская оружейника и кузница.",
+    "to": "Храм служит для увеличения религиозной мотивации. Это единственное здание, которое распространяет магию Святого Огня на людей, которые его окружают, и поэтому должен строиться около зданий, в которых требуется мотивация: столярная мастерская, мастерская оружейника и кузница.",
+    "reason": "Błogosławieństwo świątyni działa na ludzi jej właściciela w zasięgu, nie na budynki, a motywacji wymagają trzy zawody: cieśla, płatnerz i kowal."
   }
 ]
