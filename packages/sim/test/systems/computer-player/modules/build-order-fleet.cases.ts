@@ -34,6 +34,10 @@ import * as seaRoute from '../../../../src/systems/computer-player/sea-route.js'
 import {
   AI_CATAPULT_CAP,
   AI_CATAPULT_RESUME,
+  LANDING_FLEET_MAX_SHIPS,
+  LANDING_FLEET_MIN_SHIPS,
+  landingFleetShips,
+  SOLDIERS_PER_SHIP,
   tuneCraftCounters,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
 import { findVehicleSite } from '../../../../src/systems/footprint/index.js';
@@ -675,6 +679,49 @@ describe('workforce - the top-tier joineries’ roles', () => {
     expect(fleet).toHaveLength(AI_CATAPULT_RESUME);
     expect(tuned(sim)).toEqual(new Map([[joinery, all(CATAPULT_GOOD)]]));
   });
+
+  it('sizes the landing fleet to the planned army in ship loads, within the fleet band', () => {
+    const sim = world(seaMap());
+    const withArmy = (cap: number) => ({ ...AI_PROFILES.hard, army: { ...AI_PROFILES.hard.army, cap } });
+    expect(landingFleetShips(sim.world, SEAT, withArmy(4 * SOLDIERS_PER_SHIP + 1))).toBe(5);
+    expect(landingFleetShips(sim.world, SEAT, withArmy(SOLDIERS_PER_SHIP))).toBe(LANDING_FLEET_MIN_SHIPS);
+    expect(landingFleetShips(sim.world, SEAT, withArmy(100 * SOLDIERS_PER_SHIP))).toBe(
+      LANDING_FLEET_MAX_SHIPS,
+    );
+  });
+
+  it('turns the ship crew to tools at the landing fleet, and back to ships once one is lost', () => {
+    const { sim, joineries } = crewedJoineries(seaMap(), [AWAY]);
+    const [joinery] = joineries;
+    if (joinery === undefined) throw new Error('setup: one joinery');
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+    // The untuned crew's yard on the water counts toward the fleet.
+    const yards = ownedBuildings(sim.world, SEAT).filter(
+      (e) => sim.world.get(e, Building).buildingType === SHIP_HOUSE_TYPE,
+    ).length;
+    const target = landingFleetShips(sim.world, SEAT, AI_PROFILES.hard);
+    const fleet = Array.from({ length: target - yards - 1 }, (_, i) => fleetShip(sim, i));
+    expect(tuned(sim)).toEqual(new Map());
+    fleet.push(fleetShip(sim, fleet.length));
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(TOOL_IRON)]]));
+    const [sunk] = fleet;
+    if (sunk === undefined) throw new Error('setup: a ship');
+    removeVehicle(sim.world, fleetCtx(sim), sunk, 'script');
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+  });
+
+  /** A small ship of the seat's on the open sea, the `i`-th of a column down its middle. */
+  function fleetShip(sim: Simulation, i: number): Entity {
+    const e = createVehicle(sim.world, fleetCtx(sim), {
+      vehicleType: SHIP_SMALL,
+      x: (SEA_WEST + SEA_EAST) / 2,
+      y: FLEET_SPACING * (i + 1),
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    if (e === null) throw new Error('setup: no ship');
+    return e;
+  }
 
   /** A catapult of the seat's standing in a row along the map's southern edge, the `i`-th of it. */
   function fleetCatapult(sim: Simulation, i: number): Entity {

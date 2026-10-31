@@ -33,6 +33,7 @@ import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID } from '../joinery-role.js';
 import { BARRACKS_LEAD_TICKS } from '../military/deadline.js';
 import { rivalOverSea } from '../sea-route.js';
+import { militaryOrdersOf } from '../strategy/military.js';
 import {
   ARMY_RESERVE_UNITS,
   needCounters,
@@ -86,16 +87,36 @@ export type CraftSeat =
  * and the yards still building one: the seat works `otherwise` from `cap` on, or where the content has no
  * such good or the seat has yet to earn it, and takes the vehicle back once the fleet has fallen to
  * `resume`. In between it keeps its current selection, so no state beyond the live selection is kept.
- * While it builds the vehicle it works the goods `beside` it in rotation.
+ * A {@link LANDING_FLEET} cap is the seat's landing fleet ({@link landingFleetShips}), taken back as soon as
+ * the fleet falls under it. While it builds the vehicle it works the goods `beside` it in rotation.
  */
-export interface FleetSeat {
+export type FleetSeat = {
   readonly fleet: string;
   readonly beside?: readonly string[];
   /** Count only the vehicles standing free ({@link standsFree}) beside the yards. */
   readonly freeOnly?: true;
-  readonly cap: number;
-  readonly resume: number;
   readonly otherwise: CraftSeat;
+} & ({ readonly cap: number; readonly resume: number } | { readonly cap: typeof LANDING_FLEET });
+
+/** The cap of a {@link FleetSeat} sized to the army the seat would land. */
+export const LANDING_FLEET = 'landingFleet';
+
+/** Owner ruling: a small ship carries 20 soldiers, its 19 passengers and the commander at the helm. */
+export const SOLDIERS_PER_SHIP = 20;
+
+/** Owner ruling: an island seat gathers a fleet of 2 to 10 ships for its landing. */
+export const LANDING_FLEET_MIN_SHIPS = 2;
+export const LANDING_FLEET_MAX_SHIPS = 10;
+
+/** The ships a seat's landing takes: its planned army, the army at which its barracks sends the whole band
+ *  scaled by its plan's draft share (`strategy/military.ts`), in {@link SOLDIERS_PER_SHIP}, within the
+ *  owner's fleet band. */
+export function landingFleetShips(world: World, player: number, profile: ComputerProfile): number {
+  // The share by hand: the difficulty table imports this module's plans.
+  const { num, den } = militaryOrdersOf(world, player).draftCapShare;
+  const army = Math.floor((profile.army.cap * num) / den);
+  const ships = Math.ceil(army / SOLDIERS_PER_SHIP);
+  return Math.min(LANDING_FLEET_MAX_SHIPS, Math.max(LANDING_FLEET_MIN_SHIPS, ships));
 }
 
 /** A workplace type's product plan by fixed operator seats, by stable content ids (authored). */
@@ -148,6 +169,10 @@ const HANDCART_SEAT: CraftSeat = {
   resume: AI_FREE_HANDCARTS - 1,
   otherwise: JOINERY_SEAT,
 };
+
+/** A joiner of the ship joinery: small ships while the seat's fleet stands under its landing fleet,
+ *  counting a sunk ship out, and the upgraded joinery's handcarts and tools between those runs. */
+const SHIP_SEAT: CraftSeat = { fleet: 'ship_small', cap: LANDING_FLEET, otherwise: HANDCART_SEAT };
 
 /** The crockery in stock at which the pottery's crockery seat turns to bricks and tiles (authored). A
  *  stocked home eats it beside its food, so no bill or shelf sizes it. */
@@ -385,7 +410,7 @@ export type JoineryRolePlans = Readonly<Record<string, Readonly<Record<JoineryRo
 
 /** The role plans of a seat keeping `cap` catapults and building again from `resume` (authored): the
  *  top-tier joinery's whole crew builds catapults up to the cap and a {@link JOINERY_SEAT}'s goods past
- *  it, or small ships.
+ *  it, or a {@link SHIP_SEAT}'s ships and carts.
  *  Such a type takes no {@link CRAFT_PLANS_BY_BUILDING_ID} row. */
 export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans {
   // A seat that keeps no catapults works tools alone: a fleet seat capped at none would take catapults
@@ -393,7 +418,7 @@ export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans 
   const catapultSeat: CraftSeat =
     cap === 0 ? JOINERY_SEAT : { fleet: 'catapult', cap, resume, otherwise: JOINERY_SEAT };
   return {
-    [ROLE_JOINERY_ID]: { catapult: { seats: [catapultSeat] }, ship: { seats: [['ship_small']] } },
+    [ROLE_JOINERY_ID]: { catapult: { seats: [catapultSeat] }, ship: { seats: [SHIP_SEAT] } },
   };
 }
 
@@ -567,6 +592,11 @@ export function tuneCraftCounters(
       seated.workplaces.push(assignment.workplace);
     } else byType.set(type.typeId, { type, plan, crew: [e], workplaces: [assignment.workplace] });
   }
+  let landing: number | undefined;
+  const landingShips = (): number => {
+    landing ??= landingFleetShips(world, player, profile);
+    return landing;
+  };
   const tribe = playerPlacementTribes(world, player)?.[0];
   const ownedTypes = new Map<string, boolean>();
   const owns = (buildingId: string, siteOnly: boolean): boolean => {
@@ -598,7 +628,7 @@ export function tuneCraftCounters(
   ])) {
     const products = enabledProducts(world, ctx, player, tribe, type);
     const recipeProducts = recipeProductsOf(ctx, type);
-    const choice: SeatChoice = { ctx, supply, fleetOf, owns, earned, products };
+    const choice: SeatChoice = { ctx, supply, fleetOf, landingShips, owns, earned, products };
     const counters = crew.map((e) => world.tryGet(e, ProductionCounters));
     const current = counters.map((selection) => selectedGoods(selection, recipeProducts));
     const fed = (good: number, selected: boolean): boolean =>
@@ -898,6 +928,8 @@ interface SeatChoice {
   readonly ctx: SystemContext;
   readonly supply: SeatSupply;
   readonly fleetOf: (good: number, freeOnly: boolean) => number;
+  /** The seat's {@link landingFleetShips}. */
+  readonly landingShips: () => number;
   /** Whether the seat owns a building of the type with this stable content id, standing or a site, or
    *  with `siteOnly` a site still under construction. */
   readonly owns: (buildingId: string, siteOnly: boolean) => boolean;
@@ -927,7 +959,12 @@ function seatProducts(
     const good = goodTypeByContentId(ctx.content, seat.fleet);
     if (good === undefined || !choice.products.includes(good.typeId))
       return seatProducts(choice, current, seat.otherwise);
-    const limit = current.includes(good.typeId) ? seat.cap : seat.resume + 1;
+    const limit =
+      seat.cap === LANDING_FLEET
+        ? choice.landingShips()
+        : current.includes(good.typeId)
+          ? seat.cap
+          : seat.resume + 1;
     return fleetOf(good.typeId, seat.freeOnly === true) < limit
       ? [seat.fleet, ...(seat.beside ?? [])]
       : seatProducts(choice, current, seat.otherwise);
