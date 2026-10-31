@@ -87,8 +87,10 @@ import {
 } from '../../../../src/systems/computer-player/workforce/collectors/index.js';
 import {
   collectorSpot,
+  FIRST_POST_FLAG_BAND,
   flagGround,
   flagSpotNear,
+  legalFlagNodeTest,
   unsealedResourceTest,
 } from '../../../../src/systems/computer-player/workforce/flag-spots.js';
 import { resourceStanceCells, resourceWorkCell } from '../../../../src/systems/footprint/interaction.js';
@@ -385,15 +387,15 @@ describe('workforce module (collectResources)', () => {
     expect(jobs.map((j) => j.jobType)).toEqual([COLLECTOR, COLLECTOR, COLLECTOR, SCOUT, BUILDER, BUILDER]);
     expect(selections.map((s) => s.goodType)).toEqual([MUD, STONE, WOOD]);
     expect(staffing).toEqual([]);
-    // Each flag stands 2–3 tiles (4–6 nodes) from its good's resource - never on top of it.
+    // Each good's first flag stands as close to its resource as a legal node allows - never on top of it.
     const spots = [RESOURCE_SPOTS.mud, RESOURCE_SPOTS.stone, RESOURCE_SPOTS.wood];
     expect(flags).toHaveLength(3);
     for (const [i, f] of flags.entries()) {
       const spot = spots[i];
       if (spot === undefined) throw new Error('unreachable: three spots for three flags');
       const dist = Math.abs(f.x - spot.x) + Math.abs(f.y - spot.y);
-      expect(dist).toBeGreaterThanOrEqual(FLAG_MIN_DISTANCE_NODES);
-      expect(dist).toBeLessThanOrEqual(FLAG_MAX_DISTANCE_NODES);
+      expect(dist).toBeGreaterThan(0);
+      expect(dist).toBeLessThan(FLAG_MIN_DISTANCE_NODES);
     }
     // Distinct settlers throughout - the allocator never claims one person twice.
     const claimed = jobs.map((c) => c.entity);
@@ -2354,6 +2356,36 @@ describe('flagSpotNear', () => {
     }
     expect(east.hx).toBeGreaterThan(resource.hx);
     expect(north.hy).toBeLessThan(resource.hy);
+  });
+
+  it("plants a good's first flag as close to its resource as a legal node allows, on the origin side", () => {
+    const sim = aiSim();
+    const resource = { hx: 20, hy: 16 };
+    sim.enqueueSetup({
+      kind: 'placeResource',
+      good: MUD,
+      x: resource.hx,
+      y: resource.hy,
+      remaining: 5,
+      harvestAtomic: RESOURCE_SPOTS.mud.harvest,
+    });
+    sim.step();
+    const origin = { hx: 60, hy: 16 };
+    const ground = groundOf(sim, origin);
+    const spot = flagSpotNear(sim.world, ground, depositOf(sim), origin, new Set(), FIRST_POST_FLAG_BAND);
+    if (spot === null) throw new Error('a spot on open ground');
+    const distance = Math.abs(spot.hx - resource.hx) + Math.abs(spot.hy - resource.hy);
+    expect(distance).toBeLessThan(FLAG_MIN_DISTANCE_NODES);
+    expect(spot.hx).toBeGreaterThan(resource.hx);
+    const legal = legalFlagNodeTest(ground, new Set());
+    for (let r = 0; r < distance; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        const dy = r - Math.abs(dx);
+        expect(legal(resource.hx + dx, resource.hy - dy) || legal(resource.hx + dx, resource.hy + dy)).toBe(
+          false,
+        );
+      }
+    }
   });
 
   it('walks round a wall: the flag goes where the gatherer reaches his deposit, not on its straight-line side', () => {

@@ -14,6 +14,7 @@ import { gathererReach, nearestLiveResource, type WorkableTest } from '../../liv
 import {
   claimFlagNode,
   collectorSpot,
+  FIRST_POST_FLAG_BAND,
   FLAG_MAX_DISTANCE_NODES,
   type FlagGround,
   flagSpotNear,
@@ -32,6 +33,7 @@ import {
 } from './upkeep.js';
 import {
   CLEARING_GOOD_IDS,
+  COLLECTED_GOOD_IDS,
   genericCollectorJob,
   meetsNeed,
   needsVeteran,
@@ -157,8 +159,9 @@ function seatBuilders(world: World, player: number, force: SpareForce, builderJo
 
 /**
  * First posts: keep at least one flag-bound gatherer per wanted good, and a short good's extra ones up to
- * `min`, each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), over the
- * upkeep of every current holder ({@link upkeepHolders}). One post per good per decision, and none beyond
+ * `min`, each flag standing 2-3 tiles from a workable resource nearest its anchor (authored), the first
+ * of a {@link COLLECTED_GOOD_IDS} good's as close to it as a legal node allows ({@link FIRST_POST_FLAG_BAND}),
+ * over the upkeep of every current holder ({@link upkeepHolders}). One post per good per decision, and none beyond
  * a good's first takes a builder from a seat down to `builderFloor` of them ({@link SHORTAGE_BUILDER_FLOOR}
  * unless the open sites call for more). A post beyond the first takes a
  * collect-anything gatherer before any spare man, dropping him from `genericCollectors` so the generic
@@ -199,7 +202,9 @@ export function allocateCollectors(
     const menQualify = (holders.length > 0 && genericCollectors.some(qualifies)) || force.any(qualifies);
     let steal = menQualify ? null : veteranToSteal(world, ctx, w, wanted, collectorsByGood, apprentices);
     if (!menQualify && steal === null) continue;
-    const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable);
+    const band =
+      holders.length === 0 && COLLECTED_GOOD_IDS.includes(w.good.id) ? FIRST_POST_FLAG_BAND : undefined;
+    const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable, band);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     if (holders.length > 0 && builderJob !== null)
       builders ??= seatBuilders(world, player, force, builderJob);

@@ -58,6 +58,9 @@ const STOCK_DY = -10;
 const TOWER_DY = 14;
 const DEPOSIT_DX = -6;
 const DEPOSIT_AMOUNT = 5;
+/** The seat's own deposits outlast the run: the assistant's flag follow, on for a computer seat, re-plants a
+ *  worked-out flag by the whole map's resources, which is not the seat's decision under test. */
+const SEAT_DEPOSIT_AMOUNT = 50;
 /** Enough decisions for several workforce, scout, intel and posture beats. */
 const DECISIONS = 12;
 const RUN_TICKS = DECISIONS * COMPUTER_DECISION_INTERVAL_TICKS;
@@ -81,7 +84,7 @@ function startWorld(fogMode: number): Simulation {
   sim.enqueueSetup({ kind: 'placeBuilding', buildingType: BARRACKS_TYPE, ...BARRACKS_AT, ...seatOwned });
   spawnMen(sim, SEAT_CIVILIANS);
   spawnMen(sim, SEAT_FIGHTERS, UNARMED);
-  placeResources(sim);
+  placeResources(sim, undefined, SEAT_DEPOSIT_AMOUNT);
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: OTHER, tribes: [VIKING] });
   sim.enqueueSetup({
     kind: 'placeBuilding',

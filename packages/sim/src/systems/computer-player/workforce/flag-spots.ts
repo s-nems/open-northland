@@ -36,6 +36,14 @@ const COLLECTOR_FLAG_BAND: FlagBand = {
   max: FLAG_MAX_DISTANCE_NODES,
   fallbackMax: 12,
 };
+/** The band of a good's first gatherer the seat posts (owner ruling: his flag stands as close to the
+ *  resource as a legal node allows, so he walks least). Any ring may serve; the walk cost, which weighs the
+ *  gatherer's own leg above the carriers', picks the node nearest the resource on the base side. */
+export const FIRST_POST_FLAG_BAND: FlagBand = {
+  min: 0,
+  max: FLAG_MAX_DISTANCE_NODES,
+  fallbackMax: COLLECTOR_FLAG_BAND.fallbackMax,
+};
 /** How many nearest resources one re-plant tries (authored): a resource whose best flag spot is taken or
  *  from which the holder could not work it gives way to the next nearest. */
 const REPLANT_ATTEMPTS = 3;
@@ -285,9 +293,10 @@ export function collectorSpot(
   goodType: number,
   taken: TakenFlagNodes,
   workable: WorkableTest,
+  band: FlagBand = COLLECTOR_FLAG_BAND,
 ): HalfCellNode | null {
   const resource: Entity | null = nearestLiveResource(world, goodType, anchor, workable);
-  return resource === null ? null : flagSpotNear(world, ground, resource, anchor, taken);
+  return resource === null ? null : flagSpotNear(world, ground, resource, anchor, taken, band);
 }
 
 /** A re-plant: the resource the flag moves after and the spot beside it, `dry` when the map holds no
