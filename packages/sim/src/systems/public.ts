@@ -65,6 +65,7 @@ export {
   type SeatMilitaryView,
   type SeatStrategyView,
   seatMilitaryViewOf,
+  sendsFlankRaids,
 } from './computer-player/strategy/index.js';
 // The discoveries a seat earns ahead of time and the men pinned on them, for a debug view.
 export type { ApprenticeView } from './computer-player/technology/apprentices.js';

@@ -88,7 +88,7 @@ const INTEL: components.ComputerIntelState = {
 
 describe('AI mind rows', () => {
   it('shows the posture with its orders: a harasser raids, a defender holds its waves', () => {
-    const harass = militaryTable(MILITARY, msgs).rows;
+    const harass = militaryTable(MILITARY, false, msgs).rows;
     expect(harass).toContainEqual([copy.evidence, 'harasserPlan, raidTargetKnown']);
     expect(harass).toContainEqual([copy.raids, copy.yes]);
     expect(harass).toContainEqual([copy.threatIn, '3.0']);
@@ -99,10 +99,17 @@ describe('AI mind rows', () => {
     expect(harass.find((row) => row[0] === copy.launchRatio)?.[1]).toMatch(/^\d+\/\d+$/);
     expect(harass.find((row) => row[0] === copy.towerRadius)?.[1]).toMatch(/^\d+%$/);
 
-    const defend = militaryTable({ ...MILITARY, posture: 'defend', challenger: null }, msgs).rows;
+    const defend = militaryTable({ ...MILITARY, posture: 'defend', challenger: null }, false, msgs).rows;
     expect(defend).toContainEqual([copy.launchRatio, '-']);
     expect(defend).toContainEqual([copy.raids, copy.no]);
     expect(defend.some((row) => row[0] === copy.challenger)).toBe(false);
+
+    const building = { ...MILITARY, plan: 'balanced' as const, posture: 'attack' as const };
+    expect(militaryTable(building, false, msgs).rows).toContainEqual([copy.raids, copy.no]);
+    expect(militaryTable(building, true, msgs).rows, 'a flank seat raids').toContainEqual([
+      copy.raids,
+      copy.yes,
+    ]);
   });
 
   it('weighs own points against each remembered seat and lists the stalest start zones', () => {

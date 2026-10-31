@@ -2,6 +2,7 @@ import type { ContentSet } from '@open-northland/data';
 import {
   Building,
   diplomacyStance,
+  Garrison,
   Health,
   isScriptedEconomySeat,
   MAX_PLAYERS,
@@ -48,8 +49,17 @@ export const RAID_DEFENCE_RADIUS_NODES = 20;
 /** Half-cell nodes of trip that cost one point of a target's score (authored): a 200-node trip costs half
  *  a gatherer. */
 export const RAID_NODES_PER_POINT = 4;
-/** How far off the straight line from home to the enemy base the band swings (authored). */
-export const RAID_FLANK_NODES = 30;
+/** The side of one square of the raid route search, in half-cell nodes (authored): a quarter of a tower's
+ *  reach, fine enough to find the gaps between towers, coarse enough to search a whole map per raid. */
+export const RAID_ROUTE_CELL_NODES = 8;
+/** How near the target owner's start the route search makes every step dearer, in half-cell nodes
+ *  (authored): the core of a base, so a band without towers in its way still comes in from the side. */
+export const RAID_BASE_BERTH_NODES = 40;
+/** How many times a step inside {@link RAID_BASE_BERTH_NODES} costs (authored). */
+export const RAID_BASE_BERTH_COST = 3;
+/** Route search step costs: a straight and a diagonal step between squares, near 1 : sqrt 2. */
+const STRAIGHT_STEP = 2;
+const DIAGONAL_STEP = 3;
 
 /** A believed enemy tower and the points its posts were last seen holding. */
 interface TowerBelief {
@@ -94,7 +104,18 @@ export function believedTowers(world: World, ctx: SystemContext, seat: number, o
   return towers;
 }
 
-/** `owner`'s fighters `seat` sees now and their points. Costs the owner's fighters. */
+/** The towers `seat` believes every enemy of it holds. Costs the enemies' believed buildings. */
+export function believedEnemyTowers(world: World, ctx: SystemContext, seat: number): TowerBelief[] {
+  const towers: TowerBelief[] = [];
+  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
+    if (owner !== seat && diplomacyStance(world, seat, owner) === 'enemy')
+      towers.push(...believedTowers(world, ctx, seat, owner));
+  }
+  return towers;
+}
+
+/** `owner`'s fighters `seat` sees now and their points, leaving out the men posted in a tower (the tower
+ *  belief weighs them). Costs the owner's fighters. */
 export function visibleFighters(
   world: World,
   ctx: SystemContext,
@@ -103,7 +124,7 @@ export function visibleFighters(
 ): FighterSighting[] {
   const seen: FighterSighting[] = [];
   for (const e of ownedFightersOf(world, ctx.content, owner)) {
-    if (!isLiveFighter(world, e)) continue;
+    if (!isLiveFighter(world, e) || world.has(e, Garrison)) continue;
     const at = nodeOfEntity(world, e);
     if (at === null || !playerSeesNode(ctx.fog, seat, at.hx, at.hy)) continue;
     seen.push({ at, points: unitPoints(world, ctx, e) });
@@ -226,12 +247,13 @@ export function isEconomyBuilding(ctx: SystemContext, buildingType: number): boo
 }
 
 /**
- * The flank waypoint a band from `home` walks before it strikes `target`: the midpoint of the trip pushed
- * {@link RAID_FLANK_NODES} sideways off the line from `home` to the target owner's base (its start anchor
- * in the map brief), toward the side the target lies on, the other side when that one is unwalkable, off
- * the home land or in a believed tower's reach, then half the swing. Empty when no swing qualifies: the
- * band goes straight in. Approximation: the walk between waypoints is the pathfinder's own and may pass a
- * tower the waypoint avoids.
+ * The waypoints a band from `home` walks before it strikes `target`, clear of every believed tower's
+ * reach: a cheapest route over squares of {@link RAID_ROUTE_CELL_NODES} on `home`'s land, a square closed
+ * when no node of it is walkable or its node lies in a tower's reach, steps dearer within
+ * {@link RAID_BASE_BERTH_NODES} of the target owner's start so the band comes in from the side; then pulled
+ * tight to the squares where it must turn. Empty when the way is straight; null when every way crosses a
+ * tower's reach. Approximation: the walk between waypoints is the pathfinder's own and may cut a corner
+ * of a reach the waypoints keep clear of.
  */
 export function flankRoute(
   world: World,
@@ -239,31 +261,176 @@ export function flankRoute(
   home: NodeId,
   target: OperationTarget,
   towers: readonly TowerBelief[],
-): HalfCellNode[] {
+): HalfCellNode[] | null {
+  const land = terrain.componentOf(home);
+  const box = terrain.componentBounds(land);
+  const grid = routeGrid(terrain, land, box, towers);
   const from = nodeOfId(terrain, home);
   const to = { hx: target.hx, hy: target.hy };
-  const base = baseOf(world, target.owner) ?? to;
-  const dx = base.hx - from.hx;
-  const dy = base.hy - from.hy;
-  const span = Math.max(Math.abs(dx), Math.abs(dy));
-  if (span === 0) return [];
-  const cross = dx * (to.hy - from.hy) - dy * (to.hx - from.hx);
-  const side = cross < 0 ? -1 : 1;
-  const mid = { hx: (from.hx + to.hx) >> 1, hy: (from.hy + to.hy) >> 1 };
-  const land = terrain.componentOf(home);
-  for (const swing of [RAID_FLANK_NODES, RAID_FLANK_NODES >> 1]) {
-    for (const sign of [side, -side]) {
-      const at = {
-        hx: mid.hx - Math.trunc((sign * dy * swing) / span),
-        hy: mid.hy + Math.trunc((sign * dx * swing) / span),
-      };
-      const node = terrain.nodeAtClamped(at.hx, at.hy);
-      if (!terrain.isWalkable(node) || terrain.componentOf(node) !== land) continue;
-      const snapped = nodeOfId(terrain, node);
-      if (!towerInReach(towers, snapped)) return [snapped];
+  const start = grid.squareOf(from);
+  const goal = grid.squareOf(to);
+  grid.open(start, from);
+  grid.open(goal, to);
+  const base = baseOf(world, target.owner);
+  const path = cheapestSquares(grid, start, goal, (square) => {
+    const at = grid.nodes[square];
+    return base !== null && at !== undefined && nodeManhattan(at, base) <= RAID_BASE_BERTH_NODES
+      ? RAID_BASE_BERTH_COST
+      : 1;
+  });
+  if (path === null) return null;
+  const waypoints: HalfCellNode[] = [];
+  let anchor = 0;
+  while (anchor < path.length - 1) {
+    let reach = anchor + 1;
+    for (let next = path.length - 1; next > reach; next--) {
+      if (grid.clearLine(path[anchor] ?? start, path[next] ?? goal)) {
+        reach = next;
+        break;
+      }
+    }
+    if (reach < path.length - 1) {
+      const at = grid.nodes[path[reach] ?? goal];
+      if (at !== undefined) waypoints.push(at);
+    }
+    anchor = reach;
+  }
+  return waypoints;
+}
+
+/** The route search's squares over one land: each open square's node, row-major, undefined when closed. */
+interface RouteGrid {
+  readonly columns: number;
+  readonly rows: number;
+  readonly nodes: (HalfCellNode | undefined)[];
+  squareOf(at: HalfCellNode): number;
+  /** Opens `square` at `at`: the home and the target are open whatever covers them. */
+  open(square: number, at: HalfCellNode): void;
+  /** Whether every square on the straight line between `a` and `b` is open. */
+  clearLine(a: number, b: number): boolean;
+}
+
+function routeGrid(
+  terrain: TerrainGraph,
+  land: number,
+  box: { minX: number; minY: number; maxX: number; maxY: number },
+  towers: readonly TowerBelief[],
+): RouteGrid {
+  const side = RAID_ROUTE_CELL_NODES;
+  const columns = Math.floor((box.maxX - box.minX) / side) + 1;
+  const rows = Math.floor((box.maxY - box.minY) / side) + 1;
+  const nodes: (HalfCellNode | undefined)[] = new Array(columns * rows);
+  const half = side >> 1;
+  const quarter = side >> 2;
+  const probes = [
+    [half, half],
+    [quarter, quarter],
+    [side - quarter, quarter],
+    [quarter, side - quarter],
+    [side - quarter, side - quarter],
+  ] as const;
+  for (let row = 0; row < rows; row++) {
+    for (let column = 0; column < columns; column++) {
+      for (const [dx, dy] of probes) {
+        const node = terrain.nodeAtClamped(box.minX + column * side + dx, box.minY + row * side + dy);
+        if (!terrain.isWalkable(node) || terrain.componentOf(node) !== land) continue;
+        const at = nodeOfId(terrain, node);
+        if (!towerInReach(towers, at)) nodes[row * columns + column] = at;
+        break;
+      }
     }
   }
-  return [];
+  const clamp = (value: number, last: number) => Math.min(Math.max(value, 0), last);
+  return {
+    columns,
+    rows,
+    nodes,
+    squareOf: (at) =>
+      clamp(Math.floor((at.hy - box.minY) / side), rows - 1) * columns +
+      clamp(Math.floor((at.hx - box.minX) / side), columns - 1),
+    open: (square, at) => {
+      nodes[square] = at;
+    },
+    clearLine: (a, b) => {
+      const ax = a % columns;
+      const ay = Math.floor(a / columns);
+      const dx = (b % columns) - ax;
+      const dy = Math.floor(b / columns) - ay;
+      const steps = Math.max(Math.abs(dx), Math.abs(dy));
+      for (let k = 1; k < steps; k++) {
+        const x = ax + Math.floor((2 * dx * k + steps) / (2 * steps));
+        const y = ay + Math.floor((2 * dy * k + steps) / (2 * steps));
+        if (nodes[y * columns + x] === undefined) return false;
+      }
+      return true;
+    },
+  };
+}
+
+const NEIGHBOURS = [
+  [1, 0, STRAIGHT_STEP],
+  [-1, 0, STRAIGHT_STEP],
+  [0, 1, STRAIGHT_STEP],
+  [0, -1, STRAIGHT_STEP],
+  [1, 1, DIAGONAL_STEP],
+  [-1, 1, DIAGONAL_STEP],
+  [1, -1, DIAGONAL_STEP],
+  [-1, -1, DIAGONAL_STEP],
+] as const;
+
+/** The cheapest chain of open squares from `start` to `goal`, both included, stepping onto a square at its
+ *  step cost times `weight(square)`; null when none joins them. Buckets by cost, each in push order, so
+ *  the result never depends on more than the grid. */
+function cheapestSquares(
+  grid: RouteGrid,
+  start: number,
+  goal: number,
+  weight: (square: number) => number,
+): number[] | null {
+  const { columns, rows, nodes } = grid;
+  const cost = new Int32Array(columns * rows).fill(-1);
+  const cameFrom = new Int32Array(columns * rows).fill(-1);
+  const buckets: number[][] = [[start]];
+  cost[start] = 0;
+  for (let at = 0; at < buckets.length; at++) {
+    for (const square of buckets[at] ?? []) {
+      if (cost[square] !== at) continue;
+      if (square === goal) {
+        const path = [goal];
+        for (let back = cameFrom[goal] ?? -1; back !== -1; back = cameFrom[back] ?? -1) path.push(back);
+        return path.reverse();
+      }
+      const x = square % columns;
+      const y = Math.floor(square / columns);
+      for (const [dx, dy, step] of NEIGHBOURS) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (nx < 0 || ny < 0 || nx >= columns || ny >= rows) continue;
+        const next = ny * columns + nx;
+        if (nodes[next] === undefined) continue;
+        const total = at + step * weight(next);
+        const known = cost[next] ?? -1;
+        if (known !== -1 && known <= total) continue;
+        cost[next] = total;
+        cameFrom[next] = square;
+        const bucket = buckets[total];
+        if (bucket === undefined) buckets[total] = [next];
+        else bucket.push(next);
+      }
+    }
+  }
+  return null;
+}
+
+/** Whether the rest of a raid's way, its waypoints from `leg` on and its target, lies in a believed tower's
+ *  reach. */
+export function routeUnderTower(
+  towers: readonly TowerBelief[],
+  waypoints: readonly HalfCellNode[],
+  leg: number,
+  target: HalfCellNode,
+): boolean {
+  return towerInReach(towers, target) || waypoints.slice(leg).some((at) => towerInReach(towers, at));
 }
 
 function baseOf(world: World, owner: number | null): HalfCellNode | null {

@@ -146,14 +146,16 @@ export function triggerMinutes(trigger: systems.Trigger, tick: number): string {
   }
 }
 
-/** The military section and the orders its posture gives. Codes (plan, posture, evidence) show raw. */
+/** The military section and the orders its posture gives, `flankSeat` when the seat sends periodic flank
+ *  raids. Codes (plan, posture, evidence) show raw. */
 export function militaryTable(
   military: components.MilitaryStrategyState | undefined,
+  flankSeat: boolean,
   msgs: Messages,
 ): AdminAiTable {
   const copy = msgs.admin.ai;
   if (military === undefined) return { head: null, rows: [[copy.plan, copy.undecided]] };
-  const orders = systems.ordersFor(military.plan, military.posture);
+  const orders = systems.ordersFor(military.plan, military.posture, military.evidence, flankSeat);
   return {
     head: null,
     rows: [

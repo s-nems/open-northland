@@ -27,12 +27,12 @@ import { unitPoints } from '../points.js';
 import { bandCentre, gatheredAt, homeOf, isAlive, walkTo } from './band.js';
 import { enter, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import {
-  believedTowers,
+  believedEnemyTowers,
   fighterPointsNear,
   flankRoute,
   nodeOfEntity,
   pickRaidTarget,
-  towerInReach,
+  routeUnderTower,
   visibleFighters,
   visibleGatherers,
 } from './raid-target.js';
@@ -100,19 +100,21 @@ function withdraw(env: OperationEnv, op: RaidOperation, reason: OperationEndReas
   return walkBand(env, op.members, homeOf(env), 'moveUnit', true);
 }
 
-/** Why the band should turn back now, or null: its orders no longer allow raids, the target's owner is no
- *  enemy, it lost {@link RAID_LOSS_PCT} of its men, it stands in a believed tower's reach, it sees the
- *  target's buildings switched to defence, or the enemy fighters it sees near it weigh at least its own
- *  points. Costs the enemies' fighters and the target owner's buildings. */
+/** Why the band should turn back now, or null: its seat calls its raids home, the target's owner is no
+ *  enemy, it lost {@link RAID_LOSS_PCT} of its men, the rest of its way or its target lies in a believed
+ *  tower's reach, it sees the target's buildings switched to defence, or the enemy fighters it sees near it
+ *  outweigh its own points. Passing near a tower whose reach its way keeps clear of turns no band back.
+ *  Costs the enemies' fighters and believed buildings. */
 function abortReason(env: OperationEnv, op: RaidOperation): OperationEndReason | null {
   const { world, ctx, seat } = env;
   const owner = op.target.owner;
-  if (!env.orders.raidsAllowed) return 'postureChanged';
+  if (env.orders.raidsRecalled) return 'postureChanged';
   if (owner === null || diplomacyStance(world, seat, owner) !== 'enemy') return 'targetLost';
   if ((op.startMen - op.members.length) * PERCENT >= op.startMen * RAID_LOSS_PCT) return 'losses';
   const centre = bandCentre(world, op.members);
   if (centre === null) return null;
-  if (towerInReach(believedTowers(world, ctx, seat, owner), centre)) return 'towerInReach';
+  if (routeUnderTower(believedEnemyTowers(world, ctx, seat), op.waypoints, op.leg, targetNode(op)))
+    return 'towerInReach';
   if (defenceModeNear(env, owner, targetNode(op))) return 'defenceMode';
   let ownPoints = 0;
   for (const e of op.members) ownPoints += unitPoints(world, ctx, e);
@@ -121,7 +123,7 @@ function abortReason(env: OperationEnv, op: RaidOperation): OperationEndReason |
     if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
     enemyPoints += fighterPointsNear(visibleFighters(world, ctx, seat, other), centre);
   }
-  return enemyPoints > 0 && enemyPoints >= ownPoints ? 'outmatched' : null;
+  return enemyPoints > ownPoints ? 'outmatched' : null;
 }
 
 /** Whether `seat` sees a building of `owner` within {@link RAID_STRIKE_RADIUS_NODES} of `at` in defence
@@ -235,9 +237,9 @@ function legEnd(op: RaidOperation): HalfCellNode {
  * A new raid when the seat's orders allow raids (its harassing posture, or a hard seat's flank raids) and
  * its peace is over: from the free men on the door's
  * land and on no errand, leaving {@link RAID_HOME_FLOOR_MEN} of them, up to {@link RAID_BAND_MEN}, archers
- * first, then the nearest the door, then by id; at the best target ({@link pickRaidTarget}), by its flank
- * ({@link flankRoute}), looked for on every {@link RAID_LOOK_EVERY_DECISIONS}th decision. None with fewer
- * than {@link RAID_MIN_MEN} to spare or nothing worth striking.
+ * first, then the nearest the door, then by id; at the best target ({@link pickRaidTarget}), by a way clear
+ * of believed towers ({@link flankRoute}), looked for on every {@link RAID_LOOK_EVERY_DECISIONS}th decision.
+ * None with fewer than {@link RAID_MIN_MEN} to spare, nothing worth striking or no way to it.
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number) {
   const { world, ctx, terrain, seat, home, orders } = env;
@@ -255,6 +257,8 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
   if (size < RAID_MIN_MEN || !moduleBeatDue(ctx.tick, seat, RAID_LOOK_EVERY_DECISIONS)) return null;
   const pick = pickRaidTarget(world, ctx, terrain, seat, home);
   if (pick === null || pick.target.owner === null) return null;
+  const waypoints = flankRoute(world, terrain, home, pick.target, believedEnemyTowers(world, ctx, seat));
+  if (waypoints === null) return null;
   const ranked = ready
     .map((e) => ({
       e,
@@ -274,13 +278,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
     members,
     target: pick.target,
     reason: null,
-    waypoints: flankRoute(
-      world,
-      terrain,
-      home,
-      pick.target,
-      believedTowers(world, ctx, seat, pick.target.owner),
-    ),
+    waypoints,
     leg: 0,
     startMen: members.length,
     struck: [],

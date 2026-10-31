@@ -122,6 +122,15 @@ describe('military posture', () => {
     }
   });
 
+  it('keeps a flank raid already out striking through a forecast attack, not through defence', () => {
+    for (const plan of MILITARY_PLANS) {
+      expect(ordersFor(plan, 'prepare', ['forecastThreat'], true).raidsRecalled).toBe(false);
+      expect(ordersFor(plan, 'defend', ['underAttack'], true).raidsRecalled).toBe(true);
+      expect(ordersFor(plan, 'prepare', ['forecastThreat']).raidsRecalled).toBe(true);
+      expect(ordersFor(plan, 'harass').raidsRecalled).toBe(false);
+    }
+  });
+
   it('holds an area while it builds up or attacks, never against a stronger enemy or a forecast attack', () => {
     for (const plan of MILITARY_PLANS) {
       expect(ordersFor(plan, 'defend', ['outmatched']).hold).toBeNull();

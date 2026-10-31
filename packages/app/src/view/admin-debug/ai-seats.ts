@@ -102,7 +102,11 @@ export function aiSeatRows(seats: readonly AiSeatReading[], msgs: Messages): Adm
     const military = seat.strategy?.military;
     const tables: AdminAiTable[] = [
       { head: null, rows: strategy },
-      militaryTable(military, msgs),
+      militaryTable(
+        military,
+        economy !== undefined && systems.sendsFlankRaids(seat.difficulty, economy.archetype),
+        msgs,
+      ),
       ...intelTables(seat.mind, military?.ownPoints ?? null, msgs),
       ...intentTables(seat.mind, msgs),
       ...technologyTables(seat.mind, msgs),

@@ -11,6 +11,7 @@ import {
   type MilitaryPlan,
   type MilitaryPosture,
   Owner,
+  Position,
   Settler,
   WaveMarch,
 } from '../../../../../src/components/index.js';
@@ -26,6 +27,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../../../src/index.js';
+import { type HalfCellNode, nodeManhattan, positionOfNode } from '../../../../../src/nav/halfcell.js';
 import type { TerrainGraph } from '../../../../../src/nav/terrain/index.js';
 import { moduleBeatDue } from '../../../../../src/systems/ai-shared/cadence.js';
 import { planSettlementDefence } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
@@ -39,6 +41,10 @@ import {
   seatOperationsOf,
   selectPosture,
 } from '../../../../../src/systems/computer-player/index.js';
+import {
+  flankRoute,
+  RAID_TOWER_CLEARANCE_NODES,
+} from '../../../../../src/systems/computer-player/military/operations/raid-target.js';
 import type { SystemContext } from '../../../../../src/systems/index.js';
 import { interactionCell } from '../../../../../src/systems/settlers/targets/index.js';
 import { cellOfNode } from '../../../../../src/systems/vision/gates.js';
@@ -65,6 +71,11 @@ const EXPOSED = { x: 90, y: 20 };
 /** A tower, and a gatherer nearer the seat than {@link EXPOSED} but under it. */
 const FOE_TOWER = { x: 70, y: 60 };
 const GUARDED = { x: 68, y: 58 };
+/** A tower the band may pass, its reach clear of {@link EXPOSED}; a spot in that reach; and a tower whose
+ *  reach covers {@link EXPOSED}. */
+const PASSED_TOWER = { x: 60, y: 40 };
+const NEAR_PASSED_TOWER = { hx: 60, hy: 14 };
+const OVER_EXPOSED = { x: 90, y: 36 };
 /** How many men the seat musters: a raid's band plus a wave's worth at home. */
 const ARMY = 16;
 /** Decision ticks a case steps through, one decision apart. */
@@ -177,6 +188,13 @@ function raidWorld(gatherers: readonly { x: number; y: number }[], army = ARMY, 
   return { sim, barracks, door, men, prey };
 }
 
+function teleport(sim: Simulation, e: Entity, at: HalfCellNode): void {
+  const p = positionOfNode(at.hx, at.hy);
+  const live = sim.world.mut(e, Position);
+  live.x = p.x;
+  live.y = p.y;
+}
+
 /** The first of the seat's decisions from `from` on which it looks for a raid. */
 function lookFrom(from: number): number {
   let tick = Math.ceil(from / DECISION) * DECISION;
@@ -237,16 +255,34 @@ describe('raid operations', () => {
     expect(onlyRaid(sim).target.entity).toBe(prey[0]);
   });
 
-  it('turns back once the enemy fighters it sees near it weigh as much as it does', () => {
+  it('turns back once the enemy fighters it sees near it outweigh it', () => {
     const { sim, door } = raidWorld([EXPOSED], ARMY, SPEARMAN);
     decide(sim, LOOK);
     decide(sim, LOOK + DECISION);
     expect(onlyRaid(sim).state).toBe('moving');
     band(sim, RAID_BAND_MEN, door, SPEARMAN, FOE);
     decide(sim, LOOK + 2 * DECISION);
+    expect(onlyRaid(sim).state, 'an equal band does not turn it').toBe('moving');
+    band(sim, 1, door, SPEARMAN, FOE);
+    decide(sim, LOOK + 3 * DECISION);
     const raid = onlyRaid(sim);
     expect(raid.state).toBe('withdrawing');
     expect(raid.reason).toBe('outmatched');
+  });
+
+  it('walks on past a tower its way keeps clear of, and turns back once its target comes under one', () => {
+    const { sim } = raidWorld([EXPOSED], ARMY, SPEARMAN);
+    place(sim, TOWER_TYPE, PASSED_TOWER, FOE);
+    decide(sim, LOOK);
+    decide(sim, LOOK + DECISION);
+    const out = onlyRaid(sim);
+    expect(out.state).toBe('moving');
+    for (const e of out.members) teleport(sim, e, NEAR_PASSED_TOWER);
+    decide(sim, LOOK + 2 * DECISION);
+    expect(onlyRaid(sim).state, 'standing in its reach').toBe('moving');
+    place(sim, TOWER_TYPE, OVER_EXPOSED, FOE);
+    decide(sim, LOOK + 3 * DECISION);
+    expect(onlyRaid(sim).reason).toBe('towerInReach');
   });
 
   it('waits out its cooldown before the next raid forms', () => {
@@ -353,6 +389,45 @@ describe('raid operations', () => {
       });
       decide(sim, LOOK);
       expect(raids(sim)).toEqual([]);
+    });
+  });
+
+  describe('the way to the target', () => {
+    const HOME = { hx: 10, hy: 48 };
+    const POCKET = { hx: 64, hy: 48 };
+    const target = { ...POCKET, entity: null, owner: null };
+    const tower = (hx: number, hy: number) => ({ at: { hx, hy }, postedPoints: 0 });
+    const clearOf = (towers: readonly { at: HalfCellNode }[], at: HalfCellNode) =>
+      towers.every((t) => nodeManhattan(t.at, at) > RAID_TOWER_CLEARANCE_NODES);
+
+    it('goes straight in with nothing in the way, and round a tower that stands in it', () => {
+      const sim = aiSim();
+      const terrain = terrainOf(sim);
+      const home = terrain.nodeAtClamped(HOME.hx, HOME.hy);
+      expect(flankRoute(sim.world, terrain, home, target, [])).toEqual([]);
+      const towers = [tower(37, 48)];
+      const route = flankRoute(sim.world, terrain, home, target, towers);
+      expect(route?.length).toBeGreaterThan(0);
+      for (const at of route ?? []) expect(clearOf(towers, at), JSON.stringify(at)).toBe(true);
+    });
+
+    it('finds no way into a pocket a ring of towers closes', () => {
+      const sim = aiSim();
+      const terrain = terrainOf(sim);
+      const ring = [
+        [36, 0],
+        [-36, 0],
+        [0, 36],
+        [0, -36],
+        [25, 25],
+        [25, -25],
+        [-25, 25],
+        [-25, -25],
+      ].map(([dx = 0, dy = 0]) => tower(POCKET.hx + dx, POCKET.hy + dy));
+      expect(clearOf(ring, POCKET), 'the pocket itself lies clear').toBe(true);
+      expect(
+        flankRoute(sim.world, terrain, terrain.nodeAtClamped(HOME.hx, HOME.hy), target, ring),
+      ).toBeNull();
     });
   });
 });
