@@ -15,6 +15,7 @@ import {
   systems,
   TICKS_PER_SECOND,
 } from '@open-northland/sim';
+import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { JOB_CIVILIST, JOB_HEROINE_BOW, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../../catalog/jobs.js';
 import { professionDefForJob } from '../../catalog/professions.js';
@@ -248,7 +249,7 @@ function experienceNamer(content: ContentSet): (typeId: number) => string | unde
     const fightKey = WEAPON_XP_KEY_BY_TYPE.get(typeId);
     if (fightKey !== undefined) return fights[fightKey];
     const track = tracks.get(typeId);
-    return track === undefined ? undefined : (labels[track.id] ?? trades[track.id] ?? track.name ?? track.id);
+    return track === undefined ? undefined : (labels[track.id] ?? trades[track.id]);
   };
 }
 
@@ -436,7 +437,12 @@ function harvestCycle(content: ContentSet): readonly number[] {
 function animalRows({ content }: Joins): KnowledgeAnimal[] {
   const cycle = harvestCycle(content);
   const tribes = new Map(content.tribes.map((t) => [t.typeId, t]));
-  const species = new Map(content.animals.filter((a) => a.hitpointsAdult > 0).map((a) => [a.tribeType, a]));
+  // A species with no body look draws nothing, and neither a map, a script nor a chest places one.
+  const species = new Map(
+    content.animals
+      .filter((a) => a.hitpointsAdult > 0 && ANIMAL_PALETTE_BY_TRIBE.has(a.tribeType))
+      .map((a) => [a.tribeType, a]),
+  );
   return [...species.values()].map((a) => {
     const weapon = animalWeapon(content, a.tribeType);
     const tribe = tribes.get(a.tribeType);
@@ -488,6 +494,7 @@ export function createKnowledgeBase(content: ContentSet, help: ObjectHelp | null
   const jobs = buildJobs(joins, requirements, edges);
   const playable = systems.playableTribes(content);
   return {
+    content,
     tribes: playable.map(tribeRow),
     goods,
     buildings,

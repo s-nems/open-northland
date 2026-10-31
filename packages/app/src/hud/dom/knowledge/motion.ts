@@ -1,5 +1,9 @@
 import { createHumanPaletteColours, type HumanPaletteBook } from '@open-northland/render';
-import { type PalettedSheetRef, palettedSheetBitmap } from '../../../content/atlas-sheet/index.js';
+import {
+  type AtlasSheetRef,
+  palettedSheetBitmap,
+  pictureSheetUrl,
+} from '../../../content/atlas-sheet/index.js';
 import type { ContentIr } from '../../../content/ir/rows.js';
 import { servedAtlas } from '../../../content/sprite-good-icons.js';
 import { humanPaletteBook } from '../../../content/sprite-sheet/human-palettes.js';
@@ -80,16 +84,32 @@ interface HeldPage {
   closeTimer: ReturnType<typeof setTimeout> | undefined;
 }
 
+/** A page served in colour, decoded as a paletted one is. */
+async function colourBitmap(sheet: AtlasSheetRef): Promise<ImageBitmap> {
+  const url = pictureSheetUrl(sheet);
+  if (url === null) throw new Error(`atlas sheet ${sheet.image} is not a picture`);
+  const image = new Image();
+  image.crossOrigin = 'anonymous';
+  image.src = url;
+  await image.decode();
+  return createImageBitmap(image);
+}
+
+const sheetBitmap = (sheet: AtlasSheetRef): Promise<ImageBitmap> =>
+  sheet.palette === undefined
+    ? colourBitmap(sheet)
+    : palettedSheetBitmap({ ...sheet, palette: sheet.palette });
+
 /** Coloured pages by sheet and palette, shared by whoever draws them, so one trade's three clips colour
  *  one page. */
 export class ColouredPages {
   private readonly pages = new Map<string, HeldPage>();
 
-  acquire(sheet: PalettedSheetRef): { readonly key: string; readonly bitmap: Promise<ImageBitmap> } {
-    const key = `${sheet.image}:${sheet.palette}`;
+  acquire(sheet: AtlasSheetRef): { readonly key: string; readonly bitmap: Promise<ImageBitmap> } {
+    const key = `${sheet.image}:${sheet.palette ?? ''}`;
     let page = this.pages.get(key);
     if (page === undefined) {
-      page = { bitmap: palettedSheetBitmap(sheet), users: 0, closeTimer: undefined };
+      page = { bitmap: sheetBitmap(sheet), users: 0, closeTimer: undefined };
       this.pages.set(key, page);
       page.bitmap.catch(() => this.pages.delete(key));
     }
@@ -110,11 +130,12 @@ export class ColouredPages {
   }
 }
 
-/** The first of `stems` that serves a paletted sheet. */
+/** The first of `stems` a layer can draw from: a composed palette needs a paletted sheet, and a body in
+ *  its baked skin takes either. */
 async function servedLayer(layer: FilmLayer) {
   for (const stem of layer.stems) {
     const atlas = await servedAtlas(stem);
-    if (atlas?.palette !== undefined) return { atlas, palette: atlas.palette };
+    if (atlas !== null && (layer.palette === undefined || atlas.palette !== undefined)) return atlas;
   }
   return null;
 }
@@ -154,10 +175,10 @@ async function loadFilm(
   const colours = createHumanPaletteColours();
   if (film.identity !== undefined) book?.compose(film.identity, colours);
   const sheets = film.layers.flatMap((layer, index) => {
-    const found = served[index];
-    if (found === null || found === undefined) return [];
-    const palette = layer.palette === undefined ? found.palette : paletteBase64(colours[layer.palette]);
-    return [{ layer, atlas: found.atlas, sheet: { ...found.atlas, palette } }];
+    const atlas = served[index];
+    if (atlas === null || atlas === undefined) return [];
+    const composed = layer.palette === undefined ? {} : { palette: paletteBase64(colours[layer.palette]) };
+    return [{ layer, atlas, sheet: { ...atlas, ...composed } }];
   });
   if (sheets.length === 0 || served[0] === null) return null;
   const layout = layoutFilm(

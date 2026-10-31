@@ -281,6 +281,20 @@
   max-width: 100%;
   object-fit: contain;
 }
+.on-hud .kn-entry__head .kn-motion {
+  flex: none;
+  flex-wrap: nowrap;
+  margin: 0;
+}
+.on-hud .kn-entry__head .kn-motion__clip {
+  flex: 0 0 84px;
+}
+.on-hud .kn-entry__head .kn-motion__stage {
+  height: 84px;
+}
+.on-hud .kn-entry__head .kn-motion canvas {
+  max-height: 84px;
+}
 .on-hud .kn-motion figcaption {
   display: flex;
   justify-content: space-between;
@@ -289,6 +303,12 @@
   padding-top: 3px;
   border-top: 1px solid #8d754966;
   font-size: 12.5px;
+}
+.on-hud .kn-entry__head .kn-motion figcaption {
+  justify-content: center;
+  gap: 4px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 .on-hud .kn-origin {
   margin: 14px 0 2px;

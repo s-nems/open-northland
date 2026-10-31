@@ -37,7 +37,7 @@ it('lists a house a script allowed while the world is paused, once the answer la
   const window = createConstructionWindow({
     plane,
     entries: [farm],
-    thumbs: { paint: () => false },
+    thumbs: { paint: () => false, holds: () => false },
     pack: null,
     goodIdOf: () => undefined,
     goodLabel: (goodType) => `#${goodType}`,

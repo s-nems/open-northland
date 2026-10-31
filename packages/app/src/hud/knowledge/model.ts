@@ -1,5 +1,6 @@
 import type {
   BuildingType,
+  ContentSet,
   EquipClass,
   GoodFarming,
   GoodGathering,
@@ -193,6 +194,8 @@ export interface KnowledgeTribe {
 }
 
 export interface KnowledgeBase {
+  /** The content this reference reads, for an article fact no row above carries. */
+  readonly content: ContentSet;
   readonly tribes: readonly KnowledgeTribe[];
   readonly goods: readonly KnowledgeGood[];
   readonly buildings: readonly KnowledgeBuilding[];

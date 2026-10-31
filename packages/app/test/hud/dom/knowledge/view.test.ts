@@ -30,8 +30,16 @@ vi.mock('../../../../src/hud/dom/knowledge/entry-view.js', () => ({
   },
 }));
 vi.mock('../../../../src/hud/dom/knowledge/encyclopedia-view.js', () => ({
-  renderEncyclopedia: (_context: unknown, ref: EntryRef | null) =>
-    page('stub-encyclopedia', ref === null ? '' : `${ref.kind}:${ref.id}`),
+  ENCYCLOPEDIA_LIST_SCROLL: 'enc-list',
+  firstEntry: (): EntryRef => ({ kind: 'good', id: 'wood' }),
+  renderEncyclopedia: (_context: unknown, ref: EntryRef | null, onCategory: (first: EntryRef) => void) => {
+    const encyclopedia = page('stub-encyclopedia', ref === null ? '' : `${ref.kind}:${ref.id}`);
+    const category = document.createElement('button');
+    category.className = 'stub-category';
+    category.addEventListener('click', () => onCategory({ kind: 'job', id: 'carrier' }));
+    encyclopedia.append(category);
+    return encyclopedia;
+  },
 }));
 vi.mock('../../../../src/hud/dom/knowledge/article-view.js', () => ({
   CALCULATOR_ARTICLE: 'damage',
@@ -197,6 +205,16 @@ describe('the Knowledge view', () => {
     click('[data-tab="goods"]');
     click('[data-tab="encyclopedia"]');
     expect(find('.stub-encyclopedia').textContent).toBe('good:iron');
+  });
+
+  it('opens the first entry for the reader without a step of its own', () => {
+    mount();
+    click('[data-tab="encyclopedia"]');
+    expect(find('.stub-encyclopedia').textContent).toBe('good:wood');
+    click('.stub-category');
+    expect(find('.stub-encyclopedia').textContent).toBe('job:carrier');
+    back();
+    expect(selectedTab()).toBe('goods');
   });
 
   it('restores the scroll of the place Wróć returns to', () => {

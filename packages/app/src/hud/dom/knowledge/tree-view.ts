@@ -39,6 +39,11 @@ const SCALE_STEP_PCT = 5;
 const PERCENT = 100;
 const GOOD_ICON_PX = 30;
 const INPUT_ICON_PX = 17;
+const TIGHT_INPUT_ICON_PX = 14;
+/** What a recipe row on a card has to itself, and what it spends at the full size. */
+const INPUT_ROW_PX = 118;
+const INPUT_GAP_PX = 5;
+const AMOUNT_PX = 17;
 const THUMB_PX = 40;
 const SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -81,6 +86,13 @@ function goodPicture(context: KnowledgeContext, goodId: string, boxPx: number): 
 
 const amountText = (amount: number): string => formatMessage(messages().knowledge.tree.amount, { amount });
 
+/** A recipe too long for its row at the full size. */
+function crowded(inputs: readonly { readonly amount: number }[]): boolean {
+  const amounts = inputs.filter((input) => input.amount > 1).length;
+  const spent = inputs.length * (INPUT_ICON_PX + INPUT_GAP_PX) - INPUT_GAP_PX + amounts * AMOUNT_PX;
+  return spent > INPUT_ROW_PX;
+}
+
 function goodCard(context: KnowledgeContext, good: KnowledgeGood): Card {
   const copy = messages().knowledge.tree;
   const inputs = billOf(context.base, good);
@@ -100,13 +112,14 @@ function goodCard(context: KnowledgeContext, good: KnowledgeGood): Card {
       text.append(name);
       if (inputs.length === 0) text.append(span('kn-card__from', source));
       else {
+        const tight = crowded(inputs);
         const list = document.createElement('span');
-        list.className = 'kn-card__in';
+        list.className = tight ? 'kn-card__in kn-card__in--tight' : 'kn-card__in';
         for (const input of inputs) {
           if (input.alternative) list.append(span('kn-card__or', copy.or));
           const item = document.createElement('span');
           item.className = 'kn-card__input';
-          item.append(goodPicture(context, input.good.id, INPUT_ICON_PX));
+          item.append(goodPicture(context, input.good.id, tight ? TIGHT_INPUT_ICON_PX : INPUT_ICON_PX));
           if (input.amount > 1) item.append(span('kn-card__amount', amountText(input.amount)));
           list.append(item);
         }

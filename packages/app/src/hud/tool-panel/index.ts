@@ -116,7 +116,8 @@ const NOTICE_MINIMAP_GAP = 16;
 export interface KnowledgeSource {
   createView(thumbs: BuildingThumbs): Promise<KnowledgeView>;
   /** Read the seat as of now, with the stock the HUD last counted. */
-  refresh(stocks: readonly StockCount[]): Promise<void>;
+  presentStocks(stocks: readonly StockCount[]): void;
+  refresh(): Promise<void>;
   buildingId(typeId: number): string | undefined;
 }
 
@@ -564,7 +565,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       opts.playerColourOf,
     );
     const residentFigures = new LiveFigures(opts.sheet, figureFrames, opts.playerColourOf);
-    let latestStocks: readonly StockCount[] = [];
     const windows = createToolWindows({
       knowledgeWindow: () => {
         const window = createKnowledgeWindow({
@@ -573,7 +573,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           art: paintedIcon('knowledge', KNOWLEDGE_ART_PX),
           closeLabel: shellCopy.close,
           createView: () => opts.knowledge.createView(thumbs),
-          refresh: () => opts.knowledge.refresh(latestStocks),
+          refresh: opts.knowledge.refresh,
           buildingId: opts.knowledge.buildingId,
         });
         window.onDismiss(() => focusOwner?.('knowledge'));
@@ -1013,7 +1013,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       update(model, peaceHoldsUntil): void {
         systemBar.update(model, peaceHoldsUntil);
         speed.refresh();
-        latestStocks = model.stocks;
+        opts.knowledge.presentStocks(model.stocks);
         windows.presentModel(model);
         windows.refresh();
         const open = windows.openId();

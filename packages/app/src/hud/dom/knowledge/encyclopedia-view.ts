@@ -6,16 +6,27 @@ import {
   type EntryCategory,
   placeOf,
 } from '../../knowledge/entry-blocks.js';
-import type { EntryRef } from '../../knowledge/model.js';
+import type { EntryRef, KnowledgeBase } from '../../knowledge/model.js';
 import { button, element, write } from '../parts/dom.js';
 import type { KnowledgeContext } from './context.js';
-import { buildingPicture, emptyEntry, goodIcon, node } from './entry-parts.js';
+import { buildingPicture, goodIcon, node } from './entry-parts.js';
 import { renderEntry } from './entry-view.js';
 
 const ROW_PICTURE_PX = 26;
 const DEFAULT_CATEGORY: EntryCategory = 'goods';
+export const ENCYCLOPEDIA_LIST_SCROLL = 'enc-list';
 
 const keyOf = (entry: EntryRef): string => `${entry.kind}:${entry.id}`;
+
+function sortedRows(base: KnowledgeBase, category: EntryCategory): readonly CategoryRow[] {
+  const compare = compareLabels();
+  return [...categoryRows(base, category)].sort((a, b) => compare(a.name, b.name));
+}
+
+/** Where the Encyclopedia opens before the reader picked anything. */
+export function firstEntry(base: KnowledgeBase): EntryRef | null {
+  return sortedRows(base, DEFAULT_CATEGORY)[0]?.entry ?? null;
+}
 
 function rowPicture(context: KnowledgeContext, { entry }: CategoryRow): Node | null {
   const { base, art } = context;
@@ -34,16 +45,20 @@ function rowPicture(context: KnowledgeContext, { entry }: CategoryRow): Node | n
   return art.animalPicture(image, Number(entry.id), ROW_PICTURE_PX) ? image : null;
 }
 
-/** The category rail, its list and the open entry; the page is rebuilt for each place the reader goes. */
-export function renderEncyclopedia(context: KnowledgeContext, opened: EntryRef | null): HTMLElement {
+/** The category rail, its list and the open entry; the page is rebuilt for each place the reader goes.
+ *  `onCategory` gets the first entry of a category the reader switches to. */
+export function renderEncyclopedia(
+  context: KnowledgeContext,
+  opened: EntryRef | null,
+  onCategory: (first: EntryRef) => void,
+): HTMLElement {
   const text = messages().knowledge.entry;
   const place = opened === null ? null : placeOf(context.base, opened);
-  let category = place?.category ?? DEFAULT_CATEGORY;
+  const category = place?.category ?? DEFAULT_CATEGORY;
   const selected = place === null ? null : keyOf(place.entry);
-  const compare = compareLabels();
 
   const list = element('div', 'kn-list');
-  list.dataset.keepScroll = 'enc-list';
+  list.dataset.keepScroll = ENCYCLOPEDIA_LIST_SCROLL;
   const rail = element('nav', 'kn-rail');
   const items = ENTRY_CATEGORIES.map((id) => {
     const item = button('kn-rail__item');
@@ -51,35 +66,33 @@ export function renderEncyclopedia(context: KnowledgeContext, opened: EntryRef |
       node('span', '', text.categories[id]),
       node('small', '', String(categoryRows(context.base, id).length)),
     );
+    item.setAttribute('aria-current', String(id === category));
     item.addEventListener('click', () => {
-      category = id;
-      paint();
+      const first = sortedRows(context.base, id)[0];
+      if (first !== undefined && id !== category) onCategory(first.entry);
     });
-    return { id, item };
+    return item;
   });
-  rail.append(...items.map(({ item }) => item));
+  rail.append(...items);
 
-  const paint = (): void => {
-    for (const { id, item } of items) item.setAttribute('aria-current', String(id === category));
-    const rows = [...categoryRows(context.base, category)].sort((a, b) => compare(a.name, b.name));
-    list.replaceChildren(
-      ...rows.map((row) => {
-        const item = button('kn-row');
-        item.dataset.go = keyOf(row.entry);
-        item.classList.toggle('is-selected', keyOf(row.entry) === selected);
-        const label = element('span', '');
-        write(label, row.name);
-        const picture = rowPicture(context, row);
-        if (picture !== null) item.append(picture);
-        item.append(label);
-        return item;
-      }),
-    );
-  };
-  paint();
+  list.replaceChildren(
+    ...sortedRows(context.base, category).map((row) => {
+      const item = button('kn-row');
+      item.dataset.go = keyOf(row.entry);
+      item.classList.toggle('is-selected', keyOf(row.entry) === selected);
+      const label = element('span', '');
+      write(label, row.name);
+      const picture = rowPicture(context, row);
+      if (picture !== null) item.append(picture);
+      item.append(label);
+      return item;
+    }),
+  );
 
   const page = element('div', 'on-parchment kn-page');
-  page.dataset.keepScroll = selected === null ? 'enc-entry' : `enc-${selected}`;
-  page.append(place === null ? emptyEntry(text.empty) : renderEntry(context, place.entry));
+  if (place !== null) {
+    page.dataset.keepScroll = `enc-${keyOf(place.entry)}`;
+    page.append(renderEntry(context, place.entry));
+  }
   return node('div', 'kn-enc', rail, list, page);
 }

@@ -1,4 +1,4 @@
-import { currentLocale, messages } from '../../../i18n/index.js';
+import { messages } from '../../../i18n/index.js';
 import {
   type Article,
   type ArticleGroup,
@@ -98,7 +98,6 @@ function fillBook(
   const scope: ArticleScope = {
     context,
     articles,
-    nativeText: articles.language === currentLocale(),
     dataBlock: (name) => renderDataBlock(context, name),
   };
   const page = element('div', 'on-parchment kn-page');

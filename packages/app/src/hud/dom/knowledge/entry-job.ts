@@ -63,8 +63,6 @@ function jobFilm(context: KnowledgeContext, job: KnowledgeJob, family: JobFamily
         clip: { kind: 'job', jobType, tribe, action: 'work' },
         // A hunter's trade is his shot, which the map plays as an attack.
         fallback: { kind: 'job', jobType, tribe, action: 'attack' },
-        name: text.job.filmWork,
-        text: '',
       },
     ]);
   }
@@ -195,8 +193,6 @@ export function renderJob(context: KnowledgeContext, job: KnowledgeJob): HTMLEle
   const article = family === 'hero' ? 'heroes' : family === 'soldier' ? 'damage' : 'trades';
   const render = (block: JobBlock): EntryBlock | null => {
     switch (block) {
-      case 'film':
-        return jobFilm(context, job, family);
       case 'does':
         return doesBlock(context, job);
       case 'worksIn':
@@ -213,7 +209,8 @@ export function renderJob(context: KnowledgeContext, job: KnowledgeJob): HTMLEle
         return articleLinks(context, null, [article]);
     }
   };
-  return entryPage({ picture: null, title: job.name, kicker: kickerOf(job, family) }, [
+  const film = jobFilm(context, job, family);
+  return entryPage({ picture: null, film, title: job.name, kicker: kickerOf(job, family) }, [
     statusBlock(context, job),
     ...jobBlocks(family, { does }).map(render),
   ]);

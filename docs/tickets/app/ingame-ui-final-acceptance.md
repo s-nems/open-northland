@@ -2,8 +2,7 @@
 
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
-**Blocked by:** [statistics-window](ingame-ui-statistics-window.md),
-[knowledge-dependencies](ingame-ui-knowledge-dependencies.md)
+**Blocked by:** [statistics-window](ingame-ui-statistics-window.md)
 
 Panels landed one at a time; one end-to-end pass has to catch inconsistent styles, remaining functional
 gaps and obsolete routes.
@@ -15,8 +14,7 @@ gaps and obsolete routes.
   priority, minimap and large map) to its new destination, and list the exact remaining blockers.
   Disabled placeholders are not complete functionality.
 - Review all panels together for style, density, icons, labels, focus, tooltip placement and
-  open/close rules. Remove dead legacy toolbar and help paths once replacements cover them, including
-  `hud/tool-panel/pending-window.ts`.
+  open/close rules. Remove dead legacy toolbar and help paths once replacements cover them.
 - Play an economy across construction, needs, residents, assistant, statistics, missions, diplomacy
   and Knowledge with notifications and a selection open at once.
 - Verify supported window sizes and UI scales, Polish and English text, ownership and spectator

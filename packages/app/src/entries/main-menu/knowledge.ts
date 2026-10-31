@@ -1,33 +1,48 @@
 import type { KnowledgeView } from '../../hud/dom/knowledge/context.js';
-import { currentLocale, messages } from '../../i18n/index.js';
+import { currentLocale, installNameOverlay, messages, type NameOverlay } from '../../i18n/index.js';
 import { node } from './dom.js';
 import type { MenuScreen, MountedScreen } from './model.js';
 import { screenHead } from './screen-head.js';
 import './knowledge.css';
 
-/** Everything the screen reads, imported only here: the menu's first paint downloads none of it. */
-async function loadView(): Promise<KnowledgeView | null> {
-  const [{ loadRealContent }, { loadIr }, { loadObjectHelp }, base, view, art, icons] = await Promise.all([
+interface LoadedView {
+  readonly view: KnowledgeView;
+  /** What the menu's other screens read once this one is left. */
+  readonly menuNames: NameOverlay;
+}
+
+/** Everything the screen reads, imported only here: the menu's first paint downloads none of it. The
+ *  game's names go in as a world's boot installs them, and only while the screen is still wanted. */
+async function loadView(wanted: () => boolean): Promise<LoadedView | null> {
+  const [{ loadRealContent }, { loadIr }, gui, names, base, view, art, icons] = await Promise.all([
     import('../../content/real-content.js'),
     import('../../content/ir/load.js'),
     import('../../content/gui/gfx.js'),
+    import('../../content/gui/original-names.js'),
     import('../../hud/knowledge/base.js'),
     import('../../hud/dom/knowledge/view.js'),
     import('../../hud/dom/knowledge/art.js'),
     import('../../hud/dom/good-art.js'),
     import('../../hud/dom/foundation.css'),
   ]);
-  const [content, ir, help] = await Promise.all([
+  const locale = currentLocale();
+  const [content, ir, help, strings, menuNames] = await Promise.all([
     loadRealContent(),
     loadIr(),
-    loadObjectHelp(currentLocale()),
+    gui.loadObjectHelp(locale),
+    gui.loadGuiStrings(locale),
+    names.originalTribeNameOverlay(locale),
   ]);
-  if (content === null) return null;
-  return view.createKnowledgeView({
-    base: base.createKnowledgeBase(content, help),
-    art: art.createKnowledgeArt({ ir, goodIcon: icons.createGoodIconPainter(null, content) }),
-    settlement: null,
-  });
+  if (content === null || !wanted()) return null;
+  if (strings !== null) names.installOriginalNames(locale, strings, content);
+  return {
+    view: view.createKnowledgeView({
+      base: base.createKnowledgeBase(content, help),
+      art: art.createKnowledgeArt({ ir, goodIcon: icons.createGoodIconPainter(null, content) }),
+      settlement: null,
+    }),
+    menuNames,
+  };
 }
 
 /** Knowledge with no game running: fills the view, reads the served content when it opens, and hands the
@@ -41,21 +56,18 @@ export function knowledgeScreen(open: (screen: MenuScreen) => void): MountedScre
   body.append(status);
   element.append(screenHead('knowledge', open), body);
 
-  let view: KnowledgeView | null = null;
+  let loaded: LoadedView | null = null;
   let left = false;
-  loadView()
-    .then((loaded) => {
-      if (left) {
-        loaded?.dispose();
-        return;
-      }
-      if (loaded === null) {
+  loadView(() => !left)
+    .then((made) => {
+      if (left) return;
+      if (made === null) {
         status.textContent = copy.unavailable;
         return;
       }
-      view = loaded;
-      body.replaceChildren(loaded.element);
-      loaded.open();
+      loaded = made;
+      body.replaceChildren(made.view.element);
+      made.view.open();
     })
     .catch((error: unknown) => {
       status.textContent = copy.unavailable;
@@ -63,10 +75,11 @@ export function knowledgeScreen(open: (screen: MenuScreen) => void): MountedScre
     });
   return {
     element,
-    escape: () => view?.escape() === true,
+    escape: () => loaded?.view.escape() === true,
     dispose: () => {
       left = true;
-      view?.dispose();
+      loaded?.view.dispose();
+      if (loaded !== null) installNameOverlay(currentLocale(), loaded.menuNames);
     },
   };
 }

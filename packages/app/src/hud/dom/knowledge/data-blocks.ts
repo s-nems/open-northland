@@ -17,6 +17,7 @@ import {
   stepSeconds,
   targetName,
 } from '../../knowledge/combat.js';
+import { rangeText } from '../../knowledge/entry-format.js';
 import { formatFactNumber } from '../../knowledge/facts.js';
 import { goodIconMarkup } from '../good-art.js';
 import { element, setStyleVar, write } from '../parts/dom.js';
@@ -94,10 +95,6 @@ function cadenceText(weapon: KnowledgeWeapon): string {
   return weapon.blows === 1
     ? formatMessage(cadence, { seconds })
     : formatMessage(cadenceBlows, { blows: weapon.blows, seconds });
-}
-
-function rangeText({ minRange, maxRange }: KnowledgeWeapon): string {
-  return minRange === maxRange ? String(maxRange) : `${minRange}-${maxRange}`;
 }
 
 function matrixTable(context: KnowledgeContext, state: MatrixState): HTMLElement {

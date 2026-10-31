@@ -22,14 +22,13 @@ const context = {
   go: () => undefined,
 } as unknown as KnowledgeContext;
 
-const scope = (nativeText: boolean): ArticleScope => ({
+const scope: ArticleScope = {
   context,
-  nativeText,
-  articles: { language: 'pol', groups: [] },
+  articles: { groups: [] },
   dataBlock: () => document.createElement('div'),
-});
+};
 
-const render = (block: ArticleBlock, nativeText = true): HTMLElement => renderBlock(block, scope(nativeText));
+const render = (block: ArticleBlock): HTMLElement => renderBlock(block, scope);
 
 describe('links', () => {
   const text = 'Mało [[good:wood|Drewna]] tu.';
@@ -38,12 +37,6 @@ describe('links', () => {
     const link = render({ p: text }).querySelector<HTMLElement>('[data-go]');
     expect(link?.dataset.go).toBe('good:wood');
     expect(link?.textContent).toBe('Drewna');
-  });
-
-  it("shows the reader's name over fallback text", () => {
-    expect(render({ p: text }, false).querySelector('[data-go]')?.textContent).toBe(
-      context.base.goodById.get('wood')?.name,
-    );
   });
 
   it('escapes what an article writes', () => {

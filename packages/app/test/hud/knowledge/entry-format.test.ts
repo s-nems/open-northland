@@ -47,6 +47,13 @@ describe('entry formatting', () => {
     expect(rangeText({ minRange: 1, maxRange: 1 })).toMatch(/^1 /);
   });
 
+  it('counts steps in the plural of the last number', () => {
+    setActiveLocale('pol');
+    expect(rangeText({ minRange: 1, maxRange: 1 })).toBe('1 krok');
+    expect(rangeText({ minRange: 1, maxRange: 2 })).toBe('1-2 kroki');
+    expect(rangeText({ minRange: 3, maxRange: 15 })).toBe('3-15 kroków');
+  });
+
   it('names the blows only when one clip lands several', () => {
     expect(cadenceText(weapon({ blows: 1 }))).not.toContain('5');
     expect(cadenceText(weapon({ blows: 5 }))).toContain('5');

@@ -60,6 +60,8 @@ export interface SpriteIconFrame {
 /** The facing an animal is cut at: `0` is SW in the body strip's block order, the near-side view whose
  *  silhouette still reads as the animal once it is shrunk into an icon. */
 const ANIMAL_ICON_FACING = 0;
+/** The walk strip's block with the whole body turned sideways. */
+const ANIMAL_SIDE_FACING = 1;
 
 /** A cart that recruits a draught animal is drawn as the harnessed type it becomes: the ox cart's yard
  *  spawns the ox-less cart, and the player ordered the ox cart. */
@@ -106,6 +108,21 @@ export function animalIconBob(
   if (palette === undefined || binding === null) return null;
   const idle: SpriteFrameRef = binding.idle;
   return { stem: animalBodyStem(palette), bobId: frameOf(idle, ANIMAL_ICON_FACING, 0) };
+}
+
+/** The stem and bob of a species in side view, walking: a resting pose can face the reader and shrink
+ *  to a blob (the dog sits head on, the duck floats end on). Null for a tribe with no bound body. */
+export function animalPictureBob(
+  ir: ContentIr,
+  tribe: number,
+): { readonly stem: string; readonly bobId: number } | null {
+  const palette = ANIMAL_PALETTE_BY_TRIBE.get(tribe);
+  const binding = animalBinding(ir, tribe, sequencesFor(ir, ANIMAL_BODY_IMAGELIB));
+  if (palette === undefined || binding === null) return null;
+  return {
+    stem: animalBodyStem(palette),
+    bobId: frameOf(binding.moving ?? binding.idle, ANIMAL_SIDE_FACING, 0),
+  };
 }
 
 async function animalIcon(ir: ContentIr, tribe: number) {

@@ -48,10 +48,13 @@ export function weaponClassText(weapon: Pick<KnowledgeWeapon, 'mainType'>, unarm
   return isRanged(weapon) ? names.ranged : names.melee;
 }
 
-export function rangeText(weapon: Pick<KnowledgeWeapon, 'minRange' | 'maxRange'>): string {
-  const value =
-    weapon.minRange === weapon.maxRange ? String(weapon.maxRange) : `${weapon.minRange}-${weapon.maxRange}`;
-  return formatMessage(copy().unit.halfCells, { value });
+/** `value` in steps, one step being one half-cell node; `count` picks the plural, the last number read. */
+export function stepsText(count: number, value: string = String(count)): string {
+  return formatMessage(pluralForm(count, copy().unit.steps, bcp47Tag()), { value });
+}
+
+export function rangeText({ minRange, maxRange }: Pick<KnowledgeWeapon, 'minRange' | 'maxRange'>): string {
+  return stepsText(maxRange, minRange === maxRange ? String(maxRange) : `${minRange}-${maxRange}`);
 }
 
 /** How often a weapon strikes: its clip's length, with the blows named when one clip lands several. */

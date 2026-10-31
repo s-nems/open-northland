@@ -154,7 +154,7 @@ describe('the knowledge base fighters', () => {
     });
   });
 
-  it('skips a pool-less swarm and the ox-less cart stage', () => {
+  it('skips a pool-less swarm, a species nothing draws and the ox-less cart stage', () => {
     const knowledge = base();
     expect(knowledge.animals.map((a) => a.tribe)).toEqual([WOLF_TRIBE, HARE_TRIBE]);
     expect(knowledge.vehicles.map((v) => v.id)).toEqual(['handcart']);

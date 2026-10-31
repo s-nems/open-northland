@@ -150,12 +150,6 @@
 .kn-article .kn-table .kn-dim {
   color: var(--ink-muted);
 }
-.kn-article .kn-table tbody .kn-table__group th {
-  padding-top: 9px;
-  font: 700 11.5px var(--font-caps);
-  letter-spacing: 0.09em;
-  color: var(--paper-warn);
-}
 .on-hud .kn-article .kn-table--matrix thead .on-good {
   margin-left: auto;
 }
@@ -165,6 +159,12 @@
 .kn-article .kn-table.kn-table--matrix th,
 .kn-article .kn-table.kn-table--matrix td {
   padding: 3px 4px;
+}
+.kn-article .kn-table tbody .kn-table__group th {
+  padding-top: 9px;
+  font: 700 11.5px var(--font-caps);
+  letter-spacing: 0.09em;
+  color: var(--paper-warn);
 }
 .kn-article .kn-table.kn-table--matrix th:first-child {
   width: 22%;

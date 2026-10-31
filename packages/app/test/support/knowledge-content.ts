@@ -5,6 +5,8 @@ import { ATTACK_ATOMIC } from '../../src/catalog/atomics.js';
 export const VIKING = 1;
 export const FRANK = 2;
 export const WOLF_TRIBE = 20;
+/** A species the data defines and no body look draws. */
+const BODILESS_TRIBE = 24;
 export const HARE_TRIBE = 16;
 export const CIVILIST_JOB = 6;
 export const SMITH_JOB = 13;
@@ -169,6 +171,7 @@ export function knowledgeContent(): ContentSet {
       { id: 'animal_20', tribeType: WOLF_TRIBE, hitpointsAdult: 1000, aggressive: true },
       { id: 'animal_16', tribeType: HARE_TRIBE, hitpointsAdult: 300, aggressive: true, warrantable: true },
       { id: 'animal_27', tribeType: 27 },
+      { id: 'animal_24', tribeType: BODILESS_TRIBE, hitpointsAdult: 1000 },
     ],
     vehicles: [
       { typeId: 1, id: 'handcart', jobId: 50, stockSlots: 15, hitpoints: 800, commanderJob: CARRIER_JOB },

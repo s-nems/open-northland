@@ -15,7 +15,7 @@ import {
   type TechRows,
   techSize,
 } from '../../knowledge/entry-blocks.js';
-import { counted, wholeText } from '../../knowledge/entry-format.js';
+import { counted, stepsText, wholeText } from '../../knowledge/entry-format.js';
 import { button } from '../parts/dom.js';
 import type { KnowledgeContext } from './context.js';
 import { recipeView } from './entry-good.js';
@@ -197,16 +197,15 @@ function levelsBlock(context: KnowledgeContext, building: KnowledgeBuilding): En
   return { node: section(copy().building.levels, row), side: true };
 }
 
-/** A footprint's width and height, in half-cell nodes; null for a type with none. */
+/** A footprint's width and height in steps; null for a type with none. */
 export function footprintSize(building: KnowledgeBuilding, tribe: number): string | null {
   const blocked = buildingFootprintFor(building.row, tribe)?.blocked ?? [];
   if (blocked.length === 0) return null;
   const across = blocked.map((cell) => cell.dx);
   const down = blocked.map((cell) => cell.dy);
-  return formatMessage(copy().unit.footprint, {
-    width: Math.max(...across) - Math.min(...across) + 1,
-    height: Math.max(...down) - Math.min(...down) + 1,
-  });
+  const width = Math.max(...across) - Math.min(...across) + 1;
+  const height = Math.max(...down) - Math.min(...down) + 1;
+  return stepsText(height, `${width} × ${height}`);
 }
 
 function healthBlock(context: KnowledgeContext, building: KnowledgeBuilding): EntryBlock {

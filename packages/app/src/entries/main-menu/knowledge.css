@@ -19,6 +19,34 @@
   pointer-events: auto;
 }
 
+/* No window head to sit in here: the tabs share one row with the tools and wrap under them when short. */
+.main-menu__knowledge-body.on-hud .kn-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  flex-shrink: 0;
+  padding: 7px 12px 0;
+  border-bottom: 1px solid #c9a26233;
+}
+.main-menu__knowledge-body.on-hud .kn-tool {
+  display: contents;
+}
+.main-menu__knowledge-body.on-hud .kn-tabs {
+  position: static;
+  order: 1;
+  margin-left: calc(var(--u) * 80);
+}
+.main-menu__knowledge-body.on-hud .kn-tool__gap {
+  order: 2;
+}
+.main-menu__knowledge-body.on-hud .kn-search {
+  order: 3;
+}
+.main-menu__knowledge-body.on-hud .kn-tribe {
+  order: 4;
+}
+
 .main-menu__knowledge-status {
   margin: auto;
   font: 500 calc(var(--u) * 26) / 1.4 var(--font-body);

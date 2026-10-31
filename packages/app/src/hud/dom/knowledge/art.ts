@@ -1,7 +1,6 @@
 import type { AtlasManifest } from '@open-northland/render';
-import { pictureSheetUrl } from '../../../content/atlas-sheet/index.js';
 import type { ContentIr } from '../../../content/ir/rows.js';
-import { animalIconBob, servedAtlas } from '../../../content/sprite-good-icons.js';
+import { animalPictureBob, servedAtlas } from '../../../content/sprite-good-icons.js';
 import { diag } from '../../../diag/index.js';
 import { buildingPicture, type PictureLayer } from '../../knowledge/picture.js';
 import { type BuildingThumbs, THUMB_BACKING_SCALE, thumbFit } from '../building-thumb.js';
@@ -45,17 +44,6 @@ export function placeLayers(
   };
 }
 
-/** A sheet served in colour, read as the page shows it. */
-async function colourSheet(atlas: AtlasManifest): Promise<HTMLImageElement | null> {
-  const url = pictureSheetUrl(atlas);
-  if (url === null) return null;
-  const image = new Image();
-  image.crossOrigin = 'anonymous';
-  image.src = url;
-  await image.decode();
-  return image;
-}
-
 /** Stills composed from the served sheets, kept as small images: a page is coloured once for its first
  *  picture and closed soon after the last, so an open tab holds pictures, not pages. */
 function createServedPictures() {
@@ -79,8 +67,7 @@ function createServedPictures() {
     if (placed === null) return null;
     const held: string[] = [];
     const sheetOf = (atlas: AtlasManifest): Promise<CanvasImageSource | null> => {
-      if (atlas.palette === undefined) return colourSheet(atlas);
-      const page = pages.acquire({ ...atlas, palette: atlas.palette });
+      const page = pages.acquire(atlas);
       held.push(page.key);
       return page.bitmap;
     };
@@ -166,7 +153,7 @@ export function createKnowledgeArt({ ir, goodIcon, thumbs }: KnowledgeArtInputs)
       return true;
     },
     animalPicture: (image, animalTribe, boxPx) => {
-      const bob = animalIconBob(ir, animalTribe);
+      const bob = animalPictureBob(ir, animalTribe);
       if (bob === null) return false;
       paint(image, `animal:${animalTribe}`, [{ stem: bob.stem, bob: bob.bobId, x: 0, y: 0 }], boxPx);
       return true;

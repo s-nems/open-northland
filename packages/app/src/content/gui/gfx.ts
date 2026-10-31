@@ -108,7 +108,7 @@ export async function loadGuiHistory(
 }
 
 /** One language's goods and houses descriptions, fetched only when a reader asks; `null` for a language
- *  that ships none (the overlay languages) or a checkout without them. */
+ *  or a checkout without them. */
 export async function loadObjectHelp(
   locale: string,
   fetchImpl: ContentFetch = contentFetch,

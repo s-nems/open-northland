@@ -27,9 +27,11 @@ export interface KnowledgeSeatDeps {
   readonly progressOf: (player: number) => DiscoveryProgressRead;
 }
 
-/** The seat's facts as of the last `refresh`, which the window runs before it renders. */
+/** The seat's statuses as of the last `refresh`, which the window runs before it renders; the stock lines
+ *  are the HUD's own, so a page rendered at any time reads the amounts the bar's model holds. */
 export interface LiveKnowledgeSettlement extends KnowledgeSettlement {
-  refresh(stocks: readonly StockCount[]): Promise<void>;
+  presentStocks(stocks: readonly StockCount[]): void;
+  refresh(): Promise<void>;
 }
 
 export function knowledgeStatusOf(
@@ -45,13 +47,15 @@ export function knowledgeStatusOf(
 export function createKnowledgeSettlement(deps: KnowledgeSeatDeps): LiveKnowledgeSettlement {
   const { content, tribe } = deps;
   let statuses: ReadonlyMap<string, KnowledgeStatus> = new Map();
-  let stocks: ReadonlyMap<number, number> = new Map();
+  let stocks: readonly StockCount[] = [];
   return {
     tribe,
     status: (kind, typeId) => statuses.get(`${kind}:${typeId}`) ?? AVAILABLE,
-    stock: (goodType) => stocks.get(goodType) ?? 0,
-    refresh: async (counted) => {
-      stocks = new Map(counted.map((s) => [s.goodType, s.amount]));
+    stock: (goodType) => stocks.find((line) => line.goodType === goodType)?.amount ?? 0,
+    presentStocks: (lines) => {
+      stocks = lines;
+    },
+    refresh: async () => {
       const player = deps.seat();
       if (player === null) {
         statuses = new Map();

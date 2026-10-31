@@ -104,9 +104,9 @@ describe('block selection', () => {
 
   it('shows a soldier his weapon and training, a trade its workplace', () => {
     expect(jobFamily({ typeId: SOLDIER })).toBe('soldier');
-    expect(jobBlocks('soldier', { does: false })).toEqual(['film', 'weapon', 'train', 'leadsTo', 'links']);
+    expect(jobBlocks('soldier', { does: false })).toEqual(['weapon', 'train', 'leadsTo', 'links']);
     expect(jobFamily({ typeId: TRADE })).toBe('trade');
-    expect(jobBlocks('trade', { does: true }).slice(0, 4)).toEqual(['film', 'does', 'worksIn', 'learn']);
+    expect(jobBlocks('trade', { does: true }).slice(0, 3)).toEqual(['does', 'worksIn', 'learn']);
   });
 
   it('drops the yield and attack an animal does not have', () => {

@@ -167,8 +167,9 @@ export interface EntryFilm {
   readonly clip: KnowledgeClip;
   /** Played when `clip` has no record. */
   readonly fallback?: KnowledgeClip;
-  readonly name: string;
-  readonly text: string;
+  /** The caption; a head film of one clip goes without. */
+  readonly name?: string;
+  readonly text?: string;
 }
 
 /** The looping previews of an entry. No motion, or no clip that plays, makes no block at all. */
@@ -186,7 +187,8 @@ export function filmBlock(
     const stop = motion.play(stage, clip) ?? (fallback === undefined ? null : motion.play(stage, fallback));
     if (stop === null) continue;
     stops.push(stop);
-    figure.append(node('div', 'kn-motion__clip', stage, node('figcaption', '', node('b', '', name), text)));
+    const caption = name === undefined ? null : node('figcaption', '', node('b', '', name), text ?? '');
+    figure.append(node('div', 'kn-motion__clip', stage, caption));
   }
   if (stops.length === 0) return null;
   return {
@@ -240,6 +242,8 @@ export function articleLinks(
 
 export interface EntryHead {
   readonly picture: Node | null;
+  /** Plays in the picture's place, for an entry with no still of its own. */
+  readonly film?: EntryBlock | null;
   readonly title: string;
   readonly kicker: string;
 }
@@ -298,13 +302,13 @@ export function entryPage(head: EntryHead, blocks: readonly (EntryBlock | null)[
     node(
       'header',
       'kn-entry__head',
-      head.picture,
+      head.picture ?? head.film?.node ?? null,
       node('div', 'kn-entry__title', node('h2', '', head.title), node('p', '', head.kicker)),
     ),
     columns,
     ...present.filter((block) => block.node instanceof HTMLQuoteElement).map((block) => block.node),
   );
-  const releases = present.flatMap((block) => block.release ?? []);
+  const releases = [head.film ?? null, ...present].flatMap((block) => block?.release ?? []);
   if (releases.length > 0) {
     releaseWhenRemoved(root, () => {
       for (const release of releases) release();

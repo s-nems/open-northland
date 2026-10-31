@@ -15,7 +15,7 @@ import type {
   KnowledgeTree,
   KnowledgeView,
 } from './context.js';
-import { renderEncyclopedia } from './encyclopedia-view.js';
+import { ENCYCLOPEDIA_LIST_SCROLL, firstEntry, renderEncyclopedia } from './encyclopedia-view.js';
 import { createTreeView, SCALE_DEFAULT_PCT, type TreeScales, type TreeView, treeHolds } from './tree-view.js';
 import './knowledge.css';
 
@@ -166,7 +166,9 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     tool.append(label);
   }
   const main = element('div', 'kn-main');
-  root.append(tabs, tool, main);
+  const head = element('div', 'kn-head');
+  head.append(tabs, tool);
+  root.append(head, main);
 
   const dropTree = (): void => {
     tree?.view.dispose();
@@ -262,13 +264,22 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
     if (search.value !== place.query) search.value = place.query;
     if (place.query.trim() !== '') showPage(searchPage(place.query), restored);
     else if (isTree(place.tab)) showTree(place.tab, restored);
-    else if (place.tab === 'encyclopedia') showPage(renderEncyclopedia(context, place.entry), restored);
-    else {
+    else if (place.tab === 'encyclopedia') {
+      // Picking for the reader takes no step of theirs, so the place is rewritten rather than left.
+      place = { ...place, entry: place.entry ?? firstEntry(deps.base) };
+      showPage(renderEncyclopedia(context, place.entry, openCategory), restored);
+    } else {
       const focus = place.calculator === null ? {} : { calculator: place.calculator };
       const article = place.article ?? articleGroups()[0]?.items[0]?.id ?? '';
       showPage(renderArticle(context, article, focus), restored);
     }
   }
+
+  const openCategory = (first: EntryRef): void => {
+    place = { ...place, entry: first };
+    scrolls.delete(ENCYCLOPEDIA_LIST_SCROLL);
+    render();
+  };
 
   const backOne = (): void => {
     const step = past.pop();

@@ -284,13 +284,13 @@ export function jobFamily(job: Pick<KnowledgeJob, 'typeId'>): JobFamily {
   return job.typeId >= JOB_SOLDIER_UNARMED ? 'soldier' : 'trade';
 }
 
-export type JobBlock = 'film' | 'does' | 'worksIn' | 'weapon' | 'learn' | 'train' | 'leadsTo' | 'links';
+export type JobBlock = 'does' | 'worksIn' | 'weapon' | 'learn' | 'train' | 'leadsTo' | 'links';
 
 /** A hero is found, never taught, so his page has no way to learn it and leads nowhere. */
 export function jobBlocks(family: JobFamily, shows: { readonly does: boolean }): readonly JobBlock[] {
-  if (family === 'hero') return ['film', 'weapon', 'links'];
-  if (family === 'soldier') return ['film', 'weapon', 'train', 'leadsTo', 'links'];
-  return ['film', ...(shows.does ? (['does'] as const) : []), 'worksIn', 'learn', 'leadsTo', 'links'];
+  if (family === 'hero') return ['weapon', 'links'];
+  if (family === 'soldier') return ['weapon', 'train', 'leadsTo', 'links'];
+  return [...(shows.does ? (['does'] as const) : []), 'worksIn', 'learn', 'leadsTo', 'links'];
 }
 
 /** The trades this one's practice opens. A hero's requirement counts a fight, not a career. */

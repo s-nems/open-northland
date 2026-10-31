@@ -3,7 +3,6 @@ import {
   type ArticleBlock,
   type ArticleTable,
   fillTokens,
-  type InlinePart,
   type LoadedArticles,
   parseInline,
 } from '../../knowledge/articles.js';
@@ -20,8 +19,6 @@ const GOOD_CELL_ICON_PX = 20;
 /** What rendering an article's text needs. */
 export interface ArticleScope {
   readonly context: KnowledgeContext;
-  /** False when the text is another language's fallback, so a link shows the reader's own name. */
-  readonly nativeText: boolean;
   readonly articles: LoadedArticles;
   readonly dataBlock: (name: Extract<ArticleBlock, { data: unknown }>['data']) => HTMLElement;
 }
@@ -34,35 +31,12 @@ export function goLink(target: string, label: string): HTMLButtonElement {
   return link;
 }
 
-/** The name the reader's language gives a link's target; the authored label where it names nothing. */
-function targetName({ context }: ArticleScope, part: Extract<InlinePart, { kind: string }>): string {
-  const { base } = context;
-  switch (part.kind) {
-    case 'good':
-      return base.goodById.get(part.id)?.name ?? part.label;
-    case 'building':
-      return base.buildingById.get(part.id)?.name ?? part.label;
-    case 'job':
-      return base.jobById.get(part.id)?.name ?? part.label;
-    case 'vehicle':
-      return base.vehicles.find((v) => v.id === part.id)?.name ?? part.label;
-    case 'animal':
-      return base.animals.find((a) => String(a.tribe) === part.id)?.name ?? part.label;
-    case 'article':
-      return part.label;
-  }
-}
-
-/** A sentence in its own language keeps its inflected label ("kilka Drewna"); a name swapped in cannot. */
-const linkLabel = (scope: ArticleScope, part: Extract<InlinePart, { kind: string }>): string =>
-  scope.nativeText ? part.label : targetName(scope, part);
-
 /** Appends `text` to `host`, with its `{{fact}}` numbers filled and its links live. */
 export function appendInline(host: HTMLElement, text: string, scope: ArticleScope): void {
   const filled = fillTokens(text, (name) => factText(name, scope.context.base));
   for (const part of parseInline(filled)) {
     if ('text' in part) host.append(part.text);
-    else host.append(goLink(`${part.kind}:${part.id}`, linkLabel(scope, part)));
+    else host.append(goLink(`${part.kind}:${part.id}`, part.label));
   }
 }
 
