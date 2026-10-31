@@ -71,6 +71,7 @@ export const MILITARY_RULES = [
   'underAttack',
   'outmatched',
   'ratioReached',
+  'armyOutgrown',
   'noTarget',
   'harasserPlan',
   'raidTargetKnown',

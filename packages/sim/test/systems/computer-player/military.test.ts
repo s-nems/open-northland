@@ -276,7 +276,9 @@ function holdPosture(sim: Simulation, plan: MilitaryPlan, posture: MilitaryPostu
 
 const NO_POSTURE_INPUTS = {
   ownPoints: 0,
+  ownMen: 0,
   targetOwner: null,
+  targetOverSea: false,
   targetPoints: null,
   strongestPoints: null,
   threatInTicks: null,

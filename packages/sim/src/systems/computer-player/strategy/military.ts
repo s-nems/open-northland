@@ -119,6 +119,13 @@ export const DEFEND_RATIO: Share = { num: 3, den: 2 };
 export const DEFEND_HOLD_RATIO: Share = { num: 6, den: 5 };
 /** An attacking seat keeps attacking down to this share of its plan's launch edge (authored). */
 export const ATTACK_HOLD_SHARE: Share = { num: 9, den: 10 };
+/** Owner ruling: a defensive seat whose target lies over the sea cannot scout him from home, so it must not
+ *  wait forever for an edge it cannot measure: from this many fit soldiers its army is too big to keep at
+ *  home, and it attacks by landing from parity with what it believes defends him. Authored figure: a big
+ *  landing of four small ships loaded to nine tenths carries 72 men; on arabskie_wyspy with every seat at
+ *  war the defensive seats held 64 and 68 soldiers at minute 90 and 112 and 80 at minute 100, one stopping
+ *  there, the other going on to 210 by minute 120. */
+export const DEFENSIVE_SEA_ARMY_MEN = 80;
 /** A seat that prepares or defends keeps this much more of its floor (authored). */
 export const HOLD_FLOOR_SHARE: Share = { num: 5, den: 4 };
 
@@ -130,8 +137,12 @@ export function drawMilitaryPlan(ctx: SystemContext): MilitaryPlan {
 /** What a posture review reads, gathered by {@link postureInputsOf}. */
 export interface PostureInputs {
   readonly ownPoints: number;
+  /** The seat's fit soldiers, tower garrisons counted once. */
+  readonly ownMen: number;
   readonly targetOwner: number | null;
   readonly targetPoints: number | null;
+  /** Only a ship reaches the target's owner: his headquarters is the one the sea route sails for. */
+  readonly targetOverSea: boolean;
   readonly strongestPoints: number | null;
   readonly threatInTicks: number | null;
   readonly underAttack: boolean;
@@ -144,8 +155,9 @@ export interface PostureInputs {
  * The posture the inputs argue for: defend under a raid, else prepare inside a forecast attack's lead
  * time, else defend against a clearly stronger enemy, else on a map won by holding an area prepare: the
  * army builds up at home for the hold and goes nowhere else (owner ruling: such a map is about taking the
- * area). Else attack once own points reach the plan's edge over the target's owner (harass for the
- * harasser), else harass a known raid target, else prepare while building up. `held` is the current
+ * area). Else attack once own points reach the plan's edge over the target's owner, or for a defensive
+ * seat whose target lies over the sea once its army reaches {@link DEFENSIVE_SEA_ARMY_MEN} at parity (harass
+ * for the harasser), else harass a known raid target, else prepare while building up. `held` is the current
  * posture, which widens its own thresholds. Pure; `evidence` lists every rule that fired.
  */
 export function selectPosture(
@@ -179,6 +191,15 @@ export function selectPosture(
     'ratioReached',
     ownPoints > 0 && targetPoints !== null && launchRatioReached(ownPoints, targetPoints, edge),
   );
+  const outgrown = fire(
+    'armyOutgrown',
+    !ratio &&
+      plan === 'defensive' &&
+      inputs.targetOverSea &&
+      inputs.ownMen >= DEFENSIVE_SEA_ARMY_MEN &&
+      targetPoints !== null &&
+      launchRatioReached(ownPoints, targetPoints, WHOLE),
+  );
   const harasser = fire('harasserPlan', plan === 'harasser');
   const raidTarget = fire('raidTargetKnown', inputs.raidTargetKnown);
   let posture: MilitaryPosture;
@@ -189,7 +210,7 @@ export function selectPosture(
     fired.add('buildingUp');
     posture = 'prepare';
   } else if (harasser) posture = 'harass';
-  else if (ratio) posture = 'attack';
+  else if (ratio || outgrown) posture = 'attack';
   else if (raidTarget) posture = 'harass';
   else {
     fired.add('buildingUp');
@@ -266,24 +287,30 @@ function seaTargetOwner(world: World, ctx: SystemContext, seat: number): number 
  * enemy building. Costs the campaign target pick and the enemies' fighters.
  */
 export function postureInputsOf(world: World, ctx: SystemContext, seat: number): PostureInputs {
-  const own = ownArmyPoints(world, ctx, seat).points;
+  const army = ownArmyPoints(world, ctx, seat);
+  const own = army.points;
   const terrain = ctx.terrain;
   let targetOwner: number | null = null;
+  let targetOverSea = false;
   let underAttack = false;
   if (terrain !== undefined) {
     const barracks = seatBarracksOf(world, ctx, seat);
-    targetOwner =
+    const landOwner =
       barracks === null
         ? null
         : (campaignObjective(world, ctx, terrain, seat, interactionCell(world, ctx, terrain, barracks))
-            ?.owner ?? seaTargetOwner(world, ctx, seat));
+            ?.owner ?? null);
+    targetOwner = barracks === null ? null : (landOwner ?? seaTargetOwner(world, ctx, seat));
+    targetOverSea = landOwner === null && targetOwner !== null;
     const owned = ownedBuildings(world, seat);
     underAttack =
       raidOnTheSettlement(world, ctx, terrain, owned, seatRaiders(world, ctx, terrain, seat)) !== null;
   }
   return {
     ownPoints: own,
+    ownMen: army.men,
     targetOwner,
+    targetOverSea,
     targetPoints: targetOwner === null ? null : believedDefendingPoints(world, ctx, seat, targetOwner, own),
     strongestPoints: strongestBelievedEnemy(world, ctx, seat, stayingGuardians(world, ctx, seat)).points,
     threatInTicks: nearestThreatIn(world, ctx, seat),
@@ -416,7 +443,8 @@ export function ordersFor(
   return {
     plan,
     posture,
-    launchRatio: holdHome ? null : tuning.launchRatio,
+    // A defensive army too big to keep home lands from parity (DEFENSIVE_SEA_ARMY_MEN).
+    launchRatio: holdHome ? null : evidence.includes('armyOutgrown') ? WHOLE : tuning.launchRatio,
     holdHome,
     raidsAllowed,
     raidsRecalled: !raidsAllowed && !(flankSeat && posture !== 'defend'),

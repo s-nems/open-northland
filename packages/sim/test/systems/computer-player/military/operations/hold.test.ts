@@ -189,7 +189,9 @@ function holdPosture(
   }
   const inputs = {
     ownPoints: 0,
+    ownMen: 0,
     targetOwner: null,
+    targetOverSea: false,
     targetPoints: null,
     strongestPoints: null,
     threatInTicks: null,

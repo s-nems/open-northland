@@ -8,6 +8,7 @@ import {
 import { Simulation } from '../../../../src/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
 import {
+  DEFENSIVE_SEA_ARMY_MEN,
   ordersFor,
   POSTURE_REVIEW_EVERY_DECISIONS,
   POSTURE_SWITCH_REVIEWS,
@@ -28,7 +29,9 @@ const ENEMY_POINTS = 100;
 function inputs(own: number, overrides: Partial<PostureInputs> = {}): PostureInputs {
   return {
     ownPoints: own,
+    ownMen: 0,
     targetOwner: TARGET,
+    targetOverSea: false,
     targetPoints: ENEMY_POINTS,
     strongestPoints: ENEMY_POINTS,
     threatInTicks: null,
@@ -157,6 +160,23 @@ describe('military posture', () => {
     expect(posture('balanced', ENEMY_POINTS)).toBe('attack');
     expect(posture('defensive', ENEMY_POINTS)).not.toBe('attack');
     expect(posture('defensive', (3 * ENEMY_POINTS) / 2)).toBe('attack');
+  });
+
+  it('lands a defensive army too big to keep home from parity when its target lies over the sea', () => {
+    const big = (overrides: Partial<PostureInputs> = {}) =>
+      inputs(ENEMY_POINTS, { ownMen: DEFENSIVE_SEA_ARMY_MEN, targetOverSea: true, ...overrides });
+    const chosen = selectPosture('defensive', big(), null);
+    expect(chosen.posture).toBe('attack');
+    expect(chosen.evidence).toContain('armyOutgrown');
+    expect(ordersFor('defensive', 'attack', chosen.evidence).launchRatio).toEqual({ num: 1, den: 1 });
+    expect(ordersFor('defensive', 'attack').launchRatio).toEqual({ num: 3, den: 2 });
+    expect(selectPosture('defensive', big(), 'attack').posture).toBe('attack');
+    // Smaller, on the same land, or short of what it believes defends the target: it keeps building up.
+    expect(selectPosture('defensive', big({ ownMen: DEFENSIVE_SEA_ARMY_MEN - 1 }), null).posture).toBe(
+      'prepare',
+    );
+    expect(selectPosture('defensive', big({ targetOverSea: false }), null).posture).toBe('prepare');
+    expect(selectPosture('defensive', big({ targetPoints: ENEMY_POINTS + 1 }), null).posture).toBe('prepare');
   });
 
   it('never attacks with no army, even against a target taken at parity', () => {
