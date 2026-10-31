@@ -319,7 +319,7 @@ describe('the seat strategy shapes the build order', () => {
       1, 2,
     ]);
     expect(lowerBakeries(shapeBuildOrder(DEFAULT_BUILD_ORDER, { ...shape, archetype: 'cramped' }))).toEqual([
-      1, 1,
+      1,
     ]);
   });
 

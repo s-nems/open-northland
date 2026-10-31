@@ -360,7 +360,7 @@ function copyCapsOf(tuning: ArchetypeTuning, sides: readonly EconomicSide[]): Co
 function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop, caps: CopyCaps): BuildLine {
   let steps = line.steps
     .filter((entry) => !tuning.drops.includes(entry) && !dropped(entry))
-    .map((entry) => copiesOf(entry, caps));
+    .flatMap((entry) => copiesOf(entry, caps));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;
     const leading = (entry: BuildOrderEntry) => entry.kind === 'place' && entry.onlyWhen === lead;
@@ -372,12 +372,15 @@ function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop, 
 }
 
 /** A placement, upgrade or housing lane asking for more than one copy, its count cut to the seat's cap.
- *  A cap never drops the step: a count already under it stands met the sooner. */
-function copiesOf(entry: BuildOrderEntry, caps: CopyCaps): BuildOrderEntry {
+ *  A cap never drops an upgrade or a lane: a count already under it stands met the sooner. A copy placement
+ *  capped to one goes, since its line's first placement already raises that one, and while that building
+ *  climbs a tier the copy would count none at its own tier and raise a second. */
+function copiesOf(entry: BuildOrderEntry, caps: CopyCaps): BuildOrderEntry[] {
   if ((entry.kind !== 'place' && entry.kind !== 'upgrade' && entry.kind !== 'housing') || entry.count <= 1)
-    return entry;
+    return [entry];
   const count = Math.min(entry.count, caps[entry.building] ?? entry.count);
-  return count === entry.count ? entry : { ...entry, count };
+  if (count === entry.count) return [entry];
+  return entry.kind === 'place' && count === 1 ? [] : [{ ...entry, count }];
 }
 
 /** `priority` with `lines` moved, in their order, right behind `behind`. */
