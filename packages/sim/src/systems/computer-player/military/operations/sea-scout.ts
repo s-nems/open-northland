@@ -13,12 +13,13 @@ import {
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../../core/loop.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import type { HalfCellNode } from '../../../../nav/halfcell.js';
+import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
+import { vehicleIndex } from '../../../vehicles/registry.js';
 import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
 import { unitPoints } from '../points.js';
-import { freeShips, LANDING_FORM_TIMEOUT_TICKS } from './landing.js';
+import { freeShips, LANDING_FORM_TIMEOUT_TICKS, LANDING_SHORE_SPACING_NODES } from './landing.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { believedTowers, nodeOfEntity, towerInReach } from './raid-target.js';
 
@@ -119,16 +120,58 @@ function mooredHome(world: World, op: SeaScoutOperation): boolean {
   return state?.moored === true && state.mooring?.hx === op.home.hx && state.mooring.hy === op.home.hy;
 }
 
-function dockHome(op: SeaScoutOperation): PlayerCommand {
-  return { kind: 'dockVehicle', vehicle: op.ship, x: op.home.hx, y: op.home.hy };
+/** Whether the ship lies moored at any shore of the land it set out from. */
+function mooredHomeLand(env: OperationEnv, op: SeaScoutOperation): boolean {
+  const { world, terrain } = env;
+  const state = shipState(world, op);
+  const at = state?.moored === true ? state.mooring : null;
+  if (at === null || at === undefined || !terrain.inBounds(at.hx, at.hy)) return false;
+  return (
+    terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) ===
+    terrain.componentOf(terrain.nodeAtClamped(op.home.hx, op.home.hy))
+  );
+}
+
+function dockAt(op: SeaScoutOperation, at: HalfCellNode): PlayerCommand {
+  return { kind: 'dockVehicle', vehicle: op.ship, x: at.hx, y: at.hy };
+}
+
+/**
+ * Where the ship docks once its dock at home was refused or spent short of it: the shore point of its home
+ * land nearest the ship, at least {@link LANDING_SHORE_SPACING_NODES} from where any other of the seat's
+ * ships lies moored (a ship moored at home since takes the ring the scout would lie on), the lowest node on
+ * a tie; null when none.
+ */
+function homeShore(env: OperationEnv, op: SeaScoutOperation): HalfCellNode | null {
+  const { world, ctx, terrain, seat } = env;
+  const from = nodeOfEntity(world, op.ship);
+  const spots = mooringSpotsOf(world, ctx, terrain, op.ship);
+  if (from === null || spots === null) return null;
+  const land = terrain.componentOf(terrain.nodeAtClamped(op.home.hx, op.home.hy));
+  const taken: HalfCellNode[] = [];
+  for (const e of vehicleIndex(world).ownedBy(seat)) {
+    const state = world.get(e, Vehicle);
+    if (e !== op.ship && state.moored && state.mooring !== null) taken.push(state.mooring);
+  }
+  let best: { at: HalfCellNode; node: NodeId; distance: number } | null = null;
+  for (const node of spots.spots) {
+    if (terrain.componentOf(node) !== land) continue;
+    const { x, y } = terrain.coordsOf(node);
+    const at = { hx: x, hy: y };
+    if (taken.some((t) => nodeManhattan(t, at) < LANDING_SHORE_SPACING_NODES)) continue;
+    const distance = nodeManhattan(at, from);
+    if (best === null || distance < best.distance || (distance === best.distance && node < best.node))
+      best = { at, node, distance };
+  }
+  return best?.at ?? null;
 }
 
 function sailTo(op: SeaScoutOperation, at: HalfCellNode): PlayerCommand {
   return { kind: 'moveVehicle', vehicle: op.ship, x: at.hx, y: at.hy };
 }
 
-function unload(op: SeaScoutOperation): PlayerCommand {
-  return { kind: 'unloadPeople', vehicle: op.ship, mooring: { x: op.home.hx, y: op.home.hy } };
+function unload(op: SeaScoutOperation, at: HalfCellNode = op.home): PlayerCommand {
+  return { kind: 'unloadPeople', vehicle: op.ship, mooring: { x: at.hx, y: at.hy } };
 }
 
 function turnHome(
@@ -138,13 +181,13 @@ function turnHome(
 ): PlayerCommand[] {
   enter(op, 'withdrawing', env.ctx.tick, reason);
   op.leg = op.waypoints.length;
-  return mooredHome(env.world, op) ? homecoming(env, op) : [dockHome(op)];
+  return mooredHomeLand(env, op) ? homecoming(env, op) : [dockAt(op, op.home)];
 }
 
-/** Moored at home: the soldier steps ashore and the trip ends. */
+/** Moored at a shore of home: the soldier steps ashore there and the trip ends. */
 function homecoming(env: OperationEnv, op: SeaScoutOperation): PlayerCommand[] {
   enter(op, 'done', env.ctx.tick, op.reason ?? 'arrivedHome');
-  return [unload(op)];
+  return [unload(op, shipState(env.world, op)?.mooring ?? op.home)];
 }
 
 /** Forming: the soldier walks to the ship and boards, its first leg held until he is in. Past the landing's
@@ -180,16 +223,18 @@ function sailing(env: OperationEnv, op: SeaScoutOperation): PlayerCommand[] {
   return next === undefined ? turnHome(env, op, null) : [sailTo(op, next)];
 }
 
-/** Withdrawing: the ship docks at home, sent again when it stopped short, and lets its soldier go there;
- *  past the trip timeout the operation lets go of a ship that never made it. */
+/** Withdrawing: the ship docks at home, at another shore of home when that dock is refused or spent short
+ *  ({@link homeShore}), and lets its soldier go there; past the trip timeout the operation lets go of a
+ *  ship that never made it. */
 function withdrawing(env: OperationEnv, op: SeaScoutOperation): PlayerCommand[] {
   const { world, ctx } = env;
-  if (mooredHome(world, op)) return homecoming(env, op);
+  if (mooredHomeLand(env, op)) return homecoming(env, op);
   if (ctx.tick - op.since >= SEA_SCOUT_TRIP_TIMEOUT_TICKS) {
     enter(op, 'done', ctx.tick, 'timedOut');
     return [];
   }
-  return lyingStill(world, op) ? [dockHome(op)] : [];
+  if (!lyingStill(world, op)) return [];
+  return [dockAt(op, homeShore(env, op) ?? op.home)];
 }
 
 function step(env: OperationEnv, op: SeaScoutOperation): readonly PlayerCommand[] {
