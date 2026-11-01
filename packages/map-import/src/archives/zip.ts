@@ -1,7 +1,7 @@
-import { Inflate } from 'fflate';
 import { errorMessage, MapImportError } from '../errors.js';
 import type { TreeBuilder } from '../tree.js';
-import type { ArchiveEntry } from './entries.js';
+import type { ArchiveEntry, KeepEntry } from './entries.js';
+import { inflateBounded } from './inflate.js';
 
 /** End-of-central-directory, ZIP64 locator and central-header signatures (APPNOTE 4.3.16, 4.3.15, 4.3.12). */
 const EOCD_SIGNATURE = 0x06054b50;
@@ -40,7 +40,7 @@ interface ZipEntry {
   readonly method: number;
 }
 
-function readEntries(bytes: Uint8Array, builder: TreeBuilder, keep: (path: string) => boolean): ZipEntry[] {
+function readEntries(bytes: Uint8Array, builder: TreeBuilder, keep: KeepEntry): ZipEntry[] {
   const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
   const entries: ZipEntry[] = [];
   const names = new Set<string>();
@@ -76,11 +76,11 @@ function readEntries(bytes: Uint8Array, builder: TreeBuilder, keep: (path: strin
     const nameBytes = bytes.subarray(at + CENTRAL_HEADER_BYTES, at + CENTRAL_HEADER_BYTES + nameLength);
     const path =
       (flags & FLAG_UTF8) !== 0 ? new TextDecoder().decode(nameBytes) : String.fromCharCode(...nameBytes);
-    if (!path.endsWith('/') && keep(path)) {
+    const size = view.getUint32(at + CENTRAL_UNCOMPRESSED_SIZE, true);
+    if (!path.endsWith('/') && keep(path, size)) {
       if ((flags & FLAG_ENCRYPTED) !== 0) throw new Error(`${path} is encrypted`);
       if (names.has(path)) throw new Error(`duplicate entry ${path}`);
       names.add(path);
-      const size = view.getUint32(at + CENTRAL_UNCOMPRESSED_SIZE, true);
       builder.reserve(path, size);
       const local = view.getUint32(at + CENTRAL_LOCAL_OFFSET, true);
       if (local + 30 > bytes.length || view.getUint32(local, true) !== 0x04034b50)
@@ -105,15 +105,6 @@ function readEntries(bytes: Uint8Array, builder: TreeBuilder, keep: (path: strin
   return entries;
 }
 
-/** A small compressed chunk bounds inflation overshoot before its callback checks actual output.
- * DEFLATE's maximum expansion is bounded by its 258-byte length codes; 512 input bytes cannot
- * allocate an entire forged multi-megabyte entry before this check runs. */
-const INFLATE_CHUNK_BYTES = 512;
-/** Resource policy, not a DEFLATE validity rule. Stored blocks can wait for 65535 input bytes before
- * producing output. Twice that allowance bounds decoder retention after an early final block or
- * a long sequence of empty blocks; unusual valid streams without progress may exceed this budget. */
-const MAX_INFLATE_NO_OUTPUT_BYTES = 128 * 1024;
-
 function inflateEntry(entry: ZipEntry): Uint8Array {
   if (entry.method === 0) {
     if (entry.compressed.length !== entry.size) throw new Error(`${entry.path}: size mismatch`);
@@ -121,22 +112,12 @@ function inflateEntry(entry: ZipEntry): Uint8Array {
   }
   const output = new Uint8Array(entry.size);
   let written = 0;
-  const inflater = new Inflate((chunk) => {
+  inflateBounded(entry.compressed, entry.path, (chunk) => {
     if (written + chunk.length > entry.size)
       throw new Error(`${entry.path}: inflated size exceeds declaration`);
     output.set(chunk, written);
     written += chunk.length;
   });
-  let noOutputBytes = 0;
-  for (let at = 0; at < entry.compressed.length; at += INFLATE_CHUNK_BYTES) {
-    const end = Math.min(at + INFLATE_CHUNK_BYTES, entry.compressed.length);
-    if (noOutputBytes + end - at > MAX_INFLATE_NO_OUTPUT_BYTES)
-      throw new MapImportError('too-large', `${entry.path}: compressed stream exceeds the no-output budget`);
-    const before = written;
-    inflater.push(entry.compressed.subarray(at, end), end === entry.compressed.length);
-    noOutputBytes = written === before ? noOutputBytes + end - at : 0;
-  }
-  if (entry.compressed.length === 0) inflater.push(entry.compressed, true);
   if (written !== entry.size) throw new Error(`${entry.path}: inflated size differs from declaration`);
   return output;
 }
@@ -145,7 +126,7 @@ function inflateEntry(entry: ZipEntry): Uint8Array {
 export async function unpackZip(
   bytes: Uint8Array,
   builder: TreeBuilder,
-  keep: (path: string) => boolean,
+  keep: KeepEntry,
 ): Promise<ArchiveEntry[]> {
   try {
     return readEntries(bytes, builder, keep).map((entry) => ({

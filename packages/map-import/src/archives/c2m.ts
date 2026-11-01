@@ -2,7 +2,7 @@ import { decodeC2m } from '@open-northland/formats/c2m';
 import { DecodeLimitError } from '@open-northland/formats/limit';
 import { errorMessage, MapImportError } from '../errors.js';
 import { normalizePath, type TreeBuilder } from '../tree.js';
-import type { ArchiveEntry } from './entries.js';
+import type { ArchiveEntry, KeepEntry } from './entries.js';
 
 /** The folder the map editor exports into; dropped so the map sits at the export's own root. */
 const C2M_EXPORT_ROOT = 'currentusermap';
@@ -11,7 +11,7 @@ const C2M_EXPORT_ROOT = 'currentusermap';
 export async function unpackC2m(
   bytes: Uint8Array,
   builder: TreeBuilder,
-  keep: (path: string) => boolean,
+  keep: KeepEntry,
 ): Promise<ArchiveEntry[]> {
   let files: ReturnType<typeof decodeC2m>;
   try {
@@ -27,7 +27,7 @@ export async function unpackC2m(
   files.forEach((file, i) => {
     builder.list();
     const path = rooted ? (paths[i] ?? '').slice(C2M_EXPORT_ROOT.length + 1) : (paths[i] ?? '');
-    if (!keep(path)) return;
+    if (!keep(path, file.bytes.length)) return;
     builder.reserve(path, file.bytes.length);
     entries.push({ path, bytes: file.bytes });
   });

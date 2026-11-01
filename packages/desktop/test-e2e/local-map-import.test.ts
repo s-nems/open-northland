@@ -131,7 +131,7 @@ test('imports ZIP, C2M and folder through native picks, reloads retained input o
     assert.deepEqual(await localRecords(page), previous);
     await pick(page, invalid, 'archive');
     await page
-      .getByText('Unsupported archive. Choose ZIP, RAR, C2M or a map folder.', { exact: true })
+      .getByText('Unsupported archive. Choose ZIP, RAR, C2M, a setup EXE or a map folder.', { exact: true })
       .waitFor();
     assert.deepEqual(await localRecords(page), previous);
     await start(page, mapId);

@@ -1,6 +1,6 @@
 import { MapImportError } from '../errors.js';
 import type { TreeBuilder } from '../tree.js';
-import type { ArchiveEntry } from './entries.js';
+import type { ArchiveEntry, KeepEntry } from './entries.js';
 
 /** A tar archive is a run of 512-byte blocks: a header, then the entry's data padded to whole blocks. */
 const BLOCK_BYTES = 512;
@@ -83,7 +83,7 @@ function entryPath(header: Uint8Array): string {
 export async function unpackTar(
   bytes: Uint8Array,
   builder: TreeBuilder,
-  keep: (path: string) => boolean,
+  keep: KeepEntry,
 ): Promise<ArchiveEntry[]> {
   const entries: ArchiveEntry[] = [];
   let at = 0;
@@ -100,7 +100,7 @@ export async function unpackTar(
     if (start + size > bytes.length) fail(`${path} declares ${size} bytes past the end`);
     builder.list();
     const type = header[TYPEFLAG_OFFSET];
-    if ((type === TYPE_FILE || type === TYPE_FILE_OLD) && keep(path)) {
+    if ((type === TYPE_FILE || type === TYPE_FILE_OLD) && keep(path, size)) {
       builder.reserve(path, size);
       entries.push({ path, bytes: bytes.subarray(start, start + size) });
     }

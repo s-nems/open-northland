@@ -11,7 +11,12 @@ export interface NsisSetupFile {
   /** Windows-style install path below `$INSTDIR`, `\`-separated. */
   readonly path: string;
   readonly bytes: Uint8Array;
+  /** Starts this file's `SetOutPath` at this `$VAR` index instead of `$INSTDIR`. */
+  readonly outVariable?: number;
 }
+
+/** `$TEMP`, a directory outside the install tree. */
+export const NSIS_VAR_TEMP = 25;
 
 export interface NsisSetupOptions {
   /** A Unicode NSIS-3 string table with its own special-character codes. */
@@ -145,7 +150,12 @@ function instructionsFor(
     const directory = at < 0 ? '' : file.path.slice(0, at);
     if (directory !== outPath) {
       const shared = outPath !== '' && directory.toLowerCase().startsWith(`${outPath.toLowerCase()}\\`);
-      if (shared) {
+      if (file.outVariable !== undefined) {
+        instructions.push({
+          command: EW_CREATEDIR,
+          params: [table.addVariable(file.outVariable, `\\${directory}`), 1],
+        });
+      } else if (shared) {
         instructions.push({
           command: EW_ASSIGNVAR,
           params: [VAR_SPEC_OUTDIR, table.addVariable(VAR_OUTDIR), 0, 0],

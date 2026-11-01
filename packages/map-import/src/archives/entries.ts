@@ -11,12 +11,11 @@ export interface ArchiveEntry {
   readonly bytes: Uint8Array;
 }
 
+/** Whether to unpack an entry; `size` is its unpacked size when the listing declares one. */
+export type KeepEntry = (path: string, size?: number) => boolean;
+
 /** Lists an archive, keeping the entries `keep` accepts; counts and sizes go through `builder`. */
-export type Unpack = (
-  bytes: Uint8Array,
-  builder: TreeBuilder,
-  keep: (path: string) => boolean,
-) => Promise<ArchiveEntry[]>;
+export type Unpack = (bytes: Uint8Array, builder: TreeBuilder, keep: KeepEntry) => Promise<ArchiveEntry[]>;
 
 /** The archive formats an import opens, told apart by their leading bytes (a tar by its ustar magic). */
 export type ArchiveFormat = 'zip' | 'rar' | 'c2m' | 'tar' | 'nsis';
@@ -52,6 +51,20 @@ function nestedFormat(path: string): ArchiveFormat | undefined {
   return dot < 0 ? undefined : NESTED_EXTENSIONS[path.slice(dot).toLowerCase()];
 }
 
+/** The unpackers for a nested `.exe`: one that cannot open is a stray program beside the maps, so it
+ *  yields nothing instead of failing the import. */
+function skippingFailures(unpackers: (format: ArchiveFormat) => Unpack): (format: ArchiveFormat) => Unpack {
+  return (format) =>
+    async (...args) => {
+      try {
+        return await unpackers(format)(...args);
+      } catch (err) {
+        if (err instanceof MapImportError) return [];
+        throw err;
+      }
+    };
+}
+
 /**
  * Fills `builder` from one archive under `prefix`. A nested archive opens one level deep, under its
  * own path without the extension, so `pack/foo.c2m` lands as `pack/foo/…`; deeper archives are ignored.
@@ -64,8 +77,14 @@ export async function fillTree(
   prefix = '',
   nested = false,
 ): Promise<void> {
-  const keep = (path: string): boolean =>
-    isMapTreePath(path) || (!nested && nestedFormat(path) !== undefined);
+  const keep: KeepEntry = (path, size = 0) => {
+    if (isMapTreePath(path)) return true;
+    if (nested) return false;
+    const inner = nestedFormat(path);
+    // An `.exe` in an installer is its own helper, and one over the entry budget cannot be opened.
+    if (inner === 'nsis') return format !== 'nsis' && size <= builder.limits.entryBytes;
+    return inner !== undefined;
+  };
   const entries = await unpackers(format)(bytes, builder, keep);
   for (const entry of entries) {
     const path = prefix === '' ? normalizePath(entry.path) : `${prefix}/${normalizePath(entry.path)}`;
@@ -74,11 +93,10 @@ export async function fillTree(
       builder.add(path, entry.bytes);
     } else {
       // The leading bytes win over a mislabelled extension, and an `.exe` is NSIS only when they say so.
-      const format = detectArchiveFormat(entry.bytes) ?? (inner === 'nsis' ? undefined : inner);
-      if (format === undefined) {
-        if (inner !== 'nsis') builder.add(path, entry.bytes);
-      } else
-        await fillTree(entry.bytes, format, builder, unpackers, path.slice(0, path.lastIndexOf('.')), true);
+      const detected = detectArchiveFormat(entry.bytes) ?? (inner === 'nsis' ? undefined : inner);
+      if (detected === undefined) continue;
+      const opening = inner === 'nsis' ? skippingFailures(unpackers) : unpackers;
+      await fillTree(entry.bytes, detected, builder, opening, path.slice(0, path.lastIndexOf('.')), true);
     }
   }
 }

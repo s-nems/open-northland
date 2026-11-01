@@ -1,12 +1,13 @@
-import { zipSync } from 'fflate';
+import { deflateSync, zipSync } from 'fflate';
 import { describe, expect, it } from 'vitest';
 import { encodeC2m } from '../../formats/test/fixtures/c2m.js';
+import { inflateBounded } from '../src/archives/inflate.js';
 import { detectArchiveFormat, openArchive, openNsis } from '../src/archives/open.js';
 import { convertMapTree } from '../src/convert.js';
 import { MapImportError, type MapImportFailure } from '../src/errors.js';
 import { DEFAULT_IMPORT_LIMITS } from '../src/limits.js';
 import { mapDat, plaintextMap, under } from './support/maps.js';
-import { encodeNsis2, type NsisSetupFile } from './support/nsis.js';
+import { encodeNsis2, NSIS_VAR_TEMP, type NsisSetupFile } from './support/nsis.js';
 import { encodeTar } from './support/tar.js';
 
 const bytes = (...values: number[]): Uint8Array => Uint8Array.from(values);
@@ -109,6 +110,52 @@ describe('openNsis', () => {
     expect([...tree.files.keys()].sort()).toEqual(['a/map.dat', 'plain/map.dat']);
   });
 
+  it('skips a setup it cannot open or that is over budget beside the maps of a zip', async () => {
+    const solid = encodeNsis2([{ path: 'map.dat', bytes: bytes(1) }], { headerMethod: 'solid' });
+    const zip = zipSync({ 'map.dat': bytes(2), 'solid.exe': solid, 'big.exe': new Uint8Array(600) });
+    const tree = await openArchive(zip, { limits: { ...DEFAULT_IMPORT_LIMITS, entryBytes: 550 } });
+    expect([...tree.files.keys()]).toEqual(['map.dat']);
+  });
+
+  it('ignores an installer inside an installer', async () => {
+    const inner = encodeNsis2([{ path: 'inner\\map.dat', bytes: bytes(1) }]);
+    const tree = await openNsis(
+      encodeNsis2([
+        { path: 'helper.exe', bytes: inner },
+        { path: 'outer\\map.dat', bytes: bytes(2) },
+      ]),
+    );
+    expect([...tree.files.keys()]).toEqual(['outer/map.dat']);
+  });
+
+  it('lets a later File of one path overwrite the earlier one', async () => {
+    const tree = await openNsis(
+      encodeNsis2([
+        { path: 'maps\\map.dat', bytes: bytes(1) },
+        { path: 'maps\\MAP.DAT', bytes: bytes(2) },
+      ]),
+    );
+    expect([...tree.files.keys()]).toEqual(['maps/map.dat']);
+    expect([...(tree.files.get('maps/map.dat') ?? [])]).toEqual([2]);
+  });
+
+  it('leaves files under an output directory outside the install tree', async () => {
+    const tree = await openNsis(
+      encodeNsis2([
+        { path: 'backup\\map.dat', bytes: bytes(1), outVariable: NSIS_VAR_TEMP },
+        { path: 'maps\\map.dat', bytes: bytes(2) },
+      ]),
+    );
+    expect([...tree.files.keys()]).toEqual(['maps/map.dat']);
+  });
+
+  it('rejects paths past the character budget before listing their files', async () => {
+    const exe = encodeNsis2([{ path: `${'x'.repeat(1100)}\\map.dat`, bytes: bytes(1) }]);
+    expect(await failure(openNsis(exe, { limits: { ...DEFAULT_IMPORT_LIMITS, entries: 1 } }))).toBe(
+      'too-large',
+    );
+  });
+
   it('rejects solid, bzip2, lzma and NSISBI shapes as unsupported', async () => {
     const files = [{ path: 'map.dat', bytes: mapDat() }];
     expect(await failure(openNsis(encodeNsis2(files, { headerMethod: 'solid' })))).toBe(
@@ -126,7 +173,7 @@ describe('openNsis', () => {
     expect(await failure(openNsis(exe.subarray(0, exe.length - 8)))).toBe('unsupported-archive');
   });
 
-  it('opens an uninstaller or a fileless installer to an import without maps', async () => {
+  it('opens an uninstaller like an installer, and a fileless installer to an empty tree', async () => {
     const uninstaller = encodeNsis2([{ path: 'data\\maps\\x\\map.dat', bytes: mapDat() }], {
       uninstaller: true,
     });
@@ -144,5 +191,21 @@ describe('openNsis', () => {
     expect(await limited({ entryBytes: 100 })).toBe('too-large');
     expect(await limited({ unpackedBytes: 100 })).toBe('too-large');
     expect(await limited({ entries: 1 })).toBe('too-large');
+  });
+});
+
+describe('inflateBounded', () => {
+  it('hands a highly compressed stream over in small chunks a cap can stop', () => {
+    const expanded = 64 * 1024 * 1024;
+    const largestChunk = 1024 * 1024;
+    const chunks: number[] = [];
+    const stop = new Error('cap');
+    expect(() =>
+      inflateBounded(deflateSync(new Uint8Array(expanded)), 'bomb', (chunk) => {
+        chunks.push(chunk.length);
+        if (chunks.length === 2) throw stop;
+      }),
+    ).toThrow(stop);
+    expect(Math.max(...chunks)).toBeLessThan(largestChunk);
   });
 });

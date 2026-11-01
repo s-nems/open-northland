@@ -1,7 +1,7 @@
 import { createExtractorFromData } from 'node-unrar-js';
 import { errorMessage, MapImportError } from '../errors.js';
 import type { TreeBuilder } from '../tree.js';
-import type { ArchiveEntry } from './entries.js';
+import type { ArchiveEntry, KeepEntry } from './entries.js';
 
 /**
  * Unpacks the kept entries of a RAR4 or RAR5 archive with the unrar wasm build, whose binary the caller
@@ -13,7 +13,7 @@ import type { ArchiveEntry } from './entries.js';
 export async function unpackRar(
   bytes: Uint8Array,
   builder: TreeBuilder,
-  keep: (path: string) => boolean,
+  keep: KeepEntry,
   wasmBinary: ArrayBuffer,
 ): Promise<ArchiveEntry[]> {
   try {
@@ -25,7 +25,7 @@ export async function unpackRar(
     const declared = new Map<string, number>();
     for (const header of fileHeaders) {
       builder.list();
-      if (header.flags.directory || !keep(header.name)) continue;
+      if (header.flags.directory || !keep(header.name, header.unpSize)) continue;
       if (header.flags.encrypted) {
         throw new MapImportError('unsupported-archive', `rar: ${header.name} is passworded`);
       }

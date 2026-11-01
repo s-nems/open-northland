@@ -1,8 +1,8 @@
-import { Inflate } from 'fflate';
 import { errorMessage, MapImportError } from '../errors.js';
 import type { ImportLimits } from '../limits.js';
 import { normalizePath, type TreeBuilder } from '../tree.js';
-import type { ArchiveEntry } from './entries.js';
+import type { ArchiveEntry, KeepEntry } from './entries.js';
+import { inflateBounded } from './inflate.js';
 
 /**
  * A Nullsoft setup installer (`.exe`) as community map setups ship in, read per the on-disk layout
@@ -10,7 +10,7 @@ import type { ArchiveEntry } from './entries.js';
  * data blocks. Supported are non-solid installers whose header database is stored or raw-deflate
  * (NSIS-2's zlib) compressed, with an ANSI NSIS-2 or a Unicode NSIS-3 string table. Solid archives
  * and the bzip2/LZMA methods fail as `unsupported-archive`; an NSIS-3 ANSI or Park-fork table falls
- * back to the NSIS-2 reader, whose paths then stop matching map files and yield an empty tree.
+ * back to the NSIS-2 reader, whose paths then keep their undecoded variables as a garbled prefix.
  */
 
 /** `firstheader`: flags, the `EF BE AD DE "NullsoftInst"` signature, header size, archive size. */
@@ -59,8 +59,12 @@ const VAR_TEMP = 25;
 const VAR_PLUGINSDIR = 26;
 /** `$_OUTDIR`, the cached output directory that generated sections copy around. */
 const VAR_SPEC_OUTDIR = 31;
-/** `IsAbsolutePathVar`: prefixes whose files never land inside a portable map folder. */
-const ABSOLUTE_VARS = new Set([VAR_INSTDIR, VAR_EXEDIR, VAR_TEMP, VAR_PLUGINSDIR]);
+/** Prefixes outside the install directory, whose files never land inside a portable map folder. */
+const OUTSIDE_INSTALL_VARS = new Set([VAR_EXEDIR, VAR_TEMP, VAR_PLUGINSDIR]);
+/** `IsAbsolutePathVar`: a `File` name opening with one of these ignores the output directory. */
+const ABSOLUTE_VARS = new Set([VAR_INSTDIR, ...OUTSIDE_INSTALL_VARS]);
+/** Decoded path characters an import may walk per entry budget, NSIS's default `NSIS_MAX_STRLEN`. */
+const PATH_CHARS_PER_ENTRY = 1024;
 
 const VARIABLE_NAMES = [
   'CMDLINE',
@@ -120,20 +124,16 @@ export function isNsisInstaller(bytes: Uint8Array): boolean {
   }
 }
 
-/**
- * One raw-deflate stream of unknown output, collected as it decodes and rejected past `cap` bytes,
- * so a forged expansion never allocates before the check runs.
- */
+/** One raw-deflate stream of unknown output, collected as it decodes and rejected past `cap` bytes. */
 function inflateCapped(payload: Uint8Array, cap: number, what: string): Uint8Array {
   const chunks: Uint8Array[] = [];
   let size = 0;
-  const inflater = new Inflate((chunk) => {
-    size += chunk.length;
-    if (size > cap) throw new MapImportError('too-large', `nsis: ${what} unpacks past ${cap} bytes`);
-    chunks.push(chunk);
-  });
   try {
-    inflater.push(payload, true);
+    inflateBounded(payload, `nsis: ${what}`, (chunk) => {
+      size += chunk.length;
+      if (size > cap) throw new MapImportError('too-large', `nsis: ${what} unpacks past ${cap} bytes`);
+      chunks.push(chunk);
+    });
   } catch (err) {
     if (err instanceof MapImportError) throw err;
     throw new MapImportError('unsupported-archive', `nsis: ${what}: ${errorMessage(err)}`);
@@ -293,10 +293,23 @@ function joinPath(prefix: string, name: string): string {
 }
 
 /** The file instructions in install order, with `SetOutPath` output directories tracked. */
-function readFiles(database: Uint8Array, blocks: Block[], strings: NsisStrings): NsisFile[] {
+function readFiles(
+  database: Uint8Array,
+  blocks: Block[],
+  strings: NsisStrings,
+  limits: ImportLimits,
+): NsisFile[] {
   const entries = blocks[BLOCK_ENTRIES] ?? { offset: 0, num: 0 };
   if (entries.offset > database.length || entries.num * COMMAND_BYTES > database.length - entries.offset)
     throw new MapImportError('unsupported-archive', 'nsis: command block out of bounds');
+  const pathCharBudget = limits.entries * PATH_CHARS_PER_ENTRY;
+  let pathChars = 0;
+  const charged = (text: string): string => {
+    pathChars += text.length;
+    if (pathChars > pathCharBudget)
+      throw new MapImportError('too-large', `nsis: paths exceed ${pathCharBudget} characters`);
+    return text;
+  };
   const prefixes: string[] = ['$INSTDIR'];
   let specOutdir = '';
   const files: NsisFile[] = [];
@@ -310,24 +323,20 @@ function readFiles(database: Uint8Array, blocks: Block[], strings: NsisStrings):
         isVariableString(strings, param(1), VAR_OUTDIR) && param(2) === 0 && param(3) === 0 ? current() : '';
     } else if (command === EW_CREATEDIR && param(1) !== 0) {
       const leading = leadingVariable(strings, param(0));
-      const text =
-        leading === undefined
-          ? decodeString(strings, param(0))
-          : decodeString(strings, param(0) + leading.chars);
-      prefixes.push(
-        leading === undefined
-          ? text
-          : joinPath(
-              leading.index === VAR_SPEC_OUTDIR ? specOutdir : leading.index === VAR_OUTDIR ? current() : '',
-              text,
-            ),
-      );
+      if (leading === undefined || OUTSIDE_INSTALL_VARS.has(leading.index)) {
+        prefixes.push(charged(decodeString(strings, param(0))));
+      } else {
+        const base =
+          leading.index === VAR_SPEC_OUTDIR ? specOutdir : leading.index === VAR_OUTDIR ? current() : '';
+        const rest = charged(decodeString(strings, param(0) + leading.chars));
+        prefixes.push(charged(joinPath(base, rest)));
+      }
     } else if (command === EW_EXTRACTFILE) {
-      const name = decodeString(strings, param(1));
+      const name = charged(decodeString(strings, param(1)));
       if (name === '') continue;
       const leading = leadingVariable(strings, param(1));
       const absolute = leading !== undefined && ABSOLUTE_VARS.has(leading.index);
-      let path = absolute ? name : joinPath(current(), name);
+      let path = absolute ? name : charged(joinPath(current(), name));
       if (path.toLowerCase().startsWith('$instdir\\')) path = path.slice('$INSTDIR\\'.length);
       if (path.startsWith('\\')) path = path.slice(1);
       files.push({ path, pos: param(2) });
@@ -340,27 +349,26 @@ function readFiles(database: Uint8Array, blocks: Block[], strings: NsisStrings):
 export async function unpackNsis(
   bytes: Uint8Array,
   builder: TreeBuilder,
-  keep: (path: string) => boolean,
+  keep: KeepEntry,
 ): Promise<ArchiveEntry[]> {
   try {
     const at = firstHeaderOffset(bytes);
     const header = readDatabase(bytes, at, builder.limits);
     const blocks = readBlocks(header.database);
     const strings = readStrings(header.database, blocks);
-    const files = readFiles(header.database, blocks, strings);
-    const seen = new Map<string, number>();
-    const entries: ArchiveEntry[] = [];
-    let claimed = 0;
-    for (const file of files) {
+    // A later `File` of one path overwrites the earlier one as the installer runs.
+    const installed = new Map<string, NsisFile>();
+    for (const file of readFiles(header.database, blocks, strings, builder.limits)) {
       builder.list();
       const path = normalizePath(file.path);
       // `$PLUGINSDIR` members and absolute install targets never carry portable map data.
       if (path === '' || path.includes('$') || path.includes(':')) continue;
-      const key = path.toLowerCase();
-      if (seen.get(key) === file.pos) continue;
-      seen.set(key, file.pos);
+      installed.set(path.toLowerCase(), { path, pos: file.pos });
+    }
+    const entries: ArchiveEntry[] = [];
+    for (const { path, pos } of installed.values()) {
       if (!keep(path)) continue;
-      const blockAt = header.dataArea + file.pos;
+      const blockAt = header.dataArea + pos;
       if (blockAt + 4 > bytes.length)
         throw new MapImportError('unsupported-archive', `nsis: ${path} has no data block`);
       const size = u32(bytes, blockAt);
@@ -372,12 +380,6 @@ export async function unpackNsis(
       const content = compressed
         ? inflateCapped(bytes.subarray(start, start + payloadSize), builder.limits.entryBytes, path)
         : bytes.slice(start, start + payloadSize);
-      claimed += content.length;
-      if (claimed > builder.limits.unpackedBytes)
-        throw new MapImportError(
-          'too-large',
-          `nsis: unpacks past ${builder.limits.unpackedBytes} bytes at ${path}`,
-        );
       builder.reserve(path, content.length);
       entries.push({ path, bytes: content });
     }
