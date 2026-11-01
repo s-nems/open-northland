@@ -57,6 +57,16 @@ export function heapPopRoot(s: SearchScratch): void {
   siftDown(s, 0);
 }
 
+/** Replace the root, whose node the caller has read, with `node` and its keys: a pop and a push in one
+ *  sift. */
+export function heapReplaceRoot(s: SearchScratch, node: NodeId, f: number, g: number, dev: number): void {
+  s.heap[0] = node;
+  s.heapF[0] = f;
+  s.heapG[0] = g;
+  s.heapDev[0] = dev;
+  siftDown(s, 0);
+}
+
 function growHeap(s: SearchScratch): void {
   const capacity = Math.min(s.heap.length * 2, s.heapIdx.length);
   const heap = new Int32Array(capacity);

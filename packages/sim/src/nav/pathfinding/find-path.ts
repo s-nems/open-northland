@@ -22,7 +22,7 @@ import {
   type TerrainGraph,
   type Traversal,
 } from '../terrain/index.js';
-import { heapDecrease, heapPopRoot, heapPush } from './open-heap.js';
+import { heapDecrease, heapPopRoot, heapPush, heapReplaceRoot } from './open-heap.js';
 import { MAX_QUERY_GENERATION, NO_NODE, SETTLED, type SearchScratch, scratchFor } from './scratch.js';
 
 /**
@@ -296,7 +296,9 @@ class ResumableSearch {
       // The popped minimum is closed for good; see LAND_HEURISTIC_WEIGHT for what that costs on land.
       heapIdx[current] = SETTLED;
       const currentG = scratch.heapG[0] ?? 0;
-      heapPopRoot(scratch);
+      // The settled root leaves the heap with the expansion's first push, one sift for both, since
+      // that node often keys at the minimum; the total order makes the pop sequence the same.
+      let rootLeft = false;
 
       const currentY = graph.yOf(current);
       const open = lane[current] ?? 0;
@@ -318,25 +320,28 @@ class ResumableSearch {
           const nextY = currentY + (STEP_ROWS[edge] ?? 0);
           const nextX = next - nextY * width;
           const dev = Math.abs((doubledColumn(nextX, nextY) - startD) * lineHY - (nextY - startY) * lineD);
-          heapPush(
-            scratch,
-            next as NodeId,
-            tentativeG + this.heuristic(next as NodeId, nextX, nextY),
-            tentativeG,
-            dev,
-          );
+          const f = tentativeG + this.heuristic(next as NodeId, nextX, nextY);
+          if (rootLeft) heapPush(scratch, next as NodeId, f, tentativeG, dev);
+          else heapReplaceRoot(scratch, next as NodeId, f, tentativeG, dev);
+          rootLeft = true;
           continue;
         }
         // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
         // Water's heuristic is consistent, so a settled node's g is optimal there; on land the inflated
         // heuristic can settle a node early, a loss the two weights' notes quantify.
-        const index = heapIdx[next] ?? SETTLED;
         const knownG = g[next] ?? 0;
         if (tentativeG >= knownG) continue;
+        if (!rootLeft) {
+          heapPopRoot(scratch);
+          rootLeft = true;
+        }
+        // Read after the root left, which moves slots.
+        const index = heapIdx[next] ?? SETTLED;
         heapDecrease(scratch, index, tentativeG + ((scratch.heapF[index] ?? 0) - knownG), tentativeG);
         g[next] = tentativeG;
         cameFrom[next] = current;
       }
+      if (!rootLeft) heapPopRoot(scratch);
     }
   }
 
