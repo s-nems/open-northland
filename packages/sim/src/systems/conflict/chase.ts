@@ -29,7 +29,7 @@ import { standingFighterPosts } from '../movement/collision/index.js';
 import { clearNavState, isTravelling, redirectRoute } from '../movement/nav-state.js';
 import { structureRouteSealed } from '../movement/structure-route.js';
 import { breakThroughWall } from '../palisades/breach.js';
-import { MILITARY_MODE, stanceMode } from '../readviews/index.js';
+import { isRangedWeapon, MILITARY_MODE, stanceMode } from '../readviews/index.js';
 import { anyNeedPressing } from '../settlers/drives/needs.js';
 import { markLostWay } from '../settlers/lost-way.js';
 import { closer, hexNodeDistance, nearestHexCell } from '../spatial/metric.js';
@@ -37,8 +37,10 @@ import { entityNode } from '../spatial/nodes.js';
 import { type CombatantStance, DEFEND_LEASH_NODES, type EngageSpec, enemyInReachFrom } from './engagement.js';
 import type { MeleeSlots, OwnClaims } from './melee-slots.js';
 import type { CombatPass } from './pass.js';
+import { combatTargetNode, targetBodyNodes } from './target-node.js';
 import { noteUnreachableTarget } from './unreachable-targets.js';
 import { bandNodeCount, forEachNodeInBand, ringNodeCount, type WeaponBand } from './weapon-band.js';
+import type { ArmedWith } from './weapons.js';
 
 // The walk-into-melee half of combat: advance an owned combatant on an out-of-reach enemy, deal each chaser
 // a distinct contact cell so a converging mass forms ranks rather than a pile, and respect the DEFEND leash.
@@ -209,15 +211,16 @@ function routeDelivered(world: World, e: Entity): boolean {
 }
 
 /**
- * Advance an owned combatant on `target` it can't yet reach. It keeps an {@link Engagement} marker so the
- * PlannerSystem leaves the unit to combat, and re-issues a {@link MoveGoal} toward an {@link approachCell} at
- * most every {@link REPATH_CADENCE} ticks; between repaths it follows its live route and the distance-based
- * swing check catches it the instant it steps into reach. A refused route is stood out for a cadence; an
- * ordered unit whose route cannot resolve gives the order up at once. A building target's wall list lets a
- * chaser whose nearest face is fully manned encircle to a free slot on another face.
+ * Advance an owned combatant on `enemy` it can't yet reach with `reach`. It keeps an {@link Engagement}
+ * marker so the PlannerSystem leaves the unit to combat, and re-issues a {@link MoveGoal} toward an
+ * {@link approachCell} at most every {@link REPATH_CADENCE} ticks; between repaths it follows its live
+ * route and the distance-based swing check catches it the instant it steps into reach. A refused route is
+ * stood out for a cadence; an ordered unit whose route cannot resolve gives the order up at once. A building
+ * target's wall list lets a chaser whose nearest face is fully manned encircle to a free slot on another
+ * face.
  *
- * A melee chaser standing behind a fully taken front steps along it instead ({@link seamStep}) when
- * `front` carries the spec whose targets it may turn to.
+ * A melee chaser standing behind a fully taken front of a unit steps along it instead ({@link seamStep});
+ * `holder` carries the spec whose targets it may turn to.
  *
  * Returns whether it gave the target up this tick.
  */
@@ -228,39 +231,37 @@ export function chase(
   pass: CombatPass,
   e: Entity,
   here: NodeId,
-  target: ChaseTarget,
-  weapon: ApproachBand,
+  enemy: Entity,
+  reach: ArmedWith,
   stance: CombatantStance,
   defend: DefendPost,
-  front: EngageSpec | null,
+  holder: EngageSpec | null,
 ): boolean {
   const { slots } = pass;
-  const engagement = engagementFor(world, ctx, e, target.entity);
+  const engagement = engagementFor(world, ctx, e, enemy);
 
   const marching = world.tryGet(e, PlayerOrder)?.attackMove !== undefined;
   const order = world.tryGet(e, AttackOrder);
   // The enemy an ordered man turned aside to from his order's target: giving it up hands him back to it.
   const asideFrom =
-    stance.ordered && order !== undefined && order.breach === undefined && order.target !== target.entity
+    stance.ordered && order !== undefined && order.breach === undefined && order.target !== enemy
       ? order.target
       : null;
   const aside = asideFrom !== null;
   const commanded = (stance.ordered && !aside) || marching; // player-driven: it releases here, not on the bank
-  const letGo = (): void =>
-    aside ? dropAside(world, ctx, e, target.entity) : breakOff(world, ctx, e, here, defend);
   // A failed chase route ends an explicit attack order. An attack-move march instead rests its aggression
   // and walks on: without the rest, an enemy visible across a river holds the marcher in a failing search
   // every tick and the order can never complete.
   const request = world.tryGet(e, PathRequest);
   if (request?.failed) {
     // The breach this chase walks to, whose target a further wall found on the way still leads back to.
-    const breach = order?.target === target.entity ? order.breach : undefined;
+    const breach = order?.target === enemy ? order.breach : undefined;
     // A player-driven walk walled off by a palisade breaks through it: toward the ordered target, else toward
     // the march's goal.
     if (commanded) {
       const march = world.tryGet(e, PlayerOrder)?.attackMove;
       const goal = stance.ordered ? request.goal : march?.goal;
-      const resume = stance.ordered ? (breach === undefined ? target.entity : breach.resume) : null;
+      const resume = stance.ordered ? (breach === undefined ? enemy : breach.resume) : null;
       if (
         goal !== undefined &&
         breakThroughWall(world, ctx, terrain, e, { start: request.start, goal }, { kind: 'order', resume })
@@ -284,7 +285,7 @@ export function chase(
     // Original behavior: an animal's attack ends the moment its walk to the target fails. The memo keeps
     // its search off the sealed-off target, which would otherwise cost a failed route every other tick.
     if (isWildlife(world, e) && !world.has(e, Owner)) {
-      noteUnreachableTarget(world, ctx, e, target.entity);
+      noteUnreachableTarget(world, ctx, e, enemy);
       breakOff(world, ctx, e, here, defend);
       return true;
     }
@@ -296,26 +297,26 @@ export function chase(
       routes >= SEALED_TARGET_ROUTE_FAILURES &&
       structureRouteSealed(world, ctx, terrain, request.start, request.goal)
     ) {
-      const enemy = breach?.enemy ?? target.entity;
+      const sealedFrom = breach?.enemy ?? enemy;
       const route = { start: request.start, goal: request.goal, sealed: true };
       if (aside) {
-        dropAside(world, ctx, e, target.entity);
+        dropAside(world, ctx, e, enemy);
         return true;
       }
       if (
         defend === null &&
-        worthASiege(world, enemy) &&
-        breakThroughWall(world, ctx, terrain, e, route, { kind: 'own', enemy })
+        worthASiege(world, sealedFrom) &&
+        breakThroughWall(world, ctx, terrain, e, route, { kind: 'own', enemy: sealedFrom })
       ) {
         return true;
       }
-      noteUnreachableTarget(world, ctx, e, target.entity);
+      noteUnreachableTarget(world, ctx, e, enemy);
       markLostWay(world, ctx, e, request.goal);
       breakOff(world, ctx, e, here, defend);
       return true;
     }
     const held = world.mut(e, Engagement);
-    held.stall = { target: target.entity, routes };
+    held.stall = { target: enemy, routes };
     held.repathAt = ctx.tick + REPATH_CADENCE;
     return false;
   }
@@ -324,6 +325,12 @@ export function chase(
   // Still closing on a live route, or standing out a refused one's cadence: don't re-path.
   if (ctx.tick < engagement.repathAt && (travelling || engagement.stall !== undefined)) return false;
 
+  // Resolved past the cadence gate, so a chaser still closing on its live route reads no target body.
+  const target = chaseTargetOf(world, ctx, terrain, here, enemy);
+  const weapon = approachBand(reach);
+  // Only a melee fighter holding a unit forms a front to step along; a besieger encircles its wall instead.
+  const front = holder !== null && target.body === null ? holder : null;
+
   const ownGoal = world.tryGet(e, MoveGoal)?.cell;
   // A close-range breaker without a breach slot must exclude the wall's inaccessible far side.
   // Ordinary approaches use terrain alone; a full waiting queue asks for structural regions lazily.
@@ -331,8 +338,7 @@ export function chase(
     weapon.minRange <= 1 && order?.target === target.entity && order.breach?.stand === null;
   const terrainBank = terrain.isWalkable(here) ? terrain.componentOf(here) : null;
   const banked = crowdedBreach ? slots.hasBank(here, e) : terrainBank !== null;
-  const onOurBank = (cell: NodeId): boolean =>
-    !banked || (crowdedBreach ? slots.sameBank(here, cell, e) : terrain.componentOf(cell) === terrainBank);
+  const onOurBank = bankTest(terrain, slots, e, here, banked, crowdedBreach, terrainBank);
 
   // Its own body does not take the node it stands on from itself. A walker crossing a node its own side
   // stands on holds no claim there: routes pass friends, but no two bodies come to rest on one node.
@@ -392,12 +398,12 @@ export function chase(
   // on. Only the walk is refused - the reach check ran before the chase, so an archer still shoots across
   // water. Giving up here is an approximation (source basis "Combat chase").
   if (!commanded && terrainBank !== null && terrain.componentOf(dest) !== terrainBank) {
-    letGo();
+    letGo(world, ctx, e, here, target.entity, aside, defend);
     return true;
   }
   // Anchor leash: a target hittable only by stepping past `leash` from the anchor is left alone.
   if (defend !== null && leashDistance(terrain, defend, dest) > defend.leash) {
-    letGo();
+    letGo(world, ctx, e, here, target.entity, aside, defend);
     return true;
   }
   // Owner rule: a man turned aside fights within a DEFEND leash of his order's target. An enemy past it is
@@ -430,6 +436,65 @@ export function chase(
   held.waiting = undefined;
   if (alongFront !== null) held.target = alongFront;
   return false;
+}
+
+/** `enemy` as the chase advances on it: the combat node the reach check measures, toward where the swing
+ *  lands, and a building's full wall list, so a chaser whose nearest face is manned encircles to another. */
+function chaseTargetOf(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  here: NodeId,
+  enemy: Entity,
+): ChaseTarget {
+  return {
+    entity: enemy,
+    node: combatTargetNode(world, ctx, terrain, here, enemy),
+    body: targetBodyNodes(world, ctx, terrain, enemy),
+  };
+}
+
+/**
+ * The band a chaser closes into: a melee weapon's whole reach, where it takes a contact slot, and a ranged
+ * one's reach cut back to the standoff `(2 * max - min) / 2`, so an archer steps in past its farthest shot.
+ * Original behavior.
+ */
+function approachBand(weapon: ArmedWith): ApproachBand {
+  const { minRange, maxRange } = weapon;
+  if (!isRangedWeapon(weapon.weapon)) return { minRange, maxRange, contact: true };
+  if (minRange >= maxRange) return { minRange, maxRange, contact: false };
+  return { minRange, maxRange: (2 * maxRange - minRange) >> 1, contact: false };
+}
+
+/** Whether `cell` lies on the ground chaser `e` standing on `here` can walk to: its structural region for a
+ *  crowded breach, else its terrain component. Built after the chase's early returns, so a chase that does
+ *  not re-path allocates no closure. */
+function bankTest(
+  terrain: TerrainGraph,
+  slots: MeleeSlots,
+  e: Entity,
+  here: NodeId,
+  banked: boolean,
+  crowdedBreach: boolean,
+  terrainBank: number | null,
+): (cell: NodeId) => boolean {
+  return (cell) =>
+    !banked || (crowdedBreach ? slots.sameBank(here, cell, e) : terrain.componentOf(cell) === terrainBank);
+}
+
+/** Let go of `enemy` the chase cannot close on: an enemy taken up beside an order is dropped, any other
+ *  target broken off. */
+function letGo(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  here: NodeId,
+  enemy: Entity,
+  aside: boolean,
+  defend: DefendPost,
+): void {
+  if (aside) dropAside(world, ctx, e, enemy);
+  else breakOff(world, ctx, e, here, defend);
 }
 
 /** How far (map points) a walker crossing a friend's node looks for a free node to wait on. Authored:
@@ -640,7 +705,11 @@ function contactSlot(
   if (mine.goal !== undefined && inBand(mine.goal) && free(mine.goal)) return mine.goal;
   const choices: NodeId[] = [];
   const at = { hx: terrain.xOf(from), hy: terrain.yOf(from) };
-  for (let ring = 0; ring <= CONTACT_SLOT_RADIUS && choices.length === 0; ring++) {
+  // Map points obey the triangle inequality, so only the rings within `maxRange` of the chaser's own
+  // distance to the target can hold a band cell.
+  const toTarget = hexNodeDistance(terrain, from, targetCell);
+  const last = Math.min(CONTACT_SLOT_RADIUS, toTarget + band.maxRange);
+  for (let ring = Math.max(0, toTarget - band.maxRange); ring <= last && choices.length === 0; ring++) {
     forEachRingNode(at, ring, terrain.width, terrain.height, (hx, hy) => {
       const cell = terrain.nodeAt(hx, hy);
       if (inBand(cell) && free(cell)) choices.push(cell);

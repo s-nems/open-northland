@@ -40,7 +40,6 @@ import {
   isAnimalTribe,
   isFighterJob,
   isHunterJob,
-  isRangedWeapon,
   MILITARY_MODE,
   type MilitaryMode,
   stanceFights,
@@ -49,15 +48,7 @@ import {
 import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { hexNodeDistance } from '../spatial/metric.js';
 import { entityNode } from '../spatial/nodes.js';
-import {
-  type ApproachBand,
-  breakOff,
-  type ChaseTarget,
-  chase,
-  disengage,
-  holdEnemy,
-  REPATH_CADENCE,
-} from './chase.js';
+import { breakOff, chase, disengage, holdEnemy, REPATH_CADENCE } from './chase.js';
 import { type CombatantStance, EngagementSpecs, resolveTarget, stanceMode } from './engagement.js';
 import { runsFromBlows, startBlowRun } from './flee.js';
 import { breaksHuntForNeed, holdPrey, preySearchResting, restPreySearch } from './hunting/index.js';
@@ -65,7 +56,7 @@ import { strayedPastLeash } from './leash.js';
 import type { MeleeSlots } from './melee-slots.js';
 import { noteDrivenOff } from './offenders.js';
 import type { CombatPass } from './pass.js';
-import { combatTargetNode, targetBodyNodes } from './target-node.js';
+import { combatTargetNode } from './target-node.js';
 import { hostileAnimalNow, isValidOrderedTarget, isValidTarget, wildPursuit } from './targeting.js';
 import { garrisonReach, standsAtPost, towerPostFor } from './tower-post.js';
 import { withinBand } from './weapon-band.js';
@@ -224,15 +215,6 @@ export function engageCombatant(
     pullUpInReach(world, ctx, terrain, slots, e, here, target, weapon)
   )
     return;
-  // Advance on the combat node the reach check measured, so the chase walks toward where the swing lands. A
-  // building's full wall list rides along so a chaser whose nearest face is manned encircles to another.
-  const chaseTarget: ChaseTarget = {
-    entity: target,
-    node: combatTargetNode(world, ctx, terrain, here, target),
-    body: targetBodyNodes(world, ctx, terrain, target),
-  };
-  // Only a melee fighter holding a unit forms a front to step along; a besieger encircles its wall instead.
-  const front = spec.hold?.contact === true && chaseTarget.body === null ? spec : null;
   const gaveUp = chase(
     world,
     ctx,
@@ -240,11 +222,11 @@ export function engageCombatant(
     pass,
     e,
     here,
-    chaseTarget,
-    approachBand(weapon),
+    target,
+    weapon,
     stance,
     spec.defend,
-    front,
+    spec.hold?.contact === true ? spec : null,
   );
   if (gaveUp) restPreySearch(world, ctx, e, spec);
 }
@@ -528,18 +510,6 @@ function swingAt(
   else if (world.has(target, Vehicle)) damage = base;
   const blow = { damage, hitSoundType: hitSoundVsMaterial(weapon.weapon, material) };
   startAttack(world, ctx, attacker, e, target, blow, weapon.weapon);
-}
-
-/**
- * The band a chaser closes into: a melee weapon's whole reach, where it takes a contact slot, and a ranged
- * one's reach cut back to the standoff `(2 * max - min) / 2`, so an archer steps in past its farthest shot.
- * Original behavior.
- */
-function approachBand(weapon: ArmedWith): ApproachBand {
-  const { minRange, maxRange } = weapon;
-  if (!isRangedWeapon(weapon.weapon)) return { minRange, maxRange, contact: true };
-  if (minRange >= maxRange) return { minRange, maxRange, contact: false };
-  return { minRange, maxRange: (2 * maxRange - minRange) >> 1, contact: false };
 }
 
 /** Who never walks toward a target out of reach: a garrison shooting from its tower, and an unowned
