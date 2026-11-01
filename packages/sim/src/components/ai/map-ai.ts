@@ -107,7 +107,7 @@ export const MAP_AI_REBUILD_LIST_LIMIT = 100;
 /** How many of its first-turn walls a seat remembers for rebuilding. Original behavior. */
 export const MAP_AI_WALL_LIST_LIMIT = 1000;
 
-export const MapAiState = defineComponent<MapAiStateData>('MapAiState', 'players');
+export const MapAiState = defineComponent<MapAiStateData>('MapAiState', 'players', { simOnly: true });
 
 /** The program carrier for `player`, or null before its first turn. The lowest-id carrier wins should
  *  more than one ever exist. */

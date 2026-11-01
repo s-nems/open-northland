@@ -272,7 +272,7 @@ export const CargoRun = defineComponent<{
   vehicle: Entity;
   goodType: number;
   direction: 'load' | 'unload';
-}>('CargoRun', 'economy');
+}>('CargoRun', 'economy', { simOnly: true });
 
 /** Canonical ascending-goodType view of a hold, empty lines included. */
 export function vehicleStockEntries(stock: {

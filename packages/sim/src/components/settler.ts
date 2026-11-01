@@ -419,7 +419,9 @@ export const OrderQueue = defineComponent<{ orders: QueuedUnitOrder[]; owner: nu
 export const MealBreak = defineComponent<{ readonly hungry: true }>('MealBreak', 'settlers');
 
 /** A meal break that found nothing to eat: hunger takes the settler off its orders again from `retryAt`. */
-export const MealBreakRetry = defineComponent<{ readonly retryAt: number }>('MealBreakRetry', 'settlers');
+export const MealBreakRetry = defineComponent<{ readonly retryAt: number }>('MealBreakRetry', 'settlers', {
+  simOnly: true,
+});
 
 /** The order kinds a running non-interruptible atomic parks instead of cancelling. */
 export type DeferrableOrderCommand = Extract<
@@ -436,4 +438,4 @@ export const DeferredOrder = defineComponent<{
   command: DeferrableOrderCommand;
   /** A map script's walk, replayed unconfined and as the script's own (`PlayerOrder.scripted`). */
   scripted?: true | undefined;
-}>('DeferredOrder', 'settlers');
+}>('DeferredOrder', 'settlers', { simOnly: true });

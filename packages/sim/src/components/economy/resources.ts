@@ -135,7 +135,7 @@ export const GroundDrop = defineComponent<{ goodType: number }>('GroundDrop', 'e
  * carrying a `WorkFlag`). Its collect drive reclaims a drop only when `by` is its own entity. Entity ids are
  * never reused, so a dead owner's id cannot re-alias a live settler.
  */
-export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy', 'economy');
+export const HarvestedBy = defineComponent<{ by: Entity }>('HarvestedBy', 'economy', { simOnly: true });
 
 /** Names the hunter whose shot left this carcass {@link Resource}; absent on a node not shot into being. */
 export const KilledBy = defineComponent<{ by: Entity }>('KilledBy', 'economy');

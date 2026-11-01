@@ -45,7 +45,7 @@ export const WildHabitat = defineComponent<{
   nextStayAt: number;
   /** The node a leader's graze leg aims at, until it decides again. */
   nextPoint?: NodeId | undefined;
-}>('WildHabitat', 'movement');
+}>('WildHabitat', 'movement', { simOnly: true });
 
 /** Original behavior: the bits of a map's `setanimal` flags word an animal honours. */
 export const ANIMAL_FLAG = {
@@ -190,7 +190,9 @@ export const PathRequest = defineComponent<{
  * tick. Set with the stand-in route, cleared by the drive that acts on it, by a route delivered without
  * a stand-in, and with the rest of the nav state.
  */
-export const StandIn = defineComponent<{ goal: NodeId; at: NodeId }>('StandIn', 'movement');
+export const StandIn = defineComponent<{ goal: NodeId; at: NodeId }>('StandIn', 'movement', {
+  simOnly: true,
+});
 
 /**
  * A stranded walker's retry pacing: its route failed and no drive with its own failure protocol owns it, so
@@ -230,6 +232,7 @@ export interface UnreachableGoal {
 export const UnreachableGoals = defineComponent<{ entries: readonly UnreachableGoal[] }>(
   'UnreachableGoals',
   'movement',
+  { simOnly: true },
 );
 
 /**
@@ -247,4 +250,4 @@ export const Obstructed = defineComponent<{
   hold: number;
   x: Fixed;
   y: Fixed;
-}>('Obstructed', 'movement');
+}>('Obstructed', 'movement', { simOnly: true });

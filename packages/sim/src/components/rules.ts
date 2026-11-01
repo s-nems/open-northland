@@ -357,7 +357,7 @@ export function combatEnemyMask(world: World, player: number): number {
 const playerContacts = defineWorldSingleton<{
   /** viewer player → bitmask of player slots seen (fits one integer: slots are < {@link MAX_PLAYERS}). */
   met: Map<number, number>;
-}>('PlayerContacts', 'players', () => ({ met: new Map() }));
+}>('PlayerContacts', 'players', () => ({ met: new Map() }), { simOnly: true });
 
 /**
  * Which players each player has ever seen an entity of. The vision system records a contact when an owned

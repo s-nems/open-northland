@@ -41,7 +41,7 @@ export const FarmTask = defineComponent<{
   target?: Entity;
   /** True for a sow intent - it reserves one of the farm's crew-scaled field slots while in flight. */
   sow: boolean;
-}>('FarmTask', 'economy');
+}>('FarmTask', 'economy', { simOnly: true });
 
 /**
  * A {@link Crop} field cut off from its farm - no work stance is both unblocked and routable from the farm's

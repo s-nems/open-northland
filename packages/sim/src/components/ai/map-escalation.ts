@@ -69,17 +69,22 @@ export interface MapEscalationProgress {
 }
 
 /** No carrier exists until the escalation first writes, so a world before it hashes as one without it. */
-const escalation = defineWorldSingleton<MapEscalationProgress>('MapEscalation', 'players', () => ({
-  launches: 0,
-  attack: null,
-  gearSteps: 0,
-  gearedBelow: 0,
-  catapults: null,
-  landings: [],
-  focus: [],
-  demobilized: false,
-  heroes: null,
-}));
+const escalation = defineWorldSingleton<MapEscalationProgress>(
+  'MapEscalation',
+  'players',
+  () => ({
+    launches: 0,
+    attack: null,
+    gearSteps: 0,
+    gearedBelow: 0,
+    catapults: null,
+    landings: [],
+    focus: [],
+    demobilized: false,
+    heroes: null,
+  }),
+  { simOnly: true },
+);
 
 export const MapEscalationState = escalation.component;
 

@@ -12,4 +12,4 @@ export interface MapAiDefenceState {
 }
 
 /** Ownership and leash of one reactive map-camp sortie, retained across saves and decision intervals. */
-export const MapAiDefence = defineComponent<MapAiDefenceState>('MapAiDefence', 'players');
+export const MapAiDefence = defineComponent<MapAiDefenceState>('MapAiDefence', 'players', { simOnly: true });

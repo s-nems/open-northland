@@ -44,4 +44,4 @@ export function chatAtomicRunning(world: World, e: Entity): boolean {
  * re-grabbed in the very planner pass that freed it. The stamp expires in place, overwritten by the next
  * chat rather than removed.
  */
-export const ChatCooldown = defineComponent<{ until: number }>('ChatCooldown', 'settlers');
+export const ChatCooldown = defineComponent<{ until: number }>('ChatCooldown', 'settlers', { simOnly: true });

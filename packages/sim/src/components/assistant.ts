@@ -210,7 +210,7 @@ export const AssistantCounters = defineComponent<{
   /** The player slot the counters belong to (`[0, MAX_PLAYERS)`). */
   player: number;
   counters: AssistantCounterValues;
-}>('AssistantCounters', 'players');
+}>('AssistantCounters', 'players', { simOnly: true });
 
 export function defaultAssistantCounters(): AssistantCounterValues {
   const zero = (): AssistantCounterState => ({ value: 0, infinite: false });

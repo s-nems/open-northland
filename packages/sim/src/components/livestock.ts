@@ -47,7 +47,9 @@ export const ClaimAnimalOrder = defineComponent<{
  * stands on another one, as the original claims on each new position a scout reaches. Persisted so a
  * restored run claims on the same steps as an uninterrupted one.
  */
-export const LivestockSweep = defineComponent<{ node: NodeId }>('LivestockSweep', 'settlers');
+export const LivestockSweep = defineComponent<{ node: NodeId }>('LivestockSweep', 'settlers', {
+  simOnly: true,
+});
 
 /**
  * An owned animal that scattered from an enemy scout, and the tick from which it may scatter again, so a

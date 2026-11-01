@@ -100,10 +100,15 @@ interface MissionStateValue {
   missions: MissionRecord[];
 }
 
-const missionState = defineWorldSingleton<MissionStateValue>('MissionState', 'players', () => ({
-  loadTick: 0,
-  missions: [],
-}));
+const missionState = defineWorldSingleton<MissionStateValue>(
+  'MissionState',
+  'players',
+  () => ({
+    loadTick: 0,
+    missions: [],
+  }),
+  { simOnly: true },
+);
 
 /** The per-mission state of the world's script, materialized on the mission system's first tick and
  *  saved and hashed from there on. Absent for every world that runs no script. */

@@ -6,4 +6,4 @@ export interface AiOrderOrigin {
   readonly player: number;
   readonly source: AiDecisionSource;
 }
-export const AiOrder = defineComponent<AiOrderOrigin>('AiOrder', 'players');
+export const AiOrder = defineComponent<AiOrderOrigin>('AiOrder', 'players', { simOnly: true });

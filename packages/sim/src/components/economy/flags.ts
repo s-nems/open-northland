@@ -57,7 +57,7 @@ export const YardDeliveryRoute = defineComponent<{
   goodType: number;
   goal: NodeId;
   failed: boolean;
-}>('YardDeliveryRoute', 'economy');
+}>('YardDeliveryRoute', 'economy', { simOnly: true });
 
 /**
  * The default work radius a newly placed gatherer flag gets: 32 half-cell nodes, about 16 tiles. Original
@@ -81,4 +81,5 @@ export const HUNTER_WORK_FLAG_RADIUS = 50;
 export const ReplantMisses = defineComponent<{ hx: number; hy: number; misses: number }>(
   'ReplantMisses',
   'economy',
+  { simOnly: true },
 );

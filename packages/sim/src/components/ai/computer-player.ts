@@ -37,7 +37,7 @@ export interface MusterPlanState {
  * when the wave marches, the army falls under a wave, or the campaign has no objective; a disabled military
  * leaves it in place, window and all.
  */
-export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan', 'players');
+export const MusterPlan = defineComponent<MusterPlanState>('MusterPlan', 'players', { simOnly: true });
 
 export interface WaveMarchState {
   /** The objective the wave was sent on; a new campaign target sends it again. */
@@ -60,7 +60,7 @@ export interface WaveMarchState {
  * on the muster barracks beside its {@link MusterPlan}. Minted at the launch, removed when the wave is
  * spent or the campaign loses its objective (`military/march/index.ts`).
  */
-export const WaveMarch = defineComponent<WaveMarchState>('WaveMarch', 'players');
+export const WaveMarch = defineComponent<WaveMarchState>('WaveMarch', 'players', { simOnly: true });
 
 export interface StalledPlacementsState {
   /** The first tick each build-order step, by its line and index, searches a spot again after a search
@@ -77,7 +77,9 @@ export interface StalledPlacementsState {
  * once the step places or stands met, and drops a line's holding step's once another step of that line
  * acts. Absent while no search is pending.
  */
-export const StalledPlacements = defineComponent<StalledPlacementsState>('StalledPlacements', 'players');
+export const StalledPlacements = defineComponent<StalledPlacementsState>('StalledPlacements', 'players', {
+  simOnly: true,
+});
 
 export interface LineFrontier {
   /** The line's first unmet step at the seat's last build-order decision that reached it. */
@@ -95,13 +97,16 @@ export interface LineFrontier {
 export const BuildOrderFrontier = defineComponent<{ lines: Map<BuildLineId, LineFrontier> }>(
   'BuildOrderFrontier',
   'players',
+  { simOnly: true },
 );
 
 /**
  * The tick before which the seat's build order starts nothing on a free construction site, held on its
  * {@link AiControl} carrier: a lower difficulty's pause, removed by the next site or upgrade it starts.
  */
-export const BuildOrderPause = defineComponent<{ untilTick: number }>('BuildOrderPause', 'players');
+export const BuildOrderPause = defineComponent<{ untilTick: number }>('BuildOrderPause', 'players', {
+  simOnly: true,
+});
 
 export interface RoadTrafficState {
   /** The seat whose settlers walked here. */
@@ -125,7 +130,7 @@ export interface RoadTrafficState {
  * (seat, bucket) the seat walks: counting touches only the bucket a step entered, so a tick's writes stay
  * as small as its steps. The road decision paves the busiest (`systems/computer-player/traffic.ts`).
  */
-export const RoadTraffic = defineComponent<RoadTrafficState>('RoadTraffic', 'players');
+export const RoadTraffic = defineComponent<RoadTrafficState>('RoadTraffic', 'players', { simOnly: true });
 
 /** One enemy unit a computer seat remembers for a blow on its people or buildings, or a theft of its
  *  stock, until `untilTick`. */
@@ -142,7 +147,9 @@ export interface SeatOffender {
  * {@link AiControl} carrier so a later defence decision still sees them (`conflict/offenders.ts`).
  * Absent while the seat remembers no one.
  */
-export const SeatOffenders = defineComponent<{ offenders: SeatOffender[] }>('SeatOffenders', 'players');
+export const SeatOffenders = defineComponent<{ offenders: SeatOffender[] }>('SeatOffenders', 'players', {
+  simOnly: true,
+});
 
 /** A computer seat's civilian armed as a hunter while a zone of its settlement is desperate. */
 export interface MilitiaState {

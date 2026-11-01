@@ -27,7 +27,7 @@ export const Weapon = defineComponent<{ weaponTypeId: number }>('Weapon', 'comba
  * A provoked animal's anger timer: an `animaltypes.ini` `getangry` species that is not `aggressive` fights
  * back until `until`, the tick (`hit tick + angryGameTime`) the anger lapses on.
  */
-export const Anger = defineComponent<{ until: number }>('Anger', 'combat');
+export const Anger = defineComponent<{ until: number }>('Anger', 'combat', { simOnly: true });
 
 /**
  * An animal's flight from a blow. A herd leader runs from `from`, the node its attacker struck from, to
@@ -47,14 +47,16 @@ export const Frightened = defineComponent<{
  * A hunter's empty-search breather: skip prey acquisition until the `until` tick. A cost throttle only -
  * the hunting ground is far wider than a soldier's sight band.
  */
-export const HuntRest = defineComponent<{ until: number }>('HuntRest', 'combat');
+export const HuntRest = defineComponent<{ until: number }>('HuntRest', 'combat', { simOnly: true });
 
 /**
  * A hunter's committed prey: the animal it stays on until the kill instead of re-picking the nearest each
  * tick. Never outlives the carrier's {@link Engagement}. `needBreakAt` is the tick before which a pressing
  * need does not stop the hunt again, absent until the first break.
  */
-export const HuntFocus = defineComponent<{ target: Entity; needBreakAt?: number }>('HuntFocus', 'combat');
+export const HuntFocus = defineComponent<{ target: Entity; needBreakAt?: number }>('HuntFocus', 'combat', {
+  simOnly: true,
+});
 
 /**
  * Present while a unit chases an enemy, and while an owned one trades blows - the marker the planner's
@@ -84,6 +86,7 @@ export interface UnreachableTarget {
 export const UnreachableTargets = defineComponent<{ entries: readonly UnreachableTarget[] }>(
   'UnreachableTargets',
   'combat',
+  { simOnly: true },
 );
 
 /**

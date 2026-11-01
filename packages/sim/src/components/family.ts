@@ -55,7 +55,9 @@ export const ChildOrder = defineComponent<{
  * Per-tick marker: the FamilySystem is driving this settler, so the planner's economy drives leave it alone
  * and its `Resting` marker survives a replan that would otherwise strip it.
  */
-export const FamilyDuty = defineComponent<{ readonly duty: true }>('FamilyDuty', 'settlers');
+export const FamilyDuty = defineComponent<{ readonly duty: true }>('FamilyDuty', 'settlers', {
+  simOnly: true,
+});
 
 /**
  * Durable household supplies held by a home. Values use the original house-quality scale rather than
