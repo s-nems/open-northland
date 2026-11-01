@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import * as components from '../../src/components/index.js';
+import { defineComponent } from '../../src/ecs/component.js';
 import { TOUCHED_LOG_OVERFLOW_LIMIT } from '../../src/ecs/touched-log.js';
 import {
   type Command,
@@ -50,6 +51,11 @@ const SETUP = new Map<number, Command[]>([
 const EAST_HX = 7;
 const PLANT_TICK = 200;
 const FELL_TICK = 250;
+
+/** Sim bookkeeping no read view carries. */
+const SimOnlyMark = defineComponent<{ until: number }>('SnapshotTestSimOnlyMark', 'settlers', {
+  simOnly: true,
+});
 
 function bareResource(sim: Simulation, remaining: number): Entity {
   const e = sim.world.create();
@@ -217,6 +223,39 @@ describe('snapshot delta stream', () => {
     expect(stepped).toMatchObject({ tick: 1, sequence: 1, rebuild: false, removed: [] });
     expect(stepped.touched).toHaveLength(0);
     expect(deltas.next()).toBeNull();
+  });
+
+  it('leaves a sim-only component out of deltas and snapshots', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const held = bareResource(sim, 5);
+    sim.world.add(held, SimOnlyMark, { until: 7 });
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    mirror.apply(nonNull(deltas.next()));
+    expect(entityById(mirror.snapshot(), held)?.components).not.toHaveProperty(SimOnlyMark.name);
+    sim.world.mut(held, SimOnlyMark).until = 8;
+    const markOnly = nonNull(deltas.next());
+    expect(markOnly.touched).toHaveLength(0);
+    mirror.apply(markOnly);
+    expect(entityById(sim.snapshot(), held)?.components).not.toHaveProperty(SimOnlyMark.name);
+    expect(entityById(mirror.snapshot(), held)?.components).toStrictEqual(
+      entityById(sim.snapshot(), held)?.components,
+    );
+  });
+
+  it('carries an entity created with only sim-only components, and skips one that only gains them', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const held = bareResource(sim, 5);
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    mirror.apply(nonNull(deltas.next()));
+    const hidden = sim.world.create();
+    sim.world.add(hidden, SimOnlyMark, { until: 9 });
+    sim.world.add(held, SimOnlyMark, { until: 9 });
+    const delta = nonNull(deltas.next());
+    mirror.apply(delta);
+    expect(entityById(mirror.snapshot(), hidden)?.components).toStrictEqual({});
+    expect([...delta.touched]).toStrictEqual([hidden]);
   });
 
   it('carries records of numbers, booleans, strings and null as scalars, and repeats a layout in a later delta', () => {

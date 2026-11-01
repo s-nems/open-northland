@@ -361,12 +361,17 @@ export class World {
   }
 
   /** Visit an entity's components in registration order and O(carried components), without allocating.
-   *  The revision changes only when this stored value is added or acquired through {@link mut}. */
-  forEachComponent(entity: Entity, visit: (name: string, value: unknown, revision: number) => void): void {
+   *  The revision changes only when this stored value is added or acquired through {@link mut}. A read
+   *  view passes `readView` to skip the {@link Component.simOnly} ones. */
+  forEachComponent(
+    entity: Entity,
+    visit: (name: string, value: unknown, revision: number) => void,
+    readView = false,
+  ): void {
     const memberships = this.memberships;
     for (let index = memberships.next(entity, -1); index >= 0; index = memberships.next(entity, index)) {
       const c = this.registered[index];
-      if (c === undefined) continue;
+      if (c === undefined || (readView && c.simOnly)) continue;
       const store = this.storeOf(c);
       if (store === undefined) continue;
       const slot = store.slotOf(entity);

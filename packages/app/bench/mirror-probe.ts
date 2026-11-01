@@ -301,14 +301,18 @@ function receivedDelta(bytes: Buffer): SnapshotDelta {
   return message.batch.delta;
 }
 
-/** The live world cloned straight off its component stores, sharing no encoder with the delta path and
- *  leaving the clone cache `Simulation.snapshot()` fills empty. */
+/** The live world's read view cloned straight off its component stores, sharing no encoder with the
+ *  delta path and leaving the clone cache `Simulation.snapshot()` fills empty. */
 function liveSnapshot(sim: Simulation): WorldSnapshot {
   const entities = sim.world.canonicalEntities().map((id) => {
     const components: Record<string, unknown> = {};
-    sim.world.forEachComponent(id, (name, value) => {
-      components[name] = clonePlain(value);
-    });
+    sim.world.forEachComponent(
+      id,
+      (name, value) => {
+        components[name] = clonePlain(value);
+      },
+      true,
+    );
     return { id, components };
   });
   return { tick: sim.tick, entities, events: cloneEvents(sim.events.current()) };

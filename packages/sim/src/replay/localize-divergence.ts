@@ -12,8 +12,8 @@ export interface DivergenceReport {
   readonly hashB: string;
   /**
    * Run A's state at {@link tick} against run B's, so `fromTick` and `toTick` both equal it. An empty
-   * diff under differing hashes means the split is in RNG or tick state, which a snapshot omits and
-   * `hashState()` mixes in.
+   * diff under differing hashes means the split is in RNG, tick state or a sim-only component, which a
+   * snapshot omits and `hashState()` mixes in.
    */
   readonly diff: SnapshotDiff;
 }

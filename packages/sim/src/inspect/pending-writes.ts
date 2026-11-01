@@ -35,7 +35,8 @@ export class PendingWrites {
     return this.alive;
   }
 
-  /** Log the first `count` of `written` for `entity`, after what it wrote before. */
+  /** Log the first `count` of `written` for `entity`, after what it wrote before; a
+   *  {@link Component.simOnly} one stays out, since no read view carries it. */
   add(entity: Entity, written: readonly Component<unknown>[], count = written.length): void {
     let slot = this.slotOf(entity);
     if (slot < 0) slot = this.open(entity);
@@ -47,6 +48,7 @@ export class PendingWrites {
     let held = this.listCounts[slot] as number;
     for (let i = 0; i < count; i++) {
       const component = written[i] as Component<unknown>;
+      if (component.simOnly) continue;
       let found = false;
       for (let k = 0; k < held && !found; k++) found = list[k] === component;
       if (found) continue;

@@ -51,10 +51,17 @@ class SnapshotClones {
     const cachesAny = this.entries.size > 0;
     const overflowed = world.drainTouched((e, written, count, membership) => {
       const alive = world.isAlive(e);
-      const cached = cachesAny ? this.entries.get(e) : undefined;
+      const hidden = alive && count > 0 && onlySimOnly(written, count);
+      // A sim-only value write changes no read view; a membership change still reaches the streams,
+      // since it may be the creation of an entity they have not sent.
+      if (hidden && !membership) return;
+      const cached = cachesAny && !hidden ? this.entries.get(e) : undefined;
       if (cached !== undefined) {
         if (alive) {
-          for (let i = 0; i < count; i++) cached.written.add(written[i] as Component<unknown>);
+          for (let i = 0; i < count; i++) {
+            const component = written[i] as Component<unknown>;
+            if (!component.simOnly) cached.written.add(component);
+          }
           cached.membershipChanged ||= membership;
         } else this.entries.delete(e);
       }
@@ -141,19 +148,29 @@ class SnapshotClones {
   }
 }
 
-/** Every component of the entity cloned in registration order; with `previous`, its clones of the
+/** Whether the first `count` of `written` are all {@link Component.simOnly}: writes no read view sees. */
+function onlySimOnly(written: readonly Component<unknown>[], count: number): boolean {
+  for (let i = 0; i < count; i++) if (!(written[i] as Component<unknown>).simOnly) return false;
+  return true;
+}
+
+/** Every read-view component of the entity cloned in registration order; with `previous`, its clones of the
  *  components it did not write since are kept. */
 function cloneComponents(world: World, id: Entity, previous?: CachedEntity): Record<string, unknown> {
   const components: Record<string, unknown> = {};
   const writtenNames = new Set([...(previous?.written ?? [])].map((component) => component.name));
   let fields = 0;
-  world.forEachComponent(id, (name, value) => {
-    const clone =
-      previous !== undefined && !writtenNames.has(name) && Object.hasOwn(previous.components, name)
-        ? previous.components[name]
-        : clonePlain(value);
-    addField(components, fields++, name, clone);
-  });
+  world.forEachComponent(
+    id,
+    (name, value) => {
+      const clone =
+        previous !== undefined && !writtenNames.has(name) && Object.hasOwn(previous.components, name)
+          ? previous.components[name]
+          : clonePlain(value);
+      addField(components, fields++, name, clone);
+    },
+    true,
+  );
   return components;
 }
 
@@ -275,7 +292,7 @@ export class SnapshotDeltaStream {
     this.sent.add(id);
     this.digest?.fold(this.clones.snapOf(id));
     columns.begin(id);
-    this.source.world.forEachComponent(id, columns.writeLive);
+    this.source.world.forEachComponent(id, columns.writeLive, true);
     columns.end();
   }
 
@@ -285,12 +302,14 @@ export class SnapshotDeltaStream {
       this.whole(columns, id);
       return;
     }
+    const count = this.pending.written.writtenCount(id);
+    // Only sim-only components joined or left a sent entity: nothing to carry.
+    if (count === 0) return;
     const world = this.source.world;
     this.digest?.fold(this.clones.snapOf(id));
     // Preserve the component registration order carried by complete snapshots: an insertion sort, since
     // an entity writes a handful of components and the built-in sort allocates per call.
     const written = this.pending.written.writtenBy(id);
-    const count = this.pending.written.writtenCount(id);
     for (let i = 1; i < count; i++) {
       const component = written[i] as Component<unknown>;
       const order = world.componentOrder(component);

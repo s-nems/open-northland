@@ -25,7 +25,10 @@ export interface Component<T> {
   /** Dense definition-order index, process-unique like `name`: a `World` resolves the store through it
    *  instead of hashing the component object on every read. Never persisted. */
   readonly id: number;
-  /** Phantom type brand: `T` never exists at runtime (a component is just `{ name, domain, id }`), but carrying it
+  /** Simulation bookkeeping no read view carries: snapshots, their deltas and the mirror leave it out,
+   *  while saves, the state hash and the sync digest keep it like any other component. */
+  readonly simOnly: boolean;
+  /** Phantom type brand: `T` never exists at runtime (a component is just `{ name, domain, id, simOnly }`), but carrying it
    *  in the type keeps `Component<A>` unassignable where a `Component<B>` is expected. */
   readonly __value?: T;
 }
@@ -33,14 +36,23 @@ export interface Component<T> {
 /** Every defined component by name: the vocabulary a save's component sections resolve against. */
 const defined = new Map<string, Component<unknown>>();
 
+export interface ComponentOptions {
+  /** See {@link Component.simOnly}. */
+  readonly simOnly?: true;
+}
+
 /** `name` must be unique per process - it is the component's identity in state hashes and save files,
  *  where two stores sharing a name would be indistinguishable. `domain` groups the component's writes
  *  in a sync digest. */
-export function defineComponent<T>(name: string, domain: SyncDomain): Component<T> {
+export function defineComponent<T>(
+  name: string,
+  domain: SyncDomain,
+  options: ComponentOptions = {},
+): Component<T> {
   if (defined.has(name)) throw new Error(`component name '${name}' is already defined`);
   // Component names key plain snapshot records by assignment, which the prototype setter would hijack.
   if (name === '__proto__') throw new Error(`component name '${name}' is reserved`);
-  const component: Component<T> = { name, domain, id: defined.size };
+  const component: Component<T> = { name, domain, id: defined.size, simOnly: options.simOnly === true };
   defined.set(name, component);
   return component;
 }
