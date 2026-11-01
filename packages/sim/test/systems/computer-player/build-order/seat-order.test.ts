@@ -102,6 +102,21 @@ function firstCommand(sim: Simulation, order: BuildOrder) {
 }
 
 describe('the seat strategy shapes the build order', () => {
+  it("keeps a custom order's priority on an archetype with the default one", () => {
+    const steps = [{ kind: 'place', building: 'home_level_00', count: 1 }] as const;
+    const order: BuildOrder = {
+      lines: [
+        { id: 'opening', steps },
+        { id: 'bread', steps },
+      ],
+      priority: ['bread', 'opening'],
+    };
+    for (const archetype of ['standard', 'rich'] as const) {
+      const shape = { archetype, sides: [], phase: 'opening', defenceFirst: false } as const;
+      expect(shapeBuildOrder(order, shape).priority).toEqual(order.priority);
+    }
+  });
+
   it('raises the army line over a later economy step while a scripted attack is forecast', () => {
     expect(defenceFirst(BUILDING_UP, true)).toBe(false);
     expect(defenceFirst(FORECAST, false)).toBe(true);

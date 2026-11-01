@@ -306,7 +306,8 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   const drops = sideDrops(shape.sides);
   const caps = copyCapsOf(tuning, shape.sides);
   const lines = order.lines.map((line) => shapeLine(line, tuning, drops, caps));
-  let priority = tuning === STANDARD ? order.priority : tuning.priority;
+  // An archetype on the default priority keeps the order's own; one with an authored priority plays it.
+  let priority = tuning.priority === STANDARD_PRIORITY ? order.priority : tuning.priority;
   if (shape.sides.some((side) => TUNIC_SIDES.includes(side)))
     priority = raised(priority, ['clothing'], 'brewery');
   priority = raised(priority, PHASE_RAISES[shape.phase], 'opening');
