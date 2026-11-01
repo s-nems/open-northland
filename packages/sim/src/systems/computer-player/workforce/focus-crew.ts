@@ -52,14 +52,16 @@ export function focusCrewOrders(
   }
   const at = anchorNodeOf(world, site);
   if (at === null) return [];
+  // Counted from the whole site crew, so a pinned builder another phase took this decision still counts.
   let pinned = 0;
+  for (const e of onSite)
+    if (world.get(e, SiteAssignment).pinned && world.get(e, Settler).jobType === builderJob) pinned++;
   const releasable: Placed[] = [];
   const free: Placed[] = [];
   for (const e of builders) {
     if (world.get(e, Settler).jobType !== builderJob) continue;
     const assigned = world.tryGet(e, SiteAssignment);
     const pin = assigned?.pinned === true && assigned.site === site;
-    if (pin) pinned++;
     if (atomicHoldsSettler(world, e)) continue;
     if (!pin && (world.has(e, BuildMode) || world.has(e, Carrying))) continue;
     const here = anchorNodeOf(world, e);
