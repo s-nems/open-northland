@@ -8,7 +8,7 @@ import {
 } from '../../components/index.js';
 import { JournaledCaptures } from '../../ecs/journaled-captures.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { type BlockOverlay, LayeredBlocks } from '../../nav/block-overlay.js';
+import type { BlockOverlay, NodeMask } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
@@ -36,8 +36,31 @@ function captureGate(world: World, terrain: TerrainGraph, e: Entity): Gate | nul
   return { owner, cells: translatedCells(terrain, wall.placementWalk, hx, hy) };
 }
 
+/** The levelled walk-block mask plus the enemy gate cells, each one byte per node, so a test is two array
+ *  reads. */
+class GatedBlocks implements BlockOverlay {
+  constructor(
+    private readonly actual: NodeMask,
+    private readonly gateCells: EnemyGateCells,
+  ) {}
+  has(node: NodeId): boolean {
+    return this.actual.blocked[node] === 1 || this.gateCells.bytes[node] === 1;
+  }
+  get size(): number {
+    return this.actual.size + this.gateCells.count;
+  }
+}
+
+/** The cells of the gates one enemy set must break, one byte per node, 1 on a gate cell. */
+interface EnemyGateCells {
+  readonly bytes: Uint8Array;
+  readonly count: number;
+}
+
 class GatePlans {
   private readonly gates = new Map<Entity, Gate>();
+  /** Per enemy mask; gates alone shape them, so only a gate change drops them. */
+  private readonly gateCells = new Map<number, EnemyGateCells>();
   private readonly captures: JournaledCaptures<Gate>;
   private readonly plans = new Map<number, AttackMoveBlocks>();
   private blockVersion = -1;
@@ -59,14 +82,17 @@ class GatePlans {
         apply: (e, gate) => {
           this.gates.set(e, gate);
           this.plans.clear();
+          this.gateCells.clear();
         },
         withdraw: (e) => {
           this.gates.delete(e);
           this.plans.clear();
+          this.gateCells.clear();
         },
         clear: () => {
           this.gates.clear();
           this.plans.clear();
+          this.gateCells.clear();
         },
       },
     );
@@ -91,9 +117,23 @@ class GatePlans {
         if (prior === undefined || e < prior) gates.set(node, e);
       }
     }
-    plan = { blocked: gates.size === 0 ? actual : new LayeredBlocks([actual, gates]), gates };
+    plan = {
+      blocked: gates.size === 0 ? actual : new GatedBlocks(actual, this.cellsOf(enemies, gates)),
+      gates,
+    };
     this.plans.set(enemies, plan);
     return plan;
+  }
+
+  private cellsOf(enemies: number, gates: ReadonlyMap<NodeId, Entity>): EnemyGateCells {
+    let cells = this.gateCells.get(enemies);
+    if (cells === undefined) {
+      const bytes = new Uint8Array(this.terrain.nodeCount);
+      for (const node of gates.keys()) bytes[node] = 1;
+      cells = { bytes, count: gates.size };
+      this.gateCells.set(enemies, cells);
+    }
+    return cells;
   }
 
   verify(): string[] {

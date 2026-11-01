@@ -24,7 +24,7 @@ game's slowest pathfinding ticks. Measured on the six-AI `magiczny_las` session 
   abstract route crosses. Shorter walks keep the current search.
 - Hold a cluster's portal costs until a node of that cluster flips on the walk-block mask (its flip
   stamps, `nav/change-stamps.ts` through `WalkBlockMask.flippedSince`) or its roads change (the road
-  lane revision the route memo already keys on).
+  lane revision, `TerrainGraph.mirroredRoadRevision`).
 - Ghost (non-colliding) walkers only: a collider's overlay adds standing bodies that change every tick.
   Group orders keep their own path (`movement/group-routes.ts`); the
   [mass-order design](mass-order-movement-design.md) covers armies.

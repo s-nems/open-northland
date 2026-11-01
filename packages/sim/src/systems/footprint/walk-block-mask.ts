@@ -74,7 +74,7 @@ export class WalkBlockMask implements BlockOverlay {
 
   /** The mask levelled now, read without the per-read level check: valid until the next entity write,
    *  for a flood that writes nothing. */
-  levelled(): BlockOverlay {
+  levelled(): NodeMask {
     this.catchUp();
     return this.mask;
   }

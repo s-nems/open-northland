@@ -50,7 +50,6 @@ import { GroupReachability } from './group-reachability.js';
 import { GroupRoutes } from './group-routes.js';
 import { dropPath, liveStepEnd, restartLeg } from './nav-state.js';
 import { routeBoundsOf } from './route-bounds.js';
-import { type RouteMemo, routeMemoOf } from './route-memo.js';
 import { grindStartCell, routeStartCell } from './route-start.js';
 import { settlerTraversal } from './traversal.js';
 import { beginWalkTurn } from './turning.js';
@@ -83,7 +82,7 @@ export const pathfindingSystem: System = (world, ctx) => {
 
 /**
  * One world's request-serving state, emptied at each drain so no view or claim is read past its tick
- * (the last context and memo stay referenced until the next drain). Kept per world so a routing tick
+ * (the last context stays referenced until the next drain). Kept per world so a routing tick
  * reuses its maps instead of minting them; the group helpers are built fresh, and only by a drain that
  * serves a group order.
  */
@@ -115,15 +114,11 @@ class PathDrain {
     private readonly world: World,
     private ctx: SystemContext,
     private terrain: TerrainGraph,
-    /** Colliders only: a firm body that stalls in a crowd asks for the route it walks again, while a
-     *  ghost's repeats are too rare to pay for logging its searches. */
-    private memo: RouteMemo,
   ) {}
 
-  begin(ctx: SystemContext, terrain: TerrainGraph, memo: RouteMemo): void {
+  begin(ctx: SystemContext, terrain: TerrainGraph): void {
     this.ctx = ctx;
     this.terrain = terrain;
-    this.memo = memo;
     this.reset();
   }
 
@@ -208,16 +203,13 @@ class PathDrain {
   /**
    * A route for `e` from `start` to `goal` under `overlay`. A group member's is refused at once by a region
    * the group already found sealed, borrowed from a neighbour, or searched, a searched answer kept for the
-   * rest of the group. `viaMemo` searches through the route memo, for a collider seen as `player`.
+   * rest of the group.
    */
   routeUnder(
-    e: Entity,
     overlay: BlockOverlay,
     start: NodeId,
     goal: NodeId,
     group: boolean,
-    viaMemo: boolean,
-    player: number,
     traversal: Traversal,
   ): NodeId[] | null {
     const { mask, spent } = this;
@@ -228,9 +220,7 @@ class PathDrain {
     const groupRoutes = group ? this.groupRoutes : undefined;
     const borrowed = groupRoutes === undefined ? null : groupRoutes.borrow(overlay, start, goal, spent);
     if (borrowed !== null) return borrowed;
-    const path = viaMemo
-      ? memoPath(this.memo, e, this.ctx.tick, start, goal, player, overlay, spent, this.goalSlice)
-      : resolvePath(this.terrain, start, goal, overlay, spent, traversal, this.goalSlice);
+    const path = resolvePath(this.terrain, start, goal, overlay, spent, traversal, this.goalSlice);
     // Only a searched route is offered: offering borrowed ones grows the list each member tries.
     if (path !== null && groupRoutes !== undefined) groupRoutes.offer(overlay, path);
     if (path === null && group && mask !== undefined && !overlay.has(goal)) {
@@ -243,13 +233,13 @@ class PathDrain {
 
 const drains = new WeakMap<World, PathDrain>();
 
-function pathDrainOf(world: World, ctx: SystemContext, terrain: TerrainGraph, memo: RouteMemo): PathDrain {
+function pathDrainOf(world: World, ctx: SystemContext, terrain: TerrainGraph): PathDrain {
   let drain = drains.get(world);
   if (drain === undefined) {
-    drain = new PathDrain(world, ctx, terrain, memo);
+    drain = new PathDrain(world, ctx, terrain);
     drains.set(world, drain);
   } else {
-    drain.begin(ctx, terrain, memo);
+    drain.begin(ctx, terrain);
   }
   return drain;
 }
@@ -267,12 +257,8 @@ export function drainPathRequests(
 ): void {
   // Serve in ascending entity-id order so the per-tick budget cut is canonical, never insertion order.
   const requests = world.canonicalQuery(PathRequest);
-  const memo = routeMemoOf(world, terrain);
-  if (requests.length === 0) {
-    memo.expire(ctx.tick);
-    return;
-  }
-  const drain = pathDrainOf(world, ctx, terrain, memo);
+  if (requests.length === 0) return;
+  const drain = pathDrainOf(world, ctx, terrain);
   const { spent, claimedStandIns } = drain;
   for (const e of requests) {
     // A player order must not trickle into motion in entity-id order. Sharing cuts its search cost,
@@ -332,12 +318,12 @@ export function drainPathRequests(
     const group =
       traversal === 'land' && playerOrdered && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
     if (group) drain.refreshGroup();
-    let path = drain.routeUnder(e, blocked, start, goal, group, collides, player ?? -1, traversal);
+    let path = drain.routeUnder(blocked, start, goal, group, traversal);
     // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
     if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
       const through = drain.besideTargetsFor(player ?? -1, structures);
       if (through.posts < bodies.posts) {
-        path = drain.routeUnder(e, through, start, goal, group, false, player ?? -1, traversal);
+        path = drain.routeUnder(through, start, goal, group, traversal);
       }
     }
     if (path !== null) {
@@ -452,7 +438,6 @@ export function drainPathRequests(
     settleRoute(world, e, req.goal);
   }
   drain.reset();
-  memo.expire(ctx.tick);
 }
 
 /** A route installed answers its request and ends any stranded park; one to the work a lost settler
@@ -565,22 +550,6 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Wa
     const x = node - y * terrain.width;
     return { x: positionXOfNode(x, y), y: positionYOfNode(y), node };
   });
-}
-
-/** {@link resolvePath} through the route memo, for a collider seen as `player`. */
-function memoPath(
-  memo: RouteMemo,
-  e: Entity,
-  tick: number,
-  start: number,
-  goal: number,
-  player: number,
-  blocked: BlockOverlay,
-  stats: SearchStats,
-  goalSlice: number,
-): NodeId[] | null {
-  if (!isValidNodeId(memo.terrain, start) || !isValidNodeId(memo.terrain, goal)) return null;
-  return memo.route(e, tick, start, goal, player, blocked, stats, goalSlice);
 }
 
 /** Run A* for a request; an off-grid `start` or `goal` reads as no route. */
