@@ -25,7 +25,9 @@ import type { SeatSupply } from './supply.js';
  * battle_for_the_four_hills_multiplayer, seed 7, every bakery stood at five of six units for an hour,
  * its pillar waiting on a mason hut whose builders were all pinned to the bakery).
  *
- * A `cap` bounds the crew below the bill, so the seat's other builders stay on its other sites.
+ * A `cap` bounds the crew below the bill, so the seat's other builders stay on its other sites. Builders
+ * pinned past the cap are released, the farthest first and ties to the higher id, except one an atomic
+ * holds, who is released on a later decision.
  */
 export function focusCrewOrders(
   world: World,
@@ -51,25 +53,38 @@ export function focusCrewOrders(
   const at = anchorNodeOf(world, site);
   if (at === null) return [];
   let pinned = 0;
-  const free: { readonly e: Entity; readonly distance: number }[] = [];
+  const releasable: Placed[] = [];
+  const free: Placed[] = [];
   for (const e of builders) {
     if (world.get(e, Settler).jobType !== builderJob) continue;
     const assigned = world.tryGet(e, SiteAssignment);
-    if (assigned?.pinned === true && assigned.site === site) {
-      pinned++;
-      continue;
-    }
-    if (world.has(e, BuildMode) || world.has(e, Carrying) || atomicHoldsSettler(world, e)) continue;
+    const pin = assigned?.pinned === true && assigned.site === site;
+    if (pin) pinned++;
+    if (atomicHoldsSettler(world, e)) continue;
+    if (!pin && (world.has(e, BuildMode) || world.has(e, Carrying))) continue;
     const here = anchorNodeOf(world, e);
     if (here === null) continue;
-    free.push({ e, distance: Math.abs(here.hx - at.hx) + Math.abs(here.hy - at.hy) });
+    (pin ? releasable : free).push({ e, distance: Math.abs(here.hx - at.hx) + Math.abs(here.hy - at.hy) });
+  }
+  const bill = constructionTotalUnits(world, ctx, site);
+  const limit = cap === null ? bill : Math.min(bill, cap);
+  if (pinned > limit) {
+    releasable.sort((a, b) => b.distance - a.distance || b.e - a.e);
+    return releasable
+      .slice(0, pinned - limit)
+      .map(({ e }): PlayerCommand => ({ kind: 'unassignBuilder', entity: e }));
   }
   free.sort((a, b) => a.distance - b.distance || a.e - b.e);
-  const bill = constructionTotalUnits(world, ctx, site);
-  const crew = Math.min(cap === null ? bill : Math.min(bill, cap), pinned + free.length);
+  const crew = Math.min(limit, pinned + free.length);
   return free
     .slice(0, Math.max(0, crew - pinned))
     .map(({ e }): PlayerCommand => ({ kind: 'assignBuilder', entity: e, site }));
+}
+
+/** A builder and his half-cell distance to the focus site. */
+interface Placed {
+  readonly e: Entity;
+  readonly distance: number;
 }
 
 /** Whether every line of `site`'s bill is on site, in a `crew` hand or in the seat's store. */

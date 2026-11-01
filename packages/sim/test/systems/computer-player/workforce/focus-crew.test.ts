@@ -73,6 +73,18 @@ describe('focusCrewOrders', () => {
     expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked, cap)).toHaveLength(cap);
   });
 
+  it('releases the farthest pinned builders once a cap falls below the crew', () => {
+    const { sim, men, mill } = millSeat();
+    const pins = focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked);
+    for (const c of pins) sim.enqueueSetup(c);
+    sim.step();
+    const cap = MILL_BILL_UNITS - 1;
+    const farthest = pins[pins.length - 1];
+    expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked, cap)).toEqual([
+      { kind: 'unassignBuilder', entity: farthest?.kind === 'assignBuilder' ? farthest.entity : null },
+    ]);
+  });
+
   it('sends nobody more once the crew is pinned', () => {
     const { sim, men, mill } = millSeat();
     for (const c of focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked))
