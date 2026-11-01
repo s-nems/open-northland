@@ -159,8 +159,7 @@ export function staffBuildings(
         const held =
           (tally.get(building)?.get(slot.jobType) ?? 0) + gated.schooling.promised(building, slot.jobType);
         const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
-        const qualifies = (e: Entity): boolean =>
-          settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', slot.jobType);
+        const qualifies = (e: Entity): boolean => meetsJob(world, ctx, seat, e, slot.jobType);
         // A spare man already of the slot's trade, as a map's given miller, takes it first, so a building
         // standing at the start is worked at once and no other man is retrained for it.
         const ofTrade = (e: Entity): boolean =>
@@ -197,6 +196,30 @@ export function staffBuildings(
   }
   return commands;
 }
+
+/** Whether `e` qualifies for `job` (`settlerMeetsNeed`), judged once per {@link SeatStaffing}: the
+ *  staffing passes ask the same men again, and nothing they read changes within a decision. */
+function meetsJob(world: World, ctx: SystemContext, seat: SeatStaffing, e: Entity, job: number): boolean {
+  let byJob = jobVerdictsBySeat.get(seat);
+  if (byJob === undefined) {
+    byJob = new Map();
+    jobVerdictsBySeat.set(seat, byJob);
+  }
+  let byEntity = byJob.get(job);
+  if (byEntity === undefined) {
+    byEntity = new Map();
+    byJob.set(job, byEntity);
+  }
+  let verdict = byEntity.get(e);
+  if (verdict === undefined) {
+    verdict = settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job);
+    byEntity.set(e, verdict);
+  }
+  return verdict;
+}
+
+/** {@link meetsJob}'s verdicts per decision's seat inputs, by job and then entity. */
+const jobVerdictsBySeat = new WeakMap<SeatStaffing, Map<number, Map<Entity, boolean>>>();
 
 /** Whether the `food` tier posts `type`'s first hand: a food chain workplace ({@link inFoodChain}) or an
  *  earned-trade workshop ({@link earnedTradeWorkshop}), ahead of the core builders and the other posts. */
