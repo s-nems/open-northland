@@ -100,6 +100,7 @@ describe('parseStoredSettings', () => {
       originalGameFolder: 'Cultures Northland',
       autosaveMinutes: 15,
       autosaveCount: 3,
+      catalogueSource: 'wikinger-tommy',
     } as const;
     expect(
       parseStoredSettings(JSON.stringify({ ...settings, changedKeyBindings: { pauseToggle: 'KeyO' } })),

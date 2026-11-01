@@ -1,13 +1,19 @@
 import type { Catalog } from '@open-northland/data';
 import { errorMessage } from '../log.js';
 import type { DataStore } from '../store.js';
+import { fetchMapdbPages } from '../upstream/mapdb.js';
 import { type Fetch, fetchCatalogPages } from '../upstream/strapi.js';
 import { type NormalizedRecord, normalizeRecords } from './normalize.js';
+import { firstSeenDates, normalizeMapdbRecords } from './normalize-mapdb.js';
+import { parseCatalog } from './snapshot.js';
 import { type Log, syncThumbnails } from './thumbnails.js';
 
 export interface SyncOptions {
   readonly fetch: Fetch;
   readonly upstream: string;
+  /** The wikinger-tommy.de mapdb origin, or null/absent when a deployment serves the other source
+   *  alone. */
+  readonly mapdbUpstream?: string | null;
   readonly store: DataStore;
   readonly log: Log;
   readonly signal?: AbortSignal;
@@ -34,25 +40,76 @@ async function storedEntryCount(store: DataStore): Promise<number> {
   return Array.isArray(parsed) ? parsed.length : 0;
 }
 
-/** One sync: download every page, normalize, keep the raw pages, refresh thumbnails and replace
- *  `catalog.json`. Throws before touching the data dir when the upstream fails or lists no map while a
- *  non-empty catalogue is stored, so the last good catalogue stays. */
+/** The stored catalogue's entries, or none when its text no longer parses; its dates feed the
+ *  mapdb's first-seen dates. */
+async function storedEntries(store: DataStore, log: Log): Promise<Catalog> {
+  const stored = await store.readCatalog();
+  if (stored === null) return [];
+  try {
+    return parseCatalog(stored.text);
+  } catch (error) {
+    log('stored catalogue refused', { error: errorMessage(error) });
+    return [];
+  }
+}
+
+/** Both sources' records in one catalogue: ids are unique across them, the rest sorted by id. */
+function mergeRecords(
+  sources: readonly (readonly NormalizedRecord[])[],
+  log: Log,
+): readonly NormalizedRecord[] {
+  const byId = new Map<string, NormalizedRecord>();
+  for (const records of sources) {
+    for (const record of records) {
+      if (byId.has(record.entry.id)) {
+        log('record skipped', { upstreamId: record.entry.source.id, reason: 'duplicate id' });
+        continue;
+      }
+      byId.set(record.entry.id, record);
+    }
+  }
+  return [...byId.values()].sort((a, b) => (a.entry.id < b.entry.id ? -1 : a.entry.id > b.entry.id ? 1 : 0));
+}
+
+/** One sync: download every page of both sources, normalize, keep the raw pages and the mapdb
+ *  records, refresh thumbnails and replace `catalog.json`. Throws before touching the data dir when
+ *  either source fails or lists no map while a non-empty catalogue is stored, so the last good
+ *  catalogue stays. */
 export async function syncCatalog(
   options: SyncOptions,
   now: () => Date = () => new Date(),
 ): Promise<SyncedCatalog> {
   const { fetch, upstream, store, log, signal } = options;
+  const mapdbUpstream = options.mapdbUpstream ?? null;
   const pages = await fetchCatalogPages(fetch, upstream, signal);
-  const { records, skipped } = normalizeRecords(
+  const { records: siteRecords, skipped } = normalizeRecords(
     pages.flatMap(({ records: pageRecords }) => pageRecords),
     upstream,
   );
   for (const { upstreamId, reason } of skipped) log('record skipped', { upstreamId, reason });
+
+  let mapdbRecords: readonly NormalizedRecord[] = [];
+  let mapdbRaw: readonly unknown[] = [];
+  if (mapdbUpstream !== null) {
+    const mapdbPages = await fetchMapdbPages(fetch, mapdbUpstream, signal);
+    const { records: normalized, skipped: mapdbSkipped } = normalizeMapdbRecords(
+      mapdbPages,
+      mapdbUpstream,
+      firstSeenDates(await storedEntries(store, log)),
+      () => now().toISOString(),
+    );
+    for (const { upstreamId, reason } of mapdbSkipped) log('mapdb record skipped', { upstreamId, reason });
+    mapdbRecords = normalized;
+    mapdbRaw = mapdbPages;
+  }
+
+  const records = mergeRecords([siteRecords, mapdbRecords], log);
   if (records.length === 0 && (await storedEntryCount(store)) > 0) {
     throw new Error('upstream lists no map; the stored catalogue stays');
   }
   signal?.throwIfAborted();
   await store.writeRawPages(pages);
+  if (mapdbUpstream !== null) await store.writeRawMapdbRecords(mapdbRaw);
   const catalog: Catalog = await syncThumbnails(fetch, store, records, log, signal);
   signal?.throwIfAborted();
   await store.writeCatalog(JSON.stringify(catalog));

@@ -443,6 +443,25 @@ describe('catalogue query', () => {
     expect(run({ sort: 'title' }, packs)).toHaveLength(packs.length);
   });
 
+  it('splits the list by community source, read out of the entry id', () => {
+    const mixed = rowsOf([
+      mapEntry('cn-burza', { title: 'Burza' }),
+      mapEntry('wt-sommer', { title: 'Sommerurlaub', author: 'angeldragon' }),
+    ]);
+    const pick = (patch: Partial<CatalogueQuery>) =>
+      ids(queryRows(mixed, { ...DEFAULT_CATALOGUE_QUERY, ...patch }, compare));
+    expect(pick({ source: 'wikinger-tommy' })).toEqual(['wt-sommer']);
+    expect(pick({ source: 'culturesnation' })).toEqual(['cn-burza']);
+    expect(pick({})).toHaveLength(2);
+    const [sommer] = mixed.filter((row) => row.entry.id === 'wt-sommer');
+    expect(sommer?.source).toBe('wikinger-tommy');
+    expect(mixed[0]?.source).toBe('culturesnation');
+    const counts = facetCounts(mixed);
+    expect(counts.sources.get('culturesnation')).toBe(1);
+    expect(counts.sources.get('wikinger-tommy')).toBe(1);
+    expect(hasActiveFilters({ ...DEFAULT_CATALOGUE_QUERY, source: 'culturesnation' })).toBe(true);
+  });
+
   it('counts each filter choice over every listed row', () => {
     const counts = facetCounts(rows);
     expect(counts.players.get('4')).toBe(1);

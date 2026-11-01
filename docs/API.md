@@ -47,7 +47,11 @@ the app, or use `?api=http://127.0.0.1:8790` for one session. Electron uses the 
 ### Sync and conversion
 
 1. At startup and each sync interval, fetch all upstream catalogue pages and normalize map/campaign
-   metadata. This refreshes the list, not every archive.
+   metadata. This refreshes the list, not every archive. The wikinger-tommy.de mapdb is fetched the
+   same way, by posting the search form its own site drives, and both sources merge into one
+   catalogue. An entry's id prefix names its source: `cn-` for culturesnation.pl, `wt-` for the
+   mapdb; the client derives the catalogue's source filter from it. The mapdb carries no dates, so
+   an entry keeps the dates of its first sync until its record changes.
 2. Download new or changed archives (`updatedAt`). Keep unchanged archives and conversions.
 3. Convert each eligible `archive` or `c2m` in a disposable Node worker, with the repository's
    translation overlays. External hosts stay as manual download links. A timeout or crash stops that
@@ -60,8 +64,8 @@ Downloads retry on the next sync. Stored failures retry once per process and whe
 A failed replacement keeps the previous good conversion and retries on a later sync.
 
 A failed sync keeps the last good catalogue. An empty upstream result cannot replace a non-empty
-catalogue. Logs are JSON lines and include reasons for rejected records. Shutdown aborts downloads,
-stops workers and waits for storage operations.
+catalogue, and a failing source fails the whole sync. Logs are JSON lines and include reasons for
+rejected records. Shutdown aborts downloads, stops workers and waits for storage operations.
 
 ### Translation overlays
 
@@ -79,12 +83,15 @@ kept archive on the next catalogue, without an IR change; the other entries keep
 
 ### Request limits
 
-- Automatic downloads allow HTTPS on `culturesnation.pl`, `www.culturesnation.pl` and
-  `api.culturesnation.pl`, plus the exact configured upstream origin (scheme and port included).
+- Automatic downloads allow HTTPS on `culturesnation.pl`, `www.culturesnation.pl`,
+  `api.culturesnation.pl`, `wikinger-tommy.de` and `www.wikinger-tommy.de`, plus the exact
+  configured upstream origin (scheme and port included).
 - URLs with credentials and all redirects are refused. Other HTTP(S) archives are manual links;
   untrusted screenshot URLs are omitted.
 - Catalogue limits: 2 MiB and 100 records per page; 16 MiB, 5000 records and 100 pages per sync.
   Byte limits apply after decompression, before JSON parsing. A rejected page fails the sync.
+  The mapdb list is HTML text under the same page and byte budgets; its download links must be
+  `download.php?datei=` links to a `.exe` on its own origin.
 - Archive conversion uses the shared importer limits, including a 64 MiB archive limit.
 
 ## Endpoints

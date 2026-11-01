@@ -26,6 +26,8 @@ import {
   type KindFilter,
   PLAYER_BUCKETS,
   type PlayerBucket,
+  SOURCE_FILTERS,
+  type SourceFilter,
 } from './query.js';
 
 const ANY = 'any';
@@ -181,6 +183,15 @@ export function catalogueFilters(
         ...(detail === undefined ? {} : { detail }),
       };
     });
+  const sourceEntries = (): DropdownChoice<SourceFilter>[] =>
+    SOURCE_FILTERS.map((id) => {
+      const detail = id === ANY ? undefined : count(counts?.sources, id);
+      return {
+        id,
+        label: id === ANY ? text.anySource : text.sources[id],
+        ...(detail === undefined ? {} : { detail }),
+      };
+    });
 
   const players = facetPill<string>(labels.players, playerEntries(), (id) => set({ players: id }));
   const language = facetPill<MapTextLanguage>(labels.language, languageEntries(), (id) =>
@@ -190,6 +201,9 @@ export function catalogueFilters(
   const author = authorPicker((name) => set({ author: name }));
   const download = facetPill<Exclude<DownloadMode, 'any'>>(labels.download, downloadEntries(), (id) =>
     set({ download: id ?? 'any' }),
+  );
+  const source = facetPill<SourceFilter>(labels.source, sourceEntries(), (id) =>
+    set({ source: id ?? 'any' }),
   );
   const series = toggleChip(text.seriesChip, text.seriesTitle, () => set({ seriesOnly: !query.seriesOnly }));
   const hideOwned = toggleChip(text.hideOwned, text.hideOwnedTitle, () =>
@@ -214,6 +228,7 @@ export function catalogueFilters(
     size.root,
     author.root,
     download.root,
+    source.root,
     series,
     hideOwned,
     resetButton,
@@ -231,6 +246,7 @@ export function catalogueFilters(
     size.setActive(query.size);
     author.setActive(query.author);
     download.setActive(query.download === 'any' ? null : query.download);
+    source.setActive(query.source === 'any' ? null : query.source);
     series.setAttribute('aria-pressed', String(query.seriesOnly));
     hideOwned.setAttribute('aria-pressed', String(query.hideOwned));
     resetButton.hidden = !hasActiveFilters(query);
@@ -246,6 +262,9 @@ export function catalogueFilters(
       language.setEntries(languageEntries());
       size.setEntries(sizeEntries());
       download.setEntries(downloadEntries());
+      source.setEntries(sourceEntries());
+      // A catalogue without the mapdb has no source to choose between; the pill stays out of the way.
+      source.root.hidden = (counts.sources.get('wikinger-tommy') ?? 0) === 0;
       author.setAuthors(authorCounts(rows, compareLabels()));
     },
     update: set,

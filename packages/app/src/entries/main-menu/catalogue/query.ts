@@ -1,6 +1,7 @@
 import { MAP_TEXT_LANGUAGES, type MapTextLanguage } from '@open-northland/data';
 import { foldText, hasWords, searchWords } from '../../../hud/dom/parts/name-search.js';
 import { type CatalogueRow, isManualDownload, MAP_SIZES, type MapSize } from './model.js';
+import { CATALOGUE_SOURCES, type CatalogueSource } from './source.js';
 
 export type CatalogueSort = 'liked' | 'downloaded' | 'newest' | 'updated' | 'title' | 'author';
 export const CATALOGUE_SORTS: readonly CatalogueSort[] = [
@@ -37,6 +38,10 @@ export const PLAYER_BUCKETS: readonly PlayerBucket[] = [
 export type DownloadMode = 'any' | 'auto' | 'manual';
 export const DOWNLOAD_MODES: readonly DownloadMode[] = ['any', 'auto', 'manual'];
 
+/** Which community source the browse tab lists; `any` lists both. */
+export type SourceFilter = CatalogueSource | 'any';
+export const SOURCE_FILTERS: readonly SourceFilter[] = ['any', ...CATALOGUE_SOURCES];
+
 /** What the browse tab shows: the search, the sort and every filter. */
 export interface CatalogueQuery {
   readonly text: string;
@@ -51,6 +56,8 @@ export interface CatalogueQuery {
   /** One author's exact name; null for any. */
   readonly author: string | null;
   readonly download: DownloadMode;
+  /** The community source the list draws from, or `any` for both. */
+  readonly source: SourceFilter;
   /** Leaves out what the player can already play: installed maps and maps the game ships as listed. */
   readonly hideOwned: boolean;
 }
@@ -65,6 +72,7 @@ export const DEFAULT_CATALOGUE_QUERY: CatalogueQuery = {
   size: null,
   author: null,
   download: 'any',
+  source: 'any',
   hideOwned: false,
 };
 
@@ -97,6 +105,11 @@ export function matchesDownload(row: CatalogueRow, mode: DownloadMode): boolean 
   }
 }
 
+/** Whether the row comes from the source the query lists. */
+export function matchesSource(row: CatalogueRow, source: SourceFilter): boolean {
+  return source === 'any' || row.source === source;
+}
+
 /** Whether the player can already play the entry and it offers nothing new to download. */
 export function isOwned(row: CatalogueRow): boolean {
   return row.status === 'installed' || row.status === 'updatable' || row.status === 'inGame';
@@ -112,6 +125,7 @@ export function matchesQuery(row: CatalogueRow, query: CatalogueQuery): boolean 
     (query.size === null || row.size === query.size) &&
     (query.author === null || foldText(entry.author) === foldText(query.author)) &&
     matchesDownload(row, query.download) &&
+    matchesSource(row, query.source) &&
     (!query.hideOwned || !isOwned(row)) &&
     matchesText(row, searchWords(query.text))
   );
@@ -164,6 +178,7 @@ export interface FacetCounts {
   readonly languages: ReadonlyMap<MapTextLanguage, number>;
   readonly sizes: ReadonlyMap<MapSize, number>;
   readonly downloads: ReadonlyMap<DownloadMode, number>;
+  readonly sources: ReadonlyMap<CatalogueSource, number>;
 }
 
 function countBy<K>(
@@ -184,6 +199,7 @@ export function facetCounts(rows: readonly CatalogueRow[]): FacetCounts {
     languages: countBy(rows, MAP_TEXT_LANGUAGES, (row, language) => row.languages.includes(language)),
     sizes: countBy(rows, MAP_SIZES, (row, size) => row.size === size),
     downloads: countBy(rows, DOWNLOAD_MODES, matchesDownload),
+    sources: countBy(rows, CATALOGUE_SOURCES, matchesSource),
   };
 }
 

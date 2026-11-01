@@ -9,6 +9,7 @@ import {
 import type { LocalSourceRecord } from '../../../content/local-import/source.js';
 import type { InstalledMapRecord } from '../../../content/map-source/index.js';
 import { titleKey } from './fold.js';
+import { type CatalogueSource, catalogueSource } from './source.js';
 
 /**
  * What a player can do with an entry:
@@ -76,6 +77,8 @@ export interface CatalogueRow {
   readonly playerCounts: readonly number[];
   /** Every language a map of the pack carries, in `MAP_TEXT_LANGUAGES` order. */
   readonly languages: readonly MapTextLanguage[];
+  /** The community source the entry came from. */
+  readonly source: CatalogueSource;
   /** The main map's size; null until the server converted the entry. */
   readonly size: MapSize | null;
   /** The shipped map the pack's main map (else its first matched map) is a copy of, on an `inGame` or
@@ -204,6 +207,7 @@ export function catalogueRow(
     subMapCount: Math.max(0, (maps.length > 0 ? maps.length : current.length) - 1),
     size: serverMain === null ? null : mapSize(serverMain.cells),
     shipped: null,
+    source: catalogueSource(entry.id),
     ...facts,
   };
   if (installedMain !== null) {

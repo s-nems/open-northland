@@ -1,6 +1,7 @@
 import { IR_VERSION } from '@open-northland/data/ir-version';
 import { loadTranslationOverlays } from '@open-northland/translations';
 import { normalizeRecords } from './catalog/normalize.js';
+import { firstSeenDates, normalizeMapdbRecords } from './catalog/normalize-mapdb.js';
 import { parseCatalog } from './catalog/snapshot.js';
 import { CatalogSync, downloadsOf } from './catalog/sync.js';
 import { apiConfigFromEnvironment } from './config.js';
@@ -45,16 +46,29 @@ try {
     try {
       const catalog = parseCatalog(stored.text);
       const updatedAt = new Map(catalog.map((entry) => [entry.id, entry.updatedAt]));
-      const records = normalizeRecords(await store.readRawRecords(), config.upstream).records.filter(
-        ({ entry }) => updatedAt.get(entry.id) === entry.updatedAt,
-      );
+      // An entry keeps its download while the stored catalogue still serves its conversion.
+      const kept = ({
+        entry,
+      }: {
+        readonly entry: { readonly id: string; readonly updatedAt: string };
+      }): boolean => updatedAt.get(entry.id) === entry.updatedAt;
+      const records = [
+        ...normalizeRecords(await store.readRawRecords(), config.upstream).records.filter(kept),
+        ...(config.mapdbUpstream === null
+          ? []
+          : normalizeMapdbRecords(
+              await store.readRawMapdbRecords(),
+              config.mapdbUpstream,
+              firstSeenDates(catalog),
+            ).records.filter(kept)),
+      ];
       conversions.setCatalog({ catalog, downloads: downloadsOf(records), syncedAt: stored.writtenAt });
     } catch (error) {
       logLine('stored catalogue refused', { error: errorMessage(error) });
     }
   }
   const sync = new CatalogSync(
-    { fetch, upstream: config.upstream, store, log: logLine },
+    { fetch, upstream: config.upstream, mapdbUpstream: config.mapdbUpstream, store, log: logLine },
     config.syncIntervalMs,
     (synced) => conversions.setCatalog(synced),
   );

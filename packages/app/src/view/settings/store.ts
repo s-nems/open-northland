@@ -24,6 +24,7 @@ import {
   resolveBackingDensity,
   type SelectionStyle,
 } from '@open-northland/render';
+import { CATALOGUE_SOURCES, type CatalogueSource } from '../../entries/main-menu/catalogue/source.js';
 import {
   changedKeyBindings,
   DEFAULT_KEY_BINDINGS,
@@ -167,6 +168,9 @@ export interface MenuSettings {
   readonly originalGameFolder: string | null;
   readonly autosaveMinutes: AutosaveMinutes;
   readonly autosaveCount: AutosaveCount;
+  /** Which community source the map catalogue lists at its start; the catalogue's own source
+   *  filter keeps the choice for the session. */
+  readonly catalogueSource: CatalogueSource | 'any';
 }
 
 /** The desktop game, known by its shell's bridge, owns its window and keeps sounding behind another
@@ -238,6 +242,7 @@ export function defaultSettings(): MenuSettings {
     originalGameFolder: null,
     autosaveMinutes: 0,
     autosaveCount: DEFAULT_AUTOSAVE_COUNT,
+    catalogueSource: 'any',
   };
 }
 
@@ -419,6 +424,7 @@ export function parseStoredSettings(raw: string | null): MenuSettings {
     originalGameVerified: record.originalGameVerified === true,
     originalGameLabel: optionalText(record.originalGameLabel),
     originalGameFolder: optionalText(record.originalGameFolder),
+    catalogueSource: CATALOGUE_SOURCES.find((source) => source === record.catalogueSource) ?? 'any',
   };
 }
 

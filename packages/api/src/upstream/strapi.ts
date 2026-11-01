@@ -3,7 +3,13 @@ import { readCappedBody } from './body.js';
 /** The subset of `fetch` the API calls, so a test hands in its own. */
 export type Fetch = (
   url: string,
-  init?: { readonly signal?: AbortSignal; readonly redirect?: 'error' },
+  init?: {
+    readonly signal?: AbortSignal;
+    readonly redirect?: 'error' | 'manual';
+    readonly headers?: Readonly<Record<string, string>>;
+    readonly method?: string;
+    readonly body?: string;
+  },
 ) => Promise<Response>;
 
 /** The largest page the upstream Strapi honours. */

@@ -15,6 +15,7 @@ import {
 } from '../../../content/map-source/index.js';
 import { errorText } from '../../../diag/error-text.js';
 import { bcp47Tag, compareLabels, formatMessage, messages, pluralForm } from '../../../i18n/index.js';
+import { patchStoredSettings, readStoredSettings } from '../../../view/settings/store.js';
 import { menuConfirm } from '../confirm.js';
 import { node } from '../dom.js';
 import { type MapSelectItem, mapSourceItem } from '../map-select/model.js';
@@ -48,7 +49,11 @@ export interface CatalogueMemory {
 }
 
 export function initialCatalogueMemory(): CatalogueMemory {
-  return { tab: 'browse', query: DEFAULT_CATALOGUE_QUERY, selectedId: null };
+  return {
+    tab: 'browse',
+    query: { ...DEFAULT_CATALOGUE_QUERY, source: readStoredSettings().catalogueSource },
+    selectedId: null,
+  };
 }
 
 export interface CatalogueViewOptions {
@@ -129,8 +134,14 @@ export function catalogueView(options: CatalogueViewOptions): CatalogueView {
   count.setAttribute('role', 'status');
 
   const body = node('div', 'catalogue');
+  // The source a player starts the catalogue with is their standing choice, so it persists.
+  let persistedSource = memory.query.source;
   const filters = catalogueFilters(memory.query, (query) => {
     memory.query = query;
+    if (query.source !== persistedSource) {
+      persistedSource = query.source;
+      patchStoredSettings({ catalogueSource: query.source });
+    }
     render();
   });
   const storageNotice = node('div', 'catalogue__storage-notice');

@@ -4,6 +4,8 @@ import { REPORT_UPLOAD_LIMITS } from '@open-northland/data';
 export const DEFAULT_PORT = 8790;
 const MAX_PORT = 65535;
 export const DEFAULT_UPSTREAM = 'https://api.culturesnation.pl';
+/** The community map database at wikinger-tommy.de, the catalogue's second source. */
+export const DEFAULT_MAPDB_UPSTREAM = 'https://www.wikinger-tommy.de';
 /** Relative to the directory the server starts in, which `npm run api` makes the checkout root. */
 export const DEFAULT_DATA_DIR = '.api-data';
 /** A separate volume from the data dir, so a deploy's data snapshot never copies player reports. */
@@ -93,6 +95,9 @@ export interface ApiConfig {
   readonly dataDir: string;
   /** Origin of the culturesnation.pl Strapi API, without a trailing slash. */
   readonly upstream: string;
+  /** Origin of the wikinger-tommy.de mapdb, without a trailing slash, or null when a deployment
+   *  serves the other source alone. */
+  readonly mapdbUpstream: string | null;
   readonly syncIntervalMs: number;
   /** Catalogue files downloaded and converted at once. */
   readonly convertConcurrency: number;
@@ -131,6 +136,27 @@ function upstreamSetting(env: Environment): string {
   }
   if (url.username !== '' || url.password !== '') {
     throw new Error('ON_API_UPSTREAM must not contain credentials');
+  }
+  return url.origin;
+}
+
+/** `ON_API_MAPDB_UPSTREAM`, or null when `ON_API_MAPDB` switches the source off. */
+function mapdbUpstreamSetting(env: Environment): string | null {
+  const state = setting(env, 'ON_API_MAPDB');
+  if (state === '0') return null;
+  if (state !== null && state !== '1') throw new Error(`ON_API_MAPDB must be 0 or 1, got ${state}`);
+  const raw = setting(env, 'ON_API_MAPDB_UPSTREAM') ?? DEFAULT_MAPDB_UPSTREAM;
+  let url: URL;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error(`ON_API_MAPDB_UPSTREAM must be an http:// or https:// URL, got ${raw}`);
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error(`ON_API_MAPDB_UPSTREAM must be an http:// or https:// URL, got ${raw}`);
+  }
+  if (url.username !== '' || url.password !== '') {
+    throw new Error('ON_API_MAPDB_UPSTREAM must not contain credentials');
   }
   return url.origin;
 }
@@ -229,6 +255,7 @@ export function apiConfigFromEnvironment(env: Environment, cwd: string): ApiConf
     host: setting(env, 'HOST'),
     dataDir: resolve(cwd, setting(env, 'ON_API_DATA_DIR') ?? DEFAULT_DATA_DIR),
     upstream: upstreamSetting(env),
+    mapdbUpstream: mapdbUpstreamSetting(env),
     syncIntervalMs:
       interval === null ? DEFAULT_SYNC_INTERVAL_SECONDS * MS_PER_SECOND : parseSyncInterval(interval),
     convertConcurrency: integerSetting(

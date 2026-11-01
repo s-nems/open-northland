@@ -4,6 +4,7 @@ import { sha256Hex } from './catalog/snapshot.js';
 
 const CATALOG_FILE = 'catalog.json';
 const RAW_DIR = 'raw';
+const RAW_MAPDB_FILE = 'raw-mapdb.json';
 const THUMBNAIL_DIR = 'thumbnails';
 const RAW_PAGE = /^(\d+)\.json$/;
 const THUMBNAIL_META_SUFFIX = '.json';
@@ -74,6 +75,22 @@ export class DataStore {
       const page = RAW_PAGE.exec(name)?.[1];
       if (page !== undefined && !kept.has(Number(page))) await rm(join(dir, name), { force: true });
     }
+  }
+
+  /** The mapdb records of the last good sync, in their page order; empty before the first good one. */
+  async readRawMapdbRecords(): Promise<unknown[]> {
+    try {
+      const parsed: unknown = JSON.parse(await readFile(join(this.dir, RAW_MAPDB_FILE), 'utf8'));
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      if (isMissing(error)) return [];
+      throw error;
+    }
+  }
+
+  /** Replaces the stored mapdb records with this sync's. */
+  writeRawMapdbRecords(records: readonly unknown[]): Promise<void> {
+    return writeAtomic(join(this.dir, RAW_MAPDB_FILE), JSON.stringify(records));
   }
 
   async readThumbnailMeta(id: string): Promise<ThumbnailMeta | null> {

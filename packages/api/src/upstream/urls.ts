@@ -4,6 +4,8 @@ const CATALOG_ORIGINS: ReadonlySet<string> = new Set([
   'https://culturesnation.pl',
   'https://www.culturesnation.pl',
   'https://api.culturesnation.pl',
+  'https://wikinger-tommy.de',
+  'https://www.wikinger-tommy.de',
 ]);
 
 export function permittedDownloadUrl(url: URL, upstream: string): boolean {

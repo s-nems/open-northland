@@ -2,6 +2,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   apiConfigFromEnvironment,
+  DEFAULT_MAPDB_UPSTREAM,
   DEFAULT_PORT,
   DEFAULT_REPORT_ORIGINS,
   DEFAULT_UPSTREAM,
@@ -17,6 +18,7 @@ describe('apiConfigFromEnvironment', () => {
     expect(apiConfigFromEnvironment({}, '/checkout')).toEqual({
       port: DEFAULT_PORT,
       host: null,
+      mapdbUpstream: DEFAULT_MAPDB_UPSTREAM,
       dataDir: resolve('/checkout', '.api-data'),
       upstream: DEFAULT_UPSTREAM,
       syncIntervalMs: SIX_HOURS * MS_PER_HOUR,
@@ -91,10 +93,31 @@ describe('apiConfigFromEnvironment', () => {
       host: '127.0.0.1',
       dataDir: resolve('/data'),
       upstream: 'http://localhost:1337',
+      mapdbUpstream: DEFAULT_MAPDB_UPSTREAM,
       build: 'abc',
       convertConcurrency: 3,
       convertTimeoutMs: 30_000,
     });
+    expect(apiConfigFromEnvironment({ ON_API_MAPDB: '1' }, '/checkout').mapdbUpstream).toBe(
+      DEFAULT_MAPDB_UPSTREAM,
+    );
+    expect(
+      apiConfigFromEnvironment(
+        { ON_API_MAPDB: '1', ON_API_MAPDB_UPSTREAM: 'http://mirror.example:8080/' },
+        '/checkout',
+      ).mapdbUpstream,
+    ).toBe('http://mirror.example:8080');
+    expect(apiConfigFromEnvironment({ ON_API_MAPDB: '0' }, '/checkout').mapdbUpstream).toBeNull();
+    expect(() => apiConfigFromEnvironment({ ON_API_MAPDB: 'yes' }, '/')).toThrow(/ON_API_MAPDB/);
+    expect(() =>
+      apiConfigFromEnvironment({ ON_API_MAPDB: '1', ON_API_MAPDB_UPSTREAM: 'ftp://x' }, '/'),
+    ).toThrow(/ON_API_MAPDB_UPSTREAM/);
+    expect(() =>
+      apiConfigFromEnvironment(
+        { ON_API_MAPDB: '1', ON_API_MAPDB_UPSTREAM: 'https://user:secret@x' },
+        '/',
+      ),
+    ).toThrow(/credentials/);
     expect(() => apiConfigFromEnvironment({ API_CONVERT_TIMEOUT_SECONDS: '0' }, '/')).toThrow(
       /API_CONVERT_TIMEOUT_SECONDS/,
     );

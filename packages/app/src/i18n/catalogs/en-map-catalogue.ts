@@ -1,4 +1,4 @@
-/** The map catalogue view: browsing, downloading and starting culturesnation.pl maps. */
+/** The map catalogue view: browsing, downloading and starting maps from the community catalogues. */
 export const enMapCatalogue = {
   storage: {
     failedPrevious: 'Could not refresh installed maps. Showing the last loaded list. Try again.',
@@ -64,6 +64,7 @@ export const enMapCatalogue = {
     size: 'Size',
     author: 'Author',
     download: 'Download',
+    source: 'Source',
   },
   kinds: {
     all: 'All',
@@ -101,12 +102,14 @@ export const enMapCatalogue = {
   authorAll: 'All authors (A-Z)',
   anyAuthor: 'All authors',
   authorNone: 'No author by that name',
+  anySource: 'All sources',
+  sources: { culturesnation: 'Cultures Nation', 'wikinger-tommy': 'Wikinger-Tommy MapDB' },
   resetFilters: 'Reset filters',
   byAuthor: 'by {author}',
   subMaps: { one: '+{count} sub map', few: '+{count} sub maps', many: '+{count} sub maps' },
   playersRange: '{min}-{max} players',
   entries: { one: '{count} map', few: '{count} maps', many: '{count} maps' },
-  countLine: '{maps} from culturesnation.pl',
+  countLine: '{maps} from the community catalogues',
   countFiltered: 'Showing {shown} of {total}',
   loading: 'Loading the catalogue…',
   unreachable: 'The map catalogue cannot be reached right now.',
@@ -154,7 +157,7 @@ export const enMapCatalogue = {
   remove: 'Remove',
   openPage: 'Open download page',
   downloadFile: 'Download file',
-  mapPage: 'View on culturesnation.pl',
+  mapPage: 'Open catalogue page',
   mapPageTitle: 'Opens the map page in your browser',
   failedReason: 'Server message: {message}',
   downloadFailed: 'Download failed: {reason}',

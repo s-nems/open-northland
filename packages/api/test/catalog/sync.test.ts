@@ -6,6 +6,7 @@ import { Catalog } from '@open-northland/data';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { CatalogSync, syncCatalog } from '../../src/catalog/sync.js';
 import { DataStore } from '../../src/store.js';
+import { FakeMapdb, MAPDB_UPSTREAM, mapdbMapRow } from '../support/mapdb-fixture.js';
 import {
   ACCEPTED_RECORDS,
   FakeUpstream,
@@ -169,6 +170,52 @@ describe('syncCatalog', () => {
     expect(chunks).toBeLessThanOrEqual(4);
     expect(synced.catalog[0]?.thumbnail).toBeUndefined();
     expect(await readdir(join(dir, 'thumbnails'))).toEqual([]);
+  });
+
+  it('merges both sources, keeps the mapdb records and re-dates nothing on the next sync', async () => {
+    const upstream = new FakeUpstream([ACCEPTED_RECORDS.slice(0, 1)]);
+    const mapdb = new FakeMapdb([[mapdbMapRow({ title: 'Wareham', authorId: 178 })]]);
+    const fetch = async (url: string, init?: { readonly body?: string }): Promise<Response> => {
+      if (new URL(url).origin === MAPDB_UPSTREAM) {
+        if (new URL(url).pathname.startsWith('/femaps/Screens/'))
+          return new Response(PNG_BYTES, { headers: { 'content-type': 'image/png' } });
+        return mapdb.fetch(url, init);
+      }
+      return upstream.fetch(url);
+    };
+    const first = await syncCatalog({ fetch, upstream: UPSTREAM, mapdbUpstream: MAPDB_UPSTREAM, store, log });
+    expect(first.catalog.map(({ id }) => id.startsWith('wt-'))).toContain(true);
+    const wt = first.catalog.find(({ id }) => id.startsWith('wt-'));
+    expect(first.downloads.get(wt?.id ?? ''))?.toContain('/mapdb/download.php?datei=');
+    expect(await store.readRawMapdbRecords()).toHaveLength(1);
+    const pngHash = createHash('sha256').update(PNG_BYTES).digest('hex');
+    expect(wt?.thumbnail).toBe(`/v1/maps/${wt?.id}/thumbnail?v=${pngHash}`);
+
+    // A second sync of the same list keeps every date, so thumbnails and downloads stay current.
+    mapdb.reset();
+    const second = await syncCatalog({
+      fetch,
+      upstream: UPSTREAM,
+      mapdbUpstream: MAPDB_UPSTREAM,
+      store,
+      log,
+    });
+    expect(JSON.stringify(second.catalog)).toBe(JSON.stringify(first.catalog));
+    expect(second.downloads.get(wt?.id ?? ''))?.toBe(first.downloads.get(wt?.id ?? ''));
+  });
+
+  it('keeps the last good catalogue when the mapdb source fails', async () => {
+    const upstream = new FakeUpstream([ACCEPTED_RECORDS]);
+    const mapdb = new FakeMapdb([[mapdbMapRow({ title: 'Wareham' })]]);
+    const fetch = async (url: string, init?: { readonly body?: string }): Promise<Response> =>
+      new URL(url).origin === MAPDB_UPSTREAM ? mapdb.fetch(url, init) : upstream.fetch(url);
+    await syncCatalog({ fetch, upstream: UPSTREAM, mapdbUpstream: MAPDB_UPSTREAM, store, log });
+    const before = await readFile(join(dir, 'catalog.json'), 'utf8');
+    // The fake's one page is spent: the next sync's mapdb request answers 404.
+    await expect(
+      syncCatalog({ fetch, upstream: UPSTREAM, mapdbUpstream: MAPDB_UPSTREAM, store, log }),
+    ).rejects.toThrow(/404/);
+    expect(await readFile(join(dir, 'catalog.json'), 'utf8')).toBe(before);
   });
 });
 

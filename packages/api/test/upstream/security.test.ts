@@ -42,7 +42,7 @@ describe('automatic upstream fetch policy', () => {
     expect(classifyFile('https://localhost:8791/file.zip', 'http://localhost:8791')?.kind).toBe('external');
   });
 
-  it('does not follow redirects for catalogue pages, archives or thumbnails', async () => {
+  it('follows redirects for archives, but not for catalogue pages or thumbnails', async () => {
     let targetRequests = 0;
     const target = createServer((_request, response) => {
       targetRequests += 1;
@@ -58,19 +58,34 @@ describe('automatic upstream fetch policy', () => {
         })
         .end();
     });
+    const loop = createServer((_request, response) => {
+      response.writeHead(302, { location: '/loop' }).end();
+    });
     const directory = await mkdtemp(join(tmpdir(), 'api-fetch-policy-'));
     try {
       await new Promise<void>((resolve) => redirect.listen(0, '127.0.0.1', resolve));
       const redirectAddress = redirect.address();
       if (redirectAddress === null || typeof redirectAddress === 'string') throw new Error('no TCP address');
       const upstream = `http://127.0.0.1:${redirectAddress.port}`;
+      await new Promise<void>((resolve) => loop.listen(0, '127.0.0.1', resolve));
+      const loopAddress = loop.address();
+      if (loopAddress === null || typeof loopAddress === 'string') throw new Error('no TCP address');
       await expect(fetchCatalogPages(fetch, upstream)).rejects.toThrow();
+      // An archive follows the hop a download script makes before it hands the file out.
       await expect(
         downloadArchive(fetch, `${upstream}/map.zip`, {
           maxBytes: 1024,
           timeoutMs: 1000,
         }),
-      ).rejects.toThrow();
+      ).resolves.toEqual(new TextEncoder().encode('private bytes'));
+      expect(targetRequests).toBe(1);
+      // A host that sends the download around in circles is refused, not followed without end.
+      await expect(
+        downloadArchive(fetch, `http://127.0.0.1:${loopAddress.port}/map.zip`, {
+          maxBytes: 1024,
+          timeoutMs: 1000,
+        }),
+      ).rejects.toThrow('redirects');
       const store = new DataStore(directory);
       await store.init();
       const records = normalizeRecords(
@@ -79,13 +94,15 @@ describe('automatic upstream fetch policy', () => {
       ).records;
       const catalog = await syncThumbnails(fetch, store, records, () => undefined);
       expect(catalog[0]?.thumbnail).toBeUndefined();
-      expect(targetRequests).toBe(0);
+      expect(targetRequests).toBe(1);
     } finally {
       target.closeAllConnections();
       redirect.closeAllConnections();
+      loop.closeAllConnections();
       await Promise.all([
         new Promise<void>((resolve) => target.close(() => resolve())),
         new Promise<void>((resolve) => redirect.close(() => resolve())),
+        new Promise<void>((resolve) => loop.close(() => resolve())),
         rm(directory, { recursive: true, force: true }),
       ]);
     }
