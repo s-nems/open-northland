@@ -33,8 +33,13 @@ function isBenchReport(value: unknown, bad: (why: string) => never): value is Be
     return bad('missing world.mapCells');
   }
   if (!isRecord(ticks) || typeof ticks.measured !== 'number') return bad('missing ticks.measured');
-  if (!isRecord(tickMs) || typeof tickMs.meanMs !== 'number' || typeof tickMs.p99Ms !== 'number') {
-    return bad('missing tickMs.meanMs / tickMs.p99Ms');
+  if (
+    !isRecord(tickMs) ||
+    typeof tickMs.meanMs !== 'number' ||
+    typeof tickMs.medianMs !== 'number' ||
+    typeof tickMs.p99Ms !== 'number'
+  ) {
+    return bad('missing tickMs.meanMs / medianMs / p99Ms');
   }
   if (!Array.isArray(systems)) return bad('missing systems[]');
   if (!Array.isArray(windows)) return bad('missing windows[]');

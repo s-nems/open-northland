@@ -223,6 +223,29 @@ describe('formatReport', () => {
     expect(text).toContain('this box was busy');
     expect(text).toContain('trust: SUSPECT');
   });
+
+  it('labels every system and window cell with its own column', () => {
+    const report = {
+      ...summarize(new Map([['ai', [1]]]), [1], META),
+      windows: [windowFixture(0, 1), windowFixture(1, 4)],
+    };
+    const lines = formatReport(report).split('\n');
+    const systemHeader = lines.find((line) => line.startsWith('system')) ?? '';
+    expect(systemHeader.match(/mean ms/g)).toHaveLength(1);
+    expect(
+      lines
+        .find((line) => line.startsWith('ai '))
+        ?.trimEnd()
+        .endsWith('%'),
+    ).toBe(true);
+    expect(lines.find((line) => line.trimStart().startsWith('window'))).toContain('mean ms');
+    expect(
+      lines
+        .find((line) => line.trimStart().startsWith('2/2'))
+        ?.trimEnd()
+        .endsWith('ai'),
+    ).toBe(true);
+  });
 });
 
 describe('slowest ticks', () => {

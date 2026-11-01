@@ -14,7 +14,6 @@ const SYSTEM_NAME_WIDTH = -25;
 const SYSTEM_COLUMNS: readonly Column[] = [
   { header: 'system', width: SYSTEM_NAME_WIDTH },
   { header: 'mean ms', width: 11 },
-  { header: 'mean ms', width: 11 },
   { header: 'median ms', width: 11 },
   { header: 'p95 ms', width: 11 },
   { header: 'max ms', width: 11 },
@@ -24,6 +23,7 @@ const SYSTEM_COLUMNS: readonly Column[] = [
 const WINDOW_COLUMNS: readonly Column[] = [
   { header: 'window', width: 8 },
   { header: 'ticks', width: 16 },
+  { header: 'mean ms', width: 11 },
   { header: 'median ms', width: 11 },
   { header: 'p95 ms', width: 11 },
   { header: 'p99 ms', width: 11 },
