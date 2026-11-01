@@ -43,7 +43,9 @@ function sortedPercentile(sorted: readonly number[], p: number): number {
 /** Whole-tick spread from one sort: a long run holds tens of thousands of samples. */
 function tickStat(samples: readonly number[]): TickStat {
   const sorted = [...samples].sort((a, b) => a - b);
+  const sumMs = samples.reduce((sum, ms) => sum + ms, 0);
   return {
+    meanMs: samples.length === 0 ? 0 : sumMs / samples.length,
     medianMs: sortedPercentile(sorted, 50),
     p95Ms: sortedPercentile(sorted, 95),
     p99Ms: sortedPercentile(sorted, 99),

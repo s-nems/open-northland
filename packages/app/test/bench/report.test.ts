@@ -56,7 +56,7 @@ function windowFixture(index: number, medianMs: number, overrides: Partial<Bench
     index,
     fromTick: index * 100 + 1,
     toTick: index * 100 + 100,
-    tickMs: { medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
+    tickMs: { meanMs: medianMs, medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
     systems: [
       {
         name: 'ai',
@@ -121,13 +121,13 @@ describe('summarize', () => {
   });
 
   it('reports whole-tick cost separately from the per-system rows', () => {
-    expect(report.tickMs).toEqual({ medianMs: 6, p95Ms: 20, p99Ms: 20, maxMs: 20 });
+    expect(report.tickMs).toEqual({ meanMs: 9.5, medianMs: 6, p95Ms: 20, p99Ms: 20, maxMs: 20 });
   });
 
   it('reports zero shares instead of NaN when nothing was measured', () => {
     const empty = summarize(new Map([['ai', []]]), [], META);
     expect(empty.systems[0]?.sharePct).toBe(0);
-    expect(empty.tickMs).toEqual({ medianMs: 0, p95Ms: 0, p99Ms: 0, maxMs: 0 });
+    expect(empty.tickMs).toEqual({ meanMs: 0, medianMs: 0, p95Ms: 0, p99Ms: 0, maxMs: 0 });
   });
 });
 
@@ -137,7 +137,7 @@ describe('tick spread', () => {
     // p99 the 990th.
     const samples = [...Array(985).fill(1), ...Array(14).fill(5), 40];
     const { tickMs } = summarizeSegment(new Map(), samples);
-    expect(tickMs).toEqual({ medianMs: 1, p95Ms: 1, p99Ms: 5, maxMs: 40 });
+    expect(tickMs).toEqual({ meanMs: 1.095, medianMs: 1, p95Ms: 1, p99Ms: 5, maxMs: 40 });
   });
 });
 
@@ -196,7 +196,7 @@ describe('assessTrust', () => {
   });
 
   it('rejects a window spiking far above its own median', () => {
-    const spiking = windowFixture(0, 1, { tickMs: { medianMs: 1, p95Ms: 9, p99Ms: 9, maxMs: 9 } });
+    const spiking = windowFixture(0, 1, { tickMs: { meanMs: 1, medianMs: 1, p95Ms: 9, p99Ms: 9, maxMs: 9 } });
     const verdict = assessTrust({ ...clean, windows: [spiking] });
     expect(verdict.trustworthy).toBe(false);
     expect(verdict.warnings[0]).toContain('window 1');

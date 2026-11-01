@@ -18,7 +18,7 @@ function window(index: number, medianMs: number): BenchWindow {
     index,
     fromTick: index * 100 + 1,
     toTick: index * 100 + 100,
-    tickMs: { medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
+    tickMs: { meanMs: medianMs, medianMs, p95Ms: medianMs * 2, p99Ms: medianMs * 3, maxMs: medianMs * 4 },
     systems: [
       {
         name: 'ai',
@@ -50,7 +50,7 @@ function report(overrides: Partial<BenchReport> = {}): BenchReport {
       buildings: 21,
     },
     ticks: { warmup: 60, measured: 600, windows: 2 },
-    tickMs: { medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
+    tickMs: { meanMs: 6, medianMs: 6, p95Ms: 12, p99Ms: 18, maxMs: 30 },
     systems: [
       { name: 'ai', meanMs: 4, medianMs: 4, p95Ms: 8, maxMs: 16, sharePct: 80 },
       { name: 'movement', meanMs: 1, medianMs: 1, p95Ms: 2, maxMs: 4, sharePct: 20 },
@@ -156,7 +156,7 @@ describe('compareReports', () => {
 
   it('always appends the whole-tick rows, which the per-system rows do not sum to', () => {
     const rows = compareReports(report(), report({ tickMs: { ...report().tickMs, p99Ms: 27 } })).rows;
-    expect(rows.slice(-2).map((r) => r.name)).toEqual(['tick total', 'tick p99']);
+    expect(rows.slice(-3).map((r) => r.name)).toEqual(['tick mean', 'tick total', 'tick p99']);
     expect(rows.at(-1)?.verdict).toBe('slower');
   });
 

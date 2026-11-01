@@ -14,6 +14,7 @@ const SYSTEM_NAME_WIDTH = -25;
 const SYSTEM_COLUMNS: readonly Column[] = [
   { header: 'system', width: SYSTEM_NAME_WIDTH },
   { header: 'mean ms', width: 11 },
+  { header: 'mean ms', width: 11 },
   { header: 'median ms', width: 11 },
   { header: 'p95 ms', width: 11 },
   { header: 'max ms', width: 11 },
@@ -157,6 +158,7 @@ function windowSection(windows: readonly BenchWindow[]): readonly string[] {
       windows.map((w) => [
         `${w.index + 1}/${windows.length}`,
         `${w.fromTick}..${w.toTick}`,
+        ms(w.tickMs.meanMs),
         ms(w.tickMs.medianMs),
         ms(w.tickMs.p95Ms),
         ms(w.tickMs.p99Ms),
@@ -189,7 +191,7 @@ export function formatReport(report: BenchReport): string {
     `ticks: ${ticks.warmup} warmup + ${ticks.measured} measured   state hash: ${report.stateHash}`,
     environmentLine(report),
     trustLine(report),
-    `tick total: median ${ms(tickMs.medianMs)} ms   p95 ${ms(tickMs.p95Ms)} ms   ` +
+    `tick total: mean ${ms(tickMs.meanMs)} ms   median ${ms(tickMs.medianMs)} ms   p95 ${ms(tickMs.p95Ms)} ms   ` +
       `p99 ${ms(tickMs.p99Ms)} ms   max ${ms(tickMs.maxMs)} ms`,
     ...gcLine(report.windows),
     '',

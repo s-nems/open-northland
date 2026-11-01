@@ -36,7 +36,7 @@ export interface Comparison {
   readonly noiseBandPct: number;
   readonly untrusted: boolean;
   readonly stateHashIdentical: boolean;
-  /** Per-system mean rows heaviest first, then the `tick total` (median) and `tick p99` rows. */
+  /** Per-system mean rows heaviest first, then the `tick mean`, `tick total` (median) and `tick p99` rows. */
   readonly rows: readonly DeltaRow[];
   /** Per-window tick deltas; empty when the two runs were cut into different window counts. */
   readonly windowRows: readonly DeltaRow[];
@@ -138,6 +138,7 @@ export function compareReports(before: BenchReport, after: BenchReport): Compari
         (b.beforeMs ?? b.afterMs ?? 0) - (a.beforeMs ?? a.afterMs ?? 0) ||
         (a.name < b.name ? -1 : a.name > b.name ? 1 : 0),
     );
+  rows.push(delta('tick mean', before.tickMs.meanMs, after.tickMs.meanMs, noiseBandPct));
   rows.push(delta('tick total', before.tickMs.medianMs, after.tickMs.medianMs, noiseBandPct));
   rows.push(delta('tick p99', before.tickMs.p99Ms, after.tickMs.p99Ms, noiseBandPct));
 

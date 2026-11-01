@@ -2,7 +2,7 @@
 
 /** The report layout the reader accepts; a layout change bumps it, and a report of any other version is
  *  refused rather than read. */
-export const BENCH_REPORT_VERSION = 6;
+export const BENCH_REPORT_VERSION = 7;
 
 /** One system's cost across a measured segment. `sharePct` is its share of the summed per-system
  *  time - the scale-invariant number a regression check can compare across machines. */
@@ -21,6 +21,8 @@ export interface SystemStat {
 /** Wall cost of a whole instrumented `step()`. The per-system rows do not sum to it: the residual is
  *  scheduling plus the harness's own two `performance.now` calls per system. */
 export interface TickStat {
+  /** Total measured time over ticks: the throughput figure a fast-forwarded game runs at. */
+  readonly meanMs: number;
   readonly medianMs: number;
   readonly p95Ms: number;
   readonly p99Ms: number;
