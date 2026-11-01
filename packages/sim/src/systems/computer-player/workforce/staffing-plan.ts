@@ -17,6 +17,7 @@ import {
   STORE_CARRIERS_FROM_TICKS,
   TRAINING_CARRIERS_FROM_TICKS,
 } from '../game-phase.js';
+import { seatHerdKept } from '../herd.js';
 import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
 import { craftGlutPending, openingRunPending, productsOf } from './craft.js';
 import {
@@ -99,7 +100,8 @@ export interface SeatStaffing {
  * craftsman through the band below the line that hired him. A raw good's own workshop runs without a
  * carrier while that good is short for the sites ({@link rawGoodShort}), and a workshop with nothing left
  * to make runs with nobody early in the game, or later while its input runs short for the sites
- * ({@link productsRest}), whatever the rows above say.
+ * ({@link productsRest}), whatever the rows above say. A livestock workplace employs nobody while the seat
+ * keeps no pair of either species.
  */
 export function buildingStaffing(
   world: World,
@@ -118,6 +120,8 @@ export function buildingStaffing(
     authored?.tunicSeat !== undefined && TUNIC_SIDES.some((side) => seatHasSide(world, seat.player, side))
       ? { ...row, ...authored.tunicSeat }
       : row;
+  if (authored?.herdIndustry === true && seatHerdKept(world, ctx, seat.player) === 'none')
+    return withoutCarriers(capOperators(plan, 0));
   const opening = openingRunPending(world, ctx, building, type);
   const gated = authored?.productGated === true ? gatedOperators(ctx, seat, type, held.operators) : null;
   const gate = gated === null ? null : Math.max(gated, gateFloor);

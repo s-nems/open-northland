@@ -64,6 +64,9 @@ export interface StaffingRow extends StaffingTiers {
   readonly porterUntil?: DiscoveryTarget;
   /** The tiers on a seat dressing its army in tunics (`TUNIC_SIDES`, `../build-order/seat-order.ts`), over the rest of the row. */
   readonly tunicSeat?: Partial<BuildingStaffing>;
+  /** A workplace of the livestock industry: it employs nobody while the seat keeps no pair of either
+   *  species (owner ruling, `../herd.ts`). */
+  readonly herdIndustry?: true;
 }
 
 /** A job or good the seat discovers, by stable content id. */
@@ -94,7 +97,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // sheep, so the pair works from the start. Owner ruling: a porter feeds them wheat and water, at the
   // target tier: as a minimum post with the tailors' and the joinery's it left a krwawa_rzeka seat of
   // 35-45 settlers 2-6 builders at game minute 20 and 7-13 at 60 (12-15 without them).
-  work_animal_farm: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1 },
+  work_animal_farm: { operatorMin: 2, operatorTarget: 2, carrierTarget: 1, herdIndustry: true },
   // The level-0 bakery offers a single baker slot, so only its carrier is planned.
   work_bakery_00: { carrierMin: 1, carrierTarget: 1 },
   // Owner ruling: an upgraded bakery runs its full crew before the seat raises another.
@@ -123,8 +126,8 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_mason_hut_01: { operatorTarget: 2, productGated: true },
   // Owner ruling: each tailor runs a porter at the target tier, as the animal farm does, and a tunic
   // seat's upper tailor its second tailor as a minimum post, so its two shops' four tailors stand early.
-  work_sewery_00: { carrierTarget: 1 },
-  work_sewery_01: { operatorTarget: 2, carrierTarget: 1, tunicSeat: { operatorMin: 2 } },
+  work_sewery_00: { carrierTarget: 1, herdIndustry: true },
+  work_sewery_01: { operatorTarget: 2, carrierTarget: 1, tunicSeat: { operatorMin: 2 }, herdIndustry: true },
   // A porter fetches the lower smith's iron and wood until chain mail, which opens the upper tier, is
   // earned, so he forges rather than walks: a lone smith forging about a piece every two to three minutes
   // took 20-30 game minutes for its ten forgings (diamentowa_dolina, magiczny_las).
@@ -218,6 +221,7 @@ function deriveRowPlan(type: BuildingType, lateGame: boolean): RowPlan {
     aloneUntil: __,
     porterUntil: ___,
     tunicSeat: ____,
+    herdIndustry: _____,
     late,
     ...row
   } = STAFFING_BY_BUILDING_ID[type.id] ?? {};

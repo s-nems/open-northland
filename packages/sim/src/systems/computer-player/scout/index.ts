@@ -1,4 +1,10 @@
-import { CurrentAtomic, ErectSignpostOrder, PlayerOrder, Settler } from '../../../components/index.js';
+import {
+  ClaimAnimalOrder,
+  CurrentAtomic,
+  ErectSignpostOrder,
+  PlayerOrder,
+  Settler,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { World } from '../../../ecs/world.js';
@@ -12,7 +18,7 @@ import { nextLivestockCatch } from './livestock-catch.js';
 import { nextSignpostTarget } from './signpost-coverage.js';
 import { nextStaleZoneTarget } from './stale-zones.js';
 
-export { nextLivestockCatch, SCOUT_CATCH_RADIUS_NODES } from './livestock-catch.js';
+export { type LivestockCatch, nextLivestockCatch, SCOUT_CATCH_RADIUS_NODES } from './livestock-catch.js';
 export { type LostZones, SCOUT_LOSS_MEMORY_TICKS, scoutLostZones } from './lost-zones.js';
 export {
   nextSignpostTarget,
@@ -73,15 +79,21 @@ function runScout(
   // CurrentAtomic has to be part of the busy test: both order markers are shed the moment a need drive
   // starts an atomic, so an eating scout would otherwise look order-free and be re-ordered every beat.
   if (world.has(scout, CurrentAtomic)) return [];
-  if (world.has(scout, ErectSignpostOrder) || world.has(scout, PlayerOrder)) return []; // busy
+  if (
+    world.has(scout, ErectSignpostOrder) ||
+    world.has(scout, PlayerOrder) ||
+    world.has(scout, ClaimAnimalOrder)
+  )
+    return []; // busy
   const scouts = scoutingOpen(world, ctx, player);
   const leads = scouts && scoutingLeads(ctx.tick);
   const zone = leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
   if (zone !== null) return [{ kind: 'moveUnit', entity: scout, x: zone.hx, y: zone.hy }];
   const post = nextSignpostTarget(world, ctx, player, order);
   if (post !== null) return [{ kind: 'placeSignpost', entity: scout, x: post.hx, y: post.hy }];
-  const animal = nextLivestockCatch(world, ctx, player);
-  if (animal !== null) return [{ kind: 'moveUnit', entity: scout, x: animal.hx, y: animal.hy }];
+  const herd = nextLivestockCatch(world, ctx, player);
+  if (herd?.kind === 'claim') return [{ kind: 'claimAnimal', entity: scout, animal: herd.animal }];
+  if (herd?.kind === 'look') return [{ kind: 'moveUnit', entity: scout, x: herd.node.hx, y: herd.node.hy }];
   const late = scouts && !leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
   return late === null ? [] : [{ kind: 'moveUnit', entity: scout, x: late.hx, y: late.hy }];
 }

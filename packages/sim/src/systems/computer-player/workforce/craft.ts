@@ -30,6 +30,7 @@ import { vehicleIndex } from '../../vehicles/registry.js';
 import { militaryWaits, seatHasSide } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
+import { type HerdKept, seatHerdKept } from '../herd.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID, smallestShipHouse } from '../joinery-role.js';
 import { BARRACKS_LEAD_TICKS } from '../military/deadline.js';
 import { rivalOverSea } from '../sea-route.js';
@@ -320,6 +321,16 @@ const TUNIC_SEWERY: StockCraftPlan = {
   overflow: [],
 };
 
+/** Owner ruling: a tunic seat that keeps cattle but no pair of sheep sews leather armour for the army in
+ *  the tunics' place, and shoes. */
+const LEATHER_SEWERY: StockCraftPlan = {
+  wants: [
+    { goods: ['armor_leather'], target: ARMY_ARMOUR, counts: ARMOUR_GOOD_IDS },
+    { goods: ['shoes'], target: { kind: 'units', units: SHOES_STOCK_UNITS } },
+  ],
+  overflow: [],
+};
+
 const DEFENCE_AMULET_LINE = { good: 'amulet_defense', input: 'armor_leather' } as const;
 const STRENGTH_AMULET_LINE = { good: 'amulet_strength', input: 'sword_shord' } as const;
 
@@ -489,36 +500,65 @@ export const IRON_WEAPONS_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
   work_smithy_01: IRON_WEAPONS_SMITHY,
 };
 
+/** The rows over a seat's side plans by the livestock it keeps (owner ruling, `../herd.ts`): its breeders
+ *  raise only the species it keeps a pair of, and a seat keeping only sheep sews tunics, whatever its side.
+ *  A tunic seat keeping only cattle sews leather armour ({@link TUNIC_HERD_CRAFT_PLANS}). */
+const HERD_CRAFT_PLANS: Readonly<Record<HerdKept, Readonly<Record<string, CraftPlan>>>> = {
+  both: {},
+  none: {},
+  cattle: { work_animal_farm: { seats: [['cattle']] } },
+  sheep: {
+    work_animal_farm: { seats: [['sheep']] },
+    work_sewery_00: TUNIC_SEWERY,
+    work_sewery_01: TUNIC_SEWERY,
+  },
+};
+
+/** {@link HERD_CRAFT_PLANS} for a seat dressing its army in tunics. */
+const TUNIC_HERD_CRAFT_PLANS: Readonly<Record<HerdKept, Readonly<Record<string, CraftPlan>>>> = {
+  ...HERD_CRAFT_PLANS,
+  cattle: {
+    ...HERD_CRAFT_PLANS.cattle,
+    work_sewery_00: LEATHER_SEWERY,
+    work_sewery_01: LEATHER_SEWERY,
+  },
+};
+
 /** The sides whose rows lie over a seat's difficulty plans, and those rows. */
 const SIDE_CRAFT_PLANS: readonly (readonly [EconomicSide, Readonly<Record<string, CraftPlan>>])[] = [
   ['naturalArms', NATURAL_ARMS_CRAFT_PLANS],
   ['ironWeapons', IRON_WEAPONS_CRAFT_PLANS],
 ];
 
-/** `profile`'s plans with a side's rows over them, per side rows and profile plan table. */
+/** `profile`'s plans with a side's and a herd's rows over them, per profile plan table and
+ *  `side|herd` key. */
 const sidePlans = new WeakMap<
   Readonly<Record<string, CraftPlan>>,
-  Map<EconomicSide, Readonly<Record<string, CraftPlan>>>
+  Map<string, Readonly<Record<string, CraftPlan>>>
 >();
 
-/** The craft plans `player`'s seat works: its difficulty's, with its sides' rows over them. */
+/** The craft plans `player`'s seat works: its difficulty's, with its sides' rows and then the rows of the
+ *  livestock it keeps ({@link seatHerdKept}) over them. */
 export function seatCraftPlans(
   world: World,
+  ctx: SystemContext,
   player: number,
   profile: ComputerProfile,
 ): Readonly<Record<string, CraftPlan>> {
   const held = SIDE_CRAFT_PLANS.find(([side]) => seatHasSide(world, player, side));
-  if (held === undefined) return profile.craftPlans;
-  const [side, rows] = held;
-  let bySide = sidePlans.get(profile.craftPlans);
-  if (bySide === undefined) {
-    bySide = new Map();
-    sidePlans.set(profile.craftPlans, bySide);
+  const herd = seatHerdKept(world, ctx, player);
+  if (held === undefined && (herd === 'both' || herd === 'none')) return profile.craftPlans;
+  const key = `${held?.[0] ?? ''}|${herd}`;
+  let byKey = sidePlans.get(profile.craftPlans);
+  if (byKey === undefined) {
+    byKey = new Map();
+    sidePlans.set(profile.craftPlans, byKey);
   }
-  let plans = bySide.get(side);
+  let plans = byKey.get(key);
   if (plans === undefined) {
-    plans = { ...profile.craftPlans, ...rows };
-    bySide.set(side, plans);
+    const herdRows = (held === undefined ? HERD_CRAFT_PLANS : TUNIC_HERD_CRAFT_PLANS)[herd];
+    plans = { ...profile.craftPlans, ...held?.[1], ...herdRows };
+    byKey.set(key, plans);
   }
   return plans;
 }
@@ -567,7 +607,7 @@ export function tuneCraftCounters(
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
-  const plans = seatCraftPlans(world, player, profile);
+  const plans = seatCraftPlans(world, ctx, player, profile);
   const roleOf = joineryRoles(world, ctx, player, () => rivalOverSea(world, ctx, player));
   const rolePlans = seatHasSide(world, player, 'noRoom') ? NO_CATAPULT_ROLE_PLANS : profile.joineryRolePlans;
   const fleets = new Map<string, number>();

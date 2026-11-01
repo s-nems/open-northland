@@ -2,7 +2,9 @@ import {
   AttackOrder,
   Building,
   CurrentAtomic,
+  HUNTER_WORK_FLAG_RADIUS,
   JobAssignment,
+  Livestock,
   Position,
   playerPlacementTribes,
   professionProgressionEnabled,
@@ -19,15 +21,18 @@ import {
   groundDistance,
   HUNT_CHASE_SLACK_NODES,
   HUNT_PREY_SCORE_CEILING,
+  huntingGround,
   preyScore,
   workplaceHuntingGround,
 } from '../../conflict/hunting/index.js';
 import { huntingGroundHoldsCarcass } from '../../conflict/hunting/kill-claim.js';
 import { isHuntTarget } from '../../conflict/targeting.js';
 import type { SystemContext } from '../../context.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
 import { jobEnabled, needSubjectOf, settlerMeetsNeed, typeAllowed } from '../../progression/index.js';
 import { hunterJobType, isHunterJob } from '../../readviews/index.js';
 import { entityNode } from '../../spatial/nodes.js';
+import { playerSeesEntity } from '../../vision/gates.js';
 import { seatBaseOf } from '../base.js';
 import { OPENING_HUNT_UNTIL_TICKS } from '../game-phase.js';
 import { technologyTable } from '../technology/requirements.js';
@@ -61,17 +66,26 @@ export function huntingPlan(
   return { base, job, posted, want: 1 + extraFor(Math.max(0, posted.length - 1)), apprentices };
 }
 
+/** How far (map points) from the base a hunter's work flag may go for game the seat sees, when the base's
+ *  own ground holds none and hunting still opens a trade: a second ground's width beyond the base's
+ *  ({@link HUNTER_WORK_FLAG_RADIUS}). Authored: a four hills seat's start ground held a few boars, and
+ *  once they were hunted the nearest game stood 54-60 map points out, so its hunter was sent home at game
+ *  minute 4 and the breeder stayed locked to minute 60. */
+export const HUNT_FLAG_REACH_NODES = 2 * HUNTER_WORK_FLAG_RADIUS;
+
 /**
  * The base hunters: one man employed at the seat's base on its hunter slot, handed back to the civilian
- * pool once {@link OPENING_HUNT_UNTIL_TICKS} passes, and earlier once he idles with no game left on the
- * base's hunting ground (authored). Under the experience gates the post outlasts the clock while his
+ * pool once {@link OPENING_HUNT_UNTIL_TICKS} passes, and earlier once he idles with no game left on his
+ * hunting ground (authored). Under the experience gates the post outlasts the clock while his
  * kills still have a trade to open or fill ({@link huntOpensTrades}), and is re-filled after the hunter
- * was promoted into one: the owner's ruling keeps the hunter until the breeder and the sewer open. An
- * apprentice earning a discovery by his kills is never retired. The first phase keeps and hires the one
- * post; the surplus phase, out of the men the other posts leave, hires the food-shortage hunters the plan
- * wants, and the first phase hands the extra ones back once the plan no longer wants them, the least
- * practised first. Employed rather than flag-bound because the post gives him the base as his hunting
- * ground and banks his kills as food.
+ * was promoted into one: the owner's ruling keeps the hunter until the breeder and the sewer open. While
+ * hunting opens a trade, a ground with no game left moves: his work flag goes to the nearest game the seat
+ * sees within {@link HUNT_FLAG_REACH_NODES} of the base ({@link huntFlagSpot}), and he is retired only when
+ * none is in sight. An apprentice earning a discovery by his kills is never retired. The first phase keeps
+ * and hires the one post; the surplus phase, out of the men the other posts leave, hires the food-shortage
+ * hunters the plan wants, and the first phase hands the extra ones back once the plan no longer wants
+ * them, the least practised first. Employed rather than flag-bound because the post gives him the base as
+ * his hunting ground and banks his kills as food.
  */
 export function allocateHunters(
   world: World,
@@ -86,18 +100,29 @@ export function allocateHunters(
   if (plan === null) return [];
   const { base, job, posted } = plan;
   const free = (e: Entity): boolean => !plan.apprentices.has(e);
-  if (ctx.tick >= OPENING_HUNT_UNTIL_TICKS && !huntOpensTrades(world, ctx, player, tally))
+  const opensTrades = huntOpensTrades(world, ctx, player, tally);
+  if (ctx.tick >= OPENING_HUNT_UNTIL_TICKS && !opensTrades)
     return phase === 'first' ? retireHunters(world, posted.filter(free), builderJob) : [];
   if (posted.length > 0) {
     // Not mid-action, walking included: a walk carries no CurrentAtomic.
     const idle = posted.some((e) => !world.has(e, CurrentAtomic));
-    if (idle && !huntWorkLeft(world, ctx, base, job, posted, HUNT_CHASE_SLACK_NODES))
-      return phase === 'first' ? retireHunters(world, posted.filter(free), builderJob) : [];
+    if (idle && !huntWorkLeft(world, ctx, base, job, posted, HUNT_CHASE_SLACK_NODES)) {
+      if (phase !== 'first') return [];
+      const spot = opensTrades ? huntFlagSpot(world, ctx, player, base, job) : null;
+      if (spot === null) return retireHunters(world, posted.filter(free), builderJob);
+      return posted
+        .filter((e) => !world.has(e, CurrentAtomic))
+        .map((e) => ({ kind: 'setWorkFlag', entity: e, x: spot.hx, y: spot.hy }));
+    }
     if (phase === 'first') {
       const extra = byExperience([...posted], experienceRank(world, ctx, job)).slice(plan.want);
       return retireHunters(world, extra.filter(free), builderJob);
     }
-  } else if (!huntWorkLeft(world, ctx, base, job, posted, 0)) return [];
+  } else if (
+    !huntWorkLeft(world, ctx, base, job, posted, 0) &&
+    !(opensTrades && huntFlagSpot(world, ctx, player, base, job) !== null)
+  )
+    return [];
   const want = phase === 'first' ? 1 : plan.want;
   if (posted.length >= want) return [];
   // Only the per-settler half of the command's own gate is left to ask of a candidate: `posted` above
@@ -108,14 +133,18 @@ export function allocateHunters(
   return [{ kind: 'assignWorker', entity: spare, building: base, jobPriority: [job] }];
 }
 
-/** Whether the seat's base hunter could earn hunting experience: one is posted there, or the base offers
- *  a hunter seat with game left on its ground. */
+/** Whether the seat's base hunter could earn hunting experience: one is posted there with game left on his
+ *  ground, or the base offers a hunter seat with game on its ground or in sight within
+ *  {@link HUNT_FLAG_REACH_NODES} ({@link huntFlagSpot}). */
 export function seatHuntsGame(world: World, ctx: SystemContext, player: number): boolean {
   const hunterJob = hunterJobType(ctx.content);
   const base = seatBaseOf(world, ctx, player);
   if (hunterJob === null || base === null || !offersHunterSeat(world, ctx, base, hunterJob)) return false;
   const posted = huntersAt(world, ctx, player, base);
-  return huntWorkLeft(world, ctx, base, hunterJob, posted, posted.length > 0 ? HUNT_CHASE_SLACK_NODES : 0);
+  return (
+    huntWorkLeft(world, ctx, base, hunterJob, posted, posted.length > 0 ? HUNT_CHASE_SLACK_NODES : 0) ||
+    huntFlagSpot(world, ctx, player, base, hunterJob) !== null
+  );
 }
 
 /**
@@ -158,10 +187,11 @@ function offersHunterSeat(world: World, ctx: SystemContext, base: Entity, hunter
 }
 
 /**
- * Whether the base's hunting ground, widened by `slack` nodes, still holds live game a hunter could walk
- * to and would pick (scored from the ground's anchor, see {@link HUNT_PREY_SCORE_CEILING}) or an unbanked
- * carcass of a posted hunter's. The hire asks the bare ground and the retirement the
- * chase leash, so game grazing on the edge does not flip the post each decision. Mapless: always true.
+ * Whether the posted hunters' ground, the first one's work flag circle or else the base's, widened by
+ * `slack` nodes, still holds live game a hunter could walk to and would pick (scored from the ground's
+ * anchor, see {@link HUNT_PREY_SCORE_CEILING}) or an unbanked carcass of a posted hunter's. The hire asks
+ * the bare ground and the retirement the chase leash, so game grazing on the edge does not flip the post
+ * each decision. Mapless: always true.
  */
 function huntWorkLeft(
   world: World,
@@ -172,7 +202,13 @@ function huntWorkLeft(
   slack: number,
 ): boolean {
   const terrain = ctx.terrain;
-  const ground = terrain === undefined ? null : workplaceHuntingGround(world, terrain, base);
+  const flagged = posted.find((h) => liveWorkFlag(world, h) !== undefined);
+  const ground =
+    terrain === undefined
+      ? null
+      : flagged !== undefined
+        ? huntingGround(world, terrain, flagged)
+        : workplaceHuntingGround(world, terrain, base);
   if (terrain === undefined || ground === null) return true;
   if (posted.some((h) => huntingGroundHoldsCarcass(world, ctx, terrain, h, hunterJob, ground))) return true;
   const reach = ground.radius + slack;
@@ -186,6 +222,43 @@ function huntWorkLeft(
     if (home < 0 || terrain.componentOf(at) === home) return true;
   }
   return false;
+}
+
+/**
+ * Where a hunter's work flag goes when his ground holds no game: the node of the nearest game `player`
+ * sees within {@link HUNT_FLAG_REACH_NODES} of the base, on the base's land, that a hunter would pick, ranked
+ * `(distance, entity id)`. Wild livestock is passed over: the scout claims it for the animal farm
+ * (`../scout/livestock-catch.ts`). Null when none is in sight, and in a mapless sim.
+ */
+function huntFlagSpot(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  base: Entity,
+  hunterJob: number,
+): { hx: number; hy: number } | null {
+  const terrain = ctx.terrain;
+  const ground = terrain === undefined ? null : workplaceHuntingGround(world, terrain, base);
+  if (terrain === undefined || ground === null) return null;
+  const home = terrain.componentOf(ground.anchorCell);
+  let best: Entity | null = null;
+  let bestRange = Number.POSITIVE_INFINITY;
+  for (const t of world.query(StayPoint, Settler, Position)) {
+    if (world.has(t, Livestock) || !isHuntTarget(world, ctx, t, hunterJob)) continue;
+    const at = entityNode(world, terrain, t);
+    const range = groundDistance(terrain, ground.anchorCell, at);
+    if (range > HUNT_FLAG_REACH_NODES) continue;
+    if (home >= 0 && terrain.componentOf(at) !== home) continue;
+    if (preyScore(world, terrain, at, t) >= HUNT_PREY_SCORE_CEILING) continue; // scored from a flag on it
+    if (!playerSeesEntity(world, ctx.fog, player, t)) continue;
+    if (range < bestRange || (range === bestRange && best !== null && t < best)) {
+      best = t;
+      bestRange = range;
+    }
+  }
+  if (best === null) return null;
+  const at = entityNode(world, terrain, best);
+  return { hx: terrain.xOf(at), hy: terrain.yOf(at) };
 }
 
 /** Hand the opening hunters back to the pool as builders, leaving a man mid-action or sent at an animal

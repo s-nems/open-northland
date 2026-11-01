@@ -43,9 +43,10 @@ const LATTICE_POSTS_CAP = 20;
 describe('scout module (guideBuild) - the livestock round-up', () => {
   const CENTER = { x: 128, y: 128 };
 
-  /** A seat whose always-wanted lattice already stands, so the scout has dropped to its round-up. */
+  /** A seat whose always-wanted lattice already stands, so the scout has dropped to its round-up. The map
+   *  reaches past the catch radius east of the base. */
   function tiledSim(): Simulation {
-    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
+    const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(512, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
     sim.step();
@@ -70,9 +71,10 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     placeAnimal(sim, CENTER.x + 20, CENTER.y);
     const near = placeAnimal(sim, CENTER.x + 10, CENTER.y);
 
-    const order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (order?.kind !== 'moveUnit') throw new Error('expected a round-up walk');
-    expect({ x: order.x, y: order.y }).toEqual({ x: CENTER.x + 10, y: CENTER.y });
+    expect([...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
+      kind: 'claimAnimal',
+      animal: near,
+    });
     expect(sim.world.has(near, Owner)).toBe(false); // contact does the claiming, not the module
   });
 
@@ -105,7 +107,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     });
     sim.step();
     const beside = { x: outpost.x + 10, y: outpost.y };
-    placeAnimal(sim, beside.x, beside.y);
+    const animal = placeAnimal(sim, beside.x, beside.y);
 
     // The lattice reaches out to the new building first; stand its posts so the scout drops to the round-up.
     let order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
@@ -113,8 +115,7 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
       plantPost(sim, positionOfNode(order.x, order.y));
       order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
     }
-    if (order?.kind !== 'moveUnit') throw new Error('expected a round-up walk');
-    expect({ x: order.x, y: order.y }).toEqual(beside);
+    expect(order).toMatchObject({ kind: 'claimAnimal', animal });
   });
 
   it('skips an animal sealed away from the settlement, and retires the scout for it', () => {
@@ -148,9 +149,10 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     const sim = tiledSim();
     const first = placeAnimal(sim, CENTER.x + 10, CENTER.y);
     placeAnimal(sim, CENTER.x - 10, CENTER.y);
-    const order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (order?.kind !== 'moveUnit') throw new Error('expected a round-up walk');
-    expect({ x: order.x, y: order.y }).toEqual({ x: CENTER.x + 10, y: CENTER.y });
+    expect([...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
+      kind: 'claimAnimal',
+      animal: first,
+    });
     expect(sim.world.has(first, Owner)).toBe(false);
   });
 
@@ -169,11 +171,12 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
     });
     sim.step();
     placeAnimal(sim, partnerHq.x - 4, partnerHq.y);
-    placeAnimal(sim, CENTER.x - 50, CENTER.y);
+    const free = placeAnimal(sim, CENTER.x - 50, CENTER.y);
 
-    const order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
-    if (order?.kind !== 'moveUnit') throw new Error('expected a round-up walk');
-    expect({ x: order.x, y: order.y }).toEqual({ x: CENTER.x - 50, y: CENTER.y });
+    expect([...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0]).toMatchObject({
+      kind: 'claimAnimal',
+      animal: free,
+    });
   });
 
   it('never counts the claimed herd as a bachelor the garrison may draft', () => {

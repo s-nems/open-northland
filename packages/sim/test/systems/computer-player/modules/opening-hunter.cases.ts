@@ -19,6 +19,7 @@ import {
 } from '../../../../src/systems/computer-player/workforce/food.js';
 import type { StaffingTally } from '../../../../src/systems/computer-player/workforce/tally.js';
 import { HUNT_PREY_SCORE_CEILING } from '../../../../src/systems/conflict/hunting/index.js';
+import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
   aiSim,
@@ -263,6 +264,31 @@ describe('workforce module - the opening hunter', () => {
     sim.step();
     const again = [...collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)];
     expect(again.filter((c) => c.kind === 'assignWorker' && c.jobPriority?.includes(HUNTER))).toEqual([]);
+  });
+
+  it("moves the hunter's ground to game in sight while his kills have still to open the breeder", () => {
+    const content = huntGatedContent();
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(WIDE_MAP_NODES, 32) });
+    placeHq(sim);
+    spawnMen(sim, 4);
+    const near = spawnDeer(sim, HQ_X + NEAR_GAME_DX, HQ_Y);
+    for (const c of collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT))
+      if (c.kind === 'assignWorker') sim.enqueueSetup(c);
+    sim.step();
+    const hunter = [...sim.world.query(Settler, JobAssignment)].find(
+      (e) => sim.world.get(e, Settler).jobType === HUNTER,
+    );
+    if (hunter === undefined) throw new Error('expected a posted hunter');
+    sim.world.destroy(near);
+    const far = spawnDeer(sim, HQ_X + FAR_GAME_DX, HQ_Y);
+    const commands = [...collectModule.run(sim.world, { ...ctxOf(sim), content }, SEAT)].filter(
+      (c) => 'entity' in c && c.entity === hunter,
+    );
+    const at = sim.terrain?.coordsOf(entityNode(sim.world, sim.terrain, far));
+    expect(commands).toEqual([{ kind: 'setWorkFlag', entity: hunter, x: at?.x, y: at?.y }]);
+    // With no game left in sight he goes home as before.
+    sim.world.destroy(far);
+    expect(retirements(sim, content, hunter)).toEqual([{ kind: 'setJob', entity: hunter, jobType: BUILDER }]);
   });
 
   it('keeps a hunter mid-action even with the game gone', () => {

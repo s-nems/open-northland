@@ -57,7 +57,8 @@ export type BuildOrderEntry =
    *  `radius` world-metric nodes, or while the seat has none of those; a `near` affinity on the same id
    *  then pulls the spot toward the first one lacking. `onlyWhen: 'rivalOverSea'` skips the entry while
    *  the headquarters the seat sails for (`../sea-route.ts`) can be reached by land, `'grassScarce'` while
-   *  the seat has grass enough (`./grass-reserve.ts`). An entry of a grass building with no grass left
+   *  the seat has grass enough (`./grass-reserve.ts`), `'livestock'` while the seat keeps no pair of
+   *  either species (`../herd.ts`). An entry of a grass building with no grass left
    *  for it is passed over unless `essential`, which holds its line until it stands. `belowTier` stops the
    *  count below that tier of the chain, so buildings placed straight at it never meet the entry. `role` counts only the
    *  joineries of the counted tiers holding that role (`../joinery-role.ts`). `holdUntil` holds the line on the unmet entry,
@@ -79,7 +80,7 @@ export type BuildOrderEntry =
       readonly ground?: 'plantable';
       readonly needsResources?: readonly string[];
       readonly unlessWithin?: { readonly building: string; readonly radius: number };
-      readonly onlyWhen?: 'rivalOverSea' | 'grassScarce';
+      readonly onlyWhen?: 'rivalOverSea' | 'grassScarce' | 'livestock';
       readonly essential?: true;
       readonly belowTier?: string;
       readonly role?: JoineryRole;
@@ -101,7 +102,7 @@ export type BuildOrderEntry =
       readonly count: number;
       readonly belowTier?: string;
       readonly role?: JoineryRole;
-      readonly onlyWhen?: 'rivalOverSea';
+      readonly onlyWhen?: 'rivalOverSea' | 'livestock';
       readonly lockPasses?: true;
     }
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
@@ -357,12 +358,18 @@ export const EARLY_SECOND_TAILOR: BuildOrderEntry = {
     { kind: 'building', id: 'work_animal_farm' },
   ],
   aheadOfCrews: true,
+  onlyWhen: 'livestock',
 };
 
 /** Owner ruling: a seat dressing its army in tunics runs two upper tailors, two of the four tailors on
  *  shoes and two on tunics (`workforce/craft.ts`), and upgrades both as soon as the sewer learns the wool
  *  armour: one step ahead of the single upgrade, so the second never waits for the first one's site. */
-export const SECOND_UPPER_TAILOR: BuildOrderEntry = { kind: 'upgrade', building: 'work_sewery_01', count: 2 };
+export const SECOND_UPPER_TAILOR: BuildOrderEntry = {
+  kind: 'upgrade',
+  building: 'work_sewery_01',
+  count: 2,
+  onlyWhen: 'livestock',
+};
 
 /** Owner ruling: a tunic seat raises its second animal farm, its breeders split as the first's, early and
  *  without waiting for the first one's crew: the tailors dressing the army want its leather and wool, and
@@ -377,6 +384,7 @@ export const SECOND_ANIMAL_FARM: BuildOrderEntry = {
     { kind: 'building', id: 'work_farm_00' },
   ],
   aheadOfCrews: true,
+  onlyWhen: 'livestock',
 };
 
 /** A well beside the second animal farm when the first one's stands out of reach; its cap counts every
@@ -648,6 +656,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       id: 'clothing',
       steps: [
         GRAIN_FARM,
+        // Owner ruling: the animal farm and the tailors wait while the seat owns no pair of sheep or cattle.
         {
           kind: 'place',
           building: 'work_animal_farm',
@@ -656,6 +665,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
             { kind: 'building', id: 'work_farm_00' },
             { kind: 'building', id: 'work_well_00' },
           ],
+          onlyWhen: 'livestock',
         },
         // The animal farm drinks water like the brewery, so it gets a well beside it when none stands in
         // reach.
@@ -668,9 +678,10 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           building: 'work_sewery_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_animal_farm' }],
+          onlyWhen: 'livestock',
         },
         SECOND_UPPER_TAILOR,
-        { kind: 'upgrade', building: 'work_sewery_01', count: 1 },
+        { kind: 'upgrade', building: 'work_sewery_01', count: 1, onlyWhen: 'livestock' },
         // The second tailor, counted with the upgraded one, so this adds one building: the upper tier
         // outright once the seat sources it (`./direct-tier.ts`), else the small tailor as a shoemaker.
         {
@@ -678,6 +689,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           building: 'work_sewery_00',
           count: 2,
           near: [{ kind: 'building', id: 'work_sewery_01' }],
+          onlyWhen: 'livestock',
         },
       ],
     },

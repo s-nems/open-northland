@@ -100,6 +100,7 @@ import {
   spawnMen,
   VIKING,
   WOOD,
+  keepCattle,
 } from '../support.js';
 
 /** The pottery's and mason hut's crews: the first craftsman's carrier, the supply carrier an upgraded
@@ -1117,6 +1118,7 @@ describe('workforce module - the barracks, tailor, animal farm and joinery porte
 
   it('runs a porter at the animal farm and the tools joinery at the target tier, behind the builders', () => {
     const farmSeat = seatOn(husbandryContent(), [ANIMAL_FARM_TYPE], BUILDER_CAP + SPARE_MEN);
+    keepCattle(farmSeat.sim);
     const farm = entityOfBuilding(farmSeat.sim, ANIMAL_FARM_TYPE);
     expect(planOf(farmSeat, husbandryContent(), farm, alone)).toMatchObject({
       carrierMin: 0,

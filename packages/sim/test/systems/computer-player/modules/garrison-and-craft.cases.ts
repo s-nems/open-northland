@@ -140,6 +140,7 @@ import {
   VIKING,
   WOMAN,
   WOOD,
+  keepCattle,
 } from '../support.js';
 
 // The garrison sizing out of the true bachelor surplus, the weapon mix it publishes, and the
@@ -1802,6 +1803,7 @@ describe('workforce module - the barracks and craft selections', () => {
       owner: SEAT,
     });
     spawnMen(sim, 3, BUILDER);
+    keepCattle(sim);
     sim.step();
     const ctx = { ...ctxOf(sim), content };
 

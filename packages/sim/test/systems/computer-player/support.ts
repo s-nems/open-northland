@@ -473,6 +473,12 @@ export function placeAnimal(sim: Simulation, x: number, y: number, player?: numb
   return animal;
 }
 
+/** A breeding pair of cows owned by `player`, so the seat keeps cattle (`computer-player/herd.ts`). */
+export function keepCattle(sim: Simulation, player: number = SEAT): void {
+  placeAnimal(sim, 4, 4, player);
+  placeAnimal(sim, 5, 4, player);
+}
+
 /** A standing wall Resource whose footprint walk-blocks exactly `cells` - anchored on remote open
  *  ground so the anchor's own node (which a Resource blocks for placement) seals nothing nearby. */
 export function wallOver(sim: Simulation, cells: readonly { x: number; y: number }[]): void {

@@ -32,6 +32,12 @@ export interface BriefLandComponent {
   waters: number[];
 }
 
+/** Where a wild livestock animal stood at the scan, its anchor node. */
+export interface BriefLivestockSpot {
+  hx: number;
+  hy: number;
+}
+
 /**
  * The computer player's one scan of the static map, shared by every computer seat. Every per-zone layer
  * is row-major over the zone grid, `zy * zonesWide + zx`, one entry per zone.
@@ -69,6 +75,9 @@ export interface MapBriefState {
   landComponents: BriefLandComponent[];
   /** Ascending player slot. */
   seats: BriefSeatStart[];
+  /** The wild livestock's spots at the scan, ascending entity id: the start layout a computer seat may
+   *  know, never where an animal moved since. */
+  livestock: BriefLivestockSpot[];
   /** The world's next entity id at the scan: an entity below it stood then, since ids are never reused.
    *  A deposit below it is part of the static start layout every computer seat may know. */
   entityCeiling: number;
@@ -93,6 +102,7 @@ const mapBrief = defineWorldSingleton<MapBriefState>('MapBrief', 'players', () =
   fish: [],
   landComponents: [],
   seats: [],
+  livestock: [],
   entityCeiling: 0,
 }));
 

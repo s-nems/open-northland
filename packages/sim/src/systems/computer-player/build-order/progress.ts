@@ -16,6 +16,7 @@ import { liveWorkFlag } from '../../economy/work-flag.js';
 import { goodEnabled } from '../../progression/index.js';
 import { seatStockOf } from '../../stores/index.js';
 import { seatBaseOf } from '../base.js';
+import { seatHerdKept } from '../herd.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource, knownResourceTest } from '../live-resources.js';
 import { rivalOverSea } from '../sea-route.js';
@@ -60,6 +61,8 @@ export interface DecisionMemo {
   readonly live: Map<number, boolean>;
   rivalOverSea: boolean | undefined;
   grassScarce: boolean | undefined;
+  /** Whether the seat keeps no pair of either livestock species (`../herd.ts`). */
+  herdless: boolean | undefined;
   roleOf: ((joinery: Entity) => JoineryRole) | undefined;
   /** The seat's live flags by the one good each holder gathers. */
   flagsByGood: ReadonlyMap<number, number> | undefined;
@@ -110,6 +113,7 @@ export function decisionMemo(): DecisionMemo {
     live: new Map(),
     rivalOverSea: undefined,
     grassScarce: undefined,
+    herdless: undefined,
     roleOf: undefined,
     flagsByGood: undefined,
     tallies: new Map(),
@@ -132,6 +136,12 @@ function memoFlagsByGood(
     memo.flagsByGood = flags;
   }
   return memo.flagsByGood;
+}
+
+/** Whether the seat keeps no pair of either livestock species, asked once a decision. */
+function memoHerdless(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
+  memo.herdless ??= seatHerdKept(world, ctx, player) === 'none';
+  return memo.herdless;
 }
 
 /** {@link grassScarce} around the seat's base; false with no base or terrain. */
@@ -214,6 +224,7 @@ export function entryStatus(
       if (have >= wanted) return 'satisfied';
       if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
       if (entry.onlyWhen === 'grassScarce' && !memoGrassScarce(world, ctx, player, memo)) return 'skip';
+      if (entry.onlyWhen === 'livestock' && memoHerdless(world, ctx, player, memo)) return 'skip';
       if (
         entry.unlessWithin !== undefined &&
         unservedAnchor(world, index, owned, counted, entry.unlessWithin) === null
@@ -250,6 +261,7 @@ export function entryStatus(
       }
       if (have >= entry.count) return 'satisfied';
       if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
+      if (entry.onlyWhen === 'livestock' && memoHerdless(world, ctx, player, memo)) return 'skip';
       return technologyReach(world, ctx, player, memo)?.house(target.typeId) === false ? 'skip' : 'unmet';
     }
     case 'collector': {
