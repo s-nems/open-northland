@@ -1,6 +1,12 @@
 import type { NodeId } from '../terrain/index.js';
 import type { SearchScratch } from './scratch.js';
 
+/** Children per heap slot: slot `i`'s are `ARITY * i + 1` through `ARITY * i + ARITY`. Four halves the
+ *  depth of a binary heap and keeps a slot's children adjacent; the total order makes the pop sequence the
+ *  same at any arity. */
+const ARITY_SHIFT = 2;
+const ARITY = 1 << ARITY_SHIFT;
+
 /** The canonical open-set order (f, h, dev, node id), all ascending. Ending on the id makes it total, so
  *  the heap's minimum is unique and independent of the heap's internal layout. With f equal, the smaller
  *  h = f - g is the larger g. */
@@ -77,7 +83,7 @@ function siftUp(s: SearchScratch, start: number): void {
   const dev = heapDev[start] ?? 0;
   let index = start;
   while (index > 0) {
-    const parentIndex = (index - 1) >> 1;
+    const parentIndex = (index - 1) >> ARITY_SHIFT;
     const parent = heap[parentIndex] ?? 0;
     const parentF = heapF[parentIndex] ?? 0;
     const parentG = heapG[parentIndex] ?? 0;
@@ -97,7 +103,7 @@ function siftUp(s: SearchScratch, start: number): void {
   heapIdx[node] = index;
 }
 
-/** Move the slot at `heap[start]` toward the leaves until neither child beats it. */
+/** Move the slot at `heap[start]` toward the leaves until no child beats it. */
 function siftDown(s: SearchScratch, start: number): void {
   const { heap, heapF, heapG, heapDev, heapIdx } = s;
   const size = s.heapSize;
@@ -108,24 +114,25 @@ function siftDown(s: SearchScratch, start: number): void {
   const dev = heapDev[start] ?? 0;
   let index = start;
   for (;;) {
-    let childIndex = 2 * index + 1;
-    if (childIndex >= size) break;
-    let child = heap[childIndex] ?? 0;
-    let childF = heapF[childIndex] ?? 0;
-    let childG = heapG[childIndex] ?? 0;
-    let childDev = heapDev[childIndex] ?? 0;
-    const rightIndex = childIndex + 1;
-    if (rightIndex < size) {
-      const right = heap[rightIndex] ?? 0;
-      const rightF = heapF[rightIndex] ?? 0;
-      const rightG = heapG[rightIndex] ?? 0;
-      const rightDev = heapDev[rightIndex] ?? 0;
-      if (better(rightF, rightG, rightDev, right, childF, childG, childDev, child)) {
-        child = right;
-        childF = rightF;
-        childG = rightG;
-        childDev = rightDev;
-        childIndex = rightIndex;
+    const firstChild = ARITY * index + 1;
+    if (firstChild >= size) break;
+    let childIndex = firstChild;
+    let child = heap[firstChild] ?? 0;
+    let childF = heapF[firstChild] ?? 0;
+    let childG = heapG[firstChild] ?? 0;
+    let childDev = heapDev[firstChild] ?? 0;
+    const lastChild = Math.min(firstChild + ARITY, size);
+    for (let sibling = firstChild + 1; sibling < lastChild; sibling++) {
+      const other = heap[sibling] ?? 0;
+      const otherF = heapF[sibling] ?? 0;
+      const otherG = heapG[sibling] ?? 0;
+      const otherDev = heapDev[sibling] ?? 0;
+      if (better(otherF, otherG, otherDev, other, childF, childG, childDev, child)) {
+        child = other;
+        childF = otherF;
+        childG = otherG;
+        childDev = otherDev;
+        childIndex = sibling;
       }
     }
     if (!better(childF, childG, childDev, child, f, g, dev, node)) break;

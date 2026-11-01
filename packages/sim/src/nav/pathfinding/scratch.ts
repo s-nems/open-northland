@@ -27,7 +27,7 @@ export interface SearchScratch {
   /** Position in `heap` while open, kept by the sift ops so a relaxation can decrease-key in place;
    *  {@link SETTLED} once popped. */
   readonly heapIdx: Int32Array;
-  /** The open set, a binary min-heap of node ids in its first {@link heapSize} slots. A node enters it at
+  /** The open set, a 4-ary min-heap of node ids in its first {@link heapSize} slots. A node enters it at
    *  most once per search, so it never needs more slots than the graph has nodes. */
   heap: Int32Array;
   /** `g` plus the heuristic of the node in the same heap slot. */
