@@ -1,4 +1,4 @@
-import { StepBuffer, type TerrainGraph } from '../terrain/index.js';
+import { StepBuffer, StepGate, type TerrainGraph } from '../terrain/index.js';
 
 /** `cameFrom` of the start node, which has no predecessor. */
 export const NO_NODE = -1;
@@ -41,6 +41,8 @@ export interface SearchScratch {
   heapSize: number;
   /** The settled node's outgoing edges, re-filled per expansion. */
   readonly steps: StepBuffer;
+  /** The search's step gate, reset when a search claims the scratch. */
+  readonly gate: StepGate;
   /** Generation counter, incremented per query. */
   query: number;
 }
@@ -67,6 +69,7 @@ function freshScratch(graph: TerrainGraph): SearchScratch {
     heapDev: new Float64Array(heapCapacity),
     heapSize: 0,
     steps: new StepBuffer(),
+    gate: new StepGate(),
     query: 0,
   };
 }

@@ -16,10 +16,11 @@
  * Neighbours are emitted in a fixed canonical order so traversal is byte-identical across runs.
  */
 import { HEX_EDGE, HEX_EDGE_COUNT, hexEdgeNeighbourX, hexEdgeNeighbourY } from '@open-northland/data';
-import { type BlockOverlay, NodeMask } from '../block-overlay.js';
+import type { Fixed } from '../../core/fixed.js';
+import type { BlockOverlay } from '../block-overlay.js';
 import { HALF_COLUMN, ROW_EDGE } from '../world-metric.js';
 
-import { TerrainLattice, type Traversal } from './lattice.js';
+import { ENTER_BIT, TerrainLattice, type Traversal } from './lattice.js';
 import type { NodeId } from './node-id.js';
 import { type Step, StepBuffer } from './step-buffer.js';
 
@@ -50,7 +51,68 @@ export function slantDx(y: number): number {
   return (y & 1) === 0 ? SLANT_DX_EVEN : SLANT_DX_ODD;
 }
 
+/** {@link TerrainEdges.resetGate}'s `readmitted` when no node is exempt from the overlay. */
+export const NO_READMITTED = -1;
+
+/**
+ * Which nodes a walk-block overlay closes to a step, read through the overlay's byte lanes when it has
+ * them. Reset per search or per emission, never shared between two at once.
+ */
+export class StepGate {
+  /** The edges a step may take from each node over static ground, as {@link TerrainEdges.stepLane}. */
+  lane: Uint8Array = new Uint8Array(0);
+  private readmitted = NO_READMITTED;
+  private overlay: BlockOverlay | undefined;
+  private bytes: Uint8Array | undefined;
+  private extra: Uint8Array | undefined;
+  private players: Uint16Array | undefined;
+  private hostile = 0;
+
+  reset(lane: Uint8Array, blocked: BlockOverlay | undefined, readmitted: number): void {
+    this.lane = lane;
+    this.readmitted = readmitted;
+    const lanes = blocked?.blockLanes?.();
+    this.overlay = lanes === undefined ? blocked : undefined;
+    this.bytes = lanes?.bytes;
+    this.extra = lanes?.extra;
+    this.players = lanes?.players;
+    this.hostile = lanes?.hostile ?? 0;
+  }
+
+  /** Whether the overlay closes the in-bounds node id `c`. */
+  closes(c: number): boolean {
+    if (c === this.readmitted) return false;
+    const bytes = this.bytes;
+    if (bytes !== undefined) {
+      if (bytes[c] === 1) return true;
+      const extra = this.extra;
+      if (extra !== undefined && extra[c] === 1) return true;
+      const players = this.players;
+      return players !== undefined && ((players[c] ?? 0) & this.hostile) !== 0;
+    }
+    return this.overlay?.has(c as NodeId) === true;
+  }
+}
+
+/** Each edge's world length in bit order: the two column edges are a half column, the four row-crossing
+ *  ones {@link ROW_EDGE}. */
+const EDGE_COSTS: readonly Fixed[] = EDGE_BITS.map((_, edge) =>
+  EDGE_DY[edge] === 0 ? HALF_COLUMN : ROW_EDGE,
+);
+
 export abstract class TerrainEdges extends TerrainLattice {
+  /** {@link stepsInto}'s gate, reset on every call. */
+  private readonly callGate = new StepGate();
+  private landSteps: Uint8Array | undefined;
+  private waterSteps: Uint8Array | undefined;
+  /** Each edge's node id offset from an even row and from an odd one, in {@link EDGE_BITS} order. */
+  private readonly evenOffsets = Int32Array.from(EDGE_BITS, (_, edge) => this.edgeOffset(edge, EDGE_DX_EVEN));
+  private readonly oddOffsets = Int32Array.from(EDGE_BITS, (_, edge) => this.edgeOffset(edge, EDGE_DX_ODD));
+
+  private edgeOffset(edge: number, dxs: readonly number[]): number {
+    return (EDGE_DY[edge] ?? 0) * this.width + (dxs[edge] ?? 0);
+  }
+
   /** The in-bounds lattice neighbours of a node, in canonical order, whatever the ground between. */
   neighbours(node: NodeId): NodeId[] {
     const out: NodeId[] = [];
@@ -128,56 +190,66 @@ export abstract class TerrainEdges extends TerrainLattice {
     out: StepBuffer,
     traversal: Traversal = 'land',
   ): void {
-    const y = this.yOf(node);
-    this.stepsIntoAt(node, node - y * this.width, y, blocked, out, traversal);
+    const gate = this.callGate;
+    this.resetGate(gate, traversal, blocked, NO_READMITTED);
+    this.stepsIntoAt(node, this.yOf(node), gate, out);
   }
 
-  /** {@link stepsInto} for a caller that already holds `node`'s column `x` and row `y`. */
-  stepsIntoAt(
-    node: NodeId,
-    x: number,
-    y: number,
-    blocked: BlockOverlay | undefined,
-    out: StepBuffer,
+  /** Point `gate` at `traversal`'s ground under `blocked`, with `readmitted` (or {@link NO_READMITTED})
+   *  open whatever the overlay says. */
+  resetGate(
+    gate: StepGate,
     traversal: Traversal,
+    blocked: BlockOverlay | undefined,
+    readmitted: number,
   ): void {
-    // A byte mask is read in place: one array read instead of a call through the overlay interface.
-    const bytes = blocked instanceof NodeMask ? blocked.blocked : undefined;
-    const land = traversal === 'land';
-    const width = this.width;
+    gate.reset(this.stepLane(traversal), blocked, readmitted);
+  }
+
+  /** {@link stepsInto} through a gate {@link resetGate} prepared, for a caller that already holds `node`'s
+   *  row `y`. */
+  stepsIntoAt(node: NodeId, y: number, gate: StepGate, out: StepBuffer): void {
     out.reset();
-    const east = x + 1 < width;
-    const west = x > 0;
-    const up = y > 0;
-    const down = y + 1 < this.height;
-    const odd = (y & 1) !== 0;
-    const edges = this.edgeMaskAt(node);
-    // The edge tables unrolled, since this is the pathfinder's inner loop. The row-crossing landings by
-    // this row's parity (the module header); ids are meaningful only where the matching bound holds.
-    const northEast = odd ? node - width + 1 : node - width;
-    const northWest = odd ? node - width : node - width - 1;
-    const southEast = odd ? node + width + 1 : node + width;
-    const southWest = odd ? node + width : node + width - 1;
-    const eastwardIn = odd ? east : true;
-    const westwardIn = odd ? true : west;
-    if (east && (edges & EAST) !== 0 && this.open(node + 1, blocked, bytes, land)) {
-      out.push((node + 1) as NodeId, HALF_COLUMN);
+    const open = gate.lane[node] ?? 0;
+    if (open === 0) return;
+    const offsets = (y & 1) === 0 ? this.evenOffsets : this.oddOffsets;
+    // Bit order is the canonical neighbour order.
+    for (let edge = 0; edge < HEX_EDGE_COUNT; edge++) {
+      if ((open & (1 << edge)) === 0) continue;
+      const next = node + (offsets[edge] ?? 0);
+      if (!gate.closes(next)) out.push(next as NodeId, EDGE_COSTS[edge] ?? ROW_EDGE);
     }
-    if (down && eastwardIn && (edges & SOUTH_EAST) !== 0 && this.open(southEast, blocked, bytes, land)) {
-      out.push(southEast as NodeId, ROW_EDGE);
+  }
+
+  /**
+   * Per node, the edges a mover of `traversal` may step along over static ground: the neighbour is in
+   * bounds, the ground lane joins the two and the mover may stand on the neighbour. One bit per edge in
+   * {@link EDGE_BITS} order; built on the first ask, since the terrain never changes.
+   */
+  private stepLane(traversal: Traversal): Uint8Array {
+    const held = traversal === 'land' ? this.landSteps : this.waterSteps;
+    if (held !== undefined) return held;
+    const enter = this.enterLane(traversal);
+    const lane = new Uint8Array(this.nodeCount);
+    for (let y = 0; y < this.height; y++) {
+      const dxs = (y & 1) === 0 ? EDGE_DX_EVEN : EDGE_DX_ODD;
+      for (let x = 0; x < this.width; x++) {
+        const node = this.idAt(x, y);
+        const edges = this.edgeMaskAt(node);
+        let open = 0;
+        for (let edge = 0; edge < HEX_EDGE_COUNT; edge++) {
+          const bit = EDGE_BITS[edge] ?? 0;
+          const nx = x + (dxs[edge] ?? 0);
+          const ny = y + (EDGE_DY[edge] ?? 0);
+          if ((edges & bit) === 0 || !this.inBounds(nx, ny)) continue;
+          if (((enter[this.idAt(nx, ny)] ?? 0) & ENTER_BIT) !== 0) open |= bit;
+        }
+        lane[node] = open;
+      }
     }
-    if (down && westwardIn && (edges & SOUTH_WEST) !== 0 && this.open(southWest, blocked, bytes, land)) {
-      out.push(southWest as NodeId, ROW_EDGE);
-    }
-    if (west && (edges & WEST) !== 0 && this.open(node - 1, blocked, bytes, land)) {
-      out.push((node - 1) as NodeId, HALF_COLUMN);
-    }
-    if (up && westwardIn && (edges & NORTH_WEST) !== 0 && this.open(northWest, blocked, bytes, land)) {
-      out.push(northWest as NodeId, ROW_EDGE);
-    }
-    if (up && eastwardIn && (edges & NORTH_EAST) !== 0 && this.open(northEast, blocked, bytes, land)) {
-      out.push(northEast as NodeId, ROW_EDGE);
-    }
+    if (traversal === 'land') this.landSteps = lane;
+    else this.waterSteps = lane;
+    return lane;
   }
 
   /**
@@ -200,19 +272,5 @@ export abstract class TerrainEdges extends TerrainLattice {
   /** The open ground edge bits of the in-bounds node id `c`, every bit when the map carries no edges. */
   private edgeMaskAt(c: number): number {
     return this.groundEdges === undefined ? ALL_EDGES : (this.groundEdges[c] ?? 0);
-  }
-
-  /** Whether the in-bounds node id `c` is open to a land mover (`land`) or a ship and not masked by the
-   *  dynamic `blocked` overlay. */
-  private open(
-    c: number,
-    blocked: BlockOverlay | undefined,
-    bytes: Uint8Array | undefined,
-    land: boolean,
-  ): boolean {
-    const id = c as NodeId;
-    if (!(land ? this.walkableAt(id) : this.isWater(id))) return false;
-    if (bytes !== undefined) return bytes[id] !== 1;
-    return !(blocked?.has(id) ?? false);
   }
 }

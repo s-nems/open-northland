@@ -15,6 +15,7 @@ import type { BlockOverlay } from '../block-overlay.js';
 import {
   DEFAULT_NODE_ROUGHNESS,
   latticeOffsetDistance,
+  NO_READMITTED,
   type NodeId,
   type TerrainGraph,
   type Traversal,
@@ -140,10 +141,16 @@ function goalSideSearch(
   stats: SearchStats | undefined,
   traversal: Traversal,
 ): ResumableSearch {
-  const readmitted: BlockOverlay = blocked.has(start)
-    ? { has: (n) => n !== start && blocked.has(n), size: blocked.size }
-    : blocked;
-  return new ResumableSearch(scratchFor(graph, 'reverse'), graph, goal, start, readmitted, stats, traversal);
+  return new ResumableSearch(
+    scratchFor(graph, 'reverse'),
+    graph,
+    goal,
+    start,
+    blocked,
+    stats,
+    traversal,
+    blocked.has(start) ? start : NO_READMITTED,
+  );
 }
 
 /**
@@ -235,10 +242,12 @@ class ResumableSearch {
     private readonly graph: TerrainGraph,
     start: NodeId,
     private readonly goal: NodeId,
-    private readonly blocked: BlockOverlay | undefined,
+    blocked: BlockOverlay | undefined,
     private readonly stats: SearchStats | undefined,
     private readonly traversal: Traversal,
+    readmitted: number = NO_READMITTED,
   ) {
+    graph.resetGate(scratch.gate, traversal, blocked, readmitted);
     if (scratch.query >= MAX_QUERY_GENERATION) {
       scratch.stamps.fill(0);
       scratch.query = 0;
@@ -259,9 +268,10 @@ class ResumableSearch {
 
   /** Settle until a verdict, or return `'aborted'` once this search has settled `maxExplored` in total. */
   advance(maxExplored: number): NodeId[] | 'unreachable' | 'aborted' {
-    const { scratch, graph, goal, blocked, stats, query, traversal, startX, startY } = this;
+    const { scratch, graph, goal, stats, query, traversal, startX, startY } = this;
     // The heap arrays are read through `scratch`: a push may replace them with larger ones.
-    const { stamps, g, cameFrom, heapIdx, steps } = scratch;
+    const { stamps, g, cameFrom, heapIdx, steps, gate } = scratch;
+    const factors = graph.routeFactorLane(traversal);
     if (scratch.query !== query) throw new Error('a newer search on this scratch overwrote a paused one');
     const width = graph.width;
     const startD = doubledColumn(startX, startY);
@@ -284,13 +294,14 @@ class ResumableSearch {
 
       const currentY = graph.yOf(current);
       const rowStart = currentY * width;
-      graph.stepsIntoAt(current, current - rowStart, currentY, blocked, steps, traversal);
+      graph.stepsIntoAt(current, currentY, gate, steps);
       for (let i = 0; i < steps.length; i++) {
         const next = steps.nodeAt(i);
         const discovered = stamps[next] === query;
         // Settled nodes are never relaxed, so they skip the step's cost.
         if (discovered && heapIdx[next] === SETTLED) continue;
-        const tentativeG = currentG + fx.mul(steps.costAt(i), graph.routeWeightAt(next, traversal));
+        const tentativeG =
+          currentG + fx.mulInt(steps.costAt(i), factors === undefined ? 1 : (factors[next] ?? 1));
         if (!discovered) {
           stamps[next] = query;
           g[next] = tentativeG;

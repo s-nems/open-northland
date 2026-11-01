@@ -8,7 +8,7 @@ import {
 } from '../../components/index.js';
 import { JournaledCaptures } from '../../ecs/journaled-captures.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { BlockOverlay, NodeMask } from '../../nav/block-overlay.js';
+import type { BlockLanes, BlockOverlay, NodeMask } from '../../nav/block-overlay.js';
 import { nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { ContentContext } from '../context.js';
@@ -39,10 +39,16 @@ function captureGate(world: World, terrain: TerrainGraph, e: Entity): Gate | nul
 /** The levelled walk-block mask plus the enemy gate cells, each one byte per node, so a test is two array
  *  reads. */
 class GatedBlocks implements BlockOverlay {
+  private readonly lanes: BlockLanes;
   constructor(
     private readonly actual: NodeMask,
     private readonly gateCells: EnemyGateCells,
-  ) {}
+  ) {
+    this.lanes = { bytes: actual.blocked, extra: gateCells.bytes, players: undefined, hostile: 0 };
+  }
+  blockLanes(): BlockLanes {
+    return this.lanes;
+  }
   has(node: NodeId): boolean {
     return this.actual.blocked[node] === 1 || this.gateCells.bytes[node] === 1;
   }

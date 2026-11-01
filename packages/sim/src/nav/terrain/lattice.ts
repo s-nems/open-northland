@@ -23,6 +23,9 @@ const WALKABLE = 1;
 const BUILDABLE = 2;
 const PLANTABLE = 4;
 
+/** The bit {@link TerrainLattice.enterLane} sets on a node a mover of its traversal may stand on. */
+export const ENTER_BIT = WALKABLE;
+
 function flagsOf(p: LandscapeProps): number {
   return (p.walkable ? WALKABLE : 0) | (p.buildable ? BUILDABLE : 0) | (p.plantable ? PLANTABLE : 0);
 }
@@ -67,6 +70,8 @@ export abstract class TerrainLattice {
   /** Each node's `GroundKind`, the original's continent type; absent, every unwalkable node reads as
    *  water. */
   readonly groundKinds: Uint8Array | undefined;
+  /** {@link isWater} per node as {@link ENTER_BIT}, built on the first ask. */
+  private waterLane: Uint8Array | undefined;
 
   constructor(
     width: number,
@@ -189,8 +194,13 @@ export abstract class TerrainLattice {
     return (this.checkedSlot(this.flags, node) & PLANTABLE) !== 0;
   }
 
-  /** {@link isWalkable} for a node the caller has already bounds-checked, as the step test's hot read. */
-  protected walkableAt(node: NodeId): boolean {
-    return ((this.flags[node] ?? 0) & WALKABLE) !== 0;
+  /** A per-node lane holding {@link ENTER_BIT} exactly where {@link traversable} holds for `traversal`,
+   *  the step test's hot read. */
+  protected enterLane(traversal: Traversal): Uint8Array {
+    if (traversal === 'land') return this.flags;
+    this.waterLane ??= Uint8Array.from({ length: this.nodeCount }, (_, node) =>
+      this.isWater(node as NodeId) ? ENTER_BIT : 0,
+    );
+    return this.waterLane;
   }
 }

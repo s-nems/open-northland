@@ -1,5 +1,11 @@
 import type { World } from '../../ecs/world.js';
-import { type BlockOverlay, CountedBlocks, type CountedCells, NodeMask } from '../../nav/block-overlay.js';
+import {
+  type BlockLanes,
+  type BlockOverlay,
+  CountedBlocks,
+  type CountedCells,
+  NodeMask,
+} from '../../nav/block-overlay.js';
 import { NodeChangeStamps } from '../../nav/change-stamps.js';
 import type { NodeArea } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
@@ -70,6 +76,11 @@ export class WalkBlockMask implements BlockOverlay {
   get size(): number {
     this.catchUp();
     return this.mask.size;
+  }
+
+  blockLanes(): BlockLanes {
+    this.catchUp();
+    return this.mask.blockLanes();
   }
 
   /** The mask levelled now, read without the per-read level check: valid until the next entity write,

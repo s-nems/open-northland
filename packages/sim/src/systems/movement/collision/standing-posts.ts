@@ -10,7 +10,7 @@ import {
 } from '../../../components/index.js';
 import { insertSortedById, removeSortedById } from '../../../core/sorted-id.js';
 import type { ChangeFeed, Entity, World } from '../../../ecs/world.js';
-import type { BlockOverlay } from '../../../nav/block-overlay.js';
+import type { BlockLanes, BlockOverlay } from '../../../nav/block-overlay.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../../spatial/node-moves.js';
@@ -452,6 +452,9 @@ export class ColliderWalkBlocks implements BlockOverlay {
   private readonly dynamic: BlockOverlay;
   private readonly playersAt: Uint16Array;
   private readonly hostile: number;
+  /** {@link blockLanes}' answer, rebuilt when the dynamic overlay hands over other lanes. */
+  private innerLanes: BlockLanes | undefined;
+  private lanes: BlockLanes | undefined;
   readonly size: number;
   /** How many standing bodies block this requester. */
   readonly posts: number;
@@ -468,5 +471,16 @@ export class ColliderWalkBlocks implements BlockOverlay {
   }
   has(node: NodeId): boolean {
     return this.dynamic.has(node) || ((this.playersAt[node] ?? 0) & this.hostile) !== 0;
+  }
+  /** The dynamic overlay's byte lanes with the hostile posts beside them; none when the dynamic overlay
+   *  has no byte lanes of its own. */
+  blockLanes(): BlockLanes | undefined {
+    const inner = this.dynamic.blockLanes?.();
+    if (inner === undefined || inner.players !== undefined) return undefined;
+    if (inner !== this.innerLanes) {
+      this.innerLanes = inner;
+      this.lanes = { bytes: inner.bytes, extra: inner.extra, players: this.playersAt, hostile: this.hostile };
+    }
+    return this.lanes;
   }
 }

@@ -1,4 +1,4 @@
-export { slantDx } from './edges.js';
+export { NO_READMITTED, StepGate, slantDx } from './edges.js';
 export { DEFAULT_NODE_ROUGHNESS, NO_COMPONENT, ROAD_RESISTANCE, TerrainGraph } from './graph.js';
 export { type LandscapeProps, resolveLandscapeProps } from './landscape-props.js';
 export {

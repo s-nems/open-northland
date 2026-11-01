@@ -10,6 +10,20 @@ import type { NodeId } from './terrain/node-id.js';
 export interface BlockOverlay {
   has(node: NodeId): boolean;
   readonly size: number;
+  /** The same membership as raw per-node lanes, for an overlay that holds them, so a search reads arrays
+   *  instead of calling {@link has}. Valid until the next entity write. */
+  blockLanes?(): BlockLanes | undefined;
+}
+
+/**
+ * An overlay's membership as per-node lanes: a node is blocked where `bytes` or `extra` holds 1, or where
+ * `players` shares a slot bit with `hostile`. Absent lanes block nothing.
+ */
+export interface BlockLanes {
+  readonly bytes: Uint8Array;
+  readonly extra: Uint8Array | undefined;
+  readonly players: Uint16Array | undefined;
+  readonly hostile: number;
 }
 
 /**
@@ -51,14 +65,19 @@ export class CountedBlocks implements BlockOverlay {
  * itself, so a membership test is a single array read.
  */
 export class NodeMask implements BlockOverlay {
-  /** One byte per node, 1 where blocked: read directly by the lattice's edge emitter. */
+  /** One byte per node, 1 where blocked: the route search reads it as {@link blockLanes}. */
   readonly blocked: Uint8Array;
   private count = 0;
+  private readonly lanes: BlockLanes;
   constructor(nodeCount: number) {
     this.blocked = new Uint8Array(nodeCount);
+    this.lanes = { bytes: this.blocked, extra: undefined, players: undefined, hostile: 0 };
   }
   has(node: NodeId): boolean {
     return this.blocked[node] === 1;
+  }
+  blockLanes(): BlockLanes {
+    return this.lanes;
   }
   get size(): number {
     return this.count;

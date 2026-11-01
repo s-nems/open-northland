@@ -47,14 +47,14 @@ const MIN_ROUTE_RESISTANCE = ROAD_RESISTANCE;
 /** Resistance values a node's Uint8 resistance lanes can hold. */
 const RESISTANCE_VALUES = 2 ** 8;
 
-function routeWeightOf(resistance: number): Fixed {
-  return fx.fromInt(resistance < MIN_ROUTE_RESISTANCE ? MIN_ROUTE_RESISTANCE : resistance);
+/** The integer factor a land route step onto ground of `resistance` is weighed by. */
+function routeFactorOf(resistance: number): number {
+  return resistance < MIN_ROUTE_RESISTANCE ? MIN_ROUTE_RESISTANCE : resistance;
 }
 
-/** {@link routeWeightOf} per resistance, so the route search reads a weight off a byte lane. */
-const ROUTE_WEIGHT_BY_RESISTANCE: readonly Fixed[] = Array.from(
-  { length: RESISTANCE_VALUES },
-  (_, resistance) => routeWeightOf(resistance),
+/** Each route factor's weight as a Fixed, so a reader turns the byte lane into a weight by lookup. */
+const ROUTE_WEIGHT_BY_FACTOR: readonly Fixed[] = Array.from({ length: RESISTANCE_VALUES }, (_, factor) =>
+  fx.fromInt(factor),
 );
 
 /** The widest value each unsigned typed lane holds, narrowest first. */
@@ -120,9 +120,8 @@ export class TerrainGraph extends TerrainEdges {
   private roadDistances: RoadDistanceField | undefined;
   /** The connected road networks, allocated with the first road. */
   private roadNetworks: RoadNetworks | undefined;
-  /** Per-node resistance the land route search weighs a step onto the node by, through
-   *  {@link ROUTE_WEIGHT_BY_RESISTANCE}. */
-  private readonly routeResistances: Uint8Array;
+  /** Per-node {@link routeFactorOf} the land route search weighs a step onto the node by. */
+  private readonly routeFactors: Uint8Array;
   /** Per-node {@link resistanceAt} on walkable ground and 0 where a walker never stands, the one read a
    *  range search makes per inspected node. */
   private readonly entryResistances: Uint8Array;
@@ -153,12 +152,12 @@ export class TerrainGraph extends TerrainEdges {
     this.waterContinents = waterContinents === undefined ? undefined : compactLane(waterContinents);
     this.roughness = roughness === undefined ? undefined : Uint8Array.from(roughness);
     this.roads = new Uint8Array(this.nodeCount);
-    this.routeResistances = new Uint8Array(this.nodeCount);
+    this.routeFactors = new Uint8Array(this.nodeCount);
     this.entryResistances = new Uint8Array(this.nodeCount);
     this.resistanceStamps = new NodeChangeStamps(width, height);
     for (let i = 0; i < this.nodeCount; i++) {
       const node = i as NodeId;
-      this.routeResistances[node] = this.roughnessAt(node);
+      this.routeFactors[node] = routeFactorOf(this.roughnessAt(node));
       this.entryResistances[node] = this.isWalkable(node) ? this.roughnessAt(node) : 0;
     }
     this.cellColumns = Math.ceil(width / 2);
@@ -256,8 +255,14 @@ export class TerrainGraph extends TerrainEdges {
    */
   routeWeightAt(node: NodeId, traversal: Traversal): Fixed {
     if (traversal !== 'land') return ONE;
-    const resistance = this.routeResistances[node];
-    return resistance === undefined ? ONE : (ROUTE_WEIGHT_BY_RESISTANCE[resistance] ?? ONE);
+    const factor = this.routeFactors[node];
+    return factor === undefined ? ONE : (ROUTE_WEIGHT_BY_FACTOR[factor] ?? ONE);
+  }
+
+  /** {@link routeWeightAt} per node as an integer factor, or undefined where every step weighs one (at
+   *  sea). Kept current by every road change; callers must not write it. */
+  routeFactorLane(traversal: Traversal): Uint8Array | undefined {
+    return traversal === 'land' ? this.routeFactors : undefined;
   }
 
   /** The world road revision the lanes mirror; {@link UNSYNCED_ROAD_REVISION} before the first sync. */
@@ -315,7 +320,7 @@ export class TerrainGraph extends TerrainEdges {
   private setRoad(node: NodeId, road: boolean): void {
     this.checkedSlot(this.roads, node);
     this.roads[node] = road ? 1 : 0;
-    this.routeResistances[node] = road ? ROAD_RESISTANCE : this.roughnessAt(node);
+    this.routeFactors[node] = routeFactorOf(road ? ROAD_RESISTANCE : this.roughnessAt(node));
     const resistance = this.isWalkable(node) ? this.resistanceAt(node) : 0;
     if (this.entryResistances[node] !== resistance) {
       this.entryResistances[node] = resistance;
