@@ -21,7 +21,7 @@ import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../../progression/index.js';
 import { ownedRoadSites } from '../../../roads/site-index.js';
-import { roadPavingGood } from '../../../roads/sites.js';
+import { roadConstructionBill, roadPavingGood } from '../../../roads/sites.js';
 import {
   type BuildOrder,
   collectorGoodStocked,
@@ -39,6 +39,7 @@ import {
   LATE_GAME_FROM_TICKS,
   MID_GAME_FROM_TICKS,
 } from '../../game-phase.js';
+import { MAX_PENDING_ROAD_SITES, ROADS_PAST_SETTLERS } from '../../road-build.js';
 import type { SeatSupply } from '../supply.js';
 
 /** The goods the gatherers collect from game start, by stable content id (authored). An id absent from
@@ -162,6 +163,39 @@ export function siteShortagePosts(profile: ComputerProfile, tick: number): numbe
  *  crew draws stone on top of the building sites, and without this post the stone fell to a few units
  *  in a six-seat run with a full road backlog. */
 export const ROAD_SITE_SHORTAGE_POSTS = 1;
+
+/** How many settlers before the roads start the seat digs stone for them (authored): ten, a few minutes
+ *  of a growing seat, so the first road sites find their stone in store. */
+const ROAD_STONE_LEAD_SETTLERS = 10;
+
+/** The stone posts the coming roads add (owner ruling: the roads take much stone, so the seat puts more
+ *  men on it ahead of them). */
+export const ROAD_STONE_POSTS = 1;
+
+/**
+ * The road stone posts the seat keeps this decision: {@link ROAD_STONE_POSTS} once it counts
+ * {@link ROAD_STONE_LEAD_SETTLERS} fewer settlers than the roads start at, until its stone covers the
+ * line `held` reads (the glut while its men work them, comfort otherwise) plus a full road backlog's bill,
+ * the stone bank the road sites draw on.
+ */
+function roadStonePosts(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  supply: SeatSupply,
+  goodType: number,
+  held: boolean,
+): number {
+  if (ownedSettlers(world, player).length <= ROADS_PAST_SETTLERS - ROAD_STONE_LEAD_SETTLERS) return 0;
+  const lines = supply.lines(goodType);
+  const surplus = supply.surplus(goodType);
+  if (lines === undefined || surplus === undefined) return ROAD_STONE_POSTS;
+  let perSite = 0;
+  for (const line of roadConstructionBill(ctx.content))
+    if (line.goodType === goodType) perSite += line.amount;
+  const bank = MAX_PENDING_ROAD_SITES * perSite;
+  return surplus < lines[held ? 'glut' : 'comfort'] + bank ? ROAD_STONE_POSTS : 0;
+}
 
 function roadShortagePosts(world: World, ctx: SystemContext, player: number): number {
   if (ctx.terrain === undefined) return 0;
@@ -333,7 +367,8 @@ export function genericCollectorJob(ctx: SystemContext): number | null {
  *  plan order. A target is the good's fixed row, else its entries' largest `count` (at least
  *  {@link DEFAULT_COLLECTOR_TARGET}) grown by {@link OPERATORS_PER_EXTRA_GATHERER}, either grown by the
  *  good's {@link EXTRA_GATHERERS_BY_GOOD_ID} schedule, the extras as far as they are kept
- *  ({@link keptExtraPosts}), plus the shortage posts ({@link shortageGatherers});
+ *  ({@link keptExtraPosts}), plus the paving good's road stone posts ({@link roadStonePosts}) and the
+ *  shortage posts ({@link shortageGatherers});
  *  nothing lowers it below a reached entry's `count`, since a released holder would regress the entry and
  *  stall the order. A good missing from the content set or with no harvest trade is skipped. */
 export function wantedCollectorGoods(
@@ -384,7 +419,11 @@ export function wantedCollectorGoods(
       if (digging?.whateverStock !== true)
         scheduled = keptExtraPosts(supply, good.typeId, scheduled, held, shelved);
     }
-    let target = Math.max(base + consumerPosts + scheduled, entryCount);
+    const roadPosts =
+      good.typeId === roadGood
+        ? roadStonePosts(world, ctx, player, supply, good.typeId, holdersOf(good.typeId) > base)
+        : 0;
+    let target = Math.max(base + consumerPosts + scheduled + roadPosts, entryCount);
     const planned = target;
     const sitePosts =
       (fixed === undefined ? 0 : siteShortagePosts(profile, ctx.tick)) +
@@ -392,7 +431,8 @@ export function wantedCollectorGoods(
     const mostExtra = Math.max(sitePosts, Math.ceil(consumers / OPERATORS_PER_EXTRA_GATHERER));
     // A building good's row stands whole before the reserve (authored): the standard one gatherer
     // each is what a seat of fifteen men keeps in its first minutes, its other men building.
-    let min = fixed ?? (fed ? planned : Math.min(1, planned));
+    // The road stone posts too, so the stone lies in store before the road sites open.
+    let min = Math.min(planned, (fixed ?? (fed ? planned : Math.min(1, planned))) + roadPosts);
     if (mostExtra > 0) {
       const heldExtra = Math.max(0, holdersOf(good.typeId) - target);
       const extra = shortageGatherers(supply, good.typeId, heldExtra, mostExtra, phase, shelved);

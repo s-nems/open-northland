@@ -13,7 +13,7 @@ import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
-import { goodEnabled } from '../../progression/index.js';
+import { buildingEnabled, goodEnabled } from '../../progression/index.js';
 import { seatStockOf } from '../../stores/index.js';
 import { seatBaseOf } from '../base.js';
 import { seatHerdKept } from '../herd.js';
@@ -293,14 +293,15 @@ export function entryStatus(
 }
 
 /** Whether an unmet step still holds its line: a placement of one more workshop while the ones standing
- *  lack crews ({@link copyAwaitsCrews}), or a placement, collector or tower ring on its `holdUntil`
- *  ({@link StepHold}) while the seat has no standing building of the id at that tier or above (no site
- *  either for a placed hold, while its defence does not come first), or has not
- *  discovered the good, while it still could and `order` may still raise that building or one making the
- *  good ({@link orderMayRaise}), while it counts fewer settlers than the hold names, while its military
- *  deadline lies further off than the lead and its defence does not come first, or while any of an `all`
- *  hold's parts holds. `owned` is the seat's {@link ownedBuildings} list and `statuses` this decision's
- *  {@link lineStatuses} of `order`. */
+ *  lack crews ({@link copyAwaitsCrews}), or a placement, upgrade, collector or tower ring on its
+ *  `holdUntil` ({@link StepHold}) while the seat has fewer standing buildings of the id at that tier or
+ *  above than it names (no site either for a placed hold, while its defence does not come first), or has
+ *  not discovered the good, while it still could and `order` may still raise that building or one making
+ *  the good ({@link orderMayRaise}), while no other line's step wants the good ({@link goodWanted}), while
+ *  it counts fewer settlers than the hold names, while its military deadline lies further off than the
+ *  lead and its defence does not come first, while any of an `all` hold's parts holds, or while every one
+ *  of an `any` hold's parts holds. `owned` is the seat's {@link ownedBuildings} list and `statuses` this
+ *  decision's {@link lineStatuses} of `order`. */
 export function stepHeld(
   world: World,
   ctx: SystemContext,
@@ -313,12 +314,56 @@ export function stepHeld(
 ): boolean {
   if (entry.kind === 'place' && copyAwaitsCrews(world, ctx, player, owned, entry)) return true;
   if (
-    (entry.kind !== 'place' && entry.kind !== 'collector' && entry.kind !== 'towerCoverage') ||
+    (entry.kind !== 'place' &&
+      entry.kind !== 'upgrade' &&
+      entry.kind !== 'collector' &&
+      entry.kind !== 'towerCoverage') ||
     entry.holdUntil === undefined
   )
     return false;
-  const mayRaise = (typeId: number) => orderMayRaise(world, ctx, owned, order, statuses, entry, typeId);
-  return holdOpen(world, ctx, player, owned, entry.holdUntil, memo, mayRaise);
+  const scope: HoldScope = {
+    mayRaise: (typeId) => orderMayRaise(world, ctx, owned, order, statuses, entry, typeId),
+    wanted: (goodType) => goodWanted(world, ctx, player, order, statuses, entry, goodType),
+  };
+  return holdOpen(world, ctx, player, owned, entry.holdUntil, memo, scope);
+}
+
+/** What a hold asks of the order beyond the seat: whether it may yet raise a building of the type
+ *  ({@link orderMayRaise}), and whether another step wants the good ({@link goodWanted}). */
+interface HoldScope {
+  readonly mayRaise: (typeId: number) => boolean;
+  readonly wanted: (goodType: number) => boolean;
+}
+
+/**
+ * Whether a step of `order` other than `held` wants `goodType` now: the first unmet step of its line, no
+ * lane, holding on nothing of its own, its tier open to the seat, and the merged bill of that tier taking
+ * the good. A step waiting on its own hold or on a discovery wants nothing yet.
+ */
+function goodWanted(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  order: BuildOrder,
+  statuses: LineStatuses,
+  held: BuildOrderEntry,
+  goodType: number,
+): boolean {
+  const tribe = playerPlacementTribes(world, player)?.[0];
+  if (tribe === undefined) return false;
+  const index = contentIndex(ctx.content);
+  for (const line of order.lines) {
+    const lineStatus = statuses.get(line.id);
+    const step = line.steps.findIndex((entry, at) => !isLaneEntry(entry) && lineStatus?.[at] === 'unmet');
+    const entry = line.steps[step];
+    if (entry === undefined || entry === held || entry.kind === 'collector') continue;
+    if ('holdUntil' in entry && entry.holdUntil !== undefined) continue;
+    const type = buildingTypeByContentId(ctx.content, entry.building);
+    if (type === undefined || !buildingEnabled(world, ctx, player, tribe, type.typeId)) continue;
+    const bill = index.constructionBillByBuilding.get(type.typeId) ?? [];
+    if (bill.some((line) => line.goodType === goodType)) return true;
+  }
+  return false;
 }
 
 /**
@@ -355,17 +400,21 @@ function holdOpen(
   owned: readonly Entity[],
   hold: StepHold,
   memo: DecisionMemo,
-  mayRaise: (typeId: number) => boolean,
+  scope: HoldScope,
 ): boolean {
   const reach = technologyReach(world, ctx, player, memo);
+  const { mayRaise } = scope;
   switch (hold.kind) {
     case 'built': {
       const type = buildingTypeByContentId(ctx.content, hold.building);
       if (type === undefined) return false;
       const counted = countedTiers(ctx.content, type, undefined);
+      const wanted = hold.count ?? 1;
+      let standing = 0;
       for (const e of owned) {
         if (!counted.has(world.get(e, Building).buildingType)) continue;
-        if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
+        if ((!world.has(e, UnderConstruction) || world.has(e, Upgrading)) && ++standing >= wanted)
+          return false;
       }
       return reach?.house(type.typeId) !== false && mayRaise(type.typeId);
     }
@@ -387,6 +436,10 @@ function holdOpen(
       }
       return false;
     }
+    case 'wanted': {
+      const good = goodTypeByContentId(ctx.content, hold.good);
+      return good !== undefined && !scope.wanted(good.typeId);
+    }
     case 'settlers':
       return ownedSettlers(world, player).length < hold.count;
     case 'deadline':
@@ -394,7 +447,9 @@ function holdOpen(
     case 'tick':
       return ctx.tick < hold.tick;
     case 'all':
-      return hold.holds.some((part) => holdOpen(world, ctx, player, owned, part, memo, mayRaise));
+      return hold.holds.some((part) => holdOpen(world, ctx, player, owned, part, memo, scope));
+    case 'any':
+      return hold.holds.every((part) => holdOpen(world, ctx, player, owned, part, memo, scope));
   }
 }
 

@@ -95,7 +95,10 @@ earned a core workshop's trade takes its first post ahead of a school lesson and
 first hands: the clay gatherer the pottery, even after he went back to the builders once the clay was
 stocked, the stone gatherer the mason hut, the farmer the mill, the miller the bakery. The pottery and
 the mason hut never rest their first craftsman before he earns the tiles and the ornaments (owner
-ruling: a potter or mason sent off starts over, and the upper tiers wait on them). Every builder
+ruling: a potter or mason sent off starts over, and the upper tiers wait on them). Their upper tiers
+wait for the opening homes, the mill, the well and the bakery, and for the joinery, the animal farm and
+the tailor unless a step of another line already wants tiles or marble (owner ruling: an early upgrade
+wastes the builders' work while nothing takes its goods). Every builder
 works the chain's open site (`workforce/focus-crew.ts`), up to one per unit of
 its bill, and the other sites wait until it stands; the pins lift while the site lacks a good the store
 does not hold. The seat keeps 2 builders on it ahead of every gatherer post, freeing gatherers of goods
@@ -238,6 +241,10 @@ the builder reserve stands, and one for the handcarts' joinery ahead of it, whic
 joiner (owner ruling: iron tools and handcarts are always short). The builder reserve grows
 with the civilians past 60 (a sixteenth of them on hard). A cramped seat digs room with three extra wood
 and two extra stone collectors from the start, a standard one with two and one from game minute 10.
+The seat lays roads once it counts more than 50 settlers (owner ruling), with two roadsters and three
+while the road sites pile up, one of them on top of the builder reserve so the building sites keep their
+hands. From 41 settlers one more stone gatherer digs ahead of the roads, ahead of the builder reserve,
+until the stone in store covers its glut line and a full road backlog's bill.
 
 ## Military
 

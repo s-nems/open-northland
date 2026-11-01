@@ -85,7 +85,7 @@ import {
 import { settlementGrantOrders } from './grants.js';
 import { assignHaulingCarts } from './hauling-carts.js';
 import { allocateHunters, huntingPlan } from './hunter.js';
-import { allocateRoadCrew } from './road-crew.js';
+import { allocateRoadCrew, ROAD_CREW_EXTRA_BUILDERS } from './road-crew.js';
 import {
   builderCap,
   coreBuilderFloor,
@@ -118,7 +118,6 @@ export {
 export { FLAG_MAX_DISTANCE_NODES, FLAG_MIN_DISTANCE_NODES } from './flag-spots.js';
 export {
   BACKLOG_ROAD_CREW,
-  LATE_BACKLOG_ROAD_CREW,
   ROAD_BACKLOG_RELEASE_SITES,
   ROAD_BACKLOG_SITES,
   ROAD_CREW,
@@ -313,12 +312,13 @@ function runWorkforce(
     ...staffBuildings(world, ctx, seat, force, tally, 'min', gated),
   ];
   const scouting = allocateScout(world, ctx, player, order, scouts, force, builderJob);
-  // The road crew comes out of the builder reserve, ahead of it, so a seat with road sites always has
-  // its roadster.
+  // The road crew comes ahead of the builder reserve, so a seat with road sites always has its roadsters.
   const roadCrew = allocateRoadCrew(world, ctx, player, roadsters, force, builderJob);
-  // Construction never starves. The road crew is part of the reserve. The army floor may reclaim the
-  // reserve past its core (`garrison.ts`), so its fresh men's commands wait.
-  const reserveCap = Math.max(0, builderLimit - roadCrew.crew);
+  // Construction never starves. The road crew is part of the reserve but for its extra builders, who come
+  // on top of it. The army floor may reclaim the reserve past its core (`garrison.ts`), so its fresh men's
+  // commands wait.
+  const roadExtra = Math.min(roadCrew.crew, ROAD_CREW_EXTRA_BUILDERS);
+  const reserveCap = Math.max(0, builderLimit + roadExtra - roadCrew.crew);
   const claimed = focusCore.reserved.length + core.reserved.length;
   const rest = reserveBuilders(world, force, builderJob, reserveCap - claimed, ctx);
   const reserve = {

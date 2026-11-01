@@ -23,22 +23,26 @@ export type PlacementAffinity =
   | { readonly kind: 'front' }
   | { readonly kind: 'shore' };
 
-/** What a step waits for while its line holds on it: a built building of the id (at that tier or
- *  above, a rising site not counting), a placed one (its site counting) unless the seat's defence comes
- *  first, a good the seat has discovered how to make, the seat counting `count` settlers, the clock
- *  reaching `leadTicks` before the seat's military deadline (`../military/deadline.ts`), which its
- *  defence coming first lifts at once, the clock reaching `tick`, or every one of `holds`. A
- *  hold the seat can never meet, a building or good missing from the content, a discovery it can never
- *  make, or a building (or the good's maker) no unskipped step of the order raises, lets the step act
- *  (`./progress.ts`); within `all` only that hold drops out. */
+/** What a step waits for while its line holds on it: `count` (default 1) built buildings of the id (at
+ *  that tier or above, a rising site not counting), a placed one (its site counting) unless the seat's
+ *  defence comes first, a good the seat has discovered how to make, a step of another line wanting the
+ *  good (it heads its line, holds on nothing of its own, its tier is open to the seat and its bill takes
+ *  the good), the seat counting `count` settlers, the clock reaching `leadTicks` before the seat's
+ *  military deadline (`../military/deadline.ts`), which its defence coming first lifts at once, the clock
+ *  reaching `tick`, every one of `holds`, or any one of them. A hold the seat can never meet, a building
+ *  or good missing from the content, a discovery it can never make, or a building (or the good's maker) no
+ *  unskipped step of the order raises, lets the step act (`./progress.ts`); within `all` only that hold
+ *  drops out. */
 export type StepHold =
-  | { readonly kind: 'built'; readonly building: string }
+  | { readonly kind: 'built'; readonly building: string; readonly count?: number }
   | { readonly kind: 'placedUnlessDefending'; readonly building: string }
   | { readonly kind: 'good'; readonly good: string }
+  | { readonly kind: 'wanted'; readonly good: string }
   | { readonly kind: 'settlers'; readonly count: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number }
   | { readonly kind: 'tick'; readonly tick: number }
-  | { readonly kind: 'all'; readonly holds: readonly StepHold[] };
+  | { readonly kind: 'all'; readonly holds: readonly StepHold[] }
+  | { readonly kind: 'any'; readonly holds: readonly StepHold[] };
 
 /** The defence a tower ring wants, in garrison seats summed over the defence circles covering a node:
  *  `village` over every building, `front` over the front's band (`./tower-defence.ts`). */
@@ -95,7 +99,7 @@ export type BuildOrderEntry =
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. `role` counts and lifts only the joineries holding that
-   *  role; `onlyWhen` and `lockPasses` act as a placement's. */
+   *  role; `onlyWhen`, `holdUntil` and `lockPasses` act as a placement's. */
   | {
       readonly kind: 'upgrade';
       readonly building: string;
@@ -103,6 +107,7 @@ export type BuildOrderEntry =
       readonly belowTier?: string;
       readonly role?: JoineryRole;
       readonly onlyWhen?: 'rivalOverSea' | 'livestock';
+      readonly holdUntil?: StepHold;
       readonly lockPasses?: true;
     }
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
@@ -269,6 +274,44 @@ const AFTER_FOOD_AND_ARMS: StepHold = {
     { kind: 'built', building: 'work_brewery' },
     { kind: 'built', building: 'work_smithy_01' },
     { kind: 'built', building: 'work_joinery_01' },
+  ],
+};
+
+/** The homes every seat's opening raises (owner ruling): a roomy or rich seat raises more on top. */
+const OPENING_HOMES = 3;
+
+/**
+ * When the pottery and the mason hut go up a tier (owner ruling: the mill, the bakery, the homes, the
+ * joinery, the animal farm, the well and the tailor come before them, since the tiles and marble only
+ * those tiers make go into later buildings and an early upgrade wastes the builders' work). The opening's
+ * homes, the mill, the well and the bakery always stand first; the joinery, the animal farm and the tailor
+ * too, unless a step of another line already wants tiles or marble, as the upper bakery once the baker
+ * has learned its candy. A building the seat can never raise, the animal farm and the tailor of a seat
+ * keeping no livestock, drops out of the wait. The pottery's tier unlocks only with the tile discovery,
+ * the mason hut's with the marble one.
+ */
+const MATERIAL_TIERS_DUE: StepHold = {
+  kind: 'all',
+  holds: [
+    { kind: 'built', building: 'home_level_00', count: OPENING_HOMES },
+    { kind: 'built', building: 'work_mill_00' },
+    { kind: 'built', building: 'work_well_00' },
+    { kind: 'built', building: 'work_bakery_00' },
+    {
+      kind: 'any',
+      holds: [
+        {
+          kind: 'all',
+          holds: [
+            { kind: 'built', building: 'work_joinery_00' },
+            { kind: 'built', building: 'work_animal_farm' },
+            { kind: 'built', building: 'work_sewery_00' },
+          ],
+        },
+        { kind: 'wanted', good: 'tile' },
+        { kind: 'wanted', good: 'ornament' },
+      ],
+    },
   ],
 };
 
@@ -518,7 +561,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           lockPasses: true,
         },
         { ...MASON_HUT, atUnlock: true, lockPasses: true },
-        { kind: 'place', building: 'home_level_00', count: 3 },
+        { kind: 'place', building: 'home_level_00', count: OPENING_HOMES },
         ROOMY_OPENING_HOMES,
         RICH_OPENING_HOMES,
         // Owner ruling: the school once the pottery stands, never before it, a core building, so every
@@ -615,8 +658,8 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       // Tiles and marble come only from these tiers, and homes, the armory, the upper bakeries and druids and
       // the mint all wait on them.
       steps: [
-        { kind: 'upgrade', building: 'work_pottery_01', count: 1 },
-        { kind: 'upgrade', building: 'work_mason_hut_01', count: 1 },
+        { kind: 'upgrade', building: 'work_pottery_01', count: 1, holdUntil: MATERIAL_TIERS_DUE },
+        { kind: 'upgrade', building: 'work_mason_hut_01', count: 1, holdUntil: MATERIAL_TIERS_DUE },
       ],
     },
     {

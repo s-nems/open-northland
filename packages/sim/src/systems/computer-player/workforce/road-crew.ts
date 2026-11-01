@@ -7,29 +7,29 @@ import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { type OwnedRoadSite, ownedRoadSites } from '../../roads/site-index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
-import { LATE_ROAD_CREW_FROM_TICKS } from '../game-phase.js';
 
-/** The builders the seat keeps on a road run while any of its road sites is pending (authored). */
-export const ROAD_CREW = 1;
+/** The builders the seat keeps on a road run while any of its road sites is pending (owner ruling: the
+ *  roads start once the settlement has grown, `../road-build.ts`, so one builder more than the lone
+ *  roadster paves them). */
+export const ROAD_CREW = 2;
 
-/** The road crew while the pending road sites pile up (authored). */
-export const BACKLOG_ROAD_CREW = 2;
+/** The road crew while the pending road sites pile up (authored: one over {@link ROAD_CREW}). */
+export const BACKLOG_ROAD_CREW = 3;
 
-/** The backlog road crew from {@link LATE_ROAD_CREW_FROM_TICKS} on, when the grown seat has men to spare
- *  and a network wide enough to keep a third builder paving (authored). */
-export const LATE_BACKLOG_ROAD_CREW = 3;
+/** The road crew's builders that come on top of the builder reserve rather than out of it (owner ruling:
+ *  the roads get an extra builder, so the building sites keep the hands they had). */
+export const ROAD_CREW_EXTRA_BUILDERS = 1;
 
 /** From how many pending road sites the seat puts {@link BACKLOG_ROAD_CREW} builders on roads, and under
  *  how many it lets the extra ones go again (authored): the gap keeps a crew from flipping at one line. */
 export const ROAD_BACKLOG_SITES = 12;
 export const ROAD_BACKLOG_RELEASE_SITES = 6;
 
-/** The road crew the seat wants at `tick` with `pending` road sites and `held` builders already on a run. */
-export function roadCrewTarget(pending: number, held: number, tick: number): number {
+/** The road crew the seat wants with `pending` road sites and `held` builders already on a run. */
+export function roadCrewTarget(pending: number, held: number): number {
   if (pending === 0) return 0;
-  const backlogCrew = tick >= LATE_ROAD_CREW_FROM_TICKS ? LATE_BACKLOG_ROAD_CREW : BACKLOG_ROAD_CREW;
-  if (pending >= ROAD_BACKLOG_SITES) return backlogCrew;
-  if (held > ROAD_CREW && pending >= ROAD_BACKLOG_RELEASE_SITES) return Math.min(held, backlogCrew);
+  if (pending >= ROAD_BACKLOG_SITES) return BACKLOG_ROAD_CREW;
+  if (held > ROAD_CREW && pending >= ROAD_BACKLOG_RELEASE_SITES) return Math.min(held, BACKLOG_ROAD_CREW);
   return ROAD_CREW;
 }
 
@@ -38,7 +38,7 @@ export function roadCrewTarget(pending: number, held: number, tick: number): num
  * unclaimed road sites on a road run there, or with no builder in the pool at all train a spare man as one, whom a later
  * decision posts. A roadster stays off the pool until the builder drive ends his run with no site left,
  * so no other rung takes him; one over the target is called off. Returns the commands and the crew the
- * seat counts on, which the builder reserve leaves out.
+ * seat counts on, which the builder reserve leaves out past its {@link ROAD_CREW_EXTRA_BUILDERS}.
  */
 export function allocateRoadCrew(
   world: World,
@@ -51,7 +51,7 @@ export function allocateRoadCrew(
   const terrain = ctx.terrain;
   if (terrain === undefined || builderJob === null) return { commands: [], crew: roadsters.length };
   const sites = ownedRoadSites(world, terrain, player);
-  const target = roadCrewTarget(sites.size, roadsters.length, ctx.tick);
+  const target = roadCrewTarget(sites.size, roadsters.length);
   const commands: PlayerCommand[] = [];
   for (const e of roadsters.slice(target)) {
     if (!atomicHoldsSettler(world, e)) commands.push({ kind: 'unassignBuilder', entity: e });

@@ -5,7 +5,7 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { forEachRingNode, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../ai-shared/cadence.js';
-import { isBuilt, ownedBuildings } from '../ai-shared/seat-roster.js';
+import { isBuilt, ownedBuildings, ownedSettlers } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
 import { doorNodeOf, houseFootprintOf } from '../footprint/geometry.js';
@@ -13,7 +13,6 @@ import { ownedRoadSites, roadSitesByNode } from '../roads/site-index.js';
 import { roadSitePlacementProbe } from '../roads/sites.js';
 import { networkLimitAt } from '../signposts/network.js';
 import { seatBaseOf } from './base.js';
-import { ROADS_FROM_TICKS } from './game-phase.js';
 import type { ComputerModule } from './index.js';
 import { type RoadStepCost, roadRoute } from './road-route.js';
 import {
@@ -25,6 +24,15 @@ import {
   TRAFFIC_HALF_LIFE_TICKS,
 } from './traffic.js';
 import { walkSeedNear } from './walk-distance.js';
+
+/** The seat lays roads once it counts more settlers than this, children included (owner ruling): roads
+ *  take much stone and builders' work, which the opening's buildings need first. */
+export const ROADS_PAST_SETTLERS = 50;
+
+/** Whether `player`'s seat has grown enough to lay roads ({@link ROADS_PAST_SETTLERS}). */
+export function roadsDue(world: World, player: number): boolean {
+  return ownedSettlers(world, player).length > ROADS_PAST_SETTLERS;
+}
 
 /** The most road sites the seat keeps pending at once (authored): each takes a stone and a builder's
  *  walk, so a bounded backlog leaves the building sites their stone and hands. */
@@ -87,8 +95,8 @@ export interface RoadBuildPlan {
 }
 
 /**
- * The RoadBuild module: link every built building of the seat to its base by road, and pave where its
- * settlers walk most. A building decision takes one building in turn (the decision count, so no state is
+ * The RoadBuild module: once the seat has grown ({@link roadsDue}), link every built building of the seat
+ * to its base by road, and pave where its settlers walk most. A building decision takes one building in turn (the decision count, so no state is
  * kept) and routes its door to the base's door over the nodes a road paints across ({@link roadRoute}). A
  * traffic decision takes the seat's busiest bucket of off-road walking ({@link hottestTraffic}) and
  * routes from where its walks crossed to the base's door the same way. Roads and the seat's road sites
@@ -101,7 +109,7 @@ export interface RoadBuildPlan {
 export function roadBuildPlan(world: World, ctx: SystemContext, player: number): RoadBuildPlan {
   const none: RoadBuildPlan = { source: 'building', commands: [] };
   const terrain = ctx.terrain;
-  if (terrain === undefined || ctx.tick < ROADS_FROM_TICKS) return none;
+  if (terrain === undefined || !roadsDue(world, player)) return none;
   const room = Math.min(
     MAX_PENDING_ROAD_SITES - ownedRoadSites(world, terrain, player).size,
     ROAD_SITES_PER_DECISION,
