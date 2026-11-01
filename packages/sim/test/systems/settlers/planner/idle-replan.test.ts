@@ -13,11 +13,13 @@ import {
   Position,
   Resource,
   Resting,
+  Stance,
   WorkFlag,
 } from '../../../../src/components/index.js';
 import { type Entity, World } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../../src/index.js';
 import { plannerSystem, stampResourceFootprintData } from '../../../../src/systems/index.js';
+import { MILITARY_MODE } from '../../../../src/systems/readviews/index.js';
 import * as ladder from '../../../../src/systems/settlers/drives/ladder.js';
 import {
   COMPUTER_IDLE_REPLAN_PERIOD_TICKS,
@@ -293,5 +295,18 @@ describe('a computer seat', () => {
     const { key, planned } = heldPlans(true);
     expect(planned).toHaveLength(2); // the first pass, then its beat
     expect(idleReplanDue(planned[1] ?? -1, key, COMPUTER)).toBe(true);
+  });
+
+  it('holds a guard at its post on its beat, where a human seat re-plans it every pass', () => {
+    const guardPlans = (computer: boolean): number => {
+      const sim = newSim();
+      if (computer) computerSeat(sim);
+      const guard = woodcutterAt(sim, 10, 10);
+      sim.world.add(guard, Stance, { mode: MILITARY_MODE.DEFEND, anchorCell: null });
+      sim.step();
+      return plannedTicks(sim, guard, COMPUTER).length;
+    };
+    expect(guardPlans(false)).toBe(COMPUTER);
+    expect(guardPlans(true)).toBe(1);
   });
 });

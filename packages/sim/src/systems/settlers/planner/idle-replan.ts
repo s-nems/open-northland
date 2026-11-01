@@ -1,8 +1,11 @@
 import {
+  CurrentAtomic,
   chatHoldsSettler,
   computerControllerRuns,
   FamilyDuty,
   IdleStand,
+  isMachinePlayer,
+  MoveGoal,
   ownerOf,
   Resting,
 } from '../../../components/index.js';
@@ -41,6 +44,19 @@ export function waitsHoldOnBeat(world: World, e: Entity): boolean {
     idleReplanPeriodOf(world, e) === COMPUTER_IDLE_REPLAN_PERIOD_TICKS &&
     (world.has(e, FamilyDuty) || chatHoldsSettler(world, e)) &&
     !heldByBeatBlockingHold(world, e)
+  );
+}
+
+/** Whether `e`, a machine seat's settler (computer or map AI) that its ladder left holding still with no
+ *  walk or clip, waits for its idle beat instead of re-planning every tick. A cost cut, not fidelity: it
+ *  takes up new work or answers a need up to its seat's idle period late; a move, clip or order wakes it. */
+export function standsStillForMachine(world: World, e: Entity): boolean {
+  const owner = ownerOf(world, e);
+  return (
+    owner !== undefined &&
+    isMachinePlayer(world, owner) &&
+    !world.has(e, MoveGoal) &&
+    !world.has(e, CurrentAtomic)
   );
 }
 
