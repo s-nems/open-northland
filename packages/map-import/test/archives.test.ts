@@ -188,9 +188,18 @@ describe('openC2m', () => {
     expect([...tree.files.keys()]).toEqual(['map.dat']);
   });
 
-  it('fails a corrupt directory as unsupported', async () => {
+  it('pads the tail a cut-off file still promises', async () => {
     const c2m = encodeC2m({ 'map.dat': MAP_DAT });
-    expect(await failure(openC2m(c2m.subarray(0, c2m.length - 1)))).toBe('unsupported-archive');
+    const tree = await openC2m(c2m.subarray(0, c2m.length - 1));
+    expect([...tree.files.keys()]).toEqual(['map.dat']);
+    expect(tree.files.get('map.dat')?.length).toBe(MAP_DAT.length);
+  });
+
+  it('still fails a c2m whose directory is damaged as unsupported', async () => {
+    const c2m = encodeC2m({ 'map.dat': MAP_DAT });
+    const broken = c2m.slice();
+    broken[0] = 9;
+    expect(await failure(openC2m(broken))).toBe('unsupported-archive');
   });
 });
 

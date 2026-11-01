@@ -122,9 +122,12 @@ export function isNsisInstaller(bytes: Uint8Array): boolean {
 
 /**
  * One raw-deflate stream of unknown output, collected as it decodes and rejected past `cap` bytes,
- * so a forged expansion never allocates before the check runs.
+ * so a forged expansion never allocates before the check runs. With `tolerateCut`, a payload that
+ * ends inside its stream keeps what decoded so far: NSIS states no inflated size, so a damaged
+ * block cannot be told from an oversized one here, and a file's own decoders judge what arrived —
+ * an empty result still fails.
  */
-function inflateCapped(payload: Uint8Array, cap: number, what: string): Uint8Array {
+function inflateCapped(payload: Uint8Array, cap: number, what: string, tolerateCut = false): Uint8Array {
   const chunks: Uint8Array[] = [];
   let size = 0;
   const inflater = new Inflate((chunk) => {
@@ -133,10 +136,15 @@ function inflateCapped(payload: Uint8Array, cap: number, what: string): Uint8Arr
     chunks.push(chunk);
   });
   try {
-    inflater.push(payload, true);
+    // The last push carries the final flag, empty so a stream that ends inside its payload has
+    // already emitted what it decoded: a final-flagged push over the whole payload throws before
+    // the collector sees a chunk.
+    inflater.push(payload, false);
+    inflater.push(new Uint8Array(0), true);
   } catch (err) {
     if (err instanceof MapImportError) throw err;
-    throw new MapImportError('unsupported-archive', `nsis: ${what}: ${errorMessage(err)}`);
+    if (!tolerateCut || size === 0)
+      throw new MapImportError('unsupported-archive', `nsis: ${what}: ${errorMessage(err)}`);
   }
   const out = new Uint8Array(size);
   let at = 0;
@@ -349,7 +357,8 @@ export async function unpackNsis(
     const strings = readStrings(header.database, blocks);
     const files = readFiles(header.database, blocks, strings);
     const seen = new Map<string, number>();
-    const entries: ArchiveEntry[] = [];
+    /** Per case-folded path: the first spelling and the content the installer leaves on disk. */
+    const pending = new Map<string, { path: string; bytes: Uint8Array }>();
     let claimed = 0;
     for (const file of files) {
       builder.list();
@@ -370,7 +379,7 @@ export async function unpackNsis(
       if (start + payloadSize > bytes.length)
         throw new MapImportError('unsupported-archive', `nsis: ${path} is truncated`);
       const content = compressed
-        ? inflateCapped(bytes.subarray(start, start + payloadSize), builder.limits.entryBytes, path)
+        ? inflateCapped(bytes.subarray(start, start + payloadSize), builder.limits.entryBytes, path, true)
         : bytes.slice(start, start + payloadSize);
       claimed += content.length;
       if (claimed > builder.limits.unpackedBytes)
@@ -378,9 +387,13 @@ export async function unpackNsis(
           'too-large',
           `nsis: unpacks past ${builder.limits.unpackedBytes} bytes at ${path}`,
         );
-      builder.reserve(path, content.length);
-      entries.push({ path, bytes: content });
+      // An installer re-extracting a path overwrites it, the way its case-insensitive target disk
+      // would: the later content wins, the first spelling names the file.
+      const earlier = pending.get(key);
+      pending.set(key, { path: earlier?.path ?? path, bytes: content });
     }
+    const entries = [...pending.values()];
+    for (const entry of entries) builder.reserve(entry.path, entry.bytes.length);
     return entries;
   } catch (err) {
     if (err instanceof MapImportError) throw err;

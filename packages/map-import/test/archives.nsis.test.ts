@@ -21,6 +21,26 @@ async function failure(promise: Promise<unknown>): Promise<MapImportFailure> {
   throw new Error('expected a MapImportError');
 }
 
+/** Replaces the setup's only file block with a stored block that carries `content` and no
+ *  final-block flag, so its stream ends early inside the payload the size field declares. */
+function withStoredBlock(exe: Uint8Array, content: Uint8Array): Uint8Array {
+  const at = 512 + 28;
+  const header = new DataView(exe.buffer, exe.byteOffset, exe.byteLength);
+  const dataArea = at + 4 + (header.getUint32(at, true) & 0x7fffffff);
+  const stream = new Uint8Array(5 + content.length);
+  stream[0] = 0x00;
+  stream[1] = content.length & 0xff;
+  stream[2] = content.length >>> 8;
+  stream[3] = ~stream[1] & 0xff;
+  stream[4] = ~stream[2] & 0xff;
+  stream.set(content, 5);
+  const out = new Uint8Array(dataArea + 4 + stream.length);
+  out.set(exe.subarray(0, dataArea));
+  new DataView(out.buffer).setUint32(dataArea, (stream.length | 0x80000000) >>> 0, true);
+  out.set(stream, dataArea + 4);
+  return out;
+}
+
 const setup = (name: string): NsisSetupFile[] => [
   { path: `data\\maps\\${name}\\map.dat`, bytes: mapDat() },
   { path: `data\\maps\\${name}\\misc.inc`, bytes: bytes(4, 5) },
@@ -97,6 +117,32 @@ describe('openNsis', () => {
       encodeNsis2([{ path: 'usermaps\\Sommerurlaub.c2m', bytes: encodeC2m({ 'map.dat': mapDat() }) }]),
     );
     expect([...tree.files.keys()].sort()).toEqual(['usermaps/sommerurlaub/map.dat']);
+  });
+
+  it('lets a later extract overwrite an earlier one, case-insensitively, under the first spelling', async () => {
+    const tree = await openNsis(
+      encodeNsis2([
+        { path: 'data\\maps\\Ostern\\map.dat', bytes: mapDat() },
+        { path: 'Text\\Ger\\Strings.ini', bytes: bytes(1, 2, 3) },
+        { path: 'Text\\Ger\\strings.ini', bytes: bytes(4, 5) },
+      ]),
+    );
+    expect([...tree.files.keys()].sort()).toEqual(['data/maps/ostern/map.dat', 'text/ger/strings.ini']);
+    expect([...(tree.files.get('text/ger/strings.ini') ?? [])]).toEqual([4, 5]);
+    expect(tree.names.get('text/ger/strings.ini')).toBe('Text/Ger/Strings.ini');
+  });
+
+  it('keeps the intact share of a damaged block and pads the editor map it cuts', async () => {
+    const c2m = encodeC2m({ 'map.dat': mapDat(), 'text/pol/strings.ini': bytes(1, 2, 3, 4, 5, 6) });
+    // The block's stream, replaced by a stored block over all but the c2m's last 2 bytes and without
+    // the final-block flag: it decodes until its input ends, the way a damaged upload does.
+    const exe = withStoredBlock(
+      encodeNsis2([{ path: 'usermaps\\Inselkolonie.c2m', bytes: c2m }]),
+      c2m.subarray(0, c2m.length - 2),
+    );
+    const tree = await openNsis(exe);
+    expect(tree.files.get('usermaps/inselkolonie/map.dat')).toEqual(mapDat());
+    expect(tree.files.get('usermaps/inselkolonie/text/pol/strings.ini')?.length).toBe(6);
   });
 
   it('opens a zip of setup installers, ignoring a plain exe among them', async () => {
