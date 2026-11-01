@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   addCurrentAtomic,
   Building,
   Carrying,
   Chat,
+  COMPUTER_MODULE_IDS,
   CurrentAtomic,
+  computerModuleEnables,
+  IdleStand,
   LISTEN_ATOMIC_ID,
   MoveGoal,
   Owner,
@@ -979,6 +983,9 @@ describe('producer works ONLY its own workplace’s goods (its own building’s 
   });
 });
 
+/** Long enough for a loiterer to step off its door and settle beside it. */
+const LOITER_WALK_TICKS = 60;
+
 describe('producer loiter - an idle owned worker waits BESIDE the door, not inside', () => {
   it('an owned operator with nothing to do loiters off the door (a MoveGoal beside it, no Resting)', () => {
     const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
@@ -994,6 +1001,30 @@ describe('producer loiter - an idle owned worker waits BESIDE the door, not insi
     expect(sim.world.has(worker, CurrentAtomic)).toBe(false);
     expect(sim.world.has(worker, MoveGoal)).toBe(true);
     expect(sim.world.get(worker, MoveGoal).cell).not.toBe(cell(sim, 3, 0)); // beside the door, not on it
+  });
+
+  it("a computer seat's loiterer beside the door waits for its idle beat; a human seat's re-plans every tick", () => {
+    const loiterer = (computer: boolean): { readonly standing: boolean } | undefined => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(6, 1) });
+      if (computer) {
+        const carrier = sim.world.create();
+        sim.world.add(carrier, AiControl, {
+          player: 0,
+          modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
+          computerEnabled: true,
+          mapAiEnabled: false,
+          difficulty: 'hard',
+        });
+      }
+      const mill = buildingAt(sim, SAWMILL, 3, 0); // no wood anywhere: nothing to produce, fetch or haul
+      const worker = settlerAt(sim, 3, 0, CARPENTER, mill);
+      sim.world.add(worker, Owner, { player: 0 });
+      for (let i = 0; i < LOITER_WALK_TICKS; i++) sim.step();
+      expect(sim.world.has(worker, MoveGoal)).toBe(false);
+      return sim.world.tryGet(worker, IdleStand);
+    };
+    expect(loiterer(false)).toBeUndefined();
+    expect(loiterer(true)).toEqual({ standing: false });
   });
 
   it('a loiterer grabbed into idle chatter keeps chatting: standing by the door is not work', () => {

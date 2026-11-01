@@ -439,7 +439,7 @@ function planTrade(plan: PlannerContext, pass: PlannerPass, hx: number, hy: numb
       : boundWorkplaceTarget(world, ctx, e, plan.jobType, plan.tribe);
   if (workplace !== null) {
     if (isCarrierJob(ctx, plan.jobType)) {
-      planWorkshopSupplier(plan, workplace, pass.seatClaims, pass.spacing);
+      planWorkshopSupplier(plan, workplace, pass.seatClaims, pass.spacing, pass.idle);
     } else {
       planProducer(plan, workplace, pass.seatClaims, pass.spacing, pass.idle);
     }

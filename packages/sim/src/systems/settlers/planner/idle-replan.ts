@@ -47,17 +47,17 @@ export function waitsHoldOnBeat(world: World, e: Entity): boolean {
   );
 }
 
-/** Whether `e`, a machine seat's settler (computer or map AI) that its ladder left holding still with no
- *  walk or clip, waits for its idle beat instead of re-planning every tick. A cost cut, not fidelity: it
- *  takes up new work or answers a need up to its seat's idle period late; a move, clip or order wakes it. */
-export function standsStillForMachine(world: World, e: Entity): boolean {
+/** Whether `e` belongs to a machine seat, computer or map AI. */
+export function ownedByMachine(world: World, e: Entity): boolean {
   const owner = ownerOf(world, e);
-  return (
-    owner !== undefined &&
-    isMachinePlayer(world, owner) &&
-    !world.has(e, MoveGoal) &&
-    !world.has(e, CurrentAtomic)
-  );
+  return owner !== undefined && isMachinePlayer(world, owner);
+}
+
+/** Whether `e`, a machine seat's settler that its ladder left holding still with no walk or clip, waits
+ *  for its idle beat instead of re-planning every tick. A cost cut, not fidelity: it takes up new work or
+ *  answers a need up to its seat's idle period late; a move, clip or order wakes it. */
+export function standsStillForMachine(world: World, e: Entity): boolean {
+  return ownedByMachine(world, e) && !world.has(e, MoveGoal) && !world.has(e, CurrentAtomic);
 }
 
 /** Every economy hold but the family duty: any of them keeps the settler re-planning every tick. */

@@ -18,7 +18,12 @@ import { carryCapacityOf } from '../../../../vehicles/hauling-cart.js';
 import { atOrWalk, walkFetchInput, walkPickupBatch } from '../../../atomics/start.js';
 import { enterBuilding } from '../../../indoors.js';
 import type { PlannerContext } from '../../../planner/context.js';
-import type { IdleStands } from '../../../planner/idle-replan.js';
+import {
+  type IdleStands,
+  idleReplanPeriodOf,
+  ownedByMachine,
+  standsStillForMachine,
+} from '../../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../../planner/spacing.js';
 import { interactionCell } from '../../../targets/index.js';
 import { loiterCell } from '../../spacing.js';
@@ -159,7 +164,7 @@ const CARRIER_SHORTFALL: InputShortfall = { restockToCapacity: true };
 /** A crew that may make nothing here wants no input brought. */
 const NO_SUPPLY: Recipe = { inputs: [], outputs: [], ticks: 1 };
 
-/** A loitering worker is not idle to the planner, so its ladder runs every tick. */
+/** A human seat's loitering worker is not idle to the planner, so its ladder runs every tick. */
 const LOITER_PLAN_PERIOD_TICKS = 1;
 
 /**
@@ -244,7 +249,7 @@ export function planProducer(
   // carrier also serves the settlement and may not return before the output stock fills.
   if (haulWorkplaceOutput(plan, workplace)) return;
   // A craftsman without a seat adds no production at the door, so it may loiter beside it.
-  loiterByDoor(plan, workplace, spacing, false);
+  loiterByDoor(plan, workplace, spacing, false, idle);
 }
 
 /** A node of {@link mergedRotation}'s memo: the merge of the recipe run that led here, and the runs that
@@ -286,6 +291,7 @@ export function planWorkshopSupplier(
   workplace: Entity,
   seatClaims: WorkSeatClaims,
   spacing: PlannerSpacing,
+  idle?: IdleStands,
 ): void {
   const { world, ctx } = plan;
   const worker = plan;
@@ -307,8 +313,13 @@ export function planWorkshopSupplier(
   // presence gate still fires; one at a workshop run by other operators, or at a house that fills
   // itself, drives nothing and may loiter.
   const drivesProduction = recipe !== undefined && isWorkplaceOperator(world, ctx, workplace, worker.jobType);
-  if (area !== null && !drivesProduction) waitAtHaulFlag(plan, area.flag);
-  else loiterByDoor(plan, workplace, spacing, drivesProduction);
+  if (area === null || drivesProduction) {
+    loiterByDoor(plan, workplace, spacing, drivesProduction, idle);
+    return;
+  }
+  waitAtHaulFlag(plan, area.flag);
+  // A machine seat's carrier waiting at its flag waits for its idle beat.
+  if (idle !== undefined && standsStillForMachine(world, plan.entity)) idle.stand(plan.entity, false);
 }
 
 /**
@@ -365,13 +376,15 @@ function holdInsideWorkplace(
  * Loiter beside the workplace door rather than on it, so a bound worker with nothing to do neither runs
  * the craft nor hides indoors, and may strike up an idle chat with a nearby idler. One that drives the
  * craft by its presence stands on the door in view, where the operator gate counts it. Unowned fixtures
- * keep the wait-inside behaviour so their state hashes stay byte-identical.
+ * keep the wait-inside behaviour so their state hashes stay byte-identical. With `idle`, a machine seat's
+ * loiterer beside the door waits for its idle beat.
  */
 function loiterByDoor(
   plan: PlannerContext,
   workplace: Entity,
   spacing: PlannerSpacing,
   drivesProduction: boolean,
+  idle?: IdleStands,
 ): void {
   const { world, ctx, terrain, entity, here } = plan;
   if (!world.has(entity, Owner)) {
@@ -387,8 +400,11 @@ function loiterByDoor(
   if (inPastimeChat(world, entity)) return;
   const stand = loiterCell(world, terrain, entity, here, door, spacing);
   atOrWalk(world, entity, here, stand, () => {
+    const onBeat = idle !== undefined && ownedByMachine(world, entity);
     const { x, y } = terrain.coordsOf(here);
-    planGossipIdle(world, ctx, entity, plan, x, y, plan.gossipCandidates, LOITER_PLAN_PERIOD_TICKS);
+    const period = onBeat ? idleReplanPeriodOf(world, entity) : LOITER_PLAN_PERIOD_TICKS;
+    planGossipIdle(world, ctx, entity, plan, x, y, plan.gossipCandidates, period);
+    if (onBeat && standsStillForMachine(world, entity)) idle.stand(entity, false);
   });
 }
 
