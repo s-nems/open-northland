@@ -24,11 +24,11 @@ import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../../src/systems/ai-
 import { computerProfileOf } from '../../../../../src/systems/computer-player/difficulty.js';
 import { type OperationView, seatOperationsOf } from '../../../../../src/systems/computer-player/index.js';
 import {
-  LANDING_BIG_SHIPS,
   LANDING_FORM_TIMEOUT_TICKS,
   LANDING_SAIL_TIMEOUT_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
 import {
+  LANDING_BIG_SHIPS,
   LANDING_FLEET_MIN_SHIPS,
   landingFleetShips,
 } from '../../../../../src/systems/computer-player/workforce/craft.js';

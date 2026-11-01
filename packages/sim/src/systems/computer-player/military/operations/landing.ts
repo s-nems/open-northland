@@ -56,7 +56,6 @@ import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleFighters } from './raid
 
 const SECONDS_PER_MINUTE = 60;
 
-export { LANDING_BIG_SHIPS } from '../../workforce/craft.js';
 /** How long after a landing ends before the next one forms. */
 export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most a landing waits for its men to walk to their ships and board. */
