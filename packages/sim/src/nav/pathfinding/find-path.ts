@@ -17,6 +17,8 @@ import {
   latticeOffsetDistance,
   NO_READMITTED,
   type NodeId,
+  STEP_COSTS,
+  STEP_ROWS,
   type TerrainGraph,
   type Traversal,
 } from '../terrain/index.js';
@@ -184,6 +186,9 @@ export function findPathWithin(
 
 const UNCAPPED = Number.POSITIVE_INFINITY;
 
+/** The lattice edges per node, the bits of a step lane. */
+const EDGE_COUNT = STEP_COSTS.length;
+
 /**
  * The land heuristic's per-length weight far from roads: common ground (grass, roughness 2), not a road's
  * 1. A deliberately inflated heuristic (weighted A*), a named approximation trading exactness for search
@@ -191,7 +196,7 @@ const UNCAPPED = Number.POSITIVE_INFINITY;
  * costs at most this factor over the cheapest even without reopening settled nodes; the average excess on
  * the six-edge lattice is unmeasured. On uniform grass it is exact.
  */
-const LAND_HEURISTIC_WEIGHT = fx.fromInt(DEFAULT_NODE_ROUGHNESS);
+const LAND_HEURISTIC_WEIGHT = DEFAULT_NODE_ROUGHNESS;
 
 /**
  * The inflation of the road-aware estimate `d + min(d, r)`, with `d` the lattice distance to the goal and
@@ -270,7 +275,8 @@ class ResumableSearch {
   advance(maxExplored: number): NodeId[] | 'unreachable' | 'aborted' {
     const { scratch, graph, goal, stats, query, traversal, startX, startY } = this;
     // The heap arrays are read through `scratch`: a push may replace them with larger ones.
-    const { stamps, g, cameFrom, heapIdx, steps, gate } = scratch;
+    const { stamps, g, cameFrom, heapIdx, gate } = scratch;
+    const lane = gate.lane;
     const factors = graph.routeFactorLane(traversal);
     if (scratch.query !== query) throw new Error('a newer search on this scratch overwrote a paused one');
     const width = graph.width;
@@ -293,23 +299,32 @@ class ResumableSearch {
       heapPopRoot(scratch);
 
       const currentY = graph.yOf(current);
-      const rowStart = currentY * width;
-      graph.stepsIntoAt(current, currentY, gate, steps);
-      for (let i = 0; i < steps.length; i++) {
-        const next = steps.nodeAt(i);
+      const open = lane[current] ?? 0;
+      const offsets = graph.stepOffsets(currentY);
+      // The static lane's bits in canonical neighbour order; the gate drops the overlay's.
+      for (let edge = 0; edge < EDGE_COUNT; edge++) {
+        if ((open & (1 << edge)) === 0) continue;
+        const next = current + (offsets[edge] ?? 0);
+        if (gate.closes(next)) continue;
         const discovered = stamps[next] === query;
         // Settled nodes are never relaxed, so they skip the step's cost.
         if (discovered && heapIdx[next] === SETTLED) continue;
-        const tentativeG =
-          currentG + fx.mulInt(steps.costAt(i), factors === undefined ? 1 : (factors[next] ?? 1));
+        const cost = (STEP_COSTS[edge] ?? 0) as Fixed;
+        const tentativeG = currentG + fx.mulInt(cost, factors === undefined ? 1 : (factors[next] ?? 1));
         if (!discovered) {
           stamps[next] = query;
           g[next] = tentativeG;
           cameFrom[next] = current;
-          const nextY = rowOfStep(next, rowStart, width, currentY);
+          const nextY = currentY + (STEP_ROWS[edge] ?? 0);
           const nextX = next - nextY * width;
           const dev = Math.abs((doubledColumn(nextX, nextY) - startD) * lineHY - (nextY - startY) * lineD);
-          heapPush(scratch, next, tentativeG + this.heuristic(next, nextX, nextY), tentativeG, dev);
+          heapPush(
+            scratch,
+            next as NodeId,
+            tentativeG + this.heuristic(next as NodeId, nextX, nextY),
+            tentativeG,
+            dev,
+          );
           continue;
         }
         // A relaxation only decreases the key, so restoring the heap invariant is a sift toward the root.
@@ -335,7 +350,7 @@ class ResumableSearch {
   private heuristic(node: NodeId, x: number, y: number): Fixed {
     const toGoal = latticeOffsetDistance(this.goalX - x, this.goalY - y, y);
     if (this.traversal !== 'land') return toGoal;
-    const overGrass = fx.mul(toGoal, LAND_HEURISTIC_WEIGHT);
+    const overGrass = fx.mulInt(toGoal, LAND_HEURISTIC_WEIGHT);
     const toRoad = this.graph.roadDistanceAt(node);
     if (toRoad >= toGoal) return overGrass;
     const network = this.graph.roadNetworkNear(node);
@@ -349,15 +364,6 @@ class ResumableSearch {
     const viaRoad = inflated > bounded ? inflated : bounded;
     return viaRoad < overGrass ? viaRoad : overGrass;
   }
-}
-
-/**
- * The row of `next`, a step from the node on `row` whose row begins at id `rowStart`. A step spans at
- * most one row, so comparing against row starts is `yOf` exactly, without its division.
- */
-function rowOfStep(next: number, rowStart: number, width: number, row: number): number {
-  if (next < rowStart) return row - 1;
-  return next < rowStart + width ? row : row + 1;
 }
 
 /** Walk `cameFrom` back from the goal to the start, returning the path in start→goal order. `cameFrom`

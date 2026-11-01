@@ -96,9 +96,12 @@ export class StepGate {
 
 /** Each edge's world length in bit order: the two column edges are a half column, the four row-crossing
  *  ones {@link ROW_EDGE}. */
-const EDGE_COSTS: readonly Fixed[] = EDGE_BITS.map((_, edge) =>
+export const STEP_COSTS: Float64Array = Float64Array.from(EDGE_BITS, (_, edge) =>
   EDGE_DY[edge] === 0 ? HALF_COLUMN : ROW_EDGE,
 );
+
+/** Each edge's row offset in bit order. */
+export const STEP_ROWS: Int32Array = Int32Array.from(EDGE_BITS, (_, edge) => EDGE_DY[edge] ?? 0);
 
 export abstract class TerrainEdges extends TerrainLattice {
   /** {@link stepsInto}'s gate, reset on every call. */
@@ -212,13 +215,19 @@ export abstract class TerrainEdges extends TerrainLattice {
     out.reset();
     const open = gate.lane[node] ?? 0;
     if (open === 0) return;
-    const offsets = (y & 1) === 0 ? this.evenOffsets : this.oddOffsets;
+    const offsets = this.stepOffsets(y);
     // Bit order is the canonical neighbour order.
     for (let edge = 0; edge < HEX_EDGE_COUNT; edge++) {
       if ((open & (1 << edge)) === 0) continue;
       const next = node + (offsets[edge] ?? 0);
-      if (!gate.closes(next)) out.push(next as NodeId, EDGE_COSTS[edge] ?? ROW_EDGE);
+      if (!gate.closes(next)) out.push(next as NodeId, (STEP_COSTS[edge] ?? ROW_EDGE) as Fixed);
     }
+  }
+
+  /** Each edge's node id offset from a node on row `y`, in the bit order of {@link StepGate.lane}. A
+   *  search walking a lane's bits itself steps by these and costs a step by {@link STEP_COSTS}. */
+  stepOffsets(y: number): Int32Array {
+    return (y & 1) === 0 ? this.evenOffsets : this.oddOffsets;
   }
 
   /**
