@@ -1,7 +1,7 @@
 import { hostileMaskOf, hostilePlayerMasks, type Waypoint } from '../../../../components/index.js';
 import type { Fixed } from '../../../../core/fixed.js';
 import type { Entity, World } from '../../../../ecs/world.js';
-import type { BlockOverlay } from '../../../../nav/block-overlay.js';
+import type { NodeMask } from '../../../../nav/block-overlay.js';
 import {
   type NodesBeside,
   nodeHxOfPosition,
@@ -11,7 +11,7 @@ import {
 import { columnStepMiddles } from '../../../../nav/pathfinding/straight-steps.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { dynamicBlockOverlay } from '../../../footprint/index.js';
+import { walkBlockMask } from '../../../footprint/walk-block-mask.js';
 import { columnStepStopAt } from '../../../spatial/mover-node.js';
 import { type CalmZones, calmZonesByPlayer } from '../bodies.js';
 import { playerSlotBit } from '../standing-posts.js';
@@ -25,10 +25,11 @@ const NO_PLAYER = -1;
 
 /** The tick's gates, built on first ask so a tick where no pair interacts builds none. {@link reset} them
  *  every tick: the caches are snapshots, so a held answer would keep approving displacements onto ground
- *  blocked since, and keep answering the old calm zones and stances. */
+ *  blocked since, and keep answering the old calm zones and stances. Within the pass they hold: it writes
+ *  only movers' Position and walk state, which no walk-block layer reads. */
 export class SeparationGates {
   private zones: CalmZones | undefined;
-  private blocked: BlockOverlay | undefined;
+  private blocked: NodeMask | undefined;
   private hostile: readonly number[] | undefined;
 
   constructor(
@@ -104,7 +105,7 @@ export class SeparationGates {
     if (!this.terrain.inBounds(hx, hy)) return false;
     const node = this.terrain.nodeAt(hx, hy);
     if (!this.terrain.isWalkable(node)) return false;
-    this.blocked ??= dynamicBlockOverlay(this.world, this.ctx, this.terrain);
+    this.blocked ??= walkBlockMask(this.world, this.ctx, this.terrain).levelled();
     return !this.blocked.has(node);
   }
 }

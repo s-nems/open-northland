@@ -48,6 +48,9 @@ export interface StandingPostGrid {
 /** The node {@link StandingPostGrid.collectAround} reports for a post standing off the lattice. */
 export const OFF_LATTICE_NODE = -1;
 
+/** Nodes per side of the block {@link StandingPostGrid.collectAround} reads: the node and its neighbours. */
+const BLOCK_SIDE = 3;
+
 /** One standing owned fighter, linked into its node's list so a shared node can name its highest id. */
 interface Post {
   readonly entity: Entity;
@@ -284,6 +287,21 @@ function collectPostsAround(
 ): number {
   const { terrain, posts } = index;
   let count = 0;
+  const { width } = terrain;
+  if (hx >= 1 && hy >= 1 && hx + 1 < width && hy + 1 < terrain.height) {
+    // Wholly on the lattice: the row-major node ids step by one along x and by `width` along y.
+    for (let column = (hy - 1) * width + hx - 1, x = 0; x < BLOCK_SIDE; x++, column++) {
+      for (let node = column, y = 0; y < BLOCK_SIDE; y++, node += width) {
+        if (posts[node] === 0) continue;
+        for (let post = index.byNode.get(node as NodeId); post !== undefined; post = post.next) {
+          out[count] = post.entity;
+          players[count] = post.player;
+          nodes[count++] = node;
+        }
+      }
+    }
+    return count;
+  }
   for (let x = hx - 1; x <= hx + 1; x++) {
     for (let y = hy - 1; y <= hy + 1; y++) {
       if (!terrain.inBounds(x, y)) {
