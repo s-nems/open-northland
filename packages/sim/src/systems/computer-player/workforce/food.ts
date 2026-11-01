@@ -23,8 +23,8 @@ export const FOOD_COMFORT_UNITS_PER_SETTLER = 2;
 /**
  * The food-shortage hunters the seat keeps beside its opening hunter (owner ruling): up to
  * {@link FOOD_SHORTAGE_HUNTERS} while its store runs short of food, none once a workshop making food (the
- * animal farm, a bakery) has a worker, since the farms feed the seat from then on. A seat fishing near
- * its stores gets none: its fishers (`fisher.ts`) catch more than a hunter. `held` is how many it keeps
+ * animal farm, a bakery) has a worker, since the farms feed the seat from then on. A seat `fishing`
+ * (`fishersWanted`) gets none: its fishers catch more than a hunter. `held` is how many it keeps
  * now, which hold to the comfort line instead of the short one.
  */
 export function foodHunters(

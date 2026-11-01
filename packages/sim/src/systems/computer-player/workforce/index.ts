@@ -64,7 +64,7 @@ import {
 } from './collectors/index.js';
 import { tuneCraftCounters } from './craft.js';
 import { demobilizeStartSoldiers } from './demobilize.js';
-import { allocateFishers, fisherTarget, fishingPlan } from './fisher.js';
+import { allocateFishers, fishersWanted, fisherTarget, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import {
   FOCUS_BUILDERS,
@@ -250,7 +250,7 @@ function runWorkforce(
     ctx,
     player,
     base,
-    (held) => foodHunters(world, ctx, player, owned, supply, tally, held, (fishing?.stands.length ?? 0) > 0),
+    (held) => foodHunters(world, ctx, player, owned, supply, tally, held, fishersWanted(fishing)),
     apprentices,
   );
   const generic = (): PlayerCommand[] =>

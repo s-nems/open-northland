@@ -110,9 +110,8 @@ export interface FishingPlan {
   readonly firstHires: number;
   /** The water of the seat's far fisher while no swarm, fished out or not, lies within a trip of a store's
    *  door: the fished shore nearest a store's door within {@link FAR_FISHING_RADIUS_NODES}, or null. A seat
-   *  that fished out its near water hires none (authored: on diamentowa_dolina, seed 7, far fishers hired
-   *  after the near swarms ran dry each brought 13-25 fish home in 45 minutes, and the summed population
-   *  at minute 60 fell 3%). */
+   *  that fished out its near water hires none (authored, from skirmish observation: a far fisher's trickle
+   *  does not repay the man). */
   readonly far: FishingStand | null;
   /** The seat's fishers employed at a store, the far fisher among them. */
   readonly employed: readonly Entity[];
@@ -156,6 +155,12 @@ export function fishingPlan(
     (e) => world.has(e, JobAssignment) && world.get(e, Settler).jobType === job,
   );
   return { job, terrain, ground, stands, fishers: [...fishers], target, firstHires, far, employed };
+}
+
+/** Whether the seat fishes this decision: it keeps flag fishers, or hires them now, its target above none
+ *  with a stand to post them at. Water alone does not count: no fisher is hired before the homes stand. */
+export function fishersWanted(plan: FishingPlan | null): boolean {
+  return plan !== null && (plan.fishers.length > 0 || (plan.target > 0 && plan.stands.length > 0));
 }
 
 /** Whether one of the seat's men works as a flag fisher: the side names water in the seat's near band,
@@ -239,10 +244,10 @@ function keepFlagsOnWater(
 
 /**
  * The seat's one far fisher (owner ruling: a fisher needs no store by the water): while the plan names far
- * water and its target is above none, a man employed at the store nearest fished water within {@link FAR_FISHING_RADIUS_NODES} fishes
- * from a flag beside it and walks every catch home. Employed rather than flag-bound: a flag fisher drops
- * his catch at the flag for the store's carriers, who lift piles only near their store, so far off it
- * lay where it fell, only the housewives walking out for it. The others are handed back as builders, as
+ * water, a man employed at the store nearest fished water within {@link FAR_FISHING_RADIUS_NODES} fishes
+ * from a flag beside it and walks every catch home, hired only while the plan's target is above none.
+ * Employed rather than flag-bound: a flag fisher drops his catch at the flag for the store's carriers, who
+ * lift piles only near their store, so far off it lay where it fell, only the housewives walking out for it. The others are handed back as builders, as
  * is he once the plan names none or his water runs dry; a man mid-action is left alone. False when the
  * spare force ran out, which ends the phase's hiring.
  */

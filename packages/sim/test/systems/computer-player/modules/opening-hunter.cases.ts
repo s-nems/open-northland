@@ -19,6 +19,7 @@ import {
 } from '../../../../src/systems/computer-player/workforce/food.js';
 import type { StaffingTally } from '../../../../src/systems/computer-player/workforce/tally.js';
 import { HUNT_PREY_SCORE_CEILING } from '../../../../src/systems/conflict/hunting/index.js';
+import { addFishSwarms } from '../../../../src/systems/economy/fish.js';
 import { entityNode } from '../../../../src/systems/spatial/nodes.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import {
@@ -136,6 +137,25 @@ function animalFarmContent(): ContentSet {
         produces: [FOOD],
       },
     ],
+  });
+}
+
+/** A free fixture job id for {@link fishingGameContent}'s fisher, spelled `fisher` so its role reads. */
+const FISHER = 22;
+/** The fisher's cast and catch atomics, as the fishers' fixture gives them. */
+const FISHER_ATOMICS = [36, 37, 38];
+/** A fish swarm a few nodes off the headquarters, well inside a fishing trip from its door. */
+const LAKE_SWARM = { hx: HQ_X + 4, hy: HQ_Y + 6 };
+
+/** {@link gameContent} plus a fisher trade the headquarters seats, so a seat by the water plans fishing. */
+function fishingGameContent(): ContentSet {
+  const base = gameContent();
+  return parseContentSet({
+    ...base,
+    jobs: [...base.jobs, { typeId: FISHER, id: 'fisher', allowedAtomics: FISHER_ATOMICS }],
+    buildings: base.buildings.map((b) =>
+      b.typeId === HQ_TYPE ? { ...b, workers: [...b.workers, { jobType: FISHER, count: 3 }] } : b,
+    ),
   });
 }
 
@@ -386,5 +406,25 @@ describe('workforce module - the opening hunter', () => {
       (c) => c.kind === 'setJob' && hunters.includes(c.entity),
     );
     expect(back).toHaveLength(1);
+  });
+
+  it('sends food hunters out from a seat by the water while its homes still rise and no fisher is hired', () => {
+    const content = fishingGameContent();
+    const sim = new Simulation({ seed: 1, content, map: grassNodeMap(64, 32) });
+    placeHq(sim);
+    spawnMen(sim, SURPLUS_CREW);
+    spawnDeer(sim, HQ_X + NEAR_GAME_DX, HQ_Y);
+    const terrain = sim.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    addFishSwarms(sim.world, terrain, [{ ...LAKE_SWARM, count: 5, continent: 0 }]);
+    const ctx = { ...ctxOf(sim), content };
+    const hq = entityOfBuilding(sim, HQ_TYPE);
+    const commands = [...collectModule.run(sim.world, ctx, SEAT)];
+    expect(commands.filter((c) => c.kind === 'setJob' && c.jobType === FISHER)).toEqual([]);
+    const hires = commands.filter(
+      (c) => c.kind === 'assignWorker' && c.building === hq && c.jobPriority[0] === HUNTER,
+    );
+    // The opening hunter and a food hunter: the water feeds nobody before a fisher is hired.
+    expect(hires).toHaveLength(2);
   });
 });
