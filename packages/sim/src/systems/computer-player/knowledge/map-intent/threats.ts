@@ -139,9 +139,9 @@ function missionThreats(content: ContentSet, script: MissionScript, timing: Miss
   }
   const out: ScriptedThreat[] = [];
   const seen = new Set<string>();
-  const push = (threat: ScriptedThreat) => {
-    // A mission repeats a send line for the same men; one threat each.
-    const key = `${threat.source}|${threat.mission}|${threat.player}|${threat.target.hx},${threat.target.hy}`;
+  const push = (threat: ScriptedThreat, humanId: number | null = null) => {
+    // A mission repeats a send line for the same men; one threat each. Two mission ids are two groups.
+    const key = `${threat.source}|${threat.mission}|${threat.player}|${humanId}|${threat.target.hx},${threat.target.hy}`;
     if (seen.has(key)) return;
     seen.add(key);
     out.push(threat);
@@ -160,6 +160,7 @@ function missionThreats(content: ContentSet, script: MissionScript, timing: Miss
           fire(),
           index,
         ),
+        group.humanId,
       );
     }
     for (const result of mission.results) {
@@ -168,11 +169,14 @@ function missionThreats(content: ContentSet, script: MissionScript, timing: Miss
         const sent = own.length > 0 ? own : (spawnsById.get(result.humanId) ?? []);
         const owners = [...new Set(sent.map((g) => g.player))].sort((a, b) => a - b);
         if (owners.length === 0)
-          push(missionThreat('missionSend', null, result.point, [], [], fire(), index));
+          push(missionThreat('missionSend', null, result.point, [], [], fire(), index), result.humanId);
         for (const owner of owners) {
           const groups = sent.filter((g) => g.player === owner);
           const from = groups.map((g) => g.point);
-          push(missionThreat('missionSend', owner, result.point, unitsOf(groups), from, fire(), index));
+          push(
+            missionThreat('missionSend', owner, result.point, unitsOf(groups), from, fire(), index),
+            result.humanId,
+          );
         }
       } else if (result.opcode === 'MoveUnitsInArea') {
         // The one line that spells its destination with the generic index and extra kinds.
