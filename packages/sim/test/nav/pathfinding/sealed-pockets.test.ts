@@ -1,7 +1,21 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { buildTerrainGraph, findPath, type NodeId, Rng, type TerrainGraph } from '../../../src/index.js';
 import { RACE_SLICE_EXPLORED, SealedPockets, type SearchStats } from '../../../src/nav/pathfinding/index.js';
 import { testContent } from '../../fixtures/content.js';
+
+/** Counts the searches `SealedPockets` runs, so a refusal it proves without one shows. */
+const searches = vi.hoisted(() => ({ count: 0 }));
+
+vi.mock('../../../src/nav/pathfinding/find-path.js', async (importOriginal) => {
+  const real = await importOriginal<typeof import('../../../src/nav/pathfinding/find-path.js')>();
+  return {
+    ...real,
+    findPath: (...args: Parameters<typeof real.findPath>): ReturnType<typeof real.findPath> => {
+      searches.count += 1;
+      return real.findPath(...args);
+    },
+  };
+});
 
 const GRASS = 0;
 const SIZE = 120;
@@ -45,6 +59,7 @@ describe('SealedPockets', () => {
     const rng = new Rng(SEED);
     const wall = walls(terrain);
     const gate = terrain.nodeAt(WALL_FROM, (WALL_FROM + WALL_TO) >> 1);
+    let provedWithoutSearch = 0;
     for (let round = 0; round < ROUNDS; round++) {
       const blocked = new Set(wall);
       for (let i = 0; i < BODIES; i++) blocked.add(inside(rng, terrain));
@@ -56,8 +71,11 @@ describe('SealedPockets', () => {
       const expected: SearchStats = { explored: 0 };
       const held: SearchStats = { explored: 0 };
       const want = findPath(terrain, start, goal, blocked, expected, 'land');
+      const searchesBefore = searches.count;
       expect(pockets.findPath(start, goal, blocked, held, RACE_SLICE_EXPLORED)).toEqual(want);
+      if (searches.count === searchesBefore) provedWithoutSearch += 1;
       expect(held.explored).toBe(expected.explored);
     }
+    expect(provedWithoutSearch).toBeGreaterThan(0);
   });
 });

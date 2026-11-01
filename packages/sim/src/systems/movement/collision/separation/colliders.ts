@@ -56,7 +56,7 @@ export function collectColliders(
   scratch.posts = firmCount > 0 ? standingPostGrid(world, ctx.content, terrain) : undefined;
   for (let slot = 0; slot < moverCount; slot++) {
     const e = movers.entity[slot];
-    if (e === undefined) continue; // a census slot, so only for the type
+    if (e === undefined) continue; // every slot below `moverCount` is filled; this narrows the type
     const node = heldMoverNode(world, e);
     movers.hx[slot] = node.hx;
     movers.hy[slot] = node.hy;

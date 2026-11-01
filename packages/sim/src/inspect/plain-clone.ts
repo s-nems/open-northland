@@ -34,10 +34,24 @@ export function clonePlain(value: unknown): unknown {
   }
   if (Array.isArray(value)) return value.map((e) => clonePlain(e));
   if (!isPlainRecord(value)) throw uncloneable(value);
+  return cloneRecord(value, null);
+}
+
+/** {@link clonePlain} of a component value as read views carry it: a record without the component's
+ *  sim-only fields. */
+export function cloneReadView(value: unknown, simOnlyFields: ReadonlySet<string> | null): unknown {
+  if (simOnlyFields === null || !isPlainRecord(value)) return clonePlain(value);
+  return cloneRecord(value, simOnlyFields);
+}
+
+function cloneRecord(
+  value: Record<string, unknown>,
+  skipped: ReadonlySet<string> | null,
+): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const k of Object.keys(value)) {
     const field = value[k];
-    if (field === undefined) continue;
+    if (field === undefined || skipped?.has(k)) continue;
     // A number field, the common case, is its own clone: no call for it.
     const cloned = typeof field === 'number' ? field : clonePlain(field);
     if (k === '__proto__') {
@@ -45,23 +59,6 @@ export function clonePlain(value: unknown): unknown {
     } else out[k] = cloned;
   }
   return out;
-}
-
-/** {@link clonePlain} of a component value as read views carry it: a record without the component's
- *  sim-only fields. */
-export function cloneReadView(value: unknown, simOnlyFields: ReadonlySet<string> | null): unknown {
-  if (simOnlyFields === null || !isPlainRecord(value)) return clonePlain(value);
-  const visible: Record<string, unknown> = {};
-  for (const k of Object.keys(value)) {
-    if (simOnlyFields.has(k)) continue;
-    Object.defineProperty(visible, k, {
-      value: value[k],
-      enumerable: true,
-      writable: true,
-      configurable: true,
-    });
-  }
-  return clonePlain(visible);
 }
 
 function uncloneable(value: unknown): Error {

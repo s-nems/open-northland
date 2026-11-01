@@ -291,7 +291,7 @@ export function planWorkshopSupplier(
   workplace: Entity,
   seatClaims: WorkSeatClaims,
   spacing: PlannerSpacing,
-  idle?: IdleStands,
+  idle: IdleStands,
 ): void {
   const { world, ctx } = plan;
   const worker = plan;
@@ -319,7 +319,7 @@ export function planWorkshopSupplier(
   }
   waitAtHaulFlag(plan, area.flag);
   // A machine seat's carrier waiting at its flag waits for its idle beat.
-  if (idle !== undefined && standsStillForMachine(world, plan.entity)) idle.stand(plan.entity, false);
+  if (standsStillForMachine(world, plan.entity)) idle.stand(plan.entity, false);
 }
 
 /**

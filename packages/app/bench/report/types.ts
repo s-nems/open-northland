@@ -21,7 +21,7 @@ export interface SystemStat {
 /** Wall cost of a whole instrumented `step()`. The per-system rows do not sum to it: the residual is
  *  scheduling plus the harness's own two `performance.now` calls per system. */
 export interface TickStat {
-  /** Total measured time over ticks: the throughput figure a fast-forwarded game runs at. */
+  /** Mean tick time, the measured total divided by the ticks: the throughput a fast-forwarded game runs at. */
   readonly meanMs: number;
   readonly medianMs: number;
   readonly p95Ms: number;

@@ -383,6 +383,20 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     expect(new Set(gaps)).toEqual(new Set([AI_SEAT_SLOT_STEP_TICKS]));
   });
 
+  it('keeps every module tick of the first tiling seats apart from every other seat', () => {
+    const firstTilingSeats = COMPUTER_DECISION_INTERVAL_TICKS / (2 * AI_SEAT_SLOT_STEP_TICKS);
+    const owner = new Map<number, number>();
+    for (let player = 0; player < firstTilingSeats; player++) {
+      for (let module = 0; module < COMPUTER_MODULES.length; module++) {
+        const tick =
+          (computerDecisionSlot(player) + module * COMPUTER_MODULE_PHASE_TICKS) %
+          COMPUTER_DECISION_INTERVAL_TICKS;
+        expect(owner.get(tick) ?? player).toBe(player);
+        owner.set(tick, player);
+      }
+    }
+  });
+
   it('skips a disabled module for the seat that disabled it and runs it for the rest', () => {
     const world = worldWithSeats(0, OTHER_SEAT); // OTHER_SEAT has `military` disabled
     const commands = new CommandQueue();

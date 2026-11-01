@@ -906,6 +906,8 @@ describe('attack-move planning around open enemy gates', () => {
     expect(plan()).toBe(first);
     expect(structureRouteSealed(sim.world, ctxOf(sim), terrain, start, goal, first.blocked)).toBe(true);
     expect(structureSameRegion(sim.world, ctxOf(sim), terrain, start, goal, first.blocked)).toBe(false);
+    // A route search prepares its gate once; a flood steps through `stepsIntoAt`.
+    const searches = vi.spyOn(terrain, 'resetGate');
     const steps = vi.spyOn(terrain, 'stepsIntoAt');
     for (let i = 0; i < 100; i++) {
       expect(
@@ -919,7 +921,9 @@ describe('attack-move planning around open enemy gates', () => {
         ),
       ).toBe(true);
     }
+    expect(searches).not.toHaveBeenCalled();
     expect(steps).not.toHaveBeenCalled();
+    searches.mockRestore();
     steps.mockRestore();
     setDiplomacyStance(sim.world, P0, P1, 'friend');
     expect(findPath(terrain, start, goal, plan().blocked)).not.toBeNull();
