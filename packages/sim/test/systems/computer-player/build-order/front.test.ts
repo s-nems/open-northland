@@ -7,6 +7,7 @@ import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import {
   enemiesSurround,
   FRONT_LINE_DEPTH_NODES,
+  LINE_MAX_SHARE_PCT,
   RIVAL_LINE_ADVANCE_NODES,
   seatFrontLine,
 } from '../../../../src/systems/computer-player/build-order/front.js';
@@ -72,7 +73,7 @@ describe('seat front', () => {
   });
 
   it("stands a rival's line well ahead of the seat's farthest building, inside a tower's reach of it", () => {
-    const HQ = { x: 40, y: 80 };
+    const HQ = { x: 10, y: 80 };
     // Just inside two line depths, where a rounding to whole depths stood the line right at the home.
     const AHEAD = 2 * FRONT_LINE_DEPTH_NODES - 1;
     const sim = seats(HQ, [{ x: 150, y: 80 }]);
@@ -92,6 +93,26 @@ describe('seat front', () => {
     if (ahead === undefined) throw new Error('expected a front line toward the rival');
     expect(ahead.hx - farthest).toBeGreaterThanOrEqual(RIVAL_LINE_ADVANCE_NODES);
     expect(ahead.hx - farthest).toBeLessThan(RIVAL_LINE_ADVANCE_NODES + FRONT_LINE_DEPTH_NODES / 2);
+  });
+
+  it('stands no farther than halfway to a near rival, past whatever its farthest building wants', () => {
+    const HQ = { x: 40, y: 80 };
+    const RIVAL = { x: 100, y: 80 };
+    const sim = seats(HQ, [RIVAL]);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: HQ.x + 24,
+      y: HQ.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    const line = seatFrontLine(sim.world, ctxOf(sim), SEAT, ownedBuildings(sim.world, SEAT));
+    const halfway = HQ.x + ((RIVAL.x - HQ.x) * LINE_MAX_SHARE_PCT) / 100;
+    expect(line?.slots(FRONT_LINE_DEPTH_NODES, 1)[0]).toEqual({ hx: halfway, hy: HQ.y });
+    expect(line?.beyond(halfway + 1, HQ.y)).toBe(true);
+    expect(line?.beyond(halfway, HQ.y)).toBe(false);
   });
 
   it("faces the rival when the forecast attacks set out from the seat's own base", () => {

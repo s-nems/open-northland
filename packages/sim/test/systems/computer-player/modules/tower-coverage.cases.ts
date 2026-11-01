@@ -7,6 +7,7 @@ import type { EnemyFire } from '../../../../src/systems/ai-shared/military/defen
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
   FRONT_LINE_DEPTH_NODES,
+  LINE_MAX_SHARE_PCT,
   scheduledTowers,
   TOWER_UPGRADE_QUIET_TICKS,
   towerUpgradeWaits,
@@ -164,6 +165,8 @@ describe('build-order tower and store coverage', () => {
     );
   });
 
+  /** The map's east edge, where {@link raidedFromEast}'s spearmen spawn. */
+  const RAID_X = 63;
   /** A seat raided at `tick` by spearmen spawned at the map's east edge, with the context that forecasts it. */
   const raidedFromEast = (sim: Simulation, tick = 0) => {
     const anchor = seatTerritoryOf(mapBriefOf(sim.world), SEAT)?.anchor;
@@ -175,7 +178,7 @@ describe('build-order tower and store coverage', () => {
         player: RAIDER,
         tribe: VIKING,
         job: SPEARMAN,
-        point: { hx: 63, hy: HQ_Y },
+        point: { hx: RAID_X, hy: HQ_Y },
         humanId: 1,
         behaviour: 0,
         amount: 6,
@@ -222,11 +225,11 @@ describe('build-order tower and store coverage', () => {
       towerPlan(sim.world, ctx, SEAT, owned, { ...tower, wants: { village, front } })?.short ?? [];
     // Wants the HQ meets leave nothing short.
     expect(planOf(hq.value, hq.value)).toEqual([]);
-    // A front want past it offers the slot straight ahead of the base toward the raid and the home beyond
-    // the line; the homes behind it hold the village want.
+    // A front want past it offers the slot straight ahead of the base toward the raid, halfway to the raid
+    // on this narrow map, and the home beyond the line; the homes behind it hold the village want.
     const front = planOf(hq.value, 2 * hq.value);
     expect(front.map((t) => t.node)).toEqual([
-      { hx: HQ_X + FRONT_LINE_DEPTH_NODES, hy: HQ_Y },
+      { hx: HQ_X + Math.round(((RAID_X - HQ_X) * LINE_MAX_SHARE_PCT) / 100), hy: HQ_Y },
       { hx: BEYOND.x, hy: BEYOND.y },
     ]);
     expect(front.every((t) => t.front && t.want === 2 * hq.value && t.has === hq.value)).toBe(true);

@@ -21,20 +21,26 @@ import { nearestEnemyBuilding } from '../sea-route.js';
 export const TOWER_CONTENT_IDS: readonly string[] = ['tower_00', 'tower_01'];
 
 /** How far ahead of the seat's base its tower line stands toward the attacks, in world-metric nodes
- *  (authored): inside a cramped seat's build reach on every heading (29 rows straight north), with the
- *  base's own workshops behind it. Buildings already reaching past it move the line out by whole steps of
- *  this depth, so one stray building does not shift every slot: on a scripted front only the seat's start
- *  buildings, since a building the economy places beyond the line when nothing fits behind it would
- *  otherwise walk the line out step by step (on mroczny_las 75 rows north of the base by minute 60). */
-export const FRONT_LINE_DEPTH_NODES = 16;
+ *  (owner ruling: the line stands well forward, so the seat claims room toward the rival and its town
+ *  grows behind the towers; authored figure: half again the depth that left the town of a specjalna_forteca
+ *  or mroczny_las seat cramped behind its towers). Buildings already reaching past it move the line out
+ *  by whole steps of this depth, so one stray building does not shift every slot: on a scripted front only
+ *  the seat's start buildings, since a building the economy places beyond the line when nothing fits
+ *  behind it would otherwise walk the line out step by step (on mroczny_las 75 rows north of the base by
+ *  minute 60). */
+export const FRONT_LINE_DEPTH_NODES = 24;
 
 /** How far ahead of the seat's farthest building toward its nearest rival that rival's line stands at
  *  least, and the steps it moves out by, in world-metric nodes (authored, owner ruling: the line stands
- *  forward so the town grows behind it). The farthest building then stands 10 to 17 nodes behind the
- *  line, well inside a tower's defence circle (the house bow's 29 map points), where a rounding to whole
- *  {@link FRONT_LINE_DEPTH_NODES} left it 0 to 16 behind. */
-export const RIVAL_LINE_ADVANCE_NODES = 10;
+ *  well forward so the town grows behind it). The farthest building then stands 16 to 23 nodes behind the
+ *  line, inside a tower's defence circle (the house bow's 29 map points) across the heading. */
+export const RIVAL_LINE_ADVANCE_NODES = 16;
 const RIVAL_LINE_STEP_NODES = 8;
+
+/** The farthest share of the way from the base to where the line faces, in percent (owner ruling: towers
+ *  stand forward but never in the rival's reach): half, so two rivals' lines never cross, and toward a
+ *  rival the way ends at the building the line faces, one the seat knows of, never one hidden in the fog. */
+export const LINE_MAX_SHARE_PCT = 50;
 
 /** Towers the seat wants standing, sites included, from {@link TOWER_LEAD_TICKS} before its first
  *  deadline, and how many more from that lead before each later one (owner ruling: the towers finish a
@@ -210,7 +216,8 @@ function baseNode(world: World, ctx: SystemContext, player: number): HalfCellNod
  * The line across the heading from `base` to `origin`, {@link FRONT_LINE_DEPTH_NODES} ahead of the base,
  * or as many whole depths further as the farthest of `depthFrom` stands; null when the two coincide.
  * Without `depthFrom`, toward a rival, it stands {@link RIVAL_LINE_ADVANCE_NODES} past the farthest of
- * `owned` other than its towers, rounded out to whole steps. The slots span the width of `owned`.
+ * `owned` other than its towers, rounded out to whole steps. Either way it stands no farther than
+ * {@link LINE_MAX_SHARE_PCT} of the way to `origin`. The slots span the width of `owned`.
  * Integer px arithmetic with truncating division, byte-identical across engines.
  */
 export function frontLine(
@@ -244,13 +251,14 @@ export function frontLine(
   }
   for (const node of depthFrom ?? []) farthest = Math.max(farthest, ahead(node.hx, node.hy));
   const rivalStepPx = RIVAL_LINE_STEP_NODES * NODE_STEP_PX;
-  const depthPx =
+  const wantedPx =
     depthFrom === undefined
       ? Math.max(
           stepPx,
           rivalStepPx * Math.ceil((farthest + RIVAL_LINE_ADVANCE_NODES * NODE_STEP_PX) / rivalStepPx),
         )
       : stepPx * Math.max(1, Math.ceil(farthest / stepPx));
+  const depthPx = Math.min(wantedPx, Math.trunc((length * LINE_MAX_SHARE_PCT) / 100));
   return {
     scripted,
     beyond: (x, y) => ahead(x, y) > depthPx,

@@ -649,6 +649,16 @@ describe('build-order placement - affinity and ground rules', () => {
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(160, 32) });
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
     placeHq(sim);
+    // A start home inside the line, so the seat's build reach stretches past it.
+    const HOME_X = HQ_X + FRONT_LINE_DEPTH_NODES / 2;
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: HOME_TYPE,
+      x: HOME_X,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     makeAiSeat(sim, SEAT);
     sim.step();
     const anchor = seatTerritoryOf(mapBriefOf(sim.world), SEAT)?.anchor;
