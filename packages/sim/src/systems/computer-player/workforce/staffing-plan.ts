@@ -1,4 +1,5 @@
 import type { BuildingType, ContentSet } from '@open-northland/data';
+import { playerPlacementTribes, Settler } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import {
@@ -6,8 +7,11 @@ import {
   goodTypeByContentId,
   tiersAtOrAbove,
 } from '../../ai-shared/content-lookup.js';
+import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
+import { jobEnabled } from '../../progression/index.js';
+import { isCarrierJob } from '../../stores/index.js';
 import { breadChainSupplier } from '../build-order/food-first.js';
 import { seatHasSide, TUNIC_SIDES } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
@@ -146,6 +150,7 @@ export function buildingStaffing(
     };
   if (!opening && productsRest(world, ctx, seat, building, type, held.operators))
     plan = withoutCarriers(capOperators(plan, 0));
+  if (held.operators === 0 && !craftPostFillable(world, ctx, seat, type)) plan = withoutHelpers(plan);
   return plan;
 }
 
@@ -159,6 +164,51 @@ function breadSupplyPending(ctx: SystemContext, seat: SeatStaffing, type: Buildi
     productsOf(ctx, type).every((good) => seat.supply.units(good) <= 0)
   );
 }
+
+/** `plan` with no carrier and no gatherer: the posts that only serve a craftsman. */
+function withoutHelpers(plan: BuildingStaffing): BuildingStaffing {
+  return { ...withoutCarriers(plan), gathererTarget: 0, gathererSurplus: 0 };
+}
+
+/**
+ * Whether a craft post of a workplace with one can be filled: one of its operator trades is discovered
+ * for the seat, or a man of the seat holds it. Owner ruling: a workshop standing ahead of its trade, as one
+ * a map's papers raise, posts no carrier or gatherer until its craftsman can be posted, since they have
+ * nothing to do there without him. A carrier-only workplace (the well, the hive) has no craft post to wait on.
+ */
+function craftPostFillable(
+  world: World,
+  ctx: SystemContext,
+  seat: SeatStaffing,
+  type: BuildingType,
+): boolean {
+  const index = contentIndex(ctx.content);
+  const tribe = playerPlacementTribes(world, seat.player)?.[0];
+  let craftSlot = false;
+  for (const slot of type.workers) {
+    if (isCarrierJob(ctx, slot.jobType) || index.harvestJobs.has(slot.jobType)) continue;
+    craftSlot = true;
+    if (tribe !== undefined && jobEnabled(world, ctx, seat.player, tribe, slot.jobType)) return true;
+    if (heldTradesOf(world, seat).has(slot.jobType)) return true;
+  }
+  return !craftSlot;
+}
+
+/** The trades the seat's men hold this decision, gathered once per {@link SeatStaffing}. */
+function heldTradesOf(world: World, seat: SeatStaffing): ReadonlySet<number> {
+  let trades = heldTradesBySeat.get(seat);
+  if (trades === undefined) {
+    trades = new Set();
+    for (const e of ownedSettlers(world, seat.player)) {
+      const job = world.get(e, Settler).jobType;
+      if (job !== null) trades.add(job);
+    }
+    heldTradesBySeat.set(seat, trades);
+  }
+  return trades;
+}
+
+const heldTradesBySeat = new WeakMap<SeatStaffing, Set<number>>();
 
 function withoutCarriers(plan: BuildingStaffing): BuildingStaffing {
   return { ...plan, carrierMin: 0, carrierTarget: 0, carrierSurplus: 0 };

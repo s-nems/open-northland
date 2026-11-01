@@ -67,6 +67,7 @@ import { aiContent } from '../../../fixtures/ai-content.js';
 import {
   ANIMAL_FARM_TYPE,
   aiSim,
+  BAKER,
   BAKERY_TYPE,
   BARRACKS_TYPE,
   BUILDER,
@@ -1135,5 +1136,62 @@ describe('workforce module - the barracks, tailor, animal farm and joinery porte
     expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 1, carrierTarget: 1 });
     seatEconomy(seat.sim, 'standard', ['naturalArms']);
     expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 2, carrierTarget: 1 });
+  });
+});
+
+describe('workforce module - a workshop ahead of its trade', () => {
+  /** The miller's general track, on which the baker is earned. */
+  const MILLER_TRACK = 90;
+
+  /** The AI content with the baker earned from the miller's work, a trade nobody of the seat holds. */
+  function bakerGatedContent(): ContentSet {
+    const base = aiContent();
+    return parseContentSet({
+      ...base,
+      jobExperience: [
+        ...base.jobExperience,
+        { typeId: MILLER_TRACK, id: 'miller_general', jobType: MILLER, goodTypes: [], experienceFactor: 100 },
+      ],
+      tribes: base.tribes.map((t) =>
+        t.typeId !== VIKING
+          ? t
+          : {
+              ...t,
+              jobEnables: [...t.jobEnables, { jobType: MILLER, kind: 'job' as const, targetId: BAKER }],
+              jobRequirements: [
+                ...t.jobRequirements,
+                {
+                  requirement: 'need' as const,
+                  target: 'job' as const,
+                  targetId: BAKER,
+                  amount: 10,
+                  experienceTypes: [MILLER_TRACK],
+                },
+              ],
+            },
+      ),
+    });
+  }
+
+  it('posts no carrier at a bakery until a baker can be posted there or works there', () => {
+    const content = bakerGatedContent();
+    const seat = seatOn(content, [BAKERY_TYPE], BUILDER_CAP + SPARE_MEN);
+    const bakery = entityOfBuilding(seat.sim, BAKERY_TYPE);
+    const carriersOf = (held: HeldStaff) => {
+      const plan = planOf(seat, content, bakery, held);
+      return { min: plan.carrierMin, target: plan.carrierTarget };
+    };
+    expect(carriersOf(crewOf(0))).toEqual({ min: 0, target: 0 });
+    expect(
+      seat
+        .decide()
+        .filter((c) => c.kind === 'assignWorker' && c.building === bakery && c.jobPriority[0] === CARRIER),
+    ).toEqual([]);
+    // A baker at work keeps his carrier.
+    expect(carriersOf(crewOf(1))).toEqual({ min: 1, target: 1 });
+    // A man of the seat holding the trade can be posted, so the carrier comes with him.
+    spawnMen(seat.sim, 1, BAKER);
+    seat.sim.step();
+    expect(carriersOf(crewOf(0))).toEqual({ min: 1, target: 1 });
   });
 });
