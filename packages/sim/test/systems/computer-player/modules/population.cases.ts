@@ -15,7 +15,10 @@ import type { Entity } from '../../../../src/ecs/world.js';
 import type { Simulation } from '../../../../src/index.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
 import { populationModule } from '../../../../src/systems/computer-player/index.js';
-import { IDLE_MEN_HOLD_BIRTHS } from '../../../../src/systems/computer-player/population.js';
+import {
+  IDLE_MEN_HOLD_BIRTHS,
+  MEN_PROPOSE_UNTIL_TICKS,
+} from '../../../../src/systems/computer-player/population.js';
 import { builderCap } from '../../../../src/systems/computer-player/workforce/staffing.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
@@ -119,7 +122,7 @@ describe('population module (homeExpansion)', () => {
     expect(weddings.map((c) => c.entity)).toEqual(menOf(sim));
   });
 
-  it('weds single builders first, and every woman still marries', () => {
+  it('weds single builders first in the opening, then from the women side, and every woman marries', () => {
     const sim = aiSim();
     placeHq(sim);
     for (let i = 0; i < 2; i++) {
@@ -139,6 +142,10 @@ describe('population module (homeExpansion)', () => {
     const [civilist] = menOf(sim).filter((e) => e !== builder);
     const opening = [...populationModule.run(sim.world, ctxOf(sim), SEAT)].filter((c) => c.kind === 'marry');
     expect(opening.map((c) => c.entity)).toEqual([builder, civilist]);
+
+    const later = { ...ctxOf(sim), tick: MEN_PROPOSE_UNTIL_TICKS };
+    const after = [...populationModule.run(sim.world, later, SEAT)].filter((c) => c.kind === 'marry');
+    expect(after.map((c) => c.entity)).toEqual(womenOf(sim));
 
     for (let i = 0; i < 3000 && womenOf(sim).some((w) => !sim.world.has(w, Marriage)); i++) {
       for (const c of populationModule.run(sim.world, ctxOf(sim), SEAT))

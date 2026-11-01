@@ -22,9 +22,15 @@ import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import { type ComputerProfile, computerProfileOf, shareOf } from './difficulty.js';
 import { bookedBirths, femaleStockOf } from './female-stock.js';
+import { minutesToTicks } from './game-phase.js';
 import type { ComputerModule } from './index.js';
 import { seatEarningTrades } from './technology/apprentices.js';
 import { builderCap } from './workforce/staffing.js';
+
+/** Until when the seat's weddings go out from the men's side in husband order, in ticks (owner ruling:
+ *  builders take the wives in the first 30 game minutes). Later the women's side orders, each bride
+ *  taking the man nearest her, so no bride walks out to a builder on a far site. */
+export const MEN_PROPOSE_UNTIL_TICKS = minutesToTicks(30);
 
 /** How many idle men beyond the builder reserve hold the sons counter at zero (authored). */
 export const IDLE_MEN_HOLD_BIRTHS = 3;
@@ -44,17 +50,19 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));
 
   // One marry order per possible couple, capped by the smaller side so the command log does not fill with
-  // orders that would only auto-cancel. Every order goes from the men's side in husband order, each man
-  // wedding the woman nearest him, so a woman's order never picks the farmer only because he stands
-  // nearest.
+  // orders that would only auto-cancel. In the opening every order goes from the men's side in husband
+  // order, each man wedding the woman nearest him, so a woman's order never picks the farmer only because
+  // he stands nearest; the rest go from the women's side.
   const singleWomen = women.filter((e) => mayMarry(world, ctx.content, e));
   const singleMen = settlers.filter(
     (e) => !world.has(e, Female) && isAdultSettler(world, e) && mayMarry(world, ctx.content, e),
   );
   const orders = Math.min(singleWomen.length, singleMen.length);
-  if (orders > 0)
-    for (const man of husbandOrder(world, ctx, player, singleMen).slice(0, orders))
-      commands.push({ kind: 'marry', entity: man });
+  if (orders > 0) {
+    const proposers =
+      ctx.tick < MEN_PROPOSE_UNTIL_TICKS ? husbandOrder(world, ctx, player, singleMen) : singleWomen;
+    for (const e of proposers.slice(0, orders)) commands.push({ kind: 'marry', entity: e });
+  }
 
   // A married, unhoused woman's family takes the first free family slot, in canonical order; slots
   // claimed this decision are tracked so two families never target the same one.
