@@ -3,8 +3,7 @@
 **Area:** app · **Focus:** in-game UI redesign · **Priority:** P2
 
 **Blocked by:** [statistics-window](ingame-ui-statistics-window.md),
-[knowledge-dependencies](ingame-ui-knowledge-dependencies.md),
-[map-overview](ingame-ui-map-overview.md)
+[knowledge-dependencies](ingame-ui-knowledge-dependencies.md)
 
 Panels landed one at a time; one end-to-end pass has to catch inconsistent styles, remaining functional
 gaps and obsolete routes.

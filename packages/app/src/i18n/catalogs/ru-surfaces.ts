@@ -409,6 +409,7 @@ export const ruSurfaces = {
         statistics: 'Окно статистики',
         mission: 'Окно миссии',
         diplomacy: 'Окно дипломатии',
+        diplomacyMap: 'Дипломатическая карта',
         knowledge: 'Окно знаний',
         network: 'Окно сети (сетевая игра)',
         actionRing: 'Круговое меню действий',

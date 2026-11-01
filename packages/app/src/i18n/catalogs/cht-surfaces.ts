@@ -360,6 +360,7 @@ export const chtSurfaces = {
         statistics: '統計視窗',
         mission: '任務視窗',
         diplomacy: '外交視窗',
+        diplomacyMap: '外交地圖',
         knowledge: '知識視窗',
         network: '網路視窗（多人遊戲）',
         actionRing: '單位動作環',

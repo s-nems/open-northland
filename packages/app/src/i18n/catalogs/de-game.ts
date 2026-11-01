@@ -40,6 +40,14 @@ export const deGame = {
     },
     armyOrderLimit:
       'Wähle höchstens {limit} Einheiten für einen Befehl aus. Keine Einheit hat diesen Befehl erhalten.',
+    diplomacyMap: {
+      title: 'Diplomatiekarte',
+      theirs: 'Sie:',
+      ours: 'Du:',
+      own: 'Dein Stamm',
+      unknown: 'Position unbekannt:',
+      openDiplomacy: 'Diplomatie öffnen',
+    },
     mapOverlays: {
       label: 'Einblendungen auf der Hauptkarte',
       signposts: 'Wegweiser',
@@ -48,6 +56,7 @@ export const deGame = {
     },
     minimap: {
       label: 'Minikarte',
+      overview: 'Diplomatiekarte',
       interaction:
         'Klicke oder ziehe, um die Kamera zu bewegen. Scrolle, um den Zoom der Minikarte zu ändern. Ziehe mit der mittleren Maustaste, um den vergrößerten Kartenausschnitt zu verschieben.',
       zoomIn: 'Vergrößern',
@@ -238,6 +247,7 @@ export const deGame = {
       enemy: 'feindlich',
     },
     diplomacyWindow: {
+      map: 'Diplomatiekarte',
       nations: 'Stämme',
       attitude: 'Verhältnis',
       theirs: 'Verhältnis zu dir',

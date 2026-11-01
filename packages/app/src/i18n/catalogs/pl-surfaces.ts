@@ -373,6 +373,7 @@ export const plSurfaces = {
         statistics: 'Okno statystyk',
         mission: 'Okno misji',
         diplomacy: 'Okno dyplomacji',
+        diplomacyMap: 'Mapa Dyplomacji',
         knowledge: 'Okno wiedzy',
         network: 'Okno sieci (gra sieciowa)',
         actionRing: 'Menu akcji jednostki',

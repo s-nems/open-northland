@@ -413,6 +413,7 @@ export const deSurfaces = {
         statistics: 'Statistik',
         mission: 'Missionsfenster',
         diplomacy: 'Diplomatie',
+        diplomacyMap: 'Diplomatiekarte',
         knowledge: 'Wissensfenster',
         network: 'Netzwerkfenster (Mehrspieler)',
         actionRing: 'Aktionsring der Einheit',

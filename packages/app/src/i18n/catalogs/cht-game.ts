@@ -23,6 +23,14 @@ export const chtGame = {
       },
     },
     armyOrderLimit: '一道命令最多只能選取 {limit} 個單位。沒有任何單位收到這道命令。',
+    diplomacyMap: {
+      title: '外交地圖',
+      theirs: '對方:',
+      ours: '你:',
+      own: '你的民族',
+      unknown: '位置未知:',
+      openDiplomacy: '開啟外交',
+    },
     mapOverlays: {
       label: '主地圖疊加層',
       signposts: '路標',
@@ -31,6 +39,7 @@ export const chtGame = {
     },
     minimap: {
       label: '小地圖',
+      overview: '外交地圖',
       interaction: '點擊或拖曳以移動鏡頭。捲動滾輪以縮放小地圖。按住滑鼠中鍵拖曳可平移放大後的地圖。',
       zoomIn: '放大',
       zoomOut: '縮小',
@@ -200,6 +209,7 @@ export const chtGame = {
       enemy: '敵對',
     },
     diplomacyWindow: {
+      map: '外交地圖',
       nations: '民族',
       attitude: '態度',
       theirs: '對方的態度',

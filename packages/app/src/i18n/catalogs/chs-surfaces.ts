@@ -360,6 +360,7 @@ export const chsSurfaces = {
         statistics: '统计窗口',
         mission: '任务窗口',
         diplomacy: '外交窗口',
+        diplomacyMap: '外交地图',
         knowledge: '知识窗口',
         network: '网络窗口（多人游戏）',
         actionRing: '单位行动环',

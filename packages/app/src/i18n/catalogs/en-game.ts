@@ -36,6 +36,14 @@ export const enGame = {
       },
     },
     armyOrderLimit: 'Select at most {limit} units for one order. No units received this order.',
+    diplomacyMap: {
+      title: 'Diplomacy map',
+      theirs: 'They:',
+      ours: 'You:',
+      own: 'Your tribe',
+      unknown: 'Location unknown:',
+      openDiplomacy: 'Open diplomacy',
+    },
     mapOverlays: {
       label: 'Main map overlays',
       signposts: 'Signposts',
@@ -44,6 +52,7 @@ export const enGame = {
     },
     minimap: {
       label: 'Minimap',
+      overview: 'Diplomacy map',
       interaction:
         'Click or drag to move the camera. Scroll to zoom the minimap. Drag with the middle mouse button to pan the zoomed map.',
       zoomIn: 'Zoom in',
@@ -215,6 +224,7 @@ export const enGame = {
       enemy: 'hostile',
     },
     diplomacyWindow: {
+      map: 'Diplomacy map',
       nations: 'Tribes',
       attitude: 'Attitude',
       theirs: 'Their attitude',

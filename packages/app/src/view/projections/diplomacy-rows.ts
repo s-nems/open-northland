@@ -1,6 +1,7 @@
 import type { MapRelationFlag } from '@open-northland/data';
 import type { DiplomacyState, OpenTribute, TradeOffer } from '@open-northland/sim';
 import { PLAYER_SWATCH_COLORS } from '../../catalog/roster.js';
+import type { DiplomacyMapNation } from '../../hud/diplomacy-map/labels.js';
 import type {
   DeclarationBlock,
   DiplomacyGood,
@@ -101,6 +102,48 @@ export function diplomacyMetSeats(
     player,
     towardYou: sim.diplomacyStance(player, opts.localPlayer),
   }));
+}
+
+/** What the diplomacy map labels: the viewer's own nation and the players the window lists. A spectator
+ *  stands in no relation to anyone, so a whole-map view names the nations without stances. */
+export function diplomacyMapNations(
+  sim: Pick<DiplomacySimView, 'hasMetPlayer' | 'diplomacyStance'>,
+  opts: Pick<
+    DiplomacyRosterOptions,
+    | 'localPlayer'
+    | 'rosterPlayers'
+    | 'observer'
+    | 'relationFlags'
+    | 'seatNameOf'
+    | 'tribeOf'
+    | 'playerColourOf'
+  >,
+): DiplomacyMapNation[] {
+  const colourOf = opts.playerColourOf ?? ((player: number): number => player);
+  const local = opts.localPlayer;
+  // A whole-map view keeps a seat for its reads, which need not be one of the map's nations.
+  const seated = !opts.observer || opts.rosterPlayers.includes(local);
+  return [...(seated ? [local] : []), ...listedPlayers(sim, opts)].map((player) => {
+    const name = opts.seatNameOf?.(player);
+    const tribe = opts.tribeOf?.(player);
+    const own = player === local && !opts.observer;
+    return {
+      player,
+      ...(name !== undefined ? { name } : {}),
+      ...(tribe !== undefined ? { tribe } : {}),
+      colour: PLAYER_SWATCH_COLORS[colourOf(player)] ?? 0,
+      own,
+      hasPage: player !== local,
+      ...(own || opts.observer
+        ? {}
+        : {
+            relation: {
+              towardYou: sim.diplomacyStance(player, local),
+              yourStance: sim.diplomacyStance(local, player),
+            },
+          }),
+    };
+  });
 }
 
 /** One diplomacy-window row per listed player, each carrying the tributes the viewer owes that player. */

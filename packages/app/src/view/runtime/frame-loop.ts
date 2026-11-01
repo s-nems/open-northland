@@ -21,6 +21,7 @@ import { reportProblem } from '../../diag/report/problem.js';
 import { HUMAN_PLAYER } from '../../game/rules.js';
 import { peaceHoldsUntilTickOf } from '../../game/snapshot/index.js';
 import type { ViewerSeat } from '../../game/viewer-seat.js';
+import type { DiplomacyMap } from '../../hud/diplomacy-map/index.js';
 import type { MinimapHandle } from '../../hud/minimap/index.js';
 import { type BuildingPick, probeOwner, techWaived } from '../../hud/tool-panel/placement.js';
 import { setCanvasCursor } from '../cursors/element.js';
@@ -78,6 +79,7 @@ export interface FrameLoopDeps {
   readonly fogGates: FogGates;
   readonly toolPanel: GameToolPanelHandle;
   readonly minimap: MinimapHandle;
+  readonly diplomacyMap: Pick<DiplomacyMap, 'refresh'>;
   readonly mapOverlay?: SignpostMapOverlay;
   readonly controls: UnitControls;
   readonly worldHover: WorldHover;
@@ -188,6 +190,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     fogGates,
     toolPanel,
     minimap: mountedMinimap,
+    diplomacyMap,
     controls,
     worldHover,
     geometryDebug,
@@ -367,6 +370,7 @@ export function startFrameLoop(loop: FrameLoopDeps): RafLoop {
     // generation change.
     const lostGoals = controls.lostGoals();
     mountedMinimap.update(snap, fogView, lostGoals);
+    diplomacyMap.refresh();
     // Decided here from the host's placement probe and handed over as plain data: the renderer stays a
     // pure projection and never calls back into the host.
     const cursor = placementCursor({

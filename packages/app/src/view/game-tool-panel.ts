@@ -127,6 +127,7 @@ export interface GameToolPanelDeps {
   readonly residents: ResidentsSeam;
   /** The diplomacy window's roster: one row per discovered player. */
   readonly diplomacy: DiplomacySource;
+  readonly diplomacyMap: ToolPanelOptions['diplomacyMap'];
   /** The discovered players and their stance toward the viewer, the message centre's per-tick read. */
   readonly metSeats: () => readonly MetSeat[];
   /** The viewer's fog, null with fog off or the whole map in view. */
@@ -307,6 +308,7 @@ export async function mountGameToolPanel(deps: GameToolPanelDeps): Promise<GameT
     papers: deps.papers,
     residents: deps.residents,
     diplomacy: deps.diplomacy,
+    diplomacyMap: deps.diplomacyMap,
     metSeats: deps.metSeats,
     fogView: deps.fogView,
     ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),

@@ -61,6 +61,7 @@ export interface ToolPanelInputDeps {
   readonly toggleHud: () => void;
   /** Open or close the network window; absent outside a relayed game, which leaves its key alone. */
   readonly toggleNetwork?: () => void;
+  readonly toggleDiplomacyMap: () => void;
   /** Hold the road tool; absent where the game offers none, which leaves its key to the page. */
   readonly roadTool?: () => void;
   /** Hold the palisade wall tool; absent where the game offers none. */
@@ -228,6 +229,7 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
       ['loadGame', deps.openLoad],
       ['saveGame', deps.openSave],
       ['network', deps.toggleNetwork],
+      ['diplomacyMap', deps.toggleDiplomacyMap],
     ];
     for (const [action, run] of pressed) {
       if (run === undefined || !isActionHotkey(e, deps.bindings, action)) continue;

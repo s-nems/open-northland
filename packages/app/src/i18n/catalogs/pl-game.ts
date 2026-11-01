@@ -34,6 +34,14 @@ export const plGame = {
     },
     armyOrderLimit:
       'Zaznacz najwyżej {limit} jednostek do jednego rozkazu. Żadna jednostka nie otrzymała tego rozkazu.',
+    diplomacyMap: {
+      title: 'Mapa Dyplomacji',
+      theirs: 'Ich:',
+      ours: 'Twój:',
+      own: 'Twoje plemię',
+      unknown: 'Położenie nieznane:',
+      openDiplomacy: 'Otwórz Dyplomację',
+    },
     mapOverlays: {
       label: 'Nakładki mapy głównej',
       signposts: 'Drogowskazy',
@@ -42,6 +50,7 @@ export const plGame = {
     },
     minimap: {
       label: 'Minimapa',
+      overview: 'Mapa Dyplomacji',
       interaction:
         'Kliknij lub przeciągnij, aby przesunąć kamerę. Kółko zmienia skalę minimapy. Przeciągnij środkowym przyciskiem, aby przesunąć powiększony wycinek mapy.',
       zoomIn: 'Przybliż',
@@ -209,6 +218,7 @@ export const plGame = {
       enemy: 'wrogi',
     },
     diplomacyWindow: {
+      map: 'Mapa Dyplomacji',
       nations: 'Plemiona',
       attitude: 'Stosunek',
       theirs: 'Ich stosunek',

@@ -6,6 +6,7 @@ import {
   type SceneTerrain,
   type SeenRoadNetwork,
   terrainWorldBounds,
+  type WorldBounds,
 } from '@open-northland/render';
 import type { DiplomacyState, FogView, HalfCellNode, WorldSnapshot } from '@open-northland/sim';
 import { type Application, BufferImageSource, Container, Graphics, Sprite, Texture } from 'pixi.js';
@@ -27,9 +28,11 @@ import type { MinimapFrame } from './frames.js';
 import { createGoalMarks, type GoalNode } from './goal-marks.js';
 import { createMinimapInput } from './input.js';
 import {
+  type MinimapLayout,
   type MinimapSize,
   minimapLayout,
   nextMinimapSize,
+  overviewLayout,
   pointOverMinimap,
   viewportRectOnMinimap,
   visibleMinimapRect,
@@ -44,6 +47,8 @@ const NO_GOALS: readonly GoalNode[] = [];
 
 /** Under the map while the DOM backing loads: the dark wood of the frames' backing. */
 const BACKDROP_COLOUR = 0x2a2018;
+/** How far the overview dims the world around its frame. */
+const OVERVIEW_SCRIM_ALPHA = 0.55;
 /** Wall-clock ms a frame may spend walking a dot plot. A late map's plot costs several ms on a fast
  *  machine and several times that on a weak one, so it spreads over frames into a back raster and shows
  *  whole when done, instead of stalling the frame that starts it. */
@@ -79,6 +84,14 @@ export interface MinimapOptions {
   readonly onJump: (worldX: number, worldY: number) => void;
   readonly onOrder?: (worldX: number, worldY: number, event: MouseEvent) => boolean;
   readonly toScreenPx: (clientX: number, clientY: number) => { x: number; y: number };
+  /** The button over the frame was pressed. */
+  readonly onOverviewButton: () => void;
+}
+
+/** Where the map stands on the screen, for what is drawn over it; a new `layout` object means it moved. */
+export interface MinimapPlacement {
+  readonly layout: MinimapLayout;
+  readonly bounds: WorldBounds;
 }
 
 export interface MinimapHandle {
@@ -89,9 +102,25 @@ export interface MinimapHandle {
   /** Ring an attack at half-cell node `at`. */
   ping(at: HalfCellNode): void;
   setHidden(hidden: boolean): void;
+  /** Spread the map over the screen, or fold it back into its corner. Each place keeps its own zoom and
+   *  pan, and while spread the map answers every press on the screen. */
+  setOverview(open: boolean): void;
+  placement(): MinimapPlacement;
+  /** Hand the keyboard to the button that opens the overview. */
+  focusOverviewButton(): void;
+  /** The element a view drawn over the framed map mounts in. */
+  readonly overviewHost: HTMLElement;
   setUiScale(uiscale: number): Promise<void>;
   setFrame(frame: MinimapFrame): void;
   dispose(): void;
+}
+
+/** The zoom and pan one of the map's two places keeps. */
+interface MinimapView {
+  zoom: number;
+  center: { x: number; y: number };
+  /** The requested focus, which a low zoom may have clamped `center` away from. */
+  zoomFocus: { x: number; y: number };
 }
 
 /** The retained whole-map layers share one transform and one clip, including the fog. */
@@ -100,15 +129,25 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const bounds = terrainWorldBounds(terrain.width, terrain.height);
   let uiScale = opts.uiscale;
   let size: MinimapSize = 'm';
-  let zoom = 1;
-  let center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
-  let zoomFocus = center;
+  const wholeMap = (): MinimapView => {
+    const center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
+    return { zoom: 1, center, zoomFocus: center };
+  };
+  const cornerView = wholeMap();
+  const overviewView = wholeMap();
+  let overview = false;
+  /** The view of the place the map stands in now. */
+  let current = cornerView;
   let filters: MinimapFilters = opts.filters ?? DEFAULT_MINIMAP_FILTERS;
   let hidden = false;
   let hasSeat = opts.viewer() !== null;
   let dirtyDots = true;
-  let base = minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width);
-  let layout = zoomMinimapLayout(base, bounds, zoom, center);
+  const placedLayout = (): MinimapLayout =>
+    overview
+      ? overviewLayout(bounds, app.screen.height, uiScale, app.screen.width)
+      : minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width);
+  let base = placedLayout();
+  let layout = zoomMinimapLayout(base, bounds, current.zoom, current.center);
   /** The shown part of the dot raster, in raster px. */
   let visibleRaster: Rect = { x: 0, y: 0, w: 0, h: 0 };
 
@@ -117,6 +156,8 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   // Its own Pixi render group: the viewport rect redraws on every camera move and the alarms animate
   // every frame, and a redrawn Graphics rebuilds the instructions of the group it sits in.
   container.isRenderGroup = true;
+  const scrim = new Graphics();
+  scrim.visible = false;
   const backdrop = new Graphics();
   const world = new Container();
   const clip = new Graphics();
@@ -124,7 +165,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const goalGraphics = new Graphics();
   /** Shares the world's transform but not its clip: the alarm rings reach past the frame. */
   const unclippedWorld = new Container();
-  container.addChild(backdrop, world, clip, view, goalGraphics, unclippedWorld);
+  container.addChild(scrim, backdrop, world, clip, view, goalGraphics, unclippedWorld);
   const goalMarks = createGoalMarks(goalGraphics);
   world.mask = clip;
   app.stage.addChild(container);
@@ -172,23 +213,23 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   const alarms = createAlarmLayer(world, unclippedWorld, bounds, rasterScale);
 
   const zoomAt = (delta: number, anchor?: { x: number; y: number }): void => {
-    const next = Math.max(1, Math.min(4, zoom * 2 ** (delta / 2)));
-    if (next === zoom) return;
+    const next = Math.max(1, Math.min(4, current.zoom * 2 ** (delta / 2)));
+    if (next === current.zoom) return;
     if (anchor !== undefined) {
-      center = {
-        x: anchor.x + ((center.x - anchor.x) * zoom) / next,
-        y: anchor.y + ((center.y - anchor.y) * zoom) / next,
+      current.center = {
+        x: anchor.x + ((current.center.x - anchor.x) * current.zoom) / next,
+        y: anchor.y + ((current.center.y - anchor.y) * current.zoom) / next,
       };
     } else {
-      if (zoom === 1) {
+      if (current.zoom === 1) {
         const vp = cameraViewport(opts.camera(), app.screen.width, app.screen.height);
-        zoomFocus = { x: (vp.minX + vp.maxX) / 2, y: (vp.minY + vp.maxY) / 2 };
+        current.zoomFocus = { x: (vp.minX + vp.maxX) / 2, y: (vp.minY + vp.maxY) / 2 };
       }
-      center = zoomFocus;
+      current.center = current.zoomFocus;
     }
     // Remember the requested focus even when a low zoom must clamp it away from a map edge.
-    zoomFocus = center;
-    zoom = next;
+    current.zoomFocus = current.center;
+    current.zoom = next;
     dirtyDots = true;
     refreshLayout();
   };
@@ -197,7 +238,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     {
       onZoom: (delta) => zoomAt(delta),
       onReset: () => {
-        zoom = 1;
+        current.zoom = 1;
         dirtyDots = true;
         refreshLayout();
       },
@@ -212,14 +253,18 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       onGround: (ground) => setFilters({ ...filters, ground }),
       onMarkerSize: (markerSize) => setFilters({ ...filters, markerSize }),
       onColours: (colours) => setFilters({ ...filters, colours }),
+      onOverview: opts.onOverviewButton,
     },
     opts.frame,
     opts.overlays,
   );
+  function publishState(): void {
+    chrome.setState({ zoom: current.zoom, size, filters, hasSeat });
+  }
   function setFilters(next: MinimapFilters): void {
     filters = next;
     dirtyDots = true;
-    chrome.setState({ size, zoom, filters, hasSeat });
+    publishState();
     opts.onFiltersChange?.(next);
   }
   let lastPanel = '';
@@ -227,11 +272,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   let screenKey = '';
   function refreshLayout(): void {
     screenKey = `${app.screen.width},${app.screen.height}`;
-    base = minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width);
-    layout = zoomMinimapLayout(base, bounds, zoom, center);
+    base = placedLayout();
+    layout = zoomMinimapLayout(base, bounds, current.zoom, current.center);
     // Keep the effective clamped center: reversing a drag at the boundary moves immediately.
     if (layout.scaleX > 0 && layout.scaleY > 0)
-      center = {
+      current.center = {
         x: bounds.minX + (base.map.x + base.map.w / 2 - layout.map.x) / layout.scaleX,
         y: bounds.minY + (base.map.y + base.map.h / 2 - layout.map.y) / layout.scaleY,
       };
@@ -241,7 +286,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       const { inner } = base;
       backdrop.clear().rect(inner.x, inner.y, inner.w, inner.h).fill(BACKDROP_COLOUR);
       clip.clear().rect(inner.x, inner.y, inner.w, inner.h).fill(0xffffff);
-      setMinimapReserve(plane, hidden ? null : base.panel, uiScale);
+      scrim.clear().rect(0, 0, app.screen.width, app.screen.height).fill({
+        color: 0,
+        alpha: OVERVIEW_SCRIM_ALPHA,
+      });
+      reserveCorner();
       dirtyDots = true;
     }
     const shown = visibleMinimapRect(layout);
@@ -259,7 +308,11 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     const visible = !hidden && layout.scaleX > 0 && layout.scaleY > 0;
     container.visible = visible;
     chrome.setHidden(!visible);
-    chrome.setState({ zoom, size, filters, hasSeat });
+    publishState();
+  }
+  /** The HUD regions keep clear of the map in its corner; the spread map hides them instead. */
+  function reserveCorner(): void {
+    setMinimapReserve(plane, hidden || overview ? null : base.panel, uiScale);
   }
   refreshLayout();
   const input = createMinimapInput({
@@ -272,9 +325,9 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     ...(opts.onOrder === undefined ? {} : { onOrder: opts.onOrder }),
     onZoom: zoomAt,
     onPan: (dx, dy) => {
-      center = { x: center.x + dx, y: center.y + dy };
+      current.center = { x: current.center.x + dx, y: current.center.y + dy };
       refreshLayout();
-      zoomFocus = center;
+      current.zoomFocus = current.center;
     },
   });
   const claimDotReplot = createDotReplotGate(() => performance.now());
@@ -289,6 +342,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   return {
     claimsPointer: (x, y) => {
       if (hidden) return false;
+      if (overview) return true;
       const point = opts.toScreenPx(x, y);
       return pointOverMinimap(layout, point.x, point.y);
     },
@@ -308,7 +362,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       // A spectator can switch between watching a seat and the whole map.
       if ((viewer !== null) !== hasSeat) {
         hasSeat = viewer !== null;
-        chrome.setState({ zoom, size, filters, hasSeat });
+        publishState();
       }
       const seat = fog?.player ?? viewer;
       // A spectator's seat switch changes the scope, colours and fog a plot under way was started with.
@@ -357,8 +411,21 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       container.visible = !next && layout.scaleX > 0 && layout.scaleY > 0;
       chrome.setHidden(!container.visible);
       input.cancel();
-      setMinimapReserve(plane, next ? null : base.panel, uiScale);
+      reserveCorner();
     },
+    setOverview: (open) => {
+      if (overview === open) return;
+      overview = open;
+      current = open ? overviewView : cornerView;
+      scrim.visible = open;
+      input.cancel();
+      chrome.setOverview(open);
+      dirtyDots = true;
+      refreshLayout();
+    },
+    placement: () => ({ layout, bounds }),
+    focusOverviewButton: chrome.focusOverviewButton,
+    overviewHost: chrome.root,
     setUiScale: async (next) => {
       uiScale = next;
       refreshLayout();

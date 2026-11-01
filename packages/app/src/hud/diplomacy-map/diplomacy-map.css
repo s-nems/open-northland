@@ -1,0 +1,172 @@
+/* The spread map stands in the world's place, so the always-on regions step aside; windows stay. */
+.on-hud[data-diplomacy-map="open"] :is(.on-bar, .on-beam, .on-notices, .on-slip, .on-selection) {
+  display: none;
+}
+.on-hud .on-dipmap {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.on-hud .on-dipmap[hidden] {
+  display: none;
+}
+.on-hud .on-dipmap__field {
+  position: absolute;
+  overflow: hidden;
+}
+.on-hud .on-dipmap__title {
+  position: absolute;
+  z-index: 1;
+  top: var(--minimap-rail-center);
+  left: 50%;
+  margin: 0;
+  padding: 7px 34px;
+  border: 1px solid var(--bronze);
+  border-radius: 3px;
+  background:
+    url("../../assets/ui/minimap/wood.webp") 0 0 / 160px 160px,
+    #9c8c7c;
+  background-blend-mode: multiply;
+  box-shadow:
+    0 3px 7px #000a,
+    inset 0 0 0 1px #ead9a533;
+  color: #f4e6c4;
+  font: 600 17px / 1.2 var(--font-title);
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 2px #000;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+}
+.on-hud .on-dipmap__close {
+  position: absolute;
+  z-index: 1;
+  top: -6px;
+  right: -6px;
+  pointer-events: auto;
+}
+.on-hud .on-dipmap__pin {
+  position: absolute;
+  width: 9px;
+  height: 9px;
+  margin: -4.5px 0 0 -4.5px;
+  border: 1px solid #120c07;
+  background: var(--nation-colour);
+  box-shadow: 0 0 0 1px #f4e6c4;
+  rotate: 45deg;
+}
+.on-hud .on-dipmap__pin[hidden] {
+  display: none;
+}
+.on-hud .on-dipmap-plaque {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  min-height: 0;
+  padding: 4px 9px 4px 4px;
+  border: 1px solid #8e7a53;
+  border-radius: 3px;
+  background: linear-gradient(130deg, #2e3a30f0, #16231df0);
+  box-shadow: 0 2px 6px #000a;
+  color: #f1e4c6;
+  text-align: left;
+  pointer-events: auto;
+}
+.on-hud .on-dipmap-plaque[hidden] {
+  display: none;
+}
+.on-hud .on-dipmap-plaque--map {
+  position: absolute;
+  top: 0;
+  left: 0;
+  white-space: nowrap;
+}
+.on-hud .on-dipmap-plaque--own {
+  border-color: var(--bronze);
+}
+.on-hud .on-dipmap-plaque--passive {
+  pointer-events: none;
+}
+.on-hud .on-dipmap-plaque:hover {
+  z-index: 1;
+  border-color: var(--bronze);
+  background: linear-gradient(130deg, #3d4c40, #203228);
+}
+.on-hud .on-dipmap-plaque__emblem {
+  width: 34px;
+  height: 34px;
+  padding: 1px;
+  border-width: 1px;
+  border-radius: 3px;
+}
+.on-hud .on-dipmap-plaque__text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.on-hud .on-dipmap-plaque__name {
+  font: 600 13px / 1.2 var(--font-title);
+}
+.on-hud .on-dipmap-plaque__note,
+.on-hud .on-dipmap-plaque__relation {
+  color: #d9c69c;
+  font: 12px / 1.2 var(--font-body);
+}
+.on-hud .on-dipmap-plaque__note[hidden],
+.on-hud .on-dipmap-plaque__relation[hidden] {
+  display: none;
+}
+.on-hud .on-dipmap-plaque__relation {
+  display: flex;
+  gap: 4px;
+}
+.on-hud .on-dipmap-plaque__relation b {
+  margin-right: 5px;
+  font-weight: 600;
+}
+.on-hud .on-dipmap-plaque__relation b:last-child {
+  margin-right: 0;
+}
+.on-hud .on-dipmap-plaque__relation b[data-stance="friend"] {
+  color: #a9bd8b;
+}
+.on-hud .on-dipmap-plaque__relation b[data-stance="neutral"] {
+  color: #d5b273;
+}
+.on-hud .on-dipmap-plaque__relation b[data-stance="enemy"] {
+  color: #e08a70;
+}
+.on-hud .on-dipmap__unknown {
+  position: absolute;
+  z-index: 1;
+  bottom: var(--minimap-rail-center);
+  left: 50%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px 8px;
+  width: max-content;
+  max-width: calc(100% - 96px);
+  padding: 5px 10px;
+  border: 1px solid var(--bronze);
+  border-radius: 3px;
+  background:
+    url("../../assets/ui/minimap/wood.webp") 0 0 / 160px 160px,
+    #9c8c7c;
+  background-blend-mode: multiply;
+  box-shadow:
+    0 -2px 7px #000a,
+    inset 0 0 0 1px #ead9a533;
+  transform: translate(-50%, 50%);
+}
+.on-hud .on-dipmap__unknown[hidden] {
+  display: none;
+}
+.on-hud .on-dipmap__unknown-label {
+  color: #f0dfb9;
+  font: 600 13px / 1.2 var(--font-title);
+  text-shadow: 0 1px 1px #000;
+  white-space: nowrap;
+}

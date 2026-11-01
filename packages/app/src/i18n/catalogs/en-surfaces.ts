@@ -373,6 +373,7 @@ export const enSurfaces = {
         statistics: 'Statistics window',
         mission: 'Mission window',
         diplomacy: 'Diplomacy window',
+        diplomacyMap: 'Diplomacy map',
         knowledge: 'Knowledge window',
         network: 'Network window (multiplayer)',
         actionRing: 'Unit action ring',

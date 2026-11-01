@@ -760,6 +760,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     },
     signpostPlacementActive: pickMode.signpostActive,
     workFlagPlacementActive: pickMode.flagActive,
+    windowOpen: chrome.windowOpen,
     claimsEscape: () =>
       chrome.actions().state().mode !== 'closed' ||
       chrome.windowOpen() ||

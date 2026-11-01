@@ -48,6 +48,7 @@ export interface MinimapChromeCallbacks {
   readonly onGround: (ground: MinimapGroundMode) => void;
   readonly onMarkerSize: (markerSize: MinimapMarkerSize) => void;
   readonly onColours: (colours: MinimapColourMode) => void;
+  readonly onOverview: () => void;
 }
 
 export interface MinimapChrome {
@@ -56,8 +57,16 @@ export interface MinimapChrome {
   setState(state: MinimapChromeState): void;
   setHidden(hidden: boolean): void;
   setFrame(frame: MinimapFrame): void;
+  /** Dress the frame for the screen-sized map, whose controls sit on its own rails. */
+  setOverview(open: boolean): void;
+  focusOverviewButton(): void;
+  /** Where a view drawn over the framed map mounts, inside the frame's stacking order. */
+  readonly root: HTMLElement;
   dispose(): void;
 }
+
+/** Design px between the frame's outer edge and a filter drawer opened over the overview. */
+const OVERVIEW_DRAWER_INSET = 34;
 
 const icon = (paths: string): string =>
   `<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">${paths}</svg>`;
@@ -66,6 +75,11 @@ const ICONS = {
   plus: icon('<path d="M5 10h10M10 5v10"/>'),
   reset: icon('<path d="M7 3H3v4m10-4h4v4M3 13v4h4m10-4v4h-4"/><rect x="7" y="7" width="6" height="6"/>'),
   filters: icon('<path d="M3 5h14M3 10h14M3 15h14"/><path d="M7 3v4M13 8v4M8 13v4"/>'),
+  // A compass star over a sheet of map folded in three.
+  overview: icon(
+    '<path d="M2 5.2 7 3l6 2.2L18 3v11.8L13 17l-6-2.2L2 17z"/><path d="M7 3v2.4m0 7V14.8M13 5.2v2.2m0 7.2V17" stroke-width="1"/>' +
+      '<path d="m10 5.2 1.4 3.4L14.8 10l-3.4 1.4L10 14.8l-1.4-3.4L5.2 10l3.4-1.4z" fill="currentColor" stroke-width="0.6"/>',
+  ),
   colours: icon('<circle cx="10" cy="10" r="7"/><path d="M10 3a7 7 0 0 0 0 14z" fill="currentColor"/>'),
 };
 const LAYER_ICONS: Readonly<Record<MinimapLayer, string>> = {
@@ -189,6 +203,11 @@ export function createMinimapChrome(
   const frame = element('div', 'on-minimap-chrome__frame');
   frame.setAttribute('aria-hidden', 'true');
   root.append(frame);
+  const overviewButton = button('on-minimap-chrome__button on-minimap-chrome__overview', ICONS.overview);
+  overviewButton.setAttribute('aria-label', copy.overview);
+  setTip(overviewButton, copy.overview);
+  overviewButton.addEventListener('click', callbacks.onOverview);
+  root.append(overviewButton);
   const controls = element('div', 'on-minimap-chrome__controls');
   const control = (name: string, label: string, content: string, action: () => void): HTMLButtonElement => {
     const node = button(`on-minimap-chrome__button on-minimap-chrome__button--${name}`, content);
@@ -306,8 +325,13 @@ export function createMinimapChrome(
     const height = bounds.height / uiScale;
     const drawerWidth = popover.offsetWidth;
     const drawerHeight = popover.offsetHeight;
-    const right = root.offsetLeft + root.offsetWidth + 8;
-    const x = Math.max(4, Math.min(right, width - drawerWidth - 4));
+    const rootRight = root.offsetLeft + root.offsetWidth;
+    // The screen-sized frame leaves no room beside it, so the drawer opens over the map, by its controls.
+    const beside = rootRight + 8;
+    const x =
+      root.dataset.view === 'overview'
+        ? rootRight - drawerWidth - OVERVIEW_DRAWER_INSET
+        : Math.max(4, Math.min(beside, width - drawerWidth - 4));
     let y = root.offsetTop + (root.offsetHeight - drawerHeight) / 2;
     const beam = plane.querySelector<HTMLElement>('.on-beam');
     if (beam?.checkVisibility()) {
@@ -361,6 +385,7 @@ export function createMinimapChrome(
 
   let lastLayout = '';
   return {
+    root,
     setLayout: (panel, visibleMap, scale) => {
       uiScale = scale;
       backing.setLayout(panel, visibleMap, scale);
@@ -433,6 +458,13 @@ export function createMinimapChrome(
     setFrame: (next) => {
       root.dataset.frame = next;
     },
+    setOverview: (open) => {
+      showFilters(false);
+      tips.hide();
+      if (open) root.dataset.view = 'overview';
+      else delete root.dataset.view;
+    },
+    focusOverviewButton: () => overviewButton.focus({ preventScroll: true }),
     dispose: () => {
       showFilters(false);
       document.removeEventListener('pointerdown', onOutsidePress, true);

@@ -242,6 +242,8 @@ export interface UnitControls {
   readonly workFlagPlacementActive: () => boolean;
   /** True while an Escape would land here: the job list is open, a pick is armed or units are selected. */
   readonly claimsEscape: () => boolean;
+  /** True while the trade window stands, which these controls close on Escape. */
+  readonly windowOpen: () => boolean;
   /** The ship whose dock pick is armed, whose mooring spots the frame loop washes onto the map. */
   readonly dockPickVehicle: () => number | null;
   /** Where a dock click at `tile` would moor the ships it orders: the armed dock pick's ship, or the

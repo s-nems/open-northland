@@ -102,6 +102,7 @@ function mount(keyboardOwned?: () => boolean, escapeClaimed?: () => boolean, ctr
     openSave: () => ran.push('save'),
     palisadeTool: () => ran.push('wall'),
     gateTool: () => ran.push('gate'),
+    toggleDiplomacyMap: () => ran.push('diplomacy map'),
     toggleHud: () => {
       hudToggled++;
     },
@@ -288,6 +289,7 @@ describe('tool panel Escape ladder', () => {
       togglePause: () => undefined,
       cycleSpeed: () => undefined,
       toggleHud: () => undefined,
+      toggleDiplomacyMap: () => undefined,
       cue: () => undefined,
     });
     let opened = 0;
@@ -437,6 +439,20 @@ describe('tool panel Escape ladder', () => {
     windowTarget.dispatchEvent(key(networkKey));
     expect(reached).toBe(1);
     expect([cues, ran, navToggled]).toEqual([[], [], []]);
+    input.dispose();
+  });
+
+  it('toggles the diplomacy map on its key, which a modal dialog keeps for its search', () => {
+    const { input, windowTarget, ran } = mount();
+    const mapKey = DEFAULT_KEY_BINDINGS.diplomacyMap;
+    if (mapKey === null) throw new Error('diplomacy map key unbound');
+    const typed = key(mapKey);
+    Object.defineProperty(typed, 'target', { value: new DialogButton() });
+    windowTarget.dispatchEvent(typed);
+    expect(typed.defaultPrevented).toBe(false);
+    expect(ran).toEqual([]);
+    windowTarget.dispatchEvent(key(mapKey));
+    expect(ran).toEqual(['diplomacy map']);
     input.dispose();
   });
 

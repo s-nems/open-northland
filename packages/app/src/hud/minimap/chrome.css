@@ -379,6 +379,29 @@
   display: none;
 }
 
+/* The way into the screen-sized map: a seal on the frame's corner, standing above it. */
+.on-hud .on-minimap-chrome__overview {
+  position: absolute;
+  z-index: 1;
+  top: -13px;
+  right: -9px;
+  width: 36px;
+  height: 36px;
+}
+.on-hud .on-minimap-chrome__overview svg {
+  width: 26px;
+  height: 26px;
+  stroke-width: 1.1;
+}
+.on-hud
+  .on-minimap-chrome[data-view="overview"]
+  :is(.on-minimap-chrome__overview, .on-minimap-chrome__button--size) {
+  display: none;
+}
+.on-hud .on-minimap-chrome[data-view="overview"] .on-map-overlays {
+  left: 72px;
+}
+
 .on-hud .on-map-overlays {
   position: absolute;
   z-index: 1;

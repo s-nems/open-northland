@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { PLAYER_SWATCH_COLORS } from '../../../src/catalog/roster.js';
 import {
   type DiplomacySimView,
+  diplomacyMapNations,
   diplomacyMetSeats,
   diplomacyPanelRows,
   harshestStance,
@@ -245,6 +246,71 @@ describe('diplomacyMetSeats', () => {
     expect(diplomacyMetSeats(sim, { localPlayer: 0, rosterPlayers: [0, 1, 2], observer: false })).toEqual([
       { player: 2, towardYou: 'friend' },
     ]);
+  });
+});
+
+describe('diplomacyMapNations', () => {
+  it('puts the own nation first with no relation and keeps each direction of a met stance', () => {
+    const sim = simView(
+      [[0, 2]],
+      [
+        [2, 0, 'friend'],
+        [0, 2, 'enemy'],
+      ],
+    );
+    const nations = diplomacyMapNations(sim, {
+      localPlayer: 0,
+      rosterPlayers: [2, 0],
+      observer: false,
+      seatNameOf: (p) => (p === 2 ? 'Mieszkańcy Lasu' : undefined),
+    });
+    expect(nations).toEqual([
+      { player: 0, colour: PLAYER_SWATCH_COLORS[0], own: true, hasPage: false },
+      {
+        player: 2,
+        name: 'Mieszkańcy Lasu',
+        colour: PLAYER_SWATCH_COLORS[2],
+        own: false,
+        hasPage: true,
+        relation: { towardYou: 'friend', yourStance: 'enemy' },
+      },
+    ]);
+  });
+
+  it('leaves out an unmet nation and one the map hides', () => {
+    const sim = simView(
+      [
+        [0, 1],
+        [0, 2],
+      ],
+      [],
+    );
+    const nations = diplomacyMapNations(sim, {
+      localPlayer: 0,
+      rosterPlayers: [0, 1, 2, 3],
+      observer: false,
+      relationFlags: [{ kind: 'hide', a: 2, b: 0 }],
+    });
+    expect(nations.map((nation) => nation.player)).toEqual([0, 1]);
+  });
+
+  it('names everyone without an own nation or a relation on a whole-map view', () => {
+    const nations = diplomacyMapNations(simView([], []), {
+      localPlayer: 0,
+      rosterPlayers: [0, 1, 2],
+      observer: true,
+    });
+    expect(nations.map((nation) => nation.player)).toEqual([0, 1, 2]);
+    expect(nations.every((nation) => !nation.own && nation.relation === undefined)).toBe(true);
+  });
+
+  it("leaves out a whole-map view's reading seat when the map has no such nation", () => {
+    const nations = diplomacyMapNations(simView([], []), {
+      localPlayer: 9,
+      rosterPlayers: [1, 2],
+      observer: true,
+    });
+    expect(nations.map((nation) => nation.player)).toEqual([1, 2]);
   });
 });
 

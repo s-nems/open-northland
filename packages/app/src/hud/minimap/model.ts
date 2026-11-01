@@ -27,6 +27,8 @@ const MAX_FRAME_ASPECT = 1.5;
 const NAV_GAP = 6;
 const TOP_SAFE = 70;
 const SELECTION_GAP = 12;
+/** Design px kept free between the overview's frame and the screen edge. */
+const OVERVIEW_MARGIN = 28;
 
 /** Outer geometry in screen px; an impossibly small screen collapses the available map area. */
 function atlasPanel(
@@ -90,7 +92,30 @@ export function minimapLayout(
   screenW: number = Number.POSITIVE_INFINITY,
 ): MinimapLayout {
   const artScale = Math.max(MIN_UI_SCALE, uiscale);
-  const panel = atlasPanel(bounds, screenH, screenW, artScale, size);
+  return framedLayout(atlasPanel(bounds, screenH, screenW, artScale, size), bounds, artScale);
+}
+
+/** The largest frame hugging the whole map, centred on the screen inside the overview's margin. */
+export function overviewLayout(
+  bounds: WorldBounds,
+  screenH: number,
+  uiscale: number,
+  screenW: number,
+): MinimapLayout {
+  const artScale = Math.max(MIN_UI_SCALE, uiscale);
+  const margin = OVERVIEW_MARGIN * artScale;
+  const border = 2 * BORDER * artScale;
+  const fit = Math.min(
+    (screenW - 2 * margin - border) / bounds.width,
+    (screenH - 2 * margin - border) / bounds.height,
+  );
+  if (fit <= 0) return framedLayout({ x: 0, y: screenH, w: 0, h: 0 }, bounds, artScale);
+  const w = bounds.width * fit + border;
+  const h = bounds.height * fit + border;
+  return framedLayout({ x: (screenW - w) / 2, y: (screenH - h) / 2, w, h }, bounds, artScale);
+}
+
+function framedLayout(panel: Rect, bounds: WorldBounds, artScale: number): MinimapLayout {
   const border = Math.min(BORDER * artScale, panel.w / 2);
   const inner: Rect = {
     x: panel.x + border,

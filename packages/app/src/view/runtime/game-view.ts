@@ -72,6 +72,7 @@ import {
 } from '../../game/viewer-seat.js';
 import type { WorldTribes } from '../../game/world-tribes.js';
 import { createProductSelectionCache } from '../../hud/details-panel/model/settler-work.js';
+import { createDiplomacyMap, type DiplomacyMap } from '../../hud/diplomacy-map/index.js';
 import type { DiplomacyPanelRow } from '../../hud/dom/diplomacy-window/model.js';
 import { createGoodIconPainter } from '../../hud/dom/good-art.js';
 import { createHoverCard } from '../../hud/dom/hover-card.js';
@@ -140,6 +141,7 @@ import { nodeBounds } from '../picking.js';
 import { createPlacementGates } from '../placement/gates.js';
 import {
   createFogGates,
+  diplomacyMapNations,
   diplomacyMetSeats,
   diplomacyPanelRows,
   entityAnchor,
@@ -524,6 +526,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     // Assigned right after the tool panel mounts: stage order is draw order, and the minimap window
     // draws over the strip's lower buttons on a short screen.
     let minimap: MinimapHandle | undefined;
+    // Stands on the minimap, so it mounts after it; the panel and the minimap's button reach it here.
+    let diplomacyMap: DiplomacyMap | undefined;
+    let unitWindowOpen: (() => boolean) | undefined;
 
     // Client coords, null off-canvas. Tracked persistently so the frame loop reads it instead of probing
     // the sim on every mousemove.
@@ -706,6 +711,17 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           submit: issueCommand,
         }),
       },
+      diplomacyMap: {
+        open: () => diplomacyMap?.open() === true,
+        // A window of the unit controls stands over the map, and its own Escape comes first.
+        close: () => {
+          if (diplomacyMap?.isOpen() !== true || unitWindowOpen?.() === true) return false;
+          diplomacyMap.close();
+          return true;
+        },
+        toggle: () => diplomacyMap?.toggle(),
+        focus: () => diplomacyMap?.focus() === true,
+      },
       metSeats,
       fogView: fogViewOf,
       canPlaceAt,
@@ -842,6 +858,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
 
     cleanup.push(() => toolPanel.dispose());
+    /** True while the world is what counts: the HUD is hidden, or a held tool works on the ground. */
+    const hudStandsBack = (): boolean =>
+      hudHidden ||
+      toolPanel.controller.placementBuilding() !== null ||
+      toolPanel.controller.palisadeGfxIndex() !== null ||
+      toolPanel.controller.roadActive();
     const gpuAdapter = gpuAdapterName(app);
     const perfReadout = mountPerfReadout({
       app,
@@ -1030,12 +1052,39 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       onJump: jumpToWorld,
       onOrder: (worldX, worldY, event) => overviewPress?.(worldX, worldY, event) ?? false,
       toScreenPx: clientToScreen,
+      onOverviewButton: () => diplomacyMap?.toggle(),
     });
 
     // The minimap and the DOM regions, open windows among them, keep the wheel from zooming under them
     // and narrow the edge-scroll band over them.
     const mountedMinimap = minimap;
     cleanup.push(() => mountedMinimap.dispose());
+    const mountedDiplomacyMap = createDiplomacyMap({
+      plane: hudDom.element,
+      canvas,
+      minimap: mountedMinimap,
+      nations: () =>
+        diplomacyMapNations(diplomacyView, {
+          localPlayer: viewerPlayer(),
+          rosterPlayers: deps.rosterPlayers ?? [],
+          observer: viewer.wholeMap(),
+          tribeOf: seatTribeOf,
+          ...(deps.relationFlags !== undefined ? { relationFlags: deps.relationFlags } : {}),
+          ...(deps.seatNameOf !== undefined ? { seatNameOf: deps.seatNameOf } : {}),
+          ...(deps.playerColourOf !== undefined ? { playerColourOf: deps.playerColourOf } : {}),
+        }),
+      snapshot: () => host.snapshot(),
+      fog: fogViewOf,
+      memory: deps.renderer.fogMemory,
+      paintEmblem: toolPanel.controller.paintNationEmblem,
+      uiScale: hudDom.currentScale,
+      unavailable: hudStandsBack,
+      onNation: toolPanel.controller.showNation,
+      cue: uiCue,
+      now: () => performance.now(),
+    });
+    diplomacyMap = mountedDiplomacyMap;
+    cleanup.push(() => mountedDiplomacyMap.dispose());
     const hudClaims = (clientX: number, clientY: number): boolean =>
       mountedMinimap.claimsPointer(clientX, clientY) || hudDom.claims(clientX, clientY);
     cameraCtl.setPointerGuard(hudClaims);
@@ -1107,11 +1156,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canAttachToVehicle: answers.canAttachToVehicle,
       tradeHouseAttachAnswer: answers.tradeHouseAttachAnswer,
       vehicleAttachAnswer: answers.vehicleAttachAnswer,
-      hintSuppressed: () =>
-        hudHidden ||
-        toolPanel.controller.placementBuilding() !== null ||
-        toolPanel.controller.palisadeGfxIndex() !== null ||
-        toolPanel.controller.roadActive(),
+      hintSuppressed: hudStandsBack,
       cursorHints: storedSettings.cursorHints,
       askAttachToVehicle: answers.askAttachToVehicle,
       askMooring: placementGates.askMooring,
@@ -1153,6 +1198,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     unitSelection = controls;
     residentsProducts = createProductSelectionCache(controls.panelModelContext, answers.versions.technology);
     escapeClaimed = controls.claimsEscape;
+    unitWindowOpen = controls.windowOpen;
     overviewPress = controls.overviewPress;
 
     const {
@@ -1308,12 +1354,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>
-        hudHidden ||
-        toolPanel.controller.placementBuilding() !== null ||
-        toolPanel.controller.palisadeGfxIndex() !== null ||
-        toolPanel.controller.roadActive() ||
-        toolPanel.claimPointer() ||
-        controls.claimsPointer(clientX, clientY),
+        hudStandsBack() || toolPanel.claimPointer() || controls.claimsPointer(clientX, clientY),
     });
 
     cleanup.push(() => worldHover.destroy());
@@ -1472,6 +1513,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       fogGates,
       toolPanel,
       minimap: mountedMinimap,
+      diplomacyMap: mountedDiplomacyMap,
       mapOverlay,
       controls,
       worldHover,

@@ -23,6 +23,14 @@ export const chsGame = {
       },
     },
     armyOrderLimit: '一道命令最多只能选择 {limit} 个单位。没有任何单位收到这道命令。',
+    diplomacyMap: {
+      title: '外交地图',
+      theirs: '对方:',
+      ours: '你:',
+      own: '你的民族',
+      unknown: '位置未知:',
+      openDiplomacy: '打开外交',
+    },
     mapOverlays: {
       label: '主地图图层',
       signposts: '路标',
@@ -31,6 +39,7 @@ export const chsGame = {
     },
     minimap: {
       label: '小地图',
+      overview: '外交地图',
       interaction: '点击或拖动以移动视角。滚动滚轮可缩放小地图。按住鼠标中键拖动可平移放大后的地图。',
       zoomIn: '放大',
       zoomOut: '缩小',
@@ -200,6 +209,7 @@ export const chsGame = {
       enemy: '敌对',
     },
     diplomacyWindow: {
+      map: '外交地图',
       nations: '民族',
       attitude: '立场',
       theirs: '对方立场',

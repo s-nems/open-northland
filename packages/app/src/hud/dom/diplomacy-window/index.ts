@@ -31,9 +31,13 @@ export interface DiplomacyWindowDeps {
   readonly paintEmblem: NationEmblemPainter;
   readonly tooltip: TipChip;
   readonly cue: (cue: UiCue) => void;
+  /** The map button was pressed; false leaves this window open, the map having refused. */
+  readonly onOpenMap: () => boolean;
 }
 
 export interface DiplomacyWindow extends ToolWindow {
+  /** Open on `player`'s page; a player the viewer may not see falls back to the first listed. */
+  showNation(player: number): void;
   refresh(): void;
   onDismiss(listener: () => void): void;
   dispose(): void;
@@ -62,6 +66,8 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
   window.body.classList.add('on-dip-body');
   const place = centralWindowPlacer(window, deps.plane, WIDTH);
   const tips = attachTipLayer(window.element, deps.tooltip);
+  const mapButton = button('on-button on-dip-map');
+  write(mapButton, copy.map);
   const layout = element('div', 'on-dip-layout');
   const nav = element('nav', 'on-dip-nav');
   setAttribute(nav, 'aria-label', copy.nations);
@@ -160,7 +166,9 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     tally,
   );
   layout.append(nav, detail);
-  window.body.append(layout, empty, feedback);
+  const foot = element('div', 'on-dip-foot');
+  foot.append(feedback, mapButton);
+  window.body.append(layout, empty, foot);
 
   function paintEmblem(
     node: HTMLElement,
@@ -193,15 +201,19 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     return { button: control, name, stance, tribute, emblem, picture, identity: '' };
   }
 
+  /** A spectator's change of seat starts the window over. */
+  function followViewer(): void {
+    if (viewer === deps.source.viewer()) return;
+    viewer = deps.source.viewer();
+    selected = null;
+    orders.clear();
+  }
+
   function refresh(): void {
     if (!window.isOpen()) return;
     place();
     tips.refresh();
-    if (viewer !== deps.source.viewer()) {
-      viewer = deps.source.viewer();
-      selected = null;
-      orders.clear();
-    }
+    followViewer();
     rows = deps.source.rows();
     orders.reconcile(rows);
     selected = resolveSelectedPlayer(rows, selected);
@@ -279,16 +291,28 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     window.close();
   };
   window.onDismiss(() => tips.hide());
+  const open = (): void => {
+    window.open();
+    refresh();
+    nations.get(selected ?? -1)?.button.focus({ preventScroll: true });
+  };
+  mapButton.addEventListener('click', () => {
+    const opened = deps.onOpenMap();
+    deps.cue(opened ? 'confirm' : 'fail');
+    if (opened) close();
+  });
   return {
     isOpen: window.isOpen,
     close,
     toggle: () => {
       if (window.isOpen()) close();
-      else {
-        window.open();
-        refresh();
-        nations.get(selected ?? -1)?.button.focus({ preventScroll: true });
-      }
+      else open();
+    },
+    showNation: (player) => {
+      followViewer();
+      selected = player;
+      if (window.isOpen()) refresh();
+      else open();
     },
     refresh,
     onDismiss: window.onDismiss,

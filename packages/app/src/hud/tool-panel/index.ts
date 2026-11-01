@@ -33,7 +33,7 @@ import { type AssistantSource, createAssistantWindow } from '../dom/assistant-wi
 import type { BuildingPanelWindows } from '../dom/building-panel/actions.js';
 import { createBuildingThumbs } from '../dom/building-thumb.js';
 import { createConstructionWindow } from '../dom/construction-window.js';
-import { createNationEmblems } from '../dom/diplomacy-window/emblems.js';
+import { createNationEmblems, type NationEmblemPainter } from '../dom/diplomacy-window/emblems.js';
 import { createDiplomacyWindow } from '../dom/diplomacy-window/index.js';
 import type { DiplomacySource } from '../dom/diplomacy-window/model.js';
 import { ACTION_ART_PX, paintedIcon, RESIDENTS_TOKEN } from '../dom/icons.js';
@@ -164,6 +164,16 @@ export interface ToolPanelOptions {
   readonly residents: ResidentsSeam;
   /** The roster of discovered players, one row each, which the diplomacy window reads while it is open. */
   readonly diplomacy: DiplomacySource;
+  /** The diplomacy map, which mounts after the panel and over the minimap. */
+  readonly diplomacyMap: {
+    /** False when the map may not stand now. */
+    open(): boolean;
+    /** False when the Escape was not the map's to take. */
+    close(): boolean;
+    toggle(): void;
+    /** Give the open map the keyboard; false when it is shut. */
+    focus(): boolean;
+  };
   /** The discovered players and their stance toward the viewer, which the message centre reads a tick. */
   readonly metSeats: () => readonly MetSeat[];
   /** The viewer's fog, null with fog off or the whole map in view: a note about another seat points only
@@ -282,6 +292,9 @@ export interface ToolPanelController {
   readonly uiString: UiString;
   /** The sheet's recoloured-frame cache, shared with the details panels' figure painters. */
   readonly figureFrames: FigureFrames;
+  readonly paintNationEmblem: NationEmblemPainter;
+  /** The diplomacy window on `player`'s page, as a press on the beam opens it. */
+  showNation(player: number): void;
   /** Open the mission book (the map's briefing and goals), as the session start does; on `page` when a
    *  script asked for one, which holds the game while it shows. */
   openMission(page?: number): void;
@@ -516,6 +529,13 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     const goodTypeById = new Map(opts.goods.map((g) => [g.id, g.typeId]));
     const thumbs = createBuildingThumbs(opts.sheet, opts.tribe);
     const figureFrames = new FigureFrames(opts.sheet);
+    const paintNationEmblem = createNationEmblems(
+      opts.sheet,
+      thumbs,
+      figureFrames,
+      opts.nationEmblemType,
+      opts.playerColourOf,
+    );
     const residentFigures = new LiveFigures(opts.sheet, figureFrames, opts.playerColourOf);
     const windows = createToolWindows({
       pendingWindow: (id) => {
@@ -652,13 +672,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           paintGood: opts.assistant.paintGood,
           tooltip: opts.assistant.tooltip,
           cue: ctx.cue,
-          paintEmblem: createNationEmblems(
-            opts.sheet,
-            thumbs,
-            figureFrames,
-            opts.nationEmblemType,
-            opts.playerColourOf,
-          ),
+          paintEmblem: paintNationEmblem,
+          onOpenMap: opts.diplomacyMap.open,
         });
         window.onDismiss(() => focusOwner?.('diplomacy'));
         return window;
@@ -713,7 +728,8 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     });
     domParts.push(nav);
     focusOwner = (id) => {
-      if (id !== null) nav.focus(id);
+      // The beam stands aside for the diplomacy map, so a window closed over it hands the keyboard there.
+      if (id !== null && !opts.diplomacyMap.focus()) nav.focus(id);
     };
 
     let speedHeld = false;
@@ -791,10 +807,11 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     });
     domParts.push(messageCenter);
 
-    // Esc closes the open window and hands focus back to its beam entry.
+    // Esc closes the open window and hands focus back to its beam entry; the diplomacy map is the
+    // rung under the windows, which open over it.
     const closeWindow = (): boolean => {
       const open = windows.openId();
-      if (open === null) return false;
+      if (open === null) return opts.diplomacyMap.close();
       windows.byId[open].close();
       focusOwner?.(navEntryForWindow(open));
       return true;
@@ -847,6 +864,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
             },
           }
         : {}),
+      toggleDiplomacyMap: opts.diplomacyMap.toggle,
       ...(roadOffered
         ? {
             roadTool: () => {
@@ -878,6 +896,9 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     return {
       uiString: ctx.uiString,
       figureFrames,
+      paintNationEmblem,
+      showNation: (player) =>
+        applyNavEntry(surfaces, 'diplomacy', () => windows.byId.diplomacy.showNation(player)),
       openMission: (page) => {
         if (page !== undefined) applyNavEntry(surfaces, 'mission', () => windows.mission.showPage(page));
         else if (!windows.mission.isOpen()) applyNavEntry(surfaces, 'mission');

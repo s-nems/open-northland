@@ -102,8 +102,8 @@ describe('parseStoredSettings', () => {
       autosaveCount: 3,
     } as const;
     expect(
-      parseStoredSettings(JSON.stringify({ ...settings, changedKeyBindings: { pauseToggle: 'KeyO' } })),
-    ).toEqual({ ...settings, keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO' } });
+      parseStoredSettings(JSON.stringify({ ...settings, changedKeyBindings: { pauseToggle: 'KeyJ' } })),
+    ).toEqual({ ...settings, keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyJ' } });
   });
 
   it('falls back per field, not per blob', () => {
@@ -261,9 +261,9 @@ describe('persistSettings', () => {
   it('keeps only the bindings a player changed, so an untouched key follows a new default', () => {
     const blob = storedBlob({
       ...defaultSettings(),
-      keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyO', attackMove: null },
+      keyBindings: { ...DEFAULT_KEY_BINDINGS, pauseToggle: 'KeyJ', attackMove: null },
     });
-    expect(blob.changedKeyBindings).toEqual({ pauseToggle: 'KeyO', attackMove: null });
+    expect(blob.changedKeyBindings).toEqual({ pauseToggle: 'KeyJ', attackMove: null });
     expect('keyBindings' in blob).toBe(false);
     // A full map an earlier build stored is not this format, and holds nobody's choices back.
     expect(parseStoredSettings('{"keyBindings":{"hudToggle":"KeyH"}}').keyBindings).toEqual(
