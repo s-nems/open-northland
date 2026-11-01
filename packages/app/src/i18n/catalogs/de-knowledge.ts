@@ -29,14 +29,7 @@ export const deKnowledge = {
   tree: {
     or: 'oder',
     amount: 'x{amount}',
-    scale: 'Maßstab',
     scaleLabel: 'Maßstab des Baums',
-    goodsUp: 'woraus es entsteht',
-    goodsDown: 'wofür man es braucht',
-    buildingsUp: 'was vorher stehen muss',
-    buildingsDown: 'was es freischaltet',
-    missing: 'Fehlt: {first}',
-    missingMore: 'Fehlt: {first} +{more}',
     mapForbidden: 'auf dieser Karte gesperrt',
     mapForbiddenLong: 'Diese Karte erlaubt dieses Gebäude nicht',
     closePane: 'Eintrag schließen',
@@ -72,7 +65,6 @@ export const deKnowledge = {
   },
   entry: {
     notFound: 'Diesen Eintrag gibt es in den Daten dieses Spiels nicht.',
-    original: 'Beschreibung aus dem Original',
     categories: {
       goods: 'Waren',
       arms: 'Bewaffnung',
@@ -111,14 +103,13 @@ export const deKnowledge = {
       missing: 'Fehlt: {names}',
       missingMore: 'Fehlt: {names} und {more} weitere',
       mapForbidden: 'Diese Karte erlaubt das nicht',
-      stock: 'Im Dorf: {amount}',
     },
     unit: {
       seconds: '{value} s',
       steps: {
-        one: '{value} Schritt',
-        few: '{value} Schritte',
-        many: '{value} Schritte',
+        one: '{value} Hexfeld',
+        few: '{value} Hexfelder',
+        many: '{value} Hexfelder',
       },
     },
     cadence: {
@@ -165,7 +156,6 @@ export const deKnowledge = {
       noArmour: 'Ohne Rüstung',
       slower: 'Langsamer',
       marchNote: 'Mit Schuhen, auf Land. Helden bremst das Gewicht nicht.',
-      wielder: 'Für',
       unlock: 'Freischaltung',
       calculator: 'Im Rechner öffnen',
       notForTribe: 'Dieser Stamm nutzt diese Waffe nicht.',
@@ -179,7 +169,6 @@ export const deKnowledge = {
       slows: 'Bremst',
       slowsNot: 'bremst nicht',
       durability: 'Haltbarkeit',
-      permanent: 'nutzt sich nicht ab',
     },
     good: {
       effect: 'Wirkung',
@@ -218,6 +207,18 @@ export const deKnowledge = {
       },
     },
     building: {
+      aura: {
+        title: 'Aura',
+        lead: 'Wirkt von selbst, sobald der Tempel fertig und unbeschädigt ist. Erfasst alle Leute des Besitzers in Reichweite.',
+        range: 'Reichweite',
+        rangeValue: '{{aura.range}} Hexfelder',
+        health: 'Gesundheit',
+        healthValue: '+{{aura.perSecond}} pro Sekunde, bis {{aura.ceiling}}',
+        piety: 'Religion',
+        pietyValue: '+{{aura.pietyPct}}% pro Sekunde, bis {{need.satedPct}}%',
+        many: 'Mehrere Tempel',
+        manyValue: 'Es wirkt eine Aura, die Werte addieren sich nicht',
+      },
       output: 'Was es herstellt',
       capacity: 'Kapazität',
       perGood: '{amount} je Ware, {count} Waren',
@@ -247,7 +248,12 @@ export const deKnowledge = {
       health: 'Gesundheit',
       footprint: 'Grundfläche',
     },
+    recipe: { inputs: 'Zutaten', outputs: 'Produkt', time: 'Zeit' },
     job: {
+      soldier: 'Soldat',
+      arms: 'Waffen',
+      armsNote:
+        'Es gibt nur einen Soldaten. Seine Klasse hängt an der Waffe in seiner Hand und wechselt mit ihr.',
       does: 'Was er tut',
       opens: 'Schaltet frei:',
       makes: 'Stellt her:',
@@ -326,7 +332,24 @@ export const deKnowledge = {
       absent: 'fehlt',
       present: 'vorhanden',
     },
-    wonder: { inGame: 'Im Spiel', text: 'Kartenschmuck ohne Wirkung' },
+    wonder: {
+      wonder_lighthouse_of_alexandria:
+        'Der Leuchtturm auf der Insel Pharos, errichtet um 280 v. Chr. unter den Ptolemäern. Er war über 100 m hoch und jahrhundertelang eines der höchsten Bauwerke der Welt. Das Feuer auf seiner Spitze wies den Schiffen den Weg in den Hafen. Erdbeben im Mittelalter brachten ihn zum Einsturz.',
+      wonder_gardens_of_semiramis:
+        'Die Terrassengärten von Babylon, bewässert aus dem Euphrat. Die Überlieferung verbindet sie mit Königin Semiramis oder mit Nebukadnezar II., der sie für seine Frau angelegt haben soll, weil sie sich nach den Bergen sehnte. Von den sieben Weltwundern ist es das einzige, dessen Standort nie gefunden wurde.',
+      wonder_rhodos:
+        'Die Statue des Sonnengottes Helios, im 3. Jh. v. Chr. auf Rhodos in Bronze gegossen. Bezahlt wurde sie aus dem Verkauf der Belagerungsmaschinen, die der besiegte Demetrios vor der Stadt zurückgelassen hatte. Sie maß etwa 33 m. Keine 60 Jahre später stürzte sie bei einem Erdbeben ein, und ihre Trümmer lagen noch über 800 Jahre am Boden.',
+      wonder_mausolos:
+        'Das Grabmal des Mausolos, des Herrschers von Karien, um 350 v. Chr. in Halikarnassos errichtet von seiner Frau und Schwester Artemisia. Von seinem Namen kommt das Wort Mausoleum. Es stand mehr als tausend Jahre. Im 15. Jahrhundert verbauten die Johanniter seine Steine in der Burg von Bodrum.',
+      wonder_artemis_temple:
+        'Der Marmortempel von Ephesos, einer der größten der Antike. 356 v. Chr. steckte ihn Herostrat in Brand, nur um in die Geschichte einzugehen. Er wurde noch prächtiger wieder aufgebaut und verschwand endgültig in der Spätantike. Herostrats Name steht bis heute für jemanden, der aus Ruhmsucht zerstört.',
+      wonder_zeus_statue:
+        'Der sitzende Zeus von Olympia, ein Werk des Phidias aus der Zeit um 435 v. Chr. Er war etwa 12 m hoch, der Körper aus Elfenbein, das Gewand aus Gold. Es hieß, stünde der Gott auf, würde er mit dem Kopf das Tempeldach durchstoßen.',
+      wonder_pyramid_of_gizeh:
+        'Das Grab des Pharaos Cheops, um 2560 v. Chr. aus über zwei Millionen Steinblöcken vollendet. Fast 3800 Jahre lang war die Pyramide das höchste Bauwerk der Welt. Sie ist das älteste der sieben Weltwunder und das einzige, das heute noch steht.',
+      wonder_8th_wonder:
+        'Ein Wunder, das keine antike Liste kennt. Die griechischen Verzeichnisse enden bei sieben. Dieses achte entsprang der Fantasie der Macher von Cultures und gab dem ganzen Spiel seinen Titel.',
+    },
     showInTree: 'Im Baum zeigen',
     experience: {
       builder_general: 'Hausbau',
@@ -379,13 +402,13 @@ export const deKnowledge = {
       cart: 'Karren',
       adult: 'Erwachsener',
       child: 'Kind',
-      across: 'Schritte waagerecht',
+      across: 'Hexfelder waagerecht',
       along: 'senkrecht',
-      note: 'Maße in Schritten. Auf dem Bildschirm ist es ein Kreis.',
+      note: 'Maße in Hexfeldern. Auf dem Bildschirm ist es ein Kreis.',
     },
     reach: {
       signpost: 'Wegweiser',
-      link: 'Verbindung: unter {nodes}',
+      link: 'Verbindung: < {nodes}',
       settler: 'Siedler: {nodes}',
       carrier: 'Träger: {nodes}',
       inside: 'In Reichweite',
@@ -411,7 +434,7 @@ export const deKnowledge = {
       straight: '{steps} waagerecht',
       straightUp: '{steps} senkrecht',
       slant: '{steps} schräg',
-      note: 'Ein Schrägschritt geht eine Reihe und eine halbe Spalte weit und zählt daher wie {cost} Schritte.',
+      note: 'Schräg misst ein Hexfeld eine Reihe und eine halbe Spalte und zählt daher wie {cost} Hexfelder.',
     },
     leash: {
       attack: 'Angriff',
@@ -425,7 +448,7 @@ export const deKnowledge = {
     },
     catapultSplash: {
       catapult: 'Katapult',
-      band: 'Reichweite: {min}-{max} Schritte',
+      band: 'Reichweite: {min}-{max} Hexfelder',
       landing: 'Einschlag',
       points: '{count} Punkte',
       full: 'Jeder bekommt den vollen Treffer',

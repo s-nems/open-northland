@@ -48,7 +48,7 @@ export function weaponClassText(weapon: Pick<KnowledgeWeapon, 'mainType'>, unarm
   return isRanged(weapon) ? names.ranged : names.melee;
 }
 
-/** `value` in steps, one step being one half-cell node; `count` picks the plural, the last number read. */
+/** `value` in hexes, one hex being one node of the map's lattice; `count` picks the plural, the last number read. */
 export function stepsText(count: number, value: string = String(count)): string {
   return formatMessage(pluralForm(count, copy().unit.steps, bcp47Tag()), { value });
 }
@@ -147,9 +147,10 @@ export function equipEffects(equip: EquipClass, stepSeconds: (ticks: number) => 
 }
 
 /** How long a worn or drunk good lasts. */
-export function equipDurability(equip: EquipClass): string {
+/** How long a piece lasts; null for one that never wears out. */
+export function equipDurability(equip: EquipClass): string | null {
   const text = copy().equip;
-  if (!equip.wears || equip.uses === undefined) return copy().armour.permanent;
+  if (!equip.wears || equip.uses === undefined) return null;
   if (equip.category === 'boots') return formatMessage(text.usesBoots, { count: wholeText(equip.uses) });
   if (equip.category === 'tool') return formatMessage(text.usesTool, { count: equip.uses });
   return counted(equip.uses, text.usesSip);

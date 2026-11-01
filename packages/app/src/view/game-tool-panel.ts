@@ -23,8 +23,8 @@ import type { NetPanelSource } from '../hud/network/model.js';
 import { CATALOGUE_KINDS, type MenuBuildingEntry } from '../hud/tool-panel/building-menu.js';
 import type { GameSpeedChangeCause, GameSpeedStateSpec } from '../hud/tool-panel/game-speed.js';
 import {
-  mountToolPanel,
   type KnowledgeSource,
+  mountToolPanel,
   type PalisadeTools,
   type ToolPanelController,
   type ToolPanelOptions,

@@ -1,5 +1,6 @@
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { KnowledgeBuilding, KnowledgeGood } from '../../knowledge/base.js';
+import { shownJobName } from '../../knowledge/entry-blocks.js';
 import { amountText, statusText } from '../../knowledge/entry-format.js';
 import type { EntryRef } from '../../knowledge/model.js';
 import { goodIconMarkup } from '../good-art.js';
@@ -82,7 +83,7 @@ export const buildingLink = (building: KnowledgeBuilding): HTMLElement =>
 /** A trade's name, a link when it has a page. */
 export function jobLink(context: KnowledgeContext, jobType: number, name: string): HTMLElement {
   const job = context.base.jobByType.get(jobType);
-  return job === undefined ? node('span', '', name) : textLink(`job:${job.id}`, job.name);
+  return job === undefined ? node('span', '', name) : textLink(`job:${job.id}`, shownJobName(job));
 }
 
 export const links = (items: readonly Child[]): HTMLElement => node('div', 'kn-links', ...items);
@@ -199,16 +200,9 @@ export function statusChip(status: KnowledgeStatus, sayAvailable: boolean): HTML
   return node('p', `kn-chip kn-chip--${status.kind === 'locked' ? 'locked' : 'map'}`, text ?? '');
 }
 
+/** The original game's own words, kept under the entry's name. */
 export function originBlock(help: string | null): EntryBlock | null {
-  if (help === null) return null;
-  return {
-    node: node(
-      'blockquote',
-      'kn-origin',
-      node('span', 'kn-origin__text', help),
-      node('cite', '', copy().original),
-    ),
-  };
+  return help === null ? null : { node: node('blockquote', 'kn-origin', help) };
 }
 
 export function articleLinks(
@@ -285,8 +279,8 @@ export function entryPage(head: EntryHead, blocks: readonly (EntryBlock | null)[
       head.picture ?? head.film?.node ?? null,
       node('div', 'kn-entry__title', node('h2', '', head.title), node('p', '', head.kicker)),
     ),
-    columns,
     ...present.filter((block) => block.node instanceof HTMLQuoteElement).map((block) => block.node),
+    columns,
   );
 }
 

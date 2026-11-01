@@ -84,7 +84,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Gdy nie ma czego zjeść ani gdzie się modlić, osadnik wraca do pracy, a pasek spada dalej. Bez domu w zasięgu {{reach.walk}} kroków śpi na otwartym terenie.',
+          p: 'Gdy nie ma czego zjeść ani gdzie się modlić, osadnik wraca do pracy, a pasek spada dalej. Bez domu w zasięgu {{reach.walk}} hexów śpi na otwartym terenie.',
         },
         {
           p: 'Żołnierz w walce je tylko to, co niesie, albo z zapasu wieży. Rozkaz jedzenia przerywa walkę.',
@@ -179,7 +179,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Co jest w pobliżu', 'Kroki', 'Skutek'],
+            head: ['Co jest w pobliżu', 'Hexy', 'Skutek'],
             rows: [
               ['Walka', 'do {{alert.restClearance}}', 'Nie śpi, nie modli się, nie rozmawia.'],
               ['Widoczny wróg w Ataku lub Obronie', 'do {{alert.standTo}}', 'To samo.'],
@@ -269,9 +269,9 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            'Własna spiżarnia, gdy drzwi domu są najwyżej {{reach.walk}} kroków dalej.',
-            'Najbliższy magazyn, warsztat lub stos na ziemi w zasięgu {{reach.goods}} kroków, albo dojrzały krzew bliżej niż {{reach.bushAtHand}} kroków.',
-            'Najbliższy dojrzały krzew w zasięgu {{reach.goods}} kroków.',
+            'Własna spiżarnia, gdy drzwi domu są najwyżej {{reach.walk}} hexów dalej.',
+            'Najbliższy magazyn, warsztat lub stos na ziemi w zasięgu {{reach.goods}} hexów, albo dojrzały krzew bliżej niż {{reach.bushAtHand}} hexów.',
+            'Najbliższy dojrzały krzew w zasięgu {{reach.goods}} hexów.',
             'Najbliższe jedzenie gdziekolwiek w zasięgu chodu, także daleki własny dom.',
           ],
         },
@@ -315,7 +315,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[article:religion|Aura Świątyni]]',
                 '+{{aura.perSecond}}/s',
-                '{{aura.range}} kroków od [[building:work_temple|Świątyni]]',
+                '{{aura.range}} hexów od [[building:work_temple|Świątyni]]',
                 '{{aura.wholeMin}} min {{aura.restSec}} s',
               ],
               [
@@ -664,7 +664,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Flaga przesuwa się za surowcem, {{assistant.flagMin}}-{{assistant.flagMax}} kroków od niego: [[article:work-flag|Flaga robocza]].',
+          p: 'Flaga przesuwa się za surowcem, {{assistant.flagMin}}-{{assistant.flagMax}} hexów od niego: [[article:work-flag|Flaga robocza]].',
         },
         {
           p: 'Okno "Poddani" liczy braki: domu, miejsca pracy, narzędzi, butów, pary, dzieci, broni, miodu pitnego.',

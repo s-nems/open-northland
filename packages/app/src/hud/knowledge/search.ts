@@ -1,4 +1,5 @@
 import type { KnowledgeBase } from './base.js';
+import { listedJobs, shownJobName } from './entry-blocks.js';
 import type { EntryRef } from './model.js';
 
 /** One row a search can land on; `T` is what the caller opens. */
@@ -43,7 +44,7 @@ export function entrySearchItems(base: KnowledgeBase): readonly SearchItem<Entry
   return [
     ...base.goods.map((g) => item('goods', 'good', g.id, g.name)),
     ...base.buildings.map((b) => item('buildings', 'building', b.id, b.name)),
-    ...base.jobs.map((j) => item('jobs', 'job', j.id, j.name)),
+    ...listedJobs(base).map((j) => item('jobs', 'job', j.id, shownJobName(j))),
     ...base.animals.map((a) => item('animals', 'animal', String(a.tribe), a.name)),
   ];
 }

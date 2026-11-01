@@ -239,7 +239,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Zasięg w krokach. Poniżej dolnej granicy łucznik nie strzela. Cyra u Franków: zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s.',
+            foot: 'Zasięg w hexach. Poniżej dolnej granicy łucznik nie strzela. Cyra u Franków: zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s.',
           },
         },
         {
@@ -262,7 +262,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Niecelna strzała spada do 3 kroków od celu. Od 75 trafień nie zbacza.',
+            'Niecelna strzała spada do 3 hexów od celu. Od 75 trafień nie zbacza.',
             'Niecelna strzała trafia pierwszego wroga na punkcie upadku: człowieka, zwierzę albo pojazd, potem budynek, potem palisadę.',
             'Strzała przelatuje nad swoimi, sojusznikami i neutralnymi.',
             'Żołnierz bierze poprawkę na idący cel. Budynek celuje tam, gdzie cel stoi.',
@@ -311,12 +311,12 @@ export const MILITARY: ArticleGroup = {
                 'Nie odpowiada',
               ],
             ],
-            foot: 'Promienie w krokach. Miejsce postoju to punkt, w którym żołnierz stał przy zmianie postawy. Rozkaz ruchu i ataku go przesuwa.',
+            foot: 'Promienie w hexach. Miejsce postoju to punkt, w którym żołnierz stał przy zmianie postawy. Rozkaz ruchu i ataku go przesuwa.',
           },
         },
         {
           list: [
-            'Żołnierz w Ataku wraca do miejsca postoju, gdy skończy walkę dalej niż {{stance.attackReturn}} kroków od niego.',
+            'Żołnierz w Ataku wraca do miejsca postoju, gdy skończy walkę dalej niż {{stance.attackReturn}} hexów od niego.',
             'Szukanie wroga nie zależy od [[article:fog|mgły]].',
             'Rozkaz ataku działa w każdej postawie.',
             'Łucznik na posterunku strzela do tego, co ma w zasięgu, w każdej postawie.',
@@ -340,14 +340,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Kto', 'Od rannego, kroki', 'Reakcja'],
+            head: ['Kto', 'Od rannego, hexy', 'Reakcja'],
             rows: [
               ['Żołnierze i bohaterowie w Ataku lub Obronie', '{{stance.soldierAlarm}}', 'Idą na napastnika'],
               ['Żołnierze i bohaterowie w Ignorowaniu', '-', 'Biją tylko to, co w zasięgu broni'],
               [
                 'Cywile i Zwiadowcy',
                 '{{stance.peopleAlarm}}',
-                'Uciekają {{stance.fleeMin}}-{{stance.fleeMax}} kroków i wracają do pracy',
+                'Uciekają {{stance.fleeMin}}-{{stance.fleeMax}} hexów i wracają do pracy',
               ],
               ['Ludzie w budynkach', '-', 'Nie reagują, poza łucznikiem na posterunku'],
               ['Cywil śpiący na otwartym terenie', '-', 'Śpi, ucieka tylko uderzony'],
@@ -416,22 +416,10 @@ export const MILITARY: ArticleGroup = {
                 '{{hero.saberReach}}',
               ],
               [
-                '[[job:hero_axe|Bohater Topornik]]',
-                'Topór',
-                '[[good:armor_chain|Kolczuga]]',
-                '{{hero.axeReach}}',
-              ],
-              [
                 '[[job:heroine_bow_xena|Cyra]]',
                 'Łuk',
                 '[[good:armor_leather|Skórzana Zbroja]]',
                 '{{heroBow.min}}-{{heroBow.max}}',
-              ],
-              [
-                '[[job:hero_unarmed|Nieuzbrojony Bohater]]',
-                'Pięści',
-                '[[good:armor_wool|Tunika]]',
-                '{{hero.fistReach}}',
               ],
             ],
             num: [3],
@@ -452,19 +440,9 @@ export const MILITARY: ArticleGroup = {
                 '{{hero.hatchieSaracenBlows}} ciosy co {{hero.hatchieSaracenSeconds}} s',
               ],
               [
-                'Bohater Topornik',
-                'Wiking',
-                'Płytowa {{hero.axeVikingPlate}}, cios co {{hero.axeVikingSeconds}} s',
-              ],
-              [
                 'Cyra',
                 'Frank',
                 'Zasięg {{frankHeroBow.min}}-{{frankHeroBow.max}}, strzał co {{frankHeroBow.seconds}} s, bez pancerza {{hero.frankBowBare}}, Tunika i Skórzana {{hero.frankBowWool}}, Kolczuga i Płytowa {{hero.frankBowChain}}, Budynek i Pojazd {{hero.frankBowVehicle}}',
-              ],
-              [
-                'Nieuzbrojony Bohater',
-                'Bizantyjczyk, Egipcjanin',
-                'Seria {{hero.fistEasternBlows}} ciosów co {{hero.fistEasternSeconds}} s',
               ],
             ],
           },
@@ -562,7 +540,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Zasięg to {{shelter.range}} kroków od najbliższej ściany budynku, bez dolnej granicy.',
+            'Zasięg to {{shelter.range}} hexów od najbliższej ściany budynku, bez dolnej granicy.',
             'Budynek strzela także do wroga we mgle.',
             'Strzały nic nie kosztują i nie dają doświadczenia.',
             'Kolejność celów: żołnierze i bohaterowie, dzikie zwierzęta, budynki, pozostali ludzie.',
@@ -659,7 +637,7 @@ export const MILITARY: ArticleGroup = {
               ['Zamknij', 'Nikt nie przechodzi, także swoi'],
               [
                 'Automatyczny',
-                'Otwarta. Zamyka się, gdy wróg jest do {{wall.gateEnemyNear}} kroków od bramy, potem znów się otwiera',
+                'Otwarta. Zamyka się, gdy wróg jest do {{wall.gateEnemyNear}} hexów od bramy, potem znów się otwiera',
               ],
             ],
             foot: 'W trybie automatycznym liczą się żywi ludzie i pojazdy gracza w stanie wojny, cywile też. Zwierzęta i budynki się nie liczą.',
@@ -730,7 +708,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Cecha', 'Wartość'],
             rows: [
-              ['Zasięg', '{{catapult.min}}-{{catapult.max}} kroki'],
+              ['Zasięg', '{{catapult.min}}-{{catapult.max}} hexy'],
               ['Strzał co', '{{catapult.seconds}} s'],
               ['Zdrowie', '{{catapult.hitpoints}}'],
               ['Załoga', '1 żołnierz albo bohater, z dowolną bronią'],
@@ -810,7 +788,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Celność',
         },
         {
-          p: 'Tabela: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} krokach niecelny kamień zbacza do 3 kroków przy 0 trafień, 2 przy 25, 1 przy 50, 0 od 75. Doświadczenie zbiera dowódca, 1 punkt za kamień, który kogoś zranił.',
+          p: 'Tabela: [[article:aim|Trafienie i strzelanie]]. Na {{catapult.max}} hexach niecelny kamień zbacza do 3 hexów przy 0 trafień, 2 przy 25, 1 przy 50, 0 od 75. Doświadczenie zbiera dowódca, 1 punkt za kamień, który kogoś zranił.',
         },
         {
           h: 'Postawy Katapulty',
@@ -833,7 +811,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Cel bliżej niż {{catapult.min}} kroków: Katapulta odjeżdża. Cel dalej niż {{catapult.max}}: podjeżdża na {{catapult.bandMin}}-{{catapult.max}} kroki.',
+            'Cel bliżej niż {{catapult.min}} hexów: Katapulta odjeżdża. Cel dalej niż {{catapult.max}}: podjeżdża na {{catapult.bandMin}}-{{catapult.max}} hexy.',
             'Strzela tylko z postoju i tylko wtedy, gdy nie styka się z innym pojazdem.',
             'Rozkaz może wskazać punkt na ziemi. Palisadę bije tylko na rozkaz.',
           ],
@@ -964,7 +942,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Odbudowa',
         },
         {
-          p: '"AI mapy" odbudowuje budynki, gdy wroga nie ma do {{ai.rebuildNear}} kroków. Kwatery głównej nie.',
+          p: '"AI mapy" odbudowuje budynki, gdy wroga nie ma do {{ai.rebuildNear}} hexów. Kwatery głównej nie.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

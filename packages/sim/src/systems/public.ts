@@ -55,9 +55,9 @@ export {
 } from './computer-player/knowledge/seat-brief.js';
 // The garrison an acceptance scene pins, and the outfit the real-content plan test resolves.
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './computer-player/military/index.js';
-export { WAVE_GATHER_TICKS, waveBandAt } from './computer-player/military/plan.js';
 // A seat's military operations (the marching wave, raids) as plain data, for a debug view.
 export { type OperationView, seatOperationsOf } from './computer-player/military/operations/index.js';
+export { WAVE_GATHER_TICKS, waveBandAt } from './computer-player/military/plan.js';
 // A seat's strategy (economy, military plan and posture) and the seat brief it was chosen from, and its
 // army, strongest believed enemy and next forecast attack, for a debug view.
 export {
@@ -272,6 +272,7 @@ export {
   atomicDuration,
   atomicDurationForName,
   atomicEventChannelDelta,
+  resolvedAtomicLength,
 } from './readviews/animations.js';
 export {
   combatClassOfType,

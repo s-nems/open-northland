@@ -239,7 +239,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: "Range in steps. An archer won't shoot below the lower limit. Cyra with the Franks: range {{frankHeroBow.min}}-{{frankHeroBow.max}}, a shot every {{frankHeroBow.seconds}} s.",
+            foot: "Range in hexes. An archer won't shoot below the lower limit. Cyra with the Franks: range {{frankHeroBow.min}}-{{frankHeroBow.max}}, a shot every {{frankHeroBow.seconds}} s.",
           },
         },
         {
@@ -262,7 +262,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'A stray arrow lands up to 3 steps from the target. From 75 hits, arrows stop straying.',
+            'A stray arrow lands up to 3 hexes from the target. From 75 hits, arrows stop straying.',
             'A stray arrow hits the first enemy at the landing spot: a person, animal or vehicle, then a building, then a stockade.',
             'Arrows fly over your own side, allies and neutrals.',
             'Soldiers lead a moving target. Buildings aim where the target stands.',
@@ -317,12 +317,12 @@ export const MILITARY: ArticleGroup = {
                 "Doesn't respond",
               ],
             ],
-            foot: 'Radii in steps. The standing point is where the soldier stood when his stance changed. Move and attack orders shift it.',
+            foot: 'Radii in hexes. The standing point is where the soldier stood when his stance changed. Move and attack orders shift it.',
           },
         },
         {
           list: [
-            'A soldier on Attack returns to his standing point if the fight ends more than {{stance.attackReturn}} steps from it.',
+            'A soldier on Attack returns to his standing point if the fight ends more than {{stance.attackReturn}} hexes from it.',
             '[[article:fog|Fog]] does not stop a soldier finding enemies.',
             'An attack order works in every stance.',
             "An archer on post shoots at what's in range, in every stance.",
@@ -346,14 +346,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Who', 'Steps from the wounded', 'Reaction'],
+            head: ['Who', 'Hexes from the wounded', 'Reaction'],
             rows: [
               ['Soldiers and heroes on Attack or Defence', '{{stance.soldierAlarm}}', 'Go for the attacker'],
               ['Soldiers and heroes on Ignorant', '-', "Strike only what's within weapon range"],
               [
                 'Civilians and Scouts',
                 '{{stance.peopleAlarm}}',
-                'Flee {{stance.fleeMin}}-{{stance.fleeMax}} steps and go back to work',
+                'Flee {{stance.fleeMin}}-{{stance.fleeMax}} hexes and go back to work',
               ],
               ['People inside buildings', '-', "Don't react, except an archer on post"],
               ['Civilian sleeping in the open', '-', 'Sleeps on, flees only when struck'],
@@ -421,18 +421,11 @@ export const MILITARY: ArticleGroup = {
                 '[[good:armor_chain|Chain Mail]]',
                 '{{hero.saberReach}}',
               ],
-              ['[[job:hero_axe|Axe Hero]]', 'Axe', '[[good:armor_chain|Chain Mail]]', '{{hero.axeReach}}'],
               [
                 '[[job:heroine_bow_xena|Cyra]]',
                 'Bow',
                 '[[good:armor_leather|Leather Armour]]',
                 '{{heroBow.min}}-{{heroBow.max}}',
-              ],
-              [
-                '[[job:hero_unarmed|Unarmed Hero]]',
-                'Fists',
-                '[[good:armor_wool|Tunic]]',
-                '{{hero.fistReach}}',
               ],
             ],
             num: [3],
@@ -453,19 +446,9 @@ export const MILITARY: ArticleGroup = {
                 '{{hero.hatchieSaracenBlows}} blows every {{hero.hatchieSaracenSeconds}} s',
               ],
               [
-                'Axe Hero',
-                'Viking',
-                'Plate {{hero.axeVikingPlate}}, a blow every {{hero.axeVikingSeconds}} s',
-              ],
-              [
                 'Cyra',
                 'Frank',
                 'Range {{frankHeroBow.min}}-{{frankHeroBow.max}}, a shot every {{frankHeroBow.seconds}} s, no armour {{hero.frankBowBare}}, Tunic and Leather {{hero.frankBowWool}}, Chain Mail and Plate {{hero.frankBowChain}}, Building and Vehicle {{hero.frankBowVehicle}}',
-              ],
-              [
-                'Unarmed Hero',
-                'Byzantine, Egyptian',
-                'A run of {{hero.fistEasternBlows}} blows every {{hero.fistEasternSeconds}} s',
               ],
             ],
           },
@@ -563,7 +546,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Range is {{shelter.range}} steps from the nearest building wall, with no lower limit.',
+            'Range is {{shelter.range}} hexes from the nearest building wall, with no lower limit.',
             'A building also shoots at enemies in fog.',
             'Arrows cost nothing and give no experience.',
             'Target order: soldiers and heroes, wild animals, buildings, other people.',
@@ -660,7 +643,7 @@ export const MILITARY: ArticleGroup = {
               ['Close', 'Nobody passes, your own people too'],
               [
                 'Automatic',
-                'Open. Shuts when an enemy is within {{wall.gateEnemyNear}} steps of the gate, then opens again',
+                'Open. Shuts when an enemy is within {{wall.gateEnemyNear}} hexes of the gate, then opens again',
               ],
             ],
             foot: "In automatic mode, living people and vehicles of a player at war count, civilians too. Animals and buildings don't.",
@@ -731,7 +714,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Trait', 'Value'],
             rows: [
-              ['Range', '{{catapult.min}}-{{catapult.max}} steps'],
+              ['Range', '{{catapult.min}}-{{catapult.max}} hexes'],
               ['Shot every', '{{catapult.seconds}} s'],
               ['Health', '{{catapult.hitpoints}}'],
               ['Crew', '1 soldier or hero, any weapon'],
@@ -811,7 +794,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Accuracy',
         },
         {
-          p: 'Table: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} steps a stray stone drifts up to 3 steps at 0 hits, 2 at 25, 1 at 50, 0 from 75. The commander collects the experience, 1 point per stone that wounded someone.',
+          p: 'Table: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes a stray stone drifts up to 3 hexes at 0 hits, 2 at 25, 1 at 50, 0 from 75. The commander collects the experience, 1 point per stone that wounded someone.',
         },
         {
           h: 'Catapult stances',
@@ -834,7 +817,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Target closer than {{catapult.min}} steps: the Catapult backs off. Target past {{catapult.max}}: it moves up to {{catapult.bandMin}}-{{catapult.max}} steps.',
+            'Target closer than {{catapult.min}} hexes: the Catapult backs off. Target past {{catapult.max}}: it moves up to {{catapult.bandMin}}-{{catapult.max}} hexes.',
             'It fires only standing still, and only when not touching another vehicle.',
             'An order can point at a spot on the ground. It strikes a stockade only on orders.',
           ],
@@ -965,7 +948,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Rebuilding',
         },
         {
-          p: '"Map AI" rebuilds buildings, but not the Headquarters, when no enemy is within {{ai.rebuildNear}} steps.',
+          p: '"Map AI" rebuilds buildings, but not the Headquarters, when no enemy is within {{ai.rebuildNear}} hexes.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

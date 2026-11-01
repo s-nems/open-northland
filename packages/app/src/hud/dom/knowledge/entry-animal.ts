@@ -29,7 +29,7 @@ import {
   type TableRow,
 } from './entry-parts.js';
 
-const HEAD_PICTURE_PX = 48;
+const HEAD_PICTURE_PX = 84;
 
 const copy = () => messages().knowledge.entry;
 

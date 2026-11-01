@@ -56,6 +56,7 @@ function createServedPictures() {
     key: string,
     layers: readonly PictureLayer[],
     size: number,
+    maxScale: number | undefined,
   ): Promise<StaticPicture | null> => {
     const stems = [...new Set(layers.map((layer) => layer.stem))];
     const atlases = new Map<string, AtlasManifest | null>(
@@ -77,7 +78,7 @@ function createServedPictures() {
           [...atlases].map(async ([stem, atlas]) => [stem, atlas && (await sheetOf(atlas))] as const),
         ),
       );
-      const fit = thumbFit(placed, size);
+      const fit = thumbFit(placed, size, maxScale);
       const scale = fit.dw / placed.width;
       return pictures.picture(key, size, size, (ctx) => {
         ctx.imageSmoothingEnabled = true;
@@ -103,13 +104,19 @@ function createServedPictures() {
     }
   };
 
-  return (image: HTMLImageElement, key: string, layers: readonly PictureLayer[], boxPx: number): void => {
+  return (
+    image: HTMLImageElement,
+    key: string,
+    layers: readonly PictureLayer[],
+    boxPx: number,
+    maxScale?: number,
+  ): void => {
     const size = boxPx * THUMB_BACKING_SCALE;
     const drawnKey = `${key}:${size}`;
     latest.set(image, drawnKey);
     let pending = drawing.get(drawnKey);
     if (pending === undefined) {
-      pending = compose(drawnKey, layers, size);
+      pending = compose(drawnKey, layers, size, maxScale);
       drawing.set(drawnKey, pending);
     }
     pending
@@ -155,7 +162,9 @@ export function createKnowledgeArt({ ir, goodIcon, thumbs }: KnowledgeArtInputs)
     animalPicture: (image, animalTribe, boxPx) => {
       const bob = animalPictureBob(ir, animalTribe);
       if (bob === null) return false;
-      paint(image, `animal:${animalTribe}`, [{ stem: bob.stem, bob: bob.bobId, x: 0, y: 0 }], boxPx);
+      // A hen stays a hen: a sprite never grows to its box, so the animals keep their sizes to each other.
+      const layers = [{ stem: bob.stem, bob: bob.bobId, x: 0, y: 0 }];
+      paint(image, `animal:${animalTribe}`, layers, boxPx, THUMB_BACKING_SCALE);
       return true;
     },
     motion: createKnowledgeMotion(ir),

@@ -27,11 +27,11 @@ export const ECONOMY: ArticleGroup = {
               ['Drzewo, skała, złoże, palisada', 'Muszą stać poza obrysem'],
               [
                 'Wrogi żołnierz',
-                'Odmowa do {{contest.radius}} kroków, po skosie około {{contest.diagonal}}. Liczy się tylko widoczny, bez załogi na stanowisku w wieży.',
+                'Odmowa do {{contest.radius}} hexów, po skosie około {{contest.diagonal}}. Liczy się tylko widoczny, bez załogi na stanowisku w wieży.',
               ],
               [
                 'Budynek gracza, z którym łączy cię pokój',
-                'Odmowa do {{peace.keepOut}} kroków od niego, także od placu budowy, chyba że twój budynek stoi bliżej.',
+                'Odmowa do {{peace.keepOut}} hexów od niego, także od placu budowy, chyba że twój budynek stoi bliżej.',
               ],
               [
                 'Miejsce pod rozbudowę',
@@ -172,7 +172,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Po ciosie wroga naprawa czeka {{repair.calmSeconds}} s, a w promieniu {{alert.standTo}} kroków nikt nie może walczyć. Rozkaz gracza pomija oba warunki.',
+            'Po ciosie wroga naprawa czeka {{repair.calmSeconds}} s, a w promieniu {{alert.standTo}} hexów nikt nie może walczyć. Rozkaz gracza pomija oba warunki.',
             'Plac budowy i odcinek palisady w budowie nie mają naprawy, zdrowie rośnie z budową.',
             'Uszkodzony budynek w rozbudowie: najpierw naprawa, potem rozbudowa.',
           ],
@@ -191,7 +191,7 @@ export const ECONOMY: ArticleGroup = {
                 'To samo dla obecnego poziomu, plus odłożone zapasy i materiał rozbudowy',
               ],
             ],
-            foot: 'Towar układa się na ziemi do {{reach.spill}} kroków, na tym samym lądzie. Co się nie zmieści, przepada.',
+            foot: 'Towar układa się na ziemi do {{reach.spill}} hexów, na tym samym lądzie. Co się nie zmieści, przepada.',
           },
         },
       ],
@@ -436,20 +436,20 @@ export const ECONOMY: ArticleGroup = {
               [
                 '[[building:work_farm_00|Farma]]',
                 '{{field.max}}',
-                '{{field.radius}} kroków',
+                '{{field.radius}} hexów',
                 '{{farm.farmers}} Farmerów, {{farm.carriers}} Tragarz',
                 '{{farm.stock}}',
               ],
               [
                 '[[building:work_herb_hut|Chatka zielarza]]',
                 '{{field.max}}',
-                '{{field.radius}} kroków',
+                '{{field.radius}} hexów',
                 '{{herbHut.herbalists}} Zbieraczy Ziół, {{herbHut.carriers}} Tragarz',
                 '{{herbHut.stock}}',
               ],
             ],
             num: [1, 4],
-            foot: 'Po skosie promień to około {{field.diagonal}} kroków. Limit pól dotyczy budynku, więcej ludzi obraca polami szybciej.',
+            foot: 'Po skosie promień to około {{field.diagonal}} hexów. Limit pól dotyczy budynku, więcej ludzi obraca polami szybciej.',
           },
         },
         {
@@ -707,7 +707,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Wóz bierze tylko Tragarz z miejscem pracy i [[job:trader|Kupiec]]. Tragarz zachowuje miejsce pracy, a wóz traktuje jak narzędzie.',
             'Wóz musi być własny i wolny: bez załogi, bez innego woźnicy, na tym samym lądzie.',
-            'Tragarz magazynu z miejscem na wozie dobiera ten sam towar ze stosów i gotowych wyrobów do {{haul.cartTopUp}} kroków od siebie, potem wraca.',
+            'Tragarz magazynu z miejscem na wozie dobiera ten sam towar ze stosów i gotowych wyrobów do {{haul.cartTopUp}} hexów od siebie, potem wraca.',
             'Po utracie miejsca pracy wóz zostaje na miejscu.',
           ],
         },
@@ -718,7 +718,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'W jednym miejscu leży 1 towar, do {{haul.groundStack}} sztuk.',
             'Stos nie ma właściciela, bierze każdy.',
-            'Tragarz bez flagi roboczej podnosi do {{flag.radius}} kroków od budynku, z flagą do {{flag.radius}} kroków od flagi.',
+            'Tragarz bez flagi roboczej podnosi do {{flag.radius}} hexów od budynku, z flagą do {{flag.radius}} hexów od flagi.',
           ],
         },
         {
@@ -740,7 +740,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [2, 3],
-            foot: 'W krokach. Obszar pracy kończy się na zasięgu drogowskazów, gdy zawód mu podlega.',
+            foot: 'W hexach. Obszar pracy kończy się na zasięgu drogowskazów, gdy zawód mu podlega.',
           },
         },
         {
@@ -800,7 +800,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['Kto', 'Bez flagi'],
             rows: [
               ['Zbieracz', 'Cały zasięg drogowskazów'],
-              ['Tragarz', 'Magazyn: stosy do {{flag.radius}} kroków od budynku'],
+              ['Tragarz', 'Magazyn: stosy do {{flag.radius}} hexów od budynku'],
               ['Myśliwy', 'Wokół miejsca pracy'],
               ['Rybak', 'Szuka brzegu od miejsca, w którym stoi'],
             ],
@@ -813,7 +813,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'Towar spod flagi nie trafi do magazynu sam. Potrzebny jest Tragarz z miejscem pracy.',
-            'Tragarz magazynu sięga do {{flag.radius}} kroków od budynku. Dalej daj mu własną flagę przy fladze Zbieracza.',
+            'Tragarz magazynu sięga do {{flag.radius}} hexów od budynku. Dalej daj mu własną flagę przy fladze Zbieracza.',
             'Tragarz z flagą bierze stosy i gotowe wyroby wokół niej i niesie je do swojego budynku.',
             'Przeniesienie flagi nie rusza stosów, zostają na miejscu.',
           ],
@@ -827,7 +827,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               [
                 '"Wbij chorągiewkę"',
-                'Stawia flagę we wskazanym miejscu albo ją tam przenosi. Na zajętym polu szuka miejsca do {{flag.snap}} kroków, dalej rozkaz przepada.',
+                'Stawia flagę we wskazanym miejscu albo ją tam przenosi. Na zajętym polu szuka miejsca do {{flag.snap}} hexów, dalej rozkaz przepada.',
               ],
               ['"Zabierz chorągiewkę"', 'Tylko z miejscem pracy, usuwa flagę'],
               ['"Pokaż obszar roboczy"', 'Włącza okrąg obszaru. Działa, gdy flaga stoi.'],
@@ -837,7 +837,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Zbieracz przenosi flagę sam, gdy włączony jest przełącznik w [[article:assistant|Asystencie]]: {{assistant.flagMin}}-{{assistant.flagMax}} kroków od zasobu, a po wyczerpaniu obszaru do zasobu najbliżej własnego budynku. Flagi Myśliwego i Rybaka stoją.',
+          p: 'Zbieracz przenosi flagę sam, gdy włączony jest przełącznik w [[article:assistant|Asystencie]]: {{assistant.flagMin}}-{{assistant.flagMax}} hexów od zasobu, a po wyczerpaniu obszaru do zasobu najbliżej własnego budynku. Flagi Myśliwego i Rybaka stoją.',
         },
         {
           h: 'Flaga poza zasięgiem drogowskazów',
@@ -867,7 +867,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Zasięg, kroki', 'Osadnik', '[[job:carrier|Tragarz]]', 'Uwagi'],
+            head: ['Zasięg, hexy', 'Osadnik', '[[job:carrier|Tragarz]]', 'Uwagi'],
             rows: [
               ['Chód', '{{reach.walk}}', '{{reach.carrier}}', 'Od miejsca, w którym stoi'],
               [
@@ -886,7 +886,7 @@ export const ECONOMY: ArticleGroup = {
                 'Połączenie dwóch drogowskazów',
                 'mniej niż {{reach.link}}',
                 'mniej niż {{reach.link}}',
-                'Trasa między nimi do {{reach.linkRoute}} kroków',
+                'Trasa między nimi do {{reach.linkRoute}} hexów',
               ],
               [
                 'Odstęp od własnego drogowskazu',
@@ -912,7 +912,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Teren', 'Szukanie towaru, kroki'],
+            head: ['Teren', 'Szukanie towaru, hexy'],
             rows: [
               ['Droga, ląd', 'mniej niż {{reach.goods}}'],
               ['Piasek', 'około {{reach.goodsSand}}'],
@@ -1093,7 +1093,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Przy 20-30 krokach w jedną stronę oba wozy przewożą tyle samo towaru w czasie. Krócej wygrywa Wózek Ręczny, dalej Zaprzęg.',
+          p: 'Przy 20-30 hexach w jedną stronę oba wozy przewożą tyle samo towaru w czasie. Krócej wygrywa Wózek Ręczny, dalej Zaprzęg.',
         },
         {
           h: 'Trasa',

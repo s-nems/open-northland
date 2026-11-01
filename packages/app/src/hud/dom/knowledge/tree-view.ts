@@ -33,9 +33,9 @@ import './tree.css';
 export type TreeScales = Record<KnowledgeTree, number>;
 
 export const SCALE_DEFAULT_PCT = 100;
-const SCALE_MIN_PCT = 50;
-const SCALE_MAX_PCT = 130;
-const SCALE_STEP_PCT = 5;
+export const SCALE_MIN_PCT = 50;
+export const SCALE_MAX_PCT = 130;
+export const SCALE_STEP_PCT = 5;
 const PERCENT = 100;
 const GOOD_ICON_PX = 30;
 const INPUT_ICON_PX = 17;
@@ -51,12 +51,15 @@ export interface TreeViewDeps {
   readonly scales: TreeScales;
   /** The reader's click on the pane's close button. */
   readonly onClosePane: () => void;
+  /** The scale moved, by the wheel or a clamp, for the bar's slider. */
+  readonly onScale: (percent: number) => void;
 }
 
 export interface TreeView {
   readonly element: HTMLElement;
   /** Move the pin and its pane to `ref`, or drop both. */
   pin(ref: EntryRef | null): void;
+  setScale(percent: number): void;
   dispose(): void;
 }
 
@@ -140,14 +143,8 @@ function statusLook(
       return { kind: '', line: worker, long: '' };
     case 'mapForbidden':
       return { kind: ' kn-card--map', line: copy.mapForbidden, long: copy.mapForbiddenLong };
-    case 'locked': {
-      const [first = '', ...rest] = status.missing;
-      const line =
-        rest.length === 0
-          ? formatMessage(copy.missing, { first })
-          : formatMessage(copy.missingMore, { first, more: rest.length });
-      return { kind: ' kn-card--locked', line, long: status.missing.join(', ') };
-    }
+    case 'locked':
+      return { kind: ' kn-card--locked', line: worker, long: status.missing.join(', ') };
   }
 }
 
@@ -181,12 +178,10 @@ interface TreeShape {
   readonly key: (id: string) => string;
   readonly card: (id: string) => Card | null;
   readonly relate: (key: string, pinned: boolean) => TreeRelation;
-  readonly legend: readonly [up: string, down: string];
 }
 
 function shapeOf(context: KnowledgeContext, tree: KnowledgeTree): TreeShape {
   const { base } = context;
-  const copy = messages().knowledge.tree;
   if (tree === 'goods') {
     return {
       lanes: GOOD_LANES,
@@ -198,7 +193,6 @@ function shapeOf(context: KnowledgeContext, tree: KnowledgeTree): TreeShape {
         return good === undefined ? null : goodCard(context, good);
       },
       relate: (key, pinned) => relateGood(base, key, pinned),
-      legend: [copy.goodsUp, copy.goodsDown],
     };
   }
   return {
@@ -211,7 +205,6 @@ function shapeOf(context: KnowledgeContext, tree: KnowledgeTree): TreeShape {
       return building === undefined ? null : buildingCard(context, building);
     },
     relate: (key) => relateBuilding(base, key),
-    legend: [copy.buildingsUp, copy.buildingsDown],
   };
 }
 
@@ -359,34 +352,9 @@ export function createTreeView(context: KnowledgeContext, tree: KnowledgeTree, d
   zoomed.append(lanes, overlay);
   scroller.append(zoomed);
 
-  const legend = document.createElement('div');
-  legend.className = 'kn-legend';
-  for (const [kind, text] of [
-    ['up', shape.legend[0]],
-    ['down', shape.legend[1]],
-  ] as const) {
-    const item = document.createElement('span');
-    const swatch = document.createElement('i');
-    swatch.className = `kn-swatch kn-swatch--${kind}`;
-    item.append(swatch, text);
-    legend.append(item);
-  }
-
-  const copy = messages().knowledge.tree;
-  const scaleBox = document.createElement('label');
-  scaleBox.className = 'kn-zoom';
-  const slider = document.createElement('input');
-  slider.type = 'range';
-  slider.min = String(SCALE_MIN_PCT);
-  slider.max = String(SCALE_MAX_PCT);
-  slider.step = String(SCALE_STEP_PCT);
-  slider.setAttribute('aria-label', copy.scaleLabel);
-  const scaleOut = document.createElement('output');
-  scaleBox.append(span('', copy.scale), slider, scaleOut);
-
   const treeSide = document.createElement('div');
   treeSide.className = 'kn-treeside';
-  treeSide.append(scroller, legend, scaleBox);
+  treeSide.append(scroller);
   const pane = createTreePane(context, deps.onClosePane);
   element.append(treeSide, pane.element);
 
@@ -448,12 +416,10 @@ export function createTreeView(context: KnowledgeContext, tree: KnowledgeTree, d
     const scale = Math.min(SCALE_MAX_PCT, Math.max(SCALE_MIN_PCT, stepped));
     deps.scales[tree] = scale;
     zoomed.style.setProperty('zoom', String(scale / PERCENT));
-    slider.value = String(scale);
-    scaleOut.textContent = `${scale}%`;
+    deps.onScale(scale);
     drawOverlay(relationOf(pointed ?? pinned));
   };
 
-  slider.addEventListener('input', () => setScale(Number(slider.value)));
   element.addEventListener(
     'wheel',
     (event) => {
@@ -503,6 +469,7 @@ export function createTreeView(context: KnowledgeContext, tree: KnowledgeTree, d
 
   return {
     element,
+    setScale,
     pin: (ref) => {
       const key = ref === null ? null : shape.key(ref.id);
       if (key === pinned) return;

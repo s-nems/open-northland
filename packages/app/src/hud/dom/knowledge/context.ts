@@ -23,7 +23,6 @@ export type KnowledgeStatus =
 export interface KnowledgeSettlement {
   readonly tribe: number;
   status(kind: 'building' | 'good' | 'job', typeId: number): KnowledgeStatus;
-  stock(goodType: number): number;
 }
 
 /** One looping preview: a fighter's blow or march, a worker at his trade, an animal. */
@@ -58,7 +57,7 @@ export interface KnowledgeDeps {
 
 /** What every view of the window shares. `go` is the single navigation path, so Wróć sees every move. */
 export interface KnowledgeContext extends KnowledgeDeps {
-  /** The tribe the numbers are for: the seat's in a game, the reader's pick otherwise. */
+  /** The tribe the numbers are for: the reader's pick, the seat's until they choose. */
   tribe(): number;
   go(target: KnowledgeTarget): void;
   /** Queues what the page being built must free once it leaves; a hidden window reports no removal. */

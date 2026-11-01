@@ -1,9 +1,30 @@
 import type { GoodQuantity } from '@open-northland/data';
+import { systems } from '@open-northland/sim';
 import type { KnowledgeBase, KnowledgeBuilding, KnowledgeGood, KnowledgeRecipe } from './base.js';
 
 export interface RecipeSource {
   readonly building: KnowledgeBuilding;
   readonly recipe: KnowledgeRecipe;
+}
+
+/** One batch's length for `tribe`: the produce clip of whichever trade of the house has one, the sim's
+ *  own timing, or the row's stand-in. */
+export function recipeTicks(
+  base: KnowledgeBase,
+  building: KnowledgeBuilding,
+  recipe: KnowledgeRecipe,
+  tribe: number,
+): number {
+  const good = recipe.madeGood;
+  if (good === null) return recipe.fallbackTicks;
+  for (const { jobType } of building.workers) {
+    const settler = { tribe, jobType };
+    const atomic = systems.productionAtomic(base.content, settler, good);
+    const length =
+      atomic === undefined ? undefined : systems.resolvedAtomicLength(base.content, settler, atomic);
+    if (length !== undefined) return length;
+  }
+  return recipe.fallbackTicks;
 }
 
 export type ChainEdgeKind = 'hunt' | 'recipe' | 'slaughter';

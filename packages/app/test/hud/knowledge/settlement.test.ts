@@ -44,14 +44,11 @@ describe('the settlement Knowledge reads', () => {
       unlockStatus,
       progressOf: () => () => null,
     });
-    settlement.presentStocks([{ goodType: GOOD.iron, amount: 4 }]);
     await settlement.refresh();
     const asked = unlockStatus.mock.calls.length;
     expect(unlockStatus).toHaveBeenCalledWith('house', HOUSE.druid, VIKING, SEAT);
     expect(settlement.status('building', HOUSE.druid).kind).toBe('mapForbidden');
     expect(settlement.status('job', 1).kind).toBe('available');
-    expect(settlement.stock(GOOD.iron)).toBe(4);
-    expect(settlement.stock(GOOD.wood)).toBe(0);
     expect(unlockStatus).toHaveBeenCalledTimes(asked);
   });
 

@@ -187,27 +187,44 @@
   gap: 3px 10px;
   min-width: 0;
 }
-.on-hud .kn-recipe {
-  margin: 4px 0;
-  min-width: 0;
+.on-hud .kn-recipes {
+  width: 100%;
+  margin: 4px 0 8px;
+  border-collapse: collapse;
 }
-.on-hud .kn-recipe__house {
+.on-hud .kn-recipes th {
+  padding: 2px 8px 3px 0;
+  border-bottom: 1px solid #8d754966;
+  color: var(--ink-muted);
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+.on-hud .kn-recipes td {
+  padding: 5px 8px 5px 0;
+  border-bottom: 1px solid #8d754933;
+  vertical-align: middle;
+}
+.on-hud .kn-recipes__goods .kn-link {
+  display: flex;
+  white-space: nowrap;
+}
+.on-hud .kn-recipes__house {
+  padding-bottom: 0;
+  border-bottom: none;
   font-weight: 700;
 }
-.on-hud .kn-recipe__flow {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 3px 6px;
-  min-width: 0;
-}
-.on-hud .kn-recipe__flow i {
-  font-style: normal;
+.on-hud .kn-recipes__arrow {
+  width: 22px;
   color: var(--bronze-lo);
+  font-size: 18px;
+  text-align: center;
 }
-.on-hud .kn-recipe__time {
+.on-hud .kn-recipes__time,
+.on-hud .kn-recipes th:last-child {
+  padding-right: 0;
+  text-align: right;
   white-space: nowrap;
-  color: var(--ink-muted);
   font-variant-numeric: tabular-nums;
 }
 .on-hud .kn-entry .kn-chip {
@@ -263,8 +280,8 @@
   display: none;
 }
 .on-hud .kn-motion__clip {
-  flex: 1 1 110px;
-  min-width: 0;
+  flex: 0 0 auto;
+  min-width: 96px;
   display: flex;
   flex-direction: column;
 }
@@ -277,23 +294,17 @@
   align-items: flex-end;
   min-height: 0;
 }
-.on-hud .kn-motion canvas {
-  max-width: 100%;
-  object-fit: contain;
+/* Sprites keep whole pixels: a fractional scale smears them. */
+.on-hud .kn-film {
+  flex: none;
+  width: calc(var(--film-w) * 2);
+  height: calc(var(--film-h) * 2);
+  image-rendering: pixelated;
 }
 .on-hud .kn-entry__head .kn-motion {
   flex: none;
   flex-wrap: nowrap;
   margin: 0;
-}
-.on-hud .kn-entry__head .kn-motion__clip {
-  flex: 0 0 84px;
-}
-.on-hud .kn-entry__head .kn-motion__stage {
-  height: 84px;
-}
-.on-hud .kn-entry__head .kn-motion canvas {
-  max-height: 84px;
 }
 .on-hud .kn-motion figcaption {
   display: flex;
@@ -311,26 +322,17 @@
   white-space: nowrap;
 }
 .on-hud .kn-origin {
-  margin: 14px 0 2px;
+  margin: 8px 0 4px;
   padding: 6px 10px;
   border-left: 3px solid #8d7549;
   background: #fff3;
   font-style: italic;
-}
-.on-hud .kn-origin__text {
   white-space: pre-line;
-}
-.on-hud .kn-origin cite {
-  display: block;
-  margin-top: 3px;
-  font: 700 10.5px var(--font-caps);
-  letter-spacing: 0.08em;
-  color: var(--ink-muted);
 }
 .on-hud .kn-entry .kn-facts {
   display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 3px 10px;
+  grid-template-columns: max-content minmax(0, 1fr);
+  gap: 3px 14px;
   margin: 6px 0;
 }
 .on-hud .kn-entry .kn-facts dt {
@@ -339,10 +341,6 @@
 .on-hud .kn-entry .kn-facts dd {
   margin: 0;
   font-weight: 700;
-  text-align: right;
-}
-.on-hud .kn-entry__main .kn-facts {
-  max-width: 320px;
 }
 .on-hud .kn-workers {
   margin: 0;
@@ -351,8 +349,7 @@
 }
 .on-hud .kn-workers li {
   display: flex;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 14px;
 }
 .on-hud .kn-steps {
   margin: 6px 0;

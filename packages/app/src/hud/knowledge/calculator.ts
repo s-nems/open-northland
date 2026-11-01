@@ -18,6 +18,7 @@ import {
   HUMAN_HITPOINTS,
   hitsToKill,
   isHeroWeapon,
+  isNamedHeroWeapon,
   isRanged,
   perSecond,
   secondsForHits,
@@ -114,7 +115,7 @@ export function weaponGroups(base: KnowledgeBase, tribe: number, heroes: boolean
   return [
     { id: 'soldier' as const, weapons: pick(SOLDIER_ORDER) },
     { id: 'civilian' as const, weapons: pick(CIVILIAN_ORDER) },
-    ...(heroes ? [{ id: 'hero' as const, weapons: usable.filter(isHeroWeapon) }] : []),
+    ...(heroes ? [{ id: 'hero' as const, weapons: usable.filter(isNamedHeroWeapon) }] : []),
   ].filter((group) => group.weapons.length > 0);
 }
 

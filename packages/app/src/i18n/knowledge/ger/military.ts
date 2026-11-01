@@ -243,7 +243,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Reichweite in Schritten. Unter der Untergrenze schießt der Bogenschütze nicht. Cyra bei den Franken: Reichweite {{frankHeroBow.min}}-{{frankHeroBow.max}}, Schuss alle {{frankHeroBow.seconds}} s.',
+            foot: 'Reichweite in Hexfeldern. Unter der Untergrenze schießt der Bogenschütze nicht. Cyra bei den Franken: Reichweite {{frankHeroBow.min}}-{{frankHeroBow.max}}, Schuss alle {{frankHeroBow.seconds}} s.',
           },
         },
         {
@@ -266,7 +266,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Ein Fehlschuss landet bis 3 Schritte neben dem Ziel. Ab 75 Treffern weicht er nicht mehr ab.',
+            'Ein Fehlschuss landet bis 3 Hexfelder neben dem Ziel. Ab 75 Treffern weicht er nicht mehr ab.',
             'Ein Fehlschuss trifft den ersten Feind am Einschlagpunkt: Mensch, Tier oder Fahrzeug, dann Gebäude, dann Palisade.',
             'Pfeile fliegen über Eigene, Verbündete und Neutrale hinweg.',
             'Soldaten halten bei laufenden Zielen vor. Gebäude zielen dorthin, wo das Ziel steht.',
@@ -321,12 +321,12 @@ export const MILITARY: ArticleGroup = {
                 'Antwortet nicht',
               ],
             ],
-            foot: 'Radien in Schritten. Der Haltepunkt ist der Ort, an dem der Soldat beim Moduswechsel stand. Bewegungs- und Angriffsbefehle verschieben ihn.',
+            foot: 'Radien in Hexfeldern. Der Haltepunkt ist der Ort, an dem der Soldat beim Moduswechsel stand. Bewegungs- und Angriffsbefehle verschieben ihn.',
           },
         },
         {
           list: [
-            'Ein Soldat im Modus Angriff kehrt zum Haltepunkt zurück, wenn er mehr als {{stance.attackReturn}} Schritte davon entfernt zu kämpfen aufhört.',
+            'Ein Soldat im Modus Angriff kehrt zum Haltepunkt zurück, wenn er mehr als {{stance.attackReturn}} Hexfelder davon entfernt zu kämpfen aufhört.',
             'Die Feindsuche hängt nicht vom [[article:fog|Nebel]] ab.',
             'Ein Angriffsbefehl wirkt in jedem Modus.',
             'Ein Bogenschütze auf dem Posten schießt in jedem Modus auf alles in Reichweite.',
@@ -350,7 +350,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Wer', 'Vom Verwundeten, Schritte', 'Reaktion'],
+            head: ['Wer', 'Vom Verwundeten, Hexfelder', 'Reaktion'],
             rows: [
               [
                 'Soldaten und Helden im Modus Angriff oder Verteidigung',
@@ -361,7 +361,7 @@ export const MILITARY: ArticleGroup = {
               [
                 'Zivilisten und Kundschafter',
                 '{{stance.peopleAlarm}}',
-                'Fliehen {{stance.fleeMin}}-{{stance.fleeMax}} Schritte und kehren zur Arbeit zurück',
+                'Fliehen {{stance.fleeMin}}-{{stance.fleeMax}} Hexfelder und kehren zur Arbeit zurück',
               ],
               ['Leute in Gebäuden', '-', 'Reagieren nicht, außer dem Bogenschützen auf dem Posten'],
               ['Zivilist, der im Freien schläft', '-', 'Schläft, flieht nur, wenn er selbst getroffen wird'],
@@ -429,18 +429,11 @@ export const MILITARY: ArticleGroup = {
                 '[[good:armor_chain|Kettenhemd]]',
                 '{{hero.saberReach}}',
               ],
-              ['[[job:hero_axe|Axtheld]]', 'Axt', '[[good:armor_chain|Kettenhemd]]', '{{hero.axeReach}}'],
               [
                 '[[job:heroine_bow_xena|Cyra]]',
                 'Bogen',
                 '[[good:armor_leather|Lederrüstung]]',
                 '{{heroBow.min}}-{{heroBow.max}}',
-              ],
-              [
-                '[[job:hero_unarmed|Unbewaffneter Held]]',
-                'Fäuste',
-                '[[good:armor_wool|Waffenrock]]',
-                '{{hero.fistReach}}',
               ],
             ],
             num: [3],
@@ -461,19 +454,9 @@ export const MILITARY: ArticleGroup = {
                 '{{hero.hatchieSaracenBlows}} Schläge alle {{hero.hatchieSaracenSeconds}} s',
               ],
               [
-                'Axtheld',
-                'Wikinger',
-                'Plattenrüstung {{hero.axeVikingPlate}}, Schlag alle {{hero.axeVikingSeconds}} s',
-              ],
-              [
                 'Cyra',
                 'Franke',
                 'Reichweite {{frankHeroBow.min}}-{{frankHeroBow.max}}, Schuss alle {{frankHeroBow.seconds}} s, ohne Rüstung {{hero.frankBowBare}}, Waffenrock und Lederrüstung {{hero.frankBowWool}}, Kettenhemd und Plattenrüstung {{hero.frankBowChain}}, Gebäude und Fahrzeug {{hero.frankBowVehicle}}',
-              ],
-              [
-                'Unbewaffneter Held',
-                'Byzantiner, Ägypter',
-                'Serie aus {{hero.fistEasternBlows}} Schlägen alle {{hero.fistEasternSeconds}} s',
               ],
             ],
           },
@@ -571,7 +554,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Die Reichweite beträgt {{shelter.range}} Schritte ab der nächsten Gebäudewand, ohne Untergrenze.',
+            'Die Reichweite beträgt {{shelter.range}} Hexfelder ab der nächsten Gebäudewand, ohne Untergrenze.',
             'Ein Gebäude schießt auch auf Feinde im Nebel.',
             'Die Pfeile kosten nichts und bringen keine Erfahrung.',
             'Reihenfolge der Ziele: Soldaten und Helden, Wildtiere, Gebäude, übrige Menschen.',
@@ -668,7 +651,7 @@ export const MILITARY: ArticleGroup = {
               ['Schließen', 'Niemand kommt durch, auch Eigene nicht'],
               [
                 'Automatisch',
-                'Offen. Schließt, wenn ein Feind bis {{wall.gateEnemyNear}} Schritte ans Tor kommt, und öffnet danach wieder',
+                'Offen. Schließt, wenn ein Feind bis {{wall.gateEnemyNear}} Hexfelder ans Tor kommt, und öffnet danach wieder',
               ],
             ],
             foot: 'Im Automatikmodus zählen lebende Menschen und Fahrzeuge eines Spielers im Krieg, Zivilisten ebenso. Tiere und Gebäude zählen nicht.',
@@ -739,7 +722,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Eigenschaft', 'Wert'],
             rows: [
-              ['Reichweite', '{{catapult.min}}-{{catapult.max}} Schritte'],
+              ['Reichweite', '{{catapult.min}}-{{catapult.max}} Hexfelder'],
               ['Schuss alle', '{{catapult.seconds}} s'],
               ['Gesundheit', '{{catapult.hitpoints}}'],
               ['Besatzung', '1 Soldat oder Held, mit beliebiger Waffe'],
@@ -819,7 +802,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Treffsicherheit',
         },
         {
-          p: 'Tabelle: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Schritten weicht ein Fehlschuss bei 0 Treffern bis 3 Schritte ab, bei 25 um 2, bei 50 um 1, ab 75 um 0. Die Erfahrung sammelt der Kommandant, 1 Punkt je Stein, der jemanden verletzt hat.',
+          p: 'Tabelle: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern weicht ein Fehlschuss bei 0 Treffern bis 3 Hexfelder ab, bei 25 um 2, bei 50 um 1, ab 75 um 0. Die Erfahrung sammelt der Kommandant, 1 Punkt je Stein, der jemanden verletzt hat.',
         },
         {
           h: 'Katapultmodi',
@@ -842,7 +825,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Ziel näher als {{catapult.min}} Schritte: Das Katapult fährt weg. Ziel weiter als {{catapult.max}}: Es rückt auf {{catapult.bandMin}}-{{catapult.max}} Schritte heran.',
+            'Ziel näher als {{catapult.min}} Hexfelder: Das Katapult fährt weg. Ziel weiter als {{catapult.max}}: Es rückt auf {{catapult.bandMin}}-{{catapult.max}} Hexfelder heran.',
             'Es schießt nur im Stand und nur, wenn es kein anderes Fahrzeug berührt.',
             'Ein Befehl kann einen Punkt am Boden wählen. Palisaden beschießt es nur auf Befehl.',
           ],
@@ -973,7 +956,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Wiederaufbau',
         },
         {
-          p: 'Die „Karten-KI“ baut Gebäude wieder auf, wenn im Umkreis von {{ai.rebuildNear}} Schritten kein Feind steht. Das Hauptquartier nicht.',
+          p: 'Die „Karten-KI“ baut Gebäude wieder auf, wenn im Umkreis von {{ai.rebuildNear}} Hexfeldern kein Feind steht. Das Hauptquartier nicht.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

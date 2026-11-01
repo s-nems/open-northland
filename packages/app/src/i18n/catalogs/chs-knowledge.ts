@@ -23,14 +23,7 @@ export const chsKnowledge = {
   tree: {
     or: '或',
     amount: 'x{amount}',
-    scale: '缩放',
     scaleLabel: '树状图缩放',
-    goodsUp: '由什么制成',
-    goodsDown: '用于什么',
-    buildingsUp: '前置条件',
-    buildingsDown: '解锁内容',
-    missing: '缺少：{first}',
-    missingMore: '缺少：{first} +{more}',
     mapForbidden: '本图禁用',
     mapForbiddenLong: '此地图禁止这种建筑',
     closePane: '关闭词条',
@@ -66,7 +59,6 @@ export const chsKnowledge = {
   },
   entry: {
     notFound: '本游戏的数据中没有这个词条。',
-    original: '原版说明',
     categories: {
       goods: '物资',
       arms: '军备',
@@ -105,11 +97,10 @@ export const chsKnowledge = {
       missing: '缺少：{names}',
       missingMore: '缺少：{names}等{more}项',
       mapForbidden: '此地图禁止',
-      stock: '聚落库存：{amount}',
     },
     unit: {
       seconds: '{value}秒',
-      steps: { one: '{value}步', few: '{value}步', many: '{value}步' },
+      steps: { one: '{value}格', few: '{value}格', many: '{value}格' },
     },
     cadence: {
       many: '每{time}{blows}{word}',
@@ -146,7 +137,6 @@ export const chsKnowledge = {
       noArmour: '无护甲',
       slower: '减慢',
       marchNote: '穿鞋，陆地上。英雄不受重量影响。',
-      wielder: '使用者',
       unlock: '解锁',
       calculator: '在计算器中计算',
       notForTribe: '此民族不使用这种武器。',
@@ -160,7 +150,6 @@ export const chsKnowledge = {
       slows: '减速',
       slowsNot: '不减速',
       durability: '耐久',
-      permanent: '不耗损',
     },
     good: {
       effect: '效果',
@@ -195,6 +184,18 @@ export const chsKnowledge = {
       usesSip: { one: '{count}口', few: '{count}口', many: '{count}口' },
     },
     building: {
+      aura: {
+        title: '光环',
+        lead: '神庙建成且无损伤时自动生效，覆盖范围内神庙所有者的全部人员。',
+        range: '范围',
+        rangeValue: '{{aura.range}}格',
+        health: '生命值',
+        healthValue: '每秒+{{aura.perSecond}}，上限{{aura.ceiling}}',
+        piety: '信仰',
+        pietyValue: '每秒+{{aura.pietyPct}}%，上限{{need.satedPct}}%',
+        many: '多座神庙',
+        manyValue: '只有一层光环，数值不叠加',
+      },
       output: '产出',
       capacity: '容量',
       perGood: '每种{amount}份，共{count}种',
@@ -220,7 +221,11 @@ export const chsKnowledge = {
       health: '生命值',
       footprint: '占地',
     },
+    recipe: { inputs: '原料', outputs: '产品', time: '时间' },
     job: {
+      soldier: '士兵',
+      arms: '武器',
+      armsNote: '士兵只有一种。兵种由手中的武器决定，换了武器就换了兵种。',
       does: '工作内容',
       opens: '解锁：',
       makes: '生产：',
@@ -298,7 +303,24 @@ export const chsKnowledge = {
       absent: '无',
       present: '有',
     },
-    wonder: { inGame: '游戏中', text: '地图装饰，没有效果' },
+    wonder: {
+      wonder_lighthouse_of_alexandria:
+        '法罗斯岛上的灯塔，约公元前280年建于托勒密王朝时期。塔高超过100米，数百年间都是世界上最高的建筑之一，塔顶的火光引导船只进港。中世纪的几次地震将它震毁。',
+      wonder_gardens_of_semiramis:
+        '巴比伦的阶梯式花园，引幼发拉底河水灌溉。传说它出自王后塞米拉米斯之手，也有说法是尼布甲尼撒二世为思念山地故乡的妻子所建。七大奇迹中，只有它的遗址至今无人找到。',
+      wonder_rhodos:
+        '太阳神赫利俄斯的青铜像，公元前3世纪铸于罗德岛。建造费用来自变卖攻城器械，那是战败的德米特里留在城下的。雕像高约33米，不到60年便在地震中倒塌，残骸又在地上躺了800多年。',
+      wonder_mausolos:
+        '卡里亚统治者摩索拉斯的陵墓，约公元前350年由他的妻子兼姐妹阿尔特米西亚建于哈利卡纳苏斯。西方语言里的“陵墓”（mausoleum）一词就来自他的名字。陵墓留存了一千多年，15世纪时，医院骑士团用它的石料修建博德鲁姆城堡。',
+      wonder_artemis_temple:
+        '以弗所的大理石神庙，古代最大的神庙之一。公元前356年，黑若斯达特斯为了名留青史放火烧了它。重建后的神庙比从前更壮丽，最终在古代晚期消失。在西方，黑若斯达特斯的名字至今仍指为出名而搞破坏的人。',
+      wonder_zeus_statue:
+        '奥林匹亚的宙斯坐像，菲迪亚斯约公元前435年的作品。雕像高约12米，身躯用象牙，衣袍用黄金。据说神若站起身来，头会顶穿神庙的屋顶。',
+      wonder_pyramid_of_gizeh:
+        '法老胡夫的陵墓，约公元前2560年完工，用了200多万块石料。近3800年间，它一直是世界上最高的建筑。它是七大奇迹中最古老的一座，也是唯一留存至今的一座。',
+      wonder_8th_wonder:
+        '任何古代名单上都没有这项奇迹。希腊人的名录到七项为止，这第八项出自 Cultures 开发者的想象，游戏的标题也由此而来。',
+    },
     showInTree: '在树状图中显示',
     experience: {
       builder_general: '房屋建造',
@@ -351,9 +373,9 @@ export const chsKnowledge = {
       cart: '车辆',
       adult: '成人',
       child: '儿童',
-      across: '横向步数',
+      across: '横向格数',
       along: '纵向',
-      note: '图以步为单位。屏幕上呈圆形。',
+      note: '图以格为单位。屏幕上呈圆形。',
     },
     reach: {
       signpost: '路标',
@@ -383,7 +405,7 @@ export const chsKnowledge = {
       straight: '横向{steps}',
       straightUp: '纵向{steps}',
       slant: '斜向{steps}',
-      note: '斜走一步是一行加半列，所以算作{cost}步。',
+      note: '斜走一步是一行加半列，所以按{cost}格计算。',
     },
     leash: {
       attack: '进攻',
@@ -397,9 +419,9 @@ export const chsKnowledge = {
     },
     catapultSplash: {
       catapult: '投石机',
-      band: '射程：{min}-{max}步',
+      band: '射程：{min}-{max}格',
       landing: '落点',
-      points: '{count}个节点',
+      points: '{count}格',
       full: '每个目标都受全额伤害',
     },
     gate: {

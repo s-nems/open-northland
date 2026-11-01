@@ -27,11 +27,11 @@ export const ECONOMY: ArticleGroup = {
               ['Tree, rock, deposit, stockade', 'Must stand outside the footprint'],
               [
                 'Enemy soldier',
-                "Refused within {{contest.radius}} steps, about {{contest.diagonal}} on the slant. Only a visible one counts, and not a tower's garrison at its post.",
+                "Refused within {{contest.radius}} hexes, about {{contest.diagonal}} on the slant. Only a visible one counts, and not a tower's garrison at its post.",
               ],
               [
                 'Building of a player you are at peace with',
-                'Refused within {{peace.keepOut}} steps of it or its site, unless your building stands closer.',
+                'Refused within {{peace.keepOut}} hexes of it or its site, unless your building stands closer.',
               ],
               [
                 'Room for upgrades',
@@ -177,7 +177,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'After an enemy blow, repairs wait {{repair.calmSeconds}} s, and nobody may be fighting within {{alert.standTo}} steps. A player order skips both conditions.',
+            'After an enemy blow, repairs wait {{repair.calmSeconds}} s, and nobody may be fighting within {{alert.standTo}} hexes. A player order skips both conditions.',
             'Sites and stockade segments under construction get no repairs. Their health grows with the building.',
             'Damaged building being upgraded: repair first, then upgrade.',
           ],
@@ -196,7 +196,7 @@ export const ECONOMY: ArticleGroup = {
                 'The same for the current level, plus set-aside stock and upgrade material',
               ],
             ],
-            foot: "Goods spread out on the ground up to {{reach.spill}} steps away, on the same landmass. What doesn't fit is lost.",
+            foot: "Goods spread out on the ground up to {{reach.spill}} hexes away, on the same landmass. What doesn't fit is lost.",
           },
         },
       ],
@@ -447,20 +447,20 @@ export const ECONOMY: ArticleGroup = {
               [
                 '[[building:work_farm_00|Farm]]',
                 '{{field.max}}',
-                '{{field.radius}} steps',
+                '{{field.radius}} hexes',
                 '{{farm.farmers}} Farmers, {{farm.carriers}} Carrier',
                 '{{farm.stock}}',
               ],
               [
                 '[[building:work_herb_hut|Herb Hut]]',
                 '{{field.max}}',
-                '{{field.radius}} steps',
+                '{{field.radius}} hexes',
                 '{{herbHut.herbalists}} Herb Gatherers, {{herbHut.carriers}} Carrier',
                 '{{herbHut.stock}}',
               ],
             ],
             num: [1, 4],
-            foot: 'On the slant the radius is about {{field.diagonal}} steps. The field limit applies to the building, more people just cycle the fields faster.',
+            foot: 'On the slant the radius is about {{field.diagonal}} hexes. The field limit applies to the building, more people just cycle the fields faster.',
           },
         },
         {
@@ -726,7 +726,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Only a Carrier with a workplace and a [[job:trader|Merchant]] take a cart. The Carrier keeps his workplace and treats the cart as a tool.',
             'The cart must be yours and free: no crew, no other driver, same landmass.',
-            'A warehouse Carrier with room on his cart picks up the same good from piles and finished products within {{haul.cartTopUp}} steps of himself, then returns.',
+            'A warehouse Carrier with room on his cart picks up the same good from piles and finished products within {{haul.cartTopUp}} hexes of himself, then returns.',
             'If he loses his workplace, the cart stays where it is.',
           ],
         },
@@ -737,7 +737,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'One spot holds 1 good, up to {{haul.groundStack}} pieces.',
             'A pile has no owner. Anyone can take it.',
-            'A Carrier with no work flag picks up within {{flag.radius}} steps of the building, with a flag within {{flag.radius}} steps of the flag.',
+            'A Carrier with no work flag picks up within {{flag.radius}} hexes of the building, with a flag within {{flag.radius}} hexes of the flag.',
           ],
         },
         {
@@ -759,7 +759,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [2, 3],
-            foot: 'In steps. The work area ends at signpost reach where the profession is subject to it.',
+            foot: 'In hexes. The work area ends at signpost reach where the profession is subject to it.',
           },
         },
         {
@@ -823,7 +823,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['Who', 'No flag'],
             rows: [
               ['Extractor', 'Full signpost reach'],
-              ['Carrier', 'Warehouse: piles within {{flag.radius}} steps of the building'],
+              ['Carrier', 'Warehouse: piles within {{flag.radius}} hexes of the building'],
               ['Hunter', 'Around the workplace'],
               ['Fisherman', 'Looks for a shore from where he stands'],
             ],
@@ -836,7 +836,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             "Goods from a flag won't reach a store by themselves. You need a Carrier with a workplace.",
-            "A warehouse Carrier reaches {{flag.radius}} steps from the building. Further out, give him his own flag next to the Extractor's.",
+            "A warehouse Carrier reaches {{flag.radius}} hexes from the building. Further out, give him his own flag next to the Extractor's.",
             'A Carrier with a flag takes piles and finished products around it and brings them to his building.',
             'Moving the flag leaves the piles where they are.',
           ],
@@ -850,7 +850,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               [
                 '"Plant a flag"',
-                'Places the flag on the chosen spot or moves it there. On an occupied spot it looks within {{flag.snap}} steps, past that the order is lost.',
+                'Places the flag on the chosen spot or moves it there. On an occupied spot it looks within {{flag.snap}} hexes, past that the order is lost.',
               ],
               ['"Take the flag away"', 'Only with a workplace, removes the flag'],
               ['"Show Work Area"', 'Shows the area circle. Works while a flag stands.'],
@@ -860,7 +860,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'An Extractor moves his own flag when the [[article:assistant|Assistant]] switch is on: {{assistant.flagMin}}-{{assistant.flagMax}} steps from the resource, and once the area runs out, to the resource nearest his building. Hunter and Fisherman flags stay put.',
+          p: 'An Extractor moves his own flag when the [[article:assistant|Assistant]] switch is on: {{assistant.flagMin}}-{{assistant.flagMax}} hexes from the resource, and once the area runs out, to the resource nearest his building. Hunter and Fisherman flags stay put.',
         },
         {
           h: 'A flag outside signpost reach',
@@ -890,7 +890,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Reach, steps', 'Settler', '[[job:carrier|Carrier]]', 'Notes'],
+            head: ['Reach, hexes', 'Settler', '[[job:carrier|Carrier]]', 'Notes'],
             rows: [
               ['Walking', '{{reach.walk}}', '{{reach.carrier}}', 'From where he stands'],
               [
@@ -909,7 +909,7 @@ export const ECONOMY: ArticleGroup = {
                 'Link between two signposts',
                 'under {{reach.link}}',
                 'under {{reach.link}}',
-                'Route between them up to {{reach.linkRoute}} steps',
+                'Route between them up to {{reach.linkRoute}} hexes',
               ],
               [
                 'Gap from your own signpost',
@@ -935,7 +935,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Terrain', 'Searching for goods, steps'],
+            head: ['Terrain', 'Searching for goods, hexes'],
             rows: [
               ['Road, land', 'under {{reach.goods}}'],
               ['Sand', 'about {{reach.goodsSand}}'],
@@ -1105,7 +1105,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'At 20-30 steps one way, both carts move the same goods per minute. Shorter favours the Handcart, longer the Ox Cart.',
+          p: 'At 20-30 hexes one way, both carts move the same goods per minute. Shorter favours the Handcart, longer the Ox Cart.',
         },
         {
           h: 'Route',

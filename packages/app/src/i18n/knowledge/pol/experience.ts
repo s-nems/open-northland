@@ -166,7 +166,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Bohaterowie',
         },
         {
-          p: 'Bohaterowi trafienia się nie liczą, jego obrażenia nie rosną. [[job:hero_axe|Bohater Topornik]] nie ma toru topora.',
+          p: 'Bohaterowi trafienia się nie liczą, jego obrażenia nie rosną.',
         },
       ],
       see: [

@@ -90,7 +90,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Gibt es nichts zu essen und keinen Ort zum Beten, geht der Siedler zurück an die Arbeit, und der Balken sinkt weiter. Ohne Wohnhaus im Umkreis von {{reach.walk}} Schritten schläft er im Freien.',
+          p: 'Gibt es nichts zu essen und keinen Ort zum Beten, geht der Siedler zurück an die Arbeit, und der Balken sinkt weiter. Ohne Wohnhaus im Umkreis von {{reach.walk}} Hexfeldern schläft er im Freien.',
         },
         {
           p: 'Ein Soldat im Kampf isst nur, was er bei sich trägt, oder aus dem Turmvorrat. Der Befehl Iss unterbricht den Kampf.',
@@ -188,7 +188,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Was in der Nähe ist', 'Schritte', 'Folge'],
+            head: ['Was in der Nähe ist', 'Hexfelder', 'Folge'],
             rows: [
               ['Kampf', 'bis {{alert.restClearance}}', 'Schläft, betet und redet nicht.'],
               ['Sichtbarer Feind, Modus Angriff oder Verteidigung', 'bis {{alert.standTo}}', 'Ebenso.'],
@@ -282,9 +282,9 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            'Eigene Speisekammer, wenn die Haustür höchstens {{reach.walk}} Schritte entfernt ist.',
-            'Nächstes Lager, nächste Werkstatt oder nächster Haufen im Umkreis von {{reach.goods}} Schritten, oder ein reifer Strauch näher als {{reach.bushAtHand}} Schritte.',
-            'Nächster reifer Strauch im Umkreis von {{reach.goods}} Schritten.',
+            'Eigene Speisekammer, wenn die Haustür höchstens {{reach.walk}} Hexfelder entfernt ist.',
+            'Nächstes Lager, nächste Werkstatt oder nächster Haufen im Umkreis von {{reach.goods}} Hexfeldern, oder ein reifer Strauch näher als {{reach.bushAtHand}} Hexfelder.',
+            'Nächster reifer Strauch im Umkreis von {{reach.goods}} Hexfeldern.',
             'Nächstes Essen irgendwo in Gehreichweite, auch das ferne eigene Wohnhaus.',
           ],
         },
@@ -328,7 +328,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[article:religion|Tempelaura]]',
                 '+{{aura.perSecond}}/s',
-                '{{aura.range}} Schritte vom [[building:work_temple|Tempel]]',
+                '{{aura.range}} Hexfelder vom [[building:work_temple|Tempel]]',
                 '{{aura.wholeMin}} Min. {{aura.restSec}} s',
               ],
               [
@@ -676,7 +676,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Die Fahne folgt dem Rohstoff, {{assistant.flagMin}}-{{assistant.flagMax}} Schritte davon entfernt: [[article:work-flag|Arbeitsfahne]].',
+          p: 'Die Fahne folgt dem Rohstoff, {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder davon entfernt: [[article:work-flag|Arbeitsfahne]].',
         },
         {
           p: 'Das Fenster „Untertanen“ zählt, was fehlt: Wohnhaus, Arbeitsplatz, Werkzeug, Schuhe, Partner, Kinder, Waffen, Met.',

@@ -6,6 +6,7 @@ import { entrySearchItems, type SearchItem, searchItems } from '../../knowledge/
 import { goodIconMarkup } from '../good-art.js';
 import { GLYPH } from '../icons.js';
 import { button, element, write } from '../parts/dom.js';
+import { tribeEmblem } from '../tribe-emblems.js';
 import { articleGroups, CALCULATOR_ARTICLE, renderArticle } from './article-view.js';
 import type {
   KnowledgeContext,
@@ -16,7 +17,16 @@ import type {
   KnowledgeView,
 } from './context.js';
 import { ENCYCLOPEDIA_LIST_SCROLL, firstEntry, renderEncyclopedia } from './encyclopedia-view.js';
-import { createTreeView, SCALE_DEFAULT_PCT, type TreeScales, type TreeView, treeHolds } from './tree-view.js';
+import {
+  createTreeView,
+  SCALE_DEFAULT_PCT,
+  SCALE_MAX_PCT,
+  SCALE_MIN_PCT,
+  SCALE_STEP_PCT,
+  type TreeScales,
+  type TreeView,
+  treeHolds,
+} from './tree-view.js';
 import './knowledge.css';
 
 const TABS: readonly KnowledgeTab[] = ['goods', 'buildings', 'encyclopedia', 'mechanics'];
@@ -123,6 +133,10 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
   };
   const context: KnowledgeContext = {
     ...deps,
+    // The seat's standing says nothing about another people's page.
+    get settlement() {
+      return deps.settlement?.tribe === tribe ? deps.settlement : null;
+    },
     tribe: () => tribe,
     go,
     onPageLeft: (release) => pageReleases.push(release),
@@ -143,11 +157,49 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
   });
   tabs.append(...tabButtons);
 
-  const tool = element('div', 'kn-tool');
   const back = button('on-button on-button--rounded kn-back');
   back.innerHTML = GLYPH.back;
   back.append(copy.back);
   const gap = element('span', 'kn-tool__gap');
+
+  const zoom = element('label', 'kn-zoom');
+  const treeCopy = messages().knowledge.tree;
+  const slider = document.createElement('input');
+  slider.type = 'range';
+  slider.min = String(SCALE_MIN_PCT);
+  slider.max = String(SCALE_MAX_PCT);
+  slider.step = String(SCALE_STEP_PCT);
+  slider.setAttribute('aria-label', treeCopy.scaleLabel);
+  const scaleOut = document.createElement('output');
+  zoom.append(slider, scaleOut);
+  const showScale = (percent: number): void => {
+    slider.value = String(percent);
+    scaleOut.textContent = `${percent}%`;
+  };
+  slider.addEventListener('input', () => tree?.view.setScale(Number(slider.value)));
+
+  const tribes = element('div', 'kn-tribes');
+  tribes.setAttribute('role', 'group');
+  tribes.setAttribute('aria-label', copy.tribe);
+  const tribeButtons = deps.base.tribes.map((known) => {
+    const item = button('kn-tribes__item');
+    item.title = known.name;
+    item.setAttribute('aria-label', known.name);
+    item.setAttribute('aria-pressed', String(known.typeId === tribe));
+    item.append(tribeEmblem(known.typeId, 'kn-tribes__emblem'));
+    item.addEventListener('click', () => {
+      if (known.typeId === tribe) return;
+      tribe = known.typeId;
+      for (const [index, row] of deps.base.tribes.entries()) {
+        tribeButtons[index]?.setAttribute('aria-pressed', String(row.typeId === tribe));
+      }
+      dropTree();
+      render();
+    });
+    return item;
+  });
+  tribes.append(...tribeButtons);
+
   const searchBox = element('label', 'on-res-field on-res-field--search kn-search');
   searchBox.innerHTML = GLYPH.search;
   const search = document.createElement('input');
@@ -155,29 +207,10 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
   search.placeholder = copy.search;
   search.setAttribute('aria-label', copy.search);
   searchBox.append(search);
-  tool.append(back, gap, searchBox);
-  if (deps.settlement === null) {
-    const label = element('label', 'kn-tribe');
-    label.append(copy.tribe);
-    const picker = document.createElement('select');
-    for (const known of deps.base.tribes) {
-      const option = document.createElement('option');
-      option.value = String(known.typeId);
-      option.textContent = known.name;
-      option.selected = known.typeId === tribe;
-      picker.append(option);
-    }
-    picker.addEventListener('input', () => {
-      tribe = Number(picker.value);
-      dropTree();
-      render();
-    });
-    label.append(picker);
-    tool.append(label);
-  }
+
   const main = element('div', 'kn-main');
   const head = element('div', 'kn-head');
-  head.append(tabs, tool);
+  head.append(tabs, back, gap, zoom, tribes, searchBox);
   root.append(head, main);
 
   const dropTree = (): void => {
@@ -252,6 +285,7 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
       const view = createTreeView(context, id, {
         scales,
         onClosePane: () => go({ tree: id, pin: null }),
+        onScale: showScale,
       });
       tree = { id, view };
       main.replaceChildren(view.element);
@@ -273,6 +307,7 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
       item.setAttribute('aria-selected', String(item.dataset.tab === place.tab));
     }
     back.disabled = past.length === 0;
+    zoom.hidden = !isTree(place.tab) || place.query.trim() !== '';
     if (search.value !== place.query) search.value = place.query;
     if (place.query.trim() !== '') showPage(() => searchPage(place.query), restored);
     else if (isTree(place.tab)) showTree(place.tab, restored);

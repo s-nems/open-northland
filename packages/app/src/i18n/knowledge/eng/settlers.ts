@@ -81,7 +81,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'With nothing to eat and nowhere to pray, a settler returns to work and the bar keeps falling. With no dwelling within {{reach.walk}} steps he sleeps in the open.',
+          p: 'With nothing to eat and nowhere to pray, a settler returns to work and the bar keeps falling. With no dwelling within {{reach.walk}} hexes he sleeps in the open.',
         },
         {
           p: "A soldier in combat eats only what he carries or from the tower's stock. An eat order breaks off the fight.",
@@ -179,7 +179,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['What is nearby', 'Steps', 'Effect'],
+            head: ['What is nearby', 'Hexes', 'Effect'],
             rows: [
               ['Fight', 'up to {{alert.restClearance}}', 'No sleep, no prayer, no talk.'],
               ['Visible enemy, on Attack or Defence', 'up to {{alert.standTo}}', 'Same.'],
@@ -273,9 +273,9 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            "His own larder, if the dwelling's door is at most {{reach.walk}} steps away.",
-            'The nearest store, workshop or ground pile within {{reach.goods}} steps, or a ripe bush closer than {{reach.bushAtHand}} steps.',
-            'The nearest ripe bush within {{reach.goods}} steps.',
+            "His own larder, if the dwelling's door is at most {{reach.walk}} hexes away.",
+            'The nearest store, workshop or ground pile within {{reach.goods}} hexes, or a ripe bush closer than {{reach.bushAtHand}} hexes.',
+            'The nearest ripe bush within {{reach.goods}} hexes.',
             'The nearest food anywhere in walking reach, even a distant dwelling of his own.',
           ],
         },
@@ -319,7 +319,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[article:religion|Temple aura]]',
                 '+{{aura.perSecond}}/s',
-                '{{aura.range}} steps from a [[building:work_temple|Temple]]',
+                '{{aura.range}} hexes from a [[building:work_temple|Temple]]',
                 '{{aura.wholeMin}} min {{aura.restSec}} s',
               ],
               [
@@ -667,7 +667,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'The flag moves with the resource, staying {{assistant.flagMin}}-{{assistant.flagMax}} steps from it: [[article:work-flag|Work Flag]].',
+          p: 'The flag moves with the resource, staying {{assistant.flagMin}}-{{assistant.flagMax}} hexes from it: [[article:work-flag|Work Flag]].',
         },
         {
           p: 'The "Subjects" window counts shortages: dwellings, workplaces, tools, shoes, partners, children, weapons, mead.',

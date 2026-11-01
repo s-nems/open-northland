@@ -24,14 +24,7 @@ export const enKnowledge = {
   tree: {
     or: 'or',
     amount: 'x{amount}',
-    scale: 'Scale',
     scaleLabel: 'Tree scale',
-    goodsUp: 'what it is made from',
-    goodsDown: 'what it goes into',
-    buildingsUp: 'what must come first',
-    buildingsDown: 'what it unlocks',
-    missing: 'Missing: {first}',
-    missingMore: 'Missing: {first} +{more}',
     mapForbidden: 'not on this map',
     mapForbiddenLong: 'This map does not allow this building',
     closePane: 'Close entry',
@@ -67,7 +60,6 @@ export const enKnowledge = {
   },
   entry: {
     notFound: "This entry is not in this game's data.",
-    original: 'Original description',
     categories: {
       goods: 'Goods',
       arms: 'Arms',
@@ -106,11 +98,10 @@ export const enKnowledge = {
       missing: 'Missing: {names}',
       missingMore: 'Missing: {names} and {more} more',
       mapForbidden: 'This map does not allow it',
-      stock: 'In the settlement: {amount}',
     },
     unit: {
       seconds: '{value} s',
-      steps: { one: '{value} step', few: '{value} steps', many: '{value} steps' },
+      steps: { one: '{value} hex', few: '{value} hexes', many: '{value} hexes' },
     },
     cadence: {
       many: '{blows} {word} every {time}',
@@ -147,7 +138,6 @@ export const enKnowledge = {
       noArmour: 'No armour',
       slower: 'Slower',
       marchNote: 'In shoes, on land. Weight does not slow heroes.',
-      wielder: 'For',
       unlock: 'Unlocked by',
       calculator: 'Open in the calculator',
       notForTribe: 'This tribe does not use this weapon.',
@@ -161,7 +151,6 @@ export const enKnowledge = {
       slows: 'Slows by',
       slowsNot: 'does not slow',
       durability: 'Durability',
-      permanent: 'never wears out',
     },
     good: {
       effect: 'Effect',
@@ -196,6 +185,18 @@ export const enKnowledge = {
       usesSip: { one: '{count} sip', few: '{count} sips', many: '{count} sips' },
     },
     building: {
+      aura: {
+        title: 'Aura',
+        lead: "Works by itself once the Temple is finished and undamaged. It covers all of the owner's people in range.",
+        range: 'Range',
+        rangeValue: '{{aura.range}} hexes',
+        health: 'Health',
+        healthValue: '+{{aura.perSecond}} per second, up to {{aura.ceiling}}',
+        piety: 'Religion',
+        pietyValue: '+{{aura.pietyPct}}% per second, up to {{need.satedPct}}%',
+        many: 'Several Temples',
+        manyValue: 'One aura applies, the values do not add up',
+      },
       output: 'What it makes',
       capacity: 'Capacity',
       perGood: '{amount} per good, {count} goods',
@@ -221,7 +222,12 @@ export const enKnowledge = {
       health: 'Health',
       footprint: 'Footprint',
     },
+    recipe: { inputs: 'Ingredients', outputs: 'Product', time: 'Time' },
     job: {
+      soldier: 'Soldier',
+      arms: 'Weapons',
+      armsNote:
+        'There is one soldier. The weapon in his hand gives him his class, and it changes with the weapon.',
       does: 'What it does',
       opens: 'Opens:',
       makes: 'Makes:',
@@ -299,7 +305,24 @@ export const enKnowledge = {
       absent: 'none',
       present: 'yes',
     },
-    wonder: { inGame: 'In the game', text: 'A map ornament with no effect' },
+    wonder: {
+      wonder_lighthouse_of_alexandria:
+        'A lighthouse on the island of Pharos, built around 280 BC under the Ptolemies. It stood over 100 m tall and for centuries was among the tallest buildings in the world, and a fire at the top guided ships into port. Medieval earthquakes brought it down.',
+      wonder_gardens_of_semiramis:
+        'Terraced gardens in Babylon, watered from the Euphrates. Tradition ties them to Queen Semiramis or to Nebuchadnezzar II, who is said to have planted them for a wife who missed the mountains. It is the only one of the seven wonders whose site nobody has found.',
+      wonder_rhodos:
+        'A statue of the sun god Helios, cast in bronze on Rhodes in the 3rd century BC. It was paid for by selling the siege engines the defeated Demetrius left outside the city. It stood about 33 m tall. An earthquake toppled it after less than 60 years, and the wreck lay on the ground for over 800 more.',
+      wonder_mausolos:
+        'The tomb of Mausolus, ruler of Caria, built at Halicarnassus around 350 BC by Artemisia, his wife and sister. The word mausoleum comes from his name. It stood for over a thousand years, and in the 15th century the Knights of St John used its stones to build the castle at Bodrum.',
+      wonder_artemis_temple:
+        'A marble temple at Ephesus, one of the largest of antiquity. In 356 BC Herostratus burned it down just to go down in history, and his name still means someone who destroys for fame. It was rebuilt grander than before and vanished only in late antiquity.',
+      wonder_zeus_statue:
+        'The seated Zeus at Olympia, made by Phidias around 435 BC. He stood about 12 m tall, with a body of ivory and robes of gold. People said that if the god rose, his head would go through the temple roof.',
+      wonder_pyramid_of_gizeh:
+        'The pyramid of the pharaoh Khufu, laid from over two million stone blocks and finished around 2560 BC. It was the tallest building in the world for over 3800 years. It is the oldest of the seven wonders and the only one still standing.',
+      wonder_8th_wonder:
+        'No ancient list knows this wonder. The Greek lists stop at seven. The makers of Cultures invented the eighth, and the game took its title from it.',
+    },
     showInTree: 'Show in the tree',
     experience: {
       builder_general: 'Building Construction',
@@ -352,9 +375,9 @@ export const enKnowledge = {
       cart: 'Cart',
       adult: 'Adult',
       child: 'Child',
-      across: 'steps across',
+      across: 'hexes across',
       along: 'down',
-      note: 'Drawn in steps. On screen it is a circle.',
+      note: 'Drawn in hexes. On screen it is a circle.',
     },
     reach: {
       signpost: 'Signpost',
@@ -384,7 +407,7 @@ export const enKnowledge = {
       straight: '{steps} across',
       straightUp: '{steps} down',
       slant: '{steps} slanted',
-      note: 'A slanted step is a row and half a column, so it counts as {cost} steps.',
+      note: 'A slanted step is a row and half a column, so it counts as {cost} hexes.',
     },
     leash: {
       attack: 'Attack',
@@ -398,7 +421,7 @@ export const enKnowledge = {
     },
     catapultSplash: {
       catapult: 'Catapult',
-      band: 'Range: {min}-{max} steps',
+      band: 'Range: {min}-{max} hexes',
       landing: 'Impact',
       points: '{count} points',
       full: 'Each takes the full blow',

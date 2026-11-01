@@ -1,8 +1,22 @@
-import { systems } from '@open-northland/sim';
-import { JOB_HERO_UNARMED, JOB_HEROINE_BOW, JOB_HUNTER, JOB_SOLDIER_UNARMED } from '../../catalog/jobs.js';
+import {
+  JOB_HERO_UNARMED,
+  JOB_HEROINE_BOW,
+  JOB_HUNTER,
+  JOB_SOLDIER_UNARMED,
+  JOB_WOMAN,
+} from '../../catalog/jobs.js';
+import { messages } from '../../i18n/index.js';
 import { buildingHitpoints, type KnowledgeBase } from './base.js';
 import { rawCost, recipesOf } from './chains.js';
-import { combatTargets, isHeroWeapon, landed, shownWeapons, stepSeconds, weaponsOf } from './combat.js';
+import {
+  combatTargets,
+  isCatapult,
+  isNamedHeroWeapon,
+  landed,
+  shownWeapons,
+  stepSeconds,
+  weaponsOf,
+} from './combat.js';
 import { cadenceText, preciseSecondsText, rangeText, wholeText } from './entry-format.js';
 import type {
   EntryRef,
@@ -65,15 +79,12 @@ function armsGoods(base: KnowledgeBase): ReadonlySet<number> {
   for (const armor of base.armor) if (armor.goodType !== null) types.add(armor.goodType);
   for (const rows of base.weapons.values()) {
     for (const weapon of rows) {
-      if (weapon.goodType !== null && !isCatapultWeapon(weapon)) types.add(weapon.goodType);
+      if (weapon.goodType !== null && !isCatapult(weapon)) types.add(weapon.goodType);
     }
   }
   armsIndexes.set(base, types);
   return types;
 }
-
-const isCatapultWeapon = (weapon: Pick<KnowledgeWeapon, 'mainType'>): boolean =>
-  weapon.mainType === systems.WEAPON_MAIN_TYPE.CATAPULT;
 
 export const isArmsGood = (base: KnowledgeBase, good: KnowledgeGood): boolean =>
   armsGoods(base).has(good.typeId);
@@ -104,8 +115,16 @@ export function placeOf(base: KnowledgeBase, ref: EntryRef): EntryPlace {
         ? { category: 'wonders', family: 'wonder', entry: ref }
         : { category: 'buildings', family: 'building', entry: ref };
     }
-    case 'job':
-      return { category: 'jobs', family: 'job', entry: ref };
+    case 'job': {
+      const job = base.jobById.get(ref.id);
+      const soldier = base.jobByType.get(JOB_SOLDIER_UNARMED);
+      const entry = job !== undefined && soldier !== undefined && jobFamily(job) === 'soldier';
+      return {
+        category: 'jobs',
+        family: 'job',
+        entry: entry ? { kind: 'job', id: soldier.id } : ref,
+      };
+    }
     case 'vehicle':
       return vehicle(ref.id);
     case 'animal':
@@ -114,6 +133,18 @@ export function placeOf(base: KnowledgeBase, ref: EntryRef): EntryPlace {
       return { category: 'tribes', family: 'tribe', entry: ref };
   }
 }
+
+/** The Zawody list: the trades and one soldier. The classes a weapon gives are that weapon's business, and
+ *  a hero or a woman has no trade to look up. */
+export function listedJobs(base: KnowledgeBase): readonly KnowledgeJob[] {
+  return base.jobs.filter((job) =>
+    jobFamily(job) === 'trade' ? job.typeId !== JOB_WOMAN : job.typeId === JOB_SOLDIER_UNARMED,
+  );
+}
+
+/** A job's name in the reference: every fighter class reads as the one soldier. */
+export const shownJobName = (job: KnowledgeJob): string =>
+  job.typeId === JOB_SOLDIER_UNARMED ? messages().knowledge.entry.job.soldier : job.name;
 
 export interface CategoryRow {
   readonly entry: EntryRef;
@@ -136,7 +167,7 @@ export function categoryRows(base: KnowledgeBase, category: EntryCategory): read
     case 'wonders':
       return buildings((b) => b.kind === 'wonder');
     case 'jobs':
-      return base.jobs.map((j) => ({ entry: { kind: 'job', id: j.id }, name: j.name }));
+      return listedJobs(base).map((j) => ({ entry: { kind: 'job', id: j.id }, name: shownJobName(j) }));
     case 'vehicles':
       return base.vehicles.map((v) => ({ entry: { kind: 'vehicle', id: v.id }, name: v.name }));
     case 'animals':
@@ -171,6 +202,7 @@ export function rawCostAddsSteps(base: KnowledgeBase, good: KnowledgeGood): bool
 }
 
 export type BuildingBlock =
+  | 'aura'
   | 'status'
   | 'output'
   | 'capacity'
@@ -185,10 +217,16 @@ export type BuildingBlock =
 
 export function buildingBlocks(
   building: KnowledgeBuilding,
-  shows: { readonly capacity: boolean; readonly teaches: boolean; readonly levels: boolean },
+  shows: {
+    readonly aura: boolean;
+    readonly capacity: boolean;
+    readonly teaches: boolean;
+    readonly levels: boolean;
+  },
 ): readonly BuildingBlock[] {
   return [
     'status',
+    ...(shows.aura ? (['aura'] as const) : []),
     ...(building.recipes.length > 0 ? (['output'] as const) : []),
     ...(shows.capacity ? (['capacity'] as const) : []),
     ...(shows.teaches ? (['teaches'] as const) : []),
@@ -284,12 +322,12 @@ export function jobFamily(job: Pick<KnowledgeJob, 'typeId'>): JobFamily {
   return job.typeId >= JOB_SOLDIER_UNARMED ? 'soldier' : 'trade';
 }
 
-export type JobBlock = 'does' | 'worksIn' | 'weapon' | 'learn' | 'train' | 'leadsTo' | 'links';
+export type JobBlock = 'arms' | 'does' | 'worksIn' | 'weapon' | 'learn' | 'train' | 'leadsTo' | 'links';
 
 /** A hero is found, never taught, so his page has no way to learn it and leads nowhere. */
 export function jobBlocks(family: JobFamily, shows: { readonly does: boolean }): readonly JobBlock[] {
   if (family === 'hero') return ['weapon', 'links'];
-  if (family === 'soldier') return ['weapon', 'train', 'leadsTo', 'links'];
+  if (family === 'soldier') return ['arms', 'train', 'links'];
   return [...(shows.does ? (['does'] as const) : []), 'worksIn', 'learn', 'leadsTo', 'links'];
 }
 
@@ -352,14 +390,14 @@ export function huntWeapons(
 /** A tribe's weapons in table order: the catapult is a vehicle's shot, so it closes the list. */
 export function tribeWeapons(base: KnowledgeBase, tribe: number): readonly KnowledgeWeapon[] {
   const rows = shownWeapons(base, tribe);
-  return [...rows.filter((w) => !isCatapultWeapon(w)), ...rows.filter(isCatapultWeapon)];
+  return [...rows.filter((w) => !isCatapult(w)), ...rows.filter(isCatapult)];
 }
 
 /** A tribe's heroes: the rows held by a hero's job, whatever the row's own id says. */
 export function tribeHeroes(base: KnowledgeBase, tribe: number): readonly KnowledgeWeapon[] {
   const seen = new Set<number>();
   return weaponsOf(base, tribe).filter((w) => {
-    if (!w.usable || w.jobType === null || !isHeroWeapon(w)) return false;
+    if (!w.usable || w.jobType === null || !isNamedHeroWeapon(w)) return false;
     if (jobFamily({ typeId: w.jobType }) !== 'hero' || seen.has(w.jobType)) return false;
     seen.add(w.jobType);
     return true;
@@ -390,7 +428,7 @@ export interface TribeDifferences {
 
 /** A weapon's name in a table; the catapult's row names its stone as the good. */
 export function weaponName(base: KnowledgeBase, weapon: KnowledgeWeapon): string {
-  if (isCatapultWeapon(weapon)) {
+  if (isCatapult(weapon)) {
     return base.vehicles.find((v) => v.jobType === weapon.jobType)?.name ?? weapon.id;
   }
   return weapon.goodName ?? weapon.jobName ?? weapon.id;

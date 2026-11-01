@@ -43,6 +43,7 @@ const row = (over: Partial<KnowledgeWeapon> = {}): KnowledgeWeapon => ({
   typeId: 1,
   id: 'iron_spear',
   jobType: 33,
+  filmJob: null,
   jobName: null,
   goodType: 40,
   goodName: null,

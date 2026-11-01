@@ -28,7 +28,7 @@ const TRADE = 8;
 
 const base = (): KnowledgeBase => createKnowledgeBase(knowledgeContent());
 
-const shows = { capacity: false, teaches: false, levels: false };
+const shows = { aura: false, capacity: false, teaches: false, levels: false };
 
 function building(over: Partial<KnowledgeBuilding>): KnowledgeBuilding {
   const row = base().buildings[0];
@@ -79,7 +79,7 @@ describe('block selection', () => {
 
   it('orders a building as the player reads it', () => {
     const b = building({
-      recipes: [{ inputs: [], outputs: [], ticks: 1 }],
+      recipes: [{ inputs: [], outputs: [], madeGood: null, fallbackTicks: 1 }],
       workers: [{ jobType: 8, name: 'x', count: 1 }],
       tech: { jobs: [], goods: [] },
     });
@@ -102,9 +102,9 @@ describe('block selection', () => {
     expect(jobBlocks('hero', { does: true })).not.toContain('leadsTo');
   });
 
-  it('shows a soldier his weapon and training, a trade its workplace', () => {
+  it('shows a soldier his arms and training, a trade its workplace', () => {
     expect(jobFamily({ typeId: SOLDIER })).toBe('soldier');
-    expect(jobBlocks('soldier', { does: false })).toEqual(['weapon', 'train', 'leadsTo', 'links']);
+    expect(jobBlocks('soldier', { does: false })).toEqual(['arms', 'train', 'links']);
     expect(jobFamily({ typeId: TRADE })).toBe('trade');
     expect(jobBlocks('trade', { does: true }).slice(0, 3)).toEqual(['does', 'worksIn', 'learn']);
   });

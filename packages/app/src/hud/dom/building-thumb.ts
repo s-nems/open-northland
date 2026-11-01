@@ -26,9 +26,13 @@ export interface ThumbFit {
 
 /** Contain the whole frame in a `box` square, centred: a tall body (a tower) stands small and whole
  *  rather than cropped. */
-export function thumbFit(frame: { readonly width: number; readonly height: number }, box: number): ThumbFit {
+export function thumbFit(
+  frame: { readonly width: number; readonly height: number },
+  box: number,
+  maxScale = Number.POSITIVE_INFINITY,
+): ThumbFit {
   const { width, height } = frame;
-  const scale = Math.min(box / width, box / height);
+  const scale = Math.min(box / width, box / height, maxScale);
   const dw = width * scale;
   const dh = height * scale;
   return { sx: 0, sy: 0, sw: width, sh: height, dx: (box - dw) / 2, dy: (box - dh) / 2, dw, dh };

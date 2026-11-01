@@ -42,7 +42,6 @@ import {
   foot,
   goodHead,
   goodIcon,
-  jobLink,
   node,
   originBlock,
   paragraph,
@@ -77,7 +76,7 @@ export function weaponStrip(context: KnowledgeContext, weapon: KnowledgeWeapon):
 
 export function weaponFilm(context: KnowledgeContext, weapon: KnowledgeWeapon): EntryBlock | null {
   const text = copy().weapon;
-  const { jobType } = weapon;
+  const jobType = weapon.filmJob;
   if (jobType === null) return null;
   const tribe = context.tribe();
   const step = preciseSecondsText(stepSeconds(context.base, weapon.weight, tribe));
@@ -189,14 +188,10 @@ function marchFold(context: KnowledgeContext, weapon: KnowledgeWeapon): EntryBlo
 function factsBlock(context: KnowledgeContext, good: KnowledgeGood, weapon: KnowledgeWeapon): EntryBlock {
   const text = copy().weapon;
   const discovery = context.base.goodRequirements.get(good.typeId)?.find((r) => r.route === 'need');
-  const { jobType, jobName } = weapon;
   return {
     node: section(
       null,
       factList([
-        ...(jobType === null || jobName === null
-          ? []
-          : ([[text.wielder, jobLink(context, jobType, jobName)]] as const)),
         ...(discovery === undefined
           ? []
           : ([[text.unlock, `${discovery.amount} × ${discovery.experience.join(' + ')}`]] as const)),

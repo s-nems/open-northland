@@ -233,58 +233,6 @@
 }
 
 /* ---- legend and scale ---- */
-.on-hud .kn-legend {
-  position: absolute;
-  left: 8px;
-  bottom: 6px;
-  display: flex;
-  gap: 12px;
-  padding: 3px 9px;
-  border: 1px solid #8d754977;
-  background: #e6d9b8e6;
-  color: var(--ink);
-  font-size: 12px;
-}
-.on-hud .kn-legend span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-.on-hud .kn-swatch {
-  width: 20px;
-  height: 4px;
-}
-.on-hud .kn-swatch--up {
-  background: #a8560f;
-}
-.on-hud .kn-swatch--down {
-  background: #2f6a2c;
-}
-.on-hud .kn-zoom {
-  position: absolute;
-  right: 18px;
-  bottom: 6px;
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 3px 9px;
-  border: 1px solid #8d754977;
-  background: #e6d9b8e6;
-  color: var(--ink);
-  font-size: 12px;
-  pointer-events: auto;
-}
-.on-hud .kn-zoom input {
-  width: 130px;
-  pointer-events: auto;
-  accent-color: #7a5a2f;
-}
-.on-hud .kn-zoom output {
-  min-width: 34px;
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
 /* ---- the pinned entry ---- */
 .on-hud .kn-pane {
   position: relative;
@@ -313,6 +261,3 @@
   pointer-events: auto;
 }
 /* The legend and the scale share what the pane leaves of the tree. */
-.on-hud .kn-treeview:has(.kn-pane:not([hidden])) .kn-zoom input {
-  width: 64px;
-}

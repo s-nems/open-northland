@@ -1,8 +1,8 @@
 import { CIVILIZATION_TRIBES } from '@open-northland/data';
 import { RECOMMENDED_CAMPAIGN_TRIBE } from '../../../campaign/launch.js';
+import { tribeEmblem } from '../../../hud/dom/tribe-emblems.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { node } from '../dom.js';
-import { tribeEmblem } from '../lobby-controls/tribe-emblems.js';
 
 /** Keys that move the choice to the previous or next civilization, as in any radio group. */
 const STEP_KEYS: Readonly<Record<string, number>> = {

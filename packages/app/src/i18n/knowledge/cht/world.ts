@@ -124,7 +124,7 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|投石機]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: '單位為步/秒。滿載指手推車{{haul.handcart}}/{{haul.handcart}}、牛車{{haul.oxcart}}/{{haul.oxcart}}。按赤腳車夫計算，穿鞋更快。船不受載重影響，約{{pace.ship}}步/秒。拉車的搬運工步速也按相同比例下降。路線選車見[[article:trade|貿易]]。',
+            foot: '單位為格/秒。滿載指手推車{{haul.handcart}}/{{haul.handcart}}、牛車{{haul.oxcart}}/{{haul.oxcart}}。按赤腳車夫計算，穿鞋更快。船不受載重影響，約{{pace.ship}}格/秒。拉車的搬運工步速也按相同比例下降。路線選車見[[article:trade|貿易]]。',
           },
         },
         {
@@ -181,7 +181,7 @@ export const WORLD: ArticleGroup = {
           list: [
             '貨艙由所有貨物共用。',
             '船載1輛載具：手推車、牛車或投石機。載具的乘員必須也上得了船。大船不載載具。',
-            '「靠岸」需要指定岸邊。船停在離指定位置{{vehicle.mooringDistance}}步處，不需要港口建築。',
+            '「靠岸」需要指定岸邊。船停在離指定位置{{vehicle.mooringDistance}}格處，不需要港口建築。',
             '海上不能上下船。',
             'Ctrl/Cmd + 點擊：靠岸並讓乘員登陸。',
           ],
@@ -194,9 +194,9 @@ export const WORLD: ArticleGroup = {
             '「目標」：貨艙要裝多少份。目標總和不超過容量。',
             '「由搬運工」：有工作地點的搬運工拉車，車上裝的是他每趟搬起的貨物。目標被鎖定。',
             '車輛停下或船靠岸時，負責裝卸的人下來工作。海上沒人工作。',
-            '每次拿1份：貨堆、{{vehicle.cargoSearch}}步內的建築，然後更遠處。',
+            '每次拿1份：貨堆、{{vehicle.cargoSearch}}格內的建築，然後更遠處。',
             '來源必須在船門所在的陸地上。不拿民居裡的食物。',
-            '目標為0或低於現有數量：多餘的運到{{vehicle.cargoSearch}}步內最近的有空位的倉庫或大本營。沒有就卸在地上。',
+            '目標為0或低於現有數量：多餘的運到{{vehicle.cargoSearch}}格內最近的有空位的倉庫或大本營。沒有就卸在地上。',
             '指揮官是士兵、英雄、[[job:scout|偵察兵]]或[[job:druid|德魯伊]]且無人裝卸時，若貨物無處可取，會調低目標。有人裝卸時目標不變。',
             '移動命令會在出發前召回乘員。',
           ],
@@ -208,7 +208,7 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['狀態', '船上乘員', '載運的載具', '貨物'],
             rows: [
-              ['車輛、[[good:catapult|投石機]]', '在門口下車', '-', '散落在{{vehicle.spill}}步內'],
+              ['車輛、[[good:catapult|投石機]]', '在門口下車', '-', '散落在{{vehicle.spill}}格內'],
               ['船已靠岸', '登岸', '停在門口', '消失'],
               ['船在海上', '溺亡', '連同乘員沉沒', '消失'],
             ],
@@ -262,7 +262,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             '受和平保護的玩家之間不能交戰。',
-            '不能進入或在對方建築{{peace.keepOut}}步內建造，除非離你自己的建築更近。',
+            '不能進入或在對方建築{{peace.keepOut}}格內建造，除非離你自己的建築更近。',
             '結束前{{peace.noticeFirstMinutes}}分鐘和{{peace.noticeLastMinutes}}分鐘發出提醒。',
           ],
         },
@@ -329,7 +329,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['對象', '範圍（步）'],
+            head: ['對象', '範圍（格）'],
             rows: [
               ['[[job:scout|偵察兵]]、[[building:headquarters|大本營]]', '{{vision.scout}}'],
               ['英雄、[[good:ship_small|船]]、[[good:ship_big|大船]]', '{{vision.hero}}'],
@@ -340,7 +340,7 @@ export const WORLD: ArticleGroup = {
               ['工地', '0'],
             ],
             num: [1],
-            foot: '步數按橫向計算。木柵欄、道路和路標沒有視野。',
+            foot: '格數按橫向計算。木柵欄、道路和路標沒有視野。',
           },
         },
         {
@@ -367,7 +367,7 @@ export const WORLD: ArticleGroup = {
               ['路標', '「放置路標」命令，不花材料', '[[article:roads|道路與路標]]'],
               ['探索陸地', '「探索」命令', '見下'],
               ['動物', '從野生牛和綿羊身旁走過即可收服', '[[article:livestock|畜牧]]'],
-              ['視野', '{{vision.scout}}步，人員中最遠', '[[article:fog|迷霧與視野]]'],
+              ['視野', '{{vision.scout}}格，人員中最遠', '[[article:fog|迷霧與視野]]'],
             ],
             foot: '不受路標範圍限制，可走遍全圖。',
           },
@@ -406,7 +406,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'wildlife',
       name: '野生動物與狩獵',
-      lead: '攻擊性獸群會撲向其所在地{{wild.aggro}}步內的人，超出{{wild.giveUp}}步後返回。',
+      lead: '攻擊性獸群會撲向其所在地{{wild.aggro}}格內的人，超出{{wild.giveUp}}格後返回。',
       blocks: [
         {
           data: 'animals',
@@ -424,13 +424,13 @@ export const WORLD: ArticleGroup = {
                 '熊、大象',
                 '憤怒持續到最後一次受擊後{{wild.angrySeconds}}秒，已開始的攻擊持續到目標死亡或避難',
               ],
-              ['膽小', '其餘動物', '頭領受擊後逃開{{wild.flight}}步，獸群跟隨'],
+              ['膽小', '其餘動物', '頭領受擊後逃開{{wild.flight}}格，獸群跟隨'],
             ],
             foot: '野山羊既不攻擊也不逃跑。',
           },
         },
         {
-          list: ['攻擊會驚動受擊者{{wild.kinAlarm}}步內的同種動物。', '動物不攻擊建築和載具。'],
+          list: ['攻擊會驚動受擊者{{wild.kinAlarm}}格內的同種動物。', '動物不攻擊建築和載具。'],
         },
         {
           h: '獸群增長',
@@ -443,10 +443,10 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            '獵場是工作旗幟或工作地點周圍{{flag.hunter}}步。追擊可超出獵場{{wild.huntChase}}步。',
+            '獵場是工作旗幟或工作地點周圍{{flag.hunter}}格。追擊可超出獵場{{wild.huntChase}}格。',
             '優先選擇又近又弱的動物。',
             '一次只獵1隻，收完獵物才找下一隻。',
-            '獵人的弓每箭造成{{wild.hunterShot}}，射程{{hunterBow.min}}-{{hunterBow.max}}步。',
+            '獵人的弓每箭造成{{wild.hunterShot}}，射程{{hunterBow.min}}-{{hunterBow.max}}格。',
             '不會主動獵成年野山羊，其幼崽可獵。',
             '跳過有主人的動物、被激怒的動物和其他陸地上的動物。',
           ],
@@ -484,7 +484,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['對象', '做法', '範圍（步）'],
+            head: ['對象', '做法', '範圍（格）'],
             rows: [
               [
                 '[[job:scout|偵察兵]]',
@@ -522,7 +522,7 @@ export const WORLD: ArticleGroup = {
           list: [
             '[[building:work_animal_farm|畜牧場]]總共容納{{livestock.farmHerd}}頭，含兩種牲畜和待出生的幼崽。',
             '幼崽{{livestock.growSeconds}}秒（{{livestock.growMinutes}}分鐘）長大，不計入一對。',
-            '出生時親代必須在畜牧場門口{{livestock.birthRange}}步內。否則原料白費，沒有幼崽。',
+            '出生時親代必須在畜牧場門口{{livestock.birthRange}}格內。否則原料白費，沒有幼崽。',
             '畜牧場人手：[[job:breeder|畜牧師]]{{livestock.breeders}}名，[[job:carrier|搬運工]]{{livestock.carriers}}名。',
           ],
         },
@@ -604,7 +604,7 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['項目', '數值'],
             rows: [
-              ['範圍', '{{aura.range}}步'],
+              ['範圍', '{{aura.range}}格'],
               ['生命值', '每秒+{{aura.perSecond}}，上限{{aura.ceiling}}'],
               ['信仰', '需求條不超過{{need.satedPct}}%時每秒+{{aura.pietyPct}}%'],
               ['對象', '神廟所有者的全部人員。兒童獲得生命值'],

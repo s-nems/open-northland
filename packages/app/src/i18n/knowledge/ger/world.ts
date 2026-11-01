@@ -136,7 +136,7 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|Katapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Schritte pro Sekunde. Voll heißt {{haul.handcart}} von {{haul.handcart}} auf dem Handkarren und {{haul.oxcart}} von {{haul.oxcart}} auf dem Ochsenkarren. Gerechnet für einen Fahrer ohne Schuhe, mit Schuhen geht es schneller. Ein Schiff wird durch Ladung nicht langsamer und fährt etwa {{pace.ship}} Schritte/s. Ein Träger, der einen Karren zieht, verliert denselben Prozentsatz von seinem Gehtempo. Welcher Karren für eine Route: [[article:trade|Handel]].',
+            foot: 'Hexfelder pro Sekunde. Voll heißt {{haul.handcart}} von {{haul.handcart}} auf dem Handkarren und {{haul.oxcart}} von {{haul.oxcart}} auf dem Ochsenkarren. Gerechnet für einen Fahrer ohne Schuhe, mit Schuhen geht es schneller. Ein Schiff wird durch Ladung nicht langsamer und fährt etwa {{pace.ship}} Hexfelder/s. Ein Träger, der einen Karren zieht, verliert denselben Prozentsatz von seinem Gehtempo. Welcher Karren für eine Route: [[article:trade|Handel]].',
           },
         },
         {
@@ -193,7 +193,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Der Frachtraum ist für alle Waren gemeinsam.',
             'Ein Schiff transportiert 1 Fahrzeug: Handkarren, Ochsenkarren oder Katapult. Dessen Besatzung muss an Bord passen. Ein Großes Schiff transportiert keine Fahrzeuge.',
-            'Bei „Andocken“ wählst du ein Ufer. Das Schiff hält {{vehicle.mooringDistance}} Schritte vom gewählten Ort, ein Hafengebäude ist nicht nötig.',
+            'Bei „Andocken“ wählst du ein Ufer. Das Schiff hält {{vehicle.mooringDistance}} Hexfelder vom gewählten Ort, ein Hafengebäude ist nicht nötig.',
             'Auf See steigt niemand ein oder aus.',
             'Ctrl/Cmd + Klick dockt an und setzt die Besatzung ab.',
           ],
@@ -206,9 +206,9 @@ export const WORLD: ArticleGroup = {
             '„Zielmenge“: Wie viele Stück im Frachtraum sein sollen. Die Summe der Zielmengen übersteigt die Kapazität nicht.',
             '„durch den Träger“: Ein Träger mit Arbeitsplatz zieht den Karren und fährt, was er auf jeder Fahrt aufhebt. Die Zielmengen sind gesperrt.',
             'Wer lädt, steigt aus, wenn der Karren steht oder das Schiff angedockt ist. Auf See arbeitet niemand.',
-            'Geladen wird je 1 Stück: Haufen, Gebäude bis {{vehicle.cargoSearch}} Schritte, dann weiter weg.',
+            'Geladen wird je 1 Stück: Haufen, Gebäude bis {{vehicle.cargoSearch}} Hexfelder, dann weiter weg.',
             'Die Quelle muss auf derselben Landmasse liegen wie die Tür. Essen aus Wohnhäusern bleibt dort.',
-            'Zielmenge 0 oder unter dem Inhalt: Der Überschuss geht ins nächste Lagerhaus oder Hauptquartier mit Platz, bis {{vehicle.cargoSearch}} Schritte von der Tür. Sonst landet er am Boden.',
+            'Zielmenge 0 oder unter dem Inhalt: Der Überschuss geht ins nächste Lagerhaus oder Hauptquartier mit Platz, bis {{vehicle.cargoSearch}} Hexfelder von der Tür. Sonst landet er am Boden.',
             'Ist der Kommandant Soldat, Held, [[job:scout|Kundschafter]] oder [[job:druid|Druide]] und lädt sonst niemand, senkt er die Zielmenge, wenn es die Ware nirgends gibt. Lädt jemand anderes mit, bleibt sie.',
             'Ein Fahrbefehl ruft die Besatzung vor der Abfahrt an Bord.',
           ],
@@ -224,7 +224,7 @@ export const WORLD: ArticleGroup = {
                 'Karren, [[good:catapult|Katapult]]',
                 'Steigt an der Tür aus',
                 '-',
-                'Verstreut bis {{vehicle.spill}} Schritte ringsum',
+                'Verstreut bis {{vehicle.spill}} Hexfelder ringsum',
               ],
               ['Schiff angedockt', 'Geht an Land', 'Steht an der Tür', 'Verloren'],
               ['Schiff auf See', 'Ertrinkt', 'Sinkt samt Besatzung', 'Verloren'],
@@ -287,7 +287,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Kampf zwischen Spielern im Frieden ist gesperrt.',
-            'Du betrittst nichts und baust nichts bis {{peace.keepOut}} Schritte vom Gebäude des Partners, außer dein eigenes ist näher.',
+            'Du betrittst nichts und baust nichts bis {{peace.keepOut}} Hexfelder vom Gebäude des Partners, außer dein eigenes ist näher.',
             'Warnungen kommen {{peace.noticeFirstMinutes}} Min. und {{peace.noticeLastMinutes}} Min. vor dem Ende.',
           ],
         },
@@ -354,7 +354,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Wer', 'Sichtweite, Schritte'],
+            head: ['Wer', 'Sichtweite, Hexfelder'],
             rows: [
               ['[[job:scout|Kundschafter]], [[building:headquarters|Hauptquartier]]', '{{vision.scout}}'],
               ['Held, [[good:ship_small|Schiff]], [[good:ship_big|Großes Schiff]]', '{{vision.hero}}'],
@@ -368,7 +368,7 @@ export const WORLD: ArticleGroup = {
               ['Baustelle', '0'],
             ],
             num: [1],
-            foot: 'Schritte waagerecht gezählt. Palisaden, Straßen und Wegweiser sehen nichts.',
+            foot: 'Hexfelder waagerecht gezählt. Palisaden, Straßen und Wegweiser sehen nichts.',
           },
         },
         {
@@ -405,7 +405,7 @@ export const WORLD: ArticleGroup = {
               ],
               [
                 'Sicht',
-                '{{vision.scout}} Schritte, die größte unter Menschen',
+                '{{vision.scout}} Hexfelder, die größte unter Menschen',
                 '[[article:fog|Nebel und Sicht]]',
               ],
             ],
@@ -449,7 +449,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'wildlife',
       name: 'Wildtiere und Jagd',
-      lead: 'Eine aggressive Herde stürzt sich auf Menschen im Umkreis von {{wild.aggro}} Schritten um ihren Platz und kehrt nach {{wild.giveUp}} Schritten um.',
+      lead: 'Eine aggressive Herde stürzt sich auf Menschen im Umkreis von {{wild.aggro}} Hexfeldern um ihren Platz und kehrt nach {{wild.giveUp}} Hexfeldern um.',
       blocks: [
         {
           data: 'animals',
@@ -470,7 +470,7 @@ export const WORLD: ArticleGroup = {
               [
                 'Scheu',
                 'Alle übrigen',
-                'Ein getroffenes Leittier flieht bis {{wild.flight}} Schritte, die Herde hinterher',
+                'Ein getroffenes Leittier flieht bis {{wild.flight}} Hexfelder, die Herde hinterher',
               ],
             ],
             foot: 'Die Wildziege greift weder an, noch flieht sie.',
@@ -478,7 +478,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Ein Schlag alarmiert Tiere derselben Art bis {{wild.kinAlarm}} Schritte um das getroffene.',
+            'Ein Schlag alarmiert Tiere derselben Art bis {{wild.kinAlarm}} Hexfelder um das getroffene.',
             'Gebäude und Fahrzeuge greifen Tiere nicht an.',
           ],
         },
@@ -493,10 +493,10 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Das Jagdgebiet reicht {{flag.hunter}} Schritte um Arbeitsfahne oder Arbeitsplatz. Die Verfolgung geht {{wild.huntChase}} Schritte darüber hinaus.',
+            'Das Jagdgebiet reicht {{flag.hunter}} Hexfelder um Arbeitsfahne oder Arbeitsplatz. Die Verfolgung geht {{wild.huntChase}} Hexfelder darüber hinaus.',
             'Er wählt nahe und schwache Tiere.',
             'Er jagt je 1 Beute und nimmt die nächste erst, wenn er die Beute eingesammelt hat.',
-            'Der Jägerbogen nimmt {{wild.hunterShot}} je Schuss, Reichweite {{hunterBow.min}}-{{hunterBow.max}} Schritte.',
+            'Der Jägerbogen nimmt {{wild.hunterShot}} je Schuss, Reichweite {{hunterBow.min}}-{{hunterBow.max}} Hexfelder.',
             'Erwachsene Wildziegen jagt er nicht von selbst, ihre Jungtiere schon.',
             'Er übergeht Tiere mit Besitzer, wütende Tiere und Tiere auf einer anderen Landmasse.',
           ],
@@ -542,7 +542,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Wer', 'Was er tut', 'Reichweite, Schritte'],
+            head: ['Wer', 'Was er tut', 'Reichweite, Hexfelder'],
             rows: [
               [
                 '[[job:scout|Kundschafter]]',
@@ -588,7 +588,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Die [[building:work_animal_farm|Viehzüchterei]] fasst insgesamt {{livestock.farmHerd}} Tiere, beide Arten und Jungtiere unterwegs eingerechnet.',
             'Ein Jungtier wächst {{livestock.growSeconds}} s ({{livestock.growMinutes}} Min.) und zählt nicht zum Paar.',
-            'Das Elterntier muss bei der Geburt bis {{livestock.birthRange}} Schritte von der Tür der Viehzüchterei sein. Weiter weg: Rohstoff verloren, kein Jungtier.',
+            'Das Elterntier muss bei der Geburt bis {{livestock.birthRange}} Hexfelder von der Tür der Viehzüchterei sein. Weiter weg: Rohstoff verloren, kein Jungtier.',
             'Besatzung der Viehzüchterei: {{livestock.breeders}} [[job:breeder|Viehzüchter]] und {{livestock.carriers}} [[job:carrier|Träger]].',
           ],
         },
@@ -674,7 +674,7 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Wirkung', 'Wert'],
             rows: [
-              ['Reichweite', '{{aura.range}} Schritte'],
+              ['Reichweite', '{{aura.range}} Hexfelder'],
               ['Gesundheit', '+{{aura.perSecond}} pro Sekunde, bis {{aura.ceiling}}'],
               ['Religion', '+{{aura.pietyPct}}% pro Sekunde, wenn der Balken bis {{need.satedPct}}% steht'],
               ['Wer', 'Alle Leute des Tempelbesitzers. Kinder bekommen Gesundheit'],

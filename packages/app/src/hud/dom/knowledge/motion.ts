@@ -11,8 +11,6 @@ import { diag } from '../../../diag/index.js';
 import { type FilmLayer, type KnowledgeFilm, knowledgeFilm } from '../../knowledge/film.js';
 import type { KnowledgeClip, KnowledgeMotion } from './context.js';
 
-/** Css px per bob px: a figure reads at the size of the entry's stat sheet. */
-const FILM_DISPLAY_SCALE = 1.6;
 /** A coloured page nobody draws is closed this long after its last film, so a tab flicked back and forth
  *  decodes once and a closed window holds none. */
 const IDLE_SHEET_MS = 20_000;
@@ -199,8 +197,8 @@ async function loadFilm(
   canvas.className = 'kn-film';
   canvas.width = layout.width;
   canvas.height = layout.height;
-  canvas.style.width = `${layout.width * FILM_DISPLAY_SCALE}px`;
-  canvas.style.height = `${layout.height * FILM_DISPLAY_SCALE}px`;
+  canvas.style.setProperty('--film-w', `${layout.width}px`);
+  canvas.style.setProperty('--film-h', `${layout.height}px`);
   const ctx = canvas.getContext('2d');
   if (ctx === null) return null;
   let shown = -1;

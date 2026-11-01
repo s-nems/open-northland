@@ -6,6 +6,7 @@ import {
   type RecipeSource,
   rawCost,
   recipesOf,
+  recipeTicks,
   usesOf,
 } from '../../knowledge/chains.js';
 import { stepSeconds } from '../../knowledge/combat.js';
@@ -16,7 +17,6 @@ import {
   mealText,
   preciseSecondsText,
   ticksText,
-  wholeText,
 } from '../../knowledge/entry-format.js';
 import type { KnowledgeRecipe } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
@@ -46,37 +46,51 @@ const TOOL_CATEGORY = 'tool';
 
 const copy = () => messages().knowledge.entry;
 
-/** A recipe: inputs, an arrow, outputs and the cycle; `house` adds its workshop on a line above. */
-export function recipeView(
-  context: KnowledgeContext,
-  recipe: KnowledgeRecipe,
-  house: Child = null,
-): HTMLElement {
-  const inputs = goodLinks(context, recipe.inputs).flatMap((input, index) =>
-    index === 0 ? [input] : [node('i', '', '+'), input],
-  );
+const billColumn = (context: KnowledgeContext, rows: KnowledgeRecipe['inputs']): HTMLElement => {
+  const items = goodLinks(context, rows);
+  return node('td', 'kn-recipes__goods', ...(items.length === 0 ? ['-'] : items));
+};
+
+/** Recipes one to a row: what goes in, an arrow, what comes out and one batch's time. A list that spans
+ *  several houses names each above its rows. */
+export function recipeTable(context: KnowledgeContext, sources: readonly RecipeSource[]): HTMLElement {
+  const text = copy().recipe;
+  const titles = [text.inputs, '', text.outputs, text.time];
+  const houses = new Set(sources.map((source) => source.building.typeId)).size > 1;
+  let house: number | null = null;
+  const rows = sources.flatMap(({ building, recipe }) => {
+    const opensHouse = houses && building.typeId !== house;
+    house = building.typeId;
+    const name = node('td', 'kn-recipes__house', buildingLink(building));
+    name.colSpan = titles.length;
+    return [
+      ...(opensHouse ? [node('tr', '', name)] : []),
+      node(
+        'tr',
+        '',
+        billColumn(context, recipe.inputs),
+        node('td', 'kn-recipes__arrow', '→'),
+        billColumn(context, recipe.outputs),
+        node(
+          'td',
+          'kn-recipes__time',
+          ticksText(recipeTicks(context.base, building, recipe, context.tribe())),
+        ),
+      ),
+    ];
+  });
   return node(
-    'div',
-    'kn-recipe',
-    house === null ? null : node('div', 'kn-recipe__house', house),
-    node(
-      'div',
-      'kn-recipe__flow',
-      ...inputs,
-      inputs.length === 0 ? null : node('i', '', '→'),
-      ...goodLinks(context, recipe.outputs),
-      node('span', 'kn-recipe__time', ticksText(recipe.ticks)),
-    ),
+    'table',
+    'kn-recipes',
+    node('thead', '', node('tr', '', ...titles.map((title) => node('th', '', title)))),
+    node('tbody', '', ...rows),
   );
 }
 
-/** The stock line and any status the seat puts on a good; empty outside a game. */
+/** Any status the seat puts on a good; nothing outside a game. */
 export function goodStatusBlock(context: KnowledgeContext, good: KnowledgeGood): EntryBlock | null {
-  const settlement = context.settlement;
-  if (settlement === null) return null;
-  const chip = statusChip(settlement.status('good', good.typeId), false);
-  const amount = formatMessage(copy().status.stock, { amount: wholeText(settlement.stock(good.typeId)) });
-  return { node: node('div', 'kn-status', chip, node('p', 'kn-foot', amount)) };
+  const chip = context.settlement && statusChip(context.settlement.status('good', good.typeId), false);
+  return chip === null ? null : { node: chip };
 }
 
 /** Every way a good comes into being. */
@@ -90,12 +104,10 @@ export function obtainBlock(
   const fills = producersOf(context.base, good.typeId);
   const workers = sources.length > 0 ? [] : (context.base.gatheredBy.get(good.typeId) ?? []);
   if (sources.length === 0 && fills.length === 0 && workers.length === 0) return null;
-  const recipe = ({ building, recipe: row }: RecipeSource): HTMLElement =>
-    recipeView(context, row, buildingLink(building));
   return {
     node: section(
       title,
-      ...sources.map(recipe),
+      sources.length === 0 ? null : recipeTable(context, sources),
       fills.length === 0 ? null : paragraph(text.fills, ' ', links(fills.map(buildingLink))),
       workers.length === 0
         ? null
@@ -148,13 +160,14 @@ function effectBlock(context: KnowledgeContext, good: KnowledgeGood): EntryBlock
       ...(equip.category === 'boots' ? bootEffects(context) : []),
     ];
     if (effects.length > 0) parts.push(paragraph(effects.join('. ')));
-    rows.push([text.durability, equipDurability(equip)]);
+    const durability = equipDurability(equip);
+    if (durability !== null) rows.push([text.durability, durability]);
   }
   if (meal !== null) {
     const { outside, home } = mealText(meal);
     rows.push([text.mealOutside, outside], [text.mealHome, home]);
   }
-  return { node: section(text.effect, ...parts, factList(rows)) };
+  return { node: section(text.effect, ...parts, rows.length === 0 ? null : factList(rows)) };
 }
 
 function bootEffects(context: KnowledgeContext): readonly string[] {

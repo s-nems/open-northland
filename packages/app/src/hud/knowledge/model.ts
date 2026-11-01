@@ -72,7 +72,10 @@ export interface KnowledgeTech {
 export interface KnowledgeRecipe {
   readonly inputs: readonly GoodQuantity[];
   readonly outputs: readonly GoodQuantity[];
-  readonly ticks: number;
+  /** The good the batch's produce clip is bound to, before a meal folds into its dish. */
+  readonly madeGood: number | null;
+  /** The batch's length when no produce clip times it. */
+  readonly fallbackTicks: number;
 }
 
 export interface KnowledgeBuilding {
@@ -119,6 +122,8 @@ export interface KnowledgeWeapon {
   readonly typeId: number;
   readonly id: string;
   readonly jobType: number | null;
+  /** The job whose body draws the row: a trained form can borrow another class's look. */
+  readonly filmJob: number | null;
   readonly jobName: string | null;
   readonly goodType: number | null;
   readonly goodName: string | null;

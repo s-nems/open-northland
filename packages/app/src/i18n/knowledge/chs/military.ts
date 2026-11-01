@@ -232,7 +232,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: '射程单位为步。目标近于射程下限时弓手不射击。法兰克人的希拉：射程{{frankHeroBow.min}}-{{frankHeroBow.max}}，每{{frankHeroBow.seconds}}秒一箭。',
+            foot: '射程单位为格。目标近于射程下限时弓手不射击。法兰克人的希拉：射程{{frankHeroBow.min}}-{{frankHeroBow.max}}，每{{frankHeroBow.seconds}}秒一箭。',
           },
         },
         {
@@ -255,7 +255,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '未命中的箭落在目标3步以内。命中75次起不再偏移。',
+            '未命中的箭落在目标3格以内。命中75次起不再偏移。',
             '未命中的箭打中落点的第一个敌人：人、动物或载具，然后是建筑，最后是木栅栏。',
             '箭会飞过己方、盟友和中立单位。',
             '士兵会对移动目标提前瞄准。建筑瞄准目标当前位置。',
@@ -298,12 +298,12 @@ export const MILITARY: ArticleGroup = {
                 '不反击',
               ],
             ],
-            foot: '半径单位为步。驻守点是士兵更换姿态时所站的位置。移动和攻击命令会改变驻守点。',
+            foot: '半径单位为格。驻守点是士兵更换姿态时所站的位置。移动和攻击命令会改变驻守点。',
           },
         },
         {
           list: [
-            '进攻姿态的士兵战斗结束时若离驻守点超过{{stance.attackReturn}}步，就返回驻守点。',
+            '进攻姿态的士兵战斗结束时若离驻守点超过{{stance.attackReturn}}格，就返回驻守点。',
             '索敌不受[[article:fog|迷雾]]影响。',
             '攻击命令在任何姿态下都有效。',
             '岗位上的弓手在任何姿态下都射击范围内的目标。',
@@ -324,14 +324,14 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['对象', '距伤者（步）', '反应'],
+            head: ['对象', '距伤者（格）', '反应'],
             rows: [
               ['进攻或防御姿态的士兵和英雄', '{{stance.soldierAlarm}}', '冲向攻击者'],
               ['无视姿态的士兵和英雄', '-', '只打武器范围内的目标'],
               [
                 '平民和侦察兵',
                 '{{stance.peopleAlarm}}',
-                '逃开{{stance.fleeMin}}-{{stance.fleeMax}}步后回去工作',
+                '逃开{{stance.fleeMin}}-{{stance.fleeMax}}格后回去工作',
               ],
               ['建筑内的人', '-', '不反应，岗位上的弓手除外'],
               ['露天睡觉的平民', '-', '继续睡，被打才逃'],
@@ -389,14 +389,12 @@ export const MILITARY: ArticleGroup = {
               ],
               ['[[job:hero_sword_bjarni|比亚尼]]', '剑', '[[good:armor_chain|锁甲]]', '{{hero.swordReach}}'],
               ['[[job:hero_saber_hatschi|哈奇]]', '弯刀', '[[good:armor_chain|锁甲]]', '{{hero.saberReach}}'],
-              ['[[job:hero_axe|战斧英雄]]', '斧头', '[[good:armor_chain|锁甲]]', '{{hero.axeReach}}'],
               [
                 '[[job:heroine_bow_xena|希拉]]',
                 '弓',
                 '[[good:armor_leather|皮甲]]',
                 '{{heroBow.min}}-{{heroBow.max}}',
               ],
-              ['[[job:hero_unarmed|徒手英雄]]', '拳头', '[[good:armor_wool|布甲]]', '{{hero.fistReach}}'],
             ],
             num: [3],
             foot: '每{{hero.blowSeconds}}秒攻击一次。伤害见[[article:damage|武器、护甲与伤害]]表中的“英雄”选项。',
@@ -411,16 +409,10 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['西格德', '埃及人', '对锁甲{{hero.sigurdEgyptChain}}'],
               ['哈奇', '撒拉逊人', '每{{hero.hatchieSaracenSeconds}}秒{{hero.hatchieSaracenBlows}}击'],
-              ['战斧英雄', '维京人', '对板甲{{hero.axeVikingPlate}}，每{{hero.axeVikingSeconds}}秒一击'],
               [
                 '希拉',
                 '法兰克人',
                 '射程{{frankHeroBow.min}}-{{frankHeroBow.max}}，每{{frankHeroBow.seconds}}秒一箭，对无甲{{hero.frankBowBare}}，对布甲和皮甲{{hero.frankBowWool}}，对锁甲和板甲{{hero.frankBowChain}}，对建筑和载具{{hero.frankBowVehicle}}',
-              ],
-              [
-                '徒手英雄',
-                '拜占庭人、埃及人',
-                '每{{hero.fistEasternSeconds}}秒连击{{hero.fistEasternBlows}}次',
               ],
             ],
           },
@@ -518,7 +510,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '射程为从建筑最近的墙起{{shelter.range}}步，没有下限。',
+            '射程为从建筑最近的墙起{{shelter.range}}格，没有下限。',
             '建筑也会射击迷雾中的敌人。',
             '箭不耗材料，也不给经验。',
             '目标顺序：士兵和英雄、野兽、建筑、其他人。',
@@ -613,7 +605,7 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['开启', '谁都能过，包括敌人'],
               ['关闭', '谁也过不去，包括自己人'],
-              ['自动', '保持开启。敌人进入栅门{{wall.gateEnemyNear}}步内时关闭，之后再打开'],
+              ['自动', '保持开启。敌人进入栅门{{wall.gateEnemyNear}}格内时关闭，之后再打开'],
             ],
             foot: '自动模式只看交战玩家的活人和载具，平民也算。动物和建筑不算。',
           },
@@ -668,7 +660,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'catapult',
       name: '投石机',
-      lead: '石弹伤及落点和周围六个节点上的一切，自己人也不例外。',
+      lead: '石弹伤及落点和周围六格内的一切，自己人也不例外。',
       blocks: [
         {
           figure: {
@@ -680,7 +672,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['项目', '数值'],
             rows: [
-              ['射程', '{{catapult.min}}-{{catapult.max}}步'],
+              ['射程', '{{catapult.min}}-{{catapult.max}}格'],
               ['射击间隔', '{{catapult.seconds}}秒'],
               ['生命值', '{{catapult.hitpoints}}'],
               ['乘员', '1名士兵或英雄，武器不限'],
@@ -760,7 +752,7 @@ export const MILITARY: ArticleGroup = {
           h: '命中率',
         },
         {
-          p: '数值表见[[article:aim|命中与射击]]。在{{catapult.max}}步处，未命中的石弹偏移：0次命中时最多3步，25次2步，50次1步，75次起0步。经验归指挥官，石弹打伤目标得1点。',
+          p: '数值表见[[article:aim|命中与射击]]。在{{catapult.max}}格处，未命中的石弹偏移：0次命中时最多3格，25次2格，50次1格，75次起0格。经验归指挥官，石弹打伤目标得1点。',
         },
         {
           h: '投石机的姿态',
@@ -778,7 +770,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            '目标近于{{catapult.min}}步：投石机后撤。目标远于{{catapult.max}}步：开到{{catapult.bandMin}}-{{catapult.max}}步处。',
+            '目标近于{{catapult.min}}格：投石机后撤。目标远于{{catapult.max}}格：开到{{catapult.bandMin}}-{{catapult.max}}格处。',
             '只在静止且不与其他载具接触时射击。',
             '命令可以指定地面位置。只有下令才打木栅栏。',
           ],
@@ -894,7 +886,7 @@ export const MILITARY: ArticleGroup = {
           h: '重建',
         },
         {
-          p: '“地图 AI”在{{ai.rebuildNear}}步内没有敌人时重建建筑。大本营除外。',
+          p: '“地图 AI”在{{ai.rebuildNear}}格内没有敌人时重建建筑。大本营除外。',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

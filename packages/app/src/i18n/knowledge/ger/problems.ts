@@ -19,13 +19,13 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„Dorf angegriffen“',
                 'Wichtig',
-                'Schlag gegen Gebäude oder Palisade oder bis {{notice.settlementReach}} Schritte davon. Schläge bis {{notice.fightRadius}} Schritte voneinander ergeben eine Karte, sie verschwindet nach {{notice.fightQuietSeconds}} s ohne Schlag',
+                'Schlag gegen Gebäude oder Palisade oder bis {{notice.settlementReach}} Hexfelder davon. Schläge bis {{notice.fightRadius}} Hexfelder voneinander ergeben eine Karte, sie verschwindet nach {{notice.fightQuietSeconds}} s ohne Schlag',
                 'Schicke Soldaten',
               ],
               [
                 '„Unter Angriff“',
                 'Bemerkenswert',
-                'Schlag weiter als {{notice.settlementReach}} Schritte vom Dorf entfernt',
+                'Schlag weiter als {{notice.settlementReach}} Hexfelder vom Dorf entfernt',
                 'Schicke Soldaten oder ziehe die Leute ab',
               ],
               [
@@ -284,7 +284,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '„In Alarmbereitschaft“',
                 '-',
-                'Ein Soldat im Modus Angriff oder Verteidigung ruht nicht bei Kampf bis {{alert.restClearance}} Schritte oder bei sichtbarem feindlichem Soldaten bis {{alert.standTo}} Schritte. Ein Wildtier zählt erst im Kampf',
+                'Ein Soldat im Modus Angriff oder Verteidigung ruht nicht bei Kampf bis {{alert.restClearance}} Hexfelder oder bei sichtbarem feindlichem Soldaten bis {{alert.standTo}} Hexfelder. Ein Wildtier zählt erst im Kampf',
                 'Der Befehl „Iss“ oder „Schlaf“ gibt ihn frei',
               ],
               [
@@ -353,7 +353,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Die Werkstatt steht leer',
-              'Status „Keine Arbeiter“: Niemand hat dort einen Arbeitsplatz. Ein Siedler kommt nur mit passendem Beruf und freiem Platz hinein, sonst heißt es „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter holt ihn selbst, wenn er höchstens {{reach.goods}} Schritte von einem Wegweiser entfernt liegt.',
+              'Status „Keine Arbeiter“: Niemand hat dort einen Arbeitsplatz. Ein Siedler kommt nur mit passendem Beruf und freiem Platz hinein, sonst heißt es „Falscher Beruf“, „Stellen belegt“ oder „Zu unerfahren“. Status „Untätig“ nennt den fehlenden Rohstoff. Der Arbeiter holt ihn selbst, wenn er höchstens {{reach.goods}} Hexfelder von einem Wegweiser entfernt liegt.',
             ],
             [
               'Waffenbauer, Schmied oder Näher arbeitet nicht',
@@ -361,7 +361,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Träger tragen nichts',
-              'Ein Träger trägt nur mit Arbeitsplatz in einem Gebäude. Status „Nichts zum Tragen in Reichweite“: Im Umkreis von {{flag.radius}} Schritten um das Gebäude oder um seine Arbeitsfahne liegt nichts zum Abholen. „Kein Ziel nimmt diese Ware an“ heißt, die Lager sind voll.',
+              'Ein Träger trägt nur mit Arbeitsplatz in einem Gebäude. Status „Nichts zum Tragen in Reichweite“: Im Umkreis von {{flag.radius}} Hexfeldern um das Gebäude oder um seine Arbeitsfahne liegt nichts zum Abholen. „Kein Ziel nimmt diese Ware an“ heißt, die Lager sind voll.',
             ],
             [
               'Die Zucht steht',
@@ -369,7 +369,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Der Jäger bringt nichts',
-              'Status „Kein verfügbares Wild im Jagdgebiet“: Im Umkreis von {{flag.hunter}} Schritten um Arbeitsfahne oder Arbeitsplatz ist kein Wild. Wolf, Löwe, Bär, Elefant, Hund und Huhn jagt er nicht. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
+              'Status „Kein verfügbares Wild im Jagdgebiet“: Im Umkreis von {{flag.hunter}} Hexfeldern um Arbeitsfahne oder Arbeitsplatz ist kein Wild. Wolf, Löwe, Bär, Elefant, Hund und Huhn jagt er nicht. Versetze die Arbeitsfahne dorthin, wo Wild weidet.',
             ],
           ],
         },
@@ -384,7 +384,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Hunger trotz vollem Lager',
-              'Prüfe das „Lagerminimum“: Unter dieser Summe nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Die zweite Ursache ist die Entfernung: Das Lager muss in Gehreichweite des Siedlers liegen, {{reach.walk}} Schritte oder das Wegweisernetz.',
+              'Prüfe das „Lagerminimum“: Unter dieser Summe nimmt niemand Ware heraus, auch nicht zum Essen. Senke das Minimum bei Essen. Die zweite Ursache ist die Entfernung: Das Lager muss in Gehreichweite des Siedlers liegen, {{reach.walk}} Hexfelder oder das Wegweisernetz.',
             ],
             [
               'Der Beruf fehlt auf der Schulliste',
@@ -403,11 +403,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Der Bau steht',
-              'Der Baustatus sagt, was fehlt: „Material fehlt“, „Lieferung unterwegs“ oder „Kein Bauarbeiter“. „Baustelle: [Ware] fehlt“ heißt, dass die Ware in keinem Lager in Wegweiser-Reichweite der Baustelle liegt, {{reach.goods}} Schritte von einem Wegweiser. Der Bauarbeiter trägt das Material selbst.',
+              'Der Baustatus sagt, was fehlt: „Material fehlt“, „Lieferung unterwegs“ oder „Kein Bauarbeiter“. „Baustelle: [Ware] fehlt“ heißt, dass die Ware in keinem Lager in Wegweiser-Reichweite der Baustelle liegt, {{reach.goods}} Hexfelder von einem Wegweiser. Der Bauarbeiter trägt das Material selbst.',
             ],
             [
               'Das Feld wächst nicht',
-              'Es wächst nur, wenn ein [[job:farmer|Farmer]] mit Arbeitsplatz auf der [[building:work_farm_00|Farm]] es gießt. Der Farmer sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Gesät wird nur auf Gras, abseits von Straßen, bis {{field.radius}} Schritte von der Farm.',
+              'Es wächst nur, wenn ein [[job:farmer|Farmer]] mit Arbeitsplatz auf der [[building:work_farm_00|Farm]] es gießt. Der Farmer sät zuerst und gießt erst bei {{field.max}} Feldern oder wenn er nirgends mehr säen kann. Ein Feld reift nach {{field.waterings}} Mal Gießen, und einmal Gießen erfasst auch 6 Nachbarfelder. Gesät wird nur auf Gras, abseits von Straßen, bis {{field.radius}} Hexfelder von der Farm.',
             ],
           ],
         },

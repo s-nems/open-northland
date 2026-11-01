@@ -23,6 +23,7 @@ const weapon = (over: Partial<KnowledgeWeapon>): KnowledgeWeapon => ({
   typeId: 1,
   id: 'spear',
   jobType: 32,
+  filmJob: null,
   jobName: null,
   goodType: null,
   goodName: null,
@@ -47,11 +48,11 @@ describe('entry formatting', () => {
     expect(rangeText({ minRange: 1, maxRange: 1 })).toMatch(/^1 /);
   });
 
-  it('counts steps in the plural of the last number', () => {
+  it('counts hexes in the plural of the last number', () => {
     setActiveLocale('pol');
-    expect(rangeText({ minRange: 1, maxRange: 1 })).toBe('1 krok');
-    expect(rangeText({ minRange: 1, maxRange: 2 })).toBe('1-2 kroki');
-    expect(rangeText({ minRange: 3, maxRange: 15 })).toBe('3-15 kroków');
+    expect(rangeText({ minRange: 1, maxRange: 1 })).toBe('1 hex');
+    expect(rangeText({ minRange: 1, maxRange: 2 })).toBe('1-2 hexy');
+    expect(rangeText({ minRange: 3, maxRange: 15 })).toBe('3-15 hexów');
   });
 
   it('names the blows only when one clip lands several', () => {
@@ -100,9 +101,7 @@ describe('entry formatting', () => {
 
   it('says how long a good lasts by its kind', () => {
     expect(equipDurability({ category: 'misc', wears: true, uses: 2 })).toContain('2');
-    expect(equipDurability({ category: 'misc', wears: false })).toBe(
-      equipDurability({ category: 'armor', wears: false }),
-    );
+    expect(equipDurability({ category: 'misc', wears: false })).toBeNull();
   });
 
   it('formats through the active locale', () => {

@@ -7,6 +7,7 @@ import {
   type JobType,
   type ObjectHelp,
   type TribeType,
+  type UnitVariant,
   type WeaponType,
 } from '@open-northland/data';
 import {
@@ -19,6 +20,7 @@ import { ANIMAL_PALETTE_BY_TRIBE } from '../../catalog/animal-roster.js';
 import { ATTACK_ATOMIC } from '../../catalog/atomics.js';
 import { JOB_CIVILIST, JOB_HEROINE_BOW, JOB_SOLDIER_UNARMED, JOB_WOMAN } from '../../catalog/jobs.js';
 import { professionDefForJob } from '../../catalog/professions.js';
+import { withUnitVariants } from '../../catalog/unit-variants.js';
 import { WEAPON_XP_KEY_BY_TYPE } from '../../catalog/weapon-experience.js';
 import { withGoodOverlays, withHeroFistJob, withShelterCapacity } from '../../content/real-content.js';
 import { PRIMARY_TRIBE } from '../../game/rules.js';
@@ -233,7 +235,8 @@ function buildBuildings(joins: Joins): KnowledgeBuilding[] {
       recipes: b.recipes.map((r) => ({
         inputs: shownQuantities(r.inputs),
         outputs: shownQuantities(r.outputs),
-        ticks: r.ticks,
+        madeGood: r.outputs[0]?.goodType ?? null,
+        fallbackTicks: r.ticks,
       })),
       stock: b.stock.map((s) => ({ goodType: s.goodType, capacity: s.capacity })),
       tech: techOf(b.typeId),
@@ -328,10 +331,21 @@ function buildJobs(joins: Joins, requirements: Requirements, edges: TechEdges): 
     }));
 }
 
-function weaponRow(joins: Joins, tribe: TribeType, w: WeaponType): KnowledgeWeapon {
+/** The form a player's soldier of this class takes; a native form belongs to the map's placed units. */
+function trainedForm(tribe: TribeType, jobType: number | undefined): UnitVariant | undefined {
+  return tribe.unitVariants?.find((variant) => variant.jobType === jobType && variant.form === 'human');
+}
+
+function weaponRow(
+  joins: Joins,
+  tribe: TribeType,
+  w: WeaponType,
+  form: UnitVariant | undefined,
+): KnowledgeWeapon {
   const { content, shownType, goodNameOf, jobNameByType } = joins;
+  const clipJob = form?.animationJobType ?? w.jobType;
   const clipName = tribe.atomicBindings.find(
-    (b) => b.jobType === w.jobType && b.atomicId === ATTACK_ATOMIC,
+    (b) => b.jobType === clipJob && b.atomicId === ATTACK_ATOMIC,
   )?.animation;
   const clip = content.atomicAnimations.find((a) => a.name === clipName);
   const blows = (clip?.events ?? []).filter((e) => e.type === systems.ATOMIC_EVENT_TYPE_ATTACK).length;
@@ -340,6 +354,7 @@ function weaponRow(joins: Joins, tribe: TribeType, w: WeaponType): KnowledgeWeap
     typeId: w.typeId,
     id: w.id,
     jobType: w.jobType ?? null,
+    filmJob: form?.graphicsJobType ?? w.jobType ?? null,
     jobName: w.jobType === undefined ? null : jobNameByType(w.jobType),
     goodType: w.goodType === undefined ? null : shownType(w.goodType),
     goodName: w.goodType === undefined ? null : goodNameOf(w.goodType),
@@ -362,7 +377,17 @@ function buildWeapons(
   return new Map(
     tribes.map((tribe) => [
       tribe.typeId,
-      rows.filter((w) => w.tribeType === tribe.typeId).map((w) => weaponRow(joins, tribe, w)),
+      rows
+        .filter((w) => w.tribeType === tribe.typeId)
+        .map((w) => {
+          const form = trainedForm(withUnitVariants(tribe, joins.content.weapons), w.jobType);
+          const fought = form?.weapon;
+          const row =
+            fought === undefined
+              ? w
+              : rows.find((r) => r.tribeType === fought.tribeType && r.typeId === fought.typeId);
+          return weaponRow(joins, tribe, { ...(row ?? w), jobType: w.jobType }, form);
+        }),
     ]),
   );
 }

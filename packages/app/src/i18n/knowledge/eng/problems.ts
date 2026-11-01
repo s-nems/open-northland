@@ -19,13 +19,13 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Village attacked"',
                 'Important',
-                'A blow on a building or stockade, or within {{notice.settlementReach}} steps of one. Blows within {{notice.fightRadius}} steps of each other share one card, which clears after {{notice.fightQuietSeconds}} s with no blow',
+                'A blow on a building or stockade, or within {{notice.settlementReach}} hexes of one. Blows within {{notice.fightRadius}} hexes of each other share one card, which clears after {{notice.fightQuietSeconds}} s with no blow',
                 'Send soldiers',
               ],
               [
                 '"Under attack"',
                 'Notable',
-                'A blow more than {{notice.settlementReach}} steps from the settlement',
+                'A blow more than {{notice.settlementReach}} hexes from the settlement',
                 'Send soldiers or pull your people out',
               ],
               [
@@ -259,7 +259,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Standing to"',
                 '-',
-                'A soldier on Attack or Defence does not rest with a fight within {{alert.restClearance}} steps or a visible enemy soldier within {{alert.standTo}} steps. A wild animal only counts once fighting',
+                'A soldier on Attack or Defence does not rest with a fight within {{alert.restClearance}} hexes or a visible enemy soldier within {{alert.standTo}} hexes. A wild animal only counts once fighting',
                 'An "Eat" or "Sleep" order releases him',
               ],
               [
@@ -323,7 +323,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'The workshop stands empty',
-              'Status "No workers": nobody holds a workplace there. A settler enters only with the right profession and a free post, otherwise a message says "Wrong trade", "No free post" or "Lacks experience". Status "Idle" names the missing input. The worker fetches it himself if it lies within {{reach.goods}} steps of a signpost.',
+              'Status "No workers": nobody holds a workplace there. A settler enters only with the right profession and a free post, otherwise a message says "Wrong trade", "No free post" or "Lacks experience". Status "Idle" names the missing input. The worker fetches it himself if it lies within {{reach.goods}} hexes of a signpost.',
             ],
             [
               "The Armourer, Blacksmith or Tailor won't work",
@@ -331,7 +331,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               "Carriers aren't carrying",
-              'A Carrier only carries with a workplace in a building. Status "Nothing to carry in reach": no goods to take within {{flag.radius}} steps of the building, or of the work flag if he has one. "No destination accepts this good" means the stores are full.',
+              'A Carrier only carries with a workplace in a building. Status "Nothing to carry in reach": no goods to take within {{flag.radius}} hexes of the building, or of the work flag if he has one. "No destination accepts this good" means the stores are full.',
             ],
             [
               'Breeding has stopped',
@@ -339,7 +339,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'The Hunter brings nothing back',
-              'Status "No free prey in the hunting ground": no game within {{flag.hunter}} steps of the work flag or workplace. He does not hunt Wolf, Lion, Bear, Elephant, Dog or Chicken. Move the work flag to where game grazes.',
+              'Status "No free prey in the hunting ground": no game within {{flag.hunter}} hexes of the work flag or workplace. He does not hunt Wolf, Lion, Bear, Elephant, Dog or Chicken. Move the work flag to where game grazes.',
             ],
           ],
         },
@@ -354,7 +354,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Hungry with a full store',
-              'Check "Storage minimum": nobody takes a good below that total, not even for a meal. Lower the minimum on food. The other cause is distance: the store must be within the settler\'s walking reach, {{reach.walk}} steps or the signpost network.',
+              'Check "Storage minimum": nobody takes a good below that total, not even for a meal. Lower the minimum on food. The other cause is distance: the store must be within the settler\'s walking reach, {{reach.walk}} hexes or the signpost network.',
             ],
             [
               'A profession is missing from the School list',
@@ -373,11 +373,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Construction has stopped',
-              'The site status says what\'s missing: "materials missing", "delivery on the way" or "no builder". The message "Site needs [good]" means no store within the site\'s signpost reach holds it, {{reach.goods}} steps from a signpost. Builders carry their own materials.',
+              'The site status says what\'s missing: "materials missing", "delivery on the way" or "no builder". The message "Site needs [good]" means no store within the site\'s signpost reach holds it, {{reach.goods}} hexes from a signpost. Builders carry their own materials.',
             ],
             [
               "A field isn't growing",
-              'It grows only when watered by a [[job:farmer|Farmer]] with a workplace at a [[building:work_farm_00|Farm]]. The Farmer sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. Sowing works only on grass, off roads, within {{field.radius}} steps of the Farm.',
+              'It grows only when watered by a [[job:farmer|Farmer]] with a workplace at a [[building:work_farm_00|Farm]]. The Farmer sows first and waters only at {{field.max}} fields or when there is nowhere left to sow. A field ripens after {{field.waterings}} waterings, and one watering also covers 6 neighbouring fields. Sowing works only on grass, off roads, within {{field.radius}} hexes of the Farm.',
             ],
           ],
         },

@@ -124,6 +124,18 @@ export function isHeroWeapon(weapon: Pick<KnowledgeWeapon, 'id'>): boolean {
   return weapon.id.startsWith(HERO_WEAPON_PREFIX);
 }
 
+/** Hero classes no map fields under a name of their own, so the reference leaves them out. */
+const NAMELESS_HERO_WEAPONS: ReadonlySet<string> = new Set(['hero_axe', 'hero_fist']);
+
+/** A hero a player can meet: one of the named ones. */
+export function isNamedHeroWeapon(weapon: Pick<KnowledgeWeapon, 'id'>): boolean {
+  return isHeroWeapon(weapon) && !NAMELESS_HERO_WEAPONS.has(weapon.id);
+}
+
+export function isCatapult(weapon: Pick<KnowledgeWeapon, 'mainType'>): boolean {
+  return weapon.mainType === WEAPON_MAIN_TYPE.CATAPULT;
+}
+
 export function isRanged(weapon: Pick<KnowledgeWeapon, 'mainType'>): boolean {
   return weapon.mainType === WEAPON_MAIN_TYPE.BOW || weapon.mainType === WEAPON_MAIN_TYPE.CATAPULT;
 }

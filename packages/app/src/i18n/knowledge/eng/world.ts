@@ -140,7 +140,7 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|Catapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: "Steps per second. Full means {{haul.handcart}} of {{haul.handcart}} on the Handcart and {{haul.oxcart}} of {{haul.oxcart}} on the Ox Cart. Figures are for a barefoot driver, shoes are faster. A Ship doesn't slow under load and sails about {{pace.ship}} steps/s. A Carrier pulling a cart loses the same percentage of his walk. Picking a cart for a route: [[article:trade|Trade]].",
+            foot: "Hexes per second. Full means {{haul.handcart}} of {{haul.handcart}} on the Handcart and {{haul.oxcart}} of {{haul.oxcart}} on the Ox Cart. Figures are for a barefoot driver, shoes are faster. A Ship doesn't slow under load and sails about {{pace.ship}} hexes/s. A Carrier pulling a cart loses the same percentage of his walk. Picking a cart for a route: [[article:trade|Trade]].",
           },
         },
         {
@@ -197,7 +197,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'The hold is shared by all goods.',
             "A Ship carries 1 vehicle: a Handcart, Ox Cart or Catapult. The vehicle's crew must fit aboard. A Big Ship carries no vehicles.",
-            '"Moor" asks you to pick a shore. The ship stops {{vehicle.mooringDistance}} steps from the spot, with no harbour building needed.',
+            '"Moor" asks you to pick a shore. The ship stops {{vehicle.mooringDistance}} hexes from the spot, with no harbour building needed.',
             'Nobody boards or leaves at sea.',
             'Ctrl/Cmd + click moors and lands the crew.',
           ],
@@ -210,9 +210,9 @@ export const WORLD: ArticleGroup = {
             '"target": how many pieces should be in the hold. Targets can\'t sum past capacity.',
             '"by the carrier": a Carrier with a workplace pulls the cart and takes what he picks up on each trip. Targets are locked.',
             'Whoever loads gets off when the cart stops or the ship moors. Nobody works at sea.',
-            'He takes 1 piece at a time: pile, building within {{vehicle.cargoSearch}} steps, then further.',
+            'He takes 1 piece at a time: pile, building within {{vehicle.cargoSearch}} hexes, then further.',
             'The source must be on the same landmass as the door. He takes no food from dwellings.',
-            'Target 0 or below the contents: the surplus goes to the nearest Warehouse or Headquarters with room, within {{vehicle.cargoSearch}} steps of the door. With none, it lands on the ground.',
+            'Target 0 or below the contents: the surplus goes to the nearest Warehouse or Headquarters with room, within {{vehicle.cargoSearch}} hexes of the door. With none, it lands on the ground.',
             "A commander who is a soldier, hero, [[job:scout|Scout]] or [[job:druid|Druid]], with nobody else to load, lowers the target when there's nowhere to get the good. With a loader aboard the target stays.",
             'A move order calls the crew aboard before leaving.',
           ],
@@ -228,7 +228,7 @@ export const WORLD: ArticleGroup = {
                 'Cart, [[good:catapult|Catapult]]',
                 'Gets off at the door',
                 '-',
-                'Scattered within {{vehicle.spill}} steps',
+                'Scattered within {{vehicle.spill}} hexes',
               ],
               ['Ship moored', 'Gets off on the shore', 'Stops at the door', 'Lost'],
               ['Ship at sea', 'Sinks', 'Sinks with its crew', 'Lost'],
@@ -283,7 +283,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Fighting between players under peace is blocked.',
-            "You can't enter or build within {{peace.keepOut}} steps of a partner's building, unless you're closer to your own.",
+            "You can't enter or build within {{peace.keepOut}} hexes of a partner's building, unless you're closer to your own.",
             'Warnings come {{peace.noticeFirstMinutes}} min and {{peace.noticeLastMinutes}} min before the end.',
           ],
         },
@@ -350,7 +350,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Who', 'Range, steps'],
+            head: ['Who', 'Range, hexes'],
             rows: [
               ['[[job:scout|Scout]], [[building:headquarters|Headquarters]]', '{{vision.scout}}'],
               ['Hero, [[good:ship_small|Ship]], [[good:ship_big|Big Ship]]', '{{vision.hero}}'],
@@ -364,7 +364,7 @@ export const WORLD: ArticleGroup = {
               ['Construction site', '0'],
             ],
             num: [1],
-            foot: "Steps counted across. Stockades, roads and signposts don't see.",
+            foot: "Hexes counted across. Stockades, roads and signposts don't see.",
           },
         },
         {
@@ -395,7 +395,7 @@ export const WORLD: ArticleGroup = {
                 'Claims wild Oxen and Sheep by walking past them',
                 '[[article:livestock|Livestock]]',
               ],
-              ['Vision', '{{vision.scout}} steps, the most of any person', '[[article:fog|Fog and Vision]]'],
+              ['Vision', '{{vision.scout}} hexes, the most of any person', '[[article:fog|Fog and Vision]]'],
             ],
             foot: "Signpost reach doesn't apply to him, so he walks the whole map.",
           },
@@ -437,7 +437,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'wildlife',
       name: 'Wild Animals and Hunting',
-      lead: 'An aggressive herd rushes people within {{wild.aggro}} steps of its home and turns back past {{wild.giveUp}} steps.',
+      lead: 'An aggressive herd rushes people within {{wild.aggro}} hexes of its home and turns back past {{wild.giveUp}} hexes.',
       blocks: [
         {
           data: 'animals',
@@ -455,14 +455,14 @@ export const WORLD: ArticleGroup = {
                 'Bear, Elephant',
                 'Anger lasts {{wild.angrySeconds}} s from the last blow, an attack in progress lasts until the target dies or takes shelter',
               ],
-              ['Skittish', 'The rest', 'A struck leader flees up to {{wild.flight}} steps, the herd follows'],
+              ['Skittish', 'The rest', 'A struck leader flees up to {{wild.flight}} hexes, the herd follows'],
             ],
             foot: 'The Ibex neither attacks nor flees.',
           },
         },
         {
           list: [
-            'A blow alerts animals of the species within {{wild.kinAlarm}} steps of the one struck.',
+            'A blow alerts animals of the species within {{wild.kinAlarm}} hexes of the one struck.',
             "Animals don't attack buildings or vehicles.",
           ],
         },
@@ -477,10 +477,10 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'The hunting ground is {{flag.hunter}} steps from the work flag or workplace. A chase runs {{wild.huntChase}} steps past it.',
+            'The hunting ground is {{flag.hunter}} hexes from the work flag or workplace. A chase runs {{wild.huntChase}} hexes past it.',
             'He picks a close, weak animal.',
             'He hunts 1 quarry at a time and takes a new one only after collecting the kill.',
-            "The Hunter's bow takes {{wild.hunterShot}} per shot, range {{hunterBow.min}}-{{hunterBow.max}} steps.",
+            "The Hunter's bow takes {{wild.hunterShot}} per shot, range {{hunterBow.min}}-{{hunterBow.max}} hexes.",
             "He won't go for an adult Ibex on his own, but its young are game.",
             'He skips owned animals, enraged ones and those on another landmass.',
           ],
@@ -518,7 +518,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Who', 'What he does', 'Range, steps'],
+            head: ['Who', 'What he does', 'Range, hexes'],
             rows: [
               [
                 '[[job:scout|Scout]]',
@@ -564,7 +564,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'A [[building:work_animal_farm|Cattle Farm]] holds {{livestock.farmHerd}} animals in total, both species and young on the way.',
             "Young take {{livestock.growSeconds}} s ({{livestock.growMinutes}} min) to grow and don't count toward the pair.",
-            "A parent must be within {{livestock.birthRange}} steps of the farm's door at birth. Further away, the input is lost and no young arrive.",
+            "A parent must be within {{livestock.birthRange}} hexes of the farm's door at birth. Further away, the input is lost and no young arrive.",
             "A Cattle Farm's crew is {{livestock.breeders}} [[job:breeder|Stock Farmers]] and {{livestock.carriers}} [[job:carrier|Carrier]].",
           ],
         },
@@ -650,7 +650,7 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Effect', 'Value'],
             rows: [
-              ['Range', '{{aura.range}} steps'],
+              ['Range', '{{aura.range}} hexes'],
               ['Health', '+{{aura.perSecond}} per second, up to {{aura.ceiling}}'],
               ['Religion', '+{{aura.pietyPct}}% per second while the bar is at {{need.satedPct}}% or less'],
               ['Who', "All the Temple owner's people. Children get health"],

@@ -19,13 +19,13 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Atak na osadę"',
                 'Pilne',
-                'Cios w budynek lub palisadę albo do {{notice.settlementReach}} kroków od nich. Ciosy do {{notice.fightRadius}} kroków od siebie to jedna karta, znika po {{notice.fightQuietSeconds}} s bez ciosu',
+                'Cios w budynek lub palisadę albo do {{notice.settlementReach}} hexów od nich. Ciosy do {{notice.fightRadius}} hexów od siebie to jedna karta, znika po {{notice.fightQuietSeconds}} s bez ciosu',
                 'Wyślij żołnierzy',
               ],
               [
                 '"Atakują nas"',
                 'Ważne',
-                'Cios dalej niż {{notice.settlementReach}} kroków od osady',
+                'Cios dalej niż {{notice.settlementReach}} hexów od osady',
                 'Wyślij żołnierzy albo odprowadź ludzi',
               ],
               [
@@ -249,7 +249,7 @@ export const PROBLEMS: ArticleGroup = {
               [
                 '"Stoi na alarmie"',
                 '-',
-                'Żołnierz w Ataku lub Obronie nie odpoczywa przy walce do {{alert.restClearance}} kroków albo przy widocznym wrogim żołnierzu do {{alert.standTo}} kroków. Dzikie zwierzę liczy się dopiero w walce',
+                'Żołnierz w Ataku lub Obronie nie odpoczywa przy walce do {{alert.restClearance}} hexów albo przy widocznym wrogim żołnierzu do {{alert.standTo}} hexów. Dzikie zwierzę liczy się dopiero w walce',
                 'Rozkaz "Jedz" albo "Śpij" go zwalnia',
               ],
               [
@@ -318,7 +318,7 @@ export const PROBLEMS: ArticleGroup = {
           faq: [
             [
               'Warsztat stoi pusty',
-              'Stan "Brak pracowników": nikt nie ma tam miejsca pracy. Osadnik wchodzi tylko z właściwym zawodem i wolnym miejscem, inaczej komunikat powie "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik sam po niego chodzi, jeśli leży do {{reach.goods}} kroków od drogowskazu.',
+              'Stan "Brak pracowników": nikt nie ma tam miejsca pracy. Osadnik wchodzi tylko z właściwym zawodem i wolnym miejscem, inaczej komunikat powie "Nie ten zawód", "Brak miejsc" albo "Za mało wprawy". Stan "Bezczynny" podaje brakujący surowiec. Pracownik sam po niego chodzi, jeśli leży do {{reach.goods}} hexów od drogowskazu.',
             ],
             [
               'Płatnerz, Kowal albo Krawiec nie pracuje',
@@ -326,7 +326,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Tragarze nic nie noszą',
-              'Tragarz nosi tylko z miejscem pracy w budynku. Stan "Nic do przeniesienia w zasięgu": do {{flag.radius}} kroków od budynku, a z flagą roboczą od flagi, nie ma towaru do zabrania. "Brak miejsca przyjmującego towar" to pełne magazyny.',
+              'Tragarz nosi tylko z miejscem pracy w budynku. Stan "Nic do przeniesienia w zasięgu": do {{flag.radius}} hexów od budynku, a z flagą roboczą od flagi, nie ma towaru do zabrania. "Brak miejsca przyjmującego towar" to pełne magazyny.',
             ],
             [
               'Hodowla stoi',
@@ -334,7 +334,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Myśliwy nic nie przynosi',
-              'Stan "Brak wolnej zwierzyny w terenie łowieckim": do {{flag.hunter}} kroków od flagi roboczej albo miejsca pracy nie ma zwierzyny. Na Wilka, Lwa, Niedźwiedzia, Słonia, Psa i Kurę nie poluje. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
+              'Stan "Brak wolnej zwierzyny w terenie łowieckim": do {{flag.hunter}} hexów od flagi roboczej albo miejsca pracy nie ma zwierzyny. Na Wilka, Lwa, Niedźwiedzia, Słonia, Psa i Kurę nie poluje. Przenieś flagę roboczą tam, gdzie pasie się zwierzyna.',
             ],
           ],
         },
@@ -349,7 +349,7 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Głód przy pełnym magazynie',
-              'Sprawdź "Minimum w magazynach": nikt nie weźmie towaru poniżej tej sumy, także na posiłek. Obniż minimum przy jedzeniu. Druga przyczyna to odległość: magazyn musi leżeć w zasięgu chodu osadnika, {{reach.walk}} kroków albo sieć drogowskazów.',
+              'Sprawdź "Minimum w magazynach": nikt nie weźmie towaru poniżej tej sumy, także na posiłek. Obniż minimum przy jedzeniu. Druga przyczyna to odległość: magazyn musi leżeć w zasięgu chodu osadnika, {{reach.walk}} hexów albo sieć drogowskazów.',
             ],
             [
               'Zawodu nie ma na liście w Szkole',
@@ -368,11 +368,11 @@ export const PROBLEMS: ArticleGroup = {
             ],
             [
               'Budowa stoi',
-              'Stan budowy mówi, czego brak: "brak materiałów", "dostawa w drodze" albo "brak budowniczego". Komunikat "Budowa czeka: towar" oznacza, że towaru nie ma w żadnym magazynie w zasięgu drogowskazów placu, {{reach.goods}} kroków od drogowskazu. Budowniczy sam nosi materiał.',
+              'Stan budowy mówi, czego brak: "brak materiałów", "dostawa w drodze" albo "brak budowniczego". Komunikat "Budowa czeka: towar" oznacza, że towaru nie ma w żadnym magazynie w zasięgu drogowskazów placu, {{reach.goods}} hexów od drogowskazu. Budowniczy sam nosi materiał.',
             ],
             [
               'Pole nie rośnie',
-              'Rośnie tylko od podlewania przez [[job:farmer|Farmera]] z miejscem pracy na [[building:work_farm_00|Farmie]]. Farmer najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Siew działa tylko na trawie, poza drogami, do {{field.radius}} kroków od Farmy.',
+              'Rośnie tylko od podlewania przez [[job:farmer|Farmera]] z miejscem pracy na [[building:work_farm_00|Farmie]]. Farmer najpierw sieje, a podlewa dopiero przy {{field.max}} polach albo gdy nie ma gdzie siać. Pole dojrzewa po {{field.waterings}} podlewaniach, a jedno podlewanie obejmuje też 6 sąsiednich pól. Siew działa tylko na trawie, poza drogami, do {{field.radius}} hexów od Farmy.',
             ],
           ],
         },

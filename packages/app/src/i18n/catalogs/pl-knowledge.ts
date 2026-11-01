@@ -24,14 +24,7 @@ export const plKnowledge = {
   tree: {
     or: 'lub',
     amount: 'x{amount}',
-    scale: 'Skala',
     scaleLabel: 'Skala drzewa',
-    goodsUp: 'z czego powstaje',
-    goodsDown: 'do czego idzie',
-    buildingsUp: 'co musi być wcześniej',
-    buildingsDown: 'co otwiera',
-    missing: 'Brak: {first}',
-    missingMore: 'Brak: {first} +{more}',
     mapForbidden: 'poza mapą',
     mapForbiddenLong: 'Ta mapa nie pozwala na ten budynek',
     closePane: 'Zamknij hasło',
@@ -67,7 +60,6 @@ export const plKnowledge = {
   },
   entry: {
     notFound: 'Tego hasła nie ma w danych tej gry.',
-    original: 'Opis z oryginału',
     categories: {
       goods: 'Towary',
       arms: 'Uzbrojenie',
@@ -106,11 +98,10 @@ export const plKnowledge = {
       missing: 'Brakuje: {names}',
       missingMore: 'Brakuje: {names} i {more} więcej',
       mapForbidden: 'Ta mapa na to nie pozwala',
-      stock: 'W osadzie: {amount}',
     },
     unit: {
       seconds: '{value} s',
-      steps: { one: '{value} krok', few: '{value} kroki', many: '{value} kroków' },
+      steps: { one: '{value} hex', few: '{value} hexy', many: '{value} hexów' },
     },
     cadence: {
       many: '{blows} {word} co {time}',
@@ -147,7 +138,6 @@ export const plKnowledge = {
       noArmour: 'Bez pancerza',
       slower: 'Wolniej',
       marchNote: 'W butach, na lądzie. Bohaterów ciężar nie spowalnia.',
-      wielder: 'Dla',
       unlock: 'Odblokowanie',
       calculator: 'Policz w kalkulatorze',
       notForTribe: 'To plemię nie używa tej broni.',
@@ -161,7 +151,6 @@ export const plKnowledge = {
       slows: 'Spowalnia',
       slowsNot: 'nie spowalnia',
       durability: 'Trwałość',
-      permanent: 'nie zużywa się',
     },
     good: {
       effect: 'Działanie',
@@ -196,6 +185,18 @@ export const plKnowledge = {
       usesSip: { one: '{count} łyk', few: '{count} łyki', many: '{count} łyków' },
     },
     building: {
+      aura: {
+        title: 'Aura',
+        lead: 'Działa sama, gdy Świątynia jest gotowa i nieuszkodzona. Obejmuje wszystkich ludzi właściciela w zasięgu.',
+        range: 'Zasięg',
+        rangeValue: '{{aura.range}} hexów',
+        health: 'Zdrowie',
+        healthValue: '+{{aura.perSecond}} na sekundę, do {{aura.ceiling}}',
+        piety: 'Religia',
+        pietyValue: '+{{aura.pietyPct}}% na sekundę, do {{need.satedPct}}%',
+        many: 'Kilka Świątyń',
+        manyValue: 'Działa jedna aura, wartości się nie sumują',
+      },
       output: 'Co wytwarza',
       capacity: 'Pojemność',
       perGood: '{amount} na towar, {count} towarów',
@@ -221,7 +222,11 @@ export const plKnowledge = {
       health: 'Zdrowie',
       footprint: 'Podstawa',
     },
+    recipe: { inputs: 'Składniki', outputs: 'Produkt', time: 'Czas' },
     job: {
+      soldier: 'Żołnierz',
+      arms: 'Broń',
+      armsNote: 'Jest jeden żołnierz. Klasę daje mu broń w ręku: zmienia się razem z nią.',
       does: 'Co robi',
       opens: 'Otwiera:',
       makes: 'Wytwarza:',
@@ -299,7 +304,24 @@ export const plKnowledge = {
       absent: 'brak',
       present: 'jest',
     },
-    wonder: { inGame: 'W grze', text: 'Ozdoba mapy, bez działania' },
+    wonder: {
+      wonder_lighthouse_of_alexandria:
+        'Latarnia na wyspie Faros, wzniesiona około 280 p.n.e. za Ptolemeuszy. Miała ponad 100 m wysokości i przez wieki była jedną z najwyższych budowli świata, a ogień na szczycie prowadził statki do portu. Obaliły ją średniowieczne trzęsienia ziemi.',
+      wonder_gardens_of_semiramis:
+        'Tarasowe ogrody Babilonu, nawadniane wodą z Eufratu. Tradycja łączy je z królową Semiramidą albo z Nabuchodonozorem II, który miał je założyć dla żony tęskniącej za górami. To jedyny z siedmiu cudów, którego miejsca nikt nie odnalazł.',
+      wonder_rhodos:
+        'Posąg boga słońca Heliosa, odlany z brązu na Rodos w III w. p.n.e. Sfinansowano go ze sprzedaży machin oblężniczych, które zostawił pod miastem pokonany Demetriusz. Mierzył około 33 m. Runął w trzęsieniu ziemi po mniej niż 60 latach, a jego szczątki leżały na ziemi jeszcze ponad 800 lat.',
+      wonder_mausolos:
+        'Grobowiec Mauzolosa, władcy Karii, wzniesiony w Halikarnasie około 350 p.n.e. przez jego żonę i siostrę Artemizję. Od imienia władcy pochodzi słowo mauzoleum. Stał ponad tysiąc lat, a w XV wieku joannici użyli jego kamieni do budowy zamku w Bodrum.',
+      wonder_artemis_temple:
+        'Marmurowa świątynia w Efezie, jedna z największych w starożytności. W 356 p.n.e. spalił ją Herostrates tylko po to, by przejść do historii, i jego imię do dziś oznacza kogoś, kto niszczy dla sławy. Odbudowano ją jeszcze wspanialszą, a zniknęła dopiero w późnej starożytności.',
+      wonder_zeus_statue:
+        'Siedzący Zeus z Olimpii, dzieło Fidiasza z około 435 p.n.e. Miał około 12 m wysokości, ciało z kości słoniowej i szaty ze złota. Mówiono, że gdyby bóg wstał, przebiłby głową dach świątyni.',
+      wonder_pyramid_of_gizeh:
+        'Piramida faraona Cheopsa, ułożona z ponad dwóch milionów kamiennych bloków i ukończona około 2560 p.n.e. Najwyższą budowlą świata była przez ponad 3800 lat. To najstarszy z siedmiu cudów i jedyny, który stoi do dziś.',
+      wonder_8th_wonder:
+        'Tego cudu nie zna żadna starożytna lista. Greckie spisy kończą się na siedmiu. Ósmy wymyślili twórcy Cultures i od niego gra wzięła tytuł.',
+    },
     showInTree: 'Pokaż w drzewie',
     experience: {
       builder_general: 'Budowanie',
@@ -352,9 +374,9 @@ export const plKnowledge = {
       cart: 'Wóz',
       adult: 'Dorosły',
       child: 'Dziecko',
-      across: 'kroki w poziomie',
+      across: 'hexy w poziomie',
       along: 'w pionie',
-      note: 'Rysunek w krokach. Na ekranie to koło.',
+      note: 'Rysunek w hexach. Na ekranie to koło.',
     },
     reach: {
       signpost: 'Drogowskaz',
@@ -384,7 +406,7 @@ export const plKnowledge = {
       straight: '{steps} poziomo',
       straightUp: '{steps} pionowo',
       slant: '{steps} po skosie',
-      note: 'Krok po skosie to rząd i pół kolumny, więc liczy się jak {cost} kroku.',
+      note: 'Krok po skosie to rząd i pół kolumny, więc liczy się jak {cost} hexa.',
     },
     leash: {
       attack: 'Atak',
@@ -398,7 +420,7 @@ export const plKnowledge = {
     },
     catapultSplash: {
       catapult: 'Katapulta',
-      band: 'Zasięg: {min}-{max} kroków',
+      band: 'Zasięg: {min}-{max} hexów',
       landing: 'Upadek',
       points: '{count} punktów',
       full: 'Każdy dostaje pełny cios',

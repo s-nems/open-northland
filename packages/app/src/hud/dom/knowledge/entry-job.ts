@@ -1,6 +1,7 @@
 import { systems } from '@open-northland/sim';
+import { JOB_HUNTER } from '../../../catalog/jobs.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { combatTargets, landed, stepSeconds } from '../../knowledge/combat.js';
+import { combatTargets, isCatapult, landed, stepSeconds } from '../../knowledge/combat.js';
 import {
   type JobBlock,
   type JobFamily,
@@ -8,13 +9,17 @@ import {
   jobFamily,
   jobsLedTo,
   jobWeapon,
+  shownJobName,
+  tribeWeapons,
 } from '../../knowledge/entry-blocks.js';
 import {
   cadenceText,
   perSecondText,
   practiceText,
   preciseSecondsText,
+  rangeText,
   secondsText,
+  wholeText,
 } from '../../knowledge/entry-format.js';
 import type { KnowledgeJob, KnowledgeRequirement } from '../../knowledge/model.js';
 import type { KnowledgeContext } from './context.js';
@@ -22,6 +27,7 @@ import { weaponLabel } from './entry-armour.js';
 import {
   articleLinks,
   buildingLink,
+  dataTable,
   type EntryBlock,
   entryPage,
   factList,
@@ -43,7 +49,7 @@ const copy = () => messages().knowledge.entry;
 
 function kickerOf(job: KnowledgeJob, family: JobFamily): string {
   const { kicker } = copy();
-  if (family !== 'trade') return kicker[family];
+  if (family === 'hero') return kicker.hero;
   return job.needsReligion ? kicker.jobReligion : kicker.job;
 }
 
@@ -58,13 +64,10 @@ function jobFilm(context: KnowledgeContext, job: KnowledgeJob, family: JobFamily
   const tribe = context.tribe();
   const jobType = job.typeId;
   if (family === 'trade') {
-    return filmBlock(context, [
-      {
-        clip: { kind: 'job', jobType, tribe, action: 'work' },
-        // A hunter's trade is his shot, which the map plays as an attack.
-        fallback: { kind: 'job', jobType, tribe, action: 'attack' },
-      },
-    ]);
+    // A hunter's trade is his shot, which the map plays as an attack; every other trade's blow is the
+    // common settler's, so a trade with no clip of its own shows none.
+    const action = jobType === JOB_HUNTER ? 'attack' : 'work';
+    return filmBlock(context, [{ clip: { kind: 'job', jobType, tribe, action } }]);
   }
   const weapon = jobWeapon(context.base, job, tribe);
   const step = preciseSecondsText(stepSeconds(context.base, weapon?.weight ?? 0, tribe));
@@ -166,6 +169,28 @@ function weaponBlock(context: KnowledgeContext, job: KnowledgeJob): EntryBlock |
   };
 }
 
+/** What makes a soldier a spearman or an archer: the weapon in his hand, the tribe's whole rack. */
+function armsBlock(context: KnowledgeContext): EntryBlock {
+  const text = copy();
+  const targets = combatTargets(context.base);
+  const bare = targets[0];
+  const rows = tribeWeapons(context.base, context.tribe()).flatMap((weapon) => {
+    if (bare === undefined || isCatapult(weapon)) return [];
+    const damage = landed(weapon, bare);
+    return [
+      {
+        label: weaponLabel(context, weapon),
+        cells: [{ text: wholeText(damage), heat: damage }, { text: rangeText(weapon) }],
+      },
+    ];
+  });
+  const table = dataTable(
+    [{ title: text.table.weapon }, { title: text.table.perBlow }, { title: text.strip.range }],
+    rows,
+  );
+  return { node: section(text.job.arms, paragraph(text.job.armsNote), table) };
+}
+
 function trainBlock(context: KnowledgeContext, job: KnowledgeJob): EntryBlock {
   const text = copy().job;
   const barracks = context.base.buildings.filter((b) => systems.isBarracksType(b.row));
@@ -197,6 +222,8 @@ export function renderJob(context: KnowledgeContext, job: KnowledgeJob): HTMLEle
         return doesBlock(context, job);
       case 'worksIn':
         return worksInBlock(context, job);
+      case 'arms':
+        return armsBlock(context);
       case 'weapon':
         return weaponBlock(context, job);
       case 'learn':
@@ -210,7 +237,7 @@ export function renderJob(context: KnowledgeContext, job: KnowledgeJob): HTMLEle
     }
   };
   const film = jobFilm(context, job, family);
-  return entryPage({ picture: null, film, title: job.name, kicker: kickerOf(job, family) }, [
+  return entryPage({ picture: null, film, title: shownJobName(job), kicker: kickerOf(job, family) }, [
     statusBlock(context, job),
     ...jobBlocks(family, { does }).map(render),
   ]);

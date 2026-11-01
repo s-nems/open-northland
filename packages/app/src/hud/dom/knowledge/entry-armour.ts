@@ -49,13 +49,7 @@ function factsBlock(context: KnowledgeContext, weight: number): EntryBlock {
     stepSeconds(context.base, 0, tribe),
   );
   return {
-    node: section(
-      null,
-      factList([
-        [text.slows, slower === 0 ? text.slowsNot : `${slower}%`],
-        [text.durability, text.permanent],
-      ]),
-    ),
+    node: section(null, factList([[text.slows, slower === 0 ? text.slowsNot : `${slower}%`]])),
     side: true,
   };
 }

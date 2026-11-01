@@ -143,7 +143,7 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Kroki na sekundę. Pełny to {{haul.handcart}} z {{haul.handcart}} na Wózku i {{haul.oxcart}} z {{haul.oxcart}} na Zaprzęgu. Liczone dla woźnicy bez butów, w butach jest szybciej. Statek nie zwalnia od ładunku i płynie około {{pace.ship}} kroków/s. Tragarz ciągnący wóz traci ten sam procent ze swojego chodu. Wybór wozu na trasę: [[article:trade|Handel]].',
+            foot: 'Hexy na sekundę. Pełny to {{haul.handcart}} z {{haul.handcart}} na Wózku i {{haul.oxcart}} z {{haul.oxcart}} na Zaprzęgu. Liczone dla woźnicy bez butów, w butach jest szybciej. Statek nie zwalnia od ładunku i płynie około {{pace.ship}} hexów/s. Tragarz ciągnący wóz traci ten sam procent ze swojego chodu. Wybór wozu na trasę: [[article:trade|Handel]].',
           },
         },
         {
@@ -200,7 +200,7 @@ export const WORLD: ArticleGroup = {
           list: [
             'Ładownia jest wspólna na wszystkie towary.',
             'Statek przewozi 1 pojazd: Wózek Ręczny, Zaprzęg albo Katapultę. Załoga pojazdu musi się zmieścić na pokładzie. Statek handlowy nie przewozi pojazdów.',
-            '"Zacumuj" każe wskazać brzeg. Statek staje {{vehicle.mooringDistance}} kroki od wskazanego miejsca, budynek portowy nie jest potrzebny.',
+            '"Zacumuj" każe wskazać brzeg. Statek staje {{vehicle.mooringDistance}} hexy od wskazanego miejsca, budynek portowy nie jest potrzebny.',
             'Na morzu nikt nie wsiada ani nie wysiada.',
             'Ctrl/Cmd + klik cumuje i wysadza załogę.',
           ],
@@ -213,9 +213,9 @@ export const WORLD: ArticleGroup = {
             '"cel": ile sztuk ma być w ładowni. Suma celów nie przekroczy pojemności.',
             '"w rękach tragarza": wóz ciągnie Tragarz z miejscem pracy i wiezie to, co podnosi w każdym kursie. Cele są zablokowane.',
             'Ten, kto ładuje, wysiada, gdy wóz stoi albo statek cumuje. Na morzu nikt nie pracuje.',
-            'Bierze po 1 sztuce: stos, budynek do {{vehicle.cargoSearch}} kroków, potem dalej.',
+            'Bierze po 1 sztuce: stos, budynek do {{vehicle.cargoSearch}} hexów, potem dalej.',
             'Źródło musi leżeć na lądzie, na którym stoją drzwi. Jedzenia z domu nie bierze.',
-            'Cel 0 albo niższy od zawartości: nadmiar idzie do najbliższego Magazynu lub Kwatery głównej z miejscem, do {{vehicle.cargoSearch}} kroków od drzwi. Gdy takich brak, ląduje na ziemi.',
+            'Cel 0 albo niższy od zawartości: nadmiar idzie do najbliższego Magazynu lub Kwatery głównej z miejscem, do {{vehicle.cargoSearch}} hexów od drzwi. Gdy takich brak, ląduje na ziemi.',
             'Dowódca, który jest żołnierzem, bohaterem, [[job:scout|Zwiadowcą]] albo [[job:druid|Druidem]], bez nikogo innego do ładunku obniża cel, gdy towaru nie ma skąd wziąć. Z kimś do ładunku cel zostaje.',
             'Rozkaz jazdy woła załogę na pokład przed odjazdem.',
           ],
@@ -231,7 +231,7 @@ export const WORLD: ArticleGroup = {
                 'Wóz, [[good:catapult|Katapulta]]',
                 'Wysiada przy drzwiach',
                 '-',
-                'Rozsypany do {{vehicle.spill}} kroków wokół',
+                'Rozsypany do {{vehicle.spill}} hexów wokół',
               ],
               ['Statek cumuje', 'Wysiada na brzeg', 'Staje przy drzwiach', 'Przepada'],
               ['Statek na morzu', 'Tonie', 'Tonie razem ze swoją załogą', 'Przepada'],
@@ -286,7 +286,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Walka między graczami objętymi pokojem jest zablokowana.',
-            'Nie wejdziesz ani nie zbudujesz do {{peace.keepOut}} kroków od budynku partnera, chyba że bliżej ci do własnego.',
+            'Nie wejdziesz ani nie zbudujesz do {{peace.keepOut}} hexów od budynku partnera, chyba że bliżej ci do własnego.',
             'Ostrzeżenia przychodzą {{peace.noticeFirstMinutes}} min i {{peace.noticeLastMinutes}} min przed końcem.',
           ],
         },
@@ -353,7 +353,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Kto', 'Zasięg, kroki'],
+            head: ['Kto', 'Zasięg, hexy'],
             rows: [
               ['[[job:scout|Zwiadowca]], [[building:headquarters|Kwatera główna]]', '{{vision.scout}}'],
               ['Bohater, [[good:ship_small|Statek]], [[good:ship_big|Statek handlowy]]', '{{vision.hero}}'],
@@ -367,7 +367,7 @@ export const WORLD: ArticleGroup = {
               ['Plac budowy', '0'],
             ],
             num: [1],
-            foot: 'Kroki liczone w poziomie. Palisada, droga i drogowskaz nie widzą.',
+            foot: 'Hexy liczone w poziomie. Palisada, droga i drogowskaz nie widzą.',
           },
         },
         {
@@ -400,7 +400,7 @@ export const WORLD: ArticleGroup = {
               ['Zwierzęta', 'Przejmuje dzikie Woły i Owce, idąc obok nich', '[[article:livestock|Hodowla]]'],
               [
                 'Widzenie',
-                '{{vision.scout}} kroków, najwięcej wśród ludzi',
+                '{{vision.scout}} hexów, najwięcej wśród ludzi',
                 '[[article:fog|Mgła i widzenie]]',
               ],
             ],
@@ -444,7 +444,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'wildlife',
       name: 'Dzikie zwierzęta i polowanie',
-      lead: 'Agresywne stado rzuca się na ludzi w promieniu {{wild.aggro}} kroków od swojego miejsca, a za {{wild.giveUp}} krokami wraca.',
+      lead: 'Agresywne stado rzuca się na ludzi w promieniu {{wild.aggro}} hexów od swojego miejsca, a za {{wild.giveUp}} hexami wraca.',
       blocks: [
         {
           data: 'animals',
@@ -462,14 +462,14 @@ export const WORLD: ArticleGroup = {
                 'Niedźwiedź, Słoń',
                 'Złość trwa {{wild.angrySeconds}} s od ostatniego ciosu, zaczęty atak trwa do śmierci celu albo jego schronienia',
               ],
-              ['Płochliwe', 'Pozostałe', 'Uderzony przywódca ucieka do {{wild.flight}} kroków, stado za nim'],
+              ['Płochliwe', 'Pozostałe', 'Uderzony przywódca ucieka do {{wild.flight}} hexów, stado za nim'],
             ],
             foot: 'Dzika Koza nie atakuje i nie ucieka.',
           },
         },
         {
           list: [
-            'Cios alarmuje zwierzęta tego gatunku do {{wild.kinAlarm}} kroków wokół uderzonego.',
+            'Cios alarmuje zwierzęta tego gatunku do {{wild.kinAlarm}} hexów wokół uderzonego.',
             'Budynków i pojazdów zwierzęta nie atakują.',
           ],
         },
@@ -484,10 +484,10 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Teren łowiecki to {{flag.hunter}} kroków od flagi roboczej albo miejsca pracy. Pościg wychodzi poza teren o {{wild.huntChase}} kroki.',
+            'Teren łowiecki to {{flag.hunter}} hexów od flagi roboczej albo miejsca pracy. Pościg wychodzi poza teren o {{wild.huntChase}} hexy.',
             'Wybiera bliskie i słabe zwierzę.',
             'Poluje na 1 ofiarę naraz, nową bierze dopiero po zebraniu zdobyczy.',
-            'Łuk Myśliwego zabiera {{wild.hunterShot}} na strzał, zasięg {{hunterBow.min}}-{{hunterBow.max}} kroków.',
+            'Łuk Myśliwego zabiera {{wild.hunterShot}} na strzał, zasięg {{hunterBow.min}}-{{hunterBow.max}} hexów.',
             'Dorosłej Dzikiej Kozy sam nie weźmie, jej młode są zwierzyną.',
             'Pomija zwierzęta z właścicielem, rozwścieczone oraz stojące na innym lądzie.',
           ],
@@ -525,7 +525,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Kto', 'Co robi', 'Zasięg, kroki'],
+            head: ['Kto', 'Co robi', 'Zasięg, hexy'],
             rows: [
               [
                 '[[job:scout|Zwiadowca]]',
@@ -571,7 +571,7 @@ export const WORLD: ArticleGroup = {
           list: [
             '[[building:work_animal_farm|Ferma bydła]] mieści {{livestock.farmHerd}} sztuk łącznie, oba gatunki i młode w drodze.',
             'Młode dorasta {{livestock.growSeconds}} s ({{livestock.growMinutes}} min) i nie liczy się do pary.',
-            'Rodzic musi być do {{livestock.birthRange}} kroków od drzwi Fermy przy narodzinach. Dalej: stracony surowiec i brak młodego.',
+            'Rodzic musi być do {{livestock.birthRange}} hexów od drzwi Fermy przy narodzinach. Dalej: stracony surowiec i brak młodego.',
             'Załoga Fermy to {{livestock.breeders}} [[job:breeder|Hodowców]] i {{livestock.carriers}} [[job:carrier|Tragarz]].',
           ],
         },
@@ -657,7 +657,7 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Działanie', 'Wartość'],
             rows: [
-              ['Zasięg', '{{aura.range}} kroków'],
+              ['Zasięg', '{{aura.range}} hexów'],
               ['Zdrowie', '+{{aura.perSecond}} na sekundę, do {{aura.ceiling}}'],
               ['Religia', '+{{aura.pietyPct}}% na sekundę, gdy pasek ma do {{need.satedPct}}%'],
               ['Kto', 'Wszyscy ludzie właściciela Świątyni. Dzieci dostają zdrowie'],

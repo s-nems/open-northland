@@ -16,14 +16,14 @@ export const ECONOMY: ArticleGroup = {
             head: ['建不了', '规则'],
             rows: [
               ['地形', '陆地、沙地、海滩、石漠可建。山地、雪地、水面和沼泽不行。'],
-              ['[[building:work_well_00|水井]]、[[building:work_hive_00|蜂房]]', '建筑下方至少1个节点是草地'],
+              ['[[building:work_well_00|水井]]、[[building:work_hive_00|蜂房]]', '建筑下方至少1格是草地'],
               ['空间', '建筑一开始就占用最高等级的轮廓和周围边距。两座建筑的边距不能重叠。'],
               ['树木、岩石、矿藏、木栅栏', '必须在轮廓之外'],
               [
                 '敌方士兵',
-                '{{contest.radius}}步内不能建，斜向约{{contest.diagonal}}步。只算可见的士兵，不算箭塔上岗的驻军。',
+                '{{contest.radius}}格内不能建，斜向约{{contest.diagonal}}格。只算可见的士兵，不算箭塔上岗的驻军。',
               ],
-              ['和平关系玩家的建筑', '距其{{peace.keepOut}}步内不能建，工地也算，除非你的建筑离得更近。'],
+              ['和平关系玩家的建筑', '距其{{peace.keepOut}}格内不能建，工地也算，除非你的建筑离得更近。'],
               ['升级预留地', '现有建筑更高等级的轮廓已被占用，别的建筑不能建在那里。'],
               ['迷雾中的地块', '该位置此刻必须可见'],
             ],
@@ -157,7 +157,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            '敌人攻击后要等{{repair.calmSeconds}}秒，且{{alert.standTo}}步内不能有人战斗，才会修理。玩家命令可跳过这两个条件。',
+            '敌人攻击后要等{{repair.calmSeconds}}秒，且{{alert.standTo}}格内不能有人战斗，才会修理。玩家命令可跳过这两个条件。',
             '工地和在建的木栅栏段没有修理一说，生命值随建造增长。',
             '受损建筑升级时先修理，再升级。',
           ],
@@ -173,7 +173,7 @@ export const ECONOMY: ArticleGroup = {
               ['拆除或摧毁建筑', '库存加一半成本，每项向上取整'],
               ['拆除升级中的建筑', '当前等级同上，另加暂存的库存和升级材料'],
             ],
-            foot: '物资堆放在{{reach.spill}}步内的同一片陆地上，放不下的消失。',
+            foot: '物资堆放在{{reach.spill}}格内的同一片陆地上，放不下的消失。',
           },
         },
       ],
@@ -388,20 +388,20 @@ export const ECONOMY: ArticleGroup = {
               [
                 '[[building:work_farm_00|农场]]',
                 '{{field.max}}',
-                '{{field.radius}}步',
+                '{{field.radius}}格',
                 '农夫{{farm.farmers}}名，搬运工{{farm.carriers}}名',
                 '{{farm.stock}}',
               ],
               [
                 '[[building:work_herb_hut|草药屋]]',
                 '{{field.max}}',
-                '{{field.radius}}步',
+                '{{field.radius}}格',
                 '草药师{{herbHut.herbalists}}名，搬运工{{herbHut.carriers}}名',
                 '{{herbHut.stock}}',
               ],
             ],
             num: [1, 4],
-            foot: '斜向半径约{{field.diagonal}}步。田数上限按建筑计算，人多只是周转更快。',
+            foot: '斜向半径约{{field.diagonal}}格。田数上限按建筑计算，人多只是周转更快。',
           },
         },
         {
@@ -655,7 +655,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             '只有有工作场所的搬运工和[[job:trader|商人]]能用车。搬运工保留工作场所，把车当工具用。',
             '车必须是自己的且空闲：没有乘员，没有别的车夫，在同一片陆地上。',
-            '车上有空位时，仓库搬运工顺路拾取{{haul.cartTopUp}}步内堆垛和成品中的同种物资，然后返回。',
+            '车上有空位时，仓库搬运工顺路拾取{{haul.cartTopUp}}格内堆垛和成品中的同种物资，然后返回。',
             '失去工作场所后车留在原地。',
           ],
         },
@@ -666,7 +666,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             '同一处只放1种物资，最多{{haul.groundStack}}份。',
             '堆垛没有主人，谁都能拿。',
-            '搬运工没有工作旗帜时在建筑{{flag.radius}}步内拾取，有旗帜时在旗帜{{flag.radius}}步内。',
+            '搬运工没有工作旗帜时在建筑{{flag.radius}}格内拾取，有旗帜时在旗帜{{flag.radius}}格内。',
           ],
         },
         {
@@ -688,7 +688,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [2, 3],
-            foot: '单位为步。受路标限制的职业，工作区域到路标范围为止。',
+            foot: '单位为格。受路标限制的职业，工作区域到路标范围为止。',
           },
         },
         {
@@ -748,7 +748,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['对象', '无旗帜时'],
             rows: [
               ['采集者', '整个路标范围'],
-              ['搬运工', '仓库：建筑{{flag.radius}}步内的堆垛'],
+              ['搬运工', '仓库：建筑{{flag.radius}}格内的堆垛'],
               ['猎人', '工作场所周围'],
               ['渔夫', '从所在位置寻找岸边'],
             ],
@@ -761,7 +761,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             '旗帜下的物资不会自己进仓库，需要有工作场所的搬运工。',
-            '仓库搬运工只够到建筑{{flag.radius}}步内。更远时，在采集者的旗帜旁给他插一面自己的旗帜。',
+            '仓库搬运工只够到建筑{{flag.radius}}格内。更远时，在采集者的旗帜旁给他插一面自己的旗帜。',
             '有旗帜的搬运工拿旗帜周围的堆垛和成品，运回自己的建筑。',
             '移动旗帜不影响堆垛，它们留在原地。',
           ],
@@ -775,7 +775,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               [
                 '“插下旗帜”',
-                '在指定位置插旗，或把旗帜移过去。目标被占用时在{{flag.snap}}步内找位置，再远命令作废。',
+                '在指定位置插旗，或把旗帜移过去。目标被占用时在{{flag.snap}}格内找位置，再远命令作废。',
               ],
               ['“收回旗帜”', '仅限有工作场所者，移除旗帜'],
               ['“显示工作区域”', '显示区域圆圈。旗帜在场时有效。'],
@@ -785,7 +785,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: '打开[[article:assistant|助手]]的开关后，采集者会自己移动旗帜：与资源相距{{assistant.flagMin}}-{{assistant.flagMax}}步，区域采空后移到离自己建筑最近的资源。猎人和渔夫的旗帜不动。',
+          p: '打开[[article:assistant|助手]]的开关后，采集者会自己移动旗帜：与资源相距{{assistant.flagMin}}-{{assistant.flagMax}}格，区域采空后移到离自己建筑最近的资源。猎人和渔夫的旗帜不动。',
         },
         {
           h: '路标范围外的旗帜',
@@ -815,7 +815,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['范围（步）', '居民', '[[job:carrier|搬运工]]', '备注'],
+            head: ['范围（格）', '居民', '[[job:carrier|搬运工]]', '备注'],
             rows: [
               ['步行', '{{reach.walk}}', '{{reach.carrier}}', '从所在位置算起'],
               ['居民到路标', '小于{{reach.walk}}', '小于{{reach.carrier}}', '开放整个相连的网络'],
@@ -824,7 +824,7 @@ export const ECONOMY: ArticleGroup = {
                 '两路标相连',
                 '小于{{reach.link}}',
                 '小于{{reach.link}}',
-                '两者间路线不超过{{reach.linkRoute}}步',
+                '两者间路线不超过{{reach.linkRoute}}格',
               ],
               ['与自家路标的间距', '至少{{reach.spacing}}', '至少{{reach.spacing}}', '再近放不下'],
               ['寻找物资', '小于{{reach.goods}}', '小于{{reach.goods}}', '也从此范围内的路标算起'],
@@ -835,7 +835,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['地形', '寻找物资（步）'],
+            head: ['地形', '寻找物资（格）'],
             rows: [
               ['道路、陆地', '小于{{reach.goods}}'],
               ['沙地', '约{{reach.goodsSand}}'],
@@ -1002,7 +1002,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: '单程20-30步时，两种车单位时间运量相同。更短用手推车，更远用牛车。',
+          p: '单程20-30格时，两种车单位时间运量相同。更短用手推车，更远用牛车。',
         },
         {
           h: '路线',

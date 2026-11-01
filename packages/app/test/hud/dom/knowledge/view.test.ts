@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
+  KnowledgeStatus,
   KnowledgeArt,
   KnowledgeContext,
   KnowledgeSettlement,
@@ -315,16 +316,17 @@ describe('the Knowledge view', () => {
     expect(view.element.querySelector('.stub-encyclopedia')).not.toBeNull();
   });
 
-  it('offers a tribe only where no settlement fixes it', () => {
-    mount();
-    expect(view.element.querySelector('.kn-tribe select')).not.toBeNull();
-    view.dispose();
-    mount({
-      tribe: 1,
-      status: () => ({ kind: 'available' }),
-      stock: () => 0,
-    });
-    expect(view.element.querySelector('.kn-tribe')).toBeNull();
+  it("presses the seat's tribe, and drops the seat's standing on another people's pages", () => {
+    const status = vi.fn((): KnowledgeStatus => ({ kind: 'locked', missing: ['Smith'] }));
+    mount({ tribe: 1, status });
+    click('[data-tab="buildings"]');
+    const pressed = view.element.querySelectorAll('.kn-tribes__item[aria-pressed="true"]');
+    expect(pressed).toHaveLength(1);
+    expect(find(card('building:work_smithy_00')).classList.contains('kn-card--locked')).toBe(true);
+    const other = view.element.querySelector<HTMLElement>('.kn-tribes__item[aria-pressed="false"]');
+    other?.click();
+    expect(other?.getAttribute('aria-pressed')).toBe('true');
+    expect(find(card('building:work_smithy_00')).classList.contains('kn-card--locked')).toBe(false);
   });
 
   it('tells a locked building from a map ban on its card', () => {
@@ -334,13 +336,12 @@ describe('the Knowledge view', () => {
         typeId === createKnowledgeBase(knowledgeContent()).buildingById.get('work_druid_00')?.typeId
           ? { kind: 'mapForbidden' }
           : { kind: 'locked', missing: ['Smith', 'Iron'] },
-      stock: () => 0,
     });
     click('[data-tab="buildings"]');
     expect(find(card('building:work_druid_00')).classList.contains('kn-card--map')).toBe(true);
     const locked = find(card('building:work_smithy_00'));
     expect(locked.classList.contains('kn-card--locked')).toBe(true);
-    expect(locked.textContent).toContain('Smith');
-    expect(locked.textContent).toContain('+1');
+    expect(locked.title).toContain('Smith');
+    expect(locked.textContent).not.toContain('Smith');
   });
 });

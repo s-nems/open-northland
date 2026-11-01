@@ -152,7 +152,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: '英雄',
         },
         {
-          p: '英雄不累計命中，傷害不會增長。[[job:hero_axe|戰斧英雄]]沒有斧頭經驗線。',
+          p: '英雄不累計命中，傷害不會增長。',
         },
       ],
       see: [

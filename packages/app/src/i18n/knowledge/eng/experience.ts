@@ -170,7 +170,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Heroes',
         },
         {
-          p: 'Heroes do not collect hits, so their damage never grows. The [[job:hero_axe|Axe Hero]] has no axe track.',
+          p: 'Heroes do not collect hits, so their damage never grows.',
         },
       ],
       see: [

@@ -27,11 +27,11 @@ export const ECONOMY: ArticleGroup = {
               ['Baum, Fels, Lagerstätte, Palisade', 'Müssen außerhalb des Grundrisses stehen'],
               [
                 'Feindlicher Soldat',
-                'Abgelehnt bis {{contest.radius}} Schritte, schräg etwa {{contest.diagonal}}. Es zählt nur ein sichtbarer, ohne die Besatzung auf Turmposten.',
+                'Abgelehnt bis {{contest.radius}} Hexfelder, schräg etwa {{contest.diagonal}}. Es zählt nur ein sichtbarer, ohne die Besatzung auf Turmposten.',
               ],
               [
                 'Gebäude eines Spielers, mit dem Frieden herrscht',
-                'Abgelehnt bis {{peace.keepOut}} Schritte davon, auch von einer Baustelle, außer dein eigenes Gebäude steht näher.',
+                'Abgelehnt bis {{peace.keepOut}} Hexfelder davon, auch von einer Baustelle, außer dein eigenes Gebäude steht näher.',
               ],
               [
                 'Platz für den Ausbau',
@@ -177,7 +177,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           list: [
-            'Nach einem feindlichen Schlag wartet die Reparatur {{repair.calmSeconds}} s, und im Umkreis von {{alert.standTo}} Schritten darf niemand kämpfen. Ein Befehl des Spielers übergeht beides.',
+            'Nach einem feindlichen Schlag wartet die Reparatur {{repair.calmSeconds}} s, und im Umkreis von {{alert.standTo}} Hexfeldern darf niemand kämpfen. Ein Befehl des Spielers übergeht beides.',
             'Baustellen und Palisadenabschnitte im Bau werden nicht repariert, ihre Gesundheit wächst mit dem Bau.',
             'Beschädigtes Gebäude im Ausbau: erst Reparatur, dann Ausbau.',
           ],
@@ -196,7 +196,7 @@ export const ECONOMY: ArticleGroup = {
                 'Dasselbe für die aktuelle Stufe, plus eingelagerte Vorräte und Ausbaumaterial',
               ],
             ],
-            foot: 'Die Waren verteilen sich bis zu {{reach.spill}} Schritte weit am Boden, auf derselben Landmasse. Was nicht passt, geht verloren.',
+            foot: 'Die Waren verteilen sich bis zu {{reach.spill}} Hexfelder weit am Boden, auf derselben Landmasse. Was nicht passt, geht verloren.',
           },
         },
       ],
@@ -456,20 +456,20 @@ export const ECONOMY: ArticleGroup = {
               [
                 '[[building:work_farm_00|Farm]]',
                 '{{field.max}}',
-                '{{field.radius}} Schritte',
+                '{{field.radius}} Hexfelder',
                 '{{farm.farmers}} Farmer, {{farm.carriers}} Träger',
                 '{{farm.stock}}',
               ],
               [
                 '[[building:work_herb_hut|Kräuterhütte]]',
                 '{{field.max}}',
-                '{{field.radius}} Schritte',
+                '{{field.radius}} Hexfelder',
                 '{{herbHut.herbalists}} Kräutergärtner, {{herbHut.carriers}} Träger',
                 '{{herbHut.stock}}',
               ],
             ],
             num: [1, 4],
-            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Schritte. Die Feldgrenze gilt fürs Gebäude, mehr Leute bestellen die Felder nur schneller.',
+            foot: 'Schräg beträgt der Radius etwa {{field.diagonal}} Hexfelder. Die Feldgrenze gilt fürs Gebäude, mehr Leute bestellen die Felder nur schneller.',
           },
         },
         {
@@ -744,7 +744,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Einen Karren nehmen nur Träger mit Arbeitsplatz und [[job:trader|Händler]]. Der Träger behält seinen Arbeitsplatz und nutzt den Karren wie ein Werkzeug.',
             'Der Karren muss dir gehören und frei sein: ohne Besatzung, ohne anderen Fahrer, auf derselben Landmasse.',
-            'Ein Lagerträger mit Platz auf dem Karren nimmt dieselbe Ware von Haufen und fertigen Produkten bis {{haul.cartTopUp}} Schritte um sich mit und fährt dann zurück.',
+            'Ein Lagerträger mit Platz auf dem Karren nimmt dieselbe Ware von Haufen und fertigen Produkten bis {{haul.cartTopUp}} Hexfelder um sich mit und fährt dann zurück.',
             'Verliert er den Arbeitsplatz, bleibt der Karren stehen.',
           ],
         },
@@ -755,7 +755,7 @@ export const ECONOMY: ArticleGroup = {
           list: [
             'Auf einem Punkt liegt 1 Ware, bis {{haul.groundStack}} Stück.',
             'Ein Haufen gehört niemandem, jeder darf ihn nehmen.',
-            'Ein Träger ohne Arbeitsfahne sammelt bis {{flag.radius}} Schritte um sein Gebäude auf, mit Fahne bis {{flag.radius}} Schritte um die Fahne.',
+            'Ein Träger ohne Arbeitsfahne sammelt bis {{flag.radius}} Hexfelder um sein Gebäude auf, mit Fahne bis {{flag.radius}} Hexfelder um die Fahne.',
           ],
         },
         {
@@ -777,7 +777,7 @@ export const ECONOMY: ArticleGroup = {
               ],
             ],
             num: [2, 3],
-            foot: 'In Schritten. Der Arbeitsbereich endet an der Wegweiser-Reichweite, wenn der Beruf ihr unterliegt.',
+            foot: 'In Hexfeldern. Der Arbeitsbereich endet an der Wegweiser-Reichweite, wenn der Beruf ihr unterliegt.',
           },
         },
         {
@@ -841,7 +841,7 @@ export const ECONOMY: ArticleGroup = {
             head: ['Wer', 'Ohne Fahne'],
             rows: [
               ['Abbauer', 'Ganze Wegweiser-Reichweite'],
-              ['Träger', 'Lagerhaus: Haufen bis {{flag.radius}} Schritte ums Gebäude'],
+              ['Träger', 'Lagerhaus: Haufen bis {{flag.radius}} Hexfelder ums Gebäude'],
               ['Jäger', 'Rund um den Arbeitsplatz'],
               ['Fischer', 'Sucht das Ufer von seinem Standort aus'],
             ],
@@ -854,7 +854,7 @@ export const ECONOMY: ArticleGroup = {
         {
           list: [
             'Ware von der Fahne kommt nicht von selbst ins Lager. Dafür braucht es einen Träger mit Arbeitsplatz.',
-            'Ein Lagerträger reicht bis {{flag.radius}} Schritte ums Gebäude. Weiter weg gib ihm eine eigene Fahne neben der des Abbauers.',
+            'Ein Lagerträger reicht bis {{flag.radius}} Hexfelder ums Gebäude. Weiter weg gib ihm eine eigene Fahne neben der des Abbauers.',
             'Ein Träger mit Fahne nimmt Haufen und fertige Produkte um sie herum und bringt sie in sein Gebäude.',
             'Das Versetzen der Fahne bewegt die Haufen nicht, sie bleiben liegen.',
           ],
@@ -868,7 +868,7 @@ export const ECONOMY: ArticleGroup = {
             rows: [
               [
                 '„Arbeitsfahne setzen“',
-                'Setzt die Fahne an den gewählten Ort oder versetzt sie dorthin. Auf belegtem Feld sucht sie Platz bis {{flag.snap}} Schritte, darüber hinaus verfällt der Befehl.',
+                'Setzt die Fahne an den gewählten Ort oder versetzt sie dorthin. Auf belegtem Hexfeld sucht sie Platz bis {{flag.snap}} Hexfelder, darüber hinaus verfällt der Befehl.',
               ],
               ['„Fahne entfernen“', 'Nur mit Arbeitsplatz, entfernt die Fahne'],
               ['„Zeige Arbeitsbereich“', 'Blendet den Kreis des Bereichs ein. Geht, wenn die Fahne steht.'],
@@ -878,7 +878,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Ein Abbauer versetzt seine Fahne selbst, wenn der Schalter im [[article:assistant|Assistenten]] an ist: {{assistant.flagMin}}-{{assistant.flagMax}} Schritte vom Vorkommen, und ist der Bereich erschöpft, zum Vorkommen am nächsten am eigenen Gebäude. Fahnen von Jäger und Fischer bleiben stehen.',
+          p: 'Ein Abbauer versetzt seine Fahne selbst, wenn der Schalter im [[article:assistant|Assistenten]] an ist: {{assistant.flagMin}}-{{assistant.flagMax}} Hexfelder vom Vorkommen, und ist der Bereich erschöpft, zum Vorkommen am nächsten am eigenen Gebäude. Fahnen von Jäger und Fischer bleiben stehen.',
         },
         {
           h: 'Fahne außerhalb der Wegweiser-Reichweite',
@@ -908,7 +908,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Reichweite, Schritte', 'Siedler', '[[job:carrier|Träger]]', 'Hinweise'],
+            head: ['Reichweite, Hexfelder', 'Siedler', '[[job:carrier|Träger]]', 'Hinweise'],
             rows: [
               ['Gehen', '{{reach.walk}}', '{{reach.carrier}}', 'Ab seinem Standort'],
               [
@@ -927,7 +927,7 @@ export const ECONOMY: ArticleGroup = {
                 'Verbindung zweier Wegweiser',
                 'unter {{reach.link}}',
                 'unter {{reach.link}}',
-                'Weg zwischen ihnen bis {{reach.linkRoute}} Schritte',
+                'Weg zwischen ihnen bis {{reach.linkRoute}} Hexfelder',
               ],
               [
                 'Abstand zum eigenen Wegweiser',
@@ -953,7 +953,7 @@ export const ECONOMY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Gelände', 'Warensuche, Schritte'],
+            head: ['Gelände', 'Warensuche, Hexfelder'],
             rows: [
               ['Straße, Land', 'unter {{reach.goods}}'],
               ['Sand', 'etwa {{reach.goodsSand}}'],
@@ -1126,7 +1126,7 @@ export const ECONOMY: ArticleGroup = {
           },
         },
         {
-          p: 'Bei 20-30 Schritten pro Richtung bringen beide Karren gleich viel Ware in derselben Zeit. Auf kürzeren Strecken gewinnt der Handkarren, auf längeren der Ochsenkarren.',
+          p: 'Bei 20-30 Hexfeldern pro Richtung bringen beide Karren gleich viel Ware in derselben Zeit. Auf kürzeren Strecken gewinnt der Handkarren, auf längeren der Ochsenkarren.',
         },
         {
           h: 'Route',

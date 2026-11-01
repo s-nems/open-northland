@@ -12,6 +12,7 @@ const weapon = (id: string, bare: number): KnowledgeWeapon => ({
   typeId: 1,
   id,
   jobType: 33,
+  filmJob: null,
   jobName: id,
   goodType: null,
   goodName: id,

@@ -69,7 +69,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: '没东西吃、没地方祈祷时，居民回去工作，需求条继续下降。{{reach.walk}}步内没有住所就露天睡觉。',
+          p: '没东西吃、没地方祈祷时，居民回去工作，需求条继续下降。{{reach.walk}}格内没有住所就露天睡觉。',
         },
         {
           p: '士兵战斗中只吃随身带的或箭塔存粮。进食命令会打断战斗。',
@@ -164,7 +164,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['附近情况', '步数', '结果'],
+            head: ['附近情况', '格数', '结果'],
             rows: [
               ['战斗', '{{alert.restClearance}}以内', '不睡觉、不祈祷、不聊天。'],
               ['可见的进攻或防御姿态敌人', '{{alert.standTo}}以内', '同上。'],
@@ -250,9 +250,9 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           steps: [
-            '自家存粮，住所门口最多{{reach.walk}}步远。',
-            '{{reach.goods}}步内最近的仓库、工坊或地面堆垛，或{{reach.bushAtHand}}步内的成熟灌木。',
-            '{{reach.goods}}步内最近的成熟灌木。',
+            '自家存粮，住所门口最多{{reach.walk}}格远。',
+            '{{reach.goods}}格内最近的仓库、工坊或地面堆垛，或{{reach.bushAtHand}}格内的成熟灌木。',
+            '{{reach.goods}}格内最近的成熟灌木。',
             '步行范围内任何地方最近的食物，包括较远的自家。',
           ],
         },
@@ -296,7 +296,7 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[article:religion|神庙光环]]',
                 '+{{aura.perSecond}}/秒',
-                '距[[building:work_temple|神庙]]{{aura.range}}步',
+                '距[[building:work_temple|神庙]]{{aura.range}}格',
                 '{{aura.wholeMin}}分{{aura.restSec}}秒',
               ],
               ['治疗药水', '每口+{{draught.healSip}}', '受伤后将低于{{draught.healBelow}}', '-'],
@@ -609,7 +609,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: '旗帜跟着资源移动，与其相距{{assistant.flagMin}}-{{assistant.flagMax}}步：[[article:work-flag|工作旗帜]]。',
+          p: '旗帜跟着资源移动，与其相距{{assistant.flagMin}}-{{assistant.flagMax}}格：[[article:work-flag|工作旗帜]]。',
         },
         {
           p: '“臣民”窗口统计缺口：住所、工作场所、工具、鞋子、配偶、孩子、武器、蜂蜜酒。',

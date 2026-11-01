@@ -1,7 +1,8 @@
-import { buildingFootprintFor } from '@open-northland/data';
+import { buildingFootprintFor, PRAYER_SITE } from '@open-northland/data';
 import { systems } from '@open-northland/sim';
 import { JOB_SOLDIER_UNARMED } from '../../../catalog/jobs.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
+import { fillTokens } from '../../knowledge/articles.js';
 import { buildingHitpoints, type KnowledgeBuilding } from '../../knowledge/base.js';
 import {
   type BuildingBlock,
@@ -16,9 +17,10 @@ import {
   techSize,
 } from '../../knowledge/entry-blocks.js';
 import { counted, stepsText, wholeText } from '../../knowledge/entry-format.js';
+import { factText } from '../../knowledge/facts.js';
 import { button } from '../parts/dom.js';
 import type { KnowledgeContext } from './context.js';
-import { recipeView } from './entry-good.js';
+import { recipeTable } from './entry-good.js';
 import {
   articleLinks,
   buildingPicture,
@@ -53,7 +55,13 @@ function statusBlock(context: KnowledgeContext, building: KnowledgeBuilding): En
 
 function outputBlock(context: KnowledgeContext, building: KnowledgeBuilding): EntryBlock {
   return {
-    node: section(copy().building.output, ...building.recipes.map((recipe) => recipeView(context, recipe))),
+    node: section(
+      copy().building.output,
+      recipeTable(
+        context,
+        building.recipes.map((recipe) => ({ building, recipe })),
+      ),
+    ),
   };
 }
 
@@ -225,6 +233,24 @@ function healthBlock(context: KnowledgeContext, building: KnowledgeBuilding): En
   };
 }
 
+/** What a temple does to the people around it, on its own, with no worker. */
+function auraBlock(context: KnowledgeContext): EntryBlock {
+  const text = copy().building.aura;
+  const filled = (template: string): string => fillTokens(template, (name) => factText(name, context.base));
+  return {
+    node: section(
+      text.title,
+      paragraph(text.lead),
+      factList([
+        [text.range, filled(text.rangeValue)],
+        [text.health, filled(text.healthValue)],
+        [text.piety, filled(text.pietyValue)],
+        [text.many, text.manyValue],
+      ]),
+    ),
+  };
+}
+
 function kindName(building: KnowledgeBuilding): string {
   const kinds: Readonly<Record<string, string | undefined>> = copy().kinds;
   return kinds[building.kind] ?? copy().kinds.other;
@@ -235,12 +261,15 @@ export function renderBuilding(context: KnowledgeContext, building: KnowledgeBui
   const capacity = capacityShows(buildingCapacity(building));
   const levels = levelChain(context.base, building).length > 1;
   const teaches = systems.isSchoolType(building.row) || systems.isBarracksType(building.row);
+  const aura = building.row.prayerSite === PRAYER_SITE.temple;
   const render = (block: BuildingBlock): EntryBlock | null => {
     switch (block) {
       case 'status':
         return statusBlock(context, building);
       case 'output':
         return outputBlock(context, building);
+      case 'aura':
+        return auraBlock(context);
       case 'capacity':
         return capacityBlock(building);
       case 'teaches':
@@ -267,6 +296,6 @@ export function renderBuilding(context: KnowledgeContext, building: KnowledgeBui
       title: building.name,
       kicker: formatMessage(text.kicker.building, { kind: kindName(building) }),
     },
-    buildingBlocks(building, { capacity, teaches, levels }).map(render),
+    buildingBlocks(building, { aura, capacity, teaches, levels }).map(render),
   );
 }

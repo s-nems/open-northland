@@ -47,7 +47,6 @@ export function createKnowledgeSource(deps: KnowledgeSourceDeps): KnowledgeSourc
         settlement,
       });
     },
-    presentStocks: settlement.presentStocks,
     refresh: settlement.refresh,
     buildingId: (typeId) => content.buildings.find((b) => b.typeId === typeId)?.id,
   };

@@ -5,7 +5,6 @@ import type {
   MapViewFrame,
   MapViewTarget,
   SpriteSheet,
-  StockCount,
   TargetMark,
 } from '@open-northland/render';
 import type {
@@ -115,8 +114,7 @@ const NOTICE_MINIMAP_GAP = 16;
 /** The Knowledge window's seam: everything but the thumbnails, which the panel already keeps. */
 export interface KnowledgeSource {
   createView(thumbs: BuildingThumbs): Promise<KnowledgeView>;
-  /** Read the seat as of now, with the stock the HUD last counted. */
-  presentStocks(stocks: readonly StockCount[]): void;
+  /** Read the seat as of now. */
   refresh(): Promise<void>;
   buildingId(typeId: number): string | undefined;
 }
@@ -1013,7 +1011,6 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
       update(model, peaceHoldsUntil): void {
         systemBar.update(model, peaceHoldsUntil);
         speed.refresh();
-        opts.knowledge.presentStocks(model.stocks);
         windows.presentModel(model);
         windows.refresh();
         const open = windows.openId();

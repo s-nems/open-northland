@@ -170,7 +170,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Helden',
         },
         {
-          p: 'Bei Helden zählen Treffer nicht, ihr Schaden steigt nicht. Der [[job:hero_axe|Axtheld]] hat keinen Axtzweig.',
+          p: 'Bei Helden zählen Treffer nicht, ihr Schaden steigt nicht.',
         },
       ],
       see: [

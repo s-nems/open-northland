@@ -25,11 +25,14 @@ const context: KnowledgeContext = {
 };
 
 function mount(scales: TreeScales = { goods: 100, buildings: 100 }) {
-  const view = createTreeView(context, 'goods', { scales, onClosePane: () => undefined });
+  const shown: number[] = [];
+  const view = createTreeView(context, 'goods', {
+    scales,
+    onClosePane: () => undefined,
+    onScale: (percent) => shown.push(percent),
+  });
   document.body.append(view.element);
-  const slider = view.element.querySelector<HTMLInputElement>('.kn-zoom input');
-  if (slider === null) throw new Error('no slider');
-  return { view, slider, scales };
+  return { view, shown, scales };
 }
 
 describe('the tree', () => {
@@ -43,13 +46,13 @@ describe('the tree', () => {
   });
 
   it('keeps the scale on steps, inside its limits, for the next mount', () => {
-    const { view, slider, scales } = mount();
-    slider.value = '200';
-    slider.dispatchEvent(new Event('input'));
+    const { view, shown, scales } = mount();
+    view.setScale(200);
     expect(scales.goods).toBe(130);
     view.element.dispatchEvent(new WheelEvent('wheel', { deltaY: 1, ctrlKey: true, cancelable: true }));
     expect(scales.goods).toBe(125);
-    expect(mount(scales).slider.value).toBe('125');
+    expect(shown.at(-1)).toBe(125);
+    expect(mount(scales).shown.at(-1)).toBe(125);
   });
 
   it('leaves a plain wheel to the scroll', () => {

@@ -5,8 +5,10 @@ import { buildingPicture, entryPage, originBlock, paragraph, section } from './e
 
 export function renderWonder(context: KnowledgeContext, building: KnowledgeBuilding): HTMLElement {
   const text = messages().knowledge.entry;
+  const stories: Readonly<Record<string, string | undefined>> = text.wonder;
+  const story = stories[building.id];
   return entryPage(
     { picture: buildingPicture(context, building), title: building.name, kicker: text.kicker.wonder },
-    [{ node: section(text.wonder.inGame, paragraph(text.wonder.text)) }, originBlock(building.help)],
+    [story === undefined ? null : { node: section(null, paragraph(story)) }, originBlock(building.help)],
   );
 }

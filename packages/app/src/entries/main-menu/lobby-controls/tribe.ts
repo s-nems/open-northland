@@ -1,7 +1,7 @@
 import { CIVILIZATION_TRIBES, isCivilizationTribe } from '@open-northland/data';
+import { tribeEmblem } from '../../../hud/dom/tribe-emblems.js';
 import { formatMessage, messages, tribeName } from '../../../i18n/index.js';
 import { node } from '../dom.js';
-import { tribeEmblem } from './tribe-emblems.js';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const STAR_PATH = 'M12 2l2.9 6.9 7.1.6-5.4 4.7 1.6 7-6.2-3.8-6.2 3.8 1.6-7L2 9.5l7.1-.6z';
