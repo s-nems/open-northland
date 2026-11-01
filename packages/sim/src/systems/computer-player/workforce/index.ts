@@ -31,6 +31,7 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
 import { breadChainUnfinished, breadFocusSite } from '../build-order/food-first.js';
+import { openingHomesStand } from '../build-order/housing.js';
 import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
@@ -57,7 +58,7 @@ import {
 } from './collectors/index.js';
 import { tuneCraftCounters } from './craft.js';
 import { demobilizeStartSoldiers } from './demobilize.js';
-import { allocateFishers, fishingPlan } from './fisher.js';
+import { allocateFishers, fisherTarget, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
 import {
   FOCUS_BUILDERS,
@@ -231,7 +232,14 @@ function runWorkforce(
     breadChainOpen: breadChainUnfinished(world, ctx, owned),
   };
   const ground = collectorGround(world, ctx, player, seat.owned, baseNode);
-  const fishing = fishingPlan(world, ctx, player, ground?.flags ?? null, fishers);
+  const fishing = fishingPlan(
+    world,
+    ctx,
+    player,
+    ground?.flags ?? null,
+    fishers,
+    fisherTarget(world, ctx, player, openingHomesStand(world, ctx, order, owned)),
+  );
   const hunting = huntingPlan(
     world,
     ctx,

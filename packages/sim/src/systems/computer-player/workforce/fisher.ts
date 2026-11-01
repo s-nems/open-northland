@@ -19,13 +19,27 @@ import { networkLimitAt } from '../../signposts/index.js';
 import { type ReachSpan, type TerrainReach, terrainReach } from '../../signposts/terrain-reach.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { manhattan } from '../../spatial/metric.js';
+import { HOUSING_WOMEN_PER_FOOD_SOURCE } from '../build-order/housing.js';
 import { seatHasSide } from '../build-order/seat-order.js';
+import { femaleDemand } from '../female-stock.js';
 import { NEAR_BAND_NODES } from '../knowledge/seat-brief.js';
 import { claimFlagNode, type FlagGround, legalFlagNodeTest, type TakenFlagNodes } from './flag-spots.js';
 
-/** How many fishers the seat keeps while fish swim in reach (authored): the first is hired beside the
+/** The most fishers the seat keeps while fish swim in reach (authored): the first is hired beside the
  *  first collector posts, the second only as a top-up, unless the seat's economy leans on fishing. */
 const FISHER_TARGET = 2;
+
+/**
+ * How many fishers the seat hires up to ({@link FISHER_TARGET} at most), the far fisher among them (owner
+ * ruling: the homes go up first, so the women start children before the men go fishing, and one fisher
+ * comes before more): none until its first wave of homes stands (`homesStand`), then one, and one more for
+ * each {@link HOUSING_WOMEN_PER_FOOD_SOURCE} women and booked daughters past the first.
+ */
+export function fisherTarget(world: World, ctx: SystemContext, player: number, homesStand: boolean): number {
+  if (!homesStand) return 0;
+  const women = femaleDemand(world, ctx, player);
+  return Math.min(FISHER_TARGET, Math.max(1, Math.ceil(women / HOUSING_WOMEN_PER_FOOD_SOURCE)));
+}
 
 /** How far past a fisher's own shore search his water may lie from a store's door, in Manhattan nodes
  *  (authored): the store's carriers walk the catch in from his flag, so the trip is theirs, not his. */
@@ -89,8 +103,10 @@ export interface FishingPlan {
   readonly stands: readonly FishingStand[];
   /** The seat's flag fishers; the decision's hires are pushed in and its retirements taken out. */
   readonly fishers: Entity[];
-  /** How many fishers the first phase hires up to: every one of {@link FISHER_TARGET} for a seat with the
-   *  `fishing` side (owner ruling: where fish exist a fisher catches a lot), one otherwise. */
+  /** How many fishers the seat hires up to ({@link fisherTarget}); the top-up phase fills it. */
+  readonly target: number;
+  /** How many fishers the first phase hires up to: the whole {@link target} for a seat with the `fishing`
+   *  side (owner ruling: where fish exist a fisher catches a lot), at most one otherwise. */
   readonly firstHires: number;
   /** The water of the seat's far fisher while no swarm, fished out or not, lies within a trip of a store's
    *  door: the fished shore nearest a store's door within {@link FAR_FISHING_RADIUS_NODES}, or null. A seat
@@ -112,6 +128,7 @@ export function fishingPlan(
   player: number,
   ground: FlagGround | null,
   fishers: readonly Entity[],
+  target: number,
 ): FishingPlan | null {
   const terrain = ctx.terrain;
   const job = ctx.content.jobs.find((j) => isFisherJob(ctx.content, j.typeId))?.typeId;
@@ -134,11 +151,11 @@ export function fishingPlan(
   const stands = standsWithin(TRIP_REACH);
   const waterNear = stores.some(({ door }) => swarmWithinTrip(world, terrain, door));
   const far = stands.length === 0 && !waterNear ? (standsWithin(FAR_REACH)[0] ?? null) : null;
-  const firstHires = seatHasSide(world, player, 'fishing') ? FISHER_TARGET : 1;
+  const firstHires = seatHasSide(world, player, 'fishing') ? target : Math.min(1, target);
   const employed = ownedSettlers(world, player).filter(
     (e) => world.has(e, JobAssignment) && world.get(e, Settler).jobType === job,
   );
-  return { job, terrain, ground, stands, fishers: [...fishers], firstHires, far, employed };
+  return { job, terrain, ground, stands, fishers: [...fishers], target, firstHires, far, employed };
 }
 
 /** Whether one of the seat's men works as a flag fisher: the side names water in the seat's near band,
@@ -160,7 +177,7 @@ export function flagFishers(world: World, ctx: SystemContext, player: number): n
  * The first phase keeps every fisher's flag on fished water: a flag whose water ran dry moves to the
  * seat's nearest stand with a free bank node, and its holder is handed back as a builder when no stand
  * is left; a man mid-action is left alone. It then hires up to the plan's first hires, the top-up phase
- * toward {@link FISHER_TARGET}. A hire is a flag
+ * up to its target. A hire is a flag
  * fisher rather than a store's employee: he drops each catch at the flag beside his water for the
  * carriers, where an employee walks every fish to the store himself.
  */
@@ -179,7 +196,7 @@ export function allocateFishers(
     keepFlagsOnWater(world, plan, builderJob, taken, commands);
     if (!keepFarFisher(world, ctx, plan, force, builderJob, taken, commands)) return commands;
   }
-  const want = phase === 'first' ? plan.firstHires : FISHER_TARGET;
+  const want = phase === 'first' ? plan.firstHires : plan.target;
   for (const stand of plan.stands) {
     while (plan.fishers.length < want) {
       const spot = fisherFlagSpot(plan, stand, taken);
@@ -222,7 +239,7 @@ function keepFlagsOnWater(
 
 /**
  * The seat's one far fisher (owner ruling: a fisher needs no store by the water): while the plan names far
- * water, a man employed at the store nearest fished water within {@link FAR_FISHING_RADIUS_NODES} fishes
+ * water and its target is above none, a man employed at the store nearest fished water within {@link FAR_FISHING_RADIUS_NODES} fishes
  * from a flag beside it and walks every catch home. Employed rather than flag-bound: a flag fisher drops
  * his catch at the flag for the store's carriers, who lift piles only near their store, so far off it
  * lay where it fell, only the housewives walking out for it. The others are handed back as builders, as
@@ -251,7 +268,7 @@ function keepFarFisher(
     if (builderJob === null || world.has(fisher, CurrentAtomic)) continue;
     commands.push({ kind: 'setJob', entity: fisher, jobType: builderJob });
   }
-  if (far === null || kept > 0) return true;
+  if (far === null || kept > 0 || plan.target === 0) return true;
   const spot = fisherFlagSpot(plan, far, taken);
   if (spot === null) return true;
   const spare = force.take((e) => settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', plan.job));

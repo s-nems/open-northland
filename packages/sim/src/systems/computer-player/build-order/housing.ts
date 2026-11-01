@@ -1,4 +1,4 @@
-import type { BuildingType, ContentSet } from '@open-northland/data';
+import { BUILDING_KIND, type BuildingType, type ContentSet } from '@open-northland/data';
 import {
   Building,
   CHILD_FOOD_UNITS,
@@ -23,7 +23,7 @@ import { seatFishes } from '../workforce/fisher.js';
 import { foodSourcesAtWork, foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
 import { seatHuntsGame } from '../workforce/hunter.js';
 import { billSourced, sourcedTiers } from './bill-sources.js';
-import type { BuildOrderEntry } from './entries.js';
+import type { BuildOrder, BuildOrderEntry } from './entries.js';
 import { placementSpot } from './placement.js';
 import { suppliedUpgrade } from './upgrade-supply.js';
 
@@ -224,6 +224,40 @@ function homesLag(world: World, ctx: SystemContext, owned: readonly Entity[], en
     if (isBuilt(world, e) && !world.has(e, UnderConstruction)) lowest = Math.min(lowest, size);
   }
   return lowest < highest;
+}
+
+/** The homes of the seat's first wave: the most a home `place` step of its `opening` line raises (owner
+ *  ruling: three on a cramped seat, four with room, five on a rich one), 0 when the line raises none. */
+export function openingHomeCount(ctx: SystemContext, order: BuildOrder): number {
+  let count = 0;
+  for (const line of order.lines) {
+    if (line.id !== 'opening') continue;
+    for (const entry of line.steps) {
+      if (entry.kind !== 'place') continue;
+      if (buildingTypeByContentId(ctx.content, entry.building)?.kind !== BUILDING_KIND.home) continue;
+      count = Math.max(count, entry.count);
+    }
+  }
+  return count;
+}
+
+/** Whether the seat's first wave of homes stands: it owns {@link openingHomeCount} built homes of any
+ *  tier. */
+export function openingHomesStand(
+  world: World,
+  ctx: SystemContext,
+  order: BuildOrder,
+  owned: readonly Entity[],
+): boolean {
+  const wave = openingHomeCount(ctx, order);
+  if (wave === 0) return true;
+  const index = contentIndex(ctx.content);
+  let built = 0;
+  for (const e of owned) {
+    if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== BUILDING_KIND.home) continue;
+    if (isBuilt(world, e) && ++built >= wave) return true;
+  }
+  return false;
 }
 
 /** Whether the lane wants a site: the family slots fall short ({@link slotsShort}); in the `herding`

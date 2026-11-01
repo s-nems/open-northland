@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Female,
   FishSwarm,
   Position,
   Settler,
@@ -32,6 +33,7 @@ import {
   collectModule,
   ctxOf,
   entityOfBuilding,
+  HOME_TYPE,
   HQ_TYPE,
   HQ_X,
   HQ_Y,
@@ -64,6 +66,14 @@ const STORE_SPOT = { x: HQ_X + 30, y: HQ_Y };
 /** A swarm a few nodes off {@link STORE_SPOT}, nearer it than {@link TRIP_SWARM} and farther from the
  *  headquarters than {@link TRIP_SWARM}. */
 const STORE_SWARM = { hx: HQ_X + 34, hy: HQ_Y };
+/** The most homes an opening's first wave raises; the seat hires no fisher before they stand. */
+const OPENING_WAVE_HOMES = 5;
+/** The row the opening's homes stand on, clear of every swarm and the spawn rows. */
+const HOMES_ROW = HQ_Y + 28;
+/** The fixture's woman trade. */
+const WOMAN = 5;
+/** Women past which one fisher's catch no longer carries the seat, so a second is hired. */
+const WOMEN_FOR_TWO_FISHERS = 5;
 /** Decisions the catch test runs: long enough for a walk to the shore and several casts. */
 const FISHING_DECISIONS = 120;
 
@@ -93,11 +103,23 @@ function fishingSeat(
   swarms: readonly { hx: number; hy: number }[],
   count = 5,
   map: TerrainMap = grassNodeMap(128, 64),
+  homesStand = true,
 ): Simulation {
   const content = fishingContent();
   const sim = new Simulation({ seed: 1, content, map });
   placeHq(sim);
   spawnMen(sim, men);
+  if (homesStand) {
+    for (let i = 0; i < OPENING_WAVE_HOMES; i++)
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x: 4 + 4 * i,
+        y: HOMES_ROW,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+  }
   sim.step();
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('setup: no terrain');
@@ -107,6 +129,22 @@ function fishingSeat(
     swarms.map((swarm) => ({ ...swarm, count, continent: 0 })),
   );
   return sim;
+}
+
+/** `count` women of the seat, on a row of their own. */
+function addWomen(sim: Simulation, count: number): void {
+  const before = new Set(sim.world.query(Settler));
+  for (let i = 0; i < count; i++)
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: WOMAN,
+      x: 4 + 2 * i,
+      y: HOMES_ROW - 4,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+  sim.step();
+  for (const e of sim.world.query(Settler)) if (!before.has(e)) sim.world.add(e, Female, { female: true });
 }
 
 function decide(sim: Simulation) {
@@ -193,10 +231,20 @@ describe('workforce module - the fishers', () => {
     const shore = shoreOf(early, NEAR_SWARM);
     for (const post of posts)
       expect(distance(post.flag, shore)).toBeLessThanOrEqual(FISHER_FLAG_MAX_DISTANCE_NODES);
-    // Beyond the scout and the builder reserve the pool has men to spare for the second, on its own node.
-    const two = fisherPosts(fishingSeat(BUILDER_CAP + 6, [NEAR_SWARM]));
+    // Beyond the scout and the builder reserve the pool has men to spare, but one fisher carries few women.
+    expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, [NEAR_SWARM]))).toHaveLength(1);
+    // More women than one catch carries take the second, on its own node.
+    const grown = fishingSeat(BUILDER_CAP + 6, [NEAR_SWARM]);
+    addWomen(grown, WOMEN_FOR_TWO_FISHERS);
+    const two = fisherPosts(grown);
     expect(two).toHaveLength(2);
     expect(two[0]?.flag).not.toEqual(two[1]?.flag);
+  });
+
+  it('hires no fisher, near or far, before the opening homes stand', () => {
+    const map = grassNodeMap(128, 64);
+    expect(fisherPosts(fishingSeat(BUILDER_CAP + 6, [NEAR_SWARM], 5, map, false))).toEqual([]);
+    expect(farPosts(fishingSeat(BUILDER_CAP + 6, [BAND_SWARM], 5, map, false))).toEqual([]);
   });
 
   it('hires no fisher while no fish swim within a trip of the door', () => {
@@ -343,6 +391,7 @@ describe('workforce module - the fishers', () => {
       SEAT,
       flagGround(sim.world, ctx, terrain, networkLimitAt(sim.world, terrain, SEAT, baseNode.hx, baseNode.hy)),
       [fisher],
+      1,
     );
     // The store beside its own water is the nearest stand; another decision phase has taken its bank.
     const store = shoreOf(sim, STORE_SWARM);
