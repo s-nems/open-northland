@@ -1,7 +1,7 @@
 import { Building, Livestock, mapBriefOf, Owner, Position } from '../../../components/index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import type { HalfCellNode } from '../../../nav/halfcell.js';
+import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
@@ -37,7 +37,9 @@ export type LivestockCatch =
 
 /**
  * The seat's next round-up errand within {@link SCOUT_CATCH_RADIUS_NODES} of one of its STANDING buildings,
- * nearest first, ranked `(distance, entity id)`: the {@link Livestock} creature it could claim and sees now,
+ * nearest first, ranked `(distance, entity id)`, the distance from the scout's node `scoutAt` when given
+ * (owner ruling: the scout picks the animal close to him rather than crossing the settlement between a
+ * sheep and a cow) and from the settlement otherwise: the {@link Livestock} creature it could claim and sees now,
  * wild stock and a rival's alike, the set contact actually claims (`livestock/capture.ts`); else the start
  * spot of a wild herd in the map brief that its sight never reached, where the herd may still graze. The
  * seat knows the herds' start layout, never where they moved since: a herd that left its spot is found again
@@ -53,7 +55,12 @@ export type LivestockCatch =
  * refuses the walk, so it would win every decision while the scout never moves. So is one in a zone the
  * seat lost a scout in ({@link scoutLostZones}).
  */
-export function nextLivestockCatch(world: World, ctx: SystemContext, player: number): LivestockCatch | null {
+export function nextLivestockCatch(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  scoutAt: HalfCellNode | null = null,
+): LivestockCatch | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return null; // mapless sim: no ground to walk into an animal over
   const base = seatBaseOf(world, ctx, player);
@@ -80,6 +87,8 @@ export function nextLivestockCatch(world: World, ctx: SystemContext, player: num
     forEachBuildingNear(world, ax, ay, SCOUT_CATCH_RADIUS_NODES, visit);
     return nearest;
   };
+  const nearOf = (node: HalfCellNode, settlement: number): number =>
+    scoutAt === null ? settlement : hexDistanceBetween(scoutAt.hx, scoutAt.hy, node.hx, node.hy);
   const animals: Candidate[] = [];
   for (const e of world.query(Livestock, Position)) {
     if (!claimableBy(world, e, player)) continue;
@@ -87,14 +96,16 @@ export function nextLivestockCatch(world: World, ctx: SystemContext, player: num
     if (node === null || !terrain.inBounds(node.hx, node.hy)) continue;
     if (!playerSeesNode(ctx.fog, player, node.hx, node.hy)) continue;
     const distance = reach(node);
-    if (distance <= SCOUT_CATCH_RADIUS_NODES) animals.push({ rank: e, entity: e, node, distance });
+    if (distance <= SCOUT_CATCH_RADIUS_NODES)
+      animals.push({ rank: e, entity: e, node, near: nearOf(node, distance) });
   }
   const spots: Candidate[] = [];
   for (const [i, spot] of (mapBriefOf(world)?.livestock ?? []).entries()) {
     if (playerSawNode(ctx.fog, player, spot.hx, spot.hy)) continue;
     const node = { hx: spot.hx, hy: spot.hy };
     const distance = reach(node);
-    if (distance <= SCOUT_CATCH_RADIUS_NODES) spots.push({ rank: i, entity: null, node, distance });
+    if (distance <= SCOUT_CATCH_RADIUS_NODES)
+      spots.push({ rank: i, entity: null, node, near: nearOf(node, distance) });
   }
   if (animals.length === 0 && spots.length === 0) return null;
 
@@ -108,7 +119,7 @@ export function nextLivestockCatch(world: World, ctx: SystemContext, player: num
   const peace = peaceGroundFor(world, player);
   const lost = scoutLostZones(world, player, ctx.tick);
   const first = (candidates: Candidate[]): Candidate | null => {
-    candidates.sort((a, b) => a.distance - b.distance || a.rank - b.rank);
+    candidates.sort((a, b) => a.near - b.near || a.rank - b.rank);
     for (const candidate of candidates) {
       if (peace?.bars(candidate.node.hx, candidate.node.hy) === true) continue;
       if (lost.node(candidate.node.hx, candidate.node.hy)) continue;
@@ -124,12 +135,13 @@ export function nextLivestockCatch(world: World, ctx: SystemContext, player: num
   return spot === null ? null : { kind: 'look', node: spot.node };
 }
 
-/** A round-up candidate: an animal (`rank` its entity id) or a brief spot (`rank` its index, no entity). */
+/** A round-up candidate: an animal (`rank` its entity id) or a brief spot (`rank` its index, no entity),
+ *  `near` the distance it is ranked by. */
 interface Candidate {
   readonly rank: number;
   readonly entity: Entity | null;
   readonly node: HalfCellNode;
-  readonly distance: number;
+  readonly near: number;
 }
 
 /** The box around the seat's standing building anchors, widened by the catch radius: an animal outside

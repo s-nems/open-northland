@@ -36,7 +36,13 @@ import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../bu
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
 import { knownResourceTest, reachableResourceTest, workableResourceTest } from '../live-resources.js';
-import { nextLivestockCatch, nextSignpostTarget, nextStaleZoneTarget, scoutingOpen } from '../scout/index.js';
+import {
+  nextLivestockCatch,
+  nextSignpostTarget,
+  nextStaleZoneTarget,
+  scoutHeldForBuilders,
+  scoutingOpen,
+} from '../scout/index.js';
 import { seatApprentices } from '../technology/apprentices.js';
 import { Promotions } from '../technology/promotion.js';
 import { Schooling } from '../technology/schooling.js';
@@ -527,7 +533,8 @@ function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[
 }
 
 /** The scout hire and retire: one scout exists while any of his duties has work (`scout/index.ts`), an
- *  idle one turns back into a builder, and one mid-action is left alone because `setJob` cancels the running
+ *  idle one turns back into a builder, as does every free one while the seat holds its scout
+ *  ({@link scoutHeldForBuilders}), and one mid-action is left alone because `setJob` cancels the running
  *  atomic. Only an unwed man is hired, not one walking to his wedding either (authored: a scout is away on a mission and his wife would
  *  wait forever). The hire ignores the seat's `guideBuild` toggle, which gates only the module that
  *  orders him, so a seat with GuideBuild off still pays for a scout. */
@@ -554,13 +561,15 @@ function allocateScout(
       nextSignpostTarget(world, ctx, player, order) !== null;
     return scoutWork;
   };
-  if (scoutJob !== null && scouts.length === 0 && force.any(unwed) && hasScoutWork()) {
+  // A seat of few start men holds its scout as a builder for the first game minutes (owner ruling).
+  const held = scoutHeldForBuilders(world, ctx, player);
+  if (scoutJob !== null && !held && scouts.length === 0 && force.any(unwed) && hasScoutWork()) {
     const spare = force.take(unwed);
     if (spare !== null) commands.push({ kind: 'setJob', entity: spare, jobType: scoutJob });
   }
   for (const [i, scout] of scouts.entries()) {
     if (!scoutFree(world, scout) || builderJob === null) continue;
-    if (i === 0 && scoutJob !== null && hasScoutWork()) continue; // the working scout - keep
+    if (i === 0 && scoutJob !== null && !held && hasScoutWork()) continue; // the working scout - keep
     commands.push({ kind: 'setJob', entity: scout, jobType: builderJob });
   }
   return commands;

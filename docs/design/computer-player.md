@@ -222,6 +222,10 @@ employs one far fisher at the store nearest fished water within its near band, w
 home, unless it fished out its near water. While hunting still opens a trade, a hunter whose ground runs out of game moves his work flag to the
 nearest game the seat sees within twice a hunting ground's radius of the base. The scout rounds up livestock within
 160 nodes of a standing building: animals it sees, else the herds' start spots its sight never reached.
+He takes the animal, and the lattice signpost beside a standing post, nearest to him (owner ruling), so he
+carries one corridor outward instead of crossing the settlement for each ring, and he takes no order while
+hungry or tired, which would cancel his meal. A seat of fewer than 10 start men, heroes not counted,
+keeps him a builder until game minute 15 (owner ruling).
 Each druid hut posts its own mushroom gatherer, who banks them on its shelf, an upper
 hut a second out of surplus. On a seat with iron to spare the iron posts its smithies plan come ahead of the builder
 reserve, its consumers' input shelves do not count as iron to spare, and its iron gatherers are never

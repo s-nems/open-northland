@@ -49,6 +49,11 @@ export function signpostLatticeOffset(q: number, r: number): { dx: number; dy: n
   return { dx: LATTICE_Q_DX * q + LATTICE_R_DX * r, dy: LATTICE_R_DY * r };
 }
 
+/** How far a standing post may be from a lattice target and still be its neighbour's (hex nodes): one
+ *  spacing plus the tolerance the post may drift off its own target, so the target extends the network
+ *  that post belongs to. */
+const LATTICE_LINK_NODES = SIGNPOST_LATTICE_SPACING_NODES + SIGNPOST_TARGET_TOLERANCE_NODES;
+
 /** The innermost hex ring: the centre post and this ring are always wanted, outer rings need a building
  *  nearby. */
 const BASE_RING = 1;
@@ -175,6 +180,13 @@ function corridorGoals(
   return goals;
 }
 
+/** A wanted lattice target and its hex distance to the scout (0 with no scout given). */
+interface LatticeTarget {
+  readonly hx: number;
+  readonly hy: number;
+  readonly near: number;
+}
+
 /** Whether any of `points` lies within `radius` hex nodes of `(tx, ty)`. */
 function anyWithin(points: readonly HalfCellNode[], tx: number, ty: number, radius: number): boolean {
   for (const p of points) if (hexDistanceBetween(p.hx, p.hy, tx, ty) <= radius) return true;
@@ -182,17 +194,22 @@ function anyWithin(points: readonly HalfCellNode[], tx: number, ty: number, radi
 }
 
 /**
- * The next erectable lattice target for the seat: the first spot, rings inside-out, that is wanted (ring
- * within {@link BASE_RING}, an owned building within one lattice spacing, or a {@link corridorGoals}
- * corridor passing within {@link CORRIDOR_HALF_WIDTH_NODES}), has no own post within the tolerance, lies
- * outside the zones the seat lost a scout in ({@link scoutLostZones}), and offers a legal node to erect
- * on. Null when the wanted lattice stands complete or every remaining target is unbuildable.
+ * The next erectable lattice target for the seat: a spot that is wanted (ring within {@link BASE_RING},
+ * an owned building within one lattice spacing, or a {@link corridorGoals} corridor passing within
+ * {@link CORRIDOR_HALF_WIDTH_NODES}), has no own post within the tolerance, lies outside the zones the
+ * seat lost a scout in ({@link scoutLostZones}), and offers a legal node to erect on. With the scout's
+ * node `from`, the targets beside a standing post ({@link LATTICE_LINK_NODES}) and the centre come first,
+ * nearest to him first, so he carries one corridor outward instead of crossing the settlement for each
+ * ring (owner ruling: the scout picks the points close to him); the rest follow rings inside-out, the
+ * whole order without `from`. Null when the wanted lattice stands complete or every remaining target is
+ * unbuildable.
  */
 export function nextSignpostTarget(
   world: World,
   ctx: SystemContext,
   player: number,
   order: BuildOrder,
+  from: HalfCellNode | null = null,
 ): HalfCellNode | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return null;
@@ -215,18 +232,17 @@ export function nextSignpostTarget(
     for (const samples of corridors) if (anyWithin(samples, tx, ty, CORRIDOR_HALF_WIDTH_NODES)) return true;
     return false;
   };
-  let probe: ReturnType<typeof signpostProbe> | null = null;
   // The sealed-pocket veto: without it a provably sealed spot wins the search and the module re-aims at
-  // it every decision. Judged from the base's door because the scout's own cell is unknowable in a
-  // per-seat pick (approximation); a pocketed reference would invert the veto, so the pick then fails
-  // open to the unvetoed search.
-  let veto: ReturnType<typeof routeRegions> | null = null;
+  // it every decision. Judged from the base's door, which every scout walks from (approximation); a
+  // pocketed reference would invert the veto, so the pick then fails open to the unvetoed search.
   const refNode =
     door !== null ? terrain.nodeAtClamped(door.x, door.y) : terrain.nodeAtClamped(anchor.hx, anchor.hy);
   // A spot on other land than the base, such as another island, is one the scout cannot walk to.
   const landmass = terrain.componentOf(refNode);
   const maxRing = latticeRingBound(anchor, [...buildings, ...corridors.flat()]);
   const lost = scoutLostZones(world, player, ctx.tick);
+  const linked: LatticeTarget[] = [];
+  const unlinked: LatticeTarget[] = [];
   for (let ring = 0; ring <= maxRing; ring++) {
     for (const { q, r } of latticeRing(ring)) {
       const offset = signpostLatticeOffset(q, r);
@@ -241,27 +257,33 @@ export function nextSignpostTarget(
         anyWithin(buildings, tx, ty, SIGNPOST_LATTICE_SPACING_NODES) ||
         nearCorridor(tx, ty);
       if (!wanted) continue;
-      if (probe === null) {
-        probe = signpostProbe(world, ctx.content, terrain, player);
-        const regions = routeRegions(world, ctx, terrain);
-        veto = regions.pocketed(refNode) ? null : regions;
-      }
-      const p = probe;
-      const v = veto;
-      // Never the doorway itself: a post there stands where the base's settlers enter and leave. The
-      // region veto probes last, so a spot the cheap gates reject never costs a pocket flood.
-      const spot = firstRingNode(
-        tx,
-        ty,
-        SIGNPOST_TARGET_TOLERANCE_NODES,
-        (x, y) =>
-          p.canPlace(x, y) &&
-          !(door !== null && x === door.x && y === door.y) &&
-          (landmass === NO_COMPONENT || terrain.componentOf(terrain.nodeAt(x, y)) === landmass) &&
-          (v === null || !v.unroutable(refNode, terrain.nodeAt(x, y))),
-      );
-      if (spot !== null) return spot;
+      const near = from === null ? 0 : hexDistanceBetween(from.hx, from.hy, tx, ty);
+      const target = { hx: tx, hy: ty, near };
+      if (from !== null && (ring === 0 || anyWithin(posts, tx, ty, LATTICE_LINK_NODES))) linked.push(target);
+      else unlinked.push(target);
     }
+  }
+  // A stable sort keeps the ring order among targets equally near.
+  linked.sort((a, b) => a.near - b.near);
+  const targets = [...linked, ...unlinked];
+  if (targets.length === 0) return null;
+  const probe = signpostProbe(world, ctx.content, terrain, player);
+  const regions = routeRegions(world, ctx, terrain);
+  const veto = regions.pocketed(refNode) ? null : regions;
+  for (const { hx: tx, hy: ty } of targets) {
+    // Never the doorway itself: a post there stands where the base's settlers enter and leave. The
+    // region veto probes last, so a spot the cheap gates reject never costs a pocket flood.
+    const spot = firstRingNode(
+      tx,
+      ty,
+      SIGNPOST_TARGET_TOLERANCE_NODES,
+      (x, y) =>
+        probe.canPlace(x, y) &&
+        !(door !== null && x === door.x && y === door.y) &&
+        (landmass === NO_COMPONENT || terrain.componentOf(terrain.nodeAt(x, y)) === landmass) &&
+        (veto === null || !veto.unroutable(refNode, terrain.nodeAt(x, y))),
+    );
+    if (spot !== null) return spot;
   }
   return null;
 }
