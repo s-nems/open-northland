@@ -15,6 +15,7 @@ import { TICKS_PER_SECOND } from '../../../../core/loop.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import { onErrand } from '../../../ai-shared/military/errand.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf } from '../../difficulty.js';
@@ -300,8 +301,9 @@ function weakest(env: OperationEnv, men: readonly Entity[]): Entity | null {
  * A scouting trip when the seat's peace is over, its rival lies over the sea ({@link seaRouteOf}) as an
  * enemy whose headquarters it does not see now, no landing is under way and it has a free moored ship
  * ({@link freeShips}) the landing can spare, never the one that completes its fewest
- * ({@link landingFewestShips}): the highest-id one, so the landing keeps the ships it fills first. The weakest free
- * soldier on the home land boards it and it sails the loop round the rival's island ({@link scoutLoop}).
+ * ({@link landingFewestShips}): the highest-id one, so the landing keeps the ships it fills first. The
+ * weakest free soldier on the home land and on no errand ({@link onErrand}) boards it and it sails the loop
+ * round the rival's island ({@link scoutLoop}).
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<SeaScoutOperation> | null {
   const { world, ctx, terrain, seat } = env;
@@ -320,6 +322,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<Se
   const men = free.filter((e) => {
     const at = nodeOfEntity(world, e);
     return (
+      !onErrand(world, e) &&
       at !== null &&
       terrain.inBounds(at.hx, at.hy) &&
       terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) === route.home
@@ -353,6 +356,6 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<Se
 export const seaScoutHandler: OperationHandler<SeaScoutOperation> = {
   phase: 'beforeCampaign',
   cooldownTicks: () => SEA_SCOUT_INTERVAL_TICKS,
-  step: (env, op) => step(env, op),
+  step,
   open,
 };

@@ -1,10 +1,12 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   COMPUTER_MODULE_IDS,
   type ComputerModuleEnables,
   FOG_MODE,
   Owner,
+  TrainingOrder,
   Vehicle,
   vehiclePassengers,
 } from '../../../../../src/components/index.js';
@@ -94,7 +96,7 @@ function militaryOnly(): Partial<ComputerModuleEnables> {
 
 /** The seat on the west island under fog with one ship moored and a few spearmen, the foe's headquarters
  *  on the east island. */
-function scoutWorld(): { sim: Simulation; ship: Entity } {
+function scoutWorld(): { sim: Simulation; ship: Entity; army: Entity[] } {
   const sim = new Simulation({ seed: 7, content: scoutContent(), map: islands() });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.CLASSIC });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
@@ -120,18 +122,20 @@ function scoutWorld(): { sim: Simulation; ship: Entity } {
     tribe: VIKING,
     owner: SEAT,
   });
+  const army: Entity[] = [];
   for (let i = 0; i < ARMY; i++) {
     const at = { x: BARRACKS.x - 6 + 2 * (i % ARMY_RANK), y: BARRACKS.y + 8 + 2 * Math.floor(i / ARMY_RANK) };
-    spawnSettler(sim.world, ctxOf(sim), {
+    const man = spawnSettler(sim.world, ctxOf(sim), {
       kind: 'spawnSettler',
       jobType: SPEARMAN,
       ...at,
       tribe: VIKING,
       owner: SEAT,
     });
+    if (man !== null) army.push(man);
   }
   if (ship === null) throw new Error('setup: the ship was not created');
-  return { sim, ship };
+  return { sim, ship, army };
 }
 
 function scouts(sim: Simulation): OperationView[] {
@@ -166,6 +170,32 @@ describe('sea scouting', () => {
     expect(state.moored).toBe(true);
     expect(state.mooring).toEqual(home);
     expect(sim.world.get(ship, Owner).player).toBe(SEAT);
+  });
+
+  it('never takes a man off an errand to scout', () => {
+    const { sim, army } = scoutWorld();
+    const [drilled, next] = army;
+    if (drilled === undefined || next === undefined) throw new Error('setup: no army');
+    // The weakest man by id drills at the barracks, so the scout falls to the next one.
+    const barracks = sim.world
+      .canonicalQuery(Building)
+      .find((e) => sim.world.get(e, Building).buildingType === BARRACKS_TYPE);
+    if (barracks === undefined) throw new Error('setup: no barracks');
+    const order = {
+      house: barracks,
+      drillTicksLeft: SEA_SCOUT_TRIP_TIMEOUT_TICKS,
+      enrolled: 0,
+      seated: false,
+    };
+    for (
+      let t = 0;
+      t < DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS && scouts(sim).length === 0;
+      t++
+    ) {
+      if (!sim.world.has(drilled, TrainingOrder)) sim.world.add(drilled, TrainingOrder, order);
+      sim.step();
+    }
+    expect(scouts(sim)[0]?.members).toEqual([next]);
   });
 
   it('keeps home the ship that completes the landing fleet, and sails once one more lies free', () => {
