@@ -2,6 +2,7 @@ import {
   AttackOrder,
   Building,
   Engagement,
+  isMachinePlayer,
   Owner,
   Palisade,
   PalisadeBlocking,
@@ -87,12 +88,14 @@ export function breakThroughWall(
  * or elsewhere chops on, and a fallen wall that blocked nothing releases none. An ordered attack returns to
  * its target; a march resumes and finds the next wall itself if the gap does not open the way; a fighter's
  * own breach picks its enemy again. Costs the standing attack orders, plus the standing walls and buildings
- * when a breach is among them, once per fallen wall.
+ * when a breach is among them, once per fallen wall. Machine seats' marches resting after a refused chase
+ * pick their fights again.
  */
 export function releaseWallBreaches(world: World, ctx: SystemContext, fallen: Entity): void {
   const terrain = ctx.terrain;
   if (terrain === undefined || !(world.has(fallen, PalisadeBlocking) || isWallBuilding(world, ctx, fallen)))
     return;
+  endMachineMarchRests(world, ctx.tick);
   const breaches: { e: Entity; wall: Entity; resume: Entity | null }[] = [];
   for (const e of world.query(AttackOrder)) {
     const order = world.get(e, AttackOrder);
@@ -111,6 +114,19 @@ export function releaseWallBreaches(world: World, ctx: SystemContext, fallen: En
     } else {
       world.remove(e, AttackOrder);
     }
+  }
+}
+
+/** A machine seat's attack-move resting after a refused chase picks its fights again: the fallen wall may
+ *  be what sealed its enemy off. A human's march keeps its own short rest. */
+function endMachineMarchRests(world: World, tick: number): void {
+  for (const e of world.query(PlayerOrder)) {
+    const march = world.get(e, PlayerOrder).attackMove;
+    if (march === undefined || march.blockedUntil <= tick) continue;
+    const player = world.tryGet(e, Owner)?.player;
+    if (player === undefined || !isMachinePlayer(world, player)) continue;
+    const resting = world.mut(e, PlayerOrder).attackMove;
+    if (resting !== undefined) resting.blockedUntil = tick;
   }
 }
 

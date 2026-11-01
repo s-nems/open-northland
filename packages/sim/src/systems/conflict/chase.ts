@@ -5,6 +5,7 @@ import {
   EquipOrder,
   Garrison,
   HuntFocus,
+  isMachinePlayer,
   isWildlife,
   JobAssignment,
   MoveGoal,
@@ -75,12 +76,26 @@ const CONTACT_SLOT_CHOICES = 6;
 export const REPATH_CADENCE = 8;
 
 /**
+ * How long a machine seat's attack-move rests its aggression after a refused chase, unless a wall falls
+ * first (`endMachineMarchRests`): its refusals are walls it plans as closed, which stand far longer
+ * than a chase cadence. A human's march rests the cadence alone. Authored.
+ */
+export const MACHINE_MARCH_REST_TICKS = 15 * REPATH_CADENCE;
+
+/**
  * How many chase cadences in a row routing may refuse a route to the same target before the chase asks
  * whether buildings and resources alone seal it and, if so, gives it up as unreachable. A seal of standing
  * bodies is re-asked at the cadence for as long as it stands. Approximation: the original's rule is not
  * readable.
  */
 export const SEALED_TARGET_ROUTE_FAILURES = 3;
+
+/** The ticks `e`'s attack-move rests after a refused chase: {@link MACHINE_MARCH_REST_TICKS} for a machine
+ *  seat's unit, the chase cadence for anyone else's. */
+function marchRestTicks(world: World, e: Entity): number {
+  const player = world.tryGet(e, Owner)?.player;
+  return player !== undefined && isMachinePlayer(world, player) ? MACHINE_MARCH_REST_TICKS : REPATH_CADENCE;
+}
 
 /** Send a DEFEND guard, or an ATTACK fighter that strayed, back to its anchor when nothing is left to
  *  fight. The {@link Engagement} always drops here, or the planner's Engagement gate would bench the unit for
@@ -275,7 +290,8 @@ export function chase(
       world.remove(e, Engagement);
       if (marching) {
         const order = world.mut(e, PlayerOrder);
-        if (order.attackMove !== undefined) order.attackMove.blockedUntil = ctx.tick + REPATH_CADENCE;
+        if (order.attackMove !== undefined)
+          order.attackMove.blockedUntil = ctx.tick + marchRestTicks(world, e);
       } else {
         // Only the dropped attack order is worth a note; the march above keeps walking.
         markLostWay(world, ctx, e, request.goal);

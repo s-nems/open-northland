@@ -1,15 +1,19 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   Building,
   CurrentAtomic,
+  computerModuleEnables,
   Engagement,
   Health,
   MoveGoal,
   Owner,
+  PalisadeBlocking,
   PathFollow,
   PathRequest,
   PathRoute,
+  PlayerOrder,
   Position,
   Resource,
   Stance,
@@ -27,7 +31,11 @@ import {
   Simulation,
   type TerrainGraph,
 } from '../../../../src/index.js';
-import { REPATH_CADENCE, SEALED_TARGET_ROUTE_FAILURES } from '../../../../src/systems/conflict/chase.js';
+import {
+  MACHINE_MARCH_REST_TICKS,
+  REPATH_CADENCE,
+  SEALED_TARGET_ROUTE_FAILURES,
+} from '../../../../src/systems/conflict/chase.js';
 import {
   noteUnreachableTarget,
   UNREACHABLE_TARGET_MEMO_TICKS,
@@ -39,6 +47,8 @@ import {
   type SystemContext,
   stampResourceFootprintData,
 } from '../../../../src/systems/index.js';
+import { attackMoveUnit } from '../../../../src/systems/orders/index.js';
+import { releaseWallBreaches } from '../../../../src/systems/palisades/breach.js';
 import { MILITARY_MODE, type MilitaryMode } from '../../../../src/systems/readviews/index.js';
 import { testContent } from '../../../fixtures/content.js';
 import { addSettlerOfTribe } from '../../../fixtures/settler.js';
@@ -347,6 +357,62 @@ describe('a chase whose target is walled in by buildings', () => {
     combatSystem(sim.world, ctxAt(sim, UNREACHABLE_TARGET_MEMO_TICKS));
     expect(sim.world.has(besieger, Engagement)).toBe(true);
     expect(sim.world.has(besieger, UnreachableTargets)).toBe(false); // reaped as it lapsed
+  });
+});
+
+/** Where the marching besieger is sent: on its own side of the ring, so the march itself routes. */
+const MARCH_CELL = { x: 2, y: 8 };
+/** Ticks within which the marcher's first chase into the pocket is refused. */
+const REFUSAL_WAIT_TICKS = 100;
+
+/** Give `player` machine identity with both decision sources off, so only the machine unit rules differ. */
+function makeMachineSeat(sim: Simulation, player: number): void {
+  sim.world.add(sim.world.create(), AiControl, {
+    player,
+    computerEnabled: false,
+    modules: computerModuleEnables(),
+    mapAiEnabled: false,
+    difficulty: 'hard',
+  });
+}
+
+/** Run until the marching besieger's chase is refused, returning the ticks its march then rests. */
+function restAfterRefusal(sim: Simulation, marcher: Entity): number {
+  for (let tick = 0; tick < REFUSAL_WAIT_TICKS; tick++) {
+    sim.step();
+    const blockedUntil = sim.world.tryGet(marcher, PlayerOrder)?.attackMove?.blockedUntil ?? 0;
+    if (blockedUntil > sim.tick) return blockedUntil - sim.tick;
+  }
+  throw new Error('the chase was never refused');
+}
+
+describe('an attack-move whose target is walled in', () => {
+  it("rests a machine seat's march until a wall falls, a human's for one cadence", () => {
+    const scenes = [false, true].map((machine) => {
+      const scene = siege();
+      if (machine) makeMachineSeat(scene.sim, P0);
+      const goal = nodeOfPosition(fx.fromInt(MARCH_CELL.x), fx.fromInt(MARCH_CELL.y));
+      attackMoveUnit(scene.sim.world, ctxOf(scene.sim), {
+        kind: 'attackMoveUnit',
+        entity: scene.besieger,
+        x: goal.hx,
+        y: goal.hy,
+      });
+      return { scene, rest: restAfterRefusal(scene.sim, scene.besieger) };
+    });
+    const [human, machine] = scenes;
+    expect(human?.rest).toBeLessThanOrEqual(REPATH_CADENCE);
+    expect(machine?.rest).toBeGreaterThan(REPATH_CADENCE);
+    expect(machine?.rest).toBeLessThanOrEqual(MACHINE_MARCH_REST_TICKS);
+    for (const { scene } of scenes) {
+      const { sim, besieger } = scene;
+      const fallen = sim.world.create();
+      sim.world.add(fallen, PalisadeBlocking, {});
+      releaseWallBreaches(sim.world, ctxOf(sim), fallen);
+      const blockedUntil = sim.world.get(besieger, PlayerOrder).attackMove?.blockedUntil;
+      if (scene === machine?.scene) expect(blockedUntil).toBe(sim.tick);
+      else expect(blockedUntil).toBeGreaterThan(sim.tick);
+    }
   });
 });
 
