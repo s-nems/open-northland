@@ -12,7 +12,7 @@ real-map figures behind them.
 
 ## What a seat may know
 
-A computer seat knows the static map (terrain and the start layout of resources and landscape), every
+A computer seat knows the static map (terrain and the start layout of resources, landscape and wild herds), every
 seat's start position and start buildings, and the complete map scripts. What other players do during
 the game reaches it only through its own sight (`ctx.fog`, `systems/vision/gates.ts`), plus what it
 remembers. With fog off everyone sees everything, the seat included. The scripted map AI is not bound
@@ -25,7 +25,7 @@ the seat's sight must not change one of its commands.
 
 | Layer | Folder | State |
 | --- | --- | --- |
-| Map brief: one scan of the static map in 32-node zones (ground, deposits, fish, land components, seat starts) | `knowledge/map-brief/` | saved (`MapBrief`) |
+| Map brief: one scan of the static map in 32-node zones (ground, deposits, fish, land components, seat starts, wild herds' start spots) | `knowledge/map-brief/` | saved (`MapBrief`) |
 | Seat brief: the map seen from one seat (home and near bands, access to iron, gold, mushrooms, fish, the other starts) | `knowledge/seat-brief.ts` | derived |
 | Intel: the other seats' buildings, fighter peaks in points, zone staleness and where the seat lost a scout, fed by sight | `knowledge/intel/` | saved (`ComputerIntel`) |
 | Map intent: the seat's objectives and forecast scripted attacks, read from the scripts | `knowledge/map-intent/` | derived |
@@ -42,8 +42,11 @@ any lobby peace ends, since island seats that wait to be declared on never fight
 The economic strategy is chosen from the seat brief and reviewed every few game minutes with
 hysteresis. Archetypes: `standard`, `cramped` (little free ground or ground mostly under forest: compact
 placement, early clearing, upgrades over copies), `rich` (room, iron and gold to spare: one more
-construction site and the largest late workshop counts), `islands` (no rival on the seat's land: ship
-joinery first by the shore, passed over while its tier is locked, economy kept on its own land). The metals are weighed by amount, not only distance: the near band's deposit plus the seat's share
+construction site and the largest late workshop counts), `islands` (no rival on the seat's land:
+economy kept on its own land). Where only a ship reaches the nearest rival the joinery is the way across:
+a low-tier joinery claims the shore early, the joinery standing by the water is lifted to the ship tier,
+and a fresh top-tier one goes by the water only where none could claim the shore; each step lets the line
+pass while its tier is locked. The metals are weighed by amount, not only distance: the near band's deposit plus the seat's share
 of its land's. Sides: `ironArms` (iron to spare, 2,200 units or more within reach, which leaves
 krwawa_rzeka and specjalna_forteca on weapons only: plate and mail, leather armour as the fallback),
 `ironWeapons` (little iron: two smithies on long swords, iron spears and the amulets' short swords, the
@@ -83,11 +86,16 @@ site over the pace once its deadline lead opens. A seat whose food production is
 stands, no fisher fishes) gives the first building of each food chain kind it lacks the next free site,
 right after the due steps and ahead of the lanes, the towers and the other crafts (owner ruling); such a
 step takes the extra site only as an earned workshop. The school is a core step: it takes an earned
-workshop's turn and extra site once no food turn waits. The bread chain goes mill, well beside it, bakery
-(owner ruling): the farmer who earned the mill runs it and the miller who earned the bakery bakes, and
-every builder works the chain's open site (`workforce/focus-crew.ts`), up to one per unit of its bill.
-Another site holding delivered material or two thirds of its bill keeps one builder, and the pins lift
-while the chain's site lacks a good the store does not hold. A placement held on the
+workshop's turn and extra site once no food turn waits. The bread chain goes mill, mason hut,
+well, bakery (owner ruling): each is placed the moment it unlocks, over the site pace and ahead of the
+lanes and the other lines, unless the seat is attacked. The mason hut follows the mill because the
+bakery's bill takes a pillar, and the bakery's unlock asks the mason's trade. The farmer who earned the
+mill runs it, the miller who earned the bakery bakes, and the mason is posted at once and works whatever
+stock says. Every builder works the chain's open site (`workforce/focus-crew.ts`), up to one per unit of
+its bill, and the other sites wait until it stands; the pins lift while the site lacks a good the store
+does not hold. The seat keeps 2 builders on it ahead of every gatherer post, freeing gatherers of goods
+the site does not wait on, while the gatherers of a good it waits on take one more post. While the seat's
+flag fishers feed its women (four each), the site pins only those 2 builders and the rest keep the homes. A placement held on the
 military deadline, the barracks among them, goes ahead of the earned workshops once its lead opens and
 may take their extra site (owner ruling: the barracks stands a bit before the deadline). One more workshop of a kind
 the seat runs waits until those standing hold their full crews (owner ruling: upgrades and full crews
@@ -102,7 +110,10 @@ the seat is spent on a placement it fits, which then stands finished at once: a 
 the step's chain at or above the chosen one, the highest first, else an any-building paper on the tier
 with the dearest bill any placing step raises (owner ruling). A step a named paper covers is placed at
 once, ahead of any site pace, turn or hold, and its workshop's slot goes first to a spare man already
-holding its trade (owner ruling: the map means that line to stand at the start). One brewery feeds many
+holding its trade (owner ruling: the map means that line to stand at the start). The first brewery ranks with
+the bakery (owner ruling: mead speeds the whole economy): it keeps a first new kind's turn beside the
+bread chain's rising sites, and its hive, unlocked with it, rises beside it while its site does, with a
+second well beside it when the first stands far off. One brewery feeds many
 adults (owner ruling): the second waits for 100 settlers, the third, the last, for 200. The armory goes
 up right after the first smithy in a line of its own; one armory with two armourers lasts long, so the
 second waits for 200 settlers. Once the smith has learned mail and plate, a seat with iron to spare
@@ -111,7 +122,10 @@ one with little iron stops at two. A copy placed ahead of the crew wait takes a 
 kind of building. A seat dressing its army in tunics raises both tailors at once, its clothing line
 ahead of its tools, and its second animal farm right after the first, and upgrades both tailors at once
 (two tailors on shoes, two on tunics, its breeders split between cattle and sheep); a seat with iron
-puts its tools line ahead of its clothing. A second and third mint follow, on a seat with gold to spare,
+puts its tools line ahead of its clothing. The livestock kept overrides this (owner ruling,
+`herd.ts`): under a pair of either cattle or sheep the animal farm and tailor steps wait and employ
+nobody; with cattle alone the breeders raise cattle and a tunic seat sews leather armour; with sheep
+alone they raise sheep and every seat sews tunics. A second and third mint follow, on a seat with gold to spare,
 once the coiner has learned the amulets, and further druid huts once the druid has learned the big
 healing potion. The late targets per archetype (owner ruling for a rich seat: 3 mints, 3 breweries, 6
 druid huts, 6 smithies, 2 armories, 14 homes, 4 upper bakeries, the third and fourth bakery at 150 and
@@ -134,7 +148,7 @@ starts only while the standing homes still keep a slot free past the women's dem
 places a new home, and no upgrade climbs past a tier whose own bill nothing the seat makes. It follows
 food (owner ruling: an upgraded home bears no children while food is short): no home site while the
 store holds under one child's food a woman, unless a staple source works (a staffed workshop making food
-or a fisher) and the female demand stays under four per working food source, hunters included; a food-rich seat (a hired fisher, or five meals a settler in store)
+or a fisher) and the female demand stays under four per working food source, hunters included; a food-rich seat (a flag fisher, or five meals a settler in store)
 may run it from the start of the opening while the daughters are blocked; any other seat opens it behind
 the pottery, mason and school once a workshop making food (animal farm, bakery) stands.
 
@@ -153,8 +167,11 @@ promotes him into the new building when it stands, refilling his old post. Once 
 workers of a discovered trade are schooled instead. Owner ruling on the opening: one wood, one clay and
 one stone collector, a second stone collector early, a hunter and a farmer, the mason hut, then the school (its bill
 wants his pillars) once the pottery stands, iron from game minute 15, mushrooms from minute 25. The first
-wood, stone and clay flags stand as close to their resource as a legal node allows, and in the first 30
-game minutes single builders wed first, so the bride walks to him and the gatherers stay at work. An operator whose every listed product is
+wood, stone and clay flags stand as close to their resource as a legal node allows. In the first 30
+game minutes weddings go out from the men's side (owner ruling): the builders first, then men of a trade
+no discovery waits on, last the men still earning one, such as the farmer toward the miller; afterwards
+each bride takes the nearest man. A craft post picks an unwed man among equals, and the scout hire skips
+a man walking to his wedding. An operator whose every listed product is
 still locked for him learns one of them at school (the one he lacks the most repeats for) instead of
 grinding the weaker product he has earned: a fresh smith otherwise forged about ten short swords before
 his first long sword.
@@ -194,11 +211,18 @@ fewest blocked nodes. While an input of a workshop runs short for the sites, at 
 rests once none of its products is short, so the scarce good goes to the sites; otherwise a glutted
 workshop keeps its first craftsman for his experience from the core-crew time. An apprentice works past
 his glut, since a resting man earns no repeats. A good whose every collector step stands stocked keeps
-no base post either, so the clay gatherer goes back to the builders while clay piles up. A fisher's flag goes only where the store's carriers walk to it within the trip, not round
-a long river bend. Each druid hut posts its own mushroom gatherer, who banks them on its shelf, an upper
+no base post either, so the clay gatherer goes back to the builders while clay piles up. Fishers wait until the opening's homes stand, then one is hired, and one more for each four
+women and booked daughters past the first, at most two. A flag fisher's flag goes only where the store's
+carriers walk to it within the trip, not round a long river bend; a seat with no water within any trip
+employs one far fisher at the store nearest fished water within its near band, who walks each catch
+home, unless it fished out its near water. While hunting still opens a trade, a hunter whose ground runs out of game moves his work flag to the
+nearest game the seat sees within twice a hunting ground's radius of the base. The scout rounds up livestock within
+160 nodes of a standing building: animals it sees, else the herds' start spots its sight never reached.
+Each druid hut posts its own mushroom gatherer, who banks them on its shelf, an upper
 hut a second out of surplus. On a seat with iron to spare the iron posts its smithies plan come ahead of the builder
 reserve, its consumers' input shelves do not count as iron to spare, and its iron gatherers are never
-called to arms. Porters: one for the headquarters and each warehouse, last in the ladder, and two for
+called to arms. A workshop posts no carrier or gatherer until a craftsman works there, as one a map's papers
+raise ahead of its trade (owner ruling). Porters: one for the headquarters and each warehouse, last in the ladder, and two for
 the barracks, both from the late game; one for the lower smithy until chain mail is earned; one for the animal farms, the tailors and the tools joinery once
 the builder reserve stands, and one for the handcarts' joinery ahead of it, which also fills its third
 joiner (owner ruling: iron tools and handcarts are always short). The builder reserve grows
@@ -233,13 +257,14 @@ most, at least half a circle from every defence building; from minute 60 the upg
 that lifts a short target goes ahead of a new tower (owner ruling).
 Facing forecast scripted attacks the ring is timed per wave (owner ruling: the towers finish a bit before
 each attack): three towers from 20 minutes before the first deadline, two more before each later one;
-its front is a line across the attack's heading 16 nodes ahead of the base (whole steps further past
+its front is a line across the attack's heading 24 nodes ahead of the base (whole steps further past
 its start buildings), and while the seat's defence comes first every building facing the attack counts
 as front. Only this scripted line also keeps
 the seat's economy placed behind it while anything fits there. Without a forecast attack, or with its
-origin within those 16 nodes of the base, the ring's line faces the nearest believed enemy building
-instead, 10 nodes past the seat's farthest building and moving out in 8-node steps, so the town has room
-to grow behind it (owner ruling). A seat whose enemy
+origin within those 24 nodes of the base, the ring's line faces the nearest believed enemy building
+instead, 16 nodes past the seat's farthest building and moving out in 8-node steps, so the town has room
+to grow behind it (owner ruling). Either line stands at most halfway from the base to what it faces, so
+two rivals' lines never cross. A seat whose enemy
 groups (a team counts as one) lie more than about 45 degrees apart from its base holds no single front:
 no rival line is drawn, and the barracks and every front-pulled spot stay by the base (owner
 ruling). Once the economy is safe (the brewery and the upper bakery stand and game minute 60 has
@@ -265,23 +290,30 @@ never a bare soldier. The rest wait at the barracks door, where the seat dresses
 equip order, three each decision, the best armour within reach first, since the assistant dresses a
 recruit only when his weapon lands. Each finished
 barracks marks the seat's weapons, armour, healing potions, mead and amulets as store priority, so its
-porters fetch the army's gear.
+porters fetch the army's gear, less the wooden spear, short bow, short sword and leather armour (owner
+ruling).
 
 Settlement defence is shared with the map AI (`systems/ai-shared/military`), filtered by sight for a
 computer seat. An outmatched seat (its posture review found the strongest enemy clearly stronger) sorties
 only for raiders at its towers and stores, and its army waits at its base door, not at a barracks on the
 front (owner ruling: survive at any cost); recruits awaiting a weapon stay at the barracks. A seat
 awaiting a scripted or map-AI attack stands its army 10 nodes behind its manned towers facing the attack
-(`military/tower-stand.ts`), and meets a band of 4 or more only within those towers' reach or at its
-stores (owner ruling: the army meets big attacks together under the tower line). Offensive work runs as operations (`military/operations/`): saved records with a kind,
+(`military/tower-stand.ts`), moved into a temple's aura only where the front tower still reaches, and
+meets a band of 4 or more only within those towers' reach or at its stores (owner ruling: the army meets
+big attacks together under the tower line). Any other seat owning a temple keeps its waiting army, and
+forms its waves, inside the temple's aura, where the blessing lifts hitpoints past their max (owner
+ruling, `military/temple-station.ts`). Offensive work runs as operations (`military/operations/`): saved records with a kind,
 members, target and a lifecycle (`forming`, `moving`, `acting`, `withdrawing`, `done`, `failed`). The
 wave march is the `assault` kind: the wave walks to a gathering point short of the enemy base and out
 of its known towers' reach, waits there until three quarters of it have arrived (at most 45 seconds after
 the first, 5 minutes after setting out), then goes in as one group attack-move while its catapults take
 the towers by the objective. A `raid` sends a small band, archers first, at the gatherers or economy
-buildings of an enemy player, never a map-scripted camp. A harassing posture raids; a hard seat off an
-island start also sends a flank raid after its peace, eight minutes after the last one ended, except while it defends or
-prepares against a forecast attack (owner ruling). The band walks a route clear of believed towers' reach, coming in from the
+buildings of an enemy player, never a map-scripted camp. Raids are rare (owner ruling: one or two a game).
+A harassing posture may raid, and a hard seat off an island start may also flank raid except while it
+defends or prepares against a forecast attack. At its peace end each seat draws whether it raids at all
+(the harasser plan always, any other at even odds) and each wait, the first and every one after the
+last raid ended, from 20 to 60 minutes. The target scores the defence of every enemy's towers and
+fighters, and the raiders take the attack stance back once home. The band walks a route clear of believed towers' reach, coming in from the
 side, without stopping to fight, strikes, and comes home the way it came; it turns back when the way or
 target falls in a tower's reach, a building near it switches to defence, the fighters and militia it
 sees outweigh it, or it loses half its men. A new behaviour such as supporting an ally is one more kind
@@ -289,19 +321,28 @@ with its handler.
 
 Over the sea (`military/operations/landing.ts`, `sea-scout.ts`), the ship joinery builds small ships up
 to the landing fleet (`workforce/craft.ts`): the planned army, the army cap times the plan's draft share,
-at 20 soldiers a ship, 2 to 10 ships (owner ruling); a yard still building does not count toward it, and
-the crafts leave the missing ships' leather and other ungathered bill goods in stock. A `landing` opens
-once the posture attacks and the peace is over: the free men must load at least 4 free moored ships, or
-the whole fleet when smaller but never under 2, each to 90 percent (owner ruling: ships go only on big
-landings). The fleet casts off together, the first ship moored waits up to a minute for the rest, every
-man but each commander lands, and the ships sail home; a ship refused its berth docks at another shore
-of that land. The wave turns back on heavy ship losses or when the enemy seen at the shore outweighs it,
-and the next landing waits 5 minutes. A seat whose rival lies over the sea weighs its posture against
-him; a defensive one attacks from 80 fit soldiers at parity with the believed defence, not the plan's
-edge, which it cannot measure over the sea (owner ruling). A `seaScout` sails one ship, the highest-id free one, with the weakest free soldier
-round the rival's island outside his believed towers, while the peace is over, no landing runs and the
-rival's headquarters is out of sight, then docks home, at another home shore if its own is taken; the
-next trip waits 8 minutes.
+at 20 soldiers a ship, 2 to 10 ships (owner ruling), plus room for one sea scout ship; a yard still
+building does not count toward it, and the crafts leave the missing ships' leather and other ungathered
+bill goods in stock. A `landing` opens once the posture attacks and the peace is over, at least 4 free
+moored ships lie ready (the whole fleet when smaller, never under 2) and the free men at home fill 2 of
+them (owner ruling: ships go only on big landings). Every such man sails, in as few ships as seat him,
+the weakest at the helms so the best-armed land, once they outweigh by the posture's launch ratio, at
+least half again against an army the seat knows, the defence it believes and the fire covering the first
+objective. Each ship moors at its own point of the rival's shore nearest his headquarters outside the
+reach of every tower and building his people shelter in on alarm; the first moored waits up to a minute
+for the rest. No landing sails while nothing there lies clear of that fire. The landed men strike his
+headquarters where no other tower or shelter covers it, else the nearest building clear of the fire.
+The ships wait at the shore up to 12 minutes; the survivors board them when the enemy fighters seen near
+them outweigh them, when half have fallen and one stands under fire, or when nothing is left to strike,
+and the ships sail once all are aboard or after 2 minutes. The wave turns back before landing on heavy
+ship losses, and the next landing waits 5 minutes. A ship that runs out of sailing time sets its crew
+ashore where it lies moored, or is let go 12 minutes later while still at sea; the sea scout does the
+same. A seat whose rival lies over the sea weighs its posture against him; a defensive one attacks from
+80 fit soldiers at parity with the believed defence, not the plan's edge, which it cannot measure over
+the sea, and holds the attack down to 90 percent of both (owner ruling). A `seaScout` sails the
+highest-id free ship the landing can spare with the weakest free soldier round the rival's island
+outside his believed towers, while the peace is over, no landing runs and the rival's headquarters is
+out of sight, then docks home, at another home shore if its own is taken; the next trip waits 8 minutes.
 
 A `hold` takes an area the map pays for holding. The map intent reads one from the script's shape, not
 the map id: a presence goal on a repeating timer whose mission hands over goods a deciding deliver
