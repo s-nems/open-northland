@@ -457,7 +457,8 @@ export function housingPick(
   const ceiling = herdingCeiling(world, ctx, player, homes, stage);
   const upgradeOpen = upgradeLeavesRoom(world, ctx, player, homes);
   let upgrade: (Option<HousingPick> & { readonly from: number }) | null = null;
-  // Homes of one type offer the same upgrades, so only the lowest-id built one of each is asked.
+  // Homes of one type offer the same tiers, so only the lowest-id built one of each is asked; its own pile
+  // alone weighs in the supply check (`suppliedUpgrade`), which another home's may judge differently.
   const asked = new Set<number>();
   for (const home of homes) {
     const building = world.get(home, Building);

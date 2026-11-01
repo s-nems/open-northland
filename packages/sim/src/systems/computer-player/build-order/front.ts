@@ -218,7 +218,8 @@ function baseNode(world: World, ctx: SystemContext, player: number): HalfCellNod
  * Without `depthFrom`, toward a rival, it stands {@link RIVAL_LINE_ADVANCE_NODES} past the farthest of
  * `owned` other than its towers, rounded out to whole steps. Either way it stands no farther than
  * {@link LINE_MAX_SHARE_PCT} of the way to `origin`. The slots span the width of `owned`.
- * Integer px arithmetic with truncating division, byte-identical across engines.
+ * Integer px arithmetic, byte-identical across engines: divisions truncate, and a slot rounds half up to
+ * its node.
  */
 export function frontLine(
   world: World,
@@ -275,12 +276,17 @@ export function frontLine(
           const side = k % 2 === 0 ? k / 2 : -(k + 1) / 2;
           const lateral = side * spacingPx + stagger;
           out.push({
-            hx: base.hx + Math.round((along * hx - lateral * hy) / length / NODE_STEP_PX),
-            hy: base.hy + Math.round((along * hy + lateral * hx) / length / HALF_ROW_PX),
+            hx: base.hx + nearestQuotient(along * hx - lateral * hy, length * NODE_STEP_PX),
+            hy: base.hy + nearestQuotient(along * hy + lateral * hx, length * HALF_ROW_PX),
           });
         }
       }
       return out;
     },
   };
+}
+
+/** `a / b` rounded half up for integers and `b > 0`, exact where a float quotient could land beside a half. */
+function nearestQuotient(a: number, b: number): number {
+  return Math.floor((2 * a + b) / (2 * b));
 }

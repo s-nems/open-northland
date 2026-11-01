@@ -9,8 +9,7 @@ import { type OwnedRoadSite, ownedRoadSites } from '../../roads/site-index.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 
 /** The builders the seat keeps on a road run while any of its road sites is pending (owner ruling: the
- *  roads start once the settlement has grown, `../road-build.ts`, so one builder more than the lone
- *  roadster paves them). */
+ *  roads start once the settlement has grown, `../road-build.ts`, and a grown settlement spares two). */
 export const ROAD_CREW = 2;
 
 /** The road crew while the pending road sites pile up (authored: one over {@link ROAD_CREW}). */
