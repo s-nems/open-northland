@@ -13,14 +13,11 @@ import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
 import type { BuildOrderEntry, DefenceWants } from './entries.js';
-import { TOWER_CONTENT_IDS } from './front.js';
 import { grassBound } from './grass-reserve.js';
 import { buildReach } from './placement.js';
 import { seatDefenceFirst, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
-import { OPENING_DEFENCE, seatDefenceWants, towerPlan } from './tower-defence.js';
-
-export { TOWER_CONTENT_IDS };
+import { OPENING_DEFENCE, seatDefenceWants, towerRingStands } from './tower-defence.js';
 
 /** Which buildings a coverage entry spreads: a tower ring by the defence it wants
  *  (`./tower-defence.ts`), a store ring every owned building within `radius` world-metric nodes of the
@@ -126,7 +123,7 @@ export function firstUncovered<T>(
   return null;
 }
 
-/** Whether the seat stands covered: a tower ring short of no defence it wants ({@link towerPlan}), a
+/** Whether the seat stands covered: a tower ring short of no defence it wants ({@link towerRingStands}), a
  *  store ring with no node left outside ({@link firstUncovered}). */
 export function seatCovered(
   world: World,
@@ -136,7 +133,7 @@ export function seatCovered(
   coverage: Coverage,
 ): boolean {
   if (coverage.by === 'store') return firstUncovered(world, ctx, player, owned, coverage, uncovered) === null;
-  return (towerPlan(world, ctx, player, owned, coverage)?.short.length ?? 0) === 0;
+  return towerRingStands(world, ctx, player, owned, coverage);
 }
 
 const uncovered = (): true => true;

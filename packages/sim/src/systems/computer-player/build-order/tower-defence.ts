@@ -90,17 +90,17 @@ export function defenceAt(circles: readonly DefenceCircle[], hx: number, hy: num
   return sum;
 }
 
-/** `wants` as `player`'s seat holds them: scaled by its military orders (`towerRadiusPct`, under 100 for
- *  more towers) and by {@link DEFENCE_FIRST_WANT_PCT} while its defence comes first, rounded up. */
+/** `wants` as `player`'s seat holds them: divided by its military orders' `towerWantDivisorPct` and
+ *  raised by {@link DEFENCE_FIRST_WANT_PCT} while its defence comes first, rounded up. */
 export function seatDefenceWants(
   world: World,
   ctx: SystemContext,
   player: number,
   wants: DefenceWants,
 ): DefenceWants {
-  const plan = militaryOrdersOf(world, player).towerRadiusPct;
+  const divisor = militaryOrdersOf(world, player).towerWantDivisorPct;
   const first = seatDefenceFirst(world, ctx, player) ? DEFENCE_FIRST_WANT_PCT : 100;
-  const scale = (want: number): number => Math.ceil((want * first) / plan);
+  const scale = (want: number): number => Math.ceil((want * first) / divisor);
   return { village: scale(wants.village), front: scale(wants.front) };
 }
 
@@ -142,24 +142,77 @@ export function towerPlan(
   ctx: SystemContext,
   player: number,
   owned: readonly Entity[],
-  coverage: { readonly wants: DefenceWants; readonly building: string },
+  coverage: TowerWants,
 ): TowerPlan | null {
-  const { wants } = coverage;
+  const scan = towerScan(world, ctx, player, owned, coverage);
+  if (scan === null) return null;
+  const front: HalfCellNode[] = [];
+  const scored: { target: DefenceTarget; order: number }[] = [];
+  for (const target of scan.targets) {
+    if (target.front) front.push(target.node);
+    if (target.has < target.want) scored.push({ target, order: scored.length });
+  }
+  scored.sort(
+    (a, b) =>
+      a.target.has * b.target.want - b.target.has * a.target.want ||
+      Number(b.target.front) - Number(a.target.front) ||
+      a.order - b.order,
+  );
+  return { circles: scan.circles, front, short: scored.map((s) => s.target), reach: scan.reach };
+}
+
+/** Whether {@link towerPlan} would find no short target, stopping at the first one. */
+export function towerRingStands(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  coverage: TowerWants,
+): boolean {
+  const scan = towerScan(world, ctx, player, owned, coverage);
+  if (scan === null) return true;
+  for (const target of scan.targets) if (target.has < target.want) return false;
+  return true;
+}
+
+type TowerWants = { readonly wants: DefenceWants; readonly building: string };
+
+/** {@link towerPlan}'s inputs, its targets offered lazily in offer order, at their want or not. */
+function towerScan(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  coverage: TowerWants,
+): { circles: readonly DefenceCircle[]; reach: BuildReach; targets: Iterable<DefenceTarget> } | null {
   const base = seatBaseOf(world, ctx, player);
   const anchor = base === null ? null : anchorNodeOf(world, base);
   if (anchor === null) return null;
   const circles = seatDefenceCircles(world, ctx, owned);
   const reach = buildReach(world, owned, anchor, seatTuning(world, player).reachNodes);
-  const plan = { circles, front: [] as HalfCellNode[], short: [] as DefenceTarget[], reach };
   const wanted = scheduledTowers(world, ctx, player);
-  if (wanted !== null && countTowers(world, ctx, owned) >= wanted) return plan;
-  const scored: { target: DefenceTarget; order: number }[] = [];
-  const add = (node: HalfCellNode, front: boolean): void => {
-    if (front) plan.front.push(node);
-    const want = front ? wants.front : wants.village;
-    const has = defenceAt(circles, node.hx, node.hy);
-    if (has < want) scored.push({ target: { node, want, has, front }, order: scored.length });
-  };
+  const capped = wanted !== null && countTowers(world, ctx, owned) >= wanted;
+  const targets = capped ? [] : defenceTargets(world, ctx, player, owned, coverage, anchor, circles, reach);
+  return { circles, reach, targets };
+}
+
+function* defenceTargets(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  coverage: TowerWants,
+  anchor: HalfCellNode,
+  circles: readonly DefenceCircle[],
+  reach: BuildReach,
+): Generator<DefenceTarget> {
+  const { wants } = coverage;
+  const target = (node: HalfCellNode, front: boolean): DefenceTarget => ({
+    node,
+    want: front ? wants.front : wants.village,
+    has: defenceAt(circles, node.hx, node.hy),
+    front,
+  });
   const line = seatFrontLine(world, ctx, player, owned);
   const tower = buildingTypeByContentId(ctx.content, coverage.building);
   const tribe = playerPlacementTribes(world, player)?.[0];
@@ -172,23 +225,15 @@ export function towerPlan(
     for (const slot of line.slots(spacing, 1)) {
       // A slot off the map or out of every building's reach is no work the ring could do.
       if (ctx.terrain?.inBounds(slot.hx, slot.hy) !== true || !reach.meets(slot, span)) continue;
-      add(slot, true);
+      yield target(slot, true);
     }
   }
   const facing = new Set(facingBuildings(world, ctx, player, owned, anchor));
   for (const e of facing.size === 0 ? owned : [...facing, ...owned.filter((o) => !facing.has(o))]) {
     const node = anchorNodeOf(world, e);
     if (node === null || defenceCircleOf(ctx, world.get(e, Building), node) !== null) continue;
-    add(node, facing.has(e) || (line?.beyond(node.hx, node.hy) ?? false));
+    yield target(node, facing.has(e) || (line?.beyond(node.hx, node.hy) ?? false));
   }
-  scored.sort(
-    (a, b) =>
-      a.target.has * b.target.want - b.target.has * a.target.want ||
-      Number(b.target.front) - Number(a.target.front) ||
-      a.order - b.order,
-  );
-  plan.short = scored.map((s) => s.target);
-  return plan;
 }
 
 function countTowers(world: World, ctx: SystemContext, owned: readonly Entity[]): number {
