@@ -1,14 +1,15 @@
 import type { SimEvent } from '../core/events.js';
-import { isPlainRecord, PROTO_KEY } from '../core/plain-value.js';
+import { isPlainRecord, PROTO_KEY, sortedMapEntries } from '../core/plain-value.js';
 import type { DeltaDigest } from './entity-digest.js';
+import { addField } from './fast-record.js';
 import { clonePlain } from './plain-clone.js';
 
 /**
  * The changes of one stretch of ticks, in the shape a mirror rebuilds the snapshot from and a worker
  * boundary carries whole: plain data, structured-cloneable like the snapshot itself. Stored by column,
- * so a structured clone copies no object per touched entity, and none for a component whose fields are
- * all numbers, booleans, strings or null, which travels as numbers and strings under a key list sent
- * once (`deltaValues` rebuilds it). The
+ * so a structured clone copies no object per touched entity, and none for a component that is a plain
+ * record of numbers, booleans, strings, null and nested records and arrays of those, which travels as
+ * numbers and strings under key lists sent once (`deltaValues` rebuilds it). The
  * per-entity and per-value columns are typed arrays, which a structured clone copies as bytes where it
  * writes and reads a plain array element by element, each in the narrowest element type its entries fit.
  */
@@ -36,8 +37,9 @@ export interface SnapshotDelta {
   readonly recordKeys: readonly (readonly string[])[];
   /** Per `recordKeys` entry, one {@link FIELD} character per key: how its field travels. */
   readonly recordFields: readonly string[];
-  /** Those records' number and boolean fields, record after record, each in its key list's order: 32-bit
-   *  integers, as fixed-point state is, unless one of them is not. */
+  /** Those records' number and boolean fields and the framing of their nested values, record after
+   *  record, each in its key list's order: 32-bit integers, as fixed-point state is, unless one of them
+   *  is not. */
   readonly numbers: Int32Array | Float64Array;
   /** Those records' string fields, in the same order. */
   readonly strings: readonly string[];
@@ -61,16 +63,34 @@ const INT16_MAX = 0x7fff;
 /** A {@link SnapshotDelta.valueKinds} entry for a value carried whole in `values`. */
 const WHOLE_VALUE = -1;
 
-/** How a scalar record's field travels: a number or a boolean (0 or 1) in `numbers`, a string in
- *  `strings`, a null in neither. */
-const FIELD = { NUMBER: 'n', BOOLEAN: 'b', STRING: 's', NULL: 'z' } as const;
+/** How a record's field travels: a number or a boolean (0 or 1) in `numbers`, a string in `strings`, a
+ *  null in neither. A nested record puts its layout's `recordKeys` entry in `numbers`, then its fields;
+ *  an array puts its length, then, unless empty, its elements' kind as an index in {@link FIELD_KINDS}
+ *  or one of the array kinds below, then each element as a field of that kind travels. */
+const FIELD = { NUMBER: 'n', BOOLEAN: 'b', STRING: 's', NULL: 'z', RECORD: 'r', ARRAY: 'a' } as const;
 type FieldKind = (typeof FIELD)[keyof typeof FIELD];
-/** The field kinds by index: the scalar reader keeps a field's kind as its index here. */
-const FIELD_KINDS: readonly FieldKind[] = [FIELD.NUMBER, FIELD.BOOLEAN, FIELD.STRING, FIELD.NULL];
+/** The field kinds by index: the writer keeps a field's kind as its index here. */
+const FIELD_KINDS: readonly FieldKind[] = [
+  FIELD.NUMBER,
+  FIELD.BOOLEAN,
+  FIELD.STRING,
+  FIELD.NULL,
+  FIELD.RECORD,
+  FIELD.ARRAY,
+];
 const NUMBER_KIND = 0;
 const BOOLEAN_KIND = 1;
 const STRING_KIND = 2;
 const NULL_KIND = 3;
+const RECORD_KIND = 4;
+const ARRAY_KIND = 5;
+/** After an array's length: its elements are records of one layout, whose entry follows once. */
+const SAME_LAYOUT_ELEMENTS = 6;
+/** After an array's length: each element goes after its own kind. Any other kind there is every
+ *  element's. */
+const MIXED_ELEMENTS = 7;
+/** A field or element the columns cannot carry: its whole value travels cloned. */
+const NO_KIND = -1;
 
 /** What one touched entity changed since the base, shared by every entity that changed the same. */
 export interface EntityChange {
@@ -157,8 +177,30 @@ function isInt32(value: number): boolean {
   return (value | 0) === value && (value !== 0 || 1 / value > 0);
 }
 
-/** A scalar record's keys in order and how each field travels; interned per stream, so its entry in a
- *  delta's `recordKeys` is found without rebuilding the key list. */
+/** How an array element travels, or {@link NO_KIND}; a record is checked once it is read. A live `Map`
+ *  travels as its entries, as its clone does. */
+function kindOfElement(element: unknown, skipUndefined: boolean): number {
+  if (typeof element === 'number') return NUMBER_KIND;
+  if (typeof element === 'boolean') return BOOLEAN_KIND;
+  if (typeof element === 'string') return STRING_KIND;
+  if (element === null) return NULL_KIND;
+  if (typeof element !== 'object') return NO_KIND;
+  return Array.isArray(element) || (skipUndefined && element instanceof Map) ? ARRAY_KIND : RECORD_KIND;
+}
+
+/** The kind every element of a non-empty array shares, {@link MIXED_ELEMENTS}, or {@link NO_KIND}. */
+function elementsKind(array: readonly unknown[], skipUndefined: boolean): number {
+  const kind = kindOfElement(array[0], skipUndefined);
+  for (let i = 1; i < array.length && kind !== NO_KIND; i++) {
+    const next = kindOfElement(array[i], skipUndefined);
+    if (next === NO_KIND) return NO_KIND;
+    if (next !== kind) return MIXED_ELEMENTS;
+  }
+  return kind;
+}
+
+/** A record's keys in order and how each field travels; interned per stream, so its entry in a delta's
+ *  `recordKeys` is found without rebuilding the key list. */
 interface RecordLayout {
   readonly keys: readonly string[];
   readonly fields: string;
@@ -169,17 +211,25 @@ interface RecordLayout {
   epoch: number;
 }
 
-/** One step of the changes met so far: the names written or dropped after it lead on. */
-interface ChangeStep {
+/** The record layouts met at one place in a value: a component's, or a nested field's below it. */
+interface LayoutSlot {
+  /** The layout of the last record written here, which the next one usually repeats. */
+  lastLayout: RecordLayout | null;
+  /** Every layout written here: a record whose optional fields come and go has a few. */
+  readonly layouts: RecordLayout[];
+  /** The slots of the records and arrays under each key of the records written here, made on first
+   *  use; an array's elements share its slot. */
+  nested: Map<string, LayoutSlot> | null;
+}
+
+/** One step of the changes met so far: the names written or dropped after it lead on. Its layouts are
+ *  those of the component whose write leads here. */
+interface ChangeStep extends LayoutSlot {
   readonly written: Map<string, ChangeStep>;
   readonly dropped: Map<string, ChangeStep>;
   /** The entry in `changes` of the change that ends here in the delta stamped `changeEpoch`. */
   change: number;
   changeEpoch: number;
-  /** The layout of the last record written at this step, which the next one usually repeats. */
-  lastLayout: RecordLayout | null;
-  /** Every layout written at this step: a component whose optional fields come and go has a few. */
-  readonly layouts: RecordLayout[];
   /** The change that ends here, the same names in every delta. */
   entityChange: EntityChange | null;
   /** The last name written at this step and the step it led to, which the next entity here usually
@@ -189,7 +239,8 @@ interface ChangeStep {
 }
 
 const NO_EPOCH = 0;
-/** The change steps a stream keeps before it starts over, far above what a long match meets. */
+/** The change steps, nested slots and layouts a stream keeps before it starts over, far above what a long
+ *  match meets. */
 const MAX_CHANGE_STEPS = 1 << 16;
 
 function changeStep(): ChangeStep {
@@ -200,6 +251,7 @@ function changeStep(): ChangeStep {
     changeEpoch: NO_EPOCH,
     lastLayout: null,
     layouts: [],
+    nested: null,
     entityChange: null,
     nextName: null,
     nextStep: null,
@@ -231,6 +283,29 @@ export class DeltaShapes {
       this.steps++;
     }
     return step;
+  }
+
+  /** The slot of the value under `key` in the records written at `slot`, made on first use. */
+  slotUnder(slot: LayoutSlot, key: string): LayoutSlot {
+    slot.nested ??= new Map();
+    let nested = slot.nested.get(key);
+    if (nested === undefined) {
+      nested = { lastLayout: null, layouts: [], nested: null };
+      slot.nested.set(key, nested);
+      this.steps++;
+    }
+    return nested;
+  }
+
+  /** The interned layout named `name`, made by `make` on first use. */
+  layoutNamed(name: string, make: () => RecordLayout): RecordLayout {
+    let layout = this.layouts.get(name);
+    if (layout === undefined) {
+      layout = make();
+      this.layouts.set(name, layout);
+      this.steps++;
+    }
+    return layout;
   }
 
   /** The step writing `name` leads to from `from`. */
@@ -272,9 +347,9 @@ export class DeltaColumns {
   private writtenCount = 0;
   private readonly dropped: string[] = [];
   private droppedCount = 0;
-  /** The keys and field kinds of the record being read, for a layout met for the first time. */
-  private readonly recordKeyScratch: string[] = [];
-  private readonly recordKindScratch: number[] = [];
+  /** Per nesting depth, the keys and field kinds of the record being read there, for a layout met for
+   *  the first time. */
+  private readonly scratch: { readonly keys: string[]; readonly kinds: number[] }[] = [];
 
   /** One builder at a time per `shapes`: it fills the shapes' column storage. */
   constructor(private readonly shapes = new DeltaShapes()) {
@@ -297,23 +372,23 @@ export class DeltaColumns {
     this.droppedCount = 0;
   }
 
-  /** Write a value read off the live world: a plain record whose fields are all scalars, a cleared
-   *  `undefined` one aside, goes straight into the columns, any other value as its {@link clonePlain}.
-   *  Either way the columns end as {@link write} of the clone leaves them. */
+  /** Write a value read off the live world: a plain record the columns carry, a cleared `undefined`
+   *  field aside and a `Map` as its sorted entries, goes straight into them, any other value as its
+   *  {@link clonePlain}. Either way the columns end as {@link write} of the clone leaves them. */
   readonly writeLive = (name: string, value: unknown): void => {
     this.written[this.writtenCount++] = name;
     this.step = this.shapes.writtenAfter(this.step, name);
-    const kind = isPlainRecord(value) ? this.scalarRecordKind(this.step, value, true) : WHOLE_VALUE;
+    const kind = isPlainRecord(value) ? this.recordKind(this.step, value, true) : WHOLE_VALUE;
     this.valueKinds.push(kind);
-    // A field that fails the scalar test fails it in the clone too, so the clone needs no second look.
+    // A field that fails the column test fails it in the clone too, so the clone needs no second look.
     if (kind === WHOLE_VALUE) this.values.push(clonePlain(value));
   };
 
-  /** Write a detached value, kept as the delta's own unless its fields are all scalars. */
+  /** Write a detached value, kept as the delta's own unless it is a record the columns carry. */
   write(name: string, value: unknown): void {
     this.written[this.writtenCount++] = name;
     this.step = this.shapes.writtenAfter(this.step, name);
-    const kind = this.scalarRecordKind(this.step, value, false);
+    const kind = this.recordKind(this.step, value, false);
     this.valueKinds.push(kind);
     if (kind === WHOLE_VALUE) this.values.push(value);
   }
@@ -360,21 +435,36 @@ export class DeltaColumns {
     return narrow;
   }
 
-  /** Push the fields of a record whose fields are all scalars and answer its key list's entry, or answer
+  /** Push the fields of a record the columns carry and answer its key list's entry, or answer
    *  {@link WHOLE_VALUE} for any other value and push nothing. A record is any non-array object: a
-   *  structured clone keeps no prototype either. `skipUndefined` leaves out a field holding `undefined`,
-   *  as the clone of a live value does. */
-  private scalarRecordKind(step: ChangeStep, value: unknown, skipUndefined: boolean): number {
+   *  structured clone keeps no prototype either. */
+  private recordKind(step: ChangeStep, value: unknown, skipUndefined: boolean): number {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) return WHOLE_VALUE;
-    const record = value as Record<string, unknown>;
+    const layout = this.recordLayout(step, value as Record<string, unknown>, skipUndefined, 0);
+    return layout === null ? WHOLE_VALUE : layout.at;
+  }
+
+  /** Push the fields of `record`, read at `slot` and nesting `depth`, and answer its layout, entered in
+   *  this delta's `recordKeys`; or answer null and leave the columns as they were when a field is none the
+   *  columns carry. `skipUndefined` leaves out a field holding `undefined`, as the clone of a live value
+   *  does, and reads a nested `Map` as its sorted entries. */
+  private recordLayout(
+    slot: LayoutSlot,
+    record: Record<string, unknown>,
+    skipUndefined: boolean,
+    depth: number,
+  ): RecordLayout | null {
     const stringStart = this.strings.length;
-    const last = step.lastLayout;
+    const numberStart = this.numberCount;
+    const int32Start = this.int32Numbers;
+    const last = slot.lastLayout;
+    const scratch = this.scratchAt(depth);
     // The number column and its count stay in locals for the loop and are stored back once the record
-    // is taken: a record that turns out not to be scalar leaves them as they were.
+    // is taken, or around a nested value, which writes them itself.
     let numbers = this.shapes.numbers;
-    let numberCount = this.numberCount;
-    let int32Numbers = this.int32Numbers;
-    // While the record repeats the step's last layout, its keys and kinds are that layout's; the scratch
+    let numberCount = numberStart;
+    let int32Numbers = int32Start;
+    // While the record repeats the slot's last layout, its keys and kinds are that layout's; the scratch
     // lists are filled only once it parts from it.
     let matched = last === null ? 0 : -1;
     let count = 0;
@@ -395,21 +485,30 @@ export class DeltaColumns {
         kind = STRING_KIND;
       } else if (field === null) kind = NULL_KIND;
       else if (field === undefined && skipUndefined) continue;
-      else kind = -1;
-      if (kind < 0 || key === PROTO_KEY) {
+      else if (typeof field === 'object' && key !== PROTO_KEY) {
+        this.numberCount = numberCount;
+        this.int32Numbers = int32Numbers;
+        kind = this.nestedKind(this.shapes.slotUnder(slot, key), field, skipUndefined, depth + 1);
+        numbers = this.shapes.numbers;
+        numberCount = this.numberCount;
+        int32Numbers = this.int32Numbers;
+      } else kind = NO_KIND;
+      if (kind === NO_KIND || key === PROTO_KEY) {
         this.strings.length = stringStart;
-        return WHOLE_VALUE;
+        this.numberCount = numberStart;
+        this.int32Numbers = int32Start;
+        return null;
       }
       if (matched < 0 && last !== null && (last.keys[count] !== key || last.kinds[count] !== kind)) {
         matched = count;
         for (let k = 0; k < count; k++) {
-          this.recordKeyScratch[k] = last.keys[k] as string;
-          this.recordKindScratch[k] = last.kinds[k] as number;
+          scratch.keys[k] = last.keys[k] as string;
+          scratch.kinds[k] = last.kinds[k] as number;
         }
       }
       if (matched >= 0) {
-        this.recordKeyScratch[count] = key;
-        this.recordKindScratch[count] = kind;
+        scratch.keys[count] = key;
+        scratch.kinds[count] = kind;
       }
       count++;
     }
@@ -421,51 +520,176 @@ export class DeltaColumns {
       if (matched < 0 && last !== null) {
         // A prefix of the last layout: its keys are still to be copied.
         for (let k = 0; k < count; k++) {
-          this.recordKeyScratch[k] = last.keys[k] as string;
-          this.recordKindScratch[k] = last.kinds[k] as number;
+          scratch.keys[k] = last.keys[k] as string;
+          scratch.kinds[k] = last.kinds[k] as number;
         }
       }
-      layout = this.layoutAt(step, count);
+      layout = this.layoutAt(slot, scratch.keys, scratch.kinds, count);
     }
-    step.lastLayout = layout;
+    slot.lastLayout = layout;
     if (layout.epoch !== this.epoch) {
       layout.epoch = this.epoch;
       layout.at = this.recordKeys.length;
       this.recordKeys.push(layout.keys);
       this.recordFields.push(layout.fields);
     }
-    return layout.at;
+    return layout;
   }
 
-  /** The layout of the record just read into the scratch lists, among those met at `step` or else
-   *  interned for it. */
-  private layoutAt(step: ChangeStep, count: number): RecordLayout {
-    for (const layout of step.layouts) {
+  /** Push a record or array field and answer its kind, or answer {@link NO_KIND} with the columns as
+   *  they were. */
+  private nestedKind(slot: LayoutSlot, value: object, skipUndefined: boolean, depth: number): number {
+    if (Array.isArray(value))
+      return this.pushedArray(slot, value, skipUndefined, depth) ? ARRAY_KIND : NO_KIND;
+    if (skipUndefined && value instanceof Map) {
+      return this.pushedArray(slot, sortedMapEntries(value), skipUndefined, depth) ? ARRAY_KIND : NO_KIND;
+    }
+    if (!isPlainRecord(value)) return NO_KIND;
+    // The layout is known once the fields are read: its entry goes in the place kept for it here.
+    const at = this.numberCount;
+    this.pushNumber(0);
+    const layout = this.recordLayout(slot, value, skipUndefined, depth);
+    if (layout === null) {
+      this.numberCount = at;
+      return NO_KIND;
+    }
+    this.shapes.numbers[at] = layout.at;
+    return RECORD_KIND;
+  }
+
+  /** Push an array's length and its elements and answer true; or answer false with the columns as they
+   *  were when an element is none the columns carry. */
+  private pushedArray(
+    slot: LayoutSlot,
+    array: readonly unknown[],
+    skipUndefined: boolean,
+    depth: number,
+  ): boolean {
+    const stringStart = this.strings.length;
+    const numberStart = this.numberCount;
+    const int32Start = this.int32Numbers;
+    this.pushNumber(array.length);
+    const kind = array.length === 0 ? NULL_KIND : elementsKind(array, skipUndefined);
+    const pushed =
+      array.length === 0 ||
+      (kind === RECORD_KIND
+        ? this.pushedRecords(slot, array, skipUndefined, depth)
+        : kind !== NO_KIND && this.pushedElements(slot, array, kind, skipUndefined, depth));
+    if (!pushed) {
+      this.strings.length = stringStart;
+      this.numberCount = numberStart;
+      this.int32Numbers = int32Start;
+    }
+    return pushed;
+  }
+
+  /** Push records under one layout, which goes once ahead of their fields, or else each record after its
+   *  own layout; answer false when one is no record the columns carry. */
+  private pushedRecords(
+    slot: LayoutSlot,
+    records: readonly unknown[],
+    skipUndefined: boolean,
+    depth: number,
+  ): boolean {
+    const stringStart = this.strings.length;
+    const numberStart = this.numberCount;
+    const int32Start = this.int32Numbers;
+    this.pushNumber(SAME_LAYOUT_ELEMENTS);
+    const layoutAt = this.numberCount;
+    this.pushNumber(0);
+    let shared: RecordLayout | null = null;
+    for (let i = 0; i < records.length; i++) {
+      const record = records[i];
+      if (!isPlainRecord(record)) return false;
+      const layout = this.recordLayout(slot, record, skipUndefined, depth);
+      if (layout === null) return false;
+      if (shared === null) shared = layout;
+      else if (layout !== shared) {
+        this.strings.length = stringStart;
+        this.numberCount = numberStart;
+        this.int32Numbers = int32Start;
+        return this.pushedElements(slot, records, RECORD_KIND, skipUndefined, depth);
+      }
+    }
+    if (shared !== null) this.shapes.numbers[layoutAt] = shared.at;
+    return true;
+  }
+
+  /** Push elements of one `kind`, or each after its own kind under {@link MIXED_ELEMENTS}; answer false
+   *  when one is none the columns carry. */
+  private pushedElements(
+    slot: LayoutSlot,
+    elements: readonly unknown[],
+    kind: number,
+    skipUndefined: boolean,
+    depth: number,
+  ): boolean {
+    this.pushNumber(kind);
+    for (let i = 0; i < elements.length; i++) {
+      const element = elements[i];
+      let elementKind = kind;
+      if (kind === MIXED_ELEMENTS) {
+        elementKind = kindOfElement(element, skipUndefined);
+        this.pushNumber(elementKind);
+      }
+      if (typeof element === 'number') this.pushNumber(element);
+      else if (typeof element === 'boolean') this.pushNumber(element ? 1 : 0);
+      else if (typeof element === 'string') this.strings.push(element);
+      else if (elementKind === RECORD_KIND || elementKind === ARRAY_KIND) {
+        if (this.nestedKind(slot, element as object, skipUndefined, depth) !== elementKind) return false;
+      } else if (element !== null) return false;
+    }
+    return true;
+  }
+
+  private pushNumber(value: number): void {
+    const numbers =
+      this.numberCount === this.shapes.numbers.length ? this.growNumbers() : this.shapes.numbers;
+    if (this.int32Numbers && !isInt32(value)) this.int32Numbers = false;
+    numbers[this.numberCount++] = value;
+  }
+
+  /** The scratch lists of nesting `depth`, made on first use. */
+  private scratchAt(depth: number): { readonly keys: string[]; readonly kinds: number[] } {
+    let scratch = this.scratch[depth];
+    if (scratch === undefined) {
+      scratch = { keys: [], kinds: [] };
+      this.scratch[depth] = scratch;
+    }
+    return scratch;
+  }
+
+  /** The layout of the record just read into the first `count` of `keys` and `kinds`, among those met at
+   *  `slot` or else interned for it. */
+  private layoutAt(
+    slot: LayoutSlot,
+    keys: readonly string[],
+    kinds: readonly number[],
+    count: number,
+  ): RecordLayout {
+    for (const layout of slot.layouts) {
       if (layout.keys.length !== count) continue;
       let same = true;
-      for (let k = 0; k < count && same; k++) {
-        same = layout.keys[k] === this.recordKeyScratch[k] && layout.kinds[k] === this.recordKindScratch[k];
-      }
+      for (let k = 0; k < count && same; k++)
+        same = layout.keys[k] === keys[k] && layout.kinds[k] === kinds[k];
       if (same) return layout;
     }
-    const layout = this.layoutOf(count);
-    step.layouts.push(layout);
+    const layout = this.layoutOf(keys.slice(0, count), kinds.slice(0, count));
+    slot.layouts.push(layout);
     return layout;
   }
 
-  /** The interned layout of the record just read into the scratch lists. */
-  private layoutOf(count: number): RecordLayout {
-    const keys = this.recordKeyScratch.slice(0, count);
-    const kinds = this.recordKindScratch.slice(0, count);
+  /** The interned layout of these keys and kinds. */
+  private layoutOf(keys: readonly string[], kinds: readonly number[]): RecordLayout {
     const fields = kinds.map((kind) => FIELD_KINDS[kind] as FieldKind).join('');
     // JSON quotes each key, so no two key lists share a name whatever characters the keys hold.
-    const name = JSON.stringify([fields, keys]);
-    let layout = this.shapes.layouts.get(name);
-    if (layout === undefined) {
-      layout = { keys, fields, kinds, at: WHOLE_VALUE, epoch: NO_EPOCH };
-      this.shapes.layouts.set(name, layout);
-    }
-    return layout;
+    return this.shapes.layoutNamed(JSON.stringify([fields, keys]), () => ({
+      keys,
+      fields,
+      kinds,
+      at: WHOLE_VALUE,
+      epoch: NO_EPOCH,
+    }));
   }
 
   /** The number column doubled, its entries kept. */
@@ -478,7 +702,7 @@ export class DeltaColumns {
 }
 
 /** Reads the written values of a delta in turn, per touched entity in its change's `written` order,
- *  each scalar record rebuilt as it is read rather than collected into a list first. */
+ *  each columned record rebuilt as it is read rather than collected into a list first. */
 export class DeltaValueReader {
   private kind = 0;
   private number = 0;
@@ -488,21 +712,62 @@ export class DeltaValueReader {
   constructor(private readonly delta: SnapshotDelta) {}
 
   next(): unknown {
-    const { valueKinds, recordKeys, recordFields, numbers, strings, values } = this.delta;
-    const kind = valueKinds[this.kind++] ?? WHOLE_VALUE;
-    const keys = recordKeys[kind];
-    const fields = recordFields[kind];
-    if (keys === undefined || fields === undefined) return values[this.whole++];
+    const kind = this.delta.valueKinds[this.kind++] ?? WHOLE_VALUE;
+    return kind === WHOLE_VALUE ? this.delta.values[this.whole++] : this.record(kind);
+  }
+
+  private record(layout: number): Record<string, unknown> {
+    const { recordKeys, recordFields, numbers, strings } = this.delta;
+    const keys = recordKeys[layout];
+    const fields = recordFields[layout];
+    if (keys === undefined || fields === undefined) {
+      throw new Error(`snapshot delta ${this.delta.sequence}: no record layout ${layout}`);
+    }
     const record: Record<string, unknown> = {};
+    // The number cursor stays in a local for the loop and is stored around a nested value.
+    let number = this.number;
     for (let k = 0; k < keys.length; k++) {
       const key = keys[k] as string;
       const field = fields[k];
-      if (field === FIELD.NUMBER) record[key] = numbers[this.number++];
-      else if (field === FIELD.BOOLEAN) record[key] = numbers[this.number++] !== 0;
-      else if (field === FIELD.STRING) record[key] = strings[this.string++];
-      else record[key] = null;
+      let value: unknown;
+      if (field === FIELD.NUMBER) value = numbers[number++];
+      else if (field === FIELD.BOOLEAN) value = numbers[number++] !== 0;
+      else if (field === FIELD.STRING) value = strings[this.string++];
+      else if (field === FIELD.NULL) value = null;
+      else {
+        this.number = field === FIELD.RECORD ? number + 1 : number;
+        value = field === FIELD.RECORD ? this.record(numbers[number] as number) : this.array();
+        number = this.number;
+      }
+      addField(record, k, key, value);
     }
+    this.number = number;
     return record;
+  }
+
+  private array(): unknown[] {
+    const { numbers } = this.delta;
+    const length = numbers[this.number++] as number;
+    const out: unknown[] = [];
+    if (length === 0) return out;
+    const kind = numbers[this.number++] as number;
+    if (kind === SAME_LAYOUT_ELEMENTS) {
+      const layout = numbers[this.number++] as number;
+      for (let i = 0; i < length; i++) out.push(this.record(layout));
+    } else if (kind === MIXED_ELEMENTS) {
+      for (let i = 0; i < length; i++) out.push(this.element(numbers[this.number++] as number));
+    } else for (let i = 0; i < length; i++) out.push(this.element(kind));
+    return out;
+  }
+
+  private element(kind: number): unknown {
+    const { numbers } = this.delta;
+    if (kind === NUMBER_KIND) return numbers[this.number++];
+    if (kind === BOOLEAN_KIND) return numbers[this.number++] !== 0;
+    if (kind === STRING_KIND) return this.delta.strings[this.string++];
+    if (kind === RECORD_KIND) return this.record(numbers[this.number++] as number);
+    if (kind === ARRAY_KIND) return this.array();
+    return null;
   }
 }
 

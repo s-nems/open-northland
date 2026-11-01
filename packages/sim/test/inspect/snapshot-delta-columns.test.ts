@@ -29,6 +29,37 @@ const LIVE: ReadonlyArray<readonly [string, unknown]> = [
   ['clearedAndFlag', { index: 1, cleared: undefined, flag: true }],
   ['nested', { at: { x: 1, y: 2 }, list: [1, 2] }],
   [
+    'route',
+    {
+      waypoints: [
+        { x: 1, y: 2, node: 3 },
+        { x: 4, y: 5, node: 6 },
+      ],
+      label: 'r',
+    },
+  ],
+  ['mixed', { list: [1, true, 'a', null, [2, [3]], { deep: { on: false } }], empty: [], none: {} }],
+  [
+    'nestedMap',
+    {
+      lines: new Map([
+        [2, { wanted: 1 }],
+        [1, { wanted: 0, cleared: undefined }],
+      ]),
+    },
+  ],
+  [
+    'unevenRecords',
+    {
+      cycles: [{ a: 1 }, { a: 2 }, { b: 'x' }],
+      pairs: [
+        [1, 2],
+        [3, 4],
+      ],
+    },
+  ],
+  ['holeyList', { list: [1, undefined, 2] }],
+  [
     'map',
     new Map([
       [2, 'b'],
@@ -48,6 +79,25 @@ describe('delta columns from live values', () => {
       for (const [name, value] of LIVE) columns.write(name, clonePlain(value));
     });
     expect(live).toStrictEqual(cloned);
+  });
+
+  it('carry nested records and arrays in the columns and read them back as their clones', () => {
+    const carried = LIVE.filter(([name]) =>
+      ['nested', 'route', 'mixed', 'nestedMap', 'unevenRecords'].includes(name),
+    );
+    const columns = columnsOf((c) => {
+      for (const [name, value] of carried) c.writeLive(name, value);
+    });
+    expect(columns.values).toEqual([]);
+    const delta: SnapshotDelta = {
+      ...columns,
+      tick: 0,
+      sequence: 0,
+      rebuild: false,
+      removed: [],
+      events: [],
+    };
+    expect(deltaValues(delta)).toStrictEqual(carried.map(([, value]) => clonePlain(value)));
   });
 
   it('hand out no live object', () => {
