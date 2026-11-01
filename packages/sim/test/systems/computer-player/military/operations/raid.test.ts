@@ -575,6 +575,8 @@ describe('raid operations', () => {
       const near = { hx: 20, hy: 6, entity: null, owner: null };
       expect(flankRoute(sim.world, terrain, home, near, ring), 'a target the corner reaches').toEqual([]);
       expect(flankRoute(sim.world, terrain, home, target, []), 'the ring gone').toEqual([]);
+      expect(flankRoute(sim.world, terrain, home, near, []), 'another target, open belief').toEqual([]);
+      expect(flankRoute(sim.world, terrain, home, target, ring), 'the ring back').toBeNull();
     });
   });
 });

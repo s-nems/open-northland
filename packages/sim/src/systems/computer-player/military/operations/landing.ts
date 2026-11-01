@@ -3,15 +3,12 @@ import {
   Building,
   diplomacyStance,
   Engagement,
-  EquipOrder,
   type LandingOperation,
   type LandingShip,
-  MAX_PLAYERS,
   type OperationEndReason,
   Position,
   Rider,
   seatPeaceEndTick,
-  TrainingOrder,
   Vehicle,
   VehicleDrive,
   vehicleCommander,
@@ -23,10 +20,8 @@ import { TICKS_PER_SECOND } from '../../../../core/loop.js';
 import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../nav/terrain/index.js';
-import { isTravelling } from '../../../movement/nav-state.js';
+import { onErrand, spokenFor } from '../../../ai-shared/military/errand.js';
 import { isShipVehicle } from '../../../readviews/vehicles.js';
-import { anotherSystemOwns } from '../../../settlers/action-owner.js';
-import { atomicHoldsSettler } from '../../../settlers/atomics/busy.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { crewInside } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
@@ -45,13 +40,14 @@ import {
   underFire,
 } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
-import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleFighters } from './raid-target.js';
+import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleEnemyFighters } from './raid-target.js';
 
 // A naval landing (owner ruling): a seat whose rival lies over the sea fills its moored ships with the
 // soldiers at home, sails them together to the rival's shore nearest his headquarters outside the reach of
-// his towers and shelters, sets every man but each ship's commander ashore once the fleet lies there and marches the landed
-// men on his headquarters and then on what stands clear of his towers and shelters. The ships lie at the
-// shore meanwhile and take the survivors home once the landing is losing or has nothing left to strike.
+// his towers and shelters, sets every man but each ship's commander ashore once the fleet lies there and
+// marches the landed men on his headquarters and then on what stands clear of his towers and shelters. The
+// ships lie at the shore meanwhile and take the survivors home once the landing is losing or has nothing
+// left to strike.
 // Every figure below is authored unless it says otherwise.
 
 const SECONDS_PER_MINUTE = 60;
@@ -100,17 +96,6 @@ function standingNode(world: World, terrain: TerrainGraph, e: Entity): NodeId | 
 
 function componentOfPoint(terrain: TerrainGraph, at: HalfCellNode): number {
   return terrain.inBounds(at.hx, at.hy) ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) : NO_COMPONENT;
-}
-
-/** Whether another drive owns `e` or he is on an errand an attach would throw away. A walk is no errand:
- *  the muster keeps the men at home walking to the door. */
-function busy(world: World, e: Entity): boolean {
-  return (
-    anotherSystemOwns(world, e) ||
-    world.has(e, TrainingOrder) ||
-    world.has(e, EquipOrder) ||
-    atomicHoldsSettler(world, e)
-  );
 }
 
 /** The seat's ships a landing may take, ascending id: on the map, moored at a shore of `home`, crewless,
@@ -263,12 +248,9 @@ function outmatchedAshore(env: OperationEnv, op: LandingOperation): boolean {
   let own = 0;
   for (const e of op.members) own += unitPoints(world, ctx, e);
   let enemy = 0;
-  for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
-    for (const f of visibleFighters(world, ctx, seat, other)) {
-      if (op.ships.some((ship) => nodeManhattan(f.at, ship.shore) <= RAID_DEFENCE_RADIUS_NODES))
-        enemy += f.points;
-    }
+  for (const f of visibleEnemyFighters(world, ctx, seat)) {
+    if (op.ships.some((ship) => nodeManhattan(f.at, ship.shore) <= RAID_DEFENCE_RADIUS_NODES))
+      enemy += f.points;
   }
   return enemy > 0 && enemy >= own;
 }
@@ -448,8 +430,7 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
   const goal = landingObjective(ctx, believed, from);
   if (goal === null) return { landed, striking: false, fire: believed.sources, commands: [] };
   const free = landed.filter(
-    (e) =>
-      !isTravelling(world, e) && !busy(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
+    (e) => !spokenFor(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
   );
   return {
     landed,
@@ -474,15 +455,31 @@ function losing(
   const spots = landed.flatMap((e) => nodeOfEntity(world, e) ?? []);
   let own = 0;
   for (const e of landed) own += unitPoints(world, ctx, e);
+  // A fighter outside the band's box grown by the radius stands farther than the radius from every man.
+  const box = boundsOf(spots, RAID_DEFENCE_RADIUS_NODES);
   let enemy = 0;
-  for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
-    for (const f of visibleFighters(world, ctx, seat, other))
-      if (spots.some((at) => nodeManhattan(f.at, at) <= RAID_DEFENCE_RADIUS_NODES)) enemy += f.points;
+  for (const f of visibleEnemyFighters(world, ctx, seat)) {
+    if (f.at.hx < box.minX || f.at.hx > box.maxX || f.at.hy < box.minY || f.at.hy > box.maxY) continue;
+    if (spots.some((at) => nodeManhattan(f.at, at) <= RAID_DEFENCE_RADIUS_NODES)) enemy += f.points;
   }
   if (enemy >= own) return true;
   if ((op.landed - landed.length) * PERCENT < op.landed * LANDING_RETREAT_LOSS_PCT) return false;
   return spots.some((at) => underFire(fire, at));
+}
+
+/** The box round `spots` grown by `margin` on every side; an empty box when there are none. */
+function boundsOf(spots: readonly HalfCellNode[], margin: number) {
+  let minX = Number.POSITIVE_INFINITY;
+  let minY = Number.POSITIVE_INFINITY;
+  let maxX = Number.NEGATIVE_INFINITY;
+  let maxY = Number.NEGATIVE_INFINITY;
+  for (const { hx, hy } of spots) {
+    minX = Math.min(minX, hx);
+    minY = Math.min(minY, hy);
+    maxX = Math.max(maxX, hx);
+    maxY = Math.max(maxY, hy);
+  }
+  return { minX: minX - margin, minY: minY - margin, maxX: maxX + margin, maxY: maxY + margin };
 }
 
 /** Call the landed men back aboard the waiting ships for `reason`: each walks to the waiting ship nearest
@@ -659,7 +656,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   if (diplomacyStance(world, seat, owner) !== 'enemy') return null;
   const men = free.filter((e) => {
     const node = standingNode(world, terrain, e);
-    return node !== null && terrain.componentOf(node) === route.home && !busy(world, e);
+    return node !== null && terrain.componentOf(node) === route.home && !onErrand(world, e);
   });
   const seatsOf = (ship: Entity): number => world.get(ship, Vehicle).passengers.length;
   let least = 0;
@@ -727,6 +724,6 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
 export const landingHandler: OperationHandler<LandingOperation> = {
   phase: 'beforeCampaign',
   cooldownTicks: () => LANDING_COOLDOWN_TICKS,
-  step: (env, op) => step(env, op),
+  step,
   open,
 };

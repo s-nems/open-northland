@@ -14,7 +14,7 @@ import type { SystemContext } from '../../../context.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import { type IntentArea, seatMapIntentOf } from '../../knowledge/map-intent/index.js';
 import { believedDefendingPoints } from '../enemy-strength.js';
-import { nodeOfEntity, visibleFighters } from './raid-target.js';
+import { nodeOfEntity, visibleEnemyFighters } from './raid-target.js';
 
 // What a hold reads about its area: which area the map rewards the seat for holding, the reachable spot in
 // it, and the strength the seat believes holds it, from its own sight and memory only.
@@ -80,14 +80,12 @@ export function believedAreaDefence(
   const guardians = areaGuardians(world, area);
   let points = 0;
   for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
-    if (guardians.has(other)) {
+    if (other !== seat && guardians.has(other) && diplomacyStance(world, seat, other) === 'enemy')
       points += believedDefendingPoints(world, ctx, seat, other, 0, TOWER_POST_STRENGTH);
-      continue;
-    }
-    for (const f of visibleFighters(world, ctx, seat, other)) {
-      if (hexDistance(f.at, area.point) <= area.range + HOLD_WATCH_MARGIN_POINTS) points += f.points;
-    }
+  }
+  for (const f of visibleEnemyFighters(world, ctx, seat)) {
+    if (guardians.has(f.owner)) continue;
+    if (hexDistance(f.at, area.point) <= area.range + HOLD_WATCH_MARGIN_POINTS) points += f.points;
   }
   return points;
 }
@@ -105,7 +103,8 @@ function areaGuardians(world: World, area: IntentArea): Set<number> {
 
 /**
  * The guardians of the area `seat` wins by holding that never leave it: map-AI seats no computer player
- * runs whose map program names no attack. A human guardian may walk anywhere, so he never stays. Such a seat threatens a band in the area, never the seat's home.
+ * runs whose map program names no attack. A human guardian may walk anywhere, so he never stays. Such a
+ * seat threatens a band in the area, never the seat's home.
  */
 export function stayingGuardians(world: World, ctx: SystemContext, seat: number): ReadonlySet<number> {
   const area = holdAreaOf(ctx, seat);
@@ -125,18 +124,14 @@ const NO_SEATS: ReadonlySet<number> = new Set();
 /** Whether a friend of `seat` holds `area` as far as the seat sees: one of his people inside it and no
  *  enemy fighter. Relations are read live. Costs the friends' people and the enemies' fighters. */
 export function friendHoldsArea(world: World, ctx: SystemContext, seat: number, area: IntentArea): boolean {
-  let friendInside = false;
+  if (visibleEnemyFighters(world, ctx, seat).some((f) => insideArea(area, f.at))) return false;
   for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === seat) continue;
-    const stance = diplomacyStance(world, seat, other);
-    if (stance === 'enemy') {
-      if (visibleFighters(world, ctx, seat, other).some((f) => insideArea(area, f.at))) return false;
-    } else if (stance === 'friend' && !friendInside) {
-      friendInside = ownedSettlers(world, other).some((e) => {
-        const at = nodeOfEntity(world, e);
-        return at !== null && insideArea(area, at) && playerSeesNode(ctx.fog, seat, at.hx, at.hy);
-      });
-    }
+    if (other === seat || diplomacyStance(world, seat, other) !== 'friend') continue;
+    const inside = ownedSettlers(world, other).some((e) => {
+      const at = nodeOfEntity(world, e);
+      return at !== null && insideArea(area, at) && playerSeesNode(ctx.fog, seat, at.hx, at.hy);
+    });
+    if (inside) return true;
   }
-  return friendInside;
+  return false;
 }

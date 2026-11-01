@@ -27,7 +27,11 @@ import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
 import { combatClassOfType } from '../../../readviews/buildings.js';
 import { buildingCombatClass, isFighterJob } from '../../../readviews/index.js';
 import { playerSeesNode } from '../../../vision/gates.js';
-import { believedBuildings, rememberedBuildings } from '../../knowledge/intel/index.js';
+import {
+  type BelievedBuildings,
+  believedBuildings,
+  rememberedBuildings,
+} from '../../knowledge/intel/index.js';
 import { isLiveFighter, unitPoints } from '../points.js';
 
 // Where a raid strikes and how it gets there: what the seat sees or remembers of the enemy's economy,
@@ -69,8 +73,9 @@ interface TowerBelief {
   readonly postedPoints: number;
 }
 
-/** A visible enemy fighter's spot and points. */
+/** A visible enemy fighter's owner, spot and points. */
 interface FighterSighting {
+  readonly owner: number;
   readonly at: HalfCellNode;
   readonly points: number;
 }
@@ -84,20 +89,44 @@ export interface EnemyDefence {
 export interface RaidPick {
   readonly target: OperationTarget;
   readonly score: number;
+  /** The believed towers of every enemy the target was scored against ({@link believedEnemyTowers}). */
+  readonly towers: readonly TowerBelief[];
 }
 
 /** The enemy towers `seat` believes stand, of `owner`, with the posts it last saw on them: a seen one with
  *  hitpoints left, a remembered one out of sight as last seen. Costs the owner's believed buildings. */
 export function believedTowers(world: World, ctx: SystemContext, seat: number, owner: number): TowerBelief[] {
-  const postedByBuilding = new Map<Entity, number>();
-  for (const b of rememberedBuildings(world, seat)) postedByBuilding.set(b.entity, b.postedPoints);
+  return towersOf(world, ctx, believedBuildings(world, ctx, seat, owner), postedPointsOf(world, seat));
+}
+
+/** The towers `seat` believes every enemy of it holds. Costs the enemies' believed buildings. */
+export function believedEnemyTowers(world: World, ctx: SystemContext, seat: number): TowerBelief[] {
+  const posted = postedPointsOf(world, seat);
   const towers: TowerBelief[] = [];
-  const { seen, remembered } = believedBuildings(world, ctx, seat, owner);
+  for (const owner of enemiesOf(world, seat))
+    towers.push(...towersOf(world, ctx, believedBuildings(world, ctx, seat, owner), posted));
+  return towers;
+}
+
+/** The points `seat` last saw posted on each building it remembers. */
+function postedPointsOf(world: World, seat: number): ReadonlyMap<Entity, number> {
+  const posted = new Map<Entity, number>();
+  for (const b of rememberedBuildings(world, seat)) posted.set(b.entity, b.postedPoints);
+  return posted;
+}
+
+function towersOf(
+  world: World,
+  ctx: SystemContext,
+  { seen, remembered }: BelievedBuildings,
+  posted: ReadonlyMap<Entity, number>,
+): TowerBelief[] {
+  const towers: TowerBelief[] = [];
   for (const e of seen) {
     if (buildingCombatClass(ctx, world.get(e, Building).buildingType) !== 'tower') continue;
     if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
     const at = anchorNodeOf(world, e);
-    if (at !== null) towers.push({ at, postedPoints: postedByBuilding.get(e) ?? 0 });
+    if (at !== null) towers.push({ at, postedPoints: posted.get(e) ?? 0 });
   }
   for (const b of remembered) {
     if (buildingCombatClass(ctx, b.buildingType) === 'tower')
@@ -106,14 +135,12 @@ export function believedTowers(world: World, ctx: SystemContext, seat: number, o
   return towers;
 }
 
-/** The towers `seat` believes every enemy of it holds. Costs the enemies' believed buildings. */
-export function believedEnemyTowers(world: World, ctx: SystemContext, seat: number): TowerBelief[] {
-  const towers: TowerBelief[] = [];
-  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
-    if (owner !== seat && diplomacyStance(world, seat, owner) === 'enemy')
-      towers.push(...believedTowers(world, ctx, seat, owner));
-  }
-  return towers;
+/** The players `seat` holds an `enemy` stance toward now, ascending. */
+function enemiesOf(world: World, seat: number): number[] {
+  const enemies: number[] = [];
+  for (let owner = 0; owner < MAX_PLAYERS; owner++)
+    if (owner !== seat && diplomacyStance(world, seat, owner) === 'enemy') enemies.push(owner);
+  return enemies;
 }
 
 /** `owner`'s fighters and militiamen `seat` sees now and their points, leaving out the men posted in a
@@ -125,18 +152,34 @@ export function visibleFighters(
   seat: number,
   owner: number,
 ): FighterSighting[] {
+  return sightingsOf(world, ctx, seat, [owner]);
+}
+
+/** {@link visibleFighters} of every enemy of `seat`, in one pass over the militia. */
+export function visibleEnemyFighters(world: World, ctx: SystemContext, seat: number): FighterSighting[] {
+  return sightingsOf(world, ctx, seat, enemiesOf(world, seat));
+}
+
+function sightingsOf(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  owners: readonly number[],
+): FighterSighting[] {
   const seen: FighterSighting[] = [];
-  for (const e of ownedFightersOf(world, ctx.content, owner)) {
-    if (!isLiveFighter(world, e) || world.has(e, Garrison)) continue;
-    const at = nodeOfEntity(world, e);
-    if (at === null || !playerSeesNode(ctx.fog, seat, at.hx, at.hy)) continue;
-    seen.push({ at, points: unitPoints(world, ctx, e) });
-  }
-  for (const e of world.query(Militia)) {
-    if (world.tryGet(e, Owner)?.player !== owner || !isLiveFighter(world, e)) continue;
+  const sight = (e: Entity, owner: number) => {
     const at = nodeOfEntity(world, e);
     if (at !== null && playerSeesNode(ctx.fog, seat, at.hx, at.hy))
-      seen.push({ at, points: unitPoints(world, ctx, e) });
+      seen.push({ owner, at, points: unitPoints(world, ctx, e) });
+  };
+  for (const owner of owners) {
+    for (const e of ownedFightersOf(world, ctx.content, owner))
+      if (isLiveFighter(world, e) && !world.has(e, Garrison)) sight(e, owner);
+  }
+  if (owners.length === 0) return seen;
+  for (const e of world.query(Militia)) {
+    const owner = world.tryGet(e, Owner)?.player;
+    if (owner !== undefined && owners.includes(owner) && isLiveFighter(world, e)) sight(e, owner);
   }
   return seen;
 }
@@ -179,40 +222,43 @@ export function pickRaidTarget(
 ): RaidPick | null {
   const from = nodeOfId(terrain, home);
   const land = terrain.componentOf(home);
-  let best: RaidPick | null = null;
-  // Every enemy's towers and fighters guard every target: a raid opened under a second enemy's tower
-  // turns back on its first step.
-  const fighters: FighterSighting[] = [];
-  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
-    if (owner !== seat && diplomacyStance(world, seat, owner) === 'enemy')
-      fighters.push(...visibleFighters(world, ctx, seat, owner));
-  }
-  const guard: EnemyDefence = { towers: believedEnemyTowers(world, ctx, seat), fighters };
-  const consider = (entity: Entity, owner: number, at: HalfCellNode, value: number) => {
-    if (terrain.componentOf(terrain.nodeAtClamped(at.hx, at.hy)) !== land) return;
-    const score = value - defenceAt(guard, at) - Math.floor(nodeManhattan(from, at) / RAID_NODES_PER_POINT);
-    if (score <= 0) return;
-    if (best === null || score > best.score || (score === best.score && entity < (best.target.entity ?? 0)))
-      best = { target: { hx: at.hx, hy: at.hy, entity, owner }, score };
-  };
-  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
-    if (owner === seat || diplomacyStance(world, seat, owner) !== 'enemy') continue;
+  const posted = postedPointsOf(world, seat);
+  const towers: TowerBelief[] = [];
+  const candidates: { entity: Entity; owner: number; at: HalfCellNode; value: number }[] = [];
+  for (const owner of enemiesOf(world, seat)) {
+    const believed = believedBuildings(world, ctx, seat, owner);
+    towers.push(...towersOf(world, ctx, believed, posted));
     // Owner ruling: a raid hurts a player's production, never a map-scripted seat's camps.
     if (isScriptedEconomySeat(world, owner)) continue;
-    for (const e of visibleGatherers(world, ctx, seat, owner)) {
-      const at = nodeOfEntity(world, e);
-      if (at !== null) consider(e, owner, at, RAID_GATHERER_VALUE);
+    for (const entity of visibleGatherers(world, ctx, seat, owner)) {
+      const at = nodeOfEntity(world, entity);
+      if (at !== null) candidates.push({ entity, owner, at, value: RAID_GATHERER_VALUE });
     }
-    const { seen, remembered } = believedBuildings(world, ctx, seat, owner);
-    for (const e of seen) {
-      if (!isEconomyBuilding(ctx, world.get(e, Building).buildingType)) continue;
-      const at = anchorNodeOf(world, e);
-      if (at !== null) consider(e, owner, at, RAID_ECONOMY_BUILDING_VALUE);
+    for (const entity of believed.seen) {
+      if (!isEconomyBuilding(ctx, world.get(entity, Building).buildingType)) continue;
+      const at = anchorNodeOf(world, entity);
+      if (at !== null) candidates.push({ entity, owner, at, value: RAID_ECONOMY_BUILDING_VALUE });
     }
-    for (const b of remembered) {
+    for (const b of believed.remembered) {
       if (isEconomyBuilding(ctx, b.buildingType))
-        consider(b.entity, owner, { hx: b.hx, hy: b.hy }, RAID_ECONOMY_BUILDING_VALUE);
+        candidates.push({
+          entity: b.entity,
+          owner,
+          at: { hx: b.hx, hy: b.hy },
+          value: RAID_ECONOMY_BUILDING_VALUE,
+        });
     }
+  }
+  // Every enemy's towers and fighters guard every target: a raid opened under a second enemy's tower
+  // turns back on its first step.
+  const guard: EnemyDefence = { towers, fighters: visibleEnemyFighters(world, ctx, seat) };
+  let best: RaidPick | null = null;
+  for (const { entity, owner, at, value } of candidates) {
+    if (terrain.componentOf(terrain.nodeAtClamped(at.hx, at.hy)) !== land) continue;
+    const score = value - defenceAt(guard, at) - Math.floor(nodeManhattan(from, at) / RAID_NODES_PER_POINT);
+    if (score <= 0) continue;
+    if (best === null || score > best.score || (score === best.score && entity < (best.target.entity ?? 0)))
+      best = { target: { hx: at.hx, hy: at.hy, entity, owner }, score, towers };
   }
   return best;
 }
@@ -228,7 +274,8 @@ export function visibleGatherers(world: World, ctx: SystemContext, seat: number,
   return seen;
 }
 
-/** A live person whose trade takes goods off the map and who is no fighter, nor a civilian armed as militia. */
+/** A live person whose trade takes goods off the map and who is no fighter, nor a civilian armed as
+ *  militia. */
 export function isGatherer(world: World, ctx: SystemContext, e: Entity): boolean {
   if (!world.has(e, Person) || world.has(e, Militia) || (world.tryGet(e, Health)?.hitpoints ?? 0) <= 0)
     return false;
