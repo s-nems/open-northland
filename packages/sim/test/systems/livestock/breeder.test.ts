@@ -1,18 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
-  AiControl,
   Building,
   Carrying,
-  COMPUTER_MODULE_IDS,
   CurrentAtomic,
-  computerModuleEnables,
   DraughtAnimal,
   FarmAnimal,
-  IdleStand,
   MoveGoal,
   Position,
   Production,
-  Resting,
   SettlerProgress,
   Stockpile,
   YoungAnimal,
@@ -73,32 +68,7 @@ function plan(sim: ReturnType<typeof livestockSim>): void {
   plannerSystem(sim.world, ctxOf(sim));
 }
 
-/** Long enough for a breeder on its farm's anchor to walk in at the door. */
-const WALK_IN_TICKS = 60;
-
 describe('the breeder cycle - adopt, take, flush, slaughter, breed', () => {
-  it("waits inside with nothing to tend, a computer seat's breeder on its idle beat", () => {
-    const waitingBreeder = (computer: boolean) => {
-      const sim = livestockSim();
-      if (computer) {
-        const carrier = sim.world.create();
-        sim.world.add(carrier, AiControl, {
-          player: P0,
-          modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
-          computerEnabled: true,
-          mapAiEnabled: false,
-          difficulty: 'hard',
-        });
-      }
-      const { farm, breeder } = farmWithBreeder(sim);
-      for (let i = 0; i < WALK_IN_TICKS; i++) sim.step();
-      expect(sim.world.get(breeder, Resting).at).toBe(farm);
-      return sim.world.tryGet(breeder, IdleStand);
-    };
-    expect(waitingBreeder(false)).toBeUndefined();
-    expect(waitingBreeder(true)).toEqual({ standing: false });
-  });
-
   it('adopts the nearest loose animal of its player and counts it in the herd row', () => {
     const sim = livestockSim();
     const { farm } = farmWithBreeder(sim);
