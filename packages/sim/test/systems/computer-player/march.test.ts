@@ -352,6 +352,54 @@ describe('military module - the wave gathers, then goes in', () => {
   });
 });
 
+describe('military module - a gathering wave given a new target', () => {
+  /** West of the enemy base, far from the first gathering point on the way from the barracks. */
+  const DETOUR = { hx: 20, hy: 80 };
+
+  /** Launch a wave, set its men down at {@link DETOUR} and point it at a stale target with a running wait. */
+  function retargeted(sim: Simulation): { band: Entity[]; before: HalfCellNode } {
+    const band = pack(sim, BAND, SPEARMAN);
+    run(sim);
+    const before = gatherPointOf(sim);
+    for (const e of band) teleport(sim, e, DETOUR);
+    const barracks = barracksOf(sim);
+    const stale = sim.world.mut(barracks, WaveMarch);
+    stale.target = barracks;
+    stale.firstArrival = sim.tick;
+    return { band, before };
+  }
+
+  it('gathers again on the way from where its men stand, with its clocks restarted', () => {
+    const sim = marchSim();
+    const { band, before } = retargeted(sim);
+    const next = run(sim);
+    const after = gatherPointOf(sim);
+    expect(march(sim).target).toBe(foeBuilding(sim, HQ_TYPE));
+    expect(march(sim).since).toBe(sim.tick);
+    expect(march(sim).firstArrival).toBeNull();
+    expect(manhattan(after, DETOUR)).toBeLessThan(manhattan(before, DETOUR));
+    expect(manhattan(after, objectiveOf(sim))).toBeGreaterThan(GATHER_STANDOFF_NODES);
+    const goals = groupWalks(next);
+    expect([...goals.keys()]).toEqual(band);
+    for (const g of goals.values())
+      expect(manhattan(g, after)).toBeLessThanOrEqual(ASSAULT_RING_RADIUS_NODES);
+  });
+
+  it('keeps its catapults and drives them to the new gathering point', () => {
+    const sim = marchSim();
+    const catapults = siegeTrain(sim);
+    retargeted(sim);
+    const next = run(sim);
+    expect(march(sim).catapults).toEqual(catapults);
+    const gather = gatherPointOf(sim);
+    const drove = drives(next);
+    expect(drove.map((c) => c.vehicle)).toEqual(catapults);
+    const door = rallyOf(sim);
+    for (const c of drove)
+      expect(manhattan({ hx: c.x, hy: c.y }, door)).toBeLessThan(manhattan(gather, door));
+  });
+});
+
 describe('military module - the siege march needs four catapults', () => {
   it('leaves fewer than four catapults parked at home', () => {
     const sim = marchSim();

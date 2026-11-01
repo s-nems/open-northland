@@ -54,6 +54,8 @@ export const GATHER_MARCH_TIMEOUT_TICKS = 5 * 60 * TICKS_PER_SECOND;
  *  idle de-stack steps off his spot is not counted out. */
 const GATHERED_SLACK_NODES = 2;
 
+const PERCENT = 100;
+
 /** How near the barracks door a crewed catapult stands to join a launching wave: the park band and one
  *  spacing more. */
 const HOME_CATAPULT_NODES = PARK_RING_MAX_NODES + PARK_SPACING_NODES;
@@ -154,7 +156,10 @@ export function advanceWave(
     endMarch(world, barracks);
     return NO_WAVE;
   }
-  if (held.target !== target) retarget(world, ctx, terrain, barracks, player, target, objective, members);
+  if (held.target !== target) {
+    const lead = catapults[0] ?? null;
+    retarget(world, ctx, terrain, barracks, { player, target, objective, lead }, members);
+  }
   const men = members.filter((e) => inField.has(e));
   const gatherAt = world.get(barracks, WaveMarch).gatherAt;
   if (gatherAt !== null) {
@@ -203,7 +208,7 @@ function gathered(
   if (arrived > 0 && state.firstArrival === null) world.mut(barracks, WaveMarch).firstArrival = ctx.tick;
   const firstArrival = world.get(barracks, WaveMarch).firstArrival;
   return (
-    arrived * 100 >= members.length * GATHER_QUORUM_PERCENT ||
+    arrived * PERCENT >= members.length * GATHER_QUORUM_PERCENT ||
     (firstArrival !== null && ctx.tick - firstArrival >= GATHER_WAIT_TICKS) ||
     ctx.tick - state.since >= GATHER_MARCH_TIMEOUT_TICKS
   );
@@ -237,6 +242,14 @@ function crewed(world: World, vehicle: Entity): boolean {
   );
 }
 
+interface Retarget {
+  readonly player: number;
+  readonly target: Entity;
+  readonly objective: NodeId;
+  /** The catapult whose walk-block the new gathering point fits, or null when no manned one gathers. */
+  readonly lead: Entity | null;
+}
+
 /** Point the wave at `target`: a wave still gathering gathers again on the way there from where it
  *  stands, and its clocks restart; a wave already sent in is sent at the new objective by the next
  *  orders. */
@@ -245,9 +258,7 @@ function retarget(
   ctx: SystemContext,
   terrain: TerrainGraph,
   barracks: Entity,
-  player: number,
-  target: Entity,
-  objective: NodeId,
+  { player, target, objective, lead }: Retarget,
   members: readonly Entity[],
 ): void {
   const state = world.get(barracks, WaveMarch);
@@ -262,7 +273,7 @@ function retarget(
   const towers = enemyTowerNodesNear(world, ctx, terrain, player, objective);
   const live = world.mut(barracks, WaveMarch);
   live.target = target;
-  live.gatherAt = gatheringPoint(world, ctx, terrain, start, objective, towers, live.catapults[0] ?? null);
+  live.gatherAt = gatheringPoint(world, ctx, terrain, start, objective, towers, lead);
   live.since = ctx.tick;
   live.firstArrival = null;
 }
