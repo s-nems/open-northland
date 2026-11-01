@@ -32,6 +32,7 @@ import { resourcesAtNode } from '../spatial/resources.js';
 import { passIndexOf } from './combat-index.js';
 import { targetBodyNodes } from './target-node.js';
 import { isStructureTarget, mayTarget } from './targeting.js';
+import { wallsCoveringNode } from './wall-cover.js';
 import { damageVsTarget, hitSoundVsMaterial, targetMaterial } from './weapons.js';
 
 type Flight = NonNullable<(typeof Projectile)['__value']>;
@@ -47,8 +48,8 @@ const STRUCK_LIST_CAPACITY = 100;
  *
  * Projectiles are visited in canonical ascending-id order and a victim's reaction is deferred past the
  * loop, so a flinch tie-break is order-independent. Cost scales with the count of active projectiles:
- * nothing else scans them, a landing asks the combat index about one node (seven for an area shot) and
- * reads the walls once, and a spent shot is destroyed the instant it lands.
+ * nothing else scans them, a landing asks the combat index and the wall cover about one node (seven for an
+ * area shot), and a spent shot is destroyed the instant it lands.
  */
 export const projectileSystem: System = (world, ctx) => {
   // Deferred reactions from any survivor struck this tick, so a flinch added mid-loop cannot perturb a
@@ -264,7 +265,7 @@ function landingNode(terrain: TerrainGraph, proj: Flight): NodeId {
 
 /**
  * The walls whose bodies cover one of `nodes` and that `proj` may strike, ascending by id. The combat index
- * holds no wall, so the standing walls are read directly; the cost is one landing's, over the map's walls.
+ * holds no wall, so the held wall cover names the candidates.
  */
 function wallsCovering(
   world: World,
@@ -273,11 +274,14 @@ function wallsCovering(
   proj: Flight,
   nodes: readonly NodeId[],
 ): Entity[] {
+  const covering = new Set<Entity>();
+  for (const node of nodes) {
+    for (const wall of wallsCoveringNode(world, ctx, terrain, node)) covering.add(wall);
+  }
   const walls: Entity[] = [];
-  for (const wall of world.query(Palisade, Health, Position)) {
+  for (const wall of covering) {
     if (!strikeable(world, wall) || !strayMayStrike(world, ctx, proj, wall)) continue;
-    if (sparedSide(world, proj, ownerOf(world, wall))) continue;
-    if (nodes.some((node) => stands(world, ctx, terrain, wall, node))) walls.push(wall);
+    if (!sparedSide(world, proj, ownerOf(world, wall))) walls.push(wall);
   }
   return canonicalById(walls);
 }
