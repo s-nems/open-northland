@@ -83,7 +83,8 @@ export function firstRingNode(
  * walked on ties, or null. `penalty` must be a non-negative integer: a node's cost is then never below
  * its ring, so the walk stops at the first ring no longer under the best cost, and `accept` runs only on
  * a node that would beat it. `acceptedPenalty`, of the same kind, adds to the cost of an accepted node
- * only, for a term too dear to read on every node of the fan.
+ * only, for a term too dear to read on every node of the fan. Both must be pure: until a node is
+ * accepted every cost beats the best, so `penalty` is read only on accepted nodes.
  */
 export function bestRingNode(
   cx: number,
@@ -101,8 +102,14 @@ export function bestRingNode(
       // North (y−) first, then south; the equator node once.
       for (let side = dy === 0 ? 1 : 0; side < 2; side++) {
         const y = side === 0 ? cy - dy : cy + dy;
-        let cost = r + penalty(cx + dx, y);
-        if (cost >= bestCost || !accept(cx + dx, y)) continue;
+        let cost: number;
+        if (best === null) {
+          if (!accept(cx + dx, y)) continue;
+          cost = r + penalty(cx + dx, y);
+        } else {
+          cost = r + penalty(cx + dx, y);
+          if (cost >= bestCost || !accept(cx + dx, y)) continue;
+        }
         if (acceptedPenalty !== undefined) {
           cost += acceptedPenalty(cx + dx, y);
           if (cost >= bestCost) continue;
