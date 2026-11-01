@@ -1,6 +1,7 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   COMPUTER_MODULE_IDS,
   type ComputerModuleEnables,
   Owner,
@@ -10,7 +11,7 @@ import {
   Vehicle,
   vehiclePassengers,
 } from '../../../../../src/components/index.js';
-import type { Entity } from '../../../../../src/ecs/world.js';
+import type { DeepReadonly, Entity } from '../../../../../src/ecs/world.js';
 import {
   halfCellMapFromCells,
   nodeOfPosition,
@@ -25,10 +26,12 @@ import { type OperationView, seatOperationsOf } from '../../../../../src/systems
 import {
   LANDING_BIG_SHIPS,
   LANDING_FORM_TIMEOUT_TICKS,
-  LANDING_LOAD_PCT,
   LANDING_SAIL_TIMEOUT_TICKS,
 } from '../../../../../src/systems/computer-player/military/operations/landing.js';
-import { landingFleetShips } from '../../../../../src/systems/computer-player/workforce/craft.js';
+import {
+  LANDING_FLEET_MIN_SHIPS,
+  landingFleetShips,
+} from '../../../../../src/systems/computer-player/workforce/craft.js';
 import { spawnSettler } from '../../../../../src/systems/spawn/index.js';
 import { createVehicle } from '../../../../../src/systems/vehicles/index.js';
 import { crewInside } from '../../../../../src/systems/vehicles/movement.js';
@@ -71,10 +74,13 @@ const LANDING_LIMIT_TICKS = LANDING_FORM_TIMEOUT_TICKS + 2 * LANDING_SAIL_TIMEOU
 /** Twice the decisions a full fleet with its full band takes to open its landing here. */
 const DECISIONS_TO_OPEN = 8;
 
-/** {@link aiContent} with a small ship that admits spearmen. */
-function landingContent(): ContentSet {
+/** {@link aiContent} with a small ship that admits spearmen and, unless `shelterFire`, no house bow, so
+ *  the foe's headquarters shelters its people without the fire a landing weighs. */
+function landingContent(shelterFire: boolean): ContentSet {
+  const base = aiContent();
   return parseContentSet({
-    ...aiContent(),
+    ...base,
+    weapons: shelterFire ? base.weapons : base.weapons.filter((w) => w.id !== 'house_bow'),
     vehicles: [
       {
         typeId: SHIP,
@@ -123,8 +129,16 @@ interface LandingWorld {
 /** The seat on the west island with `ships` ships moored, its whole landing fleet by default, and `men`
  *  men at the barracks door, as many as fill the fleet by default; the foe's headquarters on the east
  *  island. */
-function landingWorld({ ships, men }: { ships?: number; men?: number } = {}): LandingWorld {
-  const sim = new Simulation({ seed: 7, content: landingContent(), map: islands() });
+function landingWorld({
+  ships,
+  men,
+  shelterFire = false,
+}: {
+  ships?: number;
+  men?: number;
+  shelterFire?: boolean;
+} = {}): LandingWorld {
+  const sim = new Simulation({ seed: 7, content: landingContent(shelterFire), map: islands() });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   sim.enqueueSetup({ kind: 'setAiControl', player: SEAT, enabled: true, modules: militaryOnly() });
   const place = (buildingType: number, at: { x: number; y: number }, owner: number) =>
@@ -189,6 +203,11 @@ function menAcross(sim: Simulation): Entity[] {
   });
 }
 
+function foeHeadquarters(sim: Simulation): Entity | null {
+  for (const e of sim.world.query(Building, Owner)) if (sim.world.get(e, Owner).player === FOE) return e;
+  return null;
+}
+
 /** Step the sim at most `ticks`, calling `watch` after every tick, until it answers true. */
 function runUntil(sim: Simulation, ticks: number, watch: () => boolean): void {
   const end = sim.tick + ticks;
@@ -207,13 +226,19 @@ function shipsHomeEmpty(sim: Simulation): boolean {
 }
 
 describe('landing operations', () => {
-  it('lands the wave on the rival island and brings the empty ships home', () => {
+  it('lands the wave on the rival island and takes it home once nothing is left to strike', () => {
     const { sim, fleet } = landingWorld();
-    const homes = new Map(seatShips(sim).map((e) => [e, { ...sim.world.get(e, Vehicle).mooring }]));
+    const terrain = terrainOf(sim);
+    const landOf = (at: DeepReadonly<HalfCellNode> | null) =>
+      at === null ? null : terrain.componentOf(terrain.nodeAt(at.hx, at.hy));
+    const homes = new Map(seatShips(sim).map((e) => [e, landOf(sim.world.get(e, Vehicle).mooring)]));
     let landedMost = 0;
     let seen: OperationView | undefined;
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
       landedMost = Math.max(landedMost, menAcross(sim).length);
+      // The foe's headquarters falls once the men are ashore.
+      const hq = foeHeadquarters(sim);
+      if (landedMost > 0 && hq !== null) sim.world.destroy(hq);
       seen = landings(sim)[0] ?? seen;
       return landedMost > 0 && shipsHomeEmpty(sim);
     });
@@ -221,12 +246,36 @@ describe('landing operations', () => {
     // Every man but the commanders went ashore.
     expect(seen?.landing?.landed).toBe(fleet * SHIP_SEATS);
     expect(landedMost).toBe(fleet * SHIP_SEATS);
+    // The headquarters gone, the men walked back aboard the waiting ships and came home.
+    expect(seen?.reason).toBe('nothingToStrike');
+    expect(menAcross(sim)).toEqual([]);
     for (const [ship, home] of homes) {
       const state = sim.world.get(ship, Vehicle);
       expect(state.moored).toBe(true);
-      expect(state.mooring).toEqual(home);
+      expect(landOf(state.mooring)).toBe(home);
       expect(vehiclePassengers(state)).toEqual([]);
     }
+    for (const e of sim.world.query(Settler, Owner)) expect(sim.world.has(e, Rider)).toBe(false);
+  });
+
+  it('takes the survivors home once half the men set ashore fell', () => {
+    const { sim, fleet } = landingWorld();
+    let seen: OperationView | undefined;
+    let struck = false;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      if (seen?.state === 'done') return shipsHomeEmpty(sim);
+      const across = menAcross(sim);
+      if (struck || seen?.state !== 'acting' || across.length < fleet * SHIP_SEATS) return false;
+      struck = true;
+      for (const e of across.slice(0, Math.ceil(across.length / 2))) sim.world.destroy(e);
+      return false;
+    });
+    expect(struck).toBe(true);
+    expect(seen?.reason).toBe('losses');
+    expect(foeHeadquarters(sim)).not.toBeNull();
+    expect(menAcross(sim)).toEqual([]);
+    expect(shipsHomeEmpty(sim)).toBe(true);
     for (const e of sim.world.query(Settler, Owner)) expect(sim.world.has(e, Rider)).toBe(false);
   });
 
@@ -295,8 +344,9 @@ describe('landing operations', () => {
     expect(vehiclePassengers(state)).toEqual([]);
   });
 
-  it('sails the ships its men fill when they are fewer than the whole fleet', () => {
-    const { sim, fleet } = landingWorld({ men: LANDING_BIG_SHIPS * MEN_PER_SHIP });
+  it('sails every man in as few ships as seat him when they are fewer than the whole fleet', () => {
+    const men = LANDING_BIG_SHIPS * MEN_PER_SHIP - 1;
+    const { sim, fleet } = landingWorld({ men });
     expect(fleet).toBeGreaterThan(LANDING_BIG_SHIPS);
     let seen: OperationView | undefined;
     runUntil(sim, LANDING_LIMIT_TICKS, () => {
@@ -304,7 +354,15 @@ describe('landing operations', () => {
       return (seen?.landing?.landed ?? 0) > 0;
     });
     expect(seen?.landing?.startShips).toBe(LANDING_BIG_SHIPS);
-    expect(seen?.landing?.startMen).toBe(LANDING_BIG_SHIPS * MEN_PER_SHIP);
+    expect(seen?.landing?.startMen).toBe(men);
+  });
+
+  it('holds the landing back while the fire of the shelters it believes the foe holds outweighs it', () => {
+    const { sim } = landingWorld({ men: LANDING_BIG_SHIPS * MEN_PER_SHIP, shelterFire: true });
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(landings(sim)).toEqual([]);
+      return false;
+    });
   });
 
   it('keeps fewer ships than a big landing home', () => {
@@ -315,10 +373,8 @@ describe('landing operations', () => {
     });
   });
 
-  it('never sails a band that leaves a big landing short of its load', () => {
-    const PERCENT = 100;
-    const men = Math.ceil((LANDING_BIG_SHIPS * MEN_PER_SHIP * LANDING_LOAD_PCT) / PERCENT) - 1;
-    const { sim } = landingWorld({ men });
+  it('never sails fewer men than fill its least ships', () => {
+    const { sim } = landingWorld({ men: LANDING_FLEET_MIN_SHIPS * MEN_PER_SHIP - 1 });
     runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
       expect(landings(sim)).toEqual([]);
       return false;

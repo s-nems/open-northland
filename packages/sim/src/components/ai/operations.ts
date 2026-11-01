@@ -83,9 +83,9 @@ export interface HoldOperation extends OperationBase {
   sentMen: number;
 }
 
-/** Where one ship of a landing is on its voyage: sailing out to its shore, sailing back once it set its men
- *  ashore or turned back, or moored at home with its crew freed. */
-export const LANDING_LEGS = ['out', 'back', 'home'] as const;
+/** Where one ship of a landing is on its voyage: sailing out to its shore, lying at its shore with its men
+ *  ashore to take them back, sailing back once it turned home, or moored at home with its crew freed. */
+export const LANDING_LEGS = ['out', 'waiting', 'back', 'home'] as const;
 export type LandingLeg = (typeof LANDING_LEGS)[number];
 
 export interface LandingShip {
