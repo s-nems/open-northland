@@ -144,12 +144,12 @@ export function buildingStaffing(
   }
   if (rawGoodShort(ctx, seat, type, holdsCarrier)) plan = withoutCarriers(plan);
   if (breadSupplyPending(ctx, seat, type))
-    return {
+    plan = {
       ...plan,
       operatorMin: Math.max(plan.operatorMin, 1),
       operatorTarget: Math.max(plan.operatorTarget, 1),
     };
-  if (!opening && productsRest(world, ctx, seat, building, type, held.operators))
+  else if (!opening && productsRest(world, ctx, seat, building, type, held.operators))
     plan = withoutCarriers(capOperators(plan, 0));
   if (held.operators === 0 && hasCraftPost(ctx, type)) plan = withoutHelpers(plan);
   return plan;

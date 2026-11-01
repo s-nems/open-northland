@@ -604,6 +604,15 @@ describe('workforce module - a workshop with nothing left to make', () => {
     });
   });
 
+  it('posts the mason hut no carrier while the bread chain waits on its first mason', () => {
+    const seat = workshopSeat();
+    const content = workshopsContent();
+    const hut = entityOfBuilding(seat.sim, MASON_HUT);
+    const breadPlan = (held: HeldStaff) => planOf(seat, content, hut, held, 0, true);
+    expect(breadPlan(crewOf(0))).toMatchObject({ operatorTarget: 1, carrierMin: 0, carrierTarget: 0 });
+    expect(breadPlan(alone)).toMatchObject({ operatorTarget: 1, carrierTarget: 1 });
+  });
+
   it('keeps a mason hut on its opening run whatever lies in store', () => {
     const seat = upgradedSeat();
     const [mason] = seat.crew(seat.hut, MASON);
@@ -779,6 +788,7 @@ function planOf(
   building: Entity,
   held: HeldStaff,
   tick = 0,
+  breadChainOpen = false,
 ): BuildingStaffing {
   const { world } = seat.sim;
   const ctx = { ...ctxOf(seat.sim, tick), content };
@@ -788,6 +798,7 @@ function planOf(
     owned,
     supply: SeatSupply.of(world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER),
     profile: AI_PROFILES.hard,
+    breadChainOpen,
   };
   const type = contentIndex(content).buildings.get(world.get(building, Building).buildingType);
   const plan = type === undefined ? null : buildingStaffing(world, ctx, staffing, building, type, held);
