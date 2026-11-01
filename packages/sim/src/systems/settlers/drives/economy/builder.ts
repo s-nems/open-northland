@@ -31,6 +31,7 @@ import {
   startAtomic,
 } from '../../atomics/start.js';
 import type { PlannerContext } from '../../planner/context.js';
+import { type IdleStands, standsStillForMachine } from '../../planner/idle-replan.js';
 import type { PlannerSpacing } from '../../planner/spacing.js';
 import {
   type InteractionCellIndex,
@@ -75,6 +76,7 @@ export function planBuilder(
   claims: ConstructionTaskClaims,
   repairs: RepairCrews,
   supply: SiteSupplyReach,
+  idle: IdleStands,
 ): boolean {
   const { world, ctx, terrain, entity: e, here, targets } = plan;
   const settler = plan;
@@ -293,7 +295,8 @@ export function planBuilder(
   // Only a road site with stone on the way is waited at: waiting claims the site, and a claimed site is
   // one a neighbour's finishing stone cannot pave and a supplied builder must pass over. One cut off by its
   // signposts, from its work or its seat, stands lost on the idle tail instead, whose cut-off check tells
-  // the player and lifts the mark once the network reaches them.
+  // the player and lifts the mark once the network reaches them. A machine seat's builder standing ready
+  // waits for its idle beat.
   if (world.tryGet(e, LostWay)?.cutOff !== true) {
     const staging =
       nearestInTurn(
@@ -311,6 +314,7 @@ export function planBuilder(
       stampAssignment(plan, claims, staging, false);
       if (!holdSegment(plan, claims, staging)) return false;
       waitAtSite(plan, spacing, staging);
+      if (standsStillForMachine(world, e)) idle.stand(e, false);
       return true;
     }
   }

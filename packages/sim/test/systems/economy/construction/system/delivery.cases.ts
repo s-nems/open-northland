@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   addCurrentAtomic,
   Building,
   Carrying,
+  COMPUTER_MODULE_IDS,
   CurrentAtomic,
+  computerModuleEnables,
   Fleeing,
+  IdleStand,
   JobAssignment,
   MoveGoal,
   OrderQueue,
@@ -25,6 +29,7 @@ import { type Fixed, fx, nodeOfPosition, ONE, positionOfNode, Simulation } from 
 import { remainingConstructionSteps } from '../../../../../src/systems/economy/construction.js';
 import { plannerSystem } from '../../../../../src/systems/index.js';
 import { pickupFromStore } from '../../../../../src/systems/settlers/atomics/effects/goods/index.js';
+import { COMPUTER_IDLE_REPLAN_PERIOD_TICKS } from '../../../../../src/systems/settlers/planner/idle-replan.js';
 import { PlannerSpacing } from '../../../../../src/systems/settlers/planner/spacing.js';
 import {
   collectSupplyTally,
@@ -54,6 +59,9 @@ import {
   WORKSHOP,
 } from './support.js';
 
+/** Long enough for a builder two tiles off to walk to its site's stand. */
+const WALK_TO_SITE_TICKS = 100;
+
 /** Step until `settler` starts a pickup and return that effect - which store it chose to lift from. */
 function firstPickup(sim: Simulation, settler: Entity): AtomicEffect | null {
   for (let i = 0; i < 400; i++) {
@@ -80,6 +88,36 @@ describe('constructionSystem - material-DELIVERY dispatch (carrier path)', () =>
     }
     expect(stoneAtSite).toBe(1); // the carrier delivered its stone to the construction site
     expect(sim.world.has(carrier, Carrying)).toBe(false); // unloaded
+  });
+
+  it("stands a computer seat's builder ready at a site with no material on its idle beat", () => {
+    const readyBuilder = (computer: boolean): { idle: boolean; replans: number } => {
+      const sim = new Simulation({ seed: 3, content: constructionContent(), map: grassMap(8, 1) });
+      if (computer) {
+        const carrier = sim.world.create();
+        sim.world.add(carrier, AiControl, {
+          player: 0,
+          modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
+          computerEnabled: true,
+          mapAiEnabled: false,
+          difficulty: 'hard',
+        });
+      }
+      const site = siteAt(sim, HOUSE, 4, 0); // empty hold and no store: nothing to fetch or hammer
+      const builder = builderAt(sim, 6, 0);
+      for (const e of [site, builder]) sim.world.add(e, Owner, { player: 0 });
+      for (let i = 0; i < WALK_TO_SITE_TICKS; i++) sim.step();
+      expect(sim.world.has(builder, MoveGoal)).toBe(false);
+      let replans = 0;
+      for (let i = 0; i < COMPUTER_IDLE_REPLAN_PERIOD_TICKS; i++) {
+        sim.step();
+        if (!sim.world.has(builder, IdleStand)) replans++;
+      }
+      expect(sim.world.get(builder, SiteAssignment).site).toBe(site);
+      return { idle: sim.world.has(builder, IdleStand), replans };
+    };
+    expect(readyBuilder(false)).toEqual({ idle: false, replans: COMPUTER_IDLE_REPLAN_PERIOD_TICKS });
+    expect(readyBuilder(true)).toEqual({ idle: true, replans: 0 });
   });
 
   it('end-to-end: carriers haul the full cost while a builder hammers, then the site builds and consumes it', () => {
