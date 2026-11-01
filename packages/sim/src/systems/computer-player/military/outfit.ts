@@ -140,10 +140,19 @@ const BARRACKS_AMULET_GOOD_IDS: readonly string[] = SOLDIER_OUTFIT_GOOD_IDS.filt
   id.startsWith('amulet_'),
 );
 
+/** The low-tier gear the barracks leaves off its priority (owner ruling): the wooden spear, the short bow,
+ *  the short sword (its content id is spelled `sword_shord`) and leather armour. */
+const BARRACKS_UNMARKED_GOOD_IDS: readonly string[] = [
+  'spear_wooden',
+  'bow_short',
+  'sword_shord',
+  'armor_leather',
+];
+
 /**
  * The goods a barracks of `tribe` marks as priority, in the owner's ranking: weapons arming a trade of
- * that tribe, every armour, the healing potions, mead, the amulets. Owner ruling; the store marks a set,
- * so the ranking orders only the commands.
+ * that tribe, every armour, the healing potions, mead, the amulets, less {@link BARRACKS_UNMARKED_GOOD_IDS}.
+ * Owner ruling; the store marks a set, so the ranking orders only the commands.
  */
 function barracksPriorityGoods(ctx: SystemContext, tribe: number): number[] {
   const goods: number[] = [];
@@ -156,7 +165,10 @@ function barracksPriorityGoods(ctx: SystemContext, tribe: number): number[] {
       if (good !== undefined) goods.push(good.typeId);
     }
   }
-  return goods;
+  const unmarked = new Set(
+    BARRACKS_UNMARKED_GOOD_IDS.map((id) => goodTypeByContentId(ctx.content, id)?.typeId),
+  );
+  return goods.filter((good) => !unmarked.has(good));
 }
 
 /**

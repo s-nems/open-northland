@@ -255,7 +255,8 @@ function apply(sim: Simulation, commands: readonly PlayerCommand[]): void {
   sim.step();
 }
 
-const BARRACKS_GEAR = [SPEAR, AI_SWORD, ARMOR_33, POTION_HEAL_BIG, MEAD, AMULET_SPEED];
+/** The wooden spear is low-tier gear the barracks leaves unmarked. */
+const BARRACKS_GEAR = [AI_SWORD, ARMOR_33, POTION_HEAL_BIG, MEAD, AMULET_SPEED];
 
 describe('barracksPriorityOrders - the barracks fetches the army gear', () => {
   it('marks every gear good the barracks shelves once, in the ranking weapons, armour, potions, mead, amulets', () => {
@@ -269,6 +270,7 @@ describe('barracksPriorityOrders - the barracks fetches the army gear', () => {
     expect([...goods].sort((a, b) => a - b)).toEqual([...BARRACKS_GEAR].sort((a, b) => a - b));
     expect(goods.slice(-4)).toEqual([ARMOR_33, POTION_HEAL_BIG, MEAD, AMULET_SPEED]);
     expect(goods).not.toContain(BOW); // the seat's weapon the barracks has no shelf for
+    expect(goods).not.toContain(SPEAR); // low-tier gear stays off the priority
     expect(goods).not.toContain(FOREIGN_AXE);
     expect(goods).not.toContain(FOOD);
 
