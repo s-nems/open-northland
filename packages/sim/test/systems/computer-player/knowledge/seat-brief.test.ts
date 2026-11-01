@@ -37,6 +37,7 @@ function brief(deposits: { iron?: number; gold?: number }): MapBriefState {
       { player: 0, hx: 16, hy: 16, component: WEST_LAND, buildings: [] },
       { player: 1, hx: 240, hy: 16, component: EAST_LAND, buildings: [] },
     ],
+    livestock: [],
     entityCeiling: 0,
   };
 }

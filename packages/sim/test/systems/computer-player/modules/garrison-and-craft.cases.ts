@@ -122,6 +122,7 @@ import {
   IRON,
   JOINER,
   JOINERY_TYPE,
+  keepCattle,
   MILL_TYPE,
   MILLER,
   makeAiSeat,
@@ -140,7 +141,6 @@ import {
   VIKING,
   WOMAN,
   WOOD,
-  keepCattle,
 } from '../support.js';
 
 // The garrison sizing out of the true bachelor surplus, the weapon mix it publishes, and the

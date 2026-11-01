@@ -87,6 +87,7 @@ import {
   husbandryContent,
   JOINER,
   JOINERY_TYPE,
+  keepCattle,
   MILL_TYPE,
   MUD,
   oneLine,
@@ -100,7 +101,6 @@ import {
   spawnMen,
   VIKING,
   WOOD,
-  keepCattle,
 } from '../support.js';
 
 /** The pottery's and mason hut's crews: the first craftsman's carrier, the supply carrier an upgraded
