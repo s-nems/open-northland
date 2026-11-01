@@ -9,6 +9,7 @@ export {
   type SearchStats,
 } from './find-path.js';
 export { nodeMarksOf } from './node-marks.js';
+export { SealedPockets } from './sealed-pockets.js';
 export {
   columnStepMiddles,
   isColumnStep,

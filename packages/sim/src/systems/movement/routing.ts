@@ -29,6 +29,7 @@ import { nearestUnblockedNode } from '../../nav/nearest.js';
 import {
   findPath,
   RACE_SLICE_EXPLORED,
+  SealedPockets,
   type SearchStats,
   straightenColumnSteps,
 } from '../../nav/pathfinding/index.js';
@@ -109,6 +110,10 @@ class PathDrain {
   readonly spent: SearchStats = { explored: 0 };
   /** The goal-side race slice of the request being served. */
   goalSlice = RACE_SLICE_EXPLORED;
+  /** Each player's sealed goals, held across drains: a refusal is proved against the asking overlay. An
+   *  attack-move plans for closed enemy gates, so its walls differ from an ordinary walk's. */
+  private readonly pocketsByPlayer = new Map<number, SealedPockets>();
+  private readonly marchingPocketsByPlayer = new Map<number, SealedPockets>();
 
   constructor(
     private readonly world: World,
@@ -118,8 +123,23 @@ class PathDrain {
 
   begin(ctx: SystemContext, terrain: TerrainGraph): void {
     this.ctx = ctx;
+    if (terrain !== this.terrain) {
+      this.pocketsByPlayer.clear();
+      this.marchingPocketsByPlayer.clear();
+    }
     this.terrain = terrain;
     this.reset();
+  }
+
+  /** The sealed goals `player`'s walkers found, -1 for an unowned walker's. */
+  private pocketsOf(player: number, marching: boolean): SealedPockets {
+    const byPlayer = marching ? this.marchingPocketsByPlayer : this.pocketsByPlayer;
+    let pockets = byPlayer.get(player);
+    if (pockets === undefined) {
+      pockets = new SealedPockets(this.terrain);
+      byPlayer.set(player, pockets);
+    }
+    return pockets;
   }
 
   /** Drops every view and claim the drain built, so the next drain starts as a fresh one would. */
@@ -203,13 +223,15 @@ class PathDrain {
   /**
    * A route for `e` from `start` to `goal` under `overlay`. A group member's is refused at once by a region
    * the group already found sealed, borrowed from a neighbour, or searched, a searched answer kept for the
-   * rest of the group.
+   * rest of the group. A land refusal is proved through the sealed goals of `player`'s march or walk.
    */
   routeUnder(
     overlay: BlockOverlay,
     start: NodeId,
     goal: NodeId,
     group: boolean,
+    player: number,
+    marching: boolean,
     traversal: Traversal,
   ): NodeId[] | null {
     const { mask, spent } = this;
@@ -220,7 +242,15 @@ class PathDrain {
     const groupRoutes = group ? this.groupRoutes : undefined;
     const borrowed = groupRoutes === undefined ? null : groupRoutes.borrow(overlay, start, goal, spent);
     if (borrowed !== null) return borrowed;
-    const path = resolvePath(this.terrain, start, goal, overlay, spent, traversal, this.goalSlice);
+    const path = resolvePath(
+      this.pocketsOf(player, marching),
+      start,
+      goal,
+      overlay,
+      spent,
+      traversal,
+      this.goalSlice,
+    );
     // Only a searched route is offered: offering borrowed ones grows the list each member tries.
     if (path !== null && groupRoutes !== undefined) groupRoutes.offer(overlay, path);
     if (path === null && group && mask !== undefined && !overlay.has(goal)) {
@@ -318,12 +348,12 @@ export function drainPathRequests(
     const group =
       traversal === 'land' && playerOrdered && isValidNodeId(terrain, start) && isValidNodeId(terrain, goal);
     if (group) drain.refreshGroup();
-    let path = drain.routeUnder(blocked, start, goal, group, traversal);
+    let path = drain.routeUnder(blocked, start, goal, group, player ?? -1, marching, traversal);
     // An attack-move goes for what seals its goal off: the bodies it fights shape its route, never refuse it.
     if (path === null && bodies !== null && world.tryGet(e, PlayerOrder)?.attackMove !== undefined) {
       const through = drain.besideTargetsFor(player ?? -1, structures);
       if (through.posts < bodies.posts) {
-        path = drain.routeUnder(through, start, goal, group, traversal);
+        path = drain.routeUnder(through, start, goal, group, player ?? -1, marching, traversal);
       }
     }
     if (path !== null) {
@@ -552,9 +582,10 @@ function pathToWaypoints(terrain: TerrainGraph, path: ReadonlyArray<NodeId>): Wa
   });
 }
 
-/** Run A* for a request; an off-grid `start` or `goal` reads as no route. */
+/** Run A* for a request, a land refusal through the sealed pockets; an off-grid `start` or `goal` reads as
+ *  no route. */
 function resolvePath(
-  terrain: TerrainGraph,
+  pockets: SealedPockets,
   start: number,
   goal: number,
   blocked: BlockOverlay,
@@ -562,6 +593,9 @@ function resolvePath(
   traversal: Traversal,
   goalSlice: number,
 ): NodeId[] | null {
+  const { terrain } = pockets;
   if (!isValidNodeId(terrain, start) || !isValidNodeId(terrain, goal)) return null;
-  return findPath(terrain, start, goal, blocked, stats, traversal, goalSlice);
+  return traversal === 'land'
+    ? pockets.findPath(start, goal, blocked, stats, goalSlice)
+    : findPath(terrain, start, goal, blocked, stats, traversal, goalSlice);
 }
