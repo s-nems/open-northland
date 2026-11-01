@@ -1693,6 +1693,7 @@ export const enGame = {
       decidedAt: 'tick {tick}',
       challenger: 'Challenger',
       challengerValue: '{archetype}, {reviews} in a row',
+      postureChallengerValue: '{posture}, {reviews} in a row',
       band: 'Band',
       home: 'Home',
       near: 'Near',

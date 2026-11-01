@@ -1813,6 +1813,7 @@ export const ruGame = {
       decidedAt: 'тик {tick}',
       challenger: 'Претендент',
       challengerValue: '{archetype}, {reviews} подряд',
+      postureChallengerValue: '{posture}, {reviews} подряд',
       band: 'Пояс',
       home: 'Дом',
       near: 'Округа',

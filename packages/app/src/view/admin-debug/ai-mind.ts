@@ -168,8 +168,8 @@ export function militaryTable(
         : [
             [
               copy.challenger,
-              formatMessage(copy.challengerValue, {
-                archetype: military.challenger.posture,
+              formatMessage(copy.postureChallengerValue, {
+                posture: military.challenger.posture,
                 reviews: military.challenger.reviews,
               }),
             ],

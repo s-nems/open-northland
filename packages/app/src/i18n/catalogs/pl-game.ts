@@ -1670,6 +1670,7 @@ export const plGame = {
       decidedAt: 'tik {tick}',
       challenger: 'Pretendent',
       challengerValue: '{archetype}, {reviews} z rzędu',
+      postureChallengerValue: '{posture}, {reviews} z rzędu',
       band: 'Pas',
       home: 'Dom',
       near: 'Okolica',

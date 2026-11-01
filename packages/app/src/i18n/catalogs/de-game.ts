@@ -1824,6 +1824,7 @@ export const deGame = {
       decidedAt: 'Tick {tick}',
       challenger: 'Herausforderer',
       challengerValue: '{archetype}, {reviews}× in Folge',
+      postureChallengerValue: '{posture}, {reviews}× in Folge',
       band: 'Bereich',
       home: 'Heim',
       near: 'Nähe',

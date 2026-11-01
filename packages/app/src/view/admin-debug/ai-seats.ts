@@ -80,7 +80,8 @@ const listed = (items: readonly string[]): string => (items.length === 0 ? NO_VA
  *  (archetype, sides, evidence) show raw. */
 export function aiSeatRows(seats: readonly AiSeatReading[], msgs: Messages): AdminAiSeat[] {
   const copy = msgs.admin.ai;
-  const goodName = (id: string): string => msgs.goods[id as keyof Messages['goods']] ?? id;
+  const goodNames: Readonly<Record<string, string | undefined>> = msgs.goods;
+  const goodName = (id: string): string => goodNames[id] ?? id;
   return seats.map((seat) => {
     const title = formatMessage(copy.seat, {
       player: seat.player,

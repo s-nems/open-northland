@@ -1650,6 +1650,7 @@ export const chsGame = {
       decidedAt: '第 {tick} 刻',
       challenger: '挑战者',
       challengerValue: '{archetype}，连续 {reviews} 次',
+      postureChallengerValue: '{posture}，连续 {reviews} 次',
       band: '范围',
       home: '本地',
       near: '附近',

@@ -1650,6 +1650,7 @@ export const chtGame = {
       decidedAt: '第 {tick} 刻',
       challenger: '挑戰者',
       challengerValue: '{archetype}，連續 {reviews} 次',
+      postureChallengerValue: '{posture}，連續 {reviews} 次',
       band: '範圍',
       home: '本地',
       near: '附近',
