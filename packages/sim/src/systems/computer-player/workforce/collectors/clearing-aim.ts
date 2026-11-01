@@ -13,6 +13,7 @@ import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../../context.js';
 import { buildingFootprintOf } from '../../../footprint/geometry.js';
 import { placementBlockerGrid } from '../../../footprint/placement/blocker-grid.js';
+import { OBSTACLE, resourceBlockerCells } from '../../../footprint/placement/blockers.js';
 import { forEachResourceNear } from '../../../spatial/resources.js';
 import {
   type BuildLineId,
@@ -25,11 +26,17 @@ import {
 import { CLEARING_GOOD_IDS } from './wanted-goods.js';
 
 /** How far from a tree or rock's anchor its walk body may block ground, in Manhattan half-cell nodes
- *  (authored): a node blocked within this of a clearing resource is taken for that resource's body, one
- *  blocked farther from every one for ground no post can clear. */
+ *  (authored): the resources whose bodies may reach a chosen patch are all aimed at. */
 const CLEARING_BODY_NODES = 2;
 
-const NO_AIM: ReadonlySet<Entity> = new Set();
+export const NO_AIM: ReadonlySet<Entity> = new Set();
+
+/** A node's verdict for a building's zone: open ground, ground blocked only by what a post clears (one
+ *  node of clearing each), or ground the building may never take. */
+const FREE = 0;
+const CLEARABLE = 1;
+const NEVER = 2;
+type Verdict = typeof FREE | typeof CLEARABLE | typeof NEVER;
 
 /**
  * The trees and rocks the seat's generic posts clear first while a placement finds no spot: those standing
@@ -38,9 +45,8 @@ const NO_AIM: ReadonlySet<Entity> = new Set();
  * the seat's highest-priority line, so a seat whose defence comes first clears for its barracks. Ground the
  * building may never take (unbuildable terrain, another building's zone, a road, a blocker no clearing
  * resource stands by) rules a patch out. Empty while nothing stalls, for a step that is no placement, when
- * some patch fits already, or when none would ever fit. On smocza_kraina no barracks or home fitted
- * anywhere by game minute 9 on two seats while patches of 14 to 37 blocked nodes would, and the
- * nearest-first posts never cleared one; with the aim every seat placed its barracks by minute 28-54.
+ * some patch fits already, or when none would ever fit. Authored, from skirmish observation: nearest-first
+ * posts never cleared a patch that would fit, and the aim does.
  * Costs the reach's nodes once and the building's zone per candidate anchor, only while a placement stalls.
  */
 export function clearingAim(
@@ -100,15 +106,14 @@ function zoneSpan(zone: readonly FootprintCell[]): number {
   return span;
 }
 
-/** Node verdicts over a box around the base: ground a building may never take, ground blocked by a
- *  clearing resource or its body, and the clearing resources by anchor node. */
+/** Node verdicts over a box around the base ({@link Verdict}), and the clearing resources by anchor node.
+ *  A blocked node is clearable only while every obstacle on it is a clearing resource's walk body. */
 class ClearingGround {
   private constructor(
     private readonly terrain: TerrainGraph,
     private readonly minX: number,
     private readonly minY: number,
     private readonly side: number,
-    /** 0 free, 1 blocked by something a post clears, 2 never buildable. */
     private readonly verdict: Uint8Array,
     private readonly resources: ReadonlyMap<number, readonly Entity[]>,
   ) {}
@@ -129,7 +134,8 @@ class ClearingGround {
       if (good !== undefined) clearing.add(good.typeId);
     }
     const resources = new Map<number, Entity[]>();
-    const near = new Uint8Array(side * side);
+    // Per node, the obstacle stamps of clearing resources' walk bodies, the grid's own contributions.
+    const clearable = new Uint16Array(side * side);
     forEachResourceNear(world, centre.hx, centre.hy, radius, (e, hx, hy) => {
       const r = world.get(e, Resource);
       if (r.remaining <= 0 || !clearing.has(r.goodType)) return;
@@ -138,14 +144,13 @@ class ClearingGround {
       const at = resources.get(i);
       if (at === undefined) resources.set(i, [e]);
       else at.push(e);
-      for (let dy = -CLEARING_BODY_NODES; dy <= CLEARING_BODY_NODES; dy++) {
-        const span = CLEARING_BODY_NODES - Math.abs(dy);
-        for (let dx = -span; dx <= span; dx++) {
-          const x = hx + dx - minX;
-          const y = hy + dy - minY;
-          if (x >= 0 && x < side && y >= 0 && y < side) near[y * side + x] = 1;
-        }
-      }
+      resourceBlockerCells(world, e, (cx, cy, channel) => {
+        const x = cx - minX;
+        const y = cy - minY;
+        if (channel !== OBSTACLE || x < 0 || x >= side || y < 0 || y >= side) return;
+        const j = y * side + x;
+        clearable[j] = (clearable[j] ?? 0) + 1;
+      });
     });
     const grid = placementBlockerGrid(world, ctx.content, terrain);
     const verdict = new Uint8Array(side * side);
@@ -155,15 +160,16 @@ class ClearingGround {
         const hy = minY + y;
         const i = y * side + x;
         if (!terrain.inBounds(hx, hy)) {
-          verdict[i] = 2;
+          verdict[i] = NEVER;
           continue;
         }
         const node = terrain.nodeAt(hx, hy);
         const slot = hy * terrain.width + hx;
+        const obstacles = grid.obstacle[slot] ?? 0;
         if (!terrain.isBuildable(node) || terrain.isRoad(node) || (grid.buildingZone[slot] ?? 0) > 0) {
-          verdict[i] = 2;
-        } else if (resources.has(i) || (grid.obstacle[slot] ?? 0) > 0) {
-          verdict[i] = near[i] === 1 ? 1 : 2;
+          verdict[i] = NEVER;
+        } else if (resources.has(i) || obstacles > 0) {
+          verdict[i] = obstacles <= (clearable[i] ?? 0) ? CLEARABLE : NEVER;
         }
       }
     }
@@ -175,8 +181,8 @@ class ClearingGround {
     let cost = 0;
     for (const c of zone) {
       const v = this.verdictAt(x + footprintCellDx(y, c), y + c.dy);
-      if (v === 2) return null;
-      cost += v;
+      if (v === NEVER) return null;
+      if (v === CLEARABLE) cost++;
     }
     return cost;
   }
@@ -201,11 +207,12 @@ class ClearingGround {
     return aim;
   }
 
-  private verdictAt(hx: number, hy: number): number {
+  private verdictAt(hx: number, hy: number): Verdict {
     const x = hx - this.minX;
     const y = hy - this.minY;
-    if (x < 0 || x >= this.side || y < 0 || y >= this.side || !this.terrain.inBounds(hx, hy)) return 2;
-    return this.verdict[y * this.side + x] ?? 2;
+    if (x < 0 || x >= this.side || y < 0 || y >= this.side || !this.terrain.inBounds(hx, hy)) return NEVER;
+    const v = this.verdict[y * this.side + x];
+    return v === FREE || v === CLEARABLE ? v : NEVER;
   }
 }
 

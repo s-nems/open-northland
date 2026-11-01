@@ -24,12 +24,18 @@ const HOME_ZONE = [
 const NEAR_STRIP = { x: 12, y: 10 } as const;
 const FAR_STRIP = { x: 42, y: 20 } as const;
 
+/** A `[state, x, y, run]` block-area row covering the anchor node alone. */
+const ANCHOR_WALK_BODY: [number, number, number, number] = [0, 0, 0, 1];
+
 const ORDER: BuildOrder = {
   lines: [{ id: 'homes', steps: [{ kind: 'place', building: 'home_level_00', count: 1 }] }],
   priority: ['homes'],
 };
 
-function stripSim(trees: readonly { x: number; y: number }[]): Simulation {
+function stripSim(
+  trees: readonly { x: number; y: number }[],
+  deposits: readonly { x: number; y: number }[] = [],
+): Simulation {
   const base = aiContent();
   const content = parseContentSet({
     ...base,
@@ -38,6 +44,8 @@ function stripSim(trees: readonly { x: number; y: number }[]): Simulation {
         ? { ...b, footprint: { blocked: HOME_ZONE, reserved: HOME_ZONE, door: { dx: 0, dy: 1 } } }
         : b,
     ),
+    // Every resource's walk body blocks its own node, as a real tree's or rock's does.
+    landscapeGfx: base.landscapeGfx.map((gfx) => ({ ...gfx, walkBlockAreas: [ANCHOR_WALK_BODY] })),
   });
   const typeIds = new Array<number>(WIDTH * HEIGHT).fill(WATER);
   for (const strip of [NEAR_STRIP, FAR_STRIP])
@@ -48,10 +56,10 @@ function stripSim(trees: readonly { x: number; y: number }[]): Simulation {
     map: { resolution: 'half-cell', width: WIDTH, height: HEIGHT, typeIds },
   });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
-  placeResources(
-    sim,
-    trees.map((tree) => ({ ...RESOURCE_SPOTS.wood, ...tree })),
-  );
+  placeResources(sim, [
+    ...trees.map((tree) => ({ ...RESOURCE_SPOTS.wood, ...tree })),
+    ...deposits.map((deposit) => ({ ...RESOURCE_SPOTS.iron, ...deposit })),
+  ]);
   makeAiSeat(sim, SEAT);
   sim.step();
   const carrier = aiControlEntity(sim.world, SEAT);
@@ -74,6 +82,14 @@ describe('clearing aim', () => {
     const tree = resourcesAtNode(sim.world, near.x, near.y);
     expect(tree).toHaveLength(1);
     expect(aimOf(sim)).toEqual(tree);
+  });
+
+  it('rules out a patch an iron deposit blocks, however near a tree it stands', () => {
+    const far = [-2, 0, 2].map((dx) => ({ x: FAR_STRIP.x + dx, y: FAR_STRIP.y }));
+    const sim = stripSim([NEAR_STRIP, ...far], [{ x: NEAR_STRIP.x + 2, y: NEAR_STRIP.y }]);
+    const farTrees = far.flatMap((tree) => resourcesAtNode(sim.world, tree.x, tree.y));
+    expect(farTrees).toHaveLength(far.length);
+    expect(aimOf(sim).sort((a, b) => a - b)).toEqual(farTrees.sort((a, b) => a - b));
   });
 
   it('aims nowhere while some patch fits, or while no placement stalls', () => {
