@@ -27,6 +27,7 @@ import { interactionCell } from '../../../settlers/targets/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { fogHides, playerSeesNode } from '../../../vision/gates.js';
 import type { FogState } from '../../../vision/state.js';
+import { type FireCover, fireCover } from './fire-cover.js';
 
 /** An enemy fighter, at the node he stands on this decision, with the walkable component that node
  *  belongs to - the seat can shelter from a man it cannot reach, but it cannot march out at him - and
@@ -503,18 +504,55 @@ const postRecords = new WeakMap<World, Map<Entity, PostedShooter>>();
 
 /** The {@link EnemyFire} of every shooter in `shooters` and `more`, loose or posted, whatever ground he
  *  stands on: a bow shoots across water. Reach counts map points, as the bow does. Two lists, so the
- *  map's raiders are not copied to join the posts. */
+ *  map's raiders are not copied to join the posts. It keeps each narrowing it hands out, so build it
+ *  within the decision that reads it, like the lists. */
 export function enemyFire(shooters: readonly Shooter[], more: readonly Shooter[] = NO_SHOOTERS): EnemyFire {
   const within = (s: Shooter, x: number, y: number, extra: number): boolean =>
     hexDistanceBetween(s.x, s.y, x, y) <= s.reach + extra;
+  const narrowed = new Map<string, EnemyFire>();
   return {
     reaches: (x, y, span) => anyWithin(shooters, x, y, span) || anyWithin(more, x, y, span),
     around: (x, y, radius, span) => {
+      const key = `${x},${y},${radius},${span}`;
+      const kept = narrowed.get(key);
+      if (kept !== undefined) return kept;
       const near: Shooter[] = [];
       for (const s of shooters) if (within(s, x, y, radius + span)) near.push(s);
       for (const s of more) if (within(s, x, y, radius + span)) near.push(s);
-      return enemyFire(near);
+      const fire = narrowedFire(near, x, y, radius, span);
+      narrowed.set(key, fire);
+      return fire;
     },
+  };
+}
+
+/** {@link enemyFire} over `near`, the shooters an `around(x, y, radius, span)` kept. Once the shooter tests
+ *  its fan has spent past the cells of the fan's box, its `span` tests read a {@link fireCover} instead,
+ *  so a fan facing an army costs its box once rather than every node times every man. */
+function narrowedFire(
+  near: readonly Shooter[],
+  x: number,
+  y: number,
+  radius: number,
+  span: number,
+): EnemyFire {
+  const fire = enemyFire(near);
+  // A ring `radius` map points out holds rows up to `radius` off and, on an odd row, one column past it.
+  const halfWidth = radius + 1;
+  const boxCells = (2 * halfWidth + 1) * (2 * radius + 1);
+  let tested = 0;
+  let cover: FireCover | null = null;
+  return {
+    reaches: (cx, cy, extra) => {
+      if (extra === span) {
+        if (cover === null && tested >= boxCells) cover = fireCover(near, x, y, halfWidth, radius, span);
+        const covered = cover?.covers(cx, cy) ?? null;
+        if (covered !== null) return covered;
+        tested += near.length;
+      }
+      return fire.reaches(cx, cy, extra);
+    },
+    around: fire.around,
   };
 }
 
