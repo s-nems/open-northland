@@ -210,6 +210,58 @@ export class CombatIndex {
   }
 
   /**
+   * {@link nearestFew} over the best of several kinds in one scan: the take of the lowest `rank` any
+   * acceptor holds, exactly what asking `nearestFew` kind by kind returns at the first kind with an
+   * acceptor. `rank(e, bound)` names the first kind below `bound` that `e` is of, or `bound` for none, and
+   * `accept` must be total and pure; both are asked at most once per member.
+   */
+  nearestFewOfBestRank(
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    rank: (e: Entity, bound: number) => number,
+    ranks: number,
+    accept: (e: Entity) => boolean,
+    limit: number,
+    seeker: number | null,
+    tailRings: number,
+    metric: SearchMetric = 'manhattan',
+  ): readonly { entity: Entity; distance: number }[] {
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const { keys, count } = scan;
+    let found: { entity: Entity; distance: number }[] = [];
+    let best = ranks;
+    let lastRing = maxDist;
+    scan.met.begin();
+    this.depth++;
+    try {
+      for (let i = 0; i < count; i++) {
+        const key = keys[i] ?? 0;
+        const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+        // Once the best kind's take is full or past its tail, only a better kind can still change it.
+        const closed = found.length >= limit || distance > lastRing;
+        const bound = closed ? best : best + 1;
+        if (bound === 0) break;
+        const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+        if (!scan.met.firstMark(entity)) continue;
+        const kind = rank(entity, Math.min(bound, ranks));
+        if (kind >= bound || kind >= ranks || !accept(entity)) continue;
+        if (kind < best) {
+          best = kind;
+          found = [];
+          lastRing = maxDist;
+        }
+        found.push({ entity, distance });
+        lastRing = Math.min(lastRing, distance + tailRings);
+      }
+      return found;
+    } finally {
+      this.depth--;
+    }
+  }
+
+  /**
    * Every unit or building owned by `player` within `maxDist` of node (fromX, fromY) by `metric`, each once at
    * its nearest admitted node, in ascending (distance, id) order. Only the owner's own members are measured,
    * so the cost is the owner's members in the box, however crowded the box is with anyone else.

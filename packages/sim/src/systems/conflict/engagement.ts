@@ -904,28 +904,31 @@ function pickByTier(
   y: number,
   tiers: readonly PickTier[] = PICK_TIERS,
 ): { entity: Entity; distance: number } | null {
-  // One filter for every tier, built once per pick: it reads `tier`, which the loop sets before each search.
-  let tier: PickTier | undefined;
-  const accept = (t: Entity): boolean => tier?.(world, ctx, pass.index, t) === true && spec.accept(t);
-  for (const next of tiers) {
-    tier = next;
-    const found = pass.index.nearestFew(
-      x,
-      y,
-      spec.minDist,
-      spec.searchRadius,
-      accept,
-      PICK_CANDIDATES,
-      spec.player,
-      PICK_SPREAD_NODES,
-      SEARCH_METRIC,
-    );
-    if (found.length === 0) continue;
-    if (found.length === 1) return found[0] ?? null;
-    if (asker === null) return found[ctx.rng.int(found.length)] ?? null;
-    return leastCrowded(world, ctx, terrain, pass, asker, found);
-  }
-  return null;
+  const { index } = pass;
+  const rank = (t: Entity, bound: number): number => {
+    for (let kind = 0; kind < bound; kind++) {
+      if (tiers[kind]?.(world, ctx, index, t) === true) return kind;
+    }
+    return bound;
+  };
+  // The first tier holding an acceptor wins, so one scan ranks every candidate by its first tier.
+  const found = index.nearestFewOfBestRank(
+    x,
+    y,
+    spec.minDist,
+    spec.searchRadius,
+    rank,
+    tiers.length,
+    spec.accept,
+    PICK_CANDIDATES,
+    spec.player,
+    PICK_SPREAD_NODES,
+    SEARCH_METRIC,
+  );
+  if (found.length === 0) return null;
+  if (found.length === 1) return found[0] ?? null;
+  if (asker === null) return found[ctx.rng.int(found.length)] ?? null;
+  return leastCrowded(world, ctx, terrain, pass, asker, found);
 }
 
 /** The lowest-scoring of `found` (in ascending distance, then id), drawn at random among equal scores;
