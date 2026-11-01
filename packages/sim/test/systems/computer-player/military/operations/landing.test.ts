@@ -58,6 +58,13 @@ const STRAIT_TO = 42;
 const SEAT_HQ = { x: 16, y: 20 };
 const BARRACKS = { x: 22, y: 50 };
 const FOE_HQ = { x: 120, y: 40 };
+const TOWER_TYPE = 15;
+const FARM_TYPE = 5;
+/** A foe tower whose reach covers his headquarters, and a farm out of reach of both. */
+const FOE_TOWER = { x: 120, y: 54 };
+const FOE_FARM = { x: 104, y: 100 };
+/** The farm's life pool here, so a landing can strike it. */
+const FARM_HITPOINTS = 300;
 /** The strait column beside the west shore where the seat's ships lie moored, a ship every
  *  {@link SHIP_SPACING} rows from {@link FIRST_SHIP_ROW}. */
 const SHIP_COLUMN = 46;
@@ -81,6 +88,7 @@ function landingContent(shelterFire: boolean): ContentSet {
   return parseContentSet({
     ...base,
     weapons: shelterFire ? base.weapons : base.weapons.filter((w) => w.id !== 'house_bow'),
+    buildings: base.buildings.map((b) => (b.typeId === FARM_TYPE ? { ...b, hitpoints: FARM_HITPOINTS } : b)),
     vehicles: [
       {
         typeId: SHIP,
@@ -133,10 +141,13 @@ function landingWorld({
   ships,
   men,
   shelterFire = false,
+  foe = [],
 }: {
   ships?: number;
   men?: number;
   shelterFire?: boolean;
+  /** More foe buildings on the east island. */
+  foe?: readonly { readonly buildingType: number; readonly at: { x: number; y: number } }[];
 } = {}): LandingWorld {
   const sim = new Simulation({ seed: 7, content: landingContent(shelterFire), map: islands() });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
@@ -154,6 +165,7 @@ function landingWorld({
   place(HQ_TYPE, SEAT_HQ, SEAT);
   place(BARRACKS_TYPE, BARRACKS, SEAT);
   place(HQ_TYPE, FOE_HQ, FOE);
+  for (const b of foe) place(b.buildingType, b.at, FOE);
   sim.step();
   const fleet = landingFleetShips(sim.world, SEAT, computerProfileOf(sim.world, SEAT));
   for (let i = 0; i < (ships ?? fleet); i++) {
@@ -363,6 +375,29 @@ describe('landing operations', () => {
       expect(landings(sim)).toEqual([]);
       return false;
     });
+  });
+
+  it('sails no landing while a tower covers the headquarters and nothing else lies clear', () => {
+    const { sim } = landingWorld({ foe: [{ buildingType: TOWER_TYPE, at: FOE_TOWER }] });
+    runUntil(sim, DECISIONS_TO_OPEN * COMPUTER_DECISION_INTERVAL_TICKS, () => {
+      expect(landings(sim)).toEqual([]);
+      return false;
+    });
+  });
+
+  it('lands on a building out of the reach of the tower that covers the headquarters', () => {
+    const { sim } = landingWorld({
+      foe: [
+        { buildingType: TOWER_TYPE, at: FOE_TOWER },
+        { buildingType: FARM_TYPE, at: FOE_FARM },
+      ],
+    });
+    let seen: OperationView | undefined;
+    runUntil(sim, LANDING_LIMIT_TICKS, () => {
+      seen = landings(sim)[0] ?? seen;
+      return (seen?.landing?.landed ?? 0) > 0;
+    });
+    expect(seen?.landing?.landed).toBeGreaterThan(0);
   });
 
   it('keeps fewer ships than a big landing home', () => {

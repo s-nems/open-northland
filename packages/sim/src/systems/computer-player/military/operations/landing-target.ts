@@ -14,7 +14,6 @@ import {
 } from '../../../readviews/index.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { believedBuildings } from '../../knowledge/intel/index.js';
-import type { OwnedHeadquarters } from '../../sea-route.js';
 import { fighterPoints } from '../points.js';
 import type { OperationEnv } from './lifecycle.js';
 import { RAID_TOWER_CLEARANCE_NODES } from './raid-target.js';
@@ -70,38 +69,56 @@ function believedTargets(env: OperationEnv, land: number): BelievedTarget[] {
   return targets.filter((t) => buildingCombatClass(ctx, t.buildingType) !== 'wall');
 }
 
-/** The spots on `land` the seat believes enemy fire covers: its towers and shelters ({@link shoots}). */
-export function believedFireSources(env: OperationEnv, land: number): HalfCellNode[] {
-  return believedTargets(env, land)
-    .filter((t) => shoots(env.ctx, t.buildingType))
-    .map((t) => t.at);
+/** A tower or shelter the seat believes shoots a landing, with the people it shelters on alarm. */
+export interface FireSource {
+  readonly entity: Entity;
+  readonly at: HalfCellNode;
+  readonly room: number;
 }
 
-/** Whether `at` lies within {@link RAID_TOWER_CLEARANCE_NODES} of any of `sources`. */
-export function underFire(sources: readonly HalfCellNode[], at: HalfCellNode): boolean {
-  return sources.some((s) => nodeManhattan(s, at) <= RAID_TOWER_CLEARANCE_NODES);
+function fireSourcesOf(ctx: SystemContext, targets: readonly BelievedTarget[]): FireSource[] {
+  return targets
+    .filter((t) => shoots(ctx, t.buildingType))
+    .map((t) => ({ entity: t.entity, at: t.at, room: shelterCapacityOf(ctx.content, t.buildingType) }));
+}
+
+/** The towers and shelters ({@link shoots}) on `land` the seat believes stand. */
+export function believedFireSources(env: OperationEnv, land: number): FireSource[] {
+  return fireSourcesOf(env.ctx, believedTargets(env, land));
+}
+
+/** The `sources` within {@link RAID_TOWER_CLEARANCE_NODES} of `at`, but the building `except`. */
+function sourcesReaching(sources: readonly FireSource[], at: HalfCellNode, except?: Entity): FireSource[] {
+  return sources.filter((s) => s.entity !== except && nodeManhattan(s.at, at) <= RAID_TOWER_CLEARANCE_NODES);
+}
+
+/** Whether any of `sources` reaches `at` ({@link sourcesReaching}). */
+export function underFire(sources: readonly FireSource[], at: HalfCellNode): boolean {
+  return sourcesReaching(sources, at).length > 0;
 }
 
 /**
- * What landed men standing at `from` on `land` strike next: an enemy headquarters there first, wherever it
- * stands (it falls fast and is the war aim), else the enemy building nearest `from` that lies clear of every
- * believed tower's and shelter's reach ({@link underFire}), the lower id on a tie. Null once none is left:
- * the rest of the land is a siege, not a landing's work.
+ * What landed men standing at `from` on `land` strike next: an enemy headquarters there that no other
+ * tower or shelter covers (it falls fast and is the war aim), else the enemy building nearest `from` that
+ * lies clear of every believed tower's and shelter's reach ({@link underFire}), the lower id on a tie.
+ * Null once none is left: the rest of the land is a siege, not a landing's work. Authored: on
+ * arabskie_wyspy_wolna_gra_mieszana (seeds 7, 11) waves sent on a headquarters beside a large tower lost
+ * 19 to 32 of 24 to 34 dead within 30 nodes of it, mostly to the people sheltering inside, while it fell.
  */
 export function landingObjective(
   env: OperationEnv,
   land: number,
   from: HalfCellNode,
-): { readonly entity: Entity; readonly node: NodeId } | null {
+): { readonly entity: Entity; readonly node: NodeId; readonly at: HalfCellNode } | null {
   const { ctx } = env;
   const targets = believedTargets(env, land);
-  const sources = targets.filter((t) => shoots(ctx, t.buildingType)).map((t) => t.at);
+  const sources = fireSourcesOf(ctx, targets);
   let best: BelievedTarget | null = null;
   let bestRank = 0;
   let bestDistance = 0;
   for (const t of targets) {
     const hq = buildingCombatClass(ctx, t.buildingType) === 'hq';
-    if (!hq && underFire(sources, t.at)) continue;
+    if (sourcesReaching(sources, t.at, hq ? t.entity : undefined).length > 0) continue;
     const rank = hq ? 0 : 1;
     const distance = nodeManhattan(t.at, from);
     if (
@@ -115,30 +132,20 @@ export function landingObjective(
       bestDistance = distance;
     }
   }
-  return best === null ? null : { entity: best.entity, node: best.approach };
+  return best === null ? null : { entity: best.entity, node: best.approach, at: best.at };
 }
 
 /**
- * The fire of `hq`'s owner's shelters the seat believes stand, in fighter points: each building of a type
- * that shelters people on alarm counts its whole room as archers of his house bow ({@link houseBow}), bare
- * men weighed by {@link fighterPoints}. Approximation: the room is taken as full and the archers as men who
- * can be cut down, where a shelter's people are reached only through its walls. Costs the owner's believed
- * buildings.
+ * The fire the seat believes covers `at` on `land`, in fighter points: each believed tower or shelter in
+ * reach counts its whole room as archers of `tribe`'s house bow ({@link houseBow}), bare men weighed by
+ * {@link fighterPoints}. Approximation: the room is taken as full and the archers as men who can be cut
+ * down, where a shelter's people are reached only through its walls.
  */
-export function believedShelterFire(env: OperationEnv, hq: OwnedHeadquarters): number {
-  const { world, ctx, seat } = env;
+export function believedFireAt(env: OperationEnv, land: number, at: HalfCellNode, tribe: number): number {
+  const { ctx } = env;
+  const bow = houseBow(ctx.content, tribe);
+  if (bow === undefined) return 0;
   let room = 0;
-  // A remembered building's tribe is the headquarters' (a seat's nation is no secret).
-  let tribe = world.tryGet(hq.entity, Building)?.tribe ?? null;
-  const { seen, remembered } = believedBuildings(world, ctx, seat, hq.owner);
-  for (const e of seen) {
-    const building = world.get(e, Building);
-    if ((world.tryGet(e, Health)?.hitpoints ?? 0) <= 0) continue;
-    room += shelterCapacityOf(ctx.content, building.buildingType);
-    tribe ??= building.tribe;
-  }
-  for (const b of remembered) room += shelterCapacityOf(ctx.content, b.buildingType);
-  const bow = tribe === null ? undefined : houseBow(ctx.content, tribe);
-  if (room === 0 || bow === undefined) return 0;
+  for (const s of sourcesReaching(believedFireSources(env, land), at)) room += s.room;
   return room * fighterPoints(ctx.content, bow, ARMOR_MATERIAL.NONE, NO_BLOCKING);
 }

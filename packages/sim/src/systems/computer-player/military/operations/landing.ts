@@ -1,5 +1,6 @@
 import {
   AttackOrder,
+  Building,
   diplomacyStance,
   Engagement,
   EquipOrder,
@@ -36,7 +37,7 @@ import { knownDefendingPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
 import { launchRatioReached } from '../plan.js';
 import { unitPoints } from '../points.js';
-import { believedFireSources, believedShelterFire, landingObjective, underFire } from './landing-target.js';
+import { believedFireAt, believedFireSources, landingObjective, underFire } from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleFighters } from './raid-target.js';
 
@@ -440,17 +441,14 @@ function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
 }
 
 /**
- * Whether the landed men are losing: they lost {@link LANDING_RETREAT_LOSS_PCT} of the men set ashore, and
- * one of them stands in the reach of a tower or shelter the seat believes stands ({@link underFire}) or the
- * enemy fighters it sees near them outweigh them. Costs the enemies' believed buildings and fighters, only
- * once the losses are reached.
+ * Whether the landed men are losing: the enemy fighters the seat sees within
+ * {@link RAID_DEFENCE_RADIUS_NODES} of them outweigh them, or they lost {@link LANDING_RETREAT_LOSS_PCT} of
+ * the men set ashore and one of them stands in the reach of a tower or shelter the seat believes stands
+ * ({@link underFire}).
  */
 function losing(env: OperationEnv, op: LandingOperation, landed: readonly Entity[]): boolean {
-  if ((op.landed - landed.length) * PERCENT < op.landed * LANDING_RETREAT_LOSS_PCT) return false;
   const { world, ctx, seat } = env;
   const spots = landed.flatMap((e) => nodeOfEntity(world, e) ?? []);
-  const sources = believedFireSources(env, rivalComponent(env, op));
-  if (spots.some((at) => underFire(sources, at))) return true;
   let own = 0;
   for (const e of landed) own += unitPoints(world, ctx, e);
   let enemy = 0;
@@ -459,7 +457,10 @@ function losing(env: OperationEnv, op: LandingOperation, landed: readonly Entity
     for (const f of visibleFighters(world, ctx, seat, other))
       if (spots.some((at) => nodeManhattan(f.at, at) <= RAID_DEFENCE_RADIUS_NODES)) enemy += f.points;
   }
-  return enemy >= own;
+  if (enemy >= own) return true;
+  if ((op.landed - landed.length) * PERCENT < op.landed * LANDING_RETREAT_LOSS_PCT) return false;
+  const sources = believedFireSources(env, rivalComponent(env, op));
+  return spots.some((at) => underFire(sources, at));
 }
 
 /** Call the landed men back aboard the waiting ships for `reason`: each walks to the waiting ship nearest
@@ -616,9 +617,11 @@ function crewsOf(
  * ({@link seaRouteOf}) and is an enemy, at least {@link landingFewestShips} of its ships lie free and moored,
  * and the free men on its home land fill at least {@link LANDING_FLEET_MIN_SHIPS} of them. Every such man
  * goes, in as few of those ships as seat him, weighing the posture's launch ratio, at least
- * {@link LANDING_EDGE} against an army it knows, of what the seat believes defends the rival and the fire
- * of the shelters it believes he holds ({@link believedShelterFire}). The men fill the ships by
- * {@link crewsOf}; each ship docks at its own shore point ({@link landingShores}).
+ * {@link LANDING_EDGE} against an army it knows, of what the seat believes defends the rival plus the fire
+ * it believes covers the first objective ({@link believedFireAt}); an unknown army counts at parity, and
+ * the fire alone must not outweigh the wave. No landing sails while nothing on the rival's land lies
+ * clear to strike ({@link landingObjective}). The men fill the ships by {@link crewsOf}; each ship docks
+ * at its own shore point ({@link landingShores}).
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<LandingOperation> | null {
   const { world, ctx, terrain, seat, orders } = env;
@@ -656,11 +659,15 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   const known = knownDefendingPoints(world, ctx, seat, owner);
   const edge =
     known === null || ratio.num * LANDING_EDGE.den >= LANDING_EDGE.num * ratio.den ? ratio : LANDING_EDGE;
-  const opposing = known === null ? points : known + believedShelterFire(env, route.headquarters);
-  if (!launchRatioReached(points, opposing, edge)) return null;
   const first = crews[0];
   const shores = first === undefined ? [] : landingShores(env, first.ship, route, crews.length);
-  if (shores.length === 0) return null;
+  const nearest = shores[0];
+  const goal = nearest === undefined ? null : landingObjective(env, route.rival, nearest);
+  if (goal === null) return null;
+  const tribe = world.tryGet(route.headquarters.entity, Building)?.tribe;
+  const fire = tribe === undefined ? 0 : believedFireAt(env, route.rival, goal.at, tribe);
+  const opposing = known === null ? Math.max(points, fire) : known + fire;
+  if (!launchRatioReached(points, opposing, edge)) return null;
   const commands: PlayerCommand[] = [];
   const landingShips: LandingShip[] = [];
   crews.forEach((crew, i) => {
