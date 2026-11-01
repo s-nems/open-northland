@@ -23,17 +23,23 @@ export type PlacementAffinity =
   | { readonly kind: 'front' }
   | { readonly kind: 'shore' };
 
-/** What a step waits for while its line holds on it: a built building of the id (at that tier or
- *  above, a rising site not counting), a placed one (its site counting) unless the seat's
- *  defence comes first, a good the seat has discovered how to make, a step of another line wanting the
- *  good (it heads its line, holds on nothing of its own, its tier is open to the seat and its bill takes
- *  the good), no step of another line ready to place one of `buildings` (it heads its line or is an unmet
- *  lane, its own hold is met, its tier is open to the seat), the seat counting `count` settlers, the clock reaching `leadTicks` before the seat's
- *  military deadline (`../military/deadline.ts`), which its defence coming first lifts at once, the clock
- *  reaching `tick`, every one of `holds`, or any one of them. A hold the seat can never meet, a building
- *  or good missing from the content, a discovery it can never make, or a building (or the good's maker) no
- *  unskipped step of the order raises, lets the step act (`./progress.ts`); within `all` only that hold
- *  drops out. */
+/**
+ * What a step waits for while its line holds on it:
+ * - `built`: a standing building of the id at that tier or above (a rising site does not count);
+ * - `placedUnlessDefending`: a placed one (its site counts), unless the seat's defence comes first;
+ * - `good`: the seat has discovered how to make the good;
+ * - `wanted`: a step heading another line wants the good (it holds on nothing of its own, its tier is open
+ *   to the seat and its bill takes the good);
+ * - `noneDue`: no step heading another line is ready to place one of `buildings` (`./progress.ts`);
+ * - `settlers`: the seat counts `count` settlers;
+ * - `deadline`: the clock reaches `leadTicks` before the seat's military deadline
+ *   (`../military/deadline.ts`), lifted at once while its defence comes first;
+ * - `tick`: the clock reaches `tick`;
+ * - `all` / `any`: every one, or any one, of `holds`.
+ * A hold the seat can never meet (a building or good missing from the content, a discovery it can never
+ * make, a building or the good's maker no unskipped step raises) lets the step act; within `all` only that
+ * hold drops out.
+ */
 export type StepHold =
   | { readonly kind: 'built'; readonly building: string }
   | { readonly kind: 'placedUnlessDefending'; readonly building: string }

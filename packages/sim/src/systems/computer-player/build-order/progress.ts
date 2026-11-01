@@ -1,5 +1,12 @@
 import type { BuildingType } from '@open-northland/data';
-import { Building, playerPlacementTribes, UnderConstruction, Upgrading } from '../../../components/index.js';
+import {
+  aiControlEntity,
+  Building,
+  playerPlacementTribes,
+  StalledPlacements,
+  UnderConstruction,
+  Upgrading,
+} from '../../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../../core/content-index.js';
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -31,6 +38,7 @@ import {
   linesByPriority,
   orderSteps,
   type StepHold,
+  stepKey,
 } from './entries.js';
 import { grassScarce } from './grass-reserve.js';
 import { housingShort } from './housing.js';
@@ -295,8 +303,8 @@ export function entryStatus(
 
 /** Whether an unmet step still holds its line: a placement of one more workshop while the ones standing
  *  lack crews ({@link copyAwaitsCrews}), or a placement, upgrade, collector or tower ring on its
- *  `holdUntil` ({@link StepHold}) while the seat has fewer standing buildings of the id at that tier or
- *  above than it names (no site either for a placed hold, while its defence does not come first), or has
+ *  `holdUntil` ({@link StepHold}) while the seat has no standing building of the id at that tier or above
+ *  (no site either for a placed hold, while its defence does not come first), or has
  *  not discovered the good, while it still could and `order` may still raise that building or one making
  *  the good ({@link orderMayRaise}), while no other line's step wants the good ({@link goodWanted}), while
  *  another line's step is ready to place one of the named buildings ({@link placementDue}), while it
@@ -353,8 +361,10 @@ function holdScope(
 
 /**
  * Whether a placement step of `order` other than `held` is ready to place one of `buildings` (at that
- * tier or above) now: the first unmet step of its line, or an unmet lane, its tier open to the seat, no
- * wait for the crews of its copies and no hold of its own still open. A step's own hold never asks this
+ * tier or above) now: the first unmet step of its line, its tier open to the seat, no wait for the crews
+ * of its copies, no spot search waiting out a failed try (a well with no room) and no hold of its own
+ * still open. Lanes never count: the housing lane stays unmet through every home upgrade and while its
+ * gate is shut, so the opening's home placement stands for the homes. A step's own hold never asks this
  * again, so the check goes one step deep.
  */
 function placementDue(
@@ -376,25 +386,26 @@ function placementDue(
     const type = buildingTypeByContentId(ctx.content, id);
     if (type !== undefined) for (const tier of tiersAtOrAbove(index, type)) families.add(tier);
   }
+  const carrier = aiControlEntity(world, player);
+  const retryTicks = carrier === null ? undefined : world.tryGet(carrier, StalledPlacements)?.retryTicks;
   for (const line of order.lines) {
     const lineStatus = statuses.get(line.id);
-    const head = line.steps.findIndex((entry, at) => !isLaneEntry(entry) && lineStatus?.[at] === 'unmet');
-    for (const [at, entry] of line.steps.entries()) {
-      if (entry === held || lineStatus?.[at] !== 'unmet' || (at !== head && !isLaneEntry(entry))) continue;
-      if (entry.kind !== 'place' && entry.kind !== 'housing') continue;
-      const type = buildingTypeByContentId(ctx.content, entry.building);
-      if (type === undefined || !families.has(type.typeId)) continue;
-      if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) continue;
-      if (entry.kind === 'place' && copyAwaitsCrews(world, ctx, player, owned, entry)) continue;
-      if (entry.kind === 'place' && entry.holdUntil !== undefined) {
-        const own: HoldScope = {
-          ...holdScope(world, ctx, player, owned, order, statuses, entry, memo),
-          due: () => false,
-        };
-        if (holdOpen(world, ctx, player, owned, entry.holdUntil, memo, own)) continue;
-      }
-      return true;
+    const at = line.steps.findIndex((entry, step) => !isLaneEntry(entry) && lineStatus?.[step] === 'unmet');
+    const entry = line.steps[at];
+    if (entry === undefined || entry === held || entry.kind !== 'place') continue;
+    const type = buildingTypeByContentId(ctx.content, entry.building);
+    if (type === undefined || !families.has(type.typeId)) continue;
+    if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) continue;
+    if (ctx.tick < (retryTicks?.get(stepKey(line.id, at)) ?? 0)) continue;
+    if (copyAwaitsCrews(world, ctx, player, owned, entry)) continue;
+    if (entry.holdUntil !== undefined) {
+      const own: HoldScope = {
+        ...holdScope(world, ctx, player, owned, order, statuses, entry, memo),
+        due: () => false,
+      };
+      if (holdOpen(world, ctx, player, owned, entry.holdUntil, memo, own)) continue;
     }
+    return true;
   }
   return false;
 }
