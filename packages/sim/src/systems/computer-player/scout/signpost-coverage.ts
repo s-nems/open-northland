@@ -180,7 +180,7 @@ function corridorGoals(
   return goals;
 }
 
-/** A wanted lattice target and its hex distance to the scout (0 with no scout given). */
+/** A wanted lattice target and its hex distance to the scout. */
 interface LatticeTarget {
   readonly hx: number;
   readonly hy: number;
@@ -241,6 +241,30 @@ export function nextSignpostTarget(
   const landmass = terrain.componentOf(refNode);
   const maxRing = latticeRingBound(anchor, [...buildings, ...corridors.flat()]);
   const lost = scoutLostZones(world, player, ctx.tick);
+  // The probe and the region veto are built on the first target that needs them.
+  let probe: ReturnType<typeof signpostProbe> | null = null;
+  let veto: ReturnType<typeof routeRegions> | null | undefined;
+  const spotFor = (tx: number, ty: number): HalfCellNode | null => {
+    probe ??= signpostProbe(world, ctx.content, terrain, player);
+    const placeable = probe;
+    if (veto === undefined) {
+      const regions = routeRegions(world, ctx, terrain);
+      veto = regions.pocketed(refNode) ? null : regions;
+    }
+    const regionVeto = veto;
+    // Never the doorway itself: a post there stands where the base's settlers enter and leave. The
+    // region veto probes last, so a spot the cheap gates reject never costs a pocket flood.
+    return firstRingNode(
+      tx,
+      ty,
+      SIGNPOST_TARGET_TOLERANCE_NODES,
+      (x, y) =>
+        placeable.canPlace(x, y) &&
+        !(door !== null && x === door.x && y === door.y) &&
+        (landmass === NO_COMPONENT || terrain.componentOf(terrain.nodeAt(x, y)) === landmass) &&
+        (regionVeto === null || !regionVeto.unroutable(refNode, terrain.nodeAt(x, y))),
+    );
+  };
   const linked: LatticeTarget[] = [];
   const unlinked: LatticeTarget[] = [];
   for (let ring = 0; ring <= maxRing; ring++) {
@@ -257,32 +281,21 @@ export function nextSignpostTarget(
         anyWithin(buildings, tx, ty, SIGNPOST_LATTICE_SPACING_NODES) ||
         nearCorridor(tx, ty);
       if (!wanted) continue;
-      const near = from === null ? 0 : hexDistanceBetween(from.hx, from.hy, tx, ty);
-      const target = { hx: tx, hy: ty, near };
-      if (from !== null && (ring === 0 || anyWithin(posts, tx, ty, LATTICE_LINK_NODES))) linked.push(target);
+      // Without a scout the ring order is the whole order: the first buildable target wins.
+      if (from === null) {
+        const spot = spotFor(tx, ty);
+        if (spot !== null) return spot;
+        continue;
+      }
+      const target = { hx: tx, hy: ty, near: hexDistanceBetween(from.hx, from.hy, tx, ty) };
+      if (ring === 0 || anyWithin(posts, tx, ty, LATTICE_LINK_NODES)) linked.push(target);
       else unlinked.push(target);
     }
   }
   // A stable sort keeps the ring order among targets equally near.
   linked.sort((a, b) => a.near - b.near);
-  const targets = [...linked, ...unlinked];
-  if (targets.length === 0) return null;
-  const probe = signpostProbe(world, ctx.content, terrain, player);
-  const regions = routeRegions(world, ctx, terrain);
-  const veto = regions.pocketed(refNode) ? null : regions;
-  for (const { hx: tx, hy: ty } of targets) {
-    // Never the doorway itself: a post there stands where the base's settlers enter and leave. The
-    // region veto probes last, so a spot the cheap gates reject never costs a pocket flood.
-    const spot = firstRingNode(
-      tx,
-      ty,
-      SIGNPOST_TARGET_TOLERANCE_NODES,
-      (x, y) =>
-        probe.canPlace(x, y) &&
-        !(door !== null && x === door.x && y === door.y) &&
-        (landmass === NO_COMPONENT || terrain.componentOf(terrain.nodeAt(x, y)) === landmass) &&
-        (veto === null || !veto.unroutable(refNode, terrain.nodeAt(x, y))),
-    );
+  for (const { hx, hy } of [...linked, ...unlinked]) {
+    const spot = spotFor(hx, hy);
     if (spot !== null) return spot;
   }
   return null;
