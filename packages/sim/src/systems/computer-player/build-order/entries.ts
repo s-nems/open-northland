@@ -536,14 +536,15 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'building', id: 'work_farm_00' }],
           atUnlock: true,
         },
+        // The bakery's bill takes a pillar, so the mason hut goes up with the mill, ahead of the well, and
+        // its mason has the pillar made by the time the bakery's site opens. It unlocks with the mason's
+        // trade, which the bakery's unlock also asks, and is passed over while that is locked.
+        { ...MASON_HUT, atUnlock: true, lockPasses: true },
         // Owner ruling: bread is the food the seat runs short of first, and little food means few children,
         // so one bakery follows the mill at once. Its well goes up first, beside the mill, while the baker
         // is still being earned, so it stands when the bakery does; a mill with a well in reach, or with no
         // room for one, passes it over. The cap counts a far well the seat may already own.
         { ...wellBeside('work_mill_00', OPENING_WELLS_CAP), atUnlock: true },
-        // The bakery's bill takes a pillar, so the mason hut goes up behind the mill too; it unlocks with
-        // the mason's trade, which the bakery's unlock also asks, and is passed over while that is locked.
-        { ...MASON_HUT, atUnlock: true, lockPasses: true },
         {
           kind: 'place',
           building: 'work_bakery_00',

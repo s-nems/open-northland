@@ -8,6 +8,7 @@ import {
 } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
+import { breadChainSupplier } from '../build-order/food-first.js';
 import { seatHasSide, TUNIC_SIDES } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
 import {
@@ -85,6 +86,8 @@ export interface SeatStaffing {
   readonly profile: ComputerProfile;
   /** The men pinned on the work earning a discovery (`technology/apprentices.ts`), never released. */
   readonly apprentices?: ReadonlySet<Entity>;
+  /** Whether the seat's bread chain is open and unfinished (`../build-order/food-first.ts`). */
+  readonly breadChainOpen?: boolean;
 }
 
 /**
@@ -135,9 +138,26 @@ export function buildingStaffing(
     };
   }
   if (rawGoodShort(ctx, seat, type, holdsCarrier)) plan = withoutCarriers(plan);
+  if (breadSupplyPending(ctx, seat, type))
+    return {
+      ...plan,
+      operatorMin: Math.max(plan.operatorMin, 1),
+      operatorTarget: Math.max(plan.operatorTarget, 1),
+    };
   if (!opening && productsRest(world, ctx, seat, building, type, held.operators))
     plan = withoutCarriers(capOperators(plan, 0));
   return plan;
+}
+
+/** Whether `type` is the bread chain's supplier while the seat's chain is unfinished and holds none of
+ *  its products: its craftsman works whatever the products' supply lines say, so the bakery's pillar is
+ *  made before its site waits on it (owner ruling: the bakery is built the moment it unlocks). */
+function breadSupplyPending(ctx: SystemContext, seat: SeatStaffing, type: BuildingType): boolean {
+  return (
+    seat.breadChainOpen === true &&
+    breadChainSupplier(ctx, type) &&
+    productsOf(ctx, type).every((good) => seat.supply.units(good) <= 0)
+  );
 }
 
 function withoutCarriers(plan: BuildingStaffing): BuildingStaffing {

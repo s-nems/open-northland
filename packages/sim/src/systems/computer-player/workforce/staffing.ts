@@ -10,7 +10,7 @@ import type { SystemContext } from '../../context.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { breadChainWorkshop } from '../build-order/food-first.js';
+import { breadChainSupplier, breadChainWorkshop } from '../build-order/food-first.js';
 import { type ComputerProfile, shareOf } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';
@@ -21,7 +21,7 @@ import type { BuildingStaffing } from './staffing-rows.js';
 import { incrementStaffing, type StaffingTally } from './tally.js';
 
 /** Whichever tier a staffing pass fills toward - see {@link staffBuildings}. `food` is the first hand of
- *  each food chain workplace ({@link inFoodChain}) within its minimum tier, carriers left out. */
+ *  each food chain workplace ({@link firstHandFed}) within its minimum tier, carriers left out. */
 export type StaffingTier = 'food' | 'min' | 'target' | 'surplus';
 
 /** The operators the `food` tier posts per food chain workplace (owner ruling: food production outranks
@@ -135,7 +135,7 @@ export function staffBuildings(
   for (const building of ordered) {
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
-    if (type === undefined || (tier === 'food' && !inFoodChain(ctx, type))) continue;
+    if (type === undefined || (tier === 'food' && !firstHandFed(ctx, seat, type))) continue;
     const staffing = buildingStaffing(world, ctx, seat, building, type, heldAt(ctx, tally, building));
     if (staffing === null) continue;
     const operatorWant =
@@ -178,8 +178,9 @@ export function staffBuildings(
         // A promotion seats a building's first man of the trade only, so a second post never strips the
         // predecessor trade a second time. The mill and the bakery take the man who earned their trade
         // ahead of a school lesson (owner ruling: the farmer who earned the mill becomes its miller, and
-        // the miller who earned the bakery its baker).
-        const promotesFirst = i === 0 && breadChainWorkshop(ctx, type);
+        // the miller who earned the bakery its baker), and so does the mason hut while the bread chain
+        // waits on its pillar.
+        const promotesFirst = i === 0 && (breadChainWorkshop(ctx, type) || breadSupplierDue(ctx, seat, type));
         if (spare === null && promotesFirst) spare = gated.promotions.take(slot.jobType);
         if (spare === null) {
           const lesson = gated.schooling.enrol(slot.jobType, building, force);
@@ -198,6 +199,18 @@ export function staffBuildings(
     }
   }
   return commands;
+}
+
+/** Whether the `food` tier posts `type`'s first hand: a food chain workplace ({@link inFoodChain}), or
+ *  {@link breadSupplierDue}. */
+function firstHandFed(ctx: SystemContext, seat: SeatStaffing, type: BuildingType): boolean {
+  return inFoodChain(ctx, type) || breadSupplierDue(ctx, seat, type);
+}
+
+/** Whether `type` is the bread chain's supplier while the seat's chain is unfinished: the mason hut,
+ *  whose pillar the bakery's bill takes. */
+function breadSupplierDue(ctx: SystemContext, seat: SeatStaffing, type: BuildingType): boolean {
+  return seat.breadChainOpen === true && breadChainSupplier(ctx, type);
 }
 
 /** Whether `job` is an operator trade: neither a transport carrier nor a flag gatherer. */

@@ -1,7 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { Settler } from '../../../../src/components/index.js';
+import type { Entity } from '../../../../src/ecs/world.js';
 import { ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
-import { focusCrewOrders } from '../../../../src/systems/computer-player/workforce/focus-crew.js';
+import type { WantedGood } from '../../../../src/systems/computer-player/workforce/collectors/index.js';
+import {
+  focusCrewOrders,
+  focusShortPosts,
+  focusYieldPosts,
+} from '../../../../src/systems/computer-player/workforce/focus-crew.js';
 import {
   aiSim,
   BUILDER,
@@ -12,8 +18,10 @@ import {
   HQ_X,
   HQ_Y,
   MILL_TYPE,
+  MUD,
   placeHq,
   SEAT,
+  STONE,
   spawnMen,
   VIKING,
   WOOD,
@@ -94,5 +102,53 @@ describe('focusCrewOrders', () => {
     expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, empty)).toEqual(
       pins.map((c) => ({ kind: 'unassignBuilder', entity: c.kind === 'assignBuilder' ? c.entity : null })),
     );
+  });
+});
+
+/** One post row of each of `goods`, as the opening wants them. */
+function rows(goods: readonly number[]): WantedGood[] {
+  const content = ctxOf(aiSim()).content;
+  return goods.map((typeId) => {
+    const good = content.goods.find((g) => g.typeId === typeId);
+    if (good === undefined) throw new Error(`fixture lacks good ${typeId}`);
+    return { good, harvestAtomic: 0, job: CIVILIST, target: 1, min: 1, row: 1 };
+  });
+}
+
+const postsOf = (wanted: readonly WantedGood[], good: number) => wanted.find((w) => w.good.typeId === good);
+
+describe('focusShortPosts', () => {
+  it('gives a good the focus site waits on one post over its row, filled ahead of the reserve', () => {
+    const wanted = focusShortPosts(rows([WOOD, STONE]), new Set([STONE]));
+    expect(postsOf(wanted, STONE)).toMatchObject({ target: 2, min: 2, row: 2 });
+    expect(postsOf(wanted, WOOD)).toMatchObject({ target: 1, min: 1, row: 1 });
+  });
+});
+
+describe('focusYieldPosts', () => {
+  const holders = new Map<number, Entity[]>([
+    [WOOD, [1 as Entity]],
+    [STONE, [2 as Entity, 3 as Entity]],
+    [MUD, [4 as Entity]],
+  ]);
+
+  it('cuts the good with the most holders first, then the earlier good', () => {
+    const wanted = focusYieldPosts(rows([WOOD, STONE, MUD]), holders, new Set(), new Set(), 2);
+    expect(postsOf(wanted, STONE)).toMatchObject({ target: 1, min: 1, row: 1 });
+    expect(postsOf(wanted, WOOD)).toMatchObject({ target: 0, min: 0, row: 0 });
+    expect(postsOf(wanted, MUD)).toMatchObject({ target: 1, min: 1, row: 1 });
+  });
+
+  it('keeps the posts of a good the focus waits on and of an apprentice', () => {
+    const wanted = focusYieldPosts(
+      rows([WOOD, STONE, MUD]),
+      holders,
+      new Set([STONE]),
+      new Set([1 as Entity]),
+      1,
+    );
+    expect(postsOf(wanted, STONE)?.target).toBe(1);
+    expect(postsOf(wanted, WOOD)?.target).toBe(1);
+    expect(postsOf(wanted, MUD)?.target).toBe(0);
   });
 });

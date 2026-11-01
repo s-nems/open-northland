@@ -30,7 +30,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { breadFocusSite } from '../build-order/food-first.js';
+import { breadChainUnfinished, breadFocusSite } from '../build-order/food-first.js';
 import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
@@ -59,7 +59,13 @@ import { tuneCraftCounters } from './craft.js';
 import { demobilizeStartSoldiers } from './demobilize.js';
 import { allocateFishers, fishingPlan } from './fisher.js';
 import { flagGround, type TakenFlagNodes, unsealedResourceTest } from './flag-spots.js';
-import { focusCrewOrders } from './focus-crew.js';
+import {
+  FOCUS_BUILDERS,
+  focusCrewOrders,
+  focusShortGoods,
+  focusShortPosts,
+  focusYieldPosts,
+} from './focus-crew.js';
 import { foodHunters } from './food.js';
 import {
   calledGatherers,
@@ -116,6 +122,8 @@ export { LATE_GAME_CIVILIANS, SUPPLY_CARRIER_GOODS_BY_BUILDING_ID } from './staf
 export { STAFFING_BY_BUILDING_ID } from './staffing-rows.js';
 export { SeatSupply, type SupplyLine, type SupplyLines, supplyLines } from './supply.js';
 
+const NO_GOODS: ReadonlySet<number> = new Set();
+
 /** Whether `w`'s good is one the construction sites draw on ({@link COLLECTED_GOOD_IDS}). */
 function buildsSites(w: WantedGood): boolean {
   return COLLECTED_GOOD_IDS.includes(w.good.id);
@@ -159,8 +167,15 @@ function runWorkforce(
   // smocza_kraina, seed 7, seats with five to eight open sites kept four builders while five to seven
   // clearing gatherers piled 150-1060 wood).
   const clearingPosts = Math.max(0, clearing - Math.max(0, builderFloor - builders));
-  const allWanted = wantedCollectorGoods(world, ctx, player, order, statuses, supply);
-  const wanted = shortOfBuilders ? rowPosts(allWanted) : allWanted;
+  // The bread chain's next site takes the reserve's builders ahead of every other site, unless the seat
+  // is under attack; the gatherers of a good it waits on take one more post ahead of the reserve.
+  const focus = underAttack(world, player) ? null : breadFocusSite(world, ctx, owned);
+  const focusShort = focus === null ? NO_GOODS : focusShortGoods(world, ctx, focus, supply);
+  const allWanted = focusShortPosts(
+    wantedCollectorGoods(world, ctx, player, order, statuses, supply),
+    focusShort,
+  );
+  const rowWanted = shortOfBuilders ? rowPosts(allWanted) : allWanted;
   const baseNode = anchorNodeOf(world, base);
   const farGround =
     baseNode === null || shortOfBuilders
@@ -171,13 +186,24 @@ function runWorkforce(
   const coreFloor = coreBuilderFloor(builderFloor);
   const shortHanded = builders < coreFloor;
   const genericTarget = (shortHanded ? 0 : GENERIC_COLLECTOR_TARGET) + clearingPosts + farGround;
-  const classified = classifyWorkforce(
-    world,
-    ctx,
-    player,
-    shortHanded ? wanted.filter(buildsSites) : wanted,
-    genericTarget,
-  );
+  const classify = (posts: readonly WantedGood[]) =>
+    classifyWorkforce(world, ctx, player, shortHanded ? posts.filter(buildsSites) : posts, genericTarget);
+  let wanted = rowWanted;
+  let classified = classify(wanted);
+  // While the focus site rises, gatherers of the goods it does not wait on yield the men its
+  // FOCUS_BUILDERS lack beyond the pool.
+  const focusFloor = focus === null ? 0 : Math.min(FOCUS_BUILDERS, builderLimit);
+  const spareMen = classified.pool.filter((e) => !apprentices.has(e)).length;
+  if (spareMen < focusFloor) {
+    wanted = focusYieldPosts(
+      wanted,
+      classified.collectorsByGood,
+      focusShort,
+      apprentices,
+      focusFloor - spareMen,
+    );
+    classified = classify(wanted);
+  }
   const { collectorsByGood, genericCollectors, fishers, roadsters } = classified;
   const freedScouts = shortHanded ? classified.scouts.filter((e) => scoutFree(world, e)) : [];
   const scouts =
@@ -196,7 +222,14 @@ function runWorkforce(
     promotions: new Promotions(world, ctx, player, apprentices),
     schooling: new Schooling(world, ctx, player, owned),
   };
-  const seat: SeatStaffing = { player, owned, supply, profile, apprentices };
+  const seat: SeatStaffing = {
+    player,
+    owned,
+    supply,
+    profile,
+    apprentices,
+    breadChainOpen: breadChainUnfinished(world, ctx, owned),
+  };
   const ground = collectorGround(world, ctx, player, seat.owned, baseNode);
   const fishing = fishingPlan(world, ctx, player, ground?.flags ?? null, fishers);
   const hunting = huntingPlan(
@@ -239,7 +272,10 @@ function runWorkforce(
           Math.max(SHORTAGE_BUILDER_FLOOR, builderFloor),
           posts,
         );
-  const sitePosts = firstPosts(buildsSites);
+  // The focus site's short goods, then its builders, come ahead of the other posts.
+  const shortPosts = focusShort.size === 0 ? [] : firstPosts((w) => focusShort.has(w.good.typeId));
+  const focusCore = reserveBuilders(world, force, builderJob, focusFloor, ctx);
+  const sitePosts = [...shortPosts, ...firstPosts((w) => buildsSites(w) && !focusShort.has(w.good.typeId))];
   const firstFood = [
     ...staffBuildings(world, ctx, seat, force, tally, 'food', gated),
     ...allocateHunters(world, ctx, player, hunting, force, builderJob, tally, 'first'),
@@ -254,7 +290,7 @@ function runWorkforce(
   // other goods' posts, the standing buildings' first hands and the scout: on a seat of few men the ore
   // posts and the workshops otherwise took every man and left five sites without a builder for half an
   // hour (authored, battle_for_the_four_hills_multiplayer seeds 7 and 11).
-  const core = reserveBuilders(world, force, builderJob, coreFloor, ctx);
+  const core = reserveBuilders(world, force, builderJob, coreFloor - focusCore.reserved.length, ctx);
   const posted = [
     ...sitePosts,
     ...firstFood,
@@ -269,14 +305,12 @@ function runWorkforce(
   // Construction never starves. The road crew is part of the reserve. The army floor may reclaim the
   // reserve past its core (`garrison.ts`), so its fresh men's commands wait.
   const reserveCap = Math.max(0, builderLimit - roadCrew.crew);
-  const rest = reserveBuilders(world, force, builderJob, reserveCap - core.reserved.length, ctx);
+  const claimed = focusCore.reserved.length + core.reserved.length;
+  const rest = reserveBuilders(world, force, builderJob, reserveCap - claimed, ctx);
   const reserve = {
-    commands: [...core.commands, ...rest.commands],
-    reserved: [...core.reserved, ...rest.reserved],
+    commands: [...focusCore.commands, ...core.commands, ...rest.commands],
+    reserved: [...focusCore.reserved, ...core.reserved, ...rest.reserved],
   };
-  // The bread chain's next site takes the reserve's builders ahead of every other site, unless the seat
-  // is under attack.
-  const focus = underAttack(world, player) ? null : breadFocusSite(world, ctx, owned);
   const focusCrew =
     focus === null
       ? []
