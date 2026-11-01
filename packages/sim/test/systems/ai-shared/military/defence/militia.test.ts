@@ -33,8 +33,8 @@ import {
 } from '../../../../../src/systems/ai-shared/military/defence/index.js';
 import { settlementDefenceSystem } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
 import {
-  AI_SEAT_SLOT_STEP_TICKS,
   COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionSlot,
   MILITARY_DECISION_PHASE,
 } from '../../../../../src/systems/computer-player/index.js';
 import { DEMOBILIZE_UNTIL_TICK } from '../../../../../src/systems/computer-player/workforce/demobilize.js';
@@ -74,7 +74,7 @@ const ELSEWHERE = { x: 70, y: 80 };
 /** Enough people that the per-zone cap, not the seat's share of its people, binds. */
 const CROWD = 24;
 /** The seat's first defence decision while the computer player runs it. */
-const DEFENCE_TICK = SEAT * AI_SEAT_SLOT_STEP_TICKS + MILITARY_DECISION_PHASE;
+const DEFENCE_TICK = computerDecisionSlot(SEAT) + MILITARY_DECISION_PHASE;
 /** The first of the seat's decisions after a militia armed at {@link DEFENCE_TICK} may stand down. */
 const STAND_DOWN_TICK = DEFENCE_TICK + decisionsOver(MILITIA_HOLD_TICKS) * COMPUTER_DECISION_INTERVAL_TICKS;
 /** Past the scout's band, inside the leash his chasers hold. */

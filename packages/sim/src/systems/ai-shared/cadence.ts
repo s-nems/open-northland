@@ -9,11 +9,22 @@ import type { World } from '../../ecs/world.js';
 export const COMPUTER_DECISION_INTERVAL_TICKS = 48;
 
 /**
- * How far apart consecutive computer-controlled seats' decision slots lie, in ticks (authored, a
- * performance trade): every player slot gets a slot of its own, and no two seats' dear modules share a
- * tick (pinned by the computer-player tests).
+ * How far apart neighbouring decision slots lie, in ticks (authored, a performance trade): every player
+ * slot gets a slot of its own around the interval ({@link computerDecisionSlot}).
  */
 export const AI_SEAT_SLOT_STEP_TICKS = 3;
+
+/** Seats whose decisions tile the interval first, every second slot apart, so their decisions' module
+ *  phases (`COMPUTER_MODULE_PHASE_TICKS` apart, under two slot steps in all) never share a tick; the
+ *  higher players fill the slots between. */
+const AI_SEATS_PER_TILING = COMPUTER_DECISION_INTERVAL_TICKS / (2 * AI_SEAT_SLOT_STEP_TICKS);
+
+/** The tick within the decision interval on which `player`'s computer decision begins. */
+export function computerDecisionSlot(player: number): number {
+  const between = Math.floor(player / AI_SEATS_PER_TILING) % 2;
+  const slot = (2 * (player % AI_SEATS_PER_TILING) + between) * AI_SEAT_SLOT_STEP_TICKS;
+  return slot % COMPUTER_DECISION_INTERVAL_TICKS;
+}
 
 /** The slot step of a map-AI-only seat's defence decision (authored): a scripted map's defence keeps its
  *  own timing whatever spread the computer seats use. Coprime with the interval, so every seat gets a slot
@@ -22,11 +33,11 @@ export const MAP_AI_SEAT_SLOT_STEP_TICKS = 7;
 
 /** Whether `tick` is one of `player`'s strategic decisions, for a seat a computer controller runs. */
 export function computerDecisionDue(tick: number, player: number): boolean {
-  return slotDue(tick, player, AI_SEAT_SLOT_STEP_TICKS);
+  return tickInInterval(tick) === computerDecisionSlot(player);
 }
 
-function slotDue(tick: number, player: number, step: number): boolean {
-  return tick % COMPUTER_DECISION_INTERVAL_TICKS === (player * step) % COMPUTER_DECISION_INTERVAL_TICKS;
+function tickInInterval(tick: number): number {
+  return tick % COMPUTER_DECISION_INTERVAL_TICKS;
 }
 
 /** The index of the decision interval `tick` falls in: a seat's decisions count up by one, since its
@@ -86,6 +97,9 @@ export const MILITARY_DECISION_PHASE = 5;
 /** Whether `tick` is `player`'s defence decision: on the computer slot while a computer controller runs
  *  the seat (`computerControllerRuns`), on the map-AI slot otherwise. */
 export function militaryDecisionDue(tick: number, player: number, controllerRuns: boolean): boolean {
-  const step = controllerRuns ? AI_SEAT_SLOT_STEP_TICKS : MAP_AI_SEAT_SLOT_STEP_TICKS;
-  return slotDue(tick - MILITARY_DECISION_PHASE, player, step);
+  const decision = tick - MILITARY_DECISION_PHASE;
+  if (controllerRuns) return computerDecisionDue(decision, player);
+  return (
+    tickInInterval(decision) === (player * MAP_AI_SEAT_SLOT_STEP_TICKS) % COMPUTER_DECISION_INTERVAL_TICKS
+  );
 }

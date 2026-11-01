@@ -44,8 +44,8 @@ import {
 } from '../../../src/systems/ai-shared/military/settlement-defence.js';
 import { commandSystem } from '../../../src/systems/command/index.js';
 import {
-  AI_SEAT_SLOT_STEP_TICKS,
   COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionSlot,
   MAP_AI_PEACE_ARCHERS_PER_CLASS,
   MAP_AI_SEAT_SLOT_STEP_TICKS,
   MILITARY_DECISION_PHASE,
@@ -76,7 +76,7 @@ const FRANK = VIKING + 1;
 const SEAT = 2;
 /** The seat's first settlement-defence decision, its slot plus the military phase, while a computer
  *  controller runs it and while the map AI alone does. */
-const CONTROLLED_DEFENCE_TICK = SEAT * AI_SEAT_SLOT_STEP_TICKS + MILITARY_DECISION_PHASE;
+const CONTROLLED_DEFENCE_TICK = computerDecisionSlot(SEAT) + MILITARY_DECISION_PHASE;
 const MAP_AI_DEFENCE_TICK = SEAT * MAP_AI_SEAT_SLOT_STEP_TICKS + MILITARY_DECISION_PHASE;
 const FOE = 3;
 /** A seat a lobby peace binds to {@link SEAT}. */

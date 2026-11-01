@@ -8,8 +8,8 @@ import {
   settlementDefenceSystem,
 } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
 import {
-  AI_SEAT_SLOT_STEP_TICKS,
   COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionSlot,
   MILITARY_DECISION_PHASE,
   threatWatchNodes,
 } from '../../../../../src/systems/computer-player/index.js';
@@ -39,7 +39,7 @@ const INTRUDER_OFFSET = 10;
 /** Further along the row from the scout than a civilian's strike-back leash reaches, inside the zone. */
 const BEYOND_REACH = 2 * STRIKE_BACK_LEASH_NODES + 4;
 /** The seat's first defence decision while the computer player runs it. */
-const DEFENCE_TICK = SEAT * AI_SEAT_SLOT_STEP_TICKS + MILITARY_DECISION_PHASE;
+const DEFENCE_TICK = computerDecisionSlot(SEAT) + MILITARY_DECISION_PHASE;
 
 /** The AI fixture with fists for its civilians, who strike back with them. */
 function content(): ContentSet {

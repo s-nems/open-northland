@@ -12,6 +12,7 @@ import {
   COMPUTER_MODULES,
   type ComputerModule,
   computerDecisionDue,
+  computerDecisionSlot,
   runComputerModules,
   WORKFORCE_EVERY_DECISIONS,
 } from '../../../src/systems/computer-player/index.js';
@@ -356,7 +357,7 @@ describe('computerPlayerSystem - cadence, stagger, and module gates', () => {
     for (let tick = 1; tick <= 2 * COMPUTER_DECISION_INTERVAL_TICKS; tick++) {
       runComputerModules(world, ctxAt(tick, commands), [stub]);
     }
-    const OTHER_SEAT_SLOT = OTHER_SEAT * AI_SEAT_SLOT_STEP_TICKS;
+    const OTHER_SEAT_SLOT = computerDecisionSlot(OTHER_SEAT);
     expect(calls).toEqual([
       { tick: OTHER_SEAT_SLOT, player: OTHER_SEAT },
       { tick: COMPUTER_DECISION_INTERVAL_TICKS, player: 0 },

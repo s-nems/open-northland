@@ -69,7 +69,7 @@ export const COMPUTER_MODULES: readonly ComputerModule[] = [
 /**
  * Ticks between consecutive modules of one seat's decision: module `k` runs `k` phases after the seat's
  * slot, so a decision tick costs its dearest module rather than all of them; the seat slots
- * ({@link AI_SEAT_SLOT_STEP_TICKS}) keep two seats' dear modules off one tick. Each module then reads the
+ * ({@link computerDecisionSlot}) keep two seats' modules off one tick. Each module then reads the
  * world after the commands of the modules before it have applied (commands apply on the next tick's
  * command pass): the road module, after the build order, sees the site that decision placed standing.
  * Authored.

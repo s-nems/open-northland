@@ -28,8 +28,7 @@ import type { FogState } from '../../../vision/state.js';
 import { isLiveFighter, unitPoints } from '../../military/points.js';
 
 /** Ticks after a seat's decision slot its intel is updated (authored): off the seat's own workforce and
- *  build order phases, one phase before its military decision reads it. With the seats
- *  `AI_SEAT_SLOT_STEP_TICKS` apart it shares a tick with the next seat's build order. */
+ *  build order phases, one phase before its military decision reads it. */
 export const INTEL_DECISION_PHASE = 4;
 
 /**

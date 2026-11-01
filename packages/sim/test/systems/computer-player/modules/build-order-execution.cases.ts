@@ -15,7 +15,10 @@ import {
 } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
 import { Simulation } from '../../../../src/index.js';
-import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
+import {
+  COMPUTER_DECISION_INTERVAL_TICKS,
+  computerDecisionSlot,
+} from '../../../../src/systems/ai-shared/cadence.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
 import {
   LATE_GAME_FROM_TICKS,
@@ -25,6 +28,7 @@ import {
   type BuildOrder,
   type BuildOrderEntry,
   buildOrderModule,
+  COMPUTER_MODULES,
   DEFAULT_BUILD_ORDER,
   MEN_PER_OPEN_SITE,
   REBUILD_DELAY_TICKS,
@@ -948,6 +952,12 @@ describe('build order - the bakery wells', () => {
     // A seat with an AI carrier keeps a frontier: the passed-over well must not move it, or the well, unmet
     // below it next decision, would read as a razed building and hold the list for the rebuild delay.
     const sim = wellUnderFireSeat();
+    // The seat's own decisions stay clear of the steps below, so only the module under test places.
+    while (
+      sim.tick % COMPUTER_DECISION_INTERVAL_TICKS !==
+      computerDecisionSlot(SEAT) + COMPUTER_MODULES.length
+    )
+      sim.step();
     makeAiSeat(sim, SEAT);
     const homesToo = buildOrderModule(
       oneLine([...order, { kind: 'place', building: 'home_level_00', count: 3, belowTier: 'home_level_01' }]),
