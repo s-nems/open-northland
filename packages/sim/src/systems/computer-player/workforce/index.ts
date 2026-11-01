@@ -30,7 +30,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { breadChainUnfinished, breadFocusSite } from '../build-order/food-first.js';
+import { breadChainUnfinished, breadFocusSite, fishFeedsWomen } from '../build-order/food-first.js';
 import { openingHomesStand } from '../build-order/housing.js';
 import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
@@ -319,11 +319,20 @@ function runWorkforce(
     commands: [...focusCore.commands, ...core.commands, ...rest.commands],
     reserved: [...focusCore.reserved, ...core.reserved, ...rest.reserved],
   };
+  // While the seat's catch feeds its women, the focus site pins only its floor and the other builders
+  // keep the homes and the pottery.
   const focusCrew =
     focus === null
       ? []
-      : focusCrewOrders(world, ctx, player, focus, reserve.reserved, builderJob, (good) =>
-          supply.units(good),
+      : focusCrewOrders(
+          world,
+          ctx,
+          player,
+          focus,
+          reserve.reserved,
+          builderJob,
+          (good) => supply.units(good),
+          fishFeedsWomen(world, ctx, player) ? focusFloor : null,
         );
   // The standing buildings' target crews and the gatherers the reached entries count come before the army
   // floor (authored): both are bounded by what stands, so a seat staffs every building it raised and

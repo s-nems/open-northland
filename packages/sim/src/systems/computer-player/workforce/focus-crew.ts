@@ -24,6 +24,8 @@ import type { SeatSupply } from './supply.js';
  * lifted instead, so the builders raise the workshop that makes it (authored: on
  * battle_for_the_four_hills_multiplayer, seed 7, every bakery stood at five of six units for an hour,
  * its pillar waiting on a mason hut whose builders were all pinned to the bakery).
+ *
+ * A `cap` bounds the crew below the bill, so the seat's other builders stay on its other sites.
  */
 export function focusCrewOrders(
   world: World,
@@ -33,6 +35,7 @@ export function focusCrewOrders(
   builders: readonly Entity[],
   builderJob: number | null,
   stocked: (good: number) => number,
+  cap: number | null = null,
 ): PlayerCommand[] {
   if (builderJob === null) return [];
   const onSite: Entity[] = [];
@@ -62,7 +65,8 @@ export function focusCrewOrders(
     free.push({ e, distance: Math.abs(here.hx - at.hx) + Math.abs(here.hy - at.hy) });
   }
   free.sort((a, b) => a.distance - b.distance || a.e - b.e);
-  const crew = Math.min(constructionTotalUnits(world, ctx, site), pinned + free.length);
+  const bill = constructionTotalUnits(world, ctx, site);
+  const crew = Math.min(cap === null ? bill : Math.min(bill, cap), pinned + free.length);
   return free
     .slice(0, Math.max(0, crew - pinned))
     .map(({ e }): PlayerCommand => ({ kind: 'assignBuilder', entity: e, site }));

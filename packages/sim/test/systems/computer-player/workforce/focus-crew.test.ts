@@ -67,6 +67,12 @@ describe('focusCrewOrders', () => {
     expect(pinned).not.toContain(civilian);
   });
 
+  it('pins no more builders than a cap below the bill', () => {
+    const { sim, men, mill } = millSeat();
+    const cap = MILL_BILL_UNITS - 1;
+    expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked, cap)).toHaveLength(cap);
+  });
+
   it('sends nobody more once the crew is pinned', () => {
     const { sim, men, mill } = millSeat();
     for (const c of focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked))
