@@ -95,8 +95,6 @@ export function strongestBelievedEnemy(
   return { men: waveBandAt(ctx.tick - seatPeaceEndTick(world, seat)).min, points: null };
 }
 
-export { COUNTED_ONCE } from './points.js';
-
 const NO_ARMY: BelievedArmy = { men: 0, points: 0 };
 const NOBODY: ReadonlySet<number> = new Set();
 

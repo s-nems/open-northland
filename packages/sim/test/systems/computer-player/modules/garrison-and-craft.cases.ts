@@ -55,11 +55,10 @@ import {
 } from '../../../../src/systems/computer-player/index.js';
 import {
   believedDefendingPoints,
-  COUNTED_ONCE,
   strongestBelievedEnemy,
 } from '../../../../src/systems/computer-player/military/enemy-strength.js';
 import { armourFetchOrders } from '../../../../src/systems/computer-player/military/outfit.js';
-import { unitPoints } from '../../../../src/systems/computer-player/military/points.js';
+import { COUNTED_ONCE, unitPoints } from '../../../../src/systems/computer-player/military/points.js';
 import { PLAN_TUNING } from '../../../../src/systems/computer-player/strategy/military.js';
 import {
   COIN_POTIONS_PER_DRUID,
