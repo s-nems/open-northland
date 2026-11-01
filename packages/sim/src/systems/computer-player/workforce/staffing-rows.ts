@@ -213,21 +213,39 @@ export function rowPlan(ctx: SystemContext, type: BuildingType): RowPlan {
 }
 
 function deriveRowPlan(type: BuildingType, lateGame: boolean): RowPlan {
-  const {
-    productGated: _,
-    aloneUntil: __,
-    porterUntil: ___,
-    tunicSeat: ____,
-    herdIndustry: _____,
-    late,
-    ...row
-  } = STAFFING_BY_BUILDING_ID[type.id] ?? {};
+  const row = STAFFING_BY_BUILDING_ID[type.id];
   const { gateFloor, ...tiers } = {
     gateFloor: DEFAULT_GATE_FLOOR,
-    ...row,
-    ...(late !== undefined && lateGame ? late : {}),
+    ...tiersOf(row),
+    ...(row?.late !== undefined && lateGame ? tiersOf(row.late) : {}),
   };
   return { plan: { ...DEFAULT_WORKPLACE_STAFFING, ...tiers }, gateFloor };
+}
+
+/** Every field of {@link StaffingTiers}: typed so a new tier field must be listed here and a row's rule
+ *  fields never reach a plan. */
+const TIER_FIELDS: Readonly<Record<keyof StaffingTiers, true>> = {
+  operatorMin: true,
+  operatorTarget: true,
+  operatorSurplus: true,
+  carrierMin: true,
+  carrierTarget: true,
+  carrierSurplus: true,
+  gathererTarget: true,
+  gathererSurplus: true,
+  gateFloor: true,
+};
+const TIER_KEYS = Object.keys(TIER_FIELDS) as readonly (keyof StaffingTiers)[];
+
+/** The tier fields `source` sets, rule fields left out. */
+function tiersOf(source: StaffingTiers | undefined): StaffingTiers {
+  const tiers: { -readonly [K in keyof StaffingTiers]: StaffingTiers[K] } = {};
+  if (source === undefined) return tiers;
+  for (const key of TIER_KEYS) {
+    const value = source[key];
+    if (value !== undefined) tiers[key] = value;
+  }
+  return tiers;
 }
 
 /** {@link rowPlan} per content building type, before and from the late game: the rows are authored
