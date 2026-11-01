@@ -46,7 +46,10 @@ export function passIndexOf(world: World, tick: number): CombatIndex | null {
   return index !== undefined && index.tick === tick ? index : null;
 }
 
-/** Each world's firing set, refreshed in place by every index built for it. */
+/** The firing set of an index built for presence queries alone. */
+const NO_FIRING: ReadonlySet<Entity> = new Set();
+
+/** Each world's firing set, refreshed in place by every pass index built for it. */
 const heldFiring = new WeakMap<World, HeldFiringBuildings>();
 
 function heldFiringOf(world: World): HeldFiringBuildings {
@@ -106,14 +109,14 @@ export class CombatIndex {
   private depth = 0;
 
   /** Every building holding a Health pool joins at every wall node, and every vehicle at every node of its
-   *  disc, so a search finds a body at the distance to its nearest face. */
-  constructor(world: World, ctx: SystemContext, terrain: TerrainGraph) {
+   *  disc, so a search finds a body at the distance to its nearest face. A `presence` index answers the
+   *  target queries alone and holds no {@link firing} set, so no shot, flee or strike rank may read it. */
+  constructor(world: World, ctx: SystemContext, terrain: TerrainGraph, use: 'pass' | 'presence' = 'pass') {
     this.tick = ctx.tick;
     this.hostileMasks = combatHostileMasks(world);
     this.grid = combatGridOf(world, ctx, terrain);
     this.grid.startBuild(world, ctx);
-    const firing = heldFiringOf(world).refresh(world, ctx);
-    this.firing = firing;
+    this.firing = use === 'pass' ? heldFiringOf(world).refresh(world, ctx) : NO_FIRING;
     // A vehicle moves, so it joins per build rather than in a held layer.
     for (const v of world.query(Vehicle, Health, Position)) {
       const owner = world.tryGet(v, Owner);

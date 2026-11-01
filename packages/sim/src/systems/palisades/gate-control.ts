@@ -83,7 +83,7 @@ export const gateControlSystem: System = (world, ctx) => {
     if (control.mode === 'automatic') {
       open = true;
       if (owner !== undefined) {
-        threats ??= new CombatIndex(world, ctx, ctx.terrain);
+        threats ??= new CombatIndex(world, ctx, ctx.terrain, 'presence');
         const { hx, hy } = nodeOfPosition(world.get(e, Position).x, world.get(e, Position).y);
         open =
           threats.nearest(
