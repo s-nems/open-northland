@@ -4,6 +4,7 @@ export {
   type OpenOptions,
   openArchive,
   openC2m,
+  openNsis,
   openRar,
   openZip,
 } from './archives/open.js';
