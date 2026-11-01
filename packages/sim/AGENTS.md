@@ -145,7 +145,7 @@ not depend on guessing its origin from command kind.
 A computer seat reads other players' in-game state only through its own sight and its saved memory
 (`computer-player/knowledge/`); the static map, the seats' starts and the map scripts are known to it.
 A new computer-player read of another seat's entities goes through those seams, never a raw world
-query. The scripted map AI keeps its own reads. Layers and rules: `docs/design/computer-player.md`.
+query. The scripted map AI keeps its own reads.
 
 Map AI, computer player, and common unit rules must remain distinct in names, state, tests and debug
 output. `systems/map-escalation` spawns, equips and

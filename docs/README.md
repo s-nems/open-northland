@@ -27,7 +27,6 @@ Other references:
 - [`GRAPHICS.md`](GRAPHICS.md): first-launch hardware defaults, effect costs and calibration limits
 - [`LEGAL.md`](LEGAL.md): game-data, licensing, trademark rules, and acceptable evidence
 - [`GLOSSARY.md`](GLOSSARY.md): project and format terms
-- [`design/computer-player.md`](design/computer-player.md): how the computer player knows, plans and acts
 - [`formats/`](formats/): notes about decoded file formats
 
 ## Work tracker

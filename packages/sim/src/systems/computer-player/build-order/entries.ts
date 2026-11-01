@@ -23,21 +23,23 @@ export type PlacementAffinity =
   | { readonly kind: 'front' }
   | { readonly kind: 'shore' };
 
-/** What a step waits for while its line holds on it: `count` (default 1) built buildings of the id (at
- *  that tier or above, a rising site not counting), a placed one (its site counting) unless the seat's
+/** What a step waits for while its line holds on it: a built building of the id (at that tier or
+ *  above, a rising site not counting), a placed one (its site counting) unless the seat's
  *  defence comes first, a good the seat has discovered how to make, a step of another line wanting the
  *  good (it heads its line, holds on nothing of its own, its tier is open to the seat and its bill takes
- *  the good), the seat counting `count` settlers, the clock reaching `leadTicks` before the seat's
+ *  the good), no step of another line ready to place one of `buildings` (it heads its line or is an unmet
+ *  lane, its own hold is met, its tier is open to the seat), the seat counting `count` settlers, the clock reaching `leadTicks` before the seat's
  *  military deadline (`../military/deadline.ts`), which its defence coming first lifts at once, the clock
  *  reaching `tick`, every one of `holds`, or any one of them. A hold the seat can never meet, a building
  *  or good missing from the content, a discovery it can never make, or a building (or the good's maker) no
  *  unskipped step of the order raises, lets the step act (`./progress.ts`); within `all` only that hold
  *  drops out. */
 export type StepHold =
-  | { readonly kind: 'built'; readonly building: string; readonly count?: number }
+  | { readonly kind: 'built'; readonly building: string }
   | { readonly kind: 'placedUnlessDefending'; readonly building: string }
   | { readonly kind: 'good'; readonly good: string }
   | { readonly kind: 'wanted'; readonly good: string }
+  | { readonly kind: 'noneDue'; readonly buildings: readonly string[] }
   | { readonly kind: 'settlers'; readonly count: number }
   | { readonly kind: 'deadline'; readonly leadTicks: number }
   | { readonly kind: 'tick'; readonly tick: number }
@@ -283,35 +285,29 @@ const OPENING_HOMES = 3;
 /**
  * When the pottery and the mason hut go up a tier (owner ruling: the mill, the bakery, the homes, the
  * joinery, the animal farm, the well and the tailor come before them, since the tiles and marble only
- * those tiers make go into later buildings and an early upgrade wastes the builders' work). The opening's
- * homes, the mill, the well and the bakery always stand first; the joinery, the animal farm and the tailor
- * too, unless a step of another line already wants tiles or marble, as the upper bakery once the baker
- * has learned its candy. A building the seat can never raise, the animal farm and the tailor of a seat
- * keeping no livestock, drops out of the wait. The pottery's tier unlocks only with the tile discovery,
- * the mason hut's with the marble one.
+ * those tiers make go into later buildings and an early upgrade takes the builders from the core). The
+ * upgrade gives way only while one of those is ready to be placed and has no site yet, so it follows
+ * right behind them rather than waiting for a building that takes tiles; a step of another line already
+ * wanting tiles or marble, as the upper bakery once the baker has learned its candy, lets it go at once.
+ * The pottery's tier unlocks only with the tile discovery, the mason hut's with the marble one.
  */
 const MATERIAL_TIERS_DUE: StepHold = {
-  kind: 'all',
+  kind: 'any',
   holds: [
-    { kind: 'built', building: 'home_level_00', count: OPENING_HOMES },
-    { kind: 'built', building: 'work_mill_00' },
-    { kind: 'built', building: 'work_well_00' },
-    { kind: 'built', building: 'work_bakery_00' },
     {
-      kind: 'any',
-      holds: [
-        {
-          kind: 'all',
-          holds: [
-            { kind: 'built', building: 'work_joinery_00' },
-            { kind: 'built', building: 'work_animal_farm' },
-            { kind: 'built', building: 'work_sewery_00' },
-          ],
-        },
-        { kind: 'wanted', good: 'tile' },
-        { kind: 'wanted', good: 'ornament' },
+      kind: 'noneDue',
+      buildings: [
+        'home_level_00',
+        'work_mill_00',
+        'work_well_00',
+        'work_bakery_00',
+        'work_joinery_00',
+        'work_animal_farm',
+        'work_sewery_00',
       ],
     },
+    { kind: 'wanted', good: 'tile' },
+    { kind: 'wanted', good: 'ornament' },
   ],
 };
 

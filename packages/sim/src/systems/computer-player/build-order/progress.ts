@@ -7,6 +7,7 @@ import {
   buildingTypeByContentId,
   countedTiers,
   goodTypeByContentId,
+  tiersAtOrAbove,
 } from '../../ai-shared/content-lookup.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
@@ -298,7 +299,8 @@ export function entryStatus(
  *  above than it names (no site either for a placed hold, while its defence does not come first), or has
  *  not discovered the good, while it still could and `order` may still raise that building or one making
  *  the good ({@link orderMayRaise}), while no other line's step wants the good ({@link goodWanted}), while
- *  it counts fewer settlers than the hold names, while its military deadline lies further off than the
+ *  another line's step is ready to place one of the named buildings ({@link placementDue}), while it
+ *  counts fewer settlers than the hold names, while its military deadline lies further off than the
  *  lead and its defence does not come first, while any of an `all` hold's parts holds, or while every one
  *  of an `any` hold's parts holds. `owned` is the seat's {@link ownedBuildings} list and `statuses` this
  *  decision's {@link lineStatuses} of `order`. */
@@ -321,18 +323,89 @@ export function stepHeld(
     entry.holdUntil === undefined
   )
     return false;
-  const scope: HoldScope = {
-    mayRaise: (typeId) => orderMayRaise(world, ctx, owned, order, statuses, entry, typeId),
-    wanted: (goodType) => goodWanted(world, ctx, player, order, statuses, entry, goodType),
+  return holdOpen(
+    world,
+    ctx,
+    player,
+    owned,
+    entry.holdUntil,
+    memo,
+    holdScope(world, ctx, player, owned, order, statuses, entry, memo),
+  );
+}
+
+function holdScope(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  order: BuildOrder,
+  statuses: LineStatuses,
+  held: BuildOrderEntry,
+  memo: DecisionMemo,
+): HoldScope {
+  return {
+    mayRaise: (typeId) => orderMayRaise(world, ctx, owned, order, statuses, held, typeId),
+    wanted: (goodType) => goodWanted(world, ctx, player, order, statuses, held, goodType),
+    due: (buildings) => placementDue(world, ctx, player, owned, order, statuses, held, buildings, memo),
   };
-  return holdOpen(world, ctx, player, owned, entry.holdUntil, memo, scope);
+}
+
+/**
+ * Whether a placement step of `order` other than `held` is ready to place one of `buildings` (at that
+ * tier or above) now: the first unmet step of its line, or an unmet lane, its tier open to the seat, no
+ * wait for the crews of its copies and no hold of its own still open. A step's own hold never asks this
+ * again, so the check goes one step deep.
+ */
+function placementDue(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  owned: readonly Entity[],
+  order: BuildOrder,
+  statuses: LineStatuses,
+  held: BuildOrderEntry,
+  buildings: readonly string[],
+  memo: DecisionMemo,
+): boolean {
+  const tribe = playerPlacementTribes(world, player)?.[0];
+  if (tribe === undefined) return false;
+  const index = contentIndex(ctx.content);
+  const families = new Set<number>();
+  for (const id of buildings) {
+    const type = buildingTypeByContentId(ctx.content, id);
+    if (type !== undefined) for (const tier of tiersAtOrAbove(index, type)) families.add(tier);
+  }
+  for (const line of order.lines) {
+    const lineStatus = statuses.get(line.id);
+    const head = line.steps.findIndex((entry, at) => !isLaneEntry(entry) && lineStatus?.[at] === 'unmet');
+    for (const [at, entry] of line.steps.entries()) {
+      if (entry === held || lineStatus?.[at] !== 'unmet' || (at !== head && !isLaneEntry(entry))) continue;
+      if (entry.kind !== 'place' && entry.kind !== 'housing') continue;
+      const type = buildingTypeByContentId(ctx.content, entry.building);
+      if (type === undefined || !families.has(type.typeId)) continue;
+      if (!buildingEnabled(world, ctx, player, tribe, type.typeId)) continue;
+      if (entry.kind === 'place' && copyAwaitsCrews(world, ctx, player, owned, entry)) continue;
+      if (entry.kind === 'place' && entry.holdUntil !== undefined) {
+        const own: HoldScope = {
+          ...holdScope(world, ctx, player, owned, order, statuses, entry, memo),
+          due: () => false,
+        };
+        if (holdOpen(world, ctx, player, owned, entry.holdUntil, memo, own)) continue;
+      }
+      return true;
+    }
+  }
+  return false;
 }
 
 /** What a hold asks of the order beyond the seat: whether it may yet raise a building of the type
- *  ({@link orderMayRaise}), and whether another step wants the good ({@link goodWanted}). */
+ *  ({@link orderMayRaise}), whether another step wants the good ({@link goodWanted}), and whether another
+ *  step is ready to place one of the buildings ({@link placementDue}). */
 interface HoldScope {
   readonly mayRaise: (typeId: number) => boolean;
   readonly wanted: (goodType: number) => boolean;
+  readonly due: (buildings: readonly string[]) => boolean;
 }
 
 /**
@@ -409,12 +482,9 @@ function holdOpen(
       const type = buildingTypeByContentId(ctx.content, hold.building);
       if (type === undefined) return false;
       const counted = countedTiers(ctx.content, type, undefined);
-      const wanted = hold.count ?? 1;
-      let standing = 0;
       for (const e of owned) {
         if (!counted.has(world.get(e, Building).buildingType)) continue;
-        if ((!world.has(e, UnderConstruction) || world.has(e, Upgrading)) && ++standing >= wanted)
-          return false;
+        if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
       }
       return reach?.house(type.typeId) !== false && mayRaise(type.typeId);
     }
@@ -440,6 +510,8 @@ function holdOpen(
       const good = goodTypeByContentId(ctx.content, hold.good);
       return good !== undefined && !scope.wanted(good.typeId);
     }
+    case 'noneDue':
+      return scope.due(hold.buildings);
     case 'settlers':
       return ownedSettlers(world, player).length < hold.count;
     case 'deadline':
