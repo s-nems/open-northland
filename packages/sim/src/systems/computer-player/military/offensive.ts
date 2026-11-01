@@ -17,6 +17,7 @@ import { advanceWave, endMarch, launchWave, SIEGE_MARCH_MIN_CATAPULTS } from './
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, rallyAt, waveWorthy } from './muster.js';
 import { abandonWave, decideWave } from './plan.js';
 import { crewedCatapults } from './siege-crew.js';
+import { templeStationOf } from './temple-station.js';
 import { towerStandOf } from './tower-stand.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
@@ -85,7 +86,18 @@ export function runOffensive(
   if (!atHome && (marchOn.active || wave.length === 0)) return marchOn.commands;
   // A wave spent this decision hands its men back to the muster.
   const muster = marchOn.active ? army : [...army, ...wave].sort((a, b) => a - b);
-  const rally = rallyAt(world, ctx, terrain, home, [...muster, ...awaitingWeapon]);
+  // The armed men wait, and a wave forms, inside a temple's aura; the men awaiting a weapon stay by the
+  // barracks that arms them.
+  const blessed = templeStationOf(world, ctx, terrain, player, home);
+  const station = blessed === home ? null : blessed;
+  const rally = rallyAt(
+    world,
+    ctx,
+    terrain,
+    station ?? home,
+    station === null ? [...muster, ...awaitingWeapon] : muster,
+  );
+  const doorRally = station === null ? rally : rallyAt(world, ctx, terrain, home, awaitingWeapon);
   // Sorted over the men this decision may actually order, so a wave is never measured at a strength the
   // march cannot fill. A man in transit sits out one decision and is read again once he arrives.
   const free = muster.filter((e) => !spokenFor(world, e));
@@ -136,20 +148,24 @@ export function runOffensive(
 
   const waiting: Entity[] = charges ? [] : [...formed];
   if (!pressOn) waiting.push(...forward);
-  waiting.push(...homing, ...awaitingWeapon);
+  waiting.push(...homing);
+  if (station === null) waiting.push(...awaitingWeapon);
   return [
     ...marchOn.commands,
     ...launch,
     ...marchOrders(world, terrain, pressOn ? forward : [], objective),
     ...gatherAt(world, terrain, waiting, rally),
+    ...(station === null ? [] : gatherAt(world, terrain, awaitingWeapon, doorRally)),
   ];
 }
 
 /**
  * Where the armed men at home gather apart from the barracks door `home`, or null for the door: a seat
- * awaiting a scripted attack under its tower line ({@link towerStandOf}); else an outmatched seat at its
- * base, under its towers, rather than at a barracks out on the front, where they would meet a wave before
- * the towers could shoot it (owner ruling: survive at any cost).
+ * awaiting a scripted attack under its tower line ({@link towerStandOf}, which moves into a temple's aura
+ * the towers still reach); else an outmatched seat at its base, under its towers, rather than at a
+ * barracks out on the front, where they would meet a wave before the towers could shoot it (owner ruling:
+ * survive at any cost); else inside a temple's aura ({@link templeStationOf}), the base's or the door's
+ * nearest spot of it.
  */
 function armedStandOf(
   world: World,
@@ -161,7 +177,9 @@ function armedStandOf(
   const stand = towerStandOf(world, ctx, terrain, player, home);
   if (stand !== null) return stand;
   const base = seatOutmatched(world, player) ? seatBaseOf(world, ctx, player) : null;
-  return base === null ? null : interactionCell(world, ctx, terrain, base);
+  const at = base === null ? home : interactionCell(world, ctx, terrain, base);
+  const blessed = templeStationOf(world, ctx, terrain, player, at) ?? at;
+  return blessed === home ? null : blessed;
 }
 
 interface Launch {

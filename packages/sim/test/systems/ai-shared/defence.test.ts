@@ -35,6 +35,7 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../../src/index.js';
+import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { mapDefenceLeashSystem } from '../../../src/systems/ai-shared/military/map-defence-leash.js';
 import {
@@ -62,6 +63,7 @@ import {
 } from '../../../src/systems/computer-player/military/tower-stand.js';
 import { standsAtPost } from '../../../src/systems/conflict/tower-post.js';
 import type { SystemContext } from '../../../src/systems/index.js';
+import { TEMPLE_AURA_RANGE } from '../../../src/systems/lifecycle/temple-aura.js';
 import { setAiControl } from '../../../src/systems/orders/ai.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
@@ -745,6 +747,33 @@ describe('ai defence - the tower stand', () => {
     expect(at.x).toBeGreaterThan(STAND_BASE.x);
     expect(towerAt.x - at.x).toBeLessThanOrEqual(STAND_BEHIND_TOWERS_NODES + 1);
     expect(Math.abs(at.y - towerAt.y)).toBeLessThanOrEqual(1);
+  });
+
+  it('moves the stand into a temple aura the front tower still reaches, and keeps it under the towers else', () => {
+    const { sim, tower } = mannedTowerSim();
+    const terrain = terrainOf(sim);
+    const ctx = ctxOf(sim);
+    const towerAt = nodeOf(sim, tower);
+    const base = { hx: STAND_BASE.x, hy: STAND_BASE.y };
+    const door = terrain.nodeAt(STAND_BASE.x, STAND_BASE.y);
+    const standWith = (temples: readonly { hx: number; hy: number }[]) => {
+      const stand = towerStandToward(sim.world, ctx, terrain, owned(sim), base, ATTACK_ORIGIN, door, temples);
+      if (stand === null) throw new Error('expected a stand behind the tower');
+      return terrain.coordsOf(stand);
+    };
+    const plain = standWith([]);
+
+    // A temple behind the base: the stand steps back to its aura, still under the tower.
+    const behind = { hx: STAND_BASE.x - 10, hy: STAND_BASE.y };
+    const blessed = standWith([behind]);
+    expect(blessed.x).toBeLessThan(plain.x);
+    expect(hexDistanceBetween(behind.hx, behind.hy, blessed.x, blessed.y)).toBeLessThanOrEqual(
+      TEMPLE_AURA_RANGE,
+    );
+    expect(hexDistanceBetween(towerAt.x, towerAt.y, blessed.x, blessed.y)).toBeLessThanOrEqual(watchOf(sim));
+
+    // A temple in a far corner: its aura lies out of the tower's reach, so the stand stays.
+    expect(standWith([{ hx: 0, hy: 95 }])).toEqual(plain);
   });
 
   it('has no stand without a manned tower', () => {

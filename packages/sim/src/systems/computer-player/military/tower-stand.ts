@@ -1,5 +1,6 @@
 import { Building } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { type HalfCellNode, hexDistance, hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
 import { mannedTowers, threatWatchNodes } from '../../ai-shared/military/defence/index.js';
@@ -11,6 +12,7 @@ import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { seatBaseOf } from '../base.js';
 import type { IntentPoint } from '../knowledge/map-intent/index.js';
 import { forecastAttackOrigin } from './deadline.js';
+import { seatTempleAnchors, templeStationToward } from './temple-station.js';
 
 /** How far behind its tower line, toward its base, a seat awaiting a scripted attack stands its army, in
  *  hex nodes (owner ruling: the army stands under the towers on the attack side, between them and the
@@ -37,15 +39,19 @@ export function towerStandOf(
   const base = seatBaseOf(world, ctx, player);
   const baseAt = base === null ? null : anchorNodeOf(world, base);
   if (origin === null || baseAt === null) return null;
-  return towerStandToward(world, ctx, terrain, ownedBuildings(world, player), baseAt, origin, door);
+  const temples = seatTempleAnchors(world, ctx, player);
+  return towerStandToward(world, ctx, terrain, ownedBuildings(world, player), baseAt, origin, door, temples);
 }
 
 /**
  * The stand under the towers of `owned` facing `origin`: the manned tower nearest `origin` and those
  * within its reach ({@link threatWatchNodes}) make the line; the stand lies
  * {@link STAND_BEHIND_TOWERS_NODES} from the line's centre toward `base`, never past it, on the first open
- * node of `door`'s side walking back toward the line that the front tower still reaches. Approximation:
- * a straight step over the half-cell lattice.
+ * node of `door`'s side walking back toward the line that the front tower still reaches. With `temples`,
+ * the stand moves to the nearest spot inside a temple's aura ({@link templeStationToward}) when the front
+ * tower still reaches that spot; a temple out of the towers' reach leaves the stand under them, since a
+ * wave met away from the towers fights them without their fire. Approximation: a straight step over the
+ * half-cell lattice.
  */
 export function towerStandToward(
   world: World,
@@ -55,6 +61,7 @@ export function towerStandToward(
   base: HalfCellNode,
   origin: IntentPoint,
   door: NodeId,
+  temples: readonly HalfCellNode[] = [],
 ): NodeId | null {
   const towers = mannedTowers(world, ctx, owned);
   let front: { e: Entity; at: HalfCellNode; distance: number } | null = null;
@@ -82,7 +89,23 @@ export function towerStandToward(
     const y = span === 0 ? centre.hy : centre.hy + Math.round(((base.hy - centre.hy) * behind) / span);
     if (hexDistanceBetween(x, y, frontAt.hx, frontAt.hy) > reach) continue;
     const node = terrain.nodeAtClamped(x, y);
-    if (terrain.isWalkable(node) && !blocked.has(node) && terrain.componentOf(node) === side) return node;
+    if (terrain.isWalkable(node) && !blocked.has(node) && terrain.componentOf(node) === side)
+      return blessedStand(terrain, blocked, temples, node, frontAt, reach);
   }
   return null;
+}
+
+/** The aura spot nearest `stand` when the front tower at `frontAt` still reaches it, else `stand`. */
+function blessedStand(
+  terrain: TerrainGraph,
+  blocked: BlockOverlay,
+  temples: readonly HalfCellNode[],
+  stand: NodeId,
+  frontAt: HalfCellNode,
+  reach: number,
+): NodeId {
+  const station = temples.length === 0 ? null : templeStationToward(terrain, blocked, temples, stand);
+  if (station === null) return stand;
+  const { x, y } = terrain.coordsOf(station);
+  return hexDistanceBetween(x, y, frontAt.hx, frontAt.hy) <= reach ? station : stand;
 }
