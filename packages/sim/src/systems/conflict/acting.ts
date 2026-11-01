@@ -50,8 +50,8 @@ import { attackerWeapon } from './weapons.js';
  * Whether `e` may act in this combat pass. False proves `engageCombatant` would leave it with no write and
  * no draw: every rung it reaches either returns or drops state it does not hold, and the target search
  * finds nothing. Asked in the pass's own order, so it reads each unit as the ladder would. `nearStranger`
- * false says the index's `unitsNearStrangers` did not list `e`, so an owned unit in a player slot fails
- * every presence test without asking it.
+ * false says the index's `unitsNearStrangers` did not list `e` within {@link PRESENCE_RADIUS} and it does not
+ * {@link searchesPastPresence}, so an owned unit in a player slot fails every presence test without asking it.
  */
 export function mayEngage(
   world: World,
@@ -108,7 +108,7 @@ export function mayEngage(
     return index.othersWithin(owner.player, x, y, reachOf(world, ctx, e) + TOWER_RANGE_BONUS_NODES);
   }
   // Every owned search stays inside this, bar a guard's search further out.
-  let radius = Math.max(SIGHT_RADIUS_NODES, DEFEND_RADIUS_NODES);
+  let radius = PRESENCE_RADIUS;
   const reachGuard = mode === MILITARY_MODE.IGNORE && isFighterJob(ctx.content, settler.jobType);
   if (guardsAnchor(ctx.content, mode, settler.jobType)) {
     // With nothing to fight, a guard walks back to its anchor and drops its route state.
@@ -171,18 +171,21 @@ export function readyAnywhere(world: World, content: ContentSet, e: Entity): boo
   );
 }
 
-const presenceBounds = new WeakMap<ContentSet, number>();
+/** The radius (map points) {@link mayEngage}'s presence test asks for an owned unit that
+ *  {@link searchesPastPresence} leaves out: the sight and defend radii. */
+export const PRESENCE_RADIUS = Math.max(SIGHT_RADIUS_NODES, DEFEND_RADIUS_NODES);
 
-/** The widest radius (map points) {@link mayEngage}'s presence test asks for an owned unit: the sight and
- *  defend radii, and the reach of any weapon a guard or a manned post may hold. */
-export function presenceBound(content: ContentSet): number {
-  let bound = presenceBounds.get(content);
-  if (bound === undefined) {
-    bound = Math.max(SIGHT_RADIUS_NODES, DEFEND_RADIUS_NODES);
-    for (const weapon of content.weapons) bound = Math.max(bound, weapon.maxRange + TOWER_RANGE_BONUS_NODES);
-    presenceBounds.set(content, bound);
-  }
-  return bound;
+/**
+ * Whether owned unit `e` in a player slot may ask {@link mayEngage}'s presence test past
+ * {@link PRESENCE_RADIUS}: a garrison, whose manned post searches its reach raised by the tower, or an IGNORE
+ * guard, which searches its weapon's reach. Read off `e`'s own {@link READY_MEMBERSHIP} stores alone.
+ */
+export function searchesPastPresence(world: World, content: ContentSet, e: Entity): boolean {
+  const owner = world.tryGet(e, Owner);
+  if (owner === undefined || !isValidPlayer(owner.player)) return false;
+  if (world.has(e, Garrison)) return true;
+  const { jobType } = world.get(e, Settler);
+  return isFighterJob(content, jobType) && stanceMode(world, content, e, jobType) === MILITARY_MODE.IGNORE;
 }
 
 /** Whether a unit under `mode` holds a guard's anchor: DEFEND, or IGNORE on a fighter. */
