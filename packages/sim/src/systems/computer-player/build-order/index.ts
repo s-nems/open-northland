@@ -48,7 +48,7 @@ import {
   stepKey,
 } from './entries.js';
 import { foodChainStep, seatFoodFailing } from './food-first.js';
-import { towerUpgradeWaits } from './front.js';
+import { TOWER_CONTENT_IDS, towerUpgradeWaits } from './front.js';
 import { grassBoundEntry, grassReserved } from './grass-reserve.js';
 import {
   daughtersBlocked,
@@ -82,7 +82,6 @@ import {
   coverageOf,
   coverageSpotSearch,
   firstUncovered,
-  TOWER_CONTENT_IDS,
   type TowerCoverage,
   towerRingSites,
 } from './tower-coverage.js';
@@ -91,6 +90,7 @@ import { upgradeReach } from './upgrade-reach.js';
 import { starvedUpgrade, suppliedUpgrade } from './upgrade-supply.js';
 
 export * from './entries.js';
+export { TOWER_CONTENT_IDS } from './front.js';
 export {
   collectorGoodStocked,
   collectorGoodsWanted,
@@ -108,7 +108,6 @@ export {
   shapeBuildOrder,
 } from './seat-order.js';
 export { type Siege, seatSiege } from './siege.js';
-export { TOWER_CONTENT_IDS } from './tower-coverage.js';
 export { DEFENCE_FIRST_WANT_PCT, OPENING_DEFENCE } from './tower-defence.js';
 
 /** The seat's open sites that count against its pace: a workshop's hidden vehicle yard is the crew's own

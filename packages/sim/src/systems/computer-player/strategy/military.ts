@@ -48,9 +48,9 @@ export interface PlanTuning {
   readonly floorShare: Share;
   /** Of the difficulty's army cap, the part a seat that drafts to its cap drafts to. */
   readonly draftCapShare: Share;
-  /** How sparse the tower ring stands, in percent: the ring's defence wants scale by its inverse, so
-   *  below 100 rings more towers (`build-order/tower-defence.ts`). */
-  readonly towerRadiusPct: number;
+  /** What the tower ring's defence wants divide by, in percent: below 100 rings more towers
+   *  (`build-order/tower-defence.ts`). */
+  readonly towerWantDivisorPct: number;
 }
 
 const WHOLE: Share = { num: 1, den: 1 };
@@ -63,25 +63,25 @@ export const PLAN_TUNING: Readonly<Record<MilitaryPlan, PlanTuning>> = {
     launchRatio: { num: 4, den: 5 },
     floorShare: { num: 3, den: 2 },
     draftCapShare: WHOLE,
-    towerRadiusPct: 120,
+    towerWantDivisorPct: 120,
   },
   defensive: {
     launchRatio: { num: 3, den: 2 },
     floorShare: WHOLE,
     draftCapShare: { num: 4, den: 5 },
-    towerRadiusPct: 80,
+    towerWantDivisorPct: 80,
   },
   harasser: {
     launchRatio: WHOLE,
     floorShare: WHOLE,
     draftCapShare: { num: 9, den: 10 },
-    towerRadiusPct: 100,
+    towerWantDivisorPct: 100,
   },
   balanced: {
     launchRatio: WHOLE,
     floorShare: WHOLE,
     draftCapShare: { num: 9, den: 10 },
-    towerRadiusPct: 100,
+    towerWantDivisorPct: 100,
   },
 };
 
@@ -380,8 +380,8 @@ export interface MilitaryOrders {
   readonly floorShare: Share;
   /** Of the difficulty's army cap, the part a seat that drafts to its cap drafts to. */
   readonly draftCapShare: Share;
-  /** For the build order's tower lanes: how sparse they stand, in percent (`PlanTuning.towerRadiusPct`). */
-  readonly towerRadiusPct: number;
+  /** For the build order's tower lanes: what their defence wants divide by, in percent (`PlanTuning`). */
+  readonly towerWantDivisorPct: number;
   /** The army floor may call gatherers of goods in comfortable stock to arms: the seat prepares against a
    *  forecast attack within its lead (`workforce/garrison.ts`). */
   readonly callsGatherers: boolean;
@@ -398,7 +398,7 @@ const UNDECIDED: MilitaryOrders = {
   hold: null,
   floorShare: WHOLE,
   draftCapShare: WHOLE,
-  towerRadiusPct: PLAN_TUNING.balanced.towerRadiusPct,
+  towerWantDivisorPct: PLAN_TUNING.balanced.towerWantDivisorPct,
   callsGatherers: false,
 };
 
@@ -454,7 +454,7 @@ export function ordersFor(
         }
       : tuning.floorShare,
     draftCapShare: tuning.draftCapShare,
-    towerRadiusPct: tuning.towerRadiusPct,
+    towerWantDivisorPct: tuning.towerWantDivisorPct,
     callsGatherers: posture === 'prepare' && evidence.includes('forecastThreat'),
   };
 }

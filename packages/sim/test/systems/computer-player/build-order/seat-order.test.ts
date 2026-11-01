@@ -415,7 +415,7 @@ describe('the seat strategy shapes the build order', () => {
       expect(coverageOf(sim.world, ctxOf(sim), SEAT, towers)).toEqual({
         by: 'tower',
         building: 'tower_01',
-        wants: scaled(100, PLAN_TUNING[plan].towerRadiusPct),
+        wants: scaled(100, PLAN_TUNING[plan].towerWantDivisorPct),
       });
     }
     // More defence again while a forecast attack puts the defence first.

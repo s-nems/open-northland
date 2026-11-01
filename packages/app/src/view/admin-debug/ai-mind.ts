@@ -186,7 +186,7 @@ export function militaryTable(
       [copy.threatIn, military.threatInTicks === null ? NO_VALUE : minutes(military.threatInTicks)],
       [copy.launchRatio, ratio(orders.launchRatio)],
       [copy.raids, orders.raidsAllowed ? copy.yes : copy.no],
-      [copy.towerRadius, `${orders.towerRadiusPct}%`],
+      [copy.towerRadius, `${orders.towerWantDivisorPct}%`],
     ],
   };
 }
