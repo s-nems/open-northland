@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Simulation } from '../../../../src/index.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
-import { breadFocusSite } from '../../../../src/systems/computer-player/build-order/food-first.js';
+import { focusChainSite } from '../../../../src/systems/computer-player/build-order/food-first.js';
 import {
   aiSim,
   BAKERY_TYPE,
@@ -36,14 +36,14 @@ function seatWithSites(types: readonly number[]): Simulation {
   return sim;
 }
 
-const focusOf = (sim: Simulation) => breadFocusSite(sim.world, ctxOf(sim), ownedBuildings(sim.world, SEAT));
+const focusOf = (sim: Simulation) => focusChainSite(sim.world, ctxOf(sim), ownedBuildings(sim.world, SEAT));
 
 const finish = (sim: Simulation, buildingType: number): void => {
   sim.enqueueSetup({ kind: 'debugCompleteConstruction', target: entityOfBuilding(sim, buildingType) });
   sim.step();
 };
 
-describe('breadFocusSite', () => {
+describe('focusChainSite', () => {
   it('names the mill site, then the well, then the bakery, each until one of its kind stands', () => {
     const sim = seatWithSites([BAKERY_TYPE, WELL_TYPE, MILL_TYPE]);
     expect(focusOf(sim)).toBe(entityOfBuilding(sim, MILL_TYPE));

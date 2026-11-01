@@ -86,12 +86,15 @@ site over the pace once its deadline lead opens. A seat whose food production is
 stands, no fisher fishes) gives the first building of each food chain kind it lacks the next free site,
 right after the due steps and ahead of the lanes, the towers and the other crafts (owner ruling); such a
 step takes the extra site only as an earned workshop. The school is a core step: it takes an earned
-workshop's turn and extra site once no food turn waits. The bread chain goes mill, mason hut,
-well, bakery (owner ruling): each is placed the moment it unlocks, over the site pace and ahead of the
-lanes and the other lines, unless the seat is attacked. The mason hut follows the mill because the
-bakery's bill takes a pillar, and the bakery's unlock asks the mason's trade. The farmer who earned the
-mill runs it, the miller who earned the bakery bakes, and the mason is posted at once and works whatever
-stock says. Every builder works the chain's open site (`workforce/focus-crew.ts`), up to one per unit of
+workshop's turn and extra site once no food turn waits. The core chain goes farm, pottery and mason
+hut, mill, well, bakery, then the rest (owner ruling): each is placed the moment it unlocks, over the
+site pace and ahead of the lanes and the other lines, unless the seat is attacked. The pottery and the
+mason hut come first because the school's bill takes their bricks and pillars and every later bill
+waits on them; the bakery's bill takes a pillar too, and its unlock asks the mason's trade. The man who
+earned a core workshop's trade takes its first post ahead of a school lesson and with the food chain's
+first hands: the clay gatherer the pottery, even after he went back to the builders once the clay was
+stocked, the stone gatherer the mason hut, the farmer the mill, the miller the bakery. Every builder
+works the chain's open site (`workforce/focus-crew.ts`), up to one per unit of
 its bill, and the other sites wait until it stands; the pins lift while the site lacks a good the store
 does not hold. The seat keeps 2 builders on it ahead of every gatherer post, freeing gatherers of goods
 the site does not wait on, while the gatherers of a good it waits on take one more post. While the seat's
@@ -166,7 +169,8 @@ from work: the technology module pins an apprentice on the work that credits the
 promotes him into the new building when it stands, refilling his old post. Once a school stands, further
 workers of a discovered trade are schooled instead. Owner ruling on the opening: one wood, one clay and
 one stone collector, a second stone collector early, a hunter and a farmer, the mason hut, then the school (its bill
-wants his pillars) once the pottery stands, iron from game minute 15, mushrooms from minute 25. The first
+wants his pillars) once the pottery stands, the pottery and mason hut ahead of the opening homes the
+moment they unlock, iron from game minute 15, mushrooms from minute 25. The first
 wood, stone and clay flags stand as close to their resource as a legal node allows. In the first 30
 game minutes weddings go out from the men's side (owner ruling): the builders first, then men of a trade
 no discovery waits on, last the men still earning one, such as the farmer toward the miller; afterwards

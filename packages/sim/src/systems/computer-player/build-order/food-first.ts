@@ -37,27 +37,39 @@ export function foodChainStep(ctx: SystemContext, entry: BuildOrderEntry): boole
   return type !== undefined && type.kind === BUILDING_KIND.workplace && inFoodChain(ctx, type);
 }
 
-/** The bread chain's first buildings by stable content id, in the order the seat's builders raise them
- *  (owner ruling: bread is a lean start's way out, since the women start children only on steady bread).
- *  The mason hut comes second because the bakery's bill takes a pillar, which its mason makes while the
- *  well rises, and the well before the bakery because the bakery bakes nothing without water. The first
- *  id, the mill, opens the chain; the last, the bakery, closes it. */
-export const BREAD_CHAIN_FOCUS: readonly string[] = [
-  'work_mill_00',
+/** The core workshops and the bread chain's first buildings by stable content id, in the order the
+ *  seat's builders raise them (owner ruling: farm, then potter and mason, then mill, then bakery, then the
+ *  rest). The pottery comes first because the school's bill takes its bricks and every later bill waits
+ *  on them; the mason hut next because the school's and the bakery's bills take its pillar. The well goes
+ *  before the bakery because the bakery bakes nothing without water. The mill opens the bread chain
+ *  ({@link BREAD_CHAIN_OPENER}); the last id, the bakery, closes it. */
+export const FOCUS_CHAIN: readonly string[] = [
+  'work_pottery_00',
   'work_mason_hut_00',
+  'work_mill_00',
   'work_well_00',
   'work_bakery_00',
 ];
 
-/** Whether `type` is one of the bread chain's workshops a discovery opens: the mill or the bakery at any
- *  tier, whose first post goes to the man who earned its trade (owner ruling). */
-export function breadChainWorkshop(ctx: SystemContext, type: BuildingType): boolean {
-  return BREAD_CHAIN_WORKSHOPS.some((id) => ofKind(ctx, id, type));
+/** The focus kind that opens the bread chain: the focus kinds after it count only once the seat owns
+ *  one, site or standing, since a well rises for many lines; the ones before it count on their own. */
+const BREAD_CHAIN_OPENER = 'work_mill_00';
+
+/** Whether `type` is a workshop whose first post goes to the man who earned its trade, ahead of a school
+ *  lesson and with the food chain's first hands (owner ruling): the pottery, whose bricks the school
+ *  waits on, the mason hut, the mill and the bakery, at any tier. */
+export function earnedTradeWorkshop(ctx: SystemContext, type: BuildingType): boolean {
+  return EARNED_TRADE_WORKSHOPS.some((id) => ofKind(ctx, id, type));
 }
 
-const BREAD_CHAIN_WORKSHOPS: readonly string[] = ['work_mill_00', 'work_bakery_00'];
+const EARNED_TRADE_WORKSHOPS: readonly string[] = [
+  'work_pottery_00',
+  'work_mason_hut_00',
+  'work_mill_00',
+  'work_bakery_00',
+];
 
-/** The bread chain's supplier ({@link BREAD_CHAIN_FOCUS}): the workshop making a good the bakery's bill
+/** The bread chain's supplier ({@link FOCUS_CHAIN}): the workshop making a good the bakery's bill
  *  takes and no food. */
 const BREAD_CHAIN_SUPPLIER = 'work_mason_hut_00';
 
@@ -71,18 +83,17 @@ function ofKind(ctx: SystemContext, id: string, type: BuildingType): boolean {
   return base !== undefined && tiersAtOrAbove(contentIndex(ctx.content), base).has(type.typeId);
 }
 
-/** Whether the seat's bread chain is open and unfinished: it owns the chain's first building, site or
- *  standing, and no building of its last kind stands ({@link BREAD_CHAIN_FOCUS}). */
+/** Whether the seat's bread chain is open and unfinished: it owns a building of the chain's opener
+ *  ({@link BREAD_CHAIN_OPENER}), site or standing, and no building of its last kind stands. */
 export function breadChainUnfinished(world: World, ctx: SystemContext, owned: readonly Entity[]): boolean {
-  const first = BREAD_CHAIN_FOCUS[0];
-  const last = BREAD_CHAIN_FOCUS[BREAD_CHAIN_FOCUS.length - 1];
-  if (first === undefined || last === undefined) return false;
+  const last = FOCUS_CHAIN[FOCUS_CHAIN.length - 1];
+  if (last === undefined) return false;
   let opened = false;
   for (const e of owned) {
     const type = contentIndex(ctx.content).buildings.get(world.get(e, Building).buildingType);
     if (type === undefined) continue;
     if (ofKind(ctx, last, type) && isBuilt(world, e)) return false;
-    if (ofKind(ctx, first, type)) opened = true;
+    if (ofKind(ctx, BREAD_CHAIN_OPENER, type)) opened = true;
   }
   return opened;
 }
@@ -100,14 +111,15 @@ export function fishFeedsWomen(world: World, ctx: SystemContext, player: number)
 
 /**
  * The construction site every builder of the seat works ahead of its other sites (owner ruling: when the
- * mill, and then the bakery, is earned, all builders go to it): the open site of the first
- * {@link BREAD_CHAIN_FOCUS} kind the seat has none standing of at that tier or above, the lowest entity id
- * among several of one kind. Null before the seat owns a mill, site or standing, once each kind stands or
- * while none has a site open; an upgrade site never counts.
+ * pottery, the mason hut, the mill and then the bakery is earned, all builders go to it): the open site of
+ * the first {@link FOCUS_CHAIN} kind the seat has none standing of at that tier or above, the lowest
+ * entity id among several of one kind. The kinds past the mill count only once the seat owns a mill, site
+ * or standing. Null once each counted kind stands or while none has a site open; an upgrade site never
+ * counts.
  */
-export function breadFocusSite(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity | null {
+export function focusChainSite(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity | null {
   const index = contentIndex(ctx.content);
-  for (const [rank, id] of BREAD_CHAIN_FOCUS.entries()) {
+  for (const id of FOCUS_CHAIN) {
     const type = buildingTypeByContentId(ctx.content, id);
     if (type === undefined) continue;
     const tiers = tiersAtOrAbove(index, type);
@@ -124,7 +136,7 @@ export function breadFocusSite(world: World, ctx: SystemContext, owned: readonly
       if (site === null && !world.has(e, Upgrading) && isServedConstructionSite(world, ctx.content, e))
         site = e;
     }
-    if (rank === 0 && !owns) return null;
+    if (id === BREAD_CHAIN_OPENER && !owns) return null;
     if (!stands && site !== null) return site;
   }
   return null;

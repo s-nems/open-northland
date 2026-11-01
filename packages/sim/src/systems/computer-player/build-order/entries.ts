@@ -505,13 +505,22 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         { kind: 'collector', good: 'mud', stockedAt: CLAY_STOCKED },
         { kind: 'collector', good: 'stone' },
         GRAIN_FARM,
+        // Owner ruling: farm, then potter and mason, then mill, then bakery, then the rest. The pottery and
+        // the mason hut go up the moment they unlock, ahead of the mill: the school's bill takes the
+        // potter's bricks and the mason's pillars, and every later bill waits on them. While locked they
+        // are passed over, so the opening homes rise meanwhile.
+        {
+          kind: 'place',
+          building: 'work_pottery_00',
+          count: 1,
+          near: [{ kind: 'resource', good: 'mud' }],
+          atUnlock: true,
+          lockPasses: true,
+        },
+        { ...MASON_HUT, atUnlock: true, lockPasses: true },
         { kind: 'place', building: 'home_level_00', count: 3 },
         ROOMY_OPENING_HOMES,
         RICH_OPENING_HOMES,
-        { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
-        // The mason before the school: the school's bill wants his pillars beside the potter's bricks, and
-        // the bakery and the animal farm want them too, so the school's wait on the pottery never holds him.
-        MASON_HUT,
         // Owner ruling: the school once the pottery stands, never before it, a core building, so every
         // trade discovered from here on is taught there rather than earned again by work. It has no
         // production ties, so it stands among the homes and leaves the farm's ground to its chain.
@@ -544,9 +553,10 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
           near: [{ kind: 'building', id: 'work_farm_00' }],
           atUnlock: true,
         },
-        // The bakery's bill takes a pillar, so the mason hut goes up with the mill, ahead of the well, and
-        // its mason has the pillar made by the time the bakery's site opens. It unlocks with the mason's
-        // trade, which the bakery's unlock also asks, and is passed over while that is locked.
+        // The bakery's bill takes a pillar, so a mason hut the opening has not raised yet goes up with the
+        // mill, ahead of the well, and its mason has the pillar made by the time the bakery's site opens.
+        // It unlocks with the mason's trade, which the bakery's unlock also asks, and is passed over while
+        // that is locked.
         { ...MASON_HUT, atUnlock: true, lockPasses: true },
         // Owner ruling: bread is the food the seat runs short of first, and little food means few children,
         // so one bakery follows the mill at once. Its well goes up first, beside the mill, while the baker

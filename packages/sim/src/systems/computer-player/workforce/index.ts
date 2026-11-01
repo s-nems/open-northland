@@ -30,7 +30,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { breadChainUnfinished, breadFocusSite, fishFeedsWomen } from '../build-order/food-first.js';
+import { breadChainUnfinished, fishFeedsWomen, focusChainSite } from '../build-order/food-first.js';
 import { openingHomesStand } from '../build-order/housing.js';
 import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
@@ -168,9 +168,9 @@ function runWorkforce(
   // smocza_kraina, seed 7, seats with five to eight open sites kept four builders while five to seven
   // clearing gatherers piled 150-1060 wood).
   const clearingPosts = Math.max(0, clearing - Math.max(0, builderFloor - builders));
-  // The bread chain's next site takes the reserve's builders ahead of every other site, unless the seat
-  // is under attack; the gatherers of a good it waits on take one more post ahead of the reserve.
-  const focus = underAttack(world, player) ? null : breadFocusSite(world, ctx, owned);
+  // The core chain's next site (pottery, mason hut, then the bread chain) takes the reserve's builders
+  // ahead of every other site, unless the seat is under attack; the gatherers of a good it waits on take one more post ahead of the reserve.
+  const focus = underAttack(world, player) ? null : focusChainSite(world, ctx, owned);
   const focusShort = focus === null ? NO_GOODS : focusShortGoods(world, ctx, focus, supply);
   const allWanted = focusShortPosts(
     wantedCollectorGoods(world, ctx, player, order, statuses, supply),
@@ -320,7 +320,7 @@ function runWorkforce(
     reserved: [...focusCore.reserved, ...core.reserved, ...rest.reserved],
   };
   // While the seat's catch feeds its women, the focus site pins only its floor and the other builders
-  // keep the homes and the pottery.
+  // keep the homes and the other sites.
   const focusCrew =
     focus === null
       ? []

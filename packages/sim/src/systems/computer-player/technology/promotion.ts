@@ -14,11 +14,13 @@ import { technologyTable } from './requirements.js';
 
 /**
  * One decision's promotions into gated trades (owner ruling): when no spare man qualifies for a slot whose
- * trade an experience row gates, the man of an enabling trade who earned it moves up, the farmer to the
- * mill or the clay gatherer to the pottery, and the next allocation refills his old post with a fresh
- * civilian. Men of an open trade go first, since anyone can take their post; then ascending id. A man
- * holding a load waits until he sets it down, since the trade change would drop it, and an apprentice
- * stays on the work earning his discovery.
+ * trade an experience row gates, the man who earned it moves up, the farmer to the mill or the clay
+ * gatherer to the pottery, and the next allocation refills his old post with a fresh civilian. He may
+ * hold an enabling trade or have left it for an open one since: the clay gatherer goes back to the
+ * builders once the clay is stocked, and the pottery still needs him, since nobody else earned it. Men
+ * of an open trade go first, since anyone can take their post; then ascending id. A man holding a load
+ * waits until he sets it down, since the trade change would drop it, and an apprentice stays on the work
+ * earning his discovery.
  */
 export class Promotions {
   private readonly promoted = new Set<Entity>();
@@ -44,9 +46,10 @@ export class Promotions {
       if (world.has(e, BuildMode) || world.has(e, Carrying)) continue;
       const settler = world.get(e, Settler);
       const current = settler.jobType;
-      if (current === null || !gate.enablingJobs.includes(current)) continue;
-      if (!settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job)) continue;
+      if (current === null || current === job) continue;
       const open = !jobAwaitsDiscovery(ctx, settler.tribe, current);
+      if (!open && !gate.enablingJobs.includes(current)) continue;
+      if (!settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job)) continue;
       if (best === null || (open && !bestOpen)) {
         best = e;
         bestOpen = open;

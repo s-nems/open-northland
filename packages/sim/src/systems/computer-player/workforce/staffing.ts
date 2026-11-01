@@ -11,7 +11,7 @@ import { isUnwed } from '../../family/eligibility.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { breadChainSupplier, breadChainWorkshop } from '../build-order/food-first.js';
+import { earnedTradeWorkshop } from '../build-order/food-first.js';
 import { type ComputerProfile, shareOf } from '../difficulty.js';
 import { LATE_GAME_FROM_TICKS } from '../game-phase.js';
 import type { Promotions } from '../technology/promotion.js';
@@ -99,7 +99,7 @@ export function builderCap(profile: ComputerProfile, civilians: number, tick: nu
 }
 
 /** Where a gated slot no spare man qualifies for gets its man: a school lesson while a standing school
- *  teaches the trade, else a promotion; the mill's and the bakery's first slot try the promotion first. */
+ *  teaches the trade, else a promotion; an earned-trade workshop's first slot tries the promotion first. */
 export interface GatedSlotSources {
   readonly schooling: Schooling;
   readonly promotions: Promotions;
@@ -110,8 +110,8 @@ export interface GatedSlotSources {
  * operator is a non-carrier, non-gatherer slot. Each post goes to the spare man most experienced on the
  * slot trade's general track who qualifies for it (`settlerMeetsNeed`). A slot no spare man qualifies for
  * takes a pupil of the trade's school lesson ({@link Schooling}), counted as filling it until he
- * graduates, or with no school teaching the trade a promotion ({@link Promotions}), which the mill's and
- * the bakery's first slot try before the school. Gatherer slots stay
+ * graduates, or with no school teaching the trade a promotion ({@link Promotions}), which an earned-trade
+ * workshop's first slot tries before the school ({@link earnedTradeWorkshop}). Gatherer slots stay
  * open unless the plan names gatherers, and a carrier-only workplace (the well, the hive) fills itself,
  * so it needs no staff. Workplaces fill before training buildings and those before storage within a
  * tier, and all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
@@ -136,7 +136,7 @@ export function staffBuildings(
   for (const building of ordered) {
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
-    if (type === undefined || (tier === 'food' && !firstHandFed(ctx, seat, type))) continue;
+    if (type === undefined || (tier === 'food' && !firstHandFed(ctx, type))) continue;
     const heldBefore = heldAt(ctx, tally, building);
     let staffing = buildingStaffing(world, ctx, seat, building, type, heldBefore);
     if (staffing === null) continue;
@@ -175,12 +175,11 @@ export function staffBuildings(
           let spare =
             force.take(ofTrade, veteranFirst, unwedFirst) ?? force.take(qualifies, veteranFirst, unwedFirst);
           // A promotion seats a building's first man of the trade only, so a second post never strips the
-          // predecessor trade a second time. The mill and the bakery take the man who earned their trade
-          // ahead of a school lesson (owner ruling: the farmer who earned the mill becomes its miller, and
-          // the miller who earned the bakery its baker), and so does the mason hut while the bread chain
-          // waits on its pillar.
-          const promotesFirst =
-            i === 0 && (breadChainWorkshop(ctx, type) || breadSupplierDue(ctx, seat, type));
+          // predecessor trade a second time. The pottery, the mason hut, the mill and the bakery take the
+          // man who earned their trade ahead of a school lesson (owner ruling: the clay gatherer who earned
+          // the pottery becomes its potter, since the school waits on his bricks, and the farmer who earned
+          // the mill its miller).
+          const promotesFirst = i === 0 && earnedTradeWorkshop(ctx, type);
           if (spare === null && promotesFirst) spare = gated.promotions.take(slot.jobType);
           if (spare === null) {
             const lesson = gated.schooling.enrol(slot.jobType, building, force);
@@ -202,16 +201,10 @@ export function staffBuildings(
   return commands;
 }
 
-/** Whether the `food` tier posts `type`'s first hand: a food chain workplace ({@link inFoodChain}), or
- *  {@link breadSupplierDue}. */
-function firstHandFed(ctx: SystemContext, seat: SeatStaffing, type: BuildingType): boolean {
-  return inFoodChain(ctx, type) || breadSupplierDue(ctx, seat, type);
-}
-
-/** Whether `type` is the bread chain's supplier while the seat's chain is unfinished: the mason hut,
- *  whose pillar the bakery's bill takes. */
-function breadSupplierDue(ctx: SystemContext, seat: SeatStaffing, type: BuildingType): boolean {
-  return seat.breadChainOpen === true && breadChainSupplier(ctx, type);
+/** Whether the `food` tier posts `type`'s first hand: a food chain workplace ({@link inFoodChain}) or an
+ *  earned-trade workshop ({@link earnedTradeWorkshop}), ahead of the core builders and the other posts. */
+function firstHandFed(ctx: SystemContext, type: BuildingType): boolean {
+  return inFoodChain(ctx, type) || earnedTradeWorkshop(ctx, type);
 }
 
 /** The operators, carriers and gatherers `staffing` posts per slot trade at `tier`. */
