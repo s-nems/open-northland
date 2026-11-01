@@ -9,7 +9,8 @@ import type { SystemContext } from '../../context.js';
 import { fogHides, playerSeesNode } from '../../vision/gates.js';
 import { seatBaseOf } from '../base.js';
 import type { BuildOrder } from '../build-order/entries.js';
-import { believedTowerPosts, zoneStaleness } from '../knowledge/intel/index.js';
+import { zoneStaleness } from '../knowledge/intel/index.js';
+import { type ScoutDanger, scoutDanger } from './danger.js';
 import { scoutLostZones } from './lost-zones.js';
 import { gatheredGoodIds } from './signpost-coverage.js';
 
@@ -32,11 +33,6 @@ export const SCOUT_IMPORTANCE = {
   deposit: 1,
 } as const;
 
-/** How far from a manned enemy tower the scout's goal must stay, in Manhattan half-cell nodes (authored):
- *  the house bow's extracted 29-node `maximumrange` and one node more. Approximation: a post's boosted
- *  reach is not read, and the walk there is the pathfinder's, which may still cross a reach. */
-export const SCOUT_TOWER_CLEARANCE_NODES = 30;
-
 interface StaleZone {
   readonly zone: number;
   readonly score: number;
@@ -49,9 +45,12 @@ interface StaleZone {
  * zones never seen that hold a deposit the seat gathers. Score = importance x staleness (capped; a zone
  * never seen counts the cap), best first, ties to the lower zone index; a zone seen within
  * {@link SCOUT_REVISIT_TICKS} is not due, and neither is a zone the seat lost a scout in
- * ({@link scoutLostZones}) or one whose straight walk crosses such a zone. The goal is the node nearest the
- * zone's centre on that land and clear of every remembered manned enemy tower. With nothing hidden by the
- * fog nothing is stale: null.
+ * ({@link scoutLostZones}) or one whose straight walk crosses such a zone. The goal is the zone's centre
+ * when clear of the {@link scoutDanger} reach, else the farthest point of the straight walk toward it
+ * before the walk enters that reach (owner ruling: a scout comes near, looks and turns back, never into a
+ * tower's reach); either way a node on the seat's land, clear of the reach, searched around that point.
+ * Approximation: the walk there is the pathfinder's, which may still pass a reach; the scout module turns
+ * him back when it does (`./index.ts`). With nothing hidden by the fog nothing is stale: null.
  */
 export function nextStaleZoneTarget(
   world: World,
@@ -83,13 +82,11 @@ export function nextStaleZoneTarget(
   }
   due.sort((a, b) => b.score - a.score || a.zone - b.zone);
 
-  const towers = believedTowerPosts(world, player);
+  const danger = scoutDanger(world, ctx, player);
   const clear = (x: number, y: number): boolean =>
-    terrain.inBounds(x, y) &&
-    terrain.componentOf(terrain.nodeAt(x, y)) === component &&
-    towers.every((t) => Math.abs(t.hx - x) + Math.abs(t.hy - y) > SCOUT_TOWER_CLEARANCE_NODES);
+    terrain.inBounds(x, y) && terrain.componentOf(terrain.nodeAt(x, y)) === component && !danger.covers(x, y);
   for (const { zone } of due) {
-    const goal = zoneGoal(brief, terrain, zone, clear);
+    const goal = zoneGoal(brief, terrain, zone, anchor, danger, clear);
     // The intel samples zones on its own beat: a goal in sight now is already being looked at.
     if (goal === null || playerSeesNode(fog, player, goal.hx, goal.hy)) continue;
     // Approximation: the straight walk stands in for the pathfinder's route past a zone that took a scout.
@@ -152,17 +149,42 @@ function zonesOnLine(brief: MapBriefView, from: HalfCellNode, to: HalfCellNode):
   return zones;
 }
 
-/** The node nearest `zone`'s centre, within half its edge, that `clear` accepts. */
+/** How far apart the approach walk is sampled, in nodes (authored): a quarter of the scout's 30-node
+ *  sight, so he stops close enough to the covered ground to see across its rim. */
+const APPROACH_SAMPLE_NODES = 8;
+
+/** The node, within half a zone's edge, that `clear` accepts nearest the look point: `zone`'s centre, or
+ *  while `danger` covers it the last sample of the straight walk from `from` before the walk enters the
+ *  covered ground. Null when the walk is covered from its first sample. */
 function zoneGoal(
   brief: MapBriefView,
   terrain: TerrainGraph,
   zone: number,
+  from: HalfCellNode,
+  danger: ScoutDanger,
   clear: (x: number, y: number) => boolean,
 ): HalfCellNode | null {
   const half = brief.zoneNodes / 2;
-  const cx = (zone % brief.zonesWide) * brief.zoneNodes + half;
-  const cy = Math.floor(zone / brief.zonesWide) * brief.zoneNodes + half;
-  const x = Math.min(cx, terrain.width - 1);
-  const y = Math.min(cy, terrain.height - 1);
-  return firstRingNode(x, y, half, clear);
+  const centre = {
+    hx: Math.min((zone % brief.zonesWide) * brief.zoneNodes + half, terrain.width - 1),
+    hy: Math.min(Math.floor(zone / brief.zonesWide) * brief.zoneNodes + half, terrain.height - 1),
+  };
+  if (!danger.covers(centre.hx, centre.hy)) return firstRingNode(centre.hx, centre.hy, half, clear);
+  const look = approachPoint(from, centre, danger);
+  return look === null ? null : firstRingNode(look.hx, look.hy, APPROACH_SAMPLE_NODES, clear);
+}
+
+/** The last of the straight walk's samples from `from` toward `to`, every {@link APPROACH_SAMPLE_NODES},
+ *  before the first one `danger` covers; null when the first is covered. */
+function approachPoint(from: HalfCellNode, to: HalfCellNode, danger: ScoutDanger): HalfCellNode | null {
+  const dx = to.hx - from.hx;
+  const dy = to.hy - from.hy;
+  const count = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / APPROACH_SAMPLE_NODES));
+  let last: HalfCellNode | null = null;
+  for (let k = 1; k <= count; k++) {
+    const at = { hx: from.hx + Math.trunc((dx * k) / count), hy: from.hy + Math.trunc((dy * k) / count) };
+    if (danger.covers(at.hx, at.hy)) return last;
+    last = at;
+  }
+  return last;
 }

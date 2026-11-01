@@ -93,7 +93,9 @@ mason hut come first because the school's bill takes their bricks and pillars an
 waits on them; the bakery's bill takes a pillar too, and its unlock asks the mason's trade. The man who
 earned a core workshop's trade takes its first post ahead of a school lesson and with the food chain's
 first hands: the clay gatherer the pottery, even after he went back to the builders once the clay was
-stocked, the stone gatherer the mason hut, the farmer the mill, the miller the bakery. Every builder
+stocked, the stone gatherer the mason hut, the farmer the mill, the miller the bakery. The pottery and
+the mason hut never rest their first craftsman before he earns the tiles and the ornaments (owner
+ruling: a potter or mason sent off starts over, and the upper tiers wait on them). Every builder
 works the chain's open site (`workforce/focus-crew.ts`), up to one per unit of
 its bill, and the other sites wait until it stands; the pins lift while the site lacks a good the store
 does not hold. The seat keeps 2 builders on it ahead of every gatherer post, freeing gatherers of goods
@@ -290,6 +292,12 @@ takes more men than those weapons less its recruits already waiting for one, the
 tower archers served first, and a class the seat can no longer arm releases its waiting recruits to be
 armed for another. The scout keeps out of a zone where the seat lost one within 30 game minutes, and off
 any target whose straight walk crosses it (owner ruling: scout after scout into a wolf den feeds the wolves).
+He scouts only once the seat holds a soldier, peace over or not (owner ruling), and never into the reach
+of an enemy building that may shoot him (`scout/danger.ts`: a believed tower, a building last seen
+holding a post, one seen on alarm, 35 nodes): a zone inside it is looked at from the last point of the
+straight walk before the reach, a round-up target inside it is skipped, and a walk whose goal turns out
+inside it, or that meets an enemy fighter within 30 nodes, turns home. With nothing left to do he walks
+back to the base door (owner ruling: a scout looks from nearby and turns back, he does not die).
 
 Only fit soldiers are the seat's army (owner ruling): armed, and dressed while its arms side dresses the
 army and armour lies within reach; a tower archer and a trade that wears no armour need none. Its own

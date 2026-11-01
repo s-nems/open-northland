@@ -59,6 +59,9 @@ export interface StaffingRow extends StaffingTiers {
   /** A discovery until which the building keeps one operator: a discovery's experience counts on one
    *  man, so a second hand would halve the first one's share of the work. */
   readonly aloneUntil?: DiscoveryTarget;
+  /** A discovery until which the building never rests its first operator, whatever its products' stock:
+   *  his own work earns it, and a man sent off to another post starts over. */
+  readonly keptUntil?: DiscoveryTarget;
   /** A discovery until which the building runs a carrier at the minimum tier, so its operator works
    *  instead of fetching his inputs and earns it sooner. */
   readonly porterUntil?: DiscoveryTarget;
@@ -76,6 +79,8 @@ export interface DiscoveryTarget {
 }
 
 const BIG_HEALING_POTION: DiscoveryTarget = { kind: 'good', id: 'potion_heal_big' };
+const TILE: DiscoveryTarget = { kind: 'good', id: 'tile' };
+const ORNAMENT: DiscoveryTarget = { kind: 'good', id: 'ornament' };
 
 /** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (authored),
  *  applied per building instance. A second hand is a target-tier extra unless its row says otherwise,
@@ -114,16 +119,19 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // bricks bottleneck the late bills. The
   // pottery's second potter is a minimum post, ahead of the builder reserve, while a building material
   // runs short once the opening run is done, and a surplus post meanwhile, making the crockery.
-  work_pottery_00: { carrierTarget: 1 },
-  work_mason_hut_00: { carrierTarget: 1 },
+  // Owner ruling: the potter and the mason stay at work until they earn the tiles and the ornaments,
+  // since the upper tiers' bills wait on them.
+  work_pottery_00: { carrierTarget: 1, keptUntil: TILE },
+  work_mason_hut_00: { carrierTarget: 1, keptUntil: ORNAMENT },
   work_pottery_01: {
     operatorMin: 2,
     operatorTarget: 2,
     operatorSurplus: 2,
     productGated: true,
     late: { carrierTarget: 1 },
+    keptUntil: TILE,
   },
-  work_mason_hut_01: { operatorTarget: 2, productGated: true },
+  work_mason_hut_01: { operatorTarget: 2, productGated: true, keptUntil: ORNAMENT },
   // Owner ruling: each tailor runs a porter at the target tier, as the animal farm does, and a tunic
   // seat's upper tailor its second tailor as a minimum post, so its two shops' four tailors stand early.
   work_sewery_00: { carrierTarget: 1, herdIndustry: true },

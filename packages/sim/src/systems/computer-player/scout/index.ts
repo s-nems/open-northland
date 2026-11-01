@@ -4,6 +4,7 @@ import {
   ErectSignpostOrder,
   Female,
   MealBreak,
+  MoveGoal,
   mapBriefOf,
   OrderQueue,
   PlayerOrder,
@@ -12,20 +13,32 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
+import { interactionNode } from '../../footprint/index.js';
 import { isHeroJob, isScoutJob } from '../../readviews/index.js';
 import { anyNeedPressing } from '../../settlers/drives/needs.js';
+import { seatBaseOf } from '../base.js';
 import type { BuildOrder } from '../build-order/entries.js';
 import { minutesToTicks } from '../game-phase.js';
 import type { ComputerModule } from '../index.js';
 import { militaryDeadlineTick } from '../military/deadline.js';
+import { enemyFighterNear, scoutDanger, seatHasSoldier } from './danger.js';
 import { nextLivestockCatch } from './livestock-catch.js';
 import { nextSignpostTarget } from './signpost-coverage.js';
 import { nextStaleZoneTarget } from './stale-zones.js';
 
+export {
+  enemyFighterNear,
+  SCOUT_FIGHTER_CLEARANCE_NODES,
+  SCOUT_FIRE_CLEARANCE_NODES,
+  type ScoutDanger,
+  scoutDanger,
+  seatHasSoldier,
+} from './danger.js';
 export { type LivestockCatch, nextLivestockCatch, SCOUT_CATCH_RADIUS_NODES } from './livestock-catch.js';
 export { type LostZones, SCOUT_LOSS_MEMORY_TICKS, scoutLostZones } from './lost-zones.js';
 export {
@@ -39,7 +52,6 @@ export {
   SCOUT_IMPORTANCE,
   SCOUT_REVISIT_TICKS,
   SCOUT_STALENESS_CAP_TICKS,
-  SCOUT_TOWER_CLEARANCE_NODES,
 } from './stale-zones.js';
 
 /** How long the opening lasts for the scout (authored): six game minutes, while the settlement's first
@@ -80,10 +92,19 @@ export function scoutHeldForBuilders(world: World, ctx: SystemContext, player: n
 }
 
 /** Whether `player`'s scout scouts at all at `ctx.tick`: from {@link SCOUTING_DEADLINE_LEAD_TICKS} before
- *  its {@link militaryDeadlineTick}. Signposts and the round-up run from the start regardless. */
+ *  its {@link militaryDeadlineTick}, once the seat holds a soldier (owner ruling: a look at the enemy
+ *  serves nothing before the seat can fight, peace over or not). Signposts and the round-up run from the
+ *  start regardless. */
 export function scoutingOpen(world: World, ctx: SystemContext, player: number): boolean {
-  return ctx.tick >= militaryDeadlineTick(world, ctx, player) - SCOUTING_DEADLINE_LEAD_TICKS;
+  return (
+    ctx.tick >= militaryDeadlineTick(world, ctx, player) - SCOUTING_DEADLINE_LEAD_TICKS &&
+    seatHasSoldier(world, ctx, player)
+  );
 }
+
+/** How far (hex nodes) from the base door a scout with nothing left to do still stands at home
+ *  (authored): his 30-node sight, so one who looked at a far zone walks back instead of idling there. */
+export const SCOUT_HOME_RADIUS_NODES = 30;
 
 /** Whether scouting leads the scout's duties at `tick`: every other round after the opening. A trip only
  *  starts on a decision, so a round decides which duty the next free scout takes up, not how long he
@@ -110,19 +131,67 @@ function runScout(
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
   );
   if (scout === undefined || scoutHeldForBuilders(world, ctx, player)) return [];
+  const at = anchorNodeOf(world, scout);
+  const home = scoutHome(world, ctx, player);
+  if (world.has(scout, PlayerOrder) && !world.has(scout, CurrentAtomic))
+    return at === null || home === null ? [] : retreat(world, ctx, player, scout, at, home);
   if (scoutBusy(world, ctx, scout)) return [];
   const scouts = scoutingOpen(world, ctx, player);
   const leads = scouts && scoutingLeads(ctx.tick);
   const zone = leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
   if (zone !== null) return [{ kind: 'moveUnit', entity: scout, x: zone.hx, y: zone.hy }];
-  const at = anchorNodeOf(world, scout);
   const post = nextSignpostTarget(world, ctx, player, order, at);
   if (post !== null) return [{ kind: 'placeSignpost', entity: scout, x: post.hx, y: post.hy }];
   const herd = nextLivestockCatch(world, ctx, player, at);
   if (herd?.kind === 'claim') return [{ kind: 'claimAnimal', entity: scout, animal: herd.animal }];
   if (herd?.kind === 'look') return [{ kind: 'moveUnit', entity: scout, x: herd.node.hx, y: herd.node.hy }];
   const late = scouts && !leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
-  return late === null ? [] : [{ kind: 'moveUnit', entity: scout, x: late.hx, y: late.hy }];
+  if (late !== null) return [{ kind: 'moveUnit', entity: scout, x: late.hx, y: late.hy }];
+  return at !== null && home !== null && !nearHome(at, home) ? [walkHome(scout, home)] : [];
+}
+
+/** Where the scout falls back to: the base door, else the base anchor; null with no base. */
+function scoutHome(world: World, ctx: SystemContext, player: number): HalfCellNode | null {
+  const base = seatBaseOf(world, ctx, player);
+  if (base === null) return null;
+  const door = interactionNode(world, ctx, base);
+  return door === null ? anchorNodeOf(world, base) : { hx: door.x, hy: door.y };
+}
+
+function nearHome(at: HalfCellNode, home: HalfCellNode): boolean {
+  return hexDistanceBetween(at.hx, at.hy, home.hx, home.hy) <= SCOUT_HOME_RADIUS_NODES;
+}
+
+function walkHome(scout: Entity, home: HalfCellNode): PlayerCommand {
+  return { kind: 'moveUnit', entity: scout, x: home.hx, y: home.hy };
+}
+
+/**
+ * The walk home for a scout on a move whose goal lies in the {@link scoutDanger} reach, who stands in
+ * it, or who sees an enemy fighter near him (owner ruling: a scout looks from nearby and turns back, he
+ * does not die): a tower first seen on the way, or an army, ends the trip. None while he already walks
+ * home.
+ */
+function retreat(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  scout: Entity,
+  at: HalfCellNode,
+  home: HalfCellNode,
+): PlayerCommand[] {
+  const cell = world.tryGet(scout, MoveGoal)?.cell;
+  const terrain = ctx.terrain;
+  if (cell === undefined || terrain === undefined) return [];
+  const coords = terrain.coordsOf(cell);
+  const goal = { hx: coords.x, hy: coords.y };
+  if (nearHome(goal, home)) return [];
+  const danger = scoutDanger(world, ctx, player);
+  const threatened =
+    danger.covers(goal.hx, goal.hy) ||
+    danger.covers(at.hx, at.hy) ||
+    enemyFighterNear(world, ctx, player, at);
+  return threatened ? [walkHome(scout, home)] : [];
 }
 
 /**
