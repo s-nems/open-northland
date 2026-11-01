@@ -77,11 +77,17 @@ export interface CarriedCombatEffects {
 }
 
 export function carriedCombatEffects(world: World, content: ContentSet, e: Entity): CarriedCombatEffects {
-  return {
-    damageDealtPct: carriedEffect(world, content, e, 'damageDealtPct'),
-    criticalHit: carriedEffect(world, content, e, 'criticalHit'),
-    damageTakenPct: carriedEffect(world, content, e, 'damageTakenPct'),
-  };
+  let damageDealtPct: number | undefined;
+  let criticalHit: EquipClass['criticalHit'];
+  let damageTakenPct: number | undefined;
+  for (const held of world.tryGet(e, Equipment)?.misc ?? []) {
+    const equip = liveEquipOf(content, held);
+    if (equip === undefined) continue;
+    damageDealtPct ??= equip.damageDealtPct;
+    criticalHit ??= equip.criticalHit;
+    damageTakenPct ??= equip.damageTakenPct;
+  }
+  return { damageDealtPct, criticalHit, damageTakenPct };
 }
 
 /** The hitpoints the healing potions in `e`'s misc row still hold: each live slot's sip of its bearer's
