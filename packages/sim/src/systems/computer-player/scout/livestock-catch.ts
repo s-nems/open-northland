@@ -11,7 +11,7 @@ import { peaceGroundFor } from '../../match/peace.js';
 import { forEachBuildingNear } from '../../spatial/buildings.js';
 import { playerSawNode, playerSeesNode } from '../../vision/gates.js';
 import { seatBaseOf } from '../base.js';
-import { scoutDanger } from './danger.js';
+import { type ScoutDanger, scoutDanger } from './danger.js';
 import { scoutLostZones } from './lost-zones.js';
 
 /**
@@ -46,8 +46,9 @@ export type LivestockCatch =
  * seat knows the herds' start layout, never where they moved since: a herd that left its spot is found again
  * only by seeing it. Null when nothing is in reach.
  *
- * Cost: the livestock and the brief's spots inside the box around the settlement, and per candidate only
- * the buildings the spatial index holds near it, never animals times the seat's roster.
+ * Cost: every livestock creature and brief spot pays a few flat tests (claim, sight, the box around the
+ * settlement); only one inside the box probes the buildings the spatial index holds near it, never
+ * animals times the seat's roster.
  *
  * An animal inside a workplace ({@link Resting}) is out of contact reach until its batch releases
  * it, and one sealed away from the settlement would otherwise win the pick every decision and pin a
@@ -61,6 +62,7 @@ export function nextLivestockCatch(
   ctx: SystemContext,
   player: number,
   scoutAt: HalfCellNode | null = null,
+  danger: ScoutDanger = scoutDanger(world, ctx, player),
 ): LivestockCatch | null {
   const terrain = ctx.terrain;
   if (terrain === undefined) return null; // mapless sim: no ground to walk into an animal over
@@ -119,7 +121,6 @@ export function nextLivestockCatch(
   const veto = regions.pocketed(reference) ? null : regions;
   const peace = peaceGroundFor(world, player);
   const lost = scoutLostZones(world, player, ctx.tick);
-  const danger = scoutDanger(world, ctx, player);
   const first = (candidates: Candidate[]): Candidate | null => {
     candidates.sort((a, b) => a.near - b.near || a.rank - b.rank);
     for (const candidate of candidates) {

@@ -46,6 +46,9 @@ export interface ComputerIntelState {
   scout: IntelScout | null;
   /** Per map-brief zone, row-major, the last tick the seat lost a scout there, else {@link NEVER_SEEN}. */
   scoutLostAt: number[];
+  /** Per map-brief zone, row-major, the last tick the seat's scout turned back from a goal there, else
+   *  {@link NEVER_SEEN}. */
+  scoutTurnedBackAt: number[];
 }
 
 /** The scout as the seat last saw him: gone by the next observation, he died in {@link zone}. */

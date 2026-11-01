@@ -2,13 +2,18 @@ import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
   ComputerIntel,
+  CurrentAtomic,
   FOG_MODE,
   type MapBriefView,
+  MoveGoal,
   mapBriefOf,
   NEVER_SEEN,
+  PlayerOrder,
+  Position,
   Settler,
   zoneOfNode,
 } from '../../../../src/components/index.js';
+import type { Entity } from '../../../../src/ecs/world.js';
 import { positionOfNode, Simulation } from '../../../../src/index.js';
 import type { HalfCellNode } from '../../../../src/nav/halfcell.js';
 import { ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
@@ -19,6 +24,7 @@ import {
   SCOUT_LOSS_MEMORY_TICKS,
   SCOUT_REVISIT_TICKS,
   SCOUT_STALENESS_CAP_TICKS,
+  SCOUT_TURN_BACK_MEMORY_TICKS,
   SCOUTING_DEADLINE_LEAD_TICKS,
   SCOUTING_ROUND_TICKS,
   SMALL_START_SCOUT_FROM_TICKS,
@@ -52,6 +58,8 @@ const MAP_H = 128;
 const OTHER = 1;
 const HOME = { x: 40, y: 64 };
 const OTHER_START = { x: 200, y: 64 };
+/** An entity id above every one the sim spawns, for a remembered building. */
+const TOWER_POST = 1_000_000 as Entity;
 /** A mud deposit at the scan, in a zone off the walk between the starts. */
 const DEPOSIT = { ...RESOURCE_SPOTS.mud, x: 40, y: 112 };
 /** Late enough that a never-seen zone's staleness is capped. */
@@ -178,6 +186,44 @@ describe('scout staleness scouting', () => {
     const later = NOW + SCOUT_LOSS_MEMORY_TICKS;
     const due = nextStaleZoneTarget(sim.world, ctxAt(sim, later, fog), SEAT, DEFAULT_BUILD_ORDER);
     expect(zoneOf(sim, due)).toBe(enemyZone);
+  });
+
+  it('aims the next look elsewhere for a while after a tower on the way turns the scout back', () => {
+    const sim = staleSim([DEPOSIT], true);
+    const fog = fogOfWar(sim);
+    const enemyZone = zoneOfNode(briefOf(sim), OTHER_START.x, OTHER_START.y);
+    const goal = nextStaleZoneTarget(sim.world, ctxAt(sim, NOW, fog), SEAT, DEFAULT_BUILD_ORDER);
+    if (goal === null || zoneOf(sim, goal) !== enemyZone) throw new Error('setup: the enemy start is due');
+    const { world } = sim;
+    const scout = ownedSettlers(world, SEAT).find((e) => world.get(e, Settler).jobType === SCOUT);
+    const terrain = sim.terrain;
+    const carrier = aiControlEntity(world, SEAT);
+    if (scout === undefined || terrain === undefined || carrier === null) throw new Error('setup: a scout');
+    // Halfway there, beside a tower post the seat saw manned.
+    const midX = (HOME.x + OTHER_START.x) / 2;
+    world.mut(scout, Position).x = positionOfNode(midX, HOME.y).x;
+    world.mut(scout, Position).y = positionOfNode(midX, HOME.y).y;
+    world.add(scout, PlayerOrder, {});
+    world.add(scout, MoveGoal, { cell: terrain.nodeAt(goal.hx, goal.hy) });
+    world.remove(scout, CurrentAtomic);
+    world.mut(carrier, ComputerIntel).buildings.push({
+      entity: TOWER_POST,
+      owner: OTHER,
+      buildingType: HQ_TYPE,
+      hx: midX,
+      hy: HOME.y,
+      seenAt: NOW,
+      posted: 1,
+      postedPoints: 1,
+    });
+    const [order] = scoutModule(DEFAULT_BUILD_ORDER).run(world, ctxAt(sim, NOW, fog), SEAT);
+    expect(order).toMatchObject({ kind: 'moveUnit', entity: scout });
+    const next = nextStaleZoneTarget(world, ctxAt(sim, NOW, fog), SEAT, DEFAULT_BUILD_ORDER);
+    expect(zoneOf(sim, next)).not.toBe(enemyZone);
+    const later = NOW + SCOUT_TURN_BACK_MEMORY_TICKS;
+    expect(zoneOf(sim, nextStaleZoneTarget(world, ctxAt(sim, later, fog), SEAT, DEFAULT_BUILD_ORDER))).toBe(
+      enemyZone,
+    );
   });
 
   it('erects no signpost in a zone that took a scout', () => {

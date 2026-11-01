@@ -3,7 +3,6 @@ import {
   AiControl,
   aiControlEntity,
   ComputerStrategy,
-  type EconomicStrategyState,
   mapBriefOf,
 } from '../../../../src/components/index.js';
 import {
@@ -13,11 +12,7 @@ import {
   Simulation,
   serializeSaveGame,
 } from '../../../../src/index.js';
-import {
-  reviewEconomy,
-  STRATEGY_SWITCH_REVIEWS,
-  seatBriefOf,
-} from '../../../../src/systems/computer-player/index.js';
+import { seatBriefOf } from '../../../../src/systems/computer-player/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import { grassNodeMap } from '../../../fixtures/terrain.js';
 import { makeAiSeat, placeHq, SEAT, VIKING } from '../support.js';
@@ -49,36 +44,10 @@ describe('computer strategy step', () => {
     sim.enqueueSetup({ kind: 'spawnSettler', jobType: 6, x: 50, y: 10, tribe: VIKING, owner: MAP_AI_SEAT });
     sim.step();
     // The small test map leaves the home band little room.
-    expect(strategyOf(sim)?.economy).toEqual(
-      expect.objectContaining({ archetype: 'cramped', challenger: null }),
-    );
+    expect(strategyOf(sim)?.economy).toEqual(expect.objectContaining({ archetype: 'cramped' }));
     const brief = mapBriefOf(sim.world);
     expect(brief === null ? null : seatBriefOf(brief, SEAT)?.player).toBe(SEAT);
     expect(sim.world.has(mapOnly, ComputerStrategy)).toBe(false);
-  });
-
-  it('switches archetype only after the challenger has won enough reviews in a row', () => {
-    let held: EconomicStrategyState = {
-      archetype: 'standard',
-      sides: ['ironArms'],
-      evidence: ['ironInReach'],
-      decidedAt: 0,
-      challenger: null,
-    };
-    const cramped = { archetype: 'cramped' as const, sides: ['ironArms' as const], evidence: [] };
-    const standard = {
-      archetype: 'standard' as const,
-      sides: ['ironArms' as const],
-      evidence: ['ironInReach' as const],
-    };
-    held = reviewEconomy(held, cramped, 1) ?? held;
-    held = reviewEconomy(held, standard, 2) ?? held;
-    expect(held).toEqual(expect.objectContaining({ archetype: 'standard', challenger: null }));
-    for (let review = 1; review < STRATEGY_SWITCH_REVIEWS; review++)
-      held = reviewEconomy(held, cramped, 2 + review) ?? held;
-    expect(held.archetype).toBe('standard');
-    held = reviewEconomy(held, cramped, 9) ?? held;
-    expect(held).toEqual(expect.objectContaining({ archetype: 'cramped', decidedAt: 9, challenger: null }));
   });
 
   it('survives a save and restore unchanged', () => {

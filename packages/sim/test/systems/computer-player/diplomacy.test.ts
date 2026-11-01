@@ -148,7 +148,7 @@ describe('an islands seat declaring war', () => {
     const carrier = aiControlEntity(sim.world, COMPUTER);
     if (carrier === null) throw new Error('the computer seat has no AI carrier');
     sim.world.add(carrier, ComputerStrategy, {
-      economy: { archetype, sides: [], evidence: [], decidedAt: 0, challenger: null },
+      economy: { archetype, sides: [], evidence: [], decidedAt: 0 },
       military: {
         plan: 'balanced',
         posture: 'prepare',

@@ -84,6 +84,7 @@ const INTEL: components.ComputerIntelState = {
   zoneSeenAt: [NOW, NOW - 2 * MINUTE, NOW, -1],
   scout: null,
   scoutLostAt: [-1, -1, -1, -1],
+  scoutTurnedBackAt: [-1, -1, -1, -1],
 };
 
 describe('AI mind rows', () => {

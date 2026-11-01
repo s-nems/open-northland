@@ -80,12 +80,21 @@ export function zoneStaleness(world: World, seat: number, zone: number, tick: nu
 
 /** The zones where `seat` lost a scout within `memory` ticks before `tick`, ascending. */
 export function scoutLossZones(world: World, seat: number, tick: number, memory: number): number[] {
-  const lostAt = intelOf(world, seat)?.scoutLostAt;
+  return recentZones(intelOf(world, seat)?.scoutLostAt, tick, memory);
+}
+
+/** The zones `seat`'s scout turned back from a goal in within `memory` ticks before `tick`, ascending. */
+export function scoutTurnBackZones(world: World, seat: number, tick: number, memory: number): number[] {
+  return recentZones(intelOf(world, seat)?.scoutTurnedBackAt, tick, memory);
+}
+
+/** The zones whose per-zone tick lies within `memory` ticks before `tick`, ascending. */
+function recentZones(at: readonly number[] | undefined, tick: number, memory: number): number[] {
   const zones: number[] = [];
-  if (lostAt === undefined) return zones;
-  for (let zone = 0; zone < lostAt.length; zone++) {
-    const at = lostAt[zone] ?? NEVER_SEEN;
-    if (at !== NEVER_SEEN && tick - at < memory) zones.push(zone);
+  if (at === undefined) return zones;
+  for (let zone = 0; zone < at.length; zone++) {
+    const when = at[zone] ?? NEVER_SEEN;
+    if (when !== NEVER_SEEN && tick - when < memory) zones.push(zone);
   }
   return zones;
 }

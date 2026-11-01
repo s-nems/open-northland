@@ -208,7 +208,7 @@ function holdPosture(
     decidedAt: 0,
     challenger: null,
   };
-  const economy = { archetype: 'standard' as const, sides: [], evidence: [], decidedAt: 0, challenger: null };
+  const economy = { archetype: 'standard' as const, sides: [], evidence: [], decidedAt: 0 };
   if (sim.world.has(carrier, ComputerStrategy)) sim.world.remove(carrier, ComputerStrategy);
   sim.world.add(carrier, ComputerStrategy, { economy, military });
 }

@@ -9,6 +9,7 @@ import {
   OrderQueue,
   PlayerOrder,
   Settler,
+  zoneOfNode,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
@@ -25,6 +26,7 @@ import { seatBaseOf } from '../base.js';
 import type { BuildOrder } from '../build-order/entries.js';
 import { minutesToTicks } from '../game-phase.js';
 import type { ComputerModule } from '../index.js';
+import { recordScoutTurnBack } from '../knowledge/intel/index.js';
 import { militaryDeadlineTick } from '../military/deadline.js';
 import { enemyFighterNear, scoutDanger, seatHasSoldier } from './danger.js';
 import { nextLivestockCatch } from './livestock-catch.js';
@@ -40,7 +42,13 @@ export {
   seatHasSoldier,
 } from './danger.js';
 export { type LivestockCatch, nextLivestockCatch, SCOUT_CATCH_RADIUS_NODES } from './livestock-catch.js';
-export { type LostZones, SCOUT_LOSS_MEMORY_TICKS, scoutLostZones } from './lost-zones.js';
+export {
+  type LostZones,
+  SCOUT_LOSS_MEMORY_TICKS,
+  SCOUT_TURN_BACK_MEMORY_TICKS,
+  scoutLostZones,
+  scoutTurnedBackZones,
+} from './lost-zones.js';
 export {
   nextSignpostTarget,
   SIGNPOST_LATTICE_SPACING_NODES,
@@ -76,8 +84,8 @@ export const SMALL_START_SCOUT_FROM_TICKS = minutesToTicks(15);
 export const SMALL_START_MEN = 10;
 
 /** Whether `player`'s seat holds off its scout at `ctx.tick` (owner ruling): before
- *  {@link SMALL_START_SCOUT_FROM_TICKS} while fewer than {@link SMALL_START_MEN} of its men stood at the
- *  map brief's scan, an entity below the brief's ceiling having stood then. */
+ *  {@link SMALL_START_SCOUT_FROM_TICKS} while fewer than {@link SMALL_START_MEN} of the men who stood at the
+ *  map brief's scan (an entity below the brief's ceiling) still live, so start men lost count too. */
 export function scoutHeldForBuilders(world: World, ctx: SystemContext, player: number): boolean {
   if (ctx.tick >= SMALL_START_SCOUT_FROM_TICKS) return false;
   const brief = mapBriefOf(world);
@@ -136,16 +144,17 @@ function runScout(
   if (world.has(scout, PlayerOrder) && !world.has(scout, CurrentAtomic))
     return at === null || home === null ? [] : retreat(world, ctx, player, scout, at, home);
   if (scoutBusy(world, ctx, scout)) return [];
+  const danger = scoutDanger(world, ctx, player);
   const scouts = scoutingOpen(world, ctx, player);
   const leads = scouts && scoutingLeads(ctx.tick);
-  const zone = leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
+  const zone = leads ? nextStaleZoneTarget(world, ctx, player, order, danger) : null;
   if (zone !== null) return [{ kind: 'moveUnit', entity: scout, x: zone.hx, y: zone.hy }];
   const post = nextSignpostTarget(world, ctx, player, order, at);
   if (post !== null) return [{ kind: 'placeSignpost', entity: scout, x: post.hx, y: post.hy }];
-  const herd = nextLivestockCatch(world, ctx, player, at);
+  const herd = nextLivestockCatch(world, ctx, player, at, danger);
   if (herd?.kind === 'claim') return [{ kind: 'claimAnimal', entity: scout, animal: herd.animal }];
   if (herd?.kind === 'look') return [{ kind: 'moveUnit', entity: scout, x: herd.node.hx, y: herd.node.hy }];
-  const late = scouts && !leads ? nextStaleZoneTarget(world, ctx, player, order) : null;
+  const late = scouts && !leads ? nextStaleZoneTarget(world, ctx, player, order, danger) : null;
   if (late !== null) return [{ kind: 'moveUnit', entity: scout, x: late.hx, y: late.hy }];
   return at !== null && home !== null && !nearHome(at, home) ? [walkHome(scout, home)] : [];
 }
@@ -169,7 +178,8 @@ function walkHome(scout: Entity, home: HalfCellNode): PlayerCommand {
 /**
  * The walk home for a scout on a move whose goal lies in the {@link scoutDanger} reach, who stands in
  * it, or who sees an enemy fighter near him (owner ruling: a scout looks from nearby and turns back, he
- * does not die): a tower first seen on the way, or an army, ends the trip. None while he already walks
+ * does not die): a tower first seen on the way, or an army, ends the trip, and the goal's zone is
+ * recorded so the next look goes elsewhere ({@link nextStaleZoneTarget}). None while he already walks
  * home.
  */
 function retreat(
@@ -191,7 +201,10 @@ function retreat(
     danger.covers(goal.hx, goal.hy) ||
     danger.covers(at.hx, at.hy) ||
     enemyFighterNear(world, ctx, player, at);
-  return threatened ? [walkHome(scout, home)] : [];
+  if (!threatened) return [];
+  const brief = mapBriefOf(world);
+  if (brief !== null) recordScoutTurnBack(world, player, zoneOfNode(brief, goal.hx, goal.hy), ctx.tick);
+  return [walkHome(scout, home)];
 }
 
 /**

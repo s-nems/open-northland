@@ -27,8 +27,9 @@ import { playerSeesNode } from '../../../vision/gates.js';
 import type { FogState } from '../../../vision/state.js';
 import { isLiveFighter, unitPoints } from '../../military/points.js';
 
-/** Ticks after a seat's decision slot its intel is updated (authored): off the workforce's and build
- *  order's dear phases, one phase before the military decision reads it. */
+/** Ticks after a seat's decision slot its intel is updated (authored): off the seat's own workforce and
+ *  build order phases, one phase before its military decision reads it. With the seats
+ *  `AI_SEAT_SLOT_STEP_TICKS` apart it shares a tick with the next seat's build order. */
 export const INTEL_DECISION_PHASE = 4;
 
 /**
@@ -46,6 +47,13 @@ export function updateComputerIntel(world: World, ctx: SystemContext, seats: rea
     if (!computerDecisionDue(ctx.tick - INTEL_DECISION_PHASE, seat)) continue;
     observe(world, ctx, brief, seat, world.mut(carrier, ComputerIntel));
   }
+}
+
+/** Record that `seat`'s scout turned back at `tick` from a goal in `zone`; nothing before its intel exists. */
+export function recordScoutTurnBack(world: World, seat: number, zone: number, tick: number): void {
+  const carrier = aiControlEntity(world, seat);
+  if (carrier === null || !world.has(carrier, ComputerIntel)) return;
+  world.mut(carrier, ComputerIntel).scoutTurnedBackAt[zone] = tick;
 }
 
 /** The memory a seat starts with: every other seat's start buildings, never yet seen. */
@@ -73,6 +81,7 @@ function seededIntel(brief: MapBriefView, seat: number): ComputerIntelState {
     zoneSeenAt: new Array<number>(brief.zonesWide * brief.zonesHigh).fill(NEVER_SEEN),
     scout: null,
     scoutLostAt: new Array<number>(brief.zonesWide * brief.zonesHigh).fill(NEVER_SEEN),
+    scoutTurnedBackAt: new Array<number>(brief.zonesWide * brief.zonesHigh).fill(NEVER_SEEN),
   };
 }
 
@@ -95,8 +104,9 @@ function observe(
 }
 
 /** Record the zone the seat's scout of the last observation stood in as a loss when he is gone now, then
- *  remember the scout of this one. A scout who changed trade is alive and lost nowhere, and a zone holding
- *  one of the seat's buildings is its settlement, never avoided. */
+ *  remember the scout of this one; one out of sight inside a building or ship keeps his last zone. A scout
+ *  who changed trade is alive and lost nowhere, and a zone holding one of the seat's buildings is its
+ *  settlement, never avoided. */
 function trackScout(
   world: World,
   ctx: SystemContext,
@@ -111,14 +121,15 @@ function trackScout(
   const scout = ownedSettlers(world, seat).find((e) =>
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
   );
-  const pos = scout === undefined ? undefined : world.tryGet(scout, Position);
-  intel.scout =
-    scout === undefined || pos === undefined
-      ? null
-      : {
-          entity: scout,
-          zone: zoneOfNode(brief, nodeHxOfPosition(pos.x, pos.y), nodeHyOfPosition(pos.x, pos.y)),
-        };
+  if (scout === undefined) {
+    intel.scout = null;
+    return;
+  }
+  const pos = world.tryGet(scout, Position);
+  if (pos !== undefined) {
+    const zone = zoneOfNode(brief, nodeHxOfPosition(pos.x, pos.y), nodeHyOfPosition(pos.x, pos.y));
+    intel.scout = { entity: scout, zone };
+  } else if (last?.entity !== scout) intel.scout = null;
 }
 
 /** The men seen holding one post and their points. */

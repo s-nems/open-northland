@@ -243,7 +243,7 @@ function reviewedSeat(
     difficulty: 'hard',
   });
   sim.world.add(carrier, ComputerStrategy, {
-    economy: { archetype: 'standard', sides: [], evidence: [], decidedAt: 0, challenger: null },
+    economy: { archetype: 'standard', sides: [], evidence: [], decidedAt: 0 },
     military: {
       posture: threatInTicks === null ? 'defend' : 'prepare',
       evidence,

@@ -55,7 +55,6 @@ const DECIDED: AiSeatReading = {
       sides: ['naturalArms', 'fishing'],
       evidence: ['homeRoomSmall', 'ironOutOfReach'],
       decidedAt: 120,
-      challenger: { archetype: 'rich', reviews: 2 },
     },
     military: {
       plan: 'balanced',
@@ -85,7 +84,6 @@ describe('AI view rows', () => {
     const [strategy, military, forces, bands, access, others] = seat?.tables ?? [];
     expect(strategy?.rows).toContainEqual([copy.sides, 'naturalArms, fishing']);
     expect(strategy?.rows).toContainEqual([copy.evidence, 'homeRoomSmall, ironOutOfReach']);
-    expect(strategy?.rows.find((row) => row[0] === copy.challenger)?.[1]).toContain('rich');
     expect(military?.rows).toContainEqual([copy.posture, 'prepare']);
     expect(forces?.rows).toEqual([[copy.own, '120', '-', '-', '-', '-']]);
     expect(bands?.head).toEqual([copy.band, copy.home, copy.near]);

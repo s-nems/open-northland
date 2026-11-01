@@ -39,7 +39,7 @@ export const ECONOMIC_RULES = [
 ] as const;
 export type EconomicRule = (typeof ECONOMIC_RULES)[number];
 
-/** One review's economic choice. */
+/** The economic choice read from a seat brief. */
 export interface EconomicChoice {
   archetype: EconomicArchetype;
   sides: EconomicSide[];
@@ -47,11 +47,8 @@ export interface EconomicChoice {
 }
 
 export interface EconomicStrategyState extends EconomicChoice {
-  /** The tick the current archetype was decided. */
+  /** The tick the archetype was decided. */
   decidedAt: number;
-  /** A different archetype the latest reviews agreed on, and in how many reviews in a row; null while
-   *  they agree with the current one. */
-  challenger: { archetype: EconomicArchetype; reviews: number } | null;
 }
 
 /** A seat's military personality, drawn once (`systems/computer-player/strategy/military.ts`). Owner

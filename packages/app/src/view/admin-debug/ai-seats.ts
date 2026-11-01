@@ -96,9 +96,6 @@ export function aiSeatRows(seats: readonly AiSeatReading[], msgs: Messages): Adm
             [copy.sides, listed(economy.sides)],
             [copy.evidence, listed(economy.evidence)],
             [copy.decided, formatMessage(copy.decidedAt, { tick: economy.decidedAt })],
-            ...(economy.challenger === null
-              ? []
-              : [[copy.challenger, formatMessage(copy.challengerValue, { ...economy.challenger })]]),
           ];
     const military = seat.strategy?.military;
     const tables: AdminAiTable[] = [

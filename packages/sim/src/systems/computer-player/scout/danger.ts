@@ -33,8 +33,40 @@ export interface ScoutDanger {
   readonly covers: (hx: number, hy: number) => boolean;
 }
 
-/** `player`'s {@link ScoutDanger} now. Costs the enemies' believed buildings and the alarmed ones. */
+/** The shooters' bucket edge in nodes: the clearance, so a node's shooters lie within one bucket row and
+ *  two bucket columns of its own (a hex reach spans its rows but up to one and a half times its columns). */
+const BUCKET_NODES = SCOUT_FIRE_CLEARANCE_NODES;
+/** Bucket key packing (`by * STRIDE + bx`), wide enough for every map axis and its neighbour offsets. */
+const BUCKET_KEY_STRIDE = 1 << 16;
+/** How many buckets either side of a node's own its shooters may lie in, per axis. */
+const BUCKET_REACH_X = 2;
+const BUCKET_REACH_Y = 1;
+
+/** `player`'s {@link ScoutDanger} now. Free to build: the first `covers` costs the enemies' believed
+ *  buildings and the alarmed ones, every later one only the shooters bucketed near its node. */
 export function scoutDanger(world: World, ctx: SystemContext, player: number): ScoutDanger {
+  let buckets: Map<number, HalfCellNode[]> | null = null;
+  return {
+    covers: (hx, hy) => {
+      buckets ??= bucketShooters(world, ctx, player);
+      if (buckets.size === 0) return false;
+      const bx = Math.floor(hx / BUCKET_NODES);
+      const by = Math.floor(hy / BUCKET_NODES);
+      for (let y = by - BUCKET_REACH_Y; y <= by + BUCKET_REACH_Y; y++) {
+        for (let x = bx - BUCKET_REACH_X; x <= bx + BUCKET_REACH_X; x++) {
+          const bucket = buckets.get(y * BUCKET_KEY_STRIDE + x);
+          if (bucket === undefined) continue;
+          for (const s of bucket)
+            if (hexDistanceBetween(s.hx, s.hy, hx, hy) <= SCOUT_FIRE_CLEARANCE_NODES) return true;
+        }
+      }
+      return false;
+    },
+  };
+}
+
+/** The enemy buildings that may shoot the scout, bucketed by {@link BUCKET_NODES}. */
+function bucketShooters(world: World, ctx: SystemContext, player: number): Map<number, HalfCellNode[]> {
   const shooters: HalfCellNode[] = believedEnemyTowers(world, ctx, player).map((t) => t.at);
   for (const b of believedTowerPosts(world, player)) shooters.push({ hx: b.hx, hy: b.hy });
   for (const e of world.query(DefenceMode, Owner, Building)) {
@@ -43,10 +75,14 @@ export function scoutDanger(world: World, ctx: SystemContext, player: number): S
     const at = anchorNodeOf(world, e);
     if (at !== null && playerSeesNode(ctx.fog, player, at.hx, at.hy)) shooters.push(at);
   }
-  return {
-    covers: (hx, hy) =>
-      shooters.some((s) => hexDistanceBetween(s.hx, s.hy, hx, hy) <= SCOUT_FIRE_CLEARANCE_NODES),
-  };
+  const buckets = new Map<number, HalfCellNode[]>();
+  for (const s of shooters) {
+    const key = Math.floor(s.hy / BUCKET_NODES) * BUCKET_KEY_STRIDE + Math.floor(s.hx / BUCKET_NODES);
+    const bucket = buckets.get(key);
+    if (bucket === undefined) buckets.set(key, [s]);
+    else bucket.push(s);
+  }
+  return buckets;
 }
 
 /** Whether `player` sees an enemy fighter within {@link SCOUT_FIGHTER_CLEARANCE_NODES} of `at`. Costs the

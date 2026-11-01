@@ -241,7 +241,7 @@ export function seatEconomy(sim: Simulation, archetype: EconomicArchetype, sides
   if (carrier === null) throw new Error('setup: no computer carrier');
   if (sim.world.has(carrier, ComputerStrategy)) sim.world.remove(carrier, ComputerStrategy);
   sim.world.add(carrier, ComputerStrategy, {
-    economy: { archetype, sides, evidence: [], decidedAt: 0, challenger: null },
+    economy: { archetype, sides, evidence: [], decidedAt: 0 },
     military: {
       posture: 'prepare',
       evidence: ['noTarget', 'buildingUp'],

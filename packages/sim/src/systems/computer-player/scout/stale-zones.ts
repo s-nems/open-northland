@@ -11,7 +11,7 @@ import { seatBaseOf } from '../base.js';
 import type { BuildOrder } from '../build-order/entries.js';
 import { zoneStaleness } from '../knowledge/intel/index.js';
 import { type ScoutDanger, scoutDanger } from './danger.js';
-import { scoutLostZones } from './lost-zones.js';
+import { scoutLostZones, scoutTurnedBackZones } from './lost-zones.js';
 import { gatheredGoodIds } from './signpost-coverage.js';
 
 const TICKS_PER_MINUTE = 60 * TICKS_PER_SECOND;
@@ -45,7 +45,9 @@ interface StaleZone {
  * zones never seen that hold a deposit the seat gathers. Score = importance x staleness (capped; a zone
  * never seen counts the cap), best first, ties to the lower zone index; a zone seen within
  * {@link SCOUT_REVISIT_TICKS} is not due, and neither is a zone the seat lost a scout in
- * ({@link scoutLostZones}) or one whose straight walk crosses such a zone. The goal is the zone's centre
+ * ({@link scoutLostZones}) or one whose straight walk crosses such a zone, nor a zone whose goal lately
+ * turned the scout back ({@link scoutTurnedBackZones}), or one whose goal lies in such a zone, so a route
+ * past a tower is not walked again at once. The goal is the zone's centre
  * when clear of the {@link scoutDanger} reach, else the farthest point of the straight walk toward it
  * before the walk enters that reach (owner ruling: a scout comes near, looks and turns back, never into a
  * tower's reach); either way a node on the seat's land, clear of the reach, searched around that point.
@@ -57,6 +59,7 @@ export function nextStaleZoneTarget(
   ctx: SystemContext,
   player: number,
   order: BuildOrder,
+  danger: ScoutDanger = scoutDanger(world, ctx, player),
 ): HalfCellNode | null {
   const fog = ctx.fog;
   const terrain = ctx.terrain;
@@ -70,9 +73,10 @@ export function nextStaleZoneTarget(
 
   const importance = candidateZones(world, brief, player, anchor, order, ctx.tick);
   const lost = scoutLostZones(world, player, ctx.tick);
+  const turnedBack = scoutTurnedBackZones(world, player, ctx.tick);
   const due: StaleZone[] = [];
   for (const [zone, weight] of importance) {
-    if (brief.dominantLand[zone] !== component || lost.zone(zone)) continue;
+    if (brief.dominantLand[zone] !== component || lost.zone(zone) || turnedBack.zone(zone)) continue;
     const staleness = zoneStaleness(world, player, zone, ctx.tick);
     if (staleness !== null && staleness < SCOUT_REVISIT_TICKS) continue;
     due.push({
@@ -82,13 +86,13 @@ export function nextStaleZoneTarget(
   }
   due.sort((a, b) => b.score - a.score || a.zone - b.zone);
 
-  const danger = scoutDanger(world, ctx, player);
   const clear = (x: number, y: number): boolean =>
     terrain.inBounds(x, y) && terrain.componentOf(terrain.nodeAt(x, y)) === component && !danger.covers(x, y);
   for (const { zone } of due) {
     const goal = zoneGoal(brief, terrain, zone, anchor, danger, clear);
     // The intel samples zones on its own beat: a goal in sight now is already being looked at.
     if (goal === null || playerSeesNode(fog, player, goal.hx, goal.hy)) continue;
+    if (turnedBack.node(goal.hx, goal.hy)) continue;
     // Approximation: the straight walk stands in for the pathfinder's route past a zone that took a scout.
     if (![...zonesOnLine(brief, anchor, goal)].some(lost.zone)) return goal;
   }
