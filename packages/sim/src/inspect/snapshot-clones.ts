@@ -4,7 +4,7 @@ import type { Component, Entity, World } from '../ecs/world.js';
 import { EntityDigest } from './entity-digest.js';
 import { addField } from './fast-record.js';
 import { PendingWrites } from './pending-writes.js';
-import { clonePlain } from './plain-clone.js';
+import { clonePlain, cloneReadView } from './plain-clone.js';
 import type { EntitySnapshot } from './snapshot.js';
 import { DeltaColumns, DeltaShapes, type SnapshotDelta } from './snapshot-delta.js';
 
@@ -109,7 +109,10 @@ class SnapshotClones {
       cached.membershipChanged = false;
     } else if (cached.written.size > 0) {
       for (const component of cached.written) {
-        cached.components[component.name] = clonePlain(this.world.get(id, component));
+        cached.components[component.name] = cloneReadView(
+          this.world.get(id, component),
+          component.simOnlyFields,
+        );
       }
       cached.snap = null;
       cached.written.clear();
@@ -162,11 +165,11 @@ function cloneComponents(world: World, id: Entity, previous?: CachedEntity): Rec
   let fields = 0;
   world.forEachComponent(
     id,
-    (name, value) => {
+    (name, value, _revision, component) => {
       const clone =
         previous !== undefined && !writtenNames.has(name) && Object.hasOwn(previous.components, name)
           ? previous.components[name]
-          : clonePlain(value);
+          : cloneReadView(value, component.simOnlyFields);
       addField(components, fields++, name, clone);
     },
     true,
@@ -292,7 +295,7 @@ export class SnapshotDeltaStream {
     this.sent.add(id);
     this.digest?.fold(this.clones.snapOf(id));
     columns.begin(id);
-    this.source.world.forEachComponent(id, columns.writeLive, true);
+    this.source.world.forEachComponent(id, columns.writeComponent, true);
     columns.end();
   }
 
@@ -324,7 +327,7 @@ export class SnapshotDeltaStream {
       const component = written[i] as Component<unknown>;
       const value = world.tryGet(id, component);
       if (value === undefined) columns.drop(component.name);
-      else columns.writeLive(component.name, value);
+      else columns.writeLive(component.name, value, component.simOnlyFields);
     }
     columns.end();
   }

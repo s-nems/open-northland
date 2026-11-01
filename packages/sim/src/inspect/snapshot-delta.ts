@@ -1,8 +1,9 @@
 import type { SimEvent } from '../core/events.js';
 import { isPlainRecord, PROTO_KEY, sortedMapEntries } from '../core/plain-value.js';
+import type { Component } from '../ecs/component.js';
 import type { DeltaDigest } from './entity-digest.js';
 import { addField } from './fast-record.js';
-import { clonePlain } from './plain-clone.js';
+import { cloneReadView } from './plain-clone.js';
 
 /**
  * The changes of one stretch of ticks, in the shape a mirror rebuilds the snapshot from and a worker
@@ -372,23 +373,36 @@ export class DeltaColumns {
     this.droppedCount = 0;
   }
 
-  /** Write a value read off the live world: a plain record the columns carry, a cleared `undefined`
-   *  field aside and a `Map` as its sorted entries, goes straight into them, any other value as its
-   *  {@link clonePlain}. Either way the columns end as {@link write} of the clone leaves them. */
-  readonly writeLive = (name: string, value: unknown): void => {
+  /** Write a value read off the live world without its `simOnlyFields`: a plain record the columns
+   *  carry, a cleared `undefined` field aside and a `Map` as its sorted entries, goes straight into them,
+   *  any other value as its {@link cloneReadView}. Either way the columns end as {@link write} of the
+   *  clone leaves them. */
+  readonly writeLive = (
+    name: string,
+    value: unknown,
+    simOnlyFields: ReadonlySet<string> | null = null,
+  ): void => {
     this.written[this.writtenCount++] = name;
     this.step = this.shapes.writtenAfter(this.step, name);
-    const kind = isPlainRecord(value) ? this.recordKind(this.step, value, true) : WHOLE_VALUE;
+    const kind = isPlainRecord(value) ? this.recordKind(this.step, value, true, simOnlyFields) : WHOLE_VALUE;
     this.valueKinds.push(kind);
     // A field that fails the column test fails it in the clone too, so the clone needs no second look.
-    if (kind === WHOLE_VALUE) this.values.push(clonePlain(value));
+    if (kind === WHOLE_VALUE) this.values.push(cloneReadView(value, simOnlyFields));
   };
+
+  /** {@link writeLive} as a `World.forEachComponent` visitor. */
+  readonly writeComponent = (
+    name: string,
+    value: unknown,
+    _revision: number,
+    component: Component<unknown>,
+  ): void => this.writeLive(name, value, component.simOnlyFields);
 
   /** Write a detached value, kept as the delta's own unless it is a record the columns carry. */
   write(name: string, value: unknown): void {
     this.written[this.writtenCount++] = name;
     this.step = this.shapes.writtenAfter(this.step, name);
-    const kind = this.recordKind(this.step, value, false);
+    const kind = this.recordKind(this.step, value, false, null);
     this.valueKinds.push(kind);
     if (kind === WHOLE_VALUE) this.values.push(value);
   }
@@ -438,21 +452,27 @@ export class DeltaColumns {
   /** Push the fields of a record the columns carry and answer its key list's entry, or answer
    *  {@link WHOLE_VALUE} for any other value and push nothing. A record is any non-array object: a
    *  structured clone keeps no prototype either. */
-  private recordKind(step: ChangeStep, value: unknown, skipUndefined: boolean): number {
+  private recordKind(
+    step: ChangeStep,
+    value: unknown,
+    skipUndefined: boolean,
+    omitted: ReadonlySet<string> | null,
+  ): number {
     if (typeof value !== 'object' || value === null || Array.isArray(value)) return WHOLE_VALUE;
-    const layout = this.recordLayout(step, value as Record<string, unknown>, skipUndefined, 0);
+    const layout = this.recordLayout(step, value as Record<string, unknown>, skipUndefined, 0, omitted);
     return layout === null ? WHOLE_VALUE : layout.at;
   }
 
   /** Push the fields of `record`, read at `slot` and nesting `depth`, and answer its layout, entered in
    *  this delta's `recordKeys`; or answer null and leave the columns as they were when a field is none the
    *  columns carry. `skipUndefined` leaves out a field holding `undefined`, as the clone of a live value
-   *  does, and reads a nested `Map` as its sorted entries. */
+   *  does, and reads a nested `Map` as its sorted entries. A key in `omitted` is left out too. */
   private recordLayout(
     slot: LayoutSlot,
     record: Record<string, unknown>,
     skipUndefined: boolean,
     depth: number,
+    omitted: ReadonlySet<string> | null = null,
   ): RecordLayout | null {
     const stringStart = this.strings.length;
     const numberStart = this.numberCount;
@@ -469,6 +489,7 @@ export class DeltaColumns {
     let matched = last === null ? 0 : -1;
     let count = 0;
     for (const key in record) {
+      if (omitted?.has(key)) continue;
       const field = record[key];
       let kind: number;
       if (typeof field === 'number') {

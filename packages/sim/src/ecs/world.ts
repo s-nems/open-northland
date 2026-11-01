@@ -365,7 +365,7 @@ export class World {
    *  view passes `readView` to skip the {@link Component.simOnly} ones. */
   forEachComponent(
     entity: Entity,
-    visit: (name: string, value: unknown, revision: number) => void,
+    visit: (name: string, value: unknown, revision: number, component: Component<unknown>) => void,
     readView = false,
   ): void {
     const memberships = this.memberships;
@@ -378,7 +378,7 @@ export class World {
       if (slot < 0) continue;
       const v = store.valueAt(slot);
       if (v === undefined) continue;
-      visit(c.name, v, store.revisionAt(slot));
+      visit(c.name, v, store.revisionAt(slot), c);
     }
   }
 

@@ -56,6 +56,18 @@ const FELL_TICK = 250;
 const SimOnlyMark = defineComponent<{ until: number }>('SnapshotTestSimOnlyMark', 'settlers', {
   simOnly: true,
 });
+/** A step record of every scalar kind, all of it in read views. */
+const StepMark = defineComponent<{
+  index: number;
+  legElapsed: number;
+  legCost: number;
+  legStartedAt?: number | undefined;
+  departureCharged?: true | undefined;
+}>('SnapshotTestStepMark', 'movement');
+/** A waypoint read views carry beside a step counter they leave out. */
+const CountedStep = defineComponent<{ index: number; steps: number }>('SnapshotTestCountedStep', 'movement', {
+  simOnlyFields: ['steps'],
+});
 
 function bareResource(sim: Simulation, remaining: number): Entity {
   const e = sim.world.create();
@@ -258,9 +270,27 @@ describe('snapshot delta stream', () => {
     expect([...delta.touched]).toStrictEqual([hidden]);
   });
 
+  it('leaves sim-only fields out of deltas, snapshots and the mirror', () => {
+    const sim = new Simulation({ seed: 1, content: testContent() });
+    const walker = bareResource(sim, 5);
+    const deltas = sim.snapshotDeltas();
+    const mirror = new SnapshotMirror();
+    mirror.apply(nonNull(deltas.next()));
+    sim.world.add(walker, CountedStep, { index: 0, steps: 0 });
+    mirror.apply(nonNull(deltas.next()));
+    sim.world.mut(walker, CountedStep).steps = 1;
+    const stepped = nonNull(deltas.next());
+    expect(stepped.recordKeys).toStrictEqual([['index']]);
+    mirror.apply(stepped);
+    expect(entityById(mirror.snapshot(), walker)?.components[CountedStep.name]).toStrictEqual({ index: 0 });
+    expect(entityById(mirror.snapshot(), walker)?.components).toStrictEqual(
+      entityById(sim.snapshot(), walker)?.components,
+    );
+  });
+
   it('carries records of numbers, booleans, strings and null as scalars, and repeats a layout in a later delta', () => {
     const sim = new Simulation({ seed: 1, content: testContent() });
-    const { PathFollow, SettlerNeeds, Stance } = components;
+    const { SettlerNeeds, Stance } = components;
     const walker = bareResource(sim, 5);
     const deltas = sim.snapshotDeltas();
     const mirror = new SnapshotMirror();
@@ -280,20 +310,25 @@ describe('snapshot delta stream', () => {
       asOf: 9,
       drain: 'body' as const,
     };
-    sim.world.add(walker, PathFollow, follow);
+    sim.world.add(walker, StepMark, follow);
     sim.world.add(walker, SettlerNeeds, needs);
     sim.world.add(walker, Stance, { mode: MILITARY_MODE.IGNORE, anchorCell: null });
     const first = nonNull(deltas.next());
     expect(first.values).toEqual([]);
     expect(first.recordFields).toEqual(expect.arrayContaining(['nnnb', 'nnnnns', 'nz']));
     mirror.apply(first);
-    sim.world.mut(walker, PathFollow).index = 3;
+    sim.world.mut(walker, StepMark).index = 3;
     const second = nonNull(deltas.next());
     expect(second.values).toEqual([]);
     expect(second.recordKeys).toEqual([['index', 'legElapsed', 'legCost', 'departureCharged']]);
     mirror.apply(second);
     const held = entityById(mirror.snapshot(), walker)?.components;
-    expect(held?.PathFollow).toStrictEqual({ index: 3, legElapsed: 0, legCost: 7, departureCharged: true });
+    expect(held?.[StepMark.name]).toStrictEqual({
+      index: 3,
+      legElapsed: 0,
+      legCost: 7,
+      departureCharged: true,
+    });
     expect(held?.SettlerNeeds).toStrictEqual({ ...needs });
     expect(held?.Stance).toStrictEqual({ mode: MILITARY_MODE.IGNORE, anchorCell: null });
     expect(held).toStrictEqual(entityById(sim.snapshot(), walker)?.components);

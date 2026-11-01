@@ -39,8 +39,9 @@ buckets), maintained by the mirror from the same edits and built by one walk for
 the sim; the lists it hands out are live and ascending by id. A spec declares the components it places
 an entity by (`reads`, value or presence), so a change that wrote none of them only swaps the entity's
 object; an undeclared read leaves the view stale, which `verifyIndexes` reports. A component defined
-with `simOnly` (sim bookkeeping no snapshot reader needs) stays out of snapshots, deltas and the mirror;
-saves, the state hash and the sync digest keep it. A snapshot reader that needs one drops its flag.
+with `simOnly` (sim bookkeeping no snapshot reader needs) stays out of snapshots, deltas and the mirror,
+and so do the record fields named in `simOnlyFields`; saves, the state hash and the sync digest keep
+them. A snapshot reader that needs one drops its flag or field.
 
 ## Ordering
 

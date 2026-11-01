@@ -47,6 +47,23 @@ export function clonePlain(value: unknown): unknown {
   return out;
 }
 
+/** {@link clonePlain} of a component value as read views carry it: a record without the component's
+ *  sim-only fields. */
+export function cloneReadView(value: unknown, simOnlyFields: ReadonlySet<string> | null): unknown {
+  if (simOnlyFields === null || !isPlainRecord(value)) return clonePlain(value);
+  const visible: Record<string, unknown> = {};
+  for (const k of Object.keys(value)) {
+    if (simOnlyFields.has(k)) continue;
+    Object.defineProperty(visible, k, {
+      value: value[k],
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  return clonePlain(visible);
+}
+
 function uncloneable(value: unknown): Error {
   return new Error(`snapshot: uncloneable value shape ${valueShapeName(value)}`);
 }

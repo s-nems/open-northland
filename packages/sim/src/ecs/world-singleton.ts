@@ -18,7 +18,7 @@ export function defineWorldSingleton<T extends object>(
   name: string,
   domain: SyncDomain,
   defaults: () => T,
-  options: ComponentOptions = {},
+  options: ComponentOptions<T> = {},
 ): WorldSingleton<T> {
   const component = defineComponent<T>(name, domain, options);
   // One instance answers every carrier-less read, so the default path allocates nothing. Every World in

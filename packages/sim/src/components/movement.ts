@@ -110,7 +110,10 @@ export interface Waypoint {
  * `bootsDegree` is the worn boots' degree of use as this walk's steps wore them, ahead of
  * `Equipment.boots` until the walk ends, so a step leaves the equipment record unwritten.
  */
-export const PathFollow = defineComponent<PathFollowState>('PathFollow', 'movement');
+export const PathFollow = defineComponent<PathFollowState>('PathFollow', 'movement', {
+  // The step counters change every step; read views name only the waypoint and the boots wear.
+  simOnlyFields: ['legStartedAt', 'legElapsed', 'legCost', 'legPace', 'departureCharged'],
+});
 
 export interface PathFollowState {
   index: number;

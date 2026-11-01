@@ -1,7 +1,7 @@
 import { deserialize, serialize } from 'node:v8';
 import {
   cloneEvents,
-  clonePlain,
+  cloneReadView,
   diffSnapshots,
   MirrorTruth,
   type SignpostReachView,
@@ -308,8 +308,8 @@ function liveSnapshot(sim: Simulation): WorldSnapshot {
     const components: Record<string, unknown> = {};
     sim.world.forEachComponent(
       id,
-      (name, value) => {
-        components[name] = clonePlain(value);
+      (name, value, _revision, component) => {
+        components[name] = cloneReadView(value, component.simOnlyFields);
       },
       true,
     );

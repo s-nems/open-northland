@@ -28,7 +28,10 @@ export interface Component<T> {
   /** Simulation bookkeeping no read view carries: snapshots, their deltas and the mirror leave it out,
    *  while saves, the state hash and the sync digest keep it like any other component. */
   readonly simOnly: boolean;
-  /** Phantom type brand: `T` never exists at runtime (a component is just `{ name, domain, id, simOnly }`), but carrying it
+  /** Top-level fields of a record value that no read view carries, or null: snapshots, their deltas and
+   *  the mirror hold the value without them, while saves, the state hash and the sync digest keep them. */
+  readonly simOnlyFields: ReadonlySet<string> | null;
+  /** Phantom type brand: `T` never exists at runtime (a component is just its plain descriptor fields), but carrying it
    *  in the type keeps `Component<A>` unassignable where a `Component<B>` is expected. */
   readonly __value?: T;
 }
@@ -36,9 +39,11 @@ export interface Component<T> {
 /** Every defined component by name: the vocabulary a save's component sections resolve against. */
 const defined = new Map<string, Component<unknown>>();
 
-export interface ComponentOptions {
+export interface ComponentOptions<T = unknown> {
   /** See {@link Component.simOnly}. */
   readonly simOnly?: true;
+  /** See {@link Component.simOnlyFields}. */
+  readonly simOnlyFields?: readonly (keyof T & string)[];
 }
 
 /** `name` must be unique per process - it is the component's identity in state hashes and save files,
@@ -47,12 +52,18 @@ export interface ComponentOptions {
 export function defineComponent<T>(
   name: string,
   domain: SyncDomain,
-  options: ComponentOptions = {},
+  options: ComponentOptions<T> = {},
 ): Component<T> {
   if (defined.has(name)) throw new Error(`component name '${name}' is already defined`);
   // Component names key plain snapshot records by assignment, which the prototype setter would hijack.
   if (name === '__proto__') throw new Error(`component name '${name}' is reserved`);
-  const component: Component<T> = { name, domain, id: defined.size, simOnly: options.simOnly === true };
+  const component: Component<T> = {
+    name,
+    domain,
+    id: defined.size,
+    simOnly: options.simOnly === true,
+    simOnlyFields: options.simOnlyFields === undefined ? null : new Set(options.simOnlyFields),
+  };
   defined.set(name, component);
   return component;
 }

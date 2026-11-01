@@ -129,7 +129,7 @@ export {
   type HashTraceOptions,
 } from './inspect/hashtrace.js';
 export { type HouseholdGoodPolicyView, householdGoodPolicyView } from './inspect/household-policy.js';
-export { clonePlain } from './inspect/plain-clone.js';
+export { clonePlain, cloneReadView } from './inspect/plain-clone.js';
 export {
   type EntitySnapshot,
   entityById,
