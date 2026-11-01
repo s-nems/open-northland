@@ -4,7 +4,7 @@ import type { Entity, World } from '../../../../ecs/world.js';
 import type { TerrainGraph } from '../../../../nav/terrain/index.js';
 import { worldX } from '../../../../nav/world-metric.js';
 import type { SystemContext } from '../../../context.js';
-import { moverNode } from '../../../spatial/mover-node.js';
+import { heldMoverNode } from '../../../spatial/node-moves.js';
 import { writeLegHeading } from '../../stepping.js';
 import { colliderKinds, FIRM_COLLIDER, NOT_A_COLLIDER } from '../collider-kinds.js';
 import { hasBodyCollision } from '../owned-fighters.js';
@@ -42,38 +42,35 @@ export function collectColliders(
     if (kind === NOT_A_COLLIDER) continue;
     const slot = moverCount++;
     const p = world.get(e, Position);
-    const node = moverNode(world, e, p);
-    place(movers, slot, e, p.x, p.y, node.hx, node.hy);
+    place(movers, slot, e, p.x, p.y);
     const firm = kind === FIRM_COLLIDER;
     movers.firm[slot] = firm;
     if (firm) firmCount++;
   }
   movers.count = moverCount;
   if (moverCount === 0) return false;
-  movers.grid.fill(terrain, moverCount, movers.hx, movers.hy);
 
   // Read once per census: posts never walk, so the resolve cannot move one, and a mover the grind halts
   // mid-pass stays out of the grid until the next census. Soft-only traffic never brings it up to date.
+  // Its node-move drain comes before the node reads, so they take the held nodes it brings up to date.
   scratch.posts = firmCount > 0 ? standingPostGrid(world, ctx.content, terrain) : undefined;
+  for (let slot = 0; slot < moverCount; slot++) {
+    const e = movers.entity[slot];
+    if (e === undefined) continue; // a census slot, so only for the type
+    const node = heldMoverNode(world, e);
+    movers.hx[slot] = node.hx;
+    movers.hy[slot] = node.hy;
+  }
+  movers.grid.fill(terrain, moverCount, movers.hx, movers.hy);
   return true;
 }
 
-function place(
-  columns: ColliderColumns,
-  slot: number,
-  e: Entity,
-  x: Fixed,
-  y: Fixed,
-  hx: number,
-  hy: number,
-): void {
+function place(columns: ColliderColumns, slot: number, e: Entity, x: Fixed, y: Fixed): void {
   columns.entity[slot] = e;
   columns.x[slot] = x;
   columns.y[slot] = y;
   columns.worldX[slot] = worldX(x, y);
   columns.worldY[slot] = worldYOf(y);
-  columns.hx[slot] = hx;
-  columns.hy[slot] = hy;
 }
 
 /**

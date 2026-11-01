@@ -4,7 +4,7 @@ import { type Fixed, fx, ONE } from '../../../src/core/fixed.js';
 import type { Entity } from '../../../src/ecs/world.js';
 import { World } from '../../../src/ecs/world.js';
 import { positionOfNode } from '../../../src/nav/halfcell.js';
-import { type NodeMoveFeed, watchNodeMoves } from '../../../src/systems/spatial/node-moves.js';
+import { heldMoverNode, type NodeMoveFeed, watchNodeMoves } from '../../../src/systems/spatial/node-moves.js';
 
 /** An east step far short of a half-cell node's width, so it never leaves the node's centre column. */
 const SUB_NODE_STEP = fx.div(ONE, fx.fromInt(16));
@@ -35,6 +35,20 @@ describe('watchNodeMoves', () => {
     placeAt(world, walker, 5, 2);
     expect(drained(feed)).toEqual([walker]);
     expect(world.verifyCaches()).toEqual([]);
+  });
+
+  it('serves the held node only until a write to the entity awaits the next pass', () => {
+    const world = new World();
+    const walker = world.create();
+    world.add(walker, Position, positionOfNode(4, 2));
+    const feed = watchNodeMoves(world);
+
+    placeAt(world, walker, 5, 2);
+    expect({ ...heldMoverNode(world, walker) }).toEqual({ hx: 5, hy: 2 });
+    drained(feed);
+    expect({ ...heldMoverNode(world, walker) }).toEqual({ hx: 5, hy: 2 });
+    placeAt(world, walker, 6, 2);
+    expect({ ...heldMoverNode(world, walker) }).toEqual({ hx: 6, hy: 2 });
   });
 
   it('gives every subscriber the changes since its own last drain', () => {

@@ -16,7 +16,7 @@ import type { MapContext, SystemContext } from '../context.js';
 import { isAggressiveAnimal, isAnimalTribe, isLowPriorityBuildingTarget } from '../readviews/index.js';
 import { moverNode } from '../spatial/mover-node.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../spatial/node-moves.js';
-import { entityNode } from '../spatial/nodes.js';
+import { derivedEntityNode } from '../spatial/nodes.js';
 import { EpochMarks } from './epoch-marks.js';
 import { buildingBodyNodes } from './target-node.js';
 
@@ -778,7 +778,7 @@ export class CombatGrid {
       if (pending.has(e)) continue;
       const held = this.units[e];
       if (held === undefined) return [`combatUnitLayer lacks unit ${e}`];
-      const node = entityNode(world, this.terrain, e);
+      const node = derivedEntityNode(world, this.terrain, e);
       const x = this.terrain.xOf(node);
       const y = this.terrain.yOf(node);
       const owner = world.tryGet(e, Owner);

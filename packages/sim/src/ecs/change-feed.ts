@@ -52,6 +52,13 @@ export class ChangeFeed {
     return this.overflowed || this.count > 0;
   }
 
+  /** Whether `entity` is pending: recorded since the last drain, or any entity after an overflow. */
+  has(entity: Entity): boolean {
+    if (this.overflowed) return true;
+    const word = entity >>> WORD_SHIFT;
+    return word < this.held.length && ((this.held[word] as number) & (1 << (entity & BIT_MASK))) !== 0;
+  }
+
   /** Hand every recorded entity to `visit` without draining, for a verifier that must tell a known
    *  pending change from staleness. Returns true instead when entries were lost to an overflow. */
   peek(visit: (entity: Entity) => void): boolean {

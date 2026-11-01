@@ -3,7 +3,7 @@ import type { ChangeFeed, Entity, World } from '../../ecs/world.js';
 import { hexDistanceBetween } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { type NodeMoveFeed, watchNodeMoves } from '../spatial/node-moves.js';
-import { entityNode } from '../spatial/nodes.js';
+import { derivedEntityNode, entityNode } from '../spatial/nodes.js';
 
 /**
  * Pushes onto `out` every positioned livestock animal within `range` hex map points of `at`, by node in
@@ -113,7 +113,7 @@ function verifyHerdNodes(world: World): string[] {
   let count = 0;
   for (const e of world.query(Livestock, Position)) {
     count++;
-    const node = entityNode(world, index.terrain, e);
+    const node = derivedEntityNode(world, index.terrain, e);
     if (index.nodes[e] !== node || index.byNode.get(node)?.includes(e) !== true) wrong++;
   }
   let listed = 0;

@@ -31,6 +31,7 @@ import {
   isSiegeVehicle,
 } from '../readviews/index.js';
 import { moverNode } from '../spatial/mover-node.js';
+import { heldMoverNode } from '../spatial/node-moves.js';
 import { alliedVisionGroups } from './allies.js';
 import { eyeChangesOf } from './eye-changes.js';
 import { cellOfNode } from './gates.js';
@@ -286,7 +287,7 @@ function isOwnedEyeKind(world: World, e: Entity): boolean {
 
 /** Stamp the sight of eye `e`, owned and positioned, `radius` nodes wide; whether a byte rose. */
 function stampEyeOf(world: World, fog: FogState, e: Entity, radius: number): boolean {
-  const node = moverNode(world, e, world.get(e, Position));
+  const node = heldMoverNode(world, e);
   const { cx, cy } = cellOfNode(node.hx, node.hy);
   return fog.stampEye(e, world.get(e, Owner).player, cx, cy, radius);
 }
@@ -302,7 +303,7 @@ function meetOwnerOf(world: World, contacts: ContactPass, e: Entity): void {
   if (!isValidPlayer(owner)) return; // never meetable - skip before any per-entity work
   const ownerBit = 1 << owner;
   if ((contacts.unmetOwners & ownerBit) === 0) return;
-  const node = moverNode(world, e, world.get(e, Position));
+  const node = heldMoverNode(world, e);
   const { cx, cy } = cellOfNode(node.hx, node.hy);
   const { cellsWide, cellsHigh } = contacts;
   if (cx < 0 || cy < 0 || cx >= cellsWide || cy >= cellsHigh) return; // off-grid reads UNEXPLORED

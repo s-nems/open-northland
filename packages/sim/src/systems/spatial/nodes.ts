@@ -4,6 +4,7 @@ import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { ringOffsetCount, ringOffsetDx, ringOffsetDy } from './metric.js';
 import { moverNode } from './mover-node.js';
+import { heldMoverNode } from './node-moves.js';
 
 /**
  * Ascending entity-id order: the same canonical order `World.canonicalEntities` uses, so a distance or
@@ -290,10 +291,17 @@ export function isValidNodeId(terrain: TerrainGraph, node: number): node is Node
 
 /**
  * The half-cell node an entity occupies, clamped into the grid: its {@link Position}'s node, the
- * {@link moverNode} rule for a mover. A building a settler must reach through a door needs the AI
- * planner's interaction-aware resolver instead, because walls are walk-blocked.
+ * {@link moverNode} rule for a mover, read off the node-move pass while it is current. A building a
+ * settler must reach through a door needs the AI planner's interaction-aware resolver instead, because
+ * walls are walk-blocked.
  */
 export function entityNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
+  const node = heldMoverNode(world, e);
+  return terrain.nodeAtClamped(node.hx, node.hy);
+}
+
+/** {@link entityNode} derived from the live components, for a verifier that must not trust a held node. */
+export function derivedEntityNode(world: World, terrain: TerrainGraph, e: Entity): NodeId {
   const node = moverNode(world, e, world.get(e, Position));
   return terrain.nodeAtClamped(node.hx, node.hy);
 }

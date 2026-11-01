@@ -1,6 +1,7 @@
 import { PathFollow, PathRoute, Position } from '../../components/index.js';
 import { ChangeFeed } from '../../ecs/change-feed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import type { HalfCellNode } from '../../nav/halfcell.js';
 import { HeldNodes, NO_NODE } from './held-nodes.js';
 import { moverNode } from './mover-node.js';
 
@@ -58,6 +59,11 @@ class NodeMoves {
 
   heldHy(e: Entity): number {
     return this.nodes.hy(e);
+  }
+
+  /** Whether `e`'s held node is its live one: held, and no write to `e` is waiting for the next pass. */
+  holdsLive(e: Entity): boolean {
+    return this.nodes.hx(e) !== NO_NODE && !this.writes.has(e);
   }
 
   subscribe(): NodeMoveFeed {
@@ -135,6 +141,22 @@ class Subscription implements NodeMoveFeed {
 }
 
 const byWorld = new WeakMap<World, NodeMoves>();
+
+/** {@link heldMoverNode}'s result, reused so a per-entity read allocates nothing. */
+const held = { hx: 0, hy: 0 };
+
+/**
+ * {@link moverNode} of positioned `e`, read off the last pass's held node when no Position or route write
+ * to `e` has come since, so a reader after any subscriber's drain skips the derivation. The result is
+ * shared and overwritten by the next call.
+ */
+export function heldMoverNode(world: World, e: Entity): Readonly<HalfCellNode> {
+  const moves = byWorld.get(world);
+  if (moves === undefined || !moves.holdsLive(e)) return moverNode(world, e, world.get(e, Position));
+  held.hx = moves.heldHx(e);
+  held.hy = moves.heldHy(e);
+  return held;
+}
 
 /** A new feed of the entities whose node changed from now on, shared with every other
  *  subscriber of `world`. */
