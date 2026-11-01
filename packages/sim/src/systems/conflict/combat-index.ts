@@ -210,6 +210,57 @@ export class CombatIndex {
   }
 
   /**
+   * Uncounted {@link nearestFew} for each of several disjoint kinds in one scan: per kind, the acceptors of
+   * that kind out to `tailRings` past its own first hit, exactly what asking kind by kind returns.
+   * `kindOf(e)` names `e`'s kind below `kinds`, or -1 for none; it and `accept` must be total and pure, and
+   * each is asked at most once per member.
+   */
+  nearestOfEachKind(
+    fromX: number,
+    fromY: number,
+    minDist: number,
+    maxDist: number,
+    kindOf: (e: Entity) => number,
+    kinds: number,
+    accept: (e: Entity) => boolean,
+    seeker: number | null,
+    tailRings: number,
+    metric: SearchMetric = 'manhattan',
+  ): readonly (readonly { entity: Entity; distance: number }[])[] {
+    const scan = this.bandScan(fromX, fromY, minDist, maxDist, seeker, metric);
+    const { keys, count } = scan;
+    const found: { entity: Entity; distance: number }[][] = [];
+    const lastRings: number[] = [];
+    for (let k = 0; k < kinds; k++) {
+      found.push([]);
+      lastRings.push(maxDist);
+    }
+    // The farthest ring any kind still takes.
+    let open = maxDist;
+    scan.met.begin();
+    this.depth++;
+    try {
+      for (let i = 0; i < count; i++) {
+        const key = keys[i] ?? 0;
+        const distance = Math.floor(key / CANDIDATE_ID_SPAN);
+        if (distance > open) break;
+        const entity = (key - distance * CANDIDATE_ID_SPAN) as Entity;
+        if (!scan.met.firstMark(entity)) continue;
+        const kind = kindOf(entity);
+        const take = found[kind];
+        const lastRing = lastRings[kind];
+        if (take === undefined || lastRing === undefined || distance > lastRing || !accept(entity)) continue;
+        take.push({ entity, distance });
+        lastRings[kind] = Math.min(lastRing, distance + tailRings);
+        open = Math.max(...lastRings);
+      }
+      return found;
+    } finally {
+      this.depth--;
+    }
+  }
+
+  /**
    * {@link nearestFew} over the best of several kinds in one scan: the take of the lowest `rank` any
    * acceptor holds, exactly what asking `nearestFew` kind by kind returns at the first kind with an
    * acceptor. `rank(e, bound)` names the first kind below `bound` that `e` is of, or `bound` for none, and
@@ -376,7 +427,7 @@ export class CombatIndex {
     for (let cx = cx0; cx <= cx1; cx++) {
       for (let cy = cy0; cy <= cy1; cy++) {
         const cell = this.grid.cellAt(cx, cy);
-        if (cell === undefined) continue;
+        if (cell === undefined || !holdsBandCandidate(cell, hostile)) continue;
         count = appendBand(scan, count, cell.bodies, fromX, fromY, minDist, maxDist, hostile, metric);
         count = appendBand(scan, count, cell.units, fromX, fromY, minDist, maxDist, hostile, metric);
       }
@@ -419,6 +470,12 @@ function passes(cell: CoarseCell, test: CellTest, hostile: number): boolean {
     case 'civs':
       return cell.total - cell.passive - cell.hostileAnimal > 0;
   }
+}
+
+/** Whether `cell` may hold a member a band scan for the `hostile` players keeps: one owned by such a player,
+ *  or one with no player bit, which the tallies count as undiscounted or passive. */
+function holdsBandCandidate(cell: CoarseCell, hostile: number): boolean {
+  return (cell.ownerMask & hostile) !== 0 || cell.undiscounted > 0 || cell.passive > 0;
 }
 
 /** Append to `scan` from `count` every member of `list` within `minDist..maxDist` of (fromX, fromY) that

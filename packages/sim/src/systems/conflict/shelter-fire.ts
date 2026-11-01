@@ -33,7 +33,7 @@ const isFighter = (world: World, ctx: SystemContext, t: Entity): boolean =>
   isFighterJob(ctx.content, world.tryGet(t, Settler)?.jobType ?? null);
 
 /** The kinds of enemy a building takes aim at, in the order it fills its shots: soldiers and heroes, wild
- *  animals, buildings, then everyone else. Original behavior. */
+ *  animals, buildings, then everyone else. Original behavior. Disjoint, so each enemy is of one kind. */
 const TARGET_KINDS: readonly ((world: World, ctx: SystemContext, t: Entity) => boolean)[] = [
   (world, ctx, t) => isPerson(world, t) && isFighter(world, ctx, t),
   (world, _ctx, t) => isWildlife(world, t),
@@ -173,9 +173,15 @@ function fireFrom(
   const centre = entityNode(world, terrain, building);
   const owner = world.get(building, Owner).player;
   const self = { tribe: b.tribe, jobType: null };
+  const reaches = new Map<Entity, number>();
   const reach = (t: Entity): number => {
-    const mark = combatTargetNode(world, ctx, terrain, centre, t);
-    return hexNodeDistance(terrain, nearestHexCell(terrain, walls, mark) ?? centre, mark);
+    let d = reaches.get(t);
+    if (d === undefined) {
+      const mark = combatTargetNode(world, ctx, terrain, centre, t);
+      d = hexNodeDistance(terrain, nearestHexCell(terrain, walls, mark) ?? centre, mark);
+      reaches.set(t, d);
+    }
+    return d;
   };
   const accept = (t: Entity): boolean => {
     if (world.has(t, Age) || !isValidTarget(world, ctx, building, self, t)) return false;
@@ -185,28 +191,27 @@ function fireFrom(
   // A wall stands up to `pad` nodes off the centre the index is searched from.
   let pad = 0;
   for (const wall of walls) pad = Math.max(pad, hexNodeDistance(terrain, centre, wall));
-  const x = terrain.xOf(centre);
-  const y = terrain.yOf(centre);
-  const candidates = TARGET_KINDS.map((kind) =>
-    index
-      .nearestFew(
-        x,
-        y,
-        0,
-        bow.maxRange + pad,
-        (t) => kind(world, ctx, t) && accept(t),
-        // Uncounted, because the index orders by distance to the centre, which sits up to `pad` off a
-        // mark's reach either way: the tail bound keeps every candidate that can still be among the
-        // nearest by reach.
-        Number.POSITIVE_INFINITY,
-        owner,
-        TARGET_SPREAD_NODES + 2 * pad,
-        'hex',
-      )
-      .map(({ entity }) => ({ entity, distance: reach(entity) }))
-      .sort((p, q) => p.distance - q.distance || p.entity - q.entity)
-      .slice(0, TARGET_CANDIDATES),
-  );
+  const candidates = index
+    .nearestOfEachKind(
+      terrain.xOf(centre),
+      terrain.yOf(centre),
+      0,
+      bow.maxRange + pad,
+      (t) => TARGET_KINDS.findIndex((kind) => kind(world, ctx, t)),
+      TARGET_KINDS.length,
+      accept,
+      owner,
+      // The index orders by distance to the centre, which sits up to `pad` off a mark's reach either way:
+      // the tail bound keeps every candidate that can still be among the nearest by reach.
+      TARGET_SPREAD_NODES + 2 * pad,
+      'hex',
+    )
+    .map((band) =>
+      band
+        .map(({ entity }) => ({ entity, distance: reach(entity) }))
+        .sort((p, q) => p.distance - q.distance || p.entity - q.entity)
+        .slice(0, TARGET_CANDIDATES),
+    );
   let left = shots;
   let fired = true;
   while (left > 0 && fired) {
