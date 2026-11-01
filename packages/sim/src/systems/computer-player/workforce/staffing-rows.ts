@@ -231,8 +231,6 @@ const TIER_FIELDS: Readonly<Record<keyof StaffingTiers, true>> = {
   carrierMin: true,
   carrierTarget: true,
   carrierSurplus: true,
-  gathererTarget: true,
-  gathererSurplus: true,
   gateFloor: true,
 };
 const TIER_KEYS = Object.keys(TIER_FIELDS) as readonly (keyof StaffingTiers)[];
