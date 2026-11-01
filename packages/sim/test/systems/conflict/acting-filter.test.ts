@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
   Building,
+  Engagement,
   Health,
   isValidPlayer,
   MoveGoal,
@@ -17,7 +18,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { cellAnchorNode, fx, ONE, Simulation } from '../../../src/index.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
-import { mayEngage } from '../../../src/systems/conflict/acting.js';
+import { mayEngage, PRESENCE_RADIUS } from '../../../src/systems/conflict/acting.js';
 import { BattleFront } from '../../../src/systems/conflict/battle-alert.js';
 import { CombatIndex } from '../../../src/systems/conflict/combat-index.js';
 import { engageCandidates } from '../../../src/systems/conflict/engage-candidates.js';
@@ -27,6 +28,7 @@ import type { CombatPass } from '../../../src/systems/conflict/pass.js';
 import { isManningPost, TOWER_RANGE_BONUS_NODES } from '../../../src/systems/conflict/tower-post.js';
 import { attackMoveUnit } from '../../../src/systems/orders/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
+import { hexNodeDistance } from '../../../src/systems/spatial/metric.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
 import { testContent } from '../../fixtures/content.js';
 import { BEAR, BOAR, COW, DEER, fighterAtNode, HUNTER } from './combat-system/support.js';
@@ -75,9 +77,14 @@ const ARROW_MUNITION = 1;
 const POST_BOW_RANGE = 30;
 const POST_BOW_MIN_RANGE = 2;
 const TOWER_HITPOINTS = 1_000_000;
+/** A bow reaching past the coarse neighbourhood the index rounds its presence listing up to, so only the
+ *  far-searcher set can draw an IGNORE archer to an enemy at its reach. */
+const FAR_BOW_RANGE = 56;
+/** Half-cell columns between the IGNORE archer and an enemy on its row, inside {@link FAR_BOW_RANGE}. */
+const FAR_ENEMY_OFFSET = 48;
 
-/** The fixture content with a tower posting the soldier class, armed with {@link POST_BOW_RANGE}. */
-function postContent(): ContentSet {
+/** The fixture content with a tower posting the soldier class, armed with a bow of reach `maxRange`. */
+function postContent(maxRange = POST_BOW_RANGE): ContentSet {
   const base = testContent();
   return parseContentSet({
     ...base,
@@ -101,7 +108,7 @@ function postContent(): ContentSet {
         munitionType: ARROW_MUNITION,
         speed: 8,
         minRange: POST_BOW_MIN_RANGE,
-        maxRange: POST_BOW_RANGE,
+        maxRange,
         damage: { '0': 40 },
       },
     ],
@@ -283,6 +290,33 @@ describe('combat pass - who may engage', () => {
     }
     expect(manned).toBeGreaterThan(POST_TICKS); // both towers were held for most of the run
     expect(skipped).toBeGreaterThan(POST_TICKS); // the quiet post and the far march are skipped
+  });
+
+  it('draws an unposted IGNORE archer whose reach passes the presence radius, and it engages there', () => {
+    const sim = new Simulation({ seed: 7, content: postContent(FAR_BOW_RANGE), map: grassMap(64, 64) });
+    setDiplomacyStance(sim.world, P0, P1, 'enemy');
+    setDiplomacyStance(sim.world, P1, P0, 'enemy');
+    const archer = combatantAtNode(sim, 20, 20, P0, MILITARY_MODE.IGNORE, { jobType: SOLDIER_JOB });
+    const enemy = combatantAtNode(sim, 20 + FAR_ENEMY_OFFSET, 20, P1, MILITARY_MODE.IGNORE);
+    const terrain = terrainOf(sim);
+    const apart = hexNodeDistance(
+      terrain,
+      entityNode(sim.world, terrain, archer),
+      entityNode(sim.world, terrain, enemy),
+    );
+    expect(apart).toBeGreaterThan(PRESENCE_RADIUS);
+    expect(apart).toBeLessThanOrEqual(FAR_BOW_RANGE);
+    const ctx = ctxOf(sim);
+    const ready = engageCandidates(sim.world, ctx, new CombatIndex(sim.world, ctx, terrain));
+    const drawn = Array.from({ length: ready.count }, (_, i) => ready.candidateAt(i));
+    expect(drawn).toContain(archer);
+    let target: Entity | undefined;
+    for (let t = 0; t < TICKS && target === undefined; t++) {
+      outsideCandidatesRefused(sim);
+      sim.step();
+      target = sim.world.tryGet(archer, Engagement)?.target;
+    }
+    expect(target).toBe(enemy);
   });
 });
 

@@ -1,17 +1,20 @@
 import { describe, expect, it } from 'vitest';
-import { FOG_MODE, mapBriefOf, Resource } from '../../../src/components/index.js';
+import { FOG_MODE, mapBriefOf, Position, Resource } from '../../../src/components/index.js';
 import type { Entity } from '../../../src/ecs/world.js';
-import type { Simulation } from '../../../src/index.js';
+import { positionOfNode, Simulation } from '../../../src/index.js';
 import { ownedSettlers } from '../../../src/systems/ai-shared/seat-roster.js';
 import {
   anyLiveResource,
   gathererReach,
   knownResourceTest,
   nearestLiveResource,
+  reachableResourceTest,
 } from '../../../src/systems/computer-player/live-resources.js';
 import type { SystemContext } from '../../../src/systems/index.js';
 import { cellOfNode } from '../../../src/systems/vision/gates.js';
 import type { FogState } from '../../../src/systems/vision/state.js';
+import { aiContent } from '../../fixtures/ai-content.js';
+import { waterColumnMap } from '../../fixtures/terrain.js';
 import {
   aiSim,
   COLLECTOR,
@@ -116,5 +119,29 @@ describe('computer seat resource searches', () => {
     expect(gathererReach(sim.world, ctx, terrain, known).canWork(holder, flag, FLAG_RADIUS, later)).toBe(
       false,
     );
+  });
+});
+
+/** A cell map cut in two banks by a water column at cell column `river` (half-cell node x 32-33). */
+const BANKS_CELLS = { width: 32, height: 16, river: 16 };
+const WEST_ORIGIN = { hx: 10, hy: 16 };
+/** `placeResources` takes the west deposit's spot; the move writes the east one's half-cell node. */
+const WEST_DEPOSIT = { x: 20, y: 16 };
+const EAST_DEPOSIT = { hx: 48, hy: 16 };
+
+describe('reachable resource test', () => {
+  it('judges a moved deposit by its new bank, not by the bound read before the move', () => {
+    const map = waterColumnMap(BANKS_CELLS.width, BANKS_CELLS.height, BANKS_CELLS.river);
+    const sim = new Simulation({ seed: 1, content: aiContent(), map });
+    placeResources(sim, [{ ...RESOURCE_SPOTS.mud, ...WEST_DEPOSIT }]);
+    sim.step();
+    const terrain = sim.terrain;
+    const [deposit] = sim.world.query(Resource);
+    if (terrain === undefined || deposit === undefined) throw new Error('setup: a mapped sim with a deposit');
+    const reachable = () =>
+      reachableResourceTest(sim.world, ctxOf(sim), terrain, WEST_ORIGIN, () => true)(deposit);
+    expect(reachable()).toBe(true);
+    Object.assign(sim.world.mut(deposit, Position), positionOfNode(EAST_DEPOSIT.hx, EAST_DEPOSIT.hy));
+    expect(reachable()).toBe(false);
   });
 });

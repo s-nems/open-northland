@@ -8,6 +8,7 @@ import {
   COMPUTER_MODULE_IDS,
   CurrentAtomic,
   computerModuleEnables,
+  HaulFlag,
   IdleStand,
   LISTEN_ATOMIC_ID,
   MoveGoal,
@@ -19,7 +20,7 @@ import {
   Stockpile,
   setStockAmount,
 } from '../../../../../src/components/index.js';
-import { Simulation } from '../../../../../src/index.js';
+import { cellAnchorNode, Simulation } from '../../../../../src/index.js';
 import {
   MAX_GROUND_STACK,
   plannerSystem,
@@ -985,6 +986,11 @@ describe('producer works ONLY its own workplace’s goods (its own building’s 
 
 /** Long enough for a loiterer to step off its door and settle beside it. */
 const LOITER_WALK_TICKS = 60;
+const FLAG_STRIP_WIDTH = 12;
+const MILL_COLUMN = 2;
+const FLAG_COLUMN = 9;
+/** Long enough for a carrier to walk from its mill to a pickup flag seven cells out and settle there. */
+const FLAG_WALK_TICKS = 400;
 
 describe('producer loiter - an idle owned worker waits BESIDE the door, not inside', () => {
   it('an owned operator with nothing to do loiters off the door (a MoveGoal beside it, no Resting)', () => {
@@ -1025,6 +1031,35 @@ describe('producer loiter - an idle owned worker waits BESIDE the door, not insi
     };
     expect(loiterer(false)).toBeUndefined();
     expect(loiterer(true)).toEqual({ standing: false });
+  });
+
+  it("a machine seat's carrier waiting at its pickup flag waits for its idle beat; a human seat's re-plans every tick", () => {
+    const flagWaiter = (seat: 'human' | 'computer' | 'mapAi'): { readonly standing: boolean } | undefined => {
+      const sim = new Simulation({ seed: 1, content: testContent(), map: grassMap(FLAG_STRIP_WIDTH, 1) });
+      if (seat !== 'human') {
+        sim.world.add(sim.world.create(), AiControl, {
+          player: 0,
+          modules: computerModuleEnables(Object.fromEntries(COMPUTER_MODULE_IDS.map((id) => [id, false]))),
+          computerEnabled: seat === 'computer',
+          mapAiEnabled: seat === 'mapAi',
+          difficulty: 'hard',
+        });
+      }
+      // No wood anywhere and no plank in the mill: the carrier has nothing to fetch or haul out.
+      const mill = buildingAt(sim, TWIN_MILL, MILL_COLUMN, 0);
+      sim.world.add(mill, Owner, { player: 0 });
+      const carrier = settlerAt(sim, MILL_COLUMN, 0, CARRIER, mill);
+      sim.world.add(carrier, Owner, { player: 0 });
+      const flag = cellAnchorNode(FLAG_COLUMN, 0);
+      sim.enqueueSetup({ kind: 'setWorkFlag', entity: carrier, x: flag.hx, y: flag.hy });
+      for (let i = 0; i < FLAG_WALK_TICKS; i++) sim.step();
+      expect(sim.world.has(carrier, HaulFlag)).toBe(true);
+      expect(sim.world.has(carrier, MoveGoal)).toBe(false);
+      return sim.world.tryGet(carrier, IdleStand);
+    };
+    expect(flagWaiter('human')).toBeUndefined();
+    expect(flagWaiter('computer')).toEqual({ standing: false });
+    expect(flagWaiter('mapAi')).toEqual({ standing: false });
   });
 
   it('a loiterer grabbed into idle chatter keeps chatting: standing by the door is not work', () => {
