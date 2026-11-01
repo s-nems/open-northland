@@ -1,10 +1,13 @@
+import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { aiControlEntity, ComputerStrategy } from '../../../../src/components/index.js';
+import { aiControlEntity, ComputerStrategy, StalledPlacements } from '../../../../src/components/index.js';
 import type { Simulation } from '../../../../src/index.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
-import type {
-  BuildOrder,
-  BuildOrderEntry,
+import {
+  type BuildOrder,
+  type BuildOrderEntry,
+  MATERIAL_TIERS_DUE,
+  stepKey,
 } from '../../../../src/systems/computer-player/build-order/entries.js';
 import {
   collectorGoodsWanted,
@@ -17,6 +20,7 @@ import {
   ASSUMED_PEACE_TICKS,
   TOWER_LEAD_TICKS,
 } from '../../../../src/systems/computer-player/military/deadline.js';
+import { aiContent } from '../../../fixtures/ai-content.js';
 import {
   aiSim,
   BAKERY_TYPE,
@@ -233,5 +237,84 @@ describe('build order progress', () => {
     const copy: BuildOrderEntry = { kind: 'place', building: 'work_bakery_00', count: 2 };
     expect(held(sim, copy)).toBe(true);
     expect(held(sim, { ...copy, aheadOfCrews: true })).toBe(false);
+  });
+
+  describe('the tile and marble tiers hold', () => {
+    const TILE = 20;
+    const ORNAMENT = 21;
+    const base = aiContent();
+    // The tiers' goods, and a brewery whose bill takes tiles.
+    const content = parseContentSet({
+      ...base,
+      goods: [...base.goods, { typeId: TILE, id: 'tile' }, { typeId: ORNAMENT, id: 'ornament' }],
+      buildings: base.buildings.map((b) =>
+        b.id === 'work_brewery' ? { ...b, construction: [{ goodType: TILE, amount: 1 }] } : b,
+      ),
+    });
+    const upgrade: BuildOrderEntry = {
+      kind: 'upgrade',
+      building: 'work_bakery_01',
+      count: 1,
+      holdUntil: MATERIAL_TIERS_DUE,
+    };
+    const mill: BuildOrderEntry = { kind: 'place', building: 'work_mill_00', count: 1 };
+    const order = (...lines: BuildOrder['lines']): BuildOrder => ({
+      lines: [{ id: 'materials', steps: [upgrade] }, ...lines],
+      priority: [],
+    });
+    const tierSeat = (): Simulation => {
+      const sim = aiSim(1, content);
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HQ_TYPE,
+        x: HQ_X,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+      makeAiSeat(sim, SEAT, { houseBuild: false });
+      sim.step();
+      return sim;
+    };
+    const heldBy = (sim: Simulation, held: BuildOrder): boolean => {
+      const ctx = { ...ctxOf(sim), content };
+      const owned = ownedBuildings(sim.world, SEAT);
+      const memo = decisionMemo();
+      const statuses = lineStatuses(sim.world, ctx, SEAT, owned, held, memo);
+      return stepHeld(sim.world, ctx, SEAT, owned, held, statuses, upgrade, memo);
+    };
+
+    it('holds while a core placement heads its line, ready to place', () => {
+      expect(heldBy(tierSeat(), order({ id: 'bread', steps: [mill] }))).toBe(true);
+    });
+
+    it('lets go for an unmet housing lane, which never counts as due', () => {
+      const homes = order({ id: 'homes', steps: [{ kind: 'housing', building: 'home_level_00', count: 3 }] });
+      const sim = tierSeat();
+      const ctx = { ...ctxOf(sim), content };
+      expect(lineStatuses(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), homes).get('homes')).toEqual(
+        ['unmet'],
+      );
+      expect(heldBy(sim, homes)).toBe(false);
+    });
+
+    it('lets go while the core placement waits out a failed spot search', () => {
+      const sim = tierSeat();
+      const carrier = aiControlEntity(sim.world, SEAT);
+      if (carrier === null) throw new Error('setup: no AI seat');
+      sim.world.add(carrier, StalledPlacements, {
+        retryTicks: new Map([[stepKey('bread', 0), sim.tick + 1]]),
+        holding: new Map(),
+      });
+      expect(heldBy(sim, order({ id: 'bread', steps: [mill] }))).toBe(false);
+    });
+
+    it('lets go once a step heading another line wants tiles', () => {
+      const brewery: BuildOrderEntry = { kind: 'place', building: 'work_brewery', count: 1 };
+      const sim = tierSeat();
+      expect(heldBy(sim, order({ id: 'bread', steps: [mill] }, { id: 'brewery', steps: [brewery] }))).toBe(
+        false,
+      );
+    });
   });
 });

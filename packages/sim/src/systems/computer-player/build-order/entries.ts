@@ -298,7 +298,7 @@ const OPENING_HOMES = 3;
  * wanting tiles or marble, as the upper bakery once the baker has learned its candy, lets it go at once.
  * The pottery's tier unlocks only with the tile discovery, the mason hut's with the marble one.
  */
-const MATERIAL_TIERS_DUE: StepHold = {
+export const MATERIAL_TIERS_DUE: StepHold = {
   kind: 'any',
   holds: [
     {
