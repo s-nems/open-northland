@@ -11,6 +11,7 @@ import {
   Resource,
   removeCurrentAtomic,
   Settler,
+  setProfessionProgression,
   setStockAmount,
 } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
@@ -1070,7 +1071,7 @@ describe('workforce module - the joinery crews', () => {
     const content = threeJoinerContent(id);
     const seat = seatOn(content, [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
     const joinery = entityOfBuilding(seat.sim, JOINERY_TYPE);
-    expect(planOf(seat, content, joinery, crewOf(0))).toMatchObject({
+    expect(planOf(seat, content, joinery, alone)).toMatchObject({
       operatorTarget: TOP_JOINERY_JOINERS,
       carrierMin,
       carrierTarget: 1,
@@ -1117,13 +1118,13 @@ describe('workforce module - the barracks, tailor, animal farm and joinery porte
   it('runs a porter at the animal farm and the tools joinery at the target tier, behind the builders', () => {
     const farmSeat = seatOn(husbandryContent(), [ANIMAL_FARM_TYPE], BUILDER_CAP + SPARE_MEN);
     const farm = entityOfBuilding(farmSeat.sim, ANIMAL_FARM_TYPE);
-    expect(planOf(farmSeat, husbandryContent(), farm, crewOf(0))).toMatchObject({
+    expect(planOf(farmSeat, husbandryContent(), farm, alone)).toMatchObject({
       carrierMin: 0,
       carrierTarget: 1,
     });
     const joinerySeat = seatOn(aiContent(), [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
     const joinery = entityOfBuilding(joinerySeat.sim, JOINERY_TYPE);
-    expect(planOf(joinerySeat, aiContent(), joinery, crewOf(0))).toMatchObject({
+    expect(planOf(joinerySeat, aiContent(), joinery, alone)).toMatchObject({
       carrierMin: 0,
       carrierTarget: 1,
     });
@@ -1133,9 +1134,9 @@ describe('workforce module - the barracks, tailor, animal farm and joinery porte
     const content = upperTailorContent();
     const seat = seatOn(content, [JOINERY_TYPE], BUILDER_CAP + SPARE_MEN);
     const tailor = entityOfBuilding(seat.sim, JOINERY_TYPE);
-    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 1, carrierTarget: 1 });
+    expect(planOf(seat, content, tailor, alone)).toMatchObject({ operatorMin: 1, carrierTarget: 1 });
     seatEconomy(seat.sim, 'standard', ['naturalArms']);
-    expect(planOf(seat, content, tailor, crewOf(0))).toMatchObject({ operatorMin: 2, carrierTarget: 1 });
+    expect(planOf(seat, content, tailor, alone)).toMatchObject({ operatorMin: 2, carrierTarget: 1 });
   });
 });
 
@@ -1173,7 +1174,7 @@ describe('workforce module - a workshop ahead of its trade', () => {
     });
   }
 
-  it('posts no carrier at a bakery until a baker can be posted there or works there', () => {
+  it('posts no carrier at a bakery until its baker is in, then both in one decision', () => {
     const content = bakerGatedContent();
     const seat = seatOn(content, [BAKERY_TYPE], BUILDER_CAP + SPARE_MEN);
     const bakery = entityOfBuilding(seat.sim, BAKERY_TYPE);
@@ -1181,17 +1182,14 @@ describe('workforce module - a workshop ahead of its trade', () => {
       const plan = planOf(seat, content, bakery, held);
       return { min: plan.carrierMin, target: plan.carrierTarget };
     };
+    const hires = () =>
+      seat.decide().flatMap((c) => (c.kind === 'assignWorker' && c.building === bakery ? c.jobPriority : []));
     expect(carriersOf(crewOf(0))).toEqual({ min: 0, target: 0 });
-    expect(
-      seat
-        .decide()
-        .filter((c) => c.kind === 'assignWorker' && c.building === bakery && c.jobPriority[0] === CARRIER),
-    ).toEqual([]);
-    // A baker at work keeps his carrier.
-    expect(carriersOf(crewOf(1))).toEqual({ min: 1, target: 1 });
-    // A man of the seat holding the trade can be posted, so the carrier comes with him.
-    spawnMen(seat.sim, 1, BAKER);
-    seat.sim.step();
-    expect(carriersOf(crewOf(0))).toEqual({ min: 1, target: 1 });
+    expect(carriersOf(alone)).toEqual({ min: 1, target: 1 });
+    // Nobody qualifies for the baker, so the bakery stays empty.
+    expect(hires()).toEqual([]);
+    // Once a man qualifies the baker takes the post, and his carrier follows him in the same decision.
+    setProfessionProgression(seat.sim.world, false);
+    expect(hires()).toEqual([BAKER, CARRIER]);
   });
 });

@@ -136,65 +136,61 @@ export function staffBuildings(
     if (!isBuilt(world, building)) continue;
     const type = index.buildings.get(world.get(building, Building).buildingType);
     if (type === undefined || (tier === 'food' && !firstHandFed(ctx, seat, type))) continue;
-    const staffing = buildingStaffing(world, ctx, seat, building, type, heldAt(ctx, tally, building));
+    const heldBefore = heldAt(ctx, tally, building);
+    let staffing = buildingStaffing(world, ctx, seat, building, type, heldBefore);
     if (staffing === null) continue;
-    const operatorWant =
-      tier === 'food'
-        ? Math.min(staffing.operatorMin, FOOD_CHAIN_FIRST_HANDS)
-        : tier === 'min'
-          ? staffing.operatorMin
-          : tier === 'target'
-            ? staffing.operatorTarget
-            : (staffing.operatorSurplus ?? staffing.operatorTarget);
-    const carrierWant =
-      tier === 'food'
-        ? 0
-        : tier === 'min'
-          ? staffing.carrierMin
-          : tier === 'target'
-            ? staffing.carrierTarget
-            : (staffing.carrierSurplus ?? staffing.carrierTarget);
-    const gathererWant =
-      tier === 'food' || tier === 'min'
-        ? 0
-        : tier === 'target'
-          ? (staffing.gathererTarget ?? 0)
-          : (staffing.gathererSurplus ?? staffing.gathererTarget ?? 0);
-    for (const slot of type.workers) {
-      const carrier = isCarrierJob(ctx, slot.jobType);
-      const gatherer = !carrier && index.harvestJobs.has(slot.jobType);
-      if (type.kind !== 'workplace' && !carrier) continue; // a store or a barracks staffs transport only
-      const want = Math.min(slot.count, carrier ? carrierWant : gatherer ? gathererWant : operatorWant);
-      const held =
-        (tally.get(building)?.get(slot.jobType) ?? 0) + gated.schooling.promised(building, slot.jobType);
-      const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
-      const qualifies = (e: Entity): boolean =>
-        settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', slot.jobType);
-      // A spare man already of the slot's trade, as a map's given miller, takes it first, so a building
-      // standing at the start is worked at once and no other man is retrained for it.
-      const ofTrade = (e: Entity): boolean => world.get(e, Settler).jobType === slot.jobType && qualifies(e);
-      for (let i = held; i < want; i++) {
-        let spare = force.take(ofTrade, veteranFirst) ?? force.take(qualifies, veteranFirst);
-        // A promotion seats a building's first man of the trade only, so a second post never strips the
-        // predecessor trade a second time. The mill and the bakery take the man who earned their trade
-        // ahead of a school lesson (owner ruling: the farmer who earned the mill becomes its miller, and
-        // the miller who earned the bakery its baker), and so does the mason hut while the bread chain
-        // waits on its pillar.
-        const promotesFirst = i === 0 && (breadChainWorkshop(ctx, type) || breadSupplierDue(ctx, seat, type));
-        if (spare === null && promotesFirst) spare = gated.promotions.take(slot.jobType);
-        if (spare === null) {
-          const lesson = gated.schooling.enrol(slot.jobType, building, force);
-          if (lesson.kind === 'learn') commands.push(lesson.command);
-          if (lesson.kind === 'learn' || lesson.kind === 'promised') continue;
-          if (lesson.kind === 'none' && i === 0 && !promotesFirst)
-            spare = gated.promotions.take(slot.jobType);
+    // The craft slots fill first: a workshop's carriers and gatherers wait for its craftsman
+    // (`buildingStaffing`), so the first one posted here re-plans them within this tier.
+    for (let pass = 0; pass < 2; pass++) {
+      const helpers = pass === 1;
+      if (helpers && heldBefore.operators === 0) {
+        const held = heldAt(ctx, tally, building);
+        if (held.operators > 0)
+          staffing = buildingStaffing(world, ctx, seat, building, type, held) ?? staffing;
+      }
+      const wants = tierWants(staffing, tier);
+      for (const slot of type.workers) {
+        const carrier = isCarrierJob(ctx, slot.jobType);
+        const gatherer = !carrier && index.harvestJobs.has(slot.jobType);
+        if ((carrier || gatherer) !== helpers) continue;
+        if (type.kind !== 'workplace' && !carrier) continue; // a store or a barracks staffs transport only
+        const want = Math.min(
+          slot.count,
+          carrier ? wants.carriers : gatherer ? wants.gatherers : wants.operators,
+        );
+        const held =
+          (tally.get(building)?.get(slot.jobType) ?? 0) + gated.schooling.promised(building, slot.jobType);
+        const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
+        const qualifies = (e: Entity): boolean =>
+          settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', slot.jobType);
+        // A spare man already of the slot's trade, as a map's given miller, takes it first, so a building
+        // standing at the start is worked at once and no other man is retrained for it.
+        const ofTrade = (e: Entity): boolean =>
+          world.get(e, Settler).jobType === slot.jobType && qualifies(e);
+        for (let i = held; i < want; i++) {
+          let spare = force.take(ofTrade, veteranFirst) ?? force.take(qualifies, veteranFirst);
+          // A promotion seats a building's first man of the trade only, so a second post never strips the
+          // predecessor trade a second time. The mill and the bakery take the man who earned their trade
+          // ahead of a school lesson (owner ruling: the farmer who earned the mill becomes its miller, and
+          // the miller who earned the bakery its baker), and so does the mason hut while the bread chain
+          // waits on its pillar.
+          const promotesFirst =
+            i === 0 && (breadChainWorkshop(ctx, type) || breadSupplierDue(ctx, seat, type));
+          if (spare === null && promotesFirst) spare = gated.promotions.take(slot.jobType);
+          if (spare === null) {
+            const lesson = gated.schooling.enrol(slot.jobType, building, force);
+            if (lesson.kind === 'learn') commands.push(lesson.command);
+            if (lesson.kind === 'learn' || lesson.kind === 'promised') continue;
+            if (lesson.kind === 'none' && i === 0 && !promotesFirst)
+              spare = gated.promotions.take(slot.jobType);
+          }
+          if (spare === null) {
+            if (!force.any()) return commands; // pool dry - the rest waits for grown sons
+            break; // nobody qualifies for this trade yet
+          }
+          commands.push({ kind: 'assignWorker', entity: spare, building, jobPriority: [slot.jobType] });
+          incrementStaffing(tally, building, slot.jobType);
         }
-        if (spare === null) {
-          if (!force.any()) return commands; // pool dry - the rest waits for grown sons
-          break; // nobody qualifies for this trade yet
-        }
-        commands.push({ kind: 'assignWorker', entity: spare, building, jobPriority: [slot.jobType] });
-        incrementStaffing(tally, building, slot.jobType);
       }
     }
   }
@@ -211,6 +207,31 @@ function firstHandFed(ctx: SystemContext, seat: SeatStaffing, type: BuildingType
  *  whose pillar the bakery's bill takes. */
 function breadSupplierDue(ctx: SystemContext, seat: SeatStaffing, type: BuildingType): boolean {
   return seat.breadChainOpen === true && breadChainSupplier(ctx, type);
+}
+
+/** The operators, carriers and gatherers `staffing` posts per slot trade at `tier`. */
+function tierWants(
+  staffing: BuildingStaffing,
+  tier: StaffingTier,
+): { readonly operators: number; readonly carriers: number; readonly gatherers: number } {
+  switch (tier) {
+    case 'food':
+      return { operators: Math.min(staffing.operatorMin, FOOD_CHAIN_FIRST_HANDS), carriers: 0, gatherers: 0 };
+    case 'min':
+      return { operators: staffing.operatorMin, carriers: staffing.carrierMin, gatherers: 0 };
+    case 'target':
+      return {
+        operators: staffing.operatorTarget,
+        carriers: staffing.carrierTarget,
+        gatherers: staffing.gathererTarget ?? 0,
+      };
+    case 'surplus':
+      return {
+        operators: staffing.operatorSurplus ?? staffing.operatorTarget,
+        carriers: staffing.carrierSurplus ?? staffing.carrierTarget,
+        gatherers: staffing.gathererSurplus ?? staffing.gathererTarget ?? 0,
+      };
+  }
 }
 
 /** Whether `job` is an operator trade: neither a transport carrier nor a flag gatherer. */

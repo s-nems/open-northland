@@ -2388,7 +2388,7 @@ describe('workforce module - the barracks and craft selections', () => {
       const seat = { player: SEAT, owned, supply, profile: AI_PROFILES.hard };
       const type = contentIndex(content).buildings.get(JOINERY_TYPE);
       if (type === undefined) throw new Error('setup: no druid hut type');
-      const plan = buildingStaffing(druids.sim.world, ctx, seat, hut, type, { operators: 0, carriers: 0 });
+      const plan = buildingStaffing(druids.sim.world, ctx, seat, hut, type, { operators: 1, carriers: 0 });
       return { operators: plan?.operatorTarget, porters: plan?.carrierMin };
     };
     expect(staffingAt([POTION_BIG])).toEqual({ operators: 1, porters: 1 });
