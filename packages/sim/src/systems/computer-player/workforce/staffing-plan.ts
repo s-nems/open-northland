@@ -155,7 +155,7 @@ export function buildingStaffing(
     productsRest(world, ctx, seat, building, type, held.operators)
   )
     plan = withoutCarriers(capOperators(plan, 0));
-  if (held.operators === 0 && hasCraftPost(ctx, type)) plan = withoutHelpers(plan);
+  if (held.operators === 0 && hasCraftPost(ctx, type)) plan = withoutCarriers(plan);
   return plan;
 }
 
@@ -170,14 +170,9 @@ function breadSupplyPending(ctx: SystemContext, seat: SeatStaffing, type: Buildi
   );
 }
 
-/** `plan` with no carrier and no gatherer: the posts that only serve a craftsman. */
-function withoutHelpers(plan: BuildingStaffing): BuildingStaffing {
-  return { ...withoutCarriers(plan), gathererTarget: 0, gathererSurplus: 0 };
-}
-
 /**
  * Whether `type` has a craft post: a slot neither a transport carrier nor a flag gatherer holds. Owner
- * ruling: such a workshop posts no carrier or gatherer while no craftsman works there, as one a map's papers
+ * ruling: such a workshop posts no carrier while no craftsman works there, as one a map's papers
  * raise ahead of its trade, since they have nothing to do there without him; they follow him once he is in.
  * A carrier-only workplace (the well, the hive) has no craft post to wait on.
  */

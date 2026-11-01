@@ -20,11 +20,6 @@ export interface BuildingStaffing {
   /** Carriers filled only by the `surplus` pass, and the count a release keeps. Absent: the target count
    *  is final. */
   readonly carrierSurplus?: number;
-  /** Gatherers posted to the building's own gatherer slots at the target tier, each foraging the goods its
-   *  shelves stock and banking them there. Absent: the slots stay open. */
-  readonly gathererTarget?: number;
-  /** Gatherers filled only by the `surplus` pass. Absent: the target count is final. */
-  readonly gathererSurplus?: number;
 }
 
 /** The baseline workplace plan: one worker per operator trade, no carrier (authored). */
@@ -152,16 +147,10 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // Owner ruling: one druid earns the big healing potion alone, more brew once it is earned. Until then
   // both huts run a porter: the oil he trains on takes a mushroom a brew, and without one the druid
   // averaged a brew in 75 seconds against the recipe's 15, his mushroom shelf empty (magiczny_las).
-  // Each hut posts its own mushroom gatherer, who walks every mushroom straight onto its shelf, and an
-  // upper hut a second out of surplus: with the seat's flag gatherers piling 80-160 mushrooms on the ground
-  // 17-23 tiles out, the druids and the porter fetched them one a trip and the huts held fewer than two
-  // for most of game minutes 65-90 (magiczny_las).
-  work_druid_00: { porterUntil: BIG_HEALING_POTION, gathererTarget: 1 },
+  work_druid_00: { porterUntil: BIG_HEALING_POTION },
   work_druid_01: {
     operatorTarget: 2,
     carrierTarget: 1,
-    gathererTarget: 1,
-    gathererSurplus: 2,
     aloneUntil: BIG_HEALING_POTION,
     porterUntil: BIG_HEALING_POTION,
   },

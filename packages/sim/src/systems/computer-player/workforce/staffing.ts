@@ -112,8 +112,8 @@ export interface GatedSlotSources {
  * takes a pupil of the trade's school lesson ({@link Schooling}), counted as filling it until he
  * graduates, or with no school teaching the trade a promotion ({@link Promotions}), which an earned-trade
  * workshop's first slot tries before the school ({@link earnedTradeWorkshop}). Gatherer slots stay
- * open unless the plan names gatherers, and a carrier-only workplace (the well, the hive) fills itself,
- * so it needs no staff. Workplaces fill before training buildings and those before storage within a
+ * open (owner ruling: a gatherer always works a flag in the field, where every building takes from his
+ * pile), and a carrier-only workplace (the well, the hive) fills itself, so it needs no staff. Workplaces fill before training buildings and those before storage within a
  * tier, and all tiers advance one shared {@link StaffingTally} because the commands apply only next tick.
  */
 export function staffBuildings(
@@ -140,8 +140,8 @@ export function staffBuildings(
     const heldBefore = heldAt(ctx, tally, building);
     let staffing = buildingStaffing(world, ctx, seat, building, type, heldBefore);
     if (staffing === null) continue;
-    // The craft slots fill first: a workshop's carriers and gatherers wait for its craftsman
-    // (`buildingStaffing`), so the first one posted here re-plans them within this tier.
+    // The craft slots fill first: a workshop's carriers wait for its craftsman (`buildingStaffing`), so
+    // the first one posted here re-plans them within this tier.
     for (let pass = 0; pass < 2; pass++) {
       const helpers = pass === 1;
       if (helpers && heldBefore.operators === 0) {
@@ -152,13 +152,10 @@ export function staffBuildings(
       const wants = tierWants(staffing, tier);
       for (const slot of type.workers) {
         const carrier = isCarrierJob(ctx, slot.jobType);
-        const gatherer = !carrier && index.harvestJobs.has(slot.jobType);
-        if ((carrier || gatherer) !== helpers) continue;
+        if (!carrier && index.harvestJobs.has(slot.jobType)) continue;
+        if (carrier !== helpers) continue;
         if (type.kind !== 'workplace' && !carrier) continue; // a store or a barracks staffs transport only
-        const want = Math.min(
-          slot.count,
-          carrier ? wants.carriers : gatherer ? wants.gatherers : wants.operators,
-        );
+        const want = Math.min(slot.count, carrier ? wants.carriers : wants.operators);
         const held =
           (tally.get(building)?.get(slot.jobType) ?? 0) + gated.schooling.promised(building, slot.jobType);
         const veteranFirst = held < want ? experienceRank(world, ctx, slot.jobType) : undefined;
@@ -207,27 +204,22 @@ function firstHandFed(ctx: SystemContext, type: BuildingType): boolean {
   return inFoodChain(ctx, type) || earnedTradeWorkshop(ctx, type);
 }
 
-/** The operators, carriers and gatherers `staffing` posts per slot trade at `tier`. */
+/** The operators and carriers `staffing` posts per slot trade at `tier`. */
 function tierWants(
   staffing: BuildingStaffing,
   tier: StaffingTier,
-): { readonly operators: number; readonly carriers: number; readonly gatherers: number } {
+): { readonly operators: number; readonly carriers: number } {
   switch (tier) {
     case 'food':
-      return { operators: Math.min(staffing.operatorMin, FOOD_CHAIN_FIRST_HANDS), carriers: 0, gatherers: 0 };
+      return { operators: Math.min(staffing.operatorMin, FOOD_CHAIN_FIRST_HANDS), carriers: 0 };
     case 'min':
-      return { operators: staffing.operatorMin, carriers: staffing.carrierMin, gatherers: 0 };
+      return { operators: staffing.operatorMin, carriers: staffing.carrierMin };
     case 'target':
-      return {
-        operators: staffing.operatorTarget,
-        carriers: staffing.carrierTarget,
-        gatherers: staffing.gathererTarget ?? 0,
-      };
+      return { operators: staffing.operatorTarget, carriers: staffing.carrierTarget };
     case 'surplus':
       return {
         operators: staffing.operatorSurplus ?? staffing.operatorTarget,
         carriers: staffing.carrierSurplus ?? staffing.carrierTarget,
-        gatherers: staffing.gathererSurplus ?? staffing.gathererTarget ?? 0,
       };
   }
 }

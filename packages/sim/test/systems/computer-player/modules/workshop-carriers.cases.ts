@@ -981,8 +981,8 @@ describe('workforce module - the herb hut crew', () => {
 const DRUID_HUT = 72;
 const DRUID = 30;
 
-describe("workforce module - the druid hut's own gatherers", () => {
-  it('posts one gatherer to the upper druid hut at the target tier and a second from surplus', () => {
+describe("workforce module - the druid hut's gatherer slots", () => {
+  it('posts no gatherer to a workshop, only to flags in the field', () => {
     const base = aiContent();
     const content = parseContentSet({
       ...base,
@@ -1004,11 +1004,10 @@ describe("workforce module - the druid hut's own gatherers", () => {
     });
     const seat = seatOn(content, [DRUID_HUT], BUILDER_CAP + SPARE_MEN);
     const hut = entityOfBuilding(seat.sim, DRUID_HUT);
-    expect(planOf(seat, content, hut, alone)).toMatchObject({ gathererTarget: 1, gathererSurplus: 2 });
     const gatherers = seat
       .decide()
       .filter((c) => c.kind === 'assignWorker' && c.building === hut && c.jobPriority[0] === COLLECTOR);
-    expect(gatherers).toHaveLength(2);
+    expect(gatherers).toHaveLength(0);
   });
 });
 
