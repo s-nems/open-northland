@@ -72,9 +72,8 @@ export class SealedPockets {
     }
     const before = stats.explored;
     const path = findPath(this.terrain, start, goal, blocked, stats, 'land', goalSlice);
-    if (path === null && stats.explored - before > FLOOD_GUARD_MAX_EXPLORED) {
-      this.remember(start, goal, blocked);
-    }
+    const charged = stats.explored - before;
+    if (path === null && charged > FLOOD_GUARD_MAX_EXPLORED) this.remember(start, goal, blocked, charged);
     return path;
   }
 
@@ -158,10 +157,12 @@ export class SealedPockets {
     return false;
   }
 
-  /** Remember the pocket a long refusal of `goal` exhausted, when the goal side refuted it. */
-  private remember(start: NodeId, goal: NodeId, blocked: BlockOverlay): void {
+  /** Remember the pocket a refusal of `goal` charging `charged` settles exhausted, when the goal side
+   *  refuted it: then the pocket holds at most what the forward side's flood guard left of the charge. */
+  private remember(start: NodeId, goal: NodeId, blocked: BlockOverlay, charged: number): void {
     const seal: NodeId[] = [];
-    const size = this.goalRegion(start, goal, blocked, GOAL_EXHAUST_MAX_EXPLORED, seal);
+    const limit = Math.min(charged - FLOOD_GUARD_MAX_EXPLORED, GOAL_EXHAUST_MAX_EXPLORED);
+    const size = this.goalRegion(start, goal, blocked, limit, seal);
     if (size === null || forwardSettles(size, RACE_SLICE_EXPLORED) === null) return;
     const region = this.queue.nodes.slice(0, size);
     for (const node of region) {
