@@ -7,6 +7,7 @@ import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import { byExperience, experienceRank, tradeExperience } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
+import { isUnwed } from '../../family/eligibility.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
 import { isCarrierJob } from '../../stores/index.js';
@@ -167,8 +168,12 @@ export function staffBuildings(
         // standing at the start is worked at once and no other man is retrained for it.
         const ofTrade = (e: Entity): boolean =>
           world.get(e, Settler).jobType === slot.jobType && qualifies(e);
+        // A craftsman is picked unwed among equals, so the trade a seat's discovery may wait on goes to a
+        // man no wedding walk or wife's errand holds back, and the builders take the wives (owner ruling).
+        const unwedFirst = helpers ? undefined : (e: Entity): boolean => isUnwed(world, e);
         for (let i = held; i < want; i++) {
-          let spare = force.take(ofTrade, veteranFirst) ?? force.take(qualifies, veteranFirst);
+          let spare =
+            force.take(ofTrade, veteranFirst, unwedFirst) ?? force.take(qualifies, veteranFirst, unwedFirst);
           // A promotion seats a building's first man of the trade only, so a second post never strips the
           // predecessor trade a second time. The mill and the bakery take the man who earned their trade
           // ahead of a school lesson (owner ruling: the farmer who earned the mill becomes its miller, and

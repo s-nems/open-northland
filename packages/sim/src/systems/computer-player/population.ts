@@ -22,13 +22,9 @@ import { assistantCounterCommand } from './assistant-counters.js';
 import { seatBaseOf } from './base.js';
 import { type ComputerProfile, computerProfileOf, shareOf } from './difficulty.js';
 import { bookedBirths, femaleStockOf } from './female-stock.js';
-import { minutesToTicks } from './game-phase.js';
 import type { ComputerModule } from './index.js';
+import { seatEarningTrades } from './technology/apprentices.js';
 import { builderCap } from './workforce/staffing.js';
-
-/** Until when single builders are wed ahead of the other men, in ticks (owner ruling: the first 30 game
- *  minutes). */
-export const BUILDER_HUSBANDS_UNTIL_TICKS = minutesToTicks(30);
 
 /** How many idle men beyond the builder reserve hold the sons counter at zero (authored). */
 export const IDLE_MEN_HOLD_BIRTHS = 3;
@@ -48,19 +44,17 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));
 
   // One marry order per possible couple, capped by the smaller side so the command log does not fill with
-  // orders that would only auto-cancel. In the opening single builders order first, each wedding the woman
-  // nearest him; the rest go from the women's side.
+  // orders that would only auto-cancel. Every order goes from the men's side in husband order, each man
+  // wedding the woman nearest him, so a woman's order never picks the farmer only because he stands
+  // nearest.
   const singleWomen = women.filter((e) => mayMarry(world, ctx.content, e));
   const singleMen = settlers.filter(
     (e) => !world.has(e, Female) && isAdultSettler(world, e) && mayMarry(world, ctx.content, e),
   );
-  let orders = Math.min(singleWomen.length, singleMen.length);
-  for (const builder of builderHusbands(world, ctx, singleMen)) {
-    if (orders === 0) break;
-    commands.push({ kind: 'marry', entity: builder });
-    orders--;
-  }
-  for (const woman of singleWomen.slice(0, orders)) commands.push({ kind: 'marry', entity: woman });
+  const orders = Math.min(singleWomen.length, singleMen.length);
+  if (orders > 0)
+    for (const man of husbandOrder(world, ctx, player, singleMen).slice(0, orders))
+      commands.push({ kind: 'marry', entity: man });
 
   // A married, unhoused woman's family takes the first free family slot, in canonical order; slots
   // claimed this decision are tracked so two families never target the same one.
@@ -108,16 +102,35 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   return commands;
 }
 
+/** Husband ranks, lowest weds first (owner ruling): the builders, whose trade earns the seat nothing a
+ *  wife's errands delay; then the men of a trade no pending discovery waits on; last the men still
+ *  earning one, such as the farmer toward the miller's trade. */
+const BUILDER_HUSBAND = 0;
+const IDLE_TRADE_HUSBAND = 1;
+const EARNING_HUSBAND = 2;
+
 /**
- * The single builder-trade men who propose first while the tick is before {@link BUILDER_HUSBANDS_UNTIL_TICKS}:
- * a builder's bride walks to him, so the gatherers and the farmer or miller stay at work and no woman's
- * order pulls one of them home. A priority only: the women's orders still wed every woman left.
+ * `singleMen` in the order they propose: by husband rank, ascending id within a rank. A priority only:
+ * the caller still orders one man per single woman, so every woman marries while single men exist.
  */
-function builderHusbands(world: World, ctx: SystemContext, singleMen: readonly Entity[]): Entity[] {
-  if (ctx.tick >= BUILDER_HUSBANDS_UNTIL_TICKS) return [];
+function husbandOrder(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  singleMen: readonly Entity[],
+): Entity[] {
   const builderJob = builderJobOf(ctx);
-  if (builderJob === null) return [];
-  return singleMen.filter((e) => world.get(e, Settler).jobType === builderJob);
+  let earning: ReadonlySet<number> | undefined;
+  const rankOf = (e: Entity): number => {
+    const job = world.get(e, Settler).jobType;
+    if (job !== null && job === builderJob) return BUILDER_HUSBAND;
+    if (job === null) return IDLE_TRADE_HUSBAND;
+    earning ??= seatEarningTrades(world, ctx, player);
+    return earning.has(job) ? EARNING_HUSBAND : IDLE_TRADE_HUSBAND;
+  };
+  const ranked = singleMen.map((e) => ({ e, rank: rankOf(e) }));
+  ranked.sort((a, b) => a.rank - b.rank || a.e - b.e);
+  return ranked.map((r) => r.e);
 }
 
 /**

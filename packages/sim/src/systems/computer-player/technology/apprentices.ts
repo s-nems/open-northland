@@ -148,6 +148,20 @@ export function seatApprenticeViews(
   });
 }
 
+/**
+ * The trades whose men earn a discovery the seat's next steps lack ({@link APPRENTICE_LOOKAHEAD_STEPS}),
+ * on the crediting work or not yet: the farmer while the mill waits on the miller's trade. Under the
+ * seat's own build order, like {@link seatApprenticeViews}; empty when progression is off.
+ */
+export function seatEarningTrades(world: World, ctx: SystemContext, player: number): ReadonlySet<number> {
+  const order = seatBuildOrder(world, ctx, player, DEFAULT_BUILD_ORDER, computerProfileOf(world, player));
+  const statuses = lineStatuses(world, ctx, player, ownedBuildings(world, player), order);
+  const trades = new Set<number>();
+  for (const { gate } of missingDiscoveries(world, ctx, player, order, statuses))
+    for (const job of gate.enablingJobs) trades.add(job);
+  return trades;
+}
+
 /** The content id a step names: its building, or a collector step's good. */
 function stepContentId(entry: BuildOrderEntry): string {
   switch (entry.kind) {

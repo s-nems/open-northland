@@ -151,26 +151,31 @@ export function classifyWorkforce(
 /**
  * The spare pool one decision draws from, tracking which men are already claimed so two phases never
  * post the same settler. A pick is the first unclaimed qualifying member in classification order, or with
- * a `rank` the highest-ranked one, the first in that order on a tie, so it is deterministic either way.
+ * a `rank` the highest-ranked one; a `prefer`red member beats an unpreferred one of equal rank, and the
+ * first in that order wins any remaining tie, so it is deterministic either way.
  */
 export class SpareForce {
   private readonly used = new Set<Entity>();
   constructor(private readonly pool: readonly Entity[]) {}
 
-  take(qualifies?: (e: Entity) => boolean, rank?: (e: Entity) => number): Entity | null {
+  take(
+    qualifies?: (e: Entity) => boolean,
+    rank?: (e: Entity) => number,
+    prefer?: (e: Entity) => boolean,
+  ): Entity | null {
     let spare: Entity | null = null;
     let best = Number.NEGATIVE_INFINITY;
+    let preferred = false;
     for (const e of this.pool) {
       if (this.used.has(e) || (qualifies !== undefined && !qualifies(e))) continue;
-      if (rank === undefined) {
-        spare = e;
-        break;
-      }
-      const score = rank(e);
-      if (score > best) {
-        spare = e;
-        best = score;
-      }
+      const score = rank === undefined ? 0 : rank(e);
+      if (score < best || (score === best && (preferred || prefer === undefined))) continue;
+      const liked = prefer?.(e) ?? false;
+      if (score === best && !liked) continue;
+      spare = e;
+      best = score;
+      preferred = liked;
+      if (rank === undefined && (prefer === undefined || liked)) break;
     }
     if (spare !== null) this.used.add(spare);
     return spare;

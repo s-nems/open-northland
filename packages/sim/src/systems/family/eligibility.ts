@@ -56,6 +56,11 @@ export function isMarried(world: World, e: Entity): boolean {
   return marriage !== undefined && (world.isAlive(marriage.spouse) || raisingChild(world, marriage));
 }
 
+/** Whether `e` is neither {@link isMarried} nor walking to a wedding. */
+export function isUnwed(world: World, e: Entity): boolean {
+  return !world.has(e, Wedding) && !isMarried(world, e);
+}
+
 /** Whether `e` may enter a marriage right now. A pending barracks drill disqualifies: the trade is still
  *  civilian mid-walk, but the drill's end would strand the spouse. */
 export function mayMarry(world: World, content: ContentSet, e: Entity): boolean {
