@@ -242,9 +242,8 @@ function deriveSettlementDefence(
 }
 
 /** The fewest enemy fighters seen about a settlement that make a big attack (authored): a computer raid
- *  band's size. A seat sees a scripted wave of 30 to 61 men come into sight a few at a time (mroczny_las:
- *  5 seen as its first men reached the towers), so anything from a raid band up is read as the wave's
- *  head, and a lone scout or a pair of wolves is chased as anywhere else. */
+ *  band's size. A scripted wave comes into sight a few men at a time, so anything from a raid band up is
+ *  read as the wave's head, and a lone scout or a pair of wolves is chased as anywhere else. */
 export const BIG_ATTACK_FIGHTERS = 4;
 
 /** Whether a computer seat's last posture review found its strongest enemy clearly stronger: such a seat
@@ -290,29 +289,26 @@ function computerGuard(
   return seatOutmatched(world, player) ? coveredCore(world, ctx, owned) : owned;
 }
 
+/** Whether `e` is a standing store. */
+function isStandingStore(world: World, ctx: SystemContext, e: Entity): boolean {
+  const kind = contentIndex(ctx.content).buildings.get(world.get(e, Building).buildingType)?.kind;
+  return isBuilt(world, e) && kind === BUILDING_KIND.storage;
+}
+
 /** The standing stores of `owned`. */
 function storesOf(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity[] {
-  const buildings = contentIndex(ctx.content).buildings;
-  return owned.filter(
-    (e) =>
-      isBuilt(world, e) && buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
-  );
+  return owned.filter((e) => isStandingStore(world, ctx, e));
 }
 
 /**
  * The buildings an outmatched computer seat sorties for: its standing towers and stores, the heart of the
  * town under the towers' bows. Owner ruling (survive at any cost, heavy defence on the towers): such a seat
- * fights raiders under its towers and never walks its army out to meet a wave past them. On mroczny_las
- * the scripted waves of 30-50 men cut down 15 of a seat's 17 soldiers 50-80 nodes out from its base, past
- * its towers 25-45 out, and the wave still took the towers and the barracks after.
+ * fights raiders under its towers and never walks its army out to meet a wave past them, where a scripted
+ * wave cuts it down in the open.
  */
 function coveredCore(world: World, ctx: SystemContext, owned: readonly Entity[]): readonly Entity[] {
-  const buildings = contentIndex(ctx.content).buildings;
   return owned.filter(
-    (e) =>
-      isBuilt(world, e) &&
-      (garrisonSlots(world, ctx, e).size > 0 ||
-        buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage),
+    (e) => isStandingStore(world, ctx, e) || (isBuilt(world, e) && garrisonSlots(world, ctx, e).size > 0),
   );
 }
 
