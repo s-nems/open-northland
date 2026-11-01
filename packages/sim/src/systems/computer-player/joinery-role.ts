@@ -95,7 +95,8 @@ function shipJoinery(world: World, ctx: SystemContext, player: number): Entity |
  * kept. While `overSea` holds, the lowest-id top-tier joinery with ship water in its yard rings builds
  * ships, or with none the lowest-id lower tier of its chain by the water, the one the seat lifts to the top;
  * every other one catapults; otherwise all build catapults. Lowest id rather than nearest the water, so a
- * joinery raised later never takes over a crew already on ships. `overSea` and the ship joinery are looked up once, on the first joinery asked about.
+ * joinery raised later never takes over a crew already on ships. `overSea` and the ship joinery are
+ * looked up once, on the first joinery asked about.
  */
 export function joineryRoles(
   world: World,

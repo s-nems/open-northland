@@ -11,10 +11,9 @@ import { createSpatialMemo } from './memo.js';
  */
 
 /** Region edge in half-cell nodes. Approximation: sized so a flag or forage radius touches a handful of
- *  regions while region lists stay long enough for the merge cost to vanish. An index query's cost
- *  depends on it, never its winner; the computer player's map brief zones the map by it too
- *  (`computer-player/knowledge/`). */
-export const REGION_NODES = 32;
+ *  regions while region lists stay long enough for the merge cost to vanish. Only query cost depends on
+ *  it, never a winner. */
+const REGION_NODES = 32;
 /** Region key packing (`rx * STRIDE + ry`): up to 65k regions per axis with a plain-number key. */
 const REGION_KEY_STRIDE = 1 << 16;
 /** Node key packing (`hx * STRIDE + hy`). It is also each member's ledger record, a small integer, so the

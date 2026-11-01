@@ -8,7 +8,6 @@ import {
 import type { Entity, World } from '../../../../ecs/world.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../../nav/terrain/index.js';
 import type { SystemContext } from '../../../context.js';
-import { REGION_NODES } from '../../../spatial/region.js';
 import { coastsOf } from '../../sea-route.js';
 import { scanDeposits } from './deposits.js';
 import { scanGround, zoneGridOf } from './ground.js';
@@ -17,8 +16,9 @@ import { scanSeatStarts } from './seats.js';
 
 export { BRIEF_GOOD_IDS } from './deposits.js';
 
-/** The brief's zone edge in half-cell nodes: the spatial indexes' regions, so a zone is one region. */
-export const BRIEF_ZONE_NODES = REGION_NODES;
+/** The brief's zone edge in half-cell nodes (authored, untuned): close to the scout's 30-node sight, so a
+ *  zone is about what one look from inside it covers. */
+export const BRIEF_ZONE_NODES = 32;
 
 /**
  * Take the map brief the first time a computer controller runs on a mapped world: one scan of the
