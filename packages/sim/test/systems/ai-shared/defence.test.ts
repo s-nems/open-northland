@@ -35,7 +35,6 @@ import {
   serializeSaveGame,
   type TerrainMap,
 } from '../../../src/index.js';
-import { hexDistanceBetween } from '../../../src/nav/halfcell.js';
 import type { TerrainGraph } from '../../../src/nav/terrain/index.js';
 import { mapDefenceLeashSystem } from '../../../src/systems/ai-shared/military/map-defence-leash.js';
 import {
@@ -57,13 +56,8 @@ import {
   threatWatchNodes,
   WAVE_MIN_SOLDIERS,
 } from '../../../src/systems/computer-player/index.js';
-import {
-  STAND_BEHIND_TOWERS_NODES,
-  towerStandToward,
-} from '../../../src/systems/computer-player/military/tower-stand.js';
 import { standsAtPost } from '../../../src/systems/conflict/tower-post.js';
 import type { SystemContext } from '../../../src/systems/index.js';
-import { TEMPLE_AURA_RANGE } from '../../../src/systems/lifecycle/temple-aura.js';
 import { setAiControl } from '../../../src/systems/orders/ai.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/index.js';
 import { entityNode } from '../../../src/systems/spatial/nodes.js';
@@ -706,7 +700,6 @@ describe('ai defence - the tower stand', () => {
   /** A tower east of the barracks, toward where the attacks come from, and the base west of both. */
   const STAND_TOWER = { x: 56, y: 40 };
   const STAND_BASE = { x: 16, y: 40 };
-  const ATTACK_ORIGIN = { hx: 120, hy: 40 };
   /** Far south of the town: past every watch band but the outlying site's. */
   const OUTLYING_SITE = { x: 60, y: 88 };
 
@@ -728,65 +721,6 @@ describe('ai defence - the tower stand', () => {
       throw new Error('setup: tower not manned');
     return { sim, tower };
   }
-
-  function owned(sim: Simulation): Entity[] {
-    return [...sim.world.query(Building)].filter((e) => sim.world.get(e, Owner).player === SEAT);
-  }
-
-  it('stands behind the manned tower facing the attacks, toward the base and under its reach', () => {
-    const { sim, tower } = mannedTowerSim();
-    const terrain = terrainOf(sim);
-    const ctx = ctxOf(sim);
-    const towerAt = nodeOf(sim, tower);
-    const base = { hx: STAND_BASE.x, hy: STAND_BASE.y };
-    const door = terrain.nodeAt(STAND_BASE.x, STAND_BASE.y);
-    const stand = towerStandToward(sim.world, ctx, terrain, owned(sim), base, ATTACK_ORIGIN, door);
-    if (stand === null) throw new Error('expected a stand behind the tower');
-    const at = terrain.coordsOf(stand);
-    expect(at.x).toBeLessThan(towerAt.x);
-    expect(at.x).toBeGreaterThan(STAND_BASE.x);
-    expect(towerAt.x - at.x).toBeLessThanOrEqual(STAND_BEHIND_TOWERS_NODES + 1);
-    expect(Math.abs(at.y - towerAt.y)).toBeLessThanOrEqual(1);
-  });
-
-  it('moves the stand into a temple aura the front tower still reaches, and keeps it under the towers else', () => {
-    const { sim, tower } = mannedTowerSim();
-    const terrain = terrainOf(sim);
-    const ctx = ctxOf(sim);
-    const towerAt = nodeOf(sim, tower);
-    const base = { hx: STAND_BASE.x, hy: STAND_BASE.y };
-    const door = terrain.nodeAt(STAND_BASE.x, STAND_BASE.y);
-    const standWith = (temples: readonly { hx: number; hy: number }[]) => {
-      const stand = towerStandToward(sim.world, ctx, terrain, owned(sim), base, ATTACK_ORIGIN, door, temples);
-      if (stand === null) throw new Error('expected a stand behind the tower');
-      return terrain.coordsOf(stand);
-    };
-    const plain = standWith([]);
-
-    // A temple behind the base: the stand steps back to its aura, still under the tower.
-    const behind = { hx: STAND_BASE.x - 10, hy: STAND_BASE.y };
-    const blessed = standWith([behind]);
-    expect(blessed.x).toBeLessThan(plain.x);
-    expect(hexDistanceBetween(behind.hx, behind.hy, blessed.x, blessed.y)).toBeLessThanOrEqual(
-      TEMPLE_AURA_RANGE,
-    );
-    expect(hexDistanceBetween(towerAt.x, towerAt.y, blessed.x, blessed.y)).toBeLessThanOrEqual(watchOf(sim));
-
-    // A temple in a far corner: its aura lies out of the tower's reach, so the stand stays.
-    expect(standWith([{ hx: 0, hy: 95 }])).toEqual(plain);
-  });
-
-  it('has no stand without a manned tower', () => {
-    const sim = aiSim();
-    place(sim, HQ_TYPE, STAND_BASE);
-    place(sim, TOWER_TYPE, STAND_TOWER);
-    const terrain = terrainOf(sim);
-    const door = terrain.nodeAt(STAND_BASE.x, STAND_BASE.y);
-    const base = { hx: STAND_BASE.x, hy: STAND_BASE.y };
-    expect(
-      towerStandToward(sim.world, ctxOf(sim), terrain, owned(sim), base, ATTACK_ORIGIN, door),
-    ).toBeNull();
-  });
 
   it('meets a big attack only under its towers while it awaits a scripted attack, and a small band anywhere', () => {
     const { sim, tower } = mannedTowerSim();

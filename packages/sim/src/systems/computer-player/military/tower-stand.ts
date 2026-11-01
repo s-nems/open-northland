@@ -8,11 +8,10 @@ import { seatAwaitsScriptedAttack } from '../../ai-shared/military/settlement-de
 import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
-import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { seatBaseOf } from '../base.js';
 import type { IntentPoint } from '../knowledge/map-intent/index.js';
 import { forecastAttackOrigin } from './deadline.js';
-import { seatTempleAnchors, templeStationToward } from './temple-station.js';
+import { type StandGround, templeStationToward } from './temple-station.js';
 
 /** How far behind its tower line, toward its base, a seat awaiting a scripted attack stands its army, in
  *  hex nodes (owner ruling: the army stands under the towers on the attack side, between them and the
@@ -33,22 +32,22 @@ export function towerStandOf(
   terrain: TerrainGraph,
   player: number,
   door: NodeId,
+  ground: StandGround,
 ): NodeId | null {
   if (!seatAwaitsScriptedAttack(world, player)) return null;
   const origin = forecastAttackOrigin(world, ctx, player);
   const base = seatBaseOf(world, ctx, player);
   const baseAt = base === null ? null : anchorNodeOf(world, base);
   if (origin === null || baseAt === null) return null;
-  const temples = seatTempleAnchors(world, ctx, player);
-  return towerStandToward(world, ctx, terrain, ownedBuildings(world, player), baseAt, origin, door, temples);
+  return towerStandToward(world, ctx, terrain, ownedBuildings(world, player), baseAt, origin, door, ground);
 }
 
 /**
  * The stand under the towers of `owned` facing `origin`: the manned tower nearest `origin` and those
  * within its reach ({@link threatWatchNodes}) make the line; the stand lies
  * {@link STAND_BEHIND_TOWERS_NODES} from the line's centre toward `base`, never past it, on the first open
- * node of `door`'s side walking back toward the line that the front tower still reaches. With `temples`,
- * the stand moves to the nearest spot inside a temple's aura ({@link templeStationToward}) when the front
+ * node of `door`'s side walking back toward the line that the front tower still reaches, off `ground`'s
+ * blocked nodes. With the seat's temples in `ground`, the stand moves to the nearest spot inside a temple's aura ({@link templeStationToward}) when the front
  * tower still reaches that spot; a temple out of the towers' reach leaves the stand under them, since a
  * wave met away from the towers fights them without their fire. Approximation: a straight step over the
  * half-cell lattice.
@@ -61,7 +60,7 @@ export function towerStandToward(
   base: HalfCellNode,
   origin: IntentPoint,
   door: NodeId,
-  temples: readonly HalfCellNode[] = [],
+  ground: StandGround,
 ): NodeId | null {
   const towers = mannedTowers(world, ctx, owned);
   let front: { e: Entity; at: HalfCellNode; distance: number } | null = null;
@@ -83,7 +82,7 @@ export function towerStandToward(
   const span = hexDistance(centre, base);
   const depth = Math.min(STAND_BEHIND_TOWERS_NODES, span);
   const side = terrain.componentOf(door);
-  const blocked = dynamicBlockOverlay(world, ctx, terrain);
+  const { temples, blocked } = ground;
   for (let behind = depth; behind >= 0; behind--) {
     const x = span === 0 ? centre.hx : centre.hx + Math.round(((base.hx - centre.hx) * behind) / span);
     const y = span === 0 ? centre.hy : centre.hy + Math.round(((base.hy - centre.hy) * behind) / span);

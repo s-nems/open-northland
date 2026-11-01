@@ -116,11 +116,18 @@ function runMilitary(world: World, ctx: SystemContext, player: number): readonly
   // A raid takes its band before the muster sorts the rest, so no man is the muster's and a raid's.
   const raids = env === null ? null : runOperations(env, 'beforeCampaign', fit);
   const field = raids === null ? fit : fit.filter((e) => !raids.members.has(e));
-  const campaign = runOffensive(world, ctx, terrain, player, {
-    army: field,
-    awaitingWeapon: [...army.awaitingWeapon, ...unfit],
-    wave: wave === null ? [] : army.ready.filter((e) => wave.men.has(e)),
-  });
+  const campaign = runOffensive(
+    world,
+    ctx,
+    terrain,
+    player,
+    {
+      army: field,
+      awaitingWeapon: [...army.awaitingWeapon, ...unfit],
+      wave: wave === null ? [] : army.ready.filter((e) => wave.men.has(e)),
+    },
+    wearsArmour,
+  );
   const assault = env === null ? null : runOperations(env, 'afterCampaign', []);
   // The men the campaign leaves standing at home this decision may go for armour.
   const sent = orderedMen([...campaign, ...(assault?.commands ?? [])]);

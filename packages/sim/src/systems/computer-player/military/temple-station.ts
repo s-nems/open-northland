@@ -70,15 +70,27 @@ export function templeStationToward(
   return best;
 }
 
-/** {@link templeStationToward} over `player`'s own temples; null for a seat with none. */
-export function templeStationOf(
+/** The ground the army's stands are picked on: `player`'s temple anchors ({@link seatTempleAnchors}) and
+ *  the walk-blocked nodes, read once per decision. */
+export interface StandGround {
+  readonly temples: readonly HalfCellNode[];
+  readonly blocked: BlockOverlay;
+}
+
+export function standGroundOf(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
   player: number,
-  toward: NodeId,
-): NodeId | null {
-  const temples = seatTempleAnchors(world, ctx, player);
-  if (temples.length === 0) return null;
-  return templeStationToward(terrain, dynamicBlockOverlay(world, ctx, terrain), temples, toward);
+): StandGround {
+  return {
+    temples: seatTempleAnchors(world, ctx, player),
+    blocked: dynamicBlockOverlay(world, ctx, terrain),
+  };
+}
+
+/** {@link templeStationToward} over the seat's own temples in `ground`; null for a seat with none. */
+export function templeStationOf(terrain: TerrainGraph, ground: StandGround, toward: NodeId): NodeId | null {
+  if (ground.temples.length === 0) return null;
+  return templeStationToward(terrain, ground.blocked, ground.temples, toward);
 }

@@ -12,12 +12,13 @@ import { seatBarracksOf, seatBaseOf } from '../base.js';
 import { computerProfileOf } from '../difficulty.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { campaignObjective } from './campaign.js';
-import { believedDefendingPoints, COUNTED_ONCE, ownArmyPoints } from './enemy-strength.js';
+import { believedDefendingPoints, ownArmyPoints } from './enemy-strength.js';
 import { advanceWave, endMarch, launchWave, SIEGE_MARCH_MIN_CATAPULTS } from './march/index.js';
 import { gatherAt, marchOrders, meleeCoreFor, musterAround, rallyAt, waveWorthy } from './muster.js';
 import { abandonWave, decideWave } from './plan.js';
+import { COUNTED_ONCE } from './points.js';
 import { crewedCatapults } from './siege-crew.js';
-import { templeStationOf } from './temple-station.js';
+import { type StandGround, standGroundOf, templeStationOf } from './temple-station.js';
 import { towerStandOf } from './tower-stand.js';
 
 /** What the caller has left to spend on the campaign: the tower garrison and the band a raid takes are
@@ -37,7 +38,9 @@ const NO_CAMPAIGN: readonly PlayerCommand[] = [];
  * and, with no wave out, the launch is judged ({@link decideWave}). Until the peace ends
  * ({@link seatPeaceEndTick}) and the difficulty's first wave may march, and while the seat's posture holds the
  * army home (`strategy/military.ts`), the army only gathers at home ({@link armedStandOf}),
- * as it does with no target, a marching wave called back. The men at the door set out as a wave when the
+ * as it does with no target, a marching wave called back. With a target and no wave out, a seat awaiting a
+ * scripted attack musters under its tower line ({@link towerStandOf}). `wearsArmour` is
+ * the seat's armour rule this decision (`fit.ts`). The men at the door set out as a wave when the
  * muster is the one it was gathering and the seat's points reach its plan's edge over the target owner's; a
  * body already nearer the objective goes in whatever the muster says, having nowhere safe to wait;
  * everybody else is called in.
@@ -48,6 +51,7 @@ export function runOffensive(
   terrain: TerrainGraph,
   player: number,
   { army, awaitingWeapon, wave }: CampaignForce,
+  wearsArmour: boolean,
 ): readonly PlayerCommand[] {
   // No barracks, no rally point - and no army either, since its drill is the seat's only route to a
   // soldier (workforce/garrison.ts).
@@ -66,7 +70,7 @@ export function runOffensive(
     abandonWave(world, barracks);
     endMarch(world, barracks);
     // The men awaiting a weapon stay by the barracks that arms them.
-    const stand = armedStandOf(world, ctx, terrain, player, home);
+    const stand = armedStandOf(world, ctx, terrain, player, home, standGroundOf(world, ctx, terrain, player));
     if (stand !== null) {
       const armed = [...army, ...wave];
       const atStand = rallyAt(world, ctx, terrain, stand, armed);
@@ -86,9 +90,11 @@ export function runOffensive(
   if (!atHome && (marchOn.active || wave.length === 0)) return marchOn.commands;
   // A wave spent this decision hands its men back to the muster.
   const muster = marchOn.active ? army : [...army, ...wave].sort((a, b) => a - b);
-  // The armed men wait, and a wave forms, inside a temple's aura; the men awaiting a weapon stay by the
-  // barracks that arms them.
-  const blessed = templeStationOf(world, ctx, terrain, player, home);
+  // The armed men wait, and a wave forms, under the tower line while a scripted attack is awaited and no
+  // wave is out, else inside a temple's aura; the men awaiting a weapon stay by the barracks that arms them.
+  const ground = standGroundOf(world, ctx, terrain, player);
+  const towerStand = marchOn.active ? null : towerStandOf(world, ctx, terrain, player, home, ground);
+  const blessed = towerStand ?? templeStationOf(terrain, ground, home);
   const station = blessed === home ? null : blessed;
   const rally = rallyAt(
     world,
@@ -116,7 +122,7 @@ export function runOffensive(
   // of its men is not benched by its own defence; the target's posted men weigh what they kill. The
   // target's side is what the seat has seen of it. A siege train at home outranges the towers, so their
   // posted men then weigh what any man does.
-  const own = ownArmyPoints(world, ctx, player);
+  const own = ownArmyPoints(world, ctx, player, wearsArmour);
   const postedWeight =
     crewedCatapults(world, ctx, player).length >= SIEGE_MARCH_MIN_CATAPULTS ? COUNTED_ONCE : undefined;
   const strength = {
@@ -173,12 +179,13 @@ function armedStandOf(
   terrain: TerrainGraph,
   player: number,
   home: NodeId,
+  ground: StandGround,
 ): NodeId | null {
-  const stand = towerStandOf(world, ctx, terrain, player, home);
+  const stand = towerStandOf(world, ctx, terrain, player, home, ground);
   if (stand !== null) return stand;
   const base = seatOutmatched(world, player) ? seatBaseOf(world, ctx, player) : null;
   const at = base === null ? home : interactionCell(world, ctx, terrain, base);
-  const blessed = templeStationOf(world, ctx, terrain, player, at) ?? at;
+  const blessed = templeStationOf(terrain, ground, at) ?? at;
   return blessed === home ? null : blessed;
 }
 
