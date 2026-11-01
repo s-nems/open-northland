@@ -113,10 +113,7 @@ describe('apiConfigFromEnvironment', () => {
       apiConfigFromEnvironment({ ON_API_MAPDB: '1', ON_API_MAPDB_UPSTREAM: 'ftp://x' }, '/'),
     ).toThrow(/ON_API_MAPDB_UPSTREAM/);
     expect(() =>
-      apiConfigFromEnvironment(
-        { ON_API_MAPDB: '1', ON_API_MAPDB_UPSTREAM: 'https://user:secret@x' },
-        '/',
-      ),
+      apiConfigFromEnvironment({ ON_API_MAPDB: '1', ON_API_MAPDB_UPSTREAM: 'https://user:secret@x' }, '/'),
     ).toThrow(/credentials/);
     expect(() => apiConfigFromEnvironment({ API_CONVERT_TIMEOUT_SECONDS: '0' }, '/')).toThrow(
       /API_CONVERT_TIMEOUT_SECONDS/,
