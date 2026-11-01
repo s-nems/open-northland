@@ -19,7 +19,7 @@ import {
 } from '../game-phase.js';
 import { seatHerdKept } from '../herd.js';
 import { COLLECTED_GOOD_IDS, COLLECTOR_WORKSHOP_BY_GOOD_ID } from './collectors/index.js';
-import { craftGlutPending, openingRunPending, productsOf } from './craft.js';
+import { type CraftPlan, craftGlutPending, openingRunPending, productsOf, seatCraftPlans } from './craft.js';
 import {
   type BuildingStaffing,
   discoveryPending,
@@ -128,7 +128,13 @@ export function buildingStaffing(
   if (opening || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
     plan = capOperators(plan, 1);
   else if (gate !== null) {
-    const crafting = craftGlutPending(ctx, seat.supply, seat.profile, type, held.operators > gate);
+    const crafting = craftGlutPending(
+      ctx,
+      seat.supply,
+      staffingCraftPlans(world, ctx, seat),
+      type,
+      held.operators > gate,
+    );
     plan = capOperators(plan, gate, crafting ? Number.POSITIVE_INFINITY : gate);
   }
   const holdsCarrier = held.carriers > 0;
@@ -158,6 +164,24 @@ export function buildingStaffing(
   if (held.operators === 0 && hasCraftPost(ctx, type)) plan = withoutCarriers(plan);
   return plan;
 }
+
+/** The craft plans the seat's crafts work ({@link seatCraftPlans}), read once per {@link SeatStaffing}, so
+ *  staffing and the craft tuner read the same side and herd rows. */
+function staffingCraftPlans(
+  world: World,
+  ctx: SystemContext,
+  seat: SeatStaffing,
+): Readonly<Record<string, CraftPlan>> {
+  let plans = craftPlansBySeat.get(seat);
+  if (plans === undefined) {
+    plans = seatCraftPlans(world, ctx, seat.player, seat.profile);
+    craftPlansBySeat.set(seat, plans);
+  }
+  return plans;
+}
+
+/** {@link staffingCraftPlans} per decision's seat inputs. */
+const craftPlansBySeat = new WeakMap<SeatStaffing, Readonly<Record<string, CraftPlan>>>();
 
 /** Whether `type` is the bread chain's supplier while the seat's chain is unfinished and holds none of
  *  its products: its craftsman works whatever the products' supply lines say, so the bakery's pillar is
@@ -227,7 +251,7 @@ function gatedOperators(
 }
 
 /**
- * Whether a workshop has nothing worth making: it has no craft sink (the profile's craft plans) and sows
+ * Whether a workshop has nothing worth making: it has no craft sink (the seat's craft plans) and sows
  * no fields, every product has supply lines, and each lies at its glut line, or, once its crew has gone,
  * none is short yet. A product without supply lines keeps the crew on, as does a type with no product at
  * all. A farm never rests, since a resting farm loses its sown fields. While a recipe input of the
@@ -244,7 +268,7 @@ function productsRest(
   type: BuildingType,
   operators: number,
 ): boolean {
-  if (seat.profile.craftPlans[type.id]?.sink !== undefined) return false;
+  if (staffingCraftPlans(world, ctx, seat)[type.id]?.sink !== undefined) return false;
   if (farmWorkGood(world, ctx, building) !== null) return false;
   const products = productsOf(ctx, type);
   if (products.length === 0 || products.some((good) => seat.supply.lines(good) === undefined)) return false;

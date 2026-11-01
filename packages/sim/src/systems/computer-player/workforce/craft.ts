@@ -52,9 +52,9 @@ import type { SeatSupply, SupplyLine } from './supply.js';
 /**
  * One operator seat's products, by stable content ids. A plain list is worked as is. A `glut` seat drops
  * each of its `goods` while the seat holds at least that many units of it (the summary bar's figure:
- * stores, workshop shelves, hands and the heaps in reach), and takes it back once the stock has fallen
- * {@link CRAFT_GLUT_BAND_UNITS} under the glut; while every capped good is dropped it works `otherwise`,
- * or the whole list when there is none. A `firstFed` seat works the first of its lines whose `input` the
+ * stores, workshop shelves, hands and the heaps in reach), and takes it back once the stock has fallen its
+ * `band` (default {@link CRAFT_GLUT_BAND_UNITS}) under the glut; while every capped good is dropped it
+ * works `otherwise`, or the whole list when there is none. A `firstFed` seat works the first of its lines whose `input` the
  * seat holds a unit of, and every line while it holds none of them. A good with supply lines
  * ({@link SeatSupply}) takes no authored glut: {@link SeatCraftPlan.sink} covers it. A `firstEnabled` seat
  * works the first of its seats that names a good the seat may make right now, so a better product
@@ -70,6 +70,7 @@ export type CraftSeat =
   | {
       readonly goods: readonly string[];
       readonly glut: Readonly<Record<string, number>>;
+      readonly band?: number;
       readonly otherwise?: CraftSeat;
     }
   | { readonly firstFed: readonly { readonly good: string; readonly input: string }[] }
@@ -366,16 +367,22 @@ const DRUID_SEATS = 12;
  *  discovery reads, so the oil's one herb buys the same experience as a potion's eight inputs. */
 const POTION_SEAT: CraftSeat = { firstEnabled: [['potion_heal_big'], ['holy_oil']] };
 
-/** The holy oil in stock at which the temple-site druid turns back to potions (authored). The site takes
- *  one unit, so he takes oil back only once the stock is out (the line less {@link CRAFT_GLUT_BAND_UNITS}). */
-export const TEMPLE_SITE_OIL_UNITS = CRAFT_GLUT_BAND_UNITS + 1;
+/** The holy oil in stock at which the temple-site druid turns back to potions, and the band under it at
+ *  which he takes the oil back (authored): the site's bill takes one unit, so the store holds one or two. */
+export const TEMPLE_SITE_OIL_UNITS = 2;
+const TEMPLE_SITE_OIL_BAND_UNITS = 1;
 
 /** The first druid keeps a unit of holy oil in store while the seat's temple is a site, whose bill takes
  *  one: the homes may have burned the oil the druids boiled while they earned the big potion. */
 const TEMPLE_SITE_SEAT: CraftSeat = {
   whileOwned: 'work_temple',
   siteOnly: true,
-  works: { goods: ['holy_oil'], glut: { holy_oil: TEMPLE_SITE_OIL_UNITS }, otherwise: POTION_SEAT },
+  works: {
+    goods: ['holy_oil'],
+    glut: { holy_oil: TEMPLE_SITE_OIL_UNITS },
+    band: TEMPLE_SITE_OIL_BAND_UNITS,
+    otherwise: POTION_SEAT,
+  },
   otherwise: POTION_SEAT,
 };
 
@@ -593,8 +600,9 @@ interface RestrictedCrew {
  * Over the lists, the plan's sink takes the whole crew while the type's products with supply lines lie at
  * glut ({@link sinkHolds}), and otherwise a short product takes one or two seats whose own goods are
  * plentiful ({@link shortFirst}). A crew member on an opening run keeps it. An apprentice
- * (`technology/apprentices.ts`) works past his seat's glut and rest, since a resting man earns no repeats
- * toward his discovery. No good takes an input the landing fleet's missing ships hold back
+ * (`technology/apprentices.ts`) on a fixed seat works past its glut and its earned `until` rest, since a
+ * resting man earns no repeats toward his discovery; one on a stock plan takes its surplus goods like the
+ * rest of the crew. No good takes an input the landing fleet's missing ships hold back
  * ({@link fleetReserve}).
  */
 export function tuneCraftCounters(
@@ -707,8 +715,10 @@ export function tuneCraftCounters(
     const free: number[] = []; // the crew members off any opening run, at work
     let surplusTurn = 0; // the surplus wants rotate over the operators past every want
     for (let seat = 0; seat < workplaces.length; seat++) {
-      const opening = openingRun(world, ctx, workplaces[seat] as Entity, type);
+      const workplace = workplaces[seat] as Entity;
+      const opening = openingRun(world, ctx, workplace, type);
       if (opening !== null) {
+        countCycles(world, workplace);
         listed.push(goodsOf(ctx, products, [opening]));
         continue;
       }
@@ -1007,17 +1017,18 @@ function shortFirst(
 
 /**
  * Whether a good one of the type's craft seats caps at an authored glut lies under it: under the glut while
- * `engaged`, else under it by {@link CRAFT_GLUT_BAND_UNITS}, the band at which a seat takes the good back.
+ * `engaged`, else under it by the seat's band ({@link CRAFT_GLUT_BAND_UNITS} by default), at which a seat
+ * takes the good back.
  * False for a type with no such seat.
  */
 export function craftGlutPending(
   ctx: SystemContext,
   supply: SeatSupply,
-  profile: ComputerProfile,
+  plans: Readonly<Record<string, CraftPlan>>,
   type: BuildingType,
   engaged: boolean,
 ): boolean {
-  const plan = profile.craftPlans[type.id];
+  const plan = plans[type.id];
   if (plan === undefined || 'wants' in plan) return false;
   return plan.seats.some(
     (seat) =>
@@ -1025,7 +1036,8 @@ export function craftGlutPending(
       Object.entries(seat.glut).some(([id, glut]) => {
         const good = goodTypeByContentId(ctx.content, id);
         return (
-          good !== undefined && supply.units(good.typeId) < (engaged ? glut : glut - CRAFT_GLUT_BAND_UNITS)
+          good !== undefined &&
+          supply.units(good.typeId) < (engaged ? glut : glut - (seat.band ?? CRAFT_GLUT_BAND_UNITS))
         );
       }),
   );
@@ -1073,7 +1085,8 @@ interface SeatChoice {
   readonly earned: (id: string) => boolean;
   /** The goods the type makes that the seat may make ({@link enabledProducts}). */
   readonly products: readonly number[];
-  /** Read a glutted goods list as still wanted rather than handing over to its `otherwise`. */
+  /** Read a glutted goods list as still wanted rather than handing over to its `otherwise`, and an `until`
+   *  seat that would rest once its good is earned as still working its `works`. */
   readonly pastGlut?: true;
 }
 
@@ -1107,8 +1120,11 @@ function seatProducts(
       ? [seat.fleet, ...(seat.beside ?? [])]
       : seatProducts(choice, current, seat.otherwise);
   }
-  if ('until' in seat)
-    return seatProducts(choice, current, choice.earned(seat.until) ? seat.otherwise : seat.works);
+  if ('until' in seat) {
+    if (!choice.earned(seat.until)) return seatProducts(choice, current, seat.works);
+    const goods = seatProducts(choice, current, seat.otherwise);
+    return goods === REST && choice.pastGlut === true ? seatProducts(choice, current, seat.works) : goods;
+  }
   if ('whileOwned' in seat) {
     const owned = choice.owns(seat.whileOwned, seat.siteOnly === true);
     return seatProducts(choice, current, owned ? seat.works : seat.otherwise);
@@ -1132,7 +1148,7 @@ function seatProducts(
     const glut = seat.glut[id];
     const good = glut === undefined ? undefined : goodTypeByContentId(ctx.content, id);
     if (glut === undefined || good === undefined) return true;
-    const dropAt = current.includes(good.typeId) ? glut : glut - CRAFT_GLUT_BAND_UNITS;
+    const dropAt = current.includes(good.typeId) ? glut : glut - (seat.band ?? CRAFT_GLUT_BAND_UNITS);
     return !supply.exceeds(good.typeId, dropAt - 1);
   });
   if (kept.length > 0 || choice.pastGlut === true) return kept.length > 0 ? kept : seat.goods;
@@ -1223,13 +1239,15 @@ export function openingRunPending(
   return (world.tryGet(workplace, CompletedCycles)?.byGood.get(good.typeId) ?? 0) < run.cycles;
 }
 
-/**
- * The good `workplace`'s opening run still wants, or null once the run is done or its type has none. The
- * first look opts the building into {@link CompletedCycles}, so its count starts with the crew's first
- * cycle.
- */
+/** The good built `workplace`'s opening run still wants, or null once the run is done or its type has
+ *  none. */
 function openingRun(world: World, ctx: SystemContext, workplace: Entity, type: BuildingType): string | null {
   if (world.has(workplace, UnderConstruction) || !openingRunPending(world, ctx, workplace, type)) return null;
-  if (!world.has(workplace, CompletedCycles)) world.add(workplace, CompletedCycles, { byGood: new Map() });
   return CRAFT_OPENING_RUN_BY_BUILDING_ID[type.id]?.good ?? null;
+}
+
+/** Opt `workplace` into {@link CompletedCycles} so its opening run's count starts with the crew's first
+ *  cycle. */
+function countCycles(world: World, workplace: Entity): void {
+  if (!world.has(workplace, CompletedCycles)) world.add(workplace, CompletedCycles, { byGood: new Map() });
 }
