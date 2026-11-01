@@ -39,10 +39,12 @@ const MAX_STAMP = 0x7fffffff;
  * serves the askers that share a view of the walls, such as one player's walkers.
  */
 export class SealedPockets {
-  private readonly pocketAt: Uint8Array;
+  /** Each node's pocket id, sized to the map on the first remembered pocket: most askers never remember
+   *  one, and a map-sized pair per player and mode adds up. */
+  private pocketAt = new Uint8Array(0);
   /** The blocked nodes bordering each pocket when it was remembered, by the same ids. A node may border
-   *  two; the later one keeps it. */
-  private readonly sealAt: Uint8Array;
+   *  two; the later one keeps it. Sized with {@link pocketAt}. */
+  private sealAt = new Uint8Array(0);
   /** Each remembered pocket's nodes, by id. */
   private readonly pockets: Array<Pocket | undefined> = [];
   /** Pocket ids in the order they were remembered, oldest first. */
@@ -52,8 +54,6 @@ export class SealedPockets {
   private readonly steps = new StepBuffer();
 
   constructor(readonly terrain: TerrainGraph) {
-    this.pocketAt = new Uint8Array(terrain.nodeCount);
-    this.sealAt = new Uint8Array(terrain.nodeCount);
     this.stamps = floodStampsOf(terrain);
   }
 
@@ -165,6 +165,10 @@ export class SealedPockets {
     const size = this.goalRegion(start, goal, blocked, limit, seal);
     if (size === null || forwardSettles(size, RACE_SLICE_EXPLORED) === null) return;
     const region = this.queue.nodes.slice(0, size);
+    if (this.pocketAt.length === 0) {
+      this.pocketAt = new Uint8Array(this.terrain.nodeCount);
+      this.sealAt = new Uint8Array(this.terrain.nodeCount);
+    }
     for (const node of region) {
       const held = this.pocketAt[node] ?? NO_POCKET;
       if (held !== NO_POCKET) this.forget(held);
