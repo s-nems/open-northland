@@ -3,7 +3,6 @@ import {
   Building,
   DefenceMode,
   diplomacyStance,
-  MAX_PLAYERS,
   type OperationEndReason,
   Owner,
   type RaidOperation,
@@ -39,7 +38,7 @@ import {
   nodeOfEntity,
   pickRaidTarget,
   routeUnderTower,
-  visibleFighters,
+  visibleEnemyFighters,
   visibleGatherers,
 } from './raid-target.js';
 
@@ -141,11 +140,7 @@ function abortReason(env: OperationEnv, op: RaidOperation): OperationEndReason |
   if (defenceModeNear(env, owner, targetNode(op), centre)) return 'defenceMode';
   let ownPoints = 0;
   for (const e of op.members) ownPoints += unitPoints(world, ctx, e);
-  let enemyPoints = 0;
-  for (let other = 0; other < MAX_PLAYERS; other++) {
-    if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
-    enemyPoints += fighterPointsNear(visibleFighters(world, ctx, seat, other), centre);
-  }
+  const enemyPoints = fighterPointsNear(visibleEnemyFighters(world, ctx, seat), centre);
   return enemyPoints > ownPoints ? 'outmatched' : null;
 }
 
@@ -289,11 +284,11 @@ function legEnd(op: RaidOperation): HalfCellNode {
 
 /**
  * A new raid when the seat's orders allow raids (its harassing posture, or a hard seat's flank raids) and
- * its peace is over: from the free men on the door's
- * land and on no errand, leaving {@link RAID_HOME_FLOOR_MEN} of them, up to {@link RAID_BAND_MEN}, archers
- * first, then the nearest the door, then by id; at the best target ({@link pickRaidTarget}), by a way clear
- * of believed towers ({@link flankRoute}), looked for on every {@link RAID_LOOK_EVERY_DECISIONS}th decision.
- * None with fewer than {@link RAID_MIN_MEN} to spare, nothing worth striking or no way to it.
+ * its peace is over: from the free men on the door's land and on no errand, leaving
+ * {@link RAID_HOME_FLOOR_MEN} of them, up to {@link RAID_BAND_MEN}, archers first, then the nearest the
+ * door, then by id; at the best target ({@link pickRaidTarget}), by a way clear of believed towers
+ * ({@link flankRoute}), looked for on every {@link RAID_LOOK_EVERY_DECISIONS}th decision. None with fewer
+ * than {@link RAID_MIN_MEN} to spare, nothing worth striking or no way to it.
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number) {
   const { world, ctx, terrain, seat, home, orders } = env;
@@ -306,7 +301,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
   if (size < RAID_MIN_MEN || !moduleBeatDue(ctx.tick, seat, RAID_LOOK_EVERY_DECISIONS)) return null;
   const pick = pickRaidTarget(world, ctx, terrain, seat, home);
   if (pick === null || pick.target.owner === null) return null;
-  const waypoints = flankRoute(world, terrain, home, pick.target, believedEnemyTowers(world, ctx, seat));
+  const waypoints = flankRoute(world, terrain, home, pick.target, pick.towers);
   if (waypoints === null) return null;
   const ranked = ready
     .map((e) => ({
@@ -375,5 +370,11 @@ export const raidHandler: OperationHandler<RaidOperation> = {
   cooldownTicks: ({ ctx, seat }) => drawRaidDelay(raidRoll(ctx, seat)),
   firstReadyAt: firstRaidAt,
   step,
+  // A raider a map task takes still in the raid's stance would hold it passive at the task.
+  release: (world, men) =>
+    homeStance(
+      world,
+      men.filter((e) => world.tryGet(e, Stance)?.mode === RAID_STANCE),
+    ),
   open,
 };

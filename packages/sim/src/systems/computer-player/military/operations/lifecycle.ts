@@ -1,9 +1,4 @@
-import {
-  isOperationOpen,
-  type Operation,
-  type OperationEndReason,
-  type OperationState,
-} from '../../../../components/index.js';
+import type { Operation, OperationEndReason, OperationState } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
@@ -39,6 +34,8 @@ export interface OperationHandler<O extends Operation = Operation> {
   /** One decision for an open operation: its orders. It updates `op` in place through {@link enter}, and
    *  may take reinforcements from `free`, the men no operation holds, in which case it removes them. */
   readonly step: (env: OperationEnv, op: O, free: Entity[]) => readonly PlayerCommand[];
+  /** The orders that hand back the live men a map task took out of an operation of this kind. */
+  readonly release?: (world: World, men: readonly Entity[]) => readonly PlayerCommand[];
   /** A new operation of this kind from `free` when its trigger holds, with the orders that start it. */
   readonly open: (env: OperationEnv, free: readonly Entity[], id: number) => Opened<O> | null;
 }
@@ -47,8 +44,6 @@ export interface Opened<O extends Operation> {
   readonly op: O;
   readonly commands: readonly PlayerCommand[];
 }
-
-export const isOpen = isOperationOpen;
 
 /** The ready tick of a kind whose first opening is not drawn yet ({@link OperationHandler.firstReadyAt}). */
 export const UNDRAWN_READY_AT = 0;

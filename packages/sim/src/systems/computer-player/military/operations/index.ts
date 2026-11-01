@@ -3,6 +3,7 @@ import {
   ComputerOperations,
   type ComputerOperationsState,
   Health,
+  isOperationOpen,
   type LandingLeg,
   OPERATION_KINDS,
   type Operation,
@@ -19,13 +20,12 @@ import { mapAiSoldierClaims } from '../../../ai-shared/military/ownership.js';
 import { assaultHandler } from './assault.js';
 import { holdHandler } from './hold.js';
 import { landingHandler } from './landing.js';
-import { isOpen, type OperationEnv, type OperationHandler, UNDRAWN_READY_AT } from './lifecycle.js';
+import { type OperationEnv, type OperationHandler, UNDRAWN_READY_AT } from './lifecycle.js';
 import { raidHandler } from './raid.js';
 import { seaScoutHandler } from './sea-scout.js';
 
 export {
   enter,
-  isOpen,
   NEVER_READY,
   type Opened,
   type OperationEnv,
@@ -56,13 +56,12 @@ export function operationsOf(world: World, seat: number): DeepReadonly<ComputerO
   return carrier === null ? null : (world.tryGet(carrier, ComputerOperations) ?? null);
 }
 
-/** Whether `e` is still a man `seat` can order: alive, a person, its own, and not taken by a map task. */
-function stillServes(world: World, seat: number, claimed: ReadonlySet<Entity>, e: Entity): boolean {
+/** Whether `e` is a live person of `seat`'s. */
+function ownLive(world: World, seat: number, e: Entity): boolean {
   return (
     world.has(e, Person) &&
     (world.tryGet(e, Health)?.hitpoints ?? 0) > 0 &&
-    world.tryGet(e, Owner)?.player === seat &&
-    !claimed.has(e)
+    world.tryGet(e, Owner)?.player === seat
   );
 }
 
@@ -85,15 +84,18 @@ export function runOperations(
   const pool = free.filter((e) => !heldBefore.has(e));
   // Written only when an operation runs, ends or opens, so a seat with none changes nothing.
   const held = world.tryGet(carrier, ComputerOperations);
-  if (held?.operations.some((op) => !isOpen(op) || HANDLERS[op.kind].phase === phase)) {
+  if (held?.operations.some((op) => !isOperationOpen(op) || HANDLERS[op.kind].phase === phase)) {
     const state = world.mut(carrier, ComputerOperations);
-    state.operations = state.operations.filter((op) => isOpen(op) || op.since >= ctx.tick);
+    state.operations = state.operations.filter((op) => isOperationOpen(op) || op.since >= ctx.tick);
     const claimed = mapAiSoldierClaims(world, seat);
     for (const op of state.operations) {
-      if (!isOpen(op) || HANDLERS[op.kind].phase !== phase) continue;
-      op.members = op.members.filter((e) => stillServes(world, seat, claimed, e));
+      if (!isOperationOpen(op) || HANDLERS[op.kind].phase !== phase) continue;
+      // A man a map task takes leaves the operation; its handler hands him back.
+      const released = op.members.filter((e) => claimed.has(e) && ownLive(world, seat, e));
+      if (released.length > 0) commands.push(...(HANDLERS[op.kind].release?.(world, released) ?? []));
+      op.members = op.members.filter((e) => !claimed.has(e) && ownLive(world, seat, e));
       commands.push(...stepOf(env, op, pool));
-      if (!isOpen(op)) state.readyAt[op.kind] = ctx.tick + HANDLERS[op.kind].cooldownTicks(env);
+      if (!isOperationOpen(op)) state.readyAt[op.kind] = ctx.tick + HANDLERS[op.kind].cooldownTicks(env);
     }
   }
   const members = operationMembersOf(world, seat);
@@ -112,7 +114,7 @@ export function runOperations(
     }
     const now = world.tryGet(carrier, ComputerOperations);
     if (ctx.tick < (now?.readyAt[kind] ?? 0)) continue;
-    if (now?.operations.some((op) => op.kind === kind && isOpen(op))) continue;
+    if (now?.operations.some((op) => op.kind === kind && isOperationOpen(op))) continue;
     const opened = handler.open(env, left, now?.nextId ?? FIRST_ID);
     if (opened === null) continue;
     if (now === undefined) world.add(carrier, ComputerOperations, emptyState());
