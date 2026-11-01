@@ -17,11 +17,11 @@ import {
   nextSignpostTarget,
   nextStaleZoneTarget,
   SCOUT_LOSS_MEMORY_TICKS,
-  SCOUT_OPENING_TICKS,
   SCOUT_REVISIT_TICKS,
   SCOUT_STALENESS_CAP_TICKS,
   SCOUTING_DEADLINE_LEAD_TICKS,
   SCOUTING_ROUND_TICKS,
+  SMALL_START_SCOUT_FROM_TICKS,
   scoutingLeads,
   scoutModule,
   signpostLatticeOffset,
@@ -43,6 +43,7 @@ import {
   RESOURCE_SPOTS,
   SCOUT,
   SEAT,
+  SPEARMAN,
   VIKING,
 } from '../support.js';
 
@@ -67,8 +68,10 @@ const LATTICE_RING = [
 
 /** A computer seat with a scout and an enemy seat's start headquarters, scanned, its intel never having
  *  seen any zone. */
-function staleSim(deposits = [DEPOSIT]): Simulation {
+function staleSim(deposits = [DEPOSIT], soldier = false): Simulation {
   const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(MAP_W, MAP_H) });
+  // A scout with a pressing need is left to it, and the tests jump the clock without stepping it.
+  sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   makeAiSeat(sim, SEAT);
   placeHq(sim, HOME.x, HOME.y);
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: OTHER, tribes: [VIKING] });
@@ -88,6 +91,16 @@ function staleSim(deposits = [DEPOSIT]): Simulation {
     tribe: VIKING,
     owner: SEAT,
   });
+  // Scouting opens only once the seat holds a soldier.
+  if (soldier)
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SPEARMAN,
+      x: HOME.x - 6,
+      y: HOME.y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
   sim.step();
   sim.step();
   zoneSeenAt(sim).fill(NEVER_SEEN);
@@ -180,7 +193,8 @@ describe('scout staleness scouting', () => {
 
   it('keeps the old orders with the fog off', () => {
     const sim = staleSim();
-    const tick = SCOUT_OPENING_TICKS;
+    // The seat starts small, so its scout waits until then.
+    const tick = SMALL_START_SCOUT_FROM_TICKS;
     expect(scoutingLeads(tick)).toBe(true);
     const ctx = ctxAt(sim, tick);
     expect(nextStaleZoneTarget(sim.world, ctx, SEAT, DEFAULT_BUILD_ORDER)).toBeNull();
@@ -191,7 +205,7 @@ describe('scout staleness scouting', () => {
   });
 
   it('keeps a scout with no post to erect for the stale zones once scouting opens', () => {
-    const sim = staleSim([]);
+    const sim = staleSim([], true);
     plantPost(sim, positionOfNode(HOME.x, HOME.y));
     for (const [q, r] of LATTICE_RING) {
       const o = signpostLatticeOffset(q, r);
@@ -211,7 +225,7 @@ describe('scout staleness scouting', () => {
   });
 
   it('leaves the enemy unscouted until the military deadline nears', () => {
-    const sim = staleSim();
+    const sim = staleSim([DEPOSIT], true);
     const fog = fogOfWar(sim);
     const leadingRound = (from: number): number => {
       const round = Math.ceil(from / SCOUTING_ROUND_TICKS);
