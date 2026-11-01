@@ -4,6 +4,7 @@ import {
   aiControlEntity,
   Building,
   type ComputerDifficulty,
+  ComputerOperations,
   ComputerStrategy,
   computerModuleEnables,
   DefenceMode,
@@ -12,9 +13,12 @@ import {
   type MilitaryPlan,
   type MilitaryPosture,
   Militia,
+  OPERATION_KINDS,
+  type OperationKind,
   Owner,
   Position,
   Settler,
+  Stance,
   WaveMarch,
 } from '../../../../../src/components/index.js';
 import { CommandQueue } from '../../../../../src/core/command-queue.js';
@@ -34,16 +38,20 @@ import type { TerrainGraph } from '../../../../../src/nav/terrain/index.js';
 import { moduleBeatDue } from '../../../../../src/systems/ai-shared/cadence.js';
 import { planSettlementDefence } from '../../../../../src/systems/ai-shared/military/settlement-defence.js';
 import {
-  FLANK_RAID_INTERVAL_TICKS,
   militaryModule,
   type OperationView,
   RAID_BAND_MEN,
-  RAID_COOLDOWN_TICKS,
+  RAID_DELAY_MAX_TICKS,
+  RAID_DELAY_MIN_TICKS,
   RAID_LOOK_EVERY_DECISIONS,
   seatOperationsOf,
   selectPosture,
 } from '../../../../../src/systems/computer-player/index.js';
-import { RAID_STANCE } from '../../../../../src/systems/computer-player/military/operations/raid.js';
+import { NEVER_READY } from '../../../../../src/systems/computer-player/military/operations/index.js';
+import {
+  RAID_HOME_STANCE,
+  RAID_STANCE,
+} from '../../../../../src/systems/computer-player/military/operations/raid.js';
 import {
   flankRoute,
   RAID_TOWER_CLEARANCE_NODES,
@@ -80,6 +88,8 @@ const GUARDED = { x: 68, y: 58 };
 const PASSED_TOWER = { x: 60, y: 40 };
 const NEAR_PASSED_TOWER = { hx: 60, hy: 14 };
 const OVER_EXPOSED = { x: 90, y: 36 };
+/** A third seat, at war with the seat like {@link FOE}. */
+const OTHER_FOE = 4;
 /** How many men the seat musters: a raid's band plus a wave's worth at home. */
 const ARMY = 16;
 /** Decision ticks a case steps through, one decision apart. */
@@ -89,10 +99,10 @@ function aiSim(): Simulation {
   return new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(128, 96) });
 }
 
-function ctxOf(sim: Simulation, tick: number, fog?: FogState): SystemContext {
+function ctxOf(sim: Simulation, tick: number, fog?: FogState, seed = SEED): SystemContext {
   return {
     content: aiContent(),
-    rng: new Rng(SEED),
+    rng: new Rng(seed),
     names: new PersonalNames(1, []),
     tick,
     events: new EventBuffer(),
@@ -180,11 +190,33 @@ function holdPosture(
   sim.world.add(carrier, ComputerStrategy, { economy, military });
 }
 
+/** The tick the seat's next raid may form from; undefined before any draw. */
+function raidReadyAt(sim: Simulation): number | undefined {
+  const carrier = aiControlEntity(sim.world, SEAT);
+  return carrier === null ? undefined : sim.world.tryGet(carrier, ComputerOperations)?.readyAt.raid;
+}
+
+/** The seat's raid cadence drawn and already due, so a case opens its raid on its first look. */
+function raidDue(sim: Simulation): void {
+  const carrier = aiControlEntity(sim.world, SEAT);
+  if (carrier === null) throw new Error('setup: the seat has no computer carrier');
+  const readyAt = {} as Record<OperationKind, number>;
+  for (const kind of OPERATION_KINDS) readyAt[kind] = 0;
+  readyAt.raid = 1;
+  sim.world.add(carrier, ComputerOperations, { nextId: 1, operations: [], readyAt });
+}
+
 /** A harassing seat with its barracks and men at the door, an enemy headquarters, and the enemy's
- *  gatherers at `gatherers`. */
-function raidWorld(gatherers: readonly { x: number; y: number }[], army = ARMY, jobType = BOWMAN) {
+ *  gatherers at `gatherers`; its raid due at once unless `drawn` is false. */
+function raidWorld(
+  gatherers: readonly { x: number; y: number }[],
+  army = ARMY,
+  jobType = BOWMAN,
+  drawn = true,
+) {
   const sim = aiSim();
   holdPosture(sim, 'harasser', 'harass');
+  if (drawn) raidDue(sim);
   const barracks = place(sim, BARRACKS_TYPE, BARRACKS, SEAT);
   const terrain = terrainOf(sim);
   const door = terrain.coordsOf(interactionCell(sim.world, ctxOf(sim, 0), terrain, barracks));
@@ -208,11 +240,18 @@ function lookFrom(from: number): number {
   return tick;
 }
 
+/** The seat's last decision before `before` on which it looks for a raid. */
+function lastLookBefore(before: number): number {
+  let tick = Math.floor((before - 1) / DECISION) * DECISION;
+  while (!moduleBeatDue(tick, SEAT, RAID_LOOK_EVERY_DECISIONS)) tick -= DECISION;
+  return tick;
+}
+
 /** The seat's first decision that looks for a raid. */
 const LOOK = lookFrom(0);
 
-function decide(sim: Simulation, tick: number, fog?: FogState) {
-  return militaryModule.run(sim.world, ctxOf(sim, tick, fog), SEAT);
+function decide(sim: Simulation, tick: number, fog?: FogState, seed = SEED) {
+  return militaryModule.run(sim.world, ctxOf(sim, tick, fog, seed), SEAT);
 }
 
 function raids(sim: Simulation): OperationView[] {
@@ -312,6 +351,13 @@ describe('raid operations', () => {
     expect(onlyRaid(sim).reason).toBe('outmatched');
   });
 
+  it("weighs every enemy's towers over a target, not only its owner's", () => {
+    const { sim, prey } = raidWorld([EXPOSED, { x: 110, y: 6 }]);
+    place(sim, TOWER_TYPE, OVER_EXPOSED, OTHER_FOE);
+    decide(sim, LOOK);
+    expect(onlyRaid(sim).target.entity, "the gatherer under the other enemy's tower is passed").toBe(prey[1]);
+  });
+
   it('turns back once an alarmed building has the band in its shooting reach', () => {
     const { sim, door } = raidWorld([EXPOSED], ARMY, SPEARMAN);
     decide(sim, LOOK);
@@ -349,7 +395,7 @@ describe('raid operations', () => {
     expect(onlyRaid(sim).state).toBe('withdrawing');
   });
 
-  it('waits out its cooldown before the next raid forms', () => {
+  it('waits a drawn 20 to 60 minutes before the next raid forms', () => {
     const { sim } = raidWorld([EXPOSED]);
     // An enemy army at his headquarters, far from the gatherer, outweighs the seat: no wave takes the men
     // the next raid needs.
@@ -365,10 +411,40 @@ describe('raid operations', () => {
     const ended = LOOK + 3 * DECISION;
     decide(sim, ended);
     expect(onlyRaid(sim).state).toBe('done');
-    decide(sim, lookFrom(ended + DECISION));
+    const readyAt = raidReadyAt(sim) ?? 0;
+    expect(readyAt).toBeGreaterThanOrEqual(ended + RAID_DELAY_MIN_TICKS);
+    expect(readyAt).toBeLessThanOrEqual(ended + RAID_DELAY_MAX_TICKS);
+    decide(sim, lastLookBefore(readyAt));
     expect(raids(sim)).toEqual([]);
-    decide(sim, lookFrom(ended + RAID_COOLDOWN_TICKS));
+    decide(sim, lookFrom(readyAt));
     expect(onlyRaid(sim).id).toBeGreaterThan(first);
+  });
+
+  it('hands its men back in the attacking stance once home', () => {
+    const { sim } = raidWorld([EXPOSED], ARMY, SPEARMAN);
+    band(sim, 2 * ARMY, FOE_HQ, SPEARMAN, FOE);
+    decide(sim, LOOK);
+    const raiders = onlyRaid(sim).members;
+    for (const e of raiders) sim.world.mut(e, Stance).mode = RAID_STANCE;
+    holdPosture(sim, 'harasser', 'defend');
+    decide(sim, LOOK + DECISION);
+    expect(onlyRaid(sim).reason).toBe('postureChanged');
+    const commands = decide(sim, LOOK + 2 * DECISION);
+    expect(onlyRaid(sim).state).toBe('done');
+    for (const e of raiders)
+      expect(commands).toContainEqual({ kind: 'setStance', entity: e, mode: RAID_HOME_STANCE });
+  });
+
+  it('draws its first raid 20 to 60 minutes past its peace end, the harasser plan always', () => {
+    const { sim } = raidWorld([EXPOSED], ARMY, BOWMAN, false);
+    band(sim, 2 * ARMY, FOE_HQ, SPEARMAN, FOE);
+    decide(sim, LOOK);
+    expect(raids(sim), 'no raid on the drawing decision').toEqual([]);
+    const readyAt = raidReadyAt(sim) ?? 0;
+    expect(readyAt).toBeGreaterThanOrEqual(LOOK + RAID_DELAY_MIN_TICKS);
+    expect(readyAt).toBeLessThanOrEqual(LOOK + RAID_DELAY_MAX_TICKS);
+    decide(sim, lookFrom(readyAt));
+    expect(onlyRaid(sim).state).toBe('forming');
   });
 
   it('keeps a raid under way through a save', () => {
@@ -426,20 +502,23 @@ describe('raid operations', () => {
       }
     });
 
-    it('waits the flank interval, not the harassing cooldown, before the next', () => {
-      const { sim } = buildingUp();
-      band(sim, 2 * ARMY, FOE_HQ, SPEARMAN, FOE);
-      decide(sim, LOOK);
-      holdPosture(sim, 'balanced', 'defend');
-      decide(sim, LOOK + DECISION);
-      holdPosture(sim, 'balanced', 'prepare');
-      const ended = LOOK + 2 * DECISION;
-      decide(sim, ended);
-      expect(onlyRaid(sim).state).toBe('done');
-      decide(sim, lookFrom(ended + RAID_COOLDOWN_TICKS));
-      expect(raids(sim)).toEqual([]);
-      decide(sim, lookFrom(ended + FLANK_RAID_INTERVAL_TICKS));
-      expect(onlyRaid(sim).state).toBe('forming');
+    it('raids in some matches and never in others, by the match seed', () => {
+      const drawn = new Set<number>();
+      for (let seed = 1; seed <= 8; seed++) {
+        const { sim } = buildingUp();
+        const carrier = aiControlEntity(sim.world, SEAT);
+        if (carrier !== null) sim.world.remove(carrier, ComputerOperations);
+        decide(sim, LOOK, undefined, seed);
+        const readyAt = raidReadyAt(sim) ?? 0;
+        if (readyAt !== NEVER_READY) {
+          expect(readyAt).toBeGreaterThanOrEqual(LOOK + RAID_DELAY_MIN_TICKS);
+          expect(readyAt).toBeLessThanOrEqual(LOOK + RAID_DELAY_MAX_TICKS);
+        }
+        drawn.add(readyAt === NEVER_READY ? NEVER_READY : 0);
+        decide(sim, lookFrom(LOOK + RAID_DELAY_MAX_TICKS), undefined, seed);
+        expect(raids(sim).length, `seed ${seed}`).toBe(readyAt === NEVER_READY ? 0 : 1);
+      }
+      expect(drawn.size, 'both a raiding and a peaceful seat among the seeds').toBe(2);
     });
 
     it('never raids a map-scripted seat', () => {
@@ -489,9 +568,13 @@ describe('raid operations', () => {
         [-25, -25],
       ].map(([dx = 0, dy = 0]) => tower(POCKET.hx + dx, POCKET.hy + dy));
       expect(clearOf(ring, POCKET), 'the pocket itself lies clear').toBe(true);
-      expect(
-        flankRoute(sim.world, terrain, terrain.nodeAtClamped(HOME.hx, HOME.hy), target, ring),
-      ).toBeNull();
+      // A home in the map's corner, clear of the ring's reach.
+      const home = terrain.nodeAtClamped(4, 4);
+      expect(flankRoute(sim.world, terrain, home, target, ring)).toBeNull();
+      expect(flankRoute(sim.world, terrain, home, target, ring), 'again under the same belief').toBeNull();
+      const near = { hx: 20, hy: 6, entity: null, owner: null };
+      expect(flankRoute(sim.world, terrain, home, near, ring), 'a target the corner reaches').toEqual([]);
+      expect(flankRoute(sim.world, terrain, home, target, []), 'the ring gone').toEqual([]);
     });
   });
 });

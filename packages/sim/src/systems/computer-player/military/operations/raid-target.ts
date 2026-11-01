@@ -165,10 +165,10 @@ export function towerInReach(towers: readonly TowerBelief[], at: HalfCellNode): 
 
 /**
  * The best raid target for `seat` from `home`: of an enemy player seat (no map-scripted one), a gatherer it
- * sees, or an enemy economy building it
- * believes stands (`knowledge/intel`), on `home`'s land, scored value minus believed defence minus trip
- * length; the highest positive score, ties to the lower entity id. Null when nothing scores above zero.
- * Costs the enemies' people, fighters and believed buildings.
+ * sees, or an enemy economy building it believes stands (`knowledge/intel`), on `home`'s land, scored value
+ * minus the defence it believes every enemy holds over it minus trip length; the highest positive score,
+ * ties to the lower entity id. Null when nothing scores above zero. Costs the enemies' people, fighters and
+ * believed buildings.
  */
 export function pickRaidTarget(
   world: World,
@@ -180,15 +180,17 @@ export function pickRaidTarget(
   const from = nodeOfId(terrain, home);
   const land = terrain.componentOf(home);
   let best: RaidPick | null = null;
-  const consider = (
-    entity: Entity,
-    owner: number,
-    at: HalfCellNode,
-    value: number,
-    defence: EnemyDefence,
-  ) => {
+  // Every enemy's towers and fighters guard every target: a raid opened under a second enemy's tower
+  // turns back on its first step.
+  const fighters: FighterSighting[] = [];
+  for (let owner = 0; owner < MAX_PLAYERS; owner++) {
+    if (owner !== seat && diplomacyStance(world, seat, owner) === 'enemy')
+      fighters.push(...visibleFighters(world, ctx, seat, owner));
+  }
+  const guard: EnemyDefence = { towers: believedEnemyTowers(world, ctx, seat), fighters };
+  const consider = (entity: Entity, owner: number, at: HalfCellNode, value: number) => {
     if (terrain.componentOf(terrain.nodeAtClamped(at.hx, at.hy)) !== land) return;
-    const score = value - defenceAt(defence, at) - Math.floor(nodeManhattan(from, at) / RAID_NODES_PER_POINT);
+    const score = value - defenceAt(guard, at) - Math.floor(nodeManhattan(from, at) / RAID_NODES_PER_POINT);
     if (score <= 0) return;
     if (best === null || score > best.score || (score === best.score && entity < (best.target.entity ?? 0)))
       best = { target: { hx: at.hx, hy: at.hy, entity, owner }, score };
@@ -197,23 +199,19 @@ export function pickRaidTarget(
     if (owner === seat || diplomacyStance(world, seat, owner) !== 'enemy') continue;
     // Owner ruling: a raid hurts a player's production, never a map-scripted seat's camps.
     if (isScriptedEconomySeat(world, owner)) continue;
-    const defence = {
-      towers: believedTowers(world, ctx, seat, owner),
-      fighters: visibleFighters(world, ctx, seat, owner),
-    };
     for (const e of visibleGatherers(world, ctx, seat, owner)) {
       const at = nodeOfEntity(world, e);
-      if (at !== null) consider(e, owner, at, RAID_GATHERER_VALUE, defence);
+      if (at !== null) consider(e, owner, at, RAID_GATHERER_VALUE);
     }
     const { seen, remembered } = believedBuildings(world, ctx, seat, owner);
     for (const e of seen) {
       if (!isEconomyBuilding(ctx, world.get(e, Building).buildingType)) continue;
       const at = anchorNodeOf(world, e);
-      if (at !== null) consider(e, owner, at, RAID_ECONOMY_BUILDING_VALUE, defence);
+      if (at !== null) consider(e, owner, at, RAID_ECONOMY_BUILDING_VALUE);
     }
     for (const b of remembered) {
       if (isEconomyBuilding(ctx, b.buildingType))
-        consider(b.entity, owner, { hx: b.hx, hy: b.hy }, RAID_ECONOMY_BUILDING_VALUE, defence);
+        consider(b.entity, owner, { hx: b.hx, hy: b.hy }, RAID_ECONOMY_BUILDING_VALUE);
     }
   }
   return best;
@@ -262,8 +260,9 @@ export function isEconomyBuilding(ctx: SystemContext, buildingType: number): boo
  * when no node of it is walkable or its node lies in a tower's reach, steps dearer within
  * {@link RAID_BASE_BERTH_NODES} of the target owner's start so the band comes in from the side; then pulled
  * tight to the squares where it must turn. Empty when the way is straight; null when every way crosses a
- * tower's reach. Approximation: the walk between waypoints is the pathfinder's own and may cut a corner
- * of a reach the waypoints keep clear of.
+ * tower's reach. At most one search per call, none when the squares reachable from `home` under the same
+ * tower belief ({@link reachableFrom}) exclude the target. Approximation: the walk between waypoints is the
+ * pathfinder's own and may cut a corner of a reach the waypoints keep clear of.
  */
 export function flankRoute(
   world: World,
@@ -272,14 +271,22 @@ export function flankRoute(
   target: OperationTarget,
   towers: readonly TowerBelief[],
 ): HalfCellNode[] | null {
-  const land = terrain.componentOf(home);
-  const box = terrain.componentBounds(land);
-  const grid = routeGrid(terrain, land, box, towers);
+  const squares = landSquares(terrain, terrain.componentOf(home));
   const from = nodeOfId(terrain, home);
   const to = { hx: target.hx, hy: target.hy };
-  const start = grid.squareOf(from);
-  const goal = grid.squareOf(to);
+  const start = squareOf(squares, from);
+  const goal = squareOf(squares, to);
+  const key = towersKey(towers);
+  const known = reachableFrom(terrain).get(home);
+  if (known !== undefined && known.towersKey === key && !reachesSquare(squares, known.reached, goal))
+    return null;
+  const grid = routeGrid(squares, towers);
   grid.open(start, from);
+  if (known === undefined || known.towersKey !== key) {
+    const reached = floodSquares(grid, start);
+    reachableFrom(terrain).set(home, { towersKey: key, reached });
+    if (!reachesSquare(squares, reached, goal)) return null;
+  }
   grid.open(goal, to);
   const base = baseOf(world, target.owner);
   const path = cheapestSquares(grid, start, goal, (square) => {
@@ -308,24 +315,31 @@ export function flankRoute(
   return waypoints;
 }
 
-/** The route search's squares over one land: each open square's node, row-major, undefined when closed. */
-interface RouteGrid {
+/** One land's route squares before any tower closes one: each square's first walkable probe node on the
+ *  land, row-major, undefined where it has none. Walkability never changes, so one per terrain and land. */
+interface LandSquares {
+  readonly box: {
+    readonly minX: number;
+    readonly minY: number;
+    readonly maxX: number;
+    readonly maxY: number;
+  };
   readonly columns: number;
   readonly rows: number;
-  readonly nodes: (HalfCellNode | undefined)[];
-  squareOf(at: HalfCellNode): number;
-  /** Opens `square` at `at`: the home and the target are open whatever covers them. */
-  open(square: number, at: HalfCellNode): void;
-  /** Whether every square on the straight line between `a` and `b` is open. */
-  clearLine(a: number, b: number): boolean;
+  readonly nodes: readonly (HalfCellNode | undefined)[];
 }
 
-function routeGrid(
-  terrain: TerrainGraph,
-  land: number,
-  box: { minX: number; minY: number; maxX: number; maxY: number },
-  towers: readonly TowerBelief[],
-): RouteGrid {
+const landSquaresByTerrain = new WeakMap<TerrainGraph, Map<number, LandSquares>>();
+
+function landSquares(terrain: TerrainGraph, land: number): LandSquares {
+  let byLand = landSquaresByTerrain.get(terrain);
+  if (byLand === undefined) {
+    byLand = new Map();
+    landSquaresByTerrain.set(terrain, byLand);
+  }
+  const held = byLand.get(land);
+  if (held !== undefined) return held;
+  const box = terrain.componentBounds(land);
   const side = RAID_ROUTE_CELL_NODES;
   const columns = Math.floor((box.maxX - box.minX) / side) + 1;
   const rows = Math.floor((box.maxY - box.minY) / side) + 1;
@@ -344,20 +358,122 @@ function routeGrid(
       for (const [dx, dy] of probes) {
         const node = terrain.nodeAtClamped(box.minX + column * side + dx, box.minY + row * side + dy);
         if (!terrain.isWalkable(node) || terrain.componentOf(node) !== land) continue;
-        const at = nodeOfId(terrain, node);
-        if (!towerInReach(towers, at)) nodes[row * columns + column] = at;
+        nodes[row * columns + column] = nodeOfId(terrain, node);
         break;
       }
     }
   }
+  const squares = { box, columns, rows, nodes };
+  byLand.set(land, squares);
+  return squares;
+}
+
+function squareOf({ box, columns, rows }: LandSquares, at: HalfCellNode): number {
+  const side = RAID_ROUTE_CELL_NODES;
   const clamp = (value: number, last: number) => Math.min(Math.max(value, 0), last);
+  return (
+    clamp(Math.floor((at.hy - box.minY) / side), rows - 1) * columns +
+    clamp(Math.floor((at.hx - box.minX) / side), columns - 1)
+  );
+}
+
+/** The squares reachable from one home under the tower belief `towersKey` names ({@link towersKey}). */
+interface ReachableSquares {
+  readonly towersKey: string;
+  readonly reached: Uint8Array;
+}
+
+const reachableByTerrain = new WeakMap<TerrainGraph, Map<NodeId, ReachableSquares>>();
+
+/** Per home node, the squares last found reachable from it. A pure function of the terrain, the home and
+ *  the believed towers, so holding it skips a search without changing any result. */
+function reachableFrom(terrain: TerrainGraph): Map<NodeId, ReachableSquares> {
+  let byHome = reachableByTerrain.get(terrain);
+  if (byHome === undefined) {
+    byHome = new Map();
+    reachableByTerrain.set(terrain, byHome);
+  }
+  return byHome;
+}
+
+/** The believed towers' spots, the only part of the belief the route reads. */
+function towersKey(towers: readonly TowerBelief[]): string {
+  return towers.map((t) => `${t.at.hx},${t.at.hy}`).join(';');
+}
+
+/** Whether a route reaches `square`, open whatever covers it ({@link RouteGrid.open}): it is reached, or
+ *  a square beside it is. */
+function reachesSquare(squares: LandSquares, reached: Uint8Array, square: number): boolean {
+  if (reached[square] === REACHED) return true;
+  const x = square % squares.columns;
+  const y = Math.floor(square / squares.columns);
+  for (const [dx, dy] of NEIGHBOURS) {
+    const nx = x + dx;
+    const ny = y + dy;
+    if (nx < 0 || ny < 0 || nx >= squares.columns || ny >= squares.rows) continue;
+    if (reached[ny * squares.columns + nx] === REACHED) return true;
+  }
+  return false;
+}
+
+const REACHED = 1;
+
+/** The open squares joined to `start` by the route search's steps. */
+function floodSquares(grid: RouteGrid, start: number): Uint8Array {
+  const { columns, rows, nodes } = grid;
+  const reached = new Uint8Array(columns * rows);
+  reached[start] = REACHED;
+  const queue = [start];
+  for (let head = 0; head < queue.length; head++) {
+    const square = queue[head] ?? start;
+    const x = square % columns;
+    const y = Math.floor(square / columns);
+    for (const [dx, dy] of NEIGHBOURS) {
+      const nx = x + dx;
+      const ny = y + dy;
+      if (nx < 0 || ny < 0 || nx >= columns || ny >= rows) continue;
+      const next = ny * columns + nx;
+      if (nodes[next] === undefined || reached[next] === REACHED) continue;
+      reached[next] = REACHED;
+      queue.push(next);
+    }
+  }
+  return reached;
+}
+
+/** The route search's squares over one land: each open square's node, row-major, undefined when closed. */
+interface RouteGrid {
+  readonly columns: number;
+  readonly rows: number;
+  readonly nodes: (HalfCellNode | undefined)[];
+  /** Opens `square` at `at`: the home and the target are open whatever covers them. */
+  open(square: number, at: HalfCellNode): void;
+  /** Whether every square on the straight line between `a` and `b` is open. */
+  clearLine(a: number, b: number): boolean;
+}
+
+/** `squares` with every square whose node lies in a believed tower's reach closed; costs the squares and,
+ *  per tower, the squares round its reach. */
+function routeGrid(squares: LandSquares, towers: readonly TowerBelief[]): RouteGrid {
+  const { box, columns, rows } = squares;
+  const side = RAID_ROUTE_CELL_NODES;
+  const nodes = squares.nodes.slice();
+  const span = Math.ceil(RAID_TOWER_CLEARANCE_NODES / side) + 1;
+  for (const tower of towers) {
+    const column = Math.floor((tower.at.hx - box.minX) / side);
+    const row = Math.floor((tower.at.hy - box.minY) / side);
+    for (let y = Math.max(row - span, 0); y <= Math.min(row + span, rows - 1); y++) {
+      for (let x = Math.max(column - span, 0); x <= Math.min(column + span, columns - 1); x++) {
+        const at = nodes[y * columns + x];
+        if (at !== undefined && nodeManhattan(at, tower.at) <= RAID_TOWER_CLEARANCE_NODES)
+          nodes[y * columns + x] = undefined;
+      }
+    }
+  }
   return {
     columns,
     rows,
     nodes,
-    squareOf: (at) =>
-      clamp(Math.floor((at.hy - box.minY) / side), rows - 1) * columns +
-      clamp(Math.floor((at.hx - box.minX) / side), columns - 1),
     open: (square, at) => {
       nodes[square] = at;
     },

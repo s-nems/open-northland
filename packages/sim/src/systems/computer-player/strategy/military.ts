@@ -374,9 +374,6 @@ export interface MilitaryOrders {
   /** A raid out comes home. A flank raid already out strikes on through a forecast attack and comes home
    *  only once its seat defends. */
   readonly raidsRecalled: boolean;
-  /** The raids that run are the seat's periodic flank raids, not its harassing posture's, so they wait the
-   *  longer interval between them. */
-  readonly flankRaids: boolean;
   /** Null: no hold may run. Else a hold on an area the map rewards holding may, with these figures. */
   readonly hold: HoldTuning | null;
   /** Multiplies the difficulty's army floor share. */
@@ -398,7 +395,6 @@ const UNDECIDED: MilitaryOrders = {
   holdHome: false,
   raidsAllowed: false,
   raidsRecalled: true,
-  flankRaids: false,
   hold: null,
   floorShare: WHOLE,
   draftCapShare: WHOLE,
@@ -417,7 +413,7 @@ export function militaryOrdersOf(world: World, seat: number): MilitaryOrders {
   return ordersFor(military.plan, military.posture, military.evidence, flankSeat);
 }
 
-/** Whether a seat of `difficulty` playing `archetype` sends periodic flank raids (owner ruling: the hard
+/** Whether a seat of `difficulty` playing `archetype` may send flank raids (owner ruling: the hard
  *  computer only, never from an island start). */
 export function sendsFlankRaids(difficulty: ComputerDifficulty, archetype: EconomicArchetype): boolean {
   return AI_PROFILES[difficulty].flankRaids && archetype !== 'islands';
@@ -431,7 +427,7 @@ function flankRaidsIn(posture: MilitaryPosture, evidence: readonly MilitaryRule[
 }
 
 /** The orders of `plan` in `posture`, with the `evidence` that put the seat in it. `flankSeat`: the seat
- *  sends periodic flank raids ({@link sendsFlankRaids}). */
+ *  may send flank raids ({@link sendsFlankRaids}). */
 export function ordersFor(
   plan: MilitaryPlan,
   posture: MilitaryPosture,
@@ -450,7 +446,6 @@ export function ordersFor(
     holdHome,
     raidsAllowed,
     raidsRecalled: !raidsAllowed && !(flankSeat && posture !== 'defend'),
-    flankRaids: flank,
     hold: holdsIn(plan, posture, evidence) ? HOLD_TUNING[plan] : null,
     floorShare: holdHome
       ? {

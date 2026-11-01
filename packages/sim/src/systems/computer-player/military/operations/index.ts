@@ -19,11 +19,18 @@ import { mapAiSoldierClaims } from '../../../ai-shared/military/ownership.js';
 import { assaultHandler } from './assault.js';
 import { holdHandler } from './hold.js';
 import { landingHandler } from './landing.js';
-import { isOpen, type OperationEnv, type OperationHandler } from './lifecycle.js';
+import { isOpen, type OperationEnv, type OperationHandler, UNDRAWN_READY_AT } from './lifecycle.js';
 import { raidHandler } from './raid.js';
 import { seaScoutHandler } from './sea-scout.js';
 
-export { enter, isOpen, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
+export {
+  enter,
+  isOpen,
+  NEVER_READY,
+  type Opened,
+  type OperationEnv,
+  type OperationHandler,
+} from './lifecycle.js';
 
 type Handlers = { readonly [K in OperationKind]: OperationHandler<Extract<Operation, { kind: K }>> };
 
@@ -40,7 +47,7 @@ const FIRST_ID = 1;
 
 function emptyState(): ComputerOperationsState {
   const readyAt = {} as Record<OperationKind, number>;
-  for (const kind of OPERATION_KINDS) readyAt[kind] = 0;
+  for (const kind of OPERATION_KINDS) readyAt[kind] = UNDRAWN_READY_AT;
   return { nextId: FIRST_ID, operations: [], readyAt };
 }
 
@@ -93,8 +100,18 @@ export function runOperations(
   let left = pool.filter((e) => !members.has(e));
   for (const kind of OPERATION_KINDS) {
     const handler = HANDLERS[kind];
+    if (handler.phase !== phase) continue;
+    if (handler.firstReadyAt !== undefined) {
+      const drawn = world.tryGet(carrier, ComputerOperations)?.readyAt[kind] ?? UNDRAWN_READY_AT;
+      if (drawn === UNDRAWN_READY_AT) {
+        const first = handler.firstReadyAt(env);
+        if (first === null) continue;
+        if (!world.has(carrier, ComputerOperations)) world.add(carrier, ComputerOperations, emptyState());
+        world.mut(carrier, ComputerOperations).readyAt[kind] = first;
+      }
+    }
     const now = world.tryGet(carrier, ComputerOperations);
-    if (handler.phase !== phase || ctx.tick < (now?.readyAt[kind] ?? 0)) continue;
+    if (ctx.tick < (now?.readyAt[kind] ?? 0)) continue;
     if (now?.operations.some((op) => op.kind === kind && isOpen(op))) continue;
     const opened = handler.open(env, left, now?.nextId ?? FIRST_ID);
     if (opened === null) continue;

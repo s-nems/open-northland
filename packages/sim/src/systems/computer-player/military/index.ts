@@ -56,10 +56,11 @@ export {
   seatOperationsOf,
 } from './operations/index.js';
 export {
-  FLANK_RAID_INTERVAL_TICKS,
   RAID_BAND_MEN,
-  RAID_COOLDOWN_TICKS,
+  RAID_DELAY_MAX_TICKS,
+  RAID_DELAY_MIN_TICKS,
   RAID_LOOK_EVERY_DECISIONS,
+  RAID_SEAT_CHANCE_PCT,
 } from './operations/raid.js';
 export { SOLDIER_OUTFIT_GOOD_IDS } from './outfit.js';
 export {

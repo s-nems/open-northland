@@ -33,6 +33,9 @@ export interface OperationHandler<O extends Operation = Operation> {
   readonly phase: 'beforeCampaign' | 'afterCampaign';
   /** Ticks after one ends, on the decision it ends, before the kind may open again. */
   readonly cooldownTicks: (env: OperationEnv) => number;
+  /** For a kind whose first opening is drawn: on each decision while none is drawn, the first tick it may
+   *  open, {@link NEVER_READY} when the seat never opens one, or null while the draw is not yet due. */
+  readonly firstReadyAt?: (env: OperationEnv) => number | null;
   /** One decision for an open operation: its orders. It updates `op` in place through {@link enter}, and
    *  may take reinforcements from `free`, the men no operation holds, in which case it removes them. */
   readonly step: (env: OperationEnv, op: O, free: Entity[]) => readonly PlayerCommand[];
@@ -46,6 +49,11 @@ export interface Opened<O extends Operation> {
 }
 
 export const isOpen = isOperationOpen;
+
+/** The ready tick of a kind whose first opening is not drawn yet ({@link OperationHandler.firstReadyAt}). */
+export const UNDRAWN_READY_AT = 0;
+/** The ready tick of a kind the seat never opens. */
+export const NEVER_READY = Number.MAX_SAFE_INTEGER;
 
 /** Moves `op` to `state` from this tick, with `reason` when it turns back or ends. */
 export function enter(

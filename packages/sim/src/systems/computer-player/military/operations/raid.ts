@@ -5,12 +5,14 @@ import {
   diplomacyStance,
   MAX_PLAYERS,
   type OperationEndReason,
+  Owner,
   type RaidOperation,
   Stance,
   seatPeaceEndTick,
 } from '../../../../components/index.js';
 import type { PlayerCommand } from '../../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../../core/loop.js';
+import { Rng } from '../../../../core/rng.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, hexDistance, nodeManhattan } from '../../../../nav/halfcell.js';
 import { moduleBeatDue } from '../../../ai-shared/cadence.js';
@@ -21,7 +23,7 @@ import {
 } from '../../../ai-shared/military/defence/index.js';
 import { spokenFor } from '../../../ai-shared/military/errand.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../../ai-shared/seat-roster.js';
+import type { SystemContext } from '../../../context.js';
 import { MILITARY_MODE } from '../../../readviews/index.js';
 import { entityNode } from '../../../spatial/nodes.js';
 import { playerSeesNode } from '../../../vision/gates.js';
@@ -29,7 +31,7 @@ import { computerProfileOf } from '../../difficulty.js';
 import { WAVE_MIN_SOLDIERS } from '../muster.js';
 import { unitPoints } from '../points.js';
 import { bandCentre, gatheredAt, homeOf, isAlive, walkTo } from './band.js';
-import { enter, type OperationEnv, type OperationHandler } from './lifecycle.js';
+import { enter, NEVER_READY, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import {
   believedEnemyTowers,
   fighterPointsNear,
@@ -50,6 +52,8 @@ import {
  *  and their strike orders still run. Authored: a band in the attacking stance spends most of its blows on
  *  buildings and soldiers while the town arms against it. */
 export const RAID_STANCE = MILITARY_MODE.IGNORE;
+/** The stance a raid's men take back once home: the one the seat's other bands and the muster hold. */
+export const RAID_HOME_STANCE = MILITARY_MODE.ATTACK;
 
 const SECONDS_PER_MINUTE = 60;
 
@@ -58,13 +62,15 @@ export const RAID_BAND_MEN = 4;
 export const RAID_MIN_MEN = 3;
 /** The free men a raid always leaves at the barracks door: the smallest wave. */
 export const RAID_HOME_FLOOR_MEN = WAVE_MIN_SOLDIERS;
-/** How long after a raid ends before the next one forms. */
-export const RAID_COOLDOWN_TICKS = 3 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
-/** How long after a flank raid ends before the next one forms, the harassing posture aside (owner ruling:
- *  a hard seat raids "every so often"; authored figure). A raid out walks, strikes and comes home in five
- *  to eight minutes, so a seat sends about one every fifteen, two or three in the half hour after a
- *  60-minute peace. */
-export const FLANK_RAID_INTERVAL_TICKS = 8 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+/** The shortest and longest wait for a seat's next raid, from its peace end for the first and from the
+ *  end of the last for every other, drawn anew each time from the seeded roll (owner ruling: raids are a
+ *  rare distraction, one or two a game). */
+export const RAID_DELAY_MIN_TICKS = 20 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+export const RAID_DELAY_MAX_TICKS = 60 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
+/** The chance, in percent, that a seat whose plan is not the harasser's raids at all in a match, drawn
+ *  once at its peace end (owner ruling: some seats never raid, the harasser plan always does; the even
+ *  chance is authored). */
+export const RAID_SEAT_CHANCE_PCT = 50;
 /** How near the door, and then each waypoint or home, the band counts as gathered there. */
 export const RAID_GATHER_RADIUS_NODES = 10;
 /** The most a raid waits for its band at the door, walks one leg, strikes, or walks home. */
@@ -145,26 +151,25 @@ function abortReason(env: OperationEnv, op: RaidOperation): OperationEndReason |
 
 /** Whether `seat` sees a building in defence mode of `owner` within {@link RAID_STRIKE_RADIUS_NODES} of
  *  `target`, or of any enemy with the band's `centre` inside the reach its house bow fires from it plus the
- *  stand-down margin ({@link threatWatchNodes}): an alarmed building shoots whoever stands there. */
+ *  stand-down margin ({@link threatWatchNodes}): an alarmed building shoots whoever stands there. Costs the
+ *  buildings in defence mode. */
 function defenceModeNear(
   { world, ctx, seat }: OperationEnv,
   owner: number,
   target: HalfCellNode,
   centre: HalfCellNode,
 ): boolean {
-  for (let other = 0; other < MAX_PLAYERS; other++) {
+  for (const e of world.query(DefenceMode, Owner)) {
+    const other = world.get(e, Owner).player;
     if (other === seat || diplomacyStance(world, seat, other) !== 'enemy') continue;
-    for (const e of ownedBuildings(world, other)) {
-      if (!world.has(e, DefenceMode)) continue;
-      const building = world.tryGet(e, Building);
-      const node = anchorNodeOf(world, e);
-      if (building === undefined || node === null) continue;
-      const fire = threatWatchNodes(ctx, building.tribe) + THREAT_STAND_DOWN_MARGIN_NODES;
-      const covers =
-        hexDistance(node, centre) <= fire ||
-        (other === owner && nodeManhattan(node, target) <= RAID_STRIKE_RADIUS_NODES);
-      if (covers && playerSeesNode(ctx.fog, seat, node.hx, node.hy)) return true;
-    }
+    const building = world.tryGet(e, Building);
+    const node = anchorNodeOf(world, e);
+    if (building === undefined || node === null) continue;
+    const fire = threatWatchNodes(ctx, building.tribe) + THREAT_STAND_DOWN_MARGIN_NODES;
+    const covers =
+      hexDistance(node, centre) <= fire ||
+      (other === owner && nodeManhattan(node, target) <= RAID_STRIKE_RADIUS_NODES);
+    if (covers && playerSeesNode(ctx.fog, seat, node.hx, node.hy)) return true;
   }
   return false;
 }
@@ -257,7 +262,7 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
       }
       if (gathered(world, op.members, home) || tick - op.since >= RAID_WITHDRAW_TIMEOUT_TICKS) {
         enter(op, 'done', tick);
-        return [];
+        return homeStance(world, op.members);
       }
       return walkBand(env, op.members, home, false);
     }
@@ -265,6 +270,16 @@ function step(env: OperationEnv, op: RaidOperation): readonly PlayerCommand[] {
     case 'failed':
       return [];
   }
+}
+
+/** The stance orders that hand the band's men back to the seat in {@link RAID_HOME_STANCE}: a man the
+ *  muster passes over as spoken for would otherwise stay passive at home. */
+function homeStance(world: World, members: readonly Entity[]): PlayerCommand[] {
+  return members.flatMap((e): PlayerCommand[] =>
+    world.tryGet(e, Stance)?.mode === RAID_HOME_STANCE
+      ? []
+      : [{ kind: 'setStance', entity: e, mode: RAID_HOME_STANCE }],
+  );
 }
 
 /** Where the band's current leg ends: the next flank waypoint, else the target. */
@@ -282,12 +297,7 @@ function legEnd(op: RaidOperation): HalfCellNode {
  */
 function open(env: OperationEnv, free: readonly Entity[], id: number) {
   const { world, ctx, terrain, seat, home, orders } = env;
-  if (!orders.raidsAllowed) return null;
-  const peaceEnd = Math.max(
-    seatPeaceEndTick(world, seat),
-    computerProfileOf(world, seat).army.firstWaveFromTick,
-  );
-  if (ctx.tick < peaceEnd) return null;
+  if (!orders.raidsAllowed || ctx.tick < raidsFromTick(world, seat)) return null;
   const land = terrain.componentOf(home);
   const ready = free.filter(
     (e) => !spokenFor(world, e) && terrain.componentOf(entityNode(world, terrain, e)) === land,
@@ -332,9 +342,38 @@ function open(env: OperationEnv, free: readonly Entity[], id: number) {
   return { op, commands };
 }
 
+/** The first tick `seat` may raid: its peace end, or its difficulty's first wave if later. */
+function raidsFromTick(world: World, seat: number): number {
+  return Math.max(seatPeaceEndTick(world, seat), computerProfileOf(world, seat).army.firstWaveFromTick);
+}
+
+/** Spreads seats deciding on the same tick apart in {@link raidRoll}: the 32-bit golden-ratio constant. */
+const SEAT_STREAM_MIX = 0x9e3779b9;
+
+/** The seat's raid dice: seeded from the sim's stream position and the seat, read without drawing from the
+ *  stream, so a raid draw shifts no other roll of the match. */
+function raidRoll(ctx: SystemContext, seat: number): Rng {
+  return new Rng(ctx.rng.getState() ^ Math.imul(seat + 1, SEAT_STREAM_MIX));
+}
+
+/** A wait between {@link RAID_DELAY_MIN_TICKS} and {@link RAID_DELAY_MAX_TICKS}, both included. */
+function drawRaidDelay(roll: Rng): number {
+  return RAID_DELAY_MIN_TICKS + roll.int(RAID_DELAY_MAX_TICKS - RAID_DELAY_MIN_TICKS + 1);
+}
+
+/** On the seat's first decision past {@link raidsFromTick} with its plan drawn: whether it raids in this
+ *  match (the harasser plan always, any other at {@link RAID_SEAT_CHANCE_PCT}), and when first. */
+function firstRaidAt({ world, ctx, seat, orders }: OperationEnv): number | null {
+  if (orders.plan === null || ctx.tick < raidsFromTick(world, seat)) return null;
+  const roll = raidRoll(ctx, seat);
+  if (orders.plan !== 'harasser' && roll.int(PERCENT) >= RAID_SEAT_CHANCE_PCT) return NEVER_READY;
+  return ctx.tick + drawRaidDelay(roll);
+}
+
 export const raidHandler: OperationHandler<RaidOperation> = {
   phase: 'beforeCampaign',
-  cooldownTicks: ({ orders }) => (orders.flankRaids ? FLANK_RAID_INTERVAL_TICKS : RAID_COOLDOWN_TICKS),
+  cooldownTicks: ({ ctx, seat }) => drawRaidDelay(raidRoll(ctx, seat)),
+  firstReadyAt: firstRaidAt,
   step,
   open,
 };
