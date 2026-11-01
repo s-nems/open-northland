@@ -39,22 +39,24 @@ describe.runIf(hasRealIr() && existsSync(realMapPath(MAP_ID)))('strategic AI on 
     // the HQ if the decoded typeId ever shifts.
     const hqType = ir.buildings?.find((b) => b.id === 'headquarters')?.typeId;
     expect(hqType).toBeDefined();
+    const grainFarmType = ir.buildings?.find((b) => b.id === 'work_farm_00')?.typeId;
+    expect(grainFarmType).toBeDefined();
     sim.run(RUN_TICKS);
 
     expect(isMachinePlayer(sim.world, AI_SEAT)).toBe(true);
     // The opening build order is running: the seat opened at least one construction site of its own.
-    let sites = 0;
+    const siteTypes: number[] = [];
     let hq: number | null = null;
     for (const e of sim.world.query(Building, Owner)) {
       if (sim.world.get(e, Owner).player !== AI_SEAT) continue;
-      if (sim.world.has(e, UnderConstruction)) sites++;
+      if (sim.world.has(e, UnderConstruction)) siteTypes.push(sim.world.get(e, Building).buildingType);
       else if (sim.world.get(e, Building).buildingType === hqType) hq = e;
     }
     expect(hq).not.toBeNull(); // the authored headquarters resolved and stayed built
     // Under the experience gates the opening's first site is the grain farm; the rest of its buildings
     // wait on discoveries and the homes on food, so the seat need not fill its site cap at once.
-    expect(sites).toBeGreaterThan(0);
-    expect(sites).toBeLessThanOrEqual(MAX_ACTIVE_CONSTRUCTION_SITES);
+    expect(siteTypes).toContain(grainFarmType);
+    expect(siteTypes.length).toBeLessThanOrEqual(MAX_ACTIVE_CONSTRUCTION_SITES);
     // The opening hunt: exactly one man employed on the headquarters' hunter slot, the real join
     // behind it (a hunter trade, a hunter seat on the authored HQ) proven by the seat acting on it.
     const hunters = [...sim.world.query(Settler, JobAssignment)].filter(
