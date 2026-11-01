@@ -1,4 +1,4 @@
-import { UnreachableTargets } from '../../components/index.js';
+import { type UnreachableTarget, UnreachableTargets } from '../../components/index.js';
 import { liveEntries, remember } from '../../core/expiring-list.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
@@ -38,15 +38,42 @@ export function pruneUnreachableTargets(world: World, ctx: SystemContext, e: Ent
   else if (entries.length !== memo.entries.length) world.mut(e, UnreachableTargets).entries = entries;
 }
 
-/** Whether `e` gave `t` up, or undefined when it remembers no enemy, so an untroubled seeker adds no
+/** The enemies `e` gave up, or undefined when it remembers none, so an untroubled seeker adds no
  *  per-candidate work. Prunes first, so a lapsed entry never vetoes. */
+export function givenUpTargets(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+): readonly UnreachableTarget[] | undefined {
+  pruneUnreachableTargets(world, ctx, e);
+  return world.tryGet(e, UnreachableTargets)?.entries;
+}
+
+/** Whether `entries` name `t`. */
+export function gaveUp(entries: readonly UnreachableTarget[], t: Entity): boolean {
+  for (const entry of entries) if (entry.target === t) return true;
+  return false;
+}
+
+/** {@link givenUpTargets} as a veto over candidates, or undefined when `e` remembers no enemy. */
 export function givenUpTargetVeto(
   world: World,
   ctx: SystemContext,
   e: Entity,
 ): ((t: Entity) => boolean) | undefined {
-  pruneUnreachableTargets(world, ctx, e);
-  const entries = world.tryGet(e, UnreachableTargets)?.entries;
+  return vetoOf(givenUpTargets(world, ctx, e));
+}
+
+/** `entries` as a veto over candidates, or undefined for none. */
+export function vetoOf(
+  entries: readonly UnreachableTarget[] | undefined,
+): ((t: Entity) => boolean) | undefined {
   if (entries === undefined) return undefined;
-  return (t) => entries.some((entry) => entry.target === t);
+  return (t) => gaveUp(entries, t);
+}
+
+/** Whether `e` gave `t` up, without building a veto. */
+export function hasGivenUpTarget(world: World, ctx: SystemContext, e: Entity, t: Entity): boolean {
+  const entries = givenUpTargets(world, ctx, e);
+  return entries !== undefined && gaveUp(entries, t);
 }

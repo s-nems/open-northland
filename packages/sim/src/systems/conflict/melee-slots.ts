@@ -302,7 +302,8 @@ export class MeleeSlots {
         firstOpen = radius + 1;
         bank.firstOpen = firstOpen;
       }
-      for (const [i, cell] of own.entries()) {
+      for (let i = 0; i < own.length; i++) {
+        const cell = own[i] as NodeId;
         if (
           ownRanks[i] === radius &&
           onBank(cell) &&

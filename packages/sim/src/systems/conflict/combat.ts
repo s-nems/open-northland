@@ -62,7 +62,8 @@ export const combatSystem: System = (world, ctx) => {
   // id, so a tie-break lands on the same winner. A closer chaser may release a farther ally's slot
   // reservation; the ally keeps its enemy and asks for another approach.
   const ready = engageCandidates(world, ctx, pass.index);
-  for (const e of ready.candidates) {
+  for (let i = 0; i < ready.count; i++) {
+    const e = ready.candidateAt(i);
     if (!mayEngage(world, ctx, terrain, pass.index, e, ready.nearStranger(e))) continue;
     engageCombatant(world, ctx, terrain, pass, e);
     rallyFollowers(world, ctx, terrain, e);

@@ -187,7 +187,8 @@ function outsideCandidatesRefused(sim: Simulation, far: FarAnswers = { acted: 0,
   if (terrain === undefined) throw new Error('the scene has a map');
   const index = new CombatIndex(sim.world, ctx, terrain);
   const ready = engageCandidates(sim.world, ctx, index);
-  const candidates = new Set(ready.candidates);
+  const candidates = new Set<Entity>();
+  for (let i = 0; i < ready.count; i++) candidates.add(ready.candidateAt(i));
   let outside = 0;
   for (const e of sim.world.canonicalQuery(Settler, Health, Position)) {
     if (candidates.has(e)) {

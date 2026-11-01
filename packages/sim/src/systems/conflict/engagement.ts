@@ -12,6 +12,7 @@ import {
   Person,
   type SettlerIdentity,
   Stance,
+  type UnreachableTarget,
   Vehicle,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
@@ -46,7 +47,7 @@ import {
   WILD_VICTIM_TIERS,
   wildPursuit,
 } from './targeting.js';
-import { givenUpTargetVeto } from './unreachable-targets.js';
+import { gaveUp, givenUpTargets, vetoOf } from './unreachable-targets.js';
 import { bandNodeCount, type WeaponBand, withinBand } from './weapon-band.js';
 import type { ArmedWith } from './weapons.js';
 
@@ -98,7 +99,7 @@ export class EngagementSpecs {
         attacker: SettlerIdentity;
         weapon: ArmedWith;
         bank: number;
-        givenUp: ((t: Entity) => boolean) | undefined;
+        givenUp: readonly UnreachableTarget[] | undefined;
         anchor: NodeId;
         kind: 'advance' | 'post' | 'defend' | 'ignore';
       }
@@ -123,7 +124,9 @@ export class EngagementSpecs {
   private readonly advanceAccept = (t: Entity): boolean => {
     const i = this.current();
     return (
-      this.hostile(t) && (i.givenUp === undefined || !i.givenUp(t) || this.inBand(t)) && this.reachable(t)
+      this.hostile(t) &&
+      (i.givenUp === undefined || !gaveUp(i.givenUp, t) || this.inBand(t)) &&
+      this.reachable(t)
     );
   };
   // Original behavior, unconfirmed against the running original: a wild animal looking for a victim
@@ -212,7 +215,7 @@ export class EngagementSpecs {
     const { owned, ordered } = stance;
     const viewer = owned ? world.tryGet(e, Owner)?.player : undefined;
     const bank = terrain.isWalkable(here) ? terrain.componentOf(here) : -1;
-    const givenUp = stance.post === null ? givenUpTargetVeto(world, ctx, e) : undefined;
+    const givenUp = stance.post === null ? givenUpTargets(world, ctx, e) : undefined;
     const anchor = stanceAnchor(world, e, here);
     // A posted fighter acquires only within its boosted weapon band, regardless of stance.
     const kind =
@@ -251,7 +254,7 @@ export class EngagementSpecs {
         e,
         here,
         attacker.jobType,
-        givenUp,
+        vetoOf(givenUp),
         weapon.minRange,
         SIGHT_RADIUS_NODES,
       );

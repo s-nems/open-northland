@@ -106,36 +106,39 @@ function readyUnitsOf(world: World, content: ContentSet): ReadyUnits {
  */
 export function engageCandidates(world: World, ctx: SystemContext, index: CombatIndex): EngageCandidates {
   const scratch = candidateScratchOf(world);
-  const { candidates } = scratch;
+  // Gathered unsorted, with repeats; never shrunk, so a pass grows it only past the longest one before.
+  const { gathered } = scratch;
   const units = readyUnitsOf(world, ctx.content);
   const ready = units.sync(world);
-  let count = index.unitsNearStrangers(PRESENCE_RADIUS, candidates, 0);
+  let count = index.unitsNearStrangers(PRESENCE_RADIUS, gathered, 0);
   units.wide.forEach((e) => {
-    candidates[count++] = e;
+    gathered[count++] = e;
   });
   scratch.markNear(count);
   ready.forEach((e) => {
-    candidates[count++] = e;
+    gathered[count++] = e;
   });
   // A typed array sorts numerically without a comparator call per compare.
   if (scratch.sorted.length < count)
     scratch.sorted = new Uint32Array(Math.max(count, 2 * scratch.sorted.length));
-  const sorted = scratch.sorted.subarray(0, count);
-  for (let i = 0; i < count; i++) sorted[i] = candidates[i] as Entity;
-  sorted.sort();
+  const { sorted } = scratch;
+  for (let i = 0; i < count; i++) sorted[i] = gathered[i] as Entity;
+  sorted.subarray(0, count).sort();
   let kept = 0;
   for (let i = 0; i < count; i++) {
-    const id = sorted[i] as Entity;
-    if (kept === 0 || candidates[kept - 1] !== id) candidates[kept++] = id;
+    const id = sorted[i] as number;
+    if (kept === 0 || sorted[kept - 1] !== id) sorted[kept++] = id;
   }
-  candidates.length = kept;
+  scratch.count = kept;
   return scratch;
 }
 
 /** One pass's candidates, and which of them the index listed near a stranger. Lives until the next pass. */
 export interface EngageCandidates {
-  /** Ascending by id. */
-  readonly candidates: readonly Entity[];
+  /** How many candidates the pass holds. */
+  readonly count: number;
+  /** The `i`th candidate, ascending by id. */
+  candidateAt(i: number): Entity;
   /** Whether owned unit `e` needs its presence test run: the index listed it near a stranger, or it searches
    *  past {@link PRESENCE_RADIUS}. One in a player slot not listed proves every `othersWithin` test false. */
   nearStranger(e: Entity): boolean;
@@ -146,15 +149,21 @@ const INITIAL_SORT_CAPACITY = 256;
 
 /** The buffers one pass's candidate list is gathered and sorted in, reused across passes. */
 class CandidateScratch implements EngageCandidates {
-  readonly candidates: Entity[] = [];
+  readonly gathered: Entity[] = [];
+  /** The pass's candidates in their first {@link count} slots, ascending and distinct. */
   sorted = new Uint32Array(INITIAL_SORT_CAPACITY);
+  count = 0;
   /** The units whose presence test the running pass runs. */
   private readonly near = new EpochMarks();
 
-  /** Mark the first `count` candidates, the units whose presence test runs, for this pass. */
+  /** Mark the first `count` gathered units, those whose presence test runs, for this pass. */
   markNear(count: number): void {
     this.near.begin();
-    for (let i = 0; i < count; i++) this.near.mark(this.candidates[i] as Entity);
+    for (let i = 0; i < count; i++) this.near.mark(this.gathered[i] as Entity);
+  }
+
+  candidateAt(i: number): Entity {
+    return this.sorted[i] as Entity;
   }
 
   nearStranger(e: Entity): boolean {

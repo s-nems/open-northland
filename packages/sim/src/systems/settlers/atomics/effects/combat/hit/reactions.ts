@@ -30,12 +30,11 @@ import {
   firingBuildings,
   isValidTarget,
   keepsWildTarget,
-  type StrikeRank,
   strikeRank,
   turnsAsideUnder,
 } from '../../../../../conflict/targeting.js';
 import { standsAtPost } from '../../../../../conflict/tower-post.js';
-import { givenUpTargetVeto } from '../../../../../conflict/unreachable-targets.js';
+import { hasGivenUpTarget } from '../../../../../conflict/unreachable-targets.js';
 import { withinBand } from '../../../../../conflict/weapon-band.js';
 import { attackerWeapon } from '../../../../../conflict/weapons.js';
 import type { SystemContext } from '../../../../../context.js';
@@ -123,31 +122,48 @@ export function turnOnAttacker(world: World, ctx: SystemContext, attacker: Entit
   const held = engagement?.target;
   if (held === striker) return;
   const here = entityNode(world, terrain, victim);
-  const reach = (t: Entity): number =>
-    hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
-  const givenUp = givenUpTargetVeto(world, ctx, victim);
-  if (givenUp?.(striker) === true && !withinOwnBand(world, ctx, victim, settler, reach(striker))) return;
-  let firing: ReadonlySet<Entity> | undefined;
-  const firingNow = (): ReadonlySet<Entity> => {
-    // A melee blow lands before the combat pass, which would otherwise rebuild the set.
-    firing ??= passIndexOf(world, ctx.tick)?.firing ?? firingBuildings(world, ctx);
-    return firing;
-  };
+  if (
+    hasGivenUpTarget(world, ctx, victim, striker) &&
+    !withinOwnBand(world, ctx, victim, settler, reachFrom(world, ctx, terrain, here, striker))
+  )
+    return;
+  // A melee blow lands before the combat pass, whose index would otherwise hold the firing set.
+  const firingNow = passIndexOf(world, ctx.tick)?.firingNow ?? lazyFiringBuildings(world, ctx);
   const strikerRank = strikeRank(world, ctx, striker, firingNow);
-  const rankOf = (t: Entity): StrikeRank => strikeRank(world, ctx, t, firingNow);
   const order = world.tryGet(victim, AttackOrder);
   if (
     order !== undefined &&
-    !(turnsAsideUnder(world, ctx, order, firingNow) && strikerRank < rankOf(order.target))
+    !(
+      turnsAsideUnder(world, ctx, order, firingNow) &&
+      strikerRank < strikeRank(world, ctx, order.target, firingNow)
+    )
   ) {
     return;
   }
   if (held !== undefined && world.isAlive(held) && world.has(held, Position)) {
-    const heldRank = rankOf(held);
+    const heldRank = strikeRank(world, ctx, held, firingNow);
     if (heldRank < strikerRank) return;
-    if (heldRank === strikerRank && reach(held) <= reach(striker)) return;
+    if (
+      heldRank === strikerRank &&
+      reachFrom(world, ctx, terrain, here, held) <= reachFrom(world, ctx, terrain, here, striker)
+    )
+      return;
   }
   holdEnemy(world, ctx, victim, striker);
+}
+
+/** How far (map points) `t`'s combat node lies from `here`. */
+function reachFrom(world: World, ctx: SystemContext, terrain: TerrainGraph, here: NodeId, t: Entity): number {
+  return hexNodeDistance(terrain, here, combatTargetNode(world, ctx, terrain, here, t));
+}
+
+/** The firing set as a getter that derives it on first read. */
+function lazyFiringBuildings(world: World, ctx: SystemContext): () => ReadonlySet<Entity> {
+  let firing: ReadonlySet<Entity> | undefined;
+  return () => {
+    firing ??= firingBuildings(world, ctx);
+    return firing;
+  };
 }
 
 /** Whether `dist` map points lies inside the band of the weapon `victim` fights with, where an enemy it gave
