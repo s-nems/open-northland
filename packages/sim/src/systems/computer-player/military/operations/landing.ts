@@ -37,7 +37,13 @@ import { knownDefendingPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
 import { launchRatioReached } from '../plan.js';
 import { unitPoints } from '../points.js';
-import { believedFireAt, believedFireSources, landingObjective, underFire } from './landing-target.js';
+import {
+  believedFireAt,
+  believedLand,
+  type FireSource,
+  landingObjective,
+  underFire,
+} from './landing-target.js';
 import { enter, type Opened, type OperationEnv, type OperationHandler } from './lifecycle.js';
 import { nodeOfEntity, RAID_DEFENCE_RADIUS_NODES, visibleFighters } from './raid-target.js';
 
@@ -128,16 +134,21 @@ export function freeShips(env: OperationEnv, home: number): Entity[] {
 /**
  * Up to `count` shore points for the ships, each at least {@link LANDING_SHORE_SPACING_NODES} from the
  * others: the mooring spots `ship` can sail to ({@link mooringSpotsOf}) on the rival's land outside the reach
- * of every tower and shelter the seat believes stands there ({@link underFire}), so the hulls waiting at the
- * shore are not shot, nearest his headquarters first, the lowest node on a tie. Authored: on
+ * of every tower and shelter the seat believes stands there (`fire`, {@link underFire}), so the hulls
+ * waiting at the shore are not shot, nearest his headquarters first, the lowest node on a tie. Authored: on
  * arabskie_wyspy_wolna_gra_mieszana (seed 7) four ships moored six nodes from a rival's headquarters, its
  * people shooting from inside, lost three hulls and all 61 men aboard before the last one moored.
  */
-function landingShores(env: OperationEnv, ship: Entity, route: SeaRoute, count: number): HalfCellNode[] {
+function landingShores(
+  env: OperationEnv,
+  ship: Entity,
+  route: SeaRoute,
+  fire: readonly FireSource[],
+  count: number,
+): HalfCellNode[] {
   const { world, ctx, terrain } = env;
   const spots = mooringSpotsOf(world, ctx, terrain, ship);
   if (spots === null) return [];
-  const fire = believedFireSources(env, route.rival);
   const hq = route.headquarters.node;
   const candidates: { readonly at: HalfCellNode; readonly node: NodeId; readonly distance: number }[] = [];
   for (const node of spots.spots) {
@@ -419,6 +430,8 @@ interface LandedOrders {
   readonly landed: readonly Entity[];
   /** Whether the landed men have an objective on the rival's land. */
   readonly striking: boolean;
+  /** The towers and shelters the objective was chosen clear of; none while nobody is ashore. */
+  readonly fire: readonly FireSource[];
   readonly commands: readonly PlayerCommand[];
 }
 
@@ -427,26 +440,37 @@ interface LandedOrders {
  * ({@link landingObjective}); a man fighting or on his way is left to it.
  */
 function landedOrders(env: OperationEnv, op: LandingOperation): LandedOrders {
-  const { world, terrain } = env;
+  const { world, ctx, terrain } = env;
   const landed = landedMen(env, op);
   const first = landed[0];
   const from = first === undefined ? null : nodeOfEntity(world, first);
-  const goal = from === null ? null : landingObjective(env, rivalComponent(env, op), from);
-  if (goal === null) return { landed, striking: false, commands: [] };
+  if (from === null) return { landed, striking: false, fire: [], commands: [] };
+  const believed = believedLand(env, rivalComponent(env, op));
+  const goal = landingObjective(ctx, believed, from);
+  if (goal === null) return { landed, striking: false, fire: believed.sources, commands: [] };
   const free = landed.filter(
     (e) =>
       !isTravelling(world, e) && !busy(world, e) && !world.has(e, Engagement) && !world.has(e, AttackOrder),
   );
-  return { landed, striking: true, commands: marchOrders(world, terrain, free, goal.node) };
+  return {
+    landed,
+    striking: true,
+    fire: believed.sources,
+    commands: marchOrders(world, terrain, free, goal.node),
+  };
 }
 
 /**
  * Whether the landed men are losing: the enemy fighters the seat sees within
  * {@link RAID_DEFENCE_RADIUS_NODES} of them outweigh them, or they lost {@link LANDING_RETREAT_LOSS_PCT} of
- * the men set ashore and one of them stands in the reach of a tower or shelter the seat believes stands
- * ({@link underFire}).
+ * the men set ashore and one of them stands in the reach of a tower or shelter of `fire` ({@link underFire}).
  */
-function losing(env: OperationEnv, op: LandingOperation, landed: readonly Entity[]): boolean {
+function losing(
+  env: OperationEnv,
+  op: LandingOperation,
+  landed: readonly Entity[],
+  fire: readonly FireSource[],
+): boolean {
   const { world, ctx, seat } = env;
   const spots = landed.flatMap((e) => nodeOfEntity(world, e) ?? []);
   let own = 0;
@@ -459,8 +483,7 @@ function losing(env: OperationEnv, op: LandingOperation, landed: readonly Entity
   }
   if (enemy >= own) return true;
   if ((op.landed - landed.length) * PERCENT < op.landed * LANDING_RETREAT_LOSS_PCT) return false;
-  const sources = believedFireSources(env, rivalComponent(env, op));
-  return spots.some((at) => underFire(sources, at));
+  return spots.some((at) => underFire(fire, at));
 }
 
 /** Call the landed men back aboard the waiting ships for `reason`: each walks to the waiting ship nearest
@@ -521,9 +544,9 @@ function acting(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
   const stayEnd = op.since + LANDING_SHORE_STAY_TICKS;
   const homeward = [...homecoming(env, op), ...releaseStranded(env, op, stayEnd)];
   if (env.ctx.tick >= stayEnd) homeward.push(...sailWaitingHome(env, op, true));
-  const { landed, striking, commands } = landedOrders(env, op);
+  const { landed, striking, fire, commands } = landedOrders(env, op);
   const waiting = op.ships.some((ship) => ship.leg === 'waiting');
-  if (waiting && landed.length > 0 && (!striking || losing(env, op, landed)))
+  if (waiting && landed.length > 0 && (!striking || losing(env, op, landed, fire)))
     return [...homeward, ...reembark(env, op, landed, striking ? 'losses' : 'nothingToStrike')];
   if (landed.length > 0 && striking) return [...homeward, ...commands];
   // Nothing left to strike: the landed men are let go where they stand.
@@ -659,13 +682,15 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
   const known = knownDefendingPoints(world, ctx, seat, owner);
   const edge =
     known === null || ratio.num * LANDING_EDGE.den >= LANDING_EDGE.num * ratio.den ? ratio : LANDING_EDGE;
+  const believed = believedLand(env, route.rival);
   const first = crews[0];
-  const shores = first === undefined ? [] : landingShores(env, first.ship, route, crews.length);
+  const shores =
+    first === undefined ? [] : landingShores(env, first.ship, route, believed.sources, crews.length);
   const nearest = shores[0];
-  const goal = nearest === undefined ? null : landingObjective(env, route.rival, nearest);
+  const goal = nearest === undefined ? null : landingObjective(ctx, believed, nearest);
   if (goal === null) return null;
   const tribe = world.tryGet(route.headquarters.entity, Building)?.tribe;
-  const fire = tribe === undefined ? 0 : believedFireAt(env, route.rival, goal.at, tribe);
+  const fire = tribe === undefined ? 0 : believedFireAt(ctx, believed.sources, goal.at, tribe);
   const opposing = known === null ? Math.max(points, fire) : known + fire;
   if (!launchRatioReached(points, opposing, edge)) return null;
   const commands: PlayerCommand[] = [];
