@@ -40,6 +40,19 @@ function readColumnStep(world: World, e: Entity): boolean {
 const read = { hx: 0, hy: 0 };
 
 /**
+ * Slots of the last position each mover's node was located at, indexed by entity id modulo their count.
+ * The node is a pure function of the position, so a slot answers whenever its position matches, whoever
+ * wrote it: a mover read by several indexes in one tick locates once. Authored: a power of two above a
+ * late game's walkers.
+ */
+const NODE_MEMO_SLOTS = 1 << 14;
+const NODE_MEMO_MASK = NODE_MEMO_SLOTS - 1;
+const memoX = new Float64Array(NODE_MEMO_SLOTS).fill(Number.NaN);
+const memoY = new Float64Array(NODE_MEMO_SLOTS);
+const memoHx = new Int32Array(NODE_MEMO_SLOTS);
+const memoHy = new Int32Array(NODE_MEMO_SLOTS);
+
+/**
  * The half-cell node mover `e` at `p` occupies. On a live column step it is the step's start until the
  * skipped row and its destination past it, whatever push or helm holds the body off the step's line, so a
  * walker never reads a node it passes between. Elsewhere it is {@link nodeHxOfPosition}'s node. Original
@@ -60,8 +73,15 @@ export function moverNode(
     x = stop.x;
     y = stop.y;
   }
-  read.hx = nodeHxOfPosition(x, y);
-  read.hy = nodeHyOfPosition(x, y);
+  const slot = e & NODE_MEMO_MASK;
+  if (memoX[slot] !== x || memoY[slot] !== y) {
+    memoX[slot] = x;
+    memoY[slot] = y;
+    memoHx[slot] = nodeHxOfPosition(x, y);
+    memoHy[slot] = nodeHyOfPosition(x, y);
+  }
+  read.hx = memoHx[slot] ?? 0;
+  read.hy = memoHy[slot] ?? 0;
   return read;
 }
 
