@@ -22,7 +22,7 @@ import {
   type TakenFlagNodes,
 } from '../flag-spots.js';
 import { type CollectorAnchors, type SeatedHolders, seatHolders } from './anchor.js';
-import { nearestAimed } from './clearing-aim.js';
+import { NO_AIM, nearestAimed } from './clearing-aim.js';
 import {
   everyResource,
   flagRelocateDue,
@@ -306,7 +306,7 @@ export function allocateGenericCollectors(
   taken: TakenFlagNodes,
   builderJob: number | null,
   target: number,
-  aim: ReadonlySet<Entity> = new Set(),
+  aim: ReadonlySet<Entity> = NO_AIM,
 ): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
   const { baseNode, workable } = ground;
@@ -329,10 +329,14 @@ export function allocateGenericCollectors(
     const job = world.get(g, Settler).jobType;
     if (job === null) continue;
     const harvests = (goodType: number): boolean => jobCanHarvestGood(ctx, job, goodType);
-    const others = [...flags].flatMap(([holder, f]) => (holder === g ? [] : [f]));
     const nearest = (open: WorkableTest): Entity | null =>
       aimed(open) ??
-      clearingResource(world, ctx, baseNode, (e) => workable(e) && open(e) && clearOfFlags(world, e, others));
+      clearingResource(
+        world,
+        ctx,
+        baseNode,
+        (e) => workable(e) && open(e) && clearOfFlags(world, e, flags, g),
+      );
     if (!patchWorked(world, reach, g, flagNode, flag.radius, harvests)) {
       // The flag follow moves a worked-out flag; the upkeep only retires a hopeless post.
       if (builderJob !== null && hopelessPost(world, g, flagNode, nearest))
@@ -340,12 +344,12 @@ export function allocateGenericCollectors(
       continue;
     }
     if (!flagRelocateDue(ctx, g)) continue;
-    const target = aimed(everyResource);
-    const targetNode = target === null ? null : anchorNodeOf(world, target);
+    const aimedAt = aimed(everyResource);
+    const targetNode = aimedAt === null ? null : anchorNodeOf(world, aimedAt);
     if (targetNode !== null && nodeManhattan(targetNode, flagNode) <= flag.radius) continue; // on the patch
     // The flag follow aims at whatever stands nearest, so posts may bunch up on one grove: a crowded post
     // re-aims at a clearing resource of its own, as a far one does at the nearer one.
-    const crowded = others.some((f) => nodeManhattan(f, flagNode) < CLEARING_SPREAD_NODES);
+    const crowded = nearFlag(flagNode, flags, g);
     if (targetNode === null && !crowded && !farFromNearest(world, baseNode, flagNode, nearest(everyResource)))
       continue;
     const replant = replantSpot(world, ground.flags, g, flag.radius, nearest, baseNode, reach, taken);
@@ -364,7 +368,7 @@ export function allocateGenericCollectors(
     if (!force.any()) break;
     const resource =
       aimed(everyResource) ??
-      clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags.values())) ??
+      clearingResource(world, ctx, baseNode, (e) => workable(e) && clearOfFlags(world, e, flags, null)) ??
       clearingResource(world, ctx, baseNode, workable); // every clearing good stands by a post: double up
     if (resource === null) break; // no clearing good stands anywhere - no generic post
     const spot = flagSpotNear(world, ground.flags, resource, baseNode, taken);
@@ -428,10 +432,25 @@ function clearingResource(
   return best?.resource ?? null;
 }
 
-/** Whether `resource` stands at least {@link CLEARING_SPREAD_NODES} from every flag in `flags`. */
-function clearOfFlags(world: World, resource: Entity, flags: Iterable<HalfCellNode>): boolean {
+/** Whether `resource` stands at least {@link CLEARING_SPREAD_NODES} from every post's flag in `flags` but
+ *  `skip`'s. */
+function clearOfFlags(
+  world: World,
+  resource: Entity,
+  flags: ReadonlyMap<Entity, HalfCellNode>,
+  skip: Entity | null,
+): boolean {
   const node = anchorNodeOf(world, resource);
-  if (node === null) return false;
-  for (const f of flags) if (nodeManhattan(node, f) < CLEARING_SPREAD_NODES) return false;
-  return true;
+  return node !== null && !nearFlag(node, flags, skip);
+}
+
+/** Whether `node` stands within {@link CLEARING_SPREAD_NODES} of a post's flag in `flags` other than `skip`'s. */
+function nearFlag(
+  node: HalfCellNode,
+  flags: ReadonlyMap<Entity, HalfCellNode>,
+  skip: Entity | null,
+): boolean {
+  for (const [holder, f] of flags)
+    if (holder !== skip && nodeManhattan(node, f) < CLEARING_SPREAD_NODES) return true;
+  return false;
 }

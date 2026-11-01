@@ -218,7 +218,7 @@ function runWorkforce(
   // An apprentice stays on the work earning his discovery, so no post takes him off it.
   const unschooled = apprentices.size === 0 ? pool : pool.filter((e) => !apprentices.has(e));
   // The wildlife answer comes first: the men it sends at an animal are off every other post.
-  const wild = defendAgainstWildlife(world, ctx, player, owned, unschooled);
+  const wild = defendAgainstWildlife(world, ctx, player, unschooled);
   const force = new SpareForce(
     wild.held.size === 0 ? unschooled : unschooled.filter((e) => !wild.held.has(e)),
   );

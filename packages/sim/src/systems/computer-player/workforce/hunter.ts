@@ -47,6 +47,15 @@ export interface HuntingPlan {
   /** The opening hunter, plus the food-shortage hunters while the seat runs short ({@link foodHunters}). */
   readonly want: number;
   readonly apprentices: ReadonlySet<Entity>;
+  /** The decision's wildlife walks, each answered once for both phases ({@link HuntJudgement}). */
+  readonly judged: HuntJudgement;
+}
+
+/** One decision's hunt answers: the flag spot reads only the base, and the work left the posted hunters,
+ *  who only grow by a hire, so their count and the slack key it. */
+interface HuntJudgement {
+  flagSpot: { hx: number; hy: number } | null | undefined;
+  readonly workLeft: Map<string, boolean>;
 }
 
 /** The seat's {@link HuntingPlan}, or null when the content lacks the hunter trade or the base's hunter
@@ -63,7 +72,14 @@ export function huntingPlan(
   const job = hunterJobType(ctx.content);
   if (job === null || !offersHunterSeat(world, ctx, base, job)) return null;
   const posted = huntersAt(world, ctx, player, base);
-  return { base, job, posted, want: 1 + extraFor(Math.max(0, posted.length - 1)), apprentices };
+  return {
+    base,
+    job,
+    posted,
+    want: 1 + extraFor(Math.max(0, posted.length - 1)),
+    apprentices,
+    judged: { flagSpot: undefined, workLeft: new Map() },
+  };
 }
 
 /** How far (map points) from the base a hunter's work flag may go for game the seat sees, when the base's
@@ -106,9 +122,9 @@ export function allocateHunters(
   if (posted.length > 0) {
     // Not mid-action, walking included: a walk carries no CurrentAtomic.
     const idle = posted.some((e) => !world.has(e, CurrentAtomic));
-    if (idle && !huntWorkLeft(world, ctx, base, job, posted, HUNT_CHASE_SLACK_NODES)) {
+    if (idle && !planWorkLeft(world, ctx, plan, HUNT_CHASE_SLACK_NODES)) {
       if (phase !== 'first') return [];
-      const spot = opensTrades ? huntFlagSpot(world, ctx, player, base, job) : null;
+      const spot = opensTrades ? planFlagSpot(world, ctx, player, plan) : null;
       if (spot === null) return retireHunters(world, posted.filter(free), builderJob);
       return posted
         .filter((e) => !world.has(e, CurrentAtomic))
@@ -119,8 +135,8 @@ export function allocateHunters(
       return retireHunters(world, extra.filter(free), builderJob);
     }
   } else if (
-    !huntWorkLeft(world, ctx, base, job, posted, 0) &&
-    !(opensTrades && huntFlagSpot(world, ctx, player, base, job) !== null)
+    !planWorkLeft(world, ctx, plan, 0) &&
+    !(opensTrades && planFlagSpot(world, ctx, player, plan) !== null)
   )
     return [];
   const want = phase === 'first' ? 1 : plan.want;
@@ -131,6 +147,29 @@ export function allocateHunters(
   if (spare === null) return [];
   posted.push(spare);
   return [{ kind: 'assignWorker', entity: spare, building: base, jobPriority: [job] }];
+}
+
+/** {@link huntWorkLeft} for the plan's posted hunters, asked once per head count and slack. */
+function planWorkLeft(world: World, ctx: SystemContext, plan: HuntingPlan, slack: number): boolean {
+  const key = `${plan.posted.length}:${slack}`;
+  let left = plan.judged.workLeft.get(key);
+  if (left === undefined) {
+    left = huntWorkLeft(world, ctx, plan.base, plan.job, plan.posted, slack);
+    plan.judged.workLeft.set(key, left);
+  }
+  return left;
+}
+
+/** {@link huntFlagSpot} for the plan's base, asked once per decision. */
+function planFlagSpot(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  plan: HuntingPlan,
+): { hx: number; hy: number } | null {
+  if (plan.judged.flagSpot === undefined)
+    plan.judged.flagSpot = huntFlagSpot(world, ctx, player, plan.base, plan.job);
+  return plan.judged.flagSpot;
 }
 
 /** Whether the seat's base hunter could earn hunting experience: one is posted there with game left on his

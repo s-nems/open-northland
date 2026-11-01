@@ -77,7 +77,7 @@ function foodChainTypes(ctx: SystemContext): ReadonlySet<number> {
   if (chain !== undefined) return chain;
   const index = contentIndex(ctx.content);
   const workplaces = ctx.content.buildings.filter((b) => b.kind === 'workplace');
-  const types = new Set(workplaces.filter((b) => makesFood(ctx, b)).map((b) => b.typeId));
+  const types = new Set(foodMakerTypes(ctx));
   const outputsOf = (b: BuildingType): number[] => [
     ...(index.mergedRecipeByBuilding.get(b.typeId)?.outputs ?? []).map((o) => o.goodType),
     ...b.produces,
@@ -98,14 +98,29 @@ function foodChainTypes(ctx: SystemContext): ReadonlySet<number> {
   return chain;
 }
 
+const foodMakersByContent = new WeakMap<ContentSet, ReadonlySet<number>>();
+
+/** The workplace types making food ({@link makesFood}): content-static, so memoized per content. */
+function foodMakerTypes(ctx: SystemContext): ReadonlySet<number> {
+  let makers = foodMakersByContent.get(ctx.content);
+  if (makers === undefined) {
+    makers = new Set(
+      ctx.content.buildings.filter((b) => b.kind === 'workplace' && makesFood(ctx, b)).map((b) => b.typeId),
+    );
+    foodMakersByContent.set(ctx.content, makers);
+  }
+  return makers;
+}
+
+/** Whether `e` is a built workplace making food ({@link foodMakerTypes}). */
+function isBuiltFoodMaker(world: World, makers: ReadonlySet<number>, e: Entity): boolean {
+  return makers.has(world.get(e, Building).buildingType) && isBuilt(world, e);
+}
+
 /** Whether any built workplace among `owned` makes food ({@link makesFood}). */
 export function foodWorkshopBuilt(world: World, ctx: SystemContext, owned: readonly Entity[]): boolean {
-  const index = contentIndex(ctx.content);
-  for (const e of owned) {
-    const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type?.kind === 'workplace' && isBuilt(world, e) && makesFood(ctx, type)) return true;
-  }
-  return false;
+  const makers = foodMakerTypes(ctx);
+  return owned.some((e) => isBuiltFoodMaker(world, makers, e));
 }
 
 /** The seat's food sources at work: `staples`, its built workplaces making food ({@link makesFood}) that
@@ -122,14 +137,11 @@ export function foodSourcesAtWork(
   player: number,
   owned: readonly Entity[],
 ): FoodSources {
-  const index = contentIndex(ctx.content);
+  const makers = foodMakerTypes(ctx);
   let staples = 0;
   let hunters = 0;
-  for (const e of owned) {
-    const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type?.kind !== 'workplace' || !isBuilt(world, e) || !makesFood(ctx, type)) continue;
-    if (assignedWorkers(world, e).length > 0) staples++;
-  }
+  for (const e of owned)
+    if (isBuiltFoodMaker(world, makers, e) && assignedWorkers(world, e).length > 0) staples++;
   for (const e of ownedSettlers(world, player)) {
     const job = world.get(e, Settler).jobType;
     if (isFisherJob(ctx.content, job)) staples++;
@@ -145,10 +157,9 @@ function foodWorkshopWorks(
   owned: readonly Entity[],
   tally: StaffingTally,
 ): boolean {
-  const index = contentIndex(ctx.content);
+  const makers = foodMakerTypes(ctx);
   for (const e of owned) {
-    const type = index.buildings.get(world.get(e, Building).buildingType);
-    if (type?.kind !== 'workplace' || !isBuilt(world, e) || !makesFood(ctx, type)) continue;
+    if (!isBuiltFoodMaker(world, makers, e)) continue;
     for (const count of tally.get(e)?.values() ?? []) if (count > 0) return true;
   }
   return false;

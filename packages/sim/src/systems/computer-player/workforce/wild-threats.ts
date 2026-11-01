@@ -29,6 +29,7 @@ import {
   isAggressiveAnimal,
   isHunterJob,
 } from '../../readviews/index.js';
+import { forEachBuildingNear } from '../../spatial/buildings.js';
 import { playerSeesEntity } from '../../vision/gates.js';
 
 // The computer seat's answer to wild animals that attack its people, the ownerless ones and those a map
@@ -73,12 +74,11 @@ export function defendAgainstWildlife(
   world: World,
   ctx: SystemContext,
   player: number,
-  owned: readonly Entity[],
   pool: readonly Entity[],
 ): WildDefence {
   const hunterJob = hunterJobType(ctx.content);
   if (hunterJob === null) return NO_DEFENCE;
-  const threats = seatWildThreats(world, ctx, player, owned);
+  const threats = seatWildThreats(world, ctx, player);
   if (threats.length === 0) return NO_DEFENCE;
   const hunters = ownedSettlers(world, player).filter((e) => mayDefend(world, ctx, e));
   // A man of the trade is never hired again, and a hired one only once.
@@ -125,18 +125,12 @@ export function defendAgainstWildlife(
 /**
  * The adult animals of an `aggressive` type no stronger than {@link HUNTERS_PREY_MAX_HITPOINTS}, alive and
  * attackable, ownerless or owned by a player `player` fights, that `player` sees now and that either stand
- * within {@link WILD_THREAT_REACH_NODES} of one of its buildings `owned` or are attacking one of its people
+ * within {@link WILD_THREAT_REACH_NODES} of one of its buildings or are attacking one of its people
  * wherever he works, ascending id. A provoked animal of a passive type is the hunt's own business and is
  * left out, and so is a friend's or a peace partner's herd.
  */
-export function seatWildThreats(
-  world: World,
-  ctx: SystemContext,
-  player: number,
-  owned: readonly Entity[],
-): Entity[] {
+export function seatWildThreats(world: World, ctx: SystemContext, player: number): Entity[] {
   const threats: Entity[] = [];
-  let homes: { hx: number; hy: number }[] | null = null;
   // Wildlife is the StayPoint carrier set, run on the workforce beat: 428-459 animals among 23-37
   // thousand positioned entities on mroczny_las and magiczny_las at game minute 5, 0.10-0.12 ms a seat.
   for (const e of world.query(StayPoint, Settler, Position)) {
@@ -153,12 +147,24 @@ export function seatWildThreats(
       threats.push(e);
       continue;
     }
-    homes ??= buildingNodes(world, owned);
-    const at = nodeOf(world, e);
-    if (homes.some((h) => hexDistanceBetween(h.hx, h.hy, at.hx, at.hy) <= WILD_THREAT_REACH_NODES))
-      threats.push(e);
+    if (nearOwnBuilding(world, player, nodeOf(world, e))) threats.push(e);
   }
   return threats.sort((a, b) => a - b);
+}
+
+/** Whether one of `player`'s buildings stands within {@link WILD_THREAT_REACH_NODES} of `at`, read off the
+ *  building spatial index, whose box of that reach holds every node of the hex radius. */
+function nearOwnBuilding(world: World, player: number, at: { hx: number; hy: number }): boolean {
+  let near = false;
+  forEachBuildingNear(world, at.hx, at.hy, WILD_THREAT_REACH_NODES, (b, hx, hy) => {
+    if (
+      !near &&
+      ownerOf(world, b) === player &&
+      hexDistanceBetween(hx, hy, at.hx, at.hy) <= WILD_THREAT_REACH_NODES
+    )
+      near = true;
+  });
+  return near;
 }
 
 /** A hunter of the seat's own who may be sent: alive, out in the open and not the militia's. */
@@ -192,10 +198,6 @@ function nearestWithin(
     if (d <= radius) near.push({ e, d });
   }
   return near.sort((a, b) => a.d - b.d || a.e - b.e).map((n) => n.e);
-}
-
-function buildingNodes(world: World, owned: readonly Entity[]): { hx: number; hy: number }[] {
-  return owned.filter((b) => world.has(b, Position)).map((b) => nodeOf(world, b));
 }
 
 function nodeOf(world: World, e: Entity): { hx: number; hy: number } {

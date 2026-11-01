@@ -76,8 +76,7 @@ const GARRISON_INTENTS: readonly AssistantRecruitIntent[] = ['trainSoldiers', ..
 export const ARMY_FLOOR_MIN = 2 * WAVE_MIN_SOLDIERS;
 
 /** How long before the seat's military deadline the army floor starts drafting: from when its barracks
- *  stands (owner ruling: the army ready by the deadline). One wave gather window drafted 4-10 men by the end
- *  of a 60-minute peace on magiczny_las. */
+ *  stands (owner ruling: the army ready by the deadline). */
 export const ARMY_FLOOR_LEAD_TICKS = BARRACKS_STANDS_BEFORE_TICKS;
 
 /** Whether the army floor still waits: the clock lies more than {@link ARMY_FLOOR_LEAD_TICKS} before the
@@ -110,6 +109,8 @@ export interface GarrisonArms {
   bare(): readonly Entity[];
   /** The {@link weaponRoom} for `next`'s tribe, judged once, for the first man asked about. */
   roomFor(next: Entity): ReadonlyMap<GarrisonWeaponIntent, number>;
+  /** The seat's {@link unpaidBookings}, listed once for every count that reads them. */
+  bookings(): readonly Entity[];
 }
 
 export function garrisonArms(
@@ -120,7 +121,12 @@ export function garrisonArms(
 ): GarrisonArms {
   const vetoed = playerGoodList(world, AssistantWeaponVetoes, player);
   const stock = armsStockOf(world, ctx, player);
-  const vetoChanges = weaponVetoChanges(world, ctx, player, vetoed, profile, stock);
+  let unpaid: readonly Entity[] | undefined;
+  const bookings = (): readonly Entity[] => {
+    unpaid ??= unpaidBookings(world, ctx, player);
+    return unpaid;
+  };
+  const vetoChanges = weaponVetoChanges(world, ctx, player, vetoed, profile, stock, bookings);
   // The changes land a tick later, so this decision's draft already judges the arms as they will stand.
   const judged = [
     ...vetoed.filter((good) => !vetoChanges.some((c) => c.goodType === good && !c.vetoed)),
@@ -142,7 +148,7 @@ export function garrisonArms(
       return surplus;
     },
     onHand: () => {
-      onHand ??= armyOnHand(world, ctx, player);
+      onHand ??= armyOnHand(world, ctx, player, bookings());
       return onHand;
     },
     bare: () => {
@@ -150,9 +156,10 @@ export function garrisonArms(
       return bare;
     },
     roomFor: (next) => {
-      room ??= weaponRoom(world, ctx, player, world.get(next, Settler).tribe, judged, stock);
+      room ??= weaponRoom(world, ctx, world.get(next, Settler).tribe, judged, stock, bookings());
       return room;
     },
+    bookings,
   };
 }
 
@@ -166,19 +173,17 @@ function armsStockOf(world: World, ctx: SystemContext, player: number): Reachabl
  * Per armed class, the weapons the seat's recruits can fetch ({@link armsStockOf}) that its arming would hand
  * out ({@link armingGoodPreference} past the `vetoed` goods), less the class's recruits already booked and
  * waiting for one. The draft takes no more men into a class than this: a recruit drilled past the arms in
- * stock waits unarmed at the barracks and fights bare when the settlement is raided. On magiczny_las the
- * sword counter of one seat stood at 38 against 6 long swords at game minute 90, and its 40 recruits waiting
- * for a weapon were over a third of its soldiers.
+ * stock waits unarmed at the barracks and fights bare when the settlement is raided.
  */
 function weaponRoom(
   world: World,
   ctx: SystemContext,
-  player: number,
   tribe: number,
   vetoed: readonly number[],
   stock: ReachableStockUnits,
+  bookings: readonly Entity[],
 ): ReadonlyMap<GarrisonWeaponIntent, number> {
-  const waiting = bookedByIntent(world, ctx, player);
+  const waiting = bookedByIntent(world, bookings);
   const room = new Map<GarrisonWeaponIntent, number>();
   for (const intent of GARRISON_WEAPON_INTENTS) {
     let units = 0;
@@ -188,10 +193,9 @@ function weaponRoom(
   return room;
 }
 
-/** The part of the builder reserve the army floor never reclaims (authored): a third, so the seat's
- *  sites keep a crew while the spare men past it drill. On magiczny_las the reserve held every spare man,
- *  one to seven builders against a cap of twelve, for the first hour and no seat drafted anyone; with a
- *  third kept every seat drafted between game minutes 36 and 57, with half one seat never did. */
+/** The part of the builder reserve the army floor never reclaims (authored, from skirmish observation): a
+ *  third, so the seat's sites keep a crew while the spare men past it drill; with half kept a small seat
+ *  never drafted. */
 export const ARMY_FLOOR_BUILDER_CORE: Share = { num: 1, den: 3 };
 
 /** The builder reserve's men past its core of `cap`, the last claimed first: the fresh men it was about to
@@ -292,8 +296,8 @@ export function claimArmyFloor(
  * its lead (`callsGatherers`, {@link militaryOrdersOf}): holders of a good whose stock lies at or above its
  * comfort line ({@link SeatSupply.lines}), the least practised first, never an apprentice, never a
  * building good's last gatherer ({@link COLLECTED_GOOD_IDS}) and never a holder of a good the seat feeds
- * ahead ({@link fedAhead}): an iron-arms seat's iron stock is mostly its smithies' shelves. Owner ruling: on mroczny_las every man of a
- * seat held a post and its army grew by two to five before the first scripted wave. A soldier never turns
+ * ahead ({@link fedAhead}): an iron-arms seat's iron stock is mostly its smithies' shelves. Owner ruling:
+ * a seat whose every man holds a post still raises an army before a forecast attack. A soldier never turns
  * back, so the posts are refilled by the seat's next civilians once the call ends with the threat.
  * `collectorsByGood` lists each good's holders most practised first, as the workforce classifies them.
  */
@@ -411,10 +415,8 @@ function enemyInOwnMen(world: World, ctx: SystemContext, player: number): number
  *  who are no fighters yet. A bare soldier is no army (owner ruling, {@link isFitSoldier}); the draft arms
  *  him first and claims a man past him only for a weapon past his ({@link armsToSpare}). Armour is not
  *  asked here: drafting men past the armour made would only add more waiting for it. */
-function armyOnHand(world: World, ctx: SystemContext, player: number): number {
-  const drilling = unpaidBookings(world, ctx, player).filter(
-    (e) => !isFighterJob(ctx.content, world.get(e, Settler).jobType),
-  );
+function armyOnHand(world: World, ctx: SystemContext, player: number, bookings: readonly Entity[]): number {
+  const drilling = bookings.filter((e) => !isFighterJob(ctx.content, world.get(e, Settler).jobType));
   let armed = 0;
   for (const e of ownedFightersOf(world, ctx.content, player)) {
     if (isLiveFighter(world, e) && isFitSoldier(world, ctx, e, false)) armed++;
@@ -456,9 +458,10 @@ function weaponVetoChanges(
   vetoed: readonly number[],
   profile: ComputerProfile,
   stock: ReachableStockUnits,
+  bookings: () => readonly Entity[],
 ): readonly WeaponVetoChange[] {
   if (!computerModuleRuns(world, player, 'military')) return [];
-  const marks = profile.weakerWeapons ? null : bestWeaponMarks(world, ctx, player, stock);
+  const marks = profile.weakerWeapons ? null : bestWeaponMarks(world, ctx, stock, bookings());
   const changes: WeaponVetoChange[] = [];
   for (const goodType of weakerWeaponGoods(ctx.content)) {
     const held = vetoed.includes(goodType);
@@ -478,11 +481,11 @@ interface BestWeaponMarks {
 function bestWeaponMarks(
   world: World,
   ctx: SystemContext,
-  player: number,
   stock: ReachableStockUnits,
+  bookings: readonly Entity[],
 ): BestWeaponMarks {
   const weaker = new Set(weakerWeaponGoods(ctx.content));
-  const waiting = bookedByIntent(world, ctx, player);
+  const waiting = bookedByIntent(world, bookings);
   const veto = new Set<number>();
   const kept = new Set<number>();
   for (const tribe of weaponTribes(ctx.content)) {
@@ -542,14 +545,14 @@ function standingOrder(
   const barracks = drillFloorOf(world, ctx, player);
   if (barracks === null) return wants;
 
-  const booked = bookedByIntent(world, ctx, player);
+  const booked = bookedByIntent(world, arms.bookings());
   for (const intent of GARRISON_INTENTS) wants.set(intent, booked.get(intent) ?? 0);
 
   const bare = arms.bare();
   const { draftCapShare } = militaryOrdersOf(world, player);
   const headroom = draftCeiling(profile, draftCapShare, Number.POSITIVE_INFINITY) - arms.onHand();
   const allowance = Math.max(0, Math.min(draftable.length, arms.surplus(), headroom));
-  const waiting = waitingRecruits(world, ctx, player);
+  const waiting = waitingRecruits(world, arms.bookings());
   const judged = bare[0] ?? (allowance > 0 ? draftable[0] : waiting[0]);
   if (judged === undefined) return wants; // nobody to arm or draft: the classes need no probe
   const classes = arms.classesFor(barracks, judged);
@@ -584,9 +587,7 @@ function standingOrder(
 /**
  * The seat's standing towers no archer holds yet, each owed one bowman ahead of the field army. Owner
  * ruling: until the army floor opens the seat defends through its towers, hunters and the defensive mode,
- * so the few men it drafts meanwhile man the walls first. On mroczny_las, where every start soldier turns
- * civilian, 4 to 11 towers per seat stood with at most one archer among them at game minute 40 while
- * enemy wolves bit the seat's people.
+ * so the few men it drafts meanwhile man the walls first.
  */
 function emptyTowers(world: World, ctx: SystemContext, player: number): number {
   const towers = ownedBuildings(world, player).filter(
@@ -765,14 +766,10 @@ function bachelorSurplus(world: World, ctx: SystemContext, player: number): numb
   return surplus;
 }
 
-/** The seat's in-flight bookings per counter, still unpaid ({@link unpaidBookings}). */
-function bookedByIntent(
-  world: World,
-  ctx: SystemContext,
-  player: number,
-): Map<AssistantRecruitIntent, number> {
+/** The seat's in-flight bookings per counter, its unpaid `bookings` ({@link unpaidBookings}). */
+function bookedByIntent(world: World, bookings: readonly Entity[]): Map<AssistantRecruitIntent, number> {
   const booked = new Map<AssistantRecruitIntent, number>();
-  for (const e of unpaidBookings(world, ctx, player)) {
+  for (const e of bookings) {
     const { intent } = world.get(e, AssistantRecruit);
     booked.set(intent, (booked.get(intent) ?? 0) + 1);
   }
@@ -780,8 +777,8 @@ function bookedByIntent(
 }
 
 /** The seat's unpaid recruits of an armed class out of drill, waiting for their weapon. */
-function waitingRecruits(world: World, ctx: SystemContext, player: number): Entity[] {
-  return unpaidBookings(world, ctx, player).filter(
+function waitingRecruits(world: World, bookings: readonly Entity[]): Entity[] {
+  return bookings.filter(
     (e) => !world.has(e, TrainingOrder) && isWeaponIntent(world.get(e, AssistantRecruit).intent),
   );
 }
