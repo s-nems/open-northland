@@ -428,7 +428,7 @@ function planTrade(plan: PlannerContext, pass: PlannerPass, hx: number, hy: numb
 
   // The breeder's own cycle, above the producer rung: breeding is one branch of it, and the herd work
   // around it is nothing a recipe workshop's loop would do.
-  if (planBreeder(plan, pass.seatClaims, pass.spacing)) return true;
+  if (planBreeder(plan, pass.seatClaims, pass.spacing, pass.idle)) return true;
 
   // A worker bound to a recipe workshop: a carrier ferries, a craftsman produces. A gatherer bound there
   // is not its operator - it runs the gather rung below and banks its harvest into the building, so it
