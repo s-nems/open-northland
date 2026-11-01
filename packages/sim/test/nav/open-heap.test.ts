@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { heapPopRoot, heapPush } from '../../src/nav/pathfinding/open-heap.js';
 import { INITIAL_HEAP_CAPACITY, type SearchScratch } from '../../src/nav/pathfinding/scratch.js';
-import { type NodeId, StepBuffer } from '../../src/nav/terrain/index.js';
+import { type NodeId, StepGate } from '../../src/nav/terrain/index.js';
 
 /** Enough nodes that the open set outgrows its first allocation twice. */
 const NODE_COUNT = INITIAL_HEAP_CAPACITY * 3;
@@ -21,7 +21,7 @@ function scratchOf(nodeCount: number): SearchScratch {
     heapG: new Float64Array(INITIAL_HEAP_CAPACITY),
     heapDev: new Float64Array(INITIAL_HEAP_CAPACITY),
     heapSize: 0,
-    steps: new StepBuffer(),
+    gate: new StepGate(),
     query: 0,
   };
 }
