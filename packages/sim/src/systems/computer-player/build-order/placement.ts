@@ -682,8 +682,8 @@ function boundedSpot(
   if (search === null) return null;
   const { within } = search;
   let { centre } = search;
-  // A home stays off the field farms' ground and leans to the far side of the base from them; a spot near
-  // a farm costs the whole ring budget, so it is taken only when no other spot is left in the fan. A spot
+  // A home stays off the field farms' ground and leans to the far side of the base from them: each
+  // search first runs without the ground near a farm and takes it only when nothing else is left. A spot
   // pulled toward a deposit pays a few rings for the ground beside a farm that its chain will want.
   const fan = 2 * tuning.reachNodes;
   const affinities = entry.near ?? [];
@@ -695,22 +695,24 @@ function boundedSpot(
   if (farSide !== null) centre = settlement.clamp(farSide.centre);
   const nearFarm = farSide?.nearFarm;
   const avoid =
-    nearFarm !== undefined
-      ? (x: number, y: number) => (nearFarm(x, y) ? fan : 0)
-      : deposit && farms.length > 0
-        ? (x: number, y: number) =>
-            farms.some((f) => nodeManhattan(f.node, { hx: x, hy: y }) <= CHAIN_ROOM_RADIUS_NODES)
-              ? FARM_ROOM_RESOURCE_PENALTY_RINGS
-              : 0
-        : null;
+    deposit && farms.length > 0
+      ? (x: number, y: number) =>
+          farms.some((f) => nodeManhattan(f.node, { hx: x, hy: y }) <= CHAIN_ROOM_RADIUS_NODES)
+            ? FARM_ROOM_RESOURCE_PENALTY_RINGS
+            : 0
+      : null;
   const room = roomPenalty(world, ctx, terrain, type, tribe, entry);
   const home = baseComponent(world, ctx, terrain, player);
   const onHomeLand = (x: number, y: number) => terrain.componentOf(terrain.nodeAt(x, y)) === home;
   if (tuning.homeLandOnly && home === NO_COMPONENT) return null;
-  const land = bothBounds(tuning.homeLandOnly ? onHomeLand : null, front);
+  const anyLand = bothBounds(tuning.homeLandOnly ? onHomeLand : null, front);
+  const offFarms = nearFarm === undefined ? null : bothBounds(anyLand, (x, y) => !nearFarm(x, y));
+  const farFirst = (search: (land: SpotBound) => HalfCellNode | null) =>
+    offFarms === null ? search(anyLand) : (search(offFarms) ?? search(anyLand));
   const walkable = baseWalkTest(world, ctx, terrain, player);
   const ground: GroundRule = entry.ground === 'plantable' ? 'on' : 'any';
   const near = (
+    land: SpotBound,
     reach: BuildReach,
     from: HalfCellNode,
     bound: SpotBound,
@@ -741,20 +743,23 @@ function boundedSpot(
   // A `plantable` entry stands on the grass where it fits, else beside it.
   const onOrBeside = (search: (rule: GroundRule) => HalfCellNode | null) =>
     search(ground) ?? (ground === 'on' ? search('beside') : null);
-  const inReach = (rule: GroundRule, spareGrass: boolean) =>
-    near(settlement, centre, within, fan, rule, spareGrass) ??
+  const inReach = (land: SpotBound, rule: GroundRule, spareGrass: boolean) =>
+    near(land, settlement, centre, within, fan, rule, spareGrass) ??
     (centre.hx === anchor.hx && centre.hy === anchor.hy
       ? null
-      : near(settlement, anchor, within, fan, rule, spareGrass));
-  const offGrass = reserveGrass && !grassBound(type, entry) ? inReach(ground, true) : null;
+      : near(land, settlement, anchor, within, fan, rule, spareGrass));
+  const offGrass =
+    reserveGrass && !grassBound(type, entry) ? farFirst((land) => inReach(land, ground, true)) : null;
   if (offGrass !== null) return offGrass;
-  const found = onOrBeside((rule) => inReach(rule, false));
+  const found = farFirst((land) => onOrBeside((rule) => inReach(land, rule, false)));
   // A bounded entry's disc already lies in the usual reach, so only an unbounded one overflows.
   if (found !== null || within !== null) return found;
   if (home === NO_COMPONENT) return null;
   const overflowNodes = overflowBuildReachNodes(tuning.reachNodes);
   const overflow = buildReach(world, owned, anchor, overflowNodes);
-  return onOrBeside((rule) => near(overflow, centre, onHomeLand, 2 * overflowNodes, rule));
+  return farFirst((land) =>
+    onOrBeside((rule) => near(land, overflow, centre, onHomeLand, 2 * overflowNodes, rule)),
+  );
 }
 
 function bothBounds(a: SpotBound, b: SpotBound): SpotBound {
