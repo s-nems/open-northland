@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Settler } from '../../../../src/components/index.js';
-import { ownedBuildings, ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
+import { ownedSettlers } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { focusCrewOrders } from '../../../../src/systems/computer-player/workforce/focus-crew.js';
 import {
   aiSim,
@@ -49,16 +49,7 @@ function millSeat() {
 describe('focusCrewOrders', () => {
   it('pins the builders nearest the focus site, one per unit of its bill, and no other trade', () => {
     const { sim, men, mill } = millSeat();
-    const orders = focusCrewOrders(
-      sim.world,
-      ctxOf(sim),
-      SEAT,
-      ownedBuildings(sim.world, SEAT),
-      mill,
-      men,
-      BUILDER,
-      stocked,
-    );
+    const orders = focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked);
     expect(orders).toHaveLength(MILL_BILL_UNITS);
     const pinned = orders.map((c) => (c.kind === 'assignBuilder' ? c.entity : null));
     const builders = men.filter((e) => sim.world.get(e, Settler).jobType === BUILDER);
@@ -70,33 +61,13 @@ describe('focusCrewOrders', () => {
 
   it('sends nobody more once the crew is pinned', () => {
     const { sim, men, mill } = millSeat();
-    for (const c of focusCrewOrders(
-      sim.world,
-      ctxOf(sim),
-      SEAT,
-      ownedBuildings(sim.world, SEAT),
-      mill,
-      men,
-      BUILDER,
-      stocked,
-    ))
+    for (const c of focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked))
       sim.enqueueSetup(c);
     sim.step();
-    expect(
-      focusCrewOrders(
-        sim.world,
-        ctxOf(sim),
-        SEAT,
-        ownedBuildings(sim.world, SEAT),
-        mill,
-        men,
-        BUILDER,
-        stocked,
-      ),
-    ).toEqual([]);
+    expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked)).toEqual([]);
   });
 
-  it('leaves one builder to each other site with most of its bill delivered', () => {
+  it('takes every builder the bill can use, even from another site with its bill delivered', () => {
     const { sim, men, mill } = millSeat();
     sim.enqueueSetup({
       kind: 'placeBuilding',
@@ -111,41 +82,16 @@ describe('focusCrewOrders', () => {
     const home = entityOfBuilding(sim, HOME_TYPE);
     sim.enqueueSetup({ kind: 'debugFillStockpile', target: home, goodType: WOOD });
     sim.step();
-    const pair = men.filter((e) => sim.world.get(e, Settler).jobType === BUILDER).slice(0, 2);
-    const owned = ownedBuildings(sim.world, SEAT);
-    expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, owned, mill, pair, BUILDER, stocked)).toHaveLength(1);
-    // A lone builder finishes the home first.
-    expect(
-      focusCrewOrders(sim.world, ctxOf(sim), SEAT, owned, mill, pair.slice(0, 1), BUILDER, stocked),
-    ).toEqual([]);
+    const lone = men.filter((e) => sim.world.get(e, Settler).jobType === BUILDER).slice(0, 1);
+    expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, lone, BUILDER, stocked)).toHaveLength(1);
   });
 
   it('lifts the pins while the site lacks a good the store does not hold', () => {
     const { sim, men, mill } = millSeat();
-    const pins = focusCrewOrders(
-      sim.world,
-      ctxOf(sim),
-      SEAT,
-      ownedBuildings(sim.world, SEAT),
-      mill,
-      men,
-      BUILDER,
-      stocked,
-    );
+    const pins = focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, stocked);
     for (const c of pins) sim.enqueueSetup(c);
     sim.step();
-    expect(
-      focusCrewOrders(
-        sim.world,
-        ctxOf(sim),
-        SEAT,
-        ownedBuildings(sim.world, SEAT),
-        mill,
-        men,
-        BUILDER,
-        empty,
-      ),
-    ).toEqual(
+    expect(focusCrewOrders(sim.world, ctxOf(sim), SEAT, mill, men, BUILDER, empty)).toEqual(
       pins.map((c) => ({ kind: 'unassignBuilder', entity: c.kind === 'assignBuilder' ? c.entity : null })),
     );
   });

@@ -1,13 +1,7 @@
-import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import type { Simulation } from '../../../../src/index.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
-import {
-  breadFocusSite,
-  fishFeedsWomen,
-} from '../../../../src/systems/computer-player/build-order/food-first.js';
-import { HOUSING_WOMEN_PER_FOOD_SOURCE } from '../../../../src/systems/computer-player/build-order/housing.js';
-import { aiContent } from '../../../fixtures/ai-content.js';
+import { breadFocusSite } from '../../../../src/systems/computer-player/build-order/food-first.js';
 import {
   aiSim,
   BAKERY_TYPE,
@@ -19,10 +13,8 @@ import {
   MILL_TYPE,
   placeHq,
   SEAT,
-  spawnMen,
   VIKING,
   WELL_TYPE,
-  WOMAN,
 } from '../support.js';
 
 /** A seat with open sites of a home and of each `types`, placed apart beside the headquarters. */
@@ -66,30 +58,8 @@ describe('breadFocusSite', () => {
   it('leaves the builders free while only other sites are open', () => {
     expect(focusOf(seatWithSites([]))).toBeNull();
   });
-});
 
-/** The fixture's fisher trade, spelled `fisher` since the role is read off the id. */
-const FISHER = 22;
-
-/** A seat of `fishers` flag fishers and `women` women. */
-function fishingSeat(fishers: number, women: number): { sim: Simulation; fed: () => boolean } {
-  const base = aiContent();
-  const content = parseContentSet({ ...base, jobs: [...base.jobs, { typeId: FISHER, id: 'fisher' }] });
-  const sim = aiSim(1, content);
-  placeHq(sim);
-  spawnMen(sim, fishers, FISHER);
-  spawnMen(sim, women, WOMAN);
-  sim.step();
-  return { sim, fed: () => fishFeedsWomen(sim.world, { ...ctxOf(sim), content }, SEAT) };
-}
-
-describe('fishFeedsWomen', () => {
-  it('holds while each fisher carries his share of the women, and lapses past it', () => {
-    expect(fishingSeat(2, 2 * HOUSING_WOMEN_PER_FOOD_SOURCE - 1).fed()).toBe(true);
-    expect(fishingSeat(2, 2 * HOUSING_WOMEN_PER_FOOD_SOURCE).fed()).toBe(false);
-  });
-
-  it('never holds on a seat that does not fish', () => {
-    expect(fishingSeat(0, 1).fed()).toBe(false);
+  it('leaves a well or bakery site alone until the seat owns a mill', () => {
+    expect(focusOf(seatWithSites([BAKERY_TYPE, WELL_TYPE]))).toBeNull();
   });
 });

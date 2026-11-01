@@ -156,8 +156,9 @@ describe('build-order module (houseBuild)', () => {
       else throw new Error(`unexpected ${next.kind}`);
       applyAndFinish(sim, next);
     }
-    // This content stops short of the pottery and the mason hut, so those steps skip. Every line raises its
-    // first new kind of building in priority order (opening, bread with its mill's well before the bakery, brewery,
+    // This content stops short of the pottery and the mason hut, so those steps skip. The bread line's mill,
+    // its well and the bakery go up first, at their unlock. Every other line raises its
+    // first new kind of building in priority order (opening, brewery,
     // tools; the military line waits for its deadline) before any line adds another of a kind the seat
     // has: the opening's homes, five with no archetype dropping the rich seat's fifth. No progression gate
     // is on and every bill is wood, so each place step but a home's raises its chain's top tier outright;
@@ -167,10 +168,10 @@ describe('build-order module (houseBuild)', () => {
     // clock has not come, and holds no other line.
     const place = (type: number): string => `place ${type}`;
     expect(walk).toEqual([
-      place(HOME_TYPE),
       place(MILL_TYPE),
       place(WELL_TYPE),
       place(BAKERY_TOP_TYPE),
+      place(HOME_TYPE),
       place(BREWERY_TYPE),
       place(JOINERY_TYPE),
       place(HOME_TYPE),
@@ -1243,6 +1244,31 @@ describe('build order - independent lines', () => {
     sim.step();
     // One site over the pace only, and only for the earned workshop.
     expect(decide(sim, order, 0, content)).toBeUndefined();
+  });
+
+  it('places an atUnlock step the moment it unlocks, past every site of the pace and the extra one', () => {
+    const content = technologyContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    for (const x of [HQ_X - 10, HQ_X + 10, HQ_X + 20]) {
+      sim.enqueueSetup({
+        kind: 'placeBuilding',
+        buildingType: HOME_TYPE,
+        x,
+        y: HQ_Y,
+        tribe: VIKING,
+        owner: SEAT,
+        underConstruction: true,
+      });
+    }
+    sim.step();
+    const earned = twoLines([MILL_STEP], [{ ...HOME_STEP, count: 5 }]);
+    const atUnlock = twoLines([{ ...MILL_STEP, atUnlock: true }], [{ ...HOME_STEP, count: 5 }]);
+    expect(decide(sim, atUnlock, 0, content)).toBeUndefined();
+    discoverTechnology(sim.world, SEAT, VIKING, 'job', MILLER);
+    // The earned workshop's extra site is taken too: only the atUnlock step still goes up.
+    expect(decide(sim, earned, 0, content)).toBeUndefined();
+    expect(decide(sim, atUnlock, 0, content)).toMatchObject({ buildingType: MILL_TYPE });
   });
 
   /** The fixture's edible good, `food_simple`. */

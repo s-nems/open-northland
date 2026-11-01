@@ -90,7 +90,7 @@ function floorWaits(world: World, ctx: SystemContext, player: number): boolean {
 }
 
 /** Whether the seat's last posture review found a raid on its settlement. */
-function underAttack(world: World, player: number): boolean {
+export function underAttack(world: World, player: number): boolean {
   const carrier = aiControlEntity(world, player);
   const military = carrier === null ? undefined : world.tryGet(carrier, ComputerStrategy)?.military;
   return military?.posture === 'defend' && military.evidence.includes('underAttack');

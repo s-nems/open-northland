@@ -283,7 +283,12 @@ function runBuildOrder(
   const paced = sites.length - homeSites.beyond - ringSites;
   // With the pace's sites taken, only an earned workshop, a home site or a ring tower may still go up.
   let earnedOnly = paced >= siteCap;
-  if (earnedOnly && !homeSites.open && !ringOpen && !earnedSiteOpen(base, profile, paced, siteCap)) return [];
+  // A step placed at its unlock goes up over the pace (`atUnlockCommand` below); a profile's free-site
+  // pause still holds it.
+  const unlockDue = atUnlockPending(world, ctx, order, owned);
+  const paceFull = (): boolean =>
+    earnedOnly && !homeSites.open && !ringOpen && !earnedSiteOpen(base, profile, paced, siteCap);
+  if (!unlockDue && paceFull()) return [];
   if (!earnedOnly && base !== null && waitsOnFreeSite(world, carrier, profile, ctx.tick)) return [];
 
   const tribe = playerPlacementTribes(world, player)?.[0];
@@ -478,6 +483,29 @@ function runBuildOrder(
     advanceFrontier(world, player, line.id, line.steps.length);
     return null;
   };
+  /** The command of the first `atUnlock` step that heads its line and may act, or null. The step goes
+   *  up the moment its building unlocks: over the pace, ahead of the lanes and the turns, and past the
+   *  lookahead on its line's rising sites; a hold, a locked tier or a bill with no source still waits. */
+  const atUnlockCommand = (): PlayerCommand | null => {
+    for (const line of lines) {
+      for (const [step, entry] of line.steps.entries()) {
+        if (isLaneEntry(entry) || statusOf(line.id, step) !== 'unmet') continue;
+        if (!atUnlockStep(entry) || held(entry)) break;
+        if (locked(entry)) {
+          if (lockHolds && !lockPasses(entry)) break;
+          continue;
+        }
+        if (!billSourced(world, ctx, player, entry, madeGoods)) break;
+        const verdict = verdictOf(line, step);
+        if (verdict.kind === 'pass') continue;
+        searches.acting(line.id, step);
+        const command = verdict.placement ?? stepCommand(line, step, entry);
+        if (command !== null) return papered(command, entry);
+        break;
+      }
+    }
+    return null;
+  };
   // Turns, priority deciding within each: a line with no site of its own rising goes before one with,
   // and a line whose next step raises a building the seat has none of before one adding another of a kind
   // it owns, so no line takes every site or runs its later copies while another still lacks its first. A
@@ -503,6 +531,13 @@ function runBuildOrder(
     ready,
   });
   const extraSiteOpen = earnedSiteOpen(base, profile, paced, siteCap);
+  if (unlockDue) {
+    if (!siegeOf().attacked) {
+      const command = atUnlockCommand();
+      if (command !== null) return started(command);
+    }
+    if (paceFull()) return [];
+  }
   // A seat whose food production is missing gives its food turn, and a step already due, the free site
   // ahead of the lanes too, so a tower ring or a home never takes it first; under attack the lines hold.
   const tried = new Set<BuildLineId>();
@@ -597,6 +632,33 @@ function runBuildOrder(
  *  with the brewery, waited out the brewery's eight to ten minute site in the rising turn, and the brewery
  *  brews nothing without honey). */
 const TURN = { defence: 0, due: 1, food: 2, earned: 3, newKind: 4, more: 5, rising: 6 } as const;
+
+/** Whether `entry` goes up at its building's unlock ({@link BuildOrderEntry} `atUnlock`). */
+function atUnlockStep(entry: BuildOrderEntry): entry is Extract<BuildOrderEntry, { kind: 'place' }> {
+  return entry.kind === 'place' && entry.atUnlock === true;
+}
+
+/** Whether some `atUnlock` step of `order` raises a kind the seat owns none of, the cheap test before
+ *  the decision reads the lines' statuses for {@link atUnlockStep} placements. */
+function atUnlockPending(
+  world: World,
+  ctx: SystemContext,
+  order: BuildOrder,
+  owned: readonly Entity[],
+): boolean {
+  let ownedTypes: Set<number> | undefined;
+  for (const line of order.lines) {
+    for (const entry of line.steps) {
+      if (!atUnlockStep(entry)) continue;
+      const type = buildingTypeByContentId(ctx.content, entry.building);
+      if (type === undefined) continue;
+      ownedTypes ??= new Set(owned.map((e) => world.get(e, Building).buildingType));
+      const tiers = countedTiers(ctx.content, type, entry.belowTier);
+      if (![...tiers].some((kind) => ownedTypes?.has(kind) === true)) return true;
+    }
+  }
+  return false;
+}
 
 /** Whether `entry` ranks with the bread chain's first buildings ({@link BuildOrderEntry} `firstRank`). */
 function firstRankStep(entry: BuildOrderEntry): boolean {

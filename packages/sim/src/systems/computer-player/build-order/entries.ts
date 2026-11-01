@@ -68,7 +68,8 @@ export type BuildOrderEntry =
    *  farms. `core` gives the step an earned workshop's turn while no food turn waits (`./index.ts`).
    *  `firstRank` keeps the turn of a first new kind, or the earned one, beside a rising site of its own
    *  line and when the seat owns a building of its kind, so it goes up with the bread chain's first
-   *  buildings.
+   *  buildings. `atUnlock` places the entry the moment its building unlocks, over the site pace and ahead
+   *  of the lanes and the other lines, unless the seat is attacked (`./index.ts`).
    *  `lockPasses` passes over the entry while its building's tier is locked instead of holding its line. */
   | {
       readonly kind: 'place';
@@ -88,6 +89,7 @@ export type BuildOrderEntry =
       readonly amongHomes?: true;
       readonly core?: true;
       readonly firstRank?: true;
+      readonly atUnlock?: true;
       readonly lockPasses?: true;
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
@@ -196,6 +198,14 @@ function wellBeside(building: string, cap: number): Extract<BuildOrderEntry, { k
     unlessWithin: { building, radius: WELL_REACH_NODES },
   };
 }
+
+/** The mason hut, by the stone its gatherers work. */
+const MASON_HUT: Extract<BuildOrderEntry, { kind: 'place' }> = {
+  kind: 'place',
+  building: 'work_mason_hut_00',
+  count: 1,
+  near: [{ kind: 'resource', good: 'stone' }],
+};
 
 /** The wells the seat may own when the bread line raises one beside its mill (authored): the mill's own,
  *  and one more the seat may own already out of the mill's reach. */
@@ -493,12 +503,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
         { kind: 'place', building: 'work_pottery_00', count: 1, near: [{ kind: 'resource', good: 'mud' }] },
         // The mason before the school: the school's bill wants his pillars beside the potter's bricks, and
         // the bakery and the animal farm want them too, so the school's wait on the pottery never holds him.
-        {
-          kind: 'place',
-          building: 'work_mason_hut_00',
-          count: 1,
-          near: [{ kind: 'resource', good: 'stone' }],
-        },
+        MASON_HUT,
         // Owner ruling: the school once the pottery stands, never before it, a core building, so every
         // trade discovered from here on is taught there rather than earned again by work. It has no
         // production ties, so it stands among the homes and leaves the farm's ground to its chain.
@@ -523,17 +528,22 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
       id: 'bread',
       steps: [
         GRAIN_FARM,
+        // Owner ruling: the mill, and then the bakery, goes up the moment it unlocks, on every map.
         {
           kind: 'place',
           building: 'work_mill_00',
           count: 1,
           near: [{ kind: 'building', id: 'work_farm_00' }],
+          atUnlock: true,
         },
         // Owner ruling: bread is the food the seat runs short of first, and little food means few children,
         // so one bakery follows the mill at once. Its well goes up first, beside the mill, while the baker
         // is still being earned, so it stands when the bakery does; a mill with a well in reach, or with no
         // room for one, passes it over. The cap counts a far well the seat may already own.
-        wellBeside('work_mill_00', OPENING_WELLS_CAP),
+        { ...wellBeside('work_mill_00', OPENING_WELLS_CAP), atUnlock: true },
+        // The bakery's bill takes a pillar, so the mason hut goes up behind the mill too; it unlocks with
+        // the mason's trade, which the bakery's unlock also asks, and is passed over while that is locked.
+        { ...MASON_HUT, atUnlock: true, lockPasses: true },
         {
           kind: 'place',
           building: 'work_bakery_00',
@@ -542,6 +552,7 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
             { kind: 'building', id: 'work_mill_00' },
             { kind: 'building', id: 'work_well_00' },
           ],
+          atUnlock: true,
         },
         // A seat dressing its army in tunics only (`./seat-order.ts`).
         SECOND_ANIMAL_FARM,
