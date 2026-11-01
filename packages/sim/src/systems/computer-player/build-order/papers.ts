@@ -149,7 +149,11 @@ export function* paperedSteps(
           break;
         }
       }
-      if (covered === null) break;
+      // A `lockPasses` step never holds its line, so an unpapered one leaves the walk going.
+      if (covered === null) {
+        if (entry.lockPasses === true) continue;
+        break;
+      }
       yield { line, step, entry, ...covered };
     }
   }

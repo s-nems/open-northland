@@ -83,4 +83,11 @@ describe('a computer seat spends the building papers it holds', () => {
     expect(placed?.buildingType).not.toBe(BAKERY_TYPE);
     expect(placed?.paper).toBeUndefined();
   });
+
+  it('walks past an unpapered step its line passes over while locked', () => {
+    const paper: Paper = { kind: 'placeHouse', param: BAKERY_TYPE };
+    const placed = placement([{ ...HOME, lockPasses: true }, BAKERY], [paper]);
+    expect(placed?.buildingType).toBe(BAKERY_TYPE);
+    expect(placed?.paper).toEqual(paper);
+  });
 });
