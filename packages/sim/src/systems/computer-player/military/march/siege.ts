@@ -59,13 +59,13 @@ export function siegeOrders(
 }
 
 /** A building the catapults may drive up to, with the continent its door stands on. */
-export interface SiegeTarget {
+interface SiegeTarget {
   readonly tower: Entity;
   readonly continent: number;
 }
 
 /** `vehicle` on the target nearest it whose door stands on its own continent, or null when none does. */
-export function catapultOnNearest(
+function catapultOnNearest(
   world: World,
   terrain: TerrainGraph,
   vehicle: Entity,
@@ -103,7 +103,7 @@ function siegeableTowers(
 }
 
 /** Those of `buildings` whose door stands on the continent of one of `catapults`, in their order. */
-export function onCatapultContinents(
+function onCatapultContinents(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,

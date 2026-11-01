@@ -71,9 +71,7 @@ export type ReachableStockUnits = Pick<ReachableStock, 'units'>;
 /**
  * The stock the seat's arming and dressing errands can fetch: what the stores reachable from its barracks
  * door lend ({@link reachableStock}), the reach its draft judges its classes from; null without a barracks
- * or a map. On magiczny_las three seats' bow recruits waited unarmed for over fifteen game minutes beside
- * a dozen vetoed short bows, while the seat stock counted six long bows none of them could reach, and
- * armed men stood undressed while their orders went for a plate lying on a heap past the network.
+ * or a map. Errands reach only stores inside the barracks door's signpost network.
  */
 export function seatArmsStock(world: World, ctx: SystemContext, player: number): ReachableStockUnits | null {
   const terrain = ctx.terrain;

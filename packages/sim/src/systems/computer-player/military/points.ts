@@ -42,7 +42,7 @@ const NON_SOLDIER_CLASSES: ReadonlySet<number> = new Set([
 
 /** Scales attack times survival into points (authored): a bare man with a viking short sword at full
  *  hitpoints scores about 17, one in chain with a long sword about 140. */
-export const POINTS_DIVISOR = 100;
+const POINTS_DIVISOR = 100;
 
 const PERCENT = 100;
 
@@ -119,7 +119,7 @@ function tableOf(content: ContentSet): PointsTable {
 
 /** `weapon`'s attack: its raw damage ranked within its class against the strongest class's top. A weapon
  *  of a class no soldier carries (fists, claws, siege) keeps its raw damage. Memoized per content. */
-export function weaponAttackScore(content: ContentSet, weapon: WeaponType): number {
+function weaponAttackScore(content: ContentSet, weapon: WeaponType): number {
   const table = tableOf(content);
   const held = table.attack.get(weapon);
   if (held !== undefined) return held;
@@ -137,7 +137,7 @@ function blowTaken(weapon: WeaponType, material: number, blocking: number): numb
 
 /** The damage per blow a man of armour `material` and `blocking` takes, averaged over every soldier's
  *  weapon in the content, at least 1. Memoized per content. */
-export function armourTakenScore(content: ContentSet, material: number, blocking: number): number {
+function armourTakenScore(content: ContentSet, material: number, blocking: number): number {
   const table = tableOf(content);
   const key = material * BLOCKING_KEY_SPAN + blocking;
   const held = table.taken.get(key);
@@ -172,7 +172,7 @@ export function fighterPoints(
 }
 
 /** What `e` carries into a fight: his amulets, his hitpoints now and his healing potions. */
-export function fighterBuffsOf(world: World, content: ContentSet, e: Entity): FighterBuffs {
+function fighterBuffsOf(world: World, content: ContentSet, e: Entity): FighterBuffs {
   const effects = carriedCombatEffects(world, content, e);
   let dealtPct = effects.damageDealtPct ?? PERCENT;
   const critical = effects.criticalHit;
@@ -221,6 +221,9 @@ function hasHitpoints(world: World, e: Entity): boolean {
 
 const EVERY_FIGHTER = (): boolean => true;
 
+/** A posted man's weight when men are counted one to one. */
+export const COUNTED_ONCE = 1;
+
 /** A body of fighters: its head count and its points. */
 export interface ArmyPoints {
   readonly men: number;
@@ -228,9 +231,9 @@ export interface ArmyPoints {
 }
 
 /**
- * `player`'s live fighters and their points, tower garrisons and men aboard a vehicle included, each man holding a post weighed
- * `postedWeight` times (`isPosted`), only those `counts` admits. The live read, blind to the fog. Costs
- * `player`'s fighters.
+ * `player`'s live fighters and their points, tower garrisons and men aboard a vehicle (who have no
+ * `Position`) included, each man holding a post weighed `postedWeight` times (`isPosted`), only those
+ * `counts` admits. The live read, blind to the fog. Costs `player`'s fighters.
  */
 export function armyPointsOf(
   world: World,
@@ -246,7 +249,7 @@ export function armyPointsOf(
     if (!hasHitpoints(world, e) || !counts(e)) continue;
     men++;
     const value = unitPoints(world, ctx, e);
-    points += postedWeight !== 1 && isPosted(e) ? value * postedWeight : value;
+    points += postedWeight !== COUNTED_ONCE && isPosted(e) ? value * postedWeight : value;
   }
   return { men, points };
 }

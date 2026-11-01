@@ -14,12 +14,16 @@ import {
 } from '../knowledge/intel/index.js';
 import { armyWearsArmour, isFitSoldier } from './fit.js';
 import { waveBandAt } from './plan.js';
-import { type ArmyPoints, armyPointsOf, isLiveFighter, unitPoints } from './points.js';
+import { type ArmyPoints, armyPointsOf, COUNTED_ONCE, isLiveFighter, unitPoints } from './points.js';
 
 /** `player`'s own fighters and points, tower garrisons counted once: the army the seat commands, its fit
  *  soldiers alone ({@link isFitSoldier}). */
-export function ownArmyPoints(world: World, ctx: SystemContext, player: number): ArmyPoints {
-  const wearsArmour = armyWearsArmour(world, ctx, player);
+export function ownArmyPoints(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  wearsArmour: boolean = armyWearsArmour(world, ctx, player),
+): ArmyPoints {
   return armyPointsOf(world, ctx, player, COUNTED_ONCE, NEVER_POSTED, (e) =>
     isFitSoldier(world, ctx, e, wearsArmour),
   );
@@ -91,17 +95,17 @@ export function strongestBelievedEnemy(
   return { men: waveBandAt(ctx.tick - seatPeaceEndTick(world, seat)).min, points: null };
 }
 
+export { COUNTED_ONCE } from './points.js';
+
 const NO_ARMY: BelievedArmy = { men: 0, points: 0 };
 const NOBODY: ReadonlySet<number> = new Set();
 
-/** A posted man's weight when men are counted one to one. */
-export const COUNTED_ONCE = 1;
 const NEVER_POSTED = (): boolean => false;
 
 /**
  * `owner`'s army as `seat` knows it, each man holding a post weighed `postedWeight`: the larger of those in
- * sight now and the remembered peak with the posts it saw manned; null when it has neither. Costs
- * `owner`'s fighters and the seat's memory.
+ * sight now (a man aboard a vehicle has no `Position` and is never in sight) and the remembered peak with
+ * the posts it saw manned; null when it has neither. Costs `owner`'s fighters and the seat's memory.
  */
 function knownArmy(
   world: World,
