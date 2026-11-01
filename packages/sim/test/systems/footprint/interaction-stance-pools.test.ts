@@ -12,6 +12,7 @@ import type { Entity } from '../../../src/ecs/world.js';
 import { fx, ONE, positionOfNode } from '../../../src/index.js';
 import type { NodeId } from '../../../src/nav/terrain/index.js';
 import {
+  forEachResourceStanceBound,
   positionedStanceCells,
   resourceStanceCells,
   resourceWorkCell,
@@ -27,6 +28,27 @@ import { CLAY, STONE, STONE_ATOMIC, TEST_HUT, VIKING } from './resource-footprin
 import { ctxOf, mappedSim, placeGroundDrop, placeResource, terrainOf } from './resource-footprint/support.js';
 
 describe('interaction stance pools', () => {
+  it('lists a resource stance pool inside its static stance bound under any overlay', () => {
+    const sim = mappedSim();
+    const terrain = terrainOf(sim);
+    const resource = placeResource(sim, STONE, STONE_ATOMIC, 8, 4);
+    const bound = new Set<NodeId>();
+    forEachResourceStanceBound(sim.world, terrain, resource, (cell) => bound.add(cell));
+    const insideBound = () =>
+      resourceStanceCells(sim.world, ctxOf(sim), terrain, resource).every((cell) => bound.has(cell));
+    expect(resourceStanceCells(sim.world, ctxOf(sim), terrain, resource).length).toBeGreaterThan(0);
+    expect(insideBound()).toBe(true);
+    for (const [x, y] of [
+      [7, 4],
+      [9, 4],
+      [8, 3],
+      [8, 5],
+    ] as const) {
+      placeResource(sim, STONE, STONE_ATOMIC, x, y);
+      expect(insideBound()).toBe(true);
+    }
+  });
+
   it('rechecks moved or covered positioned targets', () => {
     const sim = mappedSim();
     const terrain = terrainOf(sim);

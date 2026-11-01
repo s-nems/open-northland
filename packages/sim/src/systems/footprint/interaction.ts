@@ -405,6 +405,34 @@ function fillResourceApproachCells(
   }
 }
 
+/**
+ * Visit every cell {@link resourceStanceCells} can ever list for `resource`, whatever the structure
+ * overlays: its walkable work cells and the anchor's walkable neighbours, possibly twice. A pure function
+ * of the static terrain and the resource's Position and footprint.
+ */
+export function forEachResourceStanceBound(
+  world: World,
+  terrain: TerrainGraph,
+  resource: Entity,
+  visit: (cell: NodeId) => void,
+): void {
+  const p = world.get(resource, Position);
+  const ax = nodeHxOfPosition(p.x, p.y);
+  const ay = nodeHyOfPosition(p.x, p.y);
+  const cells = footprintCellsOf(world, resource).work;
+  for (let i = 0; i < cells.length; i++) {
+    const c = cells[i];
+    if (c === undefined) continue;
+    const x = ax + footprintCellDx(ay, c);
+    const y = ay + c.dy;
+    if (!terrain.inBounds(x, y)) continue;
+    const cell = terrain.nodeAt(x, y);
+    if (terrain.isWalkable(cell)) visit(cell);
+  }
+  const count = terrain.walkableNeighboursInto(terrain.nodeAtClamped(ax, ay), neighbourScratch);
+  for (let n = 0; n < count; n++) visit(neighbourScratch[n] as NodeId);
+}
+
 /** Push `anchor`'s walkable lattice neighbours outside `resources`, in `TerrainGraph.walkableNeighbours`
  *  order. */
 function pushFreeNeighbours(

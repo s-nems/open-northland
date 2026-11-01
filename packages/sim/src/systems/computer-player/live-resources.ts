@@ -15,7 +15,7 @@ import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
 import { routeRegions } from '../footprint/index.js';
-import { resourceStanceCells } from '../footprint/interaction.js';
+import { forEachResourceStanceBound, resourceStanceCells } from '../footprint/interaction.js';
 import { needSubjectOf, settlerMeetsNeed } from '../progression/index.js';
 import { interactionCell, jobAtomics } from '../settlers/targets/index.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
@@ -103,7 +103,8 @@ export function reachableResourceTest(
  * Whether a resource's work cell lies on `component` whatever origin picks it, or null when the pick
  * decides. The work cell is one of the resource's stance cells, or its anchor when none can be entered
  * (`resourceWorkCell`), so a pool and anchor wholly on or wholly off the component settle the verdict
- * without the nearest-stance pick and its pocket floods.
+ * without the nearest-stance pick and its pocket floods. The static {@link stanceBoundOf} settles most
+ * resources before the live pool is read.
  */
 function stanceComponentVerdict(
   world: World,
@@ -113,11 +114,15 @@ function stanceComponentVerdict(
   component: number,
 ): boolean | null {
   // A building's door is its interaction cell, and the pick below is the resource rule alone.
-  if (world.has(e, Building) || !world.has(e, Resource)) return null;
-  const p = world.tryGet(e, Position);
-  if (p === undefined) return null;
-  const anchor = terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y));
-  const anchorOn = terrain.componentOf(anchor) === component;
+  if (world.has(e, Building) || !world.has(e, Resource) || !world.has(e, Position)) return null;
+  const bound = stanceBoundOf(world, terrain, e);
+  const anchorOn = bound.anchor === component;
+  // The pool is a subset of the bound, so a bound wholly on or off the component settles it.
+  if (bound.cells === EMPTY_BOUND) return anchorOn;
+  if (bound.cells !== MIXED_BOUND) {
+    const boundOn = bound.cells === component;
+    if (anchorOn === boundOn) return anchorOn;
+  }
   let anyOn = false;
   let allOn = true;
   for (const cell of resourceStanceCells(world, ctx, terrain, e)) {
@@ -127,6 +132,59 @@ function stanceComponentVerdict(
   if (anchorOn && allOn) return true;
   if (!anchorOn && !anyOn) return false;
   return null;
+}
+
+/** {@link StanceBound.cells} of a resource whose stance bound is empty. */
+const EMPTY_BOUND = -2;
+/** {@link StanceBound.cells} of a resource whose stance bound spans several components. */
+const MIXED_BOUND = -3;
+
+/** The static components around a resource: its anchor's, and the one every cell of its stance bound
+ *  (`forEachResourceStanceBound`) shares, or {@link EMPTY_BOUND} / {@link MIXED_BOUND}. */
+interface StanceBound {
+  position: number | undefined;
+  footprint: number | undefined;
+  anchor: number;
+  cells: number;
+}
+
+/** Resources' bounds kept before the cache is dropped wholesale, so the ids of felled resources cannot
+ *  accumulate without bound (a memory bound only: a dropped bound is re-derived). */
+const MAX_HELD_STANCE_BOUNDS = 16384;
+
+/** Derived read state per world and terrain, each bound keyed on the resource's Position and
+ *  ResourceFootprint revisions, the only world state it reads. Revisions count per world, so the cache
+ *  must not be shared between worlds. Never hashed or saved. */
+const stanceBoundsByWorld = new WeakMap<
+  World,
+  { readonly terrain: TerrainGraph; readonly bounds: Map<Entity, StanceBound> }
+>();
+
+function stanceBoundOf(world: World, terrain: TerrainGraph, e: Entity): StanceBound {
+  let held = stanceBoundsByWorld.get(world);
+  if (held === undefined || held.terrain !== terrain) {
+    held = { terrain, bounds: new Map() };
+    stanceBoundsByWorld.set(world, held);
+  }
+  const { bounds } = held;
+  const position = world.revisionOf(e, Position);
+  const footprint = world.revisionOf(e, ResourceFootprint);
+  const kept = bounds.get(e);
+  if (kept !== undefined && kept.position === position && kept.footprint === footprint) return kept;
+  if (kept === undefined && bounds.size >= MAX_HELD_STANCE_BOUNDS) bounds.clear();
+  const p = world.get(e, Position);
+  const anchor = terrain.componentOf(
+    terrain.nodeAtClamped(nodeHxOfPosition(p.x, p.y), nodeHyOfPosition(p.x, p.y)),
+  );
+  let cells = EMPTY_BOUND;
+  forEachResourceStanceBound(world, terrain, e, (cell) => {
+    const label = terrain.componentOf(cell);
+    if (cells === EMPTY_BOUND) cells = label;
+    else if (cells !== label) cells = MIXED_BOUND;
+  });
+  const bound: StanceBound = { position, footprint, anchor, cells };
+  bounds.set(e, bound);
+  return bound;
 }
 
 /**
