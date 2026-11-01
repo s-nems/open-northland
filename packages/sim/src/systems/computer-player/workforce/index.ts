@@ -30,7 +30,7 @@ import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { seatBaseOf } from '../base.js';
-import { breadFocusSite } from '../build-order/food-first.js';
+import { breadFocusSite, fishFeedsWomen } from '../build-order/food-first.js';
 import { type BuildOrder, lineStatuses, seatBuildOrder, seatTuning } from '../build-order/index.js';
 import { type ComputerProfile, computerProfileOf } from '../difficulty.js';
 import type { ComputerModule } from '../index.js';
@@ -267,8 +267,9 @@ function runWorkforce(
     commands: [...core.commands, ...rest.commands],
     reserved: [...core.reserved, ...rest.reserved],
   };
-  // The bread chain's next site takes the reserve's builders ahead of every other site.
-  const focus = breadFocusSite(world, ctx, owned);
+  // The bread chain's next site takes the reserve's builders ahead of every other site, unless the catch
+  // already feeds the women.
+  const focus = fishFeedsWomen(world, ctx, player) ? null : breadFocusSite(world, ctx, owned);
   const focusCrew =
     focus === null
       ? []

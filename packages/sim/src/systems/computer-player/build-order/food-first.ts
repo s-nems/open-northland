@@ -6,9 +6,11 @@ import { buildingTypeByContentId, tiersAtOrAbove } from '../../ai-shared/content
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isServedConstructionSite } from '../../settlers/targets/index.js';
+import { femaleDemand } from '../female-stock.js';
+import { flagFishers } from '../workforce/fisher.js';
 import { inFoodChain } from '../workforce/food.js';
 import type { BuildOrderEntry } from './entries.js';
-import { housingStage } from './housing.js';
+import { HOUSING_WOMEN_PER_FOOD_SOURCE, housingStage } from './housing.js';
 
 /**
  * Whether the seat's food production is missing (owner ruling: food production comes before the population,
@@ -51,6 +53,18 @@ export function breadChainWorkshop(ctx: SystemContext, type: BuildingType): bool
 }
 
 const BREAD_CHAIN_WORKSHOPS: readonly string[] = ['work_mill_00', 'work_bakery_00'];
+
+/**
+ * Whether the seat's flag fishers feed its women and the daughters booked for them, each carrying
+ * {@link HOUSING_WOMEN_PER_FOOD_SOURCE}. Bread is the way out of a lean start because the women start
+ * children only on steady food; where the catch already is that food, the bread chain's sites take no
+ * builders from the homes (authored: on arabskie_wyspy_wolna_gra_mieszana, seed 11, whose seats fish
+ * with two men all game, the pinned crews held the pottery and the home upgrades back about ten
+ * minutes, and the seats ended peace 40 settlers short).
+ */
+export function fishFeedsWomen(world: World, ctx: SystemContext, player: number): boolean {
+  return femaleDemand(world, ctx, player) < flagFishers(world, ctx, player) * HOUSING_WOMEN_PER_FOOD_SOURCE;
+}
 
 /**
  * The construction site every builder of the seat works ahead of its other sites (owner ruling: when the

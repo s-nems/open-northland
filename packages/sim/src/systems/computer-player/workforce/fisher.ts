@@ -145,9 +145,15 @@ export function fishingPlan(
  *  which can lie beyond every store's fishing trip, so only a hired fisher shows the seat fishes. A far
  *  fisher employed at a store walks every catch home, a trickle that does not make the seat food-rich. */
 export function seatFishes(world: World, ctx: SystemContext, player: number): boolean {
-  return ownedSettlers(world, player).some(
-    (e) => isFisherJob(ctx.content, world.get(e, Settler).jobType) && !world.has(e, JobAssignment),
-  );
+  return flagFishers(world, ctx, player) > 0;
+}
+
+/** How many of the seat's men work as flag fishers ({@link seatFishes}). */
+export function flagFishers(world: World, ctx: SystemContext, player: number): number {
+  let fishers = 0;
+  for (const e of ownedSettlers(world, player))
+    if (isFisherJob(ctx.content, world.get(e, Settler).jobType) && !world.has(e, JobAssignment)) fishers++;
+  return fishers;
 }
 
 /**
