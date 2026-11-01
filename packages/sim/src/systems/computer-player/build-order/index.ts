@@ -671,7 +671,8 @@ function deadlineStep(entry: BuildOrderEntry): boolean {
 }
 
 function waitsOnDeadline(hold: StepHold): boolean {
-  return hold.kind === 'deadline' || (hold.kind === 'all' && hold.holds.some(waitsOnDeadline));
+  if (hold.kind === 'all' || hold.kind === 'any') return hold.holds.some(waitsOnDeadline);
+  return hold.kind === 'deadline';
 }
 
 /** What the food rule asks of {@link turnOrder}: whether the seat's food fails ({@link seatFoodFailing}),

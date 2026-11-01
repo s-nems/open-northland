@@ -1,3 +1,4 @@
+import type { BuildLineId, StepKey } from '../../../components/ai/computer-player.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { ComputerProfile } from '../difficulty.js';
 import {
@@ -470,21 +471,7 @@ const MUSHROOMS_STOCKED = 60;
  *  the tile and marble tiers anyway, which stand around then on magiczny_las. */
 export const GOLD_FROM_TICKS = IRON_CLIMB_FROM_TICKS;
 
-/** The build order's independent lines (authored). Each is an ordered list of steps: a step waits for the
- *  step before it in its line, never for another line. */
-export type BuildLineId =
-  | 'opening'
-  | 'homes'
-  | 'materials'
-  | 'bread'
-  | 'brewery'
-  | 'clothing'
-  | 'tools'
-  | 'weapons'
-  | 'armory'
-  | 'military'
-  | 'healing'
-  | 'coins';
+export type { BuildLineId, StepKey };
 
 export interface BuildLine {
   readonly id: BuildLineId;
@@ -497,9 +484,6 @@ export interface BuildOrder {
   readonly lines: readonly BuildLine[];
   readonly priority: readonly BuildLineId[];
 }
-
-/** A step's stable identity in saved and per-decision state: its line and its index in that line. */
-export type StepKey = `${BuildLineId}:${number}`;
 
 export function stepKey(line: BuildLineId, step: number): StepKey {
   return `${line}:${step}`;

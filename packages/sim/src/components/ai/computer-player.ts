@@ -1,7 +1,25 @@
 import { defineComponent, type Entity } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
-import type { BuildLineId, StepKey } from '../../systems/computer-player/build-order/entries.js';
 import type { AttackLeash } from '../combat.js';
+
+/** The build order's independent lines (authored, `systems/computer-player/build-order/entries.ts`). Each is
+ *  an ordered list of steps: a step waits for the step before it in its line, never for another line. */
+export type BuildLineId =
+  | 'opening'
+  | 'homes'
+  | 'materials'
+  | 'bread'
+  | 'brewery'
+  | 'clothing'
+  | 'tools'
+  | 'weapons'
+  | 'armory'
+  | 'military'
+  | 'healing'
+  | 'coins';
+
+/** A step's stable identity in saved and per-decision state: its line and its index in that line. */
+export type StepKey = `${BuildLineId}:${number}`;
 
 export interface MusterPlanState {
   /** Soldiers to gather before the wave marches. */
