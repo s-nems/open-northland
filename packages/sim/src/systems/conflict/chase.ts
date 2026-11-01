@@ -76,9 +76,10 @@ const CONTACT_SLOT_CHOICES = 6;
 export const REPATH_CADENCE = 8;
 
 /**
- * How long a machine seat's attack-move rests its aggression after a refused chase, unless a wall falls
- * first (`endMachineMarchRests`): its refusals are walls it plans as closed, which stand far longer
- * than a chase cadence. A human's march rests the cadence alone. Authored.
+ * How long a machine seat's attack-move rests its aggression after a refused chase it found no wall to
+ * break through, unless a wall falls first (`endMachineMarchRests`). Such refusals are mostly walls it
+ * plans as closed, which stand far longer than a chase cadence; one across water or a ring of bodies rests
+ * as long, an approximation chosen for cost. A human's march rests the cadence alone. Authored.
  */
 export const MACHINE_MARCH_REST_TICKS = 15 * REPATH_CADENCE;
 

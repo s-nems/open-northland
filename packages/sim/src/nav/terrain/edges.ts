@@ -232,8 +232,9 @@ export abstract class TerrainEdges extends TerrainLattice {
 
   /**
    * Per node, the edges a mover of `traversal` may step along over static ground: the neighbour is in
-   * bounds, the ground lane joins the two and the mover may stand on the neighbour. One bit per edge in
-   * {@link EDGE_BITS} order; built on the first ask, since the terrain never changes.
+   * bounds, the ground lane joins the two and the mover may stand on the neighbour. Bit `1 << i` stands for
+   * the `i`th edge of the canonical neighbour order, as the lane's readers test it; built on the first ask,
+   * since the terrain never changes.
    */
   private stepLane(traversal: Traversal): Uint8Array {
     const held = traversal === 'land' ? this.landSteps : this.waterSteps;
@@ -251,7 +252,7 @@ export abstract class TerrainEdges extends TerrainLattice {
           const nx = x + (dxs[edge] ?? 0);
           const ny = y + (EDGE_DY[edge] ?? 0);
           if ((edges & bit) === 0 || !this.inBounds(nx, ny)) continue;
-          if (((enter[this.idAt(nx, ny)] ?? 0) & ENTER_BIT) !== 0) open |= bit;
+          if (((enter[this.idAt(nx, ny)] ?? 0) & ENTER_BIT) !== 0) open |= 1 << edge;
         }
         lane[node] = open;
       }
