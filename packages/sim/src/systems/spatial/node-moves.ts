@@ -9,6 +9,10 @@ export interface NodeMoveFeed {
   readonly pending: boolean;
   drain(consume: (entity: Entity) => void): boolean;
   peek(visit: (entity: Entity) => void): boolean;
+  /** The node `e` was held at by the last pump, {@link NO_NODE} in `hx` for no Position: inside a
+   *  {@link drain}'s consumer, the node `e` reads now, so the consumer need not re-derive it. */
+  heldHx(e: Entity): number;
+  heldHy(e: Entity): number;
 }
 
 /**
@@ -46,6 +50,14 @@ class NodeMoves {
     // start or end a column step without a Position write.
     this.writes = world.watchChanges([Position, PathFollow, PathRoute], [Position, PathFollow, PathRoute]);
     this.resync();
+  }
+
+  heldHx(e: Entity): number {
+    return this.nodes.hx(e);
+  }
+
+  heldHy(e: Entity): number {
+    return this.nodes.hy(e);
   }
 
   subscribe(): NodeMoveFeed {
@@ -111,6 +123,14 @@ class Subscription implements NodeMoveFeed {
   peek(visit: (entity: Entity) => void): boolean {
     this.moves.pump();
     return this.feed.peek(visit);
+  }
+
+  heldHx(e: Entity): number {
+    return this.moves.heldHx(e);
+  }
+
+  heldHy(e: Entity): number {
+    return this.moves.heldHy(e);
   }
 }
 

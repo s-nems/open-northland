@@ -18,17 +18,26 @@ class SettlerNodes {
   /** Each settler's bucketed node, {@link NO_NODE} for an entity not bucketed. */
   private readonly nodes = new HeldNodes();
   readonly buckets: NodeBuckets;
-  /** The drains' consumer, a field so the feeds call it directly. */
+  /** The membership drain's consumer, a field so the feed calls it directly. */
   private readonly resync = (e: Entity): void => {
     const world = this.world;
     const p = world.has(e, Settler) ? world.tryGet(e, Position) : undefined;
-    let hx = NO_NODE;
-    let hy = 0;
-    if (p !== undefined) {
-      const node = moverNode(world, e, p);
-      hx = node.hx;
-      hy = node.hy;
+    if (p === undefined) {
+      this.bucket(e, NO_NODE, 0);
+      return;
     }
+    const node = moverNode(world, e, p);
+    this.bucket(e, node.hx, node.hy);
+  };
+  /** The move drain's consumer, which reads the node the move feed already derived. */
+  private readonly follow = (e: Entity): void => {
+    if (this.world.has(e, Settler)) this.bucket(e, this.moves.heldHx(e), this.moves.heldHy(e));
+    else this.bucket(e, NO_NODE, 0);
+  };
+
+  /** Bucket `e` at `(hx, hy)`, or drop it for {@link NO_NODE}. */
+  private bucket(e: Entity, hx: number, hy: number): void {
+    const world = this.world;
     const nodes = this.nodes;
     const heldX = nodes.hx(e);
     const heldY = nodes.hy(e);
@@ -36,7 +45,7 @@ class SettlerNodes {
     if (heldX !== NO_NODE) this.buckets.remove(e, heldX, heldY);
     nodes.set(e, hx, hy, world.nextEntityId);
     if (hx !== NO_NODE) this.buckets.insert(e, hx, hy);
-  };
+  }
 
   constructor(private readonly world: World) {
     this.membership = world.watchChanges([Settler, Position], []);
@@ -47,7 +56,7 @@ class SettlerNodes {
 
   catchUp(): NodeBuckets {
     const membershipLost = this.membership.drain(this.resync);
-    const movesLost = this.moves.drain(this.resync);
+    const movesLost = this.moves.drain(this.follow);
     if (membershipLost || movesLost) this.rebuild();
     return this.buckets;
   }

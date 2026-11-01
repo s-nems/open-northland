@@ -104,10 +104,10 @@ export class ChatCandidates {
   /** Runs after the membership and job changes, so only a held entity can be a candidate. */
   private move(e: Entity): void {
     if (this.nodes.hx(e) === NO_NODE) return;
-    const p = this.world.tryGet(e, Position);
+    const hx = this.moves.heldHx(e);
     // A removal after the write, which the membership feed carries.
-    if (p === undefined) return;
-    this.holdAt(e, p);
+    if (hx === NO_NODE) return;
+    this.hold(e, hx, this.moves.heldHy(e));
   }
 
   private holdAt(e: Entity, p: { readonly x: Fixed; readonly y: Fixed }): void {

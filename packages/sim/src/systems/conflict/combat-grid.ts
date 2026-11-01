@@ -526,7 +526,7 @@ export class CombatGrid {
         // Engagement cannot re-class keeps its entry.
         if (this.units[e]?.wild !== null) this.placeUnit(world, tick, e);
       }) ||
-      this.moveFeed.drain((e) => this.moveUnit(world, e));
+      this.moveFeed.drain((e) => this.moveUnit(e));
     if (lost) {
       this.unitFeed.drain(() => {});
       this.wildFeed.drain(() => {});
@@ -580,13 +580,12 @@ export class CombatGrid {
 
   /** Follow held unit `e` to the node it now reads (`moverNode`); the membership feed, replayed first,
    *  has already dropped one that left the layer. */
-  private moveUnit(world: World, e: Entity): void {
+  private moveUnit(e: Entity): void {
     const held = this.units[e];
     if (held === undefined) return;
-    // `entityNode`'s clamped coordinates, read without minting the id and dividing it apart again.
-    const node = moverNode(world, e, world.get(e, Position));
-    const x = this.terrain.clampX(node.hx);
-    const y = this.terrain.clampY(node.hy);
+    // `entityNode`'s clamped coordinates, read off the node the move feed already derived.
+    const x = this.terrain.clampX(this.moveFeed.heldHx(e));
+    const y = this.terrain.clampY(this.moveFeed.heldHy(e));
     const units = held.cell.units;
     if (units.x[held.slot] === x && units.y[held.slot] === y) return;
     const cell = this.cellFor(x, y);
