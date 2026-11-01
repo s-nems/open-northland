@@ -269,10 +269,9 @@ export function farGroundExtras(
 /**
  * The goods whose planned posts a seat of each side fills ahead of the builder reserve, by stable content
  * id (owner ruling: an iron-rich seat dresses its army in plate and chain from four to six upper smithies).
- * On magiczny_las, seed 7, such seats held one iron gatherer each to minute 90 while eight to twelve smiths
- * stood, since the consumers' posts waited behind the reserve as best-effort top-ups, and those take only
- * spare men who have already earned iron's dig experience. As minimum posts they take a
- * collect-anything gatherer, a qualified spare or a stone or clay veteran, one per decision, and the
+ * Behind the reserve those posts starve, since a best-effort top-up takes only spare men already practised
+ * in the good (authored, from skirmish observation). As minimum posts they take a collect-anything
+ * gatherer, a qualified spare or a stone or clay veteran, one per decision, and the
  * {@link SHORTAGE_BUILDER_FLOOR} still keeps the builders. The shortage posts stay best-effort.
  */
 export const FED_AHEAD_GOOD_IDS_BY_SIDE: Readonly<Partial<Record<EconomicSide, readonly string[]>>> = {
@@ -294,9 +293,8 @@ export function fedAhead(world: World, player: number, goodId: string): boolean 
 /**
  * The units of `goodType` the input shelves of the seat's built workshops consuming it hold when full. The
  * seat's stock counts what lies on those shelves, so for a {@link FED_AHEAD_GOOD_IDS_BY_SIDE} good they are
- * left out of the surplus its posts read: on magiczny_las, seed 7, four upper smithies with a joinery and a
- * mint shelve some 70 iron, and a stock of 30-40 there meant empty stores, yet it sat over the comfort line
- * of one shelf and dropped the smithies' gatherer posts.
+ * left out of the surplus its posts read: full shelves with empty stores would otherwise read as a glut and
+ * drop the consumers' gatherer posts.
  */
 function consumerShelfUnits(world: World, ctx: SystemContext, player: number, goodType: number): number {
   const index = contentIndex(ctx.content);
