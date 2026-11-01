@@ -176,6 +176,8 @@ const siteCrews = new WeakMap<World, SiteCrews>();
 export interface SiteRanking {
   readonly ranks: readonly number[];
   readonly rankOf: ReadonlyMap<Entity, number>;
+  /** The ranked sites of each rank, in ascending id. */
+  readonly sitesByRank: ReadonlyMap<number, readonly Entity[]>;
 }
 
 /**
@@ -254,20 +256,23 @@ export class ConstructionTaskClaims {
   }
 
   /**
-   * Rank `owner`'s building sites among `sites` for `builder`'s pick, by tier. The ranks are read as the
-   * crews stand at this moment; a site another builder joins later in the pass re-ranks on its own pick.
+   * Rank `owner`'s building sites among `sites`, in ascending id, for `builder`'s pick, by tier. The ranks
+   * are read as the crews stand at this moment; a site another builder joins later in the pass re-ranks on
+   * its own pick.
    */
   rankBuildingSites(owner: number | undefined, sites: readonly Entity[], builder: Entity): SiteRanking {
     const rankOf = new Map<Entity, number>();
-    const ranks: number[] = [];
+    const sitesByRank = new Map<number, Entity[]>();
     for (const site of sites) {
       if (!ownersCompatible(owner, ownerOf(this.world, site))) continue;
       const rank = this.siteTier(site, builder);
       rankOf.set(site, rank);
-      if (!ranks.includes(rank)) ranks.push(rank);
+      const ranked = sitesByRank.get(rank);
+      if (ranked === undefined) sitesByRank.set(rank, [site]);
+      else ranked.push(site);
     }
-    ranks.sort((a, b) => b - a);
-    return { ranks, rankOf };
+    const ranks = [...sitesByRank.keys()].sort((a, b) => b - a);
+    return { ranks, rankOf, sitesByRank };
   }
 
   /** Move a builder's crew count from `from` to `to`, either absent for none, for the rest of the pass.

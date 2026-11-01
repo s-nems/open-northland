@@ -37,6 +37,7 @@ import {
   type InteractionCellIndex,
   interactionCell,
   nearestBuilderSite,
+  QUALIFIES,
   unreachableSiteStand,
 } from '../../targets/index.js';
 import { unreachableGoalVeto } from '../../unreachable-goals.js';
@@ -208,7 +209,14 @@ export function planBuilder(
         claims.rankBuildingSites(settler.owner, targets.constructionSites, e),
         crewBuilding,
         buildingAccepts,
-        (accepts) => nearestSite(targets.constructionSiteCells, accepts),
+        (sites, accepts) =>
+          targets.constructionSiteCells.nearestAmong(
+            sites,
+            sites.length,
+            here,
+            (site) => (avoidSite?.(site) !== true && accepts(site) ? QUALIFIES : null),
+            plan.limit ?? undefined,
+          )?.entity ?? null,
       );
     }
     return rankedBuilding;
@@ -398,17 +406,18 @@ function anyTaskSite(
 }
 
 /** The building site of the highest rank that `accepts` this builder, the nearest within a rank and
- *  the builder's own `crewSite` first among equals. */
+ *  the builder's own `crewSite` first among equals. `nearestAmong` searches the sites of one rank, which
+ *  hold every site such a search could pick. */
 function rankedBuildingSite(
   ranking: SiteRanking,
   crewSite: Entity | null,
   accepts: (site: Entity) => boolean,
-  nearest: (accepts: (site: Entity) => boolean) => Entity | null,
+  nearestAmong: (sites: readonly Entity[], accepts: (site: Entity) => boolean) => Entity | null,
 ): Entity | null {
-  const { ranks, rankOf } = ranking;
+  const { ranks, rankOf, sitesByRank } = ranking;
   for (const rank of ranks) {
     if (crewSite !== null && rankOf.get(crewSite) === rank && accepts(crewSite)) return crewSite;
-    const site = nearest((candidate) => rankOf.get(candidate) === rank && accepts(candidate));
+    const site = nearestAmong(sitesByRank.get(rank) ?? [], accepts);
     if (site !== null) return site;
   }
   return null;
