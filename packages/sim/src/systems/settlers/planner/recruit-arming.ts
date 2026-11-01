@@ -210,6 +210,7 @@ export interface ReachableStock {
  * nobody's, a standing place inside the reach. The seat stock ledger also counts goods in a carrier's
  * hands, goods kept aside for an upgrade and heaps past the network, none of which an errand reaches, so a
  * seat sizing its draft or its vetoes on it books recruits who wait unarmed beside a vetoed weapon.
+ * Each good's units are counted once, so read the stock within one state of the world.
  */
 export function reachableStock(
   world: World,
@@ -221,6 +222,7 @@ export function reachableStock(
   const ledger = FetchableStock.of(world, ctx);
   let walls: ReadonlySet<NodeId> | undefined;
   const reachedStores = new Map<Entity, boolean>();
+  const unitsByGood = new Map<number, number>();
   const reached = (store: Entity): boolean => {
     if (reach === null) return true;
     let known = reachedStores.get(store);
@@ -241,10 +243,13 @@ export function reachableStock(
       return false;
     },
     units: (good) => {
+      const known = unitsByGood.get(good);
+      if (known !== undefined) return known;
       let units = 0;
       for (const store of ledger.holders(good)) {
         if (lends(store, good)) units += unclaimedStockOf(world, ctx, undefined, store, good);
       }
+      unitsByGood.set(good, units);
       return units;
     },
   };
