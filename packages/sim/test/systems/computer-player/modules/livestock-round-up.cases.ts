@@ -42,13 +42,16 @@ const LATTICE_POSTS_CAP = 20;
 
 describe('scout module (guideBuild) - the livestock round-up', () => {
   const CENTER = { x: 128, y: 128 };
+  /** Where the scout stands: north of the HQ within his home radius, so with nothing to do he stays put,
+   *  and as far from an animal east of the centre as from its twin west of it. */
+  const SCOUT_AT = { x: CENTER.x, y: CENTER.y - 10 };
 
   /** A seat whose always-wanted lattice already stands, so the scout has dropped to its round-up. The map
    *  reaches past the catch radius east of the base. */
   function tiledSim(): Simulation {
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(512, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, ...SCOUT_AT, tribe: VIKING, owner: SEAT });
     sim.step();
     plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
     for (const [q, r] of [
@@ -145,7 +148,8 @@ describe('scout module (guideBuild) - the livestock round-up', () => {
   });
 
   it('breaks a distance tie on the lower entity id', () => {
-    // The comparator's second term: two animals the same walk away must not resolve on store order.
+    // The comparator's second term: two animals the same walk from the scout must not resolve on store
+    // order.
     const sim = tiledSim();
     const first = placeAnimal(sim, CENTER.x + 10, CENTER.y);
     placeAnimal(sim, CENTER.x - 10, CENTER.y);

@@ -2,7 +2,8 @@ import { Position, RoadSite } from '../../../../src/components/index.js';
 import { aiCommand, type PlayerCommand } from '../../../../src/core/commands/index.js';
 import { hexNeighboursOf, nodeOfPosition, Simulation } from '../../../../src/index.js';
 import type { NodeId, TerrainGraph } from '../../../../src/nav/terrain/index.js';
-import { ROADS_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
+import { BUILDING_GOODS_GROW_FROM_TICKS } from '../../../../src/systems/computer-player/game-phase.js';
+import { ROADS_PAST_SETTLERS } from '../../../../src/systems/computer-player/road-build.js';
 import { dynamicBlockOverlay } from '../../../../src/systems/footprint/blocked.js';
 import { layRoad } from '../../../../src/systems/roads/index.js';
 import { ownedRoadSites, roadSitesByNode } from '../../../../src/systems/roads/site-index.js';
@@ -17,10 +18,32 @@ export const HOME_Y = HQ_Y;
 /** The seat's HQ door, where every route of the road cases ends. */
 export const HQ_DOOR = { x: HQ_X, y: HQ_Y + 4 };
 
-/** A seat at the road clock with its stocked HQ, a built home to the west and `men` builders. */
-export function roadSim(seed: number, men: number, content = aiContent()): Simulation {
+/** The `baby_male` job: a settler that counts toward the seat's size but takes no work. */
+const BABY = 2;
+
+/** The babies that grow a road seat lie in rows along the map's top edge, clear of every road case's
+ *  buildings and sites: this many to a row of the 64-node fixture map, on even nodes of even rows. */
+const BABIES_PER_ROW = 32;
+
+/** Spawn `count` of the seat's babies, so the seat counts more settlers without more workers. */
+export function spawnBabies(sim: Simulation, count: number): void {
+  for (let i = 0; i < count; i++) {
+    const x = 2 * (i % BABIES_PER_ROW);
+    const y = 2 * Math.floor(i / BABIES_PER_ROW);
+    sim.enqueueSetup({ kind: 'spawnSettler', jobType: BABY, x, y, tribe: VIKING, owner: SEAT });
+  }
+}
+
+/** A seat grown past {@link ROADS_PAST_SETTLERS} settlers (`men` builders, the rest babies, or `settlers`
+ *  in all), on the building goods' growth clock, with its stocked HQ and a built home to the west. */
+export function roadSim(
+  seed: number,
+  men: number,
+  content = aiContent(),
+  settlers = ROADS_PAST_SETTLERS + 1,
+): Simulation {
   const sim = new Simulation({ seed, content, map: grassNodeMap(64, 32) });
-  sim.restoreTick(ROADS_FROM_TICKS);
+  sim.restoreTick(BUILDING_GOODS_GROW_FROM_TICKS);
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   sim.enqueueSetup({
@@ -41,6 +64,7 @@ export function roadSim(seed: number, men: number, content = aiContent()): Simul
     owner: SEAT,
   });
   spawnMen(sim, men, BUILDER);
+  spawnBabies(sim, settlers - men);
   sim.step();
   return sim;
 }

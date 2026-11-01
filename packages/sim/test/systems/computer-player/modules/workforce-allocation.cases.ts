@@ -85,6 +85,7 @@ import {
   WOOD_OVER_STONE_NODES,
   wantedCollectorGoods,
 } from '../../../../src/systems/computer-player/workforce/collectors/index.js';
+import { ROAD_STONE_POSTS } from '../../../../src/systems/computer-player/workforce/collectors/wanted-goods.js';
 import {
   collectorSpot,
   FIRST_POST_FLAG_BAND,
@@ -571,14 +572,16 @@ describe('workforce module (collectResources)', () => {
 
   it("posts the sites' own shortage gatherers from the growth clock, with no workshop consuming the good", () => {
     // An empty store lies every unit under the line: the first minutes still hold to their one post each,
-    // from the growth clock the sites justify their shortage posts, all ahead of the reserve.
+    // from the growth clock the sites justify their shortage posts, all ahead of the reserve. The seat is
+    // large enough to bank stone for its coming roads, one stone post more throughout.
     const empty = () => 0;
+    const roadStone = stoneBase + ROAD_STONE_POSTS;
     expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS - 1, empty)).toEqual([
       { target: woodBase, min: woodBase },
-      { target: stoneBase, min: stoneBase },
+      { target: roadStone, min: roadStone },
     ]);
     const wood = woodBase + siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS);
-    const stone = stoneBase + siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS);
+    const stone = roadStone + siteShortagePosts(AI_PROFILES.hard, BUILDING_GOODS_GROW_FROM_TICKS);
     expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS, empty)).toEqual([
       { target: wood, min: wood },
       { target: stone, min: stone },
@@ -586,7 +589,7 @@ describe('workforce module (collectResources)', () => {
     // The opening hires them only under the short line.
     expect(buildingPosts(LARGE_SEAT, BUILDING_GOODS_GROW_FROM_TICKS, (l) => l.short)).toEqual([
       { target: woodBase, min: woodBase },
-      { target: stoneBase, min: stoneBase },
+      { target: roadStone, min: roadStone },
     ]);
   });
 

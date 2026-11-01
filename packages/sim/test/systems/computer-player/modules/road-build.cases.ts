@@ -15,10 +15,6 @@ import { spotAcceptor } from '../../../../src/systems/ai-shared/building-spot.js
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import {
-  LATE_ROAD_CREW_FROM_TICKS,
-  ROADS_FROM_TICKS,
-} from '../../../../src/systems/computer-player/game-phase.js';
-import {
   BACKLOG_ROAD_CREW,
   DEFAULT_BUILD_ORDER,
   enemyFire,
@@ -30,15 +26,12 @@ import {
   SeatSupply,
   supplyLines,
 } from '../../../../src/systems/computer-player/index.js';
+import { ROADS_PAST_SETTLERS } from '../../../../src/systems/computer-player/road-build.js';
 import {
   OPENING_SITE_SHORTAGE_POSTS,
   ROAD_SITE_SHORTAGE_POSTS,
   wantedCollectorGoods,
 } from '../../../../src/systems/computer-player/workforce/collectors/index.js';
-import {
-  LATE_BACKLOG_ROAD_CREW,
-  roadCrewTarget,
-} from '../../../../src/systems/computer-player/workforce/road-crew.js';
 import { createSignpost } from '../../../../src/systems/index.js';
 import { layRoad, roadNodeCount, roadNodes } from '../../../../src/systems/roads/index.js';
 import { roadSitesByNode } from '../../../../src/systems/roads/site-index.js';
@@ -72,6 +65,7 @@ import {
   paveSites,
   roadSim,
   sitesOf,
+  spawnBabies,
   terrainOf,
 } from './road-support.js';
 
@@ -160,11 +154,13 @@ function placeWholeRoute(sim: Simulation): PlayerCommand[] {
 }
 
 describe('road build module (roadBuild)', () => {
-  it('routes a built home to the base with road sites, from the road clock on', () => {
-    const sim = roadSim(1, 0);
-    expect(roadBuildModule.run(sim.world, ctxOf(sim, ROADS_FROM_TICKS - 1), SEAT)).toEqual([]);
+  it(`routes a built home to the base with road sites once the seat counts more than ${ROADS_PAST_SETTLERS} settlers`, () => {
+    const sim = roadSim(1, 0, aiContent(), ROADS_PAST_SETTLERS);
+    expect(roadBuildModule.run(sim.world, ctxOf(sim, sim.tick), SEAT)).toEqual([]);
 
-    const placed = roadBuildModule.run(sim.world, ctxOf(sim, ROADS_FROM_TICKS), SEAT);
+    spawnBabies(sim, 1);
+    sim.step();
+    const placed = roadBuildModule.run(sim.world, ctxOf(sim, sim.tick), SEAT);
     expect(placed.length).toBeGreaterThan(0);
     expect(placed.length).toBeLessThanOrEqual(ROAD_SITES_PER_DECISION);
     for (const c of placed) {
@@ -180,7 +176,7 @@ describe('road build module (roadBuild)', () => {
     // The next decisions carry the route on, never over a node already a site.
     const next = roadBuildModule.run(
       sim.world,
-      ctxOf(sim, ROADS_FROM_TICKS + COMPUTER_DECISION_INTERVAL_TICKS),
+      ctxOf(sim, sim.tick + COMPUTER_DECISION_INTERVAL_TICKS),
       SEAT,
     );
     const taken = new Set(placed.map((c) => (c.kind === 'placeRoadSite' ? `${c.x},${c.y}` : '')));
@@ -200,7 +196,7 @@ describe('road build module (roadBuild)', () => {
     // A map may hand a seat houses of a nation other than the one it plays.
     sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [SARACEN] });
     sim.step();
-    const placed = roadBuildModule.run(sim.world, ctxOf(sim, ROADS_FROM_TICKS), SEAT);
+    const placed = roadBuildModule.run(sim.world, ctxOf(sim, sim.tick), SEAT);
     expect(placed.length).toBeGreaterThan(0);
     for (const c of placed) if (c.kind === 'placeRoadSite') expect(c.tribe).toBe(SARACEN);
     // The seat may lay only its declared nation's road, so a viking site would never stand.
@@ -275,14 +271,15 @@ describe('road build module (roadBuild)', () => {
     const sim = roadSim(1, 0);
     placeSites(sim, MAX_PENDING_ROAD_SITES);
     expect(sitesOf(sim)).toBe(MAX_PENDING_ROAD_SITES);
-    expect(roadBuildModule.run(sim.world, ctxOf(sim, ROADS_FROM_TICKS), SEAT)).toEqual([]);
+    expect(roadBuildModule.run(sim.world, ctxOf(sim, sim.tick), SEAT)).toEqual([]);
   });
 
-  it('puts one builder on roads, a second over the backlog, and the rest of the workforce leaves them be', () => {
-    const one = busySim(1);
-    placeSites(one, 1);
+  it('puts the road crew on roads, the backlog crew over a backlog, and the rest of the workforce leaves them be', () => {
+    // A road site takes one builder, so the crew needs a site apiece.
+    const few = busySim(1);
+    placeSites(few, ROAD_CREW);
     const posted = collectModule
-      .run(one.world, ctxOf(one, one.tick), SEAT)
+      .run(few.world, ctxOf(few, few.tick), SEAT)
       .filter((c) => c.kind === 'assignBuilder');
     expect(posted).toHaveLength(ROAD_CREW);
 
@@ -339,8 +336,10 @@ describe('road build module (roadBuild)', () => {
     // when it sees the work before an ordinary builder claims it. The post applies on a tick no idle
     // builder re-plans on, since one on its beat claims the site before a higher-id roadster is visited.
     const beatDue = (): boolean =>
-      [...sim.world.query(Settler, IdleStand)].some((e) =>
-        idleReplanDue(sim.tick + 1, e, idleReplanPeriodOf(sim.world, e)),
+      [...sim.world.query(Settler, IdleStand)].some(
+        (e) =>
+          sim.world.get(e, Settler).jobType === BUILDER &&
+          idleReplanDue(sim.tick + 1, e, idleReplanPeriodOf(sim.world, e)),
       );
     for (let i = 0; i < COMPUTER_IDLE_REPLAN_PERIOD_TICKS && beatDue(); i++) sim.step();
     const openNode = terrain.nodeAt(FIRST_SITE_X + SITE_SPACING, SITE_ROW);
@@ -355,8 +354,8 @@ describe('road build module (roadBuild)', () => {
     if (openSite === undefined) throw new Error('setup: no open road site');
     expect(sim.world.get(openSite, RoadSite).reservation).toBeNull();
     const again = collectModule.run(sim.world, ctxOf(sim, sim.tick), SEAT);
+    // The one open site takes one roadster.
     const reposted = again.filter((c) => c.kind === 'assignBuilder');
-    expect(reposted).toHaveLength(ROAD_CREW);
     expect(reposted.map((c) => c.site)).toEqual([openSite]);
     apply(sim, again);
     for (const c of reposted) {
@@ -431,12 +430,5 @@ describe('road build module (roadBuild)', () => {
       expect(spent).toBeGreaterThan(0);
       expect(spent).toBeLessThan(laid);
     });
-  });
-
-  it('takes a third roadster on a backlog only from the late road crew time', () => {
-    const early = LATE_ROAD_CREW_FROM_TICKS - 1;
-    expect(roadCrewTarget(ROAD_BACKLOG_SITES, 0, early)).toBe(BACKLOG_ROAD_CREW);
-    expect(roadCrewTarget(ROAD_BACKLOG_SITES, 0, LATE_ROAD_CREW_FROM_TICKS)).toBe(LATE_BACKLOG_ROAD_CREW);
-    expect(roadCrewTarget(1, 0, LATE_ROAD_CREW_FROM_TICKS)).toBe(ROAD_CREW);
   });
 });

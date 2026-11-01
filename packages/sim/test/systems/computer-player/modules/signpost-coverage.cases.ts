@@ -53,11 +53,25 @@ const FIRST_RING = [
 /** A water cell column east of the 256-node map's centre, between the HQ and its second ring. */
 const WATER_CELL_COLUMN = 76;
 
+/** Where the 256-node map cases' scout stands: just west of their centre HQ, inside his home radius, so
+ *  with nothing to do he stays put. */
+const SCOUT_BY_CENTER = { x: 120, y: 128 };
+
+/** Where the small map case's scout stands: east of the HQ, so the first ring's east corner is the
+ *  target nearest him. */
+const SCOUT_EAST_OF_HQ = { x: HQ_X + 20, y: HQ_Y };
+
 describe('signpost-coverage module (guideBuild)', () => {
-  it('starts the lattice beside the HQ, then walks the six-post ring outward', () => {
+  it('starts the lattice beside the HQ, then walks the six-post ring outward from the scout', () => {
     const sim = aiSim();
     placeHq(sim);
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 10, y: 10, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SCOUT,
+      ...SCOUT_EAST_OF_HQ,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     sim.step();
 
     const commands = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)];
@@ -67,8 +81,8 @@ describe('signpost-coverage module (guideBuild)', () => {
     // The first post lands beside the HQ (the lattice's centre target).
     expect(hexDistanceBetween(order.x, order.y, HQ_X, HQ_Y) <= SIGNPOST_TARGET_TOLERANCE_NODES).toBe(true);
 
-    // With the centre post standing, the next order walks the first ring (its east corner fits
-    // this map; the -22-row targets fall off it and are skipped).
+    // With the centre post standing, the next order walks the first ring from the corner nearest the
+    // scout, its east one.
     plantPostAtHq(sim);
     const next = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
     if (next?.kind !== 'placeSignpost') throw new Error('expected a first-ring placement');
@@ -157,7 +171,13 @@ describe('signpost-coverage module (guideBuild)', () => {
     const CENTER = { x: 128, y: 128 };
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SCOUT,
+      ...SCOUT_BY_CENTER,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     sim.step();
     // The centre and all six first-ring targets stand satisfied - the always-wanted lattice is done.
     plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
@@ -194,7 +214,13 @@ describe('signpost-coverage module (guideBuild)', () => {
       map: waterColumnMap(128, 128, WATER_CELL_COLUMN),
     });
     placeHq(sim, CENTER.x, CENTER.y);
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SCOUT,
+      ...SCOUT_BY_CENTER,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     sim.step();
     plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
     for (const [q, r] of FIRST_RING) {
@@ -219,7 +245,13 @@ describe('signpost-coverage module (guideBuild)', () => {
     const CENTER = { x: 128, y: 128 };
     const sim = new Simulation({ seed: 1, content: aiContent(), map: grassNodeMap(256, 256) });
     placeHq(sim, CENTER.x, CENTER.y);
-    sim.enqueueSetup({ kind: 'spawnSettler', jobType: SCOUT, x: 100, y: 100, tribe: VIKING, owner: SEAT });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: SCOUT,
+      ...SCOUT_BY_CENTER,
+      tribe: VIKING,
+      owner: SEAT,
+    });
     sim.step();
     plantPost(sim, positionOfNode(CENTER.x, CENTER.y));
     for (const [q, r] of FIRST_RING) {
@@ -283,7 +315,6 @@ describe('signpost-coverage module (guideBuild)', () => {
     const order = [...guideBuild.run(sim.world, ctxOf(sim), SEAT)][0];
     if (order?.kind !== 'placeSignpost') throw new Error('expected the corridor placement toward the iron');
     const target = signpostLatticeOffset(-2, 0);
-    console.log('DBG iron order', order.x, order.y, 'target', CENTER.x + target.dx, CENTER.y + target.dy);
     expect(
       hexDistanceBetween(order.x, order.y, CENTER.x + target.dx, CENTER.y + target.dy) <=
         SIGNPOST_TARGET_TOLERANCE_NODES,
