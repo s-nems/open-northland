@@ -8,11 +8,13 @@ import {
   Resource,
   Rider,
   Settler,
+  SettlerNeeds,
   UnderConstruction,
   Vehicle,
   VehicleStock,
   vehicleCommander,
 } from '../../../../src/components/index.js';
+import { ONE } from '../../../../src/core/fixed.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import {
   exportSaveGame,
@@ -31,6 +33,7 @@ import {
   homeBuildings,
 } from '../../../../src/systems/ai-shared/home-roster.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
+import { spareMen } from '../../../../src/systems/computer-player/colony/people.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../src/systems/computer-player/sea-route.js';
@@ -78,6 +81,18 @@ function freeShipsOf(sim: Simulation): Entity[] {
 }
 
 describe('a colony scouts its site', () => {
+  it('takes the man hungry the least to the helm of its empty hold', () => {
+    const sim = colonyWorld();
+    expect(stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined)).toBe(true);
+    const men = spareMen(sim.world, ctxOf(sim), SEAT);
+    const fed = men.at(-1);
+    if (fed === undefined) throw new Error('no men');
+    for (const e of men) if (e !== fed) sim.world.mut(e, SettlerNeeds).hunger = ONE;
+    mooredShip(sim);
+    expect(stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim)?.phase === 'scouting')).toBe(true);
+    expect(colonyState(sim)?.scout?.helm).toBe(fed);
+  });
+
   it('sends a civilian helm round the site on a seat with no soldier, and home', () => {
     const sim = colonyWorld();
     expect(stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined)).toBe(true);

@@ -4,6 +4,7 @@ import {
   type ComputerColonyState,
   Female,
   mapBriefOf,
+  SettlerNeeds,
   Vehicle,
   VehicleDrive,
   vehicleCommander,
@@ -17,6 +18,7 @@ import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
 import { civilianCount } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
+import { needLevel } from '../../lifecycle/needs/index.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { mooringSpotsOf } from '../../vehicles/dock.js';
 import { isCargoHand, isLoaderRider } from '../../vehicles/stock.js';
@@ -212,6 +214,22 @@ function rejectSite(env: ColonyEnv, colony: ColonyView): void {
   nextSite(env, live);
 }
 
+/** The spare man on `home` hungry the least, the helm of a scout ship: it sails with an empty hold, and on
+ *  arabskie_wyspy_wolna_gra_mieszana (seeds 7 and 13) a helm boarding hungry starved at sea, its ship lost
+ *  to the seat on a far shore. */
+function fedHelm(env: ColonyEnv, home: number): Entity | undefined {
+  const { world, ctx, terrain, seat } = env;
+  const hunger = (e: Entity): number => {
+    const needs = world.tryGet(e, SettlerNeeds);
+    return needs === undefined ? 0 : needLevel(needs, 'hunger', ctx.tick);
+  };
+  const men = spareMen(world, ctx, seat).filter((e) => landOf(terrain, nodeOfEntity(world, e)) === home);
+  return men.reduce<Entity | undefined>(
+    (best, e) => (best === undefined || hunger(e) < hunger(best) ? e : best),
+    undefined,
+  );
+}
+
 /**
  * Site chosen: the first free moored ship takes one spare man at the helm and sails round the site's coast
  * ({@link scoutLoop}), past no peace gate: a sail refuses no target outside the peace's keep-out. A site
@@ -224,7 +242,7 @@ export function claimScoutShip(env: ColonyEnv, colony: ColonyView): PlayerComman
   const ship = home === NO_COMPONENT ? undefined : freeShips(env, home).at(-1);
   const berth = ship === undefined ? null : mooringOf(world, ship);
   if (ship === undefined || berth === null) return [];
-  const helm = spareMen(world, ctx, seat).find((e) => landOf(terrain, nodeOfEntity(world, e)) === home);
+  const helm = fedHelm(env, home);
   if (helm === undefined) return [];
   const { site, land } = colony;
   const clear = colonySiteClear(world, ctx, seat, site);
