@@ -1,6 +1,8 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
   ComputerColony,
+  Female,
   Position,
   playerPlacementTribes,
   Rider,
@@ -17,6 +19,7 @@ import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
+import { buildingEnabled } from '../../progression/index.js';
 import { isScoutJob } from '../../readviews/index.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { scoutBusy } from '../scout/index.js';
@@ -25,7 +28,7 @@ import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies, standsOn } from './people.js';
 import { COLONY_OPEN_SITES, COLONY_SPOT_NODES, colonyPlan, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
-import { LAND_GOOD_IDS } from './provision.js';
+import { colonyFoodHeld, LAND_GOOD_IDS } from './provision.js';
 import { colonyBuildings, colonySpot, workshopSpot } from './spot.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
@@ -130,6 +133,31 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   return [placementOf(type.typeId, spot, tribe, seat)];
 }
 
+/** With nothing else to raise, a fed colony of women lifts one building a tier, its homes first: what the
+ *  bill takes past its land and workshops sails from home. A colony that grows wants bricks, tiles and stone
+ *  blocks no tier-0 bill names. */
+function nextUpgrade(env: ColonyEnv, read: FoundingRead, people: readonly Entity[]): PlayerCommand[] {
+  const { world, ctx, seat } = env;
+  const open = read.buildings.some((e) => world.has(e, UnderConstruction));
+  const tribe = playerPlacementTribes(world, seat)?.[0];
+  if (open || read.plan.length > 0 || tribe === undefined) return [];
+  if (!people.some((e) => world.has(e, Female))) return [];
+  if (colonyFoodHeld(env, read.buildings) < people.length) return [];
+  const index = contentIndex(ctx.content);
+  const liftable = read.buildings.flatMap((building) => {
+    const type = index.buildings.get(world.get(building, Building).buildingType);
+    const target = type?.upgradeTarget;
+    const ready = isBuilt(world, building) && target !== undefined;
+    return ready && buildingEnabled(world, ctx, seat, tribe, target)
+      ? [{ building, target, home: type?.kind === BUILDING_KIND.home }]
+      : [];
+  });
+  const lift = liftable.find((b) => b.home) ?? liftable[0];
+  return lift === undefined
+    ? []
+    : [{ kind: 'upgradeBuilding', building: lift.building, target: lift.target }];
+}
+
 /** The nearest deposit of each good the land holds: a flag stands only inside the signposts, so a deposit
  *  past the store's walk range stays out of work until the lattice reaches it. */
 function depositsOf(env: ColonyEnv, origin: HalfCellNode): HalfCellNode[] {
@@ -175,6 +203,7 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
   }
   return [
     ...nextBuild(env, colony, read),
+    ...nextUpgrade(env, read, people),
     ...fillPosts(env, men, read),
     ...raiseSignposts(env, men, read),
     ...colonyFamilies(world, ctx, people, buildings),
