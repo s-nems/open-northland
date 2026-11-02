@@ -56,7 +56,8 @@ export const CATAPULT_JOINERY: BuildOrderEntry = {
 /** The ship joinery's steps where only a ship reaches the nearest rival: a joinery by the water, the
  *  upper pottery whose tiles the top tier's bill takes, that joinery lifted to the top tier, and a fresh
  *  top-tier joinery by the water where none could claim the shore. While a tier is locked each lets the
- *  barracks and the rest of the line pass rather than hold them. */
+ *  barracks and the rest of the line pass rather than hold them. The upgrades rank with an earned workshop:
+ *  among other copies they waited 20-38 game minutes behind new kinds on arabskie_wyspy_wolna_gra_mieszana. */
 const SHIP_JOINERY_STEPS: readonly BuildOrderEntry[] = [
   {
     kind: 'place',
@@ -68,7 +69,14 @@ const SHIP_JOINERY_STEPS: readonly BuildOrderEntry[] = [
     lockPasses: true,
     core: true,
   },
-  { kind: 'upgrade', building: 'work_pottery_01', count: 1, onlyWhen: 'rivalOverSea', lockPasses: true },
+  {
+    kind: 'upgrade',
+    building: 'work_pottery_01',
+    count: 1,
+    onlyWhen: 'rivalOverSea',
+    lockPasses: true,
+    firstRank: true,
+  },
   {
     kind: 'upgrade',
     building: 'work_joinery_03',
@@ -76,6 +84,7 @@ const SHIP_JOINERY_STEPS: readonly BuildOrderEntry[] = [
     onlyWhen: 'rivalOverSea',
     role: 'ship',
     lockPasses: true,
+    firstRank: true,
   },
   {
     kind: 'place',

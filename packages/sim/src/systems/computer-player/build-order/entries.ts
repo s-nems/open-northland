@@ -110,7 +110,7 @@ export type BuildOrderEntry =
     }
   /** Upgrade owned buildings up their `upgradeTarget` chain until `count` stand at or above the
    *  named tier, and below `belowTier` when given. `role` counts and lifts only the joineries holding that
-   *  role; `onlyWhen`, `holdUntil` and `lockPasses` act as a placement's. */
+   *  role; `onlyWhen`, `holdUntil`, `lockPasses` and `firstRank` act as a placement's. */
   | {
       readonly kind: 'upgrade';
       readonly building: string;
@@ -120,6 +120,7 @@ export type BuildOrderEntry =
       readonly onlyWhen?: 'rivalOverSea' | 'livestock';
       readonly holdUntil?: StepHold;
       readonly lockPasses?: true;
+      readonly firstRank?: true;
     }
   /** Wait for `count` (default 1) flag-bound gatherers of the good; the workforce module owns the hire
    *  and keeps at least that many. Posts past the first come out of spare men only, so its line holds

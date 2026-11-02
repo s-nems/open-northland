@@ -668,7 +668,7 @@ function atUnlockPending(
 
 /** Whether `entry` ranks with the bread chain's first buildings ({@link BuildOrderEntry} `firstRank`). */
 function firstRankStep(entry: BuildOrderEntry): boolean {
-  return entry.kind === 'place' && entry.firstRank === true;
+  return (entry.kind === 'place' || entry.kind === 'upgrade') && entry.firstRank === true;
 }
 
 /** Whether `entry` is a placement its line holds until the military deadline's lead: once the hold opens
