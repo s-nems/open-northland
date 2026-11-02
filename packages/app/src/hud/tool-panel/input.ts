@@ -85,10 +85,12 @@ function platformCtrlClickIsRightButton(): boolean {
   return typeof navigator !== 'undefined' && /Macintosh|Mac OS X/.test(navigator.userAgent);
 }
 
+type ButtonPress = Pick<MouseEvent, 'button' | 'ctrlKey'>;
+
 export interface ToolPanelInput {
   /** A right press on a surface that is not the game canvas, as the map overview: true when it called a
    *  held mode off, one rung, so it orders nothing. */
-  callOffHeld(press: MouseEvent): boolean;
+  callOffHeld(press: ButtonPress): boolean;
   dispose(): void;
 }
 
@@ -103,8 +105,8 @@ export function createToolPanelInput(deps: ToolPanelInputDeps): ToolPanelInput {
   };
   // Where Ctrl+left-click arrives as button 2, a Ctrl press counts as the primary press, so a wall tool
   // stays armed for the next line.
-  const isRightPress = (e: MouseEvent): boolean => e.button === 2 && !(e.ctrlKey && ctrlClickIsRightButton);
-  const callOffHeld = (e: MouseEvent): boolean => {
+  const isRightPress = (e: ButtonPress): boolean => e.button === 2 && !(e.ctrlKey && ctrlClickIsRightButton);
+  const callOffHeld = (e: ButtonPress): boolean => {
     if (!isRightPress(e) || !anyHeld()) return false;
     deps.cue('fail');
     cancelOneRung();

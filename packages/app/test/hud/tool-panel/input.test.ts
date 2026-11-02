@@ -143,11 +143,12 @@ describe('tool panel input clicks', () => {
 
   it('calls a held mode off for a right press the game canvas never saw, and leaves any other press', () => {
     const { input, cues, held, arm } = mount();
-    expect(input.callOffHeld(press(400, 300, 2))).toBe(false);
+    const rightPress = { button: 2, ctrlKey: false };
+    expect(input.callOffHeld(rightPress)).toBe(false);
     arm();
-    expect(input.callOffHeld(press(400, 300, 0))).toBe(false);
+    expect(input.callOffHeld({ button: 0, ctrlKey: false })).toBe(false);
     expect(held.isActive()).toBe(true);
-    expect(input.callOffHeld(press(400, 300, 2))).toBe(true);
+    expect(input.callOffHeld(rightPress)).toBe(true);
     expect(held.isActive()).toBe(false);
     expect(cues).toEqual(['fail']);
     input.dispose();
