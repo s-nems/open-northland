@@ -610,6 +610,8 @@ describe('workforce - the top-tier joineries’ roles', () => {
   const BARRACKS_AT = { x: 30, y: 20 };
   const BY_BARRACKS = { x: 30, y: 12 };
   const AWAY = { x: 44, y: 50 };
+  /** Beside the far bay, whose yards lie past the yard search's reach from {@link BY_BARRACKS}. */
+  const ABOVE_FAR_BAY = { x: 44, y: 46 };
   /** Wood in the headquarters for every yard bill a test runs. */
   const YARD_WOOD = 40;
   /** Well past the crew's walk, the bill's fetch and the hammering. */
@@ -676,7 +678,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
   const all = (good: number) => Array.from({ length: TOP_JOINERY_JOINERS }, () => [good]);
 
   it('puts a whole crew on catapults away from the water and another on ships by a sea seat’s shore', () => {
-    const { sim, joineries } = crewedJoineries(seaMap(), [BY_BARRACKS, AWAY]);
+    const { sim, joineries } = crewedJoineries(seaMap({ bay: FAR_BAY }), [BY_BARRACKS, ABOVE_FAR_BAY]);
     const [byBarracks, away] = joineries;
     if (byBarracks === undefined || away === undefined) throw new Error('setup: two joineries');
     // The untuned crew has opened a yard on the water, whose body blocks it: the ship role holds.
@@ -693,6 +695,16 @@ describe('workforce - the top-tier joineries’ roles', () => {
     );
     // Applied, the selections hold: the next decision issues nothing.
     expect(tuned(sim)).toEqual(new Map());
+  });
+
+  it('takes a standing joinery as the ship joinery anywhere the yard search reaches water', () => {
+    const PAST_SHORE_RINGS = { x: 44, y: 28 };
+    const { sim, joineries } = crewedJoineries(seaMap({ bay: FAR_BAY }), [PAST_SHORE_RINGS]);
+    const [joinery] = joineries;
+    if (joinery === undefined) throw new Error('setup: one joinery');
+    const node = anchorNodeOf(sim.world, joinery);
+    expect(node === null ? 0 : FAR_BAY.y0 - node.hy).toBeGreaterThan(SHIP_JOINERY_SHORE_RINGS);
+    expect(rolesOf(sim)).toEqual(['ship']);
   });
 
   it('puts a crew by the water on catapults where no enemy lies over the sea', () => {
@@ -760,7 +772,11 @@ describe('workforce - the top-tier joineries’ roles', () => {
 
   it('keeps the hides the missing ships of the landing fleet take out of every craft', () => {
     const content = fleetContent(true);
-    const { sim, joineries } = crewedJoineries(seaMap(), [BY_BARRACKS, AWAY], content);
+    const { sim, joineries } = crewedJoineries(
+      seaMap({ bay: FAR_BAY }),
+      [BY_BARRACKS, ABOVE_FAR_BAY],
+      content,
+    );
     const [byBarracks] = joineries;
     if (byBarracks === undefined) throw new Error('setup: two joineries');
     for (let i = 0; i < AI_CATAPULT_CAP; i++) fleetCatapult(sim, i);

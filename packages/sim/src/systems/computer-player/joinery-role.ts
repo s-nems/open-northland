@@ -32,13 +32,13 @@ export function smallestShipHouse(index: ContentIndex): number | null {
   return least?.house ?? null;
 }
 
-/** How near its ship water the AI keeps a ship joinery, in hex rings: half the yard search, so the crew
- *  launches near its joinery. Authored: on arabskie_wyspy_wolna_gra_mieszana (seed 7) the original's ten-ring
- *  placement ring left four of five seats' own joineries dry and two seats no free shore spot all game. */
+/** How near its ship water the AI puts a new ship joinery, in hex rings: half the yard search, so the crew
+ *  launches near its joinery. A joinery that already stands keeps the yard search's whole reach
+ *  ({@link hasShipWater}), since a walk costs less than a second joinery on a seat short of ground. */
 export const SHIP_JOINERY_SHORE_RINGS = SHIP_SITE_RINGS / 2;
 
-/** Whether `joinery` stands by ship water: within {@link SHIP_JOINERY_SHORE_RINGS}, one of the seat's
- *  unfinished `yards` stands or a fresh yard of the ship house fits for a worker at its door
+/** Whether `joinery` reaches ship water: within {@link SHIP_SITE_RINGS}, the engine's own yard search, one
+ *  of the seat's unfinished `yards` stands or a fresh yard of the ship house fits for a worker at its door
  *  ({@link shipWaterWithin}). The standing yard counts because its own body blocks the water. */
 function hasShipWater(
   world: World,
@@ -61,7 +61,7 @@ function hasShipWater(
     player,
     centre,
     shore,
-    SHIP_JOINERY_SHORE_RINGS,
+    SHIP_SITE_RINGS,
     yards,
   );
 }
