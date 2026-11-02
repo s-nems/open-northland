@@ -395,7 +395,7 @@ export type SimEvent =
     }
   | {
       /**
-       * A wild berry bush was razed this tick because a building was placed over it. Unlike
+       * A wild berry bush was razed this tick, by a building placed over it or the debug eraser. Unlike
        * `berryForaged` the bush entity is gone by the snapshot.
        */
       readonly kind: 'berryBushRazed';

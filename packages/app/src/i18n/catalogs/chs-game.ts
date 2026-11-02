@@ -1719,6 +1719,7 @@ export const chsGame = {
       starve: '耗尽所有需求',
       fill: '填满库存',
       finish: '完成建造',
+      erase: '抹除资源',
       teleport: '传送居民',
     },
     actionHints: {
@@ -1728,6 +1729,7 @@ export const chsGame = {
       starve: '点击居民：所有需求立即变得紧迫',
       fill: '点击建筑：填满其库存',
       finish: '点击工地：建筑立即建成',
+      erase: '点击资源、浆果丛或货物堆；按住可抹除光标经过之处',
       teleport: '点击居民，再点击目的地',
     },
     healthPercent: '目标生命值百分比',

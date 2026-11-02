@@ -1754,6 +1754,7 @@ export const plGame = {
       starve: 'Wyczerp wszystkie potrzeby',
       fill: 'Napełnij magazyn',
       finish: 'Dokończ budowę',
+      erase: 'Wymaż surowce',
       teleport: 'Przenieś osadnika',
     },
     actionHints: {
@@ -1763,6 +1764,7 @@ export const plGame = {
       starve: 'Kliknij osadnika: każda potrzeba od razu pilna',
       fill: 'Kliknij budynek: zapełnia jego magazyn',
       finish: 'Kliknij plac budowy: budynek od razu gotowy',
+      erase: 'Kliknij złoże, krzak jagód lub stos towarów; przytrzymaj, by wymazywać pod kursorem',
       teleport: 'Kliknij osadnika, potem miejsce docelowe',
     },
     healthPercent: 'Zdrowie celu w procentach',

@@ -123,6 +123,8 @@ export type DebugCommand =
    *  construction carries a `Health` pool but is not killable here; `demolish` owns its worker-unbind
    *  seam. */
   | { readonly kind: 'debugKill'; readonly target: Entity }
+  /** Take a resource node, a berry bush or a loose ground pile off the map at once, leaving nothing. */
+  | { readonly kind: 'debugErase'; readonly target: Entity }
   /** Set a living building or unit to 1..100 percent of its health pool, retaining at least one HP.
    *  An unfinished building uses its built pool; an upgrade keeps the standing building's pool. */
   | { readonly kind: 'debugSetHealth'; readonly target: Entity; readonly percent: number }

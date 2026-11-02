@@ -292,6 +292,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   debugCompleteConstruction: { required: { target: 'integer' } },
   debugFillStockpile: { required: { target: 'integer' }, optional: { goodType: 'integer' } },
+  debugErase: { required: { target: 'integer' } },
   debugKill: { required: { target: 'integer' } },
   debugSetHealth: { required: { target: 'integer', percent: 'integer' } },
   debugSetNeeds: {

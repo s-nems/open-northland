@@ -115,6 +115,7 @@ export const COMMAND_ISSUER: {
   cancelUpgrade: 'seat',
   clearHaulFlag: 'seat',
   debugCompleteConstruction: 'trusted',
+  debugErase: 'trusted',
   debugFillStockpile: 'trusted',
   debugKill: 'trusted',
   debugSetHealth: 'trusted',

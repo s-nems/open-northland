@@ -1,7 +1,11 @@
 import {
+  BerryBush,
   Building,
+  GroundDrop,
   Health,
   Person,
+  Position,
+  Resource,
   Settler,
   SettlerNeeds,
   Stockpile,
@@ -11,14 +15,18 @@ import {
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
+import { eventAt } from '../../core/events.js';
 import { type Fixed, fx, ONE } from '../../core/fixed.js';
 import type { World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { clearRepairedDamage, markShortPool } from '../economy/repair.js';
+import { unstampResourceFootprint } from '../footprint/index.js';
 import { razeBuilding } from '../lifecycle/cleanup.js';
 import { mutNeeds } from '../lifecycle/needs/levels.js';
 import { teleportHuman } from '../orders/teleport.js';
+import { stockpilesAtNode } from '../spatial/stockpiles.js';
 import { constructionBillOf } from '../stores/construction.js';
+import { isLoosePile } from '../stores/index.js';
 
 // The `debug*` commands are real commands, logged and replayed like any other, so each is a no-op on a
 // target of the wrong kind rather than a throw.
@@ -40,6 +48,39 @@ export function debugKill(
   if (!world.has(command.target, Settler) && !world.has(command.target, Vehicle)) return;
   const health = world.tryMut(command.target, Health);
   if (health !== undefined) health.hitpoints = 0;
+}
+
+/**
+ * Take what the map's nature or its ground holds off it at once: a resource node with whatever it had left
+ * and the drops on its cell, which its neighbours may leave out of every fetcher's reach, a berry bush or a
+ * loose pile. A worker bound for it finds it gone, as when a neighbour worked it out. The node and bush
+ * events retire the static map sprites still drawing them.
+ */
+export function debugErase(
+  world: World,
+  ctx: SystemContext,
+  command: Extract<Command, { kind: 'debugErase' }>,
+): void {
+  const { target } = command;
+  const position = world.tryGet(target, Position);
+  if (position === undefined) return;
+  const at = eventAt(position.x, position.y);
+  const resource = world.tryGet(target, Resource);
+  if (resource !== undefined) {
+    const { goodType } = resource;
+    unstampResourceFootprint(world, target);
+    world.destroy(target);
+    // Copied first: the probe hands back the index's live node bucket, which the destroys splice.
+    for (const pile of [...stockpilesAtNode(world, at.hx, at.hy)]) {
+      if (world.has(pile, GroundDrop)) world.destroy(pile);
+    }
+    ctx.events.emit({ kind: 'resourceDepleted', node: target, goodType, at });
+  } else if (world.has(target, BerryBush)) {
+    world.destroy(target);
+    ctx.events.emit({ kind: 'berryBushRazed', bush: target, at });
+  } else if (isLoosePile(world, target)) {
+    world.destroy(target);
+  }
 }
 
 export function debugSetHealth(world: World, command: Extract<Command, { kind: 'debugSetHealth' }>): void {

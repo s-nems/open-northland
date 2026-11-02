@@ -111,7 +111,14 @@ import {
 } from '../vehicles/index.js';
 import { VehicleOrderRoutes } from '../vehicles/order-routes.js';
 import { authorizedCommand } from './authority.js';
-import { debugFillStockpile, debugKill, debugSetHealth, debugSetNeeds, debugTeleport } from './debug.js';
+import {
+  debugErase,
+  debugFillStockpile,
+  debugKill,
+  debugSetHealth,
+  debugSetNeeds,
+  debugTeleport,
+} from './debug.js';
 import { cancelUpgrade, placeBuilding, upgradeBuilding } from './placement.js';
 import { demolish, demolishSignpost, dropGood, placeResource } from './world-edit.js';
 
@@ -586,6 +593,9 @@ function applyCommand(
       return;
     case 'debugKill':
       debugKill(world, ctx, command);
+      return;
+    case 'debugErase':
+      debugErase(world, ctx, command);
       return;
     case 'debugSetHealth':
       debugSetHealth(world, command);

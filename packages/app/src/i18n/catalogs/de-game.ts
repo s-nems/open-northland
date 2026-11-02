@@ -1901,6 +1901,7 @@ export const deGame = {
       starve: 'Alle Bedürfnisse erschöpfen',
       fill: 'Vorräte auffüllen',
       finish: 'Bau abschließen',
+      erase: 'Rohstoffe löschen',
       teleport: 'Siedler versetzen',
     },
     actionHints: {
@@ -1910,6 +1911,7 @@ export const deGame = {
       starve: 'Siedler anklicken: jedes Bedürfnis wird sofort dringend',
       fill: 'Gebäude anklicken: füllt sein Lager',
       finish: 'Baustelle anklicken: das Gebäude steht fertig',
+      erase: 'Rohstoff, Beerenstrauch oder Warenhaufen anklicken; halten löscht, was unter den Zeiger kommt',
       teleport: 'Siedler anklicken, dann das Ziel',
     },
     healthPercent: 'Lebenspunkte des Ziels in Prozent',

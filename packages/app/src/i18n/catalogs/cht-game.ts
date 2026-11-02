@@ -1719,6 +1719,7 @@ export const chtGame = {
       starve: '耗盡所有需求',
       fill: '填滿庫存',
       finish: '完成建造',
+      erase: '抹除資源',
       teleport: '移動居民',
     },
     actionHints: {
@@ -1728,6 +1729,7 @@ export const chtGame = {
       starve: '點擊一名居民：所有需求立即變得急迫',
       fill: '點擊一座建築：填滿其倉儲',
       finish: '點擊一處工地：建築立即完工',
+      erase: '點擊資源、漿果叢或貨物堆；按住可抹除游標經過之處',
       teleport: '點擊一名居民，再點擊其目的地',
     },
     healthPercent: '目標生命值百分比',

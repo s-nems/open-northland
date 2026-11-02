@@ -1763,6 +1763,7 @@ export const enGame = {
       starve: 'Exhaust all needs',
       fill: 'Fill stockpile',
       finish: 'Finish construction',
+      erase: 'Erase resources',
       teleport: 'Move settler',
     },
     actionHints: {
@@ -1772,6 +1773,7 @@ export const enGame = {
       starve: 'Click a settler: every need turns urgent at once',
       fill: 'Click a building: fills its storage',
       finish: 'Click a construction site: the building stands finished',
+      erase: 'Click a resource, berry bush or goods pile; hold to wipe what passes under the cursor',
       teleport: 'Click a settler, then its destination',
     },
     healthPercent: 'Target health in percent',

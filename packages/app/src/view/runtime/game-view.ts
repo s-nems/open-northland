@@ -10,6 +10,7 @@ import {
 import type {
   DoorBadge,
   ElevationField,
+  EntityBounds,
   MapObjectSprite,
   SceneTerrain,
   SpriteSheet,
@@ -1045,6 +1046,16 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     let pickableDoorBadges: (() => readonly DoorBadge[]) | undefined;
 
     const restoredGroups = restoredControlGroups(deps.restoredView, pickableSeat(viewer));
+    const boundsOf = (ref: number): EntityBounds | undefined => {
+      const sprite = deps.staticHarvestableSprite?.(ref);
+      return sprite === undefined ? renderer.entityBounds(ref) : mapObjectBounds(sprite, host.tick);
+    };
+    const pixelHitOf = (ref: number, wx: number, wy: number): boolean | undefined => {
+      const sprite = deps.staticHarvestableSprite?.(ref);
+      return sprite === undefined
+        ? renderer.entityPixelHit(ref, wx, wy)
+        : mapObjectPixelHit(sprite, host.tick, wx, wy);
+    };
     const controls = await createUnitControls({
       requestFormationSlots: (...args) => host.formationSlots(...args),
       technologyStatus: answers.technologyStatus,
@@ -1108,16 +1119,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       askPlaceSignpostAt: placementGates.askPlaceSignpostAt,
       signpostAnswerAt: placementGates.signpostAnswerAt,
       placementAnswersVersion: placementGates.answersVersion,
-      boundsOf: (ref) => {
-        const sprite = deps.staticHarvestableSprite?.(ref);
-        return sprite === undefined ? renderer.entityBounds(ref) : mapObjectBounds(sprite, host.tick);
-      },
-      pixelHitOf: (ref, wx, wy) => {
-        const sprite = deps.staticHarvestableSprite?.(ref);
-        return sprite === undefined
-          ? renderer.entityPixelHit(ref, wx, wy)
-          : mapObjectPixelHit(sprite, host.tick, wx, wy);
-      },
+      boundsOf,
+      pixelHitOf,
       siteFlagHitOf: (ref, wx, wy) => renderer.siteFlagHit(ref, wx, wy),
       claimPointer: (x: number, y: number) => toolPanel.claimPointer() || mountedMinimap.claimsPointer(x, y),
       onUiCue: uiCue,
@@ -1237,6 +1240,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       ...(deps.elevation !== undefined ? { elevation: deps.elevation } : {}),
       geometryOf: buildingGeometry,
       clientToScreen,
+      boundsOf,
+      pixelHitOf,
       clientToTile: (x, y) => toolPanel.clientToTile(x, y),
       claimPointer: (x, y) => controls.claimsPointer(x, y),
       goodLabel,

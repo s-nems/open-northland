@@ -492,7 +492,7 @@ function nextCommand(rng: Rng): Command {
   const y = rng.int(NODE_H);
   // Every roll is an explicit case, so a modulus that drifts past the case list throws below instead
   // of silently dropping a command kind from the stream.
-  const roll = rng.int(79);
+  const roll = rng.int(80);
   switch (roll) {
     case 31:
       // An AI-seat flip: valid players (the AiControl carrier created/updated/destroyed - the
@@ -1149,6 +1149,10 @@ function nextCommand(rng: Rng): Command {
         intent: pick(rng, ASSISTANT_ARMING_INTENTS),
         order: pick(rng, WEAPON_ORDERS),
       };
+    case 79:
+      // The debug eraser at a random id: nodes, bushes and piles go under whoever is bound for them, and
+      // every other kind or a dead id is skipped.
+      return { kind: 'debugErase', target: (rng.int(TARGET_ID_RANGE) + 1) as Entity };
     default:
       throw new Error(`fuzz roll ${roll} has no case: widen the switch or the modulus above`);
   }
