@@ -13,6 +13,7 @@ import { type HalfCellNode, nodeOfPosition } from '../../nav/halfcell.js';
 import {
   anchorReaches,
   deriveSeatStockTotals,
+  heapReach,
   NEIGHBOUR_BUCKET_OFFSETS,
   reachBucketOf,
   type SeatStock,
@@ -158,6 +159,34 @@ class SeatStockLedger {
     this.reseatStaleHeaps();
   }
 
+  /** {@link stockAtBuildings}, from the buckets around `buildings`. */
+  atBuildings(player: number, buildings: readonly Entity[]): Map<number, number> {
+    const totals = new Map<number, number>();
+    const add = (units: Units): void => {
+      for (let i = 0; i < units.length; i += 2) {
+        const good = units[i] as number;
+        totals.set(good, (totals.get(good) ?? 0) + (units[i + 1] as number));
+      }
+    };
+    const anchors: HalfCellNode[] = [];
+    const around = new Set<number>();
+    for (const e of buildings) {
+      const owned = ownedUnitsOf(this.world, e, undefined);
+      if (owned !== null) add(owned.units);
+      const anchor = anchorOf(this.world, e);
+      if (anchor === null) continue;
+      anchors.push(anchor.node);
+      for (const offset of NEIGHBOUR_BUCKET_OFFSETS) around.add(anchor.bucket + offset);
+    }
+    const reached = heapReach(anchors);
+    for (const bucket of around) {
+      for (const heap of this.heapBuckets.get(bucket)?.values() ?? []) {
+        if (heap.seats.includes(player) && reached(heap.node)) add(heap.units);
+      }
+    }
+    return totals;
+  }
+
   private totalsOf(player: number): Map<number, number> {
     const totals = new Map(this.ownedTotals.get(player));
     for (const [good, units] of this.heapTotals.get(player) ?? []) {
@@ -238,6 +267,16 @@ const ledgers = new WeakMap<World, SeatStockLedger>();
  */
 export function seatStockOf(world: World, player: number): SeatStock {
   return SeatStockLedger.of(world).stock(player);
+}
+
+/** The units by good `player`'s {@link SeatStock} counts at its `buildings`: their piles, what they keep aside
+ *  to upgrade, and every ground heap in their reach. Costs the buildings and the heaps around them. */
+export function stockAtBuildings(
+  world: World,
+  player: number,
+  buildings: readonly Entity[],
+): Map<number, number> {
+  return SeatStockLedger.of(world).atBuildings(player, buildings);
 }
 
 /**

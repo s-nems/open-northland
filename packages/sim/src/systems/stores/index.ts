@@ -29,7 +29,7 @@ export {
   type WorkplaceOperators,
 } from './operators.js';
 export { heapReach, type SeatStock } from './seat-stock.js';
-export { catchUpSeatStock, seatStockOf } from './seat-stock-ledger.js';
+export { catchUpSeatStock, seatStockOf, stockAtBuildings } from './seat-stock-ledger.js';
 export { collectSupplyTally, type SupplyTally } from './supply-tally.js';
 export {
   buildingProduces,
