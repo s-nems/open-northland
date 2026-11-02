@@ -123,7 +123,7 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // runs short once the opening run is done, and a surplus post meanwhile, making the crockery.
   // Owner ruling: the potter and the mason stay at work until they earn the tiles and the ornaments,
   // since the upper tiers' bills wait on them.
-  work_pottery_00: { carrierTarget: 1, keptUntil: TILE },
+  work_pottery_00: { carrierTarget: 1, keptUntil: TILE, islandMasterUntil: TILE },
   work_mason_hut_00: { carrierTarget: 1, keptUntil: ORNAMENT },
   work_pottery_01: {
     operatorMin: 2,
