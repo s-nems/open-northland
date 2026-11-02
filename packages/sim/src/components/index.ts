@@ -3,6 +3,7 @@
  * regrouping these modules is hash-neutral.
  */
 
+export * from './ai/colony.js';
 export * from './ai/computer-player.js';
 export * from './ai/control.js';
 export * from './ai/flags.js';

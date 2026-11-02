@@ -17,6 +17,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import { Simulation } from '../../../src/index.js';
 import { ownedBuildings, ownedSettlers } from '../../../src/systems/ai-shared/seat-roster.js';
+import { colonySiteClear } from '../../../src/systems/computer-player/colony/survey.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../src/systems/computer-player/index.js';
 import { knownResourceTest } from '../../../src/systems/computer-player/live-resources.js';
 import { playerSeesEntity } from '../../../src/systems/vision/gates.js';
@@ -50,6 +51,8 @@ const SEAT_CIVILIANS = 6;
 const SEAT_FIGHTERS = 4;
 /** Where the other seat's later world stands: far off, or at the seat's door. */
 const FAR = { x: 210, y: 30 };
+/** A colony site in range of the far stock but out of range of the other seat's start. */
+const SITE_NEAR_FAR = { hx: 125, hy: 20 };
 const NEAR = { x: 40, y: 22 };
 const LATER_FIGHTERS = 6;
 const BAND_COLUMNS = 3;
@@ -189,6 +192,11 @@ function twins(fogMode: number, at: { x: number; y: number }) {
   return { plain, varied, later };
 }
 
+function siteClear(sim: Simulation): boolean {
+  const ctx = { ...ctxOf(sim, sim.tick), ...(sim.fog ? { fog: sim.fog } : {}) };
+  return colonySiteClear(sim.world, ctx, SEAT, SITE_NEAR_FAR);
+}
+
 /** The fog modes that hide the other seat: the classic one, and recon, whose terrain reads explored
  *  everywhere from the start. */
 const HIDING_MODES = [
@@ -222,6 +230,12 @@ describe('a computer seat under fog knows only what it sees', () => {
     expect(actual.memory).toEqual(expected.memory);
   });
 
+  it.each(HIDING_MODES)('judges a colony site without what it cannot see (%s)', (_, mode) => {
+    const { plain, varied } = twins(mode, FAR);
+    expect(siteClear(plain)).toBe(true);
+    expect(siteClear(varied)).toBe(true);
+  });
+
   it('turns to defence once the same later world stands in its sight', () => {
     const { plain, varied } = twins(FOG_MODE.CLASSIC_FOG_OF_WAR, NEAR);
     const unaware = run(plain);
@@ -233,6 +247,12 @@ describe('a computer seat under fog knows only what it sees', () => {
 });
 
 describe('a computer seat with the fog off', () => {
+  it('judges a colony site by every building it can read', () => {
+    const { plain, varied } = twins(FOG_MODE.OFF, FAR);
+    expect(siteClear(plain)).toBe(true);
+    expect(siteClear(varied)).toBe(false);
+  });
+
   it('sees the far army and decides on it, as a human would', () => {
     const { plain, varied } = twins(FOG_MODE.OFF, FAR);
     const unaware = run(plain);
