@@ -12,11 +12,13 @@ import type { DeepReadonly, Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { countedTiers } from '../../ai-shared/content-lookup.js';
+import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
-import { buildingEnabled, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
+import { buildingEnabled, jobEnabled, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { minutesToTicks } from '../game-phase.js';
+import { technologyTable } from '../technology/requirements.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { colonyFoodHeld, landHolds, workshopGoods } from './provision.js';
@@ -131,7 +133,7 @@ export interface LadderRead {
   readonly grass: boolean;
   /** Whether animals live on the land. */
   readonly animals: boolean;
-  /** Whether the tribe has unlocked a building and a man has earned its trades. */
+  /** Whether the tribe has unlocked a building and its trades have a man in reach. */
   readonly open: (building: string) => boolean;
 }
 
@@ -194,15 +196,29 @@ function operatorJobs(env: ColonyEnv, type: BuildingType): number[] {
   return type.workers.map((slot) => slot.jobType).filter((job) => !isCarrierJob(env.ctx, job));
 }
 
-/** Whether some man of the colony has earned each trade of `type`. */
-export function crewOnColony(env: ColonyEnv, type: BuildingType): boolean {
+/** Whether a school standing at home teaches `job`: its pupil sails on the line. */
+function homeTeaches(env: ColonyEnv, job: number): boolean {
+  const { world, ctx, seat } = env;
+  const tribe = playerPlacementTribes(world, seat)?.[0];
+  const school =
+    tribe === undefined ? null : (technologyTable(ctx.content, tribe)?.jobs.get(job)?.school ?? null);
+  if (tribe === undefined || school === null || !jobEnabled(world, ctx, seat, tribe, job)) return false;
+  return homeBuildings(world, ctx, seat).some(
+    (e) => school.schools.includes(world.get(e, Building).buildingType) && isBuilt(world, e),
+  );
+}
+
+/** Whether each trade of `type` has its man: earned by one of the colony's, or one home's school can make.
+ *  Owner ruling: people cross like goods, so a trade the colony lacks is no reason to go without its building. */
+function crewInReach(env: ColonyEnv, type: BuildingType): boolean {
   const { world, ctx } = env;
   const men = colonists(env).filter((e) => isAllocatableMan(world, ctx, e));
-  return operatorJobs(env, type).every((job) =>
-    men.some((e) => {
-      const held = world.get(e, Settler).jobType === job;
-      return held || settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job);
-    }),
+  return operatorJobs(env, type).every(
+    (job) =>
+      men.some((e) => {
+        const held = world.get(e, Settler).jobType === job;
+        return held || settlerMeetsNeed(world, ctx, needSubjectOf(world, e), 'job', job);
+      }) || homeTeaches(env, job),
   );
 }
 
@@ -227,7 +243,7 @@ export function billsOf(env: ColonyEnv, plan: readonly string[]): Map<number, nu
 /**
  * Owner ruling: make a material or ship it, per material. The workshop goes up when `bills` call for
  * {@link MATERIAL_WORKSHOP_FROM_UNITS} of what it makes, the colony's land or workshops supply all it works
- * up, the tribe has it unlocked and a man has earned its trade. Everything else sails.
+ * up, the tribe has it unlocked and its trade has a man in reach. Everything else sails.
  */
 function materialWorkshops(
   env: ColonyEnv,
@@ -249,7 +265,7 @@ function materialWorkshops(
       continue;
     const inputs = index.mergedRecipeByBuilding.get(maker.typeId)?.inputs ?? [];
     const fed = inputs.every((input) => made.has(input.goodType) || landHolds(env, from, input.goodType));
-    if (fed && unlocked(env, maker) && crewOnColony(env, maker)) workshops.push(maker.id);
+    if (fed && unlocked(env, maker) && crewInReach(env, maker)) workshops.push(maker.id);
   }
   return workshops;
 }
@@ -322,7 +338,7 @@ function ladderRead(env: ColonyEnv, colony: ColonyView, buildings: readonly Enti
     open: (building) => {
       const typeId = index.buildingTypeBySlug.get(building);
       const type = typeId === undefined ? undefined : index.buildings.get(typeId);
-      return type !== undefined && unlocked(env, type) && crewOnColony(env, type);
+      return type !== undefined && unlocked(env, type) && crewInReach(env, type);
     },
   };
 }
