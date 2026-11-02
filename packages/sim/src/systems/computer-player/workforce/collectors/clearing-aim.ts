@@ -19,6 +19,7 @@ import {
   type BuildLineId,
   type BuildOrder,
   linesByPriority,
+  overflowBuildReachNodes,
   type StepKey,
   seatTuning,
   stepKey,
@@ -41,7 +42,7 @@ type Verdict = typeof FREE | typeof CLEARABLE | typeof NEVER;
 
 /**
  * The trees and rocks the seat's generic posts clear first while a placement finds no spot: those standing
- * on the patch, within the build search's reach of the base, that the stalled building would take with the
+ * on the patch, within the build search's reach of the base (its wider one on a seat keeping to its land), that the stalled building would take with the
  * fewest blocked nodes once cleared (the nearest to the base on a tie). The placement is the holding step of
  * the seat's highest-priority line, so a seat whose defence comes first clears for its barracks. Ground the
  * building may never take (unbuildable terrain, another building's zone, a road, a blocker no clearing
@@ -96,7 +97,7 @@ export function clearingPatch(
   const zone = buildingFootprintOf(ctx.content, typeId, tribe)?.reserved;
   if (zone === undefined || zone.length === 0) return null;
   const tuning = seatTuning(world, player);
-  const reach = tuning.reachNodes;
+  const reach = tuning.homeLandOnly ? overflowBuildReachNodes(tuning.reachNodes) : tuning.reachNodes;
   const plotted = plottedNodes(world, ctx, terrain, player, typeId);
   const home = tuning.homeLandOnly ? terrain.componentOf(terrain.nodeAt(baseNode.hx, baseNode.hy)) : null;
   const refused = (node: NodeId): boolean =>

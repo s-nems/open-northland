@@ -37,6 +37,10 @@ export const PLANNED_HOMES_FLOOR = 5;
  *  homes; the big patches lasted to minute 30 unplotted (arabskie_wyspy_wolna_gra_mieszana). */
 export const GROUND_PLAN_FROM_TICKS = minutesToTicks(10);
 
+/** Owner ruling: what a plan never cuts, plotted ahead of every bigger building: on one island seat a
+ *  bakery's plot took the last patch the barracks could be cleared on. */
+const NEVER_CUT: readonly string[] = ['barracks', 'work_armory_00'];
+
 /** The stable content id of the home chain's base tier. */
 const HOME_BUILDING = 'home_level_00';
 
@@ -122,7 +126,7 @@ interface PlottedStep {
 }
 
 /** The unmet single-copy placements of `order` that would hold their line, with a zone over a home's,
- *  biggest first, then by content id, one per building: a role joinery's top tier, which an upgrade of a
+ *  {@link NEVER_CUT} first, then biggest, then by content id, one per building: a role joinery's top tier, which an upgrade of a
  *  lower joinery meets, and a step only serving something beside it stay out, the shore's own joinery in. */
 function essentialSteps(seat: Seat, order: BuildOrder, statuses: LineStatuses): readonly PlottedStep[] {
   const { world, ctx, owned } = seat;
@@ -147,8 +151,9 @@ function essentialSteps(seat: Seat, order: BuildOrder, statuses: LineStatuses): 
       chosen.set(entry.building, { entry, line: line.id, step, zone });
     }
   }
+  const rank = (step: PlottedStep): number => (NEVER_CUT.includes(step.entry.building) ? 0 : 1);
   return [...chosen.values()].sort(
-    (a, b) => b.zone - a.zone || (a.entry.building < b.entry.building ? -1 : 1),
+    (a, b) => rank(a) - rank(b) || b.zone - a.zone || (a.entry.building < b.entry.building ? -1 : 1),
   );
 }
 
@@ -189,6 +194,15 @@ function plotOf(seat: Seat, plotted: PlottedStep): GroundPlot | null {
  * nearer ground off the other plots.
  */
 function packedSpot(seat: Seat, type: BuildingType): HalfCellNode | null {
+  // The grass stays for the grass buildings where a plot need not take it.
+  if (seat.decision.reserveGrass) {
+    const offGrass = packedOn(seat, type, true);
+    if (offGrass !== null) return offGrass;
+  }
+  return packedOn(seat, type, false);
+}
+
+function packedOn(seat: Seat, type: BuildingType, spareGrass: boolean): HalfCellNode | null {
   const { world, ctx, terrain, player, owned, anchor, tribe, decision } = seat;
   const fan = overflowBuildReachNodes(seatTuning(world, player).reachNodes);
   const reach = buildReach(world, owned, anchor, fan);
@@ -197,7 +211,7 @@ function packedSpot(seat: Seat, type: BuildingType): HalfCellNode | null {
     decision.underFire(),
     anchor,
     fan,
-    decision.reserveGrass,
+    spareGrass,
   );
   const walkable = baseWalkTest(world, ctx, terrain, player);
   const grid = placementBlockerGrid(world, ctx.content, terrain);
