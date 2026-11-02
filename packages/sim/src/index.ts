@@ -311,6 +311,6 @@ export type { WorkStatus } from './systems/readviews/work-status.js';
 export type { SignpostProbe } from './systems/signposts/index.js';
 export type { SignpostReachPost, SignpostReachView } from './systems/signposts/reach.js';
 export { heapReach } from './systems/stores/seat-stock.js';
-export type { TradeOffer, TraderView, TradeStopView } from './systems/trade/index.js';
+export type { TradeOffer, TraderShipState, TraderView, TradeStopView } from './systems/trade/index.js';
 export type { MooringProbe, VehicleStockView, VehicleView } from './systems/vehicles/index.js';
 export { FOG_STATE } from './systems/vision/index.js';

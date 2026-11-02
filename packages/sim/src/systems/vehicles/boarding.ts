@@ -36,6 +36,7 @@ import {
   passengerJobAllowed,
   placeOnNode,
   refuseCrew,
+  releaseCarried,
   releaseRider,
 } from './crew.js';
 import { startDock } from './dock.js';
@@ -239,20 +240,6 @@ function canRideInside(
   return 'ok';
 }
 
-/** Clear the slot `vehicle` holds on `carrier` and the vehicle's link back. */
-export function releaseCarried(world: World, carrier: Entity, vehicle: Entity): void {
-  const carrierState = world.tryGet(carrier, Vehicle);
-  if (carrierState !== undefined) {
-    const slot = carrierState.vehicles.findIndex((seat) => seat !== null && seat.entity === vehicle);
-    if (slot >= 0) world.mut(carrier, Vehicle).vehicles[slot] = null;
-  }
-  const live = world.tryMut(vehicle, Vehicle);
-  if (live !== undefined) {
-    live.carrier = null;
-    if (live.task === 'boardsShip') live.task = 'none';
-  }
-}
-
 /** The load order - see the command doc. `CanVehicleBeAttached`: same owner, the vehicle's job in the
  *  carrier's list, a free vehicle slot; the drive then starts on the next boarding pass. */
 export function loadIntoVehicle(
@@ -266,8 +253,9 @@ export function loadIntoVehicle(
   if (state === undefined || carrierState === undefined || vehicle === carrier) return false;
   dropVehicleOrderQueue(world, vehicle);
   if (state.carrier === carrier) return true;
-  if (state.hauler !== null) {
-    refuseCrew(world, ctx, vehicle, 'cannotAttach'); // a carrier's hauling cart goes nowhere without it
+  if (state.hauler !== null || carrierState.hauler !== null) {
+    // A carrier's hauling cart goes nowhere without it, and a trader's pinned ship keeps its slot.
+    refuseCrew(world, ctx, vehicle, 'cannotAttach');
     return false;
   }
   if (state.carrier !== null && !leaveCarrier(world, ctx, { kind: 'leaveCarrier', vehicle })) return false;

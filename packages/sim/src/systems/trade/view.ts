@@ -3,18 +3,34 @@ import {
   isForeignHouse,
   MissionObjectId,
   ownerOf,
+  Position,
+  Rider,
   Settler,
   TRADE_LIMIT_NONE,
   type TradeImportMark,
+  TradeRoute,
+  TradeShip,
   tradeRouteOf,
   Vehicle,
+  VehicleStock,
+  vehicleStockEntries,
 } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import type { ContentContext } from '../context.js';
+import { nodeOfPosition } from '../../nav/halfcell.js';
+import type { MapContext } from '../context.js';
 import { isTraderJob } from '../readviews/jobs.js';
 import { activeAgreement, agreementsAt, type HouseAgreement } from './agreements.js';
 import { traderHoldOf } from './hold.js';
 import { isSettlementAnchor } from './settlement.js';
+import { mooringTargetOfStop, routeCrossesSea, shipLiesOn } from './ship.js';
+
+/**
+ * The ship question of a trader's route as the panel explains it: `notNeeded` for a route on one
+ * continent or short of two stops, `needed` for a crossing with no pinned ship, `ready` with the ship at
+ * the trader's shore or the trader aboard it, `unreachable` with the ship out of its reach or no shore
+ * for it at a stop.
+ */
+export type TraderShipState = 'notNeeded' | 'needed' | 'ready' | 'unreachable';
 
 /** One agreement as a window lists it. */
 export interface TradeOffer {
@@ -57,6 +73,11 @@ export interface TraderView {
   readonly cart: { readonly entity: Entity; readonly vehicleType: number } | null;
   /** The goods in its hold, the cart's or its hands, ascending by good. */
   readonly cargo: readonly { readonly good: number; readonly amount: number }[];
+  /** The ship pinned to its route, or null. */
+  readonly ship: { readonly entity: Entity; readonly vehicleType: number } | null;
+  /** The goods in the pinned ship's hold, ascending by good; empty without a ship. */
+  readonly shipCargo: readonly { readonly good: number; readonly amount: number }[];
+  readonly shipState: TraderShipState;
 }
 
 function offerOf(offer: HouseAgreement): TradeOffer {
@@ -87,14 +108,43 @@ export function tradeOffersOf(world: World, partner: number): TradeOffer[] {
   return [...offered.values()].sort((a, b) => a.index - b.index);
 }
 
+function shipStateOf(world: World, ctx: MapContext, trader: Entity): TraderShipState {
+  const terrain = ctx.terrain;
+  if (terrain === undefined || !routeCrossesSea(world, ctx, terrain, trader)) return 'notNeeded';
+  const ship = world.tryGet(trader, TradeShip)?.vehicle;
+  if (ship === undefined) return 'needed';
+  const stops = world.get(trader, TradeRoute).stops;
+  if (stops.some((stop) => mooringTargetOfStop(world, ctx, terrain, ship, stop) === null))
+    return 'unreachable';
+  if (world.tryGet(trader, Rider)?.vehicle === ship) return 'ready';
+  const pos = world.tryGet(trader, Position);
+  if (pos === undefined) return 'unreachable';
+  const at = nodeOfPosition(pos.x, pos.y);
+  const continent = terrain.componentOf(terrain.nodeAtClamped(at.hx, at.hy));
+  return shipLiesOn(world, ctx, terrain, ship, continent) ? 'ready' : 'unreachable';
+}
+
 /** The route of a trader, as a detached copy; undefined for anything that is no trader. */
-export function traderView(world: World, ctx: ContentContext, trader: Entity): TraderView | undefined {
+export function traderView(world: World, ctx: MapContext, trader: Entity): TraderView | undefined {
   const settler = world.tryGet(trader, Settler);
   if (settler === undefined || !isTraderJob(ctx.content, settler.jobType)) return undefined;
   const hold = traderHoldOf(world, ctx, trader);
   const cartView =
     hold.cart === null ? null : { entity: hold.cart, vehicleType: world.get(hold.cart, Vehicle).vehicleType };
   const cargo = hold.entries.map(([good, amount]) => ({ good, amount }));
+  const shipEntity = world.tryGet(trader, TradeShip)?.vehicle;
+  const pinned = shipEntity === undefined ? undefined : world.tryGet(shipEntity, Vehicle);
+  const ship =
+    shipEntity === undefined || pinned === undefined
+      ? null
+      : { entity: shipEntity, vehicleType: pinned.vehicleType };
+  const lines = shipEntity === undefined ? undefined : world.tryGet(shipEntity, VehicleStock);
+  const shipCargo =
+    lines === undefined
+      ? []
+      : vehicleStockEntries(lines).flatMap(([good, line]) =>
+          line.current > 0 ? [{ good, amount: line.current }] : [],
+        );
   const route = tradeRouteOf(world, trader);
   if (route === undefined) {
     return {
@@ -108,6 +158,9 @@ export function traderView(world: World, ctx: ContentContext, trader: Entity): T
       takeUpTo: TRADE_LIMIT_NONE,
       cart: cartView,
       cargo,
+      ship,
+      shipCargo,
+      shipState: 'notNeeded',
     };
   }
   return {
@@ -132,5 +185,8 @@ export function traderView(world: World, ctx: ContentContext, trader: Entity): T
     takeUpTo: route.takeUpTo,
     cart: cartView,
     cargo,
+    ship,
+    shipCargo,
+    shipState: shipStateOf(world, ctx, trader),
   };
 }

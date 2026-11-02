@@ -64,6 +64,12 @@ export type TradeCommand =
       readonly entity: Entity;
       readonly giveKeep: number;
       readonly takeUpTo: number;
+    }
+  | {
+      /** Pin `ship` to the trader's route, a ship `canPinTradeShip` admits, or drop the pin with null. */
+      readonly kind: 'setTradeShip';
+      readonly entity: Entity;
+      readonly ship: Entity | null;
     };
 
 /** Register one of the map's `tradeagreement` rows (trusted setup). The houses it applies to are the

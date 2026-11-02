@@ -21,7 +21,14 @@ export interface SoundingAtomic {
 /** A lift into or out of a hold, whose length the cart's kind sets: its clip plays once over the
  *  whole atomic, shortened or stretched by the cart, and its cues ride that scaled clock. */
 function scalesClip(kind: AtomicEffect['kind'] | undefined): boolean {
-  return kind === 'haulLoad' || kind === 'haulUnload' || kind === 'tradeLoad' || kind === 'tradeUnload';
+  return (
+    kind === 'haulLoad' ||
+    kind === 'haulUnload' ||
+    kind === 'tradeLoad' ||
+    kind === 'tradeUnload' ||
+    kind === 'tradeShipStow' ||
+    kind === 'tradeShipFetch'
+  );
 }
 
 /**

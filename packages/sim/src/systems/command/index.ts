@@ -4,6 +4,7 @@ import {
   addPaper,
   continueMatch,
   endMatchContinuation,
+  Rider,
   Settler,
   setAlliedVision,
   setBioGroundWaived,
@@ -369,7 +370,8 @@ function applyCommand(
       orderAttachToVehicle(world, ctx, command);
       return;
     case 'detachFromVehicle':
-      releaseHaulingCart(world, ctx, command.entity);
+      // A rider leaves its vehicle only: a trader aboard its pinned ship lands with its cart.
+      if (!world.has(command.entity, Rider)) releaseHaulingCart(world, ctx, command.entity);
       detachFromVehicle(world, ctx, command);
       return;
     case 'boardVehicle':
@@ -553,6 +555,7 @@ function applyCommand(
     case 'clearTradeImports':
     case 'setTradeAgreement':
     case 'setTradeAgreementLimits':
+    case 'setTradeShip':
       applyTradeCommand(world, ctx, command);
       return;
     case 'addTradeAgreement':

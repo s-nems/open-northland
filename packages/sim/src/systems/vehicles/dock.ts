@@ -199,8 +199,8 @@ interface MooringMemo extends MooringSpots {
 }
 
 /** A few entries per world, by key, so a selected fleet spread over different waters does not evict
- *  one ship's answer with another's. A read-path cache feeding the overlay, the berth preview and the
- *  click gate, never a sim decision, so it is not hashed. */
+ *  one ship's answer with another's. It feeds the overlay, the berth preview, the click gate and a
+ *  trader's voyage; the spots are a function of the key alone, so it changes no result and is not hashed. */
 const mooringMemo = new WeakMap<World, Map<string, MooringMemo>>();
 /** The memo entries a world keeps, the least recently built dropped first. */
 const MOORING_MEMO_ENTRIES = 4;

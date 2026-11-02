@@ -156,6 +156,7 @@ import type { SignpostProbe } from './systems/signposts/index.js';
 import { type SignpostReachView, signpostReachKey, signpostReachView } from './systems/signposts/reach.js';
 import {
   canAttachTradeHouse,
+  canPinTradeShip,
   type TradeOffer,
   type TraderView,
   tradeOffersAt,
@@ -781,7 +782,7 @@ export class Simulation {
 
   /** A trader's route, cart and agreement choice as a detached copy; undefined for any other unit. */
   traderView(trader: Entity): TraderView | undefined {
-    return traderView(this.world, { content: this.content }, trader);
+    return traderView(this.world, this.mapContext(), trader);
   }
 
   /** The map agreements a house offers a visiting trader, as detached copies. */
@@ -812,6 +813,19 @@ export class Simulation {
   /** Whether the `attachTradeHouse` command would put `house` on the trader's route right now. */
   canAttachTradeHouse(trader: Entity, house: Entity): boolean {
     return canAttachTradeHouse(this.world, this.mapContext(), trader, house);
+  }
+
+  /** Whether the `setTradeShip` command would pin `ship` to `trader` right now. */
+  canPinTradeShip(trader: Entity, ship: Entity): boolean {
+    return canPinTradeShip(this.world, this.mapContext(), trader, ship);
+  }
+
+  /** Every ship {@link canPinTradeShip} admits for `trader`, ascending by id. */
+  tradeShipsPinnableBy(trader: Entity): Entity[] {
+    const ctx = this.mapContext();
+    return this.world
+      .canonicalQuery(Vehicle)
+      .filter((ship) => canPinTradeShip(this.world, ctx, trader, ship));
   }
 
   /** Whether the `attachToVehicle` command would seat `settler` on `vehicle` right now, or hand it the

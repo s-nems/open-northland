@@ -586,6 +586,9 @@ describe('the settler panel model', () => {
       takeUpTo: AGREEMENT_UP_TO,
       cart: null,
       cargo: [],
+      ship: null,
+      shipCargo: [],
+      shipState: 'notNeeded',
     };
     const model = settlerModel(
       [
@@ -658,6 +661,9 @@ describe('the settler panel model', () => {
       takeUpTo: TRADE_LIMIT_NONE,
       cart: null,
       cargo: [],
+      ship: null,
+      shipCargo: [],
+      shipState: 'notNeeded',
     };
     // Wood marked at A too: balanced, so it carries no limits.
     const both: TraderView = {

@@ -21,7 +21,12 @@ import {
 } from '../../../progression/index.js';
 import { isStrokeCountedAtomic } from '../../../readviews/index.js';
 import { erectSignpost } from '../../../signposts/index.js';
-import { loadTraderHold, unloadTraderHold } from '../../../trade/index.js';
+import {
+  fetchFromTradeShip,
+  loadTraderHold,
+  stowIntoTradeShip,
+  unloadTraderHold,
+} from '../../../trade/index.js';
 import { loadHaulingCart, unloadHaulingCart } from '../../../vehicles/hauling-cart.js';
 import { serveDrillRepetition } from '../../drives/training.js';
 import {
@@ -88,6 +93,12 @@ export function applyEffect(
       return;
     case 'tradeUnload':
       unloadTraderHold(world, ctx, settler, effect.store, effect.goodType);
+      return;
+    case 'tradeShipStow':
+      stowIntoTradeShip(world, ctx, settler, effect.vehicle, effect.goodType);
+      return;
+    case 'tradeShipFetch':
+      fetchFromTradeShip(world, ctx, settler, effect.vehicle, effect.goodType);
       return;
     case 'haulLoad':
       loadHaulingCart(world, ctx, settler, effect.from, effect.goodType);

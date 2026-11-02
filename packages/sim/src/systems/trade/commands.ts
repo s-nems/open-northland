@@ -21,6 +21,7 @@ import type { ContentContext, SystemContext } from '../context.js';
 import { isTrader } from '../readviews/jobs.js';
 import { agreementsAt, mutualFriends } from './agreements.js';
 import { isSettlementAnchor } from './settlement.js';
+import { setTradeShip } from './ship.js';
 
 /**
  * Whether `attachTradeHouse` puts `house` on the trader's route: a standing house not on it yet that
@@ -84,6 +85,9 @@ export function applyTradeCommand(world: World, ctx: SystemContext, command: Tra
     }
     case 'setTradeAgreementLimits':
       setTradeAgreementLimits(world, command.entity, command.giveKeep, command.takeUpTo);
+      return;
+    case 'setTradeShip':
+      setTradeShip(world, ctx, command.entity, command.ship);
       return;
   }
 }

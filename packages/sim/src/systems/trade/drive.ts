@@ -39,15 +39,11 @@ import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goa
 import { mayFetchGoodFrom } from '../stores/index.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
+import { planCrossing, seaLegOf, takeStopAtHand } from './ferry.js';
 import { sameFoodClass } from './goods.js';
-import { cartStands, type TraderHold, traderHoldOf } from './hold.js';
+import { cartStands, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
 import { refillRestores } from './partner-stock.js';
 import { settlementHouses } from './settlement.js';
-
-/** How close to the stop's door the trader's hold must be before it works the stop, in map-point steps:
- *  the standing cart's anchor, or the trader itself while the cart travels with it or it goes on foot
- *  (original behavior: a hexagon distance over 5 moves the cart). */
-export const TRADE_CART_HOUSE_DISTANCE = 5;
 
 /** A unit the trader moves at a stop: loaded out of `from`, the stop's house or a house of its
  *  settlement, or unloaded into the stop's house. */
@@ -86,13 +82,14 @@ interface LoadScope {
  * behavior of the trader's job, except that the original's trader commands its cart and idles without
  * one (owner's choice). Approximation: the original's trader carries every unit between the house and
  * the cart's door; here the load and unload clips at the house move the unit straight into and out of
- * the standing cart.
+ * the standing cart. A route across the sea with a pinned ship goes by that ship (`ferry.ts`).
  */
 export function planTrader(plan: PlannerContext): boolean {
   const { world, ctx, entity: e } = plan;
   if (!isTraderJob(ctx.content, plan.jobType) || world.has(e, Rider)) return false;
   if (!world.has(e, TradeRoute) || !routeStandsFinished(world, e)) return false;
   if (world.get(e, TradeRoute).current < 0) world.mut(e, TradeRoute).current = 0;
+  takeStopAtHand(plan);
   const current = world.get(e, TradeRoute);
   const stop = current.stops[current.current];
   const other = current.stops[1 - current.current];
@@ -101,6 +98,16 @@ export function planTrader(plan: PlannerContext): boolean {
   const hold = traderHoldOf(world, ctx, e);
   // A unit in the hands of a trader with a cart, one the ground refused, goes to the delivery rung first.
   if (hold.cart !== null && world.has(e, Carrying)) return false;
+  const leg = seaLegOf(plan, current);
+  if (leg !== null) {
+    const here = (held: TraderHold): LoadScope => loadScope(plan, held, stop, other);
+    return planCrossing(plan, leg, hold, {
+      decide: (held) => decide(here(held), current, held, other),
+      setsOut: (held) => setsOutForOtherStop(plan, held, stop, other),
+      work: (near, action) => workStop(plan, near, stop.house, action),
+      wait: (near) => waitWithLoad(plan, near),
+    });
+  }
   const action = decide(loadScope(plan, hold, stop, other), current, hold, other);
   switch (action.kind) {
     case 'wait':
@@ -125,6 +132,19 @@ export function planTrader(plan: PlannerContext): boolean {
   world.mut(e, TradeRoute).current = 1 - current.current;
   walkTo(plan, other.house, () => {});
   return true;
+}
+
+/** Whether a stop done with its work hands over to the other stop now: an own route once work waits
+ *  there, a foreign route at once. */
+function setsOutForOtherStop(
+  plan: PlannerContext,
+  hold: TraderHold,
+  stop: DeepReadonly<TradeStop>,
+  other: DeepReadonly<TradeStop>,
+): boolean {
+  const { world, entity: e } = plan;
+  if (isForeignHouse(world, e, stop.house) || isForeignHouse(world, e, other.house)) return true;
+  return decideDomestic(loadScope(plan, hold, other, stop), hold, stop).kind !== 'next';
 }
 
 function loadScope(

@@ -44,7 +44,8 @@ export interface VehicleView {
   readonly mooring: HalfCellNode | null;
   readonly harnessed: boolean;
   readonly carrier: Entity | null;
-  /** The posted carrier pulling this cart on its hauls, or null; a taken cart has no `at`. */
+  /** The posted carrier or trader pulling this cart, or the trader this ship is pinned to, or null; a
+   *  taken cart has no `at`. */
   readonly hauler: Entity | null;
   readonly at: HalfCellNode | null;
   readonly door: HalfCellNode | null;

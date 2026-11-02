@@ -2,6 +2,7 @@ import type { VehicleType } from '@open-northland/data';
 import {
   AttackOrder,
   Engagement,
+  HaulingCart,
   HuntFocus,
   hasFreeSeat,
   ownerOf,
@@ -254,10 +255,31 @@ export function placeOnNode(world: World, e: Entity, point: HalfCellNode): void 
   }
 }
 
-/** {@link setDownRider}, anchoring a fighter where it lands so it does not walk back to where it boarded. */
+/** Clear the slot `vehicle` holds on `carrier` and the vehicle's link back. */
+export function releaseCarried(world: World, carrier: Entity, vehicle: Entity): void {
+  const carrierState = world.tryGet(carrier, Vehicle);
+  if (carrierState !== undefined) {
+    const slot = carrierState.vehicles.findIndex((seat) => seat !== null && seat.entity === vehicle);
+    if (slot >= 0) world.mut(carrier, Vehicle).vehicles[slot] = null;
+  }
+  const live = world.tryMut(vehicle, Vehicle);
+  if (live !== undefined) {
+    live.carrier = null;
+    if (live.task === 'boardsShip') live.task = 'none';
+  }
+}
+
+/** {@link setDownRider}, anchoring a fighter where it lands so it does not walk back to where it boarded;
+ *  a rider's own hauling cart carried on the same ship comes off with it and stands on `point`. */
 export function landRider(world: World, ctx: SystemContext, rider: Entity, point: HalfCellNode): void {
+  const vehicle = world.tryGet(rider, Rider)?.vehicle;
+  const cart = world.tryGet(rider, HaulingCart)?.vehicle;
   setDownRider(world, rider, point);
   anchorAtFeet(world, ctx, rider);
+  if (cart === undefined || vehicle === undefined) return;
+  if (world.tryGet(cart, Vehicle)?.carrier !== vehicle) return;
+  placeOnNode(world, cart, point);
+  releaseCarried(world, vehicle, cart);
 }
 
 /** Put a rider back on the map at `point`, its seat now outside. */

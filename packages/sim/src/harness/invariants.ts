@@ -11,20 +11,24 @@ import {
   PathRoute,
   Person,
   Position,
+  Rider,
   Settler,
   SettlerNeeds,
   SettlerProgress,
   Stockpile,
   stockpileEntries,
+  TradeShip,
   Vehicle,
   VehicleDrive,
   VehicleMarchRoute,
   VehicleRoute,
 } from '../components/index.js';
+import { contentIndex } from '../core/content-index.js';
 import { ONE } from '../core/fixed.js';
 import type { Component, World } from '../ecs/world.js';
 import { NEED_OVERFILL_FLOOR } from '../systems/lifecycle/needs/index.js';
-import { isAnimalTribe } from '../systems/readviews/index.js';
+import { isAnimalTribe, isTraderJob } from '../systems/readviews/index.js';
+import { isShipVehicle } from '../systems/readviews/vehicles.js';
 import { worksWithHaulingCart } from '../systems/vehicles/hauling-cart.js';
 import { playerPlacementRulesValid } from './player-placement-invariant.js';
 
@@ -185,11 +189,38 @@ const haulingCartsLinked: Invariant = (world, content) => {
     if (held.lift !== null && (held.taken || !world.has(held.vehicle, Position))) {
       out.push(`entity ${e}: hauling cart ${held.vehicle} is in a lift while in hand or off the map`);
     }
+    if (state.carrier !== null && world.tryGet(e, Rider)?.vehicle !== state.carrier) {
+      out.push(`entity ${e}: hauling cart ${held.vehicle} rides a ship without its puller aboard`);
+    }
   }
   for (const e of world.query(Vehicle)) {
     const hauler = world.get(e, Vehicle).hauler;
-    if (hauler !== null && world.tryGet(hauler, HaulingCart)?.vehicle !== e) {
-      out.push(`entity ${e}: hauler ${hauler} does not pull it`);
+    if (hauler === null) continue;
+    const pulls = world.tryGet(hauler, HaulingCart)?.vehicle === e;
+    if (!pulls && world.tryGet(hauler, TradeShip)?.vehicle !== e) {
+      out.push(`entity ${e}: hauler ${hauler} neither pulls it nor has it pinned`);
+    }
+  }
+  return out;
+};
+
+/** A pinned ship and its trader name each other, the ship is a ship, and its hauler link never leads a
+ *  cart reader astray. */
+const tradeShipsLinked: Invariant = (world, content) => {
+  const out: string[] = [];
+  for (const e of world.query(TradeShip)) {
+    const { vehicle } = world.get(e, TradeShip);
+    const state = world.tryGet(vehicle, Vehicle);
+    if (state === undefined || state.hauler !== e) {
+      out.push(`entity ${e}: TradeShip names vehicle ${vehicle}, which does not name it back`);
+      continue;
+    }
+    const type = contentIndex(content).vehicles.get(state.vehicleType);
+    if (type === undefined || !isShipVehicle(type)) {
+      out.push(`entity ${e}: TradeShip names vehicle ${vehicle}, which is no ship`);
+    }
+    if (!isTraderJob(content, world.tryGet(e, Settler)?.jobType ?? null)) {
+      out.push(`entity ${e}: holds trade ship ${vehicle} without being a trader`);
     }
   }
   return out;
@@ -205,6 +236,7 @@ export const CORE_INVARIANTS: readonly Invariant[] = [
   atomicStandsStill,
   vehicleRoutesOwned,
   haulingCartsLinked,
+  tradeShipsLinked,
   cachesCoherent,
   playerPlacementRulesValid,
 ];

@@ -75,7 +75,8 @@ export const Vehicle = defineComponent<{
   /** The ship carrying this vehicle, or null while it stands on the map. */
   carrier: Entity | null;
   /** The posted carrier or trader this cart is the hauling cart of ({@link HaulingCart}), set from the order so
-   *  nobody else takes or boards it meanwhile; null for a cart nobody pulls. */
+   *  nobody else takes or boards it meanwhile, or the trader this ship is pinned to ({@link TradeShip});
+   *  null for a vehicle nobody holds. */
   hauler: Entity | null;
   passengers: (VehicleSeat | null)[];
   vehicles: (VehicleSeat | null)[];
@@ -180,6 +181,18 @@ export const HaulingCart = defineComponent<{
   parked: boolean;
   lift: HaulingLift | null;
 }>('HaulingCart', 'economy');
+
+/**
+ * The ship a player pinned to a trader's sea route (owner's choice; the original's sea trader job is an
+ * empty stub), the ship's `Vehicle.hauler` naming the trader back so nobody else boards or loads it. The
+ * route owns the ship's hold. `dockRetryAt` is the tick before which a failed voyage is not tried again,
+ * `failedDock` the mooring point that last failed, so a ship already on that shore stays where it lies.
+ */
+export const TradeShip = defineComponent<{
+  vehicle: Entity;
+  dockRetryAt: number;
+  failedDock: HalfCellNode | null;
+}>('TradeShip', 'economy');
 
 /**
  * An animal a cart recruited as its draught animal, from the pick until it is consumed at the cart's

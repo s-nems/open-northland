@@ -9,6 +9,7 @@ import {
   Position,
   Rider,
   Settler,
+  TradeShip,
   Vehicle,
   VehicleStock,
   vehicleLoad,
@@ -159,17 +160,38 @@ function stowHands(world: World, content: ContentSet, settler: Entity, vehicle: 
 }
 
 /**
- * Whether `settler` may still pull the cart it holds: the cart stands, names it back, belongs to the same
- * player, and the settler is still a posted carrier or a trader riding nothing. A hold that fails is set down by
- * {@link releaseHaulingCart}.
+ * Whether `settler` may still pull the cart it holds: the cart stands, or rides the ship the settler
+ * rides, names it back, belongs to the same player, and the settler is still a posted carrier or a trader
+ * riding nothing but that ship. A hold that fails is set down by {@link releaseHaulingCart}.
  */
 export function haulingCartHolds(world: World, content: ContentSet, settler: Entity): boolean {
   const held = world.tryGet(settler, HaulingCart);
   if (held === undefined) return false;
   const state = world.tryGet(held.vehicle, Vehicle);
-  if (state === undefined || state.hauler !== settler || state.carrier !== null) return false;
+  if (state === undefined || state.hauler !== settler) return false;
   if (ownerOf(world, held.vehicle) !== ownerOf(world, settler)) return false;
-  return worksWithHaulingCart(world, content, settler) && !world.has(settler, Rider);
+  const rides = world.tryGet(settler, Rider)?.vehicle;
+  if (state.carrier !== (rides ?? null)) return false;
+  return worksWithHaulingCart(world, content, settler);
+}
+
+/** The trader sets its hauling cart into a free vehicle slot of `ship`, the hold keeping its goods; the
+ *  cart stays its own, parked, and comes off with it when it lands (`landRider`). */
+export function stowCartOnShip(world: World, settler: Entity, ship: Entity): void {
+  const held = world.tryGet(settler, HaulingCart);
+  if (held === undefined) return;
+  const slot = world.get(ship, Vehicle).vehicles.indexOf(null);
+  if (slot < 0) return;
+  endDrive(world, held.vehicle);
+  world.remove(held.vehicle, Position);
+  world.mut(ship, Vehicle).vehicles[slot] = { entity: held.vehicle, inside: true };
+  const live = world.mut(held.vehicle, Vehicle);
+  live.carrier = ship;
+  if (live.task !== 'none') live.task = 'none';
+  const mine = world.mut(settler, HaulingCart);
+  mine.taken = false;
+  mine.parked = true;
+  mine.lift = null;
 }
 
 /**
@@ -365,11 +387,26 @@ export function releasesHaulingCart(command: Command): command is Command & { en
   }
 }
 
-/** A vehicle leaving the map frees the carrier pulling it; what the carrier has in hand stays there. */
+/** A vehicle leaving the map frees the carrier pulling it or the trader it is pinned to; what the carrier
+ *  has in hand stays there. */
 export function dropHauler(world: World, vehicle: Entity): void {
   const hauler = world.tryGet(vehicle, Vehicle)?.hauler;
   if (hauler === undefined || hauler === null) return;
   if (world.tryGet(hauler, HaulingCart)?.vehicle === vehicle) world.remove(hauler, HaulingCart);
+  if (world.tryGet(hauler, TradeShip)?.vehicle === vehicle) world.remove(hauler, TradeShip);
+}
+
+/**
+ * Drop the trader's pin, the ship free for anyone again, its hold as it stands. A trader aboard stays a
+ * plain commander, and its carried cart a plain carried vehicle. Nothing happens without a pin.
+ */
+export function releaseTradeShip(world: World, trader: Entity): void {
+  const ship = world.tryGet(trader, TradeShip)?.vehicle;
+  if (ship === undefined) return;
+  world.remove(trader, TradeShip);
+  if (world.tryGet(ship, Vehicle)?.hauler === trader) world.mut(ship, Vehicle).hauler = null;
+  const cart = world.tryGet(trader, HaulingCart)?.vehicle;
+  if (cart !== undefined && world.tryGet(cart, Vehicle)?.carrier === ship) abandonHaulingCart(world, trader);
 }
 
 /** The hauling cart's type, or undefined for a carrier without one. */

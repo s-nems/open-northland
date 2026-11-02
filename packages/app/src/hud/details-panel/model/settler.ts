@@ -193,6 +193,8 @@ const ATOMIC_STATE: Readonly<Record<AtomicEffect['kind'], SettlerState>> = {
   drop: 'working',
   tradeLoad: 'working',
   tradeUnload: 'working',
+  tradeShipStow: 'working',
+  tradeShipFetch: 'working',
   haulLoad: 'working',
   haulUnload: 'working',
   vehicleLoad: 'working',

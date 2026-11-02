@@ -203,6 +203,7 @@ const COMMAND_PAYLOAD: { readonly [K in Command['kind']]: PayloadSpec<Extract<Co
   },
   setTradeSettlement: { required: { entity: 'integer', house: 'integer', on: 'boolean' } },
   clearTradeImports: { required: { entity: 'integer' } },
+  setTradeShip: { required: { entity: 'integer', ship: { nullOr: 'integer' } } },
   setTradeAgreement: { required: { entity: 'integer', agreement: 'integer' } },
   setTradeAgreementLimits: { required: { entity: 'integer', giveKeep: 'count', takeUpTo: 'count' } },
   addTradeAgreement: {

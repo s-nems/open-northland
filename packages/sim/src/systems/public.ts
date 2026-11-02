@@ -259,6 +259,7 @@ export {
 } from './signposts/index.js';
 export { createSettler, HUMAN_HITPOINTS, spawnAnimalHerd } from './spawn/index.js';
 export { buildingRowKeepsPriority, isYardHeap, MAX_GROUND_STACK } from './stores/index.js';
+export { canPinTradeShip, type TraderShipState } from './trade/index.js';
 // createVehicle stands a vehicle in pre-tick assembly the way the command does; modifyVehicleStock and
 // stockVehicleGoods are the writes into a hold, the second the booked-and-stowed one a loaded spawn uses.
 export {

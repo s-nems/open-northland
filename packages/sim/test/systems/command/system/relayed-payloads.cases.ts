@@ -160,6 +160,7 @@ function seatPayloads(t: Targets): { readonly [K in PlayerCommand['kind']]: read
     setTradeImportLimits: [{ entity: t.carrier, house: t.hq, good: WOOD, upTo: 5, keep: 1 }],
     setTradeSettlement: [{ entity: t.carrier, house: t.hq, on: true }],
     clearTradeImports: [{ entity: t.carrier }],
+    setTradeShip: [{ entity: t.carrier, ship: null }],
     setTradeAgreement: [{ entity: t.carrier, agreement: 0 }],
     setTradeAgreementLimits: [{ entity: t.carrier, giveKeep: 2, takeUpTo: 10 }],
     cancelTraining: [{ entity: t.worker }],

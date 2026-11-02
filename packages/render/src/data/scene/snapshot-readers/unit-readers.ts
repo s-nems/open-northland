@@ -25,10 +25,17 @@ export function readAtomicDuration(components: Readonly<Record<string, unknown>>
 }
 
 /** Whether the running atomic lifts a unit into or out of a hold (`haulLoad`, `haulUnload`, `tradeLoad`,
- *  `tradeUnload`), whose length a cart's kind sets; a trader on foot's lift lasts its clip. */
+ *  `tradeUnload`, `tradeShipStow`, `tradeShipFetch`), whose length a cart's kind sets; a trader on foot's lift lasts its clip. */
 export function readsCartLift(components: Readonly<Record<string, unknown>>): boolean {
   const kind = (components.CurrentAtomic as { effect?: { kind?: unknown } } | undefined)?.effect?.kind;
-  return kind === 'haulLoad' || kind === 'haulUnload' || kind === 'tradeLoad' || kind === 'tradeUnload';
+  return (
+    kind === 'haulLoad' ||
+    kind === 'haulUnload' ||
+    kind === 'tradeLoad' ||
+    kind === 'tradeUnload' ||
+    kind === 'tradeShipStow' ||
+    kind === 'tradeShipFetch'
+  );
 }
 
 /**
