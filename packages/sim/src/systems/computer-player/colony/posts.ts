@@ -21,24 +21,15 @@ import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
 import { hunterJobType, isFisherJob, isHunterJob, isScoutJob, scoutJobType } from '../../readviews/index.js';
-import { interactionCell } from '../../settlers/targets/index.js';
-import { networkLimitAt } from '../../signposts/index.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { isCarrierJob } from '../../stores/workplace.js';
-import {
-  knownResourceTest,
-  reachableResourceTest,
-  type WorkableTest,
-  workableResourceTest,
-} from '../live-resources.js';
 import { genericCollectorJob } from '../workforce/collectors/wanted-goods.js';
 import { FISHER_FLAG_MAX_DISTANCE_NODES, FISHING_TRIP_RADIUS_NODES } from '../workforce/fisher.js';
 import {
   claimFlagNode,
   collectorSpot,
   type FlagGround,
-  flagGround,
   legalFlagNodeTest,
   type TakenFlagNodes,
 } from '../workforce/flag-spots.js';
@@ -46,7 +37,16 @@ import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { homeSupply } from './line.js';
 import { MEN_PER_WOMAN } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
-import { colonyFoodHeld, LAND_GOOD_IDS, type LandGood, landHolds, storesHeld } from './provision.js';
+import {
+  canDig,
+  colonyFoodHeld,
+  flagGroundAt,
+  LAND_GOOD_IDS,
+  type LandGood,
+  landHolds,
+  storesHeld,
+  workableFrom,
+} from './provision.js';
 import { colonyBuildings } from './spot.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
@@ -112,31 +112,6 @@ function postOf(world: World, ctx: SystemContext, e: Entity, builder: number | n
     return LAND_GOOD_IDS.find((id) => goodTypeByContentId(ctx.content, id)?.typeId === good) ?? null;
   }
   return job === builder ? 'builder' : null;
-}
-
-/** The flag ground of the signposts round `origin`. */
-function flagGroundAt(env: ColonyEnv, origin: HalfCellNode): FlagGround {
-  const { world, ctx, terrain, seat } = env;
-  return flagGround(world, ctx, terrain, networkLimitAt(world, terrain, seat, origin.hx, origin.hy), 'aimed');
-}
-
-/** Which of a good's resources `origin`'s men may work: known to the seat and inside its reach. */
-function workableFrom(env: ColonyEnv, origin: HalfCellNode, ground: FlagGround): WorkableTest {
-  const { world, ctx, terrain, seat } = env;
-  const reachable = reachableResourceTest(
-    world,
-    ctx,
-    terrain,
-    origin,
-    workableResourceTest(world, ctx, terrain),
-  );
-  const known = knownResourceTest(world, ctx, seat);
-  const door = terrain.nodeAtClamped(origin.hx, origin.hy);
-  const { limit } = ground;
-  return (e) =>
-    reachable(e) &&
-    (known === null || known(e)) &&
-    (limit === null || limit.allowsNode(interactionCell(world, ctx, terrain, e, door)));
 }
 
 /** The nearest live fish shore on `origin`'s land, or null. */
@@ -366,10 +341,7 @@ export function handsWanted(
   const flags = flagGroundAt(env, origin);
   const diggable = [...digGoods(env, read)].filter((id) => {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
-    return (
-      good !== undefined &&
-      collectorSpot(world, flags, origin, good, new Set(), workableFrom(env, origin, flags)) !== null
-    );
+    return good !== undefined && canDig(env, origin, good, flags);
   });
   const resting = atRest(env, read);
   let men = 0;

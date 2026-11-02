@@ -19,7 +19,7 @@ import { isCarrierJob } from '../../stores/index.js';
 import { minutesToTicks } from '../game-phase.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER } from '../workforce/food.js';
 import { colonists, colonyOrigin } from './founding.js';
-import { colonyFoodHeld, colonyMakes, landHolds } from './provision.js';
+import { colonyFoodHeld, landHolds, workshopGoods } from './provision.js';
 import { siteRoom } from './survey.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
@@ -239,7 +239,7 @@ function materialWorkshops(
   const index = contentIndex(ctx.content);
   const from = colonyOrigin(env, colony, buildings);
   if (from === null) return [];
-  const makes = colonyMakes(env, from, buildings);
+  const made = workshopGoods(env, buildings);
   const workshops: string[] = [];
   for (const id of MATERIAL_GOOD_IDS) {
     const good = index.goodTypeBySlug.get(id);
@@ -248,7 +248,7 @@ function materialWorkshops(
     if (maker === undefined || workshops.includes(maker.id) || chainCount(env, buildings, maker) > 0)
       continue;
     const inputs = index.mergedRecipeByBuilding.get(maker.typeId)?.inputs ?? [];
-    const fed = inputs.every((input) => makes.has(input.goodType) || landHolds(env, from, input.goodType));
+    const fed = inputs.every((input) => made.has(input.goodType) || landHolds(env, from, input.goodType));
     if (fed && unlocked(env, maker) && crewOnColony(env, maker)) workshops.push(maker.id);
   }
   return workshops;

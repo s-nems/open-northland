@@ -5,14 +5,18 @@ import type { Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
+import { interactionCell } from '../../settlers/targets/index.js';
+import { networkLimitAt } from '../../signposts/index.js';
 import { stockAtBuildings } from '../../stores/index.js';
 import {
   knownAnd,
   knownResourceTest,
   nearestLiveResource,
   reachableResourceTest,
+  type WorkableTest,
   workableResourceTest,
 } from '../live-resources.js';
+import { collectorSpot, type FlagGround, flagGround } from '../workforce/flag-spots.js';
 import { storedFoodUnits } from '../workforce/food.js';
 import type { ColonyEnv } from './voyage.js';
 
@@ -59,8 +63,40 @@ export function landHolds(env: ColonyEnv, from: HalfCellNode, goodType: number):
   return nearestLiveResource(world, goodType, from, knownAnd(known, reachable)) !== null;
 }
 
+/** The flag ground of the signposts round `origin`. */
+export function flagGroundAt(env: ColonyEnv, origin: HalfCellNode): FlagGround {
+  const { world, ctx, terrain, seat } = env;
+  return flagGround(world, ctx, terrain, networkLimitAt(world, terrain, seat, origin.hx, origin.hy), 'aimed');
+}
+
+/** Which of a good's resources `origin`'s men may work: known to the seat and inside its reach. */
+export function workableFrom(env: ColonyEnv, origin: HalfCellNode, ground: FlagGround): WorkableTest {
+  const { world, ctx, terrain, seat } = env;
+  const reachable = reachableResourceTest(
+    world,
+    ctx,
+    terrain,
+    origin,
+    workableResourceTest(world, ctx, terrain),
+  );
+  const known = knownResourceTest(world, ctx, seat);
+  const door = terrain.nodeAtClamped(origin.hx, origin.hy);
+  const { limit } = ground;
+  return (e) =>
+    reachable(e) &&
+    (known === null || known(e)) &&
+    (limit === null || limit.allowsNode(interactionCell(world, ctx, terrain, e, door)));
+}
+
+/** Whether a flag on `goodType` can stand now: what the land holds past the signposts nobody digs. Costs a
+ *  flag search. */
+export function canDig(env: ColonyEnv, origin: HalfCellNode, goodType: number, ground: FlagGround): boolean {
+  const workable = workableFrom(env, origin, ground);
+  return collectorSpot(env.world, ground, origin, goodType, new Set(), workable) !== null;
+}
+
 /** The goods `buildings`, the colony's, make once they stand. */
-function workshopGoods(env: ColonyEnv, buildings: readonly Entity[]): Set<number> {
+export function workshopGoods(env: ColonyEnv, buildings: readonly Entity[]): Set<number> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const goods = new Set<number>();
@@ -75,16 +111,18 @@ function workshopGoods(env: ColonyEnv, buildings: readonly Entity[]): Set<number
   return goods;
 }
 
-/** What never sails out to the colony (owner ruling): what its workshops make and what its land holds. */
+/** What never sails out to the colony (owner ruling): what its workshops make and what its land gives. A
+ *  deposit its flags cannot reach yet gives nothing, or a site could wait for a good no ship brings. */
 export function colonyMakes(
   env: ColonyEnv,
   from: HalfCellNode,
   buildings: readonly Entity[],
 ): ReadonlySet<number> {
   const goods = workshopGoods(env, buildings);
+  const flags = flagGroundAt(env, from);
   for (const id of LAND_GOOD_IDS) {
     const good = goodTypeByContentId(env.ctx.content, id);
-    if (good !== undefined && landHolds(env, from, good.typeId)) goods.add(good.typeId);
+    if (good !== undefined && canDig(env, from, good.typeId, flags)) goods.add(good.typeId);
   }
   return goods;
 }
