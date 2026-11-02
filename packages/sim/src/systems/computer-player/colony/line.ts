@@ -333,22 +333,23 @@ function outwardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoL
   return outwardCargo(read);
 }
 
-/** `held` and what the colony's workshops have made and still hold on their shelves. */
-function withWorkshopOutput(
+/** The colony's standing workshops home's order handed it: what they make is why they stand there. */
+function handedWorkshops(env: ColonyEnv, colony: ColonyView, buildings: readonly Entity[]): Entity[] {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const handed = new Set(colony.overflow.map((row) => index.buildingTypeBySlug.get(row.building)));
+  return buildings.filter((e) => isBuilt(world, e) && handed.has(world.get(e, Building).buildingType));
+}
+
+/** `held` and what `workshops` have made and still hold on their shelves. */
+function withShelves(
   env: ColonyEnv,
-  buildings: readonly Entity[],
+  workshops: readonly Entity[],
+  made: ReadonlySet<number>,
   held: ReadonlyMap<number, number>,
 ): Map<number, number> {
-  const { world, ctx, seat } = env;
-  const made = workshopGoods(env, buildings);
-  const index = contentIndex(ctx.content);
-  const workshops = buildings.filter(
-    (e) =>
-      isBuilt(world, e) &&
-      index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.workplace,
-  );
   const units = new Map(held);
-  for (const [good, amount] of stockAtBuildings(world, seat, workshops))
+  for (const [good, amount] of stockAtBuildings(env.world, env.seat, workshops))
     if (made.has(good)) units.set(good, (units.get(good) ?? 0) + amount);
   return units;
 }
@@ -360,8 +361,9 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
   const supply = homeSupply(env);
   const staples = LAND_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
   const water = goodTypeByContentId(ctx.content, WATER_ID)?.typeId;
-  const units = withWorkshopOutput(env, buildings, held);
-  const made = workshopGoods(env, buildings);
+  const workshops = handedWorkshops(env, colony, buildings);
+  const made = workshopGoods(env, workshops);
+  const units = withShelves(env, workshops, made, held);
   const sails = [...units.keys()]
     .filter(
       (good) =>
