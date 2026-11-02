@@ -342,7 +342,8 @@ describe.runIf(hasRealIr())('AI opening plan against real content', () => {
           `operator seats of every planned ${id}`,
         ).toBeGreaterThanOrEqual(plan.seats.length);
       }
-      const listed: string[] = [...(plan.alone ?? []), ...(plan.sink ?? []), ...(plan.unfed ?? [])];
+      const listed: string[] = [...(plan.alone ?? []), ...(plan.sink ?? [])];
+      if (plan.unfed !== undefined) listed.push(...seatGoods(plan.unfed));
       for (const seat of plan.seats) {
         listed.push(...seatGoods(seat));
         if ('firstFed' in seat) {

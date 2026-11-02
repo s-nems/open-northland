@@ -69,6 +69,7 @@ import {
   SHOES_STOCK_UNITS,
   TEMPLE_SITE_OIL_UNITS,
   tuneCraftCounters,
+  WOODEN_TOOL_GLUT_UNITS,
 } from '../../../../src/systems/computer-player/workforce/craft.js';
 import {
   ARMY_RESERVE_UNITS,
@@ -417,6 +418,8 @@ function unarmedSmithySeat(peaceUntil: number): ArmedSeat {
 const FURNITURE = 13;
 /** The fixture joinery's wooden tool. */
 const TOOL_WOODEN = 6;
+/** Wood enough for every joiner of the fixture, under any short line. */
+const JOINERY_WOOD_UNITS = 40;
 
 /** The AI content with the joinery's furniture line, so its joiners have a product to turn to. */
 function furnitureContent(): ContentSet {
@@ -1703,6 +1706,25 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(seat.products()).toEqual([]);
     seat.stock(TOOL_IRON, JOINERY_TOOL_GLUT_UNITS - CRAFT_GLUT_BAND_UNITS - 1);
     expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
+  });
+
+  it('turns joiners with no iron to wooden tools up to their line, and back once iron comes', () => {
+    const seat = crewedWorkshop(furnitureContent(), 2);
+    seat.stock(WOOD, JOINERY_WOOD_UNITS);
+    expect(seat.products()).toEqual([[TOOL_WOODEN], [TOOL_WOODEN]]);
+    seat.stock(IRON, JOINERY_WOOD_UNITS);
+    expect(seat.products()).toEqual([[TOOL_IRON], [TOOL_IRON]]);
+    // At the line they wait on the iron instead of burning the wood.
+    seat.stock(IRON, 0);
+    seat.stock(TOOL_WOODEN, WOODEN_TOOL_GLUT_UNITS);
+    expect(seat.products()).toEqual([]);
+    // An apprentice works on past the line: resting would earn him no repeats.
+    const { sim } = seat;
+    const ctx = { ...ctxOf(sim), content: sim.content };
+    const crew = [...sim.world.query(Settler, JobAssignment)];
+    const supply = SeatSupply.of(sim.world, ctx, SEAT, ownedBuildings(sim.world, SEAT), DEFAULT_BUILD_ORDER);
+    const tuned = tuneCraftCounters(sim.world, ctx, SEAT, supply, AI_PROFILES.hard, new Set(crew));
+    expect(decisions(tuned)).toEqual([[TOOL_WOODEN], [TOOL_WOODEN]]);
   });
 
   it('makes wooden tools only until the iron tool is earned', () => {
