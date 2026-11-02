@@ -25,7 +25,6 @@ import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
-import { stockAtBuildings } from '../../stores/index.js';
 import { isCarrierJob } from '../../stores/workplace.js';
 import {
   knownResourceTest,
@@ -47,7 +46,7 @@ import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { homeSupply } from './line.js';
 import { MEN_PER_WOMAN } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
-import { colonyFoodHeld, LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
+import { colonyFoodHeld, LAND_GOOD_IDS, type LandGood, landHolds, storesHeld } from './provision.js';
 import { colonyBuildings } from './spot.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
@@ -248,7 +247,7 @@ function atRest(env: ColonyEnv, read: FoundingRead): boolean {
 /** The units the colony's standing stores can still take of a good, unbounded while none stands: its
  *  gatherers work from the first day and heap what they dig. */
 function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number) => number {
-  const { world, ctx, seat } = env;
+  const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const stores = buildings.filter(
     (e) =>
@@ -256,7 +255,7 @@ function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number)
       index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
   );
   if (stores.length === 0) return () => Number.POSITIVE_INFINITY;
-  const held = stockAtBuildings(world, seat, stores);
+  const held = storesHeld(env, stores);
   return (good) => {
     let room = -(held.get(good) ?? 0);
     for (const e of stores)
@@ -266,14 +265,12 @@ function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number)
 }
 
 /**
- * What the colony's men dig now, from what its land holds: wood and stone while its stores have room, as home
- * always wants them, and clay and iron while the colony's own plan or workshops or home's stock call for
- * them. A good at the stores' cap is left, or men stand by a full warehouse while another good runs short.
+ * What the colony has reason to dig, from what its land holds: wood and stone, as home always wants them, and
+ * clay and iron while the colony's own plan or workshops or home's stock call for them.
  */
 function digGoods(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
-  const room = storeRoom(env, read.buildings);
   const called = billsOf(env, read.plan);
   for (const e of read.buildings) {
     const inputs = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType)?.inputs;
@@ -288,8 +285,20 @@ function digGoods(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
   const digs = new Set<LandGood>();
   for (const id of LAND_GOOD_IDS) {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
-    if (good === undefined || room(good) <= 0 || !wanted(id, good)) continue;
+    if (good === undefined || !wanted(id, good)) continue;
     if (landHolds(env, read.origin, good)) digs.add(id);
+  }
+  return digs;
+}
+
+/** {@link digGoods} but those at the stores' cap: men left on one stand by a full warehouse while another
+ *  good runs short. */
+function digGoodsWithRoom(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
+  const room = storeRoom(env, read.buildings);
+  const digs = digGoods(env, read);
+  for (const id of digs) {
+    const good = goodTypeByContentId(env.ctx.content, id)?.typeId;
+    if (good !== undefined && room(good) <= 0) digs.delete(id);
   }
   return digs;
 }
@@ -411,7 +420,7 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
   const builders: Entity[] = [];
   const free: Entity[] = [];
   const posted = men.filter((man) => !atWorkshop(env, man));
-  const digs = digGoods(env, read);
+  const digs = digGoodsWithRoom(env, read);
   for (const man of posted) {
     const post = postOf(world, ctx, man, builder);
     // A man at a full store's good moves on while another good wants digging.
