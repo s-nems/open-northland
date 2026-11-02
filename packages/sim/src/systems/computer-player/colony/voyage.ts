@@ -29,7 +29,9 @@ import { SEA_SCOUT_TRIP_TIMEOUT_TICKS, scoutLoop } from '../military/operations/
 import { shorePoints } from '../sea-route.js';
 import { holdDone, holdLoad, holdsStoreBill, manifestInStock, pinHold, wantManifest } from './cargo.js';
 import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
+import { COLONY_BUILDS } from './founding.js';
 import { boardOrders, pickParty, spareMen } from './people.js';
+import { shoreWithStore } from './spot.js';
 import { homeStockOf } from './stock.js';
 import { colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 
@@ -226,9 +228,9 @@ export function claimScoutShip(env: ColonyEnv, colony: ColonyView): PlayerComman
   const { site, land } = colony;
   const clear = colonySiteClear(world, ctx, seat, site);
   const waypoints = clear ? scoutLoop(terrain, siteCoast(env, ship, colony), berth) : [];
-  const shore = colonyShores(env, ship, land, { hx: site.hx, hy: site.hy })[0];
+  const shore = shoreWithStore(env, land, colonyShores(env, ship, land, { hx: site.hx, hy: site.hy }));
   const first = waypoints[0];
-  if (shore === undefined || first === undefined) {
+  if (shore === null || first === undefined) {
     rejectSite(env, colony);
     return [];
   }
@@ -372,8 +374,10 @@ export function loading(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     return [];
   if (!billed) return backToFittingOut(env, ship);
   if (!colonySiteClear(world, ctx, seat, colony.site)) return turnHome(env, true);
-  const [shore, second] = colonyShores(env, ship, colony.land, { hx: colony.site.hx, hy: colony.site.hy });
-  if (shore === undefined) return turnHome(env, true);
+  const shores = colonyShores(env, ship, colony.land, { hx: colony.site.hx, hy: colony.site.hy });
+  const shore = shoreWithStore(env, colony.land, shores);
+  if (shore === null) return turnHome(env, true);
+  const second = shores.find((at) => at !== shore);
   const live = env.edit();
   live.phase = 'sailing';
   live.since = ctx.tick;
@@ -467,6 +471,7 @@ export function landing(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const live = env.edit();
   live.phase = 'founding';
   live.since = ctx.tick;
+  live.builds = COLONY_BUILDS.map((building) => ({ building, placed: false }));
   return [
     { kind: 'clearVehicleWanted', vehicle: ship },
     ...setAshore(world, ctx, ship, COLONY_LANDING_HANDS),

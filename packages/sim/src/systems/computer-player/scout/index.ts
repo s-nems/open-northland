@@ -220,7 +220,7 @@ function retreat(
  * would end his meal break (`orders/meal-break.ts`), and on battle_for_the_four_hills_multiplayer the
  * scout re-ordered every decision starved.
  */
-function scoutBusy(world: World, ctx: SystemContext, scout: Entity): boolean {
+export function scoutBusy(world: World, ctx: SystemContext, scout: Entity): boolean {
   return (
     world.has(scout, CurrentAtomic) ||
     world.has(scout, ErectSignpostOrder) ||

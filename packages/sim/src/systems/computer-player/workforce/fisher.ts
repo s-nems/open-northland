@@ -47,7 +47,7 @@ export function fisherTarget(world: World, ctx: SystemContext, player: number, h
 const FISHING_WALK_NODES = 48;
 
 /** How far from a store's door a seat posts a fisher's flag, in Manhattan nodes. */
-const FISHING_TRIP_RADIUS_NODES = FISHING_WALK_NODES + FISH_SHORE_SEARCH_RADIUS;
+export const FISHING_TRIP_RADIUS_NODES = FISHING_WALK_NODES + FISH_SHORE_SEARCH_RADIUS;
 
 /**
  * How far from a store's door a seat with no fished water within a trip sends its one far fisher, in

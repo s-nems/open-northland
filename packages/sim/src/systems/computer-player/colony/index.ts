@@ -6,10 +6,11 @@ import {
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { World } from '../../../ecs/world.js';
-import { moduleBeatDue, POPULATION_PHASE } from '../../ai-shared/cadence.js';
+import { moduleBeatDue, POPULATION_PHASE, WORKFORCE_EVERY_DECISIONS } from '../../ai-shared/cadence.js';
 import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
+import { foundColony } from './founding.js';
 import {
   afterLanding,
   type ColonyEnv,
@@ -53,8 +54,11 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
     case 'landing':
       return landing(env, colony);
     case 'founding':
-    case 'running':
-      return afterLanding(env, colony);
+    case 'running': {
+      const ships = afterLanding(env, colony);
+      if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) return ships;
+      return [...ships, ...foundColony(env, colony)];
+    }
     case 'returning':
       return returning(env, colony);
     default:

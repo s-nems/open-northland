@@ -1,4 +1,4 @@
-import type { World } from '../../../ecs/world.js';
+import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import { NO_COMPONENT } from '../../../nav/terrain/index.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
@@ -211,14 +211,9 @@ export function nextSignpostTarget(
   order: BuildOrder,
   from: HalfCellNode | null = null,
 ): HalfCellNode | null {
-  const terrain = ctx.terrain;
-  if (terrain === undefined) return null;
   const base = seatBaseOf(world, ctx, player);
-  if (base === null) return null;
-  const anchor = anchorNodeOf(world, base);
-  if (anchor === null) return null;
-  const door = interactionNode(world, ctx, base);
-  const posts = signpostNetwork(world).get(player) ?? [];
+  const anchor = base === null ? null : anchorNodeOf(world, base);
+  if (base === null || anchor === null) return null;
   // Any construction state: coverage should arrive with a site, not after it finishes.
   const buildings: HalfCellNode[] = [];
   for (const e of homeBuildings(world, ctx, player)) {
@@ -228,6 +223,25 @@ export function nextSignpostTarget(
   const corridors = corridorGoals(world, ctx, player, anchor, order).map((goal) =>
     corridorSamples(anchor, goal),
   );
+  return signpostTargetAround(world, ctx, player, base, buildings, corridors, from);
+}
+
+/** {@link nextSignpostTarget} for the lattice laid out from `base`, wanted around `buildings` and along the
+ *  `corridors`' sample nodes: a colony's own lattice uses its store and buildings. */
+export function signpostTargetAround(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  base: Entity,
+  buildings: readonly HalfCellNode[],
+  corridors: readonly (readonly HalfCellNode[])[],
+  from: HalfCellNode | null,
+): HalfCellNode | null {
+  const terrain = ctx.terrain;
+  const anchor = anchorNodeOf(world, base);
+  if (terrain === undefined || anchor === null) return null;
+  const door = interactionNode(world, ctx, base);
+  const posts = signpostNetwork(world).get(player) ?? [];
   const nearCorridor = (tx: number, ty: number): boolean => {
     for (const samples of corridors) if (anyWithin(samples, tx, ty, CORRIDOR_HALF_WIDTH_NODES)) return true;
     return false;

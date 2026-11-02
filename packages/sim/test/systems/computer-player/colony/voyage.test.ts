@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
+  Building,
   Female,
   Position,
+  Resource,
   Rider,
   Settler,
+  UnderConstruction,
   Vehicle,
   VehicleStock,
   vehicleCommander,
@@ -18,7 +21,12 @@ import {
   serializeSaveGame,
 } from '../../../../src/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
-import { colonyHeldShips } from '../../../../src/systems/ai-shared/home-roster.js';
+import {
+  colonyHeldShips,
+  colonyMember,
+  everyBuildingOf,
+  homeBuildings,
+} from '../../../../src/systems/ai-shared/home-roster.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
@@ -36,7 +44,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { SEAT } from '../support.js';
+import { SEAT, STOCK_TYPE } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -49,6 +57,8 @@ const UNLOAD_DUE_TICKS = minutesToTicks(6);
 const PARTY_LEAST = 8;
 const SHORE_DX = 8;
 const SEED = 7;
+const FOUND_DUE_TICKS = minutesToTicks(16);
+const GATHER_DUE_TICKS = minutesToTicks(4);
 const TRADE_SHIP_SEATS = 10;
 const AFTER_SAVE_TICKS = minutesToTicks(4);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
@@ -184,7 +194,28 @@ describe('a colony sails', () => {
       sim.step();
       copy.step();
     }
-    expect(colonyState(copy)?.phase).toBe('founding');
+    expect(colonyState(copy)?.phase).toBe('running');
     expect(copy.hashState()).toBe(sim.hashState());
+  });
+
+  it('founds a store on the far land, houses its families and sets gatherers to work there', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const ctx = ctxOf(sim);
+    const away = everyBuildingOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
+    const standing = away.filter((e) => !sim.world.has(e, UnderConstruction));
+    expect(standing.map((e) => sim.world.get(e, Building).buildingType)).toContain(STOCK_TYPE);
+    const left = (): number => {
+      let units = 0;
+      for (const e of sim.world.query(Resource)) units += sim.world.get(e, Resource).remaining;
+      return units;
+    };
+    const before = left();
+    expect(stepUntil(sim, GATHER_DUE_TICKS, () => left() < before)).toBe(true);
+    expect(homeBuildings(sim.world, ctx, SEAT).some((e) => away.includes(e))).toBe(false);
   });
 });
