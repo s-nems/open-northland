@@ -1,5 +1,5 @@
 import { type EntitySnapshot, systems, TRADE_LIMIT_NONE, type TraderView } from '@open-northland/sim';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import {
   JOB_BUILDER,
   JOB_CARRIER,
@@ -104,6 +104,8 @@ function workshop(ctx: UnitPanelModelContext): { type: number; operator: number;
 }
 
 describe('the settler panel model', () => {
+  afterEach(() => installPetNames(petNamesOf()));
+
   it('names a settler by the player’s own name over the generated one, and the map name over both', () => {
     const pet = petNamesOf();
     installPetNames(pet);
@@ -133,7 +135,24 @@ describe('the settler panel model', () => {
       { ...sandboxCtx(), mapText: (id) => (id === 7 ? 'Ykol' : undefined) },
     );
     expect(scripted.name).toBe('Ykol');
-    installPetNames(petNamesOf());
+  });
+
+  it('offers a rename for the seat’s own person alone, not a hero, a scripted character or a kept animal', () => {
+    // The sandbox declares no hero, so one is added the way a mission map's content carries it.
+    const base = sandboxCtx();
+    const soldier = base.jobs.find((job) => job.typeId === JOB_SOLDIER);
+    if (soldier === undefined) throw new Error('the sandbox has no soldier');
+    const ctx = {
+      ...base,
+      jobs: [...base.jobs, { ...soldier, id: 'hero_sword_bjarni', typeId: JOB_HERO_SWORD }],
+    };
+    const person = { Settler: { tribe: 1, jobType: JOB_COLLECTOR }, Person: { person: true } };
+    const renameOf = (components: Record<string, unknown>) =>
+      settlerModel([{ id: SETTLER, components: owned(components) }], ctx).rename;
+    expect(renameOf(person)).toEqual({ given: '' });
+    expect(renameOf({ ...person, Settler: { tribe: 1, jobType: JOB_HERO_SWORD } })).toBeNull();
+    expect(renameOf({ ...person, ScriptedName: { stringId: 7 } })).toBeNull();
+    expect(renameOf({ Settler: { tribe: 1, jobType: JOB_COLLECTOR } })).toBeNull();
   });
 
   it('links the workplace, the home, the spouse and the growing child by entity id', () => {

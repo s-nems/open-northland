@@ -57,7 +57,7 @@ import {
 } from '../../diag/index.js';
 import { setReportGameView } from '../../diag/report/view.js';
 import { settlerName } from '../../game/character-names/index.js';
-import { installPetNames, type PetNameRecord, petNamesOf } from '../../game/character-names/pet-names.js';
+import { installPetNames, type PetNames, petNamesOf } from '../../game/character-names/pet-names.js';
 import { type MissionBriefSource, missionReader } from '../../game/map/mission-brief.js';
 import { mapStartFocus } from '../../game/map/start.js';
 import type { ObserverSeatEntry } from '../../game/match/observer-seats.js';
@@ -233,8 +233,9 @@ export interface GameViewDeps {
   /** The presentation memory a save keeps (the viewer's fog memory and given names); the entry
    *  restores it. */
   readonly presentation?: () => string | null;
-  /** The names the player gave, as the restored save kept them; absent, the world starts with none. */
-  readonly restoredPetNames?: readonly PetNameRecord[];
+  /** The names the player gives in this world, starting from what its save kept; absent, it starts
+   *  with none. */
+  readonly petNames?: PetNames;
   readonly prepareSubMission?: PrepareSubMission;
   readonly validateSavedMap?: (save: SaveGame) => Promise<void>;
   readonly cameraCtl: CameraController;
@@ -342,6 +343,8 @@ const SCRIPT_OVERLAY_Z = 900;
 
 /** Mount the standard in-game HUD over the assembled world and start the session's frame loop. */
 export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle> {
+  // Before anything can read or save a name: no name outlives the world it was given in.
+  installPetNames(deps.petNames ?? petNamesOf());
   const { app, canvas, params, renderer, host, driver, cameraCtl } = deps;
   const localPlayer = deps.localPlayer ?? HUMAN_PLAYER;
   // Shared players start on their own seat and may switch to observation after a result.
@@ -656,7 +659,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const vehicleSiteTypes = new Set(
       host.content.buildings.filter((b) => b.kind === BUILDING_KIND.vehicle).map((b) => b.typeId),
     );
-    installPetNames(petNamesOf(deps.restoredPetNames));
     const toolPanel = await mountGameToolPanel({
       settlerName: (entity) => settlerName({ jobs: host.content.jobs, mapText }, entity),
       app,

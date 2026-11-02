@@ -136,7 +136,10 @@ export async function createUnitChrome(
     if (ent === undefined || !isRenamable({ jobs: opts.content.jobs, mapText: opts.mapText }, ent)) return;
     if (petNames().set(namedSettlerOf(ent), name) === 'refused') {
       diag.warn('hud', `refused the name ${JSON.stringify(name)} for settler ${id}`);
+      return;
     }
+    // No snapshot follows a rename, and a paused game sends none: the panel shows the name now.
+    panel.render(opts.snapshot(), panelIds());
   };
   const contract: SettlerContractCommands = {
     rename,

@@ -30,10 +30,15 @@ export function namedSettlerOf(ent: SnapshotEntity): NamedSettler {
   };
 }
 
-/** Whether the player may give `ent` a name of their own: a hero keeps its job's name and a scripted
- *  character the map's. Whose settler it is, the order gate decides. */
+/** Whether the player may give `ent` a name of their own: a person, not an animal they keep, and not a
+ *  hero, who keeps its job's name, or a scripted character, who keeps the map's. Whose settler it is,
+ *  the order gate decides. */
 export function isRenamable(ctx: NameContext, ent: SnapshotEntity): boolean {
-  return ent.components.ScriptedName === undefined && heroJobOf(ctx, ent) === undefined;
+  return (
+    ent.components.Person !== undefined &&
+    ent.components.ScriptedName === undefined &&
+    heroJobOf(ctx, ent) === undefined
+  );
 }
 
 /** The name the player gave `ent`, or an empty string when they gave none. */
