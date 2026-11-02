@@ -66,8 +66,12 @@ const SPOT_SEARCH_NODES = 50;
 /** How far from the first store a deposit gets a second one, in Manhattan nodes (authored: a hold's hands'
  *  reach, past which the carriers' trips outweigh a store's bill). */
 const SECOND_STORE_NODES = 40;
+/** The builders a colony keeps once nothing is left to raise (authored): a pair for a lost building, and
+ *  every other man digs, which is what the colony is for. */
+const BUILDERS_AT_REST = 2;
 
-type Post = 'builder' | 'carrier' | 'wood' | 'stone' | 'hunter' | 'fisher' | 'scout';
+type Gathered = 'wood' | 'stone';
+type Post = 'builder' | 'carrier' | Gathered | 'hunter' | 'fisher' | 'scout';
 
 /**
  * The men's posts, filled in this order as the party's size allows (authored). 4 builders, 2 carriers, 4 on
@@ -306,9 +310,21 @@ function postOrders(
   ];
 }
 
+/** Whether the colony has raised all it means to, for now. */
+function atRest(env: ColonyEnv, colony: ColonyView, read: FoundingRead): boolean {
+  const { world } = env;
+  return colony.builds.every((b) => b.placed) && !read.buildings.some((e) => world.has(e, UnderConstruction));
+}
+
 /** The posts of {@link POSTS} the men's number reaches that none holds, handed to the free men and to the
- *  builders past their share; a free man with no post left to take builds. */
-function fillPosts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): PlayerCommand[] {
+ *  builders past their share; with nothing left to raise, the rest dig, the scarcer good first; a free man
+ *  with no post to take builds. */
+function fillPosts(
+  env: ColonyEnv,
+  colony: ColonyView,
+  men: readonly Entity[],
+  read: FoundingRead,
+): PlayerCommand[] {
   const { world, ctx, terrain, seat } = env;
   const builder = builderJobOf(ctx);
   const held = new Map<Post, number>();
@@ -320,13 +336,18 @@ function fillPosts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): 
     else held.set(post, (held.get(post) ?? 0) + 1);
     if (post === 'builder') builders.push(man);
   }
+  const dug = { wood: held.get('wood') ?? 0, stone: held.get('stone') ?? 0 };
+  const resting = atRest(env, colony, read);
   const open = POSTS.slice(0, men.length).filter((post) => {
     const standing = held.get(post) ?? 0;
     held.set(post, standing - 1);
     return standing <= 0;
   });
   // Men who built while their post could not take them yet go to it now.
-  const spare = [...free, ...builders.slice(0, Math.max(0, held.get('builder') ?? 0))];
+  const past = resting
+    ? builders.slice(BUILDERS_AT_REST)
+    : builders.slice(0, Math.max(0, held.get('builder') ?? 0));
+  const spare = [...free, ...past];
   if (spare.length === 0) return [];
   let flags: FlagGround | null = null;
   const ground = (): FlagGround => {
@@ -347,6 +368,20 @@ function fillPosts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): 
     const orders = postOrders(env, man, post, read, ground, taken);
     if (orders === null) continue;
     commands.push(...orders);
+    spare.shift();
+    if (post === 'wood' || post === 'stone') dug[post]++;
+  }
+  while (resting) {
+    const man = spare[0];
+    if (man === undefined) break;
+    const goods: readonly Gathered[] = dug.stone <= dug.wood ? ['stone', 'wood'] : ['wood', 'stone'];
+    const good = goods.find((g) => {
+      const orders = postOrders(env, man, g, read, ground, taken);
+      if (orders !== null) commands.push(...orders);
+      return orders !== null;
+    });
+    if (good === undefined) break;
+    dug[good]++;
     spare.shift();
   }
   if (builder !== null)
@@ -389,7 +424,7 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
   }
   return [
     ...nextBuild(env, colony, read),
-    ...fillPosts(env, men, read),
+    ...fillPosts(env, colony, men, read),
     ...raiseSignposts(env, men, read),
     ...colonyFamilies(world, ctx, people, buildings),
   ];

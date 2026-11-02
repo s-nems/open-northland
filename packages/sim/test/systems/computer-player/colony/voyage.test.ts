@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  aiControlEntity,
   Building,
+  ComputerColony,
   Female,
   Position,
   Resource,
@@ -25,6 +27,7 @@ import {
   colonyHeldShips,
   colonyMember,
   everyBuildingOf,
+  everySettlerOf,
   homeBuildings,
 } from '../../../../src/systems/ai-shared/home-roster.js';
 import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
@@ -44,7 +47,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { SEAT, STOCK_TYPE } from '../support.js';
+import { BUILDER, SEAT, STOCK_TYPE } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -59,6 +62,7 @@ const SHORE_DX = 8;
 const SEED = 7;
 const FOUND_DUE_TICKS = minutesToTicks(16);
 const GATHER_DUE_TICKS = minutesToTicks(4);
+const BUILDERS_AT_REST = 2;
 const TRADE_SHIP_SEATS = 10;
 const AFTER_SAVE_TICKS = minutesToTicks(4);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
@@ -221,5 +225,26 @@ describe('a colony sails', () => {
     const before = left();
     expect(stepUntil(sim, GATHER_DUE_TICKS, () => left() < before)).toBe(true);
     expect(homeBuildings(sim.world, ctx, SEAT).some((e) => away.includes(e))).toBe(false);
+  });
+
+  it('sets its builders past a pair digging once nothing is left to raise', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    const builders = (): number => {
+      const ctx = ctxOf(sim);
+      const away = everySettlerOf(sim.world, SEAT).filter((e) => colonyMember(sim.world, ctx, SEAT, e));
+      return away.filter((e) => sim.world.get(e, Settler).jobType === BUILDER).length;
+    };
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const ctx = ctxOf(sim);
+    for (const e of everyBuildingOf(sim.world, SEAT))
+      if (colonyMember(sim.world, ctx, SEAT, e) && sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('no AI seat');
+    for (const build of sim.world.mut(carrier, ComputerColony).builds) build.placed = true;
+    expect(stepUntil(sim, GATHER_DUE_TICKS, () => builders() <= BUILDERS_AT_REST)).toBe(true);
   });
 });
