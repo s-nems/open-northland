@@ -7,7 +7,7 @@ import {
 import { FOG_STATE, scanChangedBytes } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
 import { navBeamRect } from '../nav-beam.js';
-import { centralRegion, GOAL_SLIP, NOTICE_COLUMN, SELECTION_PANEL_W, TOP_BAR_HEIGHT } from '../regions.js';
+import { centralRegion, SELECTION_PANEL_W, TOP_BAR_HEIGHT } from '../regions.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
