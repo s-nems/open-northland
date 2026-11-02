@@ -1,6 +1,6 @@
 import { MAX_UNIT_ORDER_MEMBERS, ONE } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
-import { JOB_COLLECTOR } from '../../../../src/catalog/jobs.js';
+import { JOB_COLLECTOR, JOB_TRADER } from '../../../../src/catalog/jobs.js';
 import { HUMAN_PLAYER } from '../../../../src/game/rules.js';
 import {
   sandboxContent,
@@ -17,7 +17,9 @@ import type {
 import {
   type RightClickInput,
   type RightClickPlan,
+  resolvePastShipPin,
   resolveRightClick,
+  resolveRightClickOrders,
 } from '../../../../src/view/unit-controls/right-click/press.js';
 import { type Ent, snapshotOf } from '../../../support/snapshot.js';
 
@@ -29,6 +31,11 @@ const CATAPULT = 10;
 const CART = 11;
 const SHIP = 12;
 const PINNED_SHIP = 13;
+const TRADER = 2;
+const SECOND_TRADER = 3;
+const SAILOR = 4;
+const TRADERS_SHIP = 14;
+const SAILORS_SHIP = 15;
 const ENEMY = 20;
 const DOOR_SETTLER = 21;
 const RESOURCE = 30;
@@ -41,6 +48,16 @@ const vehicle = (id: number, vehicleType: number, hauler: number | null = null):
     Vehicle: { vehicleType, tribe: 1, moored: false, passengers: [], vehicles: [], carrier: null, hauler },
     Owner: { player: HUMAN_PLAYER },
     Position: { x: 2 * ONE, y: 2 * ONE },
+  },
+});
+
+const trader = (id: number, components: Record<string, unknown> = {}): Ent => ({
+  id,
+  components: {
+    Settler: { jobType: JOB_TRADER },
+    Owner: { player: HUMAN_PLAYER },
+    Position: { x: ONE, y: ONE },
+    ...components,
   },
 });
 
@@ -57,6 +74,25 @@ const WORLD = snapshotOf([
   vehicle(CART, VEHICLE_HANDCART),
   vehicle(SHIP, VEHICLE_SHIP_SMALL),
   vehicle(PINNED_SHIP, VEHICLE_SHIP_SMALL, COLLECTOR),
+  trader(TRADER, { TradeShip: { vehicle: TRADERS_SHIP } }),
+  trader(SECOND_TRADER),
+  // Commands the ship it rides, with no position of its own.
+  {
+    id: SAILOR,
+    components: {
+      Settler: { jobType: JOB_TRADER },
+      Owner: { player: HUMAN_PLAYER },
+      Rider: { vehicle: SAILORS_SHIP },
+    },
+  },
+  vehicle(TRADERS_SHIP, VEHICLE_SHIP_SMALL, TRADER),
+  ((ship: Ent): Ent => ({
+    ...ship,
+    components: {
+      ...ship.components,
+      Vehicle: { ...(ship.components.Vehicle as object), passengers: [{ entity: SAILOR }] },
+    },
+  }))(vehicle(SAILORS_SHIP, VEHICLE_SHIP_SMALL)),
 ]);
 
 const NOTHING: RightClickHit = {
@@ -82,6 +118,7 @@ const ALL_ASKS: RightClickAsks = {
   mooring: true,
   attach: true,
   formation: true,
+  pinShip: true,
 };
 
 const CONTEXT: RightClickContext = {
@@ -100,11 +137,25 @@ function press(
     hit: { ...NOTHING, ...hit },
     doorMarker: null,
     selected: new Set(selected),
-    settlers: selected.filter((ref) => ref === COLLECTOR).map((ref) => ({ ref, x: 0, y: 0 })),
+    settlers: selected.filter((ref) => ref <= SAILOR).map((ref) => ({ ref, x: 0, y: 0 })),
     mods: { queued: false, landsCrew: false },
     workFlag: false,
     ...input,
   });
+}
+
+/** The plan past the pin, for one selected settler. */
+function past(hit: RightClickHit, settler: number) {
+  return resolvePastShipPin(
+    CONTEXT,
+    {
+      hit,
+      selected: new Set([settler]),
+      settlers: [{ ref: settler, x: 0, y: 0 }],
+      mods: { queued: false, landsCrew: false },
+    },
+    null,
+  );
 }
 
 describe('a right press', () => {
@@ -173,6 +224,78 @@ describe('a right press', () => {
       settlers: { groups: [{ intent: { kind: 'walk', tile: TILE } }] },
       riders: { kind: 'none' },
       vehicles: { kind: 'none' },
+    });
+  });
+
+  it('pins a free ship to a lone trader standing on the map', () => {
+    expect(press([SECOND_TRADER], { ownVehicle: SHIP })).toEqual({
+      kind: 'pinShip',
+      pin: { trader: SECOND_TRADER, ship: SHIP, unpins: false },
+      onBuilding: null,
+    });
+  });
+
+  it("lets go of the trader's own pinned ship, and asks about one pinned to another trader", () => {
+    expect(press([TRADER], { ownVehicle: TRADERS_SHIP })).toMatchObject({
+      kind: 'pinShip',
+      pin: { trader: TRADER, ship: TRADERS_SHIP, unpins: true },
+    });
+    expect(press([SECOND_TRADER], { ownVehicle: TRADERS_SHIP })).toMatchObject({
+      kind: 'pinShip',
+      pin: { trader: SECOND_TRADER, ship: TRADERS_SHIP, unpins: false },
+    });
+  });
+
+  it('leaves a trader aboard to drive its ship', () => {
+    const hit = { ...NOTHING, ownVehicle: SAILORS_SHIP };
+    expect(press([SAILOR], hit)).toMatchObject({ kind: 'attach' });
+    const selected = new Set([SAILOR]);
+    const settlers = [{ ref: SAILOR, x: 0, y: 0 }];
+    const mods = { queued: false, landsCrew: false };
+    expect(resolveRightClickOrders(CONTEXT, { hit, selected, settlers, mods }, null)).toMatchObject({
+      vehicles: { groups: [{ vehicles: [SAILORS_SHIP], intent: { kind: 'drive' } }] },
+    });
+  });
+
+  it('boards two selected traders as before, a ship taking one', () => {
+    expect(press([TRADER, SECOND_TRADER], { ownVehicle: SHIP })).toMatchObject({
+      kind: 'attach',
+      attach: { vehicle: SHIP, settlers: [TRADER, SECOND_TRADER] },
+    });
+  });
+
+  it('skips the pin on a Shift click, since a pin is a standing setting', () => {
+    const mods = { queued: true, landsCrew: false };
+    expect(press([SECOND_TRADER], { ownVehicle: SHIP }, { mods })).toMatchObject({ kind: 'attach' });
+  });
+
+  it('leaves a ship to whoever stands over it, a cart to its boarding, and no pin rule to no pin', () => {
+    const onShip = { ownVehicle: SHIP };
+    expect(press([SECOND_TRADER], { ...onShip, enemy: ENEMY })).toMatchObject({ kind: 'orders' });
+    expect(press([SECOND_TRADER], { ...onShip, ownSettler: COLLECTOR })).toMatchObject({ kind: 'orders' });
+    expect(press([SECOND_TRADER], { ownVehicle: CART })).toMatchObject({ kind: 'attach' });
+    const plan = resolveRightClick(
+      { ...CONTEXT, asks: { ...ALL_ASKS, pinShip: false } },
+      {
+        hit: { ...NOTHING, ...onShip },
+        doorMarker: null,
+        selected: new Set([SECOND_TRADER]),
+        settlers: [{ ref: SECOND_TRADER, x: 0, y: 0 }],
+        mods: { queued: false, landsCrew: false },
+        workFlag: false,
+      },
+    );
+    expect(plan).toMatchObject({ kind: 'attach' });
+  });
+
+  it('hands a refused pin to the boarding, and past a ship that seats nobody to the walk', () => {
+    expect(past({ ...NOTHING, ownVehicle: SHIP }, SECOND_TRADER)).toMatchObject({
+      kind: 'attach',
+      attach: { vehicle: SHIP },
+    });
+    expect(past({ ...NOTHING, ownVehicle: TRADERS_SHIP }, SECOND_TRADER)).toMatchObject({
+      kind: 'orders',
+      settlers: { groups: [{ intent: { kind: 'walk', tile: TILE } }] },
     });
   });
 

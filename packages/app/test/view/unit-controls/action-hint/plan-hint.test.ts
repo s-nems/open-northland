@@ -67,10 +67,15 @@ const house = (type: number): Ent => ({
   },
 });
 
-const vehicle = (id: number, vehicleType: number, passengers: unknown[] = []): Ent => ({
+const vehicle = (
+  id: number,
+  vehicleType: number,
+  passengers: unknown[] = [],
+  hauler: number | null = null,
+): Ent => ({
   id,
   components: {
-    Vehicle: { vehicleType, tribe: 1, moored: false, passengers, vehicles: [], carrier: null },
+    Vehicle: { vehicleType, tribe: 1, moored: false, passengers, vehicles: [], carrier: null, hauler },
     Owner: { player: HUMAN_PLAYER },
     Position: { x: 2 * ONE, y: 2 * ONE },
   },
@@ -97,6 +102,7 @@ const ON_BUILDING: Partial<RightClickHit> = { ownBuilding: BUILDING, building: B
 const UNANSWERED: HintAnswers = {
   tradeHouseAttach: () => undefined,
   vehicleAttach: () => undefined,
+  tradeShipPin: () => undefined,
   jobChoice: () => undefined,
   docks: () => false,
 };
@@ -117,7 +123,7 @@ function hintOf(
       snapshot,
       content: CONTENT,
       viewer: fixedViewerSeat(HUMAN_PLAYER),
-      asks: { tradeHouse: true, equip: true, mooring: true, attach: true, formation: true },
+      asks: { tradeHouse: true, equip: true, mooring: true, attach: true, formation: true, pinShip: true },
       answers: { ...UNANSWERED, ...answers },
     },
     {
@@ -206,6 +212,26 @@ describe('the right-click hint', () => {
       tone: 'refusal',
       refusal: 'noRoom',
     });
+  });
+
+  it('names the pin of a free ship until the sim refuses it, then what the click does instead', () => {
+    const trader = settler(1, TRADER_JOB);
+    const ship = vehicle(SHIP, VEHICLE_SHIP_SMALL, [null]);
+    const onShip = { ownVehicle: SHIP };
+    expect(hintOf([trader, ship], [1], onShip)).toMatchObject(action('pinShip'));
+    expect(hintOf([trader, ship], [1], onShip, { tradeShipPin: () => true })).toMatchObject(
+      action('pinShip'),
+    );
+    expect(hintOf([trader, ship], [1], onShip, { tradeShipPin: () => false })).toMatchObject(action('board'));
+  });
+
+  it("names the unpin of the trader's own ship, and the walk past one pinned to another", () => {
+    const trader = settler(1, TRADER_JOB, { TradeShip: { vehicle: SHIP } });
+    const onShip = { ownVehicle: SHIP };
+    const pinned = vehicle(SHIP, VEHICLE_SHIP_SMALL, [], 1);
+    expect(hintOf([trader, pinned], [1], onShip)).toMatchObject(action('unpinShip'));
+    const other = settler(2, TRADER_JOB);
+    expect(hintOf([other, pinned], [2], onShip, { tradeShipPin: () => false })).toMatchObject(action('walk'));
   });
 
   it('leaves carts whose trader takes the house standing, and drives them once every rider was refused', () => {

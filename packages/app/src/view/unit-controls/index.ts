@@ -51,7 +51,13 @@ import {
   rightClickHitAt,
   rightClickMods,
 } from './right-click/context.js';
-import { type RightClickOrders, resolveRightClick, resolveRightClickOrders } from './right-click/press.js';
+import {
+  type PastShipPinPlan,
+  type RightClickOrders,
+  resolvePastShipPin,
+  resolveRightClick,
+  resolveRightClickOrders,
+} from './right-click/press.js';
 import { resolveVehicleRightClick, type VehiclePlan } from './right-click/vehicles.js';
 import { createUnitSelection } from './selection.js';
 import { createSelectionCursor } from './selection-cursor.js';
@@ -397,6 +403,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     toWorld,
     enqueue: opts.enqueue,
     askAttachToVehicle: opts.askAttachToVehicle,
+    askPinTradeShip: opts.askPinTradeShip,
     askMooring: opts.askMooring,
     mooring: opts.mooring,
     answered,
@@ -418,6 +425,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
     answers: {
       tradeHouseAttach: (trader, house) => opts.tradeHouseAttachAnswer?.(trader, house),
       vehicleAttach: (settler, vehicle) => opts.vehicleAttachAnswer?.(settler, vehicle),
+      tradeShipPin: (trader, ship) => opts.tradeShipPinAnswer?.(trader, ship),
       jobChoice: (entity, jobType) => opts.jobChoiceAnswer?.(entity, jobType),
       docks: (ships, tile) =>
         ships.length > 0 && vehicleOrders.previewBerths(ships, tile, RIGHT_CLICK_SNAP_NODES).length > 0,
@@ -506,6 +514,7 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       mooring: opts.askMooring !== undefined,
       attach: opts.askAttachToVehicle !== undefined,
       formation: opts.requestFormationSlots !== undefined,
+      pinShip: opts.askPinTradeShip !== undefined,
     },
   });
 
@@ -540,24 +549,27 @@ export async function createUnitControls(opts: UnitControlsOptions): Promise<Uni
       case 'orderLimit':
         refuseOrderLimit();
         return;
-      case 'attach': {
-        // Settlers the vehicle under the cursor refuses take the usual right-click once it answered.
-        const refused = replayed(press, () =>
-          issueOrders(
-            resolveRightClickOrders(rightClickContext(), inputAt(press), plan.onBuilding),
-            e,
-            press,
-          ),
-        );
-        const took =
-          vehicleOrders.issueAttachPlan(plan.attach, press.mods.queued, refused) ||
-          issueOrders(resolveRightClickOrders(rightClickContext(), input, plan.onBuilding), e, press);
-        if (took) cue('confirm');
+      case 'pinShip': {
+        // The pin waits on the sim with no cue yet: the sim's answer or the click it hands on plays one.
+        const refused = replayed(press, () => {
+          const past = resolvePastShipPin(rightClickContext(), inputAt(press), plan.onBuilding);
+          if (issuePastShipPin(past, e, press)) cue('confirm');
+        });
+        vehicleOrders.issueShipPin(plan.pin, () => cue('confirm'), refused);
         return;
       }
+      case 'attach':
       case 'orders':
-        if (issueOrders(plan, e, press)) cue('confirm');
+        if (issuePastShipPin(plan, e, press)) cue('confirm');
     }
+  };
+
+  /** Settlers the vehicle under the cursor refuses take the usual right-click once it answered. */
+  const issuePastShipPin = (plan: PastShipPinPlan, e: MouseEvent, press: RightClickPress): boolean => {
+    if (plan.kind === 'orders') return issueOrders(plan, e, press);
+    const usual = (): boolean =>
+      issueOrders(resolveRightClickOrders(rightClickContext(), inputAt(press), plan.onBuilding), e, press);
+    return vehicleOrders.issueAttachPlan(plan.attach, press.mods.queued, replayed(press, usual)) || usual();
   };
 
   const vehiclesAt = (press: RightClickPress): VehiclePlan => {

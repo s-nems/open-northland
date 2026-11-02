@@ -460,6 +460,7 @@ export const enGame = {
       board: 'Board',
       loadAboard: 'Load aboard',
       pinShip: 'Pin to the route',
+      unpinShip: 'Unpin the ship',
       workArea: 'Work area',
       placeSignpost: 'Place signpost',
       bombard: 'Bombard',
@@ -757,7 +758,7 @@ export const enGame = {
       tradeConfigure: 'Set up trade',
       tradePinShip: 'Pin a ship',
       tradePinShipHint:
-        'Click, then pick a lit ship of yours lying at this shore, empty of crew. The merchant sails its route on it.',
+        'Click, then pick a lit ship of yours lying at this shore, empty of crew, or right click the ship with the merchant selected. The merchant sails its route on it.',
       tradeUnpinShip: 'Unpin the ship',
       tradeShipNeeded: 'across the sea',
       tradeShipNeededTooltip: 'The stops lie on different shores: pin a ship so the merchant can cross',

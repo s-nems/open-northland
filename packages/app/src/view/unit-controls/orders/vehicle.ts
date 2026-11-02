@@ -22,6 +22,7 @@ import {
   type AttachPlan,
   isMooredShip,
   rightClickShips as rightClickShipsOf,
+  type ShipPinPlan,
   selectedVehicle as selectedVehicleOf,
   selectedVehicles as selectedVehiclesOf,
   isShip as shipIn,
@@ -64,6 +65,8 @@ export interface VehicleOrderDeps {
   /** The sim's attach rule, asked as the click lands; absent, every own vehicle under the cursor takes
    *  the attach click. */
   readonly askAttachToVehicle?: ((settler: number, vehicle: number) => Promise<boolean>) | undefined;
+  /** The sim's pin rule, asked as the click lands; absent, a right click resolves no pin. */
+  readonly askPinTradeShip?: ((trader: number, ship: number) => Promise<boolean>) | undefined;
   /** A ship's mooring rule (`SessionHost.mooringProbe`), asked as the click lands; absent, the dock
    *  click moors where it lands and a ship's right-click is always a goto. */
   readonly askMooring?: ((vehicle: number) => Promise<MooringRule | null>) | undefined;
@@ -133,6 +136,10 @@ export interface VehicleOrderController {
    *  admits taking a seat. `onNoneBoards` runs once the rule refused every one, so the click can take its
    *  usual order instead. A `queued` attach waits behind each settler's current order. */
   issueAttachPlan(plan: AttachPlan, queued: boolean, onNoneBoards: () => void): boolean;
+  /** Issues a lone trader's resolved pin (`resolveShipPin`): a pinned ship is let go at once, any other
+   *  is pinned once the sim admits it. `onSet` runs when the pin changed, `onRefused` when the sim turned
+   *  the ship down, and neither once a newer order took the trader. */
+  issueShipPin(plan: ShipPinPlan, onSet: () => void, onRefused: () => void): void;
 }
 
 export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrderController {
@@ -470,6 +477,32 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
   const issueAttachPlan = (plan: AttachPlan, queued: boolean, onNoneBoards: () => void): boolean =>
     attachWhenAdmitted(plan.settlers, plan.vehicle, onNoneBoards, queued);
 
+  const issueShipPin = (
+    { trader, ship, unpins }: ShipPinPlan,
+    onSet: () => void,
+    onRefused: () => void,
+  ): void => {
+    const entity = trader as Entity;
+    const ask = deps.askPinTradeShip;
+    if (unpins) {
+      deps.enqueue({ kind: 'setTradeShip', entity, ship: null });
+      onSet();
+    } else if (ask === undefined) {
+      onRefused();
+    } else {
+      afterAnswer([trader], false, ask(trader, ship), (admitted, current) => {
+        if (!current(trader)) return;
+        if (!admitted) {
+          onRefused();
+          return;
+        }
+        deps.enqueue({ kind: 'setTradeShip', entity, ship: ship as Entity });
+        deps.flashTarget?.(ship, 'assign');
+        onSet();
+      });
+    }
+  };
+
   const issueVehiclePlan = (plan: VehiclePlan, queued: boolean): boolean => {
     if (plan.kind === 'none') return false;
     if (plan.kind === 'orderLimit') {
@@ -566,5 +599,6 @@ export function createVehicleOrderController(deps: VehicleOrderDeps): VehicleOrd
     issueDeckLoad,
     loadsInto,
     issueAttachPlan,
+    issueShipPin,
   };
 }

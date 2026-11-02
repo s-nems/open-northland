@@ -13,7 +13,13 @@ import { homeHasFamilyRoom, staffingOf } from '../highlights/index.js';
 import { schoolStudents } from '../panels/school-dialog.js';
 import type { BuildingIntent, BuildingWorker } from '../right-click/building-rungs.js';
 import { contentLookups, type RightClickContext } from '../right-click/context.js';
-import { type RightClickInput, type RightClickOrders, resolveRightClick } from '../right-click/press.js';
+import {
+  type PastShipPinPlan,
+  type RightClickInput,
+  type RightClickOrders,
+  resolvePastShipPin,
+  resolveRightClick,
+} from '../right-click/press.js';
 import type { RiderPlan } from '../right-click/riders.js';
 import type { SettlerGroup } from '../right-click/settler-ladder.js';
 import { isShip, type VehicleGroup, type VehiclePlan } from '../right-click/vehicles.js';
@@ -44,6 +50,7 @@ export type HintAction =
   | 'board'
   | 'loadAboard'
   | 'pinShip'
+  | 'unpinShip'
   | 'workArea'
   | 'placeSignpost'
   | 'bombard';
@@ -89,6 +96,7 @@ export type PlanHint =
 export interface HintAnswers {
   readonly tradeHouseAttach: (trader: number, house: number) => boolean | undefined;
   readonly vehicleAttach: (settler: number, vehicle: number) => boolean | undefined;
+  readonly tradeShipPin: (trader: number, ship: number) => boolean | undefined;
   readonly jobChoice: (entity: number, jobType: number) => boolean | undefined;
   /** Whether a right click there moors any of `ships` at the shore, as the berth preview reads it. */
   readonly docks: (ships: readonly number[], tile: Tile) => boolean;
@@ -126,15 +134,24 @@ export function planHint(ctx: HintContext, input: RightClickInput): PlanHint | n
       return null;
     case 'orderLimit':
       return refusal('tooManyUnits');
-    case 'attach': {
-      const { vehicle, settlers } = plan.attach;
-      if (vehicleFull(ctx, vehicle, settlers)) return refusal('noRoom');
-      const refused = settlers.every((settler) => ctx.answers.vehicleAttach(settler, vehicle) === false);
-      return refused ? refusal('cannotBoard') : action('board');
+    case 'pinShip': {
+      const { trader, ship, unpins } = plan.pin;
+      if (unpins) return action('unpinShip');
+      if (ctx.answers.tradeShipPin(trader, ship) !== false) return action('pinShip');
+      return pastShipPinHint(ctx, resolvePastShipPin(ctx, input, plan.onBuilding));
     }
+    case 'attach':
     case 'orders':
-      return ordersHint(ctx, plan);
+      return pastShipPinHint(ctx, plan);
   }
+}
+
+function pastShipPinHint(ctx: HintContext, plan: PastShipPinPlan): PlanHint | null {
+  if (plan.kind === 'orders') return ordersHint(ctx, plan);
+  const { vehicle, settlers } = plan.attach;
+  if (vehicleFull(ctx, vehicle, settlers)) return refusal('noRoom');
+  const refused = settlers.every((settler) => ctx.answers.vehicleAttach(settler, vehicle) === false);
+  return refused ? refusal('cannotBoard') : action('board');
 }
 
 /** A vehicle with every seat taken refuses each settler not already riding it. */

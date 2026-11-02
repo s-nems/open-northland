@@ -495,6 +495,7 @@ export const deGame = {
       board: 'Einsteigen',
       loadAboard: 'Auf das Schiff laden',
       pinShip: 'Der Route zuweisen',
+      unpinShip: 'Schiff lösen',
       workArea: 'Arbeitsbereich',
       placeSignpost: 'Wegweiser setzen',
       bombard: 'Beschießen',
@@ -805,7 +806,7 @@ export const deGame = {
       tradeConfigure: 'Handel einrichten',
       tradePinShip: 'Schiff zuweisen',
       tradePinShipHint:
-        'Klicken, dann ein hervorgehobenes eigenes Schiff ohne Besatzung an dieser Küste wählen. Der Händler fährt seine Route damit.',
+        'Klicken, dann ein hervorgehobenes eigenes Schiff ohne Besatzung an dieser Küste wählen, oder bei gewähltem Händler das Schiff per Rechtsklick wählen. Der Händler fährt seine Route damit.',
       tradeUnpinShip: 'Schiff lösen',
       tradeShipNeeded: 'über das Meer',
       tradeShipNeededTooltip:

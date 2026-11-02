@@ -452,7 +452,8 @@ export const plGame = {
       repair: 'Naprawiaj',
       board: 'Wsiądź',
       loadAboard: 'Załaduj na statek',
-      pinShip: 'Przypnij do trasy',
+      pinShip: 'Przypnij statek',
+      unpinShip: 'Odepnij statek',
       workArea: 'Obszar pracy',
       placeSignpost: 'Postaw drogowskaz',
       bombard: 'Ostrzelaj',
@@ -741,7 +742,7 @@ export const plGame = {
       tradeConfigure: 'Konfiguruj handel',
       tradePinShip: 'Przypnij statek',
       tradePinShipHint:
-        'Kliknij, potem wskaż podświetlony własny statek przy tym brzegu, bez załogi. Kupiec popłynie nim swoją trasą.',
+        'Kliknij, potem wskaż podświetlony własny statek przy tym brzegu, bez załogi, albo kliknij statek prawym przyciskiem myszy przy wybranym kupcu. Kupiec popłynie nim swoją trasą.',
       tradeUnpinShip: 'Odepnij statek',
       tradeShipNeeded: 'przez morze',
       tradeShipNeededTooltip:

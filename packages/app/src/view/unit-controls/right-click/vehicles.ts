@@ -7,6 +7,7 @@ import {
   ownerPlayerOf,
   positionOf,
   type SnapshotEntity,
+  settlerJobType,
 } from '../../../game/snapshot/index.js';
 import { pickableSeat } from '../../../game/viewer-seat.js';
 import type { Tile } from '../../picking.js';
@@ -212,6 +213,42 @@ function pinnedShip(ctx: Pick<VehicleContext, 'snapshot' | 'content'>, vehicle: 
   const e = entityById(ctx.snapshot, vehicle);
   const hauler = (e?.components.Vehicle as { hauler?: unknown } | undefined)?.hauler;
   return e !== undefined && isShip(ctx.content, e) && num(hauler) !== undefined;
+}
+
+/** A lone trader's right click on an own ship: the ship to pin, or the pinned one to let go. */
+export interface ShipPinPlan {
+  readonly trader: number;
+  readonly ship: number;
+  readonly unpins: boolean;
+}
+
+/** Whether `ship` is the one pinned to `trader`, which the pin and the ship both name. */
+function pinnedTo(trader: SnapshotEntity, ship: SnapshotEntity): boolean {
+  const pinned = num((trader.components.TradeShip as { vehicle?: unknown } | undefined)?.vehicle);
+  const hauler = num((ship.components.Vehicle as { hauler?: unknown } | undefined)?.hauler);
+  return pinned === ship.id && hauler === trader.id;
+}
+
+/** Owner's choice: a ship takes one trader, so the rung needs one standing on the map; one aboard
+ *  drives its ship. Null when an own settler or an enemy drawn over the ship takes the click, or for a
+ *  `queued` click, since a pin is a standing setting. */
+export function resolveShipPin(
+  ctx: Pick<VehicleContext, 'snapshot' | 'content'> & { readonly asks: Pick<RightClickAsks, 'pinShip'> },
+  settlers: readonly FormationUnit[],
+  hit: RightClickHit,
+  queued: boolean,
+): ShipPinPlan | null {
+  const vehicle = hit.ownVehicle;
+  const [unit, other] = settlers;
+  if (!ctx.asks.pinShip || queued || vehicle === null || unit === undefined || other !== undefined)
+    return null;
+  if (hit.ownSettler !== null || hit.enemy !== null) return null;
+  const ship = entityById(ctx.snapshot, vehicle);
+  const trader = entityById(ctx.snapshot, unit.ref);
+  if (ship === undefined || trader === undefined || !isShip(ctx.content, ship)) return null;
+  if (positionOf(trader) === undefined) return null;
+  if (!systems.isTraderJob(ctx.content, settlerJobType(trader) ?? null)) return null;
+  return { trader: trader.id, ship: ship.id, unpins: pinnedTo(trader, ship) };
 }
 
 /** Approximation, owner's choice: the original assigns a vehicle through the ring's pick only. Null when
