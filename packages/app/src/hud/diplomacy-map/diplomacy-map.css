@@ -101,8 +101,8 @@
   font: 600 11px / 1.15 var(--font-title);
 }
 .on-hud .on-dipmap-plaque__emblem {
-  width: 13px;
-  height: 13px;
+  width: 18px;
+  height: 18px;
   padding: 0;
   border-width: 1px;
   border-radius: 2px;

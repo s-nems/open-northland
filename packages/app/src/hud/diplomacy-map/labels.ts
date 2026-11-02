@@ -26,8 +26,8 @@ export interface DiplomacyMapNation {
   readonly relation?: { readonly towardYou: DiplomacyState; readonly yourStance: DiplomacyState };
 }
 
-/** Design px of an emblem's picture, sharper than the 13 px a plaque shows it at. */
-const EMBLEM_PICTURE_PX = 26;
+/** Design px of an emblem's picture, sharper than the 18 px a plaque shows it at. */
+const EMBLEM_PICTURE_PX = 36;
 
 interface EmblemSlot {
   readonly element: HTMLElement;
