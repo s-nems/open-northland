@@ -10,6 +10,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../ai-shared/cadence.js';
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { firstRingNode } from '../../ai-shared/node-geometry.js';
@@ -19,7 +20,12 @@ import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js'
 import { placementProbe } from '../../footprint/placement/building.js';
 import { minutesToTicks } from '../game-phase.js';
 import { clearingPatch } from '../workforce/collectors/clearing-aim.js';
-import { type BuildOrder, type BuildOrderEntry, overflowBuildReachNodes } from './entries.js';
+import {
+  type BuildOrder,
+  type BuildOrderEntry,
+  overflowBuildReachNodes,
+  STALLED_PLACEMENT_RETRY_DECISIONS,
+} from './entries.js';
 import { baseComponent, buildReach, placementPassesOver, placementSpot } from './placement.js';
 import { plottedNodes, seatSpotAcceptor } from './plots.js';
 import { type LineStatuses, upgradesInto } from './progress.js';
@@ -36,6 +42,9 @@ export const PLANNED_HOMES_FLOOR = 5;
  *  headquarters, it finished ten to twenty minutes later and the housing lane behind it held back the
  *  homes; the big patches lasted to minute 30 unplotted (arabskie_wyspy_wolna_gra_mieszana). */
 export const GROUND_PLAN_FROM_TICKS = minutesToTicks(10);
+
+/** How often a plan looks for ground again for what it lacks, a stalled search's own pace. */
+const PLAN_REVIEW_TICKS = STALLED_PLACEMENT_RETRY_DECISIONS * COMPUTER_DECISION_INTERVAL_TICKS;
 
 /** Owner ruling: what a plan never cuts, plotted ahead of every bigger building: on one island seat a
  *  bakery's plot took the last patch the barracks could be cleared on. */
@@ -105,7 +114,8 @@ export function keepGroundPlan(
 
 function drawGroundPlan(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
   const { world } = seat;
-  world.add(carrier, GroundPlan, { plots: [], homes: NO_ROOM_HOMES });
+  const reviewTick = seat.ctx.tick + PLAN_REVIEW_TICKS;
+  world.add(carrier, GroundPlan, { plots: [], homes: NO_ROOM_HOMES, reviewTick });
   for (const step of essentialSteps(seat, order, statuses)) {
     const plot = plotOf(seat, step);
     if (plot !== null) world.mut(carrier, GroundPlan).plots.push(plot);
@@ -309,14 +319,14 @@ function fittingHomes(seat: Seat): number {
 }
 
 /** The plots still waiting after this decision: those whose step no longer waits go, a free one that no
- *  longer fits moves ({@link plotOf}). A plot on ground still to clear stays where it lies. */
+ *  longer fits moves ({@link plotOf}). A plot on ground still to clear stays where it lies. At the plan's
+ *  review a never-cut step with no plot, its building lost or no ground found before, is plotted again. */
 function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
   const { world, ctx, terrain, tribe } = seat;
-  const plots = world.get(carrier, GroundPlan).plots;
-  if (plots.length === 0) return;
+  const plan = world.get(carrier, GroundPlan);
   const kept: GroundPlot[] = [];
   let changed = false;
-  for (const plot of plots) {
+  for (const plot of plan.plots) {
     const type = buildingTypeByContentId(ctx.content, plot.building);
     if (type === undefined || statuses.get(plot.line)?.[plot.step] !== 'unmet') {
       changed = true;
@@ -333,9 +343,19 @@ function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: L
     const moved = entry?.kind === 'place' ? plotOf(seat, { entry, line, step }) : null;
     if (moved !== null) kept.push(moved);
   }
-  if (!changed) return;
-  const plan = world.mut(carrier, GroundPlan);
-  plan.plots = kept;
-  // Ground freed since the last read, felled trees included, lifts the cut; with no plot left nothing needs it.
-  plan.homes = kept.length === 0 ? NO_ROOM_HOMES : Math.max(plan.homes, fittingHomes(seat));
+  if (changed) world.mut(carrier, GroundPlan).plots = kept;
+  if (ctx.tick >= plan.reviewTick) reviewGround(seat, carrier, order, statuses);
+  if (changed && world.get(carrier, GroundPlan).plots.length === 0)
+    world.mut(carrier, GroundPlan).homes = NO_ROOM_HOMES;
+}
+
+function reviewGround(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
+  const { world, ctx } = seat;
+  world.mut(carrier, GroundPlan).reviewTick = ctx.tick + PLAN_REVIEW_TICKS;
+  for (const step of essentialSteps(seat, order, statuses)) {
+    if (!NEVER_CUT.includes(step.entry.building)) continue;
+    if (world.get(carrier, GroundPlan).plots.some((plot) => plot.building === step.entry.building)) continue;
+    const plot = plotOf(seat, step);
+    if (plot !== null) world.mut(carrier, GroundPlan).plots.push(plot);
+  }
 }

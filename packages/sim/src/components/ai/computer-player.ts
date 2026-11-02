@@ -99,6 +99,8 @@ export interface GroundPlanState {
   plots: GroundPlot[];
   /** The most homes the seat raises on what the plots leave. */
   homes: number;
+  /** The first tick the plan looks for ground again: a slower search than keeping its plots. */
+  reviewTick: number;
 }
 
 /**
