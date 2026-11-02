@@ -32,6 +32,8 @@ export async function createOverviewCanvas(): Promise<OverviewCanvas> {
       app.stage.position.set(-hole.x, -hole.y);
       app.render();
     },
-    dispose: () => app.destroy(true),
+    // Never a bare `true`: it also releases Pixi's global pools, destroying the batches the game's own
+    // renderer still holds and hands back to the pool for the next world.
+    dispose: () => app.destroy({ removeView: true }),
   };
 }
