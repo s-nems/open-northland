@@ -124,7 +124,7 @@ describe('build order progress', () => {
     expect(held(landed, entry)).toBe(false);
 
     const sailing = seat();
-    vi.spyOn(seaRoute, 'rivalOverSea').mockReturnValue(true);
+    vi.spyOn(seaRoute, 'seatNeedsShips').mockReturnValue(true);
     expect(held(sailing, entry)).toBe(true);
     const carrier = aiControlEntity(sailing.world, SEAT);
     if (carrier === null) throw new Error('setup: no AI seat');
