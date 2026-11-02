@@ -79,6 +79,9 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
   const tips = attachTipLayer(window.element, deps.tooltip);
   const mapButton = button('on-button on-dip-map');
   write(mapButton, copy.map);
+  const closeButton = window.element.querySelector('.on-window__close');
+  if (closeButton === null) throw new Error('diplomacy: close button');
+  closeButton.before(mapButton);
   const layout = element('div', 'on-dip-layout');
   const nav = element('nav', 'on-dip-nav');
   setAttribute(nav, 'aria-label', copy.nations);
@@ -177,9 +180,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
     tally,
   );
   layout.append(nav, detail);
-  const foot = element('div', 'on-dip-foot');
-  foot.append(feedback, mapButton);
-  window.body.append(layout, empty, foot);
+  window.body.append(layout, empty, feedback);
 
   function paintEmblem(
     node: HTMLElement,
