@@ -10,7 +10,10 @@ import {
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { DeepReadonly } from '../../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../../src/index.js';
-import { PLANNED_HOMES_FLOOR } from '../../../../src/systems/computer-player/build-order/ground-plan.js';
+import {
+  GROUND_PLAN_FROM_TICKS,
+  PLANNED_HOMES_FLOOR,
+} from '../../../../src/systems/computer-player/build-order/ground-plan.js';
 import { plottedNodes, seatHomesCap } from '../../../../src/systems/computer-player/build-order/plots.js';
 import { NO_ROOM_HOMES } from '../../../../src/systems/computer-player/build-order/seat-order.js';
 import { type BuildOrderEntry, buildOrderModule } from '../../../../src/systems/computer-player/index.js';
@@ -113,7 +116,7 @@ function island(
   return sim;
 }
 
-const contextOf = (sim: Simulation): SystemContext => ({ ...ctxOf(sim, sim.tick), content });
+const contextOf = (sim: Simulation): SystemContext => ({ ...ctxOf(sim, GROUND_PLAN_FROM_TICKS), content });
 
 function decide(sim: Simulation, steps: readonly BuildOrderEntry[]): readonly PlayerCommand[] {
   return buildOrderModule(oneLine(steps)).run(sim.world, contextOf(sim), SEAT);

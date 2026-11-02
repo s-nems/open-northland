@@ -17,6 +17,7 @@ import type { SystemContext } from '../../context.js';
 import { ANCHOR_ONLY, buildingFootprintOf, translatedCells } from '../../footprint/geometry.js';
 import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { placementProbe } from '../../footprint/placement/building.js';
+import { minutesToTicks } from '../game-phase.js';
 import { clearingPatch } from '../workforce/collectors/clearing-aim.js';
 import { type BuildOrder, type BuildOrderEntry, OPENING_HOMES, overflowBuildReachNodes } from './entries.js';
 import { baseComponent, buildReach, placementPassesOver, placementSpot } from './placement.js';
@@ -29,6 +30,12 @@ import { baseWalkTest } from './spot-walk.js';
  *  five by game minute 45 in the plain order, and cut to three or four its women stood at 3-10 where they
  *  had stood at 10-17, too few people for an economy and a colony's crew. */
 export const PLANNED_HOMES_FLOOR = 5;
+
+/** When a seat draws its plan (authored): past the opening's first homes and school, which keep the ground
+ *  by the base. Drawn at the start, the plots sent the school 39 nodes out where it stood 17 from the
+ *  headquarters, it finished ten to twenty minutes later and the housing lane behind it held back the
+ *  homes; the big patches lasted to minute 30 unplotted (arabskie_wyspy_wolna_gra_mieszana). */
+export const GROUND_PLAN_FROM_TICKS = minutesToTicks(10);
 
 /** The stable content id of the home chain's base tier. */
 const HOME_BUILDING = 'home_level_00';
@@ -65,7 +72,7 @@ interface Seat {
 
 /**
  * Owner ruling: a seat that scans very little room keeps ground for what it cannot do without, so homes
- * and copies never block its expansion. At its first build-order decision a seat with the `noRoom` side
+ * and copies never block its expansion. From {@link GROUND_PLAN_FROM_TICKS} a seat with the `noRoom` side
  * plots the zone of each step that would hold its line and that no gap of a home's size takes, biggest
  * first, packed by {@link packedSpot}, and cuts its homes to what still fits ({@link fittingHomes}). Plotting
  * every line-holding step left two homes on three of five arabskie_wyspy seats and halved their people. A
@@ -86,7 +93,7 @@ export function keepGroundPlan(
   decision: PlotDecision,
 ): void {
   const carrier = aiControlEntity(world, player);
-  if (carrier === null || !seatHasSide(world, player, 'noRoom')) return;
+  if (carrier === null || ctx.tick < GROUND_PLAN_FROM_TICKS || !seatHasSide(world, player, 'noRoom')) return;
   const seat: Seat = { world, ctx, terrain, player, owned, anchor, tribe, decision };
   if (world.has(carrier, GroundPlan)) reviewPlots(seat, carrier, order, statuses);
   else drawGroundPlan(seat, carrier, order, statuses);
