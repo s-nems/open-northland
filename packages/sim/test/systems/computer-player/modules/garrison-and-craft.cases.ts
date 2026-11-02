@@ -1739,7 +1739,14 @@ describe('workforce module - the barracks and craft selections', () => {
     );
     const seat = crewedWorkshop(content, 1);
     seatEconomy(seat.sim, 'islands');
+    seat.stock(WOOD, JOINERY_WOOD_UNITS);
     expect(seat.products()).toEqual([[TOOL_IRON, TOOL_WOODEN].sort((a, b) => a - b)]);
+    // At the wooden tools' line, and with the sites short of wood, only the iron tools stay.
+    seat.stock(TOOL_WOODEN, WOODEN_TOOL_GLUT_UNITS);
+    expect(seat.products()).toEqual([[TOOL_IRON]]);
+    seat.stock(TOOL_WOODEN, 0);
+    seat.stock(WOOD, 1);
+    expect(seat.products()).toEqual([]);
   });
 
   it('makes wooden tools only until the iron tool is earned', () => {

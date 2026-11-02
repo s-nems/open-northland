@@ -147,6 +147,9 @@ export interface SeatCraftPlan {
   /** What an operator works while no good of his seat nor of any other seat has its inputs in stock
    *  ({@link inputsInStock}), before he waits on his own seat's inputs. */
   readonly unfed?: CraftSeat;
+  /** The goods a seat works only from inputs the sites can spare ({@link inputsSpare}), its other goods
+   *  meanwhile. */
+  readonly sparing?: readonly string[];
   /** What every operator works while each product of the type with supply lines ({@link SeatSupply}) lies
    *  at its glut line, until one falls under its comfort line. A type without a sink rests its crew
    *  instead (`staffing-plan.ts`). */
@@ -165,9 +168,10 @@ export const CRAFT_GLUT_BAND_UNITS = 8;
  *  (seen at 50-146 tools on magiczny_las with 7 iron left). */
 export const JOINERY_TOOL_GLUT_UNITS = 24;
 
-/** The wooden tools in stock up to which joiners with no iron make them (authored): half the iron tools'
- *  line, a stop-gap that keeps them earning their trade's experience, and over the band they take the
- *  line back at, so it never burns the seat's short wood. */
+/** The wooden tools in stock up to which joiners make them where iron does not serve (authored): half the
+ *  iron tools' line, a stop-gap that keeps them earning their trade's experience, and over the band they
+ *  take the line back at. An apprentice works past it; every wooden tool stands behind the sites' wood
+ *  ({@link SeatCraftPlan.sparing}). */
 export const WOODEN_TOOL_GLUT_UNITS = 12;
 
 /** Owner ruling: a joiner never stalls for want of iron. With none in stock he works wooden tools, which
@@ -177,6 +181,9 @@ const NO_IRON_SEAT: CraftSeat = {
   glut: { tool_wooden: WOODEN_TOOL_GLUT_UNITS },
   otherwise: REST_SEAT,
 };
+
+/** The goods only spare wood goes into. */
+const WOODEN_TOOLS: readonly string[] = ['tool_wooden'];
 
 /** Owner ruling: a joiner makes wooden tools only to earn the iron tool, from then on iron tools alone and
  *  never furniture, or {@link NO_IRON_SEAT} with no iron; he rests while the iron tools lie at
@@ -410,10 +417,10 @@ const TEMPLE_SITE_SEAT: CraftSeat = {
 export const CRAFT_PLANS_BY_BUILDING_ID: Readonly<Record<string, CraftPlan>> = {
   // The lower joinery makes wooden tools alone, so its joiner rests once the iron tool is earned.
   work_joinery_00: { seats: [{ until: 'tool_iron', works: ['tool_wooden'], otherwise: REST_SEAT }] },
-  work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT], unfed: NO_IRON_SEAT },
+  work_joinery_01: { seats: [JOINERY_SEAT, JOINERY_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
   // The upgraded joinery's joiners build the carriers' handcarts in turn with iron tools while few stand
   // spare.
-  work_joinery_02: { seats: [HANDCART_SEAT], unfed: NO_IRON_SEAT },
+  work_joinery_02: { seats: [HANDCART_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
   // The first potter works bricks and tiles, the second crockery, which doubles a stocked home's food,
   // until it piles up; a short building material takes the crockery seat, and both potters turn to
   // crockery while bricks and tiles lie at their glut lines.
@@ -455,11 +462,22 @@ export const AI_CATAPULT_RESUME = 12;
 /** Owner ruling: on the island plan the carpenter earns the small ship first. Until then he turns wood into
  *  tools beside the iron ones, as any finished product trains the general track and iron came in at a tool
  *  every four game minutes on arabskie_wyspy_wolna_gra_mieszana; his worker rotation passes over the recipe
- *  his shelves cannot feed. */
+ *  his shelves cannot feed. The discovery's thirty cycles bound the wood he takes, and the sites' lack and
+ *  the stock lines take it from him first. */
 const ISLAND_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
   work_joinery_01: {
-    seats: [{ until: 'ship_small', works: ['tool_iron', 'tool_wooden'], otherwise: JOINERY_SEAT }],
+    seats: [
+      {
+        until: 'ship_small',
+        works: {
+          goods: ['tool_iron', 'tool_wooden'],
+          glut: { tool_iron: JOINERY_TOOL_GLUT_UNITS, tool_wooden: WOODEN_TOOL_GLUT_UNITS },
+        },
+        otherwise: JOINERY_SEAT,
+      },
+    ],
     unfed: NO_IRON_SEAT,
+    sparing: WOODEN_TOOLS,
   },
 };
 
@@ -478,8 +496,8 @@ export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans 
     cap === 0 ? JOINERY_SEAT : { fleet: 'catapult', cap, resume, otherwise: JOINERY_SEAT };
   return {
     [ROLE_JOINERY_ID]: {
-      catapult: { seats: [catapultSeat], unfed: NO_IRON_SEAT },
-      ship: { seats: [SHIP_SEAT], unfed: NO_IRON_SEAT },
+      catapult: { seats: [catapultSeat], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
+      ship: { seats: [SHIP_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
     },
   };
 }
@@ -806,7 +824,12 @@ export function tuneCraftCounters(
         const unfed = work === REST ? [] : goodsOf(ctx, products, work);
         if (anyFed(unfed)) stocked = unfed;
       }
-      listed.push(stocked.length > 0 ? stocked : goods);
+      const work = stocked.length > 0 ? stocked : goods;
+      const sparing = goodsOf(ctx, products, seatPlan?.sparing ?? []);
+      const spared = work.filter(
+        (good) => !sparing.includes(good) || inputsSpare(ctx, supply, type, good, held.includes(good)),
+      );
+      listed.push(spared.length > 0 ? spared : own);
     }
     const sinkGoods = goodsOf(ctx, products, seatPlan?.sink ?? []);
     // The whole crew, since a seat of its own may work the sink's goods, as the crockery seat does.
