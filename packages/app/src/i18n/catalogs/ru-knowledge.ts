@@ -522,7 +522,7 @@ export const ruKnowledge = {
     animalHerd: 'Стадо',
     animalTame: 'Приручить',
     animalHunter: 'Охотник сам',
-    expPoints: 'Набрано очков',
+    expPoints: 'Повторений при обычной работе',
     expPercent: 'Опыт',
     expStrokes: 'Меньше ударов (из 10)',
     expExtra: 'Прибавка к выпуску',

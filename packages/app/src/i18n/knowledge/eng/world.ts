@@ -6,10 +6,10 @@ export const WORLD: ArticleGroup = {
     {
       id: 'goals',
       name: 'Mission Goals and Game End',
-      lead: "A player is out when he has no living adult man left. Adult men and Heroes count. Women, Cyra and children don't.",
+      lead: "A player loses when he has no adult man left. A hero counts. Women, Cyra and children don't.",
       blocks: [
         {
-          h: 'Who decides',
+          h: 'How a map ends',
         },
         {
           table: {
@@ -17,11 +17,11 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 'Multiplayer map, solo play included',
-                "A goal on the map's list",
-                'No adult man, a defeat goal from the script',
+                'Map goals, see the table below',
+                'No adult man, or a defeat announced by the mission',
               ],
-              ['Story mission', 'Map script', 'Map script, no adult man'],
-              ['Map with no script', 'Last one standing', 'No adult man'],
+              ['Story mission', 'Announced by the mission', 'Announced by the mission, or no adult man'],
+              ['Map with no mission', 'Last one standing', 'No adult man'],
             ],
           },
         },
@@ -34,8 +34,8 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 'Goods',
-                "Stock on building shelves. Ground piles, ship holds and goods in hand don't count",
-                'Victory once every amount is met',
+                "Stock in buildings. Ground piles, ship holds and goods in hand don't count",
+                'Victory once you have every required amount',
               ],
               [
                 '"Inhabitants"',
@@ -47,22 +47,25 @@ export const WORLD: ArticleGroup = {
                 'Adult men in a soldier profession, no heroes',
                 'Victory at the required number',
               ],
-              ['Scripted victory', 'A mission event names the player', 'Victory'],
-              ['Scripted defeat', 'A mission event names the player', 'Defeat'],
+              [
+                'Mission announcement',
+                "The mission announces the player's victory or defeat",
+                'Victory or defeat',
+              ],
               [
                 'Last one standing',
-                'At least one rival is out and the rest are all friends with each other: [[article:diplomacy|Diplomacy]]',
+                'At least one player is out and all the others are friendly to each other: [[article:diplomacy|Diplomacy]]',
                 'Victory for everyone left',
               ],
             ],
-            foot: 'The game shows progress on goods, "Inhabitants" and "Soldiers" as current/required. Last one standing applies when the map has no goods, people or scripted goal.',
+            foot: 'The game shows progress on goods, "Inhabitants" and "Soldiers" as current/required. Last one standing applies only when the map has no goods or people goals and the mission announces no result.',
           },
         },
         {
           list: [
-            'The game checks for adult men first, then the list in map order.',
-            "The first condition met settles a player's fate for good. A winner who then loses his people is still a winner.",
-            "One player's victory doesn't end the game for the others.",
+            'The game checks for men first, then the rest of the map goals in turn. It starts counting men only after {{match.graceSeconds}} s of play.',
+            "The first condition met settles a player's fate for good.",
+            "One player's victory doesn't end the game for the others, and a winner who then loses his people has still won.",
             'A map can exempt a given player from the adult man rule.',
           ],
         },
@@ -72,13 +75,13 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'No adult man: vehicles vanish at once.',
-            'Defeat comes at the next goal check.',
-            'At the check after that, buildings, people, vehicles and signposts vanish.',
+            'Defeat comes at the next goal check, every {{match.checkSeconds}} s.',
+            'At the check after that, buildings, vehicles and signposts vanish, and a wild chicken appears in place of each person standing on land.',
             "The player's animals go wild where they stand.",
           ],
         },
         {
-          p: "That's for multiplayer maps. In story missions and on maps with no script only vehicles vanish, and the computer stops playing. Buildings and people stay.",
+          p: 'That goes for multiplayer maps. In story missions and on maps with no mission only vehicles vanish, and the computer stops playing.',
         },
       ],
       see: ['article:diplomacy', 'article:family', 'article:heroes'],
@@ -86,32 +89,29 @@ export const WORLD: ArticleGroup = {
     {
       id: 'vehicles',
       name: 'Vehicles and Ships',
-      lead: 'A vehicle with no commander stands still. A Ship carries {{vehicle.shipSeats}} people, a Big Ship {{vehicle.bigShipSeats}}, commander included.',
+      lead: 'A vehicle with no commander stands still. A Ship carries more people, a Big Ship more goods.',
       blocks: [
         {
           data: 'vehicles',
         },
         {
           table: {
-            head: ['Vehicle', 'Who boards', 'Seats with commander'],
+            head: ['Vehicle', 'Who boards'],
             rows: [
               [
                 '[[good:handcart|Handcart]], [[good:oxcart|Ox Cart]]',
                 '[[job:carrier|Carrier]], [[job:trader|Merchant]]',
-                '1',
               ],
-              ['[[good:ship_small|Ship]]', 'any adult', '{{vehicle.shipSeats}}'],
-              ['[[good:ship_big|Big Ship]]', 'any adult', '{{vehicle.bigShipSeats}}'],
-              ['[[good:catapult|Catapult]]', 'soldier, hero', '1'],
+              ['[[good:ship_small|Ship]], [[good:ship_big|Big Ship]]', 'any adult'],
+              ['[[good:catapult|Catapult]]', 'soldier, hero'],
             ],
-            num: [2],
           },
         },
         {
           list: [
-            'The first one assigned becomes commander. If he leaves, the next passenger takes over.',
-            'Whoever boards loses his workplace. A Carrier with a workplace and a Merchant take a free cart as a tool and keep their workplace.',
-            'The commander or any grown man aboard handles the hold, except soldiers, heroes, [[job:scout|Scouts]] and [[job:druid|Druids]]. Without them you get "No carrier".',
+            'The "Passengers" column does not count the commander. The first one assigned becomes commander, and if he leaves the next passenger takes over.',
+            'Whoever boards loses his workplace. The exception is a Carrier with a workplace and a Merchant, who pull the cart themselves and keep their work.',
+            'The commander and any adult man aboard handle the hold. Soldiers, heroes, [[job:scout|Scouts]] and [[job:druid|Druids]] load only as commanders. With nobody to do it you get "No carrier".',
           ],
         },
         {
@@ -140,8 +140,15 @@ export const WORLD: ArticleGroup = {
               ['[[good:catapult|Catapult]]', '-', '{{pace.catapultRoad}}', '-', '{{pace.catapultLand}}', '-'],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: "Hexes per second. Full means {{haul.handcart}} of {{haul.handcart}} on the Handcart and {{haul.oxcart}} of {{haul.oxcart}} on the Ox Cart. Figures are for a barefoot driver, shoes are faster. A Ship doesn't slow under load and sails about {{pace.ship}} hexes/s. A Carrier pulling a cart loses the same percentage of his walk. Picking a cart for a route: [[article:trade|Trade]].",
+            foot: 'Hexes per second. Full means {{haul.handcart}} pieces on the Handcart and {{haul.oxcart}} on the Ox Cart. The loss grows with the load: half a cart is half the loss. Picking a cart for a route: [[article:trade|Trade]].',
           },
+        },
+        {
+          list: [
+            "That's how a cart with a commander moves, shoes change nothing here.",
+            'A Carrier or Merchant pulling a cart himself goes at his own step. In shoes he moves faster and loses the same percentage.',
+            "A Ship doesn't slow under load and sails about {{pace.ship}} hexes/s.",
+          ],
         },
         {
           h: 'Construction',
@@ -152,12 +159,12 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 '[[good:handcart|Handcart]]',
-                "[[building:work_joinery_02|Carpenter's Shop 3]], 4",
+                "[[building:work_joinery_02|Carpenter's Shop 3]] and [[building:work_joinery_03|4]]",
                 '{{cost.handcartWood}} [[good:wood|Wood]]',
               ],
               [
                 '[[good:oxcart|Ox Cart]]',
-                "[[building:work_joinery_02|Carpenter's Shop 3]], 4",
+                "[[building:work_joinery_02|Carpenter's Shop 3]] and [[building:work_joinery_03|4]]",
                 '{{cost.oxcartWood}} [[good:wood|Wood]]',
               ],
               [
@@ -185,8 +192,8 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'A finished Ox Cart shows status "Waiting for its draught animal".',
-            'It takes the nearest adult [[good:cattle|Ox]] you own on the same landmass, free and not inside a Cattle Farm.',
-            'Every Cattle Farm keeps its first {{livestock.pair}} adults. Oxen with no farm also keep {{livestock.pair}}.',
+            "It takes the nearest adult [[good:cattle|Ox]] from the same landmass. An Ox inside a Cattle Farm doesn't count.",
+            'Every Cattle Farm keeps {{livestock.pair}} adult Oxen. The same number stays from a herd with no farm.',
             'The Ox walks to the cart and vanishes, and only then does the Ox Cart move.',
           ],
         },
@@ -195,11 +202,11 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'The hold is shared by all goods.',
+            'All goods share the capacity of the hold.',
             "A Ship carries 1 vehicle: a Handcart, Ox Cart or Catapult. The vehicle's crew must fit aboard. A Big Ship carries no vehicles.",
-            '"Moor" asks you to pick a shore. The ship stops {{vehicle.mooringDistance}} hexes from the spot, with no harbour building needed.',
+            '"Moor": pick a shore and the ship stops {{vehicle.mooringDistance}} hexes from it. No harbour needed.',
             'Nobody boards or leaves at sea.',
-            'Ctrl/Cmd + click moors and lands the crew.',
+            'Ctrl/Cmd + right-click moors and lands the crew.',
           ],
         },
         {
@@ -208,12 +215,12 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             '"target": how many pieces should be in the hold. Targets can\'t sum past capacity.',
-            '"by the carrier": a Carrier with a workplace pulls the cart and takes what he picks up on each trip. Targets are locked.',
-            'Whoever loads gets off when the cart stops or the ship moors. Nobody works at sea.',
-            'He takes 1 piece at a time: pile, building within {{vehicle.cargoSearch}} hexes, then further.',
-            'The source must be on the same landmass as the door. He takes no food from dwellings.',
-            'Target 0 or below the contents: the surplus goes to the nearest Warehouse or Headquarters with room, within {{vehicle.cargoSearch}} hexes of the door. With none, it lands on the ground.',
-            "A commander who is a soldier, hero, [[job:scout|Scout]] or [[job:druid|Druid]], with nobody else to load, lowers the target when there's nowhere to get the good. With a loader aboard the target stays.",
+            '"by the carrier": a Carrier pulls the cart and decides on each trip what to load. You can\'t set targets.',
+            'Whoever loads gets off when the cart stops or the ship moors.',
+            'He carries 1 piece at a time. He looks for piles within {{vehicle.cargoSearch}} hexes of the cart first, then buildings in the same reach, and last anywhere the signposts reach.',
+            'The good must lie on the same landmass as the cart or ship. Nobody takes food from dwellings.',
+            'When you lower a target, the surplus goes to the nearest Warehouse or Headquarters with room, within {{vehicle.cargoSearch}} hexes of the cart. With none, it lands on the ground.',
+            "When a commander who is a soldier or hero loads alone and there's nowhere to get the good, the target drops by itself. The same goes for a [[job:scout|Scout]] and a [[job:druid|Druid]].",
             'A move order calls the crew aboard before leaving.',
           ],
         },
@@ -222,18 +229,18 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['State', 'Crew aboard', 'Carried vehicle', 'Cargo'],
+            head: ['Vehicle', 'Crew aboard', 'Carried vehicle', 'Cargo'],
             rows: [
               [
                 'Cart, [[good:catapult|Catapult]]',
-                'Gets off at the door',
+                'Gets off beside it',
                 '-',
                 'Scattered within {{vehicle.spill}} hexes',
               ],
-              ['Ship moored', 'Gets off on the shore', 'Stops at the door', 'Lost'],
+              ['Ship moored', 'Gets off on the shore', 'Stops on the shore', 'Lost'],
               ['Ship at sea', 'Sinks', 'Sinks with its crew', 'Lost'],
             ],
-            foot: "The crew aboard can't be hit while the hull holds. Anyone off the deck only loses the assignment.",
+            foot: "The crew in a vehicle can't be hit while the vehicle holds. Anyone standing beside it simply stops being part of the crew.",
           },
         },
       ],
@@ -255,7 +262,7 @@ export const WORLD: ArticleGroup = {
               ['[[job:scout|Scouts]] take their Oxen and Sheep', 'yes', 'no', 'no'],
               ['[[job:trader|Merchant]] trade at their buildings with offers', 'no', 'no', 'yes, both sides'],
               ['Shared map view', 'no', 'no', 'yes, both sides'],
-              ['Shared last-standing victory', 'no', 'no', 'yes, both sides'],
+              ['Shared "Last one standing" victory', 'no', 'no', 'yes, both sides'],
             ],
             foot: 'A shared view also needs "Shared allied map" in the match settings.',
           },
@@ -267,12 +274,16 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Event', 'Result'],
             rows: [
-              ['Map start', 'The map sets attitudes, a pair with no entry starts neutral'],
-              ['A blow from outsiders', "The victim's attitude to the attacker turns hostile"],
-              ['Computer neutral, you hostile to it', 'The computer turns hostile'],
-              ['You lower your attitude to a friendly computer', 'The computer lowers its own to your level'],
+              ['Map start', 'The map sets attitudes. Where it gives none, you start neutral'],
+              ['Another player hits you', 'Your attitude to him turns hostile by itself'],
+              ['You set hostile toward a neutral computer', 'The computer turns hostile too'],
+              ['Neutral computer on an island map', 'Turns hostile to players by itself'],
+              [
+                'You lower your attitude to a friendly computer',
+                'The computer lowers its own too, to your level',
+              ],
               ['Computer hostile', 'Never goes back to peace on its own'],
-              ['A tribute paid, a mission event', 'Can change their attitude'],
+              ['Mission', 'Can change attitude, also after a paid tribute'],
               ['"Attitude set by the scenario"', "You can't change it in the Diplomacy window"],
             ],
           },
@@ -282,8 +293,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Fighting between players under peace is blocked.',
-            "You can't enter or build within {{peace.keepOut}} hexes of a partner's building, unless you're closer to your own.",
+            'You set "Peace time" before the game. Players under it can\'t fight each other.',
+            "You can't send people or build within {{peace.keepOut}} hexes of a partner's building, unless the spot lies closer to your own building.",
             'Warnings come {{peace.noticeFirstMinutes}} min and {{peace.noticeLastMinutes}} min before the end.',
           ],
         },
@@ -291,13 +302,13 @@ export const WORLD: ArticleGroup = {
           h: 'First contact',
         },
         {
-          p: 'Under fog, a tribe enters the Diplomacy window when you see one of its people, buildings, vehicles or stockades, or when it hits you. Contact never expires.',
+          p: 'Under fog, a tribe enters the Diplomacy window when you see one of its people, buildings, vehicles or stockades, or when it attacks you. It stays there for good.',
         },
         {
           h: 'Tributes',
         },
         {
-          p: 'Only a map script opens a tribute. "Pay" in the Diplomacy window takes the goods at once, nobody carries them. Sources, in order:',
+          p: 'Only a mission demands a tribute. "Pay" in the Diplomacy window takes the goods at once, nobody carries them. The game takes them from:',
         },
         {
           steps: [
@@ -309,7 +320,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             "Dwellings, towers, the [[building:barracks|Barracks]], the [[building:school|School]] and ground piles don't pay.",
-            'A food demand takes any dish of the same class.',
+            'When a mission demands food, you can pay with any dish of the same class.',
             '"Storage minimum" doesn\'t protect goods from tribute.',
           ],
         },
@@ -319,7 +330,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'fog',
       name: 'Fog and Vision',
-      lead: "You see only what's in reach of your people and buildings.",
+      lead: 'The Scout and Headquarters see furthest, {{vision.scout}} hexes. A construction site sees nothing.',
       blocks: [
         {
           h: 'Map modes',
@@ -330,14 +341,18 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Revealed', 'everything visible', 'no fog'],
               ['Classic', 'black map', 'once revealed, stays visible'],
-              ['Classic + Fog of war', 'black map', 'grey terrain, no units'],
-              ['Recon', 'grey terrain, no units', 'once revealed, stays visible'],
-              ['Recon + Fog of war', 'grey terrain, no units', 'grey terrain, no units'],
+              ['Classic + Fog of war', 'black map', 'grey terrain, no people or animals'],
+              ['Recon', 'grey terrain, no people or animals', 'once revealed, stays visible'],
+              [
+                'Recon + Fog of war',
+                'grey terrain, no people or animals',
+                'grey terrain, no people or animals',
+              ],
             ],
           },
         },
         {
-          p: "Grey terrain shows buildings, stockades, vehicles, chests, resources, logs and goods piles as last seen. People and animals don't show. This memory is also on the minimap and in saved games.",
+          p: "Grey terrain shows buildings, stockades, vehicles, chests, resources, logs and goods piles as last seen. People and animals don't show.",
         },
         {
           h: 'Vision range',
@@ -345,7 +360,7 @@ export const WORLD: ArticleGroup = {
         {
           figure: {
             id: 'vision',
-            caption: 'Who sees what',
+            caption: 'Vision range',
           },
         },
         {
@@ -359,19 +374,13 @@ export const WORLD: ArticleGroup = {
                 '[[good:handcart|Handcart]], [[good:oxcart|Ox Cart]], [[good:catapult|Catapult]]',
                 '{{vision.cart}}',
               ],
-              ['Adult civilian, Woman, own animal', '{{vision.adult}}'],
+              ['Other adults, own animal', '{{vision.adult}}'],
               ['Child', '{{vision.child}}'],
               ['Construction site', '0'],
             ],
             num: [1],
-            foot: "Hexes counted across. Stockades, roads and signposts don't see.",
+            foot: "Stockades, roads and signposts don't see. Soldiers and [[job:hunter|Hunters]] find targets in fog too. A [[good:catapult|Catapult]] picks on its own only a target it can see.",
           },
-        },
-        {
-          h: 'Fighting in fog',
-        },
-        {
-          p: "Soldiers attack in fog too, a [[good:catapult|Catapult]] won't on its own. [[job:hunter|Hunters]] hunt regardless of fog.",
         },
       ],
       see: ['article:scout', 'article:stances', 'article:catapult', 'article:diplomacy', 'job:scout'],
@@ -379,35 +388,19 @@ export const WORLD: ArticleGroup = {
     {
       id: 'scout',
       name: 'Scout',
-      lead: 'A Scout has no workplace. With no order he stands and waits.',
+      lead: 'A Scout has no workplace. With no order he stands still.',
       blocks: [
         {
-          h: 'What he does',
-        },
-        {
-          table: {
-            head: ['Task', 'How', 'More'],
-            rows: [
-              ['Signposts', '"Place signpost" order, no material', '[[article:roads|Roads and Signposts]]'],
-              ['Exploring land', '"Explore" order', 'Below'],
-              [
-                'Animals',
-                'Claims wild Oxen and Sheep by walking past them',
-                '[[article:livestock|Livestock]]',
-              ],
-              ['Vision', '{{vision.scout}} hexes, the most of any person', '[[article:fog|Fog and Vision]]'],
-            ],
-            foot: "Signpost reach doesn't apply to him, so he walks the whole map.",
-          },
+          p: "He places [[article:roads|signposts]] with no material and claims wild Oxen and Sheep by walking past them: [[article:livestock|Livestock]]. Signposts don't limit him, so he walks the whole map.",
         },
         {
           h: '"Explore"',
         },
         {
           list: [
-            'The order works only on Scouts, including several selected at once.',
-            "He walks in rings from the order's spot, always to the nearest unexplored land.",
-            'He stays on one landmass. Only a [[article:vehicles|ship]] takes him to another.',
+            'You can send several at once.',
+            "He uncovers land in rings around the order's spot.",
+            "He won't leave his landmass. Only a [[article:vehicles|ship]] can take him to another.",
             'He skips narrow strips along shores and map edges, so small patches stay unexplored.',
             'He eats and sleeps along the way, then carries on from where he stands.',
           ],
@@ -425,9 +418,8 @@ export const WORLD: ArticleGroup = {
                 'The rest counts as unreachable, "Land explored"',
               ],
               ['Map mode "Revealed"', '"Land explored" at once'],
-              ['New order', 'Exploring is lost'],
-              ['Shift order', 'Waits until exploring ends'],
-              ['Change of profession', 'Exploring is lost'],
+              ['New order, change of profession', 'Exploring is lost'],
+              ['Shift order', 'Carried out after exploring ends'],
             ],
           },
         },
@@ -437,7 +429,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'wildlife',
       name: 'Wild Animals and Hunting',
-      lead: 'An aggressive herd rushes people within {{wild.aggro}} hexes of its home and turns back past {{wild.giveUp}} hexes.',
+      lead: 'An aggressive herd rushes people within {{wild.aggro}} hexes of where it grazes. It chases at most {{wild.giveUp}} hexes, then turns back.',
       blocks: [
         {
           data: 'animals',
@@ -451,9 +443,9 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Aggressive', 'Wolf, Lion, Lioness, Polar Bear', 'Attack on their own'],
               [
-                'Enraged when struck',
+                'Attack when struck',
                 'Bear, Elephant',
-                'Anger lasts {{wild.angrySeconds}} s from the last blow, an attack in progress lasts until the target dies or takes shelter',
+                'Dangerous for {{wild.angrySeconds}} s from the last blow. An attack in progress lasts until the target dies or hides',
               ],
               ['Skittish', 'The rest', 'A struck leader flees up to {{wild.flight}} hexes, the herd follows'],
             ],
@@ -462,7 +454,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'A blow alerts animals of the species within {{wild.kinAlarm}} hexes of the one struck.',
+            'When you strike an animal, others of its species within {{wild.kinAlarm}} hexes react too.',
             "Animals don't attack buildings or vehicles.",
           ],
         },
@@ -470,7 +462,7 @@ export const WORLD: ArticleGroup = {
           h: 'Herd growth',
         },
         {
-          p: 'A wild herd larger than 1 and below the "Herd" column gains 1 adult every {{wild.growthMinutes}} min, but only about 1 herd in 5 grows.',
+          p: 'Only about 1 herd in {{wild.breedingShare}} grows at all. Such a herd gains 1 adult every {{wild.growthMinutes}} min, if it has at least 2 animals and fewer than the "Herd" column says. A lone animal doesn\'t breed.',
         },
         {
           h: 'What a Hunter hunts',
@@ -478,11 +470,12 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'The hunting ground is {{flag.hunter}} hexes from the work flag or workplace. A chase runs {{wild.huntChase}} hexes past it.',
-            'He picks a close, weak animal.',
-            'He hunts 1 quarry at a time and takes a new one only after collecting the kill.',
-            "The Hunter's bow takes {{wild.hunterShot}} per shot, range {{hunterBow.min}}-{{hunterBow.max}} hexes.",
+            'He picks the animal with the lowest sum of health and distance. Health runs in hundreds and thousands, so the weakest wins, even far away.',
+            'He hunts 1 animal at a time and takes a new one only after collecting the kill.',
+            "The Hunter's shot takes {{wild.hunterShot}} health from an animal, range {{hunterBow.min}}-{{hunterBow.max}} hexes.",
             "He won't go for an adult Ibex on his own, but its young are game.",
-            'He skips owned animals, enraged ones and those on another landmass.',
+            'He skips owned animals and those on another landmass.',
+            'The "Auto-hunted" column: "on his own" is game he goes for himself, "on orders" he attacks only when you order it.',
           ],
         },
         {
@@ -505,7 +498,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'livestock',
       name: 'Livestock',
-      lead: 'The Stock Farmer breeds only at exactly {{livestock.pair}} adults of a species. A third adult goes to slaughter.',
+      lead: 'The Stock Farmer breeds only at exactly {{livestock.pair}} adults of a species. A third one he slaughters first.',
       blocks: [
         {
           figure: {
@@ -522,17 +515,12 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 '[[job:scout|Scout]]',
-                'Each step he takes claims wild Oxen and Sheep and the herd of any player you hold as hostile. The rest of a hostile herd nearby scatters',
-                '{{livestock.captureRange}}, scatter {{livestock.scatterRange}}',
+                'With each step he claims wild Oxen and Sheep and the animals of a hostile player. Those further from him scatter',
+                'claim {{livestock.captureRange}}, scatter {{livestock.scatterRange}}',
               ],
               [
                 '[[job:breeder|Stock Farmer]]',
-                'Brings the nearest animal of yours with no farm to the Cattle Farm',
-                'same landmass',
-              ],
-              [
-                '[[job:breeder|Stock Farmer]]',
-                'Below a pair he takes one from another of your farms that has more than a pair',
+                'Brings the nearest animal of yours with no farm to the Cattle Farm. Below a pair he also takes one from another of your farms that has more than a pair',
                 'same landmass',
               ],
             ],
@@ -557,15 +545,14 @@ export const WORLD: ArticleGroup = {
                 '{{livestock.cattleLeather}} [[good:leather|Leather]], {{livestock.cattleMeat}} [[good:meat|Meat]]',
               ],
             ],
-            foot: "Young and slaughter take 8 s each. The Stock Farmer's production choice sets which species he tends. A Cattle Farm holds {{livestock.farmShelf}} pieces each of Meat, Wool and Leather.",
+            foot: "Young and slaughter take about {{livestock.cycleSeconds}} s. You pick the species in the Stock Farmer's production. A Cattle Farm holds {{livestock.farmShelf}} pieces each of Meat, Wool and Leather.",
           },
         },
         {
           list: [
             'A [[building:work_animal_farm|Cattle Farm]] holds {{livestock.farmHerd}} animals in total, both species and young on the way.',
-            "Young take {{livestock.growSeconds}} s ({{livestock.growMinutes}} min) to grow and don't count toward the pair.",
-            "A parent must be within {{livestock.birthRange}} hexes of the farm's door at birth. Further away, the input is lost and no young arrive.",
-            "A Cattle Farm's crew is {{livestock.breeders}} [[job:breeder|Stock Farmers]] and {{livestock.carriers}} [[job:carrier|Carrier]].",
+            "Young take {{livestock.growMinutes}} min to grow and don't count toward the pair until then.",
+            'If the parent is more than {{livestock.birthRange}} hexes from the farm at birth, the inputs are lost and no young arrive.',
           ],
         },
         {
@@ -588,14 +575,14 @@ export const WORLD: ArticleGroup = {
     {
       id: 'religion',
       name: 'Religion and the Temple',
-      lead: "The Religion bar drains only when making weapons and armour. At 0% a craftsman won't start a batch that costs Religion.",
+      lead: "The Religion bar drains only when making weapons and armour. At 0% a craftsman won't start a production cycle that costs Religion.",
       blocks: [
         {
-          h: 'Run cost',
+          h: 'Cost of a production cycle',
         },
         {
           table: {
-            head: ['Profession', '15%', '30%'],
+            head: ['Profession', '{{piety.lowPct}}%', '{{piety.highPct}}%'],
             rows: [
               [
                 '[[job:armorer|Armourer]]',
@@ -618,9 +605,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Below {{need.drivePct}}% Armourers and Blacksmiths go to pray, and with nowhere to pray you get "Wants to pray" at {{need.criticalPct}}%.',
-            'Tailors don\'t go on their own, so order them to "Pray".',
-            'At 0% a craftsman finishes a batch already paid for.',
+            'Below {{need.drivePct}}% the [[job:joiner|Carpenter]], Armourer, Blacksmith and Tailor go to pray on their own. With nowhere to pray you get "Wants to pray" at {{need.criticalPct}}%.',
+            'They finish a cycle already started, even at 0%.',
           ],
         },
         {
@@ -630,18 +616,20 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Place', 'Condition'],
             rows: [
-              ['Dwelling', 'A holy fire burns in it, always the first choice'],
-              ['[[building:work_temple|Temple]]', 'Finished, yours'],
-              ['[[building:headquarters|Headquarters]]', 'Finished, yours'],
+              ['Dwelling', 'When a holy fire burns in it. A settler goes there first'],
+              [
+                '[[building:work_temple|Temple]], [[building:headquarters|Headquarters]]',
+                'Only finished and yours',
+              ],
             ],
-            foot: "A prayer takes {{pray.seconds}} s and gives +{{pray.pct}}% Religion. Dwellings with no fire and foreign buildings don't work.",
+            foot: 'A prayer takes {{pray.seconds}} s and gives +{{pray.pct}}% Religion.',
           },
         },
         {
           h: 'Holy fire',
         },
         {
-          p: 'Works from Dwelling 3. 1 [[good:holy_oil|Oil]] burns {{oil.burnMinutes}} min, a full fire {{oil.fullBurnMinutes}} min.',
+          p: 'You can light it from Dwelling 3. 1 [[good:holy_oil|Oil]] burns {{oil.burnMinutes}} min, a full stock in the dwelling {{oil.fullBurnMinutes}} min. It burns even when nobody is praying.',
         },
         {
           h: 'Temple aura',
@@ -666,20 +654,10 @@ export const WORLD: ArticleGroup = {
     {
       id: 'chests',
       name: 'Chests and Papers',
-      lead: 'Papers from chests put up a building at once, with no construction, materials or discoveries.',
+      lead: 'Papers from chests put up a building at once, with no construction, materials or required discoveries.',
       blocks: [
         {
-          h: 'Who opens',
-        },
-        {
-          table: {
-            head: ['Chest', 'Who'],
-            rows: [
-              ['Chest', 'any adult'],
-              ['Magic Chest', '[[job:druid|Druid]], hero'],
-            ],
-            foot: 'The "Open chest" order. A settler is limited to his walking reach. Goods drop next to the chest.',
-          },
+          p: 'Any adult can open a Chest, but only a [[job:druid|Druid]] or hero a Magic Chest. The order is "Open chest". The settler must be able to reach it within his walking reach.',
         },
         {
           h: 'Contents',
@@ -698,18 +676,18 @@ export const WORLD: ArticleGroup = {
               ['[[good:bread|Food]]', '{{chest.foodWooden}}', '{{chest.foodMagical}}'],
               ['[[good:catapult|Catapult]]', '1', '1'],
               [
-                '{{chest.settlers}} Civilians, {{chest.settlers}} Women, {{chest.settlers}} Longsword Fighters or {{chest.settlers}} Longbow Archers',
+                'Civilians, Women, Longsword Fighters or Longbow Archers',
                 '{{chest.settlers}}',
                 '{{chest.settlers}}',
               ],
               [
-                '{{chest.wolves}} Wolves or {{chest.lions}} Lions, a wild pack',
+                'Wolves or Lions. They come out wild and attack at once',
                 '{{chest.wolves}} or {{chest.lions}}',
                 '{{chest.wolves}} or {{chest.lions}}',
               ],
             ],
             num: [1, 2],
-            foot: "The map picks each chest's contents.",
+            foot: "The map sets each chest's contents, not chance.",
           },
         },
         {
@@ -719,11 +697,11 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Paper', 'Effect'],
             rows: [
-              ['Place a building of your choice', 'Any building in the catalogue, up at once'],
+              ['Place a building of your choice', 'Any building in the build list, up at once'],
               ["Place 'name'", 'The named building, up at once'],
-              ["Place 'name' and fill its store", 'The named building with its store full to the brim'],
+              ["Place 'name' and fill its store", 'The named building with a full stock'],
             ],
-            foot: 'A paper disappears once used. A refused spot doesn\'t use it. You\'ll find the list in the build window under "Papers".',
+            foot: 'A paper disappears once used. If the spot doesn\'t fit, you keep it. Your papers are in the build window under "Papers".',
           },
         },
         {
@@ -762,7 +740,7 @@ export const WORLD: ArticleGroup = {
                 '[[good:holy_oil|Oil]], small potions',
               ],
             ],
-            foot: 'Such a chest gives a paper, a settler in that profession and access to the profession.',
+            foot: 'Such a chest also gives a settler in that profession and access to the profession.',
           },
         },
       ],

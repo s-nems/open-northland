@@ -520,7 +520,7 @@ export const chsKnowledge = {
     animalHerd: '兽群',
     animalTame: '可驯服',
     animalHunter: '猎人自动猎杀',
-    expPoints: '累计点数',
+    expPoints: '普通工作次数',
     expPercent: '经验',
     expStrokes: '减少敲击（共10次）',
     expExtra: '额外产量',

@@ -1637,7 +1637,7 @@ describe('the animal farm panel - the species rows are its herd', () => {
 
     if (model.kind !== 'building') throw new Error('expected a building model');
     expect(model.orders?.alarm).toEqual({ on: true });
-    expect(model.status).toEqual({ label: 'Alarm', detail: `schronieni 2 / ${capacity}`, tone: 'trouble' });
+    expect(model.status).toEqual({ label: 'Alarm', detail: `schowani 2 / ${capacity}`, tone: 'trouble' });
     // The claimants show as their own group, those already inside first.
     expect(model.staff?.groups.find((group) => group.key === 'sheltered')).toMatchObject({
       capacity,

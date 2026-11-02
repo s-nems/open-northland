@@ -6,7 +6,7 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-work',
       name: 'Arbeitserfahrung',
-      lead: 'Jede Ware hat ihren eigenen Erfahrungszweig: 100% bei Holz beschleunigen den Stein nicht.',
+      lead: 'Erfahrung wächst für jede Ware einzeln: 100% bei Holz beschleunigen den Stein nicht.',
       blocks: [
         {
           h: 'Was Erfahrung bringt',
@@ -21,67 +21,70 @@ export const EXPERIENCE: ArticleGroup = {
           data: 'experience',
         },
         {
-          p: 'Ein Bruchteil eines Punkts bringt nichts. Beim [[article:gathering|Abbau]] spart Erfahrung Schläge, in der Werkstatt und beim Schlachten bringt sie zusätzliche Stücke. Tabellen mit Werkzeug: [[article:tools|Werkzeug]]. Baupunkte: [[article:construction|Bau, Ausbau, Reparatur]].',
+          p: 'Die Tabelle gilt für normale Arbeit. Holz, Jagd, Fischfang und Bau zählen anders, ihr Faktor steht in der Tabelle unten. Beim [[article:gathering|Abbau]] heißt Erfahrung weniger Arbeitsschläge je Stück. In der Werkstatt und beim Schlachten gibt sie zusätzliche Stücke. Tabellen mit Werkzeug: [[article:tools|Werkzeug]]. Bau: [[article:construction|Bau, Ausbau, Reparatur]].',
+        },
+        {
+          p: 'Ein ausgewählter eigener Siedler trägt einen Berufsstern. Er erscheint bei {{star.step}}% in der besten Fähigkeit des Berufs und wächst alle {{star.step}}% bis {{star.full}}%. Träger haben keinen.',
         },
         {
           h: 'Wie viel Arbeit nötig ist',
         },
         {
           table: {
-            head: ['Arbeit', 'Was zählt', 'Punkte je Stück', 'Stück bis 51%', 'Stück bis 100%'],
+            head: ['Arbeit', 'Was zählt', 'Faktor', 'Mal bis {{exp.quotedPct}}%', 'Mal bis 100%'],
             rows: [
               [
                 'Holz',
                 'gefällter Baum',
-                '{{exp.wood.points}}',
+                '×{{exp.wood.points}}',
                 '{{exp.wood.repeatsQuoted}}',
                 '{{exp.wood.repeatsFull}}',
               ],
               [
                 'Jagd',
                 'Stück vom Kadaver',
-                '{{exp.hunt.points}}',
+                '×{{exp.hunt.points}}',
                 '{{exp.hunt.repeatsQuoted}}',
                 '{{exp.hunt.repeatsFull}}',
               ],
               [
                 'Fischfang',
                 'Fisch',
-                '{{exp.fish.points}}',
+                '×{{exp.fish.points}}',
                 '{{exp.fish.repeatsQuoted}}',
                 '{{exp.fish.repeatsFull}}',
               ],
               [
-                'Lehm, Bruchstein, Eisen, Gold, Pilze, Weizen, Schlachtung, Werkstatt',
+                'Lehm, Bruchstein, Eisen, Gold, Pilze, Kräuter, Weizen, Schlachtung, Werkstatt',
                 'Stück, beim Schlachten das Tier, in der Werkstatt die Charge',
-                '{{exp.craft.points}}',
+                '×{{exp.craft.points}}',
                 '{{exp.craft.repeatsQuoted}}',
                 '{{exp.craft.repeatsFull}}',
               ],
               [
                 'Bau, Reparatur',
-                'Schlag, der etwas hinzugefügt hat',
-                '{{exp.build.points}}',
+                'Arbeitsschlag, der etwas hinzugefügt hat',
+                '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
               ],
             ],
             num: [2, 3, 4],
-            foot: 'Die letzten Spalten zählen Bäume, Stücke, Chargen oder Schläge. Ein Zweig heißt wie Arbeit und Ware, zum Beispiel Abbau - Eisen oder Backen - Brote. Die Zweige sind bei allen Stämmen gleich.',
+            foot: 'Die letzten Spalten zählen Bäume, Stücke, Chargen oder Arbeitsschläge. Ab {{exp.quotedPct}}% braucht ein [[job:builder|Bauarbeiter]] ohne Werkzeug nur noch halb so viele Arbeitsschläge je Stück Baustoff. Im Siedlerpanel steht unter Erfahrung jede Fähigkeit in einer eigenen Zeile, zum Beispiel Abbau - Eisen: {{exp.craft.repeatsQuoted}} Mal, Ertrag +{{exp.quotedPct}}%.',
           },
         },
         {
-          p: 'Jeder Baum, jedes Stück und jede Charge gibt außerdem einen Punkt auf den allgemeinen Zweig des Berufs, zum Beispiel Abbau. Der allgemeine Zweig schaltet weitere [[article:trades|Berufe]] frei und gilt für Waren ohne eigenen Zweig. Punkte bleiben beim Berufswechsel erhalten.',
+          p: 'Jeder Baum, jedes Stück und jede Charge zählt auch für die allgemeine Fähigkeit des Berufs, zum Beispiel Ackerbau. Einen Beruf schaltet sie frei oder die Fähigkeit für eine einzelne Ware: Ackerbau schaltet den [[job:miller|Müller]] frei, Abbau - Holz den [[job:joiner|Schreiner]]. Voraussetzungen: [[article:trades|Berufe und Schule]]. Die allgemeine Fähigkeit gilt auch für Waren ohne eigene Fähigkeit. Erfahrung bleibt beim Berufswechsel erhalten.',
         },
         {
           h: 'Wer nichts davon hat',
         },
         {
           list: [
-            'Der [[job:carrier|Träger]] sammelt Tragen, das die Arbeit nicht beschleunigt. {{exp.carrierTrader}} Lieferungen schalten den [[job:trader|Händler]] frei.',
-            'Der Händler sammelt Handeln, {{exp.tradePointPerUnit}} Punkt je entladenes Stück. Handeln ändert nichts.',
-            'Der [[job:scout|Kundschafter]] sammelt keine Punkte. [[job:woman|Frauen]] und Kinder haben keine Zweige.',
-            'Säen, Gießen, [[building:school|Schule]] und [[building:barracks|Kaserne]] bringen keine Punkte.',
+            'Der [[job:carrier|Träger]] sammelt Tragen. Das macht seine Arbeit nicht schneller, aber {{exp.carrierTrader}} Lieferungen schalten den [[job:trader|Händler]] frei.',
+            'Der Händler sammelt Handeln für jedes entladene Stück, aber Handeln ändert nichts.',
+            '[[job:scout|Kundschafter]], [[job:woman|Frauen]] und Kinder sammeln keine Erfahrung.',
+            'Säen, Gießen, [[building:school|Schule]] und [[building:barracks|Kaserne]] bringen keine Erfahrung.',
           ],
         },
       ],
@@ -90,7 +93,7 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Kampferfahrung',
-      lead: 'Hundert Treffer mit einer Waffenklasse verdoppeln den Nahkampfschaden.',
+      lead: '{{combat.fightCapHits}} Treffer mit einer Waffenart verdoppeln den Nahkampfschaden.',
       blocks: [
         {
           h: 'Nahkampfschaden',
@@ -111,22 +114,19 @@ export const EXPERIENCE: ArticleGroup = {
           },
         },
         {
-          p: 'Der Faktor wirkt bei Nahkampfschlägen gegen Menschen, Tiere und Gebäude. Er wirkt nicht gegen [[article:walls|Palisaden]] und [[article:vehicles|Fahrzeuge]] und nicht bei Pfeilen und [[article:catapult|Katapulten]].',
+          p: 'Der Faktor wirkt bei Nahkampfschlägen gegen Menschen, Tiere und Gebäude. Gegen [[article:walls|Palisaden]] und [[article:vehicles|Fahrzeuge]] wirkt er nicht, auch nicht bei Pfeilen und beim [[article:catapult|Katapult]].',
         },
         {
-          h: 'Treffsicherheit',
-        },
-        {
-          p: 'Bogen und Katapult: {{aim.basePct}}% Volltreffer bei 0 Treffern, 100% bei {{aim.sureHits}}. Tabelle: [[article:aim|Treffen und Schießen]].',
+          p: 'Bogen und Katapult: {{aim.basePct}}% genaue Schüsse bei 0 Treffern, ab {{aim.noSpreadHits}} Treffern landet jeder Schuss im Ziel. Tabelle: [[article:aim|Treffen und Schießen]].',
         },
         {
           h: 'Was als Treffer zählt',
         },
         {
-          p: 'Ein Schlag oder Schuss mit Schaden gibt 1 Punkt auf die Waffenklasse: Faust, Speer, Schwert, Bogen oder Katapult. Der Bogen des [[job:hunter|Jägers]] ist ebenfalls Bogen. Ein Schuss auf mehrere Ziele zählt einmal.',
+          p: 'Ein Treffer ist ein Schlag oder Schuss, der Schaden gemacht hat. Er zählt getrennt für jede Waffenart: Faust, Speer, Schwert, Bogen, Katapult. Der Bogen des [[job:hunter|Jägers]] ist auch Bogen. Ein Schuss, der mehrere Ziele trifft, zählt einmal.',
         },
         {
-          p: 'Der Zweig einer Klasse heißt Kämpfen - Klasse. Treffer einer Klasse gelten nicht für eine andere und bleiben beim Berufswechsel erhalten.',
+          p: 'Im Siedlerpanel sind das die Zeilen Kämpfen - Schwert, Kämpfen - Bogen und so weiter. Schwerttreffer helfen dem Speerträger nicht und bleiben beim Berufswechsel erhalten. Einem Helden bringt der Kampf keinen Schaden dazu, außer die Mission erlaubt es.',
         },
         {
           h: 'Waffen entdecken',
@@ -139,38 +139,31 @@ export const EXPERIENCE: ArticleGroup = {
               [
                 '[[good:spear_iron|Eisenspeer]]',
                 '[[job:smith|Schmied]]',
-                '{{exp.ironSpearNeed}} × Schmieden',
+                'Schmieden: {{exp.ironSpearNeed}} Mal',
               ],
               ['[[good:sword_shord|Kurzschwert]]', '[[job:smith|Schmied]]', 'keine'],
               [
                 '[[good:sword_long|Langschwert]]',
                 '[[job:smith|Schmied]]',
-                '{{exp.longSwordNeed}} × Schmieden',
+                'Schmieden: {{exp.longSwordNeed}} Mal',
               ],
               ['[[good:bow_short|Kurzbogen]]', '[[job:armorer|Waffenbauer]]', 'keine'],
               [
                 '[[good:bow_long|Langbogen]]',
                 '[[job:armorer|Waffenbauer]]',
-                '{{exp.longBowNeed}} × Waffenbau',
+                'Waffenbau: {{exp.longBowNeed}} Mal',
               ],
             ],
-            foot: 'Bei allen fünf Stämmen gleich.',
           },
         },
         {
-          p: 'Treffer sperren keine Waffen. Ein Soldat nimmt jede Waffe aus einem Lager in Reichweite, auch ohne Treffer, und gehört sofort zur Klasse dieser Waffe. Die Schwelle von {{exp.classLowNeed}} oder {{exp.classHighNeed}} Treffern aus [[article:trades|Berufe und Schule]] vermerkt nur die Entdeckung der Klasse fürs Dorf und öffnet ihre Wahl unter „Beruf wechseln“.',
+          p: 'Um eine Waffe zu nehmen, braucht man keine Treffer: Ein Soldat nimmt jede Waffe aus einem Lager in Reichweite und kämpft sofort als Schwertkämpfer, Speerträger oder Bogenschütze. Die Schwelle von {{exp.classLowNeed}} oder {{exp.classHighNeed}} Treffern entdeckt nur diese Soldatenart fürs Dorf und öffnet sie unter „Beruf wechseln“: [[article:trades|Berufe und Schule]].',
         },
         {
           h: 'Stern',
         },
         {
-          p: 'Ein Soldat trägt ab 25 Treffern mit seiner aktuellen Waffe einen Stern. Er wächst alle 25 Treffer und ist bei 100 am größten.',
-        },
-        {
-          h: 'Helden',
-        },
-        {
-          p: 'Bei Helden zählen Treffer nicht, ihr Schaden steigt nicht.',
+          p: 'Ein Soldat trägt ab {{star.step}} Treffern mit seiner aktuellen Waffe einen Stern. Er wächst alle {{star.step}} Treffer und ist bei {{star.full}} am größten. Man sieht ihn bei jedem Soldaten, auch beim Feind.',
         },
       ],
       see: [
@@ -185,7 +178,7 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'trades',
       name: 'Berufe und Schule',
-      lead: 'Eine Entdeckung gehört dem Spieler und bleibt auch nach dem Tod des Arbeiters, der sie gemacht hat.',
+      lead: 'Ein entdeckter Beruf bleibt dem ganzen Dorf, auch wenn der Siedler stirbt, der ihn entdeckt hat.',
       blocks: [
         {
           p: 'Die Lobby-Einstellung „Berufsentwicklung: Alles von Anfang an freigeschaltet“ hebt die Voraussetzungen ziviler Berufe und Produkte auf. Voraussetzungen der Soldatenberufe und Kartenverbote bleiben.',
@@ -197,17 +190,17 @@ export const EXPERIENCE: ArticleGroup = {
           data: 'jobs',
         },
         {
-          p: 'Bei einer Voraussetzung mit zwei Zweigen zählt die Summe. [[job:builder|Bauarbeiter]], Abbauer, [[job:farmer|Farmer]], [[job:hunter|Jäger]], [[job:fisher|Fischer]], [[job:carrier|Träger]] und [[job:scout|Kundschafter]] sind von Anfang an offen.',
+          p: 'Nennt eine Voraussetzung zwei Fähigkeiten, zählt die Summe. [[job:builder|Bauarbeiter]], Abbauer, [[job:farmer|Farmer]], [[job:hunter|Jäger]], [[job:fisher|Fischer]], [[job:carrier|Träger]] und [[job:scout|Kundschafter]] sind von Anfang an offen.',
         },
         {
-          p: 'Produkte werden genauso entdeckt, zum Beispiel [[good:furniture|Möbel]] bei {{exp.furnitureNeed}} × Schreinern. Die Voraussetzungen sind bei allen Stämmen gleich.',
+          p: 'Produkte entdeckst du genauso, [[good:furniture|Möbel]] zum Beispiel mit Schreinern: {{exp.furnitureNeed}} Mal.',
         },
         {
           h: 'So läuft eine Entdeckung ab',
         },
         {
           steps: [
-            'Ein Siedler arbeitet im Vorgängerberuf, zum Beispiel als [[job:collector|Abbauer]] am Holz.',
+            'Ein Siedler arbeitet, zum Beispiel fällt ein [[job:collector|Abbauer]] Bäume.',
             'Nach {{exp.joinerNeed}} gefällten Bäumen erfüllt er die Voraussetzung für den [[job:joiner|Schreiner]], und das Spiel meldet die Entdeckung.',
             'Der Beruf ist fürs ganze Dorf entdeckt, und dieser Siedler kann ihn sofort annehmen.',
             'Alle anderen gehen in die [[building:school|Schule]] oder erarbeiten sich dieselbe Voraussetzung.',
@@ -223,8 +216,7 @@ export const EXPERIENCE: ArticleGroup = {
               ['Plätze', '{{school.seats}}', '{{barracks.seats}}'],
               ['Lehrt', 'zivilen Beruf oder Produkt', 'Beruf Soldat'],
               ['Dauer', 'siehe Tabelle unten', '{{barracks.drillSeconds}} s'],
-              ['Wer', 'erwachsener Mann', 'erwachsener Mann, auch mit Beruf'],
-              ['Erfahrungspunkte', '0', '0'],
+              ['Wer', 'erwachsener Mann', 'erwachsener Mann'],
               [
                 'Nach dem Kurs',
                 'neuer Beruf, wartet an der Schule auf Zuweisung',
@@ -268,7 +260,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Beruf und Arbeitsplatz',
         },
         {
-          p: 'Beruf und Arbeitsplatz sind zwei getrennte Entscheidungen. „Beruf wechseln“ löscht den Arbeitsplatz, und niemand teilt von selbst einen neuen zu. Ausnahme sind Schulabgänger, wenn du ihren Schalter im [[article:assistant|Assistenten]] einschaltest.',
+          p: '„Beruf wechseln“ löscht den Arbeitsplatz, und niemand teilt von selbst einen neuen zu. Ausnahme sind Schulabgänger, wenn du ihren Schalter im [[article:assistant|Assistenten]] einschaltest.',
         },
         {
           table: {
@@ -291,7 +283,7 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           list: [
-            'Rechtsklick auf ein Gebäude („Hier arbeiten“) wechselt den Beruf und gibt den Arbeitsplatz mit einem Befehl.',
+            'Rechtsklick auf ein Gebäude („Hier arbeiten“) wechselt sofort den Beruf und gibt den Arbeitsplatz.',
             'Erfüllt der Siedler die Voraussetzung für den Beruf des Gebäudes nicht, nimmt er dort einen freien Trägerplatz, falls es einen gibt.',
             'Ein Soldat nimmt nur einen Platz in seinem Beruf.',
             '„Arbeitsplatz aufheben“ lässt Beruf und getragene Ware. Produktionszähler und Karren des Trägers gehen verloren.',
@@ -306,22 +298,18 @@ export const EXPERIENCE: ArticleGroup = {
           table: {
             head: ['Sache', 'Was damit passiert'],
             rows: [
-              ['Arbeitsplatz', 'Geht verloren.'],
-              ['Produktionszähler', 'Gehen verloren.'],
+              ['Arbeitsplatz und Produktionszähler', 'Gehen verloren.'],
               ['Getragene Ware', 'Fällt zu Boden.'],
               [
                 'Werkzeug',
                 'Bleibt. Beim Eintritt ins Militär fällt neues zu Boden, gebrauchtes geht verloren.',
               ],
-              [
-                'Waffe und Rüstung',
-                'Beim Austritt aus dem Militär landet Unbenutztes in den Händen oder am Boden. Benutztes geht verloren.',
-              ],
+              ['Waffe und Rüstung', 'Beim Austritt aus dem Militär in die Hände oder auf den Boden.'],
               [
                 'Befehle',
                 'Aktueller Befehl und Befehlsreihe verfallen. „Essen und Schlafen“ springt auf „Erlaubt“.',
               ],
-              ['Erlernte Berufe', 'Bleiben, auch der vorige Beruf. Erfahrungspunkte ebenso.'],
+              ['Erlernte Berufe', 'Bleiben, auch der vorige Beruf. Erfahrung ebenso.'],
             ],
             foot: 'Schule und Kaserne wechseln den Beruf genauso, nur die Befehlsreihe bleibt. Der Träger lässt seinen Karren stehen.',
           },

@@ -27,8 +27,8 @@ import {
  * (reading, unconfirmed against the running original): a star shows from a quarter of the range and
  * grows a size per quarter, so it is largest at full experience.
  */
-const STAR_TIER_STEP = 25;
-const STAR_FULL = 100;
+export const STAR_TIER_STEP = 25;
+export const STAR_FULL = 100;
 
 /** What the projection resolves outside the snapshot. */
 export interface ExperienceStarInputs {

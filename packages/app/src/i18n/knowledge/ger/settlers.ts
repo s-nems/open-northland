@@ -9,7 +9,7 @@ export const SETTLERS: ArticleGroup = {
       lead: 'Bei {{need.drivePct}}% lässt ein Siedler die Arbeit liegen und kümmert sich um das Bedürfnis.',
       blocks: [
         {
-          p: 'Die Lobby-Einstellung „Bedürfnisse der Siedler: Deaktiviert“ hält die Balken an und schaltet den Hunger ab. Dieser Artikel gilt dann nicht.',
+          p: 'Die Lobby-Einstellung „Bedürfnisse der Siedler: Deaktiviert“ hält die Balken an und schaltet den Hunger ab.',
         },
         {
           h: 'Balken',
@@ -25,7 +25,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[article:food|Mahlzeit]]',
                 '[[article:health|stirbt in {{need.starveMinutes}} Min.]]',
               ],
-              ['Kondition', '100% in {{need.drainMinutes}} Min.', 'ja', 'Schlaf', 'Gesundheit bleibt'],
+              ['Kondition', '100% in {{need.drainMinutes}} Min.', 'ja', 'Schlaf', 'nur langsamerer Schritt'],
               [
                 'Soziale Motivation',
                 '100% in {{need.drainMinutes}} Min.',
@@ -38,7 +38,7 @@ export const SETTLERS: ArticleGroup = {
                 'nein',
                 'nur bei Waffen und Rüstungen',
                 '[[article:religion|Gebet]]',
-                'beginnt keine Charge, die Religion kostet',
+                'beginnt keine Waffe und keine Rüstung',
               ],
             ],
             foot: 'Beim Kartenstart steht jeder Balken zufällig auf {{need.startMinPct}}-100%. Ohne [[good:shoes|Schuhe]] kostet jeder Schritt je nach Boden {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energie, mit Last doppelt so viel.',
@@ -71,7 +71,7 @@ export const SETTLERS: ArticleGroup = {
                 'Obergrenze. Eine Mahlzeit zu Hause und Schlaf auf Möbeln legen Vorrat über 100% an.',
               ],
             ],
-            foot: 'Von selbst beten gehen nur [[job:armorer|Waffenbauer]] und [[job:smith|Schmiede]]. Der [[job:sewer|Näher]] verbraucht Religion, betet aber nur auf Befehl.',
+            foot: 'Von selbst beten gehen [[job:armorer|Waffenbauer]], [[job:smith|Schmied]] und [[job:sewer|Näher]].',
           },
         },
         {
@@ -90,7 +90,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          p: 'Gibt es nichts zu essen und keinen Ort zum Beten, geht der Siedler zurück an die Arbeit, und der Balken sinkt weiter. Ohne Wohnhaus im Umkreis von {{reach.walk}} Hexfeldern schläft er im Freien.',
+          p: 'Gibt es nichts zu essen oder keinen Ort zum Beten, geht der Siedler zurück an die Arbeit, und der Balken sinkt weiter. Ohne Wohnhaus im Umkreis von {{reach.walk}} Hexfeldern schläft er im Freien.',
         },
         {
           p: 'Ein Soldat im Kampf isst nur, was er bei sich trägt, oder aus dem Turmvorrat. Der Befehl Iss unterbricht den Kampf.',
@@ -100,10 +100,10 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Wer', 'Schlafdauer', 'Außer Haus', 'Zu Hause', 'Mit Möbeln'],
+            head: ['Wer', 'Schlafdauer', 'Außer Haus', 'Zu Hause', 'Zu Hause mit Möbeln'],
             rows: [
               [
-                'Mann mit Wohnhaus',
+                'Mann',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manAwayPct}}%',
                 '+{{sleep.manHomePct}}%',
@@ -123,7 +123,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: 'Wer keine Balken hat',
+          h: 'Ausnahmen',
         },
         {
           table: {
@@ -147,26 +147,9 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Der Befehl wirkt bei jedem Balkenstand. Er unterbricht Marsch, Angriff und Kampf.',
-            'Lässt sich das Bedürfnis nicht stillen, wartet der Befehl. Stehen weitere Befehle an, verfällt er.',
+            'Gibt es kein Essen oder keinen Ort zum Beten, wartet der Befehl. Stehen weitere Befehle in der Reihe, verfällt er.',
             'Helden nehmen diese Befehle nicht an. „Bete“ wirkt nur in einem Beruf, der beten kann.',
           ],
-        },
-        {
-          h: 'Schalter „Essen und Schlafen“',
-        },
-        {
-          table: {
-            head: ['Soldat', '„Erlaubt“', '„Verboten“'],
-            rows: [
-              ['Geht selbst essen, schlafen, beten', 'ja', 'nein'],
-              ['Isst selbst aus der Hand oder dem Turmvorrat', 'ja', 'nein'],
-              ['Hunger unterbricht lange Befehle', 'ja', 'nein'],
-            ],
-            foot: 'Getränke, Amulette und die Befehle Iss, Schlaf, Bete wirken in beiden Stellungen. Im Befehlsmenü heißen die Stellungen „Erlaube Soldaten Regeneration“ und „Verbiete Soldaten Regeneration“. Den Schalter hat nur der Soldat. Er steht anfangs auf „Erlaubt“ und springt nach einem Berufswechsel dorthin zurück.',
-          },
-        },
-        {
-          p: '„Verboten“ ohne Getränke endet im Hungertod. Da hilft der Befehl Iss oder die Rückkehr zu „Erlaubt“.',
         },
         {
           h: 'Hunger und lange Befehle',
@@ -176,26 +159,12 @@ export const SETTLERS: ArticleGroup = {
             'Bei {{need.criticalPct}}% Energie verlässt der Siedler Marsch, Erkundung oder Befehlsreihe. Status: „Hungrig, geht essen“.',
             'Er isst bis {{need.satedPct}}% und beginnt den Befehl dann von vorne.',
             'Findet er nichts, kehrt er zum Befehl zurück und sucht nach {{meal.breakRetrySeconds}} s erneut.',
-            'Ein neuer Befehl an einen Hungrigen geht vor: Der Hunger lässt ihn {{meal.breakRetrySeconds}} s in Ruhe.',
-            'Kondition wartet, bis die Befehle abgearbeitet sind.',
+            'Ein neuer Befehl geht vor: {{meal.breakRetrySeconds}} s lang unterbricht ihn der Hunger nicht.',
+            'Müdigkeit unterbricht keine Befehle.',
           ],
         },
         {
-          h: 'In Alarmbereitschaft',
-        },
-        {
-          p: 'Das ist der Zustand eines Soldaten im Modus [[article:stances|Angriff oder Verteidigung]] nahe am Kampf, nicht der [[article:defence|Verteidigungsmodus des Dorfes]], den der Spieler auslöst.',
-        },
-        {
-          table: {
-            head: ['Was in der Nähe ist', 'Hexfelder', 'Folge'],
-            rows: [
-              ['Kampf', 'bis {{alert.restClearance}}', 'Schläft, betet und redet nicht.'],
-              ['Sichtbarer Feind, Modus Angriff oder Verteidigung', 'bis {{alert.standTo}}', 'Ebenso.'],
-              ['Kampf neben einem, der im Freien schläft', 'bis {{alert.standTo}}', 'Steht auf.'],
-            ],
-            foot: 'Essen geht er erst bei {{need.criticalPct}}% Energie. Wildtiere zählen erst, wenn mit ihnen gekämpft wird. Im Modus Ignorant gilt die Regel nicht, und ein Bedürfnisbefehl geht vor.',
-          },
+          p: 'Der Schalter „Essen und Schlafen“ und der Status „In Alarmbereitschaft“ gelten nur für Soldaten: [[article:stances|Soldatenmodi]].',
         },
         {
           h: 'Religion und Soziale Motivation',
@@ -214,7 +183,7 @@ export const SETTLERS: ArticleGroup = {
                 '{{talk.shortSeconds}}-{{talk.longSeconds}} s',
                 'Bis +{{talk.pct}}% Soziale Motivation.',
               ],
-              ['Balken zu Hause auffüllen, verheiratet', '-', 'Soziale Motivation 100%.'],
+              ['Aufenthalt zu Hause, wenn der Siedler verheiratet ist', '-', 'Soziale Motivation 100%.'],
             ],
             num: [1],
           },
@@ -232,7 +201,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'food',
       name: 'Essen',
-      lead: 'Als Nahrung zählen Brot, Fleisch und Fisch. Zu Hause bringt dieselbe Mahlzeit doppelt so viel Energie.',
+      lead: 'Nahrung sind Brot, Fleisch und Fisch. Zu Hause bringt dieselbe Mahlzeit doppelt so viel Energie.',
       blocks: [
         {
           h: 'Was eine Mahlzeit bringt',
@@ -255,27 +224,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: 'Woher das Essen kommt',
-        },
-        {
-          table: {
-            head: ['Ware', 'Woher', 'Zählt als'],
-            rows: [
-              [
-                '[[good:bread|Brot]]',
-                '[[building:work_bakery_00|Bäckerei 1]], [[building:work_bakery_01|Bäckerei 2]]',
-                'Nahrung',
-              ],
-              ['[[good:candy|Kuchen]]', '[[building:work_bakery_01|Bäckerei 2]]', 'Kuchen'],
-              [
-                '[[good:meat|Fleisch]]',
-                '[[building:work_animal_farm|Viehzüchterei]], [[job:hunter|Jäger]]',
-                'Nahrung',
-              ],
-              ['[[good:fish|Fisch]]', '[[job:fisher|Fischer]]', 'Nahrung'],
-            ],
-            foot: 'Siedler essen auch aus dem Werkstattregal. Im Lager nehmen sie zuerst Nahrung, Kuchen nur, wenn keine Nahrung da ist. Einen reifen Strauch essen sie an Ort und Stelle leer.',
-          },
+          p: 'Ein Siedler isst auch aus dem Vorrat einer Werkstatt. Im Lager nimmt er zuerst Nahrung, Kuchen nur, wenn keine Nahrung da ist. Einen reifen Strauch isst er an Ort und Stelle leer.',
         },
         {
           h: 'Wo ein Siedler isst',
@@ -285,7 +234,7 @@ export const SETTLERS: ArticleGroup = {
             'Eigene Speisekammer, wenn die Haustür höchstens {{reach.walk}} Hexfelder entfernt ist.',
             'Nächstes Lager, nächste Werkstatt oder nächster Haufen im Umkreis von {{reach.goods}} Hexfeldern, oder ein reifer Strauch näher als {{reach.bushAtHand}} Hexfelder.',
             'Nächster reifer Strauch im Umkreis von {{reach.goods}} Hexfeldern.',
-            'Nächstes Essen irgendwo in Gehreichweite, auch das ferne eigene Wohnhaus.',
+            'Nächstes Essen, wohin der Siedler auch gehen kann, auch das eigene Wohnhaus, wenn es weiter weg ist.',
           ],
         },
         {
@@ -297,12 +246,12 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             'Eine [[job:woman|Frau]] mit fertigem Wohnhaus sucht das nächste Essen außerhalb von Wohnhäusern.',
-            'Sie trägt 1 Stück nach Hause, die Speisekammer nimmt es als Nahrung oder Kuchen an.',
+            'Sie trägt 1 Stück nach Hause.',
             'Mit [[good:crockery|Geschirr]] im Haus wird aus 1 geliefertem Stück 2 Stück in der Speisekammer.',
           ],
         },
         {
-          p: 'Eine Frau ohne andere Aufgabe liefert, bis die Speisekammer voll ist. Grenzen der Speisekammer: [[article:family|Familie und Wohnhaus]].',
+          p: 'Die Frau bringt Essen, bis die Speisekammer voll ist. Grenzen: [[article:family|Familie und Wohnhaus]].',
         },
       ],
       see: ['article:needs', 'article:family', 'article:gathering', 'good:bread', 'good:candy'],
@@ -317,7 +266,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Quelle', 'Änderung', 'Bedingung', '{{health.human}} Gesundheit in'],
+            head: ['Quelle', 'Änderung', 'Bedingung', 'Volle Gesundheit in'],
             rows: [
               [
                 'Regeneration',
@@ -345,7 +294,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1, 3],
-            foot: 'Regeneration und Aura addieren sich auf {{aura.totalPerSecond}} pro Sekunde. Regeneration endet bei {{health.human}}, die Aura heilt darüber hinaus bis {{aura.ceiling}}. Kinder und Helden haben ebenfalls {{health.human}} und regenerieren.',
+            foot: 'Zusammen ergibt das {{aura.totalPerSecond}} pro Sekunde. Regeneration endet bei {{health.human}}, die Aura heilt darüber hinaus bis {{aura.ceiling}}. Kinder und Helden haben ebenfalls {{health.human}} und regenerieren.',
           },
         },
         {
@@ -369,7 +318,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'life',
       name: 'Leben und Tod',
-      lead: 'Ein Kind ist {{age.adultMinutes}} Minuten nach der Geburt erwachsen. Erwachsene leben, solange sie Gesundheit haben.',
+      lead: 'Ein Kind ist {{age.adultMinutes}} Minuten nach der Geburt erwachsen. Niemand stirbt an Altersschwäche.',
       blocks: [
         {
           h: 'Lebensabschnitte',
@@ -397,7 +346,7 @@ export const SETTLERS: ArticleGroup = {
                 'Ein Junge wird [[job:civilist|Zivilist]], ein Mädchen [[job:woman|Frau]].',
               ],
             ],
-            foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s. Ein Zivilist ohne Beruf wartet auf eine Zuweisung.',
+            foot: 'Ein Lebensjahr dauert {{age.yearSeconds}} s.',
           },
         },
         {
@@ -416,12 +365,11 @@ export const SETTLERS: ArticleGroup = {
               ['Rüstung', 'Fällt immer zu Boden.'],
               ['Getränke, Amulette', 'Amulette und unangebrochene Flaschen fallen zu Boden.'],
               ['Karren des Trägers', 'Bleibt mit der Ladung stehen.'],
-              ['Körper', 'Ein Mensch hinterlässt Knochen, ein Tier [[article:wildlife|Fleisch]].'],
             ],
           },
         },
         {
-          p: 'Entdeckte [[article:trades|Berufe]] bleiben dem Dorf erhalten. Folgen für den Ehepartner: [[article:family|Familie und Wohnhaus]].',
+          p: 'Folgen für den Ehepartner: [[article:family|Familie und Wohnhaus]].',
         },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
@@ -446,7 +394,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Geheiratet wird nur auf den Befehl Heirate. Von selbst finden sich keine Paare.',
+            'Geheiratet wird nur auf den Befehl Heirate.',
             'Der Befehl verbindet den Siedler mit der nächsten erwachsenen Person des anderen Geschlechts, vom selben Stamm und Spieler.',
             'Der Partner muss in der [[article:roads|Wegweiser]]-Reichweite des Siedlers sein. Sonst verfällt der Befehl, und das Spiel meldet „Kein Partner“.',
             'Soldaten, Helden, Kundschafter und Siedler auf dem Weg in [[building:barracks|Kaserne]] oder [[building:school|Schule]] heiraten nicht.',
@@ -466,19 +414,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          table: {
-            head: ['Was das Kind verhindert', 'Lösung'],
-            rows: [
-              ['Die Frau hat kein Wohnhaus', 'Weise eines zu.'],
-              ['Das Wohnhaus ist im Bau', 'Baue es fertig.'],
-              [
-                'Der Mann ist Soldat, [[job:trader|Händler]] oder [[job:scout|Kundschafter]]',
-                'Wechsle seinen Beruf.',
-              ],
-              ['Die Eheleute wohnen getrennt', 'Weise ihnen dasselbe Wohnhaus zu.'],
-              ['Kein Essen in Reichweite', 'Bringe Essen in ein nahes Lager.'],
-            ],
-          },
+          p: 'Ein Paar bekommt kein Kind, wenn die Frau kein Wohnhaus hat, das Wohnhaus im Bau ist, der Mann Soldat, [[job:trader|Händler]] oder [[job:scout|Kundschafter]] ist, die Eheleute getrennt wohnen oder kein Essen in Reichweite ist.',
         },
         {
           p: 'Das nächste Kind ist möglich, wenn das vorige erwachsen ist, also nach {{age.adultMinutes}} Minuten. Ein Kind belegt keinen Familienplatz im Haus.',
@@ -496,7 +432,7 @@ export const SETTLERS: ArticleGroup = {
           data: 'homes',
         },
         {
-          p: 'Die Speisekammer hat getrennte Grenzen für Nahrung und Kuchen: Wohnhaus 1 fasst {{home.larder}} + {{home.candyLarder}} Stück. Eine Familie sind ein Erwachsener, sein Ehepartner und ein heranwachsendes Kind. Das Wohnhaus kann zu jedem Stamm des Spielers gehören.',
+          p: 'Die Speisekammer hat getrennte Grenzen für Nahrung und Kuchen: Wohnhaus 1 fasst {{home.larder}} + {{home.candyLarder}} Stück. Ein Siedler kann im Wohnhaus eines anderen Stammes desselben Spielers wohnen.',
         },
         {
           h: 'Hausausstattung',
@@ -516,7 +452,7 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:furniture|Möbel]]',
                 'Wohnhaus 1',
                 'Schlaf ×2',
-                '{{home.furnitureManSleeps}} Schlafphasen Mann, {{home.furnitureWomanSleeps}} Frau',
+                '{{home.furnitureManSleeps}} Schlafphasen eines Mannes, {{home.furnitureWomanSleeps}} einer Frau',
                 '{{home.furnitureFetchBelow}}',
               ],
               [
@@ -544,8 +480,6 @@ export const SETTLERS: ArticleGroup = {
               ['Witwer', 'Verliert es, wenn das Kind erwachsen oder gestorben ist.'],
               ['Witwe', 'Bleibt wohnen.'],
               ['Erwachsenes Kind', 'Verliert es, sobald es erwachsen ist.'],
-              ['Alle Bewohner', 'Verlieren es beim Abriss.'],
-              ['Ganze Familie', 'Verliert es durch den Befehl Ziehe aus Wohnhaus aus.'],
               [
                 'Händler, Kundschafter, Soldat',
                 'Das Wohnhaus bleibt der Familie, er selbst isst und schläft dort nicht.',
@@ -617,7 +551,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               ['Abbauer versetzen ihre Fahne automatisch', 'an', '[[job:collector|Abbauer]] mit Fahne'],
             ],
-            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ und „Soldaten“ die Empfänger, anfangs sind beide an. Abschalten nimmt nichts weg: Wer etwas hat, behält es.',
+            foot: 'Bei Getränken und Amuletten wählen die Knöpfe „Zivilisten“ und „Soldaten“ die Empfänger, anfangs sind beide an. Abschalten nimmt nichts weg, was schon ausgegeben ist.',
           },
         },
         {
@@ -626,7 +560,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Zuerst Töchter, dann Söhne. Töchter haben kein ∞, sonst kämen die Söhne nie an die Reihe.',
-            'Zähler 3 bedeutet höchstens 3 Paare gleichzeitig.',
+            'Bei Zähler 3 bekommen höchstens 3 Paare gleichzeitig ein Kind.',
             'Ein Paar nimmt immer nur eine Bestellung an. Es gelten dieselben Hindernisse wie beim Befehl: [[article:family|Familie und Wohnhaus]].',
             'Einen Zähler zu senken nimmt einem Paar die laufende Bestellung nicht weg.',
           ],
@@ -637,7 +571,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Es geht nur ein erwachsener Zivilist ohne Arbeitsplatz und ohne Auftrag, Unverheiratete zuerst. Niemand wird von der Arbeit geholt.',
-            'Ein Klassenzähler bewaffnet zuerst einen unbewaffneten Soldaten, wenn eine Waffe in seiner Reichweite liegt.',
+            'Die Zähler Schwertkämpfer, Speerträger oder Bogenschützen bewaffnen zuerst einen unbewaffneten Soldaten, wenn eine Waffe in seiner Reichweite liegt.',
           ],
         },
         {
@@ -647,7 +581,7 @@ export const SETTLERS: ArticleGroup = {
               ['Keine fertige [[building:barracks|Kaserne]]', 'Baue die Kaserne fertig.'],
               ['Kein freier Zivilist', 'Schicke jemanden von Hand in die Kaserne.'],
               [
-                'Ein unbewaffneter Soldat wartet auf eine Waffe dieser Klasse',
+                'Ein unbewaffneter Soldat wartet auf eine Waffe dieser Art',
                 'Liefere die Waffe. Bis dahin belegt er den Platz eines neuen Rekruten.',
               ],
             ],
@@ -659,9 +593,9 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Übergeht Frauen, Kinder, [[article:heroes|Helden]] und die Turmbesatzung.',
-            'Ein Gang zum Lager, dort nimmt der Siedler den Rest gleich mit.',
-            'Für jedes Stück im Lager geht ein Siedler los. Vorrat unter dem [[article:hauling|Lagerminimum]] bleibt liegen.',
+            'Der Assistent rüstet Frauen, Kinder, [[article:heroes|Helden]] und die Turmbesatzung nicht aus.',
+            'Ein Siedler geht einmal zum Lager und nimmt alles auf einmal mit.',
+            'Für jedes Stück im Lager geht nur ein Siedler los. Vorrat unter dem [[article:hauling|Lagerminimum]] rührt er nicht an.',
             'Füllt nur leere Plätze und tauscht nichts gegen Besseres. Eisenwerkzeug geht vor Holzwerkzeug, die große Flasche vor der kleinen.',
             'Wer einen kleinen Trank hat, holt keinen großen. Es gibt {{amulet.slots}} Plätze für Getränke und Amulette: [[article:draughts|Getränke und Amulette]].',
           ],
@@ -707,19 +641,19 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:mead|Met]]',
                 '{{draught.meadUses}}',
                 '+{{draught.meadPct}}% Energie und +{{draught.meadPct}}% Kondition',
-                'Energie oder Kondition bei höchstens {{need.drivePct}}%',
+                'Energie oder Kondition fällt auf {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_food_small|Kleiner]] / [[good:potion_food_big|Großer Nahrungstrank]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Energie',
-                'Energie bei höchstens {{need.drivePct}}%',
+                'Energie fällt auf {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_stamina_small|Kleiner]] / [[good:potion_stamina_big|Großer Wachtrank]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Kondition',
-                'Kondition bei höchstens {{need.drivePct}}%',
+                'Kondition fällt auf {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_heal_small|Kleiner]] / [[good:potion_heal_big|Großer Heiltrank]]',
@@ -729,7 +663,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'Ein Befehl zum Essen oder Schlafen hält das Trinken an.',
+            foot: 'Die Befehle Iss, Schlaf, Rede oder Bete halten das Trinken an.',
           },
         },
         {
@@ -742,12 +676,12 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:amulet_food|Nahrungsamulett]]',
                 '+{{amulet.needPct}}% Energie',
-                'jedes Mal, wenn die Energie auf höchstens {{need.drivePct}}% steht',
+                'jedes Mal, wenn die Energie auf {{need.drivePct}}% fällt',
               ],
               [
                 '[[good:amulet_stamina|Wachbleibamulett]]',
                 '+{{amulet.needPct}}% Kondition',
-                'jedes Mal, wenn die Kondition auf höchstens {{need.drivePct}}% steht',
+                'jedes Mal, wenn die Kondition auf {{need.drivePct}}% fällt',
               ],
               [
                 '[[good:amulet_strength|Stärkeamulett]]',
@@ -779,8 +713,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Ein zweites gleiches Amulett bringt nichts.',
             'Verschiedene Amulette wirken zusammen: Stärke und Treffer ergeben bei erfolgreichem Wurf ×{{amulet.comboFactor}}.',
-            'Reihenfolge beim Bedürfnis: angebrochene Flasche, Amulett, Flasche mit weniger Schlucken.',
-            'Met, der wegen der Energie getrunken wird, füllt auch die Kondition.',
+            'Bei Hunger und Müdigkeit greift der Siedler der Reihe nach zu: angebrochene Flasche, Amulett, volle Flasche mit weniger Schlucken.',
             'Mit Nahrungsamulett sucht der Siedler kein Essen, mit Wachbleibamulett geht er nicht schlafen.',
           ],
         },

@@ -170,7 +170,7 @@ export const enKnowledge = {
     },
     equip: {
       work: 'Work ×{factor}',
-      production: 'output +{amount} per batch',
+      production: 'output +{amount} per cycle',
       energy: '+{pct}% Energy',
       stamina: '+{pct}% Stamina',
       company: '+{pct}% Social Motivation',
@@ -523,7 +523,7 @@ export const enKnowledge = {
     animalHerd: 'Herd',
     animalTame: 'Tame',
     animalHunter: 'Auto-hunted',
-    expPoints: 'Points collected',
+    expPoints: 'Times at ordinary work',
     expPercent: 'Experience',
     expStrokes: 'Fewer strokes (of 10)',
     expExtra: 'Extra output',

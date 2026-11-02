@@ -6,7 +6,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'damage',
       name: 'Weapons, Armour and Damage',
-      lead: 'A person has {{health.human}} health. A blow deals the table value, changed by the multipliers below.',
+      lead: 'A person has {{health.human}} health. The table shows how much one blow takes.',
       blocks: [
         {
           data: 'matrix',
@@ -18,7 +18,7 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          h: 'What changes a blow',
+          h: 'What changes damage',
         },
         {
           table: {
@@ -37,15 +37,17 @@ export const MILITARY: ArticleGroup = {
               ],
               ["Target's [[good:amulet_defense|Amulet of Defence]]", '×{{amulet.defenseFactor}}'],
             ],
-            foot: "They apply in this order. Front and front flank give ×1. Hits don't raise arrows or catapult stones, and their direction counts from where the shot was fired. Direction and the Amulet of Defence work only on people. Hits don't count against vehicles and stockades. A Catapult stone gets none of the commander's amulets. Stockades count damage their own way: [[article:walls|Stockades and Gates]].",
+            foot: "A blow from the front or front flank doesn't change the damage.",
           },
         },
         {
           list: [
-            "A result of 0 or less doesn't wound and gives no experience.",
+            "Experience doesn't work on arrows, stones, vehicles or stockades.",
+            'Direction and the Amulet of Defence work only on people. For an arrow, what counts is the spot it was fired from.',
+            "A commander's amulets don't work on a Catapult stone.",
+            'A stockade counts damage its own way: [[article:walls|Stockades and Gates]].',
+            "A blow for 0 doesn't wound and gives no experience.",
             "Children can't be hurt.",
-            'Weapons and armour never wear out.',
-            'Only adult men carry weapons and armour.',
           ],
         },
         {
@@ -54,8 +56,8 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Saracen: [[good:bow_short|Short Bow]] deals {{saracen.bowOnWool}} to a Tunic instead of {{viking.bowOnWool}}, {{saracen.bowOnChain}} to Chain Mail and Plate instead of {{viking.bowOnChain}}.',
-            'Byzantine: the [[good:spear_wooden|Wooden Spear]] row shows the Dragon from the map: {{dragon.hitpoints}} health, range {{dragon.min}}-{{dragon.max}}, a run of {{dragon.blows}} blows every {{dragon.seconds}} s, {{dragon.bare}} against no armour. A trained Spearman fights as in the other tribes.',
-            'All other soldier weapons are the same across the five tribes.',
+            'Byzantine: the Dragon from the map fights with its own [[good:spear_wooden|Wooden Spear]]: {{dragon.hitpoints}} health, range {{dragon.min}}-{{dragon.max}}, {{dragon.blows}} blows every {{dragon.seconds}} s, {{dragon.bare}} damage against no armour. The table shows it in this row. A trained Spearman fights as in the other tribes.',
+            'All other weapons are the same in every tribe.',
           ],
         },
         {
@@ -65,7 +67,7 @@ export const MILITARY: ArticleGroup = {
           data: 'armour',
         },
         {
-          p: 'Weapon and armour weight add up: [[article:walking|Walking Speed]].',
+          p: 'Heavy weapons and armour slow walking: [[article:walking|Walking Speed]].',
         },
       ],
       see: [
@@ -81,7 +83,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'equip',
       name: 'Equipping Soldiers',
-      lead: 'The class counters in the Assistant arm your army. Change a single man in his own panel.',
+      lead: 'You arm your army with the counters in the Assistant window. You change a single man in his own panel.',
       blocks: [
         {
           h: 'Counters',
@@ -102,9 +104,21 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            "While an unarmed soldier is waiting, the counter drafts nobody in his place, even if there's no weapon yet.",
-            'An unarmed soldier goes for a weapon when one of the class is in his reach and nobody else is waiting for it.',
-            'Lowering the counter cancels those still waiting for a weapon.',
+            "While an unarmed soldier is waiting, the counter trains no new one, even if there's no weapon yet.",
+            'An unarmed soldier goes for a weapon when one of that kind lies in his reach and nobody else is waiting for it.',
+            'Lowering the counter makes those waiting for a weapon stop waiting.',
+          ],
+        },
+        {
+          h: 'Weapon and Armour strips',
+        },
+        {
+          p: 'Each kind of soldier has its own strips. A soldier takes the first item from the left that a store holds and skips crossed-out ones. At the start the strongest stands on the left. Click to cross out, hold and drag to reorder.',
+        },
+        {
+          list: [
+            'No weapon to take: he waits, and the window shows "waits for a weapon".',
+            'No armour to take: he goes without. Later he puts it on only when ordered.',
           ],
         },
         {
@@ -118,20 +132,8 @@ export const MILITARY: ArticleGroup = {
               ['Only one of the two', 'Takes it and goes for the other'],
               ['Nothing', 'Goes for a weapon, then armour'],
             ],
-            foot: 'If a higher item on the strip lies in a store in reach, the recruit goes for it and leaves the worse one at the Barracks. After the trip he returns to the Barracks, as does a soldier armed by a counter.',
+            foot: 'If a better item on the strip lies in a store in reach, the recruit goes for it and leaves the worse one at the Barracks. Then he returns to the Barracks. A soldier armed by a counter does the same.',
           },
-        },
-        {
-          h: 'Weapon and Armour strips',
-        },
-        {
-          p: 'Each class has its own strips. A soldier takes the first item from the left that a store holds and skips crossed-out ones. Strips start strongest first. Click to cross out, hold and drag to reorder.',
-        },
-        {
-          list: [
-            'No weapon to take: he waits, and the window shows "waits for a weapon".',
-            'No armour to take: he goes without. Later he puts it on only when ordered.',
-          ],
         },
         {
           h: 'What the Barracks holds',
@@ -148,7 +150,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Coin]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Goods for the Barracks get priority, with {{barracks.carriers}} Carrier places: [[article:hauling|Carriers and Warehouses]].',
+            foot: 'The Barracks has {{barracks.carriers}} Carrier places. They bring goods marked priority from the warehouses themselves: [[article:hauling|Carriers and Warehouses]].',
           },
         },
         {
@@ -168,18 +170,18 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'The settler goes for the item and returns to where he got the order.',
-            'If he finds no source on the way, he comes back empty-handed.',
-            "A weapon changes a soldier's class at once. With the weapon removed, he stays a [[job:soldier_unarmed|Soldier]].",
-            'Replaced or removed Shoes, tools and opened bottles are lost.',
+            "If he can't find the item anywhere, he comes back empty-handed.",
+            'A weapon changes the kind of soldier at once. With the weapon removed, he stays a [[job:soldier_unarmed|Soldier]].',
+            'Used Shoes, tools and opened bottles are lost when replaced or removed. Unused ones go back to the store.',
             "Weapons, armour and amulets don't wear out, so they go back to the store.",
             'An order to one person beats the Assistant.',
           ],
         },
         {
-          h: 'Hits and better weapons',
+          h: 'Who can carry a better weapon',
         },
         {
-          p: "Hits don't lock better weapons away. A soldier takes any weapon from a store. The lock is on making it: the [[good:spear_iron|Iron Spear]] and [[good:sword_long|Longsword]] need [[job:smith|Blacksmith]] experience, the [[good:bow_long|Longbow]] needs [[job:armorer|Armourer]] experience. Table: [[article:exp-combat|Combat Experience]].",
+          p: "Any soldier takes any weapon from a store, hits don't limit it. The limit is on making it: an experienced [[job:smith|Blacksmith]] makes the [[good:spear_iron|Iron Spear]] and [[good:sword_long|Longsword]], an experienced [[job:armorer|Armourer]] the [[good:bow_long|Longbow]]. Table: [[article:exp-combat|Combat Experience]].",
         },
       ],
       see: [
@@ -239,7 +241,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: "Range in hexes. An archer won't shoot below the lower limit. Cyra with the Franks: range {{frankHeroBow.min}}-{{frankHeroBow.max}}, a shot every {{frankHeroBow.seconds}} s.",
+            foot: "Range in hexes. An archer won't shoot closer than the lower number. Closes to: the distance he starts shooting from when he walks up to the target himself.",
           },
         },
         {
@@ -251,10 +253,10 @@ export const MILITARY: ArticleGroup = {
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.sureHits}}+', '100%'],
+              ['{{aim.noSpreadHits}}+', 'Always on target'],
             ],
             num: [0, 1],
-            foot: 'Each hit is +1%. Short Bow and Longbow share a hit counter, the [[article:catapult|Catapult]] has its own on the same table. Heroes always shoot true.',
+            foot: 'Each hit is +1%. From {{aim.noSpreadHits}} hits even an inaccurate arrow lands on target. Short Bow and Longbow share a hit counter, the [[article:catapult|Catapult]] has its own on the same table. A hero always shoots true.',
           },
         },
         {
@@ -262,10 +264,10 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'A stray arrow lands up to 3 hexes from the target. From 75 hits, arrows stop straying.',
-            'A stray arrow hits the first enemy at the landing spot: a person, animal or vehicle, then a building, then a stockade.',
+            'A stray arrow lands close to the target: up to {{aim.spreadShort}} hexes from a [[good:bow_short|Short Bow]], up to {{aim.spreadLong}} from a [[good:bow_long|Longbow]], up to {{aim.spreadTower}} from a Longbow on a tower. Scatter grows with distance.',
+            'A stray arrow wounds the first enemy at the landing spot: a person, animal or vehicle first, then a building, and a stockade last.',
             'Arrows fly over your own side, allies and neutrals.',
-            'Soldiers lead a moving target. Buildings aim where the target stands.',
+            'An archer aims ahead of a walking enemy. A building shoots at where the enemy stands right now.',
           ],
         },
         {
@@ -273,8 +275,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'The range bonus works once an archer stands at his post, not on his way there.',
-            "An enemy can't aim at a shooter on post, only at the tower.",
+            'An archer has the longer range only at his post, not on his way there.',
+            "An enemy can't shoot at an archer on post, only at the tower.",
           ],
         },
       ],
@@ -283,7 +285,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'stances',
       name: 'Stances',
-      lead: 'Soldiers and heroes start on Defence.',
+      lead: 'A stance says whether a soldier looks for enemies on his own and how far he follows them. Soldiers and heroes start on Defence.',
       blocks: [
         {
           figure: {
@@ -300,33 +302,33 @@ export const MILITARY: ArticleGroup = {
                 'Around himself',
                 '{{stance.search}}',
                 "Target falls or can't be reached",
-                'Hits back',
+                'Goes for the attacker',
               ],
               [
                 'Defence',
                 'Around his standing point',
                 '{{stance.search}}',
                 'Target past {{stance.defendLeash}} from the standing point',
-                'Hits back',
+                'Goes for the attacker',
               ],
               [
                 'Ignorant',
                 "Only within weapon range, doesn't close in",
                 'Weapon range',
                 'Target past {{stance.ignoreLeash}} from the standing point',
-                "Doesn't respond",
+                'Stays put',
               ],
             ],
-            foot: 'Radii in hexes. The standing point is where the soldier stood when his stance changed. Move and attack orders shift it.',
+            foot: 'Radii in hexes. The standing point is where the soldier stood when his stance changed. After a move or attack order it shifts to the new spot.',
           },
         },
         {
           list: [
             'A soldier on Attack returns to his standing point if the fight ends more than {{stance.attackReturn}} hexes from it.',
-            '[[article:fog|Fog]] does not stop a soldier finding enemies.',
+            'A soldier finds enemies in [[article:fog|fog]] too.',
             'An attack order works in every stance.',
             "An archer on post shoots at what's in range, in every stance.",
-            'A plain move order keeps a soldier on his route, even under blows. With "Attack on the way" he turns on his attacker.',
+            'After a plain move order a soldier keeps going, even under blows. After "Attack on the way" he turns on his attacker.',
           ],
         },
         {
@@ -339,7 +341,7 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          p: 'Soldiers never pick a Stockade or Defence wall on their own: [[article:walls|Stockades and Gates]].',
+          p: 'A soldier never picks a Stockade or Defence wall on his own: [[article:walls|Stockades and Gates]].',
         },
         {
           h: 'Who reacts to a blow',
@@ -359,7 +361,7 @@ export const MILITARY: ArticleGroup = {
               ['Civilian sleeping in the open', '-', 'Sleeps on, flees only when struck'],
             ],
             num: [1],
-            foot: 'Only a blow on a person triggers a reaction.',
+            foot: 'Only a blow on a person counts. A struck building or animal alarms nobody.',
           },
         },
         {
@@ -367,10 +369,36 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Civilians are Ignorant and do not fight. Stances are for soldiers and heroes.',
-            "A civilian flees only from a blow. Seeing an enemy doesn't move him.",
+            "A civilian doesn't fight. You set stances only for soldiers and heroes.",
+            "Seeing an enemy doesn't move a civilian.",
             "A fleeing settler drops what he's carrying. A Carrier leaves his handcart behind.",
           ],
+        },
+        {
+          h: 'The "Eating and sleeping" switch',
+        },
+        {
+          p: 'On "Prohibited" a soldier doesn\'t go to food, bed or prayer on his own, doesn\'t eat from his hands or the tower\'s stock, and hunger doesn\'t break off a long order. Without potions that ends in starvation. An Eat order or a return to "Allowed" saves him.',
+        },
+        {
+          p: 'Potions, amulets and the Eat, Sleep and Pray orders work in both states. In the order menu the states are "Allow Regeneration" and "Prohibit Regeneration". Only soldiers have the switch. It starts on "Allowed" and returns there after a change of profession.',
+        },
+        {
+          h: 'Standing to',
+        },
+        {
+          p: 'This is the state of a soldier on Attack or Defence near a fight, not the [[article:defence|settlement alarm]] the player sounds.',
+        },
+        {
+          table: {
+            head: ['What is nearby', 'Hexes', 'Effect'],
+            rows: [
+              ['Fight', 'up to {{alert.restClearance}}', 'No sleep, no prayer, no talk.'],
+              ['Visible enemy on Attack or Defence', 'up to {{alert.standTo}}', 'Same.'],
+              ['Fight beside a soldier sleeping in the open', 'up to {{alert.standTo}}', 'He gets up.'],
+            ],
+            foot: 'He goes for food only at {{need.criticalPct}}% Energy. Wild animals only count once a fight with them is on. On Ignorant the rule is off, and a need order takes priority.',
+          },
         },
       ],
       see: ['article:defence', 'article:aim', 'article:fog', 'article:needs'],
@@ -378,18 +406,17 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'heroes',
       name: 'Heroes',
-      lead: "Heroes come from the map. You can't train one or change his profession.",
+      lead: "A hero comes from the map. You can't train one or change his profession.",
       blocks: [
         {
           table: {
             head: ['Trait', 'Soldier', 'Hero'],
             rows: [
-              ['Vision range', '{{vision.soldier}}', '{{vision.hero}}'],
+              ['Vision range, hexes', '{{vision.soldier}}', '{{vision.hero}}'],
               ['Bow accuracy', 'Grows with hits', 'Always true'],
-              ['Combat experience', 'Grows', 'Does not grow'],
+              ['Combat experience', 'Grows', "Doesn't grow, unless the mission allows it"],
               ['Eating and sleeping', 'Needs them', "Doesn't need them"],
-              ['Shoes', 'Must be supplied, wear out', 'Has them from the start, never wear out'],
-              ['Weapon, armour, shoes', 'Can change', 'Fixed'],
+              ['Weapon, armour, Shoes', 'Can change, Shoes wear out', "Fixed, Shoes don't wear out"],
               ['Equipment weight', 'Slows him', "Doesn't slow him"],
               ['Dwelling and workplace', 'Can have', 'Has none'],
               ['Magic Chest', "Doesn't open", 'Opens'],
@@ -429,7 +456,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [3],
-            foot: 'A blow every {{hero.blowSeconds}} s. Damage: the Heroes option in the [[article:damage|Weapons, Armour and Damage]] table.',
+            foot: 'A blow every {{hero.blowSeconds}} s. Damage: turn on Heroes in the [[article:damage|Weapons, Armour and Damage]] table.',
           },
         },
         {
@@ -458,8 +485,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Takes: [[good:amulet_strength|Amulet of Strength]], [[good:amulet_defense|Amulet of Defence]], [[good:amulet_crithit|Amulet of Precision]], [[good:amulet_speed|Wind Amulet]], [[good:potion_heal_small|S Healing Potion]], [[good:potion_heal_big|L Healing Potion]].',
-            "Doesn't take items for needs: Mead, Nourishing Potions, Stamina Potions, [[good:amulet_food|Nourishing Amulet]], [[good:amulet_stamina|Amulet of Stamina]].",
+            'Takes only: [[good:amulet_strength|Amulet of Strength]], [[good:amulet_defense|Amulet of Defence]], [[good:amulet_crithit|Amulet of Precision]], [[good:amulet_speed|Wind Amulet]], [[good:potion_heal_small|S Healing Potion]], [[good:potion_heal_big|L Healing Potion]].',
           ],
         },
         {
@@ -473,8 +499,8 @@ export const MILITARY: ArticleGroup = {
     },
     {
       id: 'defence',
-      name: 'Towers, Alarm and Shelter',
-      lead: 'A building on alarm shoots by itself. Each person sheltering adds {{shelter.shotsPerSeat}} arrows per second.',
+      name: 'Towers and Alarm',
+      lead: 'A building on alarm shoots by itself. Each person inside adds {{shelter.shotsPerSeat}} arrows per second.',
       blocks: [
         {
           h: 'Alarm',
@@ -482,22 +508,22 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '"Start defence mode" acts on one building, "Whole town" on all defensive buildings.',
-            "Only the player raises the alarm. A blow on a settler doesn't.",
+            "You raise the alarm yourself. An attack on the settlement doesn't.",
             "A building under construction can't raise the alarm.",
-            'The alarm lasts until "Stop defence mode" or until the building is destroyed.',
+            'The alarm doesn\'t switch itself off. It lasts until "Stop defence mode" or until the building is destroyed.',
           ],
         },
         {
-          h: 'Who shelters',
+          h: 'Who hides',
         },
         {
           list: [
-            'Civilians, Women and children run to the nearest building with a free place in walking reach.',
+            'Civilians, Women and children run to the nearest building with a free place. The building must be in walking reach.',
             'Soldiers, heroes and the [[job:scout|Scout]] stay outside.',
             'Anyone who finds no place keeps working.',
-            "The alarm outranks hunger and sleep. A sheltering settler eats only what he carries and doesn't work.",
-            "A sheltering settler can't be attacked.",
-            'Destroying the building throws those sheltering outside.',
+            "On alarm a settler drops eating and sleeping. Inside he doesn't work and eats only what he carries.",
+            "Someone hidden inside can't be attacked.",
+            'When the building falls, those hidden inside come out.',
           ],
         },
         {
@@ -523,7 +549,7 @@ export const MILITARY: ArticleGroup = {
               ['[[building:barracks|Barracks]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
             ],
             num: [1, 2],
-            foot: "Arrows per second with all places full. A post doesn't take a shelter place. An archer employed in a tower shoots by himself, no alarm needed: [[article:aim|Hitting and Shooting]].",
+            foot: "Arrows per second with the building full. A post doesn't take a place in the building. An archer employed in a tower shoots by himself, no alarm needed: [[article:aim|Hitting and Shooting]].",
           },
         },
         {
@@ -541,12 +567,12 @@ export const MILITARY: ArticleGroup = {
               ['Building', '{{arrow.building}}'],
             ],
             num: [1],
-            foot: 'Armour counted with Blocking {{combat.armourBlock}}, as in [[article:damage|Weapons, Armour and Damage]]. The same in every tribe, before multipliers.',
+            foot: 'The same in every tribe. Blow direction and the Amulet of Defence can change this: [[article:damage|Weapons, Armour and Damage]].',
           },
         },
         {
           list: [
-            'Range is {{shelter.range}} hexes from the nearest building wall, with no lower limit.',
+            'A building shoots {{shelter.range}} hexes from its nearest wall, also at an enemy right under the walls.',
             'A building also shoots at enemies in fog.',
             'Arrows cost nothing and give no experience.',
             'Target order: soldiers and heroes, wild animals, buildings, other people.',
@@ -557,7 +583,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Tower', 'Carriers', 'Mead', 'Food', 'Every soldier weapon'],
+            head: ['Tower', 'Carrier places', 'Mead', 'Food', 'Weapons, pieces of each'],
             rows: [
               [
                 '[[building:tower_00|Defence Tower 1]]',
@@ -575,17 +601,15 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Carrier places and stock capacity.',
           },
         },
         {
           list: [
-            'A post takes only its own class: [[job:soldier_bow_short|Short Bow Archer]] or [[job:soldier_bow_long|Longbow Archer]]. You assign him like a workplace.',
-            'A different weapon changes his class and costs him the post.',
-            "The crew eats from the tower's stock without coming down and sleeps at the post. An empty stock sends them out for food.",
-            'The Assistant never pulls the crew off a tower, not even for equipment.',
+            'A post takes only its own archer: [[job:soldier_bow_short|Short Bow Archer]] or [[job:soldier_bow_long|Longbow Archer]]. You assign him like a workplace.',
+            'An archer who takes a different weapon loses the post.',
+            "The crew eats from the tower's stock and sleeps at the post without coming down. When the stock runs out, they go for food.",
+            'The Assistant never pulls archers off a tower, not even for equipment.',
             '"Release the garrison": archers leave the tower and stay selected for the next order. A move order also takes an archer off his post.',
-            'Status "Manned": the tower has an archer assigned. "No garrison": it has none.',
           ],
         },
       ],
@@ -602,14 +626,14 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Stockades and Gates',
-      lead: 'A blow takes 1 health from a stockade for every full {{wall.damagePerPoint}} damage against buildings. Anything under {{wall.damagePerPoint}} does nothing.',
+      lead: 'A stockade loses 1 health for every full {{wall.damagePerPoint}} damage from the Building column. A weaker blow does nothing to it.',
       blocks: [
         {
           table: {
             head: ['Part', 'Health', 'Repair per stroke', 'Cost'],
             rows: [
-              ['Stockade segment', '150', '5', '1 [[good:wood|Wood]]'],
-              ['Gate', '500', '5', 'Free, made from segments'],
+              ['Stockade segment', '{{wall.segmentHp}}', '{{wall.segmentRepair}}', '1 [[good:wood|Wood]]'],
+              ['Gate', '{{wall.gateHp}}', '{{wall.gateRepair}}', 'Free, made from segments'],
             ],
             num: [1, 2],
             foot: 'Repairs cost nothing. One Builder at a time repairs a stockade.',
@@ -621,15 +645,13 @@ export const MILITARY: ArticleGroup = {
         {
           figure: {
             id: 'gate',
-            caption: 'A gate on five segments',
+            caption: 'Where the gate goes',
           },
         },
         {
           list: [
-            'Place a gate on five segments in a straight line, your own and finished.',
-            'Each segment has at least 75% health and stands on level ground.',
-            'Nobody is standing in the passage.',
-            'The gate appears at once, closed, at full health, even on a damaged segment.',
+            'A gate takes {{wall.gateSegments}} of your finished segments in a straight line. Each must have at least {{wall.gateMinHealthPct}}% health and stand on level ground, and nobody may be standing in the passage.',
+            'The gate appears at once, closed. It has full health even if a segment was damaged.',
           ],
         },
         {
@@ -646,7 +668,7 @@ export const MILITARY: ArticleGroup = {
                 'Open. Shuts when an enemy is within {{wall.gateEnemyNear}} hexes of the gate, then opens again',
               ],
             ],
-            foot: "In automatic mode, living people and vehicles of a player at war count, civilians too. Animals and buildings don't.",
+            foot: "Any person or vehicle of a player you are at war with shuts the gate, civilians too. Animals don't.",
           },
         },
         {
@@ -656,39 +678,87 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          h: 'Blows on a stockade',
+          h: 'How fast a stockade falls',
         },
         {
           table: {
-            head: ['Weapon', 'Points per blow', 'Blows: segment', 'Blows: gate', 'Time: segment'],
+            head: ['Weapon', 'Health per blow', 'Blows per segment', 'Blows per gate', 'Time per segment'],
             rows: [
-              ['[[building:catapult|Catapult]]', '36', '5', '14', '20 s'],
-              ['Hero, melee', '5', '30', '100', '30 s'],
-              ['[[good:spear_iron|Iron Spear]]', '5', '30', '100', '68 s'],
-              ['[[good:sword_long|Longsword]]', '5', '30', '100', '73 s'],
-              ['[[good:sword_shord|Shortsword]]', '2', '75', '250', '75 s'],
-              ['[[good:spear_wooden|Wooden Spear]]', '4', '38', '125', '86 s'],
-              ['[[good:bow_short|Short Bow]]', '1', '150', '500', '150 s'],
-              ['[[good:bow_long|Longbow]]', '2', '75', '250', '175 s'],
+              [
+                '[[building:catapult|Catapult]]',
+                '{{wall.catapult.blow}}',
+                '{{wall.catapult.segmentHits}}',
+                '{{wall.catapult.gateHits}}',
+                '{{wall.catapult.segmentSeconds}} s',
+              ],
+              [
+                'Hero, melee',
+                '{{wall.hero.blow}}',
+                '{{wall.hero.segmentHits}}',
+                '{{wall.hero.gateHits}}',
+                '{{wall.hero.segmentSeconds}} s',
+              ],
+              [
+                '[[good:spear_iron|Iron Spear]]',
+                '{{wall.ironSpear.blow}}',
+                '{{wall.ironSpear.segmentHits}}',
+                '{{wall.ironSpear.gateHits}}',
+                '{{wall.ironSpear.segmentSeconds}} s',
+              ],
+              [
+                '[[good:sword_long|Longsword]]',
+                '{{wall.longSword.blow}}',
+                '{{wall.longSword.segmentHits}}',
+                '{{wall.longSword.gateHits}}',
+                '{{wall.longSword.segmentSeconds}} s',
+              ],
+              [
+                '[[good:sword_shord|Shortsword]]',
+                '{{wall.shortSword.blow}}',
+                '{{wall.shortSword.segmentHits}}',
+                '{{wall.shortSword.gateHits}}',
+                '{{wall.shortSword.segmentSeconds}} s',
+              ],
+              [
+                '[[good:spear_wooden|Wooden Spear]]',
+                '{{wall.woodenSpear.blow}}',
+                '{{wall.woodenSpear.segmentHits}}',
+                '{{wall.woodenSpear.gateHits}}',
+                '{{wall.woodenSpear.segmentSeconds}} s',
+              ],
+              [
+                '[[good:bow_short|Short Bow]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}} s',
+              ],
+              [
+                '[[good:bow_long|Longbow]]',
+                '{{wall.longBow.blow}}',
+                '{{wall.longBow.segmentHits}}',
+                '{{wall.longBow.gateHits}}',
+                '{{wall.longBow.segmentSeconds}} s',
+              ],
               ['Fists, arrows from a building', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Time for one soldier. Cyra 2 points, 0 with the Franks.',
+            foot: 'Time for one soldier. Cyra takes {{wall.heroBow.blow}}, with the Franks {{wall.frankHeroBow.blow}}.',
           },
         },
         {
           list: [
             "Combat experience doesn't raise a blow on a stockade.",
-            'The Amulet of Strength acts on the points: 5 gives 7, 2 gives 3, 1 stays 1.',
-            "Soldiers don't pick a stockade on their own. They strike it on orders or when it blocks their way to an enemy.",
-            'Once a segment falls, soldiers go through the breach and stop hacking at its neighbours.',
+            'The Amulet of Strength raises this number: {{wall.ironSpear.blow}} gives {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} gives {{wall.shortSword.strongBlow}}, {{wall.shortBow.blow}} stays {{wall.shortBow.strongBlow}}.',
+            "A soldier doesn't pick a stockade on his own. He strikes it on orders or when it blocks his way to an enemy.",
+            'Once a segment falls, soldiers go through the breach and leave the neighbouring segments alone.',
           ],
         },
         {
           h: 'Defence wall',
         },
         {
-          p: 'The [[building:work_pottery_02|Defence wall]] is a building: {{wall.defenceHp}} health, damage from the Building column. A soldier strikes it only on orders or when it blocks his way to an enemy.',
+          p: 'The [[building:work_pottery_02|Defence wall]] is an ordinary building: {{wall.defenceHp}} health, damage from the Building column. A soldier treats it like a stockade.',
         },
       ],
       see: [
@@ -702,7 +772,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'catapult',
       name: 'Catapults',
-      lead: 'A stone wounds everything on the impact point and the six points around it, your own side included.',
+      lead: 'A stone wounds everything on the hex where it lands and the six hexes around it, your own people included.',
       blocks: [
         {
           figure: {
@@ -739,11 +809,9 @@ export const MILITARY: ArticleGroup = {
               ['Chain Mail, Plate', '{{stone.chain}}', '{{stone.chainKills}}'],
               ['Catapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
               ['Building', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
-              ['Stockade segment', '36 points', '5'],
-              ['Gate', '36 points', '14'],
             ],
             num: [2],
-            foot: "A person, no blow direction, no amulets. Catapult hits don't raise damage.",
+            foot: 'Damage to a person from the front, no amulets. Stockades: [[article:walls|Stockades and Gates]].',
           },
         },
         {
@@ -794,7 +862,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Accuracy',
         },
         {
-          p: 'Table: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes a stray stone drifts up to 3 hexes at 0 hits, 2 at 25, 1 at 50, 0 from 75. The commander collects the experience, 1 point per stone that wounded someone.',
+          p: 'Accuracy grows as with an archer: [[article:aim|Hitting and Shooting]]. At {{catapult.max}} hexes an inaccurate stone lands up to {{stone.spread.0}} hexes from the target at 0 hits, {{stone.spread.25}} at 25, {{stone.spread.50}} at 50. From {{aim.noSpreadHits}} hits it lands on target. The commander collects the experience: 1 hit for a stone that damaged something, a building included. A stone that hit several targets counts once.',
         },
         {
           h: 'Catapult stances',
@@ -803,7 +871,7 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Stance', 'Seeks enemies', 'Radius', 'Moves'],
             rows: [
-              ['Attack', 'Around himself', '{{catapult.searchRadius}}', 'Yes'],
+              ['Attack', 'Around itself', '{{catapult.searchRadius}}', 'Yes'],
               [
                 'Defence',
                 'Around its position',
@@ -819,7 +887,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             'Target closer than {{catapult.min}} hexes: the Catapult backs off. Target past {{catapult.max}}: it moves up to {{catapult.bandMin}}-{{catapult.max}} hexes.',
             'It fires only standing still, and only when not touching another vehicle.',
-            'An order can point at a spot on the ground. It strikes a stockade only on orders.',
+            'You can order it to fire at a spot on the ground. It strikes a stockade only on orders.',
           ],
         },
         {
@@ -827,7 +895,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Weapon', 'Damage', 'Blows on a Catapult'],
+            head: ['Weapon', 'Damage', 'Hits to destroy'],
             rows: [
               ['A second Catapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
               [
@@ -844,7 +912,7 @@ export const MILITARY: ArticleGroup = {
               ['Arrow from a building', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],
             num: [1, 2],
-            foot: "Combat experience doesn't raise a blow on a vehicle. The attacker's amulets work.",
+            foot: "Experience doesn't work on vehicles. The attacker's amulets do.",
           },
         },
       ],
@@ -880,7 +948,7 @@ export const MILITARY: ArticleGroup = {
                 '{{ai.hard.sites}}, from {{ai.hard.midMinutes}} min {{ai.hard.midSites}}, from {{ai.hard.lateMinutes}} min {{ai.hard.lateSites}}',
               ],
             ],
-            foot: 'Times are game time: at ×3 they pass three times faster. No wave leaves before "Peace time" ends. Easy and Medium draft no soldiers past the army limit.',
+            foot: 'Times are game time: at ×3 they pass three times faster. No wave leaves before "Peace time" ends. Easy and Medium train no soldiers past the army limit.',
           },
         },
         {
@@ -896,13 +964,13 @@ export const MILITARY: ArticleGroup = {
               ['3 hrs and later', '{{ai.wave.3.min}}-{{ai.wave.3.max}}'],
             ],
             num: [1],
-            foot: 'Waves begin at the later of two moments: "First wave" or the end of peace. Size is rolled from the range.',
+            foot: 'Time counts from the later of two moments: "First wave" or the end of peace. Wave size is rolled from the range.',
           },
         },
         {
           list: [
             'One wave goes at a time. The next gathers at the [[building:barracks|Barracks]].',
-            "Gathering takes up to {{ai.gatherMinutes}} minutes. After that the lower end of the range sets out, or everyone who can make it if there aren't that many.",
+            "Gathering takes up to {{ai.gatherMinutes}} minutes. After that the lower number from the table sets out, or everyone who can make it if there aren't that many.",
           ],
         },
         {
@@ -910,10 +978,23 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'A wave waits while you have more points: soldier and hero 1, archer on a tower 3. The computer counts 1 for each of its men.',
-            "Weapons, armour, amulets, potions and experience don't count.",
-            'It waits at the Barracks, even after gathering.',
-            'Computer army at its limit: the wave sets out anyway.',
+            "The computer compares its army's strength with yours. It counts weapons, armour, amulets, health and healing potions, but not experience.",
+            'Your archer on a tower counts as {{ai.towerPostWeight}}.',
+            'Each computer rolls a plan at the start. An aggressive one sets out at {{ai.planAggressivePct}}% of your strength, a defensive one only at {{ai.planDefensivePct}}%, the others at {{ai.planBalancedPct}}%.',
+            "In fog it counts what it has seen. If it knows nothing about you, it assumes you're just as strong.",
+            'Until it has the strength, the wave waits at the Barracks, even after gathering.',
+            'When the computer army reaches its limit, the wave sets out anyway.',
+            "When you attack its settlement or you're {{ai.defendRatio}} times stronger, it keeps its army at home, and a wave on the way turns back.",
+          ],
+        },
+        {
+          h: 'Raids',
+        },
+        {
+          list: [
+            "A small party of {{ai.raidMen}} men goes for your Extractors and economy buildings. It avoids tower range, and if there's no way around the towers it doesn't set out.",
+            'A hard computer does this in {{ai.raidChancePct}}% of games, unless it starts on an island. A harassing plan always does it, at every level.',
+            'The first raid leaves {{ai.raidMinMinutes}}-{{ai.raidMaxMinutes}} minutes after peace ends, the next ones at similar intervals.',
           ],
         },
         {
@@ -930,7 +1011,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Stockades and the [[building:work_pottery_02|Defence wall]] are not targets: [[article:walls|Stockades and Gates]].',
-            'Fog hides nothing from the computer.',
+            'In fog the computer knows the buildings from the map start and the ones it has already seen. It learns of new ones when it sees them.',
           ],
         },
         {
@@ -938,17 +1019,18 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            "The target must stand on the same landmass as the computer's Barracks. A wave doesn't board ships.",
-            "If a rival's Headquarters is on another landmass, the computer puts up a [[building:work_joinery_03|Carpenter's Shop 4]] on the shore and builds [[good:ship_small|Ships]], but doesn't carry troops on them.",
-            "Your building or person on the computer's landmass becomes a target.",
-            'Seaborne landings are a map mode, Ragnarök for one.',
+            "A wave on foot only goes over the landmass the computer's Barracks stand on. Your building or person on that landmass becomes a target.",
+            "If a rival's Headquarters is on another landmass, the computer puts up a [[building:work_joinery_03|Carpenter's Shop 4]] on the shore, builds [[good:ship_small|Ships]] and carries troops on them.",
+            'A landing sets out once {{ai.landingShips}} Ships stand at the shore, fewer for a weaker computer, and the army is {{ai.landingEdge}} times stronger than the defenders. A Ship carries {{vehicle.shipSeats}} soldiers.',
+            'It lands outside the range of your towers and buildings on alarm, as close to the Headquarters as it can, and goes for it.',
+            'After losing {{ai.landingRetreatPct}}% of its men on land, the rest return to the Ships. The next landing leaves {{ai.landingCooldownMinutes}} minutes later at the earliest.',
           ],
         },
         {
           h: 'Rebuilding',
         },
         {
-          p: '"Map AI" rebuilds buildings, but not the Headquarters, when no enemy is within {{ai.rebuildNear}} hexes.',
+          p: 'A player set to "Map AI" in the lobby rebuilds buildings when no enemy is within {{ai.rebuildNear}} hexes and one of its civilians is. It does not rebuild the Headquarters.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

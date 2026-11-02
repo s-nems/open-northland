@@ -9,7 +9,7 @@ export const SETTLERS: ArticleGroup = {
       lead: 'At {{need.drivePct}}% on a bar, a settler drops his work and goes to refill it.',
       blocks: [
         {
-          p: 'The lobby setting "Settler needs: Disabled" freezes the bars and removes hunger. This article then does not apply.',
+          p: 'The lobby setting "Settler needs: Disabled" freezes the bars and removes hunger.',
         },
         {
           h: 'Bars',
@@ -25,14 +25,14 @@ export const SETTLERS: ArticleGroup = {
                 '[[article:food|a meal]]',
                 '[[article:health|dies in {{need.starveMinutes}} min]]',
               ],
-              ['Stamina', '100% in {{need.drainMinutes}} min', 'yes', 'sleep', 'health unaffected'],
+              ['Stamina', '100% in {{need.drainMinutes}} min', 'yes', 'sleep', 'only a slower step'],
               ['Social Motivation', '100% in {{need.drainMinutes}} min', 'no', 'talking', 'no penalty'],
               [
                 'Religion',
                 'no',
                 'weapons and armour only',
                 '[[article:religion|prayer]]',
-                "won't start a batch that costs Religion",
+                "won't start weapons or armour",
               ],
             ],
             foot: 'At map start each bar is random, {{need.startMinPct}}-100%. Without [[good:shoes|Shoes]] each step costs {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energy depending on the ground, double that under load.',
@@ -59,10 +59,10 @@ export const SETTLERS: ArticleGroup = {
               ['{{need.satedPct}}%', 'At home he tops up Stamina, then Energy, to this level and leaves.'],
               [
                 '{{need.overfillPct}}%',
-                'The ceiling. A meal at home or sleep on Furniture stores a reserve above 100%.',
+                'The most a bar holds. A meal at home or sleep on Furniture stores a reserve above 100%.',
               ],
             ],
-            foot: '[[job:armorer|Armourers]] and [[job:smith|Blacksmiths]] go to pray on their own. [[job:sewer|Tailors]] use Religion but pray only on orders.',
+            foot: '[[job:armorer|Armourers]], [[job:smith|Blacksmiths]] and [[job:sewer|Tailors]] go to pray on their own.',
           },
         },
         {
@@ -91,10 +91,10 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Who', 'Sleep time', 'Away from home', 'At home', 'With Furniture'],
+            head: ['Who', 'Sleep time', 'Away from home', 'At home', 'At home with Furniture'],
             rows: [
               [
-                'Man with a dwelling',
+                'Man',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manAwayPct}}%',
                 '+{{sleep.manHomePct}}%',
@@ -114,7 +114,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: 'Who has no bars',
+          h: 'Exceptions',
         },
         {
           table: {
@@ -124,7 +124,7 @@ export const SETTLERS: ArticleGroup = {
               ['[[article:heroes|Hero]]', 'None.'],
               ['Monsters, animals', 'None.'],
               ['Soldier', 'No Social Motivation.'],
-              ['Handcart passenger', 'Bars and health stand still.'],
+              ['Cart passenger', 'Bars and health stand still.'],
               [
                 'Ship passenger',
                 'Eats from the hold, sleeps as away from home, talks. Religion waits for land.',
@@ -138,26 +138,9 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'The order works at any bar level. It interrupts marching, attacks and fights.',
-            'If nothing can meet the need, the order waits. If more orders are queued behind it, it is lost.',
+            'With no food or place to pray, the order waits. If more orders are queued behind it, it is lost.',
             'Heroes do not take them. "Pray" works only in a profession that can pray.',
           ],
-        },
-        {
-          h: 'The "Eating and sleeping" switch',
-        },
-        {
-          table: {
-            head: ['Soldier', '"Allowed"', '"Prohibited"'],
-            rows: [
-              ['Goes to food, bed and prayer on his own', 'yes', 'no'],
-              ["Eats from his hands or the tower's stock on his own", 'yes', 'no'],
-              ['Hunger breaks off a long order', 'yes', 'no'],
-            ],
-            foot: 'Potions, amulets and the Eat, Sleep and Pray orders work in both states. In the order menu the states are "Allow Regeneration" and "Prohibit Regeneration". Only soldiers have the switch. It starts on "Allowed" and returns there after a change of profession.',
-          },
-        },
-        {
-          p: '"Prohibited" without potions ends in starvation. An Eat order or a return to "Allowed" saves him.',
         },
         {
           h: 'Hunger and long orders',
@@ -167,26 +150,12 @@ export const SETTLERS: ArticleGroup = {
             'At {{need.criticalPct}}% Energy a settler breaks off marching, scouting or an order queue. Status: "Hungry, going to eat".',
             'He eats to {{need.satedPct}}%, then starts the order again.',
             'If he finds nothing, he returns to the order and looks again after {{meal.breakRetrySeconds}} s.',
-            "A new order given to a hungry settler takes priority: hunger won't move him for {{meal.breakRetrySeconds}} s.",
-            'Stamina waits until orders run out.',
+            "A new order takes priority: hunger won't break it off for {{meal.breakRetrySeconds}} s.",
+            "Tiredness doesn't break off orders.",
           ],
         },
         {
-          h: 'Standing to',
-        },
-        {
-          p: 'This is the state of a soldier on [[article:stances|Attack or Defence]] near a fight, not the [[article:defence|settlement alarm]] the player sounds.',
-        },
-        {
-          table: {
-            head: ['What is nearby', 'Hexes', 'Effect'],
-            rows: [
-              ['Fight', 'up to {{alert.restClearance}}', 'No sleep, no prayer, no talk.'],
-              ['Visible enemy, on Attack or Defence', 'up to {{alert.standTo}}', 'Same.'],
-              ['Fight beside a soldier sleeping in the open', 'up to {{alert.standTo}}', 'He gets up.'],
-            ],
-            foot: 'He goes for food only at {{need.criticalPct}}% Energy. Wild animals only count once a fight with them is on. On Ignorant the rule is off, and a need order takes priority.',
-          },
+          p: 'The "Eating and sleeping" switch and the "Standing to" state apply only to soldiers: [[article:stances|Stances]].',
         },
         {
           h: 'Religion and Social Motivation',
@@ -205,7 +174,7 @@ export const SETTLERS: ArticleGroup = {
                 '{{talk.shortSeconds}}-{{talk.longSeconds}} s',
                 'Up to +{{talk.pct}}% Social Motivation.',
               ],
-              ['Topping up bars at home, married', '-', 'Social Motivation 100%.'],
+              ['Staying at home, when the settler has a spouse', '-', 'Social Motivation 100%.'],
             ],
             num: [1],
           },
@@ -246,27 +215,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: 'Where food comes from',
-        },
-        {
-          table: {
-            head: ['Good', 'Source', 'Counts as'],
-            rows: [
-              [
-                '[[good:bread|Bread]]',
-                '[[building:work_bakery_00|Bakery 1]], [[building:work_bakery_01|Bakery 2]]',
-                'Food',
-              ],
-              ['[[good:candy|Cake]]', '[[building:work_bakery_01|Bakery 2]]', 'Cake'],
-              [
-                '[[good:meat|Meat]]',
-                '[[building:work_animal_farm|Cattle Farm]], [[job:hunter|Hunter]]',
-                'Food',
-              ],
-              ['[[good:fish|Fish]]', '[[job:fisher|Fisherman]]', 'Food'],
-            ],
-            foot: "A settler also eats from a workshop shelf. In a store he takes Food first, Cake only when there's no Food. He eats a ripe bush where it stands, leaving it bare.",
-          },
+          p: "A settler also eats from a workshop's stock. In a store he takes Food first, Cake only when there's no Food. He eats a ripe bush where it stands, leaving it bare.",
         },
         {
           h: 'Where a settler eats',
@@ -276,7 +225,7 @@ export const SETTLERS: ArticleGroup = {
             "His own larder, if the dwelling's door is at most {{reach.walk}} hexes away.",
             'The nearest store, workshop or ground pile within {{reach.goods}} hexes, or a ripe bush closer than {{reach.bushAtHand}} hexes.',
             'The nearest ripe bush within {{reach.goods}} hexes.',
-            'The nearest food anywhere in walking reach, even a distant dwelling of his own.',
+            'The nearest food anywhere he can walk to, even his own dwelling if it is further away.',
           ],
         },
         {
@@ -288,12 +237,12 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             'A [[job:woman|Woman]] with a finished dwelling looks for the nearest food outside dwellings.',
-            'She carries 1 piece home. The larder takes it as Food or Cake.',
+            'She carries 1 piece home.',
             'With [[good:crockery|Crockery]] in the dwelling, 1 piece delivered becomes 2 in the larder.',
           ],
         },
         {
-          p: 'A woman with nothing else to do delivers until the larder is full. Larder limits: [[article:family|Family and Home]].',
+          p: 'A Woman brings food until the larder is full. Limits: [[article:family|Family and Home]].',
         },
       ],
       see: ['article:needs', 'article:family', 'article:gathering', 'good:bread', 'good:candy'],
@@ -308,7 +257,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Source', 'Change', 'Condition', '{{health.human}} health in'],
+            head: ['Source', 'Change', 'Condition', 'Full health in'],
             rows: [
               [
                 'Regeneration',
@@ -349,8 +298,8 @@ export const SETTLERS: ArticleGroup = {
           list: [
             '[[good:potion_heal_small|S Healing Potion]] has {{draught.smallUses}} sips, {{draught.healSmallTotal}} total. [[good:potion_heal_big|L Healing Potion]] has {{draught.bigUses}} sips, {{draught.healBigTotal}} total.',
             'A settler drinks sip after sip until the wound leaves him at least {{draught.healBelow}} health.',
-            "A blow that would kill doesn't, if the sips cover the wound.",
-            'Hunger also triggers drinking once health falls below {{draught.healBelow}}.',
+            "Even a killing blow doesn't kill, if the sips cover the wound.",
+            'A settler also drinks when hunger takes his health below {{draught.healBelow}}.',
             'An opened bottle goes first, then a small one, then a large one.',
           ],
         },
@@ -360,7 +309,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'life',
       name: 'Life and Death',
-      lead: 'A child grows up {{age.adultMinutes}} minutes after birth. An adult lives as long as he has health.',
+      lead: 'A child grows up {{age.adultMinutes}} minutes after birth. Nobody dies of old age.',
       blocks: [
         {
           h: 'Life stages',
@@ -388,7 +337,7 @@ export const SETTLERS: ArticleGroup = {
                 'A boy becomes a [[job:civilist|Civilian]], a girl a [[job:woman|Woman]].',
               ],
             ],
-            foot: 'A year of life lasts {{age.yearSeconds}} s. A Civilian with no profession waits for a post.',
+            foot: 'A year of life lasts {{age.yearSeconds}} s.',
           },
         },
         {
@@ -407,12 +356,11 @@ export const SETTLERS: ArticleGroup = {
               ['Armour', 'Always dropped.'],
               ['Potions, amulets', 'Amulets and unopened bottles drop.'],
               ["Carrier's handcart", 'Stays in place with its load.'],
-              ['Body', 'A person leaves bones. An animal leaves [[article:wildlife|meat]].'],
             ],
           },
         },
         {
-          p: 'Discovered [[article:trades|professions]] stay with the settlement. Effects on the spouse: [[article:family|Family and Home]].',
+          p: 'Effects on the spouse: [[article:family|Family and Home]].',
         },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
@@ -437,7 +385,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Settlers marry only on the Marry order, never on their own.',
+            'A wedding takes the Marry order.',
             'The order pairs the settler with the nearest adult of the opposite sex, same tribe, same player.',
             'The candidate must be within the settler\'s [[article:roads|signpost]] reach. With no candidate the order is lost and the game shows "No match".',
             'Soldiers, heroes, Scouts and anyone sent to the [[building:barracks|Barracks]] or [[building:school|School]] do not marry.',
@@ -457,19 +405,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          table: {
-            head: ['What blocks a child', 'Fix'],
-            rows: [
-              ['The wife has no dwelling', 'Assign one.'],
-              ['The dwelling is under construction', 'Finish it.'],
-              [
-                'The husband is a soldier, [[job:trader|Merchant]] or [[job:scout|Scout]]',
-                'Change his profession.',
-              ],
-              ['The spouses live apart', 'Assign them the same dwelling.'],
-              ['No food in reach', 'Get food to a nearby store.'],
-            ],
-          },
+          p: 'A couple has no child when the wife has no dwelling, the dwelling is under construction, the husband is a soldier, [[job:trader|Merchant]] or [[job:scout|Scout]], the spouses live apart, or there is no food in reach.',
         },
         {
           p: 'A couple can have the next child once the last one grows up, after {{age.adultMinutes}} minutes. A child takes no family place in the dwelling.',
@@ -487,7 +423,7 @@ export const SETTLERS: ArticleGroup = {
           data: 'homes',
         },
         {
-          p: "The larder has separate limits for Food and Cake: Dwelling 1 holds {{home.larder}} + {{home.candyLarder}} pieces. A family is an adult, his spouse and a growing child. A dwelling can belong to any of the player's tribes.",
+          p: 'The larder has separate limits for Food and Cake: Dwelling 1 holds {{home.larder}} + {{home.candyLarder}} pieces. A settler can live in a dwelling of another tribe of the same player.',
         },
         {
           h: 'Dwelling furnishings',
@@ -535,8 +471,6 @@ export const SETTLERS: ArticleGroup = {
               ['Widower', 'Loses it once the child has grown up or died.'],
               ['Widow', 'Stays in the dwelling.'],
               ['Grown child', 'Loses it on reaching adulthood.'],
-              ['All residents', 'Lose it when it is demolished.'],
-              ['Whole family', 'Loses it after the Remove Home order.'],
               [
                 'Merchant, Scout, soldier',
                 'The family keeps the dwelling, but he neither eats nor sleeps there.',
@@ -608,7 +542,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               ['Extractors move their flag automatically', 'on', '[[job:collector|Extractor]] with a flag'],
             ],
-            foot: 'For potions and amulets, the "Civilians" and "Soldiers" buttons choose who receives them. Both start on. Switching one off takes nothing back: whoever has it keeps it.',
+            foot: 'For potions and amulets, the "Civilians" and "Soldiers" buttons choose who receives them. Both start on. Switching one off takes nothing back.',
           },
         },
         {
@@ -617,7 +551,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Daughters first, then sons. Daughters have no ∞ setting, or sons would never get a turn.',
-            'A counter of 3 means at most 3 couples at once.',
+            'At a counter of 3, at most 3 couples have a child at once.',
             'A couple takes one order at a time. The same things block it as a direct order: [[article:family|Family and Home]].',
             'Lowering the counter does not cancel an order a couple already has.',
           ],
@@ -628,7 +562,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Only an adult Civilian with no workplace and no errand goes. Unmarried men first. Nobody is pulled off work.',
-            'A class counter first arms an unarmed soldier, if a weapon is in his reach.',
+            'The Sword fighters, Spearmen or Archers counter first arms an unarmed soldier, if a weapon is in his reach.',
           ],
         },
         {
@@ -638,7 +572,7 @@ export const SETTLERS: ArticleGroup = {
               ['No finished [[building:barracks|Barracks]]', 'Finish the Barracks.'],
               ['No free Civilian', 'Send someone to the Barracks by hand.'],
               [
-                'An unarmed soldier is waiting for a weapon of this class',
+                'An unarmed soldier is waiting for a weapon of this kind',
                 "Deliver the weapon. Until then he holds the new recruit's place.",
               ],
             ],
@@ -650,11 +584,11 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Skips women, children, [[article:heroes|heroes]] and tower garrisons.',
-            'He makes one trip to the store and picks up the rest there.',
-            'One settler goes for each piece in the store. Stock below the [[article:hauling|storage minimum]] stays put.',
+            "The Assistant doesn't equip women, children, [[article:heroes|heroes]] or tower crews.",
+            'A settler goes to the store once and takes everything in one trip.',
+            'Only one settler sets out for each piece in the store. Stock below the [[article:hauling|storage minimum]] stays put.',
             'Fills empty slots only, never swaps for better. Iron tools go before wooden, a large bottle before a small one.',
-            "A settler with a small potion doesn't fetch a large one. Potion and amulet slots: {{amulet.slots}}. See [[article:draughts|Potions and Amulets]].",
+            "A settler with a small potion doesn't fetch a large one. There are {{amulet.slots}} slots for potions and amulets: [[article:draughts|Potions and Amulets]].",
           ],
         },
         {
@@ -663,11 +597,11 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             "A graduate goes once, to the nearest free post in his profession, even a workshop construction site. A workshop making the course's product beats a closer one.",
-            'With no free post he waits at the School. Does not apply to [[job:collector|Extractors]], [[job:hunter|Hunters]], [[job:fisher|Fishermen]] or soldiers.',
+            'With no free post he waits at the School. Skips [[job:collector|Extractors]], [[job:hunter|Hunters]], [[job:fisher|Fishermen]] and soldiers.',
           ],
         },
         {
-          p: 'The flag moves with the resource, staying {{assistant.flagMin}}-{{assistant.flagMax}} hexes from it: [[article:work-flag|Work Flag]].',
+          p: 'The flag moves with the resource, staying {{assistant.flagMin}}-{{assistant.flagMax}} hexes from it: [[article:work-flag|Work flag]].',
         },
         {
           p: 'The "Subjects" window counts shortages: dwellings, workplaces, tools, shoes, partners, children, weapons, mead.',
@@ -698,19 +632,19 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:mead|Mead]]',
                 '{{draught.meadUses}}',
                 '+{{draught.meadPct}}% Energy and +{{draught.meadPct}}% Stamina',
-                'Energy or Stamina is at {{need.drivePct}}% or less',
+                'Energy or Stamina drops to {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_food_small|S]] / [[good:potion_food_big|L Nourishing Potion]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Energy',
-                'Energy is at {{need.drivePct}}% or less',
+                'Energy drops to {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_stamina_small|S]] / [[good:potion_stamina_big|L Stamina Potion]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Stamina',
-                'Stamina is at {{need.drivePct}}% or less',
+                'Stamina drops to {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_heal_small|S]] / [[good:potion_heal_big|L Healing Potion]]',
@@ -720,7 +654,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'An eat or sleep order pauses drinking.',
+            foot: 'An Eat, Sleep, Talk or Pray order holds off drinking.',
           },
         },
         {
@@ -733,12 +667,12 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:amulet_food|Nourishing Amulet]]',
                 '+{{amulet.needPct}}% Energy',
-                'each time Energy is at {{need.drivePct}}% or less',
+                'each time Energy drops to {{need.drivePct}}%',
               ],
               [
                 '[[good:amulet_stamina|Amulet of Stamina]]',
                 '+{{amulet.needPct}}% Stamina',
-                'each time Stamina is at {{need.drivePct}}% or less',
+                'each time Stamina drops to {{need.drivePct}}%',
               ],
               [
                 '[[good:amulet_strength|Amulet of Strength]]',
@@ -766,8 +700,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'A second copy of the same amulet does nothing.',
             'Different amulets work together: Strength and Precision give ×{{amulet.comboFactor}} on a lucky roll.',
-            'Order for a need: opened bottle, amulet, bottle with fewer sips.',
-            'Mead drunk for Energy also fills Stamina.',
+            'For hunger and tiredness a settler reaches in turn for an opened bottle, an amulet, then a full bottle with fewer sips.',
             "With a Nourishing Amulet a settler doesn't look for food, with an Amulet of Stamina he doesn't go to sleep.",
           ],
         },

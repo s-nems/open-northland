@@ -6,10 +6,10 @@ export const WORLD: ArticleGroup = {
     {
       id: 'goals',
       name: 'Cele misji i koniec gry',
-      lead: 'Gracz odpada, gdy nie ma ani jednego żywego dorosłego mężczyzny. Liczy się dorosły mężczyzna i Bohater. Kobieta i Cyra nie, dzieci też nie.',
+      lead: 'Gracz przegrywa, gdy nie ma już żadnego dorosłego mężczyzny. Bohater się liczy. Kobiety, Cyra i dzieci nie.',
       blocks: [
         {
-          h: 'Kto rozstrzyga',
+          h: 'Jak kończy się mapa',
         },
         {
           table: {
@@ -17,11 +17,11 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 'Mapa wieloosobowa, także grana samotnie',
-                'Cel z listy mapy',
-                'Brak dorosłego mężczyzny, cel przegranej ze skryptu',
+                'Cele mapy, tabela niżej',
+                'Brak dorosłego mężczyzny albo porażka ogłoszona przez misję',
               ],
-              ['Misja fabularna', 'Skrypt mapy', 'Skrypt mapy, brak dorosłego mężczyzny'],
-              ['Mapa bez skryptu', 'Ostatni na mapie', 'Brak dorosłego mężczyzny'],
+              ['Misja fabularna', 'Ogłasza misja', 'Ogłasza misja albo brak dorosłego mężczyzny'],
+              ['Mapa bez misji', 'Ostatni na mapie', 'Brak dorosłego mężczyzny'],
             ],
           },
         },
@@ -34,31 +34,30 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 'Towary',
-                'Zapas na półkach budynków. Stosy na ziemi, ładownie i towar w rękach się nie liczą',
-                'Wygrana przy pełnej liście ilości',
+                'Zapas w budynkach. Stosy na ziemi, ładownie i towar w rękach się nie liczą',
+                'Wygrana, gdy masz wszystkie wymagane ilości',
               ],
-              ['"Mieszkańcy"', 'Każdy człowiek gracza, także dzieci', 'Wygrana przy wymaganej liczbie'],
+              ['"Mieszkańcy"', 'Każdy człowiek gracza, także dzieci', 'Wygrana po osiągnięciu liczby'],
               [
                 '"Żołnierze"',
                 'Dorośli mężczyźni w zawodzie żołnierza, bez bohaterów',
-                'Wygrana przy wymaganej liczbie',
+                'Wygrana po osiągnięciu liczby',
               ],
-              ['Wygrana ze skryptu', 'Wydarzenie misji nazywa gracza', 'Wygrana'],
-              ['Przegrana ze skryptu', 'Wydarzenie misji nazywa gracza', 'Porażka'],
+              ['Ogłoszenie misji', 'Misja ogłasza wygraną albo porażkę gracza', 'Wygrana albo porażka'],
               [
                 'Ostatni na mapie',
-                'Choć jeden rywal odpadł, a pozostali są wzajemnymi przyjaciółmi: [[article:diplomacy|Dyplomacja]]',
+                'Odpadł co najmniej jeden gracz, a wszyscy pozostali mają wobec siebie stosunek przyjazny: [[article:diplomacy|Dyplomacja]]',
                 'Wygrana wszystkich pozostałych',
               ],
             ],
-            foot: 'Postęp towarów, "Mieszkańców" i "Żołnierzy" gra pokazuje jako obecne/wymagane. Ostatni na mapie działa, gdy mapa nie ma celu towarów, ludzi ani wyniku ze skryptu.',
+            foot: 'Postęp towarów, "Mieszkańców" i "Żołnierzy" gra pokazuje jako obecne/wymagane. Ostatni na mapie obowiązuje tylko wtedy, gdy mapa nie ma celów towarów ani ludzi i misja nie ogłasza wyniku.',
           },
         },
         {
           list: [
-            'Najpierw liczy się brak mężczyzn, potem lista w kolejności z mapy.',
-            'Pierwszy spełniony warunek rozstrzyga o graczu na stałe. Zwycięzca, który potem straci ludzi, nadal jest zwycięzcą.',
-            'Wygrana jednego gracza nie kończy gry pozostałym.',
+            'Gra najpierw sprawdza mężczyzn, potem kolejne cele z mapy. Mężczyzn liczy dopiero po {{match.graceSeconds}} s gry.',
+            'Pierwszy spełniony warunek rozstrzyga o graczu na stałe.',
+            'Wygrana jednego gracza nie kończy gry innym, a zwycięzca, który straci potem ludzi, nadal wygrał.',
             'Mapa może zwolnić wskazanego gracza z zasady o dorosłym mężczyźnie.',
           ],
         },
@@ -68,13 +67,13 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'Brak dorosłego mężczyzny: pojazdy znikają od razu.',
-            'Porażka zapada na najbliższym sprawdzeniu celów.',
-            'Na kolejnym znikają budynki, ludzie, pojazdy i drogowskazy.',
+            'Porażka zapada przy najbliższym sprawdzeniu celów, co {{match.checkSeconds}} s.',
+            'Przy następnym sprawdzeniu znikają budynki, pojazdy i drogowskazy, a w miejscu każdego człowieka stojącego na lądzie zostaje dzika kura.',
             'Zwierzęta gracza dziczeją tam, gdzie stoją.',
           ],
         },
         {
-          p: 'Tak jest na mapie wieloosobowej. W misji fabularnej i na mapie bez skryptu znikają tylko pojazdy, a komputer przestaje grać. Budynki i ludzie zostają.',
+          p: 'Tak jest na mapie wieloosobowej. W misji fabularnej i na mapie bez misji znikają tylko pojazdy, a komputer przestaje grać.',
         },
       ],
       see: ['article:diplomacy', 'article:family', 'article:heroes'],
@@ -82,32 +81,29 @@ export const WORLD: ArticleGroup = {
     {
       id: 'vehicles',
       name: 'Pojazdy i statki',
-      lead: 'Pojazd bez dowódcy stoi. Statek zabiera {{vehicle.shipSeats}} osób, Statek handlowy {{vehicle.bigShipSeats}}, razem z dowódcą.',
+      lead: 'Pojazd bez dowódcy stoi. Statek wiezie więcej ludzi, Statek handlowy więcej towaru.',
       blocks: [
         {
           data: 'vehicles',
         },
         {
           table: {
-            head: ['Pojazd', 'Kto wsiada', 'Miejsca z dowódcą'],
+            head: ['Pojazd', 'Kto wsiada'],
             rows: [
               [
                 '[[good:handcart|Wózek Ręczny]], [[good:oxcart|Zaprzęg]]',
                 '[[job:carrier|Tragarz]], [[job:trader|Kupiec]]',
-                '1',
               ],
-              ['[[good:ship_small|Statek]]', 'każdy dorosły', '{{vehicle.shipSeats}}'],
-              ['[[good:ship_big|Statek handlowy]]', 'każdy dorosły', '{{vehicle.bigShipSeats}}'],
-              ['[[good:catapult|Katapulta]]', 'żołnierz, bohater', '1'],
+              ['[[good:ship_small|Statek]], [[good:ship_big|Statek handlowy]]', 'każdy dorosły'],
+              ['[[good:catapult|Katapulta]]', 'żołnierz, bohater'],
             ],
-            num: [2],
           },
         },
         {
           list: [
-            'Pierwszy przypisany zostaje dowódcą. Po jego odejściu dowództwo przejmuje następny pasażer.',
-            'Wsiadający traci miejsce pracy. Tragarz z miejscem pracy i Kupiec biorą wolny wóz jako narzędzie i miejsce pracy zachowują.',
-            'Ładownię obsługuje dowódca albo każdy dorosły mężczyzna na pokładzie, oprócz żołnierza, bohatera, [[job:scout|Zwiadowcy]] i [[job:druid|Druida]]. Bez nich pojawia się "Brak tragarza".',
+            'Kolumna "Pasażerowie" nie liczy dowódcy. Pierwszy przypisany zostaje dowódcą, a po jego odejściu dowodzi następny pasażer.',
+            'Kto wsiada, traci miejsce pracy. Wyjątek: Tragarz z miejscem pracy i Kupiec ciągną wóz sami i pracę zachowują.',
+            'Ładownię obsługuje dowódca i każdy dorosły mężczyzna na pokładzie. Żołnierze, bohaterowie, [[job:scout|Zwiadowcy]] i [[job:druid|Druidzi]] ładują tylko jako dowódcy. Gdy nie ma kto, pojawia się "Brak tragarza".',
           ],
         },
         {
@@ -115,7 +111,14 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Pojazd', 'Utrata, pełny', 'Droga: pusty', 'Droga: pełny', 'Ląd: pusty', 'Ląd: pełny'],
+            head: [
+              'Pojazd',
+              'Utrata przy pełnym',
+              'Droga: pusty',
+              'Droga: pełny',
+              'Ląd: pusty',
+              'Ląd: pełny',
+            ],
             rows: [
               [
                 '[[good:handcart|Wózek Ręczny]]',
@@ -143,8 +146,15 @@ export const WORLD: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4, 5],
-            foot: 'Hexy na sekundę. Pełny to {{haul.handcart}} z {{haul.handcart}} na Wózku i {{haul.oxcart}} z {{haul.oxcart}} na Zaprzęgu. Liczone dla woźnicy bez butów, w butach jest szybciej. Statek nie zwalnia od ładunku i płynie około {{pace.ship}} hexów/s. Tragarz ciągnący wóz traci ten sam procent ze swojego chodu. Wybór wozu na trasę: [[article:trade|Handel]].',
+            foot: 'Hexy na sekundę. Pełny to {{haul.handcart}} sztuk na Wózku i {{haul.oxcart}} na Zaprzęgu. Utrata rośnie z ładunkiem: pół wozu to pół utraty. Wybór wozu na trasę: [[article:trade|Handel]].',
           },
+        },
+        {
+          list: [
+            'Tak jedzie wóz z dowódcą, buty nic tu nie zmieniają.',
+            'Tragarz i Kupiec, którzy ciągną wóz sami, idą własnym krokiem. W butach jadą szybciej i tracą ten sam procent.',
+            'Statek nie zwalnia od ładunku i płynie około {{pace.ship}} hexów/s.',
+          ],
         },
         {
           h: 'Budowa',
@@ -155,27 +165,27 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 '[[good:handcart|Wózek Ręczny]]',
-                '[[building:work_joinery_02|Warszt. ciesielski 3]], 4',
+                '[[building:work_joinery_02|Warsztat ciesielski 3]] i [[building:work_joinery_03|4]]',
                 '{{cost.handcartWood}} [[good:wood|Drewno]]',
               ],
               [
                 '[[good:oxcart|Zaprzęg]]',
-                '[[building:work_joinery_02|Warszt. ciesielski 3]], 4',
+                '[[building:work_joinery_02|Warsztat ciesielski 3]] i [[building:work_joinery_03|4]]',
                 '{{cost.oxcartWood}} [[good:wood|Drewno]]',
               ],
               [
                 '[[good:ship_small|Statek]]',
-                '[[building:work_joinery_03|Warszt. ciesielski 4]]',
+                '[[building:work_joinery_03|Warsztat ciesielski 4]]',
                 '{{cost.shipWood}} [[good:wood|Drewno]], {{cost.shipLeather}} [[good:leather|Skóra]]',
               ],
               [
                 '[[good:ship_big|Statek handlowy]]',
-                '[[building:work_joinery_03|Warszt. ciesielski 4]]',
+                '[[building:work_joinery_03|Warsztat ciesielski 4]]',
                 '{{cost.bigShipWood}} [[good:wood|Drewno]], {{cost.bigShipLeather}} [[good:leather|Skóra]]',
               ],
               [
                 '[[good:catapult|Katapulta]]',
-                '[[building:work_joinery_03|Warszt. ciesielski 4]]',
+                '[[building:work_joinery_03|Warsztat ciesielski 4]]',
                 '{{catapult.wood}} [[good:wood|Drewno]], {{catapult.iron}} [[good:iron|Żelazo]]',
               ],
             ],
@@ -188,8 +198,8 @@ export const WORLD: ArticleGroup = {
         {
           steps: [
             'Gotowy Zaprzęg ma stan "Czeka na zwierzę pociągowe".',
-            'Bierze najbliższego dorosłego [[good:cattle|Wołu]] gracza z tego samego lądu, wolnego i spoza wnętrza Fermy.',
-            'Każda Ferma zachowuje {{livestock.pair}} pierwsze dorosłe sztuki. Woły bez Fermy też zachowują {{livestock.pair}}.',
+            'Bierze najbliższego dorosłego [[good:cattle|Wołu]] z tego samego lądu. Wół w środku Fermy się nie liczy.',
+            'Każda Ferma zatrzymuje {{livestock.pair}} dorosłe Woły. Tyle samo zostaje ze stada bez Fermy.',
             'Wół idzie do wozu i znika, a Zaprzęg rusza dopiero z nim.',
           ],
         },
@@ -198,11 +208,11 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Ładownia jest wspólna na wszystkie towary.',
+            'Pojemność ładowni dzielą wszystkie towary.',
             'Statek przewozi 1 pojazd: Wózek Ręczny, Zaprzęg albo Katapultę. Załoga pojazdu musi się zmieścić na pokładzie. Statek handlowy nie przewozi pojazdów.',
-            '"Zacumuj" każe wskazać brzeg. Statek staje {{vehicle.mooringDistance}} hexy od wskazanego miejsca, budynek portowy nie jest potrzebny.',
+            '"Zacumuj": wskaż brzeg, statek stanie {{vehicle.mooringDistance}} hexy od niego. Portu nie trzeba.',
             'Na morzu nikt nie wsiada ani nie wysiada.',
-            'Ctrl/Cmd + klik cumuje i wysadza załogę.',
+            'Ctrl/Cmd + prawy klik cumuje i wysadza załogę.',
           ],
         },
         {
@@ -211,12 +221,12 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             '"cel": ile sztuk ma być w ładowni. Suma celów nie przekroczy pojemności.',
-            '"w rękach tragarza": wóz ciągnie Tragarz z miejscem pracy i wiezie to, co podnosi w każdym kursie. Cele są zablokowane.',
-            'Ten, kto ładuje, wysiada, gdy wóz stoi albo statek cumuje. Na morzu nikt nie pracuje.',
-            'Bierze po 1 sztuce: stos, budynek do {{vehicle.cargoSearch}} hexów, potem dalej.',
-            'Źródło musi leżeć na lądzie, na którym stoją drzwi. Jedzenia z domu nie bierze.',
-            'Cel 0 albo niższy od zawartości: nadmiar idzie do najbliższego Magazynu lub Kwatery głównej z miejscem, do {{vehicle.cargoSearch}} hexów od drzwi. Gdy takich brak, ląduje na ziemi.',
-            'Dowódca, który jest żołnierzem, bohaterem, [[job:scout|Zwiadowcą]] albo [[job:druid|Druidem]], bez nikogo innego do ładunku obniża cel, gdy towaru nie ma skąd wziąć. Z kimś do ładunku cel zostaje.',
+            '"w rękach tragarza": wóz ciągnie Tragarz i sam decyduje w każdym kursie, co na niego wziąć. Celów nie ustawisz.',
+            'Ładujący wysiada, gdy wóz stoi albo statek cumuje.',
+            'Ładujący nosi po 1 sztuce. Najpierw szuka stosów do {{vehicle.cargoSearch}} hexów od wozu, potem budynków w tym samym zasięgu, a na końcu wszędzie, gdzie sięgają drogowskazy.',
+            'Towar musi leżeć na tym samym lądzie co wóz albo statek. Jedzenia z domów nikt nie bierze.',
+            'Gdy obniżysz cel, nadmiar trafia do najbliższego Magazynu lub Kwatery głównej z miejscem, do {{vehicle.cargoSearch}} hexów od wozu. Gdy takiego nie ma, ląduje na ziemi.',
+            'Gdy ładuje sam dowódca, który jest żołnierzem albo bohaterem, a towaru nie ma skąd wziąć, cel sam spada. To samo dotyczy [[job:scout|Zwiadowcy]] i [[job:druid|Druida]].',
             'Rozkaz jazdy woła załogę na pokład przed odjazdem.',
           ],
         },
@@ -225,18 +235,18 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Stan', 'Załoga na pokładzie', 'Przewożony pojazd', 'Ładunek'],
+            head: ['Pojazd', 'Załoga na pokładzie', 'Przewożony pojazd', 'Ładunek'],
             rows: [
               [
                 'Wóz, [[good:catapult|Katapulta]]',
-                'Wysiada przy drzwiach',
+                'Wysiada obok',
                 '-',
                 'Rozsypany do {{vehicle.spill}} hexów wokół',
               ],
-              ['Statek cumuje', 'Wysiada na brzeg', 'Staje przy drzwiach', 'Przepada'],
+              ['Statek cumuje', 'Wysiada na brzeg', 'Staje na brzegu', 'Przepada'],
               ['Statek na morzu', 'Tonie', 'Tonie razem ze swoją załogą', 'Przepada'],
             ],
-            foot: 'Załogi na pokładzie nie da się trafić, dopóki kadłub stoi. Kto stoi poza pokładem, traci tylko przydział.',
+            foot: 'Załogi w pojeździe nie da się trafić, dopóki pojazd jest cały. Kto stoi obok, po prostu przestaje należeć do załogi.',
           },
         },
       ],
@@ -258,7 +268,7 @@ export const WORLD: ArticleGroup = {
               ['[[job:scout|Zwiadowca]] zabiera ich Woły i Owce', 'tak', 'nie', 'nie'],
               ['Handel [[job:trader|Kupca]] w ich budynku z ofertami', 'nie', 'nie', 'tak, obie strony'],
               ['Wspólny widok mapy', 'nie', 'nie', 'tak, obie strony'],
-              ['Wspólna wygrana ostatnich na mapie', 'nie', 'nie', 'tak, obie strony'],
+              ['Wspólna wygrana "Ostatni na mapie"', 'nie', 'nie', 'tak, obie strony'],
             ],
             foot: 'Wspólny widok wymaga też ustawienia "Wspólna mapa sojuszników" w ustawieniach rozgrywki.',
           },
@@ -270,12 +280,13 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Zdarzenie', 'Skutek'],
             rows: [
-              ['Start mapy', 'Mapa ustala stosunki, para bez wpisu zaczyna jako neutralna'],
-              ['Cios od obcego', 'Stosunek ofiary do atakującego staje się wrogi'],
-              ['Komputer neutralny, ty wrogi wobec niego', 'Komputer przechodzi na wrogi'],
+              ['Start mapy', 'Stosunki ustala mapa. Gdzie ich nie podała, startujecie jako neutralni'],
+              ['Inny gracz cię uderzy', 'Twój stosunek do niego sam zmienia się na wrogi'],
+              ['Ustawisz wrogi wobec neutralnego komputera', 'Komputer też przechodzi na wrogi'],
+              ['Komputer neutralny na mapie wyspiarskiej', 'Sam przechodzi na wrogi wobec graczy'],
               ['Obniżysz stosunek do przyjaznego komputera', 'Komputer też obniży, do twojego poziomu'],
               ['Komputer wrogi', 'Sam nie wraca do pokoju'],
-              ['Zapłacony trybut, wydarzenie misji', 'Może zmienić ich stosunek'],
+              ['Misja', 'Może zmienić stosunek, także po zapłaconym trybucie'],
               ['"Stosunek ustala scenariusz"', 'Nie zmienisz go w oknie Dyplomacja'],
             ],
           },
@@ -285,8 +296,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Walka między graczami objętymi pokojem jest zablokowana.',
-            'Nie wejdziesz ani nie zbudujesz do {{peace.keepOut}} hexów od budynku partnera, chyba że bliżej ci do własnego.',
+            '"Czas pokoju" ustawiasz przed grą. Gracze nim objęci nie mogą ze sobą walczyć.',
+            'Nie wyślesz ludzi ani nic nie zbudujesz do {{peace.keepOut}} hexów od jego budynku, chyba że to miejsce leży bliżej twojego budynku.',
             'Ostrzeżenia przychodzą {{peace.noticeFirstMinutes}} min i {{peace.noticeLastMinutes}} min przed końcem.',
           ],
         },
@@ -294,13 +305,13 @@ export const WORLD: ArticleGroup = {
           h: 'Pierwszy kontakt',
         },
         {
-          p: 'Pod mgłą plemię trafia do okna Dyplomacja, gdy zobaczysz jego człowieka, budynek, pojazd lub palisadę albo gdy cię uderzy. Kontakt nie wygasa.',
+          p: 'We mgle plemię pojawia się w oknie Dyplomacja, gdy zobaczysz jego człowieka, budynek, pojazd lub palisadę albo gdy cię zaatakuje. Zostaje tam na stałe.',
         },
         {
           h: 'Trybuty',
         },
         {
-          p: 'Trybut otwiera tylko skrypt mapy. "Zapłać" w oknie Dyplomacja zabiera towar od razu, nikt go nie nosi. Kolejność źródeł:',
+          p: 'Trybutu żąda tylko misja. "Zapłać" w oknie Dyplomacja zabiera towar od razu, nikt go nie nosi. Gra bierze go z:',
         },
         {
           steps: [
@@ -312,7 +323,7 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Domy, wieże, [[building:barracks|Koszary]], [[building:school|Szkoła]] i stosy na ziemi nie płacą.',
-            'Żądanie jedzenia przyjmuje każde danie tej samej klasy.',
+            'Gdy misja żąda jedzenia, zapłacisz każdym daniem tego samego rodzaju.',
             '"Minimum w magazynach" nie chroni towaru przed trybutem.',
           ],
         },
@@ -322,7 +333,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'fog',
       name: 'Mgła i widzenie',
-      lead: 'Widzisz tylko to, co jest w zasięgu twoich ludzi i budynków.',
+      lead: 'Najdalej widzą Zwiadowca i Kwatera główna, {{vision.scout}} hexów. Plac budowy nie widzi nic.',
       blocks: [
         {
           h: 'Tryby mapy',
@@ -333,14 +344,18 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Odkryta', 'wszystko widać', 'bez mgły'],
               ['Klasyczna', 'czarna mapa', 'raz odkryty pozostaje widoczny'],
-              ['Klasyczna + Mgła wojny', 'czarna mapa', 'szary teren, bez jednostek'],
-              ['Rozpoznanie', 'szary teren, bez jednostek', 'raz odkryty pozostaje widoczny'],
-              ['Rozpoznanie + Mgła wojny', 'szary teren, bez jednostek', 'szary teren, bez jednostek'],
+              ['Klasyczna + Mgła wojny', 'czarna mapa', 'szary teren, bez ludzi i zwierząt'],
+              ['Rozpoznanie', 'szary teren, bez ludzi i zwierząt', 'raz odkryty pozostaje widoczny'],
+              [
+                'Rozpoznanie + Mgła wojny',
+                'szary teren, bez ludzi i zwierząt',
+                'szary teren, bez ludzi i zwierząt',
+              ],
             ],
           },
         },
         {
-          p: 'Szary teren pokazuje budynki, palisady, pojazdy, skrzynie, surowce, pnie i stosy towarów w stanie z ostatniego zobaczenia. Ludzi i zwierząt nie pokazuje. Ta pamięć jest też na minimapie i w zapisie gry.',
+          p: 'Szary teren pokazuje budynki, palisady, pojazdy, skrzynie, surowce, pnie i stosy towarów w stanie z ostatniego zobaczenia. Ludzi i zwierząt nie pokazuje.',
         },
         {
           h: 'Zasięg widzenia',
@@ -348,7 +363,7 @@ export const WORLD: ArticleGroup = {
         {
           figure: {
             id: 'vision',
-            caption: 'Co widzi kto',
+            caption: 'Zasięg widzenia',
           },
         },
         {
@@ -362,19 +377,13 @@ export const WORLD: ArticleGroup = {
                 '[[good:handcart|Wózek Ręczny]], [[good:oxcart|Zaprzęg]], [[good:catapult|Katapulta]]',
                 '{{vision.cart}}',
               ],
-              ['Dorosły cywil, Kobieta, własne zwierzę', '{{vision.adult}}'],
+              ['Reszta dorosłych, własne zwierzę', '{{vision.adult}}'],
               ['Dziecko', '{{vision.child}}'],
               ['Plac budowy', '0'],
             ],
             num: [1],
-            foot: 'Hexy liczone w poziomie. Palisada, droga i drogowskaz nie widzą.',
+            foot: 'Palisada, droga i drogowskaz nie widzą. Żołnierz i [[job:hunter|Myśliwy]] znajdują cel także we mgle. [[good:catapult|Katapulta]] sama wybiera tylko cel, który widzi.',
           },
-        },
-        {
-          h: 'Walka we mgle',
-        },
-        {
-          p: 'Żołnierz atakuje też we mgle, [[good:catapult|Katapulta]] sama nie. [[job:hunter|Myśliwy]] poluje bez względu na mgłę.',
         },
       ],
       see: ['article:scout', 'article:stances', 'article:catapult', 'article:diplomacy', 'job:scout'],
@@ -382,39 +391,19 @@ export const WORLD: ArticleGroup = {
     {
       id: 'scout',
       name: 'Zwiadowca',
-      lead: 'Zwiadowca nie ma miejsca pracy. Bez rozkazu stoi i czeka.',
+      lead: 'Zwiadowca nie ma miejsca pracy. Bez rozkazu stoi.',
       blocks: [
         {
-          h: 'Co robi',
-        },
-        {
-          table: {
-            head: ['Zadanie', 'Jak', 'Więcej'],
-            rows: [
-              [
-                'Drogowskazy',
-                'Rozkaz "Postaw drogowskaz", bez materiału',
-                '[[article:roads|Drogi i drogowskazy]]',
-              ],
-              ['Badanie lądu', 'Rozkaz "Badaj"', 'Poniżej'],
-              ['Zwierzęta', 'Przejmuje dzikie Woły i Owce, idąc obok nich', '[[article:livestock|Hodowla]]'],
-              [
-                'Widzenie',
-                '{{vision.scout}} hexów, najwięcej wśród ludzi',
-                '[[article:fog|Mgła i widzenie]]',
-              ],
-            ],
-            foot: 'Zasięg drogowskazów go nie dotyczy, więc chodzi po całej mapie.',
-          },
+          p: 'Stawia [[article:roads|drogowskazy]] bez materiału i przejmuje dzikie Woły i Owce, gdy idzie obok nich: [[article:livestock|Hodowla]]. Drogowskazy go nie ograniczają, chodzi po całej mapie.',
         },
         {
           h: '"Badaj"',
         },
         {
           list: [
-            'Rozkaz działa tylko na Zwiadowcę, także na kilku zaznaczonych naraz.',
-            'Idzie pierścieniami od miejsca rozkazu, zawsze do najbliższego nieodkrytego lądu.',
-            'Zostaje na jednym lądzie. Na inny przewiezie go tylko [[article:vehicles|statek]].',
+            'Możesz wysłać kilku naraz.',
+            'Odkrywa ląd pierścieniami wokół miejsca rozkazu.',
+            'Nie opuści swojego lądu. Na inny musi go zawieźć [[article:vehicles|statek]].',
             'Pomija wąskie pasy wzdłuż brzegów i krawędzi mapy, więc drobne skrawki zostają nieodkryte.',
             'Po drodze je i śpi, a potem idzie dalej z miejsca, w którym stoi.',
           ],
@@ -428,13 +417,12 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Brak lądu do odkrycia', 'Powiadomienie "Ląd zbadany", Zwiadowca czeka'],
               [
-                'Ponad {{explore.maxFailedLegs}} nieudanych celów z rzędu',
-                'Reszta uchodzi za niedostępną, "Ląd zbadany"',
+                'Ponad {{explore.maxFailedLegs}} razy z rzędu nie doszedł do celu',
+                'Uznaje resztę za niedostępną, "Ląd zbadany"',
               ],
               ['Tryb mapy "Odkryta"', '"Ląd zbadany" od razu'],
-              ['Nowy rozkaz', 'Badanie przepada'],
-              ['Rozkaz z Shift', 'Czeka do końca badania'],
-              ['Zmiana zawodu', 'Badanie przepada'],
+              ['Nowy rozkaz, zmiana zawodu', 'Badanie przepada'],
+              ['Rozkaz z Shift', 'Wykona go po skończeniu badania'],
             ],
           },
         },
@@ -444,7 +432,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'wildlife',
       name: 'Dzikie zwierzęta i polowanie',
-      lead: 'Agresywne stado rzuca się na ludzi w promieniu {{wild.aggro}} hexów od swojego miejsca, a za {{wild.giveUp}} hexami wraca.',
+      lead: 'Agresywne stado rzuca się na ludzi do {{wild.aggro}} hexów od miejsca, w którym się pasie. Goni najdalej {{wild.giveUp}} hexów, potem wraca.',
       blocks: [
         {
           data: 'animals',
@@ -458,9 +446,9 @@ export const WORLD: ArticleGroup = {
             rows: [
               ['Agresywne', 'Wilk, Lew, Lwica, Niedźwiedź Polarny', 'Atakują same'],
               [
-                'Rozwścieczone po ciosie',
+                'Atakują uderzone',
                 'Niedźwiedź, Słoń',
-                'Złość trwa {{wild.angrySeconds}} s od ostatniego ciosu, zaczęty atak trwa do śmierci celu albo jego schronienia',
+                'Są groźne przez {{wild.angrySeconds}} s od ostatniego uderzenia. Zaczęty atak trwa, aż cel zginie albo się schowa',
               ],
               ['Płochliwe', 'Pozostałe', 'Uderzony przywódca ucieka do {{wild.flight}} hexów, stado za nim'],
             ],
@@ -469,7 +457,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Cios alarmuje zwierzęta tego gatunku do {{wild.kinAlarm}} hexów wokół uderzonego.',
+            'Gdy uderzysz zwierzę, reagują też inne tego gatunku do {{wild.kinAlarm}} hexów.',
             'Budynków i pojazdów zwierzęta nie atakują.',
           ],
         },
@@ -477,7 +465,7 @@ export const WORLD: ArticleGroup = {
           h: 'Przyrost stada',
         },
         {
-          p: 'Dzikie stado większe niż 1 sztuka i mniejsze od kolumny "Stado" zyskuje 1 dorosłą sztukę co {{wild.growthMinutes}} min, ale rośnie tylko około 1 stada na 5.',
+          p: 'Tylko około 1 stado na {{wild.breedingShare}} w ogóle się powiększa. Takie stado zyskuje 1 dorosłą sztukę co {{wild.growthMinutes}} min, jeśli ma co najmniej 2 sztuki i mniej, niż podaje kolumna "Stado". Pojedyncze zwierzę się nie rozmnaża.',
         },
         {
           h: 'Na co poluje Myśliwy',
@@ -485,11 +473,12 @@ export const WORLD: ArticleGroup = {
         {
           list: [
             'Teren łowiecki to {{flag.hunter}} hexów od flagi roboczej albo miejsca pracy. Pościg wychodzi poza teren o {{wild.huntChase}} hexy.',
-            'Wybiera bliskie i słabe zwierzę.',
-            'Poluje na 1 ofiarę naraz, nową bierze dopiero po zebraniu zdobyczy.',
-            'Łuk Myśliwego zabiera {{wild.hunterShot}} na strzał, zasięg {{hunterBow.min}}-{{hunterBow.max}} hexów.',
+            'Wybiera zwierzę z najmniejszą sumą zdrowia i odległości. Zdrowie liczy się w setkach i tysiącach, więc wygrywa najsłabsze, nawet dalekie.',
+            'Poluje na 1 zwierzę naraz, nowe bierze dopiero po zebraniu zdobyczy.',
+            'Strzał Myśliwego odbiera zwierzęciu {{wild.hunterShot}} zdrowia, zasięg {{hunterBow.min}}-{{hunterBow.max}} hexów.',
             'Dorosłej Dzikiej Kozy sam nie weźmie, jej młode są zwierzyną.',
-            'Pomija zwierzęta z właścicielem, rozwścieczone oraz stojące na innym lądzie.',
+            'Pomija zwierzęta, które mają właściciela, oraz te na innym lądzie.',
+            'Kolumna "Myśliwy": "sam" to zwierzyna, po którą pójdzie sam, a "na rozkaz" atakuje tylko na twój rozkaz.',
           ],
         },
         {
@@ -512,7 +501,7 @@ export const WORLD: ArticleGroup = {
     {
       id: 'livestock',
       name: 'Hodowla',
-      lead: 'Hodowca rozmnaża tylko przy dokładnie {{livestock.pair}} dorosłych sztukach gatunku. Trzecia dorosła idzie na ubój.',
+      lead: 'Hodowca rozmnaża tylko przy dokładnie {{livestock.pair}} dorosłych sztukach gatunku. Przy trzeciej najpierw ją ubije.',
       blocks: [
         {
           figure: {
@@ -529,17 +518,12 @@ export const WORLD: ArticleGroup = {
             rows: [
               [
                 '[[job:scout|Zwiadowca]]',
-                'Każdy jego krok przejmuje dzikie Woły i Owce oraz stado gracza, wobec którego masz stosunek wrogi. Pozostałe wrogie stado w pobliżu rozbiega się',
-                '{{livestock.captureRange}}, rozbieganie {{livestock.scatterRange}}',
+                'Z każdym krokiem przejmuje dzikie Woły i Owce oraz zwierzęta wrogiego gracza. Te dalej od niego rozbiegają się',
+                'przejęcie {{livestock.captureRange}}, rozbieganie {{livestock.scatterRange}}',
               ],
               [
                 '[[job:breeder|Hodowca]]',
-                'Zabiera do Fermy najbliższe twoje zwierzę bez Fermy',
-                'ten sam ląd',
-              ],
-              [
-                '[[job:breeder|Hodowca]]',
-                'Poniżej pary bierze sztukę z innej twojej Fermy, która ma więcej niż parę',
+                'Zabiera do Fermy najbliższe twoje zwierzę bez Fermy. Poniżej pary bierze też sztukę z innej twojej Fermy, która ma więcej niż parę',
                 'ten sam ląd',
               ],
             ],
@@ -564,15 +548,14 @@ export const WORLD: ArticleGroup = {
                 '{{livestock.cattleLeather}} [[good:leather|Skóra]], {{livestock.cattleMeat}} [[good:meat|Mięso]]',
               ],
             ],
-            foot: 'Młode i ubój trwają po 8 s. Wybór produkcji Hodowcy decyduje, którym gatunkiem się zajmuje. Na Fermie mieści się po {{livestock.farmShelf}} sztuk Mięsa, Wełny i Skóry.',
+            foot: 'Młode i ubój trwają około {{livestock.cycleSeconds}} s. Gatunek wybierasz w produkcji Hodowcy. Na Fermie mieści się po {{livestock.farmShelf}} sztuk Mięsa, Wełny i Skóry.',
           },
         },
         {
           list: [
             '[[building:work_animal_farm|Ferma bydła]] mieści {{livestock.farmHerd}} sztuk łącznie, oba gatunki i młode w drodze.',
-            'Młode dorasta {{livestock.growSeconds}} s ({{livestock.growMinutes}} min) i nie liczy się do pary.',
-            'Rodzic musi być do {{livestock.birthRange}} hexów od drzwi Fermy przy narodzinach. Dalej: stracony surowiec i brak młodego.',
-            'Załoga Fermy to {{livestock.breeders}} [[job:breeder|Hodowców]] i {{livestock.carriers}} [[job:carrier|Tragarz]].',
+            'Młode dorasta {{livestock.growMinutes}} min i do tego czasu nie liczy się do pary.',
+            'Gdy rodzic przy narodzinach jest dalej niż {{livestock.birthRange}} hexów od Fermy, surowce przepadają i młodego nie ma.',
           ],
         },
         {
@@ -595,14 +578,14 @@ export const WORLD: ArticleGroup = {
     {
       id: 'religion',
       name: 'Religia i świątynia',
-      lead: 'Pasek Religii spada wyłącznie przy produkcji broni i zbroi. Przy 0% rzemieślnik nie zacznie serii, która kosztuje Religię.',
+      lead: 'Pasek Religii spada wyłącznie przy produkcji broni i zbroi. Przy 0% rzemieślnik nie zacznie cyklu produkcji, który kosztuje Religię.',
       blocks: [
         {
-          h: 'Koszt serii',
+          h: 'Koszt cyklu produkcji',
         },
         {
           table: {
-            head: ['Zawód', '15%', '30%'],
+            head: ['Zawód', '{{piety.lowPct}}%', '{{piety.highPct}}%'],
             rows: [
               [
                 '[[job:armorer|Płatnerz]]',
@@ -625,9 +608,8 @@ export const WORLD: ArticleGroup = {
         },
         {
           list: [
-            'Pod {{need.drivePct}}% Płatnerz i Kowal idą się modlić, a bez miejsca modlitwy przy {{need.criticalPct}}% pada komunikat "Chce się modlić".',
-            'Krawiec sam nie idzie, trzeba mu kazać "Módl się".',
-            'Przy 0% rzemieślnik dokończy opłaconą serię.',
+            'Pod {{need.drivePct}}% [[job:joiner|Cieśla]], Płatnerz, Kowal i Krawiec sami idą się modlić. Bez miejsca modlitwy przy {{need.criticalPct}}% pada komunikat "Chce się modlić".',
+            'Zaczęty cykl dokończą nawet przy 0%.',
           ],
         },
         {
@@ -637,18 +619,20 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Miejsce', 'Warunek'],
             rows: [
-              ['Dom', 'Płonie w nim święty ogień, zawsze pierwszy wybór'],
-              ['[[building:work_temple|Świątynia]]', 'Gotowa, twoja'],
-              ['[[building:headquarters|Kwatera główna]]', 'Gotowa, twoja'],
+              ['Dom', 'Gdy płonie w nim święty ogień. Osadnik idzie tam najpierw'],
+              [
+                '[[building:work_temple|Świątynia]], [[building:headquarters|Kwatera główna]]',
+                'Tylko ukończone i twoje',
+              ],
             ],
-            foot: 'Modlitwa trwa {{pray.seconds}} s i daje +{{pray.pct}}% Religii. Dom bez ognia i obcy budynek nie działają.',
+            foot: 'Modlitwa trwa {{pray.seconds}} s i daje +{{pray.pct}}% Religii.',
           },
         },
         {
           h: 'Święty ogień',
         },
         {
-          p: 'Działa od Domu 3. 1 [[good:holy_oil|Oliwa]] pali się {{oil.burnMinutes}} min, pełny ogień {{oil.fullBurnMinutes}} min.',
+          p: 'Rozpalisz go od Domu 3. 1 [[good:holy_oil|Oliwa]] pali się {{oil.burnMinutes}} min, pełny zapas w domu {{oil.fullBurnMinutes}} min. Pali się też wtedy, gdy nikt się nie modli.',
         },
         {
           h: 'Aura Świątyni',
@@ -676,17 +660,7 @@ export const WORLD: ArticleGroup = {
       lead: 'Papiery ze skrzyń stawiają budynek od razu, bez budowy, materiałów i wymaganych odkryć.',
       blocks: [
         {
-          h: 'Kto otwiera',
-        },
-        {
-          table: {
-            head: ['Skrzynia', 'Kto'],
-            rows: [
-              ['Skrzynia', 'każdy dorosły'],
-              ['Magiczna skrzynia', '[[job:druid|Druid]], bohater'],
-            ],
-            foot: 'Rozkaz "Otwórz skrzynię". Osadnika obowiązuje jego zasięg chodu. Towary spadają obok skrzyni.',
-          },
+          p: 'Skrzynię otworzy każdy dorosły, Magiczną skrzynię tylko [[job:druid|Druid]] i bohater. Rozkaz to "Otwórz skrzynię". Osadnik musi do niej dojść w swoim zasięgu chodu.',
         },
         {
           h: 'Zawartość',
@@ -705,18 +679,18 @@ export const WORLD: ArticleGroup = {
               ['[[good:bread|Żywność]]', '{{chest.foodWooden}}', '{{chest.foodMagical}}'],
               ['[[good:catapult|Katapulta]]', '1', '1'],
               [
-                '{{chest.settlers}} Cywili, {{chest.settlers}} Kobiety, {{chest.settlers}} wojowników z długim mieczem albo {{chest.settlers}} łuczników z długim łukiem',
+                'Cywile, Kobiety, wojownicy z długim mieczem albo łucznicy z długim łukiem',
                 '{{chest.settlers}}',
                 '{{chest.settlers}}',
               ],
               [
-                '{{chest.wolves}} Wilków albo {{chest.lions}} Lwy, stado dzikie',
+                'Wilki albo Lwy. Wychodzą dzikie i atakują od razu',
                 '{{chest.wolves}} albo {{chest.lions}}',
                 '{{chest.wolves}} albo {{chest.lions}}',
               ],
             ],
             num: [1, 2],
-            foot: 'Mapa wybiera zawartość każdej skrzyni.',
+            foot: 'Zawartość każdej skrzyni ustala mapa, nie los.',
           },
         },
         {
@@ -726,11 +700,11 @@ export const WORLD: ArticleGroup = {
           table: {
             head: ['Papier', 'Działanie'],
             rows: [
-              ['Umieść wybrany przez ciebie budynek', 'Dowolny budynek z katalogu, stanie od razu'],
+              ['Umieść wybrany przez ciebie budynek', 'Dowolny budynek z listy budowy, stanie od razu'],
               ["Umieść 'nazwa'", 'Wskazany budynek, stanie od razu'],
-              ["Umieść 'nazwa' i zapełnij jego skład", 'Wskazany budynek ze składem pełnym po brzegi'],
+              ["Umieść 'nazwa' i zapełnij jego skład", 'Wskazany budynek z pełnym zapasem'],
             ],
-            foot: 'Papier znika po użyciu, odmowa miejsca go nie zużywa. Listę znajdziesz w oknie budowy pod "Papiery".',
+            foot: 'Papier znika po użyciu. Gdy miejsce nie pasuje, zostaje. Twoje papiery są w oknie budowy pod "Papiery".',
           },
         },
         {
@@ -741,7 +715,7 @@ export const WORLD: ArticleGroup = {
         },
         {
           table: {
-            head: ['Budynek ze składem', 'Osadnik', 'Odkrywa na stałe'],
+            head: ['Budynek z zapasem', 'Osadnik', 'Odkrywa na stałe'],
             rows: [
               [
                 '[[building:work_smithy_01|Kuźnia 2]]',
@@ -765,7 +739,7 @@ export const WORLD: ArticleGroup = {
                 '[[good:holy_oil|Oliwa]], małe mikstury',
               ],
             ],
-            foot: 'Taka skrzynia daje papier, osadnika w tym zawodzie i dostęp do zawodu.',
+            foot: 'Taka skrzynia daje też osadnika w tym zawodzie i dostęp do zawodu.',
           },
         },
       ],

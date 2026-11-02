@@ -9,7 +9,7 @@ export const SETTLERS: ArticleGroup = {
       lead: '需求条降到{{need.drivePct}}%时，居民会丢下工作去补足。',
       blocks: [
         {
-          p: '大厅选项“居民需求：关闭”会冻结所有需求条，也不会再有人挨饿。此时本文不适用。',
+          p: '大厅选项“居民需求：关闭”会冻结所有需求条，也不会再有人挨饿。',
         },
         {
           h: '需求条',
@@ -25,11 +25,11 @@ export const SETTLERS: ArticleGroup = {
                 '[[article:food|进餐]]',
                 '[[article:health|{{need.starveMinutes}}分钟后死亡]]',
               ],
-              ['耐力', '{{need.drainMinutes}}分钟掉100%', '是', '睡觉', '生命值不变'],
+              ['耐力', '{{need.drainMinutes}}分钟掉100%', '是', '睡觉', '只是走得慢'],
               ['社交', '{{need.drainMinutes}}分钟掉100%', '否', '聊天', '无惩罚'],
-              ['信仰', '否', '仅武器和护甲', '[[article:religion|祈祷]]', '不开工消耗信仰的批次'],
+              ['信仰', '否', '仅武器和护甲', '[[article:religion|祈祷]]', '不开工做武器和护甲'],
             ],
-            foot: '开局时每条需求随机为{{need.startMinPct}}-100%。没有[[good:shoes|鞋子]]时，每走一步按地面不同扣{{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}%体力，负重时翻倍。',
+            foot: '地图开始时每条需求随机为{{need.startMinPct}}-100%。没有[[good:shoes|鞋子]]时，每走一步按地面不同扣{{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}%体力，负重时翻倍。',
           },
         },
         {
@@ -48,9 +48,9 @@ export const SETTLERS: ArticleGroup = {
               ['{{need.criticalPct}}%', '发出体力、耐力或信仰通知。'],
               ['{{need.drivePct}}%', '做完手头动作后丢下工作。耐力到此值时，每步慢{{step.tiredExtra}}秒。'],
               ['{{need.satedPct}}%', '居民在家先补耐力，再补体力，补到此值后出门。'],
-              ['{{need.overfillPct}}%', '上限。在家进餐和用家具睡觉可以存下超过100%的部分。'],
+              ['{{need.overfillPct}}%', '需求条上限。在家进餐和用家具睡觉可以存下超过100%的部分。'],
             ],
-            foot: '[[job:armorer|武器匠]]和[[job:smith|铁匠]]会自己去祈祷。[[job:sewer|裁缝]]消耗信仰，但只有下令才祈祷。',
+            foot: '[[job:armorer|武器匠]]、[[job:smith|铁匠]]和[[job:sewer|裁缝]]会自己去祈祷。',
           },
         },
         {
@@ -82,7 +82,7 @@ export const SETTLERS: ArticleGroup = {
             head: ['对象', '睡眠时长', '在外', '在家', '在家有家具'],
             rows: [
               [
-                '有住所的男性',
+                '男性',
                 '{{sleep.manSeconds}}秒',
                 '+{{sleep.manAwayPct}}%',
                 '+{{sleep.manHomePct}}%',
@@ -102,7 +102,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: '谁没有需求条',
+          h: '例外',
         },
         {
           table: {
@@ -112,7 +112,7 @@ export const SETTLERS: ArticleGroup = {
               ['[[article:heroes|英雄]]', '没有。'],
               ['怪物、动物', '没有。'],
               ['士兵', '没有社交。'],
-              ['手推车乘客', '需求条和生命值冻结。'],
+              ['车上乘客', '需求条和生命值冻结。'],
               ['船上乘客', '吃货舱里的食物，按在外睡觉，可以聊天。信仰等到上岸。'],
             ],
           },
@@ -123,26 +123,9 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             '需求条多高都能下令。命令会打断行军、攻击和战斗。',
-            '满足不了需求时命令会等待。后面还有排队的命令时，这条直接作废。',
+            '没有吃的或没有祈祷场所时，命令会等待。后面还有排队的命令时，这条直接作废。',
             '英雄不接受这些命令。“祈祷”只对会祈祷的职业有效。',
           ],
-        },
-        {
-          h: '“进食与睡眠”开关',
-        },
-        {
-          table: {
-            head: ['士兵', '“允许”', '“禁止”'],
-            rows: [
-              ['自己去吃饭、睡觉、祈祷', '是', '否'],
-              ['自己吃随身食物或箭塔存粮', '是', '否'],
-              ['饥饿打断长命令', '是', '否'],
-            ],
-            foot: '饮品、护符以及进食、睡觉、祈祷命令在两种状态下都有效。命令菜单里这两种状态叫“允许休整”和“禁止休整”。只有士兵有这个开关，默认“允许”，换职业后恢复“允许”。',
-          },
-        },
-        {
-          p: '“禁止”又没有饮品，士兵会饿死。下达进食命令或改回“允许”可救。',
         },
         {
           h: '饥饿与长命令',
@@ -152,26 +135,12 @@ export const SETTLERS: ArticleGroup = {
             '体力到{{need.criticalPct}}%时，居民离开行军、侦察或命令队列。状态显示“饿了，去吃东西”。',
             '吃到{{need.satedPct}}%，然后从头执行命令。',
             '找不到吃的就回去执行命令，{{meal.breakRetrySeconds}}秒后再找。',
-            '给饥饿的人下新命令时新命令优先：{{meal.breakRetrySeconds}}秒内饥饿不会打断他。',
-            '耐力要等所有命令执行完。',
+            '新命令优先：{{meal.breakRetrySeconds}}秒内饥饿不会打断它。',
+            '疲劳不会打断命令。',
           ],
         },
         {
-          h: '戒备中',
-        },
-        {
-          p: '这是[[article:stances|进攻或防御姿态]]的士兵靠近战斗时的状态，不是玩家开启的[[article:defence|聚落防御模式]]。',
-        },
-        {
-          table: {
-            head: ['附近情况', '格数', '结果'],
-            rows: [
-              ['战斗', '{{alert.restClearance}}以内', '不睡觉、不祈祷、不聊天。'],
-              ['可见的进攻或防御姿态敌人', '{{alert.standTo}}以内', '同上。'],
-              ['露天睡觉者附近有战斗', '{{alert.standTo}}以内', '起身。'],
-            ],
-            foot: '体力到{{need.criticalPct}}%才去吃饭。野兽只有正在交战时才算。无视姿态下此规则无效，需求命令优先。',
-          },
+          p: '“进食与睡眠”开关和“戒备中”状态只和士兵有关：[[article:stances|姿态]]。',
         },
         {
           h: '信仰与社交',
@@ -186,7 +155,7 @@ export const SETTLERS: ArticleGroup = {
                 '信仰+{{pray.pct}}%。重复到100%，除非体力或耐力降到{{need.drivePct}}%。',
               ],
               ['聊天', '{{talk.shortSeconds}}-{{talk.longSeconds}}秒', '社交最多+{{talk.pct}}%。'],
-              ['已婚者在家补需求条', '-', '社交100%。'],
+              ['已婚者待在家里', '-', '社交100%。'],
             ],
             num: [1],
           },
@@ -227,23 +196,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: '食物来源',
-        },
-        {
-          table: {
-            head: ['物资', '来源', '算作'],
-            rows: [
-              [
-                '[[good:bread|面包]]',
-                '[[building:work_bakery_00|一级烘焙坊]]、[[building:work_bakery_01|二级烘焙坊]]',
-                '食物',
-              ],
-              ['[[good:candy|饼干]]', '[[building:work_bakery_01|二级烘焙坊]]', '蛋糕'],
-              ['[[good:meat|肉]]', '[[building:work_animal_farm|畜牧场]]、[[job:hunter|猎人]]', '食物'],
-              ['[[good:fish|鱼]]', '[[job:fisher|渔夫]]', '食物'],
-            ],
-            foot: '居民也吃工坊货架上的食物。在仓库先拿食物，没有食物才拿饼干。成熟的灌木就地吃，吃完灌木变空。',
-          },
+          p: '居民也吃工坊库存里的食物。在仓库先拿食物，没有食物才拿饼干。成熟的灌木就地吃，吃完灌木变空。',
         },
         {
           h: '在哪里吃',
@@ -253,7 +206,7 @@ export const SETTLERS: ArticleGroup = {
             '自家存粮，住所门口最多{{reach.walk}}格远。',
             '{{reach.goods}}格内最近的仓库、工坊或地面堆垛，或{{reach.bushAtHand}}格内的成熟灌木。',
             '{{reach.goods}}格内最近的成熟灌木。',
-            '步行范围内任何地方最近的食物，包括较远的自家。',
+            '居民走得到的任何地方最近的食物，包括较远的自家。',
           ],
         },
         {
@@ -265,12 +218,12 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             '有已建成住所的[[job:woman|妇女]]寻找住所以外最近的食物。',
-            '拿1份回家，存粮按食物或蛋糕入账。',
+            '拿1份回家。',
             '家里有[[good:crockery|陶器]]时，运回1份算2份存粮。',
           ],
         },
         {
-          p: '没别的事做的妇女会一直运，直到存粮满。存粮上限见[[article:family|家庭与住所]]。',
+          p: '妇女一直运，直到存粮满。存粮上限见[[article:family|家庭与住所]]。',
         },
       ],
       see: ['article:needs', 'article:family', 'article:gathering', 'good:bread', 'good:candy'],
@@ -285,7 +238,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['来源', '变化', '条件', '{{health.human}}点所需时间'],
+            head: ['来源', '变化', '条件', '全部生命值所需时间'],
             rows: [
               [
                 '自动恢复',
@@ -308,7 +261,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1, 3],
-            foot: '自动恢复和光环叠加，共{{aura.totalPerSecond}}/秒。自动恢复到{{health.human}}为止，光环可超上限治疗到{{aura.ceiling}}。儿童和英雄同样有{{health.human}}点并会自动恢复。',
+            foot: '自动恢复和光环加起来是每秒{{aura.totalPerSecond}}。自动恢复到{{health.human}}为止，光环可超上限治疗到{{aura.ceiling}}。儿童和英雄同样有{{health.human}}点并会自动恢复。',
           },
         },
         {
@@ -332,7 +285,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'life',
       name: '生与死',
-      lead: '儿童出生{{age.adultMinutes}}分钟后成年。成年人只要有生命值就一直活着。',
+      lead: '儿童出生{{age.adultMinutes}}分钟后成年。没有人会老死。',
       blocks: [
         {
           h: '人生阶段',
@@ -345,7 +298,7 @@ export const SETTLERS: ArticleGroup = {
                 '婴儿',
                 '0-{{age.babyLastYear}}岁',
                 '0-{{age.childWholeMin}}分{{age.childRestSec}}秒',
-                '步速慢一倍。',
+                '每步时间翻倍。',
               ],
               [
                 '儿童',
@@ -360,7 +313,7 @@ export const SETTLERS: ArticleGroup = {
                 '男孩成为[[job:civilist|平民]]，女孩成为[[job:woman|妇女]]。',
               ],
             ],
-            foot: '一岁等于{{age.yearSeconds}}秒。没有职业的平民等待分配。',
+            foot: '一岁等于{{age.yearSeconds}}秒。',
           },
         },
         {
@@ -376,12 +329,11 @@ export const SETTLERS: ArticleGroup = {
               ['护甲', '一定掉落。'],
               ['饮品、护符', '掉落护符和未开封的瓶子。'],
               ['搬运工推车', '连同货物留在原地。'],
-              ['遗体', '人留下骸骨。动物留下[[article:wildlife|肉]]。'],
             ],
           },
         },
         {
-          p: '已发现的[[article:trades|职业]]留在聚落。对配偶的影响见[[article:family|家庭与住所]]。',
+          p: '对配偶的影响见[[article:family|家庭与住所]]。',
         },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
@@ -389,7 +341,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'family',
       name: '家庭与住所',
-      lead: '生一个孩子花{{family.childFood}}份存粮，一对夫妇一次只养一个孩子。',
+      lead: '生一个孩子花{{family.childFood}}份存粮，一对夫妇一次只有一个孩子。',
       blocks: [
         {
           h: '分配住所',
@@ -406,7 +358,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '只有“结婚”命令才能结婚，居民不会自己成婚。',
+            '结婚要下“结婚”命令。',
             '命令把居民和最近的异性成人配对，须同一民族、同一玩家。',
             '对象必须在该居民的[[article:roads|路标]]范围内。找不到对象时命令作废，显示“无人可婚”。',
             '士兵、英雄、侦察兵，以及被派往[[building:barracks|兵营]]或[[building:school|学校]]的居民不能结婚。',
@@ -426,16 +378,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          table: {
-            head: ['生育受阻原因', '解决办法'],
-            rows: [
-              ['妻子没有住所', '分配住所。'],
-              ['住所还在建造', '建完。'],
-              ['丈夫是士兵、[[job:trader|商人]]或[[job:scout|侦察兵]]', '给他换职业。'],
-              ['夫妻分居', '分配同一座住所。'],
-              ['范围内没有食物', '把食物运到附近仓库。'],
-            ],
-          },
+          p: '以下情况夫妇生不了孩子：妻子没有住所，住所还在建造，丈夫是士兵、[[job:trader|商人]]或[[job:scout|侦察兵]]，夫妻分居，或范围内没有食物。',
         },
         {
           p: '上一个孩子成年后才能生下一个，也就是{{age.adultMinutes}}分钟后。孩子不占住所的家庭名额。',
@@ -453,7 +396,7 @@ export const SETTLERS: ArticleGroup = {
           data: 'homes',
         },
         {
-          p: '存粮的食物和蛋糕分开计算：一级民居可存{{home.larder}} + {{home.candyLarder}}份。一户是一名成人、其配偶和未成年的孩子。住所可以属于玩家的任何民族。',
+          p: '存粮的食物和饼干分开计算：一级民居可存{{home.larder}} + {{home.candyLarder}}份。居民可以住在同一玩家其他民族的住所里。',
         },
         {
           h: '家中用品',
@@ -501,8 +444,6 @@ export const SETTLERS: ArticleGroup = {
               ['鳏夫', '孩子成年或夭折后失去住所。'],
               ['寡妇', '留在家中。'],
               ['成年子女', '成年时失去住所。'],
-              ['全体住户', '住所被拆毁时失去住所。'],
-              ['全家', '“搬出住所”命令后失去住所。'],
               ['商人、侦察兵、士兵', '住所留给家人，但他本人不在家吃住。'],
             ],
           },
@@ -553,7 +494,7 @@ export const SETTLERS: ArticleGroup = {
               ['学校毕业生自动分配到工坊', '关', '[[building:school|学校]]毕业生'],
               ['采集者自动移动旗帜', '开', '插了旗的[[job:collector|采集者]]'],
             ],
-            foot: '饮品和护符可用“平民”和“士兵”按钮选择发放对象，初始都开。关掉不会收回任何东西，已有的继续留着。',
+            foot: '饮品和护符可用“平民”和“士兵”按钮选择发放对象，初始都开。关掉不会收回已发的东西。',
           },
         },
         {
@@ -573,7 +514,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             '只征没有工作场所、没有任务的成年平民，未婚者优先。不会抽走在职的人。',
-            '兵种计数器优先武装范围内有武器可拿的徒手士兵。',
+            '剑兵、矛兵或弓箭手计数器优先武装范围内有武器可拿的徒手士兵。',
           ],
         },
         {
@@ -582,7 +523,7 @@ export const SETTLERS: ArticleGroup = {
             rows: [
               ['没有建成的[[building:barracks|兵营]]', '建完兵营。'],
               ['没有空闲平民', '手动派人去兵营。'],
-              ['徒手士兵在等该兵种的武器', '提供武器。在此之前他占着新兵的名额。'],
+              ['徒手士兵在等这类武器', '提供武器。在此之前他占着新兵的名额。'],
             ],
             foot: '每秒最多{{assistant.draftsPerSecond}}人。在路上的新兵计入计数器，损失的新兵回到队列。',
           },
@@ -592,8 +533,8 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            '跳过妇女、儿童、[[article:heroes|英雄]]和箭塔驻军。',
-            '去一趟仓库，顺便领齐其余物品。',
+            '助手不给妇女、儿童、[[article:heroes|英雄]]和箭塔驻军发东西。',
+            '居民去一趟仓库，把东西一次领齐。',
             '仓库里每1份物资只派一名居民去领。不动用低于[[article:hauling|最低库存]]的物资。',
             '只补空位，不换更好的。铁质工具先于木质工具，大瓶先于小瓶。',
             '有小瓶的人不再去领大瓶。饮品和护符共{{amulet.slots}}个栏位：[[article:draughts|饮品与护符]]。',
@@ -640,19 +581,19 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:mead|蜂蜜酒]]',
                 '{{draught.meadUses}}',
                 '体力+{{draught.meadPct}}%，耐力+{{draught.meadPct}}%',
-                '体力或耐力不超过{{need.drivePct}}%',
+                '体力或耐力降到{{need.drivePct}}%',
               ],
               [
                 '[[good:potion_food_small|小型]] / [[good:potion_food_big|大型营养药水]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '体力+{{draught.potionPct}}%',
-                '体力不超过{{need.drivePct}}%',
+                '体力降到{{need.drivePct}}%',
               ],
               [
                 '[[good:potion_stamina_small|小型]] / [[good:potion_stamina_big|大型耐力药水]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '耐力+{{draught.potionPct}}%',
-                '耐力不超过{{need.drivePct}}%',
+                '耐力降到{{need.drivePct}}%',
               ],
               [
                 '[[good:potion_heal_small|小型]] / [[good:potion_heal_big|大型治疗药水]]',
@@ -662,7 +603,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: '进食或睡觉命令期间暂停饮用。',
+            foot: '进食、睡觉、聊天或祈祷命令期间暂停饮用。',
           },
         },
         {
@@ -675,12 +616,12 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:amulet_food|营养护符]]',
                 '体力+{{amulet.needPct}}%',
-                '每次体力不超过{{need.drivePct}}%时',
+                '每次体力降到{{need.drivePct}}%时',
               ],
               [
                 '[[good:amulet_stamina|耐力护符]]',
                 '耐力+{{amulet.needPct}}%',
-                '每次耐力不超过{{need.drivePct}}%时',
+                '每次耐力降到{{need.drivePct}}%时',
               ],
               ['[[good:amulet_strength|力量护符]]', '造成伤害×{{amulet.strengthFactor}}', '每次攻击'],
               [
@@ -699,9 +640,8 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             '相同护符第二枚无效。',
-            '不同护符同时生效：力量加精准，暴击时×{{amulet.comboFactor}}。',
-            '补需求的顺序：开过封的瓶子、护符、剩余口数较少的瓶子。',
-            '因体力喝下的蜂蜜酒也会补耐力。',
+            '不同护符同时生效：力量加精准，触发时×{{amulet.comboFactor}}。',
+            '饿了或累了时依次用：开过封的瓶子、护符、口数较少的满瓶。',
             '有营养护符的居民不找吃的，有耐力护符的不去睡觉。',
           ],
         },

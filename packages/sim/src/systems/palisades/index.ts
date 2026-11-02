@@ -387,6 +387,10 @@ function hasStoredGoods(world: World, e: Entity): boolean {
   return false;
 }
 
+/** The health, in percent of its maximum, each wall of a gate's run must hold. Original behavior. */
+export const GATE_MIN_HEALTH_PCT = 75;
+const PERCENT = 100;
+
 /** The wall run a gate converts, in steps along its axis from the centre. */
 export const GATE_SPAN_OFFSETS = [-2, -1, 0, 1, 2] as const;
 
@@ -544,7 +548,7 @@ function probeGateRow(
       wall.tribe !== centerWall.tribe ||
       ownerOf(world, e) !== owner ||
       health === undefined ||
-      health.hitpoints * 4 < health.max * 3 ||
+      health.hitpoints * PERCENT < health.max * GATE_MIN_HEALTH_PCT ||
       Math.abs(terrain.elevationAt(node.hx, node.hy) - centerElevation) > 8
     ) {
       return { ...empty, center, span };

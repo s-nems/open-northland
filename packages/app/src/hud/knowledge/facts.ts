@@ -3,6 +3,7 @@ import {
   CARRIER_WALK_RANGE_NODES,
   components,
   DEFAULT_NODE_ROUGHNESS,
+  hexDistanceBetween,
   ONE,
   PRODUCTION_COUNT_MAX,
   ROAD_RESISTANCE,
@@ -24,25 +25,40 @@ import { WOOD_YIELD_PER_NODE } from '../../catalog/felling.js';
 import {
   JOB_ARCHER,
   JOB_ARCHER_LONG,
+  JOB_ARMORER,
   JOB_BREEDER,
   JOB_BUILDER,
   JOB_CARRIER,
   JOB_CIVILIST,
+  JOB_COLLECTOR,
   JOB_FARMER,
+  JOB_FISHER,
   JOB_HERBALIST,
   JOB_SOLDIER_UNARMED,
   JOB_WOMAN,
 } from '../../catalog/jobs.js';
 import { BYZANTINE, BYZANTINE_SPEAR_VARIANTS } from '../../catalog/unit-variants.js';
+import {
+  CLOSED_GATE_LOGIC_ID,
+  POST_STRENGTH,
+  playerWallRow,
+  scaledWallRules,
+  WALL_LOGIC_ID,
+} from '../../content/map/palisade-rows.js';
 import { bcp47Tag } from '../../i18n/index.js';
 import { EGYPTIAN, FRANK, SARACEN } from '../../scenes/civilizations.js';
+import { STAR_FULL, STAR_TIER_STEP } from '../../view/projections/experience-stars.js';
 import {
   FIGHT_AREA_RADIUS_NODES,
   FIGHT_QUIET_TICKS,
   SETTLEMENT_REACH_NODES,
 } from '../tool-panel/messages/fight-areas.js';
-import { CONSTRUCTION_SHORTAGE_GRACE_TICKS } from '../tool-panel/messages/site-shortages.js';
+import {
+  IDLE_SWEEPS_BEFORE_MESSAGE,
+  SNAPSHOT_SWEEP_INTERVAL_TICKS,
+} from '../tool-panel/messages/from-snapshot.js';
 import { STORAGE_FULL_GRACE_TICKS } from '../tool-panel/messages/storage-full.js';
+import { PRODUCTION_STALL_GRACE_TICKS } from '../tool-panel/messages/workshop-stalls.js';
 import { buildingHitpoints, type KnowledgeBase } from './base.js';
 import {
   ANIMAL_TARGET,
@@ -68,8 +84,13 @@ const QUOTED_EXPERIENCE_PCT = 51;
 /** The hits, the experience percents and the hours the articles' sample rows stand on. */
 const FIGHT_SAMPLE_HITS = [10, 25, 50, 75] as const;
 const AIM_SAMPLE_HITS = 50;
+const STONE_SAMPLE_HITS = [0, 25, 50] as const;
 const EXPERIENCE_SAMPLES_PCT = [0, 20, 40, 60, 80, 100] as const;
 const CAST_SAMPLES_PCT = [0, 20, 40, 60, 80] as const;
+/** The experience percents a builder's swing gains a point at, the rows of the construction table. */
+const BUILD_SAMPLES_PCT = [0, 10, 22, 50, 79, 90] as const;
+/** A cart's unit is lifted twice: into the cart and out of it. */
+const LIFTS_PER_UNIT = 2;
 const WAVE_SAMPLE_HOURS = [0, 1, 2, 3] as const;
 const TICKS_PER_HOUR = TICKS_PER_MINUTE * SECONDS_PER_MINUTE;
 /** The value the fight-experience table shows a blow of. */
@@ -166,6 +187,22 @@ function clipNeedPct(base: KnowledgeBase, atomicId: number, jobType: number, cha
     : needPct(systems.atomicEventChannelDelta(base.content, name, channel));
 }
 
+const produceAtomic = (base: KnowledgeBase, good: string): FactValue =>
+  base.content.goods.find((row) => row.id === good)?.atomics.produce;
+
+function produceSeconds(base: KnowledgeBase, good: string, jobType: number): FactValue {
+  const atomic = produceAtomic(base, good);
+  return atomic === undefined ? undefined : clipSeconds(base, atomic, jobType);
+}
+
+/** The Religion one run of `good` costs its maker, in percent. */
+function pietyCost(base: KnowledgeBase, good: string, jobType: number): FactValue {
+  const atomic = produceAtomic(base, good);
+  if (atomic === undefined) return undefined;
+  const delta = clipNeedPct(base, atomic, jobType, systems.ATOMIC_EVENT_CHANNEL.PIETY);
+  return delta === undefined ? undefined : -delta;
+}
+
 const sleepPct = (base: KnowledgeBase, jobType: number): FactValue =>
   clipNeedPct(base, systems.SLEEP_ATOMIC_ID, jobType, systems.ATOMIC_EVENT_CHANNEL.REST);
 
@@ -174,6 +211,14 @@ const scaled =
   (base: KnowledgeBase): FactValue => {
     const value = read(base);
     return value === undefined ? undefined : value * factor;
+  };
+
+/** `read` times `pct` percent, rounded down as a blow's percent is. */
+const scaledDown =
+  (read: FactReader, pct: number) =>
+  (base: KnowledgeBase): FactValue => {
+    const value = read(base);
+    return value === undefined ? undefined : Math.floor((value * pct) / PERCENT);
   };
 
 const manSleepPct: FactReader = (base) => sleepPct(base, JOB_CIVILIST);
@@ -354,6 +399,70 @@ function batchOutput(base: KnowledgeBase, pct: number, tool: string | null): num
   const tenths = systems.experienceBonusTenths(pct) + systems.toolBonusTenths(toolPct);
   return 1 + tenths / systems.OUTPUT_TENTHS_PER_UNIT;
 }
+
+/** How long `repeats` plays of `good`'s harvest clip take `jobType`. */
+function harvestSeconds(base: KnowledgeBase, good: string, jobType: number, repeats: FactValue): FactValue {
+  const atomic = base.content.goods.find((row) => row.id === good)?.atomics.harvest;
+  const clip = atomic === undefined ? undefined : clipSeconds(base, atomic, jobType);
+  return clip === undefined || repeats === undefined ? undefined : clip * repeats;
+}
+
+/** One fish at a novice's casts: each cast but the last ends on the failed clip, the last on the catch. */
+function fishSeconds(base: KnowledgeBase): FactValue {
+  const casts = trackOf(base, 'fisher_general')?.baseRepeatCounter;
+  const cast = clipSeconds(base, systems.FISH_CAST_ATOMIC, JOB_FISHER);
+  const failed = clipSeconds(base, systems.FISH_FAILED_ATOMIC, JOB_FISHER);
+  const caught = clipSeconds(base, systems.FISH_CAUGHT_ATOMIC, JOB_FISHER);
+  if (casts === undefined || cast === undefined || failed === undefined || caught === undefined)
+    return undefined;
+  return casts * cast + (casts - 1) * failed + caught;
+}
+
+/** How many trees a novice fells before an iron tool wears out. */
+function ironToolTrees(base: KnowledgeBase): FactValue {
+  const uses = equipOf(base, 'tool_iron')?.uses;
+  const perTree = strokes(base, 'collector_wood', 0, 'tool_iron');
+  return uses === undefined || perTree === undefined ? undefined : Math.floor(uses / perTree);
+}
+
+/**
+ * The one-way route on which a handcart and an ox cart move the same goods in the same time: both shod
+ * pullers go out full and come back empty, so the handcart's lift lead is spent on the ox cart's pace.
+ */
+function cartParRoute(base: KnowledgeBase, roughness: FactValue): FactValue {
+  const handcart = vehicleOf(base, 'handcart')?.stockSlots;
+  const oxcart = vehicleOf(base, 'oxcart')?.stockSlots;
+  const handcartLift = liftSeconds(base, systems.HANDCART_LIFT_PERCENT);
+  const oxcartLift = liftSeconds(base, systems.DRAWN_CART_LIFT_PERCENT);
+  const empty = stepAt(roughness);
+  const handcartFull = stepAt(roughness, { cartSpeedLossPercent: systems.HANDCART_FULL_SPEED_LOSS_PERCENT });
+  const oxcartFull = stepAt(roughness, { cartSpeedLossPercent: systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT });
+  if (
+    handcart === undefined ||
+    oxcart === undefined ||
+    handcartLift === undefined ||
+    oxcartLift === undefined ||
+    empty === undefined ||
+    handcartFull === undefined ||
+    oxcartFull === undefined
+  ) {
+    return undefined;
+  }
+  const liftLead = LIFTS_PER_UNIT * (oxcartLift - handcartLift);
+  return liftLead / ((handcartFull + empty) / handcart - (oxcartFull + empty) / oxcart);
+}
+
+const BUILD_TABLE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
+  BUILD_SAMPLES_PCT.flatMap((pct) =>
+    TOOLS.map(([name, tool]) => [
+      `build.perUnit.${pct}.${name}`,
+      whole((base) => {
+        const points = buildPoints(base, pct, tool);
+        return points === undefined ? undefined : Math.ceil(systems.STEPS_PER_UNIT / points);
+      }),
+    ]),
+  ),
+);
 
 const TOOL_TABLE_FACTS: Readonly<Record<string, Fact>> = Object.fromEntries(
   EXPERIENCE_SAMPLES_PCT.flatMap((pct) =>
@@ -710,13 +819,8 @@ const WALK_FACTS: Readonly<Record<string, Fact>> = {
 };
 
 const WORK_FACTS: Readonly<Record<string, Fact>> = {
-  'build.pointsPerUnit': whole(systems.STEPS_PER_UNIT),
   'build.homeUnits': whole(homeBillPoints),
-  'build.homePoints': whole((base) => scaled(homeBillPoints, systems.STEPS_PER_UNIT)(base)),
   'build.swingSeconds': twoDecimals(swingSeconds),
-  'build.novicePoints': whole((base) => buildPoints(base, 0, null)),
-  'build.noviceIronPoints': whole((base) => buildPoints(base, 0, 'tool_iron')),
-  'build.masterIronPoints': whole((base) => buildPoints(base, MASTER_PCT, 'tool_iron')),
   'build.noviceSwings': whole((base) => homeSwings(base, 0, null)),
   'build.noviceIronSwings': whole((base) => homeSwings(base, 0, 'tool_iron')),
   'build.masterIronSwings': whole((base) => homeSwings(base, MASTER_PCT, 'tool_iron')),
@@ -731,7 +835,6 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
     const points = buildPoints(base, MASTER_PCT, 'tool_iron');
     return points === undefined ? undefined : points * systems.HITPOINTS_PER_REPAIR_STEP;
   }),
-  'repair.perPoint': whole(systems.HITPOINTS_PER_REPAIR_STEP),
   'repair.crew': whole(systems.REPAIR_CREW_LIMIT),
   'repair.wallCrew': whole(systems.WALL_REPAIR_CREW_LIMIT),
   'repair.calmSeconds': whole(seconds(systems.REPAIR_CALM_TICKS)),
@@ -742,8 +845,21 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'gather.herbStrokes': whole((base) => trackOf(base, 'herb_herb')?.baseRepeatCounter),
   'gather.casts': whole((base) => trackOf(base, 'fisher_general')?.baseRepeatCounter),
   'gather.oreNeed': whole((base) => goodNeed(base, 'iron')),
-  'field.lastSeedStage': whole(FIELD_GROWTH_STAGES - 1),
-  'field.ripeStage': whole(FIELD_GROWTH_STAGES),
+  'gather.treeSeconds': whole((base) =>
+    harvestSeconds(base, 'wood', JOB_COLLECTOR, trackOf(base, 'collector_wood')?.baseRepeatCounter),
+  ),
+  'gather.stoneSeconds': whole((base) =>
+    harvestSeconds(base, 'stone', JOB_COLLECTOR, trackOf(base, 'collector_stone')?.baseRepeatCounter),
+  ),
+  'gather.oreSeconds': whole((base) =>
+    harvestSeconds(base, 'iron', JOB_COLLECTOR, trackOf(base, 'collector_iron')?.baseRepeatCounter),
+  ),
+  'gather.mushroomSeconds': whole((base) => harvestSeconds(base, 'mushroom', JOB_COLLECTOR, 1)),
+  'gather.wheatSeconds': whole((base) => harvestSeconds(base, 'wheat', JOB_FARMER, WHEAT_WORK_REPEATS)),
+  'gather.herbSeconds': whole((base) =>
+    harvestSeconds(base, 'herb', JOB_HERBALIST, trackOf(base, 'herb_herb')?.baseRepeatCounter),
+  ),
+  'gather.fishSeconds': whole(fishSeconds),
   'field.waterings': whole(FIELD_GROWTH_STAGES - 1),
   'field.max': whole(FARM_MAX_FIELDS),
   'field.radius': whole(FARM_FIELD_RADIUS),
@@ -762,6 +878,7 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'fish.regrowSeconds': whole(seconds(systems.FISH_REPRODUCTION_TICKS)),
   'fish.swarmMax': whole(systems.MAX_FISH_PER_SWARM),
   'tool.uses': whole((base) => equipOf(base, 'tool_iron')?.uses),
+  'tool.ironTrees': whole(ironToolTrees),
   'haul.carry': whole(components.CARRY_CAPACITY),
   'haul.groundStack': whole(systems.MAX_GROUND_STACK),
   'haul.store1': whole((base) => stockOf(base, 'stock_00', 'wood')),
@@ -785,6 +902,8 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'trade.handsSeconds': oneDecimal((base) => liftSeconds(base, PERCENT)),
   'trade.handcartSeconds': fixedOneDecimal((base) => liftSeconds(base, systems.HANDCART_LIFT_PERCENT)),
   'trade.oxcartSeconds': fixedOneDecimal((base) => liftSeconds(base, systems.DRAWN_CART_LIFT_PERCENT)),
+  'trade.cartParLand': whole((base) => cartParRoute(base, DEFAULT_NODE_ROUGHNESS)),
+  'trade.cartParRoad': whole((base) => cartParRoute(base, ROAD_RESISTANCE)),
   'trade.refillLevel': whole(systems.AI_STOCK_REFILL_LEVEL),
   'trade.refillSeconds': whole(seconds(systems.AI_STOCK_REFILL_TURNS * systems.AI_HANDLER_ROUND_TICKS)),
   ...trackFacts('wood', 'collector_wood'),
@@ -792,8 +911,10 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   ...trackFacts('fish', 'fisher_general'),
   ...trackFacts('craft', 'collector_stone'),
   ...trackFacts('build', 'builder_general'),
+  'exp.quotedPct': whole(QUOTED_EXPERIENCE_PCT),
+  'star.step': whole(STAR_TIER_STEP),
+  'star.full': whole(STAR_FULL),
   'exp.carrierTrader': whole((base) => jobNeed(base, 'trader')),
-  'exp.tradePointPerUnit': whole((base) => trackPoints(base, 'trader_general')),
   'exp.joinerNeed': whole((base) => jobNeed(base, 'joiner')),
   'exp.furnitureNeed': whole((base) => goodNeed(base, 'furniture')),
   'exp.ironSpearNeed': whole((base) => goodNeed(base, 'spear_iron')),
@@ -816,6 +937,142 @@ const WORK_FACTS: Readonly<Record<string, Fact>> = {
   'course.shipSeconds': oneDecimal((base) => courseSeconds(base, 'ship_small')),
 };
 
+/** The farthest a stray shot of `hits` strikes from its mark over `range` nodes: the highest roll's spread
+ *  on both axes at once, in hexes. */
+function strayReach(range: number, hits: number): number {
+  const highest = systems.AIM_ROLL_SPAN - 1;
+  const quarter = Math.floor(range / systems.SCATTER_RANGE_DIVISOR);
+  const margin = Math.max(0, highest - hits - systems.AIM_TRUE_BASE);
+  const side = Math.ceil(Math.floor((margin * quarter) / highest) / 2);
+  return hexDistanceBetween(0, 0, side, side);
+}
+
+const longestBowShot = (base: KnowledgeBase): FactValue => {
+  const max = weaponRow(base, VIKING, 'long_bow')?.maxRange;
+  return max === undefined ? undefined : max + systems.TOWER_RANGE_BONUS_NODES;
+};
+
+const strayFact = (range: FactReader, hits: number): Fact =>
+  whole((base) => {
+    const reach = range(base);
+    return reach === undefined ? undefined : strayReach(reach, hits);
+  });
+
+const weaponMax =
+  (id: string): FactReader =>
+  (base) =>
+    weaponRow(base, VIKING, id)?.maxRange;
+
+/** The fewest bow hits past which no shot strays, whatever a bow's range. */
+const steadyHits: FactReader = (base) => {
+  const range = longestBowShot(base);
+  if (range === undefined) return undefined;
+  let hits = 0;
+  while (strayReach(range, hits) > 0) hits++;
+  return hits;
+};
+
+const AIM_FACTS: Readonly<Record<string, Fact>> = {
+  'aim.spreadShort': strayFact(weaponMax('short_bow'), 0),
+  'aim.spreadLong': strayFact(weaponMax('long_bow'), 0),
+  'aim.spreadTower': strayFact(longestBowShot, 0),
+  'aim.noSpreadHits': whole(steadyHits),
+  ...Object.fromEntries(
+    STONE_SAMPLE_HITS.map((hits) => [`stone.spread.${hits}`, strayFact(weaponMax('catapult'), hits)]),
+  ),
+};
+
+const wallRules = (base: KnowledgeBase, id: string, scale: number) => {
+  const row = base.content.landscape.find((type) => type.id === id);
+  const wall = row === undefined ? undefined : playerWallRow(row);
+  return wall === undefined ? undefined : scaledWallRules(wall, scale);
+};
+
+const segmentRules = (base: KnowledgeBase) => wallRules(base, WALL_LOGIC_ID, POST_STRENGTH);
+const gateRules = (base: KnowledgeBase) =>
+  wallRules(base, CLOSED_GATE_LOGIC_ID, systems.GATE_SPAN_OFFSETS.length);
+
+/** What one blow of a weapon takes off a wall, by the name the walls' table reads it under. */
+const WALL_WEAPONS = [
+  ['catapult', VIKING, 'catapult'],
+  ['hero', VIKING, 'hero_sword'],
+  ['ironSpear', VIKING, 'iron_spear'],
+  ['longSword', VIKING, 'long_sword'],
+  ['shortSword', VIKING, 'short_sword'],
+  ['woodenSpear', VIKING, 'wooden_spear'],
+  ['shortBow', VIKING, 'short_bow'],
+  ['longBow', VIKING, 'long_bow'],
+] as const;
+
+const wallBlow = (base: KnowledgeBase, tribe: number, id: string): FactValue => {
+  const blow = hitOf(base, tribe, id, 'building');
+  return blow === undefined ? undefined : Math.floor(blow / systems.HOUSE_DAMAGE_PER_WALL_VALENCY);
+};
+
+const strongWallBlow = (id: string): Fact =>
+  whole(scaledDown((base) => wallBlow(base, VIKING, id), STRENGTH_PCT));
+
+const WALL_FACTS: Readonly<Record<string, Fact>> = {
+  'wall.segmentHp': whole((base) => segmentRules(base)?.maxHitpoints),
+  'wall.gateHp': whole((base) => gateRules(base)?.maxHitpoints),
+  'wall.segmentRepair': whole((base) => segmentRules(base)?.repairPerStrike),
+  'wall.gateRepair': whole((base) => gateRules(base)?.repairPerStrike),
+  'wall.gateSegments': whole(systems.GATE_SPAN_OFFSETS.length),
+  'wall.gateMinHealthPct': whole(systems.GATE_MIN_HEALTH_PCT),
+  'wall.heroBow.blow': whole((base) => wallBlow(base, VIKING, 'hero_bow')),
+  'wall.frankHeroBow.blow': whole((base) => wallBlow(base, FRANK, 'hero_bow')),
+  'wall.ironSpear.strongBlow': strongWallBlow('iron_spear'),
+  'wall.shortSword.strongBlow': strongWallBlow('short_sword'),
+  'wall.shortBow.strongBlow': strongWallBlow('short_bow'),
+  ...Object.fromEntries(
+    WALL_WEAPONS.flatMap(([name, tribe, id]) => {
+      const blow: FactReader = (base) => wallBlow(base, tribe, id);
+      const pool =
+        (rules: typeof segmentRules): FactReader =>
+        (base) =>
+          rules(base)?.maxHitpoints;
+      return [
+        [`wall.${name}.blow`, whole(blow)],
+        [`wall.${name}.segmentHits`, killedBy(blow, pool(segmentRules))],
+        [`wall.${name}.gateHits`, killedBy(blow, pool(gateRules))],
+        [
+          `wall.${name}.segmentSeconds`,
+          whole((base) => {
+            const blows = blow(base);
+            const hitpoints = pool(segmentRules)(base);
+            const clip = clipOfWeapon(base, tribe, id);
+            if (blows === undefined || hitpoints === undefined || clip === undefined) return undefined;
+            const hits = hitsToKill(blows, hitpoints);
+            return hits === null ? undefined : hits * clip;
+          }),
+        ],
+      ];
+    }),
+  ),
+};
+
+/** A plan's launch edge over the target's points, in percent. */
+const launchPct = (plan: keyof typeof systems.PLAN_TUNING): number => {
+  const { num, den } = systems.PLAN_TUNING[plan].launchRatio;
+  return (num * PERCENT) / den;
+};
+
+const RAID_FACTS: Readonly<Record<string, Fact>> = {
+  'ai.towerPostWeight': whole(systems.TOWER_POST_STRENGTH),
+  'ai.planAggressivePct': whole(launchPct('aggressive')),
+  'ai.planBalancedPct': whole(launchPct('balanced')),
+  'ai.planDefensivePct': whole(launchPct('defensive')),
+  'ai.defendRatio': oneDecimal(systems.DEFEND_RATIO.num / systems.DEFEND_RATIO.den),
+  'ai.landingEdge': oneDecimal(systems.LANDING_EDGE.num / systems.LANDING_EDGE.den),
+  'ai.landingShips': whole(systems.LANDING_BIG_SHIPS),
+  'ai.landingRetreatPct': whole(systems.LANDING_RETREAT_LOSS_PCT),
+  'ai.landingCooldownMinutes': whole(minutes(systems.LANDING_COOLDOWN_TICKS)),
+  'ai.raidMen': whole(systems.RAID_BAND_MEN),
+  'ai.raidChancePct': whole(systems.RAID_SEAT_CHANCE_PCT),
+  'ai.raidMinMinutes': whole(minutes(systems.RAID_DELAY_MIN_TICKS)),
+  'ai.raidMaxMinutes': whole(minutes(systems.RAID_DELAY_MAX_TICKS)),
+};
+
 const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'shortBow.towerMax': towerMax('short_bow'),
   'longBow.towerMax': towerMax('long_bow'),
@@ -828,10 +1085,8 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
   'combat.sampleBlow': whole(SAMPLE_BLOW),
   'combat.backSideFactor': twoDecimals(HIT_DIRECTION.backSide / PERCENT),
   'combat.behindFactor': twoDecimals(HIT_DIRECTION.behind / PERCENT),
-  'combat.armourBlock': whole((base) => targetOf(base, 'chain')?.blocking),
   'aim.basePct': whole(aimPct(0)),
   'aim.samplePct': whole(aimPct(AIM_SAMPLE_HITS)),
-  'aim.sureHits': whole(systems.AIM_ROLL_SPAN - systems.AIM_TRUE_BASE - 1),
   'stance.search': whole(systems.DEFEND_RADIUS_NODES),
   'stance.defendLeash': whole(systems.DEFEND_LEASH_NODES),
   'stance.ignoreLeash': whole(systems.IGNORE_LEASH_NODES),
@@ -960,7 +1215,6 @@ const COMBAT_FACTS: Readonly<Record<string, Fact>> = {
 
 const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'vehicle.shipSeats': whole((base) => shipSeats(base, 'ship_small')),
-  'vehicle.bigShipSeats': whole((base) => shipSeats(base, 'ship_big')),
   'vehicle.handcartLossPct': whole(systems.HANDCART_FULL_SPEED_LOSS_PERCENT),
   'vehicle.oxcartLossPct': whole(systems.DRAWN_CART_FULL_SPEED_LOSS_PERCENT),
   'pace.cartRoad': fixedOneDecimal(vehiclePace(ROAD_RESISTANCE, false, 0)),
@@ -998,13 +1252,11 @@ const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'livestock.pairPlusOne': whole(systems.BREEDING_PAIR + 1),
   'livestock.captureRange': whole(systems.LIVESTOCK_CAPTURE_RANGE),
   'livestock.scatterRange': whole(systems.SCATTER_RANGE),
-  'livestock.growSeconds': whole(seconds(systems.ANIMAL_ADULT_AGE_TICKS)),
   'livestock.growMinutes': whole(minutes(systems.ANIMAL_ADULT_AGE_TICKS)),
   'livestock.birthRange': whole(systems.BIRTH_PARENT_RANGE),
+  'livestock.cycleSeconds': whole((base) => produceSeconds(base, 'sheep', JOB_BREEDER)),
   'livestock.farmHerd': whole((base) => stockOf(base, 'work_animal_farm', 'sheep')),
   'livestock.farmShelf': whole((base) => stockOf(base, 'work_animal_farm', 'meat')),
-  'livestock.breeders': whole((base) => crewOf(base, 'work_animal_farm', JOB_BREEDER)),
-  'livestock.carriers': whole((base) => crewOf(base, 'work_animal_farm', JOB_CARRIER)),
   'livestock.calfWater': whole((base) => amountOf(base, calfInputs(base), 'water')),
   'livestock.calfWheat': whole((base) => amountOf(base, calfInputs(base), 'wheat')),
   'livestock.sheepWool': whole((base) => amountOf(base, base.goodById.get('sheep')?.slaughterYield, 'wool')),
@@ -1024,6 +1276,7 @@ const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'wild.flight': whole(systems.FLIGHT_REACH_NODES),
   'wild.kinAlarm': whole(systems.KIN_ALARM_RADIUS_NODES),
   'wild.growthMinutes': whole(minutes(systems.BREEDING_SPAN_TICKS * systems.BREEDING_SPANS_PER_ROUND)),
+  'wild.breedingShare': whole(systems.LEADER_UPKEEP_PERIOD_TICKS / systems.BREEDING_SPAN_TICKS),
   'wild.huntChase': whole(systems.HUNT_CHASE_SLACK_NODES),
   'wild.hunterShot': whole((base) => {
     const weapon = weaponRow(base, VIKING, 'hunter_bow');
@@ -1051,7 +1304,12 @@ const WORLD_FACTS: Readonly<Record<string, Fact>> = {
   'notice.fightRadius': whole(FIGHT_AREA_RADIUS_NODES),
   'notice.fightQuietSeconds': whole(seconds(FIGHT_QUIET_TICKS)),
   'notice.yardRetrySeconds': whole(seconds(systems.UNREACHABLE_GOAL_MEMO_TICKS)),
-  'notice.noGathererSeconds': whole(seconds(CONSTRUCTION_SHORTAGE_GRACE_TICKS)),
+  'notice.noGathererSeconds': whole(seconds(PRODUCTION_STALL_GRACE_TICKS)),
+  'notice.idleSeconds': whole(seconds(IDLE_SWEEPS_BEFORE_MESSAGE * SNAPSHOT_SWEEP_INTERVAL_TICKS)),
+  'match.checkSeconds': whole(seconds(systems.MATCH_GOAL_CHECK_TICKS)),
+  'match.graceSeconds': whole(seconds(systems.MATCH_DEATH_GRACE_TICKS)),
+  'piety.lowPct': whole((base) => pietyCost(base, 'bow_short', JOB_ARMORER)),
+  'piety.highPct': whole((base) => pietyCost(base, 'bow_long', JOB_ARMORER)),
   'notice.storageFullSeconds': whole(seconds(STORAGE_FULL_GRACE_TICKS)),
 };
 
@@ -1063,8 +1321,12 @@ export const FACTS: Readonly<Record<string, Fact>> = {
   ...WALK_FACTS,
   ...WORK_FACTS,
   ...COMBAT_FACTS,
+  ...AIM_FACTS,
+  ...WALL_FACTS,
+  ...RAID_FACTS,
   ...WORLD_FACTS,
   ...WEAPON_FACTS,
+  ...BUILD_TABLE_FACTS,
   ...TOOL_TABLE_FACTS,
   ...CAST_TABLE_FACTS,
   ...WAVE_FACTS,

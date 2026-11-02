@@ -6,7 +6,7 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-work',
       name: 'Doświadczenie w pracy',
-      lead: 'Tor to osobny licznik doświadczenia dla jednego towaru: 100% przy drewnie nie przyspiesza kamienia.',
+      lead: 'Doświadczenie rośnie osobno dla każdego towaru: 100% przy drewnie nie przyspiesza kamienia.',
       blocks: [
         {
           h: 'Co daje doświadczenie',
@@ -21,67 +21,70 @@ export const EXPERIENCE: ArticleGroup = {
           data: 'experience',
         },
         {
-          p: 'Ułamek punktu nic nie daje. Przy [[article:gathering|zbieraniu]] doświadczenie skraca ciosy, sztuki dokłada w warsztacie i przy uboju. Tabele z narzędziem: [[article:tools|Narzędzia]]. Punkty budowy: [[article:construction|Budowa, rozbudowa, naprawa]].',
+          p: 'Tabela podaje zwykłą pracę. Drewno, polowanie, połów i budowa liczą się inaczej, ich mnożnik jest w tabeli niżej. Przy [[article:gathering|zbieraniu]] doświadczenie daje mniej uderzeń na sztukę. W warsztacie i przy uboju dokłada dodatkowe sztuki. Tabele z narzędziem: [[article:tools|Narzędzia]]. Budowa: [[article:construction|Budowa, rozbudowa, naprawa]].',
+        },
+        {
+          p: 'Zaznaczony własny osadnik nosi gwiazdkę fachu. Pojawia się przy {{star.step}}% najlepszej umiejętności zawodu i rośnie co {{star.step}}%, aż do {{star.full}}%. Tragarz jej nie ma.',
         },
         {
           h: 'Ile pracy trzeba',
         },
         {
           table: {
-            head: ['Praca', 'Liczy się', 'Punkty za sztukę', 'Sztuk do 51%', 'Sztuk do 100%'],
+            head: ['Praca', 'Liczy się', 'Mnożnik', 'Razy do {{exp.quotedPct}}%', 'Razy do 100%'],
             rows: [
               [
                 'Drewno',
                 'ścięte drzewo',
-                '{{exp.wood.points}}',
+                '×{{exp.wood.points}}',
                 '{{exp.wood.repeatsQuoted}}',
                 '{{exp.wood.repeatsFull}}',
               ],
               [
                 'Polowanie',
                 'sztuka z truchła',
-                '{{exp.hunt.points}}',
+                '×{{exp.hunt.points}}',
                 '{{exp.hunt.repeatsQuoted}}',
                 '{{exp.hunt.repeatsFull}}',
               ],
               [
                 'Połów',
                 'ryba',
-                '{{exp.fish.points}}',
+                '×{{exp.fish.points}}',
                 '{{exp.fish.repeatsQuoted}}',
                 '{{exp.fish.repeatsFull}}',
               ],
               [
-                'Glina, kamień, żelazo, złoto, grzyby, pszenica, ubój, warsztat',
-                'sztuka, przy uboju zwierzę, w warsztacie partia',
-                '{{exp.craft.points}}',
+                'Glina, kamień, żelazo, złoto, grzyby, zioła, pszenica, ubój, warsztat',
+                'sztuka, przy uboju zwierzę, w warsztacie cykl',
+                '×{{exp.craft.points}}',
                 '{{exp.craft.repeatsQuoted}}',
                 '{{exp.craft.repeatsFull}}',
               ],
               [
                 'Budowa, naprawa',
-                'cios, który coś dodał',
-                '{{exp.build.points}}',
+                'uderzenie, które coś dodało',
+                '×{{exp.build.points}}',
                 '{{exp.build.repeatsQuoted}}',
                 '{{exp.build.repeatsFull}}',
               ],
             ],
             num: [2, 3, 4],
-            foot: 'Ostatnie kolumny liczą drzewa, sztuki, partie lub ciosy. Tor nazywa się jak praca i towar, np. Wydobywanie - Żelazo, Pieczenie - Chleb. Tory są takie same u wszystkich plemion.',
+            foot: 'Ostatnie kolumny liczą drzewa, sztuki, cykle lub uderzenia. Od {{exp.quotedPct}}% [[job:builder|Budowniczy]] bez narzędzia potrzebuje o połowę mniej uderzeń na sztukę materiału. W panelu osadnika, w Doświadczeniu, każda umiejętność ma własny wiersz, np. Wydobywanie - Żelazo: {{exp.craft.repeatsQuoted}} razy, wydajność +{{exp.quotedPct}}%.',
           },
         },
         {
-          p: 'Każde drzewo, sztuka i partia dolicza też punkt do toru ogólnego zawodu, np. Wydobywanie. Tor ogólny otwiera kolejne [[article:trades|zawody]] i działa dla towaru bez własnego toru. Punkty zostają przy zmianie zawodu.',
+          p: 'Każde drzewo, sztuka i cykl liczy się też do ogólnej umiejętności zawodu, np. Rolnictwa. Zawód otwiera ona albo umiejętność jednego towaru: Rolnictwo otwiera [[job:miller|Młynarza]], a Zbieranie - Drewno [[job:joiner|Cieślę]]. Wymogi: [[article:trades|Zawody i szkoła]]. Ogólna umiejętność działa też przy towarze, który nie ma własnej. Doświadczenie zostaje przy zmianie zawodu.',
         },
         {
           h: 'Kto nic nie zyskuje',
         },
         {
           list: [
-            '[[job:carrier|Tragarz]] zbiera Noszenie, które nie przyspiesza pracy. {{exp.carrierTrader}} dostaw otwiera [[job:trader|Kupca]].',
-            'Kupiec zbiera Handel, {{exp.tradePointPerUnit}} punkt za rozładowaną sztukę. Handel niczego nie zmienia.',
-            '[[job:scout|Zwiadowca]] nie zbiera punktów. [[job:woman|Kobieta]] i dziecko nie mają torów.',
-            'Sadzenie, podlewanie, [[building:school|Szkoła]] i [[building:barracks|Koszary]] nie dają punktów.',
+            '[[job:carrier|Tragarz]] zbiera Noszenie. Nie przyspiesza mu ono pracy, ale {{exp.carrierTrader}} dostaw otwiera [[job:trader|Kupca]].',
+            'Kupiec zbiera Handel za każdą rozładowaną sztukę, ale Handel niczego nie zmienia.',
+            '[[job:scout|Zwiadowca]], [[job:woman|Kobieta]] i dziecko nie zdobywają doświadczenia.',
+            'Sadzenie, podlewanie, [[building:school|Szkoła]] i [[building:barracks|Koszary]] nie dają doświadczenia.',
           ],
         },
       ],
@@ -90,7 +93,7 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'exp-combat',
       name: 'Doświadczenie w walce',
-      lead: 'Sto trafień jedną klasą broni podwaja obrażenia wręcz.',
+      lead: '{{combat.fightCapHits}} trafień jednym rodzajem broni podwaja obrażenia wręcz.',
       blocks: [
         {
           h: 'Obrażenia wręcz',
@@ -114,19 +117,16 @@ export const EXPERIENCE: ArticleGroup = {
           p: 'Mnożnik działa przy ciosie wręcz w ludzi, zwierzęta i budynki. Nie działa na [[article:walls|palisady]] i [[article:vehicles|pojazdy]] ani przy strzałach i [[article:catapult|katapulcie]].',
         },
         {
-          h: 'Celność',
-        },
-        {
-          p: 'Łuk i katapulta: {{aim.basePct}}% celnych strzałów przy 0 trafień, 100% przy {{aim.sureHits}}. Tabela: [[article:aim|Trafienie i strzelanie]].',
+          p: 'Łuk i katapulta: {{aim.basePct}}% celnych strzałów przy 0 trafień, od {{aim.noSpreadHits}} trafień każdy strzał spada w cel. Tabela: [[article:aim|Trafienie i strzelanie]].',
         },
         {
           h: 'Co liczy się jako trafienie',
         },
         {
-          p: 'Cios lub strzał, który zadał obrażenia, daje 1 punkt do klasy broni: Pięść, Włócznia, Miecz, Łuk lub Katapulta. Łuk [[job:hunter|Myśliwego]] to też Łuk. Strzał trafiający kilka celów liczy się raz.',
+          p: 'Trafienie to cios lub strzał, który zadał obrażenia. Liczy się osobno dla każdego rodzaju broni: Pięść, Włócznia, Miecz, Łuk, Katapulta. Łuk [[job:hunter|Myśliwego]] to też Łuk. Strzał trafiający kilka celów liczy się raz.',
         },
         {
-          p: 'Tor klasy nazywa się Walka - Klasa. Trafienia jednej klasy nie działają na inną i zostają przy zmianie zawodu.',
+          p: 'W panelu osadnika to wiersze Walka - Miecz, Walka - Łuk i tak dalej. Trafienia mieczem nie pomagają włócznikowi i zostają po zmianie zawodu. Bohaterowi walka nie podnosi obrażeń, chyba że pozwala na to misja.',
         },
         {
           h: 'Odkrycie broni',
@@ -139,34 +139,31 @@ export const EXPERIENCE: ArticleGroup = {
               [
                 '[[good:spear_iron|Żelazna Włócznia]]',
                 '[[job:smith|Kowal]]',
-                '{{exp.ironSpearNeed}} × Kowalstwo',
+                'Kowalstwo: {{exp.ironSpearNeed}} razy',
               ],
               ['[[good:sword_shord|Krótki Miecz]]', '[[job:smith|Kowal]]', 'brak'],
-              ['[[good:sword_long|Długi Miecz]]', '[[job:smith|Kowal]]', '{{exp.longSwordNeed}} × Kowalstwo'],
+              [
+                '[[good:sword_long|Długi Miecz]]',
+                '[[job:smith|Kowal]]',
+                'Kowalstwo: {{exp.longSwordNeed}} razy',
+              ],
               ['[[good:bow_short|Krótki Łuk]]', '[[job:armorer|Płatnerz]]', 'brak'],
               [
                 '[[good:bow_long|Długi Łuk]]',
                 '[[job:armorer|Płatnerz]]',
-                '{{exp.longBowNeed}} × Wyrób Broni',
+                'Wyrób Broni: {{exp.longBowNeed}} razy',
               ],
             ],
-            foot: 'Tak samo u wszystkich pięciu plemion.',
           },
         },
         {
-          p: 'Trafienia nie blokują broni. Żołnierz bierze każdą broń, którą ma magazyn w zasięgu, także bez trafień, i od razu zostaje klasą tej broni. Próg {{exp.classLowNeed}} lub {{exp.classHighNeed}} trafień z [[article:trades|Zawodów i szkoły]] zapisuje tylko odkrycie klasy dla osady i otwiera jej wybór w "Zmiana zawodu".',
+          p: 'Do wzięcia broni trafienia nie są potrzebne: żołnierz bierze każdą broń z magazynu w zasięgu i od razu walczy jako Miecznik, Włócznik czy Łucznik. Próg {{exp.classLowNeed}} lub {{exp.classHighNeed}} trafień tylko odkrywa ten rodzaj żołnierza dla osady i otwiera go w "Zmiana zawodu": [[article:trades|Zawody i szkoła]].',
         },
         {
           h: 'Gwiazdka',
         },
         {
-          p: 'Żołnierz nosi gwiazdkę od 25 trafień bronią, którą walczy. Rośnie co 25 trafień i jest największa przy 100.',
-        },
-        {
-          h: 'Bohaterowie',
-        },
-        {
-          p: 'Bohaterowi trafienia się nie liczą, jego obrażenia nie rosną.',
+          p: 'Żołnierz nosi gwiazdkę od {{star.step}} trafień bronią, którą walczy. Rośnie co {{star.step}} trafień i jest największa przy {{star.full}}. Widać ją u każdego żołnierza, także wroga.',
         },
       ],
       see: [
@@ -181,7 +178,7 @@ export const EXPERIENCE: ArticleGroup = {
     {
       id: 'trades',
       name: 'Zawody i szkoła',
-      lead: 'Odkrycie należy do gracza i zostaje po śmierci pracownika, który je zdobył.',
+      lead: 'Odkryty zawód zostaje dla całej osady, nawet gdy osadnik, który go odkrył, zginie.',
       blocks: [
         {
           p: 'Ustawienie lobby "Rozwój zawodów: Wszystkie od początku" znosi wymogi zawodów cywilnych i wyrobów. Wymogi zawodów żołnierskich i zakazy mapy zostają.',
@@ -193,17 +190,17 @@ export const EXPERIENCE: ArticleGroup = {
           data: 'jobs',
         },
         {
-          p: 'Wymóg z dwoma torami liczy ich sumę. [[job:builder|Budowniczy]], Zbieracz, [[job:farmer|Farmer]], [[job:hunter|Myśliwy]], [[job:fisher|Rybak]], [[job:carrier|Tragarz]] i [[job:scout|Zwiadowca]] są otwarci od początku.',
+          p: 'Gdy wymóg podaje dwie umiejętności, liczy się ich suma. [[job:builder|Budowniczy]], Zbieracz, [[job:farmer|Farmer]], [[job:hunter|Myśliwy]], [[job:fisher|Rybak]], [[job:carrier|Tragarz]] i [[job:scout|Zwiadowca]] są otwarci od początku.',
         },
         {
-          p: 'Wyrób odkrywa się tak samo, np. [[good:furniture|Meble]] przy {{exp.furnitureNeed}} × Ciesielstwo. Wymagania są takie same u wszystkich plemion.',
+          p: 'Wyroby odkrywa się tak samo, np. [[good:furniture|Meble]] wymagają Ciesielstwa: {{exp.furnitureNeed}} razy.',
         },
         {
           h: 'Jak przebiega odkrycie',
         },
         {
           steps: [
-            'Osadnik pracuje w zawodzie poprzednika, np. [[job:collector|Zbieracz]] przy drewnie.',
+            'Osadnik pracuje, np. [[job:collector|Zbieracz]] ścina drzewa.',
             'Po {{exp.joinerNeed}} ściętych drzewach spełnia wymóg [[job:joiner|Cieśli]] i gra ogłasza odkrycie.',
             'Zawód jest odkryty dla całej osady, a ten osadnik może go objąć od razu.',
             'Pozostali idą do [[building:school|Szkoły]] albo zdobywają ten sam wymóg pracą.',
@@ -219,8 +216,7 @@ export const EXPERIENCE: ArticleGroup = {
               ['Miejsca', '{{school.seats}}', '{{barracks.seats}}'],
               ['Uczy', 'cywilnego zawodu lub wyrobu', 'zawodu Żołnierza'],
               ['Czas', 'tabela niżej', '{{barracks.drillSeconds}} s'],
-              ['Kto', 'dorosły mężczyzna', 'dorosły mężczyzna, także z zawodem'],
-              ['Punkty doświadczenia', '0', '0'],
+              ['Kto', 'dorosły mężczyzna', 'dorosły mężczyzna'],
               [
                 'Po kursie',
                 'nowy zawód, czeka przy Szkole na przydział',
@@ -264,7 +260,7 @@ export const EXPERIENCE: ArticleGroup = {
           h: 'Zawód a miejsce pracy',
         },
         {
-          p: 'Zawód i miejsce pracy to dwie osobne decyzje. "Zmiana zawodu" kasuje miejsce pracy i nikt nie przydzieli nowego sam. Wyjątek to absolwenci, gdy włączysz ich przełącznik w [[article:assistant|Asystencie]].',
+          p: '"Zmiana zawodu" kasuje miejsce pracy, a nowego nikt nie przydzieli sam. Wyjątek: absolwenci, gdy włączysz ich przełącznik w [[article:assistant|Asystencie]].',
         },
         {
           table: {
@@ -287,8 +283,8 @@ export const EXPERIENCE: ArticleGroup = {
         },
         {
           list: [
-            'Prawy klik na budynku ("Pracuj tutaj") zmienia zawód i daje miejsce pracy jednym rozkazem.',
-            'Bez wymogu na zawód budynku osadnik zajmuje tam wolne miejsce Tragarza, o ile takie jest.',
+            'Prawy klik na budynku ("Pracuj tutaj") od razu zmienia zawód i daje miejsce pracy.',
+            'Osadnik bez wymogu na zawód tego budynku zajmuje tam wolne miejsce Tragarza, jeśli jest.',
             'Żołnierz bierze tylko miejsce w swoim zawodzie.',
             '"Usuń miejsce pracy" zostawia zawód i niesiony towar. Zabiera liczniki produkcji i wózek Tragarza.',
             'Zburzenie budynku też zostawia zawód.',
@@ -302,16 +298,12 @@ export const EXPERIENCE: ArticleGroup = {
           table: {
             head: ['Rzecz', 'Co się z nią dzieje'],
             rows: [
-              ['Miejsce pracy', 'Przepada.'],
-              ['Liczniki produkcji', 'Przepadają.'],
+              ['Miejsce pracy i liczniki produkcji', 'Przepadają.'],
               ['Niesiony towar', 'Spada na ziemię.'],
               ['Narzędzie', 'Zostaje. Przy wejściu do wojska nowe spada na ziemię, używane przepada.'],
-              [
-                'Broń i zbroja',
-                'Przy wyjściu z wojska nieużywana rzecz trafia do rąk albo na ziemię. Używana przepada.',
-              ],
+              ['Broń i zbroja', 'Przy wyjściu z wojska trafia do rąk albo na ziemię.'],
               ['Rozkazy', 'Bieżący rozkaz i kolejka przepadają. "Jedzenie i sen" wraca na "Dozwolone".'],
-              ['Poznane zawody', 'Zostają, także poprzedni zawód. Punkty doświadczenia też.'],
+              ['Poznane zawody', 'Zostają, także poprzedni zawód. Doświadczenie też.'],
             ],
             foot: 'Szkoła i Koszary zmieniają zawód tak samo, ale kolejka rozkazów zostaje. Tragarz zostawia wózek.',
           },

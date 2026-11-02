@@ -520,7 +520,7 @@ export const chtKnowledge = {
     animalHerd: '獸群',
     animalTame: '可馴服',
     animalHunter: '獵人自動獵殺',
-    expPoints: '累計點數',
+    expPoints: '一般工作次數',
     expPercent: '經驗',
     expStrokes: '減少敲擊（共10次）',
     expExtra: '額外產量',

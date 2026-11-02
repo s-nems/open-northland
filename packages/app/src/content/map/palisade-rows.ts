@@ -37,7 +37,9 @@ export function playerWallRows(ir: ContentIr | null): ReadonlyMap<number, Player
   return out;
 }
 
-function playerWallRow(row: LandscapeTypeRow): PlayerWallRow | undefined {
+export function playerWallRow(
+  row: Pick<LandscapeTypeRow, 'id' | 'maxValency' | 'playerIdAllowed' | 'transitions'>,
+): PlayerWallRow | undefined {
   if (row.id === undefined || !WALL_FAMILY.has(row.id) || row.playerIdAllowed !== true) return undefined;
   const maxHitpoints = row.maxValency ?? 0;
   const repairPerStrike =
@@ -57,7 +59,7 @@ export function gateCounterpartName(logicId: string, editName: string): string |
  * Project rule: a one-cell post holds one and a half of its row's pools. Measured in this engine: archers
  * all shoot the first wall on their route, so a one-pool post held them well under half as long as a gate.
  */
-const POST_STRENGTH = 1.5;
+export const POST_STRENGTH = 1.5;
 
 /**
  * How many times a wall graphic holds its row's valency and repair step: once per cell its closed body

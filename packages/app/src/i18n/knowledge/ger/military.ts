@@ -6,7 +6,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'damage',
       name: 'Waffen, Rüstung und Schaden',
-      lead: 'Ein Mensch hat {{health.human}} Gesundheit. Ein Schlag zieht den Tabellenwert ab, die Faktoren unten ändern ihn.',
+      lead: 'Ein Mensch hat {{health.human}} Gesundheit. Die Tabelle zeigt, was ein Schlag davon abzieht.',
       blocks: [
         {
           data: 'matrix',
@@ -18,7 +18,7 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          h: 'Was den Schlag ändert',
+          h: 'Was den Schaden ändert',
         },
         {
           table: {
@@ -37,15 +37,17 @@ export const MILITARY: ArticleGroup = {
               ],
               ['[[good:amulet_defense|Verteidigungsamulett]] des Ziels', '×{{amulet.defenseFactor}}'],
             ],
-            foot: 'Sie wirken in dieser Reihenfolge. Vorne und vordere Flanke zählen ×1. Pfeile und Steine werden durch Treffer nicht stärker, ihre Richtung zählt vom Abschussort aus. Richtung und Verteidigungsamulett wirken nur bei Menschen. Gegen Fahrzeuge und Palisaden zählen Treffer nicht. Der Stein des Katapults bekommt keine Amulette des Kommandanten. Palisaden berechnen Schaden eigens: [[article:walls|Palisaden und Tore]].',
+            foot: 'Ein Schlag von vorne oder von der vorderen Flanke ändert den Schaden nicht.',
           },
         },
         {
           list: [
-            'Ein Ergebnis von 0 oder weniger verwundet nicht und bringt keine Erfahrung.',
+            'Erfahrung wirkt nicht bei Pfeilen und Steinen und nicht gegen Fahrzeuge und Palisaden.',
+            'Richtung und Verteidigungsamulett wirken nur bei Menschen. Beim Pfeil zählt der Ort, von dem er abgeschossen wurde.',
+            'Amulette des Kommandanten wirken nicht auf den Stein des Katapults.',
+            'Palisaden rechnen Schaden anders: [[article:walls|Palisaden und Tore]].',
+            'Ein Schlag für 0 verwundet nicht und bringt keine Erfahrung.',
             'Kinder lassen sich nicht verwunden.',
-            'Waffen und Rüstungen nutzen sich nicht ab.',
-            'Waffen und Rüstungen tragen nur erwachsene Männer.',
           ],
         },
         {
@@ -54,8 +56,8 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Sarazene: Der [[good:bow_short|Kurzbogen]] macht gegen Waffenrock {{saracen.bowOnWool}} statt {{viking.bowOnWool}}, gegen Kettenhemd und Plattenrüstung {{saracen.bowOnChain}} statt {{viking.bowOnChain}}.',
-            'Byzantiner: Die Zeile [[good:spear_wooden|Holzspeer]] zeigt den Drachen der Karte: {{dragon.hitpoints}} Gesundheit, Reichweite {{dragon.min}}-{{dragon.max}}, Serie aus {{dragon.blows}} Schlägen alle {{dragon.seconds}} s, ohne Rüstung {{dragon.bare}}. Ein ausgebildeter Speerträger kämpft wie bei den anderen Stämmen.',
-            'Alle übrigen Soldatenwaffen sind bei den fünf Stämmen gleich.',
+            'Byzantiner: Der Drache der Karte kämpft mit einem eigenen [[good:spear_wooden|Holzspeer]]: {{dragon.hitpoints}} Gesundheit, Reichweite {{dragon.min}}-{{dragon.max}}, {{dragon.blows}} Schläge alle {{dragon.seconds}} s, {{dragon.bare}} Schaden ohne Rüstung. Die Tabelle zeigt ihn in dieser Zeile. Ein ausgebildeter Speerträger kämpft wie bei den anderen Stämmen.',
+            'Alle übrigen Waffen sind bei allen Stämmen gleich.',
           ],
         },
         {
@@ -65,7 +67,7 @@ export const MILITARY: ArticleGroup = {
           data: 'armour',
         },
         {
-          p: 'Die Gewichte von Waffe und Rüstung addieren sich: [[article:walking|Gehtempo]].',
+          p: 'Schwere Waffen und Rüstungen machen langsamer: [[article:walking|Gehtempo]].',
         },
       ],
       see: [
@@ -81,7 +83,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'equip',
       name: 'Soldaten ausrüsten',
-      lead: 'Die Klassenzähler im Fenster Assistent bewaffnen das Heer. Einzelne Leute änderst du in ihrem Panel.',
+      lead: 'Das Heer bewaffnest du mit den Zählern im Fenster Assistent. Einzelne Leute änderst du in ihrem Panel.',
       blocks: [
         {
           h: 'Zähler',
@@ -97,7 +99,7 @@ export const MILITARY: ArticleGroup = {
               ],
               [
                 '„Schwertkämpfer“, „Speerträger“, „Bogenschützen“',
-                'Bewaffnet zuerst einen unbewaffneten Soldaten, bildet dann neue aus',
+                'Bewaffnet zuerst einen unbewaffneten Soldaten, bildet dann einen neuen aus',
                 'Wenn der Kämpfer die Waffe nimmt',
               ],
             ],
@@ -106,9 +108,21 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Solange ein unbewaffneter Soldat wartet, zieht der Zähler niemanden an seiner Stelle ein, selbst wenn gerade keine Waffe da ist.',
-            'Ein unbewaffneter Soldat holt sich eine Waffe, wenn eine seiner Klasse in Reichweite liegt und keine anderen darauf warten.',
-            'Einen Zähler zu senken holt die zurück, die noch auf eine Waffe warten.',
+            'Solange ein unbewaffneter Soldat wartet, bildet der Zähler niemand Neuen aus, auch wenn gerade keine Waffe da ist.',
+            'Ein unbewaffneter Soldat holt sich eine Waffe, wenn eine dieser Art in Reichweite liegt und niemand sonst darauf wartet.',
+            'Senkst du den Zähler, hören die Wartenden auf zu warten.',
+          ],
+        },
+        {
+          h: 'Waffen- und Rüstungsleisten',
+        },
+        {
+          p: 'Jede Soldatenart hat eigene Leisten. Ein Soldat nimmt von links den ersten Gegenstand, den das Lager hat, und übergeht durchgestrichene. Anfangs steht das Stärkste links. Ein Klick streicht durch, Halten und Ziehen ändert die Reihenfolge.',
+        },
+        {
+          list: [
+            'Keine Waffe zu haben: Er wartet, das Fenster zeigt „wartet auf eine Waffe“.',
+            'Keine Rüstung zu haben: Er geht ohne. Später legt er sie nur auf Befehl an.',
           ],
         },
         {
@@ -122,20 +136,8 @@ export const MILITARY: ArticleGroup = {
               ['Nur eines von beiden', 'Nimmt es und holt den Rest'],
               ['Nichts', 'Holt erst die Waffe, dann die Rüstung'],
             ],
-            foot: 'Liegt ein höherer Eintrag der Leiste in einem Lager in Reichweite, holt der Rekrut ihn dort und lässt das Schlechtere in der Kaserne. Danach kehrt er zur Kaserne zurück, ebenso ein vom Zähler bewaffneter Soldat.',
+            foot: 'Liegt etwas Besseres von der Leiste in einem Lager in Reichweite, holt der Rekrut es dort und nimmt das Schlechtere aus der Kaserne nicht. Danach kehrt er zur Kaserne zurück. Das gilt auch für einen vom Zähler bewaffneten Soldaten.',
           },
-        },
-        {
-          h: 'Waffen- und Rüstungsleisten',
-        },
-        {
-          p: 'Jede Klasse hat eigene Leisten. Ein Soldat nimmt von links den ersten Eintrag aus dem Lager und übergeht durchgestrichene. Anfangs steht das Stärkste vorn. Ein Klick streicht durch, Halten und Ziehen ändert die Reihenfolge.',
-        },
-        {
-          list: [
-            'Keine Waffe verfügbar: Er wartet, das Fenster zeigt „wartet auf eine Waffe“.',
-            'Keine Rüstung verfügbar: Er geht ohne. Später legt er sie nur auf Befehl an.',
-          ],
         },
         {
           h: 'Was die Kaserne lagert',
@@ -152,7 +154,7 @@ export const MILITARY: ArticleGroup = {
               ['[[good:coin|Münze]]', '{{barracks.coinStock}}'],
             ],
             num: [1],
-            foot: 'Ware für die Kaserne hat Vorrang, dazu {{barracks.carriers}} Trägerplätze: [[article:hauling|Träger und Lager]].',
+            foot: 'Die Kaserne hat {{barracks.carriers}} Trägerplätze. Ware mit Vorrang holen diese Träger selbst aus den Lagern: [[article:hauling|Träger und Lager]].',
           },
         },
         {
@@ -172,18 +174,18 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Der Siedler holt den Gegenstand und kehrt an den Ort des Befehls zurück.',
-            'Findet er unterwegs keine Quelle, kommt er mit leeren Händen zurück.',
-            'Eine Waffe ändert sofort die Klasse des Soldaten. Ohne Waffe bleibt er [[job:soldier_unarmed|Soldat]].',
-            'Getauschte und abgelegte Schuhe, Werkzeuge und angebrochene Flaschen gehen verloren.',
+            'Findet er ihn nirgends, kommt er mit leeren Händen zurück.',
+            'Eine Waffe ändert sofort die Soldatenart. Legt er sie ab, bleibt er [[job:soldier_unarmed|Soldat]].',
+            'Gebrauchte Schuhe, Werkzeuge und angebrochene Flaschen gehen beim Tauschen und Ablegen verloren. Unbenutzte kehren ins Lager zurück.',
             'Waffen, Rüstungen und Amulette nutzen sich nicht ab und kehren daher ins Lager zurück.',
             'Ein Befehl an eine einzelne Person geht dem Assistenten vor.',
           ],
         },
         {
-          h: 'Treffer und bessere Waffen',
+          h: 'Wer bessere Waffen tragen darf',
         },
         {
-          p: 'Treffer sperren keine besseren Waffen. Ein Soldat nimmt jede Waffe aus dem Lager. Die Sperre liegt bei der Herstellung: [[good:spear_iron|Eisenspeer]] und [[good:sword_long|Langschwert]] verlangen Erfahrung des [[job:smith|Schmieds]], der [[good:bow_long|Langbogen]] die des [[job:armorer|Waffenbauers]]. Tabelle: [[article:exp-combat|Kampferfahrung]].',
+          p: 'Jeder Soldat nimmt jede Waffe aus dem Lager, Treffer spielen dabei keine Rolle. Die Grenze liegt bei der Herstellung: [[good:spear_iron|Eisenspeer]] und [[good:sword_long|Langschwert]] macht nur ein erfahrener [[job:smith|Schmied]], den [[good:bow_long|Langbogen]] ein erfahrener [[job:armorer|Waffenbauer]]. Tabelle: [[article:exp-combat|Kampferfahrung]].',
         },
       ],
       see: [
@@ -197,7 +199,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'aim',
       name: 'Treffen und Schießen',
-      lead: 'Ein Nahkampfschlag geht nur daneben, wenn das Ziel beim Schlag außer Waffenreichweite steht. Die Treffsicherheit des Bogenschützen steigt mit Bogentreffern.',
+      lead: 'Ein Nahkampfschlag geht nur daneben, wenn das Ziel beim Schlag außer Waffenreichweite steht. Die Genauigkeit des Bogenschützen steigt mit Bogentreffern.',
       blocks: [
         {
           h: 'Fernwaffen',
@@ -243,33 +245,33 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Reichweite in Hexfeldern. Unter der Untergrenze schießt der Bogenschütze nicht. Cyra bei den Franken: Reichweite {{frankHeroBow.min}}-{{frankHeroBow.max}}, Schuss alle {{frankHeroBow.seconds}} s.',
+            foot: 'Reichweite in Hexfeldern. Näher als die untere Zahl schießt der Bogenschütze nicht. Geht heran auf: ab welcher Entfernung er schießt, wenn er selbst zum Ziel geht.',
           },
         },
         {
-          h: 'Treffsicherheit',
+          h: 'Genauigkeit',
         },
         {
           table: {
-            head: ['Treffer', 'Volltreffer'],
+            head: ['Treffer', 'Genauer Schuss'],
             rows: [
               ['0', '{{aim.basePct}}%'],
               ['50', '{{aim.samplePct}}%'],
-              ['{{aim.sureHits}}+', '100%'],
+              ['{{aim.noSpreadHits}}+', 'Immer im Ziel'],
             ],
             num: [0, 1],
-            foot: 'Jeder Treffer bringt +1%. Kurz- und Langbogen teilen sich einen Trefferzähler, das [[article:catapult|Katapult]] hat einen eigenen nach derselben Tabelle. Helden treffen immer.',
+            foot: 'Jeder Treffer bringt +1%. Ab {{aim.noSpreadHits}} Treffern landet auch ein ungenauer Pfeil im Ziel. Kurz- und Langbogen teilen sich einen Trefferzähler, das [[article:catapult|Katapult]] hat einen eigenen nach derselben Tabelle. Helden schießen immer genau.',
           },
         },
         {
-          h: 'Streuung von Fehlschüssen',
+          h: 'Streuung ungenauer Pfeile',
         },
         {
           list: [
-            'Ein Fehlschuss landet bis 3 Hexfelder neben dem Ziel. Ab 75 Treffern weicht er nicht mehr ab.',
-            'Ein Fehlschuss trifft den ersten Feind am Einschlagpunkt: Mensch, Tier oder Fahrzeug, dann Gebäude, dann Palisade.',
+            'Ein ungenauer Pfeil landet nah am Ziel: vom [[good:bow_short|Kurzbogen]] bis {{aim.spreadShort}} Hexfelder daneben, vom [[good:bow_long|Langbogen]] bis {{aim.spreadLong}}, vom Langbogen im Turm bis {{aim.spreadTower}}. Die Streuung wächst mit der Entfernung.',
+            'Ein ungenauer Pfeil verletzt den ersten Feind am Einschlagort: zuerst Mensch, Tier oder Fahrzeug, dann Gebäude, zuletzt Palisade.',
             'Pfeile fliegen über Eigene, Verbündete und Neutrale hinweg.',
-            'Soldaten halten bei laufenden Zielen vor. Gebäude zielen dorthin, wo das Ziel steht.',
+            'Ein Bogenschütze zielt vor einen laufenden Feind. Ein Gebäude schießt dorthin, wo der Feind gerade steht.',
           ],
         },
         {
@@ -277,8 +279,8 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Der Reichweitenbonus gilt, wenn der Bogenschütze auf dem Posten steht, nicht auf dem Weg dorthin.',
-            'Feinde können nicht auf den Schützen auf dem Posten zielen, nur auf den Turm.',
+            'Die größere Reichweite hat der Bogenschütze erst auf dem Posten, nicht auf dem Weg dorthin.',
+            'Feinde können nicht auf den Schützen auf dem Posten schießen, nur auf den Turm.',
           ],
         },
       ],
@@ -287,7 +289,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'stances',
       name: 'Soldatenmodi',
-      lead: 'Soldaten und Helden beginnen im Modus Verteidigung.',
+      lead: 'Der Modus sagt, ob ein Soldat selbst Feinde sucht und wie weit er ihnen folgt. Soldaten und Helden beginnen im Modus Verteidigung.',
       blocks: [
         {
           figure: {
@@ -304,33 +306,33 @@ export const MILITARY: ArticleGroup = {
                 'Um sich herum',
                 '{{stance.search}}',
                 'Ziel fällt oder ist unerreichbar',
-                'Antwortet',
+                'Geht auf den Angreifer los',
               ],
               [
                 'Verteidigung',
                 'Um den Haltepunkt',
                 '{{stance.search}}',
                 'Ziel über {{stance.defendLeash}} vom Haltepunkt',
-                'Antwortet',
+                'Geht auf den Angreifer los',
               ],
               [
                 'Ignorant',
                 'Nur in Waffenreichweite, geht nicht heran',
                 'Waffenreichweite',
                 'Ziel über {{stance.ignoreLeash}} vom Haltepunkt',
-                'Antwortet nicht',
+                'Bleibt stehen',
               ],
             ],
-            foot: 'Radien in Hexfeldern. Der Haltepunkt ist der Ort, an dem der Soldat beim Moduswechsel stand. Bewegungs- und Angriffsbefehle verschieben ihn.',
+            foot: 'Radien in Hexfeldern. Der Haltepunkt ist der Ort, an dem der Soldat beim Moduswechsel stand. Nach einem Bewegungs- oder Angriffsbefehl gilt ein neuer.',
           },
         },
         {
           list: [
             'Ein Soldat im Modus Angriff kehrt zum Haltepunkt zurück, wenn er mehr als {{stance.attackReturn}} Hexfelder davon entfernt zu kämpfen aufhört.',
-            'Die Feindsuche hängt nicht vom [[article:fog|Nebel]] ab.',
+            'Ein Soldat findet Feinde auch im [[article:fog|Nebel]].',
             'Ein Angriffsbefehl wirkt in jedem Modus.',
             'Ein Bogenschütze auf dem Posten schießt in jedem Modus auf alles in Reichweite.',
-            'Ein normaler Bewegungsbefehl hält den Soldaten auf der Route, auch unter Schlägen. Bei „Unterwegs angreifen“ dreht er sich zum Angreifer um.',
+            'Nach einem normalen Bewegungsbefehl geht der Soldat weiter, auch wenn er geschlagen wird. Bei „Unterwegs angreifen“ dreht er sich zum Angreifer um.',
           ],
         },
         {
@@ -343,7 +345,7 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          p: 'Palisaden und die Mauer wählt ein Soldat nie von selbst: [[article:walls|Palisaden und Tore]].',
+          p: 'Palisaden und die Mauer wählt ein Soldat nicht von selbst: [[article:walls|Palisaden und Tore]].',
         },
         {
           h: 'Wer auf Schläge reagiert',
@@ -367,7 +369,7 @@ export const MILITARY: ArticleGroup = {
               ['Zivilist, der im Freien schläft', '-', 'Schläft, flieht nur, wenn er selbst getroffen wird'],
             ],
             num: [1],
-            foot: 'Die Reaktion löst nur ein Schlag gegen einen Menschen aus.',
+            foot: 'Es zählt nur ein Schlag gegen einen Menschen. Ein getroffenes Gebäude oder Tier alarmiert niemanden.',
           },
         },
         {
@@ -375,10 +377,36 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Zivilisten sind im Modus Ignorant und kämpfen nicht. Den Modus stellst du nur bei Soldaten und Helden ein.',
-            'Ein Zivilist flieht nur vor Schlägen. Der Anblick eines Feindes lässt ihn kalt.',
+            'Zivilisten kämpfen nicht. Den Modus stellst du nur bei Soldaten und Helden ein.',
+            'Der Anblick eines Feindes lässt einen Zivilisten kalt.',
             'Wer flieht, wirft getragene Ware ab. Der Träger lässt seinen Karren stehen.',
           ],
+        },
+        {
+          h: 'Schalter „Essen und Schlafen“',
+        },
+        {
+          p: 'Bei „Verboten“ geht ein Soldat nicht von selbst essen, schlafen oder beten, isst nicht aus der Hand oder dem Turmvorrat, und Hunger unterbricht keine langen Befehle. Ohne Getränke endet das im Hungertod. Da hilft der Befehl Iss oder die Rückkehr zu „Erlaubt“.',
+        },
+        {
+          p: 'Getränke, Amulette und die Befehle Iss, Schlaf, Bete wirken in beiden Stellungen. Im Befehlsmenü heißen die Stellungen „Erlaube Soldaten Regeneration“ und „Verbiete Soldaten Regeneration“. Den Schalter hat nur der Soldat. Er steht anfangs auf „Erlaubt“ und springt nach einem Berufswechsel dorthin zurück.',
+        },
+        {
+          h: 'In Alarmbereitschaft',
+        },
+        {
+          p: 'Das ist der Zustand eines Soldaten im Modus Angriff oder Verteidigung nahe am Kampf, nicht der [[article:defence|Verteidigungsmodus des Dorfes]], den der Spieler auslöst.',
+        },
+        {
+          table: {
+            head: ['Was in der Nähe ist', 'Hexfelder', 'Folge'],
+            rows: [
+              ['Kampf', 'bis {{alert.restClearance}}', 'Schläft, betet und redet nicht.'],
+              ['Sichtbarer Feind, Modus Angriff oder Verteidigung', 'bis {{alert.standTo}}', 'Ebenso.'],
+              ['Kampf neben einem, der im Freien schläft', 'bis {{alert.standTo}}', 'Steht auf.'],
+            ],
+            foot: 'Essen geht er erst bei {{need.criticalPct}}% Energie. Wildtiere zählen erst, wenn mit ihnen gekämpft wird. Im Modus Ignorant gilt die Regel nicht, und ein Bedürfnisbefehl geht vor.',
+          },
         },
       ],
       see: ['article:defence', 'article:aim', 'article:fog', 'article:needs'],
@@ -392,12 +420,15 @@ export const MILITARY: ArticleGroup = {
           table: {
             head: ['Eigenschaft', 'Soldat', 'Held'],
             rows: [
-              ['Sichtweite', '{{vision.soldier}}', '{{vision.hero}}'],
-              ['Treffsicherheit mit dem Bogen', 'Steigt mit Treffern', 'Trifft immer'],
-              ['Kampferfahrung', 'Steigt', 'Steigt nicht'],
+              ['Sichtweite, Hexfelder', '{{vision.soldier}}', '{{vision.hero}}'],
+              ['Genauigkeit mit dem Bogen', 'Steigt mit Treffern', 'Immer genau'],
+              ['Kampferfahrung', 'Steigt', 'Steigt nicht, außer die Mission erlaubt es'],
               ['Essen und Schlaf', 'Braucht er', 'Braucht er nicht'],
-              ['Schuhe', 'Muss er bekommen, nutzen sich ab', 'Hat er von Anfang an, nutzen sich nicht ab'],
-              ['Waffe, Rüstung, Schuhe', 'Austauschbar', 'Fest'],
+              [
+                'Waffe, Rüstung, Schuhe',
+                'Austauschbar, Schuhe nutzen sich ab',
+                'Fest, Schuhe nutzen sich nicht ab',
+              ],
               ['Gewicht der Ausrüstung', 'Bremst', 'Bremst nicht'],
               ['Wohnhaus und Arbeitsplatz', 'Möglich', 'Keine'],
               ['Magische Kiste', 'Öffnet er nicht', 'Öffnet er'],
@@ -437,7 +468,7 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [3],
-            foot: 'Schlag alle {{hero.blowSeconds}} s. Schaden: Option Helden in der Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]].',
+            foot: 'Schlag alle {{hero.blowSeconds}} s. Schaden: Schalte die Helden in der Tabelle unter [[article:damage|Waffen, Rüstung und Schaden]] ein.',
           },
         },
         {
@@ -466,12 +497,11 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Nimmt: [[good:amulet_strength|Stärkeamulett]], [[good:amulet_defense|Verteidigungsamulett]], [[good:amulet_crithit|Trefferamulett]], [[good:amulet_speed|Windamulett]], [[good:potion_heal_small|Kleiner Heiltrank]], [[good:potion_heal_big|Großer Heiltrank]].',
-            'Nimmt nichts für Bedürfnisse: Met, Nahrungstränke, Wachtränke, [[good:amulet_food|Nahrungsamulett]], [[good:amulet_stamina|Wachbleibamulett]].',
+            'Nimmt nur: [[good:amulet_strength|Stärkeamulett]], [[good:amulet_defense|Verteidigungsamulett]], [[good:amulet_crithit|Trefferamulett]], [[good:amulet_speed|Windamulett]], [[good:potion_heal_small|Kleiner Heiltrank]], [[good:potion_heal_big|Großer Heiltrank]].',
           ],
         },
         {
-          h: 'Tod',
+          h: 'Nach dem Tod',
         },
         {
           p: 'Die Waffe verschwindet. Rüstung, Schuhe und Unbenutztes aus dem Rucksack bleiben am Boden.',
@@ -481,8 +511,8 @@ export const MILITARY: ArticleGroup = {
     },
     {
       id: 'defence',
-      name: 'Türme, Verteidigungsmodus, Schutz',
-      lead: 'Ein Gebäude im Verteidigungsmodus schießt von selbst. Jeder Schutzsuchende bringt ihm {{shelter.shotsPerSeat}} Schuss pro Sekunde.',
+      name: 'Türme und Verteidigungsmodus',
+      lead: 'Ein Gebäude im Verteidigungsmodus schießt von selbst. Jede Person drinnen bringt {{shelter.shotsPerSeat}} Schuss pro Sekunde.',
       blocks: [
         {
           h: 'Verteidigungsmodus',
@@ -490,22 +520,22 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             '„Verteidigungsmodus starten“ wirkt auf ein Gebäude, „Ganzes Dorf“ auf alle Verteidigungsgebäude.',
-            'Den Modus startet nur der Spieler. Ein Schlag gegen einen Siedler löst ihn nicht aus.',
+            'Den Modus startest du selbst. Ein Angriff auf das Dorf löst ihn nicht aus.',
             'Ein Gebäude im Bau startet ihn nicht.',
-            'Er läuft bis „Verteidigungsmodus stoppen“ oder bis zur Zerstörung des Gebäudes.',
+            'Er endet nicht von selbst. Er läuft bis „Verteidigungsmodus stoppen“ oder bis das Gebäude zerstört ist.',
           ],
         },
         {
-          h: 'Wer Schutz sucht',
+          h: 'Wer sich versteckt',
         },
         {
           list: [
-            'Zivilisten, Frauen und Kinder laufen zum nächsten Gebäude mit freiem Platz in Gehreichweite.',
+            'Zivilisten, Frauen und Kinder laufen zum nächsten Gebäude mit freiem Platz. Das Gebäude muss in Gehreichweite liegen.',
             'Soldaten, Helden und [[job:scout|Kundschafter]] bleiben draußen.',
             'Wer keinen Platz findet, arbeitet weiter.',
-            'Der Verteidigungsmodus geht vor Hunger und Schlaf. Schutzsuchende essen nur, was sie bei sich tragen, und arbeiten nicht.',
-            'Schutzsuchende lassen sich nicht angreifen.',
-            'Wird das Gebäude zerstört, kommen die Schutzsuchenden heraus.',
+            'Im Verteidigungsmodus lässt ein Siedler Essen und Schlaf liegen. Drinnen arbeitet er nicht und isst nur, was er bei sich hat.',
+            'Wer drinnen ist, lässt sich nicht angreifen.',
+            'Fällt das Gebäude, kommen alle heraus, die drinnen sind.',
           ],
         },
         {
@@ -531,7 +561,7 @@ export const MILITARY: ArticleGroup = {
               ['[[building:barracks|Kaserne]]', '{{shelter.barracks}}', '{{shelter.barracksShots}}', '-'],
             ],
             num: [1, 2],
-            foot: 'Schüsse pro Sekunde bei voller Belegung. Ein Posten nimmt keinen Schutzplatz weg. Ein im Turm beschäftigter Bogenschütze schießt von selbst, ohne Verteidigungsmodus: [[article:aim|Treffen und Schießen]].',
+            foot: 'Schüsse pro Sekunde bei vollem Gebäude. Ein Posten nimmt keinen Platz im Gebäude weg. Ein im Turm beschäftigter Bogenschütze schießt von selbst, ohne Verteidigungsmodus: [[article:aim|Treffen und Schießen]].',
           },
         },
         {
@@ -549,12 +579,12 @@ export const MILITARY: ArticleGroup = {
               ['Gebäude', '{{arrow.building}}'],
             ],
             num: [1],
-            foot: 'Rüstung mit Block {{combat.armourBlock}} gerechnet, wie in [[article:damage|Waffen, Rüstung und Schaden]]. Bei jedem Stamm gleich, vor den Faktoren.',
+            foot: 'Bei jedem Stamm gleich. Schlagrichtung und Verteidigungsamulett können das ändern: [[article:damage|Waffen, Rüstung und Schaden]].',
           },
         },
         {
           list: [
-            'Die Reichweite beträgt {{shelter.range}} Hexfelder ab der nächsten Gebäudewand, ohne Untergrenze.',
+            'Ein Gebäude schießt {{shelter.range}} Hexfelder weit ab der nächsten Wand, auch auf Feinde direkt an den Mauern.',
             'Ein Gebäude schießt auch auf Feinde im Nebel.',
             'Die Pfeile kosten nichts und bringen keine Erfahrung.',
             'Reihenfolge der Ziele: Soldaten und Helden, Wildtiere, Gebäude, übrige Menschen.',
@@ -565,7 +595,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Turm', 'Träger', 'Met', 'Nahrung', 'Jede Soldatenwaffe'],
+            head: ['Turm', 'Trägerplätze', 'Met', 'Nahrung', 'Waffen, je Art'],
             rows: [
               [
                 '[[building:tower_00|Wachturm 1]]',
@@ -583,17 +613,15 @@ export const MILITARY: ArticleGroup = {
               ],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Trägerplätze und Lagerkapazität.',
           },
         },
         {
           list: [
-            'Ein Posten nimmt nur seine Klasse: [[job:soldier_bow_short|Kurzbogenschütze]] oder [[job:soldier_bow_long|Langbogenschütze]]. Er wird wie ein Arbeitsplatz zugewiesen.',
-            'Eine andere Waffe ändert die Klasse und kostet den Posten.',
-            'Die Besatzung isst aus dem Turmvorrat, ohne herunterzukommen, und schläft auf dem Posten. Ein leerer Vorrat schickt sie zum Essen fort.',
+            'Ein Posten nimmt nur seinen Bogenschützen: [[job:soldier_bow_short|Kurzbogenschütze]] oder [[job:soldier_bow_long|Langbogenschütze]]. Er wird wie ein Arbeitsplatz zugewiesen.',
+            'Nimmt ein Bogenschütze eine andere Waffe, verliert er den Posten.',
+            'Die Besatzung isst aus dem Turmvorrat und schläft auf dem Posten, ohne herunterzukommen. Ist der Vorrat leer, geht sie essen.',
             'Der Assistent holt niemanden vom Turm, auch nicht für Ausrüstung.',
             '„Garnison abziehen“: Die Bogenschützen verlassen den Turm und bleiben für den nächsten Befehl ausgewählt. Auch ein Bewegungsbefehl holt einen Bogenschützen vom Posten.',
-            'Status „Bemannt“: Der Turm hat einen zugewiesenen Bogenschützen. „Keine Garnison“: Er hat keinen.',
           ],
         },
       ],
@@ -610,14 +638,14 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'walls',
       name: 'Palisaden und Tore',
-      lead: 'Ein Schlag nimmt einer Palisade 1 Gesundheit je volle {{wall.damagePerPoint}} Schaden gegen Gebäude. Unter {{wall.damagePerPoint}} passiert nichts.',
+      lead: 'Eine Palisade verliert 1 Gesundheit je volle {{wall.damagePerPoint}} Schaden aus der Spalte Gebäude. Ein schwächerer Schlag macht ihr nichts.',
       blocks: [
         {
           table: {
-            head: ['Element', 'Gesundheit', 'Reparatur je Schlag', 'Kosten'],
+            head: ['Element', 'Gesundheit', 'Reparatur je Arbeitsschlag', 'Kosten'],
             rows: [
-              ['Palisadenabschnitt', '150', '5', '1 [[good:wood|Holz]]'],
-              ['Tor', '500', '5', 'Kostenlos, entsteht aus Abschnitten'],
+              ['Palisadenabschnitt', '{{wall.segmentHp}}', '{{wall.segmentRepair}}', '1 [[good:wood|Holz]]'],
+              ['Tor', '{{wall.gateHp}}', '{{wall.gateRepair}}', 'Kostenlos, entsteht aus Abschnitten'],
             ],
             num: [1, 2],
             foot: 'Reparatur kostet nichts. Eine Palisade repariert nur ein Bauarbeiter zur Zeit.',
@@ -629,15 +657,13 @@ export const MILITARY: ArticleGroup = {
         {
           figure: {
             id: 'gate',
-            caption: 'Tor auf fünf Abschnitten',
+            caption: 'Wo das Tor entsteht',
           },
         },
         {
           list: [
-            'Ein Tor steht auf fünf eigenen, fertigen Abschnitten in gerader Linie.',
-            'Jeder Abschnitt hat mindestens 75% Gesundheit und steht auf ebenem Boden.',
-            'Im Durchgang steht niemand.',
-            'Das Tor entsteht sofort, geschlossen und mit voller Gesundheit, auch auf einem beschädigten Abschnitt.',
+            'Ein Tor belegt {{wall.gateSegments}} deiner fertigen Abschnitte in gerader Linie. Jeder braucht mindestens {{wall.gateMinHealthPct}}% Gesundheit und ebenen Boden, und im Durchgang darf niemand stehen.',
+            'Das Tor entsteht sofort und ist geschlossen. Es hat volle Gesundheit, auch wenn ein Abschnitt beschädigt war.',
           ],
         },
         {
@@ -654,7 +680,7 @@ export const MILITARY: ArticleGroup = {
                 'Offen. Schließt, wenn ein Feind bis {{wall.gateEnemyNear}} Hexfelder ans Tor kommt, und öffnet danach wieder',
               ],
             ],
-            foot: 'Im Automatikmodus zählen lebende Menschen und Fahrzeuge eines Spielers im Krieg, Zivilisten ebenso. Tiere und Gebäude zählen nicht.',
+            foot: 'Das Tor schließt bei jedem Menschen oder Fahrzeug eines Spielers, mit dem du Krieg hast, auch bei Zivilisten. Tiere schließen es nicht.',
           },
         },
         {
@@ -664,30 +690,78 @@ export const MILITARY: ArticleGroup = {
           ],
         },
         {
-          h: 'Schläge gegen Palisaden',
+          h: 'Wie schnell eine Palisade fällt',
         },
         {
           table: {
-            head: ['Waffe', 'Punkte je Schlag', 'Schläge: Abschnitt', 'Schläge: Tor', 'Dauer: Abschnitt'],
+            head: ['Waffe', 'Gesundheit je Schlag', 'Schläge: Abschnitt', 'Schläge: Tor', 'Dauer: Abschnitt'],
             rows: [
-              ['[[building:catapult|Katapult]]', '36', '5', '14', '20 s'],
-              ['Held im Nahkampf', '5', '30', '100', '30 s'],
-              ['[[good:spear_iron|Eisenspeer]]', '5', '30', '100', '68 s'],
-              ['[[good:sword_long|Langschwert]]', '5', '30', '100', '73 s'],
-              ['[[good:sword_shord|Kurzschwert]]', '2', '75', '250', '75 s'],
-              ['[[good:spear_wooden|Holzspeer]]', '4', '38', '125', '86 s'],
-              ['[[good:bow_short|Kurzbogen]]', '1', '150', '500', '150 s'],
-              ['[[good:bow_long|Langbogen]]', '2', '75', '250', '175 s'],
+              [
+                '[[building:catapult|Katapult]]',
+                '{{wall.catapult.blow}}',
+                '{{wall.catapult.segmentHits}}',
+                '{{wall.catapult.gateHits}}',
+                '{{wall.catapult.segmentSeconds}} s',
+              ],
+              [
+                'Held im Nahkampf',
+                '{{wall.hero.blow}}',
+                '{{wall.hero.segmentHits}}',
+                '{{wall.hero.gateHits}}',
+                '{{wall.hero.segmentSeconds}} s',
+              ],
+              [
+                '[[good:spear_iron|Eisenspeer]]',
+                '{{wall.ironSpear.blow}}',
+                '{{wall.ironSpear.segmentHits}}',
+                '{{wall.ironSpear.gateHits}}',
+                '{{wall.ironSpear.segmentSeconds}} s',
+              ],
+              [
+                '[[good:sword_long|Langschwert]]',
+                '{{wall.longSword.blow}}',
+                '{{wall.longSword.segmentHits}}',
+                '{{wall.longSword.gateHits}}',
+                '{{wall.longSword.segmentSeconds}} s',
+              ],
+              [
+                '[[good:sword_shord|Kurzschwert]]',
+                '{{wall.shortSword.blow}}',
+                '{{wall.shortSword.segmentHits}}',
+                '{{wall.shortSword.gateHits}}',
+                '{{wall.shortSword.segmentSeconds}} s',
+              ],
+              [
+                '[[good:spear_wooden|Holzspeer]]',
+                '{{wall.woodenSpear.blow}}',
+                '{{wall.woodenSpear.segmentHits}}',
+                '{{wall.woodenSpear.gateHits}}',
+                '{{wall.woodenSpear.segmentSeconds}} s',
+              ],
+              [
+                '[[good:bow_short|Kurzbogen]]',
+                '{{wall.shortBow.blow}}',
+                '{{wall.shortBow.segmentHits}}',
+                '{{wall.shortBow.gateHits}}',
+                '{{wall.shortBow.segmentSeconds}} s',
+              ],
+              [
+                '[[good:bow_long|Langbogen]]',
+                '{{wall.longBow.blow}}',
+                '{{wall.longBow.segmentHits}}',
+                '{{wall.longBow.gateHits}}',
+                '{{wall.longBow.segmentSeconds}} s',
+              ],
               ['Fäuste, Pfeile aus Gebäuden', '0', '-', '-', '-'],
             ],
             num: [1, 2, 3, 4],
-            foot: 'Dauer für einen Soldaten. Cyra 2 Punkte, bei den Franken 0.',
+            foot: 'Dauer für einen Soldaten. Cyra nimmt {{wall.heroBow.blow}}, bei den Franken {{wall.frankHeroBow.blow}}.',
           },
         },
         {
           list: [
             'Kampferfahrung erhöht den Schlag gegen Palisaden nicht.',
-            'Das Stärkeamulett wirkt auf die Punkte: 5 wird 7, 2 wird 3, 1 bleibt 1.',
+            'Das Stärkeamulett erhöht diese Zahl: {{wall.ironSpear.blow}} wird {{wall.ironSpear.strongBlow}}, {{wall.shortSword.blow}} wird {{wall.shortSword.strongBlow}}, {{wall.shortBow.blow}} bleibt {{wall.shortBow.strongBlow}}.',
             'Ein Soldat wählt keine Palisade von selbst. Er schlägt sie auf Befehl oder wenn sie ihm den Weg zum Feind versperrt.',
             'Fällt ein Abschnitt, gehen die Soldaten durch die Bresche und lassen die Nachbarn in Ruhe.',
           ],
@@ -696,7 +770,7 @@ export const MILITARY: ArticleGroup = {
           h: 'Mauer',
         },
         {
-          p: 'Die [[building:work_pottery_02|Mauer]] ist ein Gebäude: {{wall.defenceHp}} Gesundheit, Schaden aus der Spalte Gebäude. Ein Soldat schlägt sie nur auf Befehl oder wenn sie den Weg zum Feind versperrt.',
+          p: 'Die [[building:work_pottery_02|Mauer]] ist ein normales Gebäude: {{wall.defenceHp}} Gesundheit, Schaden aus der Spalte Gebäude. Ein Soldat behandelt sie wie eine Palisade.',
         },
       ],
       see: [
@@ -710,7 +784,7 @@ export const MILITARY: ArticleGroup = {
     {
       id: 'catapult',
       name: 'Katapulte',
-      lead: 'Der Stein verletzt alles am Einschlagpunkt und auf den sechs Punkten ringsum, auch Eigene.',
+      lead: 'Der Stein verletzt alles auf dem Hexfeld des Einschlags und auf den sechs Hexfeldern ringsum, auch deine Leute.',
       blocks: [
         {
           figure: {
@@ -747,11 +821,9 @@ export const MILITARY: ArticleGroup = {
               ['Kettenhemd, Plattenrüstung', '{{stone.chain}}', '{{stone.chainKills}}'],
               ['Katapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
               ['Gebäude', '{{stone.building}}', '{{stone.tower1}}-{{stone.frankHq}}'],
-              ['Palisadenabschnitt', '36 Punkte', '5'],
-              ['Tor', '36 Punkte', '14'],
             ],
             num: [2],
-            foot: 'Mensch ohne Schlagrichtung und Amulette. Treffer mit dem Katapult erhöhen den Schaden nicht.',
+            foot: 'Schaden am Menschen von vorne, ohne Amulette. Palisade: [[article:walls|Palisaden und Tore]].',
           },
         },
         {
@@ -799,10 +871,10 @@ export const MILITARY: ArticleGroup = {
           },
         },
         {
-          h: 'Treffsicherheit',
+          h: 'Genauigkeit',
         },
         {
-          p: 'Tabelle: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern weicht ein Fehlschuss bei 0 Treffern bis 3 Hexfelder ab, bei 25 um 2, bei 50 um 1, ab 75 um 0. Die Erfahrung sammelt der Kommandant, 1 Punkt je Stein, der jemanden verletzt hat.',
+          p: 'Die Genauigkeit steigt wie beim Bogenschützen: [[article:aim|Treffen und Schießen]]. Auf {{catapult.max}} Hexfeldern landet ein ungenauer Stein bei 0 Treffern bis {{stone.spread.0}} Hexfelder neben dem Ziel, bei 25 bis {{stone.spread.25}}, bei 50 bis {{stone.spread.50}}. Ab {{aim.noSpreadHits}} Treffern landet er im Ziel. Die Erfahrung sammelt der Kommandant: 1 Treffer je Stein, der etwas beschädigt hat, auch ein Gebäude. Ein Stein, der mehrere Ziele trifft, zählt einmal.',
         },
         {
           h: 'Katapultmodi',
@@ -827,7 +899,7 @@ export const MILITARY: ArticleGroup = {
           list: [
             'Ziel näher als {{catapult.min}} Hexfelder: Das Katapult fährt weg. Ziel weiter als {{catapult.max}}: Es rückt auf {{catapult.bandMin}}-{{catapult.max}} Hexfelder heran.',
             'Es schießt nur im Stand und nur, wenn es kein anderes Fahrzeug berührt.',
-            'Ein Befehl kann einen Punkt am Boden wählen. Palisaden beschießt es nur auf Befehl.',
+            'Du kannst es auf eine Stelle am Boden schießen lassen. Palisaden beschießt es nur auf Befehl.',
           ],
         },
         {
@@ -835,7 +907,7 @@ export const MILITARY: ArticleGroup = {
         },
         {
           table: {
-            head: ['Waffe', 'Schaden', 'Schläge aufs Katapult'],
+            head: ['Waffe', 'Schaden', 'Treffer zum Zerstören'],
             rows: [
               ['Zweites Katapult', '{{stone.vehicle}}', '{{stone.vehicleKills}}'],
               [
@@ -852,7 +924,7 @@ export const MILITARY: ArticleGroup = {
               ['Pfeil aus Gebäude', '{{arrow.vehicle}}', '{{vs.catapult.arrowHits}}'],
             ],
             num: [1, 2],
-            foot: 'Kampferfahrung erhöht Schläge gegen Fahrzeuge nicht. Amulette des Angreifers wirken.',
+            foot: 'Erfahrung wirkt nicht gegen Fahrzeuge, Amulette des Angreifers schon.',
           },
         },
       ],
@@ -888,7 +960,7 @@ export const MILITARY: ArticleGroup = {
                 '{{ai.hard.sites}}, ab {{ai.hard.midMinutes}} Min. {{ai.hard.midSites}}, ab {{ai.hard.lateMinutes}} Min. {{ai.hard.lateSites}}',
               ],
             ],
-            foot: 'Zeiten sind Spielzeit: Bei ×3 vergehen sie dreimal so schnell. Keine Welle zieht vor Ende der „Friedenszeit“ los. Leicht und Mittel rekrutieren nicht über die Armeegrenze hinaus.',
+            foot: 'Zeiten sind Spielzeit: Bei ×3 vergehen sie dreimal so schnell. Keine Welle zieht vor Ende der „Friedenszeit“ los. Leicht und Mittel bilden nicht über die Armeegrenze hinaus aus.',
           },
         },
         {
@@ -904,13 +976,13 @@ export const MILITARY: ArticleGroup = {
               ['3 Std. und später', '{{ai.wave.3.min}}-{{ai.wave.3.max}}'],
             ],
             num: [1],
-            foot: 'Die Wellen starten zum späteren von zwei Zeitpunkten: „Erste Welle“ oder Friedensende. Die Größe wird aus dem Bereich ausgewürfelt.',
+            foot: 'Die Zeit läuft ab dem späteren von zwei Zeitpunkten: „Erste Welle“ oder Friedensende. Die Größe der Welle wird aus diesem Bereich ausgewürfelt.',
           },
         },
         {
           list: [
             'Es marschiert immer nur eine Welle. Die nächste sammelt sich an der [[building:barracks|Kaserne]].',
-            'Das Sammeln dauert bis zu {{ai.gatherMinutes}} Minuten. Danach ziehen so viele los, wie die Untergrenze des Bereichs verlangt. Sind es weniger, gehen alle, die hinkommen.',
+            'Das Sammeln dauert bis zu {{ai.gatherMinutes}} Minuten. Danach ziehen so viele los, wie die untere Zahl der Tabelle sagt. Sind es weniger, gehen alle, die hinkommen.',
           ],
         },
         {
@@ -918,10 +990,23 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Die Welle wartet, wenn du mehr Punkte hast: Soldat und Held 1, Bogenschütze im Turm 3. Der Computer zählt jeden seiner Leute mit 1.',
-            'Waffen, Rüstung, Amulette, Tränke und Erfahrung zählen nicht.',
-            'Sie wartet an der Kaserne, auch nach dem Sammeln.',
+            'Der Computer vergleicht die Stärke seiner Armee mit deiner. Er zählt Waffen, Rüstung, Amulette, Gesundheit und Heiltränke, aber keine Erfahrung.',
+            'Dein Bogenschütze im Turm zählt {{ai.towerPostWeight}}.',
+            'Jeder Computer lost am Anfang einen Plan aus. Ein aggressiver zieht los, wenn er {{ai.planAggressivePct}}% deiner Stärke hat, ein defensiver erst bei {{ai.planDefensivePct}}%, die übrigen bei {{ai.planBalancedPct}}%.',
+            'Im Nebel zählt er, was er gesehen hat. Weiß er nichts über dich, hält er dich für gleich stark.',
+            'Solange die Stärke fehlt, wartet die Welle an der Kaserne, auch nach dem Sammeln.',
             'Hat die Computerarmee ihre Grenze erreicht, zieht die Welle trotzdem los.',
+            'Greifst du sein Dorf an oder bist du {{ai.defendRatio}} Mal stärker als er, hält er das Heer zu Hause, und eine Welle unterwegs kehrt um.',
+          ],
+        },
+        {
+          h: 'Überfälle',
+        },
+        {
+          list: [
+            'Ein kleiner Trupp von {{ai.raidMen}} Leuten geht auf deine Abbauer und Wirtschaftsgebäude los. Er meidet die Reichweite der Türme. Gibt es keinen Weg ohne Türme, zieht er nicht los.',
+            'Ein schwerer Computer macht das in {{ai.raidChancePct}}% der Spiele, außer er startet auf einer Insel. Der Plan Störangriffe macht es immer, auf jeder Stufe.',
+            'Der erste Überfall kommt {{ai.raidMinMinutes}}-{{ai.raidMaxMinutes}} Minuten nach Friedensende, die nächsten in ähnlichen Abständen.',
           ],
         },
         {
@@ -938,7 +1023,7 @@ export const MILITARY: ArticleGroup = {
         {
           list: [
             'Palisade und [[building:work_pottery_02|Mauer]] sind keine Ziele: [[article:walls|Palisaden und Tore]].',
-            'Der Computer zielt auch durch den Nebel.',
+            'Im Nebel kennt der Computer die Gebäude vom Kartenstart und die, die er schon gesehen hat. Von neuen erfährt er, wenn er sie sieht.',
           ],
         },
         {
@@ -946,17 +1031,18 @@ export const MILITARY: ArticleGroup = {
         },
         {
           list: [
-            'Ein Ziel muss auf derselben Landmasse stehen wie die Computerkaserne. Wellen steigen nicht auf Schiffe.',
-            'Steht das Hauptquartier des Rivalen auf einer anderen Landmasse, errichtet der Computer am Ufer eine [[building:work_joinery_03|Schreinerei 4]] und baut [[good:ship_small|Schiffe]], transportiert damit aber keine Truppen.',
-            'Deine Gebäude und Leute auf der Landmasse des Computers werden zum Ziel.',
-            'Landungen von See sind ein Kartenmodus, zum Beispiel Ragnarök.',
+            'Eine Welle zu Fuß geht nur über die Landmasse, auf der die Kaserne des Computers steht. Dein Gebäude oder Mensch auf dieser Landmasse wird zum Ziel.',
+            'Steht das Hauptquartier des Rivalen auf einer anderen Landmasse, errichtet der Computer am Ufer eine [[building:work_joinery_03|Schreinerei 4]], baut [[good:ship_small|Schiffe]] und bringt damit Truppen hinüber.',
+            'Eine Landung legt ab, wenn {{ai.landingShips}} Schiffe am Ufer liegen, bei einem schwächeren Computer weniger, und das Heer {{ai.landingEdge}} Mal stärker ist als die Verteidiger. Ein Schiff trägt {{vehicle.shipSeats}} Soldaten.',
+            'Sie landet außerhalb der Reichweite deiner Türme und deiner Gebäude im Verteidigungsmodus, so nah wie möglich am Hauptquartier, und geht darauf los.',
+            'Verliert sie an Land {{ai.landingRetreatPct}}% der Leute, kehrt der Rest auf die Schiffe zurück. Die nächste Landung kommt frühestens nach {{ai.landingCooldownMinutes}} Minuten.',
           ],
         },
         {
           h: 'Wiederaufbau',
         },
         {
-          p: 'Die „Karten-KI“ baut Gebäude wieder auf, wenn im Umkreis von {{ai.rebuildNear}} Hexfeldern kein Feind steht. Das Hauptquartier nicht.',
+          p: 'Ein Spieler, der in der Lobby auf „Karten-KI“ steht, baut Gebäude wieder auf, wenn bis {{ai.rebuildNear}} Hexfelder kein Feind, aber einer seiner Zivilisten ist. Das Hauptquartier baut er nicht wieder auf.',
         },
       ],
       see: ['article:defence', 'article:walls', 'article:catapult', 'article:fog', 'article:diplomacy'],

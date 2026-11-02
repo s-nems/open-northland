@@ -9,7 +9,7 @@ export const SETTLERS: ArticleGroup = {
       lead: 'Przy {{need.drivePct}}% paska osadnik rzuca pracę i idzie uzupełnić potrzebę.',
       blocks: [
         {
-          p: 'Ustawienie lobby "Potrzeby osadników: Wyłączone" zatrzymuje paski i znosi głód. Ten artykuł wtedy nie obowiązuje.',
+          p: 'Ustawienie lobby "Potrzeby osadników: Wyłączone" zatrzymuje paski i znosi głód.',
         },
         {
           h: 'Paski',
@@ -25,14 +25,14 @@ export const SETTLERS: ArticleGroup = {
                 '[[article:food|posiłek]]',
                 '[[article:health|umiera w {{need.starveMinutes}} min]]',
               ],
-              ['Wytrzymałość', '100% w {{need.drainMinutes}} min', 'tak', 'sen', 'zdrowie bez zmian'],
+              ['Wytrzymałość', '100% w {{need.drainMinutes}} min', 'tak', 'sen', 'tylko wolniejszy krok'],
               ['Towarzystwo', '100% w {{need.drainMinutes}} min', 'nie', 'rozmowa', 'bez kary'],
               [
                 'Religia',
                 'nie',
                 'tylko broń i zbroje',
                 '[[article:religion|modlitwa]]',
-                'nie zacznie partii, która kosztuje Religię',
+                'nie zacznie broni ani zbroi',
               ],
             ],
             foot: 'Na starcie mapy każdy pasek ma losowo {{need.startMinPct}}-100%. Bez [[good:shoes|Butów]] każdy krok zabiera {{need.barefootStepMinPct}}-{{need.barefootStepMaxPct}}% Energii zależnie od podłoża, z ładunkiem dwa razy tyle.',
@@ -62,10 +62,10 @@ export const SETTLERS: ArticleGroup = {
               ],
               [
                 '{{need.overfillPct}}%',
-                'Górna granica. Posiłek w domu i sen na Meblach odkładają zapas ponad 100%.',
+                'Tyle najwyżej mieści pasek. Posiłek w domu i sen na Meblach odkładają zapas ponad 100%.',
               ],
             ],
-            foot: 'Sami idą się modlić [[job:armorer|Płatnerz]] i [[job:smith|Kowal]]. [[job:sewer|Krawiec]] zużywa Religię, ale modli się tylko na rozkaz.',
+            foot: 'Sami idą się modlić [[job:armorer|Płatnerz]], [[job:smith|Kowal]] i [[job:sewer|Krawiec]].',
           },
         },
         {
@@ -97,7 +97,7 @@ export const SETTLERS: ArticleGroup = {
             head: ['Kto', 'Czas snu', 'Poza domem', 'W domu', 'W domu z Meblami'],
             rows: [
               [
-                'Mężczyzna z domem',
+                'Mężczyzna',
                 '{{sleep.manSeconds}} s',
                 '+{{sleep.manAwayPct}}%',
                 '+{{sleep.manHomePct}}%',
@@ -117,7 +117,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: 'Kto nie ma pasków',
+          h: 'Wyjątki',
         },
         {
           table: {
@@ -127,7 +127,7 @@ export const SETTLERS: ArticleGroup = {
               ['[[article:heroes|Bohater]]', 'Brak.'],
               ['Potwory, zwierzęta', 'Brak.'],
               ['Żołnierz', 'Bez Towarzystwa.'],
-              ['Pasażer wózka', 'Paski i zdrowie stoją.'],
+              ['Pasażer wozu', 'Paski i zdrowie stoją.'],
               ['Pasażer statku', 'Je z ładowni, śpi jak poza domem, rozmawia. Religia czeka na ląd.'],
             ],
           },
@@ -138,26 +138,9 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Rozkaz działa przy każdym stanie paska. Przerywa marsz, atak i walkę.',
-            'Gdy nie ma czym odpowiedzieć na potrzebę, rozkaz czeka. Gdy czekają następne rozkazy, ten przepada.',
+            'Gdy nie ma jedzenia albo miejsca modlitwy, rozkaz czeka. Jeśli w kolejce stoją następne rozkazy, ten przepada.',
             'Bohater ich nie przyjmuje. "Módl się" działa tylko w zawodzie, który umie się modlić.',
           ],
-        },
-        {
-          h: 'Przełącznik "Jedzenie i sen"',
-        },
-        {
-          table: {
-            head: ['Żołnierz', '"Dozwolone"', '"Zabronione"'],
-            rows: [
-              ['Sam idzie do jedzenia, łóżka, modlitwy', 'tak', 'nie'],
-              ['Sam je z rąk lub z zapasu wieży', 'tak', 'nie'],
-              ['Głód przerywa długi rozkaz', 'tak', 'nie'],
-            ],
-            foot: 'Napoje, amulety i rozkazy Jedz, Śpij, Módl się działają w obu stanach. W menu rozkazów stany to "Zezwól na przerwy" i "Bez przerw na potrzeby". Przełącznik ma tylko żołnierz, zaczyna od "Dozwolone" i wraca do niego po zmianie zawodu.',
-          },
-        },
-        {
-          p: '"Zabronione" bez napojów kończy się głodem. Ratuje rozkaz Jedz albo powrót na "Dozwolone".',
         },
         {
           h: 'Głód a długie rozkazy',
@@ -167,26 +150,12 @@ export const SETTLERS: ArticleGroup = {
             'Przy {{need.criticalPct}}% Energii osadnik schodzi z marszu, zwiadu lub kolejki rozkazów. Stan: "Głodny, idzie coś zjeść".',
             'Je do {{need.satedPct}}%, potem zaczyna rozkaz od nowa.',
             'Gdy nic nie znajdzie, wraca do rozkazu i szuka znowu po {{meal.breakRetrySeconds}} s.',
-            'Nowy rozkaz wydany głodnemu ma pierwszeństwo: głód nie rusza go przez {{meal.breakRetrySeconds}} s.',
-            'Wytrzymałość czeka do końca rozkazów.',
+            'Nowy rozkaz ma pierwszeństwo: przez {{meal.breakRetrySeconds}} s głód go nie przerwie.',
+            'Zmęczenie nie przerywa rozkazów.',
           ],
         },
         {
-          h: 'Stoi na alarmie',
-        },
-        {
-          p: 'To stan żołnierza w [[article:stances|Ataku lub Obronie]] blisko walki, nie [[article:defence|alarm osady]], który włącza gracz.',
-        },
-        {
-          table: {
-            head: ['Co jest w pobliżu', 'Hexy', 'Skutek'],
-            rows: [
-              ['Walka', 'do {{alert.restClearance}}', 'Nie śpi, nie modli się, nie rozmawia.'],
-              ['Widoczny wróg w Ataku lub Obronie', 'do {{alert.standTo}}', 'To samo.'],
-              ['Walka przy śpiącym na otwartym terenie', 'do {{alert.standTo}}', 'Wstaje.'],
-            ],
-            foot: 'Na jedzenie idzie dopiero przy {{need.criticalPct}}% Energii. Dzikie zwierzęta liczą się dopiero, gdy toczy się z nimi walka. W Ignorowaniu reguła nie działa, a rozkaz potrzeby ma pierwszeństwo.',
-          },
+          p: 'Przełącznik "Jedzenie i sen" i stan "Stoi na alarmie" dotyczą tylko żołnierza: [[article:stances|Postawy]].',
         },
         {
           h: 'Religia i Towarzystwo',
@@ -201,7 +170,7 @@ export const SETTLERS: ArticleGroup = {
                 '+{{pray.pct}}% Religii. Powtarza do 100%, chyba że Energia lub Wytrzymałość spadnie do {{need.drivePct}}%.',
               ],
               ['Rozmowa', '{{talk.shortSeconds}}-{{talk.longSeconds}} s', 'Do +{{talk.pct}}% Towarzystwa.'],
-              ['Dopełnianie pasków w domu, w małżeństwie', '-', 'Towarzystwo 100%.'],
+              ['Pobyt w domu, gdy osadnik ma małżonka', '-', 'Towarzystwo 100%.'],
             ],
             num: [1],
           },
@@ -242,27 +211,7 @@ export const SETTLERS: ArticleGroup = {
           },
         },
         {
-          h: 'Skąd jest jedzenie',
-        },
-        {
-          table: {
-            head: ['Towar', 'Skąd', 'Liczy się jako'],
-            rows: [
-              [
-                '[[good:bread|Chleb]]',
-                '[[building:work_bakery_00|Piekarnia 1]], [[building:work_bakery_01|Piekarnia 2]]',
-                'Żywność',
-              ],
-              ['[[good:candy|Ciastko]]', '[[building:work_bakery_01|Piekarnia 2]]', 'Ciastko'],
-              [
-                '[[good:meat|Mięso]]',
-                '[[building:work_animal_farm|Ferma bydła]], [[job:hunter|Myśliwy]]',
-                'Żywność',
-              ],
-              ['[[good:fish|Ryba]]', '[[job:fisher|Rybak]]', 'Żywność'],
-            ],
-            foot: 'Osadnik je też z półki warsztatu. W magazynie bierze najpierw Żywność, Ciastko dopiero bez Żywności. Dojrzały krzew zjada na miejscu, krzew zostaje pusty.',
-          },
+          p: 'Osadnik je też z zapasu warsztatu. W magazynie bierze najpierw Żywność, Ciastko dopiero bez Żywności. Dojrzały krzew zjada na miejscu, krzew zostaje pusty.',
         },
         {
           h: 'Gdzie je osadnik',
@@ -272,7 +221,7 @@ export const SETTLERS: ArticleGroup = {
             'Własna spiżarnia, gdy drzwi domu są najwyżej {{reach.walk}} hexów dalej.',
             'Najbliższy magazyn, warsztat lub stos na ziemi w zasięgu {{reach.goods}} hexów, albo dojrzały krzew bliżej niż {{reach.bushAtHand}} hexów.',
             'Najbliższy dojrzały krzew w zasięgu {{reach.goods}} hexów.',
-            'Najbliższe jedzenie gdziekolwiek w zasięgu chodu, także daleki własny dom.',
+            'Najbliższe jedzenie, dokądkolwiek osadnik może dojść, także własny dom, jeśli jest dalej.',
           ],
         },
         {
@@ -284,12 +233,12 @@ export const SETTLERS: ArticleGroup = {
         {
           steps: [
             '[[job:woman|Kobieta]] z gotowym domem szuka najbliższego jedzenia poza domami.',
-            'Niesie 1 sztukę do domu, spiżarnia przyjmuje ją jako Żywność albo Ciastko.',
+            'Niesie 1 sztukę do domu.',
             'Z [[good:crockery|Naczyniami]] w domu 1 dostarczona sztuka daje 2 sztuki w spiżarni.',
           ],
         },
         {
-          p: 'Kobieta bez innego zajęcia dostarcza, dopóki spiżarnia nie jest pełna. Limity spiżarni: [[article:family|Rodzina i dom]].',
+          p: 'Kobieta donosi jedzenie, dopóki spiżarnia nie jest pełna. Limity: [[article:family|Rodzina i dom]].',
         },
       ],
       see: ['article:needs', 'article:family', 'article:gathering', 'good:bread', 'good:candy'],
@@ -304,7 +253,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Źródło', 'Zmiana', 'Warunek', '{{health.human}} zdrowia w'],
+            head: ['Źródło', 'Zmiana', 'Warunek', 'Całe zdrowie w'],
             rows: [
               [
                 'Regeneracja',
@@ -332,7 +281,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1, 3],
-            foot: 'Regeneracja i aura sumują się do {{aura.totalPerSecond}} na sekundę. Regeneracja kończy się na {{health.human}}, aura leczy ponad normę, do {{aura.ceiling}}. Dziecko i bohater też mają {{health.human}} i regenerują.',
+            foot: 'Razem daje to {{aura.totalPerSecond}} na sekundę. Regeneracja kończy się na {{health.human}}, aura leczy ponad normę, do {{aura.ceiling}}. Dziecko i bohater też mają {{health.human}} i regenerują.',
           },
         },
         {
@@ -345,8 +294,8 @@ export const SETTLERS: ArticleGroup = {
           list: [
             '[[good:potion_heal_small|Mała Lecznicza Mikstura]] ma {{draught.smallUses}} łyki, razem {{draught.healSmallTotal}}. [[good:potion_heal_big|Duża Lecznicza Mikstura]] ma {{draught.bigUses}} łyków, razem {{draught.healBigTotal}}.',
             'Osadnik pije łyk za łykiem, aż rana zostawi mu co najmniej {{draught.healBelow}} zdrowia.',
-            'Cios, który by zabił, nie zabija, jeśli łyki pokrywają ranę.',
-            'Głód też wywołuje picie, gdy zdrowie schodzi poniżej {{draught.healBelow}}.',
+            'Nawet śmiertelny cios nie zabije, jeśli łyki pokryją ranę.',
+            'Osadnik pije też, gdy głód zbije zdrowie poniżej {{draught.healBelow}}.',
             'Najpierw napoczęta butelka, potem mała, potem duża.',
           ],
         },
@@ -356,7 +305,7 @@ export const SETTLERS: ArticleGroup = {
     {
       id: 'life',
       name: 'Życie i śmierć',
-      lead: 'Dziecko dorasta {{age.adultMinutes}} minuty po narodzinach. Dorosły żyje, dopóki ma zdrowie.',
+      lead: 'Dziecko dorasta {{age.adultMinutes}} minuty po narodzinach. Nikt nie umiera ze starości.',
       blocks: [
         {
           h: 'Etapy życia',
@@ -384,7 +333,7 @@ export const SETTLERS: ArticleGroup = {
                 'Chłopiec zostaje [[job:civilist|Cywilem]], dziewczynka [[job:woman|Kobietą]].',
               ],
             ],
-            foot: 'Rok życia trwa {{age.yearSeconds}} s. Cywil bez zawodu czeka na przydział.',
+            foot: 'Rok życia trwa {{age.yearSeconds}} s.',
           },
         },
         {
@@ -403,12 +352,11 @@ export const SETTLERS: ArticleGroup = {
               ['Pancerz', 'Spada zawsze.'],
               ['Napoje, amulety', 'Spadają amulety i nienapoczęte butelki.'],
               ['Wózek Tragarza', 'Stoi na miejscu z ładunkiem.'],
-              ['Ciało', 'Człowiek zostawia kości. Po zwierzęciu zostaje [[article:wildlife|mięso]].'],
             ],
           },
         },
         {
-          p: 'Odkryte [[article:trades|zawody]] zostają w osadzie. Skutki dla współmałżonka: [[article:family|Rodzina i dom]].',
+          p: 'Skutki dla współmałżonka: [[article:family|Rodzina i dom]].',
         },
       ],
       see: ['article:family', 'article:health', 'article:trades'],
@@ -433,7 +381,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Ślub bierze się tylko z rozkazu Ożeń. Sami się nie pobierają.',
+            'Ślub wymaga rozkazu Ożeń.',
             'Rozkaz łączy osadnika z najbliższą dorosłą osobą przeciwnej płci, z tego samego plemienia i od tego samego gracza.',
             'Kandydat musi być w zasięgu [[article:roads|drogowskazów]] osadnika. Bez kandydata rozkaz przepada, a gra pokazuje "Brak pary".',
             'Ślubu nie biorą żołnierze, bohaterowie, Zwiadowcy ani osadnik wysłany do [[building:barracks|Koszar]] lub [[building:school|Szkoły]].',
@@ -453,16 +401,7 @@ export const SETTLERS: ArticleGroup = {
           ],
         },
         {
-          table: {
-            head: ['Co blokuje dziecko', 'Rozwiązanie'],
-            rows: [
-              ['Żona nie ma domu', 'Przydziel dom.'],
-              ['Dom jest w budowie', 'Dokończ budowę.'],
-              ['Mąż to żołnierz, [[job:trader|Kupiec]] lub [[job:scout|Zwiadowca]]', 'Zmień mu zawód.'],
-              ['Małżonkowie mieszkają osobno', 'Przydziel im ten sam dom.'],
-              ['Brak jedzenia w zasięgu', 'Dostarcz jedzenie do pobliskiego magazynu.'],
-            ],
-          },
+          p: 'Para nie będzie mieć dziecka, gdy żona nie ma domu, dom jest w budowie, mąż to żołnierz, [[job:trader|Kupiec]] lub [[job:scout|Zwiadowca]], małżonkowie mieszkają osobno albo w zasięgu nie ma jedzenia.',
         },
         {
           p: 'Następne dziecko para może mieć, gdy poprzednie dorośnie, czyli po {{age.adultMinutes}} minutach. Dziecko nie zajmuje miejsca rodziny w domu.',
@@ -480,7 +419,7 @@ export const SETTLERS: ArticleGroup = {
           data: 'homes',
         },
         {
-          p: 'Spiżarnia to osobny limit na Żywność i na Ciastko: Dom 1 mieści {{home.larder}} + {{home.candyLarder}} sztuk. Rodzina to dorosły, jego małżonek i rosnące dziecko. Dom może należeć do dowolnego plemienia gracza.',
+          p: 'Spiżarnia to osobny limit na Żywność i na Ciastko: Dom 1 mieści {{home.larder}} + {{home.candyLarder}} sztuk. Osadnik może mieszkać w domu innego plemienia tego samego gracza.',
         },
         {
           h: 'Wyposażenie domu',
@@ -528,11 +467,9 @@ export const SETTLERS: ArticleGroup = {
               ['Wdowiec', 'Traci dom, gdy dziecko dorosło lub zmarło.'],
               ['Wdowa', 'Zostaje w domu.'],
               ['Dorosłe dziecko', 'Traci dom w chwili dorosłości.'],
-              ['Wszyscy mieszkańcy', 'Tracą dom, gdy zostaje zburzony.'],
-              ['Cała rodzina', 'Traci dom po rozkazie Usuń Dom.'],
               [
                 'Kupiec, Zwiadowca, żołnierz',
-                'Dom zostaje przy rodzinie, ale on sam nie je w nim ani nie śpi.',
+                'Dom zostaje przy rodzinie, ale on sam w nim nie je ani nie śpi.',
               ],
             ],
           },
@@ -558,7 +495,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           table: {
-            head: ['Licznik', 'Zamawia', 'Kto to robi', 'Maleje', 'Bez końca'],
+            head: ['Licznik', 'Zamawia', 'Kto', 'Maleje', 'Bez końca'],
             rows: [
               ['Córki', 'dziewczynkę', 'mężatka z domem', 'przy narodzinach', 'nie'],
               ['Synowie', 'chłopca', 'mężatka z domem', 'przy narodzinach', 'tak'],
@@ -605,7 +542,7 @@ export const SETTLERS: ArticleGroup = {
               ],
               ['Zbieracze automatycznie przenoszą flagę', 'włączony', '[[job:collector|Zbieracz]] z flagą'],
             ],
-            foot: 'Przy napojach i amuletach przyciski "Osadnicy" i "Żołnierze" wybierają odbiorców, na starcie oba włączone. Wyłączenie niczego nie odbiera: kto ma, ten zachowuje.',
+            foot: 'Przy napojach i amuletach przyciski "Osadnicy" i "Żołnierze" wybierają odbiorców, na starcie oba włączone. Wyłączenie nie odbiera tego, co już wydano.',
           },
         },
         {
@@ -614,7 +551,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Najpierw córki, potem synowie. Córki nie mają ∞, bo synowie nigdy by się nie doczekali.',
-            'Licznik 3 to najwyżej 3 pary naraz.',
+            'Przy liczniku 3 dziecko robią naraz najwyżej 3 pary.',
             'Para bierze jedno zamówienie naraz. Blokady są te same co przy rozkazie: [[article:family|Rodzina i dom]].',
             'Obniżenie licznika nie cofa zamówienia, które para już ma.',
           ],
@@ -625,7 +562,7 @@ export const SETTLERS: ArticleGroup = {
         {
           list: [
             'Idzie tylko dorosły Cywil bez miejsca pracy i bez zadania. Najpierw nieżonaci. Nikogo nie zabiera z pracy.',
-            'Licznik klasy najpierw uzbraja żołnierza bez broni, jeśli broń jest w jego zasięgu.',
+            'Licznik Miecznicy, Włócznicy lub Łucznicy najpierw uzbraja żołnierza bez broni, jeśli broń jest w jego zasięgu.',
           ],
         },
         {
@@ -635,7 +572,7 @@ export const SETTLERS: ArticleGroup = {
               ['Brak gotowych [[building:barracks|Koszar]]', 'Dokończ Koszary.'],
               ['Brak wolnego Cywila', 'Poślij kogoś do Koszar ręcznie.'],
               [
-                'Żołnierz bez broni czeka na broń tej klasy',
+                'Żołnierz bez broni czeka na broń tego rodzaju',
                 'Dostarcz broń. Do tego czasu zajmuje miejsce nowego rekruta.',
               ],
             ],
@@ -647,9 +584,9 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Pomija kobiety, dzieci, [[article:heroes|bohaterów]] i załogę wieży.',
-            'Jedno wyjście do magazynu, tam dobiera resztę.',
-            'Na każdą sztukę w magazynie idzie jeden osadnik. Zapasu poniżej [[article:hauling|minimum magazynu]] nie rusza.',
+            'Asystent nie wyposaża kobiet, dzieci, [[article:heroes|bohaterów]] ani załogi wieży.',
+            'Osadnik idzie do magazynu raz i bierze wszystko naraz.',
+            'Po każdą sztukę w magazynie rusza tylko jeden osadnik. Zapasu poniżej [[article:hauling|minimum magazynu]] nie rusza.',
             'Wypełnia tylko puste miejsca, nie wymienia na lepsze. Żelazne narzędzia idą przed drewnianymi, duża butelka przed małą.',
             'Kto ma małą miksturę, nie idzie po dużą. Miejsca na napoje i amulety są {{amulet.slots}}: [[article:draughts|Napoje i amulety]].',
           ],
@@ -659,7 +596,7 @@ export const SETTLERS: ArticleGroup = {
         },
         {
           list: [
-            'Absolwent idzie raz, do najbliższego wolnego miejsca w swoim zawodzie, także na plac budowy warsztatu. Warsztat robiący wyrób z kursu wygrywa z bliższym.',
+            'Absolwent idzie raz, do najbliższego wolnego miejsca w swoim zawodzie, także na plac budowy warsztatu. Warsztat, który robi wyrób z kursu, ma pierwszeństwo przed bliższym.',
             'Bez wolnego miejsca czeka przy Szkole. Pomija [[job:collector|Zbieracza]], [[job:hunter|Myśliwego]], [[job:fisher|Rybaka]] i żołnierzy.',
           ],
         },
@@ -695,19 +632,19 @@ export const SETTLERS: ArticleGroup = {
                 '[[good:mead|Miód Pitny]]',
                 '{{draught.meadUses}}',
                 '+{{draught.meadPct}}% Energii i +{{draught.meadPct}}% Wytrzymałości',
-                'Energia lub Wytrzymałość ma do {{need.drivePct}}%',
+                'Energia lub Wytrzymałość spadnie do {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_food_small|Mała]] / [[good:potion_food_big|Duża Odżywcza Mikstura]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Energii',
-                'Energia ma do {{need.drivePct}}%',
+                'Energia spadnie do {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_stamina_small|Mała]] / [[good:potion_stamina_big|Duża Mikstura Wytrzymałości]]',
                 '{{draught.smallUses}} / {{draught.bigUses}}',
                 '+{{draught.potionPct}}% Wytrzymałości',
-                'Wytrzymałość ma do {{need.drivePct}}%',
+                'Wytrzymałość spadnie do {{need.drivePct}}%',
               ],
               [
                 '[[good:potion_heal_small|Mała]] / [[good:potion_heal_big|Duża Lecznicza Mikstura]]',
@@ -717,7 +654,7 @@ export const SETTLERS: ArticleGroup = {
               ],
             ],
             num: [1],
-            foot: 'Rozkaz jedzenia lub snu wstrzymuje picie.',
+            foot: 'Rozkaz Jedz, Śpij, Rozmawiaj lub Módl się wstrzymuje picie.',
           },
         },
         {
@@ -730,12 +667,12 @@ export const SETTLERS: ArticleGroup = {
               [
                 '[[good:amulet_food|Odżywczy Amulet]]',
                 '+{{amulet.needPct}}% Energii',
-                'za każdym razem, gdy Energia ma do {{need.drivePct}}%',
+                'za każdym razem, gdy Energia spadnie do {{need.drivePct}}%',
               ],
               [
                 '[[good:amulet_stamina|Amulet Wytrzymałości]]',
                 '+{{amulet.needPct}}% Wytrzymałości',
-                'za każdym razem, gdy Wytrzymałość ma do {{need.drivePct}}%',
+                'za każdym razem, gdy Wytrzymałość spadnie do {{need.drivePct}}%',
               ],
               [
                 '[[good:amulet_strength|Amulet Siły]]',
@@ -763,8 +700,7 @@ export const SETTLERS: ArticleGroup = {
           list: [
             'Drugi taki sam amulet nic nie daje.',
             'Różne amulety działają razem: Siła i Precyzja dają ×{{amulet.comboFactor}} przy udanym losowaniu.',
-            'Kolejność na potrzebę: napoczęta butelka, amulet, butelka z mniejszą liczbą łyków.',
-            'Miód Pitny wypity z powodu Energii napełnia też Wytrzymałość.',
+            'Na głód i zmęczenie osadnik sięga po kolei: napoczęta butelka, amulet, pełna butelka z mniejszą liczbą łyków.',
             'Z Odżywczym Amuletem osadnik nie szuka jedzenia, z Amuletem Wytrzymałości nie idzie spać.',
           ],
         },

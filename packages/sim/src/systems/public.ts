@@ -57,7 +57,21 @@ export {
 export { SOLDIER_OUTFIT_GOOD_IDS, TOWER_GARRISON_ARCHERS } from './computer-player/military/index.js';
 // A seat's military operations (the marching wave, raids) as plain data, for a debug view.
 export { type OperationView, seatOperationsOf } from './computer-player/military/operations/index.js';
+export {
+  LANDING_COOLDOWN_TICKS,
+  LANDING_EDGE,
+  LANDING_RETREAT_LOSS_PCT,
+} from './computer-player/military/operations/landing.js';
+export {
+  RAID_BAND_MEN,
+  RAID_DELAY_MAX_TICKS,
+  RAID_DELAY_MIN_TICKS,
+  RAID_SEAT_CHANCE_PCT,
+} from './computer-player/military/operations/raid.js';
 export { WAVE_GATHER_TICKS, waveBandAt } from './computer-player/military/plan.js';
+export { DEFEND_RATIO, PLAN_TUNING } from './computer-player/strategy/military.js';
+export { LANDING_BIG_SHIPS } from './computer-player/workforce/craft.js';
+export { TOWER_POST_STRENGTH } from './ai-shared/military/census.js';
 // A seat's strategy (economy, military plan and posture) and the seat brief it was chosen from, and its
 // army, strongest believed enemy and next forecast attack, for a debug view.
 export {
@@ -106,7 +120,7 @@ export { HUNT_CHASE_SLACK_NODES } from './conflict/hunting/ground.js';
 export { HUNT_PREY_SCORE_CEILING } from './conflict/hunting/index.js';
 // The ground a defence-capable building covers, drawn when it is selected or placed.
 export { SHELTER_SHOT_PERIOD_TICKS, shelterFireRadius } from './conflict/shelter-fire.js';
-export { AIM_ROLL_SPAN, AIM_TRUE_BASE } from './conflict/shot-aim.js';
+export { AIM_ROLL_SPAN, AIM_TRUE_BASE, SCATTER_RANGE_DIVISOR } from './conflict/shot-aim.js';
 export {
   ANIMAL_ACQUIRE_RANGE_NODES,
   ANIMAL_AGGRO_RADIUS_NODES,
@@ -120,6 +134,9 @@ export { STRANDED_FIELD_RECLAIM_TICKS } from './economy/field-reclaim.js';
 export { createMapCrop } from './economy/fields.js';
 export {
   addFishSwarms,
+  FISH_CAST_ATOMIC,
+  FISH_CAUGHT_ATOMIC,
+  FISH_FAILED_ATOMIC,
   FISH_REPRODUCTION_TICKS,
   FISH_SHORE_SEARCH_RADIUS,
   fishGoodOf,
@@ -232,7 +249,7 @@ export { EXPLORE_MAX_FAILED_LEGS } from './orders/explore.js';
 export { MEAL_BREAK_RETRY_TICKS } from './orders/meal-break.js';
 export { WORK_FLAG_SNAP_MAX_RADIUS } from './orders/work/selection.js';
 export { GATE_ENEMY_NEAR_POINTS } from './palisades/gate-control.js';
-export { createPalisade, GATE_SPAN_OFFSETS, palisadeType } from './palisades/index.js';
+export { createPalisade, GATE_MIN_HEALTH_PCT, GATE_SPAN_OFFSETS, palisadeType } from './palisades/index.js';
 export {
   EXPERIENCE_MASTERY_POINTS,
   EXPERIENCE_XP_PER_POINT,
@@ -401,4 +418,5 @@ export {
   SIEGE_VISION_NODES,
   SOLDIER_VISION_NODES,
 } from './vision/system.js';
+export { LEADER_UPKEEP_PERIOD_TICKS } from './movement/herd-roster.js';
 export { BREEDING_SPAN_TICKS, BREEDING_SPANS_PER_ROUND } from './wildlife/index.js';
