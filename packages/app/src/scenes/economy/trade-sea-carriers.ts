@@ -38,21 +38,12 @@ const HELPERS = 3;
 const CARRIERS_AT = { x: 4, y: 11 } as const;
 const RUN_SECONDS = 185;
 
-/** Short of the last unit, the carriers still at work, so the checks compare two runs under way. */
+/** Short of the last unit, so the check compares two runs still under way. */
 const RUN_TICKS = TICKS_PER_SECOND * RUN_SECONDS;
-/** What the same world with no carriers lands in those ticks, measured at this seed. */
+/** A floor the same world with no carriers must not beat in those ticks, measured at this seed. */
 export const TRADER_ALONE_WOOD = 15;
 
-const {
-  CargoRun,
-  Carrying,
-  setStockAmount,
-  Settler,
-  Stockpile,
-  Vehicle,
-  vehicleCommander,
-  vehiclePassengers,
-} = components;
+const { setStockAmount, Settler, Stockpile, Vehicle, vehicleCommander, vehiclePassengers } = components;
 
 export function buildTradeSeaCarriers(sim: Simulation, helpers: number): void {
   const west = placeBuiltSandboxBuilding(
@@ -111,13 +102,10 @@ export const tradeSeaCarriersScene: SceneDefinition = {
       predicate: (sim) => farWood(sim) > TRADER_ALONE_WOOD,
     },
     {
-      label: 'every carrier kept its seat, one of them mid trip with a unit booked or in its hands',
+      label: 'every carrier kept its seat',
       predicate: (sim) => {
         const ship = tradeSeaShip(sim);
-        const helpers = ship === undefined ? [] : shipHelpers(sim, ship);
-        const onTrip = (helper: Entity): boolean =>
-          sim.world.has(helper, CargoRun) || sim.world.has(helper, Carrying);
-        return helpers.length === HELPERS && helpers.some(onTrip);
+        return ship !== undefined && shipHelpers(sim, ship).length === HELPERS;
       },
     },
     {

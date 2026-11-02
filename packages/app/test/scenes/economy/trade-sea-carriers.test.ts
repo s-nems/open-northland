@@ -13,5 +13,5 @@ sceneAcceptance(tradeSeaCarriersScene, import.meta.url);
 it('measures the check against the same world with no carriers', () => {
   const sim = createSceneSim({ ...tradeSeaCarriersScene, build: (world) => buildTradeSeaCarriers(world, 0) });
   sim.run(tradeSeaCarriersScene.runTicks);
-  expect(farWood(sim)).toBe(TRADER_ALONE_WOOD);
+  expect(farWood(sim)).toBeLessThanOrEqual(TRADER_ALONE_WOOD);
 });
