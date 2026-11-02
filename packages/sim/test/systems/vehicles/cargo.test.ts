@@ -16,6 +16,7 @@ import {
 import type { Entity } from '../../../src/ecs/world.js';
 import {
   exportSaveGame,
+  halfCellMapFromCells,
   parseSaveGame,
   playerCommand,
   restoreSimulation,
@@ -25,7 +26,7 @@ import {
 import { SUCCESSFUL_IF } from '../../../src/systems/missions/index.js';
 import { MILITARY_MODE } from '../../../src/systems/readviews/stances.js';
 import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../../src/systems/settlers/drives/economy/index.js';
-import { MAX_GROUND_STACK } from '../../../src/systems/stores/index.js';
+import { MAX_GROUND_STACK, seatStockOf, stockCapacity } from '../../../src/systems/stores/index.js';
 import { boardRider, createVehicle } from '../../../src/systems/vehicles/index.js';
 import {
   clearVehicleWanted,
@@ -76,6 +77,17 @@ const STORE_BEYOND_SAWMILL_AT = { hx: SOURCE_AT_HX + 12, hy: 20 };
 const HOME_FOOD = 5;
 /** A house beyond the cargo search radius of the cart's door. */
 const FAR_HOUSE_AT = { hx: CART_AT.hx + VEHICLE_CARGO_SEARCH_RADIUS + 20, hy: 20 };
+const SHIP_SMALL = 3;
+const GRASS = 0;
+const WATER = 1;
+/** A square map, grass up to its sea on the east from {@link SEA_CELL} on. */
+const SHORE_CELLS = 16;
+const SEA_CELL = 10;
+/** More than the ground stack of one tile, so the heap spreads. */
+const HOLD_UNITS = 12;
+const HAND_ROWS = [12, 14, 16];
+const BOARD_TICKS = 300;
+const UNLOAD_TICKS = 2000;
 
 function sim(seed = 3): Simulation {
   const s = new Simulation({ seed, content: testContent(), map: grassNodeMap(MAP_NODES, MAP_NODES) });
@@ -83,9 +95,14 @@ function sim(seed = 3): Simulation {
   return s;
 }
 
-function spawnCart(s: Simulation, at = CART_AT, goods?: { good: number; amount: number }[]): Entity {
+function spawnCart(
+  s: Simulation,
+  at = CART_AT,
+  goods?: { good: number; amount: number }[],
+  vehicleType = HANDCART,
+): Entity {
   const e = createVehicle(s.world, ctxOf(s), {
-    vehicleType: HANDCART,
+    vehicleType,
     x: at.hx,
     y: at.hy,
     tribe: VIKING,
@@ -611,6 +628,40 @@ describe('the carrier rung', () => {
     s.run(TRIP_TICKS);
     expect(line(restored, cart, WOOD)).toEqual({ current: 1, wanted: 1, reserved: 1 });
     expect(restored.hashState()).toBe(s.hashState());
+  });
+});
+
+describe('a moored ship unloading beside a full warehouse', () => {
+  it('empties the hold onto the ground, where the seat still counts it, and no hand keeps a unit', () => {
+    const typeIds = new Array<number>(SHORE_CELLS * SHORE_CELLS).fill(GRASS);
+    for (let row = 0; row < SHORE_CELLS; row++)
+      for (let col = SEA_CELL; col < SHORE_CELLS; col++) typeIds[row * SHORE_CELLS + col] = WATER;
+    const s = new Simulation({
+      seed: 3,
+      content: testContent(),
+      map: halfCellMapFromCells({ width: SHORE_CELLS, height: SHORE_CELLS, typeIds }),
+    });
+    s.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
+    const hq = placeHq(s, { hx: 8, hy: 8 });
+    const capacity = stockCapacity(s.world, ctxOf(s), hq, WOOD);
+    s.world.mut(hq, Stockpile).amounts.set(WOOD, capacity);
+    const ship = spawnCart(s, { hx: 22, hy: 8 }, [{ good: WOOD, amount: HOLD_UNITS }], SHIP_SMALL);
+    const hands = HAND_ROWS.map((y) => {
+      const hand = spawnSettler(s, 12, y);
+      s.enqueue(playerCommand(P0, { kind: 'attachToVehicle', entity: hand, vehicle: ship }));
+      s.enqueue(playerCommand(P0, { kind: 'boardVehicle', entity: hand }));
+      return hand;
+    });
+    s.run(BOARD_TICKS);
+    expect(line(s, ship, WOOD).current).toBe(HOLD_UNITS);
+    expect(s.world.get(ship, Vehicle).moored).toBe(true);
+    want(s, ship, WOOD, 0);
+    s.run(UNLOAD_TICKS);
+    expect(line(s, ship, WOOD)).toEqual({ current: 0, wanted: 0, reserved: 0 });
+    expect(pileAmount(s, WOOD)).toBe(HOLD_UNITS);
+    expect(s.world.get(hq, Stockpile).amounts.get(WOOD)).toBe(capacity);
+    expect(seatStockOf(s.world, P0).units(WOOD)).toBe(capacity + HOLD_UNITS);
+    expect(hands.some((hand) => s.world.has(hand, Carrying))).toBe(false);
   });
 });
 
