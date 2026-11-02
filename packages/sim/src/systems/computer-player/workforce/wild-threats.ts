@@ -16,7 +16,7 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { hexDistanceBetween, nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { ANIMAL_AGGRO_RADIUS_NODES } from '../../conflict/targeting.js';
 import { attackerWeapon } from '../../conflict/weapons.js';
 import type { SystemContext } from '../../context.js';
@@ -80,7 +80,7 @@ export function defendAgainstWildlife(
   if (hunterJob === null) return NO_DEFENCE;
   const threats = seatWildThreats(world, ctx, player);
   if (threats.length === 0) return NO_DEFENCE;
-  const hunters = ownedSettlers(world, player).filter((e) => mayDefend(world, ctx, e));
+  const hunters = homeSettlers(world, ctx, player).filter((e) => mayDefend(world, ctx, e));
   // A man of the trade is never hired again, and a hired one only once.
   const notHirable = new Set(hunters);
   let unposted = hunters.filter((e) => !world.has(e, JobAssignment)).length;

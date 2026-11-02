@@ -8,7 +8,7 @@ import {
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId, goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
@@ -133,7 +133,7 @@ export function seatApprenticeViews(
 ): readonly ApprenticeView[] {
   if (seatBaseOf(world, ctx, player) === null) return [];
   const order = seatBuildOrder(world, ctx, player, DEFAULT_BUILD_ORDER, computerProfileOf(world, player));
-  const statuses = lineStatuses(world, ctx, player, ownedBuildings(world, player), order);
+  const statuses = lineStatuses(world, ctx, player, homeBuildings(world, ctx, player), order);
   const missing = missingDiscoveries(world, ctx, player, order, statuses);
   const picked = pickApprentices(world, ctx, player, missing);
   return missing.map(({ gate, opens }) => {
@@ -155,7 +155,7 @@ export function seatApprenticeViews(
  */
 export function seatEarningTrades(world: World, ctx: SystemContext, player: number): ReadonlySet<number> {
   const order = seatBuildOrder(world, ctx, player, DEFAULT_BUILD_ORDER, computerProfileOf(world, player));
-  const statuses = lineStatuses(world, ctx, player, ownedBuildings(world, player), order);
+  const statuses = lineStatuses(world, ctx, player, homeBuildings(world, ctx, player), order);
   const trades = new Set<number>();
   for (const { gate } of missingDiscoveries(world, ctx, player, order, statuses))
     for (const job of gate.enablingJobs) trades.add(job);
@@ -215,7 +215,7 @@ function pickApprentices(
 ): ReadonlyMap<DiscoveryGate, Candidate> {
   const best = new Map<DiscoveryGate, Candidate>();
   const tracks = ctx.content.jobExperience;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (!isAllocatableMan(world, ctx, e)) continue;
     const job = world.get(e, Settler).jobType;
     if (job === null) continue;

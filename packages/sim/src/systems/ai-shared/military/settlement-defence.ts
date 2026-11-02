@@ -24,7 +24,8 @@ import { peaceGroundFor } from '../../match/peace.js';
 import { hexNodeDistance } from '../../spatial/metric.js';
 import { entityNode } from '../../spatial/nodes.js';
 import { militaryDecisionDue } from '../cadence.js';
-import { isBuilt, ownedBuildings } from '../seat-roster.js';
+import { homeBuildings } from '../home-roster.js';
+import { isBuilt } from '../seat-roster.js';
 import { type ArmyCensus, takeCensus } from './census.js';
 import { assessSeatThreat, NO_THREAT, type SeatThreat } from './defence/danger.js';
 import {
@@ -119,7 +120,7 @@ function deriveSettlementDefence(
   player: number,
   autonomous: boolean,
 ): SettlementDefence {
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   const claimed = mapAiSoldierClaims(world, player);
   const census = takeCensus(world, ctx, player);
   const army = {

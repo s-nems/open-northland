@@ -15,9 +15,9 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId, countedTiers, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
@@ -128,7 +128,7 @@ export const MEN_PER_OPEN_SITE = 3;
  *  brings and keep the clock's pace alone. */
 export function crewSiteCap(world: World, ctx: SystemContext, player: number): number {
   let men = 0;
-  for (const e of ownedSettlers(world, player)) if (isAllocatableMan(world, ctx, e)) men++;
+  for (const e of homeSettlers(world, ctx, player)) if (isAllocatableMan(world, ctx, e)) men++;
   return men === 0 ? Number.POSITIVE_INFINITY : Math.max(1, Math.floor(men / MEN_PER_OPEN_SITE));
 }
 
@@ -238,7 +238,7 @@ function runBuildOrder(
   if (terrain === undefined) return [];
   const profile = computerProfileOf(world, player);
   const order = seatBuildOrder(world, ctx, player, fullOrder, profile);
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   const base = seatBaseOf(world, ctx, player);
   const sites = constructionSites(world, ctx, owned);
   if (base === null) return replaceMissingBase(world, ctx, terrain, player, owned, sites);

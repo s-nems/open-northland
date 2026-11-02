@@ -10,8 +10,8 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../nav/terrain/index.js';
+import { everyBuildingOf } from '../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
@@ -32,13 +32,13 @@ export interface OpposingBuilding {
 const headquartersByRoster = new WeakMap<readonly Entity[], readonly Entity[]>();
 
 /**
- * The seat's headquarters in any construction state, ascending id. Kept per {@link ownedBuildings} roster
+ * The seat's headquarters in any construction state, ascending id. Kept per {@link everyBuildingOf} roster
  * copy, which is replaced whenever a building is added, removed or re-owned, so a seat's roster is walked
  * once per such change: a headquarters sits on no upgrade chain, so no type change in place makes or
  * unmakes one.
  */
 function seatHeadquartersOf(world: World, ctx: SystemContext, player: number): readonly Entity[] {
-  const roster = ownedBuildings(world, player);
+  const roster = everyBuildingOf(world, player);
   const held = headquartersByRoster.get(roster);
   if (held !== undefined) return held;
   const found = roster.filter((e) => isHeadquartersType(ctx, world.get(e, Building).buildingType));

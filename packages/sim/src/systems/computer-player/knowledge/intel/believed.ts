@@ -1,7 +1,7 @@
 import { diplomacyStance, type IntelBuilding, MAX_PLAYERS } from '../../../../components/index.js';
 import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
+import { everyBuildingOf } from '../../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { fogHides, playerSeesNode } from '../../../vision/gates.js';
 import { rememberedBuildings } from './read.js';
@@ -30,7 +30,7 @@ export function believedBuildings(
   owner: number | null = null,
 ): BelievedBuildings {
   const owns = (other: number): boolean => (owner === null ? isEnemy(world, seat, other) : other === owner);
-  const live = owner === null ? enemyBuildings(world, seat) : ownedBuildings(world, owner);
+  const live = owner === null ? enemyBuildings(world, seat) : everyBuildingOf(world, owner);
   const fog = ctx.fog;
   if (!fogHides(fog)) return { seen: live, remembered: NOTHING_REMEMBERED };
   const seen: Entity[] = [];
@@ -54,7 +54,7 @@ function enemyBuildings(world: World, seat: number): readonly Entity[] {
   let merged: Entity[] | null = null;
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (!isEnemy(world, seat, other)) continue;
-    const roster = ownedBuildings(world, other);
+    const roster = everyBuildingOf(world, other);
     if (roster.length === 0) continue;
     if (only === null) only = roster;
     else {

@@ -21,7 +21,8 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
@@ -685,7 +686,7 @@ export function tuneCraftCounters(
   // naming a good the tier does not make is ignored. Insertion follows the canonical settler walk, so the
   // seats and the emitted command order are both deterministic.
   const crews = new Map<CraftPlan, Map<number, RestrictedCrew>>();
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const assignment = world.tryGet(e, JobAssignment);
     if (assignment === undefined) continue;
     const job = world.get(e, Settler).jobType;
@@ -921,7 +922,7 @@ function fleetReserve(
   const joinery = index.buildingTypeBySlug.get(ROLE_JOINERY_ID);
   const vehicleType = house === null ? undefined : index.buildings.get(house)?.vehicleType;
   if (house === null || joinery === undefined || vehicleType === undefined) return NO_RESERVE;
-  const shipYard = ownedBuildings(world, player).some(
+  const shipYard = homeBuildings(world, ctx, player).some(
     (e) => world.get(e, Building).buildingType === joinery && isBuilt(world, e) && roleOf(e) === 'ship',
   );
   if (!shipYard) return NO_RESERVE;
@@ -1260,7 +1261,7 @@ function ownsBuildingOf(
 ): boolean {
   const type = contentIndex(ctx.content).buildingTypeBySlug.get(buildingId);
   if (type === undefined) return false;
-  for (const e of ownedBuildings(world, player))
+  for (const e of homeBuildings(world, ctx, player))
     if (world.get(e, Building).buildingType === type && (!siteOnly || world.has(e, UnderConstruction)))
       return true;
   return false;

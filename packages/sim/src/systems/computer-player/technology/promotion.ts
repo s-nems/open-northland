@@ -6,7 +6,7 @@ import {
   Settler,
 } from '../../../components/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { jobAwaitsDiscovery, needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
@@ -41,7 +41,7 @@ export class Promotions {
     if (gate === undefined || gate.needs.length === 0) return null;
     let best: Entity | null = null;
     let bestOpen = false;
-    for (const e of ownedSettlers(world, player)) {
+    for (const e of homeSettlers(world, ctx, player)) {
       if (this.promoted.has(e) || this.apprentices.has(e) || !isAllocatableMan(world, ctx, e)) continue;
       if (world.has(e, BuildMode) || world.has(e, Carrying)) continue;
       const settler = world.get(e, Settler);

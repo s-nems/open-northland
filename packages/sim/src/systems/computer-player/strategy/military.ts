@@ -18,8 +18,8 @@ import {
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { DeepReadonly, World } from '../../../ecs/world.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { raidOnTheSettlement, seatRaiders } from '../../ai-shared/military/defence/index.js';
-import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBarracksOf } from '../base.js';
@@ -304,7 +304,7 @@ export function postureInputsOf(world: World, ctx: SystemContext, seat: number):
             ?.owner ?? null);
     targetOwner = barracks === null ? null : (landOwner ?? seaTargetOwner(world, ctx, seat));
     targetOverSea = landOwner === null && targetOwner !== null;
-    const owned = ownedBuildings(world, seat);
+    const owned = homeBuildings(world, ctx, seat);
     underAttack =
       raidOnTheSettlement(world, ctx, terrain, owned, seatRaiders(world, ctx, terrain, seat)) !== null;
   }

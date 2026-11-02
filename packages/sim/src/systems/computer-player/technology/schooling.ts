@@ -14,8 +14,9 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { nodeManhattan } from '../../../nav/halfcell.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { tradeExperience } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
@@ -116,7 +117,7 @@ export class Schooling {
     if (tribe === undefined || table === null) return [];
     const commands: PlayerCommand[] = [];
     let standing: readonly Entity[] | undefined;
-    for (const e of ownedSettlers(world, player)) {
+    for (const e of homeSettlers(world, ctx, player)) {
       const workplace = world.tryGet(e, JobAssignment)?.workplace;
       if (workplace === undefined || world.has(e, TrainingOrder) || world.has(e, Carrying)) continue;
       const good = this.lessonFor(e, workplace, tribe, table.goods);
@@ -187,7 +188,7 @@ export class Schooling {
   /** The seat's men in a job lesson now, by the job they learn. */
   private livePupils(): Map<number, number> {
     const pupils = new Map<number, number>();
-    for (const e of ownedSettlers(this.world, this.player)) {
+    for (const e of homeSettlers(this.world, this.ctx, this.player)) {
       const lesson = this.world.tryGet(e, TrainingOrder)?.lesson;
       if (lesson?.kind === 'job') pupils.set(lesson.typeId, (pupils.get(lesson.typeId) ?? 0) + 1);
     }

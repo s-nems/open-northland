@@ -11,7 +11,8 @@ import {
 import type { PlayerCommand } from '../../core/commands/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../ai-shared/seat-roster.js';
+import { homeBuildings, homeSettlers } from '../ai-shared/home-roster.js';
+import { isBuilt } from '../ai-shared/seat-roster.js';
 import { builderJobOf, civilianCount, isAllocatableMan } from '../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../context.js';
 import { liveWorkFlag } from '../economy/work-flag.js';
@@ -46,7 +47,7 @@ export const IDLE_MEN_HOLD_BIRTHS = 3;
 function runPopulation(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   if (seatBaseOf(world, ctx, player) === null) return [];
   const commands: PlayerCommand[] = [];
-  const settlers = ownedSettlers(world, player);
+  const settlers = homeSettlers(world, ctx, player);
   const women = settlers.filter((e) => world.has(e, Female) && isAdultSettler(world, e));
 
   // One marry order per possible couple, capped by the smaller side so the command log does not fill with
@@ -69,7 +70,7 @@ function runPopulation(world: World, ctx: SystemContext, player: number): readon
   const index = contentIndex(ctx.content);
   const homes: Array<{ entity: Entity; free: number }> = [];
   let familySlotsTotal = 0;
-  for (const e of ownedBuildings(world, player)) {
+  for (const e of homeBuildings(world, ctx, player)) {
     if (!isBuilt(world, e)) continue;
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type === undefined || type.kind !== 'home') continue;
@@ -156,7 +157,7 @@ function idleMenHoldBirths(
   const builderJob = builderJobOf(ctx);
   if (builderJob === null) return false;
   let idle = 0;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (world.get(e, Settler).jobType !== builderJob || !isAllocatableMan(world, ctx, e)) continue;
     if (world.has(e, JobAssignment) || world.has(e, AssistantRecruit)) continue;
     if (liveWorkFlag(world, e) === undefined) idle++;

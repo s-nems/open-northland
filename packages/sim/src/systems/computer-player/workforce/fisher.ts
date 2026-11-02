@@ -5,8 +5,9 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { originalReachBudget, type ReachTarget, reachContains } from '../../../nav/range-search.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf, nearestRingNode } from '../../ai-shared/node-geometry.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { FISH_SHORE_SEARCH_RADIUS } from '../../economy/fish.js';
@@ -134,7 +135,7 @@ export function fishingPlan(
   if (terrain === undefined || ground === null || job === undefined) return null;
   const index = contentIndex(ctx.content);
   const stores: { store: Entity; door: NodeId }[] = [];
-  for (const e of ownedBuildings(world, player)) {
+  for (const e of homeBuildings(world, ctx, player)) {
     if (!isBuilt(world, e)) continue;
     if (index.buildings.get(world.get(e, Building).buildingType)?.kind !== 'storage') continue;
     stores.push({ store: e, door: interactionCell(world, ctx, terrain, e) });
@@ -151,7 +152,7 @@ export function fishingPlan(
   const waterNear = stores.some(({ door }) => swarmWithinTrip(world, terrain, door));
   const far = stands.length === 0 && !waterNear ? (standsWithin(FAR_REACH)[0] ?? null) : null;
   const firstHires = seatHasSide(world, player, 'fishing') ? target : Math.min(1, target);
-  const employed = ownedSettlers(world, player).filter(
+  const employed = homeSettlers(world, ctx, player).filter(
     (e) => world.has(e, JobAssignment) && world.get(e, Settler).jobType === job,
   );
   return { job, terrain, ground, stands, fishers: [...fishers], target, firstHires, far, employed };
@@ -173,7 +174,7 @@ export function seatFishes(world: World, ctx: SystemContext, player: number): bo
 /** How many of the seat's men work as flag fishers ({@link seatFishes}). */
 export function flagFishers(world: World, ctx: SystemContext, player: number): number {
   let fishers = 0;
-  for (const e of ownedSettlers(world, player))
+  for (const e of homeSettlers(world, ctx, player))
     if (isFisherJob(ctx.content, world.get(e, Settler).jobType) && !world.has(e, JobAssignment)) fishers++;
   return fishers;
 }

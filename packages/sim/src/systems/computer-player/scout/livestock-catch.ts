@@ -2,8 +2,8 @@ import { Building, Livestock, mapBriefOf, Owner, Position } from '../../../compo
 import { ONE } from '../../../core/fixed.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
+import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
 import { claimableBy } from '../../livestock/index.js';
@@ -70,7 +70,7 @@ export function nextLivestockCatch(
   if (base === null) return null;
   const from = anchorNodeOf(world, base);
   if (from === null) return null;
-  const box = settlementBox(world, player);
+  const box = settlementBox(world, ctx, player);
   if (box === null) return null;
 
   let nearest = Infinity;
@@ -152,13 +152,14 @@ interface Candidate {
  *  it is out of reach of every building, so it never pays a spatial probe. Null with nothing standing. */
 function settlementBox(
   world: World,
+  ctx: SystemContext,
   player: number,
 ): { minX: number; maxX: number; minY: number; maxY: number } | null {
   let minX = Infinity;
   let maxX = -Infinity;
   let minY = Infinity;
   let maxY = -Infinity;
-  for (const e of ownedBuildings(world, player)) {
+  for (const e of homeBuildings(world, ctx, player)) {
     if (world.get(e, Building).built < ONE) continue;
     const node = anchorNodeOf(world, e);
     if (node === null) continue;

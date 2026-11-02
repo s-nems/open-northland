@@ -3,8 +3,8 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../../../ai-shared/content-lookup.js';
+import { homeSettlers } from '../../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../../economy/work-flag.js';
@@ -121,7 +121,7 @@ export function workedDeposit(
   if (COLLECTOR_WORKSHOP_BY_GOOD_ID[goodId] === undefined) return null;
   let flag: HalfCellNode | null = null;
   let flagDistance = Number.POSITIVE_INFINITY;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (heldGatherGood(world, ctx, e) !== goodType) continue;
     const held = liveWorkFlag(world, e);
     const at = held === undefined ? null : anchorNodeOf(world, held.flag);

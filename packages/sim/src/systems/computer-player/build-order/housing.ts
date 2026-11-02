@@ -12,12 +12,13 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
-import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { buildingEnabled } from '../../progression/index.js';
-import { seatStockOf } from '../../stores/index.js';
+import { homeStockOf } from '../colony/stock.js';
 import { femaleDemand } from '../female-stock.js';
 import { seatFishes } from '../workforce/fisher.js';
 import { foodSourcesAtWork, foodWorkshopBuilt, storedFoodUnits } from '../workforce/food.js';
@@ -128,9 +129,9 @@ function herdingCeiling(
   let top = 0;
   for (const e of homes)
     if (capped.has(world.tryGet(e, Upgrading)?.target ?? world.get(e, Building).buildingType)) top++;
-  const settlers = ownedSettlers(world, player).length;
+  const settlers = homeSettlers(world, ctx, player).length;
   const wellFed =
-    storedFoodUnits(ctx.content, seatStockOf(world, player)) >= settlers * FOOD_RICH_UNITS_PER_SETTLER ||
+    storedFoodUnits(ctx.content, homeStockOf(world, ctx, player)) >= settlers * FOOD_RICH_UNITS_PER_SETTLER ||
     seatHuntsGame(world, ctx, player);
   const quota = wellFed ? HERDING_TOP_HOMES.wellFed : HERDING_TOP_HOMES.lean;
   return { cap: cap.typeId, capped, left: Math.max(0, quota - top) };
@@ -343,8 +344,8 @@ export function housingGate(
   player: number,
   owned: readonly Entity[],
 ): HousingGate {
-  const food = storedFoodUnits(ctx.content, seatStockOf(world, player));
-  const settlers = ownedSettlers(world, player);
+  const food = storedFoodUnits(ctx.content, homeStockOf(world, ctx, player));
+  const settlers = homeSettlers(world, ctx, player);
   let women = 0;
   for (const e of settlers) if (world.has(e, Female) && isAdultSettler(world, e)) women++;
   if (food < women * HOUSING_FOOD_UNITS_PER_WOMAN && !foodMadeCarriesWomen(world, ctx, player, owned))

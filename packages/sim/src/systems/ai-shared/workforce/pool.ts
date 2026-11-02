@@ -15,7 +15,7 @@ import { isAdultSettler } from '../../family/eligibility.js';
 import { isFighterJob, isFisherJob, isScoutJob } from '../../readviews/index.js';
 import { jobCanBuild } from '../../settlers/atomics/start.js';
 import { jobAtomics } from '../../settlers/targets/index.js';
-import { ownedSettlers } from '../seat-roster.js';
+import { homeSettlers } from '../home-roster.js';
 import { byExperience, trackExperience } from './experience.js';
 
 /** Default number of existing collect-anything workers kept at their flags. Authored. */
@@ -59,7 +59,7 @@ export function builderJobOf(ctx: SystemContext): number | null {
 /** The seat's settlers who are not fighters, women and children included. */
 export function civilianCount(world: World, ctx: SystemContext, player: number): number {
   let civilians = 0;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (!isFighterJob(ctx.content, world.get(e, Settler).jobType)) civilians++;
   }
   return civilians;
@@ -96,7 +96,7 @@ export function classifyWorkforce(
   const fishers: Entity[] = [];
   const scouts: Entity[] = [];
   const roadsters: Entity[] = [];
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (!isAllocatableMan(world, ctx, e)) continue;
     const job = world.get(e, Settler).jobType;
     if (world.has(e, JobAssignment)) continue; // staffing a building - keep the post

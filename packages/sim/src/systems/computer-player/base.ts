@@ -2,8 +2,8 @@ import { Building } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import { ONE } from '../../core/fixed.js';
 import type { Entity, World } from '../../ecs/world.js';
+import { homeBuildings } from '../ai-shared/home-roster.js';
 import { anchorCentroid, anchorNodeOf } from '../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID, isBarracks } from '../readviews/index.js';
 
@@ -17,7 +17,7 @@ import { HEADQUARTERS_BUILDING_ID, isBarracks } from '../readviews/index.js';
  */
 export function seatBaseOf(world: World, ctx: SystemContext, player: number): Entity | null {
   const buildings = contentIndex(ctx.content).buildings;
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   const storage: Entity[] = [];
   for (const e of owned) {
     const b = world.get(e, Building);
@@ -36,7 +36,7 @@ export function seatBaseOf(world: World, ctx: SystemContext, player: number): En
  * module that musters it always mean the same house.
  */
 export function seatBarracksOf(world: World, ctx: SystemContext, player: number): Entity | null {
-  for (const e of ownedBuildings(world, player)) if (isBarracks(world, ctx, e)) return e;
+  for (const e of homeBuildings(world, ctx, player)) if (isBarracks(world, ctx, e)) return e;
   return null;
 }
 

@@ -3,7 +3,8 @@ import { Building, Carrying, CurrentAtomic, JobAssignment, Settler } from '../..
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { byExperience, experienceRank, tradeExperience } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
@@ -79,10 +80,16 @@ export function coreBuilderFloor(builderFloor: number): number {
 }
 
 /** The seat's men of the builder trade, spare or bound to a site. */
-export function seatBuilderCount(world: World, player: number, builderJob: number | null): number {
+export function seatBuilderCount(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  builderJob: number | null,
+): number {
   if (builderJob === null) return 0;
   let builders = 0;
-  for (const e of ownedSettlers(world, player)) if (world.get(e, Settler).jobType === builderJob) builders++;
+  for (const e of homeSettlers(world, ctx, player))
+    if (world.get(e, Settler).jobType === builderJob) builders++;
   return builders;
 }
 
@@ -345,7 +352,7 @@ function releaseSurplus(
   // A workplace employs a trade or two, so its staff rows are a list scanned by job.
   const workplaces: Entity[] = [];
   const staffByWorkplace = new Map<Entity, StaffRow[]>();
-  for (const e of ownedSettlers(world, seat.player)) {
+  for (const e of homeSettlers(world, ctx, seat.player)) {
     const workplace = world.tryGet(e, JobAssignment)?.workplace;
     const job = world.get(e, Settler).jobType;
     if (workplace === undefined || job === null || !role(job)) continue;

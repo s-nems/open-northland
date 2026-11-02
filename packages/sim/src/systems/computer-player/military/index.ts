@@ -2,8 +2,8 @@ import { mapBriefOf } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { planSettlementDefence } from '../../ai-shared/military/settlement-defence.js';
-import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { seatBarracksOf } from '../base.js';
@@ -91,7 +91,7 @@ export {
 function runMilitary(world: World, ctx: SystemContext, player: number): readonly PlayerCommand[] {
   const terrain = ctx.terrain;
   if (terrain === undefined) return []; // mapless sim: no ground to march over
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   const { army, available, raid } = planSettlementDefence(world, ctx, terrain, player, true);
   const wave = marchingWave(world, ctx, player);
   const siege = siegeCrewOrders(

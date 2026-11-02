@@ -18,9 +18,9 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan, nodeOfPosition } from '../../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../../nav/terrain/index.js';
+import { everySettlerOf } from '../../../ai-shared/home-roster.js';
 import { TOWER_POST_STRENGTH } from '../../../ai-shared/military/census.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { jobGatherGoods } from '../../../economy/gather-goods.js';
 import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
@@ -266,7 +266,7 @@ export function pickRaidTarget(
 /** `owner`'s gatherers `seat` sees now, ascending id. Costs the owner's people. */
 export function visibleGatherers(world: World, ctx: SystemContext, seat: number, owner: number): Entity[] {
   const seen: Entity[] = [];
-  for (const e of ownedSettlers(world, owner)) {
+  for (const e of everySettlerOf(world, owner)) {
     if (!isGatherer(world, ctx, e)) continue;
     const at = nodeOfEntity(world, e);
     if (at !== null && playerSeesNode(ctx.fog, seat, at.hx, at.hy)) seen.push(e);

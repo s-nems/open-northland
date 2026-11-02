@@ -2,8 +2,8 @@ import { BuildMode, Carrying, Settler, SiteAssignment, Stockpile } from '../../.
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { atomicHoldsSettler } from '../../settlers/atomics/busy.js';
 import { constructionBillOf, constructionTotalUnits } from '../../stores/index.js';
@@ -41,7 +41,7 @@ export function focusCrewOrders(
 ): PlayerCommand[] {
   if (builderJob === null) return [];
   const onSite: Entity[] = [];
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const assigned = world.tryGet(e, SiteAssignment);
     if (assigned?.site === site) onSite.push(e);
   }

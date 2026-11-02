@@ -5,9 +5,9 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { nodeBoxOfCircles, withinNodeRadius } from '../../../nav/node-circle.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { anchorNodeOf, firstRingNode } from '../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { seatBaseOf } from '../base.js';
@@ -114,7 +114,7 @@ export function firstUncovered<T>(
     const hit = offer(e);
     if (hit !== null) return hit;
   }
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const flag = liveWorkFlag(world, e);
     if (flag === undefined) continue;
     const hit = offer(flag.flag);

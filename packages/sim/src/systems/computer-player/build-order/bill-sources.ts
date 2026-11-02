@@ -3,7 +3,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
-import { seatStockOf } from '../../stores/index.js';
+import { homeStockOf } from '../colony/stock.js';
 import type { BuildOrderEntry } from './entries.js';
 import { ownProductsLacking } from './upgrade-supply.js';
 
@@ -55,7 +55,7 @@ function linesSourced(
   for (const line of bill) {
     if (goods.get(line.goodType)?.atomics?.harvest !== undefined) continue;
     if (made().has(line.goodType)) continue;
-    if (!seatStockOf(world, player).exceeds(line.goodType, line.amount - 1)) return false;
+    if (!homeStockOf(world, ctx, player).exceeds(line.goodType, line.amount - 1)) return false;
   }
   return true;
 }

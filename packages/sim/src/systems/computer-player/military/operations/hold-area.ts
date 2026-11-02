@@ -8,8 +8,8 @@ import {
 import type { World } from '../../../../ecs/world.js';
 import { type HalfCellNode, hexDistance, hexDistanceBetween } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../../nav/terrain/index.js';
+import { everySettlerOf } from '../../../ai-shared/home-roster.js';
 import { TOWER_POST_STRENGTH } from '../../../ai-shared/military/census.js';
-import { ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { playerSeesNode } from '../../../vision/gates.js';
 import { type IntentArea, seatMapIntentOf } from '../../knowledge/map-intent/index.js';
@@ -127,7 +127,7 @@ export function friendHoldsArea(world: World, ctx: SystemContext, seat: number, 
   if (visibleEnemyFighters(world, ctx, seat).some((f) => insideArea(area, f.at))) return false;
   for (let other = 0; other < MAX_PLAYERS; other++) {
     if (other === seat || diplomacyStance(world, seat, other) !== 'friend') continue;
-    const inside = ownedSettlers(world, other).some((e) => {
+    const inside = everySettlerOf(world, other).some((e) => {
       const at = nodeOfEntity(world, e);
       return at !== null && insideArea(area, at) && playerSeesNode(ctx.fog, seat, at.hx, at.hy);
     });

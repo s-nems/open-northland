@@ -18,7 +18,7 @@ import { isPlayerDead } from '../../../../components/match.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { nodeHxOfPosition, nodeHyOfPosition } from '../../../../nav/halfcell.js';
 import { computerDecisionDue } from '../../../ai-shared/cadence.js';
-import { ownedBuildings, ownedSettlers } from '../../../ai-shared/seat-roster.js';
+import { everyBuildingOf, everySettlerOf } from '../../../ai-shared/home-roster.js';
 import { mannedPostOf } from '../../../conflict/tower-post.js';
 import type { SystemContext } from '../../../context.js';
 import { ownedFightersOf } from '../../../movement/collision/owned-fighters.js';
@@ -117,7 +117,7 @@ function trackScout(
   const gone =
     last !== null && (!world.has(last.entity, Settler) || world.tryGet(last.entity, Owner)?.player !== seat);
   if (gone && !settledZone(world, brief, seat, last.zone)) intel.scoutLostAt[last.zone] = ctx.tick;
-  const scout = ownedSettlers(world, seat).find((e) =>
+  const scout = everySettlerOf(world, seat).find((e) =>
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
   );
   if (scout === undefined) {
@@ -234,7 +234,7 @@ function observeBuildings(
   memory: IntelBuilding[],
   posted: ReadonlyMap<Entity, PostSighting>,
 ): void {
-  for (const e of ownedBuildings(world, other)) {
+  for (const e of everyBuildingOf(world, other)) {
     const pos = world.tryGet(e, Position);
     if (pos === undefined) continue;
     const hx = nodeHxOfPosition(pos.x, pos.y);
@@ -284,7 +284,7 @@ function lowerBound(memory: readonly IntelBuilding[], e: Entity): number {
 
 /** Whether one of the seat's buildings stands in `zone`. */
 function settledZone(world: World, brief: MapBriefView, seat: number, zone: number): boolean {
-  return ownedBuildings(world, seat).some((e) => {
+  return everyBuildingOf(world, seat).some((e) => {
     const pos = world.tryGet(e, Position);
     return (
       pos !== undefined &&

@@ -67,6 +67,35 @@
           }
         }
       }
+    },
+    {
+      "includes": [
+        "packages/sim/src/systems/computer-player/**",
+        "!packages/sim/src/systems/computer-player/colony/stock.ts"
+      ],
+      "linter": {
+        "rules": {
+          "style": {
+            "noRestrictedImports": {
+              "level": "error",
+              "options": {
+                "patterns": [
+                  {
+                    "group": ["**/ai-shared/seat-roster.js"],
+                    "importNamePattern": "owned(Buildings|Settlers)",
+                    "message": "A computer seat runs its home: read ai-shared/home-roster.js, or ask for everyBuildingOf / everySettlerOf by name."
+                  },
+                  {
+                    "group": ["**/stores/index.js"],
+                    "importNamePattern": "seatStockOf",
+                    "message": "A computer seat budgets its home stock: read homeStockOf in colony/stock.js."
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
     }
   ],
   "markdown": {

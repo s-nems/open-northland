@@ -5,7 +5,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { buildingTypeByContentId, countedTiers } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { buildingEnabled } from '../../progression/index.js';
-import { seatStockOf } from '../../stores/index.js';
+import { homeStockOf } from '../colony/stock.js';
 import { MID_GAME_FROM_TICKS } from '../game-phase.js';
 import { militaryDeadlineTick } from '../military/deadline.js';
 import { goodsMadeBy, sourcedTiers } from './bill-sources.js';
@@ -86,7 +86,7 @@ function stockBacks(
   const bill = index.constructionBillByBuilding.get(type.typeId) ?? [];
   let working: ReadonlySet<number> | undefined;
   let claimed: Map<number, number> | undefined;
-  const stock = seatStockOf(world, player);
+  const stock = homeStockOf(world, ctx, player);
   for (const line of bill) {
     if (index.goods.get(line.goodType)?.atomics?.harvest !== undefined) continue;
     working ??= goodsMadeBy(

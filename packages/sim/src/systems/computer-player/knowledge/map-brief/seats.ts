@@ -2,8 +2,8 @@ import { type BriefSeatStart, Building, MAX_PLAYERS } from '../../../../componen
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../../nav/terrain/index.js';
+import { everyBuildingOf, everySettlerOf } from '../../../ai-shared/home-roster.js';
 import { anchorCentroid, anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedBuildings, ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { interactionCell } from '../../../settlers/targets/index.js';
 import { seatBaseOf } from '../../base.js';
@@ -16,8 +16,8 @@ import { seatBaseOf } from '../../base.js';
 export function scanSeatStarts(world: World, ctx: SystemContext, terrain: TerrainGraph): BriefSeatStart[] {
   const seats: BriefSeatStart[] = [];
   for (let player = 0; player < MAX_PLAYERS; player++) {
-    const buildings = ownedBuildings(world, player);
-    const settlers = ownedSettlers(world, player);
+    const buildings = everyBuildingOf(world, player);
+    const settlers = everySettlerOf(world, player);
     if (buildings.length === 0 && settlers.length === 0) continue;
     const anchor = startAnchor(world, ctx, terrain, player, settlers.length > 0 ? settlers : buildings);
     if (anchor === null) continue;

@@ -8,7 +8,7 @@ import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { World } from '../../../../ecs/world.js';
 import type { SystemContext } from '../../../context.js';
 import { isFighterJob } from '../../../readviews/index.js';
-import { ownedSettlers } from '../../seat-roster.js';
+import { homeSettlers } from '../../home-roster.js';
 
 /**
  * Enlist the seat's fighters as the scripted handler's soldiers. Original behavior: the handler
@@ -24,7 +24,7 @@ import { ownedSettlers } from '../../seat-roster.js';
  */
 export function enlistOrders(world: World, ctx: SystemContext, player: number): PlayerCommand[] {
   const commands: PlayerCommand[] = [];
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;
     if (world.has(e, NoRegeneration) || hasMissionBehaviour(world, e, MISSION_BEHAVIOUR.NOT_CONTROLLABLE))

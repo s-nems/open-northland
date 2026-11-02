@@ -2,8 +2,8 @@ import { Building, UnderConstruction } from '../../components/index.js';
 import { type ContentIndex, contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { countedTiers } from '../ai-shared/content-lookup.js';
+import { homeBuildings } from '../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { SHIP_SITE_RINGS, shipWaterWithin } from '../footprint/placement/vehicle-site.js';
 import { interactionCell } from '../settlers/targets/index.js';
@@ -73,7 +73,7 @@ function shipJoinery(world: World, ctx: SystemContext, player: number): Entity |
   const top = index.buildingTypeBySlug.get(ROLE_JOINERY_ID);
   const house = smallestShipHouse(index);
   if (top === undefined || house === null) return null;
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   const yards = owned.filter(
     (e) => world.get(e, Building).buildingType === house && world.has(e, UnderConstruction),
   );

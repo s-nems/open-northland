@@ -6,7 +6,7 @@ import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { ownedRoadSites } from '../../roads/site-index.js';
 import { roadConstructionBill } from '../../roads/sites.js';
-import { type SeatStock, seatStockOf } from '../../stores/index.js';
+import type { SeatStock } from '../../stores/index.js';
 import { homeTiersOf } from '../build-order/housing.js';
 import {
   BUILD_ORDER_LOOKAHEAD_ENTRIES,
@@ -15,6 +15,7 @@ import {
   orderSteps,
 } from '../build-order/index.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
+import { homeStockOf } from '../colony/stock.js';
 import { type GamePhase, gamePhase, HOARD_UNITS_BY_PHASE } from '../game-phase.js';
 import { COLLECTED_GOOD_IDS } from './collectors/index.js';
 import { plannedOperators } from './staffing-rows.js';
@@ -184,7 +185,7 @@ export class SeatSupply {
     const lines = supplyLines(ctx.content, order, gamePhase(ctx.tick));
     const owed = sitesShortfalls(world, ctx, owned);
     addRoadSiteShortfall(world, ctx, player, owed);
-    const stock = seatStockOf(world, player);
+    const stock = homeStockOf(world, ctx, player);
     const surplus = new Map<number, number>();
     for (const good of lines.keys()) surplus.set(good, stock.units(good) - (owed.get(good) ?? 0));
     return new SeatSupply(world, ctx, owned, stock, lines, surplus);

@@ -3,10 +3,10 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { type HalfCellNode, hexDistance, hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { mannedTowers, threatWatchNodes } from '../../ai-shared/military/defence/index.js';
 import { seatAwaitsScriptedAttack } from '../../ai-shared/military/settlement-defence.js';
 import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { seatBaseOf } from '../base.js';
 import type { IntentPoint } from '../knowledge/map-intent/index.js';
@@ -39,7 +39,16 @@ export function towerStandOf(
   const base = seatBaseOf(world, ctx, player);
   const baseAt = base === null ? null : anchorNodeOf(world, base);
   if (origin === null || baseAt === null) return null;
-  return towerStandToward(world, ctx, terrain, ownedBuildings(world, player), baseAt, origin, door, ground);
+  return towerStandToward(
+    world,
+    ctx,
+    terrain,
+    homeBuildings(world, ctx, player),
+    baseAt,
+    origin,
+    door,
+    ground,
+  );
 }
 
 /**

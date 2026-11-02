@@ -5,7 +5,8 @@ import type { BlockOverlay } from '../../nav/block-overlay.js';
 import { forEachRingNode, hexDistanceBetween, nodeOfPosition } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../ai-shared/cadence.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../ai-shared/seat-roster.js';
+import { homeBuildings, homeSettlers } from '../ai-shared/home-roster.js';
+import { isBuilt } from '../ai-shared/seat-roster.js';
 import type { SystemContext } from '../context.js';
 import { dynamicBlockOverlay } from '../footprint/blocked.js';
 import { doorNodeOf, houseFootprintOf } from '../footprint/geometry.js';
@@ -31,8 +32,8 @@ import { walkSeedNear } from './walk-distance.js';
 export const ROADS_PAST_SETTLERS = 50;
 
 /** Whether `player`'s seat has grown enough to lay roads ({@link ROADS_PAST_SETTLERS}). */
-export function roadsDue(world: World, player: number): boolean {
-  return ownedSettlers(world, player).length > ROADS_PAST_SETTLERS;
+export function roadsDue(world: World, ctx: SystemContext, player: number): boolean {
+  return homeSettlers(world, ctx, player).length > ROADS_PAST_SETTLERS;
 }
 
 /** The most road sites the seat keeps pending at once (authored): each takes a stone and a builder's
@@ -110,7 +111,7 @@ export interface RoadBuildPlan {
 export function roadBuildPlan(world: World, ctx: SystemContext, player: number): RoadBuildPlan {
   const none: RoadBuildPlan = { source: 'building', commands: [] };
   const terrain = ctx.terrain;
-  if (terrain === undefined || !roadsDue(world, player)) return none;
+  if (terrain === undefined || !roadsDue(world, ctx, player)) return none;
   const room = Math.min(
     MAX_PENDING_ROAD_SITES - ownedRoadSites(world, terrain, player).size,
     ROAD_SITES_PER_DECISION,
@@ -124,7 +125,7 @@ export function roadBuildPlan(world: World, ctx: SystemContext, player: number):
   const decision = Math.floor(ctx.tick / COMPUTER_DECISION_INTERVAL_TICKS);
   const trafficTurn = decision % ROAD_TURNS === TRAFFIC_TURN;
   const hot = trafficTurn ? hottestTraffic(world, player, ctx.tick, TRAFFIC_ROAD_WALKS) : null;
-  const linked = ownedBuildings(world, player).filter((e) => e !== base && isBuilt(world, e));
+  const linked = homeBuildings(world, ctx, player).filter((e) => e !== base && isBuilt(world, e));
   // A traffic turn with nothing hot links the building half the roster on from the one before it.
   const turn = Math.floor(decision / ROAD_TURNS) + (trafficTurn ? Math.ceil(linked.length / ROAD_TURNS) : 0);
   const building = linked[turn % linked.length];

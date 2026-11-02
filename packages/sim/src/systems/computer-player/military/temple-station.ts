@@ -3,8 +3,8 @@ import type { World } from '../../../ecs/world.js';
 import type { BlockOverlay } from '../../../nav/block-overlay.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../../nav/terrain/index.js';
+import { homeBuildings } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { dynamicBlockOverlay } from '../../footprint/index.js';
 import { TEMPLE_AURA_RANGE } from '../../lifecycle/temple-aura.js';
@@ -25,7 +25,7 @@ const STATION_REACH = TEMPLE_AURA_RANGE - TEMPLE_STATION_INSET_NODES;
  *  from. A wounded temple still counts, since it blesses again once it is whole. */
 export function seatTempleAnchors(world: World, ctx: SystemContext, player: number): HalfCellNode[] {
   const anchors: HalfCellNode[] = [];
-  for (const e of ownedBuildings(world, player)) {
+  for (const e of homeBuildings(world, ctx, player)) {
     if (!isFinishedPrayerSite(world, ctx, e, PRAYER_SITE.temple)) continue;
     const at = anchorNodeOf(world, e);
     if (at !== null) anchors.push(at);

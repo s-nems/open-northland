@@ -2,8 +2,8 @@ import type { World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
 import { NO_COMPONENT } from '../../../nav/terrain/index.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf, firstRingNode } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { interactionNode, routeRegions } from '../../footprint/index.js';
@@ -159,7 +159,7 @@ function corridorGoals(
   order: BuildOrder,
 ): HalfCellNode[] {
   const goals: HalfCellNode[] = [];
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const flag = liveWorkFlag(world, e);
     const node = flag === undefined ? null : anchorNodeOf(world, flag.flag);
     if (node !== null) goals.push(node);
@@ -221,7 +221,7 @@ export function nextSignpostTarget(
   const posts = signpostNetwork(world).get(player) ?? [];
   // Any construction state: coverage should arrive with a site, not after it finishes.
   const buildings: HalfCellNode[] = [];
-  for (const e of ownedBuildings(world, player)) {
+  for (const e of homeBuildings(world, ctx, player)) {
     const node = anchorNodeOf(world, e);
     if (node !== null) buildings.push(node);
   }

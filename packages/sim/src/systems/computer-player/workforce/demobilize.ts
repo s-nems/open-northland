@@ -9,7 +9,7 @@ import {
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
 import type { SystemContext } from '../../context.js';
 import { isSoldierJob } from '../../readviews/index.js';
@@ -42,7 +42,7 @@ export function demobilizeStartSoldiers(
   if (builderJob === null || ctx.tick >= DEMOBILIZE_UNTIL_TICK) return [];
   if (!computerModuleRuns(world, player, 'military') || mapScriptedSeat(ctx, player)) return [];
   if (seatBarracksOf(world, ctx, player) !== null) return [];
-  return ownedSettlers(world, player)
+  return homeSettlers(world, ctx, player)
     .filter((e) => isStartSoldier(world, ctx, e))
     .map((entity): PlayerCommand => ({ kind: 'setJob', entity, jobType: builderJob }));
 }

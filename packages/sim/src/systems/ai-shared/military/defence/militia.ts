@@ -31,7 +31,7 @@ import { hunterJobType, isFighterJob, isHunterJob, sheltersOnAlarm } from '../..
 import { entityNode } from '../../../spatial/nodes.js';
 import { isCarrierJob } from '../../../stores/workplace.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../cadence.js';
-import { ownedSettlers } from '../../seat-roster.js';
+import { homeSettlers } from '../../home-roster.js';
 import { desperateZones, type SeatThreat, type ZoneThreat } from './danger.js';
 import type { ScoutChase } from './intruder-answers.js';
 
@@ -113,7 +113,7 @@ export function musterMilitia(
   if (hunterJob === null) return;
   const seatCap = Math.min(
     MILITIA_PER_SEAT_MAX,
-    Math.floor(ownedSettlers(world, player).length / MILITIA_PEOPLE_SHARE),
+    Math.floor(homeSettlers(world, ctx, player).length / MILITIA_PEOPLE_SHARE),
   );
   if (desperate.size > 0) {
     const shelterRoom = (collectShelters(world, ctx).get(player) ?? []).some((site) => site.free > 0);

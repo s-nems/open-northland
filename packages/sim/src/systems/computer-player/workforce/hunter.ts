@@ -14,7 +14,7 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { byExperience, experienceRank } from '../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import {
@@ -202,7 +202,7 @@ function huntOpensTrades(world: World, ctx: SystemContext, player: number, tally
     const hunted = gate.needs.some((row) => row.tracks.some((t) => t.work.kind === 'hunt'));
     if (!hunted || !typeAllowed(world, ctx, player, tribe, 'job', gate.typeId)) continue;
     if (!jobEnabled(world, ctx, player, tribe, gate.typeId)) return true;
-    for (const building of ownedBuildings(world, player)) {
+    for (const building of homeBuildings(world, ctx, player)) {
       const type = index.buildings.get(world.get(building, Building).buildingType);
       const slot = type?.workers.some((w) => w.jobType === gate.typeId && w.count > 0) ?? false;
       if (slot && (tally.get(building)?.get(gate.typeId) ?? 0) === 0) return true;
@@ -212,7 +212,7 @@ function huntOpensTrades(world: World, ctx: SystemContext, player: number, tally
 }
 
 function huntersAt(world: World, ctx: SystemContext, player: number, base: Entity): Entity[] {
-  return ownedSettlers(world, player).filter(
+  return homeSettlers(world, ctx, player).filter(
     (e) =>
       world.tryGet(e, JobAssignment)?.workplace === base &&
       isHunterJob(ctx.content, world.get(e, Settler).jobType),

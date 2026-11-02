@@ -16,14 +16,14 @@ import {
   goodTypeByContentId,
   tiersAtOrAbove,
 } from '../../ai-shared/content-lookup.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { buildingEnabled, goodEnabled } from '../../progression/index.js';
-import { seatStockOf } from '../../stores/index.js';
 import { seatBaseOf } from '../base.js';
+import { homeStockOf } from '../colony/stock.js';
 import { seatHerdKept } from '../herd.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource, knownResourceTest } from '../live-resources.js';
@@ -144,7 +144,7 @@ function memoFlagsByGood(
 ): ReadonlyMap<number, number> {
   if (memo.flagsByGood === undefined) {
     const flags = new Map<number, number>();
-    for (const e of ownedSettlers(world, player)) {
+    for (const e of homeSettlers(world, ctx, player)) {
       if (liveWorkFlag(world, e) === undefined) continue;
       const good = heldGatherGood(world, ctx, e);
       if (good !== undefined) flags.set(good, (flags.get(good) ?? 0) + 1);
@@ -199,7 +199,7 @@ function memoRoles(
   return memo.roleOf;
 }
 
-/** `owned` is the seat's {@link ownedBuildings} list and `memo` this decision's, both passed in so one
+/** `owned` is the seat's {@link homeBuildings} list and `memo` this decision's, both passed in so one
  *  decision computes them once. An upgrade in flight counts toward the tier it is becoming, as a placed
  *  site counts toward its entry, unless `inFlightUpgrades` is false. */
 export function entryStatus(
@@ -287,7 +287,7 @@ export function entryStatus(
       const good = goodTypeByContentId(ctx.content, entry.good);
       if (good?.atomics?.harvest === undefined) return 'skip';
       const holders = memoFlagsByGood(world, ctx, player, memo).get(good.typeId) ?? 0;
-      if (collectorStocked(world, player, entry, good.typeId, holders)) return 'skip';
+      if (collectorStocked(world, ctx, player, entry, good.typeId, holders)) return 'skip';
       if (holders >= collectorCount(entry)) return 'satisfied';
       // Nothing left to collect anywhere counts as done, so the list never stalls on a dry map.
       if (!liveResourceOnMap(world, ctx, player, good.typeId, memo.live)) return 'skip';
@@ -320,7 +320,7 @@ export function entryStatus(
  *  another line's step is ready to place one of the named buildings ({@link placementDue}), while it
  *  counts fewer settlers than the hold names, while its military deadline lies further off than the
  *  lead and its defence does not come first, while any of an `all` hold's parts holds, or while every one
- *  of an `any` hold's parts holds. `owned` is the seat's {@link ownedBuildings} list and `statuses` this
+ *  of an `any` hold's parts holds. `owned` is the seat's {@link homeBuildings} list and `statuses` this
  *  decision's {@link lineStatuses} of `order`. */
 export function stepHeld(
   world: World,
@@ -536,7 +536,7 @@ function holdOpen(
     case 'shipPath':
       return !seatDefenceFirst(world, ctx, player) && memoOverSea(world, ctx, player, memo);
     case 'settlers':
-      return ownedSettlers(world, player).length < hold.count;
+      return homeSettlers(world, ctx, player).length < hold.count;
     case 'deadline':
       return militaryWaits(world, ctx, player, hold.leadTicks);
     case 'tick':
@@ -619,7 +619,7 @@ export function entryStatuses(
   player: number,
   entries: readonly BuildOrderEntry[],
 ): EntryStatus[] {
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   const memo = decisionMemo();
   return entries.map((entry) => entryStatus(world, ctx, player, owned, entry, memo));
 }
@@ -697,6 +697,7 @@ function collectorCount(entry: Extract<BuildOrderEntry, { kind: 'collector' }>):
  *  it, still half of them, so a released post is not hired back at the next unit drawn. */
 function collectorStocked(
   world: World,
+  ctx: SystemContext,
   player: number,
   entry: Extract<BuildOrderEntry, { kind: 'collector' }>,
   goodType: number,
@@ -704,13 +705,14 @@ function collectorStocked(
 ): boolean {
   if (entry.stockedAt === undefined) return false;
   const line = holders > 0 ? entry.stockedAt : Math.floor(entry.stockedAt / 2);
-  return seatStockOf(world, player).units(goodType) >= line;
+  return homeStockOf(world, ctx, player).units(goodType) >= line;
 }
 
 /** Whether `order` names a collector step for `goodId` and every one passes over as stocked
  *  ({@link collectorStocked}), with `holders` gathering the good: then even the good's base post goes. */
 export function collectorGoodStocked(
   world: World,
+  ctx: SystemContext,
   player: number,
   order: BuildOrder,
   goodId: string,
@@ -720,7 +722,7 @@ export function collectorGoodStocked(
   let named = false;
   for (const entry of orderSteps(order)) {
     if (entry.kind !== 'collector' || entry.good !== goodId) continue;
-    if (!collectorStocked(world, player, entry, goodType, holders)) return false;
+    if (!collectorStocked(world, ctx, player, entry, goodType, holders)) return false;
     named = true;
   }
   return named;

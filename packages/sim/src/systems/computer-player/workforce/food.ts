@@ -2,7 +2,8 @@ import type { BuildingType, ContentSet } from '@open-northland/data';
 import { Building, Settler } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
-import { isBuilt, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isEdibleFoodIn, isFisherJob, isHunterJob } from '../../readviews/index.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
@@ -39,7 +40,7 @@ export function foodHunters(
 ): number {
   if (fishing || foodWorkshopWorks(world, ctx, owned, tally)) return 0;
   const perSettler = held > 0 ? FOOD_COMFORT_UNITS_PER_SETTLER : FOOD_SHORT_UNITS_PER_SETTLER;
-  return storedFoodUnits(ctx.content, supply) < ownedSettlers(world, player).length * perSettler
+  return storedFoodUnits(ctx.content, supply) < homeSettlers(world, ctx, player).length * perSettler
     ? FOOD_SHORTAGE_HUNTERS
     : 0;
 }
@@ -142,7 +143,7 @@ export function foodSourcesAtWork(
   let hunters = 0;
   for (const e of owned)
     if (isBuiltFoodMaker(world, makers, e) && assignedWorkers(world, e).length > 0) staples++;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const job = world.get(e, Settler).jobType;
     if (isFisherJob(ctx.content, job)) staples++;
     else if (isHunterJob(ctx.content, job)) hunters++;

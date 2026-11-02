@@ -15,8 +15,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, nodeHxOfPosition, nodeHyOfPosition } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { WORKFORCE_EVERY_DECISIONS } from '../../ai-shared/cadence.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
 import {
   builderJobOf,
   civilianCount,
@@ -155,7 +155,7 @@ function runWorkforce(
   const builderJob = builderJobOf(ctx);
   const base = seatBaseOf(world, ctx, player);
   if (base === null) return rebuildCrew(world, ctx, player, order, profile, builderJob);
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   const supply = SeatSupply.of(world, ctx, player, owned, order);
   const statuses = lineStatuses(world, ctx, player, owned, order);
   const apprentices = seatApprentices(world, ctx, player, order, statuses);
@@ -168,7 +168,7 @@ function runWorkforce(
   const reserveLimit = builderCap(profile, civilians, ctx.tick);
   const builderLimit = clearing > 0 ? stalledBuilderLimit(world, ctx, owned, reserveLimit) : reserveLimit;
   const builderFloor = siteBuilderFloor(world, ctx, owned, builderLimit);
-  const builders = seatBuilderCount(world, player, builderJob);
+  const builders = seatBuilderCount(world, ctx, player, builderJob);
   const shortOfBuilders = builders < builderFloor;
   // The clearing posts yield the men the open sites' builders lack, so a stalled placement never keeps
   // its gatherers while the sites already standing wait for hands (authored: on ciezka_wspolpraca and
@@ -224,7 +224,7 @@ function runWorkforce(
   const force = new SpareForce(
     wild.held.size === 0 ? unschooled : unschooled.filter((e) => !wild.held.has(e)),
   );
-  const tally = buildStaffingTally(world, player, owned);
+  const tally = buildStaffingTally(world, ctx, player, owned);
   const taken: TakenFlagNodes = new Set();
   const gated: GatedSlotSources = {
     promotions: new Promotions(world, ctx, player, apprentices),
@@ -515,14 +515,14 @@ function rebuildCrew(
   profile: ComputerProfile,
   builderJob: number | null,
 ): readonly PlayerCommand[] {
-  const owned = ownedBuildings(world, player);
+  const owned = homeBuildings(world, ctx, player);
   if (!owned.some((e) => world.has(e, UnderConstruction))) return [];
   const force = new SpareForce(rebuildHands(world, ctx, player));
   const supply = SeatSupply.of(world, ctx, player, owned, order);
   const seat: SeatStaffing = { player, owned, supply, profile };
   return [
     ...reserveBuilders(world, force, builderJob, profile.builders.opening, ctx).commands,
-    ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world, player, owned), 'min', {
+    ...staffBuildings(world, ctx, seat, force, buildStaffingTally(world, ctx, player, owned), 'min', {
       promotions: new Promotions(world, ctx, player, new Set()),
       schooling: new Schooling(world, ctx, player, owned),
     }),
@@ -537,7 +537,7 @@ function rebuildCrew(
  */
 function rebuildHands(world: World, ctx: SystemContext, player: number): Entity[] {
   const { pool, genericCollectors, fishers, scouts } = classifyWorkforce(world, ctx, player, []);
-  const posted = ownedSettlers(world, player).filter(
+  const posted = homeSettlers(world, ctx, player).filter(
     (e) => world.has(e, JobAssignment) && !atomicHoldsSettler(world, e) && isAllocatableMan(world, ctx, e),
   );
   return [...pool, ...scouts, ...genericCollectors, ...fishers, ...posted];

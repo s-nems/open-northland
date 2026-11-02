@@ -16,8 +16,8 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { TICKS_PER_SECOND } from '../../../core/loop.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistanceBetween } from '../../../nav/halfcell.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { interactionNode } from '../../footprint/index.js';
@@ -94,7 +94,7 @@ export function scoutHeldForBuilders(world: World, ctx: SystemContext, player: n
   const brief = mapBriefOf(world);
   if (brief === null) return false;
   let men = 0;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (e >= brief.entityCeiling || world.has(e, Female) || !isAdultSettler(world, e)) continue;
     if (isHeroJob(ctx.content, world.get(e, Settler).jobType)) continue;
     if (++men >= SMALL_START_MEN) return false;
@@ -139,7 +139,7 @@ function runScout(
   player: number,
   order: BuildOrder,
 ): readonly PlayerCommand[] {
-  const scout = ownedSettlers(world, player).find((e) =>
+  const scout = homeSettlers(world, ctx, player).find((e) =>
     isScoutJob(ctx.content, world.get(e, Settler).jobType),
   );
   if (scout === undefined || scoutHeldForBuilders(world, ctx, player)) return [];

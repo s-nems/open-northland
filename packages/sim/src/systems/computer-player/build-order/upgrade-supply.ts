@@ -9,7 +9,8 @@ import {
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
-import { constructionBillOf, seatStockOf } from '../../stores/index.js';
+import { constructionBillOf } from '../../stores/index.js';
+import { homeStockOf } from '../colony/stock.js';
 
 const NO_CLAIMS: ReadonlyMap<number, number> = new Map();
 
@@ -44,7 +45,7 @@ export function suppliedUpgrade(
       if (makers.working === 0 && makers.sites > 0) return undefined;
     }
   }
-  const stock = seatStockOf(world, player);
+  const stock = homeStockOf(world, ctx, player);
   const claimed = aheadOfSites ? NO_CLAIMS : sitesClaims(world, ctx, owned);
   const pile = world.tryGet(candidate, Stockpile)?.amounts;
   const madeElsewhere = new Map<number, boolean>();
@@ -206,7 +207,7 @@ export function starvedUpgrade(
     for (const [good, lacking] of ownProductsLacking(world, ctx, site)) {
       if (sourced(site, good)) continue;
       aside ??= setAside(world, owned);
-      const free = seatStockOf(world, player).units(good) - (aside.get(good) ?? 0);
+      const free = homeStockOf(world, ctx, player).units(good) - (aside.get(good) ?? 0);
       if (free < lacking) return site;
     }
   }

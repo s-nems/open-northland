@@ -14,8 +14,9 @@ import { contentIndex } from '../../../../core/content-index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import type { HalfCellNode } from '../../../../nav/halfcell.js';
 import { goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
+import { homeBuildings, homeSettlers } from '../../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../../../ai-shared/seat-roster.js';
+import { isBuilt } from '../../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../../context.js';
 import { heldGatherGood } from '../../../economy/gather-goods.js';
 import { jobCanHarvestGood, liveWorkFlag } from '../../../economy/work-flag.js';
@@ -186,7 +187,7 @@ function roadStonePosts(
   goodType: number,
   held: boolean,
 ): number {
-  if (ownedSettlers(world, player).length <= ROADS_PAST_SETTLERS - ROAD_STONE_LEAD_SETTLERS) return 0;
+  if (homeSettlers(world, ctx, player).length <= ROADS_PAST_SETTLERS - ROAD_STONE_LEAD_SETTLERS) return 0;
   const lines = supply.lines(goodType);
   const surplus = supply.surplus(goodType);
   if (lines === undefined || surplus === undefined) return ROAD_STONE_POSTS;
@@ -299,7 +300,7 @@ export function fedAhead(world: World, player: number, goodId: string): boolean 
 function consumerShelfUnits(world: World, ctx: SystemContext, player: number, goodType: number): number {
   const index = contentIndex(ctx.content);
   let units = 0;
-  for (const e of ownedBuildings(world, player)) {
+  for (const e of homeBuildings(world, ctx, player)) {
     if (!isBuilt(world, e)) continue;
     const typeId = world.get(e, Building).buildingType;
     const consumes = index.mergedRecipeByBuilding.get(typeId)?.inputs.some((i) => i.goodType === goodType);
@@ -405,7 +406,7 @@ export function wantedCollectorGoods(
     const stocked =
       fixed === undefined &&
       entryCount === 0 &&
-      collectorGoodStocked(world, player, order, goodId, good.typeId, holdersOf(good.typeId));
+      collectorGoodStocked(world, ctx, player, order, goodId, good.typeId, holdersOf(good.typeId));
     const base = fixed ?? (stocked ? 0 : Math.max(DEFAULT_COLLECTOR_TARGET, entryCount));
     const fed = fixed === undefined && fedAhead(world, player, goodId);
     const shelved = fed ? consumerShelfUnits(world, ctx, player, good.typeId) : 0;
@@ -488,7 +489,7 @@ function shortageGatherers(
  *  `classifyWorkforce` seats on the good before its target caps them. */
 function flagHoldersByGood(world: World, ctx: SystemContext, player: number): Map<number, number> {
   const holders = new Map<number, number>();
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (world.has(e, JobAssignment)) continue;
     const job = world.get(e, Settler).jobType;
     if (job === null || liveWorkFlag(world, e) === undefined) continue;

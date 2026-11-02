@@ -3,8 +3,8 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { hexDistance } from '../../../nav/halfcell.js';
+import { homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { vehicleAnchor } from '../../footprint/index.js';
 import { isCartType } from '../../vehicles/drag.js';
@@ -36,7 +36,7 @@ export function assignHaulingCarts(world: World, ctx: SystemContext, player: num
       return type !== undefined && isCartType(type) && standsFree(world, e);
     });
   if (carts.length === 0) return [];
-  const cartless = ownedSettlers(world, player).filter(
+  const cartless = homeSettlers(world, ctx, player).filter(
     (e) => !world.has(e, HaulingCart) && isPostedCarrier(world, ctx.content, e),
   );
   const commands: PlayerCommand[] = [];

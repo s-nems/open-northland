@@ -3,8 +3,8 @@ import type { PlayerCommand } from '../../../../core/commands/index.js';
 import type { Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { goodTypeByContentId } from '../../../ai-shared/content-lookup.js';
+import { homeSettlers } from '../../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../../ai-shared/node-geometry.js';
-import { ownedSettlers } from '../../../ai-shared/seat-roster.js';
 import { experienceRank } from '../../../ai-shared/workforce/experience.js';
 import type { SpareForce } from '../../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../../context.js';
@@ -148,10 +148,16 @@ function seatGood(
 export const SHORTAGE_BUILDER_FLOOR = 4;
 
 /** The seat's builders this decision: the builder-trade men `force` still holds and those bound to a site. */
-function seatBuilders(world: World, player: number, force: SpareForce, builderJob: number): number {
+function seatBuilders(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  force: SpareForce,
+  builderJob: number,
+): number {
   let builders = 0;
   for (const e of force.remaining()) if (world.get(e, Settler).jobType === builderJob) builders++;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (world.has(e, JobAssignment) && world.get(e, Settler).jobType === builderJob) builders++;
   }
   return builders;
@@ -207,7 +213,7 @@ export function allocateCollectors(
     const spot = collectorSpot(world, ground.flags, anchor, w.good.typeId, taken, workable, band);
     if (spot === null) continue; // no reachable free spot beside a live node of this good
     if (holders.length > 0 && builderJob !== null)
-      builders ??= seatBuilders(world, player, force, builderJob);
+      builders ??= seatBuilders(world, ctx, player, force, builderJob);
     const keepBuilders = holders.length > 0 && builders !== undefined && builders <= builderFloor;
     const spare =
       (holders.length > 0 ? takeGenericCollector(world, ctx, genericCollectors, w, apprentices) : null) ??

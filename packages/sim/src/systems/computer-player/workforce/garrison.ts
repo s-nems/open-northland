@@ -19,9 +19,10 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
+import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { fighterWeaponClass } from '../../ai-shared/military/census.js';
 import { garrisonSlots } from '../../ai-shared/military/defence/posts.js';
-import { isBuilt, ownedBuildings, ownedSettlers } from '../../ai-shared/seat-roster.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SpareForce } from '../../ai-shared/workforce/pool.js';
 import { draftableTrade, isBareSoldier } from '../../assistant/index.js';
 import { towerPostFor } from '../../conflict/tower-post.js';
@@ -34,9 +35,9 @@ import { INTENT_WEAPON_CLASS } from '../../settlers/atomics/effects/goods/weapon
 import { armableIntents, armingGoodPreference } from '../../settlers/planner/recruit-arming.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { networkLimitAt } from '../../signposts/index.js';
-import { seatStockOf } from '../../stores/index.js';
 import { assistantCounterCommand } from '../assistant-counters.js';
 import { seatBarracksOf } from '../base.js';
+import { homeStockOf } from '../colony/stock.js';
 import { type ComputerProfile, type Share, shareOf } from '../difficulty.js';
 import { BARRACKS_STANDS_BEFORE_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import { ownArmyPoints, strongestBelievedEnemy } from '../military/enemy-strength.js';
@@ -152,7 +153,7 @@ export function garrisonArms(
       return onHand;
     },
     bare: () => {
-      bare ??= ownedSettlers(world, player).filter((e) => isBareSoldier(world, ctx, e, player));
+      bare ??= homeSettlers(world, ctx, player).filter((e) => isBareSoldier(world, ctx, e, player));
       return bare;
     },
     roomFor: (next) => {
@@ -163,10 +164,10 @@ export function garrisonArms(
   };
 }
 
-/** The arms the seat's recruits can fetch ({@link seatArmsStock}); its seat stock ({@link seatStockOf})
+/** The arms the seat's recruits can fetch ({@link seatArmsStock}); its seat stock ({@link homeStockOf})
  *  without a barracks or a map. */
 function armsStockOf(world: World, ctx: SystemContext, player: number): ReachableStockUnits {
-  return seatArmsStock(world, ctx, player) ?? seatStockOf(world, player);
+  return seatArmsStock(world, ctx, player) ?? homeStockOf(world, ctx, player);
 }
 
 /**
@@ -590,12 +591,12 @@ function standingOrder(
  * so the few men it drafts meanwhile man the walls first.
  */
 function emptyTowers(world: World, ctx: SystemContext, player: number): number {
-  const towers = ownedBuildings(world, player).filter(
+  const towers = homeBuildings(world, ctx, player).filter(
     (b) => isBuilt(world, b) && garrisonSlots(world, ctx, b).size > 0,
   );
   if (towers.length === 0) return 0;
   const held = new Set<Entity>();
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null) continue;
     const post = towerPostFor(world, ctx, e, jobType);
@@ -653,7 +654,7 @@ function fieldedByIntent(
   booked: ReadonlyMap<AssistantRecruitIntent, number>,
 ): Map<AssistantRecruitIntent, number> {
   const field: Entity[] = [];
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     const jobType = world.get(e, Settler).jobType;
     if (jobType === null || !isFighterJob(ctx.content, jobType)) continue;
     if (towerPostFor(world, ctx, e, jobType) !== null) continue;
@@ -698,7 +699,7 @@ function draftingClasses(
 /** Whether a finished building of the seat makes a good that arms a garrison class. */
 function weaponShopStands(world: World, ctx: SystemContext, player: number): boolean {
   const shops = weaponShopTypes(ctx);
-  return ownedBuildings(world, player).some(
+  return homeBuildings(world, ctx, player).some(
     (e) => shops.has(world.get(e, Building).buildingType) && isBuilt(world, e),
   );
 }
@@ -759,7 +760,7 @@ function isDraftable(world: World, e: Entity): boolean {
  *  as husbands. */
 function bachelorSurplus(world: World, ctx: SystemContext, player: number): number {
   let surplus = 0;
-  for (const e of ownedSettlers(world, player)) {
+  for (const e of homeSettlers(world, ctx, player)) {
     if (!mayMarry(world, ctx.content, e)) continue;
     surplus += world.has(e, Female) ? -1 : 1;
   }

@@ -1,6 +1,6 @@
 import { AssistantChildOrder, ChildOrder, Female, ownerOf, Settler } from '../../components/index.js';
 import type { Entity, World } from '../../ecs/world.js';
-import { ownedSettlers } from '../ai-shared/seat-roster.js';
+import { homeSettlers } from '../ai-shared/home-roster.js';
 import type { SystemContext } from '../context.js';
 import { isOnMission } from '../family/eligibility.js';
 
@@ -19,7 +19,7 @@ export function femaleStockOf(world: World, ctx: SystemContext, settlers: readon
 /** Every family slot the seat's women and daughters will want: its {@link femaleStockOf} and the daughters
  *  the assistant booked. The housing lane (`build-order/housing.ts`) keeps the homes ahead of it. */
 export function femaleDemand(world: World, ctx: SystemContext, player: number): number {
-  return femaleStockOf(world, ctx, ownedSettlers(world, player)) + bookedBirths(world, player).daughters;
+  return femaleStockOf(world, ctx, homeSettlers(world, ctx, player)) + bookedBirths(world, player).daughters;
 }
 
 /** The seat's child orders the assistant booked and a mother still carries, by the child's sex. */
