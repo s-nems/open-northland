@@ -20,7 +20,14 @@ import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
-import { hunterJobType, isFisherJob, isHunterJob, isScoutJob, scoutJobType } from '../../readviews/index.js';
+import {
+  hunterJobType,
+  isEdibleFoodIn,
+  isFisherJob,
+  isHunterJob,
+  isScoutJob,
+  scoutJobType,
+} from '../../readviews/index.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { assignedWorkers } from '../../stores/assigned-workers.js';
 import { isCarrierJob } from '../../stores/workplace.js';
@@ -33,6 +40,7 @@ import {
   legalFlagNodeTest,
   type TakenFlagNodes,
 } from '../workforce/flag-spots.js';
+import { crewAt } from '../workforce/staffing-rows.js';
 import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { homeSupply } from './line.js';
 import { MEN_PER_WOMAN } from './people.js';
@@ -55,6 +63,15 @@ import type { ColonyEnv, ColonyView } from './voyage.js';
 const BUILDERS_AT_REST = 2;
 /** The men on a good at most (authored): past these a line of 40 units a stop cannot carry what they dig. */
 const DIGGERS_MOST: Readonly<Record<LandGood, number>> = { wood: 4, stone: 4, mud: 2, iron: 2 };
+/** The mouths one food hand feeds (authored from arabskie_wyspy_wolna_gra_mieszana: six fishers and hunters
+ *  brought 3.3 food a game minute and a mouth eats about 0.18, so three by the catch alone; at three no colony
+ *  had the men for its mill and bakery, at six a third did and the seats' totals rose past no colony), and a
+ *  hand at a kitchen, whose baker made 4.7. */
+const MOUTHS_PER_FOOD_HAND = 6;
+const MOUTHS_PER_KITCHEN_HAND = 30;
+/** The women a colony with a food hand gets before its food holds (authored): the couples its homes wait
+ *  for, as a colony of men alone never grows whatever it eats. */
+const WOMEN_FIRST = 2;
 /** The men past its work a colony keeps before any sail home (authored): one lost to a fight or a change of
  *  plan is no reason for a ship to fetch another. */
 const HANDS_SLACK = 1;
@@ -330,8 +347,23 @@ function seatsOf(ctx: SystemContext, type: BuildingType): number {
   return type.workers.reduce((sum, slot) => sum + (slot.jobType === gatherer ? 0 : slot.count), 0);
 }
 
-/** The men and women the colony has work for now. Owner ruling: people cross like goods. A colony needing
- *  hands for gatherers, sites or workshops gets men over the line, and women once its food holds. */
+/** The mouths the food hands of `posts`, the ones the colony can fill, and its kitchens' crews feed. */
+function mouthsFed(env: ColonyEnv, buildings: readonly Entity[], posts: readonly Post[]): number {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const hands = posts.filter((post) => post === 'fisher' || post === 'hunter').length;
+  let mouths = MOUTHS_PER_FOOD_HAND * hands;
+  for (const e of buildings) {
+    const type = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType);
+    if (!isBuilt(world, e) || !type?.outputs.some((o) => isEdibleFoodIn(ctx.content, o.goodType))) continue;
+    mouths += MOUTHS_PER_KITCHEN_HAND * crewAt(world, ctx, e);
+  }
+  return mouths;
+}
+
+/** The men and women the colony has work for now and can feed: a man idle there is a man lost at home. Owner
+ *  ruling: people cross like goods. A colony needing hands for gatherers, sites or workshops gets men over
+ *  the line, and women once its food holds. A good its stores cannot take calls no digger. */
 export function handsWanted(
   env: ColonyEnv,
   colony: ColonyView,
@@ -344,7 +376,7 @@ export function handsWanted(
   const plan = colonyPlan(env, colony, buildings);
   const read = { buildings, store: storeOf(env, buildings), origin, plan };
   const flags = flagGroundAt(env, origin);
-  const diggable = [...digGoods(env, read)].filter((id) => {
+  const diggable = [...digGoodsWithRoom(env, read)].filter((id) => {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
     return good !== undefined && canDig(env, origin, good, flags);
   });
@@ -366,7 +398,9 @@ export function handsWanted(
     if (type?.kind === BUILDING_KIND.workplace) men += seatsOf(ctx, type);
   }
   const fed = colonyFoodHeld(env, buildings) >= colonists(env).length;
-  return { men, women: fed ? Math.floor(men / MEN_PER_WOMAN) : 0 };
+  const fishing = colonists(env).some((e) => isFisherJob(ctx.content, world.get(e, Settler).jobType));
+  const women = fed ? Math.floor(men / MEN_PER_WOMAN) : fishing ? WOMEN_FIRST : 0;
+  return { men: Math.min(men, mouthsFed(env, buildings, others) - women), women };
 }
 
 /** The colony's men with no work left, who sail home by the next ship (owner ruling): its free builders past
