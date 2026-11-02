@@ -26,9 +26,8 @@ export interface DiplomacyMapNation {
   readonly relation?: { readonly towardYou: DiplomacyState; readonly yourStance: DiplomacyState };
 }
 
-/** Design px of the picture on a plaque's nation emblem, and on the two that say whose stance is whose. */
-const EMBLEM_PX = 34;
-const SIDE_EMBLEM_PX = 17;
+/** Design px of an emblem's picture, sharper than the 13 px a plaque shows it at. */
+const EMBLEM_PICTURE_PX = 26;
 
 interface EmblemSlot {
   readonly element: HTMLElement;
@@ -59,9 +58,10 @@ export interface NationPlaque {
   update(nation: DiplomacyMapNation, viewer: DiplomacyMapNation | undefined): void;
 }
 
-/** A nation's emblem and name, then each side's emblem beside its stance, so the plaque says whose
- *  stance is whose without a word; the words are in its tip. Pressing a nation with a diplomacy page
- *  answers `onPress` with its player; a plaque without one lets the press through to the map under it. */
+/** A nation's name over each side's emblem beside its stance, small enough to leave the map readable, so
+ *  the plaque says whose stance is whose without a word; the words are in its tip. A nation in no relation
+ *  shows its emblem by its name. Pressing a nation with a diplomacy page answers `onPress` with its
+ *  player; a plaque without one lets the press through to the map under it. */
 export function createNationPlaque(
   className: string,
   paintEmblem: NationEmblemPainter,
@@ -70,12 +70,11 @@ export function createNationPlaque(
   const copy = messages().hud.diplomacyMap;
   const windowCopy = messages().hud.diplomacyWindow;
   const root = button(`on-dipmap-plaque ${className}`);
-  const emblem = emblemSlot('on-dipmap-plaque__emblem', EMBLEM_PX, paintEmblem);
+  const emblem = emblemSlot('on-dipmap-plaque__emblem', EMBLEM_PICTURE_PX, paintEmblem);
   const name = element('strong', 'on-dipmap-plaque__name');
-  const note = element('small', 'on-dipmap-plaque__note');
   const relation = element('small', 'on-dipmap-plaque__relation');
-  const theirEmblem = emblemSlot('on-dipmap-plaque__side-emblem', SIDE_EMBLEM_PX, paintEmblem);
-  const ourEmblem = emblemSlot('on-dipmap-plaque__side-emblem', SIDE_EMBLEM_PX, paintEmblem);
+  const theirEmblem = emblemSlot('on-dipmap-plaque__emblem', EMBLEM_PICTURE_PX, paintEmblem);
+  const ourEmblem = emblemSlot('on-dipmap-plaque__emblem', EMBLEM_PICTURE_PX, paintEmblem);
   const theirs = element('b', '');
   const ours = element('b', '');
   const theirSide = element('span', 'on-dipmap-plaque__side');
@@ -83,9 +82,9 @@ export function createNationPlaque(
   theirSide.append(theirEmblem.element, theirs);
   ourSide.append(ourEmblem.element, ours);
   relation.append(theirSide, ourSide);
-  const text = element('span', 'on-dipmap-plaque__text');
-  text.append(name, note, relation);
-  root.append(emblem.element, text);
+  const nameLine = element('span', 'on-dipmap-plaque__name-line');
+  nameLine.append(emblem.element, name);
+  root.append(nameLine, relation);
   let player: number | null = null;
   root.addEventListener('click', () => {
     if (player !== null) onPress(player);
@@ -103,9 +102,8 @@ export function createNationPlaque(
       emblem.show(nation);
       const { relation: stance } = nation;
       relation.hidden = stance === undefined;
-      note.hidden = !nation.own;
-      write(note, nation.own ? copy.own : '');
-      const lines = [shownName];
+      emblem.element.hidden = stance !== undefined;
+      const lines = nation.own ? [shownName, copy.own] : [shownName];
       if (stance !== undefined) {
         write(theirs, windowCopy.stances[stance.towardYou]);
         setAttribute(theirs, 'data-stance', stance.towardYou);

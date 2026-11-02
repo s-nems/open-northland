@@ -5,6 +5,7 @@ import { fx, type WorldSnapshot } from '@open-northland/sim';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDiplomacyMap } from '../../../src/hud/diplomacy-map/index.js';
 import type { DiplomacyMapNation } from '../../../src/hud/diplomacy-map/labels.js';
+import type { Rect } from '../../../src/hud/geometry.js';
 import { type MinimapLayout, overviewLayout, zoomMinimapLayout } from '../../../src/hud/minimap/model.js';
 import { messages } from '../../../src/i18n/index.js';
 import { type Ent, snapshotOf } from '../../support/snapshot.js';
@@ -14,7 +15,7 @@ const SCREEN_W = 1280;
 const SCREEN_H = 720;
 const UI_SCALE = 2;
 const BOUNDS = terrainWorldBounds(MAP_CELLS, MAP_CELLS);
-const WHOLE_MAP = overviewLayout(BOUNDS, SCREEN_H, UI_SCALE, SCREEN_W, null);
+const WHOLE_MAP = overviewLayout(BOUNDS, SCREEN_H, UI_SCALE, SCREEN_W);
 /** The hole's centre in design px from its corner, where a settlement stands when the map zooms on it. */
 const HOLE_CENTRE_X = WHOLE_MAP.inner.w / 2 / UI_SCALE;
 /** The map's wall-clock pace between two reads of who stands where. */
@@ -74,7 +75,7 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
   const overviewHost = document.createElement('div');
   document.body.append(overviewHost);
   const world = { nations: startNations, snapshot: snapshotOf(startWorld) };
-  const state = { layout: WHOLE_MAP, clock: 0, unavailable: false };
+  const state = { layout: WHOLE_MAP, clock: 0, unavailable: false, hudOver: [] as readonly Rect[] };
   const minimap = {
     setOverview: vi.fn<(open: boolean) => void>(),
     placement: () => ({ layout: state.layout, bounds: BOUNDS }),
@@ -88,6 +89,7 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
   const map = createDiplomacyMap({
     canvas: document.createElement('canvas'),
     minimap,
+    hudOver: () => state.hudOver,
     nations,
     snapshot,
     fog: () => null,
@@ -296,6 +298,19 @@ describe('createDiplomacyMap', () => {
     map.toggle();
     expect(cue).toHaveBeenLastCalledWith('confirm');
     expect(map.isOpen()).toBe(true);
+  });
+
+  it('hides the pin of a settlement a HUD region stands over', () => {
+    const { map, state, pins, nextRead } = mount(
+      [OWN_NATION, ALLY_NATION],
+      [hut(1, ALLY_NATION.player, 10, 10)],
+    );
+    map.open();
+    expect(pins()[0]?.hidden).toBe(false);
+    state.hudOver = [WHOLE_MAP.panel];
+    nextRead();
+    map.refresh();
+    expect(pins()[0]?.hidden).toBe(true);
   });
 
   it('stands the plaques anew on a new layout object, without a read', () => {

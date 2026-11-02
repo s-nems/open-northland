@@ -106,6 +106,8 @@ export interface MinimapHandle {
   setOverview(open: boolean): void;
   /** Where the overview stands. */
   placement(): MinimapPlacement;
+  /** The corner map's frame, which stands over the overview. */
+  cornerPanel(): Rect;
   /** Where a view drawn over the overview mounts, inside its frame's stacking order. */
   readonly overviewHost: HTMLElement;
   /** Hand the keyboard to the button that opens the overview. */
@@ -125,16 +127,12 @@ interface MinimapView {
   /** Take a choice made on the other map. */
   setFilters(filters: MinimapFilters): void;
   panel(): Rect;
+  /** Clear the corner map's frame from this one. */
+  cutCorner(rect: Rect): void;
   placement(): MinimapPlacement;
   readonly host: HTMLElement;
   focusOverviewButton(): void;
   dispose(): void;
-}
-
-/** What the overview keeps clear of. */
-interface OverviewPlace {
-  /** The corner map's frame, which the overview slides clear of. */
-  readonly clearOf: () => Rect;
 }
 
 /**
@@ -147,16 +145,17 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     peer.setFilters(next);
     opts.onFiltersChange?.(next);
   };
-  const corner: MinimapView = mountMinimapView(
-    opts,
-    null,
-    (next) => chose(next, overview),
-    (x, y) => overviewOpen && overview.claimsPointer(x, y),
-  );
+  // Mounted first, so the corner map and every HUD region stand over it.
   const overview: MinimapView = mountMinimapView(
     opts,
-    { clearOf: corner.panel },
+    'overview',
     (next) => chose(next, corner),
+    (x, y) => corner.claimsPointer(x, y),
+  );
+  const corner: MinimapView = mountMinimapView(
+    opts,
+    'corner',
+    (next) => chose(next, overview),
     () => false,
   );
   return {
@@ -165,6 +164,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
     update: (snapshot, fog, lostGoals) => {
       corner.update(snapshot, fog, lostGoals);
       overview.update(snapshot, fog, lostGoals);
+      if (overviewOpen) overview.cutCorner(corner.panel());
     },
     ping: (at) => {
       corner.ping(at);
@@ -184,6 +184,7 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
       overview.setHidden(!open);
     },
     placement: overview.placement,
+    cornerPanel: corner.panel,
     overviewHost: overview.host,
     focusOverviewButton: corner.focusOverviewButton,
     dispose: () => {
@@ -193,11 +194,10 @@ export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle>
   };
 }
 
-/** The retained whole-map layers share one transform and one clip, including the fog. `overviewPlace`
- *  absent, this is the corner map. */
+/** The retained whole-map layers share one transform and one clip, including the fog. */
 function mountMinimapView(
   opts: MinimapOptions,
-  overviewPlace: OverviewPlace | null,
+  place: 'corner' | 'overview',
   onFilters: (filters: MinimapFilters) => void,
   yieldsTo: (clientX: number, clientY: number) => boolean,
 ): MinimapView {
@@ -209,15 +209,15 @@ function mountMinimapView(
   let center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
   let zoomFocus = center;
   let filters: MinimapFilters = opts.filters ?? DEFAULT_MINIMAP_FILTERS;
-  let hidden = overviewPlace !== null;
+  let hidden = place === 'overview';
   /** Whether the hidden overview has asked for its ground. */
   let groundAsked = false;
   let hasSeat = opts.viewer() !== null;
   let dirtyDots = true;
   const placedLayout = (): MinimapLayout =>
-    overviewPlace === null
+    place === 'corner'
       ? minimapLayout(bounds, app.screen.height, uiScale, size, app.screen.width)
-      : overviewLayout(bounds, app.screen.height, uiScale, app.screen.width, overviewPlace.clearOf());
+      : overviewLayout(bounds, app.screen.height, uiScale, app.screen.width);
   let base = placedLayout();
   let layout = zoomMinimapLayout(base, bounds, zoom, center);
   /** The shown part of the dot raster, in raster px. */
@@ -323,11 +323,11 @@ function mountMinimapView(
       onGround: (ground) => setFilters({ ...filters, ground }),
       onMarkerSize: (markerSize) => setFilters({ ...filters, markerSize }),
       onColours: (colours) => setFilters({ ...filters, colours }),
-      ...(overviewPlace === null ? { onOverview: opts.onOverviewButton } : {}),
+      ...(place === 'corner' ? { onOverview: opts.onOverviewButton } : {}),
     },
     opts.frame,
-    overviewPlace === null ? 'corner' : 'overview',
-    overviewPlace === null ? opts.overlays : undefined,
+    place,
+    place === 'corner' ? opts.overlays : undefined,
   );
   function applyFilters(next: MinimapFilters): void {
     filters = next;
@@ -341,13 +341,9 @@ function mountMinimapView(
   let lastPanel = '';
   let lastView = '';
   let screenKey = '';
-  /** What the place depends on outside this map: the screen and, for the overview, the corner's frame. */
-  const placeKey = (): string => {
-    const clear = overviewPlace?.clearOf();
-    return `${app.screen.width},${app.screen.height},${clear?.x},${clear?.w},${clear?.y}`;
-  };
+  let lastCut = '';
   function refreshLayout(): void {
-    screenKey = placeKey();
+    screenKey = `${app.screen.width},${app.screen.height}`;
     base = placedLayout();
     layout = zoomMinimapLayout(base, bounds, zoom, center);
     // Keep the effective clamped center: reversing a drag at the boundary moves immediately.
@@ -384,7 +380,7 @@ function mountMinimapView(
   }
   /** The HUD regions keep clear of the corner map; the overview finds its own room among them. */
   function reserveCorner(): void {
-    if (overviewPlace === null) setMinimapReserve(plane, hidden ? null : base.panel, uiScale);
+    if (place === 'corner') setMinimapReserve(plane, hidden ? null : base.panel, uiScale);
   }
   refreshLayout();
   const input = createMinimapInput({
@@ -421,13 +417,13 @@ function mountMinimapView(
     dragging: input.dragging,
     update: (snapshot, fog = null, lostGoals = NO_GOALS) => {
       if (hidden) {
-        if (overviewPlace !== null && !groundAsked) {
+        if (place === 'overview' && !groundAsked) {
           groundAsked = true;
           surface.sync(snapshot, fog);
         }
         return;
       }
-      if (screenKey !== placeKey()) refreshLayout();
+      if (screenKey !== `${app.screen.width},${app.screen.height}`) refreshLayout();
       if (layout.scaleX <= 0 || layout.scaleY <= 0) {
         view.clear();
         lastView = '';
@@ -500,13 +496,19 @@ function mountMinimapView(
     setFrame: (frame) => chrome.setFrame(frame),
     setFilters: applyFilters,
     panel: () => base.panel,
+    cutCorner: (rect) => {
+      const key = `${rect.x},${rect.y},${rect.w},${layout.panel.x},${layout.panel.y},${layout.panel.h}`;
+      if (key === lastCut) return;
+      lastCut = key;
+      chrome.cutCorner(rect);
+    },
     placement: () => ({ layout, bounds }),
     host: chrome.root,
     focusOverviewButton: chrome.focusOverviewButton,
     dispose: () => {
       input.dispose();
       chrome.dispose();
-      if (overviewPlace === null) setMinimapReserve(plane, null, uiScale);
+      if (place === 'corner') setMinimapReserve(plane, null, uiScale);
       surface.dispose();
       fogMask.dispose();
       roads.dispose();

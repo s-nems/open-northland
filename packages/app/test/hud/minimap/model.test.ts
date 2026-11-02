@@ -25,7 +25,7 @@ import {
   zoomMinimapLayout,
 } from '../../../src/hud/minimap/model.js';
 import { navBeamRect } from '../../../src/hud/nav-beam.js';
-import { GOAL_SLIP, NOTICE_COLUMN, TOP_BAR_HEIGHT } from '../../../src/hud/regions.js';
+import { TOP_BAR_HEIGHT } from '../../../src/hud/regions.js';
 import { MIN_UI_SCALE } from '../../../src/hud/ui-scale.js';
 import { cameraCenteredOnWorld } from '../../../src/view/camera/index.js';
 
@@ -201,35 +201,19 @@ describe('overviewLayout', () => {
   ] as const;
   const screen = { width: SCREEN_W, height: SCREEN_H };
 
-  it.each(CASES)('fills the room between the HUD columns with a $shape map', ({ bounds }) => {
-    const { panel, inner, map } = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, null);
+  it.each(CASES)('stands a $shape map on the beam axis, between the top bar and the beam', ({ bounds }) => {
+    const { panel, inner, map } = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W);
+    expect(panel.x + panel.w / 2).toBeCloseTo(SCREEN_W / 2);
     expect(panel.y).toBeGreaterThanOrEqual(TOP_BAR_HEIGHT);
     expect(panel.y + panel.h).toBeLessThan(navBeamRect(screen, UI).y);
-    expect(panel.x).toBeGreaterThan(NOTICE_COLUMN.left + NOTICE_COLUMN.width);
-    expect(panel.x + panel.w).toBeLessThan(SCREEN_W - GOAL_SLIP.right - GOAL_SLIP.width);
+    expect(panel.w).toBeLessThan(SCREEN_W);
     expect(map.w / map.h).toBeCloseTo(bounds.width / bounds.height);
     expect(map.w).toBeCloseTo(inner.w);
     expect(map.h).toBeCloseTo(inner.h);
   });
 
-  it('stands above a corner map for a wide map and beside it for a tall one', () => {
-    const corner = { x: 0, y: SCREEN_H - 200, w: 500, h: 200 };
-    const wide = overviewLayout(CASES[0].bounds, SCREEN_H, UI, SCREEN_W, corner).panel;
-    expect(wide.y + wide.h).toBeLessThanOrEqual(corner.y);
-    expect(wide.x).toBeLessThan(corner.w);
-    const tall = overviewLayout(CASES[1].bounds, SCREEN_H, UI, SCREEN_W, corner).panel;
-    expect(tall.x).toBeGreaterThanOrEqual(corner.w);
-    expect(tall.y + tall.h).toBeGreaterThan(corner.y);
-  });
-
-  it('keeps a usable map on a screen too narrow to clear the side columns', () => {
-    const narrow = 640;
-    const { panel } = overviewLayout(CASES[0].bounds, 640, UI, narrow, null);
-    expect(panel.w / narrow).toBeCloseTo(0.5);
-  });
-
   it.each(CASES)('zooms a $shape map inside the fixed frame, covering the hole', ({ bounds }) => {
-    const base = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, null);
+    const base = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W);
     const center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
     const zoomed = zoomMinimapLayout(base, bounds, ZOOM, center);
     expect(zoomed.panel).toBe(base.panel);
@@ -242,7 +226,7 @@ describe('overviewLayout', () => {
   it('collapses on a screen too small to hold a map, without a negative size or NaN', () => {
     const TINY_SIDE = 30;
     const { bounds } = CASES[0];
-    const base = overviewLayout(bounds, TINY_SIDE, UISCALE, TINY_SIDE, null);
+    const base = overviewLayout(bounds, TINY_SIDE, UISCALE, TINY_SIDE);
     const zoomed = zoomMinimapLayout(base, bounds, ZOOM, { x: 0, y: 0 });
     expect(base.scaleX).toBe(0);
     expect(base.panel.w).toBe(0);

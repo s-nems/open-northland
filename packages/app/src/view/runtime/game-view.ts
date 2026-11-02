@@ -332,6 +332,8 @@ const PAUSE_HOLDER_MISSION = 'mission';
 const PAUSE_HOLDER_VERDICT = 'verdict';
 const NO_PAPERS: readonly Paper[] = [];
 const NO_RESIDENTS: readonly ResidentRow[] = [];
+/** The regions that stand over the diplomacy map's sides while they show. */
+const HUD_OVER_THE_MAP = '.on-selection:not([hidden]), .on-slip:not([hidden])';
 /** Above the world layers, below the HUD plane the tool panel and the minimap share. */
 const SCRIPT_OVERLAY_Z = 900;
 
@@ -1055,6 +1057,13 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const mountedDiplomacyMap = createDiplomacyMap({
       canvas,
       minimap: mountedMinimap,
+      hudOver: () => [
+        mountedMinimap.cornerPanel(),
+        ...[...hudDom.element.querySelectorAll(HUD_OVER_THE_MAP)].map((region) => {
+          const { x, y, width, height } = region.getBoundingClientRect();
+          return { x, y, w: width, h: height };
+        }),
+      ],
       nations: () =>
         diplomacyMapNations(diplomacyView, {
           localPlayer: viewerPlayer(),

@@ -10,13 +10,15 @@
   position: absolute;
   overflow: hidden;
 }
-.on-hud .on-dipmap__title {
+.on-hud .on-dipmap__head {
   position: absolute;
   z-index: 1;
   top: var(--minimap-rail-center);
   left: 50%;
-  margin: 0;
-  padding: 7px 34px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 3px 5px 3px 30px;
   border: 1px solid var(--bronze);
   border-radius: 3px;
   background:
@@ -26,26 +28,27 @@
   box-shadow:
     0 3px 7px #000a,
     inset 0 0 0 1px #ead9a533;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
+}
+.on-hud .on-dipmap__title {
+  margin: 0;
   color: #f4e6c4;
   font: 600 17px / 1.2 var(--font-title);
   letter-spacing: 0.04em;
   text-shadow: 0 1px 2px #000;
   white-space: nowrap;
-  transform: translate(-50%, -50%);
-  pointer-events: auto;
 }
 .on-hud .on-dipmap__close {
-  position: absolute;
-  z-index: 1;
-  top: -6px;
-  right: -6px;
-  pointer-events: auto;
+  flex: none;
+  width: 26px;
+  height: 26px;
 }
 .on-hud .on-dipmap__pin {
   position: absolute;
-  width: 9px;
-  height: 9px;
-  margin: -4.5px 0 0 -4.5px;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px 0 0 -3.5px;
   border: 1px solid #120c07;
   background: var(--nation-colour);
   box-shadow: 0 0 0 1px #f4e6c4;
@@ -56,15 +59,15 @@
 }
 .on-hud .on-dipmap-plaque {
   display: flex;
-  align-items: center;
-  gap: 7px;
+  flex-direction: column;
+  gap: 1px;
   min-width: 0;
   min-height: 0;
-  padding: 4px 9px 4px 4px;
+  padding: 2px 5px 3px;
   border: 1px solid #8e7a53;
-  border-radius: 3px;
-  background: linear-gradient(130deg, #2e3a30f0, #16231df0);
-  box-shadow: 0 2px 6px #000a;
+  border-radius: 2px;
+  background: linear-gradient(130deg, #2e3a30e0, #16231de0);
+  box-shadow: 0 1px 3px #000a;
   color: #f1e4c6;
   text-align: left;
   pointer-events: auto;
@@ -89,47 +92,37 @@
   border-color: var(--bronze);
   background: linear-gradient(130deg, #3d4c40, #203228);
 }
-.on-hud .on-dipmap-plaque__emblem {
-  width: 34px;
-  height: 34px;
-  padding: 1px;
-  border-width: 1px;
-  border-radius: 3px;
-}
-.on-hud .on-dipmap-plaque__text {
+.on-hud .on-dipmap-plaque__name-line {
   display: flex;
-  flex-direction: column;
-  gap: 1px;
-  min-width: 0;
+  align-items: center;
+  gap: 4px;
 }
 .on-hud .on-dipmap-plaque__name {
-  font: 600 13px / 1.2 var(--font-title);
+  font: 600 11px / 1.15 var(--font-title);
 }
-.on-hud .on-dipmap-plaque__note,
-.on-hud .on-dipmap-plaque__relation {
-  color: #d9c69c;
-  font: 12px / 1.2 var(--font-body);
+.on-hud .on-dipmap-plaque__emblem {
+  width: 13px;
+  height: 13px;
+  padding: 0;
+  border-width: 1px;
+  border-radius: 2px;
 }
-.on-hud .on-dipmap-plaque__note[hidden],
-.on-hud .on-dipmap-plaque__relation[hidden] {
+.on-hud .on-dipmap-plaque__emblem[hidden] {
   display: none;
 }
 .on-hud .on-dipmap-plaque__relation {
   display: flex;
-  gap: 10px;
-  margin-top: 1px;
+  gap: 7px;
+  color: #d9c69c;
+  font: 10px / 1.15 var(--font-body);
+}
+.on-hud .on-dipmap-plaque__relation[hidden] {
+  display: none;
 }
 .on-hud .on-dipmap-plaque__side {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-}
-.on-hud .on-dipmap-plaque__side-emblem {
-  width: 17px;
-  height: 17px;
-  padding: 0;
-  border-width: 1px;
-  border-radius: 2px;
+  gap: 3px;
 }
 .on-hud .on-dipmap-plaque__relation b {
   font-weight: 600;

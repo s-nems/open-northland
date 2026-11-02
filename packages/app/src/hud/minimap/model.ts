@@ -27,12 +27,10 @@ const MAX_FRAME_ASPECT = 1.5;
 const NAV_GAP = 6;
 const TOP_SAFE = 70;
 const SELECTION_GAP = 12;
-/** Design px between the overview's frame and the HUD columns and corner map around it. */
-const OVERVIEW_GAP = 12;
-/** Design px between the top bar and the overview's frame, whose title plaque rises above it. */
+/** Design px between the top bar and the overview's frame, whose title rises above it. */
 const OVERVIEW_TOP_GAP = 8;
-/** The share of the screen's width the overview takes when the columns leave it less. */
-const OVERVIEW_LEAST_WIDTH_SHARE = 0.5;
+/** The overview's share of the screen's width: large, with the world still in view around it. */
+const OVERVIEW_WIDTH_SHARE = 0.8;
 /** Design px the unknown-location strip hangs below the overview's frame. */
 const OVERVIEW_STRIP_OVERHANG = 24;
 
@@ -102,40 +100,29 @@ export function minimapLayout(
 }
 
 /**
- * The largest frame hugging the whole map in the room the HUD leaves: under the top bar, above the
- * navigation beam, between the notice column and the goal slip's. The corner map takes that room either
- * from the left or from below, whichever leaves the larger map. A screen too narrow for the columns keeps
- * a usable map anyway.
+ * The largest frame hugging the whole map under the top bar and above the navigation beam, within its
+ * share of the screen's width, on the beam's axis. The HUD's columns and the corner map stay in place and
+ * stand over the frame's corners; the world keeps showing around it.
  */
 export function overviewLayout(
   bounds: WorldBounds,
   screenH: number,
   uiscale: number,
   screenW: number,
-  overlay: Rect | null,
 ): MinimapLayout {
   const artScale = Math.max(MIN_UI_SCALE, uiscale);
   const region = centralRegion({ width: screenW, height: screenH }, artScale);
   const border = 2 * BORDER * artScale;
-  const gap = OVERVIEW_GAP * artScale;
   const top = (TOP_BAR_HEIGHT + OVERVIEW_TOP_GAP) * artScale;
-  const floor = region.y + region.h - OVERVIEW_STRIP_OVERHANG * artScale;
-  const columnsLeft = (NOTICE_COLUMN.left + NOTICE_COLUMN.width) * artScale + gap;
-  const columnsRight = screenW - (GOAL_SLIP.width + GOAL_SLIP.right) * artScale - gap;
-  const framedIn = (left: number, bottom: number, leastW: number): MinimapLayout => {
-    const roomW = columnsRight - left;
-    const roomH = bottom - top;
-    const fit = Math.min((Math.max(roomW, leastW) - border) / bounds.width, (roomH - border) / bounds.height);
-    if (fit <= 0) return framedLayout({ x: 0, y: screenH, w: 0, h: 0 }, bounds, artScale);
-    const w = bounds.width * fit + border;
-    const h = bounds.height * fit + border;
-    return framedLayout({ x: left + (roomW - w) / 2, y: top + (roomH - h) / 2, w, h }, bounds, artScale);
-  };
-  const leastW = screenW * OVERVIEW_LEAST_WIDTH_SHARE;
-  if (overlay === null) return framedIn(columnsLeft, floor, leastW);
-  const above = framedIn(columnsLeft, Math.min(floor, overlay.y - gap), leastW);
-  const beside = framedIn(Math.max(columnsLeft, overlay.x + overlay.w + gap), floor, 0);
-  return above.map.w >= beside.map.w ? above : beside;
+  const roomH = region.y + region.h - OVERVIEW_STRIP_OVERHANG * artScale - top;
+  const fit = Math.min(
+    (screenW * OVERVIEW_WIDTH_SHARE - border) / bounds.width,
+    (roomH - border) / bounds.height,
+  );
+  if (fit <= 0) return framedLayout({ x: 0, y: screenH, w: 0, h: 0 }, bounds, artScale);
+  const w = bounds.width * fit + border;
+  const h = bounds.height * fit + border;
+  return framedLayout({ x: (screenW - w) / 2, y: top + (roomH - h) / 2, w, h }, bounds, artScale);
 }
 
 function framedLayout(panel: Rect, bounds: WorldBounds, artScale: number): MinimapLayout {

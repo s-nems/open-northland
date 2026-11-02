@@ -59,6 +59,9 @@ export interface MinimapChrome {
   setHidden(hidden: boolean): void;
   setFrame(frame: MinimapFrame): void;
   focusOverviewButton(): void;
+  /** Cut `rect` (screen px) out of this frame's bottom-left corner: the corner map's hole shows the
+   *  canvas, so anything of this frame's left beneath it would show through. */
+  cutCorner(rect: Rect): void;
   /** Where a view drawn over the framed map mounts, inside the frame's stacking order. */
   readonly root: HTMLElement;
   dispose(): void;
@@ -66,6 +69,10 @@ export interface MinimapChrome {
 
 /** Design px between the frame's outer edge and a filter drawer opened over the overview. */
 const OVERVIEW_DRAWER_INSET = 34;
+/** Design px a corner cut keeps round what it clears, which covers that frame's overhanging art. */
+const CORNER_CUT_MARGIN = 8;
+/** Design px past the frame's box the clip reaches, to keep the art, title and strip standing beyond it. */
+const CLIP_REACH = 80;
 
 const icon = (paths: string): string =>
   `<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">${paths}</svg>`;
@@ -329,12 +336,15 @@ export function createMinimapChrome(
     const height = bounds.height / uiScale;
     const drawerWidth = popover.offsetWidth;
     const drawerHeight = popover.offsetHeight;
-    // The overview has the HUD at its sides, so its drawer opens over the map, by its controls.
+    // The overview has the HUD at its sides, so its drawer opens over the map, under its controls.
     const x =
       place === 'overview'
         ? root.offsetLeft + OVERVIEW_DRAWER_INSET
         : Math.max(4, Math.min(root.offsetLeft + root.offsetWidth + 8, width - drawerWidth - 4));
-    let y = root.offsetTop + (root.offsetHeight - drawerHeight) / 2;
+    let y =
+      place === 'overview'
+        ? root.offsetTop + OVERVIEW_DRAWER_INSET
+        : root.offsetTop + (root.offsetHeight - drawerHeight) / 2;
     const beam = plane.querySelector<HTMLElement>('.on-beam');
     if (beam?.checkVisibility()) {
       const beamBounds = beam.getBoundingClientRect();
@@ -383,13 +393,17 @@ export function createMinimapChrome(
     if (event.relatedTarget instanceof Node && !root.contains(event.relatedTarget)) showFilters(false);
   });
   root.append(controls, popover);
-  plane.append(root);
+  // The overview goes under every other HUD region, which stand over its corners.
+  if (place === 'overview') plane.prepend(root);
+  else plane.append(root);
 
   let lastLayout = '';
+  let box: Rect = { x: 0, y: 0, w: 0, h: 0 };
   return {
     root,
     setLayout: (panel, visibleMap, scale) => {
       uiScale = scale;
+      box = panel;
       backing.setLayout(panel, visibleMap, scale);
       const layout = `${panel.x},${panel.y},${panel.w},${panel.h},${uiScale}`;
       if (layout === lastLayout) return;
@@ -461,6 +475,18 @@ export function createMinimapChrome(
       root.dataset.frame = next;
     },
     focusOverviewButton: () => overviewButton?.focus({ preventScroll: true }),
+    cutCorner: (rect) => {
+      const w = box.w / uiScale;
+      const h = box.h / uiScale;
+      const right = (rect.x + rect.w - box.x) / uiScale + CORNER_CUT_MARGIN;
+      const top = (rect.y - box.y) / uiScale - CORNER_CUT_MARGIN;
+      const far = CLIP_REACH;
+      root.style.clipPath =
+        right <= 0 || top >= h
+          ? ''
+          : `polygon(${-far}px ${-far}px, ${w + far}px ${-far}px, ${w + far}px ${h + far}px, ` +
+            `${right}px ${h + far}px, ${right}px ${top}px, ${-far}px ${top}px)`;
+    },
     dispose: () => {
       showFilters(false);
       document.removeEventListener('pointerdown', onOutsidePress, true);

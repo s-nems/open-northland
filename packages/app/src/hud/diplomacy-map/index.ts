@@ -5,7 +5,7 @@ import { messages } from '../../i18n/index.js';
 import type { NationEmblemPainter } from '../dom/diplomacy-window/emblems.js';
 import { GLYPH } from '../dom/icons.js';
 import { button, element, setHidden, setStyleVar, write } from '../dom/parts/dom.js';
-import { contains } from '../geometry.js';
+import { contains, type Rect } from '../geometry.js';
 import type { MinimapHandle } from '../minimap/index.js';
 import { visibleMinimapRect, worldToMinimap } from '../minimap/model.js';
 import { createNationPlaque, type DiplomacyMapNation, type NationPlaque } from './labels.js';
@@ -16,12 +16,14 @@ import './diplomacy-map.css';
  *  the buildings about once a second and a shut one never does. */
 const READ_INTERVAL_MS = 1000;
 /** Design px between a settlement's pin and the plaque above it. */
-const PIN_CLEARANCE = 8;
+const PIN_CLEARANCE = 6;
 
 export interface DiplomacyMapDeps {
   /** The minimap's input listens here; a plaque hands it the presses that are not its own. */
   readonly canvas: HTMLCanvasElement;
   readonly minimap: Pick<MinimapHandle, 'setOverview' | 'placement' | 'focusOverviewButton' | 'overviewHost'>;
+  /** The HUD regions standing over the map, in screen px, which plaques keep off. */
+  readonly hudOver: () => readonly Rect[];
   readonly nations: () => readonly DiplomacyMapNation[];
   readonly snapshot: () => WorldSnapshot;
   /** The viewer's fog, null with fog off or the whole map in view. */
@@ -64,15 +66,18 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
   const root = element('div', 'on-dipmap');
   root.hidden = true;
   const field = element('div', 'on-dipmap__field');
+  const head = element('div', 'on-dipmap__head');
   const title = element('h2', 'on-dipmap__title');
   write(title, copy.title);
+  // On the title, as the frame's corners go under the HUD columns.
   const closeButton = button('on-medallion on-window__close on-dipmap__close', GLYPH.close);
   closeButton.setAttribute('aria-label', messages().hud.shell.close);
+  head.append(title, closeButton);
   const unknown = element('div', 'on-dipmap__unknown');
   const unknownLabel = element('span', 'on-dipmap__unknown-label');
   write(unknownLabel, copy.unknown);
   unknown.append(unknownLabel);
-  root.append(field, title, closeButton, unknown);
+  root.append(field, head, unknown);
   deps.minimap.overviewHost.append(root);
 
   let opened = false;
@@ -157,6 +162,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
       height: `${inner.h / scale}px`,
     });
     const shown = visibleMinimapRect(layout);
+    const hud = deps.hudOver();
     const boxes: LabelBox[] = [];
     for (const [key, placed] of settlements) {
       const at = worldToMinimap(
@@ -168,7 +174,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
       const inView = contains(shown, at.x, at.y);
       const { element: plaque } = placed.plaque;
       setHidden(plaque, !inView);
-      setHidden(placed.pin, !inView);
+      setHidden(placed.pin, !inView || hud.some((rect) => contains(rect, at.x, at.y)));
       if (!inView) continue;
       const x = (at.x - inner.x) / scale;
       const y = (at.y - inner.y) / scale;
@@ -179,7 +185,13 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
       boxes.push({ key, x: x - w / 2, y: y - h - PIN_CLEARANCE, w, h });
     }
     const area = { x: 0, y: 0, w: inner.w / scale, h: inner.h / scale };
-    for (const spot of spreadLabels(boxes, area)) {
+    const keepOut = hud.map((rect) => ({
+      x: (rect.x - inner.x) / scale,
+      y: (rect.y - inner.y) / scale,
+      w: rect.w / scale,
+      h: rect.h / scale,
+    }));
+    for (const spot of spreadLabels(boxes, area, keepOut)) {
       const plaque = settlements.get(spot.key)?.plaque.element;
       if (plaque !== undefined) plaque.style.transform = `translate(${spot.x}px, ${spot.y}px)`;
     }

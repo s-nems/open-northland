@@ -181,6 +181,17 @@ function allInside(boxes: readonly LabelBox[], spots: readonly LabelSpot[], boun
 }
 
 describe('spreadLabels', () => {
+  it('keeps labels off the regions it is told to', () => {
+    const keepOut = { x: 90, y: 0, w: 100, h: 100 };
+    const [spot] = spreadLabels([{ key: 'a', x: 100, y: 10, w: 40, h: 20 }], BOUNDS, [keepOut]);
+    expect(spot).toBeDefined();
+    const clear =
+      (spot?.x ?? 0) + 40 <= keepOut.x ||
+      (spot?.x ?? 0) >= keepOut.x + keepOut.w ||
+      (spot?.y ?? 0) >= keepOut.y + keepOut.h;
+    expect(clear).toBe(true);
+  });
+
   it('leaves boxes alone that neither overlap nor cross the bounds, touching ones included', () => {
     const boxes = [label('a', 10, 10), label('b', 10 + LABEL_W, 10), label('c', 100, 100)];
     expect(spreadLabels(boxes, BOUNDS)).toEqual(boxes.map(({ key, x, y }) => ({ key, x, y })));

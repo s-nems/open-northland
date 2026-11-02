@@ -397,11 +397,13 @@
 .on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__button--size {
   display: none;
 }
-/* On the left rail, where no selection panel reaches. */
+/* In a row on the top rail, which no HUD column reaches over: they stand over the frame's sides. */
 .on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__controls {
+  top: var(--minimap-rail-center);
   right: auto;
-  left: var(--minimap-rail-center);
-  transform: translate(-50%, -50%);
+  left: 44px;
+  flex-direction: row;
+  transform: translateY(-50%);
 }
 
 .on-hud .on-map-overlays {
