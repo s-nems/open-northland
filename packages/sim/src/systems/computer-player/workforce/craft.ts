@@ -27,7 +27,7 @@ import { goodEnabled } from '../../progression/index.js';
 import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
-import { militaryWaits, seatHasSide } from '../build-order/seat-order.js';
+import { militaryWaits, seatArchetype, seatHasSide } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type HerdKept, seatHerdKept } from '../herd.js';
@@ -452,6 +452,17 @@ export const AI_CATAPULT_CAP = 15;
  *  (authored), a band under {@link AI_CATAPULT_CAP} so one loss does not flip the crew. */
 export const AI_CATAPULT_RESUME = 12;
 
+/** Owner ruling: on the island plan the carpenter earns the small ship first. Until then he turns wood into
+ *  tools beside the iron ones, as any finished product trains the general track and iron came in at a tool
+ *  every four game minutes on arabskie_wyspy_wolna_gra_mieszana; his worker rotation passes over the recipe
+ *  his shelves cannot feed. */
+const ISLAND_CRAFT_PLANS: Readonly<Record<string, CraftPlan>> = {
+  work_joinery_01: {
+    seats: [{ until: 'ship_small', works: ['tool_iron', 'tool_wooden'], otherwise: JOINERY_SEAT }],
+    unfed: NO_IRON_SEAT,
+  },
+};
+
 /** The plans per role of a workplace type whose buildings each take a role by where they stand
  *  ({@link joineryRoles}), by stable content id. */
 export type JoineryRolePlans = Readonly<Record<string, Readonly<Record<JoineryRole, CraftPlan>>>>;
@@ -571,8 +582,9 @@ export function seatCraftPlans(
 ): Readonly<Record<string, CraftPlan>> {
   const held = SIDE_CRAFT_PLANS.find(([side]) => seatHasSide(world, player, side));
   const herd = seatHerdKept(world, ctx, player);
-  if (held === undefined && (herd === 'both' || herd === 'none')) return profile.craftPlans;
-  const key = `${held?.[0] ?? ''}|${herd}`;
+  const island = seatArchetype(world, player) === 'islands';
+  if (held === undefined && !island && (herd === 'both' || herd === 'none')) return profile.craftPlans;
+  const key = `${held?.[0] ?? ''}|${herd}|${island}`;
   let byKey = sidePlans.get(profile.craftPlans);
   if (byKey === undefined) {
     byKey = new Map();
@@ -581,7 +593,12 @@ export function seatCraftPlans(
   let plans = byKey.get(key);
   if (plans === undefined) {
     const herdRows = (held === undefined ? HERD_CRAFT_PLANS : TUNIC_HERD_CRAFT_PLANS)[herd];
-    plans = { ...profile.craftPlans, ...held?.[1], ...herdRows };
+    plans = {
+      ...profile.craftPlans,
+      ...held?.[1],
+      ...herdRows,
+      ...(island ? ISLAND_CRAFT_PLANS : undefined),
+    };
     byKey.set(key, plans);
   }
   return plans;

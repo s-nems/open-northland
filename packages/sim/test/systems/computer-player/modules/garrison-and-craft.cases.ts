@@ -1727,6 +1727,21 @@ describe('workforce module - the barracks and craft selections', () => {
     expect(decisions(tuned)).toEqual([[TOOL_WOODEN], [TOOL_WOODEN]]);
   });
 
+  it('works wooden and iron tools together on an island seat until the small ship is earned', () => {
+    const SHIP_SMALL = 28;
+    const base = furnitureContent();
+    const content = withUnearned(
+      parseContentSet({
+        ...base,
+        goods: [...base.goods, { typeId: SHIP_SMALL, id: 'ship_small', weight: 1 }],
+      }),
+      [SHIP_SMALL],
+    );
+    const seat = crewedWorkshop(content, 1);
+    seatEconomy(seat.sim, 'islands');
+    expect(seat.products()).toEqual([[TOOL_IRON, TOOL_WOODEN].sort((a, b) => a - b)]);
+  });
+
   it('makes wooden tools only until the iron tool is earned', () => {
     const seat = crewedWorkshop(withUnearned(aiContent(), [TOOL_IRON]), 1);
     expect(seat.products()).toEqual([[TOOL_WOODEN]]);
