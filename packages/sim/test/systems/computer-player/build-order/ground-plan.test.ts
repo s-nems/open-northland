@@ -29,6 +29,7 @@ import { type BuildOrderEntry, buildOrderModule } from '../../../../src/systems/
 import { clearingAim } from '../../../../src/systems/computer-player/workforce/collectors/index.js';
 import type { SystemContext } from '../../../../src/systems/index.js';
 import { razeBuilding } from '../../../../src/systems/lifecycle/cleanup.js';
+import { resourcesAtNode } from '../../../../src/systems/spatial/resources.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
   BARRACKS_TYPE,
@@ -286,6 +287,16 @@ describe('ground plan', () => {
     decide(sim, [HELD_BARRACKS]);
     const [plot] = planOf(sim).plots;
     expect(plot).toMatchObject({ building: 'barracks', clearing: true });
+    if (plot === undefined) throw new Error('expected the plot');
+
+    // Felled trees leave the review a free fit, which the plot takes.
+    const cleared = island(LONG_END, ['noRoom'], trees);
+    decide(cleared, [HELD_BARRACKS]);
+    for (const tree of trees)
+      for (const e of resourcesAtNode(cleared.world, tree.x, tree.y)) cleared.world.destroy(e);
+    cleared.step();
+    reviewed(cleared, [HELD_BARRACKS]);
+    expect(plotAt(cleared, 'barracks').clearing).toBe(false);
 
     const carrier = aiControlEntity(sim.world, SEAT);
     if (carrier === null) throw new Error('setup: no carrier');

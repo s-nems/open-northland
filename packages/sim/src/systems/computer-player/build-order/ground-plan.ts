@@ -195,7 +195,7 @@ function plotOf(seat: Seat, plotted: PlottedStep): GroundPlot | null {
   if (spot !== null) return { ...plot, ...spot, clearing: false };
   if (entry.near?.some((a) => a.kind === 'shore') === true) return null;
   const patch = clearingPatch(world, ctx, terrain, player, type.typeId, tribe, anchor);
-  return patch === null ? null : { ...plot, hx: patch.x, hy: patch.y, clearing: true };
+  return patch === null ? null : { ...plot, hx: patch.x, hy: patch.y, clearing: patch.cost > 0 };
 }
 
 /**
@@ -320,8 +320,8 @@ function fittingHomes(seat: Seat): number {
 }
 
 /** The plots still waiting after this decision: those whose step no longer waits go, a free one that no
- *  longer fits moves ({@link plotOf}). A plot on ground still to clear stays where it lies. At the plan's
- *  review a never-cut step with no plot, its building lost or no ground found before, is plotted again. */
+ *  longer fits moves ({@link plotOf}). A plot on ground still to clear waits for the plan's review, which
+ *  searches it again, and plots a never-cut step with no plot, its building lost or no ground found before. */
 function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
   const { world, ctx, terrain, tribe } = seat;
   const plan = world.get(carrier, GroundPlan);
@@ -351,6 +351,17 @@ function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: L
 function reviewGround(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
   const { world, ctx } = seat;
   world.mut(carrier, GroundPlan).reviewTick = ctx.tick + PLAN_REVIEW_TICKS;
+  // Ground to clear may stand free by now, or a free fit may have opened elsewhere.
+  const clearing = world.get(carrier, GroundPlan).plots.filter((plot) => plot.clearing);
+  for (const { building, line, step } of clearing) {
+    const entry = order.lines.find((held) => held.id === line)?.steps[step];
+    const moved = entry?.kind === 'place' ? plotOf(seat, { entry, line, step }) : null;
+    const others = world.get(carrier, GroundPlan).plots.filter((plot) => plot.building !== building);
+    world.mut(carrier, GroundPlan).plots = [
+      ...others.map((plot) => ({ ...plot })),
+      ...(moved === null ? [] : [moved]),
+    ];
+  }
   for (const step of essentialSteps(seat, order, statuses)) {
     if (!NEVER_CUT.includes(step.entry.building)) continue;
     if (world.get(carrier, GroundPlan).plots.some((plot) => plot.building === step.entry.building)) continue;
