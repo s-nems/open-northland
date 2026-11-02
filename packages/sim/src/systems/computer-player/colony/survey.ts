@@ -4,6 +4,7 @@ import {
   type MapBriefView,
   mapBriefOf,
   playerPlacementTribes,
+  zoneOfNode,
 } from '../../../components/index.js';
 import type { World } from '../../../ecs/world.js';
 import { type HalfCellNode, hexDistance } from '../../../nav/halfcell.js';
@@ -54,6 +55,8 @@ export interface ColonySite {
   /** The centre zone's middle node. */
   readonly centre: HalfCellNode;
   readonly score: number;
+  /** Another seat's start lies nearer: it weighs the same block, so this seat looks there last. */
+  readonly contested: boolean;
 }
 
 const candidatesByBrief = new WeakMap<MapBriefView, Map<number, readonly ColonySite[]>>();
@@ -69,6 +72,16 @@ function blockZones(brief: MapBriefView, zone: number): number[] {
     }
   }
   return zones;
+}
+
+/** Whether node `(hx, hy)` lies in the block around `zone`. */
+export function siteBlockHolds(brief: MapBriefView, zone: number, hx: number, hy: number): boolean {
+  const inside = zoneOfNode(brief, hx, hy);
+  const row = (z: number): number => Math.floor(z / brief.zonesWide);
+  return (
+    Math.abs((inside % brief.zonesWide) - (zone % brief.zonesWide)) <= BLOCK_REACH_ZONES &&
+    Math.abs(row(inside) - row(zone)) <= BLOCK_REACH_ZONES
+  );
 }
 
 function zoneCentre(brief: MapBriefView, zone: number): HalfCellNode {
@@ -98,6 +111,7 @@ function scanCandidates(brief: MapBriefView, seat: number): readonly ColonySite[
   const stone = brief.goods.indexOf(STONE_ID);
   if (start === undefined || lands === null || wood < 0 || stone < 0) return [];
   const home = { hx: start.hx, hy: start.hy };
+  const rivals = brief.seats.filter((other) => other.player !== seat);
   const sites: ColonySite[] = [];
   for (let zone = 0; zone < brief.dominantLand.length; zone++) {
     const land = brief.dominantLand[zone] ?? NO_COMPONENT;
@@ -120,13 +134,17 @@ function scanCandidates(brief: MapBriefView, seat: number): readonly ColonySite[
       STONE_SCORE_WEIGHT * Math.min(stoneUnits, STONE_SCORE_CAP) +
       Math.floor(fish / FISH_SCORE_DIVISOR) -
       DISTANCE_SCORE_WEIGHT * hexDistance(home, centre);
-    sites.push({ zone, land, centre, score });
+    const contested = rivals.some((rival) => hexDistance(rival, centre) < hexDistance(home, centre));
+    sites.push({ zone, land, centre, score, contested });
   }
-  return sites.sort((a, b) => b.score - a.score || a.zone - b.zone);
+  return sites.sort(
+    (a, b) => Number(a.contested) - Number(b.contested) || b.score - a.score || a.zone - b.zone,
+  );
 }
 
-/** The sites the static map offers `seat`, best first, the lowest zone on a tie: blocks on a land sharing
- *  water with home. Scanned once per seat, and a pure function of the saved brief. */
+/** The sites the static map offers `seat`, blocks on a land sharing water with home: those nearer it than
+ *  any other seat's start first, so seats spread by what they all know, then best first, the lowest zone
+ *  on a tie. Scanned once per seat, and a pure function of the saved brief. */
 export function colonySiteCandidates(brief: MapBriefView, seat: number): readonly ColonySite[] {
   let bySeat = candidatesByBrief.get(brief);
   if (bySeat === undefined) {

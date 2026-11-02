@@ -36,6 +36,12 @@ export function colonyHeldShips(world: World, seat: number): readonly Entity[] {
   return colony === undefined ? [] : heldShipsOf(colony);
 }
 
+/** Whether `seat` holds a live colony plan, whose ships its joinery owes. */
+export function colonyWantsShips(world: World, seat: number): boolean {
+  const colony = colonyOf(world, seat);
+  return colony !== undefined && colony.phase !== 'abandoned';
+}
+
 function belongsToColony(
   world: World,
   ctx: SystemContext,

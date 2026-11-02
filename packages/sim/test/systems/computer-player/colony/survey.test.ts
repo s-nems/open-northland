@@ -21,6 +21,7 @@ import {
 } from '../support.js';
 
 const FOE = 3;
+const FOE_START = 8 * 32;
 const HOME_LAND = 1;
 const NEAR_LAND = 2;
 const LAKE_LAND = 3;
@@ -114,6 +115,19 @@ describe('the static colony candidates', () => {
     // Both blocks pass both caps, so the nearer one, and its lowest zone on the tie, leads.
     expect(best?.zone).toBe(ROW * ZONES_WIDE + 2);
     expect(next?.score).toBeLessThanOrEqual(best?.score ?? 0);
+  });
+
+  it('looks last at a block another start lies nearer, whatever its score', () => {
+    const rich = { wood: 5000, stone: 5000 };
+    const brief = briefOf([...pair(2, NEAR_LAND), ...pair(6, NEAR_LAND, rich)]);
+    const shared = {
+      ...brief,
+      seats: [...brief.seats, { player: FOE, hx: FOE_START, hy: 48, component: HOME_LAND, buildings: [] }],
+    };
+    const sites = colonySiteCandidates(shared, SEAT);
+    expect(sites[0]?.centre.hx).toBeLessThan(FOE_START / 2);
+    expect(sites.at(-1)?.contested).toBe(true);
+    expect(sites.at(-1)?.score).toBeGreaterThan(sites[0]?.score ?? 0);
   });
 });
 

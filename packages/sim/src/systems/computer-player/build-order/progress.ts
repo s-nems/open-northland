@@ -27,7 +27,7 @@ import { homeStockOf } from '../colony/stock.js';
 import { seatHerdKept } from '../herd.js';
 import { type JoineryRole, joineryRoles } from '../joinery-role.js';
 import { anyLiveResource, knownResourceTest } from '../live-resources.js';
-import { rivalOverSea } from '../sea-route.js';
+import { seatNeedsShips } from '../sea-route.js';
 import { technologyReach } from '../technology/reach.js';
 import { crewAt, fullCrew, plannedOperators } from '../workforce/staffing-rows.js';
 import {
@@ -171,7 +171,7 @@ function memoGrassScarce(world: World, ctx: SystemContext, player: number, memo:
 }
 
 function memoOverSea(world: World, ctx: SystemContext, player: number, memo: DecisionMemo): boolean {
-  memo.rivalOverSea ??= rivalOverSea(world, ctx, player);
+  memo.rivalOverSea ??= seatNeedsShips(world, ctx, player);
   return memo.rivalOverSea;
 }
 

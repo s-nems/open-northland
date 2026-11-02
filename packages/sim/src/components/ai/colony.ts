@@ -2,7 +2,8 @@ import { defineComponent, type Entity } from '../../ecs/world.js';
 import type { HalfCellNode } from '../../nav/halfcell.js';
 import type { BuildLineId } from './computer-player.js';
 
-/** Where a colony stands, in order; `abandoned` is terminal and keeps its land out of the home reads. */
+/** Where a colony stands, in order; `returning` turns a failed voyage for home; `abandoned` is terminal and
+ *  keeps its land out of the home reads. */
 export type ColonyPhase =
   | 'siteChosen'
   | 'scouting'
@@ -12,6 +13,7 @@ export type ColonyPhase =
   | 'landing'
   | 'founding'
   | 'running'
+  | 'returning'
   | 'abandoned';
 
 /** The trip that looks over the site's coast before a colony sails. */

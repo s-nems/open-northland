@@ -20,6 +20,7 @@ import { TICKS_PER_SECOND } from '../../../../core/loop.js';
 import type { DeepReadonly, Entity, World } from '../../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../../../nav/terrain/index.js';
+import { colonyHeldShips } from '../../../ai-shared/home-roster.js';
 import { onErrand, spokenFor } from '../../../ai-shared/military/errand.js';
 import { isShipVehicle } from '../../../readviews/vehicles.js';
 import { mooringSpotsOf } from '../../../vehicles/dock.js';
@@ -97,13 +98,18 @@ function componentOfPoint(terrain: TerrainGraph, at: HalfCellNode): number {
   return terrain.inBounds(at.hx, at.hy) ? terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) : NO_COMPONENT;
 }
 
+/** What a read of a seat's ships takes, a landing's or a colony's. */
+export type ShipEnv = Pick<OperationEnv, 'world' | 'ctx' | 'terrain' | 'seat'>;
+
 /** The seat's ships a landing may take, ascending id: on the map, moored at a shore of `home`, crewless,
- *  not under way and riding no carrier. */
-export function freeShips(env: OperationEnv, home: number): Entity[] {
+ *  not under way, riding no carrier and held by no colony. */
+export function freeShips(env: ShipEnv, home: number): Entity[] {
   const { world, ctx, terrain, seat } = env;
   const vehicles = contentIndex(ctx.content).vehicles;
+  const held = colonyHeldShips(world, seat);
   const ships: Entity[] = [];
   for (const e of vehicleIndex(world).ownedBy(seat)) {
+    if (held.includes(e)) continue;
     const state = world.get(e, Vehicle);
     const type = vehicles.get(state.vehicleType);
     if (type === undefined || !isShipVehicle(type) || type.passengerVector === undefined) continue;
@@ -314,7 +320,7 @@ function sailing(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
       ship.leg = 'back';
       commands.push(dockAt(ship, ship.home));
     } else if (stoppedShort(world, ship, ship.shore)) {
-      ship.shore = otherShore(env, ship, ship.shore) ?? ship.shore;
+      ship.shore = otherShore(env, ship.vehicle, ship.shore) ?? ship.shore;
       commands.push(dockAt(ship, ship.shore));
     }
   }
@@ -336,7 +342,7 @@ function homecoming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
     const mooring = homeMooring(env, ship);
     if (mooring !== null) commands.push(...freeCrew(ship, mooring));
     else if (stoppedShort(env.world, ship, ship.home)) {
-      ship.home = otherShore(env, ship, ship.home) ?? ship.home;
+      ship.home = otherShore(env, ship.vehicle, ship.home) ?? ship.home;
       commands.push(dockAt(ship, ship.home));
     }
   }
@@ -349,15 +355,15 @@ function homecoming(env: OperationEnv, op: LandingOperation): PlayerCommand[] {
  * lowest node on a tie, at least {@link LANDING_SHORE_SPACING_NODES} from `refused` and from every other
  * ship of the seat's mooring. Null when that land has none. Costs the ship's mooring spots.
  */
-function otherShore(env: OperationEnv, ship: LandingShip, refused: HalfCellNode): HalfCellNode | null {
+export function otherShore(env: ShipEnv, ship: Entity, refused: HalfCellNode): HalfCellNode | null {
   const { world, ctx, terrain, seat } = env;
-  const at = nodeOfEntity(world, ship.vehicle);
-  const spots = mooringSpotsOf(world, ctx, terrain, ship.vehicle);
+  const at = nodeOfEntity(world, ship);
+  const spots = mooringSpotsOf(world, ctx, terrain, ship);
   const land = componentOfPoint(terrain, refused);
   if (at === null || spots === null || land === NO_COMPONENT) return null;
   const taken: HalfCellNode[] = [refused];
   for (const e of vehicleIndex(world).ownedBy(seat)) {
-    const mooring = e === ship.vehicle ? null : world.get(e, Vehicle).mooring;
+    const mooring = e === ship ? null : world.get(e, Vehicle).mooring;
     if (mooring !== null) taken.push(mooring);
   }
   let best: { readonly at: HalfCellNode; readonly node: NodeId; readonly distance: number } | null = null;

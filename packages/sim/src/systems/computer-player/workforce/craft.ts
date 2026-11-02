@@ -21,7 +21,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
+import { colonyHeldShips, homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { goodEnabled } from '../../progression/index.js';
@@ -34,7 +34,7 @@ import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type HerdKept, seatHerdKept } from '../herd.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID, smallestShipHouse } from '../joinery-role.js';
 import { BARRACKS_LEAD_TICKS } from '../military/deadline.js';
-import { rivalOverSea } from '../sea-route.js';
+import { seatNeedsShips } from '../sea-route.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { COLLECTED_GOOD_IDS } from './collectors/wanted-goods.js';
 import {
@@ -669,7 +669,7 @@ export function tuneCraftCounters(
   const commands: PlayerCommand[] = [];
   const index = contentIndex(ctx.content);
   const plans = seatCraftPlans(world, ctx, player, profile);
-  const roleOf = joineryRoles(world, ctx, player, () => rivalOverSea(world, ctx, player));
+  const roleOf = joineryRoles(world, ctx, player, () => seatNeedsShips(world, ctx, player));
   const rolePlans = seatHasSide(world, player, 'noRoom') ? NO_CATAPULT_ROLE_PLANS : profile.joineryRolePlans;
   const fleets = new Map<string, number>();
   const fleetOf = (good: number, freeOnly: boolean): number => {
@@ -717,9 +717,10 @@ export function tuneCraftCounters(
   const landingShips = (): number => {
     if (landing === undefined) {
       const fleet = landingFleetShips(world, player, profile);
-      landing = rivalOverSea(world, ctx, player)
-        ? Math.max(fleet, landingFewestShips(fleet) + SEA_SCOUT_SHIPS)
-        : fleet;
+      const sails = seatNeedsShips(world, ctx, player);
+      landing =
+        (sails ? Math.max(fleet, landingFewestShips(fleet) + SEA_SCOUT_SHIPS) : fleet) +
+        colonyFleetShips(world, ctx, player);
     }
     return landing;
   };
@@ -1248,6 +1249,14 @@ function stockReads(
       return recruits;
     },
   };
+}
+
+/** The small ships `player`'s colony holds off its landing fleet: the joinery builds that many more. */
+function colonyFleetShips(world: World, ctx: SystemContext, player: number): number {
+  const index = contentIndex(ctx.content);
+  const house = smallestShipHouse(index);
+  const small = house === null ? undefined : index.buildings.get(house)?.vehicleType;
+  return colonyHeldShips(world, player).filter((e) => world.tryGet(e, Vehicle)?.vehicleType === small).length;
 }
 
 /** Whether `player` owns a building of the type with stable content id `buildingId`, standing or a site,

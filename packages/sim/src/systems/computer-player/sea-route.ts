@@ -10,7 +10,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
-import { everyBuildingOf } from '../ai-shared/home-roster.js';
+import { colonyWantsShips, everyBuildingOf } from '../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
@@ -241,6 +241,11 @@ export function seaRouteOf(world: World, ctx: SystemContext, player: number): Se
 /** Whether the seat needs a ship to reach the headquarters it sails for ({@link seaRouteOf}). */
 export function rivalOverSea(world: World, ctx: SystemContext, player: number): boolean {
   return seaRouteOf(world, ctx, player) !== null;
+}
+
+/** Whether the seat builds ships: for a rival over the sea, or for its colony. */
+export function seatNeedsShips(world: World, ctx: SystemContext, player: number): boolean {
+  return colonyWantsShips(world, player) || rivalOverSea(world, ctx, player);
 }
 
 /** How far apart, in half-cell nodes, ships' shore points lie, so the hulls moor side by side. */
