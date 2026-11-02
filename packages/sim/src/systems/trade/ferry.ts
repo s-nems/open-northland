@@ -141,7 +141,7 @@ function nextFetch(
   if (near.room <= 0) return undefined;
   if (near.amount(good) <= 0) return aboard.amount(good) > 0 ? good : undefined;
   if (!standsAtShip(plan, hold.ship)) return undefined;
-  const entries = aboard.entries.filter(([aboardGood]) => near.carries(aboardGood));
+  const entries = hold.entries.filter(([aboardGood]) => aboard.amount(aboardGood) > 0);
   const more = rules.decide({ ...hold, entries });
   return more.kind === 'unload' && aboard.amount(more.good) > 0 ? more.good : undefined;
 }

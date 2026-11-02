@@ -383,13 +383,18 @@ describe('a pinned ship on a route between two islands', () => {
     if (cart === null) throw new Error('no cart');
 
     let peakGiven = 0;
+    let fullestCart = 0;
     runUntil(sim, LONG_TICKS, () => {
       peakGiven = Math.max(peakGiven, sim.world.tryGet(trader, TradeRoute)?.given ?? 0);
+      const onEastIsland =
+        sim.world.has(trader, Position) && continentOf(sim, trader) === continentOf(sim, post);
+      if (onEastIsland) fullestCart = Math.max(fullestCart, aboard(sim, cart, WOOD));
       return stockOf(sim, home, PLANK) === LOAD;
     });
 
     expect(stockOf(sim, post, WOOD)).toBe(LOAD);
     expect(peakGiven).toBe(LOAD);
+    expect(fullestCart).toBe(HANDCART_HOLD);
     expect(stockOf(sim, home, PLANK)).toBe(LOAD);
     expect(goodsTradedWith(sim.world, HUMAN, NEIGHBOUR)).toBe(LOAD);
     expectSound(sim);
@@ -668,6 +673,20 @@ describe("a player's order on a voyage", () => {
     runUntil(sim, VOYAGE_TICKS, () => stockOf(sim, east, WOOD) > 0);
     expect(stockOf(sim, east, WOOD)).toBeGreaterThan(0);
     expectSound(sim);
+  });
+
+  it('to stop holds the ship at sea until the next order, and that order leads back to the route', () => {
+    const { sim, trader, ship, east } = sailing();
+    order(sim, { kind: 'stopVehicle', vehicle: ship });
+    sim.run(WAIT_TICKS);
+
+    expect(sim.world.has(ship, VehicleDrive)).toBe(false);
+    expect(sim.world.get(ship, Vehicle).moored).toBe(false);
+
+    order(sim, { kind: 'moveVehicle', vehicle: ship, x: OPEN_WATER_X, y: NORTH_WATER_Y });
+    runUntil(sim, LONG_TICKS, () => stockOf(sim, east, WOOD) > 0);
+    expect(sim.world.tryGet(trader, Rider)).toBeUndefined();
+    expect(stockOf(sim, east, WOOD)).toBeGreaterThan(0);
   });
 
   it('to walk on a moored ship lands the trader and its cart, and the route takes it back up', () => {

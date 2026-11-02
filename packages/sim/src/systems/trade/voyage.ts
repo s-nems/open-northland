@@ -109,8 +109,8 @@ function sail(world: World, ctx: SystemContext, terrain: TerrainGraph, trader: E
 
 /**
  * Keeps every pin honest and sails a trader's pinned ship: an aboard trader's idle ship docks at the
- * current stop's mooring and lands it there. A ship under a player's order, driving, holding a goal or
- * with orders queued, carries on until the order is done. Named addition. Before the planner, so a landed
+ * current stop's mooring and lands it there. A ship under a player's order, driving, holding a goal,
+ * stopped or with orders queued, carries on until the order is done. Named addition. Before the planner, so a landed
  * trader plans the tick it lands.
  */
 export const tradeVoyageSystem: System = (world, ctx) => {
@@ -124,7 +124,9 @@ export const tradeVoyageSystem: System = (world, ctx) => {
     if (terrain === undefined || world.has(trader, Position)) continue;
     if (world.tryGet(trader, Rider)?.vehicle !== ship) continue;
     if (world.has(ship, VehicleDrive) || world.has(ship, VehicleOrderQueue)) continue;
-    if (world.get(ship, Vehicle).heldGoal !== null) continue;
+    const { heldGoal, task, moored } = world.get(ship, Vehicle);
+    // A player's stop holds the ship at sea until the next order; only a stop lying moored has no hold.
+    if (heldGoal !== null || (task === 'interrupted' && !moored)) continue;
     sail(world, ctx, terrain, trader, ship);
   }
 };
