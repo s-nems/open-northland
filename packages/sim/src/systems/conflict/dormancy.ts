@@ -56,12 +56,12 @@ export function combatPossible(world: World, ctx: SystemContext): boolean {
     if (hasHostileAnimal && hasClaimedAnimal) return true; // a wild animal may strike claimed livestock
     if (hasHunter && hasPrey) return true; // a hunter and huntable prey
   }
-  // A vehicle with a standing attack fights on its own, a marching one resumes its march from the
-  // combat pass, and an owned one is a body another owner's unit may batter: its owner joins the set
+  // A vehicle with a standing attack or a clip to play out fights on its own, a marching one resumes
+  // its march from the combat pass, and an owned one is a body another owner's unit may batter: its owner joins the set
   // the building tail below reads.
   for (const v of world.query(Vehicle, Health, Position)) {
     const state = world.get(v, Vehicle);
-    if (state.attack !== null || state.march !== null) return true;
+    if (state.attack !== null || state.attackClipStart !== null || state.march !== null) return true;
     const owner = world.tryGet(v, Owner);
     if (owner !== undefined && world.get(v, Health).hitpoints > 0) owners.add(owner.player);
   }

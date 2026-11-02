@@ -27,14 +27,11 @@ export type VehicleAttackTarget =
 
 /**
  * A vehicle's standing attack: `ordered` is a player's `attackWithVehicle`, kept until the target is
- * gone; an auto-acquired one is re-judged every scan. `clipStart` is the tick the current attack clip
- * began, null between clips, so the shot's release and the clip's end are ticks counted from it and
- * nothing writes the vehicle each tick.
+ * gone; an auto-acquired one is re-judged every scan.
  */
 export interface VehicleAttack {
   target: VehicleAttackTarget;
   ordered: boolean;
-  clipStart: number | null;
 }
 
 /**
@@ -94,6 +91,12 @@ export const Vehicle = defineComponent<{
    *  writes it is not read. */
   guard: HalfCellNode | null;
   attack: VehicleAttack | null;
+  /** The tick the attack clip under way began, null between clips: the shot's release and the clip's end
+   *  are ticks counted from it, so nothing writes the vehicle each tick. It stands apart from `attack`
+   *  because the clip is the weapon's only reload: a new order or a lost target must not restart it.
+   *  Approximation: a goto starts at once, the rest of the clip a reload without its frames, though the
+   *  clip is not interruptible. */
+  attackClipStart: number | null;
   march: VehicleMarch | null;
 }>('Vehicle', 'movement');
 

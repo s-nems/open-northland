@@ -439,7 +439,8 @@ Crew: one soldier or hero (jobs 31..47); the crewman gains experience for weapon
 (`weapons.ini`, equal for all tribes): range 8..24, munition type 2, speed 3, `hitself 1`,
 `createsmoke 1` lifetime 20, damage `0:8000 1:4000 2:6000 3:2000 4:2000 6:350 7:3625`, hit
 sound 90. No ammunition and no reload counter; cadence is the attack clip job 54 binds to atomic 81
-(`viking_catapult_attack`: `length 48`, the shot at its `event 1 25`), read from content.
+(`viking_catapult_attack`: `length 48`, the shot at its `event 1 25`, not interruptible), read from
+content.
 
 The original's goto never scans while the vehicle drives. Open Northland adds an attack-move
 (`moveVehicle` with `attackMove`: the attack-move key with a catapult selected, or its commander's own

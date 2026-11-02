@@ -151,7 +151,7 @@ export interface DrawItem extends Readonly<StaticDrawFields> {
   readonly task?: VehicleDrawTask;
   /** For a ship: lying at a shore (`Vehicle.moored`), which draws the furled-sail hull. */
   readonly moored?: boolean;
-  /** For an attacking vehicle: the tick its current clip began (`Vehicle.attack.clipStart`), so the
+  /** For an attacking vehicle: the tick its current clip began (`Vehicle.attackClipStart`), so the
    *  drawn shot and its smoke run from the clip's own start rather than a global cadence. */
   readonly attackClipStart?: number;
   /** For a settler: combat-engaged (`Engagement` present). Orthogonal to {@link state}: the readied

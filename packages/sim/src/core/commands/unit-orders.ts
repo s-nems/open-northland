@@ -223,9 +223,10 @@ export type UnitOrderCommand =
        * Aim one owned siege vehicle at `target`: an enemy unit, house or vehicle it keeps after (the
        * original's `h`, `i`, `k`), or a map point it batters (`l`). Outside the `hold` stance the
        * vehicle backs off, closes in or repositions as its weapon band demands; holding, it fires only
-       * on a target already inside the band and lets any other go. A goto under way stops at its next
-       * node when the target already lies inside the band, and otherwise finishes first. The order lapses when the target is gone. Refused with `vehicleMoveRefused` `noCommander`
-       * while nobody commands it.
+       * on a target already inside the band and lets any other go. A drive under way stops at its next
+       * node, unless it already chases this target. The order lapses when the target is gone. Refused
+       * with `vehicleMoveRefused`: `noCommander` while nobody commands it, `noPath` when no firing node
+       * reaches the target.
        */
       readonly kind: 'attackWithVehicle';
       readonly vehicle: Entity;

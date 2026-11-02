@@ -914,11 +914,16 @@ export function vacateSeat(world: World, vehicle: Entity, rider: Entity): void {
  *  stays. */
 function dropAttack(world: World, e: Entity): void {
   endMarch(world, e);
+  if (world.get(e, Vehicle).attack === null) return;
+  world.mut(e, Vehicle).attack = null;
+  settleAttackTask(world, e);
+}
+
+/** A vehicle whose target changed stops reading as attacking unless a clip still plays out; the combat
+ *  pass ends that one. A drive's own start clears the task, so a clip goes on as a bare reload there. */
+export function settleAttackTask(world: World, e: Entity): void {
   const state = world.get(e, Vehicle);
-  if (state.attack === null) return;
-  const live = world.mut(e, Vehicle);
-  live.attack = null;
-  if (live.task === 'attacks') live.task = 'none';
+  if (state.task === 'attacks' && state.attackClipStart === null) world.mut(e, Vehicle).task = 'none';
 }
 
 /** End an attack-move, the route a fight kept for it with it. */

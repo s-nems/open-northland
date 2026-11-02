@@ -32,8 +32,7 @@ function readVehicleTask(components: Readonly<Record<string, unknown>>): Vehicle
 }
 
 function readAttackClipStart(components: Readonly<Record<string, unknown>>): number | undefined {
-  const v = components.Vehicle as { attack?: unknown } | undefined;
-  const clipStart = (v?.attack as { clipStart?: unknown } | null | undefined)?.clipStart;
+  const clipStart = (components.Vehicle as { attackClipStart?: unknown } | undefined)?.attackClipStart;
   return typeof clipStart === 'number' ? clipStart : undefined;
 }
 

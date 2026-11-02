@@ -605,7 +605,7 @@ describe('the clip and its target', () => {
     const mark = fighterAt(s, 22, 8, P2);
     s.world.mut(mark, Stance).mode = MILITARY_MODE.IGNORE;
     s.run(1); // the scan acquires the mark and the clip starts
-    expect(s.world.get(catapult, Vehicle).attack?.clipStart).toBe(1);
+    expect(s.world.get(catapult, Vehicle).attackClipStart).toBe(1);
     s.world.destroy(mark);
     const launches = collect(s, 3, ['projectileLaunched']);
     expect(launches).toEqual([]);
@@ -811,6 +811,179 @@ describe('the clip and its target', () => {
     s.run(100);
     restored.run(100);
     expect(restored.hashState()).toBe(s.hashState());
+  });
+});
+
+describe('a running clip', () => {
+  const SECOND_HOUSE = { hx: 26, hy: 8 };
+  /** The tick the first stone leaves for a house already in the band: tick 1 starts the clip. */
+  const FIRST_SHOT_TICK = 1 + VEHICLE_ATTACK_EVENT_FRAME + 1;
+
+  /** The ticks a stone left on over `ticks` steps; `beat` sends orders before each step. */
+  function launchTicks(s: Simulation, ticks: number, beat: () => void): number[] {
+    const launched: number[] = [];
+    for (let i = 0; i < ticks; i++) {
+      beat();
+      s.step();
+      for (const ev of s.events.current()) if (ev.kind === 'projectileLaunched') launched.push(s.tick);
+    }
+    return launched;
+  }
+
+  /** A catapult firing from tick 1 keeps its stones one clip apart whatever `beat` orders meanwhile. */
+  function expectCadenceThrough(s: Simulation, beat: () => void): void {
+    const launched = launchTicks(s, 2 * VEHICLE_ATTACK_CLIP_TICKS, beat);
+    expect(launched).toEqual([FIRST_SHOT_TICK, FIRST_SHOT_TICK + VEHICLE_ATTACK_CLIP_TICKS]);
+  }
+
+  it('plays on through the same order repeated every tick', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    expectCadenceThrough(s, () => order(s, catapult, P1, house));
+  });
+
+  it('plays on through the same ordered spot repeated every tick', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const target = { kind: 'ground', hx: 22, hy: 8 } as const;
+    expectCadenceThrough(s, () =>
+      s.enqueue(playerCommand(P1, { kind: 'attackWithVehicle', vehicle: catapult, target })),
+    );
+  });
+
+  it('keeps its reload through a switch between two targets', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const first = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    const second = houseAt(s, SECOND_HOUSE.hx, SECOND_HOUSE.hy, P2, TOUGH_HOUSE);
+    let beats = 0;
+    expectCadenceThrough(s, () => order(s, catapult, P1, beats++ % 2 === 0 ? first : second));
+  });
+
+  it('keeps its reload and its animation through a stance change', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    s.run(FIRST_SHOT_TICK + 1);
+    const clip = s.world.get(catapult, Vehicle).attackClipStart;
+    expect(clip).not.toBeNull();
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    s.step();
+    expect(s.world.get(catapult, Vehicle)).toMatchObject({ attackClipStart: clip, task: 'attacks' });
+    const launched = launchTicks(s, VEHICLE_ATTACK_CLIP_TICKS, () => {});
+    expect(launched).toEqual([FIRST_SHOT_TICK + VEHICLE_ATTACK_CLIP_TICKS]);
+  });
+
+  it('is not skipped by a stop and a new order', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    s.run(FIRST_SHOT_TICK + 1);
+    s.enqueue(playerCommand(P1, { kind: 'stopVehicle', vehicle: catapult }));
+    order(s, catapult, P1, house);
+    const launched = launchTicks(s, VEHICLE_ATTACK_CLIP_TICKS, () => {});
+    expect(launched).toEqual([FIRST_SHOT_TICK + VEHICLE_ATTACK_CLIP_TICKS]);
+  });
+
+  it('is not skipped by a drive, which shows no attack clip', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const house = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    s.run(FIRST_SHOT_TICK + 1);
+    s.enqueue(playerCommand(P1, { kind: 'setVehicleStance', vehicle: catapult, stance: 'attack' }));
+    s.step();
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: catapult, x: 8, y: 8 }));
+    s.step();
+    expect(s.world.has(catapult, VehicleDrive)).toBe(true);
+    expect(s.world.get(catapult, Vehicle).task).toBe('none');
+    order(s, catapult, P1, house);
+    const launched = launchTicks(s, VEHICLE_ATTACK_CLIP_TICKS - 5, () => {});
+    for (const tick of launched)
+      expect(tick).toBeGreaterThanOrEqual(FIRST_SHOT_TICK + VEHICLE_ATTACK_CLIP_TICKS);
+  });
+
+  it('ends unfired when a goto comes before the shot', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    s.run(1);
+    expect(s.world.get(catapult, Vehicle).attackClipStart).toBe(1);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: catapult, x: 6, y: 4 }));
+    expect(collect(s, FIRST_SHOT_TICK, ['projectileLaunched'])).toEqual([]);
+    expect(s.world.get(catapult, Vehicle).attackClipStart).toBeNull();
+  });
+
+  it('plays out after its stone killed the mark, and only then takes the next one', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    const mark = houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    const next = houseAt(s, SECOND_HOUSE.hx, SECOND_HOUSE.hy, P2, TOUGH_HOUSE);
+    s.run(FIRST_SHOT_TICK + 1);
+    s.world.destroy(mark);
+    const launched = launchTicks(s, VEHICLE_ATTACK_CLIP_TICKS, () => {});
+    expect(launched).toEqual([FIRST_SHOT_TICK + VEHICLE_ATTACK_CLIP_TICKS]);
+    expect(s.world.get(catapult, Vehicle).attack?.target).toEqual({ kind: 'entity', entity: next });
+  });
+
+  it('ends once the whole crew stepped out', () => {
+    const s = sim(grass(40, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    s.run(FIRST_SHOT_TICK + 1);
+    s.enqueue(playerCommand(P1, { kind: 'unloadPeople', vehicle: catapult }));
+    s.run(2);
+    expect(s.world.get(catapult, Vehicle)).toMatchObject({ attackClipStart: null, task: 'none' });
+  });
+
+  it('does not loose its stone at a target switched past its reach before the shot', () => {
+    const s = sim(grass(60, 10));
+    const catapult = catapultAt(s, 6, 8, P1);
+    houseAt(s, 22, 8, P2, TOUGH_HOUSE);
+    const far = houseAt(s, 6 + CATAPULT_MAX_RANGE + 20, 8, P2, TOUGH_HOUSE);
+    s.run(1);
+    expect(s.world.get(catapult, Vehicle).attackClipStart).toBe(1);
+    order(s, catapult, P1, far);
+    const launched = launchTicks(s, 3, () => {});
+    expect(launched).toEqual([]);
+    expect(s.world.get(catapult, Vehicle).attackClipStart).toBeNull();
+  });
+});
+
+describe('an order given on the way', () => {
+  it('turns a goto toward the ordered target instead of finishing the drive first', () => {
+    const s = sim(grass(60, 12));
+    const catapult = catapultAt(s, 40, 8, P1);
+    s.enqueue(playerCommand(P1, { kind: 'moveVehicle', vehicle: catapult, x: 110, y: 8 }));
+    s.run(10);
+    const house = houseAt(s, 4, 8, P2, TOUGH_HOUSE); // behind it, beyond its far reach
+    order(s, catapult, P1, house);
+    const hits = collect(s, 400, ['projectileHit']);
+    expect(hits.length).toBeGreaterThan(0);
+    expect(anchorOf(s, catapult).hx).toBeLessThanOrEqual(4 + CATAPULT_MAX_RANGE);
+  });
+
+  it('keeps its chase route through the same order repeated', () => {
+    const s = sim(grass(60, 12));
+    const catapult = catapultAt(s, 4, 8, P1);
+    const house = houseAt(s, 80, 8, P2, TOUGH_HOUSE);
+    order(s, catapult, P1, house);
+    s.run(10);
+    const route = routeAhead(s, catapult);
+    expect(route.length).toBeGreaterThan(0);
+    order(s, catapult, P1, house);
+    s.step();
+    expect(routeAhead(s, catapult).at(-1)).toEqual(route.at(-1));
+  });
+
+  it('tells the player when no firing node reaches the ordered target', () => {
+    const s = sim(strait(40, 12, 16, 32));
+    const catapult = catapultAt(s, 4, 8, P1);
+    const house = houseAt(s, 66, 8, P2, TOUGH_HOUSE);
+    order(s, catapult, P1, house);
+    const refused = collect(s, 2, ['vehicleMoveRefused']);
+    expect(refused.map((ev) => (ev.kind === 'vehicleMoveRefused' ? ev.reason : ''))).toEqual(['noPath']);
+    expect(s.world.get(catapult, Vehicle).attack).toBeNull();
   });
 });
 
