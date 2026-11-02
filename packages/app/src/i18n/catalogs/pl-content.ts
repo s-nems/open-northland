@@ -386,6 +386,11 @@ export const plContent = {
       summary:
         'Magazyn przyjaznego plemienia na wschodniej wyspie oferuje żelazo i drewno za monety. Kupiec ze statkiem handlowym przypiętym do trasy zawozi monety i wraca z żelazem, po cztery sztuki za monetę, a jego wózek kursuje między statkiem a magazynem na obu brzegach. Zaznacz kupca, by w sekcji Handel zobaczyć statek i wybraną ofertę. Otwórz okno dyplomacji, by zobaczyć oferty: gdy stosunek nie jest przyjazny, są wyszarzone.',
     },
+    'trade-sea-carriers': {
+      title: 'Tragarze pomagają kupcowi',
+      summary:
+        'Trzech tragarzy przypisanych do statku pomaga kupcowi przewozić drewno między magazynami na dwóch wyspach: na każdym brzegu noszą po sztuce między magazynem a drzwiami statku obok wózka kupca, a między brzegami płyną razem z nim. Pomagają tylko między twoimi magazynami. Zaznacz statek, by zobaczyć ich na miejscach, a miejsce kapitana nadal zajęte przez kupca. Ctrl i kliknięcie miejsca tragarza wysadza go ze statku.',
+    },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',
       summary:

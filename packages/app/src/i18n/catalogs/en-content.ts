@@ -388,6 +388,11 @@ export const enContent = {
       summary:
         "A friendly tribe's warehouse on the east island offers iron and wood for coins. A merchant with the big ship pinned to its route takes coins over and brings iron back, four for a coin, and its handcart ferries between ship and warehouse on both shores. Select the merchant to see the ship and the chosen offer in its Trade section. Open the diplomacy window to see the offers: with a stance other than friendly they are greyed out.",
     },
+    'trade-sea-carriers': {
+      title: 'The carriers help the merchant',
+      summary:
+        "Three carriers assigned to the ship help a merchant move wood between warehouses on two islands: on each shore they carry a unit a trip between the warehouse and the ship's door beside the merchant's handcart, and ride along in between. They help only between your own warehouses. Select the ship to see them in its seats, with the captain's seat still the merchant's. Ctrl click a carrier's seat to step it out.",
+    },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:

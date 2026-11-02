@@ -105,6 +105,11 @@ big ship and brings 24 iron home. The iron outweighs one handcart load, so the c
 and warehouse on both shores. Select the trader for the ship and the offer in its Trade section, and
 open the diplomacy window for both offers and how a stance other than friendly greys them out.
 
+`?scene=trade-sea-carriers` is the `trade-sea` route with 60 wood and three carriers assigned to the
+pinned ship. On both shores they carry a unit a trip between the warehouse and the ship's door beside the
+trader's cart and ride along in between, 48 wood across in the 2220 ticks the trader alone lands 15.
+Select the ship for their seats, the captain's well still the trader's, and Ctrl click a seat to step one out.
+
 `?scene=cart-drivers` hands a handcart to a trader to pull and crews an ox cart with a carrier for
 each civilization, in rows: viking, frank, byzantine, saracen, egyptian, and sends them east. Every
 driver wears his own civilization's head, standing and driving.

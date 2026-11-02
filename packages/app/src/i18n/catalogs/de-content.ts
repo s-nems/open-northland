@@ -390,6 +390,11 @@ export const deContent = {
       summary:
         'Das Lagerhaus eines befreundeten Stammes auf der Ostinsel bietet Eisen und Holz für Münzen. Ein Händler mit dem großen Schiff auf seiner Route bringt Münzen hinüber und holt Eisen zurück, vier für eine Münze. Sein Handkarren pendelt an beiden Ufern zwischen Schiff und Lagerhaus. Wähle den Händler, um im Handelsbereich das Schiff und das gewählte Handelsangebot zu sehen. Öffne das Diplomatiefenster für die Handelsangebote: Ist das Verhältnis nicht freundlich, sind sie ausgegraut.',
     },
+    'trade-sea-carriers': {
+      title: 'Träger helfen dem Händler',
+      summary:
+        'Drei dem Schiff zugewiesene Träger helfen einem Händler, Holz zwischen Lagerhäusern auf zwei Inseln zu bringen: An jedem Ufer tragen sie neben seinem Handkarren je eine Einheit zwischen Lagerhaus und Schiffstür und fahren dazwischen mit. Sie helfen nur zwischen deinen eigenen Lagerhäusern. Wähle das Schiff, um sie auf ihren Plätzen zu sehen, der Kapitänsplatz bleibt der des Händlers. Strg und Klick auf den Platz eines Trägers lässt ihn aussteigen.',
+    },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
       summary:
