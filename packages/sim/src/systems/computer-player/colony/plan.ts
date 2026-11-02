@@ -197,7 +197,7 @@ function operatorJobs(env: ColonyEnv, type: BuildingType): number[] {
 }
 
 /** Whether a school standing at home teaches `job`: its pupil sails on the line. */
-function homeTeaches(env: ColonyEnv, job: number): boolean {
+export function homeTeaches(env: ColonyEnv, job: number): boolean {
   const { world, ctx, seat } = env;
   const tribe = playerPlacementTribes(world, seat)?.[0];
   const school =

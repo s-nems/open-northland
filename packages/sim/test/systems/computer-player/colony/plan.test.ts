@@ -1,11 +1,35 @@
 import { describe, expect, it } from 'vitest';
+import { noteSettlerProgress, Settler, SettlerProgress } from '../../../../src/components/index.js';
 import {
   colonyHomes,
   type HomesRead,
+  homeTeaches,
   type LadderRead,
   nextFoodStep,
 } from '../../../../src/systems/computer-player/colony/plan.js';
+import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
+import {
+  aiSim,
+  CIVILIST,
+  ctxOf,
+  entityOfBuilding,
+  FARM_TYPE,
+  FARMER,
+  FARMER_TRACK,
+  HQ_X,
+  HQ_Y,
+  MILLER,
+  MILLER_GATE_XP,
+  placeHq,
+  SCHOOL_TYPE,
+  SEAT,
+  spawnMen,
+  technologyContent,
+  VIKING,
+} from '../support.js';
 
+const SCHOOL_OFF = 8;
+const FARM_OFF = 6;
 const SMALL_ROOM = 300;
 const FAIR_ROOM = 1200;
 const LOTS_OF_ROOM = 2400;
@@ -92,5 +116,50 @@ describe('a colony food ladder', () => {
   it('raises no well or hive for a brewery nobody can run', () => {
     const open = (building: string): boolean => building !== BREWERY && building !== ANIMAL_FARM;
     expect(nextFoodStep(ladder({ field: false, open }))).toBeNull();
+  });
+});
+
+describe('a colony trade', () => {
+  it('is in reach once a school at home teaches it', () => {
+    const content = technologyContent();
+    const sim = aiSim(1, content);
+    placeHq(sim);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: FARM_TYPE,
+      x: HQ_X + FARM_OFF,
+      y: HQ_Y + FARM_OFF,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+    });
+    spawnMen(sim, 1);
+    sim.step();
+    const farmer = [...sim.world.query(Settler)].find((e) => sim.world.get(e, Settler).jobType === CIVILIST);
+    if (farmer === undefined) throw new Error('setup: no man');
+    sim.enqueueSetup({
+      kind: 'assignWorker',
+      entity: farmer,
+      building: entityOfBuilding(sim, FARM_TYPE),
+      jobPriority: [FARMER],
+    });
+    sim.step();
+    sim.world.mut(farmer, SettlerProgress).experience.set(FARMER_TRACK, MILLER_GATE_XP);
+    noteSettlerProgress(sim.world, farmer);
+    sim.step();
+    const env = (): ColonyEnv =>
+      ({ world: sim.world, ctx: { ...ctxOf(sim), content }, seat: SEAT }) as unknown as ColonyEnv;
+    expect(homeTeaches(env(), MILLER)).toBe(false);
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: SCHOOL_TYPE,
+      x: HQ_X + SCHOOL_OFF,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+      force: true,
+    });
+    sim.step();
+    expect(homeTeaches(env(), MILLER)).toBe(true);
   });
 });
