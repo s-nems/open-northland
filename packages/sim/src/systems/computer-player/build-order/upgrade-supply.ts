@@ -11,6 +11,8 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { constructionBillOf, seatStockOf } from '../../stores/index.js';
 
+const NO_CLAIMS: ReadonlyMap<number, number> = new Map();
+
 /**
  * The highest of `tiers` the seat can start upgrading `candidate` to without starving the site or the
  * seat, judged against the merged bill of every tier the jump raises; undefined when none can. An
@@ -20,7 +22,8 @@ import { constructionBillOf, seatStockOf } from '../../stores/index.js';
  * gathered, and never holds an upgrade back. Nor does an upgrade idle the seat's last working maker of a
  * good while another maker of it is still a site: the second bakery waits for the first to come back.
  * The upgrade seeds its site from the candidate's own pile and keeps the rest of that pile aside until it
- * finishes, so a pile beyond the bill is no stock the seat's other sites can spend meanwhile.
+ * finishes, so a pile beyond the bill is no stock the seat's other sites can spend meanwhile. With
+ * `aheadOfSites` the stock only has to hold the bill, whatever other sites still lack of it.
  */
 export function suppliedUpgrade(
   world: World,
@@ -29,6 +32,7 @@ export function suppliedUpgrade(
   owned: readonly Entity[],
   candidate: Entity,
   tiers: readonly number[],
+  aheadOfSites = false,
 ): number | undefined {
   const index = contentIndex(ctx.content);
   const typeId = world.get(candidate, Building).buildingType;
@@ -41,7 +45,7 @@ export function suppliedUpgrade(
     }
   }
   const stock = seatStockOf(world, player);
-  const claimed = sitesClaims(world, ctx, owned);
+  const claimed = aheadOfSites ? NO_CLAIMS : sitesClaims(world, ctx, owned);
   const pile = world.tryGet(candidate, Stockpile)?.amounts;
   const madeElsewhere = new Map<number, boolean>();
   const backed = (bill: readonly GoodsLine[]): boolean =>

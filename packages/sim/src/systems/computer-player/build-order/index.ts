@@ -437,7 +437,7 @@ function runBuildOrder(
           candidate,
         );
         const tiers = sourcedTiers(world, ctx, player, wanted, madeGoods);
-        const reach = suppliedUpgrade(world, ctx, player, owned, candidate, tiers);
+        const reach = suppliedUpgrade(world, ctx, player, owned, candidate, tiers, firstRankStep(entry));
         return reach === undefined ? null : { kind: 'upgradeBuilding', building: candidate, target: reach };
       }
       case 'collector':
