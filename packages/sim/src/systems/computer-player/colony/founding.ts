@@ -82,7 +82,7 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
   if (tribe === undefined) return [];
   const open = read.buildings.filter((e) => world.has(e, UnderConstruction)).length;
   if (open >= COLONY_OPEN_SITES) return [];
-  const plan = colonyPlan(env, colony, read.buildings);
+  const { plan } = read;
   for (const building of read.store === null ? plan.slice(0, 1) : plan) {
     const typeId = index.buildingTypeBySlug.get(building);
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
@@ -160,7 +160,7 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
   const origin = colonyOrigin(env, colony, buildings);
   if (origin === null) return [];
   const store = storeOf(env, buildings);
-  const read: FoundingRead = { buildings, store, origin };
+  const read: FoundingRead = { buildings, store, origin, plan: colonyPlan(env, colony, buildings) };
   const people = colonists(env);
   const men = people.filter((e) => isAllocatableMan(world, ctx, e));
   const working = men.some((e) => liveWorkFlag(world, e) !== undefined);
@@ -169,7 +169,7 @@ export function foundColony(env: ColonyEnv, colony: ColonyView): PlayerCommand[]
   }
   return [
     ...nextBuild(env, colony, read),
-    ...fillPosts(env, colony, men, read),
+    ...fillPosts(env, men, read),
     ...raiseSignposts(env, men, read),
     ...colonyFamilies(world, ctx, people, buildings),
   ];

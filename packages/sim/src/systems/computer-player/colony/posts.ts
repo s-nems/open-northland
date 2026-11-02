@@ -97,6 +97,8 @@ export interface FoundingRead {
   readonly buildings: readonly Entity[];
   readonly store: Entity | null;
   readonly origin: HalfCellNode;
+  /** What it means to raise ({@link colonyPlan}). */
+  readonly plan: readonly string[];
 }
 
 /** The post `e` holds, read from the world, or null for a man free to take one. */
@@ -239,12 +241,8 @@ function postOrders(
 }
 
 /** Whether the colony has raised all it means to, for now. */
-function atRest(env: ColonyEnv, colony: ColonyView, read: FoundingRead): boolean {
-  const { world } = env;
-  return (
-    colonyPlan(env, colony, read.buildings).length === 0 &&
-    !read.buildings.some((e) => world.has(e, UnderConstruction))
-  );
+function atRest(env: ColonyEnv, read: FoundingRead): boolean {
+  return read.plan.length === 0 && !read.buildings.some((e) => env.world.has(e, UnderConstruction));
 }
 
 /** The units the colony's standing stores can still take of a good, unbounded while none stands: its
@@ -272,11 +270,11 @@ function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number)
  * always wants them, and clay and iron while the colony's own plan or workshops or home's stock call for
  * them. A good at the stores' cap is left, or men stand by a full warehouse while another good runs short.
  */
-function digGoods(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Set<LandGood> {
+function digGoods(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const room = storeRoom(env, read.buildings);
-  const called = billsOf(env, colonyPlan(env, colony, read.buildings));
+  const called = billsOf(env, read.plan);
   for (const e of read.buildings) {
     const inputs = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType)?.inputs;
     for (const input of inputs ?? []) called.set(input.goodType, input.amount);
@@ -354,16 +352,17 @@ export function handsWanted(
   const buildings = colonyBuildings(env);
   const origin = colonyOrigin(env, colony, buildings);
   if (origin === null) return { men: 0, women: 0 };
-  const read = { buildings, store: storeOf(env, buildings), origin };
+  const plan = colonyPlan(env, colony, buildings);
+  const read = { buildings, store: storeOf(env, buildings), origin, plan };
   const flags = flagGroundAt(env, origin);
-  const diggable = [...digGoods(env, colony, read)].filter((id) => {
+  const diggable = [...digGoods(env, read)].filter((id) => {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
     return (
       good !== undefined &&
       collectorSpot(world, flags, origin, good, new Set(), workableFrom(env, origin, flags)) !== null
     );
   });
-  const resting = atRest(env, colony, read);
+  const resting = atRest(env, read);
   let men = 0;
   for (const good of diggable) men += DIGGERS_MOST[good];
   const fishes = fishNear(env, origin) !== null;
@@ -375,7 +374,7 @@ export function handsWanted(
     const type = index.buildings.get(world.get(e, Building).buildingType);
     if (type?.kind === BUILDING_KIND.workplace && !world.has(e, UnderConstruction)) men += seatsOf(ctx, type);
   }
-  for (const building of colonyPlan(env, colony, buildings).slice(0, COLONY_OPEN_SITES)) {
+  for (const building of plan.slice(0, COLONY_OPEN_SITES)) {
     const typeId = index.buildingTypeBySlug.get(building);
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
     if (type?.kind === BUILDING_KIND.workplace) men += seatsOf(ctx, type);
@@ -405,19 +404,14 @@ export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
  *  builders past their share, then the workshops' seats; with nothing left to raise, the rest dig, the
  *  least dug good first; a good a site needs and nobody digs goes first of all, as no ship brings what the
  *  land holds; a free man with no post to take builds. */
-export function fillPosts(
-  env: ColonyEnv,
-  colony: ColonyView,
-  men: readonly Entity[],
-  read: FoundingRead,
-): PlayerCommand[] {
+export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): PlayerCommand[] {
   const { world, ctx } = env;
   const builder = builderJobOf(ctx);
   const held = new Map<Post, number>();
   const builders: Entity[] = [];
   const free: Entity[] = [];
   const posted = men.filter((man) => !atWorkshop(env, man));
-  const digs = digGoods(env, colony, read);
+  const digs = digGoods(env, read);
   for (const man of posted) {
     const post = postOf(world, ctx, man, builder);
     // A man at a full store's good moves on while another good wants digging.
@@ -427,9 +421,9 @@ export function fillPosts(
   }
   const dug = new Map<LandGood, number>();
   for (const id of LAND_GOOD_IDS) dug.set(id, held.get(id) ?? 0);
-  const resting = atRest(env, colony, read);
+  const resting = atRest(env, read);
   const table = POSTS.slice(0, posted.length).filter((post) => !isDug(post) || digs.has(post));
-  const called = billsOf(env, colonyPlan(env, colony, read.buildings));
+  const called = billsOf(env, read.plan);
   const urgent = LAND_GOOD_IDS.filter((id) => {
     const good = goodTypeByContentId(ctx.content, id)?.typeId;
     return digs.has(id) && (dug.get(id) ?? 0) === 0 && good !== undefined && (called.get(good) ?? 0) > 0;

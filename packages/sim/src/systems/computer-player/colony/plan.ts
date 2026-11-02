@@ -74,8 +74,8 @@ export function colonyHomes(read: HomesRead): number {
  *  arabskie_wyspy_wolna_gra_mieszana). */
 const FISHERS_FIRST_TICKS = minutesToTicks(10);
 /** Plantable nodes within the spot search of a colony's store that a grain farm's fields want, and that a
- *  well or a hive wants under its body (authored: a farm sows about a dozen nodes a farmer, a well stands
- *  on a handful). */
+ *  well or a hive wants under its body (authored, untuned: every colony site on
+ *  arabskie_wyspy_wolna_gra_mieszana clears both). */
 const FIELD_NODES = 48;
 const GRASS_NODES = 6;
 
