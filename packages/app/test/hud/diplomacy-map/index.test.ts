@@ -118,7 +118,7 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
     world,
     closeButton: () => one<HTMLButtonElement>('.on-dipmap__close'),
     unknownStrip: () => one('.on-dipmap__unknown'),
-    stripPlaques: () => all('.on-dipmap-plaque--strip'),
+    stripPlaques: () => all('.on-dipmap__unknown .on-dipmap-plaque'),
     plaques: () => all<HTMLButtonElement>('.on-dipmap-plaque--map'),
     pins: () => all('.on-dipmap__pin'),
     nextRead: (): void => {
@@ -152,6 +152,16 @@ describe('createDiplomacyMap', () => {
     closeButton().click();
     expect(map.isOpen()).toBe(false);
     expect(minimap.setOverview).toHaveBeenLastCalledWith(false);
+    expect(minimap.focusOverviewButton).toHaveBeenCalledOnce();
+  });
+
+  it('hands back the focus a control of the overview held, not only one on the labels', () => {
+    const { map, minimap } = mount([OWN_NATION]);
+    const zoomButton = document.createElement('button');
+    minimap.overviewHost.append(zoomButton);
+    map.open();
+    zoomButton.focus();
+    map.close();
     expect(minimap.focusOverviewButton).toHaveBeenCalledOnce();
   });
 

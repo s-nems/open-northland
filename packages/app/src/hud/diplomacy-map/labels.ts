@@ -7,8 +7,8 @@ import {
   element,
   setAttribute,
   setClass,
+  setColourVar,
   setDisabled,
-  setStyleVar,
   setTip,
   write,
 } from '../dom/parts/dom.js';
@@ -47,7 +47,7 @@ function emblemSlot(className: string, px: number, paintEmblem: NationEmblemPain
       identity = next;
       const drawn = nation.tribe !== undefined && paintEmblem(picture, nation.tribe, nation.player, px);
       setClass(node, 'on-dip-emblem--drawn', drawn);
-      setStyleVar(node, '--nation-colour', `#${nation.colour.toString(16).padStart(6, '0')}`);
+      setColourVar(node, '--nation-colour', nation.colour);
     },
   };
 }
@@ -63,13 +63,12 @@ export interface NationPlaque {
  *  shows its emblem by its name. Pressing a nation with a diplomacy page answers `onPress` with its
  *  player; a plaque without one lets the press through to the map under it. */
 export function createNationPlaque(
-  className: string,
   paintEmblem: NationEmblemPainter,
   onPress: (player: number) => void,
 ): NationPlaque {
   const copy = messages().hud.diplomacyMap;
   const windowCopy = messages().hud.diplomacyWindow;
-  const root = button(`on-dipmap-plaque ${className}`);
+  const root = button('on-dipmap-plaque');
   const emblem = emblemSlot('on-dipmap-plaque__emblem', EMBLEM_PICTURE_PX, paintEmblem);
   const name = element('strong', 'on-dipmap-plaque__name');
   const relation = element('small', 'on-dipmap-plaque__relation');

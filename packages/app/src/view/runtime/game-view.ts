@@ -1044,7 +1044,9 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       frame: storedSettings.minimapFrame,
       camera: () => cameraCtl.camera(),
       onJump: jumpToWorld,
-      onOrder: (worldX, worldY, event) => overviewPress?.(worldX, worldY, event) ?? false,
+      // The overview has its own canvas, so a held mode's right press does not stop on the game canvas.
+      onOrder: (worldX, worldY, event) =>
+        toolPanel.controller.callOffHeld(event) || (overviewPress?.(worldX, worldY, event) ?? false),
       toScreenPx: clientToScreen,
       onOverviewButton: () => diplomacyMap?.toggle(),
     });

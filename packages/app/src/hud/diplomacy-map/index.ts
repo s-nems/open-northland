@@ -4,7 +4,7 @@ import type { FogView, WorldSnapshot } from '@open-northland/sim';
 import { messages } from '../../i18n/index.js';
 import type { NationEmblemPainter } from '../dom/diplomacy-window/emblems.js';
 import { GLYPH } from '../dom/icons.js';
-import { button, element, setHidden, setStyleVar, write } from '../dom/parts/dom.js';
+import { button, element, setColourVar, setHidden, write } from '../dom/parts/dom.js';
 import { contains } from '../geometry.js';
 import type { MinimapHandle } from '../minimap/index.js';
 import { visibleMinimapRect, worldToMinimap } from '../minimap/model.js';
@@ -68,7 +68,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
   const head = element('div', 'on-dipmap__head');
   const title = element('h2', 'on-dipmap__title');
   write(title, copy.title);
-  // On the title, as the frame's corners go under the HUD columns.
+  // On the title's plate: the frame's rail is too slim to carry the medallion.
   const closeButton = button('on-medallion on-window__close on-dipmap__close', GLYPH.close);
   closeButton.setAttribute('aria-label', messages().hud.shell.close);
   head.append(title, closeButton);
@@ -109,19 +109,16 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
       const key = `${nation.player}:${index}`;
       let placed = settlements.get(key);
       if (placed === undefined) {
-        placed = {
-          plaque: createNationPlaque('on-dipmap-plaque--map', deps.paintEmblem, pressNation),
-          pin: element('span', 'on-dipmap__pin'),
-          col: 0,
-          row: 0,
-        };
+        const plaque = createNationPlaque(deps.paintEmblem, pressNation);
+        plaque.element.classList.add('on-dipmap-plaque--map');
+        placed = { plaque, pin: element('span', 'on-dipmap__pin'), col: 0, row: 0 };
         settlements.set(key, placed);
         field.append(placed.pin, placed.plaque.element);
       }
       placed.col = settlement.col;
       placed.row = settlement.row;
       placed.plaque.update(nation, own);
-      setStyleVar(placed.pin, '--nation-colour', `#${nation.colour.toString(16).padStart(6, '0')}`);
+      setColourVar(placed.pin, '--nation-colour', nation.colour);
       kept.add(key);
     }
     for (const [key, placed] of settlements) {
@@ -139,7 +136,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
     for (const nation of missing) {
       let plaque = unknownPlaques.get(nation.player);
       if (plaque === undefined) {
-        plaque = createNationPlaque('on-dipmap-plaque--strip', deps.paintEmblem, pressNation);
+        plaque = createNationPlaque(deps.paintEmblem, pressNation);
         unknownPlaques.set(nation.player, plaque);
         unknown.append(plaque.element);
       }
@@ -161,7 +158,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
       height: `${inner.h / scale}px`,
     });
     const shown = visibleMinimapRect(layout);
-    const boxes: LabelBox[] = [];
+    const standing: { key: string; plaque: HTMLElement; x: number; y: number }[] = [];
     for (const [key, placed] of settlements) {
       const at = worldToMinimap(
         layout,
@@ -178,10 +175,14 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
       const y = (at.y - inner.y) / scale;
       placed.pin.style.left = `${x}px`;
       placed.pin.style.top = `${y}px`;
+      standing.push({ key, plaque, x, y });
+    }
+    // Sizes read after every write, so a pan forces one layout, not one per plaque.
+    const boxes = standing.map(({ key, plaque, x, y }): LabelBox => {
       const w = plaque.offsetWidth;
       const h = plaque.offsetHeight;
-      boxes.push({ key, x: x - w / 2, y: y - h - PIN_CLEARANCE, w, h });
-    }
+      return { key, x: x - w / 2, y: y - h - PIN_CLEARANCE, w, h };
+    });
     const area = { x: 0, y: 0, w: inner.w / scale, h: inner.h / scale };
     for (const spot of spreadLabels(boxes, area)) {
       const plaque = settlements.get(spot.key)?.plaque.element;
@@ -203,7 +204,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
   function close(): void {
     if (!opened) return;
     opened = false;
-    const heldFocus = root.contains(document.activeElement);
+    const heldFocus = deps.minimap.overviewHost.contains(document.activeElement);
     root.hidden = true;
     deps.minimap.setOverview(false);
     if (heldFocus) deps.minimap.focusOverviewButton();

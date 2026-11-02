@@ -141,6 +141,18 @@ describe('tool panel input clicks', () => {
     input.dispose();
   });
 
+  it('calls a held mode off for a right press the game canvas never saw, and leaves any other press', () => {
+    const { input, cues, held, arm } = mount();
+    expect(input.callOffHeld(press(400, 300, 2))).toBe(false);
+    arm();
+    expect(input.callOffHeld(press(400, 300, 0))).toBe(false);
+    expect(held.isActive()).toBe(true);
+    expect(input.callOffHeld(press(400, 300, 2))).toBe(true);
+    expect(held.isActive()).toBe(false);
+    expect(cues).toEqual(['fail']);
+    input.dispose();
+  });
+
   it('spends one right-click or Escape per rung: a held step back first, then the mode', () => {
     const { canvas, input, cues, held, arm } = mount();
     let steps = 1;

@@ -10,8 +10,8 @@ import {
   element,
   setAttribute,
   setClass,
+  setColourVar,
   setHidden,
-  setStyleVar,
   setTip,
   write,
 } from '../parts/dom.js';
@@ -190,7 +190,7 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
   ): void {
     const drawn = nation.tribe !== undefined && deps.paintEmblem(picture, nation.tribe, nation.player, size);
     setClass(node, 'on-dip-emblem--drawn', drawn);
-    setStyleVar(node, '--nation-colour', `#${nation.colour.toString(16).padStart(6, '0')}`);
+    setColourVar(node, '--nation-colour', nation.colour);
   }
 
   function createNation(nation: DiplomacyPanelRow): NationView {

@@ -38,7 +38,7 @@ import {
   visibleMinimapRect,
   zoomMinimapLayout,
 } from './model.js';
-import { createOverviewCanvas } from './overview-canvas.js';
+import { createOverviewCanvas, type OverviewCanvas } from './overview-canvas.js';
 import { createDotReplotGate } from './replot-gate.js';
 import { createRoadLayer } from './road-layer.js';
 import { MARKER_SIZE_SCALES, stampMark } from './stamps.js';
@@ -143,8 +143,17 @@ interface MinimapView {
  * over the HUD; it stays hidden from the start, its ground baked ahead on a worker, so it opens at once.
  */
 export async function mountMinimap(opts: MinimapOptions): Promise<MinimapHandle> {
-  let overviewOpen = false;
   const overviewCanvas = await createOverviewCanvas();
+  try {
+    return mountBothMaps(opts, overviewCanvas);
+  } catch (error) {
+    overviewCanvas.dispose();
+    throw error;
+  }
+}
+
+function mountBothMaps(opts: MinimapOptions, overviewCanvas: OverviewCanvas): MinimapHandle {
+  let overviewOpen = false;
   const chose = (next: MinimapFilters, peer: MinimapView): void => {
     peer.setFilters(next);
     opts.onFiltersChange?.(next);
@@ -378,7 +387,7 @@ function mountMinimapView(
     chrome.setHidden(!visible);
     chrome.setState({ zoom, size, filters, hasSeat });
   }
-  /** The HUD regions keep clear of the corner map; the overview finds its own room among them. */
+  /** The HUD regions keep clear of the corner map; the overview stands over them. */
   function reserveCorner(): void {
     if (place === 'corner') setMinimapReserve(plane, hidden ? null : base.panel, uiScale);
   }

@@ -327,6 +327,8 @@ export interface ToolPanelController {
   cancelPlacement(): void;
   /** Drop a held placement only when it is the admin tool's finished structure. */
   cancelStanding(): void;
+  /** A right press off the game canvas: true when it called a held mode off, so it orders nothing. */
+  callOffHeld(press: MouseEvent): boolean;
   palisadePreview(tile: LineNode | null): readonly LinePreviewNode[] | null;
   gatePreview(tile: LineNode | null): GatePreview | null;
   /** The started wall line, for the reach wash; null before its first click. */
@@ -961,6 +963,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
         }
       },
       cancelPlacement: cancelHeld,
+      callOffHeld: (press) => input?.callOffHeld(press) ?? false,
       cancelStanding: (): void => {
         if (placement.activeStanding()) placement.cancel();
       },
