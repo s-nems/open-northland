@@ -10,7 +10,7 @@ import type { SystemContext } from '../../context.js';
 import { farmWorkGood } from '../../economy/fields.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { breadChainSupplier } from '../build-order/food-first.js';
-import { seatHasSide, TUNIC_SIDES } from '../build-order/seat-order.js';
+import { seatArchetype, seatHasSide, TUNIC_SIDES } from '../build-order/seat-order.js';
 import type { ComputerProfile } from '../difficulty.js';
 import {
   CORE_CREW_FROM_TICKS,
@@ -125,7 +125,10 @@ export function buildingStaffing(
   const opening = openingRunPending(world, ctx, building, type);
   const gated = authored?.productGated === true ? gatedOperators(ctx, seat, type, held.operators) : null;
   const gate = gated === null ? null : Math.max(gated, gateFloor);
-  if (opening || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
+  const islandMaster =
+    seatArchetype(world, seat.player) === 'islands' &&
+    discoveryPending(world, ctx, seat.player, authored?.islandMasterUntil);
+  if (opening || islandMaster || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
     plan = capOperators(plan, 1);
   else if (gate !== null) {
     const crafting = craftGlutPending(
@@ -140,7 +143,8 @@ export function buildingStaffing(
   const holdsCarrier = held.carriers > 0;
   if (
     suppliesShort(ctx, seat, type, holdsCarrier) ||
-    discoveryPending(world, ctx, seat.player, authored?.porterUntil)
+    discoveryPending(world, ctx, seat.player, authored?.porterUntil) ||
+    islandMaster
   ) {
     plan = {
       ...plan,
@@ -157,6 +161,7 @@ export function buildingStaffing(
     };
   else if (
     !opening &&
+    !islandMaster &&
     !discoveryPending(world, ctx, seat.player, authored?.keptUntil) &&
     productsRest(world, ctx, seat, building, type, held.operators)
   )

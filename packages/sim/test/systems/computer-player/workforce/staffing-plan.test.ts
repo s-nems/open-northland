@@ -1,6 +1,6 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { setStockAmount } from '../../../../src/components/index.js';
+import { type EconomicArchetype, setStockAmount } from '../../../../src/components/index.js';
 import { contentIndex } from '../../../../src/core/content-index.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
@@ -19,6 +19,7 @@ import {
   MILLER,
   placeHq,
   SEAT,
+  seatEconomy,
   VIKING,
   WOOD,
 } from '../support.js';
@@ -96,7 +97,53 @@ function potteryOperators(tileUnearned: boolean): number | undefined {
   return buildingStaffing(sim.world, ctx, seat, pottery, type, { operators: 1, carriers: 0 })?.operatorTarget;
 }
 
+/** A free fixture slot for the small ship. */
+const SHIP_SMALL = 28;
+
+/** The joinery's plan on a seat of `archetype`, the small ship gated behind a trade nobody holds. */
+function joineryPlan(archetype: EconomicArchetype, shipUnearned: boolean) {
+  const base = aiContent();
+  const content = parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: SHIP_SMALL, id: 'ship_small', weight: 1 }],
+    tribes: base.tribes.map((t) =>
+      t.typeId !== VIKING || !shipUnearned
+        ? t
+        : {
+            ...t,
+            jobEnables: [...t.jobEnables, { jobType: MILLER, kind: 'good' as const, targetId: SHIP_SMALL }],
+          },
+    ),
+  });
+  const sim = aiSim(1, content);
+  placeHq(sim);
+  sim.enqueueSetup({
+    kind: 'placeBuilding',
+    buildingType: JOINERY_TYPE,
+    x: 40,
+    y: HQ_Y,
+    tribe: VIKING,
+    owner: SEAT,
+  });
+  seatEconomy(sim, archetype);
+  sim.step();
+  const ctx = { ...ctxOf(sim), content };
+  const owned = ownedBuildings(sim.world, SEAT);
+  const supply = SeatSupply.of(sim.world, ctx, SEAT, owned, DEFAULT_BUILD_ORDER);
+  const seat = { player: SEAT, owned, supply, profile: AI_PROFILES.hard };
+  const type = contentIndex(content).buildings.get(JOINERY_TYPE);
+  if (type === undefined) throw new Error('setup: no joinery type');
+  const joinery = entityOfBuilding(sim, JOINERY_TYPE);
+  return buildingStaffing(sim.world, ctx, seat, joinery, type, { operators: 1, carriers: 0 });
+}
+
 describe('buildingStaffing', () => {
+  it('runs one fed joiner on an island seat until he earns the small ship, and no other seat', () => {
+    expect(joineryPlan('islands', true)).toMatchObject({ operatorTarget: 1, carrierMin: 1 });
+    expect(joineryPlan('islands', false)?.operatorTarget).toBeGreaterThan(1);
+    expect(joineryPlan('standard', true)?.operatorTarget).toBeGreaterThan(1);
+  });
+
   it('keeps the potter at work with his goods at glut until the tile is discovered, and rests him after', () => {
     expect(potteryOperators(true)).toBe(1);
     expect(potteryOperators(false)).toBe(0);

@@ -60,6 +60,8 @@ export interface StaffingRow extends StaffingTiers {
   /** A discovery until which the building runs a carrier at the minimum tier, so its operator works
    *  instead of fetching his inputs and earns it sooner. */
   readonly porterUntil?: DiscoveryTarget;
+  /** On an island seat alone, {@link aloneUntil}, {@link keptUntil} and {@link porterUntil} at once. */
+  readonly islandMasterUntil?: DiscoveryTarget;
   /** The tiers on a seat dressing its army in tunics (`TUNIC_SIDES`, `../build-order/seat-order.ts`), over the rest of the row. */
   readonly tunicSeat?: Partial<BuildingStaffing>;
   /** A workplace of the livestock industry: it employs nobody while the seat keeps no pair of either
@@ -76,6 +78,7 @@ export interface DiscoveryTarget {
 const BIG_HEALING_POTION: DiscoveryTarget = { kind: 'good', id: 'potion_heal_big' };
 const TILE: DiscoveryTarget = { kind: 'good', id: 'tile' };
 const ORNAMENT: DiscoveryTarget = { kind: 'good', id: 'ornament' };
+const SMALL_SHIP: DiscoveryTarget = { kind: 'good', id: 'ship_small' };
 
 /** Per-building overrides of {@link DEFAULT_WORKPLACE_STAFFING}, by stable content id (authored),
  *  applied per building instance. A second hand is a target-tier extra unless its row says otherwise,
@@ -105,8 +108,12 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   // The tools joinery runs two joiners and a carrier. Owner ruling: the handcarts' joinery runs its carrier
   // as a minimum post, since a joiner fetches a cart's bill from his own shelves first and the carts speed
   // every haul, and fills its third joiner slot, since iron tools and handcarts are always short.
-  work_joinery_01: { operatorTarget: 2, carrierTarget: 1 },
-  work_joinery_02: { operatorTarget: 3, carrierMin: 1, carrierTarget: 1 },
+  // Owner ruling: on the island plan the carpenter comes first: one man, kept and fed by a porter, earns
+  // the small ship. On arabskie_wyspy_wolna_gra_mieszana (seed 7) a lone joiner waited on his shelves with
+  // 20-40 iron and wood in store, a tool every four game minutes where a fed one makes four a minute.
+  work_joinery_00: { islandMasterUntil: SMALL_SHIP },
+  work_joinery_01: { operatorTarget: 2, carrierTarget: 1, islandMasterUntil: SMALL_SHIP },
+  work_joinery_02: { operatorTarget: 3, carrierMin: 1, carrierTarget: 1, islandMasterUntil: SMALL_SHIP },
   work_joinery_03: { operatorTarget: 3, carrierTarget: 1 },
   // The first potter and mason work alone, so a carrier hauls for them once the builder reserve is full.
   // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID),

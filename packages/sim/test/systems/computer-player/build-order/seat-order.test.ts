@@ -316,6 +316,7 @@ describe('the seat strategy shapes the build order', () => {
     const military = order.lines.find((line) => line.id === 'military');
     const ship = military?.steps[0];
     expect(ship?.kind === 'place' && ship.role).toBe('ship');
+    expect(order.priority.indexOf('tools')).toBeLessThan(order.priority.indexOf('bread'));
     // Its one joinery serves the tools at any tier; a seat with room keeps the tools below the top tier.
     const capped = (shaped: BuildOrder) =>
       orderSteps(shaped).filter(

@@ -121,10 +121,12 @@ export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTunin
   rich: { ...STANDARD, copyCaps: {}, extraSites: 1, drops: [] },
   islands: {
     ...STANDARD,
+    // Owner ruling: the carpenter opens the whole sea path, so his line runs right behind the ship joinery's.
     priority: [
       'opening',
       'military',
-      ...STANDARD_PRIORITY.filter((l) => l !== 'opening' && l !== 'military'),
+      'tools',
+      ...STANDARD_PRIORITY.filter((l) => l !== 'opening' && l !== 'military' && l !== 'tools'),
     ],
     leadOnlyWhen: 'rivalOverSea',
     homeLandOnly: true,
