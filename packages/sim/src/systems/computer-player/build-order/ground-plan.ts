@@ -25,6 +25,11 @@ import { type LineStatuses, upgradesInto } from './progress.js';
 import { NO_ROOM_HOMES, seatHasSide, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
 
+/** The fewest homes a plan cuts a seat to (authored): every seat on arabskie_wyspy_wolna_gra_mieszana held
+ *  five by game minute 45 in the plain order, and cut to three or four its women stood at 3-10 where they
+ *  had stood at 10-17, too few people for an economy and a colony's crew. */
+export const PLANNED_HOMES_FLOOR = 5;
+
 /** The stable content id of the home chain's base tier. */
 const HOME_BUILDING = 'home_level_00';
 
@@ -246,7 +251,7 @@ function rimOf(zone: readonly FootprintCell[]): readonly FootprintCell[] {
 
 /**
  * The homes the seat keeps: those it owns plus as many more zones as fit one beside the other on its
- * land off the plots, within {@link OPENING_HOMES} and {@link NO_ROOM_HOMES}. Homes are the first copies
+ * land off the plots, within {@link PLANNED_HOMES_FLOOR} and {@link NO_ROOM_HOMES}. Homes are the first copies
  * a plan cuts.
  */
 function fittingHomes(seat: Seat): number {
@@ -279,7 +284,7 @@ function fittingHomes(seat: Seat): number {
     for (const node of translatedCells(terrain, zone, spot.hx, spot.hy)) taken.add(node);
     fits++;
   }
-  return Math.max(OPENING_HOMES, fits);
+  return Math.max(PLANNED_HOMES_FLOOR, fits);
 }
 
 /** The plots still waiting after this decision: those whose step no longer waits go, a free one that no

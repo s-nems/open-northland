@@ -10,7 +10,7 @@ import {
 import type { PlayerCommand } from '../../../../src/core/commands/index.js';
 import type { DeepReadonly } from '../../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../../src/index.js';
-import { OPENING_HOMES } from '../../../../src/systems/computer-player/build-order/entries.js';
+import { PLANNED_HOMES_FLOOR } from '../../../../src/systems/computer-player/build-order/ground-plan.js';
 import { plottedNodes, seatHomesCap } from '../../../../src/systems/computer-player/build-order/plots.js';
 import { NO_ROOM_HOMES } from '../../../../src/systems/computer-player/build-order/seat-order.js';
 import { type BuildOrderEntry, buildOrderModule } from '../../../../src/systems/computer-player/index.js';
@@ -41,9 +41,6 @@ const HQ_LAND = { x0: 9, x1: 16, y0: 12, y1: 18 };
 const STRIP = { x0: 16, y0: 13, y1: 17 };
 /** A strip east end that fits one barracks and one home side by side, not the barracks beside two homes. */
 const BARRACKS_AND_HOME_END = 36;
-/** A strip east end that fits {@link FOUR_HOMES} homes in a row, whichever row they anchor on. */
-const FOUR_HOMES = 4;
-const FOUR_HOMES_END = 48;
 /** A strip east end with room for more homes than a seat with no room ever raises. */
 const LONG_END = 60;
 /** A strip east end with no room for a home at all. */
@@ -184,15 +181,14 @@ describe('ground plan', () => {
     expect(placesBarracks(unplanned, [HOMES, BARRACKS])).toBe(false);
   });
 
-  it('cuts the homes to what fits beside the plots, within the opening and the seat cap', () => {
+  it('cuts the homes to what fits beside the plots, within the floor and the seat cap', () => {
     const homesOn = (stripEnd: number) => {
       const sim = island(stripEnd);
       decide(sim, [HOMES]);
       return seatHomesCap(sim.world, SEAT, NO_ROOM_HOMES + 1);
     };
     expect(homesOn(LONG_END)).toBe(NO_ROOM_HOMES);
-    expect(homesOn(FOUR_HOMES_END)).toBe(FOUR_HOMES);
-    expect(homesOn(TINY_END)).toBe(OPENING_HOMES);
+    expect(homesOn(TINY_END)).toBe(PLANNED_HOMES_FLOOR);
   });
 
   it('plots ground to clear where no free fit is left, and aims the clearing there', () => {
