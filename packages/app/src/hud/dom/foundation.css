@@ -204,7 +204,7 @@ body.on-drag-scroll.on-drag-scroll-free * {
   display: flex;
   flex-direction: column;
   border: 7px solid var(--wood);
-  border-image: linear-gradient(160deg, #6f5539, #3a2c1e 28%, #5a4631 52%, #2e2418 78%, #6f5539) 7;
+  border-image: var(--window-rails) 7;
   border-radius: 0;
   box-shadow:
     0 14px 30px #000a,

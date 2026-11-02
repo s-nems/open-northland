@@ -22,7 +22,7 @@ const row = (player: number): DiplomacyPanelRow => ({
 
 afterEach(() => document.body.replaceChildren());
 
-function mount(onOpenMap: () => boolean = () => true) {
+function mount(onOpenMap: () => boolean = () => true, mapKey: string | null = 'O') {
   let viewer = 0;
   const plane = document.createElement('div');
   document.body.append(plane);
@@ -42,6 +42,7 @@ function mount(onOpenMap: () => boolean = () => true) {
     tooltip: { show: () => undefined, hide: () => undefined },
     cue: () => undefined,
     onOpenMap,
+    mapKey: () => mapKey,
   });
   const shownPlayer = (): string | undefined =>
     plane.querySelector<HTMLElement>('.on-dip-nation[aria-current="true"]')?.dataset.player;
@@ -63,6 +64,15 @@ describe('diplomacy window map button', () => {
     window.toggle();
     plane.querySelector<HTMLButtonElement>('.on-dip-map')?.click();
     expect(window.isOpen()).toBe(true);
+  });
+
+  it('names the key in its tip, and has no tip for an unbound key', () => {
+    const bound = mount();
+    bound.window.toggle();
+    expect(bound.plane.querySelector('.on-dip-map')?.getAttribute('data-tip')).toContain('O');
+    const unbound = mount(() => true, null);
+    unbound.window.toggle();
+    expect(unbound.plane.querySelector('.on-dip-map')?.hasAttribute('data-tip')).toBe(false);
   });
 
   it('keeps the asked nation through a seat change made while it was shut', () => {

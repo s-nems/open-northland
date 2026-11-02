@@ -5,7 +5,16 @@ import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import type { GoodIconPainter } from '../good-art.js';
 import { GLYPH } from '../icons.js';
 import { createNoticeArt } from '../notices/art.js';
-import { button, element, setAttribute, setClass, setHidden, setStyleVar, write } from '../parts/dom.js';
+import {
+  button,
+  element,
+  setAttribute,
+  setClass,
+  setHidden,
+  setStyleVar,
+  setTip,
+  write,
+} from '../parts/dom.js';
 import { createSection } from '../parts/section.js';
 import { attachTipLayer, type TipChip } from '../parts/tip-layer.js';
 import { pictureSlot } from '../static-picture.js';
@@ -33,6 +42,8 @@ export interface DiplomacyWindowDeps {
   readonly cue: (cue: UiCue) => void;
   /** The map button was pressed; false leaves this window open, the map having refused. */
   readonly onOpenMap: () => boolean;
+  /** The Diplomacy Map's key as shown to the player; `null` when unbound. */
+  readonly mapKey: () => string | null;
 }
 
 export interface DiplomacyWindow extends ToolWindow {
@@ -212,6 +223,8 @@ export function createDiplomacyWindow(deps: DiplomacyWindowDeps): DiplomacyWindo
   function refresh(): void {
     if (!window.isOpen()) return;
     place();
+    const mapKey = deps.mapKey();
+    setTip(mapButton, mapKey === null ? '' : `${copy.map} · ${mapKey}`);
     tips.refresh();
     followViewer();
     rows = deps.source.rows();

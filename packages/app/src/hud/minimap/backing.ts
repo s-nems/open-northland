@@ -24,10 +24,10 @@ export function createMinimapBacking(root: HTMLElement): MinimapBacking {
       if (backing.hidden) return;
       const x = (visibleMapRect.x - panel.x) / uiScale;
       const y = (visibleMapRect.y - panel.y) / uiScale;
-      backing.style.setProperty('--map-x', `${x}px`);
-      backing.style.setProperty('--map-y', `${y}px`);
-      backing.style.setProperty('--map-w', `${visibleMapRect.w / uiScale}px`);
-      backing.style.setProperty('--map-h', `${visibleMapRect.h / uiScale}px`);
+      root.style.setProperty('--map-x', `${x}px`);
+      root.style.setProperty('--map-y', `${y}px`);
+      root.style.setProperty('--map-w', `${visibleMapRect.w / uiScale}px`);
+      root.style.setProperty('--map-h', `${visibleMapRect.h / uiScale}px`);
     },
   };
 }

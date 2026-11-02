@@ -11,6 +11,7 @@ import {
   write,
 } from '../dom/parts/dom.js';
 import { attachTipLayer } from '../dom/parts/tip-layer.js';
+import { WINDOW_CORNERS } from '../dom/symbols.js';
 import type { Rect } from '../geometry.js';
 import { createMapOverlayToolbar, type MapOverlayControls } from '../map-overlays.js';
 import { createMinimapBacking } from './backing.js';
@@ -58,10 +59,9 @@ export interface MinimapChrome {
   setState(state: MinimapChromeState): void;
   setHidden(hidden: boolean): void;
   setFrame(frame: MinimapFrame): void;
+  /** Name the key of the overview button in its tip; `null` when the player left it unbound. */
+  setOverviewKey(key: string | null): void;
   focusOverviewButton(): void;
-  /** Cut `rect` (screen px) out of this frame's bottom-left corner: the corner map's hole shows the
-   *  canvas, so anything of this frame's left beneath it would show through. */
-  cutCorner(rect: Rect): void;
   /** Where a view drawn over the framed map mounts, inside the frame's stacking order. */
   readonly root: HTMLElement;
   dispose(): void;
@@ -69,10 +69,8 @@ export interface MinimapChrome {
 
 /** Design px between the frame's outer edge and a filter drawer opened over the overview. */
 const OVERVIEW_DRAWER_INSET = 34;
-/** Design px a corner cut keeps round what it clears, which covers that frame's overhanging art. */
-const CORNER_CUT_MARGIN = 8;
-/** Design px past the frame's box the clip reaches, to keep the art, title and strip standing beyond it. */
-const CLIP_REACH = 80;
+
+const tipWithKey = (text: string, key: string | null): string => (key === null ? text : `${text} · ${key}`);
 
 const icon = (paths: string): string =>
   `<svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">${paths}</svg>`;
@@ -177,7 +175,7 @@ export function createMinimapChrome(
   root.dataset.place = place;
   root.setAttribute('aria-label', place === 'corner' ? copy.label : copy.overview);
   root.setAttribute('aria-description', copy.interaction);
-  root.dataset.frame = initialFrame;
+  if (place === 'corner') root.dataset.frame = initialFrame;
   const backing = createMinimapBacking(root);
   const overlayToolbar = overlays === undefined ? null : createMapOverlayToolbar(root, overlays);
   let uiScale = 1;
@@ -208,7 +206,7 @@ export function createMinimapChrome(
     rail.setAttribute('aria-hidden', 'true');
     root.append(rail);
   }
-  const frame = element('div', 'on-minimap-chrome__frame');
+  const frame = element('div', 'on-minimap-chrome__frame', place === 'overview' ? WINDOW_CORNERS : '');
   frame.setAttribute('aria-hidden', 'true');
   root.append(frame);
   let overviewButton: HTMLButtonElement | null = null;
@@ -393,17 +391,15 @@ export function createMinimapChrome(
     if (event.relatedTarget instanceof Node && !root.contains(event.relatedTarget)) showFilters(false);
   });
   root.append(controls, popover);
-  // The overview goes under every other HUD region, which stand over its corners.
+  // First in the plane, under the windows sharing its z-index.
   if (place === 'overview') plane.prepend(root);
   else plane.append(root);
 
   let lastLayout = '';
-  let box: Rect = { x: 0, y: 0, w: 0, h: 0 };
   return {
     root,
     setLayout: (panel, visibleMap, scale) => {
       uiScale = scale;
-      box = panel;
       backing.setLayout(panel, visibleMap, scale);
       const layout = `${panel.x},${panel.y},${panel.w},${panel.h},${uiScale}`;
       if (layout === lastLayout) return;
@@ -474,19 +470,10 @@ export function createMinimapChrome(
     setFrame: (next) => {
       root.dataset.frame = next;
     },
-    focusOverviewButton: () => overviewButton?.focus({ preventScroll: true }),
-    cutCorner: (rect) => {
-      const w = box.w / uiScale;
-      const h = box.h / uiScale;
-      const right = (rect.x + rect.w - box.x) / uiScale + CORNER_CUT_MARGIN;
-      const top = (rect.y - box.y) / uiScale - CORNER_CUT_MARGIN;
-      const far = CLIP_REACH;
-      root.style.clipPath =
-        right <= 0 || top >= h
-          ? ''
-          : `polygon(${-far}px ${-far}px, ${w + far}px ${-far}px, ${w + far}px ${h + far}px, ` +
-            `${right}px ${h + far}px, ${right}px ${top}px, ${-far}px ${top}px)`;
+    setOverviewKey: (key) => {
+      if (overviewButton !== null) setTip(overviewButton, tipWithKey(copy.overview, key));
     },
+    focusOverviewButton: () => overviewButton?.focus({ preventScroll: true }),
     dispose: () => {
       showFilters(false);
       document.removeEventListener('pointerdown', onOutsidePress, true);

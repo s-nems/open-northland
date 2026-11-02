@@ -672,6 +672,10 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
           cue: ctx.cue,
           paintEmblem: paintNationEmblem,
           onOpenMap: opts.diplomacyMap.open,
+          mapKey: () => {
+            const binding = opts.bindings.diplomacyMap;
+            return binding === null ? null : keyDisplayLabel(binding);
+          },
         });
         window.onDismiss(() => focusOwner?.('diplomacy'));
         return window;

@@ -223,22 +223,18 @@ function settle(box: MovingBox, placed: readonly MovingBox[], bounds: Rect): voi
 }
 
 /**
- * Nudges `labels` apart, inside `bounds` and off `keepOut`, answering in input order. Boxes settle one by one in key
+ * Nudges `labels` apart inside `bounds`, answering in input order. Boxes settle one by one in key
  * order, so the answer ignores the input order and needs no passes. Each takes its nearest free spot,
  * which leaves a box overlapping only when the boxes before it left no gap: a crowded layout may overlap
  * even if a tighter packing exists.
  */
-export function spreadLabels(
-  labels: readonly LabelBox[],
-  bounds: Rect,
-  keepOut: readonly Rect[] = [],
-): LabelSpot[] {
+export function spreadLabels(labels: readonly LabelBox[], bounds: Rect): LabelSpot[] {
   const boxes: MovingBox[] = labels.map((label) => ({
     ...label,
     x: clampedStart(label.x, label.w, bounds, ACROSS),
     y: clampedStart(label.y, label.h, bounds, DOWN),
   }));
-  const placed: MovingBox[] = keepOut.map((rect) => ({ key: '', ...rect }));
+  const placed: MovingBox[] = [];
   for (const box of [...boxes].sort((a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0))) {
     settle(box, placed, bounds);
     placed.push(box);

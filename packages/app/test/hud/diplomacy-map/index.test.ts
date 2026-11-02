@@ -5,7 +5,6 @@ import { fx, type WorldSnapshot } from '@open-northland/sim';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createDiplomacyMap } from '../../../src/hud/diplomacy-map/index.js';
 import type { DiplomacyMapNation } from '../../../src/hud/diplomacy-map/labels.js';
-import type { Rect } from '../../../src/hud/geometry.js';
 import { type MinimapLayout, overviewLayout, zoomMinimapLayout } from '../../../src/hud/minimap/model.js';
 import { messages } from '../../../src/i18n/index.js';
 import { type Ent, snapshotOf } from '../../support/snapshot.js';
@@ -75,21 +74,20 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
   const overviewHost = document.createElement('div');
   document.body.append(overviewHost);
   const world = { nations: startNations, snapshot: snapshotOf(startWorld) };
-  const state = { layout: WHOLE_MAP, clock: 0, unavailable: false, hudOver: [] as readonly Rect[] };
+  const state = { layout: WHOLE_MAP, clock: 0, unavailable: false };
   const minimap = {
     setOverview: vi.fn<(open: boolean) => void>(),
     placement: () => ({ layout: state.layout, bounds: BOUNDS }),
     focusOverviewButton: vi.fn<() => void>(),
     overviewHost,
+    overviewCanvas: document.createElement('canvas'),
   };
   const nations = vi.fn(() => world.nations);
   const snapshot = vi.fn((): WorldSnapshot => world.snapshot);
   const onNation = vi.fn<(player: number) => void>();
   const cue = vi.fn<(cue: UiCue) => void>();
   const map = createDiplomacyMap({
-    canvas: document.createElement('canvas'),
     minimap,
-    hudOver: () => state.hudOver,
     nations,
     snapshot,
     fog: () => null,
@@ -298,19 +296,6 @@ describe('createDiplomacyMap', () => {
     map.toggle();
     expect(cue).toHaveBeenLastCalledWith('confirm');
     expect(map.isOpen()).toBe(true);
-  });
-
-  it('hides the pin of a settlement a HUD region stands over', () => {
-    const { map, state, pins, nextRead } = mount(
-      [OWN_NATION, ALLY_NATION],
-      [hut(1, ALLY_NATION.player, 10, 10)],
-    );
-    map.open();
-    expect(pins()[0]?.hidden).toBe(false);
-    state.hudOver = [WHOLE_MAP.panel];
-    nextRead();
-    map.refresh();
-    expect(pins()[0]?.hidden).toBe(true);
   });
 
   it('stands the plaques anew on a new layout object, without a read', () => {

@@ -10,10 +10,13 @@ export const HUD_SYMBOLS = `<svg aria-hidden="true" width="0" height="0" style="
 /** The knot on a window's top rail. */
 export const WINDOW_KNOT = '<svg aria-hidden="true" class="on-window__knot"><use href="#on-knot"/></svg>';
 
-/** The four knot corners and the top knot every framed window carries. */
-export const WINDOW_ORNAMENTS = `${WINDOW_KNOT}${['tl', 'tr', 'bl', 'br']
+/** The four knot corners of a framed window. */
+export const WINDOW_CORNERS = ['tl', 'tr', 'bl', 'br']
   .map(
     (corner) =>
       `<svg aria-hidden="true" class="on-window__corner on-window__corner--${corner}"><use href="#on-corner"/></svg>`,
   )
-  .join('')}`;
+  .join('');
+
+/** The knot corners and the top knot every framed window carries. */
+export const WINDOW_ORNAMENTS = `${WINDOW_KNOT}${WINDOW_CORNERS}`;
