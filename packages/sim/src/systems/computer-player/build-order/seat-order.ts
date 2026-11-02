@@ -8,7 +8,7 @@ import {
 import type { DeepReadonly, World } from '../../../ecs/world.js';
 import type { SystemContext } from '../../context.js';
 import { type ComputerProfile, profileBuildOrder } from '../difficulty.js';
-import { type GamePhase, gamePhase } from '../game-phase.js';
+import { type GamePhase, gamePhase, minutesToTicks } from '../game-phase.js';
 import { BARRACKS_LEAD_TICKS, beforeDeadlineLead } from '../military/deadline.js';
 import {
   BUILD_SEARCH_MAX_RADIUS_NODES,
@@ -27,6 +27,7 @@ import {
   SECOND_ANIMAL_FARM_WELL,
   SECOND_UPPER_TAILOR,
   type SitePace,
+  type StepHold,
   sitePace,
 } from './entries.js';
 import { CATAPULT_JOINERY } from './military-line.js';
@@ -53,10 +54,14 @@ export interface ArchetypeTuning {
   readonly homeLandOnly: boolean;
   /** Steps of the order the archetype leaves out. */
   readonly drops: readonly BuildOrderEntry[];
+  /** The buildings whose placements wait on {@link SHIP_JOINERY_FIRST}. */
+  readonly afterShipJoinery?: readonly string[];
 }
 
 /** The default order's priority (`./entries.ts`), which a standard seat plays. */
 const STANDARD_PRIORITY = DEFAULT_BUILD_ORDER.priority;
+
+const SHIP_JOINERY_FIRST_MINUTES = 50;
 
 /** Owner ruling: a cramped seat (mroczny_las) has little room and digs the forest out. Authored figures:
  *  three quarters of the standard reach, twice the pull toward the base, clearing from two thirds of the
@@ -112,6 +117,17 @@ const STANDARD: ArchetypeTuning = {
   drops: RICH_STEPS,
 };
 
+/** Owner ruling: the ship joinery goes ahead of the upper workshops on the island plan, which leave the few
+ *  builders of its opening on four to ten sites at once (arabskie_wyspy_wolna_gra_mieszana, minute 30-60).
+ *  Authored: the wait ends with the top tier or at game minute 50, so a seat stuck on it still arms. */
+const SHIP_JOINERY_FIRST: StepHold = {
+  kind: 'any',
+  holds: [
+    { kind: 'built', building: 'work_joinery_03' },
+    { kind: 'tick', tick: minutesToTicks(SHIP_JOINERY_FIRST_MINUTES) },
+  ],
+};
+
 /** The tuning per archetype. A rich seat (room, iron and gold to spare) opens one site more and plays the
  *  rich steps (`./entries.ts`) with every home of the housing lane; an island seat raises its ship joinery
  *  first and its army line right after the opening, and builds on its own land only. Authored. */
@@ -130,6 +146,7 @@ export const ARCHETYPE_TUNING: Readonly<Record<EconomicArchetype, ArchetypeTunin
     ],
     leadOnlyWhen: 'rivalOverSea',
     homeLandOnly: true,
+    afterShipJoinery: ['work_smithy_00', 'work_armory_00', 'work_sewery_00'],
   },
 };
 
@@ -374,6 +391,8 @@ function shapeLine(
     .filter((entry) => !tuning.drops.includes(entry) && !dropped(entry))
     .flatMap((entry) => copiesOf(entry, caps))
     .map((entry) => (tightGround ? onTightGround(entry) : entry));
+  const waiting = tuning.afterShipJoinery;
+  if (waiting !== undefined) steps = steps.map((entry) => afterShipJoinery(entry, waiting));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;
     const leading = (entry: BuildOrderEntry) =>
@@ -395,6 +414,15 @@ function copiesOf(entry: BuildOrderEntry, caps: CopyCaps): BuildOrderEntry[] {
   const count = Math.min(entry.count, caps[entry.building] ?? entry.count);
   if (count === entry.count) return [entry];
   return entry.kind === 'place' && count === 1 ? [] : [{ ...entry, count }];
+}
+
+/** `entry` waiting on {@link SHIP_JOINERY_FIRST} too when it places one of `buildings`. */
+function afterShipJoinery(entry: BuildOrderEntry, buildings: readonly string[]): BuildOrderEntry {
+  if (entry.kind !== 'place' || !buildings.includes(entry.building)) return entry;
+  const held = entry.holdUntil;
+  const holdUntil: StepHold =
+    held === undefined ? SHIP_JOINERY_FIRST : { kind: 'all', holds: [held, SHIP_JOINERY_FIRST] };
+  return { ...entry, holdUntil };
 }
 
 /** `entry` on a seat with {@link SideRule} `tightGround`, its own object when that changes nothing. */

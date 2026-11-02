@@ -317,6 +317,13 @@ describe('the seat strategy shapes the build order', () => {
     const ship = military?.steps[0];
     expect(ship?.kind === 'place' && ship.role).toBe('ship');
     expect(order.priority.indexOf('tools')).toBeLessThan(order.priority.indexOf('bread'));
+    // The upper workshops wait on the ship joinery; the plain order places them freely.
+    const held = (shaped: BuildOrder, building: string) =>
+      orderSteps(shaped).some(
+        (e) => e.kind === 'place' && e.building === building && e.holdUntil !== undefined,
+      );
+    expect(held(order, 'work_sewery_00')).toBe(true);
+    expect(held(DEFAULT_BUILD_ORDER, 'work_sewery_00')).toBe(false);
     // Its one joinery serves the tools at any tier; a seat with room keeps the tools below the top tier.
     const capped = (shaped: BuildOrder) =>
       orderSteps(shaped).filter(
