@@ -19,10 +19,11 @@ import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isScoutJob } from '../../readviews/index.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { scoutBusy } from '../scout/index.js';
-import { signpostTargetAround } from '../scout/signpost-coverage.js';
+import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
 import { colonyFamilies } from './people.js';
 import { COLONY_OPEN_SITES, COLONY_SPOT_NODES, colonyPlan, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
+import { LAND_GOOD_IDS } from './provision.js';
 import { colonyBuildings, colonySpot } from './spot.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
@@ -123,13 +124,28 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   return [placementOf(type.typeId, spot, tribe, seat)];
 }
 
-/** The colony's one scout carries its lattice round what stands there. */
+/** The nearest deposit of each good the land holds: a flag stands only inside the signposts, so a deposit
+ *  past the store's walk range stays out of work until the lattice reaches it. */
+function depositsOf(env: ColonyEnv, origin: HalfCellNode): HalfCellNode[] {
+  const { world, ctx, terrain } = env;
+  const workable = workableResourceTest(world, ctx, terrain);
+  const reachable = reachableResourceTest(world, ctx, terrain, origin, workable);
+  return LAND_GOOD_IDS.flatMap((id) => {
+    const good = goodTypeByContentId(ctx.content, id);
+    const near = good === undefined ? null : nearestLiveResource(world, good.typeId, origin, reachable);
+    return near === null ? [] : (anchorNodeOf(world, near) ?? []);
+  });
+}
+
+/** The colony's one scout carries its lattice round what stands there and out to its land's deposits. */
 function raiseSignposts(env: ColonyEnv, men: readonly Entity[], read: FoundingRead): PlayerCommand[] {
   const { world, ctx, seat } = env;
   const scout = men.find((e) => isScoutJob(ctx.content, world.get(e, Settler).jobType));
   if (scout === undefined || read.store === null || scoutBusy(world, ctx, scout)) return [];
   const buildings = read.buildings.flatMap((e) => anchorNodeOf(world, e) ?? []);
-  const post = signpostTargetAround(world, ctx, seat, read.store, buildings, [], anchorNodeOf(world, scout));
+  const corridors = depositsOf(env, read.origin).map((at) => corridorSamples(read.origin, at));
+  const from = anchorNodeOf(world, scout);
+  const post = signpostTargetAround(world, ctx, seat, read.store, buildings, corridors, from);
   return post === null ? [] : [{ kind: 'placeSignpost', entity: scout, x: post.hx, y: post.hy }];
 }
 

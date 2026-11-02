@@ -1,3 +1,4 @@
+import { BUILDING_KIND } from '@open-northland/data';
 import type { ColonyLine, ColonyLineLeg } from '../../../components/ai/colony.js';
 import {
   Building,
@@ -11,19 +12,23 @@ import {
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
+import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
+import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { isEdibleFoodIn } from '../../readviews/index.js';
+import { seatBaseOf } from '../base.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
 import { seatBuildOrder } from '../build-order/seat-order.js';
 import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { computerProfileOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
 import { LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
+import { shorePoints } from '../sea-route.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, storedFoodUnits } from '../workforce/food.js';
 import { SeatSupply } from '../workforce/supply.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
@@ -61,6 +66,12 @@ const PROVISIONS_PER_HAND = 2;
 const FOOD_LINE_ID = 'food_simple';
 /** How long a hold may stand unchanged before the ship goes with what it has (authored). */
 const LEG_STALL_TICKS = minutesToTicks(2);
+/** How long a stop may load at all (authored): 40 units come aboard in four to six minutes from a store by
+ *  the shore, and one seat's ship lay 19 minutes while hands fetched a good a unit at a time from far off
+ *  (arabskie_wyspy_wolna_gra_mieszana). */
+const LEG_LOAD_TICKS = minutesToTicks(7);
+/** The shores near its base a seat weighs for its line's berth (authored). */
+const BERTH_CANDIDATES = 6;
 /** How long a ship may take over one leg before it is given up at the next mooring (authored: a landing's
  *  sail limit). */
 const LINE_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
@@ -109,11 +120,41 @@ export function startLine(env: ColonyEnv, colony: ColonyView, ship: Entity): Pla
   const live = env.edit();
   live.ship = null;
   live.line = { ship, crew, leg: 'sailHome', since: ctx.tick, load: 0, lastLoad: ctx.tick };
+  const berth = homeBerth(env, ship) ?? colony.berth;
+  live.berth = berth === null ? null : { hx: berth.hx, hy: berth.hy };
   const commands: PlayerCommand[] = riders
     .filter((e) => !crew.includes(e))
     .map((entity) => ({ kind: 'detachFromVehicle', entity }));
-  if (colony.berth !== null) commands.push(dock(ship, colony.berth));
+  if (berth !== null) commands.push(dock(ship, berth));
   return commands;
+}
+
+/** The home shore nearest one of the seat's standing stores, of those near its base: a hand carries a unit a
+ *  trip, and the berth the first ship happened to lie at cost stops of up to ten minutes. */
+function homeBerth(env: ColonyEnv, ship: Entity): DeepReadonly<HalfCellNode> | null {
+  const { world, ctx, terrain, seat } = env;
+  const index = contentIndex(ctx.content);
+  const base = seatBaseOf(world, ctx, seat);
+  const towards = base === null ? null : anchorNodeOf(world, base);
+  if (towards === null) return null;
+  const stores = homeBuildings(world, ctx, seat).flatMap((e) => {
+    const storage = index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage;
+    return storage && isBuilt(world, e) ? (anchorNodeOf(world, e) ?? []) : [];
+  });
+  const spots = shorePoints(
+    world,
+    ctx,
+    terrain,
+    ship,
+    homeLandOf(env),
+    towards,
+    () => true,
+    BERTH_CANDIDATES,
+  );
+  const nearStore = (at: HalfCellNode): number => Math.min(...stores.map((s) => nodeManhattan(s, at)));
+  let best: HalfCellNode | null = null;
+  for (const at of spots) if (best === null || nearStore(at) < nearStore(best)) best = at;
+  return best;
 }
 
 /** Start `leg` now. */
@@ -134,6 +175,11 @@ function loaded(env: ColonyEnv, line: LineView): boolean {
 /** Whether the hold has stood unchanged past {@link LEG_STALL_TICKS}. */
 export function stalled(env: ColonyEnv, line: LineView): boolean {
   return env.ctx.tick - line.lastLoad >= LEG_STALL_TICKS;
+}
+
+/** Whether a loading stop is over: the load aboard, or out of patience. */
+function doneLoading(env: ColonyEnv, line: LineView): boolean {
+  return loaded(env, line) || stalled(env, line) || env.ctx.tick - line.since >= LEG_LOAD_TICKS;
 }
 
 /** Keep the record of the hold and the crew: only a change writes, as each write drops the home view. */
@@ -438,7 +484,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     case 'unloadHome':
       return holdFlushed(world, ship) || stalled(env, line) ? beginHomeLoad(env, colony, line) : [];
     case 'loadHome': {
-      if (!loaded(env, line) && !stalled(env, line)) return [];
+      if (!doneLoading(env, line)) return [];
       if (line.crew.length === 0 || !worthSailing(env, colony, line)) return beginHomeLoad(env, colony, line);
       if (colony.shore === null) return [];
       enterLeg(env, 'sailOut');
@@ -458,7 +504,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
       return [...boardOrders(world, homeward, ship), ...wantOrders(ship, load)];
     }
     case 'loadColony': {
-      if (!loaded(env, line) && !stalled(env, line)) return [];
+      if (!doneLoading(env, line)) return [];
       if (colony.berth === null) return [];
       enterLeg(env, 'sailHome');
       return [...pinHold(world, ship), dock(ship, colony.berth)];

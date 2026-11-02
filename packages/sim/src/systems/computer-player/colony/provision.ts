@@ -1,5 +1,5 @@
 import { BUILDING_KIND } from '@open-northland/data';
-import { Building } from '../../../components/index.js';
+import { Building, ComputerColony } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -24,12 +24,18 @@ export type LandGood = (typeof LAND_GOOD_IDS)[number];
 /** What the colony's warehouses hold, those still sites included: they own the ground heaps of a hold set
  *  ashore before a store stands. */
 export function storesHeld(env: ColonyEnv, buildings: readonly Entity[]): Map<number, number> {
-  const { world, ctx, seat } = env;
+  const { world, ctx, terrain, seat } = env;
   const index = contentIndex(ctx.content);
   const stores = buildings.filter(
     (e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
   );
-  return stockAtBuildings(world, seat, stores);
+  const land = world.tryGet(env.carrier, ComputerColony)?.land;
+  return stockAtBuildings(
+    world,
+    seat,
+    stores,
+    (at) => terrain.inBounds(at.hx, at.hy) && terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) === land,
+  );
 }
 
 /** The edible units in the colony's warehouses. */

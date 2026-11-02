@@ -113,6 +113,12 @@ function postOf(world: World, ctx: SystemContext, e: Entity, builder: number | n
   return job === builder ? 'builder' : null;
 }
 
+/** The flag ground of the signposts round `origin`. */
+function flagGroundAt(env: ColonyEnv, origin: HalfCellNode): FlagGround {
+  const { world, ctx, terrain, seat } = env;
+  return flagGround(world, ctx, terrain, networkLimitAt(world, terrain, seat, origin.hx, origin.hy), 'aimed');
+}
+
 /** Which of a good's resources `origin`'s men may work: known to the seat and inside its reach. */
 function workableFrom(env: ColonyEnv, origin: HalfCellNode, ground: FlagGround): WorkableTest {
   const { world, ctx, terrain, seat } = env;
@@ -349,10 +355,17 @@ export function handsWanted(
   const origin = colonyOrigin(env, colony, buildings);
   if (origin === null) return { men: 0, women: 0 };
   const read = { buildings, store: storeOf(env, buildings), origin };
-  const digs = digGoods(env, colony, read);
+  const flags = flagGroundAt(env, origin);
+  const diggable = [...digGoods(env, colony, read)].filter((id) => {
+    const good = goodTypeByContentId(ctx.content, id)?.typeId;
+    return (
+      good !== undefined &&
+      collectorSpot(world, flags, origin, good, new Set(), workableFrom(env, origin, flags)) !== null
+    );
+  });
   const resting = atRest(env, colony, read);
   let men = 0;
-  for (const good of digs) men += DIGGERS_MOST[good];
+  for (const good of diggable) men += DIGGERS_MOST[good];
   const fishes = fishNear(env, origin) !== null;
   const others = POSTS.filter(
     (p) => !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes),
@@ -398,7 +411,7 @@ export function fillPosts(
   men: readonly Entity[],
   read: FoundingRead,
 ): PlayerCommand[] {
-  const { world, ctx, terrain, seat } = env;
+  const { world, ctx } = env;
   const builder = builderJobOf(ctx);
   const held = new Map<Post, number>();
   const builders: Entity[] = [];
@@ -435,13 +448,7 @@ export function fillPosts(
   if (spare.length === 0) return commands;
   let flags: FlagGround | null = null;
   const ground = (): FlagGround => {
-    flags ??= flagGround(
-      world,
-      ctx,
-      terrain,
-      networkLimitAt(world, terrain, seat, read.origin.hx, read.origin.hy),
-      'aimed',
-    );
+    flags ??= flagGroundAt(env, read.origin);
     return flags;
   };
   const taken: TakenFlagNodes = new Set();

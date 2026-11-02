@@ -160,7 +160,11 @@ class SeatStockLedger {
   }
 
   /** {@link stockAtBuildings}, from the buckets around `buildings`. */
-  atBuildings(player: number, buildings: readonly Entity[]): Map<number, number> {
+  atBuildings(
+    player: number,
+    buildings: readonly Entity[],
+    onLand?: (node: HalfCellNode) => boolean,
+  ): Map<number, number> {
     const totals = new Map<number, number>();
     const add = (units: Units): void => {
       for (let i = 0; i < units.length; i += 2) {
@@ -181,7 +185,8 @@ class SeatStockLedger {
     const reached = heapReach(anchors);
     for (const bucket of around) {
       for (const heap of this.heapBuckets.get(bucket)?.values() ?? []) {
-        if (heap.seats.includes(player) && reached(heap.node)) add(heap.units);
+        if (heap.seats.includes(player) && reached(heap.node) && onLand?.(heap.node) !== false)
+          add(heap.units);
       }
     }
     return totals;
@@ -270,13 +275,15 @@ export function seatStockOf(world: World, player: number): SeatStock {
 }
 
 /** The units by good `player`'s {@link SeatStock} counts at its `buildings`: their piles, what they keep aside
- *  to upgrade, and every ground heap in their reach. Costs the buildings and the heaps around them. */
+ *  to upgrade, and every ground heap in their reach that `onLand` admits: a reach crosses a narrow strait, a
+ *  walker does not. Costs the buildings and the heaps around them. */
 export function stockAtBuildings(
   world: World,
   player: number,
   buildings: readonly Entity[],
+  onLand?: (node: HalfCellNode) => boolean,
 ): Map<number, number> {
-  return SeatStockLedger.of(world).atBuildings(player, buildings);
+  return SeatStockLedger.of(world).atBuildings(player, buildings, onLand);
 }
 
 /**

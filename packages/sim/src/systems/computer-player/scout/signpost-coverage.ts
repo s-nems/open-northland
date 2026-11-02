@@ -122,7 +122,7 @@ function latticeRingBound(anchor: HalfCellNode, points: readonly HalfCellNode[])
  * along the straight run, the goal itself last. Integer-trunc ray projection, byte-identical across
  * engines.
  */
-function corridorSamples(anchor: HalfCellNode, goal: HalfCellNode): HalfCellNode[] {
+export function corridorSamples(anchor: HalfCellNode, goal: HalfCellNode): HalfCellNode[] {
   const dx = goal.hx - anchor.hx;
   const dy = goal.hy - anchor.hy;
   const length = Math.abs(dx) + Math.abs(dy);

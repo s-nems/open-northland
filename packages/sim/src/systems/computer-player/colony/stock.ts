@@ -1,3 +1,4 @@
+import { aiControlEntity, ComputerColony } from '../../../components/index.js';
 import type { World } from '../../../ecs/world.js';
 import { everyBuildingOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import type { SystemContext } from '../../context.js';
@@ -35,10 +36,15 @@ export function homeStockOf(world: World, ctx: SystemContext, seat: number): Sea
   const held = bySeat.get(seat);
   if (held !== undefined && held.tick === ctx.tick && held.whole === whole) return held.home;
   const stays = new Set(home);
+  const carrier = aiControlEntity(world, seat);
+  const land = carrier === null ? undefined : world.tryGet(carrier, ComputerColony)?.land;
+  const terrain = ctx.terrain;
   const away = stockAtBuildings(
     world,
     seat,
     every.filter((e) => !stays.has(e)),
+    (at) =>
+      terrain?.inBounds(at.hx, at.hy) === true && terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) === land,
   );
   const stock = stockLess(whole, away);
   bySeat.set(seat, { tick: ctx.tick, whole, home: stock });
