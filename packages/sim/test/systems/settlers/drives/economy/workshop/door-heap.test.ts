@@ -8,7 +8,7 @@ import {
   Stockpile,
 } from '../../../../../../src/components/index.js';
 import type { Entity } from '../../../../../../src/ecs/world.js';
-import { positionOfNode, Simulation } from '../../../../../../src/index.js';
+import { type NodeId, positionOfNode, Simulation } from '../../../../../../src/index.js';
 import { dynamicBlockOverlay } from '../../../../../../src/systems/footprint/index.js';
 import {
   DOOR_HEAP_LIMIT_UNITS,
@@ -86,7 +86,7 @@ function heaped(sim: Simulation, good: number): number {
   return units;
 }
 
-function doorOf(sim: Simulation, mill: Entity): number {
+function doorOf(sim: Simulation, mill: Entity): NodeId {
   const terrain = sim.terrain;
   if (terrain === undefined) throw new Error('mapped fixture');
   return interactionCell(sim.world, ctxOf(sim), terrain, mill);

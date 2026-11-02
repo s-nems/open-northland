@@ -87,6 +87,8 @@ function foundColony(sim: Simulation): void {
     builds: [],
     line: null,
     overflow: [],
+    stalls: [],
+    dangers: [],
   };
   sim.world.add(carrier, ComputerColony, state);
 }

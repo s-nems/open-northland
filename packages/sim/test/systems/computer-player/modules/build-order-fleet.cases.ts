@@ -262,6 +262,8 @@ const fittingOutColony = (scout: ColonyScout): ComputerColonyState => ({
   builds: [],
   line: null,
   overflow: [],
+  stalls: [],
+  dangers: [],
   scout,
 });
 
