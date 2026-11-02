@@ -203,11 +203,13 @@ const NO_ROOM_COPY_CAPS: Readonly<Record<string, number>> = {
 /** What each side changes (authored): the steps it drops, the steps only the sides keeping them play, and
  *  copy caps under the archetype's. `fishing` changes the workforce (`workforce/fisher.ts`); `herbs` keeps
  *  the grass reserve rules as they are (`./grass-reserve.ts`). Owner ruling: a seat with little iron forges
- *  weapons in two upper smithies and a seat with little gold strikes coins in one mint. */
+ *  weapons in two upper smithies and a seat with little gold strikes coins in one mint. `oneJoinery` lifts
+ *  every step's `belowTier`, so a top-tier joinery meets the tools line. */
 interface SideRule {
   readonly drops?: StepMatch;
   readonly keeps?: StepMatch;
   readonly copyCaps?: Readonly<Record<string, number>>;
+  readonly oneJoinery?: true;
 }
 
 const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
@@ -221,6 +223,9 @@ const SIDE_RULES: Readonly<Record<EconomicSide, SideRule>> = {
   noRoom: {
     drops: { buildings: [], collectors: [], steps: [ROOMY_OPENING_HOMES, CATAPULT_JOINERY] },
     copyCaps: NO_ROOM_COPY_CAPS,
+    // Owner ruling: no second carpenter beside the one the seat has. Without catapults every top-tier
+    // joinery of this side works tools (`workforce/craft.ts`), the ship joinery once its fleet stands.
+    oneJoinery: true,
   },
 };
 
@@ -305,7 +310,8 @@ export function shapeBuildOrder(order: BuildOrder, shape: OrderShape): BuildOrde
   const tuning = ARCHETYPE_TUNING[shape.archetype];
   const drops = sideDrops(shape.sides);
   const caps = copyCapsOf(tuning, shape.sides);
-  const lines = order.lines.map((line) => shapeLine(line, tuning, drops, caps));
+  const oneJoinery = shape.sides.some((side) => SIDE_RULES[side].oneJoinery === true);
+  const lines = order.lines.map((line) => shapeLine(line, tuning, drops, caps, oneJoinery));
   // An archetype on the default priority keeps the order's own; one with an authored priority plays it.
   let priority = tuning.priority === STANDARD_PRIORITY ? order.priority : tuning.priority;
   if (shape.sides.some((side) => TUNIC_SIDES.includes(side)))
@@ -353,10 +359,17 @@ function copyCapsOf(tuning: ArchetypeTuning, sides: readonly EconomicSide[]): Co
   return caps;
 }
 
-function shapeLine(line: BuildLine, tuning: ArchetypeTuning, dropped: SideDrop, caps: CopyCaps): BuildLine {
+function shapeLine(
+  line: BuildLine,
+  tuning: ArchetypeTuning,
+  dropped: SideDrop,
+  caps: CopyCaps,
+  oneJoinery: boolean,
+): BuildLine {
   let steps = line.steps
     .filter((entry) => !tuning.drops.includes(entry) && !dropped(entry))
-    .flatMap((entry) => copiesOf(entry, caps));
+    .flatMap((entry) => copiesOf(entry, caps))
+    .map((entry) => (oneJoinery ? withoutTierCap(entry) : entry));
   if (tuning.leadOnlyWhen !== null) {
     const lead = tuning.leadOnlyWhen;
     const leading = (entry: BuildOrderEntry) =>
@@ -378,6 +391,13 @@ function copiesOf(entry: BuildOrderEntry, caps: CopyCaps): BuildOrderEntry[] {
   const count = Math.min(entry.count, caps[entry.building] ?? entry.count);
   if (count === entry.count) return [entry];
   return entry.kind === 'place' && count === 1 ? [] : [{ ...entry, count }];
+}
+
+/** `entry` counting every tier of its chain, its own object when it has no `belowTier`. */
+function withoutTierCap(entry: BuildOrderEntry): BuildOrderEntry {
+  if ((entry.kind !== 'place' && entry.kind !== 'upgrade') || entry.belowTier === undefined) return entry;
+  const { belowTier: _cap, ...uncapped } = entry;
+  return uncapped;
 }
 
 /** `priority` with `lines` moved, in their order, right behind `behind`. */

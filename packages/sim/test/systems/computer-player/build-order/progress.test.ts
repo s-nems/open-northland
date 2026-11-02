@@ -23,9 +23,11 @@ import {
 import { aiContent } from '../../../fixtures/ai-content.js';
 import {
   aiSim,
+  BAKERY_TOP_TYPE,
   BAKERY_TYPE,
   BARRACKS_TYPE,
   ctxOf,
+  entityOfBuilding,
   HQ_TYPE,
   HQ_X,
   HQ_Y,
@@ -73,6 +75,25 @@ function oneStep(entry: BuildOrderEntry): BuildOrder {
 }
 
 describe('build order progress', () => {
+  it("counts a building rising to a placement step's tier, so no copy goes up beside the upgrade", () => {
+    const entry: BuildOrderEntry = { kind: 'place', building: 'work_bakery_01', count: 1 };
+    const sim = seat();
+    sim.enqueueSetup({
+      kind: 'placeBuilding',
+      buildingType: BAKERY_TYPE,
+      x: HQ_X + 8,
+      y: HQ_Y,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.step();
+    expect(entryStatuses(sim.world, ctxOf(sim), SEAT, [entry])).toEqual(['unmet']);
+    const bakery = entityOfBuilding(sim, BAKERY_TYPE);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: bakery, target: BAKERY_TOP_TYPE });
+    sim.step();
+    expect(entryStatuses(sim.world, ctxOf(sim), SEAT, [entry])).toEqual(['satisfied']);
+  });
+
   it('holds a military step until its lead before the deadline, or until the defence comes first', () => {
     const sim = seat();
     expect(held(sim, towersDue(TOWER_LEAD_TICKS))).toBe(true);

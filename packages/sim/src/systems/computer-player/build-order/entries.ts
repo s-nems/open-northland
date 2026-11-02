@@ -735,8 +735,9 @@ export const DEFAULT_BUILD_ORDER: BuildOrder = {
     {
       id: 'tools',
       // The joinery works iron tools out of wood and iron: it stands between its two deposits, so its
-      // carrier never walks far. The top-tier joineries of the military line work ships and catapults,
-      // never tools, so they neither meet this line's steps nor its upgrade.
+      // carrier never walks far. The top-tier joineries of the military line work ships and catapults
+      // first, so they neither meet this line's steps nor its upgrade, but on a seat with no room to grow
+      // (`./seat-order.ts`).
       steps: [
         // The lower tier first: the furniture its upper tier wants is learned at it.
         {

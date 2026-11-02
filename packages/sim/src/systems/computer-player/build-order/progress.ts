@@ -117,6 +117,13 @@ function countOfTypes(tally: OwnedTally, types: ReadonlySet<number>): number {
   return count;
 }
 
+/** The upgrades in flight whose building sits below `tiers` and is becoming one of them. */
+function becomingCounted(tally: OwnedTally, tiers: ReadonlySet<number>): number {
+  let count = 0;
+  for (const [type, becoming] of tally.upgrading) if (!tiers.has(type) && tiers.has(becoming)) count++;
+  return count;
+}
+
 export function decisionMemo(): DecisionMemo {
   return {
     live: new Map(),
@@ -217,11 +224,16 @@ export function entryStatus(
       if (roleOf === undefined) {
         const tally = ownedTally(world, index, owned, memo);
         have = type.kind === 'home' ? tally.homes : countOfTypes(tally, counted);
+        if (inFlightUpgrades && type.kind !== 'home') have += becomingCounted(tally, counted);
       } else {
         for (const e of owned) {
           const ownedType = index.buildings.get(world.get(e, Building).buildingType);
           if (ownedType === undefined) continue;
-          const matches = type.kind === 'home' ? ownedType.kind === 'home' : counted.has(ownedType.typeId);
+          const becoming = inFlightUpgrades ? world.tryGet(e, Upgrading)?.target : undefined;
+          const matches =
+            type.kind === 'home'
+              ? ownedType.kind === 'home'
+              : counted.has(ownedType.typeId) || (becoming !== undefined && counted.has(becoming));
           if (matches && roleOf(e) === entry.role) have++;
         }
       }
@@ -256,9 +268,7 @@ export function entryStatus(
       if (entry.role === undefined) {
         const tally = ownedTally(world, index, owned, memo);
         have = countOfTypes(tally, done);
-        if (inFlightUpgrades) {
-          for (const [type, becoming] of tally.upgrading) if (!done.has(type) && done.has(becoming)) have++;
-        }
+        if (inFlightUpgrades) have += becomingCounted(tally, done);
       } else {
         const roleOf = memoRoles(world, ctx, player, memo);
         for (const e of owned) {

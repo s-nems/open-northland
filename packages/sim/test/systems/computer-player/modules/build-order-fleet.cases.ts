@@ -7,6 +7,7 @@ import {
   Settler,
   setDiplomacyStance,
   setStockAmount,
+  Upgrading,
   Vehicle,
 } from '../../../../src/components/index.js';
 import type { Command } from '../../../../src/core/commands/index.js';
@@ -306,6 +307,8 @@ function placeEntry(
 }
 
 const shipJoinery = placeEntry((e) => e.role === 'ship');
+/** The fresh top-tier joinery by the water where none could claim the shore. */
+const topShipJoinery = placeEntry((e) => e.role === 'ship' && e.building === 'work_joinery_03');
 const heldCatapultJoinery = placeEntry((e) => e.role === 'catapult');
 /** The catapult joinery's step without its hold for the late game's settlement and clock, which these
  *  seats never reach. */
@@ -523,6 +526,15 @@ describe('build order - the top-tier joineries', () => {
     // Where the enemy lies over land the step is skipped and no joinery takes the ship role.
     const bridged = world(seaMap({ bridge: true }), [{ buildingType: JOINERY_TYPE, ...BY_THE_BAY }]);
     expect(first(bridged, [shipUpgrade])).toBeUndefined();
+  });
+
+  it('raises no fresh ship joinery while the one by the water rises to the top tier', () => {
+    const sim = world(seaMap(), [{ buildingType: JOINERY_TYPE, x: 44, y: 50 }]);
+    const joinery = entityOfBuilding(sim, JOINERY_TYPE);
+    sim.enqueueSetup({ kind: 'upgradeBuilding', building: joinery, target: JOINERY_03_TYPE });
+    sim.step();
+    expect(sim.world.tryGet(joinery, Upgrading)?.target).toBe(JOINERY_03_TYPE);
+    expect(entryStatuses(sim.world, fleetCtx(sim), SEAT, [topShipJoinery])).toEqual(['satisfied']);
   });
 
   it('puts the catapult joinery beside the barracks', () => {
