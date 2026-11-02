@@ -28,6 +28,8 @@ export interface OutwardRead {
   readonly held: Units;
   /** What the colony's standing buildings want in store, by good. */
   readonly wanted: Units;
+  /** What the colony makes or digs itself: none of it sails out. */
+  readonly makes: ReadonlySet<number>;
   /** What home can give of a good and stay at its comfort. */
   readonly spare: (good: number) => number;
 }
@@ -47,8 +49,9 @@ function asLines(lines: ReadonlyMap<number, number>): CargoLine[] {
 
 /**
  * The outward load, most urgent first and goods ascending within a step: food to one meal a mouth, then what
- * the building sites and the next build lack past the stores, then what standing buildings want that the
- * stores lack. Home never goes under its comfort for it.
+ * the building sites and the next builds lack past the stores, then what standing buildings want that the
+ * stores lack. Owner ruling: what the colony makes or digs never sails out. Home never goes under its comfort
+ * for it.
  */
 export function outwardCargo(read: OutwardRead): CargoLine[] {
   const { food, held, spare } = read;
@@ -60,6 +63,7 @@ export function outwardCargo(read: OutwardRead): CargoLine[] {
   }
   for (const list of [read.owed, read.wanted]) {
     for (const good of [...list.keys()].sort((a, b) => a - b)) {
+      if (read.makes.has(good)) continue;
       const lack = (list.get(good) ?? 0) - (held.get(good) ?? 0) - (lines.get(good) ?? 0);
       room = take(lines, good, lack, room, spare(good));
     }
@@ -72,9 +76,9 @@ export interface HomewardRead {
   readonly room: number;
   /** The goods home wants most, in order. */
   readonly staples: readonly number[];
-  /** What the colony's stores hold, and what it keeps of that for its own sites, by good. */
+  /** What the colony's stores hold, and what it keeps of that for its sites and its plan, by good. */
   readonly held: Units;
-  readonly owed: Units;
+  readonly kept: Units;
   /** What home lacks of a staple to its comfort and to its glut line. */
   readonly lackToComfort: (good: number) => number;
   readonly lackToGlut: (good: number) => number;
@@ -104,13 +108,13 @@ function shareOut(lines: Map<number, number>, wants: ReadonlyMap<number, number>
 }
 
 /**
- * The homeward load: staples past what the colony's own sites owe, shared up to home's comfort, then up to
- * its glut, then any finished good the colony holds past its sites. A staple home has at its glut stays,
+ * The homeward load: staples past what the colony keeps, shared up to home's comfort, then up to its glut,
+ * then any finished good the colony holds past that. A staple home has at its glut stays,
  * since a hold unloaded into full stores would only heap at the shore.
  */
 export function homewardCargo(read: HomewardRead): CargoLine[] {
-  const { held, owed } = read;
-  const past = (good: number): number => Math.max(0, (held.get(good) ?? 0) - (owed.get(good) ?? 0));
+  const { held, kept } = read;
+  const past = (good: number): number => Math.max(0, (held.get(good) ?? 0) - (kept.get(good) ?? 0));
   const lines = new Map<number, number>();
   const upTo = (lack: (good: number) => number): Map<number, number> =>
     new Map(read.staples.map((good) => [good, Math.min(past(good), lack(good))]));

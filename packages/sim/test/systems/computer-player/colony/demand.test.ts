@@ -21,6 +21,7 @@ const outward = (read: Partial<OutwardRead>): OutwardRead => ({
   owed: new Map(),
   held: new Map(),
   wanted: new Map(),
+  makes: new Set(),
   spare: () => PLENTY,
   ...read,
 });
@@ -29,7 +30,7 @@ const homeward = (read: Partial<HomewardRead>): HomewardRead => ({
   room: 40,
   staples: [WOOD, STONE],
   held: new Map(),
-  owed: new Map(),
+  kept: new Map(),
   lackToComfort: () => PLENTY,
   lackToGlut: () => PLENTY,
   finished: [],
@@ -68,6 +69,20 @@ describe('an outward load', () => {
       { goodType: WOOD, amount: 8 },
     ]);
   });
+
+  it('never takes what the colony makes or digs itself', () => {
+    const lines = outwardCargo(
+      outward({
+        owed: new Map([
+          [WOOD, 10],
+          [STONE, 4],
+        ]),
+        wanted: new Map([[WOOD, 5]]),
+        makes: new Set([WOOD]),
+      }),
+    );
+    expect(lines).toEqual([{ goodType: STONE, amount: 4 }]);
+  });
 });
 
 describe('a homeward load', () => {
@@ -78,7 +93,7 @@ describe('a homeward load', () => {
           [WOOD, 45],
           [STONE, 45],
         ]),
-        owed: new Map([[WOOD, 12]]),
+        kept: new Map([[WOOD, 12]]),
       }),
     );
     expect(lines).toEqual([

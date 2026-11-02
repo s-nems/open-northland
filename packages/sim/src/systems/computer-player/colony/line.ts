@@ -30,8 +30,10 @@ import { FOOD_COMFORT_UNITS_PER_SETTLER, storedFoodUnits } from '../workforce/fo
 import { SeatSupply } from '../workforce/supply.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
-import { colonists } from './founding.js';
+import { colonists, colonyOrigin } from './founding.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
+import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
+import { colonyMakes, LAND_GOOD_IDS } from './provision.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
 import {
@@ -58,12 +60,6 @@ const MEN_PER_LINE_HAND = 3;
 /** Food kept aboard per hand (authored): an empty hold starves its crew, and two meals outlast a leg. */
 const PROVISIONS_PER_HAND = 2;
 const FOOD_LINE_ID = 'food_simple';
-/** The goods home wants of a colony, first of all. Owner ruling: wood and stone. */
-const STAPLE_GOOD_IDS: readonly string[] = ['wood', 'stone'];
-/** What a colony keeps in store for people who wear or draw it (authored): no bill or shelf sizes it. */
-const COLONY_STOCK_GOODS: readonly { readonly id: string; readonly units: number }[] = [
-  { id: 'shoes', units: 5 },
-];
 /** How long a hold may stand unchanged before the ship goes with what it has (authored). */
 const LEG_STALL_TICKS = minutesToTicks(2);
 /** How long a ship may take over one leg before it is given up at the next mooring (authored: a landing's
@@ -131,6 +127,11 @@ export function enterLeg(env: ColonyEnv, leg: ColonyLineLeg): void {
   live.lastLoad = env.ctx.tick;
 }
 
+/** Whether the leg's load lies aboard, a meal a hand aside. */
+function loaded(env: ColonyEnv, line: LineView): boolean {
+  return holdDone(env.world, line.ship, foodLine(env.ctx), line.crew.length);
+}
+
 /** Whether the hold has stood unchanged past {@link LEG_STALL_TICKS}. */
 export function stalled(env: ColonyEnv, line: LineView): boolean {
   return env.ctx.tick - line.lastLoad >= LEG_STALL_TICKS;
@@ -192,10 +193,19 @@ function wantOrders(ship: Entity, lines: readonly CargoLine[]): PlayerCommand[] 
 
 interface ColonyStores {
   readonly buildings: readonly Entity[];
-  /** What the colony's standing warehouses hold, by good. */
+  /** What the colony's warehouses hold, by good, those still sites included: they own the ground heaps of a
+   *  hold set ashore before a store stands. */
   readonly held: ReadonlyMap<number, number>;
-  /** What its open sites and next build still want, by good. */
+  /** What its open sites and next builds still want, by good. */
   readonly owed: ReadonlyMap<number, number>;
+  /** What it keeps of what it holds: those, the rest of its plan and what its workshops work up. */
+  readonly kept: ReadonlyMap<number, number>;
+  /** What it makes or digs itself. */
+  readonly makes: ReadonlySet<number>;
+}
+
+function addUp(into: Map<number, number>, units: ReadonlyMap<number, number>): void {
+  for (const [good, amount] of units) into.set(good, (into.get(good) ?? 0) + amount);
 }
 
 function colonyStores(env: ColonyEnv, colony: ColonyView): ColonyStores {
@@ -203,34 +213,35 @@ function colonyStores(env: ColonyEnv, colony: ColonyView): ColonyStores {
   const index = contentIndex(ctx.content);
   const buildings = colonyBuildings(env);
   const stores = buildings.filter(
-    (e) =>
-      isBuilt(world, e) &&
-      index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
+    (e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
   );
+  const plan = colonyPlan(env, colony, buildings);
   const owed = sitesShortfalls(world, ctx, buildings);
-  const next = colony.builds.find((b) => !b.placed);
-  const type = next === undefined ? undefined : index.buildingTypeBySlug.get(next.building);
-  for (const line of type === undefined ? [] : (index.constructionBillByBuilding.get(type) ?? []))
-    owed.set(line.goodType, (owed.get(line.goodType) ?? 0) + line.amount);
-  return { buildings, held: stockAtBuildings(world, seat, stores), owed };
+  addUp(owed, billsOf(env, plan.slice(0, COLONY_OPEN_SITES)));
+  const kept = new Map(owed);
+  addUp(kept, billsOf(env, plan.slice(COLONY_OPEN_SITES)));
+  addUp(kept, standingWants(env, buildings));
+  const from = colonyOrigin(env, colony, buildings);
+  return {
+    buildings,
+    held: stockAtBuildings(world, seat, stores),
+    owed,
+    kept,
+    makes: from === null ? new Set() : colonyMakes(env, from, buildings),
+  };
 }
 
-function homeSupply(env: ColonyEnv): SeatSupply {
+export function homeSupply(env: ColonyEnv): SeatSupply {
   const { world, ctx, seat } = env;
   const order = seatBuildOrder(world, ctx, seat, DEFAULT_BUILD_ORDER, computerProfileOf(world, seat));
   return SeatSupply.of(world, ctx, seat, homeBuildings(world, ctx, seat), order);
 }
 
-/** What the colony's standing buildings want in store: a shelf of each workshop input, and its
- *  {@link COLONY_STOCK_GOODS}. */
+/** What the colony's standing buildings want in store: a shelf of each workshop input. */
 function standingWants(env: ColonyEnv, buildings: readonly Entity[]): Map<number, number> {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const wants = new Map<number, number>();
-  for (const { id, units } of COLONY_STOCK_GOODS) {
-    const good = goodTypeByContentId(ctx.content, id);
-    if (good !== undefined) wants.set(good.typeId, units);
-  }
   for (const e of buildings) {
     if (!isBuilt(world, e)) continue;
     const type = world.get(e, Building).buildingType;
@@ -262,7 +273,7 @@ function homeSpare(env: ColonyEnv, supply: SeatSupply): (good: number) => number
 /** The load the home side owes the colony now. */
 function outwardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoLine[] {
   const { ctx } = env;
-  const { buildings, held, owed } = colonyStores(env, colony);
+  const { buildings, held, owed, makes } = colonyStores(env, colony);
   const read: OutwardRead = {
     room: cargoRoom(env, line),
     food: foodLine(ctx),
@@ -271,6 +282,7 @@ function outwardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoL
     owed,
     held,
     wanted: standingWants(env, buildings),
+    makes,
     spare: homeSpare(env, homeSupply(env)),
   };
   return outwardCargo(read);
@@ -279,10 +291,9 @@ function outwardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoL
 /** The load the colony owes home now. */
 function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoLine[] {
   const { ctx } = env;
-  const { buildings, held, owed } = colonyStores(env, colony);
+  const { held, kept } = colonyStores(env, colony);
   const supply = homeSupply(env);
-  const staples = STAPLE_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
-  const kept = standingWants(env, buildings);
+  const staples = LAND_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
   const finished = [...held.keys()]
     .filter((good) => !staples.includes(good) && !kept.has(good) && !isEdibleFoodIn(ctx.content, good))
     .sort((a, b) => a - b);
@@ -290,7 +301,7 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
     room: cargoRoom(env, line),
     staples,
     held,
-    owed,
+    kept,
     lackToComfort: (good) => supply.lackToComfort(good),
     lackToGlut: (good) => {
       const glut = supply.lines(good)?.glut;
@@ -430,7 +441,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     case 'unloadHome':
       return holdFlushed(world, ship) || stalled(env, line) ? beginHomeLoad(env, colony, line) : [];
     case 'loadHome': {
-      if (!holdDone(world, ship) && !stalled(env, line)) return [];
+      if (!loaded(env, line) && !stalled(env, line)) return [];
       if (line.crew.length === 0 || !worthSailing(env, colony, line)) return beginHomeLoad(env, colony, line);
       if (colony.shore === null) return [];
       enterLeg(env, 'sailOut');
@@ -448,7 +459,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
       return wantOrders(ship, load);
     }
     case 'loadColony': {
-      if (!holdDone(world, ship) && !stalled(env, line)) return [];
+      if (!loaded(env, line) && !stalled(env, line)) return [];
       if (colony.berth === null) return [];
       enterLeg(env, 'sailHome');
       return [...pinHold(world, ship), dock(ship, colony.berth)];

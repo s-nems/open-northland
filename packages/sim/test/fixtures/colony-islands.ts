@@ -21,6 +21,7 @@ import {
   makeAiSeat,
   SCOUT,
   SEAT,
+  STOCK_TYPE,
   STONE,
   STONE_HARVEST,
   seatEconomy,
@@ -46,6 +47,8 @@ export const WHEAT = 44;
 const TRADE_SHIP_GOOD = 45;
 export const FOOD = 3;
 const CARGO_GOODS = [WOOD, MUD, STONE, WHEAT, FOOD];
+/** What a warehouse holds of a good, the real one's figure. */
+const STORE_SLOT = 45;
 
 /** Cells: the west island, the strait, the east island; rows run the map's height. */
 const CELLS = { width: 120, height: 60 };
@@ -103,6 +106,11 @@ export function colonyContent(tradeShip = false): ContentSet {
   const base = aiContent();
   return parseContentSet({
     ...base,
+    buildings: base.buildings.map((b) =>
+      b.typeId === STOCK_TYPE
+        ? { ...b, stock: CARGO_GOODS.map((goodType) => ({ goodType, capacity: STORE_SLOT, initial: 0 })) }
+        : b,
+    ),
     goods: [
       ...base.goods,
       { typeId: WHEAT, id: 'wheat', weight: 1 },

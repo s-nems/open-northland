@@ -49,11 +49,14 @@ export function wantManifest(ctx: SystemContext, ship: Entity): PlayerCommand[] 
   }));
 }
 
-/** Whether every line asked of `ship`'s hold lies aboard. */
-export function holdDone(world: World, ship: Entity): boolean {
+/** Whether every line asked of `ship`'s hold lies aboard, but `eating` units of `food`: a crew eats from the
+ *  hold while it loads, and the good a colony has none of would hold the ship to the stall limit. */
+export function holdDone(world: World, ship: Entity, food: number | null = null, eating = 0): boolean {
   const stock = world.tryGet(ship, VehicleStock);
   if (stock === undefined) return false;
-  for (const line of stock.lines.values()) if (line.current < line.wanted) return false;
+  for (const [good, line] of stock.lines) {
+    if (line.current < line.wanted - (good === food ? eating : 0)) return false;
+  }
   return vehicleLoad(stock) > 0;
 }
 

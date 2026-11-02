@@ -1,0 +1,397 @@
+import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
+import { Building, FishSwarm, JobAssignment, Settler, UnderConstruction } from '../../../components/index.js';
+import type { PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
+import type { Entity, World } from '../../../ecs/world.js';
+import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
+import type { NodeId } from '../../../nav/terrain/index.js';
+import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
+import { nearestRingNode } from '../../ai-shared/node-geometry.js';
+import { isBuilt } from '../../ai-shared/seat-roster.js';
+import { builderJobOf } from '../../ai-shared/workforce/pool.js';
+import type { SystemContext } from '../../context.js';
+import { heldGatherGood } from '../../economy/gather-goods.js';
+import { liveWorkFlag } from '../../economy/work-flag.js';
+import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
+import { hunterJobType, isFisherJob, isHunterJob, isScoutJob, scoutJobType } from '../../readviews/index.js';
+import { interactionCell } from '../../settlers/targets/index.js';
+import { networkLimitAt } from '../../signposts/index.js';
+import { fishSwarmsNearNode } from '../../spatial/fish.js';
+import { assignedWorkers } from '../../stores/assigned-workers.js';
+import { stockAtBuildings } from '../../stores/index.js';
+import { isCarrierJob } from '../../stores/workplace.js';
+import {
+  knownResourceTest,
+  reachableResourceTest,
+  type WorkableTest,
+  workableResourceTest,
+} from '../live-resources.js';
+import { genericCollectorJob } from '../workforce/collectors/wanted-goods.js';
+import { FISHER_FLAG_MAX_DISTANCE_NODES, FISHING_TRIP_RADIUS_NODES } from '../workforce/fisher.js';
+import {
+  claimFlagNode,
+  collectorSpot,
+  type FlagGround,
+  flagGround,
+  legalFlagNodeTest,
+  type TakenFlagNodes,
+} from '../workforce/flag-spots.js';
+import { homeSupply } from './line.js';
+import { billsOf, colonyPlan } from './plan.js';
+import { LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
+import type { ColonyEnv, ColonyView } from './voyage.js';
+
+/** The builders a colony keeps once nothing is left to raise (authored): a pair for a lost building, and
+ *  every other man digs, which is what the colony is for. */
+const BUILDERS_AT_REST = 2;
+
+type Post = 'builder' | 'carrier' | LandGood | 'hunter' | 'fisher' | 'scout';
+
+/**
+ * The men's posts, filled in this order as the party's size allows (authored). 4 builders, 2 carriers, 4 on
+ * wood, 3 on stone, 2 hunters, 2 fishers and a scout make 18, more than the largest party's 15, so the
+ * tail is what a small party goes without: gatherers and builders first, or a party of 8 digs nothing.
+ */
+const POSTS: readonly Post[] = [
+  'builder',
+  'builder',
+  'wood',
+  'carrier',
+  'builder',
+  'wood',
+  'stone',
+  'hunter',
+  'carrier',
+  'scout',
+  'wood',
+  'builder',
+  'stone',
+  'fisher',
+  'hunter',
+  'wood',
+  'stone',
+  'fisher',
+];
+
+function isDug(post: Post | null): post is LandGood {
+  return post !== null && (LAND_GOOD_IDS as readonly string[]).includes(post);
+}
+
+/** One founding decision's reads. */
+export interface FoundingRead {
+  readonly buildings: readonly Entity[];
+  readonly store: Entity | null;
+  readonly origin: HalfCellNode;
+}
+
+/** The post `e` holds, read from the world, or null for a man free to take one. */
+function postOf(world: World, ctx: SystemContext, e: Entity, builder: number | null): Post | null {
+  const job = world.get(e, Settler).jobType;
+  if (isScoutJob(ctx.content, job)) return 'scout';
+  if (isFisherJob(ctx.content, job)) return 'fisher';
+  if (job !== null && isHunterJob(ctx.content, job)) return 'hunter';
+  if (job !== null && world.has(e, JobAssignment) && isCarrierJob(ctx, job)) return 'carrier';
+  if (liveWorkFlag(world, e) !== undefined) {
+    const good = heldGatherGood(world, ctx, e);
+    return LAND_GOOD_IDS.find((id) => goodTypeByContentId(ctx.content, id)?.typeId === good) ?? null;
+  }
+  return job === builder ? 'builder' : null;
+}
+
+/** Which of a good's resources `origin`'s men may work: known to the seat and inside its reach. */
+function workableFrom(env: ColonyEnv, origin: HalfCellNode, ground: FlagGround): WorkableTest {
+  const { world, ctx, terrain, seat } = env;
+  const reachable = reachableResourceTest(
+    world,
+    ctx,
+    terrain,
+    origin,
+    workableResourceTest(world, ctx, terrain),
+  );
+  const known = knownResourceTest(world, ctx, seat);
+  const door = terrain.nodeAtClamped(origin.hx, origin.hy);
+  const { limit } = ground;
+  return (e) =>
+    reachable(e) &&
+    (known === null || known(e)) &&
+    (limit === null || limit.allowsNode(interactionCell(world, ctx, terrain, e, door)));
+}
+
+/** The nearest live fish shore from `origin` a flag may stand on, or null. */
+function fishSpot(
+  env: ColonyEnv,
+  origin: HalfCellNode,
+  ground: FlagGround,
+  taken: TakenFlagNodes,
+): HalfCellNode | null {
+  const { world, terrain } = env;
+  const land = terrain.componentOf(terrain.nodeAtClamped(origin.hx, origin.hy));
+  let best: { readonly node: number; readonly distance: number } | null = null;
+  for (const e of fishSwarmsNearNode(world, origin.hx, origin.hy, FISHING_TRIP_RADIUS_NODES)) {
+    const swarm = world.get(e, FishSwarm);
+    if (swarm.count <= 0 || swarm.shore === null || terrain.componentOf(swarm.shore) !== land) continue;
+    const { x, y } = terrain.coordsOf(swarm.shore);
+    const distance = nodeManhattan({ hx: x, hy: y }, origin);
+    if (best === null || distance < best.distance || (distance === best.distance && swarm.shore < best.node))
+      best = { node: swarm.shore, distance };
+  }
+  if (best === null) return null;
+  const { x, y } = terrain.coordsOf(best.node as NodeId);
+  return nearestRingNode(x, y, 0, FISHER_FLAG_MAX_DISTANCE_NODES, origin, legalFlagNodeTest(ground, taken));
+}
+
+/** The orders that put `man` on `post`, or null while the post cannot take him. */
+function postOrders(
+  env: ColonyEnv,
+  man: Entity,
+  post: Post,
+  read: FoundingRead,
+  ground: () => FlagGround,
+  taken: TakenFlagNodes,
+): PlayerCommand[] | null {
+  const { world, ctx } = env;
+  const subject = needSubjectOf(world, man);
+  const qualified = (job: number): boolean => settlerMeetsNeed(world, ctx, subject, 'job', job);
+  if (post === 'builder') {
+    const job = builderJobOf(ctx);
+    return job === null ? null : [{ kind: 'setJob', entity: man, jobType: job }];
+  }
+  if (post === 'scout') {
+    const job = scoutJobType(ctx.content);
+    return job === null || !qualified(job) ? null : [{ kind: 'setJob', entity: man, jobType: job }];
+  }
+  if (isDug(post)) {
+    const good = goodTypeByContentId(ctx.content, post);
+    const job = genericCollectorJob(ctx);
+    if (good === undefined || job === null) return null;
+    if (!settlerMeetsNeed(world, ctx, subject, 'good', good.typeId)) return null;
+    const flags = ground();
+    const spot = collectorSpot(
+      world,
+      flags,
+      read.origin,
+      good.typeId,
+      taken,
+      workableFrom(env, read.origin, flags),
+    );
+    if (spot === null) return null;
+    claimFlagNode(taken, spot);
+    return [
+      { kind: 'setJob', entity: man, jobType: job },
+      { kind: 'setWorkFlag', entity: man, x: spot.hx, y: spot.hy },
+      { kind: 'setGatherGood', entity: man, goodType: good.typeId },
+    ];
+  }
+  const store = read.store;
+  if (store === null || !isBuilt(world, store)) return null;
+  const type = contentIndex(ctx.content).buildings.get(world.get(store, Building).buildingType);
+  const seatJob = (test: (job: number) => boolean): number | undefined =>
+    type?.workers.find((slot) => test(slot.jobType))?.jobType;
+  if (post === 'carrier') {
+    const job = seatJob((j) => isCarrierJob(ctx, j));
+    return job === undefined
+      ? null
+      : [{ kind: 'assignWorker', entity: man, building: store, jobPriority: [job] }];
+  }
+  if (post === 'hunter') {
+    const job = hunterJobType(ctx.content);
+    const offered = job !== null && seatJob((j) => j === job) !== undefined;
+    return !offered || job === null || !qualified(job)
+      ? null
+      : [{ kind: 'assignWorker', entity: man, building: store, jobPriority: [job] }];
+  }
+  const job = seatJob((j) => isFisherJob(ctx.content, j));
+  if (job === undefined || !qualified(job)) return null;
+  const spot = fishSpot(env, read.origin, ground(), taken);
+  if (spot === null) return null;
+  claimFlagNode(taken, spot);
+  return [
+    { kind: 'assignWorker', entity: man, building: store, jobPriority: [job] },
+    { kind: 'setWorkFlag', entity: man, x: spot.hx, y: spot.hy },
+  ];
+}
+
+/** Whether the colony has raised all it means to, for now. */
+function atRest(env: ColonyEnv, colony: ColonyView, read: FoundingRead): boolean {
+  const { world } = env;
+  return (
+    colonyPlan(env, colony, read.buildings).length === 0 &&
+    !read.buildings.some((e) => world.has(e, UnderConstruction))
+  );
+}
+
+/** The units the colony's standing stores can still take of a good, unbounded while none stands: its
+ *  gatherers work from the first day and heap what they dig. */
+function storeRoom(env: ColonyEnv, buildings: readonly Entity[]): (good: number) => number {
+  const { world, ctx, seat } = env;
+  const index = contentIndex(ctx.content);
+  const stores = buildings.filter(
+    (e) =>
+      isBuilt(world, e) &&
+      index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
+  );
+  if (stores.length === 0) return () => Number.POSITIVE_INFINITY;
+  const held = stockAtBuildings(world, seat, stores);
+  return (good) => {
+    let room = -(held.get(good) ?? 0);
+    for (const e of stores)
+      room += index.stockSlotCapacityByBuilding.get(world.get(e, Building).buildingType)?.get(good) ?? 0;
+    return room;
+  };
+}
+
+/**
+ * What the colony's men dig now, from what its land holds: wood and stone while its stores have room, as home
+ * always wants them, and clay and iron while the colony's own plan or workshops or home's stock call for
+ * them. A good at the stores' cap is left, or men stand by a full warehouse while another good runs short.
+ */
+function digGoods(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Set<LandGood> {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const room = storeRoom(env, read.buildings);
+  const called = billsOf(env, colonyPlan(env, colony, read.buildings));
+  for (const e of read.buildings) {
+    const inputs = index.mergedRecipeByBuilding.get(world.get(e, Building).buildingType)?.inputs;
+    for (const input of inputs ?? []) called.set(input.goodType, input.amount);
+  }
+  let supply: ReturnType<typeof homeSupply> | null = null;
+  const wanted = (id: LandGood, good: number): boolean => {
+    if (id === 'wood' || id === 'stone' || (called.get(good) ?? 0) > 0) return true;
+    supply ??= homeSupply(env);
+    return supply.lackToComfort(good) > 0;
+  };
+  const digs = new Set<LandGood>();
+  for (const id of LAND_GOOD_IDS) {
+    const good = goodTypeByContentId(ctx.content, id)?.typeId;
+    if (good === undefined || room(good) <= 0 || !wanted(id, good)) continue;
+    if (landHolds(env, read.origin, good)) digs.add(id);
+  }
+  return digs;
+}
+
+/** Each standing workshop's open seats, operators first and ascending by building: the trades men of the
+ *  colony have earned sit down, taken off `spare` as they do. A gatherer's seat at a workshop stays open:
+ *  the colony's diggers fill its store. */
+function crewOrders(env: ColonyEnv, read: FoundingRead, spare: Entity[]): PlayerCommand[] {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const commands: PlayerCommand[] = [];
+  const earned = (man: Entity, job: number): boolean =>
+    settlerMeetsNeed(world, ctx, needSubjectOf(world, man), 'job', job);
+  const seat = (type: BuildingType, e: Entity, carriers: boolean): void => {
+    const held = assignedWorkers(world, e);
+    for (const { jobType, count } of type.workers) {
+      if (isCarrierJob(ctx, jobType) !== carriers || (genericCollectorJob(ctx) ?? -1) === jobType) continue;
+      let open = count - held.filter((w) => world.get(w, Settler).jobType === jobType).length;
+      while (open-- > 0) {
+        const at = spare.findIndex((man) => earned(man, jobType));
+        const man = spare[at];
+        if (man === undefined) return;
+        spare.splice(at, 1);
+        commands.push({ kind: 'assignWorker', entity: man, building: e, jobPriority: [jobType] });
+      }
+    }
+  };
+  for (const carriers of [false, true]) {
+    for (const e of read.buildings) {
+      const type = index.buildings.get(world.get(e, Building).buildingType);
+      if (type?.kind === BUILDING_KIND.workplace && isBuilt(world, e)) seat(type, e, carriers);
+    }
+  }
+  return commands;
+}
+
+/** Whether `e` works a colony workshop: his seat is not a post of {@link POSTS}. */
+function atWorkshop(env: ColonyEnv, e: Entity): boolean {
+  const { world, ctx } = env;
+  const workplace = world.tryGet(e, JobAssignment)?.workplace;
+  const building = workplace === undefined ? undefined : world.tryGet(workplace, Building);
+  if (building === undefined) return false;
+  return contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.workplace;
+}
+
+/** The posts of {@link POSTS} the men's number reaches that none holds, handed to the free men and to the
+ *  builders past their share, then the workshops' seats; with nothing left to raise, the rest dig, the
+ *  least dug good first; a good a site needs and nobody digs goes first of all, as no ship brings what the
+ *  land holds; a free man with no post to take builds. */
+export function fillPosts(
+  env: ColonyEnv,
+  colony: ColonyView,
+  men: readonly Entity[],
+  read: FoundingRead,
+): PlayerCommand[] {
+  const { world, ctx, terrain, seat } = env;
+  const builder = builderJobOf(ctx);
+  const held = new Map<Post, number>();
+  const builders: Entity[] = [];
+  const free: Entity[] = [];
+  const posted = men.filter((man) => !atWorkshop(env, man));
+  const digs = digGoods(env, colony, read);
+  for (const man of posted) {
+    const post = postOf(world, ctx, man, builder);
+    // A man at a full store's good moves on while another good wants digging.
+    if (post === null || (isDug(post) && !digs.has(post) && digs.size > 0)) free.push(man);
+    else held.set(post, (held.get(post) ?? 0) + 1);
+    if (post === 'builder') builders.push(man);
+  }
+  const dug = new Map<LandGood, number>();
+  for (const id of LAND_GOOD_IDS) dug.set(id, held.get(id) ?? 0);
+  const resting = atRest(env, colony, read);
+  const table = POSTS.slice(0, posted.length).filter((post) => !isDug(post) || digs.has(post));
+  const called = billsOf(env, colonyPlan(env, colony, read.buildings));
+  const urgent = LAND_GOOD_IDS.filter((id) => {
+    const good = goodTypeByContentId(ctx.content, id)?.typeId;
+    return digs.has(id) && (dug.get(id) ?? 0) === 0 && good !== undefined && (called.get(good) ?? 0) > 0;
+  });
+  const open = [...urgent, ...table].filter((post) => {
+    const standing = held.get(post) ?? 0;
+    held.set(post, standing - 1);
+    return standing <= 0;
+  });
+  // Men who built while their post could not take them yet go to it now.
+  const past = resting
+    ? builders.slice(BUILDERS_AT_REST)
+    : builders.slice(0, Math.max(0, held.get('builder') ?? 0));
+  const spare = [...free, ...past];
+  const commands = crewOrders(env, read, spare);
+  if (spare.length === 0) return commands;
+  let flags: FlagGround | null = null;
+  const ground = (): FlagGround => {
+    flags ??= flagGround(
+      world,
+      ctx,
+      terrain,
+      networkLimitAt(world, terrain, seat, read.origin.hx, read.origin.hy),
+      'aimed',
+    );
+    return flags;
+  };
+  const taken: TakenFlagNodes = new Set();
+  for (const post of open) {
+    const man = spare[0];
+    if (man === undefined) break;
+    const orders = postOrders(env, man, post, read, ground, taken);
+    if (orders === null) continue;
+    commands.push(...orders);
+    spare.shift();
+    if (isDug(post)) dug.set(post, (dug.get(post) ?? 0) + 1);
+  }
+  while (resting) {
+    const man = spare[0];
+    if (man === undefined) break;
+    const goods = [...digs].sort((a, b) => (dug.get(a) ?? 0) - (dug.get(b) ?? 0));
+    const good = goods.find((g) => {
+      const orders = postOrders(env, man, g, read, ground, taken);
+      if (orders !== null) commands.push(...orders);
+      return orders !== null;
+    });
+    if (good === undefined) break;
+    dug.set(good, (dug.get(good) ?? 0) + 1);
+    spare.shift();
+  }
+  if (builder !== null)
+    for (const man of spare)
+      if (world.get(man, Settler).jobType !== builder)
+        commands.push({ kind: 'setJob', entity: man, jobType: builder });
+  return commands;
+}

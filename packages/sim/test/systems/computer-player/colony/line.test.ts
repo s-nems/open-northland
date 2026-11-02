@@ -75,6 +75,7 @@ describe('a colony line', () => {
     const ctx = ctxOf(sim);
     for (const e of crew) expect(homeSettlers(sim.world, ctx, SEAT)).not.toContain(e);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => leg(sim) === 'sailOut')).toBe(true);
+    sim.step();
     expect(aboard(sim, ship, FOOD)).toBeGreaterThan(0);
     const wanted = sim.world.get(ship, VehicleStock).lines;
     for (const line of wanted.values()) expect(line.wanted).toBe(line.current);
