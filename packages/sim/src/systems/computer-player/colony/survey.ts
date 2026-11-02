@@ -101,8 +101,10 @@ export interface ColonySite {
   /** The centre zone's middle node. */
   readonly centre: HalfCellNode;
   readonly score: number;
-  /** Another seat's start lies nearer: it weighs the same block, so this seat looks there last. */
+  /** Another seat's start lies nearer: it weighs the same block, so this seat looks there late. */
   readonly contested: boolean;
+  /** An earlier seat's first pick lies in range of it: this seat looks there last. */
+  readonly crowded: boolean;
 }
 
 const candidatesByBrief = new WeakMap<MapBriefView, ReadonlyMap<number, readonly ColonySite[]>>();
@@ -234,17 +236,20 @@ function scanCandidates(brief: MapBriefView, seat: number): readonly ColonySite[
     const tally = tallyBlock(brief, zone, land, hexDistance(home, centre));
     if (tally.free < MIN_FREE_NODES || tally.wood < MIN_WOOD || tally.stone < MIN_STONE) continue;
     const contested = rivals.some((rival) => hexDistance(rival, centre) < hexDistance(home, centre));
-    sites.push({ zone, land, centre, score: siteScore(tally), contested });
+    sites.push({ zone, land, centre, score: siteScore(tally), contested, crowded: false });
   }
   return sites;
 }
 
 const ranked = (a: ColonySite, b: ColonySite): number =>
-  Number(a.contested) - Number(b.contested) || b.score - a.score || a.zone - b.zone;
+  Number(a.crowded) - Number(b.crowded) ||
+  Number(a.contested) - Number(b.contested) ||
+  b.score - a.score ||
+  a.zone - b.zone;
 
 /** Each seat's sites: what {@link scanCandidates} finds, seats ascending, a site within
- *  {@link COLONY_RANGE_NODES} of an earlier seat's first pick taken for contested too, or two seats sail for
- *  one coast and the later turns back at the range rule. */
+ *  {@link COLONY_RANGE_NODES} of an earlier seat's first pick last of all, or two seats sail for one coast
+ *  and the later turns back at the range rule. */
 function spreadSeats(brief: MapBriefView): Map<number, readonly ColonySite[]> {
   const bySeat = new Map<number, readonly ColonySite[]>();
   const picks: HalfCellNode[] = [];
@@ -252,7 +257,7 @@ function spreadSeats(brief: MapBriefView): Map<number, readonly ColonySite[]> {
     const sites = scanCandidates(brief, player)
       .map((site) => ({
         ...site,
-        contested: site.contested || picks.some((at) => hexDistance(at, site.centre) <= COLONY_RANGE_NODES),
+        crowded: picks.some((at) => hexDistance(at, site.centre) <= COLONY_RANGE_NODES),
       }))
       .sort(ranked);
     bySeat.set(player, sites);
