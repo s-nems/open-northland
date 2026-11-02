@@ -1,8 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
-  aiControlEntity,
   Building,
-  ComputerColony,
   Female,
   Position,
   Resource,
@@ -44,6 +42,7 @@ import {
   colonyIslands,
   colonyState,
   colonyWorld,
+  editColony,
   mooredShip,
   SHIP_AT,
   SMALL_SHIP,
@@ -278,9 +277,7 @@ describe('a colony sails', () => {
     const ctx = ctxOf(sim);
     for (const e of everyBuildingOf(sim.world, SEAT))
       if (colonyMember(sim.world, ctx, SEAT, e) && sim.world.has(e, UnderConstruction)) sim.world.destroy(e);
-    const carrier = aiControlEntity(sim.world, SEAT);
-    if (carrier === null) throw new Error('no AI seat');
-    for (const build of sim.world.mut(carrier, ComputerColony).builds) build.placed = true;
+    for (const build of editColony(sim).builds) build.placed = true;
     expect(stepUntil(sim, GATHER_DUE_TICKS, () => builders() <= BUILDERS_AT_REST)).toBe(true);
   });
 });

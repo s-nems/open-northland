@@ -13,7 +13,7 @@ import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
-import { colonyLandOf, colonyWantsShips, everyBuildingOf } from '../ai-shared/home-roster.js';
+import { colonyWantsShips, everyBuildingOf, liveColonyLands } from '../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
@@ -254,7 +254,7 @@ export function seatNeedsShips(world: World, ctx: SystemContext, player: number)
 
 /**
  * Whether `ship` is lost to `seat` though afloat: nobody aboard, nothing driving it, adrift or moored on a
- * land that is neither the seat's, its colony's nor the rival's it lands on, where nobody of the seat stands
+ * land that is neither the seat's, a colony's nor the rival's it lands on, where nobody of the seat stands
  * to take the helm. The fleet counts it out, so the joinery builds its replacement.
  */
 export function strandedShip(world: World, ctx: SystemContext, seat: number, ship: Entity): boolean {
@@ -268,7 +268,7 @@ export function strandedShip(world: World, ctx: SystemContext, seat: number, shi
   const base = seatBaseOf(world, ctx, seat);
   const home = base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
   const route = seaRouteOf(world, ctx, seat);
-  return land !== home && land !== colonyLandOf(world, seat) && land !== route?.rival;
+  return land !== home && !liveColonyLands(world, seat).includes(land) && land !== route?.rival;
 }
 
 /** How far apart, in half-cell nodes, ships' shore points lie, so the hulls moor side by side. */

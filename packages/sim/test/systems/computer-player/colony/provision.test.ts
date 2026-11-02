@@ -1,10 +1,15 @@
 import { parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
-import { aiControlEntity, ComputerColony } from '../../../../src/components/index.js';
+import { NO_COMPONENT } from '../../../../src/nav/terrain/index.js';
 import { everyBuildingOf } from '../../../../src/systems/ai-shared/home-roster.js';
 import { colonyMakes, landHolds } from '../../../../src/systems/computer-player/colony/provision.js';
-import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
-import { colonyContent, colonyWorld, WHEAT } from '../../../fixtures/colony-islands.js';
+import {
+  blankColony,
+  colonyContent,
+  colonyWorld,
+  looseColonyEnv,
+  WHEAT,
+} from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
 import { FARM_TYPE, MUD, SEAT, STONE, VIKING, WOOD } from '../support.js';
 
@@ -23,18 +28,8 @@ function farmingContent() {
 
 function setup() {
   const sim = colonyWorld(SEED, farmingContent());
-  const ctx = ctxOf(sim);
-  const terrain = ctx.terrain;
-  const carrier = aiControlEntity(sim.world, SEAT);
-  if (terrain === undefined || carrier === null) throw new Error('setup');
-  const env: ColonyEnv = {
-    world: sim.world,
-    ctx,
-    terrain,
-    seat: SEAT,
-    carrier,
-    edit: () => sim.world.mut(carrier, ComputerColony),
-  };
+  const _ctx = ctxOf(sim);
+  const env = looseColonyEnv(sim, blankColony(NO_COMPONENT));
   return { sim, env };
 }
 

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
-  ComputerColony,
   Health,
   Rider,
   Settler,
@@ -34,6 +33,7 @@ import {
   colonyIslands,
   colonyState,
   colonyWorld,
+  editColony,
   FOOD,
   mooredShip,
   SMALL_SHIP,
@@ -205,9 +205,7 @@ describe('a colony line', () => {
     stepUntil(sim, LEG_DUE_TICKS, () => leg(sim) === 'unloadHome');
     const ctx = ctxOf(sim);
     const stray = homeSettlers(sim.world, ctx, SEAT)[0] as Entity;
-    const carrier = aiControlEntity(sim.world, SEAT);
-    if (carrier === null) throw new Error('no AI seat');
-    sim.world.mut(carrier, ComputerColony).rest.push(stray);
+    editColony(sim).rest.push(stray);
     expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).not.toContain(stray);
     expect(stepUntil(sim, LEG_DUE_TICKS, () => leg(sim) === 'loadHome')).toBe(true);
     expect(colonyState(sim)?.rest).not.toContain(stray);
@@ -233,14 +231,14 @@ describe('a colony line', () => {
 describe('a line under fire', () => {
   it('marks where its hull fell, sails with the fewest hands and owes no ship once no way is clear', () => {
     const { sim, ship } = linedWorld();
-    const carrier = aiControlEntity(sim.world, SEAT) as Entity;
+    const _carrier = aiControlEntity(sim.world, SEAT) as Entity;
     sim.world.mut(ship, Health).hitpoints -= HULL_HIT;
     stepUntil(sim, ROUND_DUE_TICKS, () => (colonyState(sim)?.dangers.length ?? 0) > 0);
     expect(colonyState(sim)?.dangers).toHaveLength(1);
     expect(stepUntil(sim, ROUND_DUE_TICKS, () => leg(sim) === 'loadHome')).toBe(true);
     expect(colonyState(sim)?.line?.crew.length).toBeLessThanOrEqual(LINE_CREW_LEAST);
     // The strait runs the map's height: fire across all of it leaves no way round.
-    sim.world.mut(carrier, ComputerColony).dangers = STRAIT_ACROSS.map((hy) => ({ hx: STRAIT_MID_HX, hy }));
+    editColony(sim).dangers = STRAIT_ACROSS.map((hy) => ({ hx: STRAIT_MID_HX, hy }));
     expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
     removeVehicle(sim.world, ctxOf(sim), ship, 'destroyed');
     expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.line === null)).toBe(true);

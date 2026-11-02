@@ -1,5 +1,6 @@
 import {
   type ColonyScout,
+  type ColonyState,
   ComputerColony,
   type ComputerColonyState,
   Female,
@@ -38,17 +39,35 @@ import { shoreWithStore } from './spot.js';
 import { homeStockOf } from './stock.js';
 import { colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 
-export type ColonyView = DeepReadonly<ComputerColonyState>;
+export type ColonyView = DeepReadonly<ColonyState>;
 
-/** One colony decision's world. {@link ColonyEnv.edit} acquires the state for a change, and only then: each
- *  write drops the seat's home view. */
-export interface ColonyEnv {
+/** One seat's world for a colony decision. */
+export interface SeatEnv {
   readonly world: World;
   readonly ctx: SystemContext;
   readonly terrain: TerrainGraph;
   readonly seat: number;
   readonly carrier: Entity;
-  readonly edit: () => ComputerColonyState;
+}
+
+/** One colony's decision. `edit` and `editSeat` acquire the state for a change, and only then: each write
+ *  drops the seat's home view. */
+export interface ColonyEnv extends SeatEnv {
+  /** The colony itself, read-only and live: an edit shows through it. */
+  readonly colony: ColonyView;
+  readonly edit: () => ColonyState;
+  readonly editSeat: () => ComputerColonyState;
+}
+
+/** The decision of the seat's `colony`, one of its live records. */
+export function colonyEnv(seat: SeatEnv, colony: ColonyView): ColonyEnv {
+  const editSeat = (): ComputerColonyState => seat.world.mut(seat.carrier, ComputerColony);
+  const edit = (): ColonyState => {
+    const live = editSeat().colonies.find((held) => held === colony);
+    if (live === undefined) throw new Error(`seat ${seat.seat} no longer holds the colony it is editing`);
+    return live;
+  };
+  return { ...seat, colony, edit, editSeat };
 }
 
 /** The civilians a seat holds before it looks for a site (authored from the home island's size: a colony
@@ -147,14 +166,12 @@ function siteCoast(env: ColonyEnv, ship: Entity, colony: ColonyView): HalfCellNo
   return coast;
 }
 
-/** A fresh colony state on `site`, keeping what the seat learned from `was`. */
+/** A fresh colony on `site`, after `failures` lost voyages. */
 function settledOn(
-  env: ColonyEnv,
+  env: SeatEnv,
   site: { readonly land: number; readonly centre: HalfCellNode },
-  rejected: readonly number[],
   failures: number,
-  retryAt: number,
-): ComputerColonyState {
+): ColonyState {
   return {
     phase: 'siteChosen',
     since: env.ctx.tick,
@@ -167,8 +184,6 @@ function settledOn(
     people: [],
     rest: [],
     failures,
-    rejected: [...rejected],
-    retryAt,
     builds: [],
     line: null,
     overflow: [],
@@ -178,11 +193,19 @@ function settledOn(
 }
 
 /** A seat with no colony and civilians enough takes the survey's best site, or stays as it is. */
-export function chooseSite(env: ColonyEnv): void {
+export function chooseSite(env: SeatEnv): void {
   const { world, ctx, seat, carrier } = env;
   if (civilianCount(world, ctx, seat) < COLONY_FROM_CIVILIANS) return;
   const site = surveyColonySite(world, ctx, seat, []);
-  if (site !== null) world.add(carrier, ComputerColony, settledOn(env, site, [], 0, 0));
+  if (site !== null)
+    world.add(carrier, ComputerColony, { colonies: [settledOn(env, site, 0)], rejected: [], retryAt: 0 });
+}
+
+/** The seat lets the colony's plan go, and with it, when it was the last, what its survey learned. */
+function dropColony(env: ColonyEnv): void {
+  const state = env.editSeat();
+  state.colonies = state.colonies.filter((held) => held !== env.colony);
+  if (state.colonies.length === 0) env.world.remove(env.carrier, ComputerColony);
 }
 
 /** Move on from a site the seat lost: past {@link COLONY_MAX_FAILURES} the colony is abandoned where it
@@ -199,21 +222,26 @@ function nextSite(env: ColonyEnv, colony: ColonyView): void {
     live.rest = [];
     return;
   }
-  const site = surveyColonySite(world, ctx, seat, colony.rejected);
+  const site = surveyColonySite(world, ctx, seat, world.get(carrier, ComputerColony).rejected);
   if (site === null) {
-    world.remove(carrier, ComputerColony);
+    dropColony(env);
     return;
   }
-  const retryAt = colony.failures > 0 ? ctx.tick + COLONY_RETRY_TICKS : 0;
-  Object.assign(env.edit(), settledOn(env, site, colony.rejected, colony.failures, retryAt));
+  env.editSeat().retryAt = colony.failures > 0 ? ctx.tick + COLONY_RETRY_TICKS : 0;
+  Object.assign(env.edit(), settledOn(env, site, colony.failures));
+}
+
+/** Add the site's zone to the seat's rejected ones. */
+function rejectZone(env: ColonyEnv, colony: ColonyView): void {
+  const zone = siteZone(env.world, colony);
+  const state = env.editSeat();
+  if (!state.rejected.includes(zone)) state.rejected.push(zone);
 }
 
 /** Give the site up for good and ask {@link nextSite}. */
 function rejectSite(env: ColonyEnv, colony: ColonyView): void {
-  const zone = siteZone(env.world, colony);
-  const live = env.edit();
-  if (!live.rejected.includes(zone)) live.rejected.push(zone);
-  nextSite(env, live);
+  rejectZone(env, colony);
+  nextSite(env, colony);
 }
 
 /** The spare man on `home` hungry the least, the helm of a scout ship: it sails with an empty hold, and on
@@ -238,8 +266,8 @@ function fedHelm(env: ColonyEnv, home: number): Entity | undefined {
  * gone unclear, or with no shore the ship can land at, is rejected.
  */
 export function claimScoutShip(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
-  const { world, ctx, terrain, seat } = env;
-  if (ctx.tick < colony.retryAt) return [];
+  const { world, ctx, terrain, seat, carrier } = env;
+  if (ctx.tick < world.get(carrier, ComputerColony).retryAt) return [];
   const home = homeLandOf(env);
   const ship = home === NO_COMPONENT ? undefined : freeShips(env, home).at(-1);
   const berth = ship === undefined ? null : mooringOf(world, ship);
@@ -269,11 +297,8 @@ export function claimScoutShip(env: ColonyEnv, colony: ColonyView): PlayerComman
 
 /** Turn every held ship for home, counting a failure, the site rejected with `reject`. */
 function turnHome(env: ColonyEnv, reject: boolean): PlayerCommand[] {
+  if (reject) rejectZone(env, env.colony);
   const live = env.edit();
-  if (reject) {
-    const zone = siteZone(env.world, live);
-    if (!live.rejected.includes(zone)) live.rejected.push(zone);
-  }
   live.failures++;
   live.phase = 'returning';
   live.since = env.ctx.tick;
@@ -516,7 +541,7 @@ export function afterLanding(env: ColonyEnv, colony: ColonyView): PlayerCommand[
 }
 
 /** A voyage with no helm or hull left to bring home: the scout ship is let go. */
-function loseScout(env: ColonyEnv, colony: ColonyView): void {
+function loseScout(env: ColonyEnv): void {
   const live = env.edit();
   live.failures++;
   live.scout = null;
@@ -537,14 +562,14 @@ export function scouting(
   const { ship, helm } = scout;
   const elapsed = ctx.tick - colony.since;
   if (!world.has(ship, Vehicle) || !world.isAlive(helm)) {
-    loseScout(env, colony);
+    loseScout(env);
     return [];
   }
   if (elapsed >= SEA_SCOUT_TRIP_TIMEOUT_TICKS) return turnHome(env, false);
   const berth = colony.berth;
   if (scout.leg === 0 && !crewed(world, ship)) {
     if (elapsed < HELM_BOARD_TICKS || berth === null) return [];
-    loseScout(env, colony);
+    loseScout(env);
     return [unloadAt(ship, berth)];
   }
   if (!lyingStill(world, ship) || berth === null) return [];

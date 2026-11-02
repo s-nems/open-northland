@@ -51,6 +51,7 @@ import { findVehicleSite } from '../../../../src/systems/footprint/index.js';
 import type { SystemContext } from '../../../../src/systems/index.js';
 import { createVehicle, removeVehicle } from '../../../../src/systems/vehicles/index.js';
 import { aiContent } from '../../../fixtures/ai-content.js';
+import { blankColony, editColony } from '../../../fixtures/colony-islands.js';
 import {
   BARRACKS_TYPE,
   BUILDER,
@@ -247,24 +248,9 @@ function fleetContent(hidesInShips = false): ContentSet {
 
 /** A colony waiting for its second ship; the case adds the scout ship. */
 const fittingOutColony = (scout: ColonyScout): ComputerColonyState => ({
-  phase: 'fittingOut',
-  since: 0,
-  land: NO_COMPONENT,
-  site: { hx: 0, hy: 0 },
-  shore: null,
-  berth: null,
-  ship: null,
-  people: [],
-  rest: [],
-  failures: 0,
+  colonies: [blankColony(NO_COMPONENT, { phase: 'fittingOut', scout })],
   rejected: [],
   retryAt: 0,
-  builds: [],
-  line: null,
-  overflow: [],
-  stalls: [],
-  dangers: [],
-  scout,
 });
 
 const MAP_W = 128;
@@ -842,7 +828,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
       fittingOutColony({ ship: scout, helm: joinery, waypoints: [], leg: 0 }),
     );
     expect(tuned(sim)).toEqual(new Map([[joinery, all(TRADE_SHIP_GOOD)]]));
-    sim.world.mut(carrier, ComputerColony).ship = scout;
+    editColony(sim).ship = scout;
     expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
   });
 

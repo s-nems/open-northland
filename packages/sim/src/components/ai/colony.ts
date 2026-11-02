@@ -60,7 +60,8 @@ export interface ColonyStall {
   since: number;
 }
 
-export interface ComputerColonyState {
+/** One colony over the sea, from its chosen site on. */
+export interface ColonyState {
   phase: ColonyPhase;
   /** The tick the phase began. */
   since: number;
@@ -77,10 +78,6 @@ export interface ComputerColonyState {
   people: Entity[];
   rest: Entity[];
   failures: number;
-  /** The sites given up on, by their zone. */
-  rejected: number[];
-  /** The tick the seat may try again. */
-  retryAt: number;
   builds: { building: string; placed: boolean }[];
   line: ColonyLine | null;
   overflow: ColonyOverflow[];
@@ -89,7 +86,16 @@ export interface ComputerColonyState {
   dangers: HalfCellNode[];
 }
 
-/** A computer seat's colony over the sea, held on its {@link AiControl} carrier: absent until a site is
+/** A seat's colonies, oldest first, and what its survey has learned across them. */
+export interface ComputerColonyState {
+  colonies: ColonyState[];
+  /** The sites given up on, by their zone. */
+  rejected: number[];
+  /** The tick the seat may try again. */
+  retryAt: number;
+}
+
+/** A computer seat's colonies over the sea, held on its {@link AiControl} carrier: absent until a site is
  *  chosen. What it says about who and what is colony is read from it on demand, so a restored game agrees. */
 export const ComputerColony = defineComponent<ComputerColonyState>('ComputerColony', 'players', {
   simOnly: true,

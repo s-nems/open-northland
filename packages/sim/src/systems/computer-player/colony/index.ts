@@ -1,9 +1,4 @@
-import {
-  aiControlEntity,
-  ComputerColony,
-  type ComputerColonyState,
-  colonyRuns,
-} from '../../../components/index.js';
+import { aiControlEntity, ComputerColony, colonyRuns } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import type { World } from '../../../ecs/world.js';
 import { moduleBeatDue, POPULATION_PHASE, WORKFORCE_EVERY_DECISIONS } from '../../ai-shared/cadence.js';
@@ -20,10 +15,12 @@ import {
   type ColonyEnv,
   chooseSite,
   claimScoutShip,
+  colonyEnv,
   fittingOut,
   landing,
   loading,
   returning,
+  type SeatEnv,
   sailing,
   scouting,
 } from './voyage.js';
@@ -34,24 +31,14 @@ const SURVEY_EVERY_DECISIONS = 15;
 /** Every how many decisions a colony reads the seat's held steps (authored): a game minute. */
 const OVERFLOW_EVERY_DECISIONS = 15;
 
-function runColony(world: World, ctx: SystemContext, seat: number): readonly PlayerCommand[] {
-  if (seatArchetype(world, seat) !== 'islands' || !colonyRuns(world, seat)) return [];
-  const terrain = ctx.terrain;
-  const carrier = aiControlEntity(world, seat);
-  if (terrain === undefined || carrier === null) return [];
-  const edit = (): ComputerColonyState => world.mut(carrier, ComputerColony);
-  const env: ColonyEnv = { world, ctx, terrain, seat, carrier, edit };
-  const planned = world.tryGet(carrier, ComputerColony);
-  if (planned === undefined) {
-    if (moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)) chooseSite(env);
-    return [];
-  }
+/** One colony's decision. */
+function runOneColony(env: ColonyEnv): readonly PlayerCommand[] {
+  const { ctx, seat, colony } = env;
   if (
-    planned.phase !== 'abandoned' &&
+    colony.phase !== 'abandoned' &&
     moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, OVERFLOW_EVERY_DECISIONS)
   )
-    reviewOverflow(env, planned);
-  const colony = world.get(carrier, ComputerColony);
+    reviewOverflow(env, colony);
   switch (colony.phase) {
     case 'siteChosen':
       return claimScoutShip(env, colony);
@@ -67,11 +54,10 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
       return landing(env, colony);
     case 'founding':
     case 'running': {
-      const ships = [...afterLanding(env, colony), ...runLine(env, world.get(carrier, ComputerColony))];
+      const ships = [...afterLanding(env, colony), ...runLine(env, colony)];
       if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) return ships;
-      const settled = world.get(carrier, ComputerColony);
-      if (!overrun(env, settled))
-        return [...ships, ...recoverStrayShips(env, settled), ...foundColony(env, settled)];
+      if (!overrun(env, colony))
+        return [...ships, ...recoverStrayShips(env, colony), ...foundColony(env, colony)];
       abandonColony(env);
       return ships;
     }
@@ -84,7 +70,22 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
   }
 }
 
-/** A seat's colony over the sea. It writes no state and issues no command while a seat holds none. */
+function runColony(world: World, ctx: SystemContext, seat: number): readonly PlayerCommand[] {
+  if (seatArchetype(world, seat) !== 'islands' || !colonyRuns(world, seat)) return [];
+  const terrain = ctx.terrain;
+  const carrier = aiControlEntity(world, seat);
+  if (terrain === undefined || carrier === null) return [];
+  const env: SeatEnv = { world, ctx, terrain, seat, carrier };
+  const state = world.tryGet(carrier, ComputerColony);
+  if (state === undefined) {
+    if (moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)) chooseSite(env);
+    return [];
+  }
+  // A copy: a voyage that fails for good drops its colony off the list.
+  return [...state.colonies].flatMap((colony) => runOneColony(colonyEnv(env, colony)));
+}
+
+/** A seat's colonies over the sea. It writes no state and issues no command while a seat holds none. */
 export const colonyModule: ComputerModule = {
   id: 'colony',
   gate: 'houseBuild',

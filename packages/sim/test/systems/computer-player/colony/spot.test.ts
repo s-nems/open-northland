@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { aiControlEntity, ComputerColony } from '../../../../src/components/index.js';
 import { nodeManhattan } from '../../../../src/nav/halfcell.js';
 import { buildingTypeByContentId } from '../../../../src/systems/ai-shared/content-lookup.js';
 import { colonySpot, shoreWithStore } from '../../../../src/systems/computer-player/colony/spot.js';
-import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
-import { colonyWorld } from '../../../fixtures/colony-islands.js';
+import { blankColony, colonyWorld, looseColonyEnv } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { SEAT, VIKING } from '../support.js';
+import { VIKING } from '../support.js';
 
 /** The east island's west shore, and a node in the strait a site's centre could fall on. */
 const EAST_SHORE = { hx: 142, hy: 60 };
@@ -18,18 +16,10 @@ function setup() {
   const sim = colonyWorld();
   const ctx = ctxOf(sim);
   const terrain = ctx.terrain;
-  const carrier = aiControlEntity(sim.world, SEAT);
   const store = buildingTypeByContentId(ctx.content, STORE_ID);
-  if (terrain === undefined || carrier === null || store === undefined) throw new Error('setup');
-  const env: ColonyEnv = {
-    world: sim.world,
-    ctx,
-    terrain,
-    seat: SEAT,
-    carrier,
-    edit: () => sim.world.mut(carrier, ComputerColony),
-  };
+  if (terrain === undefined || store === undefined) throw new Error('setup');
   const land = terrain.componentOf(terrain.nodeAt(EAST_SHORE.hx, EAST_SHORE.hy));
+  const env = looseColonyEnv(sim, blankColony(land));
   return { env, terrain, land, store };
 }
 

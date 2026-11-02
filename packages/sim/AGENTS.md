@@ -150,7 +150,7 @@ A computer seat reads other players' in-game state only through its own sight an
 A new computer-player read of another seat's entities goes through those seams, never a raw world
 query. The scripted map AI keeps its own reads.
 
-`computer-player/colony/` owns a seat's colony over the sea. The rest of the computer player runs the
+`computer-player/colony/` owns a seat's colonies over the sea. The rest of the computer player runs the
 home settlement: it reads its own seat through `ai-shared/home-roster.ts` and `colony/stock.ts`, Biome
 refuses the bare rosters and `seatStockOf` in its folder, and a read of another seat or of everything a
 seat holds asks for `everyBuildingOf` or `everySettlerOf` by name.

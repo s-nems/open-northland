@@ -2,6 +2,7 @@ import { type ContentSet, parseContentSet } from '@open-northland/data';
 import {
   aiControlEntity,
   COMPUTER_MODULE_IDS,
+  type ColonyState,
   ComputerColony,
   type ComputerColonyState,
   type ComputerModuleEnables,
@@ -9,8 +10,10 @@ import {
   FOG_MODE,
   mapBriefOf,
 } from '../../src/components/index.js';
-import type { Entity } from '../../src/ecs/world.js';
+import type { DeepReadonly, Entity } from '../../src/ecs/world.js';
 import { halfCellMapFromCells, Simulation, type TerrainMap } from '../../src/index.js';
+import { seatColonies } from '../../src/systems/ai-shared/home-roster.js';
+import type { ColonyEnv } from '../../src/systems/computer-player/colony/voyage.js';
 import { createVehicle } from '../../src/systems/vehicles/index.js';
 import {
   BUILDER,
@@ -242,11 +245,59 @@ export function mooredShip(sim: Simulation, vehicleType = SMALL_SHIP, at = SHIP_
   return ship;
 }
 
-export function colonyState(sim: Simulation): Readonly<ComputerColonyState> | undefined {
+/** The seat's colony at `at`, oldest first. */
+export function colonyState(sim: Simulation, at = 0): DeepReadonly<ColonyState> | undefined {
+  return seatColonies(sim.world, SEAT)[at];
+}
+
+/** The seat's first colony, to write to. */
+export function editColony(sim: Simulation): ColonyState {
   const carrier = aiControlEntity(sim.world, SEAT);
-  return carrier === null
-    ? undefined
-    : (sim.world.tryGet(carrier, ComputerColony) as Readonly<ComputerColonyState>);
+  const colony = carrier === null ? undefined : sim.world.mut(carrier, ComputerColony).colonies[0];
+  if (colony === undefined) throw new Error('setup: no colony');
+  return colony;
+}
+
+/** A colony with nothing yet, on `land`. */
+export function blankColony(land: number, overrides: Partial<ColonyState> = {}): ColonyState {
+  return {
+    phase: 'running',
+    since: 0,
+    land,
+    site: { hx: 0, hy: 0 },
+    shore: null,
+    berth: null,
+    scout: null,
+    ship: null,
+    people: [],
+    rest: [],
+    failures: 0,
+    builds: [],
+    line: null,
+    overflow: [],
+    stalls: [],
+    dangers: [],
+    ...overrides,
+  };
+}
+
+/** The seat's decision over `colony`, one held by no record: for a read that asks only its land. */
+export function looseColonyEnv(sim: Simulation, colony: ColonyState): ColonyEnv {
+  const ctx = ctxOf(sim);
+  const terrain = ctx.terrain;
+  const carrier = aiControlEntity(sim.world, SEAT);
+  if (terrain === undefined || carrier === null) throw new Error('setup: no terrain or AI seat');
+  const seatState = (): ComputerColonyState => sim.world.mut(carrier, ComputerColony);
+  return {
+    world: sim.world,
+    ctx,
+    terrain,
+    seat: SEAT,
+    carrier,
+    colony,
+    edit: () => colony,
+    editSeat: seatState,
+  };
 }
 
 /** Step the sim up to `limit` ticks until `done` holds; whether it did. */

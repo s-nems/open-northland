@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
   Building,
-  ComputerColony,
   type EconomicSide,
   JobAssignment,
   ProductionCounters,
@@ -34,7 +33,6 @@ import { entryStatuses } from '../../../../src/systems/computer-player/build-ord
 import { seatBuildOrder } from '../../../../src/systems/computer-player/build-order/seat-order.js';
 import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
 import { homeStockOf } from '../../../../src/systems/computer-player/colony/stock.js';
-import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
 import { computerProfileOf } from '../../../../src/systems/computer-player/difficulty.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { stockAtBuildings } from '../../../../src/systems/stores/index.js';
@@ -43,6 +41,8 @@ import {
   colonyIslands,
   colonyState,
   colonyWorld,
+  editColony,
+  looseColonyEnv,
   mooredShip,
   overflowContent,
   SMALL_SHIP,
@@ -165,19 +165,10 @@ describe('overflow production', () => {
   it('counts a man listed for the line no colonist until he lands', () => {
     const { sim } = runningWorld('barracks');
     const ctx = ctxOf(sim);
-    const carrier = aiControlEntity(sim.world, SEAT) as Entity;
-    const terrain = ctx.terrain;
-    if (terrain === undefined) throw new Error('setup: no terrain');
-    const env: ColonyEnv = {
-      world: sim.world,
-      ctx,
-      terrain,
-      seat: SEAT,
-      carrier,
-      edit: () => sim.world.mut(carrier, ComputerColony),
-    };
     const walking = homeSettlers(sim.world, ctx, SEAT)[0] as Entity;
-    sim.world.mut(carrier, ComputerColony).rest.push(walking);
+    const colony = editColony(sim);
+    colony.rest.push(walking);
+    const env = looseColonyEnv(sim, colony);
     expect(homeSettlers(sim.world, ctx, SEAT)).not.toContain(walking);
     expect(colonists(env)).not.toContain(walking);
   });
@@ -185,8 +176,7 @@ describe('overflow production', () => {
   it('gives the step back once the colony is lost', () => {
     const { sim } = runningWorld();
     stepUntil(sim, REVIEWED_TICKS, () => handedOver(sim).includes(ARMORY_ID));
-    const carrier = aiControlEntity(sim.world, SEAT) as Entity;
-    sim.world.mut(carrier, ComputerColony).phase = 'abandoned';
+    editColony(sim).phase = 'abandoned';
     const entry = { kind: 'place', building: ARMORY_ID, count: 1 } as const;
     expect(entryStatuses(sim.world, ctxOf(sim), SEAT, [entry])).toEqual(['unmet']);
   });

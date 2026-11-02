@@ -3,7 +3,6 @@ import {
   Building,
   Carrying,
   type ColonyStall,
-  ComputerColony,
   playerPlacementTribes,
   Settler,
   StalledPlacements,
@@ -12,7 +11,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
-import { homeBuildings } from '../../ai-shared/home-roster.js';
+import { homeBuildings, seatColonies } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan, SpareForce } from '../../ai-shared/workforce/pool.js';
 import { needSubjectOf, settlerMeetsNeed } from '../../progression/index.js';
@@ -103,6 +102,15 @@ function handedType(
   return workshopSpot(env, colony.land, type, tribe, origin) === null ? undefined : type;
 }
 
+/** Whether another of the seat's colonies already took `stall`, this same review: its row moves home on only
+ *  at the next decision. */
+function takenBySibling(env: ColonyEnv, stall: DeepReadonly<ColonyStall>): boolean {
+  return seatColonies(env.world, env.seat).some(
+    (other) =>
+      other !== env.colony && other.overflow.some((o) => o.line === stall.line && o.step === stall.step),
+  );
+}
+
 /** Hand the longest-held step that qualifies to the colony, one at a time so its bills do not outrun its
  *  line, ahead of the homes still to raise. Owner ruling: no home goes with it; homes serve population growth
  *  and the crew sails on the line. */
@@ -110,7 +118,7 @@ function handOver(env: ColonyEnv, colony: ColonyView): void {
   const { ctx } = env;
   if (colony.builds.some((b) => !b.placed && OVERFLOW_BUILDING_IDS.has(b.building))) return;
   for (const stall of colony.stalls) {
-    if (ctx.tick - stall.since < HELD_FOR_GROUND_TICKS) continue;
+    if (ctx.tick - stall.since < HELD_FOR_GROUND_TICKS || takenBySibling(env, stall)) continue;
     const type = handedType(env, colony, stepOf(env, stall));
     if (type === undefined) continue;
     const live = env.edit();
@@ -170,12 +178,10 @@ function dropLost(env: ColonyEnv, colony: ColonyView): void {
 /** The minute's review on a seat with no room at home: read the holds, and with the colony running hand one
  *  over. Home owns what, the colony owns where: only a row in its builds, no line or priority of its own. */
 export function reviewOverflow(env: ColonyEnv, colony: ColonyView): void {
-  const { world, seat, carrier } = env;
-  if (!seatHasSide(world, seat, 'noRoom')) return;
+  if (!seatHasSide(env.world, env.seat, 'noRoom')) return;
   dropLost(env, colony);
-  noteStalls(env, world.get(carrier, ComputerColony));
-  const settled = world.get(carrier, ComputerColony);
-  if (settled.phase === 'running') handOver(env, settled);
+  noteStalls(env, colony);
+  if (colony.phase === 'running') handOver(env, colony);
 }
 
 interface CraftSeat {

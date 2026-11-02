@@ -3,7 +3,7 @@ import { playerPlacementTribes } from '../../../components/index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
 import { buildingTypeByContentId, goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { everyBuildingOf, homeBuildings } from '../../ai-shared/home-roster.js';
+import { colonyBuildingsOn } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf, bestRingNode } from '../../ai-shared/node-geometry.js';
 import { routeRegions } from '../../footprint/index.js';
 import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
@@ -23,11 +23,9 @@ import type { ColonyEnv } from './voyage.js';
  *  so a colony with no signpost still reaches its next site. */
 const COLONY_REACH_NODES = 50;
 
-/** The buildings `seat` holds on its colony, ascending id. */
-export function colonyBuildings(env: ColonyEnv): Entity[] {
-  const { world, ctx, seat } = env;
-  const home = new Set(homeBuildings(world, ctx, seat));
-  return everyBuildingOf(world, seat).filter((e) => !home.has(e));
+/** The buildings the seat holds on this colony, ascending id. */
+export function colonyBuildings(env: ColonyEnv): readonly Entity[] {
+  return colonyBuildingsOn(env.world, env.ctx, env.seat, env.colony.land);
 }
 
 /** How far from the store and what stands a workshop may go (authored): on

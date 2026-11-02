@@ -1,5 +1,5 @@
 import { BUILDING_KIND } from '@open-northland/data';
-import { Building, ComputerColony } from '../../../components/index.js';
+import { Building } from '../../../components/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
@@ -33,7 +33,7 @@ export function storesHeld(env: ColonyEnv, buildings: readonly Entity[]): Map<nu
   const stores = buildings.filter(
     (e) => index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.storage,
   );
-  const land = world.tryGet(env.carrier, ComputerColony)?.land;
+  const { land } = env.colony;
   return stockAtBuildings(
     world,
     seat,

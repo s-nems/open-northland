@@ -2,8 +2,8 @@ import {
   aiControlEntity,
   Building,
   type ColonyOverflow,
+  type ColonyState,
   ComputerColony,
-  type ComputerColonyState,
   Position,
   Rider,
   Settler,
@@ -16,11 +16,15 @@ import { isFighterJob } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { ownedBuildings, ownedSettlers } from './seat-roster.js';
 
-type ColonyView = DeepReadonly<ComputerColonyState>;
+type ColonyView = DeepReadonly<ColonyState>;
 
-function colonyOf(world: World, seat: number): ColonyView | undefined {
+const NO_COLONIES: readonly ColonyView[] = [];
+const NOBODY: readonly Entity[] = [];
+
+/** `seat`'s colonies, oldest first, an abandoned one among them: its land stays out of the home reads. */
+export function seatColonies(world: World, seat: number): readonly ColonyView[] {
   const carrier = aiControlEntity(world, seat);
-  return carrier === null ? undefined : world.tryGet(carrier, ComputerColony);
+  return (carrier === null ? undefined : world.tryGet(carrier, ComputerColony)?.colonies) ?? NO_COLONIES;
 }
 
 function heldShipsOf(colony: ColonyView): Entity[] {
@@ -31,112 +35,177 @@ function heldShipsOf(colony: ColonyView): Entity[] {
   return ships;
 }
 
-/** The ships `seat`'s colony holds. */
+/** The ships `seat`'s colonies hold. */
 export function colonyHeldShips(world: World, seat: number): readonly Entity[] {
-  const colony = colonyOf(world, seat);
-  return colony === undefined ? [] : heldShipsOf(colony);
+  return seatColonies(world, seat).flatMap(heldShipsOf);
 }
 
-/** The land `seat`'s live colony plan stands on, or undefined. */
-export function colonyLandOf(world: World, seat: number): number | undefined {
-  const colony = colonyOf(world, seat);
-  return colony === undefined || colony.phase === 'abandoned' ? undefined : colony.land;
+function liveColonies(world: World, seat: number): readonly ColonyView[] {
+  return seatColonies(world, seat).filter((colony) => colony.phase !== 'abandoned');
+}
+
+/** The lands `seat`'s live colony plans stand on. */
+export function liveColonyLands(world: World, seat: number): readonly number[] {
+  return liveColonies(world, seat).map((colony) => colony.land);
+}
+
+/** Every land `seat` holds a colony on, an abandoned one's too. */
+export function colonyLands(world: World, seat: number): ReadonlySet<number> {
+  return new Set(seatColonies(world, seat).map((colony) => colony.land));
 }
 
 /** Whether `seat` holds a live colony plan, whose ships its joinery owes. */
 export function colonyWantsShips(world: World, seat: number): boolean {
-  const colony = colonyOf(world, seat);
-  return colony !== undefined && colony.phase !== 'abandoned';
+  return seatColonies(world, seat).some((colony) => colony.phase !== 'abandoned');
 }
 
-const NOTHING_HANDED_OVER: readonly DeepReadonly<ColonyOverflow>[] = [];
-
-/** The buildings `seat`'s order has handed to its colony; none once the colony is given up, so home's steps
- *  stand open again. */
+/** The buildings `seat`'s order has handed to its colonies; none of one given up, so home's steps stand open
+ *  again. */
 export function colonyOverflow(world: World, seat: number): readonly DeepReadonly<ColonyOverflow>[] {
-  const colony = colonyOf(world, seat);
-  return colony === undefined || colony.phase === 'abandoned' ? NOTHING_HANDED_OVER : colony.overflow;
+  return liveColonies(world, seat).flatMap((colony) => colony.overflow);
 }
 
-function belongsToColony(
+/** What a seat's colonies hold by land and by name. */
+interface ColonyClaims {
+  readonly lands: ReadonlySet<number>;
+  /** The colony land of each listed person and each held ship. */
+  readonly listed: ReadonlyMap<Entity, number>;
+  readonly ships: ReadonlyMap<Entity, number>;
+}
+
+function claimsOf(colonies: readonly ColonyView[]): ColonyClaims {
+  const lands = new Set<number>();
+  const listed = new Map<Entity, number>();
+  const ships = new Map<Entity, number>();
+  for (const colony of colonies) {
+    lands.add(colony.land);
+    for (const e of colony.people) listed.set(e, colony.land);
+    for (const e of colony.rest) listed.set(e, colony.land);
+    for (const ship of heldShipsOf(colony)) ships.set(ship, colony.land);
+  }
+  return { lands, listed, ships };
+}
+
+/** The land of the colony `e` is held by, or undefined for one of home's: a building by the land of its door,
+ *  a person when listed, riding a held ship, or standing on that land and no fighter. */
+function colonyLandOf(
   world: World,
   ctx: SystemContext,
   terrain: TerrainGraph,
-  colony: ColonyView,
+  claims: ColonyClaims,
   e: Entity,
-): boolean {
-  if (world.has(e, Building))
-    return terrain.componentOf(interactionCell(world, ctx, terrain, e)) === colony.land;
-  if (colony.people.includes(e) || colony.rest.includes(e)) return true;
+): number | undefined {
+  if (world.has(e, Building)) {
+    const door = terrain.componentOf(interactionCell(world, ctx, terrain, e));
+    return claims.lands.has(door) ? door : undefined;
+  }
+  const named = claims.listed.get(e);
+  if (named !== undefined) return named;
   const ship = world.tryGet(e, Rider)?.vehicle;
-  if (ship !== undefined && heldShipsOf(colony).includes(ship)) return true;
+  const sailing = ship === undefined ? undefined : claims.ships.get(ship);
+  if (sailing !== undefined) return sailing;
   const p = world.tryGet(e, Position);
-  if (p === undefined) return false;
+  if (p === undefined) return undefined;
   const { hx, hy } = nodeOfPosition(p.x, p.y);
+  if (!terrain.inBounds(hx, hy)) return undefined;
+  const stands = terrain.componentOf(terrain.nodeAt(hx, hy));
   // A landing on a shared island stays the army's, so a fighter never counts by where he stands.
-  return (
-    terrain.inBounds(hx, hy) &&
-    terrain.componentOf(terrain.nodeAt(hx, hy)) === colony.land &&
-    !isFighterJob(ctx.content, world.tryGet(e, Settler)?.jobType ?? null)
-  );
+  return claims.lands.has(stands) && !isFighterJob(ctx.content, world.tryGet(e, Settler)?.jobType ?? null)
+    ? stands
+    : undefined;
 }
 
-/** Whether `seat`'s building or settler `e` is its colony's: a building by the land of its door, a person
- *  when listed, riding a held ship, or standing on that land and no fighter. */
+/** Whether `seat`'s building or settler `e` is one of its colonies' ({@link colonyLandOf}). */
 export function colonyMember(world: World, ctx: SystemContext, seat: number, e: Entity): boolean {
-  const colony = colonyOf(world, seat);
   const terrain = ctx.terrain;
-  return colony !== undefined && terrain !== undefined && belongsToColony(world, ctx, terrain, colony, e);
+  if (terrain === undefined) return false;
+  return colonyLandOf(world, ctx, terrain, claimsOf(seatColonies(world, seat)), e) !== undefined;
 }
 
-interface HomeView {
+/** A roster parted into home and each colony land, ascending id. */
+interface RosterSplit {
   readonly roster: readonly Entity[];
   readonly riders: number;
-  readonly colonies: number;
-  readonly colonyValues: number;
+  readonly colonyRevision: number;
   readonly home: readonly Entity[];
+  readonly byLand: ReadonlyMap<number, readonly Entity[]>;
 }
 
-/** A seat's home reader over `roster`. With no colony it hands back the roster itself. Otherwise derived
- *  from saved state and kept while the roster, the riders and the colonies stand: a person changes land
- *  only through {@link Rider}. Never hashed. */
-function homeViewOf(
+/** A seat's reader of `roster` parted between home and its colonies, null with no colony. Derived from saved
+ *  state in one pass over the roster and kept while the roster, the riders and the seat's colonies stand: a
+ *  person changes land only through {@link Rider}, and another seat's colony write leaves this one's. Never
+ *  hashed. */
+function rosterSplitOf(
   roster: (world: World, player: number) => readonly Entity[],
-): (world: World, ctx: SystemContext, seat: number) => readonly Entity[] {
-  const views = new WeakMap<World, Map<number, HomeView>>();
+): (world: World, ctx: SystemContext, seat: number) => RosterSplit | null {
+  const views = new WeakMap<World, Map<number, RosterSplit>>();
   return (world, ctx, seat) => {
-    const owned = roster(world, seat);
-    const colony = colonyOf(world, seat);
+    const carrier = aiControlEntity(world, seat);
+    const colonyRevision = carrier === null ? undefined : world.revisionOf(carrier, ComputerColony);
     const terrain = ctx.terrain;
-    if (colony === undefined || terrain === undefined) return owned;
+    if (colonyRevision === undefined || terrain === undefined) return null;
+    const owned = roster(world, seat);
     let bySeat = views.get(world);
     if (bySeat === undefined) {
       bySeat = new Map();
       views.set(world, bySeat);
     }
     const riders = world.componentGeneration(Rider);
-    const colonies = world.componentGeneration(ComputerColony);
-    const colonyValues = world.componentValueGeneration(ComputerColony);
     const held = bySeat.get(seat);
     if (
       held !== undefined &&
       held.roster === owned &&
       held.riders === riders &&
-      held.colonies === colonies &&
-      held.colonyValues === colonyValues
+      held.colonyRevision === colonyRevision
     )
-      return held.home;
-    const home = owned.filter((e) => !belongsToColony(world, ctx, terrain, colony, e));
-    bySeat.set(seat, { roster: owned, riders, colonies, colonyValues, home });
-    return home;
+      return held;
+    const claims = claimsOf(seatColonies(world, seat));
+    const home: Entity[] = [];
+    const byLand = new Map<number, Entity[]>();
+    for (const e of owned) {
+      const land = colonyLandOf(world, ctx, terrain, claims, e);
+      if (land === undefined) home.push(e);
+      else if (byLand.has(land)) byLand.get(land)?.push(e);
+      else byLand.set(land, [e]);
+    }
+    const split: RosterSplit = { roster: owned, riders, colonyRevision, home, byLand };
+    bySeat.set(seat, split);
+    return split;
   };
 }
 
+const buildingSplit = rosterSplitOf(ownedBuildings);
+const settlerSplit = rosterSplitOf(ownedSettlers);
+
 /** The seat's buildings at home, ascending id: what the computer player runs its settlement by. */
-export const homeBuildings = homeViewOf(ownedBuildings);
+export function homeBuildings(world: World, ctx: SystemContext, seat: number): readonly Entity[] {
+  return buildingSplit(world, ctx, seat)?.home ?? ownedBuildings(world, seat);
+}
 
 /** The seat's people at home, ascending id. */
-export const homeSettlers = homeViewOf(ownedSettlers);
+export function homeSettlers(world: World, ctx: SystemContext, seat: number): readonly Entity[] {
+  return settlerSplit(world, ctx, seat)?.home ?? ownedSettlers(world, seat);
+}
+
+/** The seat's buildings on the colony on `land`, ascending id; a shared list. */
+export function colonyBuildingsOn(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  land: number,
+): readonly Entity[] {
+  return buildingSplit(world, ctx, seat)?.byLand.get(land) ?? NOBODY;
+}
+
+/** The seat's people held by the colony on `land`, ascending id; a shared list. */
+export function colonySettlersOn(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  land: number,
+): readonly Entity[] {
+  return settlerSplit(world, ctx, seat)?.byLand.get(land) ?? NOBODY;
+}
 
 /** Every building of a seat, a colony's included: for a read of another seat or of all a seat holds. The
  *  computer player reaches for {@link homeBuildings} first; biome keeps the bare roster out of its folder. */

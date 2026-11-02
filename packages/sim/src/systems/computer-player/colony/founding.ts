@@ -1,7 +1,6 @@
 import { BUILDING_KIND } from '@open-northland/data';
 import {
   Building,
-  ComputerColony,
   Female,
   Position,
   playerPlacementTribes,
@@ -14,7 +13,7 @@ import { contentIndex } from '../../../core/content-index.js';
 import type { Entity } from '../../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../../nav/halfcell.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { everySettlerOf, homeSettlers } from '../../ai-shared/home-roster.js';
+import { colonySettlersOn } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
@@ -39,14 +38,13 @@ export const COLONY_BUILDS: readonly string[] = [COLONY_STORE_BUILDING_ID];
 /** How far from the first store a deposit gets a second one, in Manhattan nodes (authored: a hold's hands'
  *  reach, past which the carriers' trips outweigh a store's bill). */
 const SECOND_STORE_NODES = 40;
-/** The people standing on the colony: those of the seat out of the home view on its land. A man listed for
- *  the line but still walking to the ship is not one yet, or a workshop on the far shore would post him. */
+/** The people standing on the colony: its members on its land. A man listed for the line but still walking
+ *  to the ship is not one yet, or a workshop on the far shore would post him. */
 export function colonists(env: ColonyEnv): Entity[] {
-  const { world, ctx, seat, carrier } = env;
-  const home = new Set(homeSettlers(world, ctx, seat));
-  const land = world.get(carrier, ComputerColony).land;
-  return everySettlerOf(world, seat).filter(
-    (e) => !home.has(e) && !world.has(e, Rider) && world.has(e, Position) && standsOn(world, ctx, e, land),
+  const { world, ctx, seat } = env;
+  const { land } = env.colony;
+  return colonySettlersOn(world, ctx, seat, land).filter(
+    (e) => !world.has(e, Rider) && world.has(e, Position) && standsOn(world, ctx, e, land),
   );
 }
 

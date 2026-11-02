@@ -2,7 +2,6 @@ import { BUILDING_KIND } from '@open-northland/data';
 import type { ColonyLine, ColonyLineLeg } from '../../../components/ai/colony.js';
 import {
   Building,
-  ComputerColony,
   Female,
   Health,
   Rider,
@@ -421,7 +420,7 @@ function crewSize(colony: ColonyView): number {
 /** Hire `men` to bring the crew to {@link crewSize}, and board them; those hired. */
 function hireCrew(env: ColonyEnv, line: LineView, men: readonly Entity[]): Entity[] {
   const riders = ridersOf(env.world, line.ship);
-  const size = crewSize(env.world.get(env.carrier, ComputerColony));
+  const size = crewSize(env.colony);
   const hired = men.filter((e) => !riders.includes(e)).slice(0, size - line.crew.length);
   const live = env.edit().line;
   if (live !== null) live.crew.push(...hired);
@@ -585,10 +584,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
         const size = crewSize(colony);
         const live = env.edit().line;
         if (live !== null && live.crew.length > size) live.crew = live.crew.slice(0, size);
-        return [
-          ...landPassengers(env, world.get(env.carrier, ComputerColony).line ?? line),
-          ...flushOrders(env, line),
-        ];
+        return [...landPassengers(env, env.colony.line ?? line), ...flushOrders(env, line)];
       });
     case 'unloadHome':
       return holdFlushed(world, ship) || stalled(env, line) ? beginHomeLoad(env, colony, line) : [];
