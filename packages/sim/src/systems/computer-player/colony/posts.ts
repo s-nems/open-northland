@@ -63,8 +63,10 @@ type Post = 'builder' | 'carrier' | LandGood | 'hunter' | 'fisher' | 'scout';
 
 /**
  * The men's posts, filled in this order as the party's size allows (authored). Owner ruling: fishers first,
- * they may meet the hunger at the start. 4 builders, 2 carriers, 4 on wood, 3 on stone, 2 hunters, 2 fishers
- * and a scout make 18, more than the largest party's 15, so the tail is what a small party goes without.
+ * they may meet the hunger at the start. 4 builders, 2 carriers, 4 on wood, 3 on stone, 3 hunters, 3 fishers
+ * and a scout make 20, more than the largest party's 15, so the tail is what a small party goes without. A
+ * store seats three of each: on arabskie_wyspy_wolna_gra_mieszana two and two brought about 3.5 food a game
+ * minute to colonies of 30 eating 4, and their stores stood empty.
  */
 const POSTS: readonly Post[] = [
   'builder',
@@ -72,6 +74,8 @@ const POSTS: readonly Post[] = [
   'builder',
   'wood',
   'carrier',
+  'fisher',
+  'hunter',
   'fisher',
   'wood',
   'stone',
