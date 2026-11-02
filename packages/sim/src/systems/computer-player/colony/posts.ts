@@ -1,5 +1,12 @@
 import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
-import { Building, FishSwarm, JobAssignment, Settler, UnderConstruction } from '../../../components/index.js';
+import {
+  Building,
+  FishSwarm,
+  JobAssignment,
+  Marriage,
+  Settler,
+  UnderConstruction,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
@@ -8,7 +15,7 @@ import type { NodeId } from '../../../nav/terrain/index.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import { nearestRingNode } from '../../ai-shared/node-geometry.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
-import { builderJobOf } from '../../ai-shared/workforce/pool.js';
+import { builderJobOf, isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
@@ -36,14 +43,22 @@ import {
   legalFlagNodeTest,
   type TakenFlagNodes,
 } from '../workforce/flag-spots.js';
+import { colonists, colonyOrigin, storeOf } from './founding.js';
 import { homeSupply } from './line.js';
-import { billsOf, colonyPlan } from './plan.js';
-import { LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
+import { MEN_PER_WOMAN } from './people.js';
+import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
+import { colonyFoodHeld, LAND_GOOD_IDS, type LandGood, landHolds } from './provision.js';
+import { colonyBuildings } from './spot.js';
 import type { ColonyEnv, ColonyView } from './voyage.js';
 
 /** The builders a colony keeps once nothing is left to raise (authored): a pair for a lost building, and
  *  every other man digs, which is what the colony is for. */
 const BUILDERS_AT_REST = 2;
+/** The men on a good at most (authored): past these a line of 40 units a stop cannot carry what they dig. */
+const DIGGERS_MOST: Readonly<Record<LandGood, number>> = { wood: 4, stone: 4, mud: 2, iron: 2 };
+/** The men past its work a colony keeps before any sail home (authored): one lost to a fight or a change of
+ *  plan is no reason for a ship to fetch another. */
+const HANDS_SLACK = 1;
 
 type Post = 'builder' | 'carrier' | LandGood | 'hunter' | 'fisher' | 'scout';
 
@@ -117,13 +132,8 @@ function workableFrom(env: ColonyEnv, origin: HalfCellNode, ground: FlagGround):
     (limit === null || limit.allowsNode(interactionCell(world, ctx, terrain, e, door)));
 }
 
-/** The nearest live fish shore from `origin` a flag may stand on, or null. */
-function fishSpot(
-  env: ColonyEnv,
-  origin: HalfCellNode,
-  ground: FlagGround,
-  taken: TakenFlagNodes,
-): HalfCellNode | null {
+/** The nearest live fish shore on `origin`'s land, or null. */
+function fishNear(env: ColonyEnv, origin: HalfCellNode): number | null {
   const { world, terrain } = env;
   const land = terrain.componentOf(terrain.nodeAtClamped(origin.hx, origin.hy));
   let best: { readonly node: number; readonly distance: number } | null = null;
@@ -135,8 +145,19 @@ function fishSpot(
     if (best === null || distance < best.distance || (distance === best.distance && swarm.shore < best.node))
       best = { node: swarm.shore, distance };
   }
-  if (best === null) return null;
-  const { x, y } = terrain.coordsOf(best.node as NodeId);
+  return best === null ? null : best.node;
+}
+
+/** The nearest spot a flag may stand on by a live fish shore from `origin`, or null. */
+function fishSpot(
+  env: ColonyEnv,
+  origin: HalfCellNode,
+  ground: FlagGround,
+  taken: TakenFlagNodes,
+): HalfCellNode | null {
+  const shore = fishNear(env, origin);
+  if (shore === null) return null;
+  const { x, y } = env.terrain.coordsOf(shore as NodeId);
   return nearestRingNode(x, y, 0, FISHER_FLAG_MAX_DISTANCE_NODES, origin, legalFlagNodeTest(ground, taken));
 }
 
@@ -310,6 +331,63 @@ function atWorkshop(env: ColonyEnv, e: Entity): boolean {
   return contentIndex(ctx.content).buildings.get(building.buildingType)?.kind === BUILDING_KIND.workplace;
 }
 
+/** The seats of `type` the colony fills: every trade but the gatherer's ({@link crewOrders}). */
+function seatsOf(ctx: SystemContext, type: BuildingType): number {
+  const gatherer = genericCollectorJob(ctx);
+  return type.workers.reduce((sum, slot) => sum + (slot.jobType === gatherer ? 0 : slot.count), 0);
+}
+
+/** The men and women the colony has work for now. Owner ruling: people cross like goods. A colony needing
+ *  hands for gatherers, sites or workshops gets men over the line, and women once its food holds. */
+export function handsWanted(
+  env: ColonyEnv,
+  colony: ColonyView,
+): { readonly men: number; readonly women: number } {
+  const { world, ctx } = env;
+  const index = contentIndex(ctx.content);
+  const buildings = colonyBuildings(env);
+  const origin = colonyOrigin(env, colony, buildings);
+  if (origin === null) return { men: 0, women: 0 };
+  const read = { buildings, store: storeOf(env, buildings), origin };
+  const digs = digGoods(env, colony, read);
+  const resting = atRest(env, colony, read);
+  let men = 0;
+  for (const good of digs) men += DIGGERS_MOST[good];
+  const fishes = fishNear(env, origin) !== null;
+  const others = POSTS.filter(
+    (p) => !isDug(p) && (p !== 'builder' || !resting) && (p !== 'fisher' || fishes),
+  );
+  men += others.length + (resting ? BUILDERS_AT_REST : 0);
+  for (const e of buildings) {
+    const type = index.buildings.get(world.get(e, Building).buildingType);
+    if (type?.kind === BUILDING_KIND.workplace && !world.has(e, UnderConstruction)) men += seatsOf(ctx, type);
+  }
+  for (const building of colonyPlan(env, colony, buildings).slice(0, COLONY_OPEN_SITES)) {
+    const typeId = index.buildingTypeBySlug.get(building);
+    const type = typeId === undefined ? undefined : index.buildings.get(typeId);
+    if (type?.kind === BUILDING_KIND.workplace) men += seatsOf(ctx, type);
+  }
+  const fed = colonyFoodHeld(env, buildings) >= colonists(env).length;
+  return { men, women: fed ? Math.floor(men / MEN_PER_WOMAN) : 0 };
+}
+
+/** The colony's men with no work left, who sail home by the next ship (owner ruling): its free builders past
+ *  what it has work for, unwed first and then ascending id. */
+export function menPastWork(env: ColonyEnv, colony: ColonyView): Entity[] {
+  const { world, ctx } = env;
+  if (colony.phase !== 'running') return [];
+  const crew = colony.line?.crew.length ?? 0;
+  const men = colonists(env).filter((e) => isAllocatableMan(world, ctx, e));
+  const past = men.length + crew - handsWanted(env, colony).men - HANDS_SLACK;
+  if (past <= 0) return [];
+  const builder = builderJobOf(ctx);
+  return men
+    .filter((e) => !atWorkshop(env, e) && postOf(world, ctx, e, builder) === 'builder')
+    .sort((a, b) => Number(world.has(a, Marriage)) - Number(world.has(b, Marriage)) || a - b)
+    .slice(BUILDERS_AT_REST)
+    .slice(0, past);
+}
+
 /** The posts of {@link POSTS} the men's number reaches that none holds, handed to the free men and to the
  *  builders past their share, then the workshops' seats; with nothing left to raise, the rest dig, the
  *  least dug good first; a good a site needs and nobody digs goes first of all, as no ship brings what the
@@ -379,7 +457,9 @@ export function fillPosts(
   while (resting) {
     const man = spare[0];
     if (man === undefined) break;
-    const goods = [...digs].sort((a, b) => (dug.get(a) ?? 0) - (dug.get(b) ?? 0));
+    const goods = [...digs]
+      .filter((g) => (dug.get(g) ?? 0) < DIGGERS_MOST[g])
+      .sort((a, b) => (dug.get(a) ?? 0) - (dug.get(b) ?? 0));
     const good = goods.find((g) => {
       const orders = postOrders(env, man, g, read, ground, taken);
       if (orders !== null) commands.push(...orders);

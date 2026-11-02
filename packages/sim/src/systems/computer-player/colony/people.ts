@@ -67,11 +67,13 @@ export function spareMen(world: World, ctx: SystemContext, seat: number): Entity
 /** Owner ruling: about 15 men and 5 women, scaled to what the seat can spare. */
 const PARTY_MOST = 20;
 const WOMEN_SHARE = 4;
+/** A colony's women to its men, the party's share. */
+export const MEN_PER_WOMAN = WOMEN_SHARE - 1;
 /** A party takes at most a quarter of the seat's civilians. */
 const CIVILIANS_PER_COLONIST = 4;
 /** The civilians home keeps however large it is. */
 const HOME_KEEPS_CIVILIANS = 30;
-/** Fewer than this found nothing: a warehouse and four homes want builders, carriers and gatherers. */
+/** Fewer than this found nothing: a warehouse wants builders, carriers and gatherers. */
 const PARTY_LEAST = 8;
 const COUPLE_SEATS = 2;
 
@@ -199,20 +201,19 @@ export function pickParty(world: World, ctx: SystemContext, seat: number, land: 
   return party.length < PARTY_LEAST ? [] : party;
 }
 
-/** Who sails on a line's outward leg, in `seats`, to bring a colony of `men` and `women` to the party the
- *  owner asked for; home keeps its {@link HOME_KEEPS_CIVILIANS} and its food posts. */
+/** Who sails on a line's outward leg, in `seats`, for the `lacking` men and women of a colony; home keeps
+ *  its {@link HOME_KEEPS_CIVILIANS} and its food posts. */
 export function topUpParty(
   world: World,
   ctx: SystemContext,
   seat: number,
   land: number,
-  colony: { readonly men: number; readonly women: number },
+  lacking: { readonly men: number; readonly women: number },
   seats: number,
 ): Entity[] {
   const room = Math.min(seats, civilianCount(world, ctx, seat) - HOME_KEEPS_CIVILIANS);
-  const women = Math.floor(PARTY_MOST / WOMEN_SHARE);
-  const want = { men: PARTY_MOST - women - colony.men, women: women - colony.women, seats: room };
-  return room <= 0 || (want.men <= 0 && want.women <= 0) ? [] : gather(world, ctx, seat, land, want);
+  const want = { ...lacking, seats: room };
+  return room <= 0 || (lacking.men <= 0 && lacking.women <= 0) ? [] : gather(world, ctx, seat, land, want);
 }
 
 /** The orders that take `party` aboard `ship`, men first so a man holds the helm: each person whose whole

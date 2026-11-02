@@ -34,7 +34,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { SEAT, UNARMED, VIKING, WOOD } from '../support.js';
+import { BUILDER, SEAT, UNARMED, VIKING, WOOD } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -46,6 +46,8 @@ const SECOND_SHIP_AT = { x: 90, y: 100 };
 const SITE_NEAR = 4;
 const ENEMY = 5;
 const CHILD_MALE = 4;
+const IDLE_MEN = 40;
+const IDLE_STEP = 2;
 
 /** A colony landed and its line under way. */
 function linedWorld(): { readonly sim: Simulation; readonly ship: Entity } {
@@ -61,6 +63,12 @@ function linedWorld(): { readonly sim: Simulation; readonly ship: Entity } {
 }
 
 const leg = (sim: Simulation): string | undefined => colonyState(sim)?.line?.leg;
+
+/** Who stands on the colony or rides for it. */
+const colonyPeople = (sim: Simulation): number => {
+  const home = new Set(homeSettlers(sim.world, ctxOf(sim), SEAT));
+  return everySettlerOf(sim.world, SEAT).filter((e) => !home.has(e)).length;
+};
 
 function aboard(sim: Simulation, ship: Entity, good: number): number {
   return sim.world.tryGet(ship, VehicleStock)?.lines.get(good)?.current ?? 0;
@@ -89,6 +97,38 @@ describe('a colony line', () => {
     expect(aboard(sim, ship, WOOD)).toBeLessThan(wood);
     expect(aboard(sim, ship, FOOD)).toBeGreaterThan(0);
     for (const e of crew) expect(sim.world.has(e, Rider)).toBe(true);
+  });
+
+  it('brings the hands a colony lacks over the line', () => {
+    const { sim } = linedWorld();
+    const before = colonyPeople(sim);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyPeople(sim) > before)).toBe(true);
+  });
+
+  it('sends men with no work left home by the next ship', () => {
+    const { sim } = linedWorld();
+    const site = colonyState(sim)?.site;
+    if (site === undefined) throw new Error('no site');
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const idle: Entity[] = [];
+    const before = new Set(everySettlerOf(sim.world, SEAT));
+    for (let i = 0; i < IDLE_MEN; i++)
+      sim.enqueueSetup({
+        kind: 'spawnSettler',
+        jobType: BUILDER,
+        x: site.hx + IDLE_STEP * i,
+        y: site.hy,
+        tribe: VIKING,
+        owner: SEAT,
+      });
+    sim.step();
+    for (const e of everySettlerOf(sim.world, SEAT)) if (!before.has(e)) idle.push(e);
+    expect(idle).toHaveLength(IDLE_MEN);
+    const homeAgain = (): boolean => {
+      const home = homeSettlers(sim.world, ctxOf(sim), SEAT);
+      return idle.some((e) => home.includes(e));
+    };
+    expect(stepUntil(sim, ROUND_DUE_TICKS, homeAgain)).toBe(true);
   });
 
   it('owes a ship once its own is sunk, and takes the next free one on', () => {

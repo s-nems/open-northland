@@ -21,8 +21,8 @@ const TIGHT_SEAT = 40;
 const THIN_SEAT = 34;
 const MARRIED_BY_TICKS = minutesToTicks(5);
 
-const WHOLE_COLONY = { men: 15, women: 5 };
-const WOMENLESS_COLONY = { men: 15, women: 0 };
+const NOTHING_LACKING = { men: 0, women: 0 };
+const WOMEN_LACKING = { men: 0, women: 5 };
 const SHIP_SEATS = 15;
 const TWO_SEATS = 2;
 const FARM_AT = { x: 40, y: 100 };
@@ -64,17 +64,17 @@ describe('a colony top-up', () => {
   it('takes nobody for a colony at its figure, and couples past a post for one with no women', () => {
     const { sim, land } = postedHusbands(HQ_TYPE);
     const ctx = ctxOf(sim);
-    expect(topUpParty(sim.world, ctx, SEAT, land, WHOLE_COLONY, SHIP_SEATS)).toEqual([]);
-    const party = topUpParty(sim.world, ctx, SEAT, land, WOMENLESS_COLONY, SHIP_SEATS);
+    expect(topUpParty(sim.world, ctx, SEAT, land, NOTHING_LACKING, SHIP_SEATS)).toEqual([]);
+    const party = topUpParty(sim.world, ctx, SEAT, land, WOMEN_LACKING, SHIP_SEATS);
     const wives = party.filter((e) => sim.world.has(e, Female));
     expect(wives.length).toBeGreaterThan(0);
     for (const wife of wives) expect(party).toContain(sim.world.get(wife, Marriage).spouse);
-    expect(topUpParty(sim.world, ctx, SEAT, land, WOMENLESS_COLONY, TWO_SEATS)).toHaveLength(TWO_SEATS);
+    expect(topUpParty(sim.world, ctx, SEAT, land, WOMEN_LACKING, TWO_SEATS)).toHaveLength(TWO_SEATS);
   });
 
   it('leaves a husband who feeds the seat at his post, and his wife with him', () => {
     const { sim, land } = postedHusbands(FARM_TYPE);
-    const party = topUpParty(sim.world, ctxOf(sim), SEAT, land, WOMENLESS_COLONY, SHIP_SEATS);
+    const party = topUpParty(sim.world, ctxOf(sim), SEAT, land, WOMEN_LACKING, SHIP_SEATS);
     expect(party.filter((e) => sim.world.has(e, Marriage))).toEqual([]);
   });
 });

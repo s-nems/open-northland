@@ -31,6 +31,7 @@ import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwa
 import { colonists, colonyOrigin } from './founding.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
+import { handsWanted, menPastWork } from './posts.js';
 import { colonyMakes, LAND_GOOD_IDS, storesHeld } from './provision.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
@@ -321,7 +322,8 @@ function crewFromColony(env: ColonyEnv, line: LineView): PlayerCommand[] {
   return boardOrders(world, hireCrew(env, line, men.slice(0, LINE_CREW_LEAST)), line.ship);
 }
 
-/** Hire the crew's shortfall from home, then the settlers the colony still lacks, in the seats left. */
+/** Hire the crew's shortfall from home, then, in the seats left, the hands the colony lacks for its gatherers,
+ *  sites and workshops ({@link handsWanted}). */
 function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCommand[] {
   const { world, ctx, seat } = env;
   forgetListed(env, colony, []);
@@ -333,7 +335,9 @@ function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCo
   const women = people.filter((e) => world.has(e, Female) && isAdultSettler(world, e)).length;
   const seats = world.tryGet(line.ship, Vehicle)?.passengers.length ?? 0;
   const free = seats - ridersOf(world, line.ship).length - hired.length;
-  const party = topUpParty(world, ctx, seat, home, { men, women }, free).filter((e) => !hired.includes(e));
+  const wanted = handsWanted(env, colony);
+  const lacking = { men: wanted.men - men, women: wanted.women - women };
+  const party = topUpParty(world, ctx, seat, home, lacking, free).filter((e) => !hired.includes(e));
   if (party.length > 0) env.edit().rest.push(...party);
   return boardOrders(world, [...hired, ...party], line.ship);
 }
@@ -429,7 +433,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     case 'sailHome':
       return sail(env, colony, line, 'berth', home, () => {
         enterLeg(env, 'unloadHome');
-        return flushOrders(env, line);
+        return [...landPassengers(env, line), ...flushOrders(env, line)];
       });
     case 'unloadHome':
       return holdFlushed(world, ship) || stalled(env, line) ? beginHomeLoad(env, colony, line) : [];
@@ -448,8 +452,10 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     case 'unloadColony': {
       if (!holdFlushed(world, ship) && !stalled(env, line)) return [];
       const load = homewardLoad(env, colony, line);
+      const seats = world.get(ship, Vehicle).passengers.length - ridersOf(world, ship).length;
+      const homeward = menPastWork(env, colony).slice(0, seats);
       enterLeg(env, 'loadColony');
-      return wantOrders(ship, load);
+      return [...boardOrders(world, homeward, ship), ...wantOrders(ship, load)];
     }
     case 'loadColony': {
       if (!loaded(env, line) && !stalled(env, line)) return [];
