@@ -5,6 +5,7 @@ import { focusChainSite } from '../../../../src/systems/computer-player/build-or
 import {
   aiSim,
   BAKERY_TYPE,
+  BARRACKS_TYPE,
   ctxOf,
   entityOfBuilding,
   HOME_TYPE,
@@ -52,6 +53,16 @@ describe('focusChainSite', () => {
     finish(sim, WELL_TYPE);
     expect(focusOf(sim)).toBe(entityOfBuilding(sim, BAKERY_TYPE));
     finish(sim, BAKERY_TYPE);
+    expect(focusOf(sim)).toBeNull();
+  });
+
+  it('names the first barracks site past the chain, with no mill owned too', () => {
+    const sim = seatWithSites([BARRACKS_TYPE, MILL_TYPE]);
+    expect(focusOf(sim)).toBe(entityOfBuilding(sim, MILL_TYPE));
+    finish(sim, MILL_TYPE);
+    expect(focusOf(sim)).toBe(entityOfBuilding(sim, BARRACKS_TYPE));
+    expect(focusOf(seatWithSites([BARRACKS_TYPE, BAKERY_TYPE]))).not.toBeNull();
+    finish(sim, BARRACKS_TYPE);
     expect(focusOf(sim)).toBeNull();
   });
 

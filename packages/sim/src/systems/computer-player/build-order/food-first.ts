@@ -69,6 +69,12 @@ const EARNED_TRADE_WORKSHOPS: readonly string[] = [
   'work_bakery_00',
 ];
 
+/** The site past the chain every builder goes to: a seat's first barracks. Authored: on
+ *  arabskie_wyspy_wolna_gra_mieszana (seed 7) seat 4's stood 59 minutes after its site opened, none of its
+ *  goods delivered for 40 of them with all of them in stock, its builders spread over nine sites and on
+ *  the towers beside them, and a rival's landing razed a seat with no soldier at minute 83. */
+const FOCUS_BARRACKS = 'barracks';
+
 /** The bread chain's supplier ({@link FOCUS_CHAIN}): the workshop making a good the bakery's bill
  *  takes and no food. */
 const BREAD_CHAIN_SUPPLIER = 'work_mason_hut_00';
@@ -115,29 +121,38 @@ export function fishFeedsWomen(world: World, ctx: SystemContext, player: number)
  * the first {@link FOCUS_CHAIN} kind the seat has none standing of at that tier or above, the lowest
  * entity id among several of one kind. The kinds past the mill count only once the seat owns a mill, site
  * or standing. Null once each counted kind stands or while none has a site open; an upgrade site never
- * counts.
+ * counts. Past the chain the first barracks takes its turn ({@link FOCUS_BARRACKS}).
  */
 export function focusChainSite(world: World, ctx: SystemContext, owned: readonly Entity[]): Entity | null {
-  const index = contentIndex(ctx.content);
   for (const id of FOCUS_CHAIN) {
-    const type = buildingTypeByContentId(ctx.content, id);
-    if (type === undefined) continue;
-    const tiers = tiersAtOrAbove(index, type);
-    let site: Entity | null = null;
-    let stands = false;
-    let owns = false;
-    for (const e of owned) {
-      if (!tiers.has(world.get(e, Building).buildingType)) continue;
-      owns = true;
-      if (isBuilt(world, e)) {
-        stands = true;
-        break;
-      }
-      if (site === null && !world.has(e, Upgrading) && isServedConstructionSite(world, ctx.content, e))
-        site = e;
-    }
-    if (id === BREAD_CHAIN_OPENER && !owns) return null;
-    if (!stands && site !== null) return site;
+    const kind = siteOfKind(world, ctx, owned, id);
+    if (kind === null) continue;
+    if (id === BREAD_CHAIN_OPENER && !kind.owns) break;
+    if (!kind.stands && kind.site !== null) return kind.site;
   }
-  return null;
+  const barracks = siteOfKind(world, ctx, owned, FOCUS_BARRACKS);
+  return barracks === null || barracks.stands ? null : barracks.site;
+}
+
+/** What the seat owns of the kind `id` at its tier or above: its first open site, whether one stands, and
+ *  whether it owns any; null for a kind the content lacks. */
+function siteOfKind(
+  world: World,
+  ctx: SystemContext,
+  owned: readonly Entity[],
+  id: string,
+): { readonly site: Entity | null; readonly stands: boolean; readonly owns: boolean } | null {
+  const type = buildingTypeByContentId(ctx.content, id);
+  if (type === undefined) return null;
+  const tiers = tiersAtOrAbove(contentIndex(ctx.content), type);
+  let site: Entity | null = null;
+  let owns = false;
+  for (const e of owned) {
+    if (!tiers.has(world.get(e, Building).buildingType)) continue;
+    owns = true;
+    if (isBuilt(world, e)) return { site: null, stands: true, owns };
+    if (site === null && !world.has(e, Upgrading) && isServedConstructionSite(world, ctx.content, e))
+      site = e;
+  }
+  return { site, stands: false, owns };
 }
