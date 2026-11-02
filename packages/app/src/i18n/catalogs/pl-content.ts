@@ -381,6 +381,11 @@ export const plContent = {
       summary:
         'Te same dwie wyspy, ale bez przypiętego statku: trasa kupca go potrzebuje i sekcja Handel o tym mówi. Zaznacz kupca, naciśnij Przypnij statek i wskaż podświetlony statek. Kupiec załaduje go i wypłynie.',
     },
+    'trade-sea-agreement': {
+      title: 'Umowa handlowa przez morze',
+      summary:
+        'Magazyn przyjaznego plemienia na wschodniej wyspie oferuje żelazo i drewno za monety. Kupiec ze statkiem handlowym przypiętym do trasy zawozi monety i wraca z żelazem, po cztery sztuki za monetę, a jego wózek kursuje między statkiem a magazynem na obu brzegach. Zaznacz kupca, by w sekcji Handel zobaczyć statek i wybraną ofertę. Otwórz okno dyplomacji, by zobaczyć oferty: gdy stosunek nie jest przyjazny, są wyszarzone.',
+    },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',
       summary:

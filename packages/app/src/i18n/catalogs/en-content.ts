@@ -383,6 +383,11 @@ export const enContent = {
       summary:
         "The same two islands with no ship pinned: the merchant's route needs one and its Trade section says so. Select the merchant, press Pin a ship and pick the lit ship; the merchant then loads it and sails.",
     },
+    'trade-sea-agreement': {
+      title: 'A trade agreement across the sea',
+      summary:
+        "A friendly tribe's warehouse on the east island offers iron and wood for coins. A merchant with the big ship pinned to its route takes coins over and brings iron back, four for a coin, and its handcart ferries between ship and warehouse on both shores. Select the merchant to see the ship and the chosen offer in its Trade section. Open the diplomacy window to see the offers: with a stance other than friendly they are greyed out.",
+    },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:

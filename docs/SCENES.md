@@ -99,6 +99,12 @@ pinned to its route: it ferries the wood aboard in two cart loads, sails with th
 vehicle slot and ferries the load ashore. `?scene=trade-sea-pin` is the same world with no ship pinned.
 Select the trader, read the note beside "Pin a ship", press it and pick the lit ship.
 
+`?scene=trade-sea-agreement` is the same crossing on a trade agreement: a friendly nation's warehouse
+on the east island offers iron and wood for coins, and the trader takes six coins over on the pinned
+big ship and brings 24 iron home. The iron outweighs one handcart load, so the cart ferries between ship
+and warehouse on both shores. Select the trader for the ship and the offer in its Trade section, and
+open the diplomacy window for both offers and how a stance other than friendly greys them out.
+
 `?scene=cart-drivers` hands a handcart to a trader to pull and crews an ox cart with a carrier for
 each civilization, in rows: viking, frank, byzantine, saracen, egyptian, and sends them east. Every
 driver wears his own civilization's head, standing and driving.

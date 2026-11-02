@@ -33,7 +33,7 @@ const MAP_W = 24;
 const MAP_H = 12;
 
 /** The trading nation; a foreign house joins a route only while both sides are friends. */
-const TRADER_NATION = 1;
+export const TRADER_NATION = 1;
 
 const HOME_AT = { x: 5, y: 5 } as const;
 const POST_AT = { x: 17, y: 5 } as const;
@@ -42,7 +42,7 @@ const TRADER_AT = { x: 6, y: 8 } as const;
 const CART_AT = { x: 7, y: 8 } as const;
 
 /** The mission object id the agreement names, the `sethouse` column a map would author. */
-const POST_MISSION_ID = 900;
+export const POST_MISSION_ID = 900;
 /** The agreement: one coin buys four iron (a corpus-like rate; both goods exist in either content base). */
 const COIN_PER_BATCH = 1;
 const IRON_PER_BATCH = 4;
@@ -107,7 +107,7 @@ function warehouseOf(sim: Simulation, player: number): Entity | undefined {
   return undefined;
 }
 
-function stockOf(sim: Simulation, player: number, good: number): number {
+export function stockOf(sim: Simulation, player: number, good: number): number {
   const house = warehouseOf(sim, player);
   return house === undefined ? 0 : (sim.world.get(house, Stockpile).amounts.get(good) ?? 0);
 }

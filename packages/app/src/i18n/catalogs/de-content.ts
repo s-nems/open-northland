@@ -385,6 +385,11 @@ export const deContent = {
       summary:
         'Dieselben zwei Inseln ohne zugewiesenes Schiff: Die Route des Händlers braucht eines, und sein Handelsbereich sagt es. Wähle den Händler, drücke Schiff zuweisen und wähle das hervorgehobene Schiff. Der Händler belädt es und legt ab.',
     },
+    'trade-sea-agreement': {
+      title: 'Handelsabkommen über das Meer',
+      summary:
+        'Das Lagerhaus eines befreundeten Stammes auf der Ostinsel bietet Eisen und Holz für Münzen. Ein Händler mit dem großen Schiff auf seiner Route bringt Münzen hinüber und holt Eisen zurück, vier für eine Münze. Sein Handkarren pendelt an beiden Ufern zwischen Schiff und Lagerhaus. Wähle den Händler, um im Handelsbereich das Schiff und das gewählte Handelsangebot zu sehen. Öffne das Diplomatiefenster für die Handelsangebote: Ist das Verhältnis nicht freundlich, sind sie ausgegraut.',
+    },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
       summary:
