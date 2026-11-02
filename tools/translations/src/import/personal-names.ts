@@ -17,6 +17,8 @@ import type { OverlayFile } from './maps.js';
  */
 const NAMES_FILE = ['strings', 'gameobjects', 'humannames.ini'] as const;
 const NAME_LINE = /^Name ([01]) "(.*)"$/;
+/** The sex tag of a man's line; a woman's is `1`. */
+const MALE_TAG = '0';
 /** The folder the English original lives in; a translation's line sits on its line. */
 const ENGLISH_FOLDER = 'eng';
 /** A line the original fills for the settler it has not named yet: not a name, never translated. */
@@ -51,7 +53,7 @@ async function readNameLines(textRoot: string, folder: string): Promise<readonly
   for (const line of text.split(/\r?\n/)) {
     const match = NAME_LINE.exec(line.trim());
     if (match === null) continue;
-    lines.push({ sex: match[1] === '0' ? 'male' : 'female', name: match[2] ?? '' });
+    lines.push({ sex: match[1] === MALE_TAG ? 'male' : 'female', name: match[2] ?? '' });
   }
   return lines;
 }
