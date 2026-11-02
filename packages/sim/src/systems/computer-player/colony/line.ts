@@ -64,6 +64,8 @@ const MEN_PER_LINE_HAND = 3;
 /** Food kept aboard per hand (authored): an empty hold starves its crew, and two meals outlast a leg. */
 const PROVISIONS_PER_HAND = 2;
 const FOOD_LINE_ID = 'food_simple';
+/** Drawn where it is drunk: a well stands wherever a workshop wants it, so it never sails. */
+const WATER_ID = 'water';
 /** How long a hold may stand unchanged before the ship goes with what it has (authored). */
 const LEG_STALL_TICKS = minutesToTicks(2);
 /** How long a stop may load at all (authored): 40 units come aboard in four to six minutes from a store by
@@ -335,13 +337,15 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
   const { held, kept } = colonyStores(env, colony);
   const supply = homeSupply(env);
   const staples = LAND_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
+  const water = goodTypeByContentId(ctx.content, WATER_ID)?.typeId;
   const finished = [...held.keys()]
     .filter(
       (good) =>
         !staples.includes(good) &&
         !kept.has(good) &&
         !isEdibleFoodIn(ctx.content, good) &&
-        !supply.atGlut(good),
+        !supply.atGlut(good) &&
+        good !== water,
     )
     .sort((a, b) => a - b);
   return homewardCargo({
