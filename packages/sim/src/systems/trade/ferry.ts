@@ -1,4 +1,5 @@
 import {
+  Carrying,
   StandIn,
   TradeRoute,
   type TradeRouteView,
@@ -15,7 +16,7 @@ import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic } from '../se
 import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
 import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goals.js';
-import { boardingNode } from '../vehicles/crew.js';
+import { boardingNode, pinnedTraderAshore } from '../vehicles/crew.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import {
   cartStands,
@@ -23,6 +24,7 @@ import {
   ferryHoldOf,
   TRADE_CART_HOUSE_DISTANCE,
   type TraderHold,
+  traderHoldOf,
 } from './hold.js';
 import { mooringTargetOfStop, routeCrossesSea, shipLiesOn, stopContinent } from './ship.js';
 import { boardTradeShip, shipLiesAwayFrom } from './voyage.js';
@@ -49,6 +51,8 @@ export interface StopRules {
   work(near: TraderHold, action: Extract<StopAction, { kind: 'load' | 'unload' }>): boolean;
   wait(near: TraderHold): boolean;
 }
+
+type WaitRule = Pick<StopRules, 'wait'>;
 
 /** The ship and stops of a trader's crossing route: null unless a pinned ship and a route that crosses. */
 export interface SeaLeg {
@@ -183,7 +187,7 @@ function liftAtShip(
   hold: FerryHold,
   good: number,
   way: 'stow' | 'fetch',
-  rules: StopRules,
+  rules: WaitRule,
 ): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const { near, ship } = hold;
@@ -208,10 +212,8 @@ function liftAtShip(
 }
 
 /**
- * Take the ship to `target`: units in bare hands go into the ship first, goods in a cart stay in the
- * cart, which is brought to the door and set into the vehicle slot. `flips` is a departure for the other
- * stop, which turns the route at the door. A failed dock's cooldown, no shore to sail to or no slot for
- * the cart keep the trader ashore.
+ * Take the ship to `target`, aboard through {@link goAboard}. `flips` is a departure for the other stop.
+ * A failed dock's cooldown or no shore to sail to keep the trader ashore.
  */
 function setOut(
   plan: PlannerContext,
@@ -220,11 +222,20 @@ function setOut(
   flips: boolean,
   rules: StopRules,
 ): boolean {
+  const cooling = plan.ctx.tick < plan.world.get(plan.entity, TradeShip).dockRetryAt;
+  if (target === null || cooling) return rules.wait(hold.near);
+  return goAboard(plan, hold, flips, rules);
+}
+
+/**
+ * The trader goes aboard: units in bare hands go into the ship first, goods in a cart stay in the cart,
+ * which is brought to the door and set into the vehicle slot. `flips` turns the route at the door. No
+ * slot for the cart keeps the trader ashore.
+ */
+function goAboard(plan: PlannerContext, hold: FerryHold, flips: boolean, rules: WaitRule): boolean {
   const { world, ctx, terrain, entity: e, here } = plan;
   const { near, ship } = hold;
-  const cooling = ctx.tick < world.get(e, TradeShip).dockRetryAt;
-  const noSlot = near.cart !== null && !world.get(ship, Vehicle).vehicles.includes(null);
-  if (target === null || cooling || noSlot) return rules.wait(near);
+  if (near.cart !== null && !world.get(ship, Vehicle).vehicles.includes(null)) return rules.wait(near);
   if (near.cart === null && near.load > 0) {
     const stow = stowableGood(hold);
     if (stow !== undefined) return liftAtShip(plan, hold, stow, 'stow', rules);
@@ -237,4 +248,25 @@ function setOut(
     boardTradeShip(world, e, ship);
   });
   return true;
+}
+
+/**
+ * An order held on the pinned ship calls its trader aboard ahead of everything the route would do, a
+ * pin needing no route for it; the voyage takes the ship back up once the order is done. False while no
+ * such order waits on the trader; a unit in the hands of a trader with a cart goes to the delivery rung
+ * first, as on the route.
+ */
+export function planShipOrder(
+  plan: PlannerContext,
+  wait: (plan: PlannerContext, near: TraderHold) => boolean,
+): boolean {
+  const { world, ctx, entity: e } = plan;
+  const ship = world.tryGet(e, TradeShip)?.vehicle;
+  if (ship === undefined || (world.tryGet(ship, Vehicle)?.heldGoal ?? null) === null) return false;
+  if (pinnedTraderAshore(world, ctx, ship) !== e) return false;
+  const near = traderHoldOf(world, ctx, e);
+  if (near.cart !== null && world.has(e, Carrying)) return false;
+  const hold = ferryHoldOf(world, ctx, near, ship);
+  if (hold === null) return wait(plan, near);
+  return goAboard(plan, hold, false, { wait: (held) => wait(plan, held) });
 }

@@ -72,7 +72,8 @@ export function shipLiesAwayFrom(
 function sail(world: World, ctx: SystemContext, terrain: TerrainGraph, trader: Entity, ship: Entity): void {
   const state = world.get(ship, Vehicle);
   const route = world.tryGet(trader, TradeRoute);
-  const stop = route?.stops[route.current];
+  // A route no plan has taken up yet starts at its first stop, as the planner starts it.
+  const stop = route?.stops[Math.max(route.current, 0)];
   const target =
     route === undefined || route.stops.length !== TRADE_ROUTE_HOUSES || stop === undefined
       ? null

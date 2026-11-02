@@ -39,7 +39,7 @@ import { isUnreachableGoal, unreachableGoals } from '../settlers/unreachable-goa
 import { mayFetchGoodFrom } from '../stores/index.js';
 import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.js';
 import { activeAgreement } from './agreements.js';
-import { planCrossing, seaLegOf, takeStopAtHand } from './ferry.js';
+import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.js';
 import { sameFoodClass } from './goods.js';
 import { cartStands, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
 import { refillRestores } from './partner-stock.js';
@@ -82,11 +82,13 @@ interface LoadScope {
  * behavior of the trader's job, except that the original's trader commands its cart and idles without
  * one (owner's choice). Approximation: the original's trader carries every unit between the house and
  * the cart's door; here the load and unload clips at the house move the unit straight into and out of
- * the standing cart. A route across the sea with a pinned ship goes by that ship (`ferry.ts`).
+ * the standing cart. A route across the sea with a pinned ship goes by that ship (`ferry.ts`), and a
+ * pinned ship holding the player's order takes its trader off everything else.
  */
 export function planTrader(plan: PlannerContext): boolean {
   const { world, ctx, entity: e } = plan;
   if (!isTraderJob(ctx.content, plan.jobType) || world.has(e, Rider)) return false;
+  if (planShipOrder(plan, waitWithLoad)) return true;
   if (!world.has(e, TradeRoute) || !routeStandsFinished(world, e)) return false;
   if (world.get(e, TradeRoute).current < 0) world.mut(e, TradeRoute).current = 0;
   takeStopAtHand(plan);

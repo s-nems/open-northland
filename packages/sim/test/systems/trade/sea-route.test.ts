@@ -705,16 +705,109 @@ describe("a player's order on a voyage", () => {
     expect(stockOf(sim, east, WOOD)).toBeGreaterThan(0);
     expectSound(sim);
   });
+});
 
-  it('refuses a ship nobody is aboard, as any uncrewed ship', () => {
+describe("a player's order to a moored pinned ship with its trader ashore", () => {
+  /** A loaded route with the trader and its cart still at the west house and the ship held on an order. */
+  function ordered() {
     const sim = newSim();
-    const { ship } = crossing(sim);
+    const west = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, SMALL_LOAD]]);
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship, cart } = crossing(sim);
+    attach(sim, trader, west);
+    attach(sim, trader, east);
+    mark(sim, trader, east, WOOD);
+    if (cart === null) throw new Error('no cart');
     sim.step();
+    order(sim, { kind: 'moveVehicle', vehicle: ship, x: OPEN_WATER_X, y: NORTH_WATER_Y });
+    sim.step();
+    expect(refusalsOf(sim, ship)).toEqual([]);
+    expect(sim.world.get(ship, Vehicle).heldGoal).not.toBeNull();
+    return { sim, trader, ship, cart, east };
+  }
+
+  it('brings the trader and its cart aboard, sails to the point, then the trader goes back to its route', () => {
+    const { sim, trader, ship, cart, east } = ordered();
+
+    const atPoint = (): boolean => {
+      const at = vehicleAnchor(sim.world, ship);
+      return at !== null && at.hx === OPEN_WATER_X && at.hy === NORTH_WATER_Y;
+    };
+    runUntil(sim, VOYAGE_TICKS, atPoint);
+    expect(atPoint()).toBe(true);
+    expect(vehicleCommander(sim.world.get(ship, Vehicle))).toBe(trader);
+    expect(sim.world.get(cart, Vehicle).carrier).toBe(ship);
+
+    runUntil(sim, LONG_TICKS, () => stockOf(sim, east, WOOD) > 0);
+    expect(stockOf(sim, east, WOOD)).toBeGreaterThan(0);
+    expectSound(sim);
+  });
+
+  it('docks on the order of a pin with no route, and the trader steps ashore there', () => {
+    const sim = newSim();
+    const east = houseAt(sim, EAST_HOUSE_CELL, HUMAN);
+    const { trader, ship } = crossing(sim, { cart: false });
+    sim.step();
+    const ctx = ctxOf(sim);
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('mapless sim');
+    const door = doorOf(sim, east);
+    const target = mooringTargetOf(sim.world, ctx, terrain, ship, terrain.nodeAt(door.hx, door.hy));
+    if (target === null) throw new Error('no mooring on the east shore');
+    const { x, y } = terrain.coordsOf(target);
+    order(sim, { kind: 'dockVehicle', vehicle: ship, x, y });
+
+    runUntil(
+      sim,
+      VOYAGE_TICKS,
+      () => sim.world.get(ship, Vehicle).mooring?.hx === x && sim.world.has(trader, Position),
+    );
+    expect(sim.world.get(ship, Vehicle).moored).toBe(true);
+    expect(continentOf(sim, trader)).toBe(terrain.componentOf(target));
+  });
+
+  it('refuses a trader on another continent', () => {
+    const sim = newSim();
+    const { trader, ship } = crossing(sim);
+    sim.step();
+    sim.world.mut(trader, Position).x = fx.fromInt(EAST_HOUSE_CELL);
     order(sim, { kind: 'moveVehicle', vehicle: ship, x: OPEN_WATER_X, y: NORTH_WATER_Y });
     sim.step();
 
     expect(sim.world.has(ship, VehicleDrive)).toBe(false);
+    expect(sim.world.get(ship, Vehicle).heldGoal).toBeNull();
     expect(refusalsOf(sim, ship)).toEqual(['noCommander']);
+  });
+
+  it('calls the held order off on a stop, and the trader goes back to its work', () => {
+    const { sim, trader, ship, east } = ordered();
+    order(sim, { kind: 'stopVehicle', vehicle: ship });
+    sim.step();
+
+    expect(sim.world.get(ship, Vehicle).heldGoal).toBeNull();
+    expect(sim.world.has(trader, Rider)).toBe(false);
+
+    runUntil(sim, LONG_TICKS, () => stockOf(sim, east, WOOD) > 0);
+    expect(stockOf(sim, east, WOOD)).toBeGreaterThan(0);
+    expectSound(sim);
+  });
+
+  it('lapses with the no-commander note when the trader dies on its way', () => {
+    const { sim, trader, ship } = ordered();
+    removeSettlerSilently(sim.world, trader);
+    sim.step();
+
+    expect(sim.world.get(ship, Vehicle).heldGoal).toBeNull();
+    expect(refusalsOf(sim, ship)).toEqual(['noCommander']);
+  });
+
+  it('holds while the trader rounds onto the sea mid-step', () => {
+    const { sim, trader, ship } = ordered();
+    sim.world.mut(trader, Position).x = fx.fromInt(STRAIT_FROM);
+    sim.step();
+
+    expect(sim.world.get(ship, Vehicle).heldGoal).not.toBeNull();
+    expect(refusalsOf(sim, ship)).toEqual([]);
   });
 });
 

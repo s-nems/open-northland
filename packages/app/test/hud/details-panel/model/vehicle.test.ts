@@ -523,13 +523,35 @@ describe('a ship pinned to a trader', () => {
     return vehiclePanelModel(tradeCtxOf(sim), sim.snapshot(), entity);
   }
 
-  it('names its trader, reads as no pulled cart and keeps its orders', () => {
+  it('names its trader and reads as no pulled cart', () => {
     const model = shipPanel(tradeSeaScene);
     expect(model.tradePin?.name).toBeTruthy();
     expect(model.hauler).toBeNull();
     expect(model.trade).toBeNull();
-    const refusals = messages().hud.vehiclePanel.refusals;
-    expect(model.orders.find((order) => order.order === 'goTo')?.control).toBe(refusals.noCommander.ship);
+  });
+
+  it("shows the trader ashore in the captain's well, outside, and a Ctrl click refuses", () => {
+    const model = shipPanel(tradeSeaScene);
+    expect(model.crew.commander?.entity).toBe(model.tradePin?.entity);
+    expect(model.crew.commander?.inside).toBe(false);
+    expect(model.crew.leave).toBe(messages().hud.vehiclePanel.refusals.pinned);
+    expect(wellPress(commanderWell(model.crew), model, true)).toBe('refuse');
+  });
+
+  it('takes go to and dock while it lies moored for the trader ashore, and refuses them at sea', () => {
+    const sim = createSceneSim(tradeSeaScene);
+    sim.run(1);
+    const ship = tradeSeaShip(sim);
+    if (ship === undefined) throw new Error('expected the scene ship');
+    const control = (snapshot: WorldSnapshot, order: string) =>
+      modelOf({ snapshot, ctx: tradeCtxOf(sim) }, ship).orders.find((row) => row.order === order)?.control;
+    const snapshot = sim.snapshot();
+    expect(control(snapshot, 'goTo')).toBe(true);
+    expect(control(snapshot, 'dock')).toBe(true);
+    const atSea = withVehicle(snapshot, ship, (v) => {
+      v.moored = false;
+    });
+    expect(control(atSea, 'goTo')).toBe(messages().hud.vehiclePanel.refusals.noCommander.ship);
   });
 
   it('leaves its hold, its seats and its deck to the route', () => {

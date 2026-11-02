@@ -1,23 +1,10 @@
 import type { AiOrderOrigin } from '../../components/ai/order.js';
-import {
-  AttackOrder,
-  Engagement,
-  Fleeing,
-  HuntFocus,
-  ownerOf,
-  PlayerOrder,
-  Position,
-  Rider,
-  Vehicle,
-  vehicleCommander,
-} from '../../components/index.js';
+import { ownerOf, Position, Rider, Vehicle, vehicleCommander } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { SystemContext } from '../context.js';
 import { vehicleAnchor } from '../footprint/index.js';
-import { clearNavState } from '../movement/nav-state.js';
-import { recordAiOrder } from '../orders/ai-lifecycle.js';
-import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
+import { turnToVehicle } from './crew.js';
 import { moveVehicle } from './movement.js';
 import { queueVehicleOrder } from './order-queue.js';
 import type { VehicleOrderRoutes } from './order-routes.js';
@@ -52,11 +39,9 @@ export function isCommanderWalkOrder(
 
 /**
  * Give a commander's walk order to its vehicle as a goto (`moveVehicle`, with its refusals), an
- * attack-move as the goto's march: the crew boards first through the goto's `waitsForHuman` hold. A
- * commander outside and free to move drops its own walk and its fight, as the ordinary walk order
- * does, so the rider rung turns it to the door at once; one held by an atomic finishes it first, so the unit it is loading lands
- * before the vehicle leaves. False when `e` commands no vehicle, leaving the order to the
- * ordinary walk.
+ * attack-move as the goto's march: the crew boards first through the goto's `waitsForHuman` hold, and a
+ * commander outside turns to the door ({@link turnToVehicle}), the rider rung taking it from there.
+ * False when `e` commands no vehicle, leaving the order to the ordinary walk.
  */
 export function driveCommandedVehicle(
   world: World,
@@ -75,14 +60,6 @@ export function driveCommandedVehicle(
   if (!moveVehicle(world, ctx, goto, orders, origin)) {
     return true;
   }
-  if (world.has(e, Position) && !atomicHoldsSettler(world, e)) {
-    recordAiOrder(world, e);
-    clearNavState(world, e);
-    world.remove(e, PlayerOrder);
-    world.remove(e, Engagement);
-    world.remove(e, AttackOrder);
-    world.remove(e, HuntFocus);
-    world.remove(e, Fleeing);
-  }
+  turnToVehicle(world, e);
   return true;
 }

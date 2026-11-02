@@ -2,16 +2,20 @@ import type { VehicleType } from '@open-northland/data';
 import {
   AttackOrder,
   Engagement,
+  Fleeing,
   HaulingCart,
   HuntFocus,
   hasFreeSeat,
   ownerOf,
+  PlayerOrder,
   Position,
   Rider,
   Settler,
   seatPassenger,
   setSeatInside,
+  TradeShip,
   Vehicle,
+  vehicleCommander,
   vehiclePassengers,
 } from '../../components/index.js';
 import type { Command } from '../../core/commands/index.js';
@@ -30,12 +34,15 @@ import {
   vehicleDoorNode,
 } from '../footprint/index.js';
 import { clearNavState } from '../movement/nav-state.js';
+import { recordAiOrder } from '../orders/ai-lifecycle.js';
 import { anchorAtFeet } from '../orders/combat.js';
 import { isOrderableSettler } from '../orders/guards.js';
 import { sendUnit } from '../orders/movement.js';
 import { isShipVehicle } from '../readviews/vehicles.js';
+import { atomicHoldsSettler } from '../settlers/atomics/busy.js';
 import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
+import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { endChat } from '../social/gossip/drive.js';
 import { abandonCargoRun } from './cargo.js';
 import { dropHeldGoal, endMarch, vacateSeat } from './movement.js';
@@ -68,7 +75,9 @@ export function canAttachToVehicle(world: World, ctx: MapContext, settler: Entit
 
 /**
  * Whether `settler` stands on the continent of `vehicle`'s door. A vehicle riding a carrier or a
- * settler aboard one is judged where it would step out. True without a map, where nothing walks.
+ * settler aboard one is judged where it would step out. A walker mid-step can round onto the unwalkable
+ * node beside its leg, which on a one-node strip of shore is the sea; it counts as reachable until it
+ * stands on ground. True without a map, where nothing walks.
  */
 export function doorReachable(world: World, ctx: MapContext, settler: Entity, vehicle: Entity): boolean {
   const terrain = ctx.terrain;
@@ -84,10 +93,38 @@ export function doorReachable(world: World, ctx: MapContext, settler: Entity, ve
         ? null
         : landingOf(world, ctx, rider.vehicle);
   if (from === null || !terrain.inBounds(from.hx, from.hy)) return false;
+  const at = terrain.nodeAt(from.hx, from.hy);
   return (
-    terrain.componentOf(terrain.nodeAt(from.hx, from.hy)) ===
-    terrain.componentOf(terrain.nodeAt(door.hx, door.hy))
+    !terrain.isWalkable(at) ||
+    terrain.componentOf(at) === terrain.componentOf(terrain.nodeAt(door.hx, door.hy))
   );
+}
+
+/**
+ * The trader pinned to `vehicle` who answers for its commander from ashore: nobody holds the commander
+ * seat, the trader rides no vehicle and can walk to the door. A ship holds an order for it as for a crew
+ * still outside. Null for anything else; a cart's hauler has no `TradeShip` naming the cart.
+ */
+export function pinnedTraderAshore(world: World, ctx: MapContext, vehicle: Entity): Entity | null {
+  const state = world.tryGet(vehicle, Vehicle);
+  if (state === undefined || state.hauler === null || vehicleCommander(state) !== null) return null;
+  const trader = state.hauler;
+  if (world.tryGet(trader, TradeShip)?.vehicle !== vehicle || world.has(trader, Rider)) return null;
+  return doorReachable(world, ctx, trader, vehicle) ? trader : null;
+}
+
+/** Turn `e`, standing on the map, to its vehicle: free to move, it drops its own walk and its fight as
+ *  the ordinary walk order does; held by an atomic, it finishes it first, so a unit it is moving lands. */
+export function turnToVehicle(world: World, e: Entity): void {
+  if (!world.has(e, Position) || atomicHoldsSettler(world, e)) return;
+  recordAiOrder(world, e);
+  clearNavState(world, e);
+  world.remove(e, PlayerOrder);
+  world.remove(e, Engagement);
+  world.remove(e, AttackOrder);
+  world.remove(e, HuntFocus);
+  world.remove(e, Fleeing);
+  wakeIdle(world, e);
 }
 
 /** Whether `vehicle` is a ship lying at sea: its riders may neither step in nor out. */

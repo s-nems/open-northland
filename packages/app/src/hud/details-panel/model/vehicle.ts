@@ -309,6 +309,7 @@ export function vehicleStatus(inputs: StatusInputs): VehicleStatusModel {
 
 interface OrderInputs {
   readonly vehicleClass: VehicleClass;
+  /** A seated commander, or a pinned trader who answers from ashore. */
   readonly commanded: boolean;
   readonly carried: boolean;
   /** The carrying ship lies moored, so a carried vehicle may drive off it. */
@@ -396,8 +397,8 @@ interface CrewInputs {
   readonly carried: boolean;
   /** The carrier or trader whose cart this is, which refuses crew meanwhile; null for any other vehicle. */
   readonly hauler: VehicleHaulerModel | null;
-  /** A trader's route holds the ship: its seats and deck are the route's. */
-  readonly pinned: boolean;
+  /** The trader whose route holds the ship: its seats and deck are the route's. */
+  readonly tradePin: VehicleTradePinModel | null;
   /** A ship lying at sea: nobody steps in or out. */
   readonly atSea: boolean;
   readonly moored: boolean;
@@ -414,14 +415,18 @@ function crewModel(
   const passengers = vehicleSeatsOf(v.passengers);
   const lead = passengers.find((seat) => seat.entity === commanderId);
   const hauled = inputs.hauler !== null;
+  const pinned = inputs.tradePin !== null;
   // The puller who holds an own cart stands in the commander's seat without taking a passenger slot;
-  // he never sits in it, so he counts as at his post rather than walking to the door.
+  // he never sits in it, so he counts as at his post rather than walking to the door. A pinned trader
+  // commands its ship from ashore too, and reads as outside there.
   const commander =
     lead !== undefined
       ? riderModel(ctx, snapshot, lead)
       : hauled && !inputs.foreign
         ? riderModel(ctx, snapshot, { entity: inputs.hauler.entity, inside: true })
-        : null;
+        : pinned
+          ? riderModel(ctx, snapshot, { entity: inputs.tradePin.entity, inside: false })
+          : null;
   const seats = ordinarySeats(v.passengers).map((seat) =>
     seat === null ? null : riderModel(ctx, snapshot, seat),
   );
@@ -450,12 +455,12 @@ function crewModel(
     count: passengers.length,
     capacity,
     deck,
-    assign: own ? (hauled ? copy.hauled : inputs.pinned ? copy.pinned : full ? copy.noSeat : doorless) : null,
-    leave: own ? (hauled ? copy.hauled : doorless) : null,
+    assign: own ? (hauled ? copy.hauled : pinned ? copy.pinned : full ? copy.noSeat : doorless) : null,
+    leave: own ? (hauled ? copy.hauled : pinned ? copy.pinned : doorless) : null,
     unload: own && passengers.length > 0 ? doorless : null,
     load:
       own && deck !== null
-        ? inputs.pinned
+        ? pinned
           ? copy.pinned
           : !inputs.moored
             ? copy.notMoored
@@ -463,7 +468,7 @@ function crewModel(
               ? copy.deckFull
               : true
         : null,
-    unloadVehicle: own && deck !== null ? (inputs.pinned ? copy.pinned : inputs.moored ? true : atSea) : null,
+    unloadVehicle: own && deck !== null ? (pinned ? copy.pinned : inputs.moored ? true : atSea) : null,
   };
 }
 
@@ -617,6 +622,9 @@ export function vehiclePanelModel(
   const hauled = hauler !== null;
   const tradePin = foreign ? null : tradePinOf(ctx, snapshot, ent);
   const pinned = tradePin !== null;
+  // The snapshot cannot tell continents apart: the sim still refuses a trader across the sea.
+  const traderAnswers =
+    tradePin !== null && moored && entityById(snapshot, tradePin.entity)?.components.Rider === undefined;
   const ownLines = readStockLines(ent.components.VehicleStock);
   const lines = hauling?.model.hold === 'pulled' ? withCarriedLoad(ownLines, hauling.carrier) : ownLines;
   const trade = foreign ? null : vehicleTrade(ctx, snapshot, vehicleClass, passengers, hauling?.carrier.id);
@@ -631,7 +639,7 @@ export function vehiclePanelModel(
     ? { orders: [], attackOrders: [] }
     : vehicleOrders({
         vehicleClass,
-        commanded,
+        commanded: commanded || traderAnswers,
         carried,
         carrierMoored: carrierEntity !== undefined && vehicleComp(carrierEntity).moored === true,
         animalMissing,
@@ -669,7 +677,7 @@ export function vehiclePanelModel(
       foreign,
       carried,
       hauler,
-      pinned,
+      tradePin,
       atSea: vehicleClass === 'ship' && !moored,
       moored,
     }),
