@@ -2,6 +2,7 @@ import { BUILDING_KIND } from '@open-northland/data';
 import type { ColonyLine, ColonyLineLeg } from '../../../components/ai/colony.js';
 import {
   Building,
+  Female,
   Vehicle,
   VehicleStock,
   vehicleCommander,
@@ -28,7 +29,7 @@ import { SeatSupply } from '../workforce/supply.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
 import { colonists } from './founding.js';
-import { boardOrders, sparePartyMen } from './people.js';
+import { boardOrders, sparePartyMen, topUpParty } from './people.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
 import {
@@ -297,15 +298,23 @@ function crewFromColony(env: ColonyEnv, line: LineView): PlayerCommand[] {
   return boardOrders(world, hireCrew(env, line, men.slice(0, LINE_CREW_LEAST)), line.ship);
 }
 
-/** Hire the crew's shortfall from home. */
+/** Hire the crew's shortfall from home, then the settlers the colony still lacks, in the seats left. */
 function boardHome(env: ColonyEnv, line: LineView): PlayerCommand[] {
   const { world, ctx, seat } = env;
-  if (line.crew.length >= LINE_CREW) return [];
-  const men = sparePartyMen(world, ctx, seat, homeLandOf(env));
-  return boardOrders(world, hireCrew(env, line, men), line.ship);
+  const home = homeLandOf(env);
+  const hired =
+    line.crew.length < LINE_CREW ? hireCrew(env, line, sparePartyMen(world, ctx, seat, home)) : [];
+  const people = colonists(env);
+  const men = people.filter((e) => isAllocatableMan(world, ctx, e)).length + line.crew.length;
+  const women = people.filter((e) => world.has(e, Female)).length;
+  const seats = world.tryGet(line.ship, Vehicle)?.passengers.length ?? 0;
+  const free = seats - ridersOf(world, line.ship).length - hired.length;
+  const party = topUpParty(world, ctx, seat, home, { men, women }, free).filter((e) => !hired.includes(e));
+  if (party.length > 0) env.edit().rest.push(...party);
+  return boardOrders(world, [...hired, ...party], line.ship);
 }
 
-/** The home stop's work begins: the hands fetch the outward load and the crew's food. */
+/** The home stop's work begins: settlers board and the hands fetch the outward load and the crew's food. */
 function beginHomeLoad(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCommand[] {
   const { ctx } = env;
   const lines = outwardLoad(env, colony, line);

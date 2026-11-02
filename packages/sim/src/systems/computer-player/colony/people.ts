@@ -1,21 +1,36 @@
-import { Building, BuildMode, Female, Marriage, Residence, Settler } from '../../../components/index.js';
+import {
+  Building,
+  BuildMode,
+  Female,
+  JobAssignment,
+  Marriage,
+  Residence,
+  Settler,
+} from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { onErrand } from '../../ai-shared/military/errand.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
-import { builderJobOf, civilianCount, classifyWorkforce } from '../../ai-shared/workforce/pool.js';
+import {
+  builderJobOf,
+  civilianCount,
+  classifyWorkforce,
+  isAllocatableMan,
+} from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { liveWorkFlag } from '../../economy/work-flag.js';
 import { isAdultSettler, mayMarry, raisingChild } from '../../family/eligibility.js';
 import { familiesOf } from '../../family/households.js';
+import { isFisherJob, isHunterJob, isScoutJob } from '../../readviews/index.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
 import { decisionMemo, lineStatuses } from '../build-order/progress.js';
 import { seatBuildOrder } from '../build-order/seat-order.js';
 import { computerProfileOf } from '../difficulty.js';
 import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { seatApprentices } from '../technology/apprentices.js';
+import { inFoodChain } from '../workforce/food.js';
 
 function apprenticesOf(world: World, ctx: SystemContext, seat: number): ReadonlySet<Entity> {
   const order = seatBuildOrder(world, ctx, seat, DEFAULT_BUILD_ORDER, computerProfileOf(world, seat));
@@ -58,6 +73,7 @@ const CIVILIANS_PER_COLONIST = 4;
 const HOME_KEEPS_CIVILIANS = 30;
 /** Fewer than this found nothing: a warehouse and four homes want builders, carriers and gatherers. */
 const PARTY_LEAST = 8;
+const COUPLE_SEATS = 2;
 
 /** Who sails from `civilians`, or none while the seat cannot spare a party. */
 export function partyFor(civilians: number): { readonly men: number; readonly women: number } | null {
@@ -98,48 +114,105 @@ export function sparePartyMen(world: World, ctx: SystemContext, seat: number, la
   return spareMen(world, ctx, seat).filter((e) => standsOn(world, ctx, e, land) && !hasMinor(world, e));
 }
 
+/** Whether `e` puts food on the seat's table: a hunter, a fisher, or a hand in a food chain's workshop. */
+function feedsHome(world: World, ctx: SystemContext, e: Entity): boolean {
+  const job = world.get(e, Settler).jobType;
+  if (isFisherJob(ctx.content, job) || (job !== null && isHunterJob(ctx.content, job))) return true;
+  const workplace = world.tryGet(e, JobAssignment)?.workplace;
+  const building = workplace === undefined ? undefined : world.tryGet(workplace, Building);
+  const type =
+    building === undefined ? undefined : contentIndex(ctx.content).buildings.get(building.buildingType);
+  return type !== undefined && inFoodChain(ctx, type);
+}
+
+/** Whether a husband may leave a post to sail with his wife: a man the workforce can refill, never a post
+ *  that feeds the seat, a scout, an apprentice, or a man on an errand or a run. */
+function mayFollowWife(
+  world: World,
+  ctx: SystemContext,
+  e: Entity,
+  apprentices: ReadonlySet<Entity>,
+): boolean {
+  return (
+    isAllocatableMan(world, ctx, e) &&
+    !apprentices.has(e) &&
+    !onErrand(world, e) &&
+    !world.has(e, BuildMode) &&
+    !isScoutJob(ctx.content, world.get(e, Settler).jobType) &&
+    !feedsHome(world, ctx, e)
+  );
+}
+
+/** How many `men` and `women` to take, and in how many `seats`. */
+interface PartyWant {
+  readonly men: number;
+  readonly women: number;
+  readonly seats: number;
+}
+
 /**
- * The party of a seat, men ahead of women, read from the people on `land`: the women unwed first, then wives
- * with their husbands; the men left to find unwed first, then married ones alone. No parent of a growing
- * child sails. Empty when that makes fewer than {@link PARTY_LEAST}.
+ * Who answers `want` from the people on `land`, men ahead of women: the women unwed first, then wives with
+ * their husbands, a spare husband ahead of one who leaves a post; the men left to find unwed first, then
+ * married ones alone. No parent of a growing child sails.
  */
-export function pickParty(world: World, ctx: SystemContext, seat: number, land: number): Entity[] {
-  const size = partyFor(civilianCount(world, ctx, seat));
-  const terrain = ctx.terrain;
-  if (size === null || terrain === undefined) return [];
-  const onLand = (e: Entity): boolean => {
-    const at = nodeOfEntity(world, e);
-    return (
-      at !== null &&
-      terrain.inBounds(at.hx, at.hy) &&
-      terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) === land
-    );
-  };
-  const spare = spareMen(world, ctx, seat).filter((e) => onLand(e) && !hasMinor(world, e));
+function gather(world: World, ctx: SystemContext, seat: number, land: number, want: PartyWant): Entity[] {
+  const spare = sparePartyMen(world, ctx, seat, land);
   const wives = homeSettlers(world, ctx, seat).filter(
     (e) =>
       world.has(e, Female) &&
       isAdultSettler(world, e) &&
-      onLand(e) &&
+      standsOn(world, ctx, e, land) &&
       !onErrand(world, e) &&
       !hasMinor(world, e),
   );
-  const women: Entity[] = wives.filter((e) => unwed(world, e)).slice(0, size.women);
+  const women: Entity[] = wives.filter((e) => unwed(world, e)).slice(0, Math.min(want.women, want.seats));
   const men: Entity[] = [];
-  for (const wife of wives) {
-    if (women.length >= size.women) break;
+  const apprentices = apprenticesOf(world, ctx, seat);
+  const couples = wives.flatMap((wife) => {
     const husband = world.tryGet(wife, Marriage)?.spouse;
-    if (husband !== undefined && spare.includes(husband)) {
-      women.push(wife);
-      men.push(husband);
-    }
+    if (husband === undefined) return [];
+    const free = spare.includes(husband);
+    const follows =
+      free || (standsOn(world, ctx, husband, land) && mayFollowWife(world, ctx, husband, apprentices));
+    return follows ? [{ wife, husband, free }] : [];
+  });
+  couples.sort((a, b) => Number(b.free) - Number(a.free) || a.wife - b.wife);
+  const room = (): number => want.seats - men.length - women.length;
+  for (const { wife, husband } of couples) {
+    if (women.length >= want.women || room() < COUPLE_SEATS) break;
+    women.push(wife);
+    men.push(husband);
   }
   const byUnwed = [...spare].sort((a, b) => Number(unwed(world, b)) - Number(unwed(world, a)));
   for (const man of byUnwed) {
-    if (men.length >= size.men) break;
+    if (men.length >= want.men || room() <= 0) break;
     if (!men.includes(man)) men.push(man);
   }
-  return men.length + women.length < PARTY_LEAST ? [] : [...men, ...women];
+  return [...men, ...women];
+}
+
+/** The party of a seat ({@link gather}), empty when that makes fewer than {@link PARTY_LEAST}. */
+export function pickParty(world: World, ctx: SystemContext, seat: number, land: number): Entity[] {
+  const size = partyFor(civilianCount(world, ctx, seat));
+  if (size === null) return [];
+  const party = gather(world, ctx, seat, land, { ...size, seats: PARTY_MOST });
+  return party.length < PARTY_LEAST ? [] : party;
+}
+
+/** Who sails on a line's outward leg, in `seats`, to bring a colony of `men` and `women` to the party the
+ *  owner asked for; home keeps its {@link HOME_KEEPS_CIVILIANS} and its food posts. */
+export function topUpParty(
+  world: World,
+  ctx: SystemContext,
+  seat: number,
+  land: number,
+  colony: { readonly men: number; readonly women: number },
+  seats: number,
+): Entity[] {
+  const room = Math.min(seats, civilianCount(world, ctx, seat) - HOME_KEEPS_CIVILIANS);
+  const women = Math.floor(PARTY_MOST / WOMEN_SHARE);
+  const want = { men: PARTY_MOST - women - colony.men, women: women - colony.women, seats: room };
+  return room <= 0 || (want.men <= 0 && want.women <= 0) ? [] : gather(world, ctx, seat, land, want);
 }
 
 /** The orders that take `party` aboard `ship`, men first so a man holds the helm: each person whose whole
