@@ -264,6 +264,9 @@ export function worldBatchFragment(
   const gather = filteredGather(maxTextures, sampling);
   return /* glsl */ `#version 300 es
 precision highp float;
+// A fragment int defaults to mediump, which Mesa radeonsi runs in 16 bits: the LUT row and the byte
+// premultiply (up to 255 * 255) overflow there and paletted decor draws black.
+precision highp int;
 in vec4 vColor;
 in vec2 vUV;
 flat in float vTextureId;
