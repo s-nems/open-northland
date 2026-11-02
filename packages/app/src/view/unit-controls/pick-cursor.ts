@@ -9,6 +9,7 @@ const PICK_CURSORS: Readonly<Record<PickMode['kind'], CursorState>> = {
   'building-site': 'build',
   'learning-place': 'crosshair',
   'trade-house': 'crosshair',
+  'trade-ship': 'crosshair',
   destination: 'move',
   signpost: 'build',
   'attack-move': 'attack-move',

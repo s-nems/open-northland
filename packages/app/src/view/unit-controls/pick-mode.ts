@@ -23,7 +23,9 @@ import {
   schoolPick,
   sitePick,
   type TradeHouseRule,
+  type TradeShipRule,
   tradeHousePick,
+  tradeShipPick,
   workerGroupAt,
 } from './highlights/index.js';
 import type { AnsweredOrders } from './orders/answered.js';
@@ -54,6 +56,8 @@ export type PickMode =
   | { readonly kind: 'attack-move'; readonly units: readonly number[]; readonly vehicles: readonly number[] }
   | { readonly kind: StrikePickKind; readonly units: readonly number[] }
   | { readonly kind: 'vehicle'; readonly settler: number }
+  /** The ship pinned to one trader's route. */
+  | { readonly kind: 'trade-ship'; readonly trader: number }
   | { readonly kind: VehicleSpotPickKind; readonly vehicle: number }
   /** The dock order for one ship or a fleet: each moors at its own berth along the shore picked. */
   | { readonly kind: 'vehicle-dock'; readonly vehicles: readonly number[] }
@@ -226,14 +230,15 @@ export type PickAim =
       readonly school: boolean;
     }
   | { readonly kind: 'board'; readonly fits: boolean }
-  | { readonly kind: 'loadAboard'; readonly fits: boolean };
+  | { readonly kind: 'loadAboard'; readonly fits: boolean }
+  | { readonly kind: 'pinShip'; readonly fits: boolean };
 
 /** The orders a Shift press queues behind each settler's or vehicle's current order (the sim's
  *  `QUEUEABLE_ORDER_KINDS` and `QUEUEABLE_VEHICLE_ORDER_KINDS`), keeping the mode armed while Shift is
  *  held. A post, a home, a trade stop and a work flag are standing settings, which apply at once. */
 type QueueableKind = Exclude<
   PickMode['kind'],
-  'workplace' | 'workplace-or-flag' | 'home' | 'trade-house' | 'work-area'
+  'workplace' | 'workplace-or-flag' | 'home' | 'trade-house' | 'trade-ship' | 'work-area'
 >;
 
 const QUEUEABLE_MODES: ReadonlySet<PickMode['kind']> = new Set<QueueableKind>([
@@ -288,12 +293,18 @@ export interface PickModeDeps {
   readonly onTradeRefused?: ((house: number) => void) | undefined;
   /** The same rule asked as the pick's click lands, which it orders by; absent, it orders nothing. */
   readonly askAttachTradeHouse?: ((trader: number, house: number) => Promise<boolean>) | undefined;
+  /** The sim's ship pin rule as its last answer, which the trade-ship pick lights by; absent, the pick
+   *  lights nothing. */
+  readonly canPinTradeShip?: TradeShipRule | undefined;
+  /** The same rule asked as the pick's click lands, which it pins by; absent, it pins nothing. */
+  readonly askPinTradeShip?: ((trader: number, ship: number) => Promise<boolean>) | undefined;
   readonly askPlaceSignpostAt?: ((col: number, row: number) => Promise<boolean>) | undefined;
   /** The signpost, trade-stop and vehicle attach rules' last answers, undefined while unanswered, which
    *  the label beside the cursor reads; it names the press optimistically without one. */
   readonly signpostAnswerAt?: ((col: number, row: number) => boolean | undefined) | undefined;
   readonly tradeHouseAttachAnswer?: ((trader: number, house: number) => boolean | undefined) | undefined;
   readonly vehicleAttachAnswer?: ((settler: number, vehicle: number) => boolean | undefined) | undefined;
+  readonly tradeShipPinAnswer?: ((trader: number, ship: number) => boolean | undefined) | undefined;
   /** Feedback for a signpost click whose verdict arrives after the synchronous pointer handler. */
   readonly cue?: ((cue: UiCue) => void) | undefined;
   /** Where the orders a host answer decides wait for it. */
@@ -486,6 +497,21 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     return true;
   };
 
+  /** Pin the ship under the press to the trader, once the sim admitted it. */
+  const pinTradeShip = (trader: number, ship: number | null): boolean => {
+    const ask = deps.askPinTradeShip;
+    if (ask === undefined || ship === null) return false;
+    deps.answered.after(ask(trader, ship), (admitted) => {
+      if (!admitted) {
+        deps.cue?.('fail');
+        return;
+      }
+      deps.enqueue({ kind: 'setTradeShip', entity: trader as Entity, ship: ship as Entity });
+      deps.flashTarget?.(ship, 'assign');
+    });
+    return true;
+  };
+
   /** `queued` applies to the {@link QUEUEABLE_MODES}; `lands` has a dock land the crew once moored. */
   const resolveSpot = (
     mode: Exclude<SpotMode, { readonly kind: 'signpost' }>,
@@ -609,6 +635,11 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.orders().issueAttackAnimal(event, mode.units, queued);
       case 'vehicle':
         return deps.vehicleOrders().issueAttach(event, mode.settler, queued);
+      case 'trade-ship':
+        return pinTradeShip(
+          mode.trader,
+          ownVehicleAt(deps.targets, deps.toWorld(event.clientX, event.clientY)),
+        );
       case 'vehicle-attack-settler':
       case 'vehicle-attack-building':
       case 'vehicle-attack-vehicle':
@@ -712,6 +743,10 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         const canAttach = deps.canAttachToVehicle;
         return canAttach === undefined ? null : computeVehicleHighlight(snapshot, mode.settler, canAttach);
       }
+      if (mode.kind === 'trade-ship') {
+        const canPin = deps.canPinTradeShip;
+        return canPin === undefined ? null : tradeShipPick.highlight(snapshot, mode.trader, canPin);
+      }
       // Only the building picks light targets up; the rest show on the ground or the cursor.
       const kind = buildingPickOf(mode);
       if (kind === null || !('units' in mode)) return null;
@@ -749,7 +784,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     const marks = highlightFor(snapshot);
     const mode = pickMode;
     if (marks === null || mode === null) return null;
-    const kind = mode.kind === 'vehicle' ? 'vehicle' : buildingPickOf(mode);
+    const kind = mode.kind === 'vehicle' || mode.kind === 'trade-ship' ? 'vehicle' : buildingPickOf(mode);
     if (kind === null) return null;
     const w = deps.toWorld(clientX, clientY);
     if (aim.marks === marks && aim.snapshot === snapshot && aim.x === w.x && aim.y === w.y) return aim;
@@ -841,6 +876,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return vehicle === null
           ? null
           : { kind: 'board', fits: deps.vehicleAttachAnswer?.(mode.settler, vehicle) !== false };
+      }
+      case 'trade-ship': {
+        const ship = ownVehicleAt(deps.targets, world);
+        return ship === null
+          ? null
+          : { kind: 'pinShip', fits: deps.tradeShipPinAnswer?.(mode.trader, ship) !== false };
       }
       case 'vehicle-rider':
         // The attach rule is asked as the press lands, so the seat is offered until it answers.

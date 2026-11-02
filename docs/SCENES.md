@@ -94,6 +94,11 @@ with a unit in its hands a trip, the lower one pulling a handcart it stands by e
 while it loads and unloads. The view checks the walker's carry gait and the cart set down and taken
 up again.
 
+`?scene=trade-sea` runs a trader with a handcart between warehouses on two islands on a small ship
+pinned to its route: it ferries the wood aboard in two cart loads, sails with the cart in the ship's
+vehicle slot and ferries the load ashore. `?scene=trade-sea-pin` is the same world with no ship pinned.
+Select the trader, read the note beside "Pin a ship", press it and pick the lit ship.
+
 `?scene=cart-drivers` hands a handcart to a trader to pull and crews an ox cart with a carrier for
 each civilization, in rows: viking, frank, byzantine, saracen, egyptian, and sends them east. Every
 driver wears his own civilization's head, standing and driving.

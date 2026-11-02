@@ -4053,6 +4053,23 @@ body.on-drag-scroll.on-drag-scroll-free * {
 .on-hud button.on-stop__settlement[aria-disabled="true"] {
   opacity: 0.45;
 }
+/* The ship row under the stops, as tall as a stop whatever it shows, so the section keeps its height:
+   the anchor badge, the ship or the pin link with the route's note, and the detach. */
+.on-hud .on-trade-ship {
+  --stop-row: 22px;
+}
+.on-hud .on-stop__badge .on-glyph {
+  width: 11px;
+  height: 11px;
+}
+.on-hud .on-stop__note {
+  flex-shrink: 0;
+  color: var(--warning);
+  font-size: 11px;
+}
+.on-hud .on-stop__note[hidden] {
+  display: none;
+}
 /* The stop rows with, while both stops are own houses, the joint at their right: a bracket from the two
    rows' detach buttons to "Konfiguruj handel", the one way into the trade window. Without it the rows
    keep the full width. */

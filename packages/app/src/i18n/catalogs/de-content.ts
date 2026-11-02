@@ -375,6 +375,16 @@ export const deContent = {
       summary:
         'Ein neutrales Lagerhaus bietet vier Eisen für eine Münze. Der Händler fährt Münzen vom heimischen Lagerhaus dorthin und bringt das Eisen zurück. Durch den Warenaustausch wird der Stamm freundlich. Wähle den Händler für den Bereich „Handel“ aus und das entfernte Lagerhaus für dessen Handelsangebote.',
     },
+    'trade-sea': {
+      title: 'Handel über das Meer',
+      summary:
+        'Ein Händler mit Handkarren und einem kleinen Schiff auf seiner Route bringt Holz zwischen Lagerhäusern auf zwei Inseln. Er trägt die Ladung in mehreren Gängen zum Schiff, fährt mit dem Karren an Bord hinüber und bringt sie ins ferne Lagerhaus. Wähle den Händler für die Schiffszeile im Handelsbereich oder das Schiff für seinen schreibgeschützten Laderaum.',
+    },
+    'trade-sea-pin': {
+      title: 'Ein Schiff einer Route zuweisen',
+      summary:
+        'Dieselben zwei Inseln ohne zugewiesenes Schiff: Die Route des Händlers braucht eines, und sein Handelsbereich sagt es. Wähle den Händler, drücke Schiff zuweisen und wähle das hervorgehobene Schiff. Der Händler belädt es und legt ab.',
+    },
     'trade-domestic': {
       title: 'Handel zwischen eigenen Lagerhäusern',
       summary:

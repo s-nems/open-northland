@@ -76,6 +76,8 @@ import { tradeScene } from './economy/trade.js';
 import { tradeBreadScene } from './economy/trade-bread.js';
 import { tradeDomesticScene } from './economy/trade-domestic.js';
 import { tradeOnFootScene } from './economy/trade-on-foot.js';
+import { tradeSeaScene } from './economy/trade-sea.js';
+import { tradeSeaPinScene } from './economy/trade-sea-pin.js';
 import { warehouseScene } from './economy/warehouse.js';
 import { workshopProductsScene } from './economy/workshop-products.js';
 import { berriesScene } from './gathering/berries.js';
@@ -253,6 +255,8 @@ export const SCENES: readonly SceneDefinition[] = [
   tradeDomesticScene,
   tradeBreadScene,
   tradeOnFootScene,
+  tradeSeaScene,
+  tradeSeaPinScene,
   tributeScene,
   presentationScene,
   terrainEditsScene,

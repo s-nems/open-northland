@@ -25,6 +25,7 @@ export interface SettlerPanelHost {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
+  readonly pinTradeShip: (id: number) => void;
   readonly ringCommand: (id: ActionOrderId, targets: readonly number[], queued?: boolean) => void;
   readonly cue: (cue: UiCue) => void;
 }
@@ -93,6 +94,8 @@ export function settlerPanelActions(
     detachTradeHouse: order((id, house: number) =>
       enqueue({ kind: 'detachTradeHouse', entity: id as Entity, house: house as Entity }),
     ),
+    pinTradeShip: order(host.pinTradeShip),
+    unpinTradeShip: order((id) => enqueue({ kind: 'setTradeShip', entity: id as Entity, ship: null })),
     setTradeMarks: order((id, changes: readonly TradeMarkChange[]) => {
       for (const change of changes) {
         enqueue({

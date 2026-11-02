@@ -93,10 +93,13 @@ export interface HostAnswers {
   /** The pick highlights' rules, read off one answer per unit rather than one per building. */
   readonly canAttachTradeHouse: (trader: number, house: number) => boolean;
   readonly canAttachToVehicle: (settler: number, vehicle: number) => boolean;
-  /** The two attach rules, undefined while unanswered rather than refused. */
+  readonly canPinTradeShip: (trader: number, ship: number) => boolean;
+  /** The attach rules, undefined while unanswered rather than refused. */
   readonly tradeHouseAttachAnswer: (trader: number, house: number) => boolean | undefined;
   readonly vehicleAttachAnswer: (settler: number, vehicle: number) => boolean | undefined;
+  readonly tradeShipPinAnswer: (trader: number, ship: number) => boolean | undefined;
   readonly askAttachTradeHouse: (trader: number, house: number) => Promise<boolean>;
+  readonly askPinTradeShip: (trader: number, ship: number) => Promise<boolean>;
   readonly askAttachToVehicle: (settler: number, vehicle: number) => Promise<boolean>;
   readonly papers: (player: number) => readonly Paper[];
   readonly missionBriefingHistory: () => readonly number[];
@@ -162,6 +165,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
   const jobChoices = cache<boolean>({ capacity: ROSTER_CAPACITY });
   const traders = cache<TraderView | undefined>({ same: samePlainData });
   const tradeHouses = cache<ReadonlySet<number>>({ same: sameIds });
+  const tradeShips = cache<ReadonlySet<number>>({ same: sameIds });
   const vehicles = cache<ReadonlySet<number>>({ same: sameIds });
   const papers = cache<readonly Paper[]>({ same: samePlainData });
   const pages = cache<readonly number[]>({ same: samePlainData });
@@ -171,12 +175,16 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
     held.read(key, ask, NO_INPUTS, PER_TICK);
   const tradeHousesOf = (trader: number) => (): Promise<ReadonlySet<number>> =>
     host.tradeHousesAttachableBy(trader as Entity).then((ids) => new Set(ids));
+  const tradeShipsOf = (trader: number) => (): Promise<ReadonlySet<number>> =>
+    host.tradeShipsPinnableBy(trader as Entity).then((ids) => new Set(ids));
   const vehiclesOf = (settler: number) => (): Promise<ReadonlySet<number>> =>
     host.vehiclesAttachableBy(settler as Entity).then((ids) => new Set(ids));
   const jobChoiceAnswer = (entity: number, jobType: number): boolean | undefined =>
     perTick(jobChoices, `${entity}:${jobType}`, () => host.canChooseJob(entity as Entity, jobType));
   const tradeHouseAttachAnswer = (trader: number, house: number): boolean | undefined =>
     perTick(tradeHouses, `${trader}`, tradeHousesOf(trader))?.has(house);
+  const tradeShipPinAnswer = (trader: number, ship: number): boolean | undefined =>
+    perTick(tradeShips, `${trader}`, tradeShipsOf(trader))?.has(ship);
   const vehicleAttachAnswer = (settler: number, vehicle: number): boolean | undefined =>
     perTick(vehicles, `${settler}`, vehiclesOf(settler))?.has(vehicle);
 
@@ -236,12 +244,16 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
       perTick(offersAt, `${house}`, () => host.tradeOffersAt(house as Entity)) ?? NO_OFFERS,
     canAttachTradeHouse: (trader, house) => tradeHouseAttachAnswer(trader, house) === true,
     canAttachToVehicle: (settler, vehicle) => vehicleAttachAnswer(settler, vehicle) === true,
+    canPinTradeShip: (trader, ship) => tradeShipPinAnswer(trader, ship) === true,
     tradeHouseAttachAnswer,
     vehicleAttachAnswer,
+    tradeShipPinAnswer,
     askAttachTradeHouse: (trader, house) =>
       tradeHouses
         .fresh(`${trader}`, tradeHousesOf(trader), NO_INPUTS, PER_TICK)
         .then((ids) => ids.has(house)),
+    askPinTradeShip: (trader, ship) =>
+      tradeShips.fresh(`${trader}`, tradeShipsOf(trader), NO_INPUTS, PER_TICK).then((ids) => ids.has(ship)),
     askAttachToVehicle: (settler, vehicle) =>
       vehicles.fresh(`${settler}`, vehiclesOf(settler), NO_INPUTS, PER_TICK).then((ids) => ids.has(vehicle)),
     papers: (player) => perTick(papers, `${player}`, () => host.papers(player)) ?? NO_PAPERS,
@@ -262,7 +274,7 @@ export function createHostAnswers(host: SessionHost, tribeOf: (player: number) =
         offersAt.version +
         reach.version,
       technology: () => statuses.version,
-      attachPicks: () => tradeHouses.version + vehicles.version,
+      attachPicks: () => tradeHouses.version + tradeShips.version + vehicles.version,
       jobChoices: () => jobChoices.version,
       mission: () => pages.version + missionEntities.version,
       construction: () => availabilities.version + tribeLists.version + papers.version,

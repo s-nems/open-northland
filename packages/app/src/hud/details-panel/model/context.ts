@@ -14,6 +14,7 @@ import { localizedBuildingName } from '../../../catalog/building-i18n.js';
 import { vikingBuildingByTypeId } from '../../../catalog/buildings.js';
 import { professionDefForJob } from '../../../catalog/professions.js';
 import type { PostFlagTrade, SnapshotEntity } from '../../../game/snapshot/index.js';
+import { vehicleLabel } from '../../../game/technology.js';
 import type { ViewerSeat } from '../../../game/viewer-seat.js';
 import {
   currentLocale,
@@ -193,6 +194,28 @@ export function goodDef(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: num
 export function goodLabel(ctx: Pick<UnitPanelModelContext, 'goods'>, goodType: number): string {
   const def = goodDef(ctx, goodType);
   return def === undefined ? `#${goodType}` : goodName(def);
+}
+
+/** The type name the panel titles a vehicle by, the content's own name when the catalog lacks one. */
+export function vehicleTitle(ctx: UnitPanelModelContext, typeId: number | undefined): string {
+  if (typeId === undefined) return messages().hud.vehicle;
+  return vehicleLabel({ vehicles: ctx.vehicles }, typeId) ?? messages().hud.vehicle;
+}
+
+/** A hold as one line: "Handcart: 3 wood, 2 iron", or "Handcart: empty". */
+export function holdLoadLine(
+  ctx: Pick<UnitPanelModelContext, 'goods'>,
+  title: string,
+  goods: readonly { readonly good: number; readonly amount: number }[],
+): string {
+  const copy = messages().hud.settlerPanel;
+  const lines = goods.map(({ good, amount }) =>
+    formatMessage(copy.vehicleLoadGood, { amount, good: goodLabel(ctx, good) }),
+  );
+  return formatMessage(copy.vehicleLoad, {
+    vehicle: title,
+    goods: lines.length === 0 ? copy.vehicleEmpty : lines.join(', '),
+  });
 }
 
 /**

@@ -73,6 +73,7 @@ export const HOST_REQUESTS = [
   'tradeOffersAt',
   'traderView',
   'tradeHousesAttachableBy',
+  'tradeShipsPinnableBy',
   'vehiclesAttachableBy',
   'missionBriefingHistory',
   'missionBriefingPage',

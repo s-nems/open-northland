@@ -94,11 +94,13 @@ export function rightClickShips(ctx: VehicleContext, selected: ReadonlySet<numbe
     : group.filter((e) => isShip(ctx.content, e)).map((e) => e.id);
 }
 
-/** Whether `carrier` is one of our moored ships, the only thing a land vehicle may be loaded into. */
+/** Whether `carrier` is one of our moored ships a trader's route does not hold, the only thing a land
+ *  vehicle may be loaded into. */
 export function isMooredShip(ctx: VehicleContext, carrier: number): boolean {
   const e = entityById(ctx.snapshot, carrier);
   if (e === undefined || !isVehicle(e) || !ownsVehicle(ctx, e) || !isShip(ctx.content, e)) return false;
-  return (e.components.Vehicle as { moored?: unknown } | undefined)?.moored === true;
+  const ship = e.components.Vehicle as { moored?: unknown; hauler?: unknown } | undefined;
+  return ship?.moored === true && num(ship.hauler) === undefined;
 }
 
 export type VehicleIntent =
@@ -205,16 +207,24 @@ export interface AttachPlan {
   readonly pending?: PendingAnswer;
 }
 
+/** Whether a trader's route holds the ship, which then seats nobody by an order. */
+function pinnedShip(ctx: Pick<VehicleContext, 'snapshot' | 'content'>, vehicle: number): boolean {
+  const e = entityById(ctx.snapshot, vehicle);
+  const hauler = (e?.components.Vehicle as { hauler?: unknown } | undefined)?.hauler;
+  return e !== undefined && isShip(ctx.content, e) && num(hauler) !== undefined;
+}
+
 /** Approximation, owner's choice: the original assigns a vehicle through the ring's pick only. Null when
  *  no own vehicle lies under the cursor, an own settler or an enemy drawn there takes the click first (a
- *  crew waiting by the door stands over the hull), or nobody is selected. */
+ *  crew waiting by the door stands over the hull), the ship seats nobody, or nobody is selected. */
 export function resolveAttachSelected(
-  ctx: { readonly asks: Pick<RightClickAsks, 'attach'> },
+  ctx: Pick<VehicleContext, 'snapshot' | 'content'> & { readonly asks: Pick<RightClickAsks, 'attach'> },
   settlers: readonly FormationUnit[],
   hit: RightClickHit,
 ): AttachPlan | null {
   const vehicle = hit.ownVehicle;
   if (vehicle === null || hit.ownSettler !== null || hit.enemy !== null || settlers.length === 0) return null;
+  if (pinnedShip(ctx, vehicle)) return null;
   return {
     vehicle,
     settlers: settlers.map((unit) => unit.ref),

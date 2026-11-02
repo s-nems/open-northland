@@ -1146,6 +1146,8 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       tradeOffersAt: answers.tradeOffersAt,
       canAttachTradeHouse: answers.canAttachTradeHouse,
       askAttachTradeHouse: answers.askAttachTradeHouse,
+      canPinTradeShip: answers.canPinTradeShip,
+      askPinTradeShip: answers.askPinTradeShip,
       tradeStances: (owner) => ({
         yours: host.diplomacyStance(viewerPlayer(), owner),
         theirs: host.diplomacyStance(owner, viewerPlayer()),
@@ -1155,6 +1157,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canAttachToVehicle: answers.canAttachToVehicle,
       tradeHouseAttachAnswer: answers.tradeHouseAttachAnswer,
       vehicleAttachAnswer: answers.vehicleAttachAnswer,
+      tradeShipPinAnswer: answers.tradeShipPinAnswer,
       hintSuppressed: () =>
         hudHidden ||
         toolPanel.controller.placementBuilding() !== null ||

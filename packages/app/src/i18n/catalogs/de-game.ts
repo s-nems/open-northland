@@ -494,6 +494,7 @@ export const deGame = {
       repair: 'Reparieren',
       board: 'Einsteigen',
       loadAboard: 'Auf das Schiff laden',
+      pinShip: 'Der Route zuweisen',
       workArea: 'Arbeitsbereich',
       placeSignpost: 'Wegweiser setzen',
       bombard: 'Beschießen',
@@ -507,6 +508,7 @@ export const deGame = {
       cannotTrainHere: 'Sie können hier nicht üben',
       cannotBoard: 'Sie können nicht einsteigen',
       cannotLoadAboard: 'Hier kann nichts verladen werden',
+      cannotPinShip: 'Dieses Schiff lässt sich nicht zuweisen',
       cannotMoorHere: 'Hier kann nicht angelegt werden',
       cannotPlaceSignpost: 'Hier passt kein Wegweiser',
     },
@@ -527,6 +529,7 @@ export const deGame = {
       awaitingWorkplace: 'Wartet auf die Werkstatt',
       awaitingTraining: 'Wartet auf den Bau',
       awaitingSeat: 'Wartet auf einen freien Platz',
+      sailingRoute: 'Fährt seine Route',
       standingTo: 'In Alarmbereitschaft',
       lost: {
         he: 'Verirrt',
@@ -800,6 +803,16 @@ export const deGame = {
       tradeHeading: 'Der Händler ist gerade hierher unterwegs',
       tradeAddStop: 'Handelshaus hinzufügen',
       tradeConfigure: 'Handel einrichten',
+      tradePinShip: 'Schiff zuweisen',
+      tradePinShipHint:
+        'Klicken, dann ein hervorgehobenes eigenes Schiff ohne Besatzung an dieser Küste wählen. Der Händler fährt seine Route damit.',
+      tradeUnpinShip: 'Schiff lösen',
+      tradeShipNeeded: 'über das Meer',
+      tradeShipNeededTooltip:
+        'Die Stationen liegen an verschiedenen Küsten: Weise ein Schiff zu, damit der Händler übersetzen kann',
+      tradeShipUnreachable: 'außer Reichweite',
+      tradeShipUnreachableTooltip:
+        'Dieses Schiff kann die Route nicht bedienen: Es fährt auf einem anderen Meer oder liegt an einer anderen Küste als der Händler',
       tradeSettlement: 'Siedlung',
       tradeSettlementOn:
         'Lädt aus der ganzen Siedlung: zuerst aus diesem Lager, dann aus den Lagern und Werkstätten, die sein Wegweisernetz erreicht. Was er zurückbringt, kommt in dieses Lager · Klicken: nur dieses Lager',
@@ -847,6 +860,8 @@ export const deGame = {
       centre: 'Ansicht auf das Fahrzeug zentrieren',
       health: 'Haltbarkeit {hitpoints} / {max}',
       carrierTooltip: 'Schiff auswählen',
+      tradeMerchant: 'Händler',
+      tradeMerchantSelect: 'Den Händler auswählen, dessen Route dieses Schiff fährt',
       haulerTooltip: 'Auswählen, wer ihn zieht',
       status: {
         aboard: 'An Bord eines Schiffs',
@@ -902,6 +917,7 @@ export const deGame = {
         noSeat: 'Keine freien Plätze',
         notMoored: 'Zuerst am Ufer anlegen',
         deckFull: 'Das Deck ist belegt',
+        pinned: 'Dieses Schiff fährt die Route eines Händlers',
       },
       stances: {
         attack: 'Angriff',

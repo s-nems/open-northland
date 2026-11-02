@@ -1,5 +1,6 @@
 import {
   type Entity,
+  entityById,
   type PlayerCommand,
   playerCommand,
   type Simulation,
@@ -25,7 +26,7 @@ import type {
   VehiclePanelModel,
   VehicleRiderModel,
 } from '../../../../src/hud/details-panel/model/index.js';
-import { vehicleStatus } from '../../../../src/hud/details-panel/model/vehicle.js';
+import { vehiclePanelModel, vehicleStatus } from '../../../../src/hud/details-panel/model/vehicle.js';
 import { createCargoState } from '../../../../src/hud/dom/vehicle-panel/cargo.js';
 import {
   commanderCaption,
@@ -37,6 +38,8 @@ import {
 import { cargoFill, cargoFlow, cargoLineTooltip } from '../../../../src/hud/dom/vehicle-panel/hold.js';
 import { orderTexts } from '../../../../src/hud/dom/vehicle-panel/portrait.js';
 import { formatMessage, messages } from '../../../../src/i18n/index.js';
+import { tradeSeaScene, tradeSeaShip } from '../../../../src/scenes/economy/trade-sea.js';
+import { tradeSeaPinScene } from '../../../../src/scenes/economy/trade-sea-pin.js';
 import { createSceneSim } from '../../../../src/scenes/index.js';
 import { vehiclesScene } from '../../../../src/scenes/vehicles/vehicles.js';
 import {
@@ -233,6 +236,7 @@ describe('vehicle status', () => {
     hauler: null,
     commanded: true,
     foreign: false,
+    pinned: false,
     driving: false,
     moored: false,
     cargo: null,
@@ -253,6 +257,10 @@ describe('vehicle status', () => {
     expect(vehicleStatus({ ...base, commanded: false, task: 'attacks' }).label).toBe(status.attacks);
     // Another seat's vehicle is nobody's trouble.
     expect(vehicleStatus({ ...base, commanded: false, foreign: true }).tone).toBe('neutral');
+    // A pinned ship waits for its trader at every shore, which is no trouble either.
+    expect(vehicleStatus({ ...base, vehicleClass: 'ship', commanded: false, pinned: true }).tone).toBe(
+      'neutral',
+    );
   });
 });
 
@@ -482,5 +490,39 @@ describe('vehicle hold', () => {
     expect(cargoLineTooltip({ ...row(1, 3, 6, 5), pinned: false }, true)).not.toContain(
       copy.rowWanted.replace('{count}', '6'),
     );
+  });
+});
+
+describe('a ship pinned to a trader', () => {
+  function shipPanel(scene: typeof tradeSeaScene): VehiclePanelModel {
+    const sim = createSceneSim(scene);
+    sim.run(1);
+    const ship = tradeSeaShip(sim);
+    const entity = ship === undefined ? undefined : entityById(sim.snapshot(), ship);
+    if (entity === undefined) throw new Error('expected the scene ship');
+    return vehiclePanelModel(tradeCtxOf(sim), sim.snapshot(), entity);
+  }
+
+  it('names its trader, reads as no pulled cart and keeps its orders', () => {
+    const model = shipPanel(tradeSeaScene);
+    expect(model.tradePin?.name).toBeTruthy();
+    expect(model.hauler).toBeNull();
+    expect(model.trade).toBeNull();
+    const refusals = messages().hud.vehiclePanel.refusals;
+    expect(model.orders.find((order) => order.order === 'goTo')?.control).toBe(refusals.noCommander.ship);
+  });
+
+  it('leaves its hold, its seats and its deck to the route', () => {
+    const { hold, crew } = shipPanel(tradeSeaScene);
+    const { pinned } = messages().hud.vehiclePanel.refusals;
+    expect(hold?.routed).toBe(true);
+    expect([crew.assign, crew.load, crew.unloadVehicle]).toEqual([pinned, pinned, pinned]);
+  });
+
+  it('frees all of that on a ship nobody pinned', () => {
+    const { tradePin, hold, crew } = shipPanel(tradeSeaPinScene);
+    expect(tradePin).toBeNull();
+    expect(hold?.routed).toBe(false);
+    expect(crew.assign).toBe(true);
   });
 });

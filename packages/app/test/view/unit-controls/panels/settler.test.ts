@@ -50,6 +50,7 @@ function harness(
       assignWorkplace: () => undefined,
       assignHome: () => undefined,
       attachTradeHouse: () => undefined,
+      pinTradeShip: () => undefined,
       ringCommand:
         ringCommand ?? ((id, targets, queued) => rings.push(queued ? [id, targets, queued] : [id, targets])),
       cue: (cue) => cues.push(cue),

@@ -1,3 +1,4 @@
+import type { UiCue } from '@open-northland/audio';
 import { halfCellToScreen } from '@open-northland/render';
 import { type Command, fx, type WorldSnapshot } from '@open-northland/sim';
 import { describe, expect, it } from 'vitest';
@@ -43,7 +44,13 @@ function harness(
   vehicleOrders: Partial<VehicleOrderController> = {},
   answers: Pick<
     PickModeDeps,
-    'signpostAnswerAt' | 'tradeHouseAttachAnswer' | 'vehicleAttachAnswer' | 'askAttachTradeHouse'
+    | 'signpostAnswerAt'
+    | 'tradeHouseAttachAnswer'
+    | 'vehicleAttachAnswer'
+    | 'askAttachTradeHouse'
+    | 'tradeShipPinAnswer'
+    | 'askPinTradeShip'
+    | 'cue'
   > = {},
 ) {
   const issued: Command[] = [];
@@ -177,6 +184,44 @@ describe('an armed pick aims as its press orders', () => {
     const h = harness({ vehicles: [drawnHere(CART, 'vehicle')] }, { loadsInto: () => false });
     h.pickMode.arm({ kind: 'vehicle-deck', vehicle: SHIP });
     expect(h.aim()).toEqual({ kind: 'loadAboard', fits: false });
+  });
+
+  it('pins the ship the sim admits as the press lands, and refuses one it turns down', async () => {
+    const lit = harness(
+      { vehicles: [drawnHere(SHIP, 'vehicle')] },
+      {},
+      { tradeShipPinAnswer: () => true, askPinTradeShip: async () => true },
+    );
+    lit.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
+    expect(lit.aim()).toEqual({ kind: 'pinShip', fits: true });
+    expect(lit.press()).toBe('ordered');
+    await Promise.resolve();
+    expect(lit.issued).toEqual([{ kind: 'setTradeShip', entity: SOLDIER, ship: SHIP }]);
+
+    const cues: UiCue[] = [];
+    const refused = harness(
+      { vehicles: [drawnHere(SHIP, 'vehicle')] },
+      {},
+      {
+        tradeShipPinAnswer: () => false,
+        askPinTradeShip: async () => false,
+        cue: (cue) => cues.push(cue),
+      },
+    );
+    refused.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
+    expect(refused.aim()).toEqual({ kind: 'pinShip', fits: false });
+    refused.press();
+    await Promise.resolve();
+    expect(refused.issued).toEqual([]);
+    expect(cues).toEqual(['fail']);
+  });
+
+  it('misses and disarms where no ship lies under the trade-ship pick', () => {
+    const h = harness({}, {}, { askPinTradeShip: async () => true });
+    h.pickMode.arm({ kind: 'trade-ship', trader: SOLDIER });
+    expect(h.aim()).toBeNull();
+    expect(h.press()).toBe('missed');
+    expect(h.pickMode.isArmed()).toBe(false);
   });
 
   it('lands the crew of a dock aimed with the primary modifier held where a berth fits', () => {

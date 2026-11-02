@@ -459,6 +459,7 @@ export const enGame = {
       repair: 'Repair',
       board: 'Board',
       loadAboard: 'Load aboard',
+      pinShip: 'Pin to the route',
       workArea: 'Work area',
       placeSignpost: 'Place signpost',
       bombard: 'Bombard',
@@ -472,6 +473,7 @@ export const enGame = {
       cannotTrainHere: 'They cannot train here',
       cannotBoard: 'They cannot board',
       cannotLoadAboard: 'Cannot load aboard here',
+      cannotPinShip: 'Cannot pin this ship',
       cannotMoorHere: 'Cannot moor here',
       cannotPlaceSignpost: 'No signpost here',
     },
@@ -492,6 +494,7 @@ export const enGame = {
       awaitingWorkplace: 'Waiting for the workshop',
       awaitingTraining: 'Waiting for construction',
       awaitingSeat: 'Waiting for a free place',
+      sailingRoute: 'Sailing the route',
       standingTo: 'Standing to',
       lost: { he: 'Lost', she: 'Lost' },
       idle: 'Idle',
@@ -752,6 +755,15 @@ export const enGame = {
       tradeHeading: 'The merchant is heading here now',
       tradeAddStop: 'Add a trade post',
       tradeConfigure: 'Set up trade',
+      tradePinShip: 'Pin a ship',
+      tradePinShipHint:
+        'Click, then pick a lit ship of yours lying at this shore, empty of crew. The merchant sails its route on it.',
+      tradeUnpinShip: 'Unpin the ship',
+      tradeShipNeeded: 'across the sea',
+      tradeShipNeededTooltip: 'The stops lie on different shores: pin a ship so the merchant can cross',
+      tradeShipUnreachable: 'out of reach',
+      tradeShipUnreachableTooltip:
+        'This ship cannot serve the route: it sails another sea, or lies at another shore than the merchant',
       tradeSettlement: 'settlement',
       tradeSettlementOn:
         'Loads from the whole settlement: this storehouse first, then the storehouses and workshops its signpost network reaches. What it brings back goes into this storehouse · click: this storehouse only',
@@ -795,6 +807,8 @@ export const enGame = {
       centre: 'Centre the view on the vehicle',
       health: 'Durability {hitpoints} / {max}',
       carrierTooltip: 'Select the ship',
+      tradeMerchant: 'Merchant',
+      tradeMerchantSelect: 'Select the merchant whose route this ship sails',
       haulerTooltip: 'Select who pulls it',
       status: {
         aboard: 'On a ship',
@@ -848,6 +862,7 @@ export const enGame = {
         noSeat: 'No free seats',
         notMoored: 'Moor at the shore first',
         deckFull: 'The deck is taken',
+        pinned: "This ship sails a merchant's route",
       },
       stances: { attack: 'Attack', defence: 'Defence', hold: 'Ignorant' },
       stanceTooltips: {

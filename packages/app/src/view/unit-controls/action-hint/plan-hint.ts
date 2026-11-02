@@ -43,6 +43,7 @@ export type HintAction =
   | 'repair'
   | 'board'
   | 'loadAboard'
+  | 'pinShip'
   | 'workArea'
   | 'placeSignpost'
   | 'bombard';
@@ -60,6 +61,7 @@ export type HintRefusal =
   | 'cannotTrainHere'
   | 'cannotBoard'
   | 'cannotLoadAboard'
+  | 'cannotPinShip'
   | 'cannotMoorHere'
   | 'cannotPlaceSignpost';
 

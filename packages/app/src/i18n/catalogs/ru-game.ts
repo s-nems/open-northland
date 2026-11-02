@@ -489,6 +489,7 @@ export const ruGame = {
       repair: 'Чинить',
       board: 'Сесть',
       loadAboard: 'Погрузить на корабль',
+      pinShip: 'Закрепить за маршрутом',
       workArea: 'Рабочая область',
       placeSignpost: 'Поставить указатель',
       bombard: 'Обстрелять',
@@ -502,6 +503,7 @@ export const ruGame = {
       cannotTrainHere: 'Здесь им не учиться',
       cannotBoard: 'Не могут сесть',
       cannotLoadAboard: 'Здесь не погрузить',
+      cannotPinShip: 'Этот корабль не закрепить',
       cannotMoorHere: 'Здесь не причалить',
       cannotPlaceSignpost: 'Здесь не поставить указатель',
     },
@@ -522,6 +524,7 @@ export const ruGame = {
       awaitingWorkplace: 'Ожидает мастерскую',
       awaitingTraining: 'Ожидает постройки',
       awaitingSeat: 'Ждёт свободного места',
+      sailingRoute: 'Идёт по маршруту',
       standingTo: 'В готовности по тревоге',
       lost: {
         he: 'Заблудился',
@@ -792,6 +795,16 @@ export const ruGame = {
       tradeHeading: 'Купец сейчас направляется сюда',
       tradeAddStop: 'Добавить торговый пост',
       tradeConfigure: 'Настроить торговлю',
+      tradePinShip: 'Закрепить корабль',
+      tradePinShipHint:
+        'Нажмите, затем выберите подсвеченный свой корабль без команды у этого берега. Купец будет ходить на нём по маршруту.',
+      tradeUnpinShip: 'Открепить корабль',
+      tradeShipNeeded: 'через море',
+      tradeShipNeededTooltip:
+        'Пункты маршрута лежат на разных берегах: закрепите корабль, чтобы купец мог переплыть',
+      tradeShipUnreachable: 'вне досягаемости',
+      tradeShipUnreachableTooltip:
+        'Этот корабль не может обслуживать маршрут: он ходит по другому морю или стоит у другого берега, чем купец',
       tradeSettlement: 'поселение',
       tradeSettlementOn:
         'Грузит из всего поселения: сначала из этого склада, затем из складов и мастерских в зоне его сети указателей. Привезённое попадает в этот склад · щелчок: только этот склад',
@@ -839,6 +852,8 @@ export const ruGame = {
       centre: 'Навести камеру на машину',
       health: 'Прочность {hitpoints} / {max}',
       carrierTooltip: 'Выбрать корабль',
+      tradeMerchant: 'Купец',
+      tradeMerchantSelect: 'Выбрать купца, чей маршрут обслуживает этот корабль',
       haulerTooltip: 'Выбрать, кто её тянет',
       status: {
         aboard: 'На борту корабля',
@@ -893,6 +908,7 @@ export const ruGame = {
         noSeat: 'Нет свободных мест',
         notMoored: 'Сначала причалить к берегу',
         deckFull: 'Палуба занята',
+        pinned: 'Этот корабль ходит по маршруту купца',
       },
       stances: {
         attack: 'Атака',

@@ -44,6 +44,7 @@ export function transfer(
 /** A two-stop own route: A holds swords and food, B stores swords only and holds none. */
 export function ownRoute(transfers: readonly TradeTransferModel[] = []): TradePanelModel {
   return {
+    ship: { ship: null, note: null },
     stops: [
       {
         slot: 0,

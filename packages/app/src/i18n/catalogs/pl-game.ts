@@ -452,6 +452,7 @@ export const plGame = {
       repair: 'Naprawiaj',
       board: 'Wsiądź',
       loadAboard: 'Załaduj na statek',
+      pinShip: 'Przypnij do trasy',
       workArea: 'Obszar pracy',
       placeSignpost: 'Postaw drogowskaz',
       bombard: 'Ostrzelaj',
@@ -465,6 +466,7 @@ export const plGame = {
       cannotTrainHere: 'Nie mogą się tu szkolić',
       cannotBoard: 'Nie mogą wsiąść',
       cannotLoadAboard: 'Nie da się tu załadować',
+      cannotPinShip: 'Tego statku nie da się przypiąć',
       cannotMoorHere: 'Nie da się tu przybić',
       cannotPlaceSignpost: 'Tu nie stanie drogowskaz',
     },
@@ -485,6 +487,7 @@ export const plGame = {
       awaitingWorkplace: 'Czeka na budowę warsztatu',
       awaitingTraining: 'Czeka na koniec budowy',
       awaitingSeat: 'Czeka na wolne miejsce',
+      sailingRoute: 'Płynie swoją trasą',
       standingTo: 'Stoi na alarmie',
       lost: { he: 'Zgubił się', she: 'Zgubiła się' },
       idle: 'Bezczynny',
@@ -736,6 +739,16 @@ export const plGame = {
       tradeHeading: 'Kupiec jedzie teraz tutaj',
       tradeAddStop: 'Dodaj punkt handlowy',
       tradeConfigure: 'Konfiguruj handel',
+      tradePinShip: 'Przypnij statek',
+      tradePinShipHint:
+        'Kliknij, potem wskaż podświetlony własny statek przy tym brzegu, bez załogi. Kupiec popłynie nim swoją trasą.',
+      tradeUnpinShip: 'Odepnij statek',
+      tradeShipNeeded: 'przez morze',
+      tradeShipNeededTooltip:
+        'Punkty trasy leżą na różnych brzegach: przypnij statek, żeby kupiec mógł przepłynąć',
+      tradeShipUnreachable: 'poza zasięgiem',
+      tradeShipUnreachableTooltip:
+        'Ten statek nie obsłuży trasy: pływa po innym morzu albo stoi przy innym brzegu niż kupiec',
       tradeSettlement: 'osada',
       tradeSettlementOn:
         'Ładuje z całej osady: najpierw z tego magazynu, potem z magazynów i warsztatów w zasięgu jego sieci drogowskazów. Co przywiezie, trafia do tego magazynu · kliknij: tylko ten magazyn',
@@ -779,6 +792,8 @@ export const plGame = {
       centre: 'Centruj widok na wehikule',
       health: 'Wytrzymałość {hitpoints} / {max}',
       carrierTooltip: 'Zaznacz statek',
+      tradeMerchant: 'Kupiec',
+      tradeMerchantSelect: 'Wybierz kupca, którego trasą płynie ten statek',
       haulerTooltip: 'Zaznacz, kto go ciągnie',
       status: {
         aboard: 'Na statku',
@@ -828,6 +843,7 @@ export const plGame = {
         noSeat: 'Brak wolnych miejsc',
         notMoored: 'Najpierw zacumuj przy brzegu',
         deckFull: 'Pokład jest zajęty',
+        pinned: 'Ten statek pływa trasą kupca',
       },
       stances: { attack: 'Atak', defence: 'Obrona', hold: 'Ignorowanie' },
       stanceTooltips: {

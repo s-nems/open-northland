@@ -82,6 +82,7 @@ export interface UnitControlsOptions {
    *  cursor reads them, and names the action optimistically without them. */
   readonly jobChoiceAnswer?: (entity: number, jobType: number) => boolean | undefined;
   readonly tradeHouseAttachAnswer?: (trader: number, house: number) => boolean | undefined;
+  readonly tradeShipPinAnswer?: (trader: number, ship: number) => boolean | undefined;
   readonly vehicleAttachAnswer?: (settler: number, vehicle: number) => boolean | undefined;
   /** Whether the label beside the cursor yields to a placement mode or a hidden HUD. */
   readonly hintSuppressed?: () => boolean;
@@ -141,6 +142,11 @@ export interface UnitControlsOptions {
   /** The same rule asked as a click lands, which gates the pick's click and a trader's right-click on a
    *  house; absent, neither puts a house on a route. */
   readonly askAttachTradeHouse?: (trader: number, house: number) => Promise<boolean>;
+  /** The sim's ship pin rule (`SessionHost.tradeShipsPinnableBy`) as its last answer, which lights the
+   *  trade-ship pick's targets; absent, the pick lights nothing. */
+  readonly canPinTradeShip?: (trader: number, ship: number) => boolean;
+  /** The same rule asked as the pick's click lands; absent, the pick pins nothing. */
+  readonly askPinTradeShip?: (trader: number, ship: number) => Promise<boolean>;
   /** The viewer's stance toward `owner` and `owner`'s back, which explain a refused foreign trade stop;
    *  absent, the refusal is silent. */
   readonly tradeStances?: (owner: number) => TradeStances;

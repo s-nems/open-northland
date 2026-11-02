@@ -373,6 +373,16 @@ export const enContent = {
       summary:
         'A neutral warehouse offers four iron for a coin; the merchant carts coins over from the home warehouse, brings the iron back, and the goods traded turn the tribe friendly. Select the merchant for its Trade section, and the far warehouse for its trade offers.',
     },
+    'trade-sea': {
+      title: 'Trade across the sea',
+      summary:
+        'A merchant with a handcart and a small ship pinned to its route carries wood between warehouses on two islands. It ferries the load to the ship in several trips, sails across with the cart aboard, and ferries it into the far warehouse. Select the merchant for the ship row in its Trade section, or the ship for its read-only hold.',
+    },
+    'trade-sea-pin': {
+      title: 'Pin a ship to a route',
+      summary:
+        "The same two islands with no ship pinned: the merchant's route needs one and its Trade section says so. Select the merchant, press Pin a ship and pick the lit ship; the merchant then loads it and sails.",
+    },
     'trade-domestic': {
       title: 'Trade between own warehouses',
       summary:

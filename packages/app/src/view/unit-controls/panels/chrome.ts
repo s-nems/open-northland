@@ -70,6 +70,7 @@ export interface UnitChromeCallbacks {
   readonly assignWorkplace: (id: number) => void;
   readonly assignHome: (id: number) => void;
   readonly attachTradeHouse: (id: number) => void;
+  readonly pinTradeShip: (id: number) => void;
   readonly selectEntity: (id: number) => void;
   /** Arm a pick for a vehicle panel control, and read which one waits for its target. */
   readonly armPick: (mode: PickMode) => void;
@@ -198,6 +199,7 @@ export async function createUnitChrome(
       assignWorkplace: callbacks.assignWorkplace,
       assignHome: callbacks.assignHome,
       attachTradeHouse: callbacks.attachTradeHouse,
+      pinTradeShip: callbacks.pinTradeShip,
       ringCommand: callbacks.ringCommand,
       cue: callbacks.cue,
     },

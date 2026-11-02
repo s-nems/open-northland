@@ -110,6 +110,10 @@ export function warmModel(goodIds: readonly string[]): SettlerPanelModel {
       agreementHolds: true,
       giveKeep: 2,
       takeUpTo: 10,
+      ship: {
+        ship: { entity: 3, label: 'Warm', load: 'Warm' },
+        note: { label: 'Warm', tooltip: 'Warm' },
+      },
     },
     experience: [
       { label: 'Warm', repeats: 1, bonusPct: 5, own: true },

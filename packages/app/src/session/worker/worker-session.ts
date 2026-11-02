@@ -568,6 +568,7 @@ class WorkerClient<E> {
       tradeOffersAt: (...args) => this.ask('tradeOffersAt', args),
       traderView: (...args) => this.ask('traderView', args),
       tradeHousesAttachableBy: (...args) => this.ask('tradeHousesAttachableBy', args),
+      tradeShipsPinnableBy: (...args) => this.ask('tradeShipsPinnableBy', args),
       vehiclesAttachableBy: (...args) => this.ask('vehiclesAttachableBy', args),
       missionBriefingHistory: (...args) => this.ask('missionBriefingHistory', args),
       missionBriefingPage: (...args) => this.ask('missionBriefingPage', args),

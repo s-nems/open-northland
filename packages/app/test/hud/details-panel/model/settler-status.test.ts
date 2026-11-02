@@ -14,6 +14,7 @@ const BAKER = 5;
 const BAKERY = 14;
 const SETTLER = 1;
 const WORKPLACE = 2;
+const PINNED_SHIP = 90;
 
 /** The panel context a caption reads: only the battle-alert seam, which the sim answers. */
 function ctxOf(standsTo?: (entity: number) => boolean): UnitPanelModelContext {
@@ -40,6 +41,14 @@ describe('the settler status caption', () => {
     const snapshot = snapshotOf(siteWorld(true));
     const sentAhead = comps(null, { TrainingOrder: { house: WORKPLACE, drillTicksLeft: 1 } });
     expect(settlerStatus(ctxOf(), snapshot, SETTLER, sentAhead)).toBe('awaitingTraining');
+  });
+
+  it('reads a trader aboard its pinned ship as on its route, and aboard any other ship as idle', () => {
+    const snapshot = snapshotOf(siteWorld(false));
+    const aboard = { Rider: { vehicle: PINNED_SHIP } };
+    const pinned = comps(null, { ...aboard, TradeShip: { vehicle: PINNED_SHIP } });
+    expect(settlerStatus(ctxOf(), snapshot, SETTLER, pinned)).toBe('sailingRoute');
+    expect(settlerStatus(ctxOf(), snapshot, SETTLER, comps(null, aboard))).toBe('idle');
   });
 
   it('reads idle for the same settler once its workplace stands', () => {

@@ -151,8 +151,19 @@ export function createCrewSection(
       else vehicle.loadVehicle(model.entityId);
     },
   });
+  const pin = createLedger({
+    buttons: 1,
+    onLink: () => {
+      const trader = current()?.tradePin;
+      if (trader != null) actions.select(trader.entity);
+    },
+    onButton: () => {
+      const trader = current()?.tradePin;
+      if (trader != null) actions.unpinTradeShip(trader.entity);
+    },
+  });
   const root = element('div', '');
-  root.append(title.element, row, deck.element);
+  root.append(title.element, row, deck.element, pin.element);
 
   let helmSeat: SeatWell = { kind: 'free' };
   let wells: FigureWell[] = [];
@@ -294,6 +305,16 @@ export function createCrewSection(
                   formatMessage(copy.deckUnload, { vehicle: carried.label }),
                 ),
           ],
+        });
+      }
+      const trader = model.tradePin;
+      setHidden(pin.element, trader === null);
+      if (trader !== null) {
+        const unpin = messages().hud.settlerPanel.tradeUnpinShip;
+        pin.update({
+          label: copy.tradeMerchant,
+          value: [{ text: trader.name, link: true, tooltip: copy.tradeMerchantSelect }],
+          buttons: [{ face: { glyph: GLYPH.close }, label: unpin, tooltip: unpin }],
         });
       }
     },

@@ -243,6 +243,8 @@ export interface SessionHost {
   traderView(trader: Entity): Promise<TraderView | undefined>;
   /** The houses the `attachTradeHouse` command would put on the trader's route now, ascending. */
   tradeHousesAttachableBy(trader: Entity): Promise<readonly Entity[]>;
+  /** The ships the `setTradeShip` command would pin to the trader now, ascending. */
+  tradeShipsPinnableBy(trader: Entity): Promise<readonly Entity[]>;
   /** The vehicles the `attachToVehicle` command would seat the settler on now, ascending. */
   vehiclesAttachableBy(settler: Entity): Promise<readonly Entity[]>;
   missionBriefingHistory(): Promise<readonly number[]>;

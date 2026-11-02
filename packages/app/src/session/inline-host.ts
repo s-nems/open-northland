@@ -115,6 +115,7 @@ export function inlineSessionHost(sim: Simulation, options: InlineSessionHostOpt
     tradeOffersAt: (house) => Promise.resolve(sim.tradeOffersAt(house)),
     traderView: (trader) => Promise.resolve(sim.traderView(trader)),
     tradeHousesAttachableBy: (trader) => Promise.resolve(sim.tradeHousesAttachableBy(trader)),
+    tradeShipsPinnableBy: (trader) => Promise.resolve(sim.tradeShipsPinnableBy(trader)),
     vehiclesAttachableBy: (settler) => Promise.resolve(sim.vehiclesAttachableBy(settler)),
     missionBriefingHistory: () => Promise.resolve(sim.missionBriefingHistory()),
     missionBriefingPage: () => Promise.resolve(sim.missionBriefingPage()),

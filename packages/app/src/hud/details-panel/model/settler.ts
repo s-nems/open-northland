@@ -164,6 +164,7 @@ export type SettlerState =
   | 'awaitingWorkplace'
   | 'awaitingTraining'
   | 'awaitingSeat'
+  | 'sailingRoute'
   | 'standingTo'
   | 'lost'
   | 'idle';
@@ -252,6 +253,8 @@ function liveSettlerState(
   if (awaitsItsTrainingHouse(snapshot, components)) return 'awaitingTraining';
   // Sent to a full school or barracks, it waits in the yard for a seat to free.
   if ((components.TrainingOrder as { seated?: unknown } | undefined)?.seated === false) return 'awaitingSeat';
+  // A trader aboard its pinned ship is on its route, however long the crossing.
+  if (ridesPinnedShip(components)) return 'sailingRoute';
   // A unit holding its ground under the battle alert takes no work and no rest, which without its own
   // caption reads as a soldier that has simply stopped caring about its empty bars.
   if (ctx.standsTo?.(entityId) === true) return 'standingTo';
@@ -287,6 +290,12 @@ export function settlerStateHold(): SettlerStateHold {
 }
 
 export type SettlerStateHold = (entity: number, tick: number, state: SettlerState) => SettlerState;
+
+function ridesPinnedShip(components: Comp): boolean {
+  const pinned = num((components.TradeShip as { vehicle?: unknown } | undefined)?.vehicle);
+  const rides = num((components.Rider as { vehicle?: unknown } | undefined)?.vehicle);
+  return pinned !== undefined && pinned === rides;
+}
 
 function awaitsItsTrainingHouse(snapshot: WorldSnapshot, components: Comp): boolean {
   const house = num((components.TrainingOrder as { house?: unknown } | undefined)?.house);

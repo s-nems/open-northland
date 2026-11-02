@@ -28,16 +28,17 @@ const COLLECTOR = 1;
 const CATAPULT = 10;
 const CART = 11;
 const SHIP = 12;
+const PINNED_SHIP = 13;
 const ENEMY = 20;
 const DOOR_SETTLER = 21;
 const RESOURCE = 30;
 const GOOD = 4;
 const TILE = { col: 6, row: 8 };
 
-const vehicle = (id: number, vehicleType: number): Ent => ({
+const vehicle = (id: number, vehicleType: number, hauler: number | null = null): Ent => ({
   id,
   components: {
-    Vehicle: { vehicleType, tribe: 1, moored: false, passengers: [], vehicles: [], carrier: null },
+    Vehicle: { vehicleType, tribe: 1, moored: false, passengers: [], vehicles: [], carrier: null, hauler },
     Owner: { player: HUMAN_PLAYER },
     Position: { x: 2 * ONE, y: 2 * ONE },
   },
@@ -55,6 +56,7 @@ const WORLD = snapshotOf([
   vehicle(CATAPULT, VEHICLE_CATAPULT),
   vehicle(CART, VEHICLE_HANDCART),
   vehicle(SHIP, VEHICLE_SHIP_SMALL),
+  vehicle(PINNED_SHIP, VEHICLE_SHIP_SMALL, COLLECTOR),
 ]);
 
 const NOTHING: RightClickHit = {
@@ -162,6 +164,15 @@ describe('a right press', () => {
     expect(press([COLLECTOR], { ownVehicle: CART, enemy: ENEMY })).toMatchObject({
       kind: 'orders',
       settlers: { groups: [{ intent: { kind: 'attack', enemy: ENEMY } }] },
+    });
+  });
+
+  it('walks past a pinned ship, which seats nobody, rather than asking to board it', () => {
+    expect(press([COLLECTOR], { ownVehicle: PINNED_SHIP })).toMatchObject({
+      kind: 'orders',
+      settlers: { groups: [{ intent: { kind: 'walk', tile: TILE } }] },
+      riders: { kind: 'none' },
+      vehicles: { kind: 'none' },
     });
   });
 

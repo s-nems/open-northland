@@ -38,6 +38,7 @@ export function warmVehicleModel(goodIds: readonly string[]): VehiclePanelModel 
     foreign: false,
     status: { label: 'Warm', tone: 'trouble', carrier: { id: 1, label: 'Warm' } },
     hauler: null,
+    tradePin: { entity: 7, name: 'Warm' },
     health: { hitpoints: 1, max: 10 },
     orders: [
       { order: 'goTo', control: true },
