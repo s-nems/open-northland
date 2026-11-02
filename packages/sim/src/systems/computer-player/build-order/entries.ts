@@ -290,7 +290,7 @@ const AFTER_FOOD_AND_ARMS: StepHold = {
 };
 
 /** The homes every seat's opening raises (owner ruling): a roomy or rich seat raises more on top. */
-export const OPENING_HOMES = 3;
+const OPENING_HOMES = 3;
 
 /**
  * When the pottery and the mason hut go up a tier (owner ruling: the mill, the bakery, the homes, the

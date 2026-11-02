@@ -19,7 +19,7 @@ import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js'
 import { placementProbe } from '../../footprint/placement/building.js';
 import { minutesToTicks } from '../game-phase.js';
 import { clearingPatch } from '../workforce/collectors/clearing-aim.js';
-import { type BuildOrder, type BuildOrderEntry, OPENING_HOMES, overflowBuildReachNodes } from './entries.js';
+import { type BuildOrder, type BuildOrderEntry, overflowBuildReachNodes } from './entries.js';
 import { baseComponent, buildReach, placementPassesOver, placementSpot } from './placement.js';
 import { plottedNodes, seatSpotAcceptor } from './plots.js';
 import { type LineStatuses, upgradesInto } from './progress.js';
