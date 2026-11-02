@@ -329,12 +329,11 @@ export function createMinimapChrome(
     const height = bounds.height / uiScale;
     const drawerWidth = popover.offsetWidth;
     const drawerHeight = popover.offsetHeight;
-    const rootRight = root.offsetLeft + root.offsetWidth;
-    // The overview's right side is the HUD's, so its drawer opens over the map, by its controls.
+    // The overview has the HUD at its sides, so its drawer opens over the map, by its controls.
     const x =
       place === 'overview'
-        ? rootRight - drawerWidth - OVERVIEW_DRAWER_INSET
-        : Math.max(4, Math.min(rootRight + 8, width - drawerWidth - 4));
+        ? root.offsetLeft + OVERVIEW_DRAWER_INSET
+        : Math.max(4, Math.min(root.offsetLeft + root.offsetWidth + 8, width - drawerWidth - 4));
     let y = root.offsetTop + (root.offsetHeight - drawerHeight) / 2;
     const beam = plane.querySelector<HTMLElement>('.on-beam');
     if (beam?.checkVisibility()) {

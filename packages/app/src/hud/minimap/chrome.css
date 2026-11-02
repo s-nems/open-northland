@@ -397,6 +397,12 @@
 .on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__button--size {
   display: none;
 }
+/* On the left rail, where no selection panel reaches. */
+.on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__controls {
+  right: auto;
+  left: var(--minimap-rail-center);
+  transform: translate(-50%, -50%);
+}
 
 .on-hud .on-map-overlays {
   position: absolute;

@@ -7,7 +7,7 @@ import {
 import { FOG_STATE, scanChangedBytes } from '@open-northland/sim';
 import { contains, type Rect } from '../geometry.js';
 import { navBeamRect } from '../nav-beam.js';
-import { centralRegion, SELECTION_PANEL_W } from '../regions.js';
+import { centralRegion, GOAL_SLIP, NOTICE_COLUMN, SELECTION_PANEL_W, TOP_BAR_HEIGHT } from '../regions.js';
 import { MIN_UI_SCALE } from '../ui-scale.js';
 
 /**
@@ -27,13 +27,12 @@ const MAX_FRAME_ASPECT = 1.5;
 const NAV_GAP = 6;
 const TOP_SAFE = 70;
 const SELECTION_GAP = 12;
-/** Design px kept free on either side of the overview: the selection panel's column, the HUD's widest,
- *  so its zoom and filter controls stay in reach under any selection. */
-const OVERVIEW_SIDE_CLEARANCE = SELECTION_PANEL_W + SELECTION_GAP;
+/** Design px between the overview's frame and the HUD columns and corner map around it. */
+const OVERVIEW_GAP = 12;
+/** Design px between the top bar and the overview's frame, whose title plaque rises above it. */
+const OVERVIEW_TOP_GAP = 8;
 /** The share of the screen's width the overview takes when the columns leave it less. */
 const OVERVIEW_LEAST_WIDTH_SHARE = 0.5;
-/** Design px between a corner map and the overview, which covers what its controls and frame overhang. */
-const OVERVIEW_CORNER_GAP = 12;
 /** Design px the unknown-location strip hangs below the overview's frame. */
 const OVERVIEW_STRIP_OVERHANG = 24;
 
@@ -103,9 +102,10 @@ export function minimapLayout(
 }
 
 /**
- * The largest frame hugging the whole map in the room the HUD leaves: between the top bar and the
- * navigation beam, clear of the columns on either side, on the beam's axis. A corner map it would run
- * into narrows that room from the left. A screen too narrow for the columns keeps a usable map anyway.
+ * The largest frame hugging the whole map in the room the HUD leaves: under the top bar, above the
+ * navigation beam, between the notice column and the goal slip's. The corner map takes that room either
+ * from the left or from below, whichever leaves the larger map. A screen too narrow for the columns keeps
+ * a usable map anyway.
  */
 export function overviewLayout(
   bounds: WorldBounds,
@@ -115,22 +115,27 @@ export function overviewLayout(
   overlay: Rect | null,
 ): MinimapLayout {
   const artScale = Math.max(MIN_UI_SCALE, uiscale);
-  const side = OVERVIEW_SIDE_CLEARANCE * artScale;
   const region = centralRegion({ width: screenW, height: screenH }, artScale);
   const border = 2 * BORDER * artScale;
-  const maxH = region.h - OVERVIEW_STRIP_OVERHANG * artScale;
-  const framedFrom = (left: number, leastW: number): MinimapLayout => {
-    const room = screenW - side - left;
-    const maxW = Math.max(room, leastW);
-    const fit = Math.min((maxW - border) / bounds.width, (maxH - border) / bounds.height);
+  const gap = OVERVIEW_GAP * artScale;
+  const top = (TOP_BAR_HEIGHT + OVERVIEW_TOP_GAP) * artScale;
+  const floor = region.y + region.h - OVERVIEW_STRIP_OVERHANG * artScale;
+  const columnsLeft = (NOTICE_COLUMN.left + NOTICE_COLUMN.width) * artScale + gap;
+  const columnsRight = screenW - (GOAL_SLIP.width + GOAL_SLIP.right) * artScale - gap;
+  const framedIn = (left: number, bottom: number, leastW: number): MinimapLayout => {
+    const roomW = columnsRight - left;
+    const roomH = bottom - top;
+    const fit = Math.min((Math.max(roomW, leastW) - border) / bounds.width, (roomH - border) / bounds.height);
     if (fit <= 0) return framedLayout({ x: 0, y: screenH, w: 0, h: 0 }, bounds, artScale);
     const w = bounds.width * fit + border;
     const h = bounds.height * fit + border;
-    return framedLayout({ x: left + (room - w) / 2, y: region.y + (maxH - h) / 2, w, h }, bounds, artScale);
+    return framedLayout({ x: left + (roomW - w) / 2, y: top + (roomH - h) / 2, w, h }, bounds, artScale);
   };
-  const centred = framedFrom(side, screenW * OVERVIEW_LEAST_WIDTH_SHARE);
-  if (overlay === null || overlay.y >= centred.panel.y + centred.panel.h) return centred;
-  return framedFrom(Math.max(side, overlay.x + overlay.w + OVERVIEW_CORNER_GAP * artScale), 0);
+  const leastW = screenW * OVERVIEW_LEAST_WIDTH_SHARE;
+  if (overlay === null) return framedIn(columnsLeft, floor, leastW);
+  const above = framedIn(columnsLeft, Math.min(floor, overlay.y - gap), leastW);
+  const beside = framedIn(Math.max(columnsLeft, overlay.x + overlay.w + gap), floor, 0);
+  return above.map.w >= beside.map.w ? above : beside;
 }
 
 function framedLayout(panel: Rect, bounds: WorldBounds, artScale: number): MinimapLayout {

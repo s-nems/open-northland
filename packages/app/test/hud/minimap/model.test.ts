@@ -25,7 +25,7 @@ import {
   zoomMinimapLayout,
 } from '../../../src/hud/minimap/model.js';
 import { navBeamRect } from '../../../src/hud/nav-beam.js';
-import { centralRegion, NOTICE_COLUMN, SELECTION_PANEL_W } from '../../../src/hud/regions.js';
+import { GOAL_SLIP, NOTICE_COLUMN, TOP_BAR_HEIGHT } from '../../../src/hud/regions.js';
 import { MIN_UI_SCALE } from '../../../src/hud/ui-scale.js';
 import { cameraCenteredOnWorld } from '../../../src/view/camera/index.js';
 
@@ -201,35 +201,31 @@ describe('overviewLayout', () => {
   ] as const;
   const screen = { width: SCREEN_W, height: SCREEN_H };
 
-  it.each(CASES)('stands a $shape map on the beam axis, in the room the HUD leaves', ({ bounds }) => {
+  it.each(CASES)('fills the room between the HUD columns with a $shape map', ({ bounds }) => {
     const { panel, inner, map } = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, null);
-    const region = centralRegion(screen, UI);
-    expect(panel.x + panel.w / 2).toBeCloseTo(SCREEN_W / 2);
-    expect(panel.y).toBeGreaterThanOrEqual(region.y);
-    expect(panel.y + panel.h).toBeLessThan(region.y + region.h);
+    expect(panel.y).toBeGreaterThanOrEqual(TOP_BAR_HEIGHT);
+    expect(panel.y + panel.h).toBeLessThan(navBeamRect(screen, UI).y);
     expect(panel.x).toBeGreaterThan(NOTICE_COLUMN.left + NOTICE_COLUMN.width);
-    expect(panel.x + panel.w).toBeLessThan(SCREEN_W - SELECTION_PANEL_W);
+    expect(panel.x + panel.w).toBeLessThan(SCREEN_W - GOAL_SLIP.right - GOAL_SLIP.width);
     expect(map.w / map.h).toBeCloseTo(bounds.width / bounds.height);
     expect(map.w).toBeCloseTo(inner.w);
     expect(map.h).toBeCloseTo(inner.h);
   });
 
-  it('gives up room to a corner map it would run into, and only then', () => {
-    const { bounds } = CASES[0];
-    const alone = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, null);
-    const beside = { x: 0, y: alone.panel.y, w: alone.panel.x + 100, h: 100 };
-    const narrowed = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, beside).panel;
-    expect(narrowed.x).toBeGreaterThan(beside.w);
-    expect(narrowed.x + narrowed.w).toBeLessThan(SCREEN_W - SELECTION_PANEL_W);
-    const below = { ...beside, y: alone.panel.y + alone.panel.h };
-    expect(overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, below).panel.x).toBe(alone.panel.x);
+  it('stands above a corner map for a wide map and beside it for a tall one', () => {
+    const corner = { x: 0, y: SCREEN_H - 200, w: 500, h: 200 };
+    const wide = overviewLayout(CASES[0].bounds, SCREEN_H, UI, SCREEN_W, corner).panel;
+    expect(wide.y + wide.h).toBeLessThanOrEqual(corner.y);
+    expect(wide.x).toBeLessThan(corner.w);
+    const tall = overviewLayout(CASES[1].bounds, SCREEN_H, UI, SCREEN_W, corner).panel;
+    expect(tall.x).toBeGreaterThanOrEqual(corner.w);
+    expect(tall.y + tall.h).toBeGreaterThan(corner.y);
   });
 
   it('keeps a usable map on a screen too narrow to clear the side columns', () => {
-    const narrow = 1024;
+    const narrow = 640;
     const { panel } = overviewLayout(CASES[0].bounds, 640, UI, narrow, null);
     expect(panel.w / narrow).toBeCloseTo(0.5);
-    expect(panel.x + panel.w / 2).toBeCloseTo(narrow / 2);
   });
 
   it.each(CASES)('zooms a $shape map inside the fixed frame, covering the hole', ({ bounds }) => {
