@@ -782,4 +782,20 @@ describe('the read seam', () => {
     sim.world.mut(ship, Vehicle).mooring = sim.world.get(across, Vehicle).mooring;
     expect(sim.traderView(trader)?.shipState).toBe('unreachable');
   });
+
+  it('keeps a hauling cart in the ship slot against the order, until it lands with its trader', () => {
+    const { sim, trader, ship, cart } = aboardMoored();
+    order(sim, { kind: 'leaveCarrier', vehicle: cart });
+    sim.step();
+
+    expect(sim.world.get(cart, Vehicle).carrier).toBe(ship);
+    expect(
+      sim.events.current().filter((ev) => ev.kind === 'vehicleCrewRefused' && ev.entity === cart),
+    ).toMatchObject([{ reason: 'cannotLeave' }]);
+
+    runUntil(sim, VOYAGE_TICKS, () => sim.world.has(trader, Position));
+    expect(sim.world.has(trader, Position)).toBe(true);
+    expect(sim.world.get(cart, Vehicle).carrier).toBeNull();
+    expect(sim.world.get(trader, HaulingCart).vehicle).toBe(cart);
+  });
 });

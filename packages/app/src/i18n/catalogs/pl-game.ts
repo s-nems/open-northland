@@ -793,7 +793,7 @@ export const plGame = {
       health: 'Wytrzymałość {hitpoints} / {max}',
       carrierTooltip: 'Zaznacz statek',
       tradeMerchant: 'Kupiec',
-      tradeMerchantSelect: 'Wybierz kupca, którego trasą płynie ten statek',
+      tradeMerchantSelect: 'Zaznacz kupca, którego trasą płynie ten statek',
       haulerTooltip: 'Zaznacz, kto go ciągnie',
       status: {
         aboard: 'Na statku',

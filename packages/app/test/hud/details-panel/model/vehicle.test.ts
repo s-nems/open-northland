@@ -26,7 +26,11 @@ import type {
   VehiclePanelModel,
   VehicleRiderModel,
 } from '../../../../src/hud/details-panel/model/index.js';
-import { vehiclePanelModel, vehicleStatus } from '../../../../src/hud/details-panel/model/vehicle.js';
+import {
+  vehicleOrders,
+  vehiclePanelModel,
+  vehicleStatus,
+} from '../../../../src/hud/details-panel/model/vehicle.js';
 import { createCargoState } from '../../../../src/hud/dom/vehicle-panel/cargo.js';
 import {
   commanderCaption,
@@ -489,6 +493,22 @@ describe('vehicle hold', () => {
     expect(words).toContain(copy.rowComing.replace('{count}', '2'));
     expect(cargoLineTooltip({ ...row(1, 3, 6, 5), pinned: false }, true)).not.toContain(
       copy.rowWanted.replace('{count}', '6'),
+    );
+  });
+});
+
+describe('a hauling cart riding a ship', () => {
+  it('refuses to leave the ship, moored or not: it comes off with its puller', () => {
+    const orders = vehicleOrders({
+      vehicleClass: 'cart',
+      commanded: false,
+      carried: true,
+      carrierMoored: true,
+      animalMissing: false,
+      hauled: true,
+    }).orders;
+    expect(orders.find((row) => row.order === 'leaveShip')?.control).toBe(
+      messages().hud.vehiclePanel.refusals.hauled,
     );
   });
 });

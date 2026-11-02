@@ -45,7 +45,7 @@ const HANDCART_HOLD = 15;
 /** Two cart loads, within the small ship's fifty. */
 const TRADE_SEA_WOOD = 30;
 export const TRADE_SEA_ZOOM = 0.8;
-export const TRADE_SEA_EAST_SLOT = 1;
+const TRADE_SEA_EAST_SLOT = 1;
 
 /** Headroom over the measured run: seed 45 lands the last unit by tick 1800. */
 const RUN_TICKS = TICKS_PER_SECOND * 160;
@@ -105,7 +105,7 @@ export function tradeSeaShip(sim: Simulation): Entity | undefined {
 }
 
 /** The wood in the route's stop at `slot`. */
-export function tradeSeaWoodAt(sim: Simulation, slot: number): number {
+function tradeSeaWoodAt(sim: Simulation, slot: number): number {
   const trader = sceneTrader(sim);
   const stop = trader === undefined ? undefined : sim.traderView(trader)?.stops[slot];
   if (stop === undefined) return 0;

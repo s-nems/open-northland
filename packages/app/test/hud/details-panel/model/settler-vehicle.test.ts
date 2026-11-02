@@ -19,7 +19,7 @@ function runUntilAboard(sim: Simulation, trader: Entity): void {
   throw new Error('expected the trader aboard its ship');
 }
 
-it('keeps showing the cart in the Vehicle row while the trader sails its pinned ship', () => {
+it('shows the cart with no remove in the Vehicle row while the trader sails its pinned ship', () => {
   const sim = createSceneSim(tradeSeaScene);
   sim.run(1);
   const trader = sceneTrader(sim);
@@ -31,4 +31,5 @@ it('keeps showing the cart in the Vehicle row while the trader sails its pinned 
   expect(sim.world.get(trader, Rider).vehicle).toBe(tradeSeaShip(sim));
   const row = vehicleRow(ctxOf(sim), sim.snapshot(), ent, 'worker', true);
   expect(row?.target?.id).toBe(sim.world.get(trader, HaulingCart).vehicle);
+  expect(row?.remove).toBeNull();
 });

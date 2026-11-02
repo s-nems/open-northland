@@ -374,12 +374,12 @@ export const plContent = {
     'trade-sea': {
       title: 'Handel przez morze',
       summary:
-        'Kupiec z wózkiem ręcznym i małym statkiem przypiętym do trasy wozi drewno między magazynami na dwóch wyspach. Przenosi ładunek na statek w kilku kursach, płynie z wózkiem na pokładzie i przenosi ładunek do dalekiego magazynu. Wybierz kupca, by zobaczyć wiersz statku w sekcji Handel, albo statek, by zobaczyć ładownię tylko do odczytu.',
+        'Kupiec z wózkiem ręcznym i małym statkiem przypiętym do trasy wozi drewno między magazynami na dwóch wyspach. Przenosi ładunek na statek w kilku kursach, płynie z wózkiem na pokładzie i przenosi ładunek do dalekiego magazynu. Zaznacz kupca, by zobaczyć wiersz statku w sekcji Handel, albo statek, by zobaczyć ładownię tylko do odczytu.',
     },
     'trade-sea-pin': {
       title: 'Przypinanie statku do trasy',
       summary:
-        'Te same dwie wyspy, ale bez przypiętego statku: trasa kupca go potrzebuje i sekcja Handel o tym mówi. Wybierz kupca, naciśnij Przypnij statek i wskaż podświetlony statek. Kupiec załaduje go i wypłynie.',
+        'Te same dwie wyspy, ale bez przypiętego statku: trasa kupca go potrzebuje i sekcja Handel o tym mówi. Zaznacz kupca, naciśnij Przypnij statek i wskaż podświetlony statek. Kupiec załaduje go i wypłynie.',
     },
     'trade-domestic': {
       title: 'Handel między własnymi magazynami',

@@ -10,6 +10,7 @@ import {
 import { WEAPON_XP_KEY_BY_TYPE } from '../../../catalog/weapon-experience.js';
 import {
   num,
+  ridesPinnedShip,
   type SnapshotEntity,
   settlerExperienceOf,
   settlerNeedsOf,
@@ -290,12 +291,6 @@ export function settlerStateHold(): SettlerStateHold {
 }
 
 export type SettlerStateHold = (entity: number, tick: number, state: SettlerState) => SettlerState;
-
-function ridesPinnedShip(components: Comp): boolean {
-  const pinned = num((components.TradeShip as { vehicle?: unknown } | undefined)?.vehicle);
-  const rides = num((components.Rider as { vehicle?: unknown } | undefined)?.vehicle);
-  return pinned !== undefined && pinned === rides;
-}
 
 function awaitsItsTrainingHouse(snapshot: WorldSnapshot, components: Comp): boolean {
   const house = num((components.TrainingOrder as { house?: unknown } | undefined)?.house);

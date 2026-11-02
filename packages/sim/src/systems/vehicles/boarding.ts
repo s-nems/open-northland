@@ -291,6 +291,10 @@ export function leaveCarrier(
   const vehicle = command.vehicle;
   const state = world.tryGet(vehicle, Vehicle);
   if (state === undefined || state.carrier === null) return true;
+  if (state.hauler !== null) {
+    refuseCrew(world, ctx, vehicle, 'cannotLeave'); // a hauling cart comes off with its puller (`landRider`)
+    return false;
+  }
   const carrier = state.carrier;
   if (vehicleAnchor(world, vehicle) === null) {
     const landing = landingOf(world, ctx, carrier);

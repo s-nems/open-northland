@@ -316,7 +316,7 @@ export interface PickModeDeps {
 /**
  * What a press did to an armed mode, for the caller's click feedback: `ordered` placed the order,
  * `missed` found no target under the press (approximation: the original keeps its tool armed after a
- * miss, this drops it), `pending` awaits a fresh signpost verdict, and `calledOff` was any other button.
+ * miss, this drops it), `pending` awaits a fresh signpost or ship pin verdict, and `calledOff` was any other button.
  * An invalid signpost remains armed. Null when no mode was armed.
  */
 export type PickPress = 'ordered' | 'missed' | 'calledOff' | 'pending';
@@ -497,10 +497,21 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     return true;
   };
 
-  /** Pin the ship under the press to the trader, once the sim admitted it. */
-  const pinTradeShip = (trader: number, ship: number | null): boolean => {
+  /** The frontmost own ship at the point: a cart parked by the door never takes a ship pick's press. */
+  const ownShipAt = (world: { readonly x: number; readonly y: number }): number | null => {
+    const snapshot = deps.snapshot();
+    const ships = deps.targets.owned('vehicle').filter((target) => {
+      const e = entityById(snapshot, target.ref);
+      return e !== undefined && isShip(deps.content, e);
+    });
+    return pickTopAt(ships, world.x, world.y);
+  };
+
+  /** Pin the ship under the press to the trader; the sim's fresh answer decides the order and its cue. */
+  const resolveShipPin = (trader: number, event: MouseEvent): PickPress => {
     const ask = deps.askPinTradeShip;
-    if (ask === undefined || ship === null) return false;
+    const ship = ownShipAt(deps.toWorld(event.clientX, event.clientY));
+    if (ask === undefined || ship === null) return 'missed';
     deps.answered.after(ask(trader, ship), (admitted) => {
       if (!admitted) {
         deps.cue?.('fail');
@@ -508,8 +519,9 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
       }
       deps.enqueue({ kind: 'setTradeShip', entity: trader as Entity, ship: ship as Entity });
       deps.flashTarget?.(ship, 'assign');
+      deps.cue?.('confirm');
     });
-    return true;
+    return 'pending';
   };
 
   /** `queued` applies to the {@link QUEUEABLE_MODES}; `lands` has a dock land the crew once moored. */
@@ -611,7 +623,11 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     deps.orders().issueSetWorkFlag(named, units, true);
 
   /** `queued` applies to the {@link QUEUEABLE_MODES}. */
-  const resolvePicked = (mode: Exclude<PickMode, SpotMode>, event: MouseEvent, queued: boolean): boolean => {
+  const resolvePicked = (
+    mode: Exclude<PickMode, SpotMode | { readonly kind: 'trade-ship' }>,
+    event: MouseEvent,
+    queued: boolean,
+  ): boolean => {
     switch (mode.kind) {
       case 'workplace':
       case 'home':
@@ -635,11 +651,6 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         return deps.orders().issueAttackAnimal(event, mode.units, queued);
       case 'vehicle':
         return deps.vehicleOrders().issueAttach(event, mode.settler, queued);
-      case 'trade-ship':
-        return pinTradeShip(
-          mode.trader,
-          ownVehicleAt(deps.targets, deps.toWorld(event.clientX, event.clientY)),
-        );
       case 'vehicle-attack-settler':
       case 'vehicle-attack-building':
       case 'vehicle-attack-vehicle':
@@ -687,6 +698,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
         event.shiftKey,
         event.ctrlKey || event.metaKey,
       );
+    if (mode.kind === 'trade-ship') return resolveShipPin(mode.trader, event);
     return chained(mode, resolvePicked(mode, event, queued), queued);
   };
 
@@ -788,7 +800,12 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
     if (kind === null) return null;
     const w = deps.toWorld(clientX, clientY);
     if (aim.marks === marks && aim.snapshot === snapshot && aim.x === w.x && aim.y === w.y) return aim;
-    aim.target = kind === 'vehicle' ? ownVehicleAt(deps.targets, w) : buildingAt(clientX, clientY, kind);
+    aim.target =
+      mode.kind === 'trade-ship'
+        ? ownShipAt(w)
+        : kind === 'vehicle'
+          ? ownVehicleAt(deps.targets, w)
+          : buildingAt(clientX, clientY, kind);
     if (aim.marks !== marks) aim.byId = new Map(marks.map((mark) => [mark.id, mark]));
     aim.marks = marks;
     aim.snapshot = snapshot;
@@ -878,7 +895,7 @@ export function createPickModeController(deps: PickModeDeps): PickModeController
           : { kind: 'board', fits: deps.vehicleAttachAnswer?.(mode.settler, vehicle) !== false };
       }
       case 'trade-ship': {
-        const ship = ownVehicleAt(deps.targets, world);
+        const ship = ownShipAt(world);
         return ship === null
           ? null
           : { kind: 'pinShip', fits: deps.tradeShipPinAnswer?.(mode.trader, ship) !== false };
