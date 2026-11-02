@@ -44,7 +44,8 @@ const HULL = 5000;
 const CREW_JOBS = [WOMAN, CIVILIST, BUILDER, COLLECTOR, CARRIER, SCOUT];
 export const WHEAT = 44;
 const TRADE_SHIP_GOOD = 45;
-const CARGO_GOODS = [WOOD, MUD, STONE, WHEAT];
+export const FOOD = 3;
+const CARGO_GOODS = [WOOD, MUD, STONE, WHEAT, FOOD];
 
 /** Cells: the west island, the strait, the east island; rows run the map's height. */
 const CELLS = { width: 120, height: 60 };
@@ -81,6 +82,7 @@ const HOME_GOODS = [
   { good: STONE, amount: 30 },
   { good: MUD, amount: 30 },
   { good: WHEAT, amount: 30 },
+  { good: FOOD, amount: 150 },
 ];
 
 /** Two ship types that seat every civilian trade and carry the building goods, sized as the real ones. */

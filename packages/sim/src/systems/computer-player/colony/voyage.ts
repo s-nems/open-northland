@@ -30,6 +30,7 @@ import { shorePoints } from '../sea-route.js';
 import { holdDone, holdLoad, holdsStoreBill, manifestInStock, pinHold, wantManifest } from './cargo.js';
 import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
 import { COLONY_BUILDS } from './founding.js';
+import { startLine } from './line.js';
 import { boardOrders, pickParty, spareMen } from './people.js';
 import { shoreWithStore } from './spot.js';
 import { homeStockOf } from './stock.js';
@@ -280,7 +281,7 @@ function shipId(env: ColonyEnv, ship: Entity): string | undefined {
 }
 
 /** The seat's free moored ship that may carry its colony: a trade ship where its tribe builds one. */
-function carryingShip(env: ColonyEnv): Entity | null {
+export function carryingShip(env: ColonyEnv): Entity | null {
   const { world, ctx, seat } = env;
   const wantsTrade = mayBuildTradeShip(world, ctx, seat);
   const free = freeShips(env, homeLandOf(env));
@@ -435,7 +436,7 @@ function setAshore(world: World, ctx: SystemContext, ship: Entity, hands: number
 
 /** The scout ship's part of a landing: moored on the site's land it sets the rest ashore and sails home
  *  with its helm, who steps off there and goes back to the seat, and the ship with him. */
-function bringScoutHome(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+export function bringScoutHome(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;
   const scout = colony.scout;
   if (scout === null) return [];
@@ -483,17 +484,13 @@ export function unloaded(env: ColonyEnv, colony: ColonyView, ship: Entity): bool
   return holdLoad(env.world, ship) === 0 || env.ctx.tick - colony.since >= COLONY_UNLOAD_TICKS;
 }
 
-/** What a founding colony's ships still do: the scout ship goes home, and an unloaded hold's riders step
- *  ashore, the helm too: an empty hold feeds nobody, and the moored ship stays the colony's. */
+/** What a founding colony's ships still do: the scout ship goes home, and an unloaded colony ship turns
+ *  into the shipping line. */
 export function afterLanding(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
-  const { world } = env;
   const commands = bringScoutHome(env, colony);
   const ship = colony.ship;
-  const state = ship === null ? undefined : world.tryGet(ship, Vehicle);
-  const mooring = ship === null ? null : mooringOf(world, ship);
-  if (ship === null || state === undefined || mooring === null) return commands;
-  if (vehiclePassengers(state).length > 0 && unloaded(env, colony, ship))
-    commands.push(unloadAt(ship, mooring));
+  if (ship !== null && mooringOf(env.world, ship) !== null && unloaded(env, colony, ship))
+    commands.push(...startLine(env, colony, ship));
   return commands;
 }
 

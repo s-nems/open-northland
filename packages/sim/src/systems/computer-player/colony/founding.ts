@@ -114,7 +114,7 @@ function postOf(world: World, ctx: SystemContext, e: Entity, builder: number | n
 }
 
 /** The people standing on the colony: everyone of the seat out of the home view but those aboard. */
-function colonists(env: ColonyEnv): Entity[] {
+export function colonists(env: ColonyEnv): Entity[] {
   const { world, ctx, seat } = env;
   const home = new Set(homeSettlers(world, ctx, seat));
   return everySettlerOf(world, seat).filter(
@@ -123,7 +123,7 @@ function colonists(env: ColonyEnv): Entity[] {
 }
 
 /** The colony's first store, standing or a site. */
-function storeOf(env: ColonyEnv, buildings: readonly Entity[]): Entity | null {
+export function storeOf(env: ColonyEnv, buildings: readonly Entity[]): Entity | null {
   const { world, ctx } = env;
   const store = contentIndex(ctx.content).buildingTypeBySlug.get(COLONY_STORE_BUILDING_ID);
   return buildings.find((e) => world.get(e, Building).buildingType === store) ?? null;

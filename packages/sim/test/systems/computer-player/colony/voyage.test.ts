@@ -148,11 +148,14 @@ describe('a colony sails', () => {
     expect(wanted.some((line) => line.wanted === 0)).toBe(false);
     expect(stepUntil(sim, SAIL_DUE_TICKS, () => colonyState(sim)?.phase === 'founding')).toBe(true);
     expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => holdLoad(sim.world, ship) === 0)).toBe(true);
-    expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => ashoreEast(sim, people).length === people.length)).toBe(
+    expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => colonyState(sim)?.line !== null)).toBe(true);
+    const crew = colonyState(sim)?.line?.crew ?? [];
+    const settlers = people.filter((e) => !crew.includes(e));
+    expect(stepUntil(sim, UNLOAD_TICKS, () => ashoreEast(sim, settlers).length === settlers.length)).toBe(
       true,
     );
     expect(colonyHeldShips(sim.world, SEAT)).toContain(ship);
-    expect(vehicleCommander(sim.world.get(ship, Vehicle))).toBeNull();
+    expect(vehicleCommander(sim.world.get(ship, Vehicle))).toBe(crew[0]);
     expect(sim.world.get(first, Vehicle).passengers.every((seat) => seat === null)).toBe(true);
     expect(freeShipsOf(sim)).toContain(first);
   });
@@ -165,7 +168,8 @@ describe('a colony sails', () => {
     const trade = mooredShip(sim, BIG_SHIP, SECOND_SHIP_AT);
     expect(stepUntil(sim, LOAD_DUE_TICKS, () => colonyState(sim)?.phase === 'sailing')).toBe(true);
     expect(colonyState(sim)?.ship).toBe(trade);
-    const { people = [], rest = [] } = colonyState(sim) ?? {};
+    const people = [...(colonyState(sim)?.people ?? [])];
+    const rest = [...(colonyState(sim)?.rest ?? [])];
     expect(people).toHaveLength(TRADE_SHIP_SEATS);
     expect(rest.length).toBeGreaterThan(0);
     const helm = rest[0] as Entity;

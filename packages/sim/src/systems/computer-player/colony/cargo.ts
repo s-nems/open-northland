@@ -57,6 +57,14 @@ export function holdDone(world: World, ship: Entity): boolean {
   return vehicleLoad(stock) > 0;
 }
 
+/** Whether no line of `ship`'s hold lies aboard past what is asked of it. */
+export function holdFlushed(world: World, ship: Entity): boolean {
+  const stock = world.tryGet(ship, VehicleStock);
+  if (stock === undefined) return true;
+  for (const line of stock.lines.values()) if (line.current > line.wanted) return false;
+  return true;
+}
+
 /** Whether `ship` holds what a warehouse costs: without that a colony cannot start. */
 export function holdsStoreBill(world: World, ctx: SystemContext, ship: Entity): boolean {
   const index = contentIndex(ctx.content);

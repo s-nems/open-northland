@@ -14,11 +14,15 @@ export function mayBuildTradeShip(world: World, ctx: SystemContext, seat: number
   return tribe !== undefined && good !== undefined && goodEnabled(world, ctx, seat, tribe, good.typeId);
 }
 
-/** The carrying ship `seat`'s colony still lacks: 1 from the scout's return until it claims one. */
+/** The carrying ship `seat`'s colony still lacks: 1 from the scout's return until it claims one, and 1 for
+ *  a shipping line that lost its ship. */
 function shipOwed(world: World, seat: number): number {
   const carrier = aiControlEntity(world, seat);
   const colony = carrier === null ? undefined : world.tryGet(carrier, ComputerColony);
-  return colony?.phase === 'fittingOut' && colony.ship === null && colony.scout !== null ? 1 : 0;
+  if (colony === undefined || colony.ship !== null) return 0;
+  const fitting = colony.phase === 'fittingOut' && colony.scout !== null;
+  const settled = colony.phase === 'founding' || colony.phase === 'running';
+  return fitting || (settled && colony.line === null) ? 1 : 0;
 }
 
 /** The trade ships the seat's joinery owes its colony. */

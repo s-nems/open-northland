@@ -11,6 +11,7 @@ import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
 import { foundColony } from './founding.js';
+import { runLine } from './line.js';
 import {
   afterLanding,
   type ColonyEnv,
@@ -55,9 +56,9 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
       return landing(env, colony);
     case 'founding':
     case 'running': {
-      const ships = afterLanding(env, colony);
+      const ships = [...afterLanding(env, colony), ...runLine(env, world.get(carrier, ComputerColony))];
       if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) return ships;
-      return [...ships, ...foundColony(env, colony)];
+      return [...ships, ...foundColony(env, world.get(carrier, ComputerColony))];
     }
     case 'returning':
       return returning(env, colony);

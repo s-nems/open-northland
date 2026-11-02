@@ -39,7 +39,8 @@ export interface ColonyLine {
   leg: ColonyLineLeg;
   /** The tick the leg began. */
   since: number;
-  /** The tick its hold last changed. */
+  /** The units aboard when last read, and the tick that figure last changed. */
+  load: number;
   lastLoad: number;
 }
 

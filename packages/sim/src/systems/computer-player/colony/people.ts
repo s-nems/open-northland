@@ -81,6 +81,23 @@ function hasMinor(world: World, e: Entity): boolean {
   return marriage !== undefined && raisingChild(world, marriage);
 }
 
+/** Whether `e` stands on `land`. */
+export function standsOn(world: World, ctx: SystemContext, e: Entity, land: number): boolean {
+  const terrain = ctx.terrain;
+  const at = nodeOfEntity(world, e);
+  return (
+    terrain !== undefined &&
+    at !== null &&
+    terrain.inBounds(at.hx, at.hy) &&
+    terrain.componentOf(terrain.nodeAt(at.hx, at.hy)) === land
+  );
+}
+
+/** The spare men on `land` who leave no growing child behind. */
+export function sparePartyMen(world: World, ctx: SystemContext, seat: number, land: number): Entity[] {
+  return spareMen(world, ctx, seat).filter((e) => standsOn(world, ctx, e, land) && !hasMinor(world, e));
+}
+
 /**
  * The party of a seat, men ahead of women, read from the people on `land`: the women unwed first, then wives
  * with their husbands; the men left to find unwed first, then married ones alone. No parent of a growing
