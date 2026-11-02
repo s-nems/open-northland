@@ -62,6 +62,8 @@ export interface StaffingRow extends StaffingTiers {
   readonly porterUntil?: DiscoveryTarget;
   /** On an island seat alone, {@link aloneUntil}, {@link keptUntil} and {@link porterUntil} at once. */
   readonly islandMasterUntil?: DiscoveryTarget;
+  /** The tiers on an island seat, over the rest of the row. */
+  readonly islandSeat?: Partial<BuildingStaffing>;
   /** The tiers on a seat dressing its army in tunics (`TUNIC_SIDES`, `../build-order/seat-order.ts`), over the rest of the row. */
   readonly tunicSeat?: Partial<BuildingStaffing>;
   /** A workplace of the livestock industry: it employs nobody while the seat keeps no pair of either
@@ -114,7 +116,14 @@ export const STAFFING_BY_BUILDING_ID: Readonly<Record<string, StaffingRow>> = {
   work_joinery_00: { islandMasterUntil: SMALL_SHIP },
   work_joinery_01: { operatorTarget: 2, carrierTarget: 1, islandMasterUntil: SMALL_SHIP },
   work_joinery_02: { operatorTarget: 3, carrierMin: 1, carrierTarget: 1, islandMasterUntil: SMALL_SHIP },
-  work_joinery_03: { operatorTarget: 3, carrierTarget: 1 },
+  // Owner ruling: on the island plan the ship joinery runs its whole crew and a porter as minimum posts: a
+  // yard's bill goes up one fetch at a time, and a lone joiner took 18-40 game minutes per small ship on
+  // arabskie_wyspy_wolna_gra_mieszana with every good of the bill in store.
+  work_joinery_03: {
+    operatorTarget: 3,
+    carrierTarget: 1,
+    islandSeat: { operatorMin: 3, operatorTarget: 3, carrierMin: 1 },
+  },
   // The first potter and mason work alone, so a carrier hauls for them once the builder reserve is full.
   // The upgraded tiers keep one only while their goods run short (SUPPLY_CARRIER_GOODS_BY_BUILDING_ID),
   // except that from the late game the pottery runs one whenever clay is not short (rawGoodShort), since

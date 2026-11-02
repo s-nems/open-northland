@@ -101,11 +101,12 @@ function potteryOperators(tileUnearned: boolean): number | undefined {
 const SHIP_SMALL = 28;
 
 /** The joinery's plan on a seat of `archetype`, the small ship gated behind a trade nobody holds. */
-function joineryPlan(archetype: EconomicArchetype, shipUnearned: boolean) {
+function joineryPlan(archetype: EconomicArchetype, shipUnearned: boolean, id = 'work_joinery_01') {
   const base = aiContent();
   const content = parseContentSet({
     ...base,
     goods: [...base.goods, { typeId: SHIP_SMALL, id: 'ship_small', weight: 1 }],
+    buildings: base.buildings.map((b) => (b.typeId === JOINERY_TYPE ? { ...b, id } : b)),
     tribes: base.tribes.map((t) =>
       t.typeId !== VIKING || !shipUnearned
         ? t
@@ -142,6 +143,14 @@ describe('buildingStaffing', () => {
     expect(joineryPlan('islands', true)).toMatchObject({ operatorTarget: 1, carrierMin: 1 });
     expect(joineryPlan('islands', false)?.operatorTarget).toBeGreaterThan(1);
     expect(joineryPlan('standard', true)?.operatorTarget).toBeGreaterThan(1);
+  });
+
+  it('runs the whole ship crew and a porter as minimum posts on an island seat alone', () => {
+    const SHIP_JOINERY = 'work_joinery_03';
+    const island = joineryPlan('islands', false, SHIP_JOINERY);
+    const standard = joineryPlan('standard', false, SHIP_JOINERY);
+    expect(island?.carrierMin).toBeGreaterThan(standard?.carrierMin ?? 0);
+    expect(island?.operatorMin).toBeGreaterThan(standard?.operatorMin ?? 0);
   });
 
   it('keeps the potter at work with his goods at glut until the tile is discovered, and rests him after', () => {

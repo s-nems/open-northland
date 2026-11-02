@@ -116,18 +116,18 @@ export function buildingStaffing(
   if (type.kind !== 'workplace') return null;
   const { plan: row, gateFloor } = rowPlan(ctx, type);
   const authored = STAFFING_BY_BUILDING_ID[type.id];
+  const island = seatArchetype(world, seat.player) === 'islands';
   let plan =
     authored?.tunicSeat !== undefined && TUNIC_SIDES.some((side) => seatHasSide(world, seat.player, side))
       ? { ...row, ...authored.tunicSeat }
       : row;
+  if (island && authored?.islandSeat !== undefined) plan = { ...plan, ...authored.islandSeat };
   if (authored?.herdIndustry === true && seatHerdKept(world, ctx, seat.player) === 'none')
     return withoutCarriers(capOperators(plan, 0));
   const opening = openingRunPending(world, ctx, building, type);
   const gated = authored?.productGated === true ? gatedOperators(ctx, seat, type, held.operators) : null;
   const gate = gated === null ? null : Math.max(gated, gateFloor);
-  const islandMaster =
-    seatArchetype(world, seat.player) === 'islands' &&
-    discoveryPending(world, ctx, seat.player, authored?.islandMasterUntil);
+  const islandMaster = island && discoveryPending(world, ctx, seat.player, authored?.islandMasterUntil);
   if (opening || islandMaster || discoveryPending(world, ctx, seat.player, authored?.aloneUntil))
     plan = capOperators(plan, 1);
   else if (gate !== null) {
