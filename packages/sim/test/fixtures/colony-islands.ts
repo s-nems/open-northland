@@ -5,6 +5,7 @@ import {
   ComputerColony,
   type ComputerColonyState,
   type ComputerModuleEnables,
+  type EconomicSide,
   FOG_MODE,
   mapBriefOf,
 } from '../../src/components/index.js';
@@ -123,6 +124,46 @@ export function colonyContent(tradeShip = false): ContentSet {
   });
 }
 
+export const SPEAR = 46;
+export const ARMORY_TYPE = 50;
+const ARMORER = 10;
+const SHELF_UNITS = 10;
+
+/** {@link colonyContent} with the armory a seat with no room hands over: spears from wood. */
+export function overflowContent(): ContentSet {
+  const base = colonyContent();
+  return parseContentSet({
+    ...base,
+    goods: [...base.goods, { typeId: SPEAR, id: 'spear_wooden', weight: 1 }],
+    jobs: [...base.jobs, { typeId: ARMORER, id: 'armorer' }],
+    vehicles: base.vehicles.map((ship) => ({
+      ...ship,
+      cargoGoods: [...ship.cargoGoods, SPEAR],
+      passengerJobs: [...ship.passengerJobs, ARMORER],
+    })),
+    buildings: [
+      ...base.buildings,
+      {
+        typeId: ARMORY_TYPE,
+        id: 'work_armory_00',
+        kind: 'workplace',
+        workers: [
+          { jobType: ARMORER, count: 1 },
+          { jobType: CARRIER, count: 1 },
+        ],
+        recipes: [
+          { inputs: [{ goodType: WOOD, amount: 1 }], outputs: [{ goodType: SPEAR, amount: 1 }], ticks: 180 },
+        ],
+        construction: [{ goodType: WOOD, amount: 2 }],
+        stock: [
+          { goodType: WOOD, capacity: SHELF_UNITS, initial: 0 },
+          { goodType: SPEAR, capacity: SHELF_UNITS, initial: 0 },
+        ],
+      },
+    ],
+  });
+}
+
 export function colonyIslands(): TerrainMap {
   const { width, height } = CELLS;
   const typeIds = new Array<number>(width * height).fill(GRASS);
@@ -141,7 +182,11 @@ function colonyModules(): Partial<ComputerModuleEnables> {
 
 /** A seat of civilians alone on the west island, no rival, no soldier, goods at home and an islands
  *  economy, with an empty east island over the strait: everything a colony wants but a ship. */
-export function colonyWorld(seed = 7, content: ContentSet = colonyContent()): Simulation {
+export function colonyWorld(
+  seed = 7,
+  content: ContentSet = colonyContent(),
+  sides: readonly EconomicSide[] = [],
+): Simulation {
   const sim = new Simulation({ seed, content, map: colonyIslands() });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
@@ -184,7 +229,7 @@ export function colonyWorld(seed = 7, content: ContentSet = colonyContent()): Si
       harvestAtomic: STONE_HARVEST,
     });
   makeAiSeat(sim, SEAT, colonyModules());
-  seatEconomy(sim, 'islands');
+  seatEconomy(sim, 'islands', sides);
   sim.step();
   if (mapBriefOf(sim.world) === null) throw new Error('setup: the map brief is not taken');
   return sim;

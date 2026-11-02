@@ -279,9 +279,9 @@ function digGoodsWithRoom(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
 }
 
 /** Each standing workshop's open seats, operators first and ascending by building: the trades men of the
- *  colony have earned sit down, taken off `spare` as they do. A gatherer's seat at a workshop stays open:
- *  the colony's diggers fill its store. */
-function crewOrders(env: ColonyEnv, read: FoundingRead, spare: Entity[]): PlayerCommand[] {
+ *  colony have earned sit down, taken off `spare` as they do, a digger at need, as digging is how a colony's
+ *  man earns his trade. A gatherer's seat at a workshop stays open: the colony's diggers fill its store. */
+function crewOrders(env: ColonyEnv, read: FoundingRead, spare: Entity[], diggers: Entity[]): PlayerCommand[] {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const commands: PlayerCommand[] = [];
@@ -293,10 +293,11 @@ function crewOrders(env: ColonyEnv, read: FoundingRead, spare: Entity[]): Player
       if (isCarrierJob(ctx, jobType) !== carriers || (genericCollectorJob(ctx) ?? -1) === jobType) continue;
       let open = count - held.filter((w) => world.get(w, Settler).jobType === jobType).length;
       while (open-- > 0) {
-        const at = spare.findIndex((man) => earned(man, jobType));
-        const man = spare[at];
+        const pool = spare.some((man) => earned(man, jobType)) ? spare : diggers;
+        const at = pool.findIndex((man) => earned(man, jobType));
+        const man = pool[at];
         if (man === undefined) return;
-        spare.splice(at, 1);
+        pool.splice(at, 1);
         commands.push({ kind: 'assignWorker', entity: man, building: e, jobPriority: [jobType] });
       }
     }
@@ -311,7 +312,7 @@ function crewOrders(env: ColonyEnv, read: FoundingRead, spare: Entity[]): Player
 }
 
 /** Whether `e` works a colony workshop: his seat is not a post of {@link POSTS}. */
-function atWorkshop(env: ColonyEnv, e: Entity): boolean {
+export function atWorkshop(env: ColonyEnv, e: Entity): boolean {
   const { world, ctx } = env;
   const workplace = world.tryGet(e, JobAssignment)?.workplace;
   const building = workplace === undefined ? undefined : world.tryGet(workplace, Building);
@@ -419,7 +420,8 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
     ? builders.slice(BUILDERS_AT_REST)
     : builders.slice(0, Math.max(0, held.get('builder') ?? 0));
   const spare = [...free, ...past];
-  const commands = crewOrders(env, read, spare);
+  const diggers = posted.filter((man) => isDug(postOf(world, ctx, man, builder)) && !spare.includes(man));
+  const commands = crewOrders(env, read, spare, diggers);
   if (spare.length === 0) return commands;
   let flags: FlagGround | null = null;
   const ground = (): FlagGround => {

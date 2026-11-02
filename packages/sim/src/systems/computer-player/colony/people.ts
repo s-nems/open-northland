@@ -216,6 +216,11 @@ export function topUpParty(
   return room <= 0 || (lacking.men <= 0 && lacking.women <= 0) ? [] : gather(world, ctx, seat, land, want);
 }
 
+/** Whether home holds more civilians than it keeps. */
+export function homeMaySpare(world: World, ctx: SystemContext, seat: number): boolean {
+  return civilianCount(world, ctx, seat) > HOME_KEEPS_CIVILIANS;
+}
+
 /** The orders that take `party` aboard `ship`, men first so a man holds the helm: each person whose whole
  *  family sails gives up the old home; a husband sailing alone leaves his to his wife. */
 export function boardOrders(world: World, party: readonly Entity[], ship: Entity): PlayerCommand[] {

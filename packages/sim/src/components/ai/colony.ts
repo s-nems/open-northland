@@ -51,6 +51,13 @@ export interface ColonyOverflow {
   building: string;
 }
 
+/** A build-order step held for ground, and the tick the colony first saw it held. */
+export interface ColonyStall {
+  line: BuildLineId;
+  step: number;
+  since: number;
+}
+
 export interface ComputerColonyState {
   phase: ColonyPhase;
   /** The tick the phase began. */
@@ -75,6 +82,7 @@ export interface ComputerColonyState {
   builds: { building: string; placed: boolean }[];
   line: ColonyLine | null;
   overflow: ColonyOverflow[];
+  stalls: ColonyStall[];
 }
 
 /** A computer seat's colony over the sea, held on its {@link AiControl} carrier: absent until a site is

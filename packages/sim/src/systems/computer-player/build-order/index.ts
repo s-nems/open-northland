@@ -15,7 +15,7 @@ import type { Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import type { TerrainGraph } from '../../../nav/terrain/index.js';
 import { buildingTypeByContentId, countedTiers, tiersAtOrAbove } from '../../ai-shared/content-lookup.js';
-import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
+import { everyBuildingOf, homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import type { EnemyFire } from '../../ai-shared/military/defence/index.js';
 import { anchorCentroid, anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
@@ -311,7 +311,8 @@ function runBuildOrder(
   }
   const searches = new StalledSearches(world, player, keyedStatuses(order, statuses));
   let made: ReadonlySet<number> | undefined;
-  const madeGoods = (): ReadonlySet<number> => (made ??= goodsMadeBy(world, ctx, owned));
+  const madeGoods = (): ReadonlySet<number> =>
+    (made ??= goodsMadeBy(world, ctx, everyBuildingOf(world, player)));
   const locked = (entry: BuildOrderEntry): boolean =>
     stepLocked(world, ctx, player, owned, tribe, entry, memo);
   const held = (entry: BuildOrderEntry): boolean =>

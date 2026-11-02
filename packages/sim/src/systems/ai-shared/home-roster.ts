@@ -1,6 +1,7 @@
 import {
   aiControlEntity,
   Building,
+  type ColonyOverflow,
   ComputerColony,
   type ComputerColonyState,
   Position,
@@ -46,6 +47,15 @@ export function colonyLandOf(world: World, seat: number): number | undefined {
 export function colonyWantsShips(world: World, seat: number): boolean {
   const colony = colonyOf(world, seat);
   return colony !== undefined && colony.phase !== 'abandoned';
+}
+
+const NOTHING_HANDED_OVER: readonly DeepReadonly<ColonyOverflow>[] = [];
+
+/** The buildings `seat`'s order has handed to its colony; none once the colony is given up, so home's steps
+ *  stand open again. */
+export function colonyOverflow(world: World, seat: number): readonly DeepReadonly<ColonyOverflow>[] {
+  const colony = colonyOf(world, seat);
+  return colony === undefined || colony.phase === 'abandoned' ? NOTHING_HANDED_OVER : colony.overflow;
 }
 
 function belongsToColony(

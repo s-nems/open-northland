@@ -21,7 +21,7 @@ import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
 import type { Entity, World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
-import { colonyHeldShips, homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
+import { colonyHeldShips, everySettlerOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import type { SystemContext } from '../../context.js';
 import { goodEnabled } from '../../progression/index.js';
@@ -695,9 +695,10 @@ export function tuneCraftCounters(
   // Restricted plan and type -> its operators across the seat, gathered first because a seat's share
   // depends on how many men the plan employs. A plan shared by tiers splits per tier, since a command
   // naming a good the tier does not make is ignored. Insertion follows the canonical settler walk, so the
-  // seats and the emitted command order are both deterministic.
+  // seats and the emitted command order are both deterministic. A colony's workshop crews work the seat's
+  // plans with home's, which no other reader of the home roster sees: the army they arm is home's.
   const crews = new Map<CraftPlan, Map<number, RestrictedCrew>>();
-  for (const e of homeSettlers(world, ctx, player)) {
+  for (const e of everySettlerOf(world, player)) {
     const assignment = world.tryGet(e, JobAssignment);
     if (assignment === undefined) continue;
     const job = world.get(e, Settler).jobType;

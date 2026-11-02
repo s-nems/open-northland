@@ -16,7 +16,7 @@ import {
   goodTypeByContentId,
   tiersAtOrAbove,
 } from '../../ai-shared/content-lookup.js';
-import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
+import { colonyOverflow, everyBuildingOf, homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../../ai-shared/node-geometry.js';
 import type { SystemContext } from '../../context.js';
 import { heldGatherGood } from '../../economy/gather-goods.js';
@@ -50,6 +50,8 @@ import { coverageOf, seatCovered } from './tower-coverage.js';
 /** `skip` (not expressible in this content set, nothing left to collect, enough of it stored, or a
  *  discovery the seat can never make) counts as done for sequencing. */
 export type EntryStatus = 'skip' | 'satisfied' | 'unmet';
+
+const NO_BUILDING_TYPE = -1;
 
 /** Whether `from` sits strictly below `target` on the `upgradeTarget` chain. The visited guard bounds
  *  a malformed cyclic chain. */
@@ -110,6 +112,20 @@ function ownedTally(
   const tally = { byType, homes, upgrading };
   memo.tallies.set(owned, tally);
   return tally;
+}
+
+/** The buildings of `tiers` the seat's order has handed to its colony: home's step reads them as its own,
+ *  so its line moves on. */
+function handedOverCount(
+  index: ContentIndex,
+  world: World,
+  player: number,
+  tiers: ReadonlySet<number>,
+): number {
+  let count = 0;
+  for (const { building } of colonyOverflow(world, player))
+    if (tiers.has(index.buildingTypeBySlug.get(building) ?? NO_BUILDING_TYPE)) count++;
+  return count;
 }
 
 function countOfTypes(tally: OwnedTally, types: ReadonlySet<number>): number {
@@ -238,6 +254,7 @@ export function entryStatus(
           if (matches && roleOf(e) === entry.role) have++;
         }
       }
+      have += handedOverCount(index, world, player, counted);
       // A seat short of grass raises one of each bio-pattern building, the grass holding no more.
       const wanted =
         type.buildOnBioPattern && entry.count > 1 && memoGrassScarce(world, ctx, player, memo)
@@ -281,6 +298,7 @@ export function entryStatus(
             have++;
         }
       }
+      have += handedOverCount(index, world, player, done);
       if (have >= entry.count) return 'satisfied';
       if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
       if (entry.onlyWhen === 'livestock' && memoHerdless(world, ctx, player, memo)) return 'skip';
@@ -506,7 +524,8 @@ function holdOpen(
       const type = buildingTypeByContentId(ctx.content, hold.building);
       if (type === undefined) return false;
       const counted = countedTiers(ctx.content, type, undefined);
-      for (const e of owned) {
+      // A workshop handed to the colony serves a hold as well as one at home.
+      for (const e of everyBuildingOf(world, player)) {
         if (!counted.has(world.get(e, Building).buildingType)) continue;
         if (!world.has(e, UnderConstruction) || world.has(e, Upgrading)) return false;
       }

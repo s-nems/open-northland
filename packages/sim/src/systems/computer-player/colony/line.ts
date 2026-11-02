@@ -21,6 +21,7 @@ import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { isAdultSettler } from '../../family/eligibility.js';
 import { isEdibleFoodIn } from '../../readviews/index.js';
+import { stockAtBuildings } from '../../stores/index.js';
 import { seatBaseOf } from '../base.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
 import { seatBuildOrder } from '../build-order/seat-order.js';
@@ -34,10 +35,11 @@ import { SeatSupply } from '../workforce/supply.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
 import { colonists, colonyOrigin } from './founding.js';
+import { tradesmenFor } from './overflow.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, ladderAhead } from './plan.js';
 import { handsWanted, menPastWork } from './posts.js';
-import { colonyMakes, LAND_GOOD_IDS, storesHeld } from './provision.js';
+import { colonyMakes, LAND_GOOD_IDS, storesHeld, workshopGoods } from './provision.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
 import {
@@ -296,7 +298,7 @@ function standingWants(env: ColonyEnv, buildings: readonly Entity[]): Map<number
 }
 
 /** What home can give of `good` and stay at its comfort line; food at its comfort per settler. */
-function homeSpare(env: ColonyEnv, supply: SeatSupply): (good: number) => number {
+export function homeSpare(env: ColonyEnv, supply: SeatSupply): (good: number) => number {
   const { world, ctx, seat } = env;
   const food = foodLine(ctx);
   const mouths = homeSettlers(world, ctx, seat).length;
@@ -331,14 +333,35 @@ function outwardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoL
   return outwardCargo(read);
 }
 
+/** `held` and what the colony's workshops have made and still hold on their shelves. */
+function withWorkshopOutput(
+  env: ColonyEnv,
+  buildings: readonly Entity[],
+  held: ReadonlyMap<number, number>,
+): Map<number, number> {
+  const { world, ctx, seat } = env;
+  const made = workshopGoods(env, buildings);
+  const index = contentIndex(ctx.content);
+  const workshops = buildings.filter(
+    (e) =>
+      isBuilt(world, e) &&
+      index.buildings.get(world.get(e, Building).buildingType)?.kind === BUILDING_KIND.workplace,
+  );
+  const units = new Map(held);
+  for (const [good, amount] of stockAtBuildings(world, seat, workshops))
+    if (made.has(good)) units.set(good, (units.get(good) ?? 0) + amount);
+  return units;
+}
+
 /** The load the colony owes home now. */
 function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): CargoLine[] {
   const { ctx } = env;
-  const { held, kept } = colonyStores(env, colony);
+  const { buildings, held, kept } = colonyStores(env, colony);
   const supply = homeSupply(env);
   const staples = LAND_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
   const water = goodTypeByContentId(ctx.content, WATER_ID)?.typeId;
-  const finished = [...held.keys()]
+  const units = withWorkshopOutput(env, buildings, held);
+  const finished = [...units.keys()]
     .filter(
       (good) =>
         !staples.includes(good) &&
@@ -351,7 +374,7 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
   return homewardCargo({
     room: cargoRoom(env, line),
     staples,
-    held,
+    held: units,
     kept,
     lackToComfort: (good) => supply.lackToComfort(good),
     lackToGlut: (good) => {
@@ -379,8 +402,8 @@ function crewFromColony(env: ColonyEnv, line: LineView): PlayerCommand[] {
   return boardOrders(world, hireCrew(env, line, men.slice(0, LINE_CREW_LEAST)), line.ship);
 }
 
-/** Hire the crew's shortfall from home, then, in the seats left, the hands the colony lacks for its gatherers,
- *  sites and workshops ({@link handsWanted}). */
+/** Hire the crew's shortfall from home, then, in the seats left, the craftsmen no colonist can stand in for,
+ *  and the hands the colony lacks for its gatherers, sites and workshops ({@link handsWanted}). */
 function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCommand[] {
   const { world, ctx, seat } = env;
   forgetListed(env, colony, []);
@@ -394,9 +417,13 @@ function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCo
   const free = seats - ridersOf(world, line.ship).length - hired.length;
   const wanted = handsWanted(env, colony);
   const lacking = { men: wanted.men - men, women: wanted.women - women };
-  const party = topUpParty(world, ctx, seat, home, lacking, free).filter((e) => !hired.includes(e));
-  if (party.length > 0) env.edit().rest.push(...party);
-  return boardOrders(world, [...hired, ...party], line.ship);
+  const trades = tradesmenFor(env, people, home, free);
+  const tradesmen = trades.sailing.filter((e) => !hired.includes(e));
+  const party = topUpParty(world, ctx, seat, home, lacking, free - tradesmen.length).filter(
+    (e) => !hired.includes(e) && !tradesmen.includes(e),
+  );
+  if (tradesmen.length + party.length > 0) env.edit().rest.push(...tradesmen, ...party);
+  return [...trades.lessons, ...boardOrders(world, [...hired, ...tradesmen, ...party], line.ship)];
 }
 
 /** The home stop's work begins: settlers board and the hands fetch the outward load and the crew's food. */

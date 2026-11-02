@@ -13,6 +13,7 @@ import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, overrun } from './abandon.js';
 import { foundColony } from './founding.js';
 import { runLine } from './line.js';
+import { reviewOverflow } from './overflow.js';
 import { recoverStrayShips } from './stray-ships.js';
 import {
   afterLanding,
@@ -30,6 +31,8 @@ import {
 /** Every how many decisions a seat with no colony surveys for one (authored): the survey's cost once a
  *  game minute. */
 const SURVEY_EVERY_DECISIONS = 15;
+/** Every how many decisions a colony reads the seat's held steps (authored): a game minute. */
+const OVERFLOW_EVERY_DECISIONS = 15;
 
 function runColony(world: World, ctx: SystemContext, seat: number): readonly PlayerCommand[] {
   if (seatArchetype(world, seat) !== 'islands' || !colonyRuns(world, seat)) return [];
@@ -38,11 +41,17 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
   if (terrain === undefined || carrier === null) return [];
   const edit = (): ComputerColonyState => world.mut(carrier, ComputerColony);
   const env: ColonyEnv = { world, ctx, terrain, seat, carrier, edit };
-  const colony = world.tryGet(carrier, ComputerColony);
-  if (colony === undefined) {
+  const planned = world.tryGet(carrier, ComputerColony);
+  if (planned === undefined) {
     if (moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, SURVEY_EVERY_DECISIONS)) chooseSite(env);
     return [];
   }
+  if (
+    planned.phase !== 'abandoned' &&
+    moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, OVERFLOW_EVERY_DECISIONS)
+  )
+    reviewOverflow(env, planned);
+  const colony = world.get(carrier, ComputerColony);
   switch (colony.phase) {
     case 'siteChosen':
       return claimScoutShip(env, colony);

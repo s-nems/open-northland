@@ -20,11 +20,12 @@ import { isScoutJob } from '../../readviews/index.js';
 import { nearestLiveResource, reachableResourceTest, workableResourceTest } from '../live-resources.js';
 import { scoutBusy } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
+import { isOverflowBuilding } from './overflow.js';
 import { colonyFamilies } from './people.js';
 import { COLONY_OPEN_SITES, COLONY_SPOT_NODES, colonyPlan, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { LAND_GOOD_IDS } from './provision.js';
-import { colonyBuildings, colonySpot } from './spot.js';
+import { colonyBuildings, colonySpot, workshopSpot } from './spot.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
 
@@ -88,7 +89,9 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
     if (type === undefined) continue;
     const ground = stepGround(building);
-    const spot = colonySpot(env, colony.land, type, tribe, read.origin, COLONY_SPOT_NODES, ground);
+    const spot = isOverflowBuilding(building)
+      ? workshopSpot(env, colony.land, type, tribe, read.origin)
+      : colonySpot(env, colony.land, type, tribe, read.origin, COLONY_SPOT_NODES, ground);
     if (spot === null) continue;
     const live = env.edit();
     const row = live.builds.find((b) => b.building === building && !b.placed);

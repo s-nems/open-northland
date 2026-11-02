@@ -8,6 +8,7 @@ import { anchorNodeOf, bestRingNode } from '../../ai-shared/node-geometry.js';
 import { routeRegions } from '../../footprint/index.js';
 import { placementBlockerGrid } from '../../footprint/placement/blocker-grid.js';
 import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../settlers/drives/economy/vehicle-cargo.js';
+import { type NavigationLimit, networkLimitAt } from '../../signposts/index.js';
 import { fishSwarmsNearNode } from '../../spatial/fish.js';
 import { buildReach, footprintOnGrass } from '../build-order/placement.js';
 import { seatSpotAcceptor } from '../build-order/plots.js';
@@ -29,9 +30,34 @@ export function colonyBuildings(env: ColonyEnv): Entity[] {
   return everyBuildingOf(world, seat).filter((e) => !home.has(e));
 }
 
+/** How far from the store and what stands a workshop may go (authored): on
+ *  arabskie_wyspy_wolna_gra_mieszana (seed 7) a colony's forest left an armory no spot within 50 nodes of its
+ *  store and 648 between 50 and 100, its footprint being far larger than a home's. */
+const WORKSHOP_SPOT_NODES = 100;
+
+/** A wider search than the walk range: its reach of what stands, and the signposts that make it walkable. */
+interface FarGround {
+  readonly reachNodes: number;
+  readonly limit: NavigationLimit | null;
+}
+
+/** The spot of a workshop handed over by home, which may lie past the walk range but inside the signposts'
+ *  reach from `anchor`. */
+export function workshopSpot(
+  env: ColonyEnv,
+  land: number,
+  type: BuildingType,
+  tribe: number,
+  anchor: HalfCellNode,
+): HalfCellNode | null {
+  const limit = networkLimitAt(env.world, env.terrain, env.seat, anchor.hx, anchor.hy);
+  const far = { reachNodes: WORKSHOP_SPOT_NODES, limit };
+  return colonySpot(env, land, type, tribe, anchor, WORKSHOP_SPOT_NODES, 'any', far);
+}
+
 /**
  * The spot of `type` nearest `anchor`, a node on the colony's land, within `radius` of it and
- * {@link COLONY_REACH_NODES} of what stands there, on `land`, on ground the anchor's walkers reach and out of
+ * {@link COLONY_REACH_NODES} of what stands there unless `far` widens it, on `land`, on ground the anchor's walkers reach and out of
  * every enemy shooter's reach; null when none. The home search reads the seat's base throughout, so this
  * is the colony's own over the same parts.
  */
@@ -43,10 +69,11 @@ export function colonySpot(
   anchor: HalfCellNode,
   radius: number,
   ground: StepGround = 'any',
+  far?: FarGround,
 ): HalfCellNode | null {
   const { world, ctx, terrain, seat } = env;
   const owned = colonyBuildings(env);
-  const reach = buildReach(world, owned, anchor, COLONY_REACH_NODES);
+  const reach = buildReach(world, owned, anchor, far?.reachNodes ?? COLONY_REACH_NODES);
   const { underFire } = seatSiege(world, ctx, terrain, seat, owned);
   const acceptor = seatSpotAcceptor(world, ctx, terrain, seat, type.typeId, tribe);
   const regions = routeRegions(world, ctx, terrain);
@@ -63,6 +90,7 @@ export function colonySpot(
         terrain.inBounds(x, y) &&
         terrain.componentOf(terrain.nodeAt(x, y)) === land &&
         reach.contains(x, y) &&
+        far?.limit?.allowsNode(terrain.nodeAt(x, y)) !== false &&
         accept(x, y) &&
         fits(x, y) &&
         walled?.unroutable(from, terrain.nodeAt(x, y)) !== true,

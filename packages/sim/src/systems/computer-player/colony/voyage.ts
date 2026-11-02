@@ -172,6 +172,7 @@ function settledOn(
     builds: [],
     line: null,
     overflow: [],
+    stalls: [],
   };
 }
 

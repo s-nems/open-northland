@@ -235,7 +235,11 @@ export function makeAiSeat(
 
 /** Give the seat (a computer carrier made for it when it has none) the economic strategy `archetype` with
  *  `sides`, and a military plan building up with no target. */
-export function seatEconomy(sim: Simulation, archetype: EconomicArchetype, sides: EconomicSide[] = []): void {
+export function seatEconomy(
+  sim: Simulation,
+  archetype: EconomicArchetype,
+  sides: readonly EconomicSide[] = [],
+): void {
   if (aiControlEntity(sim.world, SEAT) === null) makeAiSeat(sim, SEAT);
   const carrier = aiControlEntity(sim.world, SEAT);
   if (carrier === null) throw new Error('setup: no computer carrier');
