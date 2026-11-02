@@ -63,29 +63,29 @@ const HANDS_SLACK = 1;
 type Post = 'builder' | 'carrier' | LandGood | 'hunter' | 'fisher' | 'scout';
 
 /**
- * The men's posts, filled in this order as the party's size allows (authored). 4 builders, 2 carriers, 4 on
- * wood, 3 on stone, 2 hunters, 2 fishers and a scout make 18, more than the largest party's 15, so the
- * tail is what a small party goes without: gatherers and builders first, or a party of 8 digs nothing.
+ * The men's posts, filled in this order as the party's size allows (authored). Owner ruling: fishers first,
+ * they may meet the hunger at the start. 4 builders, 2 carriers, 4 on wood, 3 on stone, 2 hunters, 2 fishers
+ * and a scout make 18, more than the largest party's 15, so the tail is what a small party goes without.
  */
 const POSTS: readonly Post[] = [
   'builder',
+  'fisher',
   'builder',
   'wood',
   'carrier',
-  'builder',
+  'fisher',
   'wood',
   'stone',
   'hunter',
+  'builder',
   'carrier',
   'scout',
   'wood',
   'builder',
   'stone',
-  'fisher',
   'hunter',
   'wood',
   'stone',
-  'fisher',
 ];
 
 function isDug(post: Post | null): post is LandGood {

@@ -21,7 +21,7 @@ import { nearestLiveResource, reachableResourceTest, workableResourceTest } from
 import { scoutBusy } from '../scout/index.js';
 import { signpostTargetAround } from '../scout/signpost-coverage.js';
 import { colonyFamilies } from './people.js';
-import { COLONY_OPEN_SITES, colonyPlan } from './plan.js';
+import { COLONY_OPEN_SITES, COLONY_SPOT_NODES, colonyPlan, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { colonyBuildings, colonySpot } from './spot.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
@@ -30,8 +30,6 @@ import { type ColonyEnv, type ColonyView, unloaded } from './voyage.js';
 /** What a colony raises first (owner ruling): its warehouse near the shore. The rest it raises as it needs
  *  ({@link colonyPlan}). */
 export const COLONY_BUILDS: readonly string[] = [COLONY_STORE_BUILDING_ID];
-/** How far from its anchor a building's spot may lie, in Manhattan nodes (authored: the walk range). */
-const SPOT_SEARCH_NODES = 50;
 /** How far from the first store a deposit gets a second one, in Manhattan nodes (authored: a hold's hands'
  *  reach, past which the carriers' trips outweigh a store's bill). */
 const SECOND_STORE_NODES = 40;
@@ -88,7 +86,8 @@ function nextBuild(env: ColonyEnv, colony: ColonyView, read: FoundingRead): Play
     const typeId = index.buildingTypeBySlug.get(building);
     const type = typeId === undefined ? undefined : index.buildings.get(typeId);
     if (type === undefined) continue;
-    const spot = colonySpot(env, colony.land, type, tribe, read.origin, SPOT_SEARCH_NODES);
+    const ground = stepGround(building);
+    const spot = colonySpot(env, colony.land, type, tribe, read.origin, COLONY_SPOT_NODES, ground);
     if (spot === null) continue;
     const live = env.edit();
     const row = live.builds.find((b) => b.building === building && !b.placed);
@@ -118,7 +117,7 @@ function secondStore(env: ColonyEnv, colony: ColonyView, read: FoundingRead, tri
   const near = nearestLiveResource(world, wood.typeId, read.origin, reachable);
   const at = near === null ? null : anchorNodeOf(world, near);
   if (at === null || nodeManhattan(at, read.origin) <= SECOND_STORE_NODES) return [];
-  const spot = colonySpot(env, colony.land, type, tribe, at, SPOT_SEARCH_NODES);
+  const spot = colonySpot(env, colony.land, type, tribe, at, COLONY_SPOT_NODES);
   if (spot === null) return [];
   env.edit().builds.push({ building: COLONY_STORE_BUILDING_ID, placed: true });
   return [placementOf(type.typeId, spot, tribe, seat)];

@@ -7,9 +7,10 @@ import { everyBuildingOf, homeBuildings } from '../../ai-shared/home-roster.js';
 import { bestRingNode } from '../../ai-shared/node-geometry.js';
 import { routeRegions } from '../../footprint/index.js';
 import { VEHICLE_CARGO_SEARCH_RADIUS } from '../../settlers/drives/economy/vehicle-cargo.js';
-import { buildReach } from '../build-order/placement.js';
+import { buildReach, footprintOnGrass } from '../build-order/placement.js';
 import { seatSpotAcceptor } from '../build-order/plots.js';
 import { seatSiege } from '../build-order/siege.js';
+import type { StepGround } from './plan.js';
 import { COLONY_STORE_BUILDING_ID } from './survey.js';
 import type { ColonyEnv } from './voyage.js';
 
@@ -37,30 +38,36 @@ export function colonySpot(
   tribe: number,
   anchor: HalfCellNode,
   radius: number,
+  ground: StepGround = 'any',
 ): HalfCellNode | null {
   const { world, ctx, terrain, seat } = env;
   const owned = colonyBuildings(env);
   const reach = buildReach(world, owned, anchor, COLONY_REACH_NODES);
   const { underFire } = seatSiege(world, ctx, terrain, seat, owned);
-  const accept = seatSpotAcceptor(world, ctx, terrain, seat, type.typeId, tribe).around(
-    underFire,
-    anchor,
-    radius,
-  );
+  const acceptor = seatSpotAcceptor(world, ctx, terrain, seat, type.typeId, tribe);
+  const accept = acceptor.around(underFire, anchor, radius);
   const regions = routeRegions(world, ctx, terrain);
   const from = terrain.nodeAtClamped(anchor.hx, anchor.hy);
   const walled = regions.pocketed(from) ? null : regions;
-  return bestRingNode(
-    anchor.hx,
-    anchor.hy,
-    radius,
-    () => 0,
-    (x, y) =>
-      terrain.inBounds(x, y) &&
-      terrain.componentOf(terrain.nodeAt(x, y)) === land &&
-      reach.contains(x, y) &&
-      accept(x, y) &&
-      walled?.unroutable(from, terrain.nodeAt(x, y)) !== true,
+  const search = (fits: (x: number, y: number) => boolean): HalfCellNode | null =>
+    bestRingNode(
+      anchor.hx,
+      anchor.hy,
+      radius,
+      () => 0,
+      (x, y) =>
+        terrain.inBounds(x, y) &&
+        terrain.componentOf(terrain.nodeAt(x, y)) === land &&
+        reach.contains(x, y) &&
+        accept(x, y) &&
+        fits(x, y) &&
+        walled?.unroutable(from, terrain.nodeAt(x, y)) !== true,
+    );
+  if (ground !== 'field') return search(() => true);
+  // A farm stands on its grass where it fits, else beside it, as the home search has it.
+  return (
+    search((x, y) => footprintOnGrass(ctx, terrain, type, tribe, x, y)) ??
+    search((x, y) => acceptor.grassBeside(x, y))
   );
 }
 

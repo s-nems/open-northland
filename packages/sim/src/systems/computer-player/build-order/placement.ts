@@ -622,7 +622,7 @@ type GroundRule = 'any' | 'on' | 'beside';
 /** Every reserved footprint cell must be sowable ground. Approximation: "the farm stands on grass" is
  *  encoded as the reserved zone on `plantable` terrain (the original's `biocanplanton` class); the
  *  surrounding field ring is not pre-checked, since sowing already skips barren nodes. */
-function footprintOnGrass(
+export function footprintOnGrass(
   ctx: SystemContext,
   terrain: TerrainGraph,
   type: BuildingType,

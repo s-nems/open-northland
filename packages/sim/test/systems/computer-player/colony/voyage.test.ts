@@ -47,7 +47,7 @@ import {
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
 import { ctxOf } from '../../../fixtures/context.js';
-import { BUILDER, SEAT, STOCK_TYPE } from '../support.js';
+import { BUILDER, FARM_TYPE, SEAT, STOCK_TYPE } from '../support.js';
 
 const SITE_DUE_TICKS = minutesToTicks(2);
 const SCOUT_DUE_TICKS = minutesToTicks(12);
@@ -62,6 +62,8 @@ const SHORE_DX = 8;
 const SEED = 7;
 const FOUND_DUE_TICKS = minutesToTicks(16);
 const GATHER_DUE_TICKS = minutesToTicks(4);
+const LADDER_DUE_TICKS = minutesToTicks(14);
+const FARM_ID = 'work_farm_00';
 const BUILDERS_AT_REST = 2;
 const TRADE_SHIP_SEATS = 10;
 const AFTER_SAVE_TICKS = minutesToTicks(4);
@@ -225,6 +227,24 @@ describe('a colony sails', () => {
     const before = left();
     expect(stepUntil(sim, GATHER_DUE_TICKS, () => left() < before)).toBe(true);
     expect(homeBuildings(sim.world, ctx, SEAT).some((e) => away.includes(e))).toBe(false);
+  });
+
+  it('raises a farm on the colony once the fishers do not meet its hunger', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    const farmRow = (): boolean => colonyState(sim)?.builds.some((b) => b.building === FARM_ID) === true;
+    expect(stepUntil(sim, FOUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    expect(farmRow()).toBe(false);
+    expect(stepUntil(sim, LADDER_DUE_TICKS, farmRow)).toBe(true);
+    sim.step();
+    const ctx = ctxOf(sim);
+    const farm = everyBuildingOf(sim.world, SEAT).find(
+      (e) => sim.world.get(e, Building).buildingType === FARM_TYPE && colonyMember(sim.world, ctx, SEAT, e),
+    );
+    expect(farm).toBeDefined();
   });
 
   it('sets its builders past a pair digging once nothing is left to raise', () => {
