@@ -4,13 +4,13 @@ import type { KnowledgeTarget, KnowledgeView } from '../../../../src/hud/dom/kno
 import { createKnowledgeWindow, knowledgeWindowWidth } from '../../../../src/hud/dom/knowledge/window.js';
 
 const settle = (): Promise<void> => new Promise((done) => setTimeout(done));
-const MINIMAP = { x: 0, y: 600, w: 285, h: 200 };
 
 function stubView() {
   const opened: (KnowledgeTarget | undefined)[] = [];
   let layers = 0;
   const view: KnowledgeView = {
     element: document.createElement('div'),
+    head: document.createElement('div'),
     open: (target) => opened.push(target),
     escape: () => {
       layers -= 1;
@@ -102,9 +102,8 @@ describe('the Knowledge window', () => {
     expect(window.escape()).toBe(false);
   });
 
-  it('stands beside the minimap, and gives that up on a narrow screen', () => {
-    expect(knowledgeWindowWidth({ width: 1920, height: 1080 }, MINIMAP)).toBe(1240);
-    expect(knowledgeWindowWidth({ width: 1400, height: 900 }, MINIMAP)).toBe(1107);
-    expect(knowledgeWindowWidth({ width: 1024, height: 768 }, MINIMAP)).toBe(1000);
+  it('takes the design width, and leaves a gap on each side of a narrow screen', () => {
+    expect(knowledgeWindowWidth({ width: 1920, height: 1080 })).toBe(1240);
+    expect(knowledgeWindowWidth({ width: 1024, height: 768 })).toBe(1000);
   });
 });

@@ -20,7 +20,6 @@ import { changeUnitTribe } from '../../../src/systems/lifecycle/unit-form.js';
 import type { MissionPass } from '../../../src/systems/missions/pass.js';
 import { handHumansToPlayer, handPlayerToPlayer } from '../../../src/systems/missions/results/ownership.js';
 import { spawnScriptedHumans } from '../../../src/systems/missions/results/spawn.js';
-import { walkStepModifiersOf } from '../../../src/systems/movement/walk-cost.js';
 import {
   equipFromStore,
   unequipWornGood,
@@ -58,7 +57,6 @@ function variantContent() {
       {
         typeId: TRIBE,
         id: 'variant_test',
-        walkStepReduction: { jobType: WOOD, ticks: 2 },
         atomicBindings: [
           { jobType: WOOD, atomicId: 81, animation: 'five_strikes' },
           { jobType: IRON, atomicId: 81, animation: 'one_strike' },
@@ -71,7 +69,6 @@ function variantContent() {
             weapon: { tribeType: OTHER_TRIBE, typeId: 4 },
             animationJobType: IRON,
             graphicsJobType: IRON,
-            walkStepReduction: 0,
           },
           { jobType: WOOD, form: 'native', hitpoints: 20000 },
         ],
@@ -160,22 +157,20 @@ function arms(sim: Simulation, e: Entity) {
   return held;
 }
 
-/** The dragon: the native form's pool, reach, damage, gait and five-strike swing. */
+/** The dragon: the native form's pool, reach, damage and five-strike swing. */
 function expectDragon(sim: Simulation, e: Entity): void {
   expect(sim.world.get(e, Settler).humanForm).toBeUndefined();
   expect(sim.world.get(e, Health).max).toBe(20000);
   expect(arms(sim, e).maxRange).toBe(3);
   expect(arms(sim, e).weapon.damage['0']).toBe(500);
-  expect(walkStepModifiersOf(sim.world, e, sim.content, sim.tick).tribeReduction).toBe(2);
 }
 
-/** The spearman: the human form's pool, the borrowed ordinary spear and the iron spearman's gait. */
+/** The spearman: the human form's pool and the borrowed ordinary spear. */
 function expectSpearman(sim: Simulation, e: Entity): void {
   expect(sim.world.get(e, Settler).humanForm).toBe(true);
   expect(sim.world.get(e, Health).max).toBe(5000);
   expect(arms(sim, e).maxRange).toBe(2);
   expect(arms(sim, e).weapon.damage['0']).toBe(2400);
-  expect(walkStepModifiersOf(sim.world, e, sim.content, sim.tick).tribeReduction).toBe(0);
 }
 
 function passOf(sim: Simulation): MissionPass {

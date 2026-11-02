@@ -1024,7 +1024,6 @@ export const ECONOMY: ArticleGroup = {
               ['Ciężar broni i pancerza 2-3, bez bohaterów', '+{{step.weightLowExtra}} s'],
               ['Ciężar broni i pancerza 4-5, bez bohaterów', '+{{step.weightHighExtra}} s'],
               ['[[good:amulet_speed|Amulet Wiatru]]', '-{{step.amuletSaved}} s'],
-              ['Egipcjanin', '-{{step.egyptSaved}} s'],
               ['Pełny [[good:handcart|Wózek Ręczny]]', '{{haul.handcartLossPct}}% wolniej'],
               ['Pełny [[good:oxcart|Zaprzęg]]', '{{haul.oxcartLossPct}}% wolniej'],
             ],

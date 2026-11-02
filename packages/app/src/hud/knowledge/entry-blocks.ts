@@ -8,16 +8,8 @@ import {
 import { messages } from '../../i18n/index.js';
 import { buildingHitpoints, type KnowledgeBase } from './base.js';
 import { rawCost, recipesOf } from './chains.js';
-import {
-  combatTargets,
-  isCatapult,
-  isNamedHeroWeapon,
-  landed,
-  shownWeapons,
-  stepSeconds,
-  weaponsOf,
-} from './combat.js';
-import { cadenceText, preciseSecondsText, rangeText, wholeText } from './entry-format.js';
+import { combatTargets, isCatapult, isNamedHeroWeapon, landed, shownWeapons, weaponsOf } from './combat.js';
+import { cadenceText, rangeText, wholeText } from './entry-format.js';
 import type {
   EntryRef,
   KnowledgeAnimal,
@@ -421,7 +413,6 @@ export interface BuildingDifference {
 }
 
 export interface TribeDifferences {
-  readonly stepSeconds: { readonly reference: string; readonly own: string } | null;
   readonly weapons: readonly TribeDifference[];
   readonly buildings: readonly BuildingDifference[];
 }
@@ -472,18 +463,12 @@ export function tribeDifferences(base: KnowledgeBase, tribe: number, reference: 
       weapons.push({ subject: weaponName(base, row), stat: 'absent', reference: '', own: null });
     }
   }
-  const step = stepSeconds(base, 0, tribe);
-  const referenceStep = stepSeconds(base, 0, reference);
   const buildings = base.buildings.flatMap((building): BuildingDifference[] => {
     const own = buildingHitpoints(building, tribe);
     const other = buildingHitpoints(building, reference);
     return own === null || other === null || own === other ? [] : [{ building, reference: other, own }];
   });
   return {
-    stepSeconds:
-      step === referenceStep
-        ? null
-        : { reference: preciseSecondsText(referenceStep), own: preciseSecondsText(step) },
     weapons,
     buildings,
   };

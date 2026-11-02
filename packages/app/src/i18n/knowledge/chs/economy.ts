@@ -939,7 +939,6 @@ export const ECONOMY: ArticleGroup = {
               ['武器和护甲重量2-3，英雄除外', '+{{step.weightLowExtra}}秒'],
               ['武器和护甲重量4-5，英雄除外', '+{{step.weightHighExtra}}秒'],
               ['[[good:amulet_speed|疾风护符]]', '-{{step.amuletSaved}}秒'],
-              ['埃及人', '-{{step.egyptSaved}}秒'],
               ['满载[[good:handcart|手推车]]', '慢{{haul.handcartLossPct}}%'],
               ['满载[[good:oxcart|牛车]]', '慢{{haul.oxcartLossPct}}%'],
             ],

@@ -155,9 +155,6 @@ function checkTribes(set: ContentSet, ids: IdSets): string[] {
   for (const t of set.tribes) {
     if (t.naturalWeaponType !== undefined && !weaponTypesByTribe.get(t.typeId)?.has(t.naturalWeaponType))
       errors.push(`tribe "${t.id}" naturalWeaponType ${t.naturalWeaponType} has no scoped weapon`);
-    const walkJob = t.walkStepReduction?.jobType;
-    if (walkJob !== undefined && !jobIds.has(walkJob))
-      errors.push(`tribe "${t.id}" walkStepReduction has unknown jobType ${walkJob}`);
     // Atomic ids resolve against no extracted table (see `AtomicId`), so only the binding's job is checked.
     for (const b of t.atomicBindings) {
       if (!jobIds.has(b.jobType))

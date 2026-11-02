@@ -21,7 +21,6 @@ export const BYZANTINE_SPEAR_VARIANTS: readonly UnitVariant[] = [
     weapon: { tribeType: VIKING, typeId: WOODEN_SPEAR_WEAPON },
     animationJobType: JOB_SOLDIER_SPEAR,
     graphicsJobType: JOB_SOLDIER_SPEAR,
-    walkStepReduction: 0,
   },
   { jobType: JOB_SOLDIER_SPEAR_WOODEN, form: 'native', hitpoints: 20000 },
 ];

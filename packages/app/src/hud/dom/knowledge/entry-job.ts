@@ -70,7 +70,7 @@ function jobFilm(context: KnowledgeContext, job: KnowledgeJob, family: JobFamily
     return filmBlock(context, [{ clip: { kind: 'job', jobType, tribe, action } }]);
   }
   const weapon = jobWeapon(context.base, job, tribe);
-  const step = preciseSecondsText(stepSeconds(context.base, weapon?.weight ?? 0, tribe));
+  const step = preciseSecondsText(stepSeconds(weapon?.weight ?? 0));
   return filmBlock(context, [
     {
       clip: { kind: 'job', jobType, tribe, action: 'attack' },

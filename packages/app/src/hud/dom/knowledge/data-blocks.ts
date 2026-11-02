@@ -255,7 +255,6 @@ function matrix(context: KnowledgeContext): HTMLElement {
 function armour(context: KnowledgeContext): HTMLElement {
   const { base } = context;
   const copy = messages().knowledge.mechanics;
-  const tribe = context.tribe();
   const rows = base.armor.flatMap((row) => {
     const good = row.goodType === null ? undefined : base.goodByType.get(row.goodType);
     if (good === undefined) return [];
@@ -265,7 +264,7 @@ function armour(context: KnowledgeContext): HTMLElement {
         row.blockingValue,
         row.weight,
         formatMessage(copy.seconds, {
-          seconds: formatFactNumber(stepSeconds(base, row.weight, tribe), STEP_DIGITS, STEP_DIGITS),
+          seconds: formatFactNumber(stepSeconds(row.weight), STEP_DIGITS, STEP_DIGITS),
         }),
       ],
     ];

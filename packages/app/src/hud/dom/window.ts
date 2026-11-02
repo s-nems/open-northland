@@ -113,6 +113,7 @@ export function centralWindowPlacer(
   window: HudWindow,
   plane: HTMLElement,
   width: CentralWindowWidth,
+  { centred = false }: { readonly centred?: boolean } = {},
 ): () => boolean {
   let placed = '';
   /** Placed by the observer since the owner last asked. */
@@ -120,7 +121,7 @@ export function centralWindowPlacer(
   const place = (): boolean => {
     if (!window.isOpen()) return false;
     const screen = planeSize(plane);
-    const overlay = minimapReserve(plane);
+    const overlay = centred ? null : minimapReserve(plane);
     const drawn = typeof width === 'number' ? width : width(screen, overlay);
     const box = centralWindowBox(screen, 1, drawn, overlay);
     const key = `${drawn},${box.x},${box.y},${box.maxHeight}`;

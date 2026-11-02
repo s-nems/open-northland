@@ -1,12 +1,6 @@
 import type { UiCue } from '@open-northland/audio';
 import type { HypertextBook } from '@open-northland/data';
-import type {
-  HudModel,
-  MapViewFrame,
-  MapViewTarget,
-  SpriteSheet,
-  TargetMark,
-} from '@open-northland/render';
+import type { HudModel, MapViewFrame, MapViewTarget, SpriteSheet, TargetMark } from '@open-northland/render';
 import type {
   Command,
   Entity,

@@ -227,14 +227,8 @@ export function secondsForHits(hits: number, weapon: KnowledgeWeapon): number | 
   return clip === null ? null : Math.ceil(hits / weapon.blows) * clip;
 }
 
-/** A step's length with shoes on common land under `equipmentWeight`, for `tribe`'s people. */
-export function stepSeconds(
-  base: KnowledgeBase,
-  equipmentWeight: number,
-  tribe: number,
-  shoes = true,
-): number {
-  const reduction = base.tribes.find((t) => t.typeId === tribe)?.stepReduction ?? 0;
+/** A step's length with shoes on common land under `equipmentWeight`. */
+export function stepSeconds(equipmentWeight: number, shoes = true): number {
   const ticks = systems.walkStepTicks(DEFAULT_NODE_ROUGHNESS, {
     shoes,
     stepTicksSaved: 0,
@@ -244,7 +238,6 @@ export function stepSeconds(
     walksSlowly: false,
     walksFast: false,
     age: 'adult',
-    tribeReduction: reduction,
     equipmentWeight,
   });
   return ticks * SECONDS_PER_TICK;

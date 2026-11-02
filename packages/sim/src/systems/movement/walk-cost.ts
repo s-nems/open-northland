@@ -33,7 +33,7 @@ import { haulingCartSpeedLossPercent } from '../vehicles/hauling-cart.js';
  *   cost = cost * 2 when the script's slow bit is set, then cost - 2 when its fast bit is set
  *   cost = max(3, cost)
  *
- * Before script flags: subtract the tribe/job reduction, double for a baby or add two for a child,
+ * Before script flags: double for a baby or add two for a child,
  * then add floor(combined equipment weight / 2), except for heroes. The original applies
  * them in that order.
  * Turning is paced separately; navigation still chooses this sim's routes, not the original's paths.
@@ -46,7 +46,6 @@ export function walkStepTicks(roughness: number, m: WalkStepModifiers): number {
     (m.shoes ? 0 : BAREFOOT_STEP_TICKS) +
     (m.carrying ? CARRYING_STEP_TICKS : 0) +
     (m.tired ? TIRED_STEP_TICKS : 0);
-  cost -= m.tribeReduction;
   if (m.age === 'baby') cost *= 2;
   else if (m.age === 'child') cost += 2;
   cost += Math.floor(m.equipmentWeight / 2);
@@ -72,7 +71,6 @@ export interface WalkStepModifiers {
   readonly walksSlowly: boolean;
   readonly walksFast: boolean;
   readonly age: AgeClass;
-  readonly tribeReduction: number;
   /** Combined weapon/armor weight; zero for a hero. */
   readonly equipmentWeight: number;
 }
@@ -101,7 +99,6 @@ export const MAX_STEP_TICKS = walkStepTicks(ROUGHNESS_MAX_ON_MAPS, {
   walksSlowly: true,
   walksFast: false,
   age: 'adult',
-  tribeReduction: 0,
   equipmentWeight: 0,
 });
 
@@ -115,7 +112,6 @@ export const UNMODIFIED_STEP: WalkStepModifiers = {
   walksSlowly: false,
   walksFast: false,
   age: 'adult',
-  tribeReduction: 0,
   equipmentWeight: 0,
 };
 
@@ -158,7 +154,6 @@ export function walkStepModifiersOf(
   const index = contentIndex(content);
   const job = settler?.jobType ?? null;
   const variant = settler === undefined ? undefined : unitVariantFor(content, settler);
-  const reduction = settler === undefined ? undefined : index.tribes.get(settler.tribe)?.walkStepReduction;
   out.shoes = equipment?.boots != null && hasLiveBoots(world, e, equipment);
   out.stepTicksSaved = equipment === undefined ? 0 : carriedStepTicksSaved(world, content, e, equipment);
   out.carrying = isCarryingGood(world, e);
@@ -167,11 +162,6 @@ export function walkStepModifiersOf(
   out.walksSlowly = (flags & MISSION_BEHAVIOUR.WALKS_SLOWLY) !== 0;
   out.walksFast = (flags & MISSION_BEHAVIOUR.WALKS_FAST) !== 0;
   out.age = ageClassOfJobId(job === null ? undefined : index.jobs.get(job)?.id);
-  out.tribeReduction =
-    variant?.walkStepReduction ??
-    (reduction !== undefined && (reduction.jobType === undefined || reduction.jobType === job)
-      ? reduction.ticks
-      : 0);
   out.equipmentWeight =
     settler === undefined || isHeroJob(content, job)
       ? 0

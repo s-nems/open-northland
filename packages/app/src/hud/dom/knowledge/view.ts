@@ -210,7 +210,7 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
 
   const main = element('div', 'kn-main');
   const head = element('div', 'kn-head');
-  head.append(tabs, back, gap, zoom, tribes, searchBox);
+  head.append(back, tabs, gap, zoom, tribes, searchBox);
   root.append(head, main);
 
   const dropTree = (): void => {
@@ -409,6 +409,7 @@ export function createKnowledgeView(deps: KnowledgeDeps): KnowledgeView {
 
   return {
     element: root,
+    head,
     open: (target) => {
       dropTree();
       const next = target === undefined ? place : placeOf(place, target);

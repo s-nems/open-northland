@@ -1063,7 +1063,6 @@ export const ECONOMY: ArticleGroup = {
               ['Gewicht von Waffe und Rüstung 2-3, außer Helden', '+{{step.weightLowExtra}} s'],
               ['Gewicht von Waffe und Rüstung 4-5, außer Helden', '+{{step.weightHighExtra}} s'],
               ['[[good:amulet_speed|Windamulett]]', '-{{step.amuletSaved}} s'],
-              ['Ägypter', '-{{step.egyptSaved}} s'],
               ['Voller [[good:handcart|Handkarren]]', '{{haul.handcartLossPct}}% langsamer'],
               ['Voller [[good:oxcart|Ochsenkarren]]', '{{haul.oxcartLossPct}}% langsamer'],
             ],

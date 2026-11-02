@@ -8,7 +8,7 @@ export const chsKnowledge = {
     tabs: { goods: '物资', buildings: '建筑', encyclopedia: '百科', mechanics: '机制' },
     tabsLabel: '知识分类',
     back: '返回',
-    search: '搜索知识',
+    search: '搜索',
     tribe: '民族',
     searchGroups: {
       goods: '物资',
@@ -290,7 +290,6 @@ export const chsKnowledge = {
     tribe: {
       differs: '与{tribe}的区别',
       noDifference: '数值没有差别。',
-      march: '行军速度',
       fullTable: '完整武器表',
       plate: '板甲',
       heroes: '英雄',

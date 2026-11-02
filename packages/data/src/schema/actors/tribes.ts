@@ -65,7 +65,6 @@ export const UnitVariant = z.strictObject({
   animationJobType: TypeId.optional(),
   graphicsJobType: TypeId.optional(),
   weapon: z.strictObject({ tribeType: TypeId, typeId: TypeId }).optional(),
-  walkStepReduction: z.number().int().nonnegative().optional(),
 });
 export type UnitVariant = z.infer<typeof UnitVariant>;
 
@@ -77,13 +76,6 @@ export const TribeType = z.strictObject({
   /** Reset weapon type (original behavior: a person's weapon resets to type 1). Keeping it equipped
    *  across a monster's body-form job changes is an approximation, not traced for all five body jobs. */
   naturalWeaponType: TypeId.optional(),
-  /** Walk-cost reduction, optionally restricted to one profession. */
-  walkStepReduction: z
-    .strictObject({
-      ticks: z.number().int().positive(),
-      jobType: TypeId.optional(),
-    })
-    .optional(),
   /** `setatomic` bindings in file order - a tribe's atomic→animation vocabulary, per job. */
   atomicBindings: z.array(AtomicBinding).default([]),
   /** `jobEnables*` tech-graph edges in file order, repeated triples included. */

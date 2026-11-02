@@ -1,14 +1,14 @@
 import { PRIMARY_TRIBE } from '../../../game/rules.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
 import type { KnowledgeTribe } from '../../knowledge/base.js';
-import { combatTargets, landed, perSecond, stepSeconds } from '../../knowledge/combat.js';
+import { combatTargets, landed, perSecond } from '../../knowledge/combat.js';
 import {
   type TribeDifference,
   tribeDifferences,
   tribeHeroes,
   tribeWeapons,
 } from '../../knowledge/entry-blocks.js';
-import { cadenceText, perSecondText, preciseSecondsText, wholeText } from '../../knowledge/entry-format.js';
+import { cadenceText, perSecondText, wholeText } from '../../knowledge/entry-format.js';
 import type { KnowledgeContext } from './context.js';
 import { weaponLabel } from './entry-armour.js';
 import {
@@ -17,7 +17,6 @@ import {
   dataTable,
   type EntryBlock,
   entryPage,
-  factList,
   fold,
   jobLink,
   links,
@@ -47,18 +46,11 @@ function differsBlock(context: KnowledgeContext, tribe: KnowledgeTribe): EntryBl
   const text = copy();
   const reference = context.base.tribes.find((t) => t.typeId === PRIMARY_TRIBE);
   if (reference === undefined || tribe.typeId === reference.typeId) return null;
-  const {
-    stepSeconds: step,
-    weapons,
-    buildings,
-  } = tribeDifferences(context.base, tribe.typeId, reference.typeId);
+  const { weapons, buildings } = tribeDifferences(context.base, tribe.typeId, reference.typeId);
   const columns = [{ title: text.table.trait }, { title: reference.name }, { title: tribe.name }];
   const value = (cell: string | null): string =>
     cell === null ? text.tribe.absent : cell === '' ? text.tribe.present : cell;
   const rows: TableRow[] = [
-    ...(step === null
-      ? []
-      : [{ label: text.tribe.march, cells: [{ text: step.reference }, { text: step.own }] }]),
     ...weapons.map((row) => ({
       label: differenceLabel(row),
       cells: [{ text: value(row.reference) }, { text: value(row.own) }],
@@ -115,25 +107,18 @@ function weaponFold(context: KnowledgeContext, tribe: KnowledgeTribe): EntryBloc
   return { node: fold(text.tribe.fullTable, table) };
 }
 
-function factsBlock(context: KnowledgeContext, tribe: KnowledgeTribe): EntryBlock {
+function heroesBlock(context: KnowledgeContext, tribe: KnowledgeTribe): EntryBlock | null {
   const text = copy().tribe;
   const heroes = tribeHeroes(context.base, tribe.typeId).flatMap((row) =>
     row.jobType === null || row.jobName === null ? [] : [jobLink(context, row.jobType, row.jobName)],
   );
-  return {
-    node: section(
-      null,
-      factList([[text.march, preciseSecondsText(stepSeconds(context.base, 0, tribe.typeId))]]),
-      heroes.length === 0 ? null : section(text.heroes, links(heroes)),
-    ),
-    side: true,
-  };
+  return heroes.length === 0 ? null : { node: section(text.heroes, links(heroes)), side: true };
 }
 
 export function renderTribe(context: KnowledgeContext, tribe: KnowledgeTribe): HTMLElement {
   return entryPage({ picture: null, title: tribe.name, kicker: copy().kicker.tribe }, [
     differsBlock(context, tribe),
-    factsBlock(context, tribe),
+    heroesBlock(context, tribe),
     weaponFold(context, tribe),
     articleLinks(context, null, ['heroes']),
   ]);

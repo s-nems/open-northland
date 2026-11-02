@@ -43,11 +43,7 @@ export function weaponLabel(context: KnowledgeContext, weapon: KnowledgeWeapon):
 
 function factsBlock(context: KnowledgeContext, weight: number): EntryBlock {
   const text = copy().armour;
-  const tribe = context.tribe();
-  const slower = slowdownPercent(
-    stepSeconds(context.base, weight, tribe),
-    stepSeconds(context.base, 0, tribe),
-  );
+  const slower = slowdownPercent(stepSeconds(weight), stepSeconds(0));
   return {
     node: section(null, factList([[text.slows, slower === 0 ? text.slowsNot : `${slower}%`]])),
     side: true,

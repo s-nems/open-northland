@@ -104,7 +104,7 @@ function attackBlock(context: KnowledgeContext, animal: KnowledgeAnimal): EntryB
 
 function factsBlock(context: KnowledgeContext, animal: KnowledgeAnimal): EntryBlock {
   const text = copy().animal;
-  const humanTicks = stepSeconds(context.base, 0, context.tribe()) / SECONDS_PER_TICK;
+  const humanTicks = stepSeconds(0) / SECONDS_PER_TICK;
   const attacks = animal.aggressive
     ? text.attacksSelf
     : animal.getAngry

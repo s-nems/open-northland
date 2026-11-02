@@ -194,8 +194,6 @@ export interface KnowledgeAnimal {
 export interface KnowledgeTribe {
   readonly typeId: number;
   readonly name: string;
-  /** A tribe-wide shorter step, in ticks; a reduction tied to one job is that unit's own. */
-  readonly stepReduction: number;
 }
 
 export interface KnowledgeBase {

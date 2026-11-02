@@ -1,23 +1,17 @@
 import { diag } from '../../../diag/index.js';
-import type { Rect } from '../../geometry.js';
 import type { ScreenSize } from '../../nav-beam.js';
 import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import { centralWindowPlacer, createHudWindow } from '../window.js';
 import type { KnowledgeTarget, KnowledgeView } from './context.js';
 
-/** Largest and smallest width that still leaves the game in view, design px. */
+/** Largest width that still leaves the game in view, design px. */
 const WINDOW_MAX_W = 1240;
-const WINDOW_MIN_W = 920;
-/** Room kept beside the plane's edge when the window stands beside the minimap. */
-const EDGE_GAP = 8;
-/** Room kept on each side on a screen too narrow to clear the minimap. */
-const NARROW_GAP = 12;
+/** Room kept on each side of the window. */
+const SIDE_GAP = 12;
 
-/** As wide as the design allows beside the minimap; a screen too narrow for that gives up clearing it. */
-export function knowledgeWindowWidth(screen: ScreenSize, overlay: Rect | null): number {
-  const clear = overlay === null ? 0 : overlay.x + overlay.w;
-  const beside = Math.min(WINDOW_MAX_W, screen.width - clear - EDGE_GAP);
-  return beside >= WINDOW_MIN_W ? beside : Math.max(0, screen.width - 2 * NARROW_GAP);
+/** As wide as the design allows, always in the middle of the screen. */
+export function knowledgeWindowWidth(screen: ScreenSize): number {
+  return Math.min(WINDOW_MAX_W, Math.max(0, screen.width - 2 * SIDE_GAP));
 }
 
 export interface KnowledgeWindowDeps {
@@ -56,7 +50,8 @@ export function createKnowledgeWindow(deps: KnowledgeWindowDeps): KnowledgeWindo
   window.element.classList.add('kn-window');
   window.element.style.height = '100%';
   window.body.classList.add('on-window__body--column', 'kn-body');
-  const placeWindow = centralWindowPlacer(window, deps.plane, knowledgeWindowWidth);
+  // The biggest window of the game stays in the middle; it does not step aside for the minimap.
+  const placeWindow = centralWindowPlacer(window, deps.plane, knowledgeWindowWidth, { centred: true });
 
   let view: KnowledgeView | null = null;
   let building: Promise<KnowledgeView> | null = null;
@@ -76,6 +71,7 @@ export function createKnowledgeWindow(deps: KnowledgeWindowDeps): KnowledgeWindo
     const ask = opens;
     building ??= deps.createView().then((made) => {
       view = made;
+      window.element.querySelector('.on-window__close')?.before(made.head);
       window.body.append(made.element);
       return made;
     });

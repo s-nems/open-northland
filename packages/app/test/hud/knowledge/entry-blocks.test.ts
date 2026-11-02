@@ -174,7 +174,7 @@ describe('vehicles', () => {
 describe('tribes', () => {
   it('finds no difference between a tribe and itself', () => {
     const b = base();
-    expect(tribeDifferences(b, VIKING, VIKING)).toEqual({ stepSeconds: null, weapons: [], buildings: [] });
+    expect(tribeDifferences(b, VIKING, VIKING)).toEqual({ weapons: [], buildings: [] });
   });
 
   it('reports a building sturdier than the reference', () => {

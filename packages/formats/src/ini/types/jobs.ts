@@ -124,18 +124,6 @@ function extractJobRequirements(sec: RuleSection): JobRequirement[] {
   return reqs;
 }
 
-// The two tribes the original walks faster, a fixed rule rather than one declared by any ini key.
-// The ids are `logicdefines.inc` `TRIBE_TYPE_HUMAN_*` and `JOB_TYPE_HUMAN_*`.
-const TRIBE_BYZANTINE = 3;
-const TRIBE_EGYPT = 7;
-const JOB_SOLDIER_SPEAR_WOODEN = 32;
-const WALK_STEP_REDUCTION_TICKS = 2;
-
-const WALK_STEP_REDUCTIONS: Readonly<Record<number, { ticks: number; jobType?: number }>> = {
-  [TRIBE_BYZANTINE]: { ticks: WALK_STEP_REDUCTION_TICKS, jobType: JOB_SOLDIER_SPEAR_WOODEN },
-  [TRIBE_EGYPT]: { ticks: WALK_STEP_REDUCTION_TICKS },
-};
-
 /** Original behavior: a person's weapon resets to type 1. Whether a monster's claw stays equipped
  *  across all five body-form job changes is not traced; keeping it there is an approximation. */
 const MONSTER_INITIAL_WEAPON_TYPE = 1;
@@ -163,7 +151,6 @@ export function extractTribes(sections: readonly RuleSection[], src: SourceRef):
         naturalWeaponType:
           typeId === WERESNAKE_TRIBE || typeId === WEREWOLF_TRIBE ? MONSTER_INITIAL_WEAPON_TYPE : undefined,
         atomicBindings,
-        walkStepReduction: WALK_STEP_REDUCTIONS[typeId],
         permissions: {
           job: getIntList(sec, 'allowjob'),
           house: getIntList(sec, 'allowhouse'),

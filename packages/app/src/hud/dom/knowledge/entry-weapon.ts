@@ -79,7 +79,7 @@ export function weaponFilm(context: KnowledgeContext, weapon: KnowledgeWeapon): 
   const jobType = weapon.filmJob;
   if (jobType === null) return null;
   const tribe = context.tribe();
-  const step = preciseSecondsText(stepSeconds(context.base, weapon.weight, tribe));
+  const step = preciseSecondsText(stepSeconds(weapon.weight));
   return filmBlock(
     context,
     [
@@ -170,15 +170,14 @@ function bonusFold(context: KnowledgeContext, weapon: KnowledgeWeapon): EntryBlo
 
 function marchFold(context: KnowledgeContext, weapon: KnowledgeWeapon): EntryBlock {
   const text = copy().weapon;
-  const tribe = context.tribe();
   const { base } = context;
-  const plain = stepSeconds(base, 0, tribe);
+  const plain = stepSeconds(0);
   const armours = [
     { name: text.noArmour, weight: 0 },
     ...base.armor.map((armour) => ({ name: armour.name, weight: armour.weight })),
   ];
   const rows = armours.map((armour) => {
-    const slower = slowdownPercent(stepSeconds(base, weapon.weight + armour.weight, tribe), plain);
+    const slower = slowdownPercent(stepSeconds(weapon.weight + armour.weight), plain);
     return { label: armour.name, cells: [{ text: slower === 0 ? '-' : `${slower}%` }] };
   });
   const table = dataTable([{ title: text.withArmour }, { title: text.slower }], rows);

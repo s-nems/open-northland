@@ -28,8 +28,8 @@ describe('human walk modifiers', () => {
       JobType.parse({ typeId: 104, id: 'hero_bjarni' }),
     ],
     tribes: [
-      TribeType.parse({ typeId: 201, id: 'restricted', walkStepReduction: { ticks: 2, jobType: 103 } }),
-      TribeType.parse({ typeId: 202, id: 'unrestricted', walkStepReduction: { ticks: 2 } }),
+      TribeType.parse({ typeId: 201, id: 'restricted' }),
+      TribeType.parse({ typeId: 202, id: 'unrestricted' }),
     ],
     weapons: [
       WeaponType.parse({ typeId: 1, id: 'light', tribeType: 201, jobType: 103, goodType: 501, weight: 1 }),
@@ -39,16 +39,16 @@ describe('human walk modifiers', () => {
     armor: [ArmorType.parse({ typeId: 1, id: 'chain', goodType: 503, weight: 3 })],
   };
 
-  it('reads age classes by content identity and tribe/job restrictions without fixed numeric ids', () => {
+  it('reads age classes by content identity without fixed numeric ids', () => {
     const sim = new Simulation({ seed: 1, content });
     const modifiers = (tribe: number, jobType: number) => {
       const e = settlerAt(sim, { tribe, jobType });
       return walkStepModifiersOf(sim.world, e, content, sim.tick);
     };
-    expect(modifiers(201, 101)).toMatchObject({ age: 'baby', tribeReduction: 0 });
-    expect(modifiers(202, 102)).toMatchObject({ age: 'child', tribeReduction: 2 });
-    expect(modifiers(201, 103)).toMatchObject({ age: 'adult', tribeReduction: 2, equipmentWeight: 1 });
-    expect(modifiers(201, 104)).toMatchObject({ age: 'adult', tribeReduction: 0 });
+    expect(modifiers(201, 101)).toMatchObject({ age: 'baby' });
+    expect(modifiers(202, 102)).toMatchObject({ age: 'child' });
+    expect(modifiers(201, 103)).toMatchObject({ age: 'adult', equipmentWeight: 1 });
+    expect(modifiers(201, 104)).toMatchObject({ age: 'adult' });
   });
 
   it('resolves combined worn weight, tribe-scoped weapons, class fallbacks and hero exemption', () => {

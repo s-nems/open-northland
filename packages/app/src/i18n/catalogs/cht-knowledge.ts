@@ -8,7 +8,7 @@ export const chtKnowledge = {
     tabs: { goods: '貨物', buildings: '建築', encyclopedia: '百科', mechanics: '機制' },
     tabsLabel: '知識分類',
     back: '返回',
-    search: '搜尋知識',
+    search: '搜尋',
     tribe: '民族',
     searchGroups: {
       goods: '貨物',
@@ -290,7 +290,6 @@ export const chtKnowledge = {
     tribe: {
       differs: '與{tribe}的區別',
       noDifference: '數值沒有差別。',
-      march: '行軍速度',
       fullTable: '完整武器表',
       plate: '板甲',
       heroes: '英雄',

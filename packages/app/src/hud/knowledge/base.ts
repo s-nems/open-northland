@@ -393,12 +393,7 @@ function buildWeapons(
 }
 
 function tribeRow(tribe: TribeType): KnowledgeTribe {
-  const reduction = tribe.walkStepReduction;
-  return {
-    typeId: tribe.typeId,
-    name: tribeName(tribe.typeId, tribe.name ?? tribe.id),
-    stepReduction: reduction === undefined || reduction.jobType !== undefined ? 0 : reduction.ticks,
-  };
+  return { typeId: tribe.typeId, name: tribeName(tribe.typeId, tribe.name ?? tribe.id) };
 }
 
 function armorRows({ content, goodNameOf }: Joins): KnowledgeArmor[] {

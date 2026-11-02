@@ -21,10 +21,10 @@
 
 /* No window head to sit in here: the bar is a row of its own and wraps when short. */
 .main-menu__knowledge-body.on-hud .kn-head {
-  position: static;
+  flex: none;
   flex-wrap: wrap;
-  flex-shrink: 0;
-  padding: 7px 12px 0 calc(var(--u) * 80);
+  margin: 0;
+  padding: 7px 12px;
   border-bottom: 1px solid #c9a26233;
 }
 

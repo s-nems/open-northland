@@ -13,7 +13,7 @@ export const deKnowledge = {
     },
     tabsLabel: 'Bereiche des Wissens',
     back: 'Zurück',
-    search: 'Wissen durchsuchen',
+    search: 'Suchen',
     tribe: 'Stamm',
     searchGroups: {
       goods: 'Waren',
@@ -319,7 +319,6 @@ export const deKnowledge = {
     tribe: {
       differs: 'Unterschiede zu: {tribe}',
       noDifference: 'Keine Unterschiede in den Werten.',
-      march: 'Marschtempo',
       fullTable: 'Ganze Waffentabelle',
       plate: 'Platte',
       heroes: 'Helden',

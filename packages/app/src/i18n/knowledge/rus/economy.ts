@@ -1027,7 +1027,6 @@ export const ECONOMY: ArticleGroup = {
               ['Вес оружия и доспехов 2-3, кроме героев', '+{{step.weightLowExtra}} с'],
               ['Вес оружия и доспехов 4-5, кроме героев', '+{{step.weightHighExtra}} с'],
               ['[[good:amulet_speed|Амулет Ветра]]', '-{{step.amuletSaved}} с'],
-              ['Египтянин', '-{{step.egyptSaved}} с'],
               ['Полная [[good:handcart|Ручная Тележка]]', 'на {{haul.handcartLossPct}}% медленнее'],
               ['Полная [[good:oxcart|Бычья Повозка]]', 'на {{haul.oxcartLossPct}}% медленнее'],
             ],

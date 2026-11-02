@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type {
-  KnowledgeStatus,
   KnowledgeArt,
   KnowledgeContext,
   KnowledgeSettlement,
+  KnowledgeStatus,
   KnowledgeView,
 } from '../../../../src/hud/dom/knowledge/context.js';
 import { createKnowledgeView } from '../../../../src/hud/dom/knowledge/view.js';

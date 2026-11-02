@@ -157,7 +157,7 @@ function effectBlock(context: KnowledgeContext, good: KnowledgeGood): EntryBlock
   if (equip !== null) {
     const effects = [
       ...equipEffects(equip, (ticks) => ticks * SECONDS_PER_TICK),
-      ...(equip.category === 'boots' ? bootEffects(context) : []),
+      ...(equip.category === 'boots' ? bootEffects() : []),
     ];
     if (effects.length > 0) parts.push(paragraph(effects.join('. ')));
     const durability = equipDurability(equip);
@@ -170,10 +170,8 @@ function effectBlock(context: KnowledgeContext, good: KnowledgeGood): EntryBlock
   return { node: section(text.effect, ...parts, rows.length === 0 ? null : factList(rows)) };
 }
 
-function bootEffects(context: KnowledgeContext): readonly string[] {
-  const { base } = context;
-  const tribe = context.tribe();
-  const saved = stepSeconds(base, 0, tribe, false) - stepSeconds(base, 0, tribe);
+function bootEffects(): readonly string[] {
+  const saved = stepSeconds(0, false) - stepSeconds(0);
   const text = copy().equip;
   return [formatMessage(text.step, { time: preciseSecondsText(saved) }), text.barefoot];
 }

@@ -8,7 +8,7 @@ export const enKnowledge = {
     tabs: { goods: 'Goods', buildings: 'Buildings', encyclopedia: 'Encyclopedia', mechanics: 'Mechanics' },
     tabsLabel: 'Knowledge sections',
     back: 'Back',
-    search: 'Search Knowledge',
+    search: 'Search',
     tribe: 'Tribe',
     searchGroups: {
       goods: 'Goods',
@@ -292,7 +292,6 @@ export const enKnowledge = {
     tribe: {
       differs: 'How it differs from: {tribe}',
       noDifference: 'No differences in the numbers.',
-      march: 'Marching speed',
       fullTable: 'Full weapon table',
       plate: 'Plate',
       heroes: 'Heroes',

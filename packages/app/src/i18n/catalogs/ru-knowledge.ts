@@ -8,7 +8,7 @@ export const ruKnowledge = {
     tabs: { goods: 'Товары', buildings: 'Здания', encyclopedia: 'Энциклопедия', mechanics: 'Механики' },
     tabsLabel: 'Разделы Знаний',
     back: 'Назад',
-    search: 'Поиск в Знаниях',
+    search: 'Поиск',
     tribe: 'Племя',
     searchGroups: {
       goods: 'Товары',
@@ -291,7 +291,6 @@ export const ruKnowledge = {
     tribe: {
       differs: 'Отличия от: {tribe}',
       noDifference: 'По цифрам отличий нет.',
-      march: 'Скорость марша',
       fullTable: 'Полная таблица оружия',
       plate: 'Пластинчатые',
       heroes: 'Герои',

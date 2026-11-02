@@ -224,7 +224,6 @@ export function knowledgeContent(): ContentSet {
         typeId: FRANK,
         id: 'frank',
         jobEnables: [{ jobType: CIVILIST_JOB, kind: 'job', targetId: SMITH_JOB }],
-        walkStepReduction: { ticks: 2 },
       },
       { typeId: WOLF_TRIBE, id: 'wolves' },
     ],

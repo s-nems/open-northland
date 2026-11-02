@@ -68,6 +68,8 @@ export interface KnowledgeContext extends KnowledgeDeps {
 
 export interface KnowledgeView {
   readonly element: HTMLElement;
+  /** The bar of tabs and tools; a surface with a head of its own takes it out of `element`. */
+  readonly head: HTMLElement;
   /** Without a target the window stays where the reader left it during the session. */
   open(target?: KnowledgeTarget): void;
   /** Takes the Esc that belongs to the view (a pin, a search); false leaves it to the surface around it. */

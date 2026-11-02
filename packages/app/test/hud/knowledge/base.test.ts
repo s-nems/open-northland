@@ -141,12 +141,6 @@ describe('the knowledge base fighters', () => {
     expect(rows.find((w) => w.id === 'house_bow')?.clipTicks).toBeNull();
   });
 
-  it('keeps only a tribe-wide step reduction, one tied to a job is that unit', () => {
-    const knowledge = base();
-    expect(knowledge.tribes.find((t) => t.typeId === FRANK)?.stepReduction).toBe(2);
-    expect(knowledge.tribes.find((t) => t.typeId === VIKING)?.stepReduction).toBe(0);
-  });
-
   it('calls an animal aggressive only when it has a weapon to swing', () => {
     const knowledge = base();
     expect(knowledge.animals.find((a) => a.tribe === WOLF_TRIBE)).toMatchObject({

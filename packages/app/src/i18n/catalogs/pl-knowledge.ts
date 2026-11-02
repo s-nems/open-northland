@@ -8,7 +8,7 @@ export const plKnowledge = {
     tabs: { goods: 'Towary', buildings: 'Budynki', encyclopedia: 'Encyklopedia', mechanics: 'Mechaniki' },
     tabsLabel: 'Działy Wiedzy',
     back: 'Wróć',
-    search: 'Szukaj w Wiedzy',
+    search: 'Szukaj',
     tribe: 'Plemię',
     searchGroups: {
       goods: 'Towary',
@@ -291,7 +291,6 @@ export const plKnowledge = {
     tribe: {
       differs: 'Czym się różni od: {tribe}',
       noDifference: 'Bez różnic w liczbach.',
-      march: 'Szybkość marszu',
       fullTable: 'Pełna tabela broni',
       plate: 'Płytowa',
       heroes: 'Bohaterowie',

@@ -19,7 +19,7 @@ import {
   type TargetId,
   weaponOf,
 } from '../../../src/hud/knowledge/combat.js';
-import { FRANK, knowledgeContent, VIKING } from '../../support/knowledge-content.js';
+import { knowledgeContent, VIKING } from '../../support/knowledge-content.js';
 
 const SPEAR = 2;
 const BOW = 6;
@@ -143,10 +143,9 @@ describe('blow arithmetic', () => {
     expect(secondsForHits(1, unclipped)).toBeNull();
   });
 
-  it('walks a shod step slower with weight, shorter for a tribe-wide reduction', () => {
-    expect(stepSeconds(base, 0, VIKING)).toBeCloseTo(6 / 12);
-    expect(stepSeconds(base, 2, VIKING)).toBeCloseTo(7 / 12);
-    expect(stepSeconds(base, 0, FRANK)).toBeCloseTo(4 / 12);
+  it('walks a shod step slower with weight', () => {
+    expect(stepSeconds(0)).toBeCloseTo(6 / 12);
+    expect(stepSeconds(2)).toBeCloseTo(7 / 12);
   });
 });
 

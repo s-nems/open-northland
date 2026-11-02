@@ -686,10 +686,6 @@ const WALK_FACTS: Readonly<Record<string, Fact>> = {
     const saved = equipOf(base, 'amulet_speed')?.walkStepTicksSaved;
     return saved === undefined ? undefined : seconds(saved);
   }),
-  'step.egyptSaved': twoDecimals((base) => {
-    const saved = base.tribes.find((row) => row.typeId === EGYPTIAN)?.stepReduction;
-    return saved === undefined ? undefined : seconds(saved);
-  }),
   'step.shortest': twoDecimals(seconds(systems.MIN_STEP_TICKS)),
   'step.carrierOnRoad': twoDecimals(stepAt(ROAD_RESISTANCE, { carrying: true }) ?? 0),
   'step.plateSoldierOnLand': twoDecimals((base) => {

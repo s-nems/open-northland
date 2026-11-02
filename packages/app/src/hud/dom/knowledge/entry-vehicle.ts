@@ -37,7 +37,7 @@ function numbersBlock(context: KnowledgeContext, vehicle: KnowledgeVehicle): Ent
   const text = copy();
   const row = text.vehicle;
   const tribe = context.tribe();
-  const humanTicks = stepSeconds(context.base, 0, tribe) / SECONDS_PER_TICK;
+  const humanTicks = stepSeconds(0) / SECONDS_PER_TICK;
   const holds = vehicleHolds(vehicle);
   const weapon = vehicleWeapon(context.base, vehicle, tribe);
   const building = combatTargets(context.base).find((target) => target.id === 'building');
