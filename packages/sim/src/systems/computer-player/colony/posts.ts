@@ -301,8 +301,15 @@ function digGoodsWithRoom(env: ColonyEnv, read: FoundingRead): Set<LandGood> {
 
 /** Each standing workshop's open seats, operators first and ascending by building: the trades men of the
  *  colony have earned sit down, taken off `spare` as they do, a digger at need, as digging is how a colony's
- *  man earns his trade. A gatherer's seat at a workshop stays open: the colony's diggers fill its store. */
-function crewOrders(env: ColonyEnv, read: FoundingRead, spare: Entity[], diggers: Entity[]): PlayerCommand[] {
+ *  man earns his trade. An empty workshop takes a hand off `movers`: the farmer who earned the mill moves up
+ *  and a fresh man takes the farm. A gatherer's seat at a workshop stays open: the diggers fill its store. */
+function crewOrders(
+  env: ColonyEnv,
+  read: FoundingRead,
+  spare: Entity[],
+  diggers: Entity[],
+  movers: Entity[],
+): PlayerCommand[] {
   const { world, ctx } = env;
   const index = contentIndex(ctx.content);
   const commands: PlayerCommand[] = [];
@@ -314,8 +321,11 @@ function crewOrders(env: ColonyEnv, read: FoundingRead, spare: Entity[], diggers
       if (isCarrierJob(ctx, jobType) !== carriers || (genericCollectorJob(ctx) ?? -1) === jobType) continue;
       let open = count - held.filter((w) => world.get(w, Settler).jobType === jobType).length;
       while (open-- > 0) {
-        const pool = spare.some((man) => earned(man, jobType)) ? spare : diggers;
-        const at = pool.findIndex((man) => earned(man, jobType));
+        const fits = (man: Entity): boolean =>
+          earned(man, jobType) && (world.get(man, Settler).jobType !== jobType || !movers.includes(man));
+        const empty = held.length === 0;
+        const pool = [spare, diggers, empty ? movers : []].find((men) => men.some(fits)) ?? spare;
+        const at = pool.findIndex(fits);
         const man = pool[at];
         if (man === undefined) return;
         pool.splice(at, 1);
@@ -459,7 +469,14 @@ export function fillPosts(env: ColonyEnv, men: readonly Entity[], read: Founding
     : builders.slice(0, Math.max(0, held.get('builder') ?? 0));
   const spare = [...free, ...past];
   const diggers = posted.filter((man) => isDug(postOf(world, ctx, man, builder)) && !spare.includes(man));
-  const commands = crewOrders(env, read, spare, diggers);
+  const movers = men.filter((man) => {
+    const job = world.get(man, Settler).jobType;
+    const operator = atWorkshop(env, man) && job !== null && !isCarrierJob(ctx, job);
+    const refilled = (other: Entity): boolean =>
+      other !== man && job !== null && settlerMeetsNeed(world, ctx, needSubjectOf(world, other), 'job', job);
+    return operator && posted.some(refilled);
+  });
+  const commands = crewOrders(env, read, spare, diggers, movers);
   if (spare.length === 0) return commands;
   let flags: FlagGround | null = null;
   const ground = (): FlagGround => {
