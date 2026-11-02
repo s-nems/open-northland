@@ -248,10 +248,11 @@ export function openingHomeCount(ctx: SystemContext, order: BuildOrder): number 
 export function openingHomesStand(
   world: World,
   ctx: SystemContext,
+  player: number,
   order: BuildOrder,
   owned: readonly Entity[],
 ): boolean {
-  const wave = openingHomeCount(ctx, order);
+  const wave = seatHomesCap(world, player, openingHomeCount(ctx, order));
   if (wave === 0) return true;
   const index = contentIndex(ctx.content);
   let built = 0;

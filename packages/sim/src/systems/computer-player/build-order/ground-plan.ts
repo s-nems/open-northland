@@ -32,10 +32,21 @@ import { type LineStatuses, upgradesInto } from './progress.js';
 import { NO_ROOM_HOMES, seatHasSide, seatTuning } from './seat-order.js';
 import { baseWalkTest } from './spot-walk.js';
 
-/** The fewest homes a plan cuts a seat to (authored): every seat on arabskie_wyspy_wolna_gra_mieszana held
- *  five by game minute 45 in the plain order, and cut to three or four its women stood at 3-10 where they
- *  had stood at 10-17, too few people for an economy and a colony's crew. */
-export const PLANNED_HOMES_FLOOR = 5;
+/** Owner ruling: on very little room a seat's homes go as low as this, and the more room the more homes. */
+export const PLANNED_HOMES_FLOOR = 2;
+
+/** Home zones that must fit on a seat's land off its plots for each home it keeps (authored): at the start of
+ *  arabskie_wyspy_wolna_gra_mieszana the five seats fit 13, 2, 2, 13 and 6, which gives them 6, 2, 2, 6 and 3
+ *  homes and keeps the ground beside a home for what grows there. */
+const FIT_PER_HOME = 2;
+/** How far a fit is counted: past what {@link NO_ROOM_HOMES} homes ask, more room changes nothing. */
+const FIT_COUNTED = FIT_PER_HOME * NO_ROOM_HOMES;
+
+/** The homes a seat keeps on `fit` home zones of room, from {@link PLANNED_HOMES_FLOOR} to
+ *  {@link NO_ROOM_HOMES}. */
+export function plannedHomes(fit: number): number {
+  return Math.min(NO_ROOM_HOMES, Math.max(PLANNED_HOMES_FLOOR, Math.floor(fit / FIT_PER_HOME)));
+}
 
 /** When a seat draws its plan (authored): past the opening's first homes and school, which keep the ground
  *  by the base. Drawn at the start, the plots sent the school 39 nodes out where it stood 17 from the
@@ -87,7 +98,7 @@ interface Seat {
  * Owner ruling: a seat that scans very little room keeps ground for what it cannot do without, so homes
  * and copies never block its expansion. From {@link GROUND_PLAN_FROM_TICKS} a seat with the `noRoom` side
  * plots the zone of each step that would hold its line and that no gap of a home's size takes, biggest
- * first, packed by {@link packedSpot}, and cuts its homes to what still fits ({@link fittingHomes}). Plotting
+ * first, packed by {@link packedSpot}, and cuts its homes by the room left ({@link plannedHomes}). Plotting
  * every line-holding step left two homes on three of five arabskie_wyspy seats and halved their people. A
  * plotted building may stand anywhere off the others' plots, its plot being the room it can always fall
  * back on. Each placement decision after that drops a plot once its step stands met and moves one something
@@ -106,23 +117,46 @@ export function keepGroundPlan(
   decision: PlotDecision,
 ): void {
   const carrier = aiControlEntity(world, player);
-  if (carrier === null || ctx.tick < GROUND_PLAN_FROM_TICKS || !seatHasSide(world, player, 'noRoom')) return;
+  if (carrier === null || !seatHasSide(world, player, 'noRoom')) return;
   const seat: Seat = { world, ctx, terrain, player, owned, anchor, tribe, decision };
-  if (world.has(carrier, GroundPlan)) reviewPlots(seat, carrier, order, statuses);
+  if (!world.has(carrier, GroundPlan)) measureGround(seat, carrier, order, statuses);
+  if (ctx.tick < GROUND_PLAN_FROM_TICKS) return;
+  if (world.get(carrier, GroundPlan).drawn) reviewPlots(seat, carrier, order, statuses);
   else drawGroundPlan(seat, carrier, order, statuses);
 }
 
-function drawGroundPlan(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
-  const { world } = seat;
-  const reviewTick = seat.ctx.tick + PLAN_REVIEW_TICKS;
-  world.add(carrier, GroundPlan, { plots: [], homes: NO_ROOM_HOMES, reviewTick });
+function plotSteps(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
   for (const step of essentialSteps(seat, order, statuses)) {
     const plot = plotOf(seat, step);
-    if (plot !== null) world.mut(carrier, GroundPlan).plots.push(plot);
+    if (plot !== null) seat.world.mut(carrier, GroundPlan).plots.push(plot);
   }
-  const { plots } = world.get(carrier, GroundPlan);
-  const homes = plots.length === 0 ? NO_ROOM_HOMES : fittingHomes(seat);
-  if (homes < NO_ROOM_HOMES) world.mut(carrier, GroundPlan).homes = homes;
+}
+
+/** The seat's first decision sizes its homes on the plots it would draw, or the opening's homes would be
+ *  past the cut before any plot stands; the plots themselves wait for {@link GROUND_PLAN_FROM_TICKS}. */
+function measureGround(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
+  const { world } = seat;
+  world.add(carrier, GroundPlan, {
+    plots: [],
+    homes: NO_ROOM_HOMES,
+    reviewTick: GROUND_PLAN_FROM_TICKS,
+    drawn: false,
+  });
+  plotSteps(seat, carrier, order, statuses);
+  const homes = plannedHomes(homeFit(seat));
+  const plan = world.mut(carrier, GroundPlan);
+  plan.plots = [];
+  plan.homes = homes;
+}
+
+function drawGroundPlan(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
+  const { world, ctx } = seat;
+  const start = world.mut(carrier, GroundPlan);
+  start.drawn = true;
+  start.reviewTick = ctx.tick + PLAN_REVIEW_TICKS;
+  plotSteps(seat, carrier, order, statuses);
+  const homes = Math.max(world.get(carrier, GroundPlan).homes, plannedHomes(homeFit(seat)));
+  if (homes !== world.get(carrier, GroundPlan).homes) world.mut(carrier, GroundPlan).homes = homes;
 }
 
 function zoneOf(seat: Seat, typeId: number): readonly FootprintCell[] {
@@ -281,15 +315,12 @@ function rimOf(zone: readonly FootprintCell[]): readonly FootprintCell[] {
   return [...rim.values()];
 }
 
-/**
- * The homes the seat keeps: those it owns plus as many more zones as fit one beside the other on its
- * land off the plots, within {@link PLANNED_HOMES_FLOOR} and {@link NO_ROOM_HOMES}. Homes are the first copies
- * a plan cuts.
- */
-function fittingHomes(seat: Seat): number {
+/** The home zones the seat's land takes off its plots: those it owns plus as many more as fit one beside
+ *  the other, up to {@link FIT_COUNTED}. Homes are the first copies a plan cuts. */
+function homeFit(seat: Seat): number {
   const { world, ctx, terrain, player, owned, anchor, tribe, decision } = seat;
   const home = buildingTypeByContentId(ctx.content, HOME_BUILDING);
-  if (home === undefined) return NO_ROOM_HOMES;
+  if (home === undefined) return FIT_COUNTED;
   const chain = countedTiers(ctx.content, home, undefined);
   let fits = owned.filter((e) => chain.has(world.get(e, Building).buildingType)).length;
   const zone = buildingFootprintOf(ctx.content, home.typeId, tribe)?.reserved ?? ANCHOR_ONLY;
@@ -301,7 +332,7 @@ function fittingHomes(seat: Seat): number {
   );
   const land = baseComponent(world, ctx, terrain, player);
   const taken = new Set<NodeId>();
-  while (fits < NO_ROOM_HOMES) {
+  while (fits < FIT_COUNTED) {
     const spot = firstRingNode(
       anchor.hx,
       anchor.hy,
@@ -316,7 +347,7 @@ function fittingHomes(seat: Seat): number {
     for (const node of translatedCells(terrain, zone, spot.hx, spot.hy)) taken.add(node);
     fits++;
   }
-  return Math.max(PLANNED_HOMES_FLOOR, fits);
+  return fits;
 }
 
 /** The plots still waiting after this decision: those whose step no longer waits go, a free one that no
@@ -368,9 +399,9 @@ function reviewGround(seat: Seat, carrier: Entity, order: BuildOrder, statuses: 
     const plot = plotOf(seat, step);
     if (plot !== null) world.mut(carrier, GroundPlan).plots.push(plot);
   }
-  const { plots, homes } = world.get(carrier, GroundPlan);
+  const { homes } = world.get(carrier, GroundPlan);
   if (homes >= NO_ROOM_HOMES) return;
-  // Felled trees and freed plots lift the cut; with no plot left nothing needs it.
-  const lifted = plots.length === 0 ? NO_ROOM_HOMES : Math.max(homes, fittingHomes(seat));
+  // Felled trees and freed plots lift the cut.
+  const lifted = Math.max(homes, plannedHomes(homeFit(seat)));
   if (lifted !== homes) world.mut(carrier, GroundPlan).homes = lifted;
 }

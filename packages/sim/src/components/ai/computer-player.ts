@@ -101,6 +101,8 @@ export interface GroundPlanState {
   homes: number;
   /** The first tick the plan looks for ground again: a slower search than keeping its plots. */
   reviewTick: number;
+  /** Whether the plots are drawn: before that the plan only caps the homes. */
+  drawn: boolean;
 }
 
 /**

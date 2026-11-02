@@ -22,6 +22,7 @@ import type { TerrainGraph } from '../../../../src/nav/terrain/index.js';
 import {
   GROUND_PLAN_FROM_TICKS,
   PLANNED_HOMES_FLOOR,
+  plannedHomes,
 } from '../../../../src/systems/computer-player/build-order/ground-plan.js';
 import { plottedNodes, seatHomesCap } from '../../../../src/systems/computer-player/build-order/plots.js';
 import { NO_ROOM_HOMES } from '../../../../src/systems/computer-player/build-order/seat-order.js';
@@ -59,8 +60,6 @@ const STRIP = { x0: 16, y0: 13, y1: 17 };
 const BARRACKS_AND_HOME_END = 36;
 /** A strip east end with room for more homes than a seat with no room ever raises. */
 const LONG_END = 60;
-/** A strip east end with no room for a home at all. */
-const TINY_END = STRIP.x0;
 
 /** A filled block of half-widths `dx` and `dy`. */
 function block(dx: number, dy: number): FootprintCell[] {
@@ -264,19 +263,30 @@ describe('ground plan', () => {
     expect(carrier === null ? undefined : restored.world.tryGet(carrier, GroundPlan)).toEqual(plan);
   });
 
-  it('cuts the homes to what fits beside the plots, within the floor and the seat cap', () => {
-    // With nothing to keep the plan cuts nothing, however little fits.
-    const unplotted = island(TINY_END);
-    decide(unplotted, [HOMES]);
-    expect(seatHomesCap(unplotted.world, SEAT, NO_ROOM_HOMES + 1)).toBe(NO_ROOM_HOMES);
+  it('scales the homes with the fit, from the floor to the seat cap', () => {
+    expect(plannedHomes(0)).toBe(PLANNED_HOMES_FLOOR);
+    expect(plannedHomes(2)).toBe(PLANNED_HOMES_FLOOR);
+    expect(plannedHomes(6)).toBe(3);
+    expect(plannedHomes(13)).toBe(NO_ROOM_HOMES);
+    expect(plannedHomes(40)).toBe(NO_ROOM_HOMES);
+  });
 
-    // Short of room only while a plot waits, and lifted at the review once it is gone.
+  it('cuts the homes by the room left beside the plots', () => {
     const plotted = island(BARRACKS_AND_HOME_END);
     decide(plotted, [HELD_BARRACKS]);
     expect(seatHomesCap(plotted.world, SEAT, NO_ROOM_HOMES + 1)).toBe(PLANNED_HOMES_FLOOR);
-    settle(plotted, [BARRACKS]);
-    reviewed(plotted, [BARRACKS]);
-    expect(seatHomesCap(plotted.world, SEAT, NO_ROOM_HOMES + 1)).toBe(NO_ROOM_HOMES);
+  });
+
+  it("sizes the homes at the seat's first decision, with no plot on the ground until the plan is due", () => {
+    const sim = island(BARRACKS_AND_HOME_END);
+    const early = { ...contextOf(sim), tick: 1 };
+    buildOrderModule(oneLine([HELD_BARRACKS])).run(sim.world, early, SEAT);
+    expect(seatHomesCap(sim.world, SEAT, NO_ROOM_HOMES + 1)).toBe(PLANNED_HOMES_FLOOR);
+    expect(planOf(sim).plots).toEqual([]);
+    expect(planOf(sim).drawn).toBe(false);
+    decide(sim, [HELD_BARRACKS]);
+    expect(planOf(sim).plots).not.toEqual([]);
+    expect(planOf(sim).drawn).toBe(true);
   });
 
   it('plots ground to clear where no free fit is left, and aims the clearing there', () => {

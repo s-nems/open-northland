@@ -43,6 +43,7 @@ import {
 import { grassScarce } from './grass-reserve.js';
 import { housingShort } from './housing.js';
 import { unservedAnchor } from './placement.js';
+import { seatHomesCap } from './plots.js';
 import { militaryWaits, seatDefenceFirst } from './seat-order.js';
 import { coverageOf, seatCovered } from './tower-coverage.js';
 
@@ -241,7 +242,9 @@ export function entryStatus(
       const wanted =
         type.buildOnBioPattern && entry.count > 1 && memoGrassScarce(world, ctx, player, memo)
           ? 1
-          : entry.count;
+          : type.kind === 'home'
+            ? seatHomesCap(world, player, entry.count)
+            : entry.count;
       if (have >= wanted) return 'satisfied';
       if (entry.onlyWhen === 'rivalOverSea' && !memoOverSea(world, ctx, player, memo)) return 'skip';
       if (entry.onlyWhen === 'grassScarce' && !memoGrassScarce(world, ctx, player, memo)) return 'skip';

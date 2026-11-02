@@ -245,7 +245,7 @@ function runWorkforce(
     player,
     ground?.flags ?? null,
     fishers,
-    fisherTarget(world, ctx, player, openingHomesStand(world, ctx, order, owned)),
+    fisherTarget(world, ctx, player, openingHomesStand(world, ctx, player, order, owned)),
   );
   const hunting = huntingPlan(
     world,
