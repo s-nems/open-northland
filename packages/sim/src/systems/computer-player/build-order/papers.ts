@@ -1,3 +1,4 @@
+import { BUILDING_KIND, type BuildingType } from '@open-northland/data';
 import { type Paper, playerPaperSlots } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
@@ -157,4 +158,40 @@ export function* paperedSteps(
       yield { line, step, entry, ...covered };
     }
   }
+}
+
+/** A store-coverage step of `order` still short of a store, with the warehouse a named paper raises. */
+export interface PaperedStore {
+  readonly line: BuildLine;
+  readonly step: number;
+  readonly entry: Extract<BuildOrderEntry, { kind: 'storeCoverage' }>;
+  readonly type: BuildingType;
+  readonly paper: Paper;
+}
+
+/**
+ * The first unmet `storeCoverage` step with the first warehouse paper the seat holds, or null. A warehouse
+ * has no `place` step and a coverage step comes late at its own tier, so such a paper would lie unspent
+ * while the seat pays for the sites: on arabskie_wyspy_wolna_gra_mieszana all three of a seat's lay unused
+ * past game minute 130. A paper is free and stands finished, so it goes down at once, on any tier.
+ */
+export function paperedStore(
+  world: World,
+  ctx: SystemContext,
+  player: number,
+  order: BuildOrder,
+  statuses: LineStatuses,
+): PaperedStore | null {
+  const buildings = contentIndex(ctx.content).buildings;
+  for (const paper of playerPaperSlots(world, player).filter(namesHouse)) {
+    const type = buildings.get(paper.param);
+    if (type?.kind !== BUILDING_KIND.storage) continue;
+    for (const line of linesByPriority(order)) {
+      const lineStatus = statuses.get(line.id) ?? [];
+      for (const [step, entry] of line.steps.entries())
+        if (entry.kind === 'storeCoverage' && lineStatus[step] === 'unmet')
+          return { line, step, entry, type, paper };
+    }
+  }
+  return null;
 }

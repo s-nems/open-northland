@@ -61,7 +61,7 @@ import {
   housingPick,
   housingStage,
 } from './housing.js';
-import { holdsNamedPaper, paperedPlacement, paperedSteps, stepTiers } from './papers.js';
+import { holdsNamedPaper, paperedPlacement, paperedSteps, paperedStore, stepTiers } from './papers.js';
 import { placementPassesOver, placementSpot } from './placement.js';
 import {
   type DecisionMemo,
@@ -1247,7 +1247,8 @@ function outrunsSites(
 }
 
 /** The placement spending a named paper on the first step {@link paperedSteps} finds a spot for, a line
- *  whose papered step finds none passing to the next line; null under attack or with nothing to place. */
+ *  whose papered step finds none passing to the next line, else a warehouse paper ({@link paperedStore})
+ *  where the seat's store coverage is short; null under attack or with nothing to place. */
 function paperedOpening(
   world: World,
   ctx: SystemContext,
@@ -1300,7 +1301,36 @@ function paperedOpening(
     searches.acting(line.id, step);
     return { ...siteCommand(type, spot, tribe, player), paper };
   }
-  return null;
+  const store = paperedStore(world, ctx, player, order, statuses);
+  if (store === null || searches.waits(store.line.id, store.step, ctx.tick)) return null;
+  siege ??= seatSiege(world, ctx, terrain, player, owned);
+  if (siege.attacked) return null;
+  reserveGrass ??= grassReserved(ctx, terrain, anchor, order, statuses);
+  const coverage = { by: 'store', radius: store.entry.radius } as const;
+  const spot = firstUncovered(
+    world,
+    ctx,
+    player,
+    owned,
+    coverage,
+    coverageSpotSearch(
+      world,
+      ctx,
+      terrain,
+      player,
+      owned,
+      anchor,
+      store.type,
+      tribe,
+      coverage,
+      siege.underFire,
+      reserveGrass,
+    ),
+  );
+  searches.searched(store.line.id, store.step, ctx.tick, spot !== null, true);
+  if (spot === null) return null;
+  searches.acting(store.line.id, store.step);
+  return { ...siteCommand(store.type, spot, tribe, player), paper: store.paper };
 }
 
 function siteCommand(type: BuildingType, spot: HalfCellNode, tribe: number, player: number): PlaceCommand {
