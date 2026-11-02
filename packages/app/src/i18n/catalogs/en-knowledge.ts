@@ -473,7 +473,6 @@ export const enKnowledge = {
   },
   mechanics: {
     railLabel: 'Articles',
-    speedNote: 'Times are given at speed ×1. A higher game speed shortens them.',
     seeAlso: 'See also:',
     loading: 'Loading articles...',
     loadFailed: 'The articles could not be loaded. Open this tab again.',

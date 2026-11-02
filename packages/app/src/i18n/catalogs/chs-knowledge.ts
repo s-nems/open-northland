@@ -471,7 +471,6 @@ export const chsKnowledge = {
   },
   mechanics: {
     railLabel: '文章目录',
-    speedNote: '时间按×1速度给出。提高游戏速度会缩短时间。',
     seeAlso: '另见：',
     loading: '正在载入文章...',
     loadFailed: '文章载入失败。请重新打开此页。',

@@ -471,7 +471,6 @@ export const chtKnowledge = {
   },
   mechanics: {
     railLabel: '文章目錄',
-    speedNote: '時間按×1速度給出。提高遊戲速度會縮短時間。',
     seeAlso: '另見：',
     loading: '正在載入文章...',
     loadFailed: '文章載入失敗。請重新開啟此頁。',

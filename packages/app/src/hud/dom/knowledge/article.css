@@ -55,11 +55,6 @@
   font: 700 21px / 1.15 var(--font-title);
   color: var(--ink);
 }
-.kn-speed {
-  color: var(--ink-muted);
-  font-size: 12.5px;
-  font-style: italic;
-}
 .kn-lead {
   color: var(--ink-muted);
   font-size: 15px;

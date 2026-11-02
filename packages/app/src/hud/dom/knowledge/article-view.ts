@@ -65,9 +65,7 @@ function articleBody(article: Article, scope: ArticleScope): HTMLElement {
   const body = element('article', 'kn-article');
   const title = element('h2', 'kn-title');
   write(title, article.name);
-  const speed = element('p', 'kn-speed');
-  write(speed, copy.speedNote);
-  body.append(title, speed);
+  body.append(title);
   if (article.lead !== undefined) {
     const lead = element('p', 'kn-lead');
     appendInline(lead, article.lead, scope);

@@ -294,12 +294,11 @@
   align-items: flex-end;
   min-height: 0;
 }
-/* Sprites keep whole pixels: a fractional scale smears them. */
+/* A sprite at its own size, as big as on the map at normal zoom. */
 .on-hud .kn-film {
   flex: none;
-  width: calc(var(--film-w) * 2);
-  height: calc(var(--film-h) * 2);
-  image-rendering: pixelated;
+  width: var(--film-w);
+  height: var(--film-h);
 }
 .on-hud .kn-entry__head .kn-motion {
   flex: none;

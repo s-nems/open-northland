@@ -500,7 +500,6 @@ export const deKnowledge = {
   },
   mechanics: {
     railLabel: 'Artikelliste',
-    speedNote: 'Zeiten gelten für Tempo ×1. Ein höheres Spieltempo verkürzt sie.',
     seeAlso: 'Siehe auch:',
     loading: 'Artikel werden geladen...',
     loadFailed: 'Die Artikel ließen sich nicht laden. Öffne diesen Reiter noch einmal.',

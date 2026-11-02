@@ -472,7 +472,6 @@ export const plKnowledge = {
   },
   mechanics: {
     railLabel: 'Spis artykułów',
-    speedNote: 'Czasy podano przy prędkości ×1. Wyższa prędkość gry je skraca.',
     seeAlso: 'Zobacz też:',
     loading: 'Wczytywanie artykułów...',
     loadFailed: 'Nie udało się wczytać artykułów. Otwórz tę kartę ponownie.',
