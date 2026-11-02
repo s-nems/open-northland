@@ -42,7 +42,9 @@ const SHIP_FOOTPRINT = 2;
 const DOOR = { direction: 2, distance: 4 };
 const HULL = 5000;
 const CREW_JOBS = [WOMAN, CIVILIST, BUILDER, COLLECTOR, CARRIER, SCOUT];
-const CARGO_GOODS = [WOOD, MUD, STONE];
+export const WHEAT = 44;
+const TRADE_SHIP_GOOD = 45;
+const CARGO_GOODS = [WOOD, MUD, STONE, WHEAT];
 
 /** Cells: the west island, the strait, the east island; rows run the map's height. */
 const CELLS = { width: 120, height: 60 };
@@ -78,10 +80,11 @@ const HOME_GOODS = [
   { good: WOOD, amount: 60 },
   { good: STONE, amount: 30 },
   { good: MUD, amount: 30 },
+  { good: WHEAT, amount: 30 },
 ];
 
 /** Two ship types that seat every civilian trade and carry the building goods, sized as the real ones. */
-export function colonyContent(): ContentSet {
+export function colonyContent(tradeShip = false): ContentSet {
   const ship = (typeId: number, id: string, stockSlots: number, passengerSlots: number) => ({
     typeId,
     id,
@@ -95,8 +98,14 @@ export function colonyContent(): ContentSet {
     passengerVector: DOOR,
     hitpoints: HULL,
   });
+  const base = aiContent();
   return parseContentSet({
-    ...aiContent(),
+    ...base,
+    goods: [
+      ...base.goods,
+      { typeId: WHEAT, id: 'wheat', weight: 1 },
+      ...(tradeShip ? [{ typeId: TRADE_SHIP_GOOD, id: 'ship_big', weight: 0 }] : []),
+    ],
     vehicles: [
       ship(SMALL_SHIP, 'ship_small', HOLD_SMALL, SEATS_SMALL),
       ship(BIG_SHIP, 'ship_big', HOLD_BIG, SEATS_BIG),
@@ -104,7 +113,7 @@ export function colonyContent(): ContentSet {
   });
 }
 
-function islands(): TerrainMap {
+export function colonyIslands(): TerrainMap {
   const { width, height } = CELLS;
   const typeIds = new Array<number>(width * height).fill(GRASS);
   for (let row = 0; row < height; row++)
@@ -123,7 +132,7 @@ function colonyModules(): Partial<ComputerModuleEnables> {
 /** A seat of civilians alone on the west island, no rival, no soldier, goods at home and an islands
  *  economy, with an empty east island over the strait: everything a colony wants but a ship. */
 export function colonyWorld(seed = 7, content: ContentSet = colonyContent()): Simulation {
-  const sim = new Simulation({ seed, content, map: islands() });
+  const sim = new Simulation({ seed, content, map: colonyIslands() });
   sim.enqueueSetup({ kind: 'setFogMode', mode: FOG_MODE.OFF });
   sim.enqueueSetup({ kind: 'setNeedsEnabled', enabled: false });
   sim.enqueueSetup({ kind: 'setPlayerPlacementTribes', player: SEAT, tribes: [VIKING] });

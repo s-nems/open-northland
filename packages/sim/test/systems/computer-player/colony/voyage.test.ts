@@ -1,15 +1,37 @@
 import { describe, expect, it } from 'vitest';
-import { Rider, Settler, Vehicle } from '../../../../src/components/index.js';
+import {
+  Female,
+  Position,
+  Rider,
+  Settler,
+  Vehicle,
+  VehicleStock,
+  vehicleCommander,
+} from '../../../../src/components/index.js';
+import type { Entity } from '../../../../src/ecs/world.js';
+import {
+  exportSaveGame,
+  nodeOfPosition,
+  parseSaveGame,
+  restoreSimulation,
+  type Simulation,
+  serializeSaveGame,
+} from '../../../../src/index.js';
 import { COMPUTER_DECISION_INTERVAL_TICKS } from '../../../../src/systems/ai-shared/cadence.js';
 import { colonyHeldShips } from '../../../../src/systems/ai-shared/home-roster.js';
+import { holdLoad } from '../../../../src/systems/computer-player/colony/cargo.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { seatNeedsShips } from '../../../../src/systems/computer-player/sea-route.js';
 import { isFighterJob } from '../../../../src/systems/readviews/index.js';
 import {
+  BIG_SHIP,
+  colonyContent,
+  colonyIslands,
   colonyState,
   colonyWorld,
   mooredShip,
+  SHIP_AT,
   SMALL_SHIP,
   stepUntil,
 } from '../../../fixtures/colony-islands.js';
@@ -21,7 +43,23 @@ const SCOUT_DUE_TICKS = minutesToTicks(12);
 const UNLOAD_TICKS = 4;
 const DECISION_TICKS = COMPUTER_DECISION_INTERVAL_TICKS + 1;
 const FIT_OUT_TICKS = minutesToTicks(21);
+const LOAD_DUE_TICKS = minutesToTicks(8);
+const SAIL_DUE_TICKS = minutesToTicks(6);
+const UNLOAD_DUE_TICKS = minutesToTicks(6);
+const PARTY_LEAST = 8;
+const SHORE_DX = 8;
+const SEED = 7;
+const TRADE_SHIP_SEATS = 10;
+const AFTER_SAVE_TICKS = minutesToTicks(4);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
+
+function freeShipsOf(sim: Simulation): Entity[] {
+  const ctx = ctxOf(sim);
+  const terrain = ctx.terrain;
+  if (terrain === undefined) return [];
+  const home = terrain.componentOf(terrain.nodeAt(SHIP_AT.x - SHORE_DX, SHIP_AT.y));
+  return freeShips({ world: sim.world, ctx, terrain, seat: SEAT }, home);
+}
 
 describe('a colony scouts its site', () => {
   it('sends a civilian helm round the site on a seat with no soldier, and home', () => {
@@ -68,5 +106,85 @@ describe('a colony scouts its site', () => {
     expect(stepUntil(sim, FIT_OUT_TICKS, () => colonyState(sim)?.ship !== null)).toBe(true);
     expect(colonyState(sim)?.ship).toBe(oneShip.ship);
     expect(colonyState(sim)?.scout).toBeNull();
+  });
+});
+
+/** The people of `list` standing on the east island. */
+function ashoreEast(sim: Simulation, list: readonly Entity[]): Entity[] {
+  const ctx = ctxOf(sim);
+  const terrain = ctx.terrain;
+  const land = colonyState(sim)?.land;
+  return list.filter((e) => {
+    const p = sim.world.tryGet(e, Position);
+    if (p === undefined || terrain === undefined) return false;
+    const { hx, hy } = nodeOfPosition(p.x, p.y);
+    return terrain.componentOf(terrain.nodeAt(hx, hy)) === land;
+  });
+}
+
+describe('a colony sails', () => {
+  it('takes one party and the manifest over the strait in a second small ship', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    const first = mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    const ship = mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, LOAD_DUE_TICKS, () => colonyState(sim)?.phase === 'sailing')).toBe(true);
+    expect(colonyState(sim)?.scout).toBeNull();
+    const people = colonyState(sim)?.people ?? [];
+    expect(people.length).toBeGreaterThanOrEqual(PARTY_LEAST);
+    expect(holdLoad(sim.world, ship)).toBeGreaterThan(0);
+    const wanted = [...(sim.world.get(ship, VehicleStock).lines.values() ?? [])];
+    expect(wanted.some((line) => line.wanted === 0)).toBe(false);
+    expect(stepUntil(sim, SAIL_DUE_TICKS, () => colonyState(sim)?.phase === 'founding')).toBe(true);
+    expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => holdLoad(sim.world, ship) === 0)).toBe(true);
+    expect(stepUntil(sim, UNLOAD_DUE_TICKS, () => ashoreEast(sim, people).length === people.length)).toBe(
+      true,
+    );
+    expect(colonyHeldShips(sim.world, SEAT)).toContain(ship);
+    expect(vehicleCommander(sim.world.get(ship, Vehicle))).toBeNull();
+    expect(sim.world.get(first, Vehicle).passengers.every((seat) => seat === null)).toBe(true);
+    expect(freeShipsOf(sim)).toContain(first);
+  });
+
+  it('sends ten and the manifest in a trade ship and the rest in the scout ship, which sails home', () => {
+    const sim = colonyWorld(SEED, colonyContent(true));
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    const scout = mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    const trade = mooredShip(sim, BIG_SHIP, SECOND_SHIP_AT);
+    expect(stepUntil(sim, LOAD_DUE_TICKS, () => colonyState(sim)?.phase === 'sailing')).toBe(true);
+    expect(colonyState(sim)?.ship).toBe(trade);
+    const { people = [], rest = [] } = colonyState(sim) ?? {};
+    expect(people).toHaveLength(TRADE_SHIP_SEATS);
+    expect(rest.length).toBeGreaterThan(0);
+    const helm = rest[0] as Entity;
+    expect(sim.world.has(helm, Female)).toBe(false);
+    expect(stepUntil(sim, SAIL_DUE_TICKS, () => colonyState(sim)?.scout === null)).toBe(true);
+    expect(ashoreEast(sim, rest.slice(1))).toHaveLength(rest.length - 1);
+    expect(colonyHeldShips(sim.world, SEAT)).toEqual([trade]);
+    expect(stepUntil(sim, UNLOAD_TICKS, () => !sim.world.has(helm, Rider))).toBe(true);
+    expect(ashoreEast(sim, [helm])).toEqual([]);
+    expect(freeShipsOf(sim)).toContain(scout);
+  });
+
+  it('comes back from a save at sea exactly as it would have gone on', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    const ship = mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    stepUntil(sim, LOAD_DUE_TICKS, () => colonyState(sim)?.phase === 'sailing');
+    stepUntil(sim, LOAD_DUE_TICKS, () => !sim.world.get(ship, Vehicle).moored);
+    const saved = parseSaveGame(JSON.parse(serializeSaveGame(exportSaveGame(sim))));
+    const copy = restoreSimulation(saved, { content: colonyContent(), map: colonyIslands() });
+    expect(colonyState(copy)?.phase).toBe('sailing');
+    expect(copy.hashState()).toBe(sim.hashState());
+    for (let t = 0; t < AFTER_SAVE_TICKS; t++) {
+      sim.step();
+      copy.step();
+    }
+    expect(colonyState(copy)?.phase).toBe('founding');
+    expect(copy.hashState()).toBe(sim.hashState());
   });
 });

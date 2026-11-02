@@ -2,9 +2,11 @@ import {
   type ColonyScout,
   ComputerColony,
   type ComputerColonyState,
+  Female,
   mapBriefOf,
   Vehicle,
   VehicleDrive,
+  vehicleCommander,
   vehiclePassengers,
   zoneOfNode,
 } from '../../../components/index.js';
@@ -17,15 +19,18 @@ import { civilianCount } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
 import { interactionCell } from '../../settlers/targets/index.js';
 import { mooringSpotsOf } from '../../vehicles/dock.js';
+import { isCargoHand, isLoaderRider } from '../../vehicles/stock.js';
 import { seatBaseOf } from '../base.js';
 import { minutesToTicks } from '../game-phase.js';
-import { freeShips, otherShore } from '../military/operations/landing.js';
+import { freeShips, LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
 import { believedLand, underFire } from '../military/operations/landing-target.js';
 import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { SEA_SCOUT_TRIP_TIMEOUT_TICKS, scoutLoop } from '../military/operations/sea-scout.js';
 import { shorePoints } from '../sea-route.js';
+import { holdDone, holdLoad, holdsStoreBill, manifestInStock, pinHold, wantManifest } from './cargo.js';
 import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
-import { spareMen } from './people.js';
+import { boardOrders, pickParty, spareMen } from './people.js';
+import { homeStockOf } from './stock.js';
 import { colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 
 export type ColonyView = DeepReadonly<ComputerColonyState>;
@@ -55,6 +60,15 @@ const HELM_BOARD_TICKS = minutesToTicks(4);
 const RETURN_TIMEOUT_TICKS = SEA_SCOUT_TRIP_TIMEOUT_TICKS;
 /** How long the second ship may take once the first is home (authored). */
 const COLONY_FIT_OUT_TICKS = minutesToTicks(20);
+/** How long a party loads before it sails with what it has (authored). Seen on
+ *  arabskie_wyspy_wolna_gra_mieszana: eight hands bring 34 to 46 units in it. */
+const COLONY_LOAD_TICKS = minutesToTicks(6);
+/** How long a ship may sail out (authored: a landing's sail limit). */
+const COLONY_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
+/** The men kept aboard beside the helm to empty the hold. */
+const COLONY_LANDING_HANDS = 5;
+/** How long they get before they step ashore and leave what is left aboard (authored). */
+const COLONY_UNLOAD_TICKS = minutesToTicks(5);
 /** The shores a site's fire test keeps, nearest the site first (authored): enough that one whose ground
  *  refuses a store leaves others to try. */
 const SHORE_CANDIDATES = 6;
@@ -258,32 +272,224 @@ function crewed(world: World, ship: Entity): boolean {
   return state !== undefined && vehiclePassengers(state).some((rider) => rider.inside);
 }
 
+function shipId(env: ColonyEnv, ship: Entity): string | undefined {
+  const type = env.world.tryGet(ship, Vehicle)?.vehicleType;
+  return type === undefined ? undefined : contentIndex(env.ctx.content).vehicles.get(type)?.id;
+}
+
 /** The seat's free moored ship that may carry its colony: a trade ship where its tribe builds one. */
 function carryingShip(env: ColonyEnv): Entity | null {
   const { world, ctx, seat } = env;
-  const vehicles = contentIndex(ctx.content).vehicles;
   const wantsTrade = mayBuildTradeShip(world, ctx, seat);
   const free = freeShips(env, homeLandOf(env));
-  const fits = (e: Entity): boolean =>
-    !wantsTrade || vehicles.get(world.get(e, Vehicle).vehicleType)?.id === TRADE_SHIP_ID;
-  return free.find(fits) ?? null;
+  return free.find((e) => !wantsTrade || shipId(env, e) === TRADE_SHIP_ID) ?? null;
+}
+
+/** Hand the party to the ships: the colony ship's seats, and with a `scout` ship the rest behind a man at
+ *  its helm. */
+function splitParty(
+  world: World,
+  party: readonly Entity[],
+  ship: Entity,
+  scout: Entity | null,
+): { readonly people: Entity[]; readonly rest: Entity[] } {
+  const seats = world.get(ship, Vehicle).passengers.length;
+  if (scout === null) return { people: party.slice(0, seats), rest: [] };
+  const men = party.filter((e) => !world.has(e, Female));
+  const women = party.filter((e) => world.has(e, Female));
+  const helm = men.pop();
+  const people = [...men, ...women].slice(0, seats);
+  const rest = [...men, ...women].slice(seats);
+  return { people, rest: helm === undefined ? rest : [helm, ...rest] };
 }
 
 /**
- * Fitting out: the second ship is claimed as soon as it lies free. Past {@link COLONY_FIT_OUT_TICKS} with none
- * the scout ship carries the whole party; with no ship at all, the voyage fails.
+ * Fitting out: the second ship is claimed as soon as it lies free. Past {@link COLONY_FIT_OUT_TICKS} with
+ * none the scout ship carries the whole party; with no ship at all the voyage fails. The same span then runs
+ * for the manifest to lie in the home stock and a party to be spared: the site is looked at once more and
+ * loading starts. A scout ship the party does not need goes free here.
  */
 export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
-  const { ctx } = env;
+  const { world, ctx, seat } = env;
+  const late = ctx.tick - colony.since >= COLONY_FIT_OUT_TICKS;
   if (colony.ship === null) {
-    const late = ctx.tick - colony.since >= COLONY_FIT_OUT_TICKS;
     const ship = carryingShip(env) ?? (late ? (colony.scout?.ship ?? null) : null);
     if (ship === null) return late ? turnHome(env, false) : [];
     const live = env.edit();
     live.ship = ship;
+    live.since = ctx.tick;
     if (ship === colony.scout?.ship) live.scout = null;
+    return [];
   }
-  return [];
+  const ship = colony.ship;
+  if (!world.has(ship, Vehicle)) {
+    env.edit().ship = null;
+    return [];
+  }
+  if (late) return turnHome(env, false);
+  const home = homeLandOf(env);
+  if (!mooredOn(env, ship, home) || !manifestInStock(world, ctx, homeStockOf(world, ctx, seat), ship))
+    return [];
+  const party = pickParty(world, ctx, seat, home);
+  if (party.length === 0) return [];
+  if (!colonySiteClear(world, ctx, seat, colony.site)) return turnHome(env, true);
+  const tradeShip = shipId(env, ship) === TRADE_SHIP_ID ? (colony.scout?.ship ?? null) : null;
+  const { people, rest } = splitParty(world, party, ship, tradeShip);
+  const live = env.edit();
+  live.phase = 'loading';
+  live.since = ctx.tick;
+  live.people = people;
+  live.rest = rest;
+  if (tradeShip === null) live.scout = null;
+  else if (live.scout !== null && rest[0] !== undefined) live.scout.helm = rest[0];
+  return [...boardOrders(world, people, ship), ...wantManifest(ctx, ship)];
+}
+
+/** The home could not fill the hold: the party goes back to work, what lies aboard stays, and the fit-out
+ *  waits on the rest. */
+function backToFittingOut(env: ColonyEnv, ship: Entity): PlayerCommand[] {
+  const mooring = mooringOf(env.world, ship);
+  const live = env.edit();
+  live.phase = 'fittingOut';
+  live.since = env.ctx.tick;
+  live.people = [];
+  live.rest = [];
+  return mooring === null ? [] : [unloadAt(ship, mooring)];
+}
+
+/**
+ * Loading: the riders fetch the manifest until the hold is done or {@link COLONY_LOAD_TICKS} pass, twice that
+ * while it lacks a warehouse's bill, and then the party goes back ashore. Else the hold is pinned, or hands would
+ * fetch at the far shore, and each ship docks at a shore of its own, boarding its crew first.
+ */
+export function loading(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { world, ctx, seat } = env;
+  const ship = colony.ship;
+  if (ship === null || !world.has(ship, Vehicle)) return turnHome(env, false);
+  const elapsed = ctx.tick - colony.since;
+  const billed = holdsStoreBill(world, ctx, ship);
+  if (!holdDone(world, ship) && (elapsed < COLONY_LOAD_TICKS || (!billed && elapsed < 2 * COLONY_LOAD_TICKS)))
+    return [];
+  if (!billed) return backToFittingOut(env, ship);
+  if (!colonySiteClear(world, ctx, seat, colony.site)) return turnHome(env, true);
+  const [shore, second] = colonyShores(env, ship, colony.land, { hx: colony.site.hx, hy: colony.site.hy });
+  if (shore === undefined) return turnHome(env, true);
+  const live = env.edit();
+  live.phase = 'sailing';
+  live.since = ctx.tick;
+  live.shore = shore;
+  const commands = [...pinHold(world, ship), dock(ship, shore)];
+  const scout = colony.scout?.ship;
+  if (scout !== undefined && world.has(scout, Vehicle))
+    commands.push(...boardOrders(world, colony.rest, scout), dock(scout, second ?? shore));
+  return commands;
+}
+
+/**
+ * Sailing: the colony ship moored on the site's land ends it. A dock refused or spent short goes to another
+ * shore of that land. The ship lost, nobody lands and the voyage fails; out past {@link COLONY_SAIL_TICKS}
+ * every ship turns home.
+ */
+export function sailing(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { world, ctx } = env;
+  const { ship, shore } = colony;
+  if (ship === null || !world.has(ship, Vehicle)) return turnHome(env, false);
+  if (mooredOn(env, ship, colony.land)) {
+    const live = env.edit();
+    live.phase = 'landing';
+    live.since = ctx.tick;
+    return [];
+  }
+  if (ctx.tick - colony.since >= COLONY_SAIL_TICKS) return turnHome(env, false);
+  if (!lyingStill(world, ship) || shore === null) return [];
+  const next = otherShore(env, ship, shore) ?? shore;
+  env.edit().shore = next;
+  return [dock(ship, next)];
+}
+
+/** The riders of `ship` but its helm, and with `hands` that many men besides, step ashore. */
+function setAshore(world: World, ctx: SystemContext, ship: Entity, hands: number): PlayerCommand[] {
+  const state = world.tryGet(ship, Vehicle);
+  if (state === undefined) return [];
+  const helm = vehicleCommander(state);
+  let kept = 0;
+  const commands: PlayerCommand[] = [];
+  for (const seat of vehiclePassengers(state)) {
+    if (seat.entity === helm || !world.isAlive(seat.entity)) continue;
+    if (
+      kept < hands &&
+      isCargoHand(world, ctx.content, ship, seat.entity) &&
+      isLoaderRider(world, ctx.content, seat.entity)
+    ) {
+      kept++;
+      continue;
+    }
+    commands.push({ kind: 'detachFromVehicle', entity: seat.entity });
+  }
+  return commands;
+}
+
+/** The scout ship's part of a landing: moored on the site's land it sets the rest ashore and sails home
+ *  with its helm, who steps off there and goes back to the seat, and the ship with him. */
+function bringScoutHome(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { world, ctx } = env;
+  const scout = colony.scout;
+  if (scout === null) return [];
+  if (!world.has(scout.ship, Vehicle) || !world.isAlive(scout.helm)) {
+    env.edit().scout = null;
+    return [];
+  }
+  if (!lyingStill(world, scout.ship) || colony.berth === null) return [];
+  const riders = world.tryGet(scout.ship, Vehicle);
+  if (riders !== undefined && vehiclePassengers(riders).length > 1) {
+    if (mooredOn(env, scout.ship, colony.land)) return setAshore(world, ctx, scout.ship, 0);
+    if (mooredOn(env, scout.ship, homeLandOf(env)) || colony.shore === null) return [];
+    return [dock(scout.ship, otherShore(env, scout.ship, colony.shore) ?? colony.shore)];
+  }
+  const mooring = mooringOf(world, scout.ship);
+  if (mooring === null || !mooredOn(env, scout.ship, homeLandOf(env)))
+    return [dock(scout.ship, otherShore(env, scout.ship, colony.berth) ?? colony.berth)];
+  const live = env.edit();
+  live.scout = null;
+  live.rest = live.rest.filter((e) => e !== scout.helm);
+  return [unloadAt(scout.ship, mooring)];
+}
+
+/**
+ * Landing: at the shore every rider but the helm and {@link COLONY_LANDING_HANDS} hands steps ashore, and the
+ * hands empty the hold into a warehouse within reach, or onto the ground at their feet. Founding starts as
+ * the passengers stand ashore. The hands follow them once the hold is empty, or past {@link COLONY_UNLOAD_TICKS}.
+ */
+export function landing(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { world, ctx } = env;
+  const ship = colony.ship;
+  if (ship === null || !world.has(ship, Vehicle)) return turnHome(env, false);
+  const live = env.edit();
+  live.phase = 'founding';
+  live.since = ctx.tick;
+  return [
+    { kind: 'clearVehicleWanted', vehicle: ship },
+    ...setAshore(world, ctx, ship, COLONY_LANDING_HANDS),
+  ];
+}
+
+/** Whether the hold is empty or out of time: the hands are done. */
+export function unloaded(env: ColonyEnv, colony: ColonyView, ship: Entity): boolean {
+  return holdLoad(env.world, ship) === 0 || env.ctx.tick - colony.since >= COLONY_UNLOAD_TICKS;
+}
+
+/** What a founding colony's ships still do: the scout ship goes home, and an unloaded hold's riders step
+ *  ashore, the helm too: an empty hold feeds nobody, and the moored ship stays the colony's. */
+export function afterLanding(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { world } = env;
+  const commands = bringScoutHome(env, colony);
+  const ship = colony.ship;
+  const state = ship === null ? undefined : world.tryGet(ship, Vehicle);
+  const mooring = ship === null ? null : mooringOf(world, ship);
+  if (ship === null || state === undefined || mooring === null) return commands;
+  if (vehiclePassengers(state).length > 0 && unloaded(env, colony, ship))
+    commands.push(unloadAt(ship, mooring));
+  return commands;
 }
 
 /** A voyage with no helm or hull left to bring home: the scout ship is let go. */
@@ -339,8 +545,8 @@ export function scouting(
 }
 
 /**
- * Returning: each held ship docks at home, at another shore when that is refused, and lets its riders go
- * there. Past {@link RETURN_TIMEOUT_TICKS} a ship moored anywhere lets them go where it lies and one still at
+ * Returning: each held ship docks at home, at another shore when that is refused, empties its hold and lets
+ * its riders go there. Past {@link RETURN_TIMEOUT_TICKS} a ship moored anywhere lets them go where it lies and one still at
  * sea is let go. Then the seat moves on from the site.
  */
 export function returning(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
@@ -352,7 +558,11 @@ export function returning(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   for (const ship of heldShips(colony)) {
     if (!world.has(ship, Vehicle)) continue;
     const mooring = mooringOf(world, ship);
-    if (mooring !== null && (mooredOn(env, ship, home) || late)) commands.push(unloadAt(ship, mooring));
+    if (mooring !== null && mooredOn(env, ship, home) && !late && holdLoad(world, ship) > 0) {
+      out = true;
+      commands.push({ kind: 'clearVehicleWanted', vehicle: ship });
+    } else if (mooring !== null && (mooredOn(env, ship, home) || late))
+      commands.push(unloadAt(ship, mooring));
     else if (!late) {
       out = true;
       if (lyingStill(world, ship) && colony.berth !== null)

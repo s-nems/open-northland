@@ -10,7 +10,18 @@ import { moduleBeatDue, POPULATION_PHASE } from '../../ai-shared/cadence.js';
 import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
-import { type ColonyEnv, chooseSite, claimScoutShip, fittingOut, returning, scouting } from './voyage.js';
+import {
+  afterLanding,
+  type ColonyEnv,
+  chooseSite,
+  claimScoutShip,
+  fittingOut,
+  landing,
+  loading,
+  returning,
+  sailing,
+  scouting,
+} from './voyage.js';
 
 /** Every how many decisions a seat with no colony surveys for one (authored): the survey's cost once a
  *  game minute. */
@@ -35,6 +46,15 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
       return colony.scout === null ? [] : scouting(env, colony, colony.scout);
     case 'fittingOut':
       return fittingOut(env, colony);
+    case 'loading':
+      return loading(env, colony);
+    case 'sailing':
+      return sailing(env, colony);
+    case 'landing':
+      return landing(env, colony);
+    case 'founding':
+    case 'running':
+      return afterLanding(env, colony);
     case 'returning':
       return returning(env, colony);
     default:
