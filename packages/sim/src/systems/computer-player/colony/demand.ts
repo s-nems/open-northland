@@ -82,6 +82,8 @@ export interface HomewardRead {
   /** What home lacks of a staple to its comfort and to its glut line. */
   readonly lackToComfort: (good: number) => number;
   readonly lackToGlut: (good: number) => number;
+  /** What the colony's workshops made, past what it keeps: home could not make it, so it sails first. */
+  readonly crafted: readonly number[];
   /** Other goods that sail home, ascending. */
   readonly finished: readonly number[];
 }
@@ -108,8 +110,8 @@ function shareOut(lines: Map<number, number>, wants: ReadonlyMap<number, number>
 }
 
 /**
- * The homeward load: staples past what the colony keeps, shared up to home's comfort, then up to its glut,
- * then any finished good the colony holds past that. A staple home has at its glut stays,
+ * The homeward load: what its workshops made, then staples past what the colony keeps, shared up to home's
+ * comfort, then up to its glut, then any finished good the colony holds past that. A staple home has at its glut stays,
  * since a hold unloaded into full stores would only heap at the shore.
  */
 export function homewardCargo(read: HomewardRead): CargoLine[] {
@@ -118,7 +120,9 @@ export function homewardCargo(read: HomewardRead): CargoLine[] {
   const lines = new Map<number, number>();
   const upTo = (lack: (good: number) => number): Map<number, number> =>
     new Map(read.staples.map((good) => [good, Math.min(past(good), lack(good))]));
-  let room = shareOut(lines, upTo(read.lackToComfort), read.room);
+  let room = read.room;
+  for (const good of read.crafted) room = take(lines, good, past(good), room, past(good));
+  room = shareOut(lines, upTo(read.lackToComfort), room);
   room = shareOut(lines, upTo(read.lackToGlut), room);
   for (const good of read.finished) room = take(lines, good, past(good), room, past(good));
   return asLines(lines);

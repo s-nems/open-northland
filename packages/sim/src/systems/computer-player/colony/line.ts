@@ -361,11 +361,11 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
   const staples = LAND_GOOD_IDS.flatMap((id) => goodTypeByContentId(ctx.content, id)?.typeId ?? []);
   const water = goodTypeByContentId(ctx.content, WATER_ID)?.typeId;
   const units = withWorkshopOutput(env, buildings, held);
-  const finished = [...units.keys()]
+  const made = workshopGoods(env, buildings);
+  const sails = [...units.keys()]
     .filter(
       (good) =>
         !staples.includes(good) &&
-        !kept.has(good) &&
         !isEdibleFoodIn(ctx.content, good) &&
         !supply.atGlut(good) &&
         good !== water,
@@ -381,7 +381,8 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
       const glut = supply.lines(good)?.glut;
       return glut === undefined ? 0 : Math.max(0, glut - (supply.surplus(good) ?? 0));
     },
-    finished,
+    crafted: sails.filter((good) => made.has(good)),
+    finished: sails.filter((good) => !made.has(good) && !kept.has(good)),
   });
 }
 

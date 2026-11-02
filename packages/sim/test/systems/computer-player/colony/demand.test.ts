@@ -33,6 +33,7 @@ const homeward = (read: Partial<HomewardRead>): HomewardRead => ({
   kept: new Map(),
   lackToComfort: () => PLENTY,
   lackToGlut: () => PLENTY,
+  crafted: [],
   finished: [],
   ...read,
 });
@@ -114,6 +115,19 @@ describe('a homeward load', () => {
       }),
     );
     expect(lines).toEqual([{ goodType: WOOD, amount: 35 }]);
+  });
+
+  it('takes what the workshops made ahead of the staples', () => {
+    const lines = homewardCargo(
+      homeward({
+        held: new Map([
+          [WOOD, 45],
+          [SWORD, 5],
+        ]),
+        crafted: [SWORD],
+      }),
+    );
+    expect(lines[0]).toEqual({ goodType: SWORD, amount: 5 });
   });
 
   it('fills what is left with finished goods', () => {
