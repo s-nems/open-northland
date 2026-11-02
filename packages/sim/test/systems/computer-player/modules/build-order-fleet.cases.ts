@@ -1,7 +1,12 @@
 import { type ContentSet, parseContentSet } from '@open-northland/data';
 import { describe, expect, it } from 'vitest';
 import {
+  AiControl,
   Building,
+  type ColonyScout,
+  ComputerColony,
+  type ComputerColonyState,
+  computerModuleEnables,
   JobAssignment,
   Owner,
   Settler,
@@ -14,6 +19,7 @@ import type { Command } from '../../../../src/core/commands/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import { Simulation, type TerrainMap } from '../../../../src/index.js';
 import { withinNodeRadius } from '../../../../src/nav/node-circle.js';
+import { NO_COMPONENT } from '../../../../src/nav/terrain/index.js';
 import { anchorNodeOf } from '../../../../src/systems/ai-shared/node-geometry.js';
 import { ownedBuildings } from '../../../../src/systems/ai-shared/seat-roster.js';
 import { AI_PROFILES } from '../../../../src/systems/computer-player/difficulty.js';
@@ -83,6 +89,9 @@ const SHIP_LOGIC_SIZE = 2;
 const CATAPULT_LOGIC_SIZE = 1;
 /** The vehicle goods the top-tier joinery's crew builds on a yard. */
 const SHIP_GOOD = 40;
+const TRADE_SHIP_GOOD = 43;
+const TRADE_SHIP_HOUSE_TYPE = 65;
+const SHIP_BIG = 4;
 const CATAPULT_GOOD = 41;
 /** A good no collector gathers, in the small ship's bill under {@link fleetContent}'s `hidesInShips`. */
 const HIDE_GOOD = 42;
@@ -137,6 +146,7 @@ function fleetContent(hidesInShips = false): ContentSet {
     goods: [
       ...base.goods,
       { typeId: SHIP_GOOD, id: 'ship_small', weight: 0, vehicleHouse: SHIP_HOUSE_TYPE },
+      { typeId: TRADE_SHIP_GOOD, id: 'ship_big', weight: 0, vehicleHouse: TRADE_SHIP_HOUSE_TYPE },
       { typeId: CATAPULT_GOOD, id: 'catapult', weight: 0, vehicleHouse: CATAPULT_HOUSE_TYPE },
       { typeId: HIDE_GOOD, id: 'leather', weight: 1 },
     ],
@@ -160,8 +170,8 @@ function fleetContent(hidesInShips = false): ContentSet {
           { jobType: JOINER, count: TOP_JOINERY_JOINERS },
           { jobType: CARRIER, count: 1 },
         ],
-        produces: [SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON],
-        recipes: [SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON].map((goodType) => ({
+        produces: [SHIP_GOOD, TRADE_SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON],
+        recipes: [SHIP_GOOD, TRADE_SHIP_GOOD, CATAPULT_GOOD, TOOL_IRON].map((goodType) => ({
           inputs: hidesInShips && goodType === TOOL_IRON ? [hide] : [],
           outputs: [{ goodType, amount: 1 }],
           ticks: 180,
@@ -175,6 +185,15 @@ function fleetContent(hidesInShips = false): ContentSet {
         vehicleType: SHIP_SMALL,
         ignoreContinents: true,
         construction: hidesInShips ? [...bill, hide] : bill,
+        footprint: { blocked: SHIP_HULL, familyBody: SHIP_HULL, reserved: SHIP_HULL, door: SHIP_DOOR },
+      },
+      {
+        typeId: TRADE_SHIP_HOUSE_TYPE,
+        id: 'ship_big',
+        kind: 'vehicle',
+        vehicleType: SHIP_BIG,
+        ignoreContinents: true,
+        construction: bill,
         footprint: { blocked: SHIP_HULL, familyBody: SHIP_HULL, reserved: SHIP_HULL, door: SHIP_DOOR },
       },
       {
@@ -203,6 +222,16 @@ function fleetContent(hidesInShips = false): ContentSet {
         cargoGoods: [WOOD],
       },
       {
+        typeId: SHIP_BIG,
+        id: 'ship_big',
+        jobId: 53,
+        hitpoints: 5000,
+        stockSlots: 200,
+        passengerSlots: 9,
+        logicSize: SHIP_LOGIC_SIZE,
+        cargoGoods: [WOOD],
+      },
+      {
         typeId: CATAPULT,
         id: 'catapult',
         jobId: 54,
@@ -215,6 +244,26 @@ function fleetContent(hidesInShips = false): ContentSet {
     ],
   });
 }
+
+/** A colony waiting for its second ship; the case adds the scout ship. */
+const fittingOutColony = (scout: ColonyScout): ComputerColonyState => ({
+  phase: 'fittingOut',
+  since: 0,
+  land: NO_COMPONENT,
+  site: { hx: 0, hy: 0 },
+  shore: null,
+  berth: null,
+  ship: null,
+  people: [],
+  rest: [],
+  failures: 0,
+  rejected: [],
+  retryAt: 0,
+  builds: [],
+  line: null,
+  overflow: [],
+  scout,
+});
 
 const MAP_W = 128;
 const MAP_H = 64;
@@ -767,6 +816,31 @@ describe('workforce - the top-tier joineries’ roles', () => {
     const [sunk] = fleet;
     if (sunk === undefined) throw new Error('setup: a ship');
     removeVehicle(sim.world, fleetCtx(sim), sunk, 'script');
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+  });
+
+  it('turns the ship crew to the trade ship its colony owes, and back once the colony holds one', () => {
+    const content = fleetContent();
+    const { sim, joineries } = crewedJoineries(seaMap(), [AWAY], content);
+    const [joinery] = joineries;
+    if (joinery === undefined) throw new Error('setup: one joinery');
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
+    const carrier = sim.world.create();
+    sim.world.add(carrier, AiControl, {
+      player: SEAT,
+      computerEnabled: true,
+      modules: computerModuleEnables({}),
+      mapAiEnabled: true,
+      difficulty: 'hard',
+    });
+    const scout = fleetShip(sim, 0);
+    sim.world.add(
+      carrier,
+      ComputerColony,
+      fittingOutColony({ ship: scout, helm: joinery, waypoints: [], leg: 0 }),
+    );
+    expect(tuned(sim)).toEqual(new Map([[joinery, all(TRADE_SHIP_GOOD)]]));
+    sim.world.mut(carrier, ComputerColony).ship = scout;
     expect(tuned(sim)).toEqual(new Map([[joinery, all(SHIP_GOOD)]]));
   });
 

@@ -9,6 +9,7 @@ import {
   zoneOfNode,
 } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
+import { contentIndex } from '../../../core/content-index.js';
 import type { DeepReadonly, Entity, World } from '../../../ecs/world.js';
 import type { HalfCellNode } from '../../../nav/halfcell.js';
 import { NO_COMPONENT, type TerrainGraph } from '../../../nav/terrain/index.js';
@@ -23,6 +24,7 @@ import { believedLand, underFire } from '../military/operations/landing-target.j
 import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { SEA_SCOUT_TRIP_TIMEOUT_TICKS, scoutLoop } from '../military/operations/sea-scout.js';
 import { shorePoints } from '../sea-route.js';
+import { mayBuildTradeShip, TRADE_SHIP_ID } from './fleet.js';
 import { spareMen } from './people.js';
 import { colonySiteClear, siteBlockHolds, surveyColonySite } from './survey.js';
 
@@ -51,6 +53,8 @@ const HELM_BOARD_TICKS = minutesToTicks(4);
 /** How long a ship sailing home keeps the colony waiting before it is let go where it is (authored: a full
  *  scouting trip, the longest a ship stays out). */
 const RETURN_TIMEOUT_TICKS = SEA_SCOUT_TRIP_TIMEOUT_TICKS;
+/** How long the second ship may take once the first is home (authored). */
+const COLONY_FIT_OUT_TICKS = minutesToTicks(20);
 /** The shores a site's fire test keeps, nearest the site first (authored): enough that one whose ground
  *  refuses a store leaves others to try. */
 const SHORE_CANDIDATES = 6;
@@ -252,6 +256,34 @@ function heldShips(colony: ColonyView): Entity[] {
 function crewed(world: World, ship: Entity): boolean {
   const state = world.tryGet(ship, Vehicle);
   return state !== undefined && vehiclePassengers(state).some((rider) => rider.inside);
+}
+
+/** The seat's free moored ship that may carry its colony: a trade ship where its tribe builds one. */
+function carryingShip(env: ColonyEnv): Entity | null {
+  const { world, ctx, seat } = env;
+  const vehicles = contentIndex(ctx.content).vehicles;
+  const wantsTrade = mayBuildTradeShip(world, ctx, seat);
+  const free = freeShips(env, homeLandOf(env));
+  const fits = (e: Entity): boolean =>
+    !wantsTrade || vehicles.get(world.get(e, Vehicle).vehicleType)?.id === TRADE_SHIP_ID;
+  return free.find(fits) ?? null;
+}
+
+/**
+ * Fitting out: the second ship is claimed as soon as it lies free. Past {@link COLONY_FIT_OUT_TICKS} with none
+ * the scout ship carries the whole party; with no ship at all, the voyage fails.
+ */
+export function fittingOut(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
+  const { ctx } = env;
+  if (colony.ship === null) {
+    const late = ctx.tick - colony.since >= COLONY_FIT_OUT_TICKS;
+    const ship = carryingShip(env) ?? (late ? (colony.scout?.ship ?? null) : null);
+    if (ship === null) return late ? turnHome(env, false) : [];
+    const live = env.edit();
+    live.ship = ship;
+    if (ship === colony.scout?.ship) live.scout = null;
+  }
+  return [];
 }
 
 /** A voyage with no helm or hull left to bring home: the scout ship is let go. */

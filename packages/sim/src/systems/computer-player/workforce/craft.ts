@@ -29,6 +29,7 @@ import { vehicleHouseOfGood } from '../../readviews/index.js';
 import { isCarrierJob } from '../../stores/index.js';
 import { vehicleIndex } from '../../vehicles/registry.js';
 import { militaryWaits, seatArchetype, seatHasSide } from '../build-order/seat-order.js';
+import { colonySmallShips, colonyTradeShips, TRADE_SHIP_ID } from '../colony/fleet.js';
 import type { ComputerProfile } from '../difficulty.js';
 import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type HerdKept, seatHerdKept } from '../herd.js';
@@ -101,10 +102,17 @@ export type FleetSeat = {
   /** Count only the vehicles standing free ({@link standsFree}). */
   readonly freeOnly?: true;
   readonly otherwise: CraftSeat;
-} & ({ readonly cap: number; readonly resume: number } | { readonly cap: typeof LANDING_FLEET });
+} & (
+  | { readonly cap: number; readonly resume: number }
+  | { readonly cap: typeof LANDING_FLEET }
+  | { readonly cap: typeof COLONY_TRADE_FLEET }
+);
 
 /** The cap of a {@link FleetSeat} sized to the army the seat would land. */
 export const LANDING_FLEET = 'landingFleet';
+
+/** The cap of a {@link FleetSeat} sized to the trade ships the seat's colony owes ({@link colonyTradeShips}). */
+export const COLONY_TRADE_FLEET = 'colonyTradeFleet';
 
 /** Owner ruling: a small ship carries 20 soldiers, its 19 passengers and the commander at the helm. */
 export const SOLDIERS_PER_SHIP = 20;
@@ -213,6 +221,9 @@ const HANDCART_SEAT: CraftSeat = {
 /** A joiner of the ship joinery: small ships while the seat's fleet stands under its landing fleet,
  *  counting a sunk ship out, and the upgraded joinery's handcarts and tools between those runs. */
 const SHIP_SEAT: CraftSeat = { fleet: 'ship_small', cap: LANDING_FLEET, otherwise: HANDCART_SEAT };
+
+/** A joiner of the ship joinery while the seat's colony owes a trade ship, else a {@link SHIP_SEAT}. */
+const TRADE_SHIP_SEAT: CraftSeat = { fleet: TRADE_SHIP_ID, cap: COLONY_TRADE_FLEET, otherwise: SHIP_SEAT };
 
 /** The crockery in stock at which the pottery's crockery seat turns to bricks and tiles (authored). A
  *  stocked home eats it beside its food, so no bill or shelf sizes it. */
@@ -498,7 +509,7 @@ export function joineryRolePlans(cap: number, resume: number): JoineryRolePlans 
   return {
     [ROLE_JOINERY_ID]: {
       catapult: { seats: [catapultSeat], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
-      ship: { seats: [SHIP_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
+      ship: { seats: [TRADE_SHIP_SEAT], unfed: NO_IRON_SEAT, sparing: WOODEN_TOOLS },
     },
   };
 }
@@ -720,10 +731,12 @@ export function tuneCraftCounters(
       const sails = seatNeedsShips(world, ctx, player);
       landing =
         (sails ? Math.max(fleet, landingFewestShips(fleet) + SEA_SCOUT_SHIPS) : fleet) +
-        colonyFleetShips(world, ctx, player);
+        colonyFleetShips(world, ctx, player) +
+        colonySmallShips(world, ctx, player);
     }
     return landing;
   };
+  const tradeShips = (): number => colonyTradeShips(world, ctx, player);
   const tribe = playerPlacementTribes(world, player)?.[0];
   const ownedTypes = new Map<string, boolean>();
   const owns = (buildingId: string, siteOnly: boolean): boolean => {
@@ -750,13 +763,13 @@ export function tuneCraftCounters(
     return known;
   };
   const reads = stockReads(world, ctx, player, supply, earned);
-  const reserve = fleetReserve(world, ctx, player, roleOf, landingShips);
+  const reserve = fleetReserve(world, ctx, player, roleOf, landingShips, tradeShips);
   for (const { type, plan, crew, workplaces } of [...crews.values()].flatMap((byType) => [
     ...byType.values(),
   ])) {
     const products = enabledProducts(world, ctx, player, tribe, type);
     const recipeProducts = recipeProductsOf(ctx, type);
-    const choice: SeatChoice = { ctx, supply, fleetOf, landingShips, owns, earned, products };
+    const choice: SeatChoice = { ctx, supply, fleetOf, landingShips, tradeShips, owns, earned, products };
     const counters = crew.map((e) => world.tryGet(e, ProductionCounters));
     const current = counters.map((selection) => selectedGoods(selection, recipeProducts));
     const fed = (good: number, selected: boolean): boolean =>
@@ -917,6 +930,7 @@ function fleetReserve(
   player: number,
   roleOf: (joinery: Entity) => JoineryRole,
   landingShips: () => number,
+  tradeShips: () => number,
 ): ReadonlyMap<number, number> {
   const index = contentIndex(ctx.content);
   const house = smallestShipHouse(index);
@@ -930,12 +944,18 @@ function fleetReserve(
   let standing = 0;
   for (const e of vehicleIndex(world).ownedBy(player))
     if (world.get(e, Vehicle).vehicleType === vehicleType) standing++;
-  const missing = landingShips() - standing;
-  if (missing <= 0) return NO_RESERVE;
+  const missing = Math.max(0, landingShips() - standing);
+  const trade = tradeShips();
+  if (missing === 0 && trade === 0) return NO_RESERVE;
   const collected = new Set(COLLECTED_GOOD_IDS.flatMap((id) => index.goodTypeBySlug.get(id) ?? []));
   const reserve = new Map<number, number>();
-  for (const line of index.constructionBillByBuilding.get(house) ?? [])
-    if (!collected.has(line.goodType)) reserve.set(line.goodType, missing * line.amount);
+  const hold = (ship: number | undefined, ships: number): void => {
+    for (const line of index.constructionBillByBuilding.get(ship ?? -1) ?? [])
+      if (!collected.has(line.goodType))
+        reserve.set(line.goodType, (reserve.get(line.goodType) ?? 0) + ships * line.amount);
+  };
+  hold(house, missing);
+  hold(index.buildingTypeBySlug.get(TRADE_SHIP_ID), trade);
   return reserve;
 }
 
@@ -1142,6 +1162,8 @@ interface SeatChoice {
   readonly fleetOf: (good: number, freeOnly: boolean) => number;
   /** The ships the seat's joinery builds: its {@link landingFleetShips}, with room for {@link SEA_SCOUT_SHIPS}. */
   readonly landingShips: () => number;
+  /** The trade ships the seat's colony owes ({@link colonyTradeShips}). */
+  readonly tradeShips: () => number;
   /** Whether the seat owns a building of the type with this stable content id, standing or a site, or
    *  with `siteOnly` a site still under construction. */
   readonly owns: (buildingId: string, siteOnly: boolean) => boolean;
@@ -1177,9 +1199,11 @@ function seatProducts(
     const limit =
       seat.cap === LANDING_FLEET
         ? choice.landingShips()
-        : current.includes(good.typeId)
-          ? seat.cap
-          : seat.resume + 1;
+        : seat.cap === COLONY_TRADE_FLEET
+          ? choice.tradeShips()
+          : current.includes(good.typeId)
+            ? seat.cap
+            : seat.resume + 1;
     return fleetOf(good.typeId, seat.freeOnly === true) < limit
       ? [seat.fleet, ...(seat.beside ?? [])]
       : seatProducts(choice, current, seat.otherwise);
