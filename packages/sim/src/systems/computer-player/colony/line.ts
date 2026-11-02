@@ -35,7 +35,7 @@ import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
 import { colonists, colonyOrigin } from './founding.js';
 import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
-import { billsOf, COLONY_OPEN_SITES, colonyPlan } from './plan.js';
+import { billsOf, COLONY_OPEN_SITES, colonyPlan, ladderAhead } from './plan.js';
 import { handsWanted, menPastWork } from './posts.js';
 import { colonyMakes, LAND_GOOD_IDS, storesHeld } from './provision.js';
 import { colonyBuildings } from './spot.js';
@@ -260,6 +260,7 @@ function colonyStores(env: ColonyEnv, colony: ColonyView): ColonyStores {
   addUp(owed, billsOf(env, plan.slice(0, COLONY_OPEN_SITES)));
   const kept = new Map(owed);
   addUp(kept, billsOf(env, plan.slice(COLONY_OPEN_SITES)));
+  addUp(kept, billsOf(env, ladderAhead(env, colony, buildings)));
   addUp(kept, standingWants(env, buildings));
   const from = colonyOrigin(env, colony, buildings);
   return {

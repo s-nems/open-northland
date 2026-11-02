@@ -343,6 +343,17 @@ function homesLacking(env: ColonyEnv, colony: ColonyView, buildings: readonly En
   return new Array<string>(Math.max(0, wanted - chainCount(env, buildings, type))).fill(HOME_ID);
 }
 
+/** The buildings the colony's ladders still hold for its ground, whatever the moment: what it keeps goods
+ *  for though no step is due. */
+export function ladderAhead(
+  env: ColonyEnv,
+  colony: ColonyView,
+  buildings: readonly Entity[],
+): readonly string[] {
+  const ladder = ladderRead(env, colony, buildings);
+  return ladder === null ? [] : stepsAhead(ladder).map((step) => step.building);
+}
+
 /** What the colony means to raise, in order: its unplaced rows; then its next food step, its homes, and what
  *  the ladder's bills and theirs make worth raising. */
 export function colonyPlan(
