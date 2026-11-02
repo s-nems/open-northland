@@ -1,5 +1,6 @@
 import {
   Building,
+  ComputerColony,
   Position,
   playerPlacementTribes,
   Rider,
@@ -21,7 +22,7 @@ import { nearestLiveResource, reachableResourceTest, workableResourceTest } from
 import { scoutBusy } from '../scout/index.js';
 import { corridorSamples, signpostTargetAround } from '../scout/signpost-coverage.js';
 import { isOverflowBuilding } from './overflow.js';
-import { colonyFamilies } from './people.js';
+import { colonyFamilies, standsOn } from './people.js';
 import { COLONY_OPEN_SITES, COLONY_SPOT_NODES, colonyPlan, stepGround } from './plan.js';
 import { type FoundingRead, fillPosts } from './posts.js';
 import { LAND_GOOD_IDS } from './provision.js';
@@ -35,12 +36,14 @@ export const COLONY_BUILDS: readonly string[] = [COLONY_STORE_BUILDING_ID];
 /** How far from the first store a deposit gets a second one, in Manhattan nodes (authored: a hold's hands'
  *  reach, past which the carriers' trips outweigh a store's bill). */
 const SECOND_STORE_NODES = 40;
-/** The people standing on the colony: everyone of the seat out of the home view but those aboard. */
+/** The people standing on the colony: those of the seat out of the home view on its land. A man listed for
+ *  the line but still walking to the ship is not one yet, or a workshop on the far shore would post him. */
 export function colonists(env: ColonyEnv): Entity[] {
-  const { world, ctx, seat } = env;
+  const { world, ctx, seat, carrier } = env;
   const home = new Set(homeSettlers(world, ctx, seat));
+  const land = world.get(carrier, ComputerColony).land;
   return everySettlerOf(world, seat).filter(
-    (e) => !home.has(e) && !world.has(e, Rider) && world.has(e, Position),
+    (e) => !home.has(e) && !world.has(e, Rider) && world.has(e, Position) && standsOn(world, ctx, e, land),
   );
 }
 

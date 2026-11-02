@@ -32,7 +32,9 @@ import {
 } from '../../../../src/systems/computer-player/build-order/entries.js';
 import { entryStatuses } from '../../../../src/systems/computer-player/build-order/progress.js';
 import { seatBuildOrder } from '../../../../src/systems/computer-player/build-order/seat-order.js';
+import { colonists } from '../../../../src/systems/computer-player/colony/founding.js';
 import { homeStockOf } from '../../../../src/systems/computer-player/colony/stock.js';
+import type { ColonyEnv } from '../../../../src/systems/computer-player/colony/voyage.js';
 import { computerProfileOf } from '../../../../src/systems/computer-player/difficulty.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { stockAtBuildings } from '../../../../src/systems/stores/index.js';
@@ -158,6 +160,26 @@ describe('overflow production', () => {
       return colonists.filter((e) => now.has(e));
     };
     expect(stepUntil(sim, HOME_DUE_TICKS, () => back().length > 0)).toBe(true);
+  });
+
+  it('counts a man listed for the line no colonist until he lands', () => {
+    const { sim } = runningWorld('barracks');
+    const ctx = ctxOf(sim);
+    const carrier = aiControlEntity(sim.world, SEAT) as Entity;
+    const terrain = ctx.terrain;
+    if (terrain === undefined) throw new Error('setup: no terrain');
+    const env: ColonyEnv = {
+      world: sim.world,
+      ctx,
+      terrain,
+      seat: SEAT,
+      carrier,
+      edit: () => sim.world.mut(carrier, ComputerColony),
+    };
+    const walking = homeSettlers(sim.world, ctx, SEAT)[0] as Entity;
+    sim.world.mut(carrier, ComputerColony).rest.push(walking);
+    expect(homeSettlers(sim.world, ctx, SEAT)).not.toContain(walking);
+    expect(colonists(env)).not.toContain(walking);
   });
 
   it('gives the step back once the colony is lost', () => {
