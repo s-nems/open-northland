@@ -120,7 +120,8 @@ function drawGroundPlan(seat: Seat, carrier: Entity, order: BuildOrder, statuses
     const plot = plotOf(seat, step);
     if (plot !== null) world.mut(carrier, GroundPlan).plots.push(plot);
   }
-  const homes = fittingHomes(seat);
+  const { plots } = world.get(carrier, GroundPlan);
+  const homes = plots.length === 0 ? NO_ROOM_HOMES : fittingHomes(seat);
   if (homes < NO_ROOM_HOMES) world.mut(carrier, GroundPlan).homes = homes;
 }
 
@@ -345,8 +346,6 @@ function reviewPlots(seat: Seat, carrier: Entity, order: BuildOrder, statuses: L
   }
   if (changed) world.mut(carrier, GroundPlan).plots = kept;
   if (ctx.tick >= plan.reviewTick) reviewGround(seat, carrier, order, statuses);
-  if (changed && world.get(carrier, GroundPlan).plots.length === 0)
-    world.mut(carrier, GroundPlan).homes = NO_ROOM_HOMES;
 }
 
 function reviewGround(seat: Seat, carrier: Entity, order: BuildOrder, statuses: LineStatuses): void {
@@ -358,4 +357,9 @@ function reviewGround(seat: Seat, carrier: Entity, order: BuildOrder, statuses: 
     const plot = plotOf(seat, step);
     if (plot !== null) world.mut(carrier, GroundPlan).plots.push(plot);
   }
+  const { plots, homes } = world.get(carrier, GroundPlan);
+  if (homes >= NO_ROOM_HOMES) return;
+  // Felled trees and freed plots lift the cut; with no plot left nothing needs it.
+  const lifted = plots.length === 0 ? NO_ROOM_HOMES : Math.max(homes, fittingHomes(seat));
+  if (lifted !== homes) world.mut(carrier, GroundPlan).homes = lifted;
 }

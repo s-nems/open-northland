@@ -264,13 +264,18 @@ describe('ground plan', () => {
   });
 
   it('cuts the homes to what fits beside the plots, within the floor and the seat cap', () => {
-    const homesOn = (stripEnd: number) => {
-      const sim = island(stripEnd);
-      decide(sim, [HOMES]);
-      return seatHomesCap(sim.world, SEAT, NO_ROOM_HOMES + 1);
-    };
-    expect(homesOn(LONG_END)).toBe(NO_ROOM_HOMES);
-    expect(homesOn(TINY_END)).toBe(PLANNED_HOMES_FLOOR);
+    // With nothing to keep the plan cuts nothing, however little fits.
+    const unplotted = island(TINY_END);
+    decide(unplotted, [HOMES]);
+    expect(seatHomesCap(unplotted.world, SEAT, NO_ROOM_HOMES + 1)).toBe(NO_ROOM_HOMES);
+
+    // Short of room only while a plot waits, and lifted at the review once it is gone.
+    const plotted = island(BARRACKS_AND_HOME_END);
+    decide(plotted, [HELD_BARRACKS]);
+    expect(seatHomesCap(plotted.world, SEAT, NO_ROOM_HOMES + 1)).toBe(PLANNED_HOMES_FLOOR);
+    settle(plotted, [BARRACKS]);
+    reviewed(plotted, [BARRACKS]);
+    expect(seatHomesCap(plotted.world, SEAT, NO_ROOM_HOMES + 1)).toBe(NO_ROOM_HOMES);
   });
 
   it('plots ground to clear where no free fit is left, and aims the clearing there', () => {
