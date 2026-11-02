@@ -5,6 +5,7 @@ export { activeAgreement, agreementsAt, type HouseAgreement, isTradingHouse } fr
 export { applyTradeCommand, canAttachTradeHouse, registerTradeAgreement } from './commands.js';
 export { planTrader } from './drive.js';
 export { sameFoodClass } from './goods.js';
+export { planShipHelper } from './helpers.js';
 export {
   fetchFromTradeShip,
   loadTraderHold,

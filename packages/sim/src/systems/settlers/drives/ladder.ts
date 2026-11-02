@@ -30,9 +30,10 @@ import { isFisherJob, MILITARY_MODE } from '../../readviews/index.js';
 import { type NavigationLimit, navigationLimitFor } from '../../signposts/index.js';
 import { planGossipIdle, planGossipSeek } from '../../social/index.js';
 import { isCarrierJob } from '../../stores/index.js';
-import { planTrader } from '../../trade/index.js';
+import { planShipHelper, planTrader } from '../../trade/index.js';
 import { planRider } from '../../vehicles/boarding.js';
 import { abandonCargoRun } from '../../vehicles/cargo.js';
+import { pinnedTraderOf } from '../../vehicles/crew.js';
 import { parkHaulingCart } from '../../vehicles/hauling-cart.js';
 import { heldOffEconomy } from '../action-owner.js';
 import { jobCanBuild } from '../atomics/start.js';
@@ -204,13 +205,13 @@ function planBreak(
   // deviation from the original's pending-need gate on the board request): the order is a forced
   // boarding, and a need waits for the ride. Any cargo booking is given back first, and a rider with a
   // unit on its back runs the ladder down to the delivery rung before it answers, so nothing rides
-  // aboard in its hands. Whatever the rider waited in, it steps out of.
-  if (world.tryGet(e, Rider)?.boarding === true) {
-    abandonCargoRun(world, e);
-    if (
-      (load === undefined || load.amount <= 0) &&
-      planRider(world, ctx, terrain, e, pass.spacing, pass.idle)
-    ) {
+  // aboard in its hands; a helper of a pinned ship keeps its booking and finishes that trip on its own
+  // rung. Whatever the rider waited in, it steps out of.
+  const seat = world.tryGet(e, Rider);
+  if (seat?.boarding === true) {
+    const loaded = load !== undefined && load.amount > 0;
+    if (!loaded || pinnedTraderOf(world, seat.vehicle) === null) abandonCargoRun(world, e);
+    if (!loaded && planRider(world, ctx, terrain, e, pass.spacing, pass.idle)) {
       stepOut(world, e);
       return true;
     }
@@ -270,7 +271,8 @@ function planBreak(
   // A vehicle's crew, above every errand and trade: a cargo hand serves its vehicle's hold and places a
   // unit the hold will not take; any rider walks to the door and steps in when asked. A rider of no hold
   // work holding a load runs the ladder down to the delivery rung first, so it is not parked at the door
-  // with its hands full.
+  // with its hands full. A pinned ship's carrier helps its trader first; the rung below refuses it.
+  if (planShipHelper(plan, load)) return true;
   if (planVehicleCargo(plan, load)) return true;
   if (
     (load === undefined || load.amount <= 0) &&

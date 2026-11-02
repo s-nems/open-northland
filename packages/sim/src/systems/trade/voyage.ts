@@ -8,12 +8,14 @@ import {
   Vehicle,
   VehicleDrive,
   VehicleOrderQueue,
+  vehiclePassengers,
 } from '../../components/index.js';
 import { TICKS_PER_SECOND } from '../../core/loop.js';
 import type { Entity, World } from '../../ecs/world.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import type { System, SystemContext } from '../context.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
+import { boardCrew } from '../vehicles/boarding.js';
 import { boardRider, landingOf, landRider, releaseRider } from '../vehicles/crew.js';
 import { startDock } from '../vehicles/dock.js';
 import { releaseTradeShip, stowCartOnShip } from '../vehicles/hauling-cart.js';
@@ -31,13 +33,20 @@ export function boardTradeShip(world: World, trader: Entity, ship: Entity): void
   boardRider(world, trader, ship);
 }
 
-/** The trader steps ashore on the ship's landing, its cart with it, and the planner takes it up. */
+/** The trader steps ashore on the ship's landing, its cart with it, and the planner takes it up. Its
+ *  helpers step ashore with it and keep their seats; one still asked aboard is asked no more. */
 function landTrader(world: World, ctx: SystemContext, trader: Entity, ship: Entity): void {
   const landing = landingOf(world, ctx, ship);
   if (landing === null) return;
   landRider(world, ctx, trader, landing);
   releaseRider(world, trader, ship);
   wakeIdle(world, trader);
+  for (const seat of vehiclePassengers(world.get(ship, Vehicle))) {
+    if (seat.inside) landRider(world, ctx, seat.entity, landing);
+    else if (world.tryGet(seat.entity, Rider)?.boarding === true)
+      world.mut(seat.entity, Rider).boarding = false;
+    wakeIdle(world, seat.entity);
+  }
 }
 
 /** Whether the ship lies at `target`, its mooring point. */
@@ -100,6 +109,7 @@ function sail(world: World, ctx: SystemContext, terrain: TerrainGraph, trader: E
     if (state.moored) landTrader(world, ctx, trader, ship);
     return;
   }
+  if (!boardCrew(world, ctx, ship)) return; // helpers come aboard first, a unit in hand finished
   const { x, y } = terrain.coordsOf(target);
   if (startDock(world, ctx, terrain, ship, { hx: x, hy: y })) return;
   const pin = world.mut(trader, TradeShip);

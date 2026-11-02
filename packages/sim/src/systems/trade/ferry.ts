@@ -127,10 +127,11 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
   return setOut(plan, hold, mooringTargetOfStop(world, ctx, terrain, ship, other), true, rules);
 }
 
-/** The near good a lift into the ship moves next, with room there: `first` while the near hold has it,
- *  so a load in hand does not push out a unit still owed, else the first good the ship takes. */
+/** The near good a lift into the ship moves next, with room there past a helper's booking: `first` while
+ *  the near hold has it, so a load in hand does not push out a unit still owed, else the first good the
+ *  ship takes. */
 function stowableGood(hold: FerryHold, first?: number): number | undefined {
-  if (hold.aboard.room <= 0) return undefined;
+  if (Math.min(hold.aboard.room, hold.booked.room) <= 0) return undefined;
   if (first !== undefined && hold.near.amount(first) > 0 && hold.aboard.carries(first)) return first;
   return hold.near.entries.find(([good]) => hold.aboard.carries(good))?.[0];
 }
@@ -145,13 +146,13 @@ function nextFetch(
   good: number,
   rules: StopRules,
 ): number | undefined {
-  const { near, aboard } = hold;
+  const { near } = hold;
   if (near.room <= 0) return undefined;
-  if (near.amount(good) <= 0) return aboard.amount(good) > 0 ? good : undefined;
+  if (near.amount(good) <= 0) return hold.liftable(good) > 0 ? good : undefined;
   if (!standsAtShip(plan, hold.ship)) return undefined;
-  const entries = hold.entries.filter(([aboardGood]) => aboard.amount(aboardGood) > 0);
+  const entries = hold.entries.filter(([aboardGood]) => hold.liftable(aboardGood) > 0);
   const more = rules.decide({ ...hold, entries });
-  return more.kind === 'unload' && aboard.amount(more.good) > 0 ? more.good : undefined;
+  return more.kind === 'unload' && hold.liftable(more.good) > 0 ? more.good : undefined;
 }
 
 /** Whether the trader stands at the ship's door, where a lift needs no walk. */

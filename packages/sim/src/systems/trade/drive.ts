@@ -41,7 +41,7 @@ import { haulingCartLiftTicks, parkHaulingCart } from '../vehicles/hauling-cart.
 import { activeAgreement } from './agreements.js';
 import { planCrossing, planShipOrder, seaLegOf, takeStopAtHand } from './ferry.js';
 import { sameFoodClass } from './goods.js';
-import { cartStands, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
+import { cartStands, NO_HELPERS, TRADE_CART_HOUSE_DISTANCE, type TraderHold, traderHoldOf } from './hold.js';
 import { refillRestores } from './partner-stock.js';
 import { settlementHouses } from './settlement.js';
 
@@ -146,7 +146,9 @@ function setsOutForOtherStop(
 ): boolean {
   const { world, entity: e } = plan;
   if (isForeignHouse(world, e, stop.house) || isForeignHouse(world, e, other.house)) return true;
-  return decideDomestic(loadScope(plan, hold, other, stop), hold, stop).kind !== 'next';
+  // The helpers work this stop; the question is about the other one.
+  const there = { ...hold, helpers: NO_HELPERS };
+  return decideDomestic(loadScope(plan, there, other, stop), there, stop).kind !== 'next';
 }
 
 function loadScope(
@@ -243,7 +245,7 @@ function walkTo(plan: PlannerContext, house: Entity, start: () => void): void {
 
 /** Drop the stops whose house fell; reports whether a full route of finished houses is left to work. A
  *  house being upgraded holds the trader until it stands finished again. */
-function routeStandsFinished(world: World, e: Entity): boolean {
+export function routeStandsFinished(world: World, e: Entity): boolean {
   dropFallenTradeStops(world, e);
   const { stops } = world.get(e, TradeRoute);
   return (
@@ -412,8 +414,8 @@ function resetExchange(world: World, trader: Entity): void {
  *   what is aboard, and unloaded while the other stop holds more (score `(here - there - aboard) / 2`).
  * - A mark limits the flow into its own stop: nothing is unloaded there once the stop holds `upTo`
  *   units, nothing is loaded for it once its stock plus what is aboard reaches `upTo`, and loading for
- *   it leaves `keep` units in the other stop. A balanced good is two such flows, each limited by the
- *   mark at the stop it flows into. Approximation: `keep` stands in for the original's per-house
+ *   it leaves `keep` units in the other stop, each counting what a pinned ship's helpers have under way.
+ *   A balanced good is two such flows, each limited by the mark at the stop it flows into. Approximation: `keep` stands in for the original's per-house
  *   minimum stock setting, and the `upTo` ceiling is this build's own addition (owner's choice).
  * - With no mark on either stop nothing moves. The original then balances every good; this build waits
  *   for the player's marks instead (owner's choice).
@@ -432,18 +434,20 @@ function decideDomestic(
     return at.imports.find((mark) => mark.good === good || mark.good === edible);
   };
   const hereType = world.get(stop.house, Building).buildingType;
+  const { helpers } = hold;
 
   for (const [good, aboard] of hold.entries) {
     const slot = storableFormAt(world, ctx, stop.house, good);
-    if (slot === undefined || roomFor(world, ctx, stop.house, slot) <= 0) continue;
+    const coming = helpers.toHouse(good);
+    if (slot === undefined || roomFor(world, ctx, stop.house, slot) - coming <= 0) continue;
+    const held = stockOf(world, stop.house, slot) + coming;
     const wantedHere = markOf(stop, good);
     const wantedThere = markOf(other, good);
     if (wantedThere !== undefined && wantedHere === undefined) continue;
-    if (wantedHere !== undefined && reachesCeiling(wantedHere, stockOf(world, stop.house, slot))) continue;
+    if (wantedHere !== undefined && reachesCeiling(wantedHere, held)) continue;
     if (wantedHere !== undefined && wantedThere !== undefined) {
       const there = storableFormAt(world, ctx, other.house, good);
-      const shortfall =
-        (there === undefined ? 0 : stockOf(world, other.house, there)) - stockOf(world, stop.house, slot);
+      const shortfall = (there === undefined ? 0 : stockOf(world, other.house, there)) - held;
       if (there !== undefined && Math.floor((aboard + shortfall) / 2) <= 0) continue;
     }
     return { kind: 'unload', good, into: stop.house };
@@ -459,16 +463,29 @@ function decideDomestic(
     if (slot === undefined || roomFor(world, ctx, other.house, slot) - hold.amount(carried) <= 0) continue;
     const bound = stockOf(world, other.house, slot) + hold.amount(carried);
     if (reachesCeiling(wantedThere, bound)) continue;
+    const leaving = helpers.toLift(carried);
     if (markOf(stop, good) !== undefined) {
       // A balanced good weighs the two houses alone, settlement or not.
-      if (spareOf(world, ctx, stop.house, good) - wantedThere.keep <= 0) continue;
-      if (Math.floor((stockOf(world, stop.house, good) - bound) / 2) <= 0) continue;
+      if (spareOf(world, ctx, stop.house, good) - wantedThere.keep - leaving <= 0) continue;
+      if (Math.floor((stockOf(world, stop.house, good) - leaving - bound) / 2) <= 0) continue;
       return { kind: 'load', good, from: stop.house };
     }
-    const source = loadSourceOf(scope, good, wantedThere.keep);
+    const source = loadSourceOf(scope, good, wantedThere.keep + leaving);
     if (source !== undefined) return { kind: 'load', ...source };
   }
   return NEXT;
+}
+
+/** {@link decideDomestic} at `stop` over `hold`, as a helper of `trader`'s pinned ship asks it. */
+export function decideForHelper(
+  plan: PlannerContext,
+  trader: Entity,
+  hold: TraderHold,
+  stop: DeepReadonly<TradeStop>,
+  other: DeepReadonly<TradeStop>,
+): StopWork | NextStop {
+  const { world, ctx, terrain } = plan;
+  return decideDomestic({ world, ctx, terrain, trader, hold, stop, exclude: other.house }, hold, other);
 }
 
 /** A house to load one unit of a good out of, and the form it holds the good in. */
@@ -591,7 +608,12 @@ function stockedFormAt(world: World, ctx: ContentContext, house: Entity, good: n
 }
 
 /** The slot a house takes `good` into, on any of its shelves, inputs included; undefined with none. */
-function storableFormAt(world: World, ctx: ContentContext, house: Entity, good: number): number | undefined {
+export function storableFormAt(
+  world: World,
+  ctx: ContentContext,
+  house: Entity,
+  good: number,
+): number | undefined {
   const type = world.get(house, Building).buildingType;
   if (typeStoresGood(ctx, type, good)) return good;
   const edible = edibleGoodFormOf(ctx.content, good);

@@ -2,6 +2,7 @@ import type { ContentSet, VehicleType } from '@open-northland/data';
 import {
   CARRY_CAPACITY,
   Carrying,
+  fillCommanderSeat,
   HaulingCart,
   type HaulingLift,
   JobAssignment,
@@ -26,6 +27,7 @@ import { sendUnit } from '../orders/movement.js';
 import { isCarrierJobRow, isTrader } from '../readviews/jobs.js';
 import { addCarry, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
 import { pickupFromStore, pileupIntoStore } from '../settlers/atomics/effects/goods/transfer.js';
+import { abandonCargoRun } from './cargo.js';
 import { attachToVehicle, doorReachable, passengerJobAllowed, placeOnNode } from './crew.js';
 import { cartLiftTicks, cartSpeedLossPercent, isCartType } from './drag.js';
 import { endDrive, isOpenLand } from './movement.js';
@@ -398,13 +400,19 @@ export function dropHauler(world: World, vehicle: Entity): void {
 
 /**
  * Drop the trader's pin, the ship free for anyone again, its hold as it stands. A trader aboard stays a
- * plain commander, and its carried cart a plain carried vehicle. Nothing happens without a pin.
+ * plain commander, and its carried cart a plain carried vehicle; with the trader ashore or gone the first
+ * helper takes the commander's slot, and every helper's booking lapses. Nothing happens without a pin.
  */
 export function releaseTradeShip(world: World, trader: Entity): void {
   const ship = world.tryGet(trader, TradeShip)?.vehicle;
   if (ship === undefined) return;
   world.remove(trader, TradeShip);
-  if (world.tryGet(ship, Vehicle)?.hauler === trader) world.mut(ship, Vehicle).hauler = null;
+  const state = world.tryGet(ship, Vehicle);
+  if (state?.hauler === trader) {
+    world.mut(ship, Vehicle).hauler = null;
+    for (const seat of vehiclePassengers(state)) abandonCargoRun(world, seat.entity);
+    fillCommanderSeat(world, ship);
+  }
   const cart = world.tryGet(trader, HaulingCart)?.vehicle;
   if (cart !== undefined && world.tryGet(cart, Vehicle)?.carrier === ship) abandonHaulingCart(world, trader);
 }

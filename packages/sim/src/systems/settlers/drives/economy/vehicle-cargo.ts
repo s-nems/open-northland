@@ -146,7 +146,7 @@ function bringLoad(
  * to a consumer or a pile point near the carrier). The rung places it itself, so no stance or errand
  * below it holds a hand with a load at the door.
  */
-function placeRefusedLoad(
+export function placeRefusedLoad(
   plan: PlannerContext,
   door: NodeId,
   load: { goodType: number; amount: number },

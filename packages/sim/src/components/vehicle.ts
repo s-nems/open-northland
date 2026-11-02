@@ -184,8 +184,8 @@ export const HaulingCart = defineComponent<{
 
 /**
  * The ship a player pinned to a trader's sea route (owner's choice; the original's sea trader job is an
- * empty stub), the ship's `Vehicle.hauler` naming the trader back so nobody else boards or loads it. The
- * route owns the ship's hold. `dockRetryAt` is the tick before which a failed voyage is not tried again,
+ * empty stub), the ship's `Vehicle.hauler` naming the trader back so nobody boards or loads it but the
+ * carriers assigned to help (`trade/helpers.ts`). The route owns the ship's hold. `dockRetryAt` is the tick before which a failed voyage is not tried again,
  * `failedDock` the mooring point that last failed, so a ship already on that shore stays where it lies.
  */
 export const TradeShip = defineComponent<{
@@ -348,14 +348,22 @@ export function hasFreeSeat(vehicle: VehicleStateView): boolean {
   return vehicle.passengers.some((seat) => seat === null);
 }
 
+/** Whether an ordinary passenger slot is free, the commander's left out. */
+export function hasFreeOrdinarySeat(vehicle: VehicleStateView): boolean {
+  const commander = commanderSlotOf(vehicle.passengers.length - 1);
+  return vehicle.passengers.some((seat, i) => i !== commander && seat === null);
+}
+
 /**
  * Seat `rider` on `vehicle`: the commander slot first, then the lowest free ordinary slot, the original's
- * attach order. False when every slot is taken; the caller has already checked the job gate.
+ * attach order; a held vehicle keeps the commander slot for its hauler, whom a ship's helpers leave it to.
+ * False when every open slot is taken; the caller has already checked the job gate.
  */
 export function seatPassenger(world: World, vehicle: Entity, rider: Entity): boolean {
   const current = world.get(vehicle, Vehicle);
   const commander = commanderSlotOf(current.passengers.length - 1);
-  let slot = current.passengers[commander] === null ? commander : -1;
+  const open = current.hauler === null || current.hauler === rider;
+  let slot = open && current.passengers[commander] === null ? commander : -1;
   if (slot < 0) slot = current.passengers.findIndex((seat, i) => i !== commander && seat === null);
   if (slot < 0) return false;
   world.mut(vehicle, Vehicle).passengers[slot] = { entity: rider, inside: false };
@@ -373,23 +381,29 @@ export function setSeatInside(world: World, vehicle: Entity, rider: Entity, insi
   return true;
 }
 
+/** Move the first ordinary passenger into a free commander slot, if any rides. */
+export function fillCommanderSeat(world: World, vehicle: Entity): void {
+  const current = world.get(vehicle, Vehicle);
+  const commander = commanderSlotOf(current.passengers.length - 1);
+  if (current.passengers[commander] !== null) return;
+  const next = current.passengers.findIndex((seat, i) => i !== commander && seat !== null);
+  if (next < 0) return;
+  const live = world.mut(vehicle, Vehicle);
+  live.passengers[commander] = live.passengers[next] ?? null;
+  live.passengers[next] = null;
+}
+
 /**
  * Free `rider`'s slot. A departing commander is replaced by the first ordinary passenger (the original
- * promotes the first remaining rider whose job the type allows; the caller applies that gate). False
- * when the rider was not aboard.
+ * promotes the first remaining rider whose job the type allows; the caller applies that gate), but a held
+ * vehicle's slot waits for its hauler. False when the rider was not aboard.
  */
 export function unseatPassenger(world: World, vehicle: Entity, rider: Entity): boolean {
   const current = world.get(vehicle, Vehicle);
   const slot = current.passengers.findIndex((seat) => seat !== null && seat.entity === rider);
   if (slot < 0) return false;
   const commander = commanderSlotOf(current.passengers.length - 1);
-  const live = world.mut(vehicle, Vehicle);
-  live.passengers[slot] = null;
-  if (slot !== commander) return true;
-  const next = live.passengers.findIndex((seat, i) => i !== commander && seat !== null);
-  if (next >= 0) {
-    live.passengers[commander] = live.passengers[next] ?? null;
-    live.passengers[next] = null;
-  }
+  world.mut(vehicle, Vehicle).passengers[slot] = null;
+  if (slot === commander && current.hauler === null) fillCommanderSeat(world, vehicle);
   return true;
 }

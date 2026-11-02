@@ -1,20 +1,23 @@
 import {
   CARRY_CAPACITY,
+  CargoRun,
   Carrying,
   HaulingCart,
   isForeignHouse,
   ownerOf,
   Position,
+  Rider,
   recordGoodsTraded,
   TradeRoute,
   TradeShip,
   Vehicle,
   VehicleStock,
-  vehicleLoad,
+  type VehicleStockLine,
+  vehiclePassengers,
   vehicleStockEntries,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
-import type { Entity, World } from '../../ecs/world.js';
+import type { DeepReadonly, Entity, World } from '../../ecs/world.js';
 import type { ContentContext, SystemContext } from '../context.js';
 import { stockOf } from '../missions/stock.js';
 import { grantTradeExperience } from '../progression/index.js';
@@ -22,6 +25,8 @@ import { edibleGoodFormOf } from '../readviews/food.js';
 import { addCarry, dropCarryAtOwnTile, shrinkCarry } from '../settlers/atomics/effects/goods/carry.js';
 import { cappedByStorageMinimum } from '../settlers/targets/stores/storage-reserve.js';
 import { accessibleStockAmounts, bankedSlot, setAccessibleStockAmount } from '../stores/index.js';
+import { abandonCargoRun } from '../vehicles/cargo.js';
+import { pinnedTraderOf } from '../vehicles/crew.js';
 import { isCartType } from '../vehicles/drag.js';
 import { tradeVehicleStock, vehicleLineCap, vehicleStockGood } from '../vehicles/stock.js';
 import { activeAgreement } from './agreements.js';
@@ -53,20 +58,36 @@ export interface TraderHold {
   /** Whether the hold takes `good` at all: a cart by its `logicgood` list, dishes through their edible
    *  form; the hands take any good. */
   carries(good: number): boolean;
+  /** The units a pinned ship's helpers have under way at the current stop. */
+  readonly helpers: HelperFlight;
 }
+
+/** What the helpers of a pinned ship have under way, by good: units in neither the ship nor the house. */
+export interface HelperFlight {
+  /** Units bound for the stop's house, on a helper's back or booked out of the ship. */
+  toHouse(good: number): number;
+  /** Units a helper walks to lift, still on the house's shelf. */
+  toLift(good: number): number;
+}
+
+export const NO_HELPERS: HelperFlight = { toHouse: () => 0, toLift: () => 0 };
 
 /**
  * The route's goods on a sea crossing, in the pinned ship and the near hold together: the decisions read
- * one hold, while units move through the near hold alone (`loadTraderHold`, `unloadTraderHold`). A good
- * rides only if both can take it, and a ship's good the near hold refuses stays out of `entries`, since
- * no lift could bring it ashore.
+ * one hold, the ship's share as booked so a helper's unit under way counts, while units move through the
+ * near hold alone (`loadTraderHold`, `unloadTraderHold`). A good rides only if both can take it, and a
+ * ship's good the near hold refuses stays out of `entries`, since no lift could bring it ashore.
  */
 export interface FerryHold extends TraderHold {
   readonly ship: Entity;
   /** The cart or hands, as {@link traderHoldOf} reads them. */
   readonly near: TraderHold;
-  /** The ship's hold alone, `cart` naming the ship. */
+  /** The ship's hold alone, `cart` naming the ship: the units physically aboard. */
   readonly aboard: TraderHold;
+  /** The ship's hold as booked: aboard, plus units on their way in, less units booked out. */
+  readonly booked: TraderHold;
+  /** The units of `good` a lift may take out of the ship: aboard and not booked by a helper. */
+  liftable(good: number): number;
 }
 
 /** The trader's own hauling cart with a hold, or null for a trader on foot. */
@@ -91,19 +112,33 @@ export function traderHoldOf(world: World, ctx: ContentContext, trader: Entity):
       capacity: CARRY_CAPACITY,
       amount: (good) => (held?.goodType === good ? load : 0),
       carries: () => true,
+      helpers: NO_HELPERS,
     };
   }
   return vehicleHoldOf(world, ctx, cart);
 }
 
-/** A detached read of `vehicle`'s own hold, as a hold of `cart` naming it. */
-function vehicleHoldOf(world: World, ctx: ContentContext, vehicle: Entity): TraderHold {
+type LineUnits = (line: DeepReadonly<VehicleStockLine>) => number;
+
+const unitsAboard: LineUnits = (line) => line.current;
+const unitsBooked: LineUnits = (line) => line.reserved;
+
+/** A detached read of `vehicle`'s own hold, as a hold of `cart` naming it, its lines read by `unitsOf`. */
+function vehicleHoldOf(
+  world: World,
+  ctx: ContentContext,
+  vehicle: Entity,
+  unitsOf: LineUnits = unitsAboard,
+): TraderHold {
   const type = contentIndex(ctx.content).vehicles.get(world.get(vehicle, Vehicle).vehicleType);
   const stock = world.get(vehicle, VehicleStock);
-  const entries = vehicleStockEntries(stock).flatMap(
-    ([good, line]): Array<readonly [number, number]> => (line.current > 0 ? [[good, line.current]] : []),
-  );
-  const load = vehicleLoad(stock);
+  const entries: Array<readonly [number, number]> = [];
+  let load = 0;
+  for (const [good, line] of vehicleStockEntries(stock)) {
+    const units = unitsOf(line);
+    load += units;
+    if (units > 0) entries.push([good, units]);
+  }
   const capacity = type === undefined ? 0 : vehicleLineCap(type);
   return {
     cart: vehicle,
@@ -111,9 +146,39 @@ function vehicleHoldOf(world: World, ctx: ContentContext, vehicle: Entity): Trad
     load,
     room: Math.max(0, capacity - load),
     capacity,
-    amount: (good) => stock.lines.get(good)?.current ?? 0,
+    amount: (good) => {
+      const line = stock.lines.get(good);
+      return line === undefined ? 0 : unitsOf(line);
+    },
     carries: (good) => type !== undefined && vehicleStockGood(ctx.content, type, good) !== null,
+    helpers: NO_HELPERS,
   };
+}
+
+/** What `ship`'s helpers on the map have under way, read off its seats once per decision. */
+function helperFlightOf(world: World, ctx: ContentContext, ship: Entity): HelperFlight {
+  const toHouse = new Map<number, number>();
+  const toLift = new Map<number, number>();
+  const count = (units: Map<number, number>, good: number): void => {
+    const key = edibleGoodFormOf(ctx.content, good);
+    units.set(key, (units.get(key) ?? 0) + 1);
+  };
+  const state = world.get(ship, Vehicle);
+  for (const seat of vehiclePassengers(state)) {
+    if (seat.inside || seat.entity === state.hauler) continue;
+    const run = world.tryGet(seat.entity, CargoRun);
+    const held = world.tryGet(seat.entity, Carrying);
+    const loaded = held !== undefined && held.amount > 0;
+    if (run?.direction === 'load') {
+      if (!loaded) count(toLift, run.goodType);
+    } else if (run !== undefined) count(toHouse, run.goodType);
+    else if (loaded) count(toHouse, held.goodType);
+  }
+  const unitsIn =
+    (units: ReadonlyMap<number, number>) =>
+    (good: number): number =>
+      units.get(edibleGoodFormOf(ctx.content, good)) ?? 0;
+  return { toHouse: unitsIn(toHouse), toLift: unitsIn(toLift) };
 }
 
 /** The trader's hold merged with its pinned `ship`'s, or the near hold alone for a ship with no hold. */
@@ -125,21 +190,25 @@ export function ferryHoldOf(
 ): FerryHold | null {
   if (!world.has(ship, VehicleStock)) return null;
   const aboard = vehicleHoldOf(world, ctx, ship);
+  const booked = vehicleHoldOf(world, ctx, ship, unitsBooked);
   const merged = new Map<number, number>(near.entries);
-  for (const [good, units] of aboard.entries) {
+  for (const [good, units] of booked.entries) {
     if (near.carries(good)) merged.set(good, (merged.get(good) ?? 0) + units);
   }
   return {
     cart: near.cart,
     entries: [...merged].sort(([a], [b]) => a - b),
-    load: near.load + aboard.load,
-    room: near.room + aboard.room,
+    load: near.load + booked.load,
+    room: near.room + booked.room,
     capacity: near.capacity + aboard.capacity,
-    amount: (good) => near.amount(good) + aboard.amount(good),
+    amount: (good) => near.amount(good) + booked.amount(good),
     carries: (good) => near.carries(good) && aboard.carries(good),
+    helpers: helperFlightOf(world, ctx, ship),
     ship,
     near,
     aboard,
+    booked,
+    liftable: (good) => Math.min(aboard.amount(good), booked.amount(good)),
   };
 }
 
@@ -169,40 +238,48 @@ function moveThroughHold(
   return units;
 }
 
-/** Whether `ship` is the trader's pinned ship, lying moored so its door takes a unit. */
-function liftsAtShip(world: World, trader: Entity, ship: Entity): boolean {
-  return world.tryGet(trader, TradeShip)?.vehicle === ship && world.tryGet(ship, Vehicle)?.moored === true;
+/** Whether `lifter` works `ship`, the pinned ship of a trader or a helper's, lying moored so its door
+ *  takes a unit. */
+function liftsAtShip(world: World, lifter: Entity, ship: Entity): boolean {
+  if (world.tryGet(ship, Vehicle)?.moored !== true) return false;
+  if (world.tryGet(lifter, TradeShip)?.vehicle === ship) return true;
+  return world.tryGet(lifter, Rider)?.vehicle === ship && pinnedTraderOf(world, ship) !== null;
 }
 
 /** Resolve one completed `tradeShipStow`: one unit of `goodType` out of the near hold into the pinned
- *  ship's. A unit the ship refuses stays where it is. */
+ *  ship's, a helper's booking given back first since the stow books its unit. A unit the ship refuses
+ *  stays where it is. */
 export function stowIntoTradeShip(
   world: World,
   ctx: ContentContext,
-  trader: Entity,
+  lifter: Entity,
   ship: Entity,
   goodType: number,
 ): void {
-  if (!liftsAtShip(world, trader, ship) || traderHoldOf(world, ctx, trader).amount(goodType) <= 0) return;
+  if (!liftsAtShip(world, lifter, ship) || traderHoldOf(world, ctx, lifter).amount(goodType) <= 0) return;
+  abandonCargoRun(world, lifter);
   if (tradeVehicleStock(world, ship, ctx.content, goodType, 1) === 1) {
-    moveThroughHold(world, ctx, trader, goodType, -1);
+    moveThroughHold(world, ctx, lifter, goodType, -1);
   }
 }
 
 /** Resolve one completed `tradeShipFetch`: one unit of `goodType` out of the pinned ship's hold into the
- *  near hold. A unit the near hold has no room for stays aboard. */
+ *  near hold, a helper's booking given back first since the lift books its unit out; a line a meal
+ *  emptied keeps the lower booking instead. A unit the near hold has no room for stays aboard. */
 export function fetchFromTradeShip(
   world: World,
   ctx: ContentContext,
-  trader: Entity,
+  lifter: Entity,
   ship: Entity,
   goodType: number,
 ): void {
-  if (!liftsAtShip(world, trader, ship)) return;
-  const near = traderHoldOf(world, ctx, trader);
+  if (!liftsAtShip(world, lifter, ship)) return;
+  const near = traderHoldOf(world, ctx, lifter);
   if (near.room <= 0 || !near.carries(goodType)) return;
+  if (vehicleHoldOf(world, ctx, ship).amount(goodType) > 0) abandonCargoRun(world, lifter);
+  else world.remove(lifter, CargoRun);
   if (tradeVehicleStock(world, ship, ctx.content, goodType, -1) !== -1) return;
-  if (moveThroughHold(world, ctx, trader, goodType, 1) !== 1) {
+  if (moveThroughHold(world, ctx, lifter, goodType, 1) !== 1) {
     tradeVehicleStock(world, ship, ctx.content, goodType, 1);
   }
 }

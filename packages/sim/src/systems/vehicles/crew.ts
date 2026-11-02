@@ -5,6 +5,7 @@ import {
   Fleeing,
   HaulingCart,
   HuntFocus,
+  hasFreeOrdinarySeat,
   hasFreeSeat,
   ownerOf,
   PlayerOrder,
@@ -44,6 +45,7 @@ import { releaseTowerPost } from '../settlers/drives/tower-post.js';
 import { stepOut } from '../settlers/indoors.js';
 import { wakeIdle } from '../settlers/planner/idle-replan.js';
 import { endChat } from '../social/gossip/drive.js';
+import { isCarrierJob } from '../stores/workplace.js';
 import { abandonCargoRun } from './cargo.js';
 import { dropHeldGoal, endMarch, vacateSeat } from './movement.js';
 
@@ -57,8 +59,8 @@ export function passengerJobAllowed(type: VehicleType, jobType: number | null): 
 
 /**
  * Whether the attach order would seat `settler` on `vehicle`: the settler's own vehicle, an own vehicle
- * whose type admits the settler's job with a seat free, and a door the settler can walk to: on the
- * settler's own continent, a moored ship's shore or a land vehicle's node (a ship at sea has none). The
+ * whose type admits the settler's job with a seat free ({@link seatOpenTo}), and a door the settler can
+ * walk to: on the settler's own continent, a moored ship's shore or a land vehicle's node (a ship at sea has none). The
  * ring's "Assign Vehicle" pick lights vehicles by it. {@link attachToVehicle} applies the same gates but
  * the walk, which the boarding judges after the attach as the original does, detaching a rider that
  * cannot reach the door.
@@ -70,7 +72,17 @@ export function canAttachToVehicle(world: World, ctx: MapContext, settler: Entit
   if (world.tryGet(settler, Rider)?.vehicle === vehicle) return true;
   const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
   if (type === undefined || !passengerJobAllowed(type, world.get(settler, Settler).jobType)) return false;
-  return state.hauler === null && hasFreeSeat(state) && doorReachable(world, ctx, settler, vehicle);
+  return seatOpenTo(world, ctx, vehicle, settler) && doorReachable(world, ctx, settler, vehicle);
+}
+
+/** Whether the vehicle's lock leaves `settler` a seat: any free seat on a vehicle nobody holds, an ordinary
+ *  one for a carrier on a pinned ship. */
+function seatOpenTo(world: World, ctx: ContentContext, vehicle: Entity, settler: Entity): boolean {
+  const state = world.get(vehicle, Vehicle);
+  if (state.hauler === null) return hasFreeSeat(state);
+  const jobType = world.get(settler, Settler).jobType;
+  if (jobType === null || !isCarrierJob(ctx, jobType)) return false;
+  return pinnedTraderOf(world, vehicle) !== null && hasFreeOrdinarySeat(state);
 }
 
 /**
@@ -98,6 +110,12 @@ export function doorReachable(world: World, ctx: MapContext, settler: Entity, ve
     !terrain.isWalkable(at) ||
     terrain.componentOf(at) === terrain.componentOf(terrain.nodeAt(door.hx, door.hy))
   );
+}
+
+/** The trader `vehicle` is pinned to, by both ends of the pin; null for a hauled cart or any other vehicle. */
+export function pinnedTraderOf(world: World, vehicle: Entity): Entity | null {
+  const hauler = world.tryGet(vehicle, Vehicle)?.hauler ?? null;
+  return hauler !== null && world.tryGet(hauler, TradeShip)?.vehicle === vehicle ? hauler : null;
 }
 
 /**
@@ -183,7 +201,7 @@ export function attachToVehicle(
     refuseRider(world, ctx, e, 'cannotEnter');
     return false;
   }
-  if (state.hauler !== null || !seatPassenger(world, vehicle, e)) {
+  if (!seatOpenTo(world, ctx, vehicle, e) || !seatPassenger(world, vehicle, e)) {
     refuseCrew(world, ctx, vehicle, 'noRoom');
     return false;
   }

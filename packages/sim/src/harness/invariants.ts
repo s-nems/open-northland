@@ -22,6 +22,7 @@ import {
   VehicleDrive,
   VehicleMarchRoute,
   VehicleRoute,
+  vehicleCommander,
 } from '../components/index.js';
 import { contentIndex } from '../core/content-index.js';
 import { ONE } from '../core/fixed.js';
@@ -204,8 +205,8 @@ const haulingCartsLinked: Invariant = (world, content) => {
   return out;
 };
 
-/** A pinned ship and its trader name each other, the ship is a ship, and its hauler link never leads a
- *  cart reader astray. */
+/** A pinned ship and its trader name each other, the ship is a ship, its commander's slot is the trader's
+ *  alone, and its hauler link never leads a cart reader astray. */
 const tradeShipsLinked: Invariant = (world, content) => {
   const out: string[] = [];
   for (const e of world.query(TradeShip)) {
@@ -221,6 +222,10 @@ const tradeShipsLinked: Invariant = (world, content) => {
     }
     if (!isTraderJob(content, world.tryGet(e, Settler)?.jobType ?? null)) {
       out.push(`entity ${e}: holds trade ship ${vehicle} without being a trader`);
+    }
+    const commander = vehicleCommander(state);
+    if (commander !== null && commander !== e) {
+      out.push(`entity ${e}: rider ${commander} holds the commander's slot of its trade ship ${vehicle}`);
     }
   }
   return out;
