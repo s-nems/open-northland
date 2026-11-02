@@ -1,10 +1,8 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createDiplomacyWindow } from '../../../../src/hud/dom/diplomacy-window/index.js';
 import type { DiplomacyPanelRow } from '../../../../src/hud/dom/diplomacy-window/model.js';
-
-// jsdom images cannot decode the stance art; the window draws its glyphs without it.
-vi.mock('../../../../src/hud/dom/notices/art.js', () => ({ createNoticeArt: () => null }));
+import * as noticeArt from '../../../../src/hud/dom/notices/art.js';
 
 const FIRST = 1;
 const SECOND = 2;
@@ -20,7 +18,15 @@ const row = (player: number): DiplomacyPanelRow => ({
   tradeOffers: [],
 });
 
-afterEach(() => document.body.replaceChildren());
+// jsdom images cannot decode the stance art; the window draws its glyphs without it.
+beforeEach(() => {
+  vi.spyOn(noticeArt, 'createNoticeArt').mockReturnValue(null);
+});
+
+afterEach(() => {
+  vi.restoreAllMocks();
+  document.body.replaceChildren();
+});
 
 function mount(onOpenMap: () => boolean = () => true, mapKey: string | null = 'O') {
   let viewer = 0;
