@@ -12,6 +12,7 @@ import { hexDistance } from '../../nav/halfcell.js';
 import type { NodeId, TerrainGraph } from '../../nav/terrain/index.js';
 import { vehicleAnchor } from '../footprint/index.js';
 import { atomicDuration } from '../readviews/animations.js';
+import { edibleGoodFormOf } from '../readviews/food.js';
 import { atOrWalk, PICKUP_ATOMIC_ID, PILEUP_ATOMIC_ID, startAtomic } from '../settlers/atomics/start.js';
 import { fetchHaulingCart } from '../settlers/drives/economy/hauling-cart.js';
 import type { PlannerContext } from '../settlers/planner/context.js';
@@ -103,8 +104,9 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
     case 'wait':
       return rules.wait(near);
     case 'load': {
-      const stow = stowableGood(hold);
-      if (stow !== undefined && standsAtShip(plan, ship)) return liftAtShip(plan, hold, stow, 'stow', rules);
+      const loading = edibleGoodFormOf(ctx.content, action.good);
+      const stow = stowableGood(hold, loading);
+      if (stow === loading && standsAtShip(plan, ship)) return liftAtShip(plan, hold, stow, 'stow', rules);
       if (near.room > 0) return rules.work(near, action);
       if (stow !== undefined) return liftAtShip(plan, hold, stow, 'stow', rules);
       break;
@@ -125,9 +127,11 @@ export function planCrossing(plan: PlannerContext, leg: SeaLeg, near: TraderHold
   return setOut(plan, hold, mooringTargetOfStop(world, ctx, terrain, ship, other), true, rules);
 }
 
-/** The first near good the ship has room for and takes, what a lift into it moves next. */
-function stowableGood(hold: FerryHold): number | undefined {
+/** The near good a lift into the ship moves next, with room there: `first` while the near hold has it,
+ *  so a load in hand does not push out a unit still owed, else the first good the ship takes. */
+function stowableGood(hold: FerryHold, first?: number): number | undefined {
   if (hold.aboard.room <= 0) return undefined;
+  if (first !== undefined && hold.near.amount(first) > 0 && hold.aboard.carries(first)) return first;
   return hold.near.entries.find(([good]) => hold.aboard.carries(good))?.[0];
 }
 

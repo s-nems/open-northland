@@ -113,6 +113,9 @@ const LOAD = 22;
 const VOYAGE_TICKS = 2500;
 const LONG_TICKS = 6000;
 const TICK_STEP = 10;
+/** An agreement that hands over less than the near hold carries and pays out more than it. */
+const FEW_GIVEN = 5;
+const MANY_TAKEN = 20;
 
 function islandMap(): TerrainMap {
   const typeIds = new Array<number>(MAP_W * MAP_H).fill(GRASS);
@@ -398,6 +401,39 @@ describe('a pinned ship on a route between two islands', () => {
     expect(stockOf(sim, home, PLANK)).toBe(LOAD);
     expect(goodsTradedWith(sim.world, HUMAN, NEIGHBOUR)).toBe(LOAD);
     expectSound(sim);
+  });
+
+  it('stows what it loads before what it still owes, so no owed unit goes back into the ship', () => {
+    const sim = newSim();
+    befriend(sim);
+    sim.enqueueSetup({
+      kind: 'addTradeAgreement',
+      missionId: TRADING_POST_ID,
+      giveGood: WOOD,
+      giveAmount: FEW_GIVEN,
+      takeGood: PLANK,
+      takeAmount: MANY_TAKEN,
+    });
+    const home = houseAt(sim, WEST_HOUSE_CELL, HUMAN, [[WOOD, LOAD]]);
+    const post = houseAt(sim, EAST_HOUSE_CELL, NEIGHBOUR, [[PLANK, LOAD]], HOUSE_ROW, TRADING_POST_ID);
+    const { trader, ship } = crossing(sim);
+    attach(sim, trader, home);
+    attach(sim, trader, post);
+    order(sim, { kind: 'setTradeAgreement', entity: trader, agreement: 0 });
+
+    let woodBack = 0;
+    let woodAboard = 0;
+    runUntil(sim, LONG_TICKS, () => {
+      const onEastIsland =
+        sim.world.has(trader, Position) && continentOf(sim, trader) === continentOf(sim, post);
+      const wood = aboard(sim, ship, WOOD);
+      if (onEastIsland && wood > woodAboard) woodBack += wood - woodAboard;
+      woodAboard = wood;
+      return stockOf(sim, home, PLANK) > 0;
+    });
+
+    expect(stockOf(sim, home, PLANK)).toBeGreaterThan(0);
+    expect(woodBack).toBe(0);
   });
 
   it('crosses on foot with one unit in the hands a trip, the rest in the ship', () => {
