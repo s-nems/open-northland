@@ -103,7 +103,7 @@ describe('the Knowledge window', () => {
   });
 
   it('takes the design width, and leaves a gap on each side of a narrow screen', () => {
-    expect(knowledgeWindowWidth({ width: 1920, height: 1080 })).toBe(1240);
-    expect(knowledgeWindowWidth({ width: 1024, height: 768 })).toBe(1000);
+    expect(knowledgeWindowWidth({ width: 1920, height: 1080 })).toBe(1080);
+    expect(knowledgeWindowWidth({ width: 1000, height: 768 })).toBe(976);
   });
 });

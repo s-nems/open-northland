@@ -128,8 +128,9 @@ export function centralWindowPlacer(
     if (key === placed) return false;
     placed = key;
     if (typeof width !== 'number') window.element.style.width = `${drawn}px`;
-    window.place(box.x, box.y);
     window.element.style.maxHeight = `${box.maxHeight}px`;
+    const spare = centred ? Math.max(0, box.maxHeight - window.element.offsetHeight) : 0;
+    window.place(box.x, box.y + Math.round(spare / 2));
     return true;
   };
   const stop = onPlaneResize(plane, () => {

@@ -4,8 +4,9 @@ import type { ToolWindow } from '../../tool-panel/window-shell.js';
 import { centralWindowPlacer, createHudWindow } from '../window.js';
 import type { KnowledgeTarget, KnowledgeView } from './context.js';
 
-/** Largest width that still leaves the game in view, design px. */
-const WINDOW_MAX_W = 1240;
+/** Largest size that still leaves the game in view, design px. */
+const WINDOW_MAX_W = 1080;
+const WINDOW_MAX_H = 720;
 /** Room kept on each side of the window. */
 const SIDE_GAP = 12;
 
@@ -48,7 +49,7 @@ export function createKnowledgeWindow(deps: KnowledgeWindowDeps): KnowledgeWindo
     compact: true,
   });
   window.element.classList.add('kn-window');
-  window.element.style.height = '100%';
+  window.element.style.height = `min(100%, ${WINDOW_MAX_H}px)`;
   window.body.classList.add('on-window__body--column', 'kn-body');
   // The biggest window of the game stays in the middle; it does not step aside for the minimap.
   const placeWindow = centralWindowPlacer(window, deps.plane, knowledgeWindowWidth, { centred: true });
