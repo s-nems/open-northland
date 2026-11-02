@@ -3,6 +3,7 @@ import type { World } from '../../../ecs/world.js';
 import { goodTypeByContentId } from '../../ai-shared/content-lookup.js';
 import type { SystemContext } from '../../context.js';
 import { goodEnabled } from '../../progression/index.js';
+import { lineWayClear } from './sea-danger.js';
 
 /** Owner ruling: a seat that may build it sends its colony in the trade ship, whose hold takes everything. */
 export const TRADE_SHIP_ID = 'ship_big';
@@ -15,22 +16,24 @@ export function mayBuildTradeShip(world: World, ctx: SystemContext, seat: number
 }
 
 /** The carrying ship `seat`'s colony still lacks: 1 from the scout's return until it claims one, and 1 for
- *  a shipping line that lost its ship. */
-function shipOwed(world: World, seat: number): number {
+ *  a shipping line that lost its ship, while a way clear of the fire that took it remains. */
+function shipOwed(world: World, ctx: SystemContext, seat: number): number {
   const carrier = aiControlEntity(world, seat);
   const colony = carrier === null ? undefined : world.tryGet(carrier, ComputerColony);
   if (colony === undefined || colony.ship !== null) return 0;
   const fitting = colony.phase === 'fittingOut' && colony.scout !== null;
   const settled = colony.phase === 'founding' || colony.phase === 'running';
-  return fitting || (settled && colony.line === null) ? 1 : 0;
+  const lineOwed =
+    settled && colony.line === null && lineWayClear(ctx.terrain, colony.dangers, colony.berth, colony.shore);
+  return fitting || lineOwed ? 1 : 0;
 }
 
 /** The trade ships the seat's joinery owes its colony. */
 export function colonyTradeShips(world: World, ctx: SystemContext, seat: number): number {
-  return shipOwed(world, seat) > 0 && mayBuildTradeShip(world, ctx, seat) ? 1 : 0;
+  return shipOwed(world, ctx, seat) > 0 && mayBuildTradeShip(world, ctx, seat) ? 1 : 0;
 }
 
 /** The small ships beside its landing fleet the seat's joinery owes a colony of a tribe with no trade ship. */
 export function colonySmallShips(world: World, ctx: SystemContext, seat: number): number {
-  return mayBuildTradeShip(world, ctx, seat) ? 0 : shipOwed(world, seat);
+  return mayBuildTradeShip(world, ctx, seat) ? 0 : shipOwed(world, ctx, seat);
 }

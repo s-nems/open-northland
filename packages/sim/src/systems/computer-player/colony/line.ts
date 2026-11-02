@@ -2,7 +2,9 @@ import { BUILDING_KIND } from '@open-northland/data';
 import type { ColonyLine, ColonyLineLeg } from '../../../components/ai/colony.js';
 import {
   Building,
+  ComputerColony,
   Female,
+  Health,
   Rider,
   Vehicle,
   VehicleStock,
@@ -29,6 +31,7 @@ import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { computerProfileOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
 import { LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
+import { nodeOfEntity } from '../military/operations/raid-target.js';
 import { shorePoints, strandedShip } from '../sea-route.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, storedFoodUnits } from '../workforce/food.js';
 import { SeatSupply } from '../workforce/supply.js';
@@ -40,6 +43,7 @@ import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { billsOf, COLONY_OPEN_SITES, colonyPlan, ladderAhead } from './plan.js';
 import { handsWanted, menPastWork } from './posts.js';
 import { colonyMakes, LAND_GOOD_IDS, storesHeld, workshopGoods } from './provision.js';
+import { clearWay, lineWayClear, withDanger } from './sea-danger.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
 import {
@@ -65,6 +69,8 @@ const LINE_CREW_LEAST = 2;
 const MEN_PER_LINE_HAND = 3;
 /** Food kept aboard per hand (authored): an empty hold starves its crew, and two meals outlast a leg. */
 const PROVISIONS_PER_HAND = 2;
+/** The passengers a line takes once fire has found it (authored): what a sunk hull may cost. */
+const RIDERS_NEAR_FIRE = 2;
 const FOOD_LINE_ID = 'food_simple';
 /** Drawn where it is drunk: a well stands wherever a workshop wants it, so it never sails. */
 const WATER_ID = 'water';
@@ -123,7 +129,15 @@ export function startLine(env: ColonyEnv, colony: ColonyView, ship: Entity): Pla
   const crew = crewOf(world, ctx, riders, men);
   const live = env.edit();
   live.ship = null;
-  live.line = { ship, crew, leg: 'sailHome', since: ctx.tick, load: 0, lastLoad: ctx.tick };
+  live.line = {
+    ship,
+    crew,
+    leg: 'sailHome',
+    since: ctx.tick,
+    load: 0,
+    lastLoad: ctx.tick,
+    hull: hullOf(world, ship),
+  };
   const berth = homeBerth(env, ship) ?? colony.berth;
   live.berth = berth === null ? null : { hx: berth.hx, hy: berth.hy };
   const commands: PlayerCommand[] = riders
@@ -186,14 +200,25 @@ function doneLoading(env: ColonyEnv, line: LineView): boolean {
   return loaded(env, line) || stalled(env, line) || env.ctx.tick - line.since >= LEG_LOAD_TICKS;
 }
 
-/** Keep the record of the hold and the crew: only a change writes, as each write drops the home view. */
-function noteLine(env: ColonyEnv, line: LineView): void {
+/** The ship's hull, its hitpoints. */
+export function hullOf(world: World, ship: Entity): number {
+  return world.tryGet(ship, Health)?.hitpoints ?? 0;
+}
+
+/** Keep the record of the hold, the crew and the hull: only a change writes, as each write drops the home
+ *  view. A hull that fell marks where the ship lies as danger. */
+function noteLine(env: ColonyEnv, colony: ColonyView, line: LineView): void {
   const { world, ctx } = env;
   const load = holdLoad(world, line.ship);
   const lost = line.crew.some((e) => !world.isAlive(e));
-  if (load === line.load && !lost) return;
+  const hull = hullOf(world, line.ship);
+  if (load === line.load && !lost && hull === line.hull) return;
+  const at = hull < line.hull ? nodeOfEntity(world, line.ship) : null;
+  const dangers = at === null ? null : withDanger(colony.dangers, at);
+  if (dangers !== null) env.edit().dangers = dangers;
   const live = env.edit().line;
   if (live === null) return;
+  live.hull = hull;
   if (load !== live.load) {
     live.load = load;
     live.lastLoad = ctx.tick;
@@ -388,10 +413,16 @@ function homewardLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Cargo
   });
 }
 
-/** Hire `men` to bring the crew to {@link LINE_CREW}, and board them; those hired. */
+/** The hands a line sails with: the fewest once fire has found it. */
+function crewSize(colony: ColonyView): number {
+  return colony.dangers.length > 0 ? LINE_CREW_LEAST : LINE_CREW;
+}
+
+/** Hire `men` to bring the crew to {@link crewSize}, and board them; those hired. */
 function hireCrew(env: ColonyEnv, line: LineView, men: readonly Entity[]): Entity[] {
   const riders = ridersOf(env.world, line.ship);
-  const hired = men.filter((e) => !riders.includes(e)).slice(0, LINE_CREW - line.crew.length);
+  const size = crewSize(env.world.get(env.carrier, ComputerColony));
+  const hired = men.filter((e) => !riders.includes(e)).slice(0, size - line.crew.length);
   const live = env.edit().line;
   if (live !== null) live.crew.push(...hired);
   return hired;
@@ -411,13 +442,15 @@ function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCo
   const { world, ctx, seat } = env;
   forgetListed(env, colony, []);
   const home = homeLandOf(env);
+  const nearFire = colony.dangers.length > 0;
   const hired =
-    line.crew.length < LINE_CREW ? hireCrew(env, line, sparePartyMen(world, ctx, seat, home)) : [];
+    line.crew.length < crewSize(colony) ? hireCrew(env, line, sparePartyMen(world, ctx, seat, home)) : [];
   const people = colonists(env);
   const men = people.filter((e) => isAllocatableMan(world, ctx, e)).length + line.crew.length;
   const women = people.filter((e) => world.has(e, Female) && isAdultSettler(world, e)).length;
   const seats = world.tryGet(line.ship, Vehicle)?.passengers.length ?? 0;
-  const free = seats - ridersOf(world, line.ship).length - hired.length;
+  const empty = seats - ridersOf(world, line.ship).length - hired.length;
+  const free = nearFire ? Math.min(empty, RIDERS_NEAR_FIRE) : empty;
   const wanted = handsWanted(env, colony);
   const lacking = { men: wanted.men - men, women: wanted.women - women };
   const trades = tradesmenFor(env, people, home, free);
@@ -444,6 +477,24 @@ function beginHomeLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Play
   );
   enterLeg(env, 'loadHome');
   return [...boardHome(env, colony, line), ...orders];
+}
+
+/** The orders that sail `ship` for `to`, round the fire the line has met, and straight when no way is clear:
+ *  a leg already out has to come in. */
+function sailOrders(
+  env: ColonyEnv,
+  colony: ColonyView,
+  ship: Entity,
+  to: DeepReadonly<HalfCellNode>,
+): PlayerCommand[] {
+  const from = nodeOfEntity(env.world, ship);
+  const way = from === null ? null : clearWay(env.terrain, colony.dangers, from, to);
+  if (way === null || way.via === null) return [dock(ship, to)];
+  const { hx: x, hy: y } = way.via;
+  return [
+    { kind: 'moveVehicle', vehicle: ship, x, y },
+    { kind: 'dockVehicle', vehicle: ship, x: to.hx, y: to.hy, queued: true },
+  ];
 }
 
 /** Whether the ship has a reason to sail: cargo or settlers aboard, or goods waiting over there. */
@@ -476,7 +527,7 @@ export function sail(
   if (!lyingStill(world, line.ship) || at === null) return [];
   const next = otherShore(env, line.ship, at) ?? at;
   env.edit()[to] = next;
-  return [dock(line.ship, next)];
+  return sailOrders(env, colony, line.ship, next);
 }
 
 /** The colony's riders past the crew step ashore. */
@@ -490,12 +541,21 @@ export function landPassengers(env: ColonyEnv, line: LineView): PlayerCommand[] 
 function claimShip(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const { world, ctx } = env;
   if (colony.ship !== null) return [];
+  if (!lineWayClear(env.terrain, colony.dangers, colony.berth, colony.shore)) return [];
   const ship = carryingShip(env);
   const berth = ship === null ? null : mooringOf(world, ship);
   if (ship === null || berth === null) return [];
   const live = env.edit();
   live.berth = { hx: berth.hx, hy: berth.hy };
-  live.line = { ship, crew: [], leg: 'loadHome', since: ctx.tick, load: 0, lastLoad: ctx.tick };
+  live.line = {
+    ship,
+    crew: [],
+    leg: 'loadHome',
+    since: ctx.tick,
+    load: 0,
+    lastLoad: ctx.tick,
+    hull: hullOf(world, ship),
+  };
   return beginHomeLoad(env, live, live.line);
 }
 
@@ -515,14 +575,20 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
     return [];
   }
   if (line.since === ctx.tick) return [];
-  noteLine(env, line);
+  noteLine(env, colony, line);
   const ship = line.ship;
   const home = homeLandOf(env);
   switch (line.leg) {
     case 'sailHome':
       return sail(env, colony, line, 'berth', home, () => {
         enterLeg(env, 'unloadHome');
-        return [...landPassengers(env, line), ...flushOrders(env, line)];
+        const size = crewSize(colony);
+        const live = env.edit().line;
+        if (live !== null && live.crew.length > size) live.crew = live.crew.slice(0, size);
+        return [
+          ...landPassengers(env, world.get(env.carrier, ComputerColony).line ?? line),
+          ...flushOrders(env, line),
+        ];
       });
     case 'unloadHome':
       return holdFlushed(world, ship) || stalled(env, line) ? beginHomeLoad(env, colony, line) : [];
@@ -530,8 +596,10 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
       if (!doneLoading(env, line)) return [];
       if (line.crew.length === 0 || !worthSailing(env, colony, line)) return beginHomeLoad(env, colony, line);
       if (colony.shore === null) return [];
+      if (!lineWayClear(env.terrain, colony.dangers, colony.berth, colony.shore))
+        return releaseLine(env, line);
       enterLeg(env, 'sailOut');
-      return [...pinHold(world, ship), dock(ship, colony.shore)];
+      return [...pinHold(world, ship), ...sailOrders(env, colony, ship, colony.shore)];
     }
     case 'sailOut':
       return sail(env, colony, line, 'shore', colony.land, () => {
@@ -550,7 +618,7 @@ export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
       if (!doneLoading(env, line)) return [];
       if (colony.berth === null) return [];
       enterLeg(env, 'sailHome');
-      return [...pinHold(world, ship), dock(ship, colony.berth)];
+      return [...pinHold(world, ship), ...sailOrders(env, colony, ship, colony.berth)];
     }
   }
 }

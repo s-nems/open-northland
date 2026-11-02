@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   aiControlEntity,
   ComputerColony,
+  Health,
   Rider,
   Settler,
   Vehicle,
@@ -22,6 +23,7 @@ import {
   homeSettlers,
 } from '../../../../src/systems/ai-shared/home-roster.js';
 import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
+import { colonySmallShips } from '../../../../src/systems/computer-player/colony/fleet.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
 import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
 import { strandedShip } from '../../../../src/systems/computer-player/sea-route.js';
@@ -50,6 +52,10 @@ const SECOND_SHIP_AT = { x: 90, y: 100 };
 /** Off the colony's shore. */
 const STRAY_AT = { x: 138, y: 60 };
 const SITE_NEAR = 4;
+const HULL_HIT = 100;
+const LINE_CREW_LEAST = 2;
+const STRAIT_MID_HX = 114;
+const STRAIT_ACROSS = [30, 60, 90];
 const ENEMY = 5;
 const CHILD_MALE = 4;
 const IDLE_MEN = 40;
@@ -221,6 +227,24 @@ describe('a colony line', () => {
     }
     expect(leg(copy)).toBe(leg(sim));
     expect(copy.hashState()).toBe(sim.hashState());
+  });
+});
+
+describe('a line under fire', () => {
+  it('marks where its hull fell, sails with the fewest hands and owes no ship once no way is clear', () => {
+    const { sim, ship } = linedWorld();
+    const carrier = aiControlEntity(sim.world, SEAT) as Entity;
+    sim.world.mut(ship, Health).hitpoints -= HULL_HIT;
+    stepUntil(sim, ROUND_DUE_TICKS, () => (colonyState(sim)?.dangers.length ?? 0) > 0);
+    expect(colonyState(sim)?.dangers).toHaveLength(1);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => leg(sim) === 'loadHome')).toBe(true);
+    expect(colonyState(sim)?.line?.crew.length).toBeLessThanOrEqual(LINE_CREW_LEAST);
+    // The strait runs the map's height: fire across all of it leaves no way round.
+    sim.world.mut(carrier, ComputerColony).dangers = STRAIT_ACROSS.map((hy) => ({ hx: STRAIT_MID_HX, hy }));
+    expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
+    removeVehicle(sim.world, ctxOf(sim), ship, 'destroyed');
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.line === null)).toBe(true);
+    expect(colonySmallShips(sim.world, ctxOf(sim), SEAT)).toBe(0);
   });
 });
 

@@ -42,6 +42,8 @@ export interface ColonyLine {
   /** The units aboard when last read, and the tick that figure last changed. */
   load: number;
   lastLoad: number;
+  /** The hull when last read: a drop is fire the seat has felt. */
+  hull: number;
 }
 
 /** A building the seat's build order handed to its colony, and the step it stood on. */
@@ -83,6 +85,8 @@ export interface ComputerColonyState {
   line: ColonyLine | null;
   overflow: ColonyOverflow[];
   stalls: ColonyStall[];
+  /** Where its ships took fire, out of the seat's own experience. */
+  dangers: HalfCellNode[];
 }
 
 /** A computer seat's colony over the sea, held on its {@link AiControl} carrier: absent until a site is

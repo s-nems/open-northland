@@ -173,6 +173,7 @@ function settledOn(
     line: null,
     overflow: [],
     stalls: [],
+    dangers: [],
   };
 }
 

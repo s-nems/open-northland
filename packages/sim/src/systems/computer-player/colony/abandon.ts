@@ -10,7 +10,16 @@ import { minutesToTicks } from '../game-phase.js';
 import { visibleEnemyFighters } from '../military/operations/raid-target.js';
 import { holdFlushed } from './cargo.js';
 import { colonists } from './founding.js';
-import { enterLeg, type LineView, landPassengers, releaseLine, ridersOf, sail, stalled } from './line.js';
+import {
+  enterLeg,
+  hullOf,
+  type LineView,
+  landPassengers,
+  releaseLine,
+  ridersOf,
+  sail,
+  stalled,
+} from './line.js';
 import { boardOrders } from './people.js';
 import { colonyBuildings } from './spot.js';
 import { bringScoutHome, type ColonyEnv, type ColonyView, dock, homeLandOf, mooredOn } from './voyage.js';
@@ -47,7 +56,15 @@ export function abandonColony(env: ColonyEnv): void {
   const ship = live.ship;
   if (ship !== null && live.line === null) {
     const crew = ridersOf(world, ship);
-    live.line = { ship, crew, leg: 'sailOut', since: ctx.tick, load: 0, lastLoad: ctx.tick };
+    live.line = {
+      ship,
+      crew,
+      leg: 'sailOut',
+      since: ctx.tick,
+      load: 0,
+      lastLoad: ctx.tick,
+      hull: hullOf(world, ship),
+    };
     live.ship = null;
   } else if (live.line !== null && (live.line.leg === 'unloadColony' || live.line.leg === 'loadColony')) {
     enterLeg(env, 'sailOut');
