@@ -10,6 +10,7 @@ import { moduleBeatDue, POPULATION_PHASE, WORKFORCE_EVERY_DECISIONS } from '../.
 import type { SystemContext } from '../../context.js';
 import { seatArchetype } from '../build-order/seat-order.js';
 import type { ComputerModule } from '../index.js';
+import { abandonColony, evacuate, overrun } from './abandon.js';
 import { foundColony } from './founding.js';
 import { runLine } from './line.js';
 import {
@@ -58,10 +59,15 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
     case 'running': {
       const ships = [...afterLanding(env, colony), ...runLine(env, world.get(carrier, ComputerColony))];
       if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) return ships;
-      return [...ships, ...foundColony(env, world.get(carrier, ComputerColony))];
+      const settled = world.get(carrier, ComputerColony);
+      if (!overrun(env, settled)) return [...ships, ...foundColony(env, settled)];
+      abandonColony(env);
+      return ships;
     }
     case 'returning':
       return returning(env, colony);
+    case 'abandoned':
+      return evacuate(env, colony);
     default:
       return [];
   }
