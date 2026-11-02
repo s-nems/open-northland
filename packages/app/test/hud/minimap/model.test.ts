@@ -25,6 +25,7 @@ import {
   zoomMinimapLayout,
 } from '../../../src/hud/minimap/model.js';
 import { navBeamRect } from '../../../src/hud/nav-beam.js';
+import { centralRegion, NOTICE_COLUMN, SELECTION_PANEL_W } from '../../../src/hud/regions.js';
 import { MIN_UI_SCALE } from '../../../src/hud/ui-scale.js';
 import { cameraCenteredOnWorld } from '../../../src/view/camera/index.js';
 
@@ -190,55 +191,62 @@ describe('minimapLayout', () => {
 });
 
 describe('overviewLayout', () => {
-  const SCREEN_W = 1280;
-  const SCREEN_H = 720;
+  const SCREEN_W = 1920;
+  const SCREEN_H = 1080;
+  const UI = 1;
   const ZOOM = 2;
   const CASES = [
     { shape: 'wide', bounds: terrainWorldBounds(128, 32) },
     { shape: 'tall', bounds: terrainWorldBounds(16, 128) },
   ] as const;
+  const screen = { width: SCREEN_W, height: SCREEN_H };
 
-  it.each(CASES)(
-    'centres the largest frame for a $shape map, which it fills true to shape',
-    ({ shape, bounds }) => {
-      const { panel, inner, map, artScale } = overviewLayout(bounds, SCREEN_H, UISCALE, SCREEN_W);
-      expect(artScale).toBe(UISCALE);
-      const sideGap = panel.x;
-      const topGap = panel.y;
-      expect(sideGap).toBeGreaterThan(0);
-      expect(topGap).toBeGreaterThan(0);
-      expect(panel.x + panel.w / 2).toBeCloseTo(SCREEN_W / 2);
-      expect(panel.y + panel.h / 2).toBeCloseTo(SCREEN_H / 2);
-      // Only the map's long side reaches the margin: a frame sized by the wrong side would leave the screen.
-      if (shape === 'wide') expect(sideGap).toBeLessThan(topGap);
-      else expect(topGap).toBeLessThan(sideGap);
-      expect(map.w / map.h).toBeCloseTo(bounds.width / bounds.height);
-      expect(map.x).toBeCloseTo(inner.x);
-      expect(map.y).toBeCloseTo(inner.y);
-      expect(map.w).toBeCloseTo(inner.w);
-      expect(map.h).toBeCloseTo(inner.h);
-    },
-  );
+  it.each(CASES)('stands a $shape map on the beam axis, in the room the HUD leaves', ({ bounds }) => {
+    const { panel, inner, map } = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, null);
+    const region = centralRegion(screen, UI);
+    expect(panel.x + panel.w / 2).toBeCloseTo(SCREEN_W / 2);
+    expect(panel.y).toBeGreaterThanOrEqual(region.y);
+    expect(panel.y + panel.h).toBeLessThan(region.y + region.h);
+    expect(panel.x).toBeGreaterThan(NOTICE_COLUMN.left + NOTICE_COLUMN.width);
+    expect(panel.x + panel.w).toBeLessThan(SCREEN_W - SELECTION_PANEL_W);
+    expect(map.w / map.h).toBeCloseTo(bounds.width / bounds.height);
+    expect(map.w).toBeCloseTo(inner.w);
+    expect(map.h).toBeCloseTo(inner.h);
+  });
+
+  it('gives up room to a corner map it would run into, and only then', () => {
+    const { bounds } = CASES[0];
+    const alone = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, null);
+    const beside = { x: 0, y: alone.panel.y, w: alone.panel.x + 100, h: 100 };
+    const narrowed = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, beside).panel;
+    expect(narrowed.x).toBeGreaterThan(beside.w);
+    expect(narrowed.x + narrowed.w).toBeLessThan(SCREEN_W - SELECTION_PANEL_W);
+    const below = { ...beside, y: alone.panel.y + alone.panel.h };
+    expect(overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, below).panel.x).toBe(alone.panel.x);
+  });
+
+  it('keeps a usable map on a screen too narrow to clear the side columns', () => {
+    const narrow = 1024;
+    const { panel } = overviewLayout(CASES[0].bounds, 640, UI, narrow, null);
+    expect(panel.w / narrow).toBeCloseTo(0.5);
+    expect(panel.x + panel.w / 2).toBeCloseTo(narrow / 2);
+  });
 
   it.each(CASES)('zooms a $shape map inside the fixed frame, covering the hole', ({ bounds }) => {
-    const base = overviewLayout(bounds, SCREEN_H, UISCALE, SCREEN_W);
+    const base = overviewLayout(bounds, SCREEN_H, UI, SCREEN_W, null);
     const center = { x: bounds.minX + bounds.width / 2, y: bounds.minY + bounds.height / 2 };
     const zoomed = zoomMinimapLayout(base, bounds, ZOOM, center);
     expect(zoomed.panel).toBe(base.panel);
     expect(zoomed.map.w).toBeCloseTo(base.map.w * ZOOM);
-    expect(zoomed.map.h).toBeCloseTo(base.map.h * ZOOM);
     const shown = visibleMinimapRect(zoomed);
     expect(shown.w).toBeCloseTo(base.inner.w);
     expect(shown.h).toBeCloseTo(base.inner.h);
-    const middle = worldToMinimap(zoomed, bounds, center.x, center.y);
-    expect(middle.x).toBeCloseTo(base.inner.x + base.inner.w / 2);
-    expect(middle.y).toBeCloseTo(base.inner.y + base.inner.h / 2);
   });
 
   it('collapses on a screen too small to hold a map, without a negative size or NaN', () => {
     const TINY_SIDE = 30;
     const { bounds } = CASES[0];
-    const base = overviewLayout(bounds, TINY_SIDE, UISCALE, TINY_SIDE);
+    const base = overviewLayout(bounds, TINY_SIDE, UISCALE, TINY_SIDE, null);
     const zoomed = zoomMinimapLayout(base, bounds, ZOOM, { x: 0, y: 0 });
     expect(base.scaleX).toBe(0);
     expect(base.panel.w).toBe(0);

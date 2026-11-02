@@ -42,8 +42,6 @@ export const deGame = {
       'Wähle höchstens {limit} Einheiten für einen Befehl aus. Keine Einheit hat diesen Befehl erhalten.',
     diplomacyMap: {
       title: 'Diplomatiekarte',
-      theirs: 'Sie:',
-      ours: 'Du:',
       own: 'Dein Stamm',
       unknown: 'Position unbekannt:',
       openDiplomacy: 'Diplomatie öffnen',

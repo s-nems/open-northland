@@ -36,8 +36,6 @@ export const plGame = {
       'Zaznacz najwyżej {limit} jednostek do jednego rozkazu. Żadna jednostka nie otrzymała tego rozkazu.',
     diplomacyMap: {
       title: 'Mapa Dyplomacji',
-      theirs: 'Ich:',
-      ours: 'Twój:',
       own: 'Twoje plemię',
       unknown: 'Położenie nieznane:',
       openDiplomacy: 'Otwórz Dyplomację',

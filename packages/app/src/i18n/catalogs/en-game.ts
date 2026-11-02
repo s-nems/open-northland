@@ -38,8 +38,6 @@ export const enGame = {
     armyOrderLimit: 'Select at most {limit} units for one order. No units received this order.',
     diplomacyMap: {
       title: 'Diplomacy map',
-      theirs: 'They:',
-      ours: 'You:',
       own: 'Your tribe',
       unknown: 'Location unknown:',
       openDiplomacy: 'Open diplomacy',

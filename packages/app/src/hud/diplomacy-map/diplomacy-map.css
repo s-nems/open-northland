@@ -1,7 +1,3 @@
-/* The spread map stands in the world's place, so the always-on regions step aside; windows stay. */
-.on-hud[data-diplomacy-map="open"] :is(.on-bar, .on-beam, .on-notices, .on-slip, .on-selection) {
-  display: none;
-}
 .on-hud .on-dipmap {
   position: absolute;
   inset: 0;
@@ -36,6 +32,7 @@
   text-shadow: 0 1px 2px #000;
   white-space: nowrap;
   transform: translate(-50%, -50%);
+  pointer-events: auto;
 }
 .on-hud .on-dipmap__close {
   position: absolute;
@@ -119,14 +116,23 @@
 }
 .on-hud .on-dipmap-plaque__relation {
   display: flex;
+  gap: 10px;
+  margin-top: 1px;
+}
+.on-hud .on-dipmap-plaque__side {
+  display: inline-flex;
+  align-items: center;
   gap: 4px;
 }
-.on-hud .on-dipmap-plaque__relation b {
-  margin-right: 5px;
-  font-weight: 600;
+.on-hud .on-dipmap-plaque__side-emblem {
+  width: 17px;
+  height: 17px;
+  padding: 0;
+  border-width: 1px;
+  border-radius: 2px;
 }
-.on-hud .on-dipmap-plaque__relation b:last-child {
-  margin-right: 0;
+.on-hud .on-dipmap-plaque__relation b {
+  font-weight: 600;
 }
 .on-hud .on-dipmap-plaque__relation b[data-stance="friend"] {
   color: #a9bd8b;
@@ -137,10 +143,12 @@
 .on-hud .on-dipmap-plaque__relation b[data-stance="enemy"] {
   color: #e08a70;
 }
+/* Hangs below the frame by the room `overviewLayout` keeps for one row; more rows grow up over the
+   map, never down into the navigation beam. */
 .on-hud .on-dipmap__unknown {
   position: absolute;
   z-index: 1;
-  bottom: var(--minimap-rail-center);
+  bottom: -22px;
   left: 50%;
   display: flex;
   flex-wrap: wrap;
@@ -148,7 +156,7 @@
   justify-content: center;
   gap: 6px 8px;
   width: max-content;
-  max-width: calc(100% - 96px);
+  max-width: calc(100% + 200px);
   padding: 5px 10px;
   border: 1px solid var(--bronze);
   border-radius: 3px;
@@ -159,7 +167,8 @@
   box-shadow:
     0 -2px 7px #000a,
     inset 0 0 0 1px #ead9a533;
-  transform: translate(-50%, 50%);
+  transform: translateX(-50%);
+  pointer-events: auto;
 }
 .on-hud .on-dipmap__unknown[hidden] {
   display: none;

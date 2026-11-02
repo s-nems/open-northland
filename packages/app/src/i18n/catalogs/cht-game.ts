@@ -25,8 +25,6 @@ export const chtGame = {
     armyOrderLimit: '一道命令最多只能選取 {limit} 個單位。沒有任何單位收到這道命令。',
     diplomacyMap: {
       title: '外交地圖',
-      theirs: '對方:',
-      ours: '你:',
       own: '你的民族',
       unknown: '位置未知:',
       openDiplomacy: '開啟外交',

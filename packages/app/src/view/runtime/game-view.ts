@@ -720,7 +720,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
           return true;
         },
         toggle: () => diplomacyMap?.toggle(),
-        focus: () => diplomacyMap?.focus() === true,
       },
       metSeats,
       fogView: fogViewOf,
@@ -858,12 +857,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     });
 
     cleanup.push(() => toolPanel.dispose());
-    /** True while the world is what counts: the HUD is hidden, or a held tool works on the ground. */
-    const hudStandsBack = (): boolean =>
-      hudHidden ||
-      toolPanel.controller.placementBuilding() !== null ||
-      toolPanel.controller.palisadeGfxIndex() !== null ||
-      toolPanel.controller.roadActive();
     const gpuAdapter = gpuAdapterName(app);
     const perfReadout = mountPerfReadout({
       app,
@@ -1060,7 +1053,6 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
     const mountedMinimap = minimap;
     cleanup.push(() => mountedMinimap.dispose());
     const mountedDiplomacyMap = createDiplomacyMap({
-      plane: hudDom.element,
       canvas,
       minimap: mountedMinimap,
       nations: () =>
@@ -1078,7 +1070,7 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       memory: deps.renderer.fogMemory,
       paintEmblem: toolPanel.controller.paintNationEmblem,
       uiScale: hudDom.currentScale,
-      unavailable: hudStandsBack,
+      unavailable: () => hudHidden,
       onNation: toolPanel.controller.showNation,
       cue: uiCue,
       now: () => performance.now(),
@@ -1156,7 +1148,11 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       canAttachToVehicle: answers.canAttachToVehicle,
       tradeHouseAttachAnswer: answers.tradeHouseAttachAnswer,
       vehicleAttachAnswer: answers.vehicleAttachAnswer,
-      hintSuppressed: hudStandsBack,
+      hintSuppressed: () =>
+        hudHidden ||
+        toolPanel.controller.placementBuilding() !== null ||
+        toolPanel.controller.palisadeGfxIndex() !== null ||
+        toolPanel.controller.roadActive(),
       cursorHints: storedSettings.cursorHints,
       askAttachToVehicle: answers.askAttachToVehicle,
       askMooring: placementGates.askMooring,
@@ -1354,7 +1350,12 @@ export async function startGameView(deps: GameViewDeps): Promise<GameViewHandle>
       pixelHitOf: (ref, wx, wy) => renderer.entityPixelHit(ref, wx, wy),
       pointer: pointerAt,
       suppressed: (clientX, clientY) =>
-        hudStandsBack() || toolPanel.claimPointer() || controls.claimsPointer(clientX, clientY),
+        hudHidden ||
+        toolPanel.controller.placementBuilding() !== null ||
+        toolPanel.controller.palisadeGfxIndex() !== null ||
+        toolPanel.controller.roadActive() ||
+        toolPanel.claimPointer() ||
+        controls.claimsPointer(clientX, clientY),
     });
 
     cleanup.push(() => worldHover.destroy());

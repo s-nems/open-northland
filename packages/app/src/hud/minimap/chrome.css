@@ -379,12 +379,13 @@
   display: none;
 }
 
-/* The way into the screen-sized map: a seal on the frame's corner, standing above it. */
+/* The way into the overview: a seal on the top rail, standing above the frame, clear of the corner's
+   controls column at every size. */
 .on-hud .on-minimap-chrome__overview {
   position: absolute;
   z-index: 1;
   top: -13px;
-  right: -9px;
+  right: 30px;
   width: 36px;
   height: 36px;
 }
@@ -393,13 +394,8 @@
   height: 26px;
   stroke-width: 1.1;
 }
-.on-hud
-  .on-minimap-chrome[data-view="overview"]
-  :is(.on-minimap-chrome__overview, .on-minimap-chrome__button--size) {
+.on-hud .on-minimap-chrome[data-place="overview"] .on-minimap-chrome__button--size {
   display: none;
-}
-.on-hud .on-minimap-chrome[data-view="overview"] .on-map-overlays {
-  left: 72px;
 }
 
 .on-hud .on-map-overlays {

@@ -25,8 +25,6 @@ export const chsGame = {
     armyOrderLimit: '一道命令最多只能选择 {limit} 个单位。没有任何单位收到这道命令。',
     diplomacyMap: {
       title: '外交地图',
-      theirs: '对方:',
-      ours: '你:',
       own: '你的民族',
       unknown: '位置未知:',
       openDiplomacy: '打开外交',

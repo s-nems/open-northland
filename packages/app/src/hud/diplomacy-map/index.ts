@@ -19,7 +19,6 @@ const READ_INTERVAL_MS = 1000;
 const PIN_CLEARANCE = 8;
 
 export interface DiplomacyMapDeps {
-  readonly plane: HTMLElement;
   /** The minimap's input listens here; a plaque hands it the presses that are not its own. */
   readonly canvas: HTMLCanvasElement;
   readonly minimap: Pick<MinimapHandle, 'setOverview' | 'placement' | 'focusOverviewButton' | 'overviewHost'>;
@@ -30,7 +29,7 @@ export interface DiplomacyMapDeps {
   readonly memory: RememberedMarkers | undefined;
   readonly paintEmblem: NationEmblemPainter;
   readonly uiScale: () => number;
-  /** True while the map must not stand: a held tool wants the world in view, or the HUD is hidden. */
+  /** True while the map must not stand: the HUD is hidden. */
   readonly unavailable: () => boolean;
   /** A plaque was pressed: open that nation's diplomacy page. */
   readonly onNation: (player: number) => void;
@@ -45,8 +44,6 @@ export interface DiplomacyMap {
   open(): boolean;
   close(): void;
   toggle(): void;
-  /** Give the open map the keyboard; false when it is shut. */
-  focus(): boolean;
   /** Once a frame: follow the map's pan and zoom, and read who stands where when due. */
   refresh(): void;
   dispose(): void;
@@ -60,8 +57,8 @@ interface PlacedSettlement {
   row: number;
 }
 
-/** The screen-sized map: the minimap spread over the screen, each known settlement labelled with its
- *  nation and the stances between it and the viewer. Nothing here runs while the map is shut. */
+/** The overview, each known settlement labelled with its nation and the stances between it and the
+ *  viewer. Nothing here runs while the map is shut. */
 export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
   const copy = messages().hud.diplomacyMap;
   const root = element('div', 'on-dipmap');
@@ -119,7 +116,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
       }
       placed.col = settlement.col;
       placed.row = settlement.row;
-      placed.plaque.update(nation);
+      placed.plaque.update(nation, own);
       setStyleVar(placed.pin, '--nation-colour', `#${nation.colour.toString(16).padStart(6, '0')}`);
       kept.add(key);
     }
@@ -142,7 +139,7 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
         unknownPlaques.set(nation.player, plaque);
         unknown.append(plaque.element);
       }
-      plaque.update(nation);
+      plaque.update(nation, own);
     }
     setHidden(unknown, missing.length === 0);
   }
@@ -199,28 +196,23 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
   field.addEventListener('wheel', forwardWheel, { passive: false });
   field.addEventListener('mousedown', forwardPress);
 
-  function shut(): void {
-    opened = false;
-    root.hidden = true;
-    delete deps.plane.dataset.diplomacyMap;
-    deps.minimap.setOverview(false);
-  }
   function close(): void {
     if (!opened) return;
-    shut();
-    deps.minimap.focusOverviewButton();
+    opened = false;
+    const heldFocus = root.contains(document.activeElement);
+    root.hidden = true;
+    deps.minimap.setOverview(false);
+    if (heldFocus) deps.minimap.focusOverviewButton();
   }
   function open(): boolean {
     if (opened) return true;
     if (deps.unavailable()) return false;
     opened = true;
-    deps.plane.dataset.diplomacyMap = 'open';
     deps.minimap.setOverview(true);
     root.hidden = false;
     read();
     readAt = deps.now();
     place();
-    closeButton.focus({ preventScroll: true });
     return true;
   }
   closeButton.addEventListener('click', () => {
@@ -238,15 +230,10 @@ export function createDiplomacyMap(deps: DiplomacyMapDeps): DiplomacyMap {
         close();
       } else deps.cue(open() ? 'confirm' : 'fail');
     },
-    focus: () => {
-      if (opened) closeButton.focus({ preventScroll: true });
-      return opened;
-    },
     refresh: () => {
       if (!opened) return;
-      // The press that took a tool keeps the keyboard where it is.
       if (deps.unavailable()) {
-        shut();
+        close();
         return;
       }
       const now = deps.now();

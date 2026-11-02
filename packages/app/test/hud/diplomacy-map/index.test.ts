@@ -14,7 +14,7 @@ const SCREEN_W = 1280;
 const SCREEN_H = 720;
 const UI_SCALE = 2;
 const BOUNDS = terrainWorldBounds(MAP_CELLS, MAP_CELLS);
-const WHOLE_MAP = overviewLayout(BOUNDS, SCREEN_H, UI_SCALE, SCREEN_W);
+const WHOLE_MAP = overviewLayout(BOUNDS, SCREEN_H, UI_SCALE, SCREEN_W, null);
 /** The hole's centre in design px from its corner, where a settlement stands when the map zooms on it. */
 const HOLE_CENTRE_X = WHOLE_MAP.inner.w / 2 / UI_SCALE;
 /** The map's wall-clock pace between two reads of who stands where. */
@@ -71,9 +71,8 @@ const zoomedOn = (col: number, row: number, zoom = ZOOM_IN): MinimapLayout =>
 afterEach(() => document.body.replaceChildren());
 
 function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly Ent[] = []) {
-  const plane = document.createElement('div');
   const overviewHost = document.createElement('div');
-  document.body.append(plane, overviewHost);
+  document.body.append(overviewHost);
   const world = { nations: startNations, snapshot: snapshotOf(startWorld) };
   const state = { layout: WHOLE_MAP, clock: 0, unavailable: false };
   const minimap = {
@@ -87,7 +86,6 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
   const onNation = vi.fn<(player: number) => void>();
   const cue = vi.fn<(cue: UiCue) => void>();
   const map = createDiplomacyMap({
-    plane,
     canvas: document.createElement('canvas'),
     minimap,
     nations,
@@ -111,7 +109,6 @@ function mount(startNations: readonly DiplomacyMapNation[], startWorld: readonly
   };
   return {
     map,
-    plane,
     minimap,
     nations,
     snapshot,
@@ -137,21 +134,23 @@ const nameOn = (plaque: HTMLElement | undefined): string | null | undefined =>
 const pinX = (pin: HTMLElement | undefined): number => Number.parseFloat(pin?.style.left ?? '');
 
 describe('createDiplomacyMap', () => {
-  it('opens by marking the plane, spreading the minimap and giving the close button the focus', () => {
-    const { map, plane, minimap, closeButton } = mount([OWN_NATION]);
+  it('opens by showing the overview, leaving the keyboard where it is', () => {
+    const { map, minimap, closeButton } = mount([OWN_NATION]);
     map.open();
     expect(map.isOpen()).toBe(true);
-    expect(plane.dataset.diplomacyMap).toBeDefined();
+    expect(document.activeElement).not.toBe(closeButton());
     expect(minimap.setOverview).toHaveBeenLastCalledWith(true);
-    expect(document.activeElement).toBe(closeButton());
   });
 
-  it('closes by undoing each of those and handing the focus back through the overview button', () => {
-    const { map, plane, minimap, closeButton } = mount([OWN_NATION]);
+  it('closes by shutting the overview, handing back the focus it held through the button', () => {
+    const { map, minimap, closeButton } = mount([OWN_NATION]);
     map.open();
+    map.close();
+    expect(minimap.focusOverviewButton).not.toHaveBeenCalled();
+    map.open();
+    closeButton().focus();
     closeButton().click();
     expect(map.isOpen()).toBe(false);
-    expect(plane.dataset.diplomacyMap).toBeUndefined();
     expect(minimap.setOverview).toHaveBeenLastCalledWith(false);
     expect(minimap.focusOverviewButton).toHaveBeenCalledOnce();
   });
@@ -188,9 +187,12 @@ describe('createDiplomacyMap', () => {
     expect(plaques()).toHaveLength(1);
     expect(nameOn(plaque)).toBe(ALLY_NATION.name);
     const copy = messages().hud;
-    const { stances } = copy.diplomacyWindow;
+    const { stances, theirs, ours } = copy.diplomacyWindow;
     expect(plaque?.querySelector('.on-dipmap-plaque__relation')?.textContent).toBe(
-      `${copy.diplomacyMap.theirs}${stances.friend}${copy.diplomacyMap.ours}${stances.enemy}`,
+      `${stances.friend}${stances.enemy}`,
+    );
+    expect(plaque?.getAttribute('aria-label')).toContain(
+      `${theirs}: ${stances.friend}\n${ours}: ${stances.enemy}`,
     );
   });
 
@@ -275,12 +277,11 @@ describe('createDiplomacyMap', () => {
     expect(nations).toHaveBeenCalledOnce();
   });
 
-  it('stays shut when asked to open while unavailable, leaving plane and minimap alone', () => {
-    const { map, plane, state, minimap, nations } = mount([OWN_NATION]);
+  it('stays shut when asked to open while unavailable, leaving the minimap alone', () => {
+    const { map, state, minimap, nations } = mount([OWN_NATION]);
     state.unavailable = true;
     map.open();
     expect(map.isOpen()).toBe(false);
-    expect(plane.dataset.diplomacyMap).toBeUndefined();
     expect(minimap.setOverview).not.toHaveBeenCalled();
     expect(nations).not.toHaveBeenCalled();
   });
@@ -295,15 +296,6 @@ describe('createDiplomacyMap', () => {
     map.toggle();
     expect(cue).toHaveBeenLastCalledWith('confirm');
     expect(map.isOpen()).toBe(true);
-  });
-
-  it('takes the keyboard back only while open', () => {
-    const { map, closeButton } = mount([OWN_NATION]);
-    expect(map.focus()).toBe(false);
-    map.open();
-    closeButton().blur();
-    expect(map.focus()).toBe(true);
-    expect(document.activeElement).toBe(closeButton());
   });
 
   it('stands the plaques anew on a new layout object, without a read', () => {

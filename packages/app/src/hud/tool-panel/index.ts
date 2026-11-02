@@ -171,8 +171,6 @@ export interface ToolPanelOptions {
     /** False when the Escape was not the map's to take. */
     close(): boolean;
     toggle(): void;
-    /** Give the open map the keyboard; false when it is shut. */
-    focus(): boolean;
   };
   /** The discovered players and their stance toward the viewer, which the message centre reads a tick. */
   readonly metSeats: () => readonly MetSeat[];
@@ -728,8 +726,7 @@ export async function mountToolPanel(opts: ToolPanelOptions): Promise<ToolPanelC
     });
     domParts.push(nav);
     focusOwner = (id) => {
-      // The beam stands aside for the diplomacy map, so a window closed over it hands the keyboard there.
-      if (id !== null && !opts.diplomacyMap.focus()) nav.focus(id);
+      if (id !== null) nav.focus(id);
     };
 
     let speedHeld = false;

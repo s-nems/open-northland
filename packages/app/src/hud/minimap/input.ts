@@ -7,6 +7,8 @@ export interface MinimapInputOptions {
   readonly bounds: WorldBounds;
   readonly layout: () => MinimapLayout;
   readonly enabled: () => boolean;
+  /** True when another map stands over this client point and the press is its. */
+  readonly yieldsTo?: (clientX: number, clientY: number) => boolean;
   readonly toScreenPx: (x: number, y: number) => { x: number; y: number };
   readonly onJump: (x: number, y: number) => void;
   readonly onOrder?: (x: number, y: number, event: MouseEvent) => boolean;
@@ -36,7 +38,7 @@ export function createMinimapInput(opts: MinimapInputOptions): {
     );
   };
   const down = (event: MouseEvent): void => {
-    if (!opts.enabled()) return;
+    if (!opts.enabled() || opts.yieldsTo?.(event.clientX, event.clientY) === true) return;
     const point = opts.toScreenPx(event.clientX, event.clientY);
     const layout = opts.layout();
     if (!pointOverMinimapHole(layout, point.x, point.y) || !contains(layout.map, point.x, point.y)) return;
@@ -74,7 +76,7 @@ export function createMinimapInput(opts: MinimapInputOptions): {
     drag = null;
   };
   const wheel = (event: WheelEvent): void => {
-    if (!opts.enabled()) return;
+    if (!opts.enabled() || opts.yieldsTo?.(event.clientX, event.clientY) === true) return;
     const point = opts.toScreenPx(event.clientX, event.clientY);
     if (!pointOverMinimapHole(opts.layout(), point.x, point.y)) return;
     event.preventDefault();

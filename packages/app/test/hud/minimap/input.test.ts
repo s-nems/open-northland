@@ -12,7 +12,7 @@ afterEach(() => vi.unstubAllGlobals());
 const mouse = (type: string, x: number, y: number, button = 0): Event =>
   Object.assign(new Event(type, { cancelable: true }), { clientX: x, clientY: y, button });
 
-function mount() {
+function mount(yieldsTo?: (clientX: number, clientY: number) => boolean) {
   const bounds = terrainWorldBounds(64, 64);
   let layout = minimapLayout(bounds, 800, 1);
   let enabled = true;
@@ -26,6 +26,7 @@ function mount() {
     bounds,
     layout: () => layout,
     enabled: () => enabled,
+    ...(yieldsTo !== undefined ? { yieldsTo } : {}),
     toScreenPx: (x, y) => ({ x, y }),
     onJump,
     onOrder,
@@ -52,6 +53,22 @@ function mount() {
 }
 
 describe('Atlas input ownership', () => {
+  it('leaves a press and a wheel to the map standing over this one', () => {
+    const m = mount(() => true);
+    const r = m.layout().inner;
+    m.canvas.dispatchEvent(mouse('mousedown', r.x + r.w / 2, r.y + r.h / 2));
+    expect(m.onOrder).not.toHaveBeenCalled();
+    expect(m.onJump).not.toHaveBeenCalled();
+    m.canvas.dispatchEvent(
+      Object.assign(new Event('wheel', { cancelable: true }), {
+        clientX: r.x + r.w / 2,
+        clientY: r.y + r.h / 2,
+        deltaY: -1,
+      }),
+    );
+    expect(m.onZoom).not.toHaveBeenCalled();
+  });
+
   it('offers a projected press to orders first and never starts a camera drag when consumed', () => {
     const m = mount();
     const base = m.layout();
