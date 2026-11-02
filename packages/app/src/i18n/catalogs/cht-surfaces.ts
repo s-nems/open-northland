@@ -575,6 +575,9 @@ export const chtSurfaces = {
     loadFailedTitle: '載入存檔失敗',
     loadFailedDetail:
       '這個世界無法接受該存檔。這通常表示存檔是在不同的遊戲內容或較舊的地圖上建立的；再次載入也會以同樣方式失敗。',
+    graphicsUnavailableTitle: '圖形無法使用',
+    graphicsUnavailableDetail:
+      '瀏覽器目前無法為遊戲提供圖形功能（WebGL），通常是在顯示卡驅動程式出錯之後。請完全關閉遊戲或瀏覽器後重新啟動；如果再次發生，請更新顯示卡驅動程式。',
     availableScenes: '可用的世界：',
     unknownScene: '未知的世界：「{id}」',
     copied: '已複製',

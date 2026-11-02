@@ -636,6 +636,9 @@ export const deSurfaces = {
     loadFailedTitle: 'Spielstand konnte nicht geladen werden',
     loadFailedDetail:
       'Diese Welt konnte den Spielstand nicht übernehmen. Meist wurde er mit anderen Spieldaten oder einer älteren Karte erstellt. Ein erneuter Ladeversuch führt zum selben Fehler.',
+    graphicsUnavailableTitle: 'Die Grafik ist nicht verfügbar',
+    graphicsUnavailableDetail:
+      'Der Browser gibt dem Spiel gerade keine Grafik (WebGL), oft nach einem Absturz des Grafiktreibers. Beende das Spiel oder den Browser vollständig und starte erneut; passiert es wieder, aktualisiere den Grafiktreiber.',
     availableScenes: 'Verfügbare Welten:',
     unknownScene: 'Unbekannte Welt: „{id}“',
     copied: 'kopiert',

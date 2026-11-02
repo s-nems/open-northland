@@ -35,6 +35,7 @@ function errorFault(error: unknown): NewFault {
     durationMs: null,
     stack: named ? (error.stack ?? `${error.name}: ${error.message}`) : String(error),
     url: null,
+    gpuStatus: null,
   };
 }
 
@@ -65,6 +66,8 @@ export function recordProcessFaults(store: FaultStore, run: ShellRun): void {
         durationMs: null,
         stack: null,
         url: null,
+        // Tells a GPU process Chromium gave up on (WebGL off or in software) from one it restarts.
+        gpuStatus: { ...app.getGPUFeatureStatus() },
       }),
     );
   });
@@ -115,6 +118,7 @@ export function watchWindowFaults(
         durationMs: null,
         stack: null,
         url,
+        gpuStatus: null,
       }),
     );
     if (win.isDestroyed()) return;
@@ -149,6 +153,7 @@ export function watchWindowFaults(
         durationMs: null,
         stack: null,
         url: contents.getURL(),
+        gpuStatus: null,
       }),
     );
     if (fault === undefined) return;

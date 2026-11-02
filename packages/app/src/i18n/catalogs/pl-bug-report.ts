@@ -22,7 +22,8 @@ export const plBugReport = {
     'renderer-unresponsive': 'Strona gry przez jakiś czas nie odpowiadała.',
     desync:
       'Twoja gra nie zgadza się już z grami pozostałych graczy, więc rozgrywka nie może dalej toczyć się bez błędów.',
-    'context-lost': 'Przeglądarka odebrała grze grafikę i jej nie oddała. Zwykle pomaga odświeżenie strony.',
+    'context-lost':
+      'Przeglądarka odebrała grze grafikę i jej nie oddała. Odśwież stronę; jeśli to nie pomoże, zamknij całkiem grę albo przeglądarkę i uruchom ją ponownie.',
     'gpu-gone':
       'Część gry odpowiedzialna za grafikę przestała działać i została uruchomiona ponownie. Gra już działa; zgłoszenie pomoże ustalić przyczynę.',
   },

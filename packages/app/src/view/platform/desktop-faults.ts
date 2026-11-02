@@ -14,6 +14,8 @@ export interface DesktopFault {
   readonly stack: string | null;
   /** The page's URL when it happened. */
   readonly url: string | null;
+  /** Chromium's GPU feature status when the GPU process died, else null. */
+  readonly gpuStatus: Readonly<Record<string, string>> | null;
 }
 
 /** How the shell's previous run ended without quitting: the system ended the session, it never woke

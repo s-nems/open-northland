@@ -42,11 +42,11 @@ import { loadGuiArt } from '../../content/gui/art.js';
 import { type BriefingVoiceLoader, briefingVoicePlayer } from '../../content/map-source/briefing-voices.js';
 import type { FellingClips } from '../../content/object-gfx/felling-clips.js';
 import { hasDebugFlag } from '../../diag/debug-flags.js';
+import { logGpuContextLoss } from '../../diag/gpu-context.js';
 import {
   currentDiagGameSession,
   FrameStats,
   installSessionInstruments,
-  logGpuContextLoss,
   setDiagGameSession,
 } from '../../diag/index.js';
 import { setReportGameView } from '../../diag/report/view.js';

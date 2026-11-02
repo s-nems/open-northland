@@ -594,6 +594,9 @@ export const enSurfaces = {
     loadFailedTitle: 'Loading the save failed',
     loadFailedDetail:
       'This world could not take the saved game. It usually means the save was made on different game content or an older map; loading it again will fail the same way.',
+    graphicsUnavailableTitle: 'The graphics are not available',
+    graphicsUnavailableDetail:
+      'The browser gives the game no graphics (WebGL) right now, often after the graphics driver failed. Close the game or the browser completely and start it again; if it happens again, update the graphics driver.',
     availableScenes: 'Available worlds:',
     unknownScene: 'Unknown world: "{id}"',
     copied: 'copied',

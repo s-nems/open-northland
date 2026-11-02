@@ -13,6 +13,7 @@ import {
   type RealContentMerge,
 } from '../../content/real-content.js';
 import { diag } from '../../diag/index.js';
+import { reportProblem } from '../../diag/report/problem.js';
 import { localeParam, messages } from '../../i18n/index.js';
 import { dismissBootProgress } from '../boot/progress.js';
 import { enhancementsOf } from '../graphics/enhancements.js';
@@ -78,6 +79,19 @@ export function haltOnMissingContent(err: Error): void {
   dismissBootProgress();
   releaseDocument();
   mountMessage(copy.missingContentTitle, stale ? copy.staleContentDetail : copy.missingTerrainDetail, [
+    navButton(copy.backToMenu, false, ''),
+  ]);
+}
+
+/** Halt a boot that gets no WebGL context, which a browser refuses after a GPU driver failure until it
+ *  restarts. Reported, since a lost context the page saw may have been missed. */
+export function haltOnMissingGraphics(): void {
+  const copy = messages().common;
+  diag.error('gpu', 'no webgl context for a new world');
+  reportProblem({ trigger: 'context-lost', facts: { freshContext: false, atBoot: true } });
+  dismissBootProgress();
+  releaseDocument();
+  mountMessage(copy.graphicsUnavailableTitle, copy.graphicsUnavailableDetail, [
     navButton(copy.backToMenu, false, ''),
   ]);
 }

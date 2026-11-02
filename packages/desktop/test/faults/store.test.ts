@@ -12,6 +12,7 @@ const CRASH: NewFault = {
   durationMs: null,
   stack: null,
   url: 'app://game/index.html',
+  gpuStatus: null,
 };
 const FAULT_FILE = /^[0-9a-f]{32}\.json$/;
 
@@ -63,6 +64,17 @@ describe('createFaultStore', () => {
     store.clear([hang.id]);
     store.update(hang.id, { durationMs: 9000 });
     expect(store.pending()).toEqual([]);
+  });
+
+  it("keeps a GPU process death's feature status", () => {
+    const store = createFaultStore(root, HOME, ticking());
+    const gpuStatus = {
+      webgl: 'unavailable_off',
+      webgl2: 'unavailable_off',
+      gpu_compositing: 'disabled_software',
+    };
+    store.record({ ...CRASH, trigger: 'gpu-gone', url: null, gpuStatus });
+    expect(store.pending().map((fault) => fault.gpuStatus)).toEqual([gpuStatus]);
   });
 
   it('clears only well-formed fault ids', async () => {

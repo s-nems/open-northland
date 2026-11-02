@@ -591,6 +591,9 @@ export const plSurfaces = {
     loadFailedTitle: 'Wczytywanie zapisu nie powiodło się',
     loadFailedDetail:
       'Ten świat nie przyjął zapisanej gry. Zwykle znaczy to, że zapis powstał przy innej zawartości gry albo starszej wersji mapy; kolejna próba skończy się tak samo.',
+    graphicsUnavailableTitle: 'Grafika jest niedostępna',
+    graphicsUnavailableDetail:
+      'Przeglądarka nie daje teraz grze grafiki (WebGL), zwykle po awarii sterownika karty graficznej. Zamknij całkiem grę albo przeglądarkę i uruchom ją ponownie; jeśli to się powtórzy, zaktualizuj sterownik karty graficznej.',
     availableScenes: 'Dostępne światy:',
     unknownScene: 'Nieznany świat: „{id}”',
     copied: 'skopiowano',

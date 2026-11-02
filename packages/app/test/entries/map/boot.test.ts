@@ -9,7 +9,10 @@ const mocks = vi.hoisted(() => ({
   terrain: vi.fn(),
   haltOnMissingContent: vi.fn(),
   haltOnFailedRestore: vi.fn(),
+  haltOnMissingGraphics: vi.fn(),
   realContent: vi.fn(),
+  webgl: vi.fn(),
+  hostWorld: vi.fn(),
 }));
 vi.mock('@open-northland/render', async (original) => ({
   ...(await original<typeof import('@open-northland/render')>()),
@@ -35,7 +38,9 @@ vi.mock('../../../src/view/runtime/world-bootstrap.js', () => ({
   },
   haltOnMissingContent: mocks.haltOnMissingContent,
   haltOnFailedRestore: mocks.haltOnFailedRestore,
+  haltOnMissingGraphics: mocks.haltOnMissingGraphics,
 }));
+vi.mock('../../../src/view/platform/browser-support.js', () => ({ webglAvailable: mocks.webgl }));
 
 import { StaleContentError } from '@open-northland/data';
 import { MissingTerrainError } from '../../../src/content/map/terrain.js';
@@ -83,6 +88,15 @@ describe('assembleMapWorld with the world hosted during the art load', () => {
     vi.clearAllMocks();
     mocks.terrain.mockResolvedValue({});
     mocks.realContent.mockResolvedValue(null);
+    mocks.webgl.mockReturnValue(true);
+  });
+
+  it('halts before the renderer and the world when the browser gives no WebGL context', async () => {
+    mocks.webgl.mockReturnValue(false);
+    expect(await assemble(plan(mocks.hostWorld))).toBeNull();
+    expect(mocks.haltOnMissingGraphics).toHaveBeenCalledTimes(1);
+    expect(mocks.hostWorld).not.toHaveBeenCalled();
+    expect(mocks.appDestroy).not.toHaveBeenCalled();
   });
 
   it('stops after the sprites when the staged save failed to restore, with one notice', async () => {

@@ -25,7 +25,7 @@ export const deBugReport = {
     desync:
       'Dein Spiel stimmt nicht mehr mit denen der anderen Spieler überein, daher kann die Partie nicht zuverlässig weiterlaufen.',
     'context-lost':
-      'Der Browser hat dem Spiel die Grafik entzogen und nicht zurückgegeben. Meist hilft es, die Seite neu zu laden.',
+      'Der Browser hat dem Spiel die Grafik entzogen und nicht zurückgegeben. Lade die Seite neu; hilft das nicht, beende das Spiel oder den Browser vollständig und starte erneut.',
     'gpu-gone':
       'Der Grafikteil des Spiels ist ausgefallen und wurde neu gestartet. Das Spiel läuft wieder; der Bericht hilft, die Ursache zu finden.',
   },

@@ -13,6 +13,8 @@ export interface ShellFault {
   readonly durationMs: number | null;
   readonly stack: string | null;
   readonly url: string | null;
+  /** Chromium's GPU feature status when the GPU process died (`app.getGPUFeatureStatus()`), else null. */
+  readonly gpuStatus: Readonly<Record<string, string>> | null;
 }
 export type FaultTrigger = 'renderer-gone' | 'renderer-unresponsive' | 'gpu-gone' | 'error';
 export type NewFault = Omit<ShellFault, 'id' | 'at'>;
@@ -29,7 +31,7 @@ export interface FaultStore {
   clear(ids: unknown): void;
 }
 
-const FAULT_FILE_VERSION = 1;
+const FAULT_FILE_VERSION = 2;
 const FAULT_ID_BYTES = 16;
 const FAULT_ID = /^[0-9a-f]{32}$/;
 const FAULT_SUFFIX = '.json';
@@ -49,6 +51,9 @@ const MAX_CLEARED_IDS = 100;
 const MAX_STACK_CHARS = 16_000;
 const MAX_URL_CHARS = 2048;
 const MAX_REASON_CHARS = 200;
+/** Electron's status has about twenty features, each a short state name. */
+const MAX_GPU_STATUS_KEYS = 64;
+const MAX_GPU_STATUS_CHARS = 64;
 /** Above a clipped fault even with every character JSON-escaped; a larger file is not one of ours. */
 const MAX_FAULT_FILE_BYTES = 128 * 1024;
 
@@ -62,12 +67,21 @@ function isCount(value: unknown): value is number | null {
 function isText(value: unknown): value is string | null {
   return value === null || typeof value === 'string';
 }
+function isGpuStatus(value: unknown): value is Readonly<Record<string, string>> | null {
+  if (value === null) return true;
+  if (typeof value !== 'object' || Array.isArray(value)) return false;
+  const entries = Object.entries(value);
+  return (
+    entries.length <= MAX_GPU_STATUS_KEYS &&
+    entries.every(([key, state]) => key.length <= MAX_GPU_STATUS_CHARS && typeof state === 'string')
+  );
+}
 
 /** Anything but this version's exact shape, under the id its file name carries, reads as absent. */
 function parseFault(raw: unknown, id: string): ShellFault | undefined {
   if (typeof raw !== 'object' || raw === null) return undefined;
   const record = raw as Record<string, unknown>;
-  const { trigger, at, reason, exitCode, durationMs, stack, url } = record;
+  const { trigger, at, reason, exitCode, durationMs, stack, url, gpuStatus } = record;
   if (
     record.version !== FAULT_FILE_VERSION ||
     record.id !== id ||
@@ -78,11 +92,12 @@ function parseFault(raw: unknown, id: string): ShellFault | undefined {
     !isCount(exitCode) ||
     !isCount(durationMs) ||
     !isText(stack) ||
-    !isText(url)
+    !isText(url) ||
+    !isGpuStatus(gpuStatus)
   ) {
     return undefined;
   }
-  return { id, trigger: trigger as FaultTrigger, at, reason, exitCode, durationMs, stack, url };
+  return { id, trigger: trigger as FaultTrigger, at, reason, exitCode, durationMs, stack, url, gpuStatus };
 }
 
 function parseFaultIds(raw: unknown): string[] {
@@ -141,6 +156,17 @@ export function createFaultStore(root: string, home: string, now: () => Date = (
     reason: clip(fault.reason, MAX_REASON_CHARS, home) ?? '',
     stack: clip(fault.stack, MAX_STACK_CHARS, home),
     url: clip(fault.url, MAX_URL_CHARS, home),
+    gpuStatus:
+      fault.gpuStatus === null
+        ? null
+        : Object.fromEntries(
+            Object.entries(fault.gpuStatus)
+              .slice(0, MAX_GPU_STATUS_KEYS)
+              .map(([key, state]) => [
+                key.slice(0, MAX_GPU_STATUS_CHARS),
+                state.slice(0, MAX_GPU_STATUS_CHARS),
+              ]),
+          ),
   });
 
   return {

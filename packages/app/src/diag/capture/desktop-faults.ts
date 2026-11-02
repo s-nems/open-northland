@@ -62,7 +62,13 @@ export function desktopFaultProblem(fault: DesktopFault, extras: FaultExtras): P
   return {
     trigger: fault.trigger,
     ...(error === undefined ? {} : { error }),
-    facts: { reason: fault.reason, exitCode: fault.exitCode, durationMs: fault.durationMs, ...extras.facts },
+    facts: {
+      reason: fault.reason,
+      exitCode: fault.exitCode,
+      durationMs: fault.durationMs,
+      ...(fault.gpuStatus === null ? {} : { gpuStatus: fault.gpuStatus }),
+      ...extras.facts,
+    },
     earlier: {
       id: fault.id,
       at: fault.at,

@@ -574,6 +574,9 @@ export const chsSurfaces = {
     loadFailedTitle: '载入存档失败',
     loadFailedDetail:
       '此世界无法接受该存档。这通常意味着存档是在不同的游戏内容或旧版地图上创建的；再次载入也会同样失败。',
+    graphicsUnavailableTitle: '图形不可用',
+    graphicsUnavailableDetail:
+      '浏览器目前无法为游戏提供图形功能（WebGL），通常是在显卡驱动出错之后。请完全关闭游戏或浏览器后重新启动；如果再次发生，请更新显卡驱动。',
     availableScenes: '可用的世界：',
     unknownScene: '未知的世界：“{id}”',
     copied: '已复制',
