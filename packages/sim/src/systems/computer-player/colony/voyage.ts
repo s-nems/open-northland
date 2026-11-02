@@ -485,11 +485,12 @@ export function unloaded(env: ColonyEnv, colony: ColonyView, ship: Entity): bool
 }
 
 /** What a founding colony's ships still do: the scout ship goes home, and an unloaded colony ship turns
- *  into the shipping line. */
+ *  into the shipping line, or, sunk first, leaves the seat owing one. */
 export function afterLanding(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
   const commands = bringScoutHome(env, colony);
   const ship = colony.ship;
-  if (ship !== null && mooringOf(env.world, ship) !== null && unloaded(env, colony, ship))
+  if (ship !== null && !env.world.has(ship, Vehicle)) env.edit().ship = null;
+  else if (ship !== null && mooringOf(env.world, ship) !== null && unloaded(env, colony, ship))
     commands.push(...startLine(env, colony, ship));
   return commands;
 }

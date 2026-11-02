@@ -1,9 +1,11 @@
 import { BUILDING_KIND } from '@open-northland/data';
-import { Building, Vehicle, vehiclePassengers } from '../../../components/index.js';
+import { Building, Settler, Vehicle, vehiclePassengers } from '../../../components/index.js';
 import type { PlayerCommand } from '../../../core/commands/index.js';
 import { contentIndex } from '../../../core/content-index.js';
+import type { Entity } from '../../../ecs/world.js';
 import { hexDistance } from '../../../nav/halfcell.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
+import { passengerJobAllowed } from '../../vehicles/crew.js';
 import { minutesToTicks } from '../game-phase.js';
 import { visibleEnemyFighters } from '../military/operations/raid-target.js';
 import { holdFlushed } from './cargo.js';
@@ -54,13 +56,22 @@ export function abandonColony(env: ColonyEnv): void {
   }
 }
 
+/** The colony's people `ship` may seat: its jobs leave out children, who stay. */
+function survivorsFor(env: ColonyEnv, ship: Entity): Entity[] {
+  const { world, ctx } = env;
+  const state = world.tryGet(ship, Vehicle);
+  const type = state === undefined ? undefined : contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (type === undefined) return [];
+  return colonists(env).filter((e) => passengerJobAllowed(type, world.get(e, Settler).jobType));
+}
+
 /** Survivors take the ship's free seats and it docks at home, boarding them first. */
 function takeSurvivors(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCommand[] {
   const { world } = env;
   if (colony.berth === null) return [];
   const seats = world.tryGet(line.ship, Vehicle)?.passengers.length ?? 0;
   const free = seats - ridersOf(world, line.ship).length;
-  const survivors = colonists(env).slice(0, Math.max(0, free));
+  const survivors = survivorsFor(env, line.ship).slice(0, Math.max(0, free));
   enterLeg(env, 'sailHome');
   return [...boardOrders(world, survivors, line.ship), dock(line.ship, colony.berth)];
 }
@@ -97,7 +108,7 @@ export function evacuate(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
       break;
     case 'unloadHome': {
       if (!holdFlushed(world, ship) && !stalled(env, line)) break;
-      if (colonists(env).length === 0 || colony.shore === null) {
+      if (survivorsFor(env, ship).length === 0 || colony.shore === null) {
         commands.push(...releaseLine(env, line));
         break;
       }

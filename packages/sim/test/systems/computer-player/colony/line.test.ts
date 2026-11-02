@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Rider, Settler, Vehicle, VehicleStock } from '../../../../src/components/index.js';
+import {
+  aiControlEntity,
+  ComputerColony,
+  Rider,
+  Settler,
+  Vehicle,
+  VehicleStock,
+} from '../../../../src/components/index.js';
 import type { Entity } from '../../../../src/ecs/world.js';
 import {
   exportSaveGame,
@@ -38,6 +45,7 @@ const AFTER_SAVE_TICKS = minutesToTicks(3);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
 const SITE_NEAR = 4;
 const ENEMY = 5;
+const CHILD_MALE = 4;
 
 /** A colony landed and its line under way. */
 function linedWorld(): { readonly sim: Simulation; readonly ship: Entity } {
@@ -91,6 +99,33 @@ describe('a colony line', () => {
     expect(stepUntil(sim, LEG_DUE_TICKS, () => leg(sim) === 'sailOut')).toBe(true);
   });
 
+  it('owes a ship sunk before the line began', () => {
+    const sim = colonyWorld();
+    stepUntil(sim, SITE_DUE_TICKS, () => colonyState(sim) !== undefined);
+    mooredShip(sim);
+    stepUntil(sim, SCOUT_DUE_TICKS, () => colonyState(sim)?.phase === 'fittingOut');
+    const ship = mooredShip(sim, SMALL_SHIP, SECOND_SHIP_AT);
+    stepUntil(sim, LANDING_DUE_TICKS, () => colonyState(sim)?.phase === 'founding');
+    removeVehicle(sim.world, ctxOf(sim), ship, 'destroyed');
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => (colonyState(sim)?.line ?? null) !== null)).toBe(true);
+    expect(colonyState(sim)?.ship).toBeNull();
+    expect(colonyState(sim)?.line?.ship).not.toBe(ship);
+  });
+
+  it('hands a listed settler no ship holds back to home at its next stop', () => {
+    const { sim } = linedWorld();
+    stepUntil(sim, LEG_DUE_TICKS, () => leg(sim) === 'unloadHome');
+    const ctx = ctxOf(sim);
+    const stray = homeSettlers(sim.world, ctx, SEAT)[0] as Entity;
+    const carrier = aiControlEntity(sim.world, SEAT);
+    if (carrier === null) throw new Error('no AI seat');
+    sim.world.mut(carrier, ComputerColony).rest.push(stray);
+    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).not.toContain(stray);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => leg(sim) === 'loadHome')).toBe(true);
+    expect(colonyState(sim)?.rest).not.toContain(stray);
+    expect(homeSettlers(sim.world, ctxOf(sim), SEAT)).toContain(stray);
+  });
+
   it('comes back from a save in mid-line exactly as it would have gone on', () => {
     const { sim } = linedWorld();
     stepUntil(sim, LEG_DUE_TICKS, () => leg(sim) === 'loadHome');
@@ -136,6 +171,39 @@ describe('an overrun colony', () => {
     const placed = colonyState(sim)?.builds.filter((b) => b.placed).length;
     stepUntil(sim, AFTER_SAVE_TICKS, () => false);
     expect(colonyState(sim)?.builds.filter((b) => b.placed).length).toBe(placed);
+  });
+
+  it('lets the ship go though a child it cannot seat stays', () => {
+    const { sim, ship } = linedWorld();
+    const site = colonyState(sim)?.site;
+    if (site === undefined) throw new Error('no site');
+    const ctx = ctxOf(sim);
+    const home = new Set(homeSettlers(sim.world, ctx, SEAT));
+    const crew = colonyState(sim)?.line?.crew ?? [];
+    for (const e of everySettlerOf(sim.world, SEAT))
+      if (!home.has(e) && !crew.includes(e)) sim.world.destroy(e);
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: CHILD_MALE,
+      x: site.hx,
+      y: site.hy,
+      tribe: VIKING,
+      owner: SEAT,
+    });
+    sim.enqueueSetup({
+      kind: 'spawnSettler',
+      jobType: UNARMED,
+      x: site.hx + SITE_NEAR,
+      y: site.hy,
+      tribe: VIKING,
+      owner: ENEMY,
+    });
+    for (const e of everyBuildingOf(sim.world, SEAT))
+      if (colonyMember(sim.world, ctx, SEAT, e)) sim.world.destroy(e);
+    expect(stepUntil(sim, LEG_DUE_TICKS, () => colonyState(sim)?.phase === 'abandoned')).toBe(true);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.line === null)).toBe(true);
+    sim.step();
+    expect(sim.world.get(ship, Vehicle).passengers.every((seat) => seat === null)).toBe(true);
   });
 
   it('with nobody left is given up, and the ship goes free at home', () => {

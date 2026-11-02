@@ -3,6 +3,7 @@ import type { ColonyLine, ColonyLineLeg } from '../../../components/ai/colony.js
 import {
   Building,
   Female,
+  Rider,
   Vehicle,
   VehicleStock,
   vehicleCommander,
@@ -16,6 +17,7 @@ import { homeBuildings, homeSettlers } from '../../ai-shared/home-roster.js';
 import { isBuilt } from '../../ai-shared/seat-roster.js';
 import { isAllocatableMan } from '../../ai-shared/workforce/pool.js';
 import type { SystemContext } from '../../context.js';
+import { isAdultSettler } from '../../family/eligibility.js';
 import { isEdibleFoodIn } from '../../readviews/index.js';
 import { stockAtBuildings } from '../../stores/index.js';
 import { DEFAULT_BUILD_ORDER } from '../build-order/entries.js';
@@ -29,7 +31,7 @@ import { SeatSupply } from '../workforce/supply.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
 import { type CargoLine, homewardCargo, LINE_CARGO_MOST, type OutwardRead, outwardCargo } from './demand.js';
 import { colonists } from './founding.js';
-import { boardOrders, sparePartyMen, topUpParty } from './people.js';
+import { boardOrders, sparePartyMen, standsOn, topUpParty } from './people.js';
 import { colonyBuildings } from './spot.js';
 import { homeStockOf } from './stock.js';
 import {
@@ -64,7 +66,8 @@ const COLONY_STOCK_GOODS: readonly { readonly id: string; readonly units: number
 ];
 /** How long a hold may stand unchanged before the ship goes with what it has (authored). */
 const LEG_STALL_TICKS = minutesToTicks(2);
-/** How long a ship may sail one leg (authored: a landing's sail limit). */
+/** How long a ship may take over one leg before it is given up at the next mooring (authored: a landing's
+ *  sail limit). */
 const LINE_SAIL_TICKS = LANDING_SAIL_TIMEOUT_TICKS;
 
 /** The ship's riders, the helm first. */
@@ -148,9 +151,25 @@ function noteLine(env: ColonyEnv, line: LineView): void {
   if (lost) live.crew = live.crew.filter((e) => world.isAlive(e));
 }
 
-/** The line gives its ship up where it lies: moored, the crew step off, and the seat owes a new one. */
+/** Drop from the colony's lists whoever no ship holds and no colony land bears, as a boarding the door
+ *  refused, and `gone` besides: those are home's again. Only a change writes. */
+function forgetListed(env: ColonyEnv, colony: ColonyView, gone: readonly Entity[]): void {
+  const { world, ctx } = env;
+  const stays = (e: Entity): boolean =>
+    world.isAlive(e) && !gone.includes(e) && (world.has(e, Rider) || standsOn(world, ctx, e, colony.land));
+  if (colony.people.every(stays) && colony.rest.every(stays)) return;
+  const live = env.edit();
+  live.people = live.people.filter(stays);
+  live.rest = live.rest.filter(stays);
+}
+
+/** The line gives up its ship, moored where it lies: everyone aboard steps off, home's again, and the seat
+ *  owes a new ship. */
 export function releaseLine(env: ColonyEnv, line: LineView): PlayerCommand[] {
-  const mooring = mooringOf(env.world, line.ship);
+  const { world } = env;
+  const mooring = mooringOf(world, line.ship);
+  const riders = ridersOf(world, line.ship);
+  forgetListed(env, env.edit(), riders);
   env.edit().line = null;
   return mooring === null ? [] : [unloadAt(line.ship, mooring)];
 }
@@ -299,14 +318,15 @@ function crewFromColony(env: ColonyEnv, line: LineView): PlayerCommand[] {
 }
 
 /** Hire the crew's shortfall from home, then the settlers the colony still lacks, in the seats left. */
-function boardHome(env: ColonyEnv, line: LineView): PlayerCommand[] {
+function boardHome(env: ColonyEnv, colony: ColonyView, line: LineView): PlayerCommand[] {
   const { world, ctx, seat } = env;
+  forgetListed(env, colony, []);
   const home = homeLandOf(env);
   const hired =
     line.crew.length < LINE_CREW ? hireCrew(env, line, sparePartyMen(world, ctx, seat, home)) : [];
   const people = colonists(env);
   const men = people.filter((e) => isAllocatableMan(world, ctx, e)).length + line.crew.length;
-  const women = people.filter((e) => world.has(e, Female)).length;
+  const women = people.filter((e) => world.has(e, Female) && isAdultSettler(world, e)).length;
   const seats = world.tryGet(line.ship, Vehicle)?.passengers.length ?? 0;
   const free = seats - ridersOf(world, line.ship).length - hired.length;
   const party = topUpParty(world, ctx, seat, home, { men, women }, free).filter((e) => !hired.includes(e));
@@ -328,7 +348,7 @@ function beginHomeLoad(env: ColonyEnv, colony: ColonyView, line: LineView): Play
       : [{ goodType: food, amount: provisions }, ...lines.filter((l) => l.goodType !== food)],
   );
   enterLeg(env, 'loadHome');
-  return [...boardHome(env, line), ...orders];
+  return [...boardHome(env, colony, line), ...orders];
 }
 
 /** Whether the ship has a reason to sail: cargo or settlers aboard, or goods waiting over there. */
@@ -341,7 +361,8 @@ function worthSailing(env: ColonyEnv, colony: ColonyView, line: LineView): boole
   );
 }
 
-/** The ship `sail`s for `land`: arrived, `arrive`; refused or stopped short, the land's next shore. */
+/** The ship `sail`s for `land`: arrived, `arrive`; refused or stopped short, the land's next shore. Late,
+ *  it is released where it lies moored, never at sea, or nobody would let its riders off. */
 export function sail(
   env: ColonyEnv,
   colony: ColonyView,
@@ -352,7 +373,8 @@ export function sail(
 ): PlayerCommand[] {
   const { world, ctx } = env;
   if (mooredOn(env, line.ship, land)) return arrive();
-  if (ctx.tick - line.since >= LINE_SAIL_TICKS) return releaseLine(env, line);
+  if (ctx.tick - line.since >= LINE_SAIL_TICKS && mooringOf(world, line.ship) !== null)
+    return releaseLine(env, line);
   const at = colony[to];
   if (!lyingStill(world, line.ship) || at === null) return [];
   const next = otherShore(env, line.ship, at) ?? at;
@@ -388,13 +410,14 @@ function claimShip(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
  * would fetch and flush at the far shore. A ship lost leaves the seat owing one.
  */
 export function runLine(env: ColonyEnv, colony: ColonyView): PlayerCommand[] {
-  const { world } = env;
+  const { world, ctx } = env;
   const line = colony.line;
   if (line === null) return claimShip(env, colony);
   if (!world.has(line.ship, Vehicle)) {
     env.edit().line = null;
     return [];
   }
+  if (line.since === ctx.tick) return [];
   noteLine(env, line);
   const ship = line.ship;
   const home = homeLandOf(env);
