@@ -5,15 +5,19 @@ import {
   diplomacyStance,
   type FogMode,
   MAX_PLAYERS,
+  Vehicle,
+  VehicleDrive,
+  vehiclePassengers,
 } from '../../components/index.js';
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
 import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
-import { colonyWantsShips, everyBuildingOf } from '../ai-shared/home-roster.js';
+import { colonyLandOf, colonyWantsShips, everyBuildingOf } from '../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
+import { isShipVehicle } from '../readviews/vehicles.js';
 import { interactionCell } from '../settlers/targets/index.js';
 import { mooringSpotsOf } from '../vehicles/dock.js';
 import { fogHides, playerSeesNode } from '../vision/gates.js';
@@ -246,6 +250,25 @@ export function rivalOverSea(world: World, ctx: SystemContext, player: number): 
 /** Whether the seat builds ships: for a rival over the sea, or for its colony. */
 export function seatNeedsShips(world: World, ctx: SystemContext, player: number): boolean {
   return colonyWantsShips(world, player) || rivalOverSea(world, ctx, player);
+}
+
+/**
+ * Whether `ship` is lost to `seat` though afloat: nobody aboard, nothing driving it, adrift or moored on a
+ * land that is neither the seat's, its colony's nor the rival's it lands on, where nobody of the seat stands
+ * to take the helm. The fleet counts it out, so the joinery builds its replacement.
+ */
+export function strandedShip(world: World, ctx: SystemContext, seat: number, ship: Entity): boolean {
+  const state = world.get(ship, Vehicle);
+  const type = contentIndex(ctx.content).vehicles.get(state.vehicleType);
+  if (type === undefined || !isShipVehicle(type)) return false;
+  if (vehiclePassengers(state).length > 0 || world.has(ship, VehicleDrive)) return false;
+  const terrain = ctx.terrain;
+  if (!state.moored || state.mooring === null || terrain === undefined) return !state.moored;
+  const land = terrain.componentOf(terrain.nodeAtClamped(state.mooring.hx, state.mooring.hy));
+  const base = seatBaseOf(world, ctx, seat);
+  const home = base === null ? NO_COMPONENT : terrain.componentOf(interactionCell(world, ctx, terrain, base));
+  const route = seaRouteOf(world, ctx, seat);
+  return land !== home && land !== colonyLandOf(world, seat) && land !== route?.rival;
 }
 
 /** How far apart, in half-cell nodes, ships' shore points lie, so the hulls moor side by side. */

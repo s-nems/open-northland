@@ -886,7 +886,7 @@ describe('workforce - the top-tier joineries’ roles', () => {
     expect(catapultCrewOn(missing + 1)).toEqual(all(TOOL_IRON));
   });
 
-  /** A small ship of the seat's on the open sea, the `i`-th of a column down its middle. */
+  /** A small ship of the seat's, the `i`-th of a column down the sea's middle, tied to the home shore. */
   function fleetShip(sim: Simulation, i: number): Entity {
     const e = createVehicle(sim.world, fleetCtx(sim), {
       vehicleType: SHIP_SMALL,
@@ -896,6 +896,9 @@ describe('workforce - the top-tier joineries’ roles', () => {
       owner: SEAT,
     });
     if (e === null) throw new Error('setup: no ship');
+    const hull = sim.world.mut(e, Vehicle);
+    hull.moored = true;
+    hull.mooring = { hx: FLEET_ROW.x, hy: FLEET_ROW.y };
     return e;
   }
 

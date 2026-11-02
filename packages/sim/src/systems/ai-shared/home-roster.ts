@@ -36,6 +36,12 @@ export function colonyHeldShips(world: World, seat: number): readonly Entity[] {
   return colony === undefined ? [] : heldShipsOf(colony);
 }
 
+/** The land `seat`'s live colony plan stands on, or undefined. */
+export function colonyLandOf(world: World, seat: number): number | undefined {
+  const colony = colonyOf(world, seat);
+  return colony === undefined || colony.phase === 'abandoned' ? undefined : colony.land;
+}
+
 /** Whether `seat` holds a live colony plan, whose ships its joinery owes. */
 export function colonyWantsShips(world: World, seat: number): boolean {
   const colony = colonyOf(world, seat);

@@ -35,7 +35,7 @@ import { type GamePhase, gamePhase } from '../game-phase.js';
 import { type HerdKept, seatHerdKept } from '../herd.js';
 import { type JoineryRole, joineryRoles, ROLE_JOINERY_ID, smallestShipHouse } from '../joinery-role.js';
 import { BARRACKS_LEAD_TICKS } from '../military/deadline.js';
-import { seatNeedsShips } from '../sea-route.js';
+import { seatNeedsShips, strandedShip } from '../sea-route.js';
 import { militaryOrdersOf } from '../strategy/military.js';
 import { COLLECTED_GOOD_IDS } from './collectors/wanted-goods.js';
 import {
@@ -943,7 +943,7 @@ function fleetReserve(
   if (!shipYard) return NO_RESERVE;
   let standing = 0;
   for (const e of vehicleIndex(world).ownedBy(player))
-    if (world.get(e, Vehicle).vehicleType === vehicleType) standing++;
+    if (world.get(e, Vehicle).vehicleType === vehicleType && !strandedShip(world, ctx, player, e)) standing++;
   const missing = Math.max(0, landingShips() - standing);
   const trade = tradeShips();
   if (missing === 0 && trade === 0) return NO_RESERVE;
@@ -1317,7 +1317,8 @@ function seatFleet(
   if (house === undefined || vehicleType === undefined) return 0;
   let owned = 0;
   for (const e of vehicleIndex(world).ownedBy(player)) {
-    if (world.get(e, Vehicle).vehicleType === vehicleType && (!freeOnly || standsFree(world, e))) owned++;
+    if (world.get(e, Vehicle).vehicleType !== vehicleType || strandedShip(world, ctx, player, e)) continue;
+    if (!freeOnly || standsFree(world, e)) owned++;
   }
   return owned;
 }

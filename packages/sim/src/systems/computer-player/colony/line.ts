@@ -28,7 +28,7 @@ import { sitesShortfalls } from '../build-order/upgrade-supply.js';
 import { computerProfileOf } from '../difficulty.js';
 import { minutesToTicks } from '../game-phase.js';
 import { LANDING_SAIL_TIMEOUT_TICKS, otherShore } from '../military/operations/landing.js';
-import { shorePoints } from '../sea-route.js';
+import { shorePoints, strandedShip } from '../sea-route.js';
 import { FOOD_COMFORT_UNITS_PER_SETTLER, storedFoodUnits } from '../workforce/food.js';
 import { SeatSupply } from '../workforce/supply.js';
 import { holdDone, holdFlushed, holdLoad, pinHold } from './cargo.js';
@@ -440,6 +440,8 @@ export function sail(
   if (mooredOn(env, line.ship, land)) return arrive();
   if (ctx.tick - line.since >= LINE_SAIL_TICKS && mooringOf(world, line.ship) !== null)
     return releaseLine(env, line);
+  // A crew lost at sea leaves no helm to bring her in, and the seat a ship owed.
+  if (strandedShip(world, ctx, env.seat, line.ship)) return releaseLine(env, line);
   const at = colony[to];
   if (!lyingStill(world, line.ship) || at === null) return [];
   const next = otherShore(env, line.ship, at) ?? at;

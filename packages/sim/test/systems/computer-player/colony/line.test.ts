@@ -21,7 +21,11 @@ import {
   everySettlerOf,
   homeSettlers,
 } from '../../../../src/systems/ai-shared/home-roster.js';
+import { seatBaseOf } from '../../../../src/systems/computer-player/base.js';
 import { minutesToTicks } from '../../../../src/systems/computer-player/game-phase.js';
+import { freeShips } from '../../../../src/systems/computer-player/military/operations/landing.js';
+import { strandedShip } from '../../../../src/systems/computer-player/sea-route.js';
+import { interactionCell } from '../../../../src/systems/settlers/targets/index.js';
 import { removeVehicle } from '../../../../src/systems/vehicles/index.js';
 import {
   colonyContent,
@@ -43,6 +47,8 @@ const LEG_DUE_TICKS = minutesToTicks(8);
 const ROUND_DUE_TICKS = minutesToTicks(30);
 const AFTER_SAVE_TICKS = minutesToTicks(3);
 const SECOND_SHIP_AT = { x: 90, y: 100 };
+/** Off the colony's shore. */
+const STRAY_AT = { x: 138, y: 60 };
 const SITE_NEAR = 4;
 const ENEMY = 5;
 const CHILD_MALE = 4;
@@ -62,6 +68,15 @@ function linedWorld(): { readonly sim: Simulation; readonly ship: Entity } {
   return { sim, ship };
 }
 
+/** The land under the seat's headquarters. */
+function homeLandOfSeat(sim: Simulation): number {
+  const ctx = ctxOf(sim);
+  const terrain = ctx.terrain;
+  const base = seatBaseOf(sim.world, ctx, SEAT);
+  if (terrain === undefined || base === null) throw new Error('setup: no base');
+  return terrain.componentOf(interactionCell(sim.world, ctx, terrain, base));
+}
+
 const leg = (sim: Simulation): string | undefined => colonyState(sim)?.line?.leg;
 
 /** Who stands on the colony or rides for it. */
@@ -73,6 +88,32 @@ const colonyPeople = (sim: Simulation): number => {
 function aboard(sim: Simulation, ship: Entity, good: number): number {
   return sim.world.tryGet(ship, VehicleStock)?.lines.get(good)?.current ?? 0;
 }
+
+describe('a ship left without a helm', () => {
+  it('is brought home from the colony by a man of the colony, who steps off there', () => {
+    const { sim } = linedWorld();
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => colonyState(sim)?.phase === 'running')).toBe(true);
+    const stray = mooredShip(sim, SMALL_SHIP, STRAY_AT);
+    const land = colonyState(sim)?.land;
+    const ctx = ctxOf(sim);
+    const terrain = ctx.terrain;
+    const mooring = sim.world.get(stray, Vehicle).mooring;
+    if (land === undefined || terrain === undefined || mooring === null) throw new Error('setup: unmoored');
+    expect(terrain.componentOf(terrain.nodeAt(mooring.hx, mooring.hy))).toBe(land);
+    const env = { world: sim.world, ctx, terrain, seat: SEAT };
+    const home = homeLandOfSeat(sim);
+    expect(stepUntil(sim, ROUND_DUE_TICKS, () => freeShips(env, home).includes(stray))).toBe(true);
+  });
+
+  it('counts out of the fleet once it lies adrift with nobody aboard', () => {
+    const sim = colonyWorld();
+    sim.step();
+    const ship = mooredShip(sim);
+    expect(strandedShip(sim.world, ctxOf(sim), SEAT, ship)).toBe(false);
+    sim.world.mut(ship, Vehicle).moored = false;
+    expect(strandedShip(sim.world, ctxOf(sim), SEAT, ship)).toBe(true);
+  });
+});
 
 describe('a colony line', () => {
   it('carries food out and wood home, holding its crew through the round trip', () => {

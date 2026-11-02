@@ -13,6 +13,7 @@ import type { ComputerModule } from '../index.js';
 import { abandonColony, evacuate, overrun } from './abandon.js';
 import { foundColony } from './founding.js';
 import { runLine } from './line.js';
+import { recoverStrayShips } from './stray-ships.js';
 import {
   afterLanding,
   type ColonyEnv,
@@ -60,7 +61,8 @@ function runColony(world: World, ctx: SystemContext, seat: number): readonly Pla
       const ships = [...afterLanding(env, colony), ...runLine(env, world.get(carrier, ComputerColony))];
       if (!moduleBeatDue(ctx.tick - POPULATION_PHASE, seat, WORKFORCE_EVERY_DECISIONS)) return ships;
       const settled = world.get(carrier, ComputerColony);
-      if (!overrun(env, settled)) return [...ships, ...foundColony(env, settled)];
+      if (!overrun(env, settled))
+        return [...ships, ...recoverStrayShips(env, settled), ...foundColony(env, settled)];
       abandonColony(env);
       return ships;
     }
