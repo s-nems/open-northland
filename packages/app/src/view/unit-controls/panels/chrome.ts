@@ -1,6 +1,8 @@
 import type { UiCue } from '@open-northland/audio';
 import { projectNode } from '@open-northland/render';
-import { type Entity, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
+import { type Entity, entityById, systems, type UnlockStatus, type WorldSnapshot } from '@open-northland/sim';
+import { diag } from '../../../diag/index.js';
+import { isRenamable, namedSettlerOf } from '../../../game/character-names/index.js';
 import { petNames } from '../../../game/character-names/pet-names.js';
 import { nodeOfId } from '../../../game/node-id.js';
 import { postFlagTradeOf } from '../../../game/snapshot/index.js';
@@ -128,9 +130,16 @@ export async function createUnitChrome(
   callbacks: UnitChromeCallbacks,
 ): Promise<UnitChromeHandle> {
   // The settler panel's commands: `setProductionCount` is the sim's, while a rename is the player's
-  // own and stays here, where no other seat's screen can be made to show it.
+  // own and stays on this client, where no other seat's screen can be made to show it.
+  const rename = (id: number, name: string): void => {
+    const ent = entityById(opts.snapshot(), id);
+    if (ent === undefined || !isRenamable({ jobs: opts.content.jobs, mapText: opts.mapText }, ent)) return;
+    if (petNames().set(namedSettlerOf(ent), name) === 'refused') {
+      diag.warn('hud', `refused the name ${JSON.stringify(name)} for settler ${id}`);
+    }
+  };
   const contract: SettlerContractCommands = {
-    rename: (id, name) => petNames().set(id, name),
+    rename,
     setProductionCount: (id, goodType, count) =>
       opts.enqueue({ kind: 'setProductionCount', entity: id as Entity, goodType, count }),
   };

@@ -1,5 +1,6 @@
+import { SETTLER_NAME_MAX_CHARS } from '../../../game/character-names/pet-names.js';
 import { formatMessage, messages } from '../../../i18n/index.js';
-import { SETTLER_NAME_MAX_CHARS, type SettlerPanelModel } from '../../details-panel/model/index.js';
+import type { SettlerPanelModel } from '../../details-panel/model/index.js';
 import type { SelectionHeadModel } from '../selection-panel.js';
 import type { TradePeers } from './peers.js';
 
@@ -29,7 +30,10 @@ export function settlerHead(
             kickerTooltip: formatMessage(copy.selectTrade, { trade }),
           },
     title: model.name,
-    rename: model.renamable ? { tooltip: copy.rename, maxLength: SETTLER_NAME_MAX_CHARS } : null,
+    rename:
+      model.rename === null
+        ? null
+        : { tooltip: copy.rename, maxLength: SETTLER_NAME_MAX_CHARS, current: model.rename.given },
     meta: model.meta,
     orders: model.foreign ? null : { tooltip: formatMessage(copy.ordersTooltip, { key: ordersKey }) },
     labels: { close: copy.close, prev: copy.prev, next: copy.next },

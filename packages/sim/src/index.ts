@@ -4,7 +4,6 @@ export type {
   AssistantCounterValues,
 } from './components/assistant.js';
 export { CHEST_KINDS, CHEST_LANDSCAPE_SLUG, type ChestKind } from './components/chest.js';
-export { HOUSE_RECORD_NAME_MAX_CHARS } from './components/economy/infrastructure.js';
 export {
   PRODUCTION_COUNT_MAX,
   PRODUCTION_UNLIMITED,
@@ -39,11 +38,10 @@ export {
   fogSettings,
   peaceHoldsUntilTick,
 } from './components/rules.js';
-export {
-  type NeedDrain,
-  type NeedLevels,
-  SETTLER_NAME_MAX_CHARS,
-  type SettlerNeedsView,
+export type {
+  NeedDrain,
+  NeedLevels,
+  SettlerNeedsView,
 } from './components/settler.js';
 export { WALK_RANGE_NODES } from './components/signpost.js';
 export { TRADE_LIMIT_NONE, TRADE_ROUTE_HOUSES, type TradeImportMark } from './components/trade.js';

@@ -80,9 +80,6 @@ export type SettlerProgressState = NonNullable<(typeof SettlerProgress)['__value
 
 export type SettlerProgressView = DeepReadonly<SettlerProgressState>;
 
-/** The longest name, in code points, the player may give a settler. */
-export const SETTLER_NAME_MAX_CHARS = 24;
-
 /** The immutable identity dealt at birth or spawn, independent of family and occupation. */
 export const NameIdentity = defineComponent<{ readonly pool: string; readonly name: string }>(
   'NameIdentity',

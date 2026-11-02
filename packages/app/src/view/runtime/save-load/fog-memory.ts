@@ -1,13 +1,11 @@
 import type { FogGhost, FogGhostMemory } from '@open-northland/render';
 import type { HarvestState, StaticLayerMemory } from '../../map-objects/static-layer.js';
 
-/** The layout {@link encodeFogMemory} writes; a reader accepts exactly this one. */
-const FOG_MEMORY_VERSION = 1;
 /** `[entity, placement, state]`, one held harvestable quad of {@link StaticLayerMemory.held}. */
 const HELD_QUAD_FIELDS = 3;
 
 /**
- * What the viewer remembers of the fog, carried in a save's `presentation` text: the remembered
+ * What the viewer remembers of the fog, part of the client memory a save keeps: the remembered
  * statics, the road network and the map's static layer as the seat last saw them. A save restores it
  * into the same seat only; anything else starts from a blank memory.
  */
@@ -20,21 +18,9 @@ export interface FogMemory {
   readonly layer: StaticLayerMemory | null;
 }
 
-export function encodeFogMemory(memory: FogMemory): string {
-  return JSON.stringify({ version: FOG_MEMORY_VERSION, ...memory });
-}
-
-/** The memory a save's presentation text holds, or null when absent, of another layout or malformed:
- *  a lost memory never fails a load. */
-export function decodeFogMemory(text: string | null): FogMemory | null {
-  if (text === null) return null;
-  let raw: unknown;
-  try {
-    raw = JSON.parse(text);
-  } catch {
-    return null;
-  }
-  if (!isRecord(raw) || raw.version !== FOG_MEMORY_VERSION) return null;
+/** The fog memory `raw` holds, or null when it is malformed: a lost memory never fails a load. */
+export function fogMemoryOf(raw: unknown): FogMemory | null {
+  if (!isRecord(raw)) return null;
   const { mapId, seat, statics, roads, layer } = raw;
   if (mapId !== null && typeof mapId !== 'string') return null;
   if (seat !== null && !isCount(seat)) return null;
