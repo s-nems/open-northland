@@ -9,12 +9,13 @@ import {
 import { contentIndex } from '../../core/content-index.js';
 import type { Entity, World } from '../../ecs/world.js';
 import { type HalfCellNode, nodeManhattan } from '../../nav/halfcell.js';
-import { NO_COMPONENT, type TerrainGraph } from '../../nav/terrain/index.js';
+import { NO_COMPONENT, type NodeId, type TerrainGraph } from '../../nav/terrain/index.js';
 import { everyBuildingOf } from '../ai-shared/home-roster.js';
 import { anchorNodeOf } from '../ai-shared/node-geometry.js';
 import type { SystemContext } from '../context.js';
 import { HEADQUARTERS_BUILDING_ID } from '../readviews/index.js';
 import { interactionCell } from '../settlers/targets/index.js';
+import { mooringSpotsOf } from '../vehicles/dock.js';
 import { fogHides, playerSeesNode } from '../vision/gates.js';
 import type { FogState } from '../vision/state.js';
 import { seatBaseOf } from './base.js';
@@ -240,6 +241,43 @@ export function seaRouteOf(world: World, ctx: SystemContext, player: number): Se
 /** Whether the seat needs a ship to reach the headquarters it sails for ({@link seaRouteOf}). */
 export function rivalOverSea(world: World, ctx: SystemContext, player: number): boolean {
   return seaRouteOf(world, ctx, player) !== null;
+}
+
+/** How far apart, in half-cell nodes, ships' shore points lie, so the hulls moor side by side. */
+export const LANDING_SHORE_SPACING_NODES = 10;
+
+/**
+ * Up to `count` shore points on `land`, each at least {@link LANDING_SHORE_SPACING_NODES} from the others:
+ * the mooring spots `ship` can sail to ({@link mooringSpotsOf}) that `usable` admits, nearest `towards`
+ * first, the lowest node on a tie.
+ */
+export function shorePoints(
+  world: World,
+  ctx: SystemContext,
+  terrain: TerrainGraph,
+  ship: Entity,
+  land: number,
+  towards: HalfCellNode,
+  usable: (at: HalfCellNode) => boolean,
+  count: number,
+): HalfCellNode[] {
+  const spots = mooringSpotsOf(world, ctx, terrain, ship);
+  if (spots === null) return [];
+  const candidates: { readonly at: HalfCellNode; readonly node: NodeId; readonly distance: number }[] = [];
+  for (const node of spots.spots) {
+    if (terrain.componentOf(node) !== land) continue;
+    const { x, y } = terrain.coordsOf(node);
+    const at = { hx: x, hy: y };
+    if (!usable(at)) continue;
+    candidates.push({ at, node, distance: nodeManhattan(at, towards) });
+  }
+  candidates.sort((a, b) => a.distance - b.distance || a.node - b.node);
+  const picked: HalfCellNode[] = [];
+  for (const c of candidates) {
+    if (picked.length >= count) break;
+    if (picked.every((p) => nodeManhattan(p, c.at) >= LANDING_SHORE_SPACING_NODES)) picked.push(c.at);
+  }
+  return picked;
 }
 
 const coastsByTerrain = new WeakMap<TerrainGraph, ReadonlyMap<number, ReadonlySet<number>>>();

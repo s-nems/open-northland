@@ -26,13 +26,14 @@ import { mooringSpotsOf } from '../../../vehicles/dock.js';
 import { crewInside } from '../../../vehicles/movement.js';
 import { vehicleIndex } from '../../../vehicles/registry.js';
 import { computerProfileOf, type Share } from '../../difficulty.js';
-import { type SeaRoute, seaRouteOf } from '../../sea-route.js';
+import { LANDING_SHORE_SPACING_NODES, type SeaRoute, seaRouteOf, shorePoints } from '../../sea-route.js';
 import { LANDING_FLEET_MIN_SHIPS, landingFewestShips, landingFleetShips } from '../../workforce/craft.js';
 import { knownDefendingPoints } from '../enemy-strength.js';
 import { marchOrders } from '../muster.js';
 import { launchRatioReached } from '../plan.js';
 import { unitPoints } from '../points.js';
 import {
+  type BelievedLand,
   believedFireAt,
   believedLand,
   type FireSource,
@@ -58,8 +59,6 @@ export const LANDING_COOLDOWN_TICKS = 5 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 export const LANDING_FORM_TIMEOUT_TICKS = 4 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
 /** The most its ships sail out before it turns back, and sail home before it lets the crews go. */
 export const LANDING_SAIL_TIMEOUT_TICKS = 12 * SECONDS_PER_MINUTE * TICKS_PER_SECOND;
-/** How far apart, in half-cell nodes, the ships' shore points lie, so the hulls moor side by side. */
-export const LANDING_SHORE_SPACING_NODES = 10;
 /** The most the first ship moored at its shore keeps its men aboard waiting for the rest of the fleet,
  *  so the wave lands together. Authored: on arabskie_wyspy_wolna_gra_mieszana a wave whose ships cast
  *  off one by one landed in parts a minute or more apart, and the first men ashore fell alone. */
@@ -116,39 +115,22 @@ export function freeShips(env: OperationEnv, home: number): Entity[] {
 }
 
 /**
- * Up to `count` shore points for the ships, each at least {@link LANDING_SHORE_SPACING_NODES} from the
- * others: the mooring spots `ship` can sail to ({@link mooringSpotsOf}) on the rival's land outside the reach
- * of every tower and shelter the seat believes stands there (`fire`, {@link underFire}), so the hulls
- * waiting at the shore are not shot, nearest his headquarters first, the lowest node on a tie. Authored: on
- * arabskie_wyspy_wolna_gra_mieszana (seed 7) four ships moored six nodes from a rival's headquarters, its
- * people shooting from inside, lost three hulls and all 61 men aboard before the last one moored.
+ * The shore points of a landing's ships ({@link shorePoints}): on the rival's land, nearest his headquarters,
+ * outside the reach of every tower and shelter the seat believes stands there ({@link underFire}), so the
+ * hulls waiting at the shore are not shot. Authored: on arabskie_wyspy_wolna_gra_mieszana (seed 7) four ships
+ * moored six nodes from a rival's headquarters, its people shooting from inside, lost three hulls and all 61
+ * men aboard before the last one moored.
  */
 function landingShores(
   env: OperationEnv,
   ship: Entity,
   route: SeaRoute,
-  fire: readonly FireSource[],
+  believed: BelievedLand,
   count: number,
 ): HalfCellNode[] {
   const { world, ctx, terrain } = env;
-  const spots = mooringSpotsOf(world, ctx, terrain, ship);
-  if (spots === null) return [];
-  const hq = route.headquarters.node;
-  const candidates: { readonly at: HalfCellNode; readonly node: NodeId; readonly distance: number }[] = [];
-  for (const node of spots.spots) {
-    if (terrain.componentOf(node) !== route.rival) continue;
-    const { x, y } = terrain.coordsOf(node);
-    const at = { hx: x, hy: y };
-    if (underFire(fire, at)) continue;
-    candidates.push({ at, node, distance: nodeManhattan(at, hq) });
-  }
-  candidates.sort((a, b) => a.distance - b.distance || a.node - b.node);
-  const picked: HalfCellNode[] = [];
-  for (const c of candidates) {
-    if (picked.length >= count) break;
-    if (picked.every((p) => nodeManhattan(p, c.at) >= LANDING_SHORE_SPACING_NODES)) picked.push(c.at);
-  }
-  return picked;
+  const clear = (at: HalfCellNode): boolean => !underFire(believed.sources, at);
+  return shorePoints(world, ctx, terrain, ship, route.rival, route.headquarters.node, clear, count);
 }
 
 /** The tick from which the seat may land: its peace over and its difficulty's first wave due. */
@@ -680,8 +662,7 @@ function open(env: OperationEnv, free: readonly Entity[], id: number): Opened<La
     known === null || ratio.num * LANDING_EDGE.den >= LANDING_EDGE.num * ratio.den ? ratio : LANDING_EDGE;
   const believed = believedLand(env, route.rival);
   const first = crews[0];
-  const shores =
-    first === undefined ? [] : landingShores(env, first.ship, route, believed.sources, crews.length);
+  const shores = first === undefined ? [] : landingShores(env, first.ship, route, believed, crews.length);
   const nearest = shores[0];
   const goal = nearest === undefined ? null : landingObjective(ctx, believed, nearest);
   if (goal === null) return null;

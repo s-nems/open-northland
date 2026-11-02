@@ -25,6 +25,9 @@ import { RAID_TOWER_CLEARANCE_NODES } from './raid-target.js';
 /** A bare man's armour blocks nothing. */
 const NO_BLOCKING = 0;
 
+/** What reading a seat's belief of a land takes: no operation need be open. */
+type BeliefEnv = Pick<OperationEnv, 'world' | 'ctx' | 'terrain' | 'seat'>;
+
 /** One enemy building the seat believes stands, with where a band walks to strike it. */
 export interface BelievedTarget {
   readonly entity: Entity;
@@ -44,7 +47,7 @@ function shoots(ctx: SystemContext, buildingType: number): boolean {
 /** The enemy buildings on `land` the seat believes stand and could fall: a seen one with hitpoints left, a
  *  remembered one out of sight of a type with hitpoints. Walls are no target. Costs the believed
  *  buildings. */
-function believedTargets(env: OperationEnv, land: number): BelievedTarget[] {
+function believedTargets(env: BeliefEnv, land: number): BelievedTarget[] {
   const { world, ctx, terrain, seat } = env;
   const enemy = (owner: number): boolean => owner !== seat && diplomacyStance(world, seat, owner) === 'enemy';
   const targets: BelievedTarget[] = [];
@@ -90,7 +93,7 @@ export interface BelievedLand {
 }
 
 /** The {@link BelievedLand} of `land`. Costs the believed buildings. */
-export function believedLand(env: OperationEnv, land: number): BelievedLand {
+export function believedLand(env: BeliefEnv, land: number): BelievedLand {
   const targets = believedTargets(env, land);
   return { targets, sources: fireSourcesOf(env.ctx, targets) };
 }
